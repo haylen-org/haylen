@@ -14,6 +14,7 @@
 
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/assets/Manager.hpp"
+#include "haylen/core/ConnectionScope.hpp"
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/core/LoadingView.hpp"
@@ -35,18 +36,18 @@ class EventRecorder final {
   public:
     EventRecorder(Engine& engine, std::vector<std::string>& entries) : log(entries) {
         for (const std::string_view name : {LifecycleEvent::kSceneLoading, LifecycleEvent::kSceneLoaded, LifecycleEvent::kSceneEntered, LifecycleEvent::kSceneExited, LifecycleEvent::kSceneUnloaded, LifecycleEvent::kScenePaused, LifecycleEvent::kSceneResumed, LifecycleEvent::kSceneExitTransitionStarted, LifecycleEvent::kSceneEnterTransitionFinished}) {
-            connections.push_back(engine.getEvents().on(name, [this, name](EventBus::Event& event) { log.push_back(std::string(name) + " " + describe(event.get<Scene>())); }));
+            connections.add(engine.getEvents().on(name, [this, name](EventBus::Event& event) { log.push_back(std::string(name) + " " + describe(event.get<Scene>())); }));
         }
         for (const std::string_view name : {LifecycleEvent::kSceneCoverStarted, LifecycleEvent::kSceneCoverFinished, LifecycleEvent::kSceneHoldStarted, LifecycleEvent::kSceneHoldFinished, LifecycleEvent::kSceneRevealStarted, LifecycleEvent::kSceneRevealFinished}) {
             // clang-format off
-            connections.push_back(engine.getEvents().on(name, [this, name](EventBus::Event& event) {
+            connections.add(engine.getEvents().on(name, [this, name](EventBus::Event& event) {
                 const SceneManager::Transfer& transfer = *event.get<SceneManager::Transfer>();
                 log.push_back(std::string(name) + " " + describe(transfer.from) + ">" + describe(transfer.to));
             }));
             // clang-format on
         }
         // clang-format off
-        connections.push_back(engine.getEvents().on(LifecycleEvent::kSceneLoadFailed, [this](EventBus::Event& event) {
+        connections.add(engine.getEvents().on(LifecycleEvent::kSceneLoadFailed, [this](EventBus::Event& event) {
             const SceneManager::LoadFailure& failure = *event.get<SceneManager::LoadFailure>();
             log.push_back("sceneLoadFailed " + describe(failure.scene) + " " + failure.error->what());
         }));
@@ -60,7 +61,7 @@ class EventRecorder final {
     }
 
     std::vector<std::string>& log;
-    std::vector<Connection> connections;
+    ConnectionScope connections;
 };
 
 // Scene whose load runs a function of the test with the load context.
@@ -155,7 +156,7 @@ TEST(SceneLoadTest, FinishesOnceTheHookAndEveryDeferralReleasedIt) {
     scenes.preload(std::make_shared<LoadScene>([](SceneLoad& load) { load.preload("missing"); }), {}, [&](const SceneManager::Result& value) { result = value; });
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->outcome, SceneManager::Outcome::Failed);
-    EXPECT_STREQ(result->error->what(), "Unknown asset group: missing");
+    EXPECT_STREQ(result->error->what(), "The asset group 'missing' is not defined.");
 }
 
 TEST(SceneManagerTest, UsesTheDefaultHooksOfALoadingView) {

@@ -133,6 +133,7 @@ TEST(JobSystemTest, ParallelForNeverWaitsBehindBusyWorkers) {
 
     // Every worker runs a long job, like an asynchronous navmesh build, so no worker can take a chunk.
     std::atomic<std::size_t> started{0};
+    std::atomic<std::size_t> left{0};
     std::atomic<bool> open{false};
     for (std::size_t worker = 0; worker < jobs.getWorkerCount(); ++worker) {
         // clang-format off
@@ -141,6 +142,7 @@ TEST(JobSystemTest, ParallelForNeverWaitsBehindBusyWorkers) {
             while (!open) {
                 std::this_thread::yield();
             }
+            ++left;
         });
         // clang-format on
     }
@@ -165,6 +167,7 @@ TEST(JobSystemTest, ParallelForNeverWaitsBehindBusyWorkers) {
     const bool finishedWhileBusy = finished;
     open = true;
     caller.join();
+    ASSERT_TRUE(varn.pumpUntil([&] { return left.load() == jobs.getWorkerCount(); }));
     EXPECT_TRUE(finishedWhileBusy) << "the caller ran every chunk while the workers were busy";
     EXPECT_EQ(std::accumulate(values.begin(), values.end(), 0), 1000);
 }
@@ -175,6 +178,7 @@ TEST(JobSystemTest, DiscardsQueuedWorkWithoutRunningIt) {
 
     // Every worker waits at the gate, so the next job stays in the queue.
     std::atomic<std::size_t> started{0};
+    std::atomic<std::size_t> left{0};
     std::atomic<bool> open{false};
     for (std::size_t worker = 0; worker < jobs.getWorkerCount(); ++worker) {
         // clang-format off
@@ -183,6 +187,7 @@ TEST(JobSystemTest, DiscardsQueuedWorkWithoutRunningIt) {
             while (!open) {
                 std::this_thread::yield();
             }
+            ++left;
         });
         // clang-format on
     }
@@ -197,7 +202,7 @@ TEST(JobSystemTest, DiscardsQueuedWorkWithoutRunningIt) {
 
     open = true;
     jobs.post([&] { ++started; });
-    ASSERT_TRUE(varn.pumpUntil([&] { return started.load() == jobs.getWorkerCount() + 1; }));
+    ASSERT_TRUE(varn.pumpUntil([&] { return started.load() == jobs.getWorkerCount() + 1 && left.load() == jobs.getWorkerCount(); }));
     EXPECT_FALSE(ran);
 }
 
