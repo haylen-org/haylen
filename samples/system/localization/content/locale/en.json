@@ -1,0 +1,49 @@
+{
+    "language": {"en": "English", "pt-BR": "Portuguese", "es": "Spanish", "ja": "Japanese"},
+    "menu": {
+        "title": "Island Tales",
+        "subtitle": "A short adventure by the sea",
+        "play": "Play",
+        "continue": "Continue",
+        "settings": "Settings",
+        "quit": "Quit",
+        "current": "The game is in {name}."
+    },
+    "hud": {
+        "greeting": "Welcome back, {name}!",
+        "score": "{name} scored {score} points on day {day}.",
+        "accuracy": "Accuracy: {ratio}",
+        "sound": "Sound on: {sound}",
+        "braces": "Write {{name}} to show a placeholder.",
+        "missing": "Unknown placeholders stay as they are: {treasure}."
+    },
+    "items": {
+        "apples": {"zero": "No apples", "one": "{count} apple", "other": "{count} apples"},
+        "messages": {"zero": "No new messages", "one": "One new message", "other": "{count} new messages"},
+        "lives": {"one": "Last life!", "other": "{count} lives left"}
+    },
+    "story": {
+        "chapters": {
+            "first": {"title": "The Arrival", "text": "The boat reaches the island at dawn."},
+            "second": {"title": "The Storm", "text": "Dark clouds gather over the lighthouse."}
+        },
+        "characters": {
+            "captain": {"name": "Captain Rosa", "line": "Tie the ropes before the wind turns!"},
+            "parrot": {"name": "Pepper", "line": "Treasure! Treasure!"}
+        }
+    },
+    "extras": {
+        "credits": "Made with Haylen",
+        "tip": "Tip: the parrot knows where the gold is.",
+        "pirate": "Arr, only English pirates say this."
+    },
+    "layout": {
+        "intro": "Every text on this card is a translation. Buttons grow and shrink with their words, and long sentences wrap to the width of the card, so the layout follows the language.",
+        "save": "Save",
+        "cancel": "Cancel",
+        "options": "Options",
+        "difficulty": "Difficulty",
+        "hard": "Hard"
+    },
+    "fonts": {"sample": "Every language draws with a font that has its letters."}
+}

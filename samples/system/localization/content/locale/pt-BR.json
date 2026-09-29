@@ -1,0 +1,49 @@
+{
+    "language": {"en": "Inglês", "pt-BR": "Português", "es": "Espanhol", "ja": "Japonês"},
+    "menu": {
+        "title": "Contos da Ilha",
+        "subtitle": "Uma pequena aventura à beira-mar",
+        "play": "Jogar",
+        "continue": "Continuar",
+        "settings": "Configurações",
+        "quit": "Sair",
+        "current": "O jogo está em {name}."
+    },
+    "hud": {
+        "greeting": "Bem-vindo de volta, {name}!",
+        "score": "{name} fez {score} pontos no dia {day}.",
+        "accuracy": "Precisão: {ratio}",
+        "sound": "Som ligado: {sound}",
+        "braces": "Escreva {{name}} para mostrar um marcador.",
+        "missing": "Marcadores desconhecidos ficam como estão: {treasure}."
+    },
+    "items": {
+        "apples": {"zero": "Nenhuma maçã", "one": "{count} maçã", "other": "{count} maçãs"},
+        "messages": {"zero": "Nenhuma mensagem nova", "one": "Uma mensagem nova", "other": "{count} mensagens novas"},
+        "lives": {"one": "Última vida!", "other": "{count} vidas restantes"}
+    },
+    "story": {
+        "chapters": {
+            "first": {"title": "A Chegada", "text": "O barco chega à ilha ao amanhecer."},
+            "second": {"title": "A Tempestade", "text": "Nuvens escuras se juntam sobre o farol."}
+        },
+        "characters": {
+            "captain": {"name": "Capitã Rosa", "line": "Amarrem as cordas antes que o vento mude!"},
+            "parrot": {"name": "Pimenta", "line": "Tesouro! Tesouro!"}
+        }
+    },
+    "extras": {
+        "credits": "Feito com Haylen",
+        "tip": "Dica: o papagaio sabe onde está o ouro.",
+        "secret": "Segredo: esta frase só existe em português."
+    },
+    "layout": {
+        "intro": "Todo texto deste cartão é uma tradução. Os botões crescem e encolhem com as palavras, e frases longas quebram na largura do cartão, então o layout acompanha o idioma.",
+        "save": "Salvar",
+        "cancel": "Cancelar",
+        "options": "Opções",
+        "difficulty": "Dificuldade",
+        "hard": "Difícil"
+    },
+    "fonts": {"sample": "Cada idioma desenha com uma fonte que tem as suas letras."}
+}

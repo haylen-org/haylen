@@ -1,0 +1,32 @@
+{
+    "language": "Español",
+    "settings": {
+        "audio": "Audio",
+        "master": "Volumen general",
+        "music": "Música",
+        "effects": "Efectos",
+        "mute": "Silenciar todo",
+        "video": "Vídeo",
+        "fullscreen": "Pantalla completa",
+        "game": "Juego",
+        "difficulty": "Dificultad",
+        "easy": "Fácil",
+        "normal": "Normal",
+        "hard": "Difícil",
+        "language": "Idioma",
+        "languageCaption": "Todos los textos cambian al instante",
+        "subtitles": "Subtítulos",
+        "textSize": "Tamaño del texto",
+        "small": "Pequeño",
+        "medium": "Mediano",
+        "large": "Grande",
+        "name": "Nombre del jugador",
+        "controls": "Controles",
+        "jump": "Saltar",
+        "invertY": "Invertir la vista vertical",
+        "save": "Guardar",
+        "saved": "Guardado {time}. Cierra la app y ábrela de nuevo: todos los valores vuelven.",
+        "unsaved": "Cambios sin guardar. Guarda, o sal de la pantalla, para conservarlos.",
+        "never": "Nada guardado todavía."
+    }
+}

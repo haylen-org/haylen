@@ -1,0 +1,32 @@
+{
+    "language": "English",
+    "settings": {
+        "audio": "Audio",
+        "master": "Master volume",
+        "music": "Music",
+        "effects": "Effects",
+        "mute": "Mute everything",
+        "video": "Video",
+        "fullscreen": "Fullscreen",
+        "game": "Game",
+        "difficulty": "Difficulty",
+        "easy": "Easy",
+        "normal": "Normal",
+        "hard": "Hard",
+        "language": "Language",
+        "languageCaption": "Every label changes at once",
+        "subtitles": "Subtitles",
+        "textSize": "Text size",
+        "small": "Small",
+        "medium": "Medium",
+        "large": "Large",
+        "name": "Player name",
+        "controls": "Controls",
+        "jump": "Jump",
+        "invertY": "Invert vertical look",
+        "save": "Save",
+        "saved": "Saved {time}. Close the app and open it again: every value comes back.",
+        "unsaved": "Unsaved changes. Save, or leave the screen, to keep them.",
+        "never": "Nothing saved yet."
+    }
+}

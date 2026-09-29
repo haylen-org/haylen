@@ -1,0 +1,47 @@
+{
+    "language": {"en": "英語", "pt-BR": "ポルトガル語", "es": "スペイン語", "ja": "日本語"},
+    "menu": {
+        "title": "島の物語",
+        "subtitle": "海辺の小さな冒険",
+        "play": "プレイ",
+        "continue": "つづきから",
+        "settings": "設定",
+        "quit": "終了",
+        "current": "ゲームの言語は{name}です。"
+    },
+    "hud": {
+        "greeting": "おかえりなさい、{name}さん！",
+        "score": "{name}さんは{day}日目に{score}点を取りました。",
+        "accuracy": "命中率：{ratio}",
+        "sound": "サウンド：{sound}",
+        "braces": "{{name}}と書くとプレースホルダーを表示します。",
+        "missing": "不明なプレースホルダーはそのまま残ります：{treasure}。"
+    },
+    "items": {
+        "apples": {"zero": "りんごはありません", "other": "りんご{count}個"},
+        "messages": {"zero": "新着メッセージなし", "other": "新着メッセージ{count}件"},
+        "lives": {"other": "残り{count}機"}
+    },
+    "story": {
+        "chapters": {
+            "first": {"title": "到着", "text": "夜明けに船が島に着く。"},
+            "second": {"title": "嵐", "text": "灯台の上に黒い雲が集まる。"}
+        },
+        "characters": {
+            "captain": {"name": "ローザ船長", "line": "風が変わる前にロープを結べ！"},
+            "parrot": {"name": "ペッパー", "line": "宝だ！宝だ！"}
+        }
+    },
+    "extras": {
+        "credits": "Haylenで制作"
+    },
+    "layout": {
+        "intro": "このカードの文字はすべて翻訳です。ボタンは言葉に合わせて伸び縮みし、長い文はカードの幅で折り返すので、レイアウトは言語に合わせて変わります。",
+        "save": "保存",
+        "cancel": "キャンセル",
+        "options": "オプション",
+        "difficulty": "難易度",
+        "hard": "むずかしい"
+    },
+    "fonts": {"sample": "どの言語も、その文字を持つフォントで描かれます。"}
+}

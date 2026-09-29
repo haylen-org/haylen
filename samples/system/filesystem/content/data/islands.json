@@ -1,0 +1,9 @@
+{
+    "version": 2,
+    "islands": [
+        {"name": "Palm Cove", "size": 64, "biome": "beach", "treasures": 3},
+        {"name": "Ember Rock", "size": 48, "biome": "volcano", "treasures": 5},
+        {"name": "Fog Harbor", "size": 96, "biome": "forest", "treasures": 1}
+    ],
+    "start": {"island": "Palm Cove", "x": 12, "y": 30}
+}

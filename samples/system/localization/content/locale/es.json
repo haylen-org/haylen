@@ -1,0 +1,47 @@
+{
+    "language": {"en": "Inglés", "pt-BR": "Portugués", "es": "Español", "ja": "Japonés"},
+    "menu": {
+        "title": "Cuentos de la Isla",
+        "subtitle": "Una pequeña aventura junto al mar",
+        "play": "Jugar",
+        "continue": "Continuar",
+        "settings": "Configuración",
+        "quit": "Salir",
+        "current": "El juego está en {name}."
+    },
+    "hud": {
+        "greeting": "¡Bienvenido de nuevo, {name}!",
+        "score": "{name} hizo {score} puntos el día {day}.",
+        "accuracy": "Precisión: {ratio}",
+        "sound": "Sonido activado: {sound}",
+        "braces": "Escribe {{name}} para mostrar un marcador.",
+        "missing": "Los marcadores desconocidos se quedan igual: {treasure}."
+    },
+    "items": {
+        "apples": {"zero": "Ninguna manzana", "one": "{count} manzana", "other": "{count} manzanas"},
+        "messages": {"zero": "No hay mensajes nuevos", "one": "Un mensaje nuevo", "other": "{count} mensajes nuevos"},
+        "lives": {"one": "¡Última vida!", "other": "Quedan {count} vidas"}
+    },
+    "story": {
+        "chapters": {
+            "first": {"title": "La Llegada", "text": "El barco llega a la isla al amanecer."},
+            "second": {"title": "La Tormenta", "text": "Nubes oscuras se juntan sobre el faro."}
+        },
+        "characters": {
+            "captain": {"name": "Capitana Rosa", "line": "¡Aten las cuerdas antes de que cambie el viento!"},
+            "parrot": {"name": "Pimienta", "line": "¡Tesoro! ¡Tesoro!"}
+        }
+    },
+    "extras": {
+        "credits": "Hecho con Haylen"
+    },
+    "layout": {
+        "intro": "Cada texto de esta tarjeta es una traducción. Los botones crecen y se encogen con sus palabras, y las frases largas se ajustan al ancho de la tarjeta, así que el diseño sigue al idioma.",
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "options": "Opciones",
+        "difficulty": "Dificultad",
+        "hard": "Difícil"
+    },
+    "fonts": {"sample": "Cada idioma dibuja con una fuente que tiene sus letras."}
+}

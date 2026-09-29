@@ -1,0 +1,6 @@
+{
+    "actions": [
+        {"name": "jump", "type": "button", "bindings": ["key:space", "button:south"]},
+        {"name": "dash", "type": "button", "bindings": ["key:left_shift", "button:right_shoulder"]}
+    ]
+}
