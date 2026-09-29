@@ -154,6 +154,10 @@ Cada ponto abaixo precisa estar coberto pelos grupos A, B, J, N, O, P, Q, R, S, 
 103. Comunicação fácil com qualquer plataforma (iOS, Android, desktop, web e as outras): enviar e receber a resposta da plataforma de forma assíncrona, para usar qualquer coisa nativa da plataforma.
 104. Chamar bibliotecas e SDKs nativos, como a biblioteca da Steam, bibliotecas nativas em geral e SDKs como o P2P da Epic Online Services (NAT P2P). O `ffi` do Varn pode ser parte da solução. Não é preciso usar esses SDKs, eles são só exemplos, mas a capacidade precisa ser testada nas plataformas.
 105. Organizar tudo isso na engine, revisado e testado, não importa o tamanho da refatoração, para a engine cobrir todos os casos do desenvolvimento de jogos. E revisar o projeto inteiro de novo atrás de bugs, código legado, código não usado, erros, race conditions e falhas que derrubam o app, com as regras gerais de sempre.
+106. A cada bloco de trabalho terminado, fazer commit e push na `main`. A mensagem do commit tem o prefixo do tipo (feature, fix e os outros) e uma frase curta em minúsculas, sem coautor e sem citar Claude ou qualquer outra pessoa. A regra fica no CLAUDE.md, não na documentação.
+107. Antes de cada commit, conferir que não entra nada de build, arquivo temporário, chave de ambiente, segredo ou qualquer coisa privada ou temporária que não deveria ser commitada. A regra fica no CLAUDE.md.
+108. Nunca citar outras engines, nem em docs, nem em comentários, nem em código, nem mesmo em comparações. A regra fica no CLAUDE.md.
+109. Tudo o que o dono pedir entra nesta lista de coisas a fazer, para nada se perder.
 
 ## 3. Regras
 
@@ -1047,6 +1051,8 @@ Todo sample Lua tem um menu simples para escolher o teste, cada teste é uma cen
 - [ ] No Mac Catalyst as teclas ainda chegam ao mapa de ações enquanto um campo nativo edita texto: a navegação por foco deve ignorar setas e Enter enquanto há edição de texto ativa.
 - [ ] Reconstruir o AAR do Android com a correção do teclado que reabria depois do Back e validar no emulador.
 - [x] Host headless com limite de textura igual ao das GPUs reais (patch do backend dummy do Sokol com os limites de desktop, 16384), para o teste de fumaça sem janela chegar ao gameplay do Tiny Island (hoje o backend dummy do Sokol recusa texturas acima de 1024 pixels e o mapa da ilha não carrega).
+- [x] Regras de commit e push na `main` por bloco, com prefixo e frase curta em minúsculas e sem coautor, a conferência de arquivos privados e temporários antes de cada commit e a proibição de citar outras engines, no CLAUDE.md. Commits feitos e publicados em `github.com/haylen-org/haylen`.
+- [x] Nenhuma menção a outras engines no repositório (código, comentários, testes, docs, README, CLAUDE.md e este documento).
 - [ ] Revisar as seções 1 a 13 deste documento com os nomes novos (app, `source/`, `content/`, namespaces, módulos `2d`, `storage` e `preferences`), sem ponto e vírgula, e com o status real de cada item.
 
 #### P. Organização do código C++
