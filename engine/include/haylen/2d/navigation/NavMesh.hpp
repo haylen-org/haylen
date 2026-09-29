@@ -14,7 +14,7 @@
 
 namespace haylen::navigation2d {
 
-// A navigation mesh of triangles over the walkable area of a level, built with a constrained Delaunay triangulation from a boundary polygon and obstacle polygons, such as the collision objects of a Tiled map or generated shapes. Obstacles may overlap each other and cross the boundary. The triangulation gains points on the walls where corners come close to them, so a corridor of triangles has room for an agent exactly when every edge it crosses is at least as long as the agent is wide. Paths run through the corridors with A* and are pulled straight with the funnel algorithm around circles of the agent radius at the corners they turn around. Changing the polygons marks the mesh for a rebuild, which happens on the next query or on build.
+// A navigation mesh of triangles over the walkable area of a level, built with a constrained Delaunay triangulation from a boundary polygon and obstacle polygons, such as the collision objects of a Tiled map or generated shapes. Obstacles may overlap each other and cross the boundary. The triangulation gains points on the walls where corners come close to them, so a corridor of triangles has room for an agent exactly when every edge it crosses is at least as long as the agent is wide, within a thousandth of its width. Paths run through the corridors with A* and are pulled straight with the funnel algorithm around circles of the agent radius at the corners they turn around. Changing the polygons marks the mesh for a rebuild, which happens on the next query or on build.
 class NavMesh final {
   public:
     // Vertices run counterclockwise in a y-up frame, which is clockwise on screen. The neighbor at index i shares the edge from vertex i to vertex i + 1, and -1 marks a wall.
@@ -115,7 +115,7 @@ class NavMesh final {
     // Tells whether the straight leg between two points crosses no gathered wall away from its start, which may lie on a wall.
     [[nodiscard]] bool canStep(math::Vec2 from, math::Vec2 to) const noexcept;
 
-    // Finds the corridor of triangles from the start to the goal triangle with A* over their shared edges, skipping edges shorter than the agent is wide, which the refined triangulation makes the exact test of room.
+    // Finds the corridor of triangles from the start to the goal triangle with A* over their shared edges, skipping edges shorter than the agent is wide, which the refined triangulation makes the test of room.
     bool findCorridor(std::int32_t start, std::int32_t goal, math::Vec2 from, math::Vec2 to, float agentRadius);
 
     // Finds the corners the path turns around with the funnel algorithm, over portals narrowed by the agent radius.

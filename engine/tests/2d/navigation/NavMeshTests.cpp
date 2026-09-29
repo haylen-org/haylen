@@ -7,6 +7,7 @@
 #include <optional>
 #include <span>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 #include "haylen/2d/navigation/NavMesh.hpp"
@@ -330,16 +331,30 @@ TEST_F(NavMeshTest, BuildsAmongManyOverlappingSquares) {
     EXPECT_GT(found, 15);
 }
 
-// Crossing squares cut each other at computed points, and an edge that ends at such a point must never count as crossing a side that ends there too, which needs an exact orientation test.
+// Crossing squares cut each other at computed points, and an edge that ends at such a point must never count as crossing a side that ends there too, which needs an exact orientation test. The dense layout of seed 97 walks a constraint into an edge that ends at the far end of the constraint, which a rounded orientation test places off the line of the constraint, so the flips that insert it would never end.
 TEST_F(NavMeshTest, BuildsAmongCrossingRotatedSquares) {
-    for (const int seed : {77, 220}) {
+    for (const auto [seed, count] : std::array<std::pair<int, int>, 3>{{{77, 25}, {220, 25}, {97, 80}}}) {
         navigation2d::NavMesh mesh;
         mesh.setBoundary(box(0.0F, 0.0F, 800.0F, 600.0F));
         math::Random random(static_cast<std::uint64_t>(seed));
-        addPolygons(mesh, random, 25, 4);
+        addPolygons(mesh, random, count, 4);
         EXPECT_NO_THROW(mesh.build());
         EXPECT_GT(checkTriangles(mesh), 0.0F);
     }
+}
+
+// Two walls in the layout of seed 344 run almost parallel across a wide corridor. Refinement that chased the last sliver of room would pull thousands of points along both of them, and every path with a radius near them would crawl.
+TEST_F(NavMeshTest, RefinesWallsThatRunAlmostParallelWithFewPoints) {
+    navigation2d::NavMesh mesh;
+    mesh.setBoundary(box(0.0F, 0.0F, 800.0F, 600.0F));
+    math::Random random(344);
+    addPolygons(mesh, random, 20, 3);
+    mesh.build();
+    EXPECT_LT(mesh.getVertices().size(), 400U);
+
+    const std::vector<math::Vec2> path = copyPath(mesh.findPath({120.0F, 110.0F}, {200.0F, 140.0F}, 10.0F));
+    ASSERT_FALSE(path.empty());
+    expectInside(mesh, path);
 }
 
 TEST_F(NavMeshTest, RejectsBadPolygons) {

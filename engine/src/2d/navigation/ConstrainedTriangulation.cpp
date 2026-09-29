@@ -594,7 +594,7 @@ bool ConstrainedTriangulation::refineCorner(std::int32_t triangle, int corner) {
     const Point apex = pointAt(current.vertices[index]);
     const Point& next = pointAt(current.vertices[(index + 1) % 3]);
     const Point& previous = pointAt(current.vertices[(index + 2) % 3]);
-    const double reach = std::min(distance(apex, next), distance(apex, previous));
+    const double reach = std::min(distance(apex, next), distance(apex, previous)) * (1.0 - kRoomSlack);
     const Side far{.triangle = triangle, .index = (corner + 1) % 3};
 
     // A vertex that comes too close lies between the corner and its mirror across the perpendicular bisector of the far side, which lies on the circumcircle, so testing both ends covers it.

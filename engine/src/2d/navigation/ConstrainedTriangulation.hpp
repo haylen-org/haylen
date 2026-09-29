@@ -16,7 +16,7 @@
 
 namespace haylen::navigation2d {
 
-// Builds the constrained Delaunay triangulation of a set of segments: the triangulation of their end points closest to Delaunay in which every segment is a triangle edge. Points closer than a tiny tolerance merge, and segments that cross or touch are split where they meet. Only the areas enclosed by the segments that a test accepts are kept, and they are refined with points on the segments where vertices come close to them, so a disk of any size passes a chain of kept triangles exactly when every edge it crosses is at least as long as its diameter. Coordinates run in double precision, the orientation test is exact, and the in-circle test decides only beyond rounding doubt.
+// Builds the constrained Delaunay triangulation of a set of segments: the triangulation of their end points closest to Delaunay in which every segment is a triangle edge. Points closer than a tiny tolerance merge, and segments that cross or touch are split where they meet. Only the areas enclosed by the segments that a test accepts are kept, and they are refined with points on the segments where vertices come close to them, so a disk of any size passes a chain of kept triangles exactly when every edge it crosses is at least as long as its diameter, within a thousandth of the diameter. Coordinates run in double precision, the orientation test is exact, and the in-circle test decides only beyond rounding doubt.
 class ConstrainedTriangulation final {
   public:
     // Vertices run counterclockwise in a y-up frame, which is clockwise on screen. The neighbor and the constraint flag at index i belong to the edge from vertex i to vertex i + 1.
@@ -60,6 +60,9 @@ class ConstrainedTriangulation final {
     // The static filters of Shewchuk bound the rounding error of the orientation and in-circle determinants relative to their permanents.
     static constexpr double kOrientErrorBound = (3.0 + 16.0 * 0x1p-53) * 0x1p-53;
     static constexpr double kInCircleErrorBound = (10.0 + 96.0 * 0x1p-53) * 0x1p-53;
+
+    // Refinement treats an edge up to this fraction longer than the room it crosses as exact. Walls that run almost parallel would otherwise pull a chain of points along each other to their ends, each point a sliver closer to the opposite wall than the one before.
+    static constexpr double kRoomSlack = 1e-3;
 
     // Returns 1 when a, b and c run counterclockwise, -1 when they run clockwise and 0 when they lie on one line, exactly for any coordinates, so every decision about which side of an edge a point lies on agrees with every other one.
     [[nodiscard]] static int orient(const Point& a, const Point& b, const Point& c) noexcept;
@@ -114,7 +117,7 @@ class ConstrainedTriangulation final {
     // Marks the triangles of every area that no segment crosses as kept when the area is enclosed and the test accepts it.
     void classify(const std::function<bool(math::Vec2)>& keeps);
 
-    // Adds points on the constrained edges of the kept areas until no vertex of a kept triangle lies closer to a constrained edge beyond it than the shorter side at that vertex, the refinement of Lens and Boigelot. The points split the constrained edges at the feet of those vertices, so every narrow place between a vertex and a segment becomes a short edge.
+    // Adds points on the constrained edges of the kept areas until no vertex of a kept triangle lies closer to a constrained edge beyond it than the shorter side at that vertex, less the slack, the refinement of Lens and Boigelot. The points split the constrained edges at the feet of those vertices, so every narrow place between a vertex and a segment becomes a short edge.
     void refine();
 
     // Splits the constrained edge that the corner of a triangle, or the point mirroring it on the circumcircle, reaches across the far side closer than the shorter side at the corner, at the foot of the corner, and tells whether it did.
