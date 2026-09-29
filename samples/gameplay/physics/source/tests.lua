@@ -1,0 +1,20 @@
+-- The tests of the sample in menu order. Each module returns the scene class of its test.
+return {
+    {id = 'bodies', title = 'Bodies and shapes', description = 'Boxes, circles, capsules, convex and concave polygons, segments and chains, dragged with a mouse joint.', module = 'tests.bodies'},
+    {id = 'materials', title = 'Materials', description = 'Friction on a ramp, restitution of bouncing balls and density on a seesaw.', module = 'tests.materials'},
+    {id = 'sensors', title = 'Sensors and contacts', description = 'A sensor zone that counts its visitors and the contact, hit and sensor events of the world.', module = 'tests.sensors'},
+    {id = 'joints', title = 'Joints', description = 'Distance, revolute with a motor and limits, prismatic, weld, wheel, motor and filter joints.', module = 'tests.joints'},
+    {id = 'ropes', title = 'Ropes', description = 'Chains of segments pinned in place or hung from bodies, which can be cut.', module = 'tests.ropes'},
+    {id = 'bridge', title = 'Bridge', description = 'A bridge of planks between two cliffs that bends under falling crates.', module = 'tests.bridge'},
+    {id = 'ragdoll', title = 'Ragdolls', description = 'Human figures with limited joints tumbling down the stairs.', module = 'tests.ragdoll'},
+    {id = 'vehicle', title = 'Vehicle', description = 'A car on springy suspension whose wheel motors climb the hills.', module = 'tests.vehicle'},
+    {id = 'explosions', title = 'Explosions', description = 'Radial impulses with falloff and occlusion that scatter a tower of crates.', module = 'tests.explosions'},
+    {id = 'terrain', title = 'Destructible terrain', description = 'Ground carved and filled like Worms, with its collision rebuilt chunk by chunk.', module = 'tests.terrain'},
+    {id = 'fracture', title = 'Fracture', description = 'Objects that break into Voronoi pieces where they are hit.', module = 'tests.fracture'},
+    {id = 'liquids', title = 'Liquids', description = 'A particle fluid poured into a tank and drawn as metaballs.', module = 'tests.liquids'},
+    {id = 'one-way', title = 'One-way platforms', description = 'A character that jumps up through platforms and lands on them.', module = 'tests.one-way'},
+    {id = 'conveyors', title = 'Conveyors', description = 'Belts that carry crates with the tangent speed of their surface.', module = 'tests.conveyors'},
+    {id = 'raycasts', title = 'Ray and shape casts', description = 'Closest and all hits, filters, piercing, bounces, fans, shape casts, batches and picking.', module = 'tests.raycasts'},
+    {id = 'filtering', title = 'Collision filtering', description = 'Categories, masks and groups that decide which bodies collide.', module = 'tests.filtering'},
+    {id = 'stress', title = 'Stress test', description = 'Hundreds of bodies with the body count and the time of every step.', module = 'tests.stress'},
+}

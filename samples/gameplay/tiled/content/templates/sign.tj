@@ -1,0 +1,23 @@
+{
+ "type": "template",
+ "object": {
+  "width": 64,
+  "height": 32,
+  "name": "sign",
+  "type": "sign",
+  "rotation": 0,
+  "visible": true,
+  "properties": [
+   {
+    "name": "text",
+    "type": "string",
+    "value": "Welcome"
+   },
+   {
+    "name": "color",
+    "type": "color",
+    "value": "#ffffd54f"
+   }
+  ]
+ }
+}

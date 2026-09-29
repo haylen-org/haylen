@@ -1,0 +1,24 @@
+{
+ "type": "world",
+ "maps": [
+  {
+   "fileName": "castle.tmj",
+   "x": -640,
+   "y": 0,
+   "width": 640,
+   "height": 384
+  }
+ ],
+ "patterns": [
+  {
+   "regexp": "island_(\\d+)_(\\d+)\\.tmj",
+   "multiplierX": 640,
+   "multiplierY": 384,
+   "offsetX": 0,
+   "offsetY": 0,
+   "mapWidth": 640,
+   "mapHeight": 384
+  }
+ ],
+ "onlyShowAdjacentMaps": false
+}
