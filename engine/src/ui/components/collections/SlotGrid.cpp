@@ -46,7 +46,7 @@ std::vector<SlotGrid::Slot> SlotGrid::readSlots(PropertyReader& reader, const co
         core::JsonValidator::requireKnownKeys(entry, {"id", "image", "count", "enabled"}, "slotGrid.slots");
         Slot slot{.id = entry.at("id").get<std::string>()};
         if (!ids.insert(slot.id).second) {
-            reader.fail("slots", "uses the slot id " + slot.id + " more than once");
+            reader.fail("slots", "uses the slot id '" + slot.id + "' more than once");
         }
         if (const auto image = entry.find("image"); image != entry.end()) {
             if (!image->is_string()) {

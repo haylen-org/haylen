@@ -174,7 +174,7 @@ template <typename Visit> void MapRenderer::forEachCell(const Layer& layer, Visi
 std::uint32_t MapRenderer::getTile(std::string_view layer, int column, int row) const {
     const Layer* found = map.findLayer(layer);
     if (found == nullptr || found->kind != Layer::Kind::Tile) {
-        throw std::invalid_argument("Unknown tile layer: " + std::string(layer));
+        throw std::invalid_argument("The map has no tile layer named '" + std::string(layer) + "'.");
     }
     return found->getGid(column, row);
 }
@@ -182,10 +182,10 @@ std::uint32_t MapRenderer::getTile(std::string_view layer, int column, int row) 
 void MapRenderer::setTile(std::string_view layer, int column, int row, std::uint32_t gid) {
     Layer* found = map.findLayer(layer);
     if (found == nullptr || found->kind != Layer::Kind::Tile) {
-        throw std::invalid_argument("Unknown tile layer: " + std::string(layer));
+        throw std::invalid_argument("The map has no tile layer named '" + std::string(layer) + "'.");
     }
     if (gid != 0 && map.findTileset(gid) == nullptr) {
-        throw std::invalid_argument("No tileset holds the tile " + std::to_string(Map::tileId(gid)));
+        throw std::invalid_argument("The tile '" + std::to_string(Map::tileId(gid)) + "' belongs to no tileset of the map.");
     }
     found->setGid(column, row, gid);
 
@@ -200,7 +200,7 @@ void MapRenderer::setTile(std::string_view layer, int column, int row, std::uint
 void MapRenderer::setLayerVisible(std::string_view layer, bool visible) {
     Layer* found = map.findLayer(layer);
     if (found == nullptr) {
-        throw std::invalid_argument("Unknown layer: " + std::string(layer));
+        throw std::invalid_argument("The map has no layer named '" + std::string(layer) + "'.");
     }
     found->visible = visible;
 }
@@ -255,7 +255,7 @@ void MapRenderer::drawLayer(graphics2d::Renderer& renderer, std::string_view nam
     };
     // clang-format on
     if (!walk(walk, map.layers, {.origin = options.offset})) {
-        throw std::invalid_argument("Unknown layer: " + std::string(name));
+        throw std::invalid_argument("The map has no layer named '" + std::string(name) + "'.");
     }
 }
 
@@ -307,7 +307,7 @@ void MapRenderer::bake(graphics2d::Renderer& renderer, const Layer& layer, const
 
         const Map::TilesetReference* reference = map.findTileset(gid);
         if (reference == nullptr) {
-            throw std::invalid_argument("A tile layer uses a tile that no tileset holds: " + std::to_string(Map::tileId(gid)));
+            throw std::invalid_argument("A tile layer uses the tile '" + std::to_string(Map::tileId(gid)) + "', which no tileset of the map holds.");
         }
         const Tileset& tileset = *reference->tileset;
         const std::uint32_t localId = Map::tileId(gid) - reference->firstGid;
@@ -429,7 +429,7 @@ void MapRenderer::drawObjects(graphics2d::Renderer& renderer, const Layer& layer
 
         const Map::TilesetReference* reference = map.findTileset(object->gid);
         if (reference == nullptr) {
-            throw std::invalid_argument("A tile object uses a tile that no tileset holds: " + std::to_string(Map::tileId(object->gid)));
+            throw std::invalid_argument("A tile object uses the tile '" + std::to_string(Map::tileId(object->gid)) + "', which no tileset of the map holds.");
         }
         const Tileset& tileset = *reference->tileset;
         std::uint32_t localId = Map::tileId(object->gid) - reference->firstGid;

@@ -60,14 +60,14 @@ graphics::Texture::Options Manager::textureOptionsFromJson(const core::Json& opt
     if (options.contains("filter")) {
         const auto filter = graphics::Texture::filterFromName(options.at("filter").get<std::string>());
         if (!filter) {
-            throw std::invalid_argument("Unknown texture filter: " + options.at("filter").get<std::string>());
+            throw std::invalid_argument("The texture filter must be nearest or linear, not '" + options.at("filter").get<std::string>() + "'.");
         }
         result.filter = *filter;
     }
     if (options.contains("wrap")) {
         const auto wrap = graphics::Texture::wrapFromName(options.at("wrap").get<std::string>());
         if (!wrap) {
-            throw std::invalid_argument("Unknown texture wrap: " + options.at("wrap").get<std::string>());
+            throw std::invalid_argument("The texture wrap must be clamp, repeat or mirror, not '" + options.at("wrap").get<std::string>() + "'.");
         }
         result.wrap = *wrap;
     }
@@ -166,13 +166,13 @@ std::string Manager::getTypeForPath(std::string_view path) const {
             return name;
         }
     }
-    throw std::invalid_argument("No asset type handles the file " + std::string(path));
+    throw std::invalid_argument("No asset type handles the file '" + std::string(path) + "'. Pass its type or use an extension that an asset type handles.");
 }
 
 const Manager::Type& Manager::getType(std::string_view name) const {
     const auto found = types.find(std::string(name));
     if (found == types.end()) {
-        throw std::invalid_argument("Unknown asset type: " + std::string(name));
+        throw std::invalid_argument("The asset type '" + std::string(name) + "' does not exist.");
     }
     return found->second;
 }
@@ -417,7 +417,7 @@ std::vector<Manager::Entry> Manager::expand(const std::vector<Entry>& entries) c
 void Manager::preload(std::string_view name, GroupProgress progress, GroupCompletion completion) {
     const auto found = groups.find(std::string(name));
     if (found == groups.end()) {
-        throw std::invalid_argument("Unknown asset group: " + std::string(name));
+        throw std::invalid_argument("The asset group '" + std::string(name) + "' is not defined.");
     }
 
     Group& group = found->second;
@@ -506,7 +506,7 @@ void Manager::completeGroup(const std::string& name, std::uint64_t generation) {
 void Manager::unloadGroup(std::string_view name) {
     const auto found = groups.find(std::string(name));
     if (found == groups.end()) {
-        throw std::invalid_argument("Unknown asset group: " + std::string(name));
+        throw std::invalid_argument("The asset group '" + std::string(name) + "' is not defined.");
     }
 
     Group& group = found->second;
@@ -523,7 +523,7 @@ void Manager::unloadGroup(std::string_view name) {
 float Manager::getGroupProgress(std::string_view name) const {
     const auto found = groups.find(std::string(name));
     if (found == groups.end()) {
-        throw std::invalid_argument("Unknown asset group: " + std::string(name));
+        throw std::invalid_argument("The asset group '" + std::string(name) + "' is not defined.");
     }
     const Group& group = found->second;
     if (group.loaded) {

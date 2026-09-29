@@ -42,11 +42,11 @@ int NativeLua::load(lua_State* L) {
     if (!init.empty()) {
         void* address = NativeLibraries::findSymbol(library, init);
         if (address == nullptr) {
-            throw std::runtime_error("The native library " + name + " has no function " + init + ".");
+            throw std::runtime_error("The native library '" + name + "' has no function '" + init + "'.");
         }
         const int code = reinterpret_cast<HaylenNativeInit>(address)(&NativeApi::get());
         if (code != 0) {
-            throw std::runtime_error("The function " + init + " of the native library " + name + " failed with code " + std::to_string(code) + ".");
+            throw std::runtime_error("The function '" + init + "' of the native library '" + name + "' failed with code " + std::to_string(code) + ".");
         }
     }
 

@@ -328,7 +328,7 @@ std::string UiPlugin::addTheme(core::Engine& engine, const core::Json& document,
     for (std::size_t index = 0; index < ui::Theme::kFontCount; ++index) {
         const std::string& font = theme.getFont(static_cast<ui::Theme::Font>(index)).font;
         if (!getBackend().hasFont(font)) {
-            throw std::invalid_argument("The theme " + theme.getName() + " uses the font " + font + ", which is neither registered nor listed in fontFiles.");
+            throw std::invalid_argument("The theme '" + theme.getName() + "' uses the font '" + font + "', which is neither registered nor listed in fontFiles.");
         }
     }
 
@@ -406,7 +406,7 @@ bool UiPlugin::isUsingKeyboard() const {
 graphics::Texture UiPlugin::requestImage(core::Engine& engine, std::string_view path) {
     if (const auto found = images.find(path); found != images.end()) {
         if (!found->second.error.empty()) {
-            throw std::runtime_error("The UI image " + std::string(path) + " could not be loaded: " + found->second.error);
+            throw std::runtime_error("The UI image '" + std::string(path) + "' could not be loaded. " + found->second.error);
         }
         return found->second.texture;
     }

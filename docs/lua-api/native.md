@@ -43,7 +43,7 @@ Windows loads a library with its wide path and looks for the libraries it depend
 
 | Option | Type | Meaning |
 | --- | --- | --- |
-| `init` | string | A function of the library that `native.load` calls with the `HaylenNativeApi` of the engine, declared in C as `int init(const HaylenNativeApi* api)`. A result other than 0 raises `The function <init> of the native library <name> failed with code <code>.`, and a missing function raises `The native library <name> has no function <init>.`. See [library handlers](#library-handlers). |
+| `init` | string | A function of the library that `native.load` calls with the `HaylenNativeApi` of the engine, declared in C as `int init(const HaylenNativeApi* api)`. A result other than 0 raises `The function '<init>' of the native library '<name>' failed with code <code>.`, and a missing function raises `The native library '<name>' has no function '<init>'.`. See [library handlers](#library-handlers). |
 | `global` | boolean | Makes the symbols of the library visible to libraries loaded after it, which some SDKs expect from their plugins. It is `false` by default. |
 
 ```lua

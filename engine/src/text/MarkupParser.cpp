@@ -430,7 +430,7 @@ void MarkupParser::openBlock(const Tag& tag) {
         if (tag.attributes.contains("dir")) {
             const std::optional<Direction> direction = Style::directionFromName(tag.attributes.at("dir"));
             if (!direction) {
-                fail(tag.offset, "The dir of [p] must be auto, ltr or rtl.");
+                fail(tag.offset, "The dir of [p] must be auto, leftToRight or rightToLeft.");
             }
             block.direction = *direction;
         }

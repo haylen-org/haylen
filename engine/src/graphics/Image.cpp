@@ -48,7 +48,7 @@ Image Image::decode(std::span<const std::uint8_t> encoded) {
     int channels = 0;
     stbi_uc* decoded = stbi_load_from_memory(encoded.data(), static_cast<int>(encoded.size()), &decodedWidth, &decodedHeight, &channels, STBI_rgb_alpha);
     if (decoded == nullptr) {
-        throw std::runtime_error(std::string("Image could not be decoded: ") + stbi_failure_reason());
+        throw std::runtime_error(std::string("The image could not be decoded, and the decoder reported '") + stbi_failure_reason() + "'.");
     }
 
     std::vector<std::uint8_t> data(decoded, decoded + byteCount(decodedWidth, decodedHeight));

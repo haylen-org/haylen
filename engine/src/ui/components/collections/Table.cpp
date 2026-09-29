@@ -113,7 +113,7 @@ std::vector<Table::Row> Table::readRows(PropertyReader& reader, const core::Json
         core::JsonValidator::requireKnownKeys(entry, {"id", "cells"}, "table.rows");
         Row row{.id = entry.at("id").get<std::string>(), .cells = {}};
         if (!ids.insert(row.id).second) {
-            reader.fail("rows", "uses the row id " + row.id + " more than once");
+            reader.fail("rows", "uses the row id '" + row.id + "' more than once");
         }
         for (const core::Json& cell : entry.at("cells")) {
             row.cells.push_back(TextValue::fromJson(cell, "table.rows.cells"));

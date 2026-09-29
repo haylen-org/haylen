@@ -199,7 +199,7 @@ NativeSignature::Parameter NativeSignature::parseParameter(std::span<const std::
         }
     }
     const BaseType base = resolve(words);
-    const std::string label = parameter.name.empty() ? "A parameter" : "The parameter " + parameter.name;
+    const std::string label = parameter.name.empty() ? "A parameter" : "The parameter '" + parameter.name + "'";
 
     if (tokens[position] == "[") {
         const std::string& bound = tokens[position + 1];
@@ -242,7 +242,7 @@ void NativeSignature::bindLengths(std::vector<Parameter>& parameters, const std:
         }
         const auto found = std::ranges::find(parameters, lengthNames[index], &Parameter::name);
         if (found == parameters.end() || found->kind != Parameter::Kind::Integer) {
-            throw std::invalid_argument("The length " + lengthNames[index] + " of the native callback parameter " + parameters[index].name + " must name an integer parameter.");
+            throw std::invalid_argument("The length '" + lengthNames[index] + "' of the native callback parameter '" + parameters[index].name + "' must name an integer parameter.");
         }
         parameters[index].lengthParameter = static_cast<std::size_t>(found - parameters.begin());
     }

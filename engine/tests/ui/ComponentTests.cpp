@@ -1003,7 +1003,7 @@ TEST_F(ComponentTest, AcceptsEmptyObjectsAsEmptyLists) {
         document->set("list", core::Json::parse(R"({"items": [{"id": "a"}, {"id": "a"}]})"));
         FAIL() << "a repeated item id was accepted";
     } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "list.items uses the item id a more than once.");
+        EXPECT_STREQ(error.what(), "The property 'items' of a list uses the item id 'a' more than once.");
     }
 }
 
@@ -1059,7 +1059,7 @@ TEST_F(ComponentAssetTest, LoadsImagesThemesAndTranslations) {
 
     mount(R"({"kind": "image", "image": "ui/missing.png"})");
     ASSERT_TRUE(fixture.frameUntil([&] { return getEngine().getError() != nullptr; }));
-    EXPECT_NE(std::string_view(getEngine().getError()->what()).find("The UI image ui/missing.png could not be loaded"), std::string::npos);
+    EXPECT_NE(std::string_view(getEngine().getError()->what()).find("The UI image 'ui/missing.png' could not be loaded."), std::string::npos);
 }
 
 TEST_F(ComponentAssetTest, PressesImageButtons) {

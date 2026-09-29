@@ -244,9 +244,9 @@ TEST_F(NativeLuaTest, GivesLibrariesTheInterfaceOfTheEngine) {
 TEST_F(NativeLuaTest, ExplainsWhyALibraryDidNotLoad) {
     test::EngineFixture fixture;
     prepare(fixture);
-    EXPECT_NE(fixture.lua("native.load('native_nowhere')").find("The native library native_nowhere could not be loaded. Searched:"), std::string::npos);
-    EXPECT_NE(fixture.lua("native.load('native_test', {init = 'native_test_absent'})").find("The native library native_test has no function native_test_absent."), std::string::npos);
-    EXPECT_NE(fixture.lua("native.load('native_test', {init = 'native_test_failing_init'})").find("The function native_test_failing_init of the native library native_test failed with code 7."), std::string::npos);
+    EXPECT_NE(fixture.lua("native.load('native_nowhere')").find("The native library 'native_nowhere' could not be loaded. These are the places it searched:"), std::string::npos);
+    EXPECT_NE(fixture.lua("native.load('native_test', {init = 'native_test_absent'})").find("The native library 'native_test' has no function 'native_test_absent'."), std::string::npos);
+    EXPECT_NE(fixture.lua("native.load('native_test', {init = 'native_test_failing_init'})").find("The function 'native_test_failing_init' of the native library 'native_test' failed with code 7."), std::string::npos);
     EXPECT_NE(fixture.lua("native.load('native_test', {inti = 'x'})").find("inti"), std::string::npos);
     EXPECT_EQ(fixture.lua("return ffi.istype('NativeTestPoint', ffi.new('NativeTestPoint')) and native.load('native_test', {global = true}) ~= nil"), "true");
 }

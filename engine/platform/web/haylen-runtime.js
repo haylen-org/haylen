@@ -745,7 +745,7 @@ Module.haylen = Module.haylen || {};
                 })
                 .then((buffer) => FS.writeFile("/package.zip", new Uint8Array(buffer)))
                 .catch((error) => {
-                    const message = "The package " + haylen.packageUrl + " could not be downloaded: " + error.message;
+                    const message = "The package '" + haylen.packageUrl + "' could not be downloaded, and the browser reported '" + error.message + "'.";
                     console.error(message);
                     haylen.reportError({ message: message, file: "", line: 0, traceback: "" });
                 })

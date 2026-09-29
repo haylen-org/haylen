@@ -169,8 +169,8 @@ TEST_F(TextLuaTest, TintsAndScalesDrawnRichText) {
 
 TEST_F(TextLuaTest, ChangesRichTextOptionsAsProperties) {
     lua("story = graphics2d.newRichText('ab', {revealSpeed = 10}) story:update(0.15)");
-    lua("story.color = '#FFFF0000' story.bold = true story.italic = true story.align = 'center' story.direction = 'rtl' story.language = 'he' story.lineSpacing = 2 story.underlineLinks = false");
-    EXPECT_EQ(lua("return story.color:toHex() .. ' ' .. tostring(story.bold) .. ' ' .. tostring(story.italic) .. ' ' .. story.align .. ' ' .. story.direction .. ' ' .. story.language .. ' ' .. story.lineSpacing .. ' ' .. tostring(story.underlineLinks) .. ' ' .. story.revealSpeed"), "#FFFF0000 true true center rtl he 2.0 false 10.0");
+    lua("story.color = '#FFFF0000' story.bold = true story.italic = true story.align = 'center' story.direction = 'rightToLeft' story.language = 'he' story.lineSpacing = 2 story.underlineLinks = false");
+    EXPECT_EQ(lua("return story.color:toHex() .. ' ' .. tostring(story.bold) .. ' ' .. tostring(story.italic) .. ' ' .. story.align .. ' ' .. story.direction .. ' ' .. story.language .. ' ' .. story.lineSpacing .. ' ' .. tostring(story.underlineLinks) .. ' ' .. story.revealSpeed"), "#FFFF0000 true true center rightToLeft he 2.0 false 10.0");
 
     // Changing an option lays the text out again and starts its reveal over.
     EXPECT_EQ(lua("local glyph = story:frame().glyphs[1] return story.visibleCharacters .. ' ' .. tostring(glyph.syntheticBold) .. ' ' .. glyph.color:toHex()"), "0 true #FFFF0000");
@@ -187,16 +187,16 @@ TEST_F(TextLuaTest, ShapesAndOrdersRightToLeftText) {
     // Left-to-right text puts the Hebrew word after it reversed, drawn by the fallback, and the first Hebrew letter stands last on the right.
     EXPECT_EQ(lua("local laid = scripts:layout('abc שלום', {size = 20}) local last = laid.quads[#laid.quads] return #laid.quads .. ' ' .. tostring(laid.quads[1].font == font) .. ' ' .. tostring(last.font == hebrew) .. ' ' .. laid.lineCount"), "7 true true 1");
     EXPECT_EQ(lua("local w, h = scripts:measure('שלום', {size = 20}) local laid = scripts:layout('שלום', {size = 20}) return tostring(w == laid.size.x and h == laid.size.y)"), "true");
-    EXPECT_EQ(lua("local w = graphics2d.measureText(scripts, 'שלום abc', {size = 20, maxWidth = 50, direction = 'rtl', language = 'he'}) return w"), "50.0");
-    EXPECT_EQ(lua("local shaped = hebrew:shape('שלום', {direction = 'rtl', size = 40}) return #shaped .. ' ' .. shaped[1].cluster .. ' ' .. shaped[4].cluster .. ' ' .. tostring(shaped[1].advance > 0)"), "4 4 1 true");
+    EXPECT_EQ(lua("local w = graphics2d.measureText(scripts, 'שלום abc', {size = 20, maxWidth = 50, direction = 'rightToLeft', language = 'he'}) return w"), "50.0");
+    EXPECT_EQ(lua("local shaped = hebrew:shape('שלום', {direction = 'rightToLeft', size = 40}) return #shaped .. ' ' .. shaped[1].cluster .. ' ' .. shaped[4].cluster .. ' ' .. tostring(shaped[1].advance > 0)"), "4 4 1 true");
     EXPECT_EQ(lua("return hebrew:glyph('ש').index .. ' ' .. tostring(hebrew:glyph('ש').visible)"), lua("return hebrew:shape('ש')[1].index .. ' true'"));
 
     // Rich text reads a paragraph right to left when asked or from its first letter, and markup sets the direction of a paragraph.
-    EXPECT_EQ(lua("local laid = graphics2d.newRichText('שלום abc', {family = scripts, direction = 'rtl', language = 'he'}):frame() return tostring(laid.lines[1].rightToLeft) .. ' ' .. tostring(laid.characters[1].rightToLeft) .. ' ' .. tostring(laid.characters[6].rightToLeft) .. ' ' .. laid.characters[6].first .. '-' .. laid.characters[6].last"), "true true false 6-6");
-    EXPECT_EQ(lua("local laid = graphics2d.newRichText('abc\\n[p dir=rtl align=start]abc[/p]', {family = scripts, maxWidth = 200}):frame() return tostring(laid.lines[1].rightToLeft) .. ' ' .. tostring(laid.lines[2].rightToLeft) .. ' ' .. tostring(laid.lines[2].rect.x > 100)"), "false true true");
+    EXPECT_EQ(lua("local laid = graphics2d.newRichText('שלום abc', {family = scripts, direction = 'rightToLeft', language = 'he'}):frame() return tostring(laid.lines[1].rightToLeft) .. ' ' .. tostring(laid.characters[1].rightToLeft) .. ' ' .. tostring(laid.characters[6].rightToLeft) .. ' ' .. laid.characters[6].first .. '-' .. laid.characters[6].last"), "true true false 6-6");
+    EXPECT_EQ(lua("local laid = graphics2d.newRichText('abc\\n[p dir=rightToLeft align=start]abc[/p]', {family = scripts, maxWidth = 200}):frame() return tostring(laid.lines[1].rightToLeft) .. ' ' .. tostring(laid.lines[2].rightToLeft) .. ' ' .. tostring(laid.lines[2].rect.x > 100)"), "false true true");
     EXPECT_EQ(render("graphics2d.beginScreen() graphics2d.drawText(scripts, 'שלום abc', 10, 10, {size = 24, direction = 'auto', language = 'he', bold = true, italic = true, align = 'end', maxWidth = 300})"), "nil");
     EXPECT_NE(lua("graphics2d.measureText(nil, 'x', {direction = 'up'})").find("direction"), std::string::npos);
-    EXPECT_NE(lua("graphics2d.newRichText('[p dir=up]x[/p]')").find("The dir of [p] must be auto, ltr or rtl."), std::string::npos);
+    EXPECT_NE(lua("graphics2d.newRichText('[p dir=up]x[/p]')").find("The dir of [p] must be auto, leftToRight or rightToLeft."), std::string::npos);
 }
 
 TEST_F(TextLuaTest, RegistersEffectsIconsAndFonts) {

@@ -46,7 +46,7 @@ double WebSocket::getSteadySeconds() {
 
 WebSocket::WebSocket(std::string address, Options options) : url(std::move(address)), protocols(std::move(options.protocols)), maxMessageSize(options.maxMessageSize), reconnect(options.reconnect), clock(options.clock ? std::move(options.clock) : Clock(&getSteadySeconds)), random(options.seed != 0 ? options.seed : std::random_device{}()), inbox(std::make_shared<Inbox>()) {
     if (!url.starts_with("ws://") && !url.starts_with("wss://")) {
-        throw std::invalid_argument("A WebSocket address starts with ws:// or wss://: " + url);
+        throw std::invalid_argument("The WebSocket address '" + url + "' must start with ws:// or wss://.");
     }
     if (maxMessageSize == 0 || !std::in_range<int>(maxMessageSize)) {
         throw std::invalid_argument("A WebSocket needs a maximum message size between 1 and 2147483647 bytes.");

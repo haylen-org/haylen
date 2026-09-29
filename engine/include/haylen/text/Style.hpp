@@ -32,7 +32,7 @@ struct Style {
     Direction direction = Direction::Auto;
     std::string language;
 
-    // The alignment names "start", "end", "left", "center", "right" and "fill" and the direction names "auto", "ltr" and "rtl", which Lua, markup and UI documents share.
+    // The alignment names "start", "end", "left", "center", "right" and "fill" and the direction names "auto", "leftToRight" and "rightToLeft", which Lua, markup and UI documents share.
     static const std::array<std::pair<std::string_view, Alignment>, 6> kAlignmentNames;
     static const std::array<std::pair<std::string_view, Direction>, 3> kDirectionNames;
 

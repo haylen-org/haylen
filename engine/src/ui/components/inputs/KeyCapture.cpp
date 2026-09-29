@@ -25,7 +25,10 @@ std::string KeyCapture::describe(std::string_view binding) {
         name.pop_back();
     }
 
-    // A word starts at each capital letter and at a number after a word, and the first letter is capitalized, so leftShift reads Left Shift, keypad0 reads Keypad 0 and f12 stays F12.
+    // A digit key reads as the number on its key. Otherwise a word starts at each capital letter and at a number after a word, and the first letter is capitalized, so leftShift reads Left Shift, keypad0 reads Keypad 0 and f12 stays F12.
+    if (constexpr std::string_view digit = "digit"; kind == "key" && name.starts_with(digit)) {
+        return name.substr(digit.size());
+    }
     std::string label;
     for (std::size_t index = 0; index < name.size(); ++index) {
         const auto letter = static_cast<unsigned char>(name[index]);

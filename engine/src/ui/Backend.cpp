@@ -29,8 +29,8 @@ ImGuiKey Backend::toImGuiKey(input::Key key) noexcept {
     if (key >= input::Key::A && key <= input::Key::Z) {
         return static_cast<ImGuiKey>(ImGuiKey_A + (code - static_cast<int>(input::Key::A)));
     }
-    if (key >= input::Key::Num0 && key <= input::Key::Num9) {
-        return static_cast<ImGuiKey>(ImGuiKey_0 + (code - static_cast<int>(input::Key::Num0)));
+    if (key >= input::Key::Digit0 && key <= input::Key::Digit9) {
+        return static_cast<ImGuiKey>(ImGuiKey_0 + (code - static_cast<int>(input::Key::Digit0)));
     }
     if (key >= input::Key::F1 && key <= input::Key::F24) {
         return static_cast<ImGuiKey>(ImGuiKey_F1 + (code - static_cast<int>(input::Key::F1)));

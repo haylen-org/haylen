@@ -15,7 +15,7 @@ namespace haylen::localization {
 // Translated text by key. Keys missing from the current language come from the fallback language, and keys missing from both come back unchanged so the gap shows on screen. The first language added becomes the current and fallback language until others are chosen.
 class Catalog final {
   public:
-    // The entry of a language table that declares the direction its language writes in, ltr or rtl.
+    // The entry of a language table that declares the direction its language writes in, leftToRight or rightToLeft.
     static constexpr std::string_view kDirectionKey = "@direction";
 
     // Adds or merges a language table. Nested objects become dotted keys, and an object with only zero, one and other texts, and always other, is a plural form. The @direction entry declares the direction of the language, which is left to right until a table declares otherwise.

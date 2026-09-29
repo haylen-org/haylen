@@ -41,7 +41,7 @@ TEST_F(RichTextMarkupTest, ReadsTheAlignmentAndDirectionNamesOfTheTextStyle) {
     }
     EXPECT_FALSE(Style::alignmentFromName("justify").has_value());
     EXPECT_FALSE(Style::directionFromName("up").has_value());
-    EXPECT_NE(errorOf("[p dir=up]x[/p]").find("The dir of [p] must be auto, ltr or rtl."), std::string::npos);
+    EXPECT_NE(errorOf("[p dir=up]x[/p]").find("The dir of [p] must be auto, leftToRight or rightToLeft."), std::string::npos);
 }
 
 TEST_F(RichTextMarkupTest, NestsInlineStylesAndMergesRuns) {

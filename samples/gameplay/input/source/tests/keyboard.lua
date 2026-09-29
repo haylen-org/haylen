@@ -12,7 +12,7 @@ local Keyboard = haylen.class('Keyboard', sample.Test)
 
 -- Each row lists key names with an optional label and width in key units.
 local kRows = {
-    {{'escape', 'esc'}, {'1'}, {'2'}, {'3'}, {'4'}, {'5'}, {'6'}, {'7'}, {'8'}, {'9'}, {'0'}, {'minus', '-'}, {'equal', '='}, {'backspace', 'back', 1.6}},
+    {{'escape', 'esc'}, {'digit1', '1'}, {'digit2', '2'}, {'digit3', '3'}, {'digit4', '4'}, {'digit5', '5'}, {'digit6', '6'}, {'digit7', '7'}, {'digit8', '8'}, {'digit9', '9'}, {'digit0', '0'}, {'minus', '-'}, {'equal', '='}, {'backspace', 'back', 1.6}},
     {{'tab', 'tab', 1.4}, {'q'}, {'w'}, {'e'}, {'r'}, {'t'}, {'y'}, {'u'}, {'i'}, {'o'}, {'p'}, {'leftBracket', '['}, {'rightBracket', ']'}, {'backslash', '\\', 1.2}},
     {{'capsLock', 'caps', 1.7}, {'a'}, {'s'}, {'d'}, {'f'}, {'g'}, {'h'}, {'j'}, {'k'}, {'l'}, {'semicolon', ';'}, {'apostrophe', "'"}, {'enter', 'enter', 1.9}},
     {{'leftShift', 'shift', 2.2}, {'z'}, {'x'}, {'c'}, {'v'}, {'b'}, {'n'}, {'m'}, {'comma', ','}, {'period', '.'}, {'slash', '/'}, {'rightShift', 'shift', 2.4}},

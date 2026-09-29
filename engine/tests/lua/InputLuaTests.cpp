@@ -151,8 +151,8 @@ TEST_F(InputLuaTest, MapsActionsFromEveryDevice) {
     EXPECT_EQ(lua("return input.saveActions().actions[1].bindings[2]"), "button:south");
     EXPECT_EQ(lua("input.setGamepadIndex(2) input.setGamepadIndex(nil) return 'ok'"), "ok");
     EXPECT_EQ(lua("return input.down('unknown')"), "false");
-    EXPECT_NE(lua("input.loadActions({actions = {{name = 'x', type = 'button', bindings = {'key:nope'}}}})").find("Invalid input binding: key:nope"), std::string::npos);
-    EXPECT_NE(lua("input.loadActions({actions = {{name = 'x', type = 'trigger'}}})").find("Invalid action type: trigger"), std::string::npos);
+    EXPECT_NE(lua("input.loadActions({actions = {{name = 'x', type = 'button', bindings = {'key:nope'}}}})").find("The input binding 'key:nope' is invalid."), std::string::npos);
+    EXPECT_NE(lua("input.loadActions({actions = {{name = 'x', type = 'trigger'}}})").find("The type of an action must be button, axis or vector, not 'trigger'."), std::string::npos);
 }
 
 TEST(InputLuaAssetsTest, LoadsActionsFromAssets) {
@@ -222,7 +222,7 @@ TEST_F(InputLuaTest, DefinesActionsOneByOne) {
     lua("input.clearActions()");
     EXPECT_EQ(lua("return #input.actionNames()"), "0");
 
-    EXPECT_NE(lua("input.defineAction({name = 'x', type = 'button', bindings = {42}})").find("Invalid input binding: 42"), std::string::npos);
+    EXPECT_NE(lua("input.defineAction({name = 'x', type = 'button', bindings = {42}})").find("The input binding '42' is invalid."), std::string::npos);
     EXPECT_NE(lua("input.defineAction({type = 'button'})").find("An action needs a name and a type."), std::string::npos);
     EXPECT_NE(lua("input.defineAction({name = 'x', type = 'button', bindings = 'key:a'})").find("The bindings of an action must be a list of bindings."), std::string::npos);
     EXPECT_NE(lua("input.defineAction({name = 'x', type = 'button', hold = true})").find("Unknown key 'hold' in an action."), std::string::npos);

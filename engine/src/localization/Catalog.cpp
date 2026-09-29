@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <utility>
 
+#include "haylen/text/Style.hpp"
+
 namespace haylen::localization {
 
 bool Catalog::isPlural(const core::Json& value) {
@@ -95,10 +97,10 @@ void Catalog::add(const std::string& name, const core::Json& table) {
 
     std::optional<text::Direction> direction;
     if (const auto declared = table.find(kDirectionKey); declared != table.end()) {
-        if (*declared != "ltr" && *declared != "rtl") {
-            throw std::invalid_argument("The @direction of the localization table of " + name + " must be ltr or rtl.");
+        direction = declared->is_string() ? text::Style::directionFromName(declared->get<std::string>()) : std::nullopt;
+        if (!direction || *direction == text::Direction::Auto) {
+            throw std::invalid_argument("The @direction of the localization table of '" + name + "' must be leftToRight or rightToLeft.");
         }
-        direction = *declared == "rtl" ? text::Direction::RightToLeft : text::Direction::LeftToRight;
     }
     core::Json texts = table;
     texts.erase(std::string(kDirectionKey));

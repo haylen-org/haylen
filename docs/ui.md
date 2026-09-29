@@ -37,7 +37,7 @@ function pause:exit()
 end
 ```
 
-Every property is checked when the tree is built, so a misspelled key or a wrong value raises an error that names the kind and the key, such as `label.width must be a non-negative number or auto.`, and nothing is mounted. A document holds at most 64 levels, the root included, and 20000 nodes, and `document:replace` keeps it within them. A node table that holds itself, such as `c[1] = c`, raises the same error instead of nesting without end.
+Every property is checked when the tree is built, so a misspelled key or a wrong value raises an error that names the kind and the key, such as `The property 'width' of a label must be a non-negative number or auto.`, and nothing is mounted. A document holds at most 64 levels, the root included, and 20000 nodes, and `document:replace` keeps it within them. A node table that holds itself, such as `c[1] = c`, raises the same error instead of nesting without end.
 
 ### Screens in JSON
 
@@ -272,9 +272,9 @@ end}
 
 ImGui lays out and draws the widgets, and the text layout of the engine sets their text. Every component measures its text with the shaped layout of the font family of its role, and draws it through the 2D renderer from a callback of the ImGui draw list, at its place among the ImGui draws and inside their clip, moved, scaled and tinted by the transforms around it. Labels, buttons, fields, lists, tables, tooltips, dialogs and rich text therefore show Arabic, Hebrew, Persian, Urdu, Hindi, Thai and every other script the fonts of the family cover, with joined letters, conjuncts, marks and the bidirectional order of mixed text, as the [text guide](text.md#scripts-and-directions) describes. Layouts are cached by text and style, so a label that stays the same shapes once. The fonts of ImGui itself only serve the text editing engine of fields, which draws nothing, and the debug windows of `haylen.imgui`.
 
-Every paragraph of the UI reads in the direction of its first strong letter, so an Arabic label reads from the right and an English one from the left in any interface. The direction of the layout is separate, and it is left to right unless the app changes it. `ui.setDirection('rtl')` mirrors every document: rows start from the right, start and end alignments name the right and the left, check boxes and toggles put their box on the right, sliders and progress bars fill from the right, steppers and carousels swap their ends, menus open from the right edge and the arrow keys move sliders and steppers the way they point. A node with `direction = 'rtl'` or `'ltr'` sets the direction of its own subtree, and `language` sets the language its text is shaped for, which otherwise is the current language. The [reference](lua-api/ui.md#right-to-left-interfaces) lists everything that mirrors.
+Every paragraph of the UI reads in the direction of its first strong letter, so an Arabic label reads from the right and an English one from the left in any interface. The direction of the layout is separate, and it is left to right unless the app changes it. `ui.setDirection('rightToLeft')` mirrors every document: rows start from the right, start and end alignments name the right and the left, check boxes and toggles put their box on the right, sliders and progress bars fill from the right, steppers and carousels swap their ends, menus open from the right edge and the arrow keys move sliders and steppers the way they point. A node with `direction = 'rightToLeft'` or `'leftToRight'` sets the direction of its own subtree, and `language` sets the language its text is shaped for, which otherwise is the current language. The [reference](lua-api/ui.md#right-to-left-interfaces) lists everything that mirrors.
 
-A language declares its direction in its catalog with `"@direction": "rtl"`, as [haylen.localization](lua-api/localization.md) describes, and `ui.setDirection('auto')` makes the UI follow it, so switching to Arabic or Hebrew mirrors every mounted document from the next frame and switching back restores it. Apps opt in, because a game may prefer to keep its HUD in one layout whatever the language. Anchors and four-sided padding stay where they are, and images are never flipped.
+A language declares its direction in its catalog with `"@direction": "rightToLeft"`, as [haylen.localization](lua-api/localization.md) describes, and `ui.setDirection('auto')` makes the UI follow it, so switching to Arabic or Hebrew mirrors every mounted document from the next frame and switching back restores it. Apps opt in, because a game may prefer to keep its HUD in one layout whatever the language. Anchors and four-sided padding stay where they are, and images are never flipped.
 
 ```lua
 local assets = require('haylen.assets')
@@ -290,7 +290,7 @@ localization.setLanguage('ar')
 ui.mount(ui.card{
     ui.label{text = {key = 'menu.welcome'}},
     ui.row{ui.button{text = {key = 'menu.play'}, variant = 'primary'}, ui.button{text = {key = 'menu.quit'}}},
-    ui.column{direction = 'ltr', ui.label{text = 'v1.4.2'}},
+    ui.column{direction = 'leftToRight', ui.label{text = 'v1.4.2'}},
 })
 ```
 

@@ -22,14 +22,14 @@ local kLines = {
 local kMixed = 'السعر 42 دولارًا (USD) مع كلمة English'
 local kParagraph = '[b]الرحلة[/b] بدأت في الصباح الباكر، وكان [color=#FFF2B23A]البحر[/color] هادئًا. قرأ القبطان الرسالة رقم 1024 من [u]Harbor Station[/u] ثم أبحر نحو الجزيرة.'
 local kThai = 'ภาษาไทยไม่มีช่องว่างระหว่างคำ จึงตัดบรรทัดตามวลีที่แบบจำลองภาษาไทยหาได้'
-local kTyped = '[p dir=rtl][b]القبطان:[/b] مرحبًا أيها المسافر.[pause=0.5] [speed=0.5]البحر هادئ اليوم.[/speed][/p]'
+local kTyped = '[p dir=rightToLeft][b]القبطان:[/b] مرحبًا أيها المسافر.[pause=0.5] [speed=0.5]البحر هادئ اليوم.[/speed][/p]'
 
 function ComplexScripts:init(entry)
     ComplexScripts.super.init(self, entry)
     self.width = 460
     self.direction = 'auto'
     local family = fonts.family('scripts')
-    self.paragraph = graphics2d.newRichText(kParagraph, {family = family, size = 30, maxWidth = self.width, lineSpacing = 1, direction = 'rtl', language = 'ar'})
+    self.paragraph = graphics2d.newRichText(kParagraph, {family = family, size = 30, maxWidth = self.width, lineSpacing = 1, direction = 'rightToLeft', language = 'ar'})
     self.typed = graphics2d.newRichText(kTyped, {family = family, size = 30, maxWidth = 600, lineSpacing = 1, revealSpeed = 14})
 end
 
@@ -41,7 +41,7 @@ function ComplexScripts:controls()
             self.paragraph.maxWidth = event.value
         end},
         ui.label{text = 'Mixed line direction'},
-        ui.segmentedControl{id = 'direction', selected = self.direction, items = {{id = 'auto', text = 'Auto'}, {id = 'ltr', text = 'LTR'}, {id = 'rtl', text = 'RTL'}}, onChange = function(event)
+        ui.segmentedControl{id = 'direction', selected = self.direction, items = {{id = 'auto', text = 'Auto'}, {id = 'leftToRight', text = 'LTR'}, {id = 'rightToLeft', text = 'RTL'}}, onChange = function(event)
             self.direction = event.value
         end},
         ui.button{id = 'replay', text = 'Replay the typewriter', onClick = function()

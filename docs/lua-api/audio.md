@@ -49,7 +49,7 @@ Starts a voice for the sound and returns its id. The options table is optional, 
 | `processMode` | string | `'inherit'` | `'inherit'`, `'pausable'`, `'whenPaused'`, `'always'` or `'disabled'`. `'inherit'` takes the mode of the bus. |
 | `effects` | table | none | A list of effects from `audio.newEffect` that process the voice in order before its bus. |
 
-An unknown bus raises `Unknown audio bus: <name>`, a bad variation raises `A pitch variation must be at least 0 and smaller than the pitch.`, and an `effects` value that is not a list of effects raises `The option 'effects' must be a list of audio effects.`. Numbers must be finite, so `0 / 0` or `math.huge` for `volume`, `pan`, `fadeIn`, `startAt`, `x` or `y` raise `Audio needs a finite volume.`, `Audio needs a finite pan.`, `Audio needs a finite fade-in.`, `Audio needs a finite start time.` or `Audio needs a finite position.`, and a `pitch` that is not a finite number above 0 raises `Audio needs a finite pitch above 0.`. A call that raises an error stops no voice, even when every voice is busy.
+An unknown bus raises `The audio bus '<name>' does not exist.`, a bad variation raises `A pitch variation must be at least 0 and smaller than the pitch.`, and an `effects` value that is not a list of effects raises `The option 'effects' must be a list of audio effects.`. Numbers must be finite, so `0 / 0` or `math.huge` for `volume`, `pan`, `fadeIn`, `startAt`, `x` or `y` raise `Audio needs a finite volume.`, `Audio needs a finite pan.`, `Audio needs a finite fade-in.`, `Audio needs a finite start time.` or `Audio needs a finite position.`, and a `pitch` that is not a finite number above 0 raises `Audio needs a finite pitch above 0.`. A call that raises an error stops no voice, even when every voice is busy.
 
 ```lua
 local assets = require('haylen.assets')
@@ -324,7 +324,7 @@ Effects process the sound of a bus or of a voice, in the order they were added. 
 
 ### audio.newEffect(kind, options)
 
-Creates an effect. `kind` is one of `'lowpass'`, `'highpass'`, `'bandpass'`, `'notch'`, `'peak'`, `'lowShelf'`, `'highShelf'`, `'delay'` and `'reverb'`, and the options table is optional. An unknown kind raises `Unknown audio effect: <kind>`, unknown options raise `Unknown option '<key>'.`, and values out of range raise the errors of the property they set.
+Creates an effect. `kind` is one of `'lowpass'`, `'highpass'`, `'bandpass'`, `'notch'`, `'peak'`, `'lowShelf'`, `'highShelf'`, `'delay'` and `'reverb'`, and the options table is optional. An unknown kind raises `The audio effect must be lowpass, highpass, bandpass, notch, peak, lowShelf, highShelf, delay or reverb, not '<kind>'.`, unknown options raise `Unknown option '<key>'.`, and values out of range raise the errors of the property they set.
 
 | Kind | Options |
 | --- | --- |
@@ -476,7 +476,7 @@ end
 
 ### audio.createBus(name, parent)
 
-Creates a bus under `parent`, which defaults to `'master'`. A name that is empty or already used raises `An audio bus needs a new, non-empty name: <name>`, and an unknown parent raises `Unknown audio bus: <parent>`.
+Creates a bus under `parent`, which defaults to `'master'`. A name that is empty or already used raises `An audio bus needs a non-empty name that no other bus uses, not '<name>'.`, and an unknown parent raises `The audio bus '<parent>' does not exist.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -846,8 +846,8 @@ end)
 | Message | Cause |
 | --- | --- |
 | `Unknown option '<key>'.` | An options table has a key the call does not accept. |
-| `Unknown audio bus: <name>` | A call names a bus that does not exist. |
-| `An audio bus needs a new, non-empty name: <name>` | `audio.createBus()` received an empty or existing name. |
+| `The audio bus '<name>' does not exist.` | A call names a bus that does not exist. |
+| `An audio bus needs a non-empty name that no other bus uses, not '<name>'.` | `audio.createBus()` received an empty or existing name. |
 | `A pitch variation must be at least 0 and smaller than the pitch.` | `audio.play()` received a bad `pitchVariation`. |
 | `Audio needs a finite volume.` | `audio.play()` or `audio.setVolume()` received a volume that is not finite, such as `0 / 0` or `math.huge`. |
 | `Audio needs a finite pitch above 0.` | `audio.play()` or `audio.setPitch()` received a pitch of 0 or less or one that is not finite. |
@@ -861,7 +861,7 @@ end)
 | `The inverse and exponential audio models need a minimum distance above 0.` | `audio.setSpatialization()` chose one of these models with a minimum distance of 0. |
 | `The audio rolloff and Doppler factor cannot be negative.` | `audio.setSpatialization()` received a negative `rolloff` or `doppler`. |
 | `The audio pan distance and speed of sound must be positive.` | `audio.setSpatialization()` received a `panDistance` or `speedOfSound` of 0 or less. |
-| `Unknown audio effect: <kind>` | `audio.newEffect()` received an unknown kind. |
+| `The audio effect must be lowpass, highpass, bandpass, notch, peak, lowShelf, highShelf, delay or reverb, not '<kind>'.` | `audio.newEffect()` received an unknown kind. |
 | `The audio effect already processes another bus or voice.` | An effect was added while it is still on a bus or a voice, or still rings out after its voice ended. |
 | `The option 'effects' must be a list of audio effects.` | `audio.play()` received an `effects` value that is not a list of effects. |
 | `A filter cutoff must be a positive frequency.` | A filter received a cutoff of 0 or less. |

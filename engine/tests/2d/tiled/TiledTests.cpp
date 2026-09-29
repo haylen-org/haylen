@@ -903,10 +903,10 @@ TEST_F(TiledLuaTest, UsesMapsFromLua) {
     EXPECT_EQ(fixture.lua("local world = physics2d.newWorld({gravity = {0, 0}}) local bodies = map:buildCollision(world) return #bodies .. ' ' .. bodies[1].type .. ' ' .. tostring(bodies[1].world == world)"), "2 static true");
     EXPECT_EQ(fixture.lua("local w = assets.load('maps/world/level.world') return #w .. ' ' .. w[1].path .. ' ' .. w[3].x .. ' ' .. w[3].width"), "3 maps/island.tmj 64.0 64.0");
 
-    EXPECT_NE(fixture.lua("map:layer('missing')").find("Unknown layer: missing"), std::string::npos);
+    EXPECT_NE(fixture.lua("map:layer('missing')").find("The map has no layer named 'missing'."), std::string::npos);
     EXPECT_NE(fixture.lua("map:draw(camera, {layer = 1, z = 2})").find("Unknown option 'z'"), std::string::npos);
     EXPECT_NE(fixture.lua("map:objects('ground')").find("The map has no object layer named 'ground'."), std::string::npos);
-    EXPECT_NE(fixture.lua("map:setTile('things', 0, 0, 1)").find("Unknown tile layer: things"), std::string::npos);
+    EXPECT_NE(fixture.lua("map:setTile('things', 0, 0, 1)").find("The map has no tile layer named 'things'."), std::string::npos);
     EXPECT_NE(fixture.lua("tiled.newMapRenderer('map')").find("error: "), std::string::npos);
 
     // The Lua types carry the names of the C++ classes they wrap.

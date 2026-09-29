@@ -111,7 +111,7 @@ Starts connecting to `url` and returns a `haylen.WebSocket` in the `connecting` 
 | `jitter` | number | `0.5` | Fraction between `0` and `1` that shortens each wait at random. |
 | `maxAttempts` | integer | `0` | Failed attempts in a row before the socket closes, where `0` never gives up. |
 
-An address that does not start with `ws://` or `wss://` raises `A WebSocket address starts with ws:// or wss://: <url>`, and a `maxMessageSize` of `0` or above `2147483647` raises `A WebSocket needs a maximum message size between 1 and 2147483647 bytes.`. Reconnect settings outside these ranges raise `WebSocket reconnection needs delays from zero up with the maximum at least the initial one, a multiplier of at least 1, a jitter between 0 and 1 and a maximum of attempts of at least 0.`.
+An address that does not start with `ws://` or `wss://` raises `The WebSocket address '<url>' must start with ws:// or wss://.`, and a `maxMessageSize` of `0` or above `2147483647` raises `A WebSocket needs a maximum message size between 1 and 2147483647 bytes.`. Reconnect settings outside these ranges raise `WebSocket reconnection needs delays from zero up with the maximum at least the initial one, a multiplier of at least 1, a jitter between 0 and 1 and a maximum of attempts of at least 0.`.
 
 ```lua
 local net = require('haylen.net')

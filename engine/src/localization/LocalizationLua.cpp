@@ -11,6 +11,7 @@
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/plugins/LocalizationPlugin.hpp"
+#include "haylen/text/Style.hpp"
 
 namespace haylen::localization {
 
@@ -66,11 +67,11 @@ int LocalizationLua::text(lua_State* L) {
     return 1;
 }
 
-// Returns with direction([language]) the direction the current or the named language declares, ltr or rtl.
+// Returns with direction([language]) the direction the current or the named language declares, leftToRight or rightToLeft.
 int LocalizationLua::direction(lua_State* L) {
     const Catalog& catalog = getCatalog(L);
     const std::string language = lua_isnoneornil(L, 1) ? catalog.getLanguage() : lua::Stack::read<std::string>(L, 1);
-    lua::Stack::push(L, std::string_view(catalog.getDirection(language) == haylen::text::Direction::RightToLeft ? "rtl" : "ltr"));
+    lua::Stack::push(L, haylen::text::Style::directionName(catalog.getDirection(language)));
     return 1;
 }
 

@@ -7,6 +7,7 @@
 #include "haylen/ui/ComponentRegistry.hpp"
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
+#include "haylen/ui/PropertyReader.hpp"
 
 namespace haylen::ui {
 
@@ -90,7 +91,7 @@ Document::Built Document::build(const core::Json& node, std::size_t depth, std::
     Component& component = *built.component;
     if (const auto id = node.find("id"); id != node.end()) {
         if (!id->is_string() || id->get<std::string>().empty()) {
-            throw std::invalid_argument("The id of a " + kind->get<std::string>() + " must be a non-empty string.");
+            throw std::invalid_argument("The id of " + PropertyReader::describeKind(kind->get<std::string>()) + " must be a non-empty string.");
         }
         component.id = id->get<std::string>();
         built.ids.emplace(component.id, &component);
@@ -108,10 +109,10 @@ Document::Built Document::build(const core::Json& node, std::size_t depth, std::
         return built;
     }
     if (!children->is_array()) {
-        throw std::invalid_argument("The children of a " + kind->get<std::string>() + " must be a list.");
+        throw std::invalid_argument("The children of " + PropertyReader::describeKind(kind->get<std::string>()) + " must be a list.");
     }
     if (children->size() > component.getChildLimit()) {
-        throw std::invalid_argument("A " + kind->get<std::string>() + " takes at most " + std::to_string(component.getChildLimit()) + " children.");
+        throw std::invalid_argument("The component kind '" + kind->get<std::string>() + "' takes at most " + std::to_string(component.getChildLimit()) + " children.");
     }
     for (const core::Json& child : *children) {
         Built nested = build(child, depth + 1, count);
@@ -164,7 +165,7 @@ void Document::replaceChildren(std::string_view id, const core::Json& trees) {
         throw std::invalid_argument("The replaceChildren method of a document takes a list of nodes.");
     }
     if (trees.size() > component.getChildLimit()) {
-        throw std::invalid_argument("A " + std::string(component.getKind()) + " takes at most " + std::to_string(component.getChildLimit()) + " children.");
+        throw std::invalid_argument("The component kind '" + std::string(component.getKind()) + "' takes at most " + std::to_string(component.getChildLimit()) + " children.");
     }
 
     // The new children count against the limits of the whole document, from the level of the node on and with the nodes they replace left out.

@@ -343,6 +343,7 @@ TEST_F(GameComponentTest, CapturesBindingsForRemapping) {
     EXPECT_EQ(KeyCapture::describe("key:leftShift"), "Left Shift");
     EXPECT_EQ(KeyCapture::describe("axis:leftX+"), "Left X +");
     EXPECT_EQ(KeyCapture::describe("key:keypad0"), "Keypad 0");
+    EXPECT_EQ(KeyCapture::describe("key:digit1"), "1");
     EXPECT_EQ(KeyCapture::describe("key:f12"), "F12");
     EXPECT_EQ(KeyCapture::describe("mouse:right"), "Mouse Right");
 }

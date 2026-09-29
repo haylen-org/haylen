@@ -546,7 +546,7 @@ int UiLua::themeColor(lua_State* L) {
     const std::string name = lua::Stack::read<std::string>(L, 1);
     const std::optional<Theme::Color> role = Theme::colorFromName(name);
     if (!role) {
-        return luaL_error(L, "The theme has an unknown color role: %s", name.c_str());
+        return luaL_error(L, "The theme has no color role named '%s'.", name.c_str());
     }
     lua::Stack::push(L, getPlugin(L).getTheme().getColor(*role));
     return 1;
@@ -556,7 +556,7 @@ int UiLua::themeMetric(lua_State* L) {
     const std::string name = lua::Stack::read<std::string>(L, 1);
     const std::optional<Theme::Metric> role = Theme::metricFromName(name);
     if (!role) {
-        return luaL_error(L, "The theme has an unknown metric: %s", name.c_str());
+        return luaL_error(L, "The theme has no metric named '%s'.", name.c_str());
     }
     lua::Stack::push(L, getPlugin(L).getTheme().getMetric(*role));
     return 1;
@@ -567,7 +567,7 @@ int UiLua::themeFont(lua_State* L) {
     const std::string name = lua::Stack::read<std::string>(L, 1);
     const std::optional<Theme::Font> role = Theme::fontFromName(name);
     if (!role) {
-        return luaL_error(L, "The theme has an unknown font role: %s", name.c_str());
+        return luaL_error(L, "The theme has no font role named '%s'.", name.c_str());
     }
     const Theme::FontStyle& style = getPlugin(L).getTheme().getFont(*role);
     lua_createtable(L, 0, 4);
@@ -587,7 +587,7 @@ int UiLua::themeSurface(lua_State* L) {
     const std::string name = lua::Stack::read<std::string>(L, 1);
     const std::optional<Theme::Surface> role = Theme::surfaceFromName(name);
     if (!role) {
-        return luaL_error(L, "The theme has an unknown surface: %s", name.c_str());
+        return luaL_error(L, "The theme has no surface named '%s'.", name.c_str());
     }
     const Theme::Image* image = getPlugin(L).getTheme().getSurface(*role);
     if (image == nullptr) {
@@ -701,7 +701,7 @@ int UiLua::safeAreaVisible(lua_State* L) {
     return 1;
 }
 
-// Sets the direction of the whole UI with setDirection('ltr', 'rtl' or 'auto'), where auto follows the direction the current language declares.
+// Sets the direction of the whole UI with setDirection('leftToRight', 'rightToLeft' or 'auto'), where auto follows the direction the current language declares.
 int UiLua::setDirection(lua_State* L) {
     getPlugin(L).setDirection(lua::Stack::read<text::Direction>(L, 1));
     return 0;

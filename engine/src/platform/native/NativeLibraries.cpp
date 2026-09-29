@@ -118,7 +118,7 @@ NativeLibraries::Library NativeLibraries::open(std::string_view name) {
     if (!given.has_parent_path()) {
         searched += "\n  the libraries linked into the app: not registered";
     }
-    throw std::runtime_error("The native library " + std::string(name) + " could not be loaded. Searched:" + searched);
+    throw std::runtime_error("The native library '" + std::string(name) + "' could not be loaded. These are the places it searched:" + searched + "\nPut the library in one of them or load it by its path.");
 }
 
 void* NativeLibraries::findSymbol(const Library& library, std::string_view name) {

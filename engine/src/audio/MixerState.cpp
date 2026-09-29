@@ -45,7 +45,7 @@ std::uint8_t MixerState::toHold(Mixer::PauseReason reason) noexcept {
 MixerState::Bus& MixerState::getBus(std::string_view name) const {
     const auto found = buses.find(name);
     if (found == buses.end()) {
-        throw std::invalid_argument("Unknown audio bus: " + std::string(name));
+        throw std::invalid_argument("The audio bus '" + std::string(name) + "' does not exist.");
     }
     return *found->second;
 }

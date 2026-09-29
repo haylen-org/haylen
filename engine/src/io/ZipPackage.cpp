@@ -27,19 +27,19 @@ std::vector<std::uint8_t> ZipPackage::read(std::string_view path) const {
     zip_stat_t stat;
     zip_stat_init(&stat);
     if (zip_stat(archive, entry.c_str(), 0, &stat) != 0 || (stat.valid & ZIP_STAT_SIZE) == 0) {
-        throw std::runtime_error("Package file was not found: " + name + "/" + entry);
+        throw std::runtime_error("The package file '" + name + "/" + entry + "' was not found.");
     }
 
     zip_file_t* file = zip_fopen_index(archive, stat.index, 0);
     if (file == nullptr) {
-        throw std::runtime_error("Package file could not be opened: " + name + "/" + entry);
+        throw std::runtime_error("The package file '" + name + "/" + entry + "' could not be opened.");
     }
 
     std::vector<std::uint8_t> content(static_cast<std::size_t>(stat.size));
     const zip_int64_t count = zip_fread(file, content.data(), content.size());
     zip_fclose(file);
     if (count < 0 || static_cast<std::uint64_t>(count) != stat.size) {
-        throw std::runtime_error("Package file could not be read: " + name + "/" + entry);
+        throw std::runtime_error("The package file '" + name + "/" + entry + "' could not be read.");
     }
     return content;
 }

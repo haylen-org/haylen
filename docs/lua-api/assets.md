@@ -8,7 +8,7 @@ local assets = require('haylen.assets')
 
 ## Paths
 
-Every path is relative to the `content/` folder of the app package and never includes the `content/` prefix, so the file `content/images/hero.png` is loaded as `'images/hero.png'`. Slashes and backslashes both separate folders. Absolute paths raise `Paths must be relative: <path>`, and `..` segments that leave the folder raise `Paths cannot leave their root folder: <path>`. A missing file raises `Package file was not found: <file>`.
+Every path is relative to the `content/` folder of the app package and never includes the `content/` prefix, so the file `content/images/hero.png` is loaded as `'images/hero.png'`. Slashes and backslashes both separate folders. Absolute paths raise `The path '<path>' must be relative.`, and `..` segments that leave the folder raise `The path '<path>' must stay inside its root folder.` A missing file raises `The package file '<file>' was not found.`
 
 ## Asset types
 
@@ -34,7 +34,7 @@ Assets are cached by type, path and options. Loading the same asset again return
 
 ### assets.load(path, type, options)
 
-Loads an asset synchronously and returns it. The type is optional and comes from the file extension when it is `nil`. Options are optional. A file whose extension no type handles raises `No asset type handles the file <path>`, and an unknown type raises `Unknown asset type: <type>`.
+Loads an asset synchronously and returns it. The type is optional and comes from the file extension when it is `nil`. Options are optional. A file whose extension no type handles raises `No asset type handles the file '<path>'. Pass its type or use an extension that an asset type handles.`, and an unknown type raises `The asset type '<type>' does not exist.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -87,7 +87,7 @@ scene.push({
 
 ### assets.shader(path)
 
-Loads a `.shader` file synchronously and returns its Shader, for `graphics2d.newMaterial`. A file that is not a compiled shader raises `The shader file is malformed: reason`. In development, a changed `.shader` file reloads in place, so every material of the shader draws with the new programs from the next frame.
+Loads a `.shader` file synchronously and returns its Shader, for `graphics2d.newMaterial`. A file that is not a compiled shader raises `The shader file is malformed: ` followed by the problem, or `The shader file is malformed, and the JSON reader reported '<reason>'.` when it is not valid JSON. In development, a changed `.shader` file reloads in place, so every material of the shader draws with the new programs from the next frame.
 
 ```lua
 local assets = require('haylen.assets')
@@ -204,7 +204,7 @@ end
 
 ### assets.list(folder)
 
-Returns a sorted list of every file under a folder of the content folder, including files in subfolders, as paths relative to the content folder. Without a folder it lists every asset. A missing folder gives an empty list, and a folder that leads out of the content folder, such as `'..'`, raises `Paths cannot leave their root folder: <folder>`.
+Returns a sorted list of every file under a folder of the content folder, including files in subfolders, as paths relative to the content folder. Without a folder it lists every asset. A missing folder gives an empty list, and a folder that leads out of the content folder, such as `'..'`, raises `The path '<folder>' must stay inside its root folder.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -218,7 +218,7 @@ end
 
 ### assets.typeForPath(path)
 
-Returns the name of the asset type that handles the file, picked by its extension without regard to case, as `assets.load()` picks it. A file whose extension no type handles raises `No asset type handles the file <path>`.
+Returns the name of the asset type that handles the file, picked by its extension without regard to case, as `assets.load()` picks it. A file whose extension no type handles raises `No asset type handles the file '<path>'. Pass its type or use an extension that an asset type handles.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -292,7 +292,7 @@ assets.defineGroup('forest', {
 
 ### assets.preload(name, progress)
 
-Starts loading every asset of a group and returns a promise. The promise resolves once every asset finished, with a list of error messages in the form `'<path>: <error>'` for the assets that failed, so an empty list means everything loaded. It never rejects. The optional `progress` function receives the fraction of finished assets, from above 0 to 1, after each asset. Preloading a group that is already loaded loads nothing again, reports progress 1 and resolves with its earlier errors. An error raised by the progress function shows the engine error screen. An unknown group raises `Unknown asset group: <name>`, and an entry without a type whose extension no type handles raises `No asset type handles the file <path>`.
+Starts loading every asset of a group and returns a promise. The promise resolves once every asset finished, with a list of error messages in the form `'<path>: <error>'` for the assets that failed, so an empty list means everything loaded. It never rejects. The optional `progress` function receives the fraction of finished assets, from above 0 to 1, after each asset. Preloading a group that is already loaded loads nothing again, reports progress 1 and resolves with its earlier errors. An error raised by the progress function shows the engine error screen. An unknown group raises `The asset group '<name>' is not defined.`, and an entry without a type whose extension no type handles raises `No asset type handles the file '<path>'. Pass its type or use an extension that an asset type handles.`
 
 The group holds its assets until `assets.unloadGroup()`, so they stay cached even when nothing else refers to them, and later `assets.load()` calls return them at once.
 
@@ -328,7 +328,7 @@ scene.push(loading)
 
 ### assets.unloadGroup(name)
 
-Releases the hold of a group on its assets. Assets that nothing else refers to leave memory, and assets still in use stay loaded. The group stays defined and can be preloaded again. An unknown group raises `Unknown asset group: <name>`.
+Releases the hold of a group on its assets. Assets that nothing else refers to leave memory, and assets still in use stay loaded. The group stays defined and can be preloaded again. An unknown group raises `The asset group '<name>' is not defined.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -343,7 +343,7 @@ scene.push({
 
 ### assets.groupProgress(name)
 
-Returns the fraction of the group that finished loading, from 0 to 1. A loaded group returns 1. An unknown group raises `Unknown asset group: <name>`.
+Returns the fraction of the group that finished loading, from 0 to 1. A loaded group returns 1. An unknown group raises `The asset group '<name>' is not defined.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -565,16 +565,16 @@ end
 
 | Message | Cause |
 | --- | --- |
-| `Package file was not found: <file>` | The file does not exist in the package. |
-| `Paths must be relative: <path>` | A path starts with a slash or a drive letter. |
-| `Paths cannot leave their root folder: <path>` | A path uses `..` to leave the content folder. |
+| `The package file '<file>' was not found.` | The file does not exist in the package. |
+| `The path '<path>' must be relative.` | A path starts with a slash or a drive letter. |
+| `The path '<path>' must stay inside its root folder.` | A path uses `..` to leave the content folder. |
 | `An asset path cannot be empty.` | The path is empty. |
-| `No asset type handles the file <path>` | The extension belongs to no asset type and no type was given. |
-| `Unknown asset type: <type>` | The type argument names no asset type. |
+| `No asset type handles the file '<path>'. Pass its type or use an extension that an asset type handles.` | The extension belongs to no asset type and no type was given. |
+| `The asset type '<type>' does not exist.` | The type argument names no asset type. |
 | `Unknown key '<key>' in <kind> options.` | An options table has a key the asset type does not accept. |
-| `Unknown texture filter: <filter>` | The `filter` option is not `nearest` or `linear`. |
-| `Unknown texture wrap: <wrap>` | The `wrap` option is not `clamp`, `repeat` or `mirror`. |
-| `Unknown asset group: <name>` | A group function names a group that was never defined. |
+| `The texture filter must be nearest or linear, not '<filter>'.` | The `filter` option is not `nearest` or `linear`. |
+| `The texture wrap must be clamp, repeat or mirror, not '<wrap>'.` | The `wrap` option is not `clamp`, `repeat` or `mirror`. |
+| `The asset group '<name>' is not defined.` | A group function names a group that was never defined. |
 | `Unknown key '<key>' in the asset group manifest.` | A manifest has a key other than `groups`. |
 | `Unknown key '<key>' in an asset group entry.` | A group entry has a key other than `path`, `type` and `options`. |
 

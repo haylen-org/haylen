@@ -651,7 +651,7 @@ An action map document is a table or a JSON file with an `actions` list. Each ac
 
 ### input.loadActions(document)
 
-Replaces the action map with a document, given as a table or as a path to a JSON file in the content folder. Nothing changes when the document is invalid. A document that is not a table with string keys raises `Expected the action map to be a JSON object.`, and an action that is not one raises `Expected an action to be a JSON object.`. Unknown keys raise `Unknown key '<key>' in the action map.` or `Unknown key '<key>' in an action.`, a missing list raises `The action map needs a list of actions.`, an action without a name or type raises `An action needs a name and a type.`, bad types raise `Invalid action type: <type>`, a binding list that is not a list raises `The <list> of an action must be a list of bindings.`, bad bindings raise `Invalid input binding: <binding>` and a name used by two actions raises `Duplicate action name: <name>`. An empty Lua table counts as an empty list.
+Replaces the action map with a document, given as a table or as a path to a JSON file in the content folder. Nothing changes when the document is invalid. A document that is not a table with string keys raises `Expected the action map to be a JSON object.`, and an action that is not one raises `Expected an action to be a JSON object.`. Unknown keys raise `Unknown key '<key>' in the action map.` or `Unknown key '<key>' in an action.`, a missing list raises `The action map needs a list of actions.`, an action without a name or type raises `An action needs a name and a type.`, bad types raise `The type of an action must be button, axis or vector, not '<type>'.`, a binding list that is not a list raises `The <list> of an action must be a list of bindings.`, bad bindings raise `The input binding '<binding>' is invalid. Use a binding such as key:space, mouse:left, button:south, axis:leftX+ or stick:left.` and a name used by two actions raises `The action name '<name>' is used by more than one action.` An empty Lua table counts as an empty list.
 
 ```lua
 local input = require('haylen.input')
@@ -959,7 +959,7 @@ scene.push({
 | Group | Names |
 | --- | --- |
 | Letters | `a` to `z` |
-| Digits | `0` to `9` |
+| Digits | `digit0` to `digit9` |
 | Function keys | `f1` to `f25` |
 | Keypad | `keypad0` to `keypad9`, `keypadDecimal`, `keypadDivide`, `keypadMultiply`, `keypadSubtract`, `keypadAdd`, `keypadEnter`, `keypadEqual` |
 | Symbols | `space`, `apostrophe`, `comma`, `minus`, `period`, `slash`, `semicolon`, `equal`, `leftBracket`, `backslash`, `rightBracket`, `graveAccent`, `world1`, `world2` |
@@ -993,9 +993,9 @@ scene.push({
 | `Unknown key '<key>' in an action.` | An action has a key other than `name`, `type` and the binding lists. |
 | `The action map needs a list of actions.` | An action map document has no `actions` list. |
 | `An action needs a name and a type.` | An action lacks a string `name` or `type`. |
-| `Invalid action type: <type>` | An action type is not `button`, `axis` or `vector`. |
+| `The type of an action must be button, axis or vector, not '<type>'.` | An action type is not `button`, `axis` or `vector`. |
 | `The <list> of an action must be a list of bindings.` | A binding list is not a list. |
-| `Invalid input binding: <binding>` | A binding is not a string in one of the formats in [Action map](#action-map). |
+| `The input binding '<binding>' is invalid. Use a binding such as key:space, mouse:left, button:south, axis:leftX+ or stick:left.` | A binding is not a string in one of the formats in [Action map](#action-map). |
 | `The <type> action <name> does not read <list>.` | An action has a binding list its type never reads. |
 | `The vector action <name> takes only sticks in bindings, not <binding>.` | The `bindings` of a vector action hold something other than a stick. |
-| `Duplicate action name: <name>` | Two actions of an action map document have the same name. |
+| `The action name '<name>' is used by more than one action.` | Two actions of an action map document have the same name. |

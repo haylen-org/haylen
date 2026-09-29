@@ -124,7 +124,7 @@ TEST_P(PackageTest, ListsFilesRecursively) {
 
 TEST(PackageLuaTest, ListingAssetsNeverLeavesTheContentFolder) {
     test::EngineFixture fixture({{"content/maps/island.tmj", "{}"}});
-    EXPECT_NE(fixture.lua("return require('haylen.assets').list('..')").find("Paths cannot leave their root folder: .."), std::string::npos);
+    EXPECT_NE(fixture.lua("return require('haylen.assets').list('..')").find("The path '..' must stay inside its root folder."), std::string::npos);
 }
 
 INSTANTIATE_TEST_SUITE_P(Sources, PackageTest, ::testing::Values("directory", "zip-file", "zip-memory", "memory"));

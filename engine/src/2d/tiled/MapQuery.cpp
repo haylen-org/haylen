@@ -127,7 +127,7 @@ void MapQuery::traceOutline(const Object& object, std::vector<math::Vec2>& point
     case Object::Shape::Tile: {
         const Map::TilesetReference* reference = map.findTileset(object.gid);
         if (reference == nullptr) {
-            throw std::invalid_argument("A tile object uses a tile that no tileset holds: " + std::to_string(Map::tileId(object.gid)));
+            throw std::invalid_argument("A tile object uses the tile '" + std::to_string(Map::tileId(object.gid)) + "', which no tileset of the map holds.");
         }
         const Tileset& tileset = *reference->tileset;
         const math::Vec2 size = object.size.isZero() ? tileset.getSource(Map::tileId(object.gid) - reference->firstGid).getSize() : object.size;

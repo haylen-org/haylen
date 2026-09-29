@@ -65,14 +65,14 @@ math::Rect Theme::readRect(const core::Json& value, const std::string& context) 
 Theme::Image Theme::readImage(const core::Json& value, const std::string& context, const TextureLoader& loadTexture) {
     core::JsonValidator::requireKnownKeys(value, {"image", "source", "slice", "pieces", "scale", "padding", "tint", "colorize", "filter", "fill"}, context);
     if (!value.contains("image") || !value.at("image").is_string()) {
-        throw std::invalid_argument(context + " needs an image path.");
+        throw std::invalid_argument("The image of " + context + " must be a path.");
     }
 
     graphics::Texture::Options options;
     if (value.contains("filter")) {
         const std::optional<graphics::Texture::Filter> filter = value.at("filter").is_string() ? graphics::Texture::filterFromName(value.at("filter").get<std::string>()) : std::nullopt;
         if (!filter) {
-            throw std::invalid_argument(context + ".filter must be nearest or linear.");
+            throw std::invalid_argument("The filter of " + context + " must be nearest or linear.");
         }
         options.filter = *filter;
     }
@@ -82,38 +82,38 @@ Theme::Image Theme::readImage(const core::Json& value, const std::string& contex
     if (value.contains("pieces")) {
         const core::Json& pieces = value.at("pieces");
         if (!pieces.is_array() || pieces.size() != 9) {
-            throw std::invalid_argument(context + ".pieces must hold nine rectangles.");
+            throw std::invalid_argument("The pieces of " + context + " must hold nine rectangles.");
         }
         std::array<math::Rect, 9> rects{};
         for (std::size_t index = 0; index < rects.size(); ++index) {
-            rects[index] = readRect(pieces[index], context + ".pieces");
+            rects[index] = readRect(pieces[index], "Each piece of " + context);
         }
         image.slice = graphics2d::NineSlice::fromPieces(texture, rects);
     } else {
-        const math::Rect source = value.contains("source") ? readRect(value.at("source"), context + ".source") : math::Rect{0.0F, 0.0F, texture.getSize().x, texture.getSize().y};
-        const math::Insets borders = value.contains("slice") ? readInsets(value.at("slice"), context + ".slice") : math::Insets{};
+        const math::Rect source = value.contains("source") ? readRect(value.at("source"), "The source of " + context) : math::Rect{0.0F, 0.0F, texture.getSize().x, texture.getSize().y};
+        const math::Insets borders = value.contains("slice") ? readInsets(value.at("slice"), "The slice of " + context) : math::Insets{};
         image.slice = graphics2d::NineSlice::fromBorders(texture, source, borders);
     }
     if (value.contains("fill")) {
         const core::Json& fill = value.at("fill");
         const std::optional<graphics2d::NineSlice::Fill> named = fill.is_string() ? graphics2d::NineSlice::fillFromName(fill.get<std::string>()) : std::nullopt;
         if (!named) {
-            throw std::invalid_argument(context + ".fill must be stretch or tile.");
+            throw std::invalid_argument("The fill of " + context + " must be stretch or tile.");
         }
         image.slice.fill = *named;
     }
     if (value.contains("scale")) {
-        image.scale = readNumber(value.at("scale"), context + ".scale");
+        image.scale = readNumber(value.at("scale"), "The scale of " + context);
     }
     if (value.contains("padding")) {
-        image.padding = readInsets(value.at("padding"), context + ".padding");
+        image.padding = readInsets(value.at("padding"), "The padding of " + context);
     }
     if (value.contains("tint")) {
-        image.tint = readColor(value.at("tint"), context + ".tint");
+        image.tint = readColor(value.at("tint"), "The tint of " + context);
     }
     if (value.contains("colorize")) {
         if (!value.at("colorize").is_boolean()) {
-            throw std::invalid_argument(context + ".colorize must be true or false.");
+            throw std::invalid_argument("The colorize of " + context + " must be true or false.");
         }
         image.colorize = value.at("colorize").get<bool>();
     }
@@ -129,7 +129,7 @@ void Theme::checkTiles(const Image& image, const std::string& context) {
         const math::Rect& piece = image.slice.pieces[index];
         const bool drawn = piece.width > 0.0F && piece.height > 0.0F;
         if (drawn && (piece.width * image.scale < kMinTileSize || piece.height * image.scale < kMinTileSize)) {
-            throw std::invalid_argument(context + " tiles its edges and center, so each of them must be at least 1 unit wide and tall at its scale.");
+            throw std::invalid_argument("The tiled edges and center of " + context + " must each be at least 1 unit wide and tall at its scale.");
         }
     }
 }
@@ -138,7 +138,7 @@ const core::Json& Theme::readSection(const core::Json& document, const char* key
     static const core::Json& empty = *new const core::Json(core::Json::object());
     const core::Json& value = document.contains(key) ? document.at(key) : empty;
     if (!value.is_object()) {
-        throw std::invalid_argument(std::string("The theme ") + key + " must be an object.");
+        throw std::invalid_argument(std::string("The section '") + key + "' of the theme must be an object.");
     }
     return value;
 }
@@ -196,45 +196,45 @@ Theme Theme::fromJson(const core::Json& document, const Theme& base, const Textu
     for (const auto& [key, value] : readSection(document, "colors").items()) {
         const std::optional<Color> role = colorFromName(key);
         if (!role) {
-            throw std::invalid_argument("The theme has an unknown color role: " + key);
+            throw std::invalid_argument("The theme has no color role named '" + key + "'.");
         }
-        theme.setColor(*role, readColor(value, "The theme color " + key));
+        theme.setColor(*role, readColor(value, "The theme color '" + key + "'"));
     }
     for (const auto& [key, value] : readSection(document, "metrics").items()) {
         const std::optional<Metric> role = metricFromName(key);
         if (!role) {
-            throw std::invalid_argument("The theme has an unknown metric: " + key);
+            throw std::invalid_argument("The theme has no metric named '" + key + "'.");
         }
-        theme.setMetric(*role, readNumber(value, "The theme metric " + key));
+        theme.setMetric(*role, readNumber(value, "The theme metric '" + key + "'"));
     }
     for (const auto& [key, value] : readSection(document, "fontFiles").items()) {
         if (!value.is_string()) {
-            throw std::invalid_argument("The theme font file " + key + " must be a path.");
+            throw std::invalid_argument("The theme font file '" + key + "' must be a path.");
         }
         theme.fontFiles[key] = value.get<std::string>();
     }
     for (const auto& [key, value] : readSection(document, "fonts").items()) {
         const std::optional<Font> role = fontFromName(key);
         if (!role || !value.is_object()) {
-            throw std::invalid_argument("The theme font " + key + " must be a known role with an object value.");
+            throw std::invalid_argument("The theme font '" + key + "' must be a known role with an object value.");
         }
-        core::JsonValidator::requireKnownKeys(value, {"font", "size", "bold", "italic"}, "the theme font " + key);
+        core::JsonValidator::requireKnownKeys(value, {"font", "size", "bold", "italic"}, "the theme font '" + key + "'");
         FontStyle style = theme.getFont(*role);
         if (value.contains("font")) {
             if (!value.at("font").is_string()) {
-                throw std::invalid_argument("The theme font " + key + " must name its font with a string.");
+                throw std::invalid_argument("The theme font '" + key + "' must name its font with a string.");
             }
             style.font = value.at("font").get<std::string>();
         }
         if (value.contains("size")) {
-            style.size = readNumber(value.at("size"), "The theme font size of " + key);
+            style.size = readNumber(value.at("size"), "The size of the theme font '" + key + "'");
         }
         for (const auto& [flag, field] : {std::pair{"bold", &style.bold}, std::pair{"italic", &style.italic}}) {
             if (!value.contains(flag)) {
                 continue;
             }
             if (!value.at(flag).is_boolean()) {
-                throw std::invalid_argument("The theme font " + key + " must set " + flag + " to true or false.");
+                throw std::invalid_argument("The theme font '" + key + "' must set " + flag + " to true or false.");
             }
             *field = value.at(flag).get<bool>();
         }
@@ -243,16 +243,16 @@ Theme Theme::fromJson(const core::Json& document, const Theme& base, const Textu
     for (const auto& [key, value] : readSection(document, "surfaces").items()) {
         const std::optional<Surface> role = surfaceFromName(key);
         if (!role) {
-            throw std::invalid_argument("The theme has an unknown surface: " + key);
+            throw std::invalid_argument("The theme has no surface named '" + key + "'.");
         }
         if (value.is_null()) {
             theme.setSurface(*role, std::nullopt);
             continue;
         }
         if (!loadTexture) {
-            throw std::invalid_argument("The theme surface " + key + " needs a texture loader.");
+            throw std::invalid_argument("The theme surface '" + key + "' needs a texture loader.");
         }
-        theme.setSurface(*role, readImage(value, "the theme surface " + key, loadTexture));
+        theme.setSurface(*role, readImage(value, "the theme surface '" + key + "'", loadTexture));
     }
     return theme;
 }

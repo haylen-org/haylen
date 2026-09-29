@@ -98,7 +98,7 @@ const LayoutBuilder::StyleFont& LayoutBuilder::getStyleFont(std::size_t style) {
         if (found == families.end()) {
             std::shared_ptr<FontFamily> named = options.fonts ? options.fonts(described.font) : nullptr;
             if (!named) {
-                throw std::invalid_argument("The rich text uses the font " + described.font + ", which is not registered.");
+                throw std::invalid_argument("The rich text uses the font '" + described.font + "', which is not registered.");
             }
             layout.families.push_back(named);
             found = families.emplace(described.font, std::move(named)).first;

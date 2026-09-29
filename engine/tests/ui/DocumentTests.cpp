@@ -88,10 +88,10 @@ TEST_F(DocumentTest, PatchesPropertiesAtomically) {
 
     // Checking the merged state lets a patch leave out required properties and still catches values that clash with earlier ones.
     form.set("attack", core::Json{{"size", 90}});
-    EXPECT_NE(captureError([&] { form.set("volume", core::Json{{"min", 2}}); }).find("slider.min must be smaller than max"), std::string::npos);
+    EXPECT_NE(captureError([&] { form.set("volume", core::Json{{"min", 2}}); }).find("The property 'min' of a slider must be smaller than max."), std::string::npos);
     EXPECT_EQ(form.getProperties("volume")->at("min"), 0);
-    EXPECT_NE(captureError([&] { form.set("volume", core::Json{{"value", "loud"}}); }).find("slider.value must be a number"), std::string::npos);
-    EXPECT_NE(captureError([&] { form.set("volume", core::Json{{"colour", "red"}}); }).find("slider.colour is not a property"), std::string::npos);
+    EXPECT_NE(captureError([&] { form.set("volume", core::Json{{"value", "loud"}}); }).find("The property 'value' of a slider must be a number."), std::string::npos);
+    EXPECT_NE(captureError([&] { form.set("volume", core::Json{{"colour", "red"}}); }).find("The property 'colour' of a slider does not exist."), std::string::npos);
     EXPECT_NE(captureError([&] { form.set("volume", core::Json{{"kind", "label"}}); }).find("without kind, id or children"), std::string::npos);
     EXPECT_NE(captureError([&] { form.set("nothing", core::Json::object()); }).find("no node with the id nothing"), std::string::npos);
 }
@@ -152,27 +152,28 @@ TEST_F(DocumentTest, ReadsPropertyValuesStrictly) {
     EXPECT_EQ(sample.find("line")->getRowAlignment(), Alignment::Center);
 
     const auto invalid = [&](const std::string& json) { return captureError([&] { (void)document(json); }); };
-    EXPECT_NE(invalid(R"({"kind": "label", "width": -3})").find("label.width must be a non-negative number or auto"), std::string::npos);
-    EXPECT_NE(invalid(R"({"kind": "label", "align": "middle"})").find("label.align is not one of the allowed names"), std::string::npos);
-    EXPECT_NE(invalid(R"({"kind": "label", "visible": "yes"})").find("label.visible must be true or false"), std::string::npos);
+    EXPECT_NE(invalid(R"({"kind": "label", "width": -3})").find("The property 'width' of a label must be a non-negative number or auto."), std::string::npos);
+    EXPECT_NE(invalid(R"({"kind": "label", "align": "middle"})").find("The property 'align' of a label must be start, center, end or stretch."), std::string::npos);
+    EXPECT_NE(invalid(R"({"kind": "label", "visible": "yes"})").find("The property 'visible' of a label must be true or false."), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "label", "color": "purple"})").find("must name a theme color"), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "label", "outline": "dark"})").find("must be a color"), std::string::npos);
-    EXPECT_NE(invalid(R"({"kind": "label", "text": ["a"]})").find("label.text must be text"), std::string::npos);
+    EXPECT_NE(invalid(R"({"kind": "label", "text": ["a"]})").find("The property 'text' of a label must be text"), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "label", "text": {"args": {}}})").find("needs a translation key"), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "column", "padding": [1, 2, 3]})").find("one, two or four non-negative numbers"), std::string::npos);
-    EXPECT_NE(invalid(R"({"kind": "grid", "columns": 1.5})").find("grid.columns must be a whole number"), std::string::npos);
-    EXPECT_NE(invalid(R"({"kind": "grid", "columns": 0})").find("grid.columns is out of range"), std::string::npos);
-    EXPECT_NE(invalid(R"({"kind": "label", "font": "tiny"})").find("label.font is not one of the allowed names"), std::string::npos);
-    EXPECT_NE(invalid(R"({"kind": "list", "items": [{"id": "a"}, {"id": "a"}]})").find("uses the item id a more than once"), std::string::npos);
+    EXPECT_NE(invalid(R"({"kind": "grid", "columns": 1.5})").find("The property 'columns' of a grid must be a whole number."), std::string::npos);
+    EXPECT_NE(invalid(R"({"kind": "grid", "columns": 0})").find("The property 'columns' of a grid must be from 1 to 64."), std::string::npos);
+    EXPECT_NE(invalid(R"({"kind": "image", "minWidth": -1})").find("The property 'minWidth' of an image must be at least 0."), std::string::npos);
+    EXPECT_NE(invalid(R"({"kind": "label", "font": "tiny"})").find("The property 'font' of a label must be body, caption, button, heading, title or monospace."), std::string::npos);
+    EXPECT_NE(invalid(R"({"kind": "list", "items": [{"id": "a"}, {"id": "a"}]})").find("The property 'items' of a list uses the item id 'a' more than once."), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "list", "items": [{"text": "no id"}]})").find("needs a non-empty id"), std::string::npos);
-    EXPECT_NE(invalid(R"({"kind": "list", "items": [{"id": "a", "children": []}]})").find("list.items cannot nest items, which only a tree does."), std::string::npos);
-    EXPECT_NE(invalid(R"({"kind": "tree", "items": [{"id": "a", "children": 3}]})").find("tree.items.children must be a list of items."), std::string::npos);
+    EXPECT_NE(invalid(R"({"kind": "list", "items": [{"id": "a", "children": []}]})").find("The property 'items' of a list cannot nest items, which only a tree does."), std::string::npos);
+    EXPECT_NE(invalid(R"({"kind": "tree", "items": [{"id": "a", "children": 3}]})").find("The property 'items.children' of a tree must be a list of items."), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "list", "items": [{"id": "a", "icon": "x"}]})").find("Unknown key 'icon' in list.items."), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "table", "columns": [{"align": "middle"}]})").find("align other than start"), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "table", "columns": [{"id": "a"}]})").find("Unknown key 'id' in table.columns."), std::string::npos);
-    EXPECT_NE(invalid(R"({"kind": "table", "rows": [{"id": "a", "cells": []}, {"id": "a", "cells": []}]})").find("uses the row id a more than once"), std::string::npos);
-    EXPECT_NE(invalid(R"({"kind": "dialog", "buttons": [{"id": "ok", "variant": "huge"}]})").find("unknown variant"), std::string::npos);
-    EXPECT_NE(invalid(R"({"kind": "touchStick"})").find("touchStick.action names the virtual stick"), std::string::npos);
+    EXPECT_NE(invalid(R"({"kind": "table", "rows": [{"id": "a", "cells": []}, {"id": "a", "cells": []}]})").find("The property 'rows' of a table uses the row id 'a' more than once."), std::string::npos);
+    EXPECT_NE(invalid(R"({"kind": "dialog", "buttons": [{"id": "ok", "variant": "huge"}]})").find("The property 'buttons' of a dialog has a variant other than default, primary, destructive, toolbar, icon or link."), std::string::npos);
+    EXPECT_NE(invalid(R"({"kind": "touchStick"})").find("The property 'action' of a touchStick names the virtual stick"), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "numberField", "min": 5, "max": 1})").find("must not be greater than max"), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "tree", "expanded": [1]})").find("list of item ids"), std::string::npos);
 }

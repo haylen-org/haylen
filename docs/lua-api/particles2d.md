@@ -53,7 +53,7 @@ The file uses the keys of the emitter options below, except `seed`, with JSON va
 | `maxParticles`, `layer` | Integers. |
 | `loop`, `localSpace` | Booleans. |
 
-Errors while loading: `Unknown particle effect option 'name' in path`, `Invalid particle color: text`, `Unknown particle emitter shape: name`, `Unknown blend mode: name` and, for a `maxParticles` or a burst `count` that is not an integer of at least 0, `The particle effect value 'name' needs an integer of at least 0.`, plus the validation errors listed under emitter options.
+Errors while loading: `The particle effect 'path' has the unknown option 'name'.`, `The particle color 'text' is not a #RRGGBB or #AARRGGBB color.`, `The emitter shape of a particle effect must be point, circle, ring, rectangle or cone, not 'name'.`, `The blend mode of a particle effect must be alpha, additive, multiply, screen, premultiplied or opaque, not 'name'.` and, for a `maxParticles` or a burst `count` that is not an integer of at least 0, `The particle effect value 'name' needs an integer of at least 0.`, plus the validation errors listed under emitter options.
 
 ```json
 {

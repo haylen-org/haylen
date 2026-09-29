@@ -15,12 +15,12 @@ namespace haylen::io {
 std::vector<std::uint8_t> Package::readFile(const std::filesystem::path& file) {
     std::error_code error;
     if (!std::filesystem::is_regular_file(file, error)) {
-        throw std::runtime_error("Package file was not found: " + file.generic_string());
+        throw std::runtime_error("The package file '" + file.generic_string() + "' was not found.");
     }
 
     std::ifstream stream(file, std::ios::binary | std::ios::ate);
     if (!stream) {
-        throw std::runtime_error("Package file could not be opened: " + file.generic_string());
+        throw std::runtime_error("The package file '" + file.generic_string() + "' could not be opened.");
     }
 
     const std::streamoff size = stream.tellg();
@@ -28,7 +28,7 @@ std::vector<std::uint8_t> Package::readFile(const std::filesystem::path& file) {
     stream.seekg(0, std::ios::beg);
     stream.read(reinterpret_cast<char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
     if (!stream) {
-        throw std::runtime_error("Package file could not be read: " + file.generic_string());
+        throw std::runtime_error("The package file '" + file.generic_string() + "' could not be read.");
     }
     return bytes;
 }
@@ -36,7 +36,7 @@ std::vector<std::uint8_t> Package::readFile(const std::filesystem::path& file) {
 std::unique_ptr<Package> Package::openDirectory(const std::filesystem::path& root) {
     std::error_code error;
     if (!std::filesystem::is_directory(root, error)) {
-        throw std::runtime_error("Package folder was not found: " + root.generic_string());
+        throw std::runtime_error("The package folder '" + root.generic_string() + "' was not found.");
     }
     return std::make_unique<DirectoryPackage>(std::filesystem::canonical(root));
 }
@@ -53,7 +53,7 @@ std::unique_ptr<Package> Package::openZip(std::vector<std::uint8_t> bytes, std::
     zip_source_t* source = zip_source_buffer_create(bytes.data(), bytes.size(), 0, &error);
     if (source == nullptr) {
         zip_error_fini(&error);
-        throw std::runtime_error("Package archive could not be read: " + name);
+        throw std::runtime_error("The package archive '" + name + "' could not be read.");
     }
 
     zip_t* archive = zip_open_from_source(source, ZIP_RDONLY, &error);
@@ -61,7 +61,7 @@ std::unique_ptr<Package> Package::openZip(std::vector<std::uint8_t> bytes, std::
         const std::string reason = zip_error_strerror(&error);
         zip_source_free(source);
         zip_error_fini(&error);
-        throw std::runtime_error("Package archive is not a valid zip file: " + name + " (" + reason + ")");
+        throw std::runtime_error("The package archive '" + name + "' is not a valid zip file, and the zip reader reported '" + reason + "'.");
     }
 
     zip_error_fini(&error);

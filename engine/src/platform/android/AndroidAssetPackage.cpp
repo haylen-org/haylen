@@ -24,7 +24,7 @@ std::vector<std::uint8_t> AndroidAssetPackage::read(std::string_view path) const
     const std::string entry = io::Path::normalize(path);
     const AssetHandle asset = openAsset(root + "/" + entry);
     if (asset == nullptr) {
-        throw std::runtime_error("Package file was not found: " + root + "/" + entry);
+        throw std::runtime_error("The package file '" + root + "/" + entry + "' was not found.");
     }
     return readAll(*asset);
 }

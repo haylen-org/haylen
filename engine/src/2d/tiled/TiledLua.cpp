@@ -379,7 +379,7 @@ int TiledLua::mapLayer(lua_State* L) {
     const std::string_view name = lua::Stack::read<std::string_view>(L, 2);
     const Layer* layer = checkMap(L).findLayer(name);
     if (layer == nullptr) {
-        return luaL_error(L, "Unknown layer: %s", std::string(name).c_str());
+        return luaL_error(L, "The map has no layer named '%s'.", std::string(name).c_str());
     }
     pushLayer(L, *layer);
     return 1;

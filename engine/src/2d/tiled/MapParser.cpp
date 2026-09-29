@@ -146,7 +146,7 @@ std::vector<std::uint32_t> MapParser::readTileData(const core::Json& layer, cons
         }
         bytes = std::move(output);
     } else if (!compression.empty()) {
-        throw std::invalid_argument("Unknown tile layer compression: " + compression);
+        throw std::invalid_argument("The compression of a tile layer must be zlib, gzip or zstd, not '" + compression + "'.");
     }
 
     if (bytes.size() != cells * 4) {
@@ -167,7 +167,7 @@ std::optional<math::Color> MapParser::readOptionalColor(const core::Json& object
     const std::string text = object.at(key).get<std::string>();
     const std::optional<math::Color> color = math::Color::parse(text);
     if (!color) {
-        throw std::invalid_argument("Invalid Tiled color: " + text);
+        throw std::invalid_argument("The Tiled color '" + text + "' is not a #RRGGBB or #AARRGGBB color.");
     }
     return color;
 }
@@ -228,7 +228,7 @@ Map::Orientation MapParser::readOrientation(const std::string& name) {
     if (name == "oblique") {
         return Map::Orientation::Oblique;
     }
-    throw std::invalid_argument("Unknown Tiled map orientation: " + name);
+    throw std::invalid_argument("The orientation of a Tiled map must be orthogonal, isometric, staggered, hexagonal or oblique, not '" + name + "'.");
 }
 
 Map::RenderOrder MapParser::readRenderOrder(const std::string& name) {
@@ -244,7 +244,7 @@ Map::RenderOrder MapParser::readRenderOrder(const std::string& name) {
     if (name == "left-up") {
         return Map::RenderOrder::LeftUp;
     }
-    throw std::invalid_argument("Unknown Tiled render order: " + name);
+    throw std::invalid_argument("The render order of a Tiled map must be right-down, right-up, left-down or left-up, not '" + name + "'.");
 }
 
 std::vector<math::Vec2> MapParser::readPoints(const core::Json& points) {
@@ -332,7 +332,7 @@ std::uint32_t MapParser::readTemplateGid(const core::Json& document, std::uint32
             return (gid & Map::kFlagMask) | (candidate.firstGid + local);
         }
     }
-    throw std::invalid_argument("A tile template uses a tileset the map does not list: " + source);
+    throw std::invalid_argument("A tile template uses the tileset '" + source + "', which the map does not list.");
 }
 
 std::shared_ptr<Tileset> MapParser::readTileset(const core::Json& document, std::string_view directory, std::string path) const {
@@ -446,7 +446,7 @@ Layer MapParser::readLayer(const core::Json& entry, std::string_view directory) 
             layer.layers.push_back(readLayer(child, directory));
         }
     } else {
-        throw std::invalid_argument("Unknown Tiled layer type: " + kind);
+        throw std::invalid_argument("The type of a Tiled layer must be tilelayer, objectgroup, imagelayer or group, not '" + kind + "'.");
     }
     return layer;
 }

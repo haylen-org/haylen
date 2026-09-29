@@ -108,7 +108,7 @@ Gamepad bindings read every connected gamepad and use the strongest one. `input.
 
 ### Loading actions
 
-An action map document is a table or a JSON file with an `actions` list. Each action has a `name`, a `type` and the binding lists its type uses. `input.loadActions(document)` replaces the whole map and takes either a table or the path of a JSON file in the assets. Unknown keys, unknown types and malformed bindings raise errors that name the problem, such as `Invalid input binding: key:spcae`.
+An action map document is a table or a JSON file with an `actions` list. Each action has a `name`, a `type` and the binding lists its type uses. `input.loadActions(document)` replaces the whole map and takes either a table or the path of a JSON file in the assets. Unknown keys, unknown types and malformed bindings raise errors that name the problem, such as `The input binding 'key:spcae' is invalid. Use a binding such as key:space, mouse:left, button:south, axis:leftX+ or stick:left.`
 
 ```lua
 local input = require('haylen.input')

@@ -407,7 +407,7 @@ TEST_F(AudioLuaTest, PlaysSoundsFromLua) {
     EXPECT_NE(fixture.lua("audio.play(hit, {volumen = 1})").find("Unknown option 'volumen'"), std::string::npos);
     EXPECT_NE(fixture.lua("audio.playMusic(theme, {crossfade = 1})").find("Unknown option 'crossfade'"), std::string::npos);
     EXPECT_NE(fixture.lua("audio.play('hit')").find("error: "), std::string::npos);
-    EXPECT_NE(fixture.lua("audio.play(hit, {bus = 'missing'})").find("Unknown audio bus: missing"), std::string::npos);
+    EXPECT_NE(fixture.lua("audio.play(hit, {bus = 'missing'})").find("The audio bus 'missing' does not exist."), std::string::npos);
     EXPECT_NE(fixture.lua("audio.play(hit, {pitch = 0})").find("Audio needs a finite pitch above 0."), std::string::npos);
     EXPECT_NE(fixture.lua("audio.setVolume(1, 0 / 0)").find("Audio needs a finite volume."), std::string::npos);
     EXPECT_NE(fixture.lua("return hit.loudness").find("Sound has no member 'loudness'"), std::string::npos);

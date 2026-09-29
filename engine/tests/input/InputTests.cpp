@@ -66,6 +66,8 @@ class ActionMapTest : public InputEventTest {};
 TEST(ControlsTest, NamesRoundTrip) {
     EXPECT_EQ(Controls::keyFromName("leftShift"), Key::LeftShift);
     EXPECT_EQ(Controls::keyName(Key::F12), "f12");
+    EXPECT_EQ(Controls::keyFromName("digit1"), Key::Digit1);
+    EXPECT_EQ(Controls::keyName(Key::Digit0), "digit0");
     EXPECT_EQ(Controls::keyName(Key::Unknown), "unknown");
     EXPECT_FALSE(Controls::keyFromName("hyper").has_value());
     EXPECT_EQ(Controls::mouseButtonFromName("middle"), MouseButton::Middle);
@@ -530,7 +532,7 @@ TEST_F(ActionMapTest, RejectsInvalidDocuments) {
     EXPECT_EQ(message(R"({"actions": [{"name": "zoom", "type": "axis", "bindings": ["key:q"]}]})"), "The axis action zoom does not read bindings.");
     EXPECT_EQ(message(R"({"actions": [{"name": "move", "type": "vector", "negative": ["key:s"]}]})"), "The vector action move does not read negative.");
     EXPECT_EQ(message(R"({"actions": [{"name": "move", "type": "vector", "bindings": ["stick:left", "key:w"]}]})"), "The vector action move takes only sticks in bindings, not key:w.");
-    EXPECT_EQ(message(R"({"actions": [{"name": "jump", "type": "button"}, {"name": "jump", "type": "axis"}]})"), "Duplicate action name: jump");
+    EXPECT_EQ(message(R"({"actions": [{"name": "jump", "type": "button"}, {"name": "jump", "type": "axis"}]})"), "The action name 'jump' is used by more than one action.");
     EXPECT_THROW(actions.define({.name = "fire", .type = ActionMap::Action::Type::Button, .up = {*ActionMap::Binding::parse("key:w")}}), std::invalid_argument);
     EXPECT_EQ(actions.findAction("fire"), nullptr);
 }

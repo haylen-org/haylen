@@ -20,11 +20,11 @@ A language table maps keys to texts. Nested tables become dotted keys, so the ta
 }
 ```
 
-A language that reads right to left declares it with `"@direction": "rtl"` at the top of its table, and `"ltr"` is the default. The key holds no text, `localization.direction()` returns it, and a UI that follows the language with [ui.setDirection('auto')](ui.md#uisetdirectiondirection) mirrors its layout when the language becomes current. Any other value raises `The @direction of the localization table of <language> must be ltr or rtl.`.
+A language that reads right to left declares it with `"@direction": "rightToLeft"` at the top of its table, and `"leftToRight"` is the default. The key holds no text, `localization.direction()` returns it, and a UI that follows the language with [ui.setDirection('auto')](ui.md#uisetdirectiondirection) mirrors its layout when the language becomes current. Any other value raises `The @direction of the localization table of '<language>' must be leftToRight or rightToLeft.`.
 
 ```json
 {
-  "@direction": "rtl",
+  "@direction": "rightToLeft",
   "menu": {"play": "العب", "quit": "خروج"}
 }
 ```
@@ -84,13 +84,13 @@ print(localization.language())
 
 ### localization.direction(language)
 
-Returns `'rtl'` when a language declares that it reads right to left with `@direction`, and `'ltr'` otherwise, for the current language when `language` is omitted. Text laid out in the language takes its direction from its own letters, and the direction of a language decides the layout of a UI around it.
+Returns `'rightToLeft'` when a language declares that it reads right to left with `@direction`, and `'leftToRight'` otherwise, for the current language when `language` is omitted. Text laid out in the language takes its direction from its own letters, and the direction of a language decides the layout of a UI around it.
 
 ```lua
 local localization = require('haylen.localization')
 
 localization.add('en', {hello = 'Hello'})
-localization.add('ar', {['@direction'] = 'rtl', hello = 'مرحبا'})
+localization.add('ar', {['@direction'] = 'rightToLeft', hello = 'مرحبا'})
 print(localization.direction(), localization.direction('ar'))
 ```
 
@@ -209,6 +209,6 @@ end
 | `The localization table of <language> must be a JSON object.` | `localization.add()` received a list instead of a table with string keys. |
 | `The localization entry <key> must be text, a plural form or a group of entries.` | A language table holds a number, a boolean or a list. |
 | `The localization file <path> is not valid JSON.` | `localization.loadFolder()` found a broken file. |
-| `The @direction of the localization table of <language> must be ltr or rtl.` | A language table declares a direction other than `ltr` or `rtl`. |
+| `The @direction of the localization table of '<language>' must be leftToRight or rightToLeft.` | A language table declares a direction other than `leftToRight` or `rightToLeft`. |
 | `No localization table was added for <language>.` | `localization.setLanguage()` or `localization.setFallback()` named a language that was never added. |
 | `Localization arguments must be a JSON object.` | `localization.text()` received a list as arguments. |

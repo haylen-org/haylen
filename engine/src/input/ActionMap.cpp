@@ -139,7 +139,7 @@ ActionMap::Action ActionMap::Action::fromJson(const core::Json& json) {
     }
     const std::optional<Type> actionType = typeFromName(typeField->get<std::string>());
     if (!actionType) {
-        throw std::invalid_argument("Invalid action type: " + typeField->get<std::string>());
+        throw std::invalid_argument("The type of an action must be button, axis or vector, not '" + typeField->get<std::string>() + "'.");
     }
 
     return {
@@ -186,7 +186,7 @@ std::vector<ActionMap::Binding> ActionMap::parseBindings(const core::Json& actio
         const std::string text = entry.is_string() ? entry.get<std::string>() : entry.dump();
         const std::optional<Binding> binding = entry.is_string() ? Binding::parse(text) : std::nullopt;
         if (!binding) {
-            throw std::invalid_argument("Invalid input binding: " + text);
+            throw std::invalid_argument("The input binding '" + text + "' is invalid. Use a binding such as key:space, mouse:left, button:south, axis:leftX+ or stick:left.");
         }
         bindings.push_back(*binding);
     }
@@ -235,7 +235,7 @@ void ActionMap::load(const core::Json& document) {
         Action action = Action::fromJson(entry);
         validate(action);
         if (std::ranges::any_of(loaded, [&action](const State& state) { return state.action.name == action.name; })) {
-            throw std::invalid_argument("Duplicate action name: " + action.name);
+            throw std::invalid_argument("The action name '" + action.name + "' is used by more than one action.");
         }
         loaded.push_back(State{.action = std::move(action)});
     }

@@ -86,7 +86,7 @@ TEST_F(MixerLuaTest, CreatesAndWiresEffects) {
     fixture->runLua("audio.removeEffect(voice, shelf) audio.addEffect(voice, lowpass)");
     EXPECT_EQ(fixture->lua("local list = audio.effects(voice) return #list .. ' ' .. tostring(list[2] == lowpass)"), "2 true");
 
-    EXPECT_NE(fixture->lua("audio.newEffect('chorus')").find("Unknown audio effect: chorus"), std::string::npos);
+    EXPECT_NE(fixture->lua("audio.newEffect('chorus')").find("The audio effect must be lowpass, highpass, bandpass, notch, peak, lowShelf, highShelf, delay or reverb, not 'chorus'."), std::string::npos);
     EXPECT_NE(fixture->lua("audio.newEffect('lowpass', {gain = 3})").find("Unknown option 'gain'"), std::string::npos);
     EXPECT_NE(fixture->lua("audio.newEffect('delay', {time = 5})").find("A delay time must be between 0"), std::string::npos);
     EXPECT_NE(fixture->lua("lowpass.gain = 2").find("Only peak and shelf filters have a gain."), std::string::npos);

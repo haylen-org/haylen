@@ -48,7 +48,7 @@ Builds a document from the node table `tree`, shows it and returns its [UiDocume
 
 The root fills the whole area when its `align` is `stretch`, which is the default of containers. With `start`, `center` or `end` the root keeps its measured size and sits at the top left, the center or the bottom right of the area.
 
-A placement other than `safe` or `screen` raises `The placement option must be safe or screen.`, and an owner that is not a table or a userdata raises `An owner must be a table or a userdata, not <type>.` A tree that breaks the [screen format](#screen-format) or has an invalid property raises an error that names the problem, such as `There is no UI component kind named spaceship.` or `label.width must be a non-negative number or auto.`, and nothing is mounted. Mounting publishes the `uiDocumentMounted` event of [haylen.events](events.md) with the document.
+A placement other than `safe` or `screen` raises `The placement option must be safe or screen.`, and an owner that is not a table or a userdata raises `An owner must be a table or a userdata, not <type>.` A tree that breaks the [screen format](#screen-format) or has an invalid property raises an error that names the problem, such as `There is no UI component kind named spaceship.` or `The property 'width' of a label must be a non-negative number or auto.`, and nothing is mounted. Mounting publishes the `uiDocumentMounted` event of [haylen.events](events.md) with the document.
 
 ```lua
 local ui = require('haylen.ui')
@@ -155,7 +155,7 @@ Reads a [theme file](#themes) from the package assets, registers the fonts its `
 Errors raised:
 
 - `The UI has no theme named <base> to start from.` for an unknown base.
-- `The theme <name> uses the font <font>, which is neither registered nor listed in fontFiles.` when a font role names an unknown font.
+- `The theme '<name>' uses the font '<font>', which is neither registered nor listed in fontFiles.` when a font role names an unknown font.
 - The error of the asset system when the file is missing, and the errors of the [theme format](#themes) for an invalid file.
 
 ```lua
@@ -183,7 +183,7 @@ ui.setTheme(name)
 
 ### ui.themeColor(role)
 
-Returns a [color role](#theme-colors) of the active theme as a `haylen.Color` from [haylen.math](math.md). An unknown role raises `The theme has an unknown color role: <role>`.
+Returns a [color role](#theme-colors) of the active theme as a `haylen.Color` from [haylen.math](math.md). An unknown role raises `The theme has no color role named '<role>'.`
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -200,7 +200,7 @@ scene.push({
 
 ### ui.themeMetric(name)
 
-Returns a [metric](#theme-metrics) of the active theme in design units. An unknown metric raises `The theme has an unknown metric: <name>`.
+Returns a [metric](#theme-metrics) of the active theme in design units. An unknown metric raises `The theme has no metric named '<name>'.`
 
 ```lua
 local ui = require('haylen.ui')
@@ -211,7 +211,7 @@ ui.mount(ui.list{height = rowHeight * 5, items = {{id = 'first', text = 'First'}
 
 ### ui.themeFont(role)
 
-Returns a [font role](#theme-fonts) of the active theme as a table with the fields `font`, the registered font name, `size`, in design units, and `bold` and `italic`, the style of the face the role draws with. An unknown role raises `The theme has an unknown font role: <role>`.
+Returns a [font role](#theme-fonts) of the active theme as a table with the fields `font`, the registered font name, `size`, in design units, and `bold` and `italic`, the style of the face the role draws with. An unknown role raises `The theme has no font role named '<role>'.`
 
 ```lua
 local ui = require('haylen.ui')
@@ -222,7 +222,7 @@ print(title.font, title.size, title.bold, title.italic)
 
 ### ui.themeSurface(surface)
 
-Returns the image the active theme paints a [surface](#theme-surfaces) with, or `nil` when the theme paints it with flat colors. The table holds `slice`, a `haylen.NineSlice` for `graphics2d.drawNineSlice`, `scale`, `padding` as `{top, right, bottom, left}`, `tint`, a `haylen.Color`, and `colorize`. An unknown surface raises `The theme has an unknown surface: <surface>`.
+Returns the image the active theme paints a [surface](#theme-surfaces) with, or `nil` when the theme paints it with flat colors. The table holds `slice`, a `haylen.NineSlice` for `graphics2d.drawNineSlice`, `scale`, `padding` as `{top, right, bottom, left}`, `tint`, a `haylen.Color`, and `colorize`. An unknown surface raises `The theme has no surface named '<surface>'.`
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -369,7 +369,7 @@ ui.setSafeAreaVisible(true)
 
 ### ui.setDirection(direction)
 
-Sets the direction of the whole UI: `'ltr'`, the default, `'rtl'`, or `'auto'`, which follows the direction the current language of [haylen.localization](localization.md#localizationdirection) declares, so picking Arabic mirrors every document from the next frame. [Right-to-left interfaces](#right-to-left-interfaces) describes what mirrors. An unknown name raises an error.
+Sets the direction of the whole UI: `'leftToRight'`, the default, `'rightToLeft'`, or `'auto'`, which follows the direction the current language of [haylen.localization](localization.md#localizationdirection) declares, so picking Arabic mirrors every document from the next frame. [Right-to-left interfaces](#right-to-left-interfaces) describes what mirrors. An unknown name raises an error.
 
 ```lua
 local localization = require('haylen.localization')
@@ -381,7 +381,7 @@ localization.setLanguage('ar')
 
 ### ui.direction()
 
-Returns the direction set for the whole UI, `'ltr'`, `'rtl'` or `'auto'`, followed by the direction it draws in, `'ltr'` or `'rtl'`, which an automatic direction takes from the language at the start of every frame.
+Returns the direction set for the whole UI, `'leftToRight'`, `'rightToLeft'` or `'auto'`, followed by the direction it draws in, `'leftToRight'` or `'rightToLeft'`, which an automatic direction takes from the language at the start of every frame.
 
 ```lua
 local ui = require('haylen.ui')
@@ -439,7 +439,7 @@ Errors raised:
 - `The UI document is not mounted.` after `unmount`.
 - `The UI document has no node with the id <id>.` for an unknown id.
 - `The set method of a document changes properties only, so it takes an object without kind, id or children.` when `properties` holds `kind`, `id` or `children`.
-- The property errors of the kind, such as `slider.min must be smaller than max.` or `slider.colour is not a property of this component.`.
+- The property errors of the kind, such as `The property 'min' of a slider must be smaller than max.` or `The property 'colour' of a slider does not exist.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -464,7 +464,7 @@ Errors raised:
 
 - `The UI document is not mounted.` after `unmount`.
 - `The UI document has no node with the id <id>.` for an unknown id.
-- `A <kind> takes at most <count> children.` when the node cannot hold that many children.
+- `The component kind '<kind>' takes at most <count> children.` when the node cannot hold that many children.
 - `The UI id <id> is used more than once.` when a new id is already in use outside the replaced children.
 
 ```lua
@@ -536,7 +536,7 @@ Sends a command to the node `id`. `arguments` is optional, and both commands tak
 - `'focus'` moves the keyboard, gamepad and remote focus to the node. The focus ring stays visible when the player was already navigating and shows at once when they last used a gamepad or have no pointer device, while a mouse or touch player sees it only once they start navigating. The first accept press also counts as navigation: it shows the ring and activates the focused node. The focusable kinds are `button`, `imageButton`, `menuButton`, `popover`, `chip`, `checkbox`, `toggle`, `radioGroup`, `combo`, `segmentedControl`, `textField`, `secretField`, `textArea`, `filterField`, `numberField`, `slider`, `rangeSlider`, `stepper`, `keyCapture`, `colorField`, `list`, `tree`, `slotGrid`, `accordion`, `carousel` and a `richText` with links. A radio group, a list, a tree and a slot grid focus their selected entry, or their first entry that can be picked when none is selected or the selected one cannot take the focus, such as an item of a closed branch, an accordion focuses its first header, and rich text focuses its first link. Rich text written as literal markup takes the focus as soon as it is mounted or set, and translated rich text once it has been drawn.
 - `'open'` opens a `contextMenu` below its child, as a right click would.
 
-A kind without that command raises `A <kind> does not answer the command <name>.`, arguments raise `The focus command takes no arguments.` or `The open command takes no arguments.`, and an unknown id raises `The UI document has no node with the id <id>.`.
+A kind without that command raises `The component kind '<kind>' does not answer the command '<name>'.`, arguments raise `The focus command takes no arguments.` or `The open command takes no arguments.`, and an unknown id raises `The UI document has no node with the id <id>.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -677,13 +677,13 @@ A document has at most 64 levels, the root included, and 20000 nodes, counted ov
 Errors raised for invalid trees:
 
 - `A UI node needs a kind.` and `There is no UI component kind named <kind>.`
-- `The id of a <kind> must be a non-empty string.` and `The UI id <id> is used more than once.`
+- `The id of a <kind> must be a non-empty string.`, which reads `of an <kind>` for a kind that starts with a vowel, and `The UI id <id> is used more than once.`
 - `UI ids starting with # are reserved for nodes the engine names.`
-- `The children of a <kind> must be a list.` and `A <kind> takes at most <count> children.`
+- `The children of a <kind> must be a list.` and `The component kind '<kind>' takes at most <count> children.`
 - `A UI node takes children either in its children list or in its array part, not both.`
 - `UI node keys must be strings.` and `A UI node with handlers needs a string id.`
 - `A UI document is limited to 64 levels and 20000 nodes.`
-- `<kind>.<key> is not a property of this component.` for an unknown property, and the value errors listed in [Value types](#value-types).
+- `The property '<key>' of a <kind> does not exist.` for an unknown property, and the value errors listed in [Value types](#value-types).
 
 Screens can live in JSON files in the package assets. Handlers cannot be written in JSON, so the app attaches them with `set` after mounting.
 
@@ -720,12 +720,12 @@ Lua has no separate empty list, so an empty table converts to an empty JSON obje
 | theme color | The name of a [theme color role](#theme-colors), such as `'accent'` or `'textMuted'`. |
 | length | A non-negative number, or `'auto'` to let the content decide. |
 | insets | One number for every side, `{vertical, horizontal}`, or `{top, right, bottom, left}`. Every value is non-negative. |
-| image | A texture path relative to the package `content/` folder. Images load in the background, and a component draws nothing in their place until they arrive. An image that fails to load stops the app with `The UI image <path> could not be loaded: <reason>`. |
+| image | A texture path relative to the package `content/` folder. Images load in the background, and a component draws nothing in their place until they arrive. An image that fails to load stops the app with `The UI image '<path>' could not be loaded.` followed by the reason. |
 | tone | `'neutral'`, `'accent'`, `'success'`, `'warning'`, `'danger'` or `'information'`. |
 | variant | `'default'`, `'primary'`, `'destructive'`, `'toolbar'`, `'icon'` or `'link'`, described under [button](#uibuttonproperties). |
 | items | A list of [items](#items). |
 
-A value of the wrong type raises an error that names the kind and the key: `<kind>.<key> must be true or false.`, `must be a string.`, `must be a number.`, `must be a whole number.`, `is out of range.`, `must be a color such as #FF2E7D32.`, `must name a theme color such as accent or textMuted.`, `is not one of the allowed names.`, `must be a non-negative number or auto.`, `must be one, two or four non-negative numbers.` or `must be text, a number or a translation such as {key = 'menu.play'}.`.
+A value of the wrong type raises an error that names the key and the kind, such as `The property '<key>' of a <kind> must be true or false.`, which a kind that starts with a vowel reads as `of an <kind>`. The endings are `must be true or false.`, `must be a string.`, `must be a number.`, `must be a whole number.`, `must be at least <minimum>.`, `must be from <minimum> to <maximum>.`, `must be a color such as #FF2E7D32.`, `must name a theme color such as accent or textMuted.`, `must be <names>.` for a name outside its list, such as `must be start, center, end or stretch.`, `must be a non-negative number or auto.`, `must be one, two or four non-negative numbers.` and `must be text, a number or a translation such as {key = 'menu.play'}.`.
 
 ## Common properties
 
@@ -752,7 +752,7 @@ Every kind accepts these properties.
 | `focusScope` | boolean | `false` | Keeps the focus inside the node while it is there, and makes the node hear `cancel`. |
 | `focusWrap` | string | `'none'` | `'horizontal'`, `'vertical'` or `'both'` wrap a move that would leave the node around to its other side. |
 | `focusLeft`, `focusRight`, `focusUp`, `focusDown` | string | none | Id of the node the focus moves to in that direction instead of the nearest one. A node that names itself keeps the focus in that direction. |
-| `direction` | string | `'inherit'` | `'ltr'` or `'rtl'` lays the node and every node inside it out in that direction, whatever the direction of the UI, and `'inherit'` takes the direction of its parent. [Right-to-left interfaces](#right-to-left-interfaces) describes what mirrors. |
+| `direction` | string | `'inherit'` | `'leftToRight'` or `'rightToLeft'` lays the node and every node inside it out in that direction, whatever the direction of the UI, and `'inherit'` takes the direction of its parent. [Right-to-left interfaces](#right-to-left-interfaces) describes what mirrors. |
 | `language` | string | inherited | BCP 47 tag of the language of the text of the node and of every node inside it, such as `'ar'` or `'hi'`, which the shaper uses to pick the forms a language prefers. It defaults to the current language of [haylen.localization](localization.md). |
 
 ```lua
@@ -781,7 +781,7 @@ An anchored node leaves the layout of its parent, takes no room there and draws 
 | `'stretchLeft'`, `'stretchRight'` | The left or right edge, as tall as the area. |
 | `'stretchHorizontal'`, `'stretchVertical'` | A band across the middle, as wide or as tall as the area. |
 
-`margin` keeps the node away from the edges of its area, and `width` and `height` fix the size along axes that do not stretch. An unknown name raises `<kind>.anchor is not one of the anchor names.`, and an `anchorTo` other than `'safe'` or `'screen'` raises `<kind>.anchorTo is not one of the allowed names.`.
+`margin` keeps the node away from the edges of its area, and `width` and `height` fix the size along axes that do not stretch. An unknown name raises `The property 'anchor' of a <kind> must be none or an anchor name such as topLeft, center or stretchHorizontal.`, and an `anchorTo` other than `'safe'` or `'screen'` raises `The property 'anchorTo' of a <kind> must be safe or screen.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -798,7 +798,7 @@ ui.mount(ui.stack{
 
 Every text of every component is shaped and ordered for display by the text layout of the engine, so labels, buttons, fields, lists, tables, tooltips and rich text show Arabic, Hebrew, Persian, Urdu, Hindi, Thai and every other script their font role covers, and each paragraph reads in the direction of its first strong letter. The [text guide](../text.md#scripts-and-directions) explains shaping and directions.
 
-The direction of the layout is separate from the direction of each text. `ui.setDirection('rtl')` or a node with `direction = 'rtl'` mirrors the layout inside it:
+The direction of the layout is separate from the direction of each text. `ui.setDirection('rightToLeft')` or a node with `direction = 'rightToLeft'` mirrors the layout inside it:
 
 - Rows place their first child at the right, grids fill their rows from the right, and `start` and `end` of `align`, `justify` and `textAlign` name the right and the left.
 - Check boxes, radio buttons and toggles put their box on the right of their text, buttons put their icon on the right, and list rows, form fields, settings rows, tabs, accordions, trees, tables and alerts start from the right.
@@ -806,16 +806,16 @@ The direction of the layout is separate from the direction of each text. `ui.set
 - Steppers and carousels swap their ends, so the arrow that points left moves forward, the closed arrows of trees and accordions point left, the arrow of a combo stands at its left, and menus, combo lists, popovers and context menus open from the right edge of their button.
 - Text fields line their text up on the right. In every direction the caret stands on the side of the letter it follows, the left and right arrow keys move it the way they point on screen, and a selection across a change of direction covers every run it spans.
 
-Anchors, `padding` given as four sides and the `focusLeft` and `focusRight` properties name fixed sides, and images and icons draw as they are. A node with `direction = 'ltr'` inside a right-to-left UI keeps its own direction, for a phone number, a code or a game board.
+Anchors, `padding` given as four sides and the `focusLeft` and `focusRight` properties name fixed sides, and images and icons draw as they are. A node with `direction = 'leftToRight'` inside a right-to-left UI keeps its own direction, for a phone number, a code or a game board.
 
 ```lua
 local ui = require('haylen.ui')
 
-ui.setDirection('rtl')
+ui.setDirection('rightToLeft')
 ui.mount(ui.card{gap = 16,
     ui.row{gap = 12, ui.checkbox{text = 'تذكرني', checked = true}, ui.button{text = 'دخول', variant = 'primary'}},
     ui.slider{value = 0.3},
-    ui.row{direction = 'ltr', gap = 8, ui.label{text = '+1 555 0100'}},
+    ui.row{direction = 'leftToRight', gap = 8, ui.label{text = '+1 555 0100'}},
 })
 ```
 
@@ -888,7 +888,7 @@ Kinds that offer choices take an `items` list. Every item is a table with a uniq
 | `enabled` | boolean | `true` | A disabled item cannot be picked. |
 | `children` | list of items | none | Nested items, accepted only by `tree`. |
 
-Item errors name the kind and the property: a repeated id raises `<kind>.items uses the item id <id> more than once.`, an item without an id raises `<kind>.items needs a non-empty id for every item.`, an item that is not a table raises `<kind>.items must hold objects with an id.`, nested items outside a tree raise `<kind>.items cannot nest items, which only a tree does.`, and tree children that are not a list raise `tree.items.children must be a list of items.`.
+Item errors name the property and the kind: a repeated id raises `The property 'items' of a <kind> uses the item id '<id>' more than once.`, an item without an id raises `The property 'items' of a <kind> needs a non-empty id for every item.`, an item that is not a table raises `The property 'items' of a <kind> must hold objects with an id.`, nested items outside a tree raise `The property 'items' of a <kind> cannot nest items, which only a tree does.`, and tree children that are not a list raise `The property 'items.children' of a tree must be a list of items.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -903,7 +903,7 @@ ui.mount(ui.list{
 
 ## Events and handlers
 
-Components report what the player does as events. A node table key that starts with `on` followed by an upper-case letter and holds a function is a handler, and it answers the event named by the rest of the key with a lower-case first letter: `onClick` answers `click` and `onChange` answers `change`. A handler key that holds anything other than a function is read as a property and raises `<kind>.<key> is not a property of this component.`. The engine does not check that the kind reports the event, so a handler for an event the kind never reports is never called.
+Components report what the player does as events. A node table key that starts with `on` followed by an upper-case letter and holds a function is a handler, and it answers the event named by the rest of the key with a lower-case first letter: `onClick` answers `click` and `onChange` answers `change`. A handler key that holds anything other than a function is read as a property and raises `The property '<key>' of a <kind> does not exist.`. The engine does not check that the kind reports the event, so a handler for an event the kind never reports is never called.
 
 A node with handlers and no `id` gets an id from the engine, such as `#1`, which handlers see as `event.id`. `set` adds or replaces handlers, and `document:removeHandler` removes one.
 
@@ -1053,7 +1053,7 @@ Shows one child in an area that scrolls up and down or sideways. The mouse wheel
 | `axis` | string | `'vertical'` | `'vertical'` or `'horizontal'`, which lays the child out at its full width and scrolls it sideways, also with the mouse wheel. |
 | `snap` | boolean | `false` | Settles, once the player lets go, on the start of the item of the child nearest to the scrolled position, such as a card of a row. |
 
-A horizontal scroll lays its child out at the width of its content. Kinds that otherwise fill the width they get, `list`, `tree`, `table`, `accordion`, `carousel` and `splitter`, take the width of their content there, and grids and splitters give each of their children its own. An axis other than `'vertical'` or `'horizontal'` raises `scroll.axis must be vertical or horizontal.`.
+A horizontal scroll lays its child out at the width of its content. Kinds that otherwise fill the width they get, `list`, `tree`, `table`, `accordion`, `carousel` and `splitter`, take the width of their content there, and grids and splitters give each of their children its own. An axis other than `'vertical'` or `'horizontal'` raises `The property 'axis' of a scroll must be vertical or horizontal.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -1175,7 +1175,7 @@ Sections under headers that open and close, one child per item in the order of t
 | `expanded` | list of strings | none | Ids of the open sections. The player opens and closes sections afterwards, and setting it again replaces the open sections. |
 | `multiple` | boolean | `false` | Lets several sections stay open. |
 
-A value of `expanded` that is not a list of strings raises `accordion.expanded must be a list of item ids.`.
+A value of `expanded` that is not a list of strings raises `The property 'expanded' of an accordion must be a list of item ids.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -1730,7 +1730,7 @@ A number between a minimum and a maximum, changed with its minus and plus button
 | `decimals` | integer from 0 to 6 | `0` | Decimals shown. |
 | `returnKey` | `'default'`, `'done'`, `'go'`, `'next'`, `'search'` or `'send'` | `'default'` | Label of the return key of the on-screen keyboard, as in `textField`. |
 
-The on-screen keyboard shows digits, with a decimal separator when `decimals` is above zero. Numeric keypads have no minus sign, so a field whose `min` is negative types on the text keyboard. A minimum above the maximum raises `numberField.min must not be greater than max.`.
+The on-screen keyboard shows digits, with a decimal separator when `decimals` is above zero. Numeric keypads have no minus sign, so a field whose `min` is negative types on the text keyboard. A minimum above the maximum raises `The property 'min' of a numberField must not be greater than max.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -1753,7 +1753,7 @@ A track with a knob the player drags. A change reports `change` with the number 
 | `showValue` | boolean | `false` | Shows the value after the track, in the room the wider of `min` and `max` takes. |
 | `decimals` | integer from 0 to 6 | `2` | Decimals of the shown value. |
 
-Only the player changes the value, so a slider reports `change` only when the player moves it, and a `value` given off its step stays as it was given until then. A minimum that is not smaller than the maximum raises `slider.min must be smaller than max.`, and an end outside the range raises `slider.min is out of range.` or `slider.max is out of range.`.
+Only the player changes the value, so a slider reports `change` only when the player moves it, and a `value` given off its step stays as it was given until then. A minimum that is not smaller than the maximum raises `The property 'min' of a slider must be smaller than max.`, and an end outside the range raises `The property 'min' of a slider must be from -1e+15 to 1e+15.` or the same error for `max`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -1777,7 +1777,7 @@ A track with two knobs that pick a range, such as a price filter. The pointer dr
 | `showValue` | boolean | `false` | Shows the range after the track, in the room the wider of `min` and `max` takes at both ends. |
 | `decimals` | integer from 0 to 6 | `2` | Decimals of the shown range. |
 
-A minimum that is not smaller than the maximum raises `rangeSlider.min must be smaller than max.`, an end of the track outside its range raises `rangeSlider.min is out of range.` or `rangeSlider.max is out of range.`, and a `low` above `high` raises `rangeSlider.low must not be greater than high.`. A `set` of one end past the other end, where the player moved it, takes that end along.
+A minimum that is not smaller than the maximum raises `The property 'min' of a rangeSlider must be smaller than max.`, an end of the track outside its range raises `The property 'min' of a rangeSlider must be from -1e+15 to 1e+15.` or the same error for `max`, and a `low` above `high` raises `The property 'low' of a rangeSlider must not be greater than high.`. A `set` of one end past the other end, where the player moved it, takes that end along.
 
 ```lua
 local ui = require('haylen.ui')
@@ -1802,7 +1802,7 @@ A value between two arrows that step it, a number or one of a list of options, t
 | `selected` | string | first item | Id of the selected option. |
 | `wrap` | boolean | `false` | Lets the arrows and left and right go from one end on to the other. |
 
-A minimum above the maximum raises `stepper.min must not be greater than max.`, and a step of zero or less raises `stepper.step must be greater than zero.`.
+A minimum above the maximum raises `The property 'min' of a stepper must not be greater than max.`, and a step of zero or less raises `The property 'step' of a stepper must be greater than zero.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -1840,13 +1840,13 @@ A field that shows an [action map binding](input.md#bindings) and, once pressed,
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `value` | string | `''` | The binding, shown for people, such as `Left Shift` for `'key:leftShift'`. |
+| `value` | string | `''` | The binding, shown for people, such as `Left Shift` for `'key:leftShift'` and `1` for `'key:digit1'`. |
 | `placeholder` | text | none | Text shown while there is no binding. |
 | `prompt` | text | `'…'` | Text shown while it listens. |
 | `sources` | list of strings | every source | Kinds of input it takes: `'key'`, `'mouse'`, `'button'` and `'axis'`. It ignores the others and goes on listening. |
 | `cancelWith` | list of bindings | `{'key:escape'}` | Bindings that stop listening instead of becoming the value. |
 
-A value that is not a binding raises `keyCapture.value must be a binding such as key:space.`.
+A value that is not a binding raises `The property 'value' of a keyCapture must be a binding such as key:space.`.
 
 ```lua
 local input = require('haylen.input')
@@ -2064,7 +2064,7 @@ Nested items that open and close. Pressing the arrow of an item with children op
 | `selected` | string | none | Id of the highlighted item. |
 | `expanded` | list of strings | none | Ids of the open items. The player opens and closes items afterwards, and setting it again replaces the open items. |
 
-A value of `expanded` that is not a list of strings raises `tree.expanded must be a list of item ids.`.
+A value of `expanded` that is not a list of strings raises `The property 'expanded' of a tree must be a list of item ids.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -2099,7 +2099,7 @@ A column is a table with these keys.
 | `width` | number from 0 to 10000 | shared | Fixed width of the column. |
 | `align` | string | `'start'` | `'start'`, `'center'` or `'end'` for the header and the cells. |
 
-A row is a table with a unique `id` string and a `cells` list of texts, one per column. Rows without an id or cells raise `table.rows must hold objects with an id and a list of cells.`, a repeated id raises `table.rows uses the row id <id> more than once.`, an unknown column key raises `Unknown key '<key>' in table.columns.`, a column width out of range raises `table.columns has a width that is not a number from 0 to 10000.`, and an unknown column alignment raises `table.columns has an align other than start, center or end.`.
+A row is a table with a unique `id` string and a `cells` list of texts, one per column. Rows without an id or cells raise `The property 'rows' of a table must hold objects with an id and a list of cells.`, a repeated id raises `The property 'rows' of a table uses the row id '<id>' more than once.`, an unknown column key raises `Unknown key '<key>' in table.columns.`, a column width out of range raises `The property 'columns' of a table has a width that is not a number from 0 to 10000.`, and an unknown column alignment raises `The property 'columns' of a table has an align other than start, center or end.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -2127,7 +2127,7 @@ A grid of square slots that hold pictures and counts, such as an inventory, a ch
 | `selected` | string | none | Id of the highlighted slot. |
 | `draggable` | boolean | `true` | Lets the player drag and carry items. Without it accept selects a slot. |
 
-A slot is a table with a unique `id` string and optional `image`, `count` (text drawn in its corner) and `enabled`. Slots without an id raise `slotGrid.slots must hold objects with an id.`, a repeated id raises `slotGrid.slots uses the slot id <id> more than once.`, and an unknown key raises `Unknown key '<key>' in slotGrid.slots.`.
+A slot is a table with a unique `id` string and optional `image`, `count` (text drawn in its corner) and `enabled`. Slots without an id raise `The property 'slots' of a slotGrid must hold objects with an id.`, a repeated id raises `The property 'slots' of a slotGrid uses the slot id '<id>' more than once.`, and an unknown key raises `Unknown key '<key>' in slotGrid.slots.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -2222,7 +2222,7 @@ A modal window over the whole screen with a title, a message, optional children 
 | `dismissible` | boolean | `true` | Lets Escape and the east gamepad button close the dialog. |
 | `buttons` | list of buttons | empty | Answer buttons, lined up at the bottom right in list order. |
 
-A button is a table with a unique `id` string, a `text` and a `variant`. Buttons without an id raise `dialog.buttons must hold objects with an id.`, a repeated id raises `dialog.buttons uses the id <id> more than once.`, and an unknown variant raises `dialog.buttons has an unknown variant.`.
+A button is a table with a unique `id` string, a `text` and a `variant`. Buttons without an id raise `The property 'buttons' of a dialog must hold objects with an id.`, a repeated id raises `The property 'buttons' of a dialog uses the id '<id>' more than once.`, and an unknown variant raises `The property 'buttons' of a dialog has a variant other than default, primary, destructive, toolbar, icon or link.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -2328,7 +2328,7 @@ A virtual analog stick that sets the virtual stick `action` to a vector of lengt
 | `floating` | boolean | `false` | Centers the stick where the finger lands instead of at the center of the control. |
 | `touchOnly` | boolean | `false` | Shows the stick only while the last input came from a touch screen. |
 
-A missing or empty action raises `touchStick.action names the virtual stick to drive and cannot be empty.`.
+A missing or empty action raises `The property 'action' of a touchStick names the virtual stick to drive and cannot be empty.`.
 
 ```lua
 local input = require('haylen.input')
@@ -2360,7 +2360,7 @@ A virtual button that holds the virtual button `action` down while a finger or t
 | `size` | number from 8 to 2048 | `120` | Width and height. |
 | `touchOnly` | boolean | `false` | Shows the button only while the last input came from a touch screen. |
 
-A missing or empty action raises `touchButton.action names the virtual button to drive and cannot be empty.`.
+A missing or empty action raises `The property 'action' of a touchButton names the virtual button to drive and cannot be empty.`.
 
 ```lua
 local input = require('haylen.input')
@@ -2398,7 +2398,7 @@ A theme holds every color, metric, font and surface the components use, so no co
 | `fontFiles` | object | Font names mapped to TrueType or OpenType files in the package assets, which `ui.loadTheme` registers unless a font with that name exists. |
 | `surfaces` | object | Surfaces mapped to nine-slice images, or to `null` to go back to flat colors. |
 
-Theme files raise these errors: `Unknown key '<key>' in the theme.`, `A theme needs a name.`, `The theme has an unknown color role: <name>`, `The theme has an unknown metric: <name>`, `The theme has an unknown surface: <name>`, `The theme font <name> must be a known role with an object value.`, `The theme font <name> must name its font with a string.`, `The theme font <name> must set bold to true or false.`, the same for `italic`, `The theme font file <name> must be a path.`, `<context> must be a color such as #FF2E7D32.` and `<context> must be a non-negative number.`.
+Theme files raise these errors: `Unknown key '<key>' in the theme.`, `A theme needs a name.`, `The section '<name>' of the theme must be an object.`, `The theme has no color role named '<name>'.`, `The theme has no metric named '<name>'.`, `The theme has no surface named '<name>'.`, `The theme font '<name>' must be a known role with an object value.`, `The theme font '<name>' must name its font with a string.`, `The theme font '<name>' must set bold to true or false.`, the same for `italic`, `The theme font file '<name>' must be a path.`, `The theme color '<name>' must be a color such as #FF2E7D32.`, `The theme metric '<name>' must be a non-negative number.` and `The size of the theme font '<name>' must be a non-negative number.`.
 
 ```json
 {
@@ -2572,7 +2572,7 @@ A surface image is an object with these keys.
 | `filter` | string | `'nearest'` | Texture filter, `'nearest'` or `'linear'`. |
 | `fill` | string | `'stretch'` | `'stretch'` or `'tile'` for the edges and the center. |
 
-A surface image raises `<context> needs an image path.`, `<context>.filter must be nearest or linear.`, `<context>.fill must be stretch or tile.`, `<context>.colorize must be true or false.`, `<context>.pieces must hold nine rectangles.` or `<context> must be four numbers: x, y, width and height.` for invalid values.
+A surface image raises `The image of the theme surface '<name>' must be a path.`, `The filter of the theme surface '<name>' must be nearest or linear.`, `The fill of the theme surface '<name>' must be stretch or tile.`, `The colorize of the theme surface '<name>' must be true or false.`, `The pieces of the theme surface '<name>' must hold nine rectangles.`, `The source of the theme surface '<name>' must be four numbers: x, y, width and height.` or `The tiled edges and center of the theme surface '<name>' must each be at least 1 unit wide and tall at its scale.` for invalid values, and the `scale`, `padding`, `slice` and `tint` raise the same errors as theme metrics and colors.
 
 ```json
 {

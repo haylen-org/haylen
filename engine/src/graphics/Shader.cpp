@@ -71,7 +71,7 @@ Shader Shader::parse(std::span<const std::uint8_t> bytes) {
         }
         resource->validate();
     } catch (const core::Json::exception& error) {
-        throw std::invalid_argument(std::format("The shader file is malformed: {}", error.what()));
+        throw std::invalid_argument(std::format("The shader file is malformed, and the JSON reader reported '{}'.", error.what()));
     } catch (const std::invalid_argument& error) {
         throw std::invalid_argument(std::format("The shader file is malformed: {}", error.what()));
     }

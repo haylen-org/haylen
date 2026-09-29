@@ -263,7 +263,7 @@ TEST_F(ShapingTest, SpansStylesAcrossDirections) {
     EXPECT_GE(red, 4);
 
     // A right-to-left paragraph of markup lines up on the right and puts its list markers there.
-    RichText list("[p dir=rtl][ul]אחד[/ul][/p]", {.family = family, .size = 32.0F, .maxWidth = 400.0F}, registry);
+    RichText list("[p dir=rightToLeft][ul]אחד[/ul][/p]", {.family = family, .size = 32.0F, .maxWidth = 400.0F}, registry);
     const Layout& items = list.getLayout();
     ASSERT_FALSE(items.glyphs.empty());
     const Layout::Glyph& bullet = *std::ranges::find(items.glyphs, U'•', &Layout::Glyph::codePoint);

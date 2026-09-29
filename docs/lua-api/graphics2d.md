@@ -438,7 +438,7 @@ Draws UTF-8 `text` with `font`, a `Font` or a `FontFamily`, or with the engine's
 | `align` | string | `'start'` | Alignment of each line inside the block: `'start'` and `'end'`, the sides where the lines of the paragraph begin and end, which are left and right for left-to-right text and the other way around for right-to-left text, `'left'`, `'center'`, `'right'` or `'fill'`, which stretches the spaces of every wrapped line to reach both edges and leaves the last line of a paragraph at its start. |
 | `maxWidth` | number | `0` | Wraps whole words at this width. 0 never wraps. |
 | `lineSpacing` | number | `1.2` | Distance between lines as a multiple of the line height. |
-| `direction` | string | `'auto'` | Direction of every paragraph: `'auto'` takes the direction of its first strong letter, `'ltr'` and `'rtl'` force it, which decides the order of mixed runs and the side of `'start'`. |
+| `direction` | string | `'auto'` | Direction of every paragraph: `'auto'` takes the direction of its first strong letter, `'leftToRight'` and `'rightToLeft'` force it, which decides the order of mixed runs and the side of `'start'`. |
 | `language` | string | `''` | BCP 47 language tag of the text, such as `'ar'`, `'fa'`, `'ur'` or `'sr'`, which the shaper uses to pick the forms a language prefers. |
 | `bold`, `italic` | boolean | `false` | With a `FontFamily`, pick its bold and italic faces or synthesize them. A `Font` synthesizes them. |
 | `anchor` | Vec2 | `{0, 0}` | Point of the block placed at `x`, `y`, as a fraction of its size. `{0.5, 0.5}` centers the text. |
@@ -484,7 +484,7 @@ scene.push({
     renderUi = function(self)
         graphics2d.beginScreen()
         graphics2d.drawText(family, 'مرحبا بالعالم، رقم 42 (Harbor)', 1200, 200, {size = 40, maxWidth = 600, language = 'ar'})
-        graphics2d.drawText(family, 'Order 7: السعر 42', 100, 300, {size = 40, direction = 'ltr'})
+        graphics2d.drawText(family, 'Order 7: السعر 42', 100, 300, {size = 40, direction = 'leftToRight'})
         graphics2d.drawText(family, 'नमस्ते दुनिया', 100, 400, {size = 40, language = 'hi'})
     end,
 })
@@ -522,7 +522,7 @@ Creates a [`RichText`](#richtext) from BBCode markup, laid out once and drawn ev
 | `maxWidth` | number | `0` | Width the paragraphs wrap at. 0 never wraps, and the block is as wide as its widest line. |
 | `align` | string | `'start'` | Alignment of paragraphs without their own: `'start'`, `'end'`, `'left'`, `'center'`, `'right'` or `'fill'`, where start and end follow the direction of each paragraph. |
 | `lineSpacing` | number | `1.2` | Distance between lines as a multiple of their height. |
-| `direction` | string | `'auto'` | Direction of paragraphs without a `[p dir]` of their own: `'auto'` takes the direction of the first strong letter of each paragraph, and `'ltr'` and `'rtl'` force it. |
+| `direction` | string | `'auto'` | Direction of paragraphs without a `[p dir]` of their own: `'auto'` takes the direction of the first strong letter of each paragraph, and `'leftToRight'` and `'rightToLeft'` force it. |
 | `language` | string | `''` | BCP 47 language tag the text is shaped for, such as `'ar'` or `'hi'`. |
 | `scale` | number | `1` | Multiplies every size of the markup and the options. |
 | `revealSpeed` | number | `0` | Characters per second the typewriter reveal shows as `text:update` advances. 0 shows everything at once. |

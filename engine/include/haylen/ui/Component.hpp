@@ -188,8 +188,8 @@ class Component {
     static constexpr std::array<std::string_view, 4> kNeighborKeys{"focusLeft", "focusRight", "focusUp", "focusDown"};
     static constexpr std::array<std::pair<std::string_view, std::optional<text::Direction>>, 3> kDirections{{
         {"inherit", std::nullopt},
-        {"ltr", text::Direction::LeftToRight},
-        {"rtl", text::Direction::RightToLeft},
+        {"leftToRight", text::Direction::LeftToRight},
+        {"rightToLeft", text::Direction::RightToLeft},
     }};
 
     [[nodiscard]] float getBoundedWidth(float width) const noexcept;

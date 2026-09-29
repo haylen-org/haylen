@@ -26,7 +26,7 @@ int EffectLua::newEffect(lua_State* L) {
     }
     const std::optional<Filter::Kind> filter = lua::EnumNames<Filter::Kind>::fromName(kind);
     if (!filter) {
-        throw std::invalid_argument("Unknown audio effect: " + std::string(kind));
+        throw std::invalid_argument("The audio effect must be lowpass, highpass, bandpass, notch, peak, lowShelf, highShelf, delay or reverb, not '" + std::string(kind) + "'.");
     }
     newFilter(L, *filter);
     return 1;

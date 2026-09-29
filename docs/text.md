@@ -51,9 +51,9 @@ Every run of text is shaped by HarfBuzz before it is laid out: runs of one font,
 
 A character is a cluster, the code points shaping keeps together: a letter with its marks, a conjunct with its vowel signs, or a ligature. Characters are what the typewriter reveal counts, what text fields move the caret over, and what hit tests and selections cover, so a reveal or a caret never stops inside a letter.
 
-Every paragraph runs through the Unicode Bidirectional Algorithm of SheenBidi. Its direction is `'auto'` by default, taken from its first strong letter, so an Arabic or Hebrew paragraph reads right to left and an English one left to right, and `direction = 'ltr'` or `'rtl'` forces it. After a paragraph is broken into lines, every line is ordered for display on its own: runs that read right to left go from the right, numbers and Latin words inside them keep their own order, and brackets mirror so that `(USD)` reads correctly inside Arabic text. A paragraph that starts with a Latin word or a number but reads right to left needs a forced direction, or a right-to-left mark, U+200F, at its start.
+Every paragraph runs through the Unicode Bidirectional Algorithm of SheenBidi. Its direction is `'auto'` by default, taken from its first strong letter, so an Arabic or Hebrew paragraph reads right to left and an English one left to right, and `direction = 'leftToRight'` or `'rightToLeft'` forces it. After a paragraph is broken into lines, every line is ordered for display on its own: runs that read right to left go from the right, numbers and Latin words inside them keep their own order, and brackets mirror so that `(USD)` reads correctly inside Arabic text. A paragraph that starts with a Latin word or a number but reads right to left needs a forced direction, or a right-to-left mark, U+200F, at its start.
 
-Alignment names the sides of a paragraph by its direction. `'start'`, the default, lines text up where its lines begin, the left of left-to-right text and the right of right-to-left text, and `'end'` the other side. `'left'`, `'center'` and `'right'` name fixed sides, and `'fill'` stretches every wrapped line to both edges and leaves the last line at its start. In rich text, `[p dir=rtl]` sets the direction of a block and `[p align=end]` its alignment, the indent, the list markers and the drop cap stand on the side the paragraph starts, and a table reads in the direction of its first paragraph, so its first column stands at the right of a right-to-left table. Backgrounds, underlines, strikes and link areas cover the shaped text after it is ordered, split where the direction changes, and grow with the reveal from the side their text starts.
+Alignment names the sides of a paragraph by its direction. `'start'`, the default, lines text up where its lines begin, the left of left-to-right text and the right of right-to-left text, and `'end'` the other side. `'left'`, `'center'` and `'right'` name fixed sides, and `'fill'` stretches every wrapped line to both edges and leaves the last line at its start. In rich text, `[p dir=rightToLeft]` sets the direction of a block and `[p align=end]` its alignment, the indent, the list markers and the drop cap stand on the side the paragraph starts, and a table reads in the direction of its first paragraph, so its first column stands at the right of a right-to-left table. Backgrounds, underlines, strikes and link areas cover the shaped text after it is ordered, split where the direction changes, and grow with the reveal from the side their text starts.
 
 ```lua
 local assets = require('haylen.assets')
@@ -67,8 +67,8 @@ local family = graphics.newFontFamily({
 
 graphics2d.drawText(family, 'السعر 42 دولارًا (USD)', 1000, 100, {size = 32, anchor = {1, 0}})
 graphics2d.drawText(family, 'Hebrew: שלום עולם', 100, 160, {size = 32})
-graphics2d.drawText(family, 'Order 7 السعر', 1000, 220, {size = 32, direction = 'rtl', anchor = {1, 0}})
-local story = graphics2d.newRichText('[p dir=rtl align=start][b]الرحلة[/b] بدأت في [u]الصباح[/u] الباكر.[/p]', {family = family, size = 30, maxWidth = 500, language = 'ar', revealSpeed = 20})
+graphics2d.drawText(family, 'Order 7 السعر', 1000, 220, {size = 32, direction = 'rightToLeft', anchor = {1, 0}})
+local story = graphics2d.newRichText('[p dir=rightToLeft align=start][b]الرحلة[/b] بدأت في [u]الصباح[/u] الباكر.[/p]', {family = family, size = 30, maxWidth = 500, language = 'ar', revealSpeed = 20})
 ```
 
 A bitmap font has no shaping tables, so it maps every code point to its own glyph and applies the kerning pairs of its file. It lays out and orders right-to-left text, with mirrored brackets, but it draws neither joined Arabic letters nor Indic conjuncts, which need a TrueType or OpenType font.
@@ -98,7 +98,7 @@ Markup is text with tags in square brackets. Inline tags open with `[name]` or `
 | `[icon=name width= height= color= valign=]` | An icon that `graphics2d.registerTextIcon` registered, as tall as its text unless sized. |
 | `[pause=0.5]` | Holds the typewriter reveal for half a second before the next character. |
 | `[speed=2]` | Reveals the text inside twice as fast. |
-| `[p align=center dir=rtl indent=1]` | A paragraph block with an alignment (`start`, `end`, `left`, `center`, `right` or `fill`), a direction (`auto`, `ltr` or `rtl`) and an indent in levels of one and a half times the base size, which stands on the side the paragraph starts. |
+| `[p align=center dir=rightToLeft indent=1]` | A paragraph block with an alignment (`start`, `end`, `left`, `center`, `right` or `fill`), a direction (`auto`, `leftToRight` or `rightToLeft`) and an indent in levels of one and a half times the base size, which stands on the side the paragraph starts. |
 | `[center]`, `[left]`, `[right]`, `[fill]` | Paragraph blocks with an alignment. Fill stretches the spaces of every wrapped line to both edges. |
 | `[ul bullet=*]`, `[ol type=1]` | Lists, where every paragraph inside is an item with a bullet or a number, counted as `1`, `a`, `A`, `i` or `I`. Lists nest and indent one level each. |
 | `[hr width=50% height=2 color=c]` | A horizontal rule, centered unless its block aligns it. |

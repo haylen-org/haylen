@@ -64,12 +64,12 @@ The runtime targets the current Tiled JSON format as written by Tiled 1.12.
 - Tilesets embedded in the map or stored in external files, image tilesets with margin, spacing and tile offsets, image collection tilesets whose tiles can use a sub-rectangle of their image and keep the ids of removed tiles unused, transparent colors, object alignment, tile render size `grid` with the fill mode `preserve-aspect-fit`, tile classes, properties, animations, collision shapes and Wang sets.
 - Tile flip flags: horizontal, vertical and diagonal, plus the 120-degree rotation flag of hexagonal maps.
 - Objects: rectangles, ellipses, capsules, points, polygons, polylines, text and tile objects, with rotation, visibility, opacity, classes and custom properties.
-- Object templates, whose fields and properties are defaults that each instance overrides one by one. Tile templates map their tile to the map's own copy of the template's tileset, and a template whose tileset the map does not list raises `A tile template uses a tileset the map does not list: path`.
+- Object templates, whose fields and properties are defaults that each instance overrides one by one. Tile templates map their tile to the map's own copy of the template's tileset, and a template whose tileset the map does not list raises `A tile template uses the tileset 'path', which the map does not list.`
 - Custom property types `string`, `int`, `float`, `bool`, `color`, `file`, `object`, `class` and `list` (Tiled 1.12), including lists nested in lists.
 - Worlds with listed maps and patterns.
 - Object factories through `map:spawn`.
 
-Every layer needs the `id` that Tiled writes. Other load errors: `Unknown Tiled map orientation: name`, `Unknown Tiled render order: name`, `Unknown Tiled layer type: name`, `The Tiled map path has a negative size.`, `The Tiled map path needs a positive tile size.`, `The Tiled tile layer 'name' has a negative size.`, `The Tiled tile layer 'name' has more cells than a layer can hold.`, `Unknown tile layer compression: name`, `Tile layer data is not valid base64.`, `Tile layer data could not be decompressed.`, `Tile layer data does not match the layer size.` and `Invalid Tiled color: text`.
+Every layer needs the `id` that Tiled writes. Other load errors: `The orientation of a Tiled map must be orthogonal, isometric, staggered, hexagonal or oblique, not 'name'.`, `The render order of a Tiled map must be right-down, right-up, left-down or left-up, not 'name'.`, `The type of a Tiled layer must be tilelayer, objectgroup, imagelayer or group, not 'name'.`, `The Tiled map path has a negative size.`, `The Tiled map path needs a positive tile size.`, `The Tiled tile layer 'name' has a negative size.`, `The Tiled tile layer 'name' has more cells than a layer can hold.`, `The compression of a tile layer must be zlib, gzip or zstd, not 'name'.`, `Tile layer data is not valid base64.`, `Tile layer data could not be decompressed.`, `Tile layer data does not match the layer size.` and `The Tiled color 'text' is not a #RRGGBB or #AARRGGBB color.`
 
 ## Drawing rules
 
@@ -157,7 +157,7 @@ Draws every visible layer in map order into the active canvas. `camera` is optio
 
 ### map:drawLayer(name, camera, options)
 
-Draws one layer, including the children of a group layer, with the offset, parallax, tint and visibility it inherits from the groups above it. `camera` and `options` work as in `map:draw`. Drawing layers one by one lets the app place its own sprites between them. An unknown name raises `Unknown layer: name`.
+Draws one layer, including the children of a group layer, with the offset, parallax, tint and visibility it inherits from the groups above it. `camera` and `options` work as in `map:draw`. Drawing layers one by one lets the app place its own sprites between them. An unknown name raises `The map has no layer named 'name'.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -210,11 +210,11 @@ Advances the time of animated tiles by `dt` seconds.
 
 ### map:tile(layer, column, row)
 
-Returns the global tile id at a cell of the tile layer `layer`, with its flip flags, or 0 for an empty cell or a cell outside the layer. Columns and rows count from 0. A name that is not a tile layer raises `Unknown tile layer: name`.
+Returns the global tile id at a cell of the tile layer `layer`, with its flip flags, or 0 for an empty cell or a cell outside the layer. Columns and rows count from 0. A name that is not a tile layer raises `The map has no tile layer named 'name'.`
 
 ### map:setTile(layer, column, row, gid)
 
-Replaces the tile at a cell. `gid` is a global tile id, optionally with flip flags added, and 0 empties the cell. A gid that no tileset holds raises an error such as `No tileset holds the tile 5000`, and a cell outside the layer raises `The cell is outside the tile layer.` or, on infinite maps, `The cell is outside every chunk of the infinite tile layer.`
+Replaces the tile at a cell. `gid` is a global tile id, optionally with flip flags added, and 0 empties the cell. A gid that no tileset holds raises an error such as `The tile '5000' belongs to no tileset of the map.`, and a cell outside the layer raises `The cell is outside the tile layer.` or, on infinite maps, `The cell is outside every chunk of the infinite tile layer.`
 
 The flip flags are the module constants described in [Flip flags](#flip-flags). Combine them with `|`.
 
@@ -233,7 +233,7 @@ map:setTile('ground', 13, 10, 0)
 
 ### map:setLayerVisible(name, visible)
 
-Shows or hides a layer, which also hides the children of a group. An unknown name raises `Unknown layer: name`.
+Shows or hides a layer, which also hides the children of a group. An unknown name raises `The map has no layer named 'name'.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -285,7 +285,7 @@ scene.push({
 
 ### map:layer(name)
 
-Returns a table that describes the layer `name`, searching group layers depth first. The table is a snapshot, so changing it does not change the map. An unknown name raises `Unknown layer: name`.
+Returns a table that describes the layer `name`, searching group layers depth first. The table is a snapshot, so changing it does not change the map. An unknown name raises `The map has no layer named 'name'.`
 
 ### map:layers()
 
@@ -525,7 +525,7 @@ end
 
 ### map:objectOutlines(layer)
 
-Returns the closed world outlines of the objects of the object layer named `layer`, or of every object layer when `layer` is omitted, in map order, as a list of lists of `Vec2`. Rectangles give their corners, tile objects the corners of their image where it draws, polygons their points, and ellipses and capsules many-sided outlines, while points, text and polylines give nothing. The outlines are ready to become obstacles of a navigation mesh of [haylen.navigation2d](navigation2d.md). A name that is not an object layer raises `The map has no object layer named 'name'.`, and a tile object whose tile no tileset holds raises `A tile object uses a tile that no tileset holds: id`, here and in `map:draw`, `map:buildCollision` and `map:raycastObjects`.
+Returns the closed world outlines of the objects of the object layer named `layer`, or of every object layer when `layer` is omitted, in map order, as a list of lists of `Vec2`. Rectangles give their corners, tile objects the corners of their image where it draws, polygons their points, and ellipses and capsules many-sided outlines, while points, text and polylines give nothing. The outlines are ready to become obstacles of a navigation mesh of [haylen.navigation2d](navigation2d.md). A name that is not an object layer raises `The map has no object layer named 'name'.`, and a tile object whose tile no tileset holds raises `A tile object uses the tile 'id', which no tileset of the map holds.`, here and in `map:draw`, `map:buildCollision` and `map:raycastObjects`.
 
 ```lua
 local assets = require('haylen.assets')

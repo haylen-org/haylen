@@ -72,7 +72,7 @@ TEST_F(RightToLeftTest, PlacesTheCaretOnTheRightClusterOfRightToLeftText) {
 
 // A text field of a right-to-left node lines its text up on the right, a press left of the text puts the caret at its end, and the arrow keys move the caret on screen.
 TEST_F(RightToLeftTest, MovesTheCaretOfARightToLeftFieldOnScreen) {
-    auto document = ui.mount(R"({"kind": "column", "direction": "rtl", "padding": 20, "children": [{"kind": "textField", "id": "name", "value": "שלום", "width": 400}]})");
+    auto document = ui.mount(R"({"kind": "column", "direction": "rightToLeft", "padding": 20, "children": [{"kind": "textField", "id": "name", "value": "שלום", "width": 400}]})");
     const math::Rect bounds = ui.getBounds(*document, "name");
     ui.click({bounds.x + 30.0F, bounds.getCenter().y});
     EXPECT_EQ(getCaret(), 4);
@@ -116,7 +116,7 @@ TEST_F(RightToLeftTest, MirrorsLayoutsInARightToLeftUi) {
     // An automatic direction takes the one the current language declares.
     localization::Catalog& catalog = ui.getEngine().getPlugin<plugins::LocalizationPlugin>().getCatalog();
     catalog.add("en", core::Json::parse(R"({"hello": "Hello"})"));
-    catalog.add("ar", core::Json::parse(R"({"@direction": "rtl", "hello": "مرحبا"})"));
+    catalog.add("ar", core::Json::parse(R"({"@direction": "rightToLeft", "hello": "مرحبا"})"));
     ui.getUi().setDirection(text::Direction::Auto);
     ui.frames();
     EXPECT_FALSE(ui.getUi().getContext().isRightToLeft());
@@ -128,7 +128,7 @@ TEST_F(RightToLeftTest, MirrorsLayoutsInARightToLeftUi) {
     EXPECT_GT(ui.getBounds(*localized, "first").x, ui.getBounds(*localized, "second").x);
 
     // A node with a direction of its own keeps it inside a right-to-left UI.
-    auto island = ui.mount(R"({"kind": "row", "direction": "ltr", "gap": 10, "children": [{"kind": "button", "id": "first", "text": "One"}, {"kind": "button", "id": "second", "text": "Two"}]})");
+    auto island = ui.mount(R"({"kind": "row", "direction": "leftToRight", "gap": 10, "children": [{"kind": "button", "id": "first", "text": "One"}, {"kind": "button", "id": "second", "text": "Two"}]})");
     EXPECT_LT(ui.getBounds(*island, "first").x, ui.getBounds(*island, "second").x);
 }
 

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <format>
 #include <stdexcept>
 #include <vector>
 
@@ -9,7 +10,7 @@ namespace haylen::ui {
 
 PropertyReader::PropertyReader(const core::Json& values, std::string_view componentKind) : properties(values), kind(componentKind) {
     if (!values.is_object()) {
-        throw std::invalid_argument("The properties of a " + kind + " must be an object.");
+        throw std::invalid_argument("The properties of " + describeKind(kind) + " must be an object.");
     }
     used.insert(kStructuralKeys.begin(), kStructuralKeys.end());
 }
@@ -32,11 +33,29 @@ const core::Json* PropertyReader::take(std::string_view key) {
 }
 
 void PropertyReader::fail(std::string_view key, std::string_view problem) const {
-    throw std::invalid_argument(getQualifiedName(key) + " " + std::string(problem) + ".");
+    throw std::invalid_argument(describeProperty(getQualifiedName(key)) + " " + std::string(problem) + ".");
 }
 
 std::string PropertyReader::getQualifiedName(std::string_view key) const {
     return kind + "." + std::string(key);
+}
+
+std::string PropertyReader::describeProperty(std::string_view path) {
+    const std::size_t dot = path.find('.');
+    return "The property '" + std::string(path.substr(dot + 1)) + "' of " + describeKind(path.substr(0, dot));
+}
+
+std::string PropertyReader::describeKind(std::string_view componentKind) {
+    const bool vowel = !componentKind.empty() && std::string_view("aeiou").find(componentKind.front()) != std::string_view::npos;
+    return (vowel ? "an " : "a ") + std::string(componentKind);
+}
+
+// Names the values a number may take, leaving out a maximum that only marks the limit of its type.
+template <typename Number> std::string PropertyReader::describeRange(Number minimum, Number maximum) {
+    if (maximum == std::numeric_limits<Number>::max()) {
+        return std::format("must be at least {}", minimum);
+    }
+    return std::format("must be from {} to {}", minimum, maximum);
 }
 
 void PropertyReader::read(std::string_view key, bool& out) {
@@ -64,7 +83,7 @@ void PropertyReader::read(std::string_view key, float& out, float minimum, float
         }
         const auto number = value->get<float>();
         if (number < minimum || number > maximum) {
-            fail(key, "is out of range");
+            fail(key, describeRange(minimum, maximum));
         }
         out = number;
     }
@@ -77,7 +96,7 @@ void PropertyReader::read(std::string_view key, double& out, double minimum, dou
         }
         const auto number = value->get<double>();
         if (number < minimum || number > maximum) {
-            fail(key, "is out of range");
+            fail(key, describeRange(minimum, maximum));
         }
         out = number;
     }
@@ -90,7 +109,7 @@ void PropertyReader::read(std::string_view key, int& out, int minimum, int maxim
         }
         const auto number = value->get<double>();
         if (number < minimum || number > maximum) {
-            fail(key, "is out of range");
+            fail(key, describeRange(minimum, maximum));
         }
         out = static_cast<int>(number);
     }
@@ -160,7 +179,7 @@ void PropertyReader::readLength(std::string_view key, std::optional<float>& out)
 void PropertyReader::finish() const {
     for (const auto& [key, value] : properties.items()) {
         if (!used.contains(key)) {
-            fail(key, "is not a property of this component");
+            fail(key, "does not exist");
         }
     }
 }
