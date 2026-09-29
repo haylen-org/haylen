@@ -104,12 +104,18 @@ local calm = assets.load('music/calm.ogg', 'sound', {stream = true})
 local battle = assets.load('music/battle.ogg', 'sound', {stream = true})
 
 audio.playMusic(calm, {volume = 0.8})
-audio.playMusic(battle, {fade = 2})
+local music = audio.playMusic(battle, {fade = 2})
+
+-- Only the music pauses, while the effects and the interface sounds keep playing.
+audio.pause(music)
+audio.resume(music)
 ```
 
-- Asking for the track that is already playing keeps it going and only changes its volume, so a scene can call `playMusic` in `enter` without restarting the music every time the player returns to it.
+- `audio.playMusic` returns the voice id of the track, which every voice function takes: `audio.pause` and `audio.resume` pause the music alone, and `audio.setVolume`, `audio.addEffect` and `audio.stop` reach the track.
+- Asking for the track that is already playing keeps it going on the same voice, paused or not, and only changes its volume, so a scene can call `playMusic` in `enter` without restarting the music every time the player returns to it.
+- A paused track that the next one replaces stops without sounding again, and the next track plays.
 - `audio.stopMusic(fadeOut)` fades the track out over 1 second by default, and `audio.stopMusic(0)` stops it at once.
-- `audio.music()` returns the sound that is playing, or `nil`.
+- `audio.music()` returns the sound that is playing or paused, or `nil`, and a track stopped through its voice counts as over.
 - The music voice is the last one the voice limit stops.
 
 ## Pause and process modes

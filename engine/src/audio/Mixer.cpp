@@ -291,16 +291,17 @@ std::vector<std::shared_ptr<Effect>> Mixer::getBusEffects(std::string_view bus) 
     return state->getBus(bus).effects->getEffects();
 }
 
-void Mixer::playMusic(const Sound& sound, const MusicOptions& options) {
+Mixer::VoiceId Mixer::playMusic(const Sound& sound, const MusicOptions& options) {
     // Asking for the track that is already playing keeps it going instead of restarting it.
-    if (MixerState::Voice* current = state->findVoice(state->musicVoice); current != nullptr && current->sound == sound && isActive(current->id)) {
-        setVolume(current->id, options.volume);
-        return;
+    if (sound.isValid() && getMusic() == sound) {
+        setVolume(state->musicVoice, options.volume);
+        return state->musicVoice;
     }
 
     stop(state->musicVoice, options.fade);
     state->musicVoice = play(sound, {.bus = options.bus, .volume = options.volume, .loop = options.loop, .fadeIn = options.fade});
     state->findVoice(state->musicVoice)->music = true;
+    return state->musicVoice;
 }
 
 void Mixer::stopMusic(float fadeOutSeconds) {
@@ -308,9 +309,10 @@ void Mixer::stopMusic(float fadeOutSeconds) {
     state->musicVoice = 0;
 }
 
+// A track the app stopped through its voice is over, even while it fades out.
 Sound Mixer::getMusic() const {
     const MixerState::Voice* voice = state->findVoice(state->musicVoice);
-    return voice != nullptr && isActive(voice->id) ? voice->sound : Sound{};
+    return voice != nullptr && !voice->stopped && isActive(voice->id) ? voice->sound : Sound{};
 }
 
 void Mixer::createBus(const std::string& name, std::string_view parent) {

@@ -195,6 +195,37 @@ TEST_F(MixerTest, CrossfadesMusic) {
     mixer.stopMusic();
 }
 
+TEST_F(MixerTest, ControlsMusicThroughItsVoice) {
+    const Sound first = makeTone(toFrames(1.0F));
+    const Sound second = makeTone(toFrames(1.0F), 0.25F);
+
+    // The voice of the track pauses the music alone, and asking for the same track keeps it paused.
+    const Mixer::VoiceId music = mixer.playMusic(first, {.fade = 0.0F});
+    const Mixer::VoiceId effect = mixer.play(second, {.loop = true});
+    mixer.setPaused(music, true);
+    EXPECT_NEAR(settledPeak(256), 0.25F, 0.01F);
+    EXPECT_EQ(mixer.playMusic(first, {.volume = 0.5F}), music);
+    EXPECT_TRUE(mixer.isPaused(music));
+    EXPECT_EQ(mixer.getMusic(), first);
+    mixer.setPaused(music, false);
+    EXPECT_NEAR(settledPeak(256), 0.5F, 0.01F);
+    mixer.stop(effect);
+
+    // The next track replaces a paused one and plays.
+    mixer.setPaused(music, true);
+    const Mixer::VoiceId next = mixer.playMusic(second, {.fade = 0.0F});
+    EXPECT_NE(next, music);
+    EXPECT_NEAR(settledPeak(256), 0.25F, 0.01F);
+    mixer.update(1.0F / 60.0F);
+    EXPECT_FALSE(mixer.isActive(music));
+
+    // Stopping the voice ends the music while it fades out, so asking for the track again starts it over.
+    mixer.stop(next, 0.5F);
+    EXPECT_FALSE(mixer.getMusic().isValid());
+    EXPECT_NE(mixer.playMusic(second), next);
+    EXPECT_EQ(mixer.getMusic(), second);
+}
+
 TEST_F(MixerTest, StealsTheOldestVoiceWhenFull) {
     const Sound sound = makeTone(toFrames(1.0F));
     mixer.playMusic(sound);
@@ -308,8 +339,8 @@ TEST_F(AudioLuaTest, PlaysSoundsFromLua) {
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return audio.active(voice)"), "false");
 
-    fixture.runLua("audio.playMusic(theme, {volume = 0.8, fade = 0, loop = false, bus = 'music'})");
-    EXPECT_EQ(fixture.lua("return audio.music() == theme"), "true");
+    fixture.runLua("music = audio.playMusic(theme, {volume = 0.8, fade = 0, loop = false, bus = 'music'}) audio.pause(music)");
+    EXPECT_EQ(fixture.lua("return tostring(audio.music() == theme) .. ' ' .. tostring(audio.paused(music)) .. ' ' .. tostring(audio.playMusic(theme) == music)"), "true true true");
     fixture.runLua("audio.stopMusic(0)");
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return audio.music()"), "nil");

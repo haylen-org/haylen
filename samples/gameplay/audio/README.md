@@ -4,7 +4,7 @@ A Lua sample with one scene per feature of [haylen.audio](../../../docs/lua-api/
 
 | Test | What it shows |
 | --- | --- |
-| Music | Two streamed tracks that crossfade over the chosen time, looping or played once, a volume that `playMusic` changes on the track already playing, the pause and resume of every voice, and a graph of the fades the calls asked for. |
+| Music | Two streamed tracks that crossfade over the chosen time, looping or played once, a volume that `playMusic` changes on the track already playing, the pause and resume of the music through the voice `playMusic` returns, and a graph of the fades the calls asked for. |
 | One-shot effects | A sound played with a volume, a pitch with a random variation, a pan, a fade in and a fade out, a limit of voices per sound that stops the oldest one, and every voice with the pitch it got, its pan and its cursor. |
 | Buses | Music, effects, footsteps on a custom bus, interface clicks and ambience through the bus tree, with the volume, mute and process mode of every bus, the game pause and `audio.busStats()`. |
 | Effects | Every filter kind, the delay and the reverb on the music bus or on a looping voice, with a slider per parameter, a tween that sweeps the main parameter, and the response of the filter, the repeats of the delay or the decay of the reverb. |

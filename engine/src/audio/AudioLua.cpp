@@ -194,7 +194,7 @@ int AudioLua::effects(lua_State* L) {
     return 1;
 }
 
-// Crossfades to a music track with playMusic(sound, {bus, volume, fade, loop}).
+// Crossfades to a music track with playMusic(sound, {bus, volume, fade, loop}) and returns the voice id of the track.
 int AudioLua::playMusic(lua_State* L) {
     Mixer::MusicOptions options;
     if (!lua_isnoneornil(L, 2)) {
@@ -205,8 +205,8 @@ int AudioLua::playMusic(lua_State* L) {
         lua::Table::readField(L, 2, "fade", options.fade);
         lua::Table::readField(L, 2, "loop", options.loop);
     }
-    getMixer(L).playMusic(lua::Stack::read<Sound>(L, 1), options);
-    return 0;
+    lua::Stack::push(L, getMixer(L).playMusic(lua::Stack::read<Sound>(L, 1), options));
+    return 1;
 }
 
 int AudioLua::stopMusic(lua_State* L) {

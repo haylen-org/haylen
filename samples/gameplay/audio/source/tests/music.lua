@@ -1,4 +1,4 @@
--- Music: two streamed tracks that crossfade over the chosen time, looping or played once, a volume that playMusic changes on the track already playing, the pause and resume of every voice and a graph of the fades as the calls asked for them.
+-- Music: two streamed tracks that crossfade over the chosen time, looping or played once, a volume that playMusic changes on the track already playing, the pause and resume of the music through its voice and a graph of the fades as the calls asked for them.
 local audio = require('haylen.audio')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -11,7 +11,7 @@ local Music = haylen.class('Music', sample.Test)
 
 local kHistory = 14
 local kColors = {inn = sample.accent, market = sample.warm}
-local kCode = "audio.playMusic(track, {fade = 2, loop = true, volume = 0.8})\naudio.stopMusic(2)\naudio.pauseAll()\naudio.resumeAll()\naudio.music() == track"
+local kCode = "local music = audio.playMusic(track, {fade = 2, loop = true, volume = 0.8})\naudio.pause(music)\naudio.resume(music)\naudio.stopMusic(2)\naudio.music() == track"
 
 function Music:enter()
     self.fade, self.loop, self.volume = 2, true, 0.8
@@ -32,14 +32,13 @@ function Music:enter()
                 ui.button{id = 'resume', text = 'Resume', onClick = function() self:resume() end},
                 ui.button{id = 'stop', text = 'Stop', variant = 'destructive', onClick = function() self:stop() end},
             },
-            ui.label{text = 'Asking for the track that already plays keeps it going and only changes its volume, which the volume slider uses. The music has no voice id, so Pause and Resume hold every voice with pauseAll and resumeAll.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'Asking for the track that already plays keeps it going on the same voice and only changes its volume, which the volume slider uses. Pause and Resume hold only the music, through the voice that playMusic returns.', color = 'textMuted', font = 'caption'},
             ui.label{text = kCode, font = 'monospace'},
         },
     })
 end
 
 function Music:exit()
-    audio.resumeAll()
     audio.stopMusic(0.3)
 end
 
@@ -48,17 +47,26 @@ function Music:current()
     return segment and not segment.stop and segment or nil
 end
 
--- Ends the segment of the graph that plays now, fading out over `fade` seconds.
+-- Ends the segment of the graph that plays now, fading out over `fade` seconds, or at once when the track was paused, since a paused track fades out in silence.
 function Music:endCurrent(fade)
     local current = self:current()
     if current then
-        current.stop, current.fadeOut = self.clock, fade
+        current.stop, current.fadeOut = self.clock, self.pausedAt and 0 or fade
+    end
+    self:endPause()
+end
+
+-- Closes the red span of a pause.
+function Music:endPause()
+    if self.pausedAt then
+        self.pauses[#self.pauses + 1] = {self.pausedAt, self.clock}
+        self.pausedAt = nil
     end
 end
 
 function Music:play(track)
     local current = self:current()
-    audio.playMusic(sounds.track(track.path), {fade = self.fade, loop = self.loop, volume = self.volume})
+    self.voice = audio.playMusic(sounds.track(track.path), {fade = self.fade, loop = self.loop, volume = self.volume})
     if current and current.track == track then
         return
     end
@@ -77,17 +85,16 @@ function Music:setVolume(volume)
 end
 
 function Music:pause()
-    if not self.pausedAt then
-        audio.pauseAll()
+    if self:current() and not self.pausedAt then
+        audio.pause(self.voice)
         self.pausedAt = self.clock
     end
 end
 
 function Music:resume()
     if self.pausedAt then
-        audio.resumeAll()
-        self.pauses[#self.pauses + 1] = {self.pausedAt, self.clock}
-        self.pausedAt = nil
+        audio.resume(self.voice)
+        self:endPause()
     end
 end
 
@@ -113,7 +120,7 @@ function Music:update(dt)
             name = track.text
         end
     end
-    self:status(string.format('music() %s   paused %s   voices %d   music bus %.2f', name, self.pausedAt ~= nil, audio.voiceCount(), audio.busVolume('music')))
+    self:status(string.format('music() %s   paused %s   voices %d   music bus %.2f', name, self.voice ~= nil and audio.paused(self.voice), audio.voiceCount(), audio.busVolume('music')))
 end
 
 -- The volume the calls asked for at a time: the fade in, the level set last and the fade out.
@@ -182,7 +189,7 @@ function Music:draw(area)
         graphics2d.drawCircle(left + 12, y + 14 + (index - 1) * 44, 10, kColors[track.id], {layer = 1})
         sample.caption(string.format('%s   %.0f seconds, %d Hz, %d channels, streamed %s%s', track.text, sound.duration, sound.sampleRate, sound.channels, sound.streamed, playing and '   playing' or ''), left + 34, y + (index - 1) * 44, {color = playing and sample.ink or sample.muted})
     end
-    sample.caption('Red spans: every voice paused with pauseAll', left, y + 100, {size = 18})
+    sample.caption('Red spans: the music paused through its voice', left, y + 100, {size = 18})
 end
 
 return Music

@@ -10,7 +10,7 @@ local audio = require('haylen.audio')
 
 Sounds are assets loaded through [haylen.assets](assets.md) from WAV, Ogg Vorbis, MP3 and FLAC files. A sound is decoded into memory by default, which suits short effects. The `stream` option keeps the encoded file in memory and decodes it while it plays, which suits long music.
 
-Every call to `audio.play()` starts a new voice and returns its id, an integer. The same sound can play on many voices at once, and each voice has its own volume, pitch, pan, position and playback cursor. Calls with the id of a voice that already finished do nothing, so an app never has to check a voice before stopping it. At most 128 voices play at once, and a new voice stops the oldest voice that is not music when the limit is reached.
+Every call to `audio.play()` starts a new voice and returns its id, an integer, and `audio.playMusic()` returns the id of the voice of the music track. The same sound can play on many voices at once, and each voice has its own volume, pitch, pan, position and playback cursor. Calls with the id of a voice that already finished do nothing, so an app never has to check a voice before stopping it. At most 128 voices play at once, and a new voice stops the oldest voice that is not music when the limit is reached.
 
 ```lua
 local assets = require('haylen.assets')
@@ -423,7 +423,7 @@ One music track plays at a time on its own voice. When the voice limit is reache
 
 ### audio.playMusic(sound, options)
 
-Starts a music track and crossfades from the previous one. When the requested track is already playing, it keeps playing and only its volume changes. The options table is optional, and unknown keys raise `Unknown option '<key>'.`.
+Starts a music track, crossfades from the previous one and returns the voice id of the track. The voice works with every voice function, so `audio.pause` and `audio.resume` pause the music alone, and `audio.setVolume`, `audio.addEffect` and `audio.stop` reach the track. When the requested track is already playing or paused, it keeps its voice, which the call returns, and only its volume changes. A paused track that the next track replaces stops without sounding again, and the next track plays. The options table is optional, and unknown keys raise `Unknown option '<key>'.`.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -440,7 +440,11 @@ local calm = assets.load('music/calm.ogg', 'sound', {stream = true})
 local battle = assets.load('music/battle.ogg', 'sound', {stream = true})
 
 audio.playMusic(calm, {volume = 0.8})
-audio.playMusic(battle, {fade = 2})
+local music = audio.playMusic(battle, {fade = 2})
+
+-- The pause menu holds the music alone, while the interface sounds keep playing.
+audio.pause(music)
+audio.resume(music)
 ```
 
 ### audio.stopMusic(fadeOut)
@@ -456,7 +460,7 @@ audio.stopMusic(0)
 
 ### audio.music()
 
-Returns the sound of the music track that is playing, or `nil` when no music plays.
+Returns the sound of the music track that is playing or paused, or `nil` when no music plays. A track stopped through its voice with `audio.stop` counts as over while it fades out.
 
 ```lua
 local assets = require('haylen.assets')
