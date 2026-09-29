@@ -4,6 +4,11 @@ on:
   push:
   pull_request:
 
+# A newer push to the same branch or pull request supersedes the run in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CPM_SOURCE_CACHE: ${{ github.workspace }}/.cache/cpm
 

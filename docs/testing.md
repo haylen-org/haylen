@@ -176,7 +176,7 @@ python3 make.py format --check
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs on every push and pull request. It sets `CPM_SOURCE_CACHE` to `.cache/cpm` in the workspace, and the build jobs cache that folder, keyed by the hash of `engine/cmake/haylen-dependencies.cmake`.
+`.github/workflows/ci.yml` runs on every push and pull request, and a newer push to the same branch or pull request cancels the run in progress. It sets `CPM_SOURCE_CACHE` to `.cache/cpm` in the workspace, and the build jobs cache that folder, keyed by the hash of `engine/cmake/haylen-dependencies.cmake`.
 
 | Job | Runner | What it does |
 | --- | --- | --- |
