@@ -187,7 +187,7 @@ TEST_F(AudioInterruptionTest, TheEngineResumesAudioOnlyWhileTheAppIsActive) {
     fixture.frames(1);
     EXPECT_EQ(published, (std::vector<std::string>{"audio_interrupted"}));
 
-    // An interruption that ends while the app is inactive waits for the app to become active, like Axmol does.
+    // An interruption that ends while the app is inactive waits for the app to become active, because the system gives the audio back only to an active app.
     engine.handleEvent({.type = platform::Event::Type::FocusLost});
     audio.reportDeviceEvent(Mixer::DeviceEvent::InterruptionEnded);
     fixture.frames(1);

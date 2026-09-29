@@ -457,7 +457,7 @@ print(#path)
 
 ## NavGraph
 
-A `NavGraph` finds paths through waypoints, like `AStar2D` in Godot. The game picks the integer id of every point. Each point has a position, a weight that scales the cost of stepping into it and an enabled flag, and connections join points in one or both directions. Stepping into a point costs the distance to it times its weight. Paths use A* and never pass through disabled points. Unknown ids raise an error such as `Point 7 is not in the graph.`
+A `NavGraph` finds paths through waypoints. The game picks the integer id of every point. Each point has a position, a weight that scales the cost of stepping into it and an enabled flag, and connections join points in one or both directions. Stepping into a point costs the distance to it times its weight. Paths use A* and never pass through disabled points. Unknown ids raise an error such as `Point 7 is not in the graph.`
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |

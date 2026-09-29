@@ -20,7 +20,7 @@
 
 namespace haylen::text {
 
-// Text written in BBCode markup like the RichTextLabel of Godot, laid out with a font family and animated by effects and a typewriter reveal. Layouts are cached by width and scale, and each frame applies the effects and the reveal to a copy of the layout.
+// Text written in BBCode markup, laid out with a font family and animated by effects and a typewriter reveal. Layouts are cached by width and scale, and each frame applies the effects and the reveal to a copy of the layout.
 class RichText final {
   public:
     RichText(std::string markup, RichTextOptions textOptions, std::shared_ptr<RichTextRegistry> textRegistry);

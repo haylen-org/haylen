@@ -45,7 +45,7 @@ math::Color TextEffect::Parameters::getColor(std::string_view key, math::Color b
     return *parsed;
 }
 
-// The easing curve of Godot, where a curve above 1 eases in, between 0 and 1 eases out and below 0 eases in and out.
+// The easing curve of the effects, where a curve above 1 eases in, between 0 and 1 eases out and below 0 eases in and out.
 float TextEffect::ease(float value, float curve) noexcept {
     const float x = std::clamp(value, 0.0F, 1.0F);
     if (curve > 0.0F) {

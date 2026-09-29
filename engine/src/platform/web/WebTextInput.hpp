@@ -9,7 +9,7 @@
 
 namespace haylen::platform {
 
-// Text input of the web runtime, like the one of Godot. A hidden textarea, or a password input, lies over the focused field next to the canvas and edits it, which brings the software keyboard of phones, the input methods of every browser and native paste, copy and undo. platform/web/haylen-runtime.js holds the page side.
+// Text input of the web runtime. A hidden textarea, or a password input, lies over the focused field next to the canvas and edits it, which brings the software keyboard of phones, the input methods of every browser and native paste, copy and undo. platform/web/haylen-runtime.js holds the page side.
 class WebTextInput final : public TextInput {
   public:
     [[nodiscard]] bool isNative() const noexcept override {

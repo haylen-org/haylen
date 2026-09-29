@@ -11,7 +11,7 @@
 
 namespace haylen::lighting2d {
 
-// Casts the 1D shadow maps of lights on the CPU, the maps Godot renders on the GPU. A point or spot light stores the distance of the nearest occluder in every direction around it, and a directional light the depth of the nearest occluder along the light at every point across it, both as fractions of their range. The light pass reads one row per shadowed light.
+// Casts the 1D shadow maps of lights on the CPU. A point or spot light stores the distance of the nearest occluder in every direction around it, and a directional light the depth of the nearest occluder along the light at every point across it, both as fractions of their range. The light pass reads one row per shadowed light.
 class ShadowMap final {
   public:
     static constexpr int kResolution = 1024;

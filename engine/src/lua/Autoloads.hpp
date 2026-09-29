@@ -19,7 +19,7 @@ class Engine;
 
 namespace haylen::lua {
 
-// The autoloads of an app: Lua modules that load before the first scene and live for the whole app, like the autoloads of Godot. Each one is the table its module returns, which require returns again and haylen.autoloads.<name> holds. It receives start, event, fixedUpdate, update, render, renderUi and stop when it defines them, and its processMode field decides whether it runs while the game is paused.
+// The autoloads of an app: Lua modules that load before the first scene and live for the whole app. Each one is the table its module returns, which require returns again and haylen.autoloads.<name> holds. It receives start, event, fixedUpdate, update, render, renderUi and stop when it defines them, and its processMode field decides whether it runs while the game is paused.
 class Autoloads final {
   public:
     // Loads the module, keeps its table under the name and calls its start. A name can only be taken once.

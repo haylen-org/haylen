@@ -12,7 +12,7 @@ namespace haylen::navigation2d {
 
 class GraphSearch;
 
-// A graph of waypoints for path finding, like AStar2D in Godot. Callers pick the point ids. Each point has a position, a weight that scales the cost of stepping into it and an enabled flag, and connections join points in one or both directions. Stepping into a point costs the distance to it times its weight.
+// A graph of waypoints for path finding. Callers pick the point ids. Each point has a position, a weight that scales the cost of stepping into it and an enabled flag, and connections join points in one or both directions. Stepping into a point costs the distance to it times its weight.
 class Graph final {
   public:
     // Adds a point, or moves an existing one and changes its weight while keeping its connections. Weights below 1 are rejected so searches stay optimal.

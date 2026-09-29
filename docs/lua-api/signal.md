@@ -1,6 +1,6 @@
 # haylen.signal
 
-`haylen.signal` creates signals in the model of the signals of Godot. A signal lets one object announce that something happened without knowing who listens, and emitting it calls every connected function with the emitted values. Use a signal when one object owns the announcement, such as a player that announces its health, and use [haylen.events](events.md) for announcements by name that the whole app may care about.
+`haylen.signal` creates signals. A signal lets one object announce that something happened without knowing who listens, and emitting it calls every connected function with the emitted values. Use a signal when one object owns the announcement, such as a player that announces its health, and use [haylen.events](events.md) for announcements by name that the whole app may care about.
 
 ```lua
 local signal = require('haylen.signal')

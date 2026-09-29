@@ -1,6 +1,6 @@
 # Platform bridge
 
-The platform bridge connects an app to native code, in the spirit of Godot plugins. An app calls a named method with JSON parameters and receives its JSON result asynchronously, and native code sends named events with JSON payloads that the app listens to. Every result and every event reaches the app on the frame thread, at the start of a frame. The bridge covers everything the engine does not wrap itself, such as sign-in, purchases, sharing, deep links or system settings, with handlers written in Java or Kotlin on Android, Objective-C or Swift on Apple platforms, JavaScript on the web, and C++ or Lua anywhere.
+The platform bridge connects an app to native code. An app calls a named method with JSON parameters and receives its JSON result asynchronously, and native code sends named events with JSON payloads that the app listens to. Every result and every event reaches the app on the frame thread, at the start of a frame. The bridge covers everything the engine does not wrap itself, such as sign-in, purchases, sharing, deep links or system settings, with handlers written in Java or Kotlin on Android, Objective-C or Swift on Apple platforms, JavaScript on the web, and C++ or Lua anywhere.
 
 This guide explains how the bridge works and how each platform implements methods. The Lua functions are documented in the [haylen.platform reference](lua-api/platform.md), and the [architecture guide](architecture.md) places the bridge among the other engine systems.
 

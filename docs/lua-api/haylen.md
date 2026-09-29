@@ -266,7 +266,7 @@ print('paused:', haylen.paused()) -- paused: false
 
 ### haylen.setPaused(paused)
 
-Pauses or unpauses the game, like `SceneTree.paused` in Godot. Scenes, autoloads, timers and tweens in the `'pausable'` process mode stop, those in `'whenPaused'` start, and fixed steps stop accumulating. The scenes that the change stops or starts get `paused` or `unpaused`, and the change publishes the `paused` or `unpaused` event of [haylen.events](events.md). The [lifecycle guide](../lifecycle.md#pause-and-process-modes) explains the process modes.
+Pauses or unpauses the game. Scenes, autoloads, timers and tweens in the `'pausable'` process mode stop, those in `'whenPaused'` start, and fixed steps stop accumulating. The scenes that the change stops or starts get `paused` or `unpaused`, and the change publishes the `paused` or `unpaused` event of [haylen.events](events.md). The [lifecycle guide](../lifecycle.md#pause-and-process-modes) explains the process modes.
 
 ```lua
 local haylen = require('haylen')

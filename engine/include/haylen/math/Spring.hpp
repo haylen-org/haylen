@@ -25,7 +25,7 @@ class Spring final {
     }
     void setSmoothTime(float seconds) noexcept;
 
-    // Advances any value toward the target and updates its velocity in place, like Unity's SmoothDamp.
+    // Advances any value toward the target and updates its velocity in place.
     [[nodiscard]] static float smoothDamp(float current, float target, float& currentVelocity, float smoothing, float deltaSeconds) noexcept;
     [[nodiscard]] static Vec2 smoothDamp(Vec2 current, Vec2 target, Vec2& currentVelocity, float smoothing, float deltaSeconds) noexcept;
 

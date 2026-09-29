@@ -1,4 +1,4 @@
-# Apps deploy their package the way the Axmol template deploys content. A package is app.json, the source folder and the content folder, so nothing else that shares the package folder ships.
+# Apps deploy their package into the app of each platform. A package is app.json, the source folder and the content folder, so nothing else that shares the package folder ships.
 # Desktop builds link those entries into an "app" folder next to the executable, so edited files show up without a rebuild.
 # Apple bundles carry them under Resources/app.
 # Web builds preload them at /app in the virtual file system.

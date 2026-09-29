@@ -226,7 +226,7 @@ To add or update a package, point `URL` at the latest release archive, compute t
 
 ## C++ apps
 
-An app package is a folder with `app.json`, the Lua modules under `source/` and the assets under `content/`, as the [Lua guide](lua.md) describes. Lua apps run from the prebuilt engine through the platform templates, as the [distribution guide](distribution.md) describes. C++ apps compile the engine with their own CMake project, and `haylen_add_app` in `engine/cmake/haylen-app.cmake` turns their package into an app for the platform being built, deploying it the way the Axmol template deploys its content. Only `app.json`, `source/` and `content/` are deployed, so the platform projects, notes and build files of an app can share its folder.
+An app package is a folder with `app.json`, the Lua modules under `source/` and the assets under `content/`, as the [Lua guide](lua.md) describes. Lua apps run from the prebuilt engine through the platform templates, as the [distribution guide](distribution.md) describes. C++ apps compile the engine with their own CMake project, and `haylen_add_app` in `engine/cmake/haylen-app.cmake` turns their package into an app for the platform being built, deploying it into the app of each platform. Only `app.json`, `source/` and `content/` are deployed, so the platform projects, notes and build files of an app can share its folder.
 
 ```cmake
 haylen_add_app(<target> PACKAGE <folder> [SOURCES <files>...] [CPP] [APPLE_PROJECT <folder>] [WEB_SHELL <file>])

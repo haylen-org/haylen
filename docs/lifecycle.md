@@ -262,7 +262,7 @@ end)
 
 ## Pause and process modes
 
-`haylen.setPaused(true)` pauses the game, like `SceneTree.paused` in Godot, and `haylen.paused()` reads it. The pause is part of the game and has nothing to do with the app states: a halted app stops everything, while a paused game stops only what the pause should stop and keeps running what should run while paused, such as a pause menu. Changing the pause publishes `paused` or `unpaused`, and fixed steps do not accumulate while the game is paused.
+`haylen.setPaused(true)` pauses the game, and `haylen.paused()` reads it. The pause is part of the game and has nothing to do with the app states: a halted app stops everything, while a paused game stops only what the pause should stop and keeps running what should run while paused, such as a pause menu. Changing the pause publishes `paused` or `unpaused`, and fixed steps do not accumulate while the game is paused.
 
 Scenes, autoloads, timers, tweens and sounds each have a process mode that decides whether they run in the current pause state. Sounds take the mode of their audio bus unless they have their own, and the buses start with effects and ambience pausable while music and interface sounds keep playing, as the [audio guide](audio.md#pause-and-process-modes) explains.
 
@@ -278,7 +278,7 @@ Scenes, autoloads, timers, tweens and sounds each have a process mode that decid
 
 The mode decides whether the top scene gets `update`, `fixedUpdate` and input events, and whether an autoload gets `update`, `fixedUpdate` and input events. Scenes and autoloads keep rendering in every mode, so a paused level stays on screen under its menu. Other events, such as focus changes, reach them in every mode.
 
-When the pause changes, every scene on the stack whose mode stops or starts it hears about it, from the bottom of the stack up, like the paused and unpaused notifications of Godot. A scene gets `paused` when the change stops it and `unpaused` when the change lets it run again. A scene in `'whenPaused'` therefore gets `unpaused` when the game pauses, and scenes in `'always'` or `'disabled'` hear nothing.
+When the pause changes, every scene on the stack whose mode stops or starts it hears about it, from the bottom of the stack up. A scene gets `paused` when the change stops it and `unpaused` when the change lets it run again. A scene in `'whenPaused'` therefore gets `unpaused` when the game pauses, and scenes in `'always'` or `'disabled'` hear nothing.
 
 Timers and tweens also choose their clock. By default they count scaled time, which `haylen.setTimeScale` slows down or freezes, and with `unscaled = true` they count real time. The pause and the time scale are independent: a time scale of zero freezes scaled time but keeps calling updates with a delta of zero, while the pause stops what it pauses. UI documents of [haylen.ui](lua-api/ui.md) keep real time, so menus animate and answer input while the game is paused.
 
@@ -322,7 +322,7 @@ timer.after(2.6, function() print('enemies after the pause', level.enemies) end,
 
 ## Autoloads
 
-Autoloads are Lua modules that load before the first scene and live for the whole app, like the autoloads of Godot. They hold what every scene shares, such as the player profile, the music or the connection to a server. An autoload is the table its module returns, and it receives these callbacks when it defines them, with the table as `self`.
+Autoloads are Lua modules that load before the first scene and live for the whole app. They hold what every scene shares, such as the player profile, the music or the connection to a server. An autoload is the table its module returns, and it receives these callbacks when it defines them, with the table as `self`.
 
 | Callback | Called |
 | --- | --- |

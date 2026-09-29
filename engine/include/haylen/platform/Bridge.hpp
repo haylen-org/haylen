@@ -15,7 +15,7 @@
 
 namespace haylen::platform {
 
-// JSON request and event channel between the app and native code, in the spirit of Godot plugins. Results and events always reach callbacks on the frame thread. Call ids are unique in the whole process, so a reply that arrives after the app restarted never answers a call of the new app.
+// JSON request and event channel between the app and native code. Results and events always reach callbacks on the frame thread. Call ids are unique in the whole process, so a reply that arrives after the app restarted never answers a call of the new app.
 class Bridge final {
   public:
     struct Result {

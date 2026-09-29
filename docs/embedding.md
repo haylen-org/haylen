@@ -127,7 +127,7 @@ haylen_add_app(<target> PACKAGE <folder> [SOURCES <files>...] [CPP] [APPLE_PROJE
 | `APPLE_PROJECT` | Folder with `mac/Info.plist.in`, `ios/Info.plist.in`, `ios/LaunchScreen.storyboard`, `tvos/Info.plist.in` and `tvos/LaunchScreen.storyboard`. The default is `engine/platform/apple`. |
 | `WEB_SHELL` | HTML shell of the browser build. The default is `engine/platform/web/shell.html`. |
 
-The function links `haylen::runtime` and deploys the package the way the Axmol template deploys content. On Apple platforms it also adds `AppleMain.cpp`, whose `main` enters the runtime through `haylen_main`, because `sokol_app` leaves `main` to the app there. Only `app.json`, `source/` and `content/` are deployed, so platform projects, notes and build files can share the package folder.
+The function links `haylen::runtime` and deploys the package into the app of each platform. On Apple platforms it also adds `AppleMain.cpp`, whose `main` enters the runtime through `haylen_main`, because `sokol_app` leaves `main` to the app there. Only `app.json`, `source/` and `content/` are deployed, so platform projects, notes and build files can share the package folder.
 
 | Platform | Result |
 | --- | --- |

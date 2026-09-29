@@ -19,7 +19,7 @@ class MapRenderer;
 
 namespace haylen::lighting2d {
 
-// A shape that blocks the light of lights with shadows, like LightOccluder2D in Godot. Its points are local to its position, rotation and scale, and a closed occluder also joins its last point to the first. Every edge casts shadows unless the cull mode skips the edges a light sees wound clockwise or counterclockwise on screen, so a polygon wound clockwise with counterclockwise culling stays lit itself and only darkens what lies behind it. Lights cast shadows from occluders whose mask shares a bit with their shadow mask.
+// A shape that blocks the light of lights with shadows. Its points are local to its position, rotation and scale, and a closed occluder also joins its last point to the first. Every edge casts shadows unless the cull mode skips the edges a light sees wound clockwise or counterclockwise on screen, so a polygon wound clockwise with counterclockwise culling stays lit itself and only darkens what lies behind it. Lights cast shadows from occluders whose mask shares a bit with their shadow mask.
 struct Occluder {
     enum class Cull : std::uint8_t {
         Disabled,

@@ -1,6 +1,6 @@
 # Distributing apps
 
-A Haylen app is a package: `app.json`, the Lua modules under `source/` and the assets under `content/`. The engine is compiled once into prebuilt artifacts for every platform, and ready-made platform projects in `templates/platform/` only wait for a package, like the templates folder of Axmol. `make.py` puts the two together: it assembles the template of a platform with the package of an app, writes the name, identifier, version, orientation and splash screen of `app.json` into the project, builds it and launches it. A Lua app never compiles the engine, and the same package runs on every platform.
+A Haylen app is a package: `app.json`, the Lua modules under `source/` and the assets under `content/`. The engine is compiled once into prebuilt artifacts for every platform, and ready-made platform projects in `templates/platform/` only wait for a package. `make.py` puts the two together: it assembles the template of a platform with the package of an app, writes the name, identifier, version, orientation and splash screen of `app.json` into the project, builds it and launches it. A Lua app never compiles the engine, and the same package runs on every platform.
 
 This guide covers the commands, the engine artifacts, the templates, the way an app is assembled, platform overrides, splash screens, the web loader, the local web server and the platforms Haylen supports. The [build guide](build.md) covers building the engine itself and the [embedding guide](embedding.md) covers C++ projects that compile the engine through CMake.
 

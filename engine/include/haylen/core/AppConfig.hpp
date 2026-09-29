@@ -67,7 +67,7 @@ struct AppConfig {
     audio::Session audioSession{};
     Debug debug{};
 
-    // Lua modules that load before the first scene and live for the whole app, like the autoloads of Godot.
+    // Lua modules that load before the first scene and live for the whole app.
     std::vector<std::string> autoloads;
 
     // Set by the runtime rather than app.json: a package opened from a folder during development reloads when its files change.

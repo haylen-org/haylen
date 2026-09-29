@@ -1,6 +1,6 @@
 # Text
 
-Haylen draws text from fonts of two kinds and styles it with BBCode markup in the manner of the RichTextLabel of Godot. This guide explains fonts, font families and bitmap fonts, the markup of rich text with its effects and typewriter reveal, and how 2D drawing and the UI show it. The [haylen.graphics reference](lua-api/graphics.md#font) lists the font API, the [haylen.graphics2d reference](lua-api/graphics2d.md#richtext) the rich text API, and the [haylen.ui reference](lua-api/ui.md#uirichtextproperties) the `richText` component.
+Haylen draws text from fonts of two kinds and styles it with BBCode markup. This guide explains fonts, font families and bitmap fonts, the markup of rich text with its effects and typewriter reveal, and how 2D drawing and the UI show it. The [haylen.graphics reference](lua-api/graphics.md#font) lists the font API, the [haylen.graphics2d reference](lua-api/graphics2d.md#richtext) the rich text API, and the [haylen.ui reference](lua-api/ui.md#uirichtextproperties) the `richText` component.
 
 ## Fonts
 
@@ -92,7 +92,7 @@ Any other tag name runs a text effect of that name. Malformed markup raises an e
 
 ## Effects
 
-Effects animate the glyphs of their tag every frame, changing their offset, color and visibility. Rich text keeps the laid out glyphs and applies the effects to a copy, so the time alone decides where a glyph is, and the same time always gives the same picture. Effects nest, and the outer one runs first. The built-in effects follow Godot:
+Effects animate the glyphs of their tag every frame, changing their offset, color and visibility. Rich text keeps the laid out glyphs and applies the effects to a copy, so the time alone decides where a glyph is, and the same time always gives the same picture. Effects nest, and the outer one runs first. The built-in effects are:
 
 | Effect | Attributes | Motion |
 | --- | --- | --- |

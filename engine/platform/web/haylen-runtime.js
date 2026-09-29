@@ -252,7 +252,7 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-    // Native text editing, like the one of Godot. A hidden textarea, or a password input, lies over the focused field next to the canvas, so phones open their keyboard and browsers bring their input methods, paste, copy and undo. The engine also lists the fields on screen, because Safari on iOS opens the keyboard only when an element takes the focus inside a user gesture.
+    // Native text editing. A hidden textarea, or a password input, lies over the focused field next to the canvas, so phones open their keyboard and browsers bring their input methods, paste, copy and undo. The engine also lists the fields on screen, because Safari on iOS opens the keyboard only when an element takes the focus inside a user gesture.
     const text = { elements: {}, field: null, fields: [], active: null, composition: null, finishing: false, keyboard: [0, 0, 0, 0] };
     haylen.textInput = text;
 

@@ -11,7 +11,7 @@ class Engine;
 
 namespace haylen::debug {
 
-// The on-screen debug statistics. Compact mode draws the frame rate, frame time, draw calls, vertices and instances in a corner of the safe area with the 2D renderer, like the statistics of Axmol, so it works in every app. Full mode shows the debug overlay window instead.
+// The on-screen debug statistics. Compact mode draws the frame rate, frame time, draw calls, vertices and instances in a corner of the safe area with the 2D renderer, so it works in every app. Full mode shows the debug overlay window instead.
 class StatsDisplay final {
   public:
     enum class Mode : std::uint8_t {

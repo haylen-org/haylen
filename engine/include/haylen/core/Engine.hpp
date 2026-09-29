@@ -159,7 +159,7 @@ class Engine final {
     void requestRestart() noexcept;
     [[nodiscard]] bool isRestartRequested() const noexcept;
 
-    // Pauses the game like SceneTree.paused in Godot: pausable scenes, autoloads, timers and tweens stop, those that run when paused start, and fixed steps stop accumulating. It tells the scenes it stops or starts, emits pausedChanged and publishes the paused or unpaused event.
+    // Pauses the game: pausable scenes, autoloads, timers and tweens stop, those that run when paused start, and fixed steps stop accumulating. It tells the scenes it stops or starts, emits pausedChanged and publishes the paused or unpaused event.
     void setPaused(bool value);
     [[nodiscard]] bool isPaused() const noexcept;
 

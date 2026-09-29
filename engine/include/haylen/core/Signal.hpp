@@ -16,7 +16,7 @@
 
 namespace haylen::core {
 
-// Type-safe multicast callback in the model of Godot signals. Slots run by descending priority and then in connection order. Slots may connect and disconnect while the signal emits: a slot disconnected by an earlier one is skipped, and a slot connected during an emit is first called by the next one. Emitting allocates nothing.
+// Type-safe multicast callback. Slots run by descending priority and then in connection order. Slots may connect and disconnect while the signal emits: a slot disconnected by an earlier one is skipped, and a slot connected during an emit is first called by the next one. Emitting allocates nothing.
 template <typename... Args> class Signal final {
   public:
     using Slot = std::function<void(Args...)>;

@@ -1928,7 +1928,7 @@ print(#fence:sample(10)) -- 10
 
 ## Spring
 
-A critically damped spring that follows a moving target as fast as possible without overshooting it, like Unity's `SmoothDamp`. The smooth time is roughly how long the value takes to reach a target that stands still. It suits cameras, health bars and anything that should settle smoothly.
+A critically damped spring that follows a moving target as fast as possible without overshooting it. The smooth time is roughly how long the value takes to reach a target that stands still. It suits cameras, health bars and anything that should settle smoothly.
 
 ### m.spring(value, smoothTime)
 

@@ -10,7 +10,7 @@ The name `debug` shadows the standard Lua `debug` library in the file that requi
 
 ## Statistics display
 
-The engine shows its statistics in one of three modes, like the statistics of Axmol.
+The engine shows its statistics in one of three modes.
 
 | Mode | What shows |
 | --- | --- |

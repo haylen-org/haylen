@@ -57,7 +57,7 @@ Unlit canvases ignore the lighting keys, and [haylen.lighting2d](lighting2d.md#h
 
 The `sort` option of a canvas chooses how draws of one layer are ordered. `'layer'` keeps the order in which the app made them, `'depth'` sorts them by `depth`, and `'y'` sorts them by the y they stand on plus their `sortOffset`, so lower draws cover higher ones without setting any depth. Sprites stand on their pivot, and every sprite of a batch sorts on its own. Text stands on its position, and rectangles, lines, shapes, meshes, nine-slices, static batches and image blends stand on their lowest point. Draws that sort the same keep the order in which the app made them. `graphics2d.pushLayerOffset` shifts the layer of every following draw of the canvas, so a group of draws, such as a character and its shadow, can move between layers together.
 
-Visibility bits hide draws from some canvases, like the visibility layers of Godot: draw the world once for the main camera and again for a minimap canvas whose `visibilityMask` leaves out details. The blend modes are:
+Visibility bits hide draws from some canvases: draw the world once for the main camera and again for a minimap canvas whose `visibilityMask` leaves out details. The blend modes are:
 
 | Name | Effect |
 | --- | --- |
@@ -1503,7 +1503,7 @@ scene.push({
 
 ## Camera
 
-A `Camera` shows a part of the world for `graphics2d.beginWorld` and `graphics2d.beginTarget`, in the spirit of the `Camera2D` of Godot. `graphics2d.newCamera` creates it. Its `position` is the point of the world it shows, and `camera:follow` moves that position toward a target through the dead zone, the drag margins, the look-ahead, the smoothing and the limits, while `camera:update` advances the shake and the rotation smoothing. Vector and rectangle properties return copies, so assign a new value instead of changing a field of the returned one.
+A `Camera` shows a part of the world for `graphics2d.beginWorld` and `graphics2d.beginTarget`. `graphics2d.newCamera` creates it. Its `position` is the point of the world it shows, and `camera:follow` moves that position toward a target through the dead zone, the drag margins, the look-ahead, the smoothing and the limits, while `camera:update` advances the shake and the rotation smoothing. Vector and rectangle properties return copies, so assign a new value instead of changing a field of the returned one.
 
 The methods measure the view with the screen, the visible design area of `viewport.visibleRect()`, and a `viewport` is a rectangle of that screen in design coordinates. Screen points, such as the pointer positions of [haylen.input](input.md), are in the same design coordinates.
 
@@ -1867,7 +1867,7 @@ scene.push({
 
 ## Parallax
 
-A `Parallax` is a layer that scrolls at its own rate as the camera moves, which suggests depth, like the `Parallax2D` of Godot, for any texture and outside Tiled maps too. `graphics2d.newParallax` creates it. It draws its texture at its position moved by its offset, and repeats it on the axes that repeat until it covers the part of the world the camera shows. Vector and rectangle properties return copies.
+A `Parallax` is a layer that scrolls at its own rate as the camera moves, which suggests depth, for any texture and outside Tiled maps too. `graphics2d.newParallax` creates it. It draws its texture at its position moved by its offset, and repeats it on the axes that repeat until it covers the part of the world the camera shows. Vector and rectangle properties return copies.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |

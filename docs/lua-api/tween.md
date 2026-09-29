@@ -1,6 +1,6 @@
 # haylen.tween
 
-`haylen.tween` animates values over time, in the spirit of DOTween, GSAP, the `Tween` of Godot and the actions of Axmol. A tween moves fields of tables and properties of engine objects toward target values with an easing curve, and it can repeat, yoyo, run backwards, seek and be awaited. Ready-made tweens move, scale, rotate, fade, tint, jump, follow paths and Bézier curves, blink, shake and punch. Timelines play tweens, pauses and calls at their places in time and nest into each other, and staggers start the same tween on many targets one after another. Use tweens for UI motion, camera moves, fades, juice such as hits and pickups, and scripted cutscenes.
+`haylen.tween` animates values over time. A tween moves fields of tables and properties of engine objects toward target values with an easing curve, and it can repeat, yoyo, run backwards, seek and be awaited. Ready-made tweens move, scale, rotate, fade, tint, jump, follow paths and Bézier curves, blink, shake and punch. Timelines play tweens, pauses and calls at their places in time and nest into each other, and staggers start the same tween on many targets one after another. Use tweens for UI motion, camera moves, fades, juice such as hits and pickups, and scripted cutscenes.
 
 ```lua
 local tween = require('haylen.tween')
@@ -235,7 +235,7 @@ tween.punch(button, 0.5, -16, {field = 'offsetY', vibrato = 6, elasticity = 0.5}
 
 ### tween.timeline(options)
 
-Creates an empty [Timeline](#timeline) and returns it. A timeline is a tween that plays other tweens, pauses and calls at their places in time, like the timelines of GSAP and the sequences of DOTween. It takes every option of [Options](#options) except those that animate values, plus `onStep`, and it repeats, yoyos, seeks and reverses like any tween, moving everything inside it. Tweens join a timeline right after they are created, before they play, and leave the engine to play inside it. A tween that has already started raises `Only a tween that has not started and is in no other timeline can join a timeline.`
+Creates an empty [Timeline](#timeline) and returns it. A timeline is a tween that plays other tweens, pauses and calls at their places in time. It takes every option of [Options](#options) except those that animate values, plus `onStep`, and it repeats, yoyos, seeks and reverses like any tween, moving everything inside it. Tweens join a timeline right after they are created, before they play, and leave the engine to play inside it. A tween that has already started raises `Only a tween that has not started and is in no other timeline can join a timeline.`
 
 ```lua
 local tween = require('haylen.tween')

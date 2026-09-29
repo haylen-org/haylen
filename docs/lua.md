@@ -149,7 +149,7 @@ return title
 
 ## Autoloads
 
-Autoloads are modules that load before the first scene and live for the whole app, like the autoloads of Godot. They hold what every scene shares, such as the player profile, the music or a server connection. `app.json` lists them in its `autoload` array, and they load in that order before `source/main.lua` runs. An autoload is the table its module returns, which `require` returns again anywhere and `haylen.autoloads.<name>` holds, where the name is the last part of the module in camel case. It receives `start`, `event`, `fixedUpdate`, `update`, `render`, `renderUi` and `stop` when it defines them, and its `processMode` field decides whether it runs while the game is paused. `haylen.autoload` adds one at run time. The [lifecycle guide](lifecycle.md#autoloads) explains when each callback runs.
+Autoloads are modules that load before the first scene and live for the whole app. They hold what every scene shares, such as the player profile, the music or a server connection. `app.json` lists them in its `autoload` array, and they load in that order before `source/main.lua` runs. An autoload is the table its module returns, which `require` returns again anywhere and `haylen.autoloads.<name>` holds, where the name is the last part of the module in camel case. It receives `start`, `event`, `fixedUpdate`, `update`, `render`, `renderUi` and `stop` when it defines them, and its `processMode` field decides whether it runs while the game is paused. `haylen.autoload` adds one at run time. The [lifecycle guide](lifecycle.md#autoloads) explains when each callback runs.
 
 ```json
 {

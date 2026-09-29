@@ -13,7 +13,7 @@
 
 namespace haylen::core {
 
-// A tween that plays other tweens and callbacks at their places in time, like the timelines of GSAP and the sequences of DOTween. Appended items start a new step at the end, joined items run in parallel with the last step, and inserted items go at a time or a label. Timelines nest, repeat and yoyo like any tween, and every tween inside renders from the timeline, so seeking and reversing a timeline moves everything in it.
+// A tween that plays other tweens and callbacks at their places in time. Appended items start a new step at the end, joined items run in parallel with the last step, and inserted items go at a time or a label. Timelines nest, repeat and yoyo like any tween, and every tween inside renders from the timeline, so seeking and reversing a timeline moves everything in it.
 class Timeline final : public Tween {
   public:
     // Where a stagger starts: from the first tween, from the last one or from the middle of the list outwards.

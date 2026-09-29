@@ -56,7 +56,7 @@ class Scene {
     virtual void pause(Engine& engine);
     virtual void resume(Engine& engine);
 
-    // The game pause stops or starts the scene by its process mode, like the paused and unpaused notifications of Godot. A scene is paused when the change stops it and unpaused when the change lets it run again, so a scene that runs only while the game is paused is unpaused when the game pauses.
+    // The game pause stops or starts the scene by its process mode. A scene is paused when the change stops it and unpaused when the change lets it run again, so a scene that runs only while the game is paused is unpaused when the game pauses.
     virtual void paused(Engine& engine);
     virtual void unpaused(Engine& engine);
 
