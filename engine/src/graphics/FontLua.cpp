@@ -3,6 +3,7 @@
 #include <lua.hpp>
 
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -15,6 +16,8 @@
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/text/BitmapFont.hpp"
+#include "text/BidiParagraph.hpp"
+#include "text/Segmenter.hpp"
 
 namespace haylen::graphics {
 
@@ -87,22 +90,24 @@ int FontLua::measure(lua_State* L) {
     return 2;
 }
 
-// Lays text out with layout(text, style) and returns its glyph quads, its size and its line count, with the anchor applied.
-int FontLua::layout(lua_State* L) {
-    const text::TextLayout laid = lua::Userdata::check<text::Font>(L, 1).layout(lua::Stack::read<std::string_view>(L, 2), lua::TypeConverter::readTextStyle(L, 3));
+// Pushes the glyph quads of a layout in visual order with the anchor of the style applied, each with the font that draws it, and the size and line count of the block.
+int FontLua::pushLayout(lua_State* L, const text::TextLayout& laid, const text::TextStyle& style, const std::function<std::shared_ptr<text::Font>(const text::Font*)>& fontOf) {
+    const math::Vec2 anchorOffset = laid.size * style.anchor;
     lua_createtable(L, 0, 3);
-    lua_createtable(L, static_cast<int>(laid.quads.size()), 0);
-    for (std::size_t index = 0; index < laid.quads.size(); ++index) {
-        const text::GlyphQuad& quad = laid.quads[index];
-        lua_createtable(L, 0, 4);
-        lua::Stack::push(L, quad.position);
+    lua_createtable(L, static_cast<int>(laid.glyphs.size()), 0);
+    for (std::size_t index = 0; index < laid.glyphs.size(); ++index) {
+        const text::TextLayout::Glyph& glyph = laid.glyphs[index];
+        lua_createtable(L, 0, 5);
+        lua::Stack::push(L, glyph.position - anchorOffset);
         lua_setfield(L, -2, "position");
-        lua::Stack::push(L, quad.size);
+        lua::Stack::push(L, glyph.size);
         lua_setfield(L, -2, "size");
-        lua::Stack::push(L, quad.source);
+        lua::Stack::push(L, glyph.source);
         lua_setfield(L, -2, "source");
-        lua::Stack::push(L, static_cast<int>(quad.page) + 1);
+        lua::Stack::push(L, static_cast<int>(glyph.page) + 1);
         lua_setfield(L, -2, "page");
+        lua::Stack::push(L, fontOf(laid.looks[glyph.look].font));
+        lua_setfield(L, -2, "font");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
     lua_setfield(L, -2, "quads");
@@ -111,6 +116,13 @@ int FontLua::layout(lua_State* L) {
     lua::Stack::push(L, laid.lineCount);
     lua_setfield(L, -2, "lineCount");
     return 1;
+}
+
+// Lays text out with layout(text, style) and returns its glyph quads, its size and its line count.
+int FontLua::layout(lua_State* L) {
+    const std::shared_ptr<text::Font> font = lua::Userdata::checkShared<text::Font>(L, 1);
+    const text::TextStyle style = lua::TypeConverter::readTextStyle(L, 3);
+    return pushLayout(L, *font->layout(lua::Stack::read<std::string_view>(L, 2), style), style, [&font](const text::Font*) { return font; });
 }
 
 float FontLua::lineHeight(text::Font& font, float size) {
@@ -130,10 +142,28 @@ int FontLua::hasGlyph(lua_State* L) {
     return 1;
 }
 
-// Returns the glyph of a character at the native size as {source, offset, advance, page, visible}.
+// Shapes a whole text as one run in the script of its first letter, in the direction and language of the options.
+std::vector<text::Font::ShapedGlyph> FontLua::shapeText(text::Font& font, std::u32string_view text, text::Direction direction, std::string_view language) {
+    std::vector<text::Font::ShapedGlyph> shaped;
+    if (text.empty()) {
+        return shaped;
+    }
+    const std::vector<std::uint32_t> scripts = text::Segmenter::getScripts(text);
+    const bool rightToLeft = text::BidiParagraph(text, direction).isRightToLeft();
+    font.shape({.text = text, .begin = 0, .end = text.size(), .script = scripts.front(), .language = language, .rightToLeft = rightToLeft}, shaped);
+    return shaped;
+}
+
+// Returns the glyph of a character at the native size as {index, source, offset, advance, page, visible}, shaped on its own.
 int FontLua::glyph(lua_State* L) {
-    const text::Font::Glyph& found = lua::Userdata::check<text::Font>(L, 1).getGlyph(readCharacter(L, 2));
-    lua_createtable(L, 0, 5);
+    text::Font& font = lua::Userdata::check<text::Font>(L, 1);
+    const char32_t character = readCharacter(L, 2);
+    const std::vector<text::Font::ShapedGlyph> shaped = shapeText(font, std::u32string_view(&character, 1), text::Direction::Auto, {});
+    const std::uint32_t index = shaped.empty() ? 0 : shaped.front().index;
+    const text::Font::Glyph& found = font.getGlyph(index);
+    lua_createtable(L, 0, 6);
+    lua::Stack::push(L, index);
+    lua_setfield(L, -2, "index");
     lua::Stack::push(L, found.source);
     lua_setfield(L, -2, "source");
     lua::Stack::push(L, found.offset);
@@ -147,8 +177,36 @@ int FontLua::glyph(lua_State* L) {
     return 1;
 }
 
-int FontLua::kerning(lua_State* L) {
-    lua::Stack::push(L, lua::Userdata::check<text::Font>(L, 1).getKerning(readCharacter(L, 2), readCharacter(L, 3)));
+// Shapes text with shape(text, {size, direction, language}) and returns its glyphs in visual order as {index, cluster, advance, offset}, where cluster counts code points from 1 and lengths are pixels at the size, the native size by default.
+int FontLua::shape(lua_State* L) {
+    text::Font& font = lua::Userdata::check<text::Font>(L, 1);
+    const std::u32string text = core::Utf8::decode(lua::Stack::read<std::string_view>(L, 2));
+    float size = font.getNativeSize();
+    text::Direction direction = text::Direction::Auto;
+    std::string language;
+    if (!lua_isnoneornil(L, 3)) {
+        luaL_checktype(L, 3, LUA_TTABLE);
+        lua::Table::checkFields(L, 3, {kShapeFields});
+        lua::Table::readField(L, 3, "size", size);
+        lua::Table::readField(L, 3, "direction", direction);
+        lua::Table::readField(L, 3, "language", language);
+    }
+
+    const float factor = size / font.getNativeSize();
+    const std::vector<text::Font::ShapedGlyph> shaped = shapeText(font, text, direction, language);
+    lua_createtable(L, static_cast<int>(shaped.size()), 0);
+    for (std::size_t index = 0; index < shaped.size(); ++index) {
+        lua_createtable(L, 0, 4);
+        lua::Stack::push(L, shaped[index].index);
+        lua_setfield(L, -2, "index");
+        lua::Stack::push(L, shaped[index].cluster + 1);
+        lua_setfield(L, -2, "cluster");
+        lua::Stack::push(L, shaped[index].advance * factor);
+        lua_setfield(L, -2, "advance");
+        lua::Stack::push(L, shaped[index].offset * factor);
+        lua_setfield(L, -2, "offset");
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
     return 1;
 }
 
@@ -228,10 +286,11 @@ int FontLua::familySelect(lua_State* L) {
     return pushSelection(L, family, family.select(bold, italic, mono));
 }
 
-// Picks the font that draws a character in a style with family:resolve(character, {bold, italic, mono}), which is a fallback when the face lacks the glyph.
+// Picks the font that draws a character in a style with family:resolve(character, {bold, italic, mono}), which is a fallback when the face lacks the glyph. The character may be a letter with its marks, given as one string.
 int FontLua::familyResolve(lua_State* L) {
     const text::FontFamily& family = lua::Userdata::check<text::FontFamily>(L, 1);
-    const char32_t character = readCharacter(L, 2);
+    const std::u32string character = lua_type(L, 2) == LUA_TNUMBER ? std::u32string(1, readCharacter(L, 2)) : core::Utf8::decode(lua::Stack::read<std::string_view>(L, 2));
+    luaL_argcheck(L, !character.empty(), 2, "expected a character");
     bool bold = false;
     bool italic = false;
     bool mono = false;
@@ -245,9 +304,23 @@ int FontLua::familyResolve(lua_State* L) {
     return pushSelection(L, family, family.resolve(family.select(bold, italic, mono), character, bold, italic));
 }
 
+int FontLua::familyMeasure(lua_State* L) {
+    const math::Vec2 size = lua::Userdata::check<text::FontFamily>(L, 1).measure(lua::Stack::read<std::string_view>(L, 2), lua::TypeConverter::readTextStyle(L, 3));
+    lua::Stack::push(L, size.x);
+    lua::Stack::push(L, size.y);
+    return 2;
+}
+
+// Lays text out with family:layout(text, style) like a font does, where each quad names the face or fallback that draws it.
+int FontLua::familyLayout(lua_State* L) {
+    const std::shared_ptr<text::FontFamily> family = lua::Userdata::checkShared<text::FontFamily>(L, 1);
+    const text::TextStyle style = lua::TypeConverter::readTextStyle(L, 3);
+    return pushLayout(L, *family->layout(lua::Stack::read<std::string_view>(L, 2), style), style, [&family](const text::Font* font) { return findFace(*family, font); });
+}
+
 void FontLua::install(lua_State* L) {
-    lua::ClassBuilder<text::Font>(L).function("measure", &lua::Binding::native<&measure>).function("layout", &lua::Binding::native<&layout>).function("lineHeight", &lua::Binding::function<&lineHeight>).function("ascent", &lua::Binding::function<&ascent>).function("toDistance", &lua::Binding::function<&toDistance>).function("hasGlyph", &lua::Binding::native<&hasGlyph>).function("glyph", &lua::Binding::native<&glyph>).function("kerning", &lua::Binding::native<&kerning>).function("page", &lua::Binding::native<&page>).property("nativeSize", &nativeSize).property("distanceField", &distanceField).property("pageCount", &pageCount).meta("__eq", &lua::Userdata::equal<text::Font>).install();
-    lua::ClassBuilder<text::FontFamily>(L).property("regular", &familyFace).property("bold", &familyFace).property("italic", &familyFace).property("boldItalic", &familyFace).property("mono", &familyFace).property("fallback", &familyFallback).function("select", &lua::Binding::native<&familySelect>).function("resolve", &lua::Binding::native<&familyResolve>).meta("__eq", &lua::Userdata::equal<text::FontFamily>).install();
+    lua::ClassBuilder<text::Font>(L).function("measure", &lua::Binding::native<&measure>).function("layout", &lua::Binding::native<&layout>).function("lineHeight", &lua::Binding::function<&lineHeight>).function("ascent", &lua::Binding::function<&ascent>).function("toDistance", &lua::Binding::function<&toDistance>).function("hasGlyph", &lua::Binding::native<&hasGlyph>).function("glyph", &lua::Binding::native<&glyph>).function("shape", &lua::Binding::native<&shape>).function("page", &lua::Binding::native<&page>).property("nativeSize", &nativeSize).property("distanceField", &distanceField).property("pageCount", &pageCount).meta("__eq", &lua::Userdata::equal<text::Font>).install();
+    lua::ClassBuilder<text::FontFamily>(L).property("regular", &familyFace).property("bold", &familyFace).property("italic", &familyFace).property("boldItalic", &familyFace).property("mono", &familyFace).property("fallback", &familyFallback).function("select", &lua::Binding::native<&familySelect>).function("resolve", &lua::Binding::native<&familyResolve>).function("measure", &lua::Binding::native<&familyMeasure>).function("layout", &lua::Binding::native<&familyLayout>).meta("__eq", &lua::Userdata::equal<text::FontFamily>).install();
 }
 
 } // namespace haylen::graphics

@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <fstream>
+#include <iterator>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -58,6 +60,12 @@ class UiLuaTest : public ::testing::Test {
 
     test::EngineFixture fixture;
 };
+
+// Reads a font of the fonts sample.
+std::string readSampleFont(const std::string& name) {
+    std::ifstream file(std::string(HAYLEN_SAMPLE_FONTS) + "/" + name, std::ios::binary);
+    return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+}
 
 } // namespace
 
@@ -268,6 +276,30 @@ TEST_F(UiLuaTest, PassesTheKeyboardOptionsOfTextComponents) {
     EXPECT_NE(fixture.lua("ui.mount(ui.secretField{autocapitalize = 'shout'})").find("secretField.autocapitalize"), std::string::npos);
 }
 
+// The UI takes a direction for all of it, and a node takes one for itself and its children.
+TEST_F(UiLuaTest, SetsTheDirectionOfTheUiAndOfNodes) {
+    fixture.runLua("ui = require('haylen.ui') localization = require('haylen.localization')");
+    EXPECT_EQ(fixture.lua("local set, drawn = ui.direction() return set .. ' ' .. drawn"), "ltr ltr");
+    fixture.runLua("ui.setDirection('rtl')");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("local set, drawn = ui.direction() return set .. ' ' .. drawn"), "rtl rtl");
+    fixture.runLua("localization.add('en', {}) localization.add('he', {['@direction'] = 'rtl'}) ui.setDirection('auto')");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("local set, drawn = ui.direction() return set .. ' ' .. drawn"), "auto ltr");
+    fixture.runLua("localization.setLanguage('he')");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("local set, drawn = ui.direction() return set .. ' ' .. drawn"), "auto rtl");
+
+    fixture.runLua("doc = ui.mount(ui.row{direction = 'ltr', language = 'he', gap = 10, ui.button{id = 'a', text = 'A'}, ui.button{id = 'b', text = 'B'}})");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return tostring(doc:bounds('a').x < doc:bounds('b').x)"), "true");
+    fixture.runLua("doc:set('a', {direction = 'inherit'}) doc:unmount() doc = ui.mount(ui.row{gap = 10, ui.button{id = 'a', text = 'A'}, ui.button{id = 'b', text = 'B'}})");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return tostring(doc:bounds('a').x > doc:bounds('b').x)"), "true");
+    EXPECT_NE(fixture.lua("ui.mount(ui.label{text = 'x', direction = 'up'})").find("label.direction is not one of the allowed names"), std::string::npos);
+    EXPECT_NE(fixture.lua("ui.setDirection('up')").find("up"), std::string::npos);
+}
+
 TEST_F(UiLuaTest, SwitchesThemesAndReadsInputCapture) {
     fixture.runLua("ui = require('haylen.ui')");
     EXPECT_EQ(fixture.lua("return ui.theme() .. ' ' .. table.concat(ui.themes(), ',')"), "dark dark,light");
@@ -308,6 +340,40 @@ TEST(UiLuaThemeTest, ReadsAndAddsThemes) {
     EXPECT_NE(fixture.lua("ui.themeSurface('floor')").find("The theme has an unknown surface: floor"), std::string::npos);
     EXPECT_NE(fixture.lua("ui.addTheme({colors = {}})").find("A theme needs a name."), std::string::npos);
     EXPECT_NE(fixture.lua("ui.addTheme({name = 'x'}, 'marble')").find("no theme named marble to start from"), std::string::npos);
+}
+
+// Labels and every other text component draw with the faces of the family of their role, bold where the role asks for it, and take the characters the face lacks from the fallbacks, while rich text of a role lines up with them.
+TEST(UiLuaFontTest, DrawsTextComponentsWithTheFacesAndFallbacksOfAFamily) {
+    test::EngineFixture fixture({{"content/fonts/cjk.ttf", readSampleFont("mplus_1p_regular.ttf")}, {"content/fonts/bold.ttf", readSampleFont("crimson_text_bold.ttf")}});
+    // clang-format off
+    fixture.runLua(R"(
+        assets = require('haylen.assets')
+        graphics = require('haylen.graphics')
+        graphics2d = require('haylen.graphics2d')
+        ui = require('haylen.ui')
+        ui.addFont('story', graphics.newFontFamily({regular = graphics2d.defaultFont(), bold = assets.font('fonts/bold.ttf'), fallback = {assets.font('fonts/cjk.ttf')}}))
+        ui.setTheme(ui.addTheme({name = 'story', fonts = {body = {font = 'story'}, heading = {font = 'story', bold = true}}}))
+        screen = ui.mount(ui.column{
+            ui.label{id = 'plain', text = 'Harbor lights', align = 'start'},
+            ui.richText{id = 'rich', text = 'Harbor lights', align = 'start'},
+            ui.label{id = 'japanese', text = '日本語', align = 'start'},
+            ui.label{id = 'heading', text = 'Harbor lights', font = 'heading', align = 'start'},
+        }, {placement = 'screen'})
+    )");
+    // clang-format on
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("local role = ui.themeFont('heading') return role.font .. ' ' .. tostring(role.bold) .. ' ' .. tostring(role.italic)"), "story true false");
+    EXPECT_NEAR(std::stof(fixture.lua("return screen:bounds('plain').width - screen:bounds('rich').width")), 0.0F, 2.0F);
+
+    // A Japanese character comes from the fallback and advances by one em of the default font, 2048 units of its 2400 from ascent to descent.
+    EXPECT_NEAR(std::stof(fixture.lua("return screen:bounds('japanese').width")), 3.0F * 30.0F * 2048.0F / 2400.0F, 1.0F);
+
+    // The bold face of the heading is another font, so the same text takes another width than in the regular face.
+    const std::string bold = fixture.lua("return screen:bounds('heading').width");
+    fixture.runLua("ui.setTheme(ui.addTheme({name = 'plain', fonts = {heading = {font = 'story'}}}))");
+    fixture.frames(2);
+    EXPECT_NE(fixture.lua("return screen:bounds('heading').width"), bold);
+    EXPECT_NE(fixture.lua("ui.addTheme({name = 'odd', fonts = {body = {bold = 'yes'}}})").find("The theme font body must set bold to true or false."), std::string::npos);
 }
 
 TEST_F(UiLuaTest, DrawsImmediateWindowsInsideScenes) {
@@ -433,6 +499,61 @@ TEST_F(UiLuaTest, NavigatesTheFocusAndHearsCancel) {
     EXPECT_EQ(fixture.lua("return tostring(ui.focused())"), "nil");
 }
 
+TEST_F(UiLuaTest, ReportsThePressesTheInterfaceCaptures) {
+    // clang-format off
+    fixture.runLua(R"(
+        input = require('haylen.input')
+        ui = require('haylen.ui')
+        input.loadActions({actions = {{name = 'back', type = 'button', bindings = {'key:escape', 'button:east'}}}})
+        screen = ui.mount(ui.column{ui.combo{id = 'size', width = 300, items = {{id = 'small', text = 'Small'}}}})
+    )");
+    // clang-format on
+    fixture.frames(1);
+    click("screen", "size");
+
+    // The escape that closes the list stays with the interface, while the raw keyboard still reports it.
+    platform::Event event;
+    event.type = platform::Event::Type::KeyDown;
+    event.key = input::Key::Escape;
+    getEngine().handleEvent(event);
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return tostring(input.keyCaptured('escape')) .. ' ' .. tostring(input.keyDown('escape')) .. ' ' .. tostring(input.down('back')) .. ' ' .. tostring(input.gamepadCaptured('east'))"), "true true false false");
+    event.type = platform::Event::Type::KeyUp;
+    getEngine().handleEvent(event);
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return tostring(input.keyCaptured('escape'))"), "false");
+}
+
+TEST_F(UiLuaTest, ReportsWhereFloatingNodesDraw) {
+    // clang-format off
+    fixture.runLua(R"(
+        ui = require('haylen.ui')
+        screen = ui.mount(ui.column{
+            ui.window{id = 'map', title = 'Map', x = 300, y = 200, width = 400, ui.label{text = 'Inside'}},
+            ui.toast{id = 'saved', open = true, text = 'Saved', duration = 0},
+        }, {placement = 'screen'})
+    )");
+    // clang-format on
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("local b = screen:bounds('map') return b.x .. ' ' .. b.y .. ' ' .. b.width"), "300.0 200.0 400.0");
+    EXPECT_EQ(fixture.lua("return tostring(screen:bounds('saved').height > 0)"), "true");
+
+    // The window moves with its title bar, and its bounds follow.
+    pointer(platform::Event::Type::MouseMove, {320.0F, 220.0F});
+    fixture.frames(1);
+    pointer(platform::Event::Type::MouseDown, {320.0F, 220.0F});
+    fixture.frames(1);
+    pointer(platform::Event::Type::MouseMove, {420.0F, 270.0F});
+    fixture.frames(1);
+    pointer(platform::Event::Type::MouseUp, {420.0F, 270.0F});
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("local b = screen:bounds('map') return b.x .. ' ' .. b.y"), "400.0 250.0");
+
+    fixture.runLua("screen:set('map', {open = false})");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return tostring(screen:bounds('map'))"), "nil");
+}
+
 TEST_F(UiLuaTest, SimulatesTheSafeAreaAndKeepsTheBackButton) {
     // clang-format off
     fixture.runLua(R"(
@@ -454,6 +575,42 @@ TEST_F(UiLuaTest, SimulatesTheSafeAreaAndKeepsTheBackButton) {
     EXPECT_NE(fixture.lua("viewport.setSafeAreaSimulation('watch')").find("There is no simulated device named watch."), std::string::npos);
 }
 
+TEST_F(UiLuaTest, ChangesTheScalingAndTheDesignSizeWhileRunning) {
+    fixture.host().resize({1920.0F, 1200.0F});
+    // clang-format off
+    fixture.runLua(R"(
+        input = require('haylen.input')
+        ui = require('haylen.ui')
+        viewport = require('haylen.viewport')
+        screen = ui.mount(ui.column{id = 'root', ui.label{text = 'Title'}}, {placement = 'screen'})
+        function describe(rect) return rect.x .. ' ' .. rect.y .. ' ' .. rect.width .. ' ' .. rect.height end
+    )");
+    // clang-format on
+    platform::Event move;
+    move.type = platform::Event::Type::MouseMove;
+    move.position = {0.0F, 0.0F};
+    getEngine().handleEvent(move);
+    fixture.frames(1);
+
+    // The design size and the policy apply at once, and the UI lays out in the new visible area from the next frame.
+    fixture.runLua("viewport.setDesignSize(1280, 720)");
+    EXPECT_EQ(fixture.lua("local width, height = viewport.designSize() return width .. ' ' .. height .. ' ' .. describe(viewport.visibleRect())"), "1280.0 720.0 0.0 -40.0 1280.0 800.0");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return describe(screen:bounds('root'))"), "0.0 -40.0 1280.0 800.0");
+
+    fixture.runLua("viewport.setScaling('fit')");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return viewport.scaling() .. ' ' .. describe(viewport.pixelRect()) .. ' ' .. describe(screen:bounds('root'))"), "fit 0.0 60.0 1920.0 1080.0 0.0 0.0 1280.0 720.0");
+
+    // The pointer stays on its screen point, which lies somewhere else in design space under the new policy.
+    EXPECT_EQ(fixture.lua("local x, y = input.mousePosition() return x .. ' ' .. y"), "0.0 -40.0");
+    fixture.runLua("viewport.setScaling('stretch')");
+    EXPECT_EQ(fixture.lua("local x, y = input.mousePosition() return x .. ' ' .. y"), "0.0 0.0");
+
+    EXPECT_NE(fixture.lua("viewport.setScaling('zoom')").find("unknown value 'zoom'"), std::string::npos);
+    EXPECT_NE(fixture.lua("viewport.setDesignSize(0, 720)").find("The design size needs a positive width and height."), std::string::npos);
+}
+
 TEST_F(UiLuaTest, BuildsTheComponentsForGamesAndApps) {
     // clang-format off
     fixture.runLua(R"(
@@ -471,7 +628,7 @@ TEST_F(UiLuaTest, BuildsTheComponentsForGamesAndApps) {
             ui.slotGrid{id = 'bag', slots = {{id = 's1'}, {id = 's2'}}},
             ui.contextMenu{id = 'menu', items = {{id = 'copy', text = 'Copy'}}, onSelect = note, ui.label{text = 'Target'}},
             ui.window{id = 'map', title = 'Map', x = 900, y = 100, ui.label{text = 'Inside'}},
-            ui.scroll{direction = 'horizontal', snap = true, width = 300, ui.row{ui.button{text = 'Card'}}},
+            ui.scroll{axis = 'horizontal', snap = true, width = 300, ui.row{ui.button{text = 'Card'}}},
         }, {placement = 'screen'})
     )");
     // clang-format on

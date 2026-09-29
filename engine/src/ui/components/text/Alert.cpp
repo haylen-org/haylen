@@ -37,10 +37,12 @@ void Alert::render(Context& context, const math::Rect& bounds) {
     const float radius = context.getMetric(Theme::Metric::ControlRadius);
     ImDrawList& list = *ImGui::GetWindowDrawList();
     list.AddRectFilled(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()), ImGuiConverter::toImU32(context.getColor(colors.background)), radius);
-    list.AddRectFilled(ImGuiConverter::toImVec2(bounds.getMin()), {bounds.x + kBar, bounds.getBottom()}, ImGuiConverter::toImU32(context.getColor(colors.fill)), radius, ImDrawFlags_RoundCornersLeft);
+    // The bar of the tone marks the side the UI starts.
+    const math::Rect bar = context.mirror({bounds.x, bounds.y, kBar, bounds.height}, bounds);
+    list.AddRectFilled(ImGuiConverter::toImVec2(bar.getMin()), ImGuiConverter::toImVec2(bar.getMax()), ImGuiConverter::toImU32(context.getColor(colors.fill)), radius, context.isRightToLeft() ? ImDrawFlags_RoundCornersRight : ImDrawFlags_RoundCornersLeft);
 
     const float padding = context.getMetric(Theme::Metric::ControlPaddingX);
-    const math::Rect inner = math::Rect::fromMinMax({bounds.x + kBar + padding, bounds.y + context.getMetric(Theme::Metric::ControlPaddingY)}, {bounds.getRight() - padding, bounds.getBottom()});
+    const math::Rect inner = context.mirror(math::Rect::fromMinMax({bounds.x + kBar + padding, bounds.y + context.getMetric(Theme::Metric::ControlPaddingY)}, {bounds.getRight() - padding, bounds.getBottom()}), bounds);
     float y = inner.y;
     if (const std::string titleText = context.getText(title); !titleText.empty()) {
         const float height = Typography::measureParagraph(context, Theme::Font::Button, titleText, inner.width).y;

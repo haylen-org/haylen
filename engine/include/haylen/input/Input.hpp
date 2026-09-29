@@ -37,6 +37,9 @@ class Input final {
     // Releases every held key and mouse button and cancels every touch, which the engine does when the app loses focus or leaves the foreground.
     void releaseAll() noexcept;
 
+    // Keeps the pointer and the fingers on the same screen points when the app changes how design space maps onto the screen.
+    void followViewport(const graphics::Viewport& previous, const graphics::Viewport& viewport) noexcept;
+
     [[nodiscard]] bool isKeyDown(Key key) const noexcept;
     [[nodiscard]] bool isKeyPressed(Key key) const noexcept;
     [[nodiscard]] bool isKeyReleased(Key key) const noexcept;

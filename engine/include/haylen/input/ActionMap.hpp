@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+#include <bitset>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -8,15 +10,16 @@
 #include <vector>
 
 #include "haylen/core/Json.hpp"
+#include "haylen/input/Controls.hpp"
 #include "haylen/input/GamepadAxis.hpp"
 #include "haylen/input/GamepadButton.hpp"
+#include "haylen/input/Input.hpp"
 #include "haylen/input/Key.hpp"
 #include "haylen/input/MouseButton.hpp"
 #include "haylen/math/Vec2.hpp"
 
 namespace haylen::input {
 
-class Input;
 class VirtualInput;
 
 // Maps named gameplay actions to devices in definition order. Buttons report edges, axes report [-1, 1] and vectors report a length up to 1.
@@ -72,6 +75,14 @@ class ActionMap final {
         // Resolves the type names "button", "axis" and "vector".
         [[nodiscard]] static std::optional<Type> typeFromName(std::string_view text) noexcept;
         [[nodiscard]] static std::string_view typeName(Type value) noexcept;
+        [[nodiscard]] bool operator==(const Action&) const = default;
+    };
+
+    // The keys and gamepad buttons the UI answers itself in the next frame: every key while a text field edits, and the bindings of the navigation actions it handles, such as cancel while a popup is open.
+    struct Capture {
+        bool keyboard = false;
+        std::bitset<Controls::kKeyCount> keys;
+        std::bitset<Controls::kGamepadButtonCount> buttons;
     };
 
     void load(const core::Json& document);
@@ -90,6 +101,13 @@ class ActionMap final {
         pressThreshold = value;
     }
     void update(const Input& input, const VirtualInput& virtualInput);
+
+    // A key or gamepad button pressed while the UI captures it stays with the UI until it is released, and every binding reads it as up meanwhile, like mouse buttons while the UI owns the pointer.
+    void setCapture(const Capture& value) noexcept {
+        capture = value;
+    }
+    [[nodiscard]] bool isKeyCaptured(Key key) const noexcept;
+    [[nodiscard]] bool isGamepadButtonCaptured(std::size_t index, GamepadButton button) const noexcept;
 
     [[nodiscard]] bool isDown(std::string_view name) const noexcept;
     [[nodiscard]] bool isPressed(std::string_view name) const noexcept;
@@ -119,10 +137,14 @@ class ActionMap final {
     [[nodiscard]] math::Vec2 getBindingVector(const Binding& binding, const Input& input, const VirtualInput& virtualInput) const noexcept;
     [[nodiscard]] float getStrongest(const std::vector<Binding>& list, const Input& input, const VirtualInput& virtualInput) const noexcept;
     [[nodiscard]] const State* find(std::string_view name) const noexcept;
+    void holdCaptured(const Input& input) noexcept;
 
     std::vector<State> actions;
     std::optional<std::size_t> gamepadIndex;
     float pressThreshold = 0.5F;
+    Capture capture;
+    std::bitset<Controls::kKeyCount> capturedKeys;
+    std::array<std::bitset<Controls::kGamepadButtonCount>, Input::kMaxGamepads> capturedButtons;
 };
 
 } // namespace haylen::input

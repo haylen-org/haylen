@@ -120,11 +120,11 @@ RichText::CachedLayout& RichText::getCachedLayout(float maxWidth) {
     return layouts.front();
 }
 
-const RichTextLayout& RichText::getLayout() {
+const TextLayout& RichText::getLayout() {
     return getCachedLayout(options.maxWidth).layout;
 }
 
-const RichTextLayout& RichText::getLayout(float maxWidth) {
+const TextLayout& RichText::getLayout(float maxWidth) {
     return getCachedLayout(maxWidth).layout;
 }
 
@@ -138,7 +138,7 @@ const std::vector<float>& RichText::getRevealTimes() {
     }
     revealTimes.clear();
     float clock = 0.0F;
-    for (const RichTextLayout::Character& character : getLayout().characters) {
+    for (const TextLayout::Character& character : getLayout().characters) {
         clock += character.pause + (options.revealSpeed > 0.0F ? 1.0F / (options.revealSpeed * character.speed) : 0.0F);
         revealTimes.push_back(clock);
     }
@@ -181,7 +181,7 @@ bool RichText::isRevealing() {
 }
 
 std::optional<std::string> RichText::getLinkAt(math::Vec2 point) {
-    for (const RichTextLayout::Area& area : getLayout().links) {
+    for (const TextLayout::Area& area : getLayout().links) {
         if (area.rect.contains(point)) {
             return document.links[area.index];
         }
@@ -190,7 +190,7 @@ std::optional<std::string> RichText::getLinkAt(math::Vec2 point) {
 }
 
 std::optional<std::string> RichText::getHintAt(math::Vec2 point) {
-    for (const RichTextLayout::Area& area : getLayout().hints) {
+    for (const TextLayout::Area& area : getLayout().hints) {
         if (area.rect.contains(point)) {
             return document.hints[area.index];
         }
@@ -199,11 +199,11 @@ std::optional<std::string> RichText::getHintAt(math::Vec2 point) {
 }
 
 // Effects see every glyph of their tag, counted from the first character inside the tag, and apply from the outermost tag in.
-void RichText::applyEffects(RichTextLayout& moved) {
+void RichText::applyEffects(TextLayout& moved) {
     if (effectStarts.size() != effects.size()) {
         effectStarts.assign(effects.size(), 0);
         std::vector<bool> seen(effects.size(), false);
-        for (const RichTextLayout::Glyph& glyph : moved.glyphs) {
+        for (const TextLayout::Glyph& glyph : moved.glyphs) {
             for (const std::size_t effect : document.styles[glyph.style].effects) {
                 if (!seen[effect]) {
                     seen[effect] = true;
@@ -213,7 +213,7 @@ void RichText::applyEffects(RichTextLayout& moved) {
         }
     }
 
-    for (RichTextLayout::Glyph& glyph : moved.glyphs) {
+    for (TextLayout::Glyph& glyph : moved.glyphs) {
         const std::vector<std::size_t>& tags = document.styles[glyph.style].effects;
         if (tags.empty()) {
             continue;
@@ -230,24 +230,32 @@ void RichText::applyEffects(RichTextLayout& moved) {
     }
 }
 
-// Characters the reveal has not reached hide, and the backgrounds and lines of partly revealed text end at the last revealed character.
-void RichText::applyReveal(RichTextLayout& revealed, std::size_t visible) {
-    for (RichTextLayout::Glyph& glyph : revealed.glyphs) {
+// Characters the reveal has not reached hide, and the backgrounds and lines of partly revealed text end at the last revealed character, which is at their left when their text reads right to left.
+void RichText::applyReveal(TextLayout& revealed, std::size_t visible) {
+    for (TextLayout::Glyph& glyph : revealed.glyphs) {
         glyph.visible = glyph.visible && glyph.character < visible;
     }
-    for (RichTextLayout::Image& image : revealed.images) {
+    for (TextLayout::Image& image : revealed.images) {
         image.visible = image.character < visible;
     }
-    for (RichTextLayout::Box& box : revealed.boxes) {
+    for (TextLayout::Box& box : revealed.boxes) {
         box.visible = box.firstCharacter < visible;
-        const bool followsText = box.kind == RichTextLayout::Box::Kind::Background || box.kind == RichTextLayout::Box::Kind::Underline || box.kind == RichTextLayout::Box::Kind::Strike;
-        if (box.visible && followsText && box.lastCharacter >= visible) {
-            box.rect.width = std::max(0.0F, revealed.characters[visible - 1].box.getRight() - box.rect.x);
+        const bool followsText = box.kind == TextLayout::Box::Kind::Background || box.kind == TextLayout::Box::Kind::Underline || box.kind == TextLayout::Box::Kind::Strike;
+        if (!box.visible || !followsText || box.lastCharacter < visible) {
+            continue;
+        }
+        const math::Rect& last = revealed.characters[visible - 1].box;
+        if (box.rightToLeft) {
+            const float right = box.rect.getRight();
+            box.rect.x = std::min(last.x, right);
+            box.rect.width = right - box.rect.x;
+        } else {
+            box.rect.width = std::max(0.0F, last.getRight() - box.rect.x);
         }
     }
 }
 
-const RichTextLayout& RichText::getFrame() {
+const TextLayout& RichText::getFrame() {
     const std::size_t visible = getVisibleCharacters();
     const CachedLayout& current = getCachedLayout(options.maxWidth);
     const bool revealing = visible < current.layout.characters.size();

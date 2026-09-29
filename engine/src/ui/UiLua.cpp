@@ -556,7 +556,7 @@ int UiLua::themeMetric(lua_State* L) {
     return 1;
 }
 
-// Returns a font role of the active theme as {font, size}.
+// Returns a font role of the active theme as {font, size, bold, italic}.
 int UiLua::themeFont(lua_State* L) {
     const std::string name = lua::Stack::read<std::string>(L, 1);
     const std::optional<Theme::Font> role = Theme::fontFromName(name);
@@ -564,11 +564,15 @@ int UiLua::themeFont(lua_State* L) {
         return luaL_error(L, "The theme has an unknown font role: %s", name.c_str());
     }
     const Theme::FontStyle& style = getPlugin(L).getTheme().getFont(*role);
-    lua_createtable(L, 0, 2);
+    lua_createtable(L, 0, 4);
     lua::Stack::push(L, style.font);
     lua_setfield(L, -2, "font");
     lua::Stack::push(L, style.size);
     lua_setfield(L, -2, "size");
+    lua::Stack::push(L, style.bold);
+    lua_setfield(L, -2, "bold");
+    lua::Stack::push(L, style.italic);
+    lua_setfield(L, -2, "italic");
     return 1;
 }
 
@@ -673,6 +677,20 @@ int UiLua::safeAreaVisible(lua_State* L) {
     return 1;
 }
 
+// Sets the direction of the whole UI with setDirection('ltr', 'rtl' or 'auto'), where auto follows the direction the current language declares.
+int UiLua::setDirection(lua_State* L) {
+    getPlugin(L).setDirection(lua::Stack::read<text::Direction>(L, 1));
+    return 0;
+}
+
+// Returns the direction set for the whole UI and the one it draws in, which differ when an automatic direction follows the language.
+int UiLua::direction(lua_State* L) {
+    plugins::UiPlugin& plugin = getPlugin(L);
+    lua::Stack::push(L, plugin.getDirection());
+    lua::Stack::push(L, plugin.getContext().getDirection());
+    return 2;
+}
+
 int UiLua::setSafeAreaVisible(lua_State* L) {
     getPlugin(L).setSafeAreaVisible(lua::Stack::read<bool>(L, 1));
     return 0;
@@ -685,7 +703,7 @@ int UiLua::kinds(lua_State* L) {
 
 int UiLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"mount", &lua::Binding::native<&mount>}, {"node", &lua::Binding::native<&node>}, {"setTheme", &lua::Binding::native<&setTheme>}, {"theme", &lua::Binding::native<&theme>}, {"themes", &lua::Binding::native<&themes>}, {"loadTheme", &lua::Binding::native<&loadTheme>}, {"addTheme", &lua::Binding::native<&addTheme>}, {"themeColor", &lua::Binding::native<&themeColor>}, {"themeMetric", &lua::Binding::native<&themeMetric>}, {"themeFont", &lua::Binding::native<&themeFont>}, {"themeSurface", &lua::Binding::native<&themeSurface>}, {"addFont", &lua::Binding::native<&addFont>}, {"wantsPointer", &lua::Binding::native<&wantsPointer>}, {"wantsKeyboard", &lua::Binding::native<&wantsKeyboard>}, {"focused", &lua::Binding::native<&focused>}, {"clearFocus", &lua::Binding::native<&clearFocus>}, {"focusRingVisible", &lua::Binding::native<&focusRingVisible>}, {"safeAreaVisible", &lua::Binding::native<&safeAreaVisible>}, {"setSafeAreaVisible", &lua::Binding::native<&setSafeAreaVisible>}, {"kinds", &lua::Binding::native<&kinds>}, {"onEvent", &lua::Binding::native<&onEvent>}, {nullptr, nullptr},
+        {"mount", &lua::Binding::native<&mount>}, {"node", &lua::Binding::native<&node>}, {"setTheme", &lua::Binding::native<&setTheme>}, {"theme", &lua::Binding::native<&theme>}, {"themes", &lua::Binding::native<&themes>}, {"loadTheme", &lua::Binding::native<&loadTheme>}, {"addTheme", &lua::Binding::native<&addTheme>}, {"themeColor", &lua::Binding::native<&themeColor>}, {"themeMetric", &lua::Binding::native<&themeMetric>}, {"themeFont", &lua::Binding::native<&themeFont>}, {"themeSurface", &lua::Binding::native<&themeSurface>}, {"addFont", &lua::Binding::native<&addFont>}, {"wantsPointer", &lua::Binding::native<&wantsPointer>}, {"wantsKeyboard", &lua::Binding::native<&wantsKeyboard>}, {"focused", &lua::Binding::native<&focused>}, {"clearFocus", &lua::Binding::native<&clearFocus>}, {"focusRingVisible", &lua::Binding::native<&focusRingVisible>}, {"safeAreaVisible", &lua::Binding::native<&safeAreaVisible>}, {"setSafeAreaVisible", &lua::Binding::native<&setSafeAreaVisible>}, {"setDirection", &lua::Binding::native<&setDirection>}, {"direction", &lua::Binding::native<&direction>}, {"kinds", &lua::Binding::native<&kinds>}, {"onEvent", &lua::Binding::native<&onEvent>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     lua_createtable(L, 0, 1);

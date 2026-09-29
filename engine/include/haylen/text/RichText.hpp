@@ -13,10 +13,10 @@
 #include "haylen/debug/TrackedObject.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/text/RichTextDocument.hpp"
-#include "haylen/text/RichTextLayout.hpp"
 #include "haylen/text/RichTextOptions.hpp"
 #include "haylen/text/RichTextRegistry.hpp"
 #include "haylen/text/TextEffect.hpp"
+#include "haylen/text/TextLayout.hpp"
 
 namespace haylen::text {
 
@@ -51,12 +51,12 @@ class RichText final {
     }
 
     // Returns the layout at the current width, or at another width without changing it, which is how a container measures the text.
-    [[nodiscard]] const RichTextLayout& getLayout();
-    [[nodiscard]] const RichTextLayout& getLayout(float maxWidth);
+    [[nodiscard]] const TextLayout& getLayout();
+    [[nodiscard]] const TextLayout& getLayout(float maxWidth);
     [[nodiscard]] math::Vec2 getSize();
 
     // Returns the layout of this moment, with the effects applied and the characters the reveal has not reached hidden.
-    [[nodiscard]] const RichTextLayout& getFrame();
+    [[nodiscard]] const TextLayout& getFrame();
 
     // Return the payload of the link or the text of the hint under a point of the text block.
     [[nodiscard]] std::optional<std::string> getLinkAt(math::Vec2 point);
@@ -78,20 +78,20 @@ class RichText final {
         float maxWidth = 0.0F;
         float scale = 1.0F;
         std::uint64_t generation = 0;
-        RichTextLayout layout;
+        TextLayout layout;
     };
 
     static constexpr std::size_t kCachedLayouts = 4;
     static debug::ObjectCounter counter;
 
     static void validate(const RichTextOptions& value);
-    static void applyReveal(RichTextLayout& revealed, std::size_t visible);
+    static void applyReveal(TextLayout& revealed, std::size_t visible);
 
     void resetReveal() noexcept;
     [[nodiscard]] CachedLayout& getCachedLayout(float maxWidth);
     [[nodiscard]] const std::vector<float>& getRevealTimes();
     [[nodiscard]] std::size_t countRevealed(float clock);
-    void applyEffects(RichTextLayout& moved);
+    void applyEffects(TextLayout& moved);
 
     std::string source;
     RichTextDocument document;
@@ -102,7 +102,7 @@ class RichText final {
     std::list<CachedLayout> layouts;
     std::vector<float> revealTimes;
     std::vector<std::size_t> effectStarts;
-    RichTextLayout frame;
+    TextLayout frame;
     std::optional<std::size_t> visibleCharacters;
     std::uint64_t builds = 0;
     std::uint64_t framedGeneration = 0;

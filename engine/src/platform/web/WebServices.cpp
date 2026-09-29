@@ -12,12 +12,17 @@
 #include "haylen/io/Package.hpp"
 #include "haylen/lua/Error.hpp"
 #include "platform/web/WebTextInput.hpp"
+#include "sokol_app.h"
 
 // The page side lives in platform/web/haylen-runtime.js, which defines Module.haylen before the runtime starts.
 
 // clang-format off
 EM_JS(void, haylen_js_dispatch, (double call, const char* method, const char* params), {
     Module.haylen.dispatch(call, UTF8ToString(method), UTF8ToString(params));
+});
+
+EM_JS(void, haylen_js_cancel, (double call), {
+    Module.haylen.cancel(call);
 });
 
 EM_JS(void, haylen_js_error, (const char* json), {
@@ -82,7 +87,31 @@ void Services::persistUserData() {
     haylen_js_persist();
 }
 
-void Services::setWindowResizable(bool) {}
+bool Services::hasDesktop() noexcept {
+    return false;
+}
+
+void Services::setWindowStyle(const WindowStyle&) {}
+
+// The canvas is the window, and the page gives it no desktop, so the canvas is also the only monitor.
+math::Rect Services::getWindowFrame() {
+    return {0.0F, 0.0F, sapp_widthf() / sapp_dpi_scale(), sapp_heightf() / sapp_dpi_scale()};
+}
+
+void Services::setWindowFrame(const math::Rect&) {}
+
+std::vector<Monitor> Services::getMonitors() {
+    const math::Rect screen = getWindowFrame();
+    return {{.name = "canvas", .bounds = screen, .workArea = screen, .scale = sapp_dpi_scale(), .primary = true}};
+}
+
+void Services::setMousePassthrough(Window::Passthrough, std::span<const math::Polygon::Outline>) {}
+
+void Services::startWindowDrag() {}
+
+void Services::watchWindow() {}
+
+void Services::updateWindow() {}
 
 math::Insets Services::getSafeAreaInsets() {
     std::array<float, 4> insets{};
@@ -137,6 +166,10 @@ TextInput& Services::getTextInput() {
 
 void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson) {
     haylen_js_dispatch(static_cast<double>(id), std::string(method).c_str(), std::string(paramsJson).c_str());
+}
+
+void Services::cancel(std::uint64_t id) {
+    haylen_js_cancel(static_cast<double>(id));
 }
 
 } // namespace haylen::platform

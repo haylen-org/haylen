@@ -14,7 +14,13 @@ namespace haylen::ui {
 Context::Context(Backend& uiBackend, FocusNavigator& focusNavigator, const localization::Catalog& textCatalog, const input::Input& devices, ImageSource imageSource, FontSource fontSource, std::shared_ptr<text::RichTextRegistry> registry) : backend(uiBackend), focus(focusNavigator), catalog(textCatalog), input(devices), images(std::move(imageSource)), fonts(std::move(fontSource)), textRegistry(std::move(registry)) {}
 
 ImFont* Context::getFont(Theme::Font role) const {
-    return backend.getFont(theme->getFont(role).font);
+    const Theme::FontStyle& style = theme->getFont(role);
+    return backend.getFont(style.font, style.bold, style.italic);
+}
+
+float Context::getEmSize(Theme::Font role) const {
+    const Theme::FontStyle& style = theme->getFont(role);
+    return backend.getEmSize(style.font, style.size);
 }
 
 std::string Context::getText(const TextValue& value) const {
@@ -87,6 +93,44 @@ void Context::popReshape() {
 
 Context::Reshape Context::getReshape() const noexcept {
     return reshapes.empty() ? Reshape{} : reshapes.back();
+}
+
+// Nodes drawn in a new frame start from the writing of the whole UI, even when a failed script left some pushed.
+void Context::setBaseWriting(text::Direction direction, std::string language) {
+    writings.assign(1, {.direction = direction == text::Direction::RightToLeft ? direction : text::Direction::LeftToRight, .language = std::move(language)});
+}
+
+void Context::pushWriting(std::optional<text::Direction> direction, std::optional<std::string> language) {
+    const Writing& outer = writings.back();
+    writings.push_back({.direction = direction.value_or(outer.direction), .language = language ? std::move(*language) : outer.language});
+}
+
+void Context::popWriting() {
+    if (writings.size() > 1) {
+        writings.pop_back();
+    }
+}
+
+text::Direction Context::getDirection() const noexcept {
+    return writings.back().direction;
+}
+
+const std::string& Context::getLanguage() const noexcept {
+    return writings.back().language;
+}
+
+math::Rect Context::mirror(const math::Rect& rect, const math::Rect& area) const noexcept {
+    if (!isRightToLeft()) {
+        return rect;
+    }
+    return {area.x + area.getRight() - rect.getRight(), rect.y, rect.width, rect.height};
+}
+
+float Context::alignHorizontally(Alignment alignment, float start, float available, float size) const noexcept {
+    if (isRightToLeft() && (alignment == Alignment::Start || alignment == Alignment::End)) {
+        return Component::align(alignment == Alignment::Start ? Alignment::End : Alignment::Start, start, available, size);
+    }
+    return Component::align(alignment, start, available, size);
 }
 
 } // namespace haylen::ui

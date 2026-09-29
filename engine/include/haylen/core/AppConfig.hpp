@@ -13,11 +13,13 @@
 #include "haylen/math/Vec2.hpp"
 #include "haylen/platform/Orientation.hpp"
 #include "haylen/platform/SafeAreaSimulation.hpp"
+#include "haylen/platform/WindowPlacement.hpp"
 
 namespace haylen::core {
 
 // App settings read from app.json before any script runs, because the window exists before source/main.lua.
 struct AppConfig {
+    // A transparent window opens able to let the desktop show through its transparent pixels, which it keeps for the whole run, and clears to transparent unless clearColor says otherwise. The desktop options change at run time through the window, and position places the window when it opens.
     struct Window {
         std::string title = "Haylen";
         int width = 1280;
@@ -27,6 +29,13 @@ struct AppConfig {
         bool resizable = true;
         bool vsync = true;
         int sampleCount = 1;
+        bool decorated = true;
+        bool transparent = false;
+        bool alwaysOnTop = false;
+        bool showInTaskbar = true;
+        bool focusable = true;
+        bool mousePassthrough = false;
+        std::optional<platform::WindowPlacement> position;
     };
 
     // The launch screen that every platform shows while the app starts, with a logo relative to the content folder, or the Haylen logo when it is empty, over a background color that defaults to the clear color. make.py turns it into the launch storyboard on Apple platforms, the splash screen on Android and the loading page on the web.
@@ -69,6 +78,9 @@ struct AppConfig {
 
     // Lua modules that load before the first scene and live for the whole app.
     std::vector<std::string> autoloads;
+
+    // The native libraries the app ships by name, which make.py builds and places in the package of each platform. The engine keeps the section as app.json wrote it.
+    Json native = Json::object();
 
     // Set by the runtime rather than app.json: a package opened from a folder during development reloads when its files change.
     bool hotReload = false;

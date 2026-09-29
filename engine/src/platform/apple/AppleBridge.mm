@@ -9,11 +9,11 @@
 #endif
 
 #include "haylen/core/Log.hpp"
-#include "platform/sokol/BridgeRelay.hpp"
+#include "platform/BridgeRelay.hpp"
 
 namespace haylen::platform {
 
-void AppleBridge::setHandler(NSString* method, HaylenHandler handler) {
+void AppleBridge::setHandler(NSString* method, HaylenCancellableHandler handler) {
     @synchronized([HaylenBridge class]) {
         getHandlers()[method] = [handler copy];
     }
@@ -81,20 +81,52 @@ void AppleBridge::registerBuiltIns() {
     });
 }
 
+// The call is pending from here on, so a cancel that arrives before the handler runs keeps it from running, and the cancel block the handler returns is kept only while the call still waits.
 void AppleBridge::dispatch(std::uint64_t call, std::string_view method, std::string_view paramsJson) {
     NSString* name = toString(method);
-    HaylenHandler handler = nil;
+    NSNumber* key = @(call);
+    HaylenCancellableHandler handler = nil;
     @synchronized([HaylenBridge class]) {
         handler = getHandlers()[name];
+        if (handler != nil) {
+            getCalls()[key] = NSNull.null;
+        }
     }
     if (handler == nil) {
-        fail(call, [NSString stringWithFormat:@"No native handler is registered for %@.", name]);
+        fail(call, @{@"message" : [NSString stringWithFormat:@"No native handler is registered for %@.", name], @"code" : @"no_handler"});
         return;
     }
 
     id parsed = fromJson(paramsJson);
     id params = parsed != nil ? parsed : @{};
-    dispatch_async(dispatch_get_main_queue(), ^{ handler(params, ^(BOOL ok, id _Nullable result) { answer(call, name, ok, result); }); });
+    dispatch_async(dispatch_get_main_queue(), ^{
+      @synchronized([HaylenBridge class]) {
+          if (getCalls()[key] == nil) {
+              return;
+          }
+      }
+      HaylenCancel cancel = handler(params, ^(BOOL ok, id _Nullable result) { answer(call, name, ok, result); });
+      if (cancel == nil) {
+          return;
+      }
+      @synchronized([HaylenBridge class]) {
+          if (getCalls()[key] != nil) {
+              getCalls()[key] = [cancel copy];
+          }
+      }
+    });
+}
+
+void AppleBridge::cancel(std::uint64_t call) {
+    id entry = nil;
+    @synchronized([HaylenBridge class]) {
+        entry = getCalls()[@(call)];
+        [getCalls() removeObjectForKey:@(call)];
+    }
+    if (entry != nil && entry != NSNull.null) {
+        HaylenCancel cancel = entry;
+        dispatch_async(dispatch_get_main_queue(), cancel);
+    }
 }
 
 void AppleBridge::emit(NSString* event, id payload) {
@@ -107,15 +139,23 @@ void AppleBridge::emit(NSString* event, id payload) {
 }
 
 // Native code may register handlers before the engine starts, even before haylen_main, so the table exists from the first registration.
-NSMutableDictionary<NSString*, HaylenHandler>* AppleBridge::getHandlers() {
-    static NSMutableDictionary<NSString*, HaylenHandler>* table = [NSMutableDictionary dictionary];
+NSMutableDictionary<NSString*, HaylenCancellableHandler>* AppleBridge::getHandlers() {
+    static NSMutableDictionary<NSString*, HaylenCancellableHandler>* table = [NSMutableDictionary dictionary];
     return table;
+}
+
+NSMutableDictionary<NSNumber*, id>* AppleBridge::getCalls() {
+    static NSMutableDictionary<NSNumber*, id>* calls = [NSMutableDictionary dictionary];
+    return calls;
 }
 
 void AppleBridge::registerBuiltIn(NSString* method, HaylenHandler handler) {
     @synchronized([HaylenBridge class]) {
         if (getHandlers()[method] == nil) {
-            getHandlers()[method] = [handler copy];
+            getHandlers()[method] = ^HaylenCancel(id params, HaylenReply reply) {
+              handler(params, reply);
+              return nil;
+            };
         }
     }
 }
@@ -151,20 +191,36 @@ NSString* AppleBridge::getLanguageTag() {
     return preferred != nil ? preferred : [NSLocale.currentLocale.localeIdentifier stringByReplacingOccurrencesOfString:@"_" withString:@"-"];
 }
 
-void AppleBridge::fail(std::uint64_t call, NSString* message) {
-    BridgeRelay::resolve(call, false, *toJson(@{@"message" : message}));
+// A failure whose code or data JSON cannot hold fails with its message alone.
+void AppleBridge::fail(std::uint64_t call, NSDictionary* failure) {
+    const std::optional<std::string> json = toJson(failure);
+    BridgeRelay::resolve(call, false, json ? *json : *toJson(@{@"message" : failure[@"message"]}));
 }
 
-// Failures reach the bridge as an object with a message, and a success value that JSON cannot hold fails the call instead of answering with garbage.
+// A call answers once, and not after it was cancelled. Failures reach the bridge as an object with a message and the code and data of the handler, and a success value that JSON cannot hold fails the call instead of answering with garbage.
 void AppleBridge::answer(std::uint64_t call, NSString* method, BOOL ok, id result) {
+    @synchronized([HaylenBridge class]) {
+        if (getCalls()[@(call)] == nil) {
+            return;
+        }
+        [getCalls() removeObjectForKey:@(call)];
+    }
+
     if (!ok) {
-        const bool described = [result isKindOfClass:NSDictionary.class] && [result[@"message"] isKindOfClass:NSString.class];
-        fail(call, [result isKindOfClass:NSString.class] ? result : (described ? result[@"message"] : [NSString stringWithFormat:@"The native handler for %@ failed.", method]));
+        if ([result isKindOfClass:NSString.class]) {
+            fail(call, @{@"message" : result});
+            return;
+        }
+        NSMutableDictionary* failure = [result isKindOfClass:NSDictionary.class] ? [result mutableCopy] : [NSMutableDictionary dictionary];
+        if (![failure[@"message"] isKindOfClass:NSString.class]) {
+            failure[@"message"] = [NSString stringWithFormat:@"The native handler for %@ failed.", method];
+        }
+        fail(call, failure);
         return;
     }
     const std::optional<std::string> json = toJson(result);
     if (!json) {
-        fail(call, [NSString stringWithFormat:@"The native handler for %@ returned a value that is not JSON.", method]);
+        fail(call, @{@"message" : [NSString stringWithFormat:@"The native handler for %@ returned a value that is not JSON.", method]});
         return;
     }
     BridgeRelay::resolve(call, true, *json);

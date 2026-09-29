@@ -483,16 +483,18 @@ void FrameSubmitter::renderCapture(std::size_t index) {
     sg_end_pass();
 }
 
+// The frame of an opaque window clears its alpha to 1 and never writes it, whatever the clear color and the blends of the app.
 void FrameSubmitter::renderSwapchain() {
+    const math::Color& clear = state.clearColor;
     sg_pass pass{};
     pass.action.colors[0].load_action = SG_LOADACTION_CLEAR;
-    pass.action.colors[0].clear_value = {state.clearColor.r, state.clearColor.g, state.clearColor.b, state.clearColor.a};
+    pass.action.colors[0].clear_value = {clear.r, clear.g, clear.b, target.transparent ? clear.a : 1.0F};
     pass.swapchain = target.swapchain;
     pass.label = "haylen-swapchain-pass";
     sg_begin_pass(&pass);
     ++state.stats.passes;
 
-    drawCanvases(0, graphics::PassTarget::Swapchain);
+    drawCanvases(0, target.transparent ? graphics::PassTarget::TransparentSwapchain : graphics::PassTarget::Swapchain);
     sg_end_pass();
     sg_commit();
 }

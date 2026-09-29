@@ -36,9 +36,9 @@ platform::TextInput::Options TextEntry::getInputOptions(platform::TextInput::Key
     return {.keyboard = keyboard, .returnKey = returnKey, .capitalization = capitalization.value_or(prose ? platform::TextInput::Capitalization::Sentences : platform::TextInput::Capitalization::None), .autocorrect = autocorrect.value_or(corrected), .maxLength = maxLength};
 }
 
-void TextEntry::drawEntry(Context& context, const math::Rect& bounds, platform::TextInput::Keyboard keyboard, float reserveLeft, float reserveRight) {
+void TextEntry::drawEntry(Context& context, const math::Rect& bounds, platform::TextInput::Keyboard keyboard, float reserveStart, float reserveEnd) {
     const std::string hint = context.getText(placeholder);
-    const TextEditor::Result result = TextEditor::draw(context, bounds, value, {.placeholder = hint, .input = getInputOptions(keyboard), .focus = takeFocusRequest(), .reserveLeft = reserveLeft, .reserveRight = reserveRight});
+    const TextEditor::Result result = TextEditor::draw(context, bounds, value, {.placeholder = hint, .input = getInputOptions(keyboard), .focus = takeFocusRequest(), .reserveStart = reserveStart, .reserveEnd = reserveEnd});
     if (result.changed) {
         context.emit(*this, "change", {{"value", value}});
     }

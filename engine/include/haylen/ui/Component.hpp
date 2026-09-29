@@ -16,6 +16,7 @@
 #include "haylen/math/Insets.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/text/Direction.hpp"
 #include "haylen/ui/Alignment.hpp"
 #include "haylen/ui/Anchor.hpp"
 #include "haylen/ui/FocusDirection.hpp"
@@ -55,6 +56,10 @@ class Component {
 
         // The node ids the focus moves to from this node, in the order of FocusDirection, where an empty id leaves the choice to the search.
         std::array<std::string, 4> focusNeighbors;
+
+        // The direction and language of the node and its children, which inherit those of the node around them when unset.
+        std::optional<text::Direction> direction;
+        std::string language;
     };
 
     // The child limit of kinds that take any number of children.
@@ -146,6 +151,11 @@ class Component {
     // Runs in the first frame a component that was drawn is no longer drawn, because it or its document was hidden, so it lets go of what it held.
     virtual void drawingStopped(Context&) {}
 
+    // A floating component places itself while it renders and reports that place as the rectangle it was drawn in.
+    void setBounds(const math::Rect& value) noexcept {
+        drawnBounds = value;
+    }
+
     // The visible children the layout of the component places, which leaves out anchored and floating children.
     [[nodiscard]] std::vector<Component*> getLayoutChildren() const;
     [[nodiscard]] bool takeFocusRequest() noexcept {
@@ -176,11 +186,17 @@ class Component {
         {"both", FocusWrap::Both},
     }};
     static constexpr std::array<std::string_view, 4> kNeighborKeys{"focusLeft", "focusRight", "focusUp", "focusDown"};
+    static constexpr std::array<std::pair<std::string_view, std::optional<text::Direction>>, 3> kDirections{{
+        {"inherit", std::nullopt},
+        {"ltr", text::Direction::LeftToRight},
+        {"rtl", text::Direction::RightToLeft},
+    }};
 
     [[nodiscard]] float getBoundedWidth(float width) const noexcept;
     [[nodiscard]] float getBoundedHeight(float height) const noexcept;
     void readCommon(PropertyReader& reader);
     void readFocus(PropertyReader& reader);
+    [[nodiscard]] bool pushWriting(Context& context) const;
     void drawTooltip(Context& context, const math::Rect& bounds);
 
     // Scales the vertices the node drew since the first one around the center and multiplies their colors by the tint and the opacity.

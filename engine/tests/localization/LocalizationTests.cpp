@@ -88,6 +88,20 @@ TEST_F(CatalogTest, MatchesLanguageTags) {
     EXPECT_EQ(catalog.findBestMatch("de-DE"), std::nullopt);
 }
 
+// A table declares the direction of its language, which is left to right until a table says otherwise.
+TEST_F(CatalogTest, DeclaresTheDirectionOfALanguage) {
+    Catalog catalog = makeEnglish();
+    catalog.add("ar", core::Json::parse(R"({"@direction": "rtl", "menu": {"play": "العب"}})"));
+    catalog.add("ar", core::Json::parse(R"({"menu": {"quit": "خروج"}})"));
+    EXPECT_EQ(catalog.getDirection("en"), text::Direction::LeftToRight);
+    EXPECT_EQ(catalog.getDirection("ar"), text::Direction::RightToLeft);
+    catalog.setLanguage("ar");
+    EXPECT_EQ(catalog.getText("menu.play"), "العب");
+    EXPECT_FALSE(catalog.has("@direction"));
+    EXPECT_THROW(catalog.add("he", core::Json::parse(R"({"@direction": "up"})")), std::invalid_argument);
+    EXPECT_THROW((void)catalog.getDirection("xx"), std::invalid_argument);
+}
+
 TEST(LocalizationLuaTest, LoadsLanguageFoldersFromThePackage) {
     // clang-format off
     test::EngineFixture fixture({
@@ -106,6 +120,7 @@ TEST(LocalizationLuaTest, LoadsLanguageFoldersFromThePackage) {
     EXPECT_EQ(fixture.lua("localization.add('fr', {hud = {day = 'Jour {day}'}}) localization.setFallback('fr') return localization.fallback() .. ' ' .. tostring(localization.has('hud.wood'))"), "fr false");
     EXPECT_EQ(fixture.lua("return tostring(localization.bestMatch('de')) .. ' ' .. localization.text('nothing.here')"), "nil nothing.here");
 
+    EXPECT_EQ(fixture.lua("localization.add('ar', {['@direction'] = 'rtl', hud = {day = 'اليوم {day}'}}) return localization.direction('ar') .. ' ' .. localization.direction()"), "rtl ltr");
     EXPECT_NE(fixture.lua("localization.loadFolder('broken')").find("broken/en.json is not valid JSON"), std::string::npos);
     EXPECT_NE(fixture.lua("localization.setLanguage('xx')").find("No localization table was added for xx"), std::string::npos);
     EXPECT_NE(fixture.lua("localization.add('de', {menu = {count = 3}})").find("menu.count"), std::string::npos);

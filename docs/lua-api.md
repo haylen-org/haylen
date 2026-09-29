@@ -21,12 +21,12 @@ Apps for Haylen are written in Lua. Every engine capability is a module that `re
 | Module | Purpose |
 | --- | --- |
 | [haylen.graphics](lua-api/graphics.md) | Textures, render targets, TrueType and bitmap fonts, font families, custom shaders and the GPU backend. |
-| [haylen.graphics2d](lua-api/graphics2d.md) | Canvases, captures, draw order with y sorting and visibility, cameras with viewports, smoothing, drag margins and shake, parallax layers, sprites, sprite batches, shapes, meshes, text, rich text with effects and a typewriter reveal, nine-slices, image blends, metaballs, materials with custom shaders, lit canvases with normal maps, lights and occluders. |
+| [haylen.graphics2d](lua-api/graphics2d.md) | Canvases, captures, draw order with y sorting and visibility, cameras with viewports, smoothing, drag margins and shake, parallax layers, sprites, sprite batches, shapes, meshes, text shaped in every script and ordered in both directions, rich text with effects and a typewriter reveal, nine-slices, image blends, metaballs, materials with custom shaders, lit canvases with normal maps, lights and occluders. |
 | [haylen.animation2d](lua-api/animation2d.md) | Frame animations from grids and atlases, and animators that play them on sprites. |
 | [haylen.particles2d](lua-api/particles2d.md) | Particle emitters and `.particles` effect files. |
 | [haylen.lighting2d](lua-api/lighting2d.md) | Point, spot and directional lights with blend modes, masks and shadows, occluders from outlines, physics bodies and Tiled maps, light queries and flame flicker. |
-| [haylen.viewport](lua-api/viewport.md) | The design resolution, the visible area and the safe area. |
-| [haylen.window](lua-api/window.md) | Window size, fullscreen, title, cursor, on-screen keyboard and clipboard. |
+| [haylen.viewport](lua-api/viewport.md) | The design resolution and scaling policy, which change while the app runs, the visible area and the safe area. |
+| [haylen.window](lua-api/window.md) | Window size, fullscreen, title, cursor, on-screen keyboard and clipboard, and on desktops frameless, transparent, always-on-top and click-through windows with their frame and monitors. |
 
 ## World
 
@@ -45,10 +45,10 @@ Apps for Haylen are written in Lua. Every engine capability is a module that `re
 | Module | Purpose |
 | --- | --- |
 | [haylen.input](lua-api/input.md) | Keyboard, mouse, touch, gestures, gamepads and the action map. |
-| [haylen.ui](lua-api/ui.md) | Themed menus, HUDs, dialogs and touch controls. |
+| [haylen.ui](lua-api/ui.md) | Themed menus, HUDs, dialogs and touch controls, mirrored for right-to-left languages. |
 | [haylen.imgui](lua-api/imgui.md) | Dear ImGui windows for debug panels and tools. |
 | [haylen.audio](lua-api/audio.md) | Sounds, music, buses, effects, pause modes, interruptions and positional audio. |
-| [haylen.localization](lua-api/localization.md) | Translated text with placeholders and plural forms. |
+| [haylen.localization](lua-api/localization.md) | Translated text with placeholders, plural forms and the direction of each language. |
 
 ## Data and services
 
@@ -57,10 +57,11 @@ Apps for Haylen are written in Lua. Every engine capability is a module that `re
 | [haylen.assets](lua-api/assets.md) | Loading package files now or in the background, and preload groups. |
 | [haylen.storage](lua-api/storage.md) | Private files of the player, the folder Varn's `fs` shares with them, and named save slots with summaries. |
 | [haylen.preferences](lua-api/preferences.md) | Player preferences that persist between sessions. |
-| [haylen.platform](lua-api/platform.md) | The JSON bridge to native code, such as sign-in and device information. |
+| [haylen.platform](lua-api/platform.md) | The JSON bridge to native code, such as sign-in and device information, with typed errors, timeouts and cancellation. |
+| [haylen.native](lua-api/native.md) | Native libraries for Varn's `ffi`, found where the app ships them, their symbols, callbacks from any thread and the interface of the engine for libraries. |
 | [haylen.net](lua-api/net.md) | WebSocket connections with reconnection and pings. |
 | [haylen.debug](lua-api/debug.md) | The debug statistics, object counts, monitors, the frame profiler and the recent log. |
 
 ## Varn modules
 
-The engine runs on the [Varn](https://github.com/varn-org/varn) runtime, so its modules are available to apps too: `async` for coroutines and promises, `http`, `socket`, `json`, `fs`, `zip`, `crypto`, `log`, `platform`, `process`, `datetime` and `xml`. Their reference lives in the Varn repository. Engine functions that finish later return Varn promises, which a coroutine started with `async.spawn` waits for with `:await()`.
+The engine runs on the [Varn](https://github.com/varn-org/varn) runtime, so its modules are available to apps too: `async` for coroutines and promises, `http`, `socket`, `json`, `fs`, `zip`, `crypto`, `log`, `platform`, `process`, `datetime`, `xml` and `ffi`, which calls C functions of native libraries that `haylen.native` loads. Their reference lives in the Varn repository. Engine functions that finish later return Varn promises, which a coroutine started with `async.spawn` waits for with `:await()`.

@@ -1,6 +1,6 @@
 # haylen.window
 
-`haylen.window` controls the native window, or the canvas on the web, that the app runs in: its size, fullscreen state, title, mouse cursor, on-screen keyboard, screen orientation and clipboard. The initial window settings come from the `window` section of `app.json`. Use this module for options menus, text entry and mouse capture. Drawing sizes are in design units, so layout code normally uses `haylen.viewport` instead of the window size.
+`haylen.window` controls the native window, or the canvas on the web, that the app runs in: its size, fullscreen state, title, mouse cursor, on-screen keyboard, screen orientation and clipboard, and on desktops its decorations, level, taskbar presence, focus, frame, monitors, dragging and the clicks that pass through it. The initial window settings come from the `window` section of `app.json`. Use this module for options menus, text entry, mouse capture and apps that live on the desktop. Drawing sizes are in design units, so layout code normally uses `haylen.viewport` instead of the window size.
 
 ```lua
 local window = require('haylen.window')
@@ -262,4 +262,261 @@ function Shop:exit()
 end
 
 scene.push(setmetatable({}, Shop))
+```
+
+## Desktop windows
+
+Windows, macOS and Linux run apps in windows that can drop their title bar, float above other windows, stay out of the taskbar, refuse the focus, let clicks through and move with the mouse, which suits games that live on the desktop, such as a strip above the taskbar. The [desktop guide](../desktop.md) shows how they fit together and what each system allows. Phones, tablets, TVs and browsers run apps in a window that fills the screen or the page: there the setters keep and report their values without changing anything, `frame()` returns the screen in points and `monitors()` returns the screen as the only monitor.
+
+Frames and monitors are in desktop points, with the origin at the top left corner of the primary monitor and y growing down. A desktop point is a point of macOS, and on Windows and Linux a pixel divided by the scale of the primary monitor, so a window of 1280 by 720 points in `app.json` has a frame of 1280 by 720 points.
+
+### window.canBeTransparent()
+
+Returns `true` when the window opened able to be transparent, which `window.transparent` in `app.json` decides before the window opens, because it chooses how the system composes the window.
+
+```lua
+local window = require('haylen.window')
+
+print('can be transparent:', window.canBeTransparent())
+```
+
+### window.transparent()
+
+Returns `true` while the desktop shows through the transparent pixels of the window. A window that opens transparent clears to `#00000000` unless `clearColor` says otherwise, so everything the app does not draw lets the desktop through.
+
+```lua
+local window = require('haylen.window')
+
+if window.transparent() then
+    print('the desktop shows around the hero')
+end
+```
+
+### window.setTransparent(enabled)
+
+Makes the window opaque, or transparent again. An opaque window shows alpha 1 everywhere, whatever the clear color and the blend modes of the app, and on macOS it gets the background and the shadow of a normal window, so a window mode that needs a regular window turns transparency off together with `window.setDecorated(true)`. Only a window that opened transparent can turn transparent, and on any other window `true` raises `The window opened opaque, so it cannot turn transparent. Set window.transparent in app.json to open a window that can.`
+
+```lua
+local window = require('haylen.window')
+
+local function showNormalWindow()
+    window.setTransparent(false)
+    window.setDecorated(true)
+    window.setMousePassthrough(false)
+end
+
+local function showStrip()
+    window.setDecorated(false)
+    window.setTransparent(true)
+    window.place({anchor = 'bottom', fill = 'width'})
+end
+
+showNormalWindow()
+showStrip()
+```
+
+### window.decorated()
+
+Returns `true` while the window has a title bar and a border.
+
+```lua
+local window = require('haylen.window')
+
+print('decorated:', window.decorated())
+```
+
+### window.setDecorated(enabled)
+
+Gives the window a title bar and a border, or takes them away. The content area keeps its place and its size. A window without decorations moves through `window.startDrag()`, `window.setFrame` or `window.place`, and on Windows the player cannot resize it with the mouse.
+
+```lua
+local window = require('haylen.window')
+
+window.setDecorated(false)
+```
+
+### window.alwaysOnTop()
+
+Returns `true` while the window stays above normal windows.
+
+```lua
+local window = require('haylen.window')
+
+print('always on top:', window.alwaysOnTop())
+```
+
+### window.setAlwaysOnTop(enabled)
+
+Keeps the window above normal windows, or lets other windows cover it again. On macOS the window also shows on every space while it is on top.
+
+```lua
+local window = require('haylen.window')
+
+window.setAlwaysOnTop(true)
+```
+
+### window.showInTaskbar()
+
+Returns `true` while the window has a taskbar button, and on macOS while the app has a Dock icon.
+
+```lua
+local window = require('haylen.window')
+
+print('in the taskbar:', window.showInTaskbar())
+```
+
+### window.setShowInTaskbar(enabled)
+
+Shows the window in the taskbar and the window switcher, or leaves it out. On macOS it shows or hides the Dock icon and the menu bar of the app. A packaged macOS app that never wants a Dock icon also sets `showInTaskbar` to `false` in `app.json`, which keeps the icon from flashing while the app starts.
+
+```lua
+local window = require('haylen.window')
+
+window.setShowInTaskbar(false)
+```
+
+### window.focusable()
+
+Returns `true` while clicking the window activates the app and gives it the keyboard.
+
+```lua
+local window = require('haylen.window')
+
+print('focusable:', window.focusable())
+```
+
+### window.setFocusable(enabled)
+
+With `false`, the window never activates the app or takes the keyboard, not even when clicked, so the player keeps typing in the app they were using while the game takes clicks. Mouse buttons and moves still reach the app, and key presses go to the other app.
+
+```lua
+local window = require('haylen.window')
+
+window.setFocusable(false)
+```
+
+### window.frame()
+
+Returns the content area of the window, without its title bar and border, as a `Rect` in desktop points.
+
+```lua
+local window = require('haylen.window')
+
+local frame = window.frame()
+print(string.format('the window is at %d, %d', frame.x, frame.y))
+```
+
+### window.setFrame(x, y, width, height)
+
+Moves the content area of the window to `x`, `y` and resizes it to `width` by `height`, all in desktop points. The size must be positive. The change reaches the app as `window_moved` and `window_resized` events of [haylen.events](events.md#engine-events) when the window lands there.
+
+```lua
+local window = require('haylen.window')
+
+local area = window.currentMonitor().workArea
+window.setFrame(area.x, area:bottom() - 180, area.width, 180)
+```
+
+### window.place(position)
+
+Moves the window to a position that reads like `window.position` in `app.json`, keeping its size unless the position fills the area: `'center'`, a point `{x = 40, y = 60}`, or a table with these fields.
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `anchor` | `'center'` | The side or the corner the window touches: `'center'`, `'top'`, `'bottom'`, `'left'`, `'right'`, `'topLeft'`, `'topRight'`, `'bottomLeft'` or `'bottomRight'`. |
+| `area` | `'work'` | `'work'` for the area without the taskbar, the Dock and the menu bar, or `'full'` for the whole monitor. |
+| `monitor` | `'primary'` | `'primary'`, or the number of a monitor in the order of `window.monitors()`. A number past the last monitor places the window on the primary one. |
+| `offset` | `{0, 0}` | Points added to the anchored position. |
+| `fill` | `'none'` | `'width'`, `'height'` or `'both'` stretch the window across the area. |
+
+Anchored positions land on whole points. A position that cannot be read raises an error such as `A window position has an unknown anchor: "middle".`.
+
+```lua
+local window = require('haylen.window')
+
+-- A strip across the bottom of the work area, just above the taskbar or the Dock.
+window.place({anchor = 'bottom', fill = 'width'})
+```
+
+### window.monitors()
+
+Returns the monitors of the desktop as a list of tables, with the primary monitor flagged. The list has at least one monitor.
+
+| Field | Meaning |
+| --- | --- |
+| `name` | The name the system gives the monitor. |
+| `bounds` | The whole monitor as a `Rect` in desktop points. |
+| `workArea` | The monitor without the taskbar, the Dock and the menu bar, as a `Rect` in desktop points. |
+| `scale` | Pixels in a point, such as `2` on a Retina display or a Windows monitor at 200 percent. |
+| `primary` | `true` for the primary monitor. |
+
+Every change of the monitors, such as a monitor that connects or a taskbar that moves, publishes `window_monitors_changed` on [haylen.events](events.md#engine-events).
+
+```lua
+local window = require('haylen.window')
+
+for number, monitor in ipairs(window.monitors()) do
+    print(number, monitor.name, monitor.bounds, monitor.scale, monitor.primary)
+end
+```
+
+### window.currentMonitor()
+
+Returns the monitor that holds most of the window, as a table like the ones of `window.monitors()`, or the primary monitor while the window is off every monitor.
+
+```lua
+local window = require('haylen.window')
+
+local monitor = window.currentMonitor()
+print('the window is on', monitor.name, 'at scale', monitor.scale)
+```
+
+### window.startDrag()
+
+Moves the window with the mouse for as long as the left button that just went down stays down, so the player drags a window without a title bar by its content. Call it while the button is still down, such as from a `mouse_down` event of a scene or the `onPress` of a touch button of [haylen.ui](ui.md), and not from `onClick`, which runs once the button is up. The system moves the window, and the app hears the release of the button once the drag ends. It does nothing when the button is already up.
+
+```lua
+local scene = require('haylen.scene')
+local window = require('haylen.window')
+
+local Strip = {}
+
+function Strip:event(event)
+    if event.type == 'mouse_down' and event.button == 'left' and event.y < 40 then
+        window.startDrag()
+    end
+end
+
+scene.push(Strip)
+```
+
+### window.mousePassthrough()
+
+Returns where clicks pass through the window: `'off'`, `'whole'` or `'regions'`.
+
+```lua
+local window = require('haylen.window')
+
+print('passthrough:', window.mousePassthrough())
+```
+
+### window.setMousePassthrough(value, units)
+
+Lets clicks pass through the window to the desktop and the windows behind it. `false` gives the whole window the mouse again, `true` lets every click through, and a list of regions lets clicks through everywhere except the regions, which keep the mouse for the app. A region is a `Rect`, a table `{x, y, width, height}` or `{x = 0, y = 0, width = 10, height = 10}`, or a polygon as a list of at least three points. Regions are in design units by default, converted with the viewport of the moment, so an app whose layout changes, or whose window resizes, gives them again. `units` set to `'pixels'` takes framebuffer pixels instead. `window.mousePassthrough` in `app.json` starts the app with `true`.
+
+Apps usually give their regions every frame, around what the player can click. The window keeps the mouse it has while a button is down, so a press that starts over the app also ends there. While clicks pass through, the app still hears the mouse move over the window on Windows and macOS, while on Linux it hears the mouse only over the regions.
+
+```lua
+local scene = require('haylen.scene')
+local window = require('haylen.window')
+
+local hero = {x = 400, y = 900, width = 96, height = 96}
+local menuButton = {x = 1760, y = 960, width = 140, height = 100}
+
+scene.push({
+    update = function(self, dt)
+        hero.x = (hero.x + 120 * dt) % 1920
+        window.setMousePassthrough({hero, menuButton})
+    end,
+})
 ```

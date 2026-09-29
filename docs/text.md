@@ -1,10 +1,10 @@
 # Text
 
-Haylen draws text from fonts of two kinds and styles it with BBCode markup. This guide explains fonts, font families and bitmap fonts, the markup of rich text with its effects and typewriter reveal, and how 2D drawing and the UI show it. The [haylen.graphics reference](lua-api/graphics.md#font) lists the font API, the [haylen.graphics2d reference](lua-api/graphics2d.md#richtext) the rich text API, and the [haylen.ui reference](lua-api/ui.md#uirichtextproperties) the `richText` component.
+Haylen draws text from fonts of two kinds and styles it with BBCode markup. This guide explains fonts, font families and bitmap fonts, how text in every script is shaped, ordered in its direction and broken into lines, the markup of rich text with its effects and typewriter reveal, and how 2D drawing and the UI show it. The [haylen.graphics reference](lua-api/graphics.md#font) lists the font API, the [haylen.graphics2d reference](lua-api/graphics2d.md#richtext) the rich text API, and the [haylen.ui reference](lua-api/ui.md#uirichtextproperties) the `richText` component.
 
 ## Fonts
 
-A TrueType or OpenType font renders through a signed distance field, a single-channel atlas of how far every pixel lies from the edge of a glyph. One atlas serves every size, and the text shader draws outlines, bolder strokes, blurred shadows and glows from the same field. The field reaches `spread` pixels past a glyph at the bake size, 8 by default, and that reach bounds every one of those effects: at a text size of 24 and the default bake size of 48, an outline, a glow and a blur together reach at most 4 pixels. A font loaded with a larger `spread` reaches further.
+A TrueType or OpenType font renders through a signed distance field, a single-channel atlas of how far every pixel lies from the edge of a glyph. One atlas serves every size, and the text shader draws outlines, bolder strokes, blurred shadows and glows from the same field. A text size is the height of the em square of the font, the square its designer draws every glyph in, so faces and fallback fonts of one size line up whatever their proportions, and a line is as tall as the ascent, descent and line gap of the font at that size. The field reaches `spread` pixels past a glyph at the bake size, 8 by default, and that reach bounds every one of those effects: at a text size of 24 and the default bake size of 48, an outline, a glow and a blur together reach at most 4 pixels. A font loaded with a larger `spread` reaches further.
 
 A bitmap font draws prepared images, the pages of a BMFont file from tools such as BMFont, Hiero or Littera, or an image of equal cells. It draws pixel for pixel at its native size and scales at other sizes, keeps the colors of its images, which the text color multiplies, and draws nothing for the characters it lacks. It has no distance field, so it takes no outline, glow or blur, and its shadow is the silhouette of its glyphs in the shadow color. Load BMFont files with nearest filtering for crisp pixel art.
 
@@ -21,11 +21,11 @@ graphics2d.drawText(pixel, 'PRESS START', 40, 200, {size = pixel.nativeSize * 2}
 graphics2d.drawText(digits, '1200', 40, 280, {size = 32, shadowOffset = {2, 2}, shadowColor = '#FF000000'})
 ```
 
-Every function that takes a font takes either kind: `graphics2d.drawText`, `measureText`, rich text families and Tiled text objects.
+Every function that takes a font takes either kind: `graphics2d.drawText`, `measureText`, rich text families and Tiled text objects. `graphics2d.drawText` and `measureText` also take a font family, which draws text in every script its fonts cover.
 
 ## Font families
 
-A family groups the faces of one typeface, regular, bold, italic, bold italic and mono, with fallback fonts for the characters its faces lack, such as a CJK font for Chinese and Japanese or a symbol font for arrows and stars. Rich text picks the face of each run from its style and each character from the first font that has it: the face, then each fallback in order, and the face again when none has it, which draws its missing glyph box.
+A family groups the faces of one typeface, regular, bold, italic, bold italic and mono, with fallback fonts for the characters its faces lack, such as an Arabic, Hebrew, Devanagari or Thai font, a CJK font for Chinese and Japanese or a symbol font for arrows and stars. Layout picks the face of each run from its style and each character, a letter with its marks as one unit, from the first font that has every code point of it: the face, then each fallback in order, and the face again when none has it, which draws its missing glyph box. Spaces, punctuation and digits keep the font of the text before them, so an Arabic sentence stays in the Arabic font up to its full stop. The fonts of the Noto family cover every script with a consistent look, and a fallback per script the game shows is enough.
 
 A style the family has no face for is synthesized from the face it has. A distance field face grows its strokes on both sides by 3 percent of the text size and widens its advance to match, and leans italic glyphs by one fifth of their height around the baseline in the vertex shader. A bitmap face draws a bold glyph a second time one native pixel to the right and leans italic glyphs the same way. A fallback font synthesizes the bold and italic its run asks for. `[code]` uses the mono face, or the regular faces when the family has none.
 
@@ -43,7 +43,39 @@ local story = graphics.newFontFamily({
 local face, syntheticBold, syntheticItalic = story:select({bold = true, italic = true})
 ```
 
-`stb_truetype` builds the distance fields. It reads TrueType outlines, the `glyf` table, well, and some fonts with PostScript outlines, the `CFF` table of many `.otf` and `.ttc` files, come out broken at some sizes. Prefer TrueType flavored files for fallback fonts.
+The distance field of a glyph comes from its whole outline, the quadratic curves of TrueType fonts and the cubic curves of the `CFF` outlines of many `.otf` files alike, so both kinds draw cleanly at every size. Contours that overlap, as in the glyphs of many variable fonts, keep their shared inside whole.
+
+## Scripts and directions
+
+Every run of text is shaped by HarfBuzz before it is laid out: runs of one font, one script, one direction and one style shape together, with the whole paragraph around them as context. Shaping applies the OpenType features of the font, so Latin text takes its ligatures and kerning, Arabic, Persian and Urdu letters take the form their neighbours ask for and join, lam and alef merge, Devanagari consonants form conjuncts and place their vowel signs before or above them, and the marks of Thai, Hebrew and every other script sit on their letters. The `language` of a style or of rich text, a BCP 47 tag such as `'ar'`, `'fa'`, `'ur'`, `'hi'` or `'sr'`, picks the forms a language prefers where the font has them, such as the Urdu forms of some digits or the Serbian forms of some Cyrillic letters.
+
+A character is a cluster, the code points shaping keeps together: a letter with its marks, a conjunct with its vowel signs, or a ligature. Characters are what the typewriter reveal counts, what text fields move the caret over, and what hit tests and selections cover, so a reveal or a caret never stops inside a letter.
+
+Every paragraph runs through the Unicode Bidirectional Algorithm of SheenBidi. Its direction is `'auto'` by default, taken from its first strong letter, so an Arabic or Hebrew paragraph reads right to left and an English one left to right, and `direction = 'ltr'` or `'rtl'` forces it. After a paragraph is broken into lines, every line is ordered for display on its own: runs that read right to left go from the right, numbers and Latin words inside them keep their own order, and brackets mirror so that `(USD)` reads correctly inside Arabic text. A paragraph that starts with a Latin word or a number but reads right to left needs a forced direction, or a right-to-left mark, U+200F, at its start.
+
+Alignment names the sides of a paragraph by its direction. `'start'`, the default, lines text up where its lines begin, the left of left-to-right text and the right of right-to-left text, and `'end'` the other side. `'left'`, `'center'` and `'right'` name fixed sides, and `'fill'` stretches every wrapped line to both edges and leaves the last line at its start. In rich text, `[p dir=rtl]` sets the direction of a block and `[p align=end]` its alignment, the indent, the list markers and the drop cap stand on the side the paragraph starts, and a table reads in the direction of its first paragraph, so its first column stands at the right of a right-to-left table. Backgrounds, underlines, strikes and link areas cover the shaped text after it is ordered, split where the direction changes, and grow with the reveal from the side their text starts.
+
+```lua
+local assets = require('haylen.assets')
+local graphics = require('haylen.graphics')
+local graphics2d = require('haylen.graphics2d')
+
+local family = graphics.newFontFamily({
+    regular = graphics2d.defaultFont(),
+    fallback = {assets.font('fonts/noto_sans_arabic_regular.ttf'), assets.font('fonts/noto_sans_hebrew_regular.ttf'), assets.font('fonts/noto_sans_devanagari_regular.ttf'), assets.font('fonts/noto_sans_thai_regular.ttf')},
+})
+
+graphics2d.drawText(family, 'السعر 42 دولارًا (USD)', 1000, 100, {size = 32, anchor = {1, 0}})
+graphics2d.drawText(family, 'Hebrew: שלום עולם', 100, 160, {size = 32})
+graphics2d.drawText(family, 'Order 7 السعر', 1000, 220, {size = 32, direction = 'rtl', anchor = {1, 0}})
+local story = graphics2d.newRichText('[p dir=rtl align=start][b]الرحلة[/b] بدأت في [u]الصباح[/u] الباكر.[/p]', {family = family, size = 30, maxWidth = 500, language = 'ar', reveal = 20})
+```
+
+A bitmap font has no shaping tables, so it maps every code point to its own glyph and applies the kerning pairs of its file. It lays out and orders right-to-left text, with mirrored brackets, but it draws neither joined Arabic letters nor Indic conjuncts, which need a TrueType or OpenType font.
+
+## Line breaking
+
+Lines break where the Unicode Line Breaking Algorithm of libunibreak allows: after spaces and hyphens, between Chinese and Japanese characters, and never before a closing punctuation mark or inside a number. The language tailors the quotation marks of English, German, Spanish, French and Russian text and the ambiguous punctuation of Chinese text. Thai writes no spaces between words, so a line of Thai breaks between the phrases the Thai model of BudouX finds, a small model that weighs the letters around every place of the text. A word wider than a whole line breaks between its characters, never inside a cluster. Lao, Khmer and Burmese also write without spaces, and their lines break only at spaces and punctuation because the engine has no model for them.
 
 ## Markup
 
@@ -66,7 +98,7 @@ Markup is text with tags in square brackets. Inline tags open with `[name]` or `
 | `[icon=name width= height= color= valign=]` | An icon that `graphics2d.registerTextIcon` registered, as tall as its text unless sized. |
 | `[pause=0.5]` | Holds the typewriter reveal for half a second before the next character. |
 | `[speed=2]` | Reveals the text inside twice as fast. |
-| `[p align=center indent=1]` | A paragraph block with an alignment (`left`, `center`, `right` or `fill`) and an indent in levels of one and a half times the base size. |
+| `[p align=center dir=rtl indent=1]` | A paragraph block with an alignment (`start`, `end`, `left`, `center`, `right` or `fill`), a direction (`auto`, `ltr` or `rtl`) and an indent in levels of one and a half times the base size, which stands on the side the paragraph starts. |
 | `[center]`, `[left]`, `[right]`, `[fill]` | Paragraph blocks with an alignment. Fill stretches the spaces of every wrapped line to both edges. |
 | `[ul bullet=*]`, `[ol type=1]` | Lists, where every paragraph inside is an item with a bullet or a number, counted as `1`, `a`, `A`, `i` or `I`. Lists nest and indent one level each. |
 | `[hr width=50% height=2 color=c]` | A horizontal rule, centered unless its block aligns it. |
@@ -118,7 +150,7 @@ end)
 
 ## Typewriter reveal
 
-Characters count in reading order, one per code point, spaces included, and one per image or icon, and a list marker shows with the first character of its item. A reveal speed in characters per second, `reveal` in the options of rich text or of `ui.richText`, shows them one by one as time passes. `[pause=seconds]` holds the reveal before the next character and `[speed=factor]` changes its pace inside the tag. Hidden characters keep their place, so the text never reflows while it appears, and backgrounds, underlines and strikes grow with the revealed text.
+Characters count in reading order, one per cluster, spaces included, and one per image or icon, and a list marker shows with the first character of its item. Right-to-left text appears from the right, and a mixed line reveals every run in the order it is read, whatever its place on screen. A reveal speed in characters per second, `reveal` in the options of rich text or of `ui.richText`, shows them one by one as time passes. `[pause=seconds]` holds the reveal before the next character and `[speed=factor]` changes its pace inside the tag. Hidden characters keep their place, so the text never reflows while it appears, and backgrounds, underlines and strikes grow with the revealed text.
 
 `text.visibleCharacters` and `text.visibleRatio` read and set how much shows. Setting them moves a running reveal there, and a dialogue box skips to the end by setting `visibleCharacters` to -1 when the player presses a button while `text.revealing` is `true`.
 
@@ -145,9 +177,11 @@ scene.push({
 
 ## Layout
 
-Rich text lays each paragraph out into lines. Lines wrap after spaces and around images, between Chinese and Japanese characters, and inside a word only when the word alone is wider than a line. Every line stands on one baseline, as tall as its tallest text and images, and lines follow each other by their height times the line spacing, so a line with a larger size or an image makes room for it. Images centered by default sit on the middle of the text of their style, `baseline` puts their bottom on the baseline, and `top` and `bottom` align them with the line.
+Rich text lays each paragraph out into lines. Lines wrap where the [line breaking](#line-breaking) rules allow and around images, and inside a word only when the word alone is wider than a line. Every line stands on one baseline, as tall as its tallest text and images, and lines follow each other by their height times the line spacing, so a line with a larger size or an image makes room for it. Images centered by default sit on the middle of the text of their style, `baseline` puts their bottom on the baseline, and `top` and `bottom` align them with the line.
 
 A layout is cached by its width and scale, and a few widths stay cached, so a UI container that measures text at one width and draws it at another lays it out once for each. Changing the markup or the options lays it out again, and effects and the reveal never do. An image that is still loading takes no room, and the layout is built again once it arrives.
+
+Plain text lays out the same way, as a document of one paragraph per line. Every font and every family keeps its 512 most recent plain text layouts, by the text and the style fields that change the layout: size, wrap width, line spacing, alignment, direction, language, bold and italic. Text that `graphics2d.drawText` draws every frame, and the labels of the UI, shape once and then only place their glyphs. Color, outline, shadow, anchor and rotation apply when the text draws and never lay it out again.
 
 ## Drawing in 2D
 
@@ -175,7 +209,7 @@ scene.push({
 
 ## Rich text in the UI
 
-A `ui.richText` node draws markup in the family of its theme font role, which `ui.addFont(name, family)` gives real bold, italic and mono faces and fallbacks when a theme role names it. Its links are focusable items: the pointer, the keyboard and gamepads move to them and activate them, each link is one stop even when it wraps, and the node reports `link` and `linkHover`. Its hints show as tooltips, its images load through the UI like `ui.image`, and its text draws through the 2D renderer at its place among the other UI draws, inside the clip of its window.
+A `ui.richText` node draws markup in the family of its theme font role, which `ui.addFont(name, family)` gives real bold, italic and mono faces and fallbacks when a theme role names it, and the labels and other components of the role draw with the same faces and fallbacks. It starts in the style of its role, bold or italic when the role asks for it, and draws at the em size that lines its letters up with the labels of the role, since the widgets size a font by its height from ascent to descent. Its links are focusable items: the pointer, the keyboard and gamepads move to them and activate them, each link is one stop even when it wraps, and the node reports `link` and `linkHover`. Its hints show as tooltips, its images load through the UI like `ui.image`, and its text draws through the 2D renderer at its place among the other UI draws, inside the clip of its window. Its paragraphs read in the direction of their first strong letter unless the markup sets `[p dir]`, start and end follow the [direction of the node](lua-api/ui.md#right-to-left-interfaces), and its text is shaped for the language of the node.
 
 ```lua
 local assets = require('haylen.assets')
@@ -192,7 +226,7 @@ ui.mount(ui.card{padding = 24,
 
 ## C++
 
-The text types live in `haylen::text` under `engine/include/haylen/text/`. `text::Font` is the interface of both kinds of font, with `text::TrueTypeFont` and `text::BitmapFont` behind it, and `BitmapFont::parse` and `BitmapFont::describeGrid` read BMFont files and grids. `text::FontFamily` selects faces and resolves fallbacks. `text::RichText::parse` reads markup into a `text::RichTextDocument` of paragraphs, runs, objects, links, hints and effects, and a `text::RichText` made from markup, `text::RichTextOptions` and the `text::RichTextRegistry` of effects and icons lays it out into a `text::RichTextLayout` and animates it. `graphics2d::Renderer::drawRichText` draws the frame of this moment. The registry of an engine belongs to `plugins::TextPlugin`, which also registers the `bitmapFont` and `gridFont` asset types.
+The text types live in `haylen::text` under `engine/include/haylen/text/`. `text::Font` is the interface of both kinds of font, with `text::TrueTypeFont` and `text::BitmapFont` behind it, and `BitmapFont::parse` and `BitmapFont::describeGrid` read BMFont files and grids. `Font::shape` shapes one run into `Font::ShapedGlyph` values, and `Font::layout` and `FontFamily::layout` lay plain text out into a cached `text::TextLayout` of glyphs, characters and lines. `text::FontFamily` selects faces and resolves fallbacks, and `text::Direction` and `text::TextAlign` set the direction and alignment of a `text::TextStyle`. `text::RichText::parse` reads markup into a `text::RichTextDocument` of paragraphs, runs, objects, links, hints and effects, and a `text::RichText` made from markup, `text::RichTextOptions` and the `text::RichTextRegistry` of effects and icons lays it out into a `text::TextLayout` and animates it. `graphics2d::Renderer::drawText` draws plain text with a font or a family. `graphics2d::Renderer::drawRichText` draws the frame of this moment. The registry of an engine belongs to `plugins::TextPlugin`, which also registers the `bitmapFont` and `gridFont` asset types.
 
 ```cpp
 #include "haylen/2d/graphics/Renderer.hpp"
@@ -207,4 +241,17 @@ registry->registerEffect("blink", [](haylen::text::TextEffect::Glyph& glyph, con
 haylen::text::RichText banner("[b]Night 3[/b] [blink]begins[/blink]", {.family = registry->getDefaultFamily(), .size = 48.0F}, registry);
 banner.update(deltaSeconds);
 engine.getRenderer2D().drawRichText(banner, {48.0F, 48.0F});
+
+haylen::text::FontFamily world({.regular = engine.getDefaultFont(), .fallbacks = {arabicFont, devanagariFont}});
+const haylen::text::TextStyle arabic{.size = 32.0F, .maxWidth = 600.0F, .direction = haylen::text::Direction::RightToLeft, .language = "ar"};
+const std::shared_ptr<const haylen::text::TextLayout> laid = world.layout("مرحبا 42 (Harbor)", arabic);
+engine.getRenderer2D().drawText(world, "مرحبا 42 (Harbor)", {48.0F, 160.0F}, arabic);
 ```
+
+## Limits
+
+- Bitmap fonts draw one glyph per code point, so Arabic, Indic and other scripts that join or combine their letters need a TrueType or OpenType font.
+- Lao, Khmer and Burmese lines break only at spaces and punctuation, since the engine has a phrase model for Thai alone.
+- Every line is shaped as part of its paragraph and never shaped again after it wraps, so a letter at the end of a wrapped line keeps the joining form it had before the break.
+- Vertical text and the ruby annotations of Japanese are not laid out.
+- Text drawn by `haylen.imgui` goes through Dear ImGui, which neither shapes nor orders it, so debug windows show complex scripts unshaped.

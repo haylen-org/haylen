@@ -1,0 +1,813 @@
+Adds desktop window options to sokol_app: borderless, topmost, unfocusable and taskbar-less windows that open at a given position with those options already in effect, sapp_set_window_focusable() to change the focus behavior while the app runs, per-pixel transparency on D3D11 through a DirectComposition swapchain with premultiplied alpha, and 32-bit ARGB visuals for transparent windows on X11 with GLX and EGL. Quitting through performClose: is replaced because borderless macOS windows have no close button.
+
+--- a/sokol_app.h
++++ b/sokol_app.h
+@@ -159,7 +159,8 @@
+     window icon         | YES     | YES(1)| YES    | ---   | ---     | YES
+     srgb framebuffer    | YES     | YES   | YES    | YES   | YES     | YES(5)
+     hdr framebuffer     | ---     | YES(6)| ---    | YES(6)| ---     | YES(5)
+-    composite mode      | ---     | YES(6)| ---    | ---   | ---     | YES
++    composite mode      | YES(11) | YES(6)| YES(12)| ---   | ---     | YES
++    desktop window      | YES     | YES   | YES    | ---   | ---     | ---
+     disable vsync       | YES     | ---(8)| YES    | ---   | ---     | ---
+     swap interval       | YES(10) | YES(9)| YES(10)| YES   | ---     |
+ 
+@@ -178,6 +179,9 @@
+         has no effect since macOS 13
+     (9) on macOS+GL, setting the swap interval has no effect since macOS 13
+     (10) swap interval not supported on Vulkan
++    (11) only supported on D3D11, through a DirectComposition swapchain
++    (12) only supported on GL and GLES3, and needs a compositing window
++         manager that offers a 32-bit ARGB visual
+ 
+     STEP BY STEP
+     ============
+@@ -905,7 +909,40 @@
+     any time (either because the browser had rejected switching into fullscreen,
+     or the user leaves fullscreen via Esc), this means that the result
+     of sapp_is_fullscreen() may change also without calling sapp_toggle_fullscreen()!
++
++
++    DESKTOP WINDOW OPTIONS
++    ======================
++    On Windows, macOS and Linux, the nested struct sapp_desc.desktop creates
++    the window with options that are already in effect when the window
++    shows up for the first time, so that no decorated or activated window
++    flashes on screen:
++
++        .desktop.borderless     - the window has no title bar and no border
++        .desktop.topmost        - the window floats above normal windows
++        .desktop.no_focus       - the window never activates the application
++                                  and never takes the keyboard focus, not
++                                  even when it is clicked
++        .desktop.skip_taskbar   - the window has no taskbar button, and on
++                                  macOS the application has no Dock icon
++        .desktop.has_position   - the top left corner of the content area
++                                  opens at .desktop.x and .desktop.y instead
++                                  of the window being centered
++
++    The position has the same units as sapp_desc.width and sapp_desc.height,
++    with the origin at the top left corner of the primary screen and y
++    growing downward, on macOS too.
++
++    To let the window take the focus again, or to keep it from taking the
++    focus while the application runs, call:
+ 
++        sapp_set_window_focusable(bool focusable)
++
++    Together with SAPP_COMPOSITEMODE_PREMULTIPLIED, these options create
++    windows with per-pixel transparency that live directly on the desktop.
++    Transparency needs D3D11 on Windows, and a compositing window manager
++    with a 32-bit ARGB visual on Linux. When those are missing, sokol-app
++    fails with an error instead of creating an opaque window.
+ 
+     WINDOW ICON SUPPORT
+     ===================
+@@ -1745,6 +1782,13 @@
+     _SAPP_LOGITEM_XMACRO(WIN32_D3D11_GET_IDXGIFACTORY_FAILED, "could not obtain IDXGIFactory object") \
+     _SAPP_LOGITEM_XMACRO(WIN32_D3D11_GET_IDXGIADAPTER_FAILED, "could not obtain IDXGIAdapter object") \
+     _SAPP_LOGITEM_XMACRO(WIN32_D3D11_QUERY_INTERFACE_IDXGIDEVICE1_FAILED, "could not obtain IDXGIDevice1 interface") \
++    _SAPP_LOGITEM_XMACRO(WIN32_D3D11_CREATE_DEVICE_WITH_DEBUG_FAILED, "D3D11CreateDevice() with D3D11_CREATE_DEVICE_DEBUG failed, retrying without debug flag.") \
++    _SAPP_LOGITEM_XMACRO(WIN32_D3D11_CREATE_DEVICE_FAILED, "D3D11CreateDevice() failed") \
++    _SAPP_LOGITEM_XMACRO(WIN32_D3D11_GET_IDXGIFACTORY2_FAILED, "could not obtain IDXGIFactory2 object (transparent windows need Windows 8 or later)") \
++    _SAPP_LOGITEM_XMACRO(WIN32_D3D11_CREATE_SWAPCHAIN_FOR_COMPOSITION_FAILED, "IDXGIFactory2::CreateSwapChainForComposition() failed") \
++    _SAPP_LOGITEM_XMACRO(WIN32_LOAD_DCOMP_DLL_FAILED, "failed to load DCompositionCreateDevice() from dcomp.dll (transparent windows need DirectComposition)") \
++    _SAPP_LOGITEM_XMACRO(WIN32_DCOMP_CREATE_DEVICE_FAILED, "DCompositionCreateDevice() failed") \
++    _SAPP_LOGITEM_XMACRO(WIN32_DCOMP_CREATE_VISUAL_TREE_FAILED, "failed to show the swapchain through a DirectComposition target and visual") \
+     _SAPP_LOGITEM_XMACRO(WIN32_REGISTER_RAW_INPUT_DEVICES_FAILED_MOUSE_LOCK, "RegisterRawInputDevices() failed (on mouse lock)") \
+     _SAPP_LOGITEM_XMACRO(WIN32_REGISTER_RAW_INPUT_DEVICES_FAILED_MOUSE_UNLOCK, "RegisterRawInputDevices() failed (on mouse unlock)") \
+     _SAPP_LOGITEM_XMACRO(WIN32_GET_RAW_INPUT_DATA_FAILED, "GetRawInputData() failed") \
+@@ -1756,6 +1800,7 @@
+     _SAPP_LOGITEM_XMACRO(LINUX_GLX_VERSION_TOO_LOW, "GLX version too low (need at least 1.3)") \
+     _SAPP_LOGITEM_XMACRO(LINUX_GLX_NO_GLXFBCONFIGS, "glXGetFBConfigs() returned no configs") \
+     _SAPP_LOGITEM_XMACRO(LINUX_GLX_NO_SUITABLE_GLXFBCONFIG, "failed to find a suitable GLXFBConfig") \
++    _SAPP_LOGITEM_XMACRO(LINUX_GLX_NO_ARGB_GLXFBCONFIG, "failed to find a GLXFBConfig with a 32-bit ARGB visual (transparent windows need a compositing window manager)") \
+     _SAPP_LOGITEM_XMACRO(LINUX_GLX_GET_VISUAL_FROM_FBCONFIG_FAILED, "glXGetVisualFromFBConfig failed") \
+     _SAPP_LOGITEM_XMACRO(LINUX_GLX_REQUIRED_EXTENSIONS_MISSING, "GLX extensions ARB_create_context and ARB_create_context_profile missing") \
+     _SAPP_LOGITEM_XMACRO(LINUX_GLX_CREATE_CONTEXT_FAILED, "Failed to create GL context via glXCreateContextAttribsARB") \
+@@ -1766,6 +1811,7 @@
+     _SAPP_LOGITEM_XMACRO(LINUX_EGL_GET_DISPLAY_FAILED, "eglGetDisplay() failed") \
+     _SAPP_LOGITEM_XMACRO(LINUX_EGL_INITIALIZE_FAILED, "eglInitialize() failed") \
+     _SAPP_LOGITEM_XMACRO(LINUX_EGL_NO_CONFIGS, "eglChooseConfig() returned no configs") \
++    _SAPP_LOGITEM_XMACRO(LINUX_EGL_NO_ARGB_CONFIG, "failed to find an EGL config with a 32-bit ARGB visual (transparent windows need a compositing window manager)") \
+     _SAPP_LOGITEM_XMACRO(LINUX_EGL_NO_NATIVE_VISUAL, "eglGetConfigAttrib() for EGL_NATIVE_VISUAL_ID failed") \
+     _SAPP_LOGITEM_XMACRO(LINUX_EGL_GET_VISUAL_INFO_FAILED, "XGetVisualInfo() failed") \
+     _SAPP_LOGITEM_XMACRO(LINUX_EGL_CREATE_WINDOW_SURFACE_FAILED, "eglCreateWindowSurface() failed") \
+@@ -2064,6 +2110,16 @@
+ typedef struct sapp_android_desc {
+     bool (*native_event_cb)(const void* native_event);
+ } sapp_android_desc;
++
++typedef struct sapp_desktop_desc {
++    bool borderless;            // if true, the window has no title bar and no border
++    bool topmost;               // if true, the window floats above normal windows
++    bool no_focus;              // if true, the window never activates the application or takes the keyboard focus
++    bool skip_taskbar;          // if true, the window has no taskbar button, and on macOS the application has no Dock icon
++    bool has_position;          // if true, the window opens at x and y instead of centered
++    int x;                      // left edge of the content area, from the left edge of the primary screen
++    int y;                      // top edge of the content area, from the top edge of the primary screen
++} sapp_desktop_desc;
+ 
+ typedef struct sapp_desc {
+     void (*init_cb)(void);                  // these are the user-provided callbacks without user data
+@@ -2105,6 +2161,7 @@
+     sapp_html5_desc html5;
+     sapp_ios_desc ios;
+     sapp_android_desc android;
++    sapp_desktop_desc desktop;          // window options of desktop platforms, see DESKTOP WINDOW OPTIONS
+ } sapp_desc;
+ 
+ /* HTML5 specific: request and response structs for
+@@ -2206,6 +2263,8 @@
+ SOKOL_APP_API_DECL bool sapp_is_fullscreen(void);
+ /* toggle fullscreen mode */
+ SOKOL_APP_API_DECL void sapp_toggle_fullscreen(void);
++/* let the window take the focus, or keep it from ever activating the application (desktop platforms only) */
++SOKOL_APP_API_DECL void sapp_set_window_focusable(bool focusable);
+ /* show or hide the mouse cursor */
+ SOKOL_APP_API_DECL void sapp_show_mouse(bool show);
+ /* show or hide the mouse cursor */
+@@ -2547,8 +2606,12 @@
+         #endif
+         #include <d3d11.h>
+         #include <dxgi.h>
++        #include <dxgi1_2.h>
+         // DXGI_SWAP_EFFECT_FLIP_DISCARD is only defined in newer Windows SDKs, so don't depend on it
+         #define _SAPP_DXGI_SWAP_EFFECT_FLIP_DISCARD (4)
++    #endif
++    #ifndef WS_EX_NOREDIRECTIONBITMAP
++        #define WS_EX_NOREDIRECTIONBITMAP (0x00200000L)
+     #endif
+     #ifndef WM_MOUSEHWHEEL /* see https://github.com/floooh/sokol/issues/138 */
+         #define WM_MOUSEHWHEEL (0x020E)
+@@ -2915,6 +2978,45 @@
+ #endif // _SAPP_EMSCRIPTEN
+ 
+ #if defined(SOKOL_D3D11) && defined(_SAPP_WIN32)
++// dcomp.h has no C interface, so the few DirectComposition methods that transparent
++// windows need are declared here, with every slot of the vtables in the order of dcomp.h
++typedef struct _sapp_dcomp_device_t _sapp_dcomp_device_t;
++typedef struct _sapp_dcomp_target_t _sapp_dcomp_target_t;
++typedef struct _sapp_dcomp_visual_t _sapp_dcomp_visual_t;
++typedef struct {
++    void* QueryInterface;
++    void* AddRef;
++    ULONG (STDMETHODCALLTYPE* Release)(_sapp_dcomp_device_t* self);
++    HRESULT (STDMETHODCALLTYPE* Commit)(_sapp_dcomp_device_t* self);
++    void* WaitForCommitCompletion;
++    void* GetFrameStatistics;
++    HRESULT (STDMETHODCALLTYPE* CreateTargetForHwnd)(_sapp_dcomp_device_t* self, HWND hwnd, BOOL topmost, _sapp_dcomp_target_t** target);
++    HRESULT (STDMETHODCALLTYPE* CreateVisual)(_sapp_dcomp_device_t* self, _sapp_dcomp_visual_t** visual);
++} _sapp_dcomp_device_vtbl_t;
++struct _sapp_dcomp_device_t { const _sapp_dcomp_device_vtbl_t* lpVtbl; };
++typedef struct {
++    void* QueryInterface;
++    void* AddRef;
++    ULONG (STDMETHODCALLTYPE* Release)(_sapp_dcomp_target_t* self);
++    HRESULT (STDMETHODCALLTYPE* SetRoot)(_sapp_dcomp_target_t* self, _sapp_dcomp_visual_t* visual);
++} _sapp_dcomp_target_vtbl_t;
++struct _sapp_dcomp_target_t { const _sapp_dcomp_target_vtbl_t* lpVtbl; };
++typedef struct {
++    void* QueryInterface;
++    void* AddRef;
++    ULONG (STDMETHODCALLTYPE* Release)(_sapp_dcomp_visual_t* self);
++    void* SetOffsetX[2];
++    void* SetOffsetY[2];
++    void* SetTransform[2];
++    void* SetTransformParent;
++    void* SetEffect;
++    void* SetBitmapInterpolationMode;
++    void* SetBorderMode;
++    void* SetClip[2];
++    HRESULT (STDMETHODCALLTYPE* SetContent)(_sapp_dcomp_visual_t* self, IUnknown* content);
++} _sapp_dcomp_visual_vtbl_t;
++struct _sapp_dcomp_visual_t { const _sapp_dcomp_visual_vtbl_t* lpVtbl; };
++
+ typedef struct {
+     ID3D11Device* device;
+     ID3D11DeviceContext* device_context;
+@@ -2927,6 +3029,10 @@
+     DXGI_SWAP_CHAIN_DESC swap_chain_desc;
+     IDXGISwapChain* swap_chain;
+     IDXGIDevice1* dxgi_device;
++    HMODULE dcomp_dll;
++    _sapp_dcomp_device_t* dcomp_device;
++    _sapp_dcomp_target_t* dcomp_target;
++    _sapp_dcomp_visual_t* dcomp_visual;
+ } _sapp_d3d11_t;
+ #endif
+ 
+@@ -3298,6 +3404,7 @@
+     sapp_desc desc;
+     bool valid;
+     bool fullscreen;            // current(!) fullscreen state
++    bool focusable;             // current(!) state of sapp_set_window_focusable()
+     bool first_frame;
+     bool init_called;
+     bool cleanup_called;
+@@ -3634,6 +3741,7 @@
+     _sapp.desc.window_title = _sapp.window_title;
+     _sapp.dpi_scale = 1.0f;
+     _sapp.fullscreen = _sapp.desc.fullscreen;
++    _sapp.focusable = !_sapp.desc.desktop.no_focus;
+     _sapp.mouse.shown = true;
+     _sapp_timing_init(&_sapp.timing);
+ }
+@@ -6187,7 +6295,10 @@
+     [[_sapp.macos.view openGLContext] flushBuffer];
+     #endif
+     if (_sapp.quit_requested || _sapp.quit_ordered) {
+-        [_sapp.macos.window performClose:nil];
++        // performClose: needs a close button, which borderless windows don't have
++        if ([_sapp.macos.win_dlg windowShouldClose:_sapp.macos.window]) {
++            [_sapp.macos.window close];
++        }
+     }
+ }
+ 
+@@ -6195,17 +6306,25 @@
+ - (void)applicationDidFinishLaunching:(NSNotification*)aNotification {
+     _SOKOL_UNUSED(aNotification);
+     // NOTE: keep activationPolicy in front of window creation (see https://github.com/floooh/sokol/issues/1500)
+-    NSApp.activationPolicy = NSApplicationActivationPolicyRegular;
++    NSApp.activationPolicy = _sapp.desc.desktop.skip_taskbar ? NSApplicationActivationPolicyAccessory : NSApplicationActivationPolicyRegular;
+     _sapp_macos_init_cursors();
+     if ((_sapp.window_width == 0) || (_sapp.window_height == 0)) {
+         _sapp_macos_init_default_dimensions();
+     }
+-    const NSUInteger style =
+-        NSWindowStyleMaskTitled |
+-        NSWindowStyleMaskClosable |
+-        NSWindowStyleMaskMiniaturizable |
+-        NSWindowStyleMaskResizable;
++    NSUInteger style = NSWindowStyleMaskBorderless;
++    if (!_sapp.desc.desktop.borderless) {
++        style = NSWindowStyleMaskTitled |
++            NSWindowStyleMaskClosable |
++            NSWindowStyleMaskMiniaturizable |
++            NSWindowStyleMaskResizable;
++    }
+     NSRect window_rect = NSMakeRect(0, 0, _sapp.window_width, _sapp.window_height);
++    if (_sapp.desc.desktop.has_position) {
++        // the desktop position counts from the top of the primary screen, and AppKit from its bottom
++        const NSRect primary_frame = [[[NSScreen screens] firstObject] frame];
++        window_rect.origin.x = _sapp.desc.desktop.x;
++        window_rect.origin.y = NSMaxY(primary_frame) - _sapp.desc.desktop.y - _sapp.window_height;
++    }
+     _sapp.macos.window = [[_sapp_macos_window alloc]
+         initWithContentRect:window_rect
+         styleMask:style
+@@ -6220,6 +6339,10 @@
+         _sapp.macos.window.backgroundColor = [NSColor clearColor];
+         _sapp.macos.window.hasShadow = NO;
+     }
++    if (_sapp.desc.desktop.topmost) {
++        _sapp.macos.window.level = NSFloatingWindowLevel;
++        _sapp.macos.window.collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorStationary;
++    }
+     _sapp.macos.win_dlg = [[_sapp_macos_window_delegate alloc] init];
+     _sapp.macos.window.delegate = _sapp.macos.win_dlg;
+     #if defined(SOKOL_METAL)
+@@ -6231,12 +6354,20 @@
+     #endif
+     _sapp.macos.window.contentView = _sapp.macos.view;
+     [_sapp.macos.window makeFirstResponder:_sapp.macos.view];
+-    [_sapp.macos.window center];
++    if (!_sapp.desc.desktop.has_position) {
++        [_sapp.macos.window center];
++    }
+     _sapp.valid = true;
+     if (_sapp.fullscreen) {
+         /* ^^^ on GL, this already toggles a rendered frame, so set the valid flag before */
+         [_sapp.macos.window toggleFullScreen:self];
+     }
++    if (!_sapp.focusable) {
++        // show the window without activating the application
++        [_sapp.macos.window orderFrontRegardless];
++        _sapp_macos_update_dimensions();
++        return;
++    }
+     [NSApp activateIgnoringOtherApps:YES];
+     [_sapp.macos.window makeKeyAndOrderFront:nil];
+     _sapp_macos_update_dimensions();
+@@ -6378,6 +6509,15 @@
+     return self;
+ }
+ 
++- (BOOL)canBecomeKeyWindow {
++    // also lets borderless windows take the keyboard focus
++    return _sapp.focusable;
++}
++
++- (BOOL)canBecomeMainWindow {
++    return _sapp.focusable;
++}
++
+ - (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender {
+     return NSDragOperationCopy;
+ }
+@@ -6419,6 +6559,13 @@
+ }
+ @end
+ 
++// clicks into a window that never takes the focus neither activate the application nor bring the window to front
++_SOKOL_PRIVATE void _sapp_macos_keep_inactive(void) {
++    if (!_sapp.focusable) {
++        [NSApp preventWindowOrdering];
++    }
++}
++
+ @implementation _sapp_macos_view
+ #if defined(SOKOL_GLCORE)
+ - (void)timerFired:(id)sender {
+@@ -6462,6 +6609,15 @@
+ - (BOOL)isOpaque {
+     return _sapp.desc.composite_mode == SAPP_COMPOSITEMODE_OPAQUE;
+ }
++- (BOOL)acceptsFirstMouse:(NSEvent*)event {
++    _SOKOL_UNUSED(event);
++    // a window that never takes the focus stays inactive, so every click must reach it
++    return !_sapp.focusable;
++}
++- (BOOL)shouldDelayWindowOrderingForEvent:(NSEvent*)event {
++    _SOKOL_UNUSED(event);
++    return !_sapp.focusable;
++}
+ - (BOOL)canBecomeKeyView {
+     return YES;
+ }
+@@ -6509,6 +6665,7 @@
+     }
+ }
+ - (void)mouseDown:(NSEvent*)event {
++    _sapp_macos_keep_inactive();
+     _sapp_gl_make_current();
+     _sapp_macos_mouse_update_from_nsevent(event, false);
+     _sapp_macos_mouse_event(SAPP_EVENTTYPE_MOUSE_DOWN, SAPP_MOUSEBUTTON_LEFT, _sapp_macos_mods(event));
+@@ -6521,6 +6678,7 @@
+     _sapp.macos.mouse_buttons &= ~(1<<SAPP_MOUSEBUTTON_LEFT);
+ }
+ - (void)rightMouseDown:(NSEvent*)event {
++    _sapp_macos_keep_inactive();
+     _sapp_gl_make_current();
+     _sapp_macos_mouse_update_from_nsevent(event, false);
+     _sapp_macos_mouse_event(SAPP_EVENTTYPE_MOUSE_DOWN, SAPP_MOUSEBUTTON_RIGHT, _sapp_macos_mods(event));
+@@ -6533,6 +6691,7 @@
+     _sapp.macos.mouse_buttons &= ~(1<<SAPP_MOUSEBUTTON_RIGHT);
+ }
+ - (void)otherMouseDown:(NSEvent*)event {
++    _sapp_macos_keep_inactive();
+     _sapp_gl_make_current();
+     _sapp_macos_mouse_update_from_nsevent(event, false);
+     if (2 == event.buttonNumber) {
+@@ -8781,6 +8940,11 @@
+ static const IID _sapp_IID_ID3D11Texture2D = { 0x6f15aaf2,0xd208,0x4e89, {0x9a,0xb4,0x48,0x95,0x35,0xd3,0x4f,0x9c} };
+ static const IID _sapp_IID_IDXGIDevice1    = { 0x77db970f,0x6276,0x48ba, {0xba,0x28,0x07,0x01,0x43,0xb4,0x39,0x2c} };
+ static const IID _sapp_IID_IDXGIFactory    = { 0x7b7166ec,0x21c7,0x44ae, {0xb2,0x1a,0xc9,0xae,0x32,0x1a,0xe3,0x69} };
++static const IID _sapp_IID_IDXGIFactory2   = { 0x50c83a1c,0xe072,0x4c48, {0x87,0xb0,0x36,0x30,0xfa,0x36,0xa6,0xd0} };
++static const IID _sapp_IID_IDCompositionDevice = { 0xc37ea93a,0xe7aa,0x450d, {0xb1,0x6f,0x97,0x46,0xcb,0x04,0x07,0xf3} };
++
++#define _SAPP_DCOMP_RELEASE(obj) if (obj) { (obj)->lpVtbl->Release(obj); obj=0; }
++typedef HRESULT (WINAPI* _sapp_dcomp_create_device_t)(IDXGIDevice* dxgi_device, REFIID iid, void** device);
+ 
+ static inline HRESULT _sapp_dxgi_GetBuffer(IDXGISwapChain* self, UINT Buffer, REFIID riid, void** ppSurface) {
+     #if defined(__cplusplus)
+@@ -8875,6 +9039,14 @@
+         return self->MakeWindowAssociation(WindowHandle, Flags);
+     #else
+         return self->lpVtbl->MakeWindowAssociation(self, WindowHandle, Flags);
++    #endif
++}
++
++static inline HRESULT _sapp_dxgi_CreateSwapChainForComposition(IDXGIFactory2* self, IUnknown* pDevice, const DXGI_SWAP_CHAIN_DESC1* pDesc, IDXGIOutput* pRestrictToOutput, IDXGISwapChain1** ppSwapChain) {
++    #if defined(__cplusplus)
++        return self->CreateSwapChainForComposition(pDevice, pDesc, pRestrictToOutput, ppSwapChain);
++    #else
++        return self->lpVtbl->CreateSwapChainForComposition(self, pDevice, pDesc, pRestrictToOutput, ppSwapChain);
+     #endif
+ }
+ 
+@@ -8911,10 +9083,112 @@
+         case SAPP_PIXELFORMAT_DEPTH: return DXGI_FORMAT_D32_FLOAT;
+         case SAPP_PIXELFORMAT_DEPTH_STENCIL: return DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
+         default: SOKOL_UNREACHABLE; return DXGI_FORMAT_UNKNOWN;
++    }
++}
++
++// shows the swapchain in the window through a DirectComposition target with the swapchain as its only visual
++_SOKOL_PRIVATE void _sapp_d3d11_create_composition_visual(void) {
++    _sapp.d3d11.dcomp_dll = LoadLibraryA("dcomp.dll");
++    _sapp_dcomp_create_device_t create_device = 0;
++    if (_sapp.d3d11.dcomp_dll) {
++        create_device = (_sapp_dcomp_create_device_t)(void*) GetProcAddress(_sapp.d3d11.dcomp_dll, "DCompositionCreateDevice");
++    }
++    if (!create_device) {
++        _SAPP_PANIC(WIN32_LOAD_DCOMP_DLL_FAILED);
++    }
++    HRESULT hr = create_device((IDXGIDevice*)_sapp.d3d11.dxgi_device, _sapp_win32_refiid(_sapp_IID_IDCompositionDevice), (void**)&_sapp.d3d11.dcomp_device);
++    if (!SUCCEEDED(hr) || !_sapp.d3d11.dcomp_device) {
++        _SAPP_PANIC(WIN32_DCOMP_CREATE_DEVICE_FAILED);
+     }
++    _sapp_dcomp_device_t* device = _sapp.d3d11.dcomp_device;
++    hr = device->lpVtbl->CreateTargetForHwnd(device, _sapp.win32.hwnd, TRUE, &_sapp.d3d11.dcomp_target);
++    if (SUCCEEDED(hr)) {
++        hr = device->lpVtbl->CreateVisual(device, &_sapp.d3d11.dcomp_visual);
++    }
++    if (SUCCEEDED(hr)) {
++        hr = _sapp.d3d11.dcomp_visual->lpVtbl->SetContent(_sapp.d3d11.dcomp_visual, (IUnknown*)_sapp.d3d11.swap_chain);
++    }
++    if (SUCCEEDED(hr)) {
++        hr = _sapp.d3d11.dcomp_target->lpVtbl->SetRoot(_sapp.d3d11.dcomp_target, _sapp.d3d11.dcomp_visual);
++    }
++    if (SUCCEEDED(hr)) {
++        hr = device->lpVtbl->Commit(device);
++    }
++    if (!SUCCEEDED(hr)) {
++        _SAPP_PANIC(WIN32_DCOMP_CREATE_VISUAL_TREE_FAILED);
++    }
+ }
+ 
++/* A swapchain of the window itself can't blend with the desktop, so transparent
++   windows render into a swapchain for DirectComposition with premultiplied alpha.
++   ResizeBuffers() and Present() work on it like on the swapchain of a window.
++*/
++_SOKOL_PRIVATE void _sapp_d3d11_create_device_and_composition_swapchain(void) {
++    UINT create_flags = D3D11_CREATE_DEVICE_SINGLETHREADED | D3D11_CREATE_DEVICE_BGRA_SUPPORT;
++    #if defined(SOKOL_DEBUG)
++        create_flags |= D3D11_CREATE_DEVICE_DEBUG;
++    #endif
++    D3D_FEATURE_LEVEL requested_feature_levels[] = { D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0 };
++    D3D_FEATURE_LEVEL result_feature_level;
++    HRESULT hr = D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, create_flags, requested_feature_levels, 2, D3D11_SDK_VERSION, &_sapp.d3d11.device, &result_feature_level, &_sapp.d3d11.device_context);
++    #if defined(SOKOL_DEBUG)
++    if (!SUCCEEDED(hr)) {
++        // the debug layer may be missing, see _sapp_d3d11_create_device_and_swapchain()
++        _SAPP_ERROR(WIN32_D3D11_CREATE_DEVICE_WITH_DEBUG_FAILED);
++        create_flags &= ~(UINT)D3D11_CREATE_DEVICE_DEBUG;
++        hr = D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, create_flags, requested_feature_levels, 2, D3D11_SDK_VERSION, &_sapp.d3d11.device, &result_feature_level, &_sapp.d3d11.device_context);
++    }
++    #endif
++    if (!SUCCEEDED(hr) || !_sapp.d3d11.device || !_sapp.d3d11.device_context) {
++        _SAPP_PANIC(WIN32_D3D11_CREATE_DEVICE_FAILED);
++    }
++    hr = _sapp_d3d11_QueryInterface(_sapp.d3d11.device, _sapp_win32_refiid(_sapp_IID_IDXGIDevice1), (void**)&_sapp.d3d11.dxgi_device);
++    if (!SUCCEEDED(hr) || !_sapp.d3d11.dxgi_device) {
++        _SAPP_PANIC(WIN32_D3D11_QUERY_INTERFACE_IDXGIDEVICE1_FAILED);
++    }
++    _sapp_dxgi_SetMaximumFrameLatency(_sapp.d3d11.dxgi_device, 1);
++
++    IDXGIAdapter* dxgi_adapter = 0;
++    hr = _sapp_dxgi_GetAdapter(_sapp.d3d11.dxgi_device, &dxgi_adapter);
++    if (!SUCCEEDED(hr) || !dxgi_adapter) {
++        _SAPP_PANIC(WIN32_D3D11_GET_IDXGIADAPTER_FAILED);
++    }
++    IDXGIFactory2* dxgi_factory = 0;
++    hr = _sapp_dxgi_GetParent((IDXGIObject*)dxgi_adapter, _sapp_win32_refiid(_sapp_IID_IDXGIFactory2), (void**)&dxgi_factory);
++    _SAPP_SAFE_RELEASE(dxgi_adapter);
++    if (!SUCCEEDED(hr) || !dxgi_factory) {
++        _SAPP_PANIC(WIN32_D3D11_GET_IDXGIFACTORY2_FAILED);
++    }
++
++    _SAPP_STRUCT(DXGI_SWAP_CHAIN_DESC1, sc_desc);
++    sc_desc.Width = (UINT)_sapp.framebuffer_width;
++    sc_desc.Height = (UINT)_sapp.framebuffer_height;
++    sc_desc.Format = _sapp_d3d11_swapchain_color_format();
++    sc_desc.SampleDesc.Count = 1;
++    sc_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
++    sc_desc.BufferCount = 2;
++    sc_desc.Scaling = DXGI_SCALING_STRETCH;
++    sc_desc.SwapEffect = _sapp.win32.is_win10_or_greater ? (DXGI_SWAP_EFFECT) _SAPP_DXGI_SWAP_EFFECT_FLIP_DISCARD : DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
++    sc_desc.AlphaMode = DXGI_ALPHA_MODE_PREMULTIPLIED;
++    IDXGISwapChain1* swap_chain = 0;
++    hr = _sapp_dxgi_CreateSwapChainForComposition(dxgi_factory, (IUnknown*)_sapp.d3d11.device, &sc_desc, NULL, &swap_chain);
++    if (SUCCEEDED(hr) && swap_chain) {
++        _sapp_dxgi_MakeWindowAssociation((IDXGIFactory*)dxgi_factory, _sapp.win32.hwnd, DXGI_MWA_NO_ALT_ENTER|DXGI_MWA_NO_PRINT_SCREEN);
++    }
++    _SAPP_SAFE_RELEASE(dxgi_factory);
++    if (!SUCCEEDED(hr) || !swap_chain) {
++        _SAPP_PANIC(WIN32_D3D11_CREATE_SWAPCHAIN_FOR_COMPOSITION_FAILED);
++    }
++    _sapp.d3d11.swap_chain = (IDXGISwapChain*)swap_chain;
++    _sapp.d3d11.swap_chain_desc.BufferCount = sc_desc.BufferCount;
++    _sapp_d3d11_create_composition_visual();
++}
++
+ _SOKOL_PRIVATE void _sapp_d3d11_create_device_and_swapchain(void) {
++    if (_sapp.desc.composite_mode != SAPP_COMPOSITEMODE_OPAQUE) {
++        _sapp_d3d11_create_device_and_composition_swapchain();
++        return;
++    }
+     DXGI_SWAP_CHAIN_DESC* sc_desc = &_sapp.d3d11.swap_chain_desc;
+     sc_desc->BufferDesc.Width = (UINT)_sapp.framebuffer_width;
+     sc_desc->BufferDesc.Height = (UINT)_sapp.framebuffer_height;
+@@ -9008,6 +9282,13 @@
+ }
+ 
+ _SOKOL_PRIVATE void _sapp_d3d11_destroy_device_and_swapchain(void) {
++    _SAPP_DCOMP_RELEASE(_sapp.d3d11.dcomp_visual);
++    _SAPP_DCOMP_RELEASE(_sapp.d3d11.dcomp_target);
++    _SAPP_DCOMP_RELEASE(_sapp.d3d11.dcomp_device);
++    if (_sapp.d3d11.dcomp_dll) {
++        FreeLibrary(_sapp.d3d11.dcomp_dll);
++        _sapp.d3d11.dcomp_dll = 0;
++    }
+     _SAPP_SAFE_RELEASE(_sapp.d3d11.swap_chain);
+     _SAPP_SAFE_RELEASE(_sapp.d3d11.dxgi_device);
+     _SAPP_SAFE_RELEASE(_sapp.d3d11.device_context);
+@@ -9469,8 +9750,37 @@
+         #endif
+     }
+     return false;
++}
++
++_SOKOL_PRIVATE DWORD _sapp_win32_windowed_style(void) {
++    if (_sapp.desc.desktop.borderless) {
++        return WS_POPUP | WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_SYSMENU | WS_MINIMIZEBOX;
++    }
++    return WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SIZEBOX;
+ }
+ 
++_SOKOL_PRIVATE DWORD _sapp_win32_ex_style(void) {
++    DWORD ex_style = _sapp.desc.desktop.skip_taskbar ? WS_EX_TOOLWINDOW : (WS_EX_APPWINDOW | WS_EX_WINDOWEDGE);
++    if (_sapp.desc.desktop.topmost) {
++        ex_style |= WS_EX_TOPMOST;
++    }
++    if (!_sapp.focusable) {
++        ex_style |= WS_EX_NOACTIVATE;
++    }
++    #if defined(SOKOL_D3D11)
++    // a transparent window shows the DirectComposition visual of its swapchain instead of a redirection surface
++    if (_sapp.desc.composite_mode != SAPP_COMPOSITEMODE_OPAQUE) {
++        ex_style |= WS_EX_NOREDIRECTIONBITMAP;
++    }
++    #endif
++    return ex_style;
++}
++
++_SOKOL_PRIVATE void _sapp_win32_set_focusable(bool focusable) {
++    const LONG_PTR ex_style = GetWindowLongPtrW(_sapp.win32.hwnd, GWL_EXSTYLE);
++    SetWindowLongPtrW(_sapp.win32.hwnd, GWL_EXSTYLE, focusable ? (ex_style & ~(LONG_PTR)WS_EX_NOACTIVATE) : (ex_style | WS_EX_NOACTIVATE));
++}
++
+ _SOKOL_PRIVATE void _sapp_win32_set_fullscreen(bool fullscreen, UINT swp_flags) {
+     HMONITOR monitor = MonitorFromWindow(_sapp.win32.hwnd, MONITOR_DEFAULTTONEAREST);
+     _SAPP_STRUCT(MONITORINFO, minfo);
+@@ -9480,13 +9790,13 @@
+     const int monitor_w = mr.right - mr.left;
+     const int monitor_h = mr.bottom - mr.top;
+ 
+-    const DWORD win_ex_style = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;
++    const DWORD win_ex_style = _sapp_win32_ex_style();
+     DWORD win_style;
+     RECT rect = { 0, 0, 0, 0 };
+ 
+     _sapp.fullscreen = fullscreen;
+     if (!_sapp.fullscreen) {
+-        win_style = WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SIZEBOX;
++        win_style = _sapp_win32_windowed_style();
+         rect = _sapp.win32.stored_window_rect;
+     } else {
+         GetWindowRect(_sapp.win32.hwnd, &_sapp.win32.stored_window_rect);
+@@ -9981,6 +10291,11 @@
+                 break;
+             case WM_KILLFOCUS:
+                 _sapp_win32_app_event(SAPP_EVENTTYPE_UNFOCUSED);
++                break;
++            case WM_MOUSEACTIVATE:
++                if (!_sapp.focusable) {
++                    return MA_NOACTIVATE;
++                }
+                 break;
+             case WM_SETCURSOR:
+                 if (LOWORD(lParam) == HTCLIENT) {
+@@ -10168,11 +10483,19 @@
+        windowed-mode window will always be created first (however in hidden
+        mode, so that no windowed-mode window pops up before the fullscreen window)
+     */
+-    const DWORD win_ex_style = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;
++    const DWORD win_ex_style = _sapp_win32_ex_style();
+     RECT rect = { 0, 0, 0, 0 };
+-    DWORD win_style = WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SIZEBOX;
++    DWORD win_style = _sapp_win32_windowed_style();
+     rect.right = (int) ((float)_sapp.window_width * _sapp.win32.dpi.window_scale);
+     rect.bottom = (int) ((float)_sapp.window_height * _sapp.win32.dpi.window_scale);
++    const bool has_position = _sapp.desc.desktop.has_position;
++    if (has_position) {
++        // the position scales with the DPI of the primary monitor, like the size
++        rect.left = (LONG) ((float)_sapp.desc.desktop.x * _sapp.win32.dpi.window_scale);
++        rect.top = (LONG) ((float)_sapp.desc.desktop.y * _sapp.win32.dpi.window_scale);
++        rect.right += rect.left;
++        rect.bottom += rect.top;
++    }
+     const bool use_default_width = 0 == _sapp.window_width;
+     const bool use_default_height = 0 == _sapp.window_height;
+     AdjustWindowRectEx(&rect, win_style, FALSE, win_ex_style);
+@@ -10185,8 +10508,8 @@
+         L"SOKOLAPP",                // lpClassName
+         _sapp.window_title_wide,    // lpWindowName
+         win_style,                  // dwStyle
+-        CW_USEDEFAULT,              // X
+-        SW_HIDE,                    // Y (NOTE: CW_USEDEFAULT is not used for position here, but internally calls ShowWindow!
++        has_position ? rect.left : CW_USEDEFAULT, // X
++        has_position ? rect.top : SW_HIDE, // Y (NOTE: with CW_USEDEFAULT as X, this is the ShowWindow command!)
+         use_default_width ? CW_USEDEFAULT : win_width, // nWidth
+         use_default_height ? CW_USEDEFAULT : win_height, // nHeight (NOTE: if width is CW_USEDEFAULT, height is actually ignored)
+         NULL,                       // hWndParent
+@@ -10208,7 +10531,7 @@
+         _sapp_win32_set_fullscreen(_sapp.fullscreen, SWP_HIDEWINDOW);
+         _sapp_win32_update_dimensions();
+     }
+-    ShowWindow(_sapp.win32.hwnd, SW_SHOW);
++    ShowWindow(_sapp.win32.hwnd, _sapp.focusable ? SW_SHOW : SW_SHOWNOACTIVATE);
+     DragAcceptFiles(_sapp.win32.hwnd, 1);
+ }
+ 
+@@ -12794,6 +13117,16 @@
+     int value;
+     _sapp.glx.GetFBConfigAttrib(_sapp.x11.display, fbconfig, attrib, &value);
+     return value;
++}
++
++_SOKOL_PRIVATE bool _sapp_glx_has_argb_visual(GLXFBConfig config) {
++    XVisualInfo* visual_info = _sapp.glx.GetVisualFromFBConfig(_sapp.x11.display, config);
++    if (!visual_info) {
++        return false;
++    }
++    const bool argb = visual_info->depth == 32;
++    XFree(visual_info);
++    return argb;
+ }
+ 
+ _SOKOL_PRIVATE GLXFBConfig _sapp_glx_choosefbconfig(void) {
+@@ -12819,6 +13152,7 @@
+ 
+     usable_configs = (_sapp_gl_fbconfig*) _sapp_malloc_clear((size_t)native_count * sizeof(_sapp_gl_fbconfig));
+     usable_count = 0;
++    const bool wants_alpha = _sapp.desc.composite_mode != SAPP_COMPOSITEMODE_OPAQUE;
+     for (i = 0;  i < native_count;  i++) {
+         const GLXFBConfig n = native_configs[i];
+         _sapp_gl_fbconfig* u = usable_configs + usable_count;
+@@ -12834,6 +13168,10 @@
+                 continue;
+             }
+         }
++        /* Transparent windows only consider GLXFBConfigs with a 32-bit ARGB visual */
++        if (wants_alpha && !_sapp_glx_has_argb_visual(n)) {
++            continue;
++        }
+         u->red_bits = _sapp_glx_attrib(n, GLX_RED_SIZE);
+         u->green_bits = _sapp_glx_attrib(n, GLX_GREEN_SIZE);
+         u->blue_bits = _sapp_glx_attrib(n, GLX_BLUE_SIZE);
+@@ -12881,6 +13219,9 @@
+     desired.srgb_capable = wants_srgb;
+ 
+     closest = _sapp_gl_choose_fbconfig(&desired, usable_configs, usable_count);
++    if (!closest && wants_alpha) {
++        _SAPP_PANIC(LINUX_GLX_NO_ARGB_GLXFBCONFIG);
++    }
+     GLXFBConfig result = 0;
+     if (closest) {
+         result = (GLXFBConfig) closest->handle;
+@@ -13277,9 +13618,42 @@
+         (unsigned char*)icon_data,
+         long_count);
+     _sapp_free(icon_data);
++    XFlush(_sapp.x11.display);
++}
++
++_SOKOL_PRIVATE void _sapp_x11_set_focusable(bool focusable) {
++    XWMHints* hints = XAllocWMHints();
++    hints->flags = InputHint;
++    hints->input = focusable ? True : False;
++    XSetWMHints(_sapp.x11.display, _sapp.x11.window, hints);
++    XFree(hints);
+     XFlush(_sapp.x11.display);
+ }
+ 
++// sets the desktop options of the window before it is mapped, which window managers read when they map it
++_SOKOL_PRIVATE void _sapp_x11_init_desktop_options(void) {
++    const sapp_desktop_desc* desktop = &_sapp.desc.desktop;
++    if (desktop->borderless) {
++        // the motif hints are the de-facto standard to ask window managers for a window without decorations
++        const Atom motif_wm_hints = XInternAtom(_sapp.x11.display, "_MOTIF_WM_HINTS", False);
++        const unsigned long hints[5] = { 2 /* MWM_HINTS_DECORATIONS */, 0, 0, 0, 0 };
++        XChangeProperty(_sapp.x11.display, _sapp.x11.window, motif_wm_hints, motif_wm_hints, 32, PropModeReplace, (const unsigned char*) hints, 5);
++    }
++    Atom states[3];
++    int num_states = 0;
++    if (desktop->topmost) {
++        states[num_states++] = XInternAtom(_sapp.x11.display, "_NET_WM_STATE_ABOVE", False);
++    }
++    if (desktop->skip_taskbar) {
++        states[num_states++] = XInternAtom(_sapp.x11.display, "_NET_WM_STATE_SKIP_TASKBAR", False);
++        states[num_states++] = XInternAtom(_sapp.x11.display, "_NET_WM_STATE_SKIP_PAGER", False);
++    }
++    if (num_states > 0) {
++        XChangeProperty(_sapp.x11.display, _sapp.x11.window, _sapp.x11.NET_WM_STATE, XA_ATOM, 32, PropModeReplace, (const unsigned char*) states, num_states);
++    }
++    _sapp_x11_set_focusable(_sapp.focusable);
++}
++
+ _SOKOL_PRIVATE void _sapp_x11_create_window(Visual* visual_or_null, int depth) {
+     Visual* visual = visual_or_null;
+     if (0 == visual_or_null) {
+@@ -13308,10 +13682,13 @@
+     if (0 == _sapp.window_height) {
+         x11_window_height = (display_height * 4) / 5;
+     }
++    const bool has_position = _sapp.desc.desktop.has_position;
++    const int x11_window_x = has_position ? (int) roundf((float)_sapp.desc.desktop.x * window_scale) : 0;
++    const int x11_window_y = has_position ? (int) roundf((float)_sapp.desc.desktop.y * window_scale) : 0;
+     _sapp_x11_grab_error_handler();
+     _sapp.x11.window = XCreateWindow(_sapp.x11.display,
+                                      _sapp.x11.root,
+-                                     0, 0,
++                                     x11_window_x, x11_window_y,
+                                      (uint32_t)x11_window_width,
+                                      (uint32_t)x11_window_height,
+                                      0,     /* border width */
+@@ -13333,8 +13710,14 @@
+     XSizeHints* hints = XAllocSizeHints();
+     hints->flags = PWinGravity;
+     hints->win_gravity = CenterGravity;
++    if (has_position) {
++        // window managers keep a user position, and static gravity places the content area there
++        hints->flags |= USPosition;
++        hints->win_gravity = StaticGravity;
++    }
+     XSetWMNormalHints(_sapp.x11.display, _sapp.x11.window, hints);
+     XFree(hints);
++    _sapp_x11_init_desktop_options();
+ 
+     // announce support for drag'n'drop
+     if (_sapp.drop.enabled) {
+@@ -14105,6 +14488,23 @@
+ }
+ 
+ #if defined(_SAPP_EGL)
++
++_SOKOL_PRIVATE bool _sapp_egl_has_argb_visual(EGLConfig config) {
++    EGLint visual_id;
++    if (!eglGetConfigAttrib(_sapp.egl.display, config, EGL_NATIVE_VISUAL_ID, &visual_id)) {
++        return false;
++    }
++    _SAPP_STRUCT(XVisualInfo, visual_info_template);
++    visual_info_template.visualid = (VisualID)visual_id;
++    int num_visuals;
++    XVisualInfo* visual_info = XGetVisualInfo(_sapp.x11.display, VisualIDMask, &visual_info_template, &num_visuals);
++    if (!visual_info) {
++        return false;
++    }
++    const bool argb = visual_info->depth == 32;
++    XFree(visual_info);
++    return argb;
++}
+ 
+ _SOKOL_PRIVATE void _sapp_egl_init(void) {
+     #if defined(SOKOL_GLCORE)
+@@ -14164,6 +14564,19 @@
+     }
+ 
+     EGLConfig config = egl_configs[0];
++    if (wants_alpha) {
++        /* Transparent windows only consider configs with a 32-bit ARGB visual */
++        config = 0;
++        for (int i = 0; i < config_count; ++i) {
++            if (_sapp_egl_has_argb_visual(egl_configs[i])) {
++                config = egl_configs[i];
++                break;
++            }
++        }
++        if (!config) {
++            _SAPP_PANIC(LINUX_EGL_NO_ARGB_CONFIG);
++        }
++    }
+     for (int i = 0; i < config_count; ++i) {
+         EGLConfig c = egl_configs[i];
+         EGLint r, g, b, a, d, s, n;
+@@ -14178,7 +14591,8 @@
+             (a == alpha_size) &&
+             (d == depth_size) &&
+             (s == stencil_size) &&
+-            (n == sample_count))
++            (n == sample_count) &&
++            (!wants_alpha || _sapp_egl_has_argb_visual(c)))
+         {
+             config = c;
+             break;
+@@ -14594,6 +15008,15 @@
+     return _sapp.fullscreen;
+ }
+ 
++SOKOL_API_IMPL void sapp_set_window_focusable(bool focusable) {
++    _sapp.focusable = focusable;
++    #if defined(_SAPP_WIN32)
++    _sapp_win32_set_focusable(focusable);
++    #elif defined(_SAPP_LINUX)
++    _sapp_x11_set_focusable(focusable);
++    #endif
++}
++
+ SOKOL_API_IMPL void sapp_toggle_fullscreen(void) {
+     #if defined(_SAPP_MACOS)
+     _sapp_macos_toggle_fullscreen();

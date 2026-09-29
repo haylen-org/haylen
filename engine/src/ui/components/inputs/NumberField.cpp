@@ -38,9 +38,9 @@ math::Vec2 NumberField::measureContent(Context& context, float availableWidth) {
 
 void NumberField::render(Context& context, const math::Rect& bounds) {
     const float side = bounds.height;
-    const math::Rect minus{bounds.x, bounds.y, side, side};
-    const math::Rect plus{bounds.getRight() - side, bounds.y, side, side};
-    const math::Rect middle = math::Rect::fromMinMax({minus.getRight() + 4.0F, bounds.y}, {plus.x - 4.0F, bounds.getBottom()});
+    const math::Rect minus = context.mirror({bounds.x, bounds.y, side, side}, bounds);
+    const math::Rect plus = context.mirror({bounds.getRight() - side, bounds.y, side, side}, bounds);
+    const math::Rect middle = math::Rect::fromMinMax({bounds.x + side + 4.0F, bounds.y}, {bounds.getRight() - side - 4.0F, bounds.getBottom()});
 
     ImGui::PushID("minus");
     const bool lower = Widgets::button(context, minus, "-", nullptr, Widgets::ButtonVariant::Default);

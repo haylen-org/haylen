@@ -20,7 +20,7 @@ What each platform needs on top of that:
 | --- | --- | --- | --- | --- | --- |
 | macOS | `macos` | macOS | Metal | Ninja, or Xcode with `--xcode` | Xcode Command Line Tools, or Xcode for `--xcode`. |
 | Windows | `windows` | Windows | Direct3D 11 | Ninja when it is on `PATH`, otherwise the CMake default (Visual Studio) | Visual Studio with the C++ workload. Ninja builds run from a developer command prompt so MSVC is on `PATH`. |
-| Linux | `linux` | Linux | OpenGL core | Ninja | GCC or Clang and the X11, Xi, Xcursor and OpenGL development packages, for example `libx11-dev libxi-dev libxcursor-dev libgl1-mesa-dev` on Debian and Ubuntu. |
+| Linux | `linux` | Linux | OpenGL core | Ninja | GCC or Clang and the X11, Xi, Xcursor, Xext, Xrandr and OpenGL development packages, for example `libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev` on Debian and Ubuntu. |
 | iOS | `ios` | macOS | Metal | Xcode | Xcode. Apps also need XcodeGen only to regenerate the template project. |
 | tvOS | `tvos` | macOS | Metal | Xcode | Xcode, and the tvOS simulator runtime (`xcodebuild -downloadPlatform tvOS`) to run apps on it. |
 | Android | `android` | any | OpenGL ES 3 | Ninja | Android SDK with NDK `30.0.16248370`, CMake `4.1.2`, platform 37 and platform-tools, and JDK 17. |
@@ -203,6 +203,11 @@ Dependencies are declared with [CPM.cmake](https://github.com/cpm-cmake/CPM.cmak
 | Varn | v0.0.1 | Lua runtime, event loop, worker pools and the `async`, `http`, `socket`, `json`, `fs`, `zip`, `crypto` and other modules. `VARN_TARGET` is `cli` on desktop and Apple platforms, `android` on Android and `wasm` on the web, and iOS and tvOS use its Apple HTTP client driver. zlib, libzip, Poco, OpenSSL and Lua come in through Varn. |
 | Sokol | commit `2e75443` | Headers only. The runtime compiles the implementation for the chosen backend. |
 | stb | commit `2c980bb` | Headers only. |
+| msdfgen | v1.13 | Only its core, which builds the distance fields of font glyphs from their whole outlines. |
+| HarfBuzz | 14.5.0 | Old MIT license. The amalgamated source compiles as `haylen_harfbuzz` with `HB_MINI`, the OpenType shaper without the AAT and legacy shapers. |
+| SheenBidi | v3.0.0 | Apache 2.0. The Unicode Bidirectional Algorithm and script runs, compiled from its unity source as `haylen_sheenbidi`. |
+| libunibreak | 8.0 | zlib license. Line breaking and grapheme clusters of Unicode 17, compiled as `haylen_unibreak`. |
+| BudouX | v0.9.3 | Apache 2.0. Only its Thai phrase model, a JSON file the engine embeds for breaking Thai lines. |
 | fast_float | v8.3.0 | Headers only. Parses floating point numbers on every platform, where `std::from_chars` for floating point needs iOS, tvOS and macOS 26. |
 | Dear ImGui | v1.92.9b | Compiled as `haylen_imgui` with the engine's ImGui configuration. |
 | miniaudio | 0.11.25 | Compiled as `haylen_miniaudio`. |
@@ -358,7 +363,7 @@ Gradle finds the Android SDK through `ANDROID_HOME` or a `local.properties` file
 
 `python3 make.py configure --platform ios` or `--platform tvos` generates an Xcode project of the engine at `build/<platform>-<config>/haylen_workspace.xcodeproj`, and `make.py build` compiles it through `cmake --build`. Apps for iOS, iPadOS, Mac Catalyst, tvOS and macOS come from the XcodeGen project in `templates/platform/apple`, which links the prebuilt `Haylen.xcframework`, as the [distribution guide](distribution.md#apple) describes.
 
-C++ apps built with `haylen_add_app` target iOS 16.3 on iPhone and iPad and tvOS 16.3, with automatic code signing, because the engine needs the C++ library of those releases, and macOS apps macOS 13.3. The bundle name, identifier and version come from `name`, `identifier` and `version` in the `app.json` of the package. The templates in `engine/platform/apple` hold the `Info.plist` files and launch screens. The iOS template lists the supported orientations through `@HAYLEN_ORIENTATIONS@` and `@HAYLEN_ORIENTATIONS_IPAD@`, which `haylen_add_app` fills from `orientation` in `app.json`: `landscape` allows both landscape sides, `portrait` allows portrait (and upside down on iPad) and `any` allows all of them. Pass `APPLE_PROJECT` to `haylen_add_app` to use templates of your own with the same layout and placeholders. macOS apps use the same mechanism with `engine/platform/apple/mac/Info.plist.in`.
+C++ apps built with `haylen_add_app` target iOS 16.3 on iPhone and iPad and tvOS 16.3, with automatic code signing, because the engine needs the C++ library of those releases, and macOS apps macOS 13.3. The bundle name, identifier and version come from `name`, `identifier` and `version` in the `app.json` of the package. The templates in `engine/platform/apple` hold the `Info.plist` files and launch screens. The iOS template lists the supported orientations through `@HAYLEN_ORIENTATIONS@` and `@HAYLEN_ORIENTATIONS_IPAD@`, which `haylen_add_app` fills from `orientation` in `app.json`: `landscape` allows both landscape sides, `portrait` allows portrait (and upside down on iPad) and `any` allows all of them. The macOS template ends its dictionary with `@HAYLEN_UI_ELEMENT@`, which `haylen_add_app` fills with `LSUIElement` when `window.showInTaskbar` is `false` in `app.json`, so the app never shows a Dock icon. Pass `APPLE_PROJECT` to `haylen_add_app` to use templates of your own with the same layout and placeholders. macOS apps use the same mechanism with `engine/platform/apple/mac/Info.plist.in`.
 
 ## Tiny Island assets and map
 

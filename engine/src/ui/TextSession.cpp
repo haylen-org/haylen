@@ -81,11 +81,6 @@ void TextSession::addField(ImGuiID id, const math::Rect& fieldBounds, const plat
     fields.push_back({.id = id, .bounds = fieldBounds, .options = fieldOptions});
 }
 
-int TextSession::callback(ImGuiInputTextCallbackData* data) {
-    static_cast<TextSession*>(data->UserData)->synchronize(*data);
-    return 0;
-}
-
 void TextSession::synchronize(ImGuiInputTextCallbackData& data) {
     const auto entry = std::ranges::find(fields, data.ID, &Entry::id);
     if (entry == fields.end()) {

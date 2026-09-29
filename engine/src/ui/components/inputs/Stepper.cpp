@@ -58,8 +58,8 @@ math::Vec2 Stepper::measureContent(Context& context, float availableWidth) {
 void Stepper::render(Context& context, const math::Rect& bounds) {
     const float radius = context.getMetric(Theme::Metric::ControlRadius);
     const float side = bounds.height;
-    const math::Rect previous{bounds.x, bounds.y, side, side};
-    const math::Rect next{bounds.getRight() - side, bounds.y, side, side};
+    const math::Rect previous = context.mirror({bounds.x, bounds.y, side, side}, bounds);
+    const math::Rect next = context.mirror({bounds.getRight() - side, bounds.y, side, side}, bounds);
     Surfaces::draw(context, Theme::Surface::Field, bounds, context.getColor(Theme::Color::Raised), context.getColor(Theme::Color::Border));
 
     // The arrows come first, so they win the pointer over the value under them, even at the end of the range, and only the whole control takes the focus.
@@ -71,7 +71,7 @@ void Stepper::render(Context& context, const math::Rect& bounds) {
         if (arrow.hovered && possible) {
             ImGui::GetWindowDrawList()->AddRectFilled(ImGuiConverter::toImVec2(area.getMin()), ImGuiConverter::toImVec2(area.getMax()), ImGuiConverter::toImU32(context.getColor(arrow.held ? Theme::Color::Pressed : Theme::Color::Hover)), radius);
         }
-        Widgets::arrow(area.getCenter(), side * 0.28F, direction < 0 ? ImGuiDir_Left : ImGuiDir_Right, context.getColor(possible ? Theme::Color::TextMuted : Theme::Color::TextDisabled));
+        Widgets::arrow(area.getCenter(), side * 0.28F, Widgets::mirror(context, direction < 0 ? ImGuiDir_Left : ImGuiDir_Right), context.getColor(possible ? Theme::Color::TextMuted : Theme::Color::TextDisabled));
         ImGui::PopID();
         if (arrow.clicked) {
             stepped = direction;
@@ -82,10 +82,10 @@ void Stepper::render(Context& context, const math::Rect& bounds) {
     if (takeFocusRequest()) {
         Widgets::focusItem(context);
     }
-    Typography::drawAligned(context, Theme::Font::Body, math::Rect::fromMinMax({previous.getRight(), bounds.y}, {next.x, bounds.getBottom()}), context.getColor(Theme::Color::Text), getShownText(context), Alignment::Center);
+    Typography::drawAligned(context, Theme::Font::Body, {bounds.x + side, bounds.y, std::max(0.0F, bounds.width - side * 2.0F), bounds.height}, context.getColor(Theme::Color::Text), getShownText(context), Alignment::Center);
 
     if (const std::optional<FocusDirection> direction = takeFocusDirection(context)) {
-        stepped = direction == FocusDirection::Left ? -1 : 1;
+        stepped = Widgets::getStep(context, *direction);
     }
     if (stepped != 0 && canStep(stepped)) {
         step(context, stepped);

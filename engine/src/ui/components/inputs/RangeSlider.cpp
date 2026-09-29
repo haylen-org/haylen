@@ -46,7 +46,7 @@ math::Vec2 RangeSlider::measureContent(Context& context, float availableWidth) {
 void RangeSlider::render(Context& context, const math::Rect& bounds) {
     const std::string range = Typography::formatNumber(low, decimals) + " - " + Typography::formatNumber(high, decimals);
     const float label = showValue ? Typography::measure(context, Theme::Font::Body, Typography::formatNumber(maximum, decimals) + " - " + Typography::formatNumber(maximum, decimals)).x + context.getMetric(Theme::Metric::ItemSpacing) : 0.0F;
-    const math::Rect area{bounds.x, bounds.y, std::max(0.0F, bounds.width - label), bounds.height};
+    const math::Rect area = context.mirror({bounds.x, bounds.y, std::max(0.0F, bounds.width - label), bounds.height}, bounds);
     const float knob = context.getMetric(Theme::Metric::SliderKnobSize);
     const float trackHeight = context.getMetric(Theme::Metric::SliderTrackHeight);
     const math::Rect track{area.x + knob * 0.5F, std::floor(area.getCenter().y - trackHeight * 0.5F), std::max(0.0F, area.width - knob), trackHeight};
@@ -60,7 +60,7 @@ void RangeSlider::render(Context& context, const math::Rect& bounds) {
         highActive = !highActive;
     }
     if (const std::optional<FocusDirection> direction = takeFocusDirection(context)) {
-        const double amount = (step > 0.0 ? step : (maximum - minimum) / kFocusSteps) * (direction == FocusDirection::Left ? -1.0 : 1.0);
+        const double amount = (step > 0.0 ? step : (maximum - minimum) / kFocusSteps) * Widgets::getStep(context, *direction);
         double& moved = highActive ? high : low;
         const double next = std::clamp(snap(moved + amount), highActive ? low : minimum, highActive ? maximum : high);
         changed = changed || next != moved;
@@ -69,14 +69,15 @@ void RangeSlider::render(Context& context, const math::Rect& bounds) {
 
     const math::Rect groove = track.inset(Surfaces::getPadding(context, Theme::Surface::Track));
     Surfaces::draw(context, Theme::Surface::Track, track, context.getColor(Theme::Color::BorderStrong), std::nullopt, trackHeight * 0.5F);
-    const float from = toPosition(low, groove);
-    Surfaces::draw(context, Theme::Surface::TrackFill, {from, groove.y, toPosition(high, groove) - from, groove.height}, context.getColor(Theme::Color::Accent), std::nullopt, groove.height * 0.5F);
+    const float from = toPosition(context, low, groove);
+    const float to = toPosition(context, high, groove);
+    Surfaces::draw(context, Theme::Surface::TrackFill, {std::min(from, to), groove.y, std::fabs(to - from), groove.height}, context.getColor(Theme::Color::Accent), std::nullopt, groove.height * 0.5F);
     const bool ring = context.getFocus().isRingShown(id);
     const bool pressed = GImGui->ActiveId == id;
-    drawKnob(context, area, toPosition(low, track), ring && !highActive, pressed && !highActive);
-    drawKnob(context, area, toPosition(high, track), ring && highActive, pressed && highActive);
+    drawKnob(context, area, toPosition(context, low, track), ring && !highActive, pressed && !highActive);
+    drawKnob(context, area, toPosition(context, high, track), ring && highActive, pressed && highActive);
     if (showValue) {
-        Typography::drawAligned(context, Theme::Font::Body, {area.getRight(), bounds.y, label, bounds.height}, context.getColor(Theme::Color::TextMuted), range, Alignment::End);
+        Typography::drawAligned(context, Theme::Font::Body, context.mirror({bounds.getRight() - label, bounds.y, label, bounds.height}, bounds), context.getColor(Theme::Color::TextMuted), range, Alignment::End);
     }
     if (changed) {
         context.emit(*this, "change", {{"low", low}, {"high", high}});
@@ -90,8 +91,10 @@ double RangeSlider::snap(double candidate) const noexcept {
     return std::clamp(minimum + std::round((candidate - minimum) / step) * step, minimum, maximum);
 }
 
-float RangeSlider::toPosition(double amount, const math::Rect& track) const noexcept {
-    return track.x + track.width * static_cast<float>((amount - minimum) / (maximum - minimum));
+// The range grows toward the end of the UI, the left of a right-to-left UI.
+float RangeSlider::toPosition(const Context& context, double amount, const math::Rect& track) const noexcept {
+    const float along = track.width * static_cast<float>((amount - minimum) / (maximum - minimum));
+    return context.isRightToLeft() ? track.getRight() - along : track.x + along;
 }
 
 // The pointer grabs the knob nearer to where it presses and drags it up to the other knob, the way ImGui's own slider follows the mouse and touch.
@@ -114,9 +117,10 @@ bool RangeSlider::follow(Context& context, const math::Rect& bounds, const math:
             ImGui::SetFocusID(id, window);
         }
         ImGui::FocusWindow(window);
-        const float toLow = std::fabs(pointer - toPosition(low, track));
-        const float toHigh = std::fabs(pointer - toPosition(high, track));
-        highActive = toHigh < toLow || (toHigh == toLow && pointer > toPosition(high, track));
+        const float highX = toPosition(context, high, track);
+        const float toLow = std::fabs(pointer - toPosition(context, low, track));
+        const float toHigh = std::fabs(pointer - highX);
+        highActive = toHigh < toLow || (toHigh == toLow && (context.isRightToLeft() ? pointer < highX : pointer > highX));
     }
     Widgets::drawFocusRing(context, bounds, id, bounds.height * 0.5F);
     if (state.ActiveId != id) {
@@ -127,7 +131,8 @@ bool RangeSlider::follow(Context& context, const math::Rect& bounds, const math:
         return false;
     }
 
-    const double picked = snap(minimum + static_cast<double>(std::clamp((pointer - track.x) / std::max(1.0F, track.width), 0.0F, 1.0F)) * (maximum - minimum));
+    const float along = context.isRightToLeft() ? track.getRight() - pointer : pointer - track.x;
+    const double picked = snap(minimum + static_cast<double>(std::clamp(along / std::max(1.0F, track.width), 0.0F, 1.0F)) * (maximum - minimum));
     double& moved = highActive ? high : low;
     const double next = std::clamp(picked, highActive ? low : minimum, highActive ? maximum : high);
     const bool changed = next != moved;

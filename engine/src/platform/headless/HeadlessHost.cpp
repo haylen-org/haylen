@@ -1,10 +1,11 @@
 #include "platform/headless/HeadlessHost.hpp"
 
 #include <algorithm>
+#include <stdexcept>
 
 namespace haylen::platform {
 
-HeadlessHost::HeadlessHost(std::filesystem::path directory, math::Vec2 size) : dataDirectory(std::move(directory)), framebufferSize(size) {}
+HeadlessHost::HeadlessHost(std::filesystem::path directory, math::Vec2 size) : dataDirectory(std::move(directory)), framebufferSize(size), frame{0.0F, 0.0F, size.x, size.y} {}
 
 graphics::DeviceSetup HeadlessHost::getGraphicsSetup() {
     graphics::DeviceSetup setup;
@@ -14,8 +15,16 @@ graphics::DeviceSetup HeadlessHost::getGraphicsSetup() {
     return setup;
 }
 
+void HeadlessHost::setTransparent(bool value) {
+    if (value && !transparencySupported) {
+        throw std::logic_error("The window opened opaque, so it cannot turn transparent. Set window.transparent in app.json to open a window that can.");
+    }
+    transparent = value;
+}
+
 graphics::FrameTarget HeadlessHost::getFrameTarget() {
     graphics::FrameTarget target;
+    target.transparent = transparent;
     target.swapchain.width = static_cast<int>(framebufferSize.x);
     target.swapchain.height = static_cast<int>(framebufferSize.y);
     target.swapchain.sample_count = 1;

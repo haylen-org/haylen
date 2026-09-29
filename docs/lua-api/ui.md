@@ -211,13 +211,13 @@ ui.mount(ui.list{height = rowHeight * 5, items = {{id = 'first', text = 'First'}
 
 ### ui.themeFont(role)
 
-Returns a [font role](#theme-fonts) of the active theme as a table with the fields `font`, the registered font name, and `size`, in design units. An unknown role raises `The theme has an unknown font role: <role>`.
+Returns a [font role](#theme-fonts) of the active theme as a table with the fields `font`, the registered font name, `size`, in design units, and `bold` and `italic`, the style of the face the role draws with. An unknown role raises `The theme has an unknown font role: <role>`.
 
 ```lua
 local ui = require('haylen.ui')
 
 local title = ui.themeFont('title')
-print(title.font, title.size)
+print(title.font, title.size, title.bold, title.italic)
 ```
 
 ### ui.themeSurface(surface)
@@ -244,7 +244,7 @@ scene.push({
 
 Registers a font under `name`, from a TrueType or OpenType file of the package assets, or from a `FontFamily` or a `Font` of [haylen.graphics](graphics.md). Theme font roles, `imgui.pushFont` and the `[font=name]` tags of `ui.richText` refer to fonts by this name. Fonts are sized when drawn, so one registered font serves every size. The built-in font is named `default`.
 
-A family lets theme fonts draw `ui.richText` with its real bold, italic and mono faces and its fallback fonts, while the widgets ImGui draws use its regular face, which must be a TrueType font for a theme role to name it. A bitmap font or a family with a bitmap regular face serves `ui.richText` and `[font=name]` tags only.
+A family gives every text component of the roles that name it its faces and fallback fonts. Labels, buttons and the other components draw with its regular face, or with its bold, italic or bold italic face when the role asks for that style and the family has the face, and draw every character a face lacks from the fallback fonts, such as Japanese text from a CJK fallback, at the size of the em square of the face. `ui.richText` draws with every face and fallback of the family, mono faces included. A theme role can name a family whose regular face is a TrueType or OpenType font, and those components take the TrueType faces and fallbacks of the family. A bitmap font or a family with a bitmap regular face serves `ui.richText` and `[font=name]` tags only.
 
 A name that is already registered raises `The UI already has a font named <name>.`, and a file that is not a font raises `The font <name> is not a TrueType or OpenType font.`.
 
@@ -254,8 +254,12 @@ local graphics = require('haylen.graphics')
 local ui = require('haylen.ui')
 
 ui.addFont('serif', 'fonts/serif.ttf')
-ui.addFont('story', graphics.newFontFamily({regular = assets.font('fonts/serif.ttf'), bold = assets.font('fonts/serif_bold.ttf')}))
+ui.addFont('story', graphics.newFontFamily({regular = assets.font('fonts/serif.ttf'), bold = assets.font('fonts/serif_bold.ttf'), fallback = {assets.font('fonts/cjk.ttf')}}))
 ui.addFont('pixel', assets.font('fonts/pixel.fnt', {filter = 'nearest'}))
+
+-- Labels draw Japanese from the fallback, and headings draw with the bold face.
+ui.setTheme(ui.addTheme({name = 'story', fonts = {body = {font = 'story'}, heading = {font = 'story', bold = true}}}))
+ui.mount(ui.column{ui.label{text = 'Chapter 1', font = 'heading'}, ui.label{text = '灯台守の物語'}})
 ```
 
 ### ui.wantsPointer()
@@ -363,6 +367,29 @@ viewport.setSafeAreaSimulation('iphoneDynamicIsland')
 ui.setSafeAreaVisible(true)
 ```
 
+### ui.setDirection(direction)
+
+Sets the direction of the whole UI: `'ltr'`, the default, `'rtl'`, or `'auto'`, which follows the direction the current language of [haylen.localization](localization.md#localizationdirection) declares, so picking Arabic mirrors every document from the next frame. [Right-to-left interfaces](#right-to-left-interfaces) describes what mirrors. An unknown name raises an error.
+
+```lua
+local localization = require('haylen.localization')
+local ui = require('haylen.ui')
+
+ui.setDirection('auto')
+localization.setLanguage('ar')
+```
+
+### ui.direction()
+
+Returns the direction set for the whole UI, `'ltr'`, `'rtl'` or `'auto'`, followed by the direction it draws in, `'ltr'` or `'rtl'`, which an automatic direction takes from the language at the start of every frame.
+
+```lua
+local ui = require('haylen.ui')
+
+local set, drawn = ui.direction()
+print(set, drawn)
+```
+
 ### ui.onEvent(listener)
 
 Calls `listener(event)` for every event of every mounted document, with the same table [handlers](#events-and-handlers) receive, and returns a `haylen.Connection`. Its `disconnect()` method stops the listener, and its `connected` property is `true` until then. Listeners run before the handlers of the node. It suits screens loaded from JSON, sound effects for every click and analytics. `event.document` is `nil` for documents that C++ code mounted. An error raised inside a listener stops the app and shows the error screen with the message and its stack trace.
@@ -467,7 +494,7 @@ end
 
 ### document:bounds(id)
 
-Returns the rectangle where the node was last drawn as a `haylen.Rect` with `x`, `y`, `width` and `height`, in the design coordinates of screen canvases. Returns `nil` for an unknown id and for a node that was not drawn yet, which is the case until the document has been drawn once.
+Returns the rectangle where the node was last drawn as a `haylen.Rect` with `x`, `y`, `width` and `height`, in the design coordinates of screen canvases. A `window`, `dialog` or `toast` reports the frame it drew, which follows a window the player drags. Returns `nil` for an unknown id and for a node that was not drawn yet, which is the case until the document has been drawn once and for a window, dialog or toast that is closed.
 
 ```lua
 local scene = require('haylen.scene')
@@ -692,7 +719,7 @@ Every kind accepts these properties.
 | `visible` | boolean | `true` | A hidden node takes no room and is not drawn. |
 | `enabled` | boolean | `true` | A disabled node is drawn dimmed and ignores the player. |
 | `tooltip` | text | none | Text shown next to the pointer after it rests on the node for half a second. |
-| `grow` | number from 0 to 1000 | `0` | Share of the free space the node takes along a column or a row. Two nodes with `grow = 1` split the free space in half. |
+| `grow` | number from 0 to 1000 | `0` | Share of the free space the node takes along a column or a row. A growing node starts from nothing rather than from its content, so two nodes with `grow = 1` split the free space in half and a growing `scroll` scrolls inside its share. A column or row that takes the size of its content gives every growing node at least the room its content needs. |
 | `width` | length | `'auto'` | Fixed width. |
 | `height` | length | `'auto'` | Fixed height. |
 | `minWidth` | number | `0` | Smallest width. |
@@ -708,6 +735,8 @@ Every kind accepts these properties.
 | `focusScope` | boolean | `false` | Keeps the focus inside the node while it is there, and makes the node hear `cancel`. |
 | `focusWrap` | string | `'none'` | `'horizontal'`, `'vertical'` or `'both'` wrap a move that would leave the node around to its other side. |
 | `focusLeft`, `focusRight`, `focusUp`, `focusDown` | string | none | Id of the node the focus moves to in that direction instead of the nearest one. A node that names itself keeps the focus in that direction. |
+| `direction` | string | `'inherit'` | `'ltr'` or `'rtl'` lays the node and every node inside it out in that direction, whatever the direction of the UI, and `'inherit'` takes the direction of its parent. [Right-to-left interfaces](#right-to-left-interfaces) describes what mirrors. |
+| `language` | string | inherited | BCP 47 tag of the language of the text of the node and of every node inside it, such as `'ar'` or `'hi'`, which the shaper uses to pick the forms a language prefers. It defaults to the current language of [haylen.localization](localization.md). |
 
 ```lua
 local ui = require('haylen.ui')
@@ -748,6 +777,31 @@ ui.mount(ui.stack{
 }, {placement = 'screen'})
 ```
 
+## Right-to-left interfaces
+
+Every text of every component is shaped and ordered for display by the text layout of the engine, so labels, buttons, fields, lists, tables, tooltips and rich text show Arabic, Hebrew, Persian, Urdu, Hindi, Thai and every other script their font role covers, and each paragraph reads in the direction of its first strong letter. The [text guide](../text.md#scripts-and-directions) explains shaping and directions.
+
+The direction of the layout is separate from the direction of each text. `ui.setDirection('rtl')` or a node with `direction = 'rtl'` mirrors the layout inside it:
+
+- Rows place their first child at the right, grids fill their rows from the right, and `start` and `end` of `align`, `justify` and `textAlign` name the right and the left.
+- Check boxes, radio buttons and toggles put their box on the right of their text, buttons put their icon on the right, and list rows, form fields, settings rows, tabs, accordions, trees, tables and alerts start from the right.
+- Sliders, range sliders, progress bars and toggles fill from the right, and the left and right arrow keys move sliders, steppers, segmented controls, carousels and splitters the way they point on screen.
+- Steppers and carousels swap their ends, so the arrow that points left moves forward, the closed arrows of trees and accordions point left, the arrow of a combo stands at its left, and menus, combo lists, popovers and context menus open from the right edge of their button.
+- Text fields line their text up on the right. In every direction the caret stands on the side of the letter it follows, the left and right arrow keys move it the way they point on screen, and a selection across a change of direction covers every run it spans.
+
+Anchors, `padding` given as four sides and the `focusLeft` and `focusRight` properties name fixed sides, and images and icons draw as they are. A node with `direction = 'ltr'` inside a right-to-left UI keeps its own direction, for a phone number, a code or a game board.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.setDirection('rtl')
+ui.mount(ui.card{gap = 16,
+    ui.row{gap = 12, ui.checkbox{text = 'تذكرني', checked = true}, ui.button{text = 'دخول', variant = 'primary'}},
+    ui.slider{value = 0.3},
+    ui.row{direction = 'ltr', gap = 8, ui.label{text = '+1 555 0100'}},
+})
+```
+
 ## Focus and navigation
 
 Buttons, choices, inputs, list rows, slots and the other interactive parts of a document take the keyboard, gamepad and remote focus. The UI moves it with the navigation actions of [haylen.input](input.md#the-action-map), which the app remaps by defining an action with the same name in its action map, while the others keep their built-in bindings.
@@ -768,6 +822,7 @@ Buttons, choices, inputs, list rows, slots and the other interactive parts of a 
 - `ui_cancel` closes the open popup or dialog, puts back an item carried from a slot grid or a list, and otherwise sends `cancel` to the innermost node with `focusScope` around the focus, or to the root of the document that holds the focus, or of the topmost document when nothing has it. A screen goes back from its root handler, as in the example below.
 - The ring shows around the focus once the player navigates, and a click or a touch hides it. On a device without a pointer, such as an Apple TV or an Android TV, it shows from the start. `ui.focusRingVisible()` tells whether it shows.
 - The first press of a direction while the ring is hidden only shows where the focus is, and the first accept shows the ring and presses the control.
+- A press the UI answers itself never reaches the actions of the app. The keys and buttons of `ui_cancel` that close a popup, a dialog, a closable window or a carried item or that end the editing of a control, those of `ui_accept` while a control has the focus, every key while a text field edits and every key and button while a `keyCapture` listens read as up in the action map until they are released, and [input.keyCaptured](input.md#inputkeycapturedkey) tells when a key belongs to the UI.
 
 On an Apple TV, a swipe on the touch surface of the Siri Remote moves the focus, a click presses the focused control, and Menu is `ui_cancel`. On an Android TV, the directional pad of the remote and gamepads move it, select presses, and Back is `ui_cancel`. Both platforms leave the app when the player goes back from its root screen, as Apple and Google ask, while [window.setBackLeavesApp](window.md#windowsetbackleavesappenabled) keeps the press inside the app on other screens. An open popup or dialog always keeps it.
 
@@ -916,7 +971,7 @@ ui.mount(ui.column{
 
 ### ui.row(properties)
 
-Lays out any number of children from left to right. It takes the properties of `column`. Children with `grow` share the width the others leave, so wide content never pushes the row past its bounds. Each child sits across the height by its `align`, which defaults to `center` in a row.
+Lays out any number of children from left to right, or from right to left in a [right-to-left](#right-to-left-interfaces) node. It takes the properties of `column`. Children with `grow` share the width the others leave, so wide content never pushes the row past its bounds. Each child sits across the height by its `align`, which defaults to `center` in a row.
 
 ```lua
 local ui = require('haylen.ui')
@@ -976,10 +1031,10 @@ Shows one child in an area that scrolls up and down or sideways. The mouse wheel
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `scrollbar` | boolean | `true` | Shows the scrollbar. |
-| `direction` | string | `'vertical'` | `'vertical'` or `'horizontal'`, which lays the child out at its full width and scrolls it sideways, also with the mouse wheel. |
+| `axis` | string | `'vertical'` | `'vertical'` or `'horizontal'`, which lays the child out at its full width and scrolls it sideways, also with the mouse wheel. |
 | `snap` | boolean | `false` | Settles, once the player lets go, on the start of the item of the child nearest to the scrolled position, such as a card of a row. |
 
-A direction other than `'vertical'` or `'horizontal'` raises `scroll.direction must be vertical or horizontal.`.
+An axis other than `'vertical'` or `'horizontal'` raises `scroll.axis must be vertical or horizontal.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -994,7 +1049,7 @@ local cards = {}
 for index = 1, 8 do
     cards[index] = ui.card{width = 360, ui.label{text = 'Level ' .. index}}
 end
-ui.mount(ui.scroll{direction = 'horizontal', snap = true, width = 1200, height = 240, align = 'end', ui.row{gap = 24, children = cards}})
+ui.mount(ui.scroll{axis = 'horizontal', snap = true, width = 1200, height = 240, align = 'end', ui.row{gap = 24, children = cards}})
 ```
 
 ### ui.card(properties)
@@ -1120,7 +1175,7 @@ ui.mount(ui.accordion{
 
 ### ui.carousel(properties)
 
-Pages shown one at a time that slide sideways, one child per page, such as a tutorial or a level picker. A swipe or a drag of the pages, the arrow buttons and the page dots change the page and report `change` with the page number, counted from 1, as `page`. The page dots take the focus, and left and right turn the pages from there. The controls of the other pages stay out of navigation.
+Pages shown one at a time that slide sideways, one child per page, such as a tutorial or a level picker. A swipe or a drag of the pages, the arrow buttons, which draw above pages that fill the carousel, and the page dots change the page and report `change` with the page number, counted from 1, as `page`. The page dots take the focus, and left and right turn the pages from there. The controls of the other pages stay out of navigation.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1220,7 +1275,7 @@ Text in one of the theme fonts.
 | `text` | text | none | The text. |
 | `font` | string | `'body'` | Font role: `'body'`, `'caption'`, `'button'`, `'heading'`, `'title'` or `'monospace'`. |
 | `color` | theme color | `'text'` | Color of the text. |
-| `textAlign` | string | `'start'` | `'start'`, `'center'` or `'end'` inside the label bounds. |
+| `textAlign` | string | `'start'` | `'start'`, `'center'` or `'end'` inside the label bounds, where start is the left of a left-to-right UI and the right of a right-to-left one. |
 | `wrap` | boolean | `true` | Wraps long text onto more lines. Without wrapping the text stays on one line and ends with an ellipsis when it does not fit. |
 | `outline` | color | none | Draws an outline around the letters in this color. |
 | `outlineWidth` | number from 0 to 16 | `2` | Thickness of the outline. |
@@ -1245,7 +1300,7 @@ Text written in the BBCode markup of the [text guide](../text.md#markup), with b
 | `text` | text | none | The markup. Malformed markup raises the error of `graphics2d.newRichText`. |
 | `font` | string | `'body'` | Font role: `'body'`, `'caption'`, `'button'`, `'heading'`, `'title'` or `'monospace'`. |
 | `color` | theme color | `'text'` | Color of text without a `[color]` tag. |
-| `textAlign` | string | `'start'` | `'start'`, `'center'`, `'end'` or `'fill'` for paragraphs without their own alignment. |
+| `textAlign` | string | `'start'` | `'start'`, `'end'`, `'left'`, `'center'`, `'right'` or `'fill'` for paragraphs without their own alignment, where start and end follow the direction of the UI and left and right name fixed sides. Every paragraph reads in the direction of its first strong letter unless its markup sets `[p dir]`. |
 | `wrap` | boolean | `true` | Wraps the paragraphs at the width of the node. Without wrapping the text keeps its natural width and aligns as one block. |
 | `reveal` | number | `0` | Characters per second of the typewriter reveal, which starts again whenever the text or the theme changes. 0 shows everything at once. |
 | `visibleCharacters` | integer | `-1` | Shows only the first characters, from where the reveal continues. -1 shows everything. |
@@ -1675,11 +1730,11 @@ A track with a knob the player drags. A change reports `change` with the number 
 | `value` | number | `0` | The number, kept between `min` and `max`. |
 | `min` | number | `0` | Value at the start of the track. |
 | `max` | number | `1` | Value at the end of the track. |
-| `step` | number, at least 0 | `0` | Snaps the value to multiples of the step. `0` lets it move freely. |
+| `step` | number, at least 0 | `0` | Snaps the value to multiples of the step once the player moves it. `0` lets it move freely. |
 | `showValue` | boolean | `false` | Shows the value after the track. |
 | `decimals` | integer from 0 to 6 | `2` | Decimals of the shown value. |
 
-A minimum that is not smaller than the maximum raises `slider.min must be smaller than max.`.
+Only the player changes the value, so a slider reports `change` only when the player moves it, and a `value` given off its step stays as it was given until then. A minimum that is not smaller than the maximum raises `slider.min must be smaller than max.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -2320,11 +2375,11 @@ A theme holds every color, metric, font and surface the components use, so no co
 | `name` | string | Name of the theme, required and not empty. |
 | `colors` | object | Color roles mapped to colors. |
 | `metrics` | object | Metrics mapped to non-negative numbers. |
-| `fonts` | object | Font roles mapped to `{"font": name, "size": number}`, where both keys are optional. |
+| `fonts` | object | Font roles mapped to `{"font": name, "size": number, "bold": boolean, "italic": boolean}`, where every key is optional. |
 | `fontFiles` | object | Font names mapped to TrueType or OpenType files in the package assets, which `ui.loadTheme` registers unless a font with that name exists. |
 | `surfaces` | object | Surfaces mapped to nine-slice images, or to `null` to go back to flat colors. |
 
-Theme files raise these errors: `Unknown key '<key>' in the theme.`, `A theme needs a name.`, `The theme has an unknown color role: <name>`, `The theme has an unknown metric: <name>`, `The theme has an unknown surface: <name>`, `The theme font <name> must be a known role with an object value.`, `The theme font <name> must name its font with a string.`, `The theme font file <name> must be a path.`, `<context> must be a color such as #FF2E7D32.` and `<context> must be a non-negative number.`.
+Theme files raise these errors: `Unknown key '<key>' in the theme.`, `A theme needs a name.`, `The theme has an unknown color role: <name>`, `The theme has an unknown metric: <name>`, `The theme has an unknown surface: <name>`, `The theme font <name> must be a known role with an object value.`, `The theme font <name> must name its font with a string.`, `The theme font <name> must set bold to true or false.`, the same for `italic`, `The theme font file <name> must be a path.`, `<context> must be a color such as #FF2E7D32.` and `<context> must be a non-negative number.`.
 
 ```json
 {
@@ -2442,7 +2497,7 @@ Both built-in themes share these metrics, in design units.
 
 ## Theme fonts
 
-Every role starts with the built-in font `default`.
+Every role starts with the built-in font `default` in its regular style. A role that sets `bold` or `italic` draws with that face of its font when the font is a family that has it, and with its regular face otherwise, and `ui.richText` of the role starts in that style as if inside `[b]` or `[i]`. The size of a role is the height of its regular face from ascent to descent, and `ui.richText` draws at the em size that makes it match the other components.
 
 | Role | Size | Used for |
 | --- | --- | --- |

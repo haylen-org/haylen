@@ -66,6 +66,14 @@ int LocalizationLua::text(lua_State* L) {
     return 1;
 }
 
+// Returns with direction([language]) the direction the current or the named language declares, ltr or rtl.
+int LocalizationLua::direction(lua_State* L) {
+    const Catalog& catalog = getCatalog(L);
+    const std::string language = lua_isnoneornil(L, 1) ? catalog.getLanguage() : lua::Stack::read<std::string>(L, 1);
+    lua::Stack::push(L, std::string_view(catalog.getDirection(language) == haylen::text::Direction::RightToLeft ? "rtl" : "ltr"));
+    return 1;
+}
+
 int LocalizationLua::bestMatch(lua_State* L) {
     lua::Stack::push(L, getCatalog(L).findBestMatch(lua::Stack::read<std::string_view>(L, 1)));
     return 1;
@@ -73,7 +81,7 @@ int LocalizationLua::bestMatch(lua_State* L) {
 
 int LocalizationLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"add", &lua::Binding::native<&add>}, {"loadFolder", &lua::Binding::native<&loadFolder>}, {"setLanguage", &lua::Binding::native<&setLanguage>}, {"language", &lua::Binding::native<&language>}, {"setFallback", &lua::Binding::native<&setFallback>}, {"fallback", &lua::Binding::native<&fallback>}, {"languages", &lua::Binding::native<&languages>}, {"has", &lua::Binding::native<&has>}, {"text", &lua::Binding::native<&text>}, {"bestMatch", &lua::Binding::native<&bestMatch>}, {nullptr, nullptr},
+        {"add", &lua::Binding::native<&add>}, {"loadFolder", &lua::Binding::native<&loadFolder>}, {"setLanguage", &lua::Binding::native<&setLanguage>}, {"language", &lua::Binding::native<&language>}, {"setFallback", &lua::Binding::native<&setFallback>}, {"fallback", &lua::Binding::native<&fallback>}, {"languages", &lua::Binding::native<&languages>}, {"has", &lua::Binding::native<&has>}, {"text", &lua::Binding::native<&text>}, {"bestMatch", &lua::Binding::native<&bestMatch>}, {"direction", &lua::Binding::native<&direction>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

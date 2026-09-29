@@ -113,6 +113,7 @@ void FocusNavigator::beginDraw() {
     building.targets.clear();
     building.documents.clear();
     levels.clear();
+    cancelWindows.clear();
     currentDocument = nullptr;
 }
 
@@ -195,6 +196,11 @@ void FocusNavigator::endDraw() {
     focusedName = node != nullptr ? node->name : std::string();
     focusedRoot = focused != nullptr ? focused->window->RootWindow : nullptr;
     focusedBounds = focused != nullptr ? focused->bounds : math::Rect{};
+
+    editing = g.ActiveId != 0 && (g.ActiveIdWindow == nullptr || g.ActiveId != g.ActiveIdWindow->MoveId);
+    const ImGuiWindow* answering = popupAtEnd != nullptr ? popupAtEnd : focusedRoot;
+    cancelAnswered = editing || popupsAtEnd > 0 || carried.has_value() || std::ranges::find(cancelWindows, answering) != cancelWindows.end();
+    acceptAnswered = editing || focusedItem != 0;
 }
 
 void FocusNavigator::focus(ImGuiID item, const math::Rect& bounds) {
@@ -230,8 +236,12 @@ bool FocusNavigator::hasFocusHere() const {
     return g.NavId != 0 && focusedDocument == currentDocument && focusedRoot == ImGui::GetCurrentWindow()->RootWindow;
 }
 
-bool FocusNavigator::isCancelPressedIn(const ImGuiWindow* window) const noexcept {
-    if (!cancelPressed || window == nullptr) {
+bool FocusNavigator::answerCancel(const ImGuiWindow* window) {
+    if (window == nullptr) {
+        return false;
+    }
+    cancelWindows.push_back(window->RootWindow);
+    if (!cancelPressed) {
         return false;
     }
     return popupAtEnd != nullptr ? popupAtEnd == window : focusedRoot == window->RootWindow;

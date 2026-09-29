@@ -39,7 +39,7 @@ void Tabs::render(Context& context, const math::Rect& bounds) {
 
     for (std::size_t index = 0; index < items.size(); ++index) {
         const ChoiceItem& item = items[index];
-        const math::Rect tab{x, bounds.y, getTabWidth(context, item), height};
+        const math::Rect tab = context.mirror({x, bounds.y, getTabWidth(context, item), height}, bounds);
         x += tab.width;
         const bool current = static_cast<int>(index) == chosen;
         ImGui::PushID(static_cast<int>(index));

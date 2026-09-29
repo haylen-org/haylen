@@ -16,7 +16,7 @@ class Device;
 
 namespace haylen::text {
 
-// A TrueType or OpenType font rendered through a signed distance field atlas that grows as new glyphs are used, so text stays sharp at any size and takes outlines, weights and soft edges.
+// A TrueType or OpenType font shaped by HarfBuzz and rendered through a signed distance field atlas that grows as new glyphs are used, so text stays sharp at any size and takes outlines, weights and soft edges.
 class TrueTypeFont final : public Font {
   public:
     // The spread is how far in pixels at the bake size the distance field reaches past the edge of a glyph, which bounds outlines, weights, glows and blurred shadows.
@@ -33,8 +33,8 @@ class TrueTypeFont final : public Font {
         return true;
     }
     [[nodiscard]] bool hasGlyph(char32_t codePoint) override;
-    [[nodiscard]] const Glyph& getGlyph(char32_t codePoint) override;
-    [[nodiscard]] float getKerning(char32_t left, char32_t right) override;
+    void shape(const Run& run, std::vector<ShapedGlyph>& shaped) override;
+    [[nodiscard]] const Glyph& getGlyph(std::uint32_t index) override;
     [[nodiscard]] std::size_t getPageCount() const noexcept override {
         return 1;
     }
@@ -57,14 +57,14 @@ class TrueTypeFont final : public Font {
     [[nodiscard]] static std::unique_ptr<Face> open(std::vector<std::uint8_t> ttf, const Options& fontOptions);
     [[nodiscard]] static Metrics readMetrics(const Face& opened, const Options& fontOptions) noexcept;
 
-    void rasterize(char32_t codePoint, Glyph& glyph);
+    void rasterize(std::uint32_t index, Glyph& glyph);
     void grow();
 
     std::unique_ptr<Face> face;
     graphics::Device& device;
     Options options;
     graphics::Texture texture;
-    std::unordered_map<char32_t, Glyph> glyphs;
+    std::unordered_map<std::uint32_t, Glyph> glyphs;
     std::unordered_map<char32_t, bool> coverage;
     std::vector<std::uint8_t> atlas;
     int atlasWidth = 0;

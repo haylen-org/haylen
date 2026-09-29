@@ -37,9 +37,10 @@ void Table::render(Context& context, const math::Rect& bounds) {
     const float header = height * 0.75F;
     const std::vector<float> widths = getColumnWidths(bounds.width);
 
+    // Columns run from the right in a right-to-left UI.
     float x = bounds.x;
     for (std::size_t column = 0; column < columns.size(); ++column) {
-        const math::Rect cell{x + ListRow::kPadding, bounds.y, widths[column] - ListRow::kPadding * 2.0F, header};
+        const math::Rect cell = context.mirror({x + ListRow::kPadding, bounds.y, widths[column] - ListRow::kPadding * 2.0F, header}, bounds);
         Typography::drawAligned(context, Theme::Font::Caption, cell, context.getColor(Theme::Color::TextMuted), context.getText(columns[column].text), columns[column].align);
         x += widths[column];
     }
@@ -53,7 +54,7 @@ void Table::render(Context& context, const math::Rect& bounds) {
         ImGui::PopID();
         x = bounds.x;
         for (std::size_t column = 0; column < columns.size() && column < entry.cells.size(); ++column) {
-            const math::Rect cell{x + ListRow::kPadding, area.y, widths[column] - ListRow::kPadding * 2.0F, height};
+            const math::Rect cell = context.mirror({x + ListRow::kPadding, area.y, widths[column] - ListRow::kPadding * 2.0F, height}, area);
             Typography::drawAligned(context, Theme::Font::Body, cell, context.getColor(Theme::Color::Text), context.getText(entry.cells[column]), columns[column].align);
             x += widths[column];
         }

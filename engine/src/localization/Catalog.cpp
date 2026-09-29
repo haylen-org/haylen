@@ -2,6 +2,7 @@
 
 #include <cctype>
 #include <cmath>
+#include <optional>
 #include <stdexcept>
 #include <utility>
 
@@ -92,9 +93,22 @@ void Catalog::add(const std::string& name, const core::Json& table) {
         throw std::invalid_argument("The localization table of " + name + " must be a JSON object.");
     }
 
+    std::optional<text::Direction> direction;
+    if (const auto declared = table.find(kDirectionKey); declared != table.end()) {
+        if (*declared != "ltr" && *declared != "rtl") {
+            throw std::invalid_argument("The @direction of the localization table of " + name + " must be ltr or rtl.");
+        }
+        direction = *declared == "rtl" ? text::Direction::RightToLeft : text::Direction::LeftToRight;
+    }
+    core::Json texts = table;
+    texts.erase(std::string(kDirectionKey));
+
     Table entries = tables.contains(name) ? tables.find(name)->second : Table{};
-    flatten(table, "", entries);
+    flatten(texts, "", entries);
     tables[name] = std::move(entries);
+    if (direction) {
+        directions.insert_or_assign(name, *direction);
+    }
 
     if (language.empty()) {
         language = name;
@@ -126,6 +140,12 @@ std::vector<std::string> Catalog::getLanguages() const {
         names.push_back(name);
     }
     return names;
+}
+
+text::Direction Catalog::getDirection(std::string_view name) const {
+    requireLanguage(name);
+    const auto found = directions.find(name);
+    return found != directions.end() ? found->second : text::Direction::LeftToRight;
 }
 
 const core::Json* Catalog::find(std::string_view key) const {

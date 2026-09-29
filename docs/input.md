@@ -185,7 +185,31 @@ function level:update(dt)
 end
 ```
 
-Touch controls count as interface for `ui.wantsPointer()`, so an app that checks it never treats a tap on a touch button as a tap on the world. The UI also moves its focus with the arrow keys and the d-pad and activates controls with Space, Enter and the south gamepad button, as the [UI guide](ui.md#pointer-keyboard-and-gamepad) explains. The action map reads those devices at the same time, so a menu with focusable controls usually covers a paused scene, as the Tiny Island pause menu does.
+Touch controls count as interface for `ui.wantsPointer()`, so an app that checks it never treats a tap on a touch button as a tap on the world. The UI also moves its focus with the arrow keys and the d-pad and activates controls with Space, Enter and the south gamepad button, as the [UI guide](ui.md#pointer-keyboard-and-gamepad) explains. The action map reads the directions at the same time, so a menu with focusable controls usually covers a paused scene, as the Tiny Island pause menu does.
+
+Input the interface answers itself never triggers an action, the same way the action map leaves mouse buttons alone while the interface owns the pointer. At the end of every frame the interface captures, for the next frame, the keys and gamepad buttons of the presses it will answer:
+
+- the `ui_cancel` bindings, Escape, the east button and the Menu button of a TV remote by default, while a popup, a combo list, a menu or a dialog is open, a control is being edited, an item is carried or the focus is inside a closable window,
+- the `ui_accept` bindings, Enter, Space and the south button by default, while a control has the focus,
+- every key while a text field edits, on Mac Catalyst too, where a hardware keyboard still reports keys while the native field edits,
+- every key and gamepad button while a `keyCapture` listens.
+
+A key or button pressed while it is captured belongs to the interface until it is released, so an action bound to it reads as up for that whole press, even after the popup it closed is gone. A `back` action bound to Escape therefore never leaves the screen when Escape only closed a combo list, and fires as usual when no popup is open. `input.keyCaptured(key)` and `input.gamepadCaptured(button)` tell whether a press belongs to the interface, for apps that also read the raw keyboard, whose functions keep reporting every key.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+input.defineAction({name = 'back', type = 'button', bindings = {'key:escape', 'button:east'}})
+
+scene.push({
+    update = function(self, dt)
+        if input.pressed('back') then
+            scene.pop()
+        end
+    end,
+})
+```
 
 ## The Tiny Island actions
 
@@ -237,4 +261,4 @@ The HUD in `samples/games/tiny-island/source/ui/hud.lua` drives the virtual inpu
 
 ## From C++
 
-The raw state lives in `haylen::input::Input` (`haylen/input/Input.hpp`), reached with `engine.getInput()`. `haylen::input::ActionMap` (`haylen/input/ActionMap.hpp`), reached with `engine.getActions()`, loads the same JSON documents and can also define and remove actions one by one in code with `ActionMap::Action` and `ActionMap::Binding`. `engine.getVirtualInput()` returns the `haylen::input::VirtualInput` that touch controls write, and `engine.getGestures()` returns the `haylen::input::GestureRecognizer`. `haylen::input::Controls` (`haylen/input/Controls.hpp`) converts keys, mouse buttons, gamepad buttons and gamepad axes to and from the names that bindings and Lua use. See [Architecture](architecture.md) for how the frame updates them and [Lua](lua.md) for the scripting side.
+The raw state lives in `haylen::input::Input` (`haylen/input/Input.hpp`), reached with `engine.getInput()`. `haylen::input::ActionMap` (`haylen/input/ActionMap.hpp`), reached with `engine.getActions()`, loads the same JSON documents and can also define and remove actions one by one in code with `ActionMap::Action` and `ActionMap::Binding`, and the UI plugin hands it the keys and buttons it captures with `ActionMap::setCapture`. `engine.getVirtualInput()` returns the `haylen::input::VirtualInput` that touch controls write, and `engine.getGestures()` returns the `haylen::input::GestureRecognizer`. `haylen::input::Controls` (`haylen/input/Controls.hpp`) converts keys, mouse buttons, gamepad buttons and gamepad axes to and from the names that bindings and Lua use. See [Architecture](architecture.md) for how the frame updates them and [Lua](lua.md) for the scripting side.

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <string>
 #include <vector>
@@ -126,6 +127,14 @@ class ComponentTest : public ::testing::Test {
         return events.back();
     }
 
+    // Runs a frame and counts the vertices the document window drew, where every glyph adds four.
+    // Counts what the documents draw: the ImGui vertices of their window and the glyphs their text draws through the renderer.
+    [[nodiscard]] int countDrawn() {
+        frames();
+        getUi().getBackend().makeCurrent();
+        return ImGui::FindWindowByName("##haylen-documents")->DrawList->VtxBuffer.Size + static_cast<int>(getEngine().getRenderer2D().getStats().instances);
+    }
+
     test::EngineFixture fixture;
     std::vector<Event> events;
     core::Connection connection;
@@ -191,7 +200,8 @@ TEST_F(ComponentTest, WrapsTextTheSameWayAtItsMeasuredWidth) {
     for (const Theme::Font font : {Theme::Font::Body, Theme::Font::Caption, Theme::Font::Heading}) {
         for (float width = 120.0F; width < 900.0F; width += 7.0F) {
             const math::Vec2 measured = Typography::measureParagraph(getUi().getContext(), font, text, width);
-            EXPECT_EQ(Typography::wrapLines(getUi().getContext(), font, text, measured.x).size(), Typography::wrapLines(getUi().getContext(), font, text, width).size()) << width;
+            ui::Context& context = getUi().getContext();
+            EXPECT_EQ(Typography::layout(context, font, text, Typography::getStyle(context, font, measured.x))->lines.size(), Typography::layout(context, font, text, Typography::getStyle(context, font, width))->lines.size()) << width;
         }
     }
 }
@@ -478,6 +488,82 @@ TEST_F(ComponentTest, KeepsMouseClicksOnTheInterfaceFromActions) {
     EXPECT_TRUE(getEngine().getActions().isDown("attack"));
 }
 
+// Presses the interface answers itself never reach the actions bound to the same keys and buttons, even while they stay held after the interface lets go, and they reach the actions again once it answers nothing.
+TEST_F(ComponentTest, KeepsPressesTheInterfaceAnswersFromActions) {
+    getEngine().getActions().load(core::Json::parse(R"({"actions": [{"name": "back", "type": "button", "bindings": ["key:escape", "button:east"]}, {"name": "jump", "type": "button", "bindings": ["key:space", "key:j"]}]})"));
+    // clang-format off
+    auto document = mount(R"({"kind": "column", "padding": 20, "children": [
+        {"kind": "combo", "id": "size", "width": 300, "items": [{"id": "small", "text": "Small"}, {"id": "large", "text": "Large"}]},
+        {"kind": "textField", "id": "name"},
+        {"kind": "button", "id": "play", "text": "Play"}
+    ]})");
+    const auto reaches = [this](input::Key code, std::string_view action) {
+        platform::Event event;
+        event.type = platform::Event::Type::KeyDown;
+        event.key = code;
+        getEngine().handleEvent(event);
+        bool reached = false;
+        for (int frame = 0; frame < 3; ++frame) {
+            frames();
+            reached = reached || getEngine().getActions().isDown(action);
+        }
+        event.type = platform::Event::Type::KeyUp;
+        getEngine().handleEvent(event);
+        frames();
+        return reached;
+    };
+    const auto reachesButton = [this](input::GamepadButton pressed, std::string_view action) {
+        input::GamepadState state{.connected = true};
+        state.buttons[static_cast<std::size_t>(pressed)] = true;
+        fixture.host().setGamepad(0, state);
+        bool reached = false;
+        for (int frame = 0; frame < 3; ++frame) {
+            frames();
+            reached = reached || getEngine().getActions().isDown(action);
+        }
+        fixture.host().setGamepad(0, input::GamepadState{.connected = true});
+        frames();
+        return reached;
+    };
+    // clang-format on
+
+    click(getBounds(*document, "size").getCenter());
+    ASSERT_TRUE(getUi().isCapturingBack());
+    EXPECT_FALSE(reaches(input::Key::Escape, "back"));
+    EXPECT_FALSE(getUi().isCapturingBack());
+    EXPECT_TRUE(reaches(input::Key::Escape, "back"));
+
+    click(getBounds(*document, "size").getCenter());
+    ASSERT_TRUE(getUi().isCapturingBack());
+    EXPECT_FALSE(reachesButton(input::GamepadButton::East, "back"));
+    EXPECT_FALSE(getUi().isCapturingBack());
+    EXPECT_TRUE(reachesButton(input::GamepadButton::East, "back"));
+
+    // The keys of a text field being edited stay with it, the escape that ends the editing included.
+    click(getBounds(*document, "name").getCenter());
+    EXPECT_FALSE(reaches(input::Key::J, "jump"));
+    EXPECT_FALSE(reaches(input::Key::Escape, "back"));
+
+    // Accept presses the focused control, and jumps again once nothing has the focus.
+    document->command(getUi().getContext(), "play", "focus", core::Json::object());
+    frames(2);
+    events.clear();
+    EXPECT_FALSE(reaches(input::Key::Space, "jump"));
+    EXPECT_EQ(getEventNames(), (std::vector<std::string>{"play:click"}));
+    fixture.runLua("require('haylen.ui').clearFocus()");
+    frames();
+    EXPECT_TRUE(reaches(input::Key::Space, "jump"));
+
+    // A pointer held on empty space edits nothing, so the keys still play the game.
+    pointer(platform::Event::Type::MouseMove, {1500.0F, 900.0F});
+    pointer(platform::Event::Type::MouseDown, {1500.0F, 900.0F});
+    frames(2);
+    EXPECT_TRUE(reaches(input::Key::Escape, "back"));
+    EXPECT_TRUE(reaches(input::Key::Space, "jump"));
+    pointer(platform::Event::Type::MouseUp, {1500.0F, 900.0F});
+    frames();
+}
+
 TEST_F(ComponentTest, FocusesChipsAndRadioGroups) {
     // clang-format off
     auto document = mount(R"({"kind": "column", "padding": 20, "children": [
@@ -576,21 +662,104 @@ TEST_F(ComponentTest, ShowsTheFocusRingOfAScriptedFocusOnlyForGamepadPlayers) {
 
 TEST_F(ComponentTest, ShowsTheTextAreaPlaceholderWhileEmpty) {
     auto document = mount(R"({"kind": "textArea", "id": "notes", "rows": 3, "placeholder": "Write here"})");
-    // clang-format off
-    const auto vertices = [this] {
-        frames();
-        getUi().getBackend().makeCurrent();
-        return ImGui::FindWindowByName("##haylen-documents")->DrawList->VtxBuffer.Size;
-    };
-    // clang-format on
-    const int shown = vertices();
+    const int shown = countDrawn();
     document->set("notes", {{"placeholder", ""}});
-    const int none = vertices();
+    const int none = countDrawn();
     EXPECT_GT(shown, none);
 
-    // Typed text lives in the child window of the editor, so the document window only loses the placeholder.
+    // Typed text replaces the placeholder.
     document->set("notes", {{"placeholder", "Write here"}, {"value", "Day one"}});
-    EXPECT_EQ(vertices(), none);
+    const int typed = countDrawn();
+    document->set("notes", {{"placeholder", ""}});
+    EXPECT_EQ(countDrawn(), typed);
+}
+
+// Text measures in whole units, so a window smaller than the design, whose glyphs advance by fractions of a unit, draws a label placed at its measured size whole.
+TEST_F(ComponentTest, DrawsChoiceLabelsWholeAtTheirMeasuredSize) {
+    fixture.host().resize({1280.0F, 720.0F});
+    // clang-format off
+    const auto count = [this](const std::string& node) {
+        auto document = mount(R"({"kind": "column", "children": [)" + node + "]}");
+        const int vertices = countDrawn();
+        getUi().unmount(*document);
+        return vertices;
+    };
+    // clang-format on
+    for (const std::string kind : {"toggle", "checkbox"}) {
+        for (const std::string text : {"Spin", "flipX", "Fullscreen", "Music"}) {
+            const std::string node = R"({"kind": ")" + kind + R"(", "text": ")" + text + R"(")";
+            EXPECT_EQ(count(node + R"(, "align": "start"})"), count(node + R"(, "align": "stretch"})")) << kind << " " << text;
+        }
+        const std::string cramped = R"({"kind": ")" + kind + R"(", "text": "Fullscreen", "width": 130)";
+        EXPECT_LT(count(cramped + "}"), count(cramped + R"(, "width": 900})")) << kind;
+    }
+    EXPECT_EQ(count(R"({"kind": "statusIndicator", "text": "State: open", "align": "start"})"), count(R"({"kind": "statusIndicator", "text": "State: open", "align": "stretch"})"));
+    EXPECT_EQ(count(R"({"kind": "radioGroup", "horizontal": true, "items": [{"id": "a", "text": "Music"}, {"id": "b", "text": "Spin"}]})"), count(R"({"kind": "radioGroup", "items": [{"id": "a", "text": "Music"}, {"id": "b", "text": "Spin"}]})"));
+}
+
+TEST_F(ComponentTest, KeepsASliderValueOffItsStepUntilThePlayerMovesIt) {
+    auto document = mount(R"({"kind": "slider", "id": "volume", "width": 400, "value": 0.3499999940395355, "step": 0.05})");
+    frames(3);
+    EXPECT_TRUE(events.empty());
+
+    // A value the player moves lands on the step.
+    const math::Rect volume = getBounds(*document, "volume");
+    click({volume.x + volume.width * 0.8F, volume.getCenter().y});
+    ASSERT_EQ(getEventNames(), (std::vector<std::string>{"volume:change"}));
+    const double value = getLastEvent().value.at("value").get<double>();
+    EXPECT_NEAR(value / 0.05, std::round(value / 0.05), 1e-9);
+}
+
+// A growing child of a row measures at the width it draws at, so its wrapped text reports every line and the node below starts after the row, also through a column and a nested row.
+TEST_F(ComponentTest, MeasuresGrowingChildrenOfRowsAtTheirShare) {
+    const std::string text = "A long line of text that wraps across the narrow middle of the row, several times over, before the row ends and the next node starts.";
+    // clang-format off
+    auto document = mount(R"({"kind": "column", "children": [{"kind": "card", "children": [
+        {"kind": "row", "id": "row", "children": [
+            {"kind": "button", "text": "Back"},
+            {"kind": "column", "grow": 1, "children": [{"kind": "label", "id": "long", "text": ")" + text + R"("}]},
+            {"kind": "button", "text": "Wide", "width": 1400}
+        ]},
+        {"kind": "label", "id": "below", "text": "Below"},
+        {"kind": "row", "children": [
+            {"kind": "button", "text": "Left", "width": 700},
+            {"kind": "row", "grow": 1, "children": [{"kind": "column", "grow": 1, "children": [{"kind": "label", "id": "nested", "text": ")" + text + R"("}]}]}
+        ]},
+        {"kind": "label", "id": "last", "text": "Last"}
+    ]}]})");
+    // clang-format on
+    frames();
+    const float line = Typography::getLineHeight(getUi().getContext(), Theme::Font::Body);
+    EXPECT_GE(getBounds(*document, "long").height, line * 3.0F);
+    EXPECT_GE(getBounds(*document, "below").y, getBounds(*document, "long").getBottom());
+    EXPECT_GE(getBounds(*document, "nested").height, line * 2.0F);
+    EXPECT_GE(getBounds(*document, "last").y, getBounds(*document, "nested").getBottom());
+}
+
+// A growing child starts from nothing and takes the room its parent leaves, so a growing scroll stays inside a panel that fills the screen, while a container of its own size still fits the content of its growing children.
+TEST_F(ComponentTest, GrowsChildrenIntoTheRoomTheirParentLeaves) {
+    std::string rows;
+    for (int index = 0; index < 60; ++index) {
+        rows += std::string(index == 0 ? "" : ", ") + R"({"kind": "label", "text": "Row )" + std::to_string(index) + R"("})";
+    }
+    // clang-format off
+    auto document = mount(R"({"kind": "column", "children": [{"kind": "panel", "id": "panel", "grow": 1, "children": [
+        {"kind": "label", "text": "Title"},
+        {"kind": "scroll", "id": "list", "grow": 1, "children": [{"kind": "column", "children": [)" + rows + R"(]}]}
+    ]}]})");
+    // clang-format on
+    frames();
+    EXPECT_EQ(getBounds(*document, "panel").getBottom(), 1080.0F);
+    EXPECT_LE(getBounds(*document, "list").getBottom(), getBounds(*document, "panel").getBottom());
+    EXPECT_GT(getBounds(*document, "list").height, 600.0F);
+
+    getUi().unmount(*document);
+    document = mount(R"({"kind": "column", "children": [{"kind": "card", "id": "card", "children": [{"kind": "label", "id": "first", "grow": 1, "text": "One"}, {"kind": "label", "id": "second", "grow": 3, "text": "Two\nlines"}]}]})");
+    frames();
+    const float line = Typography::getLineHeight(getUi().getContext(), Theme::Font::Body);
+    EXPECT_GE(getBounds(*document, "first").height, line);
+    EXPECT_GE(getBounds(*document, "second").height, line * 2.0F);
+    EXPECT_LE(getBounds(*document, "second").getBottom(), getBounds(*document, "card").getBottom());
 }
 
 TEST_F(ComponentTest, AcceptsEmptyObjectsAsEmptyLists) {
@@ -665,6 +834,26 @@ TEST_F(ComponentAssetTest, LoadsImagesThemesAndTranslations) {
     mount(R"({"kind": "image", "image": "ui/missing.png"})");
     ASSERT_TRUE(fixture.frameUntil([&] { return getEngine().getError() != nullptr; }));
     EXPECT_NE(std::string_view(getEngine().getError()->what()).find("The UI image ui/missing.png could not be loaded"), std::string::npos);
+}
+
+TEST_F(ComponentAssetTest, DrawsCarouselArrowsAbovePagesThatFillIt) {
+    mount(R"({"kind": "carousel", "height": 300, "arrows": true, "indicators": false, "children": [{"kind": "image", "image": "ui/icon.png", "fit": "cover"}, {"kind": "label", "text": "Two"}]})");
+
+    // The arrows draw with the font atlas and the page with its image, so the last command of each kind tells which is on top.
+    // clang-format off
+    const auto last = [this](bool atlas) {
+        getUi().getBackend().makeCurrent();
+        const ImTextureID font = ImGui::GetIO().Fonts->TexRef.GetTexID();
+        const ImVector<ImDrawCmd>& commands = ImGui::FindWindowByName("##haylen-documents")->DrawList->CmdBuffer;
+        int found = -1;
+        for (int index = 0; index < commands.Size; ++index) {
+            found = commands[index].ElemCount > 0 && (commands[index].GetTexID() == font) == atlas ? index : found;
+        }
+        return found;
+    };
+    // clang-format on
+    ASSERT_TRUE(fixture.frameUntil([&] { return last(false) >= 0; }));
+    EXPECT_GT(last(true), last(false));
 }
 
 TEST_F(ComponentAssetTest, PaintsTooltipsWithTheThemeSurface) {

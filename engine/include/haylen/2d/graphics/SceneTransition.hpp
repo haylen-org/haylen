@@ -5,6 +5,7 @@
 #include <string_view>
 #include <vector>
 
+#include "haylen/2d/graphics/DrawOrder.hpp"
 #include "haylen/2d/graphics/ImageBlend.hpp"
 #include "haylen/core/TransitionEffect.hpp"
 #include "haylen/graphics/Texture.hpp"
@@ -105,6 +106,9 @@ class SceneTransition final : public core::TransitionEffect {
     static constexpr int kTurnRows = 12;
     static constexpr int kTileColumns = 16;
     static constexpr int kSplits = 3;
+
+    // The captured scenes hold premultiplied colors, because they render over the clear color, which a transparent window keeps transparent.
+    static const DrawOrder kCapturedOrder;
 
     // Returns the steps toward the direction on each axis, from -1 to 1.
     [[nodiscard]] static math::Vec2 getSteps(Direction direction) noexcept;

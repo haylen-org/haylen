@@ -87,6 +87,8 @@ class UiLua final {
     static int focusRingVisible(lua_State* L);
     static int safeAreaVisible(lua_State* L);
     static int setSafeAreaVisible(lua_State* L);
+    static int setDirection(lua_State* L);
+    static int direction(lua_State* L);
     static int kinds(lua_State* L);
     static int open(lua_State* L);
 };

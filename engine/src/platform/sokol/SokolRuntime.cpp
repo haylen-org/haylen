@@ -1,5 +1,7 @@
 #include "platform/sokol/SokolRuntime.hpp"
 
+#include <cmath>
+
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Log.hpp"
@@ -8,8 +10,8 @@
 #include "haylen/io/Path.hpp"
 #include "haylen/lua/Error.hpp"
 #include "haylen/platform/Event.hpp"
+#include "haylen/platform/NativeLibraries.hpp"
 #include "platform/Services.hpp"
-#include "platform/sokol/BridgeRelay.hpp"
 #include "platform/sokol/MemoryWarning.hpp"
 #include "platform/sokol/SokolEvents.hpp"
 #include "sokol_log.h"
@@ -46,6 +48,9 @@ sapp_desc SokolRuntime::describe(int argc, char* argv[]) {
     SokolRuntime& runtime = *current;
     const LaunchOptions options = parseLaunchOptions(argc, argv);
     runtime.development = options.development;
+    for (const std::string& folder : options.nativeFolders) {
+        NativeLibraries::addSearchFolder(folder);
+    }
     // clang-format off
     runtime.pending = load([&options] {
         return options.package.empty() ? Services::openBundledPackage() : std::shared_ptr<io::Package>(io::Package::open(options.package));
@@ -71,6 +76,7 @@ sapp_desc SokolRuntime::describe(int argc, char* argv[]) {
     desc.enable_clipboard = true;
     desc.clipboard_size = 64 * 1024;
     desc.logger.func = slog_func;
+    runtime.describeDesktop(desc, config.window);
 #if defined(__EMSCRIPTEN__)
     runtime.canvas = WebPage::getCanvasSelector();
     desc.html5.canvas_selector = runtime.canvas.c_str();
@@ -80,6 +86,27 @@ sapp_desc SokolRuntime::describe(int argc, char* argv[]) {
     desc.android.native_event_cb = &onAndroidInput;
 #endif
     return desc;
+}
+
+// The window opens with its desktop options already in effect, so a frameless window never shows a title bar for its first frame. Whether it can be transparent lasts for the whole run.
+void SokolRuntime::describeDesktop(sapp_desc& desc, const core::AppConfig::Window& window) {
+    desc.composite_mode = window.transparent ? SAPP_COMPOSITEMODE_PREMULTIPLIED : SAPP_COMPOSITEMODE_OPAQUE;
+    desc.desktop.borderless = !window.decorated;
+    desc.desktop.topmost = window.alwaysOnTop;
+    desc.desktop.no_focus = !window.focusable;
+    desc.desktop.skip_taskbar = !window.showInTaskbar;
+    host.prepare({.transparent = window.transparent, .resizable = window.resizable, .decorated = window.decorated, .alwaysOnTop = window.alwaysOnTop, .shownInTaskbar = window.showInTaskbar}, window.focusable);
+    if (!window.position || !Services::hasDesktop()) {
+        return;
+    }
+
+    const std::vector<Monitor> monitors = Services::getMonitors();
+    const math::Rect frame = window.position->resolve(monitors, {static_cast<float>(window.width), static_cast<float>(window.height)});
+    desc.width = static_cast<int>(std::lround(frame.width));
+    desc.height = static_cast<int>(std::lround(frame.height));
+    desc.desktop.has_position = true;
+    desc.desktop.x = static_cast<int>(std::lround(frame.x));
+    desc.desktop.y = static_cast<int>(std::lround(frame.y));
 }
 
 void SokolRuntime::restart(std::shared_ptr<io::Package> source) {
@@ -130,13 +157,15 @@ std::vector<Event> SokolRuntime::takePostedEvents() {
     return std::exchange(posted, {});
 }
 
-// Options other than --dev come from the system, such as the ones Xcode passes to the macOS apps it launches, and are left to it.
+// Options other than --dev and --native come from the system, such as the ones Xcode passes to the macOS apps it launches, and are left to it.
 SokolRuntime::LaunchOptions SokolRuntime::parseLaunchOptions(int argc, char* argv[]) {
     LaunchOptions options;
     for (int index = 1; index < argc; ++index) {
         const std::string_view argument = argv[index];
         if (argument == "--dev") {
             options.development = true;
+        } else if (argument == "--native" && index + 1 < argc) {
+            options.nativeFolders.emplace_back(argv[++index]);
         } else if (!argument.starts_with('-') && options.package.empty()) {
             options.package = argument;
         }
@@ -165,6 +194,7 @@ SokolRuntime::App SokolRuntime::load(const std::function<std::shared_ptr<io::Pac
 }
 
 void SokolRuntime::onInitialize(void* data) {
+    Services::watchWindow();
     static_cast<SokolRuntime*>(data)->launch();
 }
 
@@ -173,6 +203,7 @@ void SokolRuntime::onFrame(void* data) {
     if (runtime.paused || runtime.engine == nullptr) {
         return;
     }
+    Services::updateWindow();
     if (MemoryWarning::take()) {
         runtime.engine->handleEvent({.type = Event::Type::LowMemory});
     }
@@ -260,7 +291,6 @@ void SokolRuntime::launch() {
         return;
     }
     errors = engine->errorRaised.connect([](const lua::Error& error) { Services::reportError(error); });
-    BridgeRelay::attach(&engine->getPlatform());
     engine->start();
     if (online) {
         engine->handleEvent({.type = Event::Type::NetworkChanged, .online = *online});
@@ -276,7 +306,6 @@ void SokolRuntime::close() noexcept {
     if (engine == nullptr) {
         return;
     }
-    BridgeRelay::attach(nullptr);
     errors.disconnect();
     engine.reset();
 #if defined(__EMSCRIPTEN__)

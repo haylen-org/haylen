@@ -24,8 +24,9 @@ math::Vec2 StatusIndicator::measureContent(Context& context, float) {
 
 void StatusIndicator::render(Context& context, const math::Rect& bounds) {
     const float dot = getDotSize(context);
-    ImGui::GetWindowDrawList()->AddCircleFilled({bounds.x + dot * 0.5F, bounds.getCenter().y}, dot * 0.5F, ImGuiConverter::toImU32(context.getColor(Widgets::getToneColors(tone).fill)));
-    Typography::drawAligned(context, Theme::Font::Caption, {bounds.x + dot * 2.0F, bounds.y, bounds.width - dot * 2.0F, bounds.height}, context.getColor(Theme::Color::TextMuted), context.getText(text), Alignment::Start);
+    const math::Rect marker = context.mirror({bounds.x, bounds.getCenter().y - dot * 0.5F, dot, dot}, bounds);
+    ImGui::GetWindowDrawList()->AddCircleFilled(ImGuiConverter::toImVec2(marker.getCenter()), dot * 0.5F, ImGuiConverter::toImU32(context.getColor(Widgets::getToneColors(tone).fill)));
+    Typography::drawAligned(context, Theme::Font::Caption, context.mirror({bounds.x + dot * 2.0F, bounds.y, bounds.width - dot * 2.0F, bounds.height}, bounds), context.getColor(Theme::Color::TextMuted), context.getText(text), Alignment::Start);
 }
 
 float StatusIndicator::getDotSize(Context& context) {

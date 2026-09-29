@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <string>
+#include <vector>
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/platform/Bridge.hpp"
@@ -22,7 +24,7 @@ TEST(PlatformLuaTest, CallsNativeAndLuaHandlersWithPromises) {
             local _, failure = platform.call('math.fail'):await()
             local device = platform.call('device.info'):await()
             local _, denied = platform.call('auth.login', {provider = 'google'}):await()
-            summary = info.platform .. ' ' .. doubled.value .. ' ' .. tostring(failure:find('handler failed') ~= nil) .. ' ' .. device.model .. ' ' .. denied
+            summary = info.platform .. ' ' .. doubled.value .. ' ' .. tostring(failure.message:find('handler failed') ~= nil) .. ' ' .. device.model .. ' ' .. denied
         end)
     )");
     // clang-format on
@@ -69,8 +71,9 @@ TEST(PlatformLuaTest, AnswersCallsAndSendsEventsFromLua) {
         async = require('async')
         links = {}
         platform.on('app.link', function(payload) links[#links + 1] = payload.url end)
-        slow, slowId = platform.call('native.slow', {n = 1})
-        denied, deniedId = platform.call('native.denied')
+        slow = platform.call('native.slow', {n = 1})
+        denied = platform.call('native.denied')
+        slowId, deniedId = slow.id, denied.id
         async.spawn(function()
             local value = slow:await()
             local _, failure = denied:await()
@@ -89,6 +92,38 @@ TEST(PlatformLuaTest, AnswersCallsAndSendsEventsFromLua) {
     EXPECT_NE(fixture.lua("platform.resolve(-1, true)").find("expected a non-negative integer"), std::string::npos);
 }
 
+TEST(PlatformLuaTest, FailsCallsWithTypedErrorsTimeoutsAndCancellation) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        platform = require('haylen.platform')
+        async = require('async')
+        slow = platform.call('store.slow', {item = 1}, {timeout = 0.05})
+        typed = platform.call('store.typed')
+        given = platform.call('store.given')
+        async.spawn(function()
+            local _, timeout = slow:await()
+            local _, typedError = typed:await()
+            local _, cancel = given:await()
+            local all = async.all({platform.call('engine.info').promise, platform.call('app.version').promise}):await()
+            summary = table.concat({timeout.code, timeout.message, typedError.code, typedError.message, typedError.data.retry, cancel.code, tostring(given.done), all[1].engine, all[2]}, '|')
+        end)
+    )");
+    // clang-format on
+    ASSERT_EQ(fixture.host().getPlatformCalls().size(), 3U);
+    fixture.engine().getPlatform().resolve(std::stoull(fixture.lua("return typed.id")), false, R"({"message": "The store is closed.", "code": "closed", "data": {"retry": 30}})");
+    EXPECT_EQ(fixture.lua("return given:cancel()"), "true");
+
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return summary ~= nil") == "true"; }));
+    EXPECT_EQ(fixture.lua("return summary"), "timeout|The platform call store.slow timed out.|closed|The store is closed.|30|cancelled|true|Haylen|1.0.0");
+    EXPECT_EQ(fixture.host().getCancelledCalls(), (std::vector<std::uint64_t>{std::stoull(fixture.lua("return given.id")), std::stoull(fixture.lua("return slow.id"))}));
+    EXPECT_EQ(fixture.lua("return given:cancel()"), "false");
+
+    EXPECT_NE(fixture.lua("platform.call('store.slow', nil, {timeout = 0})").find("positive number of seconds"), std::string::npos);
+    EXPECT_NE(fixture.lua("platform.call('store.slow', nil, {timeout = 'soon'})").find("timeout"), std::string::npos);
+    EXPECT_NE(fixture.lua("platform.call('store.slow', nil, {deadline = 1})").find("deadline"), std::string::npos);
+}
+
 TEST(PlatformLuaTest, CppCallsToLuaHandlersReturnErrorsInsteadOfCrashing) {
     test::EngineFixture fixture;
     fixture.runLua("require('haylen.platform').register('bad.result', function() return {callback = print} end)");
@@ -97,7 +132,7 @@ TEST(PlatformLuaTest, CppCallsToLuaHandlersReturnErrorsInsteadOfCrashing) {
     fixture.engine().getPlatform().call("bad.result", core::Json::object(), [&](Bridge::Result result) { received = std::move(result); });
     fixture.frames(1);
     EXPECT_FALSE(received.ok);
-    EXPECT_NE(received.error.find("cannot be converted to JSON"), std::string::npos);
+    EXPECT_NE(received.error.message.find("cannot be converted to JSON"), std::string::npos);
 }
 
 } // namespace haylen::platform

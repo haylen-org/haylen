@@ -38,9 +38,10 @@ void SettingsRow::render(Context& context, const math::Rect& bounds) {
     const float labelHeight = Typography::measureParagraph(context, Theme::Font::Body, labelText, labelWidth).y;
     const float captionHeight = captionText.empty() ? 0.0F : Typography::measureParagraph(context, Theme::Font::Caption, captionText, labelWidth).y;
     const float top = std::floor(inner.getCenter().y - (labelHeight + captionHeight) * 0.5F);
-    Typography::drawParagraph(context, Theme::Font::Body, {inner.x, top, labelWidth, labelHeight}, context.getColor(Theme::Color::Text), labelText, Alignment::Start);
+    // The label stands at the start of the row and the control at its end, which swap sides in a right-to-left UI.
+    Typography::drawParagraph(context, Theme::Font::Body, context.mirror({inner.x, top, labelWidth, labelHeight}, inner), context.getColor(Theme::Color::Text), labelText, Alignment::Start);
     if (!captionText.empty()) {
-        Typography::drawParagraph(context, Theme::Font::Caption, {inner.x, top + labelHeight, labelWidth, captionHeight}, context.getColor(Theme::Color::TextMuted), captionText, Alignment::Start);
+        Typography::drawParagraph(context, Theme::Font::Caption, context.mirror({inner.x, top + labelHeight, labelWidth, captionHeight}, inner), context.getColor(Theme::Color::TextMuted), captionText, Alignment::Start);
     }
 
     if (!getChildren().empty() && getChildren().front()->getCommon().visible) {
@@ -48,7 +49,7 @@ void SettingsRow::render(Context& context, const math::Rect& bounds) {
         const float available = std::max(0.0F, inner.width - labelWidth - context.getMetric(Theme::Metric::ItemSpacing));
         const math::Vec2 size = control.measure(context, available);
         const float width = control.getAlignment() == Alignment::Stretch ? available : std::min(size.x, available);
-        control.draw(context, {inner.getRight() - width, std::floor(inner.getCenter().y - size.y * 0.5F), width, size.y});
+        control.draw(context, context.mirror({inner.getRight() - width, std::floor(inner.getCenter().y - size.y * 0.5F), width, size.y}, inner));
     }
 }
 

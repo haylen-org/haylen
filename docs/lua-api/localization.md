@@ -20,6 +20,15 @@ A language table maps keys to texts. Nested tables become dotted keys, so the ta
 }
 ```
 
+A language that reads right to left declares it with `"@direction": "rtl"` at the top of its table, and `"ltr"` is the default. The key holds no text, `localization.direction()` returns it, and a UI that follows the language with [ui.setDirection('auto')](ui.md#uisetdirectiondirection) mirrors its layout when the language becomes current. Any other value raises `The @direction of the localization table of <language> must be ltr or rtl.`.
+
+```json
+{
+  "@direction": "rtl",
+  "menu": {"play": "العب", "quit": "خروج"}
+}
+```
+
 The usual layout keeps one JSON file per language in a folder of the assets, named after its language tag, such as `i18n/en.json` and `i18n/pt-BR.json`.
 
 The first language added becomes both the current language and the fallback language until others are chosen. Keys missing from the current language come from the fallback language, and keys missing from both come back unchanged, so a missing translation shows its key on screen.
@@ -71,6 +80,18 @@ local localization = require('haylen.localization')
 
 localization.loadFolder('i18n')
 print(localization.language())
+```
+
+### localization.direction(language)
+
+Returns `'rtl'` when a language declares that it reads right to left with `@direction`, and `'ltr'` otherwise, for the current language when `language` is omitted. Text laid out in the language takes its direction from its own letters, and the direction of a language decides the layout of a UI around it.
+
+```lua
+local localization = require('haylen.localization')
+
+localization.add('en', {hello = 'Hello'})
+localization.add('ar', {['@direction'] = 'rtl', hello = 'مرحبا'})
+print(localization.direction(), localization.direction('ar'))
 ```
 
 ### localization.setFallback(language)
@@ -188,5 +209,6 @@ end
 | `The localization table of <language> must be a JSON object.` | `localization.add()` received a list instead of a table with string keys. |
 | `The localization entry <key> must be text, a plural form or a group of entries.` | A language table holds a number, a boolean or a list. |
 | `The localization file <path> is not valid JSON.` | `localization.loadFolder()` found a broken file. |
+| `The @direction of the localization table of <language> must be ltr or rtl.` | A language table declares a direction other than `ltr` or `rtl`. |
 | `No localization table was added for <language>.` | `localization.setLanguage()` or `localization.setFallback()` named a language that was never added. |
 | `Localization arguments must be a JSON object.` | `localization.text()` received a list as arguments. |

@@ -1,18 +1,13 @@
 #include "platform/Services.hpp"
 
-#include <cstdint>
 #include <cstdlib>
 #include <stdexcept>
 #include <string>
 
 #include "haylen/io/Package.hpp"
+#include "platform/linux/LinuxDesktop.hpp"
 #include "platform/linux/LinuxGamepads.hpp"
 #include "platform/linux/LinuxMethods.hpp"
-#include "sokol_app.h"
-
-// Xlib defines macros such as None and Bool, so it comes after the engine headers that use those names.
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 
 namespace haylen::platform {
 
@@ -25,6 +20,7 @@ void Services::initialize() {
 }
 
 void Services::shutdown() noexcept {
+    LinuxDesktop::release();
     LinuxGamepads::release();
 }
 
@@ -51,18 +47,40 @@ std::filesystem::path Services::getUserDataDirectory(std::string_view identifier
 
 void Services::persistUserData() {}
 
-// The window manager keeps a window whose smallest and largest sizes match at that size.
-void Services::setWindowResizable(bool value) {
-    auto* display = static_cast<Display*>(const_cast<void*>(sapp_x11_get_display()));
-    const auto window = static_cast<::Window>(reinterpret_cast<std::uintptr_t>(sapp_x11_get_window()));
-    XSizeHints hints{};
-    if (!value) {
-        hints.flags = PMinSize | PMaxSize;
-        hints.min_width = hints.max_width = sapp_width();
-        hints.min_height = hints.max_height = sapp_height();
-    }
-    XSetWMNormalHints(display, window, &hints);
-    XFlush(display);
+bool Services::hasDesktop() noexcept {
+    return true;
+}
+
+void Services::setWindowStyle(const WindowStyle& value) {
+    LinuxDesktop::setStyle(value);
+}
+
+math::Rect Services::getWindowFrame() {
+    return LinuxDesktop::getFrame();
+}
+
+void Services::setWindowFrame(const math::Rect& value) {
+    LinuxDesktop::setFrame(value);
+}
+
+std::vector<Monitor> Services::getMonitors() {
+    return LinuxDesktop::getMonitors();
+}
+
+void Services::setMousePassthrough(Window::Passthrough mode, std::span<const math::Polygon::Outline> regions) {
+    LinuxDesktop::setPassthrough(mode, regions);
+}
+
+void Services::startWindowDrag() {
+    LinuxDesktop::startDrag();
+}
+
+void Services::watchWindow() {
+    LinuxDesktop::watch();
+}
+
+void Services::updateWindow() {
+    LinuxDesktop::update();
 }
 
 math::Insets Services::getSafeAreaInsets() {
@@ -92,5 +110,8 @@ TextInput& Services::getTextInput() {
 void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson) {
     LinuxMethods().dispatch(id, method, paramsJson);
 }
+
+// The desktop methods answer during the call, so no call of theirs is ever pending.
+void Services::cancel(std::uint64_t) {}
 
 } // namespace haylen::platform

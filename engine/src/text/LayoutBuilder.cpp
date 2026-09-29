@@ -5,14 +5,55 @@
 #include <stdexcept>
 #include <utility>
 
-#include "text/BreakRules.hpp"
+#include "haylen/core/Utf8.hpp"
+#include "text/BidiParagraph.hpp"
+#include "text/Segmenter.hpp"
 
 namespace haylen::text {
 
-LayoutBuilder::LayoutBuilder(const RichTextDocument& source, const RichTextOptions& layoutOptions, const RichTextRegistry& textRegistry) : document(source), options(layoutOptions), registry(textRegistry), styleFonts(source.styles.size()) {}
+LayoutBuilder::LayoutBuilder(const RichTextDocument& source, const RichTextOptions& layoutOptions, const RichTextRegistry& textRegistry) : LayoutBuilder(source, layoutOptions, &textRegistry, layoutOptions.family.get(), nullptr) {}
+
+LayoutBuilder::LayoutBuilder(const RichTextDocument& source, const RichTextOptions& layoutOptions, const RichTextRegistry* textRegistry, const FontFamily* baseFamily, Font* baseFont) : document(source), options(layoutOptions), registry(textRegistry), family(baseFamily), loneFont(baseFont), styleFonts(source.styles.size()) {}
+
+TextLayout LayoutBuilder::layoutPlainText(std::string_view text, const TextStyle& style, const FontFamily* family, Font* font) {
+    RichTextDocument document{.styles = {RichTextDocument::Style{}}};
+    const std::u32string codePoints = core::Utf8::decode(text);
+    std::size_t start = 0;
+    while (start <= codePoints.size()) {
+        const std::size_t newline = std::min(codePoints.find(U'\n', start), codePoints.size());
+        RichTextDocument::Paragraph& paragraph = document.paragraphs.emplace_back();
+        if (newline > start) {
+            paragraph.inlines.push_back({.kind = RichTextDocument::Inline::Kind::Text, .text = codePoints.substr(start, newline - start)});
+        }
+        start = newline + 1;
+    }
+
+    const RichTextOptions options{.size = style.size, .bold = style.bold, .italic = style.italic, .color = style.color, .maxWidth = style.maxWidth, .align = style.align, .direction = style.direction, .language = style.language, .lineSpacing = style.lineSpacing};
+    return LayoutBuilder(document, options, nullptr, family, font).build();
+}
 
 float LayoutBuilder::getIndentUnit() const noexcept {
     return options.size * options.scale * kIndentEms;
+}
+
+Direction LayoutBuilder::getDirection(const RichTextDocument::Paragraph& paragraph) const noexcept {
+    return paragraph.direction.value_or(options.direction);
+}
+
+TextAlign LayoutBuilder::resolveAlign(TextAlign align, bool rightToLeft, bool lastLine) noexcept {
+    switch (align) {
+    case TextAlign::Start:
+        return rightToLeft ? TextAlign::Right : TextAlign::Left;
+    case TextAlign::End:
+        return rightToLeft ? TextAlign::Left : TextAlign::Right;
+    case TextAlign::Fill:
+        return lastLine ? resolveAlign(TextAlign::Start, rightToLeft, false) : TextAlign::Fill;
+    case TextAlign::Left:
+    case TextAlign::Center:
+    case TextAlign::Right:
+        break;
+    }
+    return align;
 }
 
 float LayoutBuilder::alignOffset(TextAlign align, float room, float width) noexcept {
@@ -21,11 +62,9 @@ float LayoutBuilder::alignOffset(TextAlign align, float room, float width) noexc
         return (room - width) * 0.5F;
     case TextAlign::Right:
         return room - width;
-    case TextAlign::Left:
-    case TextAlign::Fill:
-        break;
+    default:
+        return 0.0F;
     }
-    return 0.0F;
 }
 
 const LayoutBuilder::StyleFont& LayoutBuilder::getStyleFont(std::size_t style) {
@@ -35,7 +74,15 @@ const LayoutBuilder::StyleFont& LayoutBuilder::getStyleFont(std::size_t style) {
     }
 
     const RichTextDocument::Style& described = document.styles[style];
-    std::shared_ptr<FontFamily> family = options.family;
+    const bool bold = described.bold || options.bold;
+    const bool italic = described.italic || options.italic;
+    const float size = described.size.value_or(options.size) * described.sizeFactor * options.scale;
+    if (described.font.empty() && family == nullptr) {
+        cached = StyleFont{.face = {.font = loneFont, .syntheticBold = bold, .syntheticItalic = italic}, .bold = bold, .italic = italic, .size = size};
+        return *cached;
+    }
+
+    const FontFamily* chosen = family;
     if (!described.font.empty()) {
         auto found = families.find(described.font);
         if (found == families.end()) {
@@ -46,10 +93,9 @@ const LayoutBuilder::StyleFont& LayoutBuilder::getStyleFont(std::size_t style) {
             layout.families.push_back(named);
             found = families.emplace(described.font, std::move(named)).first;
         }
-        family = found->second;
+        chosen = found->second.get();
     }
-    const float size = described.size.value_or(options.size) * described.sizeFactor * options.scale;
-    cached = StyleFont{.family = family, .face = family->select(described.bold, described.italic, described.mono), .size = size};
+    cached = StyleFont{.family = chosen, .face = chosen->select(bold, italic, described.mono), .bold = bold, .italic = italic, .size = size};
     return *cached;
 }
 
@@ -63,7 +109,7 @@ std::size_t LayoutBuilder::getLook(std::size_t style, const FontFamily::Selectio
     const RichTextDocument::Style& described = document.styles[style];
     const float size = getStyleFont(style).size;
     const bool field = face.font->isDistanceField();
-    RichTextLayout::Look look{
+    TextLayout::Look look{
         .font = face.font,
         .size = size,
         .outlineWidth = described.outlineWidth * options.scale,
@@ -96,25 +142,127 @@ math::Color LayoutBuilder::getColor(std::size_t style) const {
     return color;
 }
 
-void LayoutBuilder::appendText(std::vector<Piece>& pieces, std::size_t style, std::u32string_view text) {
+// Shapes one run of a font, script and direction. The glyphs come in visual order, so the clusters of a right-to-left run count down, and every cluster becomes a piece in reading order that keeps its glyphs in visual order.
+void LayoutBuilder::shapeRun(const Source& source, std::size_t begin, std::size_t end, const FontFamily::Selection& face, std::uint8_t level, std::uint32_t script, std::vector<Piece>& pieces, std::vector<PlacedGlyph>& glyphs) {
+    const std::size_t style = source.styles[begin];
     const StyleFont& font = getStyleFont(style);
-    const RichTextDocument::Style& described = document.styles[style];
-    for (std::size_t index = 0; index < text.size(); ++index) {
-        const char32_t codePoint = text[index];
-        const FontFamily::Selection face = font.family->resolve(font.face, codePoint, described.bold, described.italic);
-        Font& drawing = *face.font;
-        const std::size_t look = getLook(style, face);
-        const RichTextLayout::Look& shape = layout.looks[look];
+    Font& drawing = *face.font;
+    const std::size_t look = getLook(style, face);
+    const TextLayout::Look& drawn = layout.looks[look];
+    const float factor = font.size / drawing.getNativeSize();
 
-        Piece piece{.kind = Piece::Kind::Glyph, .style = style, .look = look, .codePoint = codePoint, .glyph = drawing.getGlyph(codePoint), .factor = font.size / drawing.getNativeSize(), .space = BreakRules::isSpace(codePoint)};
-        piece.advance = piece.glyph.advance * piece.factor + shape.weight * 2.0F + shape.emboldenOffset;
-        if (index + 1 < text.size() && font.family->resolve(font.face, text[index + 1], described.bold, described.italic).font == &drawing) {
-            piece.advance += drawing.getKerning(codePoint, text[index + 1]) * piece.factor;
+    shapedGlyphs.clear();
+    drawing.shape({.text = source.text, .begin = begin, .end = end, .script = script, .language = options.language, .rightToLeft = level % 2 != 0}, shapedGlyphs);
+    std::vector<std::size_t> byCluster(shapedGlyphs.size());
+    std::iota(byCluster.begin(), byCluster.end(), std::size_t{0});
+    std::ranges::stable_sort(byCluster, {}, [this](std::size_t index) { return shapedGlyphs[index].cluster; });
+
+    std::size_t next = 0;
+    while (next < byCluster.size()) {
+        const std::size_t cluster = shapedGlyphs[byCluster[next]].cluster;
+        Piece piece{.kind = Piece::Kind::Cluster, .style = style, .look = look, .begin = cluster, .firstGlyph = glyphs.size(), .level = level};
+        float pen = 0.0F;
+        for (; next < byCluster.size() && shapedGlyphs[byCluster[next]].cluster == cluster; ++next) {
+            const Font::ShapedGlyph& shaped = shapedGlyphs[byCluster[next]];
+            glyphs.push_back({.glyph = drawing.getGlyph(shaped.index), .index = shaped.index, .factor = factor, .offset = math::Vec2{pen, 0.0F} + shaped.offset * factor});
+            pen += shaped.advance * factor;
         }
+        piece.end = next < byCluster.size() ? shapedGlyphs[byCluster[next]].cluster : end;
+        piece.glyphCount = glyphs.size() - piece.firstGlyph;
+        piece.advance = pen + drawn.weight * 2.0F + drawn.emboldenOffset;
         piece.ascent = drawing.getAscent(font.size);
         piece.descent = drawing.getLineHeight(font.size) - piece.ascent;
+        piece.space = std::all_of(source.text.begin() + static_cast<std::ptrdiff_t>(piece.begin), source.text.begin() + static_cast<std::ptrdiff_t>(piece.end), &Segmenter::isSpace);
         pieces.push_back(std::move(piece));
     }
+}
+
+// Every grapheme cluster picks the font that draws it, spaces and punctuation keeping the font before them, and runs of one style, font, level and script shape together with the whole paragraph as their context. Objects and line breaks stand alone, and a pause stays with the piece after it, so a line never wraps between them.
+std::vector<LayoutBuilder::Piece> LayoutBuilder::shape(const Source& source, const BidiParagraph& bidi, std::vector<PlacedGlyph>& glyphs) {
+    const std::u32string_view text = source.text;
+    const std::vector<std::uint32_t> scripts = Segmenter::getScripts(text);
+    const std::vector<bool> graphemes = Segmenter::getGraphemeStarts(text);
+    const std::vector<Segmenter::Break> breaks = Segmenter::getLineBreaks(text, options.language);
+
+    std::vector<Piece> pieces;
+    std::size_t nextPause = 0;
+    // clang-format off
+    const auto add = [&](Piece piece) {
+        piece.breakBefore = piece.begin > 0 && breaks[piece.begin - 1] != Segmenter::Break::Never;
+        const std::size_t firstPause = pieces.size();
+        for (; nextPause < source.pauses.size() && source.pauses[nextPause].first <= piece.begin; ++nextPause) {
+            pieces.push_back({.kind = Piece::Kind::Pause, .style = piece.style, .begin = piece.begin, .end = piece.begin, .pause = source.pauses[nextPause].second});
+        }
+        if (pieces.size() > firstPause) {
+            pieces[firstPause].breakBefore = piece.breakBefore;
+            piece.breakBefore = false;
+        }
+        pieces.push_back(std::move(piece));
+    };
+    // clang-format on
+
+    std::vector<Piece> shaped;
+    std::size_t runBegin = 0;
+    FontFamily::Selection runFace;
+    Font* previous = nullptr;
+    std::size_t index = 0;
+    while (index < text.size()) {
+        std::size_t clusterEnd = index + 1;
+        while (clusterEnd < text.size() && !graphemes[clusterEnd]) {
+            ++clusterEnd;
+        }
+        const std::u32string_view cluster = text.substr(index, clusterEnd - index);
+        const bool object = text[index] == kObject && source.objects.contains(index);
+        const bool lineBreak = text[index] == kLineSeparator;
+
+        FontFamily::Selection face;
+        if (!object && !lineBreak) {
+            const StyleFont& font = getStyleFont(source.styles[index]);
+            const bool common = std::ranges::all_of(cluster, &Segmenter::isCommon);
+            face = font.family != nullptr ? font.family->resolve(font.face, cluster, font.bold, font.italic, common ? previous : nullptr) : font.face;
+            previous = face.font;
+        }
+
+        // A run ends before an object, a line break, or a change of style, font, level or script.
+        const bool continues = index > runBegin && !object && !lineBreak && face.font == runFace.font && source.styles[index] == source.styles[runBegin] && bidi.getLevel(index) == bidi.getLevel(runBegin) && scripts[index] == scripts[runBegin];
+        if (!continues && index > runBegin && runFace.font != nullptr) {
+            shaped.clear();
+            shapeRun(source, runBegin, index, runFace, bidi.getLevel(runBegin), scripts[runBegin], shaped, glyphs);
+            for (Piece& piece : shaped) {
+                add(std::move(piece));
+            }
+        }
+        if (!continues) {
+            runBegin = index;
+            runFace = face;
+        }
+
+        if (object) {
+            Piece piece = measureImage(*source.objects.at(index));
+            piece.begin = index;
+            piece.end = clusterEnd;
+            piece.level = bidi.getLevel(index);
+            add(std::move(piece));
+            runBegin = clusterEnd;
+            runFace = {};
+        } else if (lineBreak) {
+            add({.kind = Piece::Kind::LineBreak, .style = source.styles[index], .begin = index, .end = clusterEnd, .level = bidi.getLevel(index)});
+            runBegin = clusterEnd;
+            runFace = {};
+        }
+        index = clusterEnd;
+    }
+    if (runFace.font != nullptr && runBegin < text.size()) {
+        shaped.clear();
+        shapeRun(source, runBegin, text.size(), runFace, bidi.getLevel(runBegin), scripts[runBegin], shaped, glyphs);
+        for (Piece& piece : shaped) {
+            add(std::move(piece));
+        }
+    }
+    for (; nextPause < source.pauses.size(); ++nextPause) {
+        pieces.push_back({.kind = Piece::Kind::Pause, .begin = text.size(), .end = text.size(), .pause = source.pauses[nextPause].second});
+    }
+    return pieces;
 }
 
 // Centered objects center on the middle of the text of their style, and top and bottom ones take their place once the line knows its height.
@@ -136,7 +284,7 @@ LayoutBuilder::Piece LayoutBuilder::measureObject(std::size_t style, graphics::T
 }
 
 // An image keeps the shape of its region when the markup gives only one side, and an icon without a size of its own is as tall as its text.
-void LayoutBuilder::appendImage(std::vector<Piece>& pieces, const RichTextDocument::Inline& item) {
+LayoutBuilder::Piece LayoutBuilder::measureImage(const RichTextDocument::Inline& item) {
     // clang-format off
     const auto fit = [this](math::Vec2 natural, std::optional<float> width, std::optional<float> height) {
         const float ratio = natural.y > 0.0F ? natural.x / natural.y : 1.0F;
@@ -164,39 +312,62 @@ void LayoutBuilder::appendImage(std::vector<Piece>& pieces, const RichTextDocume
         }
         const math::Rect source = image.region.value_or(texture.isValid() ? math::Rect{0.0F, 0.0F, texture.getSize().x, texture.getSize().y} : math::Rect{});
         const math::Vec2 extent = fit(source.getSize() * options.scale, image.width, image.height);
-        pieces.push_back(measureObject(item.style, std::move(texture), source, extent, image.color, image.align));
-        return;
+        return measureObject(item.style, std::move(texture), source, extent, image.color, image.align);
     }
 
     const RichTextDocument::Icon& icon = document.icons[item.object];
-    const RichTextRegistry::Icon* registered = registry.findIcon(icon.name);
+    const RichTextRegistry::Icon* registered = registry != nullptr ? registry->findIcon(icon.name) : nullptr;
     if (registered == nullptr) {
         throw std::invalid_argument("The rich text uses the icon " + icon.name + ", which is not registered.");
     }
     const math::Vec2 shape = registered->source.getSize();
     const float textSize = getStyleFont(item.style).size;
     const math::Vec2 natural = registered->size.isZero() ? math::Vec2{shape.y > 0.0F ? textSize * shape.x / shape.y : textSize, textSize} : registered->size * options.scale;
-    pieces.push_back(measureObject(item.style, registered->texture, registered->source, fit(natural, icon.width, icon.height), icon.color, icon.align));
+    return measureObject(item.style, registered->texture, registered->source, fit(natural, icon.width, icon.height), icon.color, icon.align);
 }
 
-// A line may wrap before a piece where the text allows it and around images, never before a space, and a pause stays with what follows it.
+// A drop cap or a list marker reads in the direction of its paragraph and never wraps, so it keeps its pieces in reading order and the order they stand in from the left.
+void LayoutBuilder::shapeAside(Flow& flow, std::u32string_view text, std::size_t style, std::vector<Piece>& pieces, std::vector<std::size_t>& order) {
+    const Source source{.text = std::u32string(text), .styles = std::vector<std::size_t>(text.size(), style)};
+    const BidiParagraph bidi(source.text, flow.rightToLeft ? Direction::RightToLeft : Direction::LeftToRight);
+    pieces = shape(source, bidi, flow.glyphs);
+    order = orderPieces(pieces, 0, pieces.size(), bidi);
+}
+
+// A line may wrap before a piece where the Unicode line breaking rules allow it, and a pause stays with what follows it, so the line wraps before the pause.
 bool LayoutBuilder::breaksBefore(const std::vector<Piece>& pieces, std::size_t index) noexcept {
-    const Piece& current = pieces[index];
-    if (current.kind == Piece::Kind::Pause || current.space) {
-        return false;
+    return index > 0 && pieces[index - 1].kind != Piece::Kind::Pause && pieces[index].breakBefore;
+}
+
+// The drawable pieces of a line from left to right: the runs of the line in the order the bidirectional algorithm shows them, each read forward or backward by the direction of its level.
+std::vector<std::size_t> LayoutBuilder::orderPieces(const std::vector<Piece>& pieces, std::size_t begin, std::size_t end, const BidiParagraph& bidi) {
+    std::vector<std::size_t> order;
+    std::size_t first = end;
+    std::size_t last = begin;
+    for (std::size_t index = begin; index < end; ++index) {
+        if (pieces[index].kind != Piece::Kind::Pause) {
+            first = std::min(first, index);
+            last = index + 1;
+        }
     }
-    std::size_t previous = index;
-    while (previous > 0 && pieces[previous - 1].kind == Piece::Kind::Pause) {
-        --previous;
+    if (first >= last) {
+        return order;
     }
-    if (previous == 0) {
-        return false;
+
+    for (const BidiParagraph::Run& run : bidi.getVisualRuns(pieces[first].begin, pieces[last - 1].end)) {
+        const std::size_t start = order.size();
+        for (std::size_t index = first; index < last; ++index) {
+            const Piece& piece = pieces[index];
+            const bool drawable = piece.kind == Piece::Kind::Cluster || piece.kind == Piece::Kind::Image;
+            if (drawable && piece.begin >= run.begin && piece.begin < run.end) {
+                order.push_back(index);
+            }
+        }
+        if (run.level % 2 != 0) {
+            std::reverse(order.begin() + static_cast<std::ptrdiff_t>(start), order.end());
+        }
     }
-    const Piece& before = pieces[previous - 1];
-    if (before.kind != Piece::Kind::Glyph || current.kind != Piece::Kind::Glyph) {
-        return true;
-    }
-    return BreakRules::canBreakBetween(before.codePoint, current.codePoint);
+    return order;
 }
 
 void LayoutBuilder::closeLine(Flow& flow, Line& line, float& top) const {
@@ -206,7 +377,7 @@ void LayoutBuilder::closeLine(Flow& flow, Line& line, float& top) const {
     bool measured = false;
     for (std::size_t index = line.begin; index < line.end; ++index) {
         const Piece& piece = flow.pieces[index];
-        if (piece.kind == Piece::Kind::Glyph || (piece.kind == Piece::Kind::Image && piece.align != Align::Top && piece.align != Align::Bottom)) {
+        if (piece.kind == Piece::Kind::Cluster || (piece.kind == Piece::Kind::Image && piece.align != Align::Top && piece.align != Align::Bottom)) {
             ascent = std::max(ascent, piece.ascent);
             descent = std::max(descent, piece.descent);
             measured = true;
@@ -232,7 +403,7 @@ void LayoutBuilder::closeLine(Flow& flow, Line& line, float& top) const {
     flow.lines.push_back(line);
 }
 
-// Greedy wrapping between segments, the runs of pieces from one wrap opportunity to the next. A segment wider than a whole line wraps between its pieces instead, and every line keeps at least one piece. Lines beside a drop cap are shorter.
+// Greedy wrapping between segments, the runs of pieces from one break opportunity to the next. A segment wider than a whole line wraps between its clusters instead, and every line keeps at least one piece. Lines beside a drop cap are shorter.
 void LayoutBuilder::breakLines(Flow& flow, float available) {
     const std::vector<Piece>& pieces = flow.pieces;
     const bool bounded = available > 0.0F;
@@ -246,7 +417,7 @@ void LayoutBuilder::breakLines(Flow& flow, float available) {
         penX = 0.0F;
     };
     const auto isVisible = [](const Piece& piece) {
-        return (piece.kind == Piece::Kind::Glyph && !piece.space) || piece.kind == Piece::Kind::Image;
+        return (piece.kind == Piece::Kind::Cluster && !piece.space) || piece.kind == Piece::Kind::Image;
     };
     // clang-format on
 
@@ -334,26 +505,37 @@ std::vector<LayoutBuilder::Block> LayoutBuilder::measureBlocks(const std::vector
 LayoutBuilder::Block LayoutBuilder::measureParagraph(const RichTextDocument::Paragraph& paragraph, float width) {
     Block block{.paragraph = &paragraph};
     Flow& flow = block.flow;
+
+    // The paragraph becomes one text, where an object replacement character stands for each image or icon and a line separator for each line break.
+    Source source;
     for (const RichTextDocument::Inline& item : paragraph.inlines) {
         switch (item.kind) {
         case RichTextDocument::Inline::Kind::Text:
-            appendText(flow.pieces, item.style, item.text);
+            source.text += item.text;
+            source.styles.insert(source.styles.end(), item.text.size(), item.style);
             break;
         case RichTextDocument::Inline::Kind::Image:
         case RichTextDocument::Inline::Kind::Icon:
-            appendImage(flow.pieces, item);
+            source.objects.emplace(source.text.size(), &item);
+            source.text += kObject;
+            source.styles.push_back(item.style);
             break;
         case RichTextDocument::Inline::Kind::LineBreak:
-            flow.pieces.push_back({.kind = Piece::Kind::LineBreak, .style = item.style});
+            source.text += kLineSeparator;
+            source.styles.push_back(item.style);
             break;
         case RichTextDocument::Inline::Kind::Pause:
-            flow.pieces.push_back({.kind = Piece::Kind::Pause, .style = item.style, .pause = item.seconds});
+            source.pauses.emplace_back(source.text.size(), item.seconds);
             break;
         }
     }
+    const BidiParagraph bidi(source.text, getDirection(paragraph));
+    flow.rightToLeft = bidi.isRightToLeft();
+    flow.pieces = shape(source, bidi, flow.glyphs);
+    flow.text = source.text;
 
     // An empty line is as tall as the text of its paragraph would be, or as the base text when it has none.
-    const Font* emptyFont = options.family->getFaces().regular.get();
+    const Font* emptyFont = family != nullptr ? family->getFaces().regular.get() : loneFont;
     float emptySize = options.size * options.scale;
     if (!paragraph.inlines.empty()) {
         const StyleFont& first = getStyleFont(paragraph.inlines.front().style);
@@ -364,7 +546,8 @@ LayoutBuilder::Block LayoutBuilder::measureParagraph(const RichTextDocument::Par
     flow.emptyDescent = emptyFont->getLineHeight(emptySize) - flow.emptyAscent;
 
     if (paragraph.dropCap) {
-        appendText(flow.dropCap, paragraph.dropCap->style, paragraph.dropCap->text);
+        flow.dropCapText = paragraph.dropCap->text;
+        shapeAside(flow, paragraph.dropCap->text, paragraph.dropCap->style, flow.dropCap, flow.dropCapOrder);
         float dropCapWidth = 0.0F;
         float descent = 0.0F;
         for (const Piece& piece : flow.dropCap) {
@@ -376,12 +559,13 @@ LayoutBuilder::Block LayoutBuilder::measureParagraph(const RichTextDocument::Par
         flow.dropCapShift = dropCapWidth + paragraph.dropCap->margin * options.scale;
     }
     if (!paragraph.marker.empty()) {
-        appendText(flow.marker, paragraph.markerStyle, paragraph.marker);
+        shapeAside(flow, paragraph.marker, paragraph.markerStyle, flow.marker, flow.markerOrder);
     }
 
     const float indent = paragraph.indent * getIndentUnit();
     breakLines(flow, width > 0.0F ? std::max(width - indent, 1.0F) : 0.0F);
-    for (const Line& line : flow.lines) {
+    for (Line& line : flow.lines) {
+        line.order = orderPieces(flow.pieces, line.begin, line.end, bidi);
         flow.naturalWidth = std::max(flow.naturalWidth, line.shift + line.width);
     }
 
@@ -399,18 +583,22 @@ LayoutBuilder::Block LayoutBuilder::measureRule(const RichTextDocument::Paragrap
     return {.paragraph = &paragraph, .height = paragraph.ruleThickness * options.scale + margin * 2.0F};
 }
 
-// Columns take the width their content wants. When the table would be wider than the text, each column gives up room in proportion to how far it can shrink before its widest word no longer fits.
+// Columns take the width their content wants. When the table would be wider than the text, each column gives up room in proportion to how far it can shrink before its widest word no longer fits. A table reads in the direction of its first paragraph unless it has its own, so its first column stands at the right of a right-to-left table.
 LayoutBuilder::Block LayoutBuilder::measureTable(const RichTextDocument::Paragraph& paragraph, float width) {
     const RichTextDocument::Table& table = document.tables[paragraph.table];
     const std::size_t columns = table.columns;
     std::vector<float> natural(columns, 0.0F);
     std::vector<float> minimum(columns, 0.0F);
+    std::optional<bool> firstRightToLeft;
     for (std::size_t index = 0; index < table.cells.size(); ++index) {
         const RichTextDocument::Cell& cell = table.cells[index];
         const float padding = cell.padding * options.scale * 2.0F;
         for (const Block& block : measureBlocks(cell.paragraphs, 0.0F)) {
             natural[index % columns] = std::max(natural[index % columns], block.naturalWidth + padding);
             minimum[index % columns] = std::max(minimum[index % columns], block.minimumWidth + padding);
+            if (!firstRightToLeft && block.paragraph->kind == RichTextDocument::Paragraph::Kind::Text) {
+                firstRightToLeft = block.flow.rightToLeft;
+            }
         }
     }
 
@@ -418,7 +606,8 @@ LayoutBuilder::Block LayoutBuilder::measureTable(const RichTextDocument::Paragra
     const float available = width > 0.0F ? width - indent : 0.0F;
     const float naturalSum = std::accumulate(natural.begin(), natural.end(), 0.0F);
     const float minimumSum = std::accumulate(minimum.begin(), minimum.end(), 0.0F);
-    TableBlock laid{.columns = natural, .rows = std::vector<float>((table.cells.size() + columns - 1) / columns, 0.0F)};
+    const Direction direction = getDirection(paragraph);
+    TableBlock laid{.columns = natural, .rows = std::vector<float>((table.cells.size() + columns - 1) / columns, 0.0F), .rightToLeft = direction == Direction::Auto ? firstRightToLeft.value_or(false) : direction == Direction::RightToLeft};
     if (available > 0.0F && naturalSum > available) {
         const float share = minimumSum < available ? (available - minimumSum) / (naturalSum - minimumSum) : 0.0F;
         for (std::size_t column = 0; column < columns; ++column) {
@@ -449,8 +638,10 @@ LayoutBuilder::Block LayoutBuilder::measureTable(const RichTextDocument::Paragra
     return block;
 }
 
-RichTextLayout LayoutBuilder::build() {
-    layout.families.push_back(options.family);
+TextLayout LayoutBuilder::build() {
+    if (options.family) {
+        layout.families.push_back(options.family);
+    }
 
     const std::vector<Block> blocks = measureBlocks(document.paragraphs, options.maxWidth);
     float width = std::max(options.maxWidth, 0.0F);
@@ -478,7 +669,7 @@ float LayoutBuilder::emitBlocks(const std::vector<Block>& blocks, math::Vec2 ori
             emitRule(block, {origin.x, y}, width);
             break;
         case RichTextDocument::Paragraph::Kind::Table:
-            emitTable(block, {origin.x, y});
+            emitTable(block, {origin.x, y}, width);
             break;
         }
         y += block.height;
@@ -486,75 +677,112 @@ float LayoutBuilder::emitBlocks(const std::vector<Block>& blocks, math::Vec2 ori
     return y - origin.y - (blocks.empty() ? 0.0F : blocks.back().trailing);
 }
 
+std::size_t LayoutBuilder::addCharacter(const Piece& piece, std::size_t offset, bool rightToLeft) {
+    layout.characters.push_back({.begin = offset + piece.begin, .end = offset + piece.end, .rightToLeft = rightToLeft, .pause = std::exchange(pendingPause, 0.0F), .speed = document.styles[piece.style].revealSpeed});
+    return layout.characters.size() - 1;
+}
+
+// Characters count in reading order while every line draws its pieces from left to right. The indent, the drop cap and the list marker stand on the side the paragraph starts, the left of left-to-right text and the right of right-to-left text.
 void LayoutBuilder::emitParagraph(const Block& block, math::Vec2 origin, float width) {
     const RichTextDocument::Paragraph& paragraph = *block.paragraph;
     const Flow& flow = block.flow;
+    const bool rightToLeft = flow.rightToLeft;
     const float indent = paragraph.indent * getIndentUnit();
     const TextAlign align = paragraph.align.value_or(options.align);
-    const float left = origin.x + indent;
     const float room = std::max(width - indent, 0.0F);
+    const float left = rightToLeft ? origin.x : origin.x + indent;
+    const std::size_t textStart = textOffset + flow.dropCapText.size();
 
     // The drop cap reads first and stands at the top of the paragraph.
-    float dropX = left;
-    for (const Piece& piece : flow.dropCap) {
-        emitPiece(piece, {dropX, origin.y + flow.dropCapAscent}, origin.y, flow.dropCapHeight, true);
+    std::vector<std::size_t> dropCharacters(flow.dropCap.size());
+    float dropWidth = 0.0F;
+    for (std::size_t index = 0; index < flow.dropCap.size(); ++index) {
+        dropCharacters[index] = addCharacter(flow.dropCap[index], textOffset, rightToLeft);
+        dropWidth += flow.dropCap[index].advance;
+    }
+    float dropX = rightToLeft ? left + room - dropWidth : left;
+    for (const std::size_t index : flow.dropCapOrder) {
+        const Piece& piece = flow.dropCap[index];
+        emitPiece(flow, flow.dropCapText, piece, {dropX, origin.y + flow.dropCapAscent}, origin.y, flow.dropCapHeight, dropCharacters[index]);
+        layout.characters[dropCharacters[index]].box = {dropX, origin.y, piece.advance, flow.dropCapHeight};
         dropX += piece.advance;
     }
 
+    std::size_t lineStart = 0;
     for (std::size_t lineIndex = 0; lineIndex < flow.lines.size(); ++lineIndex) {
         const Line& line = flow.lines[lineIndex];
+        const bool lastLine = lineIndex + 1 == flow.lines.size() || !line.wrapped;
+        const TextAlign resolved = resolveAlign(align, rightToLeft, lastLine);
         const float lineRoom = room - line.shift;
-        float x = left + line.shift + alignOffset(align, lineRoom, line.width);
-        float spacing = 0.0F;
-        if (align == TextAlign::Fill && line.wrapped) {
-            const auto spaces = std::count_if(flow.pieces.begin() + static_cast<std::ptrdiff_t>(line.begin), flow.pieces.begin() + static_cast<std::ptrdiff_t>(line.visibleEnd), [](const Piece& piece) { return piece.space; });
-            spacing = spaces > 0 ? (lineRoom - line.width) / static_cast<float>(spaces) : 0.0F;
-        }
         const float lineTop = origin.y + line.top;
         const float baseline = lineTop + line.ascent;
         const float lineHeight = line.ascent + line.descent;
 
-        // A list marker ends a small gap before the indent on the first baseline, and shows with the first character of its item.
+        // Characters take their numbers in reading order before the line places them.
+        std::vector<std::size_t> characters(line.end - line.begin, 0);
+        const std::size_t firstCharacter = layout.characters.size();
+        for (std::size_t index = line.begin; index < line.end; ++index) {
+            const Piece& piece = flow.pieces[index];
+            if (piece.kind == Piece::Kind::Pause) {
+                pendingPause += piece.pause;
+            } else if (piece.kind == Piece::Kind::Cluster || piece.kind == Piece::Kind::Image) {
+                characters[index - line.begin] = addCharacter(piece, textStart, piece.level % 2 != 0);
+            }
+        }
+
+        float spacing = 0.0F;
+        if (resolved == TextAlign::Fill) {
+            const auto spaces = std::count_if(flow.pieces.begin() + static_cast<std::ptrdiff_t>(line.begin), flow.pieces.begin() + static_cast<std::ptrdiff_t>(line.visibleEnd), [](const Piece& piece) { return piece.space; });
+            spacing = spaces > 0 ? (lineRoom - line.width) / static_cast<float>(spaces) : 0.0F;
+        }
+
+        // The spaces a wrapped line ends with stand past its end, which is the left of a right-to-left line, so the visible text keeps its alignment.
+        float trailing = 0.0F;
+        for (std::size_t index = line.visibleEnd; index < line.end; ++index) {
+            trailing += flow.pieces[index].kind == Piece::Kind::Cluster ? flow.pieces[index].advance : 0.0F;
+        }
+        const float contentLeft = left + (rightToLeft ? 0.0F : line.shift) + alignOffset(resolved, lineRoom, line.width);
+        float x = rightToLeft ? contentLeft - trailing : contentLeft;
+
+        // A list marker stands a small gap before the start of the first line, and shows with the first character of its item.
         if (lineIndex == 0 && !flow.marker.empty()) {
             float markerWidth = 0.0F;
             for (const Piece& piece : flow.marker) {
                 markerWidth += piece.advance;
             }
-            float markerX = left - markerWidth - options.size * options.scale * kMarkerGapEms;
-            for (const Piece& piece : flow.marker) {
-                emitPiece(piece, {markerX, baseline}, lineTop, lineHeight, false);
-                markerX += piece.advance;
+            const float gap = options.size * options.scale * kMarkerGapEms;
+            float markerX = rightToLeft ? left + room + gap : left - markerWidth - gap;
+            for (const std::size_t index : flow.markerOrder) {
+                emitPiece(flow, paragraph.marker, flow.marker[index], {markerX, baseline}, lineTop, lineHeight, firstCharacter);
+                markerX += flow.marker[index].advance;
             }
         }
 
-        std::vector<float> lefts(line.end - line.begin + 1, x);
-        for (std::size_t index = line.begin; index < line.end; ++index) {
+        std::vector<Placed> placed;
+        placed.reserve(line.order.size());
+        for (const std::size_t index : line.order) {
             const Piece& piece = flow.pieces[index];
-            lefts[index - line.begin] = x;
-            if (piece.kind == Piece::Kind::Pause) {
-                pendingPause += piece.pause;
-                continue;
-            }
-            if (piece.kind == Piece::Kind::LineBreak) {
-                continue;
-            }
-            emitPiece(piece, {x, baseline}, lineTop, lineHeight, true);
-            x += piece.advance;
-            if (piece.space && index < line.visibleEnd) {
-                x += spacing;
-            }
+            const std::size_t character = characters[index - line.begin];
+            emitPiece(flow, flow.text, piece, {x, baseline}, lineTop, lineHeight, character);
+            const float advance = piece.advance + (piece.space && index < line.visibleEnd ? spacing : 0.0F);
+            layout.characters[character].box = {x, lineTop, advance, lineHeight};
+            placed.push_back({.piece = index, .x = x, .character = character});
+            x += advance;
         }
-        lefts.back() = x;
-        emitDecorations(flow, line, lefts, baseline);
+
+        // The line holds the code points from where the one before it ended to the end of its last piece.
+        std::size_t lineEnd = lineStart;
+        for (std::size_t index = line.begin; index < line.end; ++index) {
+            lineEnd = std::max(lineEnd, flow.pieces[index].end);
+        }
+        layout.lines.push_back({.box = {contentLeft, lineTop, resolved == TextAlign::Fill ? lineRoom : line.width, lineHeight}, .baseline = baseline, .firstCharacter = firstCharacter, .endCharacter = layout.characters.size(), .begin = textStart + lineStart, .end = textStart + lineEnd, .rightToLeft = rightToLeft});
+        lineStart = lineEnd;
+        emitDecorations(flow, line, placed, baseline);
     }
+    textOffset = textStart + flow.text.size() + 1;
 }
 
-void LayoutBuilder::emitPiece(const Piece& piece, math::Vec2 pen, float lineTop, float lineHeight, bool counted) {
-    const std::size_t character = layout.characters.size();
-    if (counted) {
-        layout.characters.push_back({.box = {pen.x, lineTop, piece.advance, lineHeight}, .pause = std::exchange(pendingPause, 0.0F), .speed = document.styles[piece.style].revealSpeed});
-    }
-
+void LayoutBuilder::emitPiece(const Flow& flow, std::u32string_view text, const Piece& piece, math::Vec2 pen, float lineTop, float lineHeight, std::size_t character) {
     if (piece.kind == Piece::Kind::Image) {
         using Align = RichTextDocument::VerticalAlign;
         float top = pen.y - piece.lift - piece.extent.y * 0.5F;
@@ -572,52 +800,52 @@ void LayoutBuilder::emitPiece(const Piece& piece, math::Vec2 pen, float lineTop,
         }
         return;
     }
-    if (!piece.glyph.visible) {
-        return;
-    }
 
-    const RichTextLayout::Look& look = layout.looks[piece.look];
-    layout.glyphs.push_back({
-        .look = piece.look,
-        .style = piece.style,
-        .character = character,
-        .codePoint = piece.codePoint,
-        .position = {pen.x + look.weight + piece.glyph.offset.x * piece.factor, pen.y + piece.glyph.offset.y * piece.factor},
-        .size = piece.glyph.source.getSize() * piece.factor,
-        .baseline = pen.y,
-        .source = piece.glyph.source,
-        .page = piece.glyph.page,
-        .color = getColor(piece.style),
-    });
+    const TextLayout::Look& look = layout.looks[piece.look];
+    for (std::size_t index = piece.firstGlyph; index < piece.firstGlyph + piece.glyphCount; ++index) {
+        const PlacedGlyph& placed = flow.glyphs[index];
+        if (!placed.glyph.visible) {
+            continue;
+        }
+        layout.glyphs.push_back({
+            .look = piece.look,
+            .style = piece.style,
+            .character = character,
+            .index = placed.index,
+            .codePoint = text[piece.begin],
+            .position = {pen.x + look.weight + placed.offset.x + placed.glyph.offset.x * placed.factor, pen.y + placed.offset.y + placed.glyph.offset.y * placed.factor},
+            .size = placed.glyph.source.getSize() * placed.factor,
+            .baseline = pen.y + placed.offset.y,
+            .source = placed.glyph.source,
+            .page = placed.glyph.page,
+            .color = getColor(piece.style),
+        });
+    }
 }
 
-// Backgrounds, underlines, strikes, links and hints each merge the neighbouring pieces of a line that share them into one rectangle, up to the last visible piece.
-void LayoutBuilder::emitDecorations(const Flow& flow, const Line& line, const std::vector<float>& lefts, float baseline) {
+// Backgrounds, underlines, strikes, links and hints each merge the neighbouring pieces of a line that share them into one rectangle, up to the last visible piece. Backgrounds and lines also split where the direction changes, so each grows with the reveal from the side its text starts.
+void LayoutBuilder::emitDecorations(const Flow& flow, const Line& line, const std::vector<Placed>& placed, float baseline) {
     const float lineTop = baseline - line.ascent;
     const float lineHeight = line.ascent + line.descent;
-    std::vector<std::size_t> characters(line.end - line.begin, layout.characters.size());
-    std::size_t next = layout.characters.size();
-    for (std::size_t index = line.end; index > line.begin; --index) {
-        const Piece& piece = flow.pieces[index - 1];
-        if (piece.kind == Piece::Kind::Glyph || piece.kind == Piece::Kind::Image) {
-            --next;
-        }
-        characters[index - 1 - line.begin] = next;
-    }
 
     // clang-format off
-    const auto runs = [&](const auto& keyOf, const auto& emit) {
-        std::size_t begin = line.begin;
-        while (begin < line.visibleEnd) {
-            const auto key = keyOf(flow.pieces[begin]);
+    const auto runs = [&](const auto& keyOf, bool byDirection, const auto& emit) {
+        std::size_t begin = 0;
+        while (begin < placed.size()) {
+            const Piece& first = flow.pieces[placed[begin].piece];
+            const auto key = keyOf(first);
             std::size_t end = begin + 1;
-            while (end < line.visibleEnd && keyOf(flow.pieces[end]) == key) {
+            std::size_t lowest = placed[begin].character;
+            std::size_t highest = placed[begin].character;
+            while (end < placed.size() && placed[end].piece < line.visibleEnd && keyOf(flow.pieces[placed[end].piece]) == key && (!byDirection || flow.pieces[placed[end].piece].level == first.level)) {
+                lowest = std::min(lowest, placed[end].character);
+                highest = std::max(highest, placed[end].character);
                 ++end;
             }
-            if (key) {
-                const float x = lefts[begin - line.begin];
-                const float right = lefts[end - 1 - line.begin] + flow.pieces[end - 1].advance;
-                emit(*key, math::Rect{x, lineTop, right - x, lineHeight}, characters[begin - line.begin], characters[end - 1 - line.begin], flow.pieces[begin]);
+            if (key && placed[begin].piece < line.visibleEnd) {
+                const float x = placed[begin].x;
+                const float right = placed[end - 1].x + flow.pieces[placed[end - 1].piece].advance;
+                emit(*key, math::Rect{x, lineTop, right - x, lineHeight}, lowest, highest, first.level % 2 != 0);
             }
             begin = end;
         }
@@ -625,7 +853,7 @@ void LayoutBuilder::emitDecorations(const Flow& flow, const Line& line, const st
     // clang-format on
 
     const auto styleOf = [this](const Piece& piece) -> const RichTextDocument::Style& { return document.styles[piece.style]; };
-    runs([&](const Piece& piece) { return styleOf(piece).background; }, [&](math::Color color, const math::Rect& rect, std::size_t first, std::size_t last, const Piece&) { addBox(RichTextLayout::Box::Kind::Background, rect, color, first, last); });
+    runs([&](const Piece& piece) { return styleOf(piece).background; }, true, [&](math::Color color, const math::Rect& rect, std::size_t first, std::size_t last, bool rightToLeft) { addBox(TextLayout::Box::Kind::Background, rect, color, first, last, rightToLeft); });
 
     // clang-format off
     const auto decorate = [&](bool underline) {
@@ -633,59 +861,64 @@ void LayoutBuilder::emitDecorations(const Flow& flow, const Line& line, const st
             const RichTextDocument::Style& style = styleOf(piece);
             const bool shown = underline ? style.underline || (style.link && options.underlineLinks) : style.strike;
             return shown ? std::optional<std::size_t>(piece.style) : std::nullopt;
-        }, [&](std::size_t style, const math::Rect& rect, std::size_t first, std::size_t last, const Piece&) {
+        }, true, [&](std::size_t style, const math::Rect& rect, std::size_t first, std::size_t last, bool rightToLeft) {
             const float size = getStyleFont(style).size;
             const float thickness = std::max(1.0F, size * kDecorationThickness);
             const float y = underline ? baseline + size * kUnderlineOffset : baseline - size * kStrikeOffset;
-            addBox(underline ? RichTextLayout::Box::Kind::Underline : RichTextLayout::Box::Kind::Strike, {rect.x, y - thickness * 0.5F, rect.width, thickness}, getColor(style), first, last);
+            addBox(underline ? TextLayout::Box::Kind::Underline : TextLayout::Box::Kind::Strike, {rect.x, y - thickness * 0.5F, rect.width, thickness}, getColor(style), first, last, rightToLeft);
         });
     };
     // clang-format on
     decorate(true);
     decorate(false);
 
-    runs([&](const Piece& piece) { return styleOf(piece).link; }, [&](std::size_t link, const math::Rect& rect, std::size_t, std::size_t, const Piece&) { layout.links.push_back({.rect = rect, .index = link}); });
-    runs([&](const Piece& piece) { return styleOf(piece).hint; }, [&](std::size_t hint, const math::Rect& rect, std::size_t, std::size_t, const Piece&) { layout.hints.push_back({.rect = rect, .index = hint}); });
+    runs([&](const Piece& piece) { return styleOf(piece).link; }, false, [&](std::size_t link, const math::Rect& rect, std::size_t, std::size_t, bool) { layout.links.push_back({.rect = rect, .index = link}); });
+    runs([&](const Piece& piece) { return styleOf(piece).hint; }, false, [&](std::size_t hint, const math::Rect& rect, std::size_t, std::size_t, bool) { layout.hints.push_back({.rect = rect, .index = hint}); });
 }
 
-void LayoutBuilder::addBox(RichTextLayout::Box::Kind kind, const math::Rect& rect, math::Color color, std::size_t firstCharacter, std::size_t lastCharacter) {
-    layout.boxes.push_back({.kind = kind, .rect = rect, .color = color, .firstCharacter = firstCharacter, .lastCharacter = lastCharacter});
+void LayoutBuilder::addBox(TextLayout::Box::Kind kind, const math::Rect& rect, math::Color color, std::size_t firstCharacter, std::size_t lastCharacter, bool rightToLeft) {
+    layout.boxes.push_back({.kind = kind, .rect = rect, .color = color, .firstCharacter = firstCharacter, .lastCharacter = lastCharacter, .rightToLeft = rightToLeft});
 }
 
-// A rule shows once the reveal reaches it, centered unless its paragraph aligns it.
+// A rule shows once the reveal reaches it, centered unless its paragraph aligns it, and its indent stands on the side its direction starts.
 void LayoutBuilder::emitRule(const Block& block, math::Vec2 origin, float width) {
     const RichTextDocument::Paragraph& paragraph = *block.paragraph;
+    const bool rightToLeft = getDirection(paragraph) == Direction::RightToLeft;
     const float indent = paragraph.indent * getIndentUnit();
     const float room = std::max(width - indent, 0.0F);
     const float length = room * paragraph.ruleWidth;
-    const float x = origin.x + indent + alignOffset(paragraph.align.value_or(TextAlign::Center), room, length);
+    const float left = rightToLeft ? origin.x : origin.x + indent;
+    const float x = left + alignOffset(resolveAlign(paragraph.align.value_or(TextAlign::Center), rightToLeft, false), room, length);
     const float margin = options.size * options.scale * kRuleMarginEms;
     const std::size_t next = layout.characters.size();
-    addBox(RichTextLayout::Box::Kind::Rule, {x, origin.y + margin, length, paragraph.ruleThickness * options.scale}, paragraph.ruleColor.value_or(options.color), next, next);
+    addBox(TextLayout::Box::Kind::Rule, {x, origin.y + margin, length, paragraph.ruleThickness * options.scale}, paragraph.ruleColor.value_or(options.color), next, next);
 }
 
-void LayoutBuilder::emitTable(const Block& block, math::Vec2 origin) {
+void LayoutBuilder::emitTable(const Block& block, math::Vec2 origin, float width) {
     const RichTextDocument::Paragraph& paragraph = *block.paragraph;
     const RichTextDocument::Table& table = document.tables[paragraph.table];
     const TableBlock& laid = *block.table;
-    const float left = origin.x + paragraph.indent * getIndentUnit();
+    const float indent = paragraph.indent * getIndentUnit();
+    const float tableWidth = std::accumulate(laid.columns.begin(), laid.columns.end(), 0.0F);
+    const float left = laid.rightToLeft ? origin.x + std::max(width - indent, tableWidth) - tableWidth : origin.x + indent;
     const float border = std::max(1.0F, options.scale);
 
     for (std::size_t index = 0; index < table.cells.size(); ++index) {
         const RichTextDocument::Cell& cell = table.cells[index];
         const std::size_t column = index % table.columns;
         const std::size_t row = index / table.columns;
-        const float x = left + std::accumulate(laid.columns.begin(), laid.columns.begin() + static_cast<std::ptrdiff_t>(column), 0.0F);
+        const float before = std::accumulate(laid.columns.begin(), laid.columns.begin() + static_cast<std::ptrdiff_t>(column), 0.0F);
+        const float x = laid.rightToLeft ? left + tableWidth - before - laid.columns[column] : left + before;
         const float y = origin.y + std::accumulate(laid.rows.begin(), laid.rows.begin() + static_cast<std::ptrdiff_t>(row), 0.0F);
         const math::Rect area{x, y, laid.columns[column], laid.rows[row]};
         const std::size_t next = layout.characters.size();
 
         if (cell.background) {
-            addBox(RichTextLayout::Box::Kind::CellBackground, area, *cell.background, next, next);
+            addBox(TextLayout::Box::Kind::CellBackground, area, *cell.background, next, next);
         }
         if (cell.border) {
             for (const math::Rect& edge : {math::Rect{area.x, area.y, area.width, border}, math::Rect{area.x, area.getBottom() - border, area.width, border}, math::Rect{area.x, area.y, border, area.height}, math::Rect{area.getRight() - border, area.y, border, area.height}}) {
-                addBox(RichTextLayout::Box::Kind::CellBorder, edge, *cell.border, next, next);
+                addBox(TextLayout::Box::Kind::CellBorder, edge, *cell.border, next, next);
             }
         }
         const float padding = cell.padding * options.scale;

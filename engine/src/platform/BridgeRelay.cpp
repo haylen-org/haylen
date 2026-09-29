@@ -1,4 +1,4 @@
-#include "platform/sokol/BridgeRelay.hpp"
+#include "platform/BridgeRelay.hpp"
 
 #include "haylen/platform/Bridge.hpp"
 
@@ -7,9 +7,16 @@ namespace haylen::platform {
 std::mutex BridgeRelay::mutex;
 Bridge* BridgeRelay::bridge = nullptr;
 
-void BridgeRelay::attach(Bridge* value) noexcept {
+void BridgeRelay::attach(Bridge& value) noexcept {
     const std::scoped_lock lock(mutex);
-    bridge = value;
+    bridge = &value;
+}
+
+void BridgeRelay::detach(const Bridge& value) noexcept {
+    const std::scoped_lock lock(mutex);
+    if (bridge == &value) {
+        bridge = nullptr;
+    }
 }
 
 void BridgeRelay::resolve(std::uint64_t id, bool ok, std::string_view resultJson) {

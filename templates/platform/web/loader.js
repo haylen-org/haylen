@@ -1,5 +1,5 @@
 // Loads a Haylen app into the page: checks what the browser supports, picks WebGPU or WebGL2, downloads the prebuilt runtime and app.zip with a real progress bar, and hands both to the runtime.
-// make.py writes config.json next to this file with the name, the splash logo and background of app.json and the size of every download.
+// make.py writes config.json next to this file with the name, the transparency, the splash logo and background of app.json and the size of every download.
 
 var Module = {
     canvas: document.getElementById("canvas"),
@@ -102,7 +102,14 @@ var Module = {
         return;
     }
     document.title = config.name;
-    document.body.style.background = config.splash.background;
+    // A transparent app lets the page behind its canvas show through, so only the splash keeps the background of app.json.
+    if (config.transparent) {
+        document.documentElement.style.background = "transparent";
+        document.body.style.background = "transparent";
+        splash.style.background = config.splash.background;
+    } else {
+        document.body.style.background = config.splash.background;
+    }
     logo.src = config.splash.logo;
     logo.alt = config.name;
     document.querySelector("link[rel=icon]").href = config.splash.logo;

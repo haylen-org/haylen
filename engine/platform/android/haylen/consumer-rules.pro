@@ -2,6 +2,7 @@
 
 -keep class dev.haylen.HaylenBridge {
     static void dispatch(long, byte[], byte[]);
+    static void cancel(long);
 }
 
 -keep class dev.haylen.HaylenEditText {

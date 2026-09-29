@@ -14,14 +14,14 @@
 namespace haylen::ui {
 
 void Scroll::readProperties(PropertyReader& reader) {
-    std::string direction = horizontal ? "horizontal" : "vertical";
+    std::string axis = horizontal ? "horizontal" : "vertical";
     reader.read("scrollbar", scrollbar);
-    reader.read("direction", direction);
+    reader.read("axis", axis);
     reader.read("snap", snap);
-    if (direction != "vertical" && direction != "horizontal") {
-        reader.fail("direction", "must be vertical or horizontal");
+    if (axis != "vertical" && axis != "horizontal") {
+        reader.fail("axis", "must be vertical or horizontal");
     }
-    horizontal = direction == "horizontal";
+    horizontal = axis == "horizontal";
 }
 
 math::Vec2 Scroll::measureContent(Context& context, float availableWidth) {

@@ -295,11 +295,11 @@ float ActionMap::getBindingValue(const Binding& binding, const Input& input, con
 
     switch (binding.source) {
     case Binding::Source::Key:
-        return input.isKeyDown(binding.key) || input.isKeyPressed(binding.key) ? 1.0F : 0.0F;
+        return !isKeyCaptured(binding.key) && (input.isKeyDown(binding.key) || input.isKeyPressed(binding.key)) ? 1.0F : 0.0F;
     case Binding::Source::MouseButton:
         return !input.isPointerCaptured() && (input.isMouseDown(binding.mouseButton) || input.isMousePressed(binding.mouseButton)) ? 1.0F : 0.0F;
     case Binding::Source::GamepadButton:
-        return anyGamepad([&](std::size_t index) { return input.isGamepadDown(index, binding.gamepadButton) ? 1.0F : 0.0F; });
+        return anyGamepad([&](std::size_t index) { return input.isGamepadDown(index, binding.gamepadButton) && !isGamepadButtonCaptured(index, binding.gamepadButton) ? 1.0F : 0.0F; });
     case Binding::Source::GamepadAxis:
         return anyGamepad([&](std::size_t index) { return std::max(0.0F, input.getGamepadAxis(index, binding.gamepadAxis) * binding.direction); });
     case Binding::Source::VirtualButton:
@@ -341,6 +341,7 @@ float ActionMap::getStrongest(const std::vector<Binding>& list, const Input& inp
 }
 
 void ActionMap::update(const Input& input, const VirtualInput& virtualInput) {
+    holdCaptured(input);
     for (State& state : actions) {
         const Action& action = state.action;
         const bool wasDown = state.down;
@@ -372,6 +373,38 @@ void ActionMap::update(const Input& input, const VirtualInput& virtualInput) {
         state.pressed = state.down && !wasDown;
         state.released = !state.down && wasDown;
     }
+}
+
+// A press that starts while the UI captures its key or button stays captured until the key or button is up again, so the actions never see it, not even once the UI lets go.
+void ActionMap::holdCaptured(const Input& input) noexcept {
+    for (std::size_t code = 0; code < Controls::kKeyCount; ++code) {
+        const auto key = static_cast<Key>(code);
+        if (input.isKeyPressed(key) && (capture.keyboard || capture.keys.test(code))) {
+            capturedKeys.set(code);
+        } else if (!input.isKeyDown(key)) {
+            capturedKeys.reset(code);
+        }
+    }
+    for (std::size_t index = 0; index < Input::kMaxGamepads; ++index) {
+        for (std::size_t code = 0; code < Controls::kGamepadButtonCount; ++code) {
+            const auto button = static_cast<GamepadButton>(code);
+            if (input.isGamepadPressed(index, button) && capture.buttons.test(code)) {
+                capturedButtons[index].set(code);
+            } else if (!input.isGamepadDown(index, button)) {
+                capturedButtons[index].reset(code);
+            }
+        }
+    }
+}
+
+bool ActionMap::isKeyCaptured(Key key) const noexcept {
+    const auto code = static_cast<std::size_t>(key);
+    return code < Controls::kKeyCount && capturedKeys.test(code);
+}
+
+bool ActionMap::isGamepadButtonCaptured(std::size_t index, GamepadButton button) const noexcept {
+    const auto code = static_cast<std::size_t>(button);
+    return index < Input::kMaxGamepads && code < Controls::kGamepadButtonCount && capturedButtons[index].test(code);
 }
 
 const ActionMap::State* ActionMap::find(std::string_view name) const noexcept {

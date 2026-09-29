@@ -26,6 +26,7 @@ class Host : public Window {
     [[nodiscard]] virtual math::Insets getSafeAreaInsets() const = 0;
     virtual void pollGamepads(std::span<input::GamepadState> gamepads) = 0;
     virtual void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson) = 0;
+    virtual void cancelPlatformCall(std::uint64_t id) = 0;
 };
 
 } // namespace haylen::platform

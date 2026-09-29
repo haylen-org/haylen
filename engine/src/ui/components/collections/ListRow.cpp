@@ -25,14 +25,15 @@ Widgets::Interaction ListRow::draw(Context& context, const math::Rect& bounds, b
     return state;
 }
 
+// The image stands on the side the UI starts, before the text.
 void ListRow::drawContent(Context& context, const math::Rect& bounds, const ChoiceItem& item) {
     float x = bounds.x + kPadding;
     if (!item.image.empty()) {
         const float icon = context.getMetric(Theme::Metric::IconSize);
-        Surfaces::drawImage(context, context.getImage(item.image), {x, std::floor(bounds.getCenter().y - icon * 0.5F), icon, icon});
+        Surfaces::drawImage(context, context.getImage(item.image), context.mirror({x, std::floor(bounds.getCenter().y - icon * 0.5F), icon, icon}, bounds));
         x += icon + kPadding;
     }
-    const math::Rect text = math::Rect::fromMinMax({x, bounds.y}, {bounds.getRight() - kPadding, bounds.getBottom()});
+    const math::Rect text = context.mirror(math::Rect::fromMinMax({x, bounds.y}, {bounds.getRight() - kPadding, bounds.getBottom()}), bounds);
     const std::string caption = context.getText(item.caption);
     if (caption.empty()) {
         Typography::drawAligned(context, Theme::Font::Body, text, context.getColor(Theme::Color::Text), context.getText(item.text), Alignment::Start);

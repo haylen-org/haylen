@@ -413,15 +413,24 @@ void MarkupParser::openBlock(const Tag& tag) {
     const std::string& name = tag.name;
     if (name == "p") {
         requireNoValue(tag);
-        checkAttributes(tag, {"align", "indent"});
+        checkAttributes(tag, {"align", "dir", "indent"});
         if (tag.attributes.contains("align")) {
             const std::string& align = tag.attributes.at("align");
-            constexpr std::array<std::pair<std::string_view, TextAlign>, 4> kAligns{{{"left", TextAlign::Left}, {"center", TextAlign::Center}, {"right", TextAlign::Right}, {"fill", TextAlign::Fill}}};
+            constexpr std::array<std::pair<std::string_view, TextAlign>, 6> kAligns{{{"start", TextAlign::Start}, {"end", TextAlign::End}, {"left", TextAlign::Left}, {"center", TextAlign::Center}, {"right", TextAlign::Right}, {"fill", TextAlign::Fill}}};
             const auto found = std::find_if(kAligns.begin(), kAligns.end(), [&](const auto& entry) { return entry.first == align; });
             if (found == kAligns.end()) {
-                fail(tag.offset, "The align of [p] must be left, center, right or fill.");
+                fail(tag.offset, "The align of [p] must be start, end, left, center, right or fill.");
             }
             block.align = found->second;
+        }
+        if (tag.attributes.contains("dir")) {
+            const std::string& direction = tag.attributes.at("dir");
+            constexpr std::array<std::pair<std::string_view, Direction>, 3> kDirections{{{"auto", Direction::Auto}, {"ltr", Direction::LeftToRight}, {"rtl", Direction::RightToLeft}}};
+            const auto found = std::find_if(kDirections.begin(), kDirections.end(), [&](const auto& entry) { return entry.first == direction; });
+            if (found == kDirections.end()) {
+                fail(tag.offset, "The dir of [p] must be auto, ltr or rtl.");
+            }
+            block.direction = found->second;
         }
         if (tag.attributes.contains("indent")) {
             block.indent += number(tag, tag.attributes.at("indent"), "indent");
@@ -470,7 +479,7 @@ void MarkupParser::openTable(const Tag& tag) {
     pushTag(tag, TagKind::Table);
     table = document.tables.size();
     document.tables.push_back({.columns = static_cast<std::size_t>(columns)});
-    container().push_back({.kind = RichTextDocument::Paragraph::Kind::Table, .table = *table});
+    container().push_back({.kind = RichTextDocument::Paragraph::Kind::Table, .direction = currentBlock().direction, .table = *table});
     skipNewline = true;
 }
 
@@ -572,7 +581,7 @@ void MarkupParser::addIcon(const Tag& tag) {
 void MarkupParser::addRule(const Tag& tag) {
     requireNoValue(tag);
     checkAttributes(tag, {"width", "height", "color"});
-    RichTextDocument::Paragraph rule{.kind = RichTextDocument::Paragraph::Kind::Rule, .align = currentBlock().align, .indent = currentBlock().indent};
+    RichTextDocument::Paragraph rule{.kind = RichTextDocument::Paragraph::Kind::Rule, .align = currentBlock().align, .direction = currentBlock().direction, .indent = currentBlock().indent};
     if (tag.attributes.contains("width")) {
         const std::string& width = tag.attributes.at("width");
         if (!width.ends_with('%')) {
@@ -686,7 +695,7 @@ void MarkupParser::newline() {
 }
 
 void MarkupParser::beginParagraph(bool fromNewline) {
-    paragraph = {.align = currentBlock().align, .indent = currentBlock().indent};
+    paragraph = {.align = currentBlock().align, .direction = currentBlock().direction, .indent = currentBlock().indent};
     paragraphFromNewline = fromNewline;
 }
 

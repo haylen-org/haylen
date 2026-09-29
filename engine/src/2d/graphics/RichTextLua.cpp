@@ -45,9 +45,13 @@ text::RichTextOptions RichTextLua::readOptions(lua_State* L, int index, std::ini
     }
     lua_pop(L, 1);
     lua::Table::readField(L, table, "size", options.size);
+    lua::Table::readField(L, table, "bold", options.bold);
+    lua::Table::readField(L, table, "italic", options.italic);
     lua::Table::readField(L, table, "color", options.color);
     lua::Table::readField(L, table, "maxWidth", options.maxWidth);
     lua::Table::readField(L, table, "align", options.align);
+    lua::Table::readField(L, table, "direction", options.direction);
+    lua::Table::readField(L, table, "language", options.language);
     lua::Table::readField(L, table, "lineSpacing", options.lineSpacing);
     lua::Table::readField(L, table, "scale", options.scale);
     lua::Table::readField(L, table, "reveal", options.revealSpeed);
@@ -72,7 +76,7 @@ text::RichTextOptions RichTextLua::readOptions(lua_State* L, int index, std::ini
     return options;
 }
 
-// Creates rich text with newRichText(markup, {family, size, color, maxWidth, align, lineSpacing, scale, reveal, underlineLinks, fonts}).
+// Creates rich text with newRichText(markup, {family, size, bold, italic, color, maxWidth, align, direction, language, lineSpacing, scale, reveal, underlineLinks, fonts}).
 int RichTextLua::newRichText(lua_State* L) {
     std::string markup = lua::Stack::read<std::string>(L, 1);
     lua::Stack::push(L, std::make_shared<text::RichText>(std::move(markup), readOptions(L, 2), getRegistry(L)));
@@ -203,11 +207,11 @@ int RichTextLua::setVisibleCharacters(lua_State* L) {
     return 0;
 }
 
-// Returns the layout of this moment as {size, lineCount, glyphs, boxes, images, links, hints}, the way the text draws now.
+// Returns the layout of this moment as {size, lineCount, glyphs, boxes, images, links, hints, characters, lines}, the way the text draws now.
 int RichTextLua::layout(lua_State* L) {
     text::RichText& richText = lua::Userdata::check<text::RichText>(L, 1);
-    const text::RichTextLayout& frame = richText.getFrame();
-    lua_createtable(L, 0, 7);
+    const text::TextLayout& frame = richText.getFrame();
+    lua_createtable(L, 0, 9);
     lua::Stack::push(L, frame.size);
     lua_setfield(L, -2, "size");
     lua::Stack::push(L, frame.lineCount);
@@ -215,13 +219,15 @@ int RichTextLua::layout(lua_State* L) {
 
     lua_createtable(L, static_cast<int>(frame.glyphs.size()), 0);
     for (std::size_t index = 0; index < frame.glyphs.size(); ++index) {
-        const text::RichTextLayout::Glyph& glyph = frame.glyphs[index];
-        const text::RichTextLayout::Look& look = frame.looks[glyph.look];
+        const text::TextLayout::Glyph& glyph = frame.glyphs[index];
+        const text::TextLayout::Look& look = frame.looks[glyph.look];
         std::string character;
         core::Utf8::append(character, glyph.codePoint);
-        lua_createtable(L, 0, 10);
+        lua_createtable(L, 0, 11);
         lua::Stack::push(L, character);
         lua_setfield(L, -2, "char");
+        lua::Stack::push(L, glyph.index);
+        lua_setfield(L, -2, "index");
         lua::Stack::push(L, glyph.character + 1);
         lua_setfield(L, -2, "character");
         lua::Stack::push(L, math::Rect{glyph.position.x, glyph.position.y, glyph.size.x, glyph.size.y});
@@ -245,7 +251,7 @@ int RichTextLua::layout(lua_State* L) {
     constexpr std::array<std::string_view, 6> kKinds{"background", "underline", "strike", "rule", "cellBackground", "cellBorder"};
     lua_createtable(L, static_cast<int>(frame.boxes.size()), 0);
     for (std::size_t index = 0; index < frame.boxes.size(); ++index) {
-        const text::RichTextLayout::Box& box = frame.boxes[index];
+        const text::TextLayout::Box& box = frame.boxes[index];
         lua_createtable(L, 0, 4);
         lua::Stack::push(L, kKinds[static_cast<std::size_t>(box.kind)]);
         lua_setfield(L, -2, "kind");
@@ -273,7 +279,7 @@ int RichTextLua::layout(lua_State* L) {
     lua_setfield(L, -2, "images");
 
     // clang-format off
-    const auto pushAreas = [&](const std::vector<text::RichTextLayout::Area>& areas, const std::vector<std::string>& values, const char* key) {
+    const auto pushAreas = [&](const std::vector<text::TextLayout::Area>& areas, const std::vector<std::string>& values, const char* key) {
         lua_createtable(L, static_cast<int>(areas.size()), 0);
         for (std::size_t index = 0; index < areas.size(); ++index) {
             lua_createtable(L, 0, 2);
@@ -289,6 +295,37 @@ int RichTextLua::layout(lua_State* L) {
     lua_setfield(L, -2, "links");
     pushAreas(frame.hints, richText.getDocument().hints, "hint");
     lua_setfield(L, -2, "hints");
+
+    // Characters come in reading order with the code points of the text without markup they draw, counted from 1.
+    lua_createtable(L, static_cast<int>(frame.characters.size()), 0);
+    for (std::size_t index = 0; index < frame.characters.size(); ++index) {
+        const text::TextLayout::Character& character = frame.characters[index];
+        lua_createtable(L, 0, 4);
+        lua::Stack::push(L, character.box);
+        lua_setfield(L, -2, "rect");
+        lua::Stack::push(L, character.begin + 1);
+        lua_setfield(L, -2, "first");
+        lua::Stack::push(L, character.end);
+        lua_setfield(L, -2, "last");
+        lua::Stack::push(L, character.rightToLeft);
+        lua_setfield(L, -2, "rightToLeft");
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
+    lua_setfield(L, -2, "characters");
+
+    lua_createtable(L, static_cast<int>(frame.lines.size()), 0);
+    for (std::size_t index = 0; index < frame.lines.size(); ++index) {
+        const text::TextLayout::Line& line = frame.lines[index];
+        lua_createtable(L, 0, 3);
+        lua::Stack::push(L, line.box);
+        lua_setfield(L, -2, "rect");
+        lua::Stack::push(L, line.baseline);
+        lua_setfield(L, -2, "baseline");
+        lua::Stack::push(L, line.rightToLeft);
+        lua_setfield(L, -2, "rightToLeft");
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
+    lua_setfield(L, -2, "lines");
     return 1;
 }
 

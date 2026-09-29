@@ -30,16 +30,16 @@ void ColorField::render(Context& context, const math::Rect& bounds) {
     Surfaces::draw(context, Theme::Surface::Field, bounds, context.getColor(state.hovered ? Theme::Color::BorderStrong : Theme::Color::Raised), context.getColor(Theme::Color::Border));
 
     const float padding = context.getMetric(Theme::Metric::ControlPaddingY);
-    const math::Rect swatch{bounds.x + padding, bounds.y + padding, bounds.height - padding * 2.0F, bounds.height - padding * 2.0F};
+    const math::Rect swatch = context.mirror({bounds.x + padding, bounds.y + padding, bounds.height - padding * 2.0F, bounds.height - padding * 2.0F}, bounds);
     ImDrawList& list = *ImGui::GetWindowDrawList();
     list.AddRectFilled(ImGuiConverter::toImVec2(swatch.getMin()), ImGuiConverter::toImVec2(swatch.getMax()), ImGuiConverter::toImU32(value), context.getMetric(Theme::Metric::ControlRadius) * 0.5F);
     list.AddRect(ImGuiConverter::toImVec2(swatch.getMin()), ImGuiConverter::toImVec2(swatch.getMax()), ImGuiConverter::toImU32(context.getColor(Theme::Color::BorderStrong)), context.getMetric(Theme::Metric::ControlRadius) * 0.5F);
-    Typography::drawAligned(context, Theme::Font::Monospace, math::Rect::fromMinMax({swatch.getRight() + padding, bounds.y}, {bounds.getRight() - padding, bounds.getBottom()}), context.getColor(Theme::Color::Text), value.toHex(), Alignment::Start);
+    Typography::drawAligned(context, Theme::Font::Monospace, context.mirror(math::Rect::fromMinMax({bounds.x + bounds.height, bounds.y}, {bounds.getRight() - padding, bounds.getBottom()}), bounds), context.getColor(Theme::Color::Text), value.toHex(), Alignment::Start);
 
     if (state.clicked) {
         ImGui::OpenPopup("##picker");
     }
-    Widgets::placePopup(bounds, 360.0F);
+    Widgets::placePopup(context, bounds, 360.0F);
     if (ImGui::BeginPopup("##picker")) {
         std::array<float, 4> channels{value.r, value.g, value.b, value.a};
         const ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview | (alpha ? ImGuiColorEditFlags_AlphaBar : ImGuiColorEditFlags_NoAlpha);

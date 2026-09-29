@@ -14,8 +14,8 @@
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/platform/Event.hpp"
+#include "platform/BridgeRelay.hpp"
 #include "platform/Services.hpp"
-#include "platform/sokol/BridgeRelay.hpp"
 #include "platform/sokol/SokolRuntime.hpp"
 #include "platform/web/WebTextInput.hpp"
 

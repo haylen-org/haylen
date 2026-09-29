@@ -17,15 +17,26 @@ NavigationInput::NavigationInput() {
                         {{"name", "ui_down"}, {"type", "button"}, {"bindings", {"key:down", "button:dpad_down", "axis:left_y+"}}},
                         {{"name", "ui_menu"}, {"type", "button"}, {"bindings", {"key:menu", "button:north"}}},
                     }}});
+    resolved = defaults;
 }
 
 void NavigationInput::update(const input::ActionMap& actions, const input::Input& devices, const input::VirtualInput& virtualInput, bool blocked) {
     wasDown = down;
-    defaults.update(blocked ? idleInput : devices, blocked ? idleVirtualInput : virtualInput);
-    for (std::size_t index = 0; index < kActionCount; ++index) {
-        const std::string_view name = kNames[index];
-        down[index] = actions.findAction(name) != nullptr ? actions.isDown(name) : defaults.isDown(name);
+    for (const std::string_view name : kNames) {
+        const input::ActionMap::Action* remapped = actions.findAction(name);
+        const input::ActionMap::Action& wanted = remapped != nullptr ? *remapped : *defaults.findAction(name);
+        if (*resolved.findAction(name) != wanted) {
+            resolved.define(wanted);
+        }
     }
+    resolved.update(blocked ? idleInput : devices, blocked ? idleVirtualInput : virtualInput);
+    for (std::size_t index = 0; index < kActionCount; ++index) {
+        down[index] = resolved.isDown(kNames[index]);
+    }
+}
+
+const std::vector<input::ActionMap::Binding>& NavigationInput::getBindings(Action action) const {
+    return resolved.findAction(kNames[static_cast<std::size_t>(action)])->bindings;
 }
 
 } // namespace haylen::ui

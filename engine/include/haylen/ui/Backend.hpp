@@ -50,6 +50,15 @@ class Backend final {
     // The name of the font the UI starts with, the default font of the engine.
     static constexpr std::string_view kDefaultFontName = "default";
 
+    // The TrueType or OpenType files of a UI font: its regular face, the bold, italic and bold italic faces it may add, left empty when it has none, and the fallback fonts that draw the characters its faces lack, in order.
+    struct FontFiles {
+        std::vector<std::uint8_t> regular;
+        std::vector<std::uint8_t> bold;
+        std::vector<std::uint8_t> italic;
+        std::vector<std::uint8_t> boldItalic;
+        std::vector<std::vector<std::uint8_t>> fallbacks;
+    };
+
     Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow, std::span<const std::uint8_t> defaultFontData);
     ~Backend();
 
@@ -85,9 +94,14 @@ class Backend final {
     // Draws with the renderer at this point of the draw list of the window being built, clipped like the items around it, once the frame renders. The function receives the offset from UI coordinates to the screen canvas it draws in.
     void addRenderCallback(std::function<void(graphics2d::Renderer& renderer, math::Vec2 offset)> draw);
 
-    // Adds a TrueType font under a name. Fonts are sized when drawn, so one font serves every size.
-    ImFont* addFont(const std::string& name, std::vector<std::uint8_t> bytes);
-    [[nodiscard]] ImFont* getFont(std::string_view name) const;
+    // Adds a font under a name and returns its regular face. Fonts are sized when drawn, so one font serves every size, and a fallback draws the characters a face lacks with its em square as large as the em square of that face.
+    ImFont* addFont(const std::string& name, FontFiles files);
+
+    // Returns the face of a font for a style, which is the regular face for a style the font has no face for.
+    [[nodiscard]] ImFont* getFont(std::string_view name, bool bold = false, bool italic = false) const;
+
+    // ImGui sizes a font by its height from ascent to descent, so this returns the size of the em square of the regular face at a UI size, which text drawn beside ImGui, such as rich text, takes to match it.
+    [[nodiscard]] float getEmSize(std::string_view name, float size) const;
     [[nodiscard]] bool hasFont(std::string_view name) const {
         return fonts.contains(name);
     }
@@ -109,6 +123,15 @@ class Backend final {
   private:
     struct Recovery;
 
+    // The faces of a UI font, null for a style it has no face for, and how many times its em square fits in the height of its regular face.
+    struct Typeface {
+        ImFont* regular = nullptr;
+        ImFont* bold = nullptr;
+        ImFont* italic = nullptr;
+        ImFont* boldItalic = nullptr;
+        float emRatio = 1.0F;
+    };
+
     // What a render callback command of a draw list carries, copied into the list by ImGui.
     struct RenderCall {
         Backend* owner = nullptr;
@@ -125,12 +148,14 @@ class Backend final {
     [[nodiscard]] static platform::Window::Cursor toCursor(ImGuiMouseCursor value) noexcept;
     [[nodiscard]] static graphics::Image toImage(ImTextureData& texture);
     [[nodiscard]] static math::Color toColor(ImU32 value) noexcept;
+    [[nodiscard]] static float getEmRatio(const std::string& name, std::span<const std::uint8_t> data);
     [[nodiscard]] static Backend& getOwner(ImGuiContext* context);
     [[nodiscard]] static const char* getClipboardText(ImGuiContext* context);
     static void setClipboardText(ImGuiContext* context, const char* text);
     static void resetRenderState(const ImDrawList* list, const ImDrawCmd* command);
     static void runRenderCall(const ImDrawList* list, const ImDrawCmd* command);
 
+    ImFont* addFace(const std::string& name, std::vector<std::uint8_t> bytes, std::span<const std::span<std::uint8_t>> fallbacks);
     void handlePointer(const platform::Event& event, const graphics::Viewport& viewport);
     void handleTextAction(const platform::Event& event);
     void feedGamepad(const input::Input& input, const NavigationInput& navigation);
@@ -144,7 +169,7 @@ class Backend final {
     ImGuiContext* imguiContext = nullptr;
     ImFont* defaultFont = nullptr;
     std::vector<std::vector<std::uint8_t>> fontData;
-    std::map<std::string, ImFont*, std::less<>> fonts;
+    std::map<std::string, Typeface, std::less<>> fonts;
     std::unordered_map<ImTextureID, graphics::Texture> atlasTextures;
     std::unordered_map<ImTextureID, graphics::Texture> frameTextures;
     std::vector<std::function<void(graphics2d::Renderer&, math::Vec2)>> renderCalls;
@@ -156,6 +181,7 @@ class Backend final {
     std::vector<math::Rect> blockedPrevious;
     ImGuiID transparentWindow = 0;
     std::optional<std::uint64_t> primaryTouch;
+    std::optional<math::Vec2> pointerPosition;
     std::string clipboard;
     ImGuiMouseCursor cursor = ImGuiMouseCursor_Arrow;
     bool keyboardShown = false;

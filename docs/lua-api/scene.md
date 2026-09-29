@@ -757,6 +757,7 @@ The `event` hook receives one table per platform event. Its `type` field names t
 | `'keyboard_changed'` | `frame`, the rectangle the on-screen keyboard covers in design units, empty while it is hidden. |
 | `'network_changed'` | `online`, whether the device has a network. |
 | `'interruption_began'`, `'interruption_ended'` | None. The system interrupted the app, such as for a phone call, or gave it back. |
+| `'window_moved'`, `'monitors_changed'` | None. The desktop window moved, or the monitors of the desktop changed, as the `window_moved` and `window_monitors_changed` events of [haylen.events](events.md#engine-events) report with their details. |
 
 The full list of key names is in the `haylen.input` reference. Gameplay should read input through the action map of `haylen.input`, and events are best for text entry and pointer tracking.
 

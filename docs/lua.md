@@ -37,12 +37,19 @@ The runtime reads `app.json` before the window exists, so it configures everythi
 | `window.resizable` | boolean | `true` | Whether the player may resize the window. |
 | `window.vsync` | boolean | `true` | Waits for the display refresh when presenting. |
 | `window.sampleCount` | integer | `1` | Multisampling sample count. |
+| `window.decorated` | boolean | `true` | Whether the desktop window has a title bar and a border. |
+| `window.transparent` | boolean | `false` | Opens the window able to be transparent, and transparent, so the desktop shows through its transparent pixels, and makes `clearColor` default to `"#00000000"`. Only such a window can turn transparent again after `window.setTransparent(false)`. |
+| `window.alwaysOnTop` | boolean | `false` | Keeps the desktop window above normal windows. |
+| `window.showInTaskbar` | boolean | `true` | Whether the window has a taskbar button, and on macOS whether the app has a Dock icon and a menu bar. |
+| `window.focusable` | boolean | `true` | Whether clicking the window activates the app and gives it the keyboard. |
+| `window.mousePassthrough` | boolean | `false` | Lets every click pass through the window to what is behind it, until the app gives regions that keep the mouse. |
+| `window.position` | string or object | centered | Where the desktop window opens: `"center"`, a point `{"x": 40, "y": 60}` in desktop points, or an anchored placement such as `{"anchor": "bottom", "area": "work", "monitor": "primary", "offset": [0, -8], "fill": "width"}`, described in the [desktop guide](desktop.md#placing-the-window). |
 | `design.width`, `design.height` | number | `1920`, `1080` | Design resolution, the coordinate space the app draws and receives input in. |
 | `design.scaling` | string | `"expand"` | `"fit"`, `"fill"`, `"stretch"`, `"expand"` or `"pixel_perfect"`, described in [`haylen.viewport`](lua-api/viewport.md). |
 | `orientation` | string | `"landscape"` | `"landscape"`, `"portrait"` or `"any"`. |
 | `fixedRate` | number | `60` | Fixed updates per second. `haylen.fixedStep()` returns the matching step length in seconds. |
 | `maxFrameTime` | number | `0.25` | Longest frame time in seconds that the clock accepts, so a stall never causes a burst of fixed steps. |
-| `clearColor` | string | `"#FF000000"` | Background color as `"#RRGGBB"` or `"#AARRGGBB"`. |
+| `clearColor` | string | `"#FF000000"`, or `"#00000000"` for a transparent window | Background color as `"#RRGGBB"` or `"#AARRGGBB"`. |
 | `splash.logo` | string | the Haylen logo | Image of the launch screen, relative to `content/`, such as `"ui/splash.png"`. |
 | `splash.background` | string | The value of `clearColor` | Background color of the launch screen as `"#RRGGBB"` or `"#AARRGGBB"`. |
 | `lifecycle.pauseOnBackground` | boolean | `true` | Halts the app while it is in the background. |
@@ -68,7 +75,7 @@ The runtime reads `app.json` before the window exists, so it configures everythi
 }
 ```
 
-Unknown keys are errors, so a misspelled field never goes unnoticed. The loader rejects them with messages such as `Unknown key 'widht' in app.json window.`, and it also rejects values of the wrong type, sizes and rates that are not positive, and unknown scaling policies, orientations and colors. A package that fails to load shows `The app could not be loaded.` and the reason on screen. `window.resizable` applies to desktop windows, and `window.setResizable` changes it later. `orientation` applies to mobile apps: `make.py` writes it into the `Info.plist` of the Apple template and the manifest of the Android template, and `haylen_add_app` into the `Info.plist` of iOS apps built with CMake, as the [distribution guide](distribution.md) describes. Desktop windows and the web ignore it. `splash` sets the launch screen that iOS, tvOS, Mac Catalyst and Android show while the app starts and the loading page of the web, which `make.py` builds from the platform templates as the [distribution guide](distribution.md#splash-screens) describes. Scripts read the resolved configuration, with every default filled in, from `require('haylen').config`.
+Unknown keys are errors, so a misspelled field never goes unnoticed. The loader rejects them with messages such as `Unknown key 'widht' in app.json window.`, and it also rejects values of the wrong type, sizes and rates that are not positive, and unknown scaling policies, orientations and colors. A package that fails to load shows `The app could not be loaded.` and the reason on screen. `window.resizable` applies to desktop windows, and `window.setResizable` changes it later. The other desktop options of `window` change later through [haylen.window](lua-api/window.md#desktop-windows) as well, and the [desktop guide](desktop.md) describes them. `orientation` applies to mobile apps: `make.py` writes it into the `Info.plist` of the Apple template and the manifest of the Android template, and `haylen_add_app` into the `Info.plist` of iOS apps built with CMake, as the [distribution guide](distribution.md) describes. Desktop windows and the web ignore it. `splash` sets the launch screen that iOS, tvOS, Mac Catalyst and Android show while the app starts and the loading page of the web, which `make.py` builds from the platform templates as the [distribution guide](distribution.md#splash-screens) describes. Scripts read the resolved configuration, with every default filled in, from `require('haylen').config`.
 
 ## source/main.lua
 

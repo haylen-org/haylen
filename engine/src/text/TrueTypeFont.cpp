@@ -1,19 +1,28 @@
 #include "haylen/text/TrueTypeFont.hpp"
 
 #include <algorithm>
+#include <optional>
 #include <stdexcept>
 
+#include <hb.h>
+
 #include "haylen/graphics/Device.hpp"
+#include "text/DistanceField.hpp"
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "stb_truetype.h"
 
 namespace haylen::text {
 
+// The parsed font file, sized by its em square at the bake size. stb_truetype reads the outlines and HarfBuzz shapes in font units, with a buffer kept for every run.
 struct TrueTypeFont::Face {
     std::vector<std::uint8_t> ttf;
     stbtt_fontinfo info{};
     float scale = 1.0F;
+    std::unique_ptr<hb_blob_t, decltype(&hb_blob_destroy)> blob{nullptr, &hb_blob_destroy};
+    std::unique_ptr<hb_face_t, decltype(&hb_face_destroy)> shapingFace{nullptr, &hb_face_destroy};
+    std::unique_ptr<hb_font_t, decltype(&hb_font_destroy)> shapingFont{nullptr, &hb_font_destroy};
+    std::unique_ptr<hb_buffer_t, decltype(&hb_buffer_destroy)> buffer{hb_buffer_create(), &hb_buffer_destroy};
 };
 
 const TrueTypeFont::Options TrueTypeFont::kDefaultOptions{};
@@ -25,7 +34,14 @@ std::unique_ptr<TrueTypeFont::Face> TrueTypeFont::open(std::vector<std::uint8_t>
     if (offset < 0 || stbtt_InitFont(&opened->info, opened->ttf.data(), offset) == 0) {
         throw std::runtime_error("Font data is not a valid TrueType or OpenType font.");
     }
-    opened->scale = stbtt_ScaleForPixelHeight(&opened->info, fontOptions.bakeSize);
+    opened->scale = stbtt_ScaleForMappingEmToPixels(&opened->info, fontOptions.bakeSize);
+
+    // HarfBuzz reads the same bytes in place and positions glyphs in font units, which the scale of the em square turns into pixels.
+    opened->blob.reset(hb_blob_create(reinterpret_cast<const char*>(opened->ttf.data()), static_cast<unsigned int>(opened->ttf.size()), HB_MEMORY_MODE_READONLY, nullptr, nullptr));
+    opened->shapingFace.reset(hb_face_create(opened->blob.get(), 0));
+    opened->shapingFont.reset(hb_font_create(opened->shapingFace.get()));
+    const auto units = static_cast<int>(hb_face_get_upem(opened->shapingFace.get()));
+    hb_font_set_scale(opened->shapingFont.get(), units, units);
     return opened;
 }
 
@@ -72,36 +88,55 @@ bool TrueTypeFont::hasGlyph(char32_t codePoint) {
     return entry->second;
 }
 
-const Font::Glyph& TrueTypeFont::getGlyph(char32_t codePoint) {
-    if (const auto found = glyphs.find(codePoint); found != glyphs.end()) {
+// HarfBuzz keeps the context around the run for the joining of its ends, and its default cluster level keeps every mark in the cluster of its letter. Without a language it applies no language-specific forms.
+void TrueTypeFont::shape(const Run& run, std::vector<ShapedGlyph>& shaped) {
+    hb_buffer_t* buffer = face->buffer.get();
+    hb_buffer_clear_contents(buffer);
+    hb_buffer_add_utf32(buffer, reinterpret_cast<const std::uint32_t*>(run.text.data()), static_cast<int>(run.text.size()), static_cast<unsigned int>(run.begin), static_cast<int>(run.end - run.begin));
+    hb_buffer_set_direction(buffer, run.rightToLeft ? HB_DIRECTION_RTL : HB_DIRECTION_LTR);
+    hb_buffer_set_script(buffer, hb_script_from_iso15924_tag(run.script));
+    if (!run.language.empty()) {
+        hb_buffer_set_language(buffer, hb_language_from_string(run.language.data(), static_cast<int>(run.language.size())));
+    }
+    hb_shape(face->shapingFont.get(), buffer, nullptr, 0);
+
+    unsigned int count = 0;
+    const hb_glyph_info_t* infos = hb_buffer_get_glyph_infos(buffer, &count);
+    const hb_glyph_position_t* positions = hb_buffer_get_glyph_positions(buffer, nullptr);
+    shaped.reserve(shaped.size() + count);
+    for (unsigned int index = 0; index < count; ++index) {
+        const hb_glyph_position_t& position = positions[index];
+        shaped.push_back({
+            .index = infos[index].codepoint,
+            .cluster = infos[index].cluster,
+            .advance = static_cast<float>(position.x_advance) * face->scale,
+            .offset = {static_cast<float>(position.x_offset) * face->scale, static_cast<float>(-position.y_offset) * face->scale},
+        });
+    }
+}
+
+const Font::Glyph& TrueTypeFont::getGlyph(std::uint32_t index) {
+    if (const auto found = glyphs.find(index); found != glyphs.end()) {
         return found->second;
     }
 
-    Glyph& created = glyphs[codePoint];
-    rasterize(codePoint, created);
+    Glyph& created = glyphs[index];
+    rasterize(index, created);
     return created;
 }
 
-float TrueTypeFont::getKerning(char32_t left, char32_t right) {
-    return static_cast<float>(stbtt_GetCodepointKernAdvance(&face->info, static_cast<int>(left), static_cast<int>(right))) * face->scale;
-}
-
-void TrueTypeFont::rasterize(char32_t codePoint, Glyph& glyph) {
-    const int character = static_cast<int>(codePoint);
+void TrueTypeFont::rasterize(std::uint32_t index, Glyph& glyph) {
     int advance = 0;
     int bearing = 0;
-    stbtt_GetCodepointHMetrics(&face->info, character, &advance, &bearing);
+    stbtt_GetGlyphHMetrics(&face->info, static_cast<int>(index), &advance, &bearing);
     glyph.advance = static_cast<float>(advance) * face->scale;
 
-    int width = 0;
-    int height = 0;
-    int offsetX = 0;
-    int offsetY = 0;
-    const float distanceScale = 128.0F / static_cast<float>(options.spread);
-    unsigned char* bitmap = stbtt_GetCodepointSDF(&face->info, face->scale, character, options.spread, 128, distanceScale, &width, &height, &offsetX, &offsetY);
-    if (bitmap == nullptr) {
+    const std::optional<DistanceField> field = DistanceField::build(face->info, static_cast<int>(index), face->scale, options.spread);
+    if (!field) {
         return;
     }
+    const int width = field->width;
+    const int height = field->height;
 
     // Glyphs are packed in shelves. A glyph that fits neither the current shelf nor a new one doubles the atlas.
     while (cursorX + width + 1 > atlasWidth || cursorY + height + 1 > atlasHeight) {
@@ -116,12 +151,11 @@ void TrueTypeFont::rasterize(char32_t codePoint, Glyph& glyph) {
     }
 
     for (int row = 0; row < height; ++row) {
-        std::copy_n(bitmap + row * width, width, atlas.begin() + static_cast<std::ptrdiff_t>((cursorY + row) * atlasWidth + cursorX));
+        std::copy_n(field->pixels.begin() + static_cast<std::ptrdiff_t>(row * width), width, atlas.begin() + static_cast<std::ptrdiff_t>((cursorY + row) * atlasWidth + cursorX));
     }
-    stbtt_FreeSDF(bitmap, nullptr);
 
     glyph.source = {static_cast<float>(cursorX), static_cast<float>(cursorY), static_cast<float>(width), static_cast<float>(height)};
-    glyph.offset = {static_cast<float>(offsetX), static_cast<float>(offsetY)};
+    glyph.offset = {static_cast<float>(field->offsetX), static_cast<float>(field->offsetY)};
     glyph.visible = true;
     cursorX += width + 1;
     rowHeight = std::max(rowHeight, height);

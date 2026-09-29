@@ -46,6 +46,8 @@ class LifecycleEvent final {
     static constexpr std::string_view kWindowFullscreenChanged = "window_fullscreen_changed";
     static constexpr std::string_view kWindowOrientationChanged = "window_orientation_changed";
     static constexpr std::string_view kWindowSafeAreaChanged = "window_safe_area_changed";
+    static constexpr std::string_view kWindowMoved = "window_moved";
+    static constexpr std::string_view kWindowMonitorsChanged = "window_monitors_changed";
 
     static constexpr std::string_view kUiDocumentMounted = "ui_document_mounted";
     static constexpr std::string_view kUiDocumentUnmounted = "ui_document_unmounted";

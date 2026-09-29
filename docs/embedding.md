@@ -189,6 +189,12 @@ std::unique_ptr<haylen::core::Application> haylen::core::Application::create() {
 
 `core::Application` has three hooks. `configure(AppConfig&)` runs before the window exists and may change the configuration read from `app.json`, `start(Engine&)` runs once the engine is ready, and `stop(Engine&)` runs when the app ends. `core::Engine` gives access to every service, such as `getRenderer2D()`, `getScenes()`, `getAssets()`, `getAudio()`, `getInput()`, `getActions()`, `getTimers()`, `getTweens()`, `getJobs()` and `getPlatform()`, and `core::Scene` has the same callbacks as a Lua scene. A C++ app can still run Lua by delegating to a `lua::Application`, as the [Lua guide](lua.md#extending-the-engine-from-c) shows.
 
+## Plugins of an app
+
+An app that compiles the engine extends it with plugins of its own, which use the same `haylen::plugins::Plugin` interface as the built-in ones: `getName`, `start`, `stop`, `installLua`, `event`, `beginFrame`, `fixedUpdate`, `update`, `render`, `renderUi`, `renderOverlay` and `endFrame`, all on the frame thread. `engine.addPlugin(std::make_unique<MyPlugin>())` adds one, and a plugin added while the engine runs, such as from `Application::start`, gets `start` and `installLua` at once and the `plugin_started` event, so its Lua module exists before `source/main.lua` runs when the application adds it first and then delegates to a `lua::Application`. `engine.getPlugin<MyPlugin>()` finds it again, for example from a Lua binding through `lua::Runtime::getEngine(L)`.
+
+A plugin is the place for native code that the app compiles itself: a C++ SDK pumped from `update`, bridge handlers registered in `start` with `engine.getPlatform().registerHandler`, and a Lua module installed in `installLua` with the binding toolkit. The [Lua guide](lua.md#extending-the-engine-from-c) has a complete plugin with a Lua module and the application that adds it, and the [native code guide](native.md) compares plugins with the bridge and with native libraries called through FFI, which need no compiled engine.
+
 ## Checking the three modes
 
 `make.py embedding` builds `samples/cpp/embedding` the way another repository would consume the engine.

@@ -171,6 +171,10 @@ class Engine final {
     [[nodiscard]] const AppConfig::Lifecycle& getLifecycle() const noexcept;
     void setLifecycle(const AppConfig::Lifecycle& value);
 
+    // Change how the design space maps onto the screen while the app runs, starting from the design section of app.json. The viewport follows at once, and the UI, cameras and pointer input with it.
+    void setScaling(graphics::Viewport::ScalingPolicy value);
+    void setDesignSize(math::Vec2 value);
+
     // A simulated safe area replaces the one the device reports, to test layouts for other screens. The debug.safeArea option of app.json sets it at start.
     void setSafeAreaSimulation(std::optional<platform::SafeAreaSimulation> value);
     [[nodiscard]] const std::optional<platform::SafeAreaSimulation>& getSafeAreaSimulation() const noexcept;
@@ -191,12 +195,14 @@ class Engine final {
 
   private:
     void activatePlugin(plugins::Plugin& plugin);
+    void applyWindowOptions();
     void publishDeviceChanges();
     void publishKeyboard(const math::Rect& value);
     void render(const std::vector<plugins::Plugin*>& all);
     void renderScenes(const std::vector<plugins::Plugin*>& all);
     void setAppState(AppState value);
     void applyFocusMute();
+    void remapViewport();
     [[nodiscard]] math::Insets getSafeAreaInsets() const;
 
     std::unique_ptr<EngineState> state;

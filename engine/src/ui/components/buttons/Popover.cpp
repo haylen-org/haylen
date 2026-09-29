@@ -17,7 +17,7 @@ void Popover::render(Context& context, const math::Rect& bounds) {
     if (drawButton(context, bounds)) {
         ImGui::OpenPopup("##popover");
     }
-    Widgets::placePopup(bounds, contentWidth);
+    Widgets::placePopup(context, bounds, contentWidth);
     if (ImGui::BeginPopup("##popover", ImGuiWindowFlags_NoNavInputs)) {
         if (!getChildren().empty()) {
             Component& content = *getChildren().front();

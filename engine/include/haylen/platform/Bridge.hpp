@@ -1,10 +1,12 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -15,21 +17,46 @@
 
 namespace haylen::platform {
 
-// JSON request and event channel between the app and native code. Results and events always reach callbacks on the frame thread. Call ids are unique in the whole process, so a reply that arrives after the app restarted never answers a call of the new app.
+// JSON request and event channel between the app and native code. Results, events and work that native code posts always reach the frame thread in pump. Call ids are unique in the whole process, so a reply that arrives after the app restarted never answers a call of the new app.
 class Bridge final {
+    struct Inbox;
+
   public:
+    // Why a call failed. The code and the data are whatever native code sent, and null when it sent none. The bridge fails calls itself with the codes timeout and cancelled.
+    struct Error {
+        std::string message;
+        core::Json code;
+        core::Json data;
+    };
+
     struct Result {
         bool ok = false;
         core::Json value;
-        std::string error;
+        Error error;
+    };
+
+    // Queues work for the frame thread from any thread. The work runs in pump, and it is dropped once the bridge is gone, so it must not own Lua values.
+    class Mailbox final {
+      public:
+        // Returns false when the bridge is gone and the work was dropped.
+        bool post(std::function<void()> task) const;
+
+      private:
+        friend class Bridge;
+
+        explicit Mailbox(std::weak_ptr<Inbox> target) : inbox(std::move(target)) {}
+
+        std::weak_ptr<Inbox> inbox;
     };
 
     using Callback = std::function<void(Result)>;
     using Reply = std::function<void(Result)>;
     using Handler = std::function<void(const core::Json& params, Reply reply)>;
     using Dispatcher = std::function<void(std::uint64_t id, std::string_view method, std::string_view paramsJson)>;
+    using Canceller = std::function<void(std::uint64_t id, std::string_view method)>;
 
-    explicit Bridge(Dispatcher native);
+    // The dispatcher hands calls to native code, and the canceller tells native code that the app no longer waits for one.
+    Bridge(Dispatcher native, Canceller cancel);
 
     Bridge(const Bridge&) = delete;
     Bridge& operator=(const Bridge&) = delete;
@@ -38,12 +65,18 @@ class Bridge final {
     void registerHandler(std::string method, Handler handler);
     [[nodiscard]] bool hasHandler(std::string_view method) const;
 
-    std::uint64_t call(std::string_view method, const core::Json& params, Callback callback);
+    // A call with a timeout fails with the code timeout when no answer arrived in time, and native code hears that it was given up.
+    std::uint64_t call(std::string_view method, const core::Json& params, Callback callback, std::optional<std::chrono::steady_clock::duration> timeout = std::nullopt);
+
+    // Fails a pending call with the code cancelled at the next pump and tells native code, and returns false when the call already settled.
+    bool cancel(std::uint64_t id);
+
     core::Connection on(const std::string& event, std::function<void(const core::Json&)> listener);
 
-    // Thread-safe entry points for native code. A failed call carries a message string or an object with a message field.
+    // Thread-safe entry points for native code. A failed call carries a message string or an object with message, code and data.
     void resolve(std::uint64_t id, bool ok, std::string_view resultJson);
     void emit(std::string_view event, std::string_view payloadJson);
+    [[nodiscard]] Mailbox getMailbox() const;
 
     void pump();
     [[nodiscard]] std::size_t getPendingCallCount() const;
@@ -59,22 +92,35 @@ class Bridge final {
         core::Json payload;
     };
 
-    // Replies and native events wait here, shared with the replies of C++ handlers so a late reply never touches a destroyed bridge.
+    // Replies, native events and posted work wait here, shared with the replies of C++ handlers and with mailboxes so late native code never touches a destroyed bridge.
     struct Inbox {
         std::mutex mutex;
         std::vector<Completion> completions;
         std::vector<NativeEvent> events;
+        std::vector<std::function<void()>> tasks;
+    };
+
+    struct Pending {
+        Callback callback;
+        std::string method;
+        bool native = false;
+        std::optional<std::chrono::steady_clock::time_point> deadline;
     };
 
     // Every bridge of the process draws from one sequence, so a restarted app never reuses the id of a call that is still in flight.
     static std::atomic<std::uint64_t> nextCallId;
 
-    [[nodiscard]] static std::string getFailureMessage(const core::Json& payload);
+    [[nodiscard]] static Error readFailure(core::Json payload);
     [[nodiscard]] static Result parseResult(bool ok, std::string_view json);
 
+    // Gives up the calls whose timeout passed and tells native code about each one.
+    void expireCalls();
+
     Dispatcher dispatcher;
+    Canceller canceller;
     std::unordered_map<std::string, Handler> handlers;
-    std::unordered_map<std::uint64_t, Callback> callbacks;
+    std::unordered_map<std::uint64_t, Pending> pending;
+    std::vector<std::pair<Callback, Result>> cancelled;
     std::unordered_map<std::string, std::unique_ptr<core::Signal<const core::Json&>>> signals;
     std::shared_ptr<Inbox> inbox = std::make_shared<Inbox>();
 };

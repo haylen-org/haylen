@@ -5,15 +5,16 @@
 #include <string>
 
 #include "haylen/io/Package.hpp"
+#include "platform/BridgeRelay.hpp"
 #include "platform/android/AndroidActivity.hpp"
 #include "platform/android/AndroidAssetPackage.hpp"
 #include "platform/android/AndroidGamepads.hpp"
 #include "platform/android/AndroidKeys.hpp"
 #include "platform/android/AndroidTextInput.hpp"
 #include "platform/android/JavaBridge.hpp"
-#include "platform/sokol/BridgeRelay.hpp"
 #include "platform/sokol/MemoryWarning.hpp"
 #include "platform/sokol/SokolRuntime.hpp"
+#include "sokol_app.h"
 
 namespace haylen::platform {
 
@@ -37,7 +38,31 @@ std::filesystem::path Services::getUserDataDirectory(std::string_view identifier
 
 void Services::persistUserData() {}
 
-void Services::setWindowResizable(bool) {}
+bool Services::hasDesktop() noexcept {
+    return false;
+}
+
+void Services::setWindowStyle(const WindowStyle&) {}
+
+// The window of the activity fills the screen, which is its only monitor.
+math::Rect Services::getWindowFrame() {
+    return {0.0F, 0.0F, sapp_widthf() / sapp_dpi_scale(), sapp_heightf() / sapp_dpi_scale()};
+}
+
+void Services::setWindowFrame(const math::Rect&) {}
+
+std::vector<Monitor> Services::getMonitors() {
+    const math::Rect screen = getWindowFrame();
+    return {{.name = "screen", .bounds = screen, .workArea = screen, .scale = sapp_dpi_scale(), .primary = true}};
+}
+
+void Services::setMousePassthrough(Window::Passthrough, std::span<const math::Polygon::Outline>) {}
+
+void Services::startWindowDrag() {}
+
+void Services::watchWindow() {}
+
+void Services::updateWindow() {}
 
 math::Insets Services::getSafeAreaInsets() {
     return AndroidActivity::getSafeAreaInsets();
@@ -66,6 +91,10 @@ TextInput& Services::getTextInput() {
 
 void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson) {
     JavaBridge::dispatch(id, method, paramsJson);
+}
+
+void Services::cancel(std::uint64_t id) {
+    JavaBridge::cancel(id);
 }
 
 } // namespace haylen::platform

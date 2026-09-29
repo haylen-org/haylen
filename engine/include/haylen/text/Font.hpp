@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string_view>
 #include <vector>
 
@@ -15,7 +16,9 @@
 
 namespace haylen::text {
 
-// A font whose glyph images live in texture pages: a TrueType font drawn through a signed distance field, or a bitmap font drawn from its own images. Sizes are pixel sizes, and every font lays plain text out the same way.
+class LayoutCache;
+
+// A font whose glyph images live in texture pages: a TrueType font drawn through a signed distance field, or a bitmap font drawn from its own images. Sizes are pixel sizes, and every font shapes and lays text out the same way.
 class Font {
   public:
     // One glyph at the native size of the font: the region of its image in a page, where the image goes from the pen on the baseline, and how far the pen moves after it.
@@ -27,24 +30,42 @@ class Font {
         bool visible = false;
     };
 
-    virtual ~Font() = default;
+    // A glyph of shaped text at the native size: its index in the font, the code point where its cluster starts, how far the pen moves after it, and where it sits from the pen with y pointing down.
+    struct ShapedGlyph {
+        std::uint32_t index = 0;
+        std::size_t cluster = 0;
+        float advance = 0.0F;
+        math::Vec2 offset{};
+    };
+
+    // A run of text to shape in one script, language and direction. The text around the run gives the letters at its ends their joining forms, and the script is an ISO 15924 tag such as Arab or Deva.
+    struct Run {
+        std::u32string_view text;
+        std::size_t begin = 0;
+        std::size_t end = 0;
+        std::uint32_t script = 0;
+        std::string_view language;
+        bool rightToLeft = false;
+    };
+
+    virtual ~Font();
 
     Font(const Font&) = delete;
     Font& operator=(const Font&) = delete;
 
-    // Lays out UTF-8 text with the top-left of the block at the origin before the anchor is applied.
-    [[nodiscard]] TextLayout layout(std::string_view text, const TextStyle& style);
+    // Lays UTF-8 text out with this font alone, with the top-left of the block at the origin and the anchor left to the drawing. Layouts are cached by text and style, so text drawn every frame shapes once.
+    [[nodiscard]] std::shared_ptr<const TextLayout> layout(std::string_view text, const TextStyle& style);
     [[nodiscard]] math::Vec2 measure(std::string_view text, const TextStyle& style);
 
     // Tells whether the pages hold signed distance fields, which the text shader draws with outlines, weights and soft edges, rather than plain images.
     [[nodiscard]] virtual bool isDistanceField() const noexcept = 0;
     [[nodiscard]] virtual bool hasGlyph(char32_t codePoint) = 0;
 
-    // Returns the glyph of a code point. A TrueType font draws its missing glyph box for a code point it lacks, and a bitmap font draws nothing.
-    [[nodiscard]] virtual const Glyph& getGlyph(char32_t codePoint) = 0;
+    // Shapes a run into glyphs in visual order, appended to the list. A TrueType font substitutes and places its glyphs through its OpenType tables, which join letters, form ligatures, place marks and kern, while a bitmap font sets one glyph per code point with its kerning pairs, mirrored and reversed in right-to-left runs.
+    virtual void shape(const Run& run, std::vector<ShapedGlyph>& shaped) = 0;
 
-    // Returns the advance adjustment between two glyphs at the native size.
-    [[nodiscard]] virtual float getKerning(char32_t left, char32_t right) = 0;
+    // Returns a glyph by the index shaping gave it. A TrueType font draws its missing glyph box for a code point it lacks, and a bitmap font draws nothing.
+    [[nodiscard]] virtual const Glyph& getGlyph(std::uint32_t index) = 0;
     [[nodiscard]] virtual std::size_t getPageCount() const noexcept = 0;
     [[nodiscard]] virtual const graphics::Texture& getPage(std::size_t index) const = 0;
 
@@ -70,22 +91,13 @@ class Font {
         float spread = 0.0F;
     };
 
-    explicit Font(Metrics fontMetrics) noexcept : metrics(fontMetrics) {}
+    explicit Font(Metrics fontMetrics);
 
   private:
-    struct Line {
-        std::size_t begin = 0;
-        std::size_t end = 0;
-        float width = 0.0F;
-        bool wrapped = false;
-    };
-
     static debug::ObjectCounter counter;
 
-    [[nodiscard]] std::vector<Line> breakLines(const std::u32string& codePoints, const TextStyle& style, float factor);
-    [[nodiscard]] float advanceOf(const std::u32string& codePoints, std::size_t index, float factor);
-
     Metrics metrics;
+    std::unique_ptr<LayoutCache> layouts;
     debug::TrackedObject tracked{counter};
 };
 

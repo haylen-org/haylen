@@ -56,6 +56,7 @@
 #include "haylen/platform/Orientation.hpp"
 #include "haylen/platform/TextInput.hpp"
 #include "haylen/platform/Window.hpp"
+#include "haylen/text/Direction.hpp"
 #include "haylen/text/Font.hpp"
 #include "haylen/text/TextAlign.hpp"
 #include "haylen/text/TextStyle.hpp"
@@ -66,7 +67,7 @@ namespace haylen::lua {
 class TypeConverter final {
   public:
     static constexpr std::array<std::string_view, 12> kDrawOrderFields{"layer", "depth", "sortOffset", "visibility", "blend", "material", "normalMap", "specular", "shininess", "emission", "lightMask", "unshaded"};
-    static constexpr std::array<std::string_view, 12> kTextStyleFields{"size", "color", "outlineWidth", "outlineColor", "shadowOffset", "shadowColor", "shadowBlur", "align", "maxWidth", "lineSpacing", "anchor", "rotation"};
+    static constexpr std::array<std::string_view, 16> kTextStyleFields{"size", "color", "outlineWidth", "outlineColor", "shadowOffset", "shadowColor", "shadowBlur", "align", "maxWidth", "lineSpacing", "anchor", "rotation", "bold", "italic", "direction", "language"};
     static constexpr std::array<std::string_view, 2> kTextureOptionFields{"filter", "wrap"};
     static constexpr std::array<std::string_view, 12> kSpriteInstanceFields{"x", "y", "width", "height", "source", "pivotX", "pivotY", "rotation", "color", "flash", "flipX", "flipY"};
 
@@ -90,11 +91,13 @@ class TypeConverter final {
     static const NameTable<graphics2d::ImageBlend::Pattern, 5> kBlendPatterns;
     static const NameTable<graphics2d::SceneTransition::Kind, 24> kTransitions;
     static const NameTable<graphics2d::SceneTransition::Direction, 8> kDirections;
-    static const NameTable<text::TextAlign, 4> kAligns;
+    static const NameTable<text::TextAlign, 6> kAligns;
+    static const NameTable<text::Direction, 3> kTextDirections;
     static const NameTable<input::InputDevice, 3> kDevices;
     static const NameTable<input::TouchPhase, 5> kPhases;
     static const NameTable<platform::Window::Cursor, 11> kCursors;
-    static const NameTable<platform::Event::Type, 26> kEvents;
+    static const NameTable<platform::Event::Type, 28> kEvents;
+    static const NameTable<platform::Window::Passthrough, 3> kPassthroughs;
     static const NameTable<platform::Orientation, 3> kOrientations;
     static const NameTable<platform::TextInput::Action, 4> kTextActions;
     static const NameTable<core::ProcessMode, 5> kProcessModes;
@@ -405,6 +408,15 @@ template <> struct EnumNames<text::TextAlign> {
     }
 };
 
+template <> struct EnumNames<text::Direction> {
+    static std::optional<text::Direction> fromName(std::string_view name) {
+        return TypeConverter::fromTable(TypeConverter::kTextDirections, name);
+    }
+    static std::string_view name(text::Direction value) {
+        return TypeConverter::toName(TypeConverter::kTextDirections, value);
+    }
+};
+
 template <> struct EnumNames<math::Easing::Type> {
     static std::optional<math::Easing::Type> fromName(std::string_view name) {
         return math::Easing::parse(name);
@@ -438,6 +450,15 @@ template <> struct EnumNames<platform::Window::Cursor> {
     }
     static std::string_view name(platform::Window::Cursor value) {
         return TypeConverter::toName(TypeConverter::kCursors, value);
+    }
+};
+
+template <> struct EnumNames<platform::Window::Passthrough> {
+    static std::optional<platform::Window::Passthrough> fromName(std::string_view name) {
+        return TypeConverter::fromTable(TypeConverter::kPassthroughs, name);
+    }
+    static std::string_view name(platform::Window::Passthrough value) {
+        return TypeConverter::toName(TypeConverter::kPassthroughs, value);
     }
 };
 

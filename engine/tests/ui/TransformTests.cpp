@@ -48,7 +48,7 @@ Drawn getDrawn(plugins::UiPlugin& plugin) {
 TEST(UiTransformTest, MovesScalesFadesAndTintsANode) {
     test::EngineFixture fixture;
     plugins::UiPlugin& plugin = fixture.engine().getPlugin<plugins::UiPlugin>();
-    const std::shared_ptr<Document> document = plugin.createDocument({{"kind", "label"}, {"id", "title"}, {"text", "Hello there"}}, Placement::Screen);
+    const std::shared_ptr<Document> document = plugin.createDocument({{"kind", "button"}, {"id", "title"}, {"text", "Hello there"}}, Placement::Screen);
     plugin.mount(document, 0);
     fixture.frames(2);
     const math::Rect plain = document->find("title")->getBounds();

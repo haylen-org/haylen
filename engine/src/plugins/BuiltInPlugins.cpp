@@ -17,6 +17,7 @@
 #include "plugins/Graphics2DPlugin.hpp"
 #include "plugins/InputPlugin.hpp"
 #include "plugins/JobsPlugin.hpp"
+#include "plugins/NativePlugin.hpp"
 #include "plugins/Navigation2DPlugin.hpp"
 #include "plugins/Particles2DPlugin.hpp"
 #include "plugins/Physics2DPlugin.hpp"
@@ -49,6 +50,7 @@ void BuiltInPlugins::registerAll(PluginRegistry& registry) {
     registry.add(std::make_unique<UiPlugin>());
     registry.add(std::make_unique<NetPlugin>());
     registry.add(std::make_unique<PlatformPlugin>());
+    registry.add(std::make_unique<NativePlugin>());
 }
 
 } // namespace haylen::plugins

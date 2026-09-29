@@ -68,8 +68,12 @@ set(HAYLEN_TEST_SOURCES
   math/UtilityTests.cpp
   math/VectorTests.cpp
   net/WebSocketTests.cpp
+  platform/NativeLuaTests.cpp
+  platform/NativeTests.cpp
   platform/PlatformLuaTests.cpp
   platform/PlatformTests.cpp
+  platform/WindowLuaTests.cpp
+  platform/WindowTests.cpp
   storage/StorageTests.cpp
   support/EngineFixture.cpp
   support/TemporaryDirectory.cpp
@@ -78,6 +82,7 @@ set(HAYLEN_TEST_SOURCES
   text/FontTests.cpp
   text/RichTextLayoutTests.cpp
   text/RichTextMarkupTests.cpp
+  text/ShapingTests.cpp
   text/TextLuaTests.cpp
   ui/AnchorTests.cpp
   ui/BackendTests.cpp
@@ -87,6 +92,7 @@ set(HAYLEN_TEST_SOURCES
   ui/GameComponentTests.cpp
   ui/MountLinkTests.cpp
   ui/RichTextComponentTests.cpp
+  ui/RightToLeftTests.cpp
   ui/TextInputTests.cpp
   ui/ThemeTests.cpp
   ui/TransformTests.cpp
@@ -98,11 +104,23 @@ set_target_properties(haylen_tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_
 target_link_libraries(haylen_tests PRIVATE haylen::engine haylen::headless haylen_sokol_headers haylen_stb libzip::zip ZLIB::ZLIB libzstd_static Poco::Net GTest::gtest_main)
 # The tests reach into the engine's private headers on purpose, to check internals the public API hides.
 target_include_directories(haylen_tests PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${HAYLEN_ENGINE_DIR}/src")
-# The shader tests compile a material with make.py shaders, the way apps compile theirs.
+# The shader tests compile a material with make.py shaders, the way apps compile theirs, and the font tests read the fonts of the fonts sample.
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
-target_compile_definitions(haylen_tests PRIVATE HAYLEN_PYTHON="${Python3_EXECUTABLE}" HAYLEN_MAKE_SCRIPT="${HAYLEN_ENGINE_DIR}/../make.py")
+target_compile_definitions(haylen_tests PRIVATE HAYLEN_PYTHON="${Python3_EXECUTABLE}" HAYLEN_MAKE_SCRIPT="${HAYLEN_ENGINE_DIR}/../make.py" HAYLEN_SAMPLE_FONTS="${HAYLEN_ENGINE_DIR}/../samples/graphics/fonts/content/fonts")
 haylen_enable_warnings(haylen_tests)
 haylen_enable_coverage(haylen_tests)
+
+# The native library that the native interop tests call. It sits next to the test executable, where native.load finds it by its exact name, which the Debug postfix that Poco forces would change.
+add_library(haylen_native_test SHARED native/NativeTest.c)
+set_target_properties(haylen_native_test PROPERTIES OUTPUT_NAME native_test DEBUG_POSTFIX "" C_VISIBILITY_PRESET hidden LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+target_include_directories(haylen_native_test PRIVATE "${HAYLEN_ENGINE_DIR}/include")
+if(NOT WIN32)
+  find_package(Threads REQUIRED)
+  target_link_libraries(haylen_native_test PRIVATE Threads::Threads)
+endif()
+haylen_enable_warnings(haylen_native_test)
+add_dependencies(haylen_tests haylen_native_test)
+target_compile_definitions(haylen_tests PRIVATE HAYLEN_NATIVE_TEST_LIBRARY="$<TARGET_FILE:haylen_native_test>")
 
 include(GoogleTest)
 gtest_discover_tests(haylen_tests

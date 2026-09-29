@@ -1,14 +1,17 @@
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <functional>
 #include <stdexcept>
 #include <string>
+#include <thread>
+#include <utility>
 #include <vector>
 
 #include "haylen/platform/Bridge.hpp"
+#include "platform/BridgeRelay.hpp"
 #include "platform/KeyboardTranslator.hpp"
 #include "platform/desktop/DesktopMethods.hpp"
-#include "platform/sokol/BridgeRelay.hpp"
 #include "platform/sokol/MemoryWarning.hpp"
 #include "platform/sokol/SokolEvents.hpp"
 #include "support/EngineFixture.hpp"
@@ -154,7 +157,7 @@ TEST(KeyboardTranslatorTest, TypesWhatThePlainKeyboardCommits) {
 
 TEST(BridgeRelayTest, ForwardsNativeRepliesToTheAttachedBridge) {
     std::vector<std::string> calls;
-    Bridge bridge([&calls](std::uint64_t, std::string_view method, std::string_view) { calls.emplace_back(method); });
+    Bridge bridge([&calls](std::uint64_t, std::string_view method, std::string_view) { calls.emplace_back(method); }, [](std::uint64_t, std::string_view) {});
     std::vector<Bridge::Result> results;
     std::vector<core::Json> events;
     const std::uint64_t call = bridge.call("native.method", core::Json::object(), [&](Bridge::Result result) { results.push_back(std::move(result)); });
@@ -165,10 +168,10 @@ TEST(BridgeRelayTest, ForwardsNativeRepliesToTheAttachedBridge) {
     bridge.pump();
     EXPECT_TRUE(results.empty()) << "nothing reaches a bridge that is not attached";
 
-    BridgeRelay::attach(&bridge);
+    BridgeRelay::attach(bridge);
     BridgeRelay::resolve(call, true, "{\"value\": 3}");
     BridgeRelay::emit("native.event", "4");
-    BridgeRelay::attach(nullptr);
+    BridgeRelay::detach(bridge);
     bridge.pump();
     ASSERT_EQ(results.size(), 1U);
     EXPECT_EQ(results.front().value.at("value"), 3);
@@ -187,8 +190,8 @@ TEST(MemoryWarningTest, HandsEachWarningOverOnce) {
 
 TEST(DesktopMethodsTest, AnswersTheBuiltInMethods) {
     std::vector<Bridge::Result> results;
-    Bridge bridge([](std::uint64_t, std::string_view, std::string_view) {});
-    BridgeRelay::attach(&bridge);
+    Bridge bridge([](std::uint64_t, std::string_view, std::string_view) {}, [](std::uint64_t, std::string_view) {});
+    BridgeRelay::attach(bridge);
 
     FakeDesktopMethods methods;
     FakeDesktopMethods broken(true);
@@ -210,7 +213,7 @@ TEST(DesktopMethodsTest, AnswersTheBuiltInMethods) {
     ask(methods, "store.buy", "{}");
     ask(broken, "device.info", "{}");
     bridge.pump();
-    BridgeRelay::attach(nullptr);
+    BridgeRelay::detach(bridge);
 
     ASSERT_EQ(results.size(), 10U);
     EXPECT_EQ(results[0].value, (core::Json{{"model", "PC"}, {"systemVersion", "6.8"}}));
@@ -218,25 +221,26 @@ TEST(DesktopMethodsTest, AnswersTheBuiltInMethods) {
     EXPECT_TRUE(results[2].ok);
     EXPECT_EQ(results[2].value, true);
     EXPECT_EQ(methods.getOpenedUrls(), (std::vector<std::string>{"https://example.com", "https://refused.example"}));
-    EXPECT_EQ(results[3].error, "The url could not be opened.");
+    EXPECT_EQ(results[3].error.message, "The url could not be opened.");
     for (const std::size_t missing : {4U, 5U, 6U}) {
         EXPECT_FALSE(results[missing].ok);
-        EXPECT_EQ(results[missing].error, "The url is missing.");
-        EXPECT_EQ(results[missing].value, (core::Json{{"message", "The url is missing."}}));
+        EXPECT_EQ(results[missing].error.message, "The url is missing.");
+        EXPECT_TRUE(results[missing].error.code.is_null());
     }
     EXPECT_TRUE(results[7].ok);
-    EXPECT_EQ(results[8].error, "No native handler is registered for store.buy.");
-    EXPECT_EQ(results[9].error, "no version");
+    EXPECT_EQ(results[8].error.message, "No native handler is registered for store.buy.");
+    EXPECT_EQ(results[8].error.code, "no_handler");
+    EXPECT_EQ(results[9].error.message, "no version");
 }
 
-TEST(BridgeTest, TurnsEveryFailurePayloadIntoAMessage) {
-    Bridge bridge([](std::uint64_t, std::string_view, std::string_view) {});
+TEST(BridgeTest, KeepsTheMessageCodeAndDataOfEveryFailure) {
+    Bridge bridge([](std::uint64_t, std::string_view, std::string_view) {}, [](std::uint64_t, std::string_view) {});
     std::vector<Bridge::Result> results;
     std::vector<std::uint64_t> calls;
-    for (int index = 0; index < 8; ++index) {
+    for (int index = 0; index < 9; ++index) {
         calls.push_back(bridge.call("native.method", core::Json::object(), [&results](Bridge::Result result) { results.push_back(std::move(result)); }));
     }
-    const std::vector<std::string> payloads{"null", "42", "[1, 2]", R"({"code": 3})", R"({"message": 3})", "", R"("denied")", R"({"message": "no network", "code": 7})"};
+    const std::vector<std::string> payloads{"null", "42", "[1, 2]", R"({"code": 3})", R"({"message": 3})", "", R"("denied")", R"({"message": "no network", "code": "offline", "data": {"retry": 5}})", "{broken"};
     for (std::size_t index = 0; index < payloads.size(); ++index) {
         bridge.resolve(calls[index], false, payloads[index]);
     }
@@ -245,11 +249,66 @@ TEST(BridgeTest, TurnsEveryFailurePayloadIntoAMessage) {
     ASSERT_EQ(results.size(), payloads.size());
     for (std::size_t index = 0; index < 6; ++index) {
         EXPECT_FALSE(results[index].ok);
-        EXPECT_EQ(results[index].error, "The native platform call failed without a message.") << payloads[index];
+        EXPECT_EQ(results[index].error.message, "The native platform call failed without a message.") << payloads[index];
     }
-    EXPECT_EQ(results[6].error, "denied");
-    EXPECT_EQ(results[7].error, "no network");
-    EXPECT_EQ(results[7].value.at("code"), 7);
+    EXPECT_EQ(results[3].error.code, 3);
+    EXPECT_EQ(results[6].error.message, "denied");
+    EXPECT_TRUE(results[6].error.code.is_null());
+    EXPECT_EQ(results[7].error.message, "no network");
+    EXPECT_EQ(results[7].error.code, "offline");
+    EXPECT_EQ(results[7].error.data.at("retry"), 5);
+    EXPECT_EQ(results[8].error.message, "The platform returned invalid JSON.");
+    EXPECT_EQ(results[8].error.code, "invalid_json");
+}
+
+TEST(BridgeTest, TimesOutAndCancelsCallsAndTellsNativeCode) {
+    std::vector<std::pair<std::uint64_t, std::string>> cancelled;
+    Bridge bridge([](std::uint64_t, std::string_view, std::string_view) {}, [&cancelled](std::uint64_t id, std::string_view method) { cancelled.emplace_back(id, method); });
+    Bridge::Reply late;
+    bridge.registerHandler("engine.slow", [&late](const core::Json&, Bridge::Reply reply) { late = std::move(reply); });
+
+    std::vector<std::string> codes;
+    const auto record = [&codes](Bridge::Result result) { codes.push_back(result.ok ? "ok" : result.error.code.get<std::string>()); };
+    const std::uint64_t quick = bridge.call("native.quick", core::Json::object(), record, std::chrono::milliseconds(1));
+    const std::uint64_t answered = bridge.call("native.answered", core::Json::object(), record, std::chrono::hours(1));
+    const std::uint64_t dropped = bridge.call("native.dropped", core::Json::object(), record);
+    bridge.call("engine.slow", core::Json::object(), record, std::chrono::milliseconds(1));
+    bridge.resolve(answered, true, "1");
+    EXPECT_TRUE(bridge.cancel(dropped));
+    EXPECT_FALSE(bridge.cancel(dropped));
+    EXPECT_EQ(bridge.getPendingCallCount(), 4U);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    bridge.resolve(dropped, true, "2");
+    bridge.pump();
+    late({.ok = true});
+    bridge.pump();
+
+    // Engine handlers have nothing native to tell, and answers that come after the call gave up are dropped.
+    EXPECT_EQ(codes, (std::vector<std::string>{"ok", "cancelled", "timeout", "timeout"}));
+    EXPECT_EQ(cancelled, (std::vector<std::pair<std::uint64_t, std::string>>{{dropped, "native.dropped"}, {quick, "native.quick"}}));
+    EXPECT_EQ(bridge.getPendingCallCount(), 0U);
+    EXPECT_FALSE(bridge.cancel(answered));
+}
+
+TEST(BridgeTest, RunsPostedWorkOnTheFrameThreadUntilTheBridgeIsGone) {
+    std::vector<std::thread::id> threads;
+    // clang-format off
+    Bridge::Mailbox kept = [&threads] {
+        Bridge bridge([](std::uint64_t, std::string_view, std::string_view) {}, [](std::uint64_t, std::string_view) {});
+        Bridge::Mailbox mailbox = bridge.getMailbox();
+        std::thread worker([&] { EXPECT_TRUE(mailbox.post([&threads] { threads.push_back(std::this_thread::get_id()); })); });
+        worker.join();
+        EXPECT_TRUE(threads.empty());
+        bridge.pump();
+        return mailbox;
+    }();
+    // clang-format on
+
+    ASSERT_EQ(threads.size(), 1U);
+    EXPECT_EQ(threads.front(), std::this_thread::get_id());
+    EXPECT_FALSE(kept.post([&threads] { threads.clear(); }));
+    EXPECT_EQ(threads.size(), 1U);
 }
 
 TEST(BridgeTest, KeepsLateRepliesAwayFromOtherBridges) {
@@ -257,7 +316,7 @@ TEST(BridgeTest, KeepsLateRepliesAwayFromOtherBridges) {
     Bridge::Reply late;
     std::uint64_t oldCall = 0;
     {
-        Bridge old([](std::uint64_t, std::string_view, std::string_view) {});
+        Bridge old([](std::uint64_t, std::string_view, std::string_view) {}, [](std::uint64_t, std::string_view) {});
         old.registerHandler("slow", [&late](const core::Json&, Bridge::Reply reply) { late = std::move(reply); });
         oldCall = old.call("slow", core::Json::object(), [&answers](Bridge::Result) { answers.emplace_back("old"); });
         EXPECT_EQ(old.getPendingCallCount(), 1U);
@@ -265,7 +324,7 @@ TEST(BridgeTest, KeepsLateRepliesAwayFromOtherBridges) {
 
     // The reply of a destroyed bridge goes nowhere, and a restarted app never shares call ids with the old one.
     late({.ok = true});
-    Bridge restarted([](std::uint64_t, std::string_view, std::string_view) {});
+    Bridge restarted([](std::uint64_t, std::string_view, std::string_view) {}, [](std::uint64_t, std::string_view) {});
     const std::uint64_t newCall = restarted.call("native.method", core::Json::object(), [&answers](Bridge::Result result) { answers.push_back(result.value.get<std::string>()); });
     EXPECT_NE(newCall, oldCall);
     restarted.resolve(oldCall, true, R"("stale")");
@@ -305,7 +364,7 @@ TEST(BridgeTest, RoutesCallsToHandlersAndNativeCode) {
     bridge.resolve(objectError, false, R"({"message": "no session"})");
     bridge.resolve(invalid, true, "{broken");
     bridge.resolve(9999, true, "{}");
-    EXPECT_EQ(bridge.getPendingCallCount(), 6U);
+    EXPECT_EQ(bridge.getPendingCallCount(), 7U);
     fixture.frames(1);
 
     ASSERT_EQ(results.size(), 6U);
@@ -313,10 +372,10 @@ TEST(BridgeTest, RoutesCallsToHandlersAndNativeCode) {
     EXPECT_EQ(results[0].value.at("platform"), "headless");
     EXPECT_EQ(results[1].value.at("value"), 7);
     EXPECT_EQ(results[2].value.at("model"), "test");
-    EXPECT_EQ(results[3].error, "cancelled");
-    EXPECT_EQ(results[4].error, "no session");
+    EXPECT_EQ(results[3].error.message, "cancelled");
+    EXPECT_EQ(results[4].error.message, "no session");
     EXPECT_FALSE(results[5].ok);
-    EXPECT_EQ(bridge.getPendingCallCount(), 0U);
+    EXPECT_EQ(bridge.getPendingCallCount(), 1U) << "a call without a callback waits for its answer too";
 
     EXPECT_THROW(bridge.call("", core::Json::object(), {}), std::invalid_argument);
     EXPECT_THROW(bridge.registerHandler("", {}), std::invalid_argument);
@@ -342,7 +401,7 @@ TEST(BridgeTest, DeliversNativeEventsToSubscribers) {
     bridge.emit("app.link", "{}");
     fixture.frames(1);
     EXPECT_EQ(payloads.size(), 2U);
-    EXPECT_THROW(Bridge({}), std::invalid_argument);
+    EXPECT_THROW(Bridge({}, {}), std::invalid_argument);
 }
 
 } // namespace haylen::platform

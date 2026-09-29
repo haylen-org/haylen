@@ -29,7 +29,7 @@ void Stack::render(Context& context, const math::Rect& bounds) {
             continue;
         }
         const math::Vec2 fitted = math::Vec2::min(size, inner.getSize());
-        child->draw(context, {std::floor(align(alignment, inner.x, inner.width, fitted.x)), std::floor(align(alignment, inner.y, inner.height, fitted.y)), fitted.x, fitted.y});
+        child->draw(context, {std::floor(context.alignHorizontally(alignment, inner.x, inner.width, fitted.x)), std::floor(align(alignment, inner.y, inner.height, fitted.y)), fitted.x, fitted.y});
     }
 }
 

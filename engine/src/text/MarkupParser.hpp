@@ -49,6 +49,7 @@ class MarkupParser final {
     // The layout a block tag gives the paragraphs inside it. A list numbers its items from one.
     struct Block {
         std::optional<TextAlign> align;
+        std::optional<Direction> direction;
         float indent = 0.0F;
         std::optional<RichTextDocument::ListKind> list;
         std::u32string bullet;

@@ -41,20 +41,20 @@ void ContextMenu::render(Context& context, const math::Rect& bounds) {
 
     if (const std::optional<math::Vec2> opening = findOpening(context, bounds)) {
         ImGui::OpenPopup("##context");
-        ImGui::SetNextWindowPos(ImGuiConverter::toImVec2(*opening));
+        ImGui::SetNextWindowPos(ImGuiConverter::toImVec2(*opening), ImGuiCond_Always, {context.isRightToLeft() ? 1.0F : 0.0F, 0.0F});
     }
     if (const std::optional<std::string> picked = PopupList::draw(context, "##context", items, {}, 0.0F)) {
         context.emit(*this, "select", {{"item", *picked}});
     }
 }
 
-// Returns where the menu opens this frame: at the pointer for a right click or a long press, below the focused control for ui_menu, and below the child for the open command.
+// Returns where the menu opens this frame: at the pointer for a right click or a long press, below the focused control for ui_menu, and below the child for the open command. The menu hangs from that point toward the end of the UI.
 std::optional<math::Vec2> ContextMenu::findOpening(Context& context, const math::Rect& bounds) {
     const ImGuiIO& io = ImGui::GetIO();
     const math::Vec2 pointer{io.MousePos.x, io.MousePos.y};
     const bool over = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) && bounds.contains(pointer);
     if (std::exchange(openRequested, false)) {
-        return math::Vec2{bounds.x, bounds.getBottom()};
+        return math::Vec2{context.isRightToLeft() ? bounds.getRight() : bounds.x, bounds.getBottom()};
     }
     if (over && ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
         return pointer;
@@ -71,7 +71,7 @@ std::optional<math::Vec2> ContextMenu::findOpening(Context& context, const math:
 
     if (context.getFocus().isMenuPressed()) {
         if (const std::optional<math::Rect> focused = context.getFocus().findFocusIn(bounds)) {
-            return math::Vec2{focused->x, focused->getBottom()};
+            return math::Vec2{context.isRightToLeft() ? focused->getRight() : focused->x, focused->getBottom()};
         }
     }
     return std::nullopt;

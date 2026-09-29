@@ -98,7 +98,8 @@ vec4 page_turn(float progress) {
     float fold = mix(1.0, -radius, progress);
     if (along > fold + radius) {
         float shadow = 1.0 - (1.0 - clamp((along - fold - radius) / 0.06, 0.0, 1.0)) * 0.45 * (1.0 - progress);
-        return vec4(sample_to(uv).rgb * shadow, 1.0);
+        vec4 revealed = sample_to(uv);
+        return vec4(revealed.rgb * shadow, revealed.a);
     }
 
     // Each point is covered by the highest layer of paper: the turned back lying flat, the back of the curl, the front of the curl or the flat page.
@@ -116,7 +117,8 @@ vec4 page_turn(float progress) {
         return vec4(paper * (0.85 + 0.15 * shade), 1.0);
     }
     if (front <= 1.0) {
-        return vec4(sample_from(uv + axis * (front - along) * span).rgb * shade, 1.0);
+        vec4 page = sample_from(uv + axis * (front - along) * span);
+        return vec4(page.rgb * shade, page.a);
     }
     return sample_to(uv);
 }

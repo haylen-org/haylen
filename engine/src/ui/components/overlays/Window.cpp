@@ -7,6 +7,7 @@
 
 #include <imgui.h>
 
+#include "haylen/core/JsonNumber.hpp"
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
@@ -61,6 +62,7 @@ void Window::render(Context& context, const math::Rect&) {
     const float header = context.getMetric(Theme::Metric::WindowTitleHeight);
     const math::Vec2 start = position.value_or(requested.value_or(context.getBackend().getSafeRect().getCenter() - size * 0.5F));
     position = math::Vec2{std::clamp(start.x, display.x, std::max(display.x, display.getRight() - size.x)), std::clamp(start.y, display.y, std::max(display.y, display.getBottom() - header))};
+    setBounds({position->x, position->y, size.x, size.y});
 
     ImGui::SetNextWindowPos(ImGuiConverter::toImVec2(*position));
     ImGui::SetNextWindowSize(ImGuiConverter::toImVec2(size));
@@ -74,7 +76,7 @@ void Window::render(Context& context, const math::Rect&) {
         Surfaces::draw(context, Theme::Surface::Window, frame, context.getColor(Theme::Color::Panel), context.getColor(Theme::Color::Border));
         drawTitle(context, {frame.x, frame.y, frame.width, header});
         Linear::render(context, {frame.x, frame.y + header, frame.width, std::max(0.0F, frame.height - header)});
-        if (open && closable && context.getFocus().isCancelPressedIn(ImGui::GetCurrentWindow())) {
+        if (open && closable && context.getFocus().answerCancel(ImGui::GetCurrentWindow())) {
             close(context);
         }
     }
@@ -84,7 +86,7 @@ void Window::render(Context& context, const math::Rect&) {
 void Window::drawTitle(Context& context, const math::Rect& bar) {
     const float radius = context.getMetric(Theme::Metric::ControlRadius);
     const float side = closable ? bar.height : 0.0F;
-    const math::Rect grip{bar.x, bar.y, bar.width - side, bar.height};
+    const math::Rect grip = context.mirror({bar.x, bar.y, bar.width - side, bar.height}, bar);
     ImDrawList& list = *ImGui::GetWindowDrawList();
     list.AddRectFilled(ImGuiConverter::toImVec2(bar.getMin()), ImGuiConverter::toImVec2(bar.getMax()), ImGuiConverter::toImU32(context.getColor(Theme::Color::Raised)), radius, ImDrawFlags_RoundCornersTop);
     list.AddLine({bar.x, bar.getBottom()}, {bar.getRight(), bar.getBottom()}, ImGuiConverter::toImU32(context.getColor(Theme::Color::Border)), context.getMetric(Theme::Metric::BorderWidth));
@@ -92,7 +94,7 @@ void Window::drawTitle(Context& context, const math::Rect& bar) {
     Typography::drawAligned(context, Theme::Font::Button, {grip.x + padding, grip.y, std::max(0.0F, grip.width - padding * 2.0F), grip.height}, context.getColor(Theme::Color::Text), context.getText(title), Alignment::Start);
 
     if (closable) {
-        const math::Rect cross = math::Rect{bar.getRight() - side, bar.y, side, side}.expanded(-side * 0.15F);
+        const math::Rect cross = context.mirror({bar.getRight() - side, bar.y, side, side}, bar).expanded(-side * 0.15F);
         const Widgets::Interaction state = Widgets::interact(context, cross, radius, "##close");
         if (state.hovered) {
             list.AddRectFilled(ImGuiConverter::toImVec2(cross.getMin()), ImGuiConverter::toImVec2(cross.getMax()), ImGuiConverter::toImU32(context.getColor(Theme::Color::Hover)), radius);
@@ -118,7 +120,7 @@ void Window::drawTitle(Context& context, const math::Rect& bar) {
         dragging = true;
         ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
     } else if (std::exchange(dragging, false)) {
-        context.emit(*this, "move", {{"x", position->x}, {"y", position->y}});
+        context.emit(*this, "move", {{"x", core::JsonNumber::fromFloat(position->x)}, {"y", core::JsonNumber::fromFloat(position->y)}});
     }
 }
 

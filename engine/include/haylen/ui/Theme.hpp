@@ -150,9 +150,12 @@ class Theme final {
         SlotHighlighted,
     };
 
+    // The font a role draws with, its size and the style of its face, where a font without a face for the style draws with its regular face.
     struct FontStyle {
         std::string font = "default";
         float size = 30.0F;
+        bool bold = false;
+        bool italic = false;
     };
 
     // A nine-slice image drawn in place of a flat surface. Borders keep their texture size times the scale, and the padding moves content away from thick borders.

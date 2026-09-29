@@ -11,6 +11,7 @@
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/ui/FocusDirection.hpp"
 #include "haylen/ui/Theme.hpp"
 
 namespace haylen::ui {
@@ -97,8 +98,14 @@ class Widgets final {
     // Draws a filled triangle pointing in a direction, sized in design units and centered on a point.
     static void arrow(math::Vec2 center, float size, ImGuiDir direction, math::Color color);
 
-    // Places a popup just below an anchor, as wide as the anchor unless its content needs more.
-    static void placePopup(const math::Rect& anchor, float width);
+    // Returns the direction an arrow points in the direction of the UI, which swaps left and right in a right-to-left UI, so an arrow that means forward points the way the UI reads.
+    [[nodiscard]] static ImGuiDir mirror(const Context& context, ImGuiDir direction) noexcept;
+
+    // Returns the step a horizontal direction the player pressed takes along a control that grows toward the end of the UI: one forward when it points toward the end and one back otherwise.
+    [[nodiscard]] static int getStep(const Context& context, FocusDirection direction) noexcept;
+
+    // Places a popup just below an anchor, as wide as the anchor unless its content needs more, lined up with the side of the anchor where the UI starts.
+    static void placePopup(const Context& context, const math::Rect& anchor, float width);
 
   private:
     struct SurfaceSet {

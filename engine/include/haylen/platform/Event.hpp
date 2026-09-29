@@ -43,6 +43,8 @@ struct Event {
         NetworkChanged,
         InterruptionBegan,
         InterruptionEnded,
+        WindowMoved,
+        MonitorsChanged,
     };
 
     static constexpr std::size_t kMaxTouchPoints = 10;

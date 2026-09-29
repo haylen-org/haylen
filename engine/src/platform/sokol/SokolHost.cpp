@@ -1,5 +1,6 @@
 #include "platform/sokol/SokolHost.hpp"
 
+#include <stdexcept>
 #include <string>
 
 #include "platform/Services.hpp"
@@ -25,20 +26,23 @@ bool SokolHost::isFullscreen() const noexcept {
 }
 
 void SokolHost::setFullscreen(bool value) {
-    if (sapp_is_fullscreen() != value) {
-        sapp_toggle_fullscreen();
-        // Leaving fullscreen restores the default frame of the window, which lets the player resize it again.
-        Services::setWindowResizable(resizable);
+    if (sapp_is_fullscreen() == value) {
+        return;
+    }
+    sapp_toggle_fullscreen();
+    // Leaving fullscreen restores the default style of the window, which may have lost its decorations or its fixed size.
+    if (!value) {
+        applyStyle();
     }
 }
 
 bool SokolHost::isResizable() const noexcept {
-    return resizable;
+    return style.resizable;
 }
 
 void SokolHost::setResizable(bool value) {
-    resizable = value;
-    Services::setWindowResizable(value);
+    style.resizable = value;
+    applyStyle();
 }
 
 void SokolHost::setTitle(std::string_view value) {
@@ -102,6 +106,90 @@ bool SokolHost::hasPointerDevice() const noexcept {
     return Services::hasPointerDevice();
 }
 
+// The window composes premultiplied alpha with the desktop when it opened transparent, and while it is opaque the frames keep alpha 1.
+bool SokolHost::canBeTransparent() const noexcept {
+    return sapp_query_desc().composite_mode == SAPP_COMPOSITEMODE_PREMULTIPLIED;
+}
+
+bool SokolHost::isTransparent() const noexcept {
+    return style.transparent;
+}
+
+void SokolHost::setTransparent(bool value) {
+    if (value && !canBeTransparent()) {
+        throw std::logic_error("The window opened opaque, so it cannot turn transparent. Set window.transparent in app.json to open a window that can.");
+    }
+    style.transparent = value;
+    applyStyle();
+}
+
+bool SokolHost::isDecorated() const noexcept {
+    return style.decorated;
+}
+
+void SokolHost::setDecorated(bool value) {
+    style.decorated = value;
+    applyStyle();
+}
+
+bool SokolHost::isAlwaysOnTop() const noexcept {
+    return style.alwaysOnTop;
+}
+
+void SokolHost::setAlwaysOnTop(bool value) {
+    style.alwaysOnTop = value;
+    applyStyle();
+}
+
+bool SokolHost::isShownInTaskbar() const noexcept {
+    return style.shownInTaskbar;
+}
+
+void SokolHost::setShowInTaskbar(bool value) {
+    style.shownInTaskbar = value;
+    applyStyle();
+}
+
+bool SokolHost::isFocusable() const noexcept {
+    return focusable;
+}
+
+void SokolHost::setFocusable(bool value) {
+    focusable = value;
+    sapp_set_window_focusable(value);
+}
+
+math::Rect SokolHost::getFrame() const {
+    return Services::getWindowFrame();
+}
+
+void SokolHost::setFrame(const math::Rect& value) {
+    Services::setWindowFrame(value);
+}
+
+Window::Passthrough SokolHost::getMousePassthrough() const noexcept {
+    return passthrough;
+}
+
+void SokolHost::setMousePassthrough(Passthrough mode, std::span<const math::Polygon::Outline> regions) {
+    passthrough = mode;
+    Services::setMousePassthrough(mode, regions);
+}
+
+void SokolHost::startDrag() {
+    Services::startWindowDrag();
+}
+
+std::vector<Monitor> SokolHost::getMonitors() const {
+    return Services::getMonitors();
+}
+
+void SokolHost::applyStyle() {
+    if (!sapp_is_fullscreen()) {
+        Services::setWindowStyle(style);
+    }
+}
+
 std::string_view SokolHost::getPlatformName() const noexcept {
     return Services::getName();
 }
@@ -120,7 +208,7 @@ audio::Mixer::Setup SokolHost::getAudioSetup() const {
 }
 
 graphics::FrameTarget SokolHost::getFrameTarget() {
-    return {.swapchain = sglue_swapchain()};
+    return {.swapchain = sglue_swapchain(), .transparent = style.transparent};
 }
 
 std::filesystem::path SokolHost::getUserDataDirectory(std::string_view identifier) {
@@ -141,6 +229,10 @@ void SokolHost::pollGamepads(std::span<input::GamepadState> gamepads) {
 
 void SokolHost::dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson) {
     Services::dispatch(id, method, paramsJson);
+}
+
+void SokolHost::cancelPlatformCall(std::uint64_t id) {
+    Services::cancel(id);
 }
 
 sapp_mouse_cursor SokolHost::toSokolCursor(Cursor cursor) noexcept {

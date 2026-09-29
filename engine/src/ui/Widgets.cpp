@@ -141,7 +141,8 @@ bool Widgets::button(Context& context, const math::Rect& bounds, std::string_vie
         Typography::drawAligned(context, Theme::Font::Button, bounds, color, label, Alignment::Start);
         if (state.hovered) {
             const float y = std::floor(bounds.y + (bounds.height + Typography::getLineHeight(context, Theme::Font::Button)) * 0.5F);
-            ImGui::GetWindowDrawList()->AddLine({bounds.x, y}, {bounds.x + Typography::measure(context, Theme::Font::Button, label).x, y}, ImGuiConverter::toImU32(color), 1.0F);
+            const math::Rect line = context.mirror({bounds.x, y, std::min(Typography::measure(context, Theme::Font::Button, label).x, bounds.width), 0.0F}, bounds);
+            ImGui::GetWindowDrawList()->AddLine({line.x, y}, {line.getRight(), y}, ImGuiConverter::toImU32(color), 1.0F);
         }
         return state.clicked;
     }
@@ -177,18 +178,18 @@ bool Widgets::button(Context& context, const math::Rect& bounds, std::string_vie
         ImGui::GetWindowDrawList()->AddRectFilled(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()), ImGuiConverter::toImU32(context.getColor(Theme::Color::Selection)), context.getMetric(Theme::Metric::ControlRadius));
     }
 
-    // The label and icon sit together in the middle of the space the surface leaves free.
+    // The label and icon sit together in the middle of the space the surface leaves free, the icon on the side the UI starts.
     const math::Rect inner = bounds.inset(Surfaces::getPadding(context, surfaces.normal));
     const float iconSize = icon != nullptr && icon->isValid() ? context.getMetric(Theme::Metric::IconSize) : 0.0F;
     const float labelWidth = label.empty() ? 0.0F : std::min(Typography::measure(context, Theme::Font::Button, label).x, std::max(0.0F, inner.width - iconSize - kContentSpacing));
     const float contentWidth = iconSize + labelWidth + (iconSize > 0.0F && labelWidth > 0.0F ? kContentSpacing : 0.0F);
     float x = std::floor(inner.x + (inner.width - contentWidth) * 0.5F);
     if (iconSize > 0.0F) {
-        Surfaces::drawImage(context, *icon, {x, std::floor(inner.getCenter().y - iconSize * 0.5F), iconSize, iconSize}, variant == ButtonVariant::Icon || variant == ButtonVariant::Toolbar ? textColor : math::Color::white());
+        Surfaces::drawImage(context, *icon, context.mirror({x, std::floor(inner.getCenter().y - iconSize * 0.5F), iconSize, iconSize}, inner), variant == ButtonVariant::Icon || variant == ButtonVariant::Toolbar ? textColor : math::Color::white());
         x += iconSize + kContentSpacing;
     }
     if (labelWidth > 0.0F) {
-        Typography::drawAligned(context, Theme::Font::Button, {x, inner.y, labelWidth, inner.height}, textColor, label, Alignment::Start);
+        Typography::drawAligned(context, Theme::Font::Button, context.mirror({x, inner.y, labelWidth, inner.height}, inner), textColor, label, Alignment::Start);
     }
     return state.clicked;
 }
@@ -206,7 +207,7 @@ bool Widgets::checkbox(Context& context, const math::Rect& bounds, bool& value, 
     }
 
     const float size = context.getMetric(Theme::Metric::ChoiceSize);
-    const math::Rect box{bounds.x, std::floor(bounds.getCenter().y - size * 0.5F), size, size};
+    const math::Rect box = context.mirror({bounds.x, std::floor(bounds.getCenter().y - size * 0.5F), size, size}, bounds);
     const Theme::Surface role = value ? Theme::Surface::CheckChecked : Theme::Surface::Check;
     math::Color fill = context.getColor(value ? Theme::Color::Accent : Theme::Color::Raised);
     if (state.hovered) {
@@ -218,7 +219,7 @@ bool Widgets::checkbox(Context& context, const math::Rect& bounds, bool& value, 
         ImGui::RenderCheckMark(ImGui::GetWindowDrawList(), {box.x + padding, box.y + padding}, ImGuiConverter::toImU32(context.getColor(Theme::Color::OnAccent)), size - padding * 2.0F);
     }
     if (!label.empty()) {
-        Typography::drawAligned(context, Theme::Font::Body, {box.getRight() + kContentSpacing, bounds.y, bounds.getRight() - box.getRight() - kContentSpacing, bounds.height}, context.getColor(Theme::Color::Text), label, Alignment::Start);
+        Typography::drawAligned(context, Theme::Font::Body, context.mirror({bounds.x + size + kContentSpacing, bounds.y, bounds.width - size - kContentSpacing, bounds.height}, bounds), context.getColor(Theme::Color::Text), label, Alignment::Start);
     }
     return state.clicked;
 }
@@ -226,7 +227,8 @@ bool Widgets::checkbox(Context& context, const math::Rect& bounds, bool& value, 
 bool Widgets::radio(Context& context, const math::Rect& bounds, bool selected, std::string_view label, std::string_view idLabel) {
     const Interaction state = interact(context, bounds, context.getMetric(Theme::Metric::ControlRadius), idLabel);
     const float size = context.getMetric(Theme::Metric::ChoiceSize);
-    const ImVec2 center{bounds.x + size * 0.5F, bounds.getCenter().y};
+    const math::Rect circle = context.mirror({bounds.x, bounds.getCenter().y - size * 0.5F, size, size}, bounds);
+    const ImVec2 center = ImGuiConverter::toImVec2(circle.getCenter());
     math::Color fill = context.getColor(Theme::Color::Raised);
     if (state.hovered) {
         fill = mix(fill, context.getColor(Theme::Color::Hover));
@@ -238,7 +240,7 @@ bool Widgets::radio(Context& context, const math::Rect& bounds, bool selected, s
         list.AddCircleFilled(center, size * 0.25F, ImGuiConverter::toImU32(context.getColor(Theme::Color::Accent)));
     }
     if (!label.empty()) {
-        Typography::drawAligned(context, Theme::Font::Body, {bounds.x + size + kContentSpacing, bounds.y, bounds.width - size - kContentSpacing, bounds.height}, context.getColor(Theme::Color::Text), label, Alignment::Start);
+        Typography::drawAligned(context, Theme::Font::Body, context.mirror({bounds.x + size + kContentSpacing, bounds.y, bounds.width - size - kContentSpacing, bounds.height}, bounds), context.getColor(Theme::Color::Text), label, Alignment::Start);
     }
     return state.clicked;
 }
@@ -260,19 +262,20 @@ bool Widgets::toggle(Context& context, const math::Rect& bounds, bool& value, st
     const float step = context.getDeltaSeconds() * kToggleSpeed;
     position = position < target ? std::min(target, position + step) : std::max(target, position - step);
 
+    // A right-to-left UI mirrors the switch, which sits on the right and turns on toward the left.
     const float width = context.getMetric(Theme::Metric::ToggleWidth);
     const float height = context.getMetric(Theme::Metric::ToggleHeight);
-    const math::Rect track{bounds.x, std::floor(bounds.getCenter().y - height * 0.5F), width, height};
+    const math::Rect track = context.mirror({bounds.x, std::floor(bounds.getCenter().y - height * 0.5F), width, height}, bounds);
     const math::Color off = context.getColor(Theme::Color::BorderStrong);
     const math::Color on = context.getColor(Theme::Color::Accent);
     const math::Color trackColor{off.r + (on.r - off.r) * position, off.g + (on.g - off.g) * position, off.b + (on.b - off.b) * position, off.a + (on.a - off.a) * position};
     Surfaces::draw(context, value ? Theme::Surface::TrackFill : Theme::Surface::Track, track, state.hovered ? mix(trackColor, context.getColor(Theme::Color::Hover)) : trackColor, std::nullopt, height * 0.5F);
 
     const float knob = height - 6.0F;
-    const math::Rect knobRect{track.x + 3.0F + (width - knob - 6.0F) * position, track.y + 3.0F, knob, knob};
+    const math::Rect knobRect = context.mirror({track.x + 3.0F + (width - knob - 6.0F) * position, track.y + 3.0F, knob, knob}, track);
     Surfaces::draw(context, Theme::Surface::Knob, knobRect, context.getColor(Theme::Color::OnAccent), std::nullopt, knob * 0.5F);
     if (!label.empty()) {
-        Typography::drawAligned(context, Theme::Font::Body, {track.getRight() + kContentSpacing, bounds.y, bounds.getRight() - track.getRight() - kContentSpacing, bounds.height}, context.getColor(Theme::Color::Text), label, Alignment::Start);
+        Typography::drawAligned(context, Theme::Font::Body, context.mirror({bounds.x + width + kContentSpacing, bounds.y, bounds.width - width - kContentSpacing, bounds.height}, bounds), context.getColor(Theme::Color::Text), label, Alignment::Start);
     }
     return state.clicked;
 }
@@ -300,13 +303,17 @@ bool Widgets::slider(Context& context, const math::Rect& bounds, double& value, 
         ImGui::FocusWindow(window);
     }
 
+    // A right-to-left slider grows toward the left, which ImGui drags as a reversed range.
     const float knob = context.getMetric(Theme::Metric::SliderKnobSize);
+    const bool reversed = context.isRightToLeft();
     ImGui::PushStyleVar(ImGuiStyleVar_GrabMinSize, knob);
     ImRect grab;
     const double before = value;
-    ImGui::SliderBehavior(box, id, ImGuiDataType_Double, &value, &minimum, &maximum, "%.4f", ImGuiSliderFlags_NoInput, &grab);
+    ImGui::SliderBehavior(box, id, ImGuiDataType_Double, &value, reversed ? &maximum : &minimum, reversed ? &minimum : &maximum, "%.4f", ImGuiSliderFlags_NoInput, &grab);
     ImGui::PopStyleVar();
-    if (step > 0.0) {
+
+    // Only a value the player moves lands on the step, so a value given off the step stays as it is until then.
+    if (step > 0.0 && value != before) {
         value = std::clamp(minimum + std::round((value - minimum) / step) * step, minimum, maximum);
     }
     drawFocusRing(context, bounds, id, bounds.height * 0.5F);
@@ -316,8 +323,8 @@ bool Widgets::slider(Context& context, const math::Rect& bounds, double& value, 
     const math::Rect track{bounds.x + knob * 0.5F, std::floor(bounds.getCenter().y - trackHeight * 0.5F), bounds.width - knob, trackHeight};
     const math::Rect groove = track.inset(Surfaces::getPadding(context, Theme::Surface::Track));
     Surfaces::draw(context, Theme::Surface::Track, track, context.getColor(Theme::Color::BorderStrong), std::nullopt, trackHeight * 0.5F);
-    Surfaces::draw(context, Theme::Surface::TrackFill, {groove.x, groove.y, groove.width * span, groove.height}, context.getColor(Theme::Color::Accent), std::nullopt, groove.height * 0.5F);
-    const math::Rect knobRect{track.x + track.width * span - knob * 0.5F, std::floor(bounds.getCenter().y - knob * 0.5F), knob, knob};
+    Surfaces::draw(context, Theme::Surface::TrackFill, context.mirror({groove.x, groove.y, groove.width * span, groove.height}, groove), context.getColor(Theme::Color::Accent), std::nullopt, groove.height * 0.5F);
+    const math::Rect knobRect = context.mirror({track.x + track.width * span - knob * 0.5F, std::floor(bounds.getCenter().y - knob * 0.5F), knob, knob}, track);
     const bool active = state.ActiveId == id;
     Surfaces::draw(context, Theme::Surface::Knob, knobRect, active || hovered ? mix(context.getColor(Theme::Color::OnAccent), context.getColor(Theme::Color::Pressed)) : context.getColor(Theme::Color::OnAccent), context.getColor(Theme::Color::Accent), knob * 0.5F);
 
@@ -337,7 +344,7 @@ void Widgets::progress(Context& context, const math::Rect& bounds, float value, 
 
     // The fill stays inside the padding of the track surface, so a framed bar image keeps its frame visible.
     const math::Rect groove = bounds.inset(Surfaces::getPadding(context, Theme::Surface::Track));
-    const math::Rect filled{groove.x, groove.y, std::max(groove.width * amount, context.getTheme().getSurface(Theme::Surface::TrackFill) != nullptr ? 0.0F : groove.height), groove.height};
+    const math::Rect filled = context.mirror({groove.x, groove.y, std::max(groove.width * amount, context.getTheme().getSurface(Theme::Surface::TrackFill) != nullptr ? 0.0F : groove.height), groove.height}, groove);
     Surfaces::draw(context, Theme::Surface::TrackFill, filled, context.getColor(getToneColors(tone == Tone::Neutral ? Tone::Accent : tone).fill), std::nullopt, groove.height * 0.5F);
 }
 
@@ -350,6 +357,17 @@ void Widgets::spinner(Context& context, math::Vec2 center, float radius, math::C
     list.PathStroke(ImGuiConverter::toImU32(color), std::max(2.0F, radius * 0.2F));
 }
 
+ImGuiDir Widgets::mirror(const Context& context, ImGuiDir direction) noexcept {
+    if (!context.isRightToLeft() || (direction != ImGuiDir_Left && direction != ImGuiDir_Right)) {
+        return direction;
+    }
+    return direction == ImGuiDir_Left ? ImGuiDir_Right : ImGuiDir_Left;
+}
+
+int Widgets::getStep(const Context& context, FocusDirection direction) noexcept {
+    return (direction == FocusDirection::Right) != context.isRightToLeft() ? 1 : -1;
+}
+
 void Widgets::arrow(math::Vec2 center, float size, ImGuiDir direction, math::Color color) {
     const float half = size * 0.5F;
     const bool vertical = direction == ImGuiDir_Up || direction == ImGuiDir_Down;
@@ -360,8 +378,9 @@ void Widgets::arrow(math::Vec2 center, float size, ImGuiDir direction, math::Col
     ImGui::GetWindowDrawList()->AddTriangleFilled(first, second, tip, ImGuiConverter::toImU32(color));
 }
 
-void Widgets::placePopup(const math::Rect& anchor, float width) {
-    ImGui::SetNextWindowPos({anchor.x, anchor.getBottom() + 4.0F});
+void Widgets::placePopup(const Context& context, const math::Rect& anchor, float width) {
+    const bool rightToLeft = context.isRightToLeft();
+    ImGui::SetNextWindowPos({rightToLeft ? anchor.getRight() : anchor.x, anchor.getBottom() + 4.0F}, ImGuiCond_Always, {rightToLeft ? 1.0F : 0.0F, 0.0F});
     ImGui::SetNextWindowSizeConstraints({std::max(width, anchor.width), 0.0F}, {FLT_MAX, FLT_MAX});
 }
 

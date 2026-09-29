@@ -294,13 +294,18 @@ void RendererState::describeTargets(sg_pipeline_desc& desc, Program program, std
     using Mode = graphics::BlendMode::Type;
     const auto mode = static_cast<Mode>(blend);
     const sg_pixel_format offscreen = device.getState().offscreenFormat;
-    if (target != graphics::PassTarget::Swapchain) {
+    if (target != graphics::PassTarget::Swapchain && target != graphics::PassTarget::TransparentSwapchain) {
         desc.depth.pixel_format = SG_PIXELFORMAT_NONE;
         desc.sample_count = 1;
     }
 
     switch (target) {
     case graphics::PassTarget::Swapchain:
+        // The swapchain of an opaque window keeps the alpha of its clear, so no blend can let the desktop through.
+        desc.colors[0].blend = program == Program::Composite ? sg_blend_state{} : blendState(mode);
+        desc.colors[0].write_mask = SG_COLORMASK_RGB;
+        return;
+    case graphics::PassTarget::TransparentSwapchain:
         desc.colors[0].blend = program == Program::Composite ? sg_blend_state{} : blendState(mode);
         return;
     case graphics::PassTarget::Offscreen:

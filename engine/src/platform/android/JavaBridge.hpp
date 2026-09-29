@@ -17,6 +17,9 @@ class JavaBridge final {
     // Hands a call to the Java handler registry, which answers through the bridge relay.
     static void dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson);
 
+    // Tells the Java handler of a call that the app gave it up.
+    static void cancel(std::uint64_t id);
+
     // Hands a text field as JSON to the hidden text field, or lets it go, from the frame thread.
     static void editText(std::string_view fieldJson);
     static void finishText();
@@ -56,6 +59,7 @@ class JavaBridge final {
     static JavaVM* javaVm;
     static jclass bridgeClass;
     static jmethodID dispatchMethod;
+    static jmethodID cancelMethod;
     static jclass editorClass;
     static jmethodID editMethod;
     static jmethodID finishMethod;

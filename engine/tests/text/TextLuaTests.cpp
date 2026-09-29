@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <fstream>
+#include <iterator>
 #include <map>
 #include <string>
 #include <vector>
@@ -10,11 +12,13 @@ namespace haylen {
 
 namespace {
 
+// A bitmap font, an image and the Hebrew font of the fonts sample.
 std::map<std::string, std::string> fontFiles() {
     const std::vector<std::uint8_t> image = test::pngImage(32, 16, 0xFFFFFFFFU);
     const std::string png(image.begin(), image.end());
     const std::string bmfont = "info face=\"Pixel\" size=8\ncommon lineHeight=10 base=8 pages=1\npage id=0 file=\"pixel.png\"\nchar id=65 x=0 y=0 width=8 height=8 xoffset=0 yoffset=0 xadvance=9 page=0\nchar id=66 x=8 y=0 width=8 height=8 xoffset=0 yoffset=0 xadvance=9 page=0\nkerning first=65 second=66 amount=-1\n";
-    return {{"content/fonts/pixel.fnt", bmfont}, {"content/fonts/pixel.png", png}, {"content/images/coin.png", png}};
+    std::ifstream hebrew(std::string(HAYLEN_SAMPLE_FONTS) + "/noto_sans_hebrew_regular.ttf", std::ios::binary);
+    return {{"content/fonts/pixel.fnt", bmfont}, {"content/fonts/pixel.png", png}, {"content/images/coin.png", png}, {"content/fonts/hebrew.ttf", {std::istreambuf_iterator<char>(hebrew), std::istreambuf_iterator<char>()}}};
 }
 
 } // namespace
@@ -42,12 +46,12 @@ class TextLuaTest : public ::testing::Test {
 TEST_F(TextLuaTest, InspectsFontsAndBuildsFamilies) {
     EXPECT_EQ(lua("return tostring(font.distanceField) .. ' ' .. font.nativeSize .. ' ' .. font.pageCount .. ' ' .. tostring(font:hasGlyph('A')) .. ' ' .. tostring(font:hasGlyph(0xE000))"), "true 48.0 1 true false");
     EXPECT_EQ(lua("local glyph = font:glyph('A') return tostring(glyph.visible) .. ' ' .. tostring(glyph.advance > 0) .. ' ' .. glyph.page .. ' ' .. tostring(font:page(1).width >= 512)"), "true true 1 true");
-    EXPECT_EQ(lua("return font:toDistance(4, 32) == 2 * font:toDistance(2, 32) and font:kerning('A', 'V') <= 0"), "true");
+    EXPECT_EQ(lua("local shaped = font:shape('AV', {size = 96}) return font:toDistance(4, 32) == 2 * font:toDistance(2, 32) and #shaped == 2 and shaped[2].cluster == 2 and shaped[1].advance <= font:glyph('A').advance * 2"), "true");
     EXPECT_NE(lua("font:glyph('AB')").find("expected one character or a code point"), std::string::npos);
     EXPECT_NE(lua("font:page(2)").find("page out of range"), std::string::npos);
 
     lua("pixel = assets.font('fonts/pixel.fnt') grid = graphics.newGridFont(assets.texture('images/coin.png'), {characters = 'ABCDEFGH', cellWidth = 8, cellHeight = 8, spacing = {0, 0}})");
-    EXPECT_EQ(lua("return tostring(pixel.distanceField) .. ' ' .. pixel.nativeSize .. ' ' .. pixel:kerning('A', 'B') .. ' ' .. pixel:lineHeight(16) .. ' ' .. tostring(grid:hasGlyph('H'))"), "false 8.0 -1.0 20.0 true");
+    EXPECT_EQ(lua("return tostring(pixel.distanceField) .. ' ' .. pixel.nativeSize .. ' ' .. pixel:shape('AB')[1].advance - pixel:glyph('A').advance .. ' ' .. pixel:lineHeight(16) .. ' ' .. tostring(grid:hasGlyph('H'))"), "false 8.0 -1.0 20.0 true");
     EXPECT_EQ(lua("local layout = pixel:layout('AB', {size = 8}) return #layout.quads .. ' ' .. layout.quads[2].position.x .. ' ' .. layout.quads[2].page"), "2 8.0 1");
     EXPECT_EQ(lua("local loaded = assets.load('images/coin.png', 'gridFont', {characters = 'XY', cellWidth = 16, cellHeight = 16}) return tostring(loaded:hasGlyph('Y'))"), "true");
     EXPECT_EQ(lua("local data = assets.text('fonts/pixel.fnt') local made = graphics.newBitmapFont(data, {assets.texture('fonts/pixel.png')}) return made:measure('AB', {size = 8})"), "17.0");
@@ -88,6 +92,9 @@ TEST_F(TextLuaTest, MakesDrawsAndMeasuresRichText) {
     lua("text.visibleRatio = 1 text.visibleCharacters = -1");
     EXPECT_EQ(lua("return text.visibleCharacters .. ' ' .. text.visibleRatio"), "3 1.0");
 
+    // The bold and italic options style all the text as [b] and [i] would, here synthesized from the default font.
+    EXPECT_EQ(lua("local glyph = graphics2d.newRichText('ab', {bold = true, italic = true}):layout().glyphs[2] return tostring(glyph.syntheticBold) .. ' ' .. tostring(glyph.syntheticItalic)"), "true true");
+
     lua("typed = graphics2d.newRichText('abcd', {reveal = 20})");
     EXPECT_EQ(lua("typed:update(0.11) return typed.visibleCharacters .. ' ' .. string.format('%.2f', typed.time)"), "2 0.11");
 
@@ -99,6 +106,24 @@ TEST_F(TextLuaTest, MakesDrawsAndMeasuresRichText) {
     EXPECT_NE(lua("graphics2d.newRichText('x', {sizes = 3})").find("Unknown option 'sizes'"), std::string::npos);
     EXPECT_NE(lua("graphics2d.newRichText('x', {family = 3})").find("expected a FontFamily or a Font"), std::string::npos);
     EXPECT_NE(render("graphics2d.drawRichText('x', 0, 0)").find("No canvas is active"), std::string::npos);
+}
+
+TEST_F(TextLuaTest, ShapesAndOrdersRightToLeftText) {
+    lua("hebrew = assets.font('fonts/hebrew.ttf') scripts = graphics.newFontFamily({regular = font, fallback = {hebrew}})");
+
+    // Left-to-right text puts the Hebrew word after it reversed, drawn by the fallback, and the first Hebrew letter stands last on the right.
+    EXPECT_EQ(lua("local laid = scripts:layout('abc שלום', {size = 20}) local last = laid.quads[#laid.quads] return #laid.quads .. ' ' .. tostring(laid.quads[1].font == font) .. ' ' .. tostring(last.font == hebrew) .. ' ' .. laid.lineCount"), "7 true true 1");
+    EXPECT_EQ(lua("local w, h = scripts:measure('שלום', {size = 20}) local laid = scripts:layout('שלום', {size = 20}) return tostring(w == laid.size.x and h == laid.size.y)"), "true");
+    EXPECT_EQ(lua("local w = graphics2d.measureText(scripts, 'שלום abc', {size = 20, maxWidth = 50, direction = 'rtl', language = 'he'}) return w"), "50.0");
+    EXPECT_EQ(lua("local shaped = hebrew:shape('שלום', {direction = 'rtl', size = 40}) return #shaped .. ' ' .. shaped[1].cluster .. ' ' .. shaped[4].cluster .. ' ' .. tostring(shaped[1].advance > 0)"), "4 4 1 true");
+    EXPECT_EQ(lua("return hebrew:glyph('ש').index .. ' ' .. tostring(hebrew:glyph('ש').visible)"), lua("return hebrew:shape('ש')[1].index .. ' true'"));
+
+    // Rich text reads a paragraph right to left when asked or from its first letter, and markup sets the direction of a paragraph.
+    EXPECT_EQ(lua("local laid = graphics2d.newRichText('שלום abc', {family = scripts, direction = 'rtl', language = 'he'}):layout() return tostring(laid.lines[1].rightToLeft) .. ' ' .. tostring(laid.characters[1].rightToLeft) .. ' ' .. tostring(laid.characters[6].rightToLeft) .. ' ' .. laid.characters[6].first .. '-' .. laid.characters[6].last"), "true true false 6-6");
+    EXPECT_EQ(lua("local laid = graphics2d.newRichText('abc\\n[p dir=rtl align=start]abc[/p]', {family = scripts, maxWidth = 200}):layout() return tostring(laid.lines[1].rightToLeft) .. ' ' .. tostring(laid.lines[2].rightToLeft) .. ' ' .. tostring(laid.lines[2].rect.x > 100)"), "false true true");
+    EXPECT_EQ(render("graphics2d.beginScreen() graphics2d.drawText(scripts, 'שלום abc', 10, 10, {size = 24, direction = 'auto', language = 'he', bold = true, italic = true, align = 'end', maxWidth = 300})"), "nil");
+    EXPECT_NE(lua("graphics2d.measureText(nil, 'x', {direction = 'up'})").find("direction"), std::string::npos);
+    EXPECT_NE(lua("graphics2d.newRichText('[p dir=up]x[/p]')").find("The dir of [p] must be auto, ltr or rtl."), std::string::npos);
 }
 
 TEST_F(TextLuaTest, RegistersEffectsIconsAndFonts) {

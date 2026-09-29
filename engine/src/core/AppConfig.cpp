@@ -91,7 +91,7 @@ std::string_view AppConfig::sessionCategoryName(audio::Session::Category value) 
 }
 
 AppConfig AppConfig::fromJson(const Json& document) {
-    JsonValidator::requireKnownKeys(document, {"name", "identifier", "version", "window", "design", "orientation", "fixedRate", "maxFrameTime", "clearColor", "splash", "lifecycle", "audio", "debug", "autoload"}, "app.json");
+    JsonValidator::requireKnownKeys(document, {"name", "identifier", "version", "window", "design", "orientation", "fixedRate", "maxFrameTime", "clearColor", "splash", "lifecycle", "audio", "debug", "autoload", "native"}, "app.json");
 
     AppConfig config;
     readValue(document, "name", config.name);
@@ -101,7 +101,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
 
     if (document.contains("window")) {
         const Json& windowJson = document.at("window");
-        JsonValidator::requireKnownKeys(windowJson, {"title", "width", "height", "fullscreen", "highDpi", "resizable", "vsync", "sampleCount"}, "app.json window");
+        JsonValidator::requireKnownKeys(windowJson, {"title", "width", "height", "fullscreen", "highDpi", "resizable", "vsync", "sampleCount", "decorated", "transparent", "alwaysOnTop", "showInTaskbar", "focusable", "mousePassthrough", "position"}, "app.json window");
         readValue(windowJson, "title", config.window.title);
         readValue(windowJson, "width", config.window.width);
         readValue(windowJson, "height", config.window.height);
@@ -110,9 +110,22 @@ AppConfig AppConfig::fromJson(const Json& document) {
         readValue(windowJson, "resizable", config.window.resizable);
         readValue(windowJson, "vsync", config.window.vsync);
         readValue(windowJson, "sampleCount", config.window.sampleCount);
+        readValue(windowJson, "decorated", config.window.decorated);
+        readValue(windowJson, "transparent", config.window.transparent);
+        readValue(windowJson, "alwaysOnTop", config.window.alwaysOnTop);
+        readValue(windowJson, "showInTaskbar", config.window.showInTaskbar);
+        readValue(windowJson, "focusable", config.window.focusable);
+        readValue(windowJson, "mousePassthrough", config.window.mousePassthrough);
         requirePositive(config.window.width, "window.width");
         requirePositive(config.window.height, "window.height");
         requirePositive(config.window.sampleCount, "window.sampleCount");
+        if (windowJson.contains("position")) {
+            try {
+                config.window.position = platform::WindowPlacement::fromJson(windowJson.at("position"));
+            } catch (const std::invalid_argument& error) {
+                throw std::invalid_argument(std::string("app.json has an invalid window.position. ") + error.what());
+            }
+        }
     }
 
     if (document.contains("design")) {
@@ -147,6 +160,9 @@ AppConfig AppConfig::fromJson(const Json& document) {
 
     std::string clearColorText;
     readValue(document, "clearColor", clearColorText);
+    if (config.window.transparent) {
+        config.clearColor = math::Color::transparent();
+    }
     if (!clearColorText.empty()) {
         const auto color = math::Color::parse(clearColorText);
         if (!color) {
@@ -223,6 +239,13 @@ AppConfig AppConfig::fromJson(const Json& document) {
             throw std::invalid_argument("app.json has an empty module name in 'autoload'.");
         }
     }
+
+    if (document.contains("native")) {
+        if (!document.at("native").is_object()) {
+            throw std::invalid_argument("app.json has a 'native' section that is not an object of libraries.");
+        }
+        config.native = document.at("native");
+    }
     return config;
 }
 
@@ -231,8 +254,12 @@ Json AppConfig::toJson() const {
     if (debug.safeArea) {
         debugJson["safeArea"] = debug.safeArea->toJson();
     }
+    Json windowJson = {{"title", window.title}, {"width", window.width}, {"height", window.height}, {"fullscreen", window.fullscreen}, {"highDpi", window.highDpi}, {"resizable", window.resizable}, {"vsync", window.vsync}, {"sampleCount", window.sampleCount}, {"decorated", window.decorated}, {"transparent", window.transparent}, {"alwaysOnTop", window.alwaysOnTop}, {"showInTaskbar", window.showInTaskbar}, {"focusable", window.focusable}, {"mousePassthrough", window.mousePassthrough}};
+    if (window.position) {
+        windowJson["position"] = window.position->toJson();
+    }
     return {
-        {"name", name}, {"identifier", identifier}, {"version", version}, {"window", {{"title", window.title}, {"width", window.width}, {"height", window.height}, {"fullscreen", window.fullscreen}, {"highDpi", window.highDpi}, {"resizable", window.resizable}, {"vsync", window.vsync}, {"sampleCount", window.sampleCount}}}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", scalingName(scaling)}}}, {"orientation", orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", {{"logo", splash.logo}, {"background", splash.background.toHex()}}}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", sessionCategoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}}}, {"debug", debugJson}, {"autoload", autoloads},
+        {"name", name}, {"identifier", identifier}, {"version", version}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", scalingName(scaling)}}}, {"orientation", orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", {{"logo", splash.logo}, {"background", splash.background.toHex()}}}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", sessionCategoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}}}, {"debug", debugJson}, {"autoload", autoloads}, {"native", native},
     };
 }
 

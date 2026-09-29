@@ -120,6 +120,23 @@ scene.push({
 })
 ```
 
+### input.keyCaptured(key)
+
+Returns true while the current press of a key belongs to the interface of [haylen.ui](ui.md), such as the Escape that closes a combo list or a key typed into a text field, as the [input guide](../input.md#ui-and-gameplay-input) lists. The press stays with the interface until the key is released, and meanwhile `key:` bindings of the [action map](#action-map) read it as up. The raw keyboard functions keep reporting the key.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+scene.push({
+    update = function(self, dt)
+        if input.keyPressed('escape') and not input.keyCaptured('escape') then
+            print('escape reached the game')
+        end
+    end,
+})
+```
+
 ## Mouse
 
 Mouse buttons are named `'left'`, `'right'` and `'middle'`, and the button argument defaults to `'left'`.
@@ -502,6 +519,23 @@ scene.push({
 })
 ```
 
+### input.gamepadCaptured(button, index)
+
+Returns true while the current press of a gamepad button belongs to the interface, such as the east button that closes a popup, and `button:` bindings read it as up meanwhile. `index` picks the gamepad from 1 to 4 and defaults to 1.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+scene.push({
+    update = function(self, dt)
+        if input.gamepadPressed('east') and not input.gamepadCaptured('east') then
+            print('east reached the game')
+        end
+    end,
+})
+```
+
 ### input.gamepadAxis(axis, index)
 
 Returns the value of one axis with the dead zone removed and the rest rescaled to the full range. Sticks go from -1 to 1 with positive y pointing down, and triggers go from 0 to 1.
@@ -601,7 +635,7 @@ Bindings are strings with a source and a name.
 | `virtual:<name>` | A virtual button set with `input.setVirtualButton()` or an on-screen `touchButton`. |
 | `virtual_stick:<name>` | A virtual stick set with `input.setVirtualStick()` or an on-screen `touchStick`, for vector actions. |
 
-Gamepad bindings read every connected gamepad and use the strongest one, unless `input.setGamepadIndex()` picks one gamepad. Mouse bindings read as released while the interface owns the pointer, as [input.pointerCaptured()](#inputpointercaptured) explains. Action names that were never defined read as not down and 0.
+Gamepad bindings read every connected gamepad and use the strongest one, unless `input.setGamepadIndex()` picks one gamepad. Mouse bindings read as released while the interface owns the pointer, as [input.pointerCaptured()](#inputpointercaptured) explains, and key and gamepad button bindings read as up for a press the interface answers itself, as [input.keyCaptured()](#inputkeycapturedkey) explains. Action names that were never defined read as not down and 0.
 
 An action map document is a table or a JSON file with an `actions` list. Each action has `name`, `type` and the binding lists its type uses.
 

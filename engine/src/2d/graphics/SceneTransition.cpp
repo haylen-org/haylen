@@ -14,6 +14,8 @@
 
 namespace haylen::graphics2d {
 
+const DrawOrder SceneTransition::kCapturedOrder{.blend = graphics::BlendMode::Type::Premultiplied};
+
 math::Vec2 SceneTransition::getSteps(Direction direction) noexcept {
     switch (direction) {
     case Direction::Left:
@@ -126,7 +128,7 @@ void SceneTransition::render(Renderer& renderer, const Frames& frames, float pro
         return;
     case Kind::CrossFade:
         drawImage(renderer, frames.outgoing, area);
-        drawImage(renderer, frames.incoming, area, math::Color::white().withAlpha(progress));
+        drawImage(renderer, frames.incoming, area, math::Color{progress, progress, progress, progress});
         return;
     case Kind::MoveIn:
     case Kind::SlideIn:
@@ -216,7 +218,7 @@ void SceneTransition::render(Renderer& renderer, const Frames& frames, float pro
 }
 
 void SceneTransition::drawImage(Renderer& renderer, const graphics::Texture& texture, const math::Rect& target, math::Color tint, const math::Rect& part) {
-    renderer.draw({.texture = texture, .source = getSource(texture, part), .position = target.getMin(), .size = target.getSize(), .pivot = {}, .color = tint});
+    renderer.draw({.texture = texture, .source = getSource(texture, part), .position = target.getMin(), .size = target.getSize(), .pivot = {}, .color = tint, .order = kCapturedOrder});
 }
 
 void SceneTransition::drawTransformed(Renderer& renderer, const math::Rect& area, const graphics::Texture& texture, math::Vec2 pivot, float scale, float rotation) {
@@ -224,7 +226,7 @@ void SceneTransition::drawTransformed(Renderer& renderer, const math::Rect& area
         return;
     }
     const math::Vec2 center = area.getMin() + area.getSize() * pivot;
-    renderer.draw({.texture = texture, .source = getSource(texture, {0.0F, 0.0F, 1.0F, 1.0F}), .position = center, .size = area.getSize() * scale, .pivot = pivot, .rotation = rotation});
+    renderer.draw({.texture = texture, .source = getSource(texture, {0.0F, 0.0F, 1.0F, 1.0F}), .position = center, .size = area.getSize() * scale, .pivot = pivot, .rotation = rotation, .order = kCapturedOrder});
 }
 
 // Rotates the image in depth around its middle and projects it with a camera placed well in front of it, as a grid fine enough that each cell stays straight.
@@ -254,7 +256,7 @@ void SceneTransition::drawTurn(Renderer& renderer, const math::Rect& area, const
             }
         }
     }
-    renderer.drawMesh(texture, vertices, indices);
+    renderer.drawMesh(texture, vertices, indices, kCapturedOrder);
 }
 
 void SceneTransition::drawRegion(Renderer& renderer, const math::Rect& area, const graphics::Texture& texture, std::span<const math::Vec2> polygon) {
@@ -269,7 +271,7 @@ void SceneTransition::drawRegion(Renderer& renderer, const math::Rect& area, con
     for (std::uint32_t corner = 2; corner < polygon.size(); ++corner) {
         indices.insert(indices.end(), {0U, corner - 1U, corner});
     }
-    renderer.drawMesh(texture, vertices, indices);
+    renderer.drawMesh(texture, vertices, indices, kCapturedOrder);
 }
 
 // Tiles turn off in random order, or shrink in a wave that crosses the screen toward the direction.
@@ -299,7 +301,7 @@ void SceneTransition::drawGrid(Renderer& renderer, const math::Rect& area, const
             tiles.push_back({.position = center, .size = part.getSize() * area.getSize() * scale, .source = getSource(texture, part)});
         }
     }
-    renderer.drawBatch(texture, tiles);
+    renderer.drawBatch(texture, tiles, kCapturedOrder);
 }
 
 // The outgoing strips leave in alternating directions and the incoming strips come back the same way.
@@ -320,7 +322,7 @@ void SceneTransition::drawSplit(Renderer& renderer, const math::Rect& area, cons
         strips.push_back({.position = area.getMin() + part.getMin() * area.getSize() + shift, .size = part.getSize() * area.getSize(), .source = getSource(texture, part), .pivot = {}});
     }
     renderer.drawRect(area, options.color);
-    renderer.drawBatch(texture, strips);
+    renderer.drawBatch(texture, strips, kCapturedOrder);
 }
 
 // A quarter to shrink the outgoing scene, a quarter for it to jump out, a quarter for the incoming scene to jump in and a quarter to grow it.
@@ -345,7 +347,7 @@ void SceneTransition::drawJump(Renderer& renderer, const math::Rect& area, const
     const float hop = std::abs(std::sin(travel * math::Math::kTau)) * area.height * 0.25F;
     const math::Vec2 center = area.getCenter() + steps * area.getSize() * travel - math::Vec2{0.0F, hop};
     renderer.drawRect(area, options.color);
-    renderer.draw({.texture = texture, .source = getSource(texture, {0.0F, 0.0F, 1.0F, 1.0F}), .position = center, .size = area.getSize() * scale});
+    renderer.draw({.texture = texture, .source = getSource(texture, {0.0F, 0.0F, 1.0F, 1.0F}), .position = center, .size = area.getSize() * scale, .order = kCapturedOrder});
 }
 
 void SceneTransition::drawMotion(Renderer& renderer, const math::Rect& area, const Frames& frames, float progress) const {
@@ -365,18 +367,20 @@ void SceneTransition::drawMotion(Renderer& renderer, const math::Rect& area, con
 // Every pattern reads only its own settings, so the blend carries all of them sized to the image.
 void SceneTransition::drawBlend(Renderer& renderer, const math::Rect& area, const Frames& frames, float progress, ImageBlend::Pattern pattern) const {
     const auto height = static_cast<float>(frames.outgoing.getHeight());
-    renderer.drawImageBlend({
-        .pattern = pattern,
-        .from = frames.outgoing,
-        .to = frames.incoming,
-        .area = area,
-        .progress = progress,
-        .cellSize = std::max(1.0F, height / 360.0F),
-        .blockSize = std::max(4.0F, height / 12.0F),
-        .color = options.color,
-        .reversed = options.kind == Kind::RadialCounterclockwise,
-        .angle = getSteps(options.direction).getAngle(),
-    });
+    renderer.drawImageBlend(
+        {
+            .pattern = pattern,
+            .from = frames.outgoing,
+            .to = frames.incoming,
+            .area = area,
+            .progress = progress,
+            .cellSize = std::max(1.0F, height / 360.0F),
+            .blockSize = std::max(4.0F, height / 12.0F),
+            .color = options.color,
+            .reversed = options.kind == Kind::RadialCounterclockwise,
+            .angle = getSteps(options.direction).getAngle(),
+        },
+        kCapturedOrder);
 }
 
 } // namespace haylen::graphics2d

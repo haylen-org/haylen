@@ -58,10 +58,11 @@ void Dialog::render(Context& context, const math::Rect&) {
     }
 
     const math::Rect frame{ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, width, height};
+    setBounds(frame);
     Surfaces::draw(context, Theme::Surface::Dialog, frame, context.getColor(Theme::Color::Panel), context.getColor(Theme::Color::Border));
     drawContent(context, frame.inset(padding));
 
-    if (open && dismissible && context.getFocus().isCancelPressedIn(ImGui::GetCurrentWindow())) {
+    if (open && dismissible && context.getFocus().answerCancel(ImGui::GetCurrentWindow())) {
         open = false;
         context.emit(*this, "dismiss");
     }
@@ -145,7 +146,7 @@ void Dialog::drawContent(Context& context, const math::Rect& inner) {
         y += size.y + spacing;
     }
 
-    // Buttons line up at the bottom right, and the last one, usually the main answer, starts with the navigation focus.
+    // Buttons line up at the bottom end, the right or the left of a right-to-left UI, and the last one, usually the main answer, starts with the navigation focus.
     float x = inner.getRight();
     const float height = context.getMetric(Theme::Metric::ControlHeight);
     for (auto button = buttons.rbegin(); button != buttons.rend(); ++button) {
@@ -153,7 +154,7 @@ void Dialog::drawContent(Context& context, const math::Rect& inner) {
         const math::Vec2 size = Widgets::measureButton(context, text, false, button->variant);
         x -= size.x;
         ImGui::PushID(button->id.c_str());
-        const bool pressed = Widgets::button(context, {x, inner.getBottom() - height, size.x, height}, text, nullptr, button->variant);
+        const bool pressed = Widgets::button(context, context.mirror({x, inner.getBottom() - height, size.x, height}, inner), text, nullptr, button->variant);
         if (button == buttons.rbegin() && ImGui::IsWindowAppearing()) {
             Widgets::focusItem(context);
         }

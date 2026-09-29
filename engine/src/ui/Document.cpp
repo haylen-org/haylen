@@ -45,11 +45,11 @@ void Document::collectIds(const Component& component, std::vector<std::string>& 
     }
 }
 
-math::Rect Document::place(const Component& component, math::Vec2 size, const math::Rect& area) {
+math::Rect Document::place(const Context& context, const Component& component, math::Vec2 size, const math::Rect& area) {
     if (component.getAlignment() == Alignment::Stretch) {
         return area;
     }
-    return {Component::align(component.getAlignment(), area.x, area.width, size.x), Component::align(component.getAlignment(), area.y, area.height, size.y), size.x, size.y};
+    return {context.alignHorizontally(component.getAlignment(), area.x, area.width, size.x), Component::align(component.getAlignment(), area.y, area.height, size.y), size.x, size.y};
 }
 
 Document::Built Document::build(const core::Json& node, std::size_t depth, std::size_t& count) const {
@@ -178,11 +178,17 @@ void Document::command(Context& context, std::string_view id, std::string_view n
     require(id).command(context, name, arguments);
 }
 
+// The root places itself in the direction it sets for the document.
 void Document::draw(Context& context, const math::Rect& area) {
     const EventScope scope(context, events);
     if (visible) {
         context.getFocus().beginDocument(*this);
-        root->draw(context, root->getCommon().anchor ? root->getAnchoredBounds(context) : place(*root, root->measure(context, area.width), area));
+        const bool writing = root->pushWriting(context);
+        const math::Rect placed = root->getCommon().anchor ? root->getAnchoredBounds(context) : place(context, *root, root->measure(context, area.width), area);
+        if (writing) {
+            context.popWriting();
+        }
+        root->draw(context, placed);
     }
     root->noticeStoppedDrawing(context);
 }

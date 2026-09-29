@@ -6,6 +6,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -16,39 +17,48 @@
 #include "haylen/text/Font.hpp"
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/RichTextDocument.hpp"
-#include "haylen/text/RichTextLayout.hpp"
 #include "haylen/text/RichTextOptions.hpp"
 #include "haylen/text/RichTextRegistry.hpp"
+#include "haylen/text/TextLayout.hpp"
+#include "haylen/text/TextStyle.hpp"
 
 namespace haylen::text {
 
-// Lays a rich text document out: it measures every piece of every paragraph with its font, breaks paragraphs into lines, sizes tables, and places glyphs, boxes, images and hit areas in reading order.
+class BidiParagraph;
+
+// Lays a rich text document out: it shapes every paragraph into clusters with the fonts of their styles and scripts, breaks paragraphs into lines where the Unicode rules allow, orders every line for display by the Unicode Bidirectional Algorithm, sizes tables, and places glyphs, boxes, images and hit areas. Plain text lays out the same way as a document of one run per line.
 class LayoutBuilder final {
   public:
     LayoutBuilder(const RichTextDocument& source, const RichTextOptions& layoutOptions, const RichTextRegistry& textRegistry);
 
-    [[nodiscard]] RichTextLayout build();
+    [[nodiscard]] TextLayout build();
+
+    // Lays plain text out with a family, or with a lone font when there is no family, where every line of the text is a paragraph.
+    [[nodiscard]] static TextLayout layoutPlainText(std::string_view text, const TextStyle& style, const FontFamily* family, Font* font);
 
   private:
-    // One unit a line holds: a glyph, an inline image or icon, a line break, or a pause of the reveal before the next character.
+    // One unit a line holds in reading order: a cluster of glyphs, an inline image or icon, a line break, or a pause of the reveal before the next character. Code points count in the text of the paragraph, and the glyphs of a cluster stand in visual order from its left edge.
     struct Piece {
         enum class Kind : std::uint8_t {
-            Glyph,
+            Cluster,
             Image,
             LineBreak,
             Pause,
         };
 
-        Kind kind = Kind::Glyph;
+        Kind kind = Kind::Cluster;
         std::size_t style = 0;
         std::size_t look = 0;
-        char32_t codePoint = 0;
-        Font::Glyph glyph;
-        float factor = 1.0F;
+        std::size_t begin = 0;
+        std::size_t end = 0;
+        std::size_t firstGlyph = 0;
+        std::size_t glyphCount = 0;
         float advance = 0.0F;
         float ascent = 0.0F;
         float descent = 0.0F;
+        std::uint8_t level = 0;
         bool space = false;
+        bool breakBefore = false;
         graphics::Texture texture;
         math::Rect source{};
         math::Vec2 extent{};
@@ -58,7 +68,15 @@ class LayoutBuilder final {
         float pause = 0.0F;
     };
 
-    // The pieces a line holds, the width up to its last visible piece, its ascent and descent, where it starts below the paragraph top, how far a drop cap pushes it, and whether it wrapped, which lets filled lines stretch.
+    // A glyph of a cluster at the scale of its text, where the offset places its pen from the left edge of the cluster.
+    struct PlacedGlyph {
+        Font::Glyph glyph;
+        std::uint32_t index = 0;
+        float factor = 1.0F;
+        math::Vec2 offset{};
+    };
+
+    // The pieces a line holds, the width up to its last visible piece, its ascent and descent, where it starts below the paragraph top, how far a drop cap pushes it, whether it wrapped, which lets filled lines stretch, and its drawable pieces from left to right.
     struct Line {
         std::size_t begin = 0;
         std::size_t end = 0;
@@ -69,14 +87,29 @@ class LayoutBuilder final {
         float top = 0.0F;
         float shift = 0.0F;
         bool wrapped = false;
+        std::vector<std::size_t> order;
     };
 
-    // A paragraph broken into lines, with its drop cap and list marker pieces. The widest segment that cannot wrap is the narrowest the paragraph can get.
+    // The text of a paragraph with the style of every code point, the object behind each object replacement character and the pauses before code points.
+    struct Source {
+        std::u32string text;
+        std::vector<std::size_t> styles;
+        std::map<std::size_t, const RichTextDocument::Inline*> objects;
+        std::vector<std::pair<std::size_t, float>> pauses;
+    };
+
+    // A paragraph broken into lines, with its drop cap and list marker pieces and their visual orders. The widest segment that cannot wrap is the narrowest the paragraph can get.
     struct Flow {
+        std::u32string text;
+        std::u32string dropCapText;
+        bool rightToLeft = false;
         std::vector<Piece> pieces;
+        std::vector<PlacedGlyph> glyphs;
         std::vector<Line> lines;
         std::vector<Piece> dropCap;
+        std::vector<std::size_t> dropCapOrder;
         std::vector<Piece> marker;
+        std::vector<std::size_t> markerOrder;
         float dropCapAscent = 0.0F;
         float dropCapHeight = 0.0F;
         float dropCapShift = 0.0F;
@@ -92,6 +125,7 @@ class LayoutBuilder final {
         std::vector<float> columns;
         std::vector<float> rows;
         std::vector<std::vector<Block>> cells;
+        bool rightToLeft = false;
     };
 
     // A laid out paragraph, rule or table with its height and widths. The trailing space is the line spacing below its last line, which the last block of a column leaves out.
@@ -105,11 +139,20 @@ class LayoutBuilder final {
         float minimumWidth = 0.0F;
     };
 
-    // The family, face and size a style draws with.
+    // The family, face, styles and size a style draws with, where a lone font has no family and so no fallbacks.
     struct StyleFont {
-        std::shared_ptr<FontFamily> family;
+        const FontFamily* family = nullptr;
         FontFamily::Selection face;
+        bool bold = false;
+        bool italic = false;
         float size = 0.0F;
+    };
+
+    // A drawable piece placed on its line, from left to right.
+    struct Placed {
+        std::size_t piece = 0;
+        float x = 0.0F;
+        std::size_t character = 0;
     };
 
     // Synthetic bold adds this fraction of the text size to each side of a stroke, and synthetic italic leans glyphs by this shift per unit of height.
@@ -126,17 +169,28 @@ class LayoutBuilder final {
     static constexpr float kStrikeOffset = 0.3F;
     static constexpr float kDecorationThickness = 0.06F;
 
+    // An object replacement character stands for an image or an icon, and a line separator for a line break inside a paragraph.
+    static constexpr char32_t kObject = U'\U0000FFFC';
+    static constexpr char32_t kLineSeparator = U'\U00002028';
+
+    LayoutBuilder(const RichTextDocument& source, const RichTextOptions& layoutOptions, const RichTextRegistry* textRegistry, const FontFamily* baseFamily, Font* baseFont);
+
     [[nodiscard]] static bool breaksBefore(const std::vector<Piece>& pieces, std::size_t index) noexcept;
+    [[nodiscard]] static TextAlign resolveAlign(TextAlign align, bool rightToLeft, bool lastLine) noexcept;
     [[nodiscard]] static float alignOffset(TextAlign align, float room, float width) noexcept;
+    [[nodiscard]] static std::vector<std::size_t> orderPieces(const std::vector<Piece>& pieces, std::size_t begin, std::size_t end, const BidiParagraph& bidi);
 
     [[nodiscard]] const StyleFont& getStyleFont(std::size_t style);
     [[nodiscard]] std::size_t getLook(std::size_t style, const FontFamily::Selection& face);
     [[nodiscard]] math::Color getColor(std::size_t style) const;
     [[nodiscard]] float getIndentUnit() const noexcept;
+    [[nodiscard]] Direction getDirection(const RichTextDocument::Paragraph& paragraph) const noexcept;
 
-    void appendText(std::vector<Piece>& pieces, std::size_t style, std::u32string_view text);
-    void appendImage(std::vector<Piece>& pieces, const RichTextDocument::Inline& item);
+    [[nodiscard]] std::vector<Piece> shape(const Source& source, const BidiParagraph& bidi, std::vector<PlacedGlyph>& glyphs);
+    void shapeRun(const Source& source, std::size_t begin, std::size_t end, const FontFamily::Selection& face, std::uint8_t level, std::uint32_t script, std::vector<Piece>& pieces, std::vector<PlacedGlyph>& glyphs);
+    [[nodiscard]] Piece measureImage(const RichTextDocument::Inline& item);
     [[nodiscard]] Piece measureObject(std::size_t style, graphics::Texture texture, math::Rect source, math::Vec2 extent, math::Color tint, RichTextDocument::VerticalAlign align);
+    void shapeAside(Flow& flow, std::u32string_view text, std::size_t style, std::vector<Piece>& pieces, std::vector<std::size_t>& order);
 
     [[nodiscard]] std::vector<Block> measureBlocks(const std::vector<RichTextDocument::Paragraph>& paragraphs, float width);
     [[nodiscard]] Block measureParagraph(const RichTextDocument::Paragraph& paragraph, float width);
@@ -148,19 +202,24 @@ class LayoutBuilder final {
     float emitBlocks(const std::vector<Block>& blocks, math::Vec2 origin, float width);
     void emitParagraph(const Block& block, math::Vec2 origin, float width);
     void emitRule(const Block& block, math::Vec2 origin, float width);
-    void emitTable(const Block& block, math::Vec2 origin);
-    void emitPiece(const Piece& piece, math::Vec2 pen, float lineTop, float lineHeight, bool counted);
-    void emitDecorations(const Flow& flow, const Line& line, const std::vector<float>& lefts, float baseline);
-    void addBox(RichTextLayout::Box::Kind kind, const math::Rect& rect, math::Color color, std::size_t firstCharacter, std::size_t lastCharacter);
+    void emitTable(const Block& block, math::Vec2 origin, float width);
+    void emitPiece(const Flow& flow, std::u32string_view text, const Piece& piece, math::Vec2 pen, float lineTop, float lineHeight, std::size_t character);
+    void emitDecorations(const Flow& flow, const Line& line, const std::vector<Placed>& placed, float baseline);
+    void addBox(TextLayout::Box::Kind kind, const math::Rect& rect, math::Color color, std::size_t firstCharacter, std::size_t lastCharacter, bool rightToLeft = false);
+    [[nodiscard]] std::size_t addCharacter(const Piece& piece, std::size_t offset, bool rightToLeft);
 
     const RichTextDocument& document;
     const RichTextOptions& options;
-    const RichTextRegistry& registry;
-    RichTextLayout layout;
+    const RichTextRegistry* registry;
+    const FontFamily* family;
+    Font* loneFont;
+    TextLayout layout;
     std::vector<std::optional<StyleFont>> styleFonts;
     std::map<std::string, std::shared_ptr<FontFamily>, std::less<>> families;
     std::map<std::pair<std::size_t, const Font*>, std::size_t> looks;
+    std::vector<Font::ShapedGlyph> shapedGlyphs;
     float pendingPause = 0.0F;
+    std::size_t textOffset = 0;
 };
 
 } // namespace haylen::text

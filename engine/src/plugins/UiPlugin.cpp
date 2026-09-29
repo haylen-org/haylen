@@ -17,8 +17,10 @@
 #include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/graphics/Viewport.hpp"
+#include "haylen/input/ActionMap.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/input/VirtualInput.hpp"
+#include "haylen/localization/Catalog.hpp"
 #include "haylen/plugins/LocalizationPlugin.hpp"
 #include "haylen/plugins/TextPlugin.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
@@ -60,6 +62,7 @@ void UiPlugin::stop(core::Engine& engine) {
         controls.setStick(name, {});
     }
     engine.getInput().setPointerCaptured(false);
+    engine.getActions().setCapture({});
 
     // Pending image loads finish into a cache that no longer exists, so they are told to drop their result.
     alive = std::make_shared<bool>(true);
@@ -102,6 +105,12 @@ void UiPlugin::beginFrame(core::Engine& engine, float) {
     navigation.update(engine.getActions(), engine.getInput(), engine.getVirtualInput(), engine.isHalted() || engine.getScenes().isInputBlocked());
     backend->beginFrame(delta, engine.getViewport(), engine.getInput(), navigation);
     context->beginFrame(elapsed, delta, engine.getViewport().getVisibleRect().getMin());
+
+    // Text reads in the current language, and an automatic direction takes the one that language declares.
+    const localization::Catalog& catalog = engine.getPlugin<LocalizationPlugin>().getCatalog();
+    const bool known = !catalog.getLanguage().empty();
+    const text::Direction resolved = direction == text::Direction::Auto ? (known ? catalog.getDirection(catalog.getLanguage()) : text::Direction::LeftToRight) : direction;
+    context->setBaseWriting(resolved, catalog.getLanguage());
     focus.update(navigation, engine.getInput().getLastDevice(), engine.getWindow().hasPointerDevice());
 }
 
@@ -155,8 +164,32 @@ void UiPlugin::renderUi(core::Engine& engine) {
     drawing.render(engine.getRenderer2D());
     applyVirtualInput(engine);
 
-    // The action map of the next frame ignores mouse buttons while the interface owns the pointer, so a click on a button never reaches gameplay.
+    // The action map of the next frame ignores mouse buttons while the interface owns the pointer, so a click on a button never reaches gameplay, and it leaves the presses the interface answers itself to the interface, such as the cancel that closes a popup.
     engine.getInput().setPointerCaptured(isUsingPointer());
+    engine.getActions().setCapture(getCapture());
+}
+
+// A text field that edits takes every key, and a control that listens for a binding takes every key and gamepad button.
+input::ActionMap::Capture UiPlugin::getCapture() const {
+    const ImGuiContext& state = *backend->getImGuiContext();
+    const bool listening = focus.isEditing() && state.ActiveIdUsingAllKeyboardKeys;
+    input::ActionMap::Capture capture{.keyboard = listening || state.PlatformImeData.WantTextInput};
+    if (listening) {
+        capture.buttons.set();
+    }
+    for (const auto& [action, answered] : {std::pair{ui::NavigationInput::Action::Cancel, focus.answersCancel()}, std::pair{ui::NavigationInput::Action::Accept, focus.answersAccept()}}) {
+        if (!answered) {
+            continue;
+        }
+        for (const input::ActionMap::Binding& binding : navigation.getBindings(action)) {
+            if (binding.source == input::ActionMap::Binding::Source::Key) {
+                capture.keys.set(static_cast<std::size_t>(binding.key));
+            } else if (binding.source == input::ActionMap::Binding::Source::GamepadButton) {
+                capture.buttons.set(static_cast<std::size_t>(binding.gamepadButton));
+            }
+        }
+    }
+    return capture;
 }
 
 void UiPlugin::drawSafeArea() {
@@ -309,8 +342,13 @@ std::string UiPlugin::loadTheme(core::Engine& engine, std::string_view path, std
 }
 
 void UiPlugin::addFont(core::Engine& engine, const std::string& name, std::string_view path) {
-    getBackend().addFont(name, engine.getAssets().bytes(path));
+    getBackend().addFont(name, {.regular = engine.getAssets().bytes(path)});
     fontPaths.insert_or_assign(name, std::string(path));
+}
+
+std::vector<std::uint8_t> UiPlugin::getTrueTypeData(const std::shared_ptr<text::Font>& face) {
+    const auto* font = dynamic_cast<const text::TrueTypeFont*>(face.get());
+    return font != nullptr ? std::vector<std::uint8_t>(font->getData().begin(), font->getData().end()) : std::vector<std::uint8_t>();
 }
 
 void UiPlugin::addFontFamily(const std::string& name, std::shared_ptr<text::FontFamily> family) {
@@ -320,8 +358,17 @@ void UiPlugin::addFontFamily(const std::string& name, std::shared_ptr<text::Font
     if (fontFamilies.contains(name)) {
         throw std::invalid_argument("The UI already has a font named " + name + ".");
     }
-    if (const auto* regular = dynamic_cast<const text::TrueTypeFont*>(family->getFaces().regular.get())) {
-        getBackend().addFont(name, {regular->getData().begin(), regular->getData().end()});
+
+    // ImGui draws the TrueType faces of the family, each with the TrueType fallbacks, while rich text draws every face and fallback it has.
+    const text::FontFamily::Faces& faces = family->getFaces();
+    ui::Backend::FontFiles files{.regular = getTrueTypeData(faces.regular), .bold = getTrueTypeData(faces.bold), .italic = getTrueTypeData(faces.italic), .boldItalic = getTrueTypeData(faces.boldItalic)};
+    if (!files.regular.empty()) {
+        for (const std::shared_ptr<text::Font>& fallback : faces.fallbacks) {
+            if (std::vector<std::uint8_t> data = getTrueTypeData(fallback); !data.empty()) {
+                files.fallbacks.push_back(std::move(data));
+            }
+        }
+        getBackend().addFont(name, std::move(files));
     }
     fontFamilies.emplace(name, std::move(family));
 }

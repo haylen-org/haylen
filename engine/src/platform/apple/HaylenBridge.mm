@@ -5,6 +5,13 @@
 @implementation HaylenBridge
 
 + (void)registerHandler:(NSString*)method handler:(HaylenHandler)handler {
+    haylen::platform::AppleBridge::setHandler(method, ^HaylenCancel(id params, HaylenReply reply) {
+      handler(params, reply);
+      return nil;
+    });
+}
+
++ (void)registerCancellableHandler:(NSString*)method handler:(HaylenCancellableHandler)handler {
     haylen::platform::AppleBridge::setHandler(method, handler);
 }
 

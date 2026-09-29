@@ -32,7 +32,7 @@ class RangeSlider final : public Component {
     static constexpr double kFocusSteps = 20.0;
 
     [[nodiscard]] double snap(double candidate) const noexcept;
-    [[nodiscard]] float toPosition(double amount, const math::Rect& track) const noexcept;
+    [[nodiscard]] float toPosition(const Context& context, double amount, const math::Rect& track) const noexcept;
     [[nodiscard]] bool follow(Context& context, const math::Rect& bounds, const math::Rect& track);
     void drawKnob(Context& context, const math::Rect& bounds, float x, bool active, bool pressed) const;
 

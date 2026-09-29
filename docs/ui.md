@@ -86,7 +86,7 @@ self:show('day', 'text', widgets.text('hud.day', {day = game.cycle.day}), game.c
 
 ## Placement and the safe area
 
-Sizes and positions are design units of the `design` resolution in `app.json`, which is 1920 by 1080 in Tiny Island and by default. The metrics of the built-in themes suit that resolution. See [Rendering](rendering.md) for the scaling policies that map design units to the screen.
+Sizes and positions are design units of the `design` resolution in `app.json`, which is 1920 by 1080 in Tiny Island and by default. The metrics of the built-in themes suit that resolution. See [Rendering](rendering.md) for the scaling policies that map design units to the screen. [viewport.setScaling](lua-api/viewport.md#viewportsetscalingpolicy) and [viewport.setDesignSize](lua-api/viewport.md#viewportsetdesignsizewidth-height) change them while the app runs, and every document lays out in the new visible and safe areas from the next frame on.
 
 `ui.mount` takes two options.
 
@@ -129,7 +129,7 @@ Layout comes from a small set of containers and a few common properties that eve
 | Container | Layout |
 | --- | --- |
 | `column` | Children from top to bottom. |
-| `row` | Children from left to right. |
+| `row` | Children from left to right, or from right to left in a [right-to-left](#right-to-left-interfaces) interface. |
 | `grid` | Cells of equal width, `columns` per row, each row as tall as its tallest child. |
 | `stack` | Children on top of each other, the later ones above. |
 | `scroll` | One child in a vertically scrolling area. It measures as tall as its content, so it needs a `height` or `maxHeight` to scroll. |
@@ -139,12 +139,14 @@ Columns and rows share these properties.
 
 - `gap` is the space between children and defaults to the theme `itemSpacing` metric.
 - `padding` is one number for every side, `{vertical, horizontal}` or `{top, right, bottom, left}`.
-- `grow` on a child takes a share of the free space along the main axis. Two children with `grow = 1` split it in half. In a row, growing children share only the width the others leave, so long content never pushes the row past its bounds.
+- `grow` on a child takes a share of the free space along the main axis. A growing child starts from nothing rather than from its content, so two children with `grow = 1` split the space the others leave in half, long content never pushes a row or a column past its bounds, and a `scroll` with `grow = 1` scrolls inside the room its parent leaves. A row measures its growing children at the width they get, so text that wraps there reports every line and the node below starts after it. A column or row that takes the size of its content still gives each growing child at least the room its content needs.
 - `justify` places the children along the main axis when none of them grows: `start`, `center`, `end` or `spaceBetween`.
 - `align` on a child places it across the other axis: `start`, `center`, `end` or `stretch`. In a grid it places the child inside its cell, and in a stack or at the root it applies in both directions. Rows center their children unless they say otherwise. Elsewhere labels, buttons, icons, images, badges, touch controls and the other small kinds default to `start`, the busy indicator defaults to `center` and every other kind stretches.
 - `width`, `height`, `minWidth`, `maxWidth`, `minHeight` and `maxHeight` fix or bound the size. `'auto'` lets the content decide.
 
 A `spacer` takes room and draws nothing, so `ui.spacer{grow = 1}` pushes the nodes after it to the far end of a row or column.
+
+Text measures in whole design units, so a label, button or choice placed at its measured size always shows its whole text, whatever the scaling of the screen, and ends with an ellipsis only when its space is really too small.
 
 Cards and panels add padding from two sources. Their own `padding` applies when it is set, and otherwise the theme `panelPadding` metric applies. The `padding` of their theme surface image is always added on top, so content clears thick frame borders.
 
@@ -184,7 +186,7 @@ The engine ships 62 component kinds, and `ui.kinds()` lists them. They are group
 | [Overlays](lua-api/ui.md#overlays) | `dialog`, `toast`, `window`, `contextMenu` |
 | [Touch controls](lua-api/ui.md#touch-controls) | `touchStick`, `touchButton` |
 
-Every kind also accepts the [common properties](lua-api/ui.md#common-properties): `visible`, `enabled`, `tooltip`, `grow`, the size bounds, `align`, the anchor and the focus properties. A hidden node takes no room.
+Every kind also accepts the [common properties](lua-api/ui.md#common-properties): `visible`, `enabled`, `tooltip`, `grow`, the size bounds, `align`, the anchor, the focus properties, `direction` and `language`. A hidden node takes no room.
 
 Games reach for a few of them often. `circularProgress` with `style = 'cooldown'` shades an ability icon while it recharges. `stepper` and `segmentedControl` pick settings with left and right, the way console menus do. `slotGrid` holds inventories and hotbars and moves items between slots, draggable lists and other documents, with the pointer and by carrying them with a gamepad or a remote. `keyCapture` reads the next key, mouse button, gamepad button or stick for a controls screen and returns a binding the action map takes. `window` floats a draggable panel over the game, and `contextMenu` opens actions on a right click, a long press or `ui_menu`.
 
@@ -206,7 +208,9 @@ The [event table](lua-api/ui.md#events-and-handlers) of the reference lists whic
 
 ### Pointer, keyboard and gamepad
 
-`ui.wantsPointer()` returns `true` while the pointer is over something the interface owns: an interactive component, an open dialog, menu or picker, an ImGui window, or a card, panel or touch control. Empty space inside columns, rows and stacks lets the pointer through. `ui.wantsKeyboard()` returns `true` while a text field has the focus. Gameplay that reacts to raw clicks or key presses checks them first. The [input guide](input.md#ui-and-gameplay-input) explains how this relates to actions bound to mouse buttons.
+`ui.wantsPointer()` returns `true` while the pointer is over something the interface owns: an interactive component, an open dialog, menu or picker, an ImGui window, or a card, panel or touch control. Empty space inside columns, rows and stacks lets the pointer through. `ui.wantsKeyboard()` returns `true` while a text field has the focus. Gameplay that reacts to raw clicks or key presses checks them first.
+
+A press the interface answers itself never reaches the actions of the app, like a click on a button. Escape, the east button and the Menu button of a TV remote that close a popup, a combo list, a dialog, a closable window or a carried item, or that end the editing of a control, accept presses that press the focused control, every key while a text field edits, and every key and button while a `keyCapture` listens, stay with the interface until they are released, so an action bound to the same key, such as a `back` bound to Escape, fires only when the interface answers nothing. The keys and buttons are those of `ui_cancel` and `ui_accept`, remapped or built in. The [input guide](input.md#ui-and-gameplay-input) explains how this relates to the action map.
 
 ### Focus, navigation and TV remotes
 
@@ -251,15 +255,43 @@ end
 widgets.caption('best', widgets.text('menu.best', {count = best and best.days or 0}))
 ```
 
-Labels choose one of the theme font roles `body`, `caption`, `button`, `heading`, `title` and `monospace`, and a theme color role such as `text`, `textMuted` or `onAccent`. Text drawn straight over the app needs an outline to stay readable, and the Tiny Island titles and captions use `color = 'onAccent'` with a dark `outline` for that reason.
+Labels choose one of the theme font roles `body`, `caption`, `button`, `heading`, `title` and `monospace`, and a theme color role such as `text`, `textMuted` or `onAccent`. A role that names a font family registered with `ui.addFont(name, family)` draws the characters its face lacks from the fallback fonts of the family, so one theme serves every language, Japanese included, and a role with `bold` or `italic` draws with those faces of the family. Text drawn straight over the app needs an outline to stay readable, and the Tiny Island titles and captions use `color = 'onAccent'` with a dark `outline` for that reason.
 
-Styled text goes in a `richText` node, which reads the BBCode markup of the [text guide](text.md): bold and italic, colors, outlines and shadows, lists and tables, inline images and input prompt icons, links the player can focus and activate, and animated effects with a typewriter reveal for dialogue. It draws through the 2D renderer rather than ImGui, so its glyphs come from the distance field or bitmap faces of a font family, and it reports `link` and `linkHover` events.
+Styled text goes in a `richText` node, which reads the BBCode markup of the [text guide](text.md): bold and italic, colors, outlines and shadows, lists and tables, inline images and input prompt icons, links the player can focus and activate, and animated effects with a typewriter reveal for dialogue. It reports `link` and `linkHover` events.
 
 ```lua
 ui.richText{id = 'npc', text = 'The [b]old sailor[/b] says: [i]"Mind the [color=#FF6A6A]crabs[/color]."[/i] [url=more]Ask more[/url]', reveal = 30, onLink = function(event)
     showMore(event.link)
 end}
 ```
+
+## Complex scripts and right-to-left interfaces
+
+ImGui lays out and draws the widgets, and the text layout of the engine sets their text. Every component measures its text with the shaped layout of the font family of its role, and draws it through the 2D renderer from a callback of the ImGui draw list, at its place among the ImGui draws and inside their clip, moved, scaled and tinted by the transforms around it. Labels, buttons, fields, lists, tables, tooltips, dialogs and rich text therefore show Arabic, Hebrew, Persian, Urdu, Hindi, Thai and every other script the fonts of the family cover, with joined letters, conjuncts, marks and the bidirectional order of mixed text, as the [text guide](text.md#scripts-and-directions) describes. Layouts are cached by text and style, so a label that stays the same shapes once. The fonts of ImGui itself only serve the text editing engine of fields, which draws nothing, and the debug windows of `haylen.imgui`.
+
+Every paragraph of the UI reads in the direction of its first strong letter, so an Arabic label reads from the right and an English one from the left in any interface. The direction of the layout is separate, and it is left to right unless the app changes it. `ui.setDirection('rtl')` mirrors every document: rows start from the right, start and end alignments name the right and the left, check boxes and toggles put their box on the right, sliders and progress bars fill from the right, steppers and carousels swap their ends, menus open from the right edge and the arrow keys move sliders and steppers the way they point. A node with `direction = 'rtl'` or `'ltr'` sets the direction of its own subtree, and `language` sets the language its text is shaped for, which otherwise is the current language. The [reference](lua-api/ui.md#right-to-left-interfaces) lists everything that mirrors.
+
+A language declares its direction in its catalog with `"@direction": "rtl"`, as [haylen.localization](lua-api/localization.md) describes, and `ui.setDirection('auto')` makes the UI follow it, so switching to Arabic or Hebrew mirrors every mounted document from the next frame and switching back restores it. Apps opt in, because a game may prefer to keep its HUD in one layout whatever the language. Anchors and four-sided padding stay where they are, and images are never flipped.
+
+```lua
+local assets = require('haylen.assets')
+local graphics = require('haylen.graphics')
+local localization = require('haylen.localization')
+local ui = require('haylen.ui')
+
+ui.addFont('world', graphics.newFontFamily({regular = assets.font('fonts/body.ttf'), fallback = {assets.font('fonts/noto_sans_arabic_regular.ttf'), assets.font('fonts/noto_sans_devanagari_regular.ttf')}}))
+local role = {font = 'world'}
+ui.setTheme(ui.addTheme({name = 'world', fonts = {body = role, caption = role, button = role, heading = role, title = role}}, 'dark'))
+ui.setDirection('auto')
+localization.setLanguage('ar')
+ui.mount(ui.card{
+    ui.label{text = {key = 'menu.welcome'}},
+    ui.row{ui.button{text = {key = 'menu.play'}, variant = 'primary'}, ui.button{text = {key = 'menu.quit'}}},
+    ui.column{direction = 'ltr', ui.label{text = 'v1.4.2'}},
+})
+```
+
+Text fields show complex scripts and right-to-left text the same way, and the caret moves over whole characters in the order they show, as the [text input guide](text-input.md#complex-scripts-and-right-to-left-text) explains.
 
 ## Themes
 
@@ -278,8 +310,8 @@ A theme file has these keys.
 | `name` | Name of the theme. It is required. |
 | `colors` | [Color roles](lua-api/ui.md#theme-colors) mapped to `'#RRGGBB'` or `'#AARRGGBB'` strings. |
 | `metrics` | [Metrics](lua-api/ui.md#theme-metrics) mapped to non-negative numbers in design units, such as `controlHeight` or `panelPadding`. |
-| `fonts` | [Font roles](lua-api/ui.md#theme-fonts) mapped to `{"font": name, "size": number}`, where both keys are optional. |
-| `fontFiles` | Font names mapped to TrueType or OpenType files in the package assets, registered unless a font with that name already exists. `ui.addFont(name, path)` registers fonts from Lua too, and `ui.addFont(name, family)` registers a font family whose bold, italic, mono and fallback faces `richText` nodes use when a font role names it. |
+| `fonts` | [Font roles](lua-api/ui.md#theme-fonts) mapped to `{"font": name, "size": number, "bold": boolean, "italic": boolean}`, where every key is optional. |
+| `fontFiles` | Font names mapped to TrueType or OpenType files in the package assets, registered unless a font with that name already exists. `ui.addFont(name, path)` registers fonts from Lua too, and `ui.addFont(name, family)` registers a font family, whose faces and fallback fonts every text component of the roles that name it uses. |
 | `surfaces` | [Surfaces](lua-api/ui.md#theme-surfaces) mapped to nine-slice images, or to `null` to go back to flat colors. |
 
 Unknown keys, roles, metrics and surfaces are errors, so a typo in a theme file never goes unnoticed.
@@ -288,7 +320,7 @@ Unknown keys, roles, metrics and surfaces are errors, so a typo in a theme file 
 
 Color roles come in families. `window`, `panel`, `raised` and `tooltip` fill surfaces, `overlay` dims the app behind modal dialogs, `hover`, `pressed`, `selection` and `focus` mark states, `border` and `borderStrong` draw lines, `scrollbar` and `scrollbarHover` draw scrollbars, and `text`, `textMuted`, `textDisabled` and `onTooltip` write text. The accent and the four tones `success`, `warning`, `danger` and `information` each come as a fill, the ink written on that fill (such as `onAccent`), a subtle background (such as `accentBackground`) and a text color readable on the window (such as `accentText`). A `progress` bar with `tone = 'danger'` draws with the `danger` fill, and a `badge` with the same tone uses `dangerBackground` and `dangerText`, or `danger` and `onDanger` when it is `solid`.
 
-Metrics size the controls. `controlHeight` sets the height of buttons, fields and sliders, `itemSpacing` is the default gap, `panelPadding` pads cards, panels and dialogs, and more specific metrics such as `progressHeight`, `sliderTrackHeight`, `toggleWidth` and `iconSize` size single parts. Fonts are sized when drawn, so one registered font serves every role and size.
+Metrics size the controls. `controlHeight` sets the height of buttons, fields and sliders, `itemSpacing` is the default gap, `panelPadding` pads cards, panels and dialogs, and more specific metrics such as `progressHeight`, `sliderTrackHeight`, `toggleWidth` and `iconSize` size single parts. Fonts are sized when drawn, so one registered font serves every role and size. A role that names a font family takes its bold and italic faces with `"bold": true` and `"italic": true`, and every face draws the characters it lacks from the fallback fonts of the family at the size of its own em square, so symbols and Japanese text match the letters around them.
 
 ### Surfaces
 
@@ -419,4 +451,4 @@ A retained document is built once and then changed by id, which keeps per-frame 
 
 ## From C++
 
-The same system is available to C++ code through `haylen::plugins::UiPlugin` (`haylen/plugins/UiPlugin.hpp`), reached with `engine.getPlugin<plugins::UiPlugin>()`. It builds `haylen::ui::Document` trees from JSON with `createDocument` and shows them with `mount`, which publishes `ui_document_mounted` on the event bus of the engine, like `unmount` publishes `ui_document_unmounted`. It also loads and switches themes (`haylen::ui::Theme` in `haylen/ui/Theme.hpp`) and publishes every `haylen::ui::Event` of a document through its `events` signal. `UiPlugin::getComponents()` returns the `haylen::ui::ComponentRegistry`, where a C++ plugin registers its own component kinds, subclasses of `haylen::ui::Component` that read their properties with a `PropertyReader` and draw through the `haylen::ui::Context` they receive, which Lua then builds with `ui.<kind>{...}` like the built-in ones. `UiPlugin::getBackend()` returns the `haylen::ui::Backend` that owns the Dear ImGui context, for C++ code that draws immediate mode windows, and whose `addRenderCallback` lets a component draw with the 2D renderer at its place among the ImGui draws, as `richText` does. `UiPlugin::addFontFamily` registers a `haylen::text::FontFamily` under a font name. `UiPlugin::getFocus()` returns the `haylen::ui::FocusNavigator`, which tells which document and node hold the focus and whether the ring shows, and `UiPlugin::getNavigation()` the `haylen::ui::NavigationInput` with the navigation actions. A C++ component makes an ImGui item a focus target with `FocusNavigator::addTarget` while it draws, and keeps a direction for itself by overriding `Component::usesFocusDirection`. `core::Engine::setSafeAreaSimulation` and `setBackLeavesApp` are the C++ side of the safe area simulation and the back button. Text fields reach the platform through `haylen::platform::TextInput` (`haylen/platform/TextInput.hpp`), which `Window::getTextInput()` returns and which the [text input guide](text-input.md) describes. See [Architecture](architecture.md) for plugins and [Lua](lua.md) for the scripting model.
+The same system is available to C++ code through `haylen::plugins::UiPlugin` (`haylen/plugins/UiPlugin.hpp`), reached with `engine.getPlugin<plugins::UiPlugin>()`. It builds `haylen::ui::Document` trees from JSON with `createDocument` and shows them with `mount`, which publishes `ui_document_mounted` on the event bus of the engine, like `unmount` publishes `ui_document_unmounted`. It also loads and switches themes (`haylen::ui::Theme` in `haylen/ui/Theme.hpp`) and publishes every `haylen::ui::Event` of a document through its `events` signal. `UiPlugin::getComponents()` returns the `haylen::ui::ComponentRegistry`, where a C++ plugin registers its own component kinds, subclasses of `haylen::ui::Component` that read their properties with a `PropertyReader` and draw through the `haylen::ui::Context` they receive, which Lua then builds with `ui.<kind>{...}` like the built-in ones. `UiPlugin::getBackend()` returns the `haylen::ui::Backend` that owns the Dear ImGui context, for C++ code that draws immediate mode windows, and whose `addRenderCallback` lets a component draw with the 2D renderer at its place among the ImGui draws, as `richText` does. `UiPlugin::addFontFamily` registers a `haylen::text::FontFamily` under a font name, which reaches the backend as `Backend::FontFiles`, its TrueType faces and fallbacks. `UiPlugin::getFocus()` returns the `haylen::ui::FocusNavigator`, which tells which document and node hold the focus and whether the ring shows, and `UiPlugin::getNavigation()` the `haylen::ui::NavigationInput` with the navigation actions. A C++ component makes an ImGui item a focus target with `FocusNavigator::addTarget` while it draws, and keeps a direction for itself by overriding `Component::usesFocusDirection`. `core::Engine::setSafeAreaSimulation` and `setBackLeavesApp` are the C++ side of the safe area simulation and the back button, and `setScaling` and `setDesignSize` change the mapping of design space the UI lays out in while the app runs. Text fields reach the platform through `haylen::platform::TextInput` (`haylen/platform/TextInput.hpp`), which `Window::getTextInput()` returns and which the [text input guide](text-input.md) describes. See [Architecture](architecture.md) for plugins and [Lua](lua.md) for the scripting model.

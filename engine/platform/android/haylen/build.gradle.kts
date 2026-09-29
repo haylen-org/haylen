@@ -57,6 +57,7 @@ android {
 dependencies {
     implementation("androidx.core:core:1.19.1")
     implementation("androidx.core:core-splashscreen:1.2.0")
+    api("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 }
 
 // Only the HTTP transport of the Varn Android library runs inside a Haylen app, because the engine links Varn into the player library itself.

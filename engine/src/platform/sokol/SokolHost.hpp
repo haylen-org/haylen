@@ -7,6 +7,7 @@
 #include "haylen/platform/Event.hpp"
 #include "platform/Host.hpp"
 #include "platform/KeyboardTranslator.hpp"
+#include "platform/WindowStyle.hpp"
 #include "sokol_app.h"
 
 namespace haylen::platform {
@@ -32,6 +33,23 @@ class SokolHost final : public Host {
     void lockOrientation(Orientation value) override;
     [[nodiscard]] TextInput& getTextInput() noexcept override;
     [[nodiscard]] bool hasPointerDevice() const noexcept override;
+    [[nodiscard]] bool canBeTransparent() const noexcept override;
+    [[nodiscard]] bool isTransparent() const noexcept override;
+    void setTransparent(bool value) override;
+    [[nodiscard]] bool isDecorated() const noexcept override;
+    void setDecorated(bool value) override;
+    [[nodiscard]] bool isAlwaysOnTop() const noexcept override;
+    void setAlwaysOnTop(bool value) override;
+    [[nodiscard]] bool isShownInTaskbar() const noexcept override;
+    void setShowInTaskbar(bool value) override;
+    [[nodiscard]] bool isFocusable() const noexcept override;
+    void setFocusable(bool value) override;
+    [[nodiscard]] math::Rect getFrame() const override;
+    void setFrame(const math::Rect& value) override;
+    [[nodiscard]] Passthrough getMousePassthrough() const noexcept override;
+    void setMousePassthrough(Passthrough mode, std::span<const math::Polygon::Outline> regions) override;
+    void startDrag() override;
+    [[nodiscard]] std::vector<Monitor> getMonitors() const override;
 
     [[nodiscard]] std::string_view getPlatformName() const noexcept override;
     [[nodiscard]] graphics::DeviceSetup getGraphicsSetup() override;
@@ -42,6 +60,13 @@ class SokolHost final : public Host {
     [[nodiscard]] math::Insets getSafeAreaInsets() const override;
     void pollGamepads(std::span<input::GamepadState> gamepads) override;
     void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson) override;
+    void cancelPlatformCall(std::uint64_t id) override;
+
+    // Records the options the window opens with, before it exists, so the options the engine applies when the app starts find the window as it already is.
+    void prepare(const WindowStyle& openingStyle, bool openingFocusable) noexcept {
+        style = openingStyle;
+        focusable = openingFocusable;
+    }
 
     // Turns the edits and actions of the plain keyboard that setKeyboardVisible opens into key and character events.
     [[nodiscard]] std::vector<Event> translateKeyboard(const Event& event) {
@@ -51,9 +76,14 @@ class SokolHost final : public Host {
   private:
     [[nodiscard]] static sapp_mouse_cursor toSokolCursor(Cursor cursor) noexcept;
 
+    // Fullscreen windows keep the style of the platform, and leaving fullscreen brings this one back.
+    void applyStyle();
+
     KeyboardTranslator keyboard;
     std::uint64_t keyboardRevision = 0;
-    bool resizable = true;
+    WindowStyle style;
+    Passthrough passthrough = Passthrough::Off;
+    bool focusable = true;
 };
 
 } // namespace haylen::platform

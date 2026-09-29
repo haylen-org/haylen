@@ -17,7 +17,6 @@
 		438E5F4503410B7230640301 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0A753EF2BDFD938E5832DBA1 /* CoreGraphics.framework */; };
 		49A811C6C45D5B73D553AA04 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 64525A5E227A6F8D56316636 /* AVFoundation.framework */; };
 		4DABBEF89CF0C18F1E854F34 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FBB2073FE2C3FA8CF2F2F81 /* Foundation.framework */; };
-		4E681FB8FA0158533A3F9937 /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = 4738B6A9B7D5021BFDF61671 /* main.mm */; };
 		4F61DECEEE65FCDB7B0E1E14 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 609349DF20D01EF9541FA51A /* QuartzCore.framework */; };
 		575303CDA0129B2DBC14134A /* GameController.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E659DE470F86E25B0A48DA55 /* GameController.framework */; };
 		59F4004C3E5C9A5C5D01DDA0 /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 93773212B32C9B1B03E2D35B /* Network.framework */; };
@@ -31,7 +30,6 @@
 		8A2B7EF128108C576483EDC3 /* app in Resources */ = {isa = PBXBuildFile; fileRef = 785CC13C763BA59F86046EB0 /* app */; };
 		914F3304D2A9BB099291F289 /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 93773212B32C9B1B03E2D35B /* Network.framework */; };
 		91EE9A5DB424FA32614525BA /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FBB2073FE2C3FA8CF2F2F81 /* Foundation.framework */; };
-		99932FEC27A9913FBC6C3A6A /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = 4738B6A9B7D5021BFDF61671 /* main.mm */; };
 		9C935C4A0B9EE4AA32F751EB /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 64525A5E227A6F8D56316636 /* AVFoundation.framework */; };
 		A2709552647909DD2982048D /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1503D5523FDF705ED22BB7B6 /* AudioToolbox.framework */; };
 		A52579759E0192C6D1C7320C /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 58FBB2D1052B9870DDD312D5 /* Metal.framework */; };
@@ -50,7 +48,6 @@
 		DEE4BD0D75B23A2892CF21B1 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 58FBB2D1052B9870DDD312D5 /* Metal.framework */; };
 		E5592221B879FDB263605333 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3F039FF63D30D21B8BB1868F /* LaunchScreen.storyboard */; };
 		EB9D689C7598B3D35EB90987 /* Haylen.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8DBB0B5A6BA934671179571C /* Haylen.xcframework */; };
-		F5745DAEAA7C080F9CB7AFB7 /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = 4738B6A9B7D5021BFDF61671 /* main.mm */; };
 		F8CC57B848E29E69FAC0D5FD /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB92594DDC4336170D045976 /* MetalKit.framework */; };
 		FD009245EE160B3AAAC8DAA3 /* GameController.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E659DE470F86E25B0A48DA55 /* GameController.framework */; };
 /* End PBXBuildFile section */
@@ -65,7 +62,6 @@
 		3AF24FBCB72AEA680A86D5CC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		3F039FF63D30D21B8BB1868F /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		472CA46FDEFCAE4CF35D1C91 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		4738B6A9B7D5021BFDF61671 /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
 		58FBB2D1052B9870DDD312D5 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		59E6A3E8851905DB115F3231 /* project.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = project.yml; sourceTree = "<group>"; };
 		609349DF20D01EF9541FA51A /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
@@ -85,6 +81,18 @@
 		FCA3C5FAA7EFDD728B5A5DA0 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		FCF7A4FB4D015D75B3963752 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		92D6982FD9CE5324737D2C72 /* source */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = source;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		33B712DC3AEA24F8147A0714 /* Frameworks */ = {
@@ -172,7 +180,7 @@
 				07647C09763FE2C02CA8B8BA /* apple */,
 				92ACA850132D7931F18F9889 /* ios */,
 				26AF8B7558A7407655419076 /* macos */,
-				C052FFBE5A5FBF73FCF07F56 /* source */,
+				92D6982FD9CE5324737D2C72 /* source */,
 				C22072D3136F7C8F73B883E8 /* tvos */,
 				BDD1182E50DC622819F25364 /* Frameworks */,
 				E9C3DB3EC6D7655028A9C0D3 /* Products */,
@@ -209,14 +217,6 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		C052FFBE5A5FBF73FCF07F56 /* source */ = {
-			isa = PBXGroup;
-			children = (
-				4738B6A9B7D5021BFDF61671 /* main.mm */,
-			);
-			path = source;
-			sourceTree = "<group>";
-		};
 		C22072D3136F7C8F73B883E8 /* tvos */ = {
 			isa = PBXGroup;
 			children = (
@@ -247,10 +247,14 @@
 				FF5462EAB5F233178A7D9F05 /* Sources */,
 				57D85FEA6FE84314187A5957 /* Resources */,
 				33B712DC3AEA24F8147A0714 /* Frameworks */,
+				3739C45D9390BB9C7D46786E /* Embed native libraries */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				92D6982FD9CE5324737D2C72 /* source */,
 			);
 			name = tvOS;
 			packageProductDependencies = (
@@ -266,10 +270,14 @@
 				E339665BBBE0042216494732 /* Sources */,
 				3DEFE7259E79B5E01677354F /* Resources */,
 				96CC5937DD037107ED842DD2 /* Frameworks */,
+				E1B931B69B5E2D99423AFCA2 /* Embed native libraries */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				92D6982FD9CE5324737D2C72 /* source */,
 			);
 			name = macOS;
 			packageProductDependencies = (
@@ -285,10 +293,14 @@
 				8A0E1982AB0E2C9C11C649C4 /* Sources */,
 				9CE729316E41A31A43197BD8 /* Resources */,
 				FC0E41DC167719D0F263590D /* Frameworks */,
+				5647F88408BBF45F673E921B /* Embed native libraries */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				92D6982FD9CE5324737D2C72 /* source */,
 			);
 			name = iOS;
 			packageProductDependencies = (
@@ -361,12 +373,74 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		3739C45D9390BB9C7D46786E /* Embed native libraries */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"$(PROJECT_DIR)/native/$(TARGET_NAME)-$(PLATFORM_NAME).xcfilelist",
+			);
+			inputPaths = (
+			);
+			name = "Embed native libraries";
+			outputFileListPaths = (
+				"$(PROJECT_DIR)/native/$(TARGET_NAME)-$(PLATFORM_NAME)-output.xcfilelist",
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Copies the libraries that make.py listed for this target and platform into the app and signs them like the app.\nset -e\ndestination=\"$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH\"\nmkdir -p \"$destination\"\nwhile IFS= read -r library; do\n  if [ -z \"$library\" ]; then\n    continue\n  fi\n  target=\"$destination/$(basename \"$library\")\"\n  rm -rf \"$target\"\n  ditto \"$library\" \"$target\"\n  if [ \"$CODE_SIGNING_ALLOWED\" != \"NO\" ]; then\n    codesign --force --sign \"${EXPANDED_CODE_SIGN_IDENTITY:--}\" --timestamp=none --preserve-metadata=identifier,entitlements,flags \"$target\"\n  fi\ndone < \"$SCRIPT_INPUT_FILE_LIST_0\"\n";
+		};
+		5647F88408BBF45F673E921B /* Embed native libraries */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"$(PROJECT_DIR)/native/$(TARGET_NAME)-$(PLATFORM_NAME).xcfilelist",
+			);
+			inputPaths = (
+			);
+			name = "Embed native libraries";
+			outputFileListPaths = (
+				"$(PROJECT_DIR)/native/$(TARGET_NAME)-$(PLATFORM_NAME)-output.xcfilelist",
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Copies the libraries that make.py listed for this target and platform into the app and signs them like the app.\nset -e\ndestination=\"$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH\"\nmkdir -p \"$destination\"\nwhile IFS= read -r library; do\n  if [ -z \"$library\" ]; then\n    continue\n  fi\n  target=\"$destination/$(basename \"$library\")\"\n  rm -rf \"$target\"\n  ditto \"$library\" \"$target\"\n  if [ \"$CODE_SIGNING_ALLOWED\" != \"NO\" ]; then\n    codesign --force --sign \"${EXPANDED_CODE_SIGN_IDENTITY:--}\" --timestamp=none --preserve-metadata=identifier,entitlements,flags \"$target\"\n  fi\ndone < \"$SCRIPT_INPUT_FILE_LIST_0\"\n";
+		};
+		E1B931B69B5E2D99423AFCA2 /* Embed native libraries */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"$(PROJECT_DIR)/native/$(TARGET_NAME)-$(PLATFORM_NAME).xcfilelist",
+			);
+			inputPaths = (
+			);
+			name = "Embed native libraries";
+			outputFileListPaths = (
+				"$(PROJECT_DIR)/native/$(TARGET_NAME)-$(PLATFORM_NAME)-output.xcfilelist",
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Copies the libraries that make.py listed for this target and platform into the app and signs them like the app.\nset -e\ndestination=\"$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH\"\nmkdir -p \"$destination\"\nwhile IFS= read -r library; do\n  if [ -z \"$library\" ]; then\n    continue\n  fi\n  target=\"$destination/$(basename \"$library\")\"\n  rm -rf \"$target\"\n  ditto \"$library\" \"$target\"\n  if [ \"$CODE_SIGNING_ALLOWED\" != \"NO\" ]; then\n    codesign --force --sign \"${EXPANDED_CODE_SIGN_IDENTITY:--}\" --timestamp=none --preserve-metadata=identifier,entitlements,flags \"$target\"\n  fi\ndone < \"$SCRIPT_INPUT_FILE_LIST_0\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		8A0E1982AB0E2C9C11C649C4 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4E681FB8FA0158533A3F9937 /* main.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -374,7 +448,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F5745DAEAA7C080F9CB7AFB7 /* main.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -382,7 +455,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				99932FEC27A9913FBC6C3A6A /* main.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -479,7 +551,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -493,8 +565,10 @@
 				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				PRODUCT_MODULE_NAME = HaylenApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OBJC_BRIDGING_HEADER = source/HaylenBridging.h;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
 				TVOS_DEPLOYMENT_TARGET = 16.3;
@@ -627,7 +701,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -648,8 +722,10 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_MODULE_NAME = HaylenApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OBJC_BRIDGING_HEADER = source/HaylenBridging.h;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TVOS_DEPLOYMENT_TARGET = 16.3;

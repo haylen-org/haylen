@@ -70,7 +70,7 @@ class Document final {
     };
 
     static void collectIds(const Component& component, std::vector<std::string>& found);
-    [[nodiscard]] static math::Rect place(const Component& component, math::Vec2 size, const math::Rect& area);
+    [[nodiscard]] static math::Rect place(const Context& context, const Component& component, math::Vec2 size, const math::Rect& area);
 
     [[nodiscard]] Built build(const core::Json& node, std::size_t depth, std::size_t& count) const;
     [[nodiscard]] Component& require(std::string_view id) const;

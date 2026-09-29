@@ -13,6 +13,7 @@
 
 #include "haylen/io/Package.hpp"
 #import "platform/apple/AppleBridge.hpp"
+#import "platform/apple/AppleDesktop.hpp"
 #import "platform/apple/AppleNetwork.hpp"
 #import "platform/apple/AppleOrientation.hpp"
 #import "platform/apple/AppleRemote.hpp"
@@ -73,10 +74,61 @@ std::filesystem::path Services::getUserDataDirectory(std::string_view identifier
 
 void Services::persistUserData() {}
 
-void Services::setWindowResizable([[maybe_unused]] bool value) {
+bool Services::hasDesktop() noexcept {
+    return TARGET_OS_OSX != 0;
+}
+
+void Services::setWindowStyle([[maybe_unused]] const WindowStyle& value) {
 #if TARGET_OS_OSX
-    NSWindow* window = (__bridge NSWindow*)sapp_macos_get_window();
-    window.styleMask = value ? (window.styleMask | NSWindowStyleMaskResizable) : (window.styleMask & ~NSWindowStyleMaskResizable);
+    AppleDesktop::setStyle(value);
+#endif
+}
+
+// Windows of iPhones, iPads and TVs fill their screen, which is their only monitor.
+math::Rect Services::getWindowFrame() {
+#if TARGET_OS_OSX
+    return AppleDesktop::getFrame();
+#else
+    return {0.0F, 0.0F, sapp_widthf() / sapp_dpi_scale(), sapp_heightf() / sapp_dpi_scale()};
+#endif
+}
+
+void Services::setWindowFrame([[maybe_unused]] const math::Rect& value) {
+#if TARGET_OS_OSX
+    AppleDesktop::setFrame(value);
+#endif
+}
+
+std::vector<Monitor> Services::getMonitors() {
+#if TARGET_OS_OSX
+    return AppleDesktop::getMonitors();
+#else
+    const math::Rect screen = getWindowFrame();
+    return {{.name = "screen", .bounds = screen, .workArea = screen, .scale = sapp_dpi_scale(), .primary = true}};
+#endif
+}
+
+void Services::setMousePassthrough([[maybe_unused]] Window::Passthrough mode, [[maybe_unused]] std::span<const math::Polygon::Outline> regions) {
+#if TARGET_OS_OSX
+    AppleDesktop::setPassthrough(mode, regions);
+#endif
+}
+
+void Services::startWindowDrag() {
+#if TARGET_OS_OSX
+    AppleDesktop::startDrag();
+#endif
+}
+
+void Services::watchWindow() {
+#if TARGET_OS_OSX
+    AppleDesktop::watch();
+#endif
+}
+
+void Services::updateWindow() {
+#if TARGET_OS_OSX
+    AppleDesktop::update();
 #endif
 }
 
@@ -174,6 +226,10 @@ TextInput& Services::getTextInput() {
 
 void Services::dispatch(std::uint64_t call, std::string_view method, std::string_view paramsJson) {
     AppleBridge::dispatch(call, method, paramsJson);
+}
+
+void Services::cancel(std::uint64_t call) {
+    AppleBridge::cancel(call);
 }
 
 } // namespace haylen::platform

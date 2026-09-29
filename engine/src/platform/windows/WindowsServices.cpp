@@ -12,9 +12,9 @@
 #include <string>
 
 #include "haylen/io/Package.hpp"
+#include "platform/windows/WindowsDesktop.hpp"
 #include "platform/windows/WindowsMethods.hpp"
 #include "platform/windows/WindowsTextInput.hpp"
-#include "sokol_app.h"
 
 namespace haylen::platform {
 
@@ -22,7 +22,9 @@ std::string_view Services::getName() noexcept {
     return "windows";
 }
 
-void Services::initialize() {}
+void Services::initialize() {
+    WindowsDesktop::initialize();
+}
 
 void Services::shutdown() noexcept {}
 
@@ -59,12 +61,40 @@ std::filesystem::path Services::getUserDataDirectory(std::string_view identifier
 
 void Services::persistUserData() {}
 
-void Services::setWindowResizable(bool value) {
-    auto* window = static_cast<HWND>(const_cast<void*>(sapp_win32_get_hwnd()));
-    constexpr LONG_PTR kFrame = WS_SIZEBOX | WS_MAXIMIZEBOX;
-    const LONG_PTR style = GetWindowLongPtrW(window, GWL_STYLE);
-    SetWindowLongPtrW(window, GWL_STYLE, value ? (style | kFrame) : (style & ~kFrame));
-    SetWindowPos(window, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+bool Services::hasDesktop() noexcept {
+    return true;
+}
+
+void Services::setWindowStyle(const WindowStyle& value) {
+    WindowsDesktop::setStyle(value);
+}
+
+math::Rect Services::getWindowFrame() {
+    return WindowsDesktop::getFrame();
+}
+
+void Services::setWindowFrame(const math::Rect& value) {
+    WindowsDesktop::setFrame(value);
+}
+
+std::vector<Monitor> Services::getMonitors() {
+    return WindowsDesktop::getMonitors();
+}
+
+void Services::setMousePassthrough(Window::Passthrough mode, std::span<const math::Polygon::Outline> regions) {
+    WindowsDesktop::setPassthrough(mode, regions);
+}
+
+void Services::startWindowDrag() {
+    WindowsDesktop::startDrag();
+}
+
+void Services::watchWindow() {
+    WindowsDesktop::watch();
+}
+
+void Services::updateWindow() {
+    WindowsDesktop::update();
 }
 
 math::Insets Services::getSafeAreaInsets() {
@@ -128,5 +158,8 @@ TextInput& Services::getTextInput() {
 void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson) {
     WindowsMethods().dispatch(id, method, paramsJson);
 }
+
+// The desktop methods answer during the call, so no call of theirs is ever pending.
+void Services::cancel(std::uint64_t) {}
 
 } // namespace haylen::platform

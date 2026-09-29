@@ -192,6 +192,8 @@ The engine publishes these events on the bus. Events with data pass it to listen
 | `window_fullscreen_changed` | The window entered or left fullscreen. | `{fullscreen}` |
 | `window_orientation_changed` | The screen turned between landscape and portrait, as `window.orientation()` of [haylen.window](window.md) reports it. Desktop windows always count as landscape. | `{orientation}`, `'landscape'` or `'portrait'`. |
 | `window_safe_area_changed` | The safe area moved, for example after a rotation. | `{x, y, width, height}`, the same rectangle as `viewport.safeRect()`. |
+| `window_moved` | The desktop window moved, dragged by the player, placed by the app or moved by the system. A move publishes each new position once. | `{x, y}`, the top left corner of `window.frame()` of [haylen.window](window.md#desktop-windows) in desktop points. |
+| `window_monitors_changed` | A monitor connected, disconnected or changed, or its work area changed, such as when the taskbar moved. `window.monitors()` returns the new list. | None. |
 | `ui_document_mounted`, `ui_document_unmounted` | A UI document of [haylen.ui](ui.md) was mounted or unmounted. | The document. |
 | `gamepad_connected`, `gamepad_disconnected` | A gamepad was plugged in or removed. Gamepads that are connected when the app starts are announced on its first frame. | `{gamepad, name}`, where `gamepad` counts from 1 like [haylen.input](input.md). |
 | `audio_interrupted`, `audio_resumed` | The system took the audio, such as for a phone call, and every voice paused, or gave it back while the app is active and the voices resumed, as [haylen.audio](audio.md#events) explains. | None. |

@@ -62,21 +62,21 @@ void Tree::drawItems(Context& context, const math::Rect& bounds, const std::vect
         ImGui::BeginDisabled(!item.enabled);
 
         // The arrow claims the pointer before the row under it, since ImGui hands hover to the first of two overlapping items, and only the row takes the focus, where left and right close and open the item.
-        const math::Rect arrow{left, area.y, indent, height};
+        const math::Rect arrow = context.mirror({left, area.y, indent, height}, area);
         bool toggled = !item.children.empty() && Widgets::interact(context, arrow, context.getMetric(Theme::Metric::ControlRadius) * 0.5F, "##toggle", ImGuiButtonFlags_NoNavFocus).clicked;
         const Widgets::Interaction state = ListRow::draw(context, area, item.id == selected);
         if (focusing && (item.id == selected || selected.empty())) {
             focusing = false;
             Widgets::focusItem(context);
         }
-        if (pressedDirection && ImGui::GetItemID() == ImGui::GetFocusID() && !item.children.empty() && open == (pressedDirection == FocusDirection::Left)) {
+        if (pressedDirection && ImGui::GetItemID() == ImGui::GetFocusID() && !item.children.empty() && open == (Widgets::getStep(context, *pressedDirection) < 0)) {
             toggled = true;
             pressedDirection.reset();
         }
         if (!item.children.empty()) {
-            Widgets::arrow(arrow.getCenter(), indent * 0.4F, open ? ImGuiDir_Down : ImGuiDir_Right, context.getColor(Theme::Color::TextMuted));
+            Widgets::arrow(arrow.getCenter(), indent * 0.4F, Widgets::mirror(context, open ? ImGuiDir_Down : ImGuiDir_Right), context.getColor(Theme::Color::TextMuted));
         }
-        ListRow::drawContent(context, math::Rect::fromMinMax({left + indent - ListRow::kPadding, area.y}, area.getMax()), item);
+        ListRow::drawContent(context, context.mirror(math::Rect::fromMinMax({left + indent - ListRow::kPadding, area.y}, area.getMax()), area), item);
         ImGui::EndDisabled();
         ImGui::PopID();
 

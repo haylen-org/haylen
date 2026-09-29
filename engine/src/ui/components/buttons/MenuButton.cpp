@@ -20,7 +20,7 @@ void MenuButton::render(Context& context, const math::Rect& bounds) {
     if (drawButton(context, bounds)) {
         ImGui::OpenPopup("##menu");
     }
-    Widgets::placePopup(bounds, 0.0F);
+    Widgets::placePopup(context, bounds, 0.0F);
     if (const std::optional<std::string> picked = PopupList::draw(context, "##menu", items, {}, bounds.width)) {
         context.emit(*this, "select", {{"item", *picked}});
     }

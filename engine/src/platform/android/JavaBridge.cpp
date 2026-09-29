@@ -7,6 +7,7 @@ namespace haylen::platform {
 JavaVM* JavaBridge::javaVm = nullptr;
 jclass JavaBridge::bridgeClass = nullptr;
 jmethodID JavaBridge::dispatchMethod = nullptr;
+jmethodID JavaBridge::cancelMethod = nullptr;
 jclass JavaBridge::editorClass = nullptr;
 jmethodID JavaBridge::editMethod = nullptr;
 jmethodID JavaBridge::finishMethod = nullptr;
@@ -26,6 +27,7 @@ jint JavaBridge::load(JavaVM* vm) {
         return JNI_ERR;
     }
     dispatchMethod = env->GetStaticMethodID(bridgeClass, "dispatch", "(J[B[B)V");
+    cancelMethod = env->GetStaticMethodID(bridgeClass, "cancel", "(J)V");
     editMethod = env->GetStaticMethodID(editorClass, "edit", "([B)V");
     finishMethod = env->GetStaticMethodID(editorClass, "finish", "()V");
     lockOrientationMethod = env->GetStaticMethodID(activityClass, "lockOrientation", "(I)V");
@@ -47,6 +49,11 @@ void JavaBridge::dispatch(std::uint64_t id, std::string_view method, std::string
     env.CallStaticVoidMethod(bridgeClass, dispatchMethod, static_cast<jlong>(id), methodBytes, paramsBytes);
     env.DeleteLocalRef(methodBytes);
     env.DeleteLocalRef(paramsBytes);
+}
+
+void JavaBridge::cancel(std::uint64_t id) {
+    const Thread thread;
+    thread.getEnv().CallStaticVoidMethod(bridgeClass, cancelMethod, static_cast<jlong>(id));
 }
 
 void JavaBridge::editText(std::string_view fieldJson) {

@@ -101,7 +101,8 @@ TEST(AppConfigTest, ReadsEveryField) {
         "fixedRate": 30,
         "maxFrameTime": 0.1,
         "clearColor": "#102030",
-        "splash": {"logo": "ui/logo.png", "background": "#405060"}
+        "splash": {"logo": "ui/logo.png", "background": "#405060"},
+        "native": {"steam_api": {"files": {"macos": "platform/apple/libsteam_api.dylib"}}}
     })"));
 
     EXPECT_EQ(config.name, "Tiny Island");
@@ -122,6 +123,8 @@ TEST(AppConfigTest, ReadsEveryField) {
     EXPECT_EQ(config.splash.logo, "ui/logo.png");
     EXPECT_EQ(config.splash.background, math::Color::fromHex(0x405060FFU));
     EXPECT_EQ(core::AppConfig::fromJson(core::Json{{"clearColor", "#102030"}}).splash.background, math::Color::fromHex(0x102030FFU));
+    EXPECT_EQ(config.native.at("steam_api").at("files").at("macos"), "platform/apple/libsteam_api.dylib");
+    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json{{"native", core::Json::array()}}), std::invalid_argument);
 
     const core::AppConfig roundTrip = core::AppConfig::fromJson(config.toJson());
     EXPECT_EQ(roundTrip.toJson(), config.toJson());

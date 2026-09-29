@@ -150,6 +150,15 @@ void Input::releaseAll() noexcept {
     }
 }
 
+void Input::followViewport(const graphics::Viewport& previous, const graphics::Viewport& viewport) noexcept {
+    mousePosition = viewport.toDesign(mouseFramebufferPosition);
+    for (Touch& touch : touches) {
+        for (math::Vec2* point : {&touch.position, &touch.startPosition, &touch.previousPosition}) {
+            *point = viewport.toDesign(previous.toFramebuffer(*point));
+        }
+    }
+}
+
 void Input::endFrame() {
     keysPressed.reset();
     keysReleased.reset();

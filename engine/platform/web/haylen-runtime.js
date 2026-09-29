@@ -28,7 +28,7 @@ Module.haylen = Module.haylen || {};
         return null;
     });
 
-    // Registers an async handler for a platform method, which receives the parsed params and returns any JSON value.
+    // Registers an async handler for a platform method. It receives the parsed params and a context with the id of the call and a signal that aborts when the app cancels the call or its timeout passes, and it returns any JSON value. A thrown error fails the call with its message and its code and data, or with the code exception when it has no code.
     haylen.register = function (method, handler) {
         handlers.set(method, handler);
     };
@@ -42,16 +42,50 @@ Module.haylen = Module.haylen || {};
         Module.ccall("haylen_web_emit", null, ["string", "string"], [event, JSON.stringify(payload === undefined ? null : payload)]);
     };
 
+    // The abort controllers of the calls that wait for their handler, so a cancel reaches the handler and its late answer is dropped.
+    const pending = new Map();
+
+    // An error with a code keeps its code and data, and any other error fails with the code exception and its name in data.type, as on the other platforms.
+    const describeFailure = function (error) {
+        const message = String(error && error.message ? error.message : error);
+        if (error && error.code !== undefined) {
+            return { message, code: error.code, data: error.data };
+        }
+        return { message, code: "exception", data: { type: error && error.name ? error.name : typeof error } };
+    };
+
     haylen.dispatch = function (call, method, params) {
-        const reply = (ok, value) => Module.ccall("haylen_web_resolve", null, ["number", "number", "string"], [call, ok ? 1 : 0, JSON.stringify(value === undefined ? null : value)]);
+        const reply = (ok, value) => {
+            if (pending.delete(call)) {
+                Module.ccall("haylen_web_resolve", null, ["number", "number", "string"], [call, ok ? 1 : 0, JSON.stringify(value === undefined ? null : value)]);
+            }
+        };
         const handler = handlers.get(method);
+        const controller = new AbortController();
+        pending.set(call, controller);
         if (!handler) {
-            reply(false, { message: "No page handler is registered for " + method + "." });
+            reply(false, { message: "No page handler is registered for " + method + ".", code: "no_handler" });
             return;
         }
-        Promise.resolve()
-            .then(() => handler(JSON.parse(params)))
-            .then((value) => reply(true, value), (error) => reply(false, { message: String(error && error.message ? error.message : error) }));
+        // The handler starts after the frame that made the call, and a cancel in that frame keeps it from starting, as on the other platforms.
+        queueMicrotask(async () => {
+            if (controller.signal.aborted) {
+                return;
+            }
+            try {
+                reply(true, await handler(JSON.parse(params), { call, signal: controller.signal }));
+            } catch (error) {
+                reply(false, describeFailure(error));
+            }
+        });
+    };
+
+    haylen.cancel = function (call) {
+        const controller = pending.get(call);
+        if (controller) {
+            pending.delete(call);
+            controller.abort();
+        }
     };
 
     // The runtime reports from inside a frame, so page callbacks run right after it and may call back into the runtime, even to restart the app.

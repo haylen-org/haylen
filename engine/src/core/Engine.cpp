@@ -16,6 +16,7 @@
 #include "haylen/platform/Event.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
 #include "lua/Environment.hpp"
+#include "platform/native/NativeApi.hpp"
 #include "plugins/BuiltInPlugins.hpp"
 
 namespace haylen::core {
@@ -37,9 +38,21 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     current.audio = std::make_unique<audio::Mixer>(audioSetup);
     // clang-format off
     current.storage = std::make_unique<storage::UserStorage>(host.getUserDataDirectory(current.config.identifier), [&host] { host.persistUserData(); });
-    current.platform = std::make_unique<platform::Bridge>([&host](std::uint64_t id, std::string_view method, std::string_view params) {
-        host.dispatchPlatformCall(id, method, params);
-    });
+    // clang-format on
+
+    // Handlers that native libraries register through the C interface answer before the handlers of the platform.
+    // clang-format off
+    current.platform = std::make_unique<platform::Bridge>(
+        [&host](std::uint64_t id, std::string_view method, std::string_view params) {
+            if (!platform::NativeApi::dispatch(id, method, params)) {
+                host.dispatchPlatformCall(id, method, params);
+            }
+        },
+        [&host](std::uint64_t id, std::string_view method) {
+            if (!platform::NativeApi::cancel(id, method)) {
+                host.cancelPlatformCall(id);
+            }
+        });
     // clang-format on
     current.renderer = std::make_unique<graphics2d::Renderer>(*current.graphics, *current.jobs);
     current.assets = std::make_unique<assets::Manager>(*current.package, *current.jobs, *current.graphics, current.events);
@@ -50,6 +63,7 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     current.safeAreaSimulation = current.config.debug.safeArea;
     current.viewport.update(host.getFramebufferSize(), current.config.designSize, current.config.scaling, getSafeAreaInsets());
     current.fullscreen = host.isFullscreen();
+    current.windowPosition = host.getFrame().getPosition();
     current.orientation = host.getOrientation();
     current.safeRect = current.viewport.getSafeRect();
     plugins::BuiltInPlugins::registerAll(current.plugins);
@@ -94,7 +108,7 @@ void Engine::start() {
     }
     current.started = true;
 
-    current.host.setResizable(current.config.window.resizable);
+    applyWindowOptions();
 
     // A plugin or an application that fails to start shows the error screen instead of taking the process down.
     try {
@@ -109,6 +123,20 @@ void Engine::start() {
     } catch (const std::exception& exception) {
         reportError(exception);
     }
+}
+
+// Every start applies the window options of app.json again, so an app that restarts from its package gets the window it asks for. The position only applies when the window opens, so a restart leaves the window where the player moved it.
+void Engine::applyWindowOptions() {
+    EngineState& current = *state;
+    const AppConfig::Window& window = current.config.window;
+    platform::Host& host = current.host;
+    host.setTransparent(window.transparent && host.canBeTransparent());
+    host.setResizable(window.resizable);
+    host.setDecorated(window.decorated);
+    host.setAlwaysOnTop(window.alwaysOnTop);
+    host.setShowInTaskbar(window.showInTaskbar);
+    host.setFocusable(window.focusable);
+    host.setMousePassthrough(window.mousePassthrough ? platform::Window::Passthrough::Whole : platform::Window::Passthrough::Off, {});
 }
 
 void Engine::stop() {
@@ -376,6 +404,18 @@ void Engine::handleEvent(const platform::Event& event) {
         case platform::Event::Type::KeyboardChanged:
             publishKeyboard(event.keyboardFrame);
             break;
+        case platform::Event::Type::WindowMoved: {
+            // Platforms report every step of a move, and the app hears each new position once.
+            const math::Vec2 position = current.host.getFrame().getPosition();
+            if (position != current.windowPosition) {
+                current.windowPosition = position;
+                current.events.emit(LifecycleEvent::kWindowMoved, {{"x", JsonNumber::fromFloat(position.x)}, {"y", JsonNumber::fromFloat(position.y)}});
+            }
+            break;
+        }
+        case platform::Event::Type::MonitorsChanged:
+            current.events.emit(LifecycleEvent::kWindowMonitorsChanged);
+            break;
         case platform::Event::Type::NetworkChanged: {
             // The first report publishes the state the app starts in, and later reports publish only changes.
             const NetworkState reported = event.online ? NetworkState::Online : NetworkState::Offline;
@@ -523,6 +563,26 @@ void Engine::setLifecycle(const AppConfig::Lifecycle& value) {
         current.clock.skipNextDelta();
     }
     applyFocusMute();
+}
+
+void Engine::setScaling(graphics::Viewport::ScalingPolicy value) {
+    state->config.scaling = value;
+    remapViewport();
+}
+
+void Engine::setDesignSize(math::Vec2 value) {
+    if (!(value.x > 0.0F) || !(value.y > 0.0F)) {
+        throw std::invalid_argument("The design size needs a positive width and height.");
+    }
+    state->config.designSize = value;
+    remapViewport();
+}
+
+void Engine::remapViewport() {
+    EngineState& current = *state;
+    const graphics::Viewport previous = current.viewport;
+    current.viewport.update(current.host.getFramebufferSize(), current.config.designSize, current.config.scaling, getSafeAreaInsets());
+    current.input.followViewport(previous, current.viewport);
 }
 
 void Engine::setSafeAreaSimulation(std::optional<platform::SafeAreaSimulation> value) {

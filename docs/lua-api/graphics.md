@@ -43,7 +43,7 @@ print(red.width, checker.height)
 
 ### graphics.newFontFamily(faces)
 
-Creates a `FontFamily` from its faces: `regular`, which it needs, and the optional `bold`, `italic`, `boldItalic` and `mono` faces, plus `fallback`, a list of fonts for the characters a face lacks, such as a CJK or symbol font. Rich text draws `[b]` and `[i]` with the real faces the family has and synthesizes the others: a TrueType face grows its strokes and leans its glyphs through its distance field, and a bitmap face draws a bold glyph twice a native pixel apart and leans italic ones. `[code]` uses the mono face, or the regular faces when the family has none. A family without `regular` raises `A font family needs a regular face.`.
+Creates a `FontFamily` from its faces: `regular`, which it needs, and the optional `bold`, `italic`, `boldItalic` and `mono` faces, plus `fallback`, a list of fonts for the characters a face lacks, such as a CJK, Arabic, Devanagari or symbol font. A family picks the font of every character with its marks as one unit, so a letter and its marks always come from one font, and each run of one font is shaped on its own. `graphics2d.drawText` and `graphics2d.measureText` take a family in place of a font to draw plain text in every script its fonts cover. Rich text draws `[b]` and `[i]` with the real faces the family has and synthesizes the others: a TrueType face grows its strokes and leans its glyphs through its distance field, and a bitmap face draws a bold glyph twice a native pixel apart and leans italic ones. `[code]` uses the mono face, or the regular faces when the family has none. A family without `regular` raises `A font family needs a regular face.`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -139,7 +139,7 @@ local preview = graphics2d.newSprite(target.texture, {x = 64, y = 32})
 
 ## Font
 
-A `Font` is a TrueType or OpenType font drawn through a signed distance field, or a bitmap font drawn from its own images. `assets.font(path, options)` loads either one by the extension of the file: a `.ttf` or `.otf` file takes `bakeSize` (glyph size in the atlas, default 48), `spread` (how far the distance field reaches past a glyph, in pixels at the bake size, default 8, which bounds outlines, glows and blurred shadows) and `atlasSize` (initial atlas size, default 512), and a `.fnt` BMFont file takes the `filter` and `wrap` of its page textures. `graphics.newGridFont` and `graphics.newBitmapFont` make bitmap fonts from textures, and `graphics2d.defaultFont()` returns the built-in one. Every function that takes a font takes either kind. A bitmap font draws pixel for pixel at its native size, scales at other sizes and draws nothing for the characters it lacks. Two font values compare equal with `==` when they refer to the same font, such as a face read twice from a family or a font loaded twice with the same options.
+A `Font` is a TrueType or OpenType font drawn through a signed distance field, or a bitmap font drawn from its own images. `assets.font(path, options)` loads either one by the extension of the file: a `.ttf` or `.otf` file takes `bakeSize` (the em size of the glyphs in the atlas, default 48), `spread` (how far the distance field reaches past a glyph, in pixels at the bake size, default 8, which bounds outlines, glows and blurred shadows) and `atlasSize` (initial atlas size, default 512), and a `.fnt` BMFont file takes the `filter` and `wrap` of its page textures. `graphics.newGridFont` and `graphics.newBitmapFont` make bitmap fonts from textures, and `graphics2d.defaultFont()` returns the built-in one. Every function that takes a font takes either kind. A bitmap font draws pixel for pixel at its native size, scales at other sizes and draws nothing for the characters it lacks. Two font values compare equal with `==` when they refer to the same font, such as a face read twice from a family or a font loaded twice with the same options.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -156,7 +156,7 @@ print(pixel.nativeSize, pixel.distanceField, pixel.pageCount)
 
 ### font:measure(text, style)
 
-Returns the width and height of `text` laid out with `style`. The style takes the text keys of `graphics2d.drawText` without its draw order keys, which raise `Unknown option 'name'.` because a font draws nothing itself.
+Returns the width and height of `text` shaped and laid out with `style`. The style takes the text keys of `graphics2d.drawText` without its draw order keys, which raise `Unknown option 'name'.` because a font draws nothing itself.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -171,7 +171,7 @@ Lays `text` out with the layout keys of `style`, like `graphics2d.drawText` does
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `quads` | table | One entry per visible glyph, each with `position` (Vec2, top-left corner), `size` (Vec2), `source` (Rect in the page) and `page` (counted from 1). Spaces and line breaks have no entry. |
+| `quads` | table | One entry per visible glyph in the order the lines show them, each with `position` (Vec2, top-left corner), `size` (Vec2), `source` (Rect in the page), `page` (counted from 1) and `font`, the font that draws it. Spaces and line breaks have no entry, and a shaped cluster, such as a ligature or a letter with its marks, has one entry per glyph the font draws for it. |
 | `size` | Vec2 | Width and height of the whole block, as `font:measure` returns them. |
 | `lineCount` | integer | Number of lines after wrapping. |
 
@@ -206,23 +206,27 @@ print(font:hasGlyph('A'), font:hasGlyph(0x4E16))
 
 ### font:glyph(character)
 
-Returns the glyph of a character at the native size as a table with `source` (Rect in its page), `offset` (Vec2 from the pen on the baseline to the top-left of the image), `advance`, `page` (counted from 1) and `visible`.
+Returns the glyph a character shapes to on its own at the native size as a table with `index` (the glyph index in the font, 0 for a missing glyph), `source` (Rect in its page), `offset` (Vec2 from the pen on the baseline to the top-left of the image), `advance`, `page` (counted from 1) and `visible`.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
 
 local glyph = graphics2d.defaultFont():glyph('g')
-print(glyph.advance, glyph.offset.y, glyph.source.height)
+print(glyph.index, glyph.advance, glyph.offset.y, glyph.source.height)
 ```
 
-### font:kerning(left, right)
+### font:shape(text, options)
 
-Returns the advance adjustment between two characters at the native size, which is negative for pairs that tuck together.
+Shapes `text` as one run and returns its glyphs in visual order, each as a table with `index` (the glyph index in the font), `cluster` (the position of the first character of its cluster in the text, counted in code points from 1), `advance` and `offset` (Vec2 from the pen, where positive y points down). A TrueType font shapes with HarfBuzz in the script of the first letter, so the glyphs show ligatures, the joining forms of Arabic, the conjuncts of Indic scripts, kerning and the marks placed on their letters. A bitmap font maps every character to its glyph and applies its kerning pairs. `options` takes `size` (the text size of the lengths, the native size by default), `direction` (`'auto'`, the default, which reads the direction of the first strong letter, `'ltr'` or `'rtl'`) and `language` (a BCP 47 tag such as `'fa'` or `'sr'`, which picks the forms a language prefers). `font:layout` and the draw functions split mixed text into runs and shape each one themselves.
 
 ```lua
-local graphics2d = require('haylen.graphics2d')
+local assets = require('haylen.assets')
 
-print(graphics2d.defaultFont():kerning('A', 'V'))
+local arabic = assets.font('fonts/noto_sans_arabic_regular.ttf')
+for _, glyph in ipairs(arabic:shape('لا سلام', {size = 32, language = 'ar'})) do
+    print(glyph.index, glyph.cluster, glyph.advance)
+end
+print(#assets.font('fonts/serif.ttf'):shape('office'))
 ```
 
 ### font:page(index)
@@ -303,7 +307,7 @@ print(face == family.regular, syntheticBold, syntheticItalic)
 
 ### family:resolve(character, style)
 
-Returns the font that draws a character in a style, followed by whether bold and italic are synthesized: the selected face when it has the glyph, otherwise the first fallback that has it, which synthesizes the requested styles, and otherwise the selected face, which draws its missing glyph.
+Returns the font that draws a character in a style, followed by whether bold and italic are synthesized: the selected face when it has the glyph, otherwise the first fallback that has it, which synthesizes the requested styles, and otherwise the selected face, which draws its missing glyph. The character is a code point or a string, which may hold a letter with its marks, and a font draws it only when it has a glyph for every character of the string.
 
 ```lua
 local assets = require('haylen.assets')
@@ -313,6 +317,35 @@ local graphics2d = require('haylen.graphics2d')
 local family = graphics.newFontFamily({regular = graphics2d.defaultFont(), fallback = {assets.font('fonts/cjk.ttf')}})
 local font, syntheticBold = family:resolve('世', {bold = true})
 print(font == family.fallback[1], syntheticBold)
+```
+
+### family:measure(text, style)
+
+Returns the width and height of `text` laid out in the family with `style`, like `font:measure` does. The style takes the text keys of `graphics2d.drawText`, where `bold` and `italic` pick the faces, and every character the selected face lacks comes from the first fallback that has it.
+
+```lua
+local assets = require('haylen.assets')
+local graphics = require('haylen.graphics')
+local graphics2d = require('haylen.graphics2d')
+
+local family = graphics.newFontFamily({regular = graphics2d.defaultFont(), fallback = {assets.font('fonts/noto_sans_hebrew_regular.ttf')}})
+print(family:measure('Shalom שלום', {size = 32}))
+```
+
+### family:layout(text, style)
+
+Lays `text` out in the family and returns the same table as `font:layout`, where the `font` of every quad is the face or fallback that draws it.
+
+```lua
+local assets = require('haylen.assets')
+local graphics = require('haylen.graphics')
+local graphics2d = require('haylen.graphics2d')
+
+local family = graphics.newFontFamily({regular = graphics2d.defaultFont(), fallback = {assets.font('fonts/noto_sans_devanagari_regular.ttf')}})
+local layout = family:layout('Hindi हिन्दी', {size = 32})
+for _, quad in ipairs(layout.quads) do
+    print(quad.font == family.regular, quad.position.x)
+end
 ```
 
 ## Shader

@@ -15,7 +15,7 @@
 
 namespace haylen::text {
 
-// A font drawn from prepared images: a BMFont made by tools such as BMFont, Hiero or Littera, or a grid of equal cells in one image. It draws pixel for pixel at its native size and scales at other sizes, and code points it lacks draw nothing.
+// A font drawn from prepared images: a BMFont made by tools such as BMFont, Hiero or Littera, or a grid of equal cells in one image. It draws pixel for pixel at its native size and scales at other sizes, and code points it lacks draw nothing. It has no OpenType tables, so it sets one glyph per code point with its kerning pairs and cannot join or reorder the letters of complex scripts.
 class BitmapFont final : public Font {
   public:
     // One character of the font: its region in a page, where that region goes from the pen on the baseline, and how far the pen moves after it.
@@ -65,8 +65,10 @@ class BitmapFont final : public Font {
         return false;
     }
     [[nodiscard]] bool hasGlyph(char32_t codePoint) override;
-    [[nodiscard]] const Glyph& getGlyph(char32_t codePoint) override;
-    [[nodiscard]] float getKerning(char32_t left, char32_t right) override;
+    void shape(const Run& run, std::vector<ShapedGlyph>& shaped) override;
+
+    // The index of a glyph of a bitmap font is its code point.
+    [[nodiscard]] const Glyph& getGlyph(std::uint32_t index) override;
     [[nodiscard]] std::size_t getPageCount() const noexcept override {
         return pages.size();
     }
@@ -81,8 +83,10 @@ class BitmapFont final : public Font {
     [[nodiscard]] static Description parseBinary(std::span<const std::uint8_t> bytes);
     [[nodiscard]] static std::uint64_t pairKey(char32_t left, char32_t right) noexcept;
 
+    [[nodiscard]] float getKerning(char32_t left, char32_t right) const;
+
     std::vector<graphics::Texture> pages;
-    std::unordered_map<char32_t, Glyph> glyphs;
+    std::unordered_map<std::uint32_t, Glyph> glyphs;
     std::unordered_map<std::uint64_t, float> kernings;
     Glyph missing;
 };

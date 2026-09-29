@@ -218,7 +218,7 @@ Theme Theme::fromJson(const core::Json& document, const Theme& base, const Textu
         if (!role || !value.is_object()) {
             throw std::invalid_argument("The theme font " + key + " must be a known role with an object value.");
         }
-        core::JsonValidator::requireKnownKeys(value, {"font", "size"}, "the theme font " + key);
+        core::JsonValidator::requireKnownKeys(value, {"font", "size", "bold", "italic"}, "the theme font " + key);
         FontStyle style = theme.getFont(*role);
         if (value.contains("font")) {
             if (!value.at("font").is_string()) {
@@ -228,6 +228,15 @@ Theme Theme::fromJson(const core::Json& document, const Theme& base, const Textu
         }
         if (value.contains("size")) {
             style.size = readNumber(value.at("size"), "The theme font size of " + key);
+        }
+        for (const auto& [flag, field] : {std::pair{"bold", &style.bold}, std::pair{"italic", &style.italic}}) {
+            if (!value.contains(flag)) {
+                continue;
+            }
+            if (!value.at(flag).is_boolean()) {
+                throw std::invalid_argument("The theme font " + key + " must set " + flag + " to true or false.");
+            }
+            *field = value.at(flag).get<bool>();
         }
         theme.setFont(*role, std::move(style));
     }

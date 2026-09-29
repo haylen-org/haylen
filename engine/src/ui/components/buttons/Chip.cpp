@@ -27,7 +27,7 @@ math::Vec2 Chip::measureContent(Context& context, float) {
 
 void Chip::render(Context& context, const math::Rect& bounds) {
     const float remove = removable ? bounds.height * 0.6F : 0.0F;
-    const math::Rect body{bounds.x, bounds.y, bounds.width - remove, bounds.height};
+    const math::Rect body = context.mirror({bounds.x, bounds.y, bounds.width - remove, bounds.height}, bounds);
     const Widgets::Interaction state = Widgets::interact(context, body, body.height * 0.5F, "##chip");
     if (takeFocusRequest()) {
         Widgets::focusItem(context);
@@ -43,9 +43,9 @@ void Chip::render(Context& context, const math::Rect& bounds) {
     Typography::drawAligned(context, Theme::Font::Caption, body, ink, context.getText(text), Alignment::Center);
 
     if (removable) {
-        const math::Rect cross{body.getRight(), bounds.y, remove, bounds.height};
+        const math::Rect cross = context.mirror({bounds.getRight() - remove, bounds.y, remove, bounds.height}, bounds);
         const Widgets::Interaction removal = Widgets::interact(context, cross, cross.height * 0.5F, "##remove");
-        const math::Vec2 center = cross.getCenter() - math::Vec2{remove * 0.25F, 0.0F};
+        const math::Vec2 center = cross.getCenter() - math::Vec2{context.isRightToLeft() ? -remove * 0.25F : remove * 0.25F, 0.0F};
         const float arm = remove * 0.18F;
         ImDrawList& list = *ImGui::GetWindowDrawList();
         const ImU32 color = ImGuiConverter::toImU32(context.getColor(removal.hovered ? Theme::Color::DangerText : Theme::Color::TextMuted));

@@ -66,11 +66,12 @@ endif()
 
 # sokol_app sizes the iOS framebuffer by the screen, which crops apps whose window is smaller than the screen, on Mac Catalyst and in iPad windows, so the first patch sizes it by the view of the app.
 # The dummy backend of the headless host caps textures at 1024 pixels, below every real GPU, so the second patch gives it the limits of desktop GPUs and headless runs load full-size art.
+# Desktop apps open borderless, topmost, unfocusable and taskbar-less windows at a given position, so the third patch creates the window with those options before it first shows, lets the focus behavior change at run time, and makes transparency work on D3D11 through DirectComposition and on X11 through ARGB visuals.
 CPMAddPackage(
   NAME sokol
   URL "https://github.com/floooh/sokol/archive/2e75443dbd4940b5aa8d76a8e479f8e4b270b9a3.tar.gz"
   URL_HASH SHA256=d8560ddd11fb3223f3aaf6513aaa2d9be66ee7896fa1263ad51c5bd60ec52cf3
-  PATCHES "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-ios-view-size.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-dummy-limits.patch"
+  PATCHES "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-ios-view-size.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-dummy-limits.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-desktop-window.patch"
   DOWNLOAD_ONLY YES
 )
 
@@ -78,6 +79,47 @@ CPMAddPackage(
   NAME stb
   URL "https://github.com/nothings/stb/archive/2c980bb59875b0d32144a71867fbdebb2f77cd20.tar.gz"
   URL_HASH SHA256=9a955b1b49a4410088a2e0ee2a9c057c3c907d0c1d75454144cb980aca0ba515
+  DOWNLOAD_ONLY YES
+)
+
+# The core of msdfgen builds the signed distance fields of font glyphs from their whole outlines, the cubic curves of OpenType CFF fonts included.
+CPMAddPackage(
+  NAME msdfgen
+  URL "https://github.com/Chlumsky/msdfgen/archive/refs/tags/v1.13.tar.gz"
+  URL_HASH SHA256=93cd1ad8918c1a78c5c96e82d4f4c77f0eb86c2e7e8579a0967e54196c4b7167
+  OPTIONS "MSDFGEN_CORE_ONLY ON" "MSDFGEN_BUILD_STANDALONE OFF" "MSDFGEN_USE_VCPKG OFF" "MSDFGEN_USE_SKIA OFF" "MSDFGEN_INSTALL OFF" "MSDFGEN_DYNAMIC_RUNTIME ON"
+  SYSTEM YES
+)
+
+# HarfBuzz shapes text with the OpenType tables of its font: ligatures, contextual forms, mark positioning and kerning.
+CPMAddPackage(
+  NAME harfbuzz
+  URL "https://github.com/harfbuzz/harfbuzz/releases/download/14.5.0/harfbuzz-14.5.0.tar.xz"
+  URL_HASH SHA256=b7132e148358a45185c9feafd049dbaf243649d3c44414b3534d9c95d18592b9
+  DOWNLOAD_ONLY YES
+)
+
+# SheenBidi resolves the bidirectional levels and the visual order of paragraphs and finds their script runs.
+CPMAddPackage(
+  NAME sheenbidi
+  URL "https://github.com/Tehreer/SheenBidi/archive/refs/tags/v3.0.0.tar.gz"
+  URL_HASH SHA256=86c56014034739ba39a24c23eb00323b0bf6f737354f665786015fca842af786
+  DOWNLOAD_ONLY YES
+)
+
+# libunibreak finds the line break opportunities and the grapheme clusters of Unicode text.
+CPMAddPackage(
+  NAME libunibreak
+  URL "https://github.com/adah1972/libunibreak/releases/download/libunibreak_8_0/libunibreak-8.0.tar.gz"
+  URL_HASH SHA256=9c4fad6e517338a098373acc9f35579ae2c325e6446666fb9ac2666ba15ceba4
+  DOWNLOAD_ONLY YES
+)
+
+# The Thai model of BudouX finds where Thai text, which has no spaces between words, may break into lines.
+CPMAddPackage(
+  NAME budoux
+  URL "https://github.com/google/budoux/archive/refs/tags/v0.9.3.tar.gz"
+  URL_HASH SHA256=55211d599d35c9dcfbb237b5f2050f382daa8e8fe8895986809ee5084e6da893
   DOWNLOAD_ONLY YES
 )
 
@@ -160,6 +202,19 @@ target_include_directories(haylen_stb SYSTEM INTERFACE "${stb_SOURCE_DIR}")
 
 add_library(haylen_fast_float INTERFACE)
 target_include_directories(haylen_fast_float SYSTEM INTERFACE "${fast_float_SOURCE_DIR}/include")
+
+# The amalgamated source of HarfBuzz builds its OpenType shaper alone, without the shapers of legacy and AAT fonts.
+add_library(haylen_harfbuzz STATIC "${harfbuzz_SOURCE_DIR}/src/harfbuzz.cc")
+target_include_directories(haylen_harfbuzz SYSTEM PUBLIC "${harfbuzz_SOURCE_DIR}/src")
+target_compile_definitions(haylen_harfbuzz PRIVATE HB_MINI)
+
+add_library(haylen_sheenbidi STATIC "${sheenbidi_SOURCE_DIR}/Source/SheenBidi.c")
+target_include_directories(haylen_sheenbidi SYSTEM PUBLIC "${sheenbidi_SOURCE_DIR}/Headers" PRIVATE "${sheenbidi_SOURCE_DIR}/Source")
+target_compile_definitions(haylen_sheenbidi PRIVATE SB_CONFIG_UNITY)
+
+set(unibreak_dir "${libunibreak_SOURCE_DIR}/src")
+add_library(haylen_unibreak STATIC "${unibreak_dir}/unibreakbase.c" "${unibreak_dir}/unibreakdef.c" "${unibreak_dir}/linebreak.c" "${unibreak_dir}/linebreakdata.c" "${unibreak_dir}/linebreakdef.c" "${unibreak_dir}/eastasianwidthdef.c" "${unibreak_dir}/emojidef.c" "${unibreak_dir}/graphemebreak.c")
+target_include_directories(haylen_unibreak SYSTEM PUBLIC "${unibreak_dir}")
 
 add_library(haylen_imgui STATIC
   "${imgui_SOURCE_DIR}/imgui.cpp"

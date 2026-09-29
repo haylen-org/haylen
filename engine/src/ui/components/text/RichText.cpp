@@ -30,19 +30,23 @@ void RichText::readProperties(PropertyReader& reader) {
     changed = true;
 }
 
-// The theme gives the family, size and color, so a theme change lays the text out again, which starts its reveal over. Fonts and images resolve through the context the options were made with.
+// The theme gives the family, size, style and color and the node its language and the side start and end name, so a change of them lays the text out again, which starts its reveal over. Paragraphs read in the direction of their first strong letter unless their markup sets one. The text takes the em size of the widgets of its role, so it lines up with labels in the same font. Fonts and images resolve through the context the options were made with.
 text::RichText& RichText::prepare(Context& context) {
     std::string markup = context.getText(text);
     std::shared_ptr<text::FontFamily> family = context.getFontFamily(font);
-    const float size = context.getFontSize(font);
+    const float size = context.getEmSize(font);
+    const Theme::FontStyle& style = context.getTheme().getFont(font);
     const math::Color ink = context.getColor(color.value_or(Theme::Color::Text));
+    const bool rightToLeft = context.isRightToLeft();
+    const bool sided = textAlign == text::TextAlign::Start || textAlign == text::TextAlign::End;
+    const text::TextAlign align = sided ? ((textAlign == text::TextAlign::Start) != rightToLeft ? text::TextAlign::Left : text::TextAlign::Right) : textAlign;
     const text::RichTextOptions* current = richText ? &richText->getOptions() : nullptr;
-    const bool sameOptions = current != nullptr && preparedFor == &context && current->family == family && current->size == size && current->color == ink && current->align == textAlign && current->revealSpeed == reveal;
+    const bool sameOptions = current != nullptr && preparedFor == &context && current->family == family && current->size == size && current->bold == style.bold && current->italic == style.italic && current->color == ink && current->align == align && current->language == context.getLanguage() && current->revealSpeed == reveal;
 
     if (!sameOptions) {
         Context* owner = &context;
         preparedFor = owner;
-        text::RichTextOptions options{.family = std::move(family), .size = size, .color = ink, .align = textAlign, .revealSpeed = reveal};
+        text::RichTextOptions options{.family = std::move(family), .size = size, .bold = style.bold, .italic = style.italic, .color = ink, .align = align, .language = context.getLanguage(), .revealSpeed = reveal};
         options.fonts = [owner](std::string_view name) { return owner->getFontFamily(name); };
         options.images = [owner](std::string_view path) { return owner->getImage(path); };
         if (richText) {
@@ -80,9 +84,11 @@ void RichText::render(Context& context, const math::Rect& bounds) {
     }
     prepared.setMaxWidth(wrap ? bounds.width : 0.0F);
 
-    // Text that does not wrap aligns as one block inside the bounds.
+    // Text that does not wrap aligns as one block inside the bounds, where start and end follow the direction of the UI.
     const float room = bounds.width - prepared.getSize().x;
-    const float shift = wrap ? 0.0F : (textAlign == text::TextAlign::Center ? room * 0.5F : (textAlign == text::TextAlign::Right ? room : 0.0F));
+    const bool rightToLeft = context.isRightToLeft();
+    const bool toRight = textAlign == text::TextAlign::Right || (textAlign == text::TextAlign::Start && rightToLeft) || (textAlign == text::TextAlign::End && !rightToLeft);
+    const float shift = wrap ? 0.0F : (textAlign == text::TextAlign::Center ? room * 0.5F : (toRight ? room : 0.0F));
     const math::Vec2 origin{bounds.x + shift, bounds.y};
     interactWithLinks(context, origin);
     showHint(context, origin);
@@ -98,14 +104,14 @@ void RichText::render(Context& context, const math::Rect& bounds) {
 
 // Every piece of a wrapped link reacts to the pointer, and only its first piece takes the focus, so the focus stops once per link.
 void RichText::interactWithLinks(Context& context, math::Vec2 origin) {
-    const text::RichTextLayout& layout = richText->getLayout();
+    const text::TextLayout& layout = richText->getLayout();
     const std::vector<std::string>& links = richText->getDocument().links;
     const bool takesFocus = takeFocusRequest();
     std::vector<bool> reached(links.size(), false);
     std::optional<std::size_t> hovered;
 
     for (std::size_t index = 0; index < layout.links.size(); ++index) {
-        const text::RichTextLayout::Area& area = layout.links[index];
+        const text::TextLayout::Area& area = layout.links[index];
         const bool first = !reached[area.index];
         reached[area.index] = true;
         const std::string label = "##link" + std::to_string(index);
@@ -138,7 +144,7 @@ void RichText::showHint(Context&, math::Vec2 origin) {
     if (!ImGui::IsWindowHovered()) {
         return;
     }
-    for (const text::RichTextLayout::Area& area : richText->getLayout().hints) {
+    for (const text::TextLayout::Area& area : richText->getLayout().hints) {
         const math::Rect rect = area.rect.translated(origin);
         if (ImGui::IsMouseHoveringRect(ImGuiConverter::toImVec2(rect.getMin()), ImGuiConverter::toImVec2(rect.getMax()))) {
             ImGui::SetTooltip("%s", richText->getDocument().hints[area.index].c_str());

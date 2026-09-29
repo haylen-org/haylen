@@ -15,6 +15,7 @@
 #include "2d/lighting/LightLua.hpp"
 #include "2d/lighting/OccluderLua.hpp"
 #include "core/FloatBufferLua.hpp"
+#include "graphics/FontLua.hpp"
 #include "haylen/2d/graphics/ImageBlend.hpp"
 #include "haylen/2d/graphics/Parallax.hpp"
 #include "haylen/2d/graphics/SpriteBatch.hpp"
@@ -27,6 +28,7 @@
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/math/Insets.hpp"
 #include "haylen/text/Font.hpp"
+#include "haylen/text/FontFamily.hpp"
 
 namespace haylen::graphics2d {
 
@@ -308,15 +310,26 @@ int Graphics2DLua::drawMesh(lua_State* L) {
     return 0;
 }
 
-// Draws text with drawText(font or nil, text, x, y, style), where the style also takes the layer, depth and blend of the draw.
+// Draws text with drawText(font, family or nil, text, x, y, style), where the style also takes the layer, depth and blend of the draw. A family draws what its faces lack from its fallbacks.
 int Graphics2DLua::drawText(lua_State* L) {
-    getRenderer(L).drawText(fontArgument(L, 1), lua::Stack::read<std::string_view>(L, 2), {lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4)}, lua::TypeConverter::readTextStyle(L, 5, {lua::TypeConverter::kDrawOrderFields}), lua::TypeConverter::readDrawOrder(L, 5, {lua::TypeConverter::kTextStyleFields}));
+    const std::string_view content = lua::Stack::read<std::string_view>(L, 2);
+    const math::Vec2 position{lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4)};
+    const text::TextStyle style = lua::TypeConverter::readTextStyle(L, 5, {lua::TypeConverter::kDrawOrderFields});
+    const DrawOrder order = lua::TypeConverter::readDrawOrder(L, 5, {lua::TypeConverter::kTextStyleFields});
+    if (text::FontFamily* family = lua::Userdata::test<text::FontFamily>(L, 1)) {
+        getRenderer(L).drawText(*family, content, position, style, order);
+    } else {
+        getRenderer(L).drawText(fontArgument(L, 1), content, position, style, order);
+    }
     return 0;
 }
 
-// Measures text with the same style table drawText takes, whose draw order keys change nothing.
+// Measures text with the same font or family and style table drawText takes, whose draw order keys change nothing.
 int Graphics2DLua::measureText(lua_State* L) {
-    const math::Vec2 size = fontArgument(L, 1).measure(lua::Stack::read<std::string_view>(L, 2), lua::TypeConverter::readTextStyle(L, 3, {lua::TypeConverter::kDrawOrderFields}));
+    const std::string_view content = lua::Stack::read<std::string_view>(L, 2);
+    const text::TextStyle style = lua::TypeConverter::readTextStyle(L, 3, {lua::TypeConverter::kDrawOrderFields});
+    text::FontFamily* family = lua::Userdata::test<text::FontFamily>(L, 1);
+    const math::Vec2 size = family != nullptr ? family->measure(content, style) : fontArgument(L, 1).measure(content, style);
     lua::Stack::push(L, size.x);
     lua::Stack::push(L, size.y);
     return 2;

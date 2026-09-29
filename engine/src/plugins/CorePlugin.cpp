@@ -9,6 +9,7 @@
 #include "core/TimerLua.hpp"
 #include "core/TweenLua.hpp"
 #include "math/MathLua.hpp"
+#include "platform/WindowLua.hpp"
 
 namespace haylen::plugins {
 
@@ -18,6 +19,7 @@ void CorePlugin::stop(core::Engine& engine) {
 
 void CorePlugin::installLua(core::Engine&, lua_State* L) {
     core::CoreLua::install(L);
+    platform::WindowLua::install(L);
     core::CollectionsLua::install(L);
     core::TimerLua::install(L);
     core::SceneLua::install(L);

@@ -2,7 +2,7 @@
 
 #include <exception>
 
-#include "platform/sokol/BridgeRelay.hpp"
+#include "platform/BridgeRelay.hpp"
 
 namespace haylen::platform {
 
@@ -42,7 +42,7 @@ void DesktopMethods::dispatch(std::uint64_t call, std::string_view method, std::
         fail(call, error.what());
         return;
     }
-    fail(call, "No native handler is registered for " + std::string(method) + ".");
+    BridgeRelay::resolve(call, false, core::Json{{"message", "No native handler is registered for " + std::string(method) + "."}, {"code", "no_handler"}}.dump());
 }
 
 void DesktopMethods::fail(std::uint64_t call, const std::string& message) {

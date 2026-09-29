@@ -1,9 +1,14 @@
 #include <gtest/gtest.h>
 
+#include <cstdint>
+#include <fstream>
 #include <functional>
+#include <iterator>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
@@ -45,6 +50,15 @@ class BackendTest : public ::testing::Test {
         event.type = type;
         event.position = position;
         backend.handleEvent(event, getEngine().getViewport());
+    }
+
+    [[nodiscard]] static std::vector<std::uint8_t> readFont(const std::string& name) {
+        if (name == "default") {
+            const std::span<const std::uint8_t> data = core::EmbeddedFiles::getDefaultFont();
+            return {data.begin(), data.end()};
+        }
+        std::ifstream file(std::string(HAYLEN_SAMPLE_FONTS) + "/" + name, std::ios::binary);
+        return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
     }
 
     static void beginWindow(const char* name, math::Vec2 position, ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration) {
@@ -173,7 +187,9 @@ TEST_F(BackendTest, ManagesFontsAndAppTextures) {
     EXPECT_EQ(backend.getFont("default"), backend.getDefaultFont());
     EXPECT_THROW((void)backend.getFont("missing"), std::invalid_argument);
     EXPECT_THROW(backend.addFont("default", {}), std::invalid_argument);
-    EXPECT_THROW(backend.addFont("broken", {1, 2, 3}), std::runtime_error);
+    EXPECT_THROW(backend.addFont("broken", {.regular = {1, 2, 3}}), std::runtime_error);
+    EXPECT_THROW(backend.addFont("broken", {.regular = readFont("default"), .fallbacks = {{1, 2, 3}}}), std::runtime_error);
+    EXPECT_FALSE(backend.hasFont("broken"));
 
     const graphics::Texture& white = getEngine().getGraphics().getWhiteTexture();
     // clang-format off
@@ -184,6 +200,28 @@ TEST_F(BackendTest, ManagesFontsAndAppTextures) {
     });
     // clang-format on
     EXPECT_GE(getEngine().getRenderer2D().getStats().drawCalls, 1U);
+}
+
+// Every face of a font draws the characters it lacks from the fallbacks, whose em squares match the em square of the face, and a style the font has no face for draws with the regular face.
+TEST_F(BackendTest, DrawsMissingCharactersFromFallbacksAtTheEmSize) {
+    ImFont* regular = backend.addFont("story", {.regular = readFont("default"), .bold = readFont("crimson_text_bold.ttf"), .fallbacks = {readFont("mplus_1p_regular.ttf"), readFont("noto_sans_symbols_2_regular.ttf")}});
+    EXPECT_EQ(backend.getFont("story"), regular);
+    EXPECT_NE(backend.getFont("story", true), regular);
+    EXPECT_EQ(backend.getFont("story", true, true), backend.getFont("story", true));
+    EXPECT_EQ(backend.getFont("story", false, true), regular);
+
+    // The default font is 2048 units to the em and 2400 from ascent to descent, Crimson Text 1024 to the em and 1331 from ascent to descent, and a Japanese character advances by one em.
+    EXPECT_NEAR(backend.getEmSize("story", 30.0F), 30.0F * 2048.0F / 2400.0F, 0.001F);
+    // clang-format off
+    frame([&] {
+        for (const auto& [face, em] : {std::pair{regular, 30.0F * 2048.0F / 2400.0F}, std::pair{backend.getFont("story", true), 30.0F * 1024.0F / 1331.0F}}) {
+            EXPECT_TRUE(face->IsGlyphInFont(U'日'));
+            EXPECT_TRUE(face->IsGlyphInFont(U'☀'));
+            EXPECT_NEAR(face->GetFontBaked(30.0F)->GetCharAdvance(U'日'), em, 0.5F);
+        }
+        EXPECT_FALSE(backend.getDefaultFont()->IsGlyphInFont(U'日'));
+    });
+    // clang-format on
 }
 
 } // namespace haylen::ui

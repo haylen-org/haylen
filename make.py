@@ -658,13 +658,22 @@ class App:
         if not re.fullmatch(r"\d+(\.\d+){0,2}", self.version):
             raise BuildError(f"The version of {folder}/app.json must be one to three numbers separated by dots, such as 1.2.0.")
 
+        # A transparent window clears to transparent, and an app without a taskbar button also leaves out its Dock icon on macOS.
+        window = document.get("window", {})
+        self.transparent: bool = window.get("transparent", False)
+        self.show_in_taskbar: bool = window.get("showInTaskbar", True)
         splash = document.get("splash", {})
-        self.background = parse_color(splash.get("background", document.get("clearColor", "#FF000000")))
+        self.background = parse_color(splash.get("background", document.get("clearColor", "#00000000" if self.transparent else "#FF000000")))
         self.splash_logo: Path | None = None
         if splash.get("logo"):
             self.splash_logo = folder / "content" / splash["logo"]
             if not self.splash_logo.is_file():
                 raise BuildError(f"The splash logo {self.splash_logo} of {folder}/app.json does not exist.")
+
+        native = document.get("native", {})
+        if not isinstance(native, dict):
+            raise BuildError(f"The native section of {folder}/app.json maps library names to their files or CMake projects.")
+        self.native = [NativeLibrary.parse(folder, name, entry) for name, entry in native.items()]
 
     @property
     def slug(self) -> str:
@@ -700,6 +709,231 @@ def package_folder(folder: Path, output: Path) -> None:
             if path.is_file() and path.name != ".DS_Store":
                 archive.write(path, path.relative_to(folder).as_posix())
     print(f"Packaged {folder} into {output}")
+
+
+# Native libraries: what the native section of app.json lists, prebuilt or built from a CMake project, placed where each platform package loads it.
+
+NATIVE_PLATFORMS = ("macos", "ios", "tvos", "android", "windows", "linux")
+# The ABIs of the haylen Android library, which the native libraries of an app match.
+ANDROID_ABIS = ("arm64-v8a", "armeabi-v7a", "x86_64")
+# The slice of APPLE_SLICES that each Apple run platform builds, and the target and platform whose embed phase ships its libraries in App.xcodeproj.
+APPLE_NATIVE_SLICES = {"macos": "macos", "catalyst": "ios-maccatalyst", "ios": "ios", "ios-simulator": "ios-simulator", "tvos": "tvos", "tvos-simulator": "tvos-simulator"}
+APPLE_NATIVE_KEYS = {"macos": "macOS-macosx", "ios-maccatalyst": "iOS-macosx", "ios": "iOS-iphoneos", "ios-simulator": "iOS-iphonesimulator", "tvos": "tvOS-appletvos", "tvos-simulator": "tvOS-appletvsimulator"}
+XCFRAMEWORK_SLICES = {"macos": ("macos", None), "ios-maccatalyst": ("ios", "maccatalyst"), "ios": ("ios", None), "ios-simulator": ("ios", "simulator"), "tvos": ("tvos", None), "tvos-simulator": ("tvos", "simulator")}
+FRAMEWORK_PLATFORMS = {"ios": "iPhoneOS", "ios-simulator": "iPhoneSimulator", "tvos": "AppleTVOS", "tvos-simulator": "AppleTVSimulator"}
+
+
+@dataclasses.dataclass(frozen=True)
+class NativeLibrary:
+    """A native library of an app: prebuilt files per platform, or a target of a CMake project that make.py builds for each listed platform. iOS and tvOS may link it statically, and then the symbols that Lua reaches are listed."""
+
+    name: str
+    files: dict[str, Path]
+    cmake: Path | None
+    platforms: tuple[str, ...]
+    static: bool
+    symbols: tuple[str, ...]
+
+    @staticmethod
+    def parse(folder: Path, name: str, entry: object) -> "NativeLibrary":
+        where = f"The native library {name} in {folder}/app.json"
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) or not isinstance(entry, dict):
+            raise BuildError(f"{where} needs a name of letters, digits and underscores and an object with its files or its CMake project.")
+        unknown = set(entry) - {"files", "cmake", "platforms", "link", "symbols"}
+        if unknown:
+            raise BuildError(f"{where} has unknown keys: {', '.join(sorted(unknown))}.")
+        if ("files" in entry) == ("cmake" in entry) or ("cmake" in entry) != ("platforms" in entry):
+            raise BuildError(f"{where} lists either its prebuilt files by platform or a CMake project with the platforms it builds for.")
+
+        files = {platform: folder / path for platform, path in entry.get("files", {}).items()}
+        platforms = tuple(entry.get("platforms", files.keys()))
+        if "android" in files and not files["android"].is_dir():
+            raise BuildError(f"{where} gives Android a folder with a subfolder of libraries for each ABI, like jniLibs.")
+        for platform in platforms:
+            if platform not in NATIVE_PLATFORMS:
+                raise BuildError(f"{where} names the unknown platform {platform}. Native libraries ship to {', '.join(NATIVE_PLATFORMS)}.")
+        for path in files.values():
+            if not path.exists():
+                raise BuildError(f"{where} lists {path}, which does not exist.")
+        cmake = folder / entry["cmake"] if "cmake" in entry else None
+        if cmake is not None and not (cmake / "CMakeLists.txt").is_file():
+            raise BuildError(f"{where} names the CMake project {cmake}, which has no CMakeLists.txt.")
+
+        link = entry.get("link", "dynamic")
+        symbols = tuple(entry.get("symbols", ()))
+        if link not in ("dynamic", "static"):
+            raise BuildError(f"{where} links dynamic or static, not {link}.")
+        if link == "static" and (not set(platforms) <= {"ios", "tvos"} or not symbols):
+            raise BuildError(f"{where} links statically, which iOS and tvOS apps do, and lists the symbols that Lua calls.")
+        return NativeLibrary(name, files, cmake, platforms, link == "static", symbols)
+
+    def ships_to(self, platform: str) -> bool:
+        return platform in self.platforms
+
+
+def build_native_target(library: NativeLibrary, directory: Path, options: list[str], jobs: int) -> Path:
+    """Configures and builds the CMake target of a library, which shares the name of the library, and returns the folder with its output. BUILD_SHARED_LIBS picks the kind of library, and HAYLEN_INCLUDE_DIR leads to haylen/platform/native/HaylenNative.h."""
+    output = directory / "out"
+    command = ["cmake", "-S", library.cmake, "-B", directory / "build", "-DCMAKE_BUILD_TYPE=Release", f"-DBUILD_SHARED_LIBS={'OFF' if library.static else 'ON'}", f"-DHAYLEN_INCLUDE_DIR={ENGINE_DIR / 'include'}"]
+    command += [f"-DCMAKE_{kind}_OUTPUT_DIRECTORY{suffix}={output}" for kind in ("LIBRARY", "ARCHIVE", "RUNTIME") for suffix in ("", "_RELEASE")]
+    if host_name() != "windows" or shutil.which("ninja"):
+        command += ["-G", "Ninja"]
+    run(command + options)
+    run(["cmake", "--build", directory / "build", "--config", "Release", "--target", library.name, "--parallel", str(jobs)])
+    return output
+
+
+def build_apple_native(app: App, library: NativeLibrary, slice_name: str, jobs: int) -> Path:
+    """Builds a library for every architecture of an Apple slice and joins them. A dynamic library for iOS or tvOS becomes the framework bundle those systems load."""
+    folder = APPS_DIR / app.slug / "native" / library.name / slice_name
+    extension = "a" if library.static else "dylib"
+    built = [build_native_target(library, folder / arch, apple_slice_options(slice_name, arch), jobs) / f"lib{library.name}.{extension}" for arch in APPLE_SLICES[slice_name]]
+    joined = folder / f"lib{library.name}.{extension}"
+    run(["lipo", "-create", *built, "-output", joined])
+    if library.static or slice_name not in FRAMEWORK_PLATFORMS:
+        return joined
+
+    framework = folder / f"{library.name}.framework"
+    shutil.rmtree(framework, ignore_errors=True)
+    framework.mkdir()
+    shutil.copy2(joined, framework / library.name)
+    run(["install_name_tool", "-id", f"@rpath/{library.name}.framework/{library.name}", framework / library.name])
+    system = "iOS" if slice_name.startswith("ios") else "tvOS"
+    info = {
+        "CFBundleDevelopmentRegion": "en",
+        "CFBundleExecutable": library.name,
+        "CFBundleIdentifier": f"{app.identifier}.native.{library.name.replace('_', '-')}",
+        "CFBundleInfoDictionaryVersion": "6.0",
+        "CFBundleName": library.name,
+        "CFBundlePackageType": "FMWK",
+        "CFBundleShortVersionString": app.version,
+        "CFBundleSupportedPlatforms": [FRAMEWORK_PLATFORMS[slice_name]],
+        "CFBundleVersion": app.version,
+        "MinimumOSVersion": APPLE_MINIMUM_VERSIONS[system],
+    }
+    (framework / "Info.plist").write_bytes(plistlib.dumps(info, sort_keys=True))
+    return framework
+
+
+def prebuilt_apple_native(path: Path, slice_name: str) -> Path:
+    """Returns the library of a prebuilt file for an Apple slice, which an xcframework holds among its slices."""
+    if path.suffix != ".xcframework":
+        return path
+    platform, variant = XCFRAMEWORK_SLICES[slice_name]
+    for entry in plistlib.loads((path / "Info.plist").read_bytes())["AvailableLibraries"]:
+        if entry["SupportedPlatform"] == platform and entry.get("SupportedPlatformVariant") == variant:
+            return path / entry["LibraryIdentifier"] / entry["LibraryPath"]
+    raise BuildError(f"{path} has no slice for {slice_name}.")
+
+
+def copy_native(source: Path, folder: Path) -> Path:
+    """Copies a library file or bundle into a folder, keeping the links inside frameworks."""
+    folder.mkdir(parents=True, exist_ok=True)
+    destination = folder / source.name
+    if source.is_dir():
+        shutil.copytree(source, destination, symlinks=True, dirs_exist_ok=True)
+    else:
+        shutil.copy2(source, destination)
+    return destination
+
+
+def prepare_apple_native(app: App, project: Path, run_platform: str, jobs: int) -> list[str]:
+    """Places the libraries of an Apple run in native/ with the file lists of the embed phase of every target and platform, writes the table of linked symbols into source/ and returns the settings that link static libraries."""
+    slice_name = APPLE_NATIVE_SLICES[run_platform]
+    key = APPLE_NATIVE_KEYS[slice_name]
+    platform = "macos" if slice_name == "macos" else slice_name.split("-")[0]
+    embedded: list[Path] = []
+    linked: list[tuple[NativeLibrary, Path]] = []
+    for library in app.native:
+        if not library.ships_to(platform):
+            continue
+        if library.static and slice_name == "ios-maccatalyst":
+            raise BuildError(f"Mac Catalyst loads dynamic libraries only, so the static library {library.name} does not ship there.")
+        source = build_apple_native(app, library, slice_name, jobs) if library.cmake else prebuilt_apple_native(library.files[platform], slice_name)
+        placed = copy_native(source, project / "native" / key)
+        if library.static:
+            linked.append((library, placed))
+        else:
+            embedded.append(placed)
+
+    for list_key in APPLE_NATIVE_KEYS.values():
+        shipped = embedded if list_key == key else []
+        write_if_changed(project / "native" / f"{list_key}.xcfilelist", "".join(f"$(PROJECT_DIR)/native/{list_key}/{path.name}\n" for path in shipped))
+        write_if_changed(project / "native" / f"{list_key}-output.xcfilelist", "".join(f"$(TARGET_BUILD_DIR)/$(FRAMEWORKS_FOLDER_PATH)/{path.name}\n" for path in shipped))
+    if not linked:
+        return []
+
+    # Dead code stripping keeps what the table refers to, and the table lets haylen.native find the symbols without the app exporting them.
+    target_name, platform_name = key.split("-")
+    condition = "TARGET_OS_IOS && !TARGET_OS_MACCATALYST" if platform == "ios" else "TARGET_OS_TV"
+    declarations = [f'extern "C" void {symbol}(void);' for library, _ in linked for symbol in library.symbols]
+    registrations = []
+    for library, _ in linked:
+        entries = ", ".join(f'{{"{symbol}", reinterpret_cast<void*>(&{symbol})}}' for symbol in library.symbols)
+        registrations.append(f'    haylen::platform::NativeLibraries::registerLinked("{library.name}", {{{entries}}});')
+    table = [
+        "// Written by make.py from the native section of app.json. It links the symbols of the static native libraries into the app and registers them for haylen.native.",
+        "#import <Foundation/Foundation.h>",
+        "#include <TargetConditionals.h>",
+        "",
+        '#include "haylen/platform/NativeLibraries.hpp"',
+        "",
+        f"#if {condition}",
+        *declarations,
+        "#endif",
+        "",
+        "@interface HaylenNativeSymbols : NSObject",
+        "@end",
+        "",
+        "@implementation HaylenNativeSymbols",
+        "",
+        "+ (void)load {",
+        f"#if {condition}",
+        *registrations,
+        "#endif",
+        "}",
+        "",
+        "@end",
+        "",
+    ]
+    write_if_changed(project / "source" / "HaylenNativeSymbols.mm", "\n".join(table))
+    flags = " ".join(f'"$(PROJECT_DIR)/native/{key}/{path.name}"' for _, path in linked)
+    return [f"HAYLEN_NATIVE_LDFLAGS_{target_name}_{platform_name} = {flags}", "OTHER_LDFLAGS = $(inherited) $(HAYLEN_NATIVE_LDFLAGS_$(TARGET_NAME)_$(PLATFORM_NAME))"]
+
+
+def prepare_android_native(app: App, project: Path, jobs: int) -> None:
+    """Places the libraries of an app in the jniLibs folders of the Android project, building each ABI one after the other."""
+    libraries = project / "app" / "src" / "main" / "jniLibs"
+    for library in app.native:
+        if not library.ships_to("android"):
+            continue
+        if library.cmake is None:
+            shutil.copytree(library.files["android"], libraries, dirs_exist_ok=True)
+            continue
+        toolchain = android_ndk() / "build" / "cmake" / "android.toolchain.cmake"
+        for abi in ANDROID_ABIS:
+            options = [f"-DCMAKE_TOOLCHAIN_FILE={toolchain}", f"-DANDROID_ABI={abi}", f"-DANDROID_PLATFORM=android-{ANDROID_MIN_SDK}", "-DANDROID_STL=c++_static", "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"]
+            output = build_native_target(library, APPS_DIR / app.slug / "native" / library.name / f"android-{abi}", options, jobs)
+            copy_native(output / f"lib{library.name}.so", libraries / abi)
+
+
+def prepare_host_native(app: App, folder: Path, jobs: int) -> list[Path]:
+    """Places the libraries of an app for this desktop in a folder and returns them."""
+    platform = host_name()
+    placed = []
+    for library in app.native:
+        if not library.ships_to(platform):
+            continue
+        if library.cmake is None:
+            placed.append(copy_native(prebuilt_apple_native(library.files[platform], "macos") if platform == "macos" else library.files[platform], folder))
+            continue
+        options = [f"-DCMAKE_OSX_DEPLOYMENT_TARGET={APPLE_MINIMUM_VERSIONS['macOS']}"] if platform == "macos" else []
+        output = build_native_target(library, APPS_DIR / app.slug / "native" / library.name / platform, options, jobs)
+        built = sorted(output.glob({"macos": f"lib{library.name}.dylib", "windows": f"*{library.name}.dll", "linux": f"lib{library.name}.so"}[platform]))
+        if not built:
+            raise BuildError(f"The CMake target {library.name} of {library.cmake} built no shared library into {output}.")
+        placed.append(copy_native(built[0], folder))
+    return placed
 
 
 # Shaders: annotated GLSL under content/shaders compiled ahead of time into one .shader file per source, because no platform, the web editor included, compiles shaders at runtime.
@@ -873,15 +1107,14 @@ def platform_templates() -> list[str]:
 
 
 def assemble(app: App, template: str | None, run_platform: str) -> Path:
-    """Recreates build/apps/<app>/<platform> from the platform template and lays the platform/<template> folder of the app over it. Platforms without a template start empty."""
+    """Recreates build/apps/<app>/<platform> from the platform template and lays the platform/<template> folder of the app over it. Platforms without a template start empty and take the platform/<platform> folder of the app, such as the libraries a Windows app keeps next to its executable."""
     folder = APPS_DIR / app.slug / run_platform
     shutil.rmtree(folder, ignore_errors=True)
     if template is None:
         folder.mkdir(parents=True)
-        return folder
-
-    shutil.copytree(PLATFORM_TEMPLATES_DIR / template, folder, symlinks=True)
-    overrides = app.folder / "platform" / template
+    else:
+        shutil.copytree(PLATFORM_TEMPLATES_DIR / template, folder, symlinks=True)
+    overrides = app.folder / "platform" / (template or run_platform)
     if overrides.is_dir():
         shutil.copytree(overrides, folder, dirs_exist_ok=True, ignore=shutil.ignore_patterns(".DS_Store", "build", ".gradle", ".cxx", ".kotlin"))
     return folder
@@ -899,14 +1132,15 @@ def apple_colorset(color: tuple[int, int, int, int]) -> dict:
     return {"colors": [{"color": {"color-space": "srgb", "components": components}, "idiom": "universal"}], "info": {"author": "xcode", "version": 1}}
 
 
-def write_apple_settings(app: App, project: Path) -> None:
-    """Writes App.xcconfig, the Info.plist of every platform and the splash assets of an app into the Apple project."""
+def write_apple_settings(app: App, project: Path, native: list[str]) -> None:
+    """Writes App.xcconfig with the settings that link the static native libraries, the Info.plist of every platform and the splash assets of an app into the Apple project."""
     xcconfig = "\n".join([
         "// Written by make.py from app.json, so App.xcodeproj never changes per app.",
         f"HAYLEN_PRODUCT_NAME = {app.name}",
         f"HAYLEN_BUNDLE_IDENTIFIER = {app.identifier}",
         f"MARKETING_VERSION = {app.version}",
         f"CURRENT_PROJECT_VERSION = {app.version}",
+        *native,
         "",
     ])
     write_if_changed(project / "App.xcconfig", xcconfig)
@@ -930,7 +1164,7 @@ def write_apple_settings(app: App, project: Path) -> None:
     plists = {
         "ios": {**common, **scenes, "LSRequiresIPhoneOS": True, "UILaunchStoryboardName": "LaunchScreen", "UIStatusBarHidden": True, "UIViewControllerBasedStatusBarAppearance": False, "UISupportedInterfaceOrientations": phone, "UISupportedInterfaceOrientations~ipad": pad},
         "tvos": {**common, **scenes, "UILaunchStoryboardName": "LaunchScreen"},
-        "macos": {**common, "LSMinimumSystemVersion": "$(MACOSX_DEPLOYMENT_TARGET)", "NSHighResolutionCapable": True, "NSPrincipalClass": "NSApplication"},
+        "macos": {**common, "LSMinimumSystemVersion": "$(MACOSX_DEPLOYMENT_TARGET)", "NSHighResolutionCapable": True, "NSPrincipalClass": "NSApplication", **({} if app.show_in_taskbar else {"LSUIElement": True})},
     }
     for platform_name, values in plists.items():
         write_if_changed(project / platform_name / "Info.plist", plistlib.dumps(values, sort_keys=True).decode())
@@ -971,7 +1205,7 @@ def run_apple(app: App, project: Path, args: argparse.Namespace) -> None:
     require_host("apple")
     (project / "Haylen.xcframework").symlink_to(ARTIFACTS_DIR / "apple" / "Haylen.xcframework")
     copy_package(app, project / "app")
-    write_apple_settings(app, project)
+    write_apple_settings(app, project, prepare_apple_native(app, project, args.platform, args.jobs))
 
     settings = APPLE_RUNS[args.platform]
     simulator = apple_simulator(settings["simulator"], args.device) if "simulator" in settings else None
@@ -1048,6 +1282,7 @@ def run_android(app: App, project: Path, args: argparse.Namespace) -> None:
     # Android cannot list asset folders recursively, so the runtime reads the files of the package from this index.
     (project / "app" / "src" / "main" / "assets" / "app" / "haylen-package-index.json").write_text(json.dumps(sorted(files)))
     write_android_settings(app, project)
+    prepare_android_native(app, project, args.jobs)
 
     variant = "Release" if args.config == "Release" else "Debug"
     run([ensure_gradle(), "-p", project, f":app:assemble{variant}"])
@@ -1069,7 +1304,7 @@ def write_web_settings(app: App, site: Path) -> None:
         shutil.copy2(logo, site / logo_name)
     red, green, blue, alpha = app.background
     sizes = {path: (site / path).stat().st_size for path in ("app.zip", "webgpu/haylen.wasm", "webgl2/haylen.wasm")}
-    config = {"name": app.name, "splash": {"logo": logo_name, "background": f"rgba({red}, {green}, {blue}, {alpha / 255:.3f})"}, "sizes": sizes}
+    config = {"name": app.name, "transparent": app.transparent, "splash": {"logo": logo_name, "background": f"rgba({red}, {green}, {blue}, {alpha / 255:.3f})"}, "sizes": sizes}
     (site / "config.json").write_text(json.dumps(config, indent=4) + "\n")
 
 
@@ -1081,11 +1316,12 @@ def run_web(app: App, site: Path, args: argparse.Namespace) -> None:
 
 
 def run_desktop_app(app: App, folder: Path, args: argparse.Namespace) -> None:
-    """Runs the shipped layout of a Windows or Linux app: the player named after the app with the package in an app folder next to it."""
+    """Runs the shipped layout of a Windows or Linux app: the player named after the app with the package in an app folder next to it, and the native libraries next to it on Windows and in lib on Linux, which the RUNPATH of the player covers."""
     require_host(args.platform)
     executable = folder / executable_name(app.slug)
     shutil.copy2(desktop_artifact(), executable)
     copy_package(app, folder / "app")
+    prepare_host_native(app, folder if args.platform == "windows" else folder / "lib", args.jobs)
     run([executable], cwd=folder)
 
 
@@ -1120,10 +1356,15 @@ def command_run(args: argparse.Namespace) -> None:
         # The player of this machine runs the package folder in development mode, which reloads edited files, while changed shaders compile again in the background.
         build = build_options(host_name(), args.config, "haylen", args.jobs)
         command_build(build)
+        # The native libraries of the app wait in a folder of their own, which the player searches first.
+        info = App(app)
+        native = APPS_DIR / info.slug / "native" / "development"
+        shutil.rmtree(native, ignore_errors=True)
+        native_options = ["--native", native] if prepare_host_native(info, native, args.jobs) else []
         stop = threading.Event()
         threading.Thread(target=watch_app_shaders, args=(app, stop), daemon=True).start()
         try:
-            run([build_dir(build.platform, build.config) / "bin" / "haylen" / executable_name("haylen"), "--dev", app])
+            run([build_dir(build.platform, build.config) / "bin" / "haylen" / executable_name("haylen"), "--dev", *native_options, app])
         finally:
             stop.set()
         return

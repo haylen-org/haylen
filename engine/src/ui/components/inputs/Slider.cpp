@@ -32,11 +32,11 @@ math::Vec2 Slider::measureContent(Context& context, float availableWidth) {
 
 void Slider::render(Context& context, const math::Rect& bounds) {
     const float label = showValue ? Typography::measure(context, Theme::Font::Body, Typography::formatNumber(maximum, decimals)).x + context.getMetric(Theme::Metric::ItemSpacing) : 0.0F;
-    const math::Rect track{bounds.x, bounds.y, std::max(0.0F, bounds.width - label), bounds.height};
+    const math::Rect track = context.mirror({bounds.x, bounds.y, std::max(0.0F, bounds.width - label), bounds.height}, bounds);
     bool changed = Widgets::slider(context, track, value, minimum, maximum, step);
     if (const std::optional<FocusDirection> direction = takeFocusDirection(context)) {
         const double amount = step > 0.0 ? step : (maximum - minimum) / kFocusSteps;
-        const double moved = std::clamp(value + (direction == FocusDirection::Left ? -amount : amount), minimum, maximum);
+        const double moved = std::clamp(value + amount * Widgets::getStep(context, *direction), minimum, maximum);
         changed = changed || moved != value;
         value = moved;
     }
@@ -47,7 +47,7 @@ void Slider::render(Context& context, const math::Rect& bounds) {
         Widgets::focusItem(context);
     }
     if (showValue) {
-        Typography::drawAligned(context, Theme::Font::Body, {track.getRight(), bounds.y, label, bounds.height}, context.getColor(Theme::Color::TextMuted), Typography::formatNumber(value, decimals), Alignment::End);
+        Typography::drawAligned(context, Theme::Font::Body, context.mirror({bounds.getRight() - label, bounds.y, label, bounds.height}, bounds), context.getColor(Theme::Color::TextMuted), Typography::formatNumber(value, decimals), Alignment::End);
     }
 }
 

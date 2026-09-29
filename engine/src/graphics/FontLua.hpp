@@ -1,8 +1,10 @@
 #pragma once
 
 #include <array>
+#include <functional>
 #include <memory>
 #include <string_view>
+#include <vector>
 
 #include "haylen/lua/Type.hpp"
 #include "haylen/text/Font.hpp"
@@ -37,11 +39,14 @@ class FontLua final {
     static constexpr std::array<std::string_view, 6> kFamilyFields{"regular", "bold", "italic", "boldItalic", "mono", "fallback"};
     static constexpr std::array<std::string_view, 8> kGridFields{"characters", "cellWidth", "cellHeight", "spacing", "margin", "advance", "lineHeight", "baseline"};
     static constexpr std::array<std::string_view, 3> kStyleFields{"bold", "italic", "mono"};
+    static constexpr std::array<std::string_view, 3> kShapeFields{"size", "direction", "language"};
 
     // Reads a character given as a string of one character or as a code point.
     [[nodiscard]] static char32_t readCharacter(lua_State* L, int index);
     [[nodiscard]] static std::shared_ptr<text::Font> findFace(const text::FontFamily& family, const text::Font* font);
     static int pushSelection(lua_State* L, const text::FontFamily& family, const text::FontFamily::Selection& selection);
+    static int pushLayout(lua_State* L, const text::TextLayout& laid, const text::TextStyle& style, const std::function<std::shared_ptr<text::Font>(const text::Font*)>& fontOf);
+    [[nodiscard]] static std::vector<text::Font::ShapedGlyph> shapeText(text::Font& font, std::u32string_view text, text::Direction direction, std::string_view language);
 
     static int measure(lua_State* L);
     static int layout(lua_State* L);
@@ -50,7 +55,7 @@ class FontLua final {
     [[nodiscard]] static float toDistance(text::Font& font, float pixels, float size);
     static int hasGlyph(lua_State* L);
     static int glyph(lua_State* L);
-    static int kerning(lua_State* L);
+    static int shape(lua_State* L);
     static int page(lua_State* L);
     static int nativeSize(lua_State* L);
     static int distanceField(lua_State* L);
@@ -60,6 +65,8 @@ class FontLua final {
     static int familyFallback(lua_State* L);
     static int familySelect(lua_State* L);
     static int familyResolve(lua_State* L);
+    static int familyMeasure(lua_State* L);
+    static int familyLayout(lua_State* L);
 };
 
 } // namespace haylen::graphics

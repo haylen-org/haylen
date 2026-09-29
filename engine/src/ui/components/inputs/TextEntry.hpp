@@ -23,7 +23,7 @@ class TextEntry : public Component {
     [[nodiscard]] math::Vec2 measureContent(Context& context, float availableWidth) override;
 
     // Draws the editor with the keyboard of the entry and space kept free for icons on either side.
-    void drawEntry(Context& context, const math::Rect& bounds, platform::TextInput::Keyboard keyboard, float reserveLeft = 0.0F, float reserveRight = 0.0F);
+    void drawEntry(Context& context, const math::Rect& bounds, platform::TextInput::Keyboard keyboard, float reserveStart = 0.0F, float reserveEnd = 0.0F);
 
     std::string value;
 

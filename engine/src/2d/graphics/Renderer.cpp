@@ -23,7 +23,9 @@
 #include "haylen/math/Insets.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/text/Font.hpp"
+#include "haylen/text/FontFamily.hpp"
 #include "haylen/text/RichText.hpp"
+#include "haylen/text/TextLayout.hpp"
 #include "shaders/blend.glsl.h"
 #include "shaders/blend_lit.glsl.h"
 #include "shaders/composite.glsl.h"
@@ -358,15 +360,25 @@ void Renderer::drawNineSlice(const NineSlice& slice, const math::Rect& area, mat
     state->addInstances(Program::Sprite, order, slice.texture, quads, area.getBottom());
 }
 
-void Renderer::drawText(text::Font& font, std::string_view content, math::Vec2 position, const text::TextStyle& style, const DrawOrder& order) {
-    if (!state->accepts(order)) {
-        return;
+void Renderer::drawText(text::Font& font, std::string_view content, math::Vec2 position, const text::TextStyle& style, const DrawOrder& order, math::Vec2 scale) {
+    if (state->accepts(order)) {
+        drawTextLayout(*font.layout(content, style), position, style, order, scale);
     }
+}
 
-    const text::TextLayout layout = font.layout(content, style);
-    font.sync();
+void Renderer::drawText(text::FontFamily& family, std::string_view content, math::Vec2 position, const text::TextStyle& style, const DrawOrder& order, math::Vec2 scale) {
+    if (state->accepts(order)) {
+        drawTextLayout(*family.layout(content, style), position, style, order, scale);
+    }
+}
+
+// The fonts of the layout upload the glyphs it added before its instances draw.
+void Renderer::drawTextLayout(const text::TextLayout& layout, math::Vec2 position, const text::TextStyle& style, const DrawOrder& order, math::Vec2 scale) {
+    for (const text::TextLayout::Look& look : layout.looks) {
+        look.font->sync();
+    }
     TextPainter painter(state->white);
-    painter.paintText(font, layout, position, style);
+    painter.paintText(layout, position, style, scale);
     for (const TextPainter::Batch& batch : painter.getBatches()) {
         state->addInstances(batch.program, order, batch.texture, batch.instances, position.y);
     }
@@ -378,8 +390,8 @@ void Renderer::drawRichText(text::RichText& richText, math::Vec2 position, const
         return;
     }
 
-    const text::RichTextLayout& frame = richText.getFrame();
-    for (const text::RichTextLayout::Look& look : frame.looks) {
+    const text::TextLayout& frame = richText.getFrame();
+    for (const text::TextLayout::Look& look : frame.looks) {
         look.font->sync();
     }
     TextPainter painter(state->white);

@@ -56,19 +56,27 @@ A table with the configuration read from `app.json`, with defaults filled in for
 | `window.resizable` | boolean | `true` | Whether the player can resize the window. |
 | `window.vsync` | boolean | `true` | Whether presentation waits for the display refresh. |
 | `window.sampleCount` | integer | `1` | Multisampling sample count. |
+| `window.decorated` | boolean | `true` | Whether the desktop window has a title bar and a border. |
+| `window.transparent` | boolean | `false` | Whether the window opened able to be transparent, and transparent. |
+| `window.alwaysOnTop` | boolean | `false` | Whether the desktop window stays above normal windows. |
+| `window.showInTaskbar` | boolean | `true` | Whether the window has a taskbar button or a Dock icon. |
+| `window.focusable` | boolean | `true` | Whether clicking the window activates the app. |
+| `window.mousePassthrough` | boolean | `false` | Whether clicks start passing through the window. |
+| `window.position` | table | absent | Where the desktop window opened, present only when `app.json` sets it, as `{x, y}` or `{anchor, area, monitor, offset, fill}`. |
 | `design.width` | number | `1920` | Design resolution width in units. |
 | `design.height` | number | `1080` | Design resolution height in units. |
 | `design.scaling` | string | `'expand'` | Scaling policy, see `haylen.viewport`. |
 | `orientation` | string | `'landscape'` | `'landscape'`, `'portrait'` or `'any'`. |
 | `fixedRate` | number | `60` | Fixed updates per second. `haylen.fixedStep()` returns the matching step length in seconds. |
 | `maxFrameTime` | number | `0.25` | Longest frame duration in seconds that the clock accepts. |
-| `clearColor` | string | `'#FF000000'` | Background color as `#AARRGGBB`. |
+| `clearColor` | string | `'#FF000000'`, or `'#00000000'` for a transparent window | Background color as `#AARRGGBB`. |
 | `splash.logo` | string | `''` | Image of the launch screen relative to `content/`, empty for the Haylen logo. |
 | `splash.background` | string | The value of `clearColor` | Background color of the launch screen as `#AARRGGBB`. |
 | `lifecycle.pauseOnBackground` | boolean | `true` | Whether the app halts in the background, see `haylen.lifecycle()`. |
 | `lifecycle.pauseOnFocusLoss` | boolean | `false` | Whether the app halts while its window has no focus. |
 | `lifecycle.muteOnFocusLoss` | boolean | `false` | Whether the master bus is muted while the app is not active. |
 | `autoload` | list of strings | `{}` | Modules that load as autoloads before `source/main.lua`, see `haylen.autoload`. |
+| `native` | table | `{}` | The native libraries the app ships by name, as `app.json` lists them for make.py, see the [native code guide](../native.md#packaging-libraries-with-an-app). |
 
 ```lua
 local haylen = require('haylen')

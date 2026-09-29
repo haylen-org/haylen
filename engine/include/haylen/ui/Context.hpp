@@ -4,6 +4,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <string_view>
@@ -16,6 +17,8 @@
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/text/Direction.hpp"
+#include "haylen/ui/Alignment.hpp"
 #include "haylen/ui/Event.hpp"
 #include "haylen/ui/TextValue.hpp"
 #include "haylen/ui/Theme.hpp"
@@ -75,6 +78,9 @@ class Context final {
         return theme->getFont(role).size;
     }
 
+    // The size of the em square of a font role, for text that draws beside ImGui at the size of its widgets, such as rich text.
+    [[nodiscard]] float getEmSize(Theme::Font role) const;
+
     [[nodiscard]] std::string getText(const TextValue& value) const;
     [[nodiscard]] graphics::Texture getImage(std::string_view path) const;
 
@@ -132,6 +138,22 @@ class Context final {
     void popReshape();
     [[nodiscard]] Reshape getReshape() const noexcept;
 
+    // The direction and language of the whole UI, which nodes change for themselves and their children by pushing their own around their measuring and drawing. The direction is left to right or right to left, and the language is a BCP 47 tag or empty.
+    void setBaseWriting(text::Direction direction, std::string language);
+    void pushWriting(std::optional<text::Direction> direction, std::optional<std::string> language);
+    void popWriting();
+    [[nodiscard]] text::Direction getDirection() const noexcept;
+    [[nodiscard]] bool isRightToLeft() const noexcept {
+        return getDirection() == text::Direction::RightToLeft;
+    }
+    [[nodiscard]] const std::string& getLanguage() const noexcept;
+
+    // Returns where a rectangle laid out inside an area from the left goes in the direction of the UI, which is its mirror image across the area when the UI reads right to left.
+    [[nodiscard]] math::Rect mirror(const math::Rect& rect, const math::Rect& area) const noexcept;
+
+    // Returns where an extent starts along the width of an area, where start and end follow the direction of the UI.
+    [[nodiscard]] float alignHorizontally(Alignment alignment, float start, float available, float size) const noexcept;
+
   private:
     Backend& backend;
     FocusNavigator& focus;
@@ -144,7 +166,14 @@ class Context final {
     std::vector<Event>* events = nullptr;
     std::set<std::string, std::less<>> heldButtons;
     std::map<std::string, math::Vec2, std::less<>> sticks;
+    // The direction and language in effect, from the whole UI at the bottom to the node being drawn at the top.
+    struct Writing {
+        text::Direction direction = text::Direction::LeftToRight;
+        std::string language;
+    };
+
     std::vector<Reshape> reshapes;
+    std::vector<Writing> writings{Writing{}};
     math::Vec2 origin;
     std::uint64_t frame = 0;
     double time = 0.0;

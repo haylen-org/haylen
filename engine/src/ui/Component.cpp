@@ -14,6 +14,7 @@
 #include "haylen/ui/FocusNavigator.hpp"
 #include "ui/ImGuiConverter.hpp"
 #include "ui/Surfaces.hpp"
+#include "ui/Typography.hpp"
 
 namespace haylen::ui {
 
@@ -58,7 +59,18 @@ void Component::readCommon(PropertyReader& reader) {
     }
     reader.readChoice<Anchor::Area>("anchorTo", common.anchorArea, kAnchorAreas);
     reader.read("margin", common.margin);
+    reader.readChoice<std::optional<text::Direction>>("direction", common.direction, kDirections);
+    reader.read("language", common.language);
     readFocus(reader);
+}
+
+// A node that sets its direction or language measures and draws itself and its children in them.
+bool Component::pushWriting(Context& context) const {
+    if (!common.direction && common.language.empty()) {
+        return false;
+    }
+    context.pushWriting(common.direction, common.language.empty() ? std::nullopt : std::optional<std::string>(common.language));
+    return true;
 }
 
 void Component::readFocus(PropertyReader& reader) {
@@ -97,7 +109,11 @@ math::Vec2 Component::measure(Context& context, float availableWidth) {
         return measuredSize;
     }
     const float offered = common.width.value_or(getBoundedWidth(availableWidth));
+    const bool writing = pushWriting(context);
     const math::Vec2 content = measureContent(context, offered);
+    if (writing) {
+        context.popWriting();
+    }
     measuredSize = {common.width.value_or(getBoundedWidth(content.x)), common.height.value_or(getBoundedHeight(content.y))};
     measuredFrame = context.getFrame();
     measuredWidth = availableWidth;
@@ -129,6 +145,7 @@ void Component::draw(Context& context, const math::Rect& layout) {
     if (!common.enabled) {
         ImGui::BeginDisabled();
     }
+    const bool writing = pushWriting(context);
     // The context carries the transform to the draws of the node that go around the ImGui vertices, such as rich text.
     const bool reshaping = transform->isReshaping();
     const int firstVertex = ImGui::GetWindowDrawList()->VtxBuffer.Size;
@@ -145,6 +162,9 @@ void Component::draw(Context& context, const math::Rect& layout) {
         ImGui::EndDisabled();
     }
     drawTooltip(context, bounds);
+    if (writing) {
+        context.popWriting();
+    }
     focus.leave();
     ImGui::PopID();
 }
@@ -207,26 +227,25 @@ void Component::drawTooltip(Context& context, const math::Rect& bounds) {
         return;
     }
 
-    // The tooltip window only lays the text out, and the theme paints the tooltip surface behind it, keeping the text inside the padding of a surface image.
+    // The tooltip window takes the size of the text, and the theme paints the tooltip surface behind it, keeping the text inside the padding of a surface image.
     const math::Insets padding = Surfaces::getPadding(context, Theme::Surface::Tooltip);
     const ImVec2 spacing = ImGui::GetStyle().WindowPadding;
     ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.0F, 0.0F, 0.0F, 0.0F));
-    ImGui::PushStyleColor(ImGuiCol_Text, ImGuiConverter::toImVec4(context.getColor(Theme::Color::OnTooltip)));
     ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 0.0F);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {spacing.x + std::max(padding.left, padding.right), spacing.y + std::max(padding.top, padding.bottom)});
-    ImGui::PushFont(context.getFont(Theme::Font::Caption), context.getFontSize(Theme::Font::Caption));
     if (ImGui::BeginTooltip()) {
         const ImVec2 position = ImGui::GetWindowPos();
         const ImVec2 size = ImGui::GetWindowSize();
         Surfaces::draw(context, Theme::Surface::Tooltip, {position.x, position.y, size.x, size.y}, context.getColor(Theme::Color::Tooltip));
-        ImGui::PushTextWrapPos(context.getMetric(Theme::Metric::TooltipWidth));
-        ImGui::TextUnformatted(context.getText(common.tooltip).c_str());
-        ImGui::PopTextWrapPos();
+        const std::string text = context.getText(common.tooltip);
+        const math::Vec2 measured = Typography::measureParagraph(context, Theme::Font::Caption, text, context.getMetric(Theme::Metric::TooltipWidth));
+        const ImVec2 cursor = ImGui::GetCursorScreenPos();
+        Typography::drawParagraph(context, Theme::Font::Caption, {cursor.x, cursor.y, measured.x, measured.y}, context.getColor(Theme::Color::OnTooltip), text, Alignment::Start);
+        ImGui::Dummy(ImGuiConverter::toImVec2(measured));
         ImGui::EndTooltip();
     }
-    ImGui::PopFont();
     ImGui::PopStyleVar(2);
-    ImGui::PopStyleColor(2);
+    ImGui::PopStyleColor();
 }
 
 void Component::command(Context&, std::string_view name, const core::Json& arguments) {

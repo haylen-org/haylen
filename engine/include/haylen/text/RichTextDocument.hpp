@@ -10,6 +10,7 @@
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/text/Direction.hpp"
 #include "haylen/text/TextAlign.hpp"
 
 namespace haylen::text {
@@ -117,7 +118,7 @@ struct RichTextDocument {
         UpperRoman,
     };
 
-    // A block of the document: a paragraph of text, a horizontal rule, or a table. The indent counts levels, and a list item carries the marker drawn in the indent before its first line.
+    // A block of the document: a paragraph of text, a horizontal rule, or a table. The indent counts levels on the side the paragraph starts, and a list item carries the marker drawn in the indent before its first line.
     struct Paragraph {
         enum class Kind : std::uint8_t {
             Text,
@@ -127,6 +128,7 @@ struct RichTextDocument {
 
         Kind kind = Kind::Text;
         std::optional<TextAlign> align;
+        std::optional<Direction> direction;
         float indent = 0.0F;
         std::u32string marker;
         std::size_t markerStyle = 0;

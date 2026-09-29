@@ -54,8 +54,8 @@ class RichTextLayoutTest : public ::testing::Test {
     test::EngineFixture fixture;
 };
 
-const RichTextLayout::Glyph& glyphOf(const RichTextLayout& layout, char32_t codePoint, std::size_t occurrence = 0) {
-    for (const RichTextLayout::Glyph& glyph : layout.glyphs) {
+const TextLayout::Glyph& glyphOf(const TextLayout& layout, char32_t codePoint, std::size_t occurrence = 0) {
+    for (const TextLayout::Glyph& glyph : layout.glyphs) {
         if (glyph.codePoint == codePoint && occurrence-- == 0) {
             return glyph;
         }
@@ -67,7 +67,7 @@ const RichTextLayout::Glyph& glyphOf(const RichTextLayout& layout, char32_t code
 
 TEST_F(RichTextLayoutTest, WrapsMixedSizesOnOneBaselineAndAligns) {
     RichText mixed = make("a [size=64]B[/size] c", {.size = 20.0F});
-    const RichTextLayout& line = mixed.getLayout();
+    const TextLayout& line = mixed.getLayout();
     EXPECT_EQ(line.lineCount, 1U);
     EXPECT_NEAR(line.size.y, regular().getLineHeight(64.0F), 0.01F);
     EXPECT_FLOAT_EQ(glyphOf(line, U'a').baseline, glyphOf(line, U'B').baseline);
@@ -75,15 +75,15 @@ TEST_F(RichTextLayoutTest, WrapsMixedSizesOnOneBaselineAndAligns) {
     EXPECT_NEAR(glyphOf(line, U'B').baseline, regular().getAscent(64.0F), 0.01F);
 
     RichText wrapped = make("one two three four five six seven eight nine ten", {.size = 24.0F, .maxWidth = 150.0F});
-    const RichTextLayout& lines = wrapped.getLayout();
+    const TextLayout& lines = wrapped.getLayout();
     EXPECT_GT(lines.lineCount, 2U);
     EXPECT_FLOAT_EQ(lines.size.x, 150.0F);
-    for (const RichTextLayout::Glyph& glyph : lines.glyphs) {
+    for (const TextLayout::Glyph& glyph : lines.glyphs) {
         EXPECT_LE(glyph.position.x + glyph.size.x, 155.0F);
     }
 
     RichText centered = make("[center]mid[/center]\n[right]end[/right]", {.size = 24.0F, .maxWidth = 400.0F});
-    const RichTextLayout& aligned = centered.getLayout();
+    const TextLayout& aligned = centered.getLayout();
     const float left = glyphOf(aligned, U'm').position.x;
     const float right = glyphOf(aligned, U'd').position.x + glyphOf(aligned, U'd').size.x;
     EXPECT_NEAR(left + (right - left) * 0.5F, 200.0F, 4.0F);
@@ -91,16 +91,17 @@ TEST_F(RichTextLayoutTest, WrapsMixedSizesOnOneBaselineAndAligns) {
 
     // Filled lines reach the right edge, and the last line of the paragraph stays at the left.
     RichText filled = make("[fill]aaa bb cccc dd eeee ff gggggg h[/fill]", {.size = 24.0F, .maxWidth = 200.0F});
-    const RichTextLayout& stretched = filled.getLayout();
+    const TextLayout& stretched = filled.getLayout();
     ASSERT_GT(stretched.lineCount, 1U);
     float firstLineRight = 0.0F;
-    for (const RichTextLayout::Glyph& glyph : stretched.glyphs) {
+    for (const TextLayout::Glyph& glyph : stretched.glyphs) {
         if (glyph.baseline == stretched.glyphs.front().baseline) {
             firstLineRight = std::max(firstLineRight, glyph.position.x + glyph.size.x);
         }
     }
     EXPECT_NEAR(firstLineRight, 200.0F, 6.0F);
-    EXPECT_LT(glyphOf(stretched, U'h').position.x, 150.0F);
+    RichText unfilled = make("aaa bb cccc dd eeee ff gggggg h", {.size = 24.0F, .maxWidth = 200.0F});
+    EXPECT_FLOAT_EQ(glyphOf(stretched, U'h').position.x, glyphOf(unfilled.getLayout(), U'h').position.x);
 
     // A word wider than the line breaks between its characters.
     RichText longWord = make("abcdefghijklmnopqrstuvwxyz", {.size = 24.0F, .maxWidth = 100.0F});
@@ -109,9 +110,9 @@ TEST_F(RichTextLayoutTest, WrapsMixedSizesOnOneBaselineAndAligns) {
 
 TEST_F(RichTextLayoutTest, LaysOutListsRulesTablesAndDropCaps) {
     RichText list = make("[ul]one\ntwo[/ul]\n[ol type=i]x[/ol]", {.size = 20.0F});
-    const RichTextLayout& items = list.getLayout();
-    const RichTextLayout::Glyph& bullet = glyphOf(items, U'•');
-    const RichTextLayout::Glyph& first = glyphOf(items, U'o');
+    const TextLayout& items = list.getLayout();
+    const TextLayout::Glyph& bullet = glyphOf(items, U'•');
+    const TextLayout::Glyph& first = glyphOf(items, U'o');
     EXPECT_LT(bullet.position.x + bullet.size.x, first.position.x);
     EXPECT_FLOAT_EQ(bullet.baseline, first.baseline);
     EXPECT_NEAR(first.position.x, 30.0F, 3.0F);
@@ -119,8 +120,8 @@ TEST_F(RichTextLayoutTest, LaysOutListsRulesTablesAndDropCaps) {
     EXPECT_GT(glyphOf(items, U'i').position.x, glyphOf(items, U'x').position.x - 20.0F);
 
     RichText rule = make("above\n[hr width=50% height=3 color=red]\nbelow", {.size = 20.0F, .maxWidth = 200.0F});
-    const RichTextLayout& ruled = rule.getLayout();
-    const auto line = std::find_if(ruled.boxes.begin(), ruled.boxes.end(), [](const RichTextLayout::Box& box) { return box.kind == RichTextLayout::Box::Kind::Rule; });
+    const TextLayout& ruled = rule.getLayout();
+    const auto line = std::find_if(ruled.boxes.begin(), ruled.boxes.end(), [](const TextLayout::Box& box) { return box.kind == TextLayout::Box::Kind::Rule; });
     ASSERT_NE(line, ruled.boxes.end());
     EXPECT_FLOAT_EQ(line->rect.width, 100.0F);
     EXPECT_FLOAT_EQ(line->rect.x, 50.0F);
@@ -128,21 +129,21 @@ TEST_F(RichTextLayoutTest, LaysOutListsRulesTablesAndDropCaps) {
     EXPECT_GT(glyphOf(ruled, U'b', 1).position.y, line->rect.getBottom());
 
     RichText table = make("[table=2][cell bg=#101010 border=white]a[/cell][cell]bbbbbb[/cell][cell]c[/cell][/table]", {.size = 20.0F});
-    const RichTextLayout& cells = table.getLayout();
+    const TextLayout& cells = table.getLayout();
     EXPECT_GT(glyphOf(cells, U'b').position.x, glyphOf(cells, U'a').position.x + glyphOf(cells, U'a').size.x);
     EXPECT_GT(glyphOf(cells, U'c').baseline, glyphOf(cells, U'a').baseline);
     EXPECT_NEAR(glyphOf(cells, U'c').position.x, glyphOf(cells, U'a').position.x, 2.0F);
-    EXPECT_EQ(std::count_if(cells.boxes.begin(), cells.boxes.end(), [](const RichTextLayout::Box& box) { return box.kind == RichTextLayout::Box::Kind::CellBorder; }), 4);
+    EXPECT_EQ(std::count_if(cells.boxes.begin(), cells.boxes.end(), [](const TextLayout::Box& box) { return box.kind == TextLayout::Box::Kind::CellBorder; }), 4);
     EXPECT_EQ(table.getLayout(40.0F).size.x, 40.0F);
 
     RichText dropped = make("[dropcap]W[/dropcap]ords wrap beside the tall letter and then return under it once it ends, which takes a few more lines of words to show", {.size = 16.0F, .maxWidth = 220.0F});
-    const RichTextLayout& capped = dropped.getLayout();
-    const RichTextLayout::Glyph& capital = glyphOf(capped, U'W');
+    const TextLayout& capped = dropped.getLayout();
+    const TextLayout::Glyph& capital = glyphOf(capped, U'W');
     EXPECT_NEAR(capital.size.y, glyphOf(capped, U'o').size.y * 3.0F, capital.size.y * 0.5F);
     EXPECT_GT(glyphOf(capped, U'o').position.x, capital.position.x + capital.size.x * 0.6F);
     EXPECT_EQ(capital.character, 0U);
     float belowLeft = capped.size.x;
-    for (const RichTextLayout::Glyph& glyph : capped.glyphs) {
+    for (const TextLayout::Glyph& glyph : capped.glyphs) {
         if (glyph.baseline > capital.position.y + capital.size.y + 16.0F) {
             belowLeft = std::min(belowLeft, glyph.position.x);
         }
@@ -161,7 +162,7 @@ TEST_F(RichTextLayoutTest, PlacesImagesAndIconsAgainstTheText) {
 
     loaded = true;
     pictured.update(0.0F);
-    const RichTextLayout& laid = pictured.getLayout();
+    const TextLayout& laid = pictured.getLayout();
     ASSERT_EQ(laid.images.size(), 2U);
     EXPECT_FALSE(laid.waitingForImages);
     EXPECT_EQ(laid.images[0].rect.getSize(), math::Vec2(20.0F, 10.0F));
@@ -180,9 +181,9 @@ TEST_F(RichTextLayoutTest, PlacesImagesAndIconsAgainstTheText) {
 
 TEST_F(RichTextLayoutTest, HitTestsLinksAndHints) {
     RichText linked = make("go [url=home]to the home page[/url] or [hint=A tip]here[/hint]", {.size = 20.0F, .maxWidth = 120.0F});
-    const RichTextLayout& laid = linked.getLayout();
+    const TextLayout& laid = linked.getLayout();
     ASSERT_GE(laid.links.size(), 2U);
-    for (const RichTextLayout::Area& area : laid.links) {
+    for (const TextLayout::Area& area : laid.links) {
         EXPECT_EQ(linked.getLinkAt(area.rect.getCenter()), "home");
     }
     EXPECT_FALSE(linked.getLinkAt({1.0F, 1.0F}));
@@ -190,7 +191,7 @@ TEST_F(RichTextLayoutTest, HitTestsLinksAndHints) {
     EXPECT_EQ(linked.getHintAt(laid.hints[0].rect.getCenter()), "A tip");
     EXPECT_FALSE(linked.getHintAt(laid.links[0].rect.getCenter()));
 
-    const auto underlines = std::count_if(laid.boxes.begin(), laid.boxes.end(), [](const RichTextLayout::Box& box) { return box.kind == RichTextLayout::Box::Kind::Underline; });
+    const auto underlines = std::count_if(laid.boxes.begin(), laid.boxes.end(), [](const TextLayout::Box& box) { return box.kind == TextLayout::Box::Kind::Underline; });
     EXPECT_EQ(static_cast<std::size_t>(underlines), laid.links.size());
     RichText plain = make("[url=x]link[/url]", {.underlineLinks = false});
     EXPECT_TRUE(plain.getLayout().boxes.empty());
@@ -202,18 +203,18 @@ TEST_F(RichTextLayoutTest, RunsEffectsDeterministically) {
     first.update(0.25F);
     second.update(0.1F);
     second.update(0.15F);
-    const RichTextLayout& laid = first.getLayout();
-    const RichTextLayout& moved = first.getFrame();
+    const TextLayout& laid = first.getLayout();
+    const TextLayout& moved = first.getFrame();
     for (std::size_t index = 0; index < moved.glyphs.size(); ++index) {
         EXPECT_NEAR(moved.glyphs[index].position.y, second.getFrame().glyphs[index].position.y, 0.0001F);
     }
-    const RichTextLayout::Glyph& w = glyphOf(laid, U'w');
+    const TextLayout::Glyph& w = glyphOf(laid, U'w');
     EXPECT_NEAR(glyphOf(moved, U'w').position.y - w.position.y, std::sin(2.0F * 0.25F + w.position.x / 50.0F) * 5.0F, 0.001F);
     EXPECT_FLOAT_EQ(glyphOf(moved, U's').position.y, glyphOf(laid, U's').position.y);
 
     registry()->registerEffect("everyOther", [](TextEffect::Glyph& glyph, const TextEffect::Parameters& parameters) { glyph.visible = glyph.index % static_cast<std::size_t>(parameters.getNumber("step", 2.0F)) == 0; });
     RichText skipping = make("[everyOther]abcd[/everyOther][fade start=0 length=4]wxyz[/fade]");
-    const RichTextLayout& skipped = skipping.getFrame();
+    const TextLayout& skipped = skipping.getFrame();
     EXPECT_TRUE(glyphOf(skipped, U'a').visible);
     EXPECT_FALSE(glyphOf(skipped, U'b').visible);
     EXPECT_TRUE(glyphOf(skipped, U'c').visible);
@@ -223,7 +224,7 @@ TEST_F(RichTextLayoutTest, RunsEffectsDeterministically) {
     for (const char* effect : {"shake", "tornado", "rainbow", "pulse"}) {
         RichText animated = make(std::string("[") + effect + "]ab[/" + effect + "]");
         animated.update(0.3F);
-        const RichTextLayout& frame = animated.getFrame();
+        const TextLayout& frame = animated.getFrame();
         const bool changed = frame.glyphs[0].position != animated.getLayout().glyphs[0].position || frame.glyphs[0].color != animated.getLayout().glyphs[0].color;
         EXPECT_TRUE(changed) << effect;
     }
@@ -270,7 +271,7 @@ TEST_F(RichTextLayoutTest, RevealsLikeATypewriter) {
     // Backgrounds and lines follow the revealed text.
     RichText underlined = make("[u]abcdef[/u]");
     underlined.setVisibleCharacters(3);
-    const RichTextLayout& partial = underlined.getFrame();
+    const TextLayout& partial = underlined.getFrame();
     ASSERT_EQ(partial.boxes.size(), 1U);
     EXPECT_NEAR(partial.boxes[0].rect.getRight(), partial.characters[2].box.getRight(), 0.001F);
     EXPECT_LT(partial.boxes[0].rect.width, underlined.getLayout().boxes[0].rect.width);
@@ -286,11 +287,11 @@ TEST_F(RichTextLayoutTest, SelectsFallbackGlyphsAndSynthesizesStyles) {
     const std::shared_ptr<Font> bold = copyOfDefaultFont(fixture.engine());
     const auto family = std::make_shared<FontFamily>(FontFamily::Faces{.regular = registry()->getDefaultFamily()->getFaces().regular, .fallbacks = {grid}});
     RichText mixed = make("a\U0000E000 [b]b[/b][i]i[/i][b][i]x[/i][/b]", {.family = family, .size = 16.0F});
-    const RichTextLayout& laid = mixed.getLayout();
+    const TextLayout& laid = mixed.getLayout();
     EXPECT_EQ(laid.looks[glyphOf(laid, U'\U0000E000').look].font, grid.get());
     EXPECT_EQ(laid.looks[glyphOf(laid, U'a').look].font, family->getFaces().regular.get());
 
-    const RichTextLayout::Look& synthesizedBold = laid.looks[glyphOf(laid, U'b').look];
+    const TextLayout::Look& synthesizedBold = laid.looks[glyphOf(laid, U'b').look];
     EXPECT_NEAR(synthesizedBold.weight, 16.0F * 0.03F, 0.0001F);
     EXPECT_FLOAT_EQ(synthesizedBold.skew, 0.0F);
     EXPECT_FLOAT_EQ(laid.looks[glyphOf(laid, U'i').look].skew, 0.2F);
@@ -299,7 +300,7 @@ TEST_F(RichTextLayoutTest, SelectsFallbackGlyphsAndSynthesizesStyles) {
 
     const auto withBold = std::make_shared<FontFamily>(FontFamily::Faces{.regular = family->getFaces().regular, .bold = bold});
     RichText real = make("[b]b[/b][b][i]x[/i][/b][code]c[/code]", {.family = withBold});
-    const RichTextLayout& faces = real.getLayout();
+    const TextLayout& faces = real.getLayout();
     EXPECT_EQ(faces.looks[glyphOf(faces, U'b').look].font, bold.get());
     EXPECT_FLOAT_EQ(faces.looks[glyphOf(faces, U'b').look].weight, 0.0F);
     EXPECT_EQ(faces.looks[glyphOf(faces, U'x').look].font, bold.get());
@@ -308,7 +309,7 @@ TEST_F(RichTextLayoutTest, SelectsFallbackGlyphsAndSynthesizesStyles) {
 
     // A bitmap font cannot move its edge, so its synthetic bold draws twice a native pixel apart.
     RichText pixel = make("[b]A[/b]", {.family = std::make_shared<FontFamily>(FontFamily::Faces{.regular = grid}), .size = 16.0F});
-    const RichTextLayout::Look& embolden = pixel.getLayout().looks[pixel.getLayout().glyphs[0].look];
+    const TextLayout::Look& embolden = pixel.getLayout().looks[pixel.getLayout().glyphs[0].look];
     EXPECT_FLOAT_EQ(embolden.weight, 0.0F);
     EXPECT_FLOAT_EQ(embolden.emboldenOffset, 2.0F);
 

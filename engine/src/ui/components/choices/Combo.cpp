@@ -44,14 +44,14 @@ void Combo::render(Context& context, const math::Rect& bounds) {
     const float padding = context.getMetric(Theme::Metric::ControlPaddingX) * 0.5F;
     const float chevron = bounds.height * 0.5F;
     const math::Rect inner = bounds.inset(Surfaces::getPadding(context, Theme::Surface::Field));
-    Typography::drawAligned(context, Theme::Font::Body, {inner.x + padding, inner.y, inner.width - padding * 2.0F - chevron, inner.height}, context.getColor(empty ? Theme::Color::TextMuted : Theme::Color::Text), shown, Alignment::Start);
-    const math::Vec2 center{inner.getRight() - padding - chevron * 0.5F, inner.getCenter().y};
+    Typography::drawAligned(context, Theme::Font::Body, context.mirror({inner.x + padding, inner.y, inner.width - padding * 2.0F - chevron, inner.height}, inner), context.getColor(empty ? Theme::Color::TextMuted : Theme::Color::Text), shown, Alignment::Start);
+    const math::Vec2 center = context.mirror({inner.getRight() - padding - chevron, inner.y, chevron, inner.height}, inner).getCenter();
     Widgets::arrow(center, chevron * 0.5F, ImGuiDir_Down, context.getColor(Theme::Color::TextMuted));
 
     if (state.clicked) {
         ImGui::OpenPopup("##list");
     }
-    Widgets::placePopup(bounds, bounds.width);
+    Widgets::placePopup(context, bounds, bounds.width);
     if (const std::optional<std::string> picked = PopupList::draw(context, "##list", items, selected, bounds.width); picked && *picked != selected) {
         selected = *picked;
         context.emit(*this, "change", {{"value", selected}});

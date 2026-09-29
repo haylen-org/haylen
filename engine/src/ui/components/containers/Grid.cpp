@@ -28,6 +28,7 @@ math::Vec2 Grid::measureContent(Context& context, float availableWidth) {
     return {layout.widest * static_cast<float>(std::min<std::size_t>(static_cast<std::size_t>(columns), getLayoutChildren().size())) + padding.getHorizontal(), height + padding.getVertical()};
 }
 
+// Cells fill every row from its start, the right in a right-to-left UI.
 void Grid::render(Context& context, const math::Rect& bounds) {
     const math::Rect inner = bounds.inset(padding);
     const Layout layout = measureRows(context, inner.width);
@@ -41,9 +42,9 @@ void Grid::render(Context& context, const math::Rect& bounds) {
         }
         Component& child = *visible[index];
         const math::Vec2 size = child.measure(context, layout.cell);
-        const float x = inner.x + (layout.cell + getGap(context)) * static_cast<float>(column);
+        const math::Rect cell = context.mirror({inner.x + (layout.cell + getGap(context)) * static_cast<float>(column), y, layout.cell, layout.rows[row]}, inner);
         const float width = child.getAlignment() == Alignment::Stretch ? layout.cell : std::min(size.x, layout.cell);
-        child.draw(context, {std::floor(align(child.getAlignment(), x, layout.cell, width)), std::floor(y), width, layout.rows[row]});
+        child.draw(context, {std::floor(context.alignHorizontally(child.getAlignment(), cell.x, layout.cell, width)), std::floor(y), width, layout.rows[row]});
     }
 }
 

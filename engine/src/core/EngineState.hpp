@@ -79,6 +79,7 @@ struct EngineState {
 
     // The window, the keyboard, the network and the gamepads as the app last heard of them, so every change is published once. A connected gamepad keeps its name here so its disconnection can report it.
     bool fullscreen = false;
+    math::Vec2 windowPosition;
     platform::Orientation orientation = platform::Orientation::Landscape;
     math::Rect safeRect;
     std::optional<platform::SafeAreaSimulation> safeAreaSimulation;

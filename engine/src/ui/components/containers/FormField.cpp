@@ -41,7 +41,8 @@ void FormField::render(Context& context, const math::Rect& bounds) {
     if (!getChildren().empty()) {
         Component& control = *getChildren().front();
         const math::Vec2 size = control.measure(context, bounds.width);
-        control.draw(context, {bounds.x, y, control.getAlignment() == Alignment::Stretch ? bounds.width : size.x, size.y});
+        const float width = control.getAlignment() == Alignment::Stretch ? bounds.width : size.x;
+        control.draw(context, {context.alignHorizontally(Alignment::Start, bounds.x, bounds.width, width), y, width, size.y});
         y += size.y + spacing;
     }
     if (const std::string note = getNoteText(context); !note.empty()) {

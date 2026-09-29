@@ -1,6 +1,8 @@
 # XcodeGen spec of App.xcodeproj, which is committed next to it. Run `xcodegen generate` in this folder after changing it.
-# The project never changes per app: make.py writes the name, identifier and version into App.xcconfig, the Info.plist of each platform from app.json, the splash assets, the package into app/ and a link to Haylen.xcframework.
+# The project never changes per app: make.py writes the name, identifier, version and native library settings into App.xcconfig, the Info.plist of each platform from app.json, the splash assets, the package into app/, the native libraries into native/ and a link to Haylen.xcframework.
 # The app folder and Haylen.xcframework exist only in the projects make.py assembles, so the template lists them as optional.
+# Every file in source/ builds into every target, so apps add Objective-C, C++ and Swift files there, and Swift reaches the engine through HaylenBridging.h.
+# The embed phase copies and signs whole library bundles, whose files the script sandbox would need listed one by one together with the temporary files of codesign, so scripts run without it.
 name: App
 options:
   deploymentTarget:
@@ -11,9 +13,12 @@ settings:
   base:
     CLANG_CXX_LANGUAGE_STANDARD: c++20
     CLANG_ENABLE_OBJC_ARC: YES
-    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
     GENERATE_INFOPLIST_FILE: NO
     DEAD_CODE_STRIPPING: YES
+    PRODUCT_MODULE_NAME: HaylenApp
+    SWIFT_VERSION: "5.0"
+    SWIFT_OBJC_BRIDGING_HEADER: source/HaylenBridging.h
 fileGroups:
   - project.yml
 targets:
@@ -25,6 +30,7 @@ targets:
     platform: iOS
     sources:
       - path: source
+        type: syncedFolder
       - path: ios
       - path: app
         type: folder
@@ -57,6 +63,28 @@ targets:
         # Mac Catalyst 16.3 would run on macOS 13.2, while the C++ library of the engine needs macOS 13.3, which is Mac Catalyst 16.4.
         IPHONEOS_DEPLOYMENT_TARGET[sdk=macosx*]: "16.4"
         ASSETCATALOG_COMPILER_APPICON_NAME: app_icon
+    postBuildScripts:
+      - name: Embed native libraries
+        inputFileLists:
+          - $(PROJECT_DIR)/native/$(TARGET_NAME)-$(PLATFORM_NAME).xcfilelist
+        outputFileLists:
+          - $(PROJECT_DIR)/native/$(TARGET_NAME)-$(PLATFORM_NAME)-output.xcfilelist
+        script: |
+          # Copies the libraries that make.py listed for this target and platform into the app and signs them like the app.
+          set -e
+          destination="$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH"
+          mkdir -p "$destination"
+          while IFS= read -r library; do
+            if [ -z "$library" ]; then
+              continue
+            fi
+            target="$destination/$(basename "$library")"
+            rm -rf "$target"
+            ditto "$library" "$target"
+            if [ "$CODE_SIGNING_ALLOWED" != "NO" ]; then
+              codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" --timestamp=none --preserve-metadata=identifier,entitlements,flags "$target"
+            fi
+          done < "$SCRIPT_INPUT_FILE_LIST_0"
     scheme: {}
   tvOS:
     type: application
@@ -66,6 +94,7 @@ targets:
     platform: tvOS
     sources:
       - path: source
+        type: syncedFolder
       - path: tvos
       - path: app
         type: folder
@@ -92,6 +121,28 @@ targets:
         INFOPLIST_FILE: tvos/Info.plist
         TARGETED_DEVICE_FAMILY: "3"
         ASSETCATALOG_COMPILER_APPICON_NAME: app_icon
+    postBuildScripts:
+      - name: Embed native libraries
+        inputFileLists:
+          - $(PROJECT_DIR)/native/$(TARGET_NAME)-$(PLATFORM_NAME).xcfilelist
+        outputFileLists:
+          - $(PROJECT_DIR)/native/$(TARGET_NAME)-$(PLATFORM_NAME)-output.xcfilelist
+        script: |
+          # Copies the libraries that make.py listed for this target and platform into the app and signs them like the app.
+          set -e
+          destination="$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH"
+          mkdir -p "$destination"
+          while IFS= read -r library; do
+            if [ -z "$library" ]; then
+              continue
+            fi
+            target="$destination/$(basename "$library")"
+            rm -rf "$target"
+            ditto "$library" "$target"
+            if [ "$CODE_SIGNING_ALLOWED" != "NO" ]; then
+              codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" --timestamp=none --preserve-metadata=identifier,entitlements,flags "$target"
+            fi
+          done < "$SCRIPT_INPUT_FILE_LIST_0"
     scheme: {}
   macOS:
     type: application
@@ -101,6 +152,7 @@ targets:
     platform: macOS
     sources:
       - path: source
+        type: syncedFolder
       - path: macos
       - path: app
         type: folder
@@ -126,4 +178,26 @@ targets:
         INFOPLIST_FILE: macos/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: app_icon
         ENABLE_HARDENED_RUNTIME: YES
+    postBuildScripts:
+      - name: Embed native libraries
+        inputFileLists:
+          - $(PROJECT_DIR)/native/$(TARGET_NAME)-$(PLATFORM_NAME).xcfilelist
+        outputFileLists:
+          - $(PROJECT_DIR)/native/$(TARGET_NAME)-$(PLATFORM_NAME)-output.xcfilelist
+        script: |
+          # Copies the libraries that make.py listed for this target and platform into the app and signs them like the app.
+          set -e
+          destination="$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH"
+          mkdir -p "$destination"
+          while IFS= read -r library; do
+            if [ -z "$library" ]; then
+              continue
+            fi
+            target="$destination/$(basename "$library")"
+            rm -rf "$target"
+            ditto "$library" "$target"
+            if [ "$CODE_SIGNING_ALLOWED" != "NO" ]; then
+              codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" --timestamp=none --preserve-metadata=identifier,entitlements,flags "$target"
+            fi
+          done < "$SCRIPT_INPUT_FILE_LIST_0"
     scheme: {}

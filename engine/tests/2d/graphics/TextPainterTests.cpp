@@ -63,7 +63,7 @@ TEST_F(TextPainterTest, PacksSyntheticStylesIntoTheGlyphParameters) {
     const GpuInstance& italic = batches[0].instances[1];
     EXPECT_EQ(signedByte(italic.parameters[2]), static_cast<int>(std::lround(0.2F * 127.0F)));
     EXPECT_EQ(italic.parameters[1], 0U);
-    const text::RichTextLayout::Glyph& leaning = styled.getLayout().glyphs[1];
+    const text::TextLayout::Glyph& leaning = styled.getLayout().glyphs[1];
     EXPECT_FLOAT_EQ(italic.position[1], 50.0F + leaning.baseline);
     EXPECT_NEAR(italic.position[1] - italic.pivot[1] * italic.size[1], 50.0F + leaning.position.y, 0.001F);
 
@@ -84,7 +84,7 @@ TEST_F(TextPainterTest, ScalesAndTintsRichTextFromItsCorner) {
     EXPECT_NEAR(static_cast<double>(background.color >> 24U), 127.5, 1.0);
 
     const GpuInstance& glyph = painter.getBatches()[1].instances[0];
-    const text::RichTextLayout::Glyph& laid = boxed.getLayout().glyphs[0];
+    const text::TextLayout::Glyph& laid = boxed.getLayout().glyphs[0];
     EXPECT_FLOAT_EQ(glyph.position[1], 20.0F + laid.baseline * 3.0F);
     EXPECT_FLOAT_EQ(glyph.size[0], laid.size.x * 2.0F);
 }
@@ -130,14 +130,14 @@ TEST_F(TextPainterTest, DrawsBitmapGlyphsAsSprites) {
 
     TextPainter plain(fixture.engine().getGraphics().getWhiteTexture());
     const text::TextStyle style{.size = 16.0F, .shadowOffset = {1.0F, 1.0F}, .shadowColor = math::Color::black(), .shadowBlur = 4.0F};
-    plain.paintText(*grid, grid->layout("AB", style), {}, style);
+    plain.paintText(*grid->layout("AB", style), {}, style);
     ASSERT_EQ(plain.getBatches().size(), 1U);
     EXPECT_EQ(plain.getBatches()[0].program, Program::Sprite);
     EXPECT_EQ(plain.getBatches()[0].instances[0].parameters[3], 0U);
 
     text::Font& field = *fixture.engine().getDefaultFont();
     TextPainter smooth(fixture.engine().getGraphics().getWhiteTexture());
-    smooth.paintText(field, field.layout("AB", style), {}, style);
+    smooth.paintText(*field.layout("AB", style), {}, style);
     ASSERT_EQ(smooth.getBatches().size(), 1U);
     EXPECT_EQ(smooth.getBatches()[0].program, Program::Text);
     EXPECT_GT(smooth.getBatches()[0].instances[0].parameters[3], 0U);

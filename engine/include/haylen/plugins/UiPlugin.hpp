@@ -11,6 +11,7 @@
 #include "haylen/core/Signal.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/plugins/Plugin.hpp"
+#include "haylen/text/Direction.hpp"
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/ComponentRegistry.hpp"
@@ -77,11 +78,19 @@ class UiPlugin final : public Plugin {
     std::string loadTheme(core::Engine& engine, std::string_view path, std::string_view base = "dark");
     void addFont(core::Engine& engine, const std::string& name, std::string_view path);
 
-    // Registers a font family under a name that themes and rich text use. Widgets drawn by ImGui use its regular face, which must then be a TrueType font.
+    // Registers a font family under a name that themes and rich text use. Widgets drawn by ImGui use its TrueType faces, the regular one for roles without a style and the bold and italic ones for roles that ask for them, and draw the characters a face lacks from its TrueType fallbacks. A theme role can only name a family whose regular face is a TrueType font.
     void addFontFamily(const std::string& name, std::shared_ptr<text::FontFamily> family);
 
     // Returns the family of a UI font name: a registered family, the font file of a name, or the default font, and null for a name the UI does not know.
     [[nodiscard]] std::shared_ptr<text::FontFamily> getFontFamily(core::Engine& engine, std::string_view name);
+
+    // The direction of the whole UI, which mirrors its layouts and sets the direction its text reads in when right to left. Auto follows the direction the localization catalog declares for the current language, and nodes with a direction of their own keep it.
+    void setDirection(text::Direction value) noexcept {
+        direction = value;
+    }
+    [[nodiscard]] text::Direction getDirection() const noexcept {
+        return direction;
+    }
 
     // Shades the screen outside the safe area and outlines it over everything, to check layouts against notches and system bars. The debug.showSafeArea option of app.json turns it on at start.
     void setSafeAreaVisible(bool value) noexcept {
@@ -111,6 +120,10 @@ class UiPlugin final : public Plugin {
     [[nodiscard]] graphics::Texture requestImage(core::Engine& engine, std::string_view path);
     void applyVirtualInput(core::Engine& engine);
     void drawSafeArea();
+    [[nodiscard]] input::ActionMap::Capture getCapture() const;
+
+    // Returns the file of a TrueType face, or nothing for a bitmap face or a style the family has no face for.
+    [[nodiscard]] static std::vector<std::uint8_t> getTrueTypeData(const std::shared_ptr<text::Font>& face);
 
     ui::ComponentRegistry components;
     ui::FocusNavigator focus;
@@ -128,6 +141,7 @@ class UiPlugin final : public Plugin {
     std::set<std::string, std::less<>> heldButtons;
     std::set<std::string, std::less<>> sticks;
     double elapsed = 0.0;
+    text::Direction direction = text::Direction::LeftToRight;
     bool safeAreaVisible = false;
     core::Engine* owner = nullptr;
 };

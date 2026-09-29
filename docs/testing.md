@@ -12,6 +12,7 @@ The suite lives in `engine/tests/` and builds into one executable, `haylen_tests
 | `engine/tests/2d/<module>/` | Tests of the 2D modules, like the engine's own `2d` folders: `animation`, `graphics` (the renderer, fonts, cameras and their Lua binding), `lighting`, `navigation`, `particles`, `physics`, `spatial` and `tiled`. |
 | `engine/tests/lua/` | Binding tests of the core, math, input and assets modules, and of the Lua runtime and the binding toolkit. Other modules keep their binding tests next to their C++ tests, such as `Spatial2DLuaTest` in `2d/spatial/Spatial2DTests.cpp`. |
 | `engine/tests/support/` | Shared helpers in `haylen::test`: `EngineFixture` with `DrawingScene` and the test data helpers, `TemporaryDirectory`, `TestApplication` and `VarnRuntime`. |
+| `engine/tests/native/` | `NativeTest.c`, the plain C library that the native interop tests load through `haylen.native` and Varn's `ffi`. CMake builds it as `native_test` next to `haylen_tests`, where `native.load` finds it by name, and passes its path to the tests as `HAYLEN_NATIVE_TEST_LIBRARY`. The native sample builds the same source for every platform. |
 | `engine/tests/CMakeLists.txt` | The `HAYLEN_TEST_SOURCES` list, which names every test file, and the `haylen_tests` target. |
 
 `haylen_tests` links `haylen::engine`, `haylen::headless` and GoogleTest's `gtest_main`, and it includes `engine/tests`, so tests include `support/EngineFixture.hpp`. It also adds `engine/src` and the Sokol headers to its own include folders, so a test may include internal headers such as `platform/headless/HeadlessHost.hpp`. Apps never see those folders, because the engine libraries keep them private. `gtest_discover_tests` registers every test with CTest under its `Suite.Name`, with `engine/tests` as the working directory. The suite is built only on desktop platforms, and only when `HAYLEN_BUILD_TESTS` is on, which is the default when the engine or the repository root is the top-level project.
@@ -25,7 +26,7 @@ Every test file lives in the namespace of the context it tests, such as `haylen:
 - `SokolDummy.c` compiles Sokol gfx with its dummy backend, so the renderer, textures, render targets and the UI run and record statistics without drawing anything. The root `haylen` Lua module reports `'dummy'` as its `backend` and `'headless'` as its `platform`.
 - The audio mixer has no device and mixes only when a test asks it to.
 - User data goes to a folder the test chooses, and `getPersistCount()` counts the requests to make it durable.
-- Bridge calls are recorded in `getPlatformCalls()` instead of reaching native code.
+- Bridge calls are recorded in `getPlatformCalls()` instead of reaching native code, and the calls the bridge gave up through a timeout or a cancel in `getCancelledCalls()`.
 - `resize(size)`, `setSafeAreaInsets(insets)` and `setGamepad(index, state)` change what the engine sees, and `getTitle()`, `getCursor()`, `isCursorVisible()`, `isMouseLocked()`, `isKeyboardVisible()` and `isQuitRequested()` report what the engine asked for.
 
 Sokol keeps one global device, so only one engine can exist at a time in a process, and a test never creates two fixtures at once. CTest runs every test in a process of its own, so tests still run in parallel.

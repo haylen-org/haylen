@@ -421,20 +421,23 @@ scene.push({
 
 ### graphics2d.drawText(font, text, x, y, style)
 
-Draws UTF-8 `text` with `font`, or with the engine's default font when `font` is `nil`. A TrueType font is rendered from a signed distance field, so it stays sharp at any size, and a bitmap font draws its own images, pixel for pixel at its native size. `\n` starts a new line, and lines wrap after spaces and between Chinese and Japanese characters. The anchor point of the text block sits at `x`, `y`, and rotation turns the block around that point. `style` is optional:
+Draws UTF-8 `text` with `font`, a `Font` or a `FontFamily`, or with the engine's default font when `font` is `nil`. A family draws every character its regular face lacks with the first fallback that has it, which is how one string mixes Latin, Arabic, Devanagari or CJK text. A TrueType font is shaped by HarfBuzz and rendered from a signed distance field, so it stays sharp at any size, with the ligatures, joining forms, conjuncts and marks of every script, and a bitmap font draws its own images, pixel for pixel at its native size. Every line is ordered for display by the Unicode bidirectional algorithm, so right-to-left text reads from the right and keeps numbers and Latin words in their own order. `\n` starts a new line, and lines wrap where the Unicode line breaking rules allow, which includes between Chinese and Japanese characters and between Thai phrases. The [text guide](../text.md#scripts-and-directions) explains shaping, directions and line breaking. The anchor point of the text block sits at `x`, `y`, and rotation turns the block around that point. `style` is optional:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `size` | number | `32` | Font size in canvas units. |
+| `size` | number | `32` | Font size in canvas units, the height of the em square of a TrueType font. |
 | `color` | Color | `'#FFFFFFFF'` | Text color. |
 | `outlineWidth` | number | `0` | Outline width in canvas units. 0 draws no outline. Outlines, blurs and glows reach at most the distance field spread of the font, and bitmap fonts have none. |
 | `outlineColor` | Color | `'#FF000000'` | Outline color. |
 | `shadowOffset` | Vec2 | `{0, 0}` | Offset of the drop shadow. |
 | `shadowColor` | Color | `'#00000000'` | Shadow color. The shadow is drawn only when its alpha is above 0. The shadow of a bitmap font is the silhouette of its glyphs. |
 | `shadowBlur` | number | `0` | Softens the shadow over this many canvas units. |
-| `align` | string | `'left'` | Alignment of each line inside the block: `'left'`, `'center'`, `'right'` or `'fill'`, which stretches the spaces of every wrapped line to reach both edges and leaves the last line of a paragraph at the left. |
+| `align` | string | `'start'` | Alignment of each line inside the block: `'start'` and `'end'`, the sides where the lines of the paragraph begin and end, which are left and right for left-to-right text and the other way around for right-to-left text, `'left'`, `'center'`, `'right'` or `'fill'`, which stretches the spaces of every wrapped line to reach both edges and leaves the last line of a paragraph at its start. |
 | `maxWidth` | number | `0` | Wraps whole words at this width. 0 never wraps. |
 | `lineSpacing` | number | `1.2` | Distance between lines as a multiple of the line height. |
+| `direction` | string | `'auto'` | Direction of every paragraph: `'auto'` takes the direction of its first strong letter, `'ltr'` and `'rtl'` force it, which decides the order of mixed runs and the side of `'start'`. |
+| `language` | string | `''` | BCP 47 language tag of the text, such as `'ar'`, `'fa'`, `'ur'` or `'sr'`, which the shaper uses to pick the forms a language prefers. |
+| `bold`, `italic` | boolean | `false` | With a `FontFamily`, pick its bold and italic faces or synthesize them. A `Font` ignores them. |
 | `anchor` | Vec2 | `{0, 0}` | Point of the block placed at `x`, `y`, as a fraction of its size. `{0.5, 0.5}` centers the text. |
 | `rotation` | number | `0` | Rotation in radians. |
 | `layer`, `depth`, `blend` | | | Draw order. |
@@ -460,9 +463,32 @@ scene.push({
 })
 ```
 
+A family with fallbacks for other scripts draws them in the same call:
+
+```lua
+local assets = require('haylen.assets')
+local graphics = require('haylen.graphics')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local family = graphics.newFontFamily({
+    regular = graphics2d.defaultFont(),
+    fallback = {assets.font('fonts/noto_sans_arabic_regular.ttf'), assets.font('fonts/noto_sans_devanagari_regular.ttf')},
+})
+
+scene.push({
+    renderUi = function(self)
+        graphics2d.beginScreen()
+        graphics2d.drawText(family, 'مرحبا بالعالم، رقم 42 (Harbor)', 1200, 200, {size = 40, maxWidth = 600, language = 'ar'})
+        graphics2d.drawText(family, 'Order 7: السعر 42', 100, 300, {size = 40, direction = 'ltr'})
+        graphics2d.drawText(family, 'नमस्ते दुनिया', 100, 400, {size = 40, language = 'hi'})
+    end,
+})
+```
+
 ### graphics2d.measureText(font, text, style)
 
-Returns the width and height of the text block that `graphics2d.drawText` would draw with the same arguments. `font` can be `nil` for the default font. Only the layout keys of `style` change the result.
+Returns the width and height of the text block that `graphics2d.drawText` would draw with the same arguments. `font` can be a `Font`, a `FontFamily` or `nil` for the default font. Only the layout keys of `style` change the result.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -485,11 +511,15 @@ Creates a [`RichText`](#richtext) from BBCode markup, laid out once and drawn ev
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `family` | FontFamily or Font | default font | The family of text without a `[font]` tag. A `Font` becomes the regular face of a family of its own. |
-| `size` | number | `32` | Size of text without a `[size]` tag, in canvas units. |
+| `size` | number | `32` | Size of text without a `[size]` tag, in canvas units: the height of the em square of the font. |
+| `bold` | boolean | `false` | Styles all the text bold, as if inside `[b]`. |
+| `italic` | boolean | `false` | Styles all the text italic, as if inside `[i]`. |
 | `color` | Color | `'#FFFFFFFF'` | Color of text without a `[color]` tag. |
 | `maxWidth` | number | `0` | Width the paragraphs wrap at. 0 never wraps, and the block is as wide as its widest line. |
-| `align` | string | `'left'` | Alignment of paragraphs without their own: `'left'`, `'center'`, `'right'` or `'fill'`. |
+| `align` | string | `'start'` | Alignment of paragraphs without their own: `'start'`, `'end'`, `'left'`, `'center'`, `'right'` or `'fill'`, where start and end follow the direction of each paragraph. |
 | `lineSpacing` | number | `1.2` | Distance between lines as a multiple of their height. |
+| `direction` | string | `'auto'` | Direction of paragraphs without a `[p dir]` of their own: `'auto'` takes the direction of the first strong letter of each paragraph, and `'ltr'` and `'rtl'` force it. |
+| `language` | string | `''` | BCP 47 language tag the text is shaped for, such as `'ar'` or `'hi'`. |
 | `scale` | number | `1` | Multiplies every size of the markup and the options. |
 | `reveal` | number | `0` | Characters per second the typewriter reveal shows as `text:update` advances. 0 shows everything at once. |
 | `underlineLinks` | boolean | `true` | Whether `[url]` text is underlined. |
@@ -505,6 +535,7 @@ local scene = require('haylen.scene')
 
 local family = graphics.newFontFamily({regular = graphics2d.defaultFont()})
 local story = graphics2d.newRichText('[b]Welcome[/b], traveler!\nPress [color=gold]Start[/color] to [wave]begin[/wave].', {family = family, size = 36, maxWidth = 600, reveal = 25})
+local chapter = graphics2d.newRichText('Chapter [i]One[/i]', {family = family, size = 48, bold = true})
 
 scene.push({
     update = function(self, dt)
@@ -512,6 +543,7 @@ scene.push({
     end,
     renderUi = function(self)
         graphics2d.beginScreen()
+        chapter:draw(660, 320)
         story:draw(660, 400)
     end,
 })
@@ -2019,7 +2051,7 @@ A `RichText` is BBCode markup laid out with a font family, created by `graphics2
 | `scale` | number | read-write | Multiplies every size of the text. |
 | `visibleCharacters` | integer | read-write | How many characters show. Setting it moves the reveal there, and a negative count shows everything. |
 | `visibleRatio` | number | read-write | The share of characters that show, from 0 to 1. |
-| `characterCount` | integer | read | The characters of the text: one per code point and one per image or icon. |
+| `characterCount` | integer | read | The characters of the text: one per cluster, which is a letter with its marks, a conjunct or a ligature, and one per image or icon. |
 | `revealing` | boolean | read | Whether the reveal still has characters to show. |
 | `time` | number | read | Seconds the text has run, which drives its effects. |
 
@@ -2127,11 +2159,13 @@ Returns the text as it draws at this moment, with its effects applied and the ch
 
 | Field | Entries |
 | --- | --- |
-| `glyphs` | `char`, `character` (counted from 1), `rect` (the quad), `baseline`, `color`, `visible`, `size` (the text size), `syntheticBold` and `syntheticItalic`. |
+| `glyphs` | `char` (the first code point of its character), `index` (the glyph index in its font), `character` (counted from 1), `rect` (the quad), `baseline`, `color`, `visible`, `size` (the text size), `syntheticBold` and `syntheticItalic`, in the order the lines show them. |
 | `boxes` | `kind` (`'background'`, `'underline'`, `'strike'`, `'rule'`, `'cellBackground'` or `'cellBorder'`), `rect`, `color` and `visible`. |
 | `images` | `rect`, `texture` and `visible` of every image and icon. |
 | `links` | `rect` and `link` of every piece of a link, several when it wraps. |
 | `hints` | `rect` and `hint` of every piece of a hint. |
+| `characters` | `rect`, `first` and `last` (the code points of the text without markup it draws, counted from 1, where paragraphs end with a line break) and `rightToLeft` of every character in reading order. |
+| `lines` | `rect`, `baseline` and `rightToLeft` of every line. |
 
 ```lua
 local graphics2d = require('haylen.graphics2d')

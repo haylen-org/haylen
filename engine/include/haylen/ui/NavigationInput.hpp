@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
+#include <vector>
 
 #include "haylen/input/ActionMap.hpp"
 #include "haylen/input/Input.hpp"
@@ -29,8 +30,11 @@ class NavigationInput final {
 
     NavigationInput();
 
-    // Reads every action from the app map when it defines it and from the built-in bindings otherwise. Blocked input, such as during a scene transition, holds every action up.
+    // Reads every action with the bindings the app map gives it when it defines it and with the built-in bindings otherwise. The UI reads the presses it captures from the app map itself, and blocked input, such as during a scene transition, holds every action up.
     void update(const input::ActionMap& actions, const input::Input& devices, const input::VirtualInput& virtualInput, bool blocked);
+
+    // The bindings an action reads, remapped by the app or built in.
+    [[nodiscard]] const std::vector<input::ActionMap::Binding>& getBindings(Action action) const;
 
     [[nodiscard]] bool isDown(Action action) const noexcept {
         return down[static_cast<std::size_t>(action)];
@@ -46,6 +50,7 @@ class NavigationInput final {
 
   private:
     input::ActionMap defaults;
+    input::ActionMap resolved;
     input::Input idleInput;
     input::VirtualInput idleVirtualInput;
     std::array<bool, kActionCount> down{};

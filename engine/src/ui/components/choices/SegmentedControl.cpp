@@ -42,7 +42,7 @@ void SegmentedControl::render(Context& context, const math::Rect& bounds) {
     for (std::size_t index = 0; index < items.size(); ++index) {
         const ChoiceItem& item = items[index];
         const float width = inner.width / static_cast<float>(items.size());
-        const math::Rect segment{std::floor(inner.x + width * static_cast<float>(index)), inner.y, width, inner.height};
+        const math::Rect segment = context.mirror({std::floor(inner.x + width * static_cast<float>(index)), inner.y, width, inner.height}, inner);
         const bool chosen = static_cast<int>(index) == current;
         ImGui::PushID(item.id.c_str());
         ImGui::BeginDisabled(!item.enabled);
@@ -53,7 +53,8 @@ void SegmentedControl::render(Context& context, const math::Rect& bounds) {
             ImGui::GetWindowDrawList()->AddRectFilled(ImGuiConverter::toImVec2(segment.getMin()), ImGuiConverter::toImVec2(segment.getMax()), ImGuiConverter::toImU32(context.getColor(state.held ? Theme::Color::Pressed : Theme::Color::Hover)), radius);
         }
         if (index > 0 && !chosen && static_cast<int>(index) != current + 1) {
-            ImGui::GetWindowDrawList()->AddLine({segment.x, segment.y + segment.height * 0.25F}, {segment.x, segment.getBottom() - segment.height * 0.25F}, ImGuiConverter::toImU32(context.getColor(Theme::Color::Border)), context.getMetric(Theme::Metric::BorderWidth));
+            const float edge = context.isRightToLeft() ? segment.getRight() : segment.x;
+            ImGui::GetWindowDrawList()->AddLine({edge, segment.y + segment.height * 0.25F}, {edge, segment.getBottom() - segment.height * 0.25F}, ImGuiConverter::toImU32(context.getColor(Theme::Color::Border)), context.getMetric(Theme::Metric::BorderWidth));
         }
         Typography::drawAligned(context, Theme::Font::Button, segment, context.getColor(chosen ? Theme::Color::OnAccent : Theme::Color::Text), context.getText(item.text), Alignment::Center);
         ImGui::EndDisabled();
@@ -71,7 +72,7 @@ void SegmentedControl::render(Context& context, const math::Rect& bounds) {
     if (clicked) {
         select(context, *clicked);
     } else if (const std::optional<FocusDirection> direction = takeFocusDirection(context)) {
-        select(context, findNext(current, direction == FocusDirection::Left ? -1 : 1, false));
+        select(context, findNext(current, Widgets::getStep(context, *direction), false));
     } else if (body.clicked) {
         select(context, findNext(current, 1, true));
     }

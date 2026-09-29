@@ -1,13 +1,18 @@
 #include "haylen/text/FontFamily.hpp"
 
+#include <algorithm>
 #include <stdexcept>
 #include <utility>
+
+#include "text/LayoutBuilder.hpp"
+#include "text/LayoutCache.hpp"
+#include "text/Segmenter.hpp"
 
 namespace haylen::text {
 
 debug::ObjectCounter FontFamily::counter("FontFamily", debug::ObjectCounter::Kind::Native);
 
-FontFamily::FontFamily(Faces familyFaces) : faces(std::move(familyFaces)) {
+FontFamily::FontFamily(Faces familyFaces) : faces(std::move(familyFaces)), layouts(std::make_unique<LayoutCache>()) {
     if (!faces.regular) {
         throw std::invalid_argument("A font family needs a regular face.");
     }
@@ -17,6 +22,8 @@ FontFamily::FontFamily(Faces familyFaces) : faces(std::move(familyFaces)) {
         }
     }
 }
+
+FontFamily::~FontFamily() = default;
 
 FontFamily::Selection FontFamily::select(bool bold, bool italic, bool mono) const noexcept {
     if (mono && faces.mono) {
@@ -43,16 +50,45 @@ FontFamily::Selection FontFamily::select(bool bold, bool italic, bool mono) cons
     return {.font = faces.regular.get()};
 }
 
-FontFamily::Selection FontFamily::resolve(const Selection& face, char32_t codePoint, bool bold, bool italic) const {
-    if (face.font->hasGlyph(codePoint)) {
+// Joiners, variation selectors and direction marks draw nothing, so a font covers a cluster without them.
+bool FontFamily::covers(Font& font, std::u32string_view cluster) {
+    return std::ranges::all_of(cluster, [&font](char32_t codePoint) { return Segmenter::isInvisible(codePoint) || font.hasGlyph(codePoint); });
+}
+
+FontFamily::Selection FontFamily::resolve(const Selection& face, std::u32string_view cluster, bool bold, bool italic, Font* previous) const {
+    const auto fallback = [bold, italic](const std::shared_ptr<Font>& font) { return Selection{.font = font.get(), .syntheticBold = bold, .syntheticItalic = italic}; };
+    if (previous != nullptr && previous != face.font && covers(*previous, cluster)) {
+        for (const std::shared_ptr<Font>& font : faces.fallbacks) {
+            if (font.get() == previous) {
+                return fallback(font);
+            }
+        }
+    }
+    if (covers(*face.font, cluster)) {
         return face;
     }
-    for (const std::shared_ptr<Font>& fallback : faces.fallbacks) {
-        if (fallback->hasGlyph(codePoint)) {
-            return {.font = fallback.get(), .syntheticBold = bold, .syntheticItalic = italic};
+    for (const std::shared_ptr<Font>& font : faces.fallbacks) {
+        if (covers(*font, cluster)) {
+            return fallback(font);
+        }
+    }
+    if (cluster.empty() || face.font->hasGlyph(cluster.front())) {
+        return face;
+    }
+    for (const std::shared_ptr<Font>& font : faces.fallbacks) {
+        if (font->hasGlyph(cluster.front())) {
+            return fallback(font);
         }
     }
     return face;
+}
+
+std::shared_ptr<const TextLayout> FontFamily::layout(std::string_view text, const TextStyle& style) {
+    return layouts->get(text, style, [&] { return LayoutBuilder::layoutPlainText(text, style, this, nullptr); });
+}
+
+math::Vec2 FontFamily::measure(std::string_view text, const TextStyle& style) {
+    return layout(text, style)->size;
 }
 
 } // namespace haylen::text

@@ -260,7 +260,7 @@ Backend::Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow,
     platform.Renderer_TextureMaxHeight = graphicsDevice.getMaxTextureSize();
 
     ImGui::GetStyle().FontSizeBase = kBaseFontSize;
-    defaultFont = addFont(std::string(kDefaultFontName), {defaultFontData.begin(), defaultFontData.end()});
+    defaultFont = addFont(std::string(kDefaultFontName), {.regular = {defaultFontData.begin(), defaultFontData.end()}});
 }
 
 Backend::~Backend() {
@@ -279,34 +279,88 @@ float Backend::getKeyboardOffset() const noexcept {
     return textSession->getKeyboardOffset();
 }
 
-ImFont* Backend::addFont(const std::string& name, std::vector<std::uint8_t> bytes) {
+// ImGui only parses a font when it first draws with it, so broken data is caught here while the caller can still hear about it.
+float Backend::getEmRatio(const std::string& name, std::span<const std::uint8_t> data) {
+    stbtt_fontinfo info;
+    const int offset = data.size() < kFontHeaderSize ? -1 : stbtt_GetFontOffsetForIndex(data.data(), 0);
+    if (offset < 0 || stbtt_InitFont(&info, data.data(), offset) == 0) {
+        throw std::runtime_error("The font " + name + " is not a TrueType or OpenType font.");
+    }
+    return stbtt_ScaleForPixelHeight(&info, 1.0F) / stbtt_ScaleForMappingEmToPixels(&info, 1.0F);
+}
+
+ImFont* Backend::addFont(const std::string& name, FontFiles files) {
     makeCurrent();
     if (fonts.contains(name)) {
         throw std::invalid_argument("The UI already has a font named " + name + ".");
     }
 
-    // ImGui only parses a font when it first draws with it, so broken data is caught here while the caller can still hear about it.
-    stbtt_fontinfo info;
-    const int offset = bytes.size() < kFontHeaderSize ? -1 : stbtt_GetFontOffsetForIndex(bytes.data(), 0);
-    if (offset < 0 || stbtt_InitFont(&info, bytes.data(), offset) == 0) {
-        throw std::runtime_error("The font " + name + " is not a TrueType or OpenType font.");
+    // Every file is checked before any reaches ImGui, so a broken one registers nothing.
+    Typeface typeface{.emRatio = getEmRatio(name, files.regular)};
+    for (const std::vector<std::uint8_t>* face : {&files.bold, &files.italic, &files.boldItalic}) {
+        if (!face->empty()) {
+            (void)getEmRatio(name, *face);
+        }
+    }
+    for (const std::vector<std::uint8_t>& fallback : files.fallbacks) {
+        (void)getEmRatio(name, fallback);
     }
 
-    // ImGui reads the font data for as long as the atlas lives, so the bytes stay owned here.
+    // ImGui reads the font data for as long as the atlas lives, so the bytes stay owned here, and every face shares the fallbacks.
+    std::vector<std::span<std::uint8_t>> fallbacks;
+    for (std::vector<std::uint8_t>& fallback : files.fallbacks) {
+        fallbacks.emplace_back(fontData.emplace_back(std::move(fallback)));
+    }
+    typeface.regular = addFace(name, std::move(files.regular), fallbacks);
+    typeface.bold = files.bold.empty() ? nullptr : addFace(name, std::move(files.bold), fallbacks);
+    typeface.italic = files.italic.empty() ? nullptr : addFace(name, std::move(files.italic), fallbacks);
+    typeface.boldItalic = files.boldItalic.empty() ? nullptr : addFace(name, std::move(files.boldItalic), fallbacks);
+    fonts.emplace(name, typeface);
+    return typeface.regular;
+}
+
+// ImGui draws each fallback at the size of the face it merges into, measured from ascent to descent, so a fallback scales by how much its em square differs from the em square of the face.
+ImFont* Backend::addFace(const std::string& name, std::vector<std::uint8_t> bytes, std::span<const std::span<std::uint8_t>> fallbacks) {
     std::vector<std::uint8_t>& data = fontData.emplace_back(std::move(bytes));
+    const float faceRatio = getEmRatio(name, data);
     ImFontConfig config;
     config.FontDataOwnedByAtlas = false;
     ImFont* font = ImGui::GetIO().Fonts->AddFontFromMemoryTTF(data.data(), static_cast<int>(data.size()), kBaseFontSize, &config);
-    fonts.emplace(name, font);
+    for (const std::span<std::uint8_t> fallback : fallbacks) {
+        ImFontConfig merged;
+        merged.FontDataOwnedByAtlas = false;
+        merged.MergeMode = true;
+        merged.DstFont = font;
+        merged.ExtraSizeScale = faceRatio / getEmRatio(name, fallback);
+        ImGui::GetIO().Fonts->AddFontFromMemoryTTF(fallback.data(), static_cast<int>(fallback.size()), kBaseFontSize, &merged);
+    }
     return font;
 }
 
-ImFont* Backend::getFont(std::string_view name) const {
+ImFont* Backend::getFont(std::string_view name, bool bold, bool italic) const {
     const auto found = fonts.find(name);
     if (found == fonts.end()) {
         throw std::invalid_argument("The UI has no font named " + std::string(name) + ".");
     }
-    return found->second;
+    const Typeface& typeface = found->second;
+    if (bold && italic && typeface.boldItalic != nullptr) {
+        return typeface.boldItalic;
+    }
+    if (bold && typeface.bold != nullptr) {
+        return typeface.bold;
+    }
+    if (italic && typeface.italic != nullptr) {
+        return typeface.italic;
+    }
+    return typeface.regular;
+}
+
+float Backend::getEmSize(std::string_view name, float size) const {
+    const auto found = fonts.find(name);
+    if (found == fonts.end()) {
+        throw std::invalid_argument("The UI has no font named " + std::string(name) + ".");
+    }
+    return size * found->second.emRatio;
 }
 
 void Backend::handleEvent(const platform::Event& event, const graphics::Viewport& viewport) {
@@ -360,6 +414,7 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
     const auto place = [&](math::Vec2 framebufferPoint) {
         const math::Vec2 point = viewport.toDesign(framebufferPoint) - origin;
         io.AddMousePosEvent(point.x, point.y);
+        pointerPosition = framebufferPoint;
     };
     // clang-format on
 
@@ -379,6 +434,7 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
         break;
     case platform::Event::Type::MouseLeave:
         io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
+        pointerPosition.reset();
         break;
     default:
         break;
@@ -499,6 +555,13 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     const math::Vec2 density = viewport.getPixelsPerUnit();
     origin = visible.getMin();
     safeRect = viewport.getSafeRect().translated(-origin);
+
+    // The pointer keeps its place on the screen when design space moves under it, such as after the app changes its scaling.
+    if (pointerPosition) {
+        const math::Vec2 point = viewport.toDesign(*pointerPosition) - origin;
+        io.AddMousePosEvent(point.x, point.y);
+    }
+
     io.DisplaySize = {visible.width, visible.height};
     io.DisplayFramebufferScale = {density.x, density.y};
     io.DeltaTime = std::max(deltaSeconds, 1.0F / 1000.0F);

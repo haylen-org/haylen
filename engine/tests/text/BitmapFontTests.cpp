@@ -150,19 +150,25 @@ TEST(BitmapFontTest, LoadsAsAssetsAndDrawsLikeAnyFont) {
     EXPECT_TRUE(font->hasGlyph(U'A'));
     EXPECT_FALSE(font->hasGlyph(U'Z'));
     EXPECT_FALSE(font->getGlyph(U'Z').visible);
-    EXPECT_FLOAT_EQ(font->getKerning(U'A', U'B'), -2.0F);
     EXPECT_FLOAT_EQ(font->toDistance(4.0F, 16.0F), 0.0F);
     EXPECT_EQ(font->getPage(0), assets.texture("fonts/pixel_0.png"));
     EXPECT_THROW((void)font->getPage(2), std::out_of_range);
 
-    // Kerning pulls B two pixels closer, and B comes from the second page.
-    const TextLayout laid = font->layout("AB Z", {.size = 16.0F});
-    ASSERT_EQ(laid.quads.size(), 2U);
-    EXPECT_FLOAT_EQ(laid.quads[0].position.x, 1.0F);
-    EXPECT_FLOAT_EQ(laid.quads[0].position.y, 2.0F);
-    EXPECT_FLOAT_EQ(laid.quads[1].position.x, 8.0F);
-    EXPECT_EQ(laid.quads[1].page, 1U);
+    // Kerning pulls B two pixels closer, and B comes from the second page. A right-to-left run reads backwards with its pairs in screen order.
+    const std::shared_ptr<const TextLayout> laid = font->layout("AB Z", {.size = 16.0F});
+    ASSERT_EQ(laid->glyphs.size(), 2U);
+    EXPECT_FLOAT_EQ(laid->glyphs[0].position.x, 1.0F);
+    EXPECT_FLOAT_EQ(laid->glyphs[0].position.y, 2.0F);
+    EXPECT_FLOAT_EQ(laid->glyphs[1].position.x, 8.0F);
+    EXPECT_EQ(laid->glyphs[1].page, 1U);
     EXPECT_FLOAT_EQ(font->measure("AB", {.size = 32.0F}).x, 34.0F);
+    std::vector<Font::ShapedGlyph> shaped;
+    const std::u32string text = U"AB";
+    font->shape({.text = text, .begin = 0, .end = 2, .rightToLeft = true}, shaped);
+    ASSERT_EQ(shaped.size(), 2U);
+    EXPECT_EQ(shaped[0].index, static_cast<std::uint32_t>(U'B'));
+    EXPECT_EQ(shaped[0].cluster, 1U);
+    EXPECT_FLOAT_EQ(shaped[0].advance, font->getGlyph(U'B').advance);
 
     const auto grid = std::static_pointer_cast<Font>(assets.load("gridFont", "fonts/grid.png", {{"characters", "0123456789"}, {"cellWidth", 8}, {"cellHeight", 8}, {"filter", "nearest"}}));
     EXPECT_TRUE(grid->hasGlyph(U'9'));

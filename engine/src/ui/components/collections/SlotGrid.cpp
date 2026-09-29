@@ -101,7 +101,7 @@ void SlotGrid::render(Context& context, const math::Rect& bounds) {
     for (std::size_t index = 0; index < slots.size(); ++index) {
         const auto column = static_cast<float>(index % static_cast<std::size_t>(columns));
         const auto row = static_cast<float>(index / static_cast<std::size_t>(columns));
-        const math::Rect area{bounds.x + (size + spacing) * column, bounds.y + (size + spacing) * row, size, size};
+        const math::Rect area = context.mirror({bounds.x + (size + spacing) * column, bounds.y + (size + spacing) * row, size, size}, bounds);
         drawSlot(context, slots[index], area, !focused.empty() && slots[index].id == focused);
     }
 }

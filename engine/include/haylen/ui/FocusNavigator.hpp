@@ -71,8 +71,21 @@ class FocusNavigator final {
     }
     [[nodiscard]] bool isRingShown(ImGuiID item) const;
 
-    // Whether the player pressed ui_cancel this frame for a window that handles it itself, such as a dialog: the topmost popup, or the window with the focus while no popup is open.
-    [[nodiscard]] bool isCancelPressedIn(const ImGuiWindow* window) const noexcept;
+    // Whether the player pressed ui_cancel this frame for a window that closes with it, such as a dismissible dialog or a closable window: the topmost popup, or the window with the focus while no popup is open. The window being asked answers cancel, so the app actions leave the next press to it.
+    [[nodiscard]] bool answerCancel(const ImGuiWindow* window);
+
+    // Whether the UI answers ui_cancel and ui_accept itself in the next frame: cancel while a control is being edited, a popup is open, an item is carried or the focused window closes with it, and accept while a control has the focus.
+    [[nodiscard]] bool answersCancel() const noexcept {
+        return cancelAnswered;
+    }
+    [[nodiscard]] bool answersAccept() const noexcept {
+        return acceptAnswered;
+    }
+
+    // Whether an item was being edited when the frame ended, such as a text field or a dragged slider. A press on empty space holds the move id of its window, which edits nothing.
+    [[nodiscard]] bool isEditing() const noexcept {
+        return editing;
+    }
 
     // Whether the player pressed ui_menu this frame, which opens the context menu around the focus.
     [[nodiscard]] bool isMenuPressed() const noexcept {
@@ -180,6 +193,7 @@ class FocusNavigator final {
     std::vector<std::pair<ImGuiID, std::string_view>> notices;
     std::optional<std::pair<ImGuiID, FocusDirection>> pendingDirection;
     std::optional<Carry> carried;
+    std::vector<const ImGuiWindow*> cancelWindows;
     ImGuiID focusedItem = 0;
     ImGuiID focusedNode = 0;
     const Document* focusedDocument = nullptr;
@@ -193,6 +207,9 @@ class FocusNavigator final {
     bool pointerAvailable = true;
     bool ringVisible = false;
     bool cancelPressed = false;
+    bool editing = false;
+    bool cancelAnswered = false;
+    bool acceptAnswered = false;
     bool menuPressed = false;
     bool suspended = false;
 };

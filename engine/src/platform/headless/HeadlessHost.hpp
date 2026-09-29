@@ -3,6 +3,7 @@
 #include <array>
 #include <filesystem>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "haylen/input/Input.hpp"
@@ -79,6 +80,56 @@ class HeadlessHost final : public Host {
     [[nodiscard]] bool hasPointerDevice() const noexcept override {
         return pointerDevice;
     }
+    [[nodiscard]] bool canBeTransparent() const noexcept override {
+        return transparencySupported;
+    }
+    [[nodiscard]] bool isTransparent() const noexcept override {
+        return transparent;
+    }
+    void setTransparent(bool value) override;
+    [[nodiscard]] bool isDecorated() const noexcept override {
+        return decorated;
+    }
+    void setDecorated(bool value) override {
+        decorated = value;
+    }
+    [[nodiscard]] bool isAlwaysOnTop() const noexcept override {
+        return alwaysOnTop;
+    }
+    void setAlwaysOnTop(bool value) override {
+        alwaysOnTop = value;
+    }
+    [[nodiscard]] bool isShownInTaskbar() const noexcept override {
+        return shownInTaskbar;
+    }
+    void setShowInTaskbar(bool value) override {
+        shownInTaskbar = value;
+    }
+    [[nodiscard]] bool isFocusable() const noexcept override {
+        return focusable;
+    }
+    void setFocusable(bool value) override {
+        focusable = value;
+    }
+    [[nodiscard]] math::Rect getFrame() const override {
+        return frame;
+    }
+    void setFrame(const math::Rect& value) override {
+        frame = value;
+    }
+    [[nodiscard]] Passthrough getMousePassthrough() const noexcept override {
+        return passthrough;
+    }
+    void setMousePassthrough(Passthrough mode, std::span<const math::Polygon::Outline> regions) override {
+        passthrough = mode;
+        passthroughRegions.assign(regions.begin(), regions.end());
+    }
+    void startDrag() override {
+        ++dragCount;
+    }
+    [[nodiscard]] std::vector<Monitor> getMonitors() const override {
+        return monitors;
+    }
 
     [[nodiscard]] std::string_view getPlatformName() const noexcept override {
         return "headless";
@@ -97,6 +148,9 @@ class HeadlessHost final : public Host {
     }
     void pollGamepads(std::span<input::GamepadState> states) override;
     void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson) override;
+    void cancelPlatformCall(std::uint64_t id) override {
+        cancelledCalls.push_back(id);
+    }
 
     void resize(math::Vec2 size) noexcept {
         framebufferSize = size;
@@ -109,6 +163,15 @@ class HeadlessHost final : public Host {
     }
     void setPointerDevice(bool value) noexcept {
         pointerDevice = value;
+    }
+
+    // Opens the headless window able to be transparent, and transparent, the way window.transparent of app.json opens a real one.
+    void setTransparencySupported(bool value) noexcept {
+        transparencySupported = value;
+        transparent = value;
+    }
+    void setMonitors(std::vector<Monitor> value) {
+        monitors = std::move(value);
     }
 
     [[nodiscard]] const std::string& getTitle() const noexcept {
@@ -138,6 +201,15 @@ class HeadlessHost final : public Host {
     [[nodiscard]] const std::vector<PlatformCall>& getPlatformCalls() const noexcept {
         return platformCalls;
     }
+    [[nodiscard]] const std::vector<std::uint64_t>& getCancelledCalls() const noexcept {
+        return cancelledCalls;
+    }
+    [[nodiscard]] const std::vector<math::Polygon::Outline>& getPassthroughRegions() const noexcept {
+        return passthroughRegions;
+    }
+    [[nodiscard]] int getDragCount() const noexcept {
+        return dragCount;
+    }
 
   private:
     std::filesystem::path dataDirectory;
@@ -145,6 +217,14 @@ class HeadlessHost final : public Host {
     math::Insets safeAreaInsets{};
     std::array<input::GamepadState, input::Input::kMaxGamepads> gamepads{};
     std::vector<PlatformCall> platformCalls;
+    std::vector<std::uint64_t> cancelledCalls;
+
+    // The headless desktop is one 1920 by 1080 monitor whose work area leaves a 40 point taskbar at the bottom, with the window at the top left corner of it.
+    std::vector<Monitor> monitors{{.name = "headless", .bounds = {0.0F, 0.0F, 1920.0F, 1080.0F}, .workArea = {0.0F, 0.0F, 1920.0F, 1040.0F}, .scale = 1.0F, .primary = true}};
+    math::Rect frame;
+    std::vector<math::Polygon::Outline> passthroughRegions;
+    Passthrough passthrough = Passthrough::Off;
+    int dragCount = 0;
     HeadlessTextInput textInput;
     std::string title;
     std::string clipboard;
@@ -158,6 +238,12 @@ class HeadlessHost final : public Host {
     bool keyboardVisible = false;
     bool quitRequested = false;
     bool pointerDevice = true;
+    bool transparencySupported = false;
+    bool transparent = false;
+    bool decorated = true;
+    bool alwaysOnTop = false;
+    bool shownInTaskbar = true;
+    bool focusable = true;
 };
 
 } // namespace haylen::platform

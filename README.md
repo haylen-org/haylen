@@ -10,6 +10,7 @@ The repository holds the engine, the `haylen` desktop player and Tiny Island, a 
 - Tiled maps with every orientation, animated tiles, parallax, blend modes, collision and object spawning.
 - Box2D physics, particles, 2D lighting, A\* navigation with steering, tweens, state machines and a spatial hash.
 - Keyboard, mouse, touch, gestures and gamepads behind one action map, with on-screen touch controls.
+- Text in every script, shaped with HarfBuzz and ordered right to left where a language reads that way, in 2D drawing, rich text and a UI that mirrors for Arabic and Hebrew.
 - A themed UI with menus, HUD components, dialogs and nine-slice skins, plus Dear ImGui for tools.
 - Audio buses, streamed music with crossfades and positional sounds.
 - Asset preload groups, saves, settings, localization, WebSockets and a JSON bridge to native platform code.
@@ -70,7 +71,7 @@ scene.push({
 - [Lua API reference](docs/lua-api.md)
 - [Lua guide](docs/lua.md), [lifecycle](docs/lifecycle.md) and [architecture](docs/architecture.md)
 - [Distributing apps](docs/distribution.md), [building the engine](docs/build.md) and [using the engine as a library](docs/embedding.md)
-- [Rendering](docs/rendering.md), [shaders](docs/shaders.md), [text](docs/text.md), [UI](docs/ui.md), [text input](docs/text-input.md), [Tiled](docs/tiled.md), [audio](docs/audio.md) and [input](docs/input.md)
+- [Rendering](docs/rendering.md), [shaders](docs/shaders.md), [text](docs/text.md), [UI](docs/ui.md), [text input](docs/text-input.md), [Tiled](docs/tiled.md), [audio](docs/audio.md), [input](docs/input.md) and [desktop apps](docs/desktop.md)
 - [Platform bridge](docs/platform_bridge.md) and [testing](docs/testing.md)
 - [Tiny Island](samples/games/tiny-island/README.md)
 

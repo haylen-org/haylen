@@ -43,7 +43,7 @@ class RichTextLua final {
     [[nodiscard]] static const std::shared_ptr<text::RichTextRegistry>& getRegistry(lua_State* L);
 
   private:
-    static constexpr std::array<std::string_view, 10> kOptionFields{"family", "size", "color", "maxWidth", "align", "lineSpacing", "scale", "reveal", "underlineLinks", "fonts"};
+    static constexpr std::array<std::string_view, 14> kOptionFields{"family", "size", "bold", "italic", "color", "maxWidth", "align", "direction", "language", "lineSpacing", "scale", "reveal", "underlineLinks", "fonts"};
     static constexpr std::array<std::string_view, 3> kIconFields{"source", "width", "height"};
 
     // Runs a Lua effect on one glyph, which reads and writes the fields of a glyph table and reads the attributes of its tag.

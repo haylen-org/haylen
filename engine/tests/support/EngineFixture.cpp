@@ -28,6 +28,7 @@ EngineFixture::EngineFixture(std::map<std::string, std::string> files, std::uniq
         application = std::make_unique<lua::Application>();
     }
     application->configure(config);
+    headlessHost.setTransparencySupported(config.window.transparent);
     runningEngine = std::make_unique<core::Engine>(headlessHost, memoryPackage, std::move(config), std::move(application));
     runningEngine->start();
 }

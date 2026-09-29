@@ -6,7 +6,7 @@
 local viewport = require('haylen.viewport')
 ```
 
-The design size and the scaling policy come from the `design` section of `app.json`, which defaults to 1920 by 1080 units with the `expand` policy. The viewport is recomputed at the start of every frame, so after a resize or a rotation the new values are available from the next frame on.
+The design size and the scaling policy come from the `design` section of `app.json`, which defaults to 1920 by 1080 units with the `expand` policy, and [viewport.setScaling](#viewportsetscalingpolicy) and [viewport.setDesignSize](#viewportsetdesignsizewidth-height) change them while the app runs. The viewport is recomputed at the start of every frame, so after a resize or a rotation the new values are available from the next frame on.
 
 ## Scaling policies
 
@@ -127,6 +127,36 @@ local viewport = require('haylen.viewport')
 if viewport.scaling() == 'expand' then
     print('anchor the HUD to the visible rectangle')
 end
+```
+
+### viewport.setScaling(policy)
+
+Changes the [scaling policy](#scaling-policies) while the app runs, such as from a video settings screen. The viewport follows at once, so the functions of this module report the new mapping right away, and the UI, the default view of cameras and the canvases lay out and draw with it from the next frame on. The pointer and the fingers keep their places on the screen, so `input.mousePosition()` reports where the pointer lies under the new policy. A name that is not a policy raises `unknown value '<name>'`.
+
+```lua
+local ui = require('haylen.ui')
+local viewport = require('haylen.viewport')
+
+ui.mount(ui.segmentedControl{
+    items = {{id = 'expand', text = 'Expand'}, {id = 'fit', text = 'Fit'}, {id = 'pixel_perfect', text = 'Pixel perfect'}},
+    selected = viewport.scaling(),
+    onChange = function(event)
+        viewport.setScaling(event.value)
+    end,
+})
+```
+
+### viewport.setDesignSize(width, height)
+
+Changes the design resolution while the app runs, in design units, and the viewport, the UI, cameras and pointer input follow it like they follow [viewport.setScaling](#viewportsetscalingpolicy). A width or height that is not positive raises `The design size needs a positive width and height.`.
+
+```lua
+local viewport = require('haylen.viewport')
+
+-- A pixel art scene lays out on a small canvas that pixel perfect scaling enlarges.
+viewport.setDesignSize(480, 270)
+viewport.setScaling('pixel_perfect')
+print(viewport.designSize())
 ```
 
 ### viewport.safeAreaSimulation()

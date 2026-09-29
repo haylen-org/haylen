@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "haylen/core/Utf8.hpp"
+#include "text/Segmenter.hpp"
 
 namespace haylen::text {
 
@@ -32,7 +33,7 @@ BitmapFont::BitmapFont(const Description& description, std::vector<graphics::Tex
         if (character.page >= pages.size()) {
             throw std::invalid_argument("A bitmap font character lies on page " + std::to_string(character.page) + ", which the font does not have.");
         }
-        glyphs[character.codePoint] = {.source = character.source, .offset = character.offset, .advance = character.advance, .page = character.page, .visible = !character.source.isEmpty()};
+        glyphs[static_cast<std::uint32_t>(character.codePoint)] = {.source = character.source, .offset = character.offset, .advance = character.advance, .page = character.page, .visible = !character.source.isEmpty()};
     }
     for (const Kerning& kerning : description.kernings) {
         kernings[pairKey(kerning.left, kerning.right)] = kerning.amount;
@@ -44,15 +45,31 @@ std::uint64_t BitmapFont::pairKey(char32_t left, char32_t right) noexcept {
 }
 
 bool BitmapFont::hasGlyph(char32_t codePoint) {
-    return glyphs.contains(codePoint);
+    return glyphs.contains(static_cast<std::uint32_t>(codePoint));
 }
 
-const Font::Glyph& BitmapFont::getGlyph(char32_t codePoint) {
-    const auto found = glyphs.find(codePoint);
+// A right-to-left run draws mirrored brackets and reads backwards, and the kerning pairs apply to glyphs in the order they stand on screen.
+void BitmapFont::shape(const Run& run, std::vector<ShapedGlyph>& shaped) {
+    const std::size_t first = shaped.size();
+    for (std::size_t index = run.begin; index < run.end; ++index) {
+        const char32_t codePoint = run.rightToLeft ? Segmenter::getMirror(run.text[index]) : run.text[index];
+        const auto glyph = static_cast<std::uint32_t>(codePoint);
+        shaped.push_back({.index = glyph, .cluster = index, .advance = getGlyph(glyph).advance});
+    }
+    if (run.rightToLeft) {
+        std::reverse(shaped.begin() + static_cast<std::ptrdiff_t>(first), shaped.end());
+    }
+    for (std::size_t index = first; index + 1 < shaped.size(); ++index) {
+        shaped[index].advance += getKerning(static_cast<char32_t>(shaped[index].index), static_cast<char32_t>(shaped[index + 1].index));
+    }
+}
+
+const Font::Glyph& BitmapFont::getGlyph(std::uint32_t index) {
+    const auto found = glyphs.find(index);
     return found != glyphs.end() ? found->second : missing;
 }
 
-float BitmapFont::getKerning(char32_t left, char32_t right) {
+float BitmapFont::getKerning(char32_t left, char32_t right) const {
     const auto found = kernings.find(pairKey(left, right));
     return found != kernings.end() ? found->second : 0.0F;
 }

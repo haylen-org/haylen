@@ -8,13 +8,17 @@
 #include <vector>
 
 #include "haylen/core/Json.hpp"
+#include "haylen/text/Direction.hpp"
 
 namespace haylen::localization {
 
 // Translated text by key. Keys missing from the current language come from the fallback language, and keys missing from both come back unchanged so the gap shows on screen. The first language added becomes the current and fallback language until others are chosen.
 class Catalog final {
   public:
-    // Adds or merges a language table. Nested objects become dotted keys, and an object with only zero, one and other texts, and always other, is a plural form.
+    // The entry of a language table that declares the direction its language writes in, ltr or rtl.
+    static constexpr std::string_view kDirectionKey = "@direction";
+
+    // Adds or merges a language table. Nested objects become dotted keys, and an object with only zero, one and other texts, and always other, is a plural form. The @direction entry declares the direction of the language, which is left to right until a table declares otherwise.
     void add(const std::string& name, const core::Json& table);
 
     void setLanguage(std::string_view value);
@@ -26,6 +30,9 @@ class Catalog final {
         return fallback;
     }
     [[nodiscard]] std::vector<std::string> getLanguages() const;
+
+    // Returns the direction a loaded language writes in, left to right or right to left.
+    [[nodiscard]] text::Direction getDirection(std::string_view name) const;
 
     [[nodiscard]] bool has(std::string_view key) const;
 
@@ -50,6 +57,7 @@ class Catalog final {
     void requireLanguage(std::string_view name) const;
 
     std::map<std::string, Table, std::less<>> tables;
+    std::map<std::string, text::Direction, std::less<>> directions;
     std::string language;
     std::string fallback;
 };

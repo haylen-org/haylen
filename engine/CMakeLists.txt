@@ -302,8 +302,18 @@ set(HAYLEN_ENGINE_SOURCES
   src/net/NetLua.cpp
   src/net/WebSocket.cpp
   src/platform/Bridge.cpp
+  src/platform/BridgeRelay.cpp
+  src/platform/native/NativeApi.cpp
+  src/platform/native/NativeCallback.cpp
+  src/platform/native/NativeCallbacks.cpp
+  src/platform/native/NativeLibraries.cpp
+  src/platform/native/NativeLua.cpp
+  src/platform/native/NativeSignature.cpp
   src/platform/PlatformLua.cpp
   src/platform/SafeAreaSimulation.cpp
+  src/platform/Window.cpp
+  src/platform/WindowLua.cpp
+  src/platform/WindowPlacement.cpp
   src/plugins/Animation2DPlugin.cpp
   src/plugins/AssetsPlugin.cpp
   src/plugins/AudioPlugin.cpp
@@ -315,6 +325,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/plugins/InputPlugin.cpp
   src/plugins/JobsPlugin.cpp
   src/plugins/LocalizationPlugin.cpp
+  src/plugins/NativePlugin.cpp
   src/plugins/Navigation2DPlugin.cpp
   src/plugins/NetPlugin.cpp
   src/plugins/Particles2DPlugin.cpp
@@ -333,13 +344,18 @@ set(HAYLEN_ENGINE_SOURCES
   src/storage/SaveSlots.cpp
   src/storage/StorageLua.cpp
   src/storage/UserStorage.cpp
+  src/text/BidiParagraph.cpp
   src/text/BitmapFont.cpp
+  src/text/DistanceField.cpp
   src/text/Font.cpp
   src/text/FontFamily.cpp
   src/text/LayoutBuilder.cpp
+  src/text/LayoutCache.cpp
   src/text/MarkupParser.cpp
+  src/text/PhraseBreaker.cpp
   src/text/RichText.cpp
   src/text/RichTextRegistry.cpp
+  src/text/Segmenter.cpp
   src/text/TextEffect.cpp
   src/text/TrueTypeFont.cpp
   src/ui/Anchor.cpp
@@ -425,6 +441,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/PropertyReader.cpp
   src/ui/Surfaces.cpp
   src/ui/TextEditor.cpp
+  src/ui/TextFieldLayout.cpp
   src/ui/TextSession.cpp
   src/ui/TextValue.cpp
   src/ui/Theme.cpp
@@ -461,7 +478,7 @@ target_include_directories(haylen_engine
 
 target_link_libraries(haylen_engine
   PUBLIC nlohmann_json::nlohmann_json varn_core haylen_imgui
-  PRIVATE haylen_sokol_headers box2d::box2d Clipper2 haylen_miniaudio haylen_stb haylen_fast_float libzip::zip ZLIB::ZLIB libzstd_static
+  PRIVATE haylen_sokol_headers box2d::box2d Clipper2 msdfgen::msdfgen-core haylen_harfbuzz haylen_sheenbidi haylen_unibreak haylen_miniaudio haylen_stb haylen_fast_float libzip::zip ZLIB::ZLIB libzstd_static
 )
 
 if(WIN32)
@@ -469,6 +486,9 @@ if(WIN32)
 elseif(NOT EMSCRIPTEN)
   target_link_libraries(haylen_engine PRIVATE Poco::NetSSL)
 endif()
+
+# Native libraries load through the dynamic linker, which Linux keeps in its own library.
+target_link_libraries(haylen_engine PRIVATE ${CMAKE_DL_LIBS})
 
 # Programs that draw into lit canvases also compile with HAYLEN_LIT, which writes the images the light pass reads.
 set(shader_dir "${CMAKE_CURRENT_LIST_DIR}/shaders")
@@ -485,6 +505,7 @@ haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/metaball.glsl" MODULE 
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/composite.glsl" MODULE composite)
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/light.glsl" MODULE light)
 haylen_embed_file(haylen_engine "${imgui_SOURCE_DIR}/misc/fonts/Roboto-Medium.ttf" getDefaultFont)
+haylen_embed_file(haylen_engine "${budoux_SOURCE_DIR}/budoux/models/th.json" getThaiPhraseModel)
 
 haylen_enable_warnings(haylen_engine)
 haylen_enable_coverage(haylen_engine)
@@ -493,7 +514,6 @@ haylen_enable_coverage(haylen_engine)
 add_library(haylen_platform STATIC
   src/platform/KeyboardTranslator.cpp
   src/platform/desktop/DesktopMethods.cpp
-  src/platform/sokol/BridgeRelay.cpp
   src/platform/sokol/MemoryWarning.cpp
   src/platform/sokol/SokolEvents.cpp
 )
@@ -512,6 +532,7 @@ set(HAYLEN_RUNTIME_SOURCES
 if(APPLE)
   set(HAYLEN_APPLE_SOURCES
     src/platform/apple/AppleBridge.mm
+    src/platform/apple/AppleDesktop.mm
     src/platform/apple/AppleNetwork.mm
     src/platform/apple/AppleOrientation.mm
     src/platform/apple/AppleRemote.mm
@@ -528,13 +549,13 @@ if(APPLE)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.m ${HAYLEN_APPLE_SOURCES})
   set_source_files_properties(${HAYLEN_APPLE_SOURCES} PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
 elseif(WIN32)
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/windows/WindowsMethods.cpp src/platform/windows/WindowsServices.cpp src/platform/windows/WindowsTextInput.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/windows/WindowsDesktop.cpp src/platform/windows/WindowsMethods.cpp src/platform/windows/WindowsServices.cpp src/platform/windows/WindowsTextInput.cpp)
 elseif(ANDROID)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/android/AndroidActivity.cpp src/platform/android/AndroidAssetPackage.cpp src/platform/android/AndroidGamepads.cpp src/platform/android/AndroidKeys.cpp src/platform/android/AndroidServices.cpp src/platform/android/AndroidTextInput.cpp src/platform/android/JavaBridge.cpp)
 elseif(EMSCRIPTEN)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/web/WebPage.cpp src/platform/web/WebServices.cpp src/platform/web/WebTextInput.cpp)
 else()
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/linux/LinuxGamepads.cpp src/platform/linux/LinuxMethods.cpp src/platform/linux/LinuxServices.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/linux/LinuxDesktop.cpp src/platform/linux/LinuxGamepads.cpp src/platform/linux/LinuxMethods.cpp src/platform/linux/LinuxServices.cpp)
 endif()
 
 add_library(haylen_runtime OBJECT ${HAYLEN_RUNTIME_SOURCES})
@@ -573,6 +594,10 @@ if(HAYLEN_BUILD_PLAYER AND (HAYLEN_DESKTOP OR EMSCRIPTEN))
     set_target_properties(haylen PROPERTIES WIN32_EXECUTABLE ON)
   elseif(EMSCRIPTEN)
     haylen_setup_web_page(haylen "")
+  else()
+    # Linux apps keep their native libraries in lib next to the player, where the libraries also find the ones they depend on.
+    set_target_properties(haylen PROPERTIES BUILD_RPATH "$ORIGIN;$ORIGIN/lib")
+    target_link_options(haylen PRIVATE "LINKER:--enable-new-dtags")
   endif()
 elseif(HAYLEN_BUILD_PLAYER AND ANDROID)
   add_library(haylen SHARED src/platform/sokol/LuaPlayer.cpp)

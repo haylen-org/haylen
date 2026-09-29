@@ -28,18 +28,23 @@ out vec4 frag_color;
 void main() {
     // Flags: x enables the light map and the emission, and y flips rows for backends whose render targets start at the bottom.
     vec2 sample_uv = flags.y > 0.5 ? vec2(uv.x, 1.0 - uv.y) : uv;
+    // The scene holds colors premultiplied by its coverage, which stays below 1 where a transparent window lets the desktop through.
     vec4 scene = texture(sampler2D(scene_texture, composite_sampler), sample_uv);
     vec3 color = scene.rgb;
+    float alpha = scene.a;
 
+    // Emitted light also covers what lies behind a transparent window, the way an additive draw does.
     if (flags.x > 0.5) {
+        vec3 emission = texture(sampler2D(emission_texture, composite_sampler), sample_uv).rgb;
         color *= texture(sampler2D(light_texture, composite_sampler), sample_uv).rgb;
-        color += texture(sampler2D(emission_texture, composite_sampler), sample_uv).rgb;
+        color += emission;
+        alpha = max(alpha, max(emission.r, max(emission.g, emission.b)));
     }
 
-    // Grading: x is saturation, y is brightness and z is contrast.
+    // Grading: x is saturation, y is brightness and z is contrast, which pivots on the middle gray of the coverage.
     float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
     color = mix(vec3(luminance), color, grading.x);
-    color = (color - 0.5) * grading.z + 0.5;
+    color = (color - 0.5 * alpha) * grading.z + 0.5 * alpha;
     color *= grading.y;
     color *= tint.rgb;
 
@@ -48,8 +53,10 @@ void main() {
     float shade = smoothstep(vignette.y, vignette.y + vignette.z, distance_to_center);
     color *= 1.0 - shade * vignette.x;
 
+    // The fade covers the canvas with an opaque color.
     color = mix(color, fade.rgb, fade.a);
-    frag_color = vec4(color, scene.a);
+    alpha = min(mix(alpha, 1.0, fade.a), 1.0);
+    frag_color = vec4(clamp(color, vec3(0.0), vec3(alpha)), alpha);
 }
 @end
 

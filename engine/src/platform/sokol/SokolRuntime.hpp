@@ -92,9 +92,11 @@ class SokolRuntime final {
     };
 
     // The command line names the package to play, or none for the bundled one, and --dev turns on development behavior such as hot reload. Shipped apps never pass it.
+    // The package to play, whether it plays in development, and the folders where native.load looks first, such as the one make.py builds the libraries of an app into.
     struct LaunchOptions {
         std::string package;
         bool development = false;
+        std::vector<std::string> nativeFolders;
     };
 
     static std::unique_ptr<SokolRuntime> current;
@@ -116,6 +118,7 @@ class SokolRuntime final {
     void reportBackCapture();
 #endif
 
+    void describeDesktop(sapp_desc& desc, const core::AppConfig::Window& window);
     void launch();
     void close() noexcept;
     void replace(App app);
