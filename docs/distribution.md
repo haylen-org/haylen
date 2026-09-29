@@ -14,7 +14,7 @@ python3 make.py run ~/apps/my-game --platform android
 python3 make.py run ~/apps/my-game --platform web
 ```
 
-`new` creates the app from the starter app and copies every platform template into its `platform/` folder. `run` without `--platform` starts the desktop player of this machine in development mode, which reloads edited scripts and assets. With `--platform` it builds the engine artifacts when they are missing or stale, assembles the platform project under `build/apps/`, builds it and launches it on a simulator, an emulator, a device, this Mac or a local web server.
+`new` creates the app from the starter app and copies every platform template into its `platform/` folder. `run` without `--platform` starts the desktop player of this machine in development mode, which reloads edited scripts and assets. With `--platform` it builds the engine artifacts when they are missing or stale, assembles the platform project under `build/apps/`, builds it and launches it on a simulator, an emulator, a device, this Mac or a local web server, and streams the output of the app.
 
 ## Commands
 
@@ -23,7 +23,7 @@ python3 make.py run ~/apps/my-game --platform web
 | `engine [--platform apple\|android\|web\|desktop\|all] [--config]` | Builds the prebuilt engine artifacts into `build/artifacts/`. |
 | `new <folder> [--name] [--identifier] [--orientation]` | Creates an app from `templates/app` with a copy of every platform template of `templates/platform` under `platform/`. |
 | `run [app] [--platform] [--device] [--config] [--engine-config]` | Runs an app folder or a sample, in the desktop player by default or built for a platform. |
-| `run-cpp <project> [--platform <host>\|web] [--target] [--config]` | Builds a C++ project that compiles the engine through CMake and runs it. |
+| `run-cpp <project> [--platform] [--target] [--device] [--config] [--engine-config]` | Builds a C++ project that compiles the engine through CMake and runs it on this machine, in the browser, on Mac Catalyst, iOS, tvOS, their simulators or Android. |
 | `package <app> [-o app.zip]` | Zips `app.json`, `source/` and `content/` of an app. |
 | `shaders <app> [--force]` | Compiles the shaders under `content/shaders/` of an app into `.shader` files. |
 | `serve <folder> [--port] [--coep] [--open]` | Serves a folder with the headers WebAssembly pages need. |
@@ -59,28 +59,40 @@ python3 make.py run games/tiny-island --platform android --device emulator-5554
 python3 make.py run games/tiny-island --platform web --coep off --open
 ```
 
-Before anything else, `run` compiles the shaders of the app whose sources changed, as [shaders](#shaders) describes. Without `--platform`, `run` builds the `haylen` player in the build tree of this machine (`build/<host>-<config>`), builds or copies the [native libraries](#native-libraries) of the app for this machine into `build/apps/<app>/native/development`, and starts the player with `--dev`, `--native` and that folder when there are libraries, and the app folder. While the player runs it compiles every shader source that changes again, which the player then reloads. With `--platform` it assembles the app as the next sections describe and then:
+Before anything else, `run` compiles the shaders of the app whose sources changed, as [shaders](#shaders) describes. Without `--platform`, `run` builds the `haylen` player in the build tree of this machine (`build/<host>-<config>`), builds or copies the [native libraries](#native-libraries) of the app for this machine into `native/development` of the [build folder of the app](#assembling-an-app), and starts the player with `--dev`, `--native` and that folder when there are libraries, and the app folder. While the player runs it compiles every shader source that changes again, which the player then reloads. With `--platform` it assembles the app as the next sections describe and then:
 
 | Platform | Build | Launch |
 | --- | --- | --- |
-| `macos` | `xcodebuild` of the `macOS` scheme of `App.xcodeproj`. | Starts the executable of the app bundle, so its log stays in the terminal. |
-| `catalyst` | `xcodebuild` of the `iOS` scheme for the Mac Catalyst destination. | Starts the executable of the Mac Catalyst bundle. |
-| `ios-simulator`, `tvos-simulator` | `xcodebuild` of the `iOS` or `tvOS` scheme for the simulator. | `xcrun simctl boot`, `install` and `launch --console-pty`, on the simulator named by `--device` (a name or an id), on a booted one, or on the first iPhone or Apple TV available. |
-| `ios`, `tvos` | `xcodebuild` for the device, signed with the team in the `HAYLEN_APPLE_TEAM` environment variable. | `xcrun devicectl device install app` and `device process launch` on the device id given with `--device`. |
+| `macos` | `xcodebuild` of the `macOS` scheme of `App.xcodeproj`. | Starts the executable of the app bundle, whose log the engine writes to the standard output, so it stays in the terminal. |
+| `catalyst` | `xcodebuild` of the `iOS` scheme for the Mac Catalyst destination. | Starts the executable of the Mac Catalyst bundle and streams its log with `log stream`. |
+| `ios-simulator`, `tvos-simulator` | `xcodebuild` of the `iOS` or `tvOS` scheme for the simulator. | `xcrun simctl boot`, `install` and `launch --console-pty`, on the simulator named by `--device` (a name or an id), on a booted one, or on the first iPhone or Apple TV available, and streams the log of the app with `log stream` inside the simulator. |
+| `ios`, `tvos` | `xcodebuild` for the device, signed with the team in the `HAYLEN_APPLE_TEAM` environment variable. | `xcrun devicectl device install app` and `device process launch --console` on the device id given with `--device`. |
 | `android` | Gradle `:app:assembleDebug`, or `assembleRelease` with `--config Release`. | `adb install -r`, `adb shell am start` and the log of the app process, on the device or emulator serial given with `--device`, which may be left out when only one is connected. |
 | `web` | Copies the prebuilt runtime and writes `app.zip` and `config.json`. | Serves the site on `--port` (8000 by default) with the `--coep` policy, and opens it with `--open`. |
 | `windows`, `linux` | Copies the desktop player artifact next to the package, the `platform/windows` or `platform/linux` folder of the app over it, and the native libraries of the app next to the player on Windows and into `lib/` on Linux. | Runs the player, named after the app, which plays the `app` folder next to it. |
 
-`--config` is the configuration of the platform project (`Debug` by default), and `--engine-config` the configuration of the engine artifacts it links (`Release` by default). `run` streams the output of the app until it exits or Ctrl+C stops it.
+`--config` is the configuration of the platform project (`Debug` by default), and `--engine-config` the configuration of the engine artifacts it links (`Release` by default). `xcodebuild` and Gradle build with the jobs of `--jobs`. `run` streams the output of the app until it exits or Ctrl+C stops it. The engine logs to the standard output on desktops, to the log of the process on Android, which `adb logcat --pid` streams, and to the unified log on iOS, tvOS and Mac Catalyst, under the `dev.varn.engine` subsystem. On Mac Catalyst and the simulators `run` streams those lines next to the standard output and error of the process, with warnings and errors on stderr, and keeps streaming for a second after the app ends so its last lines arrive. The log of an app on a device shows in Console.app, while `run` shows the standard output and error of its process.
 
 ### run-cpp
 
 ```sh
 python3 make.py run-cpp cpp/embedding
 python3 make.py run-cpp samples/cpp/embedding --platform web
+python3 make.py run-cpp cpp/embedding --platform ios-simulator --device "iPhone 17"
+python3 make.py run-cpp cpp/embedding --platform catalyst
+python3 make.py run-cpp cpp/embedding --platform android --device emulator-5554
 ```
 
-Configures a CMake project that calls `haylen_add_app`, such as `samples/cpp/embedding`, in `build/cpp/<project>/<platform>-<config>`, builds its app target and runs it. The target is named after the project folder unless `--target` names another one. With `--platform web` it builds the target with Emscripten for WebGPU and for WebGL2 into `build/cpp/<project>/web`, with an `index.html` that picks the backend the browser supports, and serves that folder. C++ projects compile the engine from source, so they do not use the artifacts.
+Configures a CMake project that calls `haylen_add_app`, such as `samples/cpp/embedding`, in `build/cpp/<project>-<hash>/<platform>-<config>`, builds its app target and runs it. `<hash>` is the start of the SHA-256 hash of the absolute project folder, so projects in folders with the same name never share a build tree. The target is named after the project folder unless `--target` names another one. C++ projects compile the engine from source, so only Android uses an engine artifact, for its Java classes.
+
+| Platform | Build | Launch |
+| --- | --- | --- |
+| This machine | Ninja, or the default generator on Windows without Ninja. | Runs the executable. |
+| `web` | Emscripten for WebGPU and for WebGL2 into `build/cpp/<project>-<hash>/web`, with an `index.html` that picks the backend the browser supports. | Serves that folder like `serve`. |
+| `ios-simulator`, `tvos-simulator` | The Xcode generator with the iOS or tvOS simulator SDK for the architecture of this Mac, which compiles the launch screen and signs the bundle. | Like `run`, on the simulator named by `--device`, a booted one or the first one available. |
+| `ios`, `tvos` | The Xcode generator with the device SDK, signed with the team in `HAYLEN_APPLE_TEAM`. | Like `run`, on the device named by `--device`. |
+| `catalyst` | Ninja with `engine/cmake/haylen-catalyst.toolchain.cmake` for the architecture of this Mac. `haylen_add_app` signs the bundle ad hoc after linking, as Xcode does, because macOS opens the window of an unsigned Mac Catalyst app at the top left of the screen instead of where the app asks. | Like `run`: starts the executable and streams its log. |
+| `android` | Ninja with the NDK for the ABI of the device named by `--device`, or of the only one connected, into `bin/<target>/lib<target>.so`. Then it assembles the Android template with the package that `bin/<target>/package.txt` names, the library in `jniLibs/<abi>` and `haylen.library` set to the target, which makes `HaylenActivity` load the library of the app and leaves the Lua player of the haylen library out of the APK. The haylen library comes from the artifacts, built with `--engine-config` when they are missing or stale. | Like `run`. |
 
 ### package
 
@@ -102,8 +114,8 @@ Compiles every source under `content/shaders/` that declares an `@program` into 
 ### serve
 
 ```sh
-python3 make.py serve build/apps/tiny-island/web --port 8000
-python3 make.py serve build/apps/tiny-island/web --coep off --open
+python3 make.py serve dist/my-game --port 8000
+python3 make.py serve dist/my-game --coep off --open
 ```
 
 Serves a folder at `http://127.0.0.1:<port>/` with a threading Python server that sends:
@@ -127,8 +139,8 @@ build/artifacts/
   manifest.json                 Engine version and, per platform, the configuration and the source hash of the last build.
   apple/Haylen.xcframework      Static library and headers for macOS, iOS, the iOS simulator, Mac Catalyst, tvOS and the tvOS simulator.
   android/maven/                Maven repository with dev.haylen:haylen, the Android library with the player.
-  web/webgpu/                   haylen.js and haylen.wasm of the player for WebGPU.
-  web/webgl2/                   haylen.js and haylen.wasm of the player for WebGL2.
+  web/webgpu/                   haylen.js and haylen.wasm of the player for WebGPU, and haylen-audio-worklet.js, the processor of its audio output.
+  web/webgl2/                   The same files for WebGL2.
   desktop/<os>-<arch>/haylen    The player of this machine.
 ```
 
@@ -169,7 +181,7 @@ That `main` is also the place to register native platform bridge handlers with `
 
 ### Web and desktop
 
-The web artifacts are the `haylen` player built for WebGPU and for WebGL2. It embeds no app: the page hands it the package at runtime, so the same `haylen.wasm` runs every app and only `app.zip` changes from one app to another. The desktop artifact is the `haylen` player of this machine, which Windows and Linux apps ship next to their package.
+The web artifacts are the `haylen` player built for WebGPU and for WebGL2, each next to `haylen-audio-worklet.js`, the AudioWorklet processor that the runtime loads from the folder of its script. It embeds no app: the page hands it the package at runtime, so the same `haylen.wasm` runs every app and only `app.zip` changes from one app to another. The desktop artifact is the `haylen` player of this machine, which Windows and Linux apps ship next to their package.
 
 ## Templates
 
@@ -219,7 +231,7 @@ templates/platform/android/
   app/src/main/res/           Adaptive launcher icon and Android TV banner.
 ```
 
-The module reads the application id, version name and code, label and screen orientation from `haylen.identifier`, `haylen.versionName`, `haylen.versionCode`, `haylen.name` and `haylen.orientation` of `gradle.properties`. The version code comes from the version, with 1.2.3 becoming 1002003. The manifest declares `HaylenActivity` with the `android.app.lib_name` meta-data set to `haylen`, the `LAUNCHER` and `LEANBACK_LAUNCHER` categories, the TV banner, and a touchscreen, the screen orientations, Android TV and a gamepad as optional features, so the same APK serves phones, tablets and Android TV. make.py copies the package into `app/src/main/assets/app` with `haylen-package-index.json`, the list of its files, because Android cannot list asset folders recursively.
+The module reads the application id, version name and code, label, screen orientation and native library from `haylen.identifier`, `haylen.versionName`, `haylen.versionCode`, `haylen.name`, `haylen.orientation` and `haylen.library` of `gradle.properties`. The version code comes from the version, with 1.2.3 becoming 1002003. The manifest declares `HaylenActivity` with the `android.app.lib_name` meta-data set to `haylen.library`, which is `haylen`, the Lua player of the haylen library, for Lua apps and the library of the app for C++ apps, whose APK leaves the Lua player out, the `LAUNCHER` and `LEANBACK_LAUNCHER` categories, the TV banner, and a touchscreen, the screen orientations, Android TV and a gamepad as optional features, so the same APK serves phones, tablets and Android TV. make.py copies the package into `app/src/main/assets/app` with `haylen-package-index.json`, the list of its files, because Android cannot list asset folders recursively.
 
 ### web
 
@@ -234,13 +246,13 @@ templates/platform/web/
 
 ## Assembling an app
 
-`run` recreates `build/apps/<app>/<platform>/` for every run:
+Every app has a build folder of its own, `build/apps/<app>-<hash>/`, named after the app folder and the start of the SHA-256 hash of its absolute path, so apps in folders with the same name never share platform projects or native library builds. `run` recreates `<platform>/` in that folder for every run:
 
 1. It deletes the folder and copies the template of the platform from `templates/platform/`: `apple` for `macos`, `catalyst`, `ios`, `ios-simulator`, `tvos` and `tvos-simulator`, `android`, or `web`. Windows and Linux have no template and start from an empty folder.
 2. It copies `platform/<template>/` of the app over it, or `platform/windows/` and `platform/linux/` on those platforms. A file at the same path replaces the one of the template and a new file is added.
 3. It injects the package: `app/` next to the Xcode project, `app/src/main/assets/app/` with its index on Android, and `app.zip` on the web.
 4. It builds or copies the native libraries of the app and places them as [native libraries](#native-libraries) describes.
-5. It writes the generated settings: `App.xcconfig`, the three `Info.plist` files and the splash assets on Apple platforms, the `haylen` keys of `gradle.properties` and the splash resources on Android, and `config.json` with the splash logo and the transparency on the web. The macOS `Info.plist` of an app whose `window.showInTaskbar` is `false` has `LSUIElement`, so macOS never shows its Dock icon, not even while it starts. It links `Haylen.xcframework` into the Apple project and copies the WebGPU and WebGL2 runtimes into the site.
+5. It writes the generated settings: `App.xcconfig`, the three `Info.plist` files and the splash assets on Apple platforms, the `haylen` keys of `gradle.properties`, `haylen.library` among them, and the splash resources on Android, and `config.json` with the splash logo and the transparency on the web. The macOS `Info.plist` of an app whose `window.showInTaskbar` is `false` has `LSUIElement`, so macOS never shows its Dock icon, not even while it starts. It links `Haylen.xcframework` into the Apple project and copies the WebGPU and WebGL2 runtimes into the site.
 
 The generated settings are written last, so they always follow `app.json`, even over a copy of the templates in `platform/`.
 
@@ -278,7 +290,7 @@ The `native` section of `app.json` lists the native libraries an app ships, by t
 }
 ```
 
-make.py builds a CMake library in `build/apps/<app>/native/<library>/`, once per architecture with the settings of the engine artifacts, and joins the architectures of Apple platforms with `lipo`. Then it places every library of the run platform:
+make.py builds a CMake library in `native/<library>/` of the [build folder of the app](#assembling-an-app), once per architecture with the settings of the engine artifacts, and joins the architectures of Apple platforms with `lipo`. Then it places every library of the run platform:
 
 | Platform | Place |
 | --- | --- |
@@ -334,18 +346,20 @@ The runtime turns on development behavior, which today is hot reload of the pack
 | macOS | Supported | macOS 13.3 and later. The desktop player, or the `macOS` target of the Apple template with `--platform macos`. |
 | Windows, Linux | Supported | The desktop player, or the player artifact next to the package with `--platform windows` or `--platform linux`. Built and tested on those hosts by CI. |
 | iOS, iPadOS | Supported | iOS and iPadOS 16.3 and later. The `iOS` target on iPhone and iPad, with every orientation of `app.json` and every iPad window size. |
-| Mac Catalyst | Supported | macOS 13.3 and later. The `iOS` target on the Mac. Mac Catalyst passes only touches to `sokol_app`, and the left mouse button arrives as a touch, so the runtime reads the keyboard through `GCKeyboard`, the right and middle buttons and the wheel through `GCMouse`, and the pointer position through a hover gesture on the view of the app. Text entry through the keyboard needs the text input bridge of the runtime. |
+| Mac Catalyst | Supported | macOS 13.3 and later. The `iOS` target on the Mac, whose window opens at the size of `app.json` in the points of the Mac, where macOS places it. Mac Catalyst passes only touches to `sokol_app`, and the left mouse button arrives as a touch, so the runtime reads the keyboard through `GCKeyboard`, the right and middle buttons and the wheel through `GCMouse`, and the pointer position through a hover gesture on the view of the app. Text entry through the keyboard needs the text input bridge of the runtime. |
 | tvOS | Supported | tvOS 16.3 and later. The `tvOS` target on Apple TV and its simulator, with the Siri Remote and game controllers. |
 | visionOS | Runs the iPad app | The iOS target runs on Apple Vision Pro as a compatible iPad app. A native visionOS slice is not possible yet: `sokol_app` reads `UIScreen` through `windowScene.screen` in eight places, which the visionOS SDK marks unavailable, so its implementation does not compile for visionOS. |
 | watchOS | Not possible | The watchOS 27 SDK has no Metal, MetalKit, GameController or AudioToolbox, which the renderer, the input and the audio of the engine need. |
 | Android | Supported | Phones, tablets and Android TV from one APK, on arm64-v8a, armeabi-v7a and x86_64, Android 8.1 (API 27) and later. |
-| Web | Supported | Desktop and mobile browsers with WebGPU or WebGL2. |
+| Web | Supported | Desktop and mobile browsers with WebGPU or WebGL2 and `AudioWorklet`, on pages served over https or from localhost. |
 
 ## Notes on dependencies
 
 - Varn configures its bundled Lua for macOS when a build names Darwin as its system, which Mac Catalyst builds do, while Mac Catalyst has no `system` function. The engine adds `LUA_USE_IOS` to that Lua target for Mac Catalyst, which Lua uses on iOS for the same reason.
-- The tvOS branch of `uv_spawn` in libuv 1.53.0, the latest release, still calls the `QUEUE_INIT` macro that libuv renamed to `uv__queue_init`. The engine defines the old name for that one libuv target on tvOS until libuv fixes it.
+- The tvOS branch of `uv_spawn` in libuv calls a `QUEUE_INIT` macro that libuv does not define, where `uv__queue_init` is the function it means. The engine defines `QUEUE_INIT` as that function for the libuv target on tvOS.
 - miniaudio manages the audio session on iOS and tvOS with Objective-C, so its implementation file compiles as Objective-C there.
+- `sokol_app` asks Android for an OpenGL ES 3.1 context, which the Android emulator on a Mac and some devices lack, while the shaders of the engine are GLSL ES 3.00, so the runtime asks every OpenGL ES build for version 3.0.
+- Varn adds the debug source of libffi to Debug builds only, through a generator expression that the Xcode generator does not support, so projects made with the Xcode generator, such as C++ apps for iOS and tvOS, compile it in every configuration.
 - The engine builds miniaudio with AAudio as its only Android backend, and miniaudio uses AAudio from Android 8.1 (API 27) on, because the first AAudio release of Android 8.0 has known faults. The Android library and template therefore set `minSdk` to 27 and the native code builds for API 27. The AndroidX libraries they use need API 21 and Varn's HTTP transport needs API 24. `HaylenActivity` and `HaylenSplash` reach the system bars through `WindowCompat` and `WindowInsetsControllerCompat` of `androidx.core`, and cover display cutouts from Android 9 on, where cutouts exist. Android 13 and later deliver the back button only to an `OnBackInvokedCallback`, so the library manifest sets `android:enableOnBackInvokedCallback` and `HaylenActivity` registers its callback only while the app takes back or edits a text field, which lets the system play its predictive back animation when back leaves the app. Earlier versions send the back key to the native activity, where the engine takes it or leaves it to Android. `sokol_app` picks its Android frame loop when it is compiled: builds for API 29 and later follow the Choreographer, and builds for API 27 wait for the display refresh in `eglSwapBuffers` on every device, which keeps the frame rate at the display rate with slightly less even frame pacing.
 - `sokol_app` sizes the framebuffer of iOS apps by the screen, which crops every app whose window is smaller than the screen, as Mac Catalyst windows and iPad windows are. `engine/cmake/patches/sokol-ios-view-size.patch`, which CPM applies to the pinned commit, sizes it by the view of the app instead.
 - `sokol_app` ends a destroyed Android activity with `exit()`, which runs the static destructors of the process while the rendering threads of Android still use them and aborts the process with a crash report every time the app closes, and it ignores `sapp_quit()` on Android. `engine/cmake/patches/sokol-android-quit.patch` calls the cleanup callback of the runtime when the activity is destroyed, even after its window is gone, by binding the GL context without a surface, so the engine stops and releases its resources, then lets the activity finish normally and the process stay cached like any Android app. It also makes `haylen.quit()` finish the activity. A later activity in the same process starts a new runtime.

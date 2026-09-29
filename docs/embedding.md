@@ -16,7 +16,7 @@ When the engine is not the top-level project, its player, tests and benchmarks a
 | --- | --- | --- |
 | `HAYLEN_SOKOL_SHDC` | Empty | Path to the `sokol-shdc` executable that compiles the engine shaders. A source build fails without it. `python3 make.py tools` downloads the pinned version into `.tools/` of a Haylen checkout. |
 | `HAYLEN_RENDER_BACKEND` | `AUTO` | `AUTO`, `METAL`, `D3D11`, `GLCORE`, `GLES3` or `WGPU`. `AUTO` picks Metal on Apple platforms, D3D11 on Windows, GLES3 on Android, WebGPU in the browser and OpenGL Core on Linux. |
-| `HAYLEN_ENABLE_SANITIZERS` | `OFF` | AddressSanitizer and UndefinedBehaviorSanitizer on desktop builds that do not use MSVC. |
+| `HAYLEN_SANITIZERS` | `OFF` | Sanitizers of desktop builds that do not use MSVC: `ADDRESS` for AddressSanitizer and UndefinedBehaviorSanitizer, or `THREAD` for ThreadSanitizer. |
 | `HAYLEN_BUILD_SDK` | `OFF` | Adds the `haylen_sdk` target and the install rules of the SDK. |
 
 The engine needs CMake 3.28 or newer and a C++20 compiler, and it downloads its dependencies with CPM. When the engine bootstraps CPM itself, as it does under `add_subdirectory`, it keeps the sources in `CPM_SOURCE_CACHE` when that variable is set and in `.cache/cpm` of the top-level project otherwise.
@@ -132,9 +132,9 @@ The function links `haylen::runtime` and deploys the package into the app of eac
 | Platform | Result |
 | --- | --- |
 | Windows and Linux | An executable in `bin/<target>/` of the build tree, and a `SYNC_PACKAGE-<target>` target that creates an `app` folder next to it with links to `app.json`, `source/` and `content/` of the package folder, so edited files show up without a rebuild. Windows builds are GUI apps whose Visual Studio debugger starts in that folder. |
-| macOS, iOS and tvOS | An app bundle in `bin/<target>/` with the package files under `Resources/app`. iOS and tvOS target version 17.0. |
+| macOS, iOS, tvOS and Mac Catalyst | An app bundle in `bin/<target>/`, or in `bin/` with the Xcode generator, with the package files under `Resources/app`. iOS and tvOS target version 16.3, like the engine. |
 | Web | `<target>.html` with the shell, and the package preloaded at `/app` in the virtual file system. |
-| Android | A shared library that the Gradle app packages. The Gradle script `engine/platform/android/haylen-app.gradle` copies the package into the APK assets. |
+| Android | The shared library `bin/<target>/lib<target>.so`, which `HaylenActivity` loads, and `bin/<target>/package.txt` with the absolute path of the package folder, which the Gradle project of the app copies into the APK assets. `make.py run-cpp --platform android` assembles that project from the Android template. |
 
 ## An app written in C++
 

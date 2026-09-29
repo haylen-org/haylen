@@ -37,8 +37,8 @@ class NativeApi final {
     [[nodiscard]] static std::optional<Handler> find(std::string_view method);
 
     static const HaylenNativeApi api;
-    static std::mutex mutex;
-    static std::unordered_map<std::string, Handler> handlers;
+    static std::mutex& mutex;
+    static std::unordered_map<std::string, Handler>& handlers;
 };
 
 } // namespace haylen::platform

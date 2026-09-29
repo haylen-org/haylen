@@ -151,7 +151,7 @@ Orientation Services::getOrientation() {
 void Services::lockOrientation(Orientation) {}
 
 TextInput& Services::getTextInput() {
-    static WindowsTextInput input;
+    static WindowsTextInput& input = *new WindowsTextInput();
     return input;
 }
 

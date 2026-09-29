@@ -21,9 +21,10 @@ option(HAYLEN_BUILD_BENCHMARKS "Build the engine benchmarks." ${PROJECT_IS_TOP_L
 option(HAYLEN_BUILD_SDK "Merge the engine into the SDK that cmake --install --component haylen_sdk installs for find_package(haylen)." OFF)
 option(HAYLEN_BUILD_FRAMEWORK "Merge the SDK and the player into the static library of one Haylen.xcframework slice. Apple platforms only." OFF)
 option(HAYLEN_ENABLE_COVERAGE "Instrument the engine and its tests for code coverage." OFF)
-option(HAYLEN_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer on desktop builds." OFF)
 set(HAYLEN_RENDER_BACKEND "AUTO" CACHE STRING "Rendering backend: AUTO, METAL, D3D11, GLCORE, GLES3 or WGPU.")
 set_property(CACHE HAYLEN_RENDER_BACKEND PROPERTY STRINGS AUTO METAL D3D11 GLCORE GLES3 WGPU)
+set(HAYLEN_SANITIZERS "OFF" CACHE STRING "Sanitizers of desktop builds without MSVC: OFF, ADDRESS for AddressSanitizer and UndefinedBehaviorSanitizer, or THREAD for ThreadSanitizer.")
+set_property(CACHE HAYLEN_SANITIZERS PROPERTY STRINGS OFF ADDRESS THREAD)
 set(HAYLEN_SOKOL_SHDC "" CACHE FILEPATH "Path to the sokol-shdc executable.")
 
 list(APPEND CMAKE_MODULE_PATH "${HAYLEN_CMAKE_DIR}")
@@ -452,9 +453,9 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/Widgets.cpp
 )
 
-# The browser build talks WebSocket through the page, while native builds use Poco with the TLS stack Varn already links.
+# The browser build talks WebSocket through the page and plays audio through it, while native builds use Poco with the TLS stack Varn already links.
 if(EMSCRIPTEN)
-  list(APPEND HAYLEN_ENGINE_SOURCES src/platform/web/BrowserWebSocket.cpp)
+  list(APPEND HAYLEN_ENGINE_SOURCES src/platform/web/BrowserAudioOutput.cpp src/platform/web/BrowserWebSocket.cpp)
 else()
   list(APPEND HAYLEN_ENGINE_SOURCES src/net/PocoWebSocket.cpp)
 endif()
@@ -513,6 +514,7 @@ haylen_enable_coverage(haylen_engine)
 
 # Portable pieces of the runtime, which the tests link without an app entry point.
 add_library(haylen_platform STATIC
+  src/platform/GamepadSlots.cpp
   src/platform/KeyboardTranslator.cpp
   src/platform/desktop/DesktopMethods.cpp
   src/platform/sokol/MemoryWarning.cpp
@@ -534,12 +536,14 @@ if(APPLE)
   set(HAYLEN_APPLE_SOURCES
     src/platform/apple/AppleBridge.mm
     src/platform/apple/AppleDesktop.mm
+    src/platform/apple/AppleGamepads.mm
     src/platform/apple/AppleNetwork.mm
     src/platform/apple/AppleOrientation.mm
     src/platform/apple/AppleRemote.mm
     src/platform/apple/AppleServices.mm
     src/platform/apple/AppleTextInput.mm
     src/platform/apple/CatalystInput.mm
+    src/platform/apple/CatalystWindow.mm
     src/platform/apple/HaylenBridge.mm
     src/platform/apple/HaylenFieldEditor.mm
     src/platform/apple/HaylenPointer.mm

@@ -2,7 +2,7 @@
 # Desktop builds link those entries into an "app" folder next to the executable, so edited files show up without a rebuild.
 # Apple bundles carry them under Resources/app.
 # Web builds preload them at /app in the virtual file system.
-# Android copies them into the APK assets through platform/android/haylen-app.gradle, which also writes the file index.
+# Android apps take them into the APK assets of their Gradle project, which make.py assembles from the Android template, so the build records the package folder next to the library.
 
 # Adds the system libraries and link options every runtime needs, with PUBLIC for the runtime the engine builds and INTERFACE for the one an installed SDK imports.
 function(haylen_link_runtime_platform target scope)
@@ -25,7 +25,7 @@ function(haylen_link_runtime_platform target scope)
       -sSTACK_SIZE=1048576
       -lidbfs.js
       "-sEXPORTED_RUNTIME_METHODS=[ccall,UTF8ToString,stringToNewUTF8,HEAPU8,HEAPF32,FS,IDBFS,addRunDependency,removeRunDependency]"
-      "-sEXPORTED_FUNCTIONS=[_main,_malloc,_free,_haylen_web_resolve,_haylen_web_emit,_haylen_web_load_zip,_haylen_web_clear_files,_haylen_web_set_file,_haylen_web_remove_file,_haylen_web_run_files,_haylen_web_restart,_haylen_web_stop,_haylen_web_set_paused,_haylen_web_paused,_haylen_web_reload_asset,_haylen_web_last_error,_haylen_web_visibility,_haylen_web_page_hidden,_haylen_web_network,_haylen_web_text_edited,_haylen_web_text_action,_haylen_web_keyboard,_haylen_web_socket_opened,_haylen_web_socket_received,_haylen_web_socket_closed,_haylen_web_socket_failed]"
+      "-sEXPORTED_FUNCTIONS=[_main,_malloc,_free,_haylen_web_resolve,_haylen_web_emit,_haylen_web_load_zip,_haylen_web_clear_files,_haylen_web_set_file,_haylen_web_remove_file,_haylen_web_run_files,_haylen_web_restart,_haylen_web_stop,_haylen_web_set_paused,_haylen_web_paused,_haylen_web_reload_asset,_haylen_web_last_error,_haylen_web_visibility,_haylen_web_page_hidden,_haylen_web_network,_haylen_web_text_edited,_haylen_web_text_action,_haylen_web_keyboard,_haylen_web_socket_opened,_haylen_web_socket_received,_haylen_web_socket_closed,_haylen_web_socket_failed,_haylen_web_audio_render]"
       "--pre-js=${HAYLEN_ENGINE_DIR}/platform/web/haylen-runtime.js"
     )
     if(HAYLEN_BACKEND STREQUAL "WGPU")
@@ -71,11 +71,14 @@ function(haylen_setup_web_page target shell)
   endif()
   set_target_properties(${target} PROPERTIES SUFFIX ".html")
   target_link_options(${target} PRIVATE "--shell-file=${shell}")
-  set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${shell}" "${HAYLEN_ENGINE_DIR}/platform/web/haylen-runtime.js")
+  set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${shell}" "${HAYLEN_ENGINE_DIR}/platform/web/haylen-runtime.js" "${HAYLEN_ENGINE_DIR}/platform/web/haylen-audio-worklet.js")
 
-  # The WebGPU and WebGL2 bundle of make.py web builds its page from the same shell, so the shell travels with the build output.
+  # The WebGPU and WebGL2 bundle of make.py run-cpp builds its page from the same shell, so the shell travels with the build output, next to the engine logo that the default shell shows as its icon.
+  # The runtime loads the processor of its audio output from next to its script, so the processor travels with the build output too.
   add_custom_command(TARGET ${target} POST_BUILD
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${shell}" "$<TARGET_FILE_DIR:${target}>/${target}.shell.html"
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${HAYLEN_ENGINE_DIR}/platform/web/haylen-logo.svg" "$<TARGET_FILE_DIR:${target}>/haylen-logo.svg"
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${HAYLEN_ENGINE_DIR}/platform/web/haylen-audio-worklet.js" "$<TARGET_FILE_DIR:${target}>/haylen-audio-worklet.js"
     VERBATIM
   )
 endfunction()
@@ -133,6 +136,14 @@ function(haylen_setup_apple_bundle target project_dir display_name identifier ve
     target_sources(${target} PRIVATE "${launch_screen}")
     set_source_files_properties("${launch_screen}" PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
   endif()
+
+  # Xcode signs the bundles it builds, while other generators leave only the signature the linker gives the executable, which binds neither the bundle identifier nor the Info.plist. macOS places the window of an unsigned Mac Catalyst app at the top left, whatever frame the app asks for, so the bundle is signed ad hoc.
+  if(CMAKE_CXX_COMPILER_TARGET MATCHES "-macabi$" AND NOT CMAKE_GENERATOR STREQUAL "Xcode")
+    add_custom_command(TARGET ${target} POST_BUILD
+      COMMAND codesign --force --sign - --timestamp=none "$<TARGET_BUNDLE_DIR:${target}>"
+      VERBATIM
+    )
+  endif()
 endfunction()
 
 # Reads the name, identifier and version of an app package, so the app carries the same values the runtime reads.
@@ -184,7 +195,7 @@ function(haylen_add_app target)
   if(ANDROID)
     add_library(${target} SHARED ${sources})
     # The activity loads the library by its exact name, while Poco forces a Debug postfix into the cache for every library after it.
-    set_target_properties(${target} PROPERTIES DEBUG_POSTFIX "")
+    set_target_properties(${target} PROPERTIES DEBUG_POSTFIX "" LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/${target}/$<0:>")
   else()
     add_executable(${target} ${sources})
     # The generator expression keeps multi-config generators such as Xcode and Visual Studio from adding a folder per configuration.
@@ -211,7 +222,10 @@ function(haylen_add_app target)
         target_link_options(${target} PRIVATE "--preload-file=${arg_PACKAGE}/${folder}@/app/${folder}")
       endif()
     endforeach()
-  elseif(NOT ANDROID)
+  elseif(ANDROID)
+    get_filename_component(package "${arg_PACKAGE}" ABSOLUTE)
+    file(WRITE "${CMAKE_BINARY_DIR}/bin/${target}/package.txt" "${package}")
+  else()
     haylen_link_package(${target} "${arg_PACKAGE}")
     if(WIN32)
       set_target_properties(${target} PROPERTIES WIN32_EXECUTABLE ON VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${target}>")

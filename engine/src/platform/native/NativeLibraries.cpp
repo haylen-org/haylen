@@ -33,7 +33,7 @@ bool NativeLibraries::isAvailable() noexcept {
 #endif
 
 NativeLibraries::State& NativeLibraries::getState() {
-    static State state;
+    static State& state = *new State();
     return state;
 }
 

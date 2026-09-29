@@ -21,7 +21,7 @@ class BridgeRelay final {
     static void emit(std::string_view event, std::string_view payloadJson);
 
   private:
-    static std::mutex mutex;
+    static std::mutex& mutex;
     static Bridge* bridge;
 };
 

@@ -1,6 +1,7 @@
 #include "platform/native/NativeSignature.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cstddef>
 #include <stdexcept>
@@ -93,14 +94,14 @@ bool NativeSignature::isQualifier(std::string_view token) noexcept {
 }
 
 bool NativeSignature::isTypeWord(std::string_view token) noexcept {
-    static const std::vector<std::string_view> words{"void", "bool", "_Bool", "char", "signed", "unsigned", "short", "int", "long", "float", "double", "int8_t", "int16_t", "int32_t", "int64_t", "uint8_t", "uint16_t", "uint32_t", "uint64_t", "size_t", "ssize_t", "ptrdiff_t", "intptr_t", "uintptr_t", "struct", "union", "enum"};
+    static constexpr auto words = std::to_array<std::string_view>({"void", "bool", "_Bool", "char", "signed", "unsigned", "short", "int", "long", "float", "double", "int8_t", "int16_t", "int32_t", "int64_t", "uint8_t", "uint16_t", "uint32_t", "uint64_t", "size_t", "ssize_t", "ptrdiff_t", "intptr_t", "uintptr_t", "struct", "union", "enum"});
     return std::ranges::find(words, token) != words.end();
 }
 
 NativeSignature::BaseType NativeSignature::resolve(std::span<const std::string> words) {
     using Kind = Parameter::Kind;
     // clang-format off
-    static const std::unordered_map<std::string, BaseType> types{
+    static const std::unordered_map<std::string, BaseType>& types = *new const std::unordered_map<std::string, BaseType>{
         {"void", {.isVoid = true}},
         {"bool", {.kind = Kind::Boolean, .size = sizeof(bool)}},
         {"_Bool", {.kind = Kind::Boolean, .size = sizeof(bool)}},

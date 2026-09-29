@@ -46,8 +46,8 @@ class WebPage final {
     static constexpr double kStatsInterval = 1000.0;
 
     // Files the page sends one by one while it edits an app, restarted as a package on demand.
-    static std::shared_ptr<io::MemoryPackage> editorPackage;
-    static std::string lastError;
+    static std::shared_ptr<io::MemoryPackage>& editorPackage;
+    static std::string& lastError;
     static double lastStats;
 
     [[nodiscard]] static core::Json getFrameStatistics(core::Engine& engine);

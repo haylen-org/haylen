@@ -33,7 +33,7 @@ class AndroidActivity final {
     [[nodiscard]] static bool isFramePresented() noexcept;
 
   private:
-    static std::mutex mutex;
+    static std::mutex& mutex;
     static math::Insets safeAreaInsets;
     static std::atomic<bool> framePresented;
     static std::atomic<bool> television;

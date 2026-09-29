@@ -129,7 +129,23 @@ To add a test for a new binding:
 python3 make.py test
 ```
 
-The command configures `build/<host>-<config>` when needed, builds `haylen_tests` and runs CTest with `--output-on-failure` in parallel. It accepts `--config` (`Debug` by default), `--jobs` and `--sanitize`, which builds with AddressSanitizer and UndefinedBehaviorSanitizer. Build options such as `--sanitize` apply when a tree is configured, so on an existing tree run `python3 make.py configure --sanitize` first.
+The command configures `build/<host>-<config>` when needed, builds `haylen_tests` and runs CTest with `--output-on-failure` in parallel. It accepts `--config` (`Debug` by default), `--jobs` and `--sanitizers`.
+
+## Sanitizers
+
+```sh
+python3 make.py test --sanitizers address
+python3 make.py test --sanitizers thread
+```
+
+`--sanitizers` builds the tests with sanitizers in a tree of its own, `build/<host>-<config>-address` or `build/<host>-<config>-thread`, so switching never rebuilds the plain tree. It sets `HAYLEN_SANITIZERS`, which MSVC builds ignore.
+
+| Value | Sanitizers | What they instrument |
+| --- | --- | --- |
+| `address` | AddressSanitizer and UndefinedBehaviorSanitizer | The engine libraries, the tests and the other targets of the engine, which catch memory errors and undefined behavior in engine code. |
+| `thread` | ThreadSanitizer | Every C and C++ target of the build, dependencies included, because ThreadSanitizer sees only the synchronization of the code it instruments, such as the atomics with which libuv wakes its event loop. OpenSSL builds with its own scripts and stays uninstrumented. |
+
+AddressSanitizer and ThreadSanitizer fail the test whose process raised a report, while UndefinedBehaviorSanitizer prints its reports and lets the test go on. ThreadSanitizer runs the tests several times slower, and `TSAN_OPTIONS`, such as `TSAN_OPTIONS=halt_on_error=1`, tunes it.
 
 One suite or test runs through CTest or through the executable.
 

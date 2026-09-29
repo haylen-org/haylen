@@ -126,7 +126,8 @@ using haylen::platform::TextInput;
 }
 
 + (NSString*)textOf:(UIView<UITextInput>*)view {
-    return [view textInRange:[view textRangeFromPosition:view.beginningOfDocument toPosition:view.endOfDocument]] ?: @"";
+    NSString* text = [view textInRange:[view textRangeFromPosition:view.beginningOfDocument toPosition:view.endOfDocument]];
+    return text != nil ? text : @"";
 }
 
 + (NSRange)rangeOf:(UITextRange*)range in:(UIView<UITextInput>*)view {
@@ -228,7 +229,7 @@ using haylen::platform::TextInput;
 }
 
 - (BOOL)textField:(UITextField*)sender shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString*)replacement {
-    return [self allowsReplacing:range with:replacement in:sender.text ?: @""];
+    return [self allowsReplacing:range with:replacement in:sender.text != nil ? sender.text : @""];
 }
 
 - (BOOL)textFieldShouldReturn:(UITextField*)sender {
@@ -252,7 +253,7 @@ using haylen::platform::TextInput;
 }
 
 - (BOOL)textView:(UITextView*)sender shouldChangeTextInRange:(NSRange)range replacementText:(NSString*)replacement {
-    return [self allowsReplacing:range with:replacement in:sender.text ?: @""];
+    return [self allowsReplacing:range with:replacement in:sender.text != nil ? sender.text : @""];
 }
 
 - (void)textViewDidEndEditing:(UITextView*)sender {

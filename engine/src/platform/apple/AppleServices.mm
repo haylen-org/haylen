@@ -1,6 +1,5 @@
 #include "platform/Services.hpp"
 
-#import <GameController/GameController.h>
 #include <TargetConditionals.h>
 
 #if TARGET_OS_OSX
@@ -14,11 +13,12 @@
 #include "haylen/io/Package.hpp"
 #import "platform/apple/AppleBridge.hpp"
 #import "platform/apple/AppleDesktop.hpp"
+#import "platform/apple/AppleGamepads.hpp"
 #import "platform/apple/AppleNetwork.hpp"
 #import "platform/apple/AppleOrientation.hpp"
-#import "platform/apple/AppleRemote.hpp"
 #import "platform/apple/AppleTextInput.hpp"
 #import "platform/apple/CatalystInput.hpp"
+#import "platform/apple/CatalystWindow.hpp"
 #include "platform/sokol/MemoryWarning.hpp"
 #include "sokol_app.h"
 
@@ -42,6 +42,7 @@ void Services::initialize() {
 #endif
 #if TARGET_OS_MACCATALYST
     CatalystInput::observe();
+    CatalystWindow::observe();
 #endif
 }
 
@@ -157,51 +158,7 @@ bool Services::hasPointerDevice() noexcept {
 }
 
 void Services::pollGamepads(std::span<input::GamepadState> gamepads) {
-    NSArray<GCController*>* controllers = GCController.controllers;
-    for (std::size_t index = 0; index < gamepads.size(); ++index) {
-        input::GamepadState& state = gamepads[index];
-        GCController* controller = index < controllers.count ? controllers[index] : nil;
-        GCExtendedGamepad* pad = controller.extendedGamepad;
-        GCMicroGamepad* remote = pad == nil ? controller.microGamepad : nil;
-        if (pad == nil && remote == nil) {
-            state = {};
-            continue;
-        }
-
-        state.connected = true;
-        NSString* vendor = controller.vendorName;
-        state.name = vendor != nil ? vendor.UTF8String : "Controller";
-        if (remote != nil) {
-            state.buttons = {};
-            state.axes = {};
-            AppleRemote::read(remote, state);
-            continue;
-        }
-        const auto set = [&state](input::GamepadButton button, GCControllerButtonInput* control) { state.buttons[static_cast<std::size_t>(button)] = control != nil && control.pressed; };
-        set(input::GamepadButton::South, pad.buttonA);
-        set(input::GamepadButton::East, pad.buttonB);
-        set(input::GamepadButton::West, pad.buttonX);
-        set(input::GamepadButton::North, pad.buttonY);
-        set(input::GamepadButton::LeftShoulder, pad.leftShoulder);
-        set(input::GamepadButton::RightShoulder, pad.rightShoulder);
-        set(input::GamepadButton::Back, pad.buttonOptions);
-        set(input::GamepadButton::Start, pad.buttonMenu);
-        set(input::GamepadButton::Guide, pad.buttonHome);
-        set(input::GamepadButton::LeftStick, pad.leftThumbstickButton);
-        set(input::GamepadButton::RightStick, pad.rightThumbstickButton);
-        set(input::GamepadButton::DpadUp, pad.dpad.up);
-        set(input::GamepadButton::DpadDown, pad.dpad.down);
-        set(input::GamepadButton::DpadLeft, pad.dpad.left);
-        set(input::GamepadButton::DpadRight, pad.dpad.right);
-
-        // GameController reports up as positive, while the engine follows the screen with down as positive.
-        state.axes[static_cast<std::size_t>(input::GamepadAxis::LeftX)] = pad.leftThumbstick.xAxis.value;
-        state.axes[static_cast<std::size_t>(input::GamepadAxis::LeftY)] = -pad.leftThumbstick.yAxis.value;
-        state.axes[static_cast<std::size_t>(input::GamepadAxis::RightX)] = pad.rightThumbstick.xAxis.value;
-        state.axes[static_cast<std::size_t>(input::GamepadAxis::RightY)] = -pad.rightThumbstick.yAxis.value;
-        state.axes[static_cast<std::size_t>(input::GamepadAxis::LeftTrigger)] = pad.leftTrigger.value;
-        state.axes[static_cast<std::size_t>(input::GamepadAxis::RightTrigger)] = pad.rightTrigger.value;
-    }
+    AppleGamepads::poll(gamepads);
 }
 
 // Only iPhones and iPads turn their screen, while Macs, Mac Catalyst windows and TVs count as landscape.
@@ -220,7 +177,7 @@ void Services::lockOrientation([[maybe_unused]] Orientation value) {
 }
 
 TextInput& Services::getTextInput() {
-    static AppleTextInput input;
+    static AppleTextInput& input = *new AppleTextInput();
     return input;
 }
 

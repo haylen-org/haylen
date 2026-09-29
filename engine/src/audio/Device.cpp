@@ -5,6 +5,10 @@
 
 #include "haylen/core/Log.hpp"
 
+#if defined(__EMSCRIPTEN__)
+#include "platform/web/BrowserAudioOutput.hpp"
+#endif
+
 namespace haylen::audio {
 
 Device::Device(const Mixer::Setup& value) : setup(value) {
@@ -94,6 +98,9 @@ void Device::open() {
     ma_context_config contextConfig = ma_context_config_init();
     contextConfig.coreaudio.sessionCategory = toSessionCategory(setup.session.category);
     contextConfig.coreaudio.sessionCategoryOptions = setup.session.mixWithOthers ? static_cast<ma_uint32>(ma_ios_session_category_option_mix_with_others) : 0U;
+#if defined(__EMSCRIPTEN__)
+    contextConfig.custom.onContextInit = &BrowserAudioOutput::initContext;
+#endif
     if (ma_context_init(nullptr, 0, &contextConfig, &context) != MA_SUCCESS) {
         throw std::runtime_error("The audio system could not be started.");
     }

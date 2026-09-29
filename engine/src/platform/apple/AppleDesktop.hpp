@@ -32,7 +32,7 @@ class AppleDesktop final {
   private:
     static NSEvent* lastMouseDown;
     static Window::Passthrough passthrough;
-    static std::vector<math::Polygon::Outline> regions;
+    static std::vector<math::Polygon::Outline>& regions;
     static math::Vec2 pointer;
     static bool pointerInside;
     static bool dragging;

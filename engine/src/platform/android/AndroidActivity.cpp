@@ -4,7 +4,7 @@
 
 namespace haylen::platform {
 
-std::mutex AndroidActivity::mutex;
+std::mutex& AndroidActivity::mutex = *new std::mutex();
 math::Insets AndroidActivity::safeAreaInsets{};
 std::atomic<bool> AndroidActivity::framePresented = false;
 std::atomic<bool> AndroidActivity::television = false;

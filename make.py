@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import dataclasses
 import functools
 import hashlib
@@ -18,6 +19,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import urllib.request
 import webbrowser
 import zipfile
@@ -39,6 +41,8 @@ APPS_DIR = BUILD_ROOT / "apps"
 CPP_BUILDS_DIR = BUILD_ROOT / "cpp"
 ANDROID_LIBRARY_PROJECT = ENGINE_DIR / "platform" / "android"
 ENGINE_LOGO = PLATFORM_TEMPLATES_DIR / "web" / "haylen-logo.svg"
+# The web runtime loads the AudioWorklet processor of its audio output from next to its script, so every web build ships it beside the .js and .wasm files.
+WEB_AUDIO_WORKLET = "haylen-audio-worklet.js"
 DEFAULT_APP = "games/tiny-island"
 
 SHDC_COMMIT = "11d0cf678105d614d675e6d9bd2aaf3eeff12f8c"
@@ -104,6 +108,10 @@ IOS_ORIENTATIONS = {
     "portrait": (["UIInterfaceOrientationPortrait"], ["UIInterfaceOrientationPortrait", "UIInterfaceOrientationPortraitUpsideDown"]),
     "any": (["UIInterfaceOrientationPortrait", "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"], ["UIInterfaceOrientationPortrait", "UIInterfaceOrientationPortraitUpsideDown", "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"]),
 }
+
+# Varn names the engine in the unified log of Apple platforms with this subsystem.
+APPLE_LOG_SUBSYSTEM = "dev.varn.engine"
+LOG_STREAM_GRACE_SECONDS = 1.0
 
 MIME_TYPES = {".wasm": "application/wasm", ".js": "text/javascript", ".mjs": "text/javascript", ".json": "application/json", ".zip": "application/zip", ".html": "text/html", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".data": "application/octet-stream"}
 
@@ -242,8 +250,14 @@ def require_host(platform_name: str) -> None:
         raise BuildError(f"{platform_name} builds require a {required} host.")
 
 
-def build_dir(platform_name: str, config: str) -> Path:
-    return BUILD_ROOT / f"{platform_name}-{config.lower()}"
+def build_dir(platform_name: str, config: str, sanitizers: str | None = None) -> Path:
+    """Returns the build tree of a platform and configuration. Each sanitizer has trees of its own, so switching never rebuilds the plain tree."""
+    return BUILD_ROOT / (f"{platform_name}-{config.lower()}" + (f"-{sanitizers}" if sanitizers else ""))
+
+
+def build_folder_name(folder: Path) -> str:
+    """Names the build folder of an app or a C++ project after its folder and a hash of its path, so projects whose folders share a name never share build trees."""
+    return f"{folder.name}-{hashlib.sha256(str(folder).encode()).hexdigest()[:8]}"
 
 
 def requested_backend(args: argparse.Namespace) -> str:
@@ -254,18 +268,19 @@ def requested_backend(args: argparse.Namespace) -> str:
 
 
 def requested_sanitizers(args: argparse.Namespace) -> str:
-    return "ON" if getattr(args, "sanitize", False) else "OFF"
+    """Returns the HAYLEN_SANITIZERS a build asks for: OFF, ADDRESS or THREAD."""
+    return (args.sanitizers or "off").upper()
 
 
 def build_options(platform_name: str, config: str, target: str | None = None, jobs: int | None = None) -> argparse.Namespace:
-    return argparse.Namespace(platform=platform_name, config=config, backend=None, xcode=False, sanitize=False, coverage=False, target=target, jobs=jobs or default_jobs())
+    return argparse.Namespace(platform=platform_name, config=config, backend=None, xcode=False, sanitizers=None, coverage=False, target=target, jobs=jobs or default_jobs())
 
 
 def configure_command(args: argparse.Namespace) -> tuple[list, dict[str, str]]:
     require_host(args.platform)
-    directory = build_dir(args.platform, args.config)
+    directory = build_dir(args.platform, args.config, args.sanitizers)
     command = ["cmake", "-S", ROOT, "-B", directory, f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={args.config}"]
-    command += [f"-DHAYLEN_RENDER_BACKEND={requested_backend(args)}", f"-DHAYLEN_ENABLE_SANITIZERS={requested_sanitizers(args)}"]
+    command += [f"-DHAYLEN_RENDER_BACKEND={requested_backend(args)}", f"-DHAYLEN_SANITIZERS={requested_sanitizers(args)}"]
     env = os.environ.copy()
 
     if args.platform == "macos":
@@ -310,13 +325,9 @@ def cmake_cache_value(directory: Path, name: str) -> str:
 
 
 def ensure_configured(args: argparse.Namespace) -> Path:
-    """Configures the build tree when it does not exist yet or when the requested options differ from the ones it was configured with."""
-    directory = build_dir(args.platform, args.config)
-    if not (directory / "CMakeCache.txt").exists():
-        command_configure(args)
-        return directory
-
-    if cmake_cache_value(directory, "HAYLEN_RENDER_BACKEND") != requested_backend(args) or cmake_cache_value(directory, "HAYLEN_ENABLE_SANITIZERS") != requested_sanitizers(args):
+    """Configures the build tree when it does not exist yet or when the requested backend differs from the one it was configured with."""
+    directory = build_dir(args.platform, args.config, args.sanitizers)
+    if not (directory / "CMakeCache.txt").exists() or cmake_cache_value(directory, "HAYLEN_RENDER_BACKEND") != requested_backend(args):
         command_configure(args)
     return directory
 
@@ -333,7 +344,7 @@ def command_test(args: argparse.Namespace) -> None:
     args.platform = host_name()
     args.target = "haylen_tests"
     command_build(args)
-    run(["ctest", "--test-dir", build_dir(args.platform, args.config), "-C", args.config, "--output-on-failure", "--parallel", str(args.jobs)])
+    run(["ctest", "--test-dir", build_dir(args.platform, args.config, args.sanitizers), "-C", args.config, "--output-on-failure", "--parallel", str(args.jobs)])
 
 
 def llvm_tool(name: str) -> str:
@@ -585,15 +596,15 @@ def build_android_artifacts(config: str, jobs: int) -> None:
 
 
 def build_web_artifacts(config: str, jobs: int) -> None:
-    """Builds the player for WebGPU and for WebGL2. It loads the app package at runtime, so one build serves every app."""
+    """Builds the player for WebGPU and for WebGL2, each next to the processor of its audio output. It loads the app package at runtime, so one build serves every app."""
     for platform_name, backend in (("web", "webgpu"), ("web-webgl2", "webgl2")):
         command_build(build_options(platform_name, config, "haylen", jobs))
         built = build_dir(platform_name, config) / "bin" / "haylen"
         destination = ARTIFACTS_DIR / "web" / backend
         shutil.rmtree(destination, ignore_errors=True)
         destination.mkdir(parents=True)
-        for suffix in (".js", ".wasm"):
-            shutil.copy2(built / f"haylen{suffix}", destination)
+        for name in ("haylen.js", "haylen.wasm", WEB_AUDIO_WORKLET):
+            shutil.copy2(built / name, destination)
 
 
 def desktop_artifact() -> Path:
@@ -695,6 +706,11 @@ class App:
     @property
     def slug(self) -> str:
         return self.folder.name
+
+    @property
+    def build_folder(self) -> Path:
+        """The folder under build/apps that holds everything make.py builds for the app, which no other app shares."""
+        return APPS_DIR / build_folder_name(self.folder)
 
     @property
     def version_code(self) -> int:
@@ -800,7 +816,7 @@ def build_native_target(library: NativeLibrary, directory: Path, options: list[s
 
 def build_apple_native(app: App, library: NativeLibrary, slice_name: str, jobs: int) -> Path:
     """Builds a library for every architecture of an Apple slice and joins them. A dynamic library for iOS or tvOS becomes the framework bundle those systems load."""
-    folder = APPS_DIR / app.slug / "native" / library.name / slice_name
+    folder = app.build_folder / "native" / library.name / slice_name
     extension = "a" if library.static else "dylib"
     built = [build_native_target(library, folder / arch, apple_slice_options(slice_name, arch), jobs) / f"lib{library.name}.{extension}" for arch in APPLE_SLICES[slice_name]]
     joined = folder / f"lib{library.name}.{extension}"
@@ -926,7 +942,7 @@ def prepare_android_native(app: App, project: Path, jobs: int) -> None:
             shutil.copytree(library.files["android"], libraries, dirs_exist_ok=True)
             continue
         for abi in ANDROID_ABIS:
-            output = build_native_target(library, APPS_DIR / app.slug / "native" / library.name / f"android-{abi}", android_options(abi), jobs)
+            output = build_native_target(library, app.build_folder / "native" / library.name / f"android-{abi}", android_options(abi), jobs)
             copy_native(output / f"lib{library.name}.so", libraries / abi)
 
 
@@ -941,7 +957,7 @@ def prepare_host_native(app: App, folder: Path, jobs: int) -> list[Path]:
             placed.append(copy_native(prebuilt_apple_native(library.files[platform], "macos") if platform == "macos" else library.files[platform], folder))
             continue
         options = [f"-DCMAKE_OSX_DEPLOYMENT_TARGET={APPLE_MINIMUM_VERSIONS['macOS']}"] if platform == "macos" else []
-        output = build_native_target(library, APPS_DIR / app.slug / "native" / library.name / platform, options, jobs)
+        output = build_native_target(library, app.build_folder / "native" / library.name / platform, options, jobs)
         built = sorted(output.glob({"macos": f"lib{library.name}.dylib", "windows": f"*{library.name}.dll", "linux": f"lib{library.name}.so"}[platform]))
         if not built:
             raise BuildError(f"The CMake target {library.name} of {library.cmake} built no shared library into {output}.")
@@ -1120,8 +1136,8 @@ def platform_templates() -> list[str]:
 
 
 def assemble(app: App, template: str | None, run_platform: str) -> Path:
-    """Recreates build/apps/<app>/<platform> from the platform template and lays the platform/<template> folder of the app over it. Platforms without a template start empty and take the platform/<platform> folder of the app, such as the libraries a Windows app keeps next to its executable."""
-    folder = APPS_DIR / app.slug / run_platform
+    """Recreates the <platform> folder of the build folder of an app from the platform template and lays the platform/<template> folder of the app over it. Platforms without a template start empty and take the platform/<platform> folder of the app, such as the libraries a Windows app keeps next to its executable."""
+    folder = app.build_folder / run_platform
     shutil.rmtree(folder, ignore_errors=True)
     if template is None:
         folder.mkdir(parents=True)
@@ -1214,6 +1230,67 @@ def apple_simulator(family: str, requested: str | None) -> dict:
     return (booted or preferred or candidates)[0]
 
 
+def apple_team() -> str:
+    team = os.environ.get("HAYLEN_APPLE_TEAM")
+    if not team:
+        raise BuildError("Apps for Apple devices are signed with a development team. Set HAYLEN_APPLE_TEAM to its id.")
+    return team
+
+
+def relay_unified_log(stream: subprocess.Popen) -> None:
+    """Prints the message of every event of a log stream in the ndjson style, with warnings and errors on stderr like the engine on a desktop."""
+    for line in stream.stdout:
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            print(line.rstrip(), flush=True)
+            continue
+        target = sys.stderr if event.get("messageType") in ("Error", "Fault") else sys.stdout
+        print(event.get("eventMessage", ""), file=target, flush=True)
+
+
+@contextlib.contextmanager
+def unified_log(executable: str, prefix: list):
+    """Relays what the engine of an app process writes to the unified log, where it logs on iOS, tvOS and Mac Catalyst, while the block runs. The prefix runs log inside a simulator."""
+    predicate = f'process == "{executable}" AND subsystem == "{APPLE_LOG_SUBSYSTEM}"'
+    stream = subprocess.Popen([str(part) for part in [*prefix, "log", "stream", "--style", "ndjson", "--level", "debug", "--predicate", predicate]], stdout=subprocess.PIPE, text=True)
+    # The stream names its filter on the first line and delivers events from then on, so the app starts after that line.
+    stream.stdout.readline()
+    threading.Thread(target=relay_unified_log, args=(stream,), daemon=True).start()
+    try:
+        yield
+    finally:
+        # Events reach the stream a moment after the app writes them, so the last lines of an app that ended still arrive.
+        time.sleep(LOG_STREAM_GRACE_SECONDS)
+        stream.terminate()
+        stream.wait()
+
+
+def launch_apple(bundle: Path, args: argparse.Namespace, simulator: dict | None) -> None:
+    """Launches an app bundle on this Mac, a simulator or a device and streams its output until it exits. The engine writes to the standard output on macOS and to the unified log elsewhere, which simulators and Mac Catalyst stream next to the output of the process."""
+    desktop = args.platform in {"macos", "catalyst"}
+    info = plistlib.loads((bundle / "Contents" / "Info.plist" if desktop else bundle / "Info.plist").read_bytes())
+    executable, identifier = info["CFBundleExecutable"], info["CFBundleIdentifier"]
+    if args.platform == "macos":
+        run([bundle / "Contents" / "MacOS" / executable])
+    elif args.platform == "catalyst":
+        with unified_log(executable, []):
+            run([bundle / "Contents" / "MacOS" / executable])
+    elif simulator:
+        udid = simulator["udid"]
+        if simulator["state"] != "Booted":
+            run(["xcrun", "simctl", "boot", udid])
+        run(["xcrun", "simctl", "bootstatus", udid, "-b"])
+        run(["xcrun", "simctl", "install", udid, bundle])
+        with unified_log(executable, ["xcrun", "simctl", "spawn", udid]):
+            run(["xcrun", "simctl", "launch", "--console-pty", "--terminate-running-process", udid, identifier])
+    else:
+        if not args.device:
+            raise BuildError("Name the device with --device. xcrun devicectl list devices lists them.")
+        run(["xcrun", "devicectl", "device", "install", "app", "--device", args.device, bundle])
+        run(["xcrun", "devicectl", "device", "process", "launch", "--console", "--device", args.device, identifier])
+
+
 def run_apple(app: App, project: Path, args: argparse.Namespace) -> None:
     require_host("apple")
     (project / "Haylen.xcframework").symlink_to(ARTIFACTS_DIR / "apple" / "Haylen.xcframework")
@@ -1226,34 +1303,15 @@ def run_apple(app: App, project: Path, args: argparse.Namespace) -> None:
     if args.platform in {"macos", "catalyst"}:
         destination += f",arch={'arm64' if host_arch() == 'arm64' else 'x86_64'}"
     derived = project / "build"
-    command = ["xcodebuild", "-project", project / "App.xcodeproj", "-scheme", settings["scheme"], "-configuration", args.config, "-destination", destination, "-derivedDataPath", derived, "build"]
-    team = os.environ.get("HAYLEN_APPLE_TEAM")
+    command = ["xcodebuild", "-project", project / "App.xcodeproj", "-scheme", settings["scheme"], "-configuration", args.config, "-destination", destination, "-derivedDataPath", derived, "-jobs", str(args.jobs), "build"]
     if args.platform in {"ios", "tvos"}:
-        if not team:
-            raise BuildError("Apps for Apple devices are signed with a development team. Set HAYLEN_APPLE_TEAM to its id.")
-        command += ["-allowProvisioningUpdates", f"DEVELOPMENT_TEAM={team}"]
+        command += ["-allowProvisioningUpdates", f"DEVELOPMENT_TEAM={apple_team()}"]
     run(command)
-
-    bundle = next((derived / "Build" / "Products").glob("*/*.app"))
-    if args.platform in {"macos", "catalyst"}:
-        executable = bundle / "Contents" / "MacOS" / bundle.stem
-        run([executable])
-    elif simulator:
-        udid = simulator["udid"]
-        if simulator["state"] != "Booted":
-            run(["xcrun", "simctl", "boot", udid])
-        run(["xcrun", "simctl", "bootstatus", udid, "-b"])
-        run(["xcrun", "simctl", "install", udid, bundle])
-        run(["xcrun", "simctl", "launch", "--console-pty", "--terminate-running-process", udid, app.identifier])
-    else:
-        if not args.device:
-            raise BuildError("Name the device with --device. xcrun devicectl list devices lists them.")
-        run(["xcrun", "devicectl", "device", "install", "app", "--device", args.device, bundle])
-        run(["xcrun", "devicectl", "device", "process", "launch", "--console", "--device", args.device, app.identifier])
+    launch_apple(next((derived / "Build" / "Products").glob("*/*.app")), args, simulator)
 
 
-def write_android_settings(app: App, project: Path) -> None:
-    """Points the Gradle project at the engine repository and writes the identity, version, orientation and splash of an app."""
+def write_android_settings(app: App, project: Path, library: str) -> None:
+    """Points the Gradle project at the engine repository and writes the identity, version, orientation and splash of an app, and the native library its activity loads."""
     properties = project / "gradle.properties"
     values = {
         "haylen.repository": (ARTIFACTS_DIR / "android" / "maven").as_posix(),
@@ -1263,6 +1321,7 @@ def write_android_settings(app: App, project: Path) -> None:
         "haylen.versionName": app.version,
         "haylen.versionCode": str(app.version_code),
         "haylen.orientation": ANDROID_ORIENTATIONS[app.orientation],
+        "haylen.library": library,
     }
     lines = [line for line in properties.read_text().splitlines() if not line.startswith("haylen.")]
     lines += [f"{key}={value}" for key, value in values.items()]
@@ -1290,22 +1349,30 @@ def android_device(requested: str | None) -> str:
     return devices[0]
 
 
-def run_android(app: App, project: Path, args: argparse.Namespace) -> None:
+def prepare_android(app: App, project: Path, library: str, jobs: int) -> None:
+    """Copies the package of an app into the assets of its Android project, writes its settings with the native library the activity loads and places its native libraries."""
     files = copy_package(app, project / "app" / "src" / "main" / "assets" / "app")
     # Android cannot list asset folders recursively, so the runtime reads the files of the package from this index.
     (project / "app" / "src" / "main" / "assets" / "app" / "haylen-package-index.json").write_text(json.dumps(sorted(files)))
-    write_android_settings(app, project)
-    prepare_android_native(app, project, args.jobs)
+    write_android_settings(app, project, library)
+    prepare_android_native(app, project, jobs)
 
+
+def launch_android(app: App, project: Path, args: argparse.Namespace, device: str) -> None:
+    """Builds the APK of an Android project with Gradle, installs it on a device, starts it and streams the log of its process until it ends."""
     variant = "Release" if args.config == "Release" else "Debug"
-    run([ensure_gradle(), "-p", project, f":app:assemble{variant}"])
+    run([ensure_gradle(), "-p", project, f":app:assemble{variant}", f"--max-workers={args.jobs}"])
     apk = project / "app" / "build" / "outputs" / "apk" / variant.lower() / f"app-{variant.lower()}.apk"
-    device = android_device(args.device)
     run([adb(), "-s", device, "install", "-r", apk])
     run([adb(), "-s", device, "shell", "am", "start", "-W", "-n", f"{app.identifier}/dev.haylen.HaylenActivity"])
     process = capture([adb(), "-s", device, "shell", "pidof", app.identifier]).strip()
     if process:
         run([adb(), "-s", device, "logcat", "--pid", process])
+
+
+def run_android(app: App, project: Path, args: argparse.Namespace) -> None:
+    prepare_android(app, project, "haylen", args.jobs)
+    launch_android(app, project, args, android_device(args.device))
 
 
 def write_web_settings(app: App, site: Path) -> None:
@@ -1371,7 +1438,7 @@ def command_run(args: argparse.Namespace) -> None:
         command_build(build)
         # The native libraries of the app wait in a folder of their own, which the player searches first.
         info = App(app)
-        native = APPS_DIR / info.slug / "native" / "development"
+        native = info.build_folder / "native" / "development"
         shutil.rmtree(native, ignore_errors=True)
         native_options = ["--native", native] if prepare_host_native(info, native, args.jobs) else []
         stop = threading.Event()
@@ -1416,38 +1483,85 @@ def command_new(args: argparse.Namespace) -> None:
     print(f"Created {name} ({identifier}) in {folder}. Run it with: python3 make.py run {folder}")
 
 
+# The platforms a C++ app project runs on: this machine, the browser, Mac Catalyst, iOS, tvOS, their simulators and Android.
+CPP_RUN_PLATFORMS = [host_name(), "web", *(name for name in APPLE_NATIVE_SLICES if name != "macos"), "android"]
+
+
 def cpp_target(project: Path, requested: str | None) -> str:
     return requested or project.name
 
 
 def command_run_cpp(args: argparse.Namespace) -> None:
-    """Builds a C++ app project, which compiles the engine through its own CMake, and runs it on this machine or in the browser."""
+    """Builds a C++ app project, which compiles the engine through its own CMake, and runs it on this machine, in the browser, on an Apple simulator or device, on Mac Catalyst or on Android."""
     candidate = Path(args.project).expanduser()
     project = (candidate if candidate.exists() else SAMPLES_DIR / args.project).resolve()
     if not (project / "CMakeLists.txt").is_file():
         raise BuildError(f"{args.project} is neither a CMake project folder nor the name of a C++ sample.")
     target = cpp_target(project, args.target)
+    folder = CPP_BUILDS_DIR / build_folder_name(project)
 
     if args.platform == "web":
-        site = CPP_BUILDS_DIR / project.name / "web"
-        bundle_web(project, target, args.config, site, args.jobs)
-        serve(site, args.port, args.coep, args.open)
-        return
+        bundle_web(project, target, args.config, folder, args.jobs)
+        serve(folder / "web", args.port, args.coep, args.open)
+    elif args.platform == "android":
+        run_cpp_android(project, target, folder, args)
+    elif args.platform in APPLE_NATIVE_SLICES and args.platform != "macos":
+        run_cpp_apple(project, target, folder, args)
+    else:
+        directory = folder / f"{host_name()}-{args.config.lower()}"
+        command = ["cmake", "-S", project, "-B", directory, f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={args.config}"]
+        if host_name() != "windows" or shutil.which("ninja"):
+            command += ["-G", "Ninja"]
+        run(command)
+        run(["cmake", "--build", directory, "--config", args.config, "--target", target, "--parallel", str(args.jobs)])
+        run([cmake_app_executable(directory, target)])
 
-    directory = CPP_BUILDS_DIR / project.name / f"{host_name()}-{args.config.lower()}"
-    command = ["cmake", "-S", project, "-B", directory, f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={args.config}"]
-    if host_name() != "windows" or shutil.which("ninja"):
-        command += ["-G", "Ninja"]
+
+def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Namespace) -> None:
+    """Builds a C++ app for iOS, tvOS or their simulators with the Xcode generator, which compiles the launch screen and signs the bundle, or for Mac Catalyst with Ninja and the Mac Catalyst toolchain, for the architecture of this Mac, then launches it like make.py run."""
+    require_host("apple")
+    device = args.platform in {"ios", "tvos"}
+    arch = "arm64" if device or host_arch() == "arm64" else "x86_64"
+    directory = folder / f"{args.platform}-{args.config.lower()}"
+    generator = "Ninja" if args.platform == "catalyst" else "Xcode"
+    command = ["cmake", "-S", project, "-B", directory, "-G", generator, f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={args.config}", *apple_slice_options(APPLE_NATIVE_SLICES[args.platform], arch)]
+    if device:
+        command.append(f"-DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM={apple_team()}")
     run(command)
-    run(["cmake", "--build", directory, "--config", args.config, "--target", target, "--parallel", str(args.jobs)])
-    run([cmake_app_executable(directory, target)])
+    run(["cmake", "--build", directory, "--config", args.config, "--target", target, "--parallel", str(args.jobs), *(["--", "-allowProvisioningUpdates"] if device else [])])
+
+    # Ninja places the bundle in bin/<target>, while the Xcode generator places it in bin.
+    settings = APPLE_RUNS[args.platform]
+    simulator = apple_simulator(settings["simulator"], args.device) if "simulator" in settings else None
+    launch_apple(next((directory / "bin").glob(f"**/{target}.app")), args, simulator)
 
 
-def bundle_web(source: Path, target: str, config: str, output: Path, jobs: int) -> None:
-    """Builds a CMake web target for WebGPU and WebGL2 into one folder whose page runs the backend the browser supports."""
+def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Namespace) -> None:
+    """Builds the library of a C++ app for the ABI of the Android device and packages it with the package of the app into the Android template, whose activity loads it instead of the Lua player, then installs and launches it like make.py run."""
+    device = android_device(args.device)
+    abi = capture([adb(), "-s", device, "shell", "getprop", "ro.product.cpu.abi"]).strip()
+    if abi not in ANDROID_ABIS:
+        raise BuildError(f"{device} runs {abi}, while the engine builds for {', '.join(ANDROID_ABIS)}.")
+    directory = folder / f"android-{abi}-{args.config.lower()}"
+    run(["cmake", "-S", project, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={args.config}", *android_options(abi)])
+    run(["cmake", "--build", directory, "--target", target, "--parallel", str(args.jobs)])
+
+    # The activity, the bridge and the other Java classes come from the haylen library of the artifacts, while the app brings the engine in its own library.
+    built = directory / "bin" / target
+    app = App(Path((built / "package.txt").read_text().strip()))
+    ensure_artifacts("android", args.engine_config, args.jobs)
+    gradle = assemble(app, "android", "android")
+    prepare_android(app, gradle, target, args.jobs)
+    copy_native(built / f"lib{target}.so", gradle / "app" / "src" / "main" / "jniLibs" / abi)
+    launch_android(app, gradle, args, device)
+
+
+def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int) -> None:
+    """Builds a CMake web target for WebGPU and WebGL2 in a build folder and bundles both into its web folder, whose page runs the backend the browser supports."""
+    output = folder / "web"
     shutil.rmtree(output, ignore_errors=True)
     for platform_name, backend in (("web", "webgpu"), ("web-webgl2", "webgl2")):
-        directory = CPP_BUILDS_DIR / source.name / f"{platform_name}-{config.lower()}"
+        directory = folder / f"{platform_name}-{config.lower()}"
         if not (directory / "CMakeCache.txt").exists():
             renderer = "WGPU" if platform_name == "web" else "GLES3"
             run([ensure_emsdk(), "cmake", "-S", source, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={config}", f"-DHAYLEN_RENDER_BACKEND={renderer}"])
@@ -1458,13 +1572,15 @@ def bundle_web(source: Path, target: str, config: str, output: Path, jobs: int) 
         for suffix in (".js", ".wasm", ".data"):
             if (built / f"{target}{suffix}").is_file():
                 shutil.copy2(built / f"{target}{suffix}", destination)
+        shutil.copy2(built / WEB_AUDIO_WORKLET, destination)
 
-    # The page is the shell of the target, with the script that picks the backend where Emscripten would put its own script.
+    # The page is the shell of the target, with the script that picks the backend where Emscripten would put its own script, next to the engine logo that the default shell shows as its icon.
     shell = (built / f"{target}.shell.html").read_text()
     picker = (ENGINE_DIR / "platform" / "web" / "backend-picker.html").read_text().replace("{{TARGET}}", target)
     if "{{{ SCRIPT }}}" not in shell:
         raise BuildError(f"The web shell of {target} has no {{{{{{ SCRIPT }}}}}} placeholder.")
     (output / "index.html").write_text(shell.replace("{{{ SCRIPT }}}", picker.strip()))
+    shutil.copy2(built / ENGINE_LOGO.name, output)
     print(f"Bundled {target} for WebGPU and WebGL2 into {output}")
 
 
@@ -1559,9 +1675,13 @@ def add_build_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--config", default="Debug", choices=CONFIGS)
     parser.add_argument("--backend", choices=["METAL", "D3D11", "GLCORE", "GLES3", "WGPU"])
     parser.add_argument("--xcode", action="store_true", help="Use the Xcode generator on macOS.")
-    parser.add_argument("--sanitize", action="store_true", help="Build with AddressSanitizer and UndefinedBehaviorSanitizer.")
+    add_sanitizer_option(parser)
     parser.add_argument("--target")
     parser.add_argument("--jobs", type=int, default=default_jobs())
+
+
+def add_sanitizer_option(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--sanitizers", choices=["address", "thread"], help="Build in a tree of its own with AddressSanitizer and UndefinedBehaviorSanitizer, or with ThreadSanitizer.")
 
 
 def add_web_server_options(parser: argparse.ArgumentParser, port: int) -> None:
@@ -1611,9 +1731,11 @@ def main() -> None:
 
     run_cpp = commands.add_parser("run-cpp", help="Build and run a C++ app project, which compiles the engine through CMake.")
     run_cpp.add_argument("project", help="CMake project folder or C++ sample path from samples/, such as cpp/embedding.")
-    run_cpp.add_argument("--platform", default=host_name(), choices=[host_name(), "web"])
+    run_cpp.add_argument("--platform", default=host_name(), choices=CPP_RUN_PLATFORMS)
     run_cpp.add_argument("--target", help="The haylen_add_app target, named like the project folder by default.")
+    run_cpp.add_argument("--device", help="Simulator name or id, Apple device id or Android serial.")
     run_cpp.add_argument("--config", default="Debug", choices=CONFIGS)
+    run_cpp.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the haylen Android library whose Java classes Android apps use.")
     run_cpp.add_argument("--jobs", type=int, default=default_jobs())
     add_web_server_options(run_cpp, 8000)
     run_cpp.set_defaults(handler=command_run_cpp)
@@ -1635,7 +1757,7 @@ def main() -> None:
 
     coverage = commands.add_parser("coverage", help="Measure engine code coverage with LLVM source-based coverage.")
     coverage.add_argument("--jobs", type=int, default=default_jobs())
-    coverage.add_argument("--sanitize", action="store_true")
+    add_sanitizer_option(coverage)
     coverage.set_defaults(handler=command_coverage)
 
     formatter = commands.add_parser("format", help="Format the C, C++ and Objective-C sources with clang-format.")

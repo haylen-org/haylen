@@ -67,8 +67,8 @@ class NativeCallback final {
     [[nodiscard]] std::vector<Value> read(void** arguments, std::string& failure) const;
     void deliver(std::vector<Value> values, std::string failure) const;
 
-    static std::mutex retainedMutex;
-    static std::unordered_map<const NativeCallback*, std::shared_ptr<NativeCallback>> retained;
+    static std::mutex& retainedMutex;
+    static std::unordered_map<const NativeCallback*, std::shared_ptr<NativeCallback>>& retained;
 
     NativeSignature signature;
     Thread thread = Thread::Any;

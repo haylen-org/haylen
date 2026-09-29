@@ -22,17 +22,26 @@ namespace haylen::platform {
 
 namespace {
 
-// A primary monitor with a taskbar at its bottom, and a denser one to its left whose top sits lower.
-std::vector<Monitor> twoMonitors() {
-    return {
-        {.name = "main", .bounds = {0.0F, 0.0F, 1920.0F, 1080.0F}, .workArea = {0.0F, 0.0F, 1920.0F, 1040.0F}, .scale = 1.0F, .primary = true},
-        {.name = "side", .bounds = {-1440.0F, 200.0F, 1440.0F, 900.0F}, .workArea = {-1440.0F, 225.0F, 1440.0F, 875.0F}, .scale = 2.0F, .primary = false},
-    };
-}
+class MonitorLayoutTest : public ::testing::Test {
+  protected:
+    // A primary monitor with a taskbar at its bottom, and a denser one to its left whose top sits lower.
+    [[nodiscard]] static std::vector<Monitor> twoMonitors() {
+        return {
+            {.name = "main", .bounds = {0.0F, 0.0F, 1920.0F, 1080.0F}, .workArea = {0.0F, 0.0F, 1920.0F, 1040.0F}, .scale = 1.0F, .primary = true},
+            {.name = "side", .bounds = {-1440.0F, 200.0F, 1440.0F, 900.0F}, .workArea = {-1440.0F, 225.0F, 1440.0F, 875.0F}, .scale = 2.0F, .primary = false},
+        };
+    }
 
-math::Rect place(const char* position, std::vector<Monitor> monitors = twoMonitors(), math::Vec2 size = {400.0F, 100.0F}) {
-    return WindowPlacement::fromJson(core::Json::parse(position)).resolve(monitors, size);
-}
+    [[nodiscard]] static math::Rect place(const char* position, const std::vector<Monitor>& monitors = twoMonitors(), math::Vec2 size = {400.0F, 100.0F}) {
+        return WindowPlacement::fromJson(core::Json::parse(position)).resolve(monitors, size);
+    }
+};
+
+class WindowConfigTest : public MonitorLayoutTest {};
+
+class WindowPlacementTest : public MonitorLayoutTest {};
+
+class WindowTest : public MonitorLayoutTest {};
 
 // Records what the renderer asks of sokol_gfx while a frame reaches the swapchain: the alpha it clears to and the channels its pipelines write.
 class SwapchainTrace final {
@@ -88,7 +97,7 @@ class SwapchainTrace final {
 
 } // namespace
 
-TEST(WindowConfigTest, ReadsTheDesktopOptionsOfAppJson) {
+TEST_F(WindowConfigTest, ReadsTheDesktopOptionsOfAppJson) {
     const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({
         "window": {"decorated": false, "transparent": true, "alwaysOnTop": true, "showInTaskbar": false, "focusable": false, "mousePassthrough": true,
                    "position": {"anchor": "bottom", "area": "work", "monitor": "primary", "offset": [0, -8], "fill": "width"}}
@@ -119,7 +128,7 @@ TEST(WindowConfigTest, ReadsTheDesktopOptionsOfAppJson) {
     EXPECT_FALSE(defaults.toJson().at("window").contains("position"));
 }
 
-TEST(WindowConfigTest, RejectsInvalidDesktopOptions) {
+TEST_F(WindowConfigTest, RejectsInvalidDesktopOptions) {
     const char* documents[] = {
         R"({"window": {"decorated": "no"}})", R"({"window": {"mousePassthrough": "regions"}})", R"({"window": {"position": "left"}})", R"({"window": {"position": 12}})", R"({"window": {"position": {"anchor": "middle"}}})", R"({"window": {"position": {"area": "screen"}}})", R"({"window": {"position": {"fill": "all"}}})", R"({"window": {"position": {"monitor": 0}}})", R"({"window": {"position": {"monitor": "left"}}})", R"({"window": {"position": {"offset": [1]}}})", R"({"window": {"position": {"offset": [1, "a"]}}})", R"({"window": {"position": {"x": 3}}})", R"({"window": {"position": {"x": 3, "y": 4, "anchor": "top"}}})", R"({"window": {"position": {"anchor": "top", "size": 3}}})",
     };
@@ -128,7 +137,7 @@ TEST(WindowConfigTest, RejectsInvalidDesktopOptions) {
     }
 }
 
-TEST(WindowPlacementTest, AnchorsWindowsToTheAreaOfAMonitor) {
+TEST_F(WindowPlacementTest, AnchorsWindowsToTheAreaOfAMonitor) {
     EXPECT_EQ(place(R"("center")"), (math::Rect{760.0F, 470.0F, 400.0F, 100.0F}));
     EXPECT_EQ(place(R"({"anchor": "bottom"})"), (math::Rect{760.0F, 940.0F, 400.0F, 100.0F}));
     EXPECT_EQ(place(R"({"anchor": "bottom", "area": "full"})"), (math::Rect{760.0F, 980.0F, 400.0F, 100.0F}));
@@ -151,7 +160,7 @@ TEST(WindowPlacementTest, AnchorsWindowsToTheAreaOfAMonitor) {
     EXPECT_EQ(place(R"({"anchor": "topLeft"})", unflagged), (math::Rect{0.0F, 0.0F, 400.0F, 100.0F}));
 }
 
-TEST(WindowPlacementTest, FillsAreasAndPlacesPoints) {
+TEST_F(WindowPlacementTest, FillsAreasAndPlacesPoints) {
     EXPECT_EQ(place(R"({"anchor": "bottom", "fill": "width"})"), (math::Rect{0.0F, 940.0F, 1920.0F, 100.0F}));
     EXPECT_EQ(place(R"({"anchor": "right", "fill": "height"})"), (math::Rect{1520.0F, 0.0F, 400.0F, 1040.0F}));
     EXPECT_EQ(place(R"({"fill": "both", "area": "full", "monitor": 2})"), (math::Rect{-1440.0F, 200.0F, 1440.0F, 900.0F}));
@@ -166,7 +175,7 @@ TEST(WindowPlacementTest, FillsAreasAndPlacesPoints) {
     }
 }
 
-TEST(WindowTest, FindsTheMonitorThatHoldsMostOfTheWindow) {
+TEST_F(WindowTest, FindsTheMonitorThatHoldsMostOfTheWindow) {
     test::TemporaryDirectory directory;
     HeadlessHost host(directory.getPath());
     host.setMonitors(twoMonitors());

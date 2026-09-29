@@ -10,7 +10,7 @@
 
 namespace haylen::platform {
 
-std::array<LinuxGamepads::Joystick, input::Input::kMaxGamepads> LinuxGamepads::joysticks;
+std::array<LinuxGamepads::Joystick, input::Input::kMaxGamepads>& LinuxGamepads::joysticks = *new std::array<Joystick, input::Input::kMaxGamepads>();
 std::chrono::steady_clock::time_point LinuxGamepads::nextScan{};
 
 void LinuxGamepads::scan() {

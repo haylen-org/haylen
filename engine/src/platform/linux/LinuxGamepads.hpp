@@ -28,7 +28,7 @@ class LinuxGamepads final {
         input::GamepadState state;
     };
 
-    static std::array<Joystick, input::Input::kMaxGamepads> joysticks;
+    static std::array<Joystick, input::Input::kMaxGamepads>& joysticks;
     static std::chrono::steady_clock::time_point nextScan;
 
     static void apply(input::GamepadState& state, const js_event& event);

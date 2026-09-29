@@ -10,7 +10,7 @@
 
 namespace haylen::audio {
 
-// The audio context and playback device of a mixer, or no device at all for a mixer that renders on demand. The output runs while it is neither suspended nor interrupted. The device plays with the game usage of AAudio on Android and the session category of the setup on iOS and tvOS, and its notifications wait in a queue that the frame thread takes.
+// The audio context and playback device of a mixer, or no device at all for a mixer that renders on demand. The output runs while it is neither suspended nor interrupted. The device plays with the game usage of AAudio on Android, the session category of the setup on iOS and tvOS and the AudioWorklet output of the page in browsers, and its notifications wait in a queue that the frame thread takes.
 class Device final {
   public:
     explicit Device(const Mixer::Setup& value);

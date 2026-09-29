@@ -8,8 +8,8 @@
 namespace haylen::platform {
 
 const HaylenNativeApi NativeApi::api{.version = HAYLEN_NATIVE_API_VERSION, .emit = &emit, .resolve = &resolve, .registerHandler = &registerHandler, .log = &log};
-std::mutex NativeApi::mutex;
-std::unordered_map<std::string, NativeApi::Handler> NativeApi::handlers;
+std::mutex& NativeApi::mutex = *new std::mutex();
+std::unordered_map<std::string, NativeApi::Handler>& NativeApi::handlers = *new std::unordered_map<std::string, Handler>();
 
 const HaylenNativeApi& NativeApi::get() noexcept {
     return api;

@@ -114,8 +114,9 @@ Module.haylen = Module.haylen || {};
         notify("onStopped");
     };
 
-    // Statistics arrive about once per second while the app runs: fps, frame times, renderer counters, cached assets, audio voices and profiler scopes.
+    // Statistics arrive about once per second while the app runs: fps, frame times, renderer counters, cached assets, audio voices, profiler scopes and the audio output.
     haylen.reportStats = function (stats) {
+        stats.audio = audio.stats();
         notify("onStats", stats);
     };
 
@@ -516,15 +517,145 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-    // Browsers start audio suspended until the user interacts, and Safari on iOS suspends it again after interruptions, so every tap, click and key resumes the contexts of miniaudio that the app keeps playing, unless the app is in the background.
-    const unlockAudio = () => {
-        const audio = window.miniaudio;
-        if (!audio || document.visibilityState !== "visible" || haylen.paused()) {
+    // The audio output that BrowserAudioOutput.cpp drives, one per audio device of the engine. The engine mixes blocks of interleaved samples on this thread and posts them to an AudioWorkletNode, whose processor in haylen-audio-worklet.js plays them from a ring buffer. The processor answers with the frames it played and the buffers of the blocks it copied, and the page mixes new blocks until the audio queued ahead of the output is back at its target, so neither shared memory nor threads are needed.
+    const audio = { outputs: new Map() };
+    haylen.audio = audio;
+
+    // Browsers offer AudioWorklet only to pages served over https or from localhost.
+    audio.supported = function () {
+        if (typeof AudioContext === "undefined" || typeof AudioWorkletNode === "undefined") {
+            console.error("Audio needs AudioWorklet, which browsers offer only to pages served over https or from localhost.");
+            return false;
+        }
+        return true;
+    };
+
+    // Browsers run a context only once the user has interacted with the page, unless their autoplay policy lets it run on its own, and Safari on iOS suspends it again after interruptions. A resume without either only makes the browser warn, so the output then waits for the next tap, click or key.
+    const resumeAudio = (output) => {
+        const activation = navigator.userActivation;
+        if (output.context.state === "running" || (activation && !activation.hasBeenActive && !output.ran)) {
             return;
         }
-        for (const device of audio.devices) {
-            if (device && device.webaudio && device.state === audio.device_state.started && device.webaudio.state !== "running") {
-                device.webaudio.resume().catch(() => {});
+        output.context.resume().catch(() => {});
+    };
+
+    const mixBlock = (output) => {
+        const samples = output.spare.pop() || new Float32Array(output.blockFrames * output.channels);
+        Module._haylen_web_audio_render(output.device, output.scratch, output.blockFrames);
+        const first = output.scratch / Float32Array.BYTES_PER_ELEMENT;
+        samples.set(Module.HEAPF32.subarray(first, first + samples.length));
+        output.node.port.postMessage(samples, [samples.buffer]);
+        output.queued += output.blockFrames;
+        output.blocks += 1;
+    };
+
+    const fillAudio = (output) => {
+        while (output.started && output.node && output.queued + output.blockFrames <= output.bufferedFrames) {
+            mixBlock(output);
+        }
+    };
+
+    const connectAudio = (output) => {
+        // The ring buffer of the processor holds the whole target, which the page never exceeds.
+        const options = { channels: output.channels, capacity: output.bufferedFrames, reportFrames: output.blockFrames };
+        output.node = new AudioWorkletNode(output.context, "haylen-audio", { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [output.channels], processorOptions: options });
+        output.node.port.onmessage = (event) => {
+            output.queued -= event.data.played;
+            output.underruns = event.data.underruns;
+            for (const buffer of event.data.buffers) {
+                output.spare.push(new Float32Array(buffer));
+            }
+            fillAudio(output);
+        };
+        output.node.connect(output.context.destination);
+        if (output.started) {
+            output.node.port.postMessage({ active: true });
+            fillAudio(output);
+        }
+    };
+
+    // Creates the context and loads the processor, which may still be loading when the engine starts the output. Returns false when the browser refuses the context.
+    audio.open = function (device, channels, sampleRate, blockFrames, bufferedFrames) {
+        let context;
+        try {
+            context = new AudioContext({ sampleRate, latencyHint: "interactive" });
+        } catch (error) {
+            console.error("The audio output could not be opened: " + error.message);
+            return false;
+        }
+        const output = { device, channels, blockFrames, bufferedFrames, context, node: null, started: false, ran: false, queued: 0, blocks: 0, underruns: 0, spare: [], scratch: Module._malloc(blockFrames * channels * Float32Array.BYTES_PER_ELEMENT) };
+        context.onstatechange = () => {
+            output.ran = output.ran || context.state === "running";
+        };
+        audio.outputs.set(device, output);
+        // An output that closed while its processor loaded is gone, whatever the loading gave.
+        const worklet = locateFile("haylen-audio-worklet.js");
+        const isOpen = () => audio.outputs.get(device) === output;
+        context.audioWorklet.addModule(worklet).then(
+            () => {
+                if (isOpen()) {
+                    connectAudio(output);
+                }
+            },
+            (error) => {
+                if (isOpen()) {
+                    console.error("The audio processor " + worklet + " could not be loaded: " + error.message);
+                }
+            }
+        );
+        return true;
+    };
+
+    // The engine starts and stops the output from inside a frame, so the first blocks are mixed once the frame returned.
+    audio.start = function (device) {
+        const output = audio.outputs.get(device);
+        output.started = true;
+        if (output.node) {
+            output.node.port.postMessage({ active: true });
+        }
+        resumeAudio(output);
+        queueMicrotask(() => fillAudio(output));
+    };
+
+    // The processor keeps what it has queued and plays silence, so the output goes on where it stopped.
+    audio.stop = function (device) {
+        const output = audio.outputs.get(device);
+        output.started = false;
+        if (output.node) {
+            output.node.port.postMessage({ active: false });
+        }
+        output.context.suspend();
+    };
+
+    audio.close = function (device) {
+        const output = audio.outputs.get(device);
+        audio.outputs.delete(device);
+        if (output.node) {
+            output.node.port.onmessage = null;
+            output.node.disconnect();
+        }
+        output.context.close();
+        Module._free(output.scratch);
+    };
+
+    // Describes the output of the app for onStats, or returns null while the app has none.
+    audio.stats = function () {
+        const [output] = audio.outputs.values();
+        if (!output) {
+            return null;
+        }
+        const rate = output.context.sampleRate;
+        return { state: output.context.state, sampleRate: rate, bufferedMilliseconds: (output.queued * 1000) / rate, blocks: output.blocks, underruns: output.underruns };
+    };
+
+    // Every tap, click and key resumes the outputs the app keeps playing, unless the app is in the background.
+    const unlockAudio = () => {
+        if (document.visibilityState !== "visible" || haylen.paused()) {
+            return;
+        }
+        for (const output of audio.outputs.values()) {
+            if (output.started) {
+                resumeAudio(output);
             }
         }
     };

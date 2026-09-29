@@ -103,7 +103,7 @@ void Services::lockOrientation(Orientation) {}
 
 // Linux types through the key and character events of X11, so its text input keeps the defaults.
 TextInput& Services::getTextInput() {
-    static TextInput input;
+    static TextInput& input = *new TextInput();
     return input;
 }
 

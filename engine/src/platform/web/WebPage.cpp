@@ -39,8 +39,8 @@ EM_JS(char*, haylen_js_canvas_selector, (), {
 
 namespace haylen::platform {
 
-std::shared_ptr<io::MemoryPackage> WebPage::editorPackage = std::make_shared<io::MemoryPackage>("editor");
-std::string WebPage::lastError;
+std::shared_ptr<io::MemoryPackage>& WebPage::editorPackage = *new std::shared_ptr<io::MemoryPackage>(std::make_shared<io::MemoryPackage>("editor"));
+std::string& WebPage::lastError = *new std::string();
 double WebPage::lastStats = 0.0;
 
 template <typename Body> int WebPage::answer(Body&& body) {

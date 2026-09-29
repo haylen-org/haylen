@@ -23,9 +23,9 @@ class AndroidGamepads final {
     static void remove(std::int32_t device);
 
   private:
-    static std::mutex mutex;
+    static std::mutex& mutex;
     static std::array<std::int32_t, input::Input::kMaxGamepads> devices;
-    static std::array<input::GamepadState, input::Input::kMaxGamepads> gamepads;
+    static std::array<input::GamepadState, input::Input::kMaxGamepads>& gamepads;
 
     [[nodiscard]] static int findSlot(std::int32_t device);
     [[nodiscard]] static bool toButton(std::int32_t code, input::GamepadButton& button);

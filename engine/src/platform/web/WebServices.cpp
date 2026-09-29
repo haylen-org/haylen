@@ -160,7 +160,7 @@ void Services::lockOrientation(Orientation value) {
 }
 
 TextInput& Services::getTextInput() {
-    static WebTextInput input;
+    static WebTextInput& input = *new WebTextInput();
     return input;
 }
 

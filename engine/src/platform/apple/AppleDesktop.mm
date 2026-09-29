@@ -12,7 +12,7 @@ namespace haylen::platform {
 
 NSEvent* AppleDesktop::lastMouseDown = nil;
 Window::Passthrough AppleDesktop::passthrough = Window::Passthrough::Off;
-std::vector<math::Polygon::Outline> AppleDesktop::regions;
+std::vector<math::Polygon::Outline>& AppleDesktop::regions = *new std::vector<math::Polygon::Outline>();
 math::Vec2 AppleDesktop::pointer{};
 bool AppleDesktop::pointerInside = false;
 bool AppleDesktop::dragging = false;

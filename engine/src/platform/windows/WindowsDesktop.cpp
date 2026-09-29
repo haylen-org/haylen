@@ -14,7 +14,7 @@ namespace haylen::platform {
 
 WNDPROC WindowsDesktop::sokolProcedure = nullptr;
 Window::Passthrough WindowsDesktop::passthrough = Window::Passthrough::Off;
-std::vector<math::Polygon::Outline> WindowsDesktop::regions;
+std::vector<math::Polygon::Outline>& WindowsDesktop::regions = *new std::vector<math::Polygon::Outline>();
 math::Vec2 WindowsDesktop::pointer{};
 bool WindowsDesktop::pointerInside = false;
 bool WindowsDesktop::clickThrough = false;

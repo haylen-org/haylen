@@ -99,10 +99,15 @@ class SokolRuntime final {
         std::vector<std::string> nativeFolders;
     };
 
-    static std::unique_ptr<SokolRuntime> current;
-    static std::mutex postedMutex;
-    static std::vector<Event> posted;
+    // What outlives every runtime of the process: the runtime that plays, which the frame thread creates when sokol_app asks for the app and destroys in the cleanup of sokol_app, and the events other threads queue for it. It is never destroyed, because an exit() on another thread, such as the one the iOS simulator calls on a background queue when its render server dies, runs the destructors of static objects while the frame thread still plays the app.
+    struct Process {
+        std::unique_ptr<SokolRuntime> current;
+        std::mutex postedMutex;
+        std::vector<Event> posted;
+    };
 
+    [[nodiscard]] static Process& getProcess() noexcept;
+    [[nodiscard]] static SokolRuntime& getCurrent() noexcept;
     [[nodiscard]] static LaunchOptions parseLaunchOptions(int argc, char* argv[]);
     [[nodiscard]] static App load(const std::function<std::shared_ptr<io::Package>()>& open, bool hotReload);
     [[nodiscard]] static std::vector<Event> takePostedEvents();

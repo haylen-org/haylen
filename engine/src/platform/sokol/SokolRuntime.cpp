@@ -30,10 +30,6 @@
 
 namespace haylen::platform {
 
-std::unique_ptr<SokolRuntime> SokolRuntime::current;
-std::mutex SokolRuntime::postedMutex;
-std::vector<Event> SokolRuntime::posted;
-
 #if defined(__APPLE__)
 int SokolRuntime::run(int argc, char* argv[]) {
     const sapp_desc desc = describe(argc, argv);
@@ -44,8 +40,9 @@ int SokolRuntime::run(int argc, char* argv[]) {
 
 sapp_desc SokolRuntime::describe(int argc, char* argv[]) {
     Services::initialize();
-    current = std::make_unique<SokolRuntime>();
-    SokolRuntime& runtime = *current;
+    Process& process = getProcess();
+    process.current = std::make_unique<SokolRuntime>();
+    SokolRuntime& runtime = *process.current;
     const LaunchOptions options = parseLaunchOptions(argc, argv);
     runtime.development = options.development;
     for (const std::string& folder : options.nativeFolders) {
@@ -77,6 +74,11 @@ sapp_desc SokolRuntime::describe(int argc, char* argv[]) {
     desc.clipboard_size = 64 * 1024;
     desc.logger.func = slog_func;
     runtime.describeDesktop(desc, config.window);
+#if defined(SOKOL_GLES3)
+    // The shaders of the engine are GLSL ES 3.00, so OpenGL ES 3.0 is enough, while sokol_app asks Android for 3.1, which emulators and some devices lack.
+    desc.gl.major_version = 3;
+    desc.gl.minor_version = 0;
+#endif
 #if defined(__EMSCRIPTEN__)
     runtime.canvas = WebPage::getCanvasSelector();
     desc.html5.canvas_selector = runtime.canvas.c_str();
@@ -114,19 +116,20 @@ void SokolRuntime::restart(std::shared_ptr<io::Package> source) {
 }
 
 void SokolRuntime::restart(const std::function<std::shared_ptr<io::Package>()>& open) {
-    current->replace(load(open, current->development));
+    SokolRuntime& runtime = getCurrent();
+    runtime.replace(load(open, runtime.development));
 }
 
 void SokolRuntime::restart() {
-    restart(current->package);
+    restart(getCurrent().package);
 }
 
 void SokolRuntime::stop() {
-    current->replace({.package = std::make_shared<io::MemoryPackage>("stopped"), .config = {}, .application = std::make_unique<StoppedApplication>(), .playing = false});
+    getCurrent().replace({.package = std::make_shared<io::MemoryPackage>("stopped"), .config = {}, .application = std::make_unique<StoppedApplication>(), .playing = false});
 }
 
 void SokolRuntime::setPaused(bool value) {
-    SokolRuntime& runtime = *current;
+    SokolRuntime& runtime = getCurrent();
     if (runtime.engine == nullptr || runtime.paused == value) {
         return;
     }
@@ -135,26 +138,37 @@ void SokolRuntime::setPaused(bool value) {
 }
 
 bool SokolRuntime::isPaused() noexcept {
-    return current->paused;
+    return getCurrent().paused;
 }
 
 bool SokolRuntime::reloadAsset(std::string_view path) {
-    const SokolRuntime& runtime = *current;
+    const SokolRuntime& runtime = getCurrent();
     return runtime.engine != nullptr && runtime.engine->getAssets().reload(path) > 0;
 }
 
 void SokolRuntime::handleEvent(const Event& event) {
-    current->deliver(event);
+    getCurrent().deliver(event);
 }
 
 void SokolRuntime::postEvent(Event event) {
-    const std::scoped_lock lock(postedMutex);
-    posted.push_back(std::move(event));
+    Process& process = getProcess();
+    const std::scoped_lock lock(process.postedMutex);
+    process.posted.push_back(std::move(event));
 }
 
 std::vector<Event> SokolRuntime::takePostedEvents() {
-    const std::scoped_lock lock(postedMutex);
-    return std::exchange(posted, {});
+    Process& process = getProcess();
+    const std::scoped_lock lock(process.postedMutex);
+    return std::exchange(process.posted, {});
+}
+
+SokolRuntime::Process& SokolRuntime::getProcess() noexcept {
+    static Process& process = *new Process();
+    return process;
+}
+
+SokolRuntime& SokolRuntime::getCurrent() noexcept {
+    return *getProcess().current;
 }
 
 // Options other than --dev and --native come from the system, such as the ones Xcode passes to the macOS apps it launches, and are left to it.
@@ -230,7 +244,8 @@ void SokolRuntime::onFrame(void* data) {
 }
 
 bool SokolRuntime::isBackCaptured() {
-    return current && current->engine != nullptr && current->engine->isBackCaptured();
+    const std::unique_ptr<SokolRuntime>& current = getProcess().current;
+    return current != nullptr && current->engine != nullptr && current->engine->isBackCaptured();
 }
 
 void SokolRuntime::onEvent(const sapp_event* source, void* data) {
@@ -271,7 +286,7 @@ void SokolRuntime::reportBackCapture() {
 
 void SokolRuntime::onCleanup(void* data) {
     static_cast<SokolRuntime*>(data)->close();
-    current.reset();
+    getProcess().current.reset();
     Services::shutdown();
 }
 

@@ -36,7 +36,7 @@ class LinuxDesktop final {
     static int randrEvents;
     static WindowStyle style;
     static Window::Passthrough passthrough;
-    static std::vector<math::Polygon::Outline> regions;
+    static std::vector<math::Polygon::Outline>& regions;
     static bool dragging;
 
     [[nodiscard]] static _XDisplay* getDisplay();

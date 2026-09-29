@@ -18,6 +18,16 @@ android {
         manifestPlaceholders["haylenAppName"] = haylen("name")
         manifestPlaceholders["haylenScreenOrientation"] = haylen("orientation")
         manifestPlaceholders["haylenApplication"] = "android.app.Application"
+        manifestPlaceholders["haylenLibrary"] = haylen("library")
+    }
+
+    // A C++ app brings the engine in its own library, so the Lua player of the haylen library stays out of its APK.
+    if (haylen("library") != "haylen") {
+        packaging {
+            jniLibs {
+                excludes += "lib/*/libhaylen.so"
+            }
+        }
     }
 
     buildTypes {

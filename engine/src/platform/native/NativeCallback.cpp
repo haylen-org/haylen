@@ -13,8 +13,8 @@
 
 namespace haylen::platform {
 
-std::mutex NativeCallback::retainedMutex;
-std::unordered_map<const NativeCallback*, std::shared_ptr<NativeCallback>> NativeCallback::retained;
+std::mutex& NativeCallback::retainedMutex = *new std::mutex();
+std::unordered_map<const NativeCallback*, std::shared_ptr<NativeCallback>>& NativeCallback::retained = *new std::unordered_map<const NativeCallback*, std::shared_ptr<NativeCallback>>();
 
 #if defined(__EMSCRIPTEN__)
 struct NativeCallback::Closure {};

@@ -34,7 +34,7 @@ std::unique_ptr<WebSocketTransport> WebSocketTransport::open(const std::string& 
 }
 
 std::map<int, WebSocketTransport::Sink>& BrowserWebSocket::getSinks() {
-    static std::map<int, Sink> registered;
+    static std::map<int, Sink>& registered = *new std::map<int, Sink>();
     return registered;
 }
 

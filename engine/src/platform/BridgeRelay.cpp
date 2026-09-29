@@ -4,7 +4,7 @@
 
 namespace haylen::platform {
 
-std::mutex BridgeRelay::mutex;
+std::mutex& BridgeRelay::mutex = *new std::mutex();
 Bridge* BridgeRelay::bridge = nullptr;
 
 void BridgeRelay::attach(Bridge& value) noexcept {

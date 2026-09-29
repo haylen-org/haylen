@@ -31,9 +31,9 @@ What each platform needs on top of that:
 
 ## Build trees
 
-Every platform and configuration gets its own tree at `build/<platform>-<config>`, with the configuration in lowercase, such as `build/macos-debug` or `build/web-webgl2-release`. Executables and apps land in `bin/<target>/` inside the tree. `python3 make.py clean` removes the whole `build/` folder but keeps `.tools/` and the dependency cache.
+Every platform and configuration gets its own tree at `build/<platform>-<config>`, with the configuration in lowercase, such as `build/macos-debug` or `build/web-webgl2-release`, and builds with sanitizers get trees of their own at `build/<platform>-<config>-<sanitizers>`, such as `build/macos-debug-thread`. Executables and apps land in `bin/<target>/` inside the tree. `python3 make.py clean` removes the whole `build/` folder but keeps `.tools/` and the dependency cache.
 
-`build` configures a tree when it has no CMake cache yet or when `--backend` or `--sanitize` differ from the options the tree was configured with. Run `clean` before switching the generator with `--xcode`, because CMake cannot change the generator of a tree. The prebuilt engine artifacts that apps use have trees of their own, described in the [distribution guide](distribution.md#engine-artifacts).
+`build` configures a tree when it has no CMake cache yet or when `--backend` differs from the backend the tree was configured with. Run `clean` before switching the generator with `--xcode`, because CMake cannot change the generator of a tree. The prebuilt engine artifacts that apps use have trees of their own, described in the [distribution guide](distribution.md#engine-artifacts).
 
 ## Commands
 
@@ -69,7 +69,7 @@ Every platform and configuration gets its own tree at `build/<platform>-<config>
 | `--config` | `Debug` | `Debug`, `Release` or `RelWithDebInfo`. |
 | `--backend` | the platform default | `METAL`, `D3D11`, `GLCORE`, `GLES3` or `WGPU`, passed as `HAYLEN_RENDER_BACKEND`. The web platforms always choose their own backend. |
 | `--xcode` | off | Use the Xcode generator on macOS. |
-| `--sanitize` | off | Build desktop targets with AddressSanitizer and UndefinedBehaviorSanitizer. MSVC builds ignore it. |
+| `--sanitizers` | none | `address` for AddressSanitizer and UndefinedBehaviorSanitizer or `thread` for ThreadSanitizer, in a tree of its own and passed as `HAYLEN_SANITIZERS`. MSVC builds ignore it. The [testing guide](testing.md#sanitizers) explains both. |
 | `--target` | everything | CMake target that `build` builds. |
 | `--jobs` | CPU count minus one | Parallel build and test jobs. |
 
@@ -110,7 +110,7 @@ Configures the tree when needed and runs `cmake --build`. Without `--target` it 
 
 ```sh
 python3 make.py test
-python3 make.py test --config Release --sanitize
+python3 make.py test --config Release --sanitizers address
 ```
 
 Builds `haylen_tests` for the host and runs it through `ctest` with `--output-on-failure` in parallel. See the [testing guide](testing.md).
@@ -121,7 +121,7 @@ Builds `haylen_tests` for the host and runs it through `ctest` with `--output-on
 python3 make.py coverage
 ```
 
-Configures `build/coverage` in Debug with `HAYLEN_ENABLE_COVERAGE=ON` and without samples and the player, builds and runs the tests, merges the profiles with `llvm-profdata`, prints the `llvm-cov report` table and writes an HTML report to `build/coverage/coverage/html/index.html`. The report leaves out dependencies, tests, generated files and the platform backends in `engine/src/platform/{apple,android,web,windows,linux,sokol}`, which need a real device. Coverage uses LLVM source-based coverage, so it needs Clang. On macOS the LLVM tools come from Xcode through `xcrun`, and elsewhere they must be on `PATH`. It accepts `--jobs` and `--sanitize`.
+Configures `build/coverage` in Debug with `HAYLEN_ENABLE_COVERAGE=ON` and without samples and the player, builds and runs the tests, merges the profiles with `llvm-profdata`, prints the `llvm-cov report` table and writes an HTML report to `build/coverage/coverage/html/index.html`. The report leaves out dependencies, tests, generated files and the platform backends in `engine/src/platform/{apple,android,web,windows,linux,sokol}`, which need a real device. Coverage uses LLVM source-based coverage, so it needs Clang. On macOS the LLVM tools come from Xcode through `xcrun`, and elsewhere they must be on `PATH`. It accepts `--jobs` and `--sanitizers`.
 
 ### format
 
@@ -141,7 +141,7 @@ python3 make.py bench --suite procedural
 python3 make.py bench --suite lua
 ```
 
-Builds `haylen-sprite-benchmark` in Release for the host and runs it on the local GPU. It accepts `--jobs`. The [rendering guide](rendering.md#sprite-benchmark) describes the phases and the recorded results. `--suite algorithms` builds and runs `haylen-algorithm-benchmark` instead, which times A*, weighted A*, jump point search, flow fields and hierarchical path finding on a 512 by 512 grid, navigation mesh builds and funnel paths, ORCA crowd steps on one thread and on the job system, AABB and k-d tree queries, and batches of physics ray casts on one thread and on the job system, and prints the average time of each. `--suite procedural` builds and runs `haylen-procedural-benchmark`, which times wave function collapse, Poisson disk sampling with a fixed and a varying distance, random scattering, marching squares, Delaunay triangulation of 100 thousand points and carving destructible terrain, and prints the average time of each. `--suite lua` builds `haylen-lua-benchmark` and runs the Lua bunnymark of `engine/bench/lua-benchmark` on the headless host, which prints how long Lua takes to update and draw 10 thousand, 100 thousand and a million sprites kept in tables, in a float buffer and in a sprite batch, as the [performance section of the Lua guide](lua.md#performance) explains.
+Builds `haylen-sprite-benchmark` in Release for the host and runs it on the local GPU. It accepts `--jobs`. The [rendering guide](rendering.md#sprite-benchmark) describes the phases and the recorded results. `--suite algorithms` builds and runs `haylen-algorithm-benchmark` instead, which times A*, weighted A*, jump point search, flow fields and hierarchical path finding on a 512 by 512 grid, navigation mesh builds and funnel paths, ORCA crowd steps on one thread, on the job system and on the job system while navmesh builds keep every worker busy, with the slowest of those steps, AABB and k-d tree queries, and batches of physics ray casts on one thread and on the job system, and prints the average time of each. `--suite procedural` builds and runs `haylen-procedural-benchmark`, which times wave function collapse, Poisson disk sampling with a fixed and a varying distance, random scattering, marching squares, Delaunay triangulation of 100 thousand points and carving destructible terrain, and prints the average time of each. `--suite lua` builds `haylen-lua-benchmark` and runs the Lua bunnymark of `engine/bench/lua-benchmark` on the headless host, which prints how long Lua takes to update and draw 10 thousand, 100 thousand and a million sprites kept in tables, in a float buffer and in a sprite batch, as the [performance section of the Lua guide](lua.md#performance) explains.
 
 ### sdk
 
@@ -188,7 +188,7 @@ python3 make.py clean
 | `HAYLEN_BUILD_SDK` | off | Merge the engine into the SDK that `cmake --install --component haylen_sdk` installs. |
 | `HAYLEN_BUILD_FRAMEWORK` | off | Apple only, with `HAYLEN_BUILD_SDK`: merge the SDK and the player into the `libhaylen.a` of one `Haylen.xcframework` slice, installed by the `haylen_framework` component. |
 | `HAYLEN_ENABLE_COVERAGE` | off | Instrument the engine and tests with LLVM coverage. Requires Clang. |
-| `HAYLEN_ENABLE_SANITIZERS` | off | AddressSanitizer and UndefinedBehaviorSanitizer on desktop builds that do not use MSVC. |
+| `HAYLEN_SANITIZERS` | `OFF` | Sanitizers of desktop builds that do not use MSVC: `OFF`, `ADDRESS` for AddressSanitizer and UndefinedBehaviorSanitizer on the engine targets, or `THREAD` for ThreadSanitizer on every C and C++ target of the build, dependencies included. |
 
 The workspace `CMakeLists.txt` at the repository root adds `engine/` and turns the player, the tests and the benchmark on. Shaders in `engine/shaders` are compiled by `sokol-shdc` at build time for GLSL 4.30, GLSL 3.00 ES, HLSL 5, Metal for macOS, iOS and the simulator and WGSL, and the runtime picks the variant of the active backend. The programs that draw into lit canvases compile a second time with `HAYLEN_LIT`, and every compile runs from `engine/shaders/include`, the shader library that app shaders include too.
 
@@ -200,7 +200,7 @@ Dependencies are declared with [CPM.cmake](https://github.com/cpm-cmake/CPM.cmak
 | --- | --- | --- |
 | nlohmann/json | 3.12.0 | Added first, so Varn reuses it. |
 | libuv | 1.53.0 | Added before Varn on every platform except the web, so Varn reuses this release. |
-| Varn | v0.0.1 | Lua runtime, event loop, worker pools and the `async`, `http`, `socket`, `json`, `fs`, `zip`, `crypto` and other modules. `VARN_TARGET` is `cli` on desktop and Apple platforms, `android` on Android and `wasm` on the web, and iOS and tvOS use its Apple HTTP client driver. zlib, libzip, Poco, OpenSSL and Lua come in through Varn. |
+| Varn | v0.0.1 | Lua runtime, event loop, worker pools and the `async`, `http`, `socket`, `json`, `fs`, `zip`, `crypto` and other modules. `VARN_TARGET` is `cli` on desktop and Apple platforms, `android` on Android and `wasm` on the web, and iOS and tvOS use its Apple HTTP client driver. zlib, libzip, Poco, OpenSSL and Lua come in through Varn. Varn builds OpenSSL with its own `make` as one step of the build, which the engine keeps to a single job with `OPENSSL_ENABLE_PARALLEL` off, so a build never runs more jobs than it was given. |
 | Sokol | commit `2e75443` | Headers only. The runtime compiles the implementation for the chosen backend. |
 | stb | commit `2c980bb` | Headers only. |
 | msdfgen | v1.13 | Only its core, which builds the distance fields of font glyphs from their whole outlines. |
@@ -261,7 +261,7 @@ How each platform carries the package, and where the runtime opens it:
 | Windows, Linux | The `SYNC_PACKAGE-<target>` target creates `bin/<target>/app` after every build and links its `app.json`, `source` and `content` to the package folder, with directory junctions and a hard link on Windows and symbolic links elsewhere. Edited files show up without a rebuild. | `app/` next to the executable, or `app.zip` next to it. |
 | macOS, iOS, tvOS | `app.json` and every file under `source/` and `content/` become bundle resources under `Resources/app/<subfolder>` through `MACOSX_PACKAGE_LOCATION`, except `.DS_Store`. The file list is globbed with `CONFIGURE_DEPENDS`, so new files are picked up by the next build. The app enters the runtime through `engine/src/platform/apple/AppleMain.cpp`, which calls `haylen_main`. | `Resources/app` of the bundle, or `Resources/app.zip`. |
 | Web | `--preload-file` options pack `app.json`, `source/` and `content/` into `<target>.data` under `/app`. | `/app` in the virtual file system, unless the page hands over another package. |
-| Android | `haylen_add_app` builds the shared library of the app. Packaging it into an APK is left to the Gradle project of the app, which loads it with `HaylenActivity` and puts the package under `assets/app` with `haylen-package-index.json`, like the [Android template](distribution.md#android) does for the player. | The `app/` folder of the APK assets. |
+| Android | `haylen_add_app` builds the shared library `bin/<target>/lib<target>.so` and writes the absolute path of the package folder to `bin/<target>/package.txt`. The Gradle project of the app packages both: `make.py run-cpp --platform android` assembles it from the [Android template](distribution.md#android), with the library in `jniLibs`, `HaylenActivity` loading it and the package under `assets/app` with `haylen-package-index.json`. | The `app/` folder of the APK assets. |
 
 Every runtime app, not only the player, runs the package named by the first command-line argument that is not an option instead of the bundled one, and `--dev` turns on the development mode described in the next section.
 
@@ -280,14 +280,15 @@ build/macos-debug/bin/haylen/haylen tiny-island.zip
 
 ## Web builds
 
-Web builds are single-threaded like Varn, so they need no `SharedArrayBuffer` and no COOP or COEP headers, although `make.py serve` sends them so pages that use threads work too. Pages must be served over HTTP, which `make.py serve`, `make.py run --platform web` and `make.py run-cpp --platform web` do on `127.0.0.1`. The link options come from `haylen_link_runtime_platform`: memory growth, a 1 MB stack, IDBFS for user data, exception support because Varn compiles Lua as C++, the `emdawnwebgpu` port for WebGPU, and WebGL 2 only for the `web-webgl2` platform.
+Web builds are single-threaded like Varn, so they need no `SharedArrayBuffer` and no COOP or COEP headers, although `make.py serve` sends them so pages that use threads work too. Audio reaches the browser through an `AudioWorkletNode` that the page feeds over its message port, as the [audio guide](audio.md#sessions-and-interruptions) describes. Pages must be served over https or from localhost, where browsers offer `AudioWorklet`, which `make.py serve`, `make.py run --platform web` and `make.py run-cpp --platform web` do on `127.0.0.1`. The link options come from `haylen_link_runtime_platform`: memory growth, a 1 MB stack, IDBFS for user data, exception support because Varn compiles Lua as C++, the `emdawnwebgpu` port for WebGPU, and WebGL 2 only for the `web-webgl2` platform.
 
-A single web target produces `<target>.html`, `<target>.js`, `<target>.wasm` and, for apps, `<target>.data` in `bin/<target>/`. A post-build step of `haylen_setup_web_page` also copies the target's shell, the `WEB_SHELL` of `haylen_add_app` or `engine/platform/web/shell.html` by default, next to them as `<target>.shell.html`. The prebuilt player of `make.py engine --platform web` is the `haylen` target of the `web` and `web-webgl2` trees, whose page is the [web template](distribution.md#web-loader). `make.py run-cpp --platform web` builds a C++ app target for both backends and writes this layout:
+A single web target produces `<target>.html`, `<target>.js`, `<target>.wasm` and, for apps, `<target>.data` in `bin/<target>/`. A post-build step of `haylen_setup_web_page` also copies the target's shell, the `WEB_SHELL` of `haylen_add_app` or `engine/platform/web/shell.html` by default, next to them as `<target>.shell.html`, together with `haylen-logo.svg`, the engine logo that the default shell shows as the icon of the page, and `haylen-audio-worklet.js`, the AudioWorklet processor of the audio output, which the runtime loads from the folder of its script through `locateFile`. The prebuilt player of `make.py engine --platform web` is the `haylen` target of the `web` and `web-webgl2` trees, whose page is the [web template](distribution.md#web-loader). `make.py run-cpp --platform web` builds a C++ app target for both backends and writes this layout:
 
 ```text
-build/cpp/embedding/web/
+build/cpp/embedding-<hash>/web/
   index.html              The target's shell, with engine/platform/web/backend-picker.html in place of {{{ SCRIPT }}}.
-  webgpu/                 embedding.js, embedding.wasm and embedding.data built for WebGPU.
+  haylen-logo.svg         The icon of the default shell.
+  webgpu/                 embedding.js, embedding.wasm and embedding.data built for WebGPU, next to haylen-audio-worklet.js.
   webgl2/                 The same files built for WebGL2.
 ```
 
@@ -333,7 +334,7 @@ The runtime reports back through callbacks the page assigns to `Module.haylen`:
 | `onError(error)` | `{message, file, line, traceback, frames}` of the error that stopped the app, with an empty `file` when no script position is known. `traceback` is the stack as text, one frame per line, and `frames` lists the same frames as `{source, line, function, kind}` objects, innermost first, with the kind `lua`, `c` or `main`. |
 | `onStarted(app)` | `{name, identifier, version}` from `app.json`. |
 | `onStopped()` | The app ended. |
-| `onStats(stats)` | About once per second: `fps`, `frameMilliseconds`, `averageMilliseconds`, `drawCalls`, `sprites`, `vertices`, `textureSwitches`, `uploadedBytes`, `assets`, `voices` and `scopes`, a list of `{name, milliseconds, calls, depth}` profiler scopes. |
+| `onStats(stats)` | About once per second: `fps`, `frameMilliseconds`, `averageMilliseconds`, `drawCalls`, `sprites`, `vertices`, `textureSwitches`, `uploadedBytes`, `assets`, `voices`, `scopes`, a list of `{name, milliseconds, calls, depth}` profiler scopes, and `audio`, the output of the app as `{state, sampleRate, bufferedMilliseconds, blocks, underruns}` or `null` while it has none. `state` is the state of its `AudioContext`, `bufferedMilliseconds` the mixed audio waiting ahead of the output, `blocks` the blocks mixed so far and `underruns` the render quanta the processor played without samples. |
 
 Callbacks run in a microtask right after the frame that raised them, so they may call back into the runtime, even to restart the app.
 

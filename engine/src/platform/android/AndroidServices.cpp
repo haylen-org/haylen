@@ -88,7 +88,7 @@ void Services::lockOrientation(Orientation value) {
 }
 
 TextInput& Services::getTextInput() {
-    static AndroidTextInput input;
+    static AndroidTextInput& input = *new AndroidTextInput();
     return input;
 }
 

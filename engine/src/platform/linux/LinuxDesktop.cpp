@@ -28,7 +28,7 @@ unsigned long LinuxDesktop::workAreaAtom = 0;
 int LinuxDesktop::randrEvents = 0;
 WindowStyle LinuxDesktop::style{};
 Window::Passthrough LinuxDesktop::passthrough = Window::Passthrough::Off;
-std::vector<math::Polygon::Outline> LinuxDesktop::regions;
+std::vector<math::Polygon::Outline>& LinuxDesktop::regions = *new std::vector<math::Polygon::Outline>();
 bool LinuxDesktop::dragging = false;
 
 Display* LinuxDesktop::getDisplay() {

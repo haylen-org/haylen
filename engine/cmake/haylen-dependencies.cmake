@@ -18,11 +18,11 @@ if(NOT HAYLEN_PLATFORM STREQUAL "web")
     OPTIONS "LIBUV_BUILD_TESTS OFF" "LIBUV_BUILD_BENCH OFF" "LIBUV_BUILD_SHARED OFF"
     SYSTEM YES
   )
-  # The tvOS branch of uv_spawn in libuv 1.53.0 still calls QUEUE_INIT, which libuv renamed to uv__queue_init everywhere else.
+  # The tvOS branch of uv_spawn calls a QUEUE_INIT macro that libuv does not define, and uv__queue_init is the function it means.
   if(HAYLEN_PLATFORM STREQUAL "tvos")
     target_compile_options(uv_a PRIVATE "-DQUEUE_INIT(queue)=uv__queue_init(queue)")
   endif()
-  # libuv 1.53.0 compiles its posix_spawn path on every Unix, while Android declares posix_spawn only from API 28 on. libuv never takes that path on Android and forks instead, so weak references let it build for older releases.
+  # libuv compiles its posix_spawn path on every Unix, while Android declares posix_spawn only from API 28 on. libuv never takes that path on Android and forks instead, so weak references let it build for older releases.
   if(ANDROID)
     target_compile_definitions(uv_a PRIVATE __ANDROID_UNAVAILABLE_SYMBOLS_ARE_WEAK__)
   endif()
@@ -37,7 +37,8 @@ else()
 endif()
 
 # Varn picks the HTTP driver of a mobile target only once its own cache holds the target, which is not the case on the first configure, so the driver is named here.
-set(HAYLEN_VARN_OPTIONS "VARN_TARGET ${HAYLEN_VARN_TARGET}" "VARN_BUILD_TESTS OFF")
+# The OpenSSL build that Varn adds runs make as one step of the build, with a job per processor unless parallel builds are off, so it takes one job and the build keeps to its job limit.
+set(HAYLEN_VARN_OPTIONS "VARN_TARGET ${HAYLEN_VARN_TARGET}" "VARN_BUILD_TESTS OFF" "OPENSSL_ENABLE_PARALLEL OFF")
 if(HAYLEN_PLATFORM STREQUAL "ios" OR HAYLEN_PLATFORM STREQUAL "tvos")
   list(APPEND HAYLEN_VARN_OPTIONS "VARN_HTTP_CLIENT_DRIVER APPLE")
 elseif(HAYLEN_PLATFORM STREQUAL "android")
@@ -49,6 +50,9 @@ if(HAYLEN_CATALYST)
   set(ENV{CFLAGS} "-O3 --target=${CMAKE_C_COMPILER_TARGET} ${CMAKE_C_FLAGS}")
 endif()
 
+# The zlib of Varn defines HAVE_UNISTD_H for every target that links it, libzip among them, whenever the platform has unistd.h. libzip checks for the header under the same name and would define the macro again in its config.h with another value, so it takes the definition of zlib and leaves the macro out of its config.h.
+set(HAVE_UNISTD_H OFF)
+
 CPMAddPackage(
   NAME varn
   URL "https://github.com/varn-org/varn/archive/refs/tags/v0.0.1.tar.gz"
@@ -58,10 +62,19 @@ CPMAddPackage(
   SYSTEM YES
 )
 
+unset(HAVE_UNISTD_H)
+
 # Varn configures Lua for macOS when a Mac Catalyst build names Darwin as its system, while Mac Catalyst has no system function, like iOS.
 if(HAYLEN_CATALYST)
   unset(ENV{CFLAGS})
   target_compile_definitions(varn_vendor_lua PRIVATE LUA_USE_IOS)
+endif()
+
+# Varn compiles the debug source of libffi only in Debug builds, which the Xcode generator cannot express, so Xcode projects compile it in every configuration.
+if(CMAKE_GENERATOR STREQUAL "Xcode" AND TARGET varn_vendor_libffi)
+  get_target_property(libffi_sources varn_vendor_libffi SOURCES)
+  list(TRANSFORM libffi_sources REPLACE "^\\$<\\$<CONFIG:Debug>:(.+)>$" "\\1")
+  set_property(TARGET varn_vendor_libffi PROPERTY SOURCES ${libffi_sources})
 endif()
 
 # sokol_app sizes the iOS framebuffer by the screen, which crops apps whose window is smaller than the screen, on Mac Catalyst and in iPad windows, so the first patch sizes it by the view of the app.
@@ -243,6 +256,9 @@ elseif(APPLE)
     set_source_files_properties("${CMAKE_CURRENT_LIST_DIR}/../src/audio/MiniaudioImpl.c" PROPERTIES LANGUAGE OBJC)
     target_link_libraries(haylen_miniaudio PUBLIC "-framework AVFoundation")
   endif()
+elseif(HAYLEN_PLATFORM STREQUAL "web")
+  # Browsers play through the AudioWorklet output of the engine, src/platform/web/BrowserAudioOutput, so miniaudio keeps only its custom backend there.
+  target_compile_definitions(haylen_miniaudio PUBLIC MA_ENABLE_ONLY_SPECIFIC_BACKENDS MA_ENABLE_CUSTOM)
 elseif(HAYLEN_PLATFORM STREQUAL "linux")
   target_link_libraries(haylen_miniaudio PUBLIC ${CMAKE_DL_LIBS} m pthread)
 endif()

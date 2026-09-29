@@ -6,9 +6,9 @@
 
 namespace haylen::platform {
 
-std::mutex AndroidGamepads::mutex;
+std::mutex& AndroidGamepads::mutex = *new std::mutex();
 std::array<std::int32_t, input::Input::kMaxGamepads> AndroidGamepads::devices{-1, -1, -1, -1};
-std::array<input::GamepadState, input::Input::kMaxGamepads> AndroidGamepads::gamepads{};
+std::array<input::GamepadState, input::Input::kMaxGamepads>& AndroidGamepads::gamepads = *new std::array<input::GamepadState, input::Input::kMaxGamepads>();
 
 bool AndroidGamepads::handleEvent(const void* source) {
     const auto* event = static_cast<const AInputEvent*>(source);

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <array>
 #include <chrono>
 #include <functional>
 #include <stdexcept>
@@ -10,6 +11,7 @@
 
 #include "haylen/platform/Bridge.hpp"
 #include "platform/BridgeRelay.hpp"
+#include "platform/GamepadSlots.hpp"
 #include "platform/KeyboardTranslator.hpp"
 #include "platform/desktop/DesktopMethods.hpp"
 #include "platform/sokol/MemoryWarning.hpp"
@@ -186,6 +188,36 @@ TEST(MemoryWarningTest, HandsEachWarningOverOnce) {
     MemoryWarning::raise();
     EXPECT_TRUE(MemoryWarning::take());
     EXPECT_FALSE(MemoryWarning::take());
+}
+
+TEST(GamepadSlotsTest, KeepsEveryControllerInItsSlotWhileItStaysConnected) {
+    std::array<int, 6> pads{};
+    const auto pad = [&pads](std::size_t index) -> const void* { return &pads[index]; };
+    GamepadSlots slots;
+
+    slots.update(std::vector{pad(0), pad(1), pad(2)});
+    EXPECT_EQ(slots.getController(0), pad(0));
+    EXPECT_EQ(slots.getController(1), pad(1));
+    EXPECT_EQ(slots.getController(2), pad(2));
+
+    // The first controller leaves, and the platform lists the others in a new order.
+    slots.update(std::vector{pad(2), pad(1)});
+    EXPECT_EQ(slots.getController(0), nullptr);
+    EXPECT_EQ(slots.getController(1), pad(1));
+    EXPECT_EQ(slots.getController(2), pad(2));
+
+    // New controllers fill the free slots, and the one beyond the last slot waits for a slot to free up.
+    slots.update(std::vector{pad(1), pad(3), pad(2), pad(4), pad(5)});
+    EXPECT_EQ(slots.getController(0), pad(3));
+    EXPECT_EQ(slots.getController(3), pad(4));
+    slots.update(std::vector{pad(3), pad(2), pad(4), pad(5)});
+    EXPECT_EQ(slots.getController(1), pad(5));
+    EXPECT_EQ(slots.getController(input::Input::kMaxGamepads), nullptr);
+
+    slots.update({});
+    for (std::size_t slot = 0; slot < input::Input::kMaxGamepads; ++slot) {
+        EXPECT_EQ(slots.getController(slot), nullptr);
+    }
 }
 
 TEST(DesktopMethodsTest, AnswersTheBuiltInMethods) {

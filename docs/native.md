@@ -168,7 +168,7 @@ make.py places each library where the app loads it:
 | Android | `app/src/main/jniLibs/<abi>/` of the Gradle project for arm64-v8a, armeabi-v7a and x86_64, the ABIs of the engine. The linker of Android finds them by name. An AAR dependency in `app/app.gradle` works too, and so does a `jniLibs` folder in the platform overrides of the app. |
 | Windows | Next to the executable. |
 | Linux | `lib/` next to the executable, whose `RUNPATH` of `$ORIGIN:$ORIGIN/lib` lets the libraries find each other. |
-| Desktop player | `build/apps/<app>/native/development/`, which `make.py run` passes to the player with `--native`. |
+| Desktop player | `build/apps/<app>-<hash>/native/development/`, in the build folder of the app, which `make.py run` passes to the player with `--native`. |
 
 `App.xcodeproj` stays the same for every app: make.py writes the libraries into `native/<target>-<platform>/` of the assembled project, the file lists that the embed phase reads into `native/<target>-<platform>.xcfilelist`, and the link settings into `App.xcconfig`. The embed phase runs without the script sandbox of Xcode, because the sandbox would need every file of a bundle and the temporary files of `codesign` listed one by one. Files that the app keeps in `platform/<platform>/` for Windows and Linux land next to the executable too.
 
@@ -178,7 +178,7 @@ An iOS app may link a library statically instead of embedding a framework, which
 
 ### Development
 
-`python3 make.py run <app>` builds or copies the libraries of this desktop into `build/apps/<app>/native/development/` and starts the player with `--native` and that folder, which `native.load` searches first. The player takes `--native <folder>` more than once, so a player started by hand finds libraries anywhere.
+`python3 make.py run <app>` builds or copies the libraries of this desktop into `build/apps/<app>-<hash>/native/development/`, in the [build folder of the app](distribution.md#assembling-an-app), and starts the player with `--native` and that folder, which `native.load` searches first. The player takes `--native <folder>` more than once, so a player started by hand finds libraries anywhere.
 
 ## C++ plugins
 
