@@ -1,0 +1,17 @@
+{
+    "texture": "../images/soft.png",
+    "rate": 160,
+    "prewarm": 2,
+    "lifetime": [1.4, 1.8],
+    "speed": [520, 620],
+    "direction": -1.5708,
+    "spread": 0.25,
+    "gravity": [0, 700],
+    "startSize": [16, 22],
+    "endSize": [8, 12],
+    "colors": ["#FFC0E8FF", "#C060A0FF", "#004080FF"],
+    "shape": "rectangle",
+    "shapeSize": [16, 2],
+    "maxParticles": 512,
+    "layer": 2
+}

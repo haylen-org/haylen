@@ -1,0 +1,22 @@
+{
+    "texture": "../images/spark.png",
+    "rate": 0,
+    "bursts": [{"time": 0, "count": 48}, {"time": 0.6, "count": 24}],
+    "duration": 1.2,
+    "loop": true,
+    "maxParticles": 128,
+    "lifetime": [0.4, 0.8],
+    "speed": [160, 320],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "gravity": [0, 500],
+    "damping": 0.5,
+    "startSize": [6, 10],
+    "endSize": 0,
+    "spin": [-4, 4],
+    "colors": ["#FFFFF0A0", "#FFFF8020", "#00FF2000"],
+    "shape": "circle",
+    "shapeSize": [6, 0],
+    "blend": "additive",
+    "layer": 3
+}

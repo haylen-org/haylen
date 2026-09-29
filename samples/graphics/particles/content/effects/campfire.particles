@@ -1,0 +1,17 @@
+{
+    "texture": "../images/soft.png",
+    "rate": 80,
+    "lifetime": [0.5, 0.9],
+    "speed": [90, 160],
+    "direction": -1.5708,
+    "spread": 0.35,
+    "gravity": [0, -120],
+    "startSize": [60, 90],
+    "endSize": [10, 20],
+    "colors": ["#FFFFF0B0", "#FFFFA030", "#C0FF4010", "#00801000"],
+    "shape": "circle",
+    "shapeSize": [22, 0],
+    "blend": "additive",
+    "maxParticles": 256,
+    "layer": 2
+}

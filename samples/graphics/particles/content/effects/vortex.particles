@@ -1,0 +1,19 @@
+{
+    "texture": "../images/star.png",
+    "rate": 60,
+    "lifetime": [1.4, 1.8],
+    "speed": [0, 10],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "radialAcceleration": -120,
+    "tangentialAcceleration": 260,
+    "startSize": [26, 34],
+    "endSize": 6,
+    "spin": [-3, 3],
+    "colors": ["#00FFFFFF", "#FFA0E0FF", "#FF8060FF", "#004020C0"],
+    "shape": "ring",
+    "shapeSize": [180, 0],
+    "blend": "additive",
+    "maxParticles": 256,
+    "layer": 2
+}

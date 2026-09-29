@@ -1,0 +1,19 @@
+{
+    "texture": "../images/snowflake.png",
+    "rate": 40,
+    "prewarm": 8,
+    "lifetime": [8, 9],
+    "speed": [60, 100],
+    "direction": 1.5708,
+    "spread": 0.4,
+    "gravity": [20, 4],
+    "tangentialAcceleration": [-6, 6],
+    "startSize": [14, 24],
+    "endSize": [14, 24],
+    "spin": [-2, 2],
+    "colors": ["#E0F0FFFF"],
+    "shape": "rectangle",
+    "shapeSize": [700, 10],
+    "maxParticles": 512,
+    "layer": 2
+}
