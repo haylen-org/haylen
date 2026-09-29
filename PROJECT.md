@@ -915,7 +915,7 @@ Esta seção cobre os itens 51 a 82 da seção 2.1. As decisões vieram da pesqu
 - [x] `Engine::setPaused`, `isPaused` e o sinal `pausedChanged`, com `haylen.setPaused`, `haylen.paused`, os eventos `paused` e `unpaused` e os ganchos de cena `paused` e `unpaused`.
 - [x] Modos de processamento (`inherit`, `pausable`, `whenPaused`, `always` e `disabled`) para cenas, autoloads, timers, tweens, sons e barramentos de áudio (efeitos e ambiente param, música e UI continuam, configurável), com motivos de pausa separados por voz.
 - [x] Timers e tweens com escolha entre tempo com escala e sem escala.
-- [~] O Tiny Island passa a usar a pausa da engine, com a cena de pausa em `whenPaused` (feito). Falta abrir o menu de pausa quando o app vai para o segundo plano ou perde o foco, para a partida continuar pausada na volta (o congelamento da engine só para o tempo enquanto o app está fora).
+- [x] O Tiny Island passa a usar a pausa da engine, com a cena de pausa em `whenPaused` (feito). Falta abrir o menu de pausa quando o app vai para o segundo plano ou perde o foco, para a partida continuar pausada na volta (o congelamento da engine só para o tempo enquanto o app está fora). Feito: o menu de pausa abre em `app_background` e em `app_inactive` com `pauseOnFocusLoss`.
 
 #### F. Entrada de texto e rich text
 
@@ -1025,12 +1025,12 @@ Todo sample Lua tem um menu simples para escolher o teste, cada teste é uma cen
 - [ ] Testes GoogleTest e Lua de cada recurso novo, com cobertura da engine perto de 100%.
 - [ ] Páginas `docs/lua-api/` e guias atualizados, incluindo um guia de distribuição (templates, artefatos e comandos) e um de ciclo de vida.
 - [ ] Revisão final de bugs, código morto, race conditions e riscos de crash.
-- [ ] Uma tecla ainda segurada quando uma troca de cena termina conta como uma pressão nova (durante a troca o input fica bloqueado e o mapa de ações vê a tecla solta): um toque normal em Escape ou Start abre e fecha o menu de pausa do Tiny Island. Uma tecla que já estava segurada antes do desbloqueio só pode disparar de novo depois de ser solta. Repro no scratchpad `sr/repro-held`.
-- [ ] O exemplo de `docs/input.md` ainda usa uma ação `back`, que os samples trocaram pelo `onCancel` do documento.
-- [ ] Os testes da engine (`engine/tests/text/ShapingTests.cpp`) leem fontes de `samples/graphics/fonts`, o que quebra a regra de a engine nunca depender dos samples: mover as fontes de teste (subconjuntos pequenos, com as licenças) para os dados de teste da engine.
+- [x] Uma tecla ainda segurada quando uma troca de cena termina conta como uma pressão nova (durante a troca o input fica bloqueado e o mapa de ações vê a tecla solta): um toque normal em Escape ou Start abre e fecha o menu de pausa do Tiny Island. Uma tecla que já estava segurada antes do desbloqueio só pode disparar de novo depois de ser solta. Repro no scratchpad `sr/repro-held`. Feito no `ActionMap`: uma ligação segurada quando o input volta só dispara de novo depois de solta.
+- [x] O exemplo de `docs/input.md` ainda usa uma ação `back`, que os samples trocaram pelo `onCancel` do documento. Feito.
+- [x] Os testes da engine (`engine/tests/text/ShapingTests.cpp`) leem fontes de `samples/graphics/fonts`, o que quebra a regra de a engine nunca depender dos samples: mover as fontes de teste (subconjuntos pequenos, com as licenças) para os dados de teste da engine. Feito: subconjuntos em `engine/tests/data/fonts` com as licenças OFL.
 - [x] Conferir o tamanho do texto desenhado com `graphics2d.drawText` e rich text nos samples e no Tiny Island depois da troca para o tamanho pelo em (fontes mais altas que o em ficaram até 1,3 vez maiores). Feito na revisão dos 25 samples, que passam nos harnesses headless e Metal.
-- [ ] Android: ao fechar o app, o sokol chama `exit(0)` quando a activity é destruída e o processo aborta com "pthread_mutex_lock called on a destroyed mutex" nas threads de UI do Android, deixando um relatório de crash a cada saída. O app precisa sair sem crash.
-- [ ] `make.py engine --platform android --jobs 6` não limita o build nativo: sobe três ninja sem limite (cerca de 51 compiladores ao mesmo tempo). O `--jobs` precisa valer para cada ABI, e as ABIs devem compilar uma de cada vez.
+- [x] Android: ao fechar o app, o sokol chama `exit(0)` quando a activity é destruída e o processo aborta com "pthread_mutex_lock called on a destroyed mutex" nas threads de UI do Android, deixando um relatório de crash a cada saída. O app precisa sair sem crash. Feito com o patch `sokol-android-quit.patch`, validado no emulador API 36 (Back na raiz, recentes, `am force-stop` e `haylen.quit()`).
+- [x] `make.py engine --platform android --jobs 6` não limita o build nativo: sobe três ninja sem limite (cerca de 51 compiladores ao mesmo tempo). O `--jobs` precisa valer para cada ABI, e as ABIs devem compilar uma de cada vez. Feito: o `make.py` compila o `libhaylen.so` uma ABI de cada vez com o `--jobs`, e o Gradle só empacota.
 - [x] Android 16 (predictive back): o Back sai do app de dentro de qualquer tela e ignora `window.setBackLeavesApp(false)`, porque a `HaylenActivity` não registra um `OnBackInvokedCallback` (ou o `OnBackPressedCallback` do AndroidX) para o alvo SDK 37. Feito: `android:enableOnBackInvokedCallback` no manifesto do AAR e o callback registrado só enquanto o app segura o Back, validado no emulador API 36.
 - [x] `audio.playMusic` não devolve um id de voz, então não dá para pausar só a música: dar um handle ou `pauseMusic` e `resumeMusic`. Feito: `playMusic` devolve a voz da música.
 - [x] Um `ui.scroll{grow = 1}` dentro de um painel fica da altura do conteúdo e empurra a página para fora da tela: um filho que cresce deve partir da altura que sobra no pai, e não da altura do conteúdo. Feito: filhos que crescem partem do zero e dividem o espaço que sobra.
@@ -1078,7 +1078,7 @@ Mapa de namespaces (um por contexto, igual ao nome da pasta, e com o sufixo `2d`
 
 - [x] A pilha vem estruturada do Lua (fonte, linha, função e tipo de cada nível), sem depender de texto com tabs, e sem os níveis internos da engine (o `xpcall` e o wrapper das tarefas assíncronas).
 - [x] A tela mostra o título, a mensagem com quebra de linha, o arquivo e a linha, um trecho do código-fonte com a linha do erro destacada e numerada, a pilha em colunas (local e função), o nome e a versão do app, a plataforma e a versão da engine.
-- [~] Rolagem quando o conteúdo passa da tela (roda do mouse, arrastar e setas), copiar o relatório completo (tecla C ou botão) e reiniciar o app (tecla R ou botão), com botões para toque.
+- [x] Rolagem quando o conteúdo passa da tela (roda do mouse, arrastar e setas), copiar o relatório completo (tecla C ou botão) e reiniciar o app (tecla R ou botão), com botões para toque. Conferido e testado, com o toque seguindo só o primeiro dedo.
 - [x] O mesmo relatório estruturado chega ao `onError` da página web (com o array `frames`) e ao log.
 
 #### R. Algoritmos de alto desempenho para jogos
