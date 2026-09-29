@@ -11,7 +11,7 @@ Um item só recebe `[x]` quando está implementado, coberto por testes (quando a
 ## 1. Objetivo
 
 - Uma engine 2D reutilizável em C++20 (Haylen), distribuída como biblioteca CMake, que sirva para qualquer jogo 2D.
-- Lua como linguagem principal dos jogos, via Varn, com toda a API também disponível em C++ (modelo Godot com GDScript e C++).
+- Lua como linguagem principal dos jogos, via Varn, com toda a API também disponível em C++.
 - O runtime executa um pacote de jogo (pasta ou `.zip`) com `game.json`, `main.lua` e a pasta `assets/`.
 - Jogos demo em `samples/`, começando por Tiny Island com o pacote Tiny Swords, exercitando todos os recursos da engine.
 - Build para desktop (macOS, Windows, Linux), iOS, tvOS, Android e Web a partir de um único script `make.py`.
@@ -25,13 +25,13 @@ Cada ponto abaixo veio do pedido e precisa estar coberto por algum item da seç�
 1. Usar a última versão de todas as bibliotecas.
 2. CMake com CPM (última versão) para baixar dependências.
 3. `make.py` que gera e compila para todas as plataformas: desktop, iOS, tvOS, Android e Web.
-4. Assets colocados na pasta certa por plataforma exatamente como o template C++ do Axmol faz.
+4. Assets colocados na pasta certa por plataforma.
 5. Jogo usando o Tiny Swords (baixado do itch.io ou do zip local).
 6. Resolução 1920x1080 com a UI dentro da safe area.
 7. Tudo para 2D: textos, sprites, alta performance para milhões de sprites.
 8. Suporte a mouse, teclado, touch e joystick.
-9. Camada de física que abstrai o Box2D (última versão), como o Axmol faz.
-10. Comunicação com a plataforma via JSON, enviando e recebendo dados (login com Google, dados do device, executar funções e receber respostas por callback), como a Godot faz, incluindo a plataforma web.
+9. Camada de física que abstrai o Box2D (última versão).
+10. Comunicação com a plataforma via JSON, enviando e recebendo dados (login com Google, dados do device, executar funções e receber respostas por callback), incluindo a plataforma web.
 11. Código da engine separado do código do jogo.
 12. Sistema de partículas.
 13. GUI/UI, inclusive na web com suporte a input.
@@ -40,7 +40,7 @@ Cada ponto abaixo veio do pedido e precisa estar coberto por algum item da seç�
 16. Foco em organização, modularização e extensibilidade.
 17. Suporte a tudo o que existe para jogos 2D, inclusive todos os recursos do Tiled.
 18. Testes com cobertura de 100% ou o mais perto possível, principalmente da engine.
-19. Pesquisar como Godot e Axmol fazem e ter todos os recursos equivalentes.
+19. Pesquisar as melhores referências do mercado e ter todos os recursos equivalentes.
 20. Jogo: mapa feito no Tiled, menu com a logo sobre o chão com água em volta (uma grande ilha), árvores aparecendo aleatoriamente na fase.
 21. Jogo: cortar árvores para aumentar o fogo da fogueira. A fogueira diminui um pouco a cada dia.
 22. Jogo: inimigos só aparecem à noite. Luz, dia e noite implementados.
@@ -52,7 +52,7 @@ Cada ponto abaixo veio do pedido e precisa estar coberto por algum item da seç�
 28. Áudio no jogo: música de fundo, efeitos de ações e menu, com gerenciamento de música e efeitos.
 29. Sistema de preload com load e unload, onde o desenvolvedor escolhe o que carregar.
 30. GUI baseada em ImGui com a mesma lista de componentes do workpane-new, todos baseados em tema, com suporte a nine-patch e imagens.
-31. Tudo o que for de 2D fica na pasta `2d`, como o Axmol faz. Por enquanto o foco é só 2D, mas a organização já prevê o futuro.
+31. Tudo o que for de 2D fica na pasta `2d`. Por enquanto o foco é só 2D, mas a organização já prevê o futuro.
 32. Depois de tudo pronto, revisar bugs, código legado, código não utilizado, erros, race conditions e riscos de crash que realmente importam.
 33. Não parar até tudo estar desenvolvido, testado e documentado.
 34. Tudo exportado para Lua usando o Varn (github.com/varn-org/varn). Tudo o que for feito em C++ precisa ser exportado para o Varn e ficar acessível ao jogo. Isso é regra.
@@ -78,25 +78,25 @@ Cada ponto abaixo veio do pedido e precisa estar coberto por algum item da seç�
 Cada ponto abaixo veio do segundo pedido e precisa estar coberto por algum item da seção 14.
 
 51. Nada de regra ou mecânica de jogo dentro da engine. O que é do jogo fica no jogo. Revisar a engine e levar para o sample tudo o que for mecânica do Tiny Island (por exemplo um ciclo de dia e noite com fases e contagem de dias).
-52. Cenas com transições opcionais entre elas, como no Axmol: push, pop, replace e voltar até a raiz, com uma biblioteca completa de transições (fade, fade por cor, crossfade, slide, move in, push, zoom, flip, rotozoom, split, tiles, página, radial, wipe, íris, dissolve e pixelate) e transições próprias escritas em Lua ou C++. Usar transição é sempre opcional.
-53. Regras de ciclo de vida no mobile, como Axmol e Godot fazem: ao ir para o segundo plano e ao voltar, parar a renderização, pausar e retomar o áudio (incluindo interrupções do sistema como ligações, alarmes e Siri no iOS, foco de áudio no Android e desbloqueio e suspensão do AudioContext na web), salvar configurações, proteger relógios, timers e tweens contra saltos de tempo e avisar o app por eventos.
-54. Pausar a partida: pausa global, como o `SceneTree.paused` da Godot, com modos de processamento por cena, timer, tween, animação e áudio (pausável, sempre, só quando pausado), para o menu de pausa continuar funcionando enquanto o mundo fica parado.
-55. Entrada de texto e rich text funcionando em todas as plataformas. Entrada de texto com teclado virtual no mobile, IME, autocorreção, colar, seleção e cursor. Na web, do jeito da Godot, com um campo HTML escondido sincronizado com o campo do app, funcionando 100% em navegadores desktop e mobile. Rich text com marcação (negrito, itálico, cor, tamanho, fonte, contorno, sombra, sublinhado, riscado, imagens no meio do texto, links clicáveis, listas, alinhamento e efeitos animados), tanto no desenho 2D quanto como componente de UI.
+52. Cenas com transições opcionais entre elas: push, pop, replace e voltar até a raiz, com uma biblioteca completa de transições (fade, fade por cor, crossfade, slide, move in, push, zoom, flip, rotozoom, split, tiles, página, radial, wipe, íris, dissolve e pixelate) e transições próprias escritas em Lua ou C++. Usar transição é sempre opcional.
+53. Regras de ciclo de vida no mobile: ao ir para o segundo plano e ao voltar, parar a renderização, pausar e retomar o áudio (incluindo interrupções do sistema como ligações, alarmes e Siri no iOS, foco de áudio no Android e desbloqueio e suspensão do AudioContext na web), salvar configurações, proteger relógios, timers e tweens contra saltos de tempo e avisar o app por eventos.
+54. Pausar a partida: pausa global, com modos de processamento por cena, timer, tween, animação e áudio (pausável, sempre, só quando pausado), para o menu de pausa continuar funcionando enquanto o mundo fica parado.
+55. Entrada de texto e rich text funcionando em todas as plataformas. Entrada de texto com teclado virtual no mobile, IME, autocorreção, colar, seleção e cursor. Na web, com um campo HTML escondido sincronizado com o campo do app, funcionando 100% em navegadores desktop e mobile. Rich text com marcação (negrito, itálico, cor, tamanho, fonte, contorno, sombra, sublinhado, riscado, imagens no meio do texto, links clicáveis, listas, alinhamento e efeitos animados), tanto no desenho 2D quanto como componente de UI.
 56. Componente de safe area: a UI pode ser ancorada na safe area (cantos, bordas, centro ou esticada) ou na tela inteira, de forma opcional, mesmo quando o app ocupa a tela toda do aparelho, inclusive embaixo das áreas recortadas (notch, ilha dinâmica, cantos arredondados e barra de gestos).
 57. Sistema de câmeras 2D completo: zoom (com limites e zoom em torno de um ponto), posição, deslocamento, rotação, limites com suavização, seguir com suavização, zonas de arrasto, zona morta, antecipação do movimento, enquadrar vários alvos, tremor por trauma com ruído, várias câmeras, viewports e tela dividida, troca suave entre câmeras, parallax, pixel snap, conversão entre tela e mundo e culling.
 58. O app roda em todos os aparelhos: macOS, Windows, Linux, iOS, iPadOS, tvOS (Apple TV), Mac Catalyst, Android (celular, tablet e TV) e web desktop e mobile. visionOS e watchOS quando a plataforma permitir, com a análise documentada.
 59. Samples focados em código Lua, com as coisas específicas de cada plataforma em pastas próprias.
 60. Projetos Apple (iOS, macOS e tvOS) gerados pelo XcodeGen (`project.yml`) para facilitar a criação do projeto do Xcode. O projeto do Xcode já gerado fica sempre junto (no template e nos projetos), com o `project.yml` ao lado para quando for preciso gerar de novo.
 61. A engine é compilada uma vez em artefatos prontos: um xcframework (macOS, iOS, tvOS, Mac Catalyst e, se a plataforma permitir, watchOS e visionOS), um AAR para Android e o wasm pronto para a web. Um app Lua é só o pacote com o código e o conteúdo, sem recompilar a engine.
-62. Novo formato do pacote: código Lua em `source/` (com `main.lua` como ponto de entrada, como o AppDelegate do Axmol) e recursos em `content/` no lugar de `assets/`.
+62. Novo formato do pacote: código Lua em `source/` (com `main.lua` como ponto de entrada) e recursos em `content/` no lugar de `assets/`.
 63. Pesquisar e pensar na melhor organização para tudo isso.
 64. Anotar tudo neste documento com muitos detalhes para nenhum pedido se perder.
 65. Camadas, Y-sort e iluminação funcionando perfeitamente, com todos os recursos de luz 2D (luz pontual, spot, direcional, sombras com oclusores, máscaras de luz e o resto).
 66. UI/GUI 100%, com todos os tipos de componente em todas as plataformas e suporte a mouse, touch, teclado e joystick, inclusive TV com controle (navegação por foco, Siri Remote na Apple TV e controle na Android TV).
-67. Na web, caixas de texto e todo o input funcionando 100%, no nível da Godot.
-68. Usar o código-fonte da Axmol e da Godot (uma cópia local de cada uma) como referência.
+67. Na web, caixas de texto e todo o input funcionando 100%.
+68. Estudar código-fonte de referência (cópias locais) para chegar às melhores soluções.
 69. Lua com acesso a tudo e com alto desempenho (APIs em lote e nenhuma alocação por chamada nos caminhos quentes).
-70. Lua com acesso ao disco e com classes e dados globais que vivem no app entre as cenas (singletons como os autoloads da Godot, por exemplo os dados globais do jogador).
+70. Lua com acesso ao disco e com classes e dados globais que vivem no app entre as cenas (singletons, por exemplo os dados globais do jogador).
 71. Conjunto completo de componentes de UI/GUI funcionando em todas as plataformas.
 72. Um sample para cada conjunto de recursos, cada um com um menu simples para escolher o teste e um botão para voltar ao menu:
     - GUI com todos os componentes.
@@ -117,26 +117,26 @@ Cada ponto abaixo veio do segundo pedido e precisa estar coberto por algum item 
     - Nine-patch.
     - Todo tipo de fonte.
 73. Quanto mais separado e organizado, melhor.
-74. Templates de plataforma, como a pasta de templates do Axmol: projetos prontos para cada plataforma que só esperam o pacote (`source/` e `content/`). O comando que roda um sample Lua apaga e recria a pasta daquele sample em `build/`, junta o template e o pacote e roda na plataforma pedida no parâmetro, e no desktop quando nenhuma é passada. O projeto C++ é um caso à parte.
+74. Templates de plataforma: projetos prontos para cada plataforma que só esperam o pacote (`source/` e `content/`). O comando que roda um sample Lua apaga e recria a pasta daquele sample em `build/`, junta o template e o pacote e roda na plataforma pedida no parâmetro, e no desktop quando nenhuma é passada. O projeto C++ é um caso à parte.
 75. Um comando para rodar samples Lua e outro para rodar samples C++.
 76. O wasm fica pré-compilado quando possível. Se não for possível, tudo é embarcado junto.
 77. Um comando no `make.py` que serve uma pasta com um servidor Python que já suporta tudo o que o wasm precisa (MIME, SharedArrayBuffer, threads e os cabeçalhos COOP, COEP e CORP), recebendo a pasta e, opcionalmente, a porta.
 78. Na web, a logo do projeto com uma barra de progresso durante o carregamento, e a logo da engine quando o projeto não tem uma.
 79. Fluxo do desenvolvedor: um comando do `make.py` cria um projeto novo na pasta escolhida, com o template de todas as plataformas e um código Lua de exemplo com `source/` e `content/`.
-80. Modo debug com estatísticas como o do Axmol: FPS, tempo de frame, draw calls, vértices e a contagem de objetos criados, vivos e destruídos por tipo.
+80. Modo debug com estatísticas: FPS, tempo de frame, draw calls, vértices e a contagem de objetos criados, vivos e destruídos por tipo.
 81. Nomes genéricos: nada de `game` ou `game.zip` nas coisas finais. Usar `app`, porque a engine serve para jogos, aplicações multimídia e apps. Separar desde já o que é 2D do que é 3D nos nomes, pastas e arquivos, para que o 3D do futuro não conflite nem obrigue a renomear ou mover nada.
 82. Uma revisão geral de tudo, organizada de forma profissional e fácil de desenvolver e de usar, com o objetivo de ser a engine mais fácil de usar, mais robusta e mais completa.
 
 ### 2.2 Terceiro pedido (28/09/2026): organização do código C++ e tela de erro
 
-Cada ponto abaixo precisa estar coberto pelos grupos A, B, J, N, O, P, Q, R, S, T, U e V da seção 14.2.
+Cada ponto abaixo precisa estar coberto pelos grupos A, B, J, N, O, P, Q, R, S, T, U, V, W e X da seção 14.2.
 
-83. Nada do prefixo `m_` nas variáveis. Os membros usam o nome normal, e os acessores usam `get`, `set`, `is` e `has`, como no Axmol.
+83. Nada do prefixo `m_` nas variáveis. Os membros usam o nome normal, e os acessores usam `get`, `set`, `is` e `has`.
 84. Nada de plugin com nome sem sentido, como o plugin chamado `save`. Todo nome precisa dizer o que a coisa é.
 85. Os plugins ficam numa pasta e num namespace próprios de plugins.
 86. Nada de funções ou métodos soltos fora de classes, nem de arquivos com uma struct e funções isoladas. Tudo pertence a uma classe.
 87. Cada arquivo tem a sua própria classe, com o nome da classe.
-88. Um sub-namespace para cada contexto, como no Axmol, e não um namespace único para tudo.
+88. Um sub-namespace para cada contexto, e não um namespace único para tudo.
 89. Revisar tudo: não pode sobrar coisa solta, perdida ou fora de classe.
 90. As regras gerais continuam valendo e ficam no CLAUDE.md: sem gambiarras, fallbacks, código porco, código legado ou compatível com versões anteriores. Comentários raros e só onde precisam. Código e comentários em inglês. Nenhuma frase dividida por ponto e vírgula. Fazer só o que faz sentido, nunca para mostrar trabalho. Manter esta mega lista detalhada e revisar no fim se tudo foi feito 100%, testado e documentado.
 91. A tela de erro precisa ser bem legível e detalhada: hoje aparecem caracteres estranhos (os tabs da pilha do Lua viram quadrados) e pouco detalhe. Melhorar sem gambiarras.
@@ -150,6 +150,10 @@ Cada ponto abaixo precisa estar coberto pelos grupos A, B, J, N, O, P, Q, R, S, 
 99. Ciclo de vida de cena com carregamento: a transição começa (cobre a cena atual), a engine chama um método de carregamento da nova cena (assíncrono), e depois a transição de saída exibe a nova cena carregada. Isso permite exibir um loading próprio se o desenvolvedor quiser, ou usar a própria transição como loading. A arquitetura precisa dar todas as possibilidades, com eventos assíncronos e ciclo de vida funcionando perfeitamente, pensada como arquitetura de software, com o máximo de desempenho e sem gambiarras, não importa o tamanho do trabalho.
 100. Revisar tudo de novo atrás de bugs, código legado, código não usado, erros, race conditions e falhas que podem derrubar o app, corrigindo o que faz sentido (não código que nunca pode acontecer nem coisas aleatórias só para mostrar trabalho), e manter as regras gerais no CLAUDE.md e esta mega lista detalhada.
 101. Os samples ficam em subpastas por categoria, e o comando recebe o caminho da categoria, por exemplo `python3 make.py run games/tiny-island`, para ficar mais organizado.
+102. Aplicações sem moldura e transparentes, como o Taskbar Hero: janela sem barra de título e sem bordas, fundo transparente, o jogo rodando no rodapé da tela e arrastável, com a GUI/UI do jogo funcionando. É outra modalidade de jogo que a engine precisa suportar.
+103. Comunicação fácil com qualquer plataforma (iOS, Android, desktop, web e as outras): enviar e receber a resposta da plataforma de forma assíncrona, para usar qualquer coisa nativa da plataforma.
+104. Chamar bibliotecas e SDKs nativos, como a biblioteca da Steam, bibliotecas nativas em geral e SDKs como o P2P da Epic Online Services (NAT P2P). O `ffi` do Varn pode ser parte da solução. Não é preciso usar esses SDKs, eles são só exemplos, mas a capacidade precisa ser testada nas plataformas.
+105. Organizar tudo isso na engine, revisado e testado, não importa o tamanho da refatoração, para a engine cobrir todos os casos do desenvolvimento de jogos. E revisar o projeto inteiro de novo atrás de bugs, código legado, código não usado, erros, race conditions e falhas que derrubam o app, com as regras gerais de sempre.
 
 ## 3. Regras
 
@@ -272,7 +276,7 @@ docs/                       Guias e referência da API Lua (docs/lua-api/).
 tools/                      Scripts Python do sample (importar Tiny Swords e gerar o mapa da ilha).
 engine/
   CMakeLists.txt            Projeto CMake independente da engine, usável por outros projetos.
-  cmake/                    Módulos CMake da engine (CPM, dependências, plataforma, shaders, haylen_add_game, conteúdo estilo Axmol).
+  cmake/                    Módulos CMake da engine (CPM, dependências, plataforma, shaders, haylen_add_game, deploy do conteúdo).
   include/haylen/
     core/                   Aplicação, engine, cenas, plugins, jobs sobre o Varn, log, sinais, timers, tweens, random, UTF-8.
     math/                   Vec2, Rect, Color, Transform2D, easing, ruído, geometria, Poisson disk.
@@ -320,7 +324,7 @@ samples/
 - `haylen::runtime`: host real por plataforma (Sokol app, backend gráfico real, serviços nativos, JNI, UIKit, JavaScript).
 - `haylen_headless`: host de testes (backend dummy do Sokol, áudio sem dispositivo, pacote em pasta local).
 - `haylen` (player): executável de desktop e página web que rodam qualquer pacote de jogo.
-- `haylen_add_game(<alvo> PACKAGE <pasta> ...)`: função CMake que gera o app de um pacote para cada plataforma, como o template do Axmol.
+- `haylen_add_game(<alvo> PACKAGE <pasta> ...)`: função CMake que gera o app de um pacote para cada plataforma.
 
 ### 6.2 Pacote do jogo
 
@@ -385,7 +389,7 @@ Rodar um pacote na web: `python3 make.py run --platform web --game samples/games
 
 O build Android primeiro configura a árvore nativa com o NDK para baixar o Varn e passa ao Gradle a pasta das fontes Kotlin do transporte HTTP (`-PhaylenVarnSourceDir`) e o `sokol-shdc` (`-PhaylenSokolShdc`). O Gradle compila a biblioteca do jogo com o CMake 4.1.2 do SDK e o NDK 30.0.16248370 para arm64-v8a e x86_64.
 
-Conteúdo como no template C++ do Axmol, agora com o pacote do jogo:
+Deploy do conteúdo, agora com o pacote do jogo:
 
 - Windows e Linux: saída em `build/<plataforma>-<config>/bin/<app>/` com um link `game` apontando para a pasta do pacote, criado pelo alvo `SYNC_PACKAGE-<app>`.
 - Apple (macOS, iOS e tvOS): o app é um bundle, e cada arquivo do pacote é marcado com `MACOSX_PACKAGE_LOCATION "Resources/game/<subpasta>"`.
@@ -432,7 +436,7 @@ Regra geral: todo item desta seção que tem API em C++ só está pronto quando 
 - [x] **Estrutura em minúsculo** conforme a seção 5, com `2d/` separado e `samples/`.
 - [x] **CPM** v0.43.2 com hash e cache compartilhado em `.cache/cpm`.
 - [x] **Detecção de plataforma e backend** com override por opção CMake.
-- [~] **Conteúdo estilo Axmol** para o pacote do jogo (desktop, Apple, web e Android).
+- [~] **Deploy do conteúdo** para o pacote do jogo (desktop, Apple, web e Android).
 - [x] **Shaders** compilados com sokol-shdc para GLSL 4.30, GLSL 3.00 ES, HLSL 5, Metal (macOS, iOS e simulador), WGSL e SPIR-V.
 - [~] **make.py** com `tools`, `configure`, `build`, `run`, `test`, `coverage`, `format`, `assets`, `map`, `web` (WebGPU e WebGL2 numa pasta só), `bench`, `embedding`, `package`, `serve` e `clean` para todas as plataformas. iOS e tvOS precisam do Xcode para validar.
 - [x] **clang-format** com o mesmo estilo do workpane-new, aplicado por `make.py format` em todo C, C++ e Objective-C++ da engine e dos samples, com verificação de lambdas multilinha sem `clang-format off/on` e modo `--check` para CI.
@@ -576,7 +580,7 @@ Regra geral: todo item desta seção que tem API em C++ só está pronto quando 
 
 ### 8.14 Plataforma
 
-- [x] **PlatformBridge**: chamadas JSON do C++ para o nativo com callback assíncrono na thread do frame, e eventos do nativo para assinantes C++, no modelo de plugins da Godot.
+- [x] **PlatformBridge**: chamadas JSON do C++ para o nativo com callback assíncrono na thread do frame, e eventos do nativo para assinantes C++.
 - [~] **Registros nativos**: `HaylenBridge.register` no Android (handlers Java na main thread), `HaylenBridge` na Apple (blocos), `Module.haylen.register` na web (handlers async em JavaScript) e handlers C++ no desktop. Android, web e desktop validados; Apple precisa do Xcode.
 - [~] **Métodos embutidos**: `device.info`, `system.open_url`, `system.locale` (tag BCP 47, como `pt-BR`), `haptics.vibrate` e `app.version` em todas as plataformas. Validados no Android, na web e no desktop; Apple precisa do Xcode.
 - [~] **Plugins de exemplo**: `auth.google.signIn` no Tiny Island, fora da engine. No Android, `GoogleSignInPlugin` usa o Credential Manager (`androidx.credentials` 1.6.0 e `googleid` 1.2.1), registrado pelo `TinyIslandApplication` com o client id vindo de `-PgoogleServerClientId`. Na web, o `shell.html` do sample carrega o Google Identity Services sob demanda com o client id da meta tag `google-client-id`. Validados no emulador e no Chrome até a chamada ao Google (erro sem client id e erro do Credential Manager sem conta). Falta validar um login real, que precisa de um client id de um projeto Google Cloud.
@@ -791,7 +795,7 @@ O editor web não faz parte deste repositório, mas a engine é construída desd
 
 - [x] **README.md**: visão geral, requisitos, início rápido e links para os guias. O Tiny Island tem o próprio `samples/games/tiny-island/README.md`.
 - [x] **docs/architecture.md**: módulos, dependências, frame, threads e posse de recursos.
-- [x] **docs/build.md**: `make.py`, plataformas, assets estilo Axmol e cobertura.
+- [x] **docs/build.md**: `make.py`, plataformas, deploy dos assets e cobertura.
 - [x] **docs/platform_bridge.md**: protocolo JSON, handlers nativos e plugins.
 - [x] **docs/ui.md**: temas, componentes e JSON de telas.
 - [x] **docs/tiled.md**: recursos suportados e convenções do jogo.
@@ -832,15 +836,15 @@ O editor web não faz parte deste repositório, mas a engine é construída desd
 
 ## 14. Segundo pedido: decisões e checklist
 
-Esta seção cobre os itens 51 a 82 da seção 2.1. As decisões vieram da pesquisa no código-fonte da Axmol e da Godot, no código do Sokol e do miniaudio e no código atual da engine.
+Esta seção cobre os itens 51 a 82 da seção 2.1. As decisões vieram da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código atual da engine.
 
 ### 14.1 Decisões de organização
 
 - **Nome do produto**: a engine passa a se chamar Haylen, sem o "2D", porque o 3D virá depois. O pacote Java passa a ser `dev.haylen`.
 - **Nomes genéricos**: o que o desenvolvedor cria é um app (jogo, aplicação multimídia ou app). `game.json` vira `app.json`, `haylen_add_game` vira `haylen_add_app`, o pacote embarcado fica em `app/` e o zip se chama `app.zip`. A palavra "game" só aparece onde é sobre jogos de verdade (gamepad, o sample Tiny Island).
-- **Regra 2D e 3D**: um tipo público declarado numa pasta `2d/` cujo conceito também existe em 3D termina com `2D`, como na Godot (`Camera2D`, `Sprite2D`, `PhysicsWorld2D`, `ParticleEmitter2D`). Os tipos 3D do futuro terminam com `3D`. Nomes que só existem em 2D (`Tiled*`, `TileMap`, `NineSlice`, `SpriteAtlas`) ficam como estão. Os módulos Lua dos subsistemas 2D terminam com `2d` (`haylen.graphics2d`, `haylen.physics2d`, `haylen.particles2d`, `haylen.lighting2d`, `haylen.animation2d`, `haylen.navigation2d`, `haylen.spatial2d`). `haylen.graphics` fica só com o que não tem dimensão (texturas, render targets, backend e, depois, shaders). `Font` sai de `2d/` e vai para `text/`, porque uma fonte serve às duas dimensões.
-- **Formato do pacote**: `app.json` (nome, identificador, versão, orientação, janela, resolução de design, logo e cor de fundo do carregamento web), `source/` com `main.lua` como ponto de entrada (como o AppDelegate do Axmol) e os outros módulos Lua, e `content/` com os recursos. `require("scenes.menu")` procura `source/scenes/menu.lua`. Todo caminho de recurso é relativo a `content/`. Uma pasta opcional `platform/<plataforma>/` no app guarda personalizações por plataforma.
-- **Templates**: a pasta `templates/` na raiz, como a do Axmol, guarda o app inicial em `templates/app` (usado pelo `make.py new`) e os projetos prontos por plataforma em `templates/platform/<plataforma>/`, que só esperam o pacote: `templates/platform/apple` (projeto XcodeGen com o `.xcodeproj` já gerado ao lado do `project.yml`, com alvos iOS, iPadOS, Mac Catalyst, tvOS e macOS), `templates/platform/android` (projeto Gradle que usa o AAR da engine) e `templates/platform/web` (página com a logo, a barra de progresso, a escolha entre WebGPU e WebGL2 e o carregador). É modular e extensível: uma plataforma nova é uma pasta nova em `templates/platform/` e o seu handler de build e execução no `make.py`, que descobre os templates pelas pastas. O `.xcodeproj` e o `build.gradle.kts` nunca mudam por app: nome, identificador, versão e orientação vêm de arquivos gerados pelo `make.py` (`App.xcconfig` e `Info.plist` na Apple, `gradle.properties` no Android e `config.json` na web).
+- **Regra 2D e 3D**: um tipo público declarado numa pasta `2d/` cujo conceito também existe em 3D termina com `2D` (`Camera2D`, `Sprite2D`, `PhysicsWorld2D`, `ParticleEmitter2D`). Os tipos 3D do futuro terminam com `3D`. Nomes que só existem em 2D (`Tiled*`, `TileMap`, `NineSlice`, `SpriteAtlas`) ficam como estão. Os módulos Lua dos subsistemas 2D terminam com `2d` (`haylen.graphics2d`, `haylen.physics2d`, `haylen.particles2d`, `haylen.lighting2d`, `haylen.animation2d`, `haylen.navigation2d`, `haylen.spatial2d`). `haylen.graphics` fica só com o que não tem dimensão (texturas, render targets, backend e, depois, shaders). `Font` sai de `2d/` e vai para `text/`, porque uma fonte serve às duas dimensões.
+- **Formato do pacote**: `app.json` (nome, identificador, versão, orientação, janela, resolução de design, logo e cor de fundo do carregamento web), `source/` com `main.lua` como ponto de entrada e os outros módulos Lua, e `content/` com os recursos. `require("scenes.menu")` procura `source/scenes/menu.lua`. Todo caminho de recurso é relativo a `content/`. Uma pasta opcional `platform/<plataforma>/` no app guarda personalizações por plataforma.
+- **Templates**: a pasta `templates/` na raiz guarda o app inicial em `templates/app` (usado pelo `make.py new`) e os projetos prontos por plataforma em `templates/platform/<plataforma>/`, que só esperam o pacote: `templates/platform/apple` (projeto XcodeGen com o `.xcodeproj` já gerado ao lado do `project.yml`, com alvos iOS, iPadOS, Mac Catalyst, tvOS e macOS), `templates/platform/android` (projeto Gradle que usa o AAR da engine) e `templates/platform/web` (página com a logo, a barra de progresso, a escolha entre WebGPU e WebGL2 e o carregador). É modular e extensível: uma plataforma nova é uma pasta nova em `templates/platform/` e o seu handler de build e execução no `make.py`, que descobre os templates pelas pastas. O `.xcodeproj` e o `build.gradle.kts` nunca mudam por app: nome, identificador, versão e orientação vêm de arquivos gerados pelo `make.py` (`App.xcconfig` e `Info.plist` na Apple, `gradle.properties` no Android e `config.json` na web).
 - **Montagem**: rodar um app apaga e recria `build/apps/<app>/<plataforma>/`, copia o template da plataforma, aplica por cima a pasta `platform/<plataforma>/` do app (mesmo caminho substitui, arquivo novo é adicionado), injeta o pacote e roda. O Tiny Island leva para `platform/android` e `platform/web` só o login Google.
 - **Artefatos prontos da engine**: `build/artifacts/` com um `manifest.json` (versão da engine e hashes) e reconstrução automática quando a engine muda.
   - `apple/Haylen.xcframework`: biblioteca estática com engine, dependências e player Lua, com os slices macOS (arm64 e x86_64), iOS, simulador iOS, Mac Catalyst, tvOS e simulador tvOS, e os headers públicos (`haylen_main` e `HaylenBridge`). O template leva um `main.mm` mínimo que chama `haylen_main`, que também é o lugar para registrar handlers nativos da bridge.
@@ -904,21 +908,21 @@ Esta seção cobre os itens 51 a 82 da seção 2.1. As decisões vieram da pesqu
 
 #### E. Pausa da partida
 
-- [x] `Engine::setPaused`, `isPaused` e o sinal `pausedChanged`, com `haylen.setPaused`, `haylen.paused`, os eventos `paused` e `unpaused` e os ganchos de cena `paused` e `unpaused` com a semântica da Godot.
-- [x] Modos de processamento como na Godot (`inherit`, `pausable`, `whenPaused`, `always` e `disabled`) para cenas, autoloads, timers, tweens, sons e barramentos de áudio (efeitos e ambiente param, música e UI continuam, configurável), com motivos de pausa separados por voz.
+- [x] `Engine::setPaused`, `isPaused` e o sinal `pausedChanged`, com `haylen.setPaused`, `haylen.paused`, os eventos `paused` e `unpaused` e os ganchos de cena `paused` e `unpaused`.
+- [x] Modos de processamento (`inherit`, `pausable`, `whenPaused`, `always` e `disabled`) para cenas, autoloads, timers, tweens, sons e barramentos de áudio (efeitos e ambiente param, música e UI continuam, configurável), com motivos de pausa separados por voz.
 - [x] Timers e tweens com escolha entre tempo com escala e sem escala.
 - [~] O Tiny Island passa a usar a pausa da engine, com a cena de pausa em `whenPaused` (feito). Falta abrir o menu de pausa quando o app vai para o segundo plano ou perde o foco, para a partida continuar pausada na volta (o congelamento da engine só para o tempo enquanto o app está fora).
 
 #### F. Entrada de texto e rich text
 
 - [x] Protocolo de edição de texto (`platform::TextInput`, `ui::TextSession`): a engine publica o campo ativo (texto, cursor, seleção, retângulo do campo e do cursor, tipo de teclado, tecla de retorno, autocorreção, capitalização e tamanho máximo) e um campo nativo escondido em cima do campo edita o texto e devolve texto, cursor, seleção e composição do IME, aplicados por callback do `InputText` do ImGui.
-- [x] Web como a Godot (validado no Chrome com WebGL2 e WebGPU, inclusive a composição do IME): `textarea` e `input` escondidos posicionados sobre o campo, com `inputmode`, `enterkeyhint`, composição do IME, colar, copiar e desfazer nativos, abertura do teclado dentro do gesto no Safari do iOS e o teclado virtual ocupando a área visível (`visualViewport`).
+- [x] Web (validado no Chrome com WebGL2 e WebGPU, inclusive a composição do IME): `textarea` e `input` escondidos posicionados sobre o campo, com `inputmode`, `enterkeyhint`, composição do IME, colar, copiar e desfazer nativos, abertura do teclado dentro do gesto no Safari do iOS e o teclado virtual ocupando a área visível (`visualViewport`).
 - [x] Android: `EditText` escondido (validado no emulador) na activity com o `InputConnection`, composição, sugestões e ações do teclado, e os insets do teclado.
 - [~] iOS e tvOS: `UITextField` e `UITextView` escondidos (validado no simulador iOS por XCUITest. Faltam a composição CJK no iOS e o teclado da Apple TV rodando) com texto marcado (CJK), autocorreção, ditado, emoji e colar, e o teclado de tela cheia na Apple TV.
 - [~] macOS: `NSTextView` escondido (`HaylenFieldEditor`) e Windows com a janela do IME no cursor (`WindowsTextInput`). Escritos, mas não exercitados aqui (tela bloqueada e sem Windows) com texto marcado, teclas mortas, emoji e ditado. Windows: posição da janela de composição do IME.
 - [x] Tipos de teclado (texto, várias linhas, número, decimal, telefone, email, URL, busca, senha) e rótulo da tecla de retorno nos campos de UI e no Lua.
 - [x] A UI sobe o campo com foco para cima do teclado virtual (validado no Android e no iOS).
-- [x] Rich text com BBCode no estilo da Godot (erros de marcação com linha e coluna, layout em cache, efeitos determinísticos): `b`, `i`, `u`, `s`, `code`, `color`, `bgcolor`, `font`, `size`, `outline`, `shadow`, `glow`, `alpha`, `p`, alinhamentos, recuo, listas, `br`, `hr`, `img`, `icon`, `url`, `hint`, efeitos `wave`, `shake`, `tornado`, `fade`, `rainbow` e `pulse`, efeitos próprios em Lua e C++, revelação de texto (máquina de escrever), e depois `table` e `dropcap`.
+- [x] Rich text com BBCode (erros de marcação com linha e coluna, layout em cache, efeitos determinísticos): `b`, `i`, `u`, `s`, `code`, `color`, `bgcolor`, `font`, `size`, `outline`, `shadow`, `glow`, `alpha`, `p`, alinhamentos, recuo, listas, `br`, `hr`, `img`, `icon`, `url`, `hint`, efeitos `wave`, `shake`, `tornado`, `fade`, `rainbow` e `pulse`, efeitos próprios em Lua e C++, revelação de texto (máquina de escrever), e depois `table` e `dropcap`.
 - [x] Famílias de fontes (normal, negrito, itálico, negrito itálico e mono), fonte de fallback, e negrito e itálico sintéticos pelo SDF quando a família não tem a variante.
 - [x] Rich text no desenho 2D (`graphics2d.newRichText`, `drawRichText` e `measureRichText`) e na UI (`ui.richText` com links focáveis e eventos `link`).
 
@@ -960,14 +964,14 @@ Esta seção cobre os itens 51 a 82 da seção 2.1. As decisões vieram da pesqu
 
 #### K. Lua: singletons, classes, disco e desempenho
 
-- [x] Autoloads como os da Godot: módulos listados no `app.json` (ou registrados por `haylen.autoload`) que carregam antes da primeira cena, vivem durante o app todo, ficam acessíveis de qualquer cena e recebem os callbacks do ciclo (update, fixedUpdate, render, renderUi, eventos e stop).
+- [x] Autoloads: módulos listados no `app.json` (ou registrados por `haylen.autoload`) que carregam antes da primeira cena, vivem durante o app todo, ficam acessíveis de qualquer cena e recebem os callbacks do ciclo (update, fixedUpdate, render, renderUi, eventos e stop).
 - [x] Helper de classes (`haylen.class`) com herança, construtor, `super`, `is` e mixins, para classes globais do app.
 - [x] Acesso ao disco documentado e testado (com `storage.root()` para o `fs` assíncrono do Varn): `fs` do Varn e `haylen.storage` (pasta do usuário, leitura e escrita síncronas e assíncronas, listagem, criação e remoção).
 - [x] Desempenho (`collections.newFloatBuffer`, `graphics2d.drawBatch` com buffer e campos, `world:readTransforms` e `writeTransforms`, `emitter:readPositions` e o bunnymark em Lua no `make.py bench --suite lua`: 1 milhão de sprites em 72 ms de CPU por frame pelo caminho em lote contra 347 ms com uma tabela por sprite). APIs em lote sem alocação por item (atualização de muitos sprites de uma vez, buffers de números compartilhados com o C++), métodos rápidos nos userdata dos caminhos quentes e medição no benchmark.
 
 #### L. Modo debug com estatísticas
 
-- [x] Estatísticas compactas sempre visíveis como as do Axmol (FPS, tempo de frame, draw calls, vértices) e o modo completo no overlay.
+- [x] Estatísticas compactas sempre visíveis (FPS, tempo de frame, draw calls, vértices) e o modo completo no overlay.
 - [x] Contagem de objetos por tipo (criados, vivos e destruídos) em todo userdata exportado para Lua e nos recursos C++ (texturas, render targets, buffers, fontes, sons, corpos, emissores, documentos de UI), memória do Lua, memória de GPU estimada e uso dos pools do Sokol.
 - [x] Contadores de tweens, timers, cenas, vozes, assets, passos fixos, contatos de física e partículas vivas.
 - [x] Monitores próprios (`debug.addMonitor`) e ligação pelo `app.json` ou por Lua.
@@ -998,12 +1002,12 @@ Todo sample Lua tem um menu simples para escolher o teste, cada teste é uma cen
 - [x] `samples/graphics/shaders` (6 testes com 13 shaders próprios): shaders próprios em sprites, canvases e pós-processamento.
 - [x] `samples/graphics/particles` (18 testes, 20 mil partículas vivas a 60 fps): fogo, fumaça, explosão, chuva, neve, faíscas, rastros, magia, confete, fogos de artifício e efeitos por arquivo.
 - [x] `samples/system/localization` (8 testes em inglês, português, espanhol e japonês): idiomas, argumentos, plurais e troca em tempo real.
-- [ ] `samples/gameplay/input`: teclado, mouse, toque, gestos, controles, mapa de ações e remapeamento.
+- [x] `samples/gameplay/input` (9 testes, com o remapeamento salvo nas preferências e toques reais no emulador Android): teclado, mouse, toque, gestos, controles, mapa de ações e remapeamento.
 - [x] `samples/graphics/sprites` (11 testes): pools, spritesheets, animação, batches, tiros, milhares de sprites e poucos sprites.
-- [ ] `samples/system/platform`: bridge com os métodos embutidos e um handler próprio em cada plataforma.
+- [x] `samples/system/platform` (4 testes, com o handler próprio respondendo em JavaScript na web e em Java no Android, e o Objective-C compilado para as plataformas Apple): bridge com os métodos embutidos e um handler próprio em cada plataforma.
 - [x] `samples/interface/orientation` (4 testes): orientação do aparelho.
 - [x] `samples/interface/safe-area` (4 testes): âncoras na safe area e na tela inteira.
-- [ ] `samples/gameplay/audio`: música, efeitos, barramentos, efeitos de áudio e áudio 2D posicional.
+- [x] `samples/gameplay/audio` (7 testes): música, efeitos, barramentos, efeitos de áudio e áudio 2D posicional.
 - [x] `samples/graphics/nine-patch` (5 testes): nine-slice esticado e repetido, em peças e em UI.
 - [x] `samples/graphics/fonts` (11 testes, com fontes OFL e fontes bitmap geradas): TTF, OTF, bitmap, tamanhos, contorno, sombra, rich text e scripts diferentes.
 - [x] `samples/graphics/camera` (14 testes): todos os recursos da câmera.
@@ -1017,6 +1021,10 @@ Todo sample Lua tem um menu simples para escolher o teste, cada teste é uma cen
 - [ ] Testes GoogleTest e Lua de cada recurso novo, com cobertura da engine perto de 100%.
 - [ ] Páginas `docs/lua-api/` e guias atualizados, incluindo um guia de distribuição (templates, artefatos e comandos) e um de ciclo de vida.
 - [ ] Revisão final de bugs, código morto, race conditions e riscos de crash.
+- [ ] Android 16 (predictive back): o Back sai do app de dentro de qualquer tela e ignora `window.setBackLeavesApp(false)`, porque a `HaylenActivity` não registra um `OnBackInvokedCallback` (ou o `OnBackPressedCallback` do AndroidX) para o alvo SDK 37.
+- [ ] `audio.playMusic` não devolve um id de voz, então não dá para pausar só a música: dar um handle ou `pauseMusic` e `resumeMusic`.
+- [ ] Um `ui.scroll{grow = 1}` dentro de um painel fica da altura do conteúdo e empurra a página para fora da tela: um filho que cresce deve partir da altura que sobra no pai, e não da altura do conteúdo.
+- [ ] Documentação contraditória: o guia da bridge diz que a API mínima do Android é 30 e usa `Map.of`, enquanto o template usa minSdk 27, e dois guias discordam sobre quando os handlers embutidos do Android são registrados.
 - [ ] Fontes OpenType CFF saem quebradas em qualquer tamanho: o `stbtt_GetGlyphSDF` só trata linhas e curvas quadráticas, e os contornos CFF são cúbicos. Gerar o campo de distância a partir do contorno completo (curvas cúbicas incluídas).
 - [ ] Glifos de fallback de algumas fontes saem pequenos demais: o `TrueTypeFont` usa `stbtt_ScaleForPixelHeight` (ascendente a descendente) e não o tamanho do em.
 - [ ] As setas do carrossel são desenhadas antes das páginas e ficam embaixo de imagens largas.
@@ -1063,7 +1071,7 @@ Mapa de namespaces (um por contexto, igual ao nome da pasta, e com o sufixo `2d`
 
 #### R. Algoritmos de alto desempenho para jogos
 
-Tudo em C++ com binding Lua, sem alocação por chamada nos caminhos quentes, com versões assíncronas pelo `JobSystem` (Promise em Lua) para os cálculos grandes e com resultados determinísticos por semente. A referência é o que a Godot oferece (`AStar2D`, `AStarGrid2D` com JPS, `NavigationServer2D` com navmesh e desvio RVO, `Geometry2D` com Clipper2, `FastNoiseLite`) e o que os jogos 2D costumam precisar.
+Tudo em C++ com binding Lua, sem alocação por chamada nos caminhos quentes, com versões assíncronas pelo `JobSystem` (Promise em Lua) para os cálculos grandes e com resultados determinísticos por semente. A lista cobre o que os jogos 2D costumam precisar.
 
 - [x] **Caminhos em grade**: A* com custos por célula, diagonais sem cortar cantos, heurísticas (Manhattan, octile, Euclidiana e Chebyshev), A* ponderado, Jump Point Search para grades de custo uniforme, grades hexagonais e isométricas (as orientações do Tiled), linha de visão e suavização (já existem o A* básico e a suavização).
 - [x] **Caminhos em grafo**: A* e Dijkstra em grafos de waypoints com pesos, pontos habilitados e desabilitados.
@@ -1082,7 +1090,7 @@ Tudo em C++ com binding Lua, sem alocação por chamada nos caminhos quentes, co
 
 #### S. Tween robusto
 
-A base atual (`TweenManager` e `haylen.tween`: float, `Vec2` e `Color`, easing, atraso, repetição, yoyo, callbacks, pausa, cancelamento, `wait()` com Promise, sequências e tags) cresce até o nível do DOTween, do GSAP, do `Tween` da Godot e das actions do Axmol.
+A base atual (`TweenManager` e `haylen.tween`: float, `Vec2` e `Color`, easing, atraso, repetição, yoyo, callbacks, pausa, cancelamento, `wait()` com Promise, sequências e tags) cresce até cobrir tudo o que um sistema de tween completo oferece.
 
 - [x] **Alvos e valores**: qualquer campo de tabela ou propriedade de userdata, caminhos aninhados (`position.x`), números, `Vec2`, `Color` (em RGB ou HSV), ângulos pelo caminho mais curto, inteiros (contadores de pontos), texto (máquina de escrever) e vários campos no mesmo tween.
 - [x] **Modos**: `to`, `from`, `by` (relativo) e `fromTo`, valor inicial lido na hora de começar, e tweens por velocidade (a duração sai da distância).
@@ -1091,7 +1099,7 @@ A base atual (`TweenManager` e `haylen.tween`: float, `Vec2` e `Color`, easing, 
 - [x] **Controle**: `play`, `pause`, `resume`, `restart`, `reverse` (tocar para trás), `seek` (ir para um tempo ou progresso), `complete` (pular para o fim com ou sem callbacks), `kill`, escala de tempo por tween e por grupo, progresso lido e escrito, e estado (`isPlaying`, `isComplete`).
 - [x] **Repetição**: número de vezes ou infinita, modos `restart`, `yoyo` e `incremental`, atraso entre repetições.
 - [x] **Eventos**: `onStart`, `onUpdate`, `onStep`, `onLoop`, `onComplete` e `onKill`, e `wait()` com Promise para `await`.
-- [x] **Tweens prontos** (como as actions do Axmol e os atalhos do DOTween): mover, escalar, girar, desbotar, tingir, pular (arco), seguir um caminho (spline com orientação), Bézier, piscar, tremer (shake com força, vibração e aleatoriedade) e soco (punch).
+- [x] **Tweens prontos**: mover, escalar, girar, desbotar, tingir, pular (arco), seguir um caminho (spline com orientação), Bézier, piscar, tremer (shake com força, vibração e aleatoriedade) e soco (punch).
 - [x] **Escalonamento (stagger)**: o mesmo tween em uma lista de alvos com atraso crescente, a partir do começo, do fim ou do centro.
 - [x] **Conflitos e vida útil**: modo de sobrescrita (um tween novo no mesmo alvo e campo mata o antigo), tweens ligados à cena (morrem quando a cena sai) e ao alvo (morrem quando o alvo é coletado ou destruído), sem nunca escrever num alvo morto.
 - [x] **Tempo**: modos de processamento da pausa (grupo E), tempo com ou sem escala, e atualização no passo fixo quando pedido.
@@ -1100,7 +1108,7 @@ A base atual (`TweenManager` e `haylen.tween`: float, `Vec2` e `Color`, easing, 
 
 #### T. Eventos, ciclo de vida e conexões
 
-Hoje existem o `Signal` com `Connection` (C++ e `haylen.signal`), o callback `event` das cenas e os eventos da plataforma. Tudo isso vira um sistema único e robusto, no modelo dos sinais da Godot.
+Hoje existem o `Signal` com `Connection` (C++ e `haylen.signal`), o callback `event` das cenas e os eventos da plataforma. Tudo isso vira um sistema único e robusto.
 
 - [x] **Sinais**: tipados em C++, conexão com RAII, seguros durante a emissão (conectar e desconectar dentro do callback), prioridade, conexão de uma vez só (`once`), conexão adiada (entregue no fim do frame), bloqueio temporário, `isConnected`, e desconexão automática quando o dono morre (objeto C++, userdata ou tabela Lua coletada, cena que saiu, documento de UI desmontado).
 - [x] **Barramento de eventos**: publicar e assinar por nome ou tipo, com canais, filtros, prioridade, consumo (parar a propagação), entrega imediata ou na fila do frame, e emissão a partir de outras threads entregue sempre na thread do frame.
@@ -1144,7 +1152,7 @@ A troca de cena vira um pipeline com fases, no modelo "cobrir, carregar, revelar
 - [x] **Fases da transição**: cobrir (a cena atual some no efeito), segurar (a tela fica coberta enquanto a nova cena carrega) e revelar (a nova cena aparece). Os efeitos que mostram as duas cenas ao mesmo tempo (crossfade, slide, push e os outros) carregam a nova cena antes de começar, com a cena atual ainda na tela.
 - [x] **Loading opcional** (com `loading`, `loadingDelay`, `minimumLoadingTime` e `loadingFadeOut`, de 0,25 s por padrão): a própria transição serve de loading (a tela coberta, com a cor ou o efeito), ou o desenvolvedor passa uma view de loading (uma cena ou tabela com `update` e `render` que recebe o progresso), exibida só se o carregamento passar de um atraso configurável (sem piscar em cargas rápidas) e por um tempo mínimo configurável quando aparece. Também continua possível usar uma cena de loading comum na pilha.
 - [x] **Pré-carregamento**: `scene.preload(cena, params)` começa o `load` em segundo plano sem trocar de cena e devolve uma Promise, e a troca depois fica instantânea ou só espera o que falta.
-- [x] **Ganchos de transição com os nomes do Axmol**: `enterTransitionFinished` na cena que entra (input liberado) e `exitTransitionStarted` na cena que sai, no lugar dos ganchos atuais, sem manter os nomes antigos.
+- [x] **Ganchos de transição**: `enterTransitionFinished` na cena que entra (input liberado) e `exitTransitionStarted` na cena que sai, no lugar dos ganchos atuais, sem manter os nomes antigos.
 - [x] **Erros**: um erro no `load` cancela a troca, rejeita a Promise da troca e mantém a cena atual quando ela ainda existe. Quando a cena atual já saiu, o erro vai para a tela de erro ou para um `onError` da troca, que pode levar a outra cena.
 - [x] **Concorrência e fila**: pedidos de troca durante uma troca entram na fila em ordem. `push`, `pop`, `replace`, `popTo` e `popToRoot` seguem o mesmo pipeline, e a pausa do jogo, o segundo plano e a perda de foco durante uma carga têm comportamento definido e testado.
 - [x] **Escopo de vida**: tudo o que a cena cria (timers, tweens, assinaturas de eventos, tarefas assíncronas iniciadas pela cena com `scene:spawn`, documentos de UI) pertence à cena e é cancelado no `unload`, sem nenhuma corrotina retomando numa cena que já saiu.
@@ -1152,3 +1160,26 @@ A troca de cena vira um pipeline com fases, no modelo "cobrir, carregar, revelar
 - [x] **Tiny Island** usando o novo ciclo (o loading do gameplay como view de loading da transição ou como `load` da cena de gameplay).
 - [~] **Testes e documentação** (36 testes das combinações, `docs/lifecycle.md` com os diagramas de sequência e `docs/lua-api/scene.md` feitos. Falta o `samples/graphics/scenes` terminar de mostrar tudo): cada fase, cada combinação (com e sem transição, efeitos que cobrem e que mostram as duas cenas, com e sem view de loading, carga rápida e lenta, erro, fila, pré-carregamento, pausa e segundo plano durante a carga), `docs/lifecycle.md`, `docs/lua-api/scene.md`, e o `samples/graphics/scenes` mostrando tudo.
 - O Varn não tem cancelamento de tarefas assíncronas. Para cancelar as tarefas de uma cena no `unload`, a engine fecha a corrotina e deixa no lugar uma função que retorna na hora, para uma Promise que ainda espere por ela não retomar código. Um cancelamento oficial no Varn (ignorar corrotinas que não estão mais suspensas, ou uma API de cancelamento) deixaria isso mais limpo, e vale levar para o Varn.
+
+#### W. Janelas sem moldura e transparentes
+
+A referência são jogos como o Taskbar Hero, que rodam numa faixa transparente em cima da barra de tarefas.
+
+- [ ] **Configuração no `app.json` e em Lua**: janela sem moldura (`decorated = false`), fundo transparente por pixel (`transparent = true`), sempre no topo, sem aparecer na barra de tarefas ou no Dock quando pedido, sem roubar o foco quando pedido, posição e tamanho iniciais (inclusive ancorados na área de trabalho, por exemplo em cima da barra de tarefas), e tudo o que puder mudar em tempo de execução também pelo Lua.
+- [ ] **Arrastar a janela** a partir do conteúdo do app (`window.startDrag()` no gesto de arrastar), mover e redimensionar por código, e ler a posição e o tamanho.
+- [ ] **Cliques atravessando a janela**: a janela inteira ou só as áreas transparentes deixam os cliques passarem para o que está atrás (passthrough por polígonos ou pelo alfa do pixel), com as áreas do jogo e da UI recebendo o mouse normalmente.
+- [ ] **Monitores**: lista de monitores com a área total e a área de trabalho (sem a barra de tarefas, o Dock e a barra de menus), escala de DPI e o monitor atual, com eventos quando mudam.
+- [ ] **Renderização transparente**: o framebuffer com alfa e a composição correta com a área de trabalho (alfa pré-multiplicado), com a luz, o pós-processamento e a UI funcionando.
+- [ ] **Plataformas**: macOS, Windows e Linux (X11) com o que cada sistema permite, e na web o canvas transparente sobre a página. No mobile e na TV não se aplica, documentado.
+- [ ] **Sample** `samples/games/taskbar-quest`: um jogo pequeno numa faixa transparente em cima da barra de tarefas, arrastável, com a UI do jogo, cliques atravessando as áreas vazias, e o modo janela comum para comparar.
+- [ ] **Testes e documentação** (`docs/lua-api/window.md` e um guia `docs/desktop.md`).
+
+#### X. Comunicação com a plataforma e código nativo
+
+- [ ] **Bridge assíncrona fácil em todas as plataformas**: revisar a `platform::Bridge` para que chamar a plataforma e receber a resposta seja uma linha em Lua (`platform.call('metodo', args):await()` e callbacks), com handlers nativos em Java e Kotlin (Android), Objective-C e Swift (Apple), JavaScript (web) e C++ (desktop e apps C++), eventos da plataforma para o app, erros claros e threads corretas (a resposta sempre chega na thread do frame).
+- [ ] **Bibliotecas nativas pelo Lua (FFI)**: carregar bibliotecas nativas e chamar funções C pelo `ffi` do Varn (ou o que for necessário além dele), com tipos, structs, ponteiros, buffers e callbacks do código nativo para o Lua entregues na thread do frame, em macOS, Windows, Linux, iOS (frameworks embarcados) e Android (`.so` do APK). Na web o equivalente é chamar JavaScript pela bridge, documentado.
+- [ ] **Bibliotecas nativas no app**: os templates e as pastas `platform/<plataforma>/` dos apps levam bibliotecas nativas (`.dylib` e frameworks, `.dll`, `.so`, xcframeworks e `jniLibs`) para dentro do pacote final de cada plataforma, com o caminho de carregamento resolvido pela engine.
+- [ ] **Plugins nativos em C++** para quem compila a engine (apps C++), registrados pela aplicação, com o mesmo ciclo de vida dos plugins da engine e o próprio módulo Lua.
+- [ ] **Guia de integração com SDKs**: como integrar a Steam (API flat em C), o Epic Online Services (API em C, NAT P2P) e SDKs parecidos por FFI ou por plugin nativo, com os callbacks do SDK chegando na thread do frame. Os SDKs não entram no repositório.
+- [ ] **Testes em todas as plataformas nativas**: uma biblioteca nativa de teste (funções, structs, buffers e um callback) compilada para cada plataforma e chamada pelo Lua nos testes da engine e num sample `samples/system/native`, rodando no macOS, no simulador iOS, no emulador Android e, pela bridge, na web.
+- [ ] **Documentação**: `docs/platform_bridge.md` revisado, um guia `docs/native.md` e as páginas da API Lua.
