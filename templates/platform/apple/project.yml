@@ -1,0 +1,129 @@
+# XcodeGen spec of App.xcodeproj, which is committed next to it. Run `xcodegen generate` in this folder after changing it.
+# The project never changes per app: make.py writes the name, identifier and version into App.xcconfig, the Info.plist of each platform from app.json, the splash assets, the package into app/ and a link to Haylen.xcframework.
+# The app folder and Haylen.xcframework exist only in the projects make.py assembles, so the template lists them as optional.
+name: App
+options:
+  deploymentTarget:
+    iOS: "16.3"
+    tvOS: "16.3"
+    macOS: "13.3"
+settings:
+  base:
+    CLANG_CXX_LANGUAGE_STANDARD: c++20
+    CLANG_ENABLE_OBJC_ARC: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    GENERATE_INFOPLIST_FILE: NO
+    DEAD_CODE_STRIPPING: YES
+fileGroups:
+  - project.yml
+targets:
+  iOS:
+    type: application
+    configFiles:
+      Debug: App.xcconfig
+      Release: App.xcconfig
+    platform: iOS
+    sources:
+      - path: source
+      - path: ios
+      - path: app
+        type: folder
+        buildPhase: resources
+        optional: true
+    dependencies:
+      - framework: Haylen.xcframework
+        embed: false
+      - sdk: Foundation.framework
+      - sdk: UIKit.framework
+      - sdk: CoreGraphics.framework
+      - sdk: QuartzCore.framework
+      - sdk: Metal.framework
+      - sdk: MetalKit.framework
+      - sdk: GameController.framework
+      - sdk: AVFoundation.framework
+      - sdk: AudioToolbox.framework
+      - sdk: CoreAudio.framework
+      - sdk: Network.framework
+    settings:
+      base:
+        PRODUCT_NAME: $(HAYLEN_PRODUCT_NAME)
+        PRODUCT_BUNDLE_IDENTIFIER: $(HAYLEN_BUNDLE_IDENTIFIER)
+        INFOPLIST_FILE: ios/Info.plist
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: YES
+        DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER: NO
+        # Mac Catalyst runs on this Mac without a development team, while devices sign with the team make.py passes.
+        CODE_SIGN_IDENTITY[sdk=macosx*]: "-"
+        # Mac Catalyst 16.3 would run on macOS 13.2, while the C++ library of the engine needs macOS 13.3, which is Mac Catalyst 16.4.
+        IPHONEOS_DEPLOYMENT_TARGET[sdk=macosx*]: "16.4"
+        ASSETCATALOG_COMPILER_APPICON_NAME: app_icon
+    scheme: {}
+  tvOS:
+    type: application
+    configFiles:
+      Debug: App.xcconfig
+      Release: App.xcconfig
+    platform: tvOS
+    sources:
+      - path: source
+      - path: tvos
+      - path: app
+        type: folder
+        buildPhase: resources
+        optional: true
+    dependencies:
+      - framework: Haylen.xcframework
+        embed: false
+      - sdk: Foundation.framework
+      - sdk: UIKit.framework
+      - sdk: CoreGraphics.framework
+      - sdk: QuartzCore.framework
+      - sdk: Metal.framework
+      - sdk: MetalKit.framework
+      - sdk: GameController.framework
+      - sdk: AVFoundation.framework
+      - sdk: AudioToolbox.framework
+      - sdk: CoreAudio.framework
+      - sdk: Network.framework
+    settings:
+      base:
+        PRODUCT_NAME: $(HAYLEN_PRODUCT_NAME)
+        PRODUCT_BUNDLE_IDENTIFIER: $(HAYLEN_BUNDLE_IDENTIFIER)
+        INFOPLIST_FILE: tvos/Info.plist
+        TARGETED_DEVICE_FAMILY: "3"
+        ASSETCATALOG_COMPILER_APPICON_NAME: app_icon
+    scheme: {}
+  macOS:
+    type: application
+    configFiles:
+      Debug: App.xcconfig
+      Release: App.xcconfig
+    platform: macOS
+    sources:
+      - path: source
+      - path: macos
+      - path: app
+        type: folder
+        buildPhase: resources
+        optional: true
+    dependencies:
+      - framework: Haylen.xcframework
+        embed: false
+      - sdk: Cocoa.framework
+      - sdk: CoreGraphics.framework
+      - sdk: QuartzCore.framework
+      - sdk: Metal.framework
+      - sdk: MetalKit.framework
+      - sdk: GameController.framework
+      - sdk: AVFoundation.framework
+      - sdk: AudioToolbox.framework
+      - sdk: CoreAudio.framework
+      - sdk: Network.framework
+    settings:
+      base:
+        PRODUCT_NAME: $(HAYLEN_PRODUCT_NAME)
+        PRODUCT_BUNDLE_IDENTIFIER: $(HAYLEN_BUNDLE_IDENTIFIER)
+        INFOPLIST_FILE: macos/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: app_icon
+        ENABLE_HARDENED_RUNTIME: YES
+    scheme: {}

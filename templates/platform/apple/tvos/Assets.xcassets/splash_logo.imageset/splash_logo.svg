@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="Haylen">
+  <defs>
+    <linearGradient id="a" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4FD1C5"/>
+      <stop offset="1" stop-color="#2B6CB0"/>
+    </linearGradient>
+    <linearGradient id="b" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F6AD55"/>
+      <stop offset="1" stop-color="#E53E3E"/>
+    </linearGradient>
+    <linearGradient id="c" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#B794F4"/>
+      <stop offset="1" stop-color="#6B46C1"/>
+    </linearGradient>
+  </defs>
+    <rect x="20.5" y="5" width="26" height="26" rx="6" fill="url(#a)"/>
+    <rect x="113.5" y="5" width="26" height="26" rx="6" fill="url(#c)"/>
+    <rect x="20.5" y="36" width="26" height="26" rx="6" fill="url(#c)"/>
+    <rect x="113.5" y="36" width="26" height="26" rx="6" fill="url(#a)"/>
+    <rect x="20.5" y="67" width="26" height="26" rx="6" fill="url(#a)"/>
+    <rect x="113.5" y="67" width="26" height="26" rx="6" fill="url(#c)"/>
+    <rect x="20.5" y="98" width="26" height="26" rx="6" fill="url(#c)"/>
+    <rect x="113.5" y="98" width="26" height="26" rx="6" fill="url(#a)"/>
+    <rect x="20.5" y="129" width="26" height="26" rx="6" fill="url(#a)"/>
+    <rect x="113.5" y="129" width="26" height="26" rx="6" fill="url(#c)"/>
+    <rect x="51.5" y="67" width="26" height="26" rx="6" fill="url(#b)"/>
+    <rect x="82.5" y="67" width="26" height="26" rx="6" fill="url(#b)"/>
+</svg>

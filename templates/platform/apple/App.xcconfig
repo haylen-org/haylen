@@ -1,0 +1,5 @@
+// Written by make.py from app.json, so App.xcodeproj never changes per app.
+HAYLEN_PRODUCT_NAME = Haylen App
+HAYLEN_BUNDLE_IDENTIFIER = dev.haylen.app
+MARKETING_VERSION = 1.0.0
+CURRENT_PROJECT_VERSION = 1.0.0

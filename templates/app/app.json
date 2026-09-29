@@ -1,0 +1,23 @@
+{
+    "name": "Haylen App",
+    "identifier": "dev.haylen.app",
+    "version": "1.0.0",
+    "orientation": "landscape",
+    "window": {
+        "title": "Haylen App",
+        "width": 1280,
+        "height": 720,
+        "resizable": true,
+        "highDpi": true
+    },
+    "design": {
+        "width": 1920,
+        "height": 1080,
+        "scaling": "expand"
+    },
+    "clearColor": "#FF101418",
+    "splash": {
+        "logo": "logo.png",
+        "background": "#FF101418"
+    }
+}

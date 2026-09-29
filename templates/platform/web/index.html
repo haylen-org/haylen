@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+    <title>Haylen</title>
+    <link rel="icon" href="haylen-logo.svg">
+    <link rel="stylesheet" href="loader.css">
+</head>
+<body>
+    <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+    <div id="splash">
+        <img id="splash-logo" alt="">
+        <div id="splash-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div id="splash-bar"></div>
+        </div>
+        <p id="splash-status">Loading</p>
+        <pre id="splash-details" hidden></pre>
+    </div>
+    <script src="loader.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

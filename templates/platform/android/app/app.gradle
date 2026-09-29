@@ -1,0 +1,2 @@
+// Settings of the app itself, applied after the template module, which an app replaces with platform/android/app/app.gradle.
+// It adds dependencies, resources and its own Application class through the haylenApplication manifest placeholder, with its sources under app/src/main.
