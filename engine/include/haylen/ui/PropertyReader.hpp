@@ -47,7 +47,7 @@ class PropertyReader final {
         }
         if (value->is_string()) {
             for (const auto& [name, choice] : choices) {
-                if (*value == name) {
+                if (value->get_ref<const std::string&>() == name) {
                     out = choice;
                     return;
                 }

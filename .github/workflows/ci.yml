@@ -99,7 +99,7 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: android-actions/setup-android@v4.0.4
-      - run: sdkmanager "ndk;30.0.16248370" "cmake;4.1.2" "platforms;android-37"
+      - run: sdkmanager "ndk;30.0.16248370" "cmake;4.1.2" "platforms;android-37.0"
       - run: sudo apt-get update && sudo apt-get install -y ninja-build
       - uses: actions/cache@v6
         with:
