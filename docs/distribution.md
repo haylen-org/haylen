@@ -27,9 +27,9 @@ python3 make.py run ~/apps/my-game --platform web
 | `package <app> [-o app.zip]` | Zips `app.json`, `source/` and `content/` of an app. |
 | `shaders <app> [--force]` | Compiles the shaders under `content/shaders/` of an app into `.shader` files. |
 | `serve <folder> [--host] [--port] [--coep] [--open]` | Serves a folder with the headers WebAssembly pages need. |
-| `plugin add <id\|folder> [--app]` | Copies an official plugin or a plugin folder into `plugins/` of an app and lists it in its `app.json`. |
+| `plugin add <folder\|repository> [--ref] [--app]` | Copies a plugin folder, or a plugin repository at a branch, tag or commit, into `plugins/` of an app and lists it in its `app.json`. |
 | `plugin remove <id> [--app]` | Deletes a plugin from an app and from its `app.json`. |
-| `plugin list [--app]` | Lists the official plugins, or the plugins of an app with their status. |
+| `plugin list [--app]` | Lists the plugins of an app with their status. |
 | `plugin new <folder> [--id]` | Creates a plugin from `templates/plugin/`. |
 
 `app` is an app folder or the path of a sample from `samples/`, so `python3 make.py run games/tiny-island` and `python3 make.py run samples/games/tiny-island` are the same. Without an app, `run` runs Tiny Island.
@@ -145,7 +145,7 @@ python3 make.py plugin remove admob --app ~/apps/my-game
 python3 make.py plugin new ~/plugins/my-plugin
 ```
 
-`plugin add` copies an official plugin from `plugins/<id>` of the repository, or any plugin folder, into `plugins/<id>/` of the app and lists it in the `plugins` section of `app.json` with the defaults of its parameters and an empty text for each required one. `plugin remove` deletes both, `plugin list` lists the official plugins or, with `--app`, the plugins of an app with the problems that keep them from building, and `plugin new` creates a plugin from `templates/plugin/`. `--app` defaults to the current folder. The [plugin guide](plugins.md) describes the commands, the `plugins` section of `app.json`, the checks that `run` makes before it builds and the plugin format.
+`plugin add` copies a plugin folder, or the root of a plugin repository at the branch, tag or commit that `--ref` names, into `plugins/<id>/` of the app and lists it in the `plugins` section of `app.json` with the defaults of its parameters and an empty text for each required one. `plugin remove` deletes both, `plugin list` lists the plugins of an app with the problems that keep them from building, and `plugin new` creates a plugin from `templates/plugin/`. `--app` defaults to the current folder. The [plugin guide](plugins.md) describes the commands, the `plugins` section of `app.json`, the checks that `run` makes before it builds and the plugin format.
 
 ## Engine artifacts
 

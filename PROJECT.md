@@ -177,6 +177,7 @@ Cada ponto abaixo precisa estar coberto pelo grupo Z da seção 14.2.
 113. Tudo isso funciona 100% e otimizado em todas as plataformas, com pesquisa e planejamento de como fazer cada parte.
 114. A cada bloco terminado, fazer commit e push.
 115. Revisar o projeto inteiro de novo atrás de bugs, código legado, código não usado, erros, race conditions e falhas que derrubam o app, com as regras gerais de sempre, e manter tudo no CLAUDE.md e nesta mega lista.
+116. Os plugins de terceiros citados (Firebase, AdMob e os outros) ficam fora deste repositório, em repositórios próprios em https://github.com/haylen-org, feitos pelo dono depois e separado. Este repositório tem só a arquitetura, a engine e a capacidade, com testes simples e equivalentes, sem bibliotecas de terceiros além das da engine.
 
 ## 3. Regras
 
@@ -818,7 +819,7 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 | 12 | Jogo Tiny Island em Lua | Concluída |
 | 13 | Testes e cobertura até o máximo possível | Concluída |
 | 14 | Documentação e revisão final (bugs, legado, não utilizado, race conditions e crashes) | Concluída, com testes de regressão para as correções |
-| 15 | Pedidos 51 a 115 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
+| 15 | Pedidos 51 a 116 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
 
 ## 13. Limitações conhecidas
 
@@ -838,9 +839,9 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 - visionOS nativo depende do Sokol, que usa o `UIScreen`, indisponível no SDK do visionOS. O app iOS roda no Apple Vision Pro como app de iPad compatível. watchOS é impossível, porque o SDK do watchOS não tem Metal, MetalKit, GameController nem AudioToolbox.
 - O Sokol só aceita imagens inteiras em texturas que vivem entre frames, então uma textura dinâmica alterada (os atlas das fontes e da UI) sobe todos os pixels, uma vez por frame.
 
-## 14. Pedidos 51 a 115: decisões e checklist
+## 14. Pedidos 51 a 116: decisões e checklist
 
-Esta seção cobre os pedidos 51 a 115 das seções 2.1, 2.2, 2.3 e 2.4. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
+Esta seção cobre os pedidos 51 a 116 das seções 2.1, 2.2, 2.3 e 2.4. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
 
 ### 14.1 Decisões de organização
 
@@ -1249,7 +1250,8 @@ Decisões, a partir da documentação oficial dos SDKs (AdMob, UMP, Firebase, St
 
 - Um plugin é uma pasta com `plugin.json` (id, nome, versão, descrição, plataformas, dependências de outros plugins, parâmetros por app e o que cada plataforma traz), a API Lua em `source/`, a parte Apple em `apple/` (Swift ou Objective-C, pacotes Swift, xcframeworks, chaves do Info.plist, entitlements e scripts de build), a parte Android em `android/` (módulo de biblioteca Gradle em Kotlin ou Java, com dependências Maven, manifesto e regras do R8), a parte web em `web/` (módulo JavaScript) e, quando preciso, uma biblioteca nativa em C ou C++ em `native/` para os desktops, a mesma da seção `native` do `app.json`.
 - Quem escreve um plugin escreve a API Lua e a implementação em Swift ou Objective-C, em Kotlin ou Java e em JavaScript. As chamadas continuam pela bridge assíncrona em JSON, com a resposta na thread do frame.
-- O app lista os plugins na seção `plugins` do `app.json`, com a configuração de cada um validada pelos parâmetros do `plugin.json`. Os plugins ficam em `plugins/<id>/` do app, copiados por `make.py plugin add` dos plugins oficiais da engine (`plugins/` do repositório) ou de outra pasta. O pacote do app leva o Lua dos plugins (`plugins/<id>/source/`), e `require('<id>')` encontra o módulo do plugin.
+- O app lista os plugins na seção `plugins` do `app.json`, com a configuração de cada um validada pelos parâmetros do `plugin.json`. Os plugins ficam em `plugins/<id>/` do app, copiados por `make.py plugin add` de uma pasta ou de um repositório git num branch, tag ou commit. O pacote do app leva o Lua dos plugins (`plugins/<id>/source/`), e `require('<id>')` encontra o módulo do plugin.
+- Plugins que trazem SDKs de terceiros (anúncios, analytics, crashes, login, compras e serviços de jogos) ficam em repositórios próprios em https://github.com/haylen-org, fora deste repositório, que não usa bibliotecas de terceiros além das dependências da engine. Aqui fica um plugin de demonstração no sample de plugins, só com APIs da plataforma, que testa cada capacidade.
 - Apple: quando o app tem plugins, `make.py` gera de novo o `App.xcodeproj` montado com o XcodeGen baixado numa versão fixa e conferido por SHA-256, incluindo um fragmento por plugin com os fontes e os pacotes Swift de cada alvo (o AdMob só existe no iOS, sem tvOS, macOS e Mac Catalyst). O template continua com o projeto gerado ao lado do `project.yml`. O Info.plist e os entitlements continuam escritos pelo `make.py`, que junta as chaves dos plugins.
 - Apple: um patch pequeno do Sokol deixa a engine usar uma subclasse do delegate de app e de cena do Sokol, que repassa aos plugins o launch com as opções, as opções de conexão da cena (URLs, atividades e notificação), `openURLContexts`, `continueUserActivity`, o token e as notificações remotas, as sessões de URL em segundo plano e o delegate do `UNUserNotificationCenter`. O swizzling do Firebase fica desligado (`FirebaseAppDelegateProxyEnabled = NO`), porque o repasse é explícito.
 - Android: `make.py` inclui o módulo Gradle de cada plugin no projeto montado e aplica os plugins Gradle que eles pedem (Crashlytics e google-services). Cada módulo declara a classe do plugin num `meta-data` do manifesto, e a biblioteca da engine encontra os plugins por um `ContentProvider` que roda antes do `Application.onCreate`, sem exigir uma classe `Application` própria. Uma regra do R8 da biblioteca mantém toda subclasse de `HaylenPlugin`.
@@ -1265,7 +1267,7 @@ Decisões, a partir da documentação oficial dos SDKs (AdMob, UMP, Firebase, St
 
 - [x] `plugin.json` com esquema documentado em `docs/plugins.md` e validado pelo `make.py` (`PluginManifestCheck`), que mostra todos os problemas de uma vez com o caminho e a chave: id em dash-case igual à pasta, versão, plataformas (`ios`, `catalyst`, `tvos`, `macos`, `android`, `web`, `windows`, `linux`), dependências, parâmetros tipados (texto, número, inteiro, booleano, lista, objeto e arquivo) com plataformas, obrigatoriedade e padrão, substituições `${parâmetro}` e as seções `apple`, `android`, `web` e `native`.
 - [x] Seção `plugins` do `app.json`: o `make.py` valida para a plataforma do build (plugin desconhecido, parâmetro que falta, tipo errado, arquivo que não existe, plugin requerido ausente e parâmetro que nenhum plugin declara), aplica os padrões e ordena os plugins pelas dependências, e o `AppConfig` da engine (`AppConfig::fromPackage`) aceita a seção como objeto de objetos com ids em dash-case e confere que cada plugin tem `plugins/<id>/plugin.json` no pacote.
-- [x] `make.py plugin add <id|pasta>`, `plugin remove <id>`, `plugin list` e `plugin new <pasta>`, com o esqueleto em `templates/plugin/` (API Lua, classe Swift, classe Kotlin, módulo JavaScript, `plugin.json` e README) e a pasta `plugins/` dos plugins oficiais.
+- [x] `make.py plugin add <pasta|repositório>` com `--ref` (branch, tag ou commit, pelo fetch de uma ref só, sem copiar o `.git`), `plugin remove <id>`, `plugin list` e `plugin new <pasta>`, com o esqueleto em `templates/plugin/` (API Lua, classe Swift, classe Kotlin, módulo JavaScript, `plugin.json` e README).
 - [~] O pacote do app (`make.py package`, a cópia para as plataformas, o índice do Android e o zip da web) leva `plugins/<id>/plugin.json` e `plugins/<id>/source/` de cada plugin listado, e o player de desktop acha o mesmo Lua, com hot reload do Lua dos plugins. Falta o `haylen_add_app` dos apps C++ levar os plugins.
 - [x] Arquivos por app, como `GoogleService-Info.plist` e `google-services.json`, como parâmetros do tipo arquivo relativos à pasta do app, copiados como recursos do bundle na Apple e para o projeto Android pela seção `files`.
 - [x] `make.py tools` baixa o XcodeGen 2.46.0 conferido por SHA-256 em `.tools/xcodegen/`, também no primeiro uso, e o `App.xcodeproj` do template regenerado com o `plugins.json` vazio sai igual byte a byte.
@@ -1316,23 +1318,14 @@ Decisões, a partir da documentação oficial dos SDKs (AdMob, UMP, Firebase, St
 - [ ] Benchmark da bridge no emulador Android, no simulador iOS e na web: ida e volta de uma chamada, chamadas por segundo e custo por frame de N chamadas e de N eventos, com os números na documentação.
 - [ ] Lote de eventos frequentes do nativo para o Lua e do Lua para o nativo, entregues uma vez por frame.
 
-**Plugins oficiais** (em `plugins/` do repositório)
+**Fora deste repositório**
 
-- [ ] `google-sign-in`: login com Google no Android (Credential Manager), no iOS (GoogleSignIn por SPM) e na web (Google Identity Services), migrado do Tiny Island, que passa a usar o plugin.
-- [ ] `admob`: banner adaptativo ancorado (topo ou base, com espaço reservado), intersticial, premiado, intersticial premiado e app open, consentimento pelo UMP (status, formulário e opções de privacidade), ATT no iOS, modo de teste com os ids de teste do Google, app coberto enquanto um anúncio de tela cheia aparece, iOS com o SDK por SPM e Android com o SDK Next-Gen. Na web, intersticial e premiado pela Ad Placement API do AdSense em modo de teste, e banner informado como indisponível.
-- [ ] `firebase`: núcleo que configura o Firebase no launch com os arquivos de configuração do app.
-- [ ] `firebase-analytics`: eventos, parâmetros, propriedades do usuário, id do usuário e tela atual, em lote, no iOS, no Android e na web.
-- [ ] `firebase-crashlytics`: erros do app como não fatais com a pilha do Lua, logs, chaves e id do usuário, crashes nativos com o NDK no Android e o upload do dSYM na Apple.
-- [ ] `firebase-messaging`: permissão, token, mensagens em primeiro plano, notificação que abriu o app (retida até o Lua escutar) e tópicos, no iOS com APNs pelo repasse do delegate e no Android.
-- [ ] `firebase-remote-config`: padrões, fetch e activate, valores tipados e o evento de atualização, no iOS, no Android e na web.
-- [ ] `purchases`: compras com StoreKit 2 e Google Play Billing (produtos, compra, restauração, transações pendentes na abertura, assinaturas e o token para o servidor).
-- [ ] `game-services`: Game Center (autenticação, placares e conquistas) e Play Games Services.
+- Os plugins de SDKs de terceiros (Google Sign-In, AdMob com UMP e ATT, Firebase com Analytics, Crashlytics, Messaging e Remote Config, compras com StoreKit 2 e Play Billing, Game Center e Play Games Services) ficam em repositórios próprios em https://github.com/haylen-org, feitos pelo dono depois, fora desta sessão. A pesquisa desses SDKs (versões, chaves, ids de teste, fluxos e requisitos por plataforma) orientou a arquitetura, e o login com Google do Tiny Island continua como está no sample.
 
 **Sample, documentação, testes e regras**
 
-- [ ] Sample `samples/system/plugins` com menu e um teste por recurso: banner no topo e na base com a UI saindo de baixo, intersticial, premiado, consentimento, evento de analytics, erro no Crashlytics, remote config e login com Google, validado no simulador iOS, no emulador Android e na web.
-- [ ] Guia `docs/plugins.md` (usar e escrever plugins: formato, Lua, Swift e Objective-C, Kotlin e Java, JavaScript, overlays, espaço reservado, cobertura, ciclo de vida, configuração, arquivos por app e testes), referência Lua de cada plugin oficial no README do plugin e atualização de `docs/platform_bridge.md`, `docs/distribution.md` e `docs/lua-api/platform.md`.
-- [ ] Testes GoogleTest da parte da engine (resolução do Lua dos plugins, configuração, espaço reservado, cobertura, erros para o host, eventos retidos e política de thread), e validação de ponta a ponta de cada plugin oficial nas plataformas.
+- [ ] Sample `samples/system/plugins` com um plugin de demonstração (`plugins/native-demo/` do sample), só com APIs da plataforma (UIKit e AppKit, views do Android, DOM e C nos desktops), e um teste por capacidade: chamadas na thread principal e em segundo plano, falha tipada, timeout e cancelamento, evento retido na carga, eventos vindos do nativo, configuração com padrões, banner nativo no topo e na base com espaço reservado e a UI saindo de baixo, toque no banner chegando ao Lua, UI nativa de tela cheia que cobre o app (pausa e silencia), resultado de uma tela nativa (seletor de arquivo com `onActivityResult` no Android), URL aberta com o app rodando e a frio, e o erro do app entregue ao nativo e devolvido ao próximo app por evento retido. Validado no simulador iOS, no Mac Catalyst, no simulador tvOS, no macOS, no emulador Android, na web e no player de desktop, e no harness sem janela com a parte nativa ausente.
+- [~] Guia `docs/plugins.md` (usar e escrever plugins: formato, Lua, Swift e Objective-C, Kotlin e Java, JavaScript, overlays, espaço reservado, cobertura, ciclo de vida, configuração, arquivos por app e testes), com `docs/platform_bridge.md`, `docs/distribution.md` e `docs/lua-api/platform.md` atualizados. Falta a parte do plugin de demonstração e do sample.
+- [x] Testes GoogleTest da parte da engine: resolução do Lua dos plugins e colisão de nomes, configuração com padrões, handles e `send`, espaço reservado com a UI ancorada, app coberto, erros para o host, eventos retidos, `HaylenNativeApi.registerPlugin` e política de thread, com 950 testes passando, também sob ThreadSanitizer.
 - [~] Regras dos plugins no CLAUDE.md (pacote, `plugin.json`, configuração, montagem e nomes). Falta completar com as APIs nativas quando o Android e a Apple ficarem prontos.
 - [ ] Caminhos da Apple que o simulador não dispara: resultado combinado do fetch em segundo plano (o `simctl` recusa push silencioso), sessões de URL em segundo plano, atalhos, atividades, token do APNs, resposta de notificação tocada e notificações remotas no macOS, conferir num aparelho.
-- [ ] Validar o Firebase de ponta a ponta com um projeto Firebase do dono (arquivos de configuração reais), porque sem ele só a configuração e as chamadas são conferidas.

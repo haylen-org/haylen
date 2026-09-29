@@ -25,7 +25,7 @@ The engine for games, multimedia apps and applications, with a fast C++20 core, 
 
 Haylen is a reusable engine for games, multimedia apps and applications, 2D today, with a fast C++20 core and a complete Lua API. Apps are written in Lua, and every capability stays fully usable from C++. One app package, a folder or a zip file with `app.json`, its Lua modules under `source/` and its assets under `content/`, runs on macOS, Windows, Linux, iOS, iPadOS, Mac Catalyst, tvOS, Android phones, tablets and TVs, and the web with WebGPU or WebGL2.
 
-The repository holds the engine, the `haylen` desktop player, the platform templates, the official native plugins and the samples, among them Tiny Island, a complete survival game built with the Tiny Swords art pack.
+The repository holds the engine, the `haylen` desktop player, the platform templates, the native plugin tooling and the samples, among them Tiny Island, a complete survival game built with the Tiny Swords art pack.
 
 ## Highlights
 

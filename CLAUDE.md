@@ -134,7 +134,6 @@ templates/
     apple/                XcodeGen project.yml with the generated App.xcodeproj next to it: iOS and iPadOS with Mac Catalyst, tvOS and macOS.
     android/              Gradle app project without C++ that depends on the haylen AAR.
     web/                  Loading page with the app or engine logo, the progress bar, the backend choice and the error screen.
-plugins/                  The official native plugins, one folder per plugin id, which make.py plugin add copies into apps.
 tools/                    Python tools (Tiny Swords importer, island map generator, PNG reader and writer).
 docs/                     Guides and the Lua API reference.
 extras/images/            Brand images: the vertical and horizontal logos, the symbol, and the logo variants with a white wordmark for dark backgrounds.
@@ -147,8 +146,8 @@ extras/images/            Brand images: the vertical and horizontal logos, the s
 - Apps list their plugins with the parameter values in the `plugins` section of `app.json`, and keep the plugin folders in `plugins/<id>/`, copied by `make.py plugin add`. A value that differs per platform uses parameters with different names (`iosAppId`, `androidAppId`), so nothing resolves platform values at runtime. Missing parameters take the defaults of `plugin.json` on every platform.
 - The package carries `plugins/<id>/plugin.json` and `plugins/<id>/source/` of every listed plugin. Nothing else of a plugin reaches the package.
 - make.py validates every manifest and the app's values before it builds, and assembles each platform: on Apple it writes `plugins.json`, which the template's `project.yml` includes, merges Info.plist keys and entitlements and regenerates the project with the pinned XcodeGen when plugins need it, on Android it drives the template through `haylen.*` keys of `gradle.properties`, on the web it copies the modules and lists them in `config.json`, and on desktops it builds the native library like the `native` section of `app.json`.
-- Native plugin methods are named `<id>.<method>` and events `<id>.<event>`, with camelCase method and event names, and every official plugin offers the same Lua API on every platform it supports. Calls a platform cannot serve fail with the code `unsupported` and a clear message.
-- Official plugins live in `plugins/` of the repository and follow every rule of this file.
+- Native plugin methods are named `<id>.<method>` and events `<id>.<event>`, with camelCase method and event names, and a plugin offers the same Lua API on every platform it supports. Calls a platform cannot serve fail with the code `unsupported` and a clear message.
+- Plugins that bring third-party SDKs, such as ads, analytics, crash reporting, sign-in, purchases or game services, live in their own repositories under https://github.com/haylen-org and never in this repository, which uses no third-party library beyond the dependencies of the engine. This repository holds the plugin architecture, the engine and platform capabilities they build on, and the demo plugin of the plugins sample, built on platform APIs alone, which tests every capability. `make.py plugin add` takes a plugin folder or a plugin repository at a branch, tag or commit.
 
 ## Architecture rules
 

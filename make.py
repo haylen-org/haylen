@@ -37,8 +37,6 @@ APP_TEMPLATE = TEMPLATES_DIR / "app"
 PLUGIN_TEMPLATE = TEMPLATES_DIR / "plugin"
 # Every folder here is the project template of one platform, which make.py new copies into platform/<name> of an app.
 PLATFORM_TEMPLATES_DIR = TEMPLATES_DIR / "platform"
-# The official plugins, which make.py plugin add copies into apps by their id.
-OFFICIAL_PLUGINS_DIR = ROOT / "plugins"
 ARTIFACTS_DIR = BUILD_ROOT / "artifacts"
 ENGINE_BUILDS_DIR = BUILD_ROOT / "engine"
 APPS_DIR = BUILD_ROOT / "apps"
@@ -85,7 +83,7 @@ FORMAT_SKIPPED_FOLDERS = {".cxx", ".gradle", "build", "_deps"}
 # A package is app.json with the Lua modules under source and the assets under content, and nothing else in its folder ships.
 PACKAGE_FOLDERS = ("source", "content")
 # Build outputs and Finder files that never travel with a copied platform folder or plugin.
-COPY_IGNORED = shutil.ignore_patterns(".DS_Store", "build", ".gradle", ".cxx", ".kotlin")
+COPY_IGNORED = shutil.ignore_patterns(".DS_Store", ".git", "build", ".gradle", ".cxx", ".kotlin")
 # Engine files that never reach an artifact, so editing them keeps the artifacts fresh.
 ENGINE_HASH_SKIPPED = {"tests", "bench", "build", ".cxx", ".gradle", ".kotlin", ".DS_Store"}
 # The benchmarks of make.py bench that are plain executables on the CPU, by suite.
@@ -2144,18 +2142,36 @@ def write_app_json(folder: Path, document: dict) -> None:
     (folder / "app.json").write_text(json.dumps(document, indent=4, ensure_ascii=False) + "\n")
 
 
+def is_git_repository(value: str) -> bool:
+    """Tells a git repository address, such as https://github.com/haylen-org/<plugin>.git or git@github.com:haylen-org/<plugin>.git, from a folder path."""
+    return "://" in value or value.startswith("git@") or value.endswith(".git")
+
+
 def command_plugin_add(args: argparse.Namespace) -> None:
-    """Copies an official plugin or a plugin folder into plugins/ of an app, replacing an earlier copy, and lists it in app.json with the defaults of its parameters and an empty text for every required one."""
+    """Copies a plugin folder, or the root of a git repository at a branch, tag or commit, into plugins/ of an app, replacing an earlier copy, and lists it in app.json with the defaults of its parameters and an empty text for every required one."""
     app = resolve_app(args.app)
-    candidate = Path(args.plugin).expanduser()
-    source = candidate.resolve() if (candidate / "plugin.json").is_file() else OFFICIAL_PLUGINS_DIR / args.plugin
-    if not (source / "plugin.json").is_file():
-        raise BuildError(f"{args.plugin} is neither a plugin folder nor an official plugin. List the official plugins with: python3 make.py plugin list")
-    plugin = Plugin.load(source)
-    target = app / "plugins" / plugin.id
-    if source != target:
-        shutil.rmtree(target, ignore_errors=True)
-        shutil.copytree(source, target, ignore=COPY_IGNORED)
+    with tempfile.TemporaryDirectory() as scratch:
+        if is_git_repository(args.plugin):
+            # Fetching one ref by name works for branches, tags and commits alike, and the checkout takes the name of the plugin id like any plugin folder.
+            checkout = Path(scratch) / "checkout"
+            run(["git", "init", "--quiet", checkout])
+            run(["git", "-C", checkout, "fetch", "--quiet", "--depth", "1", args.plugin, args.ref or "HEAD"])
+            run(["git", "-C", checkout, "checkout", "--quiet", "FETCH_HEAD"])
+            if not (checkout / "plugin.json").is_file():
+                raise BuildError(f"{args.plugin} is no plugin repository, because it has no plugin.json at its root.")
+            identifier = json.loads((checkout / "plugin.json").read_text()).get("id")
+            source = checkout.rename(Path(scratch) / identifier) if isinstance(identifier, str) and PLUGIN_ID.fullmatch(identifier) else checkout
+        elif args.ref:
+            raise BuildError("--ref picks a branch, tag or commit of a git repository, and a plugin folder has none.")
+        else:
+            source = Path(args.plugin).expanduser().resolve()
+        if not (source / "plugin.json").is_file():
+            raise BuildError(f"{args.plugin} is no plugin, because it has no plugin.json at its root.")
+        plugin = Plugin.load(source)
+        target = app / "plugins" / plugin.id
+        if source != target:
+            shutil.rmtree(target, ignore_errors=True)
+            shutil.copytree(source, target, ignore=COPY_IGNORED)
 
     document = json.loads((app / "app.json").read_text())
     listed = document.setdefault("plugins", {})
@@ -2171,7 +2187,7 @@ def command_plugin_add(args: argparse.Namespace) -> None:
         print(f"Fill in {', '.join(missing)} under plugins.{plugin.id} of {app / 'app.json'}.")
     for required in plugin.requires:
         if required not in listed:
-            print(f"{plugin.id} requires {required}, which the app does not list yet. Add it with: python3 make.py plugin add {required} --app {app}")
+            print(f"{plugin.id} requires {required}, which the app does not list yet. Add it with python3 make.py plugin add and its folder or repository.")
 
 
 def command_plugin_remove(args: argparse.Namespace) -> None:
@@ -2212,24 +2228,11 @@ def plugin_status(app: Path, identifier: str, listed: dict) -> list[str]:
             problems += [problem for problem in parameter_values(app, plugin, listed[identifier], platform)[1] if problem not in problems]
         status = f"{len(problems)} problems" if problems else "ok"
 
-    official = OFFICIAL_PLUGINS_DIR / identifier / "plugin.json"
-    version = json.loads(official.read_text()).get("version") if official.is_file() else plugin.version
-    if version != plugin.version:
-        status += f", official version {version}"
     return [f"{identifier:<24} {plugin.version:<10} {', '.join(plugin.manifest['platforms']):<48} {status}", *(f"    {problem}" for problem in problems)]
 
 
 def command_plugin_list(args: argparse.Namespace) -> None:
-    """Lists the official plugins, or the plugins of an app with the problems that keep each one from building."""
-    if args.app is None:
-        official = sorted(folder for folder in OFFICIAL_PLUGINS_DIR.iterdir() if (folder / "plugin.json").is_file())
-        if not official:
-            print(f"There are no official plugins in {OFFICIAL_PLUGINS_DIR} yet.")
-        for folder in official:
-            plugin = Plugin.load(folder)
-            print(f"{plugin.id:<24} {plugin.version:<10} {', '.join(plugin.manifest['platforms']):<48} {plugin.manifest['description']}")
-        return
-
+    """Lists the plugins of an app with the problems that keep each one from building."""
     app = resolve_app(args.app)
     listed = json.loads((app / "app.json").read_text()).get("plugins", {})
     folders = sorted(path.name for path in (app / "plugins").iterdir() if path.is_dir()) if (app / "plugins").is_dir() else []
@@ -2503,16 +2506,17 @@ def main() -> None:
 
     plugin = commands.add_parser("plugin", help="Add plugins to an app, remove them, list them or create a plugin.")
     actions = plugin.add_subparsers(dest="action", required=True, metavar="action")
-    add_plugin = actions.add_parser("add", help="Copy an official plugin or a plugin folder into plugins/ of an app and list it in app.json.")
-    add_plugin.add_argument("plugin", help="Id of an official plugin from plugins/ of the repository, or a plugin folder.")
+    add_plugin = actions.add_parser("add", help="Copy a plugin folder or a plugin repository into plugins/ of an app and list it in app.json.")
+    add_plugin.add_argument("plugin", help="A plugin folder, or the git repository of a plugin, such as https://github.com/haylen-org/<plugin>.git.")
+    add_plugin.add_argument("--ref", help="Branch, tag or commit of the repository, its default branch otherwise.")
     add_plugin.add_argument("--app", default=".", help="App folder or sample path from samples/, the current folder by default.")
     add_plugin.set_defaults(handler=command_plugin_add)
     remove_plugin = actions.add_parser("remove", help="Delete a plugin from plugins/ of an app and from its app.json.")
     remove_plugin.add_argument("id", help="Id of the plugin.")
     remove_plugin.add_argument("--app", default=".", help="App folder or sample path from samples/, the current folder by default.")
     remove_plugin.set_defaults(handler=command_plugin_remove)
-    list_plugins = actions.add_parser("list", help="List the official plugins, or the plugins of an app with their status.")
-    list_plugins.add_argument("--app", help="App folder or sample path from samples/ whose plugins to list.")
+    list_plugins = actions.add_parser("list", help="List the plugins of an app with their status.")
+    list_plugins.add_argument("--app", default=".", help="App folder or sample path from samples/, the current folder by default.")
     list_plugins.set_defaults(handler=command_plugin_list)
     new_plugin = actions.add_parser("new", help="Create a plugin from templates/plugin.")
     new_plugin.add_argument("folder", help="Folder of the new plugin, named after its id, which must not exist or be empty.")

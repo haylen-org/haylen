@@ -2,7 +2,7 @@
 
 A plugin gives Lua apps a capability that each platform implements natively, such as ads, analytics, sign-in or purchases. It is a folder with a manifest, `plugin.json`, a Lua API under `source/` and a native part for each platform it supports: Swift or Objective-C sources with Swift packages for Apple platforms, a Gradle library module for Android, ES modules for the web and a CMake library for desktops. The Lua API is the same on every platform. An app lists the plugins it uses in its `app.json`, and make.py checks them, puts their Lua code into the package and assembles their native parts into the project of each platform, so an app still never compiles the engine.
 
-These plugins are distributable folders, not the engine plugins of `haylen::plugins`, which are the C++ subsystems that make up the engine. The official plugins live in `plugins/` of the repository.
+These plugins are distributable folders, not the engine plugins of `haylen::plugins`, which are the C++ subsystems that make up the engine. Plugins that bring third-party SDKs, such as ads, analytics, crash reporting, sign-in or purchases, live in their own repositories under [haylen-org](https://github.com/haylen-org), and apps add them with `make.py plugin add` and the address of the repository. The engine repository holds no third-party SDK: the demo plugin of the plugins sample, built on platform APIs alone, exercises every capability a plugin uses.
 
 ## Using plugins
 
@@ -19,9 +19,9 @@ python3 make.py plugin new ~/plugins/my-plugin
 
 | Command | Purpose |
 | --- | --- |
-| `plugin add <id\|folder> [--app]` | Copies an official plugin from `plugins/<id>` of the repository, or any plugin folder, into `plugins/<id>/` of the app, replacing an earlier copy. It lists the plugin in `app.json` with the default of every parameter that has one and an empty text for every required parameter, which the developer fills in, keeps the values the app already gives, and names the plugins it requires that the app does not list yet. |
+| `plugin add <folder\|repository> [--ref] [--app]` | Copies a plugin folder, or the root of a plugin repository at the branch, tag or commit that `--ref` names (the default branch otherwise), into `plugins/<id>/` of the app, replacing an earlier copy. It lists the plugin in `app.json` with the default of every parameter that has one and an empty text for every required parameter, which the developer fills in, keeps the values the app already gives, and names the plugins it requires that the app does not list yet. |
 | `plugin remove <id> [--app]` | Deletes `plugins/<id>/` of the app and its entry in `app.json`. |
-| `plugin list [--app]` | Without `--app`, lists the official plugins with their version, platforms and description. With `--app`, lists the plugins of the app with their version, their platforms and their status: `ok`, the problems that keep a plugin from building for any of its platforms, a folder that `app.json` does not list, or a newer official version. |
+| `plugin list [--app]` | Lists the plugins of the app with their version, their platforms and their status: `ok`, the problems that keep a plugin from building for any of its platforms, or a folder that `app.json` does not list. |
 | `plugin new <folder> [--id]` | Creates a plugin from `templates/plugin/` in a folder named after its id, with an example method and event on every platform. `--id` defaults to the folder name and must match it. |
 
 `--app` takes an app folder or a sample path from `samples/`, and defaults to the current folder.
