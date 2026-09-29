@@ -1,8 +1,31 @@
-# Haylen
+<p align="center">
+    <a href="https://github.com/haylen-org/haylen" target="_blank" rel="noopener noreferrer">
+        <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="extras/images/logo-v-dark.svg">
+            <img width="200" src="extras/images/logo-v.svg" alt="Haylen">
+        </picture>
+    </a>
+</p>
+
+<p align="center">
+    <a href="https://github.com/haylen-org/haylen/actions/workflows/ci.yml"><img src="https://github.com/haylen-org/haylen/actions/workflows/ci.yml/badge.svg" alt="Haylen - CI"></a>
+    <a href="https://github.com/haylen-org/haylen/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+    <a href="https://isocpp.org"><img src="https://img.shields.io/badge/C%2B%2B-20-00599C.svg" alt="C++ 20"></a>
+    <a href="https://github.com/varn-org/varn"><img src="https://img.shields.io/badge/Lua-Varn-000080.svg" alt="Lua through Varn"></a>
+    <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux%20%7C%20iOS%20%7C%20tvOS%20%7C%20Android%20%7C%20Web-555555.svg" alt="Supported platforms">
+</p>
+
+<p align="center">
+The engine for games, multimedia apps and applications, with a fast C++20 core, a complete Lua API and one app package for every platform.
+</p>
+
+<br>
+
+## Project
 
 Haylen is a reusable engine for games, multimedia apps and applications, 2D today, with a fast C++20 core and a complete Lua API. Apps are written in Lua, and every capability stays fully usable from C++. One app package, a folder or a zip file with `app.json`, its Lua modules under `source/` and its assets under `content/`, runs on macOS, Windows, Linux, iOS, iPadOS, Mac Catalyst, tvOS, Android phones, tablets and TVs, and the web with WebGPU or WebGL2.
 
-The repository holds the engine, the `haylen` desktop player and Tiny Island, a complete survival game built with the Tiny Swords art pack.
+The repository holds the engine, the `haylen` desktop player, the platform templates, the official native plugins and the samples, among them Tiny Island, a complete survival game built with the Tiny Swords art pack.
 
 ## Highlights
 

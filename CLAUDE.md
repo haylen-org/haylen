@@ -137,6 +137,7 @@ templates/
 plugins/                  The official native plugins, one folder per plugin id, which make.py plugin add copies into apps.
 tools/                    Python tools (Tiny Swords importer, island map generator, PNG reader and writer).
 docs/                     Guides and the Lua API reference.
+extras/images/            Brand images: the vertical and horizontal logos, the symbol, and the logo variants with a white wordmark for dark backgrounds.
 ```
 
 ## Native plugins
