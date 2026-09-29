@@ -62,6 +62,7 @@ function classSelect:enter()
         }
     end
 
+    -- The stats sheet and the buttons share the right side next to the cards, so the sheet shows every row on short screens, such as TVs inside their safe area and phones in landscape.
     self.document = ui.mount(ui.column{
         padding = {40, 64},
         gap = 24,
@@ -72,19 +73,29 @@ function classSelect:enter()
         ui.pageHeader{title = widgets.text('classes.title'), banner = true, textAlign = 'center', align = 'center'},
         ui.row{
             grow = 1,
-            ui.spacer{grow = 1},
-            ui.panel{width = 700, gap = 14, children = rows},
-        },
-        ui.row{justify = 'center', gap = 36, children = cards},
-        ui.row{
-            justify = 'center',
-            gap = 32,
-            ui.column{width = 360, widgets.button('back', 'classes.back', function()
-                self:back()
-            end, {variant = 'default', sound = 'back'})},
-            ui.column{width = 360, widgets.button('start', 'classes.start', function()
-                self:start()
-            end, {sound = 'confirm'})},
+            gap = 24,
+            ui.column{
+                grow = 1,
+                align = 'stretch',
+                ui.spacer{grow = 1},
+                ui.row{justify = 'center', gap = 24, children = cards},
+            },
+            ui.column{
+                width = 640,
+                align = 'stretch',
+                gap = 24,
+                ui.panel{gap = 14, children = rows},
+                ui.spacer{grow = 1},
+                ui.row{
+                    gap = 32,
+                    widgets.button('back', 'classes.back', function()
+                        self:back()
+                    end, {variant = 'default', sound = 'back', grow = 1}),
+                    widgets.button('start', 'classes.start', function()
+                        self:start()
+                    end, {sound = 'confirm', grow = 1}),
+                },
+            },
         },
     })
     self:select(preferences.get('class'))
