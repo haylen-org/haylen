@@ -12,6 +12,7 @@ jmethodID JavaBridge::editMethod = nullptr;
 jmethodID JavaBridge::finishMethod = nullptr;
 jclass JavaBridge::activityClass = nullptr;
 jmethodID JavaBridge::lockOrientationMethod = nullptr;
+jmethodID JavaBridge::captureBackMethod = nullptr;
 
 jint JavaBridge::load(JavaVM* vm) {
     JNIEnv* env = nullptr;
@@ -28,6 +29,7 @@ jint JavaBridge::load(JavaVM* vm) {
     editMethod = env->GetStaticMethodID(editorClass, "edit", "([B)V");
     finishMethod = env->GetStaticMethodID(editorClass, "finish", "()V");
     lockOrientationMethod = env->GetStaticMethodID(activityClass, "lockOrientation", "(I)V");
+    captureBackMethod = env->GetStaticMethodID(activityClass, "captureBack", "(Z)V");
     varn::http::client::AndroidHttpBridge::publish(vm);
     return JNI_VERSION_1_6;
 }
@@ -63,6 +65,11 @@ void JavaBridge::finishText() {
 void JavaBridge::lockOrientation(int value) {
     const Thread thread;
     thread.getEnv().CallStaticVoidMethod(activityClass, lockOrientationMethod, static_cast<jint>(value));
+}
+
+void JavaBridge::captureBack(bool value) {
+    const Thread thread;
+    thread.getEnv().CallStaticVoidMethod(activityClass, captureBackMethod, static_cast<jboolean>(value ? JNI_TRUE : JNI_FALSE));
 }
 
 std::string JavaBridge::toString(JNIEnv& env, jbyteArray bytes) {

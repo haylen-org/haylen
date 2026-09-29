@@ -11,6 +11,7 @@
 
 -keep class dev.haylen.HaylenActivity {
     static void lockOrientation(int);
+    static void captureBack(boolean);
 }
 
 -keep class com.varn.VarnHttp { *; }

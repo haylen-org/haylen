@@ -8,6 +8,7 @@
 #include "platform/android/AndroidActivity.hpp"
 #include "platform/android/AndroidAssetPackage.hpp"
 #include "platform/android/AndroidGamepads.hpp"
+#include "platform/android/AndroidKeys.hpp"
 #include "platform/android/AndroidTextInput.hpp"
 #include "platform/android/JavaBridge.hpp"
 #include "platform/sokol/BridgeRelay.hpp"
@@ -125,5 +126,9 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenNetwork_nativeNetwork(JNIEnv*, jcla
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeControllerRemoved(JNIEnv*, jclass, jint device) {
     haylen::platform::AndroidGamepads::remove(device);
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeBack(JNIEnv*, jclass) {
+    haylen::platform::AndroidKeys::receiveBack();
 }
 }

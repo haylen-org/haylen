@@ -51,6 +51,11 @@ bool AndroidKeys::handleEvent(const void* source) {
     return true;
 }
 
+void AndroidKeys::receiveBack() {
+    SokolRuntime::postEvent({.type = Event::Type::KeyDown, .key = input::Key::Escape});
+    SokolRuntime::postEvent({.type = Event::Type::KeyUp, .key = input::Key::Escape});
+}
+
 std::optional<input::Key> AndroidKeys::toKey(std::int32_t code) noexcept {
     switch (code) {
     case AKEYCODE_DPAD_UP:

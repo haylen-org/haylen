@@ -20,6 +20,8 @@
 #include "platform/android/AndroidActivity.hpp"
 #include "platform/android/AndroidGamepads.hpp"
 #include "platform/android/AndroidKeys.hpp"
+#include "platform/android/AndroidTextInput.hpp"
+#include "platform/android/JavaBridge.hpp"
 #elif defined(__EMSCRIPTEN__)
 #include "platform/web/WebPage.hpp"
 #endif
@@ -180,6 +182,7 @@ void SokolRuntime::onFrame(void* data) {
     runtime.engine->frame(sapp_frame_duration());
 #if defined(__ANDROID__)
     AndroidActivity::endSplashScreen();
+    runtime.reportBackCapture();
 #endif
     if (!runtime.engine->isRunning()) {
         sapp_quit();
@@ -223,6 +226,15 @@ void SokolRuntime::onEvent(const sapp_event* source, void* data) {
 #if defined(__ANDROID__)
 bool SokolRuntime::onAndroidInput(const void* source) {
     return AndroidGamepads::handleEvent(source) || AndroidKeys::handleEvent(source);
+}
+
+void SokolRuntime::reportBackCapture() {
+    const bool captured = engine->isBackCaptured() || AndroidTextInput::isEditing();
+    if (captured == backReported) {
+        return;
+    }
+    backReported = captured;
+    JavaBridge::captureBack(captured);
 }
 #endif
 

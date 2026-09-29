@@ -241,7 +241,7 @@ print(window.backLeavesApp())
 
 ### window.setBackLeavesApp(enabled)
 
-Decides whether the back button of the platform, the Menu button of the Apple TV remote and the Back button of Android, leaves the app. Apple and Google ask that it leaves from the root screen, where the Apple TV goes back to its home screen and Android closes the app, so an app keeps the default there and sets `false` on the screens back returns from. The press then reaches the app as the escape key, which the UI reads as `ui_cancel`. While a UI popup or dialog is open the app keeps the press either way, and it closes them. Other platforms have no such button, so it changes nothing there.
+Decides whether the back button of the platform, the Menu button of the Apple TV remote and the Back button of Android, leaves the app. Apple and Google ask that it leaves from the root screen, where the Apple TV goes back to its home screen and Android closes the app, so an app keeps the default there and sets `false` on the screens back returns from. The press then reaches the app as the escape key, which the UI reads as `ui_cancel`. While a UI popup or dialog is open the app keeps the press either way, and it closes them. On Android 13 and later the system plays its predictive back animation only when back leaves the app. Other platforms have no such button, so it changes nothing there.
 
 ```lua
 local scene = require('haylen.scene')

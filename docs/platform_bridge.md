@@ -43,7 +43,7 @@ These methods work without app code. The results are documented in the [referenc
 | `system.open_url` | Same as `device.info`. |
 | `haptics.vibrate` | Same as `device.info`. Android and the web vibrate, iOS plays an impact, and the other platforms answer without doing anything. |
 
-An app can replace any of them. Engine handlers always take precedence over native ones. On Android, `HaylenActivity` registers the native built-ins when it is created, which replaces handlers of the same names registered before, so an app that overrides a built-in registers its handler after the activity exists. On Apple platforms and the web, a later registration replaces the built-in.
+An app can replace any of them. Engine handlers always take precedence over native ones. A native handler registered under the name of a built-in replaces it on every platform, whenever the app registers it: Android registers its built-ins when the `HaylenBridge` class loads, before any app code can register, the built-ins of Apple platforms never replace a handler of the same name, and the web runtime registers its built-ins before the page code runs.
 
 ## The Lua side
 
@@ -177,7 +177,7 @@ package com.example.myapp;
 
 import android.content.res.Configuration;
 import dev.haylen.HaylenBridge;
-import java.util.Map;
+import java.util.Collections;
 
 // Tells the app whether the device uses a dark theme, and when that changes.
 final class ThemePlugin {
@@ -185,15 +185,19 @@ final class ThemePlugin {
 
     static void register() {
         HaylenBridge.register("system.theme", (params, reply) -> {
-            boolean dark = HaylenBridge.activity().getResources().getConfiguration().isNightModeActive();
-            reply.success(Map.of("dark", dark));
+            boolean dark = isDark(HaylenBridge.activity().getResources().getConfiguration());
+            reply.success(Collections.singletonMap("dark", dark));
         });
     }
 
     static void onConfigurationChanged(Configuration configuration) {
         if (HaylenBridge.activity() != null) {
-            HaylenBridge.emit("system.themeChanged", Map.of("dark", configuration.isNightModeActive()));
+            HaylenBridge.emit("system.themeChanged", Collections.singletonMap("dark", isDark(configuration)));
         }
+    }
+
+    private static boolean isDark(Configuration configuration) {
+        return (configuration.uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
     }
 }
 ```
@@ -238,7 +242,7 @@ The manifest names the application class and keeps `uiMode` in the activity's `a
 </application>
 ```
 
-The handler runs on the main thread only while an activity exists, so `HaylenBridge.activity()` is never `null` inside it, and `isNightModeActive` is available from API 30, the engine's minimum.
+The handler runs on the main thread only while an activity exists, so `HaylenBridge.activity()` is never `null` inside it. The night mode bits of `uiMode` and `Collections.singletonMap` work from API 27, the engine's minimum, while `Configuration.isNightModeActive` and `Map.of` need API 30.
 
 ### Web
 

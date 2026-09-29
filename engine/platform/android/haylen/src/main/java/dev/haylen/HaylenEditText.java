@@ -91,6 +91,15 @@ final class HaylenEditText extends EditText {
         onUiThread(HaylenEditText::stop);
     }
 
+    // Lets the field being edited go, as the back button does, and returns whether a field was being edited.
+    boolean dismiss() {
+        if (!editing) {
+            return false;
+        }
+        nativeTextAction(field, ACTION_DISMISSED);
+        return true;
+    }
+
     // A keyboard the user closed while a field was being edited lets that field go.
     void setKeyboardShown(boolean shown) {
         if (keyboardShown && !shown && editing) {

@@ -12,6 +12,9 @@ import android.os.Bundle;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
+import android.window.OnBackInvokedCallback;
+import android.window.OnBackInvokedDispatcher;
+import androidx.annotation.RequiresApi;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -25,6 +28,7 @@ public class HaylenActivity extends NativeActivity implements InputManager.Input
     private HaylenEditText editor;
     private HaylenAudioFocus audioFocus;
     private HaylenNetwork network;
+    private OnBackInvokedCallback backCallback;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -140,6 +144,36 @@ public class HaylenActivity extends NativeActivity implements InputManager.Input
         activity.runOnUiThread(() -> activity.setRequestedOrientation(requested));
     }
 
+    // Called from the frame thread of the engine whenever the app starts or stops taking the back button, which it takes while it captures back or edits a text field. Before Android 13 back arrives as a key, which the engine takes or leaves itself.
+    static void captureBack(boolean captured) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && HaylenBridge.activity() instanceof HaylenActivity activity) {
+            activity.runOnUiThread(() -> activity.setBackCaptured(captured));
+        }
+    }
+
+    // Back reaches the app only through a registered callback, and without one Android plays its back animation and leaves the app.
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private void setBackCaptured(boolean captured) {
+        if (captured == (backCallback != null)) {
+            return;
+        }
+        OnBackInvokedDispatcher dispatcher = getOnBackInvokedDispatcher();
+        if (captured) {
+            backCallback = this::onBack;
+            dispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, backCallback);
+            return;
+        }
+        dispatcher.unregisterOnBackInvokedCallback(backCallback);
+        backCallback = null;
+    }
+
+    // Back lets the text field being edited go first, and otherwise reaches the engine as escape.
+    private void onBack() {
+        if (!editor.dismiss()) {
+            nativeBack();
+        }
+    }
+
     private String libraryName() {
         try {
             ActivityInfo info = getPackageManager().getActivityInfo(getComponentName(), PackageManager.GET_META_DATA);
@@ -160,4 +194,6 @@ public class HaylenActivity extends NativeActivity implements InputManager.Input
     private static native void nativeKeyboard(int x, int y, int width, int height);
 
     private static native void nativeOrientation(boolean portrait);
+
+    private static native void nativeBack();
 }
