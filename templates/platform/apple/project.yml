@@ -1,9 +1,12 @@
-# XcodeGen spec of App.xcodeproj, which is committed next to it. Run `xcodegen generate` in this folder after changing it.
-# The project never changes per app: make.py writes the name, identifier, version and native library settings into App.xcconfig, the Info.plist of each platform from app.json, the splash assets, the package into app/, the native libraries into native/ and a link to Haylen.xcframework.
+# XcodeGen spec of App.xcodeproj, which is committed next to it. Run the XcodeGen that make.py pins, `.tools/xcodegen/bin/xcodegen generate`, in this folder after changing it.
+# make.py writes the name, identifier, version, native library and entitlements settings into App.xcconfig, the Info.plist of each platform from app.json and the plugins, the splash assets, the package into app/, the native libraries into native/ and a link to Haylen.xcframework.
+# Only plugins change the project per app: make.py writes their sources, Swift packages, system frameworks, resources and build scripts into plugins.json, which this spec includes, and generates the project again. The template ships plugins.json empty, so the committed project is the one of an app without plugins.
 # The app folder and Haylen.xcframework exist only in the projects make.py assembles, so the template lists them as optional.
 # Every file in source/ builds into every target, so apps add Objective-C, C++ and Swift files there, and Swift reaches the engine through HaylenBridging.h.
 # The embed phase copies and signs whole library bundles, whose files the script sandbox would need listed one by one together with the temporary files of codesign, so scripts run without it.
 name: App
+include:
+  - plugins.json
 options:
   deploymentTarget:
     iOS: "16.3"

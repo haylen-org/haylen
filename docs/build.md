@@ -13,6 +13,7 @@ Every host needs Python 3.10 or newer, CMake 3.28 or newer and a C++20 compiler.
 | `sokol-shdc` | commit `11d0cf6` of `floooh/sokol-tools-bin` | `.tools/sokol-shdc` | Every build. Prebuilt binaries exist for macOS (arm64 and x64), Linux (arm64 and x64) and Windows (x64). |
 | Emscripten SDK | 6.0.10 | `.tools/emsdk` | Web builds. It is cloned with `git`. |
 | Gradle | 9.8.0 | `.tools/gradle-9.8.0` | The Android library and Android apps. |
+| XcodeGen | 2.46.0, the release zip checked against its pinned SHA-256 hash | `.tools/xcodegen` | Apple apps whose plugins add to the Apple project, which make.py generates again. macOS only. |
 
 What each platform needs on top of that:
 
@@ -81,7 +82,7 @@ The runtime links the system libraries of each platform's default backend, plus 
 python3 make.py tools [--emsdk] [--gradle]
 ```
 
-Downloads `sokol-shdc`, and Emscripten 6.0.10 or Gradle 9.8.0 when asked, and prints where each one lives. Every other command downloads what it needs by itself, so `tools` is mainly useful to warm up a machine or a CI cache.
+Downloads `sokol-shdc`, XcodeGen 2.46.0 on macOS, and Emscripten 6.0.10 or Gradle 9.8.0 when asked, and prints where each one lives. Every other command downloads what it needs by itself, so `tools` is mainly useful to warm up a machine or a CI cache.
 
 ### configure
 

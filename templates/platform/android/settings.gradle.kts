@@ -21,3 +21,10 @@ dependencyResolutionManagement {
 
 rootProject.name = "app"
 include(":app")
+
+// The library modules of the plugins of the app, which make.py copies into plugins/ and lists in haylen.plugins as id=folder entries.
+providers.gradleProperty("haylen.plugins").get().split(",").filter { it.isNotEmpty() }.forEach { entry ->
+    val (id, folder) = entry.split("=")
+    include(":$id")
+    project(":$id").projectDir = file(folder)
+}

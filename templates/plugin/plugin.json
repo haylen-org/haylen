@@ -1,0 +1,19 @@
+{
+    "id": "{{ID}}",
+    "name": "{{TITLE}}",
+    "version": "1.0.0",
+    "description": "Echoes messages through the native code of every platform.",
+    "platforms": ["ios", "catalyst", "tvos", "macos", "android", "web"],
+    "requires": [],
+    "parameters": {},
+    "apple": {
+        "class": "{{NAME}}Plugin",
+        "sources": "apple"
+    },
+    "android": {
+        "module": "android"
+    },
+    "web": {
+        "module": "web/{{ID}}.js"
+    }
+}

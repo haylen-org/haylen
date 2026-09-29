@@ -70,7 +70,7 @@ scene.push({
 
 - [Lua API reference](docs/lua-api.md)
 - [Lua guide](docs/lua.md), [lifecycle](docs/lifecycle.md) and [architecture](docs/architecture.md)
-- [Distributing apps](docs/distribution.md), [building the engine](docs/build.md) and [using the engine as a library](docs/embedding.md)
+- [Distributing apps](docs/distribution.md), [plugins](docs/plugins.md), [building the engine](docs/build.md) and [using the engine as a library](docs/embedding.md)
 - [Rendering](docs/rendering.md), [shaders](docs/shaders.md), [text](docs/text.md), [UI](docs/ui.md), [text input](docs/text-input.md), [Tiled](docs/tiled.md), [audio](docs/audio.md), [input](docs/input.md) and [desktop apps](docs/desktop.md)
 - [Platform bridge](docs/platform_bridge.md) and [testing](docs/testing.md)
 - [Tiny Island](samples/games/tiny-island/README.md)

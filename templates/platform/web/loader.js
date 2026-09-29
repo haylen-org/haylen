@@ -1,5 +1,5 @@
-// Loads a Haylen app into the page: checks what the browser supports, picks WebGPU or WebGL2, downloads the prebuilt runtime and app.zip with a real progress bar, and hands both to the runtime.
-// make.py writes config.json next to this file with the name, the transparency, the splash logo and background of app.json and the size of every download.
+// Loads a Haylen app into the page: checks what the browser supports, picks WebGPU or WebGL2, downloads the prebuilt runtime and app.zip with a real progress bar, imports the web modules of the plugins, and hands everything to the runtime.
+// make.py writes config.json next to this file with the name, the transparency, the splash logo and background of app.json, the size of every download and the plugins with a web part, whose modules it copies to plugins/<id>/.
 
 var Module = {
     canvas: document.getElementById("canvas"),
@@ -94,6 +94,41 @@ var Module = {
             document.body.appendChild(script);
         });
 
+    // Imports the module of every plugin, each of which exports its load function as its default export.
+    const importPlugins = (plugins) =>
+        Promise.all(
+            plugins.map(async (plugin) => {
+                let module;
+                try {
+                    module = await import(new URL(plugin.module, document.baseURI).href);
+                } catch (error) {
+                    throw new Error("The plugin " + plugin.id + " could not be imported from " + plugin.module + ": " + (error.message || error));
+                }
+                if (typeof module.default !== "function") {
+                    throw new Error("The plugin " + plugin.id + " does not export load(context) as the default export of " + plugin.module + ".");
+                }
+                return { plugin, load: module.default };
+            })
+        );
+
+    // Loads the plugins in the order of config.json, which puts every plugin after the plugins it requires, once the runtime exists and before the app starts. Each load gets the context the runtime makes for the plugin and may return a promise, and a plugin that fails keeps the app from starting.
+    const loadPlugins = (plugins) => {
+        Module.preRun.push(() => {
+            Module.addRunDependency("haylen-plugins");
+            (async () => {
+                for (const { plugin, load } of plugins) {
+                    try {
+                        await load(Module.haylen.createPluginContext(plugin.id, plugin.config));
+                    } catch (error) {
+                        fail("The plugin " + plugin.id + " could not be loaded.", String(error.message || error));
+                        return;
+                    }
+                }
+                Module.removeRunDependency("haylen-plugins");
+            })();
+        });
+    };
+
     let config;
     try {
         config = await (await fetch("config.json")).json();
@@ -135,13 +170,17 @@ var Module = {
     try {
         const backend = await pickBackend();
         status.textContent = "Loading " + config.name;
-        const [wasm, archive] = await download([
-            { url: backend + "/haylen.wasm", size: config.sizes[backend + "/haylen.wasm"] },
-            { url: "app.zip", size: config.sizes["app.zip"] },
+        const [plugins, [wasm, archive]] = await Promise.all([
+            importPlugins(config.plugins),
+            download([
+                { url: backend + "/haylen.wasm", size: config.sizes[backend + "/haylen.wasm"] },
+                { url: "app.zip", size: config.sizes["app.zip"] },
+            ]),
         ]);
         status.textContent = "Starting " + config.name;
         Module.wasmBinary = wasm;
         Module.haylen.packageData = archive;
+        loadPlugins(plugins);
         await loadScript(backend + "/haylen.js");
     } catch (error) {
         fail("The app could not be loaded.", String(error.message || error));
