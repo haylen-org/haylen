@@ -28,7 +28,12 @@ void Services::initialize() {
 
 void Services::shutdown() noexcept {}
 
-void Services::reportError(const lua::Error&) {}
+void Services::reportError(const core::Json&) {}
+
+// The platform loads no native plugins of its own, and native libraries declare theirs through HaylenNativeApi.
+std::vector<std::string> Services::getNativePlugins() {
+    return {};
+}
 
 std::shared_ptr<io::Package> Services::openBundledPackage() {
     std::wstring executable(MAX_PATH, L'\0');

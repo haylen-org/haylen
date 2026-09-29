@@ -59,6 +59,19 @@ TEST_F(AnchorTest, AnchorsTheRootOfADocument) {
     EXPECT_EQ(getBounds(*stretched, "side"), (math::Rect{100.0F, 50.0F, 300.0F, 990.0F}));
 }
 
+TEST_F(AnchorTest, MovesAnchoredNodesOutOfTheEdgesThatNativeViewsReserve) {
+    auto document = mount(R"({"kind": "button", "id": "buy", "text": "Buy", "width": 200, "height": 80, "anchor": "bottom"})", Placement::Safe);
+    EXPECT_EQ(getBounds(*document, "buy").getBottom(), 1040.0F);
+
+    // A banner reserves the bottom edge, and the node anchored to the safe area moves above it until the banner goes.
+    getFixture().host().getNativeViews().reserveInsets("banner", {.bottom = 150.0F});
+    frames(2);
+    EXPECT_EQ(getBounds(*document, "buy").getBottom(), 930.0F);
+    getFixture().host().getNativeViews().releaseInsets("banner");
+    frames(2);
+    EXPECT_EQ(getBounds(*document, "buy").getBottom(), 1040.0F);
+}
+
 TEST_F(AnchorTest, SimulatesTheSafeAreaOfDevices) {
     const platform::SafeAreaSimulation island = platform::SafeAreaSimulation::fromJson("iphoneDynamicIsland");
     const math::Insets landscape = island.getInsets({1920.0F, 1080.0F}, 2.0F);

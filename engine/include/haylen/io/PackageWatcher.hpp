@@ -7,7 +7,7 @@
 
 namespace haylen::io {
 
-// Notices the files of app.json, source and content that were added, changed or removed in a package folder since the previous scan, for reloading an app while it is being made.
+// Notices the files of app.json, source, content and the plugin.json and source folder of every plugin that were added, changed or removed in a package folder since the previous scan, for reloading an app while it is being made.
 class PackageWatcher final {
   public:
     explicit PackageWatcher(std::filesystem::path folder);

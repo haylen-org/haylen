@@ -25,8 +25,8 @@ class AppleBridge final {
     // Runs the cancel block that the handler of a pending call returned, and drops the answer that may still come.
     static void cancel(std::uint64_t call);
 
-    // Sends a native event to the engine, and drops a payload that JSON cannot hold.
-    static void emit(NSString* event, id payload);
+    // Sends a native event to the engine, which keeps a retained one for the first listener of its name, and drops a payload that JSON cannot hold.
+    static void emit(NSString* event, id payload, bool retain);
 
   private:
     [[nodiscard]] static NSMutableDictionary<NSString*, HaylenCancellableHandler>* getHandlers();

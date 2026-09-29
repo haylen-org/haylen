@@ -40,6 +40,9 @@ class EngineFixture final {
         return runningEngine->getLuaState();
     }
 
+    // Replaces the engine with a new one that runs the package on the same host with a Lua application, the way the runtime restarts an app, so what the host keeps outlives the app.
+    void restart();
+
     void frames(int count, double seconds = 1.0 / 60.0);
     bool frameUntil(const std::function<bool()>& condition, std::chrono::milliseconds timeout = std::chrono::seconds(10));
 
@@ -48,6 +51,8 @@ class EngineFixture final {
     void runLua(const std::string& source);
 
   private:
+    void launch(std::unique_ptr<core::Application> application);
+
     TemporaryDirectory directory;
     platform::HeadlessHost headlessHost;
     std::shared_ptr<io::MemoryPackage> memoryPackage;

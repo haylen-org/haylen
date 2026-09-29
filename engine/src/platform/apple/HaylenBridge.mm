@@ -20,7 +20,7 @@
 }
 
 + (void)emit:(NSString*)event payload:(nullable id)payload {
-    haylen::platform::AppleBridge::emit(event, payload);
+    haylen::platform::AppleBridge::emit(event, payload, false);
 }
 
 @end

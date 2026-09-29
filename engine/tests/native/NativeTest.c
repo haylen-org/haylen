@@ -151,7 +151,7 @@ static void native_test_answer_echo(NativeTestJob* job) {
 static void native_test_announce(NativeTestJob* job) {
     char payload[64];
     snprintf(payload, sizeof(payload), "{\"version\":%d,\"origin\":\"%s\"}", job->value, NATIVE_TEST_ORIGIN);
-    nativeTestApi->emit("native_test.ready", payload);
+    nativeTestApi->emit("native_test.ready", payload, 1);
 }
 
 // Answers native_test.echo from a thread of the library, fails native_test.fail with a code and data, and leaves native_test.wait pending until the app gives it up.
@@ -173,10 +173,10 @@ static void native_test_cancel(void* user, uint64_t call) {
     (void)user;
     char payload[64];
     snprintf(payload, sizeof(payload), "{\"call\":%llu}", (unsigned long long)call);
-    nativeTestApi->emit("native_test.cancelled", payload);
+    nativeTestApi->emit("native_test.cancelled", payload, 0);
 }
 
-// Registers the handlers of the library and announces it from a thread of its own.
+// Registers the handlers of the library, declares it the native part of the native-test plugin and announces it from a thread of its own with a retained event, which waits for a listener that connects later.
 NATIVE_TEST_EXPORT int native_test_haylen_init(const HaylenNativeApi* api) {
     if (api->version < HAYLEN_NATIVE_API_VERSION) {
         return 1;
@@ -185,6 +185,7 @@ NATIVE_TEST_EXPORT int native_test_haylen_init(const HaylenNativeApi* api) {
     api->registerHandler("native_test.echo", native_test_handle, NULL, NULL);
     api->registerHandler("native_test.fail", native_test_handle, NULL, NULL);
     api->registerHandler("native_test.wait", native_test_handle, native_test_cancel, NULL);
+    api->registerPlugin("native-test");
     api->log(HAYLEN_NATIVE_LOG_INFO, "The native test library is ready.");
 
     NativeTestJob* job = native_test_job(native_test_announce);

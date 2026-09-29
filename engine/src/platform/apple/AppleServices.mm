@@ -50,7 +50,11 @@ void Services::shutdown() noexcept {
     AppleBridge::clearHandlers();
 }
 
-void Services::reportError(const lua::Error&) {}
+void Services::reportError(const core::Json&) {}
+
+std::vector<std::string> Services::getNativePlugins() {
+    return {};
+}
 
 std::shared_ptr<io::Package> Services::openBundledPackage() {
     // Bundles keep the package in their resources, and a plain executable keeps it next to itself, which is where the main bundle points too.

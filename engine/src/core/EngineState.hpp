@@ -5,6 +5,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "core/ErrorScreen.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
@@ -29,6 +30,7 @@
 #include "haylen/input/Input.hpp"
 #include "haylen/input/VirtualInput.hpp"
 #include "haylen/io/Package.hpp"
+#include "haylen/math/Insets.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/platform/Bridge.hpp"
 #include "haylen/platform/Orientation.hpp"
@@ -67,6 +69,8 @@ struct EngineState {
     std::unique_ptr<assets::Manager> assets;
     std::unique_ptr<SceneManager> scenes;
     plugins::PluginRegistry plugins;
+    // The plugins whose start completed, in start order, which are the ones stop reaches.
+    std::vector<plugins::Plugin*> startedPlugins;
     std::shared_ptr<text::Font> defaultFont;
     std::unique_ptr<varn::runtime::Runtime> runtime;
     std::unique_ptr<JobSystem> jobs;
@@ -77,6 +81,7 @@ struct EngineState {
     math::Vec2 windowPosition;
     platform::Orientation orientation = platform::Orientation::Landscape;
     math::Rect safeRect;
+    math::Insets reservedInsets;
     std::optional<platform::SafeAreaSimulation> safeAreaSimulation;
     bool backLeavesApp = true;
     math::Rect keyboardFrame;
@@ -86,16 +91,17 @@ struct EngineState {
     std::unique_ptr<ErrorScreen> errorScreen;
     Engine::AppState appState = Engine::AppState::Active;
 
-    // An app in the foreground is active only while its window has the focus and no interruption of the system, such as a phone call, holds it.
+    // An app in the foreground is active only while its window has the focus, no interruption of the system, such as a phone call, holds it and no native UI of a plugin covers it.
     bool focused = true;
     bool interrupted = false;
+    bool covered = false;
     bool started = false;
     bool running = true;
     bool restartRequested = false;
 
-    // Whether focus loss muted the master bus, and whether it was muted before, so focus coming back restores the choice of the player.
-    bool focusMuted = false;
-    bool mutedBeforeFocusLoss = false;
+    // Whether the app state muted the master bus, through muteOnFocusLoss or a cover, and whether it was muted before, so the app coming back restores the choice of the player.
+    bool stateMuted = false;
+    bool mutedBeforeState = false;
 };
 
 } // namespace haylen::core

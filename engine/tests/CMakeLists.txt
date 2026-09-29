@@ -71,6 +71,7 @@ set(HAYLEN_TEST_SOURCES
   net/WebSocketTests.cpp
   platform/NativeLuaTests.cpp
   platform/NativeTests.cpp
+  platform/NativeViewsTests.cpp
   platform/PlatformLuaTests.cpp
   platform/PlatformTests.cpp
   platform/WindowLuaTests.cpp

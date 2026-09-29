@@ -83,6 +83,7 @@ A table with the configuration read from `app.json`, with defaults filled in for
 | `debug.showSafeArea` | boolean | `false` | Whether the debug view of the safe area shows from the start, see [`ui.setSafeAreaVisible`](ui.md#uisetsafeareavisiblevisible). |
 | `autoload` | list of strings | `{}` | Modules that load as autoloads before `source/main.lua`, see `haylen.autoload`. |
 | `native` | table | `{}` | The native libraries the app ships by name, as `app.json` lists them for make.py, see the [native code guide](../native.md#packaging-libraries-with-an-app). |
+| `plugins` | table | `{}` | The plugins of the app by id with the parameter values that `app.json` gives them, see the [plugin guide](../plugins.md). [`platform.plugin(id).config`](platform.md#plugin-handles) adds the defaults of their parameters. |
 
 ```lua
 local haylen = require('haylen')
@@ -300,7 +301,7 @@ require('haylen.timer').after(0.5, function() print('paused:', haylen.paused()) 
 
 ### haylen.appState()
 
-Returns where the app stands with the platform: `'active'` in the foreground with the focus, `'inactive'` while visible without the focus or interrupted by the system, such as by a phone call, and `'background'` while hidden. The [lifecycle guide](../lifecycle.md#app-states) explains what the engine does in each state.
+Returns where the app stands with the platform: `'active'` in the foreground with the focus, `'inactive'` while visible without the focus, interrupted by the system, such as by a phone call, or covered by native UI of a plugin, and `'background'` while hidden. The [lifecycle guide](../lifecycle.md#app-states) explains what the engine does in each state.
 
 ```lua
 local haylen = require('haylen')
@@ -308,6 +309,21 @@ local haylen = require('haylen')
 if haylen.appState() == 'active' then
     print('the player is here')
 end
+```
+
+### haylen.appCovered()
+
+Returns `true` while native UI of a plugin covers the app, such as a full screen ad, a consent form, a sign-in sheet or a purchase dialog. A covered app is `'inactive'`, halted and muted, whatever the lifecycle options say, and it comes back as it was once the last cover ends, as the [lifecycle guide](../lifecycle.md#covered-by-native-ui) explains.
+
+```lua
+local events = require('haylen.events')
+local haylen = require('haylen')
+
+events.on('appInactive', function()
+    if haylen.appCovered() then
+        print('a native view covers the game')
+    end
+end)
 ```
 
 ### haylen.networkState()
@@ -329,7 +345,7 @@ events.on('networkOffline', function() show('offline') end)
 
 ### haylen.halted()
 
-Returns `true` while the lifecycle options halt the app in its current state, so no time passes for scenes, autoloads, timers and tweens.
+Returns `true` while the lifecycle options halt the app in its current state or native UI covers it, so no time passes for scenes, autoloads, timers and tweens.
 
 ```lua
 local haylen = require('haylen')

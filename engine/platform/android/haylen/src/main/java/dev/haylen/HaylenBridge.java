@@ -114,7 +114,12 @@ public final class HaylenBridge {
 
     // Sends an event to the app, which receives it through haylen.platform.on.
     public static void emit(String event, Object payload) {
-        nativeEmit(utf8(event), utf8(toJson(payload)));
+        emit(event, payload, false);
+    }
+
+    // Sends an event to the app. A retained event that arrives while nothing listens waits for the first listener.
+    public static void emit(String event, Object payload, boolean retain) {
+        nativeEmit(utf8(event), utf8(toJson(payload)), retain);
     }
 
     public static Activity activity() {
@@ -286,5 +291,5 @@ public final class HaylenBridge {
 
     private static native void nativeResolve(long call, boolean ok, byte[] json);
 
-    private static native void nativeEmit(byte[] event, byte[] json);
+    private static native void nativeEmit(byte[] event, byte[] json, boolean retain);
 }

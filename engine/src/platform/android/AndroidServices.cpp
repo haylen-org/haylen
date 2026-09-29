@@ -29,7 +29,11 @@ void Services::initialize() {
 
 void Services::shutdown() noexcept {}
 
-void Services::reportError(const lua::Error&) {}
+void Services::reportError(const core::Json&) {}
+
+std::vector<std::string> Services::getNativePlugins() {
+    return {};
+}
 
 std::shared_ptr<io::Package> Services::openBundledPackage() {
     return std::make_shared<AndroidAssetPackage>(AndroidActivity::getNative().assetManager, "app");
@@ -112,8 +116,8 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenBridge_nativeResolve(JNIEnv* env, j
     haylen::platform::BridgeRelay::resolve(static_cast<std::uint64_t>(call), ok == JNI_TRUE, haylen::platform::JavaBridge::toString(*env, result));
 }
 
-JNIEXPORT void JNICALL Java_dev_haylen_HaylenBridge_nativeEmit(JNIEnv* env, jclass, jbyteArray event, jbyteArray payload) {
-    haylen::platform::BridgeRelay::emit(haylen::platform::JavaBridge::toString(*env, event), haylen::platform::JavaBridge::toString(*env, payload));
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenBridge_nativeEmit(JNIEnv* env, jclass, jbyteArray event, jbyteArray payload, jboolean retain) {
+    haylen::platform::BridgeRelay::emit(haylen::platform::JavaBridge::toString(*env, event), haylen::platform::JavaBridge::toString(*env, payload), retain == JNI_TRUE);
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeSafeArea(JNIEnv*, jclass, jint left, jint top, jint right, jint bottom) {

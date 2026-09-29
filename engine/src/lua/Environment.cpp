@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <stdexcept>
 
+#include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/io/Path.hpp"
@@ -40,6 +41,48 @@ std::string Environment::modulePath(std::string_view name) {
     return path;
 }
 
+// A module whose first name part is the id of a plugin of the app comes from the source folder of that plugin, where the id alone names init.lua. Every other module comes from the source folder of the app.
+std::vector<std::string> Environment::getCandidates(const core::AppConfig& config, std::string_view name) {
+    const std::string head(name.substr(0, name.find('.')));
+    if (!config.plugins.contains(head)) {
+        const std::string base = std::string(io::Path::kSourceDirectory) + "/" + modulePath(name);
+        return {base + ".lua", base + "/init.lua"};
+    }
+
+    const std::string source = io::Path::plugin(head, io::Path::kSourceDirectory);
+    if (head.size() == name.size()) {
+        return {source + "/init.lua"};
+    }
+    const std::string base = source + "/" + modulePath(name.substr(head.size() + 1));
+    return {base + ".lua", base + "/init.lua"};
+}
+
+// A module of the app whose first name part is a plugin id could never load, because require finds the module of the plugin first.
+void Environment::checkModules(core::Engine& engine) {
+    const core::AppConfig& config = engine.getConfig();
+    if (config.plugins.empty()) {
+        return;
+    }
+
+    const std::string root = std::string(io::Path::kSourceDirectory) + "/";
+    for (const std::string& file : engine.getPackage().list(io::Path::kSourceDirectory)) {
+        if (io::Path::extension(file) != ".lua") {
+            continue;
+        }
+        std::string module = file.substr(root.size());
+        module.resize(module.size() - std::string_view(".lua").size());
+        if (module.ends_with("/init")) {
+            module.resize(module.size() - std::string_view("/init").size());
+        }
+        std::ranges::replace(module, '/', '.');
+
+        const std::string id = module.substr(0, module.find('.'));
+        if (config.plugins.contains(id)) {
+            throw std::runtime_error("The app module " + file + " has the name " + module + ", which require resolves to " + getCandidates(config, module).front() + " of the plugin " + id + ". Rename the module of the app.");
+        }
+    }
+}
+
 int Environment::reportTaskError(lua_State* L) {
     Runtime::reportError(L, Runtime::readError(L, 1));
     return 0;
@@ -57,15 +100,16 @@ void Environment::installTaskErrors(lua_State* L) {
     Runtime::protectedCall(L, 3, 0);
 }
 
-// Searches the source folder of the package for name.lua and then name/init.lua, the same order Lua uses on disk.
+// Searches the package for name.lua and then name/init.lua, the same order Lua uses on disk.
 int Environment::searchPackage(lua_State* L) {
     // clang-format off
     return Binding::guarded(L, [L] {
         const std::string name = luaL_checkstring(L, 1);
-        io::Package& package = Runtime::getEngine(L).getPackage();
-        const std::string base = std::string(io::Path::kSourceDirectory) + "/" + modulePath(name);
+        core::Engine& engine = Runtime::getEngine(L);
+        io::Package& package = engine.getPackage();
+        const std::vector<std::string> candidates = getCandidates(engine.getConfig(), name);
 
-        for (const std::string& candidate : {base + ".lua", base + "/init.lua"}) {
+        for (const std::string& candidate : candidates) {
             if (!package.exists(candidate)) {
                 continue;
             }
@@ -79,7 +123,12 @@ int Environment::searchPackage(lua_State* L) {
             return 2;
         }
 
-        lua_pushfstring(L, "no file '%s.lua' or '%s/init.lua' in the app package", base.c_str(), base.c_str());
+        std::string message = "no file '" + candidates.front() + "'";
+        if (candidates.size() > 1) {
+            message += " or '" + candidates.back() + "'";
+        }
+        message += " in the app package";
+        lua_pushstring(L, message.c_str());
         return 1;
     });
     // clang-format on

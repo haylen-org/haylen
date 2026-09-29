@@ -9,6 +9,7 @@
 #include "haylen/input/Input.hpp"
 #include "haylen/math/Insets.hpp"
 #include "platform/Host.hpp"
+#include "platform/NativeViews.hpp"
 #include "platform/headless/HeadlessTextInput.hpp"
 
 namespace haylen::platform {
@@ -151,6 +152,18 @@ class HeadlessHost final : public Host {
     void cancelPlatformCall(std::uint64_t id) override {
         cancelledCalls.push_back(id);
     }
+    [[nodiscard]] math::Insets getReservedInsets() const override {
+        return nativeViews.getReservedInsets();
+    }
+    [[nodiscard]] bool isAppCovered() const override {
+        return nativeViews.isAppCovered();
+    }
+    [[nodiscard]] std::vector<std::string> getNativePlugins() const override {
+        return nativePlugins;
+    }
+    void reportError(const core::Json& report) override {
+        errorReports.push_back(report);
+    }
 
     void resize(math::Vec2 size) noexcept {
         framebufferSize = size;
@@ -172,6 +185,16 @@ class HeadlessHost final : public Host {
     }
     void setMonitors(std::vector<Monitor> value) {
         monitors = std::move(value);
+    }
+
+    // The ids of the plugins whose native part the headless platform reports as loaded.
+    void setNativePlugins(std::vector<std::string> value) {
+        nativePlugins = std::move(value);
+    }
+
+    // The native views of the headless screen, which tests reserve edges and cover the app with from any thread, the way native code does. They outlive the engines a test restarts on this host.
+    [[nodiscard]] NativeViews& getNativeViews() noexcept {
+        return nativeViews;
     }
 
     [[nodiscard]] const std::string& getTitle() const noexcept {
@@ -211,6 +234,11 @@ class HeadlessHost final : public Host {
         return dragCount;
     }
 
+    // The JSON reports of the errors that stopped the apps of this host, in order.
+    [[nodiscard]] const std::vector<core::Json>& getErrorReports() const noexcept {
+        return errorReports;
+    }
+
   private:
     std::filesystem::path dataDirectory;
     math::Vec2 framebufferSize;
@@ -218,6 +246,9 @@ class HeadlessHost final : public Host {
     std::array<input::GamepadState, input::Input::kMaxGamepads> gamepads{};
     std::vector<PlatformCall> platformCalls;
     std::vector<std::uint64_t> cancelledCalls;
+    NativeViews nativeViews;
+    std::vector<std::string> nativePlugins;
+    std::vector<core::Json> errorReports;
 
     // The headless desktop is one 1920 by 1080 monitor whose work area leaves a 40 point taskbar at the bottom, with the window at the top left corner of it.
     std::vector<Monitor> monitors{{.name = "headless", .bounds = {0.0F, 0.0F, 1920.0F, 1080.0F}, .workArea = {0.0F, 0.0F, 1920.0F, 1040.0F}, .scale = 1.0F, .primary = true}};

@@ -302,6 +302,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/math/WeightedChoice.cpp
   src/net/NetLua.cpp
   src/net/WebSocket.cpp
+  src/platform/AppPlugin.cpp
   src/platform/Bridge.cpp
   src/platform/BridgeRelay.cpp
   src/platform/native/NativeApi.cpp
@@ -310,6 +311,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/native/NativeLibraries.cpp
   src/platform/native/NativeLua.cpp
   src/platform/native/NativeSignature.cpp
+  src/platform/NativeViews.cpp
   src/platform/PlatformLua.cpp
   src/platform/SafeAreaSimulation.cpp
   src/platform/Window.cpp

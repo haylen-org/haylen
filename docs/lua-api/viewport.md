@@ -51,7 +51,7 @@ require('haylen.scene').push({
 
 ### viewport.safeRect()
 
-Returns the visible design region that is not covered by notches, rounded corners or system bars, as a `Rect`. Place buttons and important HUD text inside it. The `windowSafeAreaChanged` event of [haylen.events](events.md#engine-events) announces every change with the new rectangle.
+Returns the visible design region that is not covered by notches, rounded corners, system bars or the native views of plugins that reserve an edge, such as a banner ad, as a `Rect`. Each edge of the safe area of the device grows to the largest reservation on it, which [viewport.reservedInsets](#viewportreservedinsets) reports. Place buttons and important HUD text inside it, and UI anchored to the safe area follows it on its own. The `windowSafeAreaChanged` event of [haylen.events](events.md#engine-events) announces every change with the new rectangle.
 
 ```lua
 local viewport = require('haylen.viewport')
@@ -65,6 +65,22 @@ require('haylen.scene').push({
         graphics2d.drawText(nil, 'Pause', safe:right() - 24, safe:top() + 24, {size = 40, color = '#FFFFFFFF', anchor = {1, 0}})
     end,
 })
+```
+
+### viewport.reservedInsets()
+
+Returns the edges of the screen that native views of plugins reserve, as a table with `left`, `top`, `right` and `bottom` in design units, the largest reservation on each edge. A plugin that shows a native view reserves the edge the view sits on, such as the bottom for a banner, and releases it when the view goes away. The engine reads the reservations at the start of every frame, and [viewport.safeRect](#viewportsaferect) already leaves them out.
+
+```lua
+local events = require('haylen.events')
+local viewport = require('haylen.viewport')
+
+events.on('windowSafeAreaChanged', function()
+    local reserved = viewport.reservedInsets()
+    if reserved.bottom > 0 then
+        print('a native view takes the bottom ' .. reserved.bottom .. ' units of the screen')
+    end
+end)
 ```
 
 ### viewport.pixelRect()

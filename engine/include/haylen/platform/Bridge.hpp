@@ -2,7 +2,9 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -22,6 +24,9 @@ class Bridge final {
     struct Inbox;
 
   public:
+    // How many retained events of one name wait for a listener. A newer one drops the oldest.
+    static constexpr std::size_t kRetainedLimit = 32;
+
     // Why a call failed. The code and the data are whatever native code sent, and null when it sent none. The bridge fails calls itself with the codes timeout and cancelled.
     struct Error {
         std::string message;
@@ -68,14 +73,17 @@ class Bridge final {
     // A call with a timeout fails with the code timeout when no answer arrived in time, and native code hears that it was given up.
     std::uint64_t call(std::string_view method, const core::Json& params, Callback callback, std::optional<std::chrono::steady_clock::duration> timeout = std::nullopt);
 
+    // Calls a method whose answer nobody needs. Nothing waits for it, it never counts as pending, and its answer is dropped.
+    void send(std::string_view method, const core::Json& params);
+
     // Fails a pending call with the code cancelled at the next pump and tells native code, and returns false when the call already settled.
     bool cancel(std::uint64_t id);
 
     core::Connection on(const std::string& event, std::function<void(const core::Json&)> listener);
 
-    // Thread-safe entry points for native code. A failed call carries a message string or an object with message, code and data.
+    // Thread-safe entry points for native code. A failed call carries a message string or an object with message, code and data. An event that nothing listens to is dropped, unless it is retained: then it waits until a listener of its name connects, which receives the waiting events in order at the next pump.
     void resolve(std::uint64_t id, bool ok, std::string_view resultJson);
-    void emit(std::string_view event, std::string_view payloadJson);
+    void emit(std::string_view event, std::string_view payloadJson, bool retain = false);
     [[nodiscard]] Mailbox getMailbox() const;
 
     void pump();
@@ -90,6 +98,7 @@ class Bridge final {
     struct NativeEvent {
         std::string name;
         core::Json payload;
+        bool retain = false;
     };
 
     // Replies, native events and posted work wait here, shared with the replies of C++ handlers and with mailboxes so late native code never touches a destroyed bridge.
@@ -113,6 +122,12 @@ class Bridge final {
     [[nodiscard]] static Error readFailure(core::Json payload);
     [[nodiscard]] static Result parseResult(bool ok, std::string_view json);
 
+    // Runs the engine handler of the method, from a copy because it may register handlers itself, or hands the call to native code.
+    void start(std::uint64_t id, std::string_view method, const core::Json& params, Reply reply);
+
+    // Delivers the retained events of a name once it has listeners, and keeps them otherwise.
+    void deliverRetained(const std::string& name);
+
     // Gives up the calls whose timeout passed and tells native code about each one.
     void expireCalls();
 
@@ -122,6 +137,7 @@ class Bridge final {
     std::unordered_map<std::uint64_t, Pending> pending;
     std::vector<std::pair<Callback, Result>> cancelled;
     std::unordered_map<std::string, std::unique_ptr<core::Signal<const core::Json&>>> signals;
+    std::unordered_map<std::string, std::deque<core::Json>> retained;
     std::shared_ptr<Inbox> inbox = std::make_shared<Inbox>();
 };
 

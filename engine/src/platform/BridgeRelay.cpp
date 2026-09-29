@@ -26,10 +26,10 @@ void BridgeRelay::resolve(std::uint64_t id, bool ok, std::string_view resultJson
     }
 }
 
-void BridgeRelay::emit(std::string_view event, std::string_view payloadJson) {
+void BridgeRelay::emit(std::string_view event, std::string_view payloadJson, bool retain) {
     const std::scoped_lock lock(mutex);
     if (bridge != nullptr) {
-        bridge->emit(event, payloadJson);
+        bridge->emit(event, payloadJson, retain);
     }
 }
 

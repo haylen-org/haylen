@@ -49,7 +49,7 @@ The platform moves the app between three states, which `haylen.appState()` retur
 | State | Meaning | Event |
 | --- | --- | --- |
 | `'active'` | In the foreground with the focus. | `appActive` |
-| `'inactive'` | Still visible, but the window lost the focus or the system interrupted the app, such as with a phone call. | `appInactive` |
+| `'inactive'` | Still visible, but the window lost the focus, the system interrupted the app, such as with a phone call, or native UI of a plugin covers it. | `appInactive` |
 | `'background'` | Hidden, such as a minimized window, another app on a phone or a hidden browser tab. | `appBackground` |
 
 On the web the page tells the engine: a hidden tab (`visibilitychange`) sends the app to `'background'` and a visible one brings it back, and a page that goes away (`pagehide`) makes the files of [haylen.storage](lua-api/storage.md) durable once more. On Android the app holds the audio focus while it is in the foreground, and another app that takes it, for a phone call or an alarm, interrupts the app, which stays `'inactive'` until the focus comes back, even when its window has the focus.
@@ -99,7 +99,7 @@ print(haylen.lifecycle().pauseOnFocusLoss, haylen.halted())
 
 Low memory warnings publish `appLowMemory` after the engine has dropped every asset that nothing holds anymore, which is the moment to unload preload groups and caches the app can rebuild. A request to close the window publishes `appQuitRequested`, and `haylen.quit()` ends the app.
 
-The device and its screen publish their changes too. `keyboardShown` and `keyboardHidden` follow the on-screen keyboard, whose frame the UI already avoids by lifting the focused text field above it, as the [text input guide](text-input.md) explains. `networkOnline` and `networkOffline` follow the network where browsers, Android and Apple platforms, macOS included, report it: the first report publishes the state the app starts in, usually on its first frame, and later reports publish each change, while `haylen.networkState()` returns the last state at any time. `windowOrientationChanged` follows the screen, whose orientation `window.orientation()` reads and `window.lockOrientation` locks, as [haylen.window](lua-api/window.md) describes. On desktops, `windowMoved` follows the position of the window and `windowMonitorsChanged` the monitors and their work areas, as the [desktop guide](desktop.md) describes.
+The device and its screen publish their changes too. `keyboardShown` and `keyboardHidden` follow the on-screen keyboard, whose frame the UI already avoids by lifting the focused text field above it, as the [text input guide](text-input.md) explains. `networkOnline` and `networkOffline` follow the network where browsers, Android and Apple platforms, macOS included, report it: the first report publishes the state the app starts in, usually on its first frame, and later reports publish each change, while `haylen.networkState()` returns the last state at any time. `windowOrientationChanged` follows the screen, whose orientation `window.orientation()` reads and `window.lockOrientation` locks, as [haylen.window](lua-api/window.md) describes. `windowSafeAreaChanged` follows the safe area of [haylen.viewport](lua-api/viewport.md#viewportsaferect), which is the safe area of the device widened, edge by edge, by the edges that native views of plugins reserve, such as a banner at the bottom, so UI anchored to the safe area moves out of their way on its own. On desktops, `windowMoved` follows the position of the window and `windowMonitorsChanged` the monitors and their work areas, as the [desktop guide](desktop.md) describes.
 
 ```lua
 local events = require('haylen.events')
@@ -110,6 +110,27 @@ end)
 
 events.on('keyboardShown', function(frame)
     print('the keyboard covers the screen from y = ' .. frame.y)
+end)
+```
+
+### Covered by native UI
+
+Plugins show native UI over the app, such as a full screen ad, a consent form, a sign-in sheet or a purchase dialog, and tell the engine that it covers the app while it shows. Covered content must never play under native UI, so while any cover lasts the app is `'inactive'`, halted and its master bus muted, whatever the lifecycle options say, and `haylen.appCovered()` returns `true`. Covers nest, and when the last one ends the app returns to the state it would have without them, `'active'` when its window has the focus and nothing else interrupts it, with the mute the player chose and without a jump of the clock. An app that goes to the background while covered goes there as usual, comes back `'inactive'` while the cover lasts, and stays in the background when the cover ends there.
+
+The engine takes the cover at the start of every frame and publishes the state changes as usual, so an app pauses its game on `appInactive` the same way for a cover as for a phone call. The cover belongs to the platform, so an app that restarts under native UI, such as after a hot reload, becomes covered on its first frame. The [plugin guide](plugins.md#engine-services) shows how native code covers the app.
+
+```lua
+local events = require('haylen.events')
+local haylen = require('haylen')
+
+events.on('appInactive', function()
+    if haylen.appCovered() then
+        print('an ad covers the game, which stands still until it closes')
+    end
+end)
+
+events.on('appActive', function()
+    print('back in the game')
 end)
 ```
 
@@ -433,7 +454,7 @@ end)
 
 ## From C++
 
-C++ code sees the same lifecycle through the engine. `Engine::getAppState()` and the `appStateChanged` signal follow the app states, `Engine::setPaused`, `isPaused` and the `pausedChanged` signal control the pause, and `Engine::setLifecycle` changes the lifecycle options. Timers take a `TimerScheduler::Options` with a process mode and `unscaled`, and tweens take `setProcessMode`, `setUnscaledTime` and `setFixedStep`. `Engine::getEvents()` is the event bus, `core::LifecycleEvent` names every engine event, and a `core::ConnectionScope` member ends every connection it holds when its owner is destroyed.
+C++ code sees the same lifecycle through the engine. `Engine::getAppState()` and the `appStateChanged` signal follow the app states, `Engine::isAppCovered()` tells whether native UI covers the app, `Engine::getReservedInsets()` returns the edges that native views reserve in framebuffer pixels, `Engine::setPaused`, `isPaused` and the `pausedChanged` signal control the pause, and `Engine::setLifecycle` changes the lifecycle options. Timers take a `TimerScheduler::Options` with a process mode and `unscaled`, and tweens take `setProcessMode`, `setUnscaledTime` and `setFixedStep`. `Engine::getEvents()` is the event bus, `core::LifecycleEvent` names every engine event, and a `core::ConnectionScope` member ends every connection it holds when its owner is destroyed.
 
 A `core::Scene` overrides the same hooks as a Lua scene table, `getState` returns its state, `getProcessMode` returns its mode, and `Scene::listen` ties a connection to the scene until it unloads. Its `load(engine, context)` receives a `core::SceneLoad`: the load finishes when the hook returns, unless the hook takes a `SceneLoad::Deferral` with `context.defer()` and completes or fails it later, and `context.preload(group)` holds the load until an asset group loaded. A deferral destroyed before it completed fails the load, so a load never waits for work that was dropped. `SceneManager::push` and `replace` take `SceneManager::Options` with the transition, the params as a `std::any`, a `core::LoadingView`, the loading delay, minimum time and fade-out, `unloadBeforeLoad`, the completion, which receives a `Result` with the outcome and the error, and `onError`. `SceneManager::preload` and `cancelPreload` preload scenes, and the events of the transition phases carry a `SceneManager::Transfer`.
 

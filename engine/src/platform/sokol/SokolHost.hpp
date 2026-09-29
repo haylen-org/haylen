@@ -7,6 +7,7 @@
 #include "haylen/platform/Event.hpp"
 #include "platform/Host.hpp"
 #include "platform/KeyboardTranslator.hpp"
+#include "platform/NativeViews.hpp"
 #include "platform/WindowStyle.hpp"
 #include "sokol_app.h"
 
@@ -61,6 +62,13 @@ class SokolHost final : public Host {
     void pollGamepads(std::span<input::GamepadState> gamepads) override;
     void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson) override;
     void cancelPlatformCall(std::uint64_t id) override;
+    [[nodiscard]] math::Insets getReservedInsets() const override;
+    [[nodiscard]] bool isAppCovered() const override;
+    [[nodiscard]] std::vector<std::string> getNativePlugins() const override;
+    void reportError(const core::Json& report) override;
+
+    // The native views of plugins over the app, which the platform services update from any thread. They belong to the process, so a reservation or a cover outlives the apps that restart under it.
+    [[nodiscard]] static NativeViews& getNativeViews() noexcept;
 
     // Records the options the window opens with, before it exists, so the options the engine applies when the app starts find the window as it already is.
     void prepare(const WindowStyle& openingStyle, bool openingFocusable) noexcept {

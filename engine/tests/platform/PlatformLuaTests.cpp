@@ -6,7 +6,9 @@
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/platform/Bridge.hpp"
+#include "platform/headless/HeadlessHost.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen::platform {
 
@@ -122,6 +124,96 @@ TEST(PlatformLuaTest, FailsCallsWithTypedErrorsTimeoutsAndCancellation) {
     EXPECT_NE(fixture.lua("platform.call('store.slow', nil, {timeout = 0})").find("positive number of seconds"), std::string::npos);
     EXPECT_NE(fixture.lua("platform.call('store.slow', nil, {timeout = 'soon'})").find("timeout"), std::string::npos);
     EXPECT_NE(fixture.lua("platform.call('store.slow', nil, {deadline = 1})").find("deadline"), std::string::npos);
+}
+
+TEST(PlatformLuaTest, SendsCallsAndRetainsEventsFromLua) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        platform = require('haylen.platform')
+        tracked = {}
+        platform.registerHandler('analytics.track', function(params) tracked[#tracked + 1] = params.name return true end)
+        platform.send('analytics.track', {name = 'start'})
+        platform.send('store.restore')
+        platform.emit('app.opened', {url = 'island://a'}, {retain = true})
+        platform.emit('app.opened', {url = 'island://b'}, {retain = false})
+    )");
+    // clang-format on
+    EXPECT_EQ(fixture.lua("return table.concat(tracked, ',') .. ' ' .. platform.pendingCallCount()"), "start 0");
+    ASSERT_EQ(fixture.host().getPlatformCalls().size(), 1U);
+    EXPECT_EQ(fixture.host().getPlatformCalls().front().method, "store.restore");
+    EXPECT_EQ(fixture.host().getPlatformCalls().front().paramsJson, "{}");
+    fixture.engine().getPlatform().resolve(fixture.host().getPlatformCalls().front().id, true, "true");
+    fixture.frames(1);
+
+    // The retained event waited for the listener that connected after it, and the plain one was dropped.
+    fixture.runLua("opened = {} platform.on('app.opened', function(payload) opened[#opened + 1] = payload.url end)");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return table.concat(opened, ',') .. ' ' .. platform.pendingCallCount()"), "island://a 0");
+    EXPECT_NE(fixture.lua("platform.emit('app.opened', {}, {keep = true})").find("keep"), std::string::npos);
+    EXPECT_NE(fixture.lua("platform.emit('app.opened', {}, true)").find("table expected"), std::string::npos);
+    EXPECT_NE(fixture.lua("platform.send('')").find("A platform call needs a method name."), std::string::npos);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+TEST(PlatformLuaTest, HandsPluginModulesTheHandlesOfTheirPlugins) {
+    // clang-format off
+    test::EngineFixture fixture({
+        {"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "plugins": {"ads-kit": {"testMode": true}, "sign-in": {}}})"},
+        {"plugins/ads-kit/plugin.json", R"({"id": "ads-kit", "version": "1.2.0", "parameters": {"testMode": {"type": "boolean", "default": false}, "placement": {"type": "string", "default": "bottom"}, "appId": {"type": "string"}}})"},
+        {"plugins/sign-in/plugin.json", R"({"id": "sign-in", "version": "2.0"})"},
+        {"plugins/ads-kit/source/init.lua", "local handle = require('haylen.platform').plugin('ads-kit') return {handle = handle}"},
+    });
+    // clang-format on
+    fixture.host().setNativePlugins({"ads-kit"});
+    // clang-format off
+    fixture.runLua(R"(
+        platform = require('haylen.platform')
+        ads = require('ads-kit').handle
+        closed = {}
+        connection = ads:on('closed', function(payload) closed[#closed + 1] = payload.reason end)
+        shown = ads:call('show', {format = 'banner'}, {timeout = 30})
+        ads:send('track', {name = 'opened'})
+    )");
+    // clang-format on
+    EXPECT_EQ(fixture.lua("return table.concat({ads.id, ads.version, tostring(ads.native), getmetatable(ads)}, ' ')"), "ads-kit 1.2.0 true haylen.AppPlugin");
+    EXPECT_EQ(fixture.lua("return table.concat({tostring(ads.config.testMode), ads.config.placement, tostring(ads.config.appId)}, ' ')"), "true bottom nil");
+    EXPECT_EQ(fixture.lua("local all = platform.plugins() return table.concat({#all, all[1].id, all[1].version, tostring(all[1].native), all[2].id, all[2].version, tostring(all[2].native)}, ' ')"), "2 ads-kit 1.2.0 true sign-in 2.0 false");
+    EXPECT_EQ(fixture.lua("return tostring(platform.plugin('sign-in').native)"), "false");
+
+    // Calls, sends and events of the handle carry the id of the plugin in front of their names, and a send creates no call.
+    const std::vector<HeadlessHost::PlatformCall>& calls = fixture.host().getPlatformCalls();
+    ASSERT_EQ(calls.size(), 2U);
+    EXPECT_EQ(calls[0].method, "ads-kit.show");
+    EXPECT_EQ(calls[0].paramsJson, R"({"format":"banner"})");
+    EXPECT_EQ(calls[1].method, "ads-kit.track");
+    EXPECT_EQ(fixture.lua("return platform.pendingCallCount()"), "1");
+    fixture.engine().getPlatform().resolve(calls[1].id, false, R"("dropped")");
+    fixture.engine().getPlatform().resolve(calls[0].id, true, R"({"shown": true})");
+    fixture.engine().getPlatform().emit("ads-kit.closed", R"({"reason": "dismissed"})");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return table.concat({tostring(shown.done), table.concat(closed, ','), platform.pendingCallCount()}, ' ')"), "true dismissed 0");
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+
+    EXPECT_NE(fixture.lua("platform.plugin('crash-kit')").find("The plugin crash-kit is not among the plugins of app.json."), std::string::npos);
+    EXPECT_NE(fixture.lua("ads:call('')").find("A method or event of the plugin ads-kit needs a name."), std::string::npos);
+    EXPECT_NE(fixture.lua("ads:on('closed', 3)").find("function expected"), std::string::npos);
+    EXPECT_NE(fixture.lua("ads.id = 'other'").find("error: "), std::string::npos);
+}
+
+TEST(PlatformLuaTest, ExplainsPluginManifestsItCannotRead) {
+    // clang-format off
+    test::EngineFixture fixture({
+        {"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "plugins": {"broken": {}, "unversioned": {}}})"},
+        {"plugins/broken/plugin.json", "{"},
+        {"plugins/unversioned/plugin.json", R"({"id": "unversioned"})"},
+    });
+    // clang-format on
+    fixture.runLua("platform = require('haylen.platform')");
+    EXPECT_NE(fixture.lua("platform.plugin('broken')").find("The plugins/broken/plugin.json of the package is not a JSON object."), std::string::npos);
+    EXPECT_NE(fixture.lua("platform.plugins()").find("The plugins/broken/plugin.json of the package is not a JSON object."), std::string::npos);
+    fixture.package().setFile("plugins/broken/plugin.json", test::TestFiles::bytes(R"({"id": "broken", "version": "1"})"));
+    EXPECT_NE(fixture.lua("platform.plugin('unversioned')").find("The plugins/unversioned/plugin.json of the package has no version."), std::string::npos);
 }
 
 TEST(PlatformLuaTest, CppCallsToLuaHandlersReturnErrorsInsteadOfCrashing) {

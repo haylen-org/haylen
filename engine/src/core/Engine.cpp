@@ -62,6 +62,7 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     const std::span<const std::uint8_t> font = EmbeddedFiles::getDefaultFont();
     current.defaultFont = std::make_shared<text::TrueTypeFont>(*current.graphics, std::vector<std::uint8_t>(font.begin(), font.end()));
     current.safeAreaSimulation = current.config.debug.safeArea;
+    current.reservedInsets = host.getReservedInsets();
     current.viewport.update(host.getFramebufferSize(), current.config.designSize, current.config.scaling, getSafeAreaInsets());
     current.fullscreen = host.isFullscreen();
     current.windowPosition = host.getFrame().getPosition();
@@ -99,6 +100,7 @@ void Engine::activatePlugin(plugins::Plugin& plugin) {
         return;
     }
     plugin.start(*this);
+    state->startedPlugins.push_back(&plugin);
     plugin.installLua(*this, getLuaState());
     state->events.emit(LifecycleEvent::kPluginStarted, {{"name", std::string(plugin.getName())}});
 }
@@ -117,9 +119,11 @@ void Engine::start() {
         lua::Environment::install(*this, getLuaState());
         for (plugins::Plugin* plugin : current.plugins.getAll()) {
             plugin->start(*this);
+            current.startedPlugins.push_back(plugin);
             plugin->installLua(*this, getLuaState());
             current.events.emit(LifecycleEvent::kPluginStarted, {{"name", std::string(plugin->getName())}});
         }
+        lua::Environment::checkModules(*this);
         current.application->start(*this);
         current.events.emit(LifecycleEvent::kAppStarted);
     } catch (const std::exception& exception) {
@@ -162,8 +166,8 @@ void Engine::stop() {
     attempt([&current] { current.scenes->clear(); });
     attempt([this, &current] { current.application->stop(*this); });
 
-    std::vector<plugins::Plugin*> all = current.plugins.getAll();
-    for (auto plugin = all.rbegin(); plugin != all.rend(); ++plugin) {
+    const std::vector<plugins::Plugin*> started = std::exchange(current.startedPlugins, {});
+    for (auto plugin = started.rbegin(); plugin != started.rend(); ++plugin) {
         attempt([this, plugin] { (*plugin)->stop(*this); });
         attempt([&current, plugin] { current.events.emit(LifecycleEvent::kPluginStopped, {{"name", std::string((*plugin)->getName())}}); });
     }
@@ -173,6 +177,13 @@ void Engine::frame(double frameSeconds) {
     EngineState& current = *state;
     if (!current.running) {
         return;
+    }
+
+    // Native UI that covered or uncovered the app since the last frame changes its state before the frame decides whether it is halted.
+    try {
+        applyCover();
+    } catch (const std::exception& exception) {
+        reportError(exception);
     }
 
     // A halted app lets no time pass, and an app in the background draws nothing, so it does no GPU work.
@@ -372,35 +383,27 @@ void Engine::handleEvent(const platform::Event& event) {
         case platform::Event::Type::FocusLost:
             current.focused = false;
             current.events.emit(LifecycleEvent::kWindowFocusLost);
-            if (current.appState == AppState::Active) {
-                setAppState(AppState::Inactive);
-            }
+            refreshForegroundState();
             break;
         case platform::Event::Type::FocusGained:
             current.focused = true;
             current.events.emit(LifecycleEvent::kWindowFocusGained);
-            if (current.appState == AppState::Inactive && !current.interrupted) {
-                setAppState(AppState::Active);
-            }
+            refreshForegroundState();
             break;
         case platform::Event::Type::Suspended:
             setAppState(AppState::Background);
             break;
         case platform::Event::Type::Resumed:
-            setAppState(current.interrupted ? AppState::Inactive : AppState::Active);
+            setAppState(current.interrupted || current.covered ? AppState::Inactive : AppState::Active);
             break;
         case platform::Event::Type::InterruptionBegan:
             // An interruption of the system, such as a phone call or another app taking the audio focus, makes a foreground app inactive until it ends.
             current.interrupted = true;
-            if (current.appState == AppState::Active) {
-                setAppState(AppState::Inactive);
-            }
+            refreshForegroundState();
             break;
         case platform::Event::Type::InterruptionEnded:
             current.interrupted = false;
-            if (current.appState == AppState::Inactive && current.focused) {
-                setAppState(AppState::Active);
-            }
+            refreshForegroundState();
             break;
         case platform::Event::Type::KeyboardChanged:
             publishKeyboard(event.keyboardFrame);
@@ -491,7 +494,7 @@ void Engine::setAppState(AppState value) {
     if (wasHalted && !isHalted()) {
         current.clock.skipNextDelta();
     }
-    applyFocusMute();
+    applyStateMute();
 
     appStateChanged.emit(value);
     switch (value) {
@@ -510,19 +513,44 @@ void Engine::setAppState(AppState value) {
     }
 }
 
-void Engine::applyFocusMute() {
+// An app in the foreground is active only while its window has the focus, no interruption of the system holds it and no native UI of a plugin covers it.
+void Engine::refreshForegroundState() {
+    const EngineState& current = *state;
+    if (current.appState == AppState::Background) {
+        return;
+    }
+    setAppState(current.focused && !current.interrupted && !current.covered ? AppState::Active : AppState::Inactive);
+}
+
+// Covered content must never play under native UI, so a cover halts and mutes the app whatever the lifecycle options say. The app state changes last, because its listeners may fail.
+void Engine::applyCover() {
     EngineState& current = *state;
-    const bool mute = current.lifecycle.muteOnFocusLoss && current.appState != AppState::Active;
-    if (mute == current.focusMuted) {
+    const bool covered = current.host.isAppCovered();
+    if (covered == current.covered) {
+        return;
+    }
+    const bool wasHalted = isHalted();
+    current.covered = covered;
+    if (wasHalted && !isHalted()) {
+        current.clock.skipNextDelta();
+    }
+    applyStateMute();
+    refreshForegroundState();
+}
+
+void Engine::applyStateMute() {
+    EngineState& current = *state;
+    const bool mute = current.covered || (current.lifecycle.muteOnFocusLoss && current.appState != AppState::Active);
+    if (mute == current.stateMuted) {
         return;
     }
     if (mute) {
-        current.mutedBeforeFocusLoss = current.audio->isBusMuted("master");
+        current.mutedBeforeState = current.audio->isBusMuted("master");
         current.audio->setBusMuted("master", true);
     } else {
-        current.audio->setBusMuted("master", current.mutedBeforeFocusLoss);
+        current.audio->setBusMuted("master", current.mutedBeforeState);
     }
-    current.focusMuted = mute;
+    current.stateMuted = mute;
 }
 
 void Engine::setPaused(bool value) {
@@ -548,9 +576,13 @@ Engine::NetworkState Engine::getNetworkState() const noexcept {
     return state->network;
 }
 
+bool Engine::isAppCovered() const noexcept {
+    return state->covered;
+}
+
 bool Engine::isHalted() const noexcept {
     const EngineState& current = *state;
-    return (current.appState == AppState::Background && current.lifecycle.pauseOnBackground) || (current.appState == AppState::Inactive && current.lifecycle.pauseOnFocusLoss);
+    return current.covered || (current.appState == AppState::Background && current.lifecycle.pauseOnBackground) || (current.appState == AppState::Inactive && current.lifecycle.pauseOnFocusLoss);
 }
 
 const AppConfig::Lifecycle& Engine::getLifecycle() const noexcept {
@@ -564,7 +596,7 @@ void Engine::setLifecycle(const AppConfig::Lifecycle& value) {
     if (wasHalted && !isHalted()) {
         current.clock.skipNextDelta();
     }
-    applyFocusMute();
+    applyStateMute();
 }
 
 void Engine::setScaling(graphics::Viewport::ScalingPolicy value) {
@@ -584,6 +616,7 @@ void Engine::setDesignSize(math::Vec2 value) {
 void Engine::remapViewport() {
     EngineState& current = *state;
     const graphics::Viewport previous = current.viewport;
+    current.reservedInsets = current.host.getReservedInsets();
     current.viewport.update(current.host.getFramebufferSize(), current.config.designSize, current.config.scaling, getSafeAreaInsets());
     if (current.viewport.getPixelRect() != previous.getPixelRect() || current.viewport.getVisibleRect() != previous.getVisibleRect()) {
         current.input.followViewport(previous, current.viewport);
@@ -600,12 +633,37 @@ const std::optional<platform::SafeAreaSimulation>& Engine::getSafeAreaSimulation
     return state->safeAreaSimulation;
 }
 
+// The screen edges that native views reserve widen the safe area of the device, or the simulated one, edge by edge.
 math::Insets Engine::getSafeAreaInsets() const {
     const EngineState& current = *state;
-    if (current.safeAreaSimulation) {
-        return current.safeAreaSimulation->getInsets(current.host.getFramebufferSize(), current.host.getDpiScale());
+    const math::Insets device = current.safeAreaSimulation ? current.safeAreaSimulation->getInsets(current.host.getFramebufferSize(), current.host.getDpiScale()) : current.host.getSafeAreaInsets();
+    const math::Insets& reserved = current.reservedInsets;
+    return {.left = std::max(device.left, reserved.left), .top = std::max(device.top, reserved.top), .right = std::max(device.right, reserved.right), .bottom = std::max(device.bottom, reserved.bottom)};
+}
+
+const math::Insets& Engine::getReservedInsets() const noexcept {
+    return state->reservedInsets;
+}
+
+std::vector<platform::AppPlugin> Engine::getAppPlugins() const {
+    const EngineState& current = *state;
+    const std::vector<std::string> loaded = getNativePlugins();
+    std::vector<platform::AppPlugin> all;
+    for (const auto& [id, values] : current.config.plugins.items()) {
+        platform::AppPlugin plugin = platform::AppPlugin::read(*current.package, id, values);
+        plugin.native = std::ranges::binary_search(loaded, id);
+        all.push_back(std::move(plugin));
     }
-    return current.host.getSafeAreaInsets();
+    return all;
+}
+
+std::vector<std::string> Engine::getNativePlugins() const {
+    std::vector<std::string> ids = state->host.getNativePlugins();
+    const std::vector<std::string> declared = platform::NativeApi::getPlugins();
+    ids.insert(ids.end(), declared.begin(), declared.end());
+    std::ranges::sort(ids);
+    ids.erase(std::ranges::unique(ids).begin(), ids.end());
+    return ids;
 }
 
 void Engine::setBackLeavesApp(bool value) noexcept {
@@ -631,6 +689,7 @@ void Engine::reportError(const std::exception& exception) {
     const auto* scriptError = dynamic_cast<const lua::Error*>(&exception);
     current.errorScreen = std::make_unique<ErrorScreen>(*this, scriptError != nullptr ? *scriptError : lua::Error(exception.what()));
     Log::error("{}", current.errorScreen->getReport());
+    current.host.reportError(current.errorScreen->getError().toJson());
     errorRaised.emit(current.errorScreen->getError());
 }
 

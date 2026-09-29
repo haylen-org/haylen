@@ -161,6 +161,11 @@ int CoreLua::rootAppState(lua_State* L) {
     return 1;
 }
 
+int CoreLua::rootAppCovered(lua_State* L) {
+    lua::Stack::push(L, lua::Runtime::getEngine(L).isAppCovered());
+    return 1;
+}
+
 int CoreLua::rootNetworkState(lua_State* L) {
     switch (lua::Runtime::getEngine(L).getNetworkState()) {
     case Engine::NetworkState::Unknown:
@@ -219,7 +224,7 @@ int CoreLua::rootAutoload(lua_State* L) {
 int CoreLua::openRoot(lua_State* L) {
     Engine& owner = lua::Runtime::getEngine(L);
     const luaL_Reg functions[] = {
-        {"quit", &rootQuit}, {"elapsed", &rootElapsed}, {"delta", &rootDelta}, {"unscaledDelta", &rootUnscaledDelta}, {"frameIndex", &rootFrameIndex}, {"timeScale", &rootTimeScale}, {"setTimeScale", &rootSetTimeScale}, {"fixedStep", &rootFixedStep}, {"interpolation", &rootInterpolation}, {"reportError", &lua::Binding::native<&rootReportError>}, {"paused", &rootPaused}, {"setPaused", &lua::Binding::native<&rootSetPaused>}, {"appState", &rootAppState}, {"networkState", &rootNetworkState}, {"halted", &rootHalted}, {"lifecycle", &rootLifecycle}, {"setLifecycle", &lua::Binding::native<&rootSetLifecycle>}, {"autoload", &lua::Binding::native<&rootAutoload>}, {nullptr, nullptr},
+        {"quit", &rootQuit}, {"elapsed", &rootElapsed}, {"delta", &rootDelta}, {"unscaledDelta", &rootUnscaledDelta}, {"frameIndex", &rootFrameIndex}, {"timeScale", &rootTimeScale}, {"setTimeScale", &rootSetTimeScale}, {"fixedStep", &rootFixedStep}, {"interpolation", &rootInterpolation}, {"reportError", &lua::Binding::native<&rootReportError>}, {"paused", &rootPaused}, {"setPaused", &lua::Binding::native<&rootSetPaused>}, {"appState", &rootAppState}, {"appCovered", &rootAppCovered}, {"networkState", &rootNetworkState}, {"halted", &rootHalted}, {"lifecycle", &rootLifecycle}, {"setLifecycle", &lua::Binding::native<&rootSetLifecycle>}, {"autoload", &lua::Binding::native<&rootAutoload>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     ClassLua::push(L);
@@ -251,6 +256,15 @@ int CoreLua::viewportVisibleRect(lua_State* L) {
 
 int CoreLua::viewportSafeRect(lua_State* L) {
     lua::Stack::push(L, lua::Runtime::getEngine(L).getViewport().getSafeRect());
+    return 1;
+}
+
+// Returns the edges that native views reserve as a table of design units, which the safe rectangle already leaves out.
+int CoreLua::viewportReservedInsets(lua_State* L) {
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    const math::Insets& pixels = engine.getReservedInsets();
+    const math::Vec2 scale = engine.getViewport().getPixelsPerUnit();
+    lua::Stack::push(L, math::Insets{.left = pixels.left / scale.x, .top = pixels.top / scale.y, .right = pixels.right / scale.x, .bottom = pixels.bottom / scale.y});
     return 1;
 }
 
@@ -319,7 +333,7 @@ int CoreLua::viewportSetSafeAreaSimulation(lua_State* L) {
 
 int CoreLua::openViewport(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"designSize", &viewportDesignSize}, {"visibleRect", &viewportVisibleRect}, {"safeRect", &viewportSafeRect}, {"pixelRect", &viewportPixelRect}, {"pixelsPerUnit", &viewportPixelsPerUnit}, {"toDesign", &viewportToDesign}, {"toFramebuffer", &viewportToFramebuffer}, {"scaling", &viewportScaling}, {"setScaling", &viewportSetScaling}, {"setDesignSize", &lua::Binding::native<&viewportSetDesignSize>}, {"safeAreaSimulation", &viewportSafeAreaSimulation}, {"setSafeAreaSimulation", &lua::Binding::native<&viewportSetSafeAreaSimulation>}, {nullptr, nullptr},
+        {"designSize", &viewportDesignSize}, {"visibleRect", &viewportVisibleRect}, {"safeRect", &viewportSafeRect}, {"reservedInsets", &viewportReservedInsets}, {"pixelRect", &viewportPixelRect}, {"pixelsPerUnit", &viewportPixelsPerUnit}, {"toDesign", &viewportToDesign}, {"toFramebuffer", &viewportToFramebuffer}, {"scaling", &viewportScaling}, {"setScaling", &viewportSetScaling}, {"setDesignSize", &lua::Binding::native<&viewportSetDesignSize>}, {"safeAreaSimulation", &viewportSafeAreaSimulation}, {"setSafeAreaSimulation", &lua::Binding::native<&viewportSetSafeAreaSimulation>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

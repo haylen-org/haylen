@@ -4,18 +4,23 @@
 
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace haylen::core {
 class Engine;
-}
+struct AppConfig;
+} // namespace haylen::core
 
 namespace haylen::lua {
 
 // Prepares the Lua state of an engine for app scripts.
 class Environment final {
   public:
-    // Binds the Lua state to the engine and makes require load modules from the source folder of the package instead of the host file system. App code loads chunks only as text, has no string.dump, and cannot reach the protected metatables of the engine or the upvalues of native functions through the debug library.
+    // Binds the Lua state to the engine and makes require load modules from the package instead of the host file system: the modules of the app from its source folder, and the modules of every plugin that app.json lists from plugins/<id>/source. App code loads chunks only as text, has no string.dump, and cannot reach the protected metatables of the engine or the upvalues of native functions through the debug library.
     static void install(core::Engine& engine, lua_State* L);
+
+    // Throws std::runtime_error, naming both files, when a module of the app has the name of a plugin module, which require would never load.
+    static void checkModules(core::Engine& engine);
 
   private:
     static const std::string_view kTaskErrors;
@@ -23,6 +28,7 @@ class Environment final {
     static constexpr int kLoadFileMode = 2;
 
     [[nodiscard]] static std::string modulePath(std::string_view name);
+    [[nodiscard]] static std::vector<std::string> getCandidates(const core::AppConfig& config, std::string_view name);
     static int reportTaskError(lua_State* L);
     static void installTaskErrors(lua_State* L);
     static int searchPackage(lua_State* L);

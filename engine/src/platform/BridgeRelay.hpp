@@ -16,9 +16,9 @@ class BridgeRelay final {
     // Disconnects the relay when it still leads to this bridge, so an engine that stops late never disconnects the one that replaced it.
     static void detach(const Bridge& value) noexcept;
 
-    // Thread-safe entry points for native handlers.
+    // Thread-safe entry points for native handlers. A retained event waits in the bridge for the first listener of its name, while events that arrive with no app running are dropped.
     static void resolve(std::uint64_t id, bool ok, std::string_view resultJson);
-    static void emit(std::string_view event, std::string_view payloadJson);
+    static void emit(std::string_view event, std::string_view payloadJson, bool retain);
 
   private:
     static std::mutex& mutex;

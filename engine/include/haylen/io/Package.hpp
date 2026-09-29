@@ -10,7 +10,7 @@
 
 namespace haylen::io {
 
-// Read-only view of an app package: a folder or a zip archive holding app.json, the Lua modules under source with source/main.lua as the entry point, and the assets under content. All methods are thread-safe and take normalized relative paths.
+// Read-only view of an app package: a folder or a zip archive holding app.json, the Lua modules under source with source/main.lua as the entry point, the assets under content and the manifest and Lua modules of every plugin under plugins. All methods are thread-safe and take normalized relative paths.
 class Package {
   public:
     virtual ~Package() = default;

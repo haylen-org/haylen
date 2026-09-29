@@ -1,5 +1,5 @@
 // Page side of the Haylen web runtime, included before the generated module code.
-// Pages talk to the running app through Module.haylen: native bridge handlers, the editor API that swaps the app package without reloading the page, and the onLog, onError, onStarted, onStopped and onStats callbacks.
+// Pages talk to the running app through Module.haylen: native bridge handlers, the contexts of plugin modules with their overlay over the canvas, the editor API that swaps the app package without reloading the page, and the onLog, onError, onStarted, onStopped and onStats callbacks.
 
 Module.haylen = Module.haylen || {};
 
@@ -37,9 +37,25 @@ Module.haylen = Module.haylen || {};
         handlers.delete(method);
     };
 
-    // Sends an event to the app, which receives it through haylen.platform.on.
-    haylen.emit = function (event, payload) {
-        Module.ccall("haylen_web_emit", null, ["string", "string"], [event, JSON.stringify(payload === undefined ? null : payload)]);
+    // Work that needs the WebAssembly runtime waits for it, and events wait for the first app, so plugins may call in while they load before the runtime starts.
+    const waiting = { runtime: [], events: [], runtimeReady: false, appStarted: false };
+
+    const whenRuntimeReady = (work) => {
+        if (waiting.runtimeReady) {
+            work();
+            return;
+        }
+        waiting.runtime.push(work);
+    };
+
+    // Sends an event to the app, which receives it through haylen.platform.on. An event that nothing listens to is dropped, unless options.retain is true: then it waits for the first listener of its name. Events sent before the first app started reach it once it starts.
+    haylen.emit = function (event, payload, options) {
+        const values = [event, JSON.stringify(payload === undefined ? null : payload), options && options.retain ? 1 : 0];
+        if (!waiting.appStarted) {
+            waiting.events.push(values);
+            return;
+        }
+        Module.ccall("haylen_web_emit", null, ["string", "string", "number"], values);
     };
 
     // The abort controllers of the calls that wait for their handler, so a cancel reaches the handler and its late answer is dropped.
@@ -88,6 +104,197 @@ Module.haylen = Module.haylen || {};
         }
     };
 
+    // The web parts of plugins by id, each with the listeners of its context that hear app errors. Their ids are the plugins whose native part runs on the web.
+    const plugins = new Map();
+
+    haylen.nativePlugins = function () {
+        return [...plugins.keys()];
+    };
+
+    // Native UI such as a full screen ad covers the app, which the engine then halts and mutes until the last cover ends.
+    const coverApp = () => whenRuntimeReady(() => Module._haylen_web_cover_app());
+    const uncoverApp = () => whenRuntimeReady(() => Module._haylen_web_uncover_app());
+
+    // The overlay layer lies over the canvas and lets the pointer through everywhere except on the elements of plugins, which it places by the anchors of their placements. An element with reserve set reserves the edge it sits on, in canvas pixels, and the engine widens the safe area of the app by it.
+    const overlay = { layer: null, resizes: null, items: new Set(), serial: 0 };
+    const anchors = {
+        top: [0.5, 0],
+        bottom: [0.5, 1],
+        left: [0, 0.5],
+        right: [1, 0.5],
+        topLeft: [0, 0],
+        topRight: [1, 0],
+        bottomLeft: [0, 1],
+        bottomRight: [1, 1],
+        center: [0.5, 0.5],
+    };
+
+    const readPlacement = (placement) => {
+        const value = { anchor: "bottom", margin: 0, insideSafeArea: true, reserve: false, width: null, height: null, ...placement };
+        if (!(value.anchor in anchors)) {
+            throw new Error("The overlay anchor " + value.anchor + " is unknown. It is one of " + Object.keys(anchors).join(", ") + ".");
+        }
+        return value;
+    };
+
+    // The safe area insets of the page in page pixels, as far as they reach into the canvas box.
+    const safeInsets = (box) => {
+        const [left, top, right, bottom] = haylen.safeAreaInsets().map((value) => value / (window.devicePixelRatio || 1));
+        return { left: Math.max(0, left - box.left), top: Math.max(0, top - box.top), right: Math.max(0, right - (window.innerWidth - box.right)), bottom: Math.max(0, bottom - (window.innerHeight - box.bottom)) };
+    };
+
+    // Tells the engine only what changed, and insets of null release the edge of the item.
+    const reserve = (item, insets) => {
+        const previous = item.reserved;
+        if (insets === previous || (insets && previous && ["left", "top", "right", "bottom"].every((edge) => insets[edge] === previous[edge]))) {
+            return;
+        }
+        item.reserved = insets;
+        const key = item.key;
+        if (insets) {
+            whenRuntimeReady(() => Module.ccall("haylen_web_reserve_insets", null, ["string", "number", "number", "number", "number"], [key, insets.left, insets.top, insets.right, insets.bottom]));
+        } else {
+            whenRuntimeReady(() => Module.ccall("haylen_web_release_insets", null, ["string"], [key]));
+        }
+    };
+
+    // The element keeps its own styles, apart from its position, and a size or a visibility that the placement sets over its own.
+    const place = (item, box) => {
+        const element = item.element;
+        const placement = item.placement;
+        element.style.visibility = item.visible ? item.original.visibility : "hidden";
+        element.style.width = placement.width === null ? item.original.width : placement.width + "px";
+        element.style.height = placement.height === null ? item.original.height : placement.height + "px";
+        if (!item.visible) {
+            reserve(item, null);
+            return;
+        }
+
+        const insets = placement.insideSafeArea ? safeInsets(box) : { left: 0, top: 0, right: 0, bottom: 0 };
+        const width = element.offsetWidth;
+        const height = element.offsetHeight;
+        const [horizontal, vertical] = anchors[placement.anchor];
+        const margin = placement.margin;
+        const areaWidth = box.width - insets.left - insets.right;
+        const areaHeight = box.height - insets.top - insets.bottom;
+        const x = insets.left + (horizontal === 0.5 ? (areaWidth - width) / 2 : horizontal === 0 ? margin : areaWidth - width - margin);
+        const y = insets.top + (vertical === 0.5 ? (areaHeight - height) / 2 : vertical === 0 ? margin : areaHeight - height - margin);
+        element.style.left = x + "px";
+        element.style.top = y + "px";
+        if (!placement.reserve || placement.anchor === "center") {
+            reserve(item, null);
+            return;
+        }
+
+        // The element reserves the edge its anchor names, from the edge of the canvas to its far side, in canvas pixels.
+        const scale = box.width > 0 ? Module.canvas.width / box.width : 1;
+        const reserved = { left: 0, top: 0, right: 0, bottom: 0 };
+        if (vertical === 0) {
+            reserved.top = (y + height) * scale;
+        } else if (vertical === 1) {
+            reserved.bottom = (box.height - y) * scale;
+        } else if (horizontal === 0) {
+            reserved.left = (x + width) * scale;
+        } else {
+            reserved.right = (box.width - x) * scale;
+        }
+        reserve(item, reserved);
+    };
+
+    const layout = () => {
+        const layer = overlay.layer;
+        if (!layer) {
+            return;
+        }
+        const box = Module.canvas.getBoundingClientRect();
+        layer.style.left = box.left + "px";
+        layer.style.top = box.top + "px";
+        layer.style.width = box.width + "px";
+        layer.style.height = box.height + "px";
+        for (const item of overlay.items) {
+            place(item, box);
+        }
+    };
+
+    const ensureLayer = () => {
+        if (overlay.layer) {
+            return overlay.layer;
+        }
+        const layer = document.createElement("div");
+        layer.id = "haylen-overlay";
+        layer.style.cssText = "position:fixed;left:0;top:0;width:0;height:0;overflow:hidden;pointer-events:none;z-index:2;";
+        Module.canvas.after(layer);
+        overlay.layer = layer;
+        overlay.resizes = new ResizeObserver(layout);
+        overlay.resizes.observe(Module.canvas);
+        window.addEventListener("resize", layout);
+        window.addEventListener("scroll", layout, true);
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener("resize", layout);
+        }
+        return layer;
+    };
+
+    const addToOverlay = (id, element, placement) => {
+        if (!(element instanceof HTMLElement)) {
+            throw new Error("The plugin " + id + " can only place an HTML element over the app.");
+        }
+        const original = { width: element.style.width, height: element.style.height, visibility: element.style.visibility };
+        const item = { key: id + "#" + ++overlay.serial, element, original, placement: readPlacement(placement), visible: true, reserved: null };
+        element.style.position = "absolute";
+        element.style.pointerEvents = "auto";
+        element.style.boxSizing = "border-box";
+        ensureLayer().appendChild(element);
+        overlay.items.add(item);
+        overlay.resizes.observe(element);
+        layout();
+        return {
+            update(value) {
+                item.placement = readPlacement(value);
+                layout();
+            },
+            setVisible(visible) {
+                item.visible = Boolean(visible);
+                layout();
+            },
+            remove() {
+                if (!overlay.items.delete(item)) {
+                    return;
+                }
+                overlay.resizes.unobserve(element);
+                element.remove();
+                reserve(item, null);
+            },
+        };
+    };
+
+    // Makes the context that the web module of a plugin receives in load(context). Methods and events take the id of the plugin in front of their names, as the Lua handle of the plugin expects. The loader calls it for every plugin before the runtime starts.
+    haylen.createPluginContext = function (id, config) {
+        if (plugins.has(id)) {
+            throw new Error("The plugin " + id + " already has a context.");
+        }
+        const plugin = { errorListeners: [] };
+        plugins.set(id, plugin);
+        return {
+            id,
+            config: config || {},
+            register(method, handler) {
+                haylen.register(id + "." + method, handler);
+            },
+            emit(event, payload, options) {
+                haylen.emit(id + "." + event, payload, options);
+            },
+            overlay: {
+                add: (element, placement) => addToOverlay(id, element, placement),
+            },
+            coverApp,
+            uncoverApp,
+            onAppError(listener) {
+                plugin.errorListeners.push(listener);
+            },
+        };
+    };
+
     // The runtime reports from inside a frame, so page callbacks run right after it and may call back into the runtime, even to restart the app.
     const notify = function (name, ...values) {
         const callback = haylen[name];
@@ -101,12 +308,25 @@ Module.haylen = Module.haylen || {};
         notify("onLog", levels[level] || "info", message);
     };
 
-    // Errors arrive as {message, file, line, traceback}, with an empty file when no script position is known.
+    // Errors arrive as {message, file, line, traceback, frames}, with an empty file when no script position is known. The page and every plugin that listens with onAppError receive them.
     haylen.reportError = function (error) {
         notify("onError", error);
+        for (const plugin of plugins.values()) {
+            for (const listener of plugin.errorListeners) {
+                queueMicrotask(() => listener(error));
+            }
+        }
     };
 
     haylen.reportStarted = function (app) {
+        if (!waiting.appStarted) {
+            waiting.appStarted = true;
+            queueMicrotask(() => {
+                for (const values of waiting.events.splice(0)) {
+                    Module.ccall("haylen_web_emit", null, ["string", "string", "number"], values);
+                }
+            });
+        }
         notify("onStarted", app);
     };
 
@@ -679,10 +899,14 @@ Module.haylen = Module.haylen || {};
         orientation.lock(value === 1 ? "portrait" : "landscape").catch(() => {});
     };
 
-    // sokol_app follows window resizes only, so a canvas resized by the page layout announces its new size as a window resize.
+    // sokol_app follows window resizes only, so a canvas resized by the page layout announces its new size as a window resize. The runtime now takes the work that waited for it.
     Module.postRun = Module.postRun || [];
     Module.postRun.push(function () {
         new ResizeObserver(() => window.dispatchEvent(new Event("resize"))).observe(Module.canvas);
+        waiting.runtimeReady = true;
+        for (const work of waiting.runtime.splice(0)) {
+            work();
+        }
     });
 
     // A hidden page sends the app to the background, a page that goes away makes the user data durable, and the network state reaches the app when it starts and whenever it changes.

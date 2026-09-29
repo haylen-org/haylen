@@ -6,7 +6,7 @@ Apps for Haylen are written in Lua. Every engine capability is a module that `re
 
 | Module | Purpose |
 | --- | --- |
-| [haylen](lua-api/haylen.md) | Engine version, platform, graphics backend, the resolved `app.json`, the app clock, time scale, the game pause, app states, lifecycle options, autoloads, classes, quitting and fatal errors. |
+| [haylen](lua-api/haylen.md) | Engine version, platform, graphics backend, the resolved `app.json`, the app clock, time scale, the game pause, app states with the cover of native UI, lifecycle options, autoloads, classes, quitting and fatal errors. |
 | [haylen.scene](lua-api/scene.md) | The stack of scenes and their lifecycle: asynchronous loads with progress, preloads, loading views, transitions that cover, hold and reveal or keep both scenes alive with built-in and custom effects, completion promises, tasks and listeners that end with their scene, process modes and platform events. |
 | [haylen.events](lua-api/events.md) | The event bus with channels, priorities, filters, owners and queued delivery, and the lifecycle events of the engine. |
 | [haylen.signal](lua-api/signal.md) | Signals with priorities, one-shot, deferred and owned listeners, and the `Connection` of every listener. |
@@ -25,7 +25,7 @@ Apps for Haylen are written in Lua. Every engine capability is a module that `re
 | [haylen.animation2d](lua-api/animation2d.md) | Frame animations from grids and atlases, and animators that play them on sprites. |
 | [haylen.particles2d](lua-api/particles2d.md) | Particle emitters and `.particles` effect files. |
 | [haylen.lighting2d](lua-api/lighting2d.md) | Point, spot and directional lights with blend modes, masks and shadows, occluders from outlines, physics bodies and Tiled maps, light queries and flame flicker. |
-| [haylen.viewport](lua-api/viewport.md) | The design resolution and scaling policy, which change while the app runs, the visible area and the safe area. |
+| [haylen.viewport](lua-api/viewport.md) | The design resolution and scaling policy, which change while the app runs, the visible area, the safe area and the edges that native views reserve. |
 | [haylen.window](lua-api/window.md) | Window size, fullscreen, title, cursor, on-screen keyboard and clipboard, and on desktops frameless, transparent, always-on-top and click-through windows with their frame and monitors. |
 
 ## World
@@ -57,7 +57,7 @@ Apps for Haylen are written in Lua. Every engine capability is a module that `re
 | [haylen.assets](lua-api/assets.md) | Loading package files now or in the background, and preload groups. |
 | [haylen.storage](lua-api/storage.md) | Private files of the player, the folder Varn's `fs` shares with them, and named save slots with summaries, on the frame thread or asynchronously on the I/O pool. |
 | [haylen.preferences](lua-api/preferences.md) | Player preferences that persist between sessions. |
-| [haylen.platform](lua-api/platform.md) | The JSON bridge to native code, such as sign-in and device information, with typed errors, timeouts and cancellation. |
+| [haylen.platform](lua-api/platform.md) | The JSON bridge to native code, such as sign-in and device information, with typed errors, timeouts, cancellation, calls without answers, retained events and the handles of the plugins of the app. |
 | [haylen.native](lua-api/native.md) | Native libraries for Varn's `ffi`, found where the app ships them, their symbols, callbacks from any thread and the interface of the engine for libraries. |
 | [haylen.net](lua-api/net.md) | WebSocket connections with reconnection and pings. |
 | [haylen.debug](lua-api/debug.md) | The debug statistics, object counts, monitors, the frame profiler and the recent log. |

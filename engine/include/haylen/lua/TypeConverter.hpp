@@ -265,8 +265,9 @@ template <> struct Converter<math::Segment> {
     static math::Segment read(lua_State* L, int index);
 };
 
-// Insets accept one number for every side, or a table with left, top, right and bottom fields or the same four values in order.
+// Insets accept one number for every side, or a table with left, top, right and bottom fields or the same four values in order, and push as a table with the four fields.
 template <> struct Converter<math::Insets> {
+    static void push(lua_State* L, const math::Insets& value);
     static math::Insets read(lua_State* L, int index);
 };
 

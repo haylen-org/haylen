@@ -241,6 +241,27 @@ void SokolHost::cancelPlatformCall(std::uint64_t id) {
     Services::cancel(id);
 }
 
+math::Insets SokolHost::getReservedInsets() const {
+    return getNativeViews().getReservedInsets();
+}
+
+bool SokolHost::isAppCovered() const {
+    return getNativeViews().isAppCovered();
+}
+
+std::vector<std::string> SokolHost::getNativePlugins() const {
+    return Services::getNativePlugins();
+}
+
+void SokolHost::reportError(const core::Json& report) {
+    Services::reportError(report);
+}
+
+NativeViews& SokolHost::getNativeViews() noexcept {
+    static NativeViews& views = *new NativeViews();
+    return views;
+}
+
 sapp_mouse_cursor SokolHost::toSokolCursor(Cursor cursor) noexcept {
     switch (cursor) {
     case Cursor::Default:

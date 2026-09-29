@@ -325,7 +325,8 @@ A page never turns on development mode. A custom shell passed as `WEB_SHELL` kee
 | `setPaused(paused)`, `pause()`, `resume()` | Pauses or resumes the app. A paused app keeps its last frame and sees the pause as a suspend. |
 | `paused()` | Returns whether the app is paused. |
 | `reloadAsset(path)` | Reloads the cached assets read from a changed file, given relative to `content/`, and returns whether any were loaded. A file that no longer decodes throws an `Error` with the reason, and the app keeps the assets it had. |
-| `register(method, handler)`, `unregister(method)`, `emit(event, payload)` | Platform bridge handlers and events, described in the [platform bridge guide](platform_bridge.md#web). |
+| `register(method, handler)`, `unregister(method)`, `emit(event, payload, options)` | Platform bridge handlers and events, retained for the first listener with `options.retain`, described in the [platform bridge guide](platform_bridge.md#web). |
+| `createPluginContext(id, config)` | The context of the web module of a plugin, described in the [plugin guide](plugins.md#web-modules). |
 
 The runtime reports back through callbacks the page assigns to `Module.haylen`:
 

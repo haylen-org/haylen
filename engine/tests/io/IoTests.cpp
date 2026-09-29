@@ -5,6 +5,7 @@
 #include <iterator>
 #include <stdexcept>
 
+#include "haylen/core/AppConfig.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/io/Path.hpp"
@@ -34,6 +35,8 @@ TEST(PathTest, BuildsAssetPathsAndParts) {
     EXPECT_EQ(Path::directory("a.png"), "");
     EXPECT_EQ(Path::join("maps", "../tilesets/t.tsj"), "tilesets/t.tsj");
     EXPECT_EQ(Path::join("", "a/b"), "a/b");
+    EXPECT_EQ(Path::plugin("firebase-analytics", Path::kPluginManifestFile), "plugins/firebase-analytics/plugin.json");
+    EXPECT_EQ(Path::plugin("ads", "source/init.lua"), "plugins/ads/source/init.lua");
     EXPECT_TRUE(Path::isInside("maps/a.tmj", "maps"));
     EXPECT_TRUE(Path::isInside("maps/a.tmj", ""));
     EXPECT_FALSE(Path::isInside("mapsx/a.tmj", "maps"));
@@ -44,10 +47,7 @@ class PackageTest : public ::testing::TestWithParam<std::string> {
   protected:
     std::unique_ptr<Package> makePackage() {
         const std::map<std::string, std::string> files = {
-            {"app.json", "{}"},
-            {"source/main.lua", "print('hi')"},
-            {"content/maps/island.tmj", "{\"width\": 2}"},
-            {"content/audio/hit.ogg", "OggS"},
+            {"app.json", R"({"plugins": {"ads": {"testMode": true}}})"}, {"source/main.lua", "print('hi')"}, {"content/maps/island.tmj", "{\"width\": 2}"}, {"content/audio/hit.ogg", "OggS"}, {"plugins/ads/plugin.json", R"({"id": "ads", "version": "1.0.0"})"}, {"plugins/ads/source/init.lua", "return {}"},
         };
 
         if (GetParam() == "directory") {
@@ -108,6 +108,14 @@ TEST_P(PackageTest, ReadsFilesAndAssets) {
     EXPECT_EQ(package->readAsset("audio/hit.ogg").size(), 4U);
     EXPECT_THROW((void)package->read("missing.lua"), std::runtime_error);
     EXPECT_THROW((void)package->read("../outside"), std::invalid_argument);
+}
+
+TEST_P(PackageTest, CarriesThePluginsOfTheApp) {
+    const std::unique_ptr<Package> package = makePackage();
+    EXPECT_EQ(core::AppConfig::fromPackage(*package).plugins.at("ads").at("testMode"), true);
+    EXPECT_EQ(package->list(Path::kPluginsDirectory), (std::vector<std::string>{"plugins/ads/plugin.json", "plugins/ads/source/init.lua"}));
+    EXPECT_EQ(package->readText(Path::plugin("ads", "source/init.lua")), "return {}");
+    EXPECT_EQ(package->listAssets("").size(), 2U) << "the files of plugins are no assets";
 }
 
 TEST_P(PackageTest, ListsFilesRecursively) {

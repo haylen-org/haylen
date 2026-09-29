@@ -15,6 +15,10 @@
 #include "haylen/platform/SafeAreaSimulation.hpp"
 #include "haylen/platform/WindowPlacement.hpp"
 
+namespace haylen::io {
+class Package;
+}
+
 namespace haylen::core {
 
 // App settings read from app.json before any script runs, because the window exists before source/main.lua.
@@ -82,16 +86,24 @@ struct AppConfig {
     // The native libraries the app ships by name, which make.py builds and places in the package of each platform. The engine keeps the section as app.json wrote it.
     Json native = Json::object();
 
+    // The plugins the app uses by id, each with the values of its parameters as app.json wrote them. Every id names the folder plugins/<id> of the package, which holds its plugin.json and its Lua modules.
+    Json plugins = Json::object();
+
     // Set by the runtime rather than app.json: a package opened from a folder during development reloads when its files change.
     bool hotReload = false;
 
     // Reads every present field and validates it. Throws std::invalid_argument with the offending field on bad values.
     [[nodiscard]] static AppConfig fromJson(const Json& document);
+
+    // Reads app.json of the package like fromJson and also checks that the package holds plugins/<id>/plugin.json for every plugin the app lists.
+    [[nodiscard]] static AppConfig fromPackage(const io::Package& package);
     [[nodiscard]] Json toJson() const;
 
   private:
     template <typename T> static void readValue(const Json& object, const char* key, T& target);
     static void requirePositive(double value, const char* key);
+    static void readPlugins(const Json& section, AppConfig& config);
+    [[nodiscard]] static bool isPluginId(std::string_view text) noexcept;
     [[nodiscard]] static platform::Orientation orientationFromName(const std::string& text);
     [[nodiscard]] static audio::Session::Category sessionCategoryFromName(const std::string& text);
     [[nodiscard]] static std::string_view sessionCategoryName(audio::Session::Category value);

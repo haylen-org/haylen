@@ -73,7 +73,7 @@ void HotReloadPlugin::apply(core::Engine& engine, const std::vector<std::string>
             }
             continue;
         }
-        if (io::Path::isInside(path, io::Path::kSourceDirectory) || path == io::Path::kAppConfigFile) {
+        if (io::Path::isInside(path, io::Path::kSourceDirectory) || io::Path::isInside(path, io::Path::kPluginsDirectory) || path == io::Path::kAppConfigFile) {
             core::Log::info("{} changed, restarting the app.", path);
             engine.requestRestart();
         }

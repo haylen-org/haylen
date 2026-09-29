@@ -42,22 +42,14 @@ std::uint64_t Bridge::call(std::string_view method, const core::Json& params, Ca
         throw std::invalid_argument("A platform call needs a method name.");
     }
     const std::uint64_t id = nextCallId.fetch_add(1);
-    const auto found = handlers.find(std::string(method));
-    Pending entry{.callback = std::move(callback), .method = std::string(method), .native = found == handlers.end()};
+    Pending entry{.callback = std::move(callback), .method = std::string(method), .native = !hasHandler(method)};
     if (timeout) {
         entry.deadline = std::chrono::steady_clock::now() + *timeout;
     }
     pending.emplace(id, std::move(entry));
 
-    if (found == handlers.end()) {
-        dispatcher(id, method, params.dump());
-        return id;
-    }
-
-    // The handler may register handlers itself, so it runs from a copy.
-    const Handler handler = found->second;
     // clang-format off
-    handler(params, [shared = std::weak_ptr<Inbox>(inbox), id](Result result) {
+    start(id, method, params, [shared = std::weak_ptr<Inbox>(inbox), id](Result result) {
         if (const std::shared_ptr<Inbox> alive = shared.lock()) {
             const std::scoped_lock lock(alive->mutex);
             alive->completions.push_back({id, std::move(result)});
@@ -65,6 +57,23 @@ std::uint64_t Bridge::call(std::string_view method, const core::Json& params, Ca
     });
     // clang-format on
     return id;
+}
+
+void Bridge::send(std::string_view method, const core::Json& params) {
+    if (method.empty()) {
+        throw std::invalid_argument("A platform call needs a method name.");
+    }
+    start(nextCallId.fetch_add(1), method, params, [](const Result&) {});
+}
+
+void Bridge::start(std::uint64_t id, std::string_view method, const core::Json& params, Reply reply) {
+    const auto found = handlers.find(std::string(method));
+    if (found == handlers.end()) {
+        dispatcher(id, method, params.dump());
+        return;
+    }
+    const Handler handler = found->second;
+    handler(params, std::move(reply));
 }
 
 bool Bridge::cancel(std::uint64_t id) {
@@ -96,7 +105,7 @@ void Bridge::resolve(std::uint64_t id, bool ok, std::string_view resultJson) {
     inbox->completions.push_back({id, std::move(result)});
 }
 
-void Bridge::emit(std::string_view event, std::string_view payloadJson) {
+void Bridge::emit(std::string_view event, std::string_view payloadJson, bool retain) {
     core::Json payload = payloadJson.empty() ? core::Json(nullptr) : core::Json::parse(payloadJson, nullptr, false);
     if (payload.is_discarded()) {
         core::Log::error("The platform event '{}' carried invalid JSON and was dropped.", event);
@@ -104,7 +113,7 @@ void Bridge::emit(std::string_view event, std::string_view payloadJson) {
     }
 
     const std::scoped_lock lock(inbox->mutex);
-    inbox->events.push_back({std::string(event), std::move(payload)});
+    inbox->events.push_back({std::string(event), std::move(payload), retain});
 }
 
 Bridge::Mailbox Bridge::getMailbox() const {
@@ -135,9 +144,29 @@ void Bridge::pump() {
         }
     }
 
-    for (const NativeEvent& event : events) {
-        if (const auto found = signals.find(event.name); found != signals.end()) {
-            found->second->emit(event.payload);
+    // Retained events reach the listeners that connected since the last pump before any newer event of their name.
+    std::vector<std::string> waiting;
+    waiting.reserve(retained.size());
+    for (const auto& [name, payloads] : retained) {
+        waiting.push_back(name);
+    }
+    for (const std::string& name : waiting) {
+        deliverRetained(name);
+    }
+    for (NativeEvent& event : events) {
+        const auto found = signals.find(event.name);
+        if (found != signals.end() && !found->second->empty()) {
+            core::Signal<const core::Json&>& signal = *found->second;
+            deliverRetained(event.name);
+            signal.emit(event.payload);
+            continue;
+        }
+        if (event.retain) {
+            std::deque<core::Json>& payloads = retained[event.name];
+            if (payloads.size() == kRetainedLimit) {
+                payloads.pop_front();
+            }
+            payloads.push_back(std::move(event.payload));
         }
     }
 
@@ -151,6 +180,22 @@ void Bridge::pump() {
         }
     }
     expireCalls();
+}
+
+void Bridge::deliverRetained(const std::string& name) {
+    const auto queued = retained.find(name);
+    const auto found = signals.find(name);
+    if (queued == retained.end() || found == signals.end() || found->second->empty()) {
+        return;
+    }
+
+    // Listeners may connect to other events while they run, which moves the entries of the signal table but never the signals.
+    core::Signal<const core::Json&>& signal = *found->second;
+    const std::deque<core::Json> payloads = std::move(queued->second);
+    retained.erase(queued);
+    for (const core::Json& payload : payloads) {
+        signal.emit(payload);
+    }
 }
 
 std::size_t Bridge::getPendingCallCount() const {

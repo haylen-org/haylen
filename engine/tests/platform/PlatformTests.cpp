@@ -166,13 +166,15 @@ TEST(BridgeRelayTest, ForwardsNativeRepliesToTheAttachedBridge) {
     core::Connection connection = bridge.on("native.event", [&](const core::Json& payload) { events.push_back(payload); });
 
     BridgeRelay::resolve(call, true, "1");
-    BridgeRelay::emit("native.event", "2");
+    BridgeRelay::emit("native.event", "2", false);
+    BridgeRelay::emit("native.late", "5", true);
     bridge.pump();
     EXPECT_TRUE(results.empty()) << "nothing reaches a bridge that is not attached";
 
     BridgeRelay::attach(bridge);
     BridgeRelay::resolve(call, true, "{\"value\": 3}");
-    BridgeRelay::emit("native.event", "4");
+    BridgeRelay::emit("native.event", "4", false);
+    BridgeRelay::emit("native.late", "6", true);
     BridgeRelay::detach(bridge);
     bridge.pump();
     ASSERT_EQ(results.size(), 1U);
@@ -180,6 +182,12 @@ TEST(BridgeRelayTest, ForwardsNativeRepliesToTheAttachedBridge) {
     ASSERT_EQ(events.size(), 1U);
     EXPECT_EQ(events.front(), 4);
     EXPECT_EQ(calls, (std::vector<std::string>{"native.method"}));
+
+    // The relay keeps the retain flag, so the event that came while the bridge was attached waits for its first listener.
+    core::Connection late = bridge.on("native.late", [&](const core::Json& payload) { events.push_back(payload); });
+    bridge.pump();
+    ASSERT_EQ(events.size(), 2U);
+    EXPECT_EQ(events.back(), 6);
 }
 
 TEST(MemoryWarningTest, HandsEachWarningOverOnce) {
@@ -411,6 +419,71 @@ TEST(BridgeTest, RoutesCallsToHandlersAndNativeCode) {
 
     EXPECT_THROW(bridge.call("", core::Json::object(), {}), std::invalid_argument);
     EXPECT_THROW(bridge.registerHandler("", {}), std::invalid_argument);
+}
+
+TEST(BridgeTest, RetainsEventsUntilTheFirstListenerConnects) {
+    Bridge bridge([](std::uint64_t, std::string_view, std::string_view) {}, [](std::uint64_t, std::string_view) {});
+    std::vector<core::Json> opened;
+    std::vector<core::Json> purchases;
+
+    // Retained events wait while nothing listens, the newest ones up to the limit, while plain events without a listener are dropped.
+    for (int index = 0; index < 40; ++index) {
+        bridge.emit("app.opened", std::to_string(index), true);
+    }
+    bridge.emit("app.opened", R"("plain")");
+    bridge.emit("store.pending", R"({"id": 1})", true);
+    bridge.pump();
+
+    // The first listener receives them in order at the next pump, before a newer event of the same name.
+    core::Connection first = bridge.on("app.opened", [&](const core::Json& payload) { opened.push_back(payload); });
+    bridge.emit("app.opened", "40", true);
+    EXPECT_TRUE(opened.empty());
+    bridge.pump();
+    ASSERT_EQ(opened.size(), Bridge::kRetainedLimit + 1);
+    EXPECT_EQ(opened.front(), 40 - static_cast<int>(Bridge::kRetainedLimit));
+    EXPECT_EQ(opened[Bridge::kRetainedLimit - 1], 39);
+    EXPECT_EQ(opened.back(), 40);
+
+    // Delivered events are gone, so a later listener hears only new ones.
+    std::vector<core::Json> later;
+    core::Connection second = bridge.on("app.opened", [&](const core::Json& payload) { later.push_back(payload); });
+    bridge.pump();
+    EXPECT_TRUE(later.empty());
+
+    // A listener that leaves before the next pump leaves the events waiting for the next one.
+    core::Connection gone = bridge.on("store.pending", [&](const core::Json& payload) { purchases.push_back(payload); });
+    gone.disconnect();
+    bridge.pump();
+    EXPECT_TRUE(purchases.empty());
+    core::Connection kept = bridge.on("store.pending", [&](const core::Json& payload) { purchases.push_back(payload); });
+    bridge.pump();
+    ASSERT_EQ(purchases.size(), 1U);
+    EXPECT_EQ(purchases.front().at("id"), 1);
+}
+
+TEST(BridgeTest, SendsCallsWhoseAnswerNobodyNeeds) {
+    std::vector<std::pair<std::uint64_t, std::string>> dispatched;
+    Bridge bridge([&dispatched](std::uint64_t id, std::string_view method, std::string_view params) { dispatched.emplace_back(id, std::string(method) + " " + std::string(params)); }, [](std::uint64_t, std::string_view) {});
+    int counted = 0;
+    // clang-format off
+    bridge.registerHandler("engine.count", [&counted](const core::Json& params, Bridge::Reply reply) {
+        counted += params.at("by").get<int>();
+        reply({.ok = true});
+    });
+    // clang-format on
+
+    bridge.send("native.track", {{"event", "start"}});
+    bridge.send("engine.count", {{"by", 2}});
+    EXPECT_EQ(bridge.getPendingCallCount(), 0U);
+    ASSERT_EQ(dispatched.size(), 1U);
+    EXPECT_EQ(dispatched.front().second, R"(native.track {"event":"start"})");
+    EXPECT_EQ(counted, 2);
+
+    // The native answer finds no call waiting for it and is dropped.
+    bridge.resolve(dispatched.front().first, false, R"("failed")");
+    bridge.pump();
+    EXPECT_EQ(bridge.getPendingCallCount(), 0U);
+    EXPECT_THROW(bridge.send("", core::Json::object()), std::invalid_argument);
 }
 
 TEST(BridgeTest, DeliversNativeEventsToSubscribers) {

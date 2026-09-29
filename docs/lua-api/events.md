@@ -169,7 +169,7 @@ The engine publishes these events on the bus. Events with data pass it to listen
 | --- | --- | --- |
 | `appStarted` | After `source/main.lua` ran, before the first frame. | None. |
 | `appActive` | The app came back to the foreground with focus. | None. |
-| `appInactive` | The app is still visible, but the window lost the focus or the system interrupted it, such as with a phone call or another app taking the audio focus on Android. | None. |
+| `appInactive` | The app is still visible, but the window lost the focus, the system interrupted it, such as with a phone call or another app taking the audio focus on Android, or native UI of a plugin covers it, as `haylen.appCovered()` tells. | None. |
 | `appBackground` | The app went to the background. The engine makes the files of `haylen.storage` durable right after the listeners run. | None. |
 | `appLowMemory` | The platform is short of memory, after the engine dropped released assets. | None. |
 | `appQuitRequested` | The player asked to close the window. | None. |
@@ -191,7 +191,7 @@ The engine publishes these events on the bus. Events with data pass it to listen
 | `windowFocusGained`, `windowFocusLost` | The window gained or lost the keyboard focus. | None. |
 | `windowFullscreenChanged` | The window entered or left fullscreen. | `{fullscreen}` |
 | `windowOrientationChanged` | The screen turned between landscape and portrait, as `window.orientation()` of [haylen.window](window.md) reports it. Desktop windows always count as landscape. | `{orientation}`, `'landscape'` or `'portrait'`. |
-| `windowSafeAreaChanged` | The safe area moved, for example after a rotation. | `{x, y, width, height}`, the same rectangle as `viewport.safeRect()`. |
+| `windowSafeAreaChanged` | The safe area moved, for example after a rotation or when a native view of a plugin reserved or released an edge of the screen. | `{x, y, width, height}`, the same rectangle as `viewport.safeRect()`. |
 | `windowMoved` | The desktop window moved, dragged by the player, placed by the app or moved by the system. A move publishes each new position once. | `{x, y}`, the top left corner of `window.frame()` of [haylen.window](window.md#desktop-windows) in desktop points. |
 | `windowMonitorsChanged` | A monitor connected, disconnected or changed, or its work area changed, such as when the taskbar moved. `window.monitors()` returns the new list. | None. |
 | `uiDocumentMounted`, `uiDocumentUnmounted` | A UI document of [haylen.ui](ui.md) was mounted or unmounted. | The document. |

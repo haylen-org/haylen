@@ -11,6 +11,8 @@
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Signal.hpp"
 #include "haylen/lua/Error.hpp"
+#include "haylen/math/Insets.hpp"
+#include "haylen/platform/AppPlugin.hpp"
 #include "haylen/plugins/PluginRegistry.hpp"
 
 struct lua_State;
@@ -166,7 +168,10 @@ class Engine final {
     [[nodiscard]] AppState getAppState() const noexcept;
     [[nodiscard]] NetworkState getNetworkState() const noexcept;
 
-    // Returns whether the lifecycle options halt updates in the current app state. A halted app still delivers asynchronous results and queued events, and an app in the background never renders.
+    // Whether native UI of plugins covers the app, such as a full screen ad or a sign-in form. A covered app is inactive, halted and muted whatever the lifecycle options say, and it comes back as it was once the last cover ends. The engine takes the cover of the platform at the start of every frame.
+    [[nodiscard]] bool isAppCovered() const noexcept;
+
+    // Returns whether the app is halted, by a cover or by the lifecycle options in the current app state. A halted app still delivers asynchronous results and queued events, and an app in the background never renders.
     [[nodiscard]] bool isHalted() const noexcept;
     [[nodiscard]] const AppConfig::Lifecycle& getLifecycle() const noexcept;
     void setLifecycle(const AppConfig::Lifecycle& value);
@@ -178,6 +183,15 @@ class Engine final {
     // A simulated safe area replaces the one the device reports, to test layouts for other screens. The debug.safeArea option of app.json sets it at start.
     void setSafeAreaSimulation(std::optional<platform::SafeAreaSimulation> value);
     [[nodiscard]] const std::optional<platform::SafeAreaSimulation>& getSafeAreaSimulation() const noexcept;
+
+    // The screen edges that native views of plugins reserve, such as a banner ad, as the largest reservation on each edge in framebuffer pixels. The safe area of the viewport grows on each edge to cover them, so UI anchored to the safe area moves out of their way. The engine takes them at the start of every frame.
+    [[nodiscard]] const math::Insets& getReservedInsets() const noexcept;
+
+    // The plugins that app.json lists, in the order of their ids, with the version and parameter defaults of their plugin.json and whether their native part runs on this platform. Throws std::runtime_error when a plugin.json of the package cannot be read.
+    [[nodiscard]] std::vector<platform::AppPlugin> getAppPlugins() const;
+
+    // The ids of the plugins whose native part runs, which the platform loaded or a native library of the app declared, in order.
+    [[nodiscard]] std::vector<std::string> getNativePlugins() const;
 
     // Whether the back button of the platform, the Menu button of the Apple TV remote and the Back button of Android, leaves the app, which is right on the root screen. Otherwise the app keeps the press, which reaches it as uiCancel, and an open UI popup always keeps it.
     void setBackLeavesApp(bool value) noexcept;
@@ -201,7 +215,9 @@ class Engine final {
     void render(const std::vector<plugins::Plugin*>& all);
     void renderScenes(const std::vector<plugins::Plugin*>& all);
     void setAppState(AppState value);
-    void applyFocusMute();
+    void refreshForegroundState();
+    void applyCover();
+    void applyStateMute();
     void remapViewport();
     [[nodiscard]] math::Insets getSafeAreaInsets() const;
 

@@ -208,3 +208,152 @@ python3 make.py plugin add ~/plugins/my-plugin --app ~/apps/my-game
 ```
 
 `plugin new` copies `templates/plugin/` with the id in the names of the files, classes and modules: `plugin.json`, a README, `source/init.lua` with the Lua API, `apple/<Name>Plugin.swift`, the Android module with its manifest meta-data and `<Name>Plugin.kt`, and `web/<id>.js`. Each native part answers the method `<id>.echo` and sends the event `<id>.echoed`, and the Lua API wraps both with the plugin handle of `platform.plugin(id)`.
+
+## Lua API of plugins
+
+### Modules
+
+The Lua API of a plugin lives in `source/` of its folder, and the package carries it as `plugins/<id>/source/`. `require('<id>')` loads `plugins/<id>/source/init.lua`, and `require('<id>.<name>')` loads `plugins/<id>/source/<name>.lua` or, when that file is missing, `plugins/<id>/source/<name>/init.lua`, with dots of the name as folders like any module. Only the plugins that `app.json` lists have modules, so `require` looks for any other name in `source/` of the app. Plugin modules load as text like every chunk, and their chunk names are their package paths, so errors point at files such as `plugins/admob/source/init.lua`.
+
+A module of the app whose first name part is the id of a plugin could never load, because `require` finds the module of the plugin first. The app stops on the error screen when it starts, before `source/main.lua` runs, with both files named: `The app module source/admob/ads.lua has the name admob.ads, which require resolves to plugins/admob/source/ads.lua of the plugin admob. Rename the module of the app.` An app in development restarts when a module or the `plugin.json` of one of its plugins changes, like it does for its own modules.
+
+### The plugin handle
+
+`platform.plugin(id)` of [haylen.platform](lua-api/platform.md#plugin-handles) returns the handle of a plugin, which its Lua modules use to reach its native part:
+
+| Member | Meaning |
+| --- | --- |
+| `handle.id`, `handle.version` | The id and the `version` of `plugin.json`. |
+| `handle.config` | The parameter values of `app.json` over the `default` of every parameter of `plugin.json`, the same values the native parts receive. |
+| `handle.native` | Whether the native part of the plugin runs on this platform. |
+| `handle:call(method, params, options)` | Calls `<id>.<method>` and returns a platform call, which a coroutine awaits. |
+| `handle:send(method, params)` | Calls `<id>.<method>` when nothing needs its answer, without a call object. |
+| `handle:on(event, listener)` | Listens to the event `<id>.<event>` and returns a connection. |
+
+`platform.plugins()` lists the plugins of the app with their `id`, `version` and `native`. Methods and events of plugins use camelCase names, and the native parts register and send them under the same names, which their contexts prefix with the id. A platform without the native part of a plugin answers its calls with the code `noHandler`, and a native part that cannot offer a method on its platform fails the call with the code `unsupported` and a message that says why, so the Lua API stays the same everywhere. `handle.native` tells the Lua API whether the native part exists at all.
+
+```lua
+-- plugins/game-center/source/init.lua
+local platform = require('haylen.platform')
+
+local handle = platform.plugin('game-center')
+local gameCenter = {}
+
+-- Signs the player in and returns a call whose await gives {playerId, displayName}.
+function gameCenter.signIn()
+    return handle:call('signIn', {showUi = handle.config.showSignInUi})
+end
+
+function gameCenter.submitScore(board, score)
+    handle:send('submitScore', {board = board, score = score})
+end
+
+-- The native part sends playerChanged retained, so a listener added after launch still hears the player that signed in on its own.
+function gameCenter.onPlayerChanged(listener)
+    return handle:on('playerChanged', listener)
+end
+
+gameCenter.available = handle.native
+
+return gameCenter
+```
+
+```lua
+-- source/main.lua
+local async = require('async')
+local gameCenter = require('game-center')
+
+gameCenter.onPlayerChanged(function(player) print('playing as ' .. player.displayName) end)
+async.spawn(function()
+    local player, err = gameCenter.signIn():await()
+    print(player and player.playerId or err)
+end)
+```
+
+## Engine services
+
+The engine offers the native parts of plugins a few services on every platform. Native code reaches them through the plugin context of its platform from any thread, and the engine applies them on the frame thread at the start of the next frame. The headless host of the tests drives them the same way, as the [testing guide](testing.md#the-headless-host) describes.
+
+### Reserved edges
+
+A native view over the app, such as a banner ad, reserves the edge of the screen it sits on, under a key of its own, with insets in framebuffer pixels. The safe area of the app becomes the safe area of the device widened, edge by edge, to the largest reservation on that edge, so UI anchored to the safe area moves out of the way of the view on its own, `windowSafeAreaChanged` announces the change, and [`viewport.reservedInsets()`](lua-api/viewport.md#viewportreservedinsets) reports the reservations in design units. A view reserves again when it moves or changes size, and releasing its key gives the edge back. Reservations belong to the platform, so they outlive an app that restarts under them. The overlays of the plugin contexts reserve for the views they place with `reserve` set in their placement.
+
+### Covering the app
+
+Native UI that covers the app, such as a full screen ad, a consent form, a sign-in sheet or a purchase dialog, calls `coverApp` of its context when it shows and `uncoverApp` when it goes away. Covers are counted, so they nest. While any cover lasts the app is `inactive`, halted and muted, whatever its lifecycle options say, `haylen.appCovered()` returns `true`, and the app hears the usual `appInactive` and `appActive` events. When the last cover ends the app comes back as it was, as the [lifecycle guide](lifecycle.md#covered-by-native-ui) describes. An `uncoverApp` without a `coverApp` is logged as an error and changes nothing.
+
+### Errors of the app
+
+Every error that stops the app, the one its error screen shows, reaches the native parts of plugins as `{message, file, line, traceback, frames}`, where `frames` lists `{source, line, function, kind}` from the innermost call outward with the kind `lua`, `c` or `main`, the shape the web page receives in `onError`. A crash reporter records it as a non-fatal error with the stack of the Lua code. On the web, `context.onAppError(listener)` receives it.
+
+### Retained events
+
+Events that native code sends before the app listens, such as the deep link or the notification that opened the app or a purchase that finished while it was closed, are sent retained. A retained event waits, up to 32 per name, for the first listener of its name, which receives the waiting events in order, as the [platform bridge guide](platform_bridge.md#retained-events) describes. The web context sends one with `context.emit(event, payload, {retain: true})`, and a native library with `emit(event, payload, 1)` of `HaylenNativeApi`.
+
+### The native plugin list
+
+`handle.native` and the `native` field of `platform.plugins()` come from the platform, which reports the plugins whose native part it loaded: on the web, the plugins whose module received a context. A native library of the app declares itself the native part of a plugin with `registerPlugin(id)` of [`HaylenNativeApi`](lua-api/native.md#library-handlers), which is how the `native` part of a plugin counts on the desktops.
+
+### Web modules
+
+The web module of a plugin exports `default function load(context)`, which the loader calls before the runtime starts and whose promise it awaits. `Module.haylen.createPluginContext(id, config)` of the runtime makes the context, once per plugin.
+
+| Member | Meaning |
+| --- | --- |
+| `context.id` | The id of the plugin. |
+| `context.config` | The parameter values of `app.json` with the defaults of `plugin.json` applied. |
+| `context.register(method, handler)` | Answers `<id>.<method>`, like `Module.haylen.register` described in the [platform bridge guide](platform_bridge.md#web). |
+| `context.emit(event, payload, options)` | Sends `<id>.<event>`, retained when `options.retain` is `true`. |
+| `context.overlay.add(element, placement)` | Places an HTML element over the canvas and returns `{update(placement), setVisible(visible), remove()}`. |
+| `context.coverApp()`, `context.uncoverApp()` | Cover the app while native UI shows, and end the cover. |
+| `context.onAppError(listener)` | Calls `listener(error)` with the report of every error that stops the app. |
+
+A module may register, emit, cover and place elements from `load` already: the runtime keeps the events until the first app starts and the covers and reservations until the WebAssembly runtime is ready.
+
+The overlay is a layer over the canvas that lets the pointer through, so the app keeps its clicks and touches everywhere but on the elements of plugins, which receive their own. A placement has these fields:
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `anchor` | `'bottom'` | Where the element sits: `'top'`, `'bottom'`, `'left'`, `'right'`, `'topLeft'`, `'topRight'`, `'bottomLeft'`, `'bottomRight'` or `'center'`. |
+| `margin` | `0` | The distance from the anchored edges, in page pixels. |
+| `insideSafeArea` | `true` | Whether the element stays inside the safe area of the page, the CSS safe area insets that reach into the canvas. |
+| `reserve` | `false` | Whether the element reserves the edge its anchor names, from the edge of the canvas to its far side, while it is visible. A centered element reserves nothing. |
+| `width`, `height` | the size of the element | The size of the element in page pixels. |
+
+The overlay places the element again whenever the canvas, the page or the element changes size, and reports its reservation in canvas pixels.
+
+```js
+// plugins/banner-kit/web/banner-kit.js
+export default function load(context) {
+    let banner = null;
+
+    context.register("showBanner", (params) => {
+        const element = document.createElement("div");
+        element.textContent = params.text || "Banner";
+        element.style.cssText = "background:#1d3557;color:#fff;font:16px system-ui;display:flex;align-items:center;justify-content:center;";
+        element.addEventListener("click", () => context.emit("clicked", { at: Date.now() }));
+        banner = context.overlay.add(element, { anchor: "bottom", height: 60, width: 320, reserve: true });
+        return { shown: true };
+    });
+
+    context.register("hideBanner", () => {
+        if (banner) {
+            banner.remove();
+            banner = null;
+        }
+        return null;
+    });
+
+    context.register("showInterstitial", async () => {
+        context.coverApp();
+        try {
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+        } finally {
+            context.uncoverApp();
+        }
+        return { completed: true };
+    });
+
+    context.onAppError((error) => console.warn("The app failed: " + error.message));
+}
+```

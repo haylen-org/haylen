@@ -4,7 +4,7 @@ Apps for Haylen are written in Lua 5.5, which the engine runs through the [Varn]
 
 ## The app package
 
-An app is a package: a folder, or the same folder zipped, with `app.json` at its root, the Lua modules under `source/` and the assets under `content/`. Nothing else in the folder belongs to the package, so platform projects, notes and build files can live next to it.
+An app is a package: a folder, or the same folder zipped, with `app.json` at its root, the Lua modules under `source/`, the assets under `content/` and the manifest and Lua modules of every [plugin](plugins.md) the app uses under `plugins/`. Nothing else in the folder belongs to the package, so platform projects, notes, build files and the native parts of plugins can live next to it.
 
 ```text
 my-app/
@@ -17,9 +17,14 @@ my-app/
   content/
     images/hero.png    Loaded with assets.texture('images/hero.png').
     preload.json
+  plugins/
+    admob/
+      plugin.json      The manifest of a plugin that app.json lists.
+      source/
+        init.lua       Loaded with require('admob').
 ```
 
-Lua files use `dash-case` names, and asset files and folders use lowercase `snake_case`. `python3 make.py package my-app -o my-app.zip` zips `app.json`, `source/` and `content/` of a folder, with `app.json` at the root of the archive. The desktop player runs either form with `haylen my-app` or `haylen my-app.zip`, and the [distribution guide](distribution.md) shows how to run a package on every platform and in the browser.
+Lua files use `dash-case` names, and asset files and folders use lowercase `snake_case`. `python3 make.py package my-app -o my-app.zip` zips `app.json`, `source/`, `content/` and the `plugin.json` and `source/` of every plugin of a folder, with `app.json` at the root of the archive. The desktop player runs either form with `haylen my-app` or `haylen my-app.zip`, and the [distribution guide](distribution.md) shows how to run a package on every platform and in the browser.
 
 ## app.json
 
@@ -62,6 +67,8 @@ The runtime reads `app.json` before the window exists, so it configures everythi
 | `debug.safeArea` | string or insets | none | Safe area to simulate instead of the one of the device: a device name such as `"iphoneDynamicIsland"` or insets in window points, as [`viewport.setSafeAreaSimulation`](lua-api/viewport.md#viewportsetsafeareasimulationvalue) describes. |
 | `debug.showSafeArea` | boolean | `false` | Shows the debug view of the safe area from the start, as [`ui.setSafeAreaVisible`](lua-api/ui.md#uisetsafeareavisiblevisible) describes. |
 | `autoload` | array of strings | `[]` | Modules that load as [autoloads](#autoloads) before `source/main.lua`, such as `"state.player-data"`. |
+| `native` | object | `{}` | The native libraries the app ships, by name, as the [native code guide](native.md#packaging-libraries-with-an-app) describes. |
+| `plugins` | object | `{}` | The [plugins](plugins.md) the app uses, by id in dash-case, each with an object of the values of its parameters, such as `{"admob": {"testMode": true}}`. Every id needs `plugins/<id>/plugin.json` in the package, and the app fails to load with `The plugin admob in app.json has no plugins/admob/plugin.json in the package.` otherwise. |
 
 ```json
 {
@@ -99,7 +106,7 @@ scene.push(require('scenes.boot').new())
 
 ## Modules and require
 
-`require` returns a module that is already loaded, which is where Varn's modules are from the start. Otherwise it looks in two places. It first builds the modules registered in `package.preload`, which are the engine modules such as `haylen.graphics` and the modules of any plugin a C++ project adds. Then it searches the `source/` folder of the package: `require('scenes.main-menu')` loads `source/scenes/main-menu.lua` and, when that file is missing, `source/scenes/main-menu/init.lua`. Modules load as text only, never as precompiled bytecode.
+`require` returns a module that is already loaded, which is where Varn's modules are from the start. Otherwise it looks in two places. It first builds the modules registered in `package.preload`, which are the engine modules such as `haylen.graphics` and the modules of any plugin a C++ project adds. Then it searches the `source/` folder of the package: `require('scenes.main-menu')` loads `source/scenes/main-menu.lua` and, when that file is missing, `source/scenes/main-menu/init.lua`. A module whose first name part is the id of a plugin of `app.json` comes from the `source/` folder of that plugin instead: `require('admob')` loads `plugins/admob/source/init.lua` and `require('admob.consent')` loads `plugins/admob/source/consent.lua`, so a module of the app named after a plugin is an error when the app starts, as the [plugin guide](plugins.md#modules) explains. Modules load as text only, never as precompiled bytecode.
 
 `package.path` and `package.cpath` are empty, so nothing is ever loaded from the host file system and an app behaves the same from a folder, a zip file or the browser. A missing module raises `no file 'source/scenes/missing.lua' or 'source/scenes/missing/init.lua' in the app package`.
 
@@ -364,15 +371,15 @@ source/scenes/level.lua:12  function <source/scenes/level.lua:10>
 
 That report is also what `C` copies to the clipboard, and `R` restarts the app. Both actions are also buttons at the bottom of the screen, which a click or a tap presses, and on touch devices the buttons show without their keys. A report taller than the screen scrolls with the mouse wheel, a drag of the mouse or a finger, the arrow and page keys, and Home and End. The stack names each function the way Lua does, such as `local 'spawnWave'`, `method 'hit'` or `main chunk`, and a function the engine calls, like a scene callback, shows where it is defined.
 
-Chunk names are package paths, so every position in a message points at a file of the package. `haylen.reportError(message)` stops the app the same way with a message of the app's choosing and the stack of the code that reported it. In the browser, the page receives the error in `Module.haylen.onError` as `{message, file, line, traceback, frames}`, where `traceback` is the stack as text and `frames` lists every frame as `{source, line, function, kind}` with the kind `lua`, `c` or `main`. On other platforms the report goes to the console with the rest of the log.
+Chunk names are package paths, so every position in a message points at a file of the package. `haylen.reportError(message)` stops the app the same way with a message of the app's choosing and the stack of the code that reported it. In the browser, the page receives the error in `Module.haylen.onError` as `{message, file, line, traceback, frames}`, where `traceback` is the stack as text and `frames` lists every frame as `{source, line, function, kind}` with the kind `lua`, `c` or `main`. On other platforms the report goes to the console with the rest of the log. The native parts of [plugins](plugins.md#errors-of-the-app) receive the same report, so a crash reporter records it with the stack of the Lua code.
 
 The runtime stays alive on the error screen. Fixing the script restarts the app when hot reload is on, and a browser editor restarts it with `Module.haylen.restart()` or `Module.haylen.run()`.
 
 ## Hot reload
 
-The desktop player treats a package folder named on its command line as an app in development when it also receives `--dev`, as in `haylen --dev samples/games/tiny-island` or `python3 make.py run samples/games/tiny-island`. It checks `app.json`, `source/` and `content/` for changes every half second on the I/O pool, so frames never wait for the file system, and ignores everything else in the folder.
+The desktop player treats a package folder named on its command line as an app in development when it also receives `--dev`, as in `haylen --dev samples/games/tiny-island` or `python3 make.py run samples/games/tiny-island`. It checks `app.json`, `source/`, `content/` and the `plugin.json` and `source/` of every plugin for changes every half second on the I/O pool, so frames never wait for the file system, and ignores everything else in the folder.
 
-- A changed file under `source/` or a changed `app.json` restarts the app with a fresh Lua state, and `source/main.lua` runs again. This also works from the error screen.
+- A changed file under `source/`, a changed `app.json` or a changed `plugin.json` or Lua module of a plugin restarts the app with a fresh Lua state, and `source/main.lua` runs again. This also works from the error screen.
 - A changed file under `content/` reloads the assets read from it without a restart. Textures change in place, so sprites that already use them show the new pixels, and other asset types leave the cache so the next load reads the new file.
 
 A restart starts the app from scratch, so state that must survive a reload belongs in [`haylen.storage`](lua-api/storage.md) or [`haylen.preferences`](lua-api/preferences.md). Zip packages and shipped apps are never watched. In the browser, an editor sends changed files with `Module.haylen.setFile` and then calls `Module.haylen.reloadAsset(path)` for an asset or `Module.haylen.run()` for scripts, as the [architecture guide](architecture.md#the-web-runtime) describes.

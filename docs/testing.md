@@ -29,6 +29,8 @@ Every test file lives in the namespace of the context it tests, such as `haylen:
 - User data goes to a folder the test chooses, and `getPersistCount()` counts the requests to make it durable.
 - Bridge calls are recorded in `getPlatformCalls()` instead of reaching native code, and the calls the bridge gave up through a timeout or a cancel in `getCancelledCalls()`.
 - `resize(size)`, `setSafeAreaInsets(insets)` and `setGamepad(index, state)` change what the engine sees, and `getTitle()`, `getCursor()`, `isCursorVisible()`, `isMouseLocked()`, `isKeyboardVisible()` and `isQuitRequested()` report what the engine asked for.
+- `getNativeViews()` returns the `platform::NativeViews` of the headless screen, whose `reserveInsets(key, insets)`, `releaseInsets(key)`, `coverApp()` and `uncoverApp()` a test calls from any thread, the way the native views of plugins do. The engine takes them at the start of the next frame, and they outlive the engines that a test restarts on the host.
+- `setNativePlugins(ids)` sets the plugins whose native part the headless platform reports, and `getErrorReports()` returns the JSON report of every error that stopped an app, in order.
 
 Sokol keeps one global device, so only one engine can exist at a time in a process, and a test never creates two fixtures at once. CTest runs every test in a process of its own, so tests still run in parallel.
 
@@ -46,6 +48,7 @@ explicit EngineFixture(std::map<std::string, std::string> files = {}, std::uniqu
 | --- | --- |
 | `engine()`, `host()`, `package()` | The `core::Engine`, the `platform::HeadlessHost` and the `io::MemoryPackage`, for driving the engine and asserting on its state. |
 | `lua()` | The `lua_State*` of the engine. |
+| `restart()` | Replaces the engine with a new one that runs the package with a Lua application on the same host, the way the runtime restarts an app, so what the host keeps, such as the covers of the app, outlives it. |
 | `frames(count, seconds)` | Runs `count` frames of `seconds` each, one sixtieth of a second by default. |
 | `frameUntil(condition, timeout)` | Runs frames, sleeping one millisecond between them so worker threads can finish, until `condition` returns `true` or the timeout, ten seconds by default, passes. It returns whether the condition was met. |
 | `lua(source)` | Runs a chunk named `test` and returns its first result converted with `tostring`, or `error: ` followed by the message when it fails. |

@@ -4,9 +4,11 @@
 #include <filesystem>
 #include <memory>
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
+#include "haylen/core/Json.hpp"
 #include "haylen/input/GamepadState.hpp"
 #include "haylen/math/Insets.hpp"
 #include "haylen/math/Polygon.hpp"
@@ -21,10 +23,6 @@ namespace haylen::io {
 class Package;
 }
 
-namespace haylen::lua {
-class Error;
-}
-
 namespace haylen::platform {
 
 // Services every platform folder implements for the Sokol runtime. Exactly one implementation is compiled into a runtime build.
@@ -35,8 +33,11 @@ class Services final {
     static void initialize();
     static void shutdown() noexcept;
 
-    // Tells the host environment about a failure that stopped the app, beyond the log and the error screen. The web runtime passes it to the page with its stack.
-    static void reportError(const lua::Error& error);
+    // Tells the host environment about a failure that stopped the app, beyond the log and the error screen, with the JSON report of lua::Error::toJson. The web runtime passes it to the page and to the web parts of plugins, and the other platforms to the native parts of plugins.
+    static void reportError(const core::Json& report);
+
+    // The ids of the plugins whose native part the platform loaded.
+    [[nodiscard]] static std::vector<std::string> getNativePlugins();
 
     // Opens the package that ships with the app when the command line names none.
     [[nodiscard]] static std::shared_ptr<io::Package> openBundledPackage();

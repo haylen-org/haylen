@@ -16,6 +16,7 @@
 #include "haylen/platform/Event.hpp"
 #include "platform/BridgeRelay.hpp"
 #include "platform/Services.hpp"
+#include "platform/sokol/SokolHost.hpp"
 #include "platform/sokol/SokolRuntime.hpp"
 #include "platform/web/WebTextInput.hpp"
 
@@ -151,8 +152,24 @@ EMSCRIPTEN_KEEPALIVE void haylen_web_resolve(double call, int ok, const char* js
     haylen::platform::BridgeRelay::resolve(static_cast<std::uint64_t>(call), ok != 0, json);
 }
 
-EMSCRIPTEN_KEEPALIVE void haylen_web_emit(const char* event, const char* json) {
-    haylen::platform::BridgeRelay::emit(event, json);
+EMSCRIPTEN_KEEPALIVE void haylen_web_emit(const char* event, const char* json, int retain) {
+    haylen::platform::BridgeRelay::emit(event, json, retain != 0);
+}
+
+EMSCRIPTEN_KEEPALIVE void haylen_web_reserve_insets(const char* key, float left, float top, float right, float bottom) {
+    haylen::platform::SokolHost::getNativeViews().reserveInsets(key, {.left = left, .top = top, .right = right, .bottom = bottom});
+}
+
+EMSCRIPTEN_KEEPALIVE void haylen_web_release_insets(const char* key) {
+    haylen::platform::SokolHost::getNativeViews().releaseInsets(key);
+}
+
+EMSCRIPTEN_KEEPALIVE void haylen_web_cover_app() {
+    haylen::platform::SokolHost::getNativeViews().coverApp();
+}
+
+EMSCRIPTEN_KEEPALIVE void haylen_web_uncover_app() {
+    haylen::platform::SokolHost::getNativeViews().uncoverApp();
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_load_zip(const std::uint8_t* bytes, int size) {

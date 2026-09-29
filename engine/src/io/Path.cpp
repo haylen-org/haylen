@@ -48,6 +48,10 @@ std::string Path::asset(std::string_view path) {
     return std::string(kContentDirectory) + "/" + relative;
 }
 
+std::string Path::plugin(std::string_view id, std::string_view relative) {
+    return join(join(kPluginsDirectory, id), relative);
+}
+
 std::string_view Path::extension(std::string_view path) noexcept {
     const std::size_t slash = path.find_last_of('/');
     const std::size_t dot = path.find_last_of('.');

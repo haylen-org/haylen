@@ -5,6 +5,8 @@
 
 #include "haylen/core/JsonNumber.hpp"
 #include "haylen/core/JsonValidator.hpp"
+#include "haylen/io/Package.hpp"
+#include "haylen/io/Path.hpp"
 #include "haylen/platform/Window.hpp"
 
 namespace haylen::core {
@@ -59,8 +61,50 @@ std::string_view AppConfig::sessionCategoryName(audio::Session::Category value) 
     return "ambient";
 }
 
+// Plugin ids are dash-case, like the folders of the plugins: lowercase words of letters and digits joined by single dashes, starting with a letter.
+bool AppConfig::isPluginId(std::string_view text) noexcept {
+    if (text.empty() || text.front() < 'a' || text.front() > 'z' || text.back() == '-') {
+        return false;
+    }
+    char previous = '\0';
+    for (const char character : text) {
+        const bool word = (character >= 'a' && character <= 'z') || (character >= '0' && character <= '9');
+        if (!word && (character != '-' || previous == '-')) {
+            return false;
+        }
+        previous = character;
+    }
+    return true;
+}
+
+void AppConfig::readPlugins(const Json& section, AppConfig& config) {
+    if (!section.is_object()) {
+        throw std::invalid_argument("The plugins section of app.json must be an object of plugins by id.");
+    }
+    for (const auto& [id, values] : section.items()) {
+        if (!isPluginId(id)) {
+            throw std::invalid_argument("The plugin id '" + id + "' in app.json is not in dash-case, such as firebase-analytics.");
+        }
+        if (!values.is_object()) {
+            throw std::invalid_argument("The plugin " + id + " in app.json must have an object of parameter values.");
+        }
+    }
+    config.plugins = section;
+}
+
+AppConfig AppConfig::fromPackage(const io::Package& package) {
+    AppConfig config = fromJson(Json::parse(package.readText(io::Path::kAppConfigFile)));
+    for (const auto& [id, values] : config.plugins.items()) {
+        const std::string manifest = io::Path::plugin(id, io::Path::kPluginManifestFile);
+        if (!package.exists(manifest)) {
+            throw std::invalid_argument("The plugin " + id + " in app.json has no " + manifest + " in the package.");
+        }
+    }
+    return config;
+}
+
 AppConfig AppConfig::fromJson(const Json& document) {
-    JsonValidator::requireKnownKeys(document, {"name", "identifier", "version", "window", "design", "orientation", "fixedRate", "maxFrameTime", "clearColor", "splash", "lifecycle", "audio", "debug", "autoload", "native"}, "app.json");
+    JsonValidator::requireKnownKeys(document, {"name", "identifier", "version", "window", "design", "orientation", "fixedRate", "maxFrameTime", "clearColor", "splash", "lifecycle", "audio", "debug", "autoload", "native", "plugins"}, "app.json");
 
     AppConfig config;
     readValue(document, "name", config.name);
@@ -215,6 +259,10 @@ AppConfig AppConfig::fromJson(const Json& document) {
         }
         config.native = document.at("native");
     }
+
+    if (document.contains("plugins")) {
+        readPlugins(document.at("plugins"), config);
+    }
     return config;
 }
 
@@ -228,7 +276,7 @@ Json AppConfig::toJson() const {
         windowJson["position"] = window.position->toJson();
     }
     return {
-        {"name", name}, {"identifier", identifier}, {"version", version}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", {{"logo", splash.logo}, {"background", splash.background.toHex()}}}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", sessionCategoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}}}, {"debug", debugJson}, {"autoload", autoloads}, {"native", native},
+        {"name", name}, {"identifier", identifier}, {"version", version}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", {{"logo", splash.logo}, {"background", splash.background.toHex()}}}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", sessionCategoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}}}, {"debug", debugJson}, {"autoload", autoloads}, {"native", native}, {"plugins", plugins},
     };
 }
 

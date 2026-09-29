@@ -5,7 +5,6 @@
 #include <stdexcept>
 #include <thread>
 
-#include "haylen/core/Json.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "support/TestFiles.hpp"
 
@@ -20,8 +19,13 @@ EngineFixture::EngineFixture(std::map<std::string, std::string> files, std::uniq
         contents.emplace(path, TestFiles::bytes(text));
     }
     memoryPackage = std::make_shared<io::MemoryPackage>("test", std::move(contents));
+    launch(std::move(application));
+}
 
-    core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(memoryPackage->readText("app.json")));
+EngineFixture::~EngineFixture() = default;
+
+void EngineFixture::launch(std::unique_ptr<core::Application> application) {
+    core::AppConfig config = core::AppConfig::fromPackage(*memoryPackage);
     if (!application) {
         application = std::make_unique<lua::Application>();
     }
@@ -31,7 +35,10 @@ EngineFixture::EngineFixture(std::map<std::string, std::string> files, std::uniq
     runningEngine->start();
 }
 
-EngineFixture::~EngineFixture() = default;
+void EngineFixture::restart() {
+    runningEngine.reset();
+    launch(nullptr);
+}
 
 void EngineFixture::frames(int count, double seconds) {
     for (int frame = 0; frame < count; ++frame) {

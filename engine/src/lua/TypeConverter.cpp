@@ -156,6 +156,18 @@ math::Segment Converter<math::Segment>::read(lua_State* L, int index) {
     return {TypeConverter::pointComponent(L, table, "start", 1), TypeConverter::pointComponent(L, table, "end", 2)};
 }
 
+void Converter<math::Insets>::push(lua_State* L, const math::Insets& value) {
+    lua_createtable(L, 0, 4);
+    lua_pushnumber(L, static_cast<lua_Number>(value.left));
+    lua_setfield(L, -2, "left");
+    lua_pushnumber(L, static_cast<lua_Number>(value.top));
+    lua_setfield(L, -2, "top");
+    lua_pushnumber(L, static_cast<lua_Number>(value.right));
+    lua_setfield(L, -2, "right");
+    lua_pushnumber(L, static_cast<lua_Number>(value.bottom));
+    lua_setfield(L, -2, "bottom");
+}
+
 math::Insets Converter<math::Insets>::read(lua_State* L, int index) {
     if (lua_type(L, index) == LUA_TNUMBER) {
         return math::Insets::uniform(static_cast<float>(lua_tonumber(L, index)));

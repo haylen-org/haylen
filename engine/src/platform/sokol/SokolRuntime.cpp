@@ -7,7 +7,6 @@
 #include "haylen/core/Log.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/io/Package.hpp"
-#include "haylen/io/Path.hpp"
 #include "haylen/lua/Error.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/NativeLibraries.hpp"
@@ -192,7 +191,7 @@ SokolRuntime::App SokolRuntime::load(const std::function<std::shared_ptr<io::Pac
     App app;
     try {
         app.package = open();
-        app.config = core::AppConfig::fromJson(core::Json::parse(app.package->readText(io::Path::kAppConfigFile)));
+        app.config = core::AppConfig::fromPackage(*app.package);
         app.config.hotReload = hotReload;
         app.application = core::Application::create();
         app.application->configure(app.config);
@@ -299,13 +298,12 @@ void SokolRuntime::launch() {
     } catch (const std::exception& error) {
         // Without an engine there is no error screen, so the failure goes to the log and the page. A desktop app closes, while the web runtime waits for the next package.
         core::Log::error("The engine could not start: {}", error.what());
-        Services::reportError(lua::Error(error.what()));
+        Services::reportError(lua::Error(error.what()).toJson());
 #if !defined(__EMSCRIPTEN__)
         sapp_quit();
 #endif
         return;
     }
-    errors = engine->errorRaised.connect([](const lua::Error& error) { Services::reportError(error); });
     engine->start();
     if (online) {
         engine->handleEvent({.type = Event::Type::NetworkChanged, .online = *online});
@@ -321,7 +319,6 @@ void SokolRuntime::close() noexcept {
     if (engine == nullptr) {
         return;
     }
-    errors.disconnect();
     engine.reset();
 #if defined(__EMSCRIPTEN__)
     if (playing) {

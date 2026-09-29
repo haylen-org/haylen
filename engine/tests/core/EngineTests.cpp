@@ -30,6 +30,7 @@
 #include "support/RecordingScene.hpp"
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestApplication.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen::core {
 
@@ -44,6 +45,25 @@ class FailingEndPlugin final : public plugins::Plugin {
     void endFrame(core::Engine&) override {
         throw std::runtime_error("end of frame failed");
     }
+};
+
+// Fails to start, and counts the stops it receives, which a plugin that never started must not get.
+class FailingStartPlugin final : public plugins::Plugin {
+  public:
+    explicit FailingStartPlugin(int& stopCount) : stops(stopCount) {}
+
+    [[nodiscard]] std::string_view getName() const noexcept override {
+        return "failingStart";
+    }
+    void start(core::Engine&) override {
+        throw std::runtime_error("start failed");
+    }
+    void stop(core::Engine&) override {
+        ++stops;
+    }
+
+  private:
+    int& stops;
 };
 
 class CountingPlugin final : public plugins::Plugin {
@@ -143,6 +163,37 @@ TEST(AppConfigTest, RejectsInvalidValues) {
     for (const char* document : {R"([])", R"({"name": 3})", R"({"window": {"width": 0}})", R"({"design": {"scaling": "zoom"}})", R"({"design": {"height": -1}})", R"({"orientation": "sideways"})", R"({"fixedRate": 0})", R"({"clearColor": "blue"})", R"({"title": "typo"})", R"({"window": {"fullScreen": true}})", R"({"design": {"widht": 10}})", R"({"splash": {"background": "blue"}})", R"({"splash": {"image": "logo.png"}})"}) {
         EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(document)), std::invalid_argument) << document;
     }
+}
+
+TEST(AppConfigTest, ReadsThePluginsOfTheApp) {
+    const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({"plugins": {"admob": {"testMode": true, "placements": ["top"]}, "firebase-analytics": {}}})"));
+    EXPECT_EQ(config.plugins.size(), 2U);
+    EXPECT_EQ(config.plugins.at("admob").at("testMode"), true);
+    EXPECT_EQ(config.plugins.at("firebase-analytics"), core::Json::object());
+    EXPECT_EQ(core::AppConfig::fromJson(config.toJson()).plugins, config.plugins);
+    EXPECT_TRUE(core::AppConfig::fromJson(core::Json::object()).plugins.empty());
+
+    // The section is an object of parameter objects, keyed by ids in dash-case, which also keeps every id inside the plugins folder of the package.
+    for (const char* document : {R"({"plugins": ["admob"]})", R"({"plugins": {"admob": true}})", R"({"plugins": {"AdMob": {}}})", R"({"plugins": {"ad--mob": {}}})", R"({"plugins": {"admob-": {}}})", R"({"plugins": {"2d-kit": {}}})", R"({"plugins": {"../admob": {}}})", R"({"plugins": {"": {}}})"}) {
+        EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(document)), std::invalid_argument) << document;
+    }
+    try {
+        (void)core::AppConfig::fromJson(core::Json::parse(R"({"plugins": {"admob": []}})"));
+        FAIL() << "A plugin needs an object of parameter values.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_STREQ(error.what(), "The plugin admob in app.json must have an object of parameter values.");
+    }
+
+    // Every plugin of app.json has its manifest in the package.
+    io::MemoryPackage package("app", {{"app.json", test::TestFiles::bytes(R"({"plugins": {"admob": {}}})")}});
+    try {
+        (void)core::AppConfig::fromPackage(package);
+        FAIL() << "The package has no manifest for the plugin.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_STREQ(error.what(), "The plugin admob in app.json has no plugins/admob/plugin.json in the package.");
+    }
+    package.setFile("plugins/admob/plugin.json", test::TestFiles::bytes(R"({"id": "admob"})"));
+    EXPECT_EQ(core::AppConfig::fromPackage(package).plugins.size(), 1U);
 }
 
 TEST(PluginRegistryTest, FindsPluginsByTypeAndName) {
@@ -432,6 +483,23 @@ TEST(EngineTest, ReportsErrorsAndKeepsRendering) {
     EXPECT_GT(fixture.engine().getRenderer2D().getStats().sprites, 0U);
 }
 
+TEST(EngineTest, HandsTheErrorThatStoppedTheAppToTheHost) {
+    test::EngineFixture fixture({{"source/main.lua", "local function explode()\n    error('the island sank')\nend\nexplode()"}});
+    ASSERT_EQ(fixture.host().getErrorReports().size(), 1U);
+    const core::Json& report = fixture.host().getErrorReports().front();
+    EXPECT_EQ(report.at("message"), "the island sank");
+    EXPECT_EQ(report.at("file"), "source/main.lua");
+    EXPECT_EQ(report.at("line"), 2);
+    EXPECT_NE(report.at("traceback").get<std::string>().find("source/main.lua:2"), std::string::npos);
+    ASSERT_FALSE(report.at("frames").empty());
+    EXPECT_EQ(report.at("frames").at(1), (core::Json{{"source", "source/main.lua"}, {"line", 2}, {"function", "local 'explode'"}, {"kind", "lua"}}));
+    EXPECT_EQ(report, fixture.engine().getError()->toJson());
+
+    // Only the error that the error screen shows reaches the host.
+    fixture.engine().reportError("a later failure");
+    EXPECT_EQ(fixture.host().getErrorReports().size(), 1U);
+}
+
 TEST(EngineTest, TurnsStartupFailuresIntoErrors) {
     {
         test::EngineFixture failing({}, std::make_unique<test::TestApplication>([](core::Engine&) { throw std::runtime_error("cannot start"); }));
@@ -457,6 +525,15 @@ TEST(EngineTest, ReportsFailuresOfPluginsAtTheEndOfAFrame) {
     fixture.frames(1);
     ASSERT_NE(fixture.engine().getError(), nullptr);
     EXPECT_STREQ(fixture.engine().getError()->what(), "end of frame failed");
+}
+
+TEST(EngineTest, StopsOnlyThePluginsThatStarted) {
+    int stops = 0;
+    test::EngineFixture fixture({}, std::make_unique<test::TestApplication>([&stops](core::Engine& engine) { engine.addPlugin(std::make_unique<FailingStartPlugin>(stops)); }));
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+    EXPECT_STREQ(fixture.engine().getError()->what(), "start failed");
+    fixture.engine().stop();
+    EXPECT_EQ(stops, 0);
 }
 
 TEST(EngineTest, ShowsErrorsOfAsyncTasksWithTheirStack) {

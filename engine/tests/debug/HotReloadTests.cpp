@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
@@ -51,17 +52,24 @@ TEST_F(PackageWatcherTest, ReportsAddedChangedAndRemovedFiles) {
     directory.write("source/main.lua", "print(1)");
     directory.write("content/a.json", "{}");
     directory.write("platform/android/build/output.txt", "");
+    directory.write("plugins/ads/plugin.json", "{}");
+    directory.write("plugins/ads/source/init.lua", "return {}");
+    directory.write("plugins/ads/android/build.gradle.kts", "");
     io::PackageWatcher watcher(directory.getPath());
     EXPECT_TRUE(watcher.scan().empty());
 
-    // Only app.json, source and content belong to the package, so files next to them never count.
+    // Only app.json, source, content and the manifests and Lua modules of plugins belong to the package, so files next to them and the native parts of plugins never count.
     directory.write("content/b.json", "[]");
     directory.write("README.md", "# Notes");
     directory.write("platform/android/build/other.txt", "");
+    directory.write("plugins/README.md", "# Plugins");
+    directory.write("plugins/ads/android/src/main/AndroidManifest.xml", "");
+    directory.write("plugins/ads/source/banner.lua", "return {}");
     touch(directory.getPath() / "source/main.lua", 5);
     touch(directory.getPath() / "app.json", 5);
+    touch(directory.getPath() / "plugins/ads/plugin.json", 5);
     std::filesystem::remove(directory.getPath() / "content/a.json");
-    EXPECT_EQ(watcher.scan(), (std::vector<std::string>{"app.json", "content/a.json", "content/b.json", "source/main.lua"}));
+    EXPECT_EQ(watcher.scan(), (std::vector<std::string>{"app.json", "content/a.json", "content/b.json", "plugins/ads/plugin.json", "plugins/ads/source/banner.lua", "source/main.lua"}));
     EXPECT_TRUE(watcher.scan().empty());
 }
 
@@ -145,6 +153,49 @@ TEST_F(HotReloadPluginTest, RestartsForScriptsAndReloadsAssets) {
     directory.write("hot/source/main.lua", "-- edited");
     touch(directory.getPath() / "hot/source/main.lua", 5);
     EXPECT_TRUE(runUntil([&] { return engine.isRestartRequested(); }));
+    core::Log::removeListener(listener);
+}
+
+TEST_F(HotReloadPluginTest, RestartsWhenTheLuaOfAPluginChanges) {
+    const test::TemporaryDirectory directory;
+    directory.write("hot/app.json", R"({"name": "Hot", "plugins": {"ads": {}}})");
+    directory.write("hot/source/main.lua", "");
+    directory.write("hot/plugins/ads/plugin.json", R"({"id": "ads", "version": "1.0.0"})");
+    directory.write("hot/plugins/ads/source/init.lua", "return {}");
+
+    std::atomic<int> scans = 0;
+    // clang-format off
+    const std::uint64_t listener = core::Log::addListener([&scans](core::Log::Level, std::string_view line) {
+        if (line.find("for changes.") != std::string_view::npos) {
+            ++scans;
+        }
+    });
+    // clang-format on
+
+    platform::HeadlessHost host(directory.getPath() / "data");
+    const std::shared_ptr<io::Package> package = io::Package::openDirectory(directory.getPath() / "hot");
+    core::AppConfig config = core::AppConfig::fromPackage(*package);
+    config.hotReload = true;
+    core::Engine engine(host, package, config, std::make_unique<test::TestApplication>(nullptr));
+    engine.start();
+
+    // clang-format off
+    const auto runUntil = [&engine](const std::function<bool()>& condition) {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+        while (!condition() && std::chrono::steady_clock::now() < deadline) {
+            engine.frame(0.1);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        return condition();
+    };
+    // clang-format on
+    EXPECT_TRUE(runUntil([&scans] { return scans > 0; }));
+
+    // The native part of a plugin is no Lua, so only the edited module of the plugin restarts the app.
+    directory.write("hot/plugins/ads/android/build.gradle.kts", "plugins {}");
+    directory.write("hot/plugins/ads/source/init.lua", "return {edited = true}");
+    touch(directory.getPath() / "hot/plugins/ads/source/init.lua", 5);
+    EXPECT_TRUE(runUntil([&engine] { return engine.isRestartRequested(); }));
     core::Log::removeListener(listener);
 }
 

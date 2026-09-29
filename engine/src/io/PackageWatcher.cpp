@@ -25,16 +25,29 @@ std::map<std::string, std::filesystem::file_time_type> PackageWatcher::snapshot(
     };
     // clang-format on
 
-    // Only the package entries count, so the platform projects and build outputs that share the folder are never scanned.
-    record(std::filesystem::directory_entry(root / Path::kAppConfigFile, error));
     const auto options = std::filesystem::directory_options::follow_directory_symlink | std::filesystem::directory_options::skip_permission_denied;
-    for (const std::string_view folder : {Path::kSourceDirectory, Path::kContentDirectory}) {
-        for (auto iterator = std::filesystem::recursive_directory_iterator(root / folder, options, error); iterator != std::filesystem::recursive_directory_iterator(); iterator.increment(error)) {
+    // clang-format off
+    const auto recordFolder = [&](const std::filesystem::path& folder) {
+        for (auto iterator = std::filesystem::recursive_directory_iterator(folder, options, error); iterator != std::filesystem::recursive_directory_iterator(); iterator.increment(error)) {
             if (error) {
                 break;
             }
             record(*iterator);
         }
+    };
+    // clang-format on
+
+    // Only the package entries count, so the platform projects and build outputs that share the folder, and the native parts of the plugins, are never scanned.
+    record(std::filesystem::directory_entry(root / Path::kAppConfigFile, error));
+    recordFolder(root / Path::kSourceDirectory);
+    recordFolder(root / Path::kContentDirectory);
+    for (auto plugin = std::filesystem::directory_iterator(root / Path::kPluginsDirectory, options, error); plugin != std::filesystem::directory_iterator(); plugin.increment(error)) {
+        if (error) {
+            break;
+        }
+        const std::filesystem::path folder = plugin->path();
+        record(std::filesystem::directory_entry(folder / Path::kPluginManifestFile, error));
+        recordFolder(folder / Path::kSourceDirectory);
     }
     return found;
 }

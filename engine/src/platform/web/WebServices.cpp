@@ -4,13 +4,13 @@
 #include <emscripten/html5.h>
 
 #include <array>
+#include <cstdlib>
 #include <string>
 #include <utility>
 
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
-#include "haylen/lua/Error.hpp"
 #include "platform/web/WebTextInput.hpp"
 #include "sokol_app.h"
 
@@ -27,6 +27,10 @@ EM_JS(void, haylen_js_cancel, (double call), {
 
 EM_JS(void, haylen_js_error, (const char* json), {
     Module.haylen.reportError(JSON.parse(UTF8ToString(json)));
+});
+
+EM_JS(char*, haylen_js_native_plugins, (), {
+    return stringToNewUTF8(JSON.stringify(Module.haylen.nativePlugins()));
 });
 
 EM_JS(void, haylen_js_log, (int level, const char* message), {
@@ -70,8 +74,16 @@ void Services::initialize() {
 void Services::shutdown() noexcept {}
 
 // Script errors may quote bytes that are not UTF-8, which reach the page replaced instead of failing the report.
-void Services::reportError(const lua::Error& error) {
-    haylen_js_error(error.toJson().dump(-1, ' ', false, core::Json::error_handler_t::replace).c_str());
+void Services::reportError(const core::Json& report) {
+    haylen_js_error(report.dump(-1, ' ', false, core::Json::error_handler_t::replace).c_str());
+}
+
+// The plugins with a web part are the ones whose context the page created.
+std::vector<std::string> Services::getNativePlugins() {
+    char* json = haylen_js_native_plugins();
+    const core::Json ids = core::Json::parse(json);
+    std::free(json);
+    return ids.get<std::vector<std::string>>();
 }
 
 std::shared_ptr<io::Package> Services::openBundledPackage() {

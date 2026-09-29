@@ -12,7 +12,6 @@
 
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Application.hpp"
-#include "haylen/core/Connection.hpp"
 #include "haylen/platform/Event.hpp"
 #include "platform/sokol/SokolHost.hpp"
 #include "sokol_app.h"
@@ -133,7 +132,6 @@ class SokolRuntime final {
     App pending;
     std::shared_ptr<io::Package> package;
     std::unique_ptr<core::Engine> engine;
-    core::Connection errors;
 
     // The last network state the platform reported, which every new app hears when it starts.
     std::optional<bool> online;

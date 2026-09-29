@@ -35,6 +35,7 @@ class CoreLua final {
     static int rootPaused(lua_State* L);
     static int rootSetPaused(lua_State* L);
     static int rootAppState(lua_State* L);
+    static int rootAppCovered(lua_State* L);
     static int rootNetworkState(lua_State* L);
     static int rootHalted(lua_State* L);
     static int rootLifecycle(lua_State* L);
@@ -45,6 +46,7 @@ class CoreLua final {
     static int viewportDesignSize(lua_State* L);
     static int viewportVisibleRect(lua_State* L);
     static int viewportSafeRect(lua_State* L);
+    static int viewportReservedInsets(lua_State* L);
     static int viewportPixelRect(lua_State* L);
     static int viewportPixelsPerUnit(lua_State* L);
     static int viewportToDesign(lua_State* L);

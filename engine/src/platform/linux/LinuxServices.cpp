@@ -24,7 +24,12 @@ void Services::shutdown() noexcept {
     LinuxGamepads::release();
 }
 
-void Services::reportError(const lua::Error&) {}
+void Services::reportError(const core::Json&) {}
+
+// The platform loads no native plugins of its own, and native libraries declare theirs through HaylenNativeApi.
+std::vector<std::string> Services::getNativePlugins() {
+    return {};
+}
 
 std::shared_ptr<io::Package> Services::openBundledPackage() {
     const std::filesystem::path directory = std::filesystem::read_symlink("/proc/self/exe").parent_path();

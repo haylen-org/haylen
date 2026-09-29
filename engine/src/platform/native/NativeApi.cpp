@@ -7,9 +7,10 @@
 
 namespace haylen::platform {
 
-const HaylenNativeApi NativeApi::api{.version = HAYLEN_NATIVE_API_VERSION, .emit = &emit, .resolve = &resolve, .registerHandler = &registerHandler, .log = &log};
+const HaylenNativeApi NativeApi::api{.version = HAYLEN_NATIVE_API_VERSION, .emit = &emit, .resolve = &resolve, .registerHandler = &registerHandler, .log = &log, .registerPlugin = &registerPlugin};
 std::mutex& NativeApi::mutex = *new std::mutex();
 std::unordered_map<std::string, NativeApi::Handler>& NativeApi::handlers = *new std::unordered_map<std::string, Handler>();
+std::set<std::string, std::less<>>& NativeApi::plugins = *new std::set<std::string, std::less<>>();
 
 const HaylenNativeApi& NativeApi::get() noexcept {
     return api;
@@ -45,8 +46,13 @@ std::optional<NativeApi::Handler> NativeApi::find(std::string_view method) {
     return found->second;
 }
 
-void NativeApi::emit(const char* event, const char* payloadJson) {
-    BridgeRelay::emit(event, payloadJson != nullptr ? payloadJson : "null");
+std::vector<std::string> NativeApi::getPlugins() {
+    const std::scoped_lock lock(mutex);
+    return {plugins.begin(), plugins.end()};
+}
+
+void NativeApi::emit(const char* event, const char* payloadJson, int retain) {
+    BridgeRelay::emit(event, payloadJson != nullptr ? payloadJson : "null", retain != 0);
 }
 
 void NativeApi::resolve(std::uint64_t call, int ok, const char* resultJson) {
@@ -60,6 +66,15 @@ void NativeApi::registerHandler(const char* method, HaylenNativeHandler handler,
         return;
     }
     handlers.insert_or_assign(method, Handler{.handler = handler, .cancel = cancel, .user = user});
+}
+
+void NativeApi::registerPlugin(const char* id) {
+    if (id == nullptr || *id == '\0') {
+        core::Log::error("A native library declared the native part of a plugin without its id.");
+        return;
+    }
+    const std::scoped_lock lock(mutex);
+    plugins.emplace(id);
 }
 
 void NativeApi::log(int level, const char* text) {

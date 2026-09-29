@@ -129,13 +129,13 @@ void AppleBridge::cancel(std::uint64_t call) {
     }
 }
 
-void AppleBridge::emit(NSString* event, id payload) {
+void AppleBridge::emit(NSString* event, id payload, bool retain) {
     const std::optional<std::string> json = toJson(payload);
     if (!json) {
         core::Log::error("The native event '{}' carried a payload that is not JSON and was dropped.", event.UTF8String);
         return;
     }
-    BridgeRelay::emit(event.UTF8String, *json);
+    BridgeRelay::emit(event.UTF8String, *json, retain);
 }
 
 // Native code may register handlers before the engine starts, even before haylen_main, so the table exists from the first registration.

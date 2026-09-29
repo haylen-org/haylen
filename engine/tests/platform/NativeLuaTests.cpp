@@ -205,12 +205,12 @@ TEST_F(NativeLuaTest, DropsCallsThatArriveAfterTheAppStopped) {
 }
 
 TEST_F(NativeLuaTest, GivesLibrariesTheInterfaceOfTheEngine) {
-    test::EngineFixture fixture;
+    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "plugins": {"native-test": {}}})"}, {"plugins/native-test/plugin.json", R"({"id": "native-test", "version": "1.0.0"})"}});
     prepare(fixture);
+    fixture.runLua("testPlugin = platform.plugin('native-test') nativeBefore = testPlugin.native");
     // clang-format off
     fixture.runLua(R"(
         cancelled = {}
-        platform.on('native_test.ready', function(payload) ready = payload end)
         platform.on('native_test.cancelled', function(payload) cancelled[#cancelled + 1] = payload.call end)
         native.load('native_test', {init = 'native_test_haylen_init'})
         async.spawn(function()
@@ -229,9 +229,16 @@ TEST_F(NativeLuaTest, GivesLibrariesTheInterfaceOfTheEngine) {
     )");
     // clang-format on
 
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return givenUp ~= nil and ready ~= nil and #cancelled == 2") == "true"; }));
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return givenUp ~= nil and #cancelled == 2") == "true"; }));
     EXPECT_EQ(fixture.lua("return echo.echo.word .. ' ' .. tostring(echo.thread)"), "hi true");
-    EXPECT_EQ(fixture.lua("return ready.version .. ' ' .. ready.origin"), "1 dynamic");
+
+    // The init function declared the library the native part of the plugin, which the handle made before sees too.
+    EXPECT_EQ(fixture.lua("return tostring(nativeBefore) .. ' ' .. tostring(testPlugin.native) .. ' ' .. tostring(platform.plugins()[1].native)"), "false true true");
+
+    // The library announced itself with a retained event, which waits for a listener that connects late.
+    fixture.runLua("platform.on('native_test.ready', function(payload) ready = payload end)");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return ready ~= nil") == "true"; }));
+    EXPECT_EQ(fixture.lua("return ready.version .. ' ' .. ready.origin"), "2 dynamic");
     EXPECT_EQ(fixture.lua("return failed.message .. ' ' .. failed.code .. ' ' .. failed.data.reason"), "The native test failed on purpose. native_test_failure requested");
     EXPECT_EQ(fixture.lua("return tostring(failed) .. ' | ' .. ('error: ' .. failed) .. ' | ' .. (failed .. '!')"), "The native test failed on purpose. | error: The native test failed on purpose. | The native test failed on purpose.!");
 

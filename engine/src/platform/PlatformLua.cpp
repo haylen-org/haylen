@@ -1,11 +1,14 @@
 #include "platform/PlatformLua.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/Binding.hpp"
@@ -21,17 +24,15 @@
 
 namespace haylen::platform {
 
-// Calls a native method with call(method, params, {timeout = seconds}) and returns the call, which Lua awaits and may cancel.
-int PlatformLua::call(lua_State* L) {
+void PlatformLua::pushCall(lua_State* L, const std::string& method, int paramsIndex, int optionsIndex) {
     core::Engine& owner = lua::Runtime::getEngine(L);
-    const std::string method = lua::Stack::read<std::string>(L, 1);
-    const core::Json params = lua_isnoneornil(L, 2) ? core::Json::object() : lua::JsonConverter::read(L, 2);
+    const core::Json params = lua_isnoneornil(L, paramsIndex) ? core::Json::object() : lua::JsonConverter::read(L, paramsIndex);
     std::optional<std::chrono::steady_clock::duration> timeout;
-    if (!lua_isnoneornil(L, 3)) {
-        luaL_checktype(L, 3, LUA_TTABLE);
-        lua::Table::checkFields(L, 3, {kCallOptions});
+    if (!lua_isnoneornil(L, optionsIndex)) {
+        luaL_checktype(L, optionsIndex, LUA_TTABLE);
+        lua::Table::checkFields(L, optionsIndex, {kCallOptions});
         double seconds = 0.0;
-        lua::Table::readField(L, 3, "timeout", seconds);
+        lua::Table::readField(L, optionsIndex, "timeout", seconds);
         if (!std::isfinite(seconds) || seconds <= 0.0) {
             throw std::invalid_argument("The timeout of a platform call is a positive number of seconds.");
         }
@@ -52,6 +53,30 @@ int PlatformLua::call(lua_State* L) {
     // clang-format on
 
     lua::Userdata::emplace<Call>(L, std::move(pending));
+}
+
+void PlatformLua::pushConnection(lua_State* L, const std::string& event, int listenerIndex) {
+    core::Engine& owner = lua::Runtime::getEngine(L);
+    luaL_checktype(L, listenerIndex, LUA_TFUNCTION);
+    auto function = std::make_shared<lua::Reference>(L, listenerIndex);
+
+    // clang-format off
+    core::Connection connection = owner.getPlatform().on(event, [function](const core::Json& payload) {
+        lua_State* main = function->getState();
+        lua::Runtime::runReporting(main, [&] {
+            function->push(main);
+            lua::JsonConverter::push(main, payload);
+            lua::Runtime::protectedCall(main, 1, 0);
+        });
+    });
+    // clang-format on
+
+    lua::Userdata::emplace<core::Connection>(L, std::move(connection));
+}
+
+// Calls a native method with call(method, params, {timeout = seconds}) and returns the call, which Lua awaits and may cancel.
+int PlatformLua::call(lua_State* L) {
+    pushCall(L, lua::Stack::read<std::string>(L, 1), 2, 3);
     return 1;
 }
 
@@ -109,10 +134,17 @@ int PlatformLua::resolve(lua_State* L) {
     return 0;
 }
 
-// Sends an event with emit(event, payload) the way native code does, so platform.on listeners receive it at the start of the next frame.
+// Sends an event with emit(event, payload, {retain = true}) the way native code does, so platform.on listeners receive it at the start of the next frame.
 int PlatformLua::emit(lua_State* L) {
     const std::string event = lua::Stack::read<std::string>(L, 1);
-    lua::Runtime::getEngine(L).getPlatform().emit(event, lua::JsonConverter::read(L, 2).dump());
+    const std::string payload = lua::JsonConverter::read(L, 2).dump();
+    bool retain = false;
+    if (!lua_isnoneornil(L, 3)) {
+        luaL_checktype(L, 3, LUA_TTABLE);
+        lua::Table::checkFields(L, 3, {kEmitOptions});
+        lua::Table::readField(L, 3, "retain", retain);
+    }
+    lua::Runtime::getEngine(L).getPlatform().emit(event, payload, retain);
     return 0;
 }
 
@@ -123,24 +155,16 @@ int PlatformLua::pendingCallCount(lua_State* L) {
 
 // Subscribes to native events with on(name, function(payload)) and returns a connection with a disconnect method.
 int PlatformLua::on(lua_State* L) {
-    core::Engine& owner = lua::Runtime::getEngine(L);
-    const std::string name = lua::Stack::read<std::string>(L, 1);
-    luaL_checktype(L, 2, LUA_TFUNCTION);
-    auto function = std::make_shared<lua::Reference>(L, 2);
-
-    // clang-format off
-    core::Connection connection = owner.getPlatform().on(name, [function](const core::Json& payload) {
-        lua_State* main = function->getState();
-        lua::Runtime::runReporting(main, [&] {
-            function->push(main);
-            lua::JsonConverter::push(main, payload);
-            lua::Runtime::protectedCall(main, 1, 0);
-        });
-    });
-    // clang-format on
-
-    lua::Userdata::emplace<core::Connection>(L, std::move(connection));
+    pushConnection(L, lua::Stack::read<std::string>(L, 1), 2);
     return 1;
+}
+
+// Calls a method with send(method, params) when nothing needs its answer, which creates no call and drops the answer.
+int PlatformLua::send(lua_State* L) {
+    const std::string method = lua::Stack::read<std::string>(L, 1);
+    const core::Json params = lua_isnoneornil(L, 2) ? core::Json::object() : lua::JsonConverter::read(L, 2);
+    lua::Runtime::getEngine(L).getPlatform().send(method, params);
+    return 0;
 }
 
 // Implements a platform method in Lua with registerHandler(method, function(params) return result end), which is useful on desktop and in tests.
@@ -172,6 +196,84 @@ int PlatformLua::registerHandler(lua_State* L) {
 
 int PlatformLua::hasHandler(lua_State* L) {
     lua::Stack::push(L, lua::Runtime::getEngine(L).getPlatform().hasHandler(lua::Stack::read<std::string_view>(L, 1)));
+    return 1;
+}
+
+// Lists the plugins of app.json as tables with id, version and native.
+int PlatformLua::plugins(lua_State* L) {
+    const std::vector<AppPlugin> all = lua::Runtime::getEngine(L).getAppPlugins();
+    lua_createtable(L, static_cast<int>(all.size()), 0);
+    for (std::size_t index = 0; index < all.size(); ++index) {
+        lua_createtable(L, 0, 3);
+        lua::Stack::push(L, all[index].id);
+        lua_setfield(L, -2, "id");
+        lua::Stack::push(L, all[index].version);
+        lua_setfield(L, -2, "version");
+        lua::Stack::push(L, all[index].native);
+        lua_setfield(L, -2, "native");
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
+    return 1;
+}
+
+// Returns the handle of a plugin of app.json with plugin(id), which the Lua modules of the plugin use to reach its native part.
+int PlatformLua::plugin(lua_State* L) {
+    const std::string id = lua::Stack::read<std::string>(L, 1);
+    for (AppPlugin& found : lua::Runtime::getEngine(L).getAppPlugins()) {
+        if (found.id == id) {
+            lua::Userdata::emplace<AppPlugin>(L, std::move(found));
+            return 1;
+        }
+    }
+    throw std::invalid_argument("The plugin " + id + " is not among the plugins of app.json.");
+}
+
+int PlatformLua::getPluginId(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<AppPlugin>(L, 1).id);
+    return 1;
+}
+
+int PlatformLua::getPluginVersion(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<AppPlugin>(L, 1).version);
+    return 1;
+}
+
+int PlatformLua::getPluginConfig(lua_State* L) {
+    lua::JsonConverter::push(L, lua::Userdata::check<AppPlugin>(L, 1).config);
+    return 1;
+}
+
+// A native library may declare the native part of the plugin after the handle was made, so the handle asks every time.
+int PlatformLua::isPluginNative(lua_State* L) {
+    const std::vector<std::string> loaded = lua::Runtime::getEngine(L).getNativePlugins();
+    lua::Stack::push(L, std::ranges::binary_search(loaded, lua::Userdata::check<AppPlugin>(L, 1).id));
+    return 1;
+}
+
+// Plugins name their methods and events after their id, so the handle puts the id in front of the name that its method receives.
+std::string PlatformLua::getPluginName(lua_State* L) {
+    const std::string& id = lua::Userdata::check<AppPlugin>(L, 1).id;
+    const std::string name = lua::Stack::read<std::string>(L, 2);
+    if (name.empty()) {
+        throw std::invalid_argument("A method or event of the plugin " + id + " needs a name.");
+    }
+    return id + "." + name;
+}
+
+int PlatformLua::callPlugin(lua_State* L) {
+    pushCall(L, getPluginName(L), 3, 4);
+    return 1;
+}
+
+int PlatformLua::sendToPlugin(lua_State* L) {
+    const std::string method = getPluginName(L);
+    const core::Json params = lua_isnoneornil(L, 3) ? core::Json::object() : lua::JsonConverter::read(L, 3);
+    lua::Runtime::getEngine(L).getPlatform().send(method, params);
+    return 0;
+}
+
+int PlatformLua::onPlugin(lua_State* L) {
+    pushConnection(L, getPluginName(L), 3);
     return 1;
 }
 
@@ -218,9 +320,10 @@ int PlatformLua::open(lua_State* L) {
     lua_pop(L, 1);
 
     lua::ClassBuilder<Call>(L).function("await", &await).function("cancel", &cancel).property("id", &getId).property("done", &isDone).property("promise", &getPromise).install();
+    lua::ClassBuilder<AppPlugin>(L).property("id", &getPluginId).property("version", &getPluginVersion).property("config", &getPluginConfig).property("native", &lua::Binding::native<&isPluginNative>).function("call", &lua::Binding::native<&callPlugin>).function("send", &lua::Binding::native<&sendToPlugin>).function("on", &lua::Binding::native<&onPlugin>).install();
 
     const luaL_Reg functions[] = {
-        {"call", &lua::Binding::native<&call>}, {"on", &lua::Binding::native<&on>}, {"registerHandler", &lua::Binding::native<&registerHandler>}, {"hasHandler", &hasHandler}, {"resolve", &lua::Binding::native<&resolve>}, {"emit", &lua::Binding::native<&emit>}, {"pendingCallCount", &pendingCallCount}, {nullptr, nullptr},
+        {"call", &lua::Binding::native<&call>}, {"on", &lua::Binding::native<&on>}, {"send", &lua::Binding::native<&send>}, {"registerHandler", &lua::Binding::native<&registerHandler>}, {"hasHandler", &hasHandler}, {"resolve", &lua::Binding::native<&resolve>}, {"emit", &lua::Binding::native<&emit>}, {"pendingCallCount", &pendingCallCount}, {"plugins", &lua::Binding::native<&plugins>}, {"plugin", &lua::Binding::native<&plugin>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;
