@@ -179,6 +179,18 @@ Cada ponto abaixo precisa estar coberto pelo grupo Z da seção 14.2.
 115. Revisar o projeto inteiro de novo atrás de bugs, código legado, código não usado, erros, race conditions e falhas que derrubam o app, com as regras gerais de sempre, e manter tudo no CLAUDE.md e nesta mega lista.
 116. Os plugins de terceiros citados (Firebase, AdMob e os outros) ficam fora deste repositório, em repositórios próprios em https://github.com/haylen-org, feitos pelo dono depois e separado. Este repositório tem só a arquitetura, a engine e a capacidade, com testes simples e equivalentes, sem bibliotecas de terceiros além das da engine.
 
+### 2.5 Sexto pedido: diálogos, notificações, informações do sistema e webview
+
+Cada ponto abaixo precisa estar coberto pelo grupo AA da seção 14.2.
+
+117. Diálogos nativos, notificações do sistema e informações do sistema como recursos da engine: no desktop com bibliotecas C++ boas do GitHub (dependências da engine, como as outras), e no mobile e na web com as APIs de cada plataforma, cada plataforma com o que der.
+118. Um navegador embutido (webview) como view nativa por cima do app: no desktop com a biblioteca C++ `webview`, e no mobile e na web com os equivalentes de cada plataforma.
+119. Revisar bem tudo isso, com as regras gerais de sempre, tudo no CLAUDE.md e nesta mega lista, desenvolvido, testado e documentado 100%.
+120. O CI do GitHub precisa passar em todos os jobs: o job do Windows e o do Android falham desde o primeiro push (o MSVC recusa uma comparação de `core::Json` com `std::string_view` no `PropertyReader.hpp`, e o `sdkmanager` não acha `platforms;android-37`, que se chama `platforms;android-37.0`).
+121. Decisão: a engine fica só com o básico, que são as informações do sistema, a caixa de mensagem e os diálogos de arquivos e pastas. Notificações e o webview viram plugins, feitos pelo dono depois em repositórios próprios em https://github.com/haylen-org, e a biblioteca `webview` não entra, porque troca a view do Sokol no macOS, só aceita uma `GtkWindow` no Linux e trava a thread do frame no Windows.
+122. Os plugins precisam ter a capacidade de enviar e receber de forma assíncrona tudo o que os recursos básicos de cada sistema pedem: áudio, câmera, foto, localização, notificação local e os dados de uma notificação push recebida, na web, no Android, no iOS, nos desktops e nas outras plataformas. A engine entrega a capacidade, e o plugin de demonstração testa cada mecanismo sem SDK de terceiros.
+123. Plugins que abrem outra tela (uma activity no Android, um view controller na Apple, como o paywall do RevenueCat, telas de login, de compra, de câmera e de anúncios) precisam de uma arquitetura que suporte isso em todas as plataformas, pesquisada e pensada para não criar incompatibilidades no futuro: abrir a tela, pausar e cobrir o app enquanto ela aparece, receber o resultado e voltar ao jogo sem perder estado.
+
 ## 3. Regras
 
 As regras oficiais do projeto estão no `CLAUDE.md`, que é obrigatório e precisa ser lido por inteiro antes de qualquer trabalho. Ele reúne os princípios, as regras de trabalho e de commit, os nomes, a organização do código, os bindings Lua, a arquitetura, as dependências, os samples, a formatação, os comentários, os testes e a documentação. Este documento não repete essas regras.
@@ -819,7 +831,7 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 | 12 | Jogo Tiny Island em Lua | Concluída |
 | 13 | Testes e cobertura até o máximo possível | Concluída |
 | 14 | Documentação e revisão final (bugs, legado, não utilizado, race conditions e crashes) | Concluída, com testes de regressão para as correções |
-| 15 | Pedidos 51 a 116 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
+| 15 | Pedidos 51 a 123 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
 
 ## 13. Limitações conhecidas
 
@@ -839,9 +851,9 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 - visionOS nativo depende do Sokol, que usa o `UIScreen`, indisponível no SDK do visionOS. O app iOS roda no Apple Vision Pro como app de iPad compatível. watchOS é impossível, porque o SDK do watchOS não tem Metal, MetalKit, GameController nem AudioToolbox.
 - O Sokol só aceita imagens inteiras em texturas que vivem entre frames, então uma textura dinâmica alterada (os atlas das fontes e da UI) sobe todos os pixels, uma vez por frame.
 
-## 14. Pedidos 51 a 116: decisões e checklist
+## 14. Pedidos 51 a 123: decisões e checklist
 
-Esta seção cobre os pedidos 51 a 116 das seções 2.1, 2.2, 2.3 e 2.4. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
+Esta seção cobre os pedidos 51 a 123 das seções 2.1, 2.2, 2.3, 2.4 e 2.5. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
 
 ### 14.1 Decisões de organização
 
@@ -1034,6 +1046,7 @@ Todo sample de recursos tem um menu simples para escolher o teste, cada teste é
 - [x] `SceneLuaTest.SpawnedTasksNeverResumeOnceTheirSceneUnloaded` dependia de tempo real: com a máquina lenta, as duas esperas do teste venciam no mesmo frame e o teste esperava para sempre. A tarefa agora espera uma chamada da bridge que o teste só responde depois que a cena sai, sem depender do relógio.
 - [ ] `SceneLoadTest.FinishesOnceTheHookAndEveryDeferralReleasedIt` falhou uma vez no ctest paralelo com a máquina ocupada e não repetiu em 300 execuções seguidas nem em três suítes inteiras. O teste não depende de tempo. Registrar a saída da falha se ela aparecer de novo e achar a causa.
 - [ ] Safe area e espaço reservado com `highDpi: false`: o Android informa os insets em pixels da janela enquanto o framebuffer tem metade do tamanho, então a safe area e o espaço reservado saem com o dobro. Converter para pixels do framebuffer em todas as plataformas e testar com `highDpi` ligado e desligado.
+- [ ] CI verde em todos os jobs (formato, desktops macOS, Ubuntu e Windows, cobertura, web, Android e Apple), com o `desktop (windows-latest)` e o `android` passando pela primeira vez, e o workflow cancelando as execuções substituídas de um mesmo branch. Até lá, a documentação não afirma que o Windows é compilado e testado pelo CI.
 - [x] `Engine::stop` só para os plugins da engine cujo `start` terminou, em ordem inversa, inclusive os adicionados com o app rodando, então um plugin que falhou no início (ou que nunca começou porque outro falhou antes) não recebe `stop`, com o teste `EngineTest.StopsOnlyThePluginsThatStarted`.
 - [x] O build web não tem avisos nos fontes da engine (o `DestructionLua.cpp` converte o tamanho da tabela onde lê). Os seis avisos restantes são do Varn, registrados na seção 13.
 - [x] Sem saída de áudio, o app roda sem som: o log avisa uma vez com o motivo, o mixer segue o tempo misturando e descartando as amostras (vozes terminam, músicas fazem crossfade e vozes posicionais atualizam), uma interrupção sempre termina, a engine tenta abrir a saída de novo quando o app volta a ficar ativo, e `Mixer::isOutputAvailable()`, `audio.outputAvailable()` e o `available` do `onStats` informam o estado. Na web, uma página em http fora do localhost abre e roda sem som, conferido pelo IP da rede local no Chrome, e `make.py serve`, `run` e `run-cpp` aceitam `--host`.
@@ -1329,3 +1342,91 @@ Decisões, a partir da documentação oficial dos SDKs (AdMob, UMP, Firebase, St
 - [x] Testes GoogleTest da parte da engine: resolução do Lua dos plugins e colisão de nomes, configuração com padrões, handles e `send`, espaço reservado com a UI ancorada, app coberto, erros para o host, eventos retidos, `HaylenNativeApi.registerPlugin` e política de thread, com 950 testes passando, também sob ThreadSanitizer.
 - [~] Regras dos plugins no CLAUDE.md (pacote, `plugin.json`, configuração, montagem e nomes). Falta completar com as APIs nativas quando o Android e a Apple ficarem prontos.
 - [ ] Caminhos da Apple que o simulador não dispara: resultado combinado do fetch em segundo plano (o `simctl` recusa push silencioso), sessões de URL em segundo plano, atalhos, atividades, token do APNs, resposta de notificação tocada e notificações remotas no macOS, conferir num aparelho.
+
+#### AA. Informações do sistema e diálogos nativos
+
+Decisões, a partir da pesquisa das bibliotecas de diálogos, notificações e webview e das APIs de cada plataforma:
+
+- As bibliotecas de diálogos do GitHub não servem para a engine: bloqueiam a thread do frame (`runModal` no macOS, chamadas síncronas no Linux e no Windows) ou abrem processos externos. A engine usa as APIs de cada plataforma, e nada bloqueia o frame: cada diálogo termina de forma assíncrona e entrega o resultado na thread do frame, como a bridge.
+- macOS: `NSAlert` e `NSOpenPanel` e `NSSavePanel` como sheets da janela do app. Windows: uma thread de diálogos com COM de thread única, dona da janela do app, com `TaskDialogIndirect` (botões próprios, que pede o manifesto dos Common Controls 6) e `IFileOpenDialog` e `IFileSaveDialog`. Linux: GTK 3 carregado em runtime (`GtkMessageDialog` e `GtkFileChooserNative`, que usa o portal do desktop quando existe), com o loop do GLib avançado a cada frame, e `unsupported` com a explicação quando o GTK 3 não existe. iOS, iPadOS e Mac Catalyst: `UIAlertController` e `UIDocumentPickerViewController`. tvOS: só a caixa de mensagem. Android: `AlertDialog` (até três botões) e o Storage Access Framework. Web: um diálogo de DOM na camada de overlay, `<input type=file>` e o download de um blob.
+- Arquivos escolhidos voltam como caminhos que o app lê com o `fs` do Varn em todas as plataformas: o caminho real nos desktops e uma cópia numa pasta temporária do app no mobile e na web. Salvar grava os dados que o app passa no destino que o usuário escolheu, em todas as plataformas.
+- As informações do sistema substituem os métodos embutidos da bridge (`device.info`, `system.locale`, `system.openUrl`, `haptics.vibrate`, `engine.info` e `app.version`), que saem da bridge em todas as plataformas, sem aliases. A bridge fica só para métodos dos apps e dos plugins.
+
+**Informações do sistema (`haylen.system`)**
+
+- [ ] `system.info()` com os dados fixos, lidos uma vez na abertura: sistema (`macOS`, `Windows`, `Linux`, `iOS`, `iPadOS`, `tvOS`, `Android`, `Web`), versão do sistema, modelo e fabricante do aparelho, tipo do aparelho (`desktop`, `phone`, `tablet`, `tv`, `browser`), nome do processador e núcleos, memória total, nome da GPU que o Sokol criou, idioma, lista de idiomas preferidos e fuso horário.
+- [ ] `system.theme()` com `'light'` ou `'dark'` e o evento `systemThemeChanged` quando o usuário troca, em todas as plataformas (KVO da aparência no macOS, `traitCollection` no iOS, `uiMode` no Android, `WM_SETTINGCHANGE` no Windows, o portal de configurações do desktop pelo GIO no Linux e `matchMedia` na web).
+- [ ] `system.battery()` com o nível de 0 a 1, se está carregando e o estado (`unknown`, `charging`, `discharging`, `full`, `none`), e o evento `batteryChanged`, onde a plataforma informa (IOKit no macOS, `UIDevice` no iOS, `BatteryManager` no Android, `GetSystemPowerStatus` no Windows, `/sys/class/power_supply` no Linux e a Battery Status API na web onde existe).
+- [ ] `system.openUrl(url)` e `system.vibrate(seconds)` como APIs da engine, no lugar dos métodos embutidos da bridge.
+- [ ] O nome da GPU vem do dispositivo que a engine criou (`graphics::Device`): o `MTLDevice` no Metal, o adaptador DXGI no D3D11, o `GL_RENDERER` no OpenGL e as informações do adaptador no WebGPU.
+- [ ] Os métodos embutidos da bridge saem do Android, da Apple, da web, do Windows e do Linux, e os samples e o Tiny Island passam a usar `haylen.system`.
+
+**Diálogos (`haylen.dialogs`)**
+
+- [ ] `dialogs.message({title, text, kind, buttons})` com `kind` `'info'`, `'warning'` ou `'error'` e de um a três botões com texto próprio, que devolve o índice do botão escolhido, ou `nil` quando o usuário fecha sem escolher.
+- [ ] `dialogs.openFiles({title, filters, multiple})` com filtros por nome e extensões, que devolve a lista de arquivos (`name` e `path`) ou `nil` quando o usuário cancela.
+- [ ] `dialogs.saveFile({title, filters, name, data})`, que grava os dados no destino escolhido e devolve o nome e, onde existe, o caminho, ou `nil` quando o usuário cancela.
+- [ ] `dialogs.openFolder({title})`, que devolve o caminho da pasta nos desktops, no iOS e no Mac Catalyst, e falha com `unsupported` onde a plataforma não dá um caminho (Android, web e tvOS).
+- [ ] Cada chamada devolve uma chamada com `:await()`, `cancel()` e timeout, como a bridge, e falha com `unsupported` e uma mensagem clara onde a plataforma não tem o diálogo.
+- [ ] Implementações: macOS com sheets, Windows com a thread de diálogos, Linux com o GTK 3 carregado em runtime, iOS e Mac Catalyst com `UIAlertController` e `UIDocumentPickerViewController`, tvOS com `UIAlertController`, Android com `AlertDialog` e o Storage Access Framework (cópia dos arquivos para a pasta temporária e gravação pelo `ContentResolver`) e web com o diálogo de DOM, o `<input type=file>` e o download.
+
+**Correções de plataforma achadas na revisão**
+
+- [ ] macOS mínimo 14.0: o Sokol chama `-[NSView displayLinkWithTarget:selector:]` sem conferir a versão, uma API do macOS 14, então o app não abre no macOS 13. Subir o mínimo do macOS no `make.py`, no template e no CMake, e registrar na documentação. O Mac Catalyst usa o caminho do UIKit e fica como está.
+- [ ] Manifesto de aplicativo no Windows (Common Controls 6, que o `TaskDialogIndirect` pede) no player e nos apps do `haylen_add_app`.
+
+**Testes, samples e documentação**
+
+- [ ] Testes GoogleTest no host sem janela: pedidos de diálogo gravados e respondidos pelo teste, validação das opções, resultados, cancelamento e timeout, `unsupported`, informações do sistema, tema e bateria com os eventos, e os bindings Lua.
+- [ ] Sample `samples/system/system-info` (ou um teste no sample de plataforma) com as informações, o tema e a bateria ao vivo, e um sample ou testes de diálogos com mensagem, abrir arquivos, salvar e pasta, validados no macOS, no simulador iOS, no Mac Catalyst, no simulador tvOS, no emulador Android e na web. Windows e Linux compilados e testados no CI.
+- [ ] Páginas `docs/lua-api/system.md` e `docs/lua-api/dialogs.md` completas com exemplos, `docs/platform_bridge.md` sem os métodos embutidos e as regras no CLAUDE.md.
+
+**Para os plugins futuros, fora desta etapa**
+
+- Notificações e webview ficam para plugins. Quando o webview for feito, a engine precisa de posição por retângulo em unidades de design nos overlays, de uma camada de overlay no Windows e no Linux, do COM de thread única na thread do frame do Windows (o miniaudio deixa multithread) e de janelas transparentes do Windows que não escondam janelas filhas.
+
+#### AB. Dados dos plugins: binários, streams e permissões
+
+Os plugins de câmera, foto, microfone, áudio, localização e notificações moram fora deste repositório, mas a engine precisa dar a eles o caminho para mandar e receber esses dados de forma assíncrona e eficiente em todas as plataformas. O que já existe cobre parte disso: chamadas assíncronas com resposta na thread do frame, eventos, eventos guardados até o Lua escutar (a notificação que abriu o app e o push que chegou com o app fechado), o repasse do ciclo de vida e dos resultados de permissão e as views nativas por cima do jogo. Faltam os itens abaixo.
+
+- [ ] Dados binários na bridge: chamadas, respostas e eventos levam bytes junto do JSON sem base64, do C++ (`std::vector<std::byte>` ou `std::span`), do Lua (strings binárias), do Java e Kotlin (`byte[]` e `ByteBuffer` direto pelo JNI), do Objective-C e Swift (`NSData` e `Data`), do JavaScript (`Uint8Array` e `ArrayBuffer`) e da `HaylenNativeApi` em C, com um teste de ida e volta em cada plataforma. Serve para foto, arquivo gravado, áudio gravado e qualquer blob.
+- [ ] Bytes viram recursos da engine sem passar por arquivo: imagem (PNG, JPEG e pixels crus) para textura e som (WAV, OGG, MP3 e PCM cru) para `Sound`, a partir de uma string binária do Lua ou dos bytes do C++.
+- [ ] Stream de vídeo do nativo para a engine: o plugin cria um stream com largura, altura e formato (RGBA8 e BGRA8), manda quadros de qualquer thread, e a engine sobe o quadro mais recente para uma textura uma vez por frame, que o Lua desenha como qualquer textura (prévia da câmera, vídeo e captura de tela). Na web, o quadro vem de um `ImageBitmap`, `VideoFrame` ou `<video>` copiado para a memória do wasm.
+- [ ] Stream de áudio do nativo para a engine: o plugin manda PCM (float ou inteiro de 16 bits, taxa e canais) de qualquer thread para um buffer circular da engine, que o Lua toca como uma voz do mixer ou lê como amostras (microfone, voz e síntese). E o caminho contrário, amostras do mixer ou do Lua entregues ao nativo, se um plugin precisar gravar o que o app toca.
+- [ ] Eventos frequentes em lote: eventos do mesmo nome que chegam várias vezes num frame (localização, sensores e progresso) podem ser agrupados, e o Lua recebe um por frame com a lista, com a opção declarada por quem emite.
+- [ ] Permissões em tempo de execução pelos plugins, conferidas de ponta a ponta: Android (`requestPermissions` na activity e o resultado pelo repasse do `onRequestPermissionsResult`), Apple (as APIs de cada framework, com as descrições de uso no `infoPlist` do `plugin.json`), web (`navigator.permissions` e o gesto do usuário) e desktops, documentado no guia de plugins.
+- [ ] Notificações e push nos plugins: o que um plugin de notificações precisa da engine (delegate de notificações na Apple, `onNewIntent` e serviços no Android, service worker na web, eventos guardados com o app fechado), conferido pelo plugin de demonstração com uma notificação local de verdade em cada plataforma que permite, e o toque nela chegando ao Lua, inclusive com o app fechado.
+- [ ] O plugin de demonstração testa cada mecanismo: um resultado binário (uma imagem gerada no nativo e desenhada no Lua), um stream de vídeo gerado no nativo (um padrão animado), um stream de áudio gerado no nativo (um tom), eventos em lote, um pedido de permissão real e uma notificação local tocada, em cada plataforma.
+- [ ] Guia `docs/plugins.md` com a parte de dados binários, streams, lotes, permissões e notificações, e as regras no CLAUDE.md.
+
+#### AC. Telas de plugins e o host do Android
+
+Decisões, a partir da pesquisa dos SDKs que abrem telas próprias (RevenueCat, Stripe, BiometricPrompt, Facebook Login, FirebaseUI, Photo Picker, Play Billing, Credential Manager, anúncios de tela cheia, consentimento, In-App Review e Updates) e das APIs de cada plataforma:
+
+- O `HaylenActivity` não pode ser uma `ComponentActivity`, porque o `NativeActivity` estende o `Activity` simples. O paywall do RevenueCat (`PaywallActivityLauncher`), o Stripe PaymentSheet, o BiometricPrompt, o Chrome Auth Tab, o FirebaseUI e o Photo Picker exigem `ComponentActivity` ou `FragmentActivity`, e SDKs que desenham nas views da activity (mensagens in-app, prévia do CameraX e folhas em Compose) não aparecem, porque o `NativeActivity` toma a superfície da janela. O host do Android passa para o GameActivity do AndroidX (`AppCompatActivity`, portanto `FragmentActivity` e `ComponentActivity`), que desenha num `SurfaceView` da hierarquia de views, com um patch próprio do backend Android do Sokol, que não tem suporte ao GameActivity.
+- Uma API de telas de plugins em todas as plataformas: o plugin registra uma tela no nativo, o Lua abre com `handle:openScreen(nome, parâmetros, {state = ...})`, a engine cobre o app antes da tela aparecer (e para de desenhar quando a tela é opaca) e descobre quando ela fecha, o resultado resolve a chamada, e quando a chamada não existe mais (processo morto, activity recriada ou redirecionamento na web) o resultado chega como o evento retido `<id>.screenRestored` com o estado que o app salvou.
+
+**Android**
+
+- [ ] Spike antes da migração: o GameActivity 4.4.2 com o Sokol num projeto de teste, conferindo a ligação da biblioteca do GameActivity (feita para `c++_shared`) com a engine em `c++_static`, a entrada de toque, teclado e controle, o teclado de software pelo GameTextInput, a superfície e o contexto EGL ao cobrir e voltar, e views comuns por cima do `SurfaceView` recebendo toque.
+- [ ] Migração do `HaylenActivity` para o GameActivity: patch do backend Android do Sokol (callbacks do GameActivity, fila de entrada da thread principal para a thread de render), entrada da engine, o host Java (splash, insets, back preditivo, foco de áudio, controles e rede), o overlay com views comuns sobre o `SurfaceView` no lugar das janelas de painel, o teclado de software sem o `EditText` escondido quando o GameTextInput servir, o tema AppCompat, o build e a documentação.
+- [ ] Modo de abertura `singleTop` no lugar do `singleTask`, com uma activity pequena que recebe links e notificações e entrega ao jogo, para o ícone do launcher não destruir as telas de compra, paywall, verificação bancária e login abertas por cima do jogo.
+- [ ] Telas de plugins no Android sobre o `ActivityResultRegistry` com chaves de texto, sem o repasse manual do `onActivityResult` e sem colisão de request codes, e o resultado guardado quando o processo morre.
+
+**Apple**
+
+- [ ] `context.viewController` devolve o view controller mais alto já apresentado, para um plugin apresentar por cima do que já está na tela.
+- [ ] Telas de plugins com apresentação e fim detectados (conclusão, `UIAdaptivePresentationControllerDelegate` para o gesto de fechar e o fim programático), com o app coberto e sem desenhar enquanto a tela opaca aparece, também para `UIHostingController` de SDKs em SwiftUI.
+- [ ] Mac Catalyst: plugins abrindo janelas novas sem criar uma segunda janela do Sokol, porque o delegate da engine vale para toda cena nova.
+
+**Web e desktops**
+
+- [ ] Web: telas de plugins por popup (`window.open` com `postMessage`, dentro do gesto do usuário) e por redirecionamento, com o estado do app salvo antes e o resultado entregue como `screenRestored` quando a página volta, e o `make.py serve` sem o `Cross-Origin-Opener-Policy` por padrão (o runtime web não usa `SharedArrayBuffer`), que corta a ligação com os popups de login e pagamento.
+- [ ] Desktops: a `HaylenNativeApi` expõe a janela do app e a cobertura, para um plugin abrir uma janela própria dona da janela do jogo, e no Linux as janelas de plugins usam uma conexão X11 própria, porque o Sokol processa os eventos de toda janela da conexão dele.
+
+**Engine, testes e documentação**
+
+- [ ] API de telas de plugins na engine (C++, Lua, headless), com uma tela por vez, só com o app em primeiro plano, cobertura automática, resultado, cancelamento e o evento `screenRestored` com o estado salvo, e testes.
+- [ ] `docs/lifecycle.md` corrigido: com o app parado em segundo plano no Android, os frames param e as respostas da bridge, timers e callbacks de rede esperam o app voltar.
+- [ ] O plugin de demonstração abre uma tela nativa de verdade em cada plataforma (uma activity AndroidX com resultado, um view controller e uma tela em SwiftUI, um popup na web e uma janela no desktop) e recebe o resultado, inclusive depois de o processo morrer no Android.
+- [ ] Guia `docs/plugins.md` com as telas de plugins e as regras no CLAUDE.md.
