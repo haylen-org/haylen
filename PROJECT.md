@@ -168,6 +168,16 @@ Cada ponto abaixo precisa estar coberto pelo grupo O da seção 14.2.
 
 110. O CLAUDE.md descreve o projeto sem histórico e sem versões de bibliotecas, e contém tudo sobre padrões de código, arquitetura, organização e regras, para que cada execução de um agente tenha o que precisa para novos recursos e correções. Histórico e informações de versões anteriores do projeto não podem existir em nenhum lugar do repositório.
 
+### 2.4 Quinto pedido: plugins nativos
+
+Cada ponto abaixo precisa estar coberto pelo grupo Z da seção 14.2.
+
+111. O app fala com a plataforma de forma assíncrona: a chamada do Lua cai no handler em Swift ou Objective-C na Apple e em Kotlin ou Java no Android, e a resposta volta para o app sem travar o jogo. Quem desenvolve um plugin escreve a parte em Swift ou Objective-C e a parte em Kotlin ou Java (e em JavaScript na web).
+112. O sistema de plugins é parte central da engine: precisa ficar fácil usar SDKs como Firebase e AdMob, inclusive os que mostram views nativas por cima do jogo, como o banner.
+113. Tudo isso funciona 100% e otimizado em todas as plataformas, com pesquisa e planejamento de como fazer cada parte.
+114. A cada bloco terminado, fazer commit e push.
+115. Revisar o projeto inteiro de novo atrás de bugs, código legado, código não usado, erros, race conditions e falhas que derrubam o app, com as regras gerais de sempre, e manter tudo no CLAUDE.md e nesta mega lista.
+
 ## 3. Regras
 
 As regras oficiais do projeto estão no `CLAUDE.md`, que é obrigatório e precisa ser lido por inteiro antes de qualquer trabalho. Ele reúne os princípios, as regras de trabalho e de commit, os nomes, a organização do código, os bindings Lua, a arquitetura, as dependências, os samples, a formatação, os comentários, os testes e a documentação. Este documento não repete essas regras.
@@ -808,7 +818,7 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 | 12 | Jogo Tiny Island em Lua | Concluída |
 | 13 | Testes e cobertura até o máximo possível | Concluída |
 | 14 | Documentação e revisão final (bugs, legado, não utilizado, race conditions e crashes) | Concluída, com testes de regressão para as correções |
-| 15 | Pedidos 51 a 110 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
+| 15 | Pedidos 51 a 115 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
 
 ## 13. Limitações conhecidas
 
@@ -828,9 +838,9 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 - visionOS nativo depende do Sokol, que usa o `UIScreen`, indisponível no SDK do visionOS. O app iOS roda no Apple Vision Pro como app de iPad compatível. watchOS é impossível, porque o SDK do watchOS não tem Metal, MetalKit, GameController nem AudioToolbox.
 - O Sokol só aceita imagens inteiras em texturas que vivem entre frames, então uma textura dinâmica alterada (os atlas das fontes e da UI) sobe todos os pixels, uma vez por frame.
 
-## 14. Pedidos 51 a 110: decisões e checklist
+## 14. Pedidos 51 a 115: decisões e checklist
 
-Esta seção cobre os pedidos 51 a 110 das seções 2.1, 2.2 e 2.3. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
+Esta seção cobre os pedidos 51 a 115 das seções 2.1, 2.2, 2.3 e 2.4. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
 
 ### 14.1 Decisões de organização
 
@@ -1017,10 +1027,12 @@ Todo sample de recursos tem um menu simples para escolher o teste, cada teste é
 - [ ] Testes GoogleTest e Lua de cada recurso dos pedidos 51 a 110, com cobertura da engine perto de 100%.
 - [x] Páginas `docs/lua-api/` e guias com o estado atual, incluindo o guia de distribuição (`docs/distribution.md`: templates, artefatos e comandos) e o de ciclo de vida (`docs/lifecycle.md`).
 - [x] Estáticos da engine que outras threads usam nunca são destruídos (listeners do `core::Log`, contadores de objetos e o registro deles, estáticos do `EventBus`, padrões do `WebSocket`, relay da bridge, estado das chamadas nativas, campos de texto, regiões de janela, controles e estado da página web), com o teste de morte `LogTest.KeepsWorkingWhileAnotherThreadExits`. Os estáticos do spdlog do Varn dependem de uma mudança no Varn, descrita na seção 13.
-- [ ] O mesmo tratamento para os estáticos que restam em gráficos, texto, UI e 2D: os contadores de `TextureResource`, `Font`, `FontFamily`, `RichText`, `ui::Document`, `physics2d::World` e `particles2d::Emitter`, e os estáticos de `RenderTarget.cpp`, `SceneTransition.cpp`, `StaticSpriteBatch.cpp`, `particles2d/Effect.cpp`, `Raycaster.cpp`, `MapRenderer.cpp`, `PhraseBreaker.cpp` e `ui/Theme.cpp`.
+- [x] Estáticos de gráficos, texto, UI e 2D que outras threads usam na saída (contadores de `TextureResource`, `Font`, `FontFamily`, `RichText`, `ui::Document`, `physics2d::World` e `particles2d::Emitter`, e os estáticos de `RenderTarget`, `SceneTransition`, `StaticSpriteBatch`, `particles2d::Effect`, `Raycaster`, `MapRenderer`, `PhraseBreaker` e `ui::Theme`) criados com `new` e nunca destruídos, conferido com o `-Wexit-time-destructors` do clang em todos os fontes da engine e dos testes. Só os workers do WebSocket nativo têm destrutor na saída, de propósito.
 - [x] Avisos de compilação da engine: `-Wshadow` no `PocoWebSocket.cpp` e o `HAVE_UNISTD_H` do libzip (definido só no escopo do Varn, sem silenciar avisos). Builds limpos de macOS Debug, macOS com ThreadSanitizer, Catalyst e web.
-- [ ] Aviso `-Wshorten-64-to-32` no `DestructionLua.cpp:106` no build web (o `lua_rawlen` devolve 64 bits no wasm32).
-- [ ] Sem saída de áudio, o app roda sem som em vez de não abrir: hoje o `audio::Device` lança erro quando o dispositivo não abre, em todas as plataformas, e na web isso impede qualquer app servido por http fora do localhost de abrir, porque o navegador só oferece o `AudioWorklet` em https ou localhost. O mixer precisa seguir o tempo sem saída (as vozes terminam como sempre), o log diz o motivo e a API C++ e Lua informa o estado da saída.
+- [ ] Três falhas do AddressSanitizer no código dos testes: um job do `RuntimeTests.cpp` lê uma variável da pilha depois que o teste acaba, e o helper `EventRecorder` do `SceneManagerTests.cpp` falha em dois testes. Achar o problema real de tempo de vida e corrigir, com a suíte inteira limpa sob `--sanitizers address`.
+- [ ] `SceneLuaTest.SpawnedTasksNeverResumeOnceTheirSceneUnloaded` estourou o tempo uma vez sob ThreadSanitizer com a máquina ocupada: conferir se o teste depende de tempo real e deixá-lo determinístico.
+- [x] O build web não tem avisos nos fontes da engine (o `DestructionLua.cpp` converte o tamanho da tabela onde lê). Os seis avisos restantes são do Varn, registrados na seção 13.
+- [x] Sem saída de áudio, o app roda sem som: o log avisa uma vez com o motivo, o mixer segue o tempo misturando e descartando as amostras (vozes terminam, músicas fazem crossfade e vozes posicionais atualizam), uma interrupção sempre termina, a engine tenta abrir a saída de novo quando o app volta a ficar ativo, e `Mixer::isOutputAvailable()`, `audio.outputAvailable()` e o `available` do `onStats` informam o estado. Na web, uma página em http fora do localhost abre e roda sem som, conferido pelo IP da rede local no Chrome, e `make.py serve`, `run` e `run-cpp` aceitam `--host`.
 - [x] Posição da janela dos apps C++ no Mac Catalyst: `haylen_add_app` assina o bundle ad hoc depois do link, como o Xcode faz, e a janela abre onde o app pede, e não no canto superior esquerdo.
 - [x] Revisão final de bugs, código morto, race conditions e riscos de crash em duas frentes (core, Lua, plugins, storage, io, math, IA, debug, net, áudio e input, e gráficos, texto, UI e os contextos 2D), com testes de regressão para as correções (crashes na saída e no reinício, use-after-free, estouro de pilha Lua, travamentos por entradas do Lua, asserts do Box2D, leituras fora dos limites, alfa pré-multiplicado, lotes de desenho e memória por frame) e ThreadSanitizer limpo. As sobras estão nos itens abertos deste grupo.
 - [x] O teste `FontTest.FailsAgainForAGlyphNoAtlasHolds` roda em 43 ms em Debug e verifica o mesmo comportamento.
@@ -1043,7 +1055,7 @@ Todo sample de recursos tem um menu simples para escolher o teste, cada teste é
 - [x] `JobSystem::parallelFor` em que o chamador roda todo pedaço que nenhum worker começou, então o `crowd:step` nunca espera atrás de jobs longos de fundo, como a construção assíncrona de um navmesh.
 - [x] `PoissonDisk::reachOf` limitado ao tamanho da grade, zoom NaN da câmera recusado com erro, handles C++ de física com a geração do mundo (inválidos depois que o slot do mundo é reusado) e `GridRay::traverse` somando as distâncias em double, sem travar em raios longos.
 - [x] `make.py` com `--sanitizers address|thread`, e o OpenSSL compilado como um job só (`OPENSSL_ENABLE_PARALLEL` desligado), dentro do limite de jobs.
-- [ ] A triangulação com restrições do navmesh não convergiu num layout aleatório (semente 97): investigar. Com raio de agente, os caminhos ficam dentro da malha, como `docs/lua-api/navigation2d.md` descreve.
+- [x] A triangulação com restrições do navmesh converge em todo layout: o teste de orientação exato resolve a semente 97, e uma aresta até 0,1% mais longa que a abertura que cruza conta como exata, o que evita milhares de pontos entre paredes quase paralelas (sementes 344 e 715). Varredura de 2000 sementes: 20000 construções sem falha e 154170 caminhos sem sair da malha.
 - [x] Encerramento por uma thread de fundo não derruba o app: o runtime vive num `Process` que nunca é destruído fora da thread do frame, e um `exit()` de uma fila de fundo (no simulador iOS, o IOSurface faz isso quando o servidor de render cai) sai limpo (6 de 6 execuções).
 - [x] Pasta de build única por app (`build/apps/<pasta>-<hash>/`), sem colisão entre apps com o mesmo nome de pasta.
 - [x] `make.py run` nas plataformas Apple mostra o log do app no terminal: `log stream` filtrado para o app no simulador e no Catalyst, e a saída padrão no macOS.
@@ -1221,5 +1233,102 @@ A referência são jogos como o Taskbar Hero, que rodam numa faixa transparente 
 
 #### Y. Consistência da API Lua
 
-- [ ] Todos os nomes que a API Lua recebe ou devolve como string em camelCase: valores de enum (o valor do enum C++ com a primeira letra minúscula), nomes de eventos do `EventBus` e dos eventos de input e de UI, nomes de controles de input nos bindings de ações, nomes de cursor, nomes de easing e nomes de tipos de asset, além das chaves do `app.json` e dos arquivos de dados da engine. Os nomes misturam camelCase (`'whenPaused'`, `'topRight'`, `'lowShelf'`) e snake_case (`'quad_out'`, `'ping_pong'`, `'pixel_perfect'`, `'keyboard_mouse'`, `'app_background'`, `'tiled_world'`). Alinhar a engine, os testes, a documentação e os samples, sem aliases.
-- [ ] Mensagens de erro da engine no padrão do CLAUDE.md: frases completas que começam com maiúscula e terminam com ponto, fora os motivos curtos de `luaL_argerror` e `luaL_typeerror`. Cerca de 34 mensagens começam com minúscula.
+- [x] Todos os nomes que a API Lua recebe ou devolve como string em camelCase, sem aliases: os 54 eventos do `core::LifecycleEvent` (`appBackground`, `sceneEnterTransitionFinished`), os eventos de plataforma (`keyDown`, `touchBegan`, `quitRequested`), as teclas e os controles (`leftShift`, `graveAccent`, `keypad0`, `leftShoulder`, `rightTrigger`), os cursores (`pointingHand`, `resizeAll`), os dispositivos (`keyboardMouse`), os easings (`quadOut`, `elasticInOut`), os modos e políticas (`pingPong`, `pixelPerfect`), os gestos (`doubleTap`, `longPress`), as ações de UI (`uiAccept`), o tipo de asset `tiledWorld` e os códigos de erro da bridge (`noHandler`, `invalidJson`). A engine, os testes, a documentação, os samples, o template, o JavaScript da web, o Java do Android e o código Apple usam os mesmos nomes. Preferências gravadas com os nomes antigos deixam de carregar.
+- [x] Nomes Lua iguais aos do C++, na direção que dá o nome mais preciso: tipos `Transform2D`, `Noise2D`, `StaticSpriteBatch` e `HashGrid` (`spatial2d.newHashGrid`), funções como `haylen.elapsed` e `haylen.frameIndex`, `storage.readText` e `storage.writeText`, `input.findTouch`, `localization.findBestMatch`, `native.findSymbol`, `platform.registerHandler`, `assets.unloadGroup`, `window.framebufferSize`, `ui.usingPointer`, `document:replaceChildren`, e do lado C++ `Viewport::getScaling`, `Profiler::beginScope` e `endScope`, `RayBatch::getHit` e os parâmetros `curved` e `closed` do `TweenMotion::path`. Os nomes de tipo Lua são únicos no registro de metatables (`haylen.` e o nome da classe C++, com o contexto na frente quando o nome sozinho é vago, como `TiledMap`, `PhysicsWorld`, `UiDocument` e `NavGrid`).
+- [x] Mensagens de erro no padrão do CLAUDE.md nas 13 mensagens do `AppConfig.cpp` e nas mensagens que começavam com minúscula (UI, ImGui, tween, jobs, libffi, drawBatch, captura, clip, metatables protegidas, opções inválidas e tipos sem membro).
+- [ ] Teclas de dígito com o nome do valor do enum: `Key::Digit0` a `Key::Digit9` em C++ e `'digit0'` a `'digit9'` em Lua, no lugar de `Num0` e `'0'`.
+- [ ] Direção do texto com o nome do valor do enum: `'leftToRight'` e `'rightToLeft'` em Lua e nos catálogos de idioma, no lugar de `'ltr'` e `'rtl'`.
+- [ ] As cerca de 75 mensagens que terminam com um valor anexado e sem ponto (como `Unknown animation: walk`) e as cerca de 20 mensagens da UI que começam com o caminho de uma propriedade em minúscula (`PropertyReader`, `Theme`, `ChoiceItem` e `TextValue`) reescritas como frases completas.
+
+#### Z. Plugins nativos
+
+Decisões, a partir da documentação oficial dos SDKs (AdMob, UMP, Firebase, StoreKit, Play Billing, Game Center e Play Games), do código do Sokol e do código atual da bridge:
+
+- Um plugin é uma pasta com `plugin.json` (id, nome, versão, descrição, plataformas, dependências de outros plugins, parâmetros por app e o que cada plataforma traz), a API Lua em `source/`, a parte Apple em `apple/` (Swift ou Objective-C, pacotes Swift, xcframeworks, chaves do Info.plist, entitlements e scripts de build), a parte Android em `android/` (módulo de biblioteca Gradle em Kotlin ou Java, com dependências Maven, manifesto e regras do R8), a parte web em `web/` (módulo JavaScript) e, quando preciso, uma biblioteca nativa em C ou C++ em `native/` para os desktops, a mesma da seção `native` do `app.json`.
+- Quem escreve um plugin escreve a API Lua e a implementação em Swift ou Objective-C, em Kotlin ou Java e em JavaScript. As chamadas continuam pela bridge assíncrona em JSON, com a resposta na thread do frame.
+- O app lista os plugins na seção `plugins` do `app.json`, com a configuração de cada um validada pelos parâmetros do `plugin.json`. Os plugins ficam em `plugins/<id>/` do app, copiados por `make.py plugin add` dos plugins oficiais da engine (`plugins/` do repositório) ou de outra pasta. O pacote do app leva o Lua dos plugins (`plugins/<id>/source/`), e `require('<id>')` encontra o módulo do plugin.
+- Apple: quando o app tem plugins, `make.py` gera de novo o `App.xcodeproj` montado com o XcodeGen baixado numa versão fixa e conferido por SHA-256, incluindo um fragmento por plugin com os fontes e os pacotes Swift de cada alvo (o AdMob só existe no iOS, sem tvOS, macOS e Mac Catalyst). O template continua com o projeto gerado ao lado do `project.yml`. O Info.plist e os entitlements continuam escritos pelo `make.py`, que junta as chaves dos plugins.
+- Apple: um patch pequeno do Sokol deixa a engine usar uma subclasse do delegate de app e de cena do Sokol, que repassa aos plugins o launch com as opções, as opções de conexão da cena (URLs, atividades e notificação), `openURLContexts`, `continueUserActivity`, o token e as notificações remotas, as sessões de URL em segundo plano e o delegate do `UNUserNotificationCenter`. O swizzling do Firebase fica desligado (`FirebaseAppDelegateProxyEnabled = NO`), porque o repasse é explícito.
+- Android: `make.py` inclui o módulo Gradle de cada plugin no projeto montado e aplica os plugins Gradle que eles pedem (Crashlytics e google-services). Cada módulo declara a classe do plugin num `meta-data` do manifesto, e a biblioteca da engine encontra os plugins por um `ContentProvider` que roda antes do `Application.onCreate`, sem exigir uma classe `Application` própria. Uma regra do R8 da biblioteca mantém toda subclasse de `HaylenPlugin`.
+- Android: o `HaylenActivity` repassa aos plugins o ciclo da activity, `onNewIntent`, `onActivityResult`, `onRequestPermissionsResult`, `onConfigurationChanged` e `onWindowFocusChanged`, porque o `NativeActivity` não tem a API de Activity Result.
+- Views nativas por cima do jogo: no iOS, uma view que deixa os toques passarem, acima da view Metal. No Android, uma janela de painel (`TYPE_APPLICATION_PANEL`, sem foco e do tamanho da view) por view, porque o `NativeActivity` toma a superfície e a fila de input, e as views comuns da activity não desenham nem recebem toques. Na web, uma camada de DOM por cima do canvas. A posição usa âncoras (bordas, cantos e centro) com margens, dentro ou fora da safe area.
+- Uma view nativa pode reservar espaço: a engine soma a borda que ela ocupa à safe area, e a UI ancorada na safe area sai de baixo do banner sozinha, com o evento de mudança da safe area.
+- UI nativa que cobre o app (anúncios de tela cheia, formulários de consentimento, login e compras) marca o app como coberto: a engine o põe no estado inativo, pausa e silencia até a última cobertura acabar, e o Lua recebe os eventos de estado de sempre.
+- Os erros do app (mensagem, arquivo, linha e a pilha do Lua) chegam aos plugins nativos, para o Crashlytics registrar como erros não fatais com os frames do Lua.
+- Eventos nativos que chegam antes de o Lua escutar (link profundo na abertura, transações pendentes da loja e a notificação que abriu o app) ficam guardados e chegam ao primeiro ouvinte.
+- JSON continua sendo o formato da bridge. Eventos frequentes, como analytics, vão em lote. Dados grandes por frame usam um caminho binário ou C++.
+
+**Formato, configuração e ferramentas**
+
+- [ ] `plugin.json` com esquema documentado e validado pelo `make.py`: id em dash-case, nome, versão, descrição, plataformas suportadas (`ios`, `tvos`, `macos`, `catalyst`, `android`, `web`, `windows`, `linux`), dependências de outros plugins, parâmetros por app com tipo, obrigatoriedade, padrão e valor por plataforma (texto, número, booleano, lista, objeto e arquivo), e as seções `apple`, `android`, `web` e `native`.
+- [ ] Seção `plugins` do `app.json` com a configuração de cada plugin, aceita pelo `AppConfig` da engine e validada pelo `make.py` contra os parâmetros do `plugin.json`, com erros claros para plugin desconhecido, parâmetro que falta, tipo errado e plugin que depende de outro ausente.
+- [ ] `make.py plugin add <id|pasta>`, `plugin remove <id>`, `plugin list` e `plugin new <pasta>`, que copia o esqueleto de `templates/plugin/` com a API Lua, a classe Swift, a classe Kotlin, o módulo JavaScript, o `plugin.json` e o README.
+- [ ] O pacote do app (`make.py package`, a cópia para as plataformas e o zip da web) leva `plugins/<id>/source/` de cada plugin listado, e o player de desktop no modo de desenvolvimento encontra o mesmo Lua.
+- [ ] Arquivos por app, como `GoogleService-Info.plist` e `google-services.json`, como parâmetros do tipo arquivo, com o caminho relativo à pasta do app, copiados para a raiz do bundle na Apple e para o módulo `app/` do Android.
+- [ ] `make.py tools` baixa o XcodeGen numa versão fixa, conferido por SHA-256, como já faz com o `sokol-shdc`.
+
+**Engine (runtime, Lua e C++)**
+
+- [ ] `require('<id>')` e `require('<id>.<módulo>')` resolvem os módulos Lua do plugin em `plugins/<id>/source/`, só para plugins listados no `app.json`, e um módulo do app com o mesmo nome de um plugin é um erro claro na abertura.
+- [ ] `platform.plugins()` devolve os plugins do app com id, versão e se a parte nativa existe nesta plataforma, e `platform.pluginConfig(id)` devolve a configuração do plugin no `app.json`.
+- [ ] Espaço reservado por views nativas: a engine recebe as bordas ocupadas (id da view e insets em pixels do framebuffer), junta à safe area do aparelho, publica a mudança da safe area e remove o espaço quando a view some. API C++ no `platform::Window` e no host, testes no host headless.
+- [ ] App coberto por UI nativa: contador de coberturas vindo do nativo, estado inativo, pausa e áudio mudo enquanto o contador é maior que zero, e volta ao estado anterior no fim, com testes.
+- [ ] Erros do app para o nativo: o host recebe cada erro que a tela de erro mostra, com a mensagem, o arquivo, a linha e os frames do Lua, e cada plataforma entrega aos plugins.
+- [ ] Eventos nativos guardados até o primeiro ouvinte: `emit` com retenção, com um limite por evento, entregues ao primeiro `platform.on` daquele nome, com testes.
+- [ ] Handlers nativos com política de thread: na thread principal (padrão, para UI) ou numa thread de fundo, para SDKs que não tocam na UI, como analytics.
+
+**Android**
+
+- [ ] `dev.haylen.HaylenPlugin` (classe base) e `HaylenPluginContext` (activity atual, `register` e `registerSuspend` com o prefixo do plugin, `emit` e `emitRetained`, configuração do `app.json`, overlay, cobertura e thread principal).
+- [ ] `HaylenPluginProvider` que encontra os plugins pelos `meta-data` `dev.haylen.plugin.<id>` do manifesto final, cria cada um uma vez e chama `onApplicationCreate`, com a regra do R8 na biblioteca.
+- [ ] `HaylenActivity` repassa `onCreate`, `onStart`, `onResume`, `onPause`, `onStop`, `onDestroy`, `onNewIntent`, `onActivityResult`, `onRequestPermissionsResult`, `onConfigurationChanged`, `onWindowFocusChanged` e `onTrimMemory` aos plugins, e `onAppError` com os erros do app.
+- [ ] `HaylenOverlay`: janelas de painel por view nativa, sem foco, com o token da janela da activity, criadas depois do foco, reposicionadas por âncora, margens e safe area em rotação, cutout, multi-janela e teclado, pausadas e retomadas com a activity e removidas antes do `onDestroy`, com o espaço reservado enviado à engine.
+- [ ] Cobertura do app pelo nativo (`context.coverApp()` e `uncoverApp()`).
+- [ ] `make.py` monta o Android com os plugins: módulos incluídos pelo `settings.gradle.kts` a partir do `gradle.properties`, dependência do app em cada módulo, plugins Gradle declarados na raiz e aplicados no app, placeholders do manifesto vindos da configuração e os arquivos por app.
+- [ ] Correções da bridge: o JNI anexa cada thread uma vez (destrutor por `pthread_key_create`), e o `HaylenBridge.dispatch` faz o parse do JSON na thread principal, fora da thread do frame.
+
+**Apple**
+
+- [ ] `HaylenPlugin` (protocolo Objective-C, usável em Swift) e `HaylenPluginContext` nos headers públicos do xcframework (view controller e cena atuais, `register` com o prefixo do plugin, `emit` com retenção, configuração, overlay, cobertura), com o helper Swift de handlers `async` do template.
+- [ ] Descoberta pela chave `HaylenPlugins` do Info.plist (lista de classes), escrita pelo `make.py` por plataforma, com `NSClassFromString`.
+- [ ] Patch do Sokol e `HaylenSceneDelegate`: subclasse do delegate do Sokol que repassa aos plugins o launch, as opções de conexão da cena, `openURLContexts`, `continueUserActivity`, atalhos, o token e as falhas de registro de notificações remotas, `didReceiveRemoteNotification` com o resultado combinado, as sessões de URL em segundo plano, a mudança de estado da cena e o delegate do `UNUserNotificationCenter` (apresentação e resposta).
+- [ ] `HaylenOverlay`: container que deixa os toques passarem, acima da view Metal, com âncoras, margens e safe area, e o espaço reservado enviado à engine.
+- [ ] Cobertura do app pelo nativo e erros do app para os plugins.
+- [ ] `make.py` monta a Apple com os plugins: fragmentos do XcodeGen com fontes, pacotes Swift, xcframeworks e scripts por alvo e plataforma, chaves do Info.plist e entitlements juntados, `CODE_SIGN_ENTITLEMENTS` no `App.xcconfig` e o projeto gerado de novo.
+- [ ] Repasse do delegate do macOS (`application:openURLs:` e notificações remotas) para os plugins que rodam no macOS.
+
+**Web**
+
+- [ ] O loader importa o módulo JavaScript de cada plugin antes de o runtime começar, e cada módulo recebe o contexto com `register`, `emit`, a configuração, o overlay e a cobertura.
+- [ ] Camada de overlay de DOM por cima do canvas, que só recebe o ponteiro nos elementos dos plugins, com âncoras, safe area e espaço reservado.
+- [ ] `make.py` copia os módulos dos plugins para o site e escreve a lista no `config.json`.
+
+**Desktop e apps C++**
+
+- [ ] A parte `native/` do plugin entra como biblioteca nativa do app (a mesma da seção `native` do `app.json`), compilada por plataforma, e registra handlers pela `HaylenNativeApi`.
+- [ ] Apps C++ com plugins no Android e na web pelos templates, e na Apple pelo `run-cpp`, com a mesma montagem.
+
+**Desempenho**
+
+- [ ] Benchmark da bridge no emulador Android, no simulador iOS e na web: ida e volta de uma chamada, chamadas por segundo e custo por frame de N chamadas e de N eventos, com os números na documentação.
+- [ ] Lote de eventos frequentes do nativo para o Lua e do Lua para o nativo, entregues uma vez por frame.
+
+**Plugins oficiais** (em `plugins/` do repositório)
+
+- [ ] `google-sign-in`: login com Google no Android (Credential Manager), no iOS (GoogleSignIn por SPM) e na web (Google Identity Services), migrado do Tiny Island, que passa a usar o plugin.
+- [ ] `admob`: banner adaptativo ancorado (topo ou base, com espaço reservado), intersticial, premiado, intersticial premiado e app open, consentimento pelo UMP (status, formulário e opções de privacidade), ATT no iOS, modo de teste com os ids de teste do Google, app coberto enquanto um anúncio de tela cheia aparece, iOS com o SDK por SPM e Android com o SDK Next-Gen. Na web, intersticial e premiado pela Ad Placement API do AdSense em modo de teste, e banner informado como indisponível.
+- [ ] `firebase`: núcleo que configura o Firebase no launch com os arquivos de configuração do app.
+- [ ] `firebase-analytics`: eventos, parâmetros, propriedades do usuário, id do usuário e tela atual, em lote, no iOS, no Android e na web.
+- [ ] `firebase-crashlytics`: erros do app como não fatais com a pilha do Lua, logs, chaves e id do usuário, crashes nativos com o NDK no Android e o upload do dSYM na Apple.
+- [ ] `firebase-messaging`: permissão, token, mensagens em primeiro plano, notificação que abriu o app (retida até o Lua escutar) e tópicos, no iOS com APNs pelo repasse do delegate e no Android.
+- [ ] `firebase-remote-config`: padrões, fetch e activate, valores tipados e o evento de atualização, no iOS, no Android e na web.
+- [ ] `purchases`: compras com StoreKit 2 e Google Play Billing (produtos, compra, restauração, transações pendentes na abertura, assinaturas e o token para o servidor).
+- [ ] `game-services`: Game Center (autenticação, placares e conquistas) e Play Games Services.
+
+**Sample, documentação, testes e regras**
+
+- [ ] Sample `samples/system/plugins` com menu e um teste por recurso: banner no topo e na base com a UI saindo de baixo, intersticial, premiado, consentimento, evento de analytics, erro no Crashlytics, remote config e login com Google, validado no simulador iOS, no emulador Android e na web.
+- [ ] Guia `docs/plugins.md` (usar e escrever plugins: formato, Lua, Swift e Objective-C, Kotlin e Java, JavaScript, overlays, espaço reservado, cobertura, ciclo de vida, configuração, arquivos por app e testes), referência Lua de cada plugin oficial no README do plugin e atualização de `docs/platform_bridge.md`, `docs/distribution.md` e `docs/lua-api/platform.md`.
+- [ ] Testes GoogleTest da parte da engine (resolução do Lua dos plugins, configuração, espaço reservado, cobertura, erros para o host, eventos retidos e política de thread), e validação de ponta a ponta de cada plugin oficial nas plataformas.
+- [ ] Regras dos plugins no CLAUDE.md.
+- [ ] Validar o Firebase de ponta a ponta com um projeto Firebase do dono (arquivos de configuração reais), porque sem ele só a configuração e as chamadas são conferidas.
