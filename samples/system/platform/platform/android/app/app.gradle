@@ -1,0 +1,6 @@
+// Haylen Platform answers the bridge methods of the sample with its own Application class, which registers SamplePlugin before the first activity starts.
+android {
+    defaultConfig {
+        manifestPlaceholders.haylenApplication = "dev.haylen.samples.platform.PlatformSampleApplication"
+    }
+}
