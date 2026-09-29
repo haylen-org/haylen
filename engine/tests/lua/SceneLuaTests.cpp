@@ -9,7 +9,9 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/lua/Error.hpp"
+#include "haylen/platform/Bridge.hpp"
 #include "haylen/platform/Event.hpp"
+#include "platform/headless/HeadlessHost.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
 
@@ -254,13 +256,14 @@ TEST(SceneLuaTest, SpawnedTasksNeverResumeOnceTheirSceneUnloaded) {
         haylen = require('haylen')
         scene = require('haylen.scene')
         async = require('async')
+        platform = require('haylen.platform')
         log = {}
         Level = haylen.class('Level', scene.Scene)
         function Level:enter()
             self:spawn(function()
                 local guard <close> = setmetatable({}, {__close = function() log[#log + 1] = 'closed' end})
                 log[#log + 1] = 'waiting'
-                async.sleep(40):await()
+                platform.call('test.hold'):await()
                 log[#log + 1] = 'resumed'
             end)
             scene.spawn(self, function()
@@ -278,11 +281,10 @@ TEST(SceneLuaTest, SpawnedTasksNeverResumeOnceTheirSceneUnloaded) {
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return table.concat(log, ', ')"), "waiting, quick, closed");
 
-    // The sleep settles after the scene is gone and resumes nothing.
-    for (int step = 0; step < 8; ++step) {
-        fixture.frames(1);
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
+    // The call the task waited on settles after the scene is gone and resumes nothing.
+    ASSERT_EQ(fixture.host().getPlatformCalls().size(), 1U);
+    fixture.engine().getPlatform().resolve(fixture.host().getPlatformCalls()[0].id, true, "null");
+    fixture.frames(2);
     EXPECT_EQ(fixture.lua("return table.concat(log, ', ')"), "waiting, quick, closed");
 
     // A task that ends its own scene stops at its next wait.
