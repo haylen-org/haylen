@@ -312,6 +312,8 @@ void SokolRuntime::launch() {
     if (playing) {
         WebPage::reportStarted(engine->getConfig());
     }
+#elif defined(__ANDROID__)
+    JavaBridge::setAppRunning(true);
 #endif
 }
 
@@ -319,6 +321,10 @@ void SokolRuntime::close() noexcept {
     if (engine == nullptr) {
         return;
     }
+#if defined(__ANDROID__)
+    // Native events wait in Java from here on, so the ones that come while the app stops reach the next app instead of none.
+    JavaBridge::setAppRunning(false);
+#endif
     engine.reset();
 #if defined(__EMSCRIPTEN__)
     if (playing) {

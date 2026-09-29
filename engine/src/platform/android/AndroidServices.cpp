@@ -13,6 +13,7 @@
 #include "platform/android/AndroidTextInput.hpp"
 #include "platform/android/JavaBridge.hpp"
 #include "platform/sokol/MemoryWarning.hpp"
+#include "platform/sokol/SokolHost.hpp"
 #include "platform/sokol/SokolRuntime.hpp"
 #include "sokol_app.h"
 
@@ -29,10 +30,13 @@ void Services::initialize() {
 
 void Services::shutdown() noexcept {}
 
-void Services::reportError(const core::Json&) {}
+// Script errors may quote bytes that are not UTF-8, which reach the plugins replaced instead of failing the report.
+void Services::reportError(const core::Json& report) {
+    JavaBridge::reportError(report.dump(-1, ' ', false, core::Json::error_handler_t::replace));
+}
 
 std::vector<std::string> Services::getNativePlugins() {
-    return {};
+    return JavaBridge::getPlugins();
 }
 
 std::shared_ptr<io::Package> Services::openBundledPackage() {
@@ -118,6 +122,22 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenBridge_nativeResolve(JNIEnv* env, j
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenBridge_nativeEmit(JNIEnv* env, jclass, jbyteArray event, jbyteArray payload, jboolean retain) {
     haylen::platform::BridgeRelay::emit(haylen::platform::JavaBridge::toString(*env, event), haylen::platform::JavaBridge::toString(*env, payload), retain == JNI_TRUE);
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenPanels_nativeReserveInsets(JNIEnv* env, jclass, jbyteArray key, jint left, jint top, jint right, jint bottom) {
+    haylen::platform::SokolHost::getNativeViews().reserveInsets(haylen::platform::JavaBridge::toString(*env, key), {.left = static_cast<float>(left), .top = static_cast<float>(top), .right = static_cast<float>(right), .bottom = static_cast<float>(bottom)});
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenPanels_nativeReleaseInsets(JNIEnv* env, jclass, jbyteArray key) {
+    haylen::platform::SokolHost::getNativeViews().releaseInsets(haylen::platform::JavaBridge::toString(*env, key));
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenPluginContext_nativeCoverApp(JNIEnv*, jclass) {
+    haylen::platform::SokolHost::getNativeViews().coverApp();
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenPluginContext_nativeUncoverApp(JNIEnv*, jclass) {
+    haylen::platform::SokolHost::getNativeViews().uncoverApp();
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeSafeArea(JNIEnv*, jclass, jint left, jint top, jint right, jint bottom) {

@@ -3,6 +3,7 @@ package dev.haylen;
 import android.app.Activity;
 import android.app.NativeActivity;
 import android.app.UiModeManager;
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
@@ -23,8 +24,10 @@ import androidx.core.view.WindowInsetsControllerCompat;
 
 // Hosts a Haylen app. The app library is named by the android.app.lib_name meta-data, like any native activity.
 // The manifest gives the activity the Theme.Haylen.Splash theme, whose splash screen stays until the app has drawn its first frame.
+// Every event of the activity reaches the plugins too, in load order, and the views they place over the app live in its panels.
 public class HaylenActivity extends NativeActivity implements InputManager.InputDeviceListener {
     private final HaylenSplash splash = new HaylenSplash(this);
+    private final HaylenPanels panels = new HaylenPanels(this);
     private HaylenEditText editor;
     private HaylenAudioFocus audioFocus;
     private HaylenNetwork network;
@@ -58,6 +61,7 @@ public class HaylenActivity extends NativeActivity implements InputManager.Input
             // Hidden bars only appear transiently over the app, so the safe area covers the cutout and any bars that stay visible, as in multi-window mode.
             Insets safe = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
             nativeSafeArea(safe.left, safe.top, safe.right, safe.bottom);
+            panels.setSafeArea(safe);
             boolean keyboardShown = insets.isVisible(WindowInsetsCompat.Type.ime());
             int keyboardHeight = keyboardShown ? insets.getInsets(WindowInsetsCompat.Type.ime()).bottom : 0;
             nativeKeyboard(0, view.getHeight() - keyboardHeight, keyboardHeight > 0 ? view.getWidth() : 0, keyboardHeight);
@@ -69,24 +73,75 @@ public class HaylenActivity extends NativeActivity implements InputManager.Input
         audioFocus = new HaylenAudioFocus(this);
         network = new HaylenNetwork(this);
         network.register();
+        HaylenPlugins.activityCreated(this, savedInstanceState);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        panels.setStarted(true);
+        HaylenPlugins.activityStarted(this);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         audioFocus.request();
+        HaylenPlugins.activityResumed(this);
     }
 
     @Override
     protected void onPause() {
+        HaylenPlugins.activityPaused(this);
         audioFocus.abandon();
         super.onPause();
+    }
+
+    @Override
+    protected void onStop() {
+        HaylenPlugins.activityStopped(this);
+        panels.setStarted(false);
+        super.onStop();
+    }
+
+    // The template declares the activity single task, so a launch while it runs, such as a deep link or a notification, arrives here and becomes its intent.
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        HaylenPlugins.newIntent(intent);
+    }
+
+    // A native activity has no activity result API, so the plugins that start activities for a result receive it here.
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (!HaylenPlugins.activityResult(requestCode, resultCode, data)) {
+            super.onActivityResult(requestCode, resultCode, data);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        if (!HaylenPlugins.requestPermissionsResult(requestCode, permissions, grantResults)) {
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        }
     }
 
     @Override
     public void onConfigurationChanged(Configuration configuration) {
         super.onConfigurationChanged(configuration);
         nativeOrientation(configuration.orientation == Configuration.ORIENTATION_PORTRAIT);
+        panels.refresh();
+        HaylenPlugins.configurationChanged(configuration);
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            panels.windowFocused();
+        }
+        HaylenPlugins.windowFocusChanged(hasFocus);
     }
 
     @Override
@@ -95,10 +150,12 @@ public class HaylenActivity extends NativeActivity implements InputManager.Input
         splash.showOverlay();
     }
 
-    // The app stops inside the native activity, which runs its cleanup and lets the activity finish, while the bridge, the editor and the listeners it may still use are attached.
+    // The app stops inside the native activity, which runs its cleanup and lets the activity finish, while the bridge, the editor and the listeners it may still use are attached. The plugins hear of it next, and the panels they leave go before the activity does.
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        HaylenPlugins.activityDestroyed(this);
+        panels.removeAll();
         splash.dismiss();
         getSystemService(InputManager.class).unregisterInputDeviceListener(this);
         network.unregister();
@@ -113,6 +170,7 @@ public class HaylenActivity extends NativeActivity implements InputManager.Input
         if (level != TRIM_MEMORY_UI_HIDDEN) {
             nativeLowMemory();
         }
+        HaylenPlugins.trimMemory(level);
     }
 
     @Override
@@ -173,6 +231,10 @@ public class HaylenActivity extends NativeActivity implements InputManager.Input
         if (!editor.dismiss()) {
             nativeBack();
         }
+    }
+
+    HaylenPanels panels() {
+        return panels;
     }
 
     private String libraryName() {

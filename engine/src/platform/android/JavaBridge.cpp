@@ -1,13 +1,19 @@
 #include "platform/android/JavaBridge.hpp"
 
+#include "haylen/core/Json.hpp"
 #include "varn/http/AndroidHttpBridge.h"
 
 namespace haylen::platform {
 
 JavaVM* JavaBridge::javaVm = nullptr;
+pthread_key_t JavaBridge::attachedThreads{};
+std::vector<std::string>& JavaBridge::plugins = *new std::vector<std::string>();
 jclass JavaBridge::bridgeClass = nullptr;
 jmethodID JavaBridge::dispatchMethod = nullptr;
 jmethodID JavaBridge::cancelMethod = nullptr;
+jmethodID JavaBridge::setAppRunningMethod = nullptr;
+jclass JavaBridge::pluginsClass = nullptr;
+jmethodID JavaBridge::reportErrorMethod = nullptr;
 jclass JavaBridge::editorClass = nullptr;
 jmethodID JavaBridge::editMethod = nullptr;
 jmethodID JavaBridge::finishMethod = nullptr;
@@ -19,19 +25,30 @@ jint JavaBridge::load(JavaVM* vm) {
     JNIEnv* env = nullptr;
     vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6);
     javaVm = vm;
+    pthread_key_create(&attachedThreads, &JavaBridge::detachThread);
+
     // A missing class leaves an exception pending, so the lookup stops at the first one.
     bridgeClass = findClass(*env, "dev/haylen/HaylenBridge");
-    editorClass = bridgeClass != nullptr ? findClass(*env, "dev/haylen/HaylenEditText") : nullptr;
+    pluginsClass = bridgeClass != nullptr ? findClass(*env, "dev/haylen/HaylenPlugins") : nullptr;
+    editorClass = pluginsClass != nullptr ? findClass(*env, "dev/haylen/HaylenEditText") : nullptr;
     activityClass = editorClass != nullptr ? findClass(*env, "dev/haylen/HaylenActivity") : nullptr;
     if (activityClass == nullptr) {
         return JNI_ERR;
     }
     dispatchMethod = env->GetStaticMethodID(bridgeClass, "dispatch", "(J[B[B)V");
     cancelMethod = env->GetStaticMethodID(bridgeClass, "cancel", "(J)V");
+    setAppRunningMethod = env->GetStaticMethodID(bridgeClass, "setAppRunning", "(Z)V");
+    reportErrorMethod = env->GetStaticMethodID(pluginsClass, "reportError", "([B)V");
     editMethod = env->GetStaticMethodID(editorClass, "edit", "([B)V");
     finishMethod = env->GetStaticMethodID(editorClass, "finish", "()V");
     lockOrientationMethod = env->GetStaticMethodID(activityClass, "lockOrientation", "(I)V");
     captureBackMethod = env->GetStaticMethodID(activityClass, "captureBack", "(Z)V");
+
+    // The plugins load when the process starts, before any activity loads this library, so their list is final here.
+    const auto ids = static_cast<jbyteArray>(env->CallStaticObjectMethod(pluginsClass, env->GetStaticMethodID(pluginsClass, "ids", "()[B")));
+    plugins = core::Json::parse(toString(*env, ids)).get<std::vector<std::string>>();
+    env->DeleteLocalRef(ids);
+
     varn::http::client::AndroidHttpBridge::publish(vm);
     return JNI_VERSION_1_6;
 }
@@ -42,8 +59,7 @@ jclass JavaBridge::findClass(JNIEnv& env, const char* name) {
 }
 
 void JavaBridge::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson) {
-    const Thread thread;
-    JNIEnv& env = thread.getEnv();
+    JNIEnv& env = getEnv();
     const jbyteArray methodBytes = toBytes(env, method);
     const jbyteArray paramsBytes = toBytes(env, paramsJson);
     env.CallStaticVoidMethod(bridgeClass, dispatchMethod, static_cast<jlong>(id), methodBytes, paramsBytes);
@@ -52,31 +68,41 @@ void JavaBridge::dispatch(std::uint64_t id, std::string_view method, std::string
 }
 
 void JavaBridge::cancel(std::uint64_t id) {
-    const Thread thread;
-    thread.getEnv().CallStaticVoidMethod(bridgeClass, cancelMethod, static_cast<jlong>(id));
+    getEnv().CallStaticVoidMethod(bridgeClass, cancelMethod, static_cast<jlong>(id));
+}
+
+void JavaBridge::setAppRunning(bool value) {
+    getEnv().CallStaticVoidMethod(bridgeClass, setAppRunningMethod, static_cast<jboolean>(value ? JNI_TRUE : JNI_FALSE));
+}
+
+void JavaBridge::reportError(std::string_view reportJson) {
+    JNIEnv& env = getEnv();
+    const jbyteArray bytes = toBytes(env, reportJson);
+    env.CallStaticVoidMethod(pluginsClass, reportErrorMethod, bytes);
+    env.DeleteLocalRef(bytes);
+}
+
+const std::vector<std::string>& JavaBridge::getPlugins() noexcept {
+    return plugins;
 }
 
 void JavaBridge::editText(std::string_view fieldJson) {
-    const Thread thread;
-    JNIEnv& env = thread.getEnv();
+    JNIEnv& env = getEnv();
     const jbyteArray bytes = toBytes(env, fieldJson);
     env.CallStaticVoidMethod(editorClass, editMethod, bytes);
     env.DeleteLocalRef(bytes);
 }
 
 void JavaBridge::finishText() {
-    const Thread thread;
-    thread.getEnv().CallStaticVoidMethod(editorClass, finishMethod);
+    getEnv().CallStaticVoidMethod(editorClass, finishMethod);
 }
 
 void JavaBridge::lockOrientation(int value) {
-    const Thread thread;
-    thread.getEnv().CallStaticVoidMethod(activityClass, lockOrientationMethod, static_cast<jint>(value));
+    getEnv().CallStaticVoidMethod(activityClass, lockOrientationMethod, static_cast<jint>(value));
 }
 
 void JavaBridge::captureBack(bool value) {
-    const Thread thread;
-    thread.getEnv().CallStaticVoidMethod(activityClass, captureBackMethod, static_cast<jboolean>(value ? JNI_TRUE : JNI_FALSE));
+    getEnv().CallStaticVoidMethod(activityClass, captureBackMethod, static_cast<jboolean>(value ? JNI_TRUE : JNI_FALSE));
 }
 
 std::string JavaBridge::toString(JNIEnv& env, jbyteArray bytes) {
@@ -91,17 +117,18 @@ jbyteArray JavaBridge::toBytes(JNIEnv& env, std::string_view text) {
     return bytes;
 }
 
-JavaBridge::Thread::Thread() {
+// A thread that this class attached keeps its attachment, which the key ends when the thread exits, so no call pays for attaching and every attachment is released.
+JNIEnv& JavaBridge::getEnv() {
+    JNIEnv* env = nullptr;
     if (javaVm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_EDETACHED) {
         javaVm->AttachCurrentThread(&env, nullptr);
-        attached = true;
+        pthread_setspecific(attachedThreads, env);
     }
+    return *env;
 }
 
-JavaBridge::Thread::~Thread() {
-    if (attached) {
-        javaVm->DetachCurrentThread();
-    }
+void JavaBridge::detachThread(void*) {
+    javaVm->DetachCurrentThread();
 }
 
 } // namespace haylen::platform

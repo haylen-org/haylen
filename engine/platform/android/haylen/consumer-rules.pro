@@ -3,6 +3,17 @@
 -keep class dev.haylen.HaylenBridge {
     static void dispatch(long, byte[], byte[]);
     static void cancel(long);
+    static void setAppRunning(boolean);
+}
+
+-keep class dev.haylen.HaylenPlugins {
+    static byte[] ids();
+    static void reportError(byte[]);
+}
+
+# The haylen library creates plugins by the class names of the manifest meta-data, so their classes and constructors keep their names.
+-keep class * extends dev.haylen.HaylenPlugin {
+    public <init>();
 }
 
 -keep class dev.haylen.HaylenEditText {

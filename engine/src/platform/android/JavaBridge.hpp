@@ -1,17 +1,19 @@
 #pragma once
 
 #include <jni.h>
+#include <pthread.h>
 
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace haylen::platform {
 
-// Calls into the Java side of the haylen Android library: the platform bridge of dev.haylen.HaylenBridge, the hidden text field of dev.haylen.HaylenEditText and the orientation lock and back callback of dev.haylen.HaylenActivity.
+// Calls into the Java side of the haylen Android library: the platform bridge of dev.haylen.HaylenBridge, the plugins of dev.haylen.HaylenPlugins, the hidden text field of dev.haylen.HaylenEditText and the orientation lock and back callback of dev.haylen.HaylenActivity. A native thread attaches to the Java VM the first time it calls Java and detaches when it ends.
 class JavaBridge final {
   public:
-    // Resolves the Java classes the native side calls, including the HTTP transport of Varn, which JNI_OnLoad does because the app class loader is still in reach there. Returns the JNI version, or JNI_ERR when the APK lacks the bridge class.
+    // Resolves the Java classes the native side calls, including the HTTP transport of Varn, which JNI_OnLoad does because the app class loader is still in reach there, and reads the plugins that the process loaded before. Returns the JNI version, or JNI_ERR when the APK lacks a class.
     static jint load(JavaVM* vm);
 
     // Hands a call to the Java handler registry, which answers through the bridge relay.
@@ -19,6 +21,15 @@ class JavaBridge final {
 
     // Tells the Java handler of a call that the app gave it up.
     static void cancel(std::uint64_t id);
+
+    // Tells the Java bridge whether an app runs, which is when the engine takes native events. Java keeps the events meanwhile.
+    static void setAppRunning(bool value);
+
+    // Hands the JSON report of the error that stopped the app to the plugins.
+    static void reportError(std::string_view reportJson);
+
+    // The ids of the plugins whose native part the process loaded.
+    [[nodiscard]] static const std::vector<std::string>& getPlugins() noexcept;
 
     // Hands a text field as JSON to the hidden text field, or lets it go, from the frame thread.
     static void editText(std::string_view fieldJson);
@@ -34,32 +45,22 @@ class JavaBridge final {
     [[nodiscard]] static std::string toString(JNIEnv& env, jbyteArray bytes);
 
   private:
-    // Attaches the calling thread to the Java VM for the duration of a call.
-    class Thread final {
-      public:
-        Thread();
-        ~Thread();
-
-        Thread(const Thread&) = delete;
-        Thread& operator=(const Thread&) = delete;
-
-        [[nodiscard]] JNIEnv& getEnv() const noexcept {
-            return *env;
-        }
-
-      private:
-        JNIEnv* env = nullptr;
-        bool attached = false;
-    };
+    [[nodiscard]] static JNIEnv& getEnv();
+    static void detachThread(void* env);
 
     [[nodiscard]] static jbyteArray toBytes(JNIEnv& env, std::string_view text);
 
     [[nodiscard]] static jclass findClass(JNIEnv& env, const char* name);
 
     static JavaVM* javaVm;
+    static pthread_key_t attachedThreads;
+    static std::vector<std::string>& plugins;
     static jclass bridgeClass;
     static jmethodID dispatchMethod;
     static jmethodID cancelMethod;
+    static jmethodID setAppRunningMethod;
+    static jclass pluginsClass;
+    static jmethodID reportErrorMethod;
     static jclass editorClass;
     static jmethodID editMethod;
     static jmethodID finishMethod;

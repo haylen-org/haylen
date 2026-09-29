@@ -16,12 +16,20 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
-// Native side of the platform bridge on Android. Handlers run on the main thread and may reply later from any thread. A handler that throws fails its call instead of crashing the app.
+// Native side of the platform bridge on Android. Handlers run on the main thread or on the shared background thread and may reply later from any thread. A handler that throws fails its call instead of crashing the app.
 public final class HaylenBridge {
+    // The thread a handler runs on. MAIN handlers may touch the activity and views. BACKGROUND handlers share one background thread, so work that does not touch the UI, such as disk or database access, never holds up the main thread.
+    public enum Threading {
+        MAIN,
+        BACKGROUND
+    }
+
     public interface Reply {
         void success(Object value);
 
@@ -63,10 +71,20 @@ public final class HaylenBridge {
         }
     }
 
-    private static final Map<String, MethodHandler> handlers = new ConcurrentHashMap<>();
+    // Events that native code sends while no app runs wait here, up to this many of each name, until the next app starts.
+    private static final int KEPT_EVENTS_PER_NAME = 32;
+
+    private static final Map<String, Registration> handlers = new ConcurrentHashMap<>();
     private static final Map<Long, PendingReply> pending = new ConcurrentHashMap<>();
     private static final Handler mainThread = new Handler(Looper.getMainLooper());
-    private static Activity activity;
+    private static final ExecutorService background = Executors.newSingleThreadExecutor(task -> {
+        Thread thread = new Thread(task, "haylen-bridge");
+        thread.setDaemon(true);
+        return thread;
+    });
+    private static final List<KeptEvent> keptEvents = new ArrayList<>();
+    private static boolean appRunning;
+    private static volatile Activity activity;
 
     // The built-in methods are registered when the class loads, before any app code can register, so an app handler of the same name always replaces them.
     static {
@@ -105,7 +123,11 @@ public final class HaylenBridge {
     private HaylenBridge() {}
 
     public static void register(String method, MethodHandler handler) {
-        handlers.put(method, handler);
+        register(method, handler, Threading.MAIN);
+    }
+
+    public static void register(String method, MethodHandler handler, Threading threading) {
+        handlers.put(method, new Registration(handler, threading));
     }
 
     public static void unregister(String method) {
@@ -117,9 +139,31 @@ public final class HaylenBridge {
         emit(event, payload, false);
     }
 
-    // Sends an event to the app. A retained event that arrives while nothing listens waits for the first listener.
+    // Sends an event to the app. A retained event that arrives while nothing listens waits for the first listener. An event sent while no app runs, such as before the first activity loads the native library, waits here until an app starts.
     public static void emit(String event, Object payload, boolean retain) {
-        nativeEmit(utf8(event), utf8(toJson(payload)), retain);
+        KeptEvent kept = new KeptEvent(event, utf8(event), utf8(toJson(payload)), retain);
+        synchronized (keptEvents) {
+            if (appRunning) {
+                nativeEmit(kept.name, kept.json, kept.retain);
+                return;
+            }
+            // The oldest event of the name gives way once the name has its limit.
+            int oldest = -1;
+            int count = 0;
+            for (int index = 0; index < keptEvents.size(); ++index) {
+                if (!keptEvents.get(index).event.equals(event)) {
+                    continue;
+                }
+                if (oldest < 0) {
+                    oldest = index;
+                }
+                ++count;
+            }
+            if (count == KEPT_EVENTS_PER_NAME) {
+                keptEvents.remove(oldest);
+            }
+            keptEvents.add(kept);
+        }
     }
 
     public static Activity activity() {
@@ -134,37 +178,36 @@ public final class HaylenBridge {
         activity = null;
     }
 
-    // Called from the native frame thread for every call that no C++ handler answers.
+    // Called from the frame thread of the engine when an app starts and before it stops. The engine takes events only while an app runs, so the events kept meanwhile reach the app that starts, in order.
+    static void setAppRunning(boolean running) {
+        synchronized (keptEvents) {
+            appRunning = running;
+            if (!running) {
+                return;
+            }
+            for (KeptEvent kept : keptEvents) {
+                nativeEmit(kept.name, kept.json, kept.retain);
+            }
+            keptEvents.clear();
+        }
+    }
+
+    // Called from the native frame thread for every call that no C++ handler answers. The parameters are parsed on the thread of the handler, so the frame thread only hands the call over.
     static void dispatch(long call, byte[] methodBytes, byte[] paramsBytes) {
         String method = new String(methodBytes, StandardCharsets.UTF_8);
         PendingReply reply = new PendingReply(call);
-        MethodHandler handler = handlers.get(method);
-        if (handler == null) {
+        Registration registration = handlers.get(method);
+        if (registration == null) {
             reply.failure("No native handler is registered for " + method + ".", "noHandler", null);
             return;
         }
-        Object parsed;
-        try {
-            parsed = new JSONTokener(new String(paramsBytes, StandardCharsets.UTF_8)).nextValue();
-        } catch (JSONException error) {
-            reply.failure(error.getMessage());
-            return;
-        }
         pending.put(call, reply);
-        mainThread.post(() -> {
-            if (activity == null) {
-                reply.failure("The activity was destroyed before " + method + " ran.");
-                return;
-            }
-            if (reply.isCancelled()) {
-                return;
-            }
-            try {
-                handler.handle(parsed, reply);
-            } catch (Exception error) {
-                reply.failure(error);
-            }
-        });
+        Runnable run = () -> handle(method, registration, paramsBytes, reply);
+        if (registration.threading == Threading.BACKGROUND) {
+            background.execute(run);
+        } else {
+            mainThread.post(run);
+        }
     }
 
     // Called from the native frame thread when the app cancels a call or its timeout passes.
@@ -172,6 +215,29 @@ public final class HaylenBridge {
         PendingReply reply = pending.remove(call);
         if (reply != null) {
             reply.cancel();
+        }
+    }
+
+    private static void handle(String method, Registration registration, byte[] paramsBytes, PendingReply reply) {
+        if (reply.isCancelled()) {
+            return;
+        }
+        if (registration.threading == Threading.MAIN && activity == null) {
+            reply.failure("The activity was destroyed before " + method + " ran.");
+            return;
+        }
+
+        Object params;
+        try {
+            params = new JSONTokener(new String(paramsBytes, StandardCharsets.UTF_8)).nextValue();
+        } catch (JSONException error) {
+            reply.failure(error.getMessage());
+            return;
+        }
+        try {
+            registration.handler.handle(params, reply);
+        } catch (Exception error) {
+            reply.failure(error);
         }
     }
 
@@ -193,6 +259,30 @@ public final class HaylenBridge {
         }
         Object wrapped = JSONObject.wrap(value);
         return wrapped == null ? "null" : wrapped.toString();
+    }
+
+    private static final class Registration {
+        final MethodHandler handler;
+        final Threading threading;
+
+        Registration(MethodHandler handler, Threading threading) {
+            this.handler = handler;
+            this.threading = threading;
+        }
+    }
+
+    private static final class KeptEvent {
+        final String event;
+        final byte[] name;
+        final byte[] json;
+        final boolean retain;
+
+        KeptEvent(String event, byte[] name, byte[] json, boolean retain) {
+            this.event = event;
+            this.name = name;
+            this.json = json;
+            this.retain = retain;
+        }
     }
 
     // A call answers once: later answers, and answers after a cancel, are dropped.

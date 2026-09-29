@@ -1,0 +1,289 @@
+package dev.haylen;
+
+import android.app.Activity;
+import android.app.Application;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.res.Configuration;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+// The native parts of the plugins of the app, in load order. HaylenPluginProvider loads them when the process starts, HaylenActivity forwards its events to them, and the engine reads their ids and hands them its errors.
+final class HaylenPlugins {
+    private static final String TAG = "haylen";
+    private static final String META_DATA_PREFIX = "dev.haylen.plugin.";
+    // The package of the app lies in this folder of the APK assets, as the engine reads it.
+    private static final String PACKAGE_FOLDER = "app/";
+
+    private static final Handler mainThread = new Handler(Looper.getMainLooper());
+    private static List<Loaded> loaded = Collections.emptyList();
+
+    private HaylenPlugins() {}
+
+    // Creates every plugin class that the manifest names and calls onLoad in the order of the plugins in app.json, where every plugin follows the plugins it requires. A class that cannot be created, or an onLoad that fails, is logged and leaves its plugin out, so the app runs without its native part.
+    static void load(Application application) {
+        Map<String, String> classes = readClasses(application);
+        JSONObject values = readPackageJson(application, "app.json").optJSONObject("plugins");
+        Map<String, JSONObject> manifests = new TreeMap<>();
+        for (String id : classes.keySet()) {
+            manifests.put(id, readPackageJson(application, "plugins/" + id + "/plugin.json"));
+        }
+
+        List<Loaded> all = new ArrayList<>();
+        for (String id : order(classes.keySet(), values, manifests)) {
+            HaylenPlugin plugin = create(application, id, classes.get(id));
+            if (plugin == null) {
+                continue;
+            }
+            JSONObject manifest = manifests.get(id);
+            HaylenPluginContext context = new HaylenPluginContext(id, application, config(values, id, manifest));
+            try {
+                plugin.onLoad(context);
+            } catch (Exception error) {
+                Log.e(TAG, "The plugin " + id + " failed to load, so the app runs without its native part.", error);
+                context.unregisterAll();
+                continue;
+            }
+            Log.i(TAG, "Loaded the plugin " + id + " " + manifest.optString("version", "without a plugin.json") + ".");
+            all.add(new Loaded(plugin, context));
+        }
+        loaded = Collections.unmodifiableList(all);
+    }
+
+    // Called from JNI_OnLoad of the native library, which reports the plugins to the engine.
+    static byte[] ids() {
+        JSONArray ids = new JSONArray();
+        for (Loaded entry : loaded) {
+            ids.put(entry.context.id());
+        }
+        return ids.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    // Called from the frame thread of the engine with the JSON report of every error that stops the app.
+    static void reportError(byte[] json) {
+        String text = new String(json, StandardCharsets.UTF_8);
+        mainThread.post(() -> {
+            JSONObject error;
+            try {
+                error = new JSONObject(text);
+            } catch (JSONException failure) {
+                Log.e(TAG, "The engine reported an error that is not a JSON object.", failure);
+                return;
+            }
+            for (Loaded entry : loaded) {
+                entry.plugin.onAppError(error);
+            }
+        });
+    }
+
+    static void activityCreated(Activity activity, Bundle savedInstanceState) {
+        for (Loaded entry : loaded) {
+            entry.plugin.onActivityCreated(activity, savedInstanceState);
+        }
+    }
+
+    static void activityStarted(Activity activity) {
+        for (Loaded entry : loaded) {
+            entry.plugin.onActivityStarted(activity);
+        }
+    }
+
+    static void activityResumed(Activity activity) {
+        for (Loaded entry : loaded) {
+            entry.plugin.onActivityResumed(activity);
+        }
+    }
+
+    static void activityPaused(Activity activity) {
+        for (Loaded entry : loaded) {
+            entry.plugin.onActivityPaused(activity);
+        }
+    }
+
+    static void activityStopped(Activity activity) {
+        for (Loaded entry : loaded) {
+            entry.plugin.onActivityStopped(activity);
+        }
+    }
+
+    // The covers that plugins left open end with the activity, so the next app starts uncovered.
+    static void activityDestroyed(Activity activity) {
+        for (Loaded entry : loaded) {
+            entry.plugin.onActivityDestroyed(activity);
+        }
+        for (Loaded entry : loaded) {
+            entry.context.endCovers();
+        }
+    }
+
+    static void newIntent(Intent intent) {
+        for (Loaded entry : loaded) {
+            entry.plugin.onNewIntent(intent);
+        }
+    }
+
+    static boolean activityResult(int requestCode, int resultCode, Intent data) {
+        for (Loaded entry : loaded) {
+            if (entry.plugin.onActivityResult(requestCode, resultCode, data)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static boolean requestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        for (Loaded entry : loaded) {
+            if (entry.plugin.onRequestPermissionsResult(requestCode, permissions, grantResults)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static void configurationChanged(Configuration configuration) {
+        for (Loaded entry : loaded) {
+            entry.plugin.onConfigurationChanged(configuration);
+        }
+    }
+
+    static void windowFocusChanged(boolean hasFocus) {
+        for (Loaded entry : loaded) {
+            entry.plugin.onWindowFocusChanged(hasFocus);
+        }
+    }
+
+    static void trimMemory(int level) {
+        for (Loaded entry : loaded) {
+            entry.plugin.onTrimMemory(level);
+        }
+    }
+
+    // The manifest merges the dev.haylen.plugin.<id> entries of every plugin module, each naming the class of its plugin.
+    private static Map<String, String> readClasses(Application application) {
+        Bundle metaData;
+        try {
+            metaData = application.getPackageManager().getApplicationInfo(application.getPackageName(), PackageManager.GET_META_DATA).metaData;
+        } catch (PackageManager.NameNotFoundException error) {
+            throw new IllegalStateException("The package of the app is not installed.", error);
+        }
+        Map<String, String> classes = new TreeMap<>();
+        if (metaData == null) {
+            return classes;
+        }
+        for (String key : metaData.keySet()) {
+            if (key.startsWith(META_DATA_PREFIX)) {
+                classes.put(key.substring(META_DATA_PREFIX.length()), metaData.getString(key));
+            }
+        }
+        return classes;
+    }
+
+    // A file the package lacks reads as an empty object, like a plugin module that an app adds without its plugin folder.
+    private static JSONObject readPackageJson(Application application, String path) {
+        try (InputStream input = application.getAssets().open(PACKAGE_FOLDER + path)) {
+            ByteArrayOutputStream text = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            for (int read; (read = input.read(buffer)) > 0; ) {
+                text.write(buffer, 0, read);
+            }
+            return new JSONObject(new String(text.toByteArray(), StandardCharsets.UTF_8));
+        } catch (IOException | JSONException error) {
+            Log.w(TAG, "The package has no readable " + path + ": " + error.getMessage());
+            return new JSONObject();
+        }
+    }
+
+    // The plugins keep the order of app.json, every plugin after the plugins it requires, as make.py orders them, and plugins that app.json does not list follow by id.
+    private static List<String> order(Set<String> ids, JSONObject values, Map<String, JSONObject> manifests) {
+        Set<String> ordered = new LinkedHashSet<>();
+        if (values != null) {
+            for (Iterator<String> keys = values.keys(); keys.hasNext(); ) {
+                visit(keys.next(), manifests, ordered);
+            }
+        }
+        ordered.addAll(ids);
+        ordered.retainAll(ids);
+        return new ArrayList<>(ordered);
+    }
+
+    private static void visit(String id, Map<String, JSONObject> manifests, Set<String> ordered) {
+        if (ordered.contains(id)) {
+            return;
+        }
+        JSONObject manifest = manifests.get(id);
+        JSONArray requires = manifest != null ? manifest.optJSONArray("requires") : null;
+        for (int index = 0; requires != null && index < requires.length(); ++index) {
+            visit(requires.optString(index), manifests, ordered);
+        }
+        ordered.add(id);
+    }
+
+    private static HaylenPlugin create(Application application, String id, String className) {
+        try {
+            Class<?> type = Class.forName(className, true, application.getClassLoader());
+            if (!HaylenPlugin.class.isAssignableFrom(type)) {
+                Log.e(TAG, "The plugin " + id + " names the class " + className + ", which does not extend dev.haylen.HaylenPlugin, so the app runs without its native part.");
+                return null;
+            }
+            return type.asSubclass(HaylenPlugin.class).getDeclaredConstructor().newInstance();
+        } catch (ReflectiveOperationException | LinkageError error) {
+            Log.e(TAG, "The plugin " + id + " names the class " + className + ", which cannot be found or created with a public constructor without parameters, so the app runs without its native part.", error);
+            return null;
+        }
+    }
+
+    // The values that app.json gives the plugin, with the default of every parameter of its plugin.json that the app leaves out.
+    private static JSONObject config(JSONObject values, String id, JSONObject manifest) {
+        JSONObject given = values != null ? values.optJSONObject(id) : null;
+        JSONObject config = new JSONObject();
+        try {
+            if (given != null) {
+                for (Iterator<String> keys = given.keys(); keys.hasNext(); ) {
+                    String name = keys.next();
+                    config.put(name, given.get(name));
+                }
+            }
+            JSONObject parameters = manifest.optJSONObject("parameters");
+            if (parameters == null) {
+                return config;
+            }
+            for (Iterator<String> names = parameters.keys(); names.hasNext(); ) {
+                String name = names.next();
+                JSONObject parameter = parameters.optJSONObject(name);
+                if (parameter != null && parameter.has("default") && !config.has(name)) {
+                    config.put(name, parameter.get("default"));
+                }
+            }
+        } catch (JSONException error) {
+            throw new IllegalStateException("The values of the plugin " + id + " cannot be copied.", error);
+        }
+        return config;
+    }
+
+    private static final class Loaded {
+        final HaylenPlugin plugin;
+        final HaylenPluginContext context;
+
+        Loaded(HaylenPlugin plugin, HaylenPluginContext context) {
+            this.plugin = plugin;
+            this.context = context;
+        }
+    }
+}
