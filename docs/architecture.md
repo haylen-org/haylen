@@ -83,7 +83,7 @@ Every subsystem is a plugin. A plugin derives from `haylen::plugins::Plugin` in 
 | `animation2d` | `haylen.animation2d` | Registers the `atlas` asset type. |
 | `particles2d` | `haylen.particles2d` | Registers the `particles` asset type. |
 | `audio` | `haylen.audio` | Registers the `sound` asset type. |
-| `physics2d`, `tiled`, `spatial2d`, `navigation2d` | `haylen.physics2d`, `haylen.tiled`, `haylen.spatial2d`, `haylen.navigation2d` | `tiled` registers the `tiled` and `tiled_world` asset types. |
+| `physics2d`, `tiled`, `spatial2d`, `navigation2d` | `haylen.physics2d`, `haylen.tiled`, `haylen.spatial2d`, `haylen.navigation2d` | `tiled` registers the `tiled` and `tiledWorld` asset types. |
 | `localization` | `haylen.localization` | |
 | `storage` | `haylen.storage`, `haylen.preferences` | Loads preferences on start and writes them on suspend and stop. |
 | `debug` | `haylen.debug` | Draws the compact statistics with the renderer and the full debug overlay with ImGui, cycled with F3 by default, samples monitors and publishes object events. |
@@ -116,7 +116,7 @@ The portable engine reaches the platform only through `platform::Host`, declared
 | --- | --- |
 | `getPlatformName()` | The name that the `platform` field of the root `haylen` Lua module reports, such as `macos` or `web`. |
 | `getGraphicsSetup()` | The Sokol gfx environment the `graphics::Device` is created with. |
-| `getAudioSetup()` | Whether the `audio::Mixer` opens a device. |
+| `getAudioSetup()` | Whether the `audio::Mixer` opens a device, and the backend its device plays through where the platform needs one of its own, such as the audio output of the page in browsers. |
 | `getFrameTarget()` | The swapchain the renderer submits each frame to. |
 | `getUserDataDirectory(identifier)`, `persistUserData()` | Where `storage::UserStorage` keeps the files of an app, and how the platform makes them durable. |
 | `getSafeAreaInsets()` | The screen area that UI must avoid, in framebuffer pixels. |
@@ -177,7 +177,7 @@ Lua has a single state, so Lua code never runs on worker threads. Slow engine op
 
 Code on the frame thread never iterates a container while the loop body can run Lua or a user callback. It copies the container first, the way `Engine::frame` copies the plugin list and `UiPlugin` copies its mounted documents.
 
-Static objects of the engine are created with `new` and never destroyed, such as the log listeners, the object counters and their registry, the runtime of `SokolRuntime` and the platform state behind the bridge, native calls and text input. A process can end with an `exit()` on a thread other than the frame thread, as the iOS simulator does on a background queue when its render server dies, and `exit()` runs the destructors of static objects on that thread while the frame thread still logs, counts objects and plays the app. The workers of the native WebSocket connections are the one exception: they stop their connections at exit and wait for them, so the static state of Poco and OpenSSL outlives every connection thread.
+Static objects of the engine are created with `new` and never destroyed, such as the log listeners, the object counters and their registry, the default options and empty values that methods hand out, the runtime of `SokolRuntime` and the platform state behind the bridge, native calls and text input. A process can end with an `exit()` on a thread other than the frame thread, as the iOS simulator does on a background queue when its render server dies, and `exit()` runs the destructors of static objects on that thread while the frame thread still logs, counts objects and plays the app. The workers of the native WebSocket connections are the one exception: they stop their connections at exit and wait for them, so the static state of Poco and OpenSSL outlives every connection thread.
 
 The web build is single-threaded like Varn. `Runtime::poll()` runs the pool jobs posted since the last frame, and `JobSystem::parallelFor` runs the whole range on the frame thread. The page therefore needs neither `SharedArrayBuffer` nor cross-origin isolation headers.
 
@@ -241,7 +241,7 @@ The web build is the same runtime controlled by the page. `engine/platform/web/h
 | `onLog(level, line)` | Receives every log line of the engine and the app. |
 | `onError({message, file, line, traceback, frames})` | Receives the error that stopped the app, split by `lua::Error`, with the stack as text and as a list of frames. |
 | `onStarted({name, identifier, version})`, `onStopped()` | Report when an app starts and stops. |
-| `onStats(stats)` | Receives frame statistics about once per second: frame rate, frame times, renderer counters, cached assets, audio voices, profiler scopes and the state and underruns of the audio output. |
+| `onStats(stats)` | Receives frame statistics about once per second: frame rate, frame times, renderer counters, cached assets, audio voices, profiler scopes and whether the audio output is available, with its state and underruns. |
 
 Callbacks run right after the frame that produced them, so they may call back into the runtime, even to restart the app. Every start creates a new `Engine` with a fresh Lua state, and the previous one is destroyed between frames.
 

@@ -98,8 +98,8 @@ class World final {
     class OneWayFilter;
 
     static const Settings kDefaultSettings;
-    static debug::ObjectCounter bodyCounter;
-    static debug::ObjectCounter contactCounter;
+    static debug::ObjectCounter& bodyCounter;
+    static debug::ObjectCounter& contactCounter;
 
     // One-way platforms keep contacts whose normal leans at least this much toward their direction.
     static constexpr float kOneWayThreshold = 0.5F;

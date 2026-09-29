@@ -13,7 +13,7 @@ math::Rect StaticSpriteBatch::getBounds() const noexcept {
 }
 
 const graphics::Texture& StaticSpriteBatch::getTexture() const noexcept {
-    static const graphics::Texture kEmpty;
+    static const graphics::Texture& kEmpty = *new const graphics::Texture();
     return resource ? resource->texture : kEmpty;
 }
 

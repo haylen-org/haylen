@@ -37,7 +37,7 @@ math::Color Effect::readColor(const core::Json& value) {
 }
 
 Effect Effect::parse(const core::Json& document, std::string_view path) {
-    static const std::set<std::string, std::less<>> known{"texture", "frames", "rate", "bursts", "duration", "loop", "prewarm", "maxParticles", "lifetime", "speed", "direction", "spread", "gravity", "radialAcceleration", "tangentialAcceleration", "damping", "startSize", "endSize", "spin", "colors", "shape", "shapeSize", "localSpace", "layer", "depth", "blend"};
+    static const std::set<std::string, std::less<>>& known = *new const std::set<std::string, std::less<>>{"texture", "frames", "rate", "bursts", "duration", "loop", "prewarm", "maxParticles", "lifetime", "speed", "direction", "spread", "gravity", "radialAcceleration", "tangentialAcceleration", "damping", "startSize", "endSize", "spin", "colors", "shape", "shapeSize", "localSpace", "layer", "depth", "blend"};
     for (const auto& [key, value] : document.items()) {
         if (!known.contains(key)) {
             throw std::invalid_argument("Unknown particle effect option '" + key + "' in " + std::string(path));

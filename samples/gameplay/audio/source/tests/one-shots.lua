@@ -89,7 +89,7 @@ function OneShots:update(dt)
             table.remove(self.voices, index)
         end
     end
-    if input.mousePressed('left') and not ui.wantsPointer() then
+    if input.mousePressed('left') and not ui.usingPointer() then
         local x = self:toStage(input.mousePosition())
         if x >= 0 and x <= self.area.width then
             self:play(math.max(-1, math.min(1, x / self.area.width * 2 - 1)))

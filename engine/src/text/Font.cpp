@@ -5,7 +5,7 @@
 
 namespace haylen::text {
 
-debug::ObjectCounter Font::counter("Font", debug::ObjectCounter::Kind::Native);
+debug::ObjectCounter& Font::counter = *new debug::ObjectCounter("Font", debug::ObjectCounter::Kind::Native);
 
 Font::Font(Metrics fontMetrics) : metrics(fontMetrics), layouts(std::make_unique<LayoutCache>()) {}
 

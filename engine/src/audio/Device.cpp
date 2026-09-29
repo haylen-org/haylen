@@ -1,19 +1,15 @@
 #include "audio/Device.hpp"
 
-#include <stdexcept>
 #include <utility>
 
+#include "audio/OutputBackend.hpp"
 #include "haylen/core/Log.hpp"
-
-#if defined(__EMSCRIPTEN__)
-#include "platform/web/BrowserAudioOutput.hpp"
-#endif
 
 namespace haylen::audio {
 
 Device::Device(const Mixer::Setup& value) : setup(value) {
     if (setup.device) {
-        open();
+        connect(true);
     }
 }
 
@@ -42,9 +38,11 @@ void Device::interrupt() {
 }
 
 void Device::endInterruption() {
-    if (setup.device) {
+    // An output that played warns when the system refuses it now, and an output that was unavailable already tries again quietly.
+    if (setup.device && (interrupted || !opened)) {
+        const bool played = opened;
         close();
-        open();
+        connect(played);
     }
     interrupted = false;
     apply();
@@ -93,16 +91,20 @@ ma_ios_session_category Device::toSessionCategory(Session::Category category) no
     return ma_ios_session_category_ambient;
 }
 
-void Device::open() {
+std::optional<std::string_view> Device::open() {
     // Creating the context sets the category of the iOS audio session and activates it, and other platforms ignore the session.
     ma_context_config contextConfig = ma_context_config_init();
     contextConfig.coreaudio.sessionCategory = toSessionCategory(setup.session.category);
     contextConfig.coreaudio.sessionCategoryOptions = setup.session.mixWithOthers ? static_cast<ma_uint32>(ma_ios_session_category_option_mix_with_others) : 0U;
-#if defined(__EMSCRIPTEN__)
-    contextConfig.custom.onContextInit = &BrowserAudioOutput::initContext;
-#endif
-    if (ma_context_init(nullptr, 0, &contextConfig, &context) != MA_SUCCESS) {
-        throw std::runtime_error("The audio system could not be started.");
+
+    // A backend that the host gives is the only one the context tries.
+    const ma_backend custom = ma_backend_custom;
+    const bool hosted = setup.backend != nullptr;
+    if (hosted) {
+        contextConfig.custom.onContextInit = setup.backend->initContext;
+    }
+    if (const ma_result result = ma_context_init(hosted ? &custom : nullptr, hosted ? 1U : 0U, &contextConfig, &context); result != MA_SUCCESS) {
+        return hosted ? setup.backend->refusal : ma_result_description(result);
     }
 
     ma_device_config config = ma_device_config_init(ma_device_type_playback);
@@ -116,12 +118,19 @@ void Device::open() {
     config.noClip = MA_TRUE;
     config.aaudio.usage = ma_aaudio_usage_game;
     config.aaudio.contentType = ma_aaudio_content_type_sonification;
-    if (ma_device_init(&context, &config, &device) != MA_SUCCESS) {
+    if (const ma_result result = ma_device_init(&context, &config, &device); result != MA_SUCCESS) {
         ma_context_uninit(&context);
-        throw std::runtime_error("The audio output device could not be opened.");
+        return ma_result_description(result);
     }
     opened = true;
-    running = false;
+    return std::nullopt;
+}
+
+void Device::connect(bool warn) {
+    const std::optional<std::string_view> refusal = open();
+    if (refusal && warn) {
+        core::Log::warning("The app runs without sound because the audio output is unavailable: {}.", *refusal);
+    }
 }
 
 void Device::close() noexcept {
@@ -131,25 +140,24 @@ void Device::close() noexcept {
     ma_device_uninit(&device);
     ma_context_uninit(&context);
     opened = false;
-    running = false;
+    started = false;
 }
 
 void Device::apply() {
-    const bool run = engine != nullptr && !suspended && !interrupted;
-    if (run == running) {
+    running = engine != nullptr && !suspended && !interrupted;
+    if (!opened || running == started) {
         return;
     }
-    running = run;
-    if (!opened) {
-        return;
-    }
-    if (!run) {
+    if (!running) {
         ma_device_stop(&device);
+        started = false;
         return;
     }
-    if (ma_device_start(&device) != MA_SUCCESS) {
-        core::Log::warning("The audio output could not start, so the app plays no sound until it resumes again.");
+    if (const ma_result result = ma_device_start(&device); result != MA_SUCCESS) {
+        core::Log::warning("The audio output could not start ({}), so the app runs without sound until it resumes again.", ma_result_description(result));
+        return;
     }
+    started = true;
 }
 
 } // namespace haylen::audio

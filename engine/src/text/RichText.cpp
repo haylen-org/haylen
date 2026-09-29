@@ -10,7 +10,7 @@
 
 namespace haylen::text {
 
-debug::ObjectCounter RichText::counter("RichText", debug::ObjectCounter::Kind::Native);
+debug::ObjectCounter& RichText::counter = *new debug::ObjectCounter("RichText", debug::ObjectCounter::Kind::Native);
 
 RichText::RichText(std::string markup, RichTextOptions textOptions, std::shared_ptr<RichTextRegistry> textRegistry) : options(std::move(textOptions)), registry(std::move(textRegistry)) {
     if (!registry) {

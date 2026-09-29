@@ -94,7 +94,7 @@ class Font {
     explicit Font(Metrics fontMetrics);
 
   private:
-    static debug::ObjectCounter counter;
+    static debug::ObjectCounter& counter;
 
     Metrics metrics;
     std::unique_ptr<LayoutCache> layouts;

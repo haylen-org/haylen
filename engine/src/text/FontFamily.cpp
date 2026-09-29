@@ -10,7 +10,7 @@
 
 namespace haylen::text {
 
-debug::ObjectCounter FontFamily::counter("FontFamily", debug::ObjectCounter::Kind::Native);
+debug::ObjectCounter& FontFamily::counter = *new debug::ObjectCounter("FontFamily", debug::ObjectCounter::Kind::Native);
 
 FontFamily::FontFamily(Faces familyFaces) : faces(std::move(familyFaces)), layouts(std::make_unique<LayoutCache>()) {
     if (!faces.regular) {

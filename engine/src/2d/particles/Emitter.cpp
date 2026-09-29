@@ -54,8 +54,8 @@ template <typename Visit> void Emitter::Particles::forEachArray(Visit&& visit) {
     visit(tangential);
 }
 
-debug::ObjectCounter Emitter::emitterCounter("ParticleEmitter", debug::ObjectCounter::Kind::Native);
-debug::ObjectCounter Emitter::particleCounter("Particle", debug::ObjectCounter::Kind::Native);
+debug::ObjectCounter& Emitter::emitterCounter = *new debug::ObjectCounter("ParticleEmitter", debug::ObjectCounter::Kind::Native);
+debug::ObjectCounter& Emitter::particleCounter = *new debug::ObjectCounter("Particle", debug::ObjectCounter::Kind::Native);
 
 // Compacts the arrays in place and keeps the order particles draw in.
 void Emitter::Particles::removeExpired() {

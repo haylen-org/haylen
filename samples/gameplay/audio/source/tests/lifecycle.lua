@@ -11,18 +11,18 @@ local sounds = require('sounds')
 local Lifecycle = haylen.class('Lifecycle', sample.Test)
 
 local kEvents = {
-    audio_interrupted = sample.red,
-    audio_resumed = sample.green,
-    audio_route_changed = sample.warm,
-    app_active = sample.accent,
-    app_inactive = sample.violet,
-    app_background = sample.violet,
+    audioInterrupted = sample.red,
+    audioResumed = sample.green,
+    audioRouteChanged = sample.warm,
+    appActive = sample.accent,
+    appInactive = sample.violet,
+    appBackground = sample.violet,
 }
-local kOrder = {'audio_interrupted', 'audio_resumed', 'audio_route_changed', 'app_active', 'app_inactive', 'app_background'}
+local kOrder = {'audioInterrupted', 'audioResumed', 'audioRouteChanged', 'appActive', 'appInactive', 'appBackground'}
 local kNotes = {
     'Background: the engine stops the output and every voice keeps its place. The output starts again when the app comes back, unless an interruption still holds it.',
-    'Interruption: a phone call, an alarm, Siri or another Android app with the audio focus pauses every voice and sends audio_interrupted. audio_resumed follows once it ends and the app is active again.',
-    'Route change: unplugging headphones sends audio_route_changed, where a music player would pause.',
+    'Interruption: a phone call, an alarm, Siri or another Android app with the audio focus pauses every voice and sends audioInterrupted. audioResumed follows once it ends and the app is active again.',
+    'Route change: unplugging headphones sends audioRouteChanged, where a music player would pause.',
     'Web: the browser keeps the sound silent until the first click, tap or key on the page, and a hidden tab goes to the background.',
 }
 
@@ -59,7 +59,7 @@ end
 
 -- The platform reports interruptions as events of the scene too, before the engine turns them into audio events.
 function Lifecycle:event(event)
-    if event.type == 'interruption_began' or event.type == 'interruption_ended' or event.type == 'suspended' or event.type == 'resumed' then
+    if event.type == 'interruptionBegan' or event.type == 'interruptionEnded' or event.type == 'suspended' or event.type == 'resumed' then
         self.journal:add('platform event ' .. event.type, sample.muted)
     end
 end
@@ -67,7 +67,7 @@ end
 function Lifecycle:update(dt)
     Lifecycle.super.update(self, dt)
     self.clock = self.clock + haylen.unscaledDelta()
-    self:status(string.format('app %s   halted %s   interrupted %s   device %s   %d Hz, %d channels   voices %d', haylen.appState(), haylen.halted(), audio.interrupted(), audio.hasDevice(), audio.sampleRate(), audio.channels(), audio.voiceCount()))
+    self:status(string.format('app %s   halted %s   interrupted %s   device %s   output %s   %d Hz, %d channels   voices %d', haylen.appState(), haylen.halted(), audio.interrupted(), audio.hasDevice(), audio.outputAvailable() and 'available' or 'unavailable, no sound', audio.sampleRate(), audio.channels(), audio.voiceCount()))
 end
 
 function Lifecycle:draw(area)

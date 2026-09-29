@@ -35,7 +35,7 @@ local kParams = {
     width = {label = 'Width', min = 0, max = 1, step = 0.05},
 }
 local kTargets = {{id = 'bus', text = 'Music bus'}, {id = 'voice', text = 'Looping voice'}}
-local kCode = "local muffle = audio.newEffect('lowpass', {cutoff = 800})\naudio.addBusEffect('music', muffle)\naudio.play(loop, {loop = true, effects = {echo}})\ntween.to(muffle, 2, {cutoff = 8000}, {repeatCount = -1, loop = 'yoyo'})"
+local kCode = "local muffle = audio.newEffect('lowpass', {cutoff = 800})\naudio.addBusEffect('music', muffle)\naudio.play(loop, {loop = true, effects = {echo}})\ntween.to(muffle, 2, {cutoff = 8000}, {repeatCount = -1, loopMode = 'yoyo'})"
 
 function Effects:enter()
     self.kind = kKinds[1]
@@ -139,7 +139,7 @@ function Effects:setSweep(on)
     if on then
         local param, from, to = table.unpack(self.kind.sweep)
         self.effect[param] = from
-        self.sweepTween = tween.to(self.effect, 2.5, {[param] = to}, {repeatCount = -1, loop = 'yoyo', ease = 'sine_in_out', owner = self})
+        self.sweepTween = tween.to(self.effect, 2.5, {[param] = to}, {repeatCount = -1, loopMode = 'yoyo', ease = 'sineInOut', owner = self})
     end
 end
 
@@ -152,7 +152,7 @@ function Effects:showParams()
             self.effect[param] = param == 'cutoff' and response.frequency(event.value) or event.value
         end}}
     end
-    self.document:replace('params', nodes)
+    self.document:replaceChildren('params', nodes)
 end
 
 function Effects:update(dt)

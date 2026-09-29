@@ -9,7 +9,7 @@ A Lua sample with one scene per feature of [haylen.audio](../../../docs/lua-api/
 | Buses | Music, effects, footsteps on a custom bus, interface clicks and ambience through the bus tree, with the volume, mute and process mode of every bus, the game pause and `audio.busStats()`. |
 | Effects | Every filter kind, the delay and the reverb on the music bus or on a looping voice, with a slider per parameter, a tween that sweeps the main parameter, and the response of the filter, the repeats of the delay or the decay of the reverb. |
 | Positional audio | Campfires, a woodcutter and a circling hum in a world around a listener that follows the camera, with the fade models, the distances, the rolloff, the pan distance, the Doppler effect and the volume, pan and pitch each sound gets. |
-| Interruptions and lifecycle | The `audio_interrupted`, `audio_resumed` and `audio_route_changed` events and the app states as they happen while a track plays, the state of the output and the lifecycle options that mute or halt the app when it is not active. |
+| Interruptions and lifecycle | The `audioInterrupted`, `audioResumed` and `audioRouteChanged` events and the app states as they happen while a track plays, the state of the output, which is unavailable where the app runs without sound, and the lifecycle options that mute or halt the app when it is not active. |
 | Many voices | Bursts and a rain of voices up to the limit of 128, the count of voices over time and the statistics of every bus, while the music plays on. |
 
 The recordings come from the Tiny Island sample and are CC0, credited in `content/CREDITS.md`. The hum and the plucked loop were synthesized for this sample.

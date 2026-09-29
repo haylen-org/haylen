@@ -15,7 +15,7 @@
 
 namespace haylen::physics2d {
 
-const Raycaster::Filter Raycaster::kDefaultFilter{};
+const Raycaster::Filter& Raycaster::kDefaultFilter = *new const Filter();
 
 // Collects the hits of one cast from inside Box2D, either the closest one alone or all of them.
 struct Raycaster::Gather {

@@ -25,7 +25,7 @@ Every test file lives in the namespace of the context it tests, such as `haylen:
 `platform::HeadlessHost`, in `engine/src/platform/headless/`, implements the engine's `platform::Host` interface without a window or a GPU, so the real engine loop runs in tests.
 
 - `SokolDummy.c` compiles Sokol gfx with its dummy backend, so the renderer, textures, render targets and the UI run and record statistics without drawing anything. The root `haylen` Lua module reports `'dummy'` as its `backend` and `'headless'` as its `platform`.
-- The audio mixer has no device and mixes only when a test asks it to.
+- The audio mixer has no device and mixes only when a test asks it to. Tests of a mixer with a device give it an `audio::OutputBackend` of their own, which refuses the audio or opens a device that never plays, so no test reaches the audio hardware.
 - User data goes to a folder the test chooses, and `getPersistCount()` counts the requests to make it durable.
 - Bridge calls are recorded in `getPlatformCalls()` instead of reaching native code, and the calls the bridge gave up through a timeout or a cancel in `getCancelledCalls()`.
 - `resize(size)`, `setSafeAreaInsets(insets)` and `setGamepad(index, state)` change what the engine sees, and `getTitle()`, `getCursor()`, `isCursorVisible()`, `isMouseLocked()`, `isKeyboardVisible()` and `isQuitRequested()` report what the engine asked for.
@@ -71,7 +71,7 @@ Data that only one test file needs is built by its fixture, such as the zip arch
 A binding test runs Lua through the fixture and checks what matters to an app: returned values, engine state, error messages and asynchronous results.
 
 - Compare returned values as strings. `fixture.lua("return hash.size")` returns `"3"`, and a float returns `"32.0"`.
-- Check validation with the message an app would see, as in `EXPECT_NE(fixture.lua("spatial2d.newHash(-2)").find("positive cell size"), std::string::npos)`.
+- Check validation with the message an app would see, as in `EXPECT_NE(fixture.lua("spatial2d.newHashGrid(-2)").find("positive cell size"), std::string::npos)`.
 - Check callbacks that fail through `fixture.engine().getError()`, the `lua::Error` that the error screen shows, with its message, position and frames.
 - Advance frames for anything asynchronous. Promises settle and coroutines resume during a frame, so a test waits with `frameUntil`.
 - Assert on engine state through `fixture.engine()` and `fixture.host()` when a binding changes the engine, such as the window title or a platform call.

@@ -14,8 +14,8 @@ namespace haylen::physics2d {
 
 const World::Settings World::kDefaultSettings{};
 const float World::kRevoluteLimit = 0.99F * math::Math::kPi;
-debug::ObjectCounter World::bodyCounter("PhysicsBody", debug::ObjectCounter::Kind::Native);
-debug::ObjectCounter World::contactCounter("PhysicsContact", debug::ObjectCounter::Kind::Native);
+debug::ObjectCounter& World::bodyCounter = *new debug::ObjectCounter("PhysicsBody", debug::ObjectCounter::Kind::Native);
+debug::ObjectCounter& World::contactCounter = *new debug::ObjectCounter("PhysicsContact", debug::ObjectCounter::Kind::Native);
 
 // Decides in the pre-solve callback of Box2D whether a contact with a one-way platform holds. It only reads the transforms of bodies, which stay still while Box2D collides.
 class World::OneWayFilter final {

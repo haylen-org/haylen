@@ -361,9 +361,9 @@ TEST_F(AudioLuaTest, PlaysSoundsFromLua) {
     test::EngineFixture fixture({{"content/sfx/hit.wav", std::string(hit.begin(), hit.end())}, {"content/music/theme.wav", std::string(theme.begin(), theme.end())}});
     fixture.runLua("audio = require('haylen.audio') assets = require('haylen.assets') hit = assets.load('sfx/hit.wav') theme = assets.load('music/theme.wav', nil, {stream = true})");
 
-    EXPECT_EQ(fixture.lua("return hit.channels .. ' ' .. hit.sampleRate .. ' ' .. hit.frames .. ' ' .. tostring(hit.streamed) .. ' ' .. tostring(math.abs(hit.duration - 0.1) < 1e-6)"), "1 48000 4800 false true");
+    EXPECT_EQ(fixture.lua("return hit.channels .. ' ' .. hit.sampleRate .. ' ' .. hit.frameCount .. ' ' .. tostring(hit.streamed) .. ' ' .. tostring(math.abs(hit.duration - 0.1) < 1e-6)"), "1 48000 4800 false true");
     EXPECT_EQ(fixture.lua("return theme.streamed and theme == assets.load('music/theme.wav', 'sound', {stream = true}) and theme ~= hit"), "true");
-    EXPECT_EQ(fixture.lua("return audio.sampleRate() .. ' ' .. audio.channels() .. ' ' .. tostring(audio.hasDevice())"), "48000 2 false");
+    EXPECT_EQ(fixture.lua("return audio.sampleRate() .. ' ' .. audio.channels() .. ' ' .. tostring(audio.hasDevice()) .. ' ' .. tostring(audio.outputAvailable())"), "48000 2 false false");
 
     // clang-format off
     const std::string varied = fixture.lua(R"(

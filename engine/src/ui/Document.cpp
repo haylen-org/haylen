@@ -10,7 +10,7 @@
 
 namespace haylen::ui {
 
-debug::ObjectCounter Document::counter("UiDocument", debug::ObjectCounter::Kind::Native);
+debug::ObjectCounter& Document::counter = *new debug::ObjectCounter("UiDocument", debug::ObjectCounter::Kind::Native);
 
 // Points the context at the event queue of the document while it draws, and away from it afterwards even when drawing fails.
 class Document::EventScope final {
@@ -147,7 +147,7 @@ Component& Document::require(std::string_view id) const {
 void Document::set(std::string_view id, const core::Json& changes) {
     Component& component = require(id);
     if (!changes.is_object() || changes.contains("kind") || changes.contains("id") || changes.contains("children")) {
-        throw std::invalid_argument("set changes properties only, so it takes an object without kind, id or children.");
+        throw std::invalid_argument("The set method of a document changes properties only, so it takes an object without kind, id or children.");
     }
 
     // A fresh component of the same kind checks the whole merged state first, so a bad value never leaves the node half updated.
@@ -161,7 +161,7 @@ void Document::set(std::string_view id, const core::Json& changes) {
 void Document::replaceChildren(std::string_view id, const core::Json& trees) {
     Component& component = require(id);
     if (!trees.is_array()) {
-        throw std::invalid_argument("replaceChildren takes a list of nodes.");
+        throw std::invalid_argument("The replaceChildren method of a document takes a list of nodes.");
     }
     if (trees.size() > component.getChildLimit()) {
         throw std::invalid_argument("A " + std::string(component.getKind()) + " takes at most " + std::to_string(component.getChildLimit()) + " children.");

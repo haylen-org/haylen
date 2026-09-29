@@ -125,7 +125,7 @@ class MapRenderer final {
         bool visible = true;
     };
 
-    static const DrawOptions kDefaultOptions;
+    static const DrawOptions& kDefaultOptions;
     static constexpr int kRegionCells = 32;
 
     [[nodiscard]] static graphics2d::SpriteFlip flipsOf(std::uint32_t gid, bool diagonal) noexcept;

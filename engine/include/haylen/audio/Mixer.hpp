@@ -23,6 +23,7 @@ class Camera;
 namespace haylen::audio {
 
 struct MixerState;
+struct OutputBackend;
 
 // Mixes sounds through named buses. The master bus feeds the output, and music, sfx, ui and ambience exist from the start. Every call runs on the frame thread, and calls with a voice that already finished do nothing. Volumes, pans, positions and spatialization settings must be finite and pitches finite and above 0, or the call throws std::invalid_argument.
 class Mixer final {
@@ -42,12 +43,14 @@ class Mixer final {
         RouteChanged,
     };
 
+    // A mixer with a device plays in real time through the audio device of the platform, and a mixer without one mixes only when render asks. Hosts give the device a backend of their own where the platform needs one, such as the audio output of the page in browsers.
     struct Setup {
         bool device = true;
         std::uint32_t sampleRate = 48000;
         std::uint32_t channels = 2;
         std::size_t maxVoices = 128;
         Session session{};
+        const OutputBackend* backend = nullptr;
     };
 
     // A pitch variation picks the pitch of each play at random within pitch plus or minus the variation, so repeated sounds never sound exactly alike. The process mode decides whether the voice plays while the engine is paused, where Inherit takes the mode of its bus, and the effects process the voice in order before its bus.
@@ -107,7 +110,7 @@ class Mixer final {
         bool processing = true;
     };
 
-    // Throws std::invalid_argument for a setup without a sample rate, channels or voices, or that mixes with other apps outside the playback session, and std::runtime_error when the audio device cannot open.
+    // Throws std::invalid_argument for a setup without a sample rate, channels or voices, or that mixes with other apps outside the playback session, and std::runtime_error when the audio engine cannot start. A device that the system refuses leaves the output unavailable, and the log writes one warning with the reason.
     explicit Mixer(const Setup& setup);
     ~Mixer();
 
@@ -189,17 +192,20 @@ class Mixer final {
     // Queues an event from any thread for the next update, which emits it through deviceEventReceived. The device of the mixer reports its own events, and platform code reports what the device cannot see.
     void reportDeviceEvent(DeviceEvent event);
 
-    // Stops the output and pauses every voice for the interruption. Ending it opens the device again, which reactivates the iOS audio session, restarts the output unless the app is in the background and resumes the voices. Ending throws std::runtime_error when the system refuses the audio, and the mixer stays interrupted.
+    // Stops the output and pauses every voice for the interruption. Ending it resumes the voices and opens the device again, which reactivates the iOS audio session and restarts the output unless the app is in the background. When the system refuses the audio, the interruption ends all the same and the output stays unavailable, with one warning in the log. Ending an interruption while the output is unavailable, even without one in progress, tries to open the device again.
     void beginInterruption();
     void endInterruption();
     [[nodiscard]] bool isInterrupted() const noexcept;
 
-    // Emits the device events that arrived, releases finished voices and refreshes positional voices, measuring their velocities over the seconds since the last update. The engine calls it once per frame.
+    // Emits the device events that arrived, mixes and discards the seconds since the last update while the output of a mixer with a device is unavailable, releases finished voices and refreshes positional voices, measuring their velocities over those seconds. The engine calls it once per frame.
     void update(float deltaSeconds);
 
     [[nodiscard]] std::uint32_t getSampleRate() const noexcept;
     [[nodiscard]] std::uint32_t getChannels() const noexcept;
     [[nodiscard]] bool hasDevice() const noexcept;
+
+    // Tells whether the mix reaches an audio device. It is false for a mixer without a device and while the system refuses the device, when voices, music and fades go on in real time without sound.
+    [[nodiscard]] bool isOutputAvailable() const noexcept;
 
     // Mixes the next frames into interleaved samples, or silence while the output is stopped. Only a mixer without a device renders this way, which tests and offline tools use.
     void render(std::span<float> samples);

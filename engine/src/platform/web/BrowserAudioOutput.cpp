@@ -26,6 +26,8 @@ EM_JS(void, haylen_js_audio_close, (void* device), {
 
 namespace haylen::audio {
 
+const OutputBackend BrowserAudioOutput::kBackend{.initContext = &BrowserAudioOutput::initContext, .refusal = "browsers offer AudioWorklet only to pages served over https or from localhost"};
+
 ma_result BrowserAudioOutput::initContext(ma_context*, const ma_context_config*, ma_backend_callbacks* callbacks) {
     if (haylen_js_audio_supported() == 0) {
         return MA_FAILED_TO_INIT_BACKEND;

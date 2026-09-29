@@ -129,7 +129,7 @@ function Positional:update(dt)
     self.world.viewport = self.camera.viewport
 
     local wx, wy = input.vector('walk')
-    if input.mousePressed('left') and not ui.wantsPointer() then
+    if input.mousePressed('left') and not ui.usingPointer() then
         self.targetX, self.targetY = self.world:screenToWorld(input.mousePosition())
     end
     if wx ~= 0 or wy ~= 0 then

@@ -55,7 +55,7 @@ class FontFamily final {
     [[nodiscard]] math::Vec2 measure(std::string_view text, const Style& style);
 
   private:
-    static debug::ObjectCounter counter;
+    static debug::ObjectCounter& counter;
 
     [[nodiscard]] static bool covers(Font& font, std::u32string_view cluster);
 

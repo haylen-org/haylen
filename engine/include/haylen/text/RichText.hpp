@@ -82,7 +82,7 @@ class RichText final {
     };
 
     static constexpr std::size_t kCachedLayouts = 4;
-    static debug::ObjectCounter counter;
+    static debug::ObjectCounter& counter;
 
     static void validate(const RichTextOptions& value);
     static void validateWidth(float value);

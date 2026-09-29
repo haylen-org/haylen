@@ -5,7 +5,7 @@
 namespace haylen::graphics {
 
 const Texture& RenderTarget::getTexture() const noexcept {
-    static const Texture kEmpty;
+    static const Texture& kEmpty = *new const Texture();
     return resource ? resource->texture : kEmpty;
 }
 

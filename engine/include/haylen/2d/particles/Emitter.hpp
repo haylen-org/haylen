@@ -83,8 +83,8 @@ class Emitter final {
     static constexpr float kMaxPrewarm = 60.0F;
     static constexpr float kMinimumCycle = 0.001F;
     static constexpr std::size_t kMaxParticles = 1000000;
-    static debug::ObjectCounter emitterCounter;
-    static debug::ObjectCounter particleCounter;
+    static debug::ObjectCounter& emitterCounter;
+    static debug::ObjectCounter& particleCounter;
     static constexpr std::size_t kParallelGrain = 4096;
 
     static void validate(const EmitterConfig& settings);

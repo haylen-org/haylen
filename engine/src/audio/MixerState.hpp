@@ -87,6 +87,8 @@ struct MixerState {
         ma_uint64 endFrame = 0;
     };
 
+    static constexpr ma_uint64 kSilentBlockFrames = 1024;
+
     explicit MixerState(const Mixer::Setup& setup) : output(setup) {}
     ~MixerState();
 
@@ -116,6 +118,9 @@ struct MixerState {
 
     [[nodiscard]] EffectChain& getEffects(Voice& voice);
 
+    // Mixes and discards the frames of the elapsed seconds while the output runs without a device to play it, so voices, fades and effect tails move on in real time without sound.
+    void advance(float deltaSeconds);
+
     // Releases the voices that finished and the tails that rang out.
     void releaseFinished();
 
@@ -142,6 +147,8 @@ struct MixerState {
     Mixer::Spatialization spatialization;
     math::Random random;
     bool processPaused = false;
+    std::vector<float> silentBlock;
+    double silentFrames = 0.0;
 };
 
 } // namespace haylen::audio

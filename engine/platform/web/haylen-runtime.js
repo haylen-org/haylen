@@ -10,7 +10,7 @@ Module.haylen = Module.haylen || {};
     // The browser answers the built-in methods, and a page can replace any of them with register.
     handlers.set("device.info", () => ({ model: "Browser", system: "Web", systemVersion: navigator.userAgent, locale: navigator.language }));
     handlers.set("system.locale", () => navigator.language);
-    handlers.set("system.open_url", (params) => {
+    handlers.set("system.openUrl", (params) => {
         if (!params || !params.url) {
             throw new Error("The url is missing.");
         }
@@ -64,7 +64,7 @@ Module.haylen = Module.haylen || {};
         const controller = new AbortController();
         pending.set(call, controller);
         if (!handler) {
-            reply(false, { message: "No page handler is registered for " + method + ".", code: "no_handler" });
+            reply(false, { message: "No page handler is registered for " + method + ".", code: "noHandler" });
             return;
         }
         // The handler starts after the frame that made the call, and a cancel in that frame keeps it from starting, as on the other platforms.
@@ -357,7 +357,7 @@ Module.haylen = Module.haylen || {};
 
     const isElement = (target) => target === text.elements.textarea || target === text.elements.password;
 
-    // sokol_app listens for keys on the window in the capture phase, before the element sees them. A field of the UI owns every key, so sokol_app never applies them twice, and its return, tab and escape become actions. The plain keyboard of haylen.window.showKeyboard leaves keys to sokol_app and only takes their text.
+    // sokol_app listens for keys on the window in the capture phase, before the element sees them. A field of the UI owns every key, so sokol_app never applies them twice, and its return, tab and escape become actions. The plain keyboard of haylen.window.setKeyboardVisible leaves keys to sokol_app and only takes their text.
     const onKey = (event) => {
         const field = text.field;
         if (!field || !isElement(event.target)) {
@@ -521,13 +521,9 @@ Module.haylen = Module.haylen || {};
     const audio = { outputs: new Map() };
     haylen.audio = audio;
 
-    // Browsers offer AudioWorklet only to pages served over https or from localhost.
+    // Browsers offer AudioWorklet only to pages served over https or from localhost, and some keep the AudioWorkletNode constructor elsewhere while their contexts have no audioWorklet. Such pages run without sound, and the engine logs why.
     audio.supported = function () {
-        if (typeof AudioContext === "undefined" || typeof AudioWorkletNode === "undefined") {
-            console.error("Audio needs AudioWorklet, which browsers offer only to pages served over https or from localhost.");
-            return false;
-        }
-        return true;
+        return typeof AudioContext !== "undefined" && typeof AudioWorkletNode !== "undefined" && "audioWorklet" in AudioContext.prototype;
     };
 
     // Browsers run a context only once the user has interacted with the page, unless their autoplay policy lets it run on its own, and Safari on iOS suspends it again after interruptions. A resume without either only makes the browser warn, so the output then waits for the next tap, click or key.
@@ -638,14 +634,14 @@ Module.haylen = Module.haylen || {};
         Module._free(output.scratch);
     };
 
-    // Describes the output of the app for onStats, or returns null while the app has none.
+    // Describes the output of the app for onStats, which is unavailable while the app runs without sound.
     audio.stats = function () {
         const [output] = audio.outputs.values();
         if (!output) {
-            return null;
+            return { available: false };
         }
         const rate = output.context.sampleRate;
-        return { state: output.context.state, sampleRate: rate, bufferedMilliseconds: (output.queued * 1000) / rate, blocks: output.blocks, underruns: output.underruns };
+        return { available: true, state: output.context.state, sampleRate: rate, bufferedMilliseconds: (output.queued * 1000) / rate, blocks: output.blocks, underruns: output.underruns };
     };
 
     // Every tap, click and key resumes the outputs the app keeps playing, unless the app is in the background.

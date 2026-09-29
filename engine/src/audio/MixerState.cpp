@@ -140,6 +140,24 @@ EffectChain& MixerState::getEffects(Voice& voice) {
     return *voice.effects;
 }
 
+void MixerState::advance(float deltaSeconds) {
+    if (!output.isSilent()) {
+        silentFrames = 0.0;
+        return;
+    }
+
+    // The fraction of a frame left over carries into the next update, so the mix keeps exact time over many frames.
+    silentFrames += static_cast<double>(std::max(deltaSeconds, 0.0F)) * static_cast<double>(ma_engine_get_sample_rate(&engine));
+    auto frames = static_cast<ma_uint64>(silentFrames);
+    silentFrames -= static_cast<double>(frames);
+    silentBlock.resize(kSilentBlockFrames * ma_engine_get_channels(&engine));
+    while (frames > 0) {
+        const ma_uint64 block = std::min(frames, kSilentBlockFrames);
+        ma_engine_read_pcm_frames(&engine, silentBlock.data(), block, nullptr);
+        frames -= block;
+    }
+}
+
 void MixerState::releaseFinished() {
     for (auto voice = voices.begin(); voice != voices.end();) {
         const bool finished = ((*voice)->stopped || !(*voice)->isHeld()) && ma_sound_is_playing(&(*voice)->handle) == MA_FALSE;

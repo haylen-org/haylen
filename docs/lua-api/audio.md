@@ -303,7 +303,7 @@ print(audio.paused(radio), audio.paused(rain))
 
 ### audio.interrupted()
 
-Returns true while the system holds the audio, such as during a phone call, an alarm or Siri, or while another Android app has the audio focus. The engine pauses every voice for the interruption and publishes the [audio events](#events).
+Returns true while the system holds the audio, such as during a phone call, an alarm or Siri, or while another Android app has the audio focus. The engine pauses every voice for the interruption and publishes the [audio events](#events). An interruption that ends while the system still refuses the audio ends all the same, and the app goes on without an output, as `audio.outputAvailable()` reports.
 
 ```lua
 local audio = require('haylen.audio')
@@ -699,13 +699,25 @@ print(audio.channels())
 
 ### audio.hasDevice()
 
-Returns true when the mix plays through an audio device, which is the case in the player and in every app. The headless engine of tests and tools mixes without a device and returns false.
+Returns true when the mixer plays in real time for an audio device, which is the case in the player and in every app, even while the device is unavailable. The headless engine of tests and tools mixes without a device and returns false.
 
 ```lua
 local audio = require('haylen.audio')
 
 if not audio.hasDevice() then
     print('running headless, nothing is heard')
+end
+```
+
+### audio.outputAvailable()
+
+Returns true while the mix reaches an audio device. It returns false while the system refuses the device, such as on a computer without one, while another app holds the iOS audio session, or on a web page served over plain http, where browsers offer no `AudioWorklet`, and in the headless engine. The app runs all the same: voices, music, fades and positional audio go on in real time without sound, the log writes one warning with the reason when the output becomes unavailable, and the engine tries to open it again whenever the app becomes active or an interruption ends.
+
+```lua
+local audio = require('haylen.audio')
+
+if audio.hasDevice() and not audio.outputAvailable() then
+    print('the sound is off until this device offers an audio output')
 end
 ```
 
@@ -722,14 +734,14 @@ The engine pauses the output while the app is suspended and resumes it afterward
 | `duration` | number | Length in seconds. |
 | `channels` | integer | Channels of the file, 1 for mono and 2 for stereo. |
 | `sampleRate` | integer | Sample rate of the file in hertz. |
-| `frames` | integer | Length in sample frames. |
+| `frameCount` | integer | Length in sample frames. |
 | `streamed` | boolean | True when the sound was loaded with the `stream` option. |
 
 ```lua
 local assets = require('haylen.assets')
 
 local hit = assets.load('sfx/hit.wav')
-print(hit.duration, hit.channels, hit.sampleRate, hit.frames, hit.streamed)
+print(hit.duration, hit.channels, hit.sampleRate, hit.frameCount, hit.streamed)
 ```
 
 ### Filter
@@ -751,7 +763,7 @@ local tween = require('haylen.tween')
 
 local sweep = audio.newEffect('bandpass', {cutoff = 300, q = 4})
 audio.addBusEffect('music', sweep)
-tween.to(sweep, 2, {cutoff = 3000}, {repeatCount = -1, loop = 'yoyo'})
+tween.to(sweep, 2, {cutoff = 3000}, {repeatCount = -1, loopMode = 'yoyo'})
 ```
 
 ### Delay
@@ -812,19 +824,19 @@ The engine publishes these events on [haylen.events](events.md) for audio.
 
 | Event | When |
 | --- | --- |
-| `audio_interrupted` | The system took the audio: a phone call, an alarm, Siri or another Android app with the audio focus. Every voice is paused and `audio.interrupted()` returns true. |
-| `audio_resumed` | The interruption ended while the app is active, or the app became active after it ended. The audio session is active again and the voices resume. |
-| `audio_route_changed` | The output moved to another device, such as headphones that were unplugged. |
+| `audioInterrupted` | The system took the audio: a phone call, an alarm, Siri or another Android app with the audio focus. Every voice is paused and `audio.interrupted()` returns true. |
+| `audioResumed` | The interruption ended while the app is active, or the app became active after it ended. The voices resume, and the audio session is active again unless the system still refuses the audio, which `audio.outputAvailable()` tells. |
+| `audioRouteChanged` | The output moved to another device, such as headphones that were unplugged. |
 
 ```lua
 local events = require('haylen.events')
 local haylen = require('haylen')
 
-events.on('audio_interrupted', function()
+events.on('audioInterrupted', function()
     haylen.setPaused(true)
 end)
 
-events.on('audio_route_changed', function()
+events.on('audioRouteChanged', function()
     print('the output device changed')
 end)
 ```
@@ -858,4 +870,4 @@ end)
 | `A filter gain must be between -96 and 96 decibels.` | A peak or shelf filter received a gain outside that range or one that is not a number. |
 | `audio effect expected` | A function that takes an effect received another value. It comes inside a bad argument error. |
 | `expected a non-negative integer` | A voice id is negative. It comes inside a bad argument error. |
-| `haylen.Sound has no member '<name>'.` | A sound property does not exist. |
+| `The type haylen.Sound has no member '<name>'.` | A sound property does not exist. |

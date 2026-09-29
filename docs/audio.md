@@ -2,7 +2,7 @@
 
 Haylen mixes sound with [miniaudio](https://miniaud.io). Apps load sounds as assets, play them as voices, route voices through buses for volume sliders and effects, crossfade music tracks, place sounds in the world so they fade, pan and shift with distance and motion, and let the game pause stop the sounds it should stop. This guide explains those pieces, how the engine shares the audio output with the system and other apps, and how the Tiny Island sample uses them. The [haylen.audio reference](lua-api/audio.md) lists every function, option and error.
 
-Every audio call runs on the frame thread and returns at once. The mixing itself runs on the audio thread of the platform, which Lua code never touches. See [Architecture](architecture.md) for the threading model.
+Every audio call runs on the frame thread and returns at once. The mixing itself runs on the audio thread of the platform, which Lua code never touches, and on the frame thread while the app has [no audio output](#without-an-audio-output). See [Architecture](architecture.md) for the threading model.
 
 ## Sounds
 
@@ -27,7 +27,7 @@ A decoded sound is decoded when its asset loads, on worker threads when it loads
 }
 ```
 
-A loaded sound is a `haylen.Sound` value with the read-only properties `duration`, `channels`, `sampleRate`, `frames` and `streamed`. Two handles of the same cached sound compare equal with `==`.
+A loaded sound is a `haylen.Sound` value with the read-only properties `duration`, `channels`, `sampleRate`, `frameCount` and `streamed`. Two handles of the same cached sound compare equal with `==`.
 
 ## Voices
 
@@ -307,23 +307,23 @@ On iOS and tvOS, the `audio` object of `app.json` chooses the category of the au
 
 `mixWithOthers` defaults to `false`, and only the playback category accepts `true`, because ambient always mixes and solo ambient never does. Unknown categories and `mixWithOthers` with another category are errors of `app.json`. On Android the device plays through AAudio with the usage `game` and the content type `sonification`, which is how the system routes, ducks and mixes a game, and the Android activity requests the audio focus with the same attributes.
 
-The system can take the audio away for a phone call, an alarm, Siri or another app. An interruption stops the output, pauses every voice for its own reason and publishes `audio_interrupted`, and `audio.interrupted()` returns `true` until it ends. When it ends, the engine opens the audio device again, which reactivates the iOS audio session with its category, restarts the output unless the app is in the background, resumes the voices and publishes `audio_resumed`. An interruption that ends while the app is not active waits until the app becomes active again, because iOS gives the audio back only to an active app. When the output moves to another device, such as headphones that are unplugged, the engine publishes `audio_route_changed`, and a music player pauses its track there.
+The system can take the audio away for a phone call, an alarm, Siri or another app. An interruption stops the output, pauses every voice for its own reason and publishes `audioInterrupted`, and `audio.interrupted()` returns `true` until it ends. When it ends, the engine opens the audio device again, which reactivates the iOS audio session with its category, restarts the output unless the app is in the background, resumes the voices and publishes `audioResumed`. An interruption that ends while the app is not active waits until the app becomes active again, because iOS gives the audio back only to an active app. When the system still refuses the audio at that moment, the interruption ends all the same and the app goes on [without an audio output](#without-an-audio-output) until the system hands it back. When the output moves to another device, such as headphones that are unplugged, the engine publishes `audioRouteChanged`, and a music player pauses its track there.
 
 ```lua
 local audio = require('haylen.audio')
 local events = require('haylen.events')
 local haylen = require('haylen')
 
-events.on('audio_interrupted', function()
+events.on('audioInterrupted', function()
     -- A call came in: pause the run too, so the player comes back to the pause menu.
     haylen.setPaused(true)
 end)
 
-events.on('audio_resumed', function()
+events.on('audioResumed', function()
     print('the audio is back', audio.interrupted())
 end)
 
-events.on('audio_route_changed', function()
+events.on('audioRouteChanged', function()
     print('the headphones changed')
 end)
 ```
@@ -332,9 +332,31 @@ Interruptions reach the engine in two ways, and both take the same path. The min
 
 When the app goes to the background, the engine stops the audio output, and it starts the output again when the app comes back, unless an interruption still holds it. On the web, a page that pauses the app with `Module.haylen.pause()` suspends it the same way.
 
-On the web the engine plays through an audio output of its own, which is the only backend miniaudio has there. The mixer runs on the page thread like the rest of the app and mixes blocks of 256 frames, which the page posts over the message port of an `AudioWorkletNode`. Its processor, `haylen-audio-worklet.js` next to the runtime script, keeps them in a small ring buffer and plays them on the audio thread of the browser, and answers with the frames it played, so the page mixes new blocks until 50 ms of audio wait ahead of the output again. A frame of the app that takes much longer than usual therefore does not starve the output. The output needs no `SharedArrayBuffer`, no COOP or COEP headers and no WebAssembly threads. Browsers offer `AudioWorklet` only to pages served over https or from localhost, so on any other page the audio output cannot open, the console says why and the app does not start. The `audio` entry of [`onStats`](build.md#runtime-api) reports the state of the output, the audio waiting in it and the render quanta it played without samples.
+On the web the engine plays through an audio output of its own, which is the only backend miniaudio has there. The mixer runs on the page thread like the rest of the app and mixes blocks of 256 frames, which the page posts over the message port of an `AudioWorkletNode`. Its processor, `haylen-audio-worklet.js` next to the runtime script, keeps them in a small ring buffer and plays them on the audio thread of the browser, and answers with the frames it played, so the page mixes new blocks until 50 ms of audio wait ahead of the output again. A frame of the app that takes much longer than usual therefore does not starve the output. The output needs no `SharedArrayBuffer`, no COOP or COEP headers and no WebAssembly threads. Browsers offer `AudioWorklet` only to pages served over https or from localhost, so on any other page, such as one served over plain http from the LAN address of a computer, the app runs [without an audio output](#without-an-audio-output) and the console says why. The `audio` entry of [`onStats`](build.md#runtime-api) reports whether the output is available, its state, the audio waiting in it and the render quanta it played without samples.
 
 Browsers keep audio silent until the player interacts with the page. The runtime resumes the output at every tap, click or key while the app plays in the foreground, which also brings it back after Safari on iOS suspends it for an interruption. Until the unlock the output fills its 50 ms and then asks for no more blocks, so voices started earlier, such as the menu music, begin when the player first clicks or taps. The engine adds no unlock screen of its own, so a web app whose first screen matters for sound should wait for a click, as a title screen with a start button does.
+
+## Without an audio output
+
+An app never stops because it has no audio output. A computer without an audio device, an iOS audio session that another app holds, or a web page served over plain http, where the browser offers no `AudioWorklet`, leaves the mixer without an output. The app runs as usual, the log writes one warning with the reason, and `audio.outputAvailable()` returns `false`, so an app can tell the player that its sound is off.
+
+Without an output the mixer keeps time itself. Every frame it mixes the seconds that passed and throws the samples away, so voices play to their end, loops repeat, fades and music crossfades finish, effect tails ring out, the voice limit stops the oldest voice and positional voices follow the listener, exactly as they would out loud. Time stands still for the audio while the app is in the background or an interruption holds it, as it does with an output.
+
+An interruption that ends while the system still refuses the audio ends all the same: the voices resume, the engine publishes `audioResumed`, the log warns once and the app goes on without an output. Whenever the app becomes active and whenever an interruption ends, the engine tries again to open the output, without warning again, so the sound comes back as soon as the system offers it.
+
+```lua
+local audio = require('haylen.audio')
+local events = require('haylen.events')
+
+local function showSoundHint()
+    if not audio.outputAvailable() then
+        print('this device plays no sound right now')
+    end
+end
+
+showSoundHint()
+events.on('appActive', showSoundHint)
+```
 
 ## The Tiny Island sound module
 
@@ -385,7 +407,7 @@ The rest of the game completes the picture.
 
 ## From C++
 
-`haylen::audio::Mixer` (`haylen/audio/Mixer.hpp`), reached with `engine.getAudio()`, offers the same voices, buses, music, process modes, effects and positional audio with its `Mixer::PlayOptions`, `Mixer::MusicOptions` and `Mixer::Spatialization` structures, and `haylen::audio::Sound` (`haylen/audio/Sound.hpp`) holds decoded or streamed sound data. The effects are `audio::Filter`, `audio::Delay` and `audio::Reverb`, created with `std::make_shared` and their settings structures, and `audio::Session` is the session of `app.json`. The engine applies its pause through `Mixer::setProcessPaused`, and `Mixer::deviceEventReceived` delivers device events on the frame thread, which the audio plugin turns into the interruption behavior and the events above. A mixer created without a device mixes on demand through `render`, which tests and offline tools use.
+`haylen::audio::Mixer` (`haylen/audio/Mixer.hpp`), reached with `engine.getAudio()`, offers the same voices, buses, music, process modes, effects and positional audio with its `Mixer::PlayOptions`, `Mixer::MusicOptions` and `Mixer::Spatialization` structures, and `haylen::audio::Sound` (`haylen/audio/Sound.hpp`) holds decoded or streamed sound data. The effects are `audio::Filter`, `audio::Delay` and `audio::Reverb`, created with `std::make_shared` and their settings structures, and `audio::Session` is the session of `app.json`. The engine applies its pause through `Mixer::setProcessPaused`, and `Mixer::deviceEventReceived` delivers device events on the frame thread, which the audio plugin turns into the interruption behavior and the events above. `Mixer::isOutputAvailable` tells whether the mix reaches an audio device. A mixer created without a device mixes on demand through `render`, which tests and offline tools use.
 
 ```cpp
 #include "haylen/audio/Filter.hpp"

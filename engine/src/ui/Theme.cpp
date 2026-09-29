@@ -135,7 +135,7 @@ void Theme::checkTiles(const Image& image, const std::string& context) {
 }
 
 const core::Json& Theme::readSection(const core::Json& document, const char* key) {
-    static const core::Json empty = core::Json::object();
+    static const core::Json& empty = *new const core::Json(core::Json::object());
     const core::Json& value = document.contains(key) ? document.at(key) : empty;
     if (!value.is_object()) {
         throw std::invalid_argument(std::string("The theme ") + key + " must be an object.");

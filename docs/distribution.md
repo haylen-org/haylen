@@ -26,7 +26,7 @@ python3 make.py run ~/apps/my-game --platform web
 | `run-cpp <project> [--platform] [--target] [--device] [--config] [--engine-config]` | Builds a C++ project that compiles the engine through CMake and runs it on this machine, in the browser, on Mac Catalyst, iOS, tvOS, their simulators or Android. |
 | `package <app> [-o app.zip]` | Zips `app.json`, `source/` and `content/` of an app. |
 | `shaders <app> [--force]` | Compiles the shaders under `content/shaders/` of an app into `.shader` files. |
-| `serve <folder> [--port] [--coep] [--open]` | Serves a folder with the headers WebAssembly pages need. |
+| `serve <folder> [--host] [--port] [--coep] [--open]` | Serves a folder with the headers WebAssembly pages need. |
 
 `app` is an app folder or the path of a sample from `samples/`, so `python3 make.py run games/tiny-island` and `python3 make.py run samples/games/tiny-island` are the same. Without an app, `run` runs Tiny Island.
 
@@ -116,9 +116,10 @@ Compiles every source under `content/shaders/` that declares an `@program` into 
 ```sh
 python3 make.py serve dist/my-game --port 8000
 python3 make.py serve dist/my-game --coep off --open
+python3 make.py serve dist/my-game --host 192.168.1.20
 ```
 
-Serves a folder at `http://127.0.0.1:<port>/` with a threading Python server that sends:
+Serves a folder at `http://127.0.0.1:<port>/` with a threading Python server. `--host` listens on another address of this machine instead, such as its LAN address, so phones and other computers open the page. Browsers offer `AudioWorklet` only to pages served over https or from localhost, so those pages run without sound. `run --platform web` and `run-cpp --platform web` take the same options. The server sends:
 
 | Header | Value |
 | --- | --- |
@@ -351,7 +352,7 @@ The runtime turns on development behavior, which today is hot reload of the pack
 | visionOS | Runs the iPad app | The iOS target runs on Apple Vision Pro as a compatible iPad app. A native visionOS slice is not possible yet: `sokol_app` reads `UIScreen` through `windowScene.screen` in eight places, which the visionOS SDK marks unavailable, so its implementation does not compile for visionOS. |
 | watchOS | Not possible | The watchOS 27 SDK has no Metal, MetalKit, GameController or AudioToolbox, which the renderer, the input and the audio of the engine need. |
 | Android | Supported | Phones, tablets and Android TV from one APK, on arm64-v8a, armeabi-v7a and x86_64, Android 8.1 (API 27) and later. |
-| Web | Supported | Desktop and mobile browsers with WebGPU or WebGL2 and `AudioWorklet`, on pages served over https or from localhost. |
+| Web | Supported | Desktop and mobile browsers with WebGPU or WebGL2. Sound needs `AudioWorklet`, which browsers offer only to pages served over https or from localhost, and apps on other pages run without sound. |
 
 ## Notes on dependencies
 

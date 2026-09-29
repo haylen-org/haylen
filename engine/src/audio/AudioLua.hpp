@@ -104,10 +104,11 @@ class AudioLua final {
     static int sampleRate(lua_State* L);
     static int channels(lua_State* L);
     static int hasDevice(lua_State* L);
+    static int outputAvailable(lua_State* L);
 
     static int soundChannels(lua_State* L);
     static int soundSampleRate(lua_State* L);
-    static int soundFrames(lua_State* L);
+    static int soundFrameCount(lua_State* L);
     static int soundStreamed(lua_State* L);
     static int soundDuration(lua_State* L);
     static int open(lua_State* L);

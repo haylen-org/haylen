@@ -15,7 +15,7 @@
 
 namespace haylen::tiled {
 
-const MapRenderer::DrawOptions MapRenderer::kDefaultOptions{};
+const MapRenderer::DrawOptions& MapRenderer::kDefaultOptions = *new const DrawOptions();
 
 MapRenderer::MapRenderer(Map data, std::shared_ptr<text::Font> textFont) : map(std::move(data)), font(std::move(textFont)) {}
 

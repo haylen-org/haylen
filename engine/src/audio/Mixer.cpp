@@ -494,11 +494,11 @@ void Mixer::beginInterruption() {
 }
 
 void Mixer::endInterruption() {
-    if (!isInterrupted()) {
-        return;
-    }
+    const bool interrupted = isInterrupted();
     state->output.endInterruption();
-    resumeAll(PauseReason::Interruption);
+    if (interrupted) {
+        resumeAll(PauseReason::Interruption);
+    }
 }
 
 bool Mixer::isInterrupted() const noexcept {
@@ -510,6 +510,7 @@ void Mixer::update(float deltaSeconds) {
     for (const DeviceEvent event : state->output.takeEvents()) {
         deviceEventReceived.emit(event);
     }
+    state->advance(deltaSeconds);
     state->releaseFinished();
     state->spatialize(deltaSeconds);
 }
@@ -524,6 +525,10 @@ std::uint32_t Mixer::getChannels() const noexcept {
 
 bool Mixer::hasDevice() const noexcept {
     return state->output.hasDevice();
+}
+
+bool Mixer::isOutputAvailable() const noexcept {
+    return state->output.isAvailable();
 }
 
 void Mixer::render(std::span<float> samples) {

@@ -14,8 +14,8 @@ namespace haylen::graphics {
 
 // The GPU objects behind a texture handle, buried in the device graveyard when the last handle goes away. The debug statistics count textures and render target images apart, with the bytes of their pixels.
 struct TextureResource {
-    static debug::ObjectCounter textures;
-    static debug::ObjectCounter targets;
+    static debug::ObjectCounter& textures;
+    static debug::ObjectCounter& targets;
 
     sg_image image{};
     sg_view view{};

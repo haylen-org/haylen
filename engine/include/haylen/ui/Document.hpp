@@ -62,7 +62,7 @@ class Document final {
   private:
     class EventScope;
 
-    static debug::ObjectCounter counter;
+    static debug::ObjectCounter& counter;
 
     struct Built {
         std::unique_ptr<Component> component;

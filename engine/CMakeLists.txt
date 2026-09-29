@@ -568,6 +568,10 @@ add_library(haylen::runtime ALIAS haylen_runtime)
 target_compile_definitions(haylen_runtime PRIVATE SOKOL_${HAYLEN_BACKEND})
 target_include_directories(haylen_runtime PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
 target_link_libraries(haylen_runtime PUBLIC haylen_platform PRIVATE haylen_sokol_headers)
+# The web host gives the mixer the audio output of the page, a backend of miniaudio.
+if(EMSCRIPTEN)
+  target_link_libraries(haylen_runtime PRIVATE haylen_miniaudio)
+endif()
 haylen_enable_warnings(haylen_runtime)
 haylen_link_runtime_platform(haylen_runtime PUBLIC)
 

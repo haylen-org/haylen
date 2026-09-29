@@ -14,7 +14,7 @@
 
 namespace haylen::graphics2d {
 
-const DrawOrder SceneTransition::kCapturedOrder{.blend = graphics::BlendMode::Type::Premultiplied};
+const DrawOrder& SceneTransition::kCapturedOrder = *new const DrawOrder{.blend = graphics::BlendMode::Type::Premultiplied};
 
 math::Vec2 SceneTransition::getSteps(Direction direction) noexcept {
     switch (direction) {

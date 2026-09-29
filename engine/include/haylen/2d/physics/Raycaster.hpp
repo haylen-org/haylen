@@ -60,7 +60,7 @@ class Raycaster final {
   private:
     struct Gather;
 
-    static const Filter kDefaultFilter;
+    static const Filter& kDefaultFilter;
 
     // Rays of a batch run in chunks of at least this many rays per worker.
     static constexpr std::size_t kBatchGrain = 64;

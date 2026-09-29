@@ -103,7 +103,8 @@ int DestructionLua::terrainSetSamples(lua_State* L) {
     if (!computed) {
         luaL_checktype(L, 3, LUA_TTABLE);
     }
-    std::vector<std::uint8_t> values(computed ? columns * static_cast<std::size_t>(terrain.getRows()) : lua_rawlen(L, 3));
+    const std::size_t count = computed ? columns * static_cast<std::size_t>(terrain.getRows()) : static_cast<std::size_t>(lua_rawlen(L, 3));
+    std::vector<std::uint8_t> values(count);
     for (std::size_t index = 0; index < values.size(); ++index) {
         if (computed) {
             lua_pushvalue(L, 3);

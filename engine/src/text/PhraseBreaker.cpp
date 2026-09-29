@@ -27,7 +27,7 @@ PhraseBreaker::Model PhraseBreaker::parse(std::span<const std::uint8_t> json) {
 }
 
 const PhraseBreaker::Model& PhraseBreaker::getThaiModel() {
-    static const Model model = parse(core::EmbeddedFiles::getThaiPhraseModel());
+    static const Model& model = *new const Model(parse(core::EmbeddedFiles::getThaiPhraseModel()));
     return model;
 }
 

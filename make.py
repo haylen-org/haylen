@@ -1392,7 +1392,7 @@ def run_web(app: App, site: Path, args: argparse.Namespace) -> None:
     for backend in ("webgpu", "webgl2"):
         shutil.copytree(ARTIFACTS_DIR / "web" / backend, site / backend)
     write_web_settings(app, site)
-    serve(site, args.port, args.coep, args.open)
+    serve(site, args.host, args.port, args.coep, args.open)
 
 
 def run_desktop_app(app: App, folder: Path, args: argparse.Namespace) -> None:
@@ -1502,7 +1502,7 @@ def command_run_cpp(args: argparse.Namespace) -> None:
 
     if args.platform == "web":
         bundle_web(project, target, args.config, folder, args.jobs)
-        serve(folder / "web", args.port, args.coep, args.open)
+        serve(folder / "web", args.host, args.port, args.coep, args.open)
     elif args.platform == "android":
         run_cpp_android(project, target, folder, args)
     elif args.platform in APPLE_NATIVE_SLICES and args.platform != "macos":
@@ -1648,10 +1648,10 @@ class WebHandler(http.server.SimpleHTTPRequestHandler):
         return super().send_head()
 
 
-def serve(directory: Path, port: int, coep: str = "require-corp", open_page: bool = False) -> None:
+def serve(directory: Path, host: str, port: int, coep: str = "require-corp", open_page: bool = False) -> None:
     handler = functools.partial(type("Handler", (WebHandler,), {"coep": coep}), directory=str(directory))
-    with http.server.ThreadingHTTPServer(("127.0.0.1", port), handler) as server:
-        url = f"http://127.0.0.1:{port}/"
+    with http.server.ThreadingHTTPServer((host, port), handler) as server:
+        url = f"http://{host}:{port}/"
         print(f"Serving {directory} at {url}", flush=True)
         if open_page:
             webbrowser.open(url)
@@ -1662,7 +1662,7 @@ def serve(directory: Path, port: int, coep: str = "require-corp", open_page: boo
 
 
 def command_serve(args: argparse.Namespace) -> None:
-    serve(Path(args.directory).resolve(), args.port, args.coep, args.open)
+    serve(Path(args.directory).resolve(), args.host, args.port, args.coep, args.open)
 
 
 def command_clean(_: argparse.Namespace) -> None:
@@ -1685,6 +1685,7 @@ def add_sanitizer_option(parser: argparse.ArgumentParser) -> None:
 
 
 def add_web_server_options(parser: argparse.ArgumentParser, port: int) -> None:
+    parser.add_argument("--host", default="127.0.0.1", help="Address the local web server listens on. The LAN address of this machine lets phones and other computers open the page, which then runs without sound, because browsers offer AudioWorklet only to pages served over https or from localhost.")
     parser.add_argument("--port", type=int, default=port, help="Port of the local web server.")
     parser.add_argument("--coep", default="require-corp", choices=["require-corp", "credentialless", "off"], help="Cross-Origin-Embedder-Policy. Pages that load third-party scripts, such as Google sign-in, need credentialless or off.")
     parser.add_argument("--open", action="store_true", help="Open the page in the default browser.")
