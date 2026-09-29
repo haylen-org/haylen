@@ -85,7 +85,6 @@ class EffectLua final {
 
     template <typename T> static int attached(lua_State* L);
     template <typename T> static int tail(lua_State* L);
-    template <typename T> static int equal(lua_State* L);
 };
 
 } // namespace haylen::audio

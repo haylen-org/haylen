@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <memory>
 #include <numeric>
 #include <stdexcept>
 #include <string>
@@ -124,6 +125,38 @@ TEST(JobSystemTest, ParallelForPropagatesTheFirstException) {
 
     EXPECT_THROW(jobs.parallelFor(0, 1000, 1, failInWorkers), std::runtime_error);
     EXPECT_THROW(jobs.parallelFor(0, 1000, 1, failInCaller), std::logic_error);
+}
+
+TEST(JobSystemTest, DiscardsQueuedWorkWithoutRunningIt) {
+    test::VarnRuntime varn;
+    core::JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
+
+    // Every worker waits at the gate, so the next job stays in the queue.
+    std::atomic<std::size_t> started{0};
+    std::atomic<bool> open{false};
+    for (std::size_t worker = 0; worker < jobs.getWorkerCount(); ++worker) {
+        // clang-format off
+        jobs.post([&] {
+            ++started;
+            while (!open) {
+                std::this_thread::yield();
+            }
+        });
+        // clang-format on
+    }
+    ASSERT_TRUE(varn.pumpUntil([&] { return started.load() == jobs.getWorkerCount(); }));
+
+    auto held = std::make_shared<int>(0);
+    const std::weak_ptr<int> watched = held;
+    std::atomic<bool> ran{false};
+    jobs.post([&ran, sentinel = std::move(held)] { ran = sentinel != nullptr; });
+    jobs.discardQueued();
+    EXPECT_TRUE(watched.expired());
+
+    open = true;
+    jobs.post([&] { ++started; });
+    ASSERT_TRUE(varn.pumpUntil([&] { return started.load() == jobs.getWorkerCount() + 1; }));
+    EXPECT_FALSE(ran);
 }
 
 TEST(LogTest, FiltersByLevel) {

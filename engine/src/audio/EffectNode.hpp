@@ -29,7 +29,7 @@ class EffectNode final {
 
     static void processFrames(ma_node* node, const float** framesIn, ma_uint32* frameCountIn, float** framesOut, ma_uint32* frameCountOut);
 
-    // miniaudio reaches the node through its base, so the base stays the first member of this standard-layout class.
+    // The base stays the first member of this standard-layout class, because miniaudio reaches the node through it.
     ma_node_base base{};
     Effect* effect;
 };

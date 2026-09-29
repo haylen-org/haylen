@@ -443,17 +443,17 @@ A C++ project can add its own Lua modules, backed by its own plugin, while the a
 | Header | What it provides |
 | --- | --- |
 | `Stack.hpp` | `Stack::push`, `Stack::read` and `Stack::is`, which move C++ values on and off the Lua stack through their converters. |
-| `Userdata.hpp` | `Userdata::check`, `Userdata::test` and `Userdata::emplace` for bound objects, and `Userdata::pushField`, `Userdata::setField` and `Userdata::pushFunction` for storing Lua callbacks on userdata. |
+| `Userdata.hpp` | `Userdata::check`, `Userdata::checkShared`, `Userdata::test` and `Userdata::emplace` for bound objects, `Userdata::equal` for an `__eq` that compares the bound objects, and `Userdata::pushField`, `Userdata::setField` and `Userdata::pushFunction` for storing Lua callbacks on userdata. |
 | `Type.hpp` | The `Type<T>` trait that binds a C++ type as userdata. |
 | `Converter.hpp` | The `Converter<T>` trait with the conversions of scalars, strings, optionals, vectors and bound types. |
 | `EnumNames.hpp` | The `EnumNames<T>` trait for enums passed as strings. |
 | `Table.hpp` | `Table::checkFields` and `Table::readField` for option tables whose unknown keys are errors. |
 | `Binding.hpp` | `Binding::preload`, `Binding::newModule` and the `Binding::native`, `Binding::function` and `Binding::method` wrappers. |
 | `ClassBuilder.hpp` | `ClassBuilder` for metatables with methods and properties. |
-| `Runtime.hpp` | `Runtime::getEngine(L)` to reach the engine from a binding, `Runtime::protectedCall`, `Runtime::runChunk`, `Runtime::runReporting`, `Runtime::reportError` and `Runtime::captureError`. |
+| `Runtime.hpp` | `Runtime::getEngine(L)` to reach the engine from a binding, `Runtime::getMainThread` for callbacks that outlive their coroutine, `Runtime::protectedCall`, `Runtime::protectedRun`, `Runtime::runChunk`, `Runtime::runReporting`, `Runtime::reportError` and `Runtime::captureError`. |
 | `Reference.hpp` | `Reference`, which keeps a Lua value alive from C++. |
 | `JsonConverter.hpp` | `JsonConverter::push` and `JsonConverter::read` to move JSON between C++ and Lua tables. |
-| `Promise.hpp` | `Promise`, a result that a Lua coroutine waits for with `:await()` and that native code settles later, from any thread. |
+| `Promise.hpp` | `Promise`, a result that a Lua coroutine waits for with `:await()` and that native code settles later, from any thread, with `Promise::isSettled`, and `Promise::isPromise` to recognize any Varn promise on the stack. |
 | `TypeConverter.hpp` | The bindings of engine types such as `math::Vec2`, `math::Rect`, `math::Color`, `graphics::Texture` and `graphics2d::Sprite`, so bindings accept and return them. |
 | `Error.hpp` | `Error`, the exception a failed protected call throws, with the message, the script position and the frames of the stack. |
 | `Application.hpp` | `Application`, the application that runs `source/main.lua`. |

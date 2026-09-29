@@ -46,7 +46,7 @@ class UtilitySelector final {
     // Returns the option with the best score, or nothing when every option scores zero. Earlier options win ties.
     [[nodiscard]] std::optional<Choice> choose() const;
 
-    // Picks at random, weighted by score, among the options that score at least tolerance times the best score, which makes agents less predictable.
+    // Picks at random, weighted by score, among the options that score above zero and at least tolerance times the best score, which makes agents less predictable. The tolerance is clamped to [0, 1], and nothing is returned when every option scores zero.
     [[nodiscard]] std::optional<Choice> choose(math::Random& random, float tolerance) const;
 
     [[nodiscard]] const std::vector<Option>& getOptions() const noexcept {

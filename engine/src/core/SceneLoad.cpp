@@ -38,7 +38,7 @@ void SceneLoad::Deferral::fail(const lua::Error& failure) {
 SceneLoad::SceneLoad(Engine& owner, std::any value) : engine(owner), params(std::move(value)) {}
 
 void SceneLoad::setProgress(float value, std::string text) {
-    if (value < 0.0F || value > 1.0F) {
+    if (!(value >= 0.0F && value <= 1.0F)) {
         throw std::invalid_argument("A load progress runs from 0 to 1.");
     }
     if (isOver()) {
@@ -72,26 +72,33 @@ void SceneLoad::preload(std::string_view group, PreloadCompletion completion) {
 
     // The asset manager may drop its listeners, when the group is unloaded or the engine shuts down, and the deferral they hold then fails the load.
     // clang-format off
-    engine.getAssets().preload(group, [weak = weak_from_this(), part](float fraction) {
-        if (const std::shared_ptr<SceneLoad> load = weak.lock(); load && !load->isOver()) {
-            load->groups[part] = fraction;
-        }
-    }, [deferral, name = std::string(group), completion = std::move(completion)](std::vector<std::string> failures) {
-        std::optional<lua::Error> failure;
-        if (!failures.empty()) {
-            std::string text = "The asset group " + name + " could not load " + failures.front();
-            for (std::size_t index = 1; index < failures.size(); ++index) {
-                text += ", " + failures[index];
+    try {
+        engine.getAssets().preload(group, [weak = weak_from_this(), part](float fraction) {
+            if (const std::shared_ptr<SceneLoad> load = weak.lock(); load && !load->isOver()) {
+                load->groups[part] = fraction;
             }
-            failure.emplace(text + ".");
-            deferral->fail(*failure);
-        } else {
-            deferral->complete();
-        }
-        if (completion) {
-            completion(failure);
-        }
-    });
+        }, [deferral, name = std::string(group), completion = std::move(completion)](std::vector<std::string> failures) {
+            std::optional<lua::Error> failure;
+            if (!failures.empty()) {
+                std::string text = "The asset group " + name + " could not load " + failures.front();
+                for (std::size_t index = 1; index < failures.size(); ++index) {
+                    text += ", " + failures[index];
+                }
+                failure.emplace(text + ".");
+                deferral->fail(*failure);
+            } else {
+                deferral->complete();
+            }
+            if (completion) {
+                completion(failure);
+            }
+        });
+    } catch (...) {
+        // A group the manager refuses never started, so the load lets go of it and the reason of the manager reaches the scene instead of a dropped deferral.
+        groups.pop_back();
+        deferral->complete();
+        throw;
+    }
     // clang-format on
 }
 

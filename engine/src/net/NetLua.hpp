@@ -26,8 +26,9 @@ class NetLua final {
     static void install(lua_State* L);
 
   private:
-    static constexpr std::array<std::string_view, 2> kSocketOptions{"protocols", "reconnect"};
+    static constexpr std::array<std::string_view, 3> kSocketOptions{"protocols", "maxMessageSize", "reconnect"};
     static constexpr std::array<std::string_view, 5> kReconnectOptions{"initialDelay", "maxDelay", "multiplier", "jitter", "maxAttempts"};
+    static constexpr std::array<std::string_view, 1> kListenerOptions{"owner"};
 
     [[nodiscard]] static WebSocket& check(lua_State* L);
     [[nodiscard]] static WebSocket::Reconnect readReconnect(lua_State* L, int index);

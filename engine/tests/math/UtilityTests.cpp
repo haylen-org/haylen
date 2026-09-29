@@ -45,6 +45,13 @@ TEST(SpringTest, ReachesTheTargetWithoutOvershooting) {
     EXPECT_EQ(spring.getVelocity(), 1.0F);
 }
 
+TEST(SpringTest, KicksMoveASpringThatRestsOnItsTarget) {
+    Spring kicked(2.0F, 0.25F);
+    kicked.setVelocity(-5.0F);
+    EXPECT_LT(kicked.update(2.0F, 1.0F / 60.0F), 2.0F);
+    EXPECT_LT(kicked.getVelocity(), 0.0F);
+}
+
 TEST(SpringTest, DampsVectors) {
     Vec2 velocity{};
     Vec2 position{};

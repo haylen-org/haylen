@@ -515,7 +515,7 @@ Stops the tween for good and runs its `onKill`. A tween inside a timeline leaves
 local tween = require('haylen.tween')
 
 local spinner = {rotation = 0}
-local spinning = tween.rotate(spinner, 1, math.pi * 2, {repeatCount = -1, onKill = function() print('stopped') end})
+local spinning = tween.rotate(spinner, 1, math.pi / 2, {repeatCount = -1, loop = 'incremental', onKill = function() print('stopped') end})
 spinning:kill()
 print(spinning.active) -- false
 ```

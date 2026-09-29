@@ -138,9 +138,16 @@ BehaviorTree::Status BehaviorTreeLua::callLeaf(Scripted& self, lua_Integer leaf,
     return status;
 }
 
-BehaviorTree::Node BehaviorTreeLua::readNode(lua_State* L, int index, int leavesIndex, Scripted& self) {
+BehaviorTree::Node BehaviorTreeLua::readNode(lua_State* L, int index, int leavesIndex, int pathIndex, Scripted& self) {
     luaL_checktype(L, index, LUA_TTABLE);
+    luaL_checkstack(L, 4, "behavior tree too deep");
     const int description = lua_absindex(L, index);
+    lua_pushvalue(L, description);
+    if (lua_rawget(L, pathIndex) != LUA_TNIL) {
+        luaL_error(L, "A behavior tree description contains itself.");
+    }
+    lua_pop(L, 1);
+
     lua_getfield(L, description, "kind");
     const auto found = std::find(kKinds.begin(), kKinds.end(), lua::Stack::read<std::string_view>(L, -1));
     if (found == kKinds.end()) {
@@ -155,13 +162,20 @@ BehaviorTree::Node BehaviorTreeLua::readNode(lua_State* L, int index, int leaves
     node.seconds = static_cast<float>(luaL_optnumber(L, -1, 0.0));
     lua_pop(L, 2);
 
+    // The description stays in the path while its children are read, so a child that leads back to it is caught instead of recursing forever.
     if (lua_getfield(L, description, "children") == LUA_TTABLE) {
+        lua_pushvalue(L, description);
+        lua_pushboolean(L, 1);
+        lua_rawset(L, pathIndex);
         const lua_Integer count = luaL_len(L, -1);
         for (lua_Integer child = 1; child <= count; ++child) {
             lua_rawgeti(L, -1, child);
-            node.children.push_back(readNode(L, -1, leavesIndex, self));
+            node.children.push_back(readNode(L, -1, leavesIndex, pathIndex, self));
             lua_pop(L, 1);
         }
+        lua_pushvalue(L, description);
+        lua_pushnil(L);
+        lua_rawset(L, pathIndex);
     }
     lua_pop(L, 1);
 
@@ -195,7 +209,9 @@ int BehaviorTreeLua::newTree(lua_State* L) {
     lua::Userdata::setField(L, tree, "blackboard", 2);
     lua_newtable(L);
     lua::Userdata::setField(L, tree, "leaves", -1);
-    self.tree.emplace(readNode(L, 1, lua_gettop(L), self));
+    const int leaves = lua_gettop(L);
+    lua_newtable(L);
+    self.tree.emplace(readNode(L, 1, leaves, lua_gettop(L), self));
     lua_settop(L, tree);
     return 1;
 }

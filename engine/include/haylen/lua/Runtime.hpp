@@ -3,9 +3,9 @@
 #include <lua.hpp>
 
 #include <exception>
-#include <functional>
 #include <string>
 #include <string_view>
+#include <type_traits>
 
 #include "haylen/lua/Error.hpp"
 
@@ -34,7 +34,10 @@ class Runtime final {
     static void protectedCall(lua_State* L, int arguments, int results);
 
     // Runs body inside a protected Lua call, so errors that C API calls raise, such as a failing setter behind lua_setfield, become an Error with its stack. Native code outside any Lua call uses it before touching Lua values.
-    static void protectedRun(lua_State* L, std::function<void(lua_State*)> body);
+    template <typename Body> static void protectedRun(lua_State* L, Body&& body) {
+        Call call{.body = &body, .invoke = &invoke<std::remove_reference_t<Body>>};
+        runProtected(L, call);
+    }
 
     // Describes the stack of L from level down as the frames of an error with the given text, leaving out the engine's own protected-call and task levels. Level 0 is the running function.
     [[nodiscard]] static Error captureError(lua_State* L, const std::string& text, int level);
@@ -61,6 +64,10 @@ class Runtime final {
     // The chunk that runs the tasks of async.spawn and async.run in a protected call. Its frames and the protected call above them belong to the engine, not to the app.
     static constexpr const char* kTaskChunk = "=haylen.tasks";
 
+    // A deeper stack keeps only its innermost and outermost levels, like a Lua traceback, so a runaway recursion reports quickly.
+    static constexpr int kInnerLevels = 10;
+    static constexpr int kOuterLevels = 11;
+
     // The message handler of every protected call: it replaces the error value with an Error userdata that holds the stack.
     static int handleMessage(lua_State* L);
 
@@ -69,10 +76,22 @@ class Runtime final {
     [[nodiscard]] static std::string describeValue(lua_State* L, int index);
     [[nodiscard]] static std::string describeFunction(const lua_Debug& info);
     [[nodiscard]] static Error::Frame::Kind getFrameKind(const lua_Debug& info) noexcept;
+    [[nodiscard]] static int findLastLevel(lua_State* L);
     static void pushError(lua_State* L, Error error);
     static int collectError(lua_State* L);
     static int errorToString(lua_State* L);
     static int runBody(lua_State* L);
+
+    // A body for protectedRun, reduced to its address and the function that calls it, so running it allocates nothing.
+    struct Call {
+        const void* body = nullptr;
+        void (*invoke)(const void* body, lua_State* L) = nullptr;
+    };
+
+    template <typename Body> static void invoke(const void* body, lua_State* L) {
+        (*static_cast<const Body*>(body))(L);
+    }
+    static void runProtected(lua_State* L, Call& call);
 };
 
 } // namespace haylen::lua

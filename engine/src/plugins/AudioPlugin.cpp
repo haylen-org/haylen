@@ -43,7 +43,7 @@ void AudioPlugin::start(core::Engine& engine) {
     mixer.setProcessPaused(engine.isPaused());
     pauseConnection = engine.pausedChanged.connect([&mixer](bool paused) { mixer.setProcessPaused(paused); });
     deviceConnection = mixer.deviceEventReceived.connect([this, &engine](audio::Mixer::DeviceEvent deviceEvent) { handleDeviceEvent(engine, deviceEvent); });
-    // iOS does not always report the end of an interruption, so the audio comes back whenever the app becomes active again, as Apple recommends.
+    // Because iOS does not always report the end of an interruption, the audio comes back whenever the app becomes active again, as Apple recommends.
     // clang-format off
     appStateConnection = engine.appStateChanged.connect([this, &engine](core::Engine::AppState value) {
         if (value == core::Engine::AppState::Active) {

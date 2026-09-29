@@ -34,7 +34,7 @@ class Input final {
     void updateTouchDurations(float deltaSeconds) noexcept;
     void endFrame();
 
-    // Releases every held key and mouse button and cancels every touch, which the engine does when the app loses focus or leaves the foreground.
+    // Releases every held key, modifier and mouse button and cancels every touch, which the engine does when the app loses focus or leaves the foreground.
     void releaseAll() noexcept;
 
     // Keeps the pointer and the fingers on the same screen points when the app changes how design space maps onto the screen.
@@ -85,18 +85,15 @@ class Input final {
     }
     [[nodiscard]] const Touch* findTouch(std::uint64_t id) const noexcept;
 
-    [[nodiscard]] const GamepadState& getGamepad(std::size_t index) const noexcept {
-        return gamepads[index];
-    }
+    [[nodiscard]] const GamepadState& getGamepad(std::size_t index) const noexcept;
     [[nodiscard]] bool isGamepadDown(std::size_t index, GamepadButton button) const noexcept;
     [[nodiscard]] bool isGamepadPressed(std::size_t index, GamepadButton button) const noexcept;
     [[nodiscard]] bool isGamepadReleased(std::size_t index, GamepadButton button) const noexcept;
     [[nodiscard]] float getGamepadAxis(std::size_t index, GamepadAxis axis) const noexcept;
     [[nodiscard]] math::Vec2 getGamepadStick(std::size_t index, bool rightStick) const noexcept;
 
-    void setGamepadDeadzone(float value) noexcept {
-        deadzone = value;
-    }
+    // Takes a dead zone from 0 to below 1 and throws std::invalid_argument for any other value.
+    void setGamepadDeadzone(float value);
     [[nodiscard]] float getGamepadDeadzone() const noexcept {
         return deadzone;
     }
@@ -105,11 +102,14 @@ class Input final {
     }
 
   private:
+    static const GamepadState kDisconnectedGamepad;
+
     [[nodiscard]] static std::size_t keyIndex(Key key) noexcept;
     [[nodiscard]] static std::size_t buttonIndex(MouseButton button) noexcept;
     [[nodiscard]] static float applyDeadzone(float value, float threshold) noexcept;
 
     void handleTouches(const platform::Event& event, const graphics::Viewport& viewport);
+    [[nodiscard]] bool hasGamepadPress(std::size_t index) const noexcept;
 
     std::bitset<Controls::kKeyCount> keysDown;
     std::bitset<Controls::kKeyCount> keysPressed;

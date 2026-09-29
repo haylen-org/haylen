@@ -29,7 +29,7 @@ EM_JS(void, haylen_js_socket_release, (int id), {
 
 namespace haylen::net {
 
-std::unique_ptr<WebSocketTransport> WebSocketTransport::open(const std::string& url, const std::vector<std::string>& protocols, Sink sink) {
+std::unique_ptr<WebSocketTransport> WebSocketTransport::open(const std::string& url, const std::vector<std::string>& protocols, std::size_t, Sink sink) {
     return std::make_unique<BrowserWebSocket>(url, protocols, std::move(sink));
 }
 

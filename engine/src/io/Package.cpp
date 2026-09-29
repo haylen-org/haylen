@@ -94,8 +94,9 @@ std::string Package::readAssetText(std::string_view path) const {
 }
 
 std::vector<std::string> Package::listAssets(std::string_view directory) const {
+    // The folder is normalized on its own like every asset path, so ".." never climbs out of the content folder.
     const std::string root = std::string(Path::kContentDirectory) + "/";
-    std::vector<std::string> assets = list(Path::join(Path::kContentDirectory, directory));
+    std::vector<std::string> assets = list(Path::join(Path::kContentDirectory, Path::normalize(directory)));
     for (std::string& asset : assets) {
         asset.erase(0, root.size());
     }

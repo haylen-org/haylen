@@ -47,7 +47,6 @@ class Spline final {
     [[nodiscard]] Vec2 getTangent(float t) const noexcept;
     [[nodiscard]] Vec2 getPointAtDistance(float distance) const noexcept;
     [[nodiscard]] Vec2 getTangentAtDistance(float distance) const noexcept;
-    // Converts a distance along the curve into its parameter.
     [[nodiscard]] float getParameterAtDistance(float distance) const noexcept;
 
     // Returns count points spread evenly over the parameter, both ends included.

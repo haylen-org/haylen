@@ -257,7 +257,7 @@ print(brain.kind) -- selector
 
 ### ai.newBehaviorTree(root, blackboard)
 
-Creates a `BehaviorTree` from a node description and an optional blackboard table, which defaults to a new table. A malformed description raises an error such as `Unknown behavior tree node '<kind>'.` or `A parallel node needs between one success and as many successes as it has children.`
+Creates a `BehaviorTree` from a node description and an optional blackboard table, which defaults to a new table. A malformed description raises an error such as `Unknown behavior tree node '<kind>'.` or `A parallel node needs between one success and as many successes as it has children.` The same description may appear in several places of a tree, but a description that contains itself raises `A behavior tree description contains itself.`
 
 ```lua
 local ai = require('haylen.ai')
@@ -311,7 +311,7 @@ print(tree:tick(0), tree.status, tree.nodeCount, tree.time) -- success success 1
 
 ## Utility AI
 
-A `UtilitySelector` scores each option by the product of its considerations and picks the best one, such as attacking when the enemy is close and healthy or fleeing when health runs low. Each consideration reads an input from a context, maps it from its range to 0 to 1 and shapes it with a response curve. The product makes up for the number of factors, so options with many considerations are not punished, and the weight of the option scales it.
+A `UtilitySelector` scores each option by the product of its considerations and picks the best one, such as attacking when the enemy is close and healthy or fleeing when health runs low. Each consideration reads an input from a context, maps it from its range to 0 to 1 and shapes it with a response curve. Each factor is then raised toward 1 by a share that grows with the number of considerations, so options with many considerations are not punished by the product, and the weight of the option scales it.
 
 ### ai.newUtilitySelector(options)
 
@@ -330,7 +330,7 @@ Creates a selector from a list of options. Unknown keys raise `Unknown option '<
 | `minimum`, `maximum` | number | `0`, `1` | Range of the input that maps to 0 and 1. |
 | `curve` | table | linear | Response curve `{shape, slope, exponent, shift, offset}`. |
 
-Curves follow the infinite axis utility system, with `x` the mapped input: `'linear'` and `'polynomial'` give `slope * (x - shift) ^ exponent + offset`, `'logistic'` gives `exponent / (1 + e ^ (-slope * (x - shift))) + offset`, `'logit'` gives `slope * ln((x - shift) / (1 - x + shift)) / 5 + 0.5 + offset`, and `'normal'` gives `slope * e ^ (-exponent * (x - shift) ^ 2) + offset`. Results are clamped between 0 and 1, and slope, exponent, shift and offset default to `1`, `1`, `0` and `0`.
+Curves follow the infinite axis utility system, with `x` the mapped input: `'linear'` gives `slope * (x - shift) + offset` and ignores the exponent, `'polynomial'` gives `slope * (x - shift) ^ exponent + offset` with inputs below the shift counted as the shift, `'logistic'` gives `exponent / (1 + e ^ (-slope * (x - shift))) + offset`, `'logit'` gives `slope * ln((x - shift) / (1 - x + shift)) / 5 + 0.5 + offset`, and `'normal'` gives `slope * e ^ (-exponent * (x - shift) ^ 2) + offset`. Results are clamped between 0 and 1, and slope, exponent, shift and offset default to `1`, `1`, `0` and `0`.
 
 ```lua
 local ai = require('haylen.ai')
@@ -349,7 +349,7 @@ print(brain:choose({health = 90, distance = 40})) -- attack
 
 ### selector:choose(context, random, tolerance)
 
-Returns the name and score of the best option for the context, or `nil` when every option scores zero. With a `Random`, it picks at random, weighted by score, among the options that score at least `tolerance` times the best score, which defaults to `0.9` and makes agents less predictable.
+Returns the name and score of the best option for the context, or `nil` when every option scores zero. With a `Random`, it picks at random, weighted by score, among the options that score above zero and at least `tolerance` times the best score, which makes agents less predictable. `tolerance` defaults to `0.9` and is clamped between `0` and `1`, so `1` keeps only the best options and `0` keeps every option that scores above zero.
 
 ```lua
 local ai = require('haylen.ai')
@@ -391,6 +391,24 @@ local threat = ai.newInfluenceMap({columns = 64, rows = 36, cellSize = 30})
 print(threat.columns, threat.rows, threat.cellSize, threat.origin)
 ```
 
+### Map properties
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `columns` | integer | read | Number of cells across. |
+| `rows` | integer | read | Number of cells down. |
+| `cellSize` | number | read | Side of every cell in world units. |
+| `origin` | Vec2 | read | World position where cell `(0, 0)` starts, from the `x` and `y` options. |
+
+```lua
+local ai = require('haylen.ai')
+
+local threat = ai.newInfluenceMap({columns = 20, rows = 10, cellSize = 16, x = 100, y = 50})
+local width = threat.columns * threat.cellSize
+local height = threat.rows * threat.cellSize
+print(width, height, threat.origin) -- 320.0 160.0 Vec2(100.0, 50.0)
+```
+
 ### map:stamp(x, y, strength, radius, falloff)
 
 Adds `strength` to the cells whose centers lie within `radius` of the point, fading toward the edge with `'linear'` (the default), `'quadratic'` or `'constant'`.
@@ -427,7 +445,7 @@ tension:scale(0.5)
 
 ### map:get(column, row), map:set(column, row, value), map:sample(x, y), map:values()
 
-`get` and `set` read and write one cell and raise `The cell is outside the influence map.` outside it. `sample` returns the value at a world position, interpolated between cell centers, and 0 outside the map. `values` returns every value row by row.
+`get` and `set` read and write one cell and raise `The cell is outside the influence map.` outside it. `sample` returns the value at a world position, interpolated between cell centers, and 0 outside the map or for a NaN position. `values` returns every value row by row.
 
 ```lua
 local ai = require('haylen.ai')
@@ -439,7 +457,7 @@ print(heat:get(2, 3), heat:sample(40, 56), #heat:values()) -- 5.0 5.0 100
 
 ### map:highest(x, y, radius), map:lowest(x, y, radius), map:cellCenter(column, row)
 
-`highest` and `lowest` return the center and value of the cell with the highest or lowest value among the cells whose centers lie within `radius` of the point, as three numbers, or `nil` when no cell does. `cellCenter` returns the center of a cell.
+`highest` and `lowest` return the center and value of the cell with the highest or lowest value among the cells whose centers lie within `radius` of the point, as three numbers, or `nil` when no cell does. A `radius` of `math.huge` searches the whole map. `cellCenter` returns the center of a cell.
 
 ```lua
 local ai = require('haylen.ai')

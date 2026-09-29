@@ -154,7 +154,7 @@ preferences.save()
 
 ### preferences.apply()
 
-Applies the engine preferences that are stored under the keys of `preferences.capture()`. Missing keys leave the current state alone, buses the app has not created yet are skipped, and a stored action map replaces the current one. A stored value of the wrong type raises `The preference <key> has a value of the wrong type.`. Call it at startup after creating custom buses and loading the default action map, so stored choices override the defaults.
+Applies the engine preferences that are stored under the keys of `preferences.capture()`. Missing keys leave the current state alone, buses the app has not created yet are skipped, and a stored action map replaces the current one or raises the errors of `input.loadActions()` when it is invalid. A stored value of the wrong type raises `The preference <key> has a value of the wrong type.`. Call it at startup after creating custom buses and loading the default action map, so stored choices override the defaults.
 
 ```lua
 local preferences = require('haylen.preferences')

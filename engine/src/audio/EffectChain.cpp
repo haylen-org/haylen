@@ -24,14 +24,16 @@ void EffectChain::add(std::shared_ptr<Effect> effect) {
         throw std::invalid_argument("The audio effect already processes another bus or voice.");
     }
 
-    // An effect joins the node graph of the first mixer that uses it, prepared for its format.
     ma_node_graph& graph = *ma_engine_get_node_graph(&engine);
-    if (!effect->node) {
-        const std::uint32_t channels = ma_engine_get_channels(&engine);
-        effect->prepare(ma_engine_get_sample_rate(&engine), channels);
-        effect->node = std::make_unique<EffectNode>(graph, *effect, channels);
-    } else if (effect->node->getGraph() != &graph) {
+    if (effect->node && effect->node->getGraph() != &graph) {
         throw std::invalid_argument("The audio effect belongs to another mixer.");
+    }
+
+    // A detached effect is out of reach of the audio thread, so every chain it joins prepares it afresh, without the sound it still held from its last bus or voice. It joins the node graph of the first mixer that uses it.
+    const std::uint32_t channels = ma_engine_get_channels(&engine);
+    effect->prepare(ma_engine_get_sample_rate(&engine), channels);
+    if (!effect->node) {
+        effect->node = std::make_unique<EffectNode>(graph, *effect, channels);
     }
 
     ma_node* previous = effects.empty() ? source : nodeOf(*effects.back());

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <lua.hpp>
 
+#include <algorithm>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -134,6 +135,18 @@ TEST(ErrorTest, CapturesTheStackOfSceneCallbacks) {
     EXPECT_EQ(json.at("frames")[1], (core::Json{{"source", "source/scenes/battle.lua"}, {"line", 5}, {"function", "function <source/scenes/battle.lua:4>"}, {"kind", "lua"}}));
 }
 
+TEST(ErrorTest, KeepsTheEndsOfARunawayRecursion) {
+    test::EngineFixture fixture;
+    fixture.runLua("local function dive(depth) return dive(depth + 1) + 1 end require('haylen.scene').push({update = function() dive(1) end})");
+    fixture.frames(1);
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+
+    const Error& error = *fixture.engine().getError();
+    EXPECT_NE(error.getMessage().find("stack overflow"), std::string::npos) << error.getMessage();
+    EXPECT_LE(error.getFrames().size(), 22U);
+    EXPECT_TRUE(std::ranges::any_of(error.getFrames(), [](const Error::Frame& frame) { return frame.function.ends_with("levels skipped"); }));
+}
+
 TEST(ErrorTest, FindsTheScriptPositionOfErrors) {
     const Error nested("The scene could not start: source/main.lua:12: missing sprite");
     EXPECT_EQ(nested.getMessage(), "The scene could not start: source/main.lua:12: missing sprite");
@@ -149,6 +162,15 @@ TEST(ErrorTest, FindsTheScriptPositionOfErrors) {
     const Error huge("source/main.lua:99999999999: a line number beyond any int");
     EXPECT_TRUE(huge.getFile().empty());
     EXPECT_EQ(huge.getLine(), 0);
+
+    // A position further in takes the whole chunk name, and a long message without spaces is read in one pass.
+    const Error later("x.lua:1 then deep/scene.lua.lua:3: failed");
+    EXPECT_EQ(later.getFile(), "deep/scene.lua.lua");
+    EXPECT_EQ(later.getLine(), 3);
+    EXPECT_EQ(later.getMessage(), "x.lua:1 then deep/scene.lua.lua:3: failed");
+    const Error blob(std::string(1000000, 'a') + ".lua:5: end");
+    EXPECT_EQ(blob.getLine(), 5);
+    EXPECT_EQ(blob.getMessage(), "end");
 
     // A message without a position points at the innermost script frame, skipping native ones.
     const Error value("(error object is a table value)", {{.source = "[C]", .function = "global 'error'", .kind = Error::Frame::Kind::C}, {.source = "source/main.lua", .line = 7, .function = "main chunk", .kind = Error::Frame::Kind::Main}});
@@ -210,7 +232,12 @@ TEST(JsonConverterTest, ConvertsBetweenTablesAndJson) {
     EXPECT_EQ(fixture.lua("return #document.tags .. document.tags[2]"), "2b");
     EXPECT_EQ(fixture.lua("return document.nested.deep.value"), "nil");
 
-    fixture.runLua("roundTrip = {list = {1, 2, 3}, map = {x = 1.5}, flag = false, text = 'hi', integer = 7, float = 2.0}");
+    // Unsigned integers beyond the Lua integers stay positive, and keys keep every byte.
+    JsonConverter::push(L, core::Json::parse(R"({"huge": 18446744073709551615, "a\u0000b": 1})"));
+    lua_setglobal(L, "wide");
+    EXPECT_EQ(fixture.lua("return tostring(wide.huge > 0) .. ' ' .. tostring(wide['a\\0b']) .. ' ' .. tostring(wide.a)"), "true 1 nil");
+
+    fixture.runLua("roundTrip ={list = {1, 2, 3}, map = {x = 1.5}, flag = false, text = 'hi', integer = 7, float = 2.0}");
     lua_getglobal(L, "roundTrip");
     const core::Json converted = JsonConverter::read(L, -1);
     lua_pop(L, 1);

@@ -1,11 +1,13 @@
 #include "plugins/JobsPlugin.hpp"
 
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
 
 #include "haylen/lua/Runtime.hpp"
 #include "lua/JobsLua.hpp"
+#include "lua/Task.hpp"
 
 namespace haylen::plugins {
 
@@ -50,7 +52,9 @@ bool JobsPlugin::isOutOfTime(lua_State* L) const {
 
 // Jobs take turns in order, so a job that used the whole budget goes last on the next frame.
 void JobsPlugin::update(core::Engine&, float) {
-    deadline = std::chrono::steady_clock::now() + budget;
+    const auto now = std::chrono::steady_clock::now();
+    const auto remaining = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::time_point::max() - now);
+    deadline = budget >= remaining ? std::chrono::steady_clock::time_point::max() : now + budget;
     const std::size_t turns = jobs.size();
     for (std::size_t turn = 0; turn < turns && std::chrono::steady_clock::now() < deadline; ++turn) {
         Job job = std::move(jobs.front());
@@ -68,13 +72,19 @@ bool JobsPlugin::resume(Job& job) {
     const int status = lua_resume(job.state, main, std::exchange(job.arguments, 0), &results);
     current = nullptr;
 
+    // A job that waits for anything else ends there, so a promise it waits for never resumes its code.
     if (status == LUA_YIELD) {
         const bool paused = lua::JobsLua::isCheckpoint(job.state, results);
         lua_pop(job.state, results);
-        if (!paused) {
-            job.promise.reject("A job may only pause at jobs.checkpoint. Wait for promises inside async.spawn instead.");
+        if (paused) {
+            return true;
         }
-        return paused;
+        const std::optional<lua::Error> failure = lua::Task::closeCoroutine(job.state, main);
+        job.promise.reject("A job may only pause at jobs.checkpoint. Wait for promises inside async.spawn instead.");
+        if (failure) {
+            lua::Runtime::reportError(main, *failure);
+        }
+        return false;
     }
 
     // The failed coroutine keeps its stack, so the rejection carries the stack of the job without the tab characters of a Lua traceback.

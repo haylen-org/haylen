@@ -1,12 +1,15 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <limits>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 #include "audio/MixerFixture.hpp"
 #include "haylen/assets/Manager.hpp"
+#include "haylen/audio/Filter.hpp"
 #include "haylen/audio/Mixer.hpp"
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Json.hpp"
@@ -112,6 +115,8 @@ TEST_F(MixerTest, ControlsPlayback) {
     EXPECT_LT(peak(480), 0.05F);
     EXPECT_NEAR(peak(toFrames(0.6F)), 0.5F, 0.01F);
     mixer.stop(fading, 0.05F);
+    EXPECT_FALSE(mixer.isActive(fading)) << "a stopped voice is over while it fades out";
+    EXPECT_GT(peak(480), 0.0F);
     peak(toFrames(0.1F));
     mixer.update(1.0F / 60.0F);
     EXPECT_EQ(mixer.getVoiceCount(), 0U);
@@ -147,6 +152,34 @@ TEST_F(MixerTest, VariesPitchWithinTheRange) {
     EXPECT_EQ(mixer.getPitch(9999), 0.0F);
     EXPECT_THROW((void)mixer.play(sound, {.pitch = 1.0F, .pitchVariation = 1.0F}), std::invalid_argument);
     EXPECT_THROW((void)mixer.play(sound, {.pitchVariation = -0.1F}), std::invalid_argument);
+}
+
+TEST_F(MixerTest, RejectsValuesThatAreNotFinite) {
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    const float infinity = std::numeric_limits<float>::infinity();
+    const Sound sound = makeTone(toFrames(1.0F));
+    const Mixer::VoiceId voice = mixer.play(sound, {.loop = true});
+
+    EXPECT_THROW((void)mixer.play(sound, {.volume = nan}), std::invalid_argument);
+    EXPECT_THROW((void)mixer.play(sound, {.pitch = 0.0F}), std::invalid_argument);
+    EXPECT_THROW((void)mixer.play(sound, {.pitch = infinity}), std::invalid_argument);
+    EXPECT_THROW((void)mixer.play(sound, {.pitchVariation = nan}), std::invalid_argument);
+    EXPECT_THROW((void)mixer.play(sound, {.pan = infinity}), std::invalid_argument);
+    EXPECT_THROW((void)mixer.play(sound, {.fadeIn = infinity}), std::invalid_argument);
+    EXPECT_THROW((void)mixer.play(sound, {.startAt = nan}), std::invalid_argument);
+    EXPECT_THROW((void)mixer.play(sound, {.position = math::Vec2{nan, 0.0F}}), std::invalid_argument);
+    EXPECT_THROW(mixer.setVolume(voice, infinity), std::invalid_argument);
+    EXPECT_THROW(mixer.setPitch(voice, nan), std::invalid_argument);
+    EXPECT_THROW(mixer.setPitch(voice, -1.0F), std::invalid_argument);
+    EXPECT_THROW(mixer.setPan(voice, nan), std::invalid_argument);
+    EXPECT_THROW(mixer.setPosition(voice, {0.0F, infinity}), std::invalid_argument);
+    EXPECT_THROW(mixer.setListener({nan, 0.0F}), std::invalid_argument);
+    EXPECT_THROW(mixer.setBusVolume("sfx", infinity), std::invalid_argument);
+    EXPECT_THROW(mixer.setSpatialization({.doppler = 1.0F, .speedOfSound = infinity}), std::invalid_argument);
+
+    // Nothing reached the mix, so the voice still plays as it did.
+    EXPECT_EQ(mixer.getVoiceCount(), 1U);
+    EXPECT_NEAR(settledPeak(256), 0.5F, 0.01F);
 }
 
 TEST_F(MixerTest, PansAndAttenuatesPositionalVoices) {
@@ -224,6 +257,26 @@ TEST_F(MixerTest, ControlsMusicThroughItsVoice) {
     EXPECT_FALSE(mixer.getMusic().isValid());
     EXPECT_NE(mixer.playMusic(second), next);
     EXPECT_EQ(mixer.getMusic(), second);
+}
+
+TEST_F(MixerTest, FailedPlaysLeaveEveryVoicePlaying) {
+    const Sound track = makeTone(toFrames(1.0F));
+    const Mixer::VoiceId music = mixer.playMusic(track, {.fade = 0.0F});
+    EXPECT_THROW(mixer.playMusic(Sound{}), std::invalid_argument);
+    EXPECT_THROW(mixer.playMusic(makeTone(10), {.bus = "missing"}), std::invalid_argument);
+    EXPECT_EQ(mixer.getMusic(), track);
+    EXPECT_TRUE(mixer.isActive(music));
+
+    // A full mixer makes room only for a voice that plays.
+    std::vector<Mixer::VoiceId> voices;
+    for (int index = 0; index < 7; ++index) {
+        voices.push_back(mixer.play(track));
+    }
+    const auto busy = std::make_shared<Filter>(Filter::Kind::Lowpass, Filter::Settings{});
+    mixer.addBusEffect("ui", busy);
+    EXPECT_THROW((void)mixer.play(track, {.effects = {busy}}), std::invalid_argument);
+    EXPECT_EQ(mixer.getVoiceCount(), 8U);
+    EXPECT_TRUE(mixer.isActive(voices.front()));
 }
 
 TEST_F(MixerTest, StealsTheOldestVoiceWhenFull) {
@@ -354,6 +407,8 @@ TEST_F(AudioLuaTest, PlaysSoundsFromLua) {
     EXPECT_NE(fixture.lua("audio.playMusic(theme, {crossfade = 1})").find("Unknown option 'crossfade'"), std::string::npos);
     EXPECT_NE(fixture.lua("audio.play('hit')").find("error: "), std::string::npos);
     EXPECT_NE(fixture.lua("audio.play(hit, {bus = 'missing'})").find("Unknown audio bus: missing"), std::string::npos);
+    EXPECT_NE(fixture.lua("audio.play(hit, {pitch = 0})").find("Audio needs a finite pitch above 0."), std::string::npos);
+    EXPECT_NE(fixture.lua("audio.setVolume(1, 0 / 0)").find("Audio needs a finite volume."), std::string::npos);
     EXPECT_NE(fixture.lua("return hit.loudness").find("Sound has no member 'loudness'"), std::string::npos);
 }
 

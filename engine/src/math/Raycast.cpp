@@ -23,7 +23,8 @@ std::optional<float> Raycast::crossing(const Ray& ray, Vec2 start, Vec2 end) noe
     const Vec2 offset = start - ray.origin;
     const float distance = Vec2::cross(offset, edge) / denominator;
     const float along = Vec2::cross(offset, ray.direction) / denominator;
-    if (distance < 0.0F || distance > ray.length || along < 0.0F || along > 1.0F) {
+    // The negated test also rejects NaN, so every hit has a distance that sorts.
+    if (!(distance >= 0.0F && distance <= ray.length && along >= 0.0F && along <= 1.0F)) {
         return std::nullopt;
     }
     return distance;

@@ -40,10 +40,6 @@ class Autoloads final {
     // Calls stop on every autoload, the last one first, and lets go of them.
     void stop(core::Engine& engine);
 
-    [[nodiscard]] std::size_t size() const noexcept {
-        return entries.size();
-    }
-
   private:
     struct Entry {
         std::string name;

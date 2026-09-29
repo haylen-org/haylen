@@ -75,6 +75,12 @@ A table with the configuration read from `app.json`, with defaults filled in for
 | `lifecycle.pauseOnBackground` | boolean | `true` | Whether the app halts in the background, see `haylen.lifecycle()`. |
 | `lifecycle.pauseOnFocusLoss` | boolean | `false` | Whether the app halts while its window has no focus. |
 | `lifecycle.muteOnFocusLoss` | boolean | `false` | Whether the master bus is muted while the app is not active. |
+| `audio.iosSession` | string | `'ambient'` | Category of the audio session on iOS and tvOS: `'ambient'`, `'soloAmbient'` or `'playback'`, described in the [audio guide](../audio.md#sessions-and-interruptions). |
+| `audio.mixWithOthers` | boolean | `false` | Whether the `'playback'` session plays along with other apps. |
+| `debug.stats` | string | `'off'` | Debug statistics the app starts with: `'off'`, `'compact'` or `'full'`, see [`haylen.debug`](debug.md). |
+| `debug.objectEvents` | boolean | `false` | Whether every counted object publishes `object_created` and `object_destroyed`, see [`haylen.debug`](debug.md#object-counts-and-events). |
+| `debug.safeArea` | string or table | absent | The safe area simulated instead of the one of the device, present only when `app.json` sets it, see [`viewport.setSafeAreaSimulation`](viewport.md#viewportsetsafeareasimulationvalue). |
+| `debug.showSafeArea` | boolean | `false` | Whether the debug view of the safe area shows from the start, see [`ui.setSafeAreaVisible`](ui.md#uisetsafeareavisiblevisible). |
 | `autoload` | list of strings | `{}` | Modules that load as autoloads before `source/main.lua`, see `haylen.autoload`. |
 | `native` | table | `{}` | The native libraries the app ships by name, as `app.json` lists them for make.py, see the [native code guide](../native.md#packaging-libraries-with-an-app). |
 

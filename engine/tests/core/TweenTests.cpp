@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -90,6 +91,24 @@ TEST(TweenValueTest, MixesEveryKind) {
     EXPECT_FLOAT_EQ(core::TweenValue::distance(red, blue, Interpolation::Linear), 1.0F);
     EXPECT_THROW((void)core::TweenValue::mix(1.0, math::Vec2{}, 0.5F, Interpolation::Linear), std::invalid_argument);
     EXPECT_THROW((void)core::TweenValue::add(std::string("a"), std::string("b")), std::invalid_argument);
+
+    // The end of a tween is its target exactly, even where subtracting and adding back the start rounds.
+    EXPECT_EQ(core::TweenValue::mix(12.3, -4.56, 1.0F, Interpolation::Linear).getNumber(), -4.56);
+    EXPECT_EQ(core::TweenValue::mix(math::Vec2{12.3F, 12.3F}, math::Vec2{-4.56F, -4.56F}, 1.0F, Interpolation::Linear).getVector(), (math::Vec2{-4.56F, -4.56F}));
+    EXPECT_EQ(core::TweenValue::mix(math::Color{12.3F, 0.0F, 0.0F, 1.0F}, math::Color{-4.56F, 0.0F, 0.0F, 1.0F}, 1.0F, Interpolation::Linear).getColor().r, -4.56F);
+}
+
+TEST(TweenManagerTest, RejectsTimesThatAreNotNumbers) {
+    TweenRig rig;
+    Box box;
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    auto tween = rig.tweenX(box, 1.0F, core::TweenProperty::to(10.0));
+    EXPECT_THROW(tween->setDelay(nan), std::invalid_argument);
+    EXPECT_THROW(tween->setRepeatDelay(nan), std::invalid_argument);
+    EXPECT_THROW(tween->setTimeScale(nan), std::invalid_argument);
+    EXPECT_THROW(tween->seek(nan), std::invalid_argument);
+    EXPECT_THROW(core::PropertyTween{nan}, std::invalid_argument);
+    EXPECT_THROW(rig.tweens.setTimeScale("world", nan), std::invalid_argument);
 }
 
 TEST(TweenPropertyTest, ResolvesModesWhenItBegins) {
@@ -293,7 +312,7 @@ TEST(TweenManagerTest, ControlsPlayback) {
     EXPECT_DOUBLE_EQ(box.x, 20.0);
     EXPECT_EQ(completions, 2);
     tween->kill();
-    EXPECT_EQ(finished, (std::vector<bool>{true, true, true}));
+    EXPECT_EQ(finished, (std::vector<bool>{true, true, true, false}));
     tween->kill();
     EXPECT_EQ(rig.tweens.size(), 0U);
 }

@@ -18,9 +18,9 @@ class PoissonDisk::Grid final {
         cells[cellIndex(columnOf(point), rowOf(point))] = sampleIndex;
     }
 
-    // Returns how many cells away a sample may still be closer than the distance.
+    // Returns how many cells away a sample may still be closer than the distance, which never exceeds the size of the grid.
     [[nodiscard]] int reachOf(float distance) const noexcept {
-        return static_cast<int>(std::ceil(distance / cellSize));
+        return static_cast<int>(std::min(std::ceil(static_cast<double>(distance) / cellSize), static_cast<double>(std::max(columns, rows))));
     }
 
     [[nodiscard]] bool isFarEnough(Vec2 point, float distance, int reach, const std::vector<Vec2>& samples, const std::vector<float>& distances) const {
@@ -83,6 +83,9 @@ std::vector<Vec2> PoissonDisk::sample(const Options& options, Random& random) {
 
     const bool variable = static_cast<bool>(options.distance);
     const float largest = variable ? options.maximumDistance : options.minimumDistance;
+    if (!std::isfinite(options.minimumDistance) || !std::isfinite(largest)) {
+        throw std::invalid_argument("Poisson distances must be finite.");
+    }
     if (largest < options.minimumDistance) {
         throw std::invalid_argument("A varying Poisson distance needs a maximum distance of at least the minimum distance.");
     }
@@ -97,7 +100,14 @@ std::vector<Vec2> PoissonDisk::sample(const Options& options, Random& random) {
         return options.area.contains(point) && (!options.accept || options.accept(point));
     };
     const auto distanceAt = [&](Vec2 point) {
-        return variable ? std::clamp(options.distance(point), options.minimumDistance, largest) : options.minimumDistance;
+        if (!variable) {
+            return options.minimumDistance;
+        }
+        const float distance = options.distance(point);
+        if (!std::isfinite(distance)) {
+            throw std::invalid_argument("A Poisson distance function must return finite distances.");
+        }
+        return std::clamp(distance, options.minimumDistance, largest);
     };
     const auto addSample = [&](Vec2 point, float distance) {
         grid.insert(point, static_cast<int>(samples.size()));

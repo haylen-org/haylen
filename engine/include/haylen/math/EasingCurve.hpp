@@ -29,9 +29,6 @@ class EasingCurve final {
     [[nodiscard]] static EasingCurve custom(std::function<float(float)> function);
 
     [[nodiscard]] float apply(float t) const;
-    [[nodiscard]] bool isLinear() const noexcept {
-        return kind == Kind::Preset && type == Easing::Type::Linear;
-    }
 
   private:
     enum class Kind : std::uint8_t {

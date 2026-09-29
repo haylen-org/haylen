@@ -119,6 +119,13 @@ TEST(TweenLuaTest, AwaitsCompletionAndKills) {
     fixture.runLua("stopped = nil local all = tween.to(box, 1, {x = 0}) async.spawn(function() stopped = all:wait():await() end) tween.killAll()");
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return tween.count() .. ' ' .. tostring(stopped)"), "0 false");
+
+    // A kept tween that already completed waits for its next completion, and a kill settles the wait with false.
+    fixture.runLua("kept = tween.to(box, 0.1, {x = 1}, {autoKill = false})");
+    fixture.frames(1, 0.25);
+    fixture.runLua("late = nil async.spawn(function() late = kept:wait():await() end) kept:kill()");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return tostring(kept.completed) .. ' ' .. tostring(late)"), "true false");
 }
 
 TEST(TweenLuaTest, BuildsTimelinesAndStaggers) {
@@ -323,6 +330,7 @@ TEST(TweenLuaTest, EasesWithEveryKindOfCurve) {
     EXPECT_NE(fixture.lua("m.ease({curve = 'quad_in', overshoot = 2}, 0.5)").find("overshoot only applies"), std::string::npos);
     EXPECT_NE(fixture.lua("m.ease({bezier = {2, 0, 0, 1}}, 0.5)").find("between 0 and 1"), std::string::npos);
     EXPECT_NE(fixture.lua("m.ease({speed = 1}, 0.5)").find("Unknown option 'speed'"), std::string::npos);
+    EXPECT_NE(fixture.lua("m.ease({steps = 4294967297}, 0.5)").find("bad option 'steps'"), std::string::npos);
     EXPECT_NE(fixture.lua("m.ease(function() return 'x' end, 0.5)").find("must return a number"), std::string::npos);
 
     fixture.runLua("box = {x = 0} tween.to(box, 1, {x = 10}, {ease = {steps = 2}})");

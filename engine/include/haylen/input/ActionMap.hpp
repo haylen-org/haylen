@@ -97,9 +97,8 @@ class ActionMap final {
     void setGamepadIndex(std::optional<std::size_t> value) noexcept {
         gamepadIndex = value;
     }
-    void setPressThreshold(float value) noexcept {
-        pressThreshold = value;
-    }
+    // Takes a threshold above 0 and up to 1 and throws std::invalid_argument for any other value.
+    void setPressThreshold(float value);
     // Blocked input, such as during a scene change or while the app is halted, reads every action as up. An action still down when input returns stays up until its bindings let go, so a key held across a scene change never reads as a second press.
     void update(const Input& input, const VirtualInput& virtualInput, bool blocked);
 

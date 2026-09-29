@@ -148,6 +148,13 @@ TEST(SceneLoadTest, FinishesOnceTheHookAndEveryDeferralReleasedIt) {
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->outcome, SceneManager::Outcome::Failed);
     EXPECT_STREQ(result->error->what(), "The scene load was dropped before it finished.");
+
+    // A group the asset manager does not know fails the load with the reason of the manager.
+    result.reset();
+    scenes.preload(std::make_shared<LoadScene>([](SceneLoad& load) { load.preload("missing"); }), {}, [&](const SceneManager::Result& value) { result = value; });
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->outcome, SceneManager::Outcome::Failed);
+    EXPECT_STREQ(result->error->what(), "Unknown asset group: missing");
 }
 
 TEST(SceneManagerTest, UsesTheDefaultHooksOfALoadingView) {
@@ -697,6 +704,22 @@ TEST(SceneManagerTest, PreloadsScenesInTheBackground) {
     fixture.frames(4, 0.125);
     ASSERT_NE(fixture.engine().getError(), nullptr);
     EXPECT_STREQ(fixture.engine().getError()->what(), "A preloaded scene keeps the params of its preload.");
+}
+
+TEST(SceneManagerTest, UnloadsAFailedPreloadOnceWhenAListenerCancelsIt) {
+    std::vector<std::string> log;
+    test::EngineFixture fixture;
+    SceneManager& scenes = fixture.engine().getScenes();
+    auto broken = std::make_shared<test::RecordingScene>("broken", log);
+    broken->loading = test::RecordingScene::Load::Deferred;
+    scenes.preload(broken);
+    const Connection listener = fixture.engine().getEvents().on(LifecycleEvent::kSceneLoadFailed, [&](EventBus::Event&) { scenes.cancelPreload(*broken); });
+
+    broken->deferral->fail(lua::Error("broken cannot load"));
+    fixture.frames(1);
+    EXPECT_EQ(std::count(log.begin(), log.end(), "broken:unload"), 1);
+    EXPECT_EQ(broken->getState(), Scene::State::Unloaded);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
 TEST(SceneManagerTest, LoadsThroughThePauseAndHaltsWithTheApp) {

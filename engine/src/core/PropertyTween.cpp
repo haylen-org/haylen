@@ -8,7 +8,7 @@
 namespace haylen::core {
 
 PropertyTween::PropertyTween(float length, bool perSecond) : duration(perSecond ? 0.0F : length), speed(perSecond ? length : 0.0F), speedBased(perSecond) {
-    if (length <= 0.0F) {
+    if (!(length > 0.0F)) {
         throw std::invalid_argument(perSecond ? "A speed-based tween needs a positive speed." : "A tween needs a positive duration.");
     }
 }

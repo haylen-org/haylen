@@ -21,7 +21,7 @@ class DebugLua final {
     static constexpr std::array<const char*, 4> kLevelNames{"debug", "info", "warning", "error"};
 
     [[nodiscard]] static plugins::DebugPlugin& getPlugin(lua_State* L);
-    static void pushStats(lua_State* L, const Stats& stats);
+    static void pushStats(lua_State* L, const Stats& snapshot);
 
     static int setStatsMode(lua_State* L);
     static int statsMode(lua_State* L);

@@ -56,12 +56,15 @@ void UserStorage::write(std::string_view path, std::span<const std::uint8_t> byt
     // The data goes to a sibling file first so a crash mid-write never leaves a truncated save behind.
     std::filesystem::path temporary = file;
     temporary += ".tmp";
-    {
-        std::ofstream stream(temporary, std::ios::binary | std::ios::trunc);
-        stream.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
-        if (!stream) {
-            throw std::runtime_error("Storage file could not be written: " + std::string(path));
-        }
+    std::ofstream stream(temporary, std::ios::binary | std::ios::trunc);
+    stream.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+
+    // Closing flushes the last buffered bytes, so only a stream that also closed cleanly may replace the file.
+    stream.close();
+    if (!stream) {
+        std::error_code ignored;
+        std::filesystem::remove(temporary, ignored);
+        throw std::runtime_error("Storage file could not be written: " + std::string(path));
     }
     std::filesystem::rename(temporary, file);
 }

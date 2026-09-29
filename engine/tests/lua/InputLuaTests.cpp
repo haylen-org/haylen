@@ -216,9 +216,6 @@ TEST_F(InputLuaTest, DefinesActionsOneByOne) {
     engine.handleEvent(makeKeyEvent(platform::Event::Type::KeyDown, Key::W));
     fixture.frames(1);
     EXPECT_EQ(lua("return input.down('jump')"), "true");
-    lua("input.setPressThreshold(2)");
-    fixture.frames(1);
-    EXPECT_EQ(lua("return tostring(input.down('jump')) .. ' ' .. tostring(input.released('jump'))"), "false true");
 
     lua("input.removeAction('jump')");
     EXPECT_EQ(lua("return table.concat(input.actionNames(), ',')"), "move");

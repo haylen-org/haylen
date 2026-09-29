@@ -24,7 +24,7 @@ namespace haylen::audio {
 
 struct MixerState;
 
-// Mixes sounds through named buses. The master bus feeds the output, and music, sfx, ui and ambience exist from the start. Every call runs on the frame thread, and calls with a voice that already finished do nothing.
+// Mixes sounds through named buses. The master bus feeds the output, and music, sfx, ui and ambience exist from the start. Every call runs on the frame thread, and calls with a voice that already finished do nothing. Volumes, pans, positions and spatialization settings must be finite and pitches finite and above 0, or the call throws std::invalid_argument.
 class Mixer final {
   public:
     using VoiceId = std::uint64_t;
@@ -114,7 +114,7 @@ class Mixer final {
     Mixer(const Mixer&) = delete;
     Mixer& operator=(const Mixer&) = delete;
 
-    // Starts a voice. When every voice is busy, the oldest voice that is not music stops to make room.
+    // Starts a voice. When every voice is busy, the oldest voice that is not music stops to make room. Throws std::invalid_argument for an empty sound, an unknown bus, a pitch variation below 0 or not below the pitch, or a fade-in or start time that is not finite, and a call that throws stops no voice.
     VoiceId play(const Sound& sound, const PlayOptions& options = kDefaultPlayOptions);
     void stop(VoiceId voice, float fadeOutSeconds = 0.0F);
 
@@ -130,6 +130,8 @@ class Mixer final {
     void setPan(VoiceId voice, float pan);
     void setPosition(VoiceId voice, math::Vec2 position);
     [[nodiscard]] core::ProcessMode getProcessMode(VoiceId voice) const;
+
+    // Returns true while the voice plays or is paused. A voice that was stopped is over at once, even while it fades out.
     [[nodiscard]] bool isActive(VoiceId voice) const;
     [[nodiscard]] float getCursor(VoiceId voice) const;
     void stopAll(float fadeOutSeconds = 0.0F);
@@ -147,7 +149,7 @@ class Mixer final {
     void removeBusEffect(std::string_view bus, const Effect& effect);
     [[nodiscard]] std::vector<std::shared_ptr<Effect>> getBusEffects(std::string_view bus) const;
 
-    // Plays one music track at a time, crossfading from the previous track over the fade time, and returns the voice of the track, which pauses, stops and takes volume and effects like any voice. Asking for the track that is already playing keeps its voice, paused or not, and only changes its volume.
+    // Plays one music track at a time, crossfading from the previous track over the fade time, and returns the voice of the track, which pauses, stops and takes volume and effects like any voice. Asking for the track that is already playing keeps its voice, paused or not, and only changes its volume. A track that cannot play throws and leaves the current track playing.
     VoiceId playMusic(const Sound& sound, const MusicOptions& options = kDefaultMusicOptions);
     void stopMusic(float fadeOutSeconds = 1.0F);
 
@@ -170,7 +172,7 @@ class Mixer final {
     void setProcessPaused(bool value);
     [[nodiscard]] bool isProcessPaused() const noexcept;
 
-    void setListener(math::Vec2 position) noexcept;
+    void setListener(math::Vec2 position);
     [[nodiscard]] math::Vec2 getListener() const noexcept;
 
     // Moves the listener to the camera position and offset on every update, without its shake, until null stops it. The camera must outlive the following.
@@ -207,6 +209,11 @@ class Mixer final {
   private:
     static const PlayOptions kDefaultPlayOptions;
     static const MusicOptions kDefaultMusicOptions;
+
+    static void requireFinite(float value, const char* name);
+    static void requirePitch(float value);
+    static void requirePosition(math::Vec2 position);
+    static void requirePlayOptions(const PlayOptions& options);
 
     std::unique_ptr<MixerState> state;
 };

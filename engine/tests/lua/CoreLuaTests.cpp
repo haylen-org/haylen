@@ -350,9 +350,13 @@ TEST(JobsLuaTest, RejectsFailuresAndMisuse) {
         watch('empty', jobs.spawn(function() end))
         watch('broken', jobs.spawn(function() error('job exploded') end))
         watch('stray', jobs.spawn(function() coroutine.yield('hi') end))
+        gate = {}
+        watch('awaiting', jobs.spawn(function() gate.promise:await() awaited = true end))
+        gate.promise = jobs.spawn(function() end)
     )");
     // clang-format on
     fixture.frames(3);
+    EXPECT_EQ(fixture.lua("return tostring(awaited)"), "nil");
     const std::string outcomes = fixture.lua("return table.concat(outcomes, ' | ')");
     EXPECT_NE(outcomes.find("empty nil nil"), std::string::npos) << outcomes;
     EXPECT_NE(outcomes.find("job exploded"), std::string::npos) << outcomes;

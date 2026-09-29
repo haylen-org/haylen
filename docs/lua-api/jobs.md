@@ -64,7 +64,7 @@ end)
 
 ### jobs.setBudget(milliseconds)
 
-Sets how many milliseconds of each frame the jobs may use together. The default is `4`. Fractions are allowed and are rounded to whole microseconds. A value that is not positive raises `The job budget must be a positive number of milliseconds.`
+Sets how many milliseconds of each frame the jobs may use together. The default is `4`. Fractions are allowed and are rounded to whole microseconds, and `math.huge` lets the jobs run without a limit. A value that is not positive raises `The job budget must be a positive number of milliseconds.`
 
 ```lua
 local jobs = require('haylen.jobs')

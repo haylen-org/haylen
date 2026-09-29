@@ -2,11 +2,14 @@
 
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/platform/Event.hpp"
 
 namespace haylen::input {
+
+const GamepadState Input::kDisconnectedGamepad{};
 
 std::size_t Input::keyIndex(Key key) noexcept {
     return static_cast<std::size_t>(key);
@@ -32,7 +35,9 @@ void Input::handleEvent(const platform::Event& event, const graphics::Viewport& 
             keysPressed.set(keyIndex(event.key));
         }
         modifiers = event.modifiers;
-        lastDevice = InputDevice::KeyboardMouse;
+        if (!event.repeat) {
+            lastDevice = InputDevice::KeyboardMouse;
+        }
         break;
     case platform::Event::Type::KeyUp:
         if (keyIndex(event.key) < Controls::kKeyCount) {
@@ -93,8 +98,9 @@ void Input::handleTouches(const platform::Event& event, const graphics::Viewport
             continue;
         }
 
+        // A platform may give a new finger the id of a touch that ended this frame, so only a touch that is still down answers to an id.
         const math::Vec2 position = viewport.toDesign(point.position);
-        const auto found = std::find_if(touches.begin(), touches.end(), [&point](const Touch& touch) { return touch.id == point.id; });
+        const auto found = std::find_if(touches.begin(), touches.end(), [&point](const Touch& touch) { return touch.id == point.id && touch.isActive(); });
 
         if (event.type == platform::Event::Type::TouchBegan) {
             if (found == touches.end()) {
@@ -118,20 +124,41 @@ void Input::handleTouches(const platform::Event& event, const graphics::Viewport
 }
 
 void Input::updateGamepads(std::span<const GamepadState> states) {
-    previousGamepads = gamepads;
+    // The current states become the previous ones by swapping, and a name is copied only when the gamepad in a slot changes, so an ordinary frame copies no strings.
+    previousGamepads.swap(gamepads);
     for (std::size_t index = 0; index < kMaxGamepads; ++index) {
-        gamepads[index] = index < states.size() ? states[index] : GamepadState{};
+        const GamepadState& source = index < states.size() ? states[index] : kDisconnectedGamepad;
+        GamepadState& state = gamepads[index];
+        state.connected = source.connected;
+        state.buttons = source.buttons;
+        state.axes = source.axes;
+        if (state.name != source.name) {
+            state.name = source.name;
+        }
     }
 
-    // Any button press or stick movement past the dead zone makes the gamepad the active device.
+    // Only a press makes the gamepad the last used device, so a button or stick held meanwhile never takes over from a later key press or touch.
     for (std::size_t index = 0; index < kMaxGamepads; ++index) {
-        const GamepadState& state = gamepads[index];
-        const bool buttons = std::any_of(state.buttons.begin(), state.buttons.end(), [](bool down) { return down; });
-        const bool axes = std::any_of(state.axes.begin(), state.axes.end(), [this](float value) { return std::fabs(value) > deadzone; });
-        if (state.connected && (buttons || axes)) {
+        if (gamepads[index].connected && hasGamepadPress(index)) {
             lastDevice = InputDevice::Gamepad;
         }
     }
+}
+
+bool Input::hasGamepadPress(std::size_t index) const noexcept {
+    const GamepadState& state = gamepads[index];
+    const GamepadState& previous = previousGamepads[index];
+    for (std::size_t slot = 0; slot < Controls::kGamepadButtonCount; ++slot) {
+        if (state.buttons[slot] && !previous.buttons[slot]) {
+            return true;
+        }
+    }
+    for (std::size_t slot = 0; slot < Controls::kGamepadAxisCount; ++slot) {
+        if (std::fabs(state.axes[slot]) > deadzone && std::fabs(previous.axes[slot]) <= deadzone) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void Input::updateTouchDurations(float deltaSeconds) noexcept {
@@ -145,6 +172,7 @@ void Input::releaseAll() noexcept {
     keysDown.reset();
     mouseReleased |= mouseDown;
     mouseDown.reset();
+    modifiers = {};
     for (Touch& touch : touches) {
         touch.phase = TouchPhase::Cancelled;
     }
@@ -168,7 +196,7 @@ void Input::endFrame() {
     mouseDelta = {};
     mouseScroll = {};
 
-    std::erase_if(touches, [](const Touch& touch) { return touch.phase == TouchPhase::Ended || touch.phase == TouchPhase::Cancelled; });
+    std::erase_if(touches, [](const Touch& touch) { return !touch.isActive(); });
     for (Touch& touch : touches) {
         touch.phase = TouchPhase::Stationary;
         touch.previousPosition = touch.position;
@@ -202,6 +230,10 @@ bool Input::isMouseReleased(MouseButton button) const noexcept {
 const Touch* Input::findTouch(std::uint64_t id) const noexcept {
     const auto found = std::find_if(touches.begin(), touches.end(), [id](const Touch& candidate) { return candidate.id == id; });
     return found == touches.end() ? nullptr : &*found;
+}
+
+const GamepadState& Input::getGamepad(std::size_t index) const noexcept {
+    return index < kMaxGamepads ? gamepads[index] : kDisconnectedGamepad;
 }
 
 bool Input::isGamepadDown(std::size_t index, GamepadButton button) const noexcept {
@@ -241,6 +273,13 @@ math::Vec2 Input::getGamepadStick(std::size_t index, bool rightStick) const noex
     }
     const float scaled = std::min(1.0F, (magnitude - deadzone) / (1.0F - deadzone));
     return raw / magnitude * scaled;
+}
+
+void Input::setGamepadDeadzone(float value) {
+    if (!(value >= 0.0F && value < 1.0F)) {
+        throw std::invalid_argument("The gamepad dead zone must be at least 0 and below 1.");
+    }
+    deadzone = value;
 }
 
 } // namespace haylen::input

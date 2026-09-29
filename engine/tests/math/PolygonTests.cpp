@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <stdexcept>
@@ -9,7 +10,6 @@
 #include "haylen/math/MarchingSquares.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Polygon.hpp"
-#include "haylen/math/Random.hpp"
 #include "haylen/math/Spline.hpp"
 
 namespace haylen::math {
@@ -137,6 +137,10 @@ TEST(MarchingSquaresTest, TracesClosedOutlinesAroundAField) {
     EXPECT_FLOAT_EQ(bounds.width, 6.0F);
 
     EXPECT_THROW((void)MarchingSquares::trace(field, 6, 7), std::invalid_argument);
+
+    // An empty grid traces nothing, however long its other side is.
+    EXPECT_TRUE(MarchingSquares::trace({}, 0, 100000000).empty());
+    EXPECT_TRUE(MarchingSquares::traceBitmap({}, 100000000, 0).empty());
 }
 
 TEST(MarchingSquaresTest, TracesHolesAndSeparateIslandsOfABitmap) {

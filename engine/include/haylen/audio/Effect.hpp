@@ -30,7 +30,7 @@ class Effect {
     friend class EffectChain;
     friend class EffectNode;
 
-    // Prepares the effect for the mixer format on the frame thread, before the audio thread processes it.
+    // Prepares the effect for the mixer format and clears what it holds from earlier input, on the frame thread every time it joins a bus or voice, before the audio thread processes it.
     virtual void prepare(std::uint32_t sampleRate, std::uint32_t channels) = 0;
 
     // Processes interleaved frames on the audio thread.

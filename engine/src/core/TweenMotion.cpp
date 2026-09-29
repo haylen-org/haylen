@@ -9,24 +9,24 @@
 
 namespace haylen::core {
 
-std::shared_ptr<TweenMotion> TweenMotion::jump(float power, int count) {
-    if (count < 1) {
+std::shared_ptr<TweenMotion> TweenMotion::jump(float power, int hops) {
+    if (hops < 1) {
         throw std::invalid_argument("A jump needs at least one hop.");
     }
     auto motion = std::shared_ptr<TweenMotion>(new TweenMotion(Kind::Jump));
     motion->amount = power;
-    motion->count = count;
+    motion->count = hops;
     return motion;
 }
 
-std::shared_ptr<TweenMotion> TweenMotion::path(std::vector<math::Vec2> points, bool curved, bool closed) {
-    if (points.empty()) {
+std::shared_ptr<TweenMotion> TweenMotion::path(std::vector<math::Vec2> waypoints, bool smooth, bool looping) {
+    if (waypoints.empty()) {
         throw std::invalid_argument("A path needs at least one point.");
     }
     auto motion = std::shared_ptr<TweenMotion>(new TweenMotion(Kind::Path));
-    motion->points = std::move(points);
-    motion->curved = curved;
-    motion->closed = closed;
+    motion->points = std::move(waypoints);
+    motion->curved = smooth;
+    motion->closed = looping;
     return motion;
 }
 
@@ -39,14 +39,14 @@ std::shared_ptr<TweenMotion> TweenMotion::bezier(std::vector<math::Vec2> control
     return motion;
 }
 
-std::shared_ptr<TweenMotion> TweenMotion::shake(int vibrato, float randomness, std::uint32_t seed) {
+std::shared_ptr<TweenMotion> TweenMotion::shake(int vibrato, float randomness, std::uint32_t randomSeed) {
     if (vibrato < 1) {
         throw std::invalid_argument("A shake needs a vibrato of at least 1.");
     }
     auto motion = std::shared_ptr<TweenMotion>(new TweenMotion(Kind::Shake));
     motion->count = vibrato;
     motion->amount = std::clamp(randomness, 0.0F, 180.0F);
-    motion->seed = seed;
+    motion->seed = randomSeed;
     return motion;
 }
 
@@ -60,26 +60,26 @@ std::shared_ptr<TweenMotion> TweenMotion::punch(int vibrato, float elasticity) {
     return motion;
 }
 
-std::shared_ptr<TweenMotion> TweenMotion::blink(int count) {
-    if (count < 1) {
+std::shared_ptr<TweenMotion> TweenMotion::blink(int times) {
+    if (times < 1) {
         throw std::invalid_argument("A blink needs at least one blink.");
     }
     auto motion = std::shared_ptr<TweenMotion>(new TweenMotion(Kind::Blink));
-    motion->count = count;
+    motion->count = times;
     return motion;
 }
 
-std::shared_ptr<TweenMotion> TweenMotion::orientation(std::shared_ptr<TweenMotion> path) {
-    if (!path || path->kind != Kind::Path) {
+std::shared_ptr<TweenMotion> TweenMotion::orientation(std::shared_ptr<TweenMotion> followed) {
+    if (!followed || followed->kind != Kind::Path) {
         throw std::invalid_argument("An orientation follows a path motion.");
     }
     auto motion = std::shared_ptr<TweenMotion>(new TweenMotion(Kind::Orientation));
-    motion->source = std::move(path);
+    motion->source = std::move(followed);
     return motion;
 }
 
-float TweenMotion::hash(std::uint32_t seed, std::uint32_t index) noexcept {
-    std::uint32_t value = seed * 0x9E3779B9U + index * 0x85EBCA6BU + 0x632BE5ABU;
+float TweenMotion::hash(std::uint32_t key, std::uint32_t index) noexcept {
+    std::uint32_t value = key * 0x9E3779B9U + index * 0x85EBCA6BU + 0x632BE5ABU;
     value ^= value >> 16U;
     value *= 0x7FEB352DU;
     value ^= value >> 15U;

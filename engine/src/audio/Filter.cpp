@@ -10,6 +10,7 @@ namespace haylen::audio {
 Filter::Filter(Kind value, const Settings& settings) : kind(value), cutoff(settings.cutoff), q(settings.q), gain(settings.gain) {
     requireCutoff(settings.cutoff);
     requireQ(settings.q);
+    requireGain(settings.gain);
     if (settings.gain != 0.0F && !hasGain()) {
         throw std::invalid_argument("Only peak and shelf filters have a gain.");
     }
@@ -31,6 +32,7 @@ void Filter::setGain(float value) {
     if (!hasGain()) {
         throw std::invalid_argument("Only peak and shelf filters have a gain.");
     }
+    requireGain(value);
     gain.store(value, std::memory_order_relaxed);
     changed();
 }
@@ -48,6 +50,12 @@ void Filter::requireCutoff(float value) {
 void Filter::requireQ(float value) {
     if (!(value > 0.0F) || !std::isfinite(value)) {
         throw std::invalid_argument("A filter q must be positive.");
+    }
+}
+
+void Filter::requireGain(float value) {
+    if (!std::isfinite(value)) {
+        throw std::invalid_argument("A filter gain must be a finite number of decibels.");
     }
 }
 

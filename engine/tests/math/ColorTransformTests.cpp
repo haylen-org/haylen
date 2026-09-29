@@ -3,6 +3,7 @@
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Transform2D.hpp"
+#include "support/EngineFixture.hpp"
 
 namespace haylen::math {
 
@@ -41,6 +42,17 @@ TEST(ColorTest, ConvertsEveryHueSector) {
         EXPECT_FLOAT_EQ(color.a, 0.25F);
         EXPECT_FLOAT_EQ(std::max({color.r, color.g, color.b}), 1.0F);
     }
+}
+
+TEST(ColorLuaTest, ConvertsToHsvAndBlendsAroundTheHueCircle) {
+    test::EngineFixture fixture;
+    fixture.runLua("m = require('haylen.math')");
+
+    EXPECT_EQ(fixture.lua("return string.format('%.3f %.1f %.1f %.2f', m.color(0, 0, 1, 0.25):toHsv())"), "0.667 1.0 1.0 0.25");
+    // Red to blue passes through magenta in HSV instead of the dark purple of a plain lerp.
+    EXPECT_EQ(fixture.lua("local red, blue = m.color('#FFFF0000'), m.color('#FF0000FF') return tostring(red:lerpHsv(blue, 0.5)) .. ' ' .. tostring(red:lerp(blue, 0.5))"), "#FFFF00FF #FF800080");
+    // A gray takes the hue of the other color, so only the saturation changes.
+    EXPECT_EQ(fixture.lua("return tostring(m.color(1, 1, 1):lerpHsv({1, 0, 0}, 0.5))"), "#FFFF8080");
 }
 
 TEST(Transform2DTest, ComposesAndInverts) {

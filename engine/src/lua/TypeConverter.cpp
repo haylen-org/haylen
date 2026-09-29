@@ -201,8 +201,9 @@ math::EasingCurve Converter<math::EasingCurve>::read(lua_State* L, int index) {
     const int table = lua_absindex(L, index);
     Table::checkFields(L, table, {TypeConverter::kEasingFields});
     if (lua_getfield(L, table, "steps") != LUA_TNIL) {
-        const auto count = static_cast<int>(luaL_checkinteger(L, -1));
         lua_pop(L, 1);
+        int count = 0;
+        Table::readField(L, table, "steps", count);
         math::Easing::StepPosition position = math::Easing::StepPosition::End;
         Table::readField(L, table, "position", position);
         return math::EasingCurve::steps(count, position);

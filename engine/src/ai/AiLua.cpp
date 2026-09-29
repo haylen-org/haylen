@@ -5,7 +5,6 @@
 
 #include "ai/BehaviorTreeLua.hpp"
 #include "ai/InfluenceMapLua.hpp"
-#include "ai/ScriptedStateMachine.hpp"
 #include "ai/UtilityLua.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
@@ -15,9 +14,9 @@
 
 namespace haylen::lua {
 
-template <> struct Type<ai::ScriptedStateMachine> {
+template <> struct Type<ai::AiLua::Scripted> {
     static constexpr const char* name = "haylen.StateMachine";
-    using Storage = ai::ScriptedStateMachine;
+    using Storage = ai::AiLua::Scripted;
 };
 
 } // namespace haylen::lua
@@ -27,7 +26,7 @@ namespace haylen::ai {
 // Keeps the calling thread for the callbacks, restoring the outer one when methods nest.
 class AiLua::CallerScope final {
   public:
-    CallerScope(ScriptedStateMachine& machine, lua_State* L) : owner(machine), outer(std::exchange(machine.caller, L)) {}
+    CallerScope(Scripted& machine, lua_State* L) : owner(machine), outer(std::exchange(machine.caller, L)) {}
     ~CallerScope() {
         owner.caller = outer;
     }
@@ -36,7 +35,7 @@ class AiLua::CallerScope final {
     CallerScope& operator=(const CallerScope&) = delete;
 
   private:
-    ScriptedStateMachine& owner;
+    Scripted& owner;
     lua_State* outer;
 };
 
@@ -58,7 +57,7 @@ bool AiLua::pushStateFunction(lua_State* L, const std::string& name, const char*
 }
 
 // Each change leaves its extra arguments at the back of a queue, and each entered state takes the front, so queued changes keep their own arguments.
-void AiLua::enterState(ScriptedStateMachine& self, const std::string& name) {
+void AiLua::enterState(Scripted& self, const std::string& name) {
     lua_State* L = self.caller;
     lua::Userdata::pushField(L, 1, "arguments");
     const int queue = lua_gettop(L);
@@ -88,7 +87,7 @@ void AiLua::enterState(ScriptedStateMachine& self, const std::string& name) {
     lua_settop(L, queue - 1);
 }
 
-void AiLua::callState(ScriptedStateMachine& self, const std::string& name, const char* callback, const float* deltaSeconds) {
+void AiLua::callState(Scripted& self, const std::string& name, const char* callback, const float* deltaSeconds) {
     lua_State* L = self.caller;
     if (!pushStateFunction(L, name, callback)) {
         return;
@@ -103,7 +102,7 @@ void AiLua::callState(ScriptedStateMachine& self, const std::string& name, const
 // Creates a machine with newStateMachine(states), where states maps names to tables with optional enter(machine, ...), update(machine, dt) and exit(machine) functions.
 int AiLua::newStateMachine(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
-    ScriptedStateMachine& self = lua::Userdata::emplace<ScriptedStateMachine>(L);
+    Scripted& self = lua::Userdata::emplace<Scripted>(L);
     const int owner = lua_gettop(L);
     lua::Userdata::setField(L, owner, "states", 1);
     lua_newtable(L);
@@ -146,7 +145,7 @@ int AiLua::newStateMachine(lua_State* L) {
 
 // Changes state with change(name, ...), passing the extra arguments to the enter function of the new state.
 int AiLua::machineChange(lua_State* L) {
-    ScriptedStateMachine& self = lua::Userdata::check<ScriptedStateMachine>(L, 1);
+    Scripted& self = lua::Userdata::check<Scripted>(L, 1);
     const std::string name = lua::Stack::read<std::string>(L, 2);
     if (!self.machine.has(name)) {
         return luaL_error(L, "The state machine has no state named %s.", name.c_str());
@@ -185,7 +184,7 @@ int AiLua::machineChange(lua_State* L) {
 }
 
 int AiLua::machineUpdate(lua_State* L) {
-    ScriptedStateMachine& self = lua::Userdata::check<ScriptedStateMachine>(L, 1);
+    Scripted& self = lua::Userdata::check<Scripted>(L, 1);
     const auto deltaSeconds = lua::Stack::read<float>(L, 2);
     lua_settop(L, 1);
     const CallerScope caller(self, L);
@@ -194,7 +193,7 @@ int AiLua::machineUpdate(lua_State* L) {
 }
 
 int AiLua::machineHas(lua_State* L) {
-    lua::Stack::push(L, lua::Userdata::check<ScriptedStateMachine>(L, 1).machine.has(lua::Stack::read<std::string_view>(L, 2)));
+    lua::Stack::push(L, lua::Userdata::check<Scripted>(L, 1).machine.has(lua::Stack::read<std::string_view>(L, 2)));
     return 1;
 }
 
@@ -207,28 +206,28 @@ void AiLua::pushName(lua_State* L, const std::string& name) {
 }
 
 int AiLua::machineState(lua_State* L) {
-    pushName(L, lua::Userdata::check<ScriptedStateMachine>(L, 1).machine.getCurrent());
+    pushName(L, lua::Userdata::check<Scripted>(L, 1).machine.getCurrent());
     return 1;
 }
 
 int AiLua::machinePrevious(lua_State* L) {
-    pushName(L, lua::Userdata::check<ScriptedStateMachine>(L, 1).machine.getPrevious());
+    pushName(L, lua::Userdata::check<Scripted>(L, 1).machine.getPrevious());
     return 1;
 }
 
 int AiLua::machineElapsed(lua_State* L) {
-    lua::Stack::push(L, lua::Userdata::check<ScriptedStateMachine>(L, 1).machine.getElapsed());
+    lua::Stack::push(L, lua::Userdata::check<Scripted>(L, 1).machine.getElapsed());
     return 1;
 }
 
 int AiLua::machineGetOnChange(lua_State* L) {
-    (void)lua::Userdata::check<ScriptedStateMachine>(L, 1);
+    (void)lua::Userdata::check<Scripted>(L, 1);
     lua::Userdata::pushField(L, 1, "onChange");
     return 1;
 }
 
 int AiLua::machineSetOnChange(lua_State* L) {
-    (void)lua::Userdata::check<ScriptedStateMachine>(L, 1);
+    (void)lua::Userdata::check<Scripted>(L, 1);
     if (!lua_isnil(L, 3)) {
         luaL_checktype(L, 3, LUA_TFUNCTION);
     }
@@ -249,7 +248,7 @@ int AiLua::open(lua_State* L) {
 }
 
 void AiLua::install(lua_State* L) {
-    lua::ClassBuilder<ScriptedStateMachine>(L).function("change", &lua::Binding::native<&machineChange>).function("update", &lua::Binding::native<&machineUpdate>).function("has", &lua::Binding::native<&machineHas>).property("state", &machineState).property("previous", &machinePrevious).property("elapsed", &machineElapsed).property("onChange", &machineGetOnChange, &machineSetOnChange).install();
+    lua::ClassBuilder<Scripted>(L).function("change", &lua::Binding::native<&machineChange>).function("update", &lua::Binding::native<&machineUpdate>).function("has", &lua::Binding::native<&machineHas>).property("state", &machineState).property("previous", &machinePrevious).property("elapsed", &machineElapsed).property("onChange", &machineGetOnChange, &machineSetOnChange).install();
     BehaviorTreeLua::install(L);
     UtilityLua::install(L);
     InfluenceMapLua::install(L);

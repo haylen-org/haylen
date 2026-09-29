@@ -13,7 +13,6 @@
 #include "haylen/core/PropertyTween.hpp"
 #include "haylen/core/Timeline.hpp"
 #include "haylen/core/Tween.hpp"
-#include "haylen/core/TweenMotion.hpp"
 #include "haylen/core/TweenProperty.hpp"
 #include "haylen/core/TweenValue.hpp"
 #include "haylen/lua/NativeProperty.hpp"

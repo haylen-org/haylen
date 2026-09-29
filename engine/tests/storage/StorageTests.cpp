@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <filesystem>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -42,6 +43,23 @@ TEST(UserStorageTest, WritesReadsListsAndRemoves) {
     UserStorage desktop(directory.getPath() / "desktop");
     desktop.flush();
     EXPECT_EQ(persisted, 1);
+}
+
+TEST(UserStorageTest, FailedWriteKeepsThePreviousFile) {
+    const test::TemporaryDirectory directory;
+    UserStorage storage(directory.getPath());
+    storage.writeText("save.json", "good");
+
+    // A folder where the temporary file goes makes the write fail before anything replaces the file, and the cleanup that cannot remove the folder keeps the original error.
+    std::filesystem::create_directories(directory.getPath() / "save.json.tmp" / "blocked");
+    std::string error;
+    try {
+        storage.writeText("save.json", "lost");
+    } catch (const std::runtime_error& failure) {
+        error = failure.what();
+    }
+    EXPECT_EQ(error, "Storage file could not be written: save.json");
+    EXPECT_EQ(storage.readText("save.json"), "good");
 }
 
 TEST(SaveSlotsTest, WritesReadsListsAndRemovesSlots) {
@@ -91,8 +109,12 @@ TEST(SaveSlotsTest, RejectsBadNamesAndDamagedFiles) {
 
     storage.writeText("saves/broken.json", "{");
     storage.writeText("saves/partial.json", R"({"data": 1})");
+    storage.writeText("saves/dated.json", R"({"data": 1, "summary": {}, "savedAt": "yesterday"})");
+    storage.writeText("saves/summed.json", R"({"data": 1, "summary": [1], "savedAt": 5})");
     EXPECT_THROW((void)saves.read("broken"), std::runtime_error);
     EXPECT_THROW((void)saves.getInfo("partial"), std::runtime_error);
+    EXPECT_THROW((void)saves.getInfo("dated"), std::runtime_error);
+    EXPECT_THROW((void)saves.read("summed"), std::runtime_error);
 
     saves.write("real", {{"ok", true}});
     EXPECT_GT(saves.getInfo("real")->savedAt, 1'700'000'000);

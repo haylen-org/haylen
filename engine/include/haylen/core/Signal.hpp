@@ -51,7 +51,7 @@ template <typename... Args> class Signal final {
             throw std::invalid_argument("A signal slot needs a function.");
         }
         if (options.queue != nullptr) {
-            slot = deferTo(*options.queue, std::move(slot));
+            slot = deferTo(*options.queue, std::move(slot), options.once);
         }
 
         auto entry = std::make_shared<Entry>();
@@ -211,11 +211,12 @@ template <typename... Args> class Signal final {
         list.insert(position, std::move(entry));
     }
 
-    static Slot deferTo(FrameQueue& queue, Slot slot) {
+    // A once slot disconnects as it is called, so its queued call keeps it alive, while the queued calls of other slots are skipped once they disconnected.
+    static Slot deferTo(FrameQueue& queue, Slot slot, bool once) {
         if constexpr (kCopyableArguments) {
             // clang-format off
-            return [&queue, shared = std::make_shared<Slot>(std::move(slot))](Args... args) {
-                queue.post([weak = std::weak_ptr<Slot>(shared), values = std::make_tuple(std::decay_t<Args>(args)...)] {
+            return [&queue, shared = std::make_shared<Slot>(std::move(slot)), once](Args... args) {
+                queue.post([weak = std::weak_ptr<Slot>(shared), held = once ? shared : nullptr, values = std::make_tuple(std::decay_t<Args>(args)...)] {
                     if (const std::shared_ptr<Slot> target = weak.lock()) {
                         std::apply(*target, values);
                     }

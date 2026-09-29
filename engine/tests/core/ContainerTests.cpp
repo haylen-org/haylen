@@ -13,7 +13,7 @@ namespace haylen::core {
 TEST(ObjectPoolTest, ReusesSlotsAndDetectsReleasedHandles) {
     ObjectPool<std::string> pool;
     pool.reserve(2);
-    EXPECT_EQ(pool.getCapacity(), 2U);
+    EXPECT_EQ(pool.capacity(), 2U);
     EXPECT_TRUE(pool.empty());
 
     const auto first = pool.acquire("bullet");
@@ -45,10 +45,10 @@ TEST(ObjectPoolTest, ReusesSlotsAndDetectsReleasedHandles) {
     pool.forEach([&live](std::string&, ObjectPool<std::string>::Handle) { ++live; });
     EXPECT_EQ(live, 102);
 
-    const std::size_t capacity = pool.getCapacity();
+    const std::size_t capacity = pool.capacity();
     pool.clear();
     EXPECT_TRUE(pool.empty());
-    EXPECT_EQ(pool.getCapacity(), capacity);
+    EXPECT_EQ(pool.capacity(), capacity);
     EXPECT_EQ(pool.get(second), nullptr);
 }
 

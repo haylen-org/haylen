@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -51,6 +53,16 @@ class Error final : public std::runtime_error {
     [[nodiscard]] core::Json toJson() const;
 
   private:
+    // Where the script position lies in the text, from the chunk name to the space after the line.
+    struct Position {
+        std::size_t start = 0;
+        std::size_t end = 0;
+        std::string_view file;
+        int line = 0;
+    };
+
+    [[nodiscard]] static std::optional<Position> findPosition(std::string_view text);
+    [[nodiscard]] static bool isSeparator(char character) noexcept;
     [[nodiscard]] static std::string_view getKindName(Frame::Kind kind) noexcept;
 
     std::string message;

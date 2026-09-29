@@ -122,16 +122,10 @@ template <typename T> int EffectLua::tail(lua_State* L) {
     return 1;
 }
 
-// Two handles of one effect compare equal, such as an effect and the same effect listed by audio.effects.
-template <typename T> int EffectLua::equal(lua_State* L) {
-    lua::Stack::push(L, lua::Userdata::test<T>(L, 1) == lua::Userdata::test<T>(L, 2));
-    return 1;
-}
-
 void EffectLua::install(lua_State* L) {
-    lua::ClassBuilder<Filter>(L).property("kind", &filterKind).accessor<&Filter::getCutoff, &Filter::setCutoff>("cutoff").accessor<&Filter::getQ, &Filter::setQ>("q").accessor<&Filter::getGain, &Filter::setGain>("gain").property("attached", &attached<Filter>).property("tail", &tail<Filter>).meta("__eq", &equal<Filter>).install();
-    lua::ClassBuilder<Delay>(L).accessor<&Delay::getTime, &Delay::setTime>("time").property("maxTime", &lua::Binding::method<&Delay::getMaxTime>).accessor<&Delay::getFeedback, &Delay::setFeedback>("feedback").accessor<&Delay::getWet, &Delay::setWet>("wet").accessor<&Delay::getDry, &Delay::setDry>("dry").property("attached", &attached<Delay>).property("tail", &tail<Delay>).meta("__eq", &equal<Delay>).install();
-    lua::ClassBuilder<Reverb>(L).accessor<&Reverb::getRoomSize, &Reverb::setRoomSize>("roomSize").accessor<&Reverb::getDamping, &Reverb::setDamping>("damping").accessor<&Reverb::getWidth, &Reverb::setWidth>("width").accessor<&Reverb::getWet, &Reverb::setWet>("wet").accessor<&Reverb::getDry, &Reverb::setDry>("dry").property("attached", &attached<Reverb>).property("tail", &tail<Reverb>).meta("__eq", &equal<Reverb>).install();
+    lua::ClassBuilder<Filter>(L).property("kind", &filterKind).accessor<&Filter::getCutoff, &Filter::setCutoff>("cutoff").accessor<&Filter::getQ, &Filter::setQ>("q").accessor<&Filter::getGain, &Filter::setGain>("gain").property("attached", &attached<Filter>).property("tail", &tail<Filter>).meta("__eq", &lua::Userdata::equal<Filter>).install();
+    lua::ClassBuilder<Delay>(L).accessor<&Delay::getTime, &Delay::setTime>("time").property("maxTime", &lua::Binding::method<&Delay::getMaxTime>).accessor<&Delay::getFeedback, &Delay::setFeedback>("feedback").accessor<&Delay::getWet, &Delay::setWet>("wet").accessor<&Delay::getDry, &Delay::setDry>("dry").property("attached", &attached<Delay>).property("tail", &tail<Delay>).meta("__eq", &lua::Userdata::equal<Delay>).install();
+    lua::ClassBuilder<Reverb>(L).accessor<&Reverb::getRoomSize, &Reverb::setRoomSize>("roomSize").accessor<&Reverb::getDamping, &Reverb::setDamping>("damping").accessor<&Reverb::getWidth, &Reverb::setWidth>("width").accessor<&Reverb::getWet, &Reverb::setWet>("wet").accessor<&Reverb::getDry, &Reverb::setDry>("dry").property("attached", &attached<Reverb>).property("tail", &tail<Reverb>).meta("__eq", &lua::Userdata::equal<Reverb>).install();
 }
 
 } // namespace haylen::audio

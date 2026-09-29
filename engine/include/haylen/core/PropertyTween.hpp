@@ -16,9 +16,6 @@ class PropertyTween final : public Tween {
     explicit PropertyTween(float length, bool perSecond = false);
 
     void addTrack(std::unique_ptr<TweenTrack> track);
-    [[nodiscard]] const std::vector<std::unique_ptr<TweenTrack>>& getTracks() const noexcept {
-        return tracks;
-    }
 
     void setEase(math::EasingCurve value) {
         ease = std::move(value);

@@ -204,7 +204,7 @@ end
 
 ### assets.list(folder)
 
-Returns a sorted list of every file under a folder of the content folder, including files in subfolders, as paths relative to the content folder. Without a folder it lists every asset. A missing folder gives an empty list.
+Returns a sorted list of every file under a folder of the content folder, including files in subfolders, as paths relative to the content folder. Without a folder it lists every asset. A missing folder gives an empty list, and a folder that leads out of the content folder, such as `'..'`, raises `Paths cannot leave their root folder: <folder>`.
 
 ```lua
 local assets = require('haylen.assets')

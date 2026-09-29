@@ -78,11 +78,12 @@ EasingCurve EasingCurve::custom(std::function<float(float)> function) {
 }
 
 float EasingCurve::applyPoints(float t) const noexcept {
+    // The negated comparisons send NaN to the first point, so the search below always finds a point after t.
     const std::vector<Vec2>& line = *polyline;
-    if (t <= line.front().x) {
+    if (!(t > line.front().x)) {
         return line.front().y;
     }
-    if (t >= line.back().x) {
+    if (!(t < line.back().x)) {
         return line.back().y;
     }
 

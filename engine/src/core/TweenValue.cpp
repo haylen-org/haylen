@@ -43,7 +43,7 @@ TweenValue TweenValue::mix(const TweenValue& from, const TweenValue& to, float t
         if (interpolation == Interpolation::Angle) {
             end = start + static_cast<double>(math::Math::wrapAngle(static_cast<float>(end - start)));
         }
-        const double value = start + (end - start) * static_cast<double>(t);
+        const double value = start * (1.0 - static_cast<double>(t)) + end * static_cast<double>(t);
         return interpolation == Interpolation::Integer ? std::round(value) : value;
     }
     case Kind::Vector:

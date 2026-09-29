@@ -64,6 +64,7 @@ void Reverb::changed() noexcept {
 void Reverb::prepare(std::uint32_t rate, std::uint32_t count) {
     channels = count;
     model = std::make_unique<Freeverb>(rate);
+    appliedVersion = 0;
 }
 
 void Reverb::process(const float* input, float* output, std::uint32_t frames) noexcept {

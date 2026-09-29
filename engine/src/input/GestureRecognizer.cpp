@@ -6,28 +6,9 @@ namespace haylen::input {
 
 const GestureRecognizer::Settings GestureRecognizer::kDefaultSettings{};
 
-bool GestureRecognizer::isActive(const Touch& touch) noexcept {
-    return touch.phase != TouchPhase::Ended && touch.phase != TouchPhase::Cancelled;
-}
-
 void GestureRecognizer::update(const Input& input, float deltaSeconds) {
     gestures.clear();
     time += deltaSeconds;
-
-    // A finger can land and lift within one frame, so a new pointer always starts from where the touch began.
-    for (const Touch& touch : input.getTouches()) {
-        Pointer& pointer = pointers.try_emplace(touch.id, Pointer{.start = touch.startPosition}).first->second;
-        pointer.position = touch.position;
-        pointer.duration = touch.duration;
-    }
-    if (settings.mouse && input.getTouches().empty()) {
-        if (input.isMousePressed(MouseButton::Left)) {
-            mouse = Pointer{.start = input.getMousePosition(), .position = input.getMousePosition(), .duration = 0.0F, .longPressed = false};
-        } else if (mouse) {
-            mouse->position = input.getMousePosition();
-            mouse->duration += deltaSeconds;
-        }
-    }
 
     // Long presses fire while the pointer is still down, so a menu can open under the finger.
     // clang-format off
@@ -39,14 +20,30 @@ void GestureRecognizer::update(const Input& input, float deltaSeconds) {
     };
     // clang-format on
 
+    // A finger can land and lift within one frame, so a new pointer always starts from where the touch began. Touches keep the order they began in, so an id the platform reuses within one frame ends its old pointer before the new one starts.
     for (const Touch& touch : input.getTouches()) {
-        Pointer& pointer = pointers[touch.id];
-        if (isActive(touch)) {
+        Pointer& pointer = pointers.try_emplace(touch.id, Pointer{.start = touch.startPosition}).first->second;
+        pointer.position = touch.position;
+        pointer.duration = touch.duration;
+        if (touch.isActive()) {
             pressLong(pointer);
             continue;
         }
-        finish(pointer);
+
+        // A cancelled touch was taken away from the app, so it never ends as a tap or a swipe.
+        if (touch.phase == TouchPhase::Ended) {
+            finish(pointer);
+        }
         pointers.erase(touch.id);
+    }
+
+    if (settings.mouse && input.getTouches().empty()) {
+        if (input.isMousePressed(MouseButton::Left)) {
+            mouse = Pointer{.start = input.getMousePosition(), .position = input.getMousePosition(), .duration = 0.0F, .longPressed = false};
+        } else if (mouse) {
+            mouse->position = input.getMousePosition();
+            mouse->duration += deltaSeconds;
+        }
     }
     if (mouse) {
         if (input.isMouseReleased(MouseButton::Left)) {
@@ -58,6 +55,12 @@ void GestureRecognizer::update(const Input& input, float deltaSeconds) {
     }
 
     recognizePinch(input);
+}
+
+void GestureRecognizer::cancel() noexcept {
+    pointers.clear();
+    mouse.reset();
+    pinchStart.reset();
 }
 
 void GestureRecognizer::finish(const Pointer& pointer) {
@@ -85,7 +88,7 @@ void GestureRecognizer::finish(const Pointer& pointer) {
 void GestureRecognizer::recognizePinch(const Input& input) {
     std::vector<const Touch*> fingers;
     for (const Touch& touch : input.getTouches()) {
-        if (isActive(touch)) {
+        if (touch.isActive()) {
             fingers.push_back(&touch);
         }
     }

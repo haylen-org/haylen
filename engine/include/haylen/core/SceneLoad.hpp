@@ -48,7 +48,7 @@ class SceneLoad final : public std::enable_shared_from_this<SceneLoad> {
     // Receives the failure of a preload, or nothing once its group loaded.
     using PreloadCompletion = std::function<void(const std::optional<lua::Error>& failure)>;
 
-    SceneLoad(Engine& owner, std::any params);
+    SceneLoad(Engine& owner, std::any value);
 
     SceneLoad(const SceneLoad&) = delete;
     SceneLoad& operator=(const SceneLoad&) = delete;
@@ -58,7 +58,7 @@ class SceneLoad final : public std::enable_shared_from_this<SceneLoad> {
     }
 
     // Reports the progress of the work the scene does itself, from 0 to 1, with an optional message for a loading view.
-    void setProgress(float value, std::string message = {});
+    void setProgress(float value, std::string text = {});
     [[nodiscard]] Progress getProgress() const;
 
     [[nodiscard]] Deferral defer();

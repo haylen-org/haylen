@@ -113,17 +113,19 @@ class WebSocketTest : public ::testing::Test {
         }
         return false;
     }
+
+    // Returns an address where nothing listens, so every connection attempt fails at once.
+    static std::string refusedUrl() {
+        Poco::Net::ServerSocket unused(Poco::Net::SocketAddress("127.0.0.1", 0));
+        const std::string url = "ws://127.0.0.1:" + std::to_string(unused.address().port());
+        unused.close();
+        return url;
+    }
 };
 
 class NetPluginTest : public WebSocketTest {};
 
-// Returns an address where nothing listens, so every connection attempt fails at once.
-std::string refusedUrl() {
-    Poco::Net::ServerSocket unused(Poco::Net::SocketAddress("127.0.0.1", 0));
-    const std::string url = "ws://127.0.0.1:" + std::to_string(unused.address().port());
-    unused.close();
-    return url;
-}
+class NetLuaTest : public WebSocketTest {};
 
 } // namespace
 
@@ -208,7 +210,57 @@ TEST_F(WebSocketTest, ReportsServerClosesAndFailures) {
     EXPECT_EQ(WebSocket::stateName(WebSocket::State::Closing), "closing");
 }
 
-TEST(NetLuaTest, TalksThroughWebSocketsFromLua) {
+TEST_F(WebSocketTest, DisconnectListenersSeeTheStateThatFollows) {
+    const EchoServer server;
+    WebSocket socket(server.getUrl(), {.reconnect = {.enabled = true}});
+    std::string seen;
+    int closedCode = 0;
+    // clang-format off
+    socket.disconnected.connect([&](int, std::string_view) {
+        seen = WebSocket::stateName(socket.getState());
+        EXPECT_THROW(socket.send("late"), std::logic_error);
+        EXPECT_THROW(socket.sendBinary({}), std::logic_error);
+        EXPECT_THROW(socket.ping(), std::logic_error);
+        socket.close(4000, "leaving");
+    });
+    // clang-format on
+    socket.closed.connect([&closedCode](int code, std::string_view) { closedCode = code; });
+
+    ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Open; }));
+    socket.send("bye");
+    ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Closed; }));
+    EXPECT_EQ(seen, "reconnecting");
+    EXPECT_EQ(closedCode, 4000) << "the close of the listener ends the socket instead of the next attempt";
+    EXPECT_EQ(socket.getAttempt(), 0);
+}
+
+TEST_F(WebSocketTest, RefusesMessagesLargerThanTheLimit) {
+    const EchoServer server;
+
+    // Hello comes back in one frame, fragments grows past the limit with its second frame, and the long message is larger than any frame the socket reads.
+    for (const std::string& request : {std::string("hello"), std::string("fragments"), std::string(200, 'x')}) {
+        WebSocket socket(server.getUrl(), {.maxMessageSize = 4});
+        std::vector<std::string> received;
+        std::string failure;
+        int closedCode = 0;
+        socket.received.connect([&received](std::string_view data, bool) { received.emplace_back(data); });
+        socket.failed.connect([&failure](std::string_view message) { failure = message; });
+        socket.closed.connect([&closedCode](int code, std::string_view) { closedCode = code; });
+
+        ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Open; }));
+        socket.send("abcd");
+        socket.send(request);
+        ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Closed; }));
+        EXPECT_EQ(received, (std::vector<std::string>{"abcd"}));
+        EXPECT_EQ(failure, "The server sent a WebSocket message larger than the maximum of 4 bytes.");
+        EXPECT_EQ(closedCode, 1009);
+    }
+
+    EXPECT_THROW(WebSocket(server.getUrl(), {.maxMessageSize = 0}), std::invalid_argument);
+    EXPECT_THROW(WebSocket(server.getUrl(), {.maxMessageSize = 2147483648U}), std::invalid_argument);
+}
+
+TEST_F(NetLuaTest, TalksThroughWebSocketsFromLua) {
     const EchoServer server;
     test::EngineFixture fixture;
     // clang-format off
@@ -238,6 +290,62 @@ TEST(NetLuaTest, TalksThroughWebSocketsFromLua) {
     EXPECT_NE(fixture.lua("net.websocket('" + server.getUrl() + "'):ping()").find("is not open"), std::string::npos);
     EXPECT_NE(fixture.lua("net.websocket('" + server.getUrl() + "', {protocol = 'x'})").find("Unknown option 'protocol'"), std::string::npos);
     EXPECT_NE(fixture.lua("net.websocket('ftp://nowhere')").find("ws:// or wss://"), std::string::npos);
+    EXPECT_NE(fixture.lua("net.websocket('" + server.getUrl() + "', {maxMessageSize = 0})").find("maximum message size between 1 and 2147483647 bytes"), std::string::npos);
+}
+
+TEST_F(NetLuaTest, ReportsFailedConnectionsWithTheirAddress) {
+    const std::string url = refusedUrl();
+    test::EngineFixture fixture;
+    fixture.runLua("local socket = require('haylen.net').websocket('" + url + "') socket:on('error', function(message) failure = socket.url .. ' ' .. tostring(#message > 0) end)");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(failure)") != "nil"; }));
+    EXPECT_EQ(fixture.lua("return failure"), url + " true");
+}
+
+TEST_F(NetLuaTest, EndsListenersWithTheirOwner) {
+    const std::string url = refusedUrl();
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        heard = {}
+        local socket = require('haylen.net').websocket(')" + url + R"(')
+        local holder = {}
+        socket:on('error', function() heard[#heard + 1] = 'owned' end, {owner = holder})
+        socket:on('error', function() heard[#heard + 1] = 'free' end)
+        holder = nil
+        collectgarbage()
+        collectgarbage()
+    )");
+    // clang-format on
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #heard") != "0"; }));
+    EXPECT_EQ(fixture.lua("return table.concat(heard, ' ')"), "free");
+    EXPECT_NE(fixture.lua("require('haylen.net').websocket('" + url + "'):on('open', function() end, {weak = true})").find("Unknown option 'weak'"), std::string::npos);
+}
+
+TEST_F(NetLuaTest, KeepsListenersAwayFromEndedAndOversizedConnections) {
+    const EchoServer server;
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        local net = require('haylen.net')
+        log = {}
+        local dropped = net.websocket(')" + server.getUrl() + R"(')
+        dropped:on('open', function() dropped:send('bye') end)
+        dropped:on('disconnect', function()
+            local sent, message = pcall(dropped.send, dropped, 'late')
+            log[#log + 1] = 'disconnect ' .. dropped.state .. ' ' .. tostring(sent) .. ' ' .. tostring(message:find('is not open') ~= nil)
+            dropped:close()
+        end)
+        dropped:on('close', function(code) log[#log + 1] = 'dropped close ' .. code end)
+
+        local limited = net.websocket(')" + server.getUrl() + R"(', {maxMessageSize = 4})
+        limited:on('open', function() limited:send('hello') end)
+        limited:on('error', function(message) log[#log + 1] = 'limited error ' .. tostring(message:find('maximum of 4 bytes') ~= nil) end)
+        limited:on('close', function(code) log[#log + 1] = 'limited close ' .. code end)
+    )");
+    // clang-format on
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #log") == "4"; }));
+    EXPECT_EQ(fixture.lua("table.sort(log) return table.concat(log, ', ')"), "disconnect closed false true, dropped close 4001, limited close 1009, limited error true");
+    EXPECT_EQ(fixture.engine().getError(), nullptr) << fixture.engine().getError()->what();
 }
 
 TEST_F(NetPluginTest, ClosesOpenSocketsWhenTheAppStops) {

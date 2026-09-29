@@ -32,14 +32,12 @@ template <> struct EnumNames<ai::ResponseCurve::Shape> {
 
 namespace haylen::ai {
 
-// Lends the calling thread to the inputs for the length of one call.
+// Lends the calling thread to the inputs for the length of one call, restoring the outer one when an input scores the same selector again.
 class UtilityLua::CallerScope final {
   public:
-    CallerScope(Scripted& selector, lua_State* L) : owner(selector) {
-        owner.caller = L;
-    }
+    CallerScope(Scripted& selector, lua_State* L) : owner(selector), outer(std::exchange(selector.caller, L)) {}
     ~CallerScope() {
-        owner.caller = nullptr;
+        owner.caller = outer;
     }
 
     CallerScope(const CallerScope&) = delete;
@@ -47,6 +45,7 @@ class UtilityLua::CallerScope final {
 
   private:
     Scripted& owner;
+    lua_State* outer;
 };
 
 ResponseCurve UtilityLua::readCurve(lua_State* L, int index) {
@@ -77,18 +76,18 @@ float UtilityLua::callInput(Scripted& self, lua_Integer input) {
 }
 
 std::size_t UtilityLua::readOption(lua_State* L, int index, const UtilitySelector& selector) {
-    const std::vector<UtilitySelector::Option>& options = selector.getOptions();
+    const std::vector<UtilitySelector::Option>& available = selector.getOptions();
     if (lua_type(L, index) == LUA_TSTRING) {
         const std::string_view name = lua::Stack::read<std::string_view>(L, index);
-        for (std::size_t option = 0; option < options.size(); ++option) {
-            if (options[option].name == name) {
+        for (std::size_t option = 0; option < available.size(); ++option) {
+            if (available[option].name == name) {
                 return option;
             }
         }
         luaL_argerror(L, index, "unknown option");
     }
     const auto option = lua::Stack::read<std::size_t>(L, index);
-    luaL_argcheck(L, option >= 1 && option <= options.size(), index, "no option with this number");
+    luaL_argcheck(L, option >= 1 && option <= available.size(), index, "no option with this number");
     return option - 1;
 }
 

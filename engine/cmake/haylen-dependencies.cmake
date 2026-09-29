@@ -232,7 +232,7 @@ target_compile_definitions(haylen_imgui PUBLIC IMGUI_DISABLE_OBSOLETE_FUNCTIONS 
 
 add_library(haylen_miniaudio STATIC "${CMAKE_CURRENT_LIST_DIR}/../src/audio/MiniaudioImpl.c")
 target_include_directories(haylen_miniaudio SYSTEM PUBLIC "${miniaudio_SOURCE_DIR}")
-target_compile_definitions(haylen_miniaudio PUBLIC MA_NO_GENERATION MA_NO_ENCODING)
+target_compile_definitions(haylen_miniaudio PUBLIC MA_NO_GENERATION MA_NO_ENCODING MA_NO_RESOURCE_MANAGER)
 if(ANDROID)
   target_compile_definitions(haylen_miniaudio PUBLIC MA_NO_OPENSL)
   target_link_libraries(haylen_miniaudio PUBLIC log)

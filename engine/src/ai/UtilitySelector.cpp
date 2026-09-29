@@ -22,18 +22,16 @@ std::size_t UtilitySelector::add(Option option) {
 // The compensation of Dave Mark raises each factor toward 1 by a share that grows with the factor count, so a product of many good factors stays good.
 float UtilitySelector::score(std::size_t index) const {
     const Option& option = options.at(index);
+    const std::size_t count = option.considerations.size();
+    const float modification = count > 0 ? 1.0F - 1.0F / static_cast<float>(count) : 0.0F;
+
     float product = 1.0F;
     for (const Consideration& consideration : option.considerations) {
-        product *= consideration.curve.evaluate(math::Math::inverseLerp(consideration.minimum, consideration.maximum, consideration.input()));
-        if (product <= 0.0F) {
+        const float factor = consideration.curve.evaluate(math::Math::inverseLerp(consideration.minimum, consideration.maximum, consideration.input()));
+        if (factor <= 0.0F) {
             return 0.0F;
         }
-    }
-
-    const std::size_t count = option.considerations.size();
-    if (count > 1) {
-        const float modification = 1.0F - 1.0F / static_cast<float>(count);
-        product += (1.0F - product) * modification * product;
+        product *= factor + (1.0F - factor) * modification * factor;
     }
     return product * option.weight;
 }
@@ -56,12 +54,13 @@ std::optional<UtilitySelector::Choice> UtilitySelector::choose(math::Random& ran
         scores.push_back(score(index));
         highest = std::max(highest, scores.back());
     }
-    if (highest <= 0.0F) {
-        return std::nullopt;
-    }
 
+    const float threshold = highest * std::clamp(tolerance, 0.0F, 1.0F);
     for (float& value : scores) {
-        value = value >= highest * tolerance ? value : 0.0F;
+        value = value > 0.0F && value >= threshold ? value : 0.0F;
+    }
+    if (std::ranges::none_of(scores, [](float value) { return value > 0.0F; })) {
+        return std::nullopt;
     }
     const std::size_t index = random.weightedIndex(scores);
     return Choice{index, scores[index]};

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <limits>
 #include <numbers>
 #include <optional>
 #include <string>
@@ -80,6 +81,10 @@ TEST(RaycastTest, CastsAgainstChainsAndSegmentLists) {
     EXPECT_EQ(hits[2].index, 2U);
     math::Raycast::segmentsAll(ray, fences, 2, hits);
     EXPECT_EQ(hits.size(), 2U);
+
+    // A ray that starts at NaN hits nothing instead of reporting distances that cannot be sorted.
+    math::Raycast::segmentsAll(math::Ray{{std::numeric_limits<float>::quiet_NaN(), 5.0F}, {1.0F, 0.0F}, 100.0F}, fences, 0, hits);
+    EXPECT_TRUE(hits.empty());
 }
 
 TEST(RaycastTest, BouncesAndFansAnyCast) {

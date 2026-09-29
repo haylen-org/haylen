@@ -40,9 +40,6 @@ class Device final {
     [[nodiscard]] bool isRunning() const noexcept {
         return running;
     }
-    [[nodiscard]] bool isSuspended() const noexcept {
-        return suspended;
-    }
     [[nodiscard]] bool isInterrupted() const noexcept {
         return interrupted;
     }

@@ -76,10 +76,38 @@ Error::Frame::Kind Runtime::getFrameKind(const lua_Debug& info) noexcept {
     return *info.what == 'm' ? Error::Frame::Kind::Main : Error::Frame::Kind::Lua;
 }
 
+// Finds the outermost level of the stack with a binary search, since reaching a level walks every level above it.
+int Runtime::findLastLevel(lua_State* L) {
+    lua_Debug info{};
+    int low = 1;
+    int high = 1;
+    while (lua_getstack(L, high, &info) != 0) {
+        low = high;
+        high *= 2;
+    }
+    while (low < high) {
+        const int middle = low + (high - low) / 2;
+        if (lua_getstack(L, middle, &info) != 0) {
+            low = middle + 1;
+        } else {
+            high = middle;
+        }
+    }
+    return high - 1;
+}
+
 Error Runtime::captureError(lua_State* L, const std::string& text, int level) {
     std::vector<Error::Frame> frames;
     lua_Debug info{};
+    const int last = findLastLevel(L);
+    const bool elide = last - level > kInnerLevels + kOuterLevels;
     for (int current = level; lua_getstack(L, current, &info) != 0; ++current) {
+        if (elide && current == level + kInnerLevels) {
+            const int skipped = last - kOuterLevels + 1 - current;
+            frames.push_back({.source = "...", .function = std::to_string(skipped) + " levels skipped", .kind = Error::Frame::Kind::C});
+            current += skipped - 1;
+            continue;
+        }
         lua_getinfo(L, "Slnf", &info);
         const lua_CFunction function = lua_tocfunction(L, -1);
         lua_pop(L, 1);
@@ -165,20 +193,22 @@ void Runtime::protectedCall(lua_State* L, int arguments, int results) {
     }
 }
 
+// The body receives the empty stack it would have as a function of its own.
 int Runtime::runBody(lua_State* L) {
-    const auto& body = *static_cast<std::function<void(lua_State*)>*>(lua_touserdata(L, lua_upvalueindex(1)));
+    const auto& call = *static_cast<const Call*>(lua_touserdata(L, 1));
+    lua_settop(L, 0);
     // clang-format off
     return Binding::guarded(L, [&] {
-        body(L);
+        call.invoke(call.body, L);
         return 0;
     });
     // clang-format on
 }
 
-void Runtime::protectedRun(lua_State* L, std::function<void(lua_State*)> body) {
-    lua_pushlightuserdata(L, &body);
-    lua_pushcclosure(L, &runBody, 1);
-    protectedCall(L, 0, 0);
+void Runtime::runProtected(lua_State* L, Call& call) {
+    lua_pushcfunction(L, &runBody);
+    lua_pushlightuserdata(L, &call);
+    protectedCall(L, 1, 0);
 }
 
 } // namespace haylen::lua

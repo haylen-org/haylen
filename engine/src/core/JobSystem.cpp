@@ -2,8 +2,10 @@
 
 #include <algorithm>
 #include <condition_variable>
+#include <cstdint>
 #include <mutex>
 #include <thread>
+#include <unordered_map>
 
 #include "varn/runtime/Runtime.h"
 
@@ -16,7 +18,14 @@ struct JobSystem::ChunkCompletion {
     std::exception_ptr error;
 };
 
-JobSystem::JobSystem(varn::runtime::Runtime& scriptRuntime, ErrorHandler errorHandler) : runtime(scriptRuntime), onError(std::move(errorHandler)), workerCount(std::max(1U, std::thread::hardware_concurrency())) {}
+// The work posted to the pools, kept here rather than in the queues of the pools, which outlive the Lua state when the runtime shuts down.
+struct JobSystem::Queue {
+    std::mutex mutex;
+    std::unordered_map<std::uint64_t, std::function<void()>> jobs;
+    std::uint64_t next = 0;
+};
+
+JobSystem::JobSystem(varn::runtime::Runtime& scriptRuntime, ErrorHandler errorHandler) : runtime(scriptRuntime), onError(std::move(errorHandler)), workerCount(std::max(1U, std::thread::hardware_concurrency())), queue(std::make_shared<Queue>()) {}
 
 std::string JobSystem::describe(const std::exception_ptr& error) {
     try {
@@ -41,12 +50,46 @@ std::function<void()> JobSystem::guardWorker(std::function<void()> work) {
     // clang-format on
 }
 
+// The pool job only names the work, so the work stays with the job system until a worker takes it.
+std::function<void()> JobSystem::enqueue(std::function<void()> work) {
+    std::uint64_t id = 0;
+    {
+        const std::scoped_lock lock(queue->mutex);
+        id = queue->next++;
+        queue->jobs.emplace(id, guardWorker(std::move(work)));
+    }
+
+    // clang-format off
+    return [target = queue, id] {
+        std::function<void()> job;
+        {
+            const std::scoped_lock lock(target->mutex);
+            const auto found = target->jobs.find(id);
+            if (found == target->jobs.end()) {
+                return;
+            }
+            job = std::move(found->second);
+            target->jobs.erase(found);
+        }
+        job();
+    };
+    // clang-format on
+}
+
 void JobSystem::post(std::function<void()> work) {
-    runtime.taskPool().post(guardWorker(std::move(work)));
+    runtime.taskPool().post(enqueue(std::move(work)));
 }
 
 void JobSystem::postIo(std::function<void()> work) {
-    runtime.ioPool().post(guardWorker(std::move(work)));
+    runtime.ioPool().post(enqueue(std::move(work)));
+}
+
+void JobSystem::discardQueued() noexcept {
+    std::unordered_map<std::uint64_t, std::function<void()>> dropped;
+    {
+        const std::scoped_lock lock(queue->mutex);
+        dropped.swap(queue->jobs);
+    }
 }
 
 void JobSystem::postToFrame(std::function<void()> work) {

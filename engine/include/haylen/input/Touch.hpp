@@ -15,6 +15,10 @@ struct Touch {
     math::Vec2 previousPosition{};
     TouchPhase phase = TouchPhase::Began;
     float duration = 0.0F;
+
+    [[nodiscard]] constexpr bool isActive() const noexcept {
+        return phase != TouchPhase::Ended && phase != TouchPhase::Cancelled;
+    }
 };
 
 } // namespace haylen::input

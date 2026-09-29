@@ -125,7 +125,7 @@ int PolygonLua::simplify(lua_State* L) {
 
 int PolygonLua::decompose(lua_State* L) {
     const std::vector<std::vector<Vec2>> shape = readShape(L, 1);
-    const auto maxVertices = static_cast<std::size_t>(luaL_optinteger(L, 2, 8));
+    const std::size_t maxVertices = lua::Stack::read<std::optional<std::size_t>>(L, 2).value_or(8);
     lua::Stack::push(L, Polygon::decompose(shape, maxVertices));
     return 1;
 }

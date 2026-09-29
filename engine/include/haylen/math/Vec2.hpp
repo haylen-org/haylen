@@ -111,7 +111,7 @@ struct Vec2 {
     }
 
     [[nodiscard]] static constexpr Vec2 lerp(Vec2 from, Vec2 to, float t) noexcept {
-        return from + (to - from) * t;
+        return from * (1.0F - t) + to * t;
     }
 
     [[nodiscard]] static constexpr Vec2 min(Vec2 lhs, Vec2 rhs) noexcept {

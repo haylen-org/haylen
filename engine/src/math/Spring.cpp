@@ -41,7 +41,7 @@ float Spring::smoothDamp(float current, float target, float& currentVelocity, fl
     const float result = target + (change + impulse) * factor;
 
     // Rounding can carry the value past the target, where it stops instead of turning back.
-    if ((target - current > 0.0F) == (result > target)) {
+    if ((target - current) * (result - target) > 0.0F) {
         currentVelocity = 0.0F;
         return target;
     }

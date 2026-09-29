@@ -362,9 +362,21 @@ print(terrain:perlin(3.5, 8.25))
 
 ## Scalar functions
 
-### m.ease(name, t)
+### m.ease(curve, t)
 
-Evaluates an easing curve at `t` and returns the eased value. `t` is clamped to `0` to `1`. The result goes from `0` to `1` and can overshoot for the `back` and `elastic` curves. The names are `'linear'` and the `in`, `out` and `in_out` variants of `sine`, `quad`, `cubic`, `quart`, `quint`, `expo`, `circ`, `back`, `elastic` and `bounce`, such as `'quad_out'`, `'back_in'` or `'elastic_in_out'`. An unknown name raises `bad argument #1 to 'ease' (unknown value 'bouncy')`.
+Evaluates an easing curve at `t` and returns the eased value. `t` is clamped to `0` to `1`. The result goes from `0` to `1` and can overshoot for the `back` and `elastic` curves and for points and Bézier handles outside that range. `curve` takes one of these forms, the same ones the `ease` option of [haylen.tween](tween.md) accepts.
+
+| Form | Example | Curve |
+| --- | --- | --- |
+| Name | `'quad_out'` | `'linear'` or the `in`, `out` and `in_out` variants of `sine`, `quad`, `cubic`, `quart`, `quint`, `expo`, `circ`, `back`, `elastic` and `bounce`, such as `'quad_out'`, `'back_in'` or `'elastic_in_out'`. A table `{curve = 'quad_out'}` names the same curve. |
+| Back | `{curve = 'back_out', overshoot = 3}` | A `back` curve with its overshoot, `1.70158` by default. |
+| Elastic | `{curve = 'elastic_out', amplitude = 1.5, period = 0.4}` | An `elastic` curve with its amplitude and period, `1` and `0.3` by default. Either key alone keeps the default of the other. |
+| Steps | `{steps = 4, position = 'end'}` | Jumps in `steps` equal steps like CSS `steps()`, with `position` `'start'`, `'end'` (the default), `'both'` or `'none'`. |
+| Bézier | `{bezier = {0.25, 0.1, 0.25, 1}}` | The cubic Bézier `{x1, y1, x2, y2}` like CSS `cubic-bezier()`, with both x values between `0` and `1`. |
+| Points | `{points = {0, 1.5, 1}}` | Straight lines through numbers spread evenly from `t = 0` to `t = 1`, or through points such as `{{0, 0}, {0.8, 1.2}, {1, 1}}` whose x grows from one point to the next. Before the first point and after the last one the curve keeps their values. |
+| Function | `function(t) return t * t end` | Any function from progress to eased progress, which receives `t` clamped to `0` to `1` and must return a number. |
+
+An unknown name raises `bad argument #1 to 'ease' (unknown value 'bouncy')`, another value raises `bad argument #1 to 'ease' (easing curve name, function or table expected, got boolean)`, and an unknown key raises `Unknown option '<key>'.` An `overshoot` on another curve raises `An overshoot only applies to the back curves.`, an `amplitude` or `period` on another curve raises `An amplitude and a period only apply to the elastic curves.`, and a period that is not positive raises `An elastic curve needs a positive period.` Fewer than one step raises `A steps curve needs at least one step.`, a `bezier` list without four numbers raises `A bezier curve needs the four numbers x1, y1, x2 and y2.`, and an x outside `0` to `1` raises `The x coordinates of a cubic Bézier curve must be between 0 and 1.` Fewer than two points raise `A points curve needs at least two points.`, points out of order raise `The points of a curve must be ordered by x.`, and a function that returns anything but a number raises `An easing function must return a number.`
 
 ```lua
 local m = require('haylen.math')
@@ -373,11 +385,19 @@ local startY, endY, duration = 1200, 540, 0.8
 local elapsed = 0.4
 local y = m.lerp(startY, endY, m.ease('back_out', elapsed / duration))
 print(y)
+
+print(m.ease({curve = 'back_out', overshoot = 3}, 0.5))
+print(m.ease({curve = 'elastic_out', amplitude = 1.5, period = 0.4}, 0.5))
+print(m.ease({steps = 4}, 0.6)) -- 0.5
+print(m.ease({bezier = {0.25, 0.1, 0.25, 1}}, 0.5))
+print(m.ease({points = {0, 1.5, 1}}, 0.25)) -- 0.75
+print(m.ease({points = {{0, 0}, {0.5, 1}, {1, 1}}}, 0.75)) -- 1.0
+print(m.ease(function(t) return t * t end, 0.5)) -- 0.25
 ```
 
 ### m.clamp(value, minimum, maximum)
 
-Returns `value` limited to the range from `minimum` to `maximum`. `minimum` must not be greater than `maximum`.
+Returns `value` limited to the range from `minimum` to `maximum`. A `minimum` greater than `maximum` raises `bad argument #3 to 'clamp' (expected a maximum of at least the minimum)`.
 
 ```lua
 local m = require('haylen.math')
@@ -630,7 +650,7 @@ print(center) -- Vec2(200.0, 100.0)
 
 ### m.polygonConvex(polygon)
 
-Returns `true` when `polygon` is convex. Polygons with fewer than three points are not convex.
+Returns `true` when `polygon` is convex, in either winding. Polygons with fewer than three points are not convex, and neither are stars such as a pentagram, whose outline crosses itself even though it turns the same way at every point.
 
 ```lua
 local m = require('haylen.math')
@@ -638,11 +658,17 @@ local m = require('haylen.math')
 local square = {{0, 0}, {10, 0}, {10, 10}, {0, 10}}
 local arrow = {{0, 0}, {10, 0}, {5, 3}, {10, 10}, {0, 10}}
 print(m.polygonConvex(square), m.polygonConvex(arrow)) -- true false
+
+local star = {}
+for point = 0, 4 do
+    star[#star + 1] = m.fromAngle(point * 2 * m.tau / 5, 10)
+end
+print(m.polygonConvex(star)) -- false
 ```
 
 ### m.convexHull(points)
 
-Returns the smallest convex polygon that encloses `points`, as a sequence of `Vec2` in order around the outline. Duplicate points are ignored, and with fewer than three distinct points the distinct points are returned.
+Returns the smallest convex polygon that encloses `points`, as a sequence of `Vec2` in order around the outline. Duplicate points and points with a NaN coordinate are ignored, and with fewer than three distinct points the distinct points are returned.
 
 ```lua
 local m = require('haylen.math')
@@ -654,7 +680,7 @@ print(#outline) -- 4
 
 ### m.triangulate(polygon)
 
-Splits a simple polygon into triangles and returns a flat sequence of 1-based vertex indices, three per triangle. The polygon may be concave and may use either winding, and every triangle comes out with the winding that `m.polygonArea` reports as positive. Fewer than three points give an empty table.
+Splits a simple polygon into triangles and returns a flat sequence of 1-based vertex indices, three per triangle. The polygon may be concave and may use either winding, and every triangle comes out with the winding that `m.polygonArea` reports as positive. Fewer than three points give an empty table, and an outline that crosses itself may leave part of its area without triangles.
 
 ```lua
 local m = require('haylen.math')
@@ -692,9 +718,9 @@ Returns evenly spread random points inside an area, where no two points are clos
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `area` | Rect | Empty | Area to fill. An empty area returns no points. |
-| `minimumDistance` | number | `64` | Smallest distance between two points. A value that is not positive returns no points, and a value so small for the area that sampling would need more than 16777216 grid cells raises an error. |
-| `maximumDistance` | number | `0` | Largest distance a `distance` function may ask for. It must be at least `minimumDistance` when `distance` is set. |
-| `distance` | function | `nil` | Called with each candidate `Vec2` and returns the spacing wanted there, such as from a density or noise map. Results are clamped between `minimumDistance` and `maximumDistance`, and two points stay at least the larger of their own spacings apart. |
+| `minimumDistance` | number | `64` | Smallest distance between two points. A value that is not positive returns no points, an infinite or NaN value raises `Poisson distances must be finite.`, and a value so small for the area that sampling would need more than 16777216 grid cells raises an error. |
+| `maximumDistance` | number | `0` | Largest distance a `distance` function may ask for. It must be finite and at least `minimumDistance` when `distance` is set. |
+| `distance` | function | `nil` | Called with each candidate `Vec2` and returns the spacing wanted there, such as from a density or noise map. Results are clamped between `minimumDistance` and `maximumDistance`, and two points stay at least the larger of their own spacings apart. A result that is infinite or NaN raises `A Poisson distance function must return finite distances.` |
 | `attempts` | integer | `30` | Candidates tried around each point before it stops growing. Higher values fill the area more tightly. |
 | `random` | Random | `nil` | Generator to draw from, which advances as points are sampled. |
 | `seed` | integer | `0` | Seed of a private generator, used when `random` is absent. |
@@ -1422,6 +1448,32 @@ local night = m.color('#FF2A3B6E')
 print(day:lerp(night, 0.5))
 ```
 
+### color:lerpHsv(to, t)
+
+Returns the interpolation toward `to` in hue, saturation, value and alpha. The hue takes the shorter way around the hue circle, so red to blue passes through magenta instead of the dark purple of `lerp`, and a gray takes the hue of the other color so only its saturation changes. `t` is not clamped.
+
+```lua
+local m = require('haylen.math')
+
+local red = m.color('#FFFF0000')
+local blue = m.color('#FF0000FF')
+print(red:lerp(blue, 0.5)) -- #FF800080
+print(red:lerpHsv(blue, 0.5)) -- #FFFF00FF
+print(m.color('#FFFFFFFF'):lerpHsv(red, 0.5)) -- #FFFF8080
+```
+
+### color:toHsv()
+
+Returns four numbers: the hue, saturation, value and alpha of the color. The hue is measured in turns from `0` up to but not including `1`, like `m.hsv` reads it, and a gray has a hue and saturation of `0`.
+
+```lua
+local m = require('haylen.math')
+
+local sky = m.color('#FF3399FF')
+local hue, saturation, value, alpha = sky:toHsv()
+print(m.hsv(hue + 0.5, saturation, value, alpha)) -- #FFFF9933
+```
+
 ### color:toHex()
 
 Returns the color as `'#AARRGGBB'` text with uppercase digits, which `m.color` and every color argument read back.
@@ -1568,7 +1620,7 @@ print(angle, speed)
 
 ### random:integer(minimum, maximum)
 
-Returns an integer from `minimum` to `maximum`, both included. When `maximum` is not greater than `minimum` it returns `minimum`. Both arguments must be integers, and a number with a fraction raises `number has no integer representation`.
+Returns an integer from `minimum` to `maximum`, both included. When `maximum` is not greater than `minimum` it returns `minimum`. Both arguments must be integers that fit in 32 bits, from `-2147483648` to `2147483647`. A number with a fraction raises `number has no integer representation`, and an integer outside that range raises `integer out of range`.
 
 ```lua
 local m = require('haylen.math')
@@ -1592,7 +1644,7 @@ end
 
 ### random:pick(weights)
 
-Picks an index of the `weights` sequence with a probability proportional to each weight and returns it, starting at `1`. An empty sequence raises `bad argument #1 to 'pick' (expected at least one weight)`.
+Picks an index of the `weights` sequence with a probability proportional to each weight and returns it, starting at `1`. An index whose weight is zero is never picked. An empty sequence raises `bad argument #1 to 'pick' (expected at least one weight)`, a negative, infinite or NaN weight raises `Weights must be finite and not negative.`, and weights that are all zero raise `A weighted pick needs at least one positive weight.`
 
 ```lua
 local m = require('haylen.math')
@@ -1784,7 +1836,7 @@ print(#m.polygon.simplify(path, 2, false)) -- 3
 
 ### m.polygon.decompose(shape, maxVertices)
 
-Splits a shape, holes included, into convex pieces of at most `maxVertices` points, which defaults to `8`, the limit of a Box2D polygon. The pieces come from a constrained Delaunay triangulation whose triangles merge while they stay convex, and each one winds with a positive area. `body:addPolygon` of `haylen.physics2d` uses it for concave outlines.
+Splits a shape, holes included, into convex pieces of at most `maxVertices` points, which defaults to `8`, the limit of a Box2D polygon. The pieces come from a constrained Delaunay triangulation whose triangles merge while they stay convex, and each one winds with a positive area. `body:addPolygon` of `haylen.physics2d` uses it for concave outlines. A negative `maxVertices` raises `bad argument #2 to 'decompose' (expected a non-negative integer)`, and one below `3` raises `Convex pieces need at least three vertices.`
 
 ```lua
 local m = require('haylen.math')
@@ -1812,7 +1864,7 @@ print(m.polygon.area(frame)) -- 7500.0
 
 ### m.marchingSquares.trace(values, width, height, options)
 
-Traces a field of `width` times `height` numbers stored row by row. Sample `(x, y)` lies at `origin + (x, y) * spacing`, outlines pass between samples where the values cross the threshold, and areas that reach the edge of the grid close along the outermost samples. A value count that does not match the size raises `The field needs width times height values.`
+Traces a field of `width` times `height` numbers stored row by row. Sample `(x, y)` lies at `origin + (x, y) * spacing`, outlines pass between samples where the values cross the threshold, and areas that reach the edge of the grid close along the outermost samples. A width or height of `0` returns no outlines, and a value count that does not match the size raises `The field needs width times height values.`
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1837,7 +1889,7 @@ print(#coasts .. ' islands and lakes')
 
 ### m.marchingSquares.traceBitmap(pixels, width, height, options)
 
-Traces the pixels that are `true` or not zero. Pixel `(x, y)` covers the square from `origin + (x, y) * spacing` to `origin + (x + 1, y + 1) * spacing`, and outlines cut diagonally across pixel corners. The options take `spacing` and `origin` as in `trace`.
+Traces the pixels that are `true` or not zero. Pixel `(x, y)` covers the square from `origin + (x, y) * spacing` to `origin + (x + 1, y + 1) * spacing`, and outlines cut diagonally across pixel corners. The options take `spacing` and `origin` as in `trace`. A width or height of `0` returns no outlines, and a pixel count that does not match the size raises `The bitmap needs width times height pixels.`
 
 ```lua
 local m = require('haylen.math')

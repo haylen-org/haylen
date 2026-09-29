@@ -49,7 +49,7 @@ Starts a voice for the sound and returns its id. The options table is optional, 
 | `processMode` | string | `'inherit'` | `'inherit'`, `'pausable'`, `'whenPaused'`, `'always'` or `'disabled'`. `'inherit'` takes the mode of the bus. |
 | `effects` | table | none | A list of effects from `audio.newEffect` that process the voice in order before its bus. |
 
-An unknown bus raises `Unknown audio bus: <name>`, a bad variation raises `A pitch variation must be at least 0 and smaller than the pitch.`, and an `effects` value that is not a list of effects raises `The option 'effects' must be a list of audio effects.`.
+An unknown bus raises `Unknown audio bus: <name>`, a bad variation raises `A pitch variation must be at least 0 and smaller than the pitch.`, and an `effects` value that is not a list of effects raises `The option 'effects' must be a list of audio effects.`. Numbers must be finite, so `0 / 0` or `math.huge` for `volume`, `pan`, `fadeIn`, `startAt`, `x` or `y` raise `Audio needs a finite volume.`, `Audio needs a finite pan.`, `Audio needs a finite fade-in.`, `Audio needs a finite start time.` or `Audio needs a finite position.`, and a `pitch` that is not a finite number above 0 raises `Audio needs a finite pitch above 0.`. A call that raises an error stops no voice, even when every voice is busy.
 
 ```lua
 local assets = require('haylen.assets')
@@ -131,7 +131,7 @@ print(audio.processMode(tick))
 
 ### audio.setVolume(voice, volume)
 
-Changes the volume of a voice.
+Changes the volume of a voice. A volume that is not finite raises `Audio needs a finite volume.`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -143,7 +143,7 @@ audio.setVolume(wind, 0.25)
 
 ### audio.setPitch(voice, pitch)
 
-Changes the pitch and playback speed of a voice.
+Changes the pitch and playback speed of a voice. A pitch that is not a finite number above 0 raises `Audio needs a finite pitch above 0.`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -190,7 +190,7 @@ end
 
 ### audio.setPan(voice, pan)
 
-Changes the stereo position of a voice from -1 (left) to 1 (right). Positional voices add their distance pan to this value.
+Changes the stereo position of a voice from -1 (left) to 1 (right). Positional voices add their distance pan to this value. A pan that is not finite raises `Audio needs a finite pan.`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -202,7 +202,7 @@ audio.setPan(voice, 0.8)
 
 ### audio.setPosition(voice, x, y)
 
-Moves a voice to a world position and makes it positional. The engine refreshes the volume and pan of positional voices every frame, as described in [Positional audio](#positional-audio).
+Moves a voice to a world position and makes it positional. The engine refreshes the volume and pan of positional voices every frame, as described in [Positional audio](#positional-audio). A coordinate that is not finite raises `Audio needs a finite position.`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -222,7 +222,7 @@ scene.push({
 
 ### audio.active(voice)
 
-Returns true while the voice plays or is paused, and false once it finished or was stopped.
+Returns true while the voice plays or is paused, and false once it finished or was stopped, even while `audio.stop` still fades it out.
 
 ```lua
 local assets = require('haylen.assets')
@@ -320,7 +320,7 @@ scene.push({
 
 ## Effects
 
-Effects process the sound of a bus or of a voice, in the order they were added. `audio.newEffect` creates them as [Filter](#filter), [Delay](#delay) and [Reverb](#reverb) values whose parameters are properties, which change at any time and which tweens animate. An effect processes one bus or one voice at a time, and a voice lets its effects ring out after it ends before they are free again.
+Effects process the sound of a bus or of a voice, in the order they were added. `audio.newEffect` creates them as [Filter](#filter), [Delay](#delay) and [Reverb](#reverb) values whose parameters are properties, which change at any time and which tweens animate. An effect processes one bus or one voice at a time, and a voice lets its effects ring out after it ends before they are free again. An effect that moves to another bus or voice starts there without the echoes or reverb it held before.
 
 ### audio.newEffect(kind, options)
 
@@ -423,7 +423,7 @@ One music track plays at a time on its own voice. When the voice limit is reache
 
 ### audio.playMusic(sound, options)
 
-Starts a music track, crossfades from the previous one and returns the voice id of the track. The voice works with every voice function, so `audio.pause` and `audio.resume` pause the music alone, and `audio.setVolume`, `audio.addEffect` and `audio.stop` reach the track. When the requested track is already playing or paused, it keeps its voice, which the call returns, and only its volume changes. A paused track that the next track replaces stops without sounding again, and the next track plays. The options table is optional, and unknown keys raise `Unknown option '<key>'.`.
+Starts a music track, crossfades from the previous one and returns the voice id of the track. The voice works with every voice function, so `audio.pause` and `audio.resume` pause the music alone, and `audio.setVolume`, `audio.addEffect` and `audio.stop` reach the track. When the requested track is already playing or paused, it keeps its voice, which the call returns, and only its volume changes. A paused track that the next track replaces stops without sounding again, and the next track plays. A track that cannot play, such as one for an unknown bus, raises the errors of [audio.play](#audioplaysound-options) and leaves the current track playing. The options table is optional, and unknown keys raise `Unknown option '<key>'.`.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -489,7 +489,7 @@ audio.play(assets.load('sfx/step.wav'), {bus = 'footsteps'})
 
 ### audio.setBusVolume(bus, volume, fade)
 
-Changes the volume of a bus, fading over `fade` seconds when given. Negative volumes become 0. The fade defaults to 0.
+Changes the volume of a bus, fading over `fade` seconds when given. Negative volumes become 0, and a volume that is not finite raises `Audio needs a finite bus volume.`. The fade defaults to 0.
 
 ```lua
 local audio = require('haylen.audio')
@@ -591,7 +591,7 @@ A positional voice fades with its distance to the listener, pans by its horizont
 
 ### audio.setListener(x, y)
 
-Moves the listener to a world position. The listener starts at `0, 0`.
+Moves the listener to a world position. The listener starts at `0, 0`. A coordinate that is not finite raises `Audio needs a finite position.`.
 
 ```lua
 local audio = require('haylen.audio')
@@ -655,7 +655,7 @@ Changes how positional voices sound. It changes the fields it names and keeps th
 | `doppler` | number | `0` | The strength of the Doppler effect, where 0 turns it off. The pitch stays within two octaves up or down. |
 | `speedOfSound` | number | `3430` | The speed of sound in world units per second. |
 
-Distances outside `0 <= minDistance < maxDistance` raise `Audio attenuation needs 0 <= minimum distance < maximum distance.`, a minimum distance of 0 with the inverse or exponential model raises `The inverse and exponential audio models need a minimum distance above 0.`, a negative `rolloff` or `doppler` raises `The audio rolloff and Doppler factor cannot be negative.`, and a `panDistance` or `speedOfSound` that is not positive raises `The audio pan distance and speed of sound must be positive.`.
+A field that is not finite raises `Audio needs a finite spatialization setting.`, distances outside `0 <= minDistance < maxDistance` raise `Audio attenuation needs 0 <= minimum distance < maximum distance.`, a minimum distance of 0 with the inverse or exponential model raises `The inverse and exponential audio models need a minimum distance above 0.`, a negative `rolloff` or `doppler` raises `The audio rolloff and Doppler factor cannot be negative.`, and a `panDistance` or `speedOfSound` that is not positive raises `The audio pan distance and speed of sound must be positive.`.
 
 ```lua
 local audio = require('haylen.audio')
@@ -741,7 +741,7 @@ print(hit.duration, hit.channels, hit.sampleRate, hit.frames, hit.streamed)
 | `kind` | string | The kind it was created with. Read-only. |
 | `cutoff` | number | Corner or center frequency in hertz. It must be positive, and cutoffs at or above half the sample rate act just below it. |
 | `q` | number | Resonance of the pass and shelf kinds and width of the band of the others, where larger is narrower. It must be positive. |
-| `gain` | number | Decibels that `'peak'`, `'lowShelf'` and `'highShelf'` add or remove. Setting it on another kind raises `Only peak and shelf filters have a gain.`. |
+| `gain` | number | Decibels that `'peak'`, `'lowShelf'` and `'highShelf'` add or remove. It must be finite. Setting it on another kind raises `Only peak and shelf filters have a gain.`. |
 | `attached` | boolean | Whether it processes a bus or a voice now. Read-only. |
 | `tail` | number | Seconds it keeps sounding after its input falls silent, 0 for filters. Read-only. |
 
@@ -837,6 +837,14 @@ end)
 | `Unknown audio bus: <name>` | A call names a bus that does not exist. |
 | `An audio bus needs a new, non-empty name: <name>` | `audio.createBus()` received an empty or existing name. |
 | `A pitch variation must be at least 0 and smaller than the pitch.` | `audio.play()` received a bad `pitchVariation`. |
+| `Audio needs a finite volume.` | `audio.play()` or `audio.setVolume()` received a volume that is not finite, such as `0 / 0` or `math.huge`. |
+| `Audio needs a finite pitch above 0.` | `audio.play()` or `audio.setPitch()` received a pitch of 0 or less or one that is not finite. |
+| `Audio needs a finite pan.` | `audio.play()` or `audio.setPan()` received a pan that is not finite. |
+| `Audio needs a finite fade-in.` | `audio.play()` received a `fadeIn` that is not finite. |
+| `Audio needs a finite start time.` | `audio.play()` received a `startAt` that is not finite. |
+| `Audio needs a finite position.` | `audio.play()`, `audio.setPosition()` or `audio.setListener()` received a coordinate that is not finite. |
+| `Audio needs a finite bus volume.` | `audio.setBusVolume()` received a volume that is not finite. |
+| `Audio needs a finite spatialization setting.` | `audio.setSpatialization()` received a field that is not finite. |
 | `Audio attenuation needs 0 <= minimum distance < maximum distance.` | `audio.setSpatialization()` received bad distances. |
 | `The inverse and exponential audio models need a minimum distance above 0.` | `audio.setSpatialization()` chose one of these models with a minimum distance of 0. |
 | `The audio rolloff and Doppler factor cannot be negative.` | `audio.setSpatialization()` received a negative `rolloff` or `doppler`. |
@@ -847,6 +855,7 @@ end)
 | `A filter cutoff must be a positive frequency.` | A filter received a cutoff of 0 or less. |
 | `A filter q must be positive.` | A filter received a `q` of 0 or less. |
 | `Only peak and shelf filters have a gain.` | Another filter received a gain. |
+| `A filter gain must be a finite number of decibels.` | A peak or shelf filter received a gain that is not finite. |
 | `audio effect expected` | A function that takes an effect received another value. It comes inside a bad argument error. |
 | `expected a non-negative integer` | A voice id is negative. It comes inside a bad argument error. |
 | `haylen.Sound has no member '<name>'.` | A sound property does not exist. |

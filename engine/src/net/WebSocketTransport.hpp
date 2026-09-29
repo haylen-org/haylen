@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -35,8 +36,8 @@ class WebSocketTransport {
     virtual void ping(std::string payload) = 0;
     virtual void close(int code, std::string reason) = 0;
 
-    // Opens the transport of the platform: Poco on native builds and the WebSocket of the page in the browser.
-    [[nodiscard]] static std::unique_ptr<WebSocketTransport> open(const std::string& url, const std::vector<std::string>& protocols, Sink sink);
+    // Opens the transport of the platform: Poco on native builds, which refuses messages larger than the maximum size, and the WebSocket of the page in the browser, which applies the limits of the browser.
+    [[nodiscard]] static std::unique_ptr<WebSocketTransport> open(const std::string& url, const std::vector<std::string>& protocols, std::size_t maxMessageSize, Sink sink);
 };
 
 } // namespace haylen::net

@@ -30,10 +30,6 @@ class PropertyTrack final : public TweenTrack {
     [[nodiscard]] std::vector<std::string> getFields() const override;
     bool release(std::string_view name) override;
 
-    [[nodiscard]] const TweenProperty& getProperty() const noexcept {
-        return property;
-    }
-
   private:
     const void* target;
     std::vector<std::string> fields;

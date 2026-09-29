@@ -45,7 +45,8 @@ struct Color {
     [[nodiscard]] static Color fromHsv(float hue, float saturation, float value, float alpha = 1.0F) noexcept;
 
     [[nodiscard]] static constexpr Color lerp(const Color& from, const Color& to, float t) noexcept {
-        return {from.r + (to.r - from.r) * t, from.g + (to.g - from.g) * t, from.b + (to.b - from.b) * t, from.a + (to.a - from.a) * t};
+        const float keep = 1.0F - t;
+        return {from.r * keep + to.r * t, from.g * keep + to.g * t, from.b * keep + to.b * t, from.a * keep + to.a * t};
     }
 
     // Interpolates hue, saturation, value and alpha, taking the shorter way around the hue circle, so red to blue passes through magenta instead of gray.

@@ -131,7 +131,7 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
     // Jumps to the end in the direction the tween plays, with or without the callbacks on the way. It has no effect on a tween that repeats forever.
     void complete(bool withCallbacks = true);
 
-    // Stops the tween for good. It runs the kill callback, emits finished when the tween had not completed, and a tween in a timeline leaves it.
+    // Stops the tween for good. It runs the kill callback, emits finished with false, and a tween in a timeline leaves it. The automatic kill of a tween that just completed emits nothing more.
     void kill();
 
     [[nodiscard]] bool isPlaying() const noexcept {
@@ -236,7 +236,7 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
     // Advances a root tween by the elapsed time, spending the delay first.
     void advance(float seconds);
 
-    void finishKill();
+    void end(bool justCompleted);
 
     Callbacks callbacks;
     std::string tag;

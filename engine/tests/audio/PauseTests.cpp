@@ -202,7 +202,7 @@ TEST_F(AudioInterruptionTest, TheEngineResumesAudioOnlyWhileTheAppIsActive) {
     EXPECT_EQ(published.back(), "audio_route_changed");
     EXPECT_EQ(published.size(), 3U);
 
-    // iOS does not always report the end of an interruption, and becoming active again brings the audio back anyway.
+    // Because iOS does not always report the end of an interruption, becoming active again brings the audio back anyway.
     audio.reportDeviceEvent(Mixer::DeviceEvent::InterruptionBegan);
     fixture.frames(1);
     engine.handleEvent({.type = platform::Event::Type::FocusLost});

@@ -133,7 +133,7 @@ void TweenManager::pauseTag(std::string_view tag, bool paused) {
 }
 
 void TweenManager::setTimeScale(std::string_view tag, float value) {
-    if (value < 0.0F) {
+    if (!(value >= 0.0F)) {
         throw std::invalid_argument("A tween time scale cannot be negative.");
     }
     groups[getGroup(tag)].timeScale = value;

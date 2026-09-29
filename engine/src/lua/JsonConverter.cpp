@@ -1,6 +1,7 @@
 #include "haylen/lua/JsonConverter.hpp"
 
 #include <cstdint>
+#include <limits>
 #include <stdexcept>
 #include <utility>
 
@@ -111,9 +112,16 @@ void JsonConverter::pushConverted(lua_State* L, const core::Json& value, int dep
     case core::Json::value_t::number_integer:
         lua_pushinteger(L, static_cast<lua_Integer>(value.get<std::int64_t>()));
         return;
-    case core::Json::value_t::number_unsigned:
-        lua_pushinteger(L, static_cast<lua_Integer>(value.get<std::uint64_t>()));
+    case core::Json::value_t::number_unsigned: {
+        // Integers above the range of Lua integers become floats rather than wrapping to negative numbers.
+        const auto number = value.get<std::uint64_t>();
+        if (number > static_cast<std::uint64_t>(std::numeric_limits<lua_Integer>::max())) {
+            lua_pushnumber(L, static_cast<lua_Number>(number));
+        } else {
+            lua_pushinteger(L, static_cast<lua_Integer>(number));
+        }
         return;
+    }
     case core::Json::value_t::number_float:
         lua_pushnumber(L, value.get<double>());
         return;
@@ -134,8 +142,9 @@ void JsonConverter::pushConverted(lua_State* L, const core::Json& value, int dep
     case core::Json::value_t::object:
         lua_createtable(L, 0, static_cast<int>(value.size()));
         for (const auto& [key, member] : value.items()) {
+            lua_pushlstring(L, key.data(), key.size());
             pushConverted(L, member, depth + 1);
-            lua_setfield(L, -2, key.c_str());
+            lua_rawset(L, -3);
         }
         return;
     }

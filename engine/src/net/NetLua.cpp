@@ -9,13 +9,13 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
-#include "haylen/lua/Reference.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/plugins/NetPlugin.hpp"
+#include "lua/Owners.hpp"
 
 namespace haylen::net {
 
@@ -37,7 +37,7 @@ WebSocket::Reconnect NetLua::readReconnect(lua_State* L, int index) {
     return reconnect;
 }
 
-// Opens a WebSocket with websocket(url, {protocols = {...}, reconnect = true or {...}}). The socket keeps delivering events until it closes, even when the app no longer holds it.
+// Opens a WebSocket with websocket(url, {protocols = {...}, maxMessageSize = bytes, reconnect = true or {...}}). The socket keeps delivering events until it closes, even when the app no longer holds it.
 int NetLua::websocket(lua_State* L) {
     std::string url = lua::Stack::read<std::string>(L, 1);
     WebSocket::Options options;
@@ -45,6 +45,7 @@ int NetLua::websocket(lua_State* L) {
         luaL_checktype(L, 2, LUA_TTABLE);
         lua::Table::checkFields(L, 2, {kSocketOptions});
         lua::Table::readField(L, 2, "protocols", options.protocols);
+        lua::Table::readField(L, 2, "maxMessageSize", options.maxMessageSize);
         if (lua_getfield(L, 2, "reconnect") != LUA_TNIL) {
             options.reconnect = readReconnect(L, lua_gettop(L));
         }
@@ -82,25 +83,36 @@ int NetLua::close(lua_State* L) {
 }
 
 // Listens with on(event, function) to open, message (data, binary), pong (payload), disconnect (code, reason), reconnecting (attempt, delay), close (code, reason) or error (message), and returns a connection.
+// A listener with an owner ends with it, like the listeners of events and signals.
 int NetLua::on(lua_State* L) {
     WebSocket& target = check(L);
     const std::string_view event = lua::Stack::read<std::string_view>(L, 2);
     luaL_checktype(L, 3, LUA_TFUNCTION);
-    auto function = std::make_shared<lua::Reference>(L, 3);
+    int owner = 0;
+    if (!lua_isnoneornil(L, 4)) {
+        luaL_checktype(L, 4, LUA_TTABLE);
+        lua::Table::checkFields(L, 4, {kListenerOptions});
+        if (lua_getfield(L, 4, "owner") != LUA_TNIL) {
+            owner = lua_gettop(L);
+        }
+    }
+    const std::weak_ptr<const void> lifetime = owner != 0 ? lua::Owners::getLifetime(L, owner) : std::weak_ptr<const void>();
+    auto function = std::make_shared<lua::Owners::Function>(L, 3, owner);
+    lua_State* main = lua::Runtime::getMainThread(L);
 
     // clang-format off
-    const auto call = [function](const auto& pushArguments) {
-        lua_State* main = function->getState();
+    const auto call = [function, main](const auto& pushArguments) {
         lua::Runtime::runReporting(main, [&] {
-            function->push(main);
-            lua::Runtime::protectedCall(main, pushArguments(main), 0);
+            if (function->push(main)) {
+                lua::Runtime::protectedCall(main, pushArguments(main), 0);
+            }
         });
     };
     // clang-format on
 
     core::Connection connection;
     if (event == "open") {
-        connection = target.opened.connect([call] { call([](lua_State*) { return 0; }); });
+        connection = target.opened.connect([call] { call([](lua_State*) { return 0; }); }, {.owner = lifetime});
     } else if (event == "message") {
         // clang-format off
         connection = target.received.connect([call](std::string_view data, bool binary) {
@@ -109,7 +121,7 @@ int NetLua::on(lua_State* L) {
                 lua_pushboolean(state, binary ? 1 : 0);
                 return 2;
             });
-        });
+        }, {.owner = lifetime});
         // clang-format on
     } else if (event == "pong") {
         // clang-format off
@@ -118,7 +130,7 @@ int NetLua::on(lua_State* L) {
                 lua_pushlstring(state, payload.data(), payload.size());
                 return 1;
             });
-        });
+        }, {.owner = lifetime});
         // clang-format on
     } else if (event == "close") {
         // clang-format off
@@ -128,7 +140,7 @@ int NetLua::on(lua_State* L) {
                 lua_pushlstring(state, reason.data(), reason.size());
                 return 2;
             });
-        });
+        }, {.owner = lifetime});
         // clang-format on
     } else if (event == "disconnect") {
         // clang-format off
@@ -138,7 +150,7 @@ int NetLua::on(lua_State* L) {
                 lua_pushlstring(state, reason.data(), reason.size());
                 return 2;
             });
-        });
+        }, {.owner = lifetime});
         // clang-format on
     } else if (event == "reconnecting") {
         // clang-format off
@@ -148,7 +160,7 @@ int NetLua::on(lua_State* L) {
                 lua_pushnumber(state, static_cast<lua_Number>(delay));
                 return 2;
             });
-        });
+        }, {.owner = lifetime});
         // clang-format on
     } else if (event == "error") {
         // clang-format off
@@ -157,10 +169,13 @@ int NetLua::on(lua_State* L) {
                 lua_pushlstring(state, message.data(), message.size());
                 return 1;
             });
-        });
+        }, {.owner = lifetime});
         // clang-format on
     } else {
         return luaL_error(L, "Unknown WebSocket event '%s'. Sockets report open, message, pong, disconnect, reconnecting, close and error.", std::string(event).c_str());
+    }
+    if (owner != 0) {
+        lua::Owners::add(L, owner, connection);
     }
     lua::Userdata::emplace<core::Connection>(L, std::move(connection));
     return 1;

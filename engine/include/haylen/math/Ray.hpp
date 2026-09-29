@@ -19,8 +19,8 @@ struct Ray {
         return {from, distance > 0.0F ? offset / distance : Vec2{1.0F, 0.0F}, distance};
     }
 
-    [[nodiscard]] static Ray fromAngle(Vec2 origin, float radians, float length) noexcept {
-        return {origin, Vec2::fromAngle(radians), length};
+    [[nodiscard]] static Ray fromAngle(Vec2 start, float radians, float distance) noexcept {
+        return {start, Vec2::fromAngle(radians), distance};
     }
 
     [[nodiscard]] constexpr Vec2 at(float distance) const noexcept {

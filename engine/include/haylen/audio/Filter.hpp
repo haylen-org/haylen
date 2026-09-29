@@ -65,6 +65,7 @@ class Filter final : public Effect {
     [[nodiscard]] static Coefficients design(Kind type, float rate, float frequency, float quality, float decibels) noexcept;
     static void requireCutoff(float value);
     static void requireQ(float value);
+    static void requireGain(float value);
 
     void prepare(std::uint32_t rate, std::uint32_t count) override;
     void process(const float* input, float* output, std::uint32_t frames) noexcept override;

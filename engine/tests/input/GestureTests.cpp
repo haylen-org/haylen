@@ -85,6 +85,39 @@ TEST_F(GestureTest, RecognizesTapsAndDoubleTaps) {
     EXPECT_EQ(frame(), Names{"tap"});
 }
 
+TEST_F(GestureTest, CancelledPressesNeverEndAsGestures) {
+    touch(platform::Event::Type::TouchBegan, {{1, {100.0F, 100.0F}}});
+    frame();
+    touch(platform::Event::Type::TouchCancelled, {{1, {100.0F, 100.0F}}});
+    EXPECT_EQ(frame(), Names{});
+
+    // Losing focus releases the held button and cancels the fingers, which the player never lifted.
+    mouse(platform::Event::Type::MouseDown, {50.0F, 60.0F});
+    frame();
+    input.releaseAll();
+    gestures.cancel();
+    EXPECT_EQ(frame(), Names{});
+
+    touch(platform::Event::Type::TouchBegan, {{2, {100.0F, 100.0F}}});
+    frame();
+    input.releaseAll();
+    gestures.cancel();
+    EXPECT_EQ(frame(), Names{});
+}
+
+TEST_F(GestureTest, AReusedTouchIdStartsANewPointer) {
+    touch(platform::Event::Type::TouchBegan, {{1, {100.0F, 100.0F}}});
+    frame();
+    touch(platform::Event::Type::TouchEnded, {{1, {100.0F, 100.0F}}});
+    touch(platform::Event::Type::TouchBegan, {{1, {600.0F, 100.0F}}});
+    EXPECT_EQ(frame(), Names{"tap"});
+    EXPECT_EQ(first().position, math::Vec2(100.0F, 100.0F));
+
+    touch(platform::Event::Type::TouchEnded, {{1, {600.0F, 100.0F}}});
+    EXPECT_EQ(frame(), Names{"tap"});
+    EXPECT_EQ(first().position, math::Vec2(600.0F, 100.0F));
+}
+
 TEST_F(GestureTest, RecognizesLongPressesAndSwipes) {
     touch(platform::Event::Type::TouchBegan, {{1, {100.0F, 100.0F}}});
     Names seen;
@@ -159,6 +192,16 @@ TEST(GestureLuaTest, ListsGesturesOfTheFrame) {
     EXPECT_EQ(fixture.lua("input.setGestureSettings({longPressDuration = 1, mouse = false}) return 'ok'"), "ok");
     EXPECT_NE(fixture.lua("input.setGestureSettings({hold = 1})").find("Unknown option 'hold'"), std::string::npos);
     EXPECT_EQ(Gesture::typeName(Gesture::Type::LongPress), "long_press");
+}
+
+TEST(GestureEngineTest, FocusLossDropsTheHeldPress) {
+    test::EngineFixture fixture;
+    core::Engine& engine = fixture.engine();
+    engine.handleEvent({.type = platform::Event::Type::MouseDown, .position = {400.0F, 300.0F}});
+    fixture.frames(1);
+    engine.handleEvent({.type = platform::Event::Type::FocusLost});
+    fixture.frames(1);
+    EXPECT_TRUE(engine.getGestures().getGestures().empty());
 }
 
 } // namespace haylen::input

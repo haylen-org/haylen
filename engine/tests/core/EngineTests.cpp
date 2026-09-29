@@ -17,6 +17,7 @@
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/core/ScopedConnection.hpp"
 #include "haylen/core/TimerScheduler.hpp"
+#include "haylen/graphics/Viewport.hpp"
 #include "haylen/input/ActionMap.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/input/VirtualInput.hpp"
@@ -306,6 +307,24 @@ TEST(EngineTest, PublishesWindowAndGamepadChanges) {
     ASSERT_EQ(log.size(), 2U);
     EXPECT_EQ(log[0], R"(window_orientation_changed {"orientation":"portrait"})");
     EXPECT_EQ(log[1].rfind("window_safe_area_changed", 0), 0U);
+}
+
+TEST(EngineTest, KeepsHeldTouchesOnTheirScreenPointAcrossAResize) {
+    test::EngineFixture fixture;
+    core::Engine& engine = fixture.engine();
+    platform::Event began;
+    began.type = platform::Event::Type::TouchBegan;
+    began.touchCount = 1;
+    began.touches[0] = {.id = 1, .position = {400.0F, 300.0F}, .changed = true};
+    engine.handleEvent(began);
+    fixture.frames(1);
+
+    fixture.host().resize({1080.0F, 1920.0F});
+    fixture.frames(1);
+    const math::Vec2 expected = engine.getViewport().toDesign({400.0F, 300.0F});
+    ASSERT_EQ(engine.getInput().getTouches().size(), 1U);
+    EXPECT_NEAR(engine.getInput().getTouches()[0].position.x, expected.x, 1e-3F);
+    EXPECT_NEAR(engine.getInput().getTouches()[0].position.y, expected.y, 1e-3F);
 }
 
 TEST(EngineTest, HaltsUpdatesByTheLifecycleOptions) {

@@ -60,19 +60,25 @@ class JobSystem final {
     // Splits [begin, end) into chunks of at least grainSize items and runs them in parallel, including on the calling thread. Only the frame thread may call it.
     void parallelFor(std::size_t begin, std::size_t end, std::size_t grainSize, const std::function<void(std::size_t, std::size_t)>& body);
 
+    // Drops the posted work that no worker started, without running it. The engine calls it once the pools stopped, so what that work holds, such as Lua references, goes while the Lua state is still open.
+    void discardQueued() noexcept;
+
     [[nodiscard]] std::size_t getWorkerCount() const noexcept {
         return workerCount;
     }
 
   private:
     struct ChunkCompletion;
+    struct Queue;
 
     [[nodiscard]] static std::string describe(const std::exception_ptr& error);
     [[nodiscard]] std::function<void()> guardWorker(std::function<void()> work);
+    [[nodiscard]] std::function<void()> enqueue(std::function<void()> work);
 
     varn::runtime::Runtime& runtime;
     ErrorHandler onError;
     std::size_t workerCount;
+    std::shared_ptr<Queue> queue;
 };
 
 } // namespace haylen::core

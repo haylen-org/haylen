@@ -3,6 +3,7 @@
 #include <lua.hpp>
 
 #include <cctype>
+#include <exception>
 #include <stdexcept>
 #include <utility>
 
@@ -152,11 +153,27 @@ void Autoloads::renderUi() {
     }
 }
 
+// Every autoload stops even when an earlier one fails, and the first failure is raised again at the end.
 void Autoloads::stop(core::Engine& engine) {
     std::vector<Entry> stopping = std::exchange(entries, {});
+    std::exception_ptr failure;
+    // clang-format off
+    const auto attempt = [&failure](const auto& step) {
+        try {
+            step();
+        } catch (...) {
+            if (!failure) {
+                failure = std::current_exception();
+            }
+        }
+    };
+    // clang-format on
     for (auto entry = stopping.rbegin(); entry != stopping.rend(); ++entry) {
-        call(*entry, "stop");
-        engine.getEvents().emit(core::LifecycleEvent::kAutoloadStopped, {{"name", entry->name}});
+        attempt([&entry] { call(*entry, "stop"); });
+        attempt([&engine, &entry] { engine.getEvents().emit(core::LifecycleEvent::kAutoloadStopped, {{"name", entry->name}}); });
+    }
+    if (failure) {
+        std::rethrow_exception(failure);
     }
 }
 

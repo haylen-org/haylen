@@ -67,10 +67,6 @@ template <Bound T> class ClassBuilder final {
         return property(name, &Binding::method<Getter>, &setThrough<Setter>);
     }
 
-    template <auto Member> ClassBuilder& readOnlyField(const char* name) {
-        return property(name, &Binding::getField<Member>);
-    }
-
     template <auto Outer, auto Inner> ClassBuilder& nestedField(const char* name) {
         using Field = typename FunctionTraits<decltype(Inner)>::Field;
         if constexpr (NativeProperty::kindOf<Field>().has_value()) {

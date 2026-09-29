@@ -1,7 +1,8 @@
 #include "haylen/math/Random.hpp"
 
 #include <bit>
-#include <numeric>
+#include <cmath>
+#include <stdexcept>
 
 namespace haylen::math {
 
@@ -59,17 +60,32 @@ bool Random::chance(float probability) noexcept {
     return nextFloat() < probability;
 }
 
-std::size_t Random::weightedIndex(std::span<const float> weights) noexcept {
-    const float total = std::accumulate(weights.begin(), weights.end(), 0.0F);
-    float target = nextFloat() * total;
+std::size_t Random::weightedIndex(std::span<const float> weights) {
+    double total = 0.0;
+    for (const float weight : weights) {
+        if (!std::isfinite(weight) || weight < 0.0F) {
+            throw std::invalid_argument("Weights must be finite and not negative.");
+        }
+        total += static_cast<double>(weight);
+    }
+    if (total <= 0.0) {
+        throw std::invalid_argument("A weighted pick needs at least one positive weight.");
+    }
 
+    // Rounding can carry the target past the last weight, and the pick then falls to the last positive weight.
+    double target = static_cast<double>(nextFloat()) * total;
+    std::size_t lastPositive = 0;
     for (std::size_t index = 0; index < weights.size(); ++index) {
-        if (target < weights[index]) {
+        if (weights[index] <= 0.0F) {
+            continue;
+        }
+        if (target < static_cast<double>(weights[index])) {
             return index;
         }
-        target -= weights[index];
+        target -= static_cast<double>(weights[index]);
+        lastPositive = index;
     }
-    return weights.empty() ? 0 : weights.size() - 1;
+    return lastPositive;
 }
 
 } // namespace haylen::math

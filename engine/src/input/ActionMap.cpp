@@ -234,6 +234,9 @@ void ActionMap::load(const core::Json& document) {
     for (const core::Json& entry : *list) {
         Action action = Action::fromJson(entry);
         validate(action);
+        if (std::ranges::any_of(loaded, [&action](const State& state) { return state.action.name == action.name; })) {
+            throw std::invalid_argument("Duplicate action name: " + action.name);
+        }
         loaded.push_back(State{.action = std::move(action)});
     }
     actions = std::move(loaded);
@@ -277,6 +280,13 @@ std::vector<std::string> ActionMap::getNames() const {
         names.push_back(state.action.name);
     }
     return names;
+}
+
+void ActionMap::setPressThreshold(float value) {
+    if (!(value > 0.0F && value <= 1.0F)) {
+        throw std::invalid_argument("The press threshold must be above 0 and at most 1.");
+    }
+    pressThreshold = value;
 }
 
 float ActionMap::getBindingValue(const Binding& binding, const Input& input, const VirtualInput& virtualInput) const noexcept {

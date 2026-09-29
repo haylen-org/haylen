@@ -9,7 +9,7 @@ This guide explains both levels, the virtual controls that on-screen touch contr
 The engine updates device state, gamepads, gestures and the action map once at the start of every frame from the events that arrived before it. Edge states such as `input.keyPressed`, `input.mouseReleased`, `input.gamepadPressed` and the action `input.pressed` stay true for that whole frame, in every scene callback, and are false again on the next frame.
 
 - Read edges in `update`. `fixedUpdate` can run zero or several times in one frame, so a press read there can be missed or seen twice.
-- Keys and mouse buttons held when the window loses focus or the app is suspended are released in that frame, so a player never comes back to a stuck key.
+- Keys, modifier keys and mouse buttons held when the window loses focus or the app is suspended are released in that frame, and touches and gestures in progress are cancelled without producing taps or swipes, so a player never comes back to a stuck key.
 - A key that goes down and up again within one frame still counts as pressed by the actions bound to it.
 - Positions are in design coordinates, the space set by `design` in `app.json`. See [Rendering](rendering.md) for how design coordinates map to the screen.
 
@@ -60,7 +60,7 @@ Up to four gamepads are tracked, with indices from 1 to 4 that default to 1. But
 - `input.gamepadDown`, `input.gamepadPressed` and `input.gamepadReleased` read buttons, and `input.gamepadConnected` and `input.gamepadName` describe the pad.
 - `input.gamepadAxis(axis, index)` returns one axis with the dead zone removed and the rest rescaled. Sticks go from -1 to 1 with positive y pointing down, and triggers from 0 to 1.
 - `input.gamepadStick(side, index)` returns a whole stick with the dead zone applied to its radius, which keeps diagonals smooth.
-- `input.setDeadzone(value)` sets the dead zone of every axis and stick, 0.2 by default.
+- `input.setDeadzone(value)` sets the dead zone of every axis and stick, from 0 to below 1, 0.2 by default.
 
 Each platform reads gamepads through its own API: GameController on Apple platforms, XInput on Windows, the joystick devices under `/dev/input` on Linux, input events on Android and the Gamepad API in browsers. Browsers only report gamepads that use their `standard` mapping, and they only reveal a gamepad to the page after one of its buttons is pressed.
 
@@ -122,7 +122,7 @@ input.loadActions({actions = {
 }})
 ```
 
-`input.saveActions()` returns the current map in the same format, and `input.actionNames()` lists the action names in definition order. Single actions change at runtime too. `input.defineAction(action)` takes one action table in the same format and adds it, or replaces the action with the same name in place, `input.actionDefinition(name)` returns the table of one action or `nil`, and `input.removeAction(name)` and `input.clearActions()` remove actions. A remapping screen reads an action with `actionDefinition`, swaps one binding and defines it again. `input.setPressThreshold(value)` changes the value at which every action counts as down, 0.5 by default. [haylen.preferences](lua-api/preferences.md) keeps a remapped map across launches: `preferences.capture()` stores it under `input.actions`, and `preferences.apply()` loads it back, so an app loads its default actions first and calls `preferences.apply()` afterwards.
+`input.saveActions()` returns the current map in the same format, and `input.actionNames()` lists the action names in definition order. Single actions change at runtime too. `input.defineAction(action)` takes one action table in the same format and adds it, or replaces the action with the same name in place, `input.actionDefinition(name)` returns the table of one action or `nil`, and `input.removeAction(name)` and `input.clearActions()` remove actions. A remapping screen reads an action with `actionDefinition`, swaps one binding and defines it again. `input.setPressThreshold(value)` changes the value at which every action counts as down, above 0 and at most 1, 0.5 by default. [haylen.preferences](lua-api/preferences.md) keeps a remapped map across launches: `preferences.capture()` stores it under `input.actions`, and `preferences.apply()` loads it back, so an app loads its default actions first and calls `preferences.apply()` afterwards.
 
 ### Reading actions
 
@@ -156,7 +156,7 @@ Values written during a frame reach the actions at the start of the next frame, 
 
 ## Last device and touch-only controls
 
-`input.lastDevice()` returns the kind of device the player used last: `'keyboard_mouse'`, `'touch'` or `'gamepad'`. Key presses and mouse button presses select `'keyboard_mouse'`, touches select `'touch'`, and gamepad buttons or axes past the dead zone select `'gamepad'`. Moving the mouse alone does not change it. Use it to show matching button prompts.
+`input.lastDevice()` returns the kind of device the player used last: `'keyboard_mouse'`, `'touch'` or `'gamepad'`. Key presses and mouse button presses select `'keyboard_mouse'`, touches select `'touch'`, and a gamepad button going down or an axis leaving the dead zone selects `'gamepad'`. Moving the mouse alone does not change it, and neither do key repeats or a gamepad button or stick that stays held, so a player who holds a trigger and then presses a key gets keyboard prompts. Use it to show matching button prompts.
 
 ```lua
 local prompts = {keyboard_mouse = 'Press Space', touch = 'Tap the screen', gamepad = 'Press A'}
@@ -174,7 +174,7 @@ Touch controls use the same rule through their `touchOnly` property. A `touchSti
 
 ## UI and gameplay input
 
-The action map does not know about the interface. An action bound to `mouse:left` goes down when the player clicks a HUD button as well as when the player clicks the world. `ui.wantsPointer()` returns `true` while the pointer is over something the interface owns, and `ui.wantsKeyboard()` returns `true` while a text field has the focus.
+The action map reads `mouse:` bindings as released while the interface owns the pointer, so an action bound to `mouse:left` never goes down when the player clicks a HUD button. The raw mouse and keyboard functions still report every click and key. `ui.wantsPointer()` returns `true` while the pointer is over something the interface owns, and `ui.wantsKeyboard()` returns `true` while a text field has the focus, so code that reads the raw devices checks them first.
 
 ```lua
 local input = require('haylen.input')

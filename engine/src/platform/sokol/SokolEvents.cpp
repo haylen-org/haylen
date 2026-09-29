@@ -22,8 +22,14 @@ std::optional<Event> SokolEvents::translate(const sapp_event& source) noexcept {
     case SAPP_EVENTTYPE_CHAR:
         return Event{.type = Event::Type::Character, .modifiers = held, .character = static_cast<char32_t>(source.char_code)};
     case SAPP_EVENTTYPE_MOUSE_DOWN:
-    case SAPP_EVENTTYPE_MOUSE_UP:
-        return Event{.type = source.type == SAPP_EVENTTYPE_MOUSE_DOWN ? Event::Type::MouseDown : Event::Type::MouseUp, .modifiers = held, .mouseButton = toMouseButton(source.mouse_button), .position = {source.mouse_x, source.mouse_y}};
+    case SAPP_EVENTTYPE_MOUSE_UP: {
+        // Buttons beyond the three the engine names, such as the back and forward buttons of a browser, reach the app as nothing.
+        const std::optional<input::MouseButton> button = toMouseButton(source.mouse_button);
+        if (!button) {
+            return std::nullopt;
+        }
+        return Event{.type = source.type == SAPP_EVENTTYPE_MOUSE_DOWN ? Event::Type::MouseDown : Event::Type::MouseUp, .modifiers = held, .mouseButton = *button, .position = {source.mouse_x, source.mouse_y}};
+    }
     case SAPP_EVENTTYPE_MOUSE_MOVE:
         return Event{.type = Event::Type::MouseMove, .modifiers = held, .position = {source.mouse_x, source.mouse_y}, .delta = {source.mouse_dx, source.mouse_dy}};
     case SAPP_EVENTTYPE_MOUSE_SCROLL:
@@ -63,14 +69,16 @@ input::KeyModifiers SokolEvents::toModifiers(std::uint32_t bits) noexcept {
     return {.shift = (bits & SAPP_MODIFIER_SHIFT) != 0U, .control = (bits & SAPP_MODIFIER_CTRL) != 0U, .alt = (bits & SAPP_MODIFIER_ALT) != 0U, .super = (bits & SAPP_MODIFIER_SUPER) != 0U};
 }
 
-input::MouseButton SokolEvents::toMouseButton(sapp_mousebutton button) noexcept {
+std::optional<input::MouseButton> SokolEvents::toMouseButton(sapp_mousebutton button) noexcept {
     switch (button) {
+    case SAPP_MOUSEBUTTON_LEFT:
+        return input::MouseButton::Left;
     case SAPP_MOUSEBUTTON_RIGHT:
         return input::MouseButton::Right;
     case SAPP_MOUSEBUTTON_MIDDLE:
         return input::MouseButton::Middle;
     default:
-        return input::MouseButton::Left;
+        return std::nullopt;
     }
 }
 

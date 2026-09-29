@@ -2,15 +2,22 @@
 
 #include <string>
 
+#include "haylen/ai/StateMachine.hpp"
+
 struct lua_State;
 
 namespace haylen::ai {
 
-struct ScriptedStateMachine;
-
 // Installs haylen.ai with the StateMachine class, whose states are Lua tables of enter, update and exit functions, and the behavior trees, utility selectors and influence maps of the other AI bindings.
 class AiLua final {
   public:
+    // A state machine created from Lua. Its callbacks run on whichever Lua thread is inside a machine method, with the machine at stack index 1.
+    struct Scripted {
+        StateMachine machine;
+        lua_State* caller = nullptr;
+        int changesInProgress = 0;
+    };
+
     static void install(lua_State* L);
 
   private:
@@ -18,8 +25,8 @@ class AiLua final {
 
     // Pushes states[name][callback] and returns true, or leaves the stack unchanged when the state has no such function.
     [[nodiscard]] static bool pushStateFunction(lua_State* L, const std::string& name, const char* callback);
-    static void enterState(ScriptedStateMachine& self, const std::string& name);
-    static void callState(ScriptedStateMachine& self, const std::string& name, const char* callback, const float* deltaSeconds);
+    static void enterState(Scripted& self, const std::string& name);
+    static void callState(Scripted& self, const std::string& name, const char* callback, const float* deltaSeconds);
     static void pushName(lua_State* L, const std::string& name);
 
     static int newStateMachine(lua_State* L);

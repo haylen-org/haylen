@@ -18,28 +18,28 @@
 
 namespace haylen::debug {
 
-const ObjectCounter::Snapshot* Stats::findObject(const std::vector<ObjectCounter::Snapshot>& objects, std::string_view name) noexcept {
-    const auto found = std::ranges::find(objects, name, &ObjectCounter::Snapshot::name);
-    return found != objects.end() ? &*found : nullptr;
+const ObjectCounter::Snapshot* Stats::findObject(const std::vector<ObjectCounter::Snapshot>& snapshots, std::string_view name) noexcept {
+    const auto found = std::ranges::find(snapshots, name, &ObjectCounter::Snapshot::name);
+    return found != snapshots.end() ? &*found : nullptr;
 }
 
 Stats::Frame Stats::measureFrames(core::Engine& engine) {
     const Profiler& profiler = engine.getProfiler();
-    Frame frame{.milliseconds = profiler.getLastFrameMilliseconds(), .fixedSteps = engine.getClock().getFixedStepCount()};
+    Frame measured{.milliseconds = profiler.getLastFrameMilliseconds(), .fixedSteps = engine.getClock().getFixedStepCount()};
     std::vector<float> times = profiler.getFrameHistory();
     if (times.empty()) {
-        return frame;
+        return measured;
     }
 
     // The slowest frames come first, so the one percent low averages the head of the list.
     std::ranges::sort(times, std::greater<>());
     const std::size_t slowest = std::max<std::size_t>(1, times.size() / 100);
-    frame.average = std::accumulate(times.begin(), times.end(), 0.0) / static_cast<double>(times.size());
-    frame.fps = frame.average > 0.0 ? 1000.0 / frame.average : 0.0;
-    frame.minimum = times.back();
-    frame.maximum = times.front();
-    frame.onePercentLow = std::accumulate(times.begin(), times.begin() + static_cast<std::ptrdiff_t>(slowest), 0.0) / static_cast<double>(slowest);
-    return frame;
+    measured.average = std::accumulate(times.begin(), times.end(), 0.0) / static_cast<double>(times.size());
+    measured.fps = measured.average > 0.0 ? 1000.0 / measured.average : 0.0;
+    measured.minimum = times.back();
+    measured.maximum = times.front();
+    measured.onePercentLow = std::accumulate(times.begin(), times.begin() + static_cast<std::ptrdiff_t>(slowest), 0.0) / static_cast<double>(slowest);
+    return measured;
 }
 
 Stats Stats::capture(core::Engine& engine, const graphics2d::Renderer::Stats& lastFrame) {

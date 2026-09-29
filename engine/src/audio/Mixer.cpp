@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 #include "audio/MixerState.hpp"
@@ -85,15 +86,43 @@ Mixer::Mixer(const Setup& setup) {
 
 Mixer::~Mixer() = default;
 
+void Mixer::requireFinite(float value, const char* name) {
+    if (!std::isfinite(value)) {
+        throw std::invalid_argument(std::string("Audio needs a finite ") + name + ".");
+    }
+}
+
+void Mixer::requirePitch(float value) {
+    if (!(value > 0.0F) || !std::isfinite(value)) {
+        throw std::invalid_argument("Audio needs a finite pitch above 0.");
+    }
+}
+
+void Mixer::requirePosition(math::Vec2 position) {
+    requireFinite(position.x, "position");
+    requireFinite(position.y, "position");
+}
+
+void Mixer::requirePlayOptions(const PlayOptions& options) {
+    requireFinite(options.volume, "volume");
+    requirePitch(options.pitch);
+    if (!(options.pitchVariation >= 0.0F) || (options.pitchVariation > 0.0F && options.pitchVariation >= options.pitch)) {
+        throw std::invalid_argument("A pitch variation must be at least 0 and smaller than the pitch.");
+    }
+    requireFinite(options.pan, "pan");
+    requireFinite(options.fadeIn, "fade-in");
+    requireFinite(options.startAt, "start time");
+    if (options.position) {
+        requirePosition(*options.position);
+    }
+}
+
 Mixer::VoiceId Mixer::play(const Sound& sound, const PlayOptions& options) {
     if (!sound.isValid()) {
         throw std::invalid_argument("Cannot play an empty sound.");
     }
-    if (options.pitchVariation < 0.0F || (options.pitchVariation > 0.0F && options.pitchVariation >= options.pitch)) {
-        throw std::invalid_argument("A pitch variation must be at least 0 and smaller than the pitch.");
-    }
+    requirePlayOptions(options);
     MixerState::Bus& bus = state->getBus(options.bus);
-    state->makeRoom();
 
     auto voice = std::make_unique<MixerState::Voice>();
     voice->id = state->nextVoice++;
@@ -140,6 +169,9 @@ Mixer::VoiceId Mixer::play(const Sound& sound, const PlayOptions& options) {
     for (const std::shared_ptr<Effect>& effect : options.effects) {
         state->getEffects(*voice).add(effect);
     }
+
+    // Everything that can fail ran already, so a play that throws never stops another voice.
+    state->makeRoom();
     state->apply(*voice);
     state->refresh(*voice);
 
@@ -174,6 +206,7 @@ bool Mixer::isPaused(VoiceId id) const {
 }
 
 void Mixer::setVolume(VoiceId id, float volume) {
+    requireFinite(volume, "volume");
     if (MixerState::Voice* voice = state->findVoice(id)) {
         voice->volume = volume;
         state->apply(*voice);
@@ -181,6 +214,7 @@ void Mixer::setVolume(VoiceId id, float volume) {
 }
 
 void Mixer::setPitch(VoiceId id, float pitch) {
+    requirePitch(pitch);
     if (MixerState::Voice* voice = state->findVoice(id)) {
         voice->pitch = pitch;
         state->apply(*voice);
@@ -197,6 +231,7 @@ void Mixer::seedVariation(std::uint64_t seed) noexcept {
 }
 
 void Mixer::setPan(VoiceId id, float pan) {
+    requireFinite(pan, "pan");
     if (MixerState::Voice* voice = state->findVoice(id)) {
         voice->pan = pan;
         state->apply(*voice);
@@ -204,6 +239,7 @@ void Mixer::setPan(VoiceId id, float pan) {
 }
 
 void Mixer::setPosition(VoiceId id, math::Vec2 position) {
+    requirePosition(position);
     MixerState::Voice* voice = state->findVoice(id);
     if (voice == nullptr) {
         return;
@@ -224,7 +260,7 @@ core::ProcessMode Mixer::getProcessMode(VoiceId id) const {
 
 bool Mixer::isActive(VoiceId id) const {
     const MixerState::Voice* voice = state->findVoice(id);
-    return voice != nullptr && (ma_sound_is_playing(&voice->handle) == MA_TRUE || (!voice->stopped && voice->isHeld()));
+    return voice != nullptr && !voice->stopped && (ma_sound_is_playing(&voice->handle) == MA_TRUE || voice->isHeld());
 }
 
 float Mixer::getCursor(VoiceId id) const {
@@ -298,10 +334,12 @@ Mixer::VoiceId Mixer::playMusic(const Sound& sound, const MusicOptions& options)
         return state->musicVoice;
     }
 
+    // The next track starts before the current one fades out, so a track that cannot play leaves the current one playing.
+    const VoiceId track = play(sound, {.bus = options.bus, .volume = options.volume, .loop = options.loop, .fadeIn = options.fade});
     stop(state->musicVoice, options.fade);
-    state->musicVoice = play(sound, {.bus = options.bus, .volume = options.volume, .loop = options.loop, .fadeIn = options.fade});
-    state->findVoice(state->musicVoice)->music = true;
-    return state->musicVoice;
+    state->musicVoice = track;
+    state->findVoice(track)->music = true;
+    return track;
 }
 
 void Mixer::stopMusic(float fadeOutSeconds) {
@@ -309,10 +347,8 @@ void Mixer::stopMusic(float fadeOutSeconds) {
     state->musicVoice = 0;
 }
 
-// A track the app stopped through its voice is over, even while it fades out.
 Sound Mixer::getMusic() const {
-    const MixerState::Voice* voice = state->findVoice(state->musicVoice);
-    return voice != nullptr && !voice->stopped && isActive(voice->id) ? voice->sound : Sound{};
+    return isActive(state->musicVoice) ? state->findVoice(state->musicVoice)->sound : Sound{};
 }
 
 void Mixer::createBus(const std::string& name, std::string_view parent) {
@@ -323,6 +359,7 @@ void Mixer::createBus(const std::string& name, std::string_view parent) {
 }
 
 void Mixer::setBusVolume(std::string_view name, float volume, float fadeSeconds) {
+    requireFinite(volume, "bus volume");
     MixerState::Bus& bus = state->getBus(name);
     bus.volume = std::max(0.0F, volume);
     ma_sound_group_set_fade_in_milliseconds(&bus.group, -1.0F, bus.volume, MixerState::toMilliseconds(fadeSeconds));
@@ -393,7 +430,8 @@ bool Mixer::isProcessPaused() const noexcept {
     return state->processPaused;
 }
 
-void Mixer::setListener(math::Vec2 position) noexcept {
+void Mixer::setListener(math::Vec2 position) {
+    requirePosition(position);
     state->listener = position;
 }
 
@@ -410,6 +448,9 @@ void Mixer::followCamera(const graphics2d::Camera* camera) noexcept {
 }
 
 void Mixer::setSpatialization(const Spatialization& value) {
+    for (const float setting : {value.minDistance, value.maxDistance, value.rolloff, value.panDistance, value.doppler, value.speedOfSound}) {
+        requireFinite(setting, "spatialization setting");
+    }
     if (value.minDistance < 0.0F || value.maxDistance <= value.minDistance) {
         throw std::invalid_argument("Audio attenuation needs 0 <= minimum distance < maximum distance.");
     }

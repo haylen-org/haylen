@@ -42,8 +42,10 @@ class WebSocket final {
     // Returns the current time in seconds, which tests replace to drive the delays. Without one, the socket reads the steady clock.
     using Clock = std::function<double()>;
 
+    // Native builds refuse a message of the server larger than the maximum size in bytes, at most 2147483647, and close the connection with status 1009.
     struct Options {
         std::vector<std::string> protocols;
+        std::size_t maxMessageSize = 16U * 1024U * 1024U;
         Reconnect reconnect;
         Clock clock;
         std::uint64_t seed = 0;
@@ -59,7 +61,7 @@ class WebSocket final {
     [[nodiscard]] static std::string_view stateName(State value) noexcept;
 
     // Returns the wait before the attempt, which counts from one, before jitter shortens it.
-    [[nodiscard]] static float getBackoff(const Reconnect& reconnect, int attempt) noexcept;
+    [[nodiscard]] static float getBackoff(const Reconnect& settings, int number) noexcept;
 
     void send(std::string_view text);
     void sendBinary(std::span<const std::uint8_t> bytes);
@@ -96,7 +98,7 @@ class WebSocket final {
     // Fires with the payload of every pong frame the server sends, which answers a ping or keeps the connection alive on its own.
     core::Signal<std::string_view> ponged;
 
-    // Fires when an open connection ends, before the socket either reconnects or closes.
+    // Fires when an open connection ends, before the socket either reconnects or closes, and its listeners already see the reconnecting or closed state.
     core::Signal<int, std::string_view> disconnected;
 
     // Fires with the attempt number and the wait in seconds every time the socket schedules an attempt.
@@ -109,17 +111,17 @@ class WebSocket final {
     struct Inbox;
 
     static const Options kDefaultOptions;
-
-    // Control frames carry at most this many bytes.
     static constexpr std::size_t kMaxPingPayload = 125;
 
     [[nodiscard]] static double getSteadySeconds();
 
     void connect();
-    [[nodiscard]] bool scheduleReconnect();
+    [[nodiscard]] bool canReconnect() const noexcept;
+    void scheduleReconnect();
 
     std::string url;
     std::vector<std::string> protocols;
+    std::size_t maxMessageSize = 0;
     Reconnect reconnect;
     Clock clock;
     math::Random random;

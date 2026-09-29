@@ -44,7 +44,8 @@ std::optional<core::Json> SaveSlots::document(std::string_view slot) const {
     }
 
     core::Json saved = core::Json::parse(userStorage.readText(path), nullptr, false);
-    if (saved.is_discarded() || !saved.is_object() || !saved.contains("data") || !saved.contains("summary") || !saved.contains("savedAt")) {
+    const bool valid = saved.is_object() && saved.contains("data") && saved.contains("summary") && saved.at("summary").is_object() && saved.contains("savedAt") && saved.at("savedAt").is_number_integer();
+    if (!valid) {
         throw std::runtime_error("The save slot " + std::string(slot) + " is damaged.");
     }
     return saved;
@@ -86,8 +87,14 @@ std::vector<SaveSlots::Info> SaveSlots::list() const {
             continue;
         }
         const std::string_view slot = std::string_view(file).substr(prefix.size(), file.size() - prefix.size() - kExtension.size());
-        if (isValidSlot(slot)) {
-            saves.push_back(*getInfo(slot));
+        if (!isValidSlot(slot)) {
+            continue;
+        }
+
+        // A slot removed after the folder was listed is left out.
+        std::optional<Info> info = getInfo(slot);
+        if (info) {
+            saves.push_back(std::move(*info));
         }
     }
 

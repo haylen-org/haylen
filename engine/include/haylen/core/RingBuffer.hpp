@@ -45,8 +45,8 @@ template <typename T> class RingBuffer final {
     };
 
     // Throws std::invalid_argument when the capacity is zero.
-    explicit RingBuffer(std::size_t capacity) : slots(capacity) {
-        if (capacity == 0) {
+    explicit RingBuffer(std::size_t slotCount) : slots(slotCount) {
+        if (slotCount == 0) {
             throw std::invalid_argument("A ring buffer needs a capacity of at least one.");
         }
     }

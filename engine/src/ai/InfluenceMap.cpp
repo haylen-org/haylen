@@ -61,7 +61,7 @@ math::Vec2 InfluenceMap::getCellCenter(int column, int row) const noexcept {
 
 float InfluenceMap::sample(math::Vec2 position) const noexcept {
     const math::Vec2 local = (position - origin) / cellSize;
-    if (local.x < 0.0F || local.y < 0.0F || local.x > static_cast<float>(width) || local.y > static_cast<float>(height)) {
+    if (!(local.x >= 0.0F && local.y >= 0.0F && local.x <= static_cast<float>(width) && local.y <= static_cast<float>(height))) {
         return 0.0F;
     }
 
@@ -82,7 +82,11 @@ float InfluenceMap::sample(math::Vec2 position) const noexcept {
 InfluenceMap::Range InfluenceMap::rangeAround(math::Vec2 center, float radius) const noexcept {
     const math::Vec2 local = (center - origin) / cellSize;
     const float reach = radius / cellSize;
-    return {std::max(0, static_cast<int>(std::floor(local.x - reach))), std::max(0, static_cast<int>(std::floor(local.y - reach))), std::min(width - 1, static_cast<int>(std::ceil(local.x + reach))), std::min(height - 1, static_cast<int>(std::ceil(local.y + reach)))};
+    const auto columns = static_cast<float>(width);
+    const auto rows = static_cast<float>(height);
+
+    // Clamping while the bounds are still floats keeps huge and infinite ones from overflowing an int, and NaN ones give an empty range.
+    return {static_cast<int>(std::fmin(std::fmax(std::floor(local.x - reach), 0.0F), columns)), static_cast<int>(std::fmin(std::fmax(std::floor(local.y - reach), 0.0F), rows)), static_cast<int>(std::fmin(std::fmax(std::ceil(local.x + reach), -1.0F), columns - 1.0F)), static_cast<int>(std::fmin(std::fmax(std::ceil(local.y + reach), -1.0F), rows - 1.0F))};
 }
 
 void InfluenceMap::stamp(math::Vec2 center, float strength, float radius, Falloff falloff) {

@@ -9,7 +9,6 @@ class Spring final {
   public:
     explicit Spring(float initial = 0.0F, float smoothing = 0.2F) noexcept;
 
-    // Moves the value toward the target and returns it.
     float update(float target, float deltaSeconds) noexcept;
 
     [[nodiscard]] float getValue() const noexcept {

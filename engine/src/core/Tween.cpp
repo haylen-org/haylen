@@ -13,7 +13,7 @@ namespace haylen::core {
 debug::ObjectCounter Tween::counter("Tween", debug::ObjectCounter::Kind::Native);
 
 void Tween::setDelay(float seconds) {
-    if (seconds < 0.0F) {
+    if (!(seconds >= 0.0F)) {
         throw std::invalid_argument("A tween delay cannot be negative.");
     }
     delay = seconds;
@@ -25,14 +25,14 @@ void Tween::setRepeatCount(int count) noexcept {
 }
 
 void Tween::setRepeatDelay(float seconds) {
-    if (seconds < 0.0F) {
+    if (!(seconds >= 0.0F)) {
         throw std::invalid_argument("A tween repeat delay cannot be negative.");
     }
     repeatDelay = seconds;
 }
 
 void Tween::setTimeScale(float value) {
-    if (value < 0.0F) {
+    if (!(value >= 0.0F)) {
         throw std::invalid_argument("A tween time scale cannot be negative.");
     }
     timeScale = value;
@@ -192,7 +192,7 @@ void Tween::render(float totalTime, bool silent) {
     }
     finished.emit(true);
     if (autoKill && parent == nullptr && !killed) {
-        kill();
+        end(true);
     }
 }
 
@@ -243,6 +243,9 @@ void Tween::reverse() {
 }
 
 void Tween::seek(float seconds) {
+    if (std::isnan(seconds)) {
+        throw std::invalid_argument("A tween cannot seek to a time that is not a number.");
+    }
     if (killed) {
         return;
     }
@@ -270,6 +273,10 @@ void Tween::complete(bool withCallbacks) {
 }
 
 void Tween::kill() {
+    end(false);
+}
+
+void Tween::end(bool justCompleted) {
     if (killed) {
         return;
     }
@@ -280,7 +287,7 @@ void Tween::kill() {
         parent->remove(*this);
     }
 
-    // The finished signal always fires for a tween that did not complete, so a script waiting on it resumes even when the kill callback fails.
+    // The finished signal always fires unless it just reported the completion, so a script waiting on it resumes even when the kill callback fails.
     std::exception_ptr failure;
     try {
         if (callbacks.kill) {
@@ -289,7 +296,7 @@ void Tween::kill() {
     } catch (...) {
         failure = std::current_exception();
     }
-    if (!completed) {
+    if (!justCompleted) {
         finished.emit(false);
     }
     if (failure) {

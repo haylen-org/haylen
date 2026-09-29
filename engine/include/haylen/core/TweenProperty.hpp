@@ -41,20 +41,11 @@ class TweenProperty final {
 
     // Resolves the start and end from the current value of the target, once.
     void begin(const TweenValue& current);
-    [[nodiscard]] bool hasBegun() const noexcept {
-        return begun;
-    }
 
     // Computes the value at the eased progress. Loops is the number of completed loops of an incremental tween, which shifts the range forward so every loop continues from where the previous one ended. Texts start over on every loop.
     [[nodiscard]] TweenValue evaluate(float progress, int loops) const;
 
     [[nodiscard]] float getDistance() const;
-    [[nodiscard]] const TweenValue& getStart() const noexcept {
-        return start;
-    }
-    [[nodiscard]] const TweenValue& getEnd() const noexcept {
-        return end;
-    }
 
   private:
     TweenProperty(Mode kind, TweenValue first, TweenValue second) : mode(kind), start(std::move(first)), end(std::move(second)) {}

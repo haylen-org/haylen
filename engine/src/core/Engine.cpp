@@ -72,19 +72,20 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
 Engine::~Engine() {
     stop();
 
-    // Everything that holds Lua references lets go before the Lua state closes, and Lua and the worker pools go before the assets, plugins and GPU resources they still reference.
+    // Everything that holds Lua references lets go before the Lua state closes, including scenes that stop hooks requested and work still queued on the pools, and Lua and the worker pools go before the assets, plugins and GPU resources they still reference.
     EngineState& current = *state;
     current.timers.clear();
     current.tweens.clear();
     current.frameQueue.clear();
     current.events.clear();
     current.assets->cancelAll();
+    current.scenes.reset();
     current.platform.reset();
     current.runtime->stop();
+    current.jobs->discardQueued();
     current.runtime.reset();
     current.audio.reset();
     current.plugins.clear();
-    current.scenes.reset();
     current.assets.reset();
     current.defaultFont.reset();
     current.renderer.reset();
@@ -176,7 +177,7 @@ void Engine::frame(double frameSeconds) {
     // A halted app lets no time pass, and an app in the background draws nothing, so it does no GPU work.
     const bool halted = isHalted();
     const bool hidden = current.appState == AppState::Background;
-    current.viewport.update(current.host.getFramebufferSize(), current.config.designSize, current.config.scaling, getSafeAreaInsets());
+    remapViewport();
     current.host.pollGamepads(current.gamepads);
     current.input.updateGamepads(current.gamepads);
     current.actions.update(current.input, current.virtualInput, halted || current.scenes->isInputBlocked());
@@ -476,6 +477,7 @@ void Engine::setAppState(AppState value) {
     // Leaving the foreground releases held input, including on-screen controls, and suspends audio, and coming back skips the time the app was away.
     if (value != AppState::Active) {
         current.input.releaseAll();
+        current.gestures.cancel();
         current.virtualInput.clear();
     }
     if (value == AppState::Background) {
@@ -577,17 +579,20 @@ void Engine::setDesignSize(math::Vec2 value) {
     remapViewport();
 }
 
+// Input positions live in design units, so they move with the viewport whenever it maps the screen differently, such as after a resize or a rotation.
 void Engine::remapViewport() {
     EngineState& current = *state;
     const graphics::Viewport previous = current.viewport;
     current.viewport.update(current.host.getFramebufferSize(), current.config.designSize, current.config.scaling, getSafeAreaInsets());
-    current.input.followViewport(previous, current.viewport);
+    if (current.viewport.getPixelRect() != previous.getPixelRect() || current.viewport.getVisibleRect() != previous.getVisibleRect()) {
+        current.input.followViewport(previous, current.viewport);
+    }
 }
 
 void Engine::setSafeAreaSimulation(std::optional<platform::SafeAreaSimulation> value) {
     EngineState& current = *state;
     current.safeAreaSimulation = std::move(value);
-    current.viewport.update(current.host.getFramebufferSize(), current.config.designSize, current.config.scaling, getSafeAreaInsets());
+    remapViewport();
 }
 
 const std::optional<platform::SafeAreaSimulation>& Engine::getSafeAreaSimulation() const noexcept {

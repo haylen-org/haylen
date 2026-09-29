@@ -209,6 +209,14 @@ TEST(SignalTest, DeferredSlotsRunWhenTheQueueFlushes) {
     queue.flush();
     EXPECT_EQ(received, std::vector<std::string>{"a1"});
 
+    // A deferred once slot still runs its single call after the emit disconnected it.
+    received.clear();
+    signal.connect([&](const std::string& value, int number) { received.push_back("once " + value + std::to_string(number)); }, {.once = true, .queue = &queue});
+    signal.emit("b", 2);
+    signal.emit("c", 3);
+    queue.flush();
+    EXPECT_EQ(received, (std::vector<std::string>{"b2", "once b2", "c3"}));
+
     core::Signal<int&> mutableSignal;
     EXPECT_THROW((void)mutableSignal.connect([](int&) {}, {.queue = &queue}), std::logic_error);
     EXPECT_THROW((void)signal.connect({}), std::invalid_argument);

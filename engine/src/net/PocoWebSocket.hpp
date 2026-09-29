@@ -5,6 +5,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstddef>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -21,7 +22,7 @@ namespace haylen::net {
 // Owns one connection on a thread of its own, which is the only thread that touches the socket, so TLS never sees two threads at once.
 class PocoWebSocket final : public WebSocketTransport {
   public:
-    PocoWebSocket(std::string url, std::vector<std::string> protocols, Sink target);
+    PocoWebSocket(std::string url, std::vector<std::string> protocols, std::size_t messageLimit, Sink target);
     ~PocoWebSocket() override;
 
     PocoWebSocket(const PocoWebSocket&) = delete;
@@ -40,6 +41,7 @@ class PocoWebSocket final : public WebSocketTransport {
     static constexpr int kConnectSeconds = 10;
     static constexpr auto kCloseTimeout = std::chrono::seconds(5);
     static constexpr int kPollMicroseconds = 2000;
+    static constexpr std::size_t kMaxControlPayload = 125;
     static constexpr int kNoStatus = 1005;
     static constexpr int kAbnormalClosure = 1006;
     static constexpr int kPingFrame = static_cast<int>(Poco::Net::WebSocket::FRAME_FLAG_FIN) | static_cast<int>(Poco::Net::WebSocket::FRAME_OP_PING);
@@ -57,10 +59,14 @@ class PocoWebSocket final : public WebSocketTransport {
     void write(Poco::Net::WebSocket& socket, std::string_view data, int flags) const;
     void writeClose(Poco::Net::WebSocket& socket, int code, std::string_view reason) const;
 
+    // Ends the connection with status 1009 after the server sent a message larger than the maximum size.
+    void refuseMessage(Poco::Net::WebSocket& socket, bool closing);
+
     // Alternates between writing queued frames and waiting briefly for incoming ones until either side closes.
     void serve(Poco::Net::WebSocket& socket);
 
     Sink sink;
+    std::size_t maxMessageSize = 0;
     std::mutex mutex;
     std::vector<Outgoing> outgoing;
     std::optional<std::pair<int, std::string>> closeRequest;

@@ -7,21 +7,24 @@
 #include <Poco/Net/HTTPRequest.h>
 #include <Poco/Net/HTTPResponse.h>
 #include <Poco/Net/HTTPSClientSession.h>
+#include <Poco/Net/NetException.h>
 #include <Poco/Net/RejectCertificateHandler.h>
 #include <Poco/Net/SSLManager.h>
 #include <Poco/URI.h>
 
+#include <algorithm>
 #include <stdexcept>
+#include <string>
 
 #include "varn/tls/CaBundle.h"
 
 namespace haylen::net {
 
-std::unique_ptr<WebSocketTransport> WebSocketTransport::open(const std::string& url, const std::vector<std::string>& protocols, Sink sink) {
-    return std::make_unique<PocoWebSocket>(url, protocols, std::move(sink));
+std::unique_ptr<WebSocketTransport> WebSocketTransport::open(const std::string& url, const std::vector<std::string>& protocols, std::size_t maxMessageSize, Sink sink) {
+    return std::make_unique<PocoWebSocket>(url, protocols, maxMessageSize, std::move(sink));
 }
 
-PocoWebSocket::PocoWebSocket(std::string url, std::vector<std::string> protocols, Sink target) : sink(std::move(target)) {
+PocoWebSocket::PocoWebSocket(std::string url, std::vector<std::string> protocols, std::size_t messageLimit, Sink target) : sink(std::move(target)), maxMessageSize(messageLimit) {
     thread = std::thread([this, address = std::move(url), names = std::move(protocols)] { run(address, names); });
 }
 
@@ -105,6 +108,9 @@ void PocoWebSocket::run(const std::string& url, const std::vector<std::string>& 
     try {
         std::string protocol;
         socket = connect(url, protocols, protocol);
+
+        // Control frames carry up to 125 bytes under any message limit, and the serve loop checks the size of whole messages.
+        socket->setMaxPayloadSize(static_cast<int>(std::max(maxMessageSize, kMaxControlPayload)));
         report({.kind = Event::Kind::Opened, .text = std::move(protocol)});
         serve(*socket);
     } catch (const Poco::Exception& error) {
@@ -126,6 +132,14 @@ void PocoWebSocket::writeClose(Poco::Net::WebSocket& socket, int code, std::stri
     std::string payload{static_cast<char>((code >> 8) & 0xFF), static_cast<char>(code & 0xFF)};
     payload += reason;
     write(socket, payload, kCloseFrame);
+}
+
+void PocoWebSocket::refuseMessage(Poco::Net::WebSocket& socket, bool closing) {
+    if (!closing) {
+        writeClose(socket, Poco::Net::WebSocket::WS_PAYLOAD_TOO_BIG, "");
+    }
+    report({.kind = Event::Kind::Failed, .text = "The server sent a WebSocket message larger than the maximum of " + std::to_string(maxMessageSize) + " bytes."});
+    report({.kind = Event::Kind::Closed, .code = Poco::Net::WebSocket::WS_PAYLOAD_TOO_BIG});
 }
 
 void PocoWebSocket::serve(Poco::Net::WebSocket& socket) {
@@ -161,8 +175,18 @@ void PocoWebSocket::serve(Poco::Net::WebSocket& socket) {
             continue;
         }
         int flags = 0;
+        int length = 0;
         frame.resize(0);
-        const int length = socket.receiveFrame(frame, flags);
+        try {
+            length = socket.receiveFrame(frame, flags);
+        } catch (const Poco::Net::WebSocketException& error) {
+            // Poco refuses a frame that could never fit from its header, before it reserves room for the payload.
+            if (error.code() != Poco::Net::WebSocket::WS_ERR_PAYLOAD_TOO_BIG) {
+                throw;
+            }
+            refuseMessage(socket, closing);
+            return;
+        }
         if (length < 0) {
             continue;
         }
@@ -198,6 +222,10 @@ void PocoWebSocket::serve(Poco::Net::WebSocket& socket) {
         }
         default:
             continue;
+        }
+        if (message.size() > maxMessageSize) {
+            refuseMessage(socket, closing);
+            return;
         }
         if ((flags & Poco::Net::WebSocket::FRAME_FLAG_FIN) != 0) {
             report({.kind = Event::Kind::Received, .text = std::exchange(message, {}), .binary = messageBinary});

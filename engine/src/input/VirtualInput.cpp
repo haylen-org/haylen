@@ -16,12 +16,12 @@ void VirtualInput::clear() noexcept {
 }
 
 bool VirtualInput::isButtonDown(std::string_view name) const noexcept {
-    const auto found = buttons.find(std::string(name));
+    const auto found = buttons.find(name);
     return found != buttons.end() && found->second;
 }
 
 math::Vec2 VirtualInput::getStick(std::string_view name) const noexcept {
-    const auto found = sticks.find(std::string(name));
+    const auto found = sticks.find(name);
     return found == sticks.end() ? math::Vec2{} : found->second;
 }
 

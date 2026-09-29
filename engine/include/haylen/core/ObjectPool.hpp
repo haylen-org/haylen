@@ -31,9 +31,9 @@ template <typename T> class ObjectPool final {
             slots.emplace_back();
         }
         const std::uint32_t index = freeSlots.back();
-        freeSlots.pop_back();
         Slot& slot = slots[index];
         slot.value.emplace(std::forward<Args>(args)...);
+        freeSlots.pop_back();
         ++liveCount;
         return {index, slot.generation};
     }
@@ -96,7 +96,7 @@ template <typename T> class ObjectPool final {
     [[nodiscard]] bool empty() const noexcept {
         return liveCount == 0;
     }
-    [[nodiscard]] std::size_t getCapacity() const noexcept {
+    [[nodiscard]] std::size_t capacity() const noexcept {
         return slots.size();
     }
 

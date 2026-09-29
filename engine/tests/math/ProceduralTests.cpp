@@ -1,13 +1,20 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
+#include <limits>
+#include <span>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 #include "haylen/math/Easing.hpp"
 #include "haylen/math/Geometry.hpp"
+#include "haylen/math/Math.hpp"
 #include "haylen/math/Noise2D.hpp"
 #include "haylen/math/PoissonDisk.hpp"
 #include "haylen/math/Random.hpp"
+#include "support/EngineFixture.hpp"
 
 namespace haylen::math {
 
@@ -81,7 +88,10 @@ TEST(RandomTest, WeightedIndexFollowsWeights) {
     for (int index = 0; index < 50; ++index) {
         EXPECT_EQ(random.weightedIndex(weights), 1U);
     }
-    EXPECT_EQ(random.weightedIndex(std::span<const float>{}), 0U);
+    EXPECT_THROW((void)random.weightedIndex(std::span<const float>{}), std::invalid_argument);
+    EXPECT_THROW((void)random.weightedIndex(std::array<float, 2>{0.0F, 0.0F}), std::invalid_argument);
+    EXPECT_THROW((void)random.weightedIndex(std::array<float, 2>{2.0F, -1.0F}), std::invalid_argument);
+    EXPECT_THROW((void)random.weightedIndex(std::array<float, 2>{1.0F, std::numeric_limits<float>::quiet_NaN()}), std::invalid_argument);
 }
 
 TEST(RandomTest, ShufflePreservesElements) {
@@ -147,12 +157,34 @@ TEST(GeometryTest, Polygons) {
     EXPECT_EQ(Geometry::centroid(std::span<const Vec2>{}), Vec2{});
 }
 
+TEST(GeometryTest, StarsThatTurnOneWayAreNotConvex) {
+    std::vector<Vec2> hexagon;
+    std::vector<Vec2> pentagram;
+    for (int index = 0; index < 6; ++index) {
+        hexagon.push_back(Vec2::fromAngle(Math::kTau * static_cast<float>(index) / 6.0F, 10.0F));
+    }
+    for (int index = 0; index < 5; ++index) {
+        pentagram.push_back(Vec2::fromAngle(Math::kTau * static_cast<float>(index * 2) / 5.0F, 10.0F));
+    }
+
+    EXPECT_TRUE(Geometry::isConvex(hexagon));
+    EXPECT_FALSE(Geometry::isConvex(pentagram));
+    std::reverse(hexagon.begin(), hexagon.end());
+    std::reverse(pentagram.begin(), pentagram.end());
+    EXPECT_TRUE(Geometry::isConvex(hexagon));
+    EXPECT_FALSE(Geometry::isConvex(pentagram));
+}
+
 TEST(GeometryTest, ConvexHullDropsInteriorPoints) {
     const std::array<Vec2, 6> points{Vec2(0.0F, 0.0F), Vec2(4.0F, 0.0F), Vec2(4.0F, 4.0F), Vec2(0.0F, 4.0F), Vec2(2.0F, 2.0F), Vec2(4.0F, 0.0F)};
     const std::vector<Vec2> hull = Geometry::convexHull(points);
     EXPECT_EQ(hull.size(), 4U);
     EXPECT_GT(Geometry::signedArea(hull), 0.0F);
     EXPECT_EQ(Geometry::convexHull(std::span<const Vec2>(points.data(), 2)).size(), 2U);
+
+    // A point with a NaN coordinate is left out instead of breaking the sort.
+    const std::array<Vec2, 5> withNaN{Vec2(0.0F, 0.0F), Vec2(4.0F, 0.0F), Vec2(std::numeric_limits<float>::quiet_NaN(), 2.0F), Vec2(4.0F, 4.0F), Vec2(0.0F, 4.0F)};
+    EXPECT_EQ(Geometry::convexHull(withNaN).size(), 4U);
 }
 
 TEST(GeometryTest, TriangulatesConcavePolygonsInEitherWinding) {
@@ -200,6 +232,34 @@ TEST(PoissonDiskTest, RejectsDegenerateInput) {
     const PoissonDisk::Options nothingAccepted{.area = Rect{0.0F, 0.0F, 10.0F, 10.0F}, .accept = [](Vec2) { return false; }};
     EXPECT_TRUE(PoissonDisk::sample(nothingAccepted, random).empty());
     EXPECT_THROW((void)PoissonDisk::sample(PoissonDisk::Options{.area = Rect{0.0F, 0.0F, 2000.0F, 2000.0F}, .minimumDistance = 0.01F}, random), std::invalid_argument);
+}
+
+TEST(PoissonDiskTest, BoundsHugeDistancesAndRejectsOnesThatAreNotFinite) {
+    Random random(5);
+    const Rect area{0.0F, 0.0F, 100.0F, 100.0F};
+    const std::vector<Vec2> points = PoissonDisk::sample(PoissonDisk::Options{.area = area, .minimumDistance = 10.0F, .maximumDistance = 1e30F, .distance = [](Vec2) { return 10.0F; }}, random);
+    ASSERT_GT(points.size(), 10U);
+    for (std::size_t first = 0; first < points.size(); ++first) {
+        for (std::size_t second = first + 1; second < points.size(); ++second) {
+            EXPECT_GE(Vec2::distance(points[first], points[second]), 10.0F - 1e-3F);
+        }
+    }
+
+    const float infinity = std::numeric_limits<float>::infinity();
+    EXPECT_THROW((void)PoissonDisk::sample(PoissonDisk::Options{.area = area, .minimumDistance = 10.0F, .maximumDistance = infinity, .distance = [](Vec2) { return 10.0F; }}, random), std::invalid_argument);
+    EXPECT_THROW((void)PoissonDisk::sample(PoissonDisk::Options{.area = area, .minimumDistance = 10.0F, .maximumDistance = 20.0F, .distance = [](Vec2) { return std::numeric_limits<float>::quiet_NaN(); }}, random), std::invalid_argument);
+}
+
+TEST(MathArgumentsLuaTest, HandleNaNAndRejectInvalidRangesAndWeights) {
+    test::EngineFixture fixture;
+    fixture.runLua("m = require('haylen.math')");
+
+    EXPECT_EQ(fixture.lua("return m.ease({points = {0, 1}}, 0 / 0) .. ' ' .. m.ease({points = {0, 1}}, 0.25)"), "0.0 0.25");
+    EXPECT_NE(fixture.lua("return m.clamp(5, 1, 0)").find("bad argument #3 to 'clamp' (expected a maximum of at least the minimum)"), std::string::npos);
+    EXPECT_NE(fixture.lua("return m.random(1):pick({1, -1})").find("Weights must be finite and not negative."), std::string::npos);
+    EXPECT_NE(fixture.lua("return m.random(1):pick({1, 0 / 0})").find("Weights must be finite and not negative."), std::string::npos);
+    EXPECT_NE(fixture.lua("return m.random(1):pick({0, 0})").find("A weighted pick needs at least one positive weight."), std::string::npos);
+    EXPECT_NE(fixture.lua("return m.polygon.decompose({{0, 0}, {4, 0}, {4, 4}}, -1)").find("bad argument #2 to 'decompose' (expected a non-negative integer)"), std::string::npos);
 }
 
 } // namespace haylen::math

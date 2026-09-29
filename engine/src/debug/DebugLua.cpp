@@ -78,27 +78,27 @@ int DebugLua::hotReloadWatching(lua_State* L) {
     return 1;
 }
 
-void DebugLua::pushStats(lua_State* L, const Stats& stats) {
+void DebugLua::pushStats(lua_State* L, const Stats& snapshot) {
     lua_createtable(L, 0, 7);
 
     lua_createtable(L, 0, 7);
-    lua::Stack::push(L, stats.frame.fps);
+    lua::Stack::push(L, snapshot.frame.fps);
     lua_setfield(L, -2, "fps");
-    lua::Stack::push(L, stats.frame.milliseconds);
+    lua::Stack::push(L, snapshot.frame.milliseconds);
     lua_setfield(L, -2, "milliseconds");
-    lua::Stack::push(L, stats.frame.average);
+    lua::Stack::push(L, snapshot.frame.average);
     lua_setfield(L, -2, "average");
-    lua::Stack::push(L, stats.frame.minimum);
+    lua::Stack::push(L, snapshot.frame.minimum);
     lua_setfield(L, -2, "minimum");
-    lua::Stack::push(L, stats.frame.maximum);
+    lua::Stack::push(L, snapshot.frame.maximum);
     lua_setfield(L, -2, "maximum");
-    lua::Stack::push(L, stats.frame.onePercentLow);
+    lua::Stack::push(L, snapshot.frame.onePercentLow);
     lua_setfield(L, -2, "onePercentLow");
-    lua::Stack::push(L, stats.frame.fixedSteps);
+    lua::Stack::push(L, snapshot.frame.fixedSteps);
     lua_setfield(L, -2, "fixedSteps");
     lua_setfield(L, -2, "frame");
 
-    const graphics2d::Renderer::Stats& rendering = stats.rendering;
+    const graphics2d::Renderer::Stats& rendering = snapshot.rendering;
     lua_createtable(L, 0, 12);
     lua::Stack::push(L, rendering.canvases);
     lua_setfield(L, -2, "canvases");
@@ -127,17 +127,17 @@ void DebugLua::pushStats(lua_State* L, const Stats& stats) {
     lua_setfield(L, -2, "rendering");
 
     lua_createtable(L, 0, 4);
-    lua::Stack::push(L, stats.memory.lua);
+    lua::Stack::push(L, snapshot.memory.lua);
     lua_setfield(L, -2, "lua");
-    lua::Stack::push(L, stats.memory.textures);
+    lua::Stack::push(L, snapshot.memory.textures);
     lua_setfield(L, -2, "textures");
-    lua::Stack::push(L, stats.memory.targets);
+    lua::Stack::push(L, snapshot.memory.targets);
     lua_setfield(L, -2, "targets");
-    lua::Stack::push(L, stats.memory.sounds);
+    lua::Stack::push(L, snapshot.memory.sounds);
     lua_setfield(L, -2, "sounds");
     lua_setfield(L, -2, "memory");
 
-    const Stats::Counts& counts = stats.counts;
+    const Stats::Counts& counts = snapshot.counts;
     lua_createtable(L, 0, 10);
     lua::Stack::push(L, counts.scenes);
     lua_setfield(L, -2, "scenes");
@@ -161,8 +161,8 @@ void DebugLua::pushStats(lua_State* L, const Stats& stats) {
     lua_setfield(L, -2, "particles");
     lua_setfield(L, -2, "counts");
 
-    lua_createtable(L, 0, static_cast<int>(stats.pools.size()));
-    for (const graphics::Device::Pool& pool : stats.pools) {
+    lua_createtable(L, 0, static_cast<int>(snapshot.pools.size()));
+    for (const graphics::Device::Pool& pool : snapshot.pools) {
         lua_createtable(L, 0, 2);
         lua::Stack::push(L, pool.used);
         lua_setfield(L, -2, "used");
@@ -172,8 +172,8 @@ void DebugLua::pushStats(lua_State* L, const Stats& stats) {
     }
     lua_setfield(L, -2, "pools");
 
-    lua_createtable(L, 0, static_cast<int>(stats.buses.size()));
-    for (const audio::Mixer::BusStats& bus : stats.buses) {
+    lua_createtable(L, 0, static_cast<int>(snapshot.buses.size()));
+    for (const audio::Mixer::BusStats& bus : snapshot.buses) {
         lua_createtable(L, 0, 4);
         lua::Stack::push(L, bus.voices);
         lua_setfield(L, -2, "voices");
@@ -187,8 +187,8 @@ void DebugLua::pushStats(lua_State* L, const Stats& stats) {
     }
     lua_setfield(L, -2, "buses");
 
-    lua_createtable(L, 0, static_cast<int>(stats.objects.size()));
-    for (const ObjectCounter::Snapshot& object : stats.objects) {
+    lua_createtable(L, 0, static_cast<int>(snapshot.objects.size()));
+    for (const ObjectCounter::Snapshot& object : snapshot.objects) {
         lua_createtable(L, 0, 5);
         lua_pushstring(L, object.kind == ObjectCounter::Kind::Userdata ? "userdata" : "native");
         lua_setfield(L, -2, "kind");
@@ -312,7 +312,7 @@ int DebugLua::profile(lua_State* L) {
 // Returns up to count recent log lines, oldest first, as {level, text} tables.
 int DebugLua::recentLog(lua_State* L) {
     const std::vector<LogLine> lines = getPlugin(L).getRecentLog();
-    const auto count = static_cast<std::size_t>(luaL_optinteger(L, 1, static_cast<lua_Integer>(lines.size())));
+    const std::size_t count = lua_isnoneornil(L, 1) ? lines.size() : lua::Stack::read<std::size_t>(L, 1);
     const std::size_t first = lines.size() > count ? lines.size() - count : 0;
     lua_createtable(L, static_cast<int>(lines.size() - first), 0);
     for (std::size_t index = first; index < lines.size(); ++index) {

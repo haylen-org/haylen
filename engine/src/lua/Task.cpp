@@ -133,22 +133,26 @@ void Task::cancel() {
     // clang-format on
 }
 
-// A promise that still waits on the coroutine resumes it later, so the closed coroutine is reset around a function that ends at once, and the resume runs none of the code of the task.
 void Task::close() {
     if (finished || threadReference == LUA_NOREF || lua_status(thread) != LUA_YIELD) {
         return;
     }
-    const int status = lua_closethread(thread, main);
-    std::optional<Error> failure;
-    if (status != LUA_OK) {
-        failure = Runtime::readError(thread, -1);
-    }
-    lua_settop(thread, 0);
-    lua_pushcfunction(thread, &endClosed);
+    const std::optional<Error> failure = closeCoroutine(thread, main);
     release();
     if (failure) {
         Runtime::reportError(main, *failure);
     }
+}
+
+// A promise that still waits on the coroutine resumes it later, so the closed coroutine is reset around a function that ends at once, and the resume runs none of the code it held.
+std::optional<Error> Task::closeCoroutine(lua_State* coroutine, lua_State* from) {
+    std::optional<Error> failure;
+    if (lua_closethread(coroutine, from) != LUA_OK) {
+        failure = Runtime::readError(coroutine, -1);
+    }
+    lua_settop(coroutine, 0);
+    lua_pushcfunction(coroutine, &endClosed);
+    return failure;
 }
 
 void Task::release() noexcept {

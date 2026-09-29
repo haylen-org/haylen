@@ -8,7 +8,7 @@ namespace haylen::ai {
 
 // Turns an input from 0 to 1 into a utility from 0 to 1, with the curve shapes of the infinite axis utility system. Inputs and results are clamped to that range.
 struct ResponseCurve {
-    // With x the input, linear and polynomial give slope * (x - shift) ^ exponent + offset, logistic gives exponent / (1 + e ^ (-slope * (x - shift))) + offset, logit gives slope * ln((x - shift) / (1 - x + shift)) / 5 + 0.5 + offset, and normal gives slope * e ^ (-exponent * (x - shift) ^ 2) + offset. Polynomials treat inputs below the shift as the shift.
+    // With x the input, linear gives slope * (x - shift) + offset and ignores the exponent, polynomial gives slope * (x - shift) ^ exponent + offset, logistic gives exponent / (1 + e ^ (-slope * (x - shift))) + offset, logit gives slope * ln((x - shift) / (1 - x + shift)) / 5 + 0.5 + offset, and normal gives slope * e ^ (-exponent * (x - shift) ^ 2) + offset. Polynomials treat inputs below the shift as the shift.
     enum class Shape : std::uint8_t {
         Linear,
         Polynomial,

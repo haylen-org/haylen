@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <limits>
 #include <stdexcept>
 #include <string>
 
@@ -11,6 +12,7 @@
 #include "haylen/input/VirtualInput.hpp"
 #include "haylen/math/Insets.hpp"
 #include "haylen/platform/Event.hpp"
+#include "support/EngineFixture.hpp"
 
 namespace haylen::input {
 
@@ -120,6 +122,7 @@ TEST_F(InputTest, TextModifiersAndFocusLoss) {
     input.releaseAll();
     EXPECT_FALSE(input.isKeyDown(Key::LeftShift));
     EXPECT_TRUE(input.isKeyReleased(Key::LeftShift));
+    EXPECT_EQ(input.getModifiers(), KeyModifiers{});
     EXPECT_FALSE(input.isMouseDown(MouseButton::Left));
     EXPECT_TRUE(input.isMouseReleased(MouseButton::Left));
 
@@ -207,6 +210,26 @@ TEST_F(InputTest, TouchesMoveThroughPhases) {
     EXPECT_EQ(input.findTouch(2)->phase, TouchPhase::Cancelled);
 }
 
+TEST_F(InputTest, AReusedTouchIdStartsANewTouch) {
+    Input input;
+    const graphics::Viewport viewport = makeIdentityViewport();
+    input.handleEvent(makeTouchEvent(platform::Event::Type::TouchBegan, 1, math::Vec2(10.0F, 10.0F)), viewport);
+    input.handleEvent(makeTouchEvent(platform::Event::Type::TouchEnded, 1, math::Vec2(10.0F, 10.0F)), viewport);
+    input.handleEvent(makeTouchEvent(platform::Event::Type::TouchBegan, 1, math::Vec2(50.0F, 50.0F)), viewport);
+    input.handleEvent(makeTouchEvent(platform::Event::Type::TouchMoved, 1, math::Vec2(60.0F, 50.0F)), viewport);
+
+    ASSERT_EQ(input.getTouches().size(), 2U);
+    EXPECT_EQ(input.getTouches()[0].phase, TouchPhase::Ended);
+    EXPECT_EQ(input.getTouches()[0].position, math::Vec2(10.0F, 10.0F));
+    EXPECT_EQ(input.getTouches()[1].phase, TouchPhase::Began);
+    EXPECT_EQ(input.getTouches()[1].startPosition, math::Vec2(50.0F, 50.0F));
+    EXPECT_EQ(input.getTouches()[1].position, math::Vec2(60.0F, 50.0F));
+
+    input.endFrame();
+    ASSERT_EQ(input.getTouches().size(), 1U);
+    EXPECT_EQ(input.findTouch(1)->phase, TouchPhase::Stationary);
+}
+
 TEST_F(InputTest, TouchMovesOfOneFrameAddUp) {
     Input input;
     const graphics::Viewport viewport = makeIdentityViewport();
@@ -241,11 +264,43 @@ TEST_F(InputTest, GamepadEdgesAxesAndDeadzones) {
     input.setGamepadDeadzone(0.7F);
     EXPECT_EQ(input.getGamepadDeadzone(), 0.7F);
     EXPECT_EQ(input.getGamepadStick(0, false), math::Vec2{});
+
+    // A negative dead zone would move a resting stick, and one of 1 or more would silence every axis.
+    EXPECT_THROW(input.setGamepadDeadzone(-0.1F), std::invalid_argument);
+    EXPECT_THROW(input.setGamepadDeadzone(1.0F), std::invalid_argument);
+    EXPECT_THROW(input.setGamepadDeadzone(std::numeric_limits<float>::quiet_NaN()), std::invalid_argument);
+    EXPECT_EQ(input.getGamepadDeadzone(), 0.7F);
+
+    EXPECT_FALSE(input.getGamepad(7).connected);
     EXPECT_FALSE(input.isGamepadDown(7, GamepadButton::South));
     EXPECT_FALSE(input.isGamepadPressed(7, GamepadButton::South));
     EXPECT_FALSE(input.isGamepadReleased(7, GamepadButton::South));
     EXPECT_EQ(input.getGamepadAxis(7, GamepadAxis::LeftX), 0.0F);
     EXPECT_EQ(input.getGamepadStick(7, false), math::Vec2{});
+}
+
+TEST_F(InputTest, LastDeviceFollowsPressesInsteadOfHeldControls) {
+    Input input;
+    const graphics::Viewport viewport = makeIdentityViewport();
+    std::array<GamepadState, 1> states{makeGamepad(GamepadButton::South)};
+    input.updateGamepads(states);
+    EXPECT_EQ(input.getLastDevice(), InputDevice::Gamepad);
+
+    // A key pressed while the gamepad button stays down takes over, and so does a touch while a stick stays pushed.
+    input.handleEvent(makeKeyEvent(platform::Event::Type::KeyDown, Key::A), viewport);
+    input.updateGamepads(states);
+    EXPECT_EQ(input.getLastDevice(), InputDevice::KeyboardMouse);
+
+    states[0].axes[static_cast<std::size_t>(GamepadAxis::LeftX)] = 0.5F;
+    input.updateGamepads(states);
+    EXPECT_EQ(input.getLastDevice(), InputDevice::Gamepad);
+
+    input.handleEvent(makeKeyEvent(platform::Event::Type::KeyDown, Key::A, true), viewport);
+    EXPECT_EQ(input.getLastDevice(), InputDevice::Gamepad);
+
+    input.handleEvent(makeTouchEvent(platform::Event::Type::TouchBegan, 1, math::Vec2(10.0F, 10.0F)), viewport);
+    input.updateGamepads(states);
+    EXPECT_EQ(input.getLastDevice(), InputDevice::Touch);
 }
 
 TEST(VirtualInputTest, StoresButtonsAndClampedSticks) {
@@ -349,9 +404,8 @@ TEST_F(ActionMapTest, VirtualControlsAndGamepadsDriveActions) {
     EXPECT_EQ(actions.getValue("aim"), 0.0F);
 
     actions.setGamepadIndex(std::nullopt);
-    actions.setPressThreshold(2.0F);
     actions.update(input, virtualInput, false);
-    EXPECT_FALSE(actions.isDown("attack"));
+    EXPECT_TRUE(actions.isDown("attack"));
 
     actions.define({.name = "attack", .type = ActionMap::Action::Type::Button});
     EXPECT_TRUE(actions.findAction("attack")->bindings.empty());
@@ -360,6 +414,30 @@ TEST_F(ActionMapTest, VirtualControlsAndGamepadsDriveActions) {
     EXPECT_EQ(actions.findAction("attack"), nullptr);
     actions.clear();
     EXPECT_TRUE(actions.getNames().empty());
+}
+
+TEST_F(ActionMapTest, PressThresholdDecidesWhenAnActionIsDown) {
+    ActionMap actions;
+    actions.define({.name = "aim", .type = ActionMap::Action::Type::Axis, .positive = {*ActionMap::Binding::parse("axis:left_x+")}});
+    Input input;
+    VirtualInput virtualInput;
+    std::array<GamepadState, 1> states{makeGamepad(GamepadButton::South, 0.7F)};
+    input.updateGamepads(states);
+    actions.update(input, virtualInput, false);
+    EXPECT_TRUE(actions.isDown("aim"));
+
+    actions.setPressThreshold(0.75F);
+    actions.update(input, virtualInput, false);
+    EXPECT_FALSE(actions.isDown("aim"));
+
+    // A threshold of 0 or less would hold every action down forever, and one above 1 would never press any.
+    EXPECT_THROW(actions.setPressThreshold(0.0F), std::invalid_argument);
+    EXPECT_THROW(actions.setPressThreshold(1.5F), std::invalid_argument);
+    actions.setPressThreshold(1.0F);
+    states[0] = makeGamepad(GamepadButton::South, 1.0F);
+    input.updateGamepads(states);
+    actions.update(input, virtualInput, false);
+    EXPECT_TRUE(actions.isPressed("aim"));
 }
 
 TEST_F(ActionMapTest, BlockedInputHoldsEveryControlUntilItIsReleased) {
@@ -452,8 +530,27 @@ TEST_F(ActionMapTest, RejectsInvalidDocuments) {
     EXPECT_EQ(message(R"({"actions": [{"name": "zoom", "type": "axis", "bindings": ["key:q"]}]})"), "The axis action zoom does not read bindings.");
     EXPECT_EQ(message(R"({"actions": [{"name": "move", "type": "vector", "negative": ["key:s"]}]})"), "The vector action move does not read negative.");
     EXPECT_EQ(message(R"({"actions": [{"name": "move", "type": "vector", "bindings": ["stick:left", "key:w"]}]})"), "The vector action move takes only sticks in bindings, not key:w.");
+    EXPECT_EQ(message(R"({"actions": [{"name": "jump", "type": "button"}, {"name": "jump", "type": "axis"}]})"), "Duplicate action name: jump");
     EXPECT_THROW(actions.define({.name = "fire", .type = ActionMap::Action::Type::Button, .up = {*ActionMap::Binding::parse("key:w")}}), std::invalid_argument);
     EXPECT_EQ(actions.findAction("fire"), nullptr);
+}
+
+TEST(InputLuaBindingTest, ReportsThePointerCapture) {
+    test::EngineFixture fixture;
+    fixture.runLua("input = require('haylen.input')");
+    EXPECT_EQ(fixture.lua("return input.pointerCaptured()"), "false");
+    fixture.engine().getInput().setPointerCaptured(true);
+    EXPECT_EQ(fixture.lua("return input.pointerCaptured()"), "true");
+}
+
+TEST(InputLuaBindingTest, RejectsDeadZonesAndThresholdsOutOfRange) {
+    test::EngineFixture fixture;
+    fixture.runLua("input = require('haylen.input')");
+    EXPECT_NE(fixture.lua("input.setDeadzone(1)").find("The gamepad dead zone must be at least 0 and below 1."), std::string::npos);
+    EXPECT_NE(fixture.lua("input.setDeadzone(-0.5)").find("The gamepad dead zone must be at least 0 and below 1."), std::string::npos);
+    EXPECT_NE(fixture.lua("input.setPressThreshold(0)").find("The press threshold must be above 0 and at most 1."), std::string::npos);
+    EXPECT_NE(fixture.lua("input.setPressThreshold(2)").find("The press threshold must be above 0 and at most 1."), std::string::npos);
+    EXPECT_EQ(fixture.lua("input.setDeadzone(0) input.setPressThreshold(1) return input.gamepadDeadzone()"), "0.0");
 }
 
 TEST(ViewportTest, FitLetterboxesAndConvertsCoordinates) {

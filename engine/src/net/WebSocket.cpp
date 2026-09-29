@@ -35,18 +35,21 @@ std::string_view WebSocket::stateName(State value) noexcept {
     return "closed";
 }
 
-float WebSocket::getBackoff(const Reconnect& reconnect, int attempt) noexcept {
-    const double grown = static_cast<double>(reconnect.initialDelay) * std::pow(static_cast<double>(reconnect.multiplier), std::max(attempt - 1, 0));
-    return static_cast<float>(std::min(grown, static_cast<double>(reconnect.maxDelay)));
+float WebSocket::getBackoff(const Reconnect& settings, int number) noexcept {
+    const double grown = static_cast<double>(settings.initialDelay) * std::pow(static_cast<double>(settings.multiplier), std::max(number - 1, 0));
+    return static_cast<float>(std::min(grown, static_cast<double>(settings.maxDelay)));
 }
 
 double WebSocket::getSteadySeconds() {
     return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
-WebSocket::WebSocket(std::string address, Options options) : url(std::move(address)), protocols(std::move(options.protocols)), reconnect(options.reconnect), clock(options.clock ? std::move(options.clock) : Clock(&getSteadySeconds)), random(options.seed != 0 ? options.seed : std::random_device{}()), inbox(std::make_shared<Inbox>()) {
+WebSocket::WebSocket(std::string address, Options options) : url(std::move(address)), protocols(std::move(options.protocols)), maxMessageSize(options.maxMessageSize), reconnect(options.reconnect), clock(options.clock ? std::move(options.clock) : Clock(&getSteadySeconds)), random(options.seed != 0 ? options.seed : std::random_device{}()), inbox(std::make_shared<Inbox>()) {
     if (!url.starts_with("ws://") && !url.starts_with("wss://")) {
         throw std::invalid_argument("A WebSocket address starts with ws:// or wss://: " + url);
+    }
+    if (maxMessageSize == 0 || !std::in_range<int>(maxMessageSize)) {
+        throw std::invalid_argument("A WebSocket needs a maximum message size between 1 and 2147483647 bytes.");
     }
     if (reconnect.initialDelay < 0.0F || reconnect.maxDelay < reconnect.initialDelay || reconnect.multiplier < 1.0F || reconnect.jitter < 0.0F || reconnect.jitter > 1.0F || reconnect.maxAttempts < 0) {
         throw std::invalid_argument("WebSocket reconnection needs delays from zero up with the maximum at least the initial one, a multiplier of at least 1, a jitter between 0 and 1 and a maximum of attempts of at least 0.");
@@ -59,7 +62,7 @@ WebSocket::~WebSocket() = default;
 void WebSocket::connect() {
     state = State::Connecting;
     // clang-format off
-    transport = WebSocketTransport::open(url, protocols, [delivery = inbox](WebSocketTransport::Event event) {
+    transport = WebSocketTransport::open(url, protocols, maxMessageSize, [delivery = inbox](WebSocketTransport::Event event) {
         const std::scoped_lock lock(delivery->mutex);
         delivery->events.push_back(std::move(event));
     });
@@ -101,28 +104,26 @@ void WebSocket::close(int code, std::string_view reason) {
         return;
     }
     closeRequested = true;
+    state = State::Closing;
 
-    // No connection exists while the socket waits for its next attempt, so it closes on the next pump.
-    if (state == State::Reconnecting) {
-        state = State::Closing;
+    // Without a connection, such as while the socket waits for its next attempt, it closes on the next pump.
+    if (!transport) {
         const std::scoped_lock lock(inbox->mutex);
         inbox->events.push_back({.kind = WebSocketTransport::Event::Kind::Closed, .text = std::string(reason), .code = code});
         return;
     }
-    state = State::Closing;
     transport->close(code, std::string(reason));
 }
 
-bool WebSocket::scheduleReconnect() {
-    if (!reconnect.enabled || closeRequested || (reconnect.maxAttempts > 0 && attempt >= reconnect.maxAttempts)) {
-        return false;
-    }
+bool WebSocket::canReconnect() const noexcept {
+    return reconnect.enabled && !closeRequested && (reconnect.maxAttempts == 0 || attempt < reconnect.maxAttempts);
+}
+
+void WebSocket::scheduleReconnect() {
     ++attempt;
     const float delay = getBackoff(reconnect, attempt) * (1.0F - reconnect.jitter * random.nextFloat());
-    state = State::Reconnecting;
     nextAttemptAt = clock() + static_cast<double>(delay);
     reconnecting.emit(attempt, delay);
-    return true;
 }
 
 void WebSocket::pump() {
@@ -155,15 +156,21 @@ void WebSocket::pump() {
             failed.emit(event.text);
             break;
         case WebSocketTransport::Event::Kind::Closed:
-            // A transport reports nothing after closing, so the next attempt opens a fresh one.
+            // A transport reports nothing after closing, so the next attempt opens a fresh one, and the disconnect listeners already see the state that follows.
             transport.reset();
+            state = canReconnect() ? State::Reconnecting : State::Closed;
             if (std::exchange(connected, false)) {
                 disconnected.emit(event.code, event.text);
             }
-            if (scheduleReconnect()) {
+
+            // A disconnect listener that closed the socket ends it on the next pump, with its own code.
+            if (state == State::Closing) {
                 break;
             }
-            state = State::Closed;
+            if (state == State::Reconnecting) {
+                scheduleReconnect();
+                break;
+            }
             closed.emit(event.code, event.text);
             dropListeners();
             return;

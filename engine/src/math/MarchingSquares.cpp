@@ -180,12 +180,18 @@ std::vector<std::vector<Vec2>> MarchingSquares::trace(std::span<const float> val
     if (width < 0 || height < 0 || values.size() != static_cast<std::size_t>(width) * static_cast<std::size_t>(height)) {
         throw std::invalid_argument("The field needs width times height values.");
     }
+    if (width == 0 || height == 0) {
+        return {};
+    }
     return Tracer(values, width, height, options).run();
 }
 
 std::vector<std::vector<Vec2>> MarchingSquares::traceBitmap(std::span<const std::uint8_t> pixels, int width, int height, float spacing, Vec2 origin) {
     if (width < 0 || height < 0 || pixels.size() != static_cast<std::size_t>(width) * static_cast<std::size_t>(height)) {
         throw std::invalid_argument("The bitmap needs width times height pixels.");
+    }
+    if (width == 0 || height == 0) {
+        return {};
     }
 
     // A frame of empty samples around the pixel centers puts the outline on the outer edge of the border pixels.

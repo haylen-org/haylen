@@ -53,7 +53,7 @@ void Environment::installTaskErrors(lua_State* L) {
     lua_getglobal(L, "require");
     lua_pushliteral(L, "async");
     Runtime::protectedCall(L, 1, 1);
-    lua_pushcfunction(L, &reportTaskError);
+    lua_pushcfunction(L, &Binding::native<&reportTaskError>);
     lua_pushcfunction(L, &Runtime::handleMessage);
     Runtime::protectedCall(L, 3, 0);
 }

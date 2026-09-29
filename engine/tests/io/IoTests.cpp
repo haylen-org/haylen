@@ -115,6 +115,15 @@ TEST_P(PackageTest, ListsFilesRecursively) {
     EXPECT_EQ(package->listAssets(""), (std::vector<std::string>{"audio/hit.ogg", "maps/island.tmj"}));
     EXPECT_EQ(package->listAssets("maps"), (std::vector<std::string>{"maps/island.tmj"}));
     EXPECT_TRUE(package->list("nothing").empty());
+
+    // A folder that climbs out of content is rejected like any asset path, instead of listing the whole package.
+    EXPECT_THROW((void)package->listAssets(".."), std::invalid_argument);
+    EXPECT_THROW((void)package->listAssets("maps/../.."), std::invalid_argument);
+}
+
+TEST(PackageLuaTest, ListingAssetsNeverLeavesTheContentFolder) {
+    test::EngineFixture fixture({{"content/maps/island.tmj", "{}"}});
+    EXPECT_NE(fixture.lua("return require('haylen.assets').list('..')").find("Paths cannot leave their root folder: .."), std::string::npos);
 }
 
 INSTANTIATE_TEST_SUITE_P(Sources, PackageTest, ::testing::Values("directory", "zip-file", "zip-memory", "memory"));

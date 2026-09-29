@@ -64,7 +64,7 @@ class Stats final {
 
   private:
     [[nodiscard]] static Frame measureFrames(core::Engine& engine);
-    [[nodiscard]] static const ObjectCounter::Snapshot* findObject(const std::vector<ObjectCounter::Snapshot>& objects, std::string_view name) noexcept;
+    [[nodiscard]] static const ObjectCounter::Snapshot* findObject(const std::vector<ObjectCounter::Snapshot>& snapshots, std::string_view name) noexcept;
 };
 
 } // namespace haylen::debug

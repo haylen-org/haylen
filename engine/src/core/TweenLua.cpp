@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <limits>
 #include <random>
 #include <span>
 #include <utility>
@@ -894,12 +893,14 @@ int TweenLua::handleSeek(lua_State* L) {
 
 int TweenLua::handleComplete(lua_State* L) {
     check(L, 1)->complete(lua_isnoneornil(L, 2) || lua_toboolean(L, 2) != 0);
-    return 0;
+    lua_settop(L, 1);
+    return 1;
 }
 
 int TweenLua::handleKill(lua_State* L) {
     check(L, 1)->kill();
-    return 0;
+    lua_settop(L, 1);
+    return 1;
 }
 
 // Returns a promise that resolves with true when the tween next completes and with false when it is killed first.

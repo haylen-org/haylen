@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <cmath>
+#include <stdexcept>
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/Binding.hpp"
@@ -41,8 +42,14 @@ int JobsLua::checkpoint(lua_State* L) {
     return lua_yield(L, 1);
 }
 
+// A budget beyond what the clock counts, such as math.huge, lets the jobs run without a limit.
 int JobsLua::setBudget(lua_State* L) {
-    getPlugin(L).setBudget(std::chrono::microseconds(std::llround(Stack::read<double>(L, 1) * 1000.0)));
+    const double microseconds = Stack::read<double>(L, 1) * 1000.0;
+    if (!(microseconds > 0.0)) {
+        throw std::invalid_argument("The job budget must be a positive number of milliseconds.");
+    }
+    const auto largest = static_cast<double>(std::chrono::microseconds::max().count());
+    getPlugin(L).setBudget(microseconds >= largest ? std::chrono::microseconds::max() : std::chrono::microseconds(std::llround(microseconds)));
     return 0;
 }
 

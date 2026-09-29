@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <limits>
 #include <memory>
 #include <numeric>
 #include <stdexcept>
@@ -120,6 +121,9 @@ TEST_F(AudioEffectTest, FilterParametersChangeWhileItPlays) {
     Filter shelf(Filter::Kind::HighShelf, {});
     shelf.setGain(-3.0F);
     EXPECT_EQ(shelf.getGain(), -3.0F);
+    EXPECT_THROW(shelf.setGain(std::nanf("")), std::invalid_argument);
+    EXPECT_THROW(Filter(Filter::Kind::Peak, {.gain = std::numeric_limits<float>::infinity()}), std::invalid_argument);
+    EXPECT_EQ(shelf.getGain(), -3.0F);
 }
 
 TEST_F(AudioEffectTest, EffectsChainInOrderOnBusesAndVoices) {
@@ -196,6 +200,18 @@ TEST_F(AudioEffectTest, DelayRepeatsTheInputAfterItsTime) {
     EXPECT_EQ(Delay({.time = 0.2F, .feedback = 0.0F}).getTail(), 0.2F);
 }
 
+TEST_F(AudioEffectTest, MovedEffectsForgetTheirEarlierInput) {
+    const auto echo = std::make_shared<Delay>(Delay::Settings{.time = 0.5F, .feedback = 0.0F, .wet = 1.0F, .dry = 0.0F});
+    mixer.addBusEffect("sfx", echo);
+    mixer.play(makeImpulse(64, 0.8F));
+    EXPECT_EQ(peak(toFrames(0.05F)), 0.0F) << "the repeat is still ahead";
+
+    // The impulse went into the delay on sfx, and on ambience, where nothing plays, its repeat never comes out.
+    mixer.removeBusEffect("sfx", *echo);
+    mixer.addBusEffect("ambience", echo);
+    EXPECT_EQ(peak(toFrames(0.8F)), 0.0F);
+}
+
 TEST_F(AudioEffectTest, VoiceEffectsRingOutAfterTheVoiceEnds) {
     const auto echo = std::make_shared<Delay>(Delay::Settings{.time = 0.05F, .feedback = 0.0F, .wet = 1.0F, .dry = 1.0F});
     mixer.play(makeImpulse(64, 0.8F), {.effects = {echo}});
@@ -231,6 +247,16 @@ TEST_F(AudioEffectTest, ReverbRingsOnABus) {
     EXPECT_GT(peak(toFrames(0.05F)), 0.0F);
     EXPECT_THROW(hall->setRoomSize(1.5F), std::invalid_argument);
     EXPECT_THROW(Reverb({.wet = -1.0F}), std::invalid_argument);
+
+    // A reverb that moves to another bus keeps its settings and starts without its old tail.
+    hall->setDry(0.0F);
+    mixer.removeBusEffect("ambience", *hall);
+    mixer.addBusEffect("sfx", hall);
+    peak(2048);
+    mixer.play(makeImpulse(64, 0.8F));
+    const std::vector<float> moved = renderLeft(toFrames(0.3F));
+    EXPECT_GT(firstLoud(moved, 1e-4F), 1200U);
+    EXPECT_LT(firstLoud(moved, 1e-4F), moved.size());
 }
 
 TEST_F(FreeverbTest, ImpulseResponseArrivesLateAndDecays) {

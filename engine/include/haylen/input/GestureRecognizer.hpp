@@ -13,7 +13,6 @@
 namespace haylen::input {
 
 class Input;
-struct Touch;
 
 // Turns touches, and the left mouse button when no finger is down, into taps, double taps, long presses, swipes and pinches, once per frame.
 class GestureRecognizer final {
@@ -33,6 +32,10 @@ class GestureRecognizer final {
     explicit GestureRecognizer(const Settings& value = kDefaultSettings) : settings(value) {}
 
     void update(const Input& input, float deltaSeconds);
+
+    // Drops every finger, the mouse press and the pinch in progress without recognizing them, which the engine does together with Input::releaseAll when the app loses focus or leaves the foreground.
+    void cancel() noexcept;
+
     [[nodiscard]] std::span<const Gesture> getGestures() const noexcept {
         return gestures;
     }
@@ -54,8 +57,6 @@ class GestureRecognizer final {
     };
 
     static const Settings kDefaultSettings;
-
-    [[nodiscard]] static bool isActive(const Touch& touch) noexcept;
 
     void finish(const Pointer& pointer);
     void recognizePinch(const Input& input);

@@ -89,9 +89,9 @@ Connection SignalLua::connect(lua_State* L, int signal, int function, int option
 
     Signal<const ScriptedSignal::Arguments&>::Slot slot;
     if (deferred) {
-        // A deferred listener runs at the end of the frame with the values packed at emit time, and not at all once it disconnects before then.
+        // A deferred listener runs at the end of the frame with the values packed at emit time, and not at all once it disconnects before then. A once listener disconnects as it is called, so its queued call keeps it.
         // clang-format off
-        slot = [callback, &queue = lua::Runtime::getEngine(L).getFrameQueue()](const ScriptedSignal::Arguments& arguments) {
+        slot = [callback, once = settings.once, &queue = lua::Runtime::getEngine(L).getFrameQueue()](const ScriptedSignal::Arguments& arguments) {
             lua_State* source = arguments.state;
             lua_createtable(source, arguments.count, 0);
             for (int index = 0; index < arguments.count; ++index) {
@@ -100,7 +100,7 @@ Connection SignalLua::connect(lua_State* L, int signal, int function, int option
             }
             auto packed = std::make_shared<lua::Reference>(source, -1);
             lua_pop(source, 1);
-            queue.post([weak = std::weak_ptr<lua::Owners::Function>(callback), packed, count = arguments.count] {
+            queue.post([weak = std::weak_ptr<lua::Owners::Function>(callback), held = once ? callback : nullptr, packed, count = arguments.count] {
                 const std::shared_ptr<lua::Owners::Function> listener = weak.lock();
                 lua_State* main = packed->getState();
                 if (!listener || !listener->push(main)) {

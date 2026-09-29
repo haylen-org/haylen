@@ -271,8 +271,12 @@ void SceneManager::settle(const std::shared_ptr<Scene>& scene) {
         return;
     }
 
+    // A listener may clear the stack or cancel the preload, which already unloaded the scene.
     const lua::Error error = *load->getError();
     (void)engine.getEvents().emitWith(LifecycleEvent::kSceneLoadFailed, LoadFailure{.scene = scene.get(), .error = &error});
+    if (scene->loading != load) {
+        return;
+    }
     std::erase(preloaded, scene);
     if (pending && pending->scene == scene && pending->phase != Phase::Start) {
         pending->failure = error;
@@ -858,7 +862,8 @@ void SceneManager::fixedUpdate(const FrameClock& clock) {
     }
 }
 
-std::vector<std::shared_ptr<Scene>> SceneManager::getVisible(const std::vector<std::shared_ptr<Scene>>& scenes) {
+// The walk goes over a copy of the stack, because asking a scripted scene whether it is transparent runs Lua.
+std::vector<std::shared_ptr<Scene>> SceneManager::getVisible(std::vector<std::shared_ptr<Scene>> scenes) {
     std::size_t first = scenes.size();
     while (first > 0) {
         --first;
@@ -866,7 +871,8 @@ std::vector<std::shared_ptr<Scene>> SceneManager::getVisible(const std::vector<s
             break;
         }
     }
-    return {scenes.begin() + static_cast<std::ptrdiff_t>(first), scenes.end()};
+    scenes.erase(scenes.begin(), scenes.begin() + static_cast<std::ptrdiff_t>(first));
+    return scenes;
 }
 
 bool SceneManager::isAlive(const Scene& scene) const noexcept {
@@ -973,16 +979,17 @@ void SceneManager::renderTransition(graphics2d::Renderer& renderer, const View& 
     if (!isEffectShown()) {
         return;
     }
-    const Change& change = *pending;
-    const std::shared_ptr<TransitionEffect> effect = change.options.transition.effect;
-    float progress = getProgress(change);
-    if (change.phase == Phase::Hold) {
+    // A scripted effect may clear the stack while it renders, which drops the change, so the change stays held until the end.
+    const std::shared_ptr<Change> change = pending;
+    const std::shared_ptr<TransitionEffect> effect = change->options.transition.effect;
+    float progress = getProgress(*change);
+    if (change->phase == Phase::Hold) {
         progress = effect->getSwitchProgress();
-    } else if (change.covering && change.phase == Phase::Reveal) {
+    } else if (change->covering && change->phase == Phase::Reveal) {
         progress = std::max(progress, effect->getSwitchProgress());
     }
     effect->render(renderer, {.outgoing = outgoingImage.getTexture(), .incoming = incomingImage.getTexture()}, progress);
-    if (!change.fading || view.current) {
+    if (pending != change || !change->fading || view.current) {
         return;
     }
 

@@ -84,7 +84,7 @@ scene.push({
 
 ### input.modifiers()
 
-Returns a table with the boolean fields `shift`, `control`, `alt` and `super`, taken from the latest key event.
+Returns a table with the boolean fields `shift`, `control`, `alt` and `super`, taken from the latest key event. They all read `false` again from the frame the window loses focus or the app is suspended.
 
 ```lua
 local input = require('haylen.input')
@@ -319,7 +319,7 @@ Returns a list of the fingers on the screen, including fingers that lifted in th
 | `phase` | string | `'began'`, `'moved'`, `'stationary'`, `'ended'` or `'cancelled'`. |
 | `duration` | number | Seconds since the finger landed. |
 
-A finger that lands and moves in the same frame keeps the `'began'` phase for that frame. Fingers in the `'ended'` or `'cancelled'` phase leave the list on the next frame.
+A finger that lands and moves in the same frame keeps the `'began'` phase for that frame. Fingers in the `'ended'` or `'cancelled'` phase leave the list on the next frame. A platform may give a new finger the identifier of a finger that lifted in the same frame, and then the list holds both for that frame, the lifted finger first.
 
 ```lua
 local input = require('haylen.input')
@@ -340,7 +340,7 @@ scene.push({
 
 ### input.touch(id)
 
-Returns the finger with the identifier `id` as a table with the fields of `input.touches()`, or `nil` when no such finger is on the screen. It suits code that follows one finger from the frame it landed.
+Returns the finger with the identifier `id` as a table with the fields of `input.touches()`, or `nil` when no such finger is on the screen. It suits code that follows one finger from the frame it landed. When a new finger takes the identifier of a finger that lifted in the same frame, it returns the lifted finger for that frame.
 
 ```lua
 local input = require('haylen.input')
@@ -377,7 +377,7 @@ Returns a list of the gestures recognized in this frame. Each gesture is a table
 | `dx`, `dy` | number | The movement of a swipe, from where the finger landed to where it lifted. Other gestures report 0. |
 | `scale` | number | The spread of a pinch divided by the spread when the second finger landed. Other gestures report 1. |
 
-A tap fires when a finger lifts quickly without moving far. The second tap of a double tap reports both a `'tap'` and a `'double_tap'` in the same frame. A long press fires once while the finger is still down, and that finger ends without a tap. A swipe fires when a finger lifts after moving far enough quickly enough. A pinch fires every frame in which one of exactly two fingers moves, and fingers that were part of a pinch never end as taps or swipes.
+A tap fires when a finger lifts quickly without moving far. The second tap of a double tap reports both a `'tap'` and a `'double_tap'` in the same frame. A long press fires once while the finger is still down, and that finger ends without a tap. A swipe fires when a finger lifts after moving far enough quickly enough. A pinch fires every frame in which one of exactly two fingers moves, and fingers that were part of a pinch never end as taps or swipes. A finger the system cancels, and every finger or mouse press still down when the window loses focus or the app is suspended, ends without a gesture.
 
 ```lua
 local input = require('haylen.input')
@@ -574,7 +574,7 @@ scene.push({
 
 ### input.setDeadzone(deadzone)
 
-Sets the dead zone of every gamepad axis and stick. Use a value from 0 to below 1, and the default is 0.2. Movement inside the dead zone reads as 0 and does not make the gamepad the last used device.
+Sets the dead zone of every gamepad axis and stick, from 0 to below 1, and the default is 0.2. Any other value raises `The gamepad dead zone must be at least 0 and below 1.` and keeps the current dead zone. Movement inside the dead zone reads as 0 and does not make the gamepad the last used device.
 
 ```lua
 local input = require('haylen.input')
@@ -596,7 +596,7 @@ input.setDeadzone(input.gamepadDeadzone() + 0.05)
 
 ### input.lastDevice()
 
-Returns the kind of device the player used last: `'keyboard_mouse'`, `'touch'` or `'gamepad'`. Key presses and mouse button presses select `'keyboard_mouse'`, touches select `'touch'`, and gamepad buttons or axes past the dead zone select `'gamepad'`. Use it to show the matching button prompts or on-screen controls.
+Returns the kind of device the player used last: `'keyboard_mouse'`, `'touch'` or `'gamepad'`. Key presses and mouse button presses select `'keyboard_mouse'`, touches select `'touch'`, and a gamepad button going down or an axis leaving the dead zone selects `'gamepad'`. Only the press counts, so key repeats and a gamepad button or stick that stays held never take over from a device the player used afterwards. Use it to show the matching button prompts or on-screen controls.
 
 ```lua
 local input = require('haylen.input')
@@ -651,7 +651,7 @@ An action map document is a table or a JSON file with an `actions` list. Each ac
 
 ### input.loadActions(document)
 
-Replaces the action map with a document, given as a table or as a path to a JSON file in the content folder. Nothing changes when the document is invalid. Unknown keys raise `Unknown key '<key>' in the action map.` or `Unknown key '<key>' in an action.`, a missing list raises `The action map needs a list of actions.`, an action without a name or type raises `An action needs a name and a type.`, bad types raise `Invalid action type: <type>`, a binding list that is not a list raises `The <list> of an action must be a list of bindings.` and bad bindings raise `Invalid input binding: <binding>`. An empty Lua table counts as an empty list.
+Replaces the action map with a document, given as a table or as a path to a JSON file in the content folder. Nothing changes when the document is invalid. A document that is not a table with string keys raises `the action map must be a JSON object.`, and an action that is not one raises `an action must be a JSON object.`. Unknown keys raise `Unknown key '<key>' in the action map.` or `Unknown key '<key>' in an action.`, a missing list raises `The action map needs a list of actions.`, an action without a name or type raises `An action needs a name and a type.`, bad types raise `Invalid action type: <type>`, a binding list that is not a list raises `The <list> of an action must be a list of bindings.`, bad bindings raise `Invalid input binding: <binding>` and a name used by two actions raises `Duplicate action name: <name>`. An empty Lua table counts as an empty list.
 
 ```lua
 local input = require('haylen.input')
@@ -736,7 +736,7 @@ input.loadActions('input.json')
 
 ### input.setPressThreshold(threshold)
 
-Sets the value at which every action counts as down, 0.5 by default. A lower threshold makes light trigger pulls and small stick movements press actions.
+Sets the value at which every action counts as down, above 0 and at most 1, 0.5 by default. A lower threshold makes light trigger pulls and small stick movements press actions. Any other value raises `The press threshold must be above 0 and at most 1.` and keeps the current threshold.
 
 ```lua
 local input = require('haylen.input')
@@ -985,6 +985,10 @@ scene.push({
 | `gamepad index out of range` | A gamepad index is outside 1 to 4. It comes inside a bad argument error. |
 | `expected left or right` | `input.gamepadStick()` received another side. It comes inside a bad argument error. |
 | `Unknown option '<key>'.` | `input.setGestureSettings()` received an unknown field. |
+| `The gamepad dead zone must be at least 0 and below 1.` | `input.setDeadzone()` received a value outside that range. |
+| `The press threshold must be above 0 and at most 1.` | `input.setPressThreshold()` received a value outside that range. |
+| `the action map must be a JSON object.` | An action map document is not a table with string keys. |
+| `an action must be a JSON object.` | An entry of the `actions` list is not a table with string keys. |
 | `Unknown key '<key>' in the action map.` | An action map document has a key other than `actions`. |
 | `Unknown key '<key>' in an action.` | An action has a key other than `name`, `type` and the binding lists. |
 | `The action map needs a list of actions.` | An action map document has no `actions` list. |
@@ -994,3 +998,4 @@ scene.push({
 | `Invalid input binding: <binding>` | A binding is not a string in one of the formats in [Action map](#action-map). |
 | `The <type> action <name> does not read <list>.` | An action has a binding list its type never reads. |
 | `The vector action <name> takes only sticks in bindings, not <binding>.` | The `bindings` of a vector action hold something other than a stick. |
+| `Duplicate action name: <name>` | Two actions of an action map document have the same name. |

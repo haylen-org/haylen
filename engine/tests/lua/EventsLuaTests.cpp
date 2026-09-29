@@ -42,6 +42,11 @@ TEST(SignalLuaTest, ConnectsWithPriorityOnceOwnersAndDeferral) {
     EXPECT_EQ(fixture.lua("local list = signal.list() return #list .. ' ' .. list[1].name .. ' ' .. list[1].listeners .. ' ' .. list[1].emissions .. ' ' .. list[1].stale"), "1 hit 2 4 0");
     EXPECT_NE(fixture.lua("hit:connect(function() end, {weak = true})").find("Unknown option 'weak'"), std::string::npos);
     EXPECT_NE(fixture.lua("hit:connect(function() end, {owner = 5})").find("An owner must be a table or a userdata"), std::string::npos);
+
+    // A deferred once listener runs its one call at the end of the frame.
+    fixture.runLua("calls = {} hit:connect(function(value) calls[#calls + 1] = 'deferred once:' .. value end, {once = true, deferred = true}) hit:emit(6) hit:emit(7)");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return table.concat(calls, ' ')"), "first:6 normal:6 first:7 normal:7 deferred once:6");
 }
 
 TEST(EventsLuaTest, PublishesAndSubscribesByName) {
@@ -253,6 +258,20 @@ TEST(AutoloadTest, LoadsModulesBeforeMainAndRunsTheirCallbacks) {
     fixture.runLua("stopLog = require('state.player-data').log");
     fixture.engine().stop();
     EXPECT_EQ(fixture.lua("return stopLog[#stopLog]"), "stop");
+}
+
+TEST(AutoloadTest, StopsEveryAutoloadWhenOneFails) {
+    // clang-format off
+    test::EngineFixture fixture({
+        {"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "autoload": ["first", "second"]})"},
+        {"source/first.lua", "return {stop = function() stopped = 'first' end}"},
+        {"source/second.lua", "return {stop = function() error('second cannot stop') end}"},
+    });
+    // clang-format on
+    fixture.engine().stop();
+    EXPECT_EQ(fixture.lua("return stopped"), "first");
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+    EXPECT_NE(std::string_view(fixture.engine().getError()->what()).find("second cannot stop"), std::string::npos);
 }
 
 TEST(AutoloadTest, ReportsModulesThatAreNotTables) {

@@ -311,7 +311,7 @@ scene.push({
 
 ### debug.recentLog(count)
 
-Returns up to `count` of the most recent log lines, oldest first, or every kept line when `count` is omitted. The engine keeps the last 200 lines logged by the app, the engine and Varn from any thread. Every line is a table with these fields.
+Returns up to `count` of the most recent log lines, oldest first, or every kept line when `count` is omitted. A negative `count` raises a bad argument error with `expected a non-negative integer`. The engine keeps the last 200 lines logged by the app, the engine and Varn from any thread. Every line is a table with these fields.
 
 | Field | Type | Meaning |
 | --- | --- | --- |

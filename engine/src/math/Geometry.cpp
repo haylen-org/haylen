@@ -4,6 +4,8 @@
 #include <cmath>
 #include <numeric>
 
+#include "haylen/math/Math.hpp"
+
 namespace haylen::math {
 
 bool Geometry::pointInTriangle(Vec2 point, Vec2 a, Vec2 b, Vec2 c) noexcept {
@@ -96,6 +98,7 @@ bool Geometry::isConvex(std::span<const Vec2> polygon) noexcept {
     }
 
     float winding = 0.0F;
+    float turning = 0.0F;
     for (std::size_t index = 0; index < polygon.size(); ++index) {
         const Vec2 a = polygon[index];
         const Vec2 b = polygon[(index + 1) % polygon.size()];
@@ -108,8 +111,11 @@ bool Geometry::isConvex(std::span<const Vec2> polygon) noexcept {
             return false;
         }
         winding = turn;
+        turning += std::atan2(turn, Vec2::dot(b - a, c - b));
     }
-    return winding != 0.0F;
+
+    // Turning one way at every vertex adds up to a whole number of turns, and a star such as a pentagram goes around more than once.
+    return winding != 0.0F && std::fabs(turning) < Math::kTau * 1.5F;
 }
 
 Rect Geometry::bounds(std::span<const Vec2> points) noexcept {
@@ -127,7 +133,9 @@ Rect Geometry::bounds(std::span<const Vec2> points) noexcept {
 }
 
 std::vector<Vec2> Geometry::convexHull(std::span<const Vec2> points) {
+    // Points with a NaN coordinate have no place in the order, so they are left out.
     std::vector<Vec2> sorted(points.begin(), points.end());
+    std::erase_if(sorted, [](Vec2 point) { return std::isnan(point.x) || std::isnan(point.y); });
     // clang-format off
     std::sort(sorted.begin(), sorted.end(), [](Vec2 lhs, Vec2 rhs) {
         return lhs.x < rhs.x || (lhs.x == rhs.x && lhs.y < rhs.y);
@@ -174,10 +182,10 @@ std::vector<std::uint32_t> Geometry::triangulate(std::span<const Vec2> polygon) 
     }
     triangles.reserve((polygon.size() - 2) * 3);
 
-    // Ear clipping removes one convex vertex whose triangle contains no other vertex per iteration.
-    std::size_t guard = remaining.size() * remaining.size();
+    // Ear clipping removes one convex vertex whose triangle contains no other vertex per iteration, and it stops once a whole pass finds no ear, as happens on an outline that crosses itself.
+    std::size_t misses = 0;
     std::size_t index = 0;
-    while (remaining.size() > 3 && guard-- > 0) {
+    while (remaining.size() > 3 && misses < remaining.size()) {
         const std::size_t count = remaining.size();
         const std::uint32_t previous = remaining[(index + count - 1) % count];
         const std::uint32_t current = remaining[index % count];
@@ -196,12 +204,14 @@ std::vector<std::uint32_t> Geometry::triangulate(std::span<const Vec2> polygon) 
 
         if (!ear) {
             index = (index + 1) % count;
+            ++misses;
             continue;
         }
 
         triangles.insert(triangles.end(), {previous, current, next});
         remaining.erase(remaining.begin() + static_cast<std::ptrdiff_t>(index % count));
         index = index % remaining.size();
+        misses = 0;
     }
 
     if (remaining.size() == 3) {

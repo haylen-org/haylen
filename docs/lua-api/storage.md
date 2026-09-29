@@ -91,7 +91,7 @@ print('first launch:', firstLaunch)
 
 ### storage.remove(path)
 
-Deletes a file and returns `true` when it existed and was removed, or `false` otherwise.
+Deletes the file at `path`, or the folder at `path` when it is empty, and returns `true` when something was removed. A missing path or a folder that still holds files returns `false` and removes nothing.
 
 ```lua
 local storage = require('haylen.storage')
@@ -107,7 +107,7 @@ deleteSave()
 
 ### storage.list(directory)
 
-Returns a sorted sequence with the paths of every file inside `directory` and its subfolders. Paths are relative to the storage folder, not to `directory`, so they can be passed straight to the other functions. Leave `directory` out to list every file of the app. A missing folder returns an empty table.
+Returns a sorted sequence with the paths of every file inside `directory` and its subfolders. Paths are relative to the storage folder, not to `directory`, so they can be passed straight to the other functions. Leave `directory` out to list every file of the app. A missing folder returns an empty table. Files with the `.tmp` extension are left out, because writes use them as temporary files.
 
 ```lua
 local storage = require('haylen.storage')
@@ -275,6 +275,6 @@ scene.push({
 | --- | --- |
 | `A save slot name uses 1 to 64 letters, digits, dashes or underscores: <slot>` | The slot name is empty, too long or has other characters. |
 | `A save summary must be a JSON object.` | The summary is not a table with string keys. |
-| `The save slot <slot> is damaged.` | The slot file is not valid JSON or misses its data, summary or time. |
+| `The save slot <slot> is damaged.` | The slot file is not valid JSON, misses its data, summary or time, or holds a summary that is not an object or a time that is not an integer. |
 | `A <type> cannot be converted to JSON.` | The data or summary holds a function, userdata or thread. |
 | `Value is nested too deeply to convert to JSON.` | The data or summary nests tables deeper than 128 levels or contains itself. |

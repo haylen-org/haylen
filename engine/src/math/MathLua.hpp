@@ -83,7 +83,7 @@ class MathLua final {
     static int noiseWorley(lua_State* L);
     static int noiseWarp(lua_State* L);
 
-    [[nodiscard]] static float clampValue(float value, float minimum, float maximum);
+    static int clampValue(lua_State* L);
     [[nodiscard]] static bool approximatelyValue(float lhs, float rhs, std::optional<float> epsilon);
 
     static int circleIntersects(lua_State* L);

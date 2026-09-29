@@ -9,7 +9,6 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/lua/Runtime.hpp"
-#include "haylen/lua/Stack.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "input/InputLua.hpp"
 #include "lua/Owners.hpp"

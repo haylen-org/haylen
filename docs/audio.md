@@ -44,7 +44,8 @@ audio.stop(crackle, 0.5)
 The options are `bus`, `volume`, `pitch`, `pitchVariation`, `pan`, `loop`, `fadeIn`, `startAt`, the world position `x` and `y`, the `processMode` that decides whether the voice plays while the game is paused, and the `effects` that process it. After it starts, a voice is controlled by id with `audio.stop(voice, fadeOut)`, `audio.pause`, `audio.resume`, `audio.setVolume`, `audio.setPitch`, `audio.setPan`, `audio.setPosition`, `audio.addEffect` and `audio.removeEffect`, and read with `audio.active`, `audio.paused`, `audio.cursor`, `audio.pitch`, `audio.processMode` and `audio.effects`.
 
 - A voice id stays safe after the voice ends. Calls with the id of a finished voice do nothing, and `audio.active` returns `false`, so an app never has to check a voice before stopping it.
-- A paused voice keeps its cursor and still counts as active.
+- A paused voice keeps its cursor and still counts as active, while a stopped voice stops counting as active at once, even while it fades out.
+- Volumes, pitches, pans and positions must be finite numbers, and pitches above 0, so a stray `0 / 0` raises an error instead of silencing a bus and its effects for good.
 - The engine releases finished voices once per frame, and `audio.voiceCount()` counts a voice that just ended until then.
 - At most 128 voices play at once. When the limit is reached, a new voice stops the oldest voice that is not music.
 - `audio.stopAll(fadeOut)` stops every voice, music included.
@@ -113,7 +114,7 @@ audio.resume(music)
 
 - `audio.playMusic` returns the voice id of the track, which every voice function takes: `audio.pause` and `audio.resume` pause the music alone, and `audio.setVolume`, `audio.addEffect` and `audio.stop` reach the track.
 - Asking for the track that is already playing keeps it going on the same voice, paused or not, and only changes its volume, so a scene can call `playMusic` in `enter` without restarting the music every time the player returns to it.
-- A paused track that the next one replaces stops without sounding again, and the next track plays.
+- A paused track that the next one replaces stops without sounding again, and the next track plays. A track that cannot play raises an error and leaves the current track playing.
 - `audio.stopMusic(fadeOut)` fades the track out over 1 second by default, and `audio.stopMusic(0)` stops it at once.
 - `audio.music()` returns the sound that is playing or paused, or `nil`, and a track stopped through its voice counts as over.
 - The music voice is the last one the voice limit stops.
@@ -214,7 +215,7 @@ audio.play(assets.load('sfx/shout.wav'), {effects = {echo}})
 - Effects on one bus or voice run in the order they were added, and `audio.busEffects(bus)` and `audio.effects(voice)` list them in that order.
 - Parameters are properties that change at any time, such as `muffle.cutoff = 400`. The audio thread applies them from the next block it mixes, and tweens animate them natively, without running Lua on every frame.
 - An effect processes one bus or one voice at a time, and adding it to a second one raises an error until it leaves the first. Effects that many sounds share belong on a bus, and each voice that needs its own effect gets its own.
-- A voice lets its echo and its reverb ring out after it ends, for as long as they take to fall silent, and the effect is free for another voice afterwards.
+- A voice lets its echo and its reverb ring out after it ends, for as long as they take to fall silent, and the effect is free for another voice afterwards. An effect that moves to another bus or voice starts there without the echoes or reverb it held before.
 
 ```lua
 local audio = require('haylen.audio')
