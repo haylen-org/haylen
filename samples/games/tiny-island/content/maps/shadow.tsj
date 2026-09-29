@@ -1,0 +1,19 @@
+{
+  "type": "tileset",
+  "version": "1.10",
+  "tiledversion": "1.12.2",
+  "name": "shadow",
+  "image": "../tiny_swords/terrain/tileset/shadow.png",
+  "imagewidth": 192,
+  "imageheight": 192,
+  "tilewidth": 192,
+  "tileheight": 192,
+  "tilecount": 1,
+  "columns": 1,
+  "margin": 0,
+  "spacing": 0,
+  "tileoffset": {
+    "x": -64,
+    "y": 64
+  }
+}

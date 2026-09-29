@@ -1,0 +1,17 @@
+{
+    "actions": [
+        {
+            "name": "move",
+            "type": "vector",
+            "up": ["key:w", "key:up", "button:dpad_up"],
+            "down": ["key:s", "key:down", "button:dpad_down"],
+            "left": ["key:a", "key:left", "button:dpad_left"],
+            "right": ["key:d", "key:right", "button:dpad_right"],
+            "bindings": ["stick:left", "virtual_stick:move"]
+        },
+        {"name": "attack", "type": "button", "bindings": ["key:space", "mouse:left", "button:south", "virtual:attack"]},
+        {"name": "special", "type": "button", "bindings": ["key:left_shift", "mouse:right", "button:west", "virtual:special"]},
+        {"name": "interact", "type": "button", "bindings": ["key:e", "button:east", "virtual:interact"]},
+        {"name": "pause", "type": "button", "bindings": ["key:escape", "button:start"]}
+    ]
+}

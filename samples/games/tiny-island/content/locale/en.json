@@ -1,0 +1,97 @@
+{
+    "title": "Tiny Island",
+    "menu": {
+        "play": "Play",
+        "settings": "Settings",
+        "quit": "Quit",
+        "best": {
+            "zero": "No record yet",
+            "one": "Best: {count} day",
+            "other": "Best: {count} days"
+        }
+    },
+    "classes": {
+        "title": "Choose your survivor",
+        "start": "Start",
+        "back": "Back",
+        "health": "Health",
+        "speed": "Speed",
+        "damage": "Damage",
+        "range": "Range",
+        "chop": "Chopping",
+        "carry": "Carry",
+        "warrior": {
+            "name": "Warrior",
+            "special": "Hold the guard to block most of the damage."
+        },
+        "archer": {
+            "name": "Archer",
+            "special": "Arrows pierce an enemy. Special shoots a volley."
+        },
+        "lancer": {
+            "name": "Lancer",
+            "special": "Thrusts push enemies away. Special charges ahead."
+        },
+        "monk": {
+            "name": "Monk",
+            "special": "Strikes in a circle. Special heals yourself."
+        },
+        "pawn": {
+            "name": "Pawn",
+            "special": "Chops trees much faster. Special sprints."
+        }
+    },
+    "loading": {
+        "title": "Sailing to the island..."
+    },
+    "hud": {
+        "day": "Day {day}",
+        "fireOut": "The fire went out!",
+        "nightFalls": "Night falls. Stay in the light!",
+        "morning": "The sun rises. The raiders burn!",
+        "special": "Special",
+        "raiders": {
+            "one": "{count} raider",
+            "other": "{count} raiders"
+        },
+        "next": {
+            "dawn": "Day in {time}",
+            "day": "Dusk in {time}",
+            "dusk": "Night in {time}",
+            "night": "Dawn in {time}"
+        }
+    },
+    "pause": {
+        "title": "Paused",
+        "resume": "Resume",
+        "settings": "Settings",
+        "quit": "Main menu"
+    },
+    "settings": {
+        "title": "Settings",
+        "music": "Music",
+        "effects": "Effects",
+        "language": "Language",
+        "fullscreen": "Fullscreen",
+        "touch": "Touch controls",
+        "device": "Device info",
+        "google": "Sign in with Google",
+        "back": "Back",
+        "signedIn": "Signed in as {name}"
+    },
+    "gameOver": {
+        "title": "The island fell",
+        "days": {
+            "one": "You survived {count} day",
+            "other": "You survived {count} days"
+        },
+        "kills": {
+            "zero": "No raiders defeated",
+            "one": "{count} raider defeated",
+            "other": "{count} raiders defeated"
+        },
+        "record": "New record!",
+        "retry": "Try again",
+        "menu": "Main menu"
+    }
+}

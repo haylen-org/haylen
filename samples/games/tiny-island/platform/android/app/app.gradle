@@ -1,0 +1,15 @@
+// Tiny Island answers auth.google.signIn with Credential Manager, registered by its own Application class.
+// The web client id of the game's Google Cloud project comes from -PgoogleServerClientId, and the handler explains how to set it when it is missing.
+android {
+    buildFeatures.resValues = true
+    defaultConfig {
+        manifestPlaceholders.haylenApplication = "dev.haylen.tinyisland.TinyIslandApplication"
+        resValue "string", "google_server_client_id", (findProperty("googleServerClientId") ?: "").toString()
+    }
+}
+
+dependencies {
+    implementation "androidx.credentials:credentials:1.6.0"
+    implementation "androidx.credentials:credentials-play-services-auth:1.6.0"
+    implementation "com.google.android.libraries.identity.googleid:googleid:1.2.1"
+}

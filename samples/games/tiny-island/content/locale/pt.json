@@ -1,0 +1,97 @@
+{
+    "title": "Tiny Island",
+    "menu": {
+        "play": "Jogar",
+        "settings": "Configurações",
+        "quit": "Sair",
+        "best": {
+            "zero": "Nenhum recorde ainda",
+            "one": "Recorde: {count} dia",
+            "other": "Recorde: {count} dias"
+        }
+    },
+    "classes": {
+        "title": "Escolha seu sobrevivente",
+        "start": "Começar",
+        "back": "Voltar",
+        "health": "Vida",
+        "speed": "Velocidade",
+        "damage": "Dano",
+        "range": "Alcance",
+        "chop": "Corte",
+        "carry": "Carga",
+        "warrior": {
+            "name": "Guerreiro",
+            "special": "Segure a guarda para bloquear quase todo o dano."
+        },
+        "archer": {
+            "name": "Arqueiro",
+            "special": "Flechas atravessam um inimigo. O especial dispara uma rajada."
+        },
+        "lancer": {
+            "name": "Lanceiro",
+            "special": "Estocadas empurram os inimigos. O especial avança com tudo."
+        },
+        "monk": {
+            "name": "Monge",
+            "special": "Ataca em círculo. O especial cura você."
+        },
+        "pawn": {
+            "name": "Peão",
+            "special": "Corta árvores muito mais rápido. O especial dá uma corrida."
+        }
+    },
+    "loading": {
+        "title": "Navegando até a ilha..."
+    },
+    "hud": {
+        "day": "Dia {day}",
+        "fireOut": "A fogueira apagou!",
+        "nightFalls": "A noite chegou. Fique na luz!",
+        "morning": "O sol nasceu. Os invasores queimam!",
+        "special": "Especial",
+        "raiders": {
+            "one": "{count} invasor",
+            "other": "{count} invasores"
+        },
+        "next": {
+            "dawn": "Dia em {time}",
+            "day": "Entardecer em {time}",
+            "dusk": "Noite em {time}",
+            "night": "Amanhecer em {time}"
+        }
+    },
+    "pause": {
+        "title": "Pausado",
+        "resume": "Continuar",
+        "settings": "Configurações",
+        "quit": "Menu principal"
+    },
+    "settings": {
+        "title": "Configurações",
+        "music": "Música",
+        "effects": "Efeitos",
+        "language": "Idioma",
+        "fullscreen": "Tela cheia",
+        "touch": "Controles de toque",
+        "device": "Dados do aparelho",
+        "google": "Entrar com Google",
+        "back": "Voltar",
+        "signedIn": "Conectado como {name}"
+    },
+    "gameOver": {
+        "title": "A ilha caiu",
+        "days": {
+            "one": "Você sobreviveu {count} dia",
+            "other": "Você sobreviveu {count} dias"
+        },
+        "kills": {
+            "zero": "Nenhum invasor derrotado",
+            "one": "{count} invasor derrotado",
+            "other": "{count} invasores derrotados"
+        },
+        "record": "Novo recorde!",
+        "retry": "Tentar de novo",
+        "menu": "Menu principal"
+    }
+}

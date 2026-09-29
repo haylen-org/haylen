@@ -1,0 +1,22 @@
+{
+    "name": "Tiny Island",
+    "identifier": "dev.haylen.tinyisland",
+    "version": "1.0.0",
+    "orientation": "landscape",
+    "window": {
+        "title": "Tiny Island",
+        "width": 1280,
+        "height": 720,
+        "resizable": true,
+        "highDpi": true
+    },
+    "design": {
+        "width": 1920,
+        "height": 1080,
+        "scaling": "expand"
+    },
+    "lifecycle": {
+        "pauseOnFocusLoss": true
+    },
+    "clearColor": "#FF47ABA9"
+}

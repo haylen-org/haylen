@@ -1,0 +1,15 @@
+{
+    "texture": "particle.png",
+    "rate": 0,
+    "maxParticles": 64,
+    "lifetime": [0.35, 0.65],
+    "speed": [140, 260],
+    "direction": -1.5708,
+    "spread": 2.4,
+    "gravity": [0, 900],
+    "startSize": [6, 10],
+    "endSize": 3,
+    "colors": ["#FFC98B4F", "#00996033"],
+    "shape": "point",
+    "layer": 7
+}

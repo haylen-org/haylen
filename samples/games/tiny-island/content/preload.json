@@ -1,0 +1,24 @@
+{
+    "groups": {
+        "boot": ["audio/ui/", "tiny_swords/ui/sliced/", "tiny_swords/ui/icons/", "tiny_swords/ui/bars/", "tiny_swords/ui/human_avatars/"],
+        "menu": [
+            "maps/island.tmj",
+            "tiny_swords/units/blue/",
+            "tiny_swords/terrain/resources/wood/",
+            "effects/flames.particles",
+            {"path": "audio/music/menu.mp3", "options": {"stream": true}}
+        ],
+        "gameplay": [
+            "tiny_swords/units/red/",
+            "tiny_swords/units/black/",
+            "tiny_swords/effects/",
+            "effects/",
+            "audio/effects/",
+            "audio/jingles/",
+            "audio/ambient/fire_loop.ogg",
+            {"path": "audio/ambient/night.ogg", "options": {"stream": true}},
+            {"path": "audio/music/day.mp3", "options": {"stream": true}},
+            {"path": "audio/music/game_over.mp3", "options": {"stream": true}}
+        ]
+    }
+}

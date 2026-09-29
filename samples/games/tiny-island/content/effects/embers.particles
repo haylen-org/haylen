@@ -1,0 +1,18 @@
+{
+    "texture": "particle.png",
+    "rate": 22,
+    "maxParticles": 96,
+    "lifetime": [0.8, 1.6],
+    "speed": [20, 70],
+    "direction": -1.5708,
+    "spread": 0.9,
+    "gravity": [0, -30],
+    "damping": 0.4,
+    "startSize": [6, 11],
+    "endSize": 1,
+    "colors": ["#FFFFE08A", "#FFFF8A2A", "#00FF3D00"],
+    "shape": "circle",
+    "shapeSize": [22, 0],
+    "blend": "additive",
+    "layer": 7
+}

@@ -1,0 +1,17 @@
+{
+    "texture": "particle.png",
+    "rate": 0,
+    "maxParticles": 64,
+    "lifetime": [0.6, 1.1],
+    "speed": [30, 80],
+    "direction": -1.5708,
+    "spread": 1.2,
+    "gravity": [0, -80],
+    "startSize": [8, 14],
+    "endSize": 2,
+    "colors": ["#FFC8FFA0", "#0050FF40"],
+    "shape": "ring",
+    "shapeSize": [34, 0],
+    "blend": "additive",
+    "layer": 7
+}
