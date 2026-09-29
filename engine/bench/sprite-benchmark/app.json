@@ -1,0 +1,18 @@
+{
+    "name": "Sprite Benchmark",
+    "identifier": "dev.haylen.spritebenchmark",
+    "version": "1.0.0",
+    "window": {
+        "title": "Haylen sprite benchmark",
+        "width": 1280,
+        "height": 720,
+        "highDpi": true,
+        "vsync": false
+    },
+    "design": {
+        "width": 1920,
+        "height": 1080,
+        "scaling": "fit"
+    },
+    "clearColor": "#FF101218"
+}
