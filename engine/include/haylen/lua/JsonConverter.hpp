@@ -1,0 +1,42 @@
+#pragma once
+
+#include <lua.hpp>
+
+#include <string>
+
+#include "haylen/core/Json.hpp"
+#include "haylen/lua/Converter.hpp"
+
+namespace haylen::lua {
+
+// Converts between JSON and plain Lua values.
+class JsonConverter final {
+  public:
+    // Pushes JSON as plain Lua values: objects become tables with string keys and arrays become sequences. Throws when the value cannot be represented or, like read, when it is nested more than 128 levels deep, which files such as saves could otherwise use to exhaust the native stack.
+    static void push(lua_State* L, const core::Json& value);
+
+    // Converts the Lua value at index to JSON without calling metamethods. Sequences become arrays and any other table becomes an object, so an empty table becomes an empty object, as in Varn's json module. UI properties and action maps read an empty object as an empty list. Throws std::invalid_argument for functions, userdata, threads, unsupported keys and cycles.
+    [[nodiscard]] static core::Json read(lua_State* L, int index);
+
+  private:
+    static constexpr int kMaxDepth = 128;
+
+    [[nodiscard]] static bool isSequence(lua_State* L, int table);
+    [[nodiscard]] static std::string objectKey(lua_State* L, int index);
+    [[nodiscard]] static core::Json convert(lua_State* L, int index, int depth);
+    static void pushConverted(lua_State* L, const core::Json& value, int depth);
+};
+
+template <> struct Converter<core::Json> {
+    static void push(lua_State* L, const core::Json& value) {
+        JsonConverter::push(L, value);
+    }
+    static core::Json read(lua_State* L, int index) {
+        return JsonConverter::read(L, index);
+    }
+    static bool is(lua_State* L, int index) {
+        return !lua_isnone(L, index);
+    }
+};
+
+} // namespace haylen::lua

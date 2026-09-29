@@ -1,0 +1,138 @@
+#include "2d/graphics/TextPainter.hpp"
+
+#include <cmath>
+#include <utility>
+
+#include "graphics/TextureResource.hpp"
+
+namespace haylen::graphics2d {
+
+TextPainter::TextPainter(graphics::Texture whiteTexture) : white(std::move(whiteTexture)) {}
+
+void TextPainter::add(Program program, const graphics::Texture& texture, const GpuInstance& instance) {
+    if (batches.empty() || batches.back().program != program || batches.back().texture != texture) {
+        batches.push_back({.program = program, .texture = texture});
+    }
+    batches.back().instances.push_back(instance);
+}
+
+// Rotated text turns as one piece around the position, so every glyph turns around its own corner at a rotated place. Shadows are the same glyphs drawn first, with an offset, the shadow color and the blur as softness, and a bitmap shadow is the silhouette of its glyph.
+void TextPainter::paintText(text::Font& font, const text::TextLayout& layout, math::Vec2 position, const text::TextStyle& style) {
+    const bool field = font.isDistanceField();
+    const Program program = field ? Program::Text : Program::Sprite;
+    const float outline = font.toDistance(style.outlineWidth, style.size);
+    const float cosine = std::cos(style.rotation);
+    const float sine = std::sin(style.rotation);
+    const auto turn = [&](math::Vec2 local) { return position + math::Vec2{local.x * cosine - local.y * sine, local.x * sine + local.y * cosine}; };
+
+    if (style.shadowColor.a > 0.0F) {
+        const math::Color flash = field ? style.shadowColor.withAlpha(outline > 0.0F ? style.shadowColor.a : 0.0F) : style.shadowColor.withAlpha(1.0F);
+        const GpuInstance::TextParameters shadow{.outline = outline, .softness = font.toDistance(style.shadowBlur, style.size)};
+        for (const text::GlyphQuad& quad : layout.quads) {
+            const graphics::Texture& page = font.getPage(quad.page);
+            add(program, page, GpuInstance::makeGlyph(*page.getResource(), {.position = turn(quad.position) + style.shadowOffset, .size = quad.size, .source = quad.source, .pivot = {}, .rotation = style.rotation, .color = style.shadowColor, .flash = flash}, shadow));
+        }
+    }
+
+    const math::Color flash = field && outline > 0.0F ? style.outlineColor : math::Color::transparent();
+    for (const text::GlyphQuad& quad : layout.quads) {
+        const graphics::Texture& page = font.getPage(quad.page);
+        add(program, page, GpuInstance::makeGlyph(*page.getResource(), {.position = turn(quad.position), .size = quad.size, .source = quad.source, .pivot = {}, .rotation = style.rotation, .color = style.color, .flash = flash}, {.outline = outline}));
+    }
+}
+
+math::Vec2 TextPainter::place(math::Vec2 local) const noexcept {
+    return blockPosition + local * blockScale;
+}
+
+SpriteInstance TextPainter::placeGlyph(const text::RichTextLayout::Glyph& glyph, math::Vec2 offset, math::Color color, math::Color flash) const noexcept {
+    const float above = glyph.baseline - glyph.position.y;
+    return {
+        .position = place(math::Vec2{glyph.position.x, glyph.baseline} + offset),
+        .size = glyph.size * blockScale,
+        .source = glyph.source,
+        .pivot = {0.0F, glyph.size.y > 0.0F ? above / glyph.size.y : 0.0F},
+        .color = color * blockTint,
+        .flash = flash * blockTint,
+    };
+}
+
+// Rich text draws in layers: backgrounds, glows, shadows, images, glyphs, and then the lines over the text.
+void TextPainter::paintRichText(const text::RichTextLayout& layout, math::Vec2 position, math::Vec2 scale, math::Color tint) {
+    blockPosition = position;
+    blockScale = scale;
+    blockTint = tint;
+    paintBoxes(layout, true);
+    paintGlows(layout);
+    paintShadows(layout);
+    for (const text::RichTextLayout::Image& image : layout.images) {
+        if (image.visible) {
+            add(Program::Sprite, image.texture, GpuInstance::make(*image.texture.getResource(), {.position = place(image.rect.getMin()), .size = image.rect.getSize() * scale, .source = image.source, .pivot = {}, .color = image.color * tint}));
+        }
+    }
+    paintGlyphs(layout);
+    paintBoxes(layout, false);
+}
+
+void TextPainter::paintBoxes(const text::RichTextLayout& layout, bool underText) {
+    using Kind = text::RichTextLayout::Box::Kind;
+    for (const text::RichTextLayout::Box& box : layout.boxes) {
+        const bool under = box.kind == Kind::Background || box.kind == Kind::CellBackground;
+        if (box.visible && under == underText && !box.rect.isEmpty()) {
+            add(Program::Sprite, white, GpuInstance::make(*white.getResource(), {.position = place(box.rect.getMin()), .size = box.rect.getSize() * blockScale, .pivot = {}, .color = box.color * blockTint}));
+        }
+    }
+}
+
+// A glow is the glyph grown past its outline by half the glow width and softened over the other half, so it fades out a glow width away from the edge. Only distance field fonts glow.
+void TextPainter::paintGlows(const text::RichTextLayout& layout) {
+    for (const text::RichTextLayout::Glyph& glyph : layout.glyphs) {
+        const text::RichTextLayout::Look& look = layout.looks[glyph.look];
+        if (!glyph.visible || !look.glow || !look.font->isDistanceField()) {
+            continue;
+        }
+        const float half = look.glow->width * 0.5F;
+        const GpuInstance::TextParameters glow{.weight = look.font->toDistance(look.weight + look.outlineWidth + half, look.size), .skew = look.skew, .softness = look.font->toDistance(half, look.size)};
+        const graphics::Texture& page = look.font->getPage(glyph.page);
+        const math::Color color = look.glow->color.withAlpha(look.glow->color.a * glyph.color.a);
+        add(Program::Text, page, GpuInstance::makeGlyph(*page.getResource(), placeGlyph(glyph, {}, color, math::Color::transparent()), glow));
+    }
+}
+
+void TextPainter::paintShadows(const text::RichTextLayout& layout) {
+    for (const text::RichTextLayout::Glyph& glyph : layout.glyphs) {
+        const text::RichTextLayout::Look& look = layout.looks[glyph.look];
+        if (!glyph.visible || !look.shadow) {
+            continue;
+        }
+        const bool field = look.font->isDistanceField();
+        const math::Color color = look.shadow->color.withAlpha(look.shadow->color.a * glyph.color.a);
+        const float outline = look.font->toDistance(look.outlineWidth, look.size);
+        const math::Color flash = field ? color.withAlpha(outline > 0.0F ? color.a : 0.0F) : color.withAlpha(1.0F);
+        const GpuInstance::TextParameters shadow{.outline = outline, .weight = look.font->toDistance(look.weight, look.size), .skew = look.skew, .softness = look.font->toDistance(look.shadow->blur, look.size)};
+        const graphics::Texture& page = look.font->getPage(glyph.page);
+        add(field ? Program::Text : Program::Sprite, page, GpuInstance::makeGlyph(*page.getResource(), placeGlyph(glyph, look.shadow->offset, color, flash), shadow));
+    }
+}
+
+// A synthetic bold bitmap glyph draws a second copy a native pixel to the right.
+void TextPainter::paintGlyphs(const text::RichTextLayout& layout) {
+    for (const text::RichTextLayout::Glyph& glyph : layout.glyphs) {
+        if (!glyph.visible) {
+            continue;
+        }
+        const text::RichTextLayout::Look& look = layout.looks[glyph.look];
+        const bool field = look.font->isDistanceField();
+        const float outline = look.font->toDistance(look.outlineWidth, look.size);
+        const math::Color flash = field && outline > 0.0F ? look.outlineColor.withAlpha(look.outlineColor.a * glyph.color.a) : math::Color::transparent();
+        const GpuInstance::TextParameters parameters{.outline = outline, .weight = look.font->toDistance(look.weight, look.size), .skew = look.skew};
+        const graphics::Texture& page = look.font->getPage(glyph.page);
+        const Program program = field ? Program::Text : Program::Sprite;
+        add(program, page, GpuInstance::makeGlyph(*page.getResource(), placeGlyph(glyph, {}, glyph.color, flash), parameters));
+        if (look.emboldenOffset > 0.0F) {
+            add(program, page, GpuInstance::makeGlyph(*page.getResource(), placeGlyph(glyph, {look.emboldenOffset, 0.0F}, glyph.color, flash), parameters));
+        }
+    }
+}
+
+} // namespace haylen::graphics2d

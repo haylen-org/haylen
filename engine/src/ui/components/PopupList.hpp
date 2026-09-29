@@ -1,0 +1,24 @@
+#pragma once
+
+#include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include "ui/components/ChoiceItem.hpp"
+
+namespace haylen::ui {
+
+class Context;
+
+// The themed list that combos, menu buttons and context menus open in a popup, with one row per item for the pointer, the keyboard, gamepads and remotes.
+class PopupList final {
+  public:
+    // Draws the popup when it is open, where ImGui was told to place it, and returns the item picked this frame, which also closes it. The current item starts with the focus.
+    [[nodiscard]] static std::optional<std::string> draw(Context& context, std::string_view popup, const std::vector<ChoiceItem>& items, std::string_view current, float minimumWidth);
+
+  private:
+    [[nodiscard]] static float measureWidth(Context& context, const std::vector<ChoiceItem>& items);
+};
+
+} // namespace haylen::ui

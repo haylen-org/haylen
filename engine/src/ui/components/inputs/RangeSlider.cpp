@@ -1,0 +1,148 @@
+#include "ui/components/inputs/RangeSlider.hpp"
+
+#include <algorithm>
+#include <cmath>
+#include <optional>
+#include <string>
+
+#include <imgui.h>
+#include <imgui_internal.h>
+
+#include "haylen/ui/Context.hpp"
+#include "haylen/ui/FocusNavigator.hpp"
+#include "ui/ImGuiConverter.hpp"
+#include "ui/Surfaces.hpp"
+#include "ui/Typography.hpp"
+#include "ui/Widgets.hpp"
+
+namespace haylen::ui {
+
+void RangeSlider::readProperties(PropertyReader& reader) {
+    double lowest = minimum;
+    double highest = maximum;
+    reader.read("low", low);
+    reader.read("high", high);
+    reader.read("min", lowest);
+    reader.read("max", highest);
+    reader.read("step", step, 0.0);
+    reader.read("showValue", showValue);
+    reader.read("decimals", decimals, 0, 6);
+    if (lowest >= highest) {
+        reader.fail("min", "must be smaller than max");
+    }
+    if (low > high) {
+        reader.fail("low", "must not be greater than high");
+    }
+    minimum = lowest;
+    maximum = highest;
+    low = std::clamp(low, minimum, maximum);
+    high = std::clamp(high, low, maximum);
+}
+
+math::Vec2 RangeSlider::measureContent(Context& context, float availableWidth) {
+    return {std::min(availableWidth, 420.0F), context.getMetric(Theme::Metric::ControlHeight)};
+}
+
+void RangeSlider::render(Context& context, const math::Rect& bounds) {
+    const std::string range = Typography::formatNumber(low, decimals) + " - " + Typography::formatNumber(high, decimals);
+    const float label = showValue ? Typography::measure(context, Theme::Font::Body, Typography::formatNumber(maximum, decimals) + " - " + Typography::formatNumber(maximum, decimals)).x + context.getMetric(Theme::Metric::ItemSpacing) : 0.0F;
+    const math::Rect area{bounds.x, bounds.y, std::max(0.0F, bounds.width - label), bounds.height};
+    const float knob = context.getMetric(Theme::Metric::SliderKnobSize);
+    const float trackHeight = context.getMetric(Theme::Metric::SliderTrackHeight);
+    const math::Rect track{area.x + knob * 0.5F, std::floor(area.getCenter().y - trackHeight * 0.5F), std::max(0.0F, area.width - knob), trackHeight};
+
+    bool changed = follow(context, area, track);
+    const ImGuiID id = ImGui::GetItemID();
+    if (takeFocusRequest()) {
+        Widgets::focusItem(context);
+    }
+    if (GImGui->NavActivatePressedId == id) {
+        highActive = !highActive;
+    }
+    if (const std::optional<FocusDirection> direction = takeFocusDirection(context)) {
+        const double amount = (step > 0.0 ? step : (maximum - minimum) / kFocusSteps) * (direction == FocusDirection::Left ? -1.0 : 1.0);
+        double& moved = highActive ? high : low;
+        const double next = std::clamp(snap(moved + amount), highActive ? low : minimum, highActive ? maximum : high);
+        changed = changed || next != moved;
+        moved = next;
+    }
+
+    const math::Rect groove = track.inset(Surfaces::getPadding(context, Theme::Surface::Track));
+    Surfaces::draw(context, Theme::Surface::Track, track, context.getColor(Theme::Color::BorderStrong), std::nullopt, trackHeight * 0.5F);
+    const float from = toPosition(low, groove);
+    Surfaces::draw(context, Theme::Surface::TrackFill, {from, groove.y, toPosition(high, groove) - from, groove.height}, context.getColor(Theme::Color::Accent), std::nullopt, groove.height * 0.5F);
+    const bool ring = context.getFocus().isRingShown(id);
+    const bool pressed = GImGui->ActiveId == id;
+    drawKnob(context, area, toPosition(low, track), ring && !highActive, pressed && !highActive);
+    drawKnob(context, area, toPosition(high, track), ring && highActive, pressed && highActive);
+    if (showValue) {
+        Typography::drawAligned(context, Theme::Font::Body, {area.getRight(), bounds.y, label, bounds.height}, context.getColor(Theme::Color::TextMuted), range, Alignment::End);
+    }
+    if (changed) {
+        context.emit(*this, "change", {{"low", low}, {"high", high}});
+    }
+}
+
+double RangeSlider::snap(double candidate) const noexcept {
+    if (step <= 0.0) {
+        return std::clamp(candidate, minimum, maximum);
+    }
+    return std::clamp(minimum + std::round((candidate - minimum) / step) * step, minimum, maximum);
+}
+
+float RangeSlider::toPosition(double amount, const math::Rect& track) const noexcept {
+    return track.x + track.width * static_cast<float>((amount - minimum) / (maximum - minimum));
+}
+
+// The pointer grabs the knob nearer to where it presses and drags it up to the other knob, the way ImGui's own slider follows the mouse and touch.
+bool RangeSlider::follow(Context& context, const math::Rect& bounds, const math::Rect& track) {
+    ImGuiContext& state = *GImGui;
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    const ImGuiID id = ImGui::GetID("##range");
+    const ImRect box = ImGuiConverter::toImRect(bounds);
+    const bool shown = ImGui::ItemAdd(box, id);
+    context.getFocus().addTarget(id, bounds);
+    if (!shown) {
+        return false;
+    }
+
+    const float pointer = state.IO.MousePos.x;
+    if (ImGui::ItemHoverable(box, id, state.LastItemData.ItemFlags) && ImGui::IsMouseClicked(0, ImGuiInputFlags_None, id)) {
+        ImGui::SetKeyOwner(ImGuiKey_MouseLeft, id);
+        ImGui::SetActiveID(id, window);
+        if (context.getFocus().isFocusable()) {
+            ImGui::SetFocusID(id, window);
+        }
+        ImGui::FocusWindow(window);
+        const float toLow = std::fabs(pointer - toPosition(low, track));
+        const float toHigh = std::fabs(pointer - toPosition(high, track));
+        highActive = toHigh < toLow || (toHigh == toLow && pointer > toPosition(high, track));
+    }
+    Widgets::drawFocusRing(context, bounds, id, bounds.height * 0.5F);
+    if (state.ActiveId != id) {
+        return false;
+    }
+    if (!state.IO.MouseDown[0]) {
+        ImGui::ClearActiveID();
+        return false;
+    }
+
+    const double picked = snap(minimum + static_cast<double>(std::clamp((pointer - track.x) / std::max(1.0F, track.width), 0.0F, 1.0F)) * (maximum - minimum));
+    double& moved = highActive ? high : low;
+    const double next = std::clamp(picked, highActive ? low : minimum, highActive ? maximum : high);
+    const bool changed = next != moved;
+    moved = next;
+    return changed;
+}
+
+void RangeSlider::drawKnob(Context& context, const math::Rect& bounds, float x, bool active, bool pressed) const {
+    const float knob = context.getMetric(Theme::Metric::SliderKnobSize);
+    const math::Rect area{x - knob * 0.5F, std::floor(bounds.getCenter().y - knob * 0.5F), knob, knob};
+    const math::Color fill = context.getColor(Theme::Color::OnAccent);
+    Surfaces::draw(context, Theme::Surface::Knob, area, pressed ? math::Color{fill.r * 0.85F, fill.g * 0.85F, fill.b * 0.85F, fill.a} : fill, context.getColor(Theme::Color::Accent), knob * 0.5F);
+    if (active) {
+        ImGui::GetWindowDrawList()->AddCircle(ImGuiConverter::toImVec2(area.getCenter()), knob * 0.5F + 4.0F, ImGuiConverter::toImU32(context.getColor(Theme::Color::Focus)), 32, context.getMetric(Theme::Metric::FocusWidth));
+    }
+}
+
+} // namespace haylen::ui

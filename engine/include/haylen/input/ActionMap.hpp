@@ -1,0 +1,128 @@
+#pragma once
+
+#include <cstddef>
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include "haylen/core/Json.hpp"
+#include "haylen/input/GamepadAxis.hpp"
+#include "haylen/input/GamepadButton.hpp"
+#include "haylen/input/Key.hpp"
+#include "haylen/input/MouseButton.hpp"
+#include "haylen/math/Vec2.hpp"
+
+namespace haylen::input {
+
+class Input;
+class VirtualInput;
+
+// Maps named gameplay actions to devices in definition order. Buttons report edges, axes report [-1, 1] and vectors report a length up to 1.
+class ActionMap final {
+  public:
+    // One physical or virtual input written as "key:w", "mouse:left", "button:south", "axis:left_y-", "stick:left", "virtual:attack" or "virtual_stick:move".
+    struct Binding {
+        enum class Source : std::uint8_t {
+            Key,
+            MouseButton,
+            GamepadButton,
+            GamepadAxis,
+            GamepadStick,
+            VirtualButton,
+            VirtualStick,
+        };
+
+        Source source = Source::Key;
+        Key key = Key::Unknown;
+        MouseButton mouseButton = MouseButton::Left;
+        GamepadButton gamepadButton = GamepadButton::South;
+        GamepadAxis gamepadAxis = GamepadAxis::LeftX;
+        float direction = 1.0F;
+        bool rightStick = false;
+        std::string name;
+
+        [[nodiscard]] static std::optional<Binding> parse(std::string_view text);
+        [[nodiscard]] std::string toString() const;
+        [[nodiscard]] bool operator==(const Binding&) const = default;
+    };
+
+    // One action of an action map document, such as {"name": "jump", "type": "button", "bindings": ["key:space"]}.
+    struct Action {
+        enum class Type : std::uint8_t {
+            Button,
+            Axis,
+            Vector,
+        };
+
+        std::string name;
+        Type type = Type::Button;
+        std::vector<Binding> bindings;
+        std::vector<Binding> positive;
+        std::vector<Binding> negative;
+        std::vector<Binding> up;
+        std::vector<Binding> down;
+        std::vector<Binding> left;
+        std::vector<Binding> right;
+
+        [[nodiscard]] static Action fromJson(const core::Json& json);
+        [[nodiscard]] core::Json toJson() const;
+
+        // Resolves the type names "button", "axis" and "vector".
+        [[nodiscard]] static std::optional<Type> typeFromName(std::string_view text) noexcept;
+        [[nodiscard]] static std::string_view typeName(Type value) noexcept;
+    };
+
+    void load(const core::Json& document);
+    [[nodiscard]] core::Json save() const;
+
+    void define(Action action);
+    void remove(std::string_view name);
+    void clear() noexcept;
+    [[nodiscard]] const Action* findAction(std::string_view name) const noexcept;
+    [[nodiscard]] std::vector<std::string> getNames() const;
+
+    void setGamepadIndex(std::optional<std::size_t> value) noexcept {
+        gamepadIndex = value;
+    }
+    void setPressThreshold(float value) noexcept {
+        pressThreshold = value;
+    }
+    void update(const Input& input, const VirtualInput& virtualInput);
+
+    [[nodiscard]] bool isDown(std::string_view name) const noexcept;
+    [[nodiscard]] bool isPressed(std::string_view name) const noexcept;
+    [[nodiscard]] bool isReleased(std::string_view name) const noexcept;
+    [[nodiscard]] float getValue(std::string_view name) const noexcept;
+    [[nodiscard]] math::Vec2 getVector(std::string_view name) const noexcept;
+
+  private:
+    struct State {
+        Action action;
+        bool down = false;
+        bool pressed = false;
+        bool released = false;
+        float value = 0.0F;
+        math::Vec2 vector{};
+    };
+
+    // Lua hands an empty table over as an empty object, which reads as an empty list.
+    [[nodiscard]] static bool isList(const core::Json& value) noexcept;
+    [[nodiscard]] static std::vector<Binding> parseBindings(const core::Json& action, const char* field);
+    [[nodiscard]] static core::Json saveBindings(const std::vector<Binding>& list);
+
+    // Rejects binding lists the type of the action never reads, so a misplaced binding never goes unnoticed.
+    static void validate(const Action& action);
+
+    [[nodiscard]] float getBindingValue(const Binding& binding, const Input& input, const VirtualInput& virtualInput) const noexcept;
+    [[nodiscard]] math::Vec2 getBindingVector(const Binding& binding, const Input& input, const VirtualInput& virtualInput) const noexcept;
+    [[nodiscard]] float getStrongest(const std::vector<Binding>& list, const Input& input, const VirtualInput& virtualInput) const noexcept;
+    [[nodiscard]] const State* find(std::string_view name) const noexcept;
+
+    std::vector<State> actions;
+    std::optional<std::size_t> gamepadIndex;
+    float pressThreshold = 0.5F;
+};
+
+} // namespace haylen::input

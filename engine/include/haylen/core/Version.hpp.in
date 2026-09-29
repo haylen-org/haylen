@@ -1,0 +1,13 @@
+#pragma once
+
+#include <string_view>
+
+namespace haylen::core {
+
+// The version of the engine, read from engine/VERSION when the build is configured.
+class Version final {
+  public:
+    static constexpr std::string_view kString = "@PROJECT_VERSION@";
+};
+
+} // namespace haylen::core
