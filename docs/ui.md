@@ -1,0 +1,422 @@
+# UI
+
+Haylen has two interface modules, and both draw over the app in design units with the active theme. [haylen.ui](lua-api/ui.md) builds the interface players see, such as menus, HUDs, settings screens, dialogs and on-screen touch controls, as retained trees of themed components. [haylen.imgui](lua-api/imgui.md) exposes Dear ImGui immediate mode windows for debug panels, cheat menus and tools. This guide explains how the retained UI is organized, how themes work and when to reach for each module. The reference pages, indexed in the [Lua API reference](lua-api.md), list every property, event and error.
+
+The worked example throughout is the Tiny Island sample: its theme in `samples/games/tiny-island/content/ui/theme.json`, its screens in `samples/games/tiny-island/source/scenes/`, the HUD in `samples/games/tiny-island/source/ui/hud.lua` and the shared building blocks in `samples/games/tiny-island/source/ui/widgets.lua`.
+
+## Documents
+
+A document is a tree of nodes. Every node is a flat Lua table with a `kind`, an optional `id`, its children and the properties of its kind. Every kind is also a function of the module, so `ui.button{text = 'Play'}` builds a button node and `ui.node('button', {text = 'Play'})` does the same when the kind comes from a variable. Children go in the array part of a node or in a `children` list, never in both.
+
+`ui.mount(tree, options)` builds the components, draws them over the app every frame and returns a `UiDocument`. The document stays on screen until `document:unmount()`, even when scenes change, so a scene mounts its documents in `enter` and unmounts them in `exit`. When another scene is pushed over it, a scene hides its documents in its `pause` callback by setting `document.visible` to `false` and shows them again in `resume`, which keeps their state.
+
+```lua
+local ui = require('haylen.ui')
+
+local pause = {}
+pause.__index = pause
+
+function pause:enter()
+    self.document = ui.mount(ui.column{
+        justify = 'center',
+        padding = 64,
+        ui.panel{
+            width = 640,
+            align = 'center',
+            ui.label{text = 'Paused', font = 'title', textAlign = 'center', align = 'center'},
+            ui.button{id = 'resume', text = 'Resume', variant = 'primary', align = 'stretch', onClick = function()
+                require('haylen.scene').pop()
+            end},
+        },
+    })
+    self.document:command('resume', 'focus')
+end
+
+function pause:exit()
+    self.document:unmount()
+end
+```
+
+Every property is checked when the tree is built, so a misspelled key or a wrong value raises an error that names the kind and the key, such as `label.width must be a non-negative number or auto.`, and nothing is mounted. A document holds at most 64 levels and 20000 nodes.
+
+### Screens in JSON
+
+The node format is plain data, so screens can also live in JSON files in the package assets. Handlers cannot be written in JSON, so the app attaches them with `set` after mounting.
+
+```lua
+local assets = require('haylen.assets')
+local ui = require('haylen.ui')
+
+local menu = ui.mount(assets.json('ui/main-menu.json'))
+menu:set('play', {onClick = function() print('play') end})
+```
+
+An empty Lua table converts to an empty JSON object, so list properties such as `items`, `rows`, `columns`, `buttons`, `expanded` and `padding` reject `{}`. A JSON screen with an empty list in one of them fails the same way once it passes through Lua. Empty `children` lists work because the engine builds them itself.
+
+### Changing a mounted document
+
+A mounted document is changed by node id instead of being rebuilt.
+
+| Method | Use |
+| --- | --- |
+| `document:set(id, properties)` | Changes some properties of a node and keeps the others. The merged result is validated first, so a bad value leaves the node untouched. `onX` keys add or replace handlers. |
+| `document:replace(id, children)` | Replaces every child of a node, such as the rows of a shop list. |
+| `document:get(id)` and `document:has(id)` | `get` returns a copy of the properties the tree and later `set` calls gave a node, and `has` tells whether the id exists. |
+| `document:bounds(id)` | Returns where the node was last drawn, which suits tutorials that point at a button. |
+| `document:command(id, 'focus')` | Moves the keyboard and gamepad focus to a focusable node. |
+
+Values the player changed, such as typed text or a moved slider, stay in the component unless a `set` call names that same property.
+
+The Tiny Island HUD checks a dozen values every frame and only calls `set` when one of them changed. Translations are compared by the plain value they show, so the day label is only set again when the day number changes.
+
+```lua
+function hud:show(id, key, value, compared)
+    local shownKey = id .. '.' .. key
+    compared = compared or value
+    if self.shown[shownKey] ~= compared then
+        self.shown[shownKey] = compared
+        self.document:set(id, {[key] = value})
+    end
+end
+
+self:show('health', 'value', health)
+self:show('health', 'tone', health < 0.3 and 'danger' or 'success')
+self:show('day', 'text', widgets.text('hud.day', {day = game.cycle.day}), game.cycle.day)
+```
+
+## Placement and the safe area
+
+Sizes and positions are design units of the `design` resolution in `app.json`, which is 1920 by 1080 in Tiny Island and by default. The metrics of the built-in themes suit that resolution. See [Rendering](rendering.md) for the scaling policies that map design units to the screen.
+
+`ui.mount` takes two options.
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `placement` | `'safe'` | `'safe'` lays the root out inside the safe area, away from notches, rounded corners and system bars. `'screen'` lays it out over the whole visible screen. |
+| `layer` | `0` | Documents draw in ascending layer order, and documents on the same layer draw in mount order. |
+
+The root fills the whole area when its `align` is `stretch`, which is the default of containers. With `start`, `center` or `end` the root keeps its measured size and sits at the top left, the center or the bottom right of the area.
+
+A document that paints a background to the screen edges uses `placement = 'screen'` and wraps its controls in `ui.safeArea`, which keeps its one child inside the safe area. Toasts always appear at the top or bottom of the safe area. Every Tiny Island screen, the HUD included, uses the default safe placement.
+
+### Anchors
+
+The app draws over the whole screen on every platform, under notches, dynamic islands, rounded corners and gesture bars, and the interface chooses where each part of it sits. Any node, the document root included, can leave the layout of its parent with an [anchor](lua-api/ui.md#anchors) and sit against the safe area or the whole screen: at a corner, at the middle of an edge, at the center, or stretched along an edge, a band or the whole area. `margin` keeps it away from the edges, and anchored nodes follow the safe area when it changes, such as when a phone turns.
+
+```lua
+ui.mount(ui.stack{
+    ui.image{image = 'ui/sky.png', fit = 'cover', anchor = 'stretch', anchorTo = 'screen'},
+    ui.button{id = 'pause', icon = 'ui/pause.png', variant = 'icon', anchor = 'topRight', margin = 16},
+    ui.panel{anchor = 'stretchBottom', height = 120, margin = {0, 24}, ui.label{text = 'Wood 12'}},
+}, {placement = 'screen'})
+```
+
+### Testing the safe area on a desktop
+
+A desktop window has no notch, so the safe area can be simulated. `debug.safeArea` in `app.json`, or [viewport.setSafeAreaSimulation](lua-api/viewport.md#viewportsetsafeareasimulationvalue) while the app runs, takes a device such as `'iphoneNotch'`, `'iphoneDynamicIsland'`, `'ipad'`, `'androidGestureBar'` or `'television'`, whose insets follow the window as it turns between landscape and portrait, or insets in window points. `debug.showSafeArea`, or [ui.setSafeAreaVisible](lua-api/ui.md#uisetsafeareavisiblevisible), shades what lies outside the safe area and prints its insets over everything.
+
+```json
+{
+    "name": "Notch Test",
+    "debug": {"safeArea": "iphoneDynamicIsland", "showSafeArea": true}
+}
+```
+
+## Layout
+
+Layout comes from a small set of containers and a few common properties that every kind accepts.
+
+| Container | Layout |
+| --- | --- |
+| `column` | Children from top to bottom. |
+| `row` | Children from left to right. |
+| `grid` | Cells of equal width, `columns` per row, each row as tall as its tallest child. |
+| `stack` | Children on top of each other, the later ones above. |
+| `scroll` | One child in a vertically scrolling area. It measures as tall as its content, so it needs a `height` or `maxHeight` to scroll. |
+| `card`, `panel` | Columns on a themed surface that keep the pointer from reaching the app. |
+
+Columns and rows share these properties.
+
+- `gap` is the space between children and defaults to the theme `itemSpacing` metric.
+- `padding` is one number for every side, `{vertical, horizontal}` or `{top, right, bottom, left}`.
+- `grow` on a child takes a share of the free space along the main axis. Two children with `grow = 1` split it in half. In a row, growing children share only the width the others leave, so long content never pushes the row past its bounds.
+- `justify` places the children along the main axis when none of them grows: `start`, `center`, `end` or `spaceBetween`.
+- `align` on a child places it across the other axis: `start`, `center`, `end` or `stretch`. In a grid it places the child inside its cell, and in a stack or at the root it applies in both directions. Rows center their children unless they say otherwise. Elsewhere labels, buttons, icons, images, badges, touch controls and the other small kinds default to `start`, the busy indicator defaults to `center` and every other kind stretches.
+- `width`, `height`, `minWidth`, `maxWidth`, `minHeight` and `maxHeight` fix or bound the size. `'auto'` lets the content decide.
+
+A `spacer` takes room and draws nothing, so `ui.spacer{grow = 1}` pushes the nodes after it to the far end of a row or column.
+
+Cards and panels add padding from two sources. Their own `padding` applies when it is set, and otherwise the theme `panelPadding` metric applies. The `padding` of their theme surface image is always added on top, so content clears thick frame borders.
+
+The Tiny Island HUD shows the typical shape of a game HUD. A padded root column holds a top row with the survivor panel on the left, a growing spacer and the day panel and pause button on the right. A toast sits under it, a growing spacer pushes the touch controls to the bottom, and the touch row stretches across the screen.
+
+```lua
+ui.mount(ui.column{
+    padding = 32,
+    ui.row{
+        align = 'stretch',
+        gap = 24,
+        ui.panel{width = 600, align = 'start', gap = 12, --[[ avatar, health, fuel, wood ]]},
+        ui.spacer{grow = 1},
+        ui.panel{align = 'start', gap = 4, --[[ day, phase, raiders ]]},
+        ui.button{id = 'pause', icon = icons .. 'icon_10.png', variant = 'icon', align = 'start'},
+    },
+    ui.toast{id = 'notice', duration = 4},
+    ui.spacer{grow = 1},
+    touchControls(),
+})
+```
+
+## Component catalog
+
+The engine ships 62 component kinds, and `ui.kinds()` lists them. They are grouped by purpose below, and each group links to its section of the reference.
+
+| Purpose | Kinds |
+| --- | --- |
+| [Containers](lua-api/ui.md#containers) | `column`, `row`, `grid`, `stack`, `scroll` (vertical or horizontal, with snapping), `card`, `panel`, `spacer`, `divider`, `tabs`, `accordion`, `carousel`, `formField`, `splitter`, `safeArea` |
+| [Text](lua-api/ui.md#text) | `label`, `richText` (BBCode markup with links, effects and a typewriter reveal), `pageHeader`, `sectionTitle`, `emptyState`, `alert` |
+| [Buttons](lua-api/ui.md#buttons) | `button` (variants `default`, `primary`, `destructive`, `toolbar`, `icon` and `link`), `imageButton`, `chip`, `menuButton`, `popover` |
+| [Choices](lua-api/ui.md#choices) | `checkbox`, `toggle`, `radioGroup`, `combo`, `segmentedControl` |
+| [Inputs](lua-api/ui.md#inputs) | `textField`, `secretField`, `textArea`, `filterField`, `numberField`, `slider`, `rangeSlider`, `stepper`, `colorField`, `keyCapture` |
+| [Indicators](lua-api/ui.md#indicators) | `badge`, `statusIndicator`, `busyIndicator`, `progress`, `circularProgress`, `icon`, `image`, `avatar` |
+| [Collections](lua-api/ui.md#collections) | `list` (with draggable rows), `tree`, `table`, `slotGrid` |
+| [Settings](lua-api/ui.md#settings) | `settingsForm`, `settingsRow`, `settingsActions` |
+| [Overlays](lua-api/ui.md#overlays) | `dialog`, `toast`, `window`, `contextMenu` |
+| [Touch controls](lua-api/ui.md#touch-controls) | `touchStick`, `touchButton` |
+
+Every kind also accepts the [common properties](lua-api/ui.md#common-properties): `visible`, `enabled`, `tooltip`, `grow`, the size bounds, `align`, the anchor and the focus properties. A hidden node takes no room.
+
+Games reach for a few of them often. `circularProgress` with `style = 'cooldown'` shades an ability icon while it recharges. `stepper` and `segmentedControl` pick settings with left and right, the way console menus do. `slotGrid` holds inventories and hotbars and moves items between slots, draggable lists and other documents, with the pointer and by carrying them with a gamepad or a remote. `keyCapture` reads the next key, mouse button, gamepad button or stick for a controls screen and returns a binding the action map takes. `window` floats a draggable panel over the game, and `contextMenu` opens actions on a right click, a long press or `ui_menu`.
+
+The Tiny Island screens use a small part of the catalog. The menu is a `pageHeader` with `banner = true` over a column of buttons. The class selection screen uses `imageButton` avatars whose `tint` dims the classes that are not chosen, and `progress` bars for the stats. The settings sheet is a `panel` holding a `settingsForm` of `settingsRow` nodes with sliders, a combo and toggles. The HUD uses panels, icons, labels, progress bars, an icon button, a toast and the touch controls.
+
+## Events and handlers
+
+A node table key that starts with `on` followed by an upper-case letter and holds a function is a handler. `onClick` answers the `click` event and `onChange` answers `change`. The handler receives one table with the values of the event plus `id`, `name` and `document`, so a handler can change its own document through `event.document:set`.
+
+```lua
+ui.settingsRow{label = widgets.text('settings.music'), ui.slider{value = preferences.get('music'), width = 440, onChange = function(event)
+    preferences.set('music', event.value)
+end}}
+```
+
+Events are collected while the document draws and handed to the handlers once per frame, in the engine update of the next frame, before the scenes update. An error inside a handler stops the app and shows the error screen with the message and its Lua stack trace. A node with handlers and no `id` gets an engine id such as `#1`. `set` adds or replaces handlers, and handlers leave with their node.
+
+The [event table](lua-api/ui.md#events-and-handlers) of the reference lists which kind reports which event. Event values never use the names `id`, `name` and `document`, so the item of a `select` arrives as `event.item` and the button of an `answer` as `event.button`, next to the node id in `event.id`. Every node also reports `focus` and `blur` as the focus comes and goes, and focus scopes and document roots hear `cancel`.
+
+### Pointer, keyboard and gamepad
+
+`ui.wantsPointer()` returns `true` while the pointer is over something the interface owns: an interactive component, an open dialog, menu or picker, an ImGui window, or a card, panel or touch control. Empty space inside columns, rows and stacks lets the pointer through. `ui.wantsKeyboard()` returns `true` while a text field has the focus. Gameplay that reacts to raw clicks or key presses checks them first. The [input guide](input.md#ui-and-gameplay-input) explains how this relates to actions bound to mouse buttons.
+
+### Focus, navigation and TV remotes
+
+Buttons, choices, inputs, rows, slots and the other interactive parts of a document take the keyboard, gamepad and remote focus, and the [navigation actions](lua-api/ui.md#focus-and-navigation) move it: `ui_up`, `ui_down`, `ui_left` and `ui_right` on the arrow keys, the directional pad and the left stick, `ui_accept` on Enter, Space and the south button, `ui_cancel` on Escape and the east button, and `ui_menu` on the menu key and the north button. An app remaps any of them by defining an action with the same name in its action map, and the others keep their built-in bindings.
+
+- A direction moves the focus to the nearest control that way, unless the node names its neighbor with `focusLeft`, `focusRight`, `focusUp` or `focusDown`. Sliders, range sliders, steppers, segmented controls and carousel dots use left and right themselves. Tab walks the controls in drawing order, also from one text field on to the next.
+- A screen gives the first focus with `autofocus = true` on a node, or with `document:command(id, 'focus')`, which every Tiny Island screen does so a gamepad player can start at once. `focusable = false` keeps a HUD button that shares keys with gameplay out of navigation, and `ui.clearFocus()` drops the focus when gameplay starts.
+- The focus stays inside its document: dialogs, popovers and menus keep it until they close and then give it back to where it was, and a node with `focusScope = true` keeps it the same way. A `window` belongs to the navigation of its document, so moves reach it and bring it to the front. `focusWrap` wraps it around the ends of a row or a column, and a scroll brings the focused control into view.
+- `ui_cancel` closes the open popup or dialog, puts back an item carried from a slot grid, and otherwise sends `cancel` to the innermost focus scope or to the document root, where a screen goes back with an `onCancel` handler.
+- The focused node shows a ring in the `focus` color of the theme, `focusWidth` thick and following the corners of the control, once the player navigates with the keyboard, a gamepad or a remote. A scripted focus keeps the ring as the player last saw it and shows it at once when a gamepad was the last device used, so a mouse or touch player never sees a ring appear on its own. The first direction while the ring is hidden only shows it, and the first accept shows it and presses the focused node. Dialogs focus their last button.
+
+On an Apple TV and an Android TV there is no pointer, so the ring shows from the start. The Siri Remote moves the focus with swipes on its touch surface and the clicks of its edges, presses with a click, goes back with Menu and reports play and pause as the pause key and the west button. The remote of an Android TV moves the focus with its directional pad, presses with select and goes back with Back. On the root screen of an app, Menu and Back leave the app as Apple and Google ask, and elsewhere the app keeps them with [window.setBackLeavesApp](lua-api/window.md#windowsetbackleavesappenabled) set to `false`, while an open popup or dialog always keeps them.
+
+### Text entry
+
+The text components (`textField`, `secretField`, `textArea`, `filterField` and `numberField`) edit through the native text input of the platform. The focused field hands its text, selection, place on screen and keyboard options to a hidden native field of the platform, which opens the on-screen keyboard on phones, tablets, TVs and mobile browsers and brings input methods, autocorrection, dictation, the emoji picker and native paste, copy and undo. What the user types comes back to the field, text the input method still composes is underlined, and return, tab and escape submit, move to the next field and cancel. `keyboard`, `returnKey`, `autocorrect`, `autocapitalize` and `maxLength` choose the keyboard, as the [reference](lua-api/ui.md#inputs) lists.
+
+When the on-screen keyboard would cover the focused field, every mounted document moves up together until the field shows above the keyboard, and moves back when the keyboard closes. `keyboard_shown` and `keyboard_hidden` of [haylen.events](lua-api/events.md) tell the app where the keyboard is. The [text input guide](text-input.md) describes what each platform does.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.column{
+    ui.textField{placeholder = 'Email', keyboard = 'email', returnKey = 'next'},
+    ui.secretField{placeholder = 'Password', returnKey = 'go', onSubmit = function(event)
+        print('signing in')
+    end},
+})
+```
+
+## Text and translations
+
+Every text property takes a string, a number or a translation such as `{key = 'hud.day', args = {day = 3}}`. A translation is resolved through [haylen.localization](lua-api/localization.md) every time the text is drawn, so switching the language changes every mounted document at once without rebuilding anything. Plural forms pick their `zero`, `one` or `other` text from the `count` argument.
+
+Tiny Island wraps this in `widgets.text`, and its settings screen switches the language live through `localization.setLanguage`.
+
+```lua
+function widgets.text(key, arguments)
+    return {key = key, args = arguments}
+end
+
+widgets.caption('best', widgets.text('menu.best', {count = best and best.days or 0}))
+```
+
+Labels choose one of the theme font roles `body`, `caption`, `button`, `heading`, `title` and `monospace`, and a theme color role such as `text`, `textMuted` or `onAccent`. Text drawn straight over the app needs an outline to stay readable, and the Tiny Island titles and captions use `color = 'onAccent'` with a dark `outline` for that reason.
+
+Styled text goes in a `richText` node, which reads the BBCode markup of the [text guide](text.md): bold and italic, colors, outlines and shadows, lists and tables, inline images and input prompt icons, links the player can focus and activate, and animated effects with a typewriter reveal for dialogue. It draws through the 2D renderer rather than ImGui, so its glyphs come from the distance field or bitmap faces of a font family, and it reports `link` and `linkHover` events.
+
+```lua
+ui.richText{id = 'npc', text = 'The [b]old sailor[/b] says: [i]"Mind the [color=#FF6A6A]crabs[/color]."[/i] [url=more]Ask more[/url]', reveal = 30, onLink = function(event)
+    showMore(event.link)
+end}
+```
+
+## Themes
+
+A theme holds every color, metric, font and surface the components use, so no component draws a literal color. The engine ships `dark`, which is active at start, and `light`. `ui.setTheme(name)` switches every document and every ImGui window at once, `ui.theme()` returns the active name and `ui.themes()` lists the registered ones.
+
+An app adds its own theme with a JSON file loaded by `ui.loadTheme(path, base)`. The theme starts as a copy of the registered theme `base`, which defaults to `dark`, so the file only lists what it changes. `loadTheme` registers the fonts of `fontFiles`, loads the surface images and returns the theme name without switching to it. Loading a file whose `name` matches a registered theme replaces that theme, and the change shows at once when it is active. Tiny Island loads its theme at startup in `source/main.lua`.
+
+```lua
+ui.setTheme(ui.loadTheme('ui/theme.json', 'light'))
+```
+
+A theme file has these keys.
+
+| Key | Content |
+| --- | --- |
+| `name` | Name of the theme. It is required. |
+| `colors` | [Color roles](lua-api/ui.md#theme-colors) mapped to `'#RRGGBB'` or `'#AARRGGBB'` strings. |
+| `metrics` | [Metrics](lua-api/ui.md#theme-metrics) mapped to non-negative numbers in design units, such as `controlHeight` or `panelPadding`. |
+| `fonts` | [Font roles](lua-api/ui.md#theme-fonts) mapped to `{"font": name, "size": number}`, where both keys are optional. |
+| `fontFiles` | Font names mapped to TrueType or OpenType files in the package assets, registered unless a font with that name already exists. `ui.addFont(name, path)` registers fonts from Lua too, and `ui.addFont(name, family)` registers a font family whose bold, italic, mono and fallback faces `richText` nodes use when a font role names it. |
+| `surfaces` | [Surfaces](lua-api/ui.md#theme-surfaces) mapped to nine-slice images, or to `null` to go back to flat colors. |
+
+Unknown keys, roles, metrics and surfaces are errors, so a typo in a theme file never goes unnoticed.
+
+### Colors, metrics and fonts
+
+Color roles come in families. `window`, `panel`, `raised` and `tooltip` fill surfaces, `overlay` dims the app behind modal dialogs, `hover`, `pressed`, `selection` and `focus` mark states, `border` and `borderStrong` draw lines, `scrollbar` and `scrollbarHover` draw scrollbars, and `text`, `textMuted`, `textDisabled` and `onTooltip` write text. The accent and the four tones `success`, `warning`, `danger` and `information` each come as a fill, the ink written on that fill (such as `onAccent`), a subtle background (such as `accentBackground`) and a text color readable on the window (such as `accentText`). A `progress` bar with `tone = 'danger'` draws with the `danger` fill, and a `badge` with the same tone uses `dangerBackground` and `dangerText`, or `danger` and `onDanger` when it is `solid`.
+
+Metrics size the controls. `controlHeight` sets the height of buttons, fields and sliders, `itemSpacing` is the default gap, `panelPadding` pads cards, panels and dialogs, and more specific metrics such as `progressHeight`, `sliderTrackHeight`, `toggleWidth` and `iconSize` size single parts. Fonts are sized when drawn, so one registered font serves every role and size.
+
+### Surfaces
+
+A surface paints part of a component with a nine-slice image instead of flat colors, such as the paper panels and wooden dialogs of a textured game. The built-in themes have none. The reference lists [which component uses which surface](lua-api/ui.md#theme-surfaces), from `panel`, `card`, `dialog`, `toast` and `banner` to the three states of each button variant, `field`, `check`, `track`, `trackFill`, `knob`, `tab`, `chip`, `badge` and the touch control surfaces `stickBase`, `stickKnob`, `touchButton` and `touchButtonPressed`.
+
+A surface image is an object with these keys.
+
+| Key | Meaning |
+| --- | --- |
+| `image` | Texture path relative to the package `content/` folder. It is required. |
+| `source` | `[x, y, width, height]` region of the texture that holds the frame. It defaults to the whole texture. |
+| `slice` | Border sizes cut from `source`, in texture pixels, as one, two or four numbers. Without it the whole region is the center and stretches to the bounds, which suits round images. |
+| `pieces` | The nine regions given one by one instead of `source` and `slice`, in reading order, for art that ships as separate corner and edge pieces. |
+| `scale` | Scale of the borders on screen. It defaults to 1. |
+| `padding` | Space in design units between the edge of the image and the content, one, two or four numbers. |
+| `tint` | Color multiplied with the image. |
+| `colorize` | Also multiplies the image with the color the component would fill the area with, such as the tone of a progress bar or the accent of a slider. It defaults to `false`. |
+| `filter` | `'nearest'` (the default) or `'linear'`. |
+| `fill` | `'stretch'` (the default) or `'tile'` for the edges and the center. |
+
+The corners keep their texture size times `scale`, and the edges and center stretch or tile. When the bounds are too small for both borders, the borders shrink together.
+
+A theme may leave out the hover or pressed surface of a button, and the normal surface of the same button stands in for it. Tiny Island gives its paper buttons hover and pressed states with the same image and a different `tint`.
+
+Without `colorize`, a surface image ignores the color the component would have used, so every tone of a progress bar and every state of a touch stick look alike. With `colorize = true`, one light image serves every color. Tiny Island draws the fill of every HUD bar from one light image, `big_bar_fill_light.png`, and the tone of each `progress` node turns it green for health, orange for fuel and red when either runs low.
+
+The fill of sliders and progress bars stays inside the `padding` of the `track` surface, so a framed bar image keeps its frame visible around the fill. Tiny Island pads its bar frame by `[9, 8, 13, 8]` so the fill sits in the groove of the wooden bar. Toggles are different: they draw the whole switch with `track` while off and with `trackFill` while on.
+
+### The Tiny Island theme
+
+`samples/games/tiny-island/content/ui/theme.json` turns the flat `light` theme into the Tiny Swords look. It is a good model for a textured theme.
+
+- `fontFiles` registers the Kenney Future fonts, and `fonts` gives the narrow cut to `body` and `caption` and the regular cut to `button`, `heading` and `title`. `monospace` keeps the built-in font.
+- `colors` sets a parchment palette with dark brown text, a teal accent and a gold `focus` color that the class selection screen also uses for the chosen class name.
+- `metrics` makes controls larger (`controlHeight` 76), lowers `panelPadding` to 12 because the paper image already brings its own padding, and raises `progressHeight` and `sliderTrackHeight` to 40 so bars and sliders fit the wooden bar art.
+- `panel` and `card` use the same paper image at different scales and paddings with `"fill": "tile"`, `dialog` uses the wooden table and `banner` uses the blue ribbon with only left and right borders, so the ribbon stretches in the middle and keeps its ends.
+- `button`, `buttonHover` and `buttonPressed` are paper with different tints. `buttonPrimary` and `buttonDestructive` use the big blue and red buttons, and their pressed states use the pressed art with its own `slice`.
+- `track` is the wooden bar with `padding`, `trackFill` is a region of the light fill image with `colorize`, and `knob` is a small round blue button.
+- `stickBase` is a round button region with a translucent `tint`, `stickKnob` reuses the knob image, and `touchButton` and `touchButtonPressed` use the regular and pressed round buttons, each with a `source` that crops the art to the button itself.
+- `check`, `checkChecked`, `tab` and `tabSelected` are the remaining surfaces. Fields, toasts, chips and badges keep the flat colors of the palette.
+
+```json
+{
+    "surfaces": {
+        "track": {"image": "tiny_swords/ui/sliced/big_bar.png", "slice": [0, 24, 0, 24], "scale": 0.8, "padding": [9, 8, 13, 8]},
+        "trackFill": {"image": "tiny_swords/ui/sliced/big_bar_fill_light.png", "source": [0, 20, 64, 24], "colorize": true},
+        "stickBase": {"image": "tiny_swords/ui/buttons/small_blue_round_button_regular.png", "source": [20, 17, 88, 94], "tint": "#8CFFFFFF"},
+        "touchButtonPressed": {"image": "tiny_swords/ui/buttons/small_blue_round_button_pressed.png", "source": [12, 28, 104, 85]}
+    }
+}
+```
+
+Four-number insets such as `slice` and `padding` run clockwise from the top: top, right, bottom and left. `slice` is measured in texture pixels and drawn at `scale`, while `padding` is in design units.
+
+## Touch controls
+
+`touchStick` and `touchButton` put on-screen controls in a document and drive the virtual sticks and buttons that the [action map](input.md#the-action-map) reads. A stick with `action = 'move'` feeds every action bound to `virtual_stick:move`, and a button with `action = 'attack'` feeds every action bound to `virtual:attack`, so gameplay code reads `input.vector('move')` and `input.pressed('attack')` the same way for keyboards, gamepads and touch.
+
+- Every control follows its own finger, so a stick and several buttons work at the same time. The mouse drives them when no finger is down.
+- A stick reports a vector of length 0 to 1 with its `deadZone` removed. A `floating` stick centers where the finger lands inside its area, so give it a generous `width` and `height`.
+- `touchOnly = true` shows a control only while the last input came from a touch screen, as `input.lastDevice()` reports it. Keyboard and gamepad players never see them.
+- Controls keep the pointer from reaching the app behind them.
+- A control that stops drawing, because it, its parent or its document was hidden or removed, releases what it held. Values reach the actions at the start of the next frame.
+- A `touchButton` also reports `press` and `release` events for feedback such as sounds.
+
+The Tiny Island HUD puts a floating stick in a large area at the bottom left and three buttons at the bottom right, all touch-only, inside a row whose visibility follows the player's touch controls setting.
+
+```lua
+ui.row{
+    id = 'touch',
+    align = 'stretch',
+    visible = preferences.get('touch'),
+    ui.touchStick{action = 'move', radius = 140, floating = true, touchOnly = true, width = 760, height = 420, align = 'end'},
+    ui.spacer{grow = 1},
+    ui.column{
+        gap = 20,
+        align = 'end',
+        ui.row{
+            gap = 24,
+            ui.touchButton{action = 'interact', image = icons .. 'icon_02.png', size = 120, touchOnly = true},
+            ui.touchButton{action = 'special', image = icons .. 'icon_06.png', size = 140, touchOnly = true},
+        },
+        ui.touchButton{action = 'attack', image = icons .. 'icon_05.png', size = 190, align = 'end', touchOnly = true},
+    },
+}
+```
+
+The theme surfaces `stickBase`, `stickKnob`, `touchButton` and `touchButtonPressed` give the controls their art. Without them they draw as translucent circles in the theme colors.
+
+## Immediate mode UI with haylen.imgui
+
+[haylen.imgui](lua-api/imgui.md) is Dear ImGui for Lua. The app rebuilds its windows every frame from its own state, usually in the `renderUi` callback of a scene, and widgets that edit a value return whether it changed and the new value.
+
+```lua
+local imgui = require('haylen.imgui')
+local scene = require('haylen.scene')
+
+scene.push({
+    speed = 120,
+    renderUi = function(self)
+        if imgui.beginWindow('Tuning', {x = 20, y = 20, width = 420, height = 200}) then
+            local changed
+            changed, self.speed = imgui.sliderFloat('Speed', self.speed, 0, 400)
+            if imgui.button('Reset') then
+                self.speed = 120
+            end
+        end
+        imgui.endWindow()
+    end,
+})
+```
+
+ImGui windows use the colors, metrics and body font of the active theme, and `ui.wantsPointer()` returns `true` while the pointer is over one. Calls outside a running frame, such as at the top level of `source/main.lua`, raise an error. The engine's own debug overlay, the full mode of the statistics that F3 cycles through and [haylen.debug](lua-api/debug.md) controls, is built with it.
+
+## Choosing between them
+
+| Need | Module |
+| --- | --- |
+| Menus, HUDs, settings, dialogs and anything else players see | `haylen.ui` |
+| Textured art, translations, safe area placement and touch controls | `haylen.ui` |
+| Gamepad and keyboard navigation with focus | `haylen.ui` |
+| Screens stored as data in JSON | `haylen.ui` |
+| Debug panels, cheat menus, live tuning and inspectors | `haylen.imgui` |
+| Windows whose content changes shape every frame, such as entity lists | `haylen.imgui` |
+| Plots, drag values and quick tools that never ship to players | `haylen.imgui` |
+
+A retained document is built once and then changed by id, which keeps per-frame Lua work low and lets the engine validate every property. Immediate mode code is shorter for tools but runs Lua for every widget every frame and follows the ImGui look rather than the app's components.
+
+## From C++
+
+The same system is available to C++ code through `haylen::plugins::UiPlugin` (`haylen/plugins/UiPlugin.hpp`), reached with `engine.getPlugin<plugins::UiPlugin>()`. It builds `haylen::ui::Document` trees from JSON with `createDocument` and shows them with `mount`, which publishes `ui_document_mounted` on the event bus of the engine, like `unmount` publishes `ui_document_unmounted`. It also loads and switches themes (`haylen::ui::Theme` in `haylen/ui/Theme.hpp`) and publishes every `haylen::ui::Event` of a document through its `events` signal. `UiPlugin::getComponents()` returns the `haylen::ui::ComponentRegistry`, where a C++ plugin registers its own component kinds, subclasses of `haylen::ui::Component` that read their properties with a `PropertyReader` and draw through the `haylen::ui::Context` they receive, which Lua then builds with `ui.<kind>{...}` like the built-in ones. `UiPlugin::getBackend()` returns the `haylen::ui::Backend` that owns the Dear ImGui context, for C++ code that draws immediate mode windows, and whose `addRenderCallback` lets a component draw with the 2D renderer at its place among the ImGui draws, as `richText` does. `UiPlugin::addFontFamily` registers a `haylen::text::FontFamily` under a font name. `UiPlugin::getFocus()` returns the `haylen::ui::FocusNavigator`, which tells which document and node hold the focus and whether the ring shows, and `UiPlugin::getNavigation()` the `haylen::ui::NavigationInput` with the navigation actions. A C++ component makes an ImGui item a focus target with `FocusNavigator::addTarget` while it draws, and keeps a direction for itself by overriding `Component::usesFocusDirection`. `core::Engine::setSafeAreaSimulation` and `setBackLeavesApp` are the C++ side of the safe area simulation and the back button. Text fields reach the platform through `haylen::platform::TextInput` (`haylen/platform/TextInput.hpp`), which `Window::getTextInput()` returns and which the [text input guide](text-input.md) describes. See [Architecture](architecture.md) for plugins and [Lua](lua.md) for the scripting model.

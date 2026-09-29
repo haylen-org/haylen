@@ -1,0 +1,210 @@
+# Text
+
+Haylen draws text from fonts of two kinds and styles it with BBCode markup in the manner of the RichTextLabel of Godot. This guide explains fonts, font families and bitmap fonts, the markup of rich text with its effects and typewriter reveal, and how 2D drawing and the UI show it. The [haylen.graphics reference](lua-api/graphics.md#font) lists the font API, the [haylen.graphics2d reference](lua-api/graphics2d.md#richtext) the rich text API, and the [haylen.ui reference](lua-api/ui.md#uirichtextproperties) the `richText` component.
+
+## Fonts
+
+A TrueType or OpenType font renders through a signed distance field, a single-channel atlas of how far every pixel lies from the edge of a glyph. One atlas serves every size, and the text shader draws outlines, bolder strokes, blurred shadows and glows from the same field. The field reaches `spread` pixels past a glyph at the bake size, 8 by default, and that reach bounds every one of those effects: at a text size of 24 and the default bake size of 48, an outline, a glow and a blur together reach at most 4 pixels. A font loaded with a larger `spread` reaches further.
+
+A bitmap font draws prepared images, the pages of a BMFont file from tools such as BMFont, Hiero or Littera, or an image of equal cells. It draws pixel for pixel at its native size and scales at other sizes, keeps the colors of its images, which the text color multiplies, and draws nothing for the characters it lacks. It has no distance field, so it takes no outline, glow or blur, and its shadow is the silhouette of its glyphs in the shadow color. Load BMFont files with nearest filtering for crisp pixel art.
+
+```lua
+local assets = require('haylen.assets')
+local graphics2d = require('haylen.graphics2d')
+
+local title = assets.font('fonts/title.ttf', {bakeSize = 64, spread = 12})
+local pixel = assets.font('fonts/pixel.fnt', {filter = 'nearest'})
+local digits = assets.load('fonts/digits.png', 'gridFont', {characters = '0123456789', cellWidth = 12, cellHeight = 16, filter = 'nearest'})
+
+graphics2d.drawText(title, 'Island', 40, 40, {size = 96, outlineWidth = 6, outlineColor = '#FF402000'})
+graphics2d.drawText(pixel, 'PRESS START', 40, 200, {size = pixel.nativeSize * 2})
+graphics2d.drawText(digits, '1200', 40, 280, {size = 32, shadowOffset = {2, 2}, shadowColor = '#FF000000'})
+```
+
+Every function that takes a font takes either kind: `graphics2d.drawText`, `measureText`, rich text families and Tiled text objects.
+
+## Font families
+
+A family groups the faces of one typeface, regular, bold, italic, bold italic and mono, with fallback fonts for the characters its faces lack, such as a CJK font for Chinese and Japanese or a symbol font for arrows and stars. Rich text picks the face of each run from its style and each character from the first font that has it: the face, then each fallback in order, and the face again when none has it, which draws its missing glyph box.
+
+A style the family has no face for is synthesized from the face it has. A distance field face grows its strokes on both sides by 3 percent of the text size and widens its advance to match, and leans italic glyphs by one fifth of their height around the baseline in the vertex shader. A bitmap face draws a bold glyph a second time one native pixel to the right and leans italic glyphs the same way. A fallback font synthesizes the bold and italic its run asks for. `[code]` uses the mono face, or the regular faces when the family has none.
+
+```lua
+local assets = require('haylen.assets')
+local graphics = require('haylen.graphics')
+
+local story = graphics.newFontFamily({
+    regular = assets.font('fonts/serif.ttf'),
+    bold = assets.font('fonts/serif_bold.ttf'),
+    italic = assets.font('fonts/serif_italic.ttf'),
+    mono = assets.font('fonts/mono.ttf'),
+    fallback = {assets.font('fonts/cjk.ttf')},
+})
+local face, syntheticBold, syntheticItalic = story:select({bold = true, italic = true})
+```
+
+`stb_truetype` builds the distance fields. It reads TrueType outlines, the `glyf` table, well, and some fonts with PostScript outlines, the `CFF` table of many `.otf` and `.ttc` files, come out broken at some sizes. Prefer TrueType flavored files for fallback fonts.
+
+## Markup
+
+Markup is text with tags in square brackets. Inline tags open with `[name]` or `[name=value attribute=value]` and close with `[/name]`, in reverse order of opening. Values and attributes may be quoted to hold spaces, and the values of `[url]` and `[hint]` run to the closing bracket. `[lb]` and `[rb]` write `[` and `]`. A newline ends a paragraph, and `[br]` breaks a line without ending it. Colors are names such as `red`, `gold` or `transparent`, `#RRGGBB` or `#AARRGGBB`, like the rest of the engine. Sizes are pixels at a scale of 1.
+
+| Tag | Meaning |
+| --- | --- |
+| `[b]`, `[i]`, `[u]`, `[s]` | Bold, italic, underline and strike. |
+| `[code]` | The mono face of the family. |
+| `[color=c]`, `[bgcolor=c]` | Text color and a background behind the text. |
+| `[font=name]` | A font family that the host names: the `fonts` option in 2D and the fonts of `ui.addFont` in the UI. |
+| `[size=24]`, `[size=150%]` | An absolute size, or a size relative to the text around it. |
+| `[outline=3 color=c]` | An outline 3 pixels wide, black by default. |
+| `[shadow=2,3 color=c blur=2]` | A shadow at an offset, 2,2 and half transparent black by default, softened by the blur. |
+| `[glow=6 color=c]` | A glow that fades out 6 pixels past the text, white by default. |
+| `[alpha=0.5]` | Multiplies the opacity of the text, images and icons inside. |
+| `[url=payload]`, `[url]text[/url]` | A link, underlined unless the host turns that off, whose payload hit tests and the UI report. Without a payload the text is the payload. |
+| `[hint=text]` | A hint the UI shows as a tooltip and `text:hintAt` reports. |
+| `[img=path width=24 height=24 region=x,y,w,h color=c valign=center]` | An inline image of the package content, which keeps the shape of its region when only one side is given. |
+| `[icon=name width= height= color= valign=]` | An icon that `graphics2d.registerTextIcon` registered, as tall as its text unless sized. |
+| `[pause=0.5]` | Holds the typewriter reveal for half a second before the next character. |
+| `[speed=2]` | Reveals the text inside twice as fast. |
+| `[p align=center indent=1]` | A paragraph block with an alignment (`left`, `center`, `right` or `fill`) and an indent in levels of one and a half times the base size. |
+| `[center]`, `[left]`, `[right]`, `[fill]` | Paragraph blocks with an alignment. Fill stretches the spaces of every wrapped line to both edges. |
+| `[ul bullet=*]`, `[ol type=1]` | Lists, where every paragraph inside is an item with a bullet or a number, counted as `1`, `a`, `A`, `i` or `I`. Lists nest and indent one level each. |
+| `[hr width=50% height=2 color=c]` | A horizontal rule, centered unless its block aligns it. |
+| `[table=3]` with `[cell bg=c border=c padding=4]` | A table of cells read row by row. Columns take the width their content wants and shrink proportionally to the room of their widest word when the table is too wide. |
+| `[dropcap size=64 font=name color=c margin=4]W[/dropcap]` | A large first letter that the lines beside it flow around, three times the base size unless sized. It must start its paragraph. |
+
+Block tags end the paragraph before them, and a newline right after an opening block tag or right before a closing one belongs to the markup, so blocks read naturally on lines of their own. Empty lines inside a list take no number.
+
+```lua
+local markup = [[
+[center][size=150%][b]The Old Lighthouse[/b][/size][/center]
+[dropcap]T[/dropcap]he keeper left a note: [i]"Mind the [color=#FF6A6A]crabs[/color]."[/i]
+[ul]
+Collect [color=gold]12 wood[/color] [img=icons/wood.png height=24]
+Press [icon=confirm] to light the [glow=6 color=#FF8000]beacon[/glow]
+[/ul]
+[table=2][cell]Wood[/cell][cell]12[/cell][cell]Stone[/cell][cell]4[/cell][/table]
+[url=map]Open the map[/url]
+]]
+```
+
+Any other tag name runs a text effect of that name. Malformed markup raises an error that names its line and column, counted from 1, such as `Rich text markup at line 2, column 6: [/b] closes [i], which is still open.`, `[b] is never closed.`, `blurple is not a color.` or `[wiggle] is neither a tag nor a registered text effect.`.
+
+## Effects
+
+Effects animate the glyphs of their tag every frame, changing their offset, color and visibility. Rich text keeps the laid out glyphs and applies the effects to a copy, so the time alone decides where a glyph is, and the same time always gives the same picture. Effects nest, and the outer one runs first. The built-in effects follow Godot:
+
+| Effect | Attributes | Motion |
+| --- | --- | --- |
+| `[wave]` | `amp` (20), `freq` (5) | Glyphs bob up and down in a wave along the line. |
+| `[shake]` | `rate` (20), `level` (5) | Glyphs jump to a new random offset `rate` times a second. |
+| `[tornado]` | `radius` (10), `freq` (1) | Glyphs circle around their place. |
+| `[fade]` | `start` (0), `length` (10) | Glyphs fade out over `length` characters from the character `start` of the tag. |
+| `[rainbow]` | `freq` (1), `sat` (0.8), `val` (0.8), `speed` (1) | Glyphs cycle through the hues. |
+| `[pulse]` | `freq` (1), `color` (`#40FFFFFF`), `ease` (-2) | Glyphs pulse toward their color multiplied by `color`. |
+
+Apps register their own effects from Lua with `graphics2d.registerTextEffect(name, effect)`, whose function receives each glyph and the attributes of the tag, and from C++ with `text::RichTextRegistry::registerEffect`, whose function receives a `text::TextEffect::Glyph` and its `text::TextEffect::Parameters`. An effect sees the index of the glyph inside its tag, its character in the whole text, its pen position on the baseline and the time.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+
+graphics2d.registerTextEffect('ghost', function(glyph, attributes)
+    local speed = attributes.speed or 2
+    local alpha = 0.5 + 0.5 * math.sin(glyph.time * speed + glyph.index)
+    glyph.color = string.format('#%02XFFFFFF', math.floor(alpha * 255))
+    glyph.offsetY = glyph.offsetY - alpha * 4
+end)
+```
+
+## Typewriter reveal
+
+Characters count in reading order, one per code point, spaces included, and one per image or icon, and a list marker shows with the first character of its item. A reveal speed in characters per second, `reveal` in the options of rich text or of `ui.richText`, shows them one by one as time passes. `[pause=seconds]` holds the reveal before the next character and `[speed=factor]` changes its pace inside the tag. Hidden characters keep their place, so the text never reflows while it appears, and backgrounds, underlines and strikes grow with the revealed text.
+
+`text.visibleCharacters` and `text.visibleRatio` read and set how much shows. Setting them moves a running reveal there, and a dialogue box skips to the end by setting `visibleCharacters` to -1 when the player presses a button while `text.revealing` is `true`.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+local line = graphics2d.newRichText('Hello, traveler.[pause=0.6] [speed=0.5]The sea is calm today.[/speed]', {size = 32, maxWidth = 700, reveal = 30})
+
+scene.push({
+    update = function(self, dt)
+        line:update(dt)
+        if input.keyPressed('space') and line.revealing then
+            line.visibleCharacters = -1
+        end
+    end,
+    renderUi = function(self)
+        graphics2d.beginScreen()
+        line:draw(290, 820)
+    end,
+})
+```
+
+## Layout
+
+Rich text lays each paragraph out into lines. Lines wrap after spaces and around images, between Chinese and Japanese characters, and inside a word only when the word alone is wider than a line. Every line stands on one baseline, as tall as its tallest text and images, and lines follow each other by their height times the line spacing, so a line with a larger size or an image makes room for it. Images centered by default sit on the middle of the text of their style, `baseline` puts their bottom on the baseline, and `top` and `bottom` align them with the line.
+
+A layout is cached by its width and scale, and a few widths stay cached, so a UI container that measures text at one width and draws it at another lays it out once for each. Changing the markup or the options lays it out again, and effects and the reveal never do. An image that is still loading takes no room, and the layout is built again once it arrives.
+
+## Drawing in 2D
+
+`graphics2d.newRichText(markup, options)` makes a `RichText` that an app keeps, updates and draws every frame, and `graphics2d.drawRichText` draws markup once, which suits text that changes every frame. Both place the top-left corner of the block at the position. The renderer draws rich text in layers, backgrounds, glows, shadows, images, glyphs and then underlines and strikes, and neighbouring glyphs of one font share a draw call.
+
+```lua
+local graphics = require('haylen.graphics')
+local graphics2d = require('haylen.graphics2d')
+local assets = require('haylen.assets')
+local scene = require('haylen.scene')
+
+local family = graphics.newFontFamily({regular = assets.font('fonts/serif.ttf'), bold = assets.font('fonts/serif_bold.ttf')})
+local sign = graphics2d.newRichText('[center][b]Harbor[/b]\n[size=70%][wave amp=10]Ferries at noon[/wave][/size][/center]', {family = family, size = 40, maxWidth = 400})
+
+scene.push({
+    update = function(self, dt)
+        sign:update(dt)
+    end,
+    render = function(self)
+        graphics2d.beginWorld(graphics2d.newCamera())
+        sign:draw(-200, -300, {layer = 4})
+    end,
+})
+```
+
+## Rich text in the UI
+
+A `ui.richText` node draws markup in the family of its theme font role, which `ui.addFont(name, family)` gives real bold, italic and mono faces and fallbacks when a theme role names it. Its links are focusable items: the pointer, the keyboard and gamepads move to them and activate them, each link is one stop even when it wraps, and the node reports `link` and `linkHover`. Its hints show as tooltips, its images load through the UI like `ui.image`, and its text draws through the 2D renderer at its place among the other UI draws, inside the clip of its window.
+
+```lua
+local assets = require('haylen.assets')
+local graphics = require('haylen.graphics')
+local ui = require('haylen.ui')
+
+ui.addFont('story', graphics.newFontFamily({regular = assets.font('fonts/serif.ttf'), bold = assets.font('fonts/serif_bold.ttf')}))
+ui.mount(ui.card{padding = 24,
+    ui.richText{id = 'quest', text = '[b]New quest:[/b] find the [url=map]lost map[/url].', reveal = 40, onLink = function(event)
+        print('open', event.link)
+    end},
+})
+```
+
+## C++
+
+The text types live in `haylen::text` under `engine/include/haylen/text/`. `text::Font` is the interface of both kinds of font, with `text::TrueTypeFont` and `text::BitmapFont` behind it, and `BitmapFont::parse` and `BitmapFont::describeGrid` read BMFont files and grids. `text::FontFamily` selects faces and resolves fallbacks. `text::RichText::parse` reads markup into a `text::RichTextDocument` of paragraphs, runs, objects, links, hints and effects, and a `text::RichText` made from markup, `text::RichTextOptions` and the `text::RichTextRegistry` of effects and icons lays it out into a `text::RichTextLayout` and animates it. `graphics2d::Renderer::drawRichText` draws the frame of this moment. The registry of an engine belongs to `plugins::TextPlugin`, which also registers the `bitmapFont` and `gridFont` asset types.
+
+```cpp
+#include "haylen/2d/graphics/Renderer.hpp"
+#include "haylen/core/Engine.hpp"
+#include "haylen/plugins/TextPlugin.hpp"
+#include "haylen/text/RichText.hpp"
+
+const std::shared_ptr<haylen::text::RichTextRegistry>& registry = engine.getPlugin<haylen::plugins::TextPlugin>().getRegistry();
+registry->registerEffect("blink", [](haylen::text::TextEffect::Glyph& glyph, const haylen::text::TextEffect::Parameters& parameters) {
+    glyph.visible = static_cast<int>(glyph.time * parameters.getNumber("rate", 2.0F)) % 2 == 0;
+});
+haylen::text::RichText banner("[b]Night 3[/b] [blink]begins[/blink]", {.family = registry->getDefaultFamily(), .size = 48.0F}, registry);
+banner.update(deltaSeconds);
+engine.getRenderer2D().drawRichText(banner, {48.0F, 48.0F});
+```

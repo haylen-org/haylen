@@ -1,0 +1,2518 @@
+# haylen.ui
+
+`haylen.ui` builds the app interface, such as menus, HUDs, settings screens, dialogs and on-screen touch controls, as retained trees of themed components. An app mounts a tree once, changes nodes by id later and reacts to the player with `onX` handlers. Use it for every interface the player sees. For debug windows rebuilt every frame, use [haylen.imgui](imgui.md) instead.
+
+```lua
+local ui = require('haylen.ui')
+```
+
+## Documents
+
+A document is a tree of nodes. Every node is one flat table with a `kind`, an optional `id`, its children and the properties of its kind. `ui.mount` builds the components, draws them over the app every frame and returns a [UiDocument](#uidocument) that stays on screen until it is unmounted. Several documents can be mounted at once, and they stay mounted when scenes change, so a scene that mounts a document usually unmounts it in `exit`.
+
+Sizes and positions are design units of the design resolution in `app.json`. The metrics of the built-in themes suit the default design resolution of 1920 by 1080.
+
+```lua
+local scene = require('haylen.scene')
+local ui = require('haylen.ui')
+
+scene.push({
+    enter = function(self)
+        self.menu = ui.mount(ui.column{
+            align = 'center',
+            gap = 24,
+            ui.label{text = 'Tiny Island', font = 'title'},
+            ui.button{id = 'play', text = 'Play', variant = 'primary', onClick = function(event)
+                event.document:set('status', {text = 'Loading the island'})
+            end},
+            ui.label{id = 'status', text = ''},
+        })
+    end,
+    exit = function(self)
+        self.menu:unmount()
+    end,
+})
+```
+
+## Functions
+
+### ui.mount(tree, options)
+
+Builds a document from the node table `tree`, shows it and returns its [UiDocument](#uidocument). The options table is optional, and unknown keys raise `Unknown option '<key>'.`.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `placement` | string | `'safe'` | `'safe'` lays the root out inside the safe area of the screen, away from notches and system bars. `'screen'` lays it out over the whole visible screen. |
+| `layer` | integer | `0` | Documents draw in ascending layer order, and documents on the same layer draw in the order they were mounted, so later ones cover earlier ones. |
+| `owner` | table or userdata | `nil` | Unmounts the document when the owner is released, such as a scene when it unloads, or collected, like the other [owners of haylen.events](events.md#owners). |
+
+The root fills the whole area when its `align` is `stretch`, which is the default of containers. With `start`, `center` or `end` the root keeps its measured size and sits at the top left, the center or the bottom right of the area.
+
+A placement other than `safe` or `screen` raises `placement must be safe or screen.`, and an owner that is not a table or a userdata raises `An owner must be a table or a userdata, not <type>.` A tree that breaks the [screen format](#screen-format) or has an invalid property raises an error that names the problem, such as `There is no UI component kind named spaceship.` or `label.width must be a non-negative number or auto.`, and nothing is mounted. Mounting publishes the `ui_document_mounted` event of [haylen.events](events.md) with the document.
+
+```lua
+local ui = require('haylen.ui')
+
+local hud = ui.mount(ui.row{
+    align = 'start',
+    padding = 16,
+    gap = 12,
+    ui.icon{image = 'ui/wood.png'},
+    ui.label{id = 'wood', text = 0},
+}, {placement = 'screen', layer = 1})
+```
+
+A scene that owns its documents needs no `exit` of its own to unmount them.
+
+```lua
+local scene = require('haylen.scene')
+local ui = require('haylen.ui')
+
+scene.push({
+    enter = function(self)
+        ui.mount(ui.label{text = 'Level 1'}, {owner = self})
+    end,
+})
+```
+
+### ui.node(kind, properties)
+
+Returns a node table of the given kind. It sets `kind` on the `properties` table and returns that same table, or a new table when `properties` is omitted. It is the long form of `ui.<kind>{...}`, useful when the kind comes from a variable. An unknown kind raises `There is no UI component kind named <kind>.`.
+
+```lua
+local ui = require('haylen.ui')
+
+local kind = 'button'
+local tree = ui.node('column', {
+    id = 'list',
+    children = {ui.node(kind, {text = 'First'}), ui.node(kind, {text = 'Second'})},
+})
+local document = ui.mount(tree)
+```
+
+### ui.&lt;kind&gt;(properties)
+
+Every component kind is also a function of the module, so `ui.button{text = 'Play'}` is the same as `ui.node('button', {text = 'Play'})`. Reading any other missing name from the module raises `haylen.ui has no member '<name>'.`.
+
+```lua
+local ui = require('haylen.ui')
+
+local card = ui.card{
+    ui.sectionTitle{text = 'Inventory'},
+    ui.label{text = 'Empty'},
+}
+ui.mount(card)
+```
+
+### ui.kinds()
+
+Returns a sorted list of the names of every component kind, the 62 kinds documented on this page.
+
+```lua
+local ui = require('haylen.ui')
+
+for _, kind in ipairs(ui.kinds()) do
+    print(kind)
+end
+```
+
+### ui.setTheme(name)
+
+Switches the theme of every document and of [haylen.imgui](imgui.md) windows. The engine ships the themes `dark`, which is active at start, and `light`. An unknown name raises `The UI has no theme named <name>.`.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.setTheme('light')
+```
+
+### ui.theme()
+
+Returns the name of the active theme.
+
+```lua
+local ui = require('haylen.ui')
+
+if ui.theme() == 'dark' then
+    ui.setTheme('light')
+end
+```
+
+### ui.themes()
+
+Returns a sorted list of the names of every registered theme.
+
+```lua
+local ui = require('haylen.ui')
+
+print(table.concat(ui.themes(), ', '))
+```
+
+### ui.loadTheme(path, base)
+
+Reads a [theme file](#themes) from the package assets, registers the fonts its `fontFiles` lists and registers the theme under its name. The theme starts as a copy of the registered theme `base`, which defaults to `'dark'`, so the file only lists what it changes. A theme with the name of a registered theme replaces it, and when that theme is active the change shows at once. Returns the theme name without switching to it.
+
+Errors raised:
+
+- `The UI has no theme named <base> to start from.` for an unknown base.
+- `The theme <name> uses the font <font>, which is neither registered nor listed in fontFiles.` when a font role names an unknown font.
+- The error of the asset system when the file is missing, and the errors of the [theme format](#themes) for an invalid file.
+
+```lua
+local ui = require('haylen.ui')
+
+local name = ui.loadTheme('themes/wood.json', 'light')
+ui.setTheme(name)
+```
+
+### ui.addTheme(document, base)
+
+Registers a theme from a table in the [theme file](#themes) format, the way `ui.loadTheme` registers a file, and returns the theme name without switching to it. The theme starts as a copy of the registered theme `base`, which defaults to `'dark'`. It raises the errors of `ui.loadTheme`, and a `document` that is not a table raises an argument error.
+
+```lua
+local ui = require('haylen.ui')
+
+local name = ui.addTheme({
+    name = 'night',
+    colors = {accent = '#FF00AA88'},
+    metrics = {controlHeight = 72},
+    fonts = {title = {size = 64}},
+}, 'dark')
+ui.setTheme(name)
+```
+
+### ui.themeColor(role)
+
+Returns a [color role](#theme-colors) of the active theme as a `haylen.Color` from [haylen.math](math.md). An unknown role raises `The theme has an unknown color role: <role>`.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+local ui = require('haylen.ui')
+
+scene.push({
+    render = function(self)
+        graphics2d.beginScreen()
+        graphics2d.drawRect({40, 40, 200, 12}, ui.themeColor('accent'))
+    end,
+})
+```
+
+### ui.themeMetric(name)
+
+Returns a [metric](#theme-metrics) of the active theme in design units. An unknown metric raises `The theme has an unknown metric: <name>`.
+
+```lua
+local ui = require('haylen.ui')
+
+local rowHeight = ui.themeMetric('listRowHeight')
+ui.mount(ui.list{height = rowHeight * 5, items = {{id = 'first', text = 'First'}}})
+```
+
+### ui.themeFont(role)
+
+Returns a [font role](#theme-fonts) of the active theme as a table with the fields `font`, the registered font name, and `size`, in design units. An unknown role raises `The theme has an unknown font role: <role>`.
+
+```lua
+local ui = require('haylen.ui')
+
+local title = ui.themeFont('title')
+print(title.font, title.size)
+```
+
+### ui.themeSurface(surface)
+
+Returns the image the active theme paints a [surface](#theme-surfaces) with, or `nil` when the theme paints it with flat colors. The table holds `slice`, a `haylen.NineSlice` for `graphics2d.drawNineSlice`, `scale`, `padding` as `{top, right, bottom, left}`, `tint`, a `haylen.Color`, and `colorize`. An unknown surface raises `The theme has an unknown surface: <surface>`.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+local ui = require('haylen.ui')
+
+scene.push({
+    render = function(self)
+        local panel = ui.themeSurface('panel')
+        if panel then
+            graphics2d.beginScreen()
+            graphics2d.drawNineSlice(panel.slice, {100, 100, 400, 240}, panel.tint, nil, panel.scale)
+        end
+    end,
+})
+```
+
+### ui.addFont(name, source)
+
+Registers a font under `name`, from a TrueType or OpenType file of the package assets, or from a `FontFamily` or a `Font` of [haylen.graphics](graphics.md). Theme font roles, `imgui.pushFont` and the `[font=name]` tags of `ui.richText` refer to fonts by this name. Fonts are sized when drawn, so one registered font serves every size. The built-in font is named `default`.
+
+A family lets theme fonts draw `ui.richText` with its real bold, italic and mono faces and its fallback fonts, while the widgets ImGui draws use its regular face, which must be a TrueType font for a theme role to name it. A bitmap font or a family with a bitmap regular face serves `ui.richText` and `[font=name]` tags only.
+
+A name that is already registered raises `The UI already has a font named <name>.`, and a file that is not a font raises `The font <name> is not a TrueType or OpenType font.`.
+
+```lua
+local assets = require('haylen.assets')
+local graphics = require('haylen.graphics')
+local ui = require('haylen.ui')
+
+ui.addFont('serif', 'fonts/serif.ttf')
+ui.addFont('story', graphics.newFontFamily({regular = assets.font('fonts/serif.ttf'), bold = assets.font('fonts/serif_bold.ttf')}))
+ui.addFont('pixel', assets.font('fonts/pixel.fnt', {filter = 'nearest'}))
+```
+
+### ui.wantsPointer()
+
+Returns `true` while the pointer is over something the interface owns: an interactive component, an open dialog, menu or picker, a [haylen.imgui](imgui.md) window, or a card, panel, touch stick or touch button, which keep the pointer from reaching the app. Empty space inside columns, rows and stacks lets the pointer through, even while a mouse button is held down on it. Apps check it before they treat a raw click or tap as a world action. The action map of [haylen.input](input.md) checks it on its own: while it is `true`, `mouse:` bindings read as released, so clicking a menu button never triggers an action bound to the same mouse button.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+local ui = require('haylen.ui')
+
+scene.push({
+    update = function(self, dt)
+        if input.mousePressed('left') and not ui.wantsPointer() then
+            print('clicked the world')
+        end
+    end,
+})
+```
+
+### ui.wantsKeyboard()
+
+Returns `true` while the interface uses the keyboard, such as when a text field has the focus. Apps check it before they treat key presses as gameplay input.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+local ui = require('haylen.ui')
+
+scene.push({
+    update = function(self, dt)
+        if input.keyPressed('space') and not ui.wantsKeyboard() then
+            print('jump')
+        end
+    end,
+})
+```
+
+### ui.focused()
+
+Returns the [UiDocument](#uidocument) and the node id that hold the keyboard, gamepad and remote focus, or `nil` when no mounted document holds it. A focused node without an id returns the document alone. The [focus guide](#focus-and-navigation) explains how the focus moves.
+
+```lua
+local scene = require('haylen.scene')
+local ui = require('haylen.ui')
+
+local menu = ui.mount(ui.column{
+    ui.button{id = 'play', text = 'Play', autofocus = true},
+    ui.button{id = 'quit', text = 'Quit'},
+    ui.label{id = 'hint', text = ''},
+})
+
+scene.push({
+    update = function(self, dt)
+        local document, id = ui.focused()
+        if document == menu then
+            menu:set('hint', {text = id == 'quit' and 'Leave the island' or 'Start a new run'})
+        end
+    end,
+})
+```
+
+### ui.clearFocus()
+
+Takes the focus away from every document, which suits the start of gameplay, so a key that plays the game never presses a menu control left focused.
+
+```lua
+local ui = require('haylen.ui')
+
+local hud = ui.mount(ui.button{id = 'pause', text = 'Pause', align = 'end'})
+ui.clearFocus()
+```
+
+### ui.focusRingVisible()
+
+Returns `true` while the focus ring shows, which happens once the player navigates with the keyboard, a gamepad or a remote, and always on a device without a pointer, such as a TV. A mouse click or a touch hides it again.
+
+```lua
+local ui = require('haylen.ui')
+
+if ui.focusRingVisible() then
+    print('the player navigates with keys, a gamepad or a remote')
+end
+```
+
+### ui.safeAreaVisible()
+
+Returns `true` while the debug view of the safe area shows.
+
+```lua
+local ui = require('haylen.ui')
+
+print(ui.safeAreaVisible())
+```
+
+### ui.setSafeAreaVisible(visible)
+
+Shows or hides the debug view of the safe area, which shades the screen outside the safe area, outlines it and prints its insets over everything. The `debug.showSafeArea` option of `app.json` turns it on at start. Together with [viewport.setSafeAreaSimulation](viewport.md#viewportsetsafeareasimulationvalue) it checks a layout against notches, rounded corners and gesture bars on a desktop.
+
+```lua
+local ui = require('haylen.ui')
+local viewport = require('haylen.viewport')
+
+viewport.setSafeAreaSimulation('iphoneDynamicIsland')
+ui.setSafeAreaVisible(true)
+```
+
+### ui.onEvent(listener)
+
+Calls `listener(event)` for every event of every mounted document, with the same table [handlers](#events-and-handlers) receive, and returns a `haylen.Connection`. Its `disconnect()` method stops the listener, and its `connected` property is `true` until then. Listeners run before the handlers of the node. It suits screens loaded from JSON, sound effects for every click and analytics. `event.document` is `nil` for documents that C++ code mounted. An error raised inside a listener stops the app and shows the error screen with the message and its stack trace.
+
+```lua
+local assets = require('haylen.assets')
+local audio = require('haylen.audio')
+local ui = require('haylen.ui')
+
+local click = assets.load('sfx/click.wav')
+local sounds = ui.onEvent(function(event)
+    if event.name == 'click' then
+        audio.play(click, {bus = 'ui'})
+    end
+end)
+```
+
+## UiDocument
+
+A `UiDocument` is the mounted tree `ui.mount` returns. Its methods find nodes by id. Reading a member it does not have raises `haylen.UiDocument has no member '<name>'.`, and writing a read-only property raises `haylen.UiDocument has no writable property '<name>'.`.
+
+### document:set(id, properties)
+
+Changes the given properties of the node `id` and leaves the others as they are. The engine checks the merged properties before it changes anything, so an invalid value leaves the node and its handlers untouched. `onX` keys add or replace [handlers](#events-and-handlers) of the node once the properties are accepted.
+
+Values the player changed, such as typed text, a checked box or a selected item, stay as they are unless `properties` sets that same property.
+
+Errors raised:
+
+- `The UI document is not mounted.` after `unmount`.
+- `The UI document has no node with the id <id>.` for an unknown id.
+- `set changes properties only, so it takes an object without kind, id or children.` when `properties` holds `kind`, `id` or `children`.
+- The property errors of the kind, such as `slider.min must be smaller than max.` or `slider.colour is not a property of this component.`.
+
+```lua
+local ui = require('haylen.ui')
+
+local hud = ui.mount(ui.column{
+    ui.label{id = 'day', text = 'Day 1'},
+    ui.button{id = 'sleep', text = 'Sleep'},
+})
+
+local day = 1
+hud:set('sleep', {onClick = function()
+    day = day + 1
+    hud:set('day', {text = 'Day ' .. day})
+end})
+```
+
+### document:replace(id, children)
+
+Replaces every child of the node `id` with the nodes of the list `children`, and an empty list removes them all. The ids of the new nodes are checked before anything changes, so a failed replace leaves the document and its handlers as they were. Once the new children are in place, the handlers of removed nodes are dropped, and a new node that reuses the id of a removed one gets only the handlers of its own table.
+
+Errors raised:
+
+- `The UI document is not mounted.` after `unmount`.
+- `The UI document has no node with the id <id>.` for an unknown id.
+- `A <kind> takes at most <count> children.` when the node cannot hold that many children.
+- `The UI id <id> is used more than once.` when a new id is already in use outside the replaced children.
+
+```lua
+local ui = require('haylen.ui')
+
+local shop = ui.mount(ui.column{id = 'items'})
+
+local function showItems(names)
+    local rows = {}
+    for index, name in ipairs(names) do
+        rows[#rows + 1] = ui.button{id = 'buy-' .. index, text = name, onClick = function()
+            print('bought ' .. name)
+        end}
+    end
+    shop:replace('items', rows)
+end
+
+showItems({'Axe', 'Rope', 'Lantern'})
+```
+
+### document:get(id)
+
+Returns a copy of the properties of the node `id` as the tree created them, updated by every `set`, without `kind`, `id`, `children` and handlers. Returns `nil` for an unknown id. Player changes such as typed text are not part of it.
+
+```lua
+local ui = require('haylen.ui')
+
+local hud = ui.mount(ui.label{id = 'gold', text = 10})
+print(hud:get('gold').text)
+```
+
+### document:has(id)
+
+Returns `true` when the document holds a node with that id.
+
+```lua
+local ui = require('haylen.ui')
+
+local hud = ui.mount(ui.column{ui.label{id = 'hint', text = 'Tap to start'}})
+if hud:has('hint') then
+    hud:set('hint', {visible = false})
+end
+```
+
+### document:bounds(id)
+
+Returns the rectangle where the node was last drawn as a `haylen.Rect` with `x`, `y`, `width` and `height`, in the design coordinates of screen canvases. Returns `nil` for an unknown id and for a node that was not drawn yet, which is the case until the document has been drawn once.
+
+```lua
+local scene = require('haylen.scene')
+local ui = require('haylen.ui')
+
+local hud = ui.mount(ui.button{id = 'map', text = 'Map'}, {placement = 'screen'})
+
+scene.push({
+    update = function(self, dt)
+        local area = hud:bounds('map')
+        if area then
+            self.pointerTarget = {x = area.x + area.width / 2, y = area.y + area.height / 2}
+        end
+    end,
+})
+```
+
+### document:command(id, name, arguments)
+
+Sends a command to the node `id`. `arguments` is optional, and both commands take none.
+
+- `'focus'` moves the keyboard, gamepad and remote focus to the node. The focus ring stays visible when the player was already navigating and shows at once when they last used a gamepad or have no pointer device, while a mouse or touch player sees it only once they start navigating. The first accept press also counts as navigation: it shows the ring and activates the focused node. The focusable kinds are `button`, `imageButton`, `menuButton`, `popover`, `chip`, `checkbox`, `toggle`, `radioGroup`, `combo`, `segmentedControl`, `textField`, `secretField`, `textArea`, `filterField`, `numberField`, `slider`, `rangeSlider`, `stepper`, `keyCapture`, `colorField`, `list`, `slotGrid`, `accordion` and `carousel`. A radio group, a list and a slot grid focus their selected entry, or their first entry that can be picked when none is selected, and an accordion focuses its first header.
+- `'open'` opens a `contextMenu` below its child, as a right click would.
+
+A kind without that command raises `A <kind> does not answer the command <name>.`, arguments raise `The focus command takes no arguments.` or `The open command takes no arguments.`, and an unknown id raises `The UI document has no node with the id <id>.`.
+
+```lua
+local ui = require('haylen.ui')
+
+local form = ui.mount(ui.column{
+    ui.textField{id = 'name', placeholder = 'Your name'},
+})
+form:command('name', 'focus')
+```
+
+### document:removeHandler(id, event)
+
+Removes the handler of the event named `event`, such as `'click'`, from the node `id`, and returns `true` when the node had one. `The UI document is not mounted.` is raised after `unmount`, and an unknown id raises `The UI document has no node with the id <id>.`.
+
+```lua
+local ui = require('haylen.ui')
+
+local intro = ui.mount(ui.button{id = 'skip', text = 'Skip', onClick = function(event)
+    print('skipped once')
+    event.document:removeHandler('skip', 'click')
+end})
+```
+
+### document:unmount()
+
+Removes the document from the screen and forgets its handlers. Returns `true` when the document was mounted and `false` when it was already unmounted. An unmounted document still answers `get`, `has` and `bounds`, while `set` and `replace` raise `The UI document is not mounted.`. Unmounting publishes the `ui_document_unmounted` event of [haylen.events](events.md) with the document, and then ends every listener, timer and tween that has the document as its `owner`.
+
+```lua
+local events = require('haylen.events')
+local timer = require('haylen.timer')
+local ui = require('haylen.ui')
+
+local banner = ui.mount(ui.label{id = 'score', text = 'Score 0', font = 'title', align = 'center'})
+
+-- The listener belongs to the banner, so it ends when the banner is unmounted.
+events.on('score_changed', function(score)
+    banner:set('score', {text = 'Score ' .. score})
+end, {owner = banner})
+
+events.emit('score_changed', 120)
+timer.after(2, function()
+    banner:unmount()
+    events.emit('score_changed', 200)
+end)
+```
+
+### document:transform(id)
+
+Returns the transform of the node with the id, a `haylen.UiTransform` that moves, scales, fades and tints the node and its children on top of the place its layout gives it. The document keeps one transform object per node, so every call returns the same one while the node exists. An unknown id raises `The UI document has no node with the id <id>.`. Changes show from the next frame.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `offset` | Vec2 | `(0, 0)` | Moves the node, with the areas where it takes clicks and taps, in design units. |
+| `scale` | Vec2 | `(1, 1)` | Scales what the node draws around its center. |
+| `opacity` | number | `1` | Multiplies the alpha of what the node draws, from `0` to `1`. |
+| `tint` | Color | white | Multiplies the colors of what the node draws. |
+
+Scale, opacity and tint change only how the node looks, so its input areas keep their layout size. They reach what the node draws in its document, while popups, tooltips and the content of scroll areas, which draw in windows of their own, keep their look. The four properties are native properties, so [haylen.tween](tween.md#native-properties) animates them without running Lua every frame. Replacing the node with `replace` releases its transform: reading it raises `haylen.UiTransform was already released.`, a tween on it stops, and `transform` returns the transform of the new node.
+
+```lua
+local math2d = require('haylen.math')
+local tween = require('haylen.tween')
+local ui = require('haylen.ui')
+
+local menu = ui.mount(ui.column{align = 'center', gap = 16,
+    ui.label{id = 'title', text = 'Tiny Island', font = 'title'},
+    ui.button{id = 'play', text = 'Play'},
+})
+
+local title = menu:transform('title')
+title.opacity = 0
+title.offset = math2d.vec2(0, -40)
+tween.to(title, 0.6, {opacity = 1, offset = math2d.vec2(0, 0)}, {ease = 'back_out'})
+tween.to(menu:transform('play'), 0.4, {scale = math2d.vec2(1.1, 1.1)}, {repeatCount = -1, loop = 'yoyo'})
+```
+
+### document.visible
+
+Readable and writable boolean, `true` after `mount`. A hidden document is neither drawn nor reports events, except the `release` of a touch button that was pressed when it was hidden, and it keeps its state for when it shows again.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+local ui = require('haylen.ui')
+
+local pause = ui.mount(ui.panel{align = 'center', ui.label{text = 'Paused'}})
+pause.visible = false
+
+scene.push({
+    update = function(self, dt)
+        if input.keyPressed('escape') then
+            pause.visible = not pause.visible
+        end
+    end,
+})
+```
+
+### document.mounted
+
+Read-only boolean, `true` from `mount` until `unmount`.
+
+```lua
+local ui = require('haylen.ui')
+
+local toastLayer = ui.mount(ui.toast{id = 'note', text = 'Saved'})
+if toastLayer.mounted then
+    toastLayer:set('note', {open = true})
+end
+```
+
+### document.placement
+
+Read-only string, `'safe'` or `'screen'`, as `ui.mount` received it.
+
+```lua
+local ui = require('haylen.ui')
+
+local hud = ui.mount(ui.label{text = 'HP 10'}, {placement = 'screen'})
+print(hud.placement)
+```
+
+## Screen format
+
+A node is a table with these keys, and the same shape works as JSON.
+
+| Key | Type | Meaning |
+| --- | --- | --- |
+| `kind` | string | Component kind, one of the kinds on this page. It is required. |
+| `id` | string | Optional name of the node, unique within the document and not empty. `set`, `replace`, `get`, `bounds` and `command` find nodes by it. Ids starting with `#` are reserved for the engine. |
+| `children` | list of nodes | Child nodes, for kinds that hold children. |
+| any other key | depends on the kind | A property of the kind, from the [common properties](#common-properties) or the properties of the kind. |
+| `onX` | function | Lua only. A [handler](#events-and-handlers) for the event `x`. |
+
+In Lua the children can also go in the array part of the node, which lets trees read like `ui.column{ui.label{...}, ui.button{...}}`. A node takes its children from `children` or from its array part, never from both.
+
+A document has at most 64 levels and 20000 nodes. Every property is checked when the tree is built, so a misspelled key or a wrong value is reported instead of ignored.
+
+Errors raised for invalid trees:
+
+- `A UI node needs a kind.` and `There is no UI component kind named <kind>.`
+- `The id of a <kind> must be a non-empty string.` and `The UI id <id> is used more than once.`
+- `UI ids starting with # are reserved for nodes the engine names.`
+- `The children of a <kind> must be a list.` and `A <kind> takes at most <count> children.`
+- `A UI node takes children either in its children list or in its array part, not both.`
+- `UI node keys must be strings.` and `A UI node with handlers needs a string id.`
+- `A UI document is limited to 64 levels and 20000 nodes.`
+- `<kind>.<key> is not a property of this component.` for an unknown property, and the value errors listed in [Value types](#value-types).
+
+Screens can live in JSON files in the package assets. Handlers cannot be written in JSON, so the app attaches them with `set` after mounting.
+
+```json
+{
+    "kind": "column",
+    "align": "center",
+    "gap": 24,
+    "children": [
+        {"kind": "label", "text": {"key": "menu.title"}, "font": "title"},
+        {"kind": "button", "id": "play", "text": {"key": "menu.play"}, "variant": "primary"},
+        {"kind": "button", "id": "quit", "text": {"key": "menu.quit"}}
+    ]
+}
+```
+
+```lua
+local assets = require('haylen.assets')
+local ui = require('haylen.ui')
+
+local menu = ui.mount(assets.json('ui/main-menu.json'))
+menu:set('play', {onClick = function() print('play') end})
+menu:set('quit', {onClick = function() print('quit') end})
+```
+
+Lua has no separate empty list, so an empty table converts to an empty JSON object. List properties such as `items`, `rows`, `columns`, `buttons`, `expanded`, the `children` of tree items and the `cells` of table rows accept an empty object as an empty list, so `{}` works in Lua and a JSON file with an empty list keeps working after it passes through Lua. `children = {}` and `replace(id, {})` work too.
+
+## Value types
+
+| Type | Accepted values |
+| --- | --- |
+| text | A string, a number, or a translation such as `{key = 'menu.play', args = {n = 2}}`, which [haylen.localization](localization.md) translates every time the text is drawn, so a language change shows at once. Whole numbers show without decimals. |
+| color | A string `'#RRGGBB'` or `'#AARRGGBB'`, such as `'#FF2E7D32'`. |
+| theme color | The name of a [theme color role](#theme-colors), such as `'accent'` or `'textMuted'`. |
+| length | A non-negative number, or `'auto'` to let the content decide. |
+| insets | One number for every side, `{vertical, horizontal}`, or `{top, right, bottom, left}`. Every value is non-negative. |
+| image | A texture path relative to the package `content/` folder. Images load in the background, and a component draws nothing in their place until they arrive. An image that fails to load stops the app with `The UI image <path> could not be loaded: <reason>`. |
+| tone | `'neutral'`, `'accent'`, `'success'`, `'warning'`, `'danger'` or `'information'`. |
+| variant | `'default'`, `'primary'`, `'destructive'`, `'toolbar'`, `'icon'` or `'link'`, described under [button](#uibuttonproperties). |
+| items | A list of [items](#items). |
+
+A value of the wrong type raises an error that names the kind and the key: `<kind>.<key> must be true or false.`, `must be a string.`, `must be a number.`, `must be a whole number.`, `is out of range.`, `must be a color such as #FF2E7D32.`, `must name a theme color such as accent or textMuted.`, `is not one of the allowed names.`, `must be a non-negative number or auto.`, `must be one, two or four non-negative numbers.` or `must be text, a number or a translation such as {key = 'menu.play'}.`.
+
+## Common properties
+
+Every kind accepts these properties.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `visible` | boolean | `true` | A hidden node takes no room and is not drawn. |
+| `enabled` | boolean | `true` | A disabled node is drawn dimmed and ignores the player. |
+| `tooltip` | text | none | Text shown next to the pointer after it rests on the node for half a second. |
+| `grow` | number from 0 to 1000 | `0` | Share of the free space the node takes along a column or a row. Two nodes with `grow = 1` split the free space in half. |
+| `width` | length | `'auto'` | Fixed width. |
+| `height` | length | `'auto'` | Fixed height. |
+| `minWidth` | number | `0` | Smallest width. |
+| `maxWidth` | number | unbounded | Largest width. |
+| `minHeight` | number | `0` | Smallest height. |
+| `maxHeight` | number | unbounded | Largest height. |
+| `align` | string | depends on the kind | `'start'`, `'center'`, `'end'` or `'stretch'`. A column places the node across its width with it, a row across its height, a grid inside its cell, and a stack or the document root in both directions. Without `align`, rows center their children. Everywhere else labels, buttons, image buttons, menu buttons, popovers, chips, check boxes, toggles, radio groups, badges, status indicators, circular progress indicators, icons, images, avatars and touch controls use `start`, the busy indicator uses `center`, and every other kind stretches. |
+| `anchor` | string | none | Takes the node out of the layout of its parent and places it against the safe area or the screen, as [Anchors](#anchors) describes. `'none'` puts it back in the layout. |
+| `anchorTo` | string | `'safe'` | Area an anchored node is placed in: `'safe'` or `'screen'`. |
+| `margin` | insets | `0` | Distance between an anchored node and the edges of its area. |
+| `focusable` | boolean | `true` | `false` keeps the controls of the node and of every node inside it out of keyboard, gamepad and remote navigation, and a click presses them without moving the focus there, which suits HUD buttons that share keys with gameplay. |
+| `autofocus` | boolean | `false` | Gives the node the focus when it appears, such as when its document mounts or its dialog opens, unless the focus is already on a control of the same document and window. |
+| `focusScope` | boolean | `false` | Keeps the focus inside the node while it is there, and makes the node hear `cancel`. |
+| `focusWrap` | string | `'none'` | `'horizontal'`, `'vertical'` or `'both'` wrap a move that would leave the node around to its other side. |
+| `focusLeft`, `focusRight`, `focusUp`, `focusDown` | string | none | Id of the node the focus moves to in that direction instead of the nearest one. A node that names itself keeps the focus in that direction. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.row{
+    align = 'start',
+    width = 900,
+    ui.button{text = 'Back', tooltip = 'Return to the map'},
+    ui.spacer{grow = 1},
+    ui.button{text = 'Buy', enabled = false, minWidth = 200},
+})
+```
+
+## Anchors
+
+An anchored node leaves the layout of its parent, takes no room there and draws over it, placed against the safe area or the whole visible screen. The document root may be anchored too, which places the whole document. The app draws under notches, dynamic islands, rounded corners and gesture bars on every platform, and anchors choose where each part of the interface sits.
+
+| Anchor | Place |
+| --- | --- |
+| `'topLeft'`, `'top'`, `'topRight'` | Top corners and the middle of the top edge, at the measured size. |
+| `'left'`, `'center'`, `'right'` | Middle of the left edge, the center and the middle of the right edge. |
+| `'bottomLeft'`, `'bottom'`, `'bottomRight'` | Bottom corners and the middle of the bottom edge. |
+| `'stretch'` | The whole area. |
+| `'stretchTop'`, `'stretchBottom'` | The top or bottom edge, as wide as the area. |
+| `'stretchLeft'`, `'stretchRight'` | The left or right edge, as tall as the area. |
+| `'stretchHorizontal'`, `'stretchVertical'` | A band across the middle, as wide or as tall as the area. |
+
+`margin` keeps the node away from the edges of its area, and `width` and `height` fix the size along axes that do not stretch. An unknown name raises `<kind>.anchor is not one of the anchor names.`, and an `anchorTo` other than `'safe'` or `'screen'` raises `<kind>.anchorTo is not one of the allowed names.`.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.stack{
+    ui.image{image = 'ui/sky.png', fit = 'cover', anchor = 'stretch', anchorTo = 'screen'},
+    ui.button{id = 'pause', icon = 'ui/pause.png', variant = 'icon', anchor = 'topRight', margin = 16},
+    ui.panel{anchor = 'stretchBottom', height = 120, margin = {0, 24}, ui.label{text = 'Wood 12'}},
+    ui.label{text = 'Day 3', font = 'heading', anchor = 'top', margin = {24, 0}},
+}, {placement = 'screen'})
+```
+
+## Focus and navigation
+
+Buttons, choices, inputs, list rows, slots and the other interactive parts of a document take the keyboard, gamepad and remote focus. The UI moves it with the navigation actions of [haylen.input](input.md#the-action-map), which the app remaps by defining an action with the same name in its action map, while the others keep their built-in bindings.
+
+| Action | Built-in bindings | Use |
+| --- | --- | --- |
+| `ui_accept` | `key:enter`, `key:keypad_enter`, `key:space`, `button:south` | Presses the focused control. |
+| `ui_cancel` | `key:escape`, `button:east` | Goes back: closes the open popup or dialog, puts back a carried item, or sends `cancel`. |
+| `ui_left`, `ui_right`, `ui_up`, `ui_down` | the arrow keys, the directional pad and the left stick | Moves the focus. |
+| `ui_menu` | `key:menu`, `button:north` | Opens the context menu around the focus. |
+
+- A direction moves the focus to the nearest control in that direction, preferring controls in line with the focused one, unless the focused node names a neighbor with `focusLeft`, `focusRight`, `focusUp` or `focusDown`. Some controls use left and right themselves while they have the focus: sliders, range sliders, steppers, segmented controls and the page dots of a carousel.
+- Tab and Shift Tab walk the controls in the order they draw, also out of a text field being edited, and a text field they reach starts editing.
+- The focus stays inside its document, and a dialog, a popover and a menu keep it until they close, and then it returns to where it was. A `window` belongs to the navigation of its document, so a move reaches its controls from the rest of the document and brings it to the front, and closing it returns the focus to where it was. A node with `focusScope = true` keeps the focus while it is inside, and a move never enters a scope from outside, only `autofocus`, the `focus` command or a click do.
+- `focusWrap` wraps a move that would leave a node around to its other side, such as the end of a row of cards back to its first card.
+- A scroll brings the focused control into view.
+- The focused node reports `focus` and its previous node reports `blur`, as long as that node still draws.
+- `ui_cancel` closes the open popup or dialog, puts back an item carried from a slot grid or a list, and otherwise sends `cancel` to the innermost node with `focusScope` around the focus, or to the root of the document that holds the focus, or of the topmost document when nothing has it. A screen goes back from its root handler, as in the example below.
+- The ring shows around the focus once the player navigates, and a click or a touch hides it. On a device without a pointer, such as an Apple TV or an Android TV, it shows from the start. `ui.focusRingVisible()` tells whether it shows.
+- The first press of a direction while the ring is hidden only shows where the focus is, and the first accept shows the ring and presses the control.
+
+On an Apple TV, a swipe on the touch surface of the Siri Remote moves the focus, a click presses the focused control, and Menu is `ui_cancel`. On an Android TV, the directional pad of the remote and gamepads move it, select presses, and Back is `ui_cancel`. Both platforms leave the app when the player goes back from its root screen, as Apple and Google ask, while [window.setBackLeavesApp](window.md#windowsetbackleavesappenabled) keeps the press inside the app on other screens. An open popup or dialog always keeps it.
+
+```lua
+local scene = require('haylen.scene')
+local ui = require('haylen.ui')
+local window = require('haylen.window')
+
+local Options = {}
+Options.__index = Options
+
+function Options:enter()
+    window.setBackLeavesApp(false)
+    self.document = ui.mount(ui.column{
+        onCancel = function()
+            scene.pop()
+        end,
+        align = 'center',
+        focusWrap = 'vertical',
+        ui.toggle{id = 'music', text = 'Music', autofocus = true},
+        ui.toggle{id = 'sound', text = 'Sound'},
+        ui.button{id = 'back', text = 'Back', focusUp = 'sound', onClick = function()
+            scene.pop()
+        end},
+    })
+end
+
+function Options:exit()
+    self.document:unmount()
+    window.setBackLeavesApp(true)
+end
+
+scene.push(setmetatable({}, Options))
+```
+
+## Items
+
+Kinds that offer choices take an `items` list. Every item is a table with a unique `id`.
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `id` | string | required | Name of the item, unique within the list and not empty. Selection properties such as `selected` refer to it. |
+| `text` | text | none | Text of the item. |
+| `caption` | text | none | Second line under the text, shown by `list` and `tree`. |
+| `image` | image | none | Picture before the text, shown by `list` and `tree`. |
+| `enabled` | boolean | `true` | A disabled item cannot be picked. |
+| `children` | list of items | none | Nested items, accepted only by `tree`. |
+
+Item errors name the kind and the property: a repeated id raises `<kind>.items uses the item id <id> more than once.`, an item without an id raises `<kind>.items needs a non-empty id for every item.`, an item that is not a table raises `<kind>.items must hold objects with an id.`, nested items outside a tree raise `<kind>.items cannot nest items, which only a tree does.`, and tree children that are not a list raise `tree.items.children must be a list of items.`.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.list{
+    items = {
+        {id = 'wood', text = 'Wood', caption = 'Used for walls', image = 'ui/wood.png'},
+        {id = 'gold', text = 'Gold', enabled = false},
+    },
+})
+```
+
+## Events and handlers
+
+Components report what the player does as events. A node table key that starts with `on` followed by an upper-case letter and holds a function is a handler, and it answers the event named by the rest of the key with a lower-case first letter: `onClick` answers `click` and `onChange` answers `change`. A handler key that holds anything other than a function is read as a property and raises `<kind>.<key> is not a property of this component.`. The engine does not check that the kind reports the event, so a handler for an event the kind never reports is never called.
+
+A node with handlers and no `id` gets an id from the engine, such as `#1`, which handlers see as `event.id`. `set` adds or replaces handlers, and `document:removeHandler` removes one.
+
+A handler receives one table that holds the values of the event plus these fields.
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `id` | string | Id of the node that reported the event. |
+| `name` | string | Name of the event, such as `'click'`. |
+| `document` | UiDocument | Document that holds the node. |
+
+Event values never use the names `id`, `name` and `document`, so the item of a `select` arrives as `event.item` and the button of an `answer` as `event.button`, next to the node id in `event.id`.
+
+Events are collected while the document draws and handed to the handlers once per frame, in the engine update of the next frame, before the scenes update. An error raised inside a handler stops the app and shows the error screen with the message and its stack trace.
+
+| Kind | Event | Values |
+| --- | --- | --- |
+| `button`, `imageButton` | `click` | none |
+| `chip` | `change` | `selected` (boolean) |
+| `chip` | `remove` | none |
+| `checkbox`, `toggle` | `change` | `checked` (boolean) |
+| `radioGroup`, `combo`, `segmentedControl` | `change` | `value` (item id) |
+| `stepper` | `change` | `value` (number, or item id for a stepper of items) |
+| `rangeSlider` | `change` | `low` and `high` (numbers) |
+| `keyCapture` | `change` | `value` (binding string such as `'key:w'`) |
+| `keyCapture` | `cancel` | none |
+| `textField`, `secretField`, `textArea`, `filterField` | `change` | `value` (string) |
+| `textField`, `secretField`, `filterField` | `submit` | `value` (string) |
+| `numberField`, `slider` | `change` | `value` (number) |
+| `colorField` | `change` | `value` (color string `'#AARRGGBB'`) |
+| `tabs`, `menuButton`, `contextMenu`, `list`, `tree`, `table`, `slotGrid` | `select` | `item` (item, row or slot id) |
+| `tree`, `accordion` | `toggle` | `item` (item id), `expanded` (boolean) |
+| `list` with `draggable`, `slotGrid` | `drag` | `item` (id of the row or slot picked up or dragged) |
+| `list` with `draggable`, `slotGrid` | `drop` | `item` (id of the row or slot dropped on), `source` (id of the node the item left), `sourceItem` (its row or slot id) |
+| `carousel` | `change` | `page` (number, from 1) |
+| `window` | `move` | `x`, `y` (numbers) |
+| `window` | `close` | none |
+| `splitter` | `resize` | `ratio` (number) |
+| `dialog` | `answer` | `button` (button id) |
+| `dialog`, `toast` | `dismiss` | none |
+| `touchButton` | `press`, `release` | none |
+| every kind | `focus`, `blur` | none |
+| a node with `focusScope`, the document root | `cancel` | none |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.column{
+    ui.checkbox{id = 'music', text = 'Music', checked = true, onChange = function(event)
+        print(event.id .. ' ' .. event.name .. ' ' .. tostring(event.checked))
+    end},
+    ui.slider{id = 'volume', value = 0.8, onChange = function(event)
+        event.document:set('music', {text = 'Music ' .. math.floor(event.value * 100 + 0.5) .. '%'})
+    end},
+})
+```
+
+## Containers
+
+### ui.column(properties)
+
+Lays out any number of children from top to bottom. Children with `grow` share the free height, and `justify` places the children when none of them grows. Each child sits across the width by its `align`.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `gap` | number from 0 to 10000 | theme `itemSpacing` | Space between children. |
+| `padding` | insets | `0` | Space between the edges and the children. |
+| `justify` | string | `'start'` | `'start'`, `'center'`, `'end'` or `'spaceBetween'`, which spreads the free space between the children. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.column{
+    padding = {24, 32},
+    gap = 12,
+    justify = 'center',
+    ui.label{text = 'Wood 12'},
+    ui.label{text = 'Stone 4'},
+    ui.button{text = 'Build', align = 'end'},
+})
+```
+
+### ui.row(properties)
+
+Lays out any number of children from left to right. It takes the properties of `column`. Children with `grow` share the width the others leave, so wide content never pushes the row past its bounds. Each child sits across the height by its `align`, which defaults to `center` in a row.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.row{
+    align = 'start',
+    padding = 16,
+    gap = 16,
+    ui.avatar{name = 'Ana Souza', size = 48},
+    ui.label{text = 'Ana', grow = 1},
+    ui.badge{text = 'Level 3', tone = 'accent'},
+})
+```
+
+### ui.grid(properties)
+
+Lays out any number of children in cells of equal width, filling each row before the next. Every row is as tall as its tallest child, and each child sits inside its cell by its `align`.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `columns` | integer from 1 to 64 | `2` | Number of cells per row. |
+| `gap` | number from 0 to 10000 | theme `itemSpacing` | Space between cells in both directions. |
+| `padding` | insets | `0` | Space between the edges and the cells. |
+
+```lua
+local ui = require('haylen.ui')
+
+local slots = {}
+for index = 1, 8 do
+    slots[index] = ui.card{ui.label{text = 'Slot ' .. index}}
+end
+ui.mount(ui.grid{columns = 4, gap = 8, padding = 16, children = slots})
+```
+
+### ui.stack(properties)
+
+Draws any number of children on top of each other, the later ones above. Each child sits by its own `align` in both directions, and `stretch` fills the whole stack.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `padding` | insets | `0` | Space between the edges and the children. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.stack{
+    ui.image{image = 'ui/map.png', fit = 'cover', align = 'stretch'},
+    ui.label{text = 'You are here', align = 'center', outline = '#FF000000'},
+    ui.button{text = 'Close', align = 'end'},
+}, {placement = 'screen'})
+```
+
+### ui.scroll(properties)
+
+Shows one child in an area that scrolls up and down or sideways. The mouse wheel, the scrollbar and, on touch screens, dragging the content scroll it, and a drag along the scrolling direction takes the finger from the control it started on, so a list of buttons still scrolls. The focus scrolls to the focused control. A vertical scroll measures as tall as its content, so give it a `height` or a `maxHeight` to make it scroll, and a horizontal scroll needs a `width`.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `scrollbar` | boolean | `true` | Shows the scrollbar. |
+| `direction` | string | `'vertical'` | `'vertical'` or `'horizontal'`, which lays the child out at its full width and scrolls it sideways, also with the mouse wheel. |
+| `snap` | boolean | `false` | Settles, once the player lets go, on the start of the item of the child nearest to the scrolled position, such as a card of a row. |
+
+A direction other than `'vertical'` or `'horizontal'` raises `scroll.direction must be vertical or horizontal.`.
+
+```lua
+local ui = require('haylen.ui')
+
+local lines = {}
+for index = 1, 40 do
+    lines[index] = ui.label{text = 'Quest log entry ' .. index}
+end
+ui.mount(ui.scroll{height = 600, ui.column{gap = 8, children = lines}})
+
+local cards = {}
+for index = 1, 8 do
+    cards[index] = ui.card{width = 360, ui.label{text = 'Level ' .. index}}
+end
+ui.mount(ui.scroll{direction = 'horizontal', snap = true, width = 1200, height = 240, align = 'end', ui.row{gap = 24, children = cards}})
+```
+
+### ui.card(properties)
+
+A column on a raised surface with a border, drawn with the theme `card` surface when the theme has one. It takes the properties of `column`. When `padding` is zero the theme `panelPadding` metric pads the content. A card keeps the pointer from reaching the app behind it.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.card{
+    align = 'center',
+    width = 600,
+    ui.sectionTitle{text = 'Crafting'},
+    ui.label{text = 'Combine two items to make a new one.'},
+})
+```
+
+### ui.panel(properties)
+
+A column on the panel color without a border, drawn with the theme `panel` surface when the theme has one. It takes the properties of `column`, pads like a card and keeps the pointer from reaching the app behind it.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.panel{
+    align = 'end',
+    width = 420,
+    ui.label{text = 'Objectives'},
+    ui.checkbox{text = 'Build a shelter'},
+    ui.checkbox{text = 'Find water'},
+}, {placement = 'screen'})
+```
+
+### ui.spacer(properties)
+
+Takes room and draws nothing. It has no properties of its own, so it uses `width`, `height` or `grow`.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.row{
+    ui.label{text = 'Score'},
+    ui.spacer{grow = 1},
+    ui.label{text = '1200'},
+})
+```
+
+### ui.divider(properties)
+
+Draws a line through the middle of its bounds, as thick as the theme `borderWidth` metric. A vertical divider in a row needs a `height` or `align = 'stretch'`.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `vertical` | boolean | `false` | Draws a vertical line instead of a horizontal one. |
+| `color` | theme color | `'border'` | Color of the line. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.column{
+    ui.label{text = 'Audio'},
+    ui.divider{},
+    ui.row{
+        ui.label{text = 'Left'},
+        ui.divider{vertical = true, height = 40, color = 'borderStrong'},
+        ui.label{text = 'Right'},
+    },
+})
+```
+
+### ui.tabs(properties)
+
+A strip of tabs over the child of the selected tab. It takes one child per item, in the order of the items, and shows only the child of the selected tab.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `items` | items | empty | The tabs. Items use `id`, `text` and `enabled`. |
+| `selected` | string | first item | Id of the selected tab. |
+
+Picking another tab reports `select` with the item id as `item`.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.tabs{
+    id = 'journal',
+    items = {{id = 'quests', text = 'Quests'}, {id = 'map', text = 'Map'}},
+    selected = 'quests',
+    onSelect = function(event)
+        print('switched ' .. event.id .. ' to ' .. event.item)
+    end,
+    ui.label{text = 'Find the lighthouse'},
+    ui.image{image = 'ui/map.png'},
+})
+```
+
+### ui.accordion(properties)
+
+Sections under headers that open and close, one child per item in the order of the items. A click, a tap or accept on a header opens or closes its section and reports `toggle` with the item id as `item` and the new state as `expanded`. Opening a section closes the others unless `multiple` is set. The headers take the focus.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `items` | items | empty | The sections. Items use `id`, `text` and `enabled`. |
+| `expanded` | list of strings | none | Ids of the open sections. The player opens and closes sections afterwards, and setting it again replaces the open sections. |
+| `multiple` | boolean | `false` | Lets several sections stay open. |
+
+A value of `expanded` that is not a list of strings raises `accordion.expanded must be a list of item ids.`.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.accordion{
+    width = 800,
+    items = {{id = 'controls', text = 'Controls'}, {id = 'goals', text = 'Goals'}},
+    expanded = {'controls'},
+    onToggle = function(event)
+        print(event.item .. ' is now ' .. (event.expanded and 'open' or 'closed'))
+    end,
+    ui.label{text = 'Move with the left stick and chop with the south button.'},
+    ui.label{text = 'Survive ten nights on the island.'},
+})
+```
+
+### ui.carousel(properties)
+
+Pages shown one at a time that slide sideways, one child per page, such as a tutorial or a level picker. A swipe or a drag of the pages, the arrow buttons and the page dots change the page and report `change` with the page number, counted from 1, as `page`. The page dots take the focus, and left and right turn the pages from there. The controls of the other pages stay out of navigation.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `page` | integer, from 1 | `1` | The page shown. |
+| `loop` | boolean | `false` | Goes from the last page on to the first and back. |
+| `indicators` | boolean | `true` | Shows the page dots under the pages. Without them the whole carousel takes the focus. |
+| `arrows` | boolean | `true` | Shows the arrow buttons on the sides. |
+| `interval` | number from 0 to 3600 | `0` | Seconds before the next page turns on its own, looping. `0` turns pages only when the player does. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.carousel{
+    width = 1000,
+    height = 520,
+    align = 'center',
+    interval = 6,
+    onChange = function(event)
+        print('page ' .. event.page)
+    end,
+    ui.image{image = 'tutorial/move.png'},
+    ui.image{image = 'tutorial/chop.png'},
+    ui.image{image = 'tutorial/build.png'},
+})
+```
+
+### ui.formField(properties)
+
+A label above one child control, with a help line or an error line under it. The error replaces the help and uses the danger text color.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `label` | text | none | Text above the control. |
+| `help` | text | none | Hint under the control. |
+| `error` | text | none | Error under the control, shown instead of `help`. |
+| `required` | boolean | `false` | Adds ` *` to the label. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.formField{
+    id = 'nameField',
+    label = 'Name',
+    help = 'Shown on the leaderboard',
+    required = true,
+    ui.textField{placeholder = 'Your name', onChange = function(event)
+        event.document:set('nameField', {error = #event.value < 3 and 'Too short' or ''})
+    end},
+})
+```
+
+### ui.splitter(properties)
+
+Two children beside each other, or one above the other, with a handle between them that the player drags.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `ratio` | number from 0.05 to 0.95 | `0.5` | Share of the space the first child takes. |
+| `vertical` | boolean | `false` | Stacks the children instead of placing them side by side. |
+
+Releasing the handle reports `resize` with the new `ratio`.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.splitter{
+    ratio = 0.3,
+    onResize = function(event)
+        print('split at ' .. event.ratio)
+    end,
+    ui.list{items = {{id = 'a', text = 'Alpha'}, {id = 'b', text = 'Beta'}}},
+    ui.label{text = 'Details'},
+})
+```
+
+### ui.safeArea(properties)
+
+Keeps its one child inside the safe area of the screen, and the child fills the part of the safe area the safe area node covers. It suits documents mounted with `placement = 'screen'` that draw a background to the edges but hold controls a notch must not hide. It has no properties of its own.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.stack{
+    ui.image{image = 'ui/title.png', fit = 'cover', align = 'stretch'},
+    ui.safeArea{ui.column{justify = 'end', ui.button{text = 'Start', align = 'end'}}},
+}, {placement = 'screen'})
+```
+
+## Text
+
+### ui.label(properties)
+
+Text in one of the theme fonts.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `text` | text | none | The text. |
+| `font` | string | `'body'` | Font role: `'body'`, `'caption'`, `'button'`, `'heading'`, `'title'` or `'monospace'`. |
+| `color` | theme color | `'text'` | Color of the text. |
+| `textAlign` | string | `'start'` | `'start'`, `'center'` or `'end'` inside the label bounds. |
+| `wrap` | boolean | `true` | Wraps long text onto more lines. Without wrapping the text stays on one line and ends with an ellipsis when it does not fit. |
+| `outline` | color | none | Draws an outline around the letters in this color. |
+| `outlineWidth` | number from 0 to 16 | `2` | Thickness of the outline. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.column{
+    ui.label{text = 'Chapter 1', font = 'title', color = 'accentText'},
+    ui.label{text = {key = 'story.intro'}, textAlign = 'center'},
+    ui.label{text = 'A very long hint that stays on one line', wrap = false, width = 300},
+    ui.label{text = 'Over the sea', outline = '#FF000000', outlineWidth = 3},
+})
+```
+
+### ui.richText(properties)
+
+Text written in the BBCode markup of the [text guide](../text.md#markup), with bold, italic, colors, outlines, shadows, glows, lists, rules, tables, inline images and icons, links, hints, animated effects and a typewriter reveal. The 2D renderer draws it inside the clip of the UI, from the family of its theme font role, so a font registered as a family with `ui.addFont` gives it real bold and italic faces and fallback fonts. `[font=name]` tags name fonts registered with `ui.addFont`, `[img=path]` images load through the UI like `ui.image`, and `[icon=name]` shows icons registered with `graphics2d.registerTextIcon`. Links are focusable items that the pointer, the keyboard and gamepads activate, and hints show as tooltips. The [transforms](#documenttransformid) of the node and of the nodes around it scale, fade and tint its text like the rest of the UI.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `text` | text | none | The markup. Malformed markup raises the error of `graphics2d.newRichText`. |
+| `font` | string | `'body'` | Font role: `'body'`, `'caption'`, `'button'`, `'heading'`, `'title'` or `'monospace'`. |
+| `color` | theme color | `'text'` | Color of text without a `[color]` tag. |
+| `textAlign` | string | `'start'` | `'start'`, `'center'`, `'end'` or `'fill'` for paragraphs without their own alignment. |
+| `wrap` | boolean | `true` | Wraps the paragraphs at the width of the node. Without wrapping the text keeps its natural width and aligns as one block. |
+| `reveal` | number | `0` | Characters per second of the typewriter reveal, which starts again whenever the text or the theme changes. 0 shows everything at once. |
+| `visibleCharacters` | integer | `-1` | Shows only the first characters, from where the reveal continues. -1 shows everything. |
+
+| Event | Values | When |
+| --- | --- | --- |
+| `link` | `link` | A link was clicked, tapped or activated with the focus. `link` is the payload of `[url=payload]`, or the text of `[url]text[/url]`. |
+| `linkHover` | `link`, `hovered` | The pointer entered a link, with `hovered` `true`, or left it, with `hovered` `false`. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.column{padding = 40, gap = 16,
+    ui.richText{id = 'intro', text = '[b]Welcome![/b] Read the [url=rules]rules[/url] or [url=play]start playing[/url].\n[ul]Collect [color=gold]wood[/color]\nKeep the [wave]fire[/wave] burning[/ul]', reveal = 40, onLink = function(event)
+        print('open', event.link)
+    end, onLinkHover = function(event)
+        print(event.link, event.hovered)
+    end},
+    ui.richText{text = '[center]Press [icon=confirm] to continue[/center]', font = 'caption', textAlign = 'center'},
+})
+```
+
+### ui.pageHeader(properties)
+
+A page title in the title font with an optional caption under it. With `banner` it sits on the theme `banner` surface, such as a ribbon, or on the accent color.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `title` | text | none | The title. |
+| `caption` | text | none | Text under the title. |
+| `banner` | boolean | `false` | Draws the banner behind the text and writes the text in the `onAccent` color. |
+| `textAlign` | string | `'start'` | `'start'`, `'center'` or `'end'`. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.column{
+    ui.pageHeader{title = 'Settings', caption = 'Tune the island', banner = true, textAlign = 'center'},
+})
+```
+
+### ui.sectionTitle(properties)
+
+A heading that starts a section, in the heading font.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `text` | text | none | The heading. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.column{
+    ui.sectionTitle{text = 'Audio'},
+    ui.toggle{text = 'Music'},
+})
+```
+
+### ui.emptyState(properties)
+
+A placeholder for a view with nothing to show yet, with an optional picture, a title and a message, centered.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `image` | image | none | Picture above the title. |
+| `imageSize` | number from 0 to 4096 | `128` | Width and height of the picture. |
+| `title` | text | none | Title in the heading font. |
+| `message` | text | none | Message in the muted text color. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.emptyState{
+    image = 'ui/empty-chest.png',
+    title = 'Nothing here',
+    message = 'Chop some trees to fill your inventory.',
+})
+```
+
+### ui.alert(properties)
+
+A message box with a colored bar on its start edge.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `tone` | tone | `'information'` | Colors of the bar, the background and the title. |
+| `title` | text | none | Title in the button font. |
+| `message` | text | none | Message text. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.alert{tone = 'warning', title = 'Careful', message = 'Night is coming.'})
+```
+
+## Buttons
+
+### ui.button(properties)
+
+A button that reports `click` when pressed. It can take the focus.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `text` | text | none | Label of the button. |
+| `icon` | image | none | Picture before the label, as large as the theme `iconSize` metric. |
+| `variant` | variant | `'default'` | Look of the button. |
+| `checked` | boolean | `false` | Marks the button as active with the selection color, which suits toolbar toggles. |
+
+The variants look like this:
+
+| Variant | Look |
+| --- | --- |
+| `'default'` | Raised fill with a border, or the theme `button` surfaces. |
+| `'primary'` | Accent fill, or the theme `buttonPrimary` surfaces. |
+| `'destructive'` | Danger fill, or the theme `buttonDestructive` surfaces. |
+| `'toolbar'` | No fill until hovered, with the icon tinted like the text. |
+| `'icon'` | A square as tall as the theme `controlHeight` metric, with no fill until hovered. |
+| `'link'` | Text only in the accent text color, underlined while hovered. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.row{
+    ui.button{text = 'Play', variant = 'primary', onClick = function() print('play') end},
+    ui.button{text = 'Delete save', variant = 'destructive'},
+    ui.button{icon = 'ui/hammer.png', variant = 'toolbar', checked = true},
+    ui.button{icon = 'ui/gear.png', variant = 'icon', tooltip = 'Settings'},
+    ui.button{text = 'Credits', variant = 'link'},
+})
+```
+
+### ui.imageButton(properties)
+
+A picture that works as a button, with optional pictures for hover and press and optional text on top in the `onAccent` color. It measures as large as its picture times `scale`. Without a hover picture it darkens while hovered, and without a pressed picture it moves down a little while held. It reports `click` and can take the focus.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `image` | image | none | Normal picture. |
+| `hoverImage` | image | none | Picture while hovered. |
+| `pressedImage` | image | none | Picture while held. |
+| `text` | text | none | Text drawn centered on the picture. |
+| `scale` | number from 0 to 64 | `1` | Size of the button relative to the picture. |
+| `tint` | color | `'#FFFFFFFF'` | Color multiplied with the pictures. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.imageButton{
+    image = 'ui/wood-button.png',
+    hoverImage = 'ui/wood-button-hover.png',
+    pressedImage = 'ui/wood-button-pressed.png',
+    text = 'Start',
+    scale = 2,
+    onClick = function() print('start') end,
+})
+```
+
+### ui.chip(properties)
+
+A small pill that toggles when pressed and reports `change` with `selected`. A removable chip has its own cross button that reports `remove`. It can take the focus.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `text` | text | none | Label of the chip. |
+| `selected` | boolean | `false` | Whether the chip is on. |
+| `removable` | boolean | `false` | Adds the remove button. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.row{
+    ui.chip{id = 'wood', text = 'Wood', selected = true, onChange = function(event)
+        print('wood filter ' .. tostring(event.selected))
+    end},
+    ui.chip{id = 'stone', text = 'Stone', removable = true, onRemove = function(event)
+        event.document:set('stone', {visible = false})
+    end},
+})
+```
+
+### ui.menuButton(properties)
+
+A button that opens a menu of items and reports `select` with the item id as `item`. It takes the properties of `button` except `checked`, plus `items`, and it can take the focus.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `items` | items | empty | Menu entries. Items use `id`, `text` and `enabled`. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.menuButton{
+    text = 'File',
+    items = {{id = 'save', text = 'Save'}, {id = 'load', text = 'Load', enabled = false}},
+    onSelect = function(event)
+        print('picked ' .. event.item)
+    end,
+})
+```
+
+### ui.popover(properties)
+
+A button that opens a floating panel holding its one child. It takes the properties of `button` except `checked`, plus `contentWidth`, and it can take the focus.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `contentWidth` | number from 0 to 10000 | `480` | Width of the floating panel. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.popover{
+    text = 'Help',
+    contentWidth = 520,
+    ui.label{text = 'Drag the map to look around and tap a tile to walk there.'},
+})
+```
+
+## Choices
+
+### ui.checkbox(properties)
+
+A box with a check mark and a label. Pressing it flips `checked` and reports `change` with `checked`. It can take the focus.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `text` | text | none | Label after the box. |
+| `checked` | boolean | `false` | Whether the box is checked. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.checkbox{text = 'Show hints', checked = true, onChange = function(event)
+    print('hints ' .. tostring(event.checked))
+end})
+```
+
+### ui.toggle(properties)
+
+A switch with a label, drawn with the theme `track`, `trackFill` and `knob` surfaces when the theme has them. It takes the properties of `checkbox`, reports `change` with `checked` and can take the focus.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.toggle{text = 'Vibration', onChange = function(event)
+    print('vibration ' .. tostring(event.checked))
+end})
+```
+
+### ui.radioGroup(properties)
+
+A group of options of which one is picked. Picking another option reports `change` with the item id as `value`. It can take the focus, which goes to the selected option.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `items` | items | empty | The options. Items use `id`, `text` and `enabled`. |
+| `selected` | string | none | Id of the picked option. |
+| `horizontal` | boolean | `false` | Places the options in a row instead of a column. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.radioGroup{
+    items = {{id = 'easy', text = 'Easy'}, {id = 'hard', text = 'Hard'}},
+    selected = 'easy',
+    horizontal = true,
+    onChange = function(event)
+        print('difficulty ' .. event.value)
+    end,
+})
+```
+
+### ui.combo(properties)
+
+A field that shows the selected item and opens a list of the others. Picking another item reports `change` with the item id as `value`. It can take the focus.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `items` | items | empty | The choices. Items use `id`, `text` and `enabled`. |
+| `selected` | string | none | Id of the selected item. |
+| `placeholder` | text | none | Text shown while no item is selected. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.combo{
+    width = 400,
+    items = {{id = 'en', text = 'English'}, {id = 'pt-BR', text = 'Português'}},
+    placeholder = 'Language',
+    onChange = function(event)
+        print('language ' .. event.value)
+    end,
+})
+```
+
+### ui.segmentedControl(properties)
+
+A row of joined segments of which one is selected, such as a switch between views. A click or a tap picks a segment and reports `change` with the item id as `value`. It takes the focus as a whole: left and right move the selection, skipping disabled segments, and accept moves it to the next segment, starting over after the last one.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `items` | items | empty | The segments, which share the width. Items use `id`, `text` and `enabled`. |
+| `selected` | string | none | Id of the selected segment. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.segmentedControl{
+    width = 600,
+    items = {{id = 'daily', text = 'Daily'}, {id = 'weekly', text = 'Weekly'}, {id = 'all', text = 'All time'}},
+    selected = 'daily',
+    onChange = function(event)
+        print('leaderboard ' .. event.value)
+    end,
+})
+```
+
+## Inputs
+
+### ui.textField(properties)
+
+A one-line text entry. Typing reports `change` and Enter, or the return key of the on-screen keyboard, reports `submit`, both with the text as `value`. It can take the focus.
+
+The focused field edits through the native text input of the platform, which opens the on-screen keyboard on phones, tablets, TVs and mobile browsers and brings input methods, autocorrection, dictation and native paste everywhere. The keyboard options below choose that keyboard. While the input method composes text, as Japanese and Chinese input do, the field underlines the composing text. When the on-screen keyboard would cover the focused field, the whole UI moves up until the field shows above it. The [text input guide](../text-input.md) describes what each platform does.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `value` | string | `''` | The text. The text the player types stays in the component when `set` changes other properties. |
+| `placeholder` | text | none | Hint shown while the field is empty. |
+| `maxLength` | integer from 0 to 1048576 | `0` | Largest length in characters (Unicode code points). `0` sets no limit. |
+| `keyboard` | `'text'`, `'number'`, `'decimal'`, `'phone'`, `'email'`, `'url'` or `'search'` | `'text'` | The on-screen keyboard: letters, digits, digits with a decimal separator, a phone pad, or the letters with the keys of addresses, links or searches. Text areas and secret fields have keyboards of their own. |
+| `returnKey` | `'default'`, `'done'`, `'go'`, `'next'`, `'search'` or `'send'` | `'default'` | Label of the return key of the on-screen keyboard. With `'next'` the return key moves the focus to the next field, like Tab, instead of reporting `submit`. |
+| `autocorrect` | boolean | `true` for `'text'`, `'search'` and text areas, `false` otherwise | Whether the keyboard corrects spelling and offers suggestions. |
+| `autocapitalize` | `'none'`, `'sentences'`, `'words'` or `'characters'` | `'sentences'` for `'text'` and text areas, `'none'` otherwise | Which letters the keyboard capitalizes on its own. |
+
+Escape, or the escape key of a hardware keyboard on a phone, brings back the text the field had when it took the focus and lets the focus go. Closing the on-screen keyboard, or leaving the field, lets the focus go and keeps the text.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.column{
+    ui.textField{
+        placeholder = 'Name your island',
+        maxLength = 24,
+        autocapitalize = 'words',
+        returnKey = 'next',
+        onChange = function(event) print('typing ' .. event.value) end,
+    },
+    ui.textField{
+        placeholder = 'Email',
+        keyboard = 'email',
+        returnKey = 'done',
+        onSubmit = function(event) print('email ' .. event.value) end,
+    },
+})
+```
+
+### ui.secretField(properties)
+
+A `textField` that hides what the player types, for passwords and codes. It takes the properties and reports the events of `textField`, except `keyboard`: it always uses the password keyboard, which neither corrects nor capitalizes by default and keeps input methods that compose text away.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.secretField{placeholder = 'Password', returnKey = 'go', onSubmit = function(event)
+    print('password has ' .. #event.value .. ' bytes')
+end})
+```
+
+### ui.textArea(properties)
+
+A text entry of several lines, where Enter, and the return key of the on-screen keyboard, starts a new line. It takes the properties of `textField` except `keyboard`, plus `rows`, reports `change` and can take the focus. It never reports `submit`, and it shows its `placeholder` while it is empty.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `rows` | integer from 1 to 200 | `4` | Height in lines of text. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.textArea{rows = 6, value = 'Dear diary,\n', onChange = function(event)
+    print('diary has ' .. #event.value .. ' bytes')
+end})
+```
+
+### ui.filterField(properties)
+
+A search field with a magnifier and a button that clears it. It takes the properties and reports the events of `textField`, except `keyboard`: it always uses the search keyboard. Clearing reports `change` with an empty `value`.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.filterField{placeholder = 'Search recipes', onChange = function(event)
+    print('filter ' .. event.value)
+end})
+```
+
+### ui.numberField(properties)
+
+A number between a minimum and a maximum, changed with its minus and plus buttons or typed into the middle. A change reports `change` with the number as `value`. It can take the focus.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `value` | number | `0` | The number, kept between `min` and `max`. |
+| `min` | number | `0` | Smallest value. |
+| `max` | number | `100` | Largest value. |
+| `step` | number, at least 0 | `1` | Amount the buttons add or remove. |
+| `decimals` | integer from 0 to 6 | `0` | Decimals shown. |
+| `returnKey` | `'default'`, `'done'`, `'go'`, `'next'`, `'search'` or `'send'` | `'default'` | Label of the return key of the on-screen keyboard, as in `textField`. |
+
+The on-screen keyboard shows digits, with a decimal separator when `decimals` is above zero. Numeric keypads have no minus sign, so a field whose `min` is negative types on the text keyboard. A minimum above the maximum raises `numberField.min must not be greater than max.`.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.numberField{value = 2, min = 1, max = 8, onChange = function(event)
+    print('players ' .. event.value)
+end})
+```
+
+### ui.slider(properties)
+
+A track with a knob the player drags. A change reports `change` with the number as `value`. It can take the focus.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `value` | number | `0` | The number, kept between `min` and `max`. |
+| `min` | number | `0` | Value at the start of the track. |
+| `max` | number | `1` | Value at the end of the track. |
+| `step` | number, at least 0 | `0` | Snaps the value to multiples of the step. `0` lets it move freely. |
+| `showValue` | boolean | `false` | Shows the value after the track. |
+| `decimals` | integer from 0 to 6 | `2` | Decimals of the shown value. |
+
+A minimum that is not smaller than the maximum raises `slider.min must be smaller than max.`.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.slider{value = 0.8, showValue = true, onChange = function(event)
+    print('volume ' .. event.value)
+end})
+```
+
+### ui.rangeSlider(properties)
+
+A track with two knobs that pick a range, such as a price filter. The pointer drags the knob nearer to where it presses, up to the other knob. It takes the focus as a whole: left and right move the active knob and accept switches to the other knob, which shows its own ring. A change reports `change` with `low` and `high`.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `low` | number | `0` | Start of the range. |
+| `high` | number | `1` | End of the range, at least `low`. |
+| `min` | number | `0` | Value at the start of the track. |
+| `max` | number | `1` | Value at the end of the track. |
+| `step` | number, at least 0 | `0` | Snaps both ends to multiples of the step. `0` lets them move freely, and left and right then move by a twentieth of the track. |
+| `showValue` | boolean | `false` | Shows the range after the track. |
+| `decimals` | integer from 0 to 6 | `2` | Decimals of the shown range. |
+
+A minimum that is not smaller than the maximum raises `rangeSlider.min must be smaller than max.`, and a `low` above `high` raises `rangeSlider.low must not be greater than high.`.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.rangeSlider{min = 0, max = 500, low = 50, high = 300, step = 10, showValue = true, decimals = 0, onChange = function(event)
+    print('from ' .. event.low .. ' to ' .. event.high)
+end})
+```
+
+### ui.stepper(properties)
+
+A value between two arrows that step it, a number or one of a list of options, the way console settings pick a difficulty. The arrows step it, a click or a tap on the value moves to the next one, and a change reports `change` with the number or the item id as `value`. It takes the focus as a whole: left and right step it and accept moves to the next value, starting over after the last one.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `value` | number | `0` | The number, kept between `min` and `max`, for a stepper without items. |
+| `min` | number | `0` | Smallest number. |
+| `max` | number | `10` | Largest number. |
+| `step` | number above 0 | `1` | Amount one step adds or removes. |
+| `decimals` | integer from 0 to 6 | `0` | Decimals shown. |
+| `items` | items | empty | Options to step through instead of a number, skipping disabled ones. Items use `id`, `text` and `enabled`. |
+| `selected` | string | first item | Id of the selected option. |
+| `wrap` | boolean | `false` | Lets the arrows and left and right go from one end on to the other. |
+
+A minimum above the maximum raises `stepper.min must not be greater than max.`, and a step of zero or less raises `stepper.step must be greater than zero.`.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.column{
+    ui.stepper{value = 2, min = 1, max = 4, onChange = function(event)
+        print('players ' .. event.value)
+    end},
+    ui.stepper{items = {{id = 'easy', text = 'Easy'}, {id = 'normal', text = 'Normal'}, {id = 'hard', text = 'Hard'}}, selected = 'normal', wrap = true, onChange = function(event)
+        print('difficulty ' .. event.value)
+    end},
+})
+```
+
+### ui.colorField(properties)
+
+A swatch with the color written as text that opens a color picker. A change reports `change` with the color as a `'#AARRGGBB'` string in `value`. It can take the focus.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `value` | color | `'#FFFFFFFF'` | The color. |
+| `alpha` | boolean | `true` | Lets the player change the opacity. Without it every picked color is opaque. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.colorField{value = '#FF2E7D32', alpha = false, onChange = function(event)
+    print('flag color ' .. event.value)
+end})
+```
+
+### ui.keyCapture(properties)
+
+A field that shows an [action map binding](input.md#bindings) and, once pressed, listens for the next key, mouse button, gamepad button or gamepad axis and takes it as its binding, which a controls screen hands to `input.defineAction`. A binding it takes reports `change` with the binding string as `value`, such as `'key:w'`, `'mouse:right'`, `'button:south'` or `'axis:left_x+'`. Sticks and triggers count once they travel well away from where they rested when listening started. While it listens it keeps every input from the rest of the UI, and a binding of `cancelWith` stops it and reports `cancel`. It takes the focus, and accept starts listening.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `value` | string | `''` | The binding, shown for people, such as `Left Shift` for `'key:left_shift'`. |
+| `placeholder` | text | none | Text shown while there is no binding. |
+| `prompt` | text | `'…'` | Text shown while it listens. |
+| `sources` | list of strings | every source | Kinds of input it takes: `'key'`, `'mouse'`, `'button'` and `'axis'`. It ignores the others and goes on listening. |
+| `cancelWith` | list of bindings | `{'key:escape'}` | Bindings that stop listening instead of becoming the value. |
+
+A value that is not a binding raises `keyCapture.value must be a binding such as key:space.`.
+
+```lua
+local input = require('haylen.input')
+local ui = require('haylen.ui')
+
+ui.mount(ui.settingsRow{
+    label = 'Jump',
+    ui.keyCapture{value = 'key:space', prompt = 'Press a key', width = 320, onChange = function(event)
+        input.defineAction({name = 'jump', type = 'button', bindings = {event.value}})
+    end},
+})
+```
+
+## Indicators
+
+### ui.badge(properties)
+
+A small pill with short text, such as a count or a state.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `text` | text | none | Text of the badge. |
+| `tone` | tone | `'neutral'` | Colors of the badge. |
+| `solid` | boolean | `false` | Uses the strong fill of the tone instead of its subtle background. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.row{
+    ui.badge{text = 'New', tone = 'accent', solid = true},
+    ui.badge{text = 3, tone = 'danger'},
+})
+```
+
+### ui.statusIndicator(properties)
+
+A colored dot with optional text, such as an online state.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `text` | text | none | Text after the dot. |
+| `tone` | tone | `'success'` | Color of the dot. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.statusIndicator{text = 'Server offline', tone = 'danger'})
+```
+
+### ui.busyIndicator(properties)
+
+A spinning ring that shows work in progress.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `size` | number from 4 to 1024 | `48` | Width and height. |
+| `color` | theme color | `'accent'` | Color of the ring. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.column{
+    align = 'center',
+    ui.busyIndicator{size = 64, color = 'information'},
+    ui.label{text = 'Loading'},
+})
+```
+
+### ui.progress(properties)
+
+A bar filled up to a value between 0 and 1, drawn with the theme `track` and `trackFill` surfaces when the theme has them, which suits health and loading bars.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `value` | number from 0 to 1 | `0` | Filled share of the bar. |
+| `tone` | tone | `'accent'` | Color of the fill. `'neutral'` draws like `'accent'`. |
+| `text` | text | none | Text centered on the bar. |
+
+```lua
+local ui = require('haylen.ui')
+
+local hud = ui.mount(ui.progress{id = 'health', value = 1, tone = 'success', text = 'HP'})
+
+local function damage(health)
+    hud:set('health', {value = health, tone = health < 0.3 and 'danger' or 'success'})
+end
+
+damage(0.25)
+```
+
+### ui.circularProgress(properties)
+
+A value between 0 and 1 drawn around a circle: a ring that fills clockwise from the top, or a shade over a picture that uncovers it clockwise as the value falls, like the cooldown of an ability.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `value` | number from 0 to 1 | `0` | Filled share of the ring, or share of the picture still shaded. |
+| `style` | string | `'ring'` | `'ring'` or `'cooldown'`. |
+| `size` | number from 0 to 2048 | `0` | Width and height. `0` uses the theme `circularProgressSize` metric. |
+| `thickness` | number from 0 to 512 | `0` | Width of the ring. `0` uses the theme `circularProgressThickness` metric. |
+| `tone` | tone | `'accent'` | Color of the ring, and of the circle behind a cooldown without a picture. |
+| `text` | text | none | Text in the middle, such as the seconds left. A cooldown outlines it with the `window` color, so it reads over any picture. |
+| `image` | image | none | Picture under the shade of a cooldown. |
+
+```lua
+local ui = require('haylen.ui')
+
+local hud = ui.mount(ui.row{
+    gap = 24,
+    ui.circularProgress{id = 'loading', value = 0.4, text = '40%'},
+    ui.circularProgress{id = 'dash', style = 'cooldown', image = 'ui/dash.png', size = 96},
+})
+
+local function showCooldown(left, total)
+    hud:set('dash', {value = left / total, text = left > 0 and math.ceil(left) or ''})
+end
+
+showCooldown(2.5, 4)
+```
+
+### ui.icon(properties)
+
+A small square picture, such as an item or resource icon, optionally tinted with a theme color.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `image` | image | none | The picture. |
+| `size` | number from 0 to 1024 | `0` | Width and height. `0` uses the theme `iconSize` metric. |
+| `color` | theme color | none | Tint of the picture. Without it the picture keeps its colors. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.row{
+    ui.icon{image = 'ui/coin.png'},
+    ui.icon{image = 'ui/heart.png', size = 48, color = 'danger'},
+})
+```
+
+### ui.image(properties)
+
+A picture that measures as large as its texture times `scale` and fits into the bounds it gets.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `image` | image | none | The picture. |
+| `fit` | string | `'contain'` | `'contain'` shows the whole picture inside the bounds, `'cover'` fills the bounds and crops what spills over, and `'fill'` stretches the picture to the bounds. |
+| `scale` | number from 0 to 64 | `1` | Measured size relative to the texture. |
+| `tint` | color | `'#FFFFFFFF'` | Color multiplied with the picture. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.column{
+    ui.image{image = 'ui/logo.png', scale = 2},
+    ui.image{image = 'ui/banner.png', fit = 'cover', height = 200, align = 'stretch', tint = '#C0FFFFFF'},
+})
+```
+
+### ui.avatar(properties)
+
+A round picture of a player, or the initials of the first two words of the name when there is no picture.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `image` | image | none | The picture. |
+| `name` | text | none | Name whose initials show without a picture. |
+| `size` | number from 8 to 1024 | `64` | Diameter. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.row{
+    ui.avatar{name = 'Ana Souza'},
+    ui.avatar{image = 'ui/players/bia.png', size = 96},
+})
+```
+
+## Collections
+
+### ui.list(properties)
+
+Rows of items, as tall as the theme `listRowHeight` metric, with an optional picture and caption. Pressing a row selects it and reports `select` with the item id as `item`. Pressing the selected row reports it again. The rows take the focus.
+
+A draggable list moves rows the way a [slot grid](#uislotgridproperties) moves slots: the pointer drags a row onto a row or a slot of any list or slot grid, and the keyboard, gamepads and remotes carry it with accept. It reports `drag` and `drop` like a slot grid, and accept carries rows instead of selecting them.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `items` | items | empty | The rows. Items use `id`, `text`, `caption`, `image` and `enabled`. |
+| `selected` | string | none | Id of the highlighted row. |
+| `draggable` | boolean | `false` | Lets the player drag and carry rows and drop items on them. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.list{
+    items = {
+        {id = 'slot1', text = 'Slot 1', caption = 'Day 12, 3 hours'},
+        {id = 'slot2', text = 'Slot 2', caption = 'Empty'},
+    },
+    selected = 'slot1',
+    onSelect = function(event)
+        print('picked the save slot ' .. event.item)
+    end,
+})
+```
+
+### ui.tree(properties)
+
+Nested items that open and close. Pressing the arrow of an item with children opens or closes it and reports `toggle` with the item id as `item` and the new state as `expanded`. Pressing the rest of a row selects it and reports `select` with the item id as `item`.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `items` | items | empty | The items. Items use every item key, including `children`. |
+| `selected` | string | none | Id of the highlighted item. |
+| `expanded` | list of strings | none | Ids of the open items. The player opens and closes items afterwards, and setting it again replaces the open items. |
+
+A value of `expanded` that is not a list of strings raises `tree.expanded must be a list of item ids.`.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.tree{
+    items = {
+        {id = 'tools', text = 'Tools', children = {{id = 'axe', text = 'Axe'}, {id = 'pick', text = 'Pickaxe'}}},
+        {id = 'food', text = 'Food', children = {{id = 'fish', text = 'Fish'}}},
+    },
+    expanded = {'tools'},
+    onToggle = function(event)
+        print(event.item .. ' is now ' .. (event.expanded and 'open' or 'closed'))
+    end,
+})
+```
+
+### ui.table(properties)
+
+Rows of cells under a header. Columns with a `width` keep it, and the other columns share the rest. Pressing a row selects it and reports `select` with the row id as `item`.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `columns` | list of columns | empty | The columns. |
+| `rows` | list of rows | empty | The rows. |
+| `selected` | string | none | Id of the highlighted row. |
+
+A column is a table with these keys.
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `text` | text | none | Header text. |
+| `width` | non-negative number | shared | Fixed width of the column. |
+| `align` | string | `'start'` | `'start'`, `'center'` or `'end'` for the header and the cells. |
+
+A row is a table with a unique `id` string and a `cells` list of texts, one per column. Rows without an id or cells raise `table.rows must hold objects with an id and a list of cells.`, a repeated id raises `table.rows uses the row id <id> more than once.`, an unknown column key raises `Unknown key '<key>' in table.columns.`, and an unknown column alignment raises `table.columns has an align other than start, center or end.`.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.table{
+    columns = {{text = 'Player'}, {text = 'Score', width = 160, align = 'end'}},
+    rows = {
+        {id = 'ana', cells = {'Ana', 1200}},
+        {id = 'bia', cells = {'Bia', 950}},
+    },
+    selected = 'ana',
+})
+```
+
+### ui.slotGrid(properties)
+
+A grid of square slots that hold pictures and counts, such as an inventory, a chest or a hotbar. A click or a tap selects a slot and reports `select` with the slot id as `item`. The pointer drags the item of a slot onto another slot or a row of any slot grid or draggable list, in the same document or another one, and the keyboard, gamepads and remotes carry it: accept picks the focused slot up, the focus moves, and accept drops it on another slot, while accept on the carried slot or `ui_cancel` puts it back. Picking up reports `drag` with the slot id as `item`, and a drop reports `drop` on the node it lands on, with the slot or row it lands on as `item`, the id of the node the item left as `source` and its slot or row as `sourceItem`. The grid only reports moves, so the app moves its items and sets the new slots. Every slot takes the focus.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `slots` | list of slots | empty | The slots, in reading order. |
+| `columns` | integer from 1 to 64 | `4` | Slots per row. |
+| `slotSize` | number from 0 to 1024 | `0` | Width and height of each slot. `0` uses the theme `slotSize` metric. |
+| `gap` | number from 0 to 1024 | half the theme `itemSpacing` | Space between slots. |
+| `selected` | string | none | Id of the highlighted slot. |
+| `draggable` | boolean | `true` | Lets the player drag and carry items. Without it accept selects a slot. |
+
+A slot is a table with a unique `id` string and optional `image`, `count` (text drawn in its corner) and `enabled`. Slots without an id raise `slotGrid.slots must hold objects with an id.`, a repeated id raises `slotGrid.slots uses the slot id <id> more than once.`, and an unknown key raises `Unknown key '<key>' in slotGrid.slots.`.
+
+```lua
+local ui = require('haylen.ui')
+
+local bag = {wood = 12, stone = 4}
+local order = {'wood', 'stone', 'empty1', 'empty2'}
+
+local function slots()
+    local list = {}
+    for index, name in ipairs(order) do
+        list[index] = {id = name, image = bag[name] and ('items/' .. name .. '.png') or nil, count = bag[name]}
+    end
+    return list
+end
+
+local inventory = ui.mount(ui.slotGrid{id = 'bag', columns = 4, slots = slots(), onDrop = function(event)
+    local from, to
+    for index, name in ipairs(order) do
+        if name == event.sourceItem then from = index end
+        if name == event.item then to = index end
+    end
+    if event.source == 'bag' and from and to then
+        order[from], order[to] = order[to], order[from]
+        event.document:set('bag', {slots = slots()})
+    end
+end})
+```
+
+## Settings
+
+### ui.settingsForm(properties)
+
+A column of settings rows, section titles and actions, with extra room above every `sectionTitle` child except the first. It holds any number of children and has no properties of its own.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.settingsForm{
+    ui.sectionTitle{text = 'Video'},
+    ui.settingsRow{label = 'Fullscreen', ui.toggle{}},
+    ui.sectionTitle{text = 'Audio'},
+    ui.settingsRow{label = 'Music', ui.slider{value = 0.7}},
+})
+```
+
+### ui.settingsRow(properties)
+
+A setting with its label and caption on the left and its one child control on the right. The label column is as wide as the theme `settingsLabelWidth` metric, at most half the row.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `label` | text | none | Name of the setting. |
+| `caption` | text | none | Explanation under the label, in the caption font. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.settingsRow{
+    label = 'Language',
+    caption = 'Changes every text at once',
+    ui.combo{width = 360, items = {{id = 'en', text = 'English'}, {id = 'pt-BR', text = 'Português'}}, selected = 'en'},
+})
+```
+
+### ui.settingsActions(properties)
+
+A row of buttons at the end of a form, such as cancel and save, lined up to the end edge. It holds any number of children and has no properties of its own.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.settingsForm{
+    ui.settingsRow{label = 'Subtitles', ui.toggle{checked = true}},
+    ui.settingsActions{
+        ui.button{text = 'Cancel'},
+        ui.button{text = 'Save', variant = 'primary'},
+    },
+})
+```
+
+## Overlays
+
+### ui.dialog(properties)
+
+A modal window over the whole screen with a title, a message, optional children and answer buttons. It takes no room in the layout that holds it. The last button starts with the focus. Pressing a button closes the dialog and reports `answer` with the button id as `button`. Escape or the east gamepad button closes a dismissible dialog and reports `dismiss`. A dialog the player closed shows again when `set` sets `open = true`.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `open` | boolean | `false` | Shows the dialog. |
+| `title` | text | none | Title in the heading font. |
+| `message` | text | none | Message under the title. |
+| `dismissible` | boolean | `true` | Lets Escape and the east gamepad button close the dialog. |
+| `buttons` | list of buttons | empty | Answer buttons, lined up at the bottom right in list order. |
+
+A button is a table with a unique `id` string, a `text` and a `variant`. Buttons without an id raise `dialog.buttons must hold objects with an id.`, a repeated id raises `dialog.buttons uses the id <id> more than once.`, and an unknown variant raises `dialog.buttons has an unknown variant.`.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.column{
+    ui.button{text = 'Quit', onClick = function(event)
+        event.document:set('confirm', {open = true})
+    end},
+    ui.dialog{
+        id = 'confirm',
+        title = 'Quit the app?',
+        message = 'Your progress is saved.',
+        buttons = {{id = 'stay', text = 'Stay'}, {id = 'quit', text = 'Quit', variant = 'destructive'}},
+        onAnswer = function(event) print('the player chose ' .. event.button) end,
+        onDismiss = function(event) print('the dialog was dismissed') end,
+        ui.checkbox{text = 'Do not ask again'},
+    },
+})
+```
+
+### ui.toast(properties)
+
+A short notice at the top or bottom of the safe area that fades in and fades out after its duration, then reports `dismiss`. It takes no room in the layout that holds it and ignores the pointer. Setting `open = true` again shows it again from the start.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `open` | boolean | `false` | Shows the toast. |
+| `text` | text | none | The notice. |
+| `tone` | tone | `'information'` | Color of the bar on its start edge. |
+| `duration` | number from 0 to 3600 | `3` | Seconds on screen. `0` keeps it until `open` is set to `false`. |
+| `position` | string | `'top'` | `'top'` or `'bottom'`. |
+
+```lua
+local ui = require('haylen.ui')
+
+local notices = ui.mount(ui.toast{id = 'saved', text = 'Progress saved', tone = 'success', position = 'bottom'})
+
+local function showSaved()
+    notices:set('saved', {open = true})
+end
+
+showSaved()
+```
+
+### ui.window(properties)
+
+A floating window with a title bar that the pointer drags around, holding a column of children, such as an inventory or a map over the game. It takes no room in the layout that holds it and sizes itself to its children unless it has a `width` or `height`. It takes the properties of `column` for its children, pads like a panel and draws with the theme `window` surface. Dragging the title bar reports `move` with the new `x` and `y` once the pointer lets go, and closing reports `close`. Moves reach the controls of the window from the rest of its document and bring it to the front, and `ui_cancel` closes a closable window while the focus is inside it.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `title` | text | none | Title in the title bar. |
+| `x`, `y` | number | the middle of the safe area | Position of the top left corner from the top left of the screen. Setting them moves the window there. |
+| `open` | boolean | `true` | Shows the window. A window the player closed shows again when `set` sets `open = true`. |
+| `closable` | boolean | `false` | Adds the close button to the title bar and lets `ui_cancel` close the window. |
+| `movable` | boolean | `true` | Lets the pointer drag the title bar. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.stack{
+    ui.window{id = 'map', title = 'Map', x = 120, y = 120, width = 640, closable = true,
+        onClose = function(event) print('map closed') end,
+        onMove = function(event) print('map at ' .. event.x .. ', ' .. event.y) end,
+        ui.image{image = 'ui/map.png', fit = 'contain', height = 400},
+        ui.button{text = 'Center on me', autofocus = true},
+    },
+}, {placement = 'screen'})
+```
+
+### ui.contextMenu(properties)
+
+A menu of items that opens over its one child: with a right click on it, a long press on a touch screen, `ui_menu` while the focus is inside it, or the `open` command. Picking an item reports `select` with the item id as `item`, and `ui_cancel` or a click outside closes the menu. The menu takes the focus while it is open and gives it back when it closes.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `items` | items | empty | Menu entries. Items use `id`, `text`, `image` and `enabled`. |
+
+```lua
+local ui = require('haylen.ui')
+
+ui.mount(ui.contextMenu{
+    items = {{id = 'rename', text = 'Rename'}, {id = 'delete', text = 'Delete'}},
+    onSelect = function(event)
+        print('save slot: ' .. event.item)
+    end,
+    ui.button{text = 'Save slot 1', width = 480},
+})
+```
+
+## Touch controls
+
+On-screen controls drive the virtual buttons and sticks of the action layer, which [haylen.input](input.md) actions read through the bindings `virtual:<name>` and `virtual_stick:<name>`. Every control follows its own finger, so a stick and several buttons work at the same time, and the mouse drives them when no finger is down. They keep the pointer from reaching the app behind them. A control that stops drawing, because it, a container around it or its document was hidden or removed, releases the virtual button or stick it held in that frame. A touch button that was pressed then reports `release`, unless its document was unmounted, and a control that shows again under a finger that is still down waits for a new press.
+
+### ui.touchStick(properties)
+
+A virtual analog stick that sets the virtual stick `action` to a vector of length 0 to 1 while a finger drags it, drawn with the theme `stickBase` and `stickKnob` surfaces when the theme has them. It reports no events.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `action` | string | required | Name of the virtual stick it drives. |
+| `radius` | number from 8 to 2048 | `110` | Radius of the stick ring. |
+| `deadZone` | number from 0 to 0.95 | `0.15` | Share of the radius near the center that counts as zero. |
+| `floating` | boolean | `false` | Centers the stick where the finger lands instead of at the center of the control. |
+| `touchOnly` | boolean | `false` | Shows the stick only while the last input came from a touch screen. |
+
+A missing or empty action raises `touchStick.action names the virtual stick to drive and cannot be empty.`.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+local ui = require('haylen.ui')
+
+input.loadActions({actions = {
+    {name = 'move', type = 'vector', bindings = {'virtual_stick:move', 'stick:left'}},
+}})
+ui.mount(ui.touchStick{action = 'move', radius = 140, floating = true, touchOnly = true, align = 'end'}, {placement = 'screen'})
+
+scene.push({
+    update = function(self, dt)
+        local x, y = input.vector('move')
+        self.speedX, self.speedY = x * 200, y * 200
+    end,
+})
+```
+
+### ui.touchButton(properties)
+
+A virtual button that holds the virtual button `action` down while a finger or the mouse presses it, and reports `press` and `release`. It is drawn with the theme `touchButton` and `touchButtonPressed` surfaces when the theme has them.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `action` | string | required | Name of the virtual button it drives. |
+| `text` | text | none | Label in the middle of the button. |
+| `image` | image | none | Picture in the middle of the button. |
+| `size` | number from 8 to 2048 | `120` | Width and height. |
+| `touchOnly` | boolean | `false` | Shows the button only while the last input came from a touch screen. |
+
+A missing or empty action raises `touchButton.action names the virtual button to drive and cannot be empty.`.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+local ui = require('haylen.ui')
+
+input.loadActions({actions = {
+    {name = 'jump', type = 'button', bindings = {'virtual:jump', 'key:space', 'button:south'}},
+}})
+ui.mount(ui.row{
+    align = 'end',
+    padding = 48,
+    ui.touchButton{action = 'jump', text = 'A', onPress = function() print('pressed') end, onRelease = function() print('released') end},
+}, {placement = 'screen'})
+
+scene.push({
+    update = function(self, dt)
+        if input.pressed('jump') then
+            print('jump')
+        end
+    end,
+})
+```
+
+## Themes
+
+A theme holds every color, metric, font and surface the components use, so no component draws a literal color. The engine ships `dark` and `light`, and an app adds its own with a JSON file in the package assets loaded by `ui.loadTheme`, or with the same document as a Lua table passed to `ui.addTheme`. A theme file starts from a base theme and lists only what it changes. The active theme also styles [haylen.imgui](imgui.md) windows.
+
+| Key | Type | Meaning |
+| --- | --- | --- |
+| `name` | string | Name of the theme, required and not empty. |
+| `colors` | object | Color roles mapped to colors. |
+| `metrics` | object | Metrics mapped to non-negative numbers. |
+| `fonts` | object | Font roles mapped to `{"font": name, "size": number}`, where both keys are optional. |
+| `fontFiles` | object | Font names mapped to TrueType or OpenType files in the package assets, which `ui.loadTheme` registers unless a font with that name exists. |
+| `surfaces` | object | Surfaces mapped to nine-slice images, or to `null` to go back to flat colors. |
+
+Theme files raise these errors: `Unknown key '<key>' in the theme.`, `A theme needs a name.`, `The theme has an unknown color role: <name>`, `The theme has an unknown metric: <name>`, `The theme has an unknown surface: <name>`, `The theme font <name> must be a known role with an object value.`, `The theme font <name> must name its font with a string.`, `The theme font file <name> must be a path.`, `<context> must be a color such as #FF2E7D32.` and `<context> must be a non-negative number.`.
+
+```json
+{
+    "name": "wood",
+    "colors": {"accent": "#FF8B5A2B", "text": "#FF1B1E2B"},
+    "metrics": {"controlHeight": 80, "panelPadding": 36},
+    "fontFiles": {"pixel": "fonts/pixel.ttf"},
+    "fonts": {"title": {"font": "pixel", "size": 72}, "body": {"size": 34}},
+    "surfaces": {
+        "panel": {"image": "ui/panel.png", "slice": 8, "scale": 2, "padding": [4, 6]},
+        "button": {"image": "ui/button.png", "slice": 6, "padding": 4},
+        "buttonPressed": {"image": "ui/button-pressed.png", "slice": 6, "padding": 4},
+        "track": {"image": "ui/bar.png", "slice": 4, "filter": "linear"},
+        "trackFill": {"image": "ui/bar-fill.png", "slice": 4, "fill": "tile"}
+    }
+}
+```
+
+```lua
+local ui = require('haylen.ui')
+
+ui.setTheme(ui.loadTheme('themes/wood.json', 'light'))
+ui.mount(ui.panel{
+    align = 'center',
+    ui.pageHeader{title = 'Workshop'},
+    ui.progress{value = 0.5},
+    ui.button{text = 'Craft'},
+})
+```
+
+## Theme colors
+
+Colors are `'#RRGGBB'` or `'#AARRGGBB'` strings. The four tones `success`, `warning`, `danger` and `information`, like the accent, come as a fill, the ink written on that fill, a subtle background and a text color readable on the window.
+
+| Role | Dark | Light | Used for |
+| --- | --- | --- | --- |
+| `window` | `#FF1B1E2B` | `#FFF4F5F9` | Background of ImGui windows and the outline of progress text. |
+| `panel` | `#FF232739` | `#FFFFFFFF` | Fill of panels and dialogs. |
+| `raised` | `#FF2C3147` | `#FFFFFFFF` | Fill of cards, buttons, fields and chips. |
+| `tooltip` | `#F20F111A` | `#F21B1E2B` | Background of tooltips and toasts. |
+| `overlay` | `#A0000000` | `#66000000` | Dimming behind modal dialogs and the base of touch controls. |
+| `hover` | `#14FFFFFF` | `#0F000000` | Layer over hovered controls and rows. |
+| `pressed` | `#24FFFFFF` | `#1F000000` | Layer over pressed controls. |
+| `selection` | `#404C7DFF` | `#334C7DFF` | Selected rows, checked buttons and selected text. |
+| `focus` | `#FF7AA2FF` | `#FF3A66E0` | Border of focused fields and the focus ring of the navigation target. |
+| `border` | `#FF3A4058` | `#FFD6D9E4` | Borders and dividers. |
+| `borderStrong` | `#FF525A7A` | `#FFB3B8CC` | Strong borders, hovered fields and empty slider tracks. |
+| `scrollbar` | `#FF3A4058` | `#FFC9CDDB` | Scrollbar grab. |
+| `scrollbarHover` | `#FF525A7A` | `#FFA9AEC2` | Hovered scrollbar grab. |
+| `text` | `#FFE8EAF2` | `#FF1B1E2B` | Main text. |
+| `textMuted` | `#FFA3A8BF` | `#FF5C6380` | Captions, placeholders, help lines and inactive tabs. |
+| `textDisabled` | `#FF6A7090` | `#FFA3A8BF` | Text of disabled ImGui items. |
+| `onTooltip` | `#FFE8EAF2` | `#FFF4F5F9` | Text of tooltips and toasts. |
+| `accent` | `#FF4C7DFF` | `#FF3A66E0` | Accent fill of primary buttons, checked boxes, slider fills and the selected tab. |
+| `accentHover` | `#FF6690FF` | `#FF4C7DFF` | Hovered accent fill and hovered links. |
+| `accentStrong` | `#FF3A66E0` | `#FF2C52C0` | Pressed accent fill. |
+| `onAccent` | `#FFFFFFFF` | `#FFFFFFFF` | Text and marks on the accent fill. |
+| `accentBackground` | `#264C7DFF` | `#1F3A66E0` | Subtle accent background of selected chips and avatars. |
+| `accentText` | `#FF8FB0FF` | `#FF2C52C0` | Accent text such as links. |
+| `success` | `#FF3DBE7A` | `#FF2E9E62` | Fill of the success tone. |
+| `onSuccess` | `#FFFFFFFF` | `#FFFFFFFF` | Ink on the success fill. |
+| `successBackground` | `#263DBE7A` | `#1F2E9E62` | Subtle background of the success tone. |
+| `successText` | `#FF6FDCA0` | `#FF1F7A49` | Text of the success tone. |
+| `warning` | `#FFF2B23A` | `#FFD9941C` | Fill of the warning tone. |
+| `onWarning` | `#FF1B1E2B` | `#FFFFFFFF` | Ink on the warning fill. |
+| `warningBackground` | `#26F2B23A` | `#1FD9941C` | Subtle background of the warning tone. |
+| `warningText` | `#FFF7CB70` | `#FF9A6508` | Text of the warning tone. |
+| `danger` | `#FFE5534B` | `#FFD0433B` | Fill of the danger tone and destructive buttons. |
+| `dangerHover` | `#FFEE6B64` | `#FFE5534B` | Hovered destructive buttons. |
+| `dangerStrong` | `#FFC8423B` | `#FFB0352E` | Pressed destructive buttons. |
+| `onDanger` | `#FFFFFFFF` | `#FFFFFFFF` | Ink on the danger fill. |
+| `dangerBackground` | `#26E5534B` | `#1FD0433B` | Subtle background of the danger tone. |
+| `dangerText` | `#FFFF8A84` | `#FFA8322B` | Text of the danger tone and form errors. |
+| `information` | `#FF3AA8E0` | `#FF2A8CC0` | Fill of the information tone. |
+| `onInformation` | `#FFFFFFFF` | `#FFFFFFFF` | Ink on the information fill. |
+| `informationBackground` | `#263AA8E0` | `#1F2A8CC0` | Subtle background of the information tone. |
+| `informationText` | `#FF7FCBF2` | `#FF1D6A93` | Text of the information tone. |
+
+## Theme metrics
+
+Both built-in themes share these metrics, in design units.
+
+| Metric | Default | Used for |
+| --- | --- | --- |
+| `controlHeight` | `64` | Height of buttons, fields, combos, sliders and the tab strip. |
+| `controlRadius` | `12` | Corner radius of controls, panels and windows. |
+| `controlPaddingX` | `24` | Horizontal padding inside buttons, fields, alerts and toasts. |
+| `controlPaddingY` | `12` | Vertical padding of settings rows, alerts, toasts and text areas. |
+| `itemSpacing` | `16` | Default gap of columns, rows and grids and the space between parts of a component. |
+| `panelPadding` | `28` | Default padding of cards, panels and dialogs and the margin of toasts. |
+| `borderWidth` | `2` | Width of borders and dividers. |
+| `focusWidth` | `3` | Thickness of the focus ring around the navigation target and of the line under the selected tab. |
+| `scrollbarSize` | `16` | Width of scrollbars. |
+| `iconSize` | `36` | Size of button icons, row pictures and icons without a size, and the indent of tree levels. |
+| `choiceSize` | `36` | Size of check boxes and radio marks. |
+| `sliderTrackHeight` | `10` | Height of the slider track. |
+| `sliderKnobSize` | `34` | Size of the slider knob. |
+| `toggleWidth` | `72` | Width of the toggle switch. |
+| `toggleHeight` | `38` | Height of the toggle switch. |
+| `progressHeight` | `22` | Smallest height of progress bars. |
+| `badgePaddingX` | `14` | Horizontal padding of badges. |
+| `badgePaddingY` | `4` | Vertical padding of badges. |
+| `tabPaddingX` | `24` | Horizontal padding of each tab. |
+| `listRowHeight` | `64` | Height of list, tree and table rows and the smallest height of settings rows. |
+| `dialogWidth` | `760` | Width of dialogs. |
+| `toastWidth` | `560` | Width of toasts. |
+| `tooltipWidth` | `520` | Width at which tooltips wrap. |
+| `settingsLabelWidth` | `420` | Width of the label column of settings rows. |
+| `caretWidth` | `2` | Width of the text cursor in fields and [haylen.imgui](imgui.md) inputs. |
+| `circularProgressSize` | `72` | Size of circular progress indicators without a size. |
+| `circularProgressThickness` | `8` | Width of the ring of circular progress indicators without a thickness. |
+| `slotSize` | `96` | Size of the slots of slot grids without a slot size. |
+| `windowTitleHeight` | `56` | Height of the title bar of windows. |
+| `pageIndicatorSize` | `14` | Size of the page dots of carousels. |
+
+## Theme fonts
+
+Every role starts with the built-in font `default`.
+
+| Role | Size | Used for |
+| --- | --- | --- |
+| `body` | `30` | Labels, fields, list rows and most text. |
+| `caption` | `24` | Captions, badges, chips, tooltips and form field labels. |
+| `button` | `30` | Button and tab labels, alert titles and avatar initials. |
+| `heading` | `38` | Section titles, dialog titles and empty state titles. |
+| `title` | `56` | Page header titles. |
+| `monospace` | `26` | The color field text. |
+
+A font role with an empty font name or a size of zero raises `A theme font needs a font name and a positive size.`, and a font name that is neither registered nor listed in `fontFiles` makes `ui.loadTheme` fail.
+
+## Theme surfaces
+
+A surface paints a part of a component with a nine-slice image instead of flat colors, such as the wooden panels and ribbons of a textured game theme. The corners keep their size times `scale`, the edges and the center stretch or tile, and `padding` moves the content away from thick borders. The built-in themes have no surfaces. A hover or pressed surface the theme leaves out falls back to the normal surface of the same button.
+
+| Surface | Used by |
+| --- | --- |
+| `panel` | `panel`. |
+| `card` | `card`. |
+| `dialog` | `dialog`. |
+| `tooltip` | Tooltips of every node. The text stays inside the `padding` of the surface. |
+| `toast` | `toast`. |
+| `banner` | `pageHeader` with `banner = true`. |
+| `button`, `buttonHover`, `buttonPressed` | Default, toolbar and icon buttons, menu buttons, popovers, dialog buttons and the number field buttons. |
+| `buttonPrimary`, `buttonPrimaryHover`, `buttonPrimaryPressed` | Primary buttons. |
+| `buttonDestructive`, `buttonDestructiveHover`, `buttonDestructivePressed` | Destructive buttons. |
+| `field`, `fieldFocused` | Text fields, secret fields, text areas, filter fields, number fields, combos, color fields, steppers and key captures. |
+| `check`, `checkChecked` | Check boxes. |
+| `track`, `trackFill`, `knob` | Toggles, sliders, range sliders and progress bars. The fill of sliders and progress bars stays inside the `padding` of the `track` surface, so a framed bar keeps its frame. |
+| `stickBase`, `stickKnob` | The ring and the knob of touch sticks. |
+| `touchButton`, `touchButtonPressed` | Touch buttons. |
+| `tab`, `tabSelected` | Tabs. |
+| `chip`, `chipSelected` | Chips. |
+| `badge` | Badges. |
+| `segment`, `segmentSelected` | The strip of segmented controls and their selected segment. |
+| `menu` | The lists of combos, menu buttons and context menus. |
+| `window` | Windows. |
+| `slot`, `slotHighlighted` | Slots of slot grids, and the selected or hovered slot. |
+
+A surface image is an object with these keys.
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `image` | string | required | Texture path relative to the package `content/` folder. |
+| `source` | `[x, y, width, height]` | whole texture | Region of the texture that holds the frame. |
+| `slice` | insets | `0` | Border sizes cut from `source`, as one, two or four numbers like padding. |
+| `pieces` | list of nine `[x, y, width, height]` | none | The nine regions given one by one instead of `source` and `slice`, in reading order: top left, top, top right, left, center, right, bottom left, bottom and bottom right. |
+| `scale` | number | `1` | Scale of the borders on screen. |
+| `padding` | insets | `0` | Space between the edge of the image and the content. |
+| `tint` | color | `'#FFFFFFFF'` | Color multiplied with the image. |
+| `colorize` | boolean | `false` | Also multiplies the image with the color the component would fill the area with, such as the tone of a progress bar or the accent of a slider, so one light image serves every color. |
+| `filter` | string | `'nearest'` | Texture filter, `'nearest'` or `'linear'`. |
+| `fill` | string | `'stretch'` | `'stretch'` or `'tile'` for the edges and the center. |
+
+A surface image raises `<context> needs an image path.`, `<context>.filter must be nearest or linear.`, `<context>.fill must be stretch or tile.`, `<context>.colorize must be true or false.`, `<context>.pieces must hold nine rectangles.` or `<context> must be four numbers: x, y, width and height.` for invalid values.
+
+```json
+{
+    "name": "parchment",
+    "surfaces": {
+        "dialog": {"image": "ui/parchment.png", "source": [0, 0, 96, 96], "slice": [24, 20], "scale": 2, "padding": 12},
+        "badge": {"image": "ui/badge.png", "pieces": [[0, 0, 4, 4], [4, 0, 4, 4], [8, 0, 4, 4], [0, 4, 4, 4], [4, 4, 4, 4], [8, 4, 4, 4], [0, 8, 4, 4], [4, 8, 4, 4], [8, 8, 4, 4]], "tint": "#FFFFE0B0"},
+        "card": null
+    }
+}
+```
+
+```lua
+local ui = require('haylen.ui')
+
+ui.setTheme(ui.loadTheme('themes/parchment.json'))
+```
