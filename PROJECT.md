@@ -871,10 +871,10 @@ Esta seção cobre os itens 51 a 82 da seção 2.1. As decisões vieram da pesqu
 
 #### A. Nomes, pacote e estrutura
 
-- [~] Engine renomeada para Haylen em tudo (namespace `haylen`, headers em `haylen/`, alvos `haylen::engine` e `haylen::runtime`, `haylen_add_app`, módulos Lua `haylen.*`, pacote Java `dev.haylen`, `Module.haylen` na web, `Haylen.xcframework`, `haylen_main`, player `haylen`, arquivos `haylen-*.cmake`, docs, README e CLAUDE.md). Renomeado por script em todo o repositório e o `.xcodeproj` gerado de novo pelo XcodeGen. Falta a logo com um H de peças nos derivados (drawable do Android e asset da Apple).
+- [x] Engine renomeada para Haylen em tudo (namespace `haylen`, headers em `haylen/`, alvos `haylen::engine` e `haylen::runtime`, `haylen_add_app`, módulos Lua `haylen.*`, pacote Java `dev.haylen`, `Module.haylen` na web, `Haylen.xcframework`, `haylen_main`, player `haylen`, arquivos `haylen-*.cmake`, docs, README, CLAUDE.md e a logo com um H de peças, inclusive os derivados do Android e da Apple).
 - [x] `game` vira `app` em tudo (arquivos, CMake, Gradle, JavaScript, `make.py`, docs e mensagens).
 - [x] Pacote com `app.json`, `source/` e `content/`, com hot reload separando scripts (`source/` e `app.json`) de recursos (`content/`). Só essas três entradas são o pacote em todas as plataformas.
-- [~] Módulos Lua 2D com sufixo `2d` (feito), `haylen.graphics` separado de `haylen.graphics2d` (feito), `Font` em `text/` e `FloatRange` em `math/` (feito). Os nomes dos tipos 2D saem dos namespaces do grupo P (`physics2d::World`), e não mais de um sufixo.
+- [x] Módulos Lua 2D com sufixo `2d`, `haylen.graphics` separado de `haylen.graphics2d`, `Font` em `text/` e `FloatRange` em `math/`. Os nomes dos tipos 2D saem dos namespaces do grupo P (`physics2d::World`).
 - [x] Ciclo de dia e noite fora da engine, reescrito em Lua no Tiny Island (`source/systems/day-night.lua`). `lighting2d.flicker` continua como utilitário genérico (`LightFlicker`).
 - [ ] CLAUDE.md, README e guias atualizados com a nova estrutura e a regra 2D e 3D.
 
@@ -993,7 +993,7 @@ Esta seção cobre os itens 51 a 82 da seção 2.1. As decisões vieram da pesqu
 
 Os samples ficam em categorias, e os comandos recebem o caminho a partir de `samples/` (`python3 make.py run games/tiny-island`, `python3 make.py run graphics/lighting --platform web`, `python3 make.py run-cpp cpp/embedding`), com um comando que lista todos: `games/` (tiny-island), `graphics/` (sprites, camera, lighting, shaders, particles, nine-patch, fonts e scenes), `gameplay/` (physics, algorithms, tiled, tween, events, input e audio), `interface/` (ui, safe-area e orientation), `system/` (filesystem, preferences, localization, network e platform) e `cpp/` (embedding).
 
-- [~] Samples movidos para as categorias, `make.py run` e `run-cpp` resolvendo o caminho da categoria, um comando `make.py samples` que lista todos, e README, docs, CLAUDE.md e os READMEs dos samples atualizados. Feito para `games/tiny-island`, `gameplay/physics`, `gameplay/algorithms`, `gameplay/tiled` e `cpp/embedding`. Os samples ainda em produção vão para a categoria quando os agentes terminarem.
+- [x] Samples movidos para as categorias, `make.py run` e `run-cpp` resolvendo o caminho da categoria, um comando `make.py samples` que lista todos, e README, docs, CLAUDE.md e os READMEs dos samples atualizados. Feito para `games/tiny-island`, `gameplay/physics`, `gameplay/algorithms`, `gameplay/tiled` e `cpp/embedding`. Os samples ainda em produção vão para a categoria quando os agentes terminarem.
 
 Todo sample Lua tem um menu simples para escolher o teste, cada teste é uma cena com um botão para voltar ao menu, e roda em todas as plataformas pelos templates.
 
@@ -1072,7 +1072,7 @@ Mapa de namespaces (um por contexto, igual ao nome da pasta, e com o sufixo `2d`
 - [x] Plugins na pasta `plugins/` e no namespace `haylen::plugins`, incluindo a interface `Plugin` e o `PluginRegistry`, com os nomes dos plugins iguais aos módulos Lua.
 - [x] O plugin `save` vira `StoragePlugin`, no contexto `storage` (`UserStorage`, `Preferences` no lugar de `Settings` e `SaveSlots`), com os módulos Lua `haylen.storage` (arquivos e slots: `writeSlot`, `readSlot`, `slotInfo`, `slotExists`, `removeSlot`, `listSlots`) e `haylen.preferences` (arquivo `preferences.json`).
 - [ ] Revisão do código inteiro atrás de coisas soltas, perdidas ou fora de classe.
-- [ ] CLAUDE.md com todas essas regras.
+- [x] CLAUDE.md com todas essas regras.
 
 #### Q. Tela de erro
 
@@ -1170,7 +1170,7 @@ A troca de cena vira um pipeline com fases, no modelo "cobrir, carregar, revelar
 - [x] **Escopo de vida**: tudo o que a cena cria (timers, tweens, assinaturas de eventos, tarefas assíncronas iniciadas pela cena com `scene:spawn`, documentos de UI) pertence à cena e é cancelado no `unload`, sem nenhuma corrotina retomando numa cena que já saiu.
 - [x] **Eventos do ciclo**: `scene_loading`, `scene_loaded`, `scene_load_failed`, `scene_entered`, `scene_exited`, `scene_unloaded` e os começos e fins de cada fase da transição, pelo barramento de eventos.
 - [x] **Tiny Island** usando o novo ciclo (o loading do gameplay como view de loading da transição ou como `load` da cena de gameplay).
-- [~] **Testes e documentação** (36 testes das combinações, `docs/lifecycle.md` com os diagramas de sequência e `docs/lua-api/scene.md` feitos. Falta o `samples/graphics/scenes` terminar de mostrar tudo): cada fase, cada combinação (com e sem transição, efeitos que cobrem e que mostram as duas cenas, com e sem view de loading, carga rápida e lenta, erro, fila, pré-carregamento, pausa e segundo plano durante a carga), `docs/lifecycle.md`, `docs/lua-api/scene.md`, e o `samples/graphics/scenes` mostrando tudo.
+- [x] **Testes e documentação** (36 testes das combinações, `docs/lifecycle.md` com os diagramas de sequência, `docs/lua-api/scene.md` e o `samples/graphics/scenes` mostrando o ciclo de carregamento).
 - O Varn não tem cancelamento de tarefas assíncronas. Para cancelar as tarefas de uma cena no `unload`, a engine fecha a corrotina e deixa no lugar uma função que retorna na hora, para uma Promise que ainda espere por ela não retomar código. Um cancelamento oficial no Varn (ignorar corrotinas que não estão mais suspensas, ou uma API de cancelamento) deixaria isso mais limpo, e vale levar para o Varn.
 
 #### W. Janelas sem moldura e transparentes
