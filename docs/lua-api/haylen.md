@@ -10,7 +10,7 @@ local haylen = require('haylen')
 
 ### haylen.version
 
-The engine version as a string, such as `'0.1.0'`.
+The engine version as a string, such as `'0.0.1'`.
 
 ```lua
 local haylen = require('haylen')

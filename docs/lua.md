@@ -354,7 +354,7 @@ An uncaught error in `source/main.lua`, in a scene callback, in a timer or tween
 
 ```text
 The app stopped with an error
-Tiny Island 1.0.0 · macos · Haylen 0.1.0
+Tiny Island 1.0.0 · macos · Haylen 0.0.1
 
 attempt to index a nil value (local 'enemy')
 source/scenes/level.lua, line 12
