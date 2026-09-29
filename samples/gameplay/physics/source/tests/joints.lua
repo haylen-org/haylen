@@ -176,14 +176,14 @@ end
 
 function Joints:reverse()
     self.direction = -self.direction
-    self.windmill:setMotorSpeed(1.5 * self.direction)
+    self.windmill.motorSpeed = 1.5 * self.direction
     self:driveCart(self.direction)
 end
 
 function Joints:driveCart(direction)
     self.cartDirection = direction
     for _, wheel in ipairs(self.wheels) do
-        wheel:setMotorSpeed(3 * direction)
+        wheel.motorSpeed = 3 * direction
     end
 end
 
@@ -205,9 +205,9 @@ end
 function Joints:fixedUpdate(step)
     self.time = self.time + step
     if self.lift.y <= kLiftTop then
-        self.piston:setMotorSpeed(120)
+        self.piston.motorSpeed = 120
     elseif self.lift.y >= kLiftBottom then
-        self.piston:setMotorSpeed(-120)
+        self.piston.motorSpeed = -120
     end
     local offset = self.cart.x - self.cartHome
     if offset > 100 and self.cartDirection > 0 or offset < -100 and self.cartDirection < 0 then

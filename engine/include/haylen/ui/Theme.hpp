@@ -181,13 +181,9 @@ class Theme final {
     // Reads a theme on top of a base theme. The JSON holds name, optional colors, metrics, fonts, fontFiles and surfaces, and fontFiles maps font names to TrueType files the caller registers before drawing.
     [[nodiscard]] static Theme fromJson(const core::Json& document, const Theme& base, const TextureLoader& loadTexture);
 
-    [[nodiscard]] static std::string_view colorName(Color role) noexcept;
     [[nodiscard]] static std::optional<Color> colorFromName(std::string_view value) noexcept;
-    [[nodiscard]] static std::string_view metricName(Metric role) noexcept;
     [[nodiscard]] static std::optional<Metric> metricFromName(std::string_view value) noexcept;
-    [[nodiscard]] static std::string_view fontName(Font role) noexcept;
     [[nodiscard]] static std::optional<Font> fontFromName(std::string_view value) noexcept;
-    [[nodiscard]] static std::string_view surfaceName(Surface role) noexcept;
     [[nodiscard]] static std::optional<Surface> surfaceFromName(std::string_view value) noexcept;
 
     [[nodiscard]] const std::string& getName() const noexcept {
@@ -241,12 +237,17 @@ class Theme final {
     static constexpr std::array<float, kMetricCount> kMetrics{64.0F, 12.0F, 24.0F, 12.0F, 16.0F, 28.0F, 2.0F, 3.0F, 16.0F, 36.0F, 36.0F, 10.0F, 34.0F, 72.0F, 38.0F, 22.0F, 14.0F, 4.0F, 24.0F, 64.0F, 760.0F, 560.0F, 520.0F, 420.0F, 2.0F, 72.0F, 8.0F, 96.0F, 56.0F, 14.0F};
     static constexpr std::array<float, kFontCount> kFontSizes{30.0F, 24.0F, 30.0F, 38.0F, 56.0F, 26.0F};
 
+    // The edges and the center of a nine-slice, the pieces a tiled image repeats, and the smallest size a copy of them may have.
+    static constexpr std::array<std::size_t, 5> kTiledPieces{1, 3, 4, 5, 7};
+    static constexpr float kMinTileSize = 1.0F;
+
     template <typename Enum, std::size_t Count> [[nodiscard]] static std::optional<Enum> fromName(const std::array<std::string_view, Count>& names, std::string_view value) noexcept;
     [[nodiscard]] static math::Color readColor(const core::Json& value, const std::string& context);
     [[nodiscard]] static float readNumber(const core::Json& value, const std::string& context);
     [[nodiscard]] static math::Insets readInsets(const core::Json& value, const std::string& context);
     [[nodiscard]] static math::Rect readRect(const core::Json& value, const std::string& context);
     [[nodiscard]] static Image readImage(const core::Json& value, const std::string& context, const TextureLoader& loadTexture);
+    static void checkTiles(const Image& image, const std::string& context);
     [[nodiscard]] static const core::Json& readSection(const core::Json& document, const char* key);
 
     std::string name;

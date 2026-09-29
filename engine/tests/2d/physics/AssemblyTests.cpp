@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
-#include <cmath>
 #include <numbers>
 #include <stdexcept>
 #include <vector>
@@ -52,6 +51,13 @@ TEST_F(AssemblyTest, RopesChainTheirSegmentsAndHang) {
     EXPECT_FALSE(rope.isValid());
     EXPECT_EQ(world.getBodyCount(), 1U);
     EXPECT_THROW((void)Rope::create(world, {.segments = 0}), std::invalid_argument);
+
+    // A rope that fails halfway leaves no bodies behind.
+    World other;
+    const Body stranger = other.createBody();
+    EXPECT_THROW((void)Rope::create(world, {.start = {0.0F, 0.0F}, .end = {100.0F, 0.0F}, .segments = 4, .endBody = stranger}), std::invalid_argument);
+    EXPECT_THROW((void)Rope::create(world, {.start = {0.0F, 0.0F}, .end = {100.0F, 0.0F}, .density = -1.0F, .pinStart = true}), std::invalid_argument);
+    EXPECT_EQ(world.getBodyCount(), 1U);
 }
 
 TEST_F(AssemblyTest, BridgesHoldLoadsBetweenPinnedEnds) {
@@ -92,6 +98,8 @@ TEST_F(AssemblyTest, RagdollsFallAsOneFigure) {
     ragdoll.destroy();
     EXPECT_FALSE(ragdoll.isValid());
     EXPECT_THROW((void)Ragdoll::create(world, {.group = 1}), std::invalid_argument);
+    EXPECT_THROW((void)Ragdoll::create(world, {.density = -1.0F}), std::invalid_argument);
+    EXPECT_EQ(world.getBodyCount(), 1U);
 }
 
 TEST_F(AssemblyTest, VehiclesDriveOnTheirMotors) {
@@ -118,6 +126,9 @@ TEST_F(AssemblyTest, VehiclesDriveOnTheirMotors) {
     car.destroy();
     EXPECT_FALSE(car.isValid());
     EXPECT_THROW((void)Vehicle::create(world, {.wheelRadius = 0.0F}), std::invalid_argument);
+    EXPECT_THROW((void)Vehicle::create(world, {.suspensionTravel = -1.0F}), std::invalid_argument);
+    EXPECT_THROW((void)Vehicle::create(world, {.wheelFriction = -1.0F}), std::invalid_argument);
+    EXPECT_EQ(world.getBodyCount(), 1U);
 }
 
 TEST_F(AssemblyTest, OneWayPlatformsLetBodiesUpFromBelow) {
@@ -187,30 +198,32 @@ TEST_F(AssemblyTest, FluidsSettleInsideTheirContainer) {
     }
 
     // The liquid spreads over the floor between the walls and comes to rest.
-    std::vector<float> positions(fluid.size() * 2);
-    EXPECT_EQ(fluid.copyPositions(positions), 300U);
-    std::vector<float> velocities(fluid.size() * 2);
-    EXPECT_EQ(fluid.copyVelocities(velocities), 300U);
     float lowest = 1e9F;
     float highest = -1e9F;
-    for (std::size_t index = 0; index < fluid.size(); ++index) {
-        const float x = positions[index * 2];
-        const float y = positions[index * 2 + 1];
-        EXPECT_GT(x, -190.0F);
-        EXPECT_LT(x, 190.0F);
-        EXPECT_LT(y, 190.0F);
-        EXPECT_LT(std::hypot(velocities[index * 2], velocities[index * 2 + 1]), 200.0F);
-        lowest = std::min(lowest, x);
-        highest = std::max(highest, x);
+    for (const Body& particle : fluid.getBodies()) {
+        const math::Vec2 position = particle.getPosition();
+        EXPECT_GT(position.x, -190.0F);
+        EXPECT_LT(position.x, 190.0F);
+        EXPECT_LT(position.y, 190.0F);
+        EXPECT_LT(particle.getVelocity().getLength(), 200.0F);
+        lowest = std::min(lowest, position.x);
+        highest = std::max(highest, position.x);
     }
     EXPECT_GT(highest - lowest, 250.0F);
 
-    fluid.remove(0);
+    // A particle whose body is destroyed elsewhere leaves the fluid, which keeps working.
+    Body drained = fluid.getBodies().front();
+    drained.destroy();
     EXPECT_EQ(fluid.size(), 299U);
+    fluid.update(1.0F / 60.0F);
+
+    fluid.remove(0);
+    EXPECT_EQ(fluid.size(), 298U);
     EXPECT_THROW(fluid.remove(500), std::out_of_range);
     fluid.clear();
     EXPECT_EQ(world.getBodyCount(), 3U);
     EXPECT_THROW(Fluid(world, {.radius = 4.0F, .smoothingRadius = 2.0F}), std::invalid_argument);
+    EXPECT_THROW(Fluid(world, {.friction = -1.0F}), std::invalid_argument);
 }
 
 } // namespace haylen::physics2d

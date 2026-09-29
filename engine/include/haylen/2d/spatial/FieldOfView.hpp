@@ -60,10 +60,10 @@ class FieldOfView final {
 
     // The first column of a row rounds the start slope half up, and the last column rounds the end slope half down.
     [[nodiscard]] static int firstColumn(const Row& row) noexcept {
-        return static_cast<int>(floorDivide(2 * row.depth * row.start.numerator + row.start.denominator, 2 * row.start.denominator));
+        return static_cast<int>(floorDivide(2 * std::int64_t{row.depth} * row.start.numerator + row.start.denominator, 2 * row.start.denominator));
     }
     [[nodiscard]] static int lastColumn(const Row& row) noexcept {
-        return static_cast<int>(-floorDivide(-(2 * row.depth * row.end.numerator - row.end.denominator), 2 * row.end.denominator));
+        return static_cast<int>(-floorDivide(-(2 * std::int64_t{row.depth} * row.end.numerator - row.end.denominator), 2 * row.end.denominator));
     }
 
     // A transparent cell is only visible when its center lies inside the sector of the row.
@@ -72,7 +72,7 @@ class FieldOfView final {
     }
 
     [[nodiscard]] static Slope slopeOf(int depth, int column) noexcept {
-        return {2 * column - 1, 2 * depth};
+        return {2 * std::int64_t{column} - 1, 2 * std::int64_t{depth}};
     }
 
     template <typename Opaque, typename Reveal> static void scan(Row row, const Quadrant& quadrant, Opaque& opaque, Reveal& reveal) {
@@ -85,7 +85,7 @@ class FieldOfView final {
         for (int column = firstColumn(row); column <= last; ++column) {
             const Cell cell = quadrant.transform(row.depth, column);
             const bool blocks = opaque(cell);
-            const bool inRange = row.depth * row.depth + column * column <= quadrant.radius * quadrant.radius;
+            const bool inRange = std::int64_t{row.depth} * row.depth + std::int64_t{column} * column <= std::int64_t{quadrant.radius} * quadrant.radius;
             if (inRange && (blocks || isCentered(row, column))) {
                 reveal(cell);
             }

@@ -4,14 +4,18 @@
 layout(binding=0) uniform blend_vs_params {
     mat4 view_projection;
     vec4 area;
+    // 1 when the blend mode of the draw expects colors premultiplied by their alpha.
+    float premultiply;
 };
 
 in vec2 corner;
 out vec2 uv;
+out float haylen_output_premultiply;
 
 void main() {
     gl_Position = view_projection * vec4(area.xy + corner * area.zw, 0.0, 1.0);
     uv = corner;
+    haylen_output_premultiply = premultiply;
 }
 @end
 

@@ -13,36 +13,43 @@
 
 namespace haylen::text {
 
-TextEffect::Parameters::Parameters(std::string effectName, std::map<std::string, std::string, std::less<>> attributes) : effect(std::move(effectName)), values(std::move(attributes)) {}
+TextEffect::Parameters::Parameters(std::string effectName, std::map<std::string, std::string, std::less<>> attributes) : effect(std::move(effectName)), values(std::move(attributes)) {
+    for (const auto& [key, text] : values) {
+        float value = 0.0F;
+        const auto [end, error] = fast_float::from_chars(text.data(), text.data() + text.size(), value);
+        if (error == std::errc{} && end == text.data() + text.size() && !text.empty()) {
+            numbers.emplace(key, value);
+        }
+        if (const std::optional<math::Color> color = MarkupParser::parseColor(text)) {
+            colors.emplace(key, *color);
+        }
+    }
+}
 
 bool TextEffect::Parameters::has(std::string_view key) const {
     return values.contains(key);
 }
 
 float TextEffect::Parameters::getNumber(std::string_view key, float byDefault) const {
+    if (const auto found = numbers.find(key); found != numbers.end()) {
+        return found->second;
+    }
     const auto found = values.find(key);
     if (found == values.end()) {
         return byDefault;
     }
-    const std::string& text = found->second;
-    float value = 0.0F;
-    const auto [end, error] = fast_float::from_chars(text.data(), text.data() + text.size(), value);
-    if (error != std::errc{} || end != text.data() + text.size() || text.empty()) {
-        throw std::invalid_argument("The " + std::string(key) + " of [" + effect + "] must be a number, not " + text + ".");
-    }
-    return value;
+    throw std::invalid_argument("The " + std::string(key) + " of [" + effect + "] must be a number, not " + found->second + ".");
 }
 
 math::Color TextEffect::Parameters::getColor(std::string_view key, math::Color byDefault) const {
+    if (const auto found = colors.find(key); found != colors.end()) {
+        return found->second;
+    }
     const auto found = values.find(key);
     if (found == values.end()) {
         return byDefault;
     }
-    const std::optional<math::Color> parsed = MarkupParser::parseColor(found->second);
-    if (!parsed) {
-        throw std::invalid_argument("The " + std::string(key) + " of [" + effect + "] must be a color such as red or #RRGGBB, not " + found->second + ".");
-    }
-    return *parsed;
+    throw std::invalid_argument("The " + std::string(key) + " of [" + effect + "] must be a color such as red or #RRGGBB, not " + found->second + ".");
 }
 
 // The easing curve of the effects, where a curve above 1 eases in, between 0 and 1 eases out and below 0 eases in and out.

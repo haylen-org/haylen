@@ -1,5 +1,8 @@
 #include "2d/physics/WorldLua.hpp"
 
+#include <algorithm>
+#include <cstdint>
+
 #include "2d/physics/Physics2DLua.hpp"
 #include "2d/physics/ShapeLua.hpp"
 #include "2d/physics/WorldRaycastLua.hpp"
@@ -162,7 +165,6 @@ int WorldLua::createJoint(lua_State* L) {
     return 1;
 }
 
-// Advances the world and then calls the event callbacks set on it.
 std::vector<Body> WorldLua::readBodies(lua_State* L, int index) {
     luaL_checktype(L, index, LUA_TTABLE);
     const auto count = static_cast<std::size_t>(lua_rawlen(L, index));
@@ -197,9 +199,44 @@ int WorldLua::writeTransforms(lua_State* L) {
     return 0;
 }
 
+bool WorldLua::hasCallbacks(lua_State* L, int worldIndex) {
+    lua_getiuservalue(L, worldIndex, 1);
+    // clang-format off
+    const bool found = std::ranges::any_of(kCallbacks, [L](std::string_view name) {
+        const bool set = lua_getfield(L, -1, name.data()) == LUA_TFUNCTION;
+        lua_pop(L, 1);
+        return set;
+    });
+    // clang-format on
+    lua_pop(L, 1);
+    return found;
+}
+
+// Bodies also die outside body:destroy(), in fractures, assemblies, fluids, terrains and the garbage collection of their owners, so every step drops the data of the bodies that are gone.
+void WorldLua::releaseDestroyedData(lua_State* L, int worldIndex) {
+    World& world = lua::Userdata::check<World>(L, worldIndex);
+    lua_getiuservalue(L, worldIndex, 1);
+    lua_getfield(L, -1, "data");
+    lua_pushnil(L);
+    while (lua_next(L, -2) != 0) {
+        lua_pop(L, 1);
+        if (!Body(&world, static_cast<std::uint64_t>(lua_tointeger(L, -1))).isValid()) {
+            lua_pushvalue(L, -1);
+            lua_pushnil(L);
+            lua_rawset(L, -4);
+        }
+    }
+    lua_pop(L, 2);
+}
+
+// Releases the data of destroyed bodies, advances the world and then calls the event callbacks set on it.
 int WorldLua::step(lua_State* L) {
     World& world = check(L);
+    releaseDestroyedData(L, 1);
     world.step(lua::Stack::read<float>(L, 2));
+    if (!hasCallbacks(L, 1)) {
+        return 0;
+    }
 
     // A callback may step the world again, which replaces its event lists, so every list is copied before the first callback runs.
     const std::vector<ContactEvent> begins = world.getContactBegins();

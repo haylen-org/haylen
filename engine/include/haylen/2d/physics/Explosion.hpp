@@ -22,7 +22,7 @@ class Explosion final {
         Quadratic,
     };
 
-    // Each body takes the impulse, scaled by the falloff over its distance, at the point of its shapes closest to the center, so bodies hit off center spin. With occlusion, bodies behind other shapes as seen from the center are spared.
+    // Each body takes the impulse, scaled by the falloff over its distance, at the point of its shapes closest to the center, so bodies hit off center spin. With occlusion, bodies behind other solid shapes that pass the filter, as seen from the center, are spared.
     struct Options {
         math::Vec2 center{};
         float radius = 100.0F;

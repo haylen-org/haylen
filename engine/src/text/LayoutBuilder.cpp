@@ -7,7 +7,6 @@
 
 #include "haylen/core/Utf8.hpp"
 #include "text/BidiParagraph.hpp"
-#include "text/Segmenter.hpp"
 
 namespace haylen::text {
 
@@ -15,21 +14,32 @@ LayoutBuilder::LayoutBuilder(const RichTextDocument& source, const RichTextOptio
 
 LayoutBuilder::LayoutBuilder(const RichTextDocument& source, const RichTextOptions& layoutOptions, const RichTextRegistry* textRegistry, const FontFamily* baseFamily, Font* baseFont) : document(source), options(layoutOptions), registry(textRegistry), family(baseFamily), loneFont(baseFont), styleFonts(source.styles.size()) {}
 
-TextLayout LayoutBuilder::layoutPlainText(std::string_view text, const TextStyle& style, const FontFamily* family, Font* font) {
-    RichTextDocument document{.styles = {RichTextDocument::Style{}}};
+// The carriage return of CRLF stays at the end of its paragraph, where it draws nothing, so the characters keep counting the code points of the text.
+TextLayout LayoutBuilder::layoutPlainText(std::string_view text, const TextStyle& style, const FontFamily* baseFamily, Font* baseFont) {
+    RichTextDocument plain{.styles = {RichTextDocument::Style{}}};
     const std::u32string codePoints = core::Utf8::decode(text);
+    // clang-format off
+    const auto endsParagraph = [&codePoints](std::size_t index) {
+        const bool crlf = codePoints[index] == U'\r' && index + 1 < codePoints.size() && codePoints[index + 1] == U'\n';
+        return Segmenter::isParagraphSeparator(codePoints[index]) && !crlf;
+    };
+    // clang-format on
+
     std::size_t start = 0;
     while (start <= codePoints.size()) {
-        const std::size_t newline = std::min(codePoints.find(U'\n', start), codePoints.size());
-        RichTextDocument::Paragraph& paragraph = document.paragraphs.emplace_back();
-        if (newline > start) {
-            paragraph.inlines.push_back({.kind = RichTextDocument::Inline::Kind::Text, .text = codePoints.substr(start, newline - start)});
+        std::size_t end = start;
+        while (end < codePoints.size() && !endsParagraph(end)) {
+            ++end;
         }
-        start = newline + 1;
+        RichTextDocument::Paragraph& paragraph = plain.paragraphs.emplace_back();
+        if (end > start) {
+            paragraph.inlines.push_back({.kind = RichTextDocument::Inline::Kind::Text, .text = codePoints.substr(start, end - start)});
+        }
+        start = end + 1;
     }
 
-    const RichTextOptions options{.size = style.size, .bold = style.bold, .italic = style.italic, .color = style.color, .maxWidth = style.maxWidth, .align = style.align, .direction = style.direction, .language = style.language, .lineSpacing = style.lineSpacing};
-    return LayoutBuilder(document, options, nullptr, family, font).build();
+    const RichTextOptions plainOptions{.size = style.size, .bold = style.bold, .italic = style.italic, .color = style.color, .maxWidth = style.maxWidth, .align = style.align, .direction = style.direction, .language = style.language, .lineSpacing = style.lineSpacing};
+    return LayoutBuilder(plain, plainOptions, nullptr, baseFamily, baseFont).build();
 }
 
 float LayoutBuilder::getIndentUnit() const noexcept {
@@ -142,7 +152,7 @@ math::Color LayoutBuilder::getColor(std::size_t style) const {
     return color;
 }
 
-// Shapes one run of a font, script and direction. The glyphs come in visual order, so the clusters of a right-to-left run count down, and every cluster becomes a piece in reading order that keeps its glyphs in visual order.
+// Shapes one run of a font, script and direction. The glyphs come in visual order, so the clusters of a right-to-left run count down, and every cluster becomes a piece in reading order that keeps its glyphs in visual order. A cluster whose code points draw nothing, such as a tab or another control character, keeps no glyph and takes no room.
 void LayoutBuilder::shapeRun(const Source& source, std::size_t begin, std::size_t end, const FontFamily::Selection& face, std::uint8_t level, std::uint32_t script, std::vector<Piece>& pieces, std::vector<PlacedGlyph>& glyphs) {
     const std::size_t style = source.styles[begin];
     const StyleFont& font = getStyleFont(style);
@@ -160,19 +170,26 @@ void LayoutBuilder::shapeRun(const Source& source, std::size_t begin, std::size_
     std::size_t next = 0;
     while (next < byCluster.size()) {
         const std::size_t cluster = shapedGlyphs[byCluster[next]].cluster;
-        Piece piece{.kind = Piece::Kind::Cluster, .style = style, .look = look, .begin = cluster, .firstGlyph = glyphs.size(), .level = level};
+        std::size_t last = next;
+        while (last < byCluster.size() && shapedGlyphs[byCluster[last]].cluster == cluster) {
+            ++last;
+        }
+        Piece piece{.kind = Piece::Kind::Cluster, .style = style, .look = look, .begin = cluster, .end = last < byCluster.size() ? shapedGlyphs[byCluster[last]].cluster : end, .firstGlyph = glyphs.size(), .level = level};
+        const auto codePoints = std::u32string_view(source.text).substr(piece.begin, piece.end - piece.begin);
+        const bool visible = !std::ranges::all_of(codePoints, &Segmenter::isInvisible);
+
         float pen = 0.0F;
-        for (; next < byCluster.size() && shapedGlyphs[byCluster[next]].cluster == cluster; ++next) {
+        for (; visible && next < last; ++next) {
             const Font::ShapedGlyph& shaped = shapedGlyphs[byCluster[next]];
             glyphs.push_back({.glyph = drawing.getGlyph(shaped.index), .index = shaped.index, .factor = factor, .offset = math::Vec2{pen, 0.0F} + shaped.offset * factor});
             pen += shaped.advance * factor;
         }
-        piece.end = next < byCluster.size() ? shapedGlyphs[byCluster[next]].cluster : end;
+        next = last;
         piece.glyphCount = glyphs.size() - piece.firstGlyph;
-        piece.advance = pen + drawn.weight * 2.0F + drawn.emboldenOffset;
+        piece.advance = visible ? pen + drawn.weight * 2.0F + drawn.emboldenOffset : 0.0F;
         piece.ascent = drawing.getAscent(font.size);
         piece.descent = drawing.getLineHeight(font.size) - piece.ascent;
-        piece.space = std::all_of(source.text.begin() + static_cast<std::ptrdiff_t>(piece.begin), source.text.begin() + static_cast<std::ptrdiff_t>(piece.end), &Segmenter::isSpace);
+        piece.space = std::ranges::all_of(codePoints, &Segmenter::isSpace);
         pieces.push_back(std::move(piece));
     }
 }
@@ -188,14 +205,13 @@ std::vector<LayoutBuilder::Piece> LayoutBuilder::shape(const Source& source, con
     std::size_t nextPause = 0;
     // clang-format off
     const auto add = [&](Piece piece) {
-        piece.breakBefore = piece.begin > 0 && breaks[piece.begin - 1] != Segmenter::Break::Never;
+        piece.breakBefore = piece.begin > 0 ? breaks[piece.begin - 1] : Segmenter::Break::Never;
         const std::size_t firstPause = pieces.size();
         for (; nextPause < source.pauses.size() && source.pauses[nextPause].first <= piece.begin; ++nextPause) {
             pieces.push_back({.kind = Piece::Kind::Pause, .style = piece.style, .begin = piece.begin, .end = piece.begin, .pause = source.pauses[nextPause].second});
         }
         if (pieces.size() > firstPause) {
-            pieces[firstPause].breakBefore = piece.breakBefore;
-            piece.breakBefore = false;
+            pieces[firstPause].breakBefore = std::exchange(piece.breakBefore, Segmenter::Break::Never);
         }
         pieces.push_back(std::move(piece));
     };
@@ -334,9 +350,9 @@ void LayoutBuilder::shapeAside(Flow& flow, std::u32string_view text, std::size_t
     order = orderPieces(pieces, 0, pieces.size(), bidi);
 }
 
-// A line may wrap before a piece where the Unicode line breaking rules allow it, and a pause stays with what follows it, so the line wraps before the pause.
-bool LayoutBuilder::breaksBefore(const std::vector<Piece>& pieces, std::size_t index) noexcept {
-    return index > 0 && pieces[index - 1].kind != Piece::Kind::Pause && pieces[index].breakBefore;
+// A line may wrap, or must end, before a piece where the Unicode line breaking rules say so, and a pause stays with what follows it, so the line breaks before the pause.
+Segmenter::Break LayoutBuilder::breakBefore(const std::vector<Piece>& pieces, std::size_t index) noexcept {
+    return index > 0 && pieces[index - 1].kind != Piece::Kind::Pause ? pieces[index].breakBefore : Segmenter::Break::Never;
 }
 
 // The drawable pieces of a line from left to right: the runs of the line in the order the bidirectional algorithm shows them, each read forward or backward by the direction of its level.
@@ -403,7 +419,7 @@ void LayoutBuilder::closeLine(Flow& flow, Line& line, float& top) const {
     flow.lines.push_back(line);
 }
 
-// Greedy wrapping between segments, the runs of pieces from one break opportunity to the next. A segment wider than a whole line wraps between its clusters instead, and every line keeps at least one piece. Lines beside a drop cap are shorter.
+// Greedy wrapping between segments, the runs of pieces from one break opportunity to the next. A segment wider than a whole line wraps between its clusters instead, and every line keeps at least one piece. A mandatory break, such as the one after a vertical tab or a form feed, ends the line. Lines beside a drop cap are shorter.
 void LayoutBuilder::breakLines(Flow& flow, float available) {
     const std::vector<Piece>& pieces = flow.pieces;
     const bool bounded = available > 0.0F;
@@ -432,8 +448,13 @@ void LayoutBuilder::breakLines(Flow& flow, float available) {
             continue;
         }
 
+        if (line.end > line.begin && breakBefore(pieces, cursor) == Segmenter::Break::Mandatory) {
+            closeLine(flow, line, top);
+            start(cursor);
+        }
+
         std::size_t segmentEnd = cursor + 1;
-        while (segmentEnd < pieces.size() && pieces[segmentEnd].kind != Piece::Kind::LineBreak && !breaksBefore(pieces, segmentEnd)) {
+        while (segmentEnd < pieces.size() && pieces[segmentEnd].kind != Piece::Kind::LineBreak && breakBefore(pieces, segmentEnd) == Segmenter::Break::Never) {
             ++segmentEnd;
         }
         float total = 0.0F;
@@ -678,7 +699,7 @@ float LayoutBuilder::emitBlocks(const std::vector<Block>& blocks, math::Vec2 ori
 }
 
 std::size_t LayoutBuilder::addCharacter(const Piece& piece, std::size_t offset, bool rightToLeft) {
-    layout.characters.push_back({.begin = offset + piece.begin, .end = offset + piece.end, .rightToLeft = rightToLeft, .pause = std::exchange(pendingPause, 0.0F), .speed = document.styles[piece.style].revealSpeed});
+    layout.characters.push_back({.begin = offset + piece.begin, .end = offset + piece.end, .style = piece.style, .rightToLeft = rightToLeft, .pause = std::exchange(pendingPause, 0.0F), .speed = document.styles[piece.style].revealSpeed});
     return layout.characters.size() - 1;
 }
 

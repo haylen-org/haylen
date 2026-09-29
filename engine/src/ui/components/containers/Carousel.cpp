@@ -27,12 +27,13 @@ float Carousel::getIndicatorHeight(Context& context) const {
     return indicators ? context.getMetric(Theme::Metric::PageIndicatorSize) * 3.0F : 0.0F;
 }
 
+// A carousel fills the width it gets, and an unbounded width, such as the one of a horizontal scroll, gets the width of its widest page.
 math::Vec2 Carousel::measureContent(Context& context, float availableWidth) {
-    float height = 0.0F;
+    math::Vec2 size;
     for (Component* child : getLayoutChildren()) {
-        height = std::max(height, child->measure(context, availableWidth).y);
+        size = math::Vec2::max(size, child->measure(context, availableWidth));
     }
-    return {availableWidth, height + getIndicatorHeight(context)};
+    return {availableWidth < CommonProperties::kUnbounded ? availableWidth : size.x, size.y + getIndicatorHeight(context)};
 }
 
 void Carousel::render(Context& context, const math::Rect& bounds) {

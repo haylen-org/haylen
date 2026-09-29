@@ -1,7 +1,6 @@
 #include "ui/components/inputs/Stepper.hpp"
 
 #include <algorithm>
-#include <cmath>
 #include <optional>
 #include <utility>
 

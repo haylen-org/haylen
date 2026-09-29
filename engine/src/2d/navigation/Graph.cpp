@@ -157,7 +157,7 @@ std::optional<std::int64_t> Graph::getClosestPoint(math::Vec2 position, bool inc
             continue;
         }
         const float distance = math::Vec2::distanceSquared(point.position, position);
-        if (distance < closestDistance || (distance == closestDistance && id < *closest)) {
+        if (distance < closestDistance || (distance == closestDistance && (!closest || id < *closest))) {
             closestDistance = distance;
             closest = id;
         }

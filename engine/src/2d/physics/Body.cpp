@@ -125,7 +125,7 @@ float Body::getLinearDamping() const {
 }
 
 void Body::setLinearDamping(float value) {
-    b2Body_SetLinearDamping(b2LoadBodyId(checkedId()), value);
+    b2Body_SetLinearDamping(b2LoadBodyId(checkedId()), Box2DConverter::toDamping(value));
 }
 
 float Body::getAngularDamping() const {
@@ -133,7 +133,7 @@ float Body::getAngularDamping() const {
 }
 
 void Body::setAngularDamping(float value) {
-    b2Body_SetAngularDamping(b2LoadBodyId(checkedId()), value);
+    b2Body_SetAngularDamping(b2LoadBodyId(checkedId()), Box2DConverter::toDamping(value));
 }
 
 float Body::getGravityScale() const {
@@ -214,6 +214,9 @@ Shape Body::addCapsule(math::Vec2 first, math::Vec2 second, float radius, const 
 Shape Body::addSegment(math::Vec2 first, math::Vec2 second, const Shape::Options& options) {
     const std::array<math::Vec2, 2> ends{first, second};
     const std::vector<b2Vec2> points = Box2DConverter::toLocalPoints(ends, options, world->getPixelsPerMeter());
+    if (!(b2Distance(points[0], points[1]) > Box2DConverter::kLinearSlop)) {
+        throw std::invalid_argument("A physics segment needs ends more than 0.005 meters apart.");
+    }
     const b2Segment segment{.point1 = points[0], .point2 = points[1]};
     const b2ShapeDef def = Box2DConverter::toShapeDef(options);
     return finishShape(b2StoreShapeId(b2CreateSegmentShape(b2LoadBodyId(checkedId()), &def, &segment)), options);
@@ -257,9 +260,7 @@ std::vector<Shape> Body::addChain(std::span<const math::Vec2> points, bool loop,
     }
 
     const std::vector<b2Vec2> local = Box2DConverter::toLocalPoints(points, options, world->getPixelsPerMeter());
-    b2SurfaceMaterial material = b2DefaultSurfaceMaterial();
-    material.friction = options.friction;
-    material.restitution = options.restitution;
+    const b2SurfaceMaterial material = Box2DConverter::toSurfaceMaterial(options);
 
     b2ChainDef def = b2DefaultChainDef();
     def.points = local.data();

@@ -17,15 +17,19 @@ void DijkstraMap::requireGrid(const Grid& grid) const {
     }
 }
 
+void DijkstraMap::requireValid(std::span<const Source> sources) {
+    if (!std::ranges::all_of(sources, [](const Source& source) { return std::isfinite(source.value); })) {
+        throw std::invalid_argument("A Dijkstra map source needs a finite value.");
+    }
+}
+
 void DijkstraMap::compute(const Grid& grid, std::span<const Source> sources, bool diagonalSteps) {
+    requireValid(sources);
     width = grid.getWidth();
     height = grid.getHeight();
     diagonal = diagonalSteps;
     values.assign(grid.getCellCount(), std::numeric_limits<float>::infinity());
     for (const Source& source : sources) {
-        if (!std::isfinite(source.value)) {
-            throw std::invalid_argument("A Dijkstra map source needs a finite value.");
-        }
         if (grid.isWalkable(source.cell)) {
             float& value = values[grid.indexOf(source.cell)];
             value = std::min(value, source.value);

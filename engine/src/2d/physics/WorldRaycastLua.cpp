@@ -1,6 +1,6 @@
 #include "2d/physics/WorldRaycastLua.hpp"
 
-#include <cstdint>
+#include <cmath>
 #include <vector>
 
 #include "2d/physics/Physics2DLua.hpp"
@@ -11,6 +11,7 @@
 #include "haylen/2d/physics/World.hpp"
 #include "haylen/2d/spatial/ScreenPicker.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/FrameClock.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
@@ -21,6 +22,7 @@
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/math/Ray.hpp"
+#include "haylen/math/Raycast.hpp"
 
 namespace haylen::lua {
 
@@ -116,7 +118,7 @@ void WorldRaycastLua::record(lua_State* L, math::Vec2 from, math::Vec2 to, const
     lua_getiuservalue(L, 1, 1);
     if (lua_getfield(L, -1, "rayDebug") == LUA_TUSERDATA) {
         const std::optional<RayDebugDraw::Hit> mark = hit ? std::optional<RayDebugDraw::Hit>{{.point = hit->point, .normal = hit->normal}} : std::nullopt;
-        lua::Userdata::check<RayDebugDraw>(L, -1).add(from, to, mark);
+        lua::Userdata::check<RayDebugDraw>(L, -1).add(lua::Runtime::getEngine(L).getClock().getFrameIndex(), from, to, mark);
     }
     lua_pop(L, 2);
 }
@@ -236,20 +238,27 @@ int WorldRaycastLua::bounceRay(lua_State* L) {
 
 // Casts a fan of rays with rayFan(x, y, angle, spread, count, length[, filter]). Each entry is the hit of one ray, or false when that ray hit nothing.
 int WorldRaycastLua::rayFan(lua_State* L) {
-    const World& world = lua::Userdata::check<World>(L, 1);
+    const Raycaster caster(lua::Userdata::check<World>(L, 1));
     const math::Vec2 origin{lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)};
     const auto angle = lua::Stack::read<float>(L, 4);
     const auto spread = lua::Stack::read<float>(L, 5);
     const auto count = lua::Stack::read<std::size_t>(L, 6);
     const auto length = lua::Stack::read<float>(L, 7);
-    std::vector<std::optional<RaycastHit>> results;
-    Raycaster(world).fan(origin, angle, spread, count, length, readFilter(L, 8), results);
+    luaL_argcheck(L, std::isfinite(length), 7, "the length must be finite");
+    const Raycaster::Filter filter = readFilter(L, 8);
 
-    const float step = count > 1 ? spread / static_cast<float>(count - 1) : 0.0F;
-    const float first = count > 1 ? angle - spread * 0.5F : angle;
+    // The fan hands each ray to the cast, which records it with its hit.
+    std::vector<std::optional<RaycastHit>> results;
+    // clang-format off
+    math::Raycast::fan(origin, angle, spread, count, length, [&](const math::Ray& ray) {
+        std::optional<RaycastHit> hit = caster.castRay(ray.origin, ray.getEnd(), filter);
+        record(L, ray.origin, ray.getEnd(), hit);
+        return hit;
+    }, results);
+    // clang-format on
+
     lua_createtable(L, static_cast<int>(results.size()), 0);
     for (std::size_t index = 0; index < results.size(); ++index) {
-        record(L, origin, math::Ray::fromAngle(origin, first + step * static_cast<float>(index), length).getEnd(), results[index]);
         if (results[index]) {
             pushHit(L, 1, *results[index]);
         } else {

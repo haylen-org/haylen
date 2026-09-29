@@ -1,7 +1,11 @@
 #include <gtest/gtest.h>
 
+#include <cstdint>
+#include <map>
 #include <string>
+#include <vector>
 
+#include "haylen/graphics/Device.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen {
@@ -18,21 +22,21 @@ std::map<std::string, std::string> imageFiles() {
 class Graphics2DLuaTest : public ::testing::Test {
   protected:
     void SetUp() override {
-        m_fixture.runLua("graphics = require('haylen.graphics') graphics2d = require('haylen.graphics2d') m = require('haylen.math') assets = require('haylen.assets') hero = assets.texture('images/hero.png')");
+        fixture.runLua("graphics = require('haylen.graphics') graphics2d = require('haylen.graphics2d') m = require('haylen.math') assets = require('haylen.assets') hero = assets.texture('images/hero.png')");
     }
 
     std::string lua(const std::string& source) {
-        return m_fixture.lua(source);
+        return fixture.lua(source);
     }
 
     // Runs the Lua body inside a scene render callback for one frame and reports the first error.
     std::string render(const std::string& body) {
         lua("require('haylen.scene').clear() renderError = nil require('haylen.scene').push({render = function() local ok, message = pcall(function() " + body + " end) if not ok then renderError = message end end})");
-        m_fixture.frames(1);
+        fixture.frames(1);
         return lua("return tostring(renderError)");
     }
 
-    test::EngineFixture m_fixture{imageFiles()};
+    test::EngineFixture fixture{imageFiles()};
 };
 
 TEST_F(Graphics2DLuaTest, MeasuresTextWithFonts) {
@@ -136,8 +140,8 @@ TEST_F(Graphics2DLuaTest, ControlsCameras) {
 
 TEST_F(Graphics2DLuaTest, KeepsCamerasInStepWithTheVisibleArea) {
     lua("camera = graphics2d.newCamera() camera.limits = {0, 0, 4000, 1000}");
-    m_fixture.host().resize({2400.0F, 1080.0F});
-    m_fixture.frames(1);
+    fixture.host().resize({2400.0F, 1080.0F});
+    fixture.frames(1);
 
     // The default expand scaling widens the visible area, and a camera made before the resize sees it too.
     EXPECT_EQ(lua("return camera.viewSize.x .. 'x' .. camera.viewSize.y .. ' ' .. camera:visibleBounds().width"), "2400.0x1080.0 2400.0");
@@ -195,7 +199,7 @@ TEST_F(Graphics2DLuaTest, DrawsParallaxLayers) {
 }
 
 TEST_F(Graphics2DLuaTest, DrawsShapesTextMeshesAndLights) {
-    m_fixture.host().resize({960.0F, 540.0F});
+    fixture.host().resize({960.0F, 540.0F});
     // clang-format off
     const std::string body = R"(
         local camera = graphics2d.newCamera()
@@ -295,6 +299,65 @@ TEST_F(Graphics2DLuaTest, LightsShadowsNormalMapsAndMetaballs) {
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawMetaballs({0, 0}, 4, {size = 2})").find("Unknown option 'size'"), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.draw(hero, 0, 0, {lightMask = 256})").find("integer out of range"), std::string::npos);
     EXPECT_NE(render("graphics2d.beginWorld(graphics2d.newCamera(), {postProcess = {materials = {1}}})").find("haylen.Material expected"), std::string::npos);
+}
+
+// Frames that light, shadow, post-process, capture, blend, write changing text and UI and run scene transitions reuse or release every GPU object they need.
+TEST_F(Graphics2DLuaTest, KeepsGpuPoolsSteadyAcrossFrames) {
+    // clang-format off
+    lua(R"(
+        local lighting2d = require('haylen.lighting2d')
+        local scene = require('haylen.scene')
+        local ui = require('haylen.ui')
+        local lamp = lighting2d.newLight({x = 20, y = 20, radius = 120, shadows = true})
+        local occluder = lighting2d.newOccluder({points = {40, 0, 40, 40, 50, 40}})
+        local capture = graphics.newRenderTarget(64, 32)
+        local target = graphics.newRenderTarget(32, 32)
+        local rich = graphics2d.newRichText('[color=#FF0000]Hello[/color] world', {size = 16})
+        local camera = graphics2d.newCamera()
+        local hud = ui.mount(ui.column{ui.label{id = 'frame', text = ''}, ui.button{text = 'Play'}})
+        local frame = 0
+        local stages = {}
+        for index = 1, 2 do
+            stages[index] = {
+                update = function()
+                    frame = frame + 1
+                    hud:set('frame', {text = 'Frame ' .. frame})
+                    if frame % 40 == 0 then
+                        scene.replace(stages[3 - index], {duration = 0.1, effect = index == 1 and 'pageTurn' or 'crossFade'})
+                    end
+                end,
+                render = function()
+                    graphics2d.beginCapture(capture, '#000000')
+                    graphics2d.beginWorld(camera, {ambientLight = '#202040', postProcess = {vignetteStrength = 0.4}})
+                    graphics2d.draw(hero, 0, 0, {normalMap = hero})
+                    graphics2d.drawOccluder(occluder)
+                    graphics2d.drawLight(lamp)
+                    graphics2d.drawText(nil, 'Frame ' .. frame, 0, 0, {size = 12 + frame % 5})
+                    graphics2d.drawMetaballs({0, 0, 10, 0}, 8)
+                    graphics2d.endCapture()
+                    graphics2d.beginTarget(target, camera, {clear = '#00000000'})
+                    graphics2d.drawRect({0, 0, 4, 4}, '#FFFFFF')
+                    graphics2d.beginScreen()
+                    rich:draw(0, 0)
+                    graphics2d.drawImageBlend(capture.texture, target.texture, {0, 0, 64, 32}, {pattern = 'radial', progress = 0.5})
+                end,
+            }
+        end
+        scene.clear()
+        scene.push(stages[1])
+    )");
+    // clang-format on
+
+    // Both measures fall at the same point between two transitions, after every transition kind ran once.
+    fixture.frames(90);
+    const std::vector<graphics::Device::Pool> warm = fixture.engine().getGraphics().getPools();
+    fixture.frames(240);
+    const std::vector<graphics::Device::Pool> later = fixture.engine().getGraphics().getPools();
+    ASSERT_EQ(fixture.engine().getError(), nullptr);
+    ASSERT_EQ(warm.size(), later.size());
+    for (std::size_t index = 0; index < warm.size(); ++index) {
+        EXPECT_EQ(warm[index].used, later[index].used) << warm[index].name;
+    }
 }
 
 } // namespace haylen

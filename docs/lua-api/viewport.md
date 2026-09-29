@@ -16,7 +16,7 @@ The design size and the scaling policy come from the `design` section of `app.js
 | `'fill'` | Fills the screen and crops the design area. The visible rectangle is smaller than the design area. |
 | `'stretch'` | Fills the screen with non-uniform scaling. |
 | `'expand'` | Keeps the design area whole and centered and extends the visible area to fill the screen. The visible rectangle can start at negative coordinates and exceed the design size. |
-| `'pixel_perfect'` | Like `fit`, but only with integer scale factors. |
+| `'pixel_perfect'` | Like `fit`, but only with integer scale factors, so every design unit covers the same whole number of pixels. A framebuffer smaller than the design area shrinks it by the smallest integer divisor that fits, such as a half or a third, so the whole design area stays visible and every pixel covers the same whole number of design units. |
 
 ## Functions
 

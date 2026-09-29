@@ -83,15 +83,14 @@ int FluidLua::update(lua_State* L) {
 
 // Reusing the list from frame to frame keeps the bulk reads from allocating.
 int FluidLua::pushPairs(lua_State* L, bool velocities) {
-    const Fluid& fluid = lua::Userdata::check<ScriptedOwner<Fluid>>(L, 1).object;
+    const std::vector<Body>& bodies = lua::Userdata::check<ScriptedOwner<Fluid>>(L, 1).object.getBodies();
     if (lua_isnoneornil(L, 2)) {
-        lua_createtable(L, static_cast<int>(fluid.size() * 2), 0);
+        lua_createtable(L, static_cast<int>(bodies.size() * 2), 0);
     } else {
         luaL_checktype(L, 2, LUA_TTABLE);
         lua_pushvalue(L, 2);
     }
 
-    const std::vector<Body>& bodies = fluid.getBodies();
     for (std::size_t index = 0; index < bodies.size(); ++index) {
         const math::Vec2 value = velocities ? bodies[index].getVelocity() : bodies[index].getPosition();
         lua_pushnumber(L, value.x);
@@ -117,9 +116,9 @@ int FluidLua::velocities(lua_State* L) {
 }
 
 int FluidLua::bodies(lua_State* L) {
-    const Fluid& fluid = lua::Userdata::check<ScriptedOwner<Fluid>>(L, 1).object;
+    const std::vector<Body>& particles = lua::Userdata::check<ScriptedOwner<Fluid>>(L, 1).object.getBodies();
     lua_getiuservalue(L, 1, 1);
-    Physics2DLua::pushList(L, -1, fluid.getBodies());
+    Physics2DLua::pushList(L, -1, particles);
     return 1;
 }
 

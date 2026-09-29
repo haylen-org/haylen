@@ -37,17 +37,44 @@ b2QueryFilter Box2DConverter::toQueryFilter(const CollisionFilter& filter) noexc
     return {.categoryBits = filter.category, .maskBits = filter.mask};
 }
 
-b2ShapeDef Box2DConverter::toShapeDef(const Shape::Options& options) noexcept {
+bool Box2DConverter::isFiniteAndNotNegative(float value) noexcept {
+    return std::isfinite(value) && value >= 0.0F;
+}
+
+void Box2DConverter::checkShapeOptions(const Shape::Options& options) {
+    if (!isFiniteAndNotNegative(options.density) || !isFiniteAndNotNegative(options.friction) || !isFiniteAndNotNegative(options.restitution)) {
+        throw std::invalid_argument("A physics shape needs a finite density, friction and restitution of zero or more.");
+    }
+    if (options.oneWay && options.oneWay->isZero()) {
+        throw std::invalid_argument("A one-way direction cannot be zero.");
+    }
+}
+
+b2SurfaceMaterial Box2DConverter::toSurfaceMaterial(const Shape::Options& options) {
+    checkShapeOptions(options);
+    b2SurfaceMaterial material = b2DefaultSurfaceMaterial();
+    material.friction = options.friction;
+    material.restitution = options.restitution;
+    return material;
+}
+
+b2ShapeDef Box2DConverter::toShapeDef(const Shape::Options& options) {
     b2ShapeDef def = b2DefaultShapeDef();
+    def.material = toSurfaceMaterial(options);
     def.density = options.density;
-    def.material.friction = options.friction;
-    def.material.restitution = options.restitution;
     def.filter = toFilter(options.filter);
     def.isSensor = options.sensor;
     def.enableSensorEvents = true;
     def.enableContactEvents = true;
     def.enableHitEvents = true;
     return def;
+}
+
+float Box2DConverter::toDamping(float value) {
+    if (!isFiniteAndNotNegative(value)) {
+        throw std::invalid_argument("A physics body needs a finite damping of zero or more.");
+    }
+    return value;
 }
 
 std::vector<b2Vec2> Box2DConverter::toLocalPoints(std::span<const math::Vec2> points, const Shape::Options& options, float scale) {

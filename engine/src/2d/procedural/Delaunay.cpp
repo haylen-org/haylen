@@ -4,11 +4,12 @@
 #include <cmath>
 #include <limits>
 #include <numeric>
+#include <stdexcept>
 #include <utility>
 
 namespace haylen::procedural2d {
 
-// Runs Delaunator on the points mirrored vertically. Delaunator winds its triangles clockwise in the coordinates it sees, so the mirror makes them counter-clockwise, with a positive signed area, in the coordinates of the engine.
+// Runs the sweep hull on the points mirrored vertically. The sweep winds its triangles clockwise in the coordinates it sees, so the mirror makes them counter-clockwise, with a positive signed area, in the coordinates of the engine.
 class Delaunay::Builder final {
   public:
     explicit Builder(const std::vector<math::Vec2>& sites) : count(sites.size()), xs(count), ys(count), hullPrev(count), hullNext(count), hullTri(count), ids(count), distances(count) {
@@ -97,7 +98,7 @@ class Delaunay::Builder final {
         return dx * dx + dy * dy;
     }
 
-    // Negative when a, b and c turn counter-clockwise in the mirrored coordinates, as Delaunator's orient predicate.
+    // Negative when a, b and c turn counter-clockwise in the mirrored coordinates.
     [[nodiscard]] double orient(double px, double py, double qx, double qy, double rx, double ry) const noexcept {
         return (qy - py) * (rx - qx) - (qx - px) * (ry - qy);
     }
@@ -368,6 +369,9 @@ class Delaunay::Builder final {
 };
 
 Delaunay::Delaunay(std::vector<math::Vec2> sites) : points(std::move(sites)) {
+    if (!std::ranges::all_of(points, [](math::Vec2 point) { return std::isfinite(point.x) && std::isfinite(point.y); })) {
+        throw std::invalid_argument("A Delaunay triangulation needs finite points.");
+    }
     Builder builder(points);
     builder.run();
     triangles = std::move(builder.triangles);

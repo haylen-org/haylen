@@ -15,8 +15,8 @@ const QuadTree::Settings QuadTree::kDefaultSettings{};
 
 QuadTree::QuadTree(const math::Rect& area, const Settings& value) : settings(value) {
     EntryBounds::requireValid(area);
-    if (area.isEmpty() || value.maxEntries == 0 || value.maxDepth < 0) {
-        throw std::invalid_argument("A quadtree needs an area of positive size, room for an entry per quadrant and a depth of zero or more.");
+    if (area.isEmpty() || value.maxEntries == 0 || value.maxDepth < 0 || value.maxDepth > kMaxDepth) {
+        throw std::invalid_argument("A quadtree needs an area of positive size, room for an entry per quadrant and a depth from 0 to 16.");
     }
     nodes.push_back({.bounds = area});
 }
@@ -276,7 +276,7 @@ void QuadTree::collectNearest(std::int32_t node, math::Vec2 point, std::size_t c
     }
     std::ranges::sort(children);
     for (const auto& [distance, child] : children) {
-        if (distance > maxDistance || (neighbors.size() == count && distance > neighbors.back().distance)) {
+        if (distance > maxDistance || (neighbors.size() == count && distance > EntryBounds::getFarthest(neighbors).distance)) {
             return;
         }
         collectNearest(child, point, count, maxDistance, neighbors);
@@ -284,11 +284,13 @@ void QuadTree::collectNearest(std::int32_t node, math::Vec2 point, std::size_t c
 }
 
 void QuadTree::nearest(math::Vec2 point, std::size_t count, float maxDistance, std::vector<Neighbor>& neighbors) const {
+    EntryBounds::requirePoint(point);
     EntryBounds::requireRadius(maxDistance);
     neighbors.clear();
     if (count > 0) {
         collectNearest(0, point, count, maxDistance, neighbors);
     }
+    EntryBounds::finishNearest(neighbors);
 }
 
 } // namespace haylen::spatial2d

@@ -42,6 +42,9 @@ class GridSearch final {
         return expanded;
     }
 
+    // Throws std::invalid_argument when the options do not suit the grid, which lets background searches reject bad arguments before they start.
+    static void requireValid(const Grid& grid, const Options& options);
+
   private:
     struct OpenNode {
         float estimate = 0.0F;
@@ -60,7 +63,6 @@ class GridSearch final {
 
     // Orders the open set by estimated total cost, then by distance left, then by cell index, so equal paths always resolve the same way.
     [[nodiscard]] static bool isWorse(const OpenNode& lhs, const OpenNode& rhs) noexcept;
-    static void requireValid(const Grid& grid, const Options& options);
 
     void begin(std::size_t cells);
     [[nodiscard]] Node& at(std::int32_t cell);

@@ -57,6 +57,15 @@ void expectInside(navigation2d::NavMesh& mesh, std::span<const math::Vec2> path)
     }
 }
 
+// Checks that no leg of a path comes closer than the radius to any of the corners.
+void expectClear(std::span<const math::Vec2> path, std::span<const math::Vec2> corners, float radius) {
+    for (std::size_t index = 1; index < path.size(); ++index) {
+        for (const math::Vec2 corner : corners) {
+            EXPECT_GE(math::Geometry::distanceToSegment({path[index - 1], path[index]}, corner), radius - 1e-3F) << corner.x << "," << corner.y;
+        }
+    }
+}
+
 } // namespace
 
 TEST(NavMeshTest, CoversTheWalkableAreaAroundObstacles) {
@@ -130,6 +139,26 @@ TEST(NavMeshTest, PullsPathsTightAroundCornersWithTheAgentRadius) {
     const std::optional<math::Vec2> snapped = mesh.getClosestPoint({200.0F, 100.0F});
     ASSERT_TRUE(snapped.has_value());
     EXPECT_NEAR(std::fabs(snapped->x - 200.0F), 10.0F, 0.01F);
+}
+
+TEST(NavMeshTest, KeepsEveryLegTheRadiusAwayFromTheCornersItTurnsAround) {
+    // A right-angle bend around one corner.
+    navigation2d::NavMesh bend;
+    bend.setBoundary(box(0.0F, 0.0F, 300.0F, 300.0F));
+    bend.addObstacle(box(60.0F, -20.0F, 260.0F, 260.0F));
+    const std::vector<math::Vec2> around = copyPath(bend.findPath({30.0F, 20.0F}, {280.0F, 270.0F}, 10.0F));
+    ASSERT_GE(around.size(), 3U);
+    expectInside(bend, around);
+    expectClear(around, std::vector<math::Vec2>{{60.0F, 240.0F}}, 10.0F);
+
+    // A turn back around the end of a thin wall passes both of its corners.
+    navigation2d::NavMesh hairpin;
+    hairpin.setBoundary(box(0.0F, 0.0F, 300.0F, 300.0F));
+    hairpin.addObstacle(box(140.0F, -20.0F, 20.0F, 220.0F));
+    const std::vector<math::Vec2> back = copyPath(hairpin.findPath({70.0F, 50.0F}, {230.0F, 50.0F}, 10.0F));
+    ASSERT_GE(back.size(), 4U);
+    expectInside(hairpin, back);
+    expectClear(back, std::vector<math::Vec2>{{140.0F, 200.0F}, {160.0F, 200.0F}}, 10.0F);
 }
 
 TEST(NavMeshTest, KeepsRandomPathsInsideTheMesh) {

@@ -1,6 +1,6 @@
 # haylen.spatial2d
 
-`haylen.spatial2d` finds things in space quickly. It offers four structures that store Lua values by their bounds or positions and answer area, circle, point, ray and nearest-neighbor queries without testing every entity: a spatial hash, a quadtree, a dynamic AABB tree and a k-d tree. It also offers the classic grid algorithms of 2D games on a grid of integer cells: ray casts across cells, Bresenham lines and circles, a symmetric field of view, visibility polygons, flood fills, connected regions and union-find. Screen picking turns the cursor or a touch into world points, rays and the values under them.
+`haylen.spatial2d` finds things in space quickly. It offers four structures that store Lua values by their bounds or positions and answer area, circle, point, ray and nearest-neighbor queries without testing every entity: a spatial hash, a quadtree, a dynamic AABB tree and a k-d tree. It also offers the classic grid algorithms of 2D games on a grid of integer cells: ray casts and walks across cells, Bresenham lines and circles, a symmetric field of view, visibility polygons, flood fills, connected regions and union-find. Screen picking turns the cursor or a touch into world points, rays and the values under them.
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -21,6 +21,8 @@ local spatial2d = require('haylen.spatial2d')
 
 Creates a `SpatialHash` whose grid cells are `cellSize` units wide and high. A cell size about the size of a typical entity, or a little larger, keeps queries fast. A size that is not positive and finite raises `A spatial hash needs a positive cell size.`
 
+A stored rectangle may cover at most 65536 cells, or `set` raises `A spatial hash entry may cover at most 65536 cells, so the cell size should be closer to the size of the entries.`, and it must lie within 536870912 cells of the origin, or `set` raises `A spatial hash entry must lie within 536870912 cells of the origin.` A query never costs much more than a visit to every stored value, so an area far larger than the stored values, or a point or a ray far away from them, stays cheap.
+
 ```lua
 local spatial2d = require('haylen.spatial2d')
 
@@ -35,7 +37,9 @@ Creates a `QuadTree` over the rectangle `area`. Entries outside the area still w
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `maxEntries` | integer | `8` | How many entries a quadrant holds before it splits in four. |
-| `maxDepth` | integer | `8` | How many times quadrants may split. |
+| `maxDepth` | integer | `8` | How many times quadrants may split, from 0 to 16. |
+
+An empty area, a `maxEntries` of 0 or a `maxDepth` outside 0 to 16 raises `A quadtree needs an area of positive size, room for an entry per quadrant and a depth from 0 to 16.`
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -94,7 +98,7 @@ print(sets:connected(2, 1), sets.setCount)
 
 ### spatial2d.raycastGrid(grid, from, to, cellSize)
 
-Walks the cells of a `CellGrid` that the ray from `from` to `to` crosses, where each cell is `cellSize` units wide, given as a number or a `{width, height}` pair, and the first cell sits at the origin. Returns the hit on the first solid cell, a hit table like those of [haylen.math](math.md#ray-casts) with the extra fields `column` and `row`, or `nil`. The ray only travels over the grid, and a ray that starts in a solid cell hits it at distance 0.
+Walks the cells of a `CellGrid` that the ray from `from` to `to` crosses, where each cell is `cellSize` units wide, given as a number or a `{width, height}` pair, and the first cell sits at the origin. Returns the hit on the first solid cell, a hit table like those of [haylen.math](math.md#ray-casts) with the extra fields `column` and `row`, or `nil`. The ray only travels over the grid, and a ray that starts in a solid cell hits it at distance 0. A cell size that is not positive and finite raises `Grid cells need a positive and finite size.`
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -103,6 +107,18 @@ local walls = spatial2d.newCellGrid(20, 15)
 walls:set(8, 3, 1)
 local hit = spatial2d.raycastGrid(walls, {40, 56}, {600, 56}, 16)
 print(hit.column, hit.row, hit.x, hit.normalX)
+```
+
+### spatial2d.traverseGrid(from, to, cellSize)
+
+Returns every cell that the segment from `from` to `to` crosses on an endless grid of cells `cellSize` units wide, given as a number or a `{width, height}` pair, with the first cell at the origin. The cells come in order from the start as `{x = column, y = row, distance}` tables, where `distance` is how far along the segment it enters the cell, 0 for the first one. Unlike `spatial2d.line`, it lists every cell the segment touches, which suits lasers, bullets and tile highlights. A segment through the exact corner of four cells steps along x first. A cell size that is not positive and finite raises `Grid cells need a positive and finite size.`, a segment beyond the 32-bit range of cells raises `A grid ray must stay within the 32-bit range of cells.`, and a segment across more than 65536 cells raises `A grid traversal lists at most 65536 cells.`
+
+```lua
+local spatial2d = require('haylen.spatial2d')
+
+for _, cell in ipairs(spatial2d.traverseGrid({5, 5}, {35, 17}, 10)) do
+    print(cell.x, cell.y, cell.distance)
+end
 ```
 
 ### spatial2d.line(x1, y1, x2, y2)
@@ -146,7 +162,7 @@ print(seen[10 * 30 + 11], seen[10 * 30 + 14])
 
 ### spatial2d.visibilityPolygon(origin, walls, bounds)
 
-Returns the outline of the area visible from `origin` among the wall segments, clipped to the rectangle `bounds`, as a list of `Vec2` in order of increasing angle. It is the shape of a 2D light or of what a guard sees. The origin must lie inside the bounds, or it raises `A visibility polygon needs an origin inside its bounds.`
+Returns the outline of the area visible from `origin` among the wall segments, clipped to the rectangle `bounds`, as a list of `Vec2` in order of increasing angle. It is the shape of a 2D light or of what a guard sees. Walls and bounds that are not finite raise `A visibility polygon needs finite walls and bounds.`, and an origin outside the bounds, or one that is not a number, raises `A visibility polygon needs an origin inside its bounds.`
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -230,7 +246,7 @@ scene.push({
 
 ## Structures
 
-The four structures store any non-nil Lua value, usually the entity table itself, and compare values by identity, the way table keys do. A structure keeps a reference to every stored value until it is removed or the structure is cleared. Queries return new lists of values in the order the values were first added, so results never depend on how entries moved. Bounds that touch count as overlapping, so zero-sized rectangles work as points.
+The four structures store any non-nil Lua value, usually the entity table itself, and compare values by identity, the way table keys do. A structure keeps a reference to every stored value until it is removed or the structure is cleared. Queries return new lists of values. `query`, `queryCircle`, `queryPoint` and `pick` list them in the order the values were added, so results never depend on how entries moved, while `raycast` and `kNearest` list them by distance, with ties going to the value added first. A value removed and stored again counts as added again. Bounds that touch count as overlapping, so zero-sized rectangles work as points.
 
 `SpatialHash`, `QuadTree` and `AabbTree` store rectangles, which accept a `Rect` or a table `{x, y, width, height}` or `{x = 0, y = 0, width = 0, height = 0}`. A rectangle with a negative size or a non-finite component raises `Spatial bounds must be finite and have a non-negative size.` The `KdTree` stores points with an optional radius and treats them as circles in every query.
 
@@ -336,7 +352,7 @@ end
 
 ### structure:nearest(x, y, maxDistance, accept)
 
-Returns the value whose bounds lie closest to the point `x`, `y`, within `maxDistance`, or `nil` when none is close enough. When `accept` is given, it is called with the candidate values from the closest one on, until it returns a true value, and the ones for which it returns a false value are skipped. It may remove values from the structure, such as dead entities it cleans up, and a removed value is not offered anymore. Ties go to the value added first. Errors raised by `accept` propagate out of the call.
+Returns the value whose bounds lie closest to the point `x`, `y`, within `maxDistance`, or `nil` when none is close enough. When `accept` is given, it is called with the candidate values from the closest one on, until it returns a true value, and the ones for which it returns a false value are skipped. It may remove values from the structure or clear it, such as dead entities it cleans up, and a removed value is not offered anymore. Ties go to the value added first. Errors raised by `accept` propagate out of the call. A point that is not finite raises `A spatial query point must be finite.`, here and in `kNearest`.
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -507,4 +523,17 @@ rooms:unite(2, 3)
 local extra = rooms:add()
 rooms:unite(extra, 6)
 print(rooms:connected(1, 3), rooms:setSize(3), rooms:find(6) == rooms:find(extra), rooms.setCount)
+```
+
+### sets:reset(count)
+
+Starts over with `count` elements, each in a set of its own, reusing the memory of the union-find instead of creating a new one.
+
+```lua
+local spatial2d = require('haylen.spatial2d')
+
+local islands = spatial2d.newUnionFind(100)
+islands:unite(1, 2)
+islands:reset(50)
+print(islands.size, islands.setCount, islands:connected(1, 2)) -- 50 50 false
 ```

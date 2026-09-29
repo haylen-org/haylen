@@ -18,9 +18,7 @@ void DebugDraw::draw(b2WorldId world) {
     callbacks.DrawSolidCircleFcn = &drawSolidCircle;
     callbacks.DrawSolidCapsuleFcn = &drawSolidCapsule;
     callbacks.DrawSegmentFcn = &drawSegment;
-    callbacks.DrawTransformFcn = &drawTransform;
     callbacks.DrawPointFcn = &drawPoint;
-    callbacks.DrawStringFcn = &drawString;
     b2World_Draw(world, &callbacks);
 }
 
@@ -73,13 +71,9 @@ void DebugDraw::drawSegment(b2Vec2 first, b2Vec2 second, b2HexColor color, void*
     self.renderer.drawLine(self.toPixels(first), self.toPixels(second), kLineWidth, toColor(color), self.order);
 }
 
-void DebugDraw::drawTransform(b2Transform, void*) {}
-
 void DebugDraw::drawPoint(b2Vec2 point, float size, b2HexColor color, void* context) {
     const auto& self = *static_cast<DebugDraw*>(context);
     self.renderer.drawCircle(self.toPixels(point), size * 0.5F, toColor(color), self.order);
 }
-
-void DebugDraw::drawString(b2Vec2, const char*, b2HexColor, void*) {}
 
 } // namespace haylen::physics2d

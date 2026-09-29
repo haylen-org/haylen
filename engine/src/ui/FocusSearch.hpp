@@ -9,7 +9,7 @@
 
 namespace haylen::ui {
 
-// Picks the rectangle a directional move lands on, the way Android picks the next focused view: candidates in the beam of the source win, then the nearest one along the direction, with the distance along the direction weighing more than the distance across it.
+// Picks the rectangle a directional move lands on: candidates in the beam of the source win, then the nearest one along the direction, with the distance along the direction weighing more than the distance across it.
 class FocusSearch final {
   public:
     using Direction = FocusDirection;

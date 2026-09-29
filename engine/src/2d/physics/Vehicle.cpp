@@ -32,20 +32,32 @@ std::string_view Vehicle::driveName(Drive value) noexcept {
 }
 
 Vehicle Vehicle::create(World& world, const Options& options) {
-    if (options.chassisSize.x <= 0.0F || options.chassisSize.y <= 0.0F || options.wheelRadius <= 0.0F || options.group >= 0) {
-        throw std::invalid_argument("A vehicle needs a chassis and wheels with a size and a negative collision group.");
+    if (options.chassisSize.x <= 0.0F || options.chassisSize.y <= 0.0F || options.wheelRadius <= 0.0F || !(options.suspensionTravel >= 0.0F) || options.group >= 0) {
+        throw std::invalid_argument("A vehicle needs a chassis and wheels with a size, a suspension travel of zero or more and a negative collision group.");
     }
 
+    // A vehicle that fails halfway, such as on a bad material, leaves no bodies behind.
     Vehicle vehicle;
-    vehicle.drive = options.drive;
+    try {
+        vehicle.build(world, options);
+    } catch (...) {
+        vehicle.destroy();
+        throw;
+    }
+    return vehicle;
+}
+
+void Vehicle::build(World& world, const Options& options) {
+    drive = options.drive;
     const CollisionFilter filter{.group = options.group};
-    vehicle.chassis = world.createBody({.position = options.position});
-    vehicle.chassis.addBox(options.chassisSize, {.density = options.density, .filter = filter});
+    chassis = world.createBody({.position = options.position});
+    chassis.addBox(options.chassisSize, {.density = options.density, .filter = filter});
 
     const std::array<math::Vec2, 2> offsets{options.rearWheel, options.frontWheel};
     for (std::size_t index = 0; index < offsets.size(); ++index) {
         const math::Vec2 center = options.position + offsets[index];
-        Body wheel = world.createBody({.position = center});
+        Body& wheel = wheels[index];
+        wheel = world.createBody({.position = center});
         wheel.addCircle(options.wheelRadius, {.density = options.wheelDensity, .friction = options.wheelFriction, .filter = filter});
 
         const bool driven = options.drive == Drive::All || (options.drive == Drive::Rear) == (index == 0);
@@ -61,10 +73,8 @@ Vehicle Vehicle::create(World& world, const Options& options) {
             .dampingRatio = options.suspensionDamping,
             .axis = {0.0F, 1.0F},
         };
-        vehicle.wheels[index] = wheel;
-        vehicle.suspension[index] = world.createJoint(Joint::Type::Wheel, vehicle.chassis, wheel, joint);
+        suspension[index] = world.createJoint(Joint::Type::Wheel, chassis, wheel, joint);
     }
-    return vehicle;
 }
 
 void Vehicle::setMotorSpeed(float radiansPerSecond) {

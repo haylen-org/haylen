@@ -12,7 +12,7 @@ Grid cells are addressed by column and row, counting from 0 like Tiled cells, so
 
 ## Background work
 
-Functions whose name ends in `Async` copy what they need, run on a worker thread and return a promise from Varn's `async` module. Call `:await()` on it inside a coroutine started with `async.spawn()`. It returns the result on success, and `nil` and the error message on failure. Invalid arguments still raise at once, when the function is called.
+Functions whose name ends in `Async` copy what they need, run on a worker thread and return a promise from Varn's `async` module. Call `:await()` on it inside a coroutine started with `async.spawn()`. It returns the result on success, and `nil` and the error message on failure. Invalid arguments still raise at once, when the function is called. Every coroutine that awaits the same promise gets its own copy of the result. A grid keeps one copy of its cells for background work and shares it between calls until one of its cells changes.
 
 ## Choosing a method
 
@@ -121,6 +121,7 @@ print(sheep.agentCount)
 | `staggerX` | boolean | read | Whether the columns shift instead of the rows. |
 | `staggerEven` | boolean | read | Whether the even rows or columns shift. |
 | `uniformCost` | boolean | read | True when every cell costs 1, which jump point search needs. |
+| `expandedCount` | integer | read | Number of cells the last `grid:findPath` expanded, which shows how much work a heuristic, a weight or jump point search saves. |
 
 `setWalkable`, `setCost` and `cost` raise an error such as `Cell 9,9 is outside the navigation grid.` for cells outside the grid.
 
@@ -164,6 +165,17 @@ end
 print(grid:cost(8, 6), grid:cost(8, 5), grid.uniformCost)
 ```
 
+### grid:estimate(fromX, fromY, toX, toY, heuristic)
+
+Returns the length of the walk between two cells that the heuristic estimates, ignoring walls and costs, the same estimate searches use. `heuristic` is `'manhattan'`, `'octile'`, `'euclidean'` or `'chebyshev'`. Hexagonal grids always count hex steps, whatever the heuristic.
+
+```lua
+local navigation2d = require('haylen.navigation2d')
+
+local grid = navigation2d.newGrid(20, 20)
+print(grid:estimate(0, 0, 3, 4, 'manhattan'), grid:estimate(0, 0, 3, 4, 'octile'), grid:estimate(0, 0, 3, 4, 'euclidean'))
+```
+
 ### grid:findPath(startX, startY, goalX, goalY, options)
 
 Finds the cheapest path from the start cell to the goal cell and returns it as a list of cells that includes both ends, followed by its cost, or `nil` when either end is blocked or the goal cannot be reached. Diagonal steps never cut the corner of a blocked cell. Equal paths always resolve the same way, so the same grid gives the same path on every device. The grid keeps its search buffers, so repeated searches allocate nothing once they have grown. `options` is optional:
@@ -172,7 +184,7 @@ Finds the cheapest path from the start cell to the goal cell and returns it as a
 | --- | --- | --- | --- |
 | `diagonal` | boolean | `true` | Allows diagonal steps, which cost the square root of 2 times the cell cost. Hexagonal grids ignore it. |
 | `smooth` | boolean | `false` | Returns the path after `grid:smooth`, keeping only the cells where it turns. The cost stays the cost of the unsmoothed path. |
-| `heuristic` | string | `'octile'` or `'manhattan'` | How the search estimates the distance left: `'manhattan'`, `'octile'`, `'euclidean'` or `'chebyshev'`. The default is `'octile'` with diagonal steps and `'manhattan'` without them, which are exact on open ground. Hexagonal grids always count hex steps and reject this option with `Hexagonal grids count hex steps and take no heuristic.` |
+| `heuristic` | string | `'octile'` or `'manhattan'` | How the search estimates the distance left: `'manhattan'`, `'octile'`, `'euclidean'` or `'chebyshev'`. The default is `'octile'` with diagonal steps and `'manhattan'` without them, which are exact on open ground. With diagonal steps, `'manhattan'` overestimates the distance left, so it can return a path that is not the cheapest. Hexagonal grids always count hex steps and reject this option with `Hexagonal grids count hex steps and take no heuristic.` |
 | `weight` | number | `1` | Weighted A*. Values above 1 explore fewer cells and return paths that cost at most `weight` times the cheapest one. Values below 1 raise `A search weight must be finite and at least 1.` |
 | `jumpPoint` | boolean | `false` | Jump point search, which skips over runs of open ground and returns paths as cheap as A* while expanding far fewer cells, most of all on large open maps. It needs a square or staggered grid where every cell costs 1, and raises `Jump point search needs a square or staggered grid.` or `Jump point search needs a grid where every cell costs 1.` otherwise. |
 
@@ -197,11 +209,16 @@ local manhattan = grid:findPath(0, 0, 3, 3, {diagonal = false})
 local jumped = grid:findPath(0, 0, 8, 0, {jumpPoint = true})
 local rough = grid:findPath(0, 0, 8, 0, {weight = 2, heuristic = 'euclidean'})
 print(#corners, #manhattan, #jumped, #rough, grid:findPath(0, 0, 20, 20))
+
+grid:findPath(0, 0, 8, 0)
+local plain = grid.expandedCount
+grid:findPath(0, 0, 8, 0, {jumpPoint = true})
+print(plain, grid.expandedCount)
 ```
 
 ### grid:findPathAsync(startX, startY, goalX, goalY, options)
 
-Searches like `grid:findPath` on a copy of the grid on a worker thread, and returns a promise that resolves with the path, or with `nil` when there is none. Changes made to the grid after the call do not affect the search. Invalid options raise the error at once.
+Searches like `grid:findPath` on a copy of the grid on a worker thread, and returns a promise that resolves with the path, or with `nil` when there is none. Changes made to the grid after the call do not affect the search. Invalid options, such as jump point search on a grid with costs, raise the error at once.
 
 ```lua
 local navigation2d = require('haylen.navigation2d')
@@ -249,7 +266,7 @@ local navigation2d = require('haylen.navigation2d')
 
 local grid = navigation2d.newGrid(20, 12)
 grid:setWalkable(10, 2, false)
-local hit = grid:raycast({8, 40}, {600, 40}, 32)
+local hit = grid:raycast({8, 80}, {600, 80}, 32)
 print(hit.column, hit.row, hit.x, hit.normalX)
 ```
 
@@ -269,7 +286,7 @@ print(chase:value(5, 5), chase:value(25, 15), chase:value(6, 5))
 
 ### grid:dijkstraMapAsync(sources, options)
 
-Computes a Dijkstra map like `grid:dijkstraMap` on a copy of the grid on a worker thread, and returns a promise that resolves with the map.
+Computes a Dijkstra map like `grid:dijkstraMap` on a copy of the grid on a worker thread, and returns a promise that resolves with the map. A source value that is not finite raises `A Dijkstra map source needs a finite value.` at once.
 
 ### grid:flowField(goals, options)
 
@@ -302,11 +319,11 @@ end)
 
 ### grid:hierarchical(options)
 
-Creates a `HierarchicalPath` over a square grid, the HPA* of Botea, Müller and Schaeffer. The grid splits into square clusters joined by entrances, a small graph of entrances is searched first and then only the cells along the chosen route, which makes long searches on large grids much faster than A*. Paths are near optimal, usually within a few percent of the cheapest one. It keeps its grid alive and reads it on every search, so after cells change, `path:update` must rebuild the clusters around them. Other topologies raise `Hierarchical path finding needs a square grid.` `options` is optional:
+Creates a `HierarchicalPath` over a square grid, the HPA* of Botea, Müller and Schaeffer. The grid splits into square clusters joined by entrances, a small graph of entrances is searched first and then only the cells along the chosen route, which makes long searches on large grids much faster than A*. Paths are near optimal, usually within a few percent of the cheapest one. It keeps its grid alive and reads it on every search, so after cells change, `path:update` must rebuild the clusters around them. Until then, a search whose route crosses the changed cells finds no path. Other topologies raise `Hierarchical path finding needs a square grid.` `options` is optional:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `clusterSize` | integer | `16` | Width and height of a cluster in cells, at least 2. Larger clusters make fewer entrances and slower local searches. |
+| `clusterSize` | integer | `16` | Width and height of a cluster in cells, at least 2, where smaller values raise `Hierarchical path finding needs clusters of at least 2 cells.` Larger clusters make fewer entrances and slower local searches, and a size above the grid makes one cluster that covers it. |
 | `diagonal` | boolean | `true` | Allows diagonal steps. |
 
 ```lua
@@ -323,7 +340,7 @@ print(#path, cost, router.nodeCount)
 
 ### grid:hierarchicalAsync(options)
 
-Builds a `HierarchicalPath` like `grid:hierarchical` from a copy of the grid on a worker thread, so building one over a large map never stalls a frame, and returns a promise that resolves with it. The path finder reads the grid itself once it arrives, so cells changed after the call and before the promise resolved need `path:update`. Invalid options raise the error at once, and a grid that is not square rejects the promise with `Hierarchical path finding needs a square grid.`
+Builds a `HierarchicalPath` like `grid:hierarchical` from a copy of the grid on a worker thread, so building one over a large map never stalls a frame, and returns a promise that resolves with it. The path finder reads the grid itself once it arrives, so cells changed after the call and before the promise resolved need `path:update`. Invalid options and grids that are not square raise the error at once.
 
 ```lua
 local navigation2d = require('haylen.navigation2d')
@@ -352,6 +369,18 @@ Returns the value of the cell, `math.huge` for blocked and unreachable cells.
 ### map:next(x, y)
 
 Returns the column and row of the neighbor that leads downhill along a cheapest path, or `nil` at a lowest point, at blocked cells and at unreachable ones.
+
+### map:values()
+
+Returns every value row by row, from the top left cell, which suits drawing the map. Blocked and unreachable cells hold `math.huge`.
+
+```lua
+local navigation2d = require('haylen.navigation2d')
+
+local grid = navigation2d.newGrid(4, 3)
+local values = grid:dijkstraMap({{0, 0}}):values()
+print(#values, values[1], values[2], values[5])
+```
 
 ### map:flee(coefficient)
 
@@ -426,11 +455,12 @@ scene.push({
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
 | `clusterSize` | integer | read | Width and height of a cluster in cells. |
+| `diagonal` | boolean | read | Whether paths take diagonal steps. |
 | `nodeCount` | integer | read | Number of entrance cells in the graph of entrances. |
 
 ### path:findPath(startX, startY, goalX, goalY)
 
-Returns the cells from the start to the goal, both included, followed by the cost of the path, or `nil` when either end is blocked or the goal cannot be reached.
+Returns the cells from the start to the goal, both included, followed by the cost of the path, or `nil` when either end is blocked, the goal cannot be reached or the route crosses cells that changed since the last `path:update`.
 
 ### path:update(x1, y1, x2, y2)
 
@@ -444,8 +474,9 @@ Rebuilds every cluster.
 local navigation2d = require('haylen.navigation2d')
 
 local grid = navigation2d.newGrid(128, 128)
-local router = grid:hierarchical()
+local router = grid:hierarchical({diagonal = false})
 print(router:findPath(0, 64, 127, 64))
+print(router.clusterSize, router.diagonal)
 
 for row = 0, 127 do
     grid:setWalkable(64, row, row == 100)
@@ -475,6 +506,15 @@ Removes the point and its connections and returns true, or returns false when it
 
 Returns true when the point is in the graph.
 
+```lua
+local navigation2d = require('haylen.navigation2d')
+
+local rooms = navigation2d.newGraph()
+rooms:addPoint(1, 0, 0)
+rooms:addPoint(2, 50, 0)
+print(rooms:hasPoint(2), rooms:removePoint(2), rooms:removePoint(2), rooms:hasPoint(2), rooms.size)
+```
+
 ### graph:position(id)
 
 Returns the position of the point as a `Vec2`.
@@ -499,6 +539,18 @@ Returns true when paths may pass through the point.
 
 Enables or disables the point. Disabled points keep their connections, so a door can close and open again.
 
+```lua
+local navigation2d = require('haylen.navigation2d')
+
+local stops = navigation2d.newGraph()
+stops:addPoint(1, 0, 0)
+stops:setPosition(1, 40, 30)
+stops:setWeight(1, 2.5)
+stops:setEnabled(1, false)
+local position = stops:position(1)
+print(position.x, position.y, stops:weight(1), stops:enabled(1))
+```
+
 ### graph:connect(from, to, bidirectional)
 
 Connects two points, both ways unless `bidirectional` is false. Connecting a point to itself raises `A graph point cannot connect to itself.`
@@ -518,6 +570,20 @@ Returns the list of points reachable in one step from the point, in the order th
 ### graph:points()
 
 Returns the list of every point id in ascending order.
+
+```lua
+local navigation2d = require('haylen.navigation2d')
+
+local rails = navigation2d.newGraph()
+for id = 3, 1, -1 do
+    rails:addPoint(id, id * 100, 0)
+end
+rails:connect(1, 2)
+rails:connect(1, 3, false)
+rails:disconnect(2, 1, false)
+print(rails:connected(1, 2), rails:connected(2, 1), rails:connected(3, 1))
+print(table.concat(rails:neighbors(1), ' '), table.concat(rails:points(), ' '))
+```
 
 ### graph:closest(x, y, includeDisabled)
 
@@ -556,11 +622,14 @@ route, cost = roads:findPath(1, 3)
 print(table.concat(route, ' > '), cost)
 
 print(roads:closest(90, 10), roads:closest(90, 10, true), roads:distances(1)[4], roads.size)
+
+roads:clear()
+print(roads.size, roads:closest(0, 0))
 ```
 
 ## NavMesh
 
-A `NavMesh` covers the walkable area of a level with triangles, built with a constrained Delaunay triangulation from a boundary polygon and obstacle polygons, such as the collision objects of a Tiled map from `tileMap:objectOutlines`. Obstacles may overlap each other and cross the boundary. Paths run through the triangles with A* and are pulled straight with the funnel algorithm, so they turn only at obstacle corners, and they keep an agent radius clear of every corner and skip passages narrower than the agent. Changing a polygon marks the mesh as dirty, and it rebuilds on the next query or on `mesh:build`. Polygons are lists of points, and fewer than three points raise `A navigation mesh polygon needs at least three points.`
+A `NavMesh` covers the walkable area of a level with triangles, built with a constrained Delaunay triangulation from a boundary polygon and obstacle polygons, such as the collision objects of a Tiled map from `tileMap:objectOutlines`. Obstacles may overlap each other and cross the boundary. Paths run through the triangles with A* and are pulled straight with the funnel algorithm, so they turn only around obstacle corners, and they skip passages narrower than the agent. With an agent radius, a path turns at points just off each corner, one for a turn up to a right angle and two for a wider one, so every leg stays at least the radius away from the corners it turns around. That needs the start and the goal to be at least the radius away from walls: next to a wall the agent has no room, and the path near that end can cross the edge of the mesh. Changing a polygon marks the mesh as dirty, and it rebuilds on the next query or on `mesh:build`. Polygons are lists of points, and fewer than three points raise `A navigation mesh polygon needs at least three points.`
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -593,9 +662,22 @@ Removes every obstacle.
 
 Rebuilds the triangles now, instead of on the next query. A mesh without a boundary raises `A navigation mesh needs a boundary before it builds.`
 
+```lua
+local navigation2d = require('haylen.navigation2d')
+
+local mesh = navigation2d.newNavMesh()
+mesh:setBoundary({{0, 0}, {640, 0}, {640, 480}, {0, 480}})
+local door = mesh:addObstacle({{300, 0}, {340, 0}, {340, 200}, {300, 200}})
+mesh:setObstacle(door, {{300, 0}, {340, 0}, {340, 400}, {300, 400}})
+mesh:build()
+print(mesh.dirty, mesh.obstacleCount, mesh.triangleCount)
+mesh:clearObstacles()
+print(mesh.dirty, mesh.obstacleCount)
+```
+
 ### mesh:findPath(x1, y1, x2, y2, agentRadius)
 
-Returns the path from the start point to the goal point as a list of `Vec2` with the start, the corners to turn at and the goal, followed by its length, or `nil` when either point lies outside the mesh or no corridor is wide enough for the agent. `agentRadius` defaults to 0.
+Returns the path from the start point to the goal point as a list of `Vec2` with the start, the points to turn at and the goal, followed by its length, or `nil` when either point lies outside the mesh or no corridor is wide enough for the agent. `agentRadius` defaults to 0.
 
 ### mesh:findTriangle(x, y)
 
@@ -604,6 +686,15 @@ Returns the index of the triangle under the point, counting from 1 like `mesh:tr
 ### mesh:contains(x, y)
 
 Returns true when the point lies on the walkable area.
+
+```lua
+local navigation2d = require('haylen.navigation2d')
+
+local mesh = navigation2d.newNavMesh({{0, 0}, {400, 0}, {400, 300}, {0, 300}})
+mesh:addObstacle({{150, 50}, {250, 50}, {250, 250}, {150, 250}})
+print(mesh:contains(50, 150), mesh:contains(200, 150))
+print(mesh:findTriangle(50, 150), mesh:findTriangle(-5, -5))
+```
 
 ### mesh:closestPoint(x, y)
 
@@ -782,7 +873,7 @@ scene.push({
 
 ## Crowd
 
-A `Crowd` moves many agents at once with optimal reciprocal collision avoidance, the ORCA of the RVO2 library. Every step, each agent takes the velocity closest to the one it prefers among those that keep it clear of its neighbors for a time horizon, sharing the effort with them, and clear of static obstacles for a shorter one. Steps are deterministic, allocate nothing once the crowd has grown and spread over the engine job system. Agents are identified by the integer ids `crowd:addAgent` returns, which a removed agent frees for later agents. Unknown ids raise an error such as `Agent 7 is not in the crowd.`
+A `Crowd` moves many agents at once with optimal reciprocal collision avoidance (ORCA). Every step, each agent takes the velocity closest to the one it prefers among those that keep it clear of its neighbors for a time horizon, sharing the effort with them, and clear of static obstacles for a shorter one. Steps are deterministic, allocate nothing once the crowd has grown and spread over the engine job system. Agents are identified by the integer ids `crowd:addAgent` returns, which a removed agent frees for later agents. Unknown ids raise an error such as `Agent 7 is not in the crowd.`, and positions, targets and velocities that are not finite raise `Crowd positions, targets and velocities must be finite.`
 
 Agents that all want the same spot, or that meet head on in a symmetric formation, can settle in a standoff where every agent keeps its neighbors clear, which is the correct ORCA answer. Games break it by giving targets a small spread or by adding a little `separation`.
 
@@ -808,7 +899,7 @@ Adds an agent and returns its id. `options` is optional:
 | `timeHorizon` | number | `2` | How many seconds ahead the agent avoids other agents. Larger values react earlier and move more cautiously. |
 | `obstacleTimeHorizon` | number | `1` | How many seconds ahead the agent avoids obstacles. |
 
-Negative sizes, non-finite values and time horizons that are not positive raise `A crowd agent needs a finite position, radius, speed and neighbor distance and positive time horizons.`
+Negative sizes, values that are not finite and time horizons that are not positive raise `A crowd agent needs a finite position, velocity, radius, speed and neighbor distance and positive time horizons.`
 
 ### crowd:removeAgent(id)
 
@@ -818,13 +909,35 @@ Removes the agent and returns true, or returns false when it was not in the crow
 
 Returns true when the agent is in the crowd.
 
+```lua
+local navigation2d = require('haylen.navigation2d')
+
+local crowd = navigation2d.newCrowd()
+local scout = crowd:addAgent({x = 10, y = 20})
+print(crowd:hasAgent(scout), crowd:removeAgent(scout), crowd:removeAgent(scout), crowd:hasAgent(scout), crowd.agentCount)
+```
+
 ### crowd:addObstacle(polygon)
 
-Adds a solid polygon, in either winding, that agents steer around, or a wall that blocks both sides when it has two points. Fewer points raise `A crowd obstacle needs at least two points.`
+Adds a solid polygon, in either winding, that agents steer around, or a wall that blocks both sides when it has two points. Fewer points raise `A crowd obstacle needs at least two points.`, and points that are not finite raise `A crowd obstacle needs finite points.`
 
 ### crowd:clearObstacles()
 
 Removes every obstacle.
+
+```lua
+local navigation2d = require('haylen.navigation2d')
+
+local crowd = navigation2d.newCrowd()
+local runner = crowd:addAgent({x = 0, y = 0, radius = 8})
+crowd:addObstacle({{50, -400}, {50, 400}})
+crowd:setTarget(runner, 100, 0)
+for _ = 1, 30 do
+    crowd:step(1 / 30)
+end
+print(crowd:position(runner).x < 50)
+crowd:clearObstacles()
+```
 
 ### crowd:position(id)
 
@@ -842,9 +955,27 @@ Returns the velocity the agent took in the last step as a `Vec2`.
 
 Returns the radius of the agent.
 
+### crowd:maxSpeed(id)
+
+Returns the speed limit of the agent.
+
+```lua
+local navigation2d = require('haylen.navigation2d')
+
+local crowd = navigation2d.newCrowd()
+local guard = crowd:addAgent({x = 0, y = 0, vx = 30, radius = 12, maxSpeed = 60})
+crowd:setPosition(guard, 200, 100)
+local position = crowd:position(guard)
+print(position.x, position.y, crowd:velocity(guard).x, crowd:radius(guard), crowd:maxSpeed(guard))
+```
+
 ### crowd:setPreferredVelocity(id, vx, vy)
 
 Sets the velocity the agent wants, such as the direction of a flow field times its speed, which also drops its target.
+
+### crowd:preferredVelocity(id)
+
+Returns the velocity the agent wants as a `Vec2`, which is zero while it has a target.
 
 ### crowd:setTarget(id, x, y)
 
@@ -857,6 +988,20 @@ Drops the target of the agent, which then wants to stand still.
 ### crowd:target(id)
 
 Returns the target of the agent as a `Vec2`, or `nil` when it has none.
+
+```lua
+local navigation2d = require('haylen.navigation2d')
+
+local crowd = navigation2d.newCrowd()
+local drone = crowd:addAgent({maxSpeed = 80})
+crowd:setTarget(drone, 300, 0)
+print(crowd:target(drone).x, crowd:preferredVelocity(drone).x)
+crowd:setPreferredVelocity(drone, 0, 40)
+print(crowd:target(drone), crowd:preferredVelocity(drone).y)
+crowd:setTarget(drone, 0, 0)
+crowd:clearTarget(drone)
+print(crowd:target(drone))
+```
 
 ### crowd:step(dt)
 

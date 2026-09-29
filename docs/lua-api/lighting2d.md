@@ -1,6 +1,6 @@
 # haylen.lighting2d
 
-`haylen.lighting2d` holds the lights and occluders of lit 2D canvases: point, spot and directional lights with blend modes, masks, layer ranges and shadows, the occluders that cast those shadows and helpers that build them from physics bodies and Tiled maps. It also answers how lit a point is, for stealth and visibility gameplay, and makes torches waver with its flicker function. Canvases, draws and the draw options that shade them come from [haylen.graphics2d](graphics2d.md).
+`haylen.lighting2d` holds the lights and occluders of lit 2D canvases: point, spot and directional lights with blend modes, masks, layer ranges and shadows, the occluders that cast those shadows and helpers that build them from physics bodies and Tiled maps. It also answers how lit a point is, for stealth and visibility gameplay, gives the falloff curve of its lights and makes torches waver with its flicker function. Canvases, draws and the draw options that shade them come from [haylen.graphics2d](graphics2d.md).
 
 ```lua
 local lighting2d = require('haylen.lighting2d')
@@ -117,7 +117,7 @@ print(sun:apply('#FF404040', 0, 0))
 
 ### light:shadowedAt(x, y, occluders)
 
-Tells whether one of the occluders stands between the light and a point, with the cull modes and masks the shadow map uses. `occluders` is a list of `Occluder` objects or tables with their properties. Lights without shadows never shadow a point, which makes the query suit stealth games that hide the player in shadows.
+Tells whether one of the occluders stands between the light and a point, with the cull modes and masks the shadow map uses. `occluders` is a list of `Occluder` objects or tables with their properties. Lights without shadows never shadow a point, which makes the query suit stealth games that hide the player in shadows. An occluder with too few points raises `An occluder needs at least 2 points, and 3 when it is closed.`
 
 ```lua
 local lighting2d = require('haylen.lighting2d')
@@ -247,7 +247,7 @@ scene.push({
 
 ### lighting2d.occludersFromMap(map, layer)
 
-Returns a list of occluders, one per object of the named object layer of a [Tiled](tiled.md) map, or of every object layer when `layer` is `nil`, in world coordinates with the offsets of the layer and its groups: rectangles, tile objects, ellipses, capsules and polygons closed, and polylines open. Points and text have no outline and make no occluder. An unknown layer raises `Unknown object layer: name`.
+Returns a list of occluders, one per object of the named object layer of a [Tiled](tiled.md) map, or of every object layer when `layer` is `nil`, in world coordinates with the offsets of the layer and its groups: rectangles, tile objects, ellipses, capsules and polygons closed, and polylines open. Tile objects outline their image where it draws. Points and text have no outline and make no occluder. A name that is not an object layer raises `The map has no object layer named 'name'.`
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -290,6 +290,18 @@ local lighting2d = require('haylen.lighting2d')
 local torches = {lighting2d.newLight({x = 0, y = 0, radius = 200}), {x = 150, y = 0, radius = 120, color = '#FFFF8040'}}
 local seen = lighting2d.illuminate('#FF101020', torches, 60, 0)
 print(seen.r > 0.5 and 'visible' or 'hidden')
+```
+
+### lighting2d.falloff(distance)
+
+Returns the radial falloff of lights without a texture, the curve of `graphics2d.lightTexture()`, for a distance given as a fraction of the radius: 1 at the center, fading smoothly to 0 at the radius and beyond. It lets gameplay code weigh light the way the light pass does, such as a light meter that sums the falloff of nearby lamps.
+
+```lua
+local lighting2d = require('haylen.lighting2d')
+
+local lamp = lighting2d.newLight({x = 0, y = 0, radius = 200})
+local distance = 80
+print(lighting2d.falloff(distance / lamp.radius), lamp:strengthAt(distance, 0))
 ```
 
 ### lighting2d.flicker(time, options)

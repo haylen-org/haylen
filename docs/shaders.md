@@ -87,7 +87,7 @@ In development, `make.py run` keeps compiling the sources that change while the 
 | `haylen_text(vec2 point)` | `vec4` | The glyph at a point with its fill and outline, which is how text draws. |
 | `haylen_base(vec2 point)` | `vec4` | `haylen_text` in the text programs and `haylen_sprite` in the others, the color the draw has without the material. |
 | `haylen_world_normal(vec3 tangent)` | `vec2` | Turns a tangent-space normal with y pointing up the image into the world through the flips and rotation of the sprite. |
-| `haylen_output(vec4 color)` | function | Writes the result. In lit canvases it also writes the emission, surface and info images the light pass reads, with a flat normal. |
+| `haylen_output(vec4 color)` | function | Writes the result, a straight color, which it multiplies by its alpha for draws whose blend mode needs that, `multiply` and `screen`. In lit canvases it also writes the emission, surface and info images the light pass reads, with a flat normal. |
 | `haylen_output_surface(vec4 color, vec2 normal, float specular, float shininess)` | function | Only with `HAYLEN_LIT`: writes the result with a world normal, a specular strength and a shininess divided by 255, for materials that light their own surface. |
 | `haylen_surface`, `haylen_info` | `vec4` uniforms | Only with `HAYLEN_LIT`: the lighting of the draw, which `haylen_output` applies. |
 
@@ -99,7 +99,7 @@ The engine's own shaders in `engine/shaders` include the same library, so a mate
 
 A material fills the uniform blocks and textures that the fragment shader declares:
 
-- Uniform blocks take the bindings 1 to 6. Binding 0 holds the view projection of the vertex shader and binding 7 the lighting of lit canvases.
+- Uniform blocks take the bindings 1 to 6. Binding 0 holds the view projection of the vertex shader and whether the blend of the draw needs premultiplied colors, and binding 7 the lighting of lit canvases. The renderer fills both with the layout of the shader library it was built with, so a shader compiled with another version of the library raises `The shader <name> was compiled with another version of the shader library. Compile it again with make.py shaders.` when a draw first uses it.
 - Members are `float`, `vec2`, `vec3`, `vec4`, `int`, `ivec2`, `ivec3`, `ivec4` and `mat4`, and arrays of `vec4`, `ivec4` and `mat4`, the types sokol-shdc allows, laid out with std140 rules.
 - Textures take the bindings from 1 up, next to `sprite_texture` at 0, with samplers of their own from binding 1 up or `sprite_sampler`. The sampler of a texture binding is the one the texture was created with, so a texture loaded with `filter = 'linear'` samples smoothly.
 - A texture that a material leaves unset draws as white.
@@ -210,6 +210,8 @@ A `.shader` file is JSON that `make.py shaders` writes and nothing else edits:
 | `programs` | For each of the six programs and each language, the entry points, the source of each stage and the bindings of its attributes, uniform blocks, textures and samplers, as the shader description of Sokol names them. |
 
 The engine reads the file on a worker thread, and on the frame thread creates the GPU program of the active backend the first time a draw uses it, and the pipelines for each blend mode and kind of target.
+
+Reading the file also checks it, so a damaged or hand-edited file fails at once instead of when a draw uses it. Every attribute, uniform block, block member, texture, sampler and texture sampler pair must fit the binding slots of the GPU, every stage must name a source of the file, every pair must name a texture and a sampler its program declares, the names of stages, texture types, sample types, sampler types and attribute types must be ones `sokol-shdc` writes, the GLSL members of a block must fill it exactly, every uniform of `blocks` must fit inside its block, and every program must read each block with the size `blocks` gives it. A file that breaks a rule raises `The shader file is malformed: ` followed by the problem, such as `The texture slot 40 is out of range.` or `The uniform tint does not fit in the block params.`, from `assets.shader` or from the hot reload, which keeps the last good shader. A GPU program the backend rejects raises `The graphics device could not create the shader <name>/<program>.` when a draw first uses it.
 
 ## C++
 

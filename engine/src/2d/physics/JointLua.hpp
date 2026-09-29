@@ -12,7 +12,9 @@ class JointLua final {
   private:
     static int isValid(lua_State* L);
     static int destroy(lua_State* L);
+    static int getTarget(lua_State* L);
     static int setTarget(lua_State* L);
+    static int getMotorSpeed(lua_State* L);
     static int setMotorSpeed(lua_State* L);
 };
 

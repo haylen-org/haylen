@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <cstddef>
+#include <functional>
 #include <stdexcept>
 #include <string>
 
@@ -64,11 +66,18 @@ TEST_F(DocumentTest, BuildsTreesWithUniqueIds) {
     EXPECT_NE(captureError([&] { (void)document(R"({"kind": "label", "children": [{"kind": "label"}]})"); }).find("at most 0 children"), std::string::npos);
     EXPECT_NE(captureError([&] { (void)document(R"({"kind": "column", "children": {"kind": "label"}})"); }).find("must be a list"), std::string::npos);
 
-    std::string deep = R"({"kind": "label"})";
-    for (int level = 0; level < 70; ++level) {
-        deep = R"({"kind": "stack", "children": [)" + deep + "]}";
-    }
-    EXPECT_NE(captureError([&] { (void)document(deep); }).find("limited to 64 levels"), std::string::npos);
+    // A document holds 64 levels, the root included.
+    // clang-format off
+    const auto nested = [](int levels) {
+        std::string tree = R"({"kind": "label"})";
+        for (int level = 1; level < levels; ++level) {
+            tree = R"({"kind": "stack", "children": [)" + tree + "]}";
+        }
+        return tree;
+    };
+    // clang-format on
+    EXPECT_NO_THROW((void)document(nested(64)));
+    EXPECT_NE(captureError([&] { (void)document(nested(65)); }).find("limited to 64 levels"), std::string::npos);
 }
 
 TEST_F(DocumentTest, PatchesPropertiesAtomically) {
@@ -100,6 +109,33 @@ TEST_F(DocumentTest, ReplacesChildrenAndTheirIds) {
     EXPECT_NE(list.find("second"), nullptr);
     EXPECT_NE(captureError([&] { list.replaceChildren("second", core::Json::parse(R"([{"kind": "label"}])")); }).find("at most 0 children"), std::string::npos);
     EXPECT_NE(captureError([&] { list.replaceChildren("list", core::Json::object()); }).find("list of nodes"), std::string::npos);
+}
+
+// New children start at the level of the node they join and count with every node of the document, so no series of replaces grows it past its limits.
+TEST_F(DocumentTest, ReplacesChildrenWithinTheLimitsOfTheDocument) {
+    const auto column = [](std::size_t id) { return core::Json::array({core::Json{{"kind", "column"}, {"id", std::to_string(id)}}}); };
+    Document chain = document(R"({"kind": "column", "id": "0"})");
+    for (std::size_t depth = 1; depth < Document::kMaxDepth; ++depth) {
+        chain.replaceChildren(std::to_string(depth - 1), column(depth));
+    }
+    EXPECT_NE(captureError([&] { chain.replaceChildren(std::to_string(Document::kMaxDepth - 1), column(Document::kMaxDepth)); }).find("limited to 64 levels"), std::string::npos);
+
+    // clang-format off
+    const auto labels = [](std::size_t count, bool named) {
+        core::Json list = core::Json::array();
+        for (std::size_t index = 0; index < count; ++index) {
+            list.push_back(named ? core::Json{{"kind", "label"}, {"id", "row" + std::to_string(index)}} : core::Json{{"kind", "label"}});
+        }
+        return list;
+    };
+    // clang-format on
+    Document rows = document(R"({"kind": "column", "id": "list"})");
+    rows.replaceChildren("list", labels(12000, true));
+    EXPECT_NO_THROW(rows.replaceChildren("list", labels(12000, true))) << "the replaced rows leave room for the new ones";
+
+    Document screen = document(R"({"kind": "column", "children": [{"kind": "column", "id": "plain"}, {"kind": "column", "id": "named"}]})");
+    screen.replaceChildren("plain", labels(12000, false));
+    EXPECT_NE(captureError([&] { screen.replaceChildren("named", labels(8000, false)); }).find("20000 nodes"), std::string::npos) << "nodes without ids count too";
 }
 
 TEST_F(DocumentTest, ReadsPropertyValuesStrictly) {

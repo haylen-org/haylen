@@ -55,7 +55,7 @@ Every draw that takes an `order` table, and every option table that lists `layer
 
 Unlit canvases ignore the lighting keys, and [haylen.lighting2d](lighting2d.md#how-2d-lighting-works) explains how lit canvases use them. A draw copies the values of its material when it is made, so a material changed between two draws shades each draw with its own values.
 
-The `sort` option of a canvas chooses how draws of one layer are ordered. `'layer'` keeps the order in which the app made them, `'depth'` sorts them by `depth`, and `'y'` sorts them by the y they stand on plus their `sortOffset`, so lower draws cover higher ones without setting any depth. Sprites stand on their pivot, and every sprite of a batch sorts on its own. Text stands on its position, and rectangles, lines, shapes, meshes, nine-slices, static batches and image blends stand on their lowest point. Draws that sort the same keep the order in which the app made them. `graphics2d.pushLayerOffset` shifts the layer of every following draw of the canvas, so a group of draws, such as a character and its shadow, can move between layers together.
+The `sort` option of a canvas chooses how draws of one layer are ordered. `'layer'` keeps the order in which the app made them, `'depth'` sorts them by `depth`, and `'y'` sorts them by the y they stand on plus their `sortOffset`, so lower draws cover higher ones without setting any depth. Sprites stand on their pivot, and every sprite of a batch sorts on its own. Text stands on its position, rich text on the bottom of its block, and rectangles, lines, shapes, meshes, nine-slices, static batches, image blends and metaballs stand on their lowest point. Draws that sort the same keep the order in which the app made them. `graphics2d.pushLayerOffset` shifts the layer of every following draw of the canvas, so a group of draws, such as a character and its shadow, can move between layers together.
 
 Visibility bits hide draws from some canvases: draw the world once for the main camera and again for a minimap canvas whose `visibilityMask` leaves out details. The blend modes are:
 
@@ -67,6 +67,8 @@ Visibility bits hide draws from some canvases: draw the world once for the main 
 | `'screen'` | Inverse multiply, which lightens. |
 | `'premultiplied'` | Transparency for colors already multiplied by their alpha. |
 | `'opaque'` | No blending, the draw replaces what is below. |
+
+Every mode but `'premultiplied'` takes straight colors, the way images and colors are usually made, so a partly transparent multiply or screen draw weakens its effect in proportion to its alpha.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -149,7 +151,7 @@ scene.push({
 
 ### graphics2d.beginTarget(target, camera, options)
 
-Starts a canvas that draws into the render target `target` through `camera`. The camera's view covers the target size, so a camera at `target.width / 2, target.height / 2` shows the region from 0, 0 to the target size, and a camera `viewport` is a rectangle of the target in pixels. `options` takes the canvas options of `beginWorld`, and `clear` defaults to transparent. With `ambientLight` or `postProcess` the canvas renders lit and post-processed offscreen and then composites into the target, so a minimap, a portrait or a mirror can show a lit scene. Draw the result with `target.texture`.
+Starts a canvas that draws into the render target `target` through `camera`. The camera's view covers the target size, so a camera at `target.width / 2, target.height / 2` shows the region from 0, 0 to the target size, and a camera `viewport` is a rectangle of the target in pixels. `options` takes the canvas options of `beginWorld`, and `clear` defaults to transparent. With `ambientLight` or `postProcess` the canvas renders lit and post-processed offscreen and then composites into the target, so a minimap, a portrait or a mirror can show a lit scene. Draw the result with `target.texture`. The target holds colors premultiplied by their alpha, so draw its texture with `blend = 'premultiplied'` wherever it is not fully opaque, or its soft edges come out darker. A canvas that draws straight into the target cannot sample its texture in the same canvas, and such a draw raises `A draw cannot sample the render target that its canvas draws into.`
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -421,7 +423,7 @@ scene.push({
 
 ### graphics2d.drawText(font, text, x, y, style)
 
-Draws UTF-8 `text` with `font`, a `Font` or a `FontFamily`, or with the engine's default font when `font` is `nil`. A family draws every character its regular face lacks with the first fallback that has it, which is how one string mixes Latin, Arabic, Devanagari or CJK text. A TrueType font is shaped by HarfBuzz and rendered from a signed distance field, so it stays sharp at any size, with the ligatures, joining forms, conjuncts and marks of every script, and a bitmap font draws its own images, pixel for pixel at its native size. Every line is ordered for display by the Unicode bidirectional algorithm, so right-to-left text reads from the right and keeps numbers and Latin words in their own order. `\n` starts a new line, and lines wrap where the Unicode line breaking rules allow, which includes between Chinese and Japanese characters and between Thai phrases. The [text guide](../text.md#scripts-and-directions) explains shaping, directions and line breaking. The anchor point of the text block sits at `x`, `y`, and rotation turns the block around that point. `style` is optional:
+Draws UTF-8 `text` with `font`, a `Font` or a `FontFamily`, or with the engine's default font when `font` is `nil`. A family draws every character its regular face lacks with the first fallback that has it, which is how one string mixes Latin, Arabic, Devanagari or CJK text. A TrueType font is shaped by HarfBuzz and rendered from a signed distance field, so it stays sharp at any size, with the ligatures, joining forms, conjuncts and marks of every script, and a bitmap font draws its own images, pixel for pixel at its native size. Every line is ordered for display by the Unicode bidirectional algorithm, so right-to-left text reads from the right and keeps numbers and Latin words in their own order. `\n` starts a new line, and so do `\r`, `\r\n`, which counts as one, and the other paragraph separators of Unicode, such as U+2029. Tabs and other control characters draw nothing and take no room. Lines wrap where the Unicode line breaking rules allow, which includes between Chinese and Japanese characters and between Thai phrases. The [text guide](../text.md#scripts-and-directions) explains shaping, directions and line breaking. The anchor point of the text block sits at `x`, `y`, and rotation turns the block around that point. `style` is optional, and a `size`, `maxWidth` or `lineSpacing` that is not a finite number raises `Text needs a finite size, maximum width and line spacing.`:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -437,7 +439,7 @@ Draws UTF-8 `text` with `font`, a `Font` or a `FontFamily`, or with the engine's
 | `lineSpacing` | number | `1.2` | Distance between lines as a multiple of the line height. |
 | `direction` | string | `'auto'` | Direction of every paragraph: `'auto'` takes the direction of its first strong letter, `'ltr'` and `'rtl'` force it, which decides the order of mixed runs and the side of `'start'`. |
 | `language` | string | `''` | BCP 47 language tag of the text, such as `'ar'`, `'fa'`, `'ur'` or `'sr'`, which the shaper uses to pick the forms a language prefers. |
-| `bold`, `italic` | boolean | `false` | With a `FontFamily`, pick its bold and italic faces or synthesize them. A `Font` ignores them. |
+| `bold`, `italic` | boolean | `false` | With a `FontFamily`, pick its bold and italic faces or synthesize them. A `Font` synthesizes them. |
 | `anchor` | Vec2 | `{0, 0}` | Point of the block placed at `x`, `y`, as a fraction of its size. `{0.5, 0.5}` centers the text. |
 | `rotation` | number | `0` | Rotation in radians. |
 | `layer`, `depth`, `blend` | | | Draw order. |
@@ -523,9 +525,9 @@ Creates a [`RichText`](#richtext) from BBCode markup, laid out once and drawn ev
 | `scale` | number | `1` | Multiplies every size of the markup and the options. |
 | `reveal` | number | `0` | Characters per second the typewriter reveal shows as `text:update` advances. 0 shows everything at once. |
 | `underlineLinks` | boolean | `true` | Whether `[url]` text is underlined. |
-| `fonts` | table | none | The families or fonts that `[font=name]` tags name, as `{name = family}`. |
+| `fonts` | table | none | The families or fonts that `[font=name]` tags name, as `{name = family}`. A key that is not a string raises `The fonts option maps font names to families, so its keys must be strings.`. |
 
-Markup errors raise `Rich text markup at line L, column C: ...` with the place and the problem, such as `[b] is never closed.` or `[wiggle] is neither a tag nor a registered text effect.`. Unknown option keys raise `Unknown option 'name'.`.
+Markup errors raise `Rich text markup at line L, column C: ...` with the place and the problem, such as `[b] is never closed.` or `[wiggle] is neither a tag nor a registered text effect.`. Unknown option keys raise `Unknown option 'name'.`, a `maxWidth` that is not a finite number raises `Rich text needs a finite maximum width.`, and a size, scale or line spacing that is not a positive number raises `Rich text needs a positive size, scale and line spacing.`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -578,7 +580,7 @@ print(width, height)
 
 ### graphics2d.registerTextEffect(name, effect)
 
-Registers a text effect that runs as `[name]...[/name]` in rich text, in `haylen.graphics2d` and in `ui.richText`. Every frame, `effect(glyph, attributes)` runs once for each glyph inside the tag. `glyph` holds `index` (counted from 1 inside the tag), `character` (counted from 1 in the whole text), `char`, `codePoint`, `x` and `y` (its pen position on the baseline) and `time` (seconds the text has run), and the effect changes `offsetX`, `offsetY`, `color` and `visible`. `attributes` holds the attributes of the tag, with numbers as numbers and `[name=value]` as `attributes.value`. Registering a name again replaces the effect. A tag name, a built-in effect name (`wave`, `shake`, `tornado`, `fade`, `rainbow`, `pulse`) or a name with spaces raises an error, and an error inside the effect stops the app like any script error.
+Registers a text effect that runs as `[name]...[/name]` in rich text, in `haylen.graphics2d` and in `ui.richText`. Every frame, `effect(glyph, attributes)` runs once for each glyph inside the tag. `glyph` holds `index` (counted from 1 over every character inside the tag, spaces and images included), `character` (counted from 1 in the whole text), `char`, `codePoint`, `x` and `y` (its pen position on the baseline) and `time` (seconds the text has run), and the effect changes `offsetX`, `offsetY`, `color` and `visible`. `attributes` holds the attributes of the tag, with numbers as numbers and `[name=value]` as `attributes.value`. Registering a name again replaces the effect. A tag name, a built-in effect name (`wave`, `shake`, `tornado`, `fade`, `rainbow`, `pulse`) or a name with spaces raises an error, and an error inside the effect stops the app like any script error. An effect runs while its text builds the picture of the moment, so changing or measuring that text from inside the effect raises `A text effect cannot change or lay out the rich text it runs on.`.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -616,7 +618,7 @@ print(table.concat(graphics2d.textEffects(), ', '))
 
 ### graphics2d.drawNineSlice(slice, rect, color, order, borderScale)
 
-Draws the nine-slice `slice` so it fills `rect`. Corners keep their size, edges stretch or tile along one axis and the center fills the rest. `color` defaults to white. `borderScale` multiplies the border sizes and defaults to 1. When `rect` is smaller than the borders, they shrink to fit.
+Draws the nine-slice `slice` so it fills `rect`. Corners keep their size, edges stretch or tile along one axis and the center fills the rest. `color` defaults to white. `borderScale` multiplies the border sizes and defaults to 1, and one that is not positive raises `A nine-slice border scale must be positive.` When `rect` is smaller than the borders, they shrink to fit.
 
 ```lua
 local assets = require('haylen.assets')
@@ -819,7 +821,7 @@ scene.push({
 
 ### graphics2d.beginCapture(target, clear)
 
-Starts a [capture](#captures): the world and screen canvases that begin until `graphics2d.endCapture` render into the render target `target`, cleared to `clear` first, transparent by default, instead of reaching the screen. The visible area covers the whole target, so give it the pixel size of the viewport to keep every pixel. Render target canvases begun during a capture still draw into their own targets. A capture left open ends with the frame. An invalid target raises `A capture needs a valid render target.`, and a second capture while one is open raises `A capture is already open. Call endCapture before beginning another one.`
+Starts a [capture](#captures): the world and screen canvases that begin until `graphics2d.endCapture` render into the render target `target`, cleared to `clear` first, transparent by default, instead of reaching the screen. The visible area covers the whole target, so give it the pixel size of the viewport to keep every pixel. Render target canvases begun during a capture still draw into their own targets. A capture can begin while another one is open, such as in a scene that a transition captures: the canvases that begin until it ends go into its own target, and the canvases after its end go back into the outer capture. A capture left open ends with the frame. The target holds colors premultiplied by their alpha, so draw its texture with `blend = 'premultiplied'` wherever it is not fully opaque, and the canvases of the capture cannot sample its texture, which raises `A draw cannot sample the render target that its canvas draws into.` An invalid target raises `A capture needs a valid render target.`
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -998,7 +1000,7 @@ Creates a `NineSlice`. Give either `borders`, which cut `source` into nine regio
 | `source` | Rect | whole texture | Region of the texture that holds the frame. Used with `borders`. |
 | `borders` | table | required without `pieces` | Border sizes in pixels, as `{left, top, right, bottom}`. |
 | `pieces` | table | none | Nine Rects, row by row from the top-left corner to the bottom-right corner. |
-| `fill` | string | `'stretch'` | `'stretch'` stretches the edges and the center. `'tile'` repeats them at their pixel size. |
+| `fill` | string | `'stretch'` | `'stretch'` stretches the edges and the center. `'tile'` repeats them at their pixel size times the `borderScale` of the draw. |
 
 Errors: `a nine-slice needs exactly nine pieces`, `borders need left, top, right and bottom`, and a `fill` other than `'stretch'` or `'tile'` raises an error that contains `unknown value 'name'`.
 
@@ -1928,7 +1930,7 @@ Returns how far the layer is moved from where the world would put it, as `x, y` 
 
 ### parallax:draw(camera, order)
 
-Draws the layer in the active canvas as `camera` sees it. `order` is an optional [Draw order](#draw-order). A layer without a texture raises `A parallax layer needs a texture to draw.`, and a repeated copy without a size raises `A parallax layer needs a positive size to repeat.`
+Draws the layer in the active canvas, moved by how `camera` sees it, with the repeated axes covering the whole area the canvas shows, a render target canvas included. `order` is an optional [Draw order](#draw-order). A layer without a texture raises `A parallax layer needs a texture to draw.`, and a repeated copy without a size raises `A parallax layer needs a positive size to repeat.`
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -2049,11 +2051,22 @@ A `RichText` is BBCode markup laid out with a font family, created by `graphics2
 | `markup` | string | read-write | The markup. Setting it lays the text out again and starts its effects and reveal over. |
 | `maxWidth` | number | read-write | The width the paragraphs wrap at, 0 for none. |
 | `scale` | number | read-write | Multiplies every size of the text. |
+| `family` | FontFamily | read-write | The family of text without a `[font]` tag. Setting a `Font` makes it the regular face of a family of its own. |
+| `bold`, `italic` | boolean | read-write | Whether all the text is bold or italic, as if inside `[b]` or `[i]`. |
+| `color` | Color | read-write | The color of text without a `[color]` tag. |
+| `align` | string | read-write | The alignment of paragraphs without their own, like the `align` option. |
+| `direction` | string | read-write | The direction of paragraphs without a `[p dir]` of their own, like the `direction` option. |
+| `language` | string | read-write | The BCP 47 language tag the text is shaped for. |
+| `lineSpacing` | number | read-write | The distance between lines as a multiple of their height. |
+| `reveal` | number | read-write | Characters per second the typewriter reveal shows, 0 for everything at once. |
+| `underlineLinks` | boolean | read-write | Whether `[url]` text is underlined. |
 | `visibleCharacters` | integer | read-write | How many characters show. Setting it moves the reveal there, and a negative count shows everything. |
 | `visibleRatio` | number | read-write | The share of characters that show, from 0 to 1. |
 | `characterCount` | integer | read | The characters of the text: one per cluster, which is a letter with its marks, a conjunct or a ligature, and one per image or icon. |
 | `revealing` | boolean | read | Whether the reveal still has characters to show. |
 | `time` | number | read | Seconds the text has run, which drives its effects. |
+
+The option properties take the values of the options of `graphics2d.newRichText`, and setting one lays the text out again and starts its reveal over, while its effects keep their time. The base `size` and the `fonts` of `[font]` tags stay the ones the text was made with, and `scale` resizes the whole text.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -2063,6 +2076,9 @@ line:update(0.25)
 print(line.visibleCharacters, line.characterCount, line.revealing)
 line.visibleRatio = 1
 line.markup = 'Goodbye'
+line.color = '#FFFFD070'
+line.italic = true
+line.reveal = 0
 ```
 
 ### text:update(dt)
@@ -2104,16 +2120,17 @@ scene.push({
 })
 ```
 
-### text:size()
+### text:size(maxWidth)
 
-Returns the width and height of the text block.
+Returns the width and height of the text block. With `maxWidth`, it returns the size the block would take wrapped at that width, without changing the width of the text, which is how a panel measures text before it places it. The layouts of the last few widths stay cached.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
 
-local label = graphics2d.newRichText('[size=48]Score[/size] 1200')
+local label = graphics2d.newRichText('[size=48]Score[/size] 1200 points this round')
 local width, height = label:size()
-print(width, height)
+local narrowWidth, narrowHeight = label:size(200)
+print(width, height, narrowWidth, narrowHeight)
 ```
 
 ### text:linkAt(x, y) and text:hintAt(x, y)

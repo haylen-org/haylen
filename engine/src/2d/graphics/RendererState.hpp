@@ -87,8 +87,10 @@ struct RendererState {
     std::vector<Command> commands;
     std::vector<Canvas> canvases;
     std::vector<Capture> captures;
+    std::vector<std::size_t> openCaptures;
+    std::vector<std::size_t> closedCaptures;
     std::vector<math::Rect> clips;
-    std::vector<std::uint16_t> clipStack;
+    std::vector<std::uint32_t> clipStack;
     std::vector<int> layerOffsets;
     std::vector<Shade> shades;
     std::vector<std::uint8_t> uniformBytes;
@@ -116,7 +118,6 @@ struct RendererState {
     std::uint32_t sequence = 0;
     int layerOffset = 0;
     bool canvasOpen = false;
-    bool captureOpen = false;
     Renderer::Stats stats{};
 
     RendererState(graphics::Device& graphicsDevice, core::JobSystem& jobSystem) : device(graphicsDevice), jobs(jobSystem) {}
@@ -136,6 +137,9 @@ struct RendererState {
     void resetFrame() noexcept;
 
     // The standing y is the point a y-sorted canvas sorts the draw by.
+    // Throws when a draw would sample the image its canvas draws into, which no backend can read and write in one pass.
+    void requireReadable(const graphics::TextureResource* texture);
+
     DrawItem& addItem(Program program, const DrawOrder& order, graphics::TextureResource* texture, float standingY);
     void addInstances(Program program, const DrawOrder& order, const graphics::Texture& texture, std::span<const GpuInstance> data, float standingY);
 
@@ -145,7 +149,10 @@ struct RendererState {
     // Adds a shade that copies the values a material has now, for the post-processing passes of the frame.
     std::uint32_t addMaterialShade(const Material& material);
 
-    // Returns the pipeline of a program, blend mode and pass target, creating it on first use. The light program takes the blend of the light instead, and the composite program ignores it.
+    // Tells whether a blend mode expects colors premultiplied by their alpha from the shader, which the programs then write through haylen_output.
+    [[nodiscard]] static bool expectsPremultiplied(graphics::BlendMode::Type mode) noexcept;
+
+    // Returns the pipeline of a program, blend mode and pass target, creating it on first use. The light program takes the blend of the light instead.
     [[nodiscard]] sg_pipeline getPipeline(Program program, std::uint8_t blend, graphics::PassTarget target);
 
     // Returns the pipeline of a material for the program it replaces, which lives with the material's shader, and the program with its bind slots.
@@ -165,7 +172,7 @@ struct RendererState {
     [[nodiscard]] std::uint32_t getShade(const DrawOrder& order);
     [[nodiscard]] std::uint32_t pushShade(Shade shade, const Material& material);
     void describeLayout(sg_pipeline_desc& desc, Program program) const;
-    void describeTargets(sg_pipeline_desc& desc, Program program, std::uint8_t blend, graphics::PassTarget target) const;
+    void describeTargets(sg_pipeline_desc& desc, std::uint8_t blend, graphics::PassTarget target) const;
 };
 
 } // namespace haylen::graphics2d

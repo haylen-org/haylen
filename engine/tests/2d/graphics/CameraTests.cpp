@@ -283,7 +283,6 @@ TEST(CameraTest, DrawsItsDebugShapes) {
 
 TEST(ParallaxTest, ScrollsRepeatsAndStopsOutsideItsLimits) {
     test::EngineFixture fixture;
-    const math::Rect screen = fixture.engine().getViewport().getVisibleRect();
     graphics2d::Parallax layer;
     layer.texture = fixture.engine().getGraphics().createTexture(graphics::Image(100, 50, math::Color::white()));
     layer.scrollScale = {0.5F, 1.0F};
@@ -302,7 +301,7 @@ TEST(ParallaxTest, ScrollsRepeatsAndStopsOutsideItsLimits) {
     const auto sprites = [&] {
         return renderOnce(fixture, [&](core::Engine& engine) {
             engine.getRenderer2D().beginWorld(camera);
-            layer.draw(engine.getRenderer2D(), camera, screen, {.layer = -1});
+            layer.draw(engine.getRenderer2D(), camera, {.layer = -1});
         }).sprites;
     };
     // clang-format on
@@ -323,9 +322,9 @@ TEST(ParallaxTest, ScrollsRepeatsAndStopsOutsideItsLimits) {
     layer.size = {0.0F, 10.0F};
     fixture.engine().getScenes().clear();
     renderer.beginWorld(camera);
-    EXPECT_THROW(layer.draw(renderer, camera, screen), std::invalid_argument);
+    EXPECT_THROW(layer.draw(renderer, camera), std::invalid_argument);
     layer.texture = {};
-    EXPECT_THROW(layer.draw(renderer, camera, screen), std::logic_error);
+    EXPECT_THROW(layer.draw(renderer, camera), std::logic_error);
     fixture.frames(1);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }

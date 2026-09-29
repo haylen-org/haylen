@@ -91,12 +91,12 @@ template <typename Visit> void KdTree::visitBox(Range range, math::Vec2 low, mat
     const Entry& entry = tree[middle];
     visit(entry);
 
-    // The lower half holds entries up to the split and the upper half entries from it, and each circle reaches maxRadius past its center at most.
-    const float split = along(entry.point, range.depth);
-    if (along(low, range.depth) - maxRadius <= split) {
+    // The lower half holds entries up to the plane of the node and the upper half entries from it, and each circle reaches maxRadius past its center at most.
+    const float plane = along(entry.point, range.depth);
+    if (along(low, range.depth) - maxRadius <= plane) {
         visitBox({.begin = range.begin, .end = middle, .depth = range.depth + 1}, low, high, visit);
     }
-    if (along(high, range.depth) + maxRadius >= split) {
+    if (along(high, range.depth) + maxRadius >= plane) {
         visitBox({.begin = middle + 1, .end = range.end, .depth = range.depth + 1}, low, high, visit);
     }
 }
@@ -182,18 +182,20 @@ void KdTree::collectNearest(Range range, math::Vec2 point, std::size_t count, fl
     const Range upper{.begin = middle + 1, .end = range.end, .depth = range.depth + 1};
     collectNearest(offset <= 0.0F ? lower : upper, point, count, maxDistance, neighbors);
     const float planeDistance = std::fabs(offset) - maxRadius;
-    if (planeDistance <= maxDistance && (neighbors.size() < count || planeDistance <= neighbors.back().distance)) {
+    if (planeDistance <= maxDistance && (neighbors.size() < count || planeDistance <= EntryBounds::getFarthest(neighbors).distance)) {
         collectNearest(offset <= 0.0F ? upper : lower, point, count, maxDistance, neighbors);
     }
 }
 
 void KdTree::nearest(math::Vec2 point, std::size_t count, float maxDistance, std::vector<Neighbor>& neighbors) const {
     requireBuilt();
+    EntryBounds::requirePoint(point);
     EntryBounds::requireRadius(maxDistance);
     neighbors.clear();
     if (count > 0) {
         collectNearest({.begin = 0, .end = tree.size()}, point, count, maxDistance, neighbors);
     }
+    EntryBounds::finishNearest(neighbors);
 }
 
 } // namespace haylen::spatial2d

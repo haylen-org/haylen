@@ -106,7 +106,7 @@ Renderer::Renderer(graphics::Device& device, core::JobSystem& jobs) : state(std:
     screenDesc.label = "haylen-screen";
     state->screen = graphics::Gpu::makeBuffer(screenDesc);
 
-    const auto make = [](const sg_shader_desc* (*description)(sg_backend)) { return sg_make_shader(graphics::Gpu::selectShader(description)); };
+    const auto make = [](const sg_shader_desc* (*description)(sg_backend)) { return graphics::Gpu::makeShader(*graphics::Gpu::selectShader(description)); };
     const auto at = [](Program program) { return static_cast<std::size_t>(program); };
     state->shaders[at(Program::Sprite)] = make(sprite_sprite_shader_desc);
     state->shaders[at(Program::Text)] = make(text_text_shader_desc);
@@ -165,7 +165,7 @@ void Renderer::beginWorld(const Camera& camera, const CanvasOptions& options) {
     }
     validatePostProcess(options);
 
-    if (camera.viewport && (camera.viewport->width <= 0.0F || camera.viewport->height <= 0.0F)) {
+    if (camera.viewport && !(camera.viewport->width > 0.0F && camera.viewport->height > 0.0F)) {
         throw std::invalid_argument("A camera viewport needs a positive width and height.");
     }
 
@@ -190,7 +190,7 @@ void Renderer::beginTarget(const graphics::RenderTarget& target, const Camera& c
     }
     validatePostProcess(options);
 
-    if (camera.viewport && (camera.viewport->width <= 0.0F || camera.viewport->height <= 0.0F)) {
+    if (camera.viewport && !(camera.viewport->width > 0.0F && camera.viewport->height > 0.0F)) {
         throw std::invalid_argument("A camera viewport needs a positive width and height.");
     }
 
@@ -203,17 +203,14 @@ void Renderer::beginCapture(const graphics::RenderTarget& target, math::Color cl
     if (!target.isValid()) {
         throw std::invalid_argument("A capture needs a valid render target.");
     }
-    if (state->captureOpen) {
-        throw std::logic_error("A capture is already open. Call endCapture before beginning another one.");
-    }
 
     state->closeCanvas();
+    state->openCaptures.push_back(state->captures.size());
     state->captures.push_back({.target = target, .clear = clear});
-    state->captureOpen = true;
 }
 
 void Renderer::endCapture() {
-    if (!state->captureOpen) {
+    if (state->openCaptures.empty()) {
         throw std::logic_error("endCapture was called without a matching beginCapture.");
     }
     state->closeCapture();
@@ -314,6 +311,9 @@ void Renderer::drawStatic(const StaticSpriteBatch& batch, const DrawOrder& order
 void Renderer::drawNineSlice(const NineSlice& slice, const math::Rect& area, math::Color color, const DrawOrder& order, float borderScale) {
     if (!slice.isValid()) {
         throw std::invalid_argument("Cannot draw a nine-slice without a texture.");
+    }
+    if (!(borderScale > 0.0F && std::isfinite(borderScale))) {
+        throw std::invalid_argument("A nine-slice border scale must be positive.");
     }
     if (!state->accepts(order)) {
         return;
@@ -430,6 +430,7 @@ void Renderer::drawImageBlend(const ImageBlend& blend, const DrawOrder& order) {
         return;
     }
 
+    state->requireReadable(blend.to.getResource().get());
     state->retain(blend.from);
     state->retain(blend.to);
     DrawItem& item = state->addItem(Program::ImageBlend, order, blend.from.getResource().get(), blend.area.getBottom());
@@ -479,19 +480,23 @@ void Renderer::drawMetaballs(std::span<const math::Vec2> points, float radius, c
 
     // Every point splats one soft circle whose kernel reaches the threshold of 0.5 at the radius.
     const float reach = radius * kMetaballReach;
-    const graphics::TextureResource& kernel = *state->metaball.getResource();
     math::Rect area = math::Rect::fromCenter(points.front(), math::Vec2{});
-    const auto first = static_cast<std::uint32_t>(state->splats.size());
     for (const math::Vec2 point : points) {
-        state->splats.push_back(GpuInstance::make(kernel, {.position = point, .size = {reach * 2.0F, reach * 2.0F}}));
         area = area.merged(math::Rect::fromCenter(point, {reach * 2.0F, reach * 2.0F}));
     }
 
-    state->retain(state->metaball);
-    state->metaballs.push_back({.first = first, .count = static_cast<std::uint32_t>(points.size()), .area = area, .style = style});
+    // The item goes first, so a draw it rejects leaves no field behind.
     DrawItem& item = state->addItem(Program::Metaball, order, state->metaball.getResource().get(), area.getBottom());
-    item.first = static_cast<std::uint32_t>(state->metaballs.size() - 1);
+    item.first = static_cast<std::uint32_t>(state->metaballs.size());
     item.count = 1;
+    state->retain(state->metaball);
+
+    const graphics::TextureResource& kernel = *state->metaball.getResource();
+    const auto first = static_cast<std::uint32_t>(state->splats.size());
+    for (const math::Vec2 point : points) {
+        state->splats.push_back(GpuInstance::make(kernel, {.position = point, .size = {reach * 2.0F, reach * 2.0F}}));
+    }
+    state->metaballs.push_back({.first = first, .count = static_cast<std::uint32_t>(points.size()), .area = area, .style = style});
 }
 
 void Renderer::drawRect(const math::Rect& rect, math::Color color, const DrawOrder& order) {
@@ -620,8 +625,12 @@ void Renderer::pushClip(const math::Rect& rect) {
     if (!state->clipStack.empty()) {
         clip = clip.intersection(state->clips[state->clipStack.back() - 1U]);
     }
-    state->clips.push_back(clip);
-    state->clipStack.push_back(static_cast<std::uint16_t>(state->clips.size()));
+
+    // Draws clipped to the same rectangle one after the other share its index, so they can share a draw call.
+    if (state->clips.empty() || !(state->clips.back() == clip)) {
+        state->clips.push_back(clip);
+    }
+    state->clipStack.push_back(static_cast<std::uint32_t>(state->clips.size()));
 }
 
 void Renderer::popClip() {
@@ -694,12 +703,14 @@ float Renderer::getCanvasUnitSize() const {
 }
 
 bool Renderer::isCapturing() const noexcept {
-    return state->captureOpen;
+    return !state->openCaptures.empty();
 }
 
 void Renderer::endFrame(const graphics::FrameTarget& target) {
     state->closeCanvas();
-    state->closeCapture();
+    while (!state->openCaptures.empty()) {
+        state->closeCapture();
+    }
     try {
         FrameSubmitter(*state, target).submit();
     } catch (...) {

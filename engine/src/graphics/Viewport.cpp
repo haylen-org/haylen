@@ -43,8 +43,10 @@ void Viewport::update(math::Vec2 framebuffer, math::Vec2 design, ScalingPolicy s
         break;
     }
     case ScalingPolicy::PixelPerfect: {
-        const float scale = std::max(1.0F, std::floor(std::min(ratio.x, ratio.y)));
-        pixelRect = centered(framebufferSize, designSize * scale);
+        // A framebuffer smaller than the design area shrinks it by a whole divisor, so the whole design stays visible at an integer ratio of pixels.
+        const float fit = std::min(ratio.x, ratio.y);
+        const math::Vec2 scaled = fit >= 1.0F ? designSize * std::floor(fit) : designSize / std::ceil(std::max(designSize.x / framebufferSize.x, designSize.y / framebufferSize.y));
+        pixelRect = centered(framebufferSize, scaled);
         visibleRect = designRect;
         break;
     }

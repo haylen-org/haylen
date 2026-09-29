@@ -5,14 +5,16 @@
 #include <stdexcept>
 #include <utility>
 
+#include "2d/physics/Box2DConverter.hpp"
 #include "haylen/2d/physics/World.hpp"
 
 namespace haylen::physics2d {
 
-Fluid::Fluid(World& owner, const Options& settings) : world(owner), options(settings) {
+Fluid::Fluid(World& owner, const Options& settings) : world(owner), options(settings), particle{.density = settings.density, .friction = settings.friction, .restitution = settings.restitution, .filter = settings.filter} {
     if (settings.radius <= 0.0F || settings.smoothingRadius <= settings.radius) {
         throw std::invalid_argument("A fluid needs a positive particle radius and a larger smoothing radius.");
     }
+    Box2DConverter::checkShapeOptions(particle);
 }
 
 Fluid::~Fluid() {
@@ -24,7 +26,7 @@ bool Fluid::spawn(math::Vec2 position, math::Vec2 velocity) {
         return false;
     }
     Body body = world.createBody({.position = position, .velocity = velocity, .fixedRotation = true});
-    body.addCircle(options.radius, {.density = options.density, .friction = options.friction, .restitution = options.restitution, .filter = options.filter});
+    body.addCircle(options.radius, particle);
     bodies.push_back(body);
     return true;
 }
@@ -59,6 +61,20 @@ void Fluid::clear() {
         body.destroy();
     }
     bodies.clear();
+}
+
+std::size_t Fluid::size() {
+    dropDestroyed();
+    return bodies.size();
+}
+
+const std::vector<Body>& Fluid::getBodies() {
+    dropDestroyed();
+    return bodies;
+}
+
+void Fluid::dropDestroyed() {
+    std::erase_if(bodies, [](const Body& body) { return !body.isValid(); });
 }
 
 std::uint64_t Fluid::cellKey(int column, int row) noexcept {
@@ -98,6 +114,7 @@ void Fluid::findPairs() {
 }
 
 void Fluid::update(float deltaSeconds) {
+    dropDestroyed();
     if (bodies.empty() || deltaSeconds <= 0.0F) {
         return;
     }
@@ -143,26 +160,6 @@ void Fluid::update(float deltaSeconds) {
     for (std::size_t index = 0; index < bodies.size(); ++index) {
         bodies[index].setVelocity(velocities[index]);
     }
-}
-
-std::size_t Fluid::copyPositions(std::span<float> target) const {
-    const std::size_t count = std::min(bodies.size(), target.size() / 2);
-    for (std::size_t index = 0; index < count; ++index) {
-        const math::Vec2 position = bodies[index].getPosition();
-        target[index * 2] = position.x;
-        target[index * 2 + 1] = position.y;
-    }
-    return count;
-}
-
-std::size_t Fluid::copyVelocities(std::span<float> target) const {
-    const std::size_t count = std::min(bodies.size(), target.size() / 2);
-    for (std::size_t index = 0; index < count; ++index) {
-        const math::Vec2 velocity = bodies[index].getVelocity();
-        target[index * 2] = velocity.x;
-        target[index * 2 + 1] = velocity.y;
-    }
-    return count;
 }
 
 } // namespace haylen::physics2d

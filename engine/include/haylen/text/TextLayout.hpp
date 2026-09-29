@@ -83,11 +83,12 @@ struct TextLayout {
         std::size_t index = 0;
     };
 
-    // Where each character sits and which code points of the text it draws, counted in the text without markup where paragraphs end with a line break, whether it reads right to left, and how the reveal reaches it: the pause before it and the speed of its style.
+    // Where each character sits and which code points of the text it draws, counted in the text without markup where paragraphs end with a line break, the style of its text, whether it reads right to left, and how the reveal reaches it: the pause before it and the speed of its style.
     struct Character {
         math::Rect box{};
         std::size_t begin = 0;
         std::size_t end = 0;
+        std::size_t style = 0;
         bool rightToLeft = false;
         float pause = 0.0F;
         float speed = 1.0F;

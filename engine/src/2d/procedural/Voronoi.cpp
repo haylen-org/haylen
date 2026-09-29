@@ -1,15 +1,22 @@
 #include "haylen/2d/procedural/Voronoi.hpp"
 
+#include <cmath>
+#include <stdexcept>
 #include <utility>
 
+#include "haylen/2d/procedural/Delaunay.hpp"
 #include "haylen/math/Geometry.hpp"
 
 namespace haylen::procedural2d {
 
 // Each cell is the rectangle cut by the bisector with every Delaunay neighbor, because only neighbors in the triangulation share an edge of the diagram.
-Voronoi::Voronoi(std::vector<math::Vec2> sites, const math::Rect& area) : delaunay(std::move(sites)), bounds(area) {
+Voronoi::Voronoi(std::vector<math::Vec2> sites, const math::Rect& area) {
+    if (!std::isfinite(area.getLeft()) || !std::isfinite(area.getTop()) || !std::isfinite(area.getRight()) || !std::isfinite(area.getBottom())) {
+        throw std::invalid_argument("A Voronoi diagram needs a finite area.");
+    }
+    const Delaunay delaunay(std::move(sites));
     const std::vector<math::Vec2>& points = delaunay.getPoints();
-    const std::vector<math::Vec2> corners{bounds.getMin(), {bounds.getRight(), bounds.getTop()}, bounds.getMax(), {bounds.getLeft(), bounds.getBottom()}};
+    const std::vector<math::Vec2> corners{area.getMin(), {area.getRight(), area.getTop()}, area.getMax(), {area.getLeft(), area.getBottom()}};
     const bool single = delaunay.getHull().size() == 1;
 
     cells.resize(points.size());
@@ -49,10 +56,6 @@ std::vector<math::Vec2> Voronoi::clip(const std::vector<math::Vec2>& outline, ma
         }
     }
     return result.size() >= 3 ? result : std::vector<math::Vec2>{};
-}
-
-std::size_t Voronoi::findCell(math::Vec2 position) const noexcept {
-    return delaunay.findNearest(position);
 }
 
 std::vector<math::Vec2> Voronoi::relax(std::vector<math::Vec2> sites, const math::Rect& area, int iterations) {

@@ -96,10 +96,6 @@ class SceneTransition final : public core::TransitionEffect {
     [[nodiscard]] float getExitProgress() const noexcept override;
     void render(Renderer& renderer, const Frames& frames, float progress) override;
 
-    [[nodiscard]] const Options& getOptions() const noexcept {
-        return options;
-    }
-
   private:
     // A turn draws as a grid whose corners follow the perspective, fine enough that the image stays straight inside each cell.
     static constexpr int kTurnColumns = 48;

@@ -122,9 +122,13 @@ math::Color Light::apply(math::Color below, math::Vec2 point) const noexcept {
 }
 
 bool Light::isShadowedAt(math::Vec2 point, std::span<const Occluder> occluders) const {
+    for (const Occluder& occluder : occluders) {
+        occluder.validate();
+    }
     if (!shadows) {
         return false;
     }
+
     std::vector<ShadowMap::Segment> segments;
     for (const Occluder& occluder : occluders) {
         ShadowMap::appendSegments(occluder, segments);

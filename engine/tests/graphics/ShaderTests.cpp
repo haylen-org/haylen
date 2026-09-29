@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -13,10 +14,14 @@
 #include <vector>
 
 #include "2d/graphics/MaterialResource.hpp"
+#include "graphics/DeviceState.hpp"
+#include "graphics/Gpu.hpp"
+#include "graphics/ShaderResource.hpp"
 #include "haylen/2d/graphics/Material.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/Json.hpp"
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
@@ -57,6 +62,34 @@ void main() {
 
 @program tint haylen_vs tint_fs
 )";
+
+// A small shader file with a block, a texture and one program for the desktop GLSL of the headless backend, which the malformed cases change field by field.
+constexpr const char* kSmallShader = R"({"format": "haylen-shader", "version": 1, "name": "small",
+    "blocks": [{"name": "params", "slot": 1, "size": 16, "uniforms": [{"name": "tint", "type": "vec4", "count": 1, "offset": 0}]}],
+    "textures": [{"name": "mask", "slot": 1}],
+    "sources": ["void main() {}"],
+    "programs": {"sprite": {"glsl430": {
+        "vertex": {"source": 0, "entry": "main"},
+        "fragment": {"source": 0, "entry": "main"},
+        "attrs": [{"slot": 0, "glsl_name": "corner", "base_type": "float"}],
+        "uniform_blocks": [{"slot": 1, "stage": "fragment", "size": 16, "glsl_uniforms": [{"type": "vec4", "array_count": 1, "glsl_name": "params"}]}],
+        "views": [{"slot": 1, "stage": "fragment", "sample_type": "float", "multisampled": false, "image_type": "2d"}],
+        "samplers": [{"slot": 1, "stage": "fragment", "sampler_type": "filtering"}],
+        "texture_sampler_pairs": [{"slot": 0, "stage": "fragment", "view_slot": 1, "sampler_slot": 1, "glsl_name": "mask_sampler"}]}}}})";
+
+// Parses the small shader with the values of `changes` written at their JSON pointers, and returns the error, which is empty when the file parses.
+std::string parseError(const core::Json& changes) {
+    core::Json document = core::Json::parse(kSmallShader);
+    for (const auto& [pointer, value] : changes.items()) {
+        document[core::Json::json_pointer(pointer)] = value;
+    }
+    try {
+        (void)graphics::Shader::parse(test::bytes(document.dump()));
+    } catch (const std::invalid_argument& error) {
+        return error.what();
+    }
+    return {};
+}
 
 // Compiles the material with make.py shaders, the way apps compile theirs, once for every test that needs it.
 const std::vector<std::uint8_t>& tintShader() {
@@ -138,6 +171,64 @@ TEST(ShaderTest, RejectsFilesThatAreNotShaders) {
     EXPECT_THROW((void)empty.getName(), std::logic_error);
     graphics::Shader target;
     EXPECT_THROW(target.replace(graphics::Shader::parse(tintShader())), std::logic_error);
+}
+
+TEST(ShaderTest, RejectsProgramsAndReflectionThatBreakTheGpuLimits) {
+    const std::string malformed = "The shader file is malformed: ";
+    const std::string program = "/programs/sprite/glsl430";
+    EXPECT_EQ(parseError(core::Json::object()), "");
+
+    // Every slot, member and source index stays inside the arrays of the shader description.
+    EXPECT_EQ(parseError({{program + "/attrs/0/slot", 16}}), malformed + "The vertex attribute slot 16 is out of range.");
+    EXPECT_EQ(parseError({{program + "/uniform_blocks/0/slot", 8}}), malformed + "The uniform block slot 8 is out of range.");
+    EXPECT_EQ(parseError({{program + "/uniform_blocks/0/glsl_uniforms", core::Json(std::size_t{17}, core::Json{{"type", "float"}, {"array_count", 1}, {"glsl_name", "x"}})}}), malformed + "The uniform block member 16 is out of range.");
+    EXPECT_EQ(parseError({{program + "/views/0/slot", 32}}), malformed + "The texture slot 32 is out of range.");
+    EXPECT_EQ(parseError({{program + "/samplers/0/slot", 12}}), malformed + "The sampler slot 12 is out of range.");
+    EXPECT_EQ(parseError({{program + "/texture_sampler_pairs/0/slot", 32}}), malformed + "The texture sampler pair slot 32 is out of range.");
+    EXPECT_EQ(parseError({{program + "/texture_sampler_pairs/0/sampler_slot", 12}}), malformed + "The sampler slot 12 is out of range.");
+    EXPECT_EQ(parseError({{program + "/texture_sampler_pairs/0/view_slot", 2}}), malformed + "The texture sampler pair at slot 0 names a texture or sampler the program does not declare.");
+    EXPECT_EQ(parseError({{program + "/fragment/source", 1}}), malformed + "The source 1 is out of range.");
+    EXPECT_EQ(parseError({{program + "/vertex/source", -1}}), malformed + "The source -1 is out of range.");
+    EXPECT_NE(parseError({{program + "/fragment", nullptr}}), "");
+
+    // Names outside the ones sokol-shdc writes fail instead of taking a default.
+    EXPECT_EQ(parseError({{program + "/uniform_blocks/0/stage", "compute"}}), malformed + "Shaders do not support the compute stage.");
+    EXPECT_EQ(parseError({{program + "/views/0/image_type", "1d"}}), malformed + "Shaders do not support 1d textures.");
+    EXPECT_EQ(parseError({{program + "/views/0/sample_type", "half"}}), malformed + "Shaders do not support textures that sample half.");
+    EXPECT_EQ(parseError({{program + "/samplers/0/sampler_type", "anisotropic"}}), malformed + "Shaders do not support anisotropic samplers.");
+    EXPECT_EQ(parseError({{program + "/attrs/0/base_type", "double"}}), malformed + "Shaders do not support vertex attributes of type double.");
+    EXPECT_EQ(parseError({{program + "/uniform_blocks/0/glsl_uniforms/0/type", "mat3"}}), malformed + "Shaders do not support uniforms of type mat3.");
+
+    // The GLSL members fill their block, and every program reads the blocks of the reflection with their own size.
+    EXPECT_EQ(parseError({{program + "/uniform_blocks/0/glsl_uniforms/0/array_count", 2}}), malformed + "The members of the uniform block at slot 1 do not fill its 16 bytes.");
+    EXPECT_EQ(parseError({{program + "/uniform_blocks/0/size", 32}, {program + "/uniform_blocks/0/glsl_uniforms", core::Json::array()}}), malformed + "The sprite program for glsl430 reads 32 bytes from the block params, which holds 16.");
+
+    // Materials write every uniform inside its block, and the reflection keeps its slots inside the limits.
+    EXPECT_EQ(parseError({{"/blocks/0/uniforms/0/offset", 4}}), malformed + "The uniform tint does not fit in the block params.");
+    EXPECT_EQ(parseError({{"/blocks/0/uniforms/0/count", 2}}), malformed + "The uniform tint does not fit in the block params.");
+    EXPECT_EQ(parseError({{"/blocks/0/uniforms/0/count", 0}}), malformed + "The uniform tint has no elements.");
+    EXPECT_EQ(parseError({{"/blocks/0/slot", 8}}), malformed + "The uniform block slot 8 is out of range.");
+    EXPECT_EQ(parseError({{"/textures/0/slot", 32}}), malformed + "The texture slot 32 is out of range.");
+}
+
+TEST(ShaderTest, ReportsAFullShaderPool) {
+    test::EngineFixture fixture;
+    graphics::Device& device = fixture.engine().getGraphics();
+    std::vector<graphics::Shader> shaders;
+    std::string error;
+    try {
+        while (shaders.size() <= static_cast<std::size_t>(graphics::Gpu::kShaderPoolSize)) {
+            shaders.push_back(graphics::Shader::parse(test::bytes(kSmallShader)));
+            shaders.back().getResource()->graveyard = device.getState().graveyard;
+            (void)shaders.back().getResource()->getProgram("sprite");
+        }
+    } catch (const std::runtime_error& failure) {
+        error = failure.what();
+    }
+    EXPECT_EQ(error, "The graphics device has no room for another shader. At most 512 shader programs can exist at once.");
+
+    shaders.clear();
+    device.collectGarbage();
 }
 
 TEST(MaterialTest, SetsUniformsByNameAndPacksThemInTheirBlocks) {

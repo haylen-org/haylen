@@ -46,9 +46,6 @@ class Region final {
     [[nodiscard]] math::Rect getBounds() const noexcept {
         return bounds;
     }
-    [[nodiscard]] const std::vector<std::vector<math::Vec2>>& getShape() const noexcept {
-        return shape;
-    }
 
     [[nodiscard]] bool contains(math::Vec2 point) const noexcept;
     [[nodiscard]] math::Vec2 getRandomPoint(math::Random& random) const noexcept;

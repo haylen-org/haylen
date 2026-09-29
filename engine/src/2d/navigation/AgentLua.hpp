@@ -50,7 +50,9 @@ class AgentLua final {
     static int crowdSetPosition(lua_State* L);
     static int crowdVelocity(lua_State* L);
     static int crowdRadius(lua_State* L);
+    static int crowdMaxSpeed(lua_State* L);
     static int crowdSetPreferredVelocity(lua_State* L);
+    static int crowdPreferredVelocity(lua_State* L);
     static int crowdSetTarget(lua_State* L);
     static int crowdClearTarget(lua_State* L);
     static int crowdTarget(lua_State* L);

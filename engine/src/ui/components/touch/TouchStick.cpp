@@ -30,7 +30,11 @@ void TouchStick::render(Context& context, const math::Rect& bounds) {
     }
     context.blockPointer(bounds);
 
-    const std::optional<math::Vec2> pointer = tracker.update(context, bounds);
+    // A disabled stick rests at the center and waits for a new press once it is enabled again.
+    if (!getCommon().enabled) {
+        tracker.reset();
+    }
+    const std::optional<math::Vec2> pointer = getCommon().enabled ? tracker.update(context, bounds) : std::nullopt;
     const math::Vec2 center = pointer && floating ? tracker.getStart() : bounds.getCenter();
     math::Vec2 value;
     if (pointer) {

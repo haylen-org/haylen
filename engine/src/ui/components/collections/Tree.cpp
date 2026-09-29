@@ -28,15 +28,49 @@ void Tree::readProperties(PropertyReader& reader) {
     }
 }
 
+// A tree fills the width it gets, and an unbounded width, such as the one of a horizontal scroll, gets the width of its widest row that shows.
 math::Vec2 Tree::measureContent(Context& context, float availableWidth) {
-    return {availableWidth, context.getMetric(Theme::Metric::ListRowHeight) * static_cast<float>(countVisible(items))};
+    const float height = context.getMetric(Theme::Metric::ListRowHeight) * static_cast<float>(countVisible(items));
+    return {availableWidth < CommonProperties::kUnbounded ? availableWidth : measureWidth(context, items, 0), height};
 }
 
+// The focus goes to the selected item when it shows and can take it, or to the first item that can.
 void Tree::render(Context& context, const math::Rect& bounds) {
     pressedDirection = takeFocusDirection(context);
-    focusing = takeFocusRequest();
+    focused.clear();
+    if (takeFocusRequest()) {
+        const ChoiceItem* target = findShown(items, selected);
+        target = target != nullptr ? target : findShown(items, {});
+        focused = target != nullptr ? target->id : std::string();
+    }
     float y = bounds.y;
     drawItems(context, bounds, items, 0, y);
+}
+
+float Tree::measureWidth(Context& context, const std::vector<ChoiceItem>& branch, int depth) const {
+    const float indent = context.getMetric(Theme::Metric::IconSize);
+    float widest = 0.0F;
+    for (const ChoiceItem& item : branch) {
+        widest = std::max(widest, indent * static_cast<float>(depth + 1) - ListRow::kPadding + ListRow::measure(context, item));
+        if (expanded.contains(item.id)) {
+            widest = std::max(widest, measureWidth(context, item.children, depth + 1));
+        }
+    }
+    return widest;
+}
+
+const ChoiceItem* Tree::findShown(const std::vector<ChoiceItem>& branch, std::string_view id) const {
+    for (const ChoiceItem& item : branch) {
+        if (item.enabled && (id.empty() || item.id == id)) {
+            return &item;
+        }
+        if (expanded.contains(item.id)) {
+            if (const ChoiceItem* found = findShown(item.children, id)) {
+                return found;
+            }
+        }
+    }
+    return nullptr;
 }
 
 std::size_t Tree::countVisible(const std::vector<ChoiceItem>& branch) const {
@@ -65,8 +99,7 @@ void Tree::drawItems(Context& context, const math::Rect& bounds, const std::vect
         const math::Rect arrow = context.mirror({left, area.y, indent, height}, area);
         bool toggled = !item.children.empty() && Widgets::interact(context, arrow, context.getMetric(Theme::Metric::ControlRadius) * 0.5F, "##toggle", ImGuiButtonFlags_NoNavFocus).clicked;
         const Widgets::Interaction state = ListRow::draw(context, area, item.id == selected);
-        if (focusing && (item.id == selected || selected.empty())) {
-            focusing = false;
+        if (item.id == focused) {
             Widgets::focusItem(context);
         }
         if (pressedDirection && ImGui::GetItemID() == ImGui::GetFocusID() && !item.children.empty() && open == (Widgets::getStep(context, *pressedDirection) < 0)) {

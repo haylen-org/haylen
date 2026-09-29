@@ -19,7 +19,7 @@ namespace haylen {
 
 namespace {
 
-// Casts the shadow map row of a light over some occluders, the way the renderer does for a canvas that shows the bounds.
+// Casts the shadow map row of a light over some occluders, the way the renderer does for a canvas that shows the bounds, and reads it the way the light shader does.
 struct CastRow {
     std::vector<float> row = std::vector<float>(lighting2d::ShadowMap::kResolution);
     lighting2d::ShadowMap::Axis axis{};
@@ -32,8 +32,25 @@ struct CastRow {
         axis = lighting2d::ShadowMap::cast(light, segments, bounds, row);
     }
 
+    // The shader finds the texel of the direction or of the place across the light, and a point deeper than the occluder depth there plus the bias is shadowed.
     [[nodiscard]] bool shadows(const lighting2d::Light& light, math::Vec2 point) const {
-        return lighting2d::ShadowMap::isShadowed(light, row, axis, point);
+        const auto width = static_cast<float>(row.size());
+        float coordinate = 0.0F;
+        float depth = 0.0F;
+        if (light.type == lighting2d::Light::Type::Directional) {
+            const math::Vec2 direction = math::Vec2::fromAngle(light.rotation);
+            coordinate = (math::Vec2::dot(point, direction.getPerpendicular()) - axis.acrossStart) / axis.acrossSpan * width;
+            depth = (math::Vec2::dot(point, direction) - axis.alongStart) / axis.alongSpan;
+        } else {
+            const math::Vec2 offset = point - light.position;
+            coordinate = (std::atan2(offset.y, offset.x) / math::Math::kTau + 0.5F) * width;
+            depth = offset.getLength() / lighting2d::ShadowMap::getRange(light);
+        }
+
+        const auto size = static_cast<int>(row.size());
+        const int texel = static_cast<int>(std::floor(coordinate));
+        const int wrapped = light.type == lighting2d::Light::Type::Directional ? std::clamp(texel, 0, size - 1) : ((texel % size) + size) % size;
+        return depth > row[static_cast<std::size_t>(wrapped)] + lighting2d::ShadowMap::getBias(light, axis);
     }
 };
 
@@ -57,6 +74,18 @@ TEST(LightFlickerTest, WaversBelowOneDeterministically) {
     EXPECT_GT(highest - lowest, 0.05F);
     EXPECT_EQ(lighting2d::LightFlicker::intensity(1.5F, 8.0F, 0.2F, 3), lighting2d::LightFlicker::intensity(1.5F, 8.0F, 0.2F, 3));
     EXPECT_EQ(lighting2d::LightFlicker::intensity(1.5F, 8.0F, 0.0F, 3), 1.0F);
+
+    // Many lights with their own seeds, more than a thread keeps noise for, flicker the same way whether their noise was kept or built again.
+    std::vector<float> forward(20);
+    std::vector<float> backward(20);
+    for (std::size_t seed = 0; seed < forward.size(); ++seed) {
+        forward[seed] = lighting2d::LightFlicker::intensity(0.7F, 8.0F, 0.5F, seed);
+    }
+    for (std::size_t seed = backward.size(); seed > 0; --seed) {
+        backward[seed - 1] = lighting2d::LightFlicker::intensity(0.7F, 8.0F, 0.5F, seed - 1);
+    }
+    EXPECT_EQ(forward, backward);
+    EXPECT_NE(forward[1], forward[2]);
 }
 
 TEST(LightTest, ResolvesNamesAndRejectsValuesOutOfRange) {
@@ -170,6 +199,10 @@ TEST(ShadowMapTest, ShadowsWhatLiesBehindOccludersOfPointLights) {
     const CastRow far(light, {box({900.0F, 900.0F})});
     EXPECT_TRUE(std::all_of(far.row.begin(), far.row.end(), [](float depth) { return depth == lighting2d::ShadowMap::kClear; }));
     EXPECT_FALSE((lighting2d::Light{.position = {100.0F, 100.0F}, .radius = 400.0F}).isShadowedAt({400.0F, 100.0F}, occluders));
+
+    // An occluder with too few points is rejected before it could cast anything.
+    const std::vector<lighting2d::Occluder> empty{{.closed = false}};
+    EXPECT_THROW((void)light.isShadowedAt({400.0F, 100.0F}, empty), std::invalid_argument);
 }
 
 TEST(ShadowMapTest, SkipsEdgesByCullModeAndMask) {
@@ -302,6 +335,10 @@ TEST(Lighting2DLuaTest, CreatesLightsAndAsksWhereTheyReach) {
     EXPECT_EQ(fixture.lua("local c = lighting2d.illuminate('#FF000000', {lamp}, 0, 0, {lightMask = 2}) return c.b"), "0.0");
     fixture.runLua("wall = lighting2d.newOccluder({points = {50, -20, 50, 20}, closed = false})");
     EXPECT_EQ(fixture.lua("return tostring(lamp:shadowedAt(80, 0, {wall})) .. ' ' .. tostring(lamp:shadowedAt(20, 0, {wall})) .. ' ' .. tostring(lamp:shadowedAt(80, 0, {{points = {{50, -20}, {50, 20}}, closed = false, mask = 2}}))"), "true false false");
+    EXPECT_NE(fixture.lua("lamp:shadowedAt(80, 0, {{points = {}, closed = false}})").find("An occluder needs at least 2 points, and 3 when it is closed."), std::string::npos);
+
+    // The falloff is the curve of lights without a texture, from 1 at the center to 0 at the radius.
+    EXPECT_EQ(fixture.lua("return lighting2d.falloff(0) .. ' ' .. lighting2d.falloff(1) .. ' ' .. tostring(lighting2d.falloff(0.5) == lamp:strengthAt(50, 0))"), "1.0 0.0 true");
 
     EXPECT_NE(fixture.lua("lighting2d.newLight({kind = 'spot'})").find("Unknown option 'kind'"), std::string::npos);
     EXPECT_NE(fixture.lua("lighting2d.newLight({type = 'area'})").find("unknown value 'area'"), std::string::npos);

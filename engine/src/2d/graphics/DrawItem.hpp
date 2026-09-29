@@ -22,7 +22,7 @@ struct DrawItem {
     std::uint32_t sequence = 0;
     Program program = Program::Sprite;
     graphics::BlendMode::Type blend = graphics::BlendMode::Type::Alpha;
-    std::uint16_t clip = 0;
+    std::uint32_t clip = 0;
     std::uint32_t shade = 0;
     graphics::TextureResource* texture = nullptr;
     StaticBatchResource* batch = nullptr;

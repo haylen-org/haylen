@@ -102,6 +102,12 @@ TEST_F(GameComponentTest, PicksSegments) {
     EXPECT_EQ(count("change"), 2U);
     button(input::GamepadButton::South);
     EXPECT_EQ(findLastEvent("change").value, (core::Json{{"value", "list"}}));
+
+    // Without a selection, accept reaches the last segment too.
+    document->set("view", {{"items", core::Json::parse(R"([{"id": "list", "text": "List", "enabled": false}, {"id": "grid", "text": "Grid"}])")}, {"selected", ""}});
+    frames();
+    key(input::Key::Enter);
+    EXPECT_EQ(findLastEvent("change").value, (core::Json{{"value", "grid"}}));
 }
 
 TEST_F(GameComponentTest, DragsAndStepsBothEndsOfARange) {
@@ -121,6 +127,13 @@ TEST_F(GameComponentTest, DragsAndStepsBothEndsOfARange) {
     key(input::Key::Left);
     EXPECT_EQ(findLastEvent("change").value, (core::Json{{"low", 10.0}, {"high", 60.0}}));
     EXPECT_THROW(document->set("price", {{"low", 90}}), std::invalid_argument);
+    EXPECT_THROW(document->set("price", {{"max", 1e300}}), std::invalid_argument);
+
+    // An end set past the other end where the player left it takes that end along.
+    document->set("price", {{"low", 70}});
+    key(input::Key::Enter);
+    key(input::Key::Right);
+    EXPECT_EQ(findLastEvent("change").value, (core::Json{{"low", 70.0}, {"high", 80.0}}));
 }
 
 TEST_F(GameComponentTest, MovesClosesAndCancelsWindows) {
@@ -159,6 +172,18 @@ TEST_F(GameComponentTest, MovesClosesAndCancelsWindows) {
     const float header = getMetric(Theme::Metric::WindowTitleHeight);
     click({400.0F + 500.0F - header * 0.5F, 300.0F + header * 0.5F});
     EXPECT_EQ(count("close"), 2U);
+}
+
+TEST_F(GameComponentTest, MovesAWindowAlongOneAxis) {
+    auto document = mount(R"({"kind": "column", "children": [{"kind": "window", "id": "map", "title": "Map", "width": 400, "height": 300}]})");
+    frames();
+    const math::Rect centered = getBounds(*document, "map");
+    document->set("map", {{"x", 40}});
+    frames();
+    EXPECT_EQ(getBounds(*document, "map").getMin(), math::Vec2(40.0F, centered.y));
+    document->set("map", {{"y", 60}});
+    frames();
+    EXPECT_EQ(getBounds(*document, "map").getMin(), math::Vec2(40.0F, 60.0F));
 }
 
 TEST_F(GameComponentTest, OpensContextMenusWithEveryDevice) {
@@ -219,6 +244,9 @@ TEST_F(GameComponentTest, OpensAccordionSections) {
     key(input::Key::Down);
     key(input::Key::Enter);
     EXPECT_EQ(findLastEvent("toggle").value, (core::Json{{"item", "b"}, {"expanded", false}}));
+
+    // Opening the second section closed the first one, which reported it.
+    EXPECT_EQ(count("toggle"), 4U);
 }
 
 TEST_F(GameComponentTest, TurnsCarouselPages) {
@@ -280,6 +308,13 @@ TEST_F(GameComponentTest, DragsAndCarriesItemsBetweenSlotsAndLists) {
     frames();
     EXPECT_FALSE(getUi().getFocus().getCarried().has_value());
     EXPECT_EQ(count("cancel"), 0U);
+
+    // An item carried from a node that stops drawing goes back.
+    key(input::Key::Enter);
+    ASSERT_TRUE(getUi().getFocus().getCarried().has_value());
+    document->set("bag", {{"visible", false}});
+    frames(2);
+    EXPECT_FALSE(getUi().getFocus().getCarried().has_value());
 }
 
 TEST_F(GameComponentTest, CapturesBindingsForRemapping) {
@@ -327,6 +362,12 @@ TEST_F(GameComponentTest, SnapsScrolledItemsIntoPlace) {
     frames(60);
     EXPECT_NEAR(getBounds(*document, "b1").x, shelf.x, 1.0F);
     EXPECT_EQ(count("click"), 0U);
+}
+
+TEST_F(GameComponentTest, FocusesTheFirstTreeRowWhenTheSelectedOneIsHidden) {
+    auto document = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "tree", "id": "files", "selected": "leaf", "items": [{"id": "root", "text": "Root", "children": [{"id": "leaf", "text": "Leaf"}]}]}]})");
+    focus(*document, "files");
+    EXPECT_TRUE(isFocused(*document, "files"));
 }
 
 TEST_F(GameComponentTest, PicksComboItemsWithTheKeyboard) {

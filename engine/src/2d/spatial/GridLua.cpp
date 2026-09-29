@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cstdint>
 #include <optional>
+#include <stdexcept>
+#include <utility>
 
 #include "haylen/2d/spatial/Bresenham.hpp"
 #include "haylen/2d/spatial/CellGrid.hpp"
@@ -138,12 +140,24 @@ int GridLua::unionSetCount(lua_State* L) {
     return 1;
 }
 
+int GridLua::unionReset(lua_State* L) {
+    lua::Userdata::check<UnionFind>(L, 1).reset(lua::Stack::read<std::size_t>(L, 2));
+    return 0;
+}
+
+math::Vec2 GridLua::readCellSize(lua_State* L, int index) {
+    if (lua_type(L, index) == LUA_TNUMBER) {
+        const auto side = lua::Stack::read<float>(L, index);
+        return {side, side};
+    }
+    return lua::Stack::read<math::Vec2>(L, index);
+}
+
 // Casts over the solid cells of a grid with raycastGrid(grid, from, to, cellSize), where the cell size is a number or a {width, height} pair.
 int GridLua::raycastGrid(lua_State* L) {
     const CellGrid& grid = lua::Userdata::check<CellGrid>(L, 1);
     const math::Ray ray = math::Ray::between(lua::Stack::read<math::Vec2>(L, 2), lua::Stack::read<math::Vec2>(L, 3));
-    const math::Vec2 cellSize = lua_type(L, 4) == LUA_TNUMBER ? math::Vec2{lua::Stack::read<float>(L, 4), lua::Stack::read<float>(L, 4)} : lua::Stack::read<math::Vec2>(L, 4);
-    const std::optional<GridRay::Hit> hit = GridRay::cast(ray, cellSize, grid);
+    const std::optional<GridRay::Hit> hit = GridRay::cast(ray, readCellSize(L, 4), grid);
     if (!hit) {
         lua_pushnil(L);
         return 1;
@@ -154,6 +168,34 @@ int GridLua::raycastGrid(lua_State* L) {
     lua_setfield(L, -2, "column");
     lua_pushinteger(L, hit->cell.y);
     lua_setfield(L, -2, "row");
+    return 1;
+}
+
+// Lists the cells that the ray from one point to another crosses with traverseGrid(from, to, cellSize), in order, each as {x, y, distance} with the distance where the ray enters it.
+int GridLua::traverseGrid(lua_State* L) {
+    const math::Ray ray = math::Ray::between(lua::Stack::read<math::Vec2>(L, 1), lua::Stack::read<math::Vec2>(L, 2));
+    std::vector<std::pair<Cell, float>> crossed;
+    // clang-format off
+    GridRay::traverse(ray, readCellSize(L, 3), [&crossed](Cell cell, float distance, math::Vec2) {
+        if (crossed.size() == kMaxTraversedCells) {
+            throw std::invalid_argument("A grid traversal lists at most 65536 cells.");
+        }
+        crossed.emplace_back(cell, distance);
+        return true;
+    });
+    // clang-format on
+
+    lua_createtable(L, static_cast<int>(crossed.size()), 0);
+    for (std::size_t index = 0; index < crossed.size(); ++index) {
+        lua_createtable(L, 0, 3);
+        lua_pushinteger(L, crossed[index].first.x);
+        lua_setfield(L, -2, "x");
+        lua_pushinteger(L, crossed[index].first.y);
+        lua_setfield(L, -2, "y");
+        lua::Stack::push(L, crossed[index].second);
+        lua_setfield(L, -2, "distance");
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
     return 1;
 }
 
@@ -177,14 +219,21 @@ int GridLua::fieldOfView(lua_State* L) {
     const Cell origin = readCell(L, 2);
     const auto radius = lua::Stack::read<int>(L, 4);
 
-    // Cells on the axes and diagonals come twice, so a mark per cell of the square around the origin keeps each one once.
-    const int side = 2 * std::max(radius, 0) + 1;
-    std::vector<std::uint8_t> revealed(static_cast<std::size_t>(side) * static_cast<std::size_t>(side), 0);
+    // Cells on the axes and diagonals come twice, so a mark per grid cell within reach of the origin keeps each one once.
+    const std::int64_t reach = std::max(radius, 0);
+    const std::int64_t left = std::max<std::int64_t>(0, origin.x - reach);
+    const std::int64_t top = std::max<std::int64_t>(0, origin.y - reach);
+    const std::int64_t columns = std::max<std::int64_t>(0, std::min<std::int64_t>(grid.getWidth(), origin.x + reach + 1) - left);
+    const std::int64_t rows = std::max<std::int64_t>(0, std::min<std::int64_t>(grid.getHeight(), origin.y + reach + 1) - top);
+    std::vector<std::uint8_t> revealed(static_cast<std::size_t>(columns * rows), 0);
     std::vector<Cell> cells;
     // clang-format off
     FieldOfView::compute(origin, radius, [&grid](Cell cell) { return grid.isSolid(cell); }, [&](Cell cell) {
-        const auto mark = static_cast<std::size_t>(cell.y - origin.y + radius) * static_cast<std::size_t>(side) + static_cast<std::size_t>(cell.x - origin.x + radius);
-        if (grid.contains(cell) && revealed[mark] == 0) {
+        if (!grid.contains(cell)) {
+            return;
+        }
+        const auto mark = static_cast<std::size_t>((cell.y - top) * columns + (cell.x - left));
+        if (revealed[mark] == 0) {
             revealed[mark] = 1;
             cells.push_back(cell);
         }
@@ -243,14 +292,14 @@ int GridLua::components(lua_State* L) {
 
 void GridLua::addFunctions(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"newCellGrid", &lua::Binding::native<&newCellGrid>}, {"newUnionFind", &lua::Binding::native<&newUnionFind>}, {"raycastGrid", &lua::Binding::native<&raycastGrid>}, {"line", &lua::Binding::native<&line>}, {"circle", &lua::Binding::native<&circle>}, {"fieldOfView", &lua::Binding::native<&fieldOfView>}, {"visibilityPolygon", &lua::Binding::native<&visibilityPolygon>}, {"floodFill", &lua::Binding::native<&floodFill>}, {"components", &lua::Binding::native<&components>}, {nullptr, nullptr},
+        {"newCellGrid", &lua::Binding::native<&newCellGrid>}, {"newUnionFind", &lua::Binding::native<&newUnionFind>}, {"raycastGrid", &lua::Binding::native<&raycastGrid>}, {"traverseGrid", &lua::Binding::native<&traverseGrid>}, {"line", &lua::Binding::native<&line>}, {"circle", &lua::Binding::native<&circle>}, {"fieldOfView", &lua::Binding::native<&fieldOfView>}, {"visibilityPolygon", &lua::Binding::native<&visibilityPolygon>}, {"floodFill", &lua::Binding::native<&floodFill>}, {"components", &lua::Binding::native<&components>}, {nullptr, nullptr},
     };
     luaL_setfuncs(L, functions, 0);
 }
 
 void GridLua::install(lua_State* L) {
     lua::ClassBuilder<CellGrid>(L).function("get", &lua::Binding::native<&gridGet>).function("set", &lua::Binding::native<&gridSet>).function("fill", &lua::Binding::native<&gridFill>).function("contains", &lua::Binding::native<&gridContains>).property("width", &gridWidth).property("height", &gridHeight).install();
-    lua::ClassBuilder<UnionFind>(L).function("add", &lua::Binding::native<&unionAdd>).function("find", &lua::Binding::native<&unionFind>).function("unite", &lua::Binding::native<&unionUnite>).function("connected", &lua::Binding::native<&unionConnected>).function("setSize", &lua::Binding::native<&unionSetSize>).property("size", &unionSize).property("setCount", &unionSetCount).install();
+    lua::ClassBuilder<UnionFind>(L).function("add", &lua::Binding::native<&unionAdd>).function("find", &lua::Binding::native<&unionFind>).function("unite", &lua::Binding::native<&unionUnite>).function("connected", &lua::Binding::native<&unionConnected>).function("setSize", &lua::Binding::native<&unionSetSize>).function("reset", &lua::Binding::native<&unionReset>).property("size", &unionSize).property("setCount", &unionSetCount).install();
 }
 
 } // namespace haylen::spatial2d

@@ -26,17 +26,21 @@ void Accordion::readProperties(PropertyReader& reader) {
     }
 }
 
+// An accordion fills the width it gets, and an unbounded width, such as the one of a horizontal scroll, gets the width of its widest header or open section.
 math::Vec2 Accordion::measureContent(Context& context, float availableWidth) {
     const float header = context.getMetric(Theme::Metric::ControlHeight);
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
-    float height = header * static_cast<float>(items.size());
+    const float arrow = context.getMetric(Theme::Metric::IconSize);
+    math::Vec2 size{0.0F, header * static_cast<float>(items.size())};
     for (std::size_t index = 0; index < items.size(); ++index) {
+        size.x = std::max(size.x, Typography::measure(context, Theme::Font::Button, context.getText(items[index].text)).x + arrow + ListRow::kPadding * 3.0F);
         Component* section = getSection(index);
         if (section != nullptr && expanded.contains(items[index].id)) {
-            height += section->measure(context, availableWidth).y + spacing * 2.0F;
+            const math::Vec2 measured = section->measure(context, availableWidth);
+            size = {std::max(size.x, measured.x), size.y + measured.y + spacing * 2.0F};
         }
     }
-    return {availableWidth, height};
+    return {availableWidth < CommonProperties::kUnbounded ? availableWidth : size.x, size.y};
 }
 
 void Accordion::render(Context& context, const math::Rect& bounds) {
@@ -81,12 +85,18 @@ Component* Accordion::getSection(std::size_t index) const {
     return index < getChildren().size() && getChildren()[index]->getCommon().visible ? getChildren()[index].get() : nullptr;
 }
 
+// A section that opens alone closes the others, and each of them reports its toggle first.
 void Accordion::toggle(Context& context, const ChoiceItem& item) {
     const bool open = !expanded.contains(item.id);
     if (!open) {
         expanded.erase(item.id);
     } else {
         if (!multiple) {
+            for (const ChoiceItem& other : items) {
+                if (expanded.contains(other.id)) {
+                    context.emit(*this, "toggle", {{"item", other.id}, {"expanded", false}});
+                }
+            }
             expanded.clear();
         }
         expanded.insert(item.id);

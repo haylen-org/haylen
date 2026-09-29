@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <optional>
 #include <stdexcept>
+#include <string>
 
 #include <hb.h>
 
@@ -27,11 +28,54 @@ struct TrueTypeFont::Face {
 
 const TrueTypeFont::Options TrueTypeFont::kDefaultOptions{};
 
+// A glyph larger than the largest texture could never be packed, so the bake size and the spread share the limit of the atlas.
+const TrueTypeFont::Options& TrueTypeFont::validate(const Options& value, const graphics::Device& graphicsDevice) {
+    const int limit = graphicsDevice.getMaxTextureSize();
+    const std::string bound = "positive and at most the maximum texture size of " + std::to_string(limit) + ".";
+    if (!(value.bakeSize > 0.0F && value.bakeSize <= static_cast<float>(limit))) {
+        throw std::invalid_argument("The bake size of a TrueType font must be " + bound);
+    }
+    if (value.spread <= 0 || value.spread > limit) {
+        throw std::invalid_argument("The spread of a TrueType font must be " + bound);
+    }
+    if (value.atlasSize <= 0 || value.atlasSize > limit) {
+        throw std::invalid_argument("The atlas size of a TrueType font must be " + bound);
+    }
+    return value;
+}
+
+// The stb_truetype reader finds tables through the table directory without checking their bounds, so the directory and every table it lists must lie inside the file.
+bool TrueTypeFont::hasTables(std::span<const std::uint8_t> ttf, std::size_t start) noexcept {
+    // clang-format off
+    const auto read = [&ttf](std::size_t offset, std::size_t size) {
+        std::uint64_t value = 0;
+        for (std::size_t index = 0; index < size; ++index) {
+            value = value << 8U | static_cast<std::uint64_t>(ttf[offset + index]);
+        }
+        return value;
+    };
+    // clang-format on
+
+    if (start > ttf.size() || ttf.size() - start < kOffsetTableSize) {
+        return false;
+    }
+    const auto count = static_cast<std::size_t>(read(start + 4, 2));
+    if ((ttf.size() - start - kOffsetTableSize) / kTableRecordSize < count) {
+        return false;
+    }
+    for (std::size_t record = start + kOffsetTableSize; record < start + kOffsetTableSize + count * kTableRecordSize; record += kTableRecordSize) {
+        if (read(record + 8, 4) + read(record + 12, 4) > ttf.size()) {
+            return false;
+        }
+    }
+    return true;
+}
+
 std::unique_ptr<TrueTypeFont::Face> TrueTypeFont::open(std::vector<std::uint8_t> ttf, const Options& fontOptions) {
     auto opened = std::make_unique<Face>();
     opened->ttf = std::move(ttf);
     const int offset = opened->ttf.size() < kHeaderSize ? -1 : stbtt_GetFontOffsetForIndex(opened->ttf.data(), 0);
-    if (offset < 0 || stbtt_InitFont(&opened->info, opened->ttf.data(), offset) == 0) {
+    if (offset < 0 || !hasTables(opened->ttf, static_cast<std::size_t>(offset)) || stbtt_InitFont(&opened->info, opened->ttf.data(), offset) == 0) {
         throw std::runtime_error("Font data is not a valid TrueType or OpenType font.");
     }
     opened->scale = stbtt_ScaleForMappingEmToPixels(&opened->info, fontOptions.bakeSize);
@@ -58,12 +102,12 @@ Font::Metrics TrueTypeFont::readMetrics(const Face& opened, const Options& fontO
     };
 }
 
-TrueTypeFont::TrueTypeFont(graphics::Device& graphicsDevice, std::vector<std::uint8_t> ttf, const Options& fontOptions) : TrueTypeFont(graphicsDevice, open(std::move(ttf), fontOptions), fontOptions) {}
+TrueTypeFont::TrueTypeFont(graphics::Device& graphicsDevice, std::vector<std::uint8_t> ttf, const Options& fontOptions) : TrueTypeFont(graphicsDevice, open(std::move(ttf), validate(fontOptions, graphicsDevice)), fontOptions) {}
 
 TrueTypeFont::TrueTypeFont(graphics::Device& graphicsDevice, std::unique_ptr<Face> opened, const Options& fontOptions) : Font(readMetrics(*opened, fontOptions)), face(std::move(opened)), device(graphicsDevice), options(fontOptions) {
     atlasWidth = options.atlasSize;
     atlasHeight = options.atlasSize;
-    atlas.assign(static_cast<std::size_t>(atlasWidth * atlasHeight), 0);
+    atlas.assign(static_cast<std::size_t>(atlasWidth) * static_cast<std::size_t>(atlasHeight), 0);
     texture = device.createAlphaTexture(atlasWidth, atlasHeight, atlas, {.filter = graphics::Texture::Filter::Linear});
 }
 
@@ -115,25 +159,26 @@ void TrueTypeFont::shape(const Run& run, std::vector<ShapedGlyph>& shaped) {
     }
 }
 
+// A glyph joins the cache only once it is in the atlas, so a glyph that did not fit fails again rather than drawing nothing.
 const Font::Glyph& TrueTypeFont::getGlyph(std::uint32_t index) {
     if (const auto found = glyphs.find(index); found != glyphs.end()) {
         return found->second;
     }
-
-    Glyph& created = glyphs[index];
-    rasterize(index, created);
-    return created;
+    if (index >= static_cast<std::uint32_t>(face->info.numGlyphs)) {
+        throw std::out_of_range("The font has no glyph with index " + std::to_string(index) + ".");
+    }
+    return glyphs.emplace(index, rasterize(index)).first->second;
 }
 
-void TrueTypeFont::rasterize(std::uint32_t index, Glyph& glyph) {
+Font::Glyph TrueTypeFont::rasterize(std::uint32_t index) {
     int advance = 0;
     int bearing = 0;
     stbtt_GetGlyphHMetrics(&face->info, static_cast<int>(index), &advance, &bearing);
-    glyph.advance = static_cast<float>(advance) * face->scale;
+    Glyph glyph{.advance = static_cast<float>(advance) * face->scale};
 
     const std::optional<DistanceField> field = DistanceField::build(face->info, static_cast<int>(index), face->scale, options.spread);
     if (!field) {
-        return;
+        return glyph;
     }
     const int width = field->width;
     const int height = field->height;
@@ -160,6 +205,7 @@ void TrueTypeFont::rasterize(std::uint32_t index, Glyph& glyph) {
     cursorX += width + 1;
     rowHeight = std::max(rowHeight, height);
     dirty = true;
+    return glyph;
 }
 
 void TrueTypeFont::grow() {
@@ -171,7 +217,7 @@ void TrueTypeFont::grow() {
         throw std::runtime_error("The font atlas exceeded the maximum texture size.");
     }
 
-    std::vector<std::uint8_t> grown(static_cast<std::size_t>(width * height), 0);
+    std::vector<std::uint8_t> grown(static_cast<std::size_t>(width) * static_cast<std::size_t>(height), 0);
     for (int row = 0; row < atlasHeight; ++row) {
         std::copy_n(atlas.begin() + static_cast<std::ptrdiff_t>(row * atlasWidth), atlasWidth, grown.begin() + static_cast<std::ptrdiff_t>(row * width));
     }
@@ -185,7 +231,11 @@ void TrueTypeFont::sync() {
     if (!dirty) {
         return;
     }
-    device.replaceAlphaTexture(texture, atlasWidth, atlasHeight, atlas);
+    if (texture.getWidth() == atlasWidth && texture.getHeight() == atlasHeight) {
+        device.replaceAlphaTexture(texture, atlasWidth, atlasHeight, atlas);
+    } else {
+        texture = device.createAlphaTexture(atlasWidth, atlasHeight, atlas, {.filter = graphics::Texture::Filter::Linear});
+    }
     dirty = false;
 }
 

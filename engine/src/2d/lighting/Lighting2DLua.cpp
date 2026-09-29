@@ -30,7 +30,7 @@ int Lighting2DLua::flicker(lua_State* L) {
 
 int Lighting2DLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"flicker", &lua::Binding::native<&flicker>}, {"newLight", &lua::Binding::native<&LightLua::newLight>}, {"illuminate", &lua::Binding::native<&LightLua::illuminate>}, {"newOccluder", &lua::Binding::native<&OccluderLua::newOccluder>}, {"occludersFromBody", &lua::Binding::native<&OccluderLua::fromBody>}, {"occludersFromMap", &lua::Binding::native<&OccluderLua::fromMap>}, {nullptr, nullptr},
+        {"flicker", &lua::Binding::native<&flicker>}, {"newLight", &lua::Binding::native<&LightLua::newLight>}, {"illuminate", &lua::Binding::native<&LightLua::illuminate>}, {"falloff", &lua::Binding::native<&LightLua::falloff>}, {"newOccluder", &lua::Binding::native<&OccluderLua::newOccluder>}, {"occludersFromBody", &lua::Binding::native<&OccluderLua::fromBody>}, {"occludersFromMap", &lua::Binding::native<&OccluderLua::fromMap>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

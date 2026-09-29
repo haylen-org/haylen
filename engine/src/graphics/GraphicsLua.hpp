@@ -17,6 +17,7 @@ class GraphicsLua final {
 
     static int newRenderTarget(lua_State* L);
     static int newTexture(lua_State* L);
+    static int maxTextureSize(lua_State* L);
     static int whiteTexture(lua_State* L);
     static int backend(lua_State* L);
 

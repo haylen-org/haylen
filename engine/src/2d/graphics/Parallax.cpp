@@ -1,6 +1,8 @@
 #include "haylen/2d/graphics/Parallax.hpp"
 
+#include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <stdexcept>
 #include <vector>
 
@@ -24,7 +26,7 @@ math::Vec2 Parallax::getOffset(const Camera& camera) const noexcept {
     return scrolled + view * follow;
 }
 
-void Parallax::draw(Renderer& renderer, const Camera& camera, const math::Rect& screen, const DrawOrder& order) const {
+void Parallax::draw(Renderer& renderer, const Camera& camera, const DrawOrder& order) const {
     if (!texture.isValid()) {
         throw std::logic_error("A parallax layer needs a texture to draw.");
     }
@@ -36,18 +38,20 @@ void Parallax::draw(Renderer& renderer, const Camera& camera, const math::Rect& 
         throw std::invalid_argument("A parallax layer needs a positive size to repeat.");
     }
 
-    // Repeated axes cover the visible part of the world with copies on a grid anchored at the layer origin.
+    // Repeated axes cover the part of the world the canvas shows with copies on a grid anchored at the layer origin, counted rather than stepped so far positions never stall on float precision.
     const math::Vec2 origin = position + getOffset(camera);
-    const math::Rect visible = camera.visibleBounds(screen);
+    const math::Rect visible = renderer.getCanvasBounds();
     const float left = repeatX ? firstCopy(visible.getLeft(), origin.x, step.x) : origin.x;
     const float top = repeatY ? firstCopy(visible.getTop(), origin.y, step.y) : origin.y;
-    const float right = repeatX ? visible.getRight() : origin.x + step.x * 0.5F;
-    const float bottom = repeatY ? visible.getBottom() : origin.y + step.y * 0.5F;
+    const int columns = repeatX ? static_cast<int>(std::ceil((visible.getRight() - left) / step.x)) : 1;
+    const int rows = repeatY ? static_cast<int>(std::ceil((visible.getBottom() - top) / step.y)) : 1;
 
     std::vector<SpriteInstance> copies;
-    for (float y = top; y < bottom; y += step.y) {
-        for (float x = left; x < right; x += step.x) {
-            copies.push_back({.position = {x, y}, .size = drawn, .source = part, .pivot = {}, .color = color});
+    copies.reserve(static_cast<std::size_t>(std::max(columns, 0)) * static_cast<std::size_t>(std::max(rows, 0)));
+    for (int row = 0; row < rows; ++row) {
+        for (int column = 0; column < columns; ++column) {
+            const math::Vec2 at{left + static_cast<float>(column) * step.x, top + static_cast<float>(row) * step.y};
+            copies.push_back({.position = at, .size = drawn, .source = part, .pivot = {}, .color = color});
         }
     }
     renderer.drawBatch(texture, copies, order);

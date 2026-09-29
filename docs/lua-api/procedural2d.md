@@ -76,7 +76,7 @@ Places points over a region, keeps them out of exclusion zones and gives each on
 | `method` | string | `'random'` | `'random'` places the area times the density in points, `'grid'` places one point per cell of spacing size moved randomly by up to jitter times half the spacing, and `'poisson'` keeps points at least spacing apart. |
 | `density` | number | `0.001` | Points per square unit for `'random'`. |
 | `spacing` | number | `32` | Cell size for `'grid'` and smallest distance for `'poisson'`. |
-| `maximumSpacing` | number | `0` | Largest distance for `'poisson'` where the density map is 0. |
+| `maximumSpacing` | number | required with `'poisson'` and a density map | Largest distance for `'poisson'` where the density map is 0, at least `spacing`. |
 | `jitter` | number | `1` | Share of half the spacing a grid point may move. |
 | `attempts` | integer | `30` | Candidates tried around each Poisson point. |
 | `densityMap` | function or noise | `nil` | Value from 0 to 1 at a point. `'random'` and `'grid'` keep each point with that probability, and `'poisson'` spaces points from `spacing` where it is 1 to `maximumSpacing` where it is 0. |
@@ -86,7 +86,9 @@ Places points over a region, keeps them out of exclusion zones and gives each on
 | `layers` | table | `{}` | List of `{minimum, maximum, weights}`. A point takes the weights of the first layer whose range holds its biome value, and points outside every layer are dropped. |
 | `seed`, `random` | | | The generator, as described above. |
 
-A function map is called with the point as a `Vec2`. A noise map is a table `{seed = 0, frequency = 0.01, octaves = 4, gain = 0.5}` of fractal noise, which a density map rescales from -1 to 1 into 0 to 1.
+A function map is called with the point as a `Vec2`. A noise map is a table `{seed = 0, frequency = 0.01, octaves = 4, gain = 0.5}` of fractal noise, which a density map rescales from -1 to 1 into 0 to 1. A map of another type raises `The densityMap option takes a function or a noise table.`, or the same error naming `biome`.
+
+A density that is negative or not finite, or a spacing that is not positive and finite, raises `Scattering needs a finite density of at least zero and a finite positive spacing.` A `'poisson'` scatter with a density map and without a finite `maximumSpacing` of at least `spacing` raises `Poisson scattering with a density map needs a finite maximumSpacing of at least the spacing.` A region that would take more than 16777216 points, or Poisson grid cells, raises an error that names the limit.
 
 ```lua
 local procedural = require('haylen.procedural2d')
@@ -145,6 +147,20 @@ local labels, regions = spatial.components(cave, {background = 1})
 print(cave:get(40, 25), regions, labels.width)
 ```
 
+### procedural.cavesStep(grid, options)
+
+Runs one smoothing step of the cave automaton over any `CellGrid` of walls (1) and floors (0), such as a painted map or a noise threshold, and returns the smoothed grid. `options` is optional and takes `birthLimit`, `survivalLimit` and `solidBorder` with the defaults and meaning of `caves`.
+
+```lua
+local procedural = require('haylen.procedural2d')
+local spatial = require('haylen.spatial2d')
+
+local painted = spatial.newCellGrid(5, 5)
+painted:set(2, 2, 1)
+local smooth = procedural.cavesStep(painted, {solidBorder = false})
+print(smooth:get(2, 2), procedural.cavesStep(painted):get(0, 0)) -- 0 1
+```
+
 ### procedural.drunkardWalk(options), procedural.drunkardWalkAsync(options)
 
 Carves winding caves with random walkers that start at the center and dig floors until `coverage` of the cells inside the border is open, and returns the `CellGrid`. Walking stops early after `maxSteps` steps. Sides below 3 or no walkers raise `A drunkard walk needs a map of at least 3 by 3 cells and at least one walker.`
@@ -189,13 +205,27 @@ print(dungeon.grid:get(start.x, start.y)) -- 0
 
 ### procedural.maze(options), procedural.mazeAsync(options)
 
-Generates a perfect maze, where exactly one path joins any two cells, and returns a `Maze`. `'backtracker'` makes long winding corridors, while `'prim'` and `'kruskal'` make many short dead ends. Options are `{width = 16, height = 16, algorithm = 'backtracker'}` with the generator fields.
+Generates a perfect maze, where exactly one path joins any two cells, and returns a `Maze`. `'backtracker'` makes long winding corridors, while `'prim'` and `'kruskal'` make many short dead ends. Options are `{width = 16, height = 16, algorithm = 'backtracker'}` with the generator fields. Sides below 1, or a maze whose `toGrid` tiles would not fit in 32-bit cell indices, raise `A maze needs at least one cell on each side and a tile grid that fits in 32-bit cell indices.`
 
 ```lua
 local procedural = require('haylen.procedural2d')
 
 local maze = procedural.maze({width = 20, height = 12, algorithm = 'prim', seed = 5})
 print(maze.width, maze.height, maze.passageCount) -- 20 12 239
+```
+
+### procedural.newMaze(width, height)
+
+Creates a `Maze` with every wall closed, to carve by hand with `maze:open` or with an algorithm of your own. Sizes follow the rules of `procedural.maze`.
+
+```lua
+local procedural = require('haylen.procedural2d')
+
+local corridor = procedural.newMaze(4, 1)
+for x = 0, 2 do
+    corridor:open(x, 0, procedural.east)
+end
+print(corridor.passageCount, corridor:openings(1, 0)) -- 3 10
 ```
 
 ### maze:openings(x, y), maze:open(x, y, side), maze:toGrid()
@@ -246,26 +276,84 @@ local island = procedural.waveFunctionCollapse({tiles = 3, allow = rules, weight
 print(island and island:get(24, 16)) -- 2
 ```
 
+### procedural.waveFunctionCollapseRules(options)
+
+Reads the rules keys of `waveFunctionCollapse` (`sample`, `periodicSample`, `tiles`, `allow` and `weights`) into a `WaveFunctionCollapseRules` object, to see what a sample taught or to check maps painted by hand against the rules. Other keys raise `Unknown option '<key>'.`
+
+| Member | Meaning |
+| --- | --- |
+| `rules.tileCount` | Number of tiles, read only. |
+| `rules:allowed(first, second, side)` | True when tile `second` may sit on `side` of tile `first`, where side is `'right'`, `'down'`, `'left'` or `'up'`. |
+| `rules:weight(tile)` | Weight of a tile, or 0 for a tile the rules do not have. |
+| `rules:valid(grid, periodic)` | True when every pair of neighbors of the `CellGrid` follows the rules, also across opposite edges when `periodic` is true. Cells that hold no tile of the rules make it false. |
+
+```lua
+local procedural = require('haylen.procedural2d')
+local spatial = require('haylen.spatial2d')
+
+local sample = spatial.newCellGrid(4, 1)
+for x = 0, 3 do
+    sample:set(x, 0, x % 2)
+end
+local rules = procedural.waveFunctionCollapseRules({sample = sample, periodicSample = true})
+print(rules.tileCount, rules:allowed(0, 1, 'right'), rules:allowed(0, 0, 'right'), rules:weight(1)) -- 2 true false 2.0
+
+local painted = spatial.newCellGrid(6, 2)
+for x = 0, 5 do
+    painted:set(x, 0, x % 2)
+    painted:set(x, 1, x % 2)
+end
+print(rules:valid(painted), rules:valid(sample, true)) -- true true
+```
+
 ## Triangulation and Voronoi
 
 ### procedural.delaunay(points)
 
-Returns the Delaunay triangulation of a list of points as `{triangles, halfedges, hull, neighbors}`, built with the sweep hull algorithm of Delaunator. `triangles` lists three point positions from 1 per triangle, wound with a positive `m.polygonArea`. `halfedges` gives, for each edge of `triangles`, the position of the same edge in the neighboring triangle, or 0 on the convex hull. `hull` lists the points on the convex hull in order, and `neighbors` the points joined to each point. No point lies inside the circumcircle of any triangle. Duplicate points stay out, and points on one line give no triangles.
+Returns the Delaunay triangulation of a list of points as a `Delaunay` object, built with a sweep hull in O(n log n). No point lies inside the circumcircle of any triangle. Duplicate points stay out, and points on one line give no triangles. A point that is not finite raises `A Delaunay triangulation needs finite points.`
+
+| Member | Meaning |
+| --- | --- |
+| `mesh.points` | The points as a list of `Vec2`. |
+| `mesh.triangles` | Three point positions from 1 per triangle, wound with a positive `m.polygonArea`. |
+| `mesh.halfedges` | For each edge of `triangles`, the position of the same edge in the neighboring triangle, or 0 on the convex hull. Edge `e` runs from point `triangles[e]` to the next point of its triangle. |
+| `mesh.hull` | The points on the convex hull in order, or every distinct point along the line when they all lie on one. |
+| `mesh.neighbors` | For each point, the points joined to it by an edge, in increasing order. |
+| `mesh.triangleCount` | The number of triangles. |
+
+The lists are read only properties, built the first time they are read, and later reads return the same tables, so a loop can read them freely.
 
 ```lua
 local procedural = require('haylen.procedural2d')
 
 local stars = {{0, 0}, {100, 10}, {40, 80}, {120, 90}, {60, 30}}
 local mesh = procedural.delaunay(stars)
-for i = 1, #mesh.triangles, 3 do
-    print(mesh.triangles[i], mesh.triangles[i + 1], mesh.triangles[i + 2])
+local triangles = mesh.triangles
+for i = 1, #triangles, 3 do
+    print(triangles[i], triangles[i + 1], triangles[i + 2])
 end
-print(#mesh.hull, #mesh.neighbors[5])
+print(mesh.triangleCount, #mesh.hull, #mesh.neighbors[5])
+```
+
+### mesh:circumcenter(triangle), mesh:findNearest(position, start)
+
+`circumcenter` returns the center of the circle through the corners of a triangle counted from 1 as a `Vec2`, where the Voronoi cells of its three corners meet, and a triangle outside `1` to `triangleCount` raises `the triangle is outside the triangulation`. `findNearest` returns the position of the point nearest to `position`, which is also the Voronoi cell that holds it, or `nil` without points. It walks the edges of the triangulation in about the square root of the point count in steps, from the point `start` when it is given, so a start near the answer, such as the previous answer of a moving position, makes it faster. A duplicate point given as start returns itself, and a start outside the points raises `the start is outside the points`.
+
+```lua
+local procedural = require('haylen.procedural2d')
+
+local towns = {{100, 100}, {400, 120}, {250, 380}, {600, 300}}
+local mesh = procedural.delaunay(towns)
+local region = mesh:findNearest({380, 150})
+print(region, mesh:findNearest({590, 310}, region)) -- 2 4
+for triangle = 1, mesh.triangleCount do
+    print(mesh:circumcenter(triangle))
+end
 ```
 
 ### procedural.voronoi(points, bounds), procedural.voronoiAsync(points, bounds)
 
-Returns the Voronoi cell of every point inside the `Rect` `bounds`, in the order of the points. Cell `i` holds every position closer to point `i` than to any other point, as a convex outline of `Vec2` with a positive area. Duplicate points get empty cells.
+Returns the Voronoi cell of every point inside the `Rect` `bounds`, in the order of the points. Cell `i` holds every position closer to point `i` than to any other point, as a convex outline of `Vec2` with a positive area, so `mesh:findNearest` of the triangulation of the same points finds the cell that holds a position. Duplicate points get empty cells. A point that is not finite raises `A Delaunay triangulation needs finite points.`, and bounds that are not finite raise `A Voronoi diagram needs a finite area.`, which the asynchronous version reports by rejecting its promise.
 
 ```lua
 local procedural = require('haylen.procedural2d')

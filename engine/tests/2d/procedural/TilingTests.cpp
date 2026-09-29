@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cmath>
+#include <limits>
 #include <set>
 #include <stdexcept>
 #include <vector>
@@ -83,6 +85,10 @@ TEST_F(TilingTest, DelaunayHandlesCollinearAndTinyInputs) {
     EXPECT_EQ(Delaunay({{1.0F, 1.0F}}).getHull().size(), 1U);
     EXPECT_EQ(Delaunay({}).getTriangleCount(), 0U);
     EXPECT_EQ(Delaunay({{0.0F, 0.0F}, {1.0F, 0.0F}, {0.0F, 1.0F}}).getTriangleCount(), 1U);
+
+    // Points that are not finite have no place in the sweep order, so they raise.
+    EXPECT_THROW(Delaunay({{0.0F, 0.0F}, {std::nanf(""), 1.0F}, {1.0F, 0.0F}}), std::invalid_argument);
+    EXPECT_THROW(Delaunay({{0.0F, 0.0F}, {std::numeric_limits<float>::infinity(), 1.0F}}), std::invalid_argument);
 }
 
 TEST_F(TilingTest, VoronoiCellsTileTheBoundsAroundTheirSites) {
@@ -100,7 +106,6 @@ TEST_F(TilingTest, VoronoiCellsTileTheBoundsAroundTheirSites) {
         total += math::Geometry::signedArea(cell);
     }
     EXPECT_NEAR(total, bounds.getArea(), 10.0F);
-    EXPECT_EQ(voronoi.findCell(points[7] + math::Vec2{0.01F, 0.0F}), 7U);
 
     // Lloyd relaxation spreads the points out, so the closest pair moves apart.
     EXPECT_GT(closestPair(Voronoi::relax(points, bounds, 5)), closestPair(points) * 2.0F);
@@ -108,6 +113,8 @@ TEST_F(TilingTest, VoronoiCellsTileTheBoundsAroundTheirSites) {
     const Voronoi single({{10.0F, 10.0F}, {10.0F, 10.0F}}, bounds);
     EXPECT_NEAR(math::Geometry::signedArea(single.getCells()[0]), bounds.getArea(), 1e-3F);
     EXPECT_TRUE(single.getCells()[1].empty());
+    EXPECT_THROW(Voronoi(points, {0.0F, 0.0F, std::numeric_limits<float>::infinity(), 10.0F}), std::invalid_argument);
+    EXPECT_THROW(Voronoi({{std::nanf(""), 0.0F}}, bounds), std::invalid_argument);
 }
 
 TEST_F(TilingTest, WaveFunctionCollapseFollowsTheRules) {

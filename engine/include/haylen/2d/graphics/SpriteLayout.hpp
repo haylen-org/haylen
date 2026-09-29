@@ -44,12 +44,6 @@ class SpriteLayout final {
     [[nodiscard]] std::size_t getStride() const noexcept {
         return fields.size();
     }
-    [[nodiscard]] const std::vector<Field>& getFields() const noexcept {
-        return fields;
-    }
-    [[nodiscard]] const SpriteInstance& getTemplate() const noexcept {
-        return base;
-    }
 
     // Returns how many whole sprites the values hold.
     [[nodiscard]] std::size_t getCount(std::span<const float> values) const noexcept {

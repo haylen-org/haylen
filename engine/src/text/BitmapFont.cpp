@@ -267,17 +267,20 @@ BitmapFont::Description BitmapFont::parseBinary(std::span<const std::uint8_t> by
     return description;
 }
 
-// Cells run left to right and top to bottom from the margin, as many per row as the image holds.
+// Cells run left to right and top to bottom from the margin, as many per row as the image holds, which is none when the margins leave no room.
 BitmapFont::Description BitmapFont::describeGrid(const Grid& grid, math::Vec2 imageSize) {
-    if (!(grid.cellWidth > 0.0F) || !(grid.cellHeight > 0.0F)) {
-        throw std::invalid_argument("A grid font needs a positive cell width and height.");
+    if (!(grid.cellWidth >= 1.0F) || !(grid.cellHeight >= 1.0F)) {
+        throw std::invalid_argument("A grid font needs cells at least one pixel wide and tall.");
+    }
+    if (!(grid.spacing.x >= 0.0F) || !(grid.spacing.y >= 0.0F) || !(grid.margin.x >= 0.0F) || !(grid.margin.y >= 0.0F)) {
+        throw std::invalid_argument("A grid font cannot have a negative spacing or margin.");
     }
     const std::u32string characters = core::Utf8::decode(grid.characters);
     if (characters.empty()) {
         throw std::invalid_argument("A grid font needs the characters of its cells.");
     }
-    const auto columns = static_cast<std::size_t>(std::floor((imageSize.x - grid.margin.x * 2.0F + grid.spacing.x) / (grid.cellWidth + grid.spacing.x)));
-    const auto rows = static_cast<std::size_t>(std::floor((imageSize.y - grid.margin.y * 2.0F + grid.spacing.y) / (grid.cellHeight + grid.spacing.y)));
+    const auto columns = static_cast<std::size_t>(std::max(0.0F, std::floor((imageSize.x - grid.margin.x * 2.0F + grid.spacing.x) / (grid.cellWidth + grid.spacing.x))));
+    const auto rows = static_cast<std::size_t>(std::max(0.0F, std::floor((imageSize.y - grid.margin.y * 2.0F + grid.spacing.y) / (grid.cellHeight + grid.spacing.y))));
     if (columns == 0 || characters.size() > columns * rows) {
         throw std::invalid_argument("The grid font image holds " + std::to_string(columns * rows) + " cells, fewer than its " + std::to_string(characters.size()) + " characters.");
     }

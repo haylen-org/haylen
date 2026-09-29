@@ -40,7 +40,7 @@ class Rope final {
         float length = 0.0F;
     };
 
-    // Throws std::invalid_argument when there are no segments, the ends coincide or the thickness is not positive.
+    // Throws std::invalid_argument when there are no segments, the ends coincide, the thickness is not positive, the material or damping is invalid or an end body is not a live body of the world, and then leaves no bodies behind.
     [[nodiscard]] static Rope create(World& world, const Options& options);
 
     // Creates a bridge of planks pinned at both ends unless the options give bodies for them.
@@ -65,6 +65,8 @@ class Rope final {
     void destroy();
 
   private:
+    void build(World& world, const Options& options);
+
     std::vector<Body> bodies;
     std::vector<Body> anchors;
     std::vector<Joint> joints;

@@ -20,6 +20,13 @@ math::Vec2 Effect::readVec2(const core::Json& value) {
     return {value.at(0).get<float>(), value.at(1).get<float>()};
 }
 
+std::size_t Effect::readCount(const core::Json& value, std::string_view name) {
+    if (!value.is_number_integer() || value < 0) {
+        throw std::invalid_argument("The particle effect value '" + std::string(name) + "' needs an integer of at least 0.");
+    }
+    return value.get<std::size_t>();
+}
+
 math::Color Effect::readColor(const core::Json& value) {
     const std::string text = value.get<std::string>();
     const std::optional<math::Color> color = math::Color::parse(text);
@@ -43,13 +50,15 @@ Effect Effect::parse(const core::Json& document, std::string_view path) {
         settings.frames.push_back({frame.at(0).get<float>(), frame.at(1).get<float>(), frame.at(2).get<float>(), frame.at(3).get<float>()});
     }
     for (const core::Json& burst : document.value("bursts", core::Json::array())) {
-        settings.bursts.push_back({.time = burst.at("time").get<float>(), .count = burst.at("count").get<std::size_t>()});
+        settings.bursts.push_back({.time = burst.at("time").get<float>(), .count = readCount(burst.at("count"), "count")});
     }
     settings.rate = document.value("rate", settings.rate);
     settings.duration = document.value("duration", settings.duration);
     settings.loop = document.value("loop", settings.loop);
     settings.prewarm = document.value("prewarm", settings.prewarm);
-    settings.maxParticles = document.value("maxParticles", settings.maxParticles);
+    if (document.contains("maxParticles")) {
+        settings.maxParticles = readCount(document.at("maxParticles"), "maxParticles");
+    }
     settings.direction = document.value("direction", settings.direction);
     settings.spread = document.value("spread", settings.spread);
     settings.damping = document.value("damping", settings.damping);

@@ -201,9 +201,19 @@ int AgentLua::crowdRadius(lua_State* L) {
     return 1;
 }
 
+int AgentLua::crowdMaxSpeed(lua_State* L) {
+    lua::Stack::push(L, checkCrowd(L).getMaxSpeed(readAgentId(L)));
+    return 1;
+}
+
 int AgentLua::crowdSetPreferredVelocity(lua_State* L) {
     checkCrowd(L).setPreferredVelocity(readAgentId(L), {lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4)});
     return 0;
+}
+
+int AgentLua::crowdPreferredVelocity(lua_State* L) {
+    lua::Stack::push(L, checkCrowd(L).getPreferredVelocity(readAgentId(L)));
+    return 1;
 }
 
 int AgentLua::crowdSetTarget(lua_State* L) {
@@ -256,7 +266,7 @@ void AgentLua::addFunctions(lua_State* L) {
 
 void AgentLua::install(lua_State* L) {
     lua::ClassBuilder<ScriptedAgent>(L).nestedField<&ScriptedAgent::agent, &SteeringAgent::position>("position").nestedField<&ScriptedAgent::agent, &SteeringAgent::velocity>("velocity").nestedField<&ScriptedAgent::agent, &SteeringAgent::maxSpeed>("maxSpeed").nestedField<&ScriptedAgent::agent, &SteeringAgent::maxForce>("maxForce").property("wanderDistance", &agentGetWander<&Wanderer::Settings::distance>, &lua::Binding::native<&agentSetWander<&Wanderer::Settings::distance>>).property("wanderRadius", &agentGetWander<&Wanderer::Settings::radius>, &lua::Binding::native<&agentSetWander<&Wanderer::Settings::radius>>).property("wanderJitter", &agentGetWander<&Wanderer::Settings::jitter>, &lua::Binding::native<&agentSetWander<&Wanderer::Settings::jitter>>).function("seek", &lua::Binding::native<&agentSeek>).function("flee", &lua::Binding::native<&agentFlee>).function("arrive", &lua::Binding::native<&agentArrive>).function("separation", &lua::Binding::native<&agentSeparation>).function("alignment", &lua::Binding::native<&agentAlignment>).function("cohesion", &lua::Binding::native<&agentCohesion>).function("avoid", &lua::Binding::native<&agentAvoid>).function("wander", &lua::Binding::native<&agentWander>).function("apply", &lua::Binding::native<&agentApply>).install();
-    lua::ClassBuilder<Crowd>(L).function("addAgent", &lua::Binding::native<&crowdAddAgent>).function("removeAgent", &lua::Binding::native<&crowdRemoveAgent>).function("hasAgent", &lua::Binding::native<&crowdHasAgent>).function("addObstacle", &lua::Binding::native<&crowdAddObstacle>).function("clearObstacles", &lua::Binding::native<&crowdClearObstacles>).function("position", &lua::Binding::native<&crowdPosition>).function("setPosition", &lua::Binding::native<&crowdSetPosition>).function("velocity", &lua::Binding::native<&crowdVelocity>).function("radius", &lua::Binding::native<&crowdRadius>).function("setPreferredVelocity", &lua::Binding::native<&crowdSetPreferredVelocity>).function("setTarget", &lua::Binding::native<&crowdSetTarget>).function("clearTarget", &lua::Binding::native<&crowdClearTarget>).function("target", &lua::Binding::native<&crowdTarget>).function("step", &lua::Binding::native<&crowdStep>).property("agentCount", &crowdAgentCount).property("separation", &crowdGetFlocking<&Crowd::Flocking::separation>, &lua::Binding::native<&crowdSetFlocking<&Crowd::Flocking::separation>>).property("alignment", &crowdGetFlocking<&Crowd::Flocking::alignment>, &lua::Binding::native<&crowdSetFlocking<&Crowd::Flocking::alignment>>).property("cohesion", &crowdGetFlocking<&Crowd::Flocking::cohesion>, &lua::Binding::native<&crowdSetFlocking<&Crowd::Flocking::cohesion>>).install();
+    lua::ClassBuilder<Crowd>(L).function("addAgent", &lua::Binding::native<&crowdAddAgent>).function("removeAgent", &lua::Binding::native<&crowdRemoveAgent>).function("hasAgent", &lua::Binding::native<&crowdHasAgent>).function("addObstacle", &lua::Binding::native<&crowdAddObstacle>).function("clearObstacles", &lua::Binding::native<&crowdClearObstacles>).function("position", &lua::Binding::native<&crowdPosition>).function("setPosition", &lua::Binding::native<&crowdSetPosition>).function("velocity", &lua::Binding::native<&crowdVelocity>).function("radius", &lua::Binding::native<&crowdRadius>).function("maxSpeed", &lua::Binding::native<&crowdMaxSpeed>).function("setPreferredVelocity", &lua::Binding::native<&crowdSetPreferredVelocity>).function("preferredVelocity", &lua::Binding::native<&crowdPreferredVelocity>).function("setTarget", &lua::Binding::native<&crowdSetTarget>).function("clearTarget", &lua::Binding::native<&crowdClearTarget>).function("target", &lua::Binding::native<&crowdTarget>).function("step", &lua::Binding::native<&crowdStep>).property("agentCount", &crowdAgentCount).property("separation", &crowdGetFlocking<&Crowd::Flocking::separation>, &lua::Binding::native<&crowdSetFlocking<&Crowd::Flocking::separation>>).property("alignment", &crowdGetFlocking<&Crowd::Flocking::alignment>, &lua::Binding::native<&crowdSetFlocking<&Crowd::Flocking::alignment>>).property("cohesion", &crowdGetFlocking<&Crowd::Flocking::cohesion>, &lua::Binding::native<&crowdSetFlocking<&Crowd::Flocking::cohesion>>).install();
 }
 
 } // namespace haylen::navigation2d

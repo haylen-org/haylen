@@ -20,7 +20,7 @@
 
 namespace haylen::text {
 
-// Text written in BBCode markup, laid out with a font family and animated by effects and a typewriter reveal. Layouts are cached by width and scale, and each frame applies the effects and the reveal to a copy of the layout.
+// Text written in BBCode markup, laid out with a font family and animated by effects and a typewriter reveal. Layouts are cached by width and scale, and each frame applies the effects and the reveal to a copy of the layout. Effects run while that copy is built, so a method that changes or lays out the text throws std::logic_error when an effect of the same text calls it.
 class RichText final {
   public:
     RichText(std::string markup, RichTextOptions textOptions, std::shared_ptr<RichTextRegistry> textRegistry);
@@ -85,8 +85,11 @@ class RichText final {
     static debug::ObjectCounter counter;
 
     static void validate(const RichTextOptions& value);
+    static void validateWidth(float value);
+    [[nodiscard]] static bool isPositive(float value) noexcept;
     static void applyReveal(TextLayout& revealed, std::size_t visible);
 
+    void requireIdle() const;
     void resetReveal() noexcept;
     [[nodiscard]] CachedLayout& getCachedLayout(float maxWidth);
     [[nodiscard]] const std::vector<float>& getRevealTimes();
@@ -110,6 +113,7 @@ class RichText final {
     float time = 0.0F;
     bool frameDirty = true;
     bool revealDirty = true;
+    bool applyingEffects = false;
     debug::TrackedObject tracked{counter};
 };
 

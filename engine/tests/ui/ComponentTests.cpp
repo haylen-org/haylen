@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <memory>
 #include <string>
 #include <vector>
@@ -333,6 +334,12 @@ TEST_F(ComponentTest, SelectsInContainersAndCollections) {
     EXPECT_EQ(getLastEvent().name, "resize");
     EXPECT_LT(getLastEvent().value.at("ratio").get<double>(), 0.4);
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"tabs:select", "list:select", "tree:toggle", "tree:select", "table:select", "split:resize"}));
+
+    for (const double width : {std::numeric_limits<double>::infinity(), std::numeric_limits<double>::quiet_NaN(), 1e300}) {
+        core::Json columns = core::Json::array();
+        columns.push_back({{"width", width}});
+        EXPECT_THROW(document->set("table", {{"columns", columns}}), std::invalid_argument) << width;
+    }
 }
 
 TEST_F(ComponentTest, RunsDialogsToastsAndPopups) {
@@ -373,6 +380,197 @@ TEST_F(ComponentTest, RunsDialogsToastsAndPopups) {
     click(menu.getCenter());
     click({menu.x + padding + 20.0F, menu.getBottom() + 4.0F + padding + item * 0.5F});
     EXPECT_EQ(getLastEvent().value, (core::Json{{"item", "save"}}));
+}
+
+// A dialog or a menu whose node stops drawing closes, so it no longer keeps the pointer and cancel from the rest of the UI.
+TEST_F(ComponentTest, ClosesThePopupsOfNodesThatStopDrawing) {
+    // clang-format off
+    auto document = mount(R"({"kind": "column", "padding": 20, "children": [
+        {"kind": "button", "id": "play", "text": "Play"},
+        {"kind": "menuButton", "id": "menu", "text": "Menu", "items": [{"id": "save", "text": "Save"}]},
+        {"kind": "dialog", "id": "quit", "open": true, "title": "Quit?", "buttons": [{"id": "stay", "text": "Stay"}]}
+    ]})");
+    // clang-format on
+    frames(2);
+    ASSERT_TRUE(getUi().isCapturingBack());
+    document->set("quit", {{"visible", false}});
+    frames(2);
+    EXPECT_FALSE(getUi().isCapturingBack());
+    click(*document, "play");
+    EXPECT_EQ(getEventNames(), (std::vector<std::string>{"play:click"}));
+
+    click(*document, "menu");
+    ASSERT_TRUE(getUi().isCapturingBack());
+    document->set("menu", {{"visible", false}});
+    frames(2);
+    EXPECT_FALSE(getUi().isCapturingBack());
+
+    document->set("quit", {{"visible", true}});
+    frames(2);
+    ASSERT_TRUE(getUi().isCapturingBack());
+    document->setVisible(false);
+    frames(2);
+    EXPECT_FALSE(getUi().isCapturingBack());
+
+    document->setVisible(true);
+    frames(2);
+    ASSERT_TRUE(getUi().isCapturingBack());
+    getUi().unmount(*document);
+    frames(2);
+    EXPECT_FALSE(getUi().isCapturingBack());
+}
+
+TEST_F(ComponentTest, ShowsOneDialogAtATime) {
+    // clang-format off
+    auto document = mount(R"({"kind": "column", "children": [
+        {"kind": "dialog", "id": "first", "open": true, "title": "First", "buttons": [{"id": "ok", "text": "OK"}]},
+        {"kind": "dialog", "id": "second", "open": true, "title": "Second", "buttons": [{"id": "ok", "text": "OK"}]}
+    ]})");
+    // clang-format on
+    frames(2);
+    key(input::Key::Enter);
+    frames(2);
+    key(input::Key::Enter);
+    frames(2);
+    EXPECT_EQ(getEventNames(), (std::vector<std::string>{"first:answer", "second:answer"}));
+}
+
+TEST_F(ComponentTest, ScrollsTheContentOfDialogsTallerThanTheScreen) {
+    std::string buttons;
+    for (int index = 0; index < 30; ++index) {
+        buttons += std::string(index == 0 ? "" : ", ") + R"({"kind": "button", "id": "b)" + std::to_string(index) + R"(", "text": "Rule"})";
+    }
+    auto document = mount(R"({"kind": "column", "children": [{"kind": "dialog", "id": "rules", "open": true, "title": "Rules", "buttons": [{"id": "ok", "text": "OK"}], "children": [)" + buttons + "]}]}");
+    frames(2);
+    const math::Rect dialog = getBounds(*document, "rules");
+    EXPECT_LE(dialog.getBottom(), 1080.0F);
+    EXPECT_GT(getBounds(*document, "b29").getBottom(), dialog.getBottom());
+
+    document->command(getUi().getContext(), "b29", "focus", core::Json::object());
+    frames(3);
+    EXPECT_LE(getBounds(*document, "b29").getBottom(), dialog.getBottom());
+}
+
+// ImGui gives a child window without a size the rest of its window, which an empty scroll must not take.
+TEST_F(ComponentTest, LetsThePointerThroughAnEmptyScroll) {
+    auto document = mount(R"({"kind": "stack", "children": [{"kind": "button", "id": "play", "text": "Play", "align": "stretch"}, {"kind": "scroll", "align": "start"}]})");
+    click(*document, "play");
+    EXPECT_EQ(getEventNames(), (std::vector<std::string>{"play:click"}));
+}
+
+// Typing reports only numbers inside the range, and the end of the editing brings any other number into it. Text that is not a finite number changes nothing.
+TEST_F(ComponentTest, CommitsTypedNumbersInsideTheRange) {
+    auto document = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "numberField", "id": "count", "value": 20, "min": 10, "max": 100}]})");
+    // clang-format off
+    const auto retype = [this, &document](std::u32string_view text) {
+        click(*document, "count");
+        key(input::Key::Backspace);
+        key(input::Key::Backspace);
+        type(text);
+    };
+    // clang-format on
+    retype(U"50");
+    key(input::Key::Enter);
+    retype(U"5");
+    key(input::Key::Enter);
+    retype(U"nan");
+    key(input::Key::Enter);
+    frames(3);
+    ASSERT_EQ(getEventNames(), (std::vector<std::string>{"count:change", "count:change"}));
+    EXPECT_EQ(events[0].value, (core::Json{{"value", 50.0}}));
+    EXPECT_EQ(events[1].value, (core::Json{{"value", 10.0}}));
+}
+
+TEST_F(ComponentTest, MeasuresGridsWithTheGapsBetweenTheirColumns) {
+    // clang-format off
+    auto document = mount(R"({"kind": "column", "children": [{"kind": "grid", "id": "grid", "columns": 3, "gap": 20, "align": "start", "children": [
+        {"kind": "spacer", "width": 100, "height": 10}, {"kind": "spacer", "width": 100, "height": 10}, {"kind": "spacer", "width": 100, "height": 10}
+    ]}]})");
+    // clang-format on
+    EXPECT_EQ(getBounds(*document, "grid").width, 340.0F);
+}
+
+// A horizontal scroll offers its child an unbounded width, where kinds that fill the width they get take the width of their content instead.
+TEST_F(ComponentTest, GivesKindsThatFillTheirWidthAFiniteWidthInAHorizontalScroll) {
+    // clang-format off
+    auto document = mount(R"({"kind": "scroll", "axis": "horizontal", "height": 800, "children": [{"kind": "column", "id": "content", "children": [
+        {"kind": "list", "id": "list", "items": [{"id": "a", "text": "Alpha"}]},
+        {"kind": "tree", "items": [{"id": "root", "text": "Root", "children": [{"id": "leaf", "text": "Leaf"}]}], "expanded": ["root"]},
+        {"kind": "table", "columns": [{"text": "Name"}, {"text": "Score", "width": 120}], "rows": [{"id": "r1", "cells": ["Ana", 12]}]},
+        {"kind": "accordion", "items": [{"id": "a", "text": "First"}], "expanded": ["a"], "children": [{"kind": "label", "text": "Answer"}]},
+        {"kind": "carousel", "height": 100, "children": [{"kind": "label", "text": "Page"}]},
+        {"kind": "grid", "columns": 2, "children": [{"kind": "list", "items": [{"id": "b", "text": "Beta"}]}, {"kind": "label", "text": "Cell"}]},
+        {"kind": "splitter", "height": 60, "children": [{"kind": "list", "items": [{"id": "c", "text": "Gamma"}]}, {"kind": "label", "text": "Side"}]}
+    ]}]})");
+    // clang-format on
+    const float width = getBounds(*document, "content").width;
+    EXPECT_GT(width, 0.0F);
+    EXPECT_LT(width, 1000.0F);
+    EXPECT_EQ(getBounds(*document, "list").width, width);
+}
+
+// A splitter measures its children at the shares of its width they draw at, and a stacked splitter makes room for both.
+TEST_F(ComponentTest, MeasuresSplitterChildrenAtTheirShares) {
+    const std::string text = "A long line of text that wraps across the half of the splitter it gets, several times over, before the other half starts.";
+    // clang-format off
+    auto document = mount(R"({"kind": "column", "children": [
+        {"kind": "splitter", "id": "split", "children": [{"kind": "label", "id": "left", "text": ")" + text + R"("}, {"kind": "label", "text": "Short"}]},
+        {"kind": "splitter", "vertical": true, "children": [{"kind": "label", "id": "top", "text": "Top"}, {"kind": "label", "id": "bottom", "text": "Bottom"}]}
+    ]})");
+    // clang-format on
+    frames();
+    Context& context = getUi().getContext();
+    const float line = std::floor(Typography::getLineHeight(context, Theme::Font::Body));
+    EXPECT_GE(getBounds(*document, "split").height, Typography::measureParagraph(context, Theme::Font::Body, text, getBounds(*document, "left").width).y);
+    EXPECT_GE(getBounds(*document, "top").height, line);
+    EXPECT_GE(getBounds(*document, "bottom").height, line);
+}
+
+// Only the rows in view draw their content, while every row still takes the focus and the pointer.
+TEST_F(ComponentTest, DrawsOnlyTheRowsOfAScrolledListInView) {
+    // clang-format off
+    const auto count = [this](int rows) {
+        std::string items;
+        for (int index = 0; index < rows; ++index) {
+            items += std::string(index == 0 ? "" : ", ") + R"({"id": "i)" + std::to_string(index) + R"(", "text": "Row )" + std::to_string(index) + R"("})";
+        }
+        auto document = mount(R"({"kind": "scroll", "height": 300, "align": "start", "children": [{"kind": "list", "id": "list", "items": [)" + items + "]}]}");
+        const int drawn = countDrawn();
+        getUi().unmount(*document);
+        return drawn;
+    };
+    // clang-format on
+    EXPECT_EQ(count(20), count(200));
+}
+
+TEST_F(ComponentTest, TouchControlsIgnoreFingersWhileDisabled) {
+    // clang-format off
+    auto document = mount(R"({"kind": "row", "padding": 40, "gap": 400, "children": [
+        {"kind": "touchStick", "id": "stick", "action": "move", "radius": 100, "deadZone": 0},
+        {"kind": "touchButton", "id": "attack", "action": "attack", "size": 120}
+    ]})");
+    // clang-format on
+    const math::Rect stick = getBounds(*document, "stick");
+    const math::Rect attack = getBounds(*document, "attack");
+    input::VirtualInput& controls = getEngine().getVirtualInput();
+    touch(platform::Event::Type::TouchBegan, 1, stick.getCenter() + math::Vec2{50.0F, 0.0F});
+    touch(platform::Event::Type::TouchBegan, 2, attack.getCenter());
+    frames(2);
+    ASSERT_TRUE(controls.isButtonDown("attack"));
+
+    document->set("stick", {{"enabled", false}});
+    document->set("attack", {{"enabled", false}});
+    frames(2);
+    EXPECT_EQ(controls.getStick("move"), math::Vec2());
+    EXPECT_FALSE(controls.isButtonDown("attack"));
+
+    // Enabled again under the same fingers, the controls wait for new presses.
+    document->set("stick", {{"enabled", true}});
+    document->set("attack", {{"enabled", true}});
+    frames(2);
+    EXPECT_EQ(controls.getStick("move"), math::Vec2());
+    EXPECT_FALSE(controls.isButtonDown("attack"));
+    EXPECT_EQ(getEventNames(), (std::vector<std::string>{"attack:press", "attack:release"}));
 }
 
 TEST_F(ComponentTest, DrivesVirtualControlsWithSeveralFingers) {
@@ -710,6 +908,33 @@ TEST_F(ComponentTest, KeepsASliderValueOffItsStepUntilThePlayerMovesIt) {
     EXPECT_NEAR(value / 0.05, std::round(value / 0.05), 1e-9);
 }
 
+// Left and right land on the step as well, the shown value takes the room of the wider end of the track, and the ends stay finite numbers ImGui can drag between.
+TEST_F(ComponentTest, StepsSlidersWithTheKeyboardAndBoundsTheirEnds) {
+    // clang-format off
+    auto document = mount(R"({"kind": "column", "padding": 20, "children": [
+        {"kind": "slider", "id": "volume", "width": 400, "value": 0.33, "step": 0.05},
+        {"kind": "slider", "id": "depth", "width": 400, "min": -1000, "max": 0, "value": -1000, "showValue": true, "decimals": 0}
+    ]})");
+    // clang-format on
+    document->command(getUi().getContext(), "volume", "focus", core::Json::object());
+    frames(2);
+    key(input::Key::Right);
+    key(input::Key::Right);
+    ASSERT_FALSE(events.empty());
+    const double value = getLastEvent().value.at("value").get<double>();
+    EXPECT_NEAR(value / 0.05, std::round(value / 0.05), 1e-9);
+
+    events.clear();
+    getUi().getBackend().makeCurrent();
+    const float label = Typography::measure(getUi().getContext(), Theme::Font::Body, "-1000").x + getUi().getTheme().getMetric(Theme::Metric::ItemSpacing);
+    const math::Rect depth = getBounds(*document, "depth");
+    click({depth.getRight() - label * 0.5F, depth.getCenter().y});
+    EXPECT_TRUE(events.empty());
+
+    EXPECT_THROW(document->set("volume", {{"min", -1e300}}), std::invalid_argument);
+    EXPECT_THROW(document->set("depth", {{"max", 1e16}}), std::invalid_argument);
+}
+
 // A growing child of a row measures at the width it draws at, so its wrapped text reports every line and the node below starts after the row, also through a column and a nested row.
 TEST_F(ComponentTest, MeasuresGrowingChildrenOfRowsAtTheirShare) {
     const std::string text = "A long line of text that wraps across the narrow middle of the row, several times over, before the row ends and the next node starts.";
@@ -834,6 +1059,14 @@ TEST_F(ComponentAssetTest, LoadsImagesThemesAndTranslations) {
     mount(R"({"kind": "image", "image": "ui/missing.png"})");
     ASSERT_TRUE(fixture.frameUntil([&] { return getEngine().getError() != nullptr; }));
     EXPECT_NE(std::string_view(getEngine().getError()->what()).find("The UI image ui/missing.png could not be loaded"), std::string::npos);
+}
+
+TEST_F(ComponentAssetTest, PressesImageButtons) {
+    auto document = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "imageButton", "id": "start", "image": "ui/icon.png", "hoverImage": "ui/panel.png", "text": "Go", "scale": 4}]})");
+    ASSERT_TRUE(fixture.frameUntil([&] { return getBounds(*document, "start").width == 64.0F; }));
+    click(*document, "start");
+    EXPECT_EQ(getEventNames(), (std::vector<std::string>{"start:click"}));
+    EXPECT_EQ(getEngine().getError(), nullptr);
 }
 
 TEST_F(ComponentAssetTest, DrawsCarouselArrowsAbovePagesThatFillIt) {

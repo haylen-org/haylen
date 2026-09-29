@@ -61,7 +61,7 @@ The runtime targets the current Tiled JSON format as written by Tiled 1.12.
 - Infinite maps, whose tile layers are stored as chunks. Cells may have negative coordinates.
 - Layer types: tile layers, object layers, image layers and group layers, with visibility, opacity, offsets, tint colors, parallax factors, the map parallax origin, classes and custom properties. Groups pass their offset, parallax, tint, opacity and visibility on to their children.
 - Layer blend modes: `normal`, `add`, `multiply` and `screen`. Every other Tiled mode, such as `overlay`, `darken` or `lighten`, is rejected when the map loads with `The Tiled layer 'name' uses the blend mode 'mode', which Haylen cannot draw. Layers can use normal, add, multiply or screen.` Tiled draws every layer of a group with that layer's own mode and never blends a group as a whole, so a group layer with a mode other than `normal` is rejected with `The Tiled group layer 'name' uses the blend mode 'mode', which Tiled does not apply to the layers inside it. Set the blend mode on those layers.`
-- Tilesets embedded in the map or stored in external files, image tilesets with margin, spacing and tile offsets, image collection tilesets whose tiles can use a sub-rectangle of their image, transparent colors, object alignment, tile render size `grid` with the fill mode `preserve-aspect-fit`, tile classes, properties, animations, collision shapes and Wang sets.
+- Tilesets embedded in the map or stored in external files, image tilesets with margin, spacing and tile offsets, image collection tilesets whose tiles can use a sub-rectangle of their image and keep the ids of removed tiles unused, transparent colors, object alignment, tile render size `grid` with the fill mode `preserve-aspect-fit`, tile classes, properties, animations, collision shapes and Wang sets.
 - Tile flip flags: horizontal, vertical and diagonal, plus the 120-degree rotation flag of hexagonal maps.
 - Objects: rectangles, ellipses, capsules, points, polygons, polylines, text and tile objects, with rotation, visibility, opacity, classes and custom properties.
 - Object templates, whose fields and properties are defaults that each instance overrides one by one. Tile templates map their tile to the map's own copy of the template's tileset, and a template whose tileset the map does not list raises `A tile template uses a tileset the map does not list: path`.
@@ -69,11 +69,11 @@ The runtime targets the current Tiled JSON format as written by Tiled 1.12.
 - Worlds with listed maps and patterns.
 - Object factories through `map:spawn`.
 
-Other load errors: `Unknown Tiled map orientation: name`, `Unknown Tiled render order: name`, `Unknown Tiled layer type: name`, `Unknown tile layer compression: name`, `Tile layer data is not valid base64.`, `Tile layer data could not be decompressed.`, `Tile layer data does not match the layer size.` and `Invalid Tiled color: text`.
+Every layer needs the `id` that Tiled writes. Other load errors: `Unknown Tiled map orientation: name`, `Unknown Tiled render order: name`, `Unknown Tiled layer type: name`, `The Tiled map path has a negative size.`, `The Tiled map path needs a positive tile size.`, `The Tiled tile layer 'name' has a negative size.`, `The Tiled tile layer 'name' has more cells than a layer can hold.`, `Unknown tile layer compression: name`, `Tile layer data is not valid base64.`, `Tile layer data could not be decompressed.`, `Tile layer data does not match the layer size.` and `Invalid Tiled color: text`.
 
 ## Drawing rules
 
-- Tile layers are baked into static batches in regions of 32 by 32 cells the first time they draw. When a camera is given, only the regions inside the area the active canvas shows are drawn, which is the visible area around the camera on a world canvas and the target size around it on a render target canvas. `map:setTile` rebakes the layer on its next draw. Animated tiles are drawn every frame with the frame that matches the map time.
+- Tile layers are baked into static batches in regions of 32 by 32 cells the first time they draw. When a camera is given, only the regions inside the area the active canvas shows are drawn, which is the visible area around the camera on a world canvas and the target size around it on a render target canvas. `map:setTile` bakes only the region of its cell again, on the next draw. Animated tiles are drawn every frame with the frame that matches the map time.
 - Object layers draw their visible tile objects and text objects. Other shapes are data for the app and for collision. Objects sort by their y position unless the layer draw order is `index`. Tile objects are placed by the tileset object alignment, which defaults to bottom-left, or bottom-center on isometric maps. Text objects use the engine's default font with their size, color, wrapping, alignment, rotation and opacity. Their font family, bold and italic settings are not applied.
 - Image layers draw their image at the layer offset. Layers that repeat on an axis cover the camera's visible area and need a camera, otherwise drawing raises `Repeated image layers need the visible area of the view.`
 - A layer with a parallax factor other than 1 shifts by the distance between the camera position and the map parallax origin, times one minus the factor. On a map drawn with an offset, the parallax origin moves with the map.
@@ -153,7 +153,7 @@ end
 
 ### map:draw(camera, options)
 
-Draws every visible layer in map order into the active canvas. `camera` is optional. When it is given, parallax layers follow its position, and culling and repeated images use the area the active canvas shows. Without it nothing is culled and parallax is measured from the map origin. `options` is optional and takes the [draw order](graphics2d.md#draw-order) keys `layer`, `depth`, `sortOffset`, `visibility` and `blend` from haylen.graphics2d, where `blend` is replaced by each layer's blend mode, `x` and `y`, the world position of the map origin, which default to 0, and `ysort`, which draws tile and object layers sorted by the y they stand on, as [Drawing rules](#drawing-rules) describes. Other keys raise `Unknown option 'name'.`
+Draws every visible layer in map order into the active canvas. `camera` is optional. When it is given, parallax layers follow its position, and culling and repeated images use the area the active canvas shows. Without it nothing is culled and parallax layers shift as if the camera stood at the world origin. `options` is optional and takes the [draw order](graphics2d.md#draw-order) keys `layer`, `depth`, `sortOffset`, `visibility` and `blend` from haylen.graphics2d, where `blend` is replaced by each layer's blend mode, `x` and `y`, the world position of the map origin, which default to 0, and `ysort`, which draws tile and object layers sorted by the y they stand on, as [Drawing rules](#drawing-rules) describes. Other keys raise `Unknown option 'name'.`
 
 ### map:drawLayer(name, camera, options)
 
@@ -332,7 +332,7 @@ end
 
 ### map:objects(layer)
 
-Returns the objects of the object layer `layer`, or of every object layer in map order when `layer` is omitted. Coordinates are the raw values of the map file, without layer offsets. A name that is not an object layer raises `Unknown object layer: name`.
+Returns the objects of the object layer `layer`, or of every object layer in map order when `layer` is omitted. Coordinates are the raw values of the map file, without layer offsets. A name that is not an object layer raises `The map has no object layer named 'name'.`
 
 Every object table has these fields:
 
@@ -372,7 +372,7 @@ end
 
 ### map:spawn(factories, layer)
 
-Creates app entities from objects. `factories` is a table from object class to function. For every object whose class has a factory, in the object layer `layer` or in every object layer when `layer` is omitted, the factory is called with the object table, which also carries `worldX` and `worldY`: the object origin in world coordinates, including the offsets of its layer and groups. Objects without a factory are skipped, which leaves markers and collision shapes for other code. `spawn` returns the list of non-nil values the factories returned, in map order. Hidden objects and hidden layers are spawned too. A factory that is not a function raises `The factory for the Tiled class 'name' is not a function.` and a name that is not an object layer raises `Unknown object layer: name`.
+Creates app entities from objects. `factories` is a table from object class to function. For every object whose class has a factory, in the object layer `layer` or in every object layer when `layer` is omitted, the factory is called with the object table, which also carries `worldX` and `worldY`: the object origin in world coordinates, including the offsets of its layer and groups. Objects without a factory are skipped, which leaves markers and collision shapes for other code. `spawn` returns the list of non-nil values the factories returned, in map order. Hidden objects and hidden layers are spawned too. The factories run after the map has listed the objects, so a factory may change the map. A factory that is not a function raises `The factory for the Tiled class 'name' is not a function.` and a name that is not an object layer raises `The map has no object layer named 'name'.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -468,9 +468,9 @@ end
 Creates static bodies in the [haylen.physics2d](physics2d.md) world `world` for the collision shapes of the map and returns them. Each layer that has shapes becomes one body, and layer visibility does not matter.
 
 - Tile layers add the collision shapes of their tiles, placed and flipped with each tile, unless the layer has a `collision` property set to false. On orthogonal maps, tiles whose collision is one rectangle covering the whole cell merge into one box per horizontal run of cells.
-- Object layers whose class is `collision` add every object, and other object layers add the objects whose class is `collision`. Points and text objects add nothing, polylines become segments and ellipses and capsules become polygons.
+- Object layers whose class is `collision` add every object, and other object layers add the objects whose class is `collision`. Points and text objects add nothing, polylines become segments, ellipses and capsules become polygons, and tile objects cover their image where it draws, placed by the object alignment of their tileset.
 - Objects and tile shapes with a `sensor` property set to true become sensors.
-- The layer properties `category` and `mask` set the collision filter of the layer's shapes. The category defaults to 1.
+- The layer properties `category` and `mask` set the collision filter of the layer's shapes as integers of at least 0. The category defaults to 1 and the mask to every bit. Other values raise `The collision property 'name' of the Tiled layer 'layer' needs an integer of at least 0.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -492,7 +492,7 @@ scene.push({
 
 ### map:raycastTiles(layer, x1, y1, x2, y2, solid)
 
-Casts a ray from `x1, y1` to `x2, y2` in map world coordinates over the cells of the tile layer named `layer`, without a physics world, and returns the hit on the first solid cell or `nil`. The hit is a table like those of [haylen.math](math.md#ray-casts) with the extra fields `column`, `row` and `gid`, and its normal points out of the side of the cell the ray entered. Every tile is solid unless the optional function `solid` receives the gid of each tile along the ray and returns false for the ones the ray passes through. Positions include the offsets of the layer and its groups. Orthogonal, isometric and oblique maps take tile casts, and other orientations raise `Tile ray casts need an orthogonal, isometric or oblique map.` An unknown layer raises `The map has no tile layer named 'name'.`
+Casts a ray from `x1, y1` to `x2, y2` in map world coordinates over the cells of the tile layer named `layer`, without a physics world, and returns the hit on the first solid cell or `nil`. The hit is a table like those of [haylen.math](math.md#ray-casts) with the extra fields `column`, `row` and `gid`, and its normal points out of the side of the cell the ray entered. Every tile is solid unless the optional function `solid` receives the gid of each tile along the ray and returns false for the ones the ray passes through. The ray only travels over the cells the layer holds, so a far end costs no more than a walk across the layer, and `solid` runs once the ray has gathered the tiles it crosses, so it may change the map. Positions include the offsets of the layer and its groups. Orthogonal, isometric and oblique maps take tile casts, and other orientations raise `Tile ray casts need an orthogonal, isometric or oblique map.` An unknown layer raises `The map has no tile layer named 'name'.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -510,7 +510,7 @@ end
 
 ### map:raycastObjects(layer, x1, y1, x2, y2)
 
-Casts a ray from `x1, y1` to `x2, y2` against the objects of the object layer named `layer`, or of every object layer when `layer` is `nil`, and returns the closest hit or `nil`. The hit is a table like those of [haylen.math](math.md#ray-casts) with the extra fields `id`, `name` and `type` of the object. Rectangles, ellipses, capsules, polygons and tile objects are solid, polylines are hit from both sides, and points and text are never hit. An unknown layer raises `The map has no object layer named 'name'.`
+Casts a ray from `x1, y1` to `x2, y2` against the objects of the object layer named `layer`, or of every object layer when `layer` is `nil`, and returns the closest hit or `nil`. The hit is a table like those of [haylen.math](math.md#ray-casts) with the extra fields `id`, `name` and `type` of the object. Rectangles, ellipses, capsules, polygons and tile objects, where their image draws, are solid, polylines are hit from both sides, and points and text are never hit. An unknown layer raises `The map has no object layer named 'name'.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -525,7 +525,7 @@ end
 
 ### map:objectOutlines(layer)
 
-Returns the closed world outlines of the objects of the object layer named `layer`, or of every object layer when `layer` is omitted, in map order, as a list of lists of `Vec2`. Rectangles and tile objects give their corners, polygons their points, and ellipses and capsules many-sided outlines, while points, text and polylines give nothing. The outlines are ready to become obstacles of a navigation mesh of [haylen.navigation2d](navigation2d.md).
+Returns the closed world outlines of the objects of the object layer named `layer`, or of every object layer when `layer` is omitted, in map order, as a list of lists of `Vec2`. Rectangles give their corners, tile objects the corners of their image where it draws, polygons their points, and ellipses and capsules many-sided outlines, while points, text and polylines give nothing. The outlines are ready to become obstacles of a navigation mesh of [haylen.navigation2d](navigation2d.md). A name that is not an object layer raises `The map has no object layer named 'name'.`, and a tile object whose tile no tileset holds raises `A tile object uses a tile that no tileset holds: id`, here and in `map:draw`, `map:buildCollision` and `map:raycastObjects`.
 
 ```lua
 local assets = require('haylen.assets')

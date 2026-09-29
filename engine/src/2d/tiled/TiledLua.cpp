@@ -2,6 +2,7 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "2d/physics/Physics2DLua.hpp"
 #include "2d/tiled/MapQueryLua.hpp"
@@ -406,7 +407,7 @@ int TiledLua::mapObjects(lua_State* L) {
     const std::string_view name = lua::Stack::read<std::string_view>(L, 2);
     const Layer* layer = data.findLayer(name);
     if (layer == nullptr || layer->kind != Layer::Kind::Object) {
-        return luaL_error(L, "Unknown object layer: %s", std::string(name).c_str());
+        return luaL_error(L, "The map has no object layer named '%s'.", std::string(name).c_str());
     }
     pushObjects(L, layer->objects);
     return 1;
@@ -416,31 +417,32 @@ int TiledLua::mapObjects(lua_State* L) {
 int TiledLua::mapSpawn(lua_State* L) {
     luaL_checktype(L, 2, LUA_TTABLE);
     const std::string_view layer = lua_isnoneornil(L, 3) ? std::string_view{} : lua::Stack::read<std::string_view>(L, 3);
+    std::vector<std::pair<const Object*, math::Vec2>> objects;
+    checkRenderer(L).forEachObject(layer, [&objects](const Object& object, math::Vec2 position) { objects.emplace_back(&object, position); });
+
+    // The factories run Lua, so they run after the walk over the map.
     lua_newtable(L);
     const int results = lua_gettop(L);
     lua_Integer count = 0;
-
-    // clang-format off
-    checkRenderer(L).forEachObject(layer, [&](const Object& object, math::Vec2 position) {
-        lua_getfield(L, 2, object.type.c_str());
+    for (const auto& [object, position] : objects) {
+        lua_getfield(L, 2, object->type.c_str());
         if (lua_isnil(L, -1)) {
             lua_pop(L, 1);
-            return;
+            continue;
         }
         if (!lua_isfunction(L, -1)) {
-            luaL_error(L, "The factory for the Tiled class '%s' is not a function.", object.type.c_str());
+            return luaL_error(L, "The factory for the Tiled class '%s' is not a function.", object->type.c_str());
         }
-        pushObject(L, object);
+        pushObject(L, *object);
         setNumber(L, "worldX", position.x);
         setNumber(L, "worldY", position.y);
         lua_call(L, 1, 1);
         if (lua_isnil(L, -1)) {
             lua_pop(L, 1);
-            return;
+            continue;
         }
         lua_rawseti(L, results, ++count);
-    });
-    // clang-format on
+    }
     return 1;
 }
 

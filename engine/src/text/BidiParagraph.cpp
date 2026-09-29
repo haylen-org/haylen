@@ -1,5 +1,7 @@
 #include "text/BidiParagraph.hpp"
 
+#include <stdexcept>
+
 #include <SheenBidi/SheenBidi.h>
 
 namespace haylen::text {
@@ -21,12 +23,13 @@ BidiParagraph::BidiParagraph(std::u32string_view text, Direction direction) : an
     analysis->algorithm.reset(SBAlgorithmCreate(&sequence));
     const SBLevel base = direction == Direction::RightToLeft ? 1 : (direction == Direction::LeftToRight ? 0 : SBLevelDefaultLTR);
     analysis->paragraph.reset(SBAlgorithmCreateParagraph(analysis->algorithm.get(), 0, text.size(), base));
+    if (SBParagraphGetLength(analysis->paragraph.get()) != text.size()) {
+        throw std::invalid_argument("Text laid out as one paragraph cannot hold a paragraph separator before its end.");
+    }
     analysis->rightToLeft = SBParagraphGetBaseLevel(analysis->paragraph.get()) % 2 != 0;
 }
 
 BidiParagraph::~BidiParagraph() = default;
-BidiParagraph::BidiParagraph(BidiParagraph&& other) noexcept = default;
-BidiParagraph& BidiParagraph::operator=(BidiParagraph&& other) noexcept = default;
 
 bool BidiParagraph::isRightToLeft() const noexcept {
     return analysis->rightToLeft;

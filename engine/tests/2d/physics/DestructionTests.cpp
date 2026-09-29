@@ -108,6 +108,7 @@ TEST_F(DestructionTest, CarvingRebuildsOnlyTheChunksItTouches) {
     EXPECT_THROW(terrain.setSamples(std::vector<std::uint8_t>(3)), std::invalid_argument);
     EXPECT_THROW((void)terrain.getSample(200, 0), std::out_of_range);
     EXPECT_THROW(Terrain(world, {.columns = 1}), std::invalid_argument);
+    EXPECT_THROW(Terrain(world, {.shape = {.friction = -1.0F}}), std::invalid_argument);
 }
 
 TEST_F(DestructionTest, TerrainExplosionsCarveAndPush) {
@@ -155,6 +156,21 @@ TEST_F(DestructionTest, ExplosionsFadeWithDistanceAndHideBehindWalls) {
     EXPECT_THROW((void)Explosion::apply(world, {.radius = 0.0F}), std::invalid_argument);
 }
 
+TEST_F(DestructionTest, ExplosionsSeeThroughSensorsAndShapesTheirFilterSkips) {
+    world.setGravity({});
+    Body belowSensor = crate({0.0F, 80.0F});
+    Body aboveGlass = crate({0.0F, -80.0F});
+    Body zone = world.createBody({.type = Body::Type::Static, .position = {0.0F, 40.0F}});
+    zone.addBox({100.0F, 10.0F}, {.sensor = true});
+    Body glass = world.createBody({.type = Body::Type::Static, .position = {0.0F, -40.0F}});
+    glass.addBox({100.0F, 10.0F}, {.filter = {.category = 2}});
+
+    const std::vector<Explosion::Hit> hits = Explosion::apply(world, {.center = {0.0F, 0.0F}, .radius = 200.0F, .impulse = 100.0F, .occlusion = true, .filter = {.mask = 1}});
+    EXPECT_EQ(hits.size(), 2U);
+    EXPECT_GT(belowSensor.getVelocity().y, 0.0F);
+    EXPECT_LT(aboveGlass.getVelocity().y, 0.0F);
+}
+
 TEST_F(DestructionTest, FracturesSplitShapesIntoCoveringPieces) {
     const std::vector<std::vector<math::Vec2>> square{{{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}}};
     const auto pieces = Fracture::split(square, {.pieces = 12, .impact = math::Vec2{20.0F, 30.0F}, .seed = 3, .minimumArea = 0.0F});
@@ -190,6 +206,14 @@ TEST_F(DestructionTest, ShatteringReplacesABodyWithMovingPieces) {
     EXPECT_TRUE(Fracture::shatter(round, {}).empty());
     EXPECT_TRUE(round.isValid());
     EXPECT_THROW((void)Fracture::shatter(box, {}), std::logic_error);
+
+    // Pieces of a sliver are thinner than the tolerance of Box2D, so the fracture fails and leaves the sliver whole.
+    Body sliver = world.createBody({.position = {0.0F, 300.0F}});
+    sliver.addBox({100.0F, 0.5F});
+    const std::size_t bodies = world.getBodyCount();
+    EXPECT_THROW((void)Fracture::shatter(sliver, {.pieces = 4}), std::invalid_argument);
+    EXPECT_TRUE(sliver.isValid());
+    EXPECT_EQ(world.getBodyCount(), bodies);
 }
 
 } // namespace haylen::physics2d

@@ -72,7 +72,7 @@ TEST_F(PhysicsFeaturesLuaTest, CarvesTerrainAndBreaksBodies) {
     // clang-format off
     fixture.runLua(R"(
         terrain = physics2d.newTerrain(world, {columns = 65, rows = 33, cellSize = 8, chunkSize = 16})
-        terrain:setSamples(function(column, row) return row >= 16 and 1 or 0 end)
+        terrain.samples = function(column, row) return row >= 16 and 1 or 0 end
         built = terrain:update()
         crate = world:createBody({x = 200, y = 100})
         crate:addBox(20, 20)
@@ -80,7 +80,7 @@ TEST_F(PhysicsFeaturesLuaTest, CarvesTerrainAndBreaksBodies) {
     )");
     // clang-format on
     EXPECT_EQ(lua("return terrain.columns .. ' ' .. terrain.rows .. ' ' .. terrain.cellSize .. ' ' .. terrain.chunkCount .. ' ' .. built .. ' ' .. #terrain:bodies()"), "65 33 8.0 8 8 8");
-    EXPECT_EQ(lua("return tostring(terrain:isSolid({100, 200})) .. ' ' .. terrain:sample(0, 20) .. ' ' .. #terrain:samples() .. ' ' .. terrain.bounds.width"), "true 1.0 2145 512.0");
+    EXPECT_EQ(lua("return tostring(terrain:isSolid({100, 200})) .. ' ' .. terrain:sample(0, 20) .. ' ' .. #terrain.samples .. ' ' .. terrain.bounds.width"), "true 1.0 2145 512.0");
     EXPECT_EQ(lua("return tostring(#terrain:outlines() >= 4)"), "true");
 
     // clang-format off
@@ -112,7 +112,8 @@ TEST_F(PhysicsFeaturesLuaTest, CarvesTerrainAndBreaksBodies) {
     // clang-format on
     EXPECT_EQ(lua("return tostring(#pieces >= 4) .. ' ' .. tostring(glass.valid) .. ' ' .. tostring(pieces[1].valid) .. ' ' .. #parts .. ' ' .. math.floor(area + 0.5)"), "true false true 5 10000");
     EXPECT_NE(lua("physics2d.newTerrain(world, {columns = 1})").find("at least 2 by 2"), std::string::npos);
-    EXPECT_NE(lua("terrain:setSamples({1, 2})").find("one value per sample"), std::string::npos);
+    EXPECT_NE(lua("terrain.samples = {1, 2}").find("The terrain needs one value per sample."), std::string::npos);
+    EXPECT_NE(lua("physics2d.newTerrain(world, {friction = -1})").find("A physics shape needs a finite density, friction and restitution of zero or more."), std::string::npos);
     EXPECT_NE(lua("physics2d.explode(world, {x = 0, y = 0, radius = 10, falloff = 'cubic'})").find("unknown value 'cubic'"), std::string::npos);
 }
 
@@ -161,9 +162,41 @@ TEST_F(PhysicsFeaturesLuaTest, FluidsExposePositionsInBulk) {
     // clang-format on
     EXPECT_EQ(lua("return added .. ' ' .. tostring(spawned) .. ' ' .. water.count .. ' ' .. water.radius .. ' ' .. #buffer .. ' ' .. #velocities .. ' ' .. #water:bodies()"), "50 true 51 4.0 102 102 51");
     EXPECT_EQ(lua("water:remove(1) water:positions(buffer) return water.count .. ' ' .. #buffer .. ' ' .. tostring(buffer[101])"), "50 100 nil");
+
+    // A particle whose body a script destroys leaves the fluid instead of breaking it.
+    EXPECT_EQ(lua("water:bodies()[1]:destroy() water:positions(buffer) water:update(1 / 60) return water.count .. ' ' .. #buffer .. ' ' .. #water:velocities()"), "49 98 98");
     EXPECT_EQ(lua("water:clear() return water.count .. ' ' .. world.bodyCount"), "0 1");
     EXPECT_NE(lua("water:remove(0)").find("particles count from 1"), std::string::npos);
     EXPECT_NE(lua("physics2d.newFluid(world, {radius = 4, smoothingRadius = 3})").find("larger smoothing radius"), std::string::npos);
+    EXPECT_NE(lua("physics2d.newFluid(world, {density = -1})").find("A physics shape needs a finite density, friction and restitution of zero or more."), std::string::npos);
+}
+
+TEST_F(PhysicsFeaturesLuaTest, ReleasesTheDataOfBodiesHoweverTheyAreDestroyed) {
+    // clang-format off
+    fixture.runLua(R"(
+        released = setmetatable({}, {__mode = 'v'})
+        local glass = world:createBody({x = 0, y = -500})
+        glass:addBox(40, 40)
+        glass.data = {}
+        released.glass = glass.data
+        local rope = physics2d.newRope(world, {from = {0, -800}, to = {100, -800}, segments = 2})
+        rope:bodies()[1].data = {}
+        released.rope = rope:bodies()[1].data
+        local water = physics2d.newFluid(world)
+        water:spawn(0, -1000)
+        water:bodies()[1].data = {}
+        released.water = water:bodies()[1].data
+        kept = world:createBody({x = 300, y = -500})
+        kept.data = {}
+        released.kept = kept.data
+        physics2d.fracture(glass)
+        rope:destroy()
+        water:clear()
+        world:step(0)
+        collectgarbage()
+    )");
+    // clang-format on
+    EXPECT_EQ(lua("return tostring(released.glass) .. ' ' .. tostring(released.rope) .. ' ' .. tostring(released.water) .. ' ' .. tostring(released.kept == kept.data)"), "nil nil nil true");
 }
 
 } // namespace haylen

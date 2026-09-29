@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <limits>
+#include <memory>
 #include <numbers>
 #include <stdexcept>
 #include <string>
@@ -205,6 +207,38 @@ TEST(PhysicsWorldTest, BuildsPolygonsChainsAndCapsules) {
     EXPECT_THROW(physics2d::World({.pixelsPerMeter = 0.0F}), std::invalid_argument);
 }
 
+TEST(PhysicsWorldTest, RejectsWhatBox2DCannotHoldBeforeCreatingIt) {
+    physics2d::World world;
+    physics2d::Body body = world.createBody();
+    const std::vector<math::Vec2> outline{{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}};
+
+    EXPECT_THROW(body.addSegment({10.0F, 0.0F}, {10.1F, 0.0F}), std::invalid_argument);
+    EXPECT_THROW(body.addBox({10.0F, 10.0F}, {.density = -1.0F}), std::invalid_argument);
+    EXPECT_THROW(body.addCircle(5.0F, {.friction = std::numeric_limits<float>::quiet_NaN()}), std::invalid_argument);
+    EXPECT_THROW(body.addBox({10.0F, 10.0F}, {.oneWay = math::Vec2{}}), std::invalid_argument);
+    EXPECT_THROW(body.addChain(outline, true, {.restitution = -0.5F}), std::invalid_argument);
+    EXPECT_THROW(body.addChain(outline, true, {.oneWay = math::Vec2{}}), std::invalid_argument);
+    EXPECT_TRUE(body.getShapes().empty());
+    EXPECT_TRUE(body.addSegment({10.0F, 0.0F}, {11.0F, 0.0F}).isValid());
+
+    EXPECT_THROW(body.setLinearDamping(-1.0F), std::invalid_argument);
+    EXPECT_THROW(body.setAngularDamping(std::numeric_limits<float>::infinity()), std::invalid_argument);
+    EXPECT_THROW(world.createBody({.linearDamping = -0.1F}), std::invalid_argument);
+    EXPECT_EQ(world.getBodyCount(), 1U);
+
+    EXPECT_THROW((void)world.queryRect({0.0F, 0.0F, -10.0F, 10.0F}), std::invalid_argument);
+    EXPECT_EQ(world.queryRect({0.0F, 0.0F, 20.0F, 0.0F}).size(), 1U);
+}
+
+TEST(PhysicsWorldTest, ReportsWhenBox2DHoldsTooManyWorlds) {
+    std::vector<std::unique_ptr<physics2d::World>> worlds;
+    EXPECT_THROW(for (int index = 0; index < 1000; ++index) { worlds.push_back(std::make_unique<physics2d::World>()); }, std::runtime_error);
+
+    // A world that goes makes room for another one.
+    worlds.pop_back();
+    EXPECT_NO_THROW(worlds.push_back(std::make_unique<physics2d::World>()));
+}
+
 TEST(PhysicsWorldTest, ReportsTheGeometryAndOutlinesOfShapes) {
     physics2d::World world;
     physics2d::Body body = world.createBody({.type = physics2d::Body::Type::Static, .position = {100.0F, 50.0F}, .rotation = std::numbers::pi_v<float> * 0.5F});
@@ -303,8 +337,14 @@ TEST(PhysicsWorldTest, ConnectsBodiesWithJoints) {
     joints[2].setMotorSpeed(64.0F);
     joints[4].setMotorSpeed(1.0F);
     joints[5].setTarget({50.0F, 50.0F});
+    EXPECT_FLOAT_EQ(joints[1].getMotorSpeed(), 2.0F);
+    EXPECT_NEAR(joints[2].getMotorSpeed(), 64.0F, 1e-3F);
+    EXPECT_FLOAT_EQ(joints[4].getMotorSpeed(), 1.0F);
+    EXPECT_NEAR(joints[5].getTarget().x, 50.0F, 1e-3F);
     EXPECT_THROW(joints[0].setMotorSpeed(1.0F), std::logic_error);
+    EXPECT_THROW((void)joints[0].getMotorSpeed(), std::logic_error);
     EXPECT_THROW(joints[0].setTarget({}), std::logic_error);
+    EXPECT_THROW((void)joints[1].getTarget(), std::logic_error);
 
     joints[0].destroy();
     EXPECT_FALSE(joints[0].isValid());
@@ -327,12 +367,38 @@ TEST(PhysicsWorldTest, ConnectsBodiesWithJoints) {
     physics2d::World other;
     const physics2d::Body stranger = other.createBody();
     EXPECT_THROW(world.createJoint(physics2d::Joint::Type::Weld, anchor, stranger), std::invalid_argument);
+
+    // Box2D cannot hold a distance joint between anchors in one place, revolute limits near a half turn or limits in the wrong order.
+    EXPECT_THROW(world.createJoint(physics2d::Joint::Type::Distance, anchor, ghost), std::invalid_argument);
+    EXPECT_TRUE(world.createJoint(physics2d::Joint::Type::Distance, anchor, ghost, {.length = 1.0F}).isValid());
+    EXPECT_THROW(world.createJoint(physics2d::Joint::Type::Revolute, anchor, ghost, {.lower = -3.13F, .upper = 0.0F}), std::invalid_argument);
+    EXPECT_THROW(world.createJoint(physics2d::Joint::Type::Revolute, anchor, ghost, {.lower = 0.5F, .upper = -0.5F}), std::invalid_argument);
+    EXPECT_THROW(world.createJoint(physics2d::Joint::Type::Prismatic, anchor, ghost, {.lower = 10.0F, .upper = -10.0F}), std::invalid_argument);
+    EXPECT_THROW(world.createJoint(physics2d::Joint::Type::Wheel, anchor, ghost, {.lower = 10.0F, .upper = -10.0F}), std::invalid_argument);
+    EXPECT_TRUE(world.createJoint(physics2d::Joint::Type::Revolute, anchor, ghost, {.lower = -3.1F, .upper = 3.1F}).isValid());
     EXPECT_EQ(physics2d::Joint::typeFromName("wheel"), physics2d::Joint::Type::Wheel);
     EXPECT_EQ(physics2d::Joint::typeName(physics2d::Joint::Type::Motor), "motor");
     EXPECT_FALSE(physics2d::Joint::typeFromName("rope").has_value());
     EXPECT_EQ(physics2d::Body::typeFromName("kinematic"), physics2d::Body::Type::Kinematic);
     EXPECT_EQ(physics2d::Body::typeName(physics2d::Body::Type::Static), "static");
     EXPECT_FALSE(physics2d::Body::typeFromName("ghost").has_value());
+}
+
+TEST(PhysicsWorldTest, MeasuresJointAnglesFromThePoseAtCreation) {
+    // A tight revolute limit and a prismatic joint both keep a body turned the way it was when they joined it.
+    physics2d::World world({.gravity = {}});
+    const physics2d::Body anchor = world.createBody({.type = physics2d::Body::Type::Static});
+    physics2d::Body hinged = world.createBody({.position = {100.0F, 0.0F}, .rotation = 1.0F, .angularVelocity = 0.5F});
+    hinged.addBox({40.0F, 10.0F});
+    physics2d::Body slider = world.createBody({.position = {0.0F, 100.0F}, .rotation = 0.8F, .velocity = {20.0F, 0.0F}});
+    slider.addBox({20.0F, 20.0F});
+    world.createJoint(physics2d::Joint::Type::Revolute, anchor, hinged, {.anchorA = {100.0F, 0.0F}, .enableLimit = true, .lower = -0.1F, .upper = 0.1F});
+    world.createJoint(physics2d::Joint::Type::Prismatic, anchor, slider, {.anchorA = {0.0F, 100.0F}});
+
+    simulate(world, 1.0F);
+    EXPECT_NEAR(hinged.getRotation(), 1.1F, 0.02F);
+    EXPECT_NEAR(slider.getRotation(), 0.8F, 0.01F);
+    EXPECT_GT(slider.getPosition().x, 10.0F);
 }
 
 TEST(PhysicsWorldTest, DrawsDebugShapes) {
@@ -409,7 +475,9 @@ TEST(Physics2DLuaTest, SimulatesWorldsFromLua) {
         for i = 1, 10 do world:step(1 / 60) end
     )");
     // clang-format on
-    EXPECT_EQ(fixture.lua("joint:setMotorSpeed(2) mouse:setTarget(610, 10) return tostring(joint.valid) .. ' ' .. #bob:shapes()"), "true 3");
+    EXPECT_EQ(fixture.lua("joint.motorSpeed = 2 mouse.target = {610, 10} return tostring(joint.valid) .. ' ' .. #bob:shapes() .. ' ' .. joint.motorSpeed .. ' ' .. math.floor(mouse.target.x + 0.5)"), "true 3 2.0 610");
+    EXPECT_NE(fixture.lua("return joint.target").find("Only mouse joints have a target."), std::string::npos);
+    EXPECT_NE(fixture.lua("mouse.motorSpeed = 1").find("Only revolute, prismatic and wheel joints have a motor speed."), std::string::npos);
     EXPECT_EQ(fixture.lua("local s = bob:shapes()[1] s.mask = 1 s.category = 4 s.group = -3 return s.mask .. ' ' .. s.category .. ' ' .. s.group .. ' ' .. tostring(s.body == bob) .. ' ' .. tostring(s == s) .. ' ' .. tostring(s.bounds.width > 0)"), "1 4 -3 true true true");
     EXPECT_EQ(fixture.lua("local s = bob:addCircle(2, {group = 5}) return s.group .. ' ' .. hinge:shapes()[1].group"), "5 0");
     EXPECT_EQ(fixture.lua("local s = bob:shapes()[2] s:destroy() return tostring(s.valid) .. ' ' .. #bob:shapes()"), "false 3");
@@ -430,6 +498,13 @@ TEST(Physics2DLuaTest, SimulatesWorldsFromLua) {
     EXPECT_NE(fixture.lua("physics2d.newWorld({pixelsPerMeter = 0})").find("positive pixels per meter"), std::string::npos);
     EXPECT_NE(fixture.lua("world.onHit = 5").find("error: "), std::string::npos);
     EXPECT_NE(fixture.lua("bob:addBox(0, 10)").find("positive size"), std::string::npos);
+    EXPECT_NE(fixture.lua("bob:addBox(10, 10, {density = -1})").find("A physics shape needs a finite density, friction and restitution of zero or more."), std::string::npos);
+    EXPECT_NE(fixture.lua("bob:addSegment(0, 0, 0, 0)").find("A physics segment needs ends more than 0.005 meters apart."), std::string::npos);
+    EXPECT_NE(fixture.lua("bob.linearDamping = -1").find("A physics body needs a finite damping of zero or more."), std::string::npos);
+    EXPECT_NE(fixture.lua("world:createJoint('distance', hinge, bob)").find("A distance joint needs a length of at least 0.005 meters."), std::string::npos);
+    EXPECT_NE(fixture.lua("world:createJoint('revolute', hinge, bob, {lower = 1, upper = 0})").find("A revolute joint needs a lower limit"), std::string::npos);
+    EXPECT_NE(fixture.lua("world:queryRect({0, 0, -10, 10})").find("A rectangle query needs a width and height of zero or more."), std::string::npos);
+    EXPECT_EQ(fixture.lua("return #bob:shapes()"), "3");
 
     fixture.runLua("world.onHit = nil world.onContactBegin = function() error('contact failed') end local b = world:createBody({x = 0, y = 384}) b:addBox(10, 10)");
     EXPECT_NE(fixture.lua("for i = 1, 60 do world:step(1 / 60) end").find("contact failed"), std::string::npos);

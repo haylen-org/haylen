@@ -43,11 +43,6 @@ class NavigationInput final {
         return down[static_cast<std::size_t>(action)] && !wasDown[static_cast<std::size_t>(action)];
     }
 
-    // The built-in bindings, which the documentation lists and a remap starts from.
-    [[nodiscard]] const input::ActionMap& getDefaults() const noexcept {
-        return defaults;
-    }
-
   private:
     input::ActionMap defaults;
     input::ActionMap resolved;

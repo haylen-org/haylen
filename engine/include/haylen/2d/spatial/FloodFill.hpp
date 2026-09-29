@@ -13,8 +13,6 @@ namespace haylen::spatial2d {
 // Finds the cells connected to a start cell, like the paint bucket of an image editor. It keeps its visit marks between calls, so repeated fills allocate nothing once its buffers have grown.
 class FloodFill final {
   public:
-    static constexpr std::array<Cell, 8> kNeighbors{{{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {-1, 1}, {1, -1}, {-1, -1}}};
-
     // Fills cells with the cells of a width by height grid that connect to the start through cells for which inside(cell) is true, in breadth-first order from the start. Diagonal fills also step between cells that only share a corner. A start outside the grid or not inside gives no cells.
     template <typename Inside> void fill(Cell start, int width, int height, bool diagonal, Inside&& inside, std::vector<Cell>& cells) {
         cells.clear();
@@ -45,6 +43,9 @@ class FloodFill final {
     void fill(const CellGrid& grid, Cell start, bool diagonal, std::vector<Cell>& cells);
 
   private:
+    // The four sides come first, so side fills read only the first four.
+    static constexpr std::array<Cell, 8> kNeighbors{{{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {-1, 1}, {1, -1}, {-1, -1}}};
+
     // Starts a fill over the given number of cells with a fresh mark, clearing old marks only when the mark counter wraps around.
     void beginVisit(std::size_t count);
 

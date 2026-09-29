@@ -55,6 +55,7 @@ TEST(GridRayTest, WalksCrossedCellsInOrder) {
 
     EXPECT_THROW((void)spatial2d::GridRay::cast(math::Ray{{0.0F, 0.0F}, {1.0F, 0.0F}}, {10.0F, 10.0F}, blocked), std::invalid_argument);
     EXPECT_THROW((void)spatial2d::GridRay::cast(math::Ray::between({0.0F, 0.0F}, {1.0F, 0.0F}), {0.0F, 10.0F}, blocked), std::invalid_argument);
+    EXPECT_THROW((void)spatial2d::GridRay::cast(math::Ray::between({0.0F, 0.0F}, {1e30F, 0.0F}), {10.0F, 10.0F}, blocked), std::invalid_argument);
 }
 
 TEST(GridRayTest, CastsOverCellGridsFromInsideAndOutside) {
@@ -80,6 +81,9 @@ TEST(GridRayTest, CastsOverCellGridsFromInsideAndOutside) {
     EXPECT_EQ(edge->normal, (math::Vec2{-1.0F, 0.0F}));
     EXPECT_FALSE(spatial2d::GridRay::cast(math::Ray{{-100.0F, 200.0F}, {1.0F, 0.0F}}, cellSize, grid).has_value());
     EXPECT_FALSE(spatial2d::GridRay::cast(math::Ray{{24.0F, 8.0F}, {0.0F, 1.0F}}, cellSize, grid).has_value());
+
+    // An invalid cell size raises even when the ray misses the grid it would describe.
+    EXPECT_THROW((void)spatial2d::GridRay::cast(math::Ray{{8.0F, 56.0F}, {1.0F, 0.0F}}, {-16.0F, 16.0F}, grid), std::invalid_argument);
 }
 
 TEST(BresenhamTest, DrawsLinesAndCircles) {
@@ -187,6 +191,13 @@ TEST(VisibilityPolygonTest, OutlinesWhatAPointSeesAmongWalls) {
         EXPECT_LE((shadowed[index - 1] - math::Vec2{50.0F, 50.0F}).getAngle(), (shadowed[index] - math::Vec2{50.0F, 50.0F}).getAngle() + 1e-5F);
     }
     EXPECT_THROW((void)visibility.compute({150.0F, 50.0F}, pillar, room), std::invalid_argument);
+
+    // Points that are not finite would leave the angles without an order, so they raise.
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    const std::vector<math::Segment> broken{{{nan, 40.0F}, {70.0F, 60.0F}}};
+    EXPECT_THROW((void)visibility.compute({nan, 50.0F}, pillar, room), std::invalid_argument);
+    EXPECT_THROW((void)visibility.compute({50.0F, 50.0F}, broken, room), std::invalid_argument);
+    EXPECT_THROW((void)visibility.compute({50.0F, 50.0F}, pillar, {0.0F, 0.0F, std::numeric_limits<float>::infinity(), 100.0F}), std::invalid_argument);
 }
 
 TEST(FloodFillTest, FillsConnectedCellsOfTheSameValue) {
@@ -279,8 +290,15 @@ TEST(GridAlgorithmsLuaTest, RunsGridAlgorithmsFromLua) {
     EXPECT_EQ(fixture.lua("return grid.width .. 'x' .. grid.height .. ' ' .. grid:get(5, 0) .. grid:get(5, 2) .. ' ' .. tostring(grid:contains(8, 0))"), "8x6 10 false");
     EXPECT_EQ(fixture.lua("local hit = spatial2d.raycastGrid(grid, {8, 8}, {200, 8}, 16) return hit.column .. ':' .. hit.row .. ' ' .. hit.x .. ' ' .. hit.normalX"), "5:0 80.0 -1.0");
     EXPECT_EQ(fixture.lua("return tostring(spatial2d.raycastGrid(grid, {8, 40}, {200, 40}, {16, 16}))"), "nil");
+    EXPECT_NE(fixture.lua("spatial2d.raycastGrid(grid, {8, 40}, {200, 40}, -16)").find("positive and finite size"), std::string::npos);
+    EXPECT_EQ(fixture.lua("local crossed = spatial2d.traverseGrid({5, 5}, {35, 17}, 10) return cells(crossed) .. ' ' .. crossed[1].distance .. ' ' .. tostring(crossed[2].distance > 5)"), "0:0 1:0 1:1 2:1 3:1 0.0 true");
+    EXPECT_EQ(fixture.lua("return cells(spatial2d.traverseGrid({5, 5}, {5, 25}, {10, 20}))"), "0:0 0:1");
+    EXPECT_NE(fixture.lua("spatial2d.traverseGrid({0, 0}, {1000000, 0}, 1)").find("at most 65536 cells"), std::string::npos);
+    EXPECT_NE(fixture.lua("spatial2d.traverseGrid({0, 0}, {1e10, 0}, 1)").find("32-bit range of cells"), std::string::npos);
     EXPECT_EQ(fixture.lua("return cells(spatial2d.line(0, 0, 3, 1)) .. ' / ' .. #spatial2d.circle(0, 0, 3)"), "0:0 1:0 2:1 3:1 / 16");
     EXPECT_EQ(fixture.lua("local seen = {} for _, cell in ipairs(spatial2d.fieldOfView(grid, 2, 2, 10)) do seen[cell.x .. ':' .. cell.y] = true end return tostring(seen['7:2']) .. ' ' .. tostring(seen['7:0']) .. ' ' .. tostring(seen['5:0'])"), "true nil true");
+    EXPECT_EQ(fixture.lua("return #spatial2d.fieldOfView(grid, 2, 2, 2000000000) == #spatial2d.fieldOfView(grid, 2, 2, 10)"), "true");
+    EXPECT_EQ(fixture.lua("return #spatial2d.fieldOfView(grid, -3, 2, 2000000000) .. ' ' .. #spatial2d.fieldOfView(grid, 7, 5, 0)"), "0 1");
     EXPECT_EQ(fixture.lua("local fill = spatial2d.floodFill(grid, 0, 0) return #fill .. ' ' .. #spatial2d.floodFill(grid, 5, 0, {diagonal = true})"), "43 2");
     EXPECT_EQ(fixture.lua("spatial2d.floodFill(grid, 7, 5, {value = 3}) return grid:get(0, 0) .. grid:get(6, 0)"), "33");
     EXPECT_EQ(fixture.lua("local labels, count = spatial2d.components(grid, {background = 3}) return count .. ' ' .. labels:get(5, 0) .. labels:get(5, 3) .. labels:get(0, 0)"), "2 120");
@@ -290,6 +308,7 @@ TEST(GridAlgorithmsLuaTest, RunsGridAlgorithmsFromLua) {
     fixture.runLua("sets = spatial2d.newUnionFind(4)");
     EXPECT_EQ(fixture.lua("return tostring(sets:unite(1, 2)) .. tostring(sets:unite(2, 1)) .. ' ' .. sets:find(2) .. ' ' .. tostring(sets:connected(1, 3)) .. ' ' .. sets:setSize(1) .. ' ' .. sets.setCount .. ' ' .. sets:add() .. ' ' .. sets.size"), "truefalse 1 false 2 3 5 5");
     EXPECT_NE(fixture.lua("sets:find(0)").find("count from 1"), std::string::npos);
+    EXPECT_EQ(fixture.lua("sets:reset(3) return sets.size .. ' ' .. sets.setCount .. ' ' .. tostring(sets:connected(1, 2))"), "3 3 false");
     EXPECT_NE(fixture.lua("grid:set(9, 0, 1)").find("outside the cell grid"), std::string::npos);
     EXPECT_NE(fixture.lua("spatial2d.floodFill(grid, 0, 0, {fill = 2})").find("Unknown option 'fill'"), std::string::npos);
     EXPECT_NE(fixture.lua("spatial2d.newCellGrid(0, 3)").find("positive size"), std::string::npos);

@@ -30,7 +30,7 @@ class Terrain final {
         Shape::Options shape{};
     };
 
-    // Starts empty. Throws std::invalid_argument for fewer than 2 samples on a side, a cell size or chunk size that is not positive, or a negative tolerance.
+    // Starts empty. Throws std::invalid_argument for fewer than 2 samples on a side, a cell size or chunk size that is not positive, a negative tolerance or invalid shape options.
     Terrain(World& owner, const Options& settings);
     ~Terrain();
 
@@ -45,9 +45,6 @@ class Terrain final {
     }
     [[nodiscard]] float getCellSize() const noexcept {
         return options.cellSize;
-    }
-    [[nodiscard]] math::Vec2 getOrigin() const noexcept {
-        return options.origin;
     }
     [[nodiscard]] math::Rect getBounds() const noexcept;
 

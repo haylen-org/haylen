@@ -14,6 +14,7 @@
 
 #include <imgui.h>
 
+#include "haylen/2d/graphics/MeshVertex.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/input/Key.hpp"
 #include "haylen/math/Color.hpp"
@@ -105,9 +106,6 @@ class Backend final {
     [[nodiscard]] bool hasFont(std::string_view name) const {
         return fonts.contains(name);
     }
-    [[nodiscard]] ImFont* getDefaultFont() const noexcept {
-        return defaultFont;
-    }
 
     [[nodiscard]] ImGuiContext* getImGuiContext() const noexcept {
         return imguiContext;
@@ -132,7 +130,7 @@ class Backend final {
         float emRatio = 1.0F;
     };
 
-    // What a render callback command of a draw list carries, copied into the list by ImGui.
+    // ImGui copies the data of a callback command into the draw list byte by byte, so a command carries the index of its function instead of the function.
     struct RenderCall {
         Backend* owner = nullptr;
         std::size_t index = 0;
@@ -159,6 +157,9 @@ class Backend final {
     void handlePointer(const platform::Event& event, const graphics::Viewport& viewport);
     void handleTextAction(const platform::Event& event);
     void feedGamepad(const input::Input& input, const NavigationInput& navigation);
+
+    // Closes every popup that no component drew in the last frame, such as the dialog of a node that was hidden or of a document that was unmounted, so it never keeps the pointer and cancel from the windows under it.
+    static void closeAbandonedPopups();
     void updateTextures(ImDrawData& data);
     [[nodiscard]] const graphics::Texture* findTexture(ImTextureID id) const;
 
@@ -167,12 +168,13 @@ class Backend final {
     std::unique_ptr<Recovery> recovery;
     std::unique_ptr<TextSession> textSession;
     ImGuiContext* imguiContext = nullptr;
-    ImFont* defaultFont = nullptr;
     std::vector<std::vector<std::uint8_t>> fontData;
     std::map<std::string, Typeface, std::less<>> fonts;
     std::unordered_map<ImTextureID, graphics::Texture> atlasTextures;
     std::unordered_map<ImTextureID, graphics::Texture> frameTextures;
     std::vector<std::function<void(graphics2d::Renderer&, math::Vec2)>> renderCalls;
+    std::vector<graphics2d::MeshVertex> meshVertices;
+    std::vector<std::uint32_t> meshIndices;
     graphics2d::Renderer* rendering = nullptr;
     ImTextureID nextAtlasTexture = 1;
     math::Vec2 origin;

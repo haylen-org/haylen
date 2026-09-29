@@ -175,6 +175,28 @@ Grid& NavGridLua::ownerGrid(lua_State* L) {
     return lua::Userdata::check<ScriptedGrid>(L, -1).grid;
 }
 
+std::shared_ptr<const Grid> NavGridLua::snapshotOf(lua_State* L) {
+    ScriptedGrid& self = lua::Userdata::check<ScriptedGrid>(L, 1);
+    if (!self.snapshot) {
+        self.snapshot = std::make_shared<const Grid>(self.grid);
+    }
+    return self.snapshot;
+}
+
+template <typename T> void NavGridLua::settleOwned(const lua::Promise& promise, const std::shared_ptr<lua::Reference>& owner, core::JobSystem::Result<T> result) {
+    if (!result.isOk()) {
+        promise.reject(result.error);
+        return;
+    }
+    // clang-format off
+    promise.resolveWith([owner, value = std::make_shared<const T>(std::move(*result.value))](lua_State* state) {
+        owner->push(state);
+        pushOwned<T>(state, -1, *value);
+        lua_remove(state, -2);
+    });
+    // clang-format on
+}
+
 // Creates a grid with newGrid(width, height[, {topology = 'square', staggerX = false, staggerEven = false}]).
 int NavGridLua::newGrid(lua_State* L) {
     Grid::Layout layout;
@@ -219,13 +241,20 @@ int NavGridLua::hasUniformCost(lua_State* L) {
     return 1;
 }
 
+int NavGridLua::getExpandedCount(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<ScriptedGrid>(L, 1).search.getExpandedCount());
+    return 1;
+}
+
 int NavGridLua::contains(lua_State* L) {
     lua::Stack::push(L, check(L).contains(readCell(L, 2)));
     return 1;
 }
 
 int NavGridLua::setWalkable(lua_State* L) {
-    check(L).setWalkable(readCell(L, 2), lua::Stack::read<bool>(L, 4));
+    ScriptedGrid& self = lua::Userdata::check<ScriptedGrid>(L, 1);
+    self.grid.setWalkable(readCell(L, 2), lua::Stack::read<bool>(L, 4));
+    self.snapshot.reset();
     return 0;
 }
 
@@ -235,12 +264,20 @@ int NavGridLua::isWalkable(lua_State* L) {
 }
 
 int NavGridLua::setCost(lua_State* L) {
-    check(L).setCost(readCell(L, 2), lua::Stack::read<float>(L, 4));
+    ScriptedGrid& self = lua::Userdata::check<ScriptedGrid>(L, 1);
+    self.grid.setCost(readCell(L, 2), lua::Stack::read<float>(L, 4));
+    self.snapshot.reset();
     return 0;
 }
 
 int NavGridLua::getCost(lua_State* L) {
     lua::Stack::push(L, check(L).getCost(readCell(L, 2)));
+    return 1;
+}
+
+// Estimates the walk between two cells with estimate(fromX, fromY, toX, toY, heuristic).
+int NavGridLua::estimate(lua_State* L) {
+    lua::Stack::push(L, check(L).estimate(readCell(L, 2), readCell(L, 4), lua::Stack::read<Grid::Heuristic>(L, 6)));
     return 1;
 }
 
@@ -256,19 +293,20 @@ int NavGridLua::findPath(lua_State* L) {
     return 2;
 }
 
-// Returns a promise for the path of findPath, searched on a copy of the grid in the background.
+// Returns a promise for the path of findPath, searched on the snapshot of the grid in the background.
 int NavGridLua::findPathAsync(lua_State* L) {
-    const Grid& grid = check(L);
     const Grid::Cell start = readCell(L, 2);
     const Grid::Cell goal = readCell(L, 4);
     const GridSearch::Options options = readPathOptions(L, 6);
+    GridSearch::requireValid(check(L), options);
+    const std::shared_ptr<const Grid> grid = snapshotOf(L);
     core::Engine& engine = lua::Runtime::getEngine(L);
     const lua::Promise promise(engine);
 
     // clang-format off
     engine.getJobs().run([grid, start, goal, options] {
         GridSearch search;
-        const std::span<const Grid::Cell> path = search.findPath(grid, start, goal, options);
+        const std::span<const Grid::Cell> path = search.findPath(*grid, start, goal, options);
         return std::vector<Grid::Cell>(path.begin(), path.end());
     }, [promise](core::JobSystem::Result<std::vector<Grid::Cell>> result) {
         if (!result.isOk()) {
@@ -326,30 +364,23 @@ int NavGridLua::dijkstraMap(lua_State* L) {
     return 1;
 }
 
-// Returns a promise for the map of dijkstraMap, computed on a copy of the grid in the background.
+// Returns a promise for the map of dijkstraMap, computed on the snapshot of the grid in the background.
 int NavGridLua::dijkstraMapAsync(lua_State* L) {
-    const Grid& grid = check(L);
-    const std::vector<DijkstraMap::Source> sources = readSources(L, 2);
+    std::vector<DijkstraMap::Source> sources = readSources(L, 2);
     const bool diagonal = readDiagonal(L, 3);
+    DijkstraMap::requireValid(sources);
+    const std::shared_ptr<const Grid> grid = snapshotOf(L);
     core::Engine& engine = lua::Runtime::getEngine(L);
     const lua::Promise promise(engine);
     const auto owner = std::make_shared<lua::Reference>(L, 1);
 
     // clang-format off
-    engine.getJobs().run([grid, sources, diagonal] {
+    engine.getJobs().run([grid, sources = std::move(sources), diagonal] {
         DijkstraMap map;
-        map.compute(grid, sources, diagonal);
+        map.compute(*grid, sources, diagonal);
         return map;
     }, [promise, owner](core::JobSystem::Result<DijkstraMap> result) {
-        if (!result.isOk()) {
-            promise.reject(result.error);
-            return;
-        }
-        promise.resolveWith([owner, map = std::move(*result.value)](lua_State* state) {
-            owner->push(state);
-            pushOwned<DijkstraMap>(state, -1, map);
-            lua_remove(state, -2);
-        });
+        settleOwned(promise, owner, std::move(result));
     });
     // clang-format on
     promise.push(L);
@@ -366,30 +397,22 @@ int NavGridLua::flowField(lua_State* L) {
     return 1;
 }
 
-// Returns a promise for the field of flowField, computed on a copy of the grid in the background.
+// Returns a promise for the field of flowField, computed on the snapshot of the grid in the background.
 int NavGridLua::flowFieldAsync(lua_State* L) {
-    const Grid& grid = check(L);
-    const std::vector<Grid::Cell> goals = lua::Stack::read<std::vector<Grid::Cell>>(L, 2);
+    std::vector<Grid::Cell> goals = lua::Stack::read<std::vector<Grid::Cell>>(L, 2);
     const bool diagonal = readDiagonal(L, 3);
+    const std::shared_ptr<const Grid> grid = snapshotOf(L);
     core::Engine& engine = lua::Runtime::getEngine(L);
     const lua::Promise promise(engine);
     const auto owner = std::make_shared<lua::Reference>(L, 1);
 
     // clang-format off
-    engine.getJobs().run([grid, goals, diagonal] {
+    engine.getJobs().run([grid, goals = std::move(goals), diagonal] {
         FlowField field;
-        field.compute(grid, goals, diagonal);
+        field.compute(*grid, goals, diagonal);
         return field;
     }, [promise, owner](core::JobSystem::Result<FlowField> result) {
-        if (!result.isOk()) {
-            promise.reject(result.error);
-            return;
-        }
-        promise.resolveWith([owner, field = std::move(*result.value)](lua_State* state) {
-            owner->push(state);
-            pushOwned<FlowField>(state, -1, field);
-            lua_remove(state, -2);
-        });
+        settleOwned(promise, owner, std::move(result));
     });
     // clang-format on
     promise.push(L);
@@ -416,26 +439,20 @@ int NavGridLua::hierarchical(lua_State* L) {
     return 1;
 }
 
-// Returns a promise for the path finder of hierarchical, built from a copy of the grid in the background.
+// Returns a promise for the path finder of hierarchical, built from the snapshot of the grid in the background.
 int NavGridLua::hierarchicalAsync(lua_State* L) {
-    const Grid& grid = check(L);
     const HierarchicalPathfinder::Options options = readHierarchyOptions(L, 2);
+    HierarchicalPathfinder::requireValid(check(L), options);
+    const std::shared_ptr<const Grid> grid = snapshotOf(L);
     core::Engine& engine = lua::Runtime::getEngine(L);
     const lua::Promise promise(engine);
     const auto owner = std::make_shared<lua::Reference>(L, 1);
 
     // clang-format off
-    HierarchicalPathfinder::buildAsync(engine.getJobs(), grid, options, [promise, owner](core::JobSystem::Result<HierarchicalPathfinder> result) {
-        if (!result.isOk()) {
-            promise.reject(result.error);
-            return;
-        }
-        auto built = std::make_shared<HierarchicalPathfinder>(std::move(*result.value));
-        promise.resolveWith([owner, built](lua_State* state) {
-            owner->push(state);
-            pushOwned<HierarchicalPathfinder>(state, -1, std::move(*built));
-            lua_remove(state, -2);
-        });
+    engine.getJobs().run([grid, options] {
+        return HierarchicalPathfinder(*grid, options);
+    }, [promise, owner](core::JobSystem::Result<HierarchicalPathfinder> result) {
+        settleOwned(promise, owner, std::move(result));
     });
     // clang-format on
     promise.push(L);
@@ -477,6 +494,17 @@ int NavGridLua::mapHeight(lua_State* L) {
     return 1;
 }
 
+// Returns every value row by row, which suits drawing the map.
+int NavGridLua::mapValues(lua_State* L) {
+    const std::span<const float> values = lua::Userdata::check<DijkstraMap>(L, 1).getValues();
+    lua_createtable(L, static_cast<int>(values.size()), 0);
+    for (std::size_t index = 0; index < values.size(); ++index) {
+        lua_pushnumber(L, values[index]);
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
+    return 1;
+}
+
 int NavGridLua::fieldNext(lua_State* L) {
     const std::optional<Grid::Cell> next = lua::Userdata::check<FlowField>(L, 1).getNext(readCell(L, 2));
     if (!next) {
@@ -510,7 +538,9 @@ int NavGridLua::fieldHeight(lua_State* L) {
 
 int NavGridLua::hierarchyFindPath(lua_State* L) {
     HierarchicalPathfinder& hierarchy = lua::Userdata::check<HierarchicalPathfinder>(L, 1);
-    const std::span<const Grid::Cell> path = hierarchy.findPath(readCell(L, 2), readCell(L, 4));
+    const Grid::Cell start = readCell(L, 2);
+    const Grid::Cell goal = readCell(L, 4);
+    const std::span<const Grid::Cell> path = hierarchy.findPath(ownerGrid(L), start, goal);
     pushPath(L, path);
     if (path.empty()) {
         return 1;
@@ -523,12 +553,12 @@ int NavGridLua::hierarchyFindPath(lua_State* L) {
 int NavGridLua::hierarchyUpdate(lua_State* L) {
     const Grid::Cell first = readCell(L, 2);
     const Grid::Cell last = lua_isnoneornil(L, 4) ? first : readCell(L, 4);
-    lua::Userdata::check<HierarchicalPathfinder>(L, 1).update(first, last);
+    lua::Userdata::check<HierarchicalPathfinder>(L, 1).update(ownerGrid(L), first, last);
     return 0;
 }
 
 int NavGridLua::hierarchyRebuild(lua_State* L) {
-    lua::Userdata::check<HierarchicalPathfinder>(L, 1).rebuild();
+    lua::Userdata::check<HierarchicalPathfinder>(L, 1).rebuild(ownerGrid(L));
     return 0;
 }
 
@@ -542,6 +572,11 @@ int NavGridLua::hierarchyClusterSize(lua_State* L) {
     return 1;
 }
 
+int NavGridLua::hierarchyDiagonal(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<HierarchicalPathfinder>(L, 1).getOptions().diagonal);
+    return 1;
+}
+
 void NavGridLua::addFunctions(lua_State* L) {
     const luaL_Reg functions[] = {
         {"newGrid", &lua::Binding::native<&newGrid>},
@@ -551,10 +586,10 @@ void NavGridLua::addFunctions(lua_State* L) {
 }
 
 void NavGridLua::install(lua_State* L) {
-    lua::ClassBuilder<ScriptedGrid>(L).property("width", &getWidth).property("height", &getHeight).property("topology", &getTopology).property("staggerX", &isStaggerX).property("staggerEven", &isStaggerEven).property("uniformCost", &hasUniformCost).function("contains", &lua::Binding::native<&contains>).function("setWalkable", &lua::Binding::native<&setWalkable>).function("walkable", &lua::Binding::native<&isWalkable>).function("setCost", &lua::Binding::native<&setCost>).function("cost", &lua::Binding::native<&getCost>).function("findPath", &lua::Binding::native<&findPath>).function("findPathAsync", &lua::Binding::native<&findPathAsync>).function("lineOfSight", &lua::Binding::native<&lineOfSight>).function("smooth", &lua::Binding::native<&smooth>).function("raycast", &lua::Binding::native<&raycast>).function("dijkstraMap", &lua::Binding::native<&dijkstraMap>).function("dijkstraMapAsync", &lua::Binding::native<&dijkstraMapAsync>).function("flowField", &lua::Binding::native<&flowField>).function("flowFieldAsync", &lua::Binding::native<&flowFieldAsync>).function("hierarchical", &lua::Binding::native<&hierarchical>).function("hierarchicalAsync", &lua::Binding::native<&hierarchicalAsync>).install();
-    lua::ClassBuilder<DijkstraMap>(L).function("value", &lua::Binding::native<&mapValue>).function("next", &lua::Binding::native<&mapNext>).function("flee", &lua::Binding::native<&mapFlee>).property("width", &mapWidth).property("height", &mapHeight).install();
+    lua::ClassBuilder<ScriptedGrid>(L).property("width", &getWidth).property("height", &getHeight).property("topology", &getTopology).property("staggerX", &isStaggerX).property("staggerEven", &isStaggerEven).property("uniformCost", &hasUniformCost).property("expandedCount", &getExpandedCount).function("contains", &lua::Binding::native<&contains>).function("setWalkable", &lua::Binding::native<&setWalkable>).function("walkable", &lua::Binding::native<&isWalkable>).function("setCost", &lua::Binding::native<&setCost>).function("cost", &lua::Binding::native<&getCost>).function("estimate", &lua::Binding::native<&estimate>).function("findPath", &lua::Binding::native<&findPath>).function("findPathAsync", &lua::Binding::native<&findPathAsync>).function("lineOfSight", &lua::Binding::native<&lineOfSight>).function("smooth", &lua::Binding::native<&smooth>).function("raycast", &lua::Binding::native<&raycast>).function("dijkstraMap", &lua::Binding::native<&dijkstraMap>).function("dijkstraMapAsync", &lua::Binding::native<&dijkstraMapAsync>).function("flowField", &lua::Binding::native<&flowField>).function("flowFieldAsync", &lua::Binding::native<&flowFieldAsync>).function("hierarchical", &lua::Binding::native<&hierarchical>).function("hierarchicalAsync", &lua::Binding::native<&hierarchicalAsync>).install();
+    lua::ClassBuilder<DijkstraMap>(L).function("value", &lua::Binding::native<&mapValue>).function("next", &lua::Binding::native<&mapNext>).function("flee", &lua::Binding::native<&mapFlee>).function("values", &lua::Binding::native<&mapValues>).property("width", &mapWidth).property("height", &mapHeight).install();
     lua::ClassBuilder<FlowField>(L).function("next", &lua::Binding::native<&fieldNext>).function("direction", &lua::Binding::native<&fieldDirection>).function("distance", &lua::Binding::native<&fieldDistance>).property("width", &fieldWidth).property("height", &fieldHeight).install();
-    lua::ClassBuilder<HierarchicalPathfinder>(L).function("findPath", &lua::Binding::native<&hierarchyFindPath>).function("update", &lua::Binding::native<&hierarchyUpdate>).function("rebuild", &lua::Binding::native<&hierarchyRebuild>).property("nodeCount", &hierarchyNodeCount).property("clusterSize", &hierarchyClusterSize).install();
+    lua::ClassBuilder<HierarchicalPathfinder>(L).function("findPath", &lua::Binding::native<&hierarchyFindPath>).function("update", &lua::Binding::native<&hierarchyUpdate>).function("rebuild", &lua::Binding::native<&hierarchyRebuild>).property("nodeCount", &hierarchyNodeCount).property("clusterSize", &hierarchyClusterSize).property("diagonal", &hierarchyDiagonal).install();
 }
 
 } // namespace haylen::navigation2d

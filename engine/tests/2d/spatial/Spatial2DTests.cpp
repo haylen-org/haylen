@@ -127,7 +127,8 @@ template <typename Structure> void expectSameAnswers(const Structure& structure,
             EXPECT_EQ(hits[index].normal, expectedHits[index].normal);
         }
 
-        const std::size_t count = static_cast<std::size_t>(random.range(1, 6));
+        // Small counts stop early, and a count of every entry ranks the whole structure.
+        const std::size_t count = probe % 10 == 0 ? reference.entries.size() : static_cast<std::size_t>(random.range(1, 6));
         const float maxDistance = random.chance(0.5F) ? std::numeric_limits<float>::infinity() : random.range(0.0F, 200.0F);
         structure.nearest(point, count, maxDistance, neighbors);
         const std::vector<spatial2d::Neighbor> expectedNeighbors = reference.nearest(point, count, maxDistance);
@@ -137,6 +138,10 @@ template <typename Structure> void expectSameAnswers(const Structure& structure,
             EXPECT_EQ(neighbors[index].distance, expectedNeighbors[index].distance);
         }
     }
+
+    const math::Rect everything{-1000.0F, -1000.0F, 2000.0F, 2000.0F};
+    structure.query(everything, ids);
+    EXPECT_EQ(ids, reference.query(everything));
 }
 
 } // namespace
@@ -209,7 +214,57 @@ TYPED_TEST(SpatialStructureTest, CountsTouchingBoundsAndRejectsInvalidInput) {
     EXPECT_THROW(structure.queryCircle({0.0F, 0.0F}, -1.0F, ids), std::invalid_argument);
     std::vector<spatial2d::Neighbor> neighbors;
     EXPECT_THROW(structure.nearest({0.0F, 0.0F}, 1, -1.0F, neighbors), std::invalid_argument);
+    EXPECT_THROW(structure.nearest({std::nanf(""), 0.0F}, 1, 10.0F, neighbors), std::invalid_argument);
+    EXPECT_THROW(structure.nearest({0.0F, std::numeric_limits<float>::infinity()}, 1, 10.0F, neighbors), std::invalid_argument);
     EXPECT_EQ(structure.size(), 2U);
+}
+
+TEST(HashGridTest, SparseEntriesKeepQueriesProportionalToTheEntries) {
+    spatial2d::HashGrid hash(1.0F);
+    hash.set(1, {0.0F, 0.0F, 1.0F, 1.0F});
+    hash.set(2, {1e8F, 1e8F, 1.0F, 1.0F});
+
+    // The areas span far more cells than any grid could visit, and the nearest point lies hundreds of millions of cells from both entries.
+    Ids ids;
+    hash.query({-1e9F, -1e9F, 2e9F, 2e9F}, ids);
+    EXPECT_EQ(ids, (Ids{1, 2}));
+    hash.query({-3e38F, -3e38F, 3e38F, 3e38F}, ids);
+    EXPECT_EQ(ids, (Ids{1}));
+    hash.queryCircle({5e7F, 5e7F}, 1e8F, ids);
+    EXPECT_EQ(ids, (Ids{1, 2}));
+    hash.queryPoint({1e30F, 0.0F}, ids);
+    EXPECT_TRUE(ids.empty());
+
+    std::vector<spatial2d::Neighbor> neighbors;
+    hash.nearest({5e8F, 5e8F}, 1, std::numeric_limits<float>::infinity(), neighbors);
+    ASSERT_EQ(neighbors.size(), 1U);
+    EXPECT_EQ(neighbors[0].id, 2U);
+    hash.nearest({3e38F, 0.0F}, 2, 1000.0F, neighbors);
+    EXPECT_TRUE(neighbors.empty());
+    hash.nearest({-3e38F, 0.0F}, 2, std::numeric_limits<float>::infinity(), neighbors);
+    EXPECT_EQ(neighbors.size(), 2U);
+
+    // Rays across the empty cells between the entries test the entries instead of walking the cells.
+    std::vector<spatial2d::RayHit> hits;
+    hash.raycast(math::Ray::between({-10.0F, 0.5F}, {2e8F, 0.5F}), 0, hits);
+    ASSERT_EQ(hits.size(), 1U);
+    EXPECT_EQ(hits[0].id, 1U);
+    EXPECT_FLOAT_EQ(hits[0].distance, 10.0F);
+    hash.raycast(math::Ray{{-10.0F, -10.0F}, math::Vec2{1.0F, 1.0F}.getNormalized()}, 0, hits);
+    ASSERT_EQ(hits.size(), 2U);
+    EXPECT_EQ(hits[0].id, 1U);
+    EXPECT_EQ(hits[1].id, 2U);
+}
+
+TEST(HashGridTest, RejectsEntriesTooLargeOrTooFarForTheCells) {
+    spatial2d::HashGrid hash(1.0F);
+    EXPECT_THROW(hash.set(1, {0.0F, 0.0F, 1e6F, 1e6F}), std::invalid_argument);
+    EXPECT_THROW(hash.set(1, {1e12F, 0.0F, 1.0F, 1.0F}), std::invalid_argument);
+    EXPECT_THROW(hash.set(1, {3e38F, 0.0F, 3e38F, 1.0F}), std::invalid_argument);
+    EXPECT_FALSE(hash.contains(1));
+
+    hash.set(1, {0.0F, 0.0F, 255.0F, 255.0F});
+    EXPECT_EQ(hash.size(), 1U);
 }
 
 TEST(HashGridTest, CastsEndlessRaysAndRejectsInvalidCellSizes) {
@@ -253,6 +308,21 @@ TEST(QuadTreeTest, SplitsFullQuadrantsAndMergesEmptyOnes) {
 
     EXPECT_THROW(spatial2d::QuadTree({0.0F, 0.0F, 0.0F, 10.0F}), std::invalid_argument);
     EXPECT_THROW(spatial2d::QuadTree({0.0F, 0.0F, 10.0F, 10.0F}, {.maxEntries = 0}), std::invalid_argument);
+}
+
+TEST(QuadTreeTest, StopsSplittingCoincidentEntriesAtTheDepthLimit) {
+    spatial2d::QuadTree tree({0.0F, 0.0F, 100.0F, 100.0F}, {.maxEntries = 1, .maxDepth = spatial2d::QuadTree::kMaxDepth});
+    for (std::uint64_t id = 1; id <= 3; ++id) {
+        tree.set(id, {10.0F, 10.0F, 0.0F, 0.0F});
+    }
+    EXPECT_EQ(tree.getNodeCount(), 1U + 4U * 16U);
+    Ids ids;
+    tree.queryPoint({10.0F, 10.0F}, ids);
+    EXPECT_EQ(ids, (Ids{1, 2, 3}));
+
+    // Deeper limits are refused, since entries at one spot would split down to them.
+    EXPECT_THROW(spatial2d::QuadTree({0.0F, 0.0F, 10.0F, 10.0F}, {.maxDepth = 17}), std::invalid_argument);
+    EXPECT_THROW(spatial2d::QuadTree({0.0F, 0.0F, 10.0F, 10.0F}, {.maxDepth = 1000000}), std::invalid_argument);
 }
 
 TEST(AabbTreeTest, StaysBalancedAndSkipsSmallMoves) {
@@ -347,6 +417,7 @@ TEST(KdTreeTest, TreatsEntriesWithRadiusAsCircles) {
     tree.nearest({70.0F, 0.0F}, 1, 100.0F, neighbors);
     EXPECT_EQ(neighbors.front().id, 1U);
     EXPECT_FLOAT_EQ(neighbors.front().distance, 10.0F);
+    EXPECT_THROW(tree.nearest({std::nanf(""), 0.0F}, 1, 100.0F, neighbors), std::invalid_argument);
 
     EXPECT_TRUE(tree.remove(1));
     EXPECT_FALSE(tree.remove(1));
@@ -476,6 +547,26 @@ TEST(Spatial2DLuaTest, StoresLuaValuesInEveryStructure) {
     EXPECT_NE(fixture.lua("fill(spatial2d.newAabbTree()):nearest(0, 0, 10, function() error('filter failed') end)").find("filter failed"), std::string::npos);
     EXPECT_NE(fixture.lua("spatial2d.newHash(-2)").find("positive cell size"), std::string::npos);
     EXPECT_NE(fixture.lua("spatial2d.newQuadTree({0, 0, 10, 10}, {depth = 3})").find("Unknown option 'depth'"), std::string::npos);
+    EXPECT_NE(fixture.lua("spatial2d.newQuadTree({0, 0, 10, 10}, {maxDepth = 40})").find("a depth from 0 to 16"), std::string::npos);
+    EXPECT_NE(fixture.lua("spatial2d.newHash(1):set(rock, {0, 0, 1000, 1000})").find("at most 65536 cells"), std::string::npos);
+    EXPECT_NE(fixture.lua("fill(spatial2d.newHash(8)):nearest(0 / 0, 0, 10)").find("point must be finite"), std::string::npos);
+}
+
+TEST(Spatial2DLuaTest, NearestNeverOffersValuesThatAcceptRemoved) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        spatial2d = require('haylen.spatial2d')
+        hash = spatial2d.newHash(32)
+        near, middle, far = {name = 'near'}, {name = 'middle'}, {name = 'far'}
+        hash:set(near, {0, 0, 4, 4})
+        hash:set(middle, {50, 0, 4, 4})
+        hash:set(far, {100, 0, 4, 4})
+    )");
+    // clang-format on
+
+    EXPECT_EQ(fixture.lua("local offered = {} local found = hash:nearest(0, 0, 500, function(value) offered[#offered + 1] = value.name if value == near then hash:remove(middle) end return value == far end) return found.name .. ' ' .. table.concat(offered, ',')"), "far near,far");
+    EXPECT_EQ(fixture.lua("local offered = 0 local found = hash:nearest(0, 0, 500, function() offered = offered + 1 hash:clear() return false end) return tostring(found) .. ' ' .. offered .. ' ' .. hash.size"), "nil 1 0");
 }
 
 } // namespace haylen

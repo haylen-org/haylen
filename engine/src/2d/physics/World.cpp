@@ -2,21 +2,22 @@
 
 #include <box2d/box2d.h>
 
-#include <algorithm>
 #include <stdexcept>
 #include <utility>
 
 #include "2d/physics/Box2DConverter.hpp"
 #include "2d/physics/DebugDraw.hpp"
 #include "haylen/2d/physics/Raycaster.hpp"
+#include "haylen/math/Math.hpp"
 
 namespace haylen::physics2d {
 
 const World::Settings World::kDefaultSettings{};
+const float World::kRevoluteLimit = 0.99F * math::Math::kPi;
 debug::ObjectCounter World::bodyCounter("PhysicsBody", debug::ObjectCounter::Kind::Native);
 debug::ObjectCounter World::contactCounter("PhysicsContact", debug::ObjectCounter::Kind::Native);
 
-// Decides in the pre-solve callback of Box2D whether a contact with a one-way platform holds, which Box2D may call from several threads at once. It only reads the transforms of bodies, which stay still while Box2D collides.
+// Decides in the pre-solve callback of Box2D whether a contact with a one-way platform holds. It only reads the transforms of bodies, which stay still while Box2D collides.
 class World::OneWayFilter final {
   public:
     static bool preSolve(b2ShapeId shapeA, b2ShapeId shapeB, b2Manifold* manifold, void* context) {
@@ -45,8 +46,12 @@ World::World(const Settings& settings) : pixelsPerMeter(settings.pixelsPerMeter)
     }
     b2WorldDef def = b2DefaultWorldDef();
     def.gravity = Box2DConverter::toMeters(settings.gravity, pixelsPerMeter);
-    handle = b2StoreWorldId(b2CreateWorld(&def));
-    b2World_SetPreSolveCallback(b2LoadWorldId(handle), &OneWayFilter::preSolve, this);
+    const b2WorldId world = b2CreateWorld(&def);
+    if (!b2World_IsValid(world)) {
+        throw std::runtime_error("Too many physics worlds exist at once to create another one.");
+    }
+    handle = b2StoreWorldId(world);
+    b2World_SetPreSolveCallback(world, &OneWayFilter::preSolve, this);
 }
 
 World::~World() {
@@ -60,8 +65,8 @@ Body World::createBody(const Body::Options& options) {
     def.rotation = b2MakeRot(options.rotation);
     def.linearVelocity = Box2DConverter::toMeters(options.velocity, pixelsPerMeter);
     def.angularVelocity = options.angularVelocity;
-    def.linearDamping = options.linearDamping;
-    def.angularDamping = options.angularDamping;
+    def.linearDamping = Box2DConverter::toDamping(options.linearDamping);
+    def.angularDamping = Box2DConverter::toDamping(options.angularDamping);
     def.gravityScale = options.gravityScale;
     def.fixedRotation = options.fixedRotation;
     def.isBullet = options.bullet;
@@ -81,24 +86,30 @@ Joint World::createJoint(Joint::Type type, Body first, Body second, const Joint:
     if (!first.isValid() || !second.isValid() || first.getWorld() != this || second.getWorld() != this) {
         throw std::invalid_argument("A joint needs two bodies of this world.");
     }
+    checkLimits(type, options);
 
     const b2WorldId world = b2LoadWorldId(handle);
     const b2BodyId a = b2LoadBodyId(first.getId());
     const b2BodyId b = b2LoadBodyId(second.getId());
     const b2Vec2 anchorA = Box2DConverter::toMeters(options.anchorA, pixelsPerMeter);
     const b2Vec2 anchorB = Box2DConverter::toMeters(options.anchorB, pixelsPerMeter);
+    const float relativeAngle = b2RelativeAngle(b2Body_GetRotation(b), b2Body_GetRotation(a));
     const float maxForce = options.maxMotorForce / pixelsPerMeter;
     const float maxTorque = options.maxMotorTorque / (pixelsPerMeter * pixelsPerMeter);
     b2JointId joint{};
 
     switch (type) {
     case Joint::Type::Distance: {
+        const float length = options.length > 0.0F ? options.length / pixelsPerMeter : b2Distance(anchorA, anchorB);
+        if (!(length >= Box2DConverter::kLinearSlop)) {
+            throw std::invalid_argument("A distance joint needs a length of at least 0.005 meters.");
+        }
         b2DistanceJointDef def = b2DefaultDistanceJointDef();
         def.bodyIdA = a;
         def.bodyIdB = b;
         def.localAnchorA = b2Body_GetLocalPoint(a, anchorA);
         def.localAnchorB = b2Body_GetLocalPoint(b, anchorB);
-        def.length = options.length > 0.0F ? options.length / pixelsPerMeter : b2Distance(anchorA, anchorB);
+        def.length = length;
         def.enableSpring = options.enableSpring;
         def.hertz = options.hertz;
         def.dampingRatio = options.dampingRatio;
@@ -115,6 +126,7 @@ Joint World::createJoint(Joint::Type type, Body first, Body second, const Joint:
         def.bodyIdB = b;
         def.localAnchorA = b2Body_GetLocalPoint(a, anchorA);
         def.localAnchorB = b2Body_GetLocalPoint(b, anchorA);
+        def.referenceAngle = relativeAngle;
         def.enableLimit = options.enableLimit;
         def.lowerAngle = options.lower;
         def.upperAngle = options.upper;
@@ -135,6 +147,7 @@ Joint World::createJoint(Joint::Type type, Body first, Body second, const Joint:
         def.localAnchorA = b2Body_GetLocalPoint(a, anchorA);
         def.localAnchorB = b2Body_GetLocalPoint(b, anchorA);
         def.localAxisA = b2Body_GetLocalVector(a, b2Normalize(b2Vec2{options.axis.x, options.axis.y}));
+        def.referenceAngle = relativeAngle;
         def.enableLimit = options.enableLimit;
         def.lowerTranslation = options.lower / pixelsPerMeter;
         def.upperTranslation = options.upper / pixelsPerMeter;
@@ -154,7 +167,7 @@ Joint World::createJoint(Joint::Type type, Body first, Body second, const Joint:
         def.bodyIdB = b;
         def.localAnchorA = b2Body_GetLocalPoint(a, anchorA);
         def.localAnchorB = b2Body_GetLocalPoint(b, anchorA);
-        def.referenceAngle = b2RelativeAngle(b2Body_GetRotation(b), b2Body_GetRotation(a));
+        def.referenceAngle = relativeAngle;
         def.linearHertz = options.hertz;
         def.angularHertz = options.hertz;
         def.linearDampingRatio = options.dampingRatio;
@@ -200,7 +213,7 @@ Joint World::createJoint(Joint::Type type, Body first, Body second, const Joint:
         def.bodyIdA = a;
         def.bodyIdB = b;
         def.linearOffset = b2Body_GetLocalPoint(a, b2Body_GetPosition(b));
-        def.angularOffset = b2RelativeAngle(b2Body_GetRotation(b), b2Body_GetRotation(a));
+        def.angularOffset = relativeAngle;
         def.maxForce = maxForce;
         def.maxTorque = maxTorque;
         def.collideConnected = options.collideConnected;
@@ -216,6 +229,17 @@ Joint World::createJoint(Joint::Type type, Body first, Body second, const Joint:
     }
     }
     return {this, b2StoreJointId(joint)};
+}
+
+// Box2D rejects limits it cannot hold even while they are disabled.
+void World::checkLimits(Joint::Type type, const Joint::Options& options) {
+    const bool ordered = options.lower <= options.upper;
+    if (type == Joint::Type::Revolute && (!ordered || options.lower < -kRevoluteLimit || options.upper > kRevoluteLimit)) {
+        throw std::invalid_argument("A revolute joint needs a lower limit that is not above the upper one, both within 0.99 pi radians of zero.");
+    }
+    if ((type == Joint::Type::Prismatic || type == Joint::Type::Wheel) && !ordered) {
+        throw std::invalid_argument("A prismatic or wheel joint needs a lower limit that is not above the upper one.");
+    }
 }
 
 void World::step(float deltaSeconds) {
@@ -317,6 +341,9 @@ std::vector<Shape> World::overlapBounds(const math::Rect& area, const CollisionF
 }
 
 std::vector<Shape> World::queryRect(const math::Rect& area, const CollisionFilter& filter) const {
+    if (!(area.width >= 0.0F) || !(area.height >= 0.0F)) {
+        throw std::invalid_argument("A rectangle query needs a width and height of zero or more.");
+    }
     return overlapBounds(area, filter);
 }
 

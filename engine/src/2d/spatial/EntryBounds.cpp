@@ -19,14 +19,26 @@ void EntryBounds::requireRadius(float radius) {
     }
 }
 
+void EntryBounds::requirePoint(math::Vec2 point) {
+    if (!std::isfinite(point.x) || !std::isfinite(point.y)) {
+        throw std::invalid_argument("A spatial query point must be finite.");
+    }
+}
+
 void EntryBounds::keepNearest(std::vector<Neighbor>& neighbors, const Neighbor& candidate, std::size_t count) {
-    if (count == 0 || (neighbors.size() == count && !(candidate < neighbors.back()))) {
+    if (count == 0 || (neighbors.size() == count && !(candidate < neighbors.front()))) {
         return;
     }
     if (neighbors.size() == count) {
+        std::pop_heap(neighbors.begin(), neighbors.end());
         neighbors.pop_back();
     }
-    neighbors.insert(std::upper_bound(neighbors.begin(), neighbors.end(), candidate), candidate);
+    neighbors.push_back(candidate);
+    std::push_heap(neighbors.begin(), neighbors.end());
+}
+
+void EntryBounds::finishNearest(std::vector<Neighbor>& neighbors) {
+    std::sort_heap(neighbors.begin(), neighbors.end());
 }
 
 void EntryBounds::insertHit(std::vector<RayHit>& hits, const RayHit& hit) {

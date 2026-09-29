@@ -15,17 +15,32 @@ namespace haylen::physics2d {
 // Converts between world units and engine types and the meters and definitions of Box2D.
 class Box2DConverter final {
   public:
+    // The linear slop of Box2D in meters, the shortest distance between two points that it tells apart.
+    static constexpr float kLinearSlop = 0.005F;
+
     [[nodiscard]] static b2Vec2 toMeters(math::Vec2 value, float scale) noexcept;
     [[nodiscard]] static math::Vec2 toPixels(b2Vec2 value, float scale) noexcept;
     [[nodiscard]] static b2BodyType toBodyType(Body::Type type) noexcept;
     [[nodiscard]] static b2Filter toFilter(const CollisionFilter& filter) noexcept;
     [[nodiscard]] static b2QueryFilter toQueryFilter(const CollisionFilter& filter) noexcept;
-    [[nodiscard]] static b2ShapeDef toShapeDef(const Shape::Options& options) noexcept;
+
+    // Throws std::invalid_argument for options that Box2D rejects: a density, friction or restitution that is negative or not finite, or a zero one-way direction.
+    static void checkShapeOptions(const Shape::Options& options);
+
+    // Checks the options with checkShapeOptions before converting them.
+    [[nodiscard]] static b2ShapeDef toShapeDef(const Shape::Options& options);
+    [[nodiscard]] static b2SurfaceMaterial toSurfaceMaterial(const Shape::Options& options);
+
+    // Returns the damping of a body, and throws std::invalid_argument when it is negative or not finite.
+    [[nodiscard]] static float toDamping(float value);
 
     // Moves local shape points by the shape offset and rotation and converts them to meters.
     [[nodiscard]] static std::vector<b2Vec2> toLocalPoints(std::span<const math::Vec2> points, const Shape::Options& options, float scale);
 
     [[nodiscard]] static b2Polygon toHullPolygon(std::span<const b2Vec2> points);
+
+  private:
+    [[nodiscard]] static bool isFiniteAndNotNegative(float value) noexcept;
 };
 
 } // namespace haylen::physics2d

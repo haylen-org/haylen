@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <string>
 #include <string_view>
 
@@ -21,6 +22,7 @@ struct Effect {
   private:
     [[nodiscard]] static math::FloatRange readRange(const core::Json& value);
     [[nodiscard]] static math::Vec2 readVec2(const core::Json& value);
+    [[nodiscard]] static std::size_t readCount(const core::Json& value, std::string_view name);
     [[nodiscard]] static math::Color readColor(const core::Json& value);
 };
 

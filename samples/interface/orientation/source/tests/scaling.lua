@@ -64,7 +64,7 @@ function Scaling:map(width, height)
     if policy == 'fill' then
         scale = math.max(ratioX, ratioY)
     elseif policy == 'pixel_perfect' then
-        scale = math.max(1, math.floor(scale))
+        scale = scale >= 1 and math.floor(scale) or 1 / math.ceil(math.max(designWidth / width, designHeight / height))
     end
     local offsetX, offsetY = (width - designWidth * scale) / 2, (height - designHeight * scale) / 2
     if policy == 'fill' or policy == 'expand' then

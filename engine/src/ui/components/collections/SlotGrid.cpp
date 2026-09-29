@@ -1,7 +1,6 @@
 #include "ui/components/collections/SlotGrid.hpp"
 
 #include <algorithm>
-#include <cmath>
 #include <set>
 #include <utility>
 
@@ -117,17 +116,8 @@ void SlotGrid::drawSlot(Context& context, const Slot& slot, const math::Rect& ar
         Widgets::focusItem(context);
     }
 
-    const bool chosen = slot.id == selected;
-    const Theme::Surface surface = chosen || state.hovered ? Theme::Surface::SlotHighlighted : Theme::Surface::Slot;
-    Surfaces::draw(context, surface, area, context.getColor(chosen ? Theme::Color::Selection : state.hovered ? Theme::Color::BorderStrong : Theme::Color::Raised), context.getColor(chosen ? Theme::Color::Accent : Theme::Color::Border), radius);
-    const bool leaving = dragging == slot.id || (context.getFocus().getCarried() && context.getFocus().getCarried()->source == getId() && context.getFocus().getCarried()->item == slot.id);
-    if (!slot.image.empty()) {
-        const float inset = area.width * 0.12F;
-        Surfaces::drawImage(context, context.getImage(slot.image), area.expanded(-inset), math::Color::white().withAlpha(leaving ? 0.35F : 1.0F));
-    }
-    if (const std::string count = context.getText(slot.count); !count.empty()) {
-        const float line = Typography::getLineHeight(context, Theme::Font::Caption);
-        Typography::drawParagraph(context, Theme::Font::Caption, {area.x, area.getBottom() - line - 4.0F, area.width - 8.0F, line}, context.getColor(Theme::Color::Text), count, Alignment::End, context.getColor(Theme::Color::Window), 2.0F);
+    if (Widgets::isVisible(context, area)) {
+        drawContent(context, slot, area, state.hovered);
     }
 
     const DragAndDrop::Result moved = draggable ? DragAndDrop::handle(context, *this, slot.id, slot.image, area) : DragAndDrop::Result{};
@@ -150,6 +140,25 @@ void SlotGrid::drawSlot(Context& context, const Slot& slot, const math::Rect& ar
         selected = slot.id;
         context.emit(*this, "select", {{"item", slot.id}});
     }
+}
+
+void SlotGrid::drawContent(Context& context, const Slot& slot, const math::Rect& area, bool hovered) const {
+    const bool chosen = slot.id == selected;
+    const Theme::Surface surface = chosen || hovered ? Theme::Surface::SlotHighlighted : Theme::Surface::Slot;
+    Surfaces::draw(context, surface, area, context.getColor(chosen ? Theme::Color::Selection : hovered ? Theme::Color::BorderStrong : Theme::Color::Raised), context.getColor(chosen ? Theme::Color::Accent : Theme::Color::Border), context.getMetric(Theme::Metric::ControlRadius));
+    const bool leaving = dragging == slot.id || (context.getFocus().getCarried() && context.getFocus().getCarried()->source == getId() && context.getFocus().getCarried()->item == slot.id);
+    if (!slot.image.empty()) {
+        const float inset = area.width * 0.12F;
+        Surfaces::drawImage(context, context.getImage(slot.image), area.expanded(-inset), math::Color::white().withAlpha(leaving ? 0.35F : 1.0F));
+    }
+    if (const std::string count = context.getText(slot.count); !count.empty()) {
+        const float line = Typography::getLineHeight(context, Theme::Font::Caption);
+        Typography::drawParagraph(context, Theme::Font::Caption, {area.x, area.getBottom() - line - 4.0F, area.width - 8.0F, line}, context.getColor(Theme::Color::Text), count, Alignment::End, context.getColor(Theme::Color::Window), 2.0F);
+    }
+}
+
+void SlotGrid::drawingStopped(Context& context) {
+    DragAndDrop::dropCarriedFrom(context, *this);
 }
 
 } // namespace haylen::ui

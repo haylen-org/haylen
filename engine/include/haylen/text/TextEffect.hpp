@@ -27,7 +27,7 @@ class TextEffect final {
         bool visible = true;
     };
 
-    // The attributes of an effect tag, where a value given as [name=value] is the attribute named value.
+    // The attributes of an effect tag, where a value given as [name=value] is the attribute named value. Numbers and colors are read once, when the markup is set, rather than for every glyph.
     class Parameters final {
       public:
         Parameters() = default;
@@ -48,6 +48,8 @@ class TextEffect final {
       private:
         std::string effect;
         std::map<std::string, std::string, std::less<>> values;
+        std::map<std::string, float, std::less<>> numbers;
+        std::map<std::string, math::Color, std::less<>> colors;
     };
 
     using Function = std::function<void(Glyph& glyph, const Parameters& parameters)>;

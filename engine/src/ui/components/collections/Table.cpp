@@ -27,9 +27,10 @@ void Table::readProperties(PropertyReader& reader) {
     reader.read("selected", selected);
 }
 
+// A table fills the width it gets, and an unbounded width, such as the one of a horizontal scroll, gives every shared column the width of the widest of them.
 math::Vec2 Table::measureContent(Context& context, float availableWidth) {
     const float height = context.getMetric(Theme::Metric::ListRowHeight);
-    return {availableWidth, height * 0.75F + height * static_cast<float>(rows.size())};
+    return {availableWidth < CommonProperties::kUnbounded ? availableWidth : measureWidth(context), height * 0.75F + height * static_cast<float>(rows.size())};
 }
 
 void Table::render(Context& context, const math::Rect& bounds) {
@@ -52,8 +53,11 @@ void Table::render(Context& context, const math::Rect& bounds) {
         ImGui::PushID(entry.id.c_str());
         const Widgets::Interaction state = ListRow::draw(context, area, entry.id == selected);
         ImGui::PopID();
+
+        // A row scrolled out of view still takes the focus and the pointer, and only its cells are left undrawn.
+        const std::size_t shown = Widgets::isVisible(context, area) ? std::min(columns.size(), entry.cells.size()) : 0;
         x = bounds.x;
-        for (std::size_t column = 0; column < columns.size() && column < entry.cells.size(); ++column) {
+        for (std::size_t column = 0; column < shown; ++column) {
             const math::Rect cell = context.mirror({x + ListRow::kPadding, area.y, widths[column] - ListRow::kPadding * 2.0F, height}, area);
             Typography::drawAligned(context, Theme::Font::Body, cell, context.getColor(Theme::Color::Text), context.getText(entry.cells[column]), columns[column].align);
             x += widths[column];
@@ -80,8 +84,8 @@ std::vector<Table::Column> Table::readColumns(PropertyReader& reader, const core
             column.text = TextValue::fromJson(*text, "table.columns.text");
         }
         if (const auto width = entry.find("width"); width != entry.end()) {
-            if (!width->is_number() || width->get<double>() < 0.0) {
-                reader.fail("columns", "has a width that is not a non-negative number");
+            if (!width->is_number() || !(width->get<double>() >= 0.0 && width->get<double>() <= 10000.0)) {
+                reader.fail("columns", "has a width that is not a number from 0 to 10000");
             }
             column.width = width->get<float>();
         }
@@ -117,6 +121,26 @@ std::vector<Table::Row> Table::readRows(PropertyReader& reader, const core::Json
         parsed.push_back(std::move(row));
     }
     return parsed;
+}
+
+float Table::measureWidth(Context& context) const {
+    float fixed = 0.0F;
+    float widest = 0.0F;
+    std::size_t shared = 0;
+    for (std::size_t column = 0; column < columns.size(); ++column) {
+        if (columns[column].width) {
+            fixed += *columns[column].width;
+            continue;
+        }
+        ++shared;
+        widest = std::max(widest, Typography::measure(context, Theme::Font::Caption, context.getText(columns[column].text)).x + ListRow::kPadding * 2.0F);
+        for (const Row& row : rows) {
+            if (column < row.cells.size()) {
+                widest = std::max(widest, Typography::measure(context, Theme::Font::Body, context.getText(row.cells[column])).x + ListRow::kPadding * 2.0F);
+            }
+        }
+    }
+    return fixed + widest * static_cast<float>(shared);
 }
 
 std::vector<float> Table::getColumnWidths(float total) const {

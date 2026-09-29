@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <vector>
 
@@ -13,7 +15,7 @@ class Renderer;
 
 namespace haylen::physics2d {
 
-// Collects cast rays with their hits and draws them over the scene in world units: each ray up to its hit or its end, a dot on the hit and a short line along its normal. Drawing clears the rays, so a frame shows the rays of the frame before it.
+// Collects cast rays with their hits and draws them over the scene in world units: each ray up to its hit or its end, a dot on the hit and a short line along its normal. It holds the rays of one frame at most, because drawing clears the rays and the first ray of a later frame drops the rays no drawing showed.
 class RayDebugDraw final {
   public:
     struct Hit {
@@ -21,10 +23,8 @@ class RayDebugDraw final {
         math::Vec2 normal{};
     };
 
-    void add(math::Vec2 from, math::Vec2 to, const std::optional<Hit>& hit);
-    void clear() noexcept {
-        rays.clear();
-    }
+    // Adds a ray cast during the frame with the given index.
+    void add(std::uint64_t frameIndex, math::Vec2 from, math::Vec2 to, const std::optional<Hit>& hit);
     [[nodiscard]] std::size_t size() const noexcept {
         return rays.size();
     }
@@ -50,6 +50,7 @@ class RayDebugDraw final {
     static const math::Color kNormalColor;
 
     std::vector<Ray> rays;
+    std::uint64_t frame = 0;
 };
 
 } // namespace haylen::physics2d

@@ -35,25 +35,15 @@ struct Loader {
 
 } // namespace
 
-TEST(ThemeTest, NamesEveryRoleBothWays) {
-    for (std::size_t index = 0; index < Theme::kColorCount; ++index) {
-        const auto role = static_cast<Theme::Color>(index);
-        EXPECT_EQ(Theme::colorFromName(Theme::colorName(role)), role);
-    }
-    for (std::size_t index = 0; index < Theme::kMetricCount; ++index) {
-        const auto role = static_cast<Theme::Metric>(index);
-        EXPECT_EQ(Theme::metricFromName(Theme::metricName(role)), role);
-    }
-    for (std::size_t index = 0; index < Theme::kFontCount; ++index) {
-        const auto role = static_cast<Theme::Font>(index);
-        EXPECT_EQ(Theme::fontFromName(Theme::fontName(role)), role);
-    }
-    for (std::size_t index = 0; index < Theme::kSurfaceCount; ++index) {
-        const auto role = static_cast<Theme::Surface>(index);
-        EXPECT_EQ(Theme::surfaceFromName(Theme::surfaceName(role)), role);
-    }
-    EXPECT_EQ(Theme::colorName(Theme::Color::AccentText), "accentText");
-    EXPECT_EQ(Theme::surfaceName(Theme::Surface::ButtonPrimaryPressed), "buttonPrimaryPressed");
+// The last name of every family reads as its last role, so no role is left without a name.
+TEST(ThemeTest, ReadsEveryRoleByName) {
+    EXPECT_EQ(Theme::colorFromName("window"), Theme::Color::Window);
+    EXPECT_EQ(Theme::colorFromName("accentText"), Theme::Color::AccentText);
+    EXPECT_EQ(Theme::colorFromName("informationText"), Theme::Color::InformationText);
+    EXPECT_EQ(Theme::metricFromName("pageIndicatorSize"), Theme::Metric::PageIndicatorSize);
+    EXPECT_EQ(Theme::fontFromName("monospace"), Theme::Font::Monospace);
+    EXPECT_EQ(Theme::surfaceFromName("buttonPrimaryPressed"), Theme::Surface::ButtonPrimaryPressed);
+    EXPECT_EQ(Theme::surfaceFromName("slotHighlighted"), Theme::Surface::SlotHighlighted);
     EXPECT_FALSE(Theme::colorFromName("purple").has_value());
     EXPECT_FALSE(Theme::metricFromName("width").has_value());
     EXPECT_FALSE(Theme::fontFromName("huge").has_value());
@@ -148,6 +138,16 @@ TEST(ThemeTest, RejectsBrokenThemes) {
     EXPECT_THROW(read(R"({"name": "x", "surfaces": {"panel": {"image": "a.png", "colorize": "yes"}}})"), std::invalid_argument);
     EXPECT_THROW(read(R"({"name": "x", "surfaces": {"panel": {"image": "a.png", "source": [0, 0, 1]}}})"), std::invalid_argument);
     EXPECT_THROW((void)Theme::fromJson(core::Json::parse(R"({"name": "x", "surfaces": {"panel": {"image": "a.png"}}})"), Theme::dark(), {}), std::invalid_argument);
+
+    // Tiles smaller than a unit would repeat without end, while a piece without area draws nothing.
+    try {
+        (void)read(R"({"name": "x", "surfaces": {"panel": {"image": "a.png", "slice": 4, "fill": "tile", "scale": 0.0001}}})");
+        ADD_FAILURE() << "tiny tiles were accepted";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_STREQ(error.what(), "the theme surface panel tiles its edges and center, so each of them must be at least 1 unit wide and tall at its scale.");
+    }
+    EXPECT_THROW(read(R"({"name": "x", "surfaces": {"panel": {"image": "a.png", "pieces": [[0,0,4,4],[4,0,0.5,4],[8,0,4,4],[0,4,4,4],[4,4,4,4],[8,4,4,4],[0,8,4,4],[4,8,4,4],[8,8,4,4]], "fill": "tile"}}})"), std::invalid_argument);
+    EXPECT_NO_THROW(read(R"({"name": "x", "surfaces": {"panel": {"image": "a.png", "slice": [0, 4], "fill": "tile", "scale": 0.5}}})"));
 
     Theme theme = Theme::dark();
     EXPECT_THROW(theme.setMetric(Theme::Metric::ItemSpacing, -2.0F), std::invalid_argument);

@@ -36,26 +36,6 @@ float ShadowMap::getRange(const Light& light) noexcept {
     return light.radius * std::max(light.scale.x, light.scale.y);
 }
 
-bool ShadowMap::isShadowed(const Light& light, std::span<const float> row, const Axis& axis, math::Vec2 point) noexcept {
-    const auto width = static_cast<float>(row.size());
-    float coordinate = 0.0F;
-    float depth = 0.0F;
-    if (light.type == Light::Type::Directional) {
-        const math::Vec2 direction = math::Vec2::fromAngle(light.rotation);
-        coordinate = (math::Vec2::dot(point, direction.getPerpendicular()) - axis.acrossStart) / axis.acrossSpan * width;
-        depth = (math::Vec2::dot(point, direction) - axis.alongStart) / axis.alongSpan;
-    } else {
-        const math::Vec2 offset = point - light.position;
-        coordinate = (std::atan2(offset.y, offset.x) / math::Math::kTau + 0.5F) * width;
-        depth = offset.getLength() / getRange(light);
-    }
-
-    const auto size = static_cast<int>(row.size());
-    int texel = static_cast<int>(std::floor(coordinate));
-    texel = light.type == Light::Type::Directional ? std::clamp(texel, 0, size - 1) : ((texel % size) + size) % size;
-    return depth > row[static_cast<std::size_t>(texel)] + getBias(light, axis);
-}
-
 bool ShadowMap::blocks(const Light& light, std::span<const Segment> segments, math::Vec2 point) noexcept {
     // A directional light is blocked when a segment crosses the ray from the point back toward the light, and a point light when one crosses the path from the light to the point.
     const bool directional = light.type == Light::Type::Directional;

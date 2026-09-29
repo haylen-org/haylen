@@ -16,14 +16,20 @@ void Emitter::validate(const EmitterConfig& settings) {
     if (!settings.texture.isValid() || settings.maxParticles == 0 || settings.colors.empty()) {
         throw std::invalid_argument("A particle emitter needs a texture, room for particles and at least one color.");
     }
-    if (settings.rate < 0.0F || settings.lifetime.min <= 0.0F || settings.lifetime.max < settings.lifetime.min) {
-        throw std::invalid_argument("Particles need a non-negative rate and a positive lifetime range.");
+    if (settings.maxParticles > kMaxParticles) {
+        throw std::invalid_argument("A particle emitter holds at most 1000000 particles.");
     }
-    if (settings.duration < 0.0F || settings.prewarm < 0.0F || (settings.loop && settings.duration <= 0.0F)) {
-        throw std::invalid_argument("Particle durations and prewarm times cannot be negative, and a looping emitter needs a duration.");
+    if (!(settings.rate >= 0.0F && std::isfinite(settings.rate)) || !(settings.lifetime.min > 0.0F && settings.lifetime.max >= settings.lifetime.min)) {
+        throw std::invalid_argument("Particles need a finite, non-negative rate and a positive lifetime range.");
+    }
+    if (!(settings.duration >= 0.0F && std::isfinite(settings.duration)) || !(settings.prewarm >= 0.0F && settings.prewarm <= kMaxPrewarm)) {
+        throw std::invalid_argument("Particle durations must be finite and not negative, and prewarm times must be from 0 to 60 seconds.");
+    }
+    if (settings.loop && settings.duration < kMinimumCycle) {
+        throw std::invalid_argument("A looping particle emitter needs a duration of at least 0.001 seconds.");
     }
     for (const EmitterConfig::Burst& planned : settings.bursts) {
-        if (planned.time < 0.0F || (settings.duration > 0.0F && planned.time > settings.duration)) {
+        if (!(planned.time >= 0.0F && std::isfinite(planned.time)) || (settings.duration > 0.0F && planned.time > settings.duration)) {
             throw std::invalid_argument("Particle bursts need a time inside the emission cycle.");
         }
     }
@@ -48,10 +54,10 @@ template <typename Visit> void Emitter::Particles::forEachArray(Visit&& visit) {
     visit(tangential);
 }
 
-// Compacts the arrays in place and keeps the order particles draw in.
 debug::ObjectCounter Emitter::emitterCounter("ParticleEmitter", debug::ObjectCounter::Kind::Native);
 debug::ObjectCounter Emitter::particleCounter("Particle", debug::ObjectCounter::Kind::Native);
 
+// Compacts the arrays in place and keeps the order particles draw in.
 void Emitter::Particles::removeExpired() {
     std::size_t kept = 0;
     for (std::size_t index = 0; index < ages.size(); ++index) {
@@ -98,11 +104,14 @@ float Emitter::pick(math::FloatRange range) {
     return range.min == range.max ? range.min : random.range(range.min, range.max);
 }
 
-void Emitter::spawn() {
-    if (getCount() >= config.maxParticles) {
-        return;
+void Emitter::spawn(std::size_t count) {
+    const std::size_t room = config.maxParticles - std::min(getCount(), config.maxParticles);
+    for (std::size_t index = std::min(count, room); index > 0; --index) {
+        spawnParticle();
     }
+}
 
+void Emitter::spawnParticle() {
     float angle = config.direction + random.range(-config.spread, config.spread) * 0.5F;
     math::Vec2 offset{};
     switch (config.shape) {
@@ -142,9 +151,7 @@ void Emitter::spawn() {
 }
 
 void Emitter::burst(std::size_t count) {
-    for (std::size_t index = 0; index < count; ++index) {
-        spawn();
-    }
+    spawn(count);
     liveParticles.set(getCount());
 }
 
@@ -190,38 +197,64 @@ void Emitter::step(float deltaSeconds, core::JobSystem* jobs) {
     liveParticles.set(getCount());
 }
 
-// Walks the emission cycle in steps that end at the cycle boundary, so bursts and the rate follow the cycle even when one frame spans several loops.
+double Emitter::takeBursts() noexcept {
+    double count = 0.0;
+    while (nextBurst < config.bursts.size() && config.bursts[nextBurst].time <= time) {
+        count += static_cast<double>(config.bursts[nextBurst++].count);
+    }
+    return count;
+}
+
+// Follows the emission cycle to the end of the frame, so bursts and the rate keep their pace even when one frame spans several loops. The whole loops inside a long frame count at once.
 void Emitter::emit(float deltaSeconds) {
     if (!emitting) {
         emitDebt = 0.0F;
         return;
     }
+    if (!(deltaSeconds > 0.0F)) {
+        return;
+    }
 
     const float duration = config.duration;
-    float remaining = deltaSeconds;
-    while (emitting && remaining > 0.0F) {
-        if (duration > 0.0F && time >= duration) {
-            time = 0.0F;
-            nextBurst = 0;
-        }
-        const bool finishesCycle = duration > 0.0F && remaining >= duration - time;
-        const float advance = finishesCycle ? duration - time : remaining;
-        time = finishesCycle ? duration : time + advance;
-        remaining -= advance;
-
-        while (nextBurst < config.bursts.size() && config.bursts[nextBurst].time <= time) {
-            burst(config.bursts[nextBurst++].count);
-        }
-        // Fractional particles carry over, so low rates still emit on average at the requested pace.
-        emitDebt += config.rate * advance;
-        while (emitDebt >= 1.0F) {
-            emitDebt -= 1.0F;
-            spawn();
-        }
-        if (finishesCycle && !config.loop) {
+    float emitted = deltaSeconds;
+    double due = 0.0;
+    if (duration > 0.0F && time >= duration) {
+        time = 0.0F;
+        nextBurst = 0;
+    }
+    if (duration <= 0.0F || deltaSeconds < duration - time) {
+        time += deltaSeconds;
+        due += takeBursts();
+    } else {
+        const float left = duration - time;
+        time = duration;
+        due += takeBursts();
+        if (!config.loop) {
             emitting = false;
+            emitted = left;
+        } else {
+            // Every whole loop fires all the bursts, and the last partial loop fires the bursts it reaches.
+            const float rest = deltaSeconds - left;
+            const float partial = std::fmod(rest, duration);
+            double everyBurst = 0.0;
+            for (const EmitterConfig::Burst& planned : config.bursts) {
+                everyBurst += static_cast<double>(planned.count);
+            }
+            due += everyBurst * static_cast<double>(std::round((rest - partial) / duration));
+            if (partial > 0.0F) {
+                time = partial;
+                nextBurst = 0;
+                due += takeBursts();
+            }
         }
     }
+
+    // Fractional particles carry over, so low rates still emit on average at the requested pace.
+    emitDebt += config.rate * emitted;
+    const float whole = std::floor(emitDebt);
+    emitDebt -= whole;
+    due += static_cast<double>(whole);
+    spawn(due < static_cast<double>(config.maxParticles) ? static_cast<std::size_t>(due) : config.maxParticles);
 }
 
 math::Color Emitter::colorAt(float life) const noexcept {
@@ -239,8 +272,7 @@ void Emitter::draw(graphics2d::Renderer& renderer) const {
         return;
     }
 
-    std::vector<graphics2d::SpriteInstance> instances;
-    instances.reserve(getCount());
+    instances.clear();
     const math::Vec2 origin = config.localSpace ? position : math::Vec2{};
     for (std::size_t index = 0; index < getCount(); ++index) {
         const float life = particles.ages[index] / particles.lifetimes[index];

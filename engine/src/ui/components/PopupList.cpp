@@ -7,7 +7,6 @@
 
 #include "haylen/ui/Context.hpp"
 #include "ui/Surfaces.hpp"
-#include "ui/Typography.hpp"
 #include "ui/Widgets.hpp"
 #include "ui/components/collections/ListRow.hpp"
 
@@ -59,10 +58,9 @@ std::optional<std::string> PopupList::draw(Context& context, std::string_view po
 float PopupList::measureWidth(Context& context, const std::vector<ChoiceItem>& items) {
     float widest = 0.0F;
     for (const ChoiceItem& item : items) {
-        const float image = item.image.empty() ? 0.0F : context.getMetric(Theme::Metric::IconSize) + ListRow::kPadding;
-        widest = std::max(widest, Typography::measure(context, Theme::Font::Body, context.getText(item.text)).x + image);
+        widest = std::max(widest, ListRow::measure(context, item));
     }
-    return widest + ListRow::kPadding * 2.0F;
+    return widest;
 }
 
 } // namespace haylen::ui

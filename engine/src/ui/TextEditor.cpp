@@ -75,10 +75,23 @@ int TextEditor::callback(ImGuiInputTextCallbackData* data) {
 
 // ImGui places the caret by its own glyphs, which know no shaping or direction, so the caret moves again here by the shaped text: a press puts it at the character under the pointer, a second press selects the word there, a drag selects up to the pointer, and the arrow keys move it one character on screen. Word jumps with a modifier key keep the reading order of ImGui.
 void TextEditor::placeCaret(ImGuiInputTextCallbackData& data, const Editing& editing) {
+    const ImGuiIO& io = ImGui::GetIO();
+    const math::Vec2 pointer{io.MousePos.x, io.MousePos.y};
+    const bool pressed = ImGui::IsMouseClicked(0) && editing.bounds.contains(pointer);
+    const bool dragged = ImGui::IsMouseDragging(0) && editing.bounds.contains(math::Vec2{io.MouseClickedPos[0].x, io.MouseClickedPos[0].y}) && io.MouseClickedCount[0] == 1;
+    const bool arrows = editing.cursor >= 0 && !io.KeyCtrl && !io.KeyAlt && !io.KeySuper;
+    const bool left = arrows && ImGui::IsKeyPressed(ImGuiKey_LeftArrow);
+    const bool right = arrows && ImGui::IsKeyPressed(ImGuiKey_RightArrow);
+    const bool up = arrows && editing.multiline && ImGui::IsKeyPressed(ImGuiKey_UpArrow);
+    const bool down = arrows && editing.multiline && ImGui::IsKeyPressed(ImGuiKey_DownArrow);
+    if (!pressed && !dragged && left == right && up == down) {
+        return;
+    }
+
+    // Only a press, a drag or an arrow key lays the text out, so a focused field that nobody touches costs nothing.
     const std::string_view buffer(data.Buf, static_cast<std::size_t>(data.BufTextLen));
     const TextFieldLayout field = layOut(*editing.context, buffer, editing.style, editing.password);
     const math::Vec2 origin = getOrigin(field, editing.area, editing.scroll, editing.rightToLeft, editing.multiline);
-    const ImGuiIO& io = ImGui::GetIO();
     // clang-format off
     const auto toBytes = [buffer](std::size_t position) {
         return static_cast<int>(core::Utf8::getOffset(buffer, position));
@@ -93,8 +106,7 @@ void TextEditor::placeCaret(ImGuiInputTextCallbackData& data, const Editing& edi
     };
     // clang-format on
 
-    const math::Vec2 pointer{io.MousePos.x, io.MousePos.y};
-    if (ImGui::IsMouseClicked(0) && editing.bounds.contains(pointer)) {
+    if (pressed) {
         const int caret = toBytes(field.hitTest(pointer - origin));
         if (io.MouseClickedCount[0] == 2) {
             const auto [begin, end] = field.getWord(toPosition(caret));
@@ -104,21 +116,11 @@ void TextEditor::placeCaret(ImGuiInputTextCallbackData& data, const Editing& edi
         select(io.KeyShift && editing.anchor >= 0 ? editing.anchor : caret, caret);
         return;
     }
-    if (ImGui::IsMouseDragging(0) && editing.bounds.contains(math::Vec2{io.MouseClickedPos[0].x, io.MouseClickedPos[0].y}) && io.MouseClickedCount[0] == 1) {
+    if (dragged) {
         select(data.SelectionStart, toBytes(field.hitTest(pointer - origin)));
         return;
     }
 
-    if (editing.cursor < 0 || io.KeyCtrl || io.KeyAlt || io.KeySuper) {
-        return;
-    }
-    const bool left = ImGui::IsKeyPressed(ImGuiKey_LeftArrow);
-    const bool right = ImGui::IsKeyPressed(ImGuiKey_RightArrow);
-    const bool up = editing.multiline && ImGui::IsKeyPressed(ImGuiKey_UpArrow);
-    const bool down = editing.multiline && ImGui::IsKeyPressed(ImGuiKey_DownArrow);
-    if (left == right && up == down) {
-        return;
-    }
     const std::size_t from = toPosition(editing.cursor);
     const int caret = toBytes(left != right ? field.moveAcross(from, right) : field.moveAlong(from, down));
     select(io.KeyShift ? editing.anchor : caret, caret);
@@ -147,9 +149,10 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     const ImGuiID scrollX = ImGui::GetID("##scrollX");
     const ImGuiID scrollY = ImGui::GetID("##scrollY");
     Editing editing{.session = &session, .context = &context, .style = style, .bounds = bounds, .area = area, .scroll = {storage.GetFloat(scrollX), storage.GetFloat(scrollY)}, .rightToLeft = rightToLeft, .password = password, .multiline = multiline};
+    // ImGui leaves the start of the last selection behind when the caret moves without selecting, so only a selection anchors a shift press.
     if (const ImGuiInputTextState* state = ImGui::GetInputTextState(id); focused && state != nullptr) {
         editing.cursor = state->GetCursorPos();
-        editing.anchor = state->GetSelectionStart();
+        editing.anchor = state->HasSelection() ? state->GetSelectionStart() : editing.cursor;
     }
 
     // ImGui edits the text while the field draws it, so everything ImGui would draw of it is transparent.

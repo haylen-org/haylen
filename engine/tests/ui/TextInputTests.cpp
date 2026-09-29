@@ -75,6 +75,17 @@ class TextInputTest : public ::testing::Test {
         send({.type = platform::Event::Type::TextAction, .textEdit = {.field = getPublished().id}, .textAction = action});
     }
 
+    // Presses a key the way a physical keyboard does, with the character it types in the same frame as the key.
+    void press(input::Key key, char32_t character, input::KeyModifiers modifiers = {}) {
+        getEngine().handleEvent({.type = platform::Event::Type::KeyDown, .key = key, .modifiers = modifiers});
+        if (character != 0) {
+            getEngine().handleEvent({.type = platform::Event::Type::Character, .modifiers = modifiers, .character = character});
+        }
+        fixture.frames(1);
+        getEngine().handleEvent({.type = platform::Event::Type::KeyUp, .key = key, .modifiers = modifiers});
+        fixture.frames(1);
+    }
+
     test::EngineFixture fixture;
     std::vector<std::string> events;
     core::Connection connection;
@@ -178,6 +189,44 @@ TEST_F(TextInputTest, LeavesTypingToTheNativeField) {
     send({.type = platform::Event::Type::KeyUp, .key = input::Key::Backspace});
     EXPECT_TRUE(events.empty());
     EXPECT_EQ(getPublished().text, "abc");
+}
+
+// Where the UI edits the text itself, Space and Enter type into the field even though they also press the focused control.
+TEST_F(TextInputTest, TypesTheKeysThatPressControls) {
+    getInput().setNative(false);
+    auto document = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name"}, {"kind": "textArea", "id": "notes"}]})");
+
+    focus(*document, "name");
+    events.clear();
+    press(input::Key::A, U'a');
+    press(input::Key::Space, U' ');
+    press(input::Key::B, U'b');
+    ASSERT_FALSE(events.empty());
+    EXPECT_EQ(events.back(), R"(name:change {"value":"a b"})");
+    press(input::Key::Enter, U'\r');
+    EXPECT_EQ(events.back(), R"(name:submit {"value":"a b"})");
+
+    focus(*document, "notes");
+    events.clear();
+    press(input::Key::A, U'a');
+    press(input::Key::Enter, U'\r');
+    press(input::Key::B, U'b');
+    ASSERT_FALSE(events.empty());
+    EXPECT_EQ(events.back(), R"(notes:change {"value":"a\nb"})");
+}
+
+// A shift press selects from the caret where it stands, also after typing moved it.
+TEST_F(TextInputTest, SelectsFromTheCaretAfterTyping) {
+    getInput().setNative(false);
+    auto document = mount(R"({"kind": "textField", "id": "name"})");
+    focus(*document, "name");
+    press(input::Key::A, U'a');
+    press(input::Key::B, U'b');
+    press(input::Key::C, U'c');
+    press(input::Key::Left, 0, {.shift = true});
+    EXPECT_EQ(getPublished().text, "abc");
+    EXPECT_EQ(getPublished().selectionStart, 2);
+    EXPECT_EQ(getPublished().selectionEnd, 3);
 }
 
 TEST_F(TextInputTest, TurnsActionsIntoSubmitNextCancelAndDismiss) {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string_view>
@@ -46,6 +47,7 @@ class FontLua final {
     [[nodiscard]] static std::shared_ptr<text::Font> findFace(const text::FontFamily& family, const text::Font* font);
     static int pushSelection(lua_State* L, const text::FontFamily& family, const text::FontFamily::Selection& selection);
     static int pushLayout(lua_State* L, const text::TextLayout& laid, const text::TextStyle& style, const std::function<std::shared_ptr<text::Font>(const text::Font*)>& fontOf);
+    static int pushGlyph(lua_State* L, text::Font& font, std::uint32_t index);
     [[nodiscard]] static std::vector<text::Font::ShapedGlyph> shapeText(text::Font& font, std::u32string_view text, text::Direction direction, std::string_view language);
 
     static int measure(lua_State* L);
@@ -55,6 +57,7 @@ class FontLua final {
     [[nodiscard]] static float toDistance(text::Font& font, float pixels, float size);
     static int hasGlyph(lua_State* L);
     static int glyph(lua_State* L);
+    static int glyphByIndex(lua_State* L);
     static int shape(lua_State* L);
     static int page(lua_State* L);
     static int nativeSize(lua_State* L);

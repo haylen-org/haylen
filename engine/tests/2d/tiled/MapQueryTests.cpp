@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <map>
+#include <memory>
 #include <numbers>
 #include <optional>
 #include <stdexcept>
@@ -39,6 +40,7 @@ tiled::Map queryMap(tiled::Map::Orientation orientation) {
     tiled::Layer group{.name = "things", .kind = tiled::Layer::Kind::Group, .offset = {4.0F, 2.0F}};
     group.layers.push_back(rocks);
     map.layers = {walls, group};
+    map.tilesets = {{.firstGid = 1, .tileset = std::make_shared<tiled::Tileset>(tiled::Tileset{.image = "tiles.png", .tileSize = {16.0F, 16.0F}, .columns = 2, .tileCount = 2})}};
     return map;
 }
 
@@ -69,6 +71,42 @@ TEST(MapQueryTest, CastsRaysOverTileLayers) {
     EXPECT_THROW((void)query.castTiles("missing", math::Ray::between({}, {1.0F, 0.0F})), std::invalid_argument);
     const tiled::Map staggered = queryMap(tiled::Map::Orientation::Staggered);
     EXPECT_THROW((void)tiled::MapQuery(staggered).castTiles("walls", math::Ray::between({}, {1.0F, 0.0F})), std::invalid_argument);
+}
+
+TEST(MapQueryTest, CastsTileRaysOnlyOverTheCellsOfTheLayer) {
+    const tiled::Map map = queryMap(tiled::Map::Orientation::Orthogonal);
+    const tiled::MapQuery query(map);
+
+    // Rays of any length walk at most across the layer, so far ends and infinite rays cost no more than short rays.
+    EXPECT_FALSE(query.castTiles("walls", math::Ray::between({8.0F, 56.0F}, {1.0e12F, 56.0F})).has_value());
+    EXPECT_FALSE(query.castTiles("walls", math::Ray{{8.0F, 56.0F}, {1.0F, 0.0F}}).has_value());
+    const std::optional<tiled::MapQuery::TileHit> endless = query.castTiles("walls", math::Ray{{8.0F, 8.0F}, {1.0F, 0.0F}});
+    ASSERT_TRUE(endless.has_value());
+    EXPECT_EQ(endless->column, 5);
+    EXPECT_NEAR(endless->distance, 72.0F, 1e-3F);
+
+    // Rays from outside enter the layer through its sides, from the left and from the right.
+    const std::optional<tiled::MapQuery::TileHit> fromLeft = query.castTiles("walls", math::Ray::between({-1000.0F, 8.0F}, {200.0F, 8.0F}));
+    ASSERT_TRUE(fromLeft.has_value());
+    EXPECT_EQ(fromLeft->column, 5);
+    EXPECT_NEAR(fromLeft->distance, 1080.0F, 1e-2F);
+    EXPECT_EQ(fromLeft->normal, (math::Vec2{-1.0F, 0.0F}));
+    const std::optional<tiled::MapQuery::TileHit> fromRight = query.castTiles("walls", math::Ray::between({1000.0F, 72.0F}, {-1000.0F, 72.0F}));
+    ASSERT_TRUE(fromRight.has_value());
+    EXPECT_EQ(fromRight->column, 5);
+    EXPECT_EQ(fromRight->gid, 2U);
+    EXPECT_NEAR(fromRight->point.x, 96.0F, 1e-3F);
+    EXPECT_EQ(fromRight->normal, (math::Vec2{1.0F, 0.0F}));
+    EXPECT_FALSE(query.castTiles("walls", math::Ray::between({-1000.0F, -8.0F}, {1000.0F, -8.0F})).has_value());
+
+    // An infinite layer spans its chunks, which may start left of the origin.
+    tiled::Map endlessMap = map;
+    tiled::Layer& walls = endlessMap.layers.front();
+    walls.chunks = {{.x = -4, .y = 0, .width = 2, .height = 1, .gids = {0, 1}}, {.x = 2, .y = 0, .width = 2, .height = 1, .gids = {1, 0}}};
+    const std::optional<tiled::MapQuery::TileHit> chunk = tiled::MapQuery(endlessMap).castTiles("walls", math::Ray::between({-1000.0F, 8.0F}, {1000.0F, 8.0F}));
+    ASSERT_TRUE(chunk.has_value());
+    EXPECT_EQ(chunk->column, -3);
+    EXPECT_NEAR(chunk->point.x, -48.0F, 1e-3F);
 }
 
 TEST(MapQueryTest, CastsRaysOverIsometricAndObliqueTiles) {
@@ -131,6 +169,27 @@ TEST(MapQueryTest, OutlinesObjectsAndCastsRaysAgainstThem) {
     EXPECT_THROW((void)query.castObjects("walls", math::Ray::between({}, {1.0F, 0.0F})), std::invalid_argument);
 }
 
+TEST(MapQueryTest, OutlinesTileObjectsWhereTheirImagesDraw) {
+    // The tree tileset aligns its objects by their bottom center, so the tree at 100, 40 covers 92 to 108 across.
+    tiled::Map map = queryMap(tiled::Map::Orientation::Orthogonal);
+    map.tilesets.front().tileset->objectAlignment = "bottom";
+    const tiled::Object& tree = map.findLayer("rocks")->objects[4];
+    std::vector<math::Vec2> outline;
+    tiled::MapQuery(map).getOutline(tree, {}, outline);
+    EXPECT_EQ(outline, (std::vector<math::Vec2>{{92.0F, 8.0F}, {108.0F, 8.0F}, {108.0F, 40.0F}, {92.0F, 40.0F}}));
+
+    // On isometric maps the image stands upright on the world position of the object, centered by the unspecified alignment.
+    const tiled::Map isometric = queryMap(tiled::Map::Orientation::Isometric);
+    const math::Vec2 anchor = isometric.objectToWorld(tree.position);
+    tiled::MapQuery(isometric).getOutline(isometric.findLayer("rocks")->objects[4], {}, outline);
+    EXPECT_EQ(outline.front(), anchor - math::Vec2(8.0F, 32.0F));
+    EXPECT_EQ(outline[2], anchor + math::Vec2(8.0F, 0.0F));
+
+    tiled::Object lost = tree;
+    lost.gid = 9;
+    EXPECT_THROW(tiled::MapQuery(map).getOutline(lost, {}, outline), std::invalid_argument);
+}
+
 TEST(MapQueryLuaTest, CastsRaysOverMapsFromLua) {
     const std::vector<std::uint8_t> image = test::pngImage(32, 16, 0xFFFFFFFFU);
     // clang-format off
@@ -158,6 +217,9 @@ TEST(MapQueryLuaTest, CastsRaysOverMapsFromLua) {
     EXPECT_EQ(fixture.lua("return map:raycastObjects(nil, 60, 27, 200, 27).name .. ' ' .. tostring(map:raycastObjects('rocks', 0, 100, 200, 100))"), "fence nil");
     EXPECT_EQ(fixture.lua("local outlines = map:objectOutlines('rocks') return #outlines .. ' ' .. #outlines[1] .. ' ' .. outlines[1][1].x .. ' ' .. #map:objectOutlines()"), "1 4 24.0 1");
     EXPECT_NE(fixture.lua("map:raycastTiles('rocks', 0, 0, 1, 0)").find("no tile layer named 'rocks'"), std::string::npos);
+
+    // The solid callback runs once the ray has gathered its tiles, so a tile it places behind the wall does not stop the ray.
+    EXPECT_EQ(fixture.lua("local hit = map:raycastTiles('walls', 8, 8, 200, 8, function(gid) map:setTile('walls', 6, 0, 2) return gid == 2 end) return tostring(hit) .. ' ' .. map:tileAt('walls', 6, 0)"), "nil 2");
 }
 
 } // namespace haylen

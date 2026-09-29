@@ -18,8 +18,6 @@ struct PostProcess {
     float vignetteSoftness = 0.5F;
     math::Color fade = math::Color::transparent();
     std::vector<Material> materials;
-
-    [[nodiscard]] bool operator==(const PostProcess&) const = default;
 };
 
 } // namespace haylen::graphics2d

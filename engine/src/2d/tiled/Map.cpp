@@ -127,10 +127,15 @@ const Map::TilesetReference* Map::findTileset(std::uint32_t gid) const noexcept 
             found = &reference;
         }
     }
-    if (found == nullptr || id - found->firstGid >= static_cast<std::uint32_t>(found->tileset->tileCount)) {
+    if (found == nullptr) {
         return nullptr;
     }
-    return found;
+
+    // Image collections keep the ids of the tiles removed from them unused, so their ids can reach past the tile count.
+    const Tileset& tileset = *found->tileset;
+    const std::uint32_t local = id - found->firstGid;
+    const bool holds = tileset.image.empty() ? tileset.findTile(local) != nullptr : local < static_cast<std::uint32_t>(tileset.tileCount);
+    return holds ? found : nullptr;
 }
 
 const Layer* Map::findLayer(std::string_view name) const noexcept {

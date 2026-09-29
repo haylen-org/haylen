@@ -30,7 +30,7 @@ class Scatter final {
         std::vector<float> weights;
     };
 
-    // The density map returns 0 to 1 at a point. Random and Grid keep each point with that probability, and Poisson spaces points from spacing where the map is 1 to maximumSpacing where it is 0. Layers need a biome function, such as fractal noise.
+    // The density map returns 0 to 1 at a point. Random and Grid keep each point with that probability, and Poisson spaces points from spacing where the map is 1 to maximumSpacing where it is 0, so Poisson with a density map needs a maximumSpacing of at least the spacing. Layers need a biome function, such as fractal noise.
     struct Options {
         Method method = Method::Random;
         float density = 0.001F;
@@ -50,16 +50,19 @@ class Scatter final {
         std::uint32_t type = 0;
     };
 
-    // Throws std::invalid_argument for a negative density, a spacing that is not positive, layers without a biome function, or weights that math::WeightedChoice rejects.
+    // Throws std::invalid_argument for a density that is negative or not finite, a spacing that is not positive and finite, a Poisson density map without a maximumSpacing of at least the spacing, a region that would need more than 16777216 points or Poisson grid cells, layers without a biome function, or weights that math::WeightedChoice rejects.
     [[nodiscard]] static std::vector<Point> generate(const Region& region, const Options& options, math::Random& random);
 
   private:
+    static constexpr double kMaxPoints = 16777216.0;
+
     [[nodiscard]] static std::vector<math::Vec2> place(const Region& region, const Options& options, math::Random& random);
     [[nodiscard]] static std::vector<math::Vec2> placeRandom(const Region& region, const Options& options, math::Random& random);
     [[nodiscard]] static std::vector<math::Vec2> placeGrid(const Region& region, const Options& options, math::Random& random);
     [[nodiscard]] static std::vector<math::Vec2> placePoisson(const Region& region, const Options& options, math::Random& random);
     [[nodiscard]] static bool isExcluded(const Options& options, math::Vec2 point) noexcept;
     [[nodiscard]] static bool keepsByDensity(const Options& options, math::Vec2 point, math::Random& random);
+    static void requirePointCount(double count);
 };
 
 } // namespace haylen::procedural2d

@@ -11,6 +11,8 @@
 #include "2d/graphics/LitTargets.hpp"
 #include "2d/graphics/Program.hpp"
 #include "graphics/PassTarget.hpp"
+#include "haylen/2d/graphics/PostProcess.hpp"
+#include "haylen/graphics/BlendMode.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
@@ -34,11 +36,14 @@ class FrameSubmitter final {
   public:
     FrameSubmitter(RendererState& rendererState, const graphics::FrameTarget& frameTarget) : state(rendererState), target(frameTarget) {}
 
-    // Every render target is created before the first pass, so a failure never leaves a GPU pass open.
+    // Every render target is created before the first pass, and a failure inside a pass ends it and the frame before it goes on.
     void submit();
 
   private:
     using Matrix = std::array<float, 16>;
+
+    // The composite of a lit canvas without post-processing grades nothing.
+    static const PostProcess kNoPostProcess;
 
     // Moves everything drawn with the matrix by an offset in world units.
     [[nodiscard]] static Matrix translated(Matrix matrix, math::Vec2 offset) noexcept;
@@ -69,16 +74,18 @@ class FrameSubmitter final {
 
     // Draws the finished image of a composited canvas into the pass: the composite, or the last post-processing material over the image before it.
     void drawFinal(const Canvas& canvas, graphics::PassTarget pass);
+    // The clear colors of color images are premultiplied by their alpha, like everything drawn into them.
     void beginOffscreenPass(const graphics::RenderTarget& renderTarget, math::Color clear);
     void beginLitPass(const LitTargets& targets, math::Color clear);
+    void endPass();
     void composite(const Canvas& canvas, graphics::PassTarget pass);
     void drawPostMaterial(std::size_t shadeIndex, const graphics::Texture& image, graphics::PassTarget pass);
 
-    void applyClip(const Canvas& canvas, std::uint16_t clip, const math::Rect& passRect);
+    void applyClip(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect);
     void drawCommands(const Canvas& canvas, std::size_t begin, std::size_t end, graphics::PassTarget pass, const math::Rect& passRect);
     void drawImageBlend(const Command& command, const Matrix& matrix);
     void drawMetaball(const Command& command, const Matrix& matrix);
-    void applyUniforms(const Matrix& matrix);
+    void applyUniforms(const Matrix& matrix, graphics::BlendMode::Type blend);
 
     // Applies the uniforms of how a command is shaded: the lighting of lit passes and the values of its material.
     void applyShade(const Shade& shade, graphics::PassTarget pass, Program program);
@@ -93,6 +100,7 @@ class FrameSubmitter final {
     std::size_t splatBase = 0;
     std::size_t commandFloor = 0;
     bool identity = true;
+    bool passOpen = false;
 };
 
 } // namespace haylen::graphics2d

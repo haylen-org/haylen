@@ -31,6 +31,9 @@ class DragAndDrop final {
     // Draws the picture of a carried item over the focused entry, so the player sees what moves.
     static void drawCarried(Context& context, ImGuiID item, const math::Rect& bounds);
 
+    // Puts back an item carried from a component that stopped drawing, so nothing drops an item whose source is gone.
+    static void dropCarriedFrom(Context& context, const Component& component);
+
   private:
     static constexpr const char* kPayload = "haylen.item";
 };

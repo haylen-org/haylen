@@ -5,6 +5,7 @@
 #include <limits>
 #include <stdexcept>
 
+#include "2d/physics/Box2DConverter.hpp"
 #include "haylen/2d/physics/World.hpp"
 #include "haylen/math/Geometry.hpp"
 #include "haylen/math/MarchingSquares.hpp"
@@ -17,6 +18,7 @@ Terrain::Terrain(World& owner, const Options& settings) : world(owner), options(
     if (settings.columns < 2 || settings.rows < 2 || settings.cellSize <= 0.0F || settings.chunkSize < 1 || settings.simplifyTolerance < 0.0F) {
         throw std::invalid_argument("A terrain needs at least 2 by 2 samples, a positive cell size and chunk size, and a tolerance of at least zero.");
     }
+    Box2DConverter::checkShapeOptions(settings.shape);
     samples.assign(static_cast<std::size_t>(settings.columns) * static_cast<std::size_t>(settings.rows), 0);
     chunkColumns = (settings.columns - 2) / settings.chunkSize + 1;
     chunkRows = (settings.rows - 2) / settings.chunkSize + 1;

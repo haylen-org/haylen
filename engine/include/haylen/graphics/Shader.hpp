@@ -53,7 +53,7 @@ class Shader final {
     Shader() = default;
     explicit Shader(std::shared_ptr<ShaderResource> value) noexcept : resource(std::move(value)) {}
 
-    // Reads a .shader file. Throws std::invalid_argument when the bytes are not one.
+    // Reads a .shader file and checks its programs against the binding limits of the GPU. Throws std::invalid_argument when the bytes are not a valid shader file.
     [[nodiscard]] static Shader parse(std::span<const std::uint8_t> bytes);
 
     // Resolves the GLSL names "float", "vec2", "vec3", "vec4", "int", "ivec2", "ivec3", "ivec4" and "mat4".

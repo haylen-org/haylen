@@ -47,11 +47,11 @@ class KeyCapture final : public Component {
     static constexpr std::array<std::string_view, 4> kSourceNames{"key", "mouse", "button", "axis"};
     static constexpr float kAxisTravel = 0.6F;
 
-    [[nodiscard]] static std::vector<std::string> readBindings(PropertyReader& reader, std::string_view key, const core::Json& value);
+    [[nodiscard]] static std::vector<std::string> readBindings(PropertyReader& reader, std::string_view key, const core::Json& listed);
     [[nodiscard]] std::optional<std::string> listen(const input::Input& devices) const;
     [[nodiscard]] bool accepts(Source source) const;
     void start(const input::Input& devices, std::uint64_t frame);
-    void finish(Context& context, const std::optional<std::string>& binding);
+    void finish(Context& context, const std::string& binding);
 
     std::string value;
     TextValue placeholder;

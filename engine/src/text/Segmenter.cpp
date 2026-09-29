@@ -28,7 +28,7 @@ std::vector<std::uint32_t> Segmenter::getScripts(std::u32string_view text) {
     return scripts;
 }
 
-// libunibreak writes a break after empty text, so empty text returns before it runs.
+// The libunibreak segmenter writes a break after empty text, so empty text returns before it runs.
 std::vector<bool> Segmenter::getGraphemeStarts(std::u32string_view text) {
     if (text.empty()) {
         return {};
@@ -92,9 +92,14 @@ bool Segmenter::isSpace(char32_t codePoint) noexcept {
     return codePoint == U'\t' || SBCodepointGetGeneralCategory(codePoint) == SBGeneralCategoryZS;
 }
 
+bool Segmenter::isParagraphSeparator(char32_t codePoint) noexcept {
+    return SBCodepointGetBidiType(codePoint) == SBBidiTypeB;
+}
+
 bool Segmenter::isInvisible(char32_t codePoint) noexcept {
     const bool selector = (codePoint >= U'\U0000FE00' && codePoint <= U'\U0000FE0F') || (codePoint >= U'\U000E0100' && codePoint <= U'\U000E01EF') || (codePoint >= U'\U0000180B' && codePoint <= U'\U0000180F');
-    return selector || codePoint == U'\U0000034F' || SBCodepointGetGeneralCategory(codePoint) == SBGeneralCategoryCF;
+    const SBGeneralCategory category = SBCodepointGetGeneralCategory(codePoint);
+    return selector || codePoint == U'\U0000034F' || category == SBGeneralCategoryCF || category == SBGeneralCategoryCC;
 }
 
 bool Segmenter::isCommon(char32_t codePoint) noexcept {

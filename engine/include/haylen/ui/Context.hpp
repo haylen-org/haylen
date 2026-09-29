@@ -155,6 +155,11 @@ class Context final {
     [[nodiscard]] float alignHorizontally(Alignment alignment, float start, float available, float size) const noexcept;
 
   private:
+    struct Writing {
+        text::Direction direction = text::Direction::LeftToRight;
+        std::string language;
+    };
+
     Backend& backend;
     FocusNavigator& focus;
     const localization::Catalog& catalog;
@@ -166,13 +171,9 @@ class Context final {
     std::vector<Event>* events = nullptr;
     std::set<std::string, std::less<>> heldButtons;
     std::map<std::string, math::Vec2, std::less<>> sticks;
-    // The direction and language in effect, from the whole UI at the bottom to the node being drawn at the top.
-    struct Writing {
-        text::Direction direction = text::Direction::LeftToRight;
-        std::string language;
-    };
-
     std::vector<Reshape> reshapes;
+
+    // The direction and language in effect, from the whole UI at the bottom to the node being drawn at the top.
     std::vector<Writing> writings{Writing{}};
     math::Vec2 origin;
     std::uint64_t frame = 0;

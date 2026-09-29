@@ -2,7 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
-#include <limits>
+#include <numeric>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -114,9 +114,6 @@ class WaveFunctionCollapse::Solver final {
             }
             while (true) {
                 const std::optional<std::size_t> cell = findLowestEntropy();
-                if (contradiction) {
-                    break;
-                }
                 if (!cell) {
                     return toGrid();
                 }
@@ -130,6 +127,13 @@ class WaveFunctionCollapse::Solver final {
     }
 
   private:
+    // An unsettled cell waiting in the heap, which goes stale once the version of the cell moves on.
+    struct Candidate {
+        double entropy = 0.0;
+        std::uint32_t cell = 0;
+        std::uint32_t version = 0;
+    };
+
     void reset(math::Random& random) {
         std::fill(wave.begin(), wave.end(), std::uint8_t{1});
         for (std::size_t cell = 0; cell < cellCount; ++cell) {
@@ -151,6 +155,13 @@ class WaveFunctionCollapse::Solver final {
         std::fill(sumWeightLogWeights.begin(), sumWeightLogWeights.end(), totalLog);
         stack.clear();
         contradiction = false;
+
+        // Every cell enters the heap on the first search for the lowest entropy.
+        heap.clear();
+        versions.assign(cellCount, 0);
+        changed.resize(cellCount);
+        std::iota(changed.begin(), changed.end(), std::uint32_t{0});
+        pending.assign(cellCount, 1);
     }
 
     // Bans the tiles that can never appear, then applies the fixed cells.
@@ -193,27 +204,37 @@ class WaveFunctionCollapse::Solver final {
         if (--possibleCounts[cell] == 0) {
             contradiction = true;
         }
+        if (pending[cell] == 0) {
+            pending[cell] = 1;
+            changed.push_back(static_cast<std::uint32_t>(cell));
+        }
     }
 
-    // Returns the unsettled cell with the lowest entropy, or nothing when every cell is settled or one has no tile left.
+    [[nodiscard]] static bool isLater(const Candidate& lhs, const Candidate& rhs) noexcept {
+        return lhs.entropy != rhs.entropy ? lhs.entropy > rhs.entropy : lhs.cell > rhs.cell;
+    }
+
+    // Returns the unsettled cell with the lowest entropy and then the lowest index, or nothing when every cell is settled. Cells whose tiles changed since the last search enter the heap again, and their older entries go stale.
     [[nodiscard]] std::optional<std::size_t> findLowestEntropy() {
-        std::optional<std::size_t> lowest;
-        double lowestEntropy = std::numeric_limits<double>::infinity();
-        for (std::size_t cell = 0; cell < cellCount; ++cell) {
-            if (possibleCounts[cell] == 0) {
-                contradiction = true;
-                return std::nullopt;
-            }
-            if (possibleCounts[cell] == 1) {
-                continue;
-            }
-            const double entropy = std::log(sumWeights[cell]) - sumWeightLogWeights[cell] / sumWeights[cell] + noise[cell];
-            if (entropy < lowestEntropy) {
-                lowestEntropy = entropy;
-                lowest = cell;
+        for (const std::uint32_t cell : changed) {
+            pending[cell] = 0;
+            ++versions[cell];
+            if (possibleCounts[cell] > 1) {
+                heap.push_back({.entropy = std::log(sumWeights[cell]) - sumWeightLogWeights[cell] / sumWeights[cell] + noise[cell], .cell = cell, .version = versions[cell]});
+                std::push_heap(heap.begin(), heap.end(), &isLater);
             }
         }
-        return lowest;
+        changed.clear();
+
+        while (!heap.empty()) {
+            std::pop_heap(heap.begin(), heap.end(), &isLater);
+            const Candidate candidate = heap.back();
+            heap.pop_back();
+            if (candidate.version == versions[candidate.cell]) {
+                return candidate.cell;
+            }
+        }
+        return std::nullopt;
     }
 
     void collapse(std::size_t cell, math::Random& random) {
@@ -292,6 +313,10 @@ class WaveFunctionCollapse::Solver final {
     std::vector<double> noise;
     std::vector<std::pair<std::uint32_t, std::uint32_t>> stack;
     bool contradiction = false;
+    std::vector<Candidate> heap;
+    std::vector<std::uint32_t> versions;
+    std::vector<std::uint32_t> changed;
+    std::vector<std::uint8_t> pending;
 };
 
 std::optional<spatial2d::CellGrid> WaveFunctionCollapse::generate(const Rules& rules, const Options& options, math::Random& random) {

@@ -44,9 +44,6 @@ class SpriteBatch final {
     [[nodiscard]] std::span<const SpriteInstance> getSprites() const noexcept {
         return sprites;
     }
-    [[nodiscard]] std::span<SpriteInstance> getSprites() noexcept {
-        return sprites;
-    }
 
     void draw(Renderer& renderer, const DrawOrder& order = {}) const;
     [[nodiscard]] StaticSpriteBatch bake(Renderer& renderer) const;

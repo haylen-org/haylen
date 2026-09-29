@@ -15,6 +15,7 @@ class EntryBounds final {
   public:
     static void requireValid(const math::Rect& bounds);
     static void requireRadius(float radius);
+    static void requirePoint(math::Vec2 point);
 
     [[nodiscard]] static bool overlaps(const math::Rect& lhs, const math::Rect& rhs) noexcept {
         return lhs.getLeft() <= rhs.getRight() && rhs.getLeft() <= lhs.getRight() && lhs.getTop() <= rhs.getBottom() && rhs.getTop() <= lhs.getBottom();
@@ -24,8 +25,16 @@ class EntryBounds final {
         return math::Vec2::distanceSquared(bounds.clamp(point), point);
     }
 
-    // Adds a candidate to neighbors, which stays sorted by distance and then by id and never holds more than count entries.
+    // Adds a candidate to neighbors, which never holds more than count entries and keeps them as a heap with the farthest one first until finishNearest sorts them.
     static void keepNearest(std::vector<Neighbor>& neighbors, const Neighbor& candidate, std::size_t count);
+
+    // Returns the farthest of the neighbors kept so far, which must not be empty.
+    [[nodiscard]] static const Neighbor& getFarthest(const std::vector<Neighbor>& neighbors) noexcept {
+        return neighbors.front();
+    }
+
+    // Sorts the neighbors that keepNearest kept by distance and then by id.
+    static void finishNearest(std::vector<Neighbor>& neighbors);
 
     // Adds a hit to hits, which stays sorted by distance and then by id.
     static void insertHit(std::vector<RayHit>& hits, const RayHit& hit);

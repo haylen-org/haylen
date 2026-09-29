@@ -9,7 +9,7 @@
 
 namespace haylen::text {
 
-// The outline in pixels, with y pointing down like the rows of the field. Lines, quadratic curves and cubic curves keep their exact shape.
+// The outline in pixels, with y pointing down like the rows of the field. Lines, quadratic curves and cubic curves keep their exact shape. A malformed CFF outline may draw before its first move, which starts a contour at the origin.
 msdfgen::Shape DistanceField::readShape(const stbtt_fontinfo& font, int glyph, float scale) {
     stbtt_vertex* vertices = nullptr;
     const int count = stbtt_GetGlyphShape(&font, glyph, &vertices);
@@ -20,11 +20,10 @@ msdfgen::Shape DistanceField::readShape(const stbtt_fontinfo& font, int glyph, f
         const stbtt_vertex& vertex = vertices[index];
         const msdfgen::Point2 end(vertex.x * scale, -vertex.y * scale);
         const msdfgen::Point2 control(vertex.cx * scale, -vertex.cy * scale);
-        if (vertex.type == STBTT_vmove) {
-            if (contour == nullptr || !contour->edges.empty()) {
-                contour = &shape.addContour();
-            }
-        } else if (vertex.type == STBTT_vline && end != pen) {
+        if (contour == nullptr || (vertex.type == STBTT_vmove && !contour->edges.empty())) {
+            contour = &shape.addContour();
+        }
+        if (vertex.type == STBTT_vline && end != pen) {
             contour->addEdge(msdfgen::EdgeHolder(pen, end));
         } else if (vertex.type == STBTT_vcurve) {
             contour->addEdge(msdfgen::EdgeHolder(pen, control, end));

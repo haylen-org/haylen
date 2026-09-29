@@ -34,7 +34,7 @@ class Grid final {
         bool staggerEven = false;
     };
 
-    // How a search estimates the distance left. Octile is exact on open ground with diagonal steps and Manhattan without them, Euclidean and Chebyshev underestimate more, and hexagonal grids always count hex steps.
+    // How a search estimates the distance left. Octile is exact on open ground with diagonal steps and Manhattan without them, Euclidean and Chebyshev underestimate more, and hexagonal grids always count hex steps. Manhattan overestimates walks with diagonal steps, so its path may not be the cheapest one.
     enum class Heuristic : std::uint8_t {
         Manhattan,
         Octile,

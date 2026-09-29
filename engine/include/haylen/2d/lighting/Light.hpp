@@ -104,7 +104,7 @@ struct Light {
     // Returns the light map value after the light draws over the value below at a point, with its blend mode.
     [[nodiscard]] math::Color apply(math::Color below, math::Vec2 point) const noexcept;
 
-    // Tells whether an occluder whose mask shares a bit with the shadow mask stands between the light and a point, following the cull mode of each occluder the way the shadow map does. Lights without shadows never shadow a point.
+    // Tells whether an occluder whose mask shares a bit with the shadow mask stands between the light and a point, following the cull mode of each occluder the way the shadow map does. Lights without shadows never shadow a point. Throws std::invalid_argument when an occluder has too few points.
     [[nodiscard]] bool isShadowedAt(math::Vec2 point, std::span<const Occluder> occluders) const;
 
   private:

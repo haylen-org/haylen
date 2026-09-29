@@ -54,10 +54,12 @@ class Joint final {
     [[nodiscard]] bool isValid() const noexcept;
     void destroy();
 
-    // Moves the target of a mouse joint.
+    // Reads and moves the target of a mouse joint. Other joint types throw std::logic_error.
+    [[nodiscard]] math::Vec2 getTarget() const;
     void setTarget(math::Vec2 value);
 
-    // Changes the motor speed of a revolute, prismatic or wheel joint.
+    // Reads and changes the motor speed of a revolute or wheel joint in radians per second, or of a prismatic joint in world units per second. Other joint types throw std::logic_error.
+    [[nodiscard]] float getMotorSpeed() const;
     void setMotorSpeed(float value);
 
     [[nodiscard]] std::uint64_t getId() const noexcept {
@@ -68,6 +70,7 @@ class Joint final {
     static const std::array<std::pair<std::string_view, Type>, 8> kTypeNames;
 
     [[nodiscard]] std::uint64_t checkedId() const;
+    [[nodiscard]] std::uint64_t checkedMouseId() const;
 
     World* world = nullptr;
     std::uint64_t id = 0;

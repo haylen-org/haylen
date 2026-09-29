@@ -26,6 +26,7 @@ class List final : public Component {
     void readProperties(PropertyReader& reader) override;
     [[nodiscard]] math::Vec2 measureContent(Context& context, float availableWidth) override;
     void render(Context& context, const math::Rect& bounds) override;
+    void drawingStopped(Context& context) override;
 
   private:
     std::vector<ChoiceItem> items;

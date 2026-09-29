@@ -12,7 +12,7 @@ namespace haylen::physics2d {
 
 class Raycaster;
 
-// Rays cast together, with a result slot for each one. The batch keeps its buffers, so casting the same number of rays again allocates nothing, and results line up with the rays by index.
+// Rays cast together, with a result slot for each one. The batch keeps its buffers, so casting the same number of rays again reuses them, and results line up with the rays by index.
 class RayBatch final {
   public:
     // Sets the number of rays, keeping the existing ones and adding rays of zero length.

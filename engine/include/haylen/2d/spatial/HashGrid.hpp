@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "haylen/2d/spatial/Cell.hpp"
 #include "haylen/2d/spatial/Neighbor.hpp"
 #include "haylen/2d/spatial/RayHit.hpp"
 #include "haylen/math/Ray.hpp"
@@ -14,7 +15,7 @@
 
 namespace haylen::spatial2d {
 
-// Buckets rectangles into a uniform grid so queries only visit nearby entries. Callers pick the ids, and bounds that touch count as overlapping, so point-sized entries are found too. It suits many entries of similar size that move every frame.
+// Buckets rectangles into a uniform grid so queries only visit nearby entries. Callers pick the ids, and bounds that touch count as overlapping, so point-sized entries are found too. It suits many entries of similar size that move every frame. An entry may cover at most 65536 cells and must lie within 536870912 cells of the origin, and set throws std::invalid_argument otherwise.
 class HashGrid final {
   public:
     explicit HashGrid(float gridCellSize);
@@ -59,16 +60,24 @@ class HashGrid final {
         CellRange cells;
     };
 
+    static constexpr float kMaxCell = 536870912.0F;
+    static constexpr double kMaxEntryCells = 65536.0;
+
     [[nodiscard]] static std::uint64_t cellKey(int x, int y) noexcept;
 
-    [[nodiscard]] int cellOf(float value) const noexcept;
-    [[nodiscard]] CellRange cellsOf(const math::Rect& bounds) const noexcept;
+    // Returns the cell of a coordinate as a whole number, which is infinite when the coordinate lies too far for any cell.
+    [[nodiscard]] float cellOf(float value) const noexcept;
+    [[nodiscard]] CellRange entryCellsOf(const math::Rect& bounds) const;
+
+    // Returns the cells of an area that lie inside the occupied cells, which is empty when the area misses them.
+    [[nodiscard]] CellRange occupiedCellsOf(const math::Rect& area) const noexcept;
     void collect(const CellRange& cells, std::vector<std::uint64_t>& ids) const;
     void link(std::uint64_t id, const CellRange& cells);
     void unlink(std::uint64_t id, const CellRange& cells);
 
-    // Offers the entries of one bucket to a nearest query.
-    void offerBucket(int x, int y, math::Vec2 point, std::size_t count, float maxDistance, std::vector<Neighbor>& neighbors) const;
+    // Offers the entries of one bucket to a nearest query around the center cell, each from the cell of the entry closest to the center only, so every entry comes once.
+    void offerBucket(Cell cell, Cell center, math::Vec2 point, std::size_t count, float maxDistance, std::vector<Neighbor>& neighbors) const;
+    void scanNearest(math::Vec2 point, std::size_t count, float maxDistance, std::vector<Neighbor>& neighbors) const;
 
     float cellSize;
     std::unordered_map<std::uint64_t, std::vector<std::uint64_t>> buckets;

@@ -35,6 +35,7 @@ class World final {
         int subSteps = 4;
     };
 
+    // Throws std::invalid_argument when the scale is not positive or there is no sub-step, and std::runtime_error when Box2D holds too many worlds already.
     explicit World(const Settings& settings = kDefaultSettings);
     ~World();
 
@@ -45,6 +46,7 @@ class World final {
 
     // Anchors are world positions. Distance joints keep the anchors apart, at their current distance unless a length is given. Revolute joints pin the bodies at anchorA, prismatic and wheel joints slide along the axis, and weld joints glue the bodies. Mouse joints pull the second body toward anchorB with 4 hertz, a damping ratio of 1 and enough force to accelerate it at a thousand meters per second squared unless the options set them. Motor joints drive the second body toward its current offset from the first.
     // Prismatic motors, mouse joints and motor joints limit their force with maxMotorForce, and revolute motors, wheel motors and motor joints limit their torque with maxMotorTorque.
+    // Revolute and prismatic joints measure their angle from the pose the bodies have at creation, so revolute limits are angles away from that pose. Throws std::invalid_argument for a distance joint shorter than 0.005 meters, revolute limits beyond 0.99 pi radians and any limits whose lower value is above the upper one.
     Joint createJoint(Joint::Type type, Body first, Body second, const Joint::Options& options = {});
 
     void step(float deltaSeconds);
@@ -73,6 +75,8 @@ class World final {
 
     // Returns the closest hit of the ray, which Raycaster extends with every other kind of cast.
     [[nodiscard]] std::optional<RaycastHit> raycast(math::Vec2 from, math::Vec2 to, const CollisionFilter& filter = {}) const;
+
+    // Returns the shapes whose bounds overlap the area. Throws std::invalid_argument when its width or height is negative.
     [[nodiscard]] std::vector<Shape> queryRect(const math::Rect& area, const CollisionFilter& filter = {}) const;
     [[nodiscard]] std::vector<Shape> queryCircle(math::Vec2 center, float radius, const CollisionFilter& filter = {}) const;
     [[nodiscard]] std::vector<Shape> queryPoint(math::Vec2 point, const CollisionFilter& filter = {}) const;
@@ -100,6 +104,9 @@ class World final {
     // One-way platforms keep contacts whose normal leans at least this much toward their direction.
     static constexpr float kOneWayThreshold = 0.5F;
 
+    // Box2D keeps revolute limits within this many radians of zero.
+    static const float kRevoluteLimit;
+
     // Returns the shapes whose bounds overlap the area, in world units.
     [[nodiscard]] std::vector<Shape> overlapBounds(const math::Rect& area, const CollisionFilter& filter) const;
 
@@ -107,6 +114,7 @@ class World final {
     void countObjects();
 
     void checkTransforms(std::span<const Body> bodies, std::size_t valueCount) const;
+    static void checkLimits(Joint::Type type, const Joint::Options& options);
 
     std::uint32_t handle = 0;
     float pixelsPerMeter = 64.0F;
@@ -117,7 +125,7 @@ class World final {
     std::vector<SensorEvent> sensorBegins;
     std::vector<SensorEvent> sensorEnds;
 
-    // Box2D reads it from the solver threads while stepping, so it only changes between steps.
+    // The pre-solve callback of Box2D reads it while the world steps, so it only changes between steps.
     std::unordered_map<std::uint64_t, math::Vec2> oneWayShapes;
     debug::TrackedCount liveBodies{bodyCounter};
     debug::TrackedCount liveContacts{contactCounter};

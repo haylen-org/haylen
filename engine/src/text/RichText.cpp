@@ -28,16 +28,35 @@ void RichText::validate(const RichTextOptions& value) {
     if (!value.family) {
         throw std::invalid_argument("Rich text needs a font family.");
     }
-    if (!(value.size > 0.0F) || !(value.scale > 0.0F) || !(value.lineSpacing > 0.0F)) {
+    if (!isPositive(value.size) || !isPositive(value.scale) || !isPositive(value.lineSpacing)) {
         throw std::invalid_argument("Rich text needs a positive size, scale and line spacing.");
     }
-    if (value.revealSpeed < 0.0F) {
+    validateWidth(value.maxWidth);
+    if (!(value.revealSpeed >= 0.0F)) {
         throw std::invalid_argument("Rich text cannot reveal at a negative speed.");
+    }
+}
+
+void RichText::validateWidth(float value) {
+    if (!std::isfinite(value)) {
+        throw std::invalid_argument("Rich text needs a finite maximum width.");
+    }
+}
+
+bool RichText::isPositive(float value) noexcept {
+    return std::isfinite(value) && value > 0.0F;
+}
+
+// A text effect runs while the frame is built, so it can neither change the text it runs on nor lay it out.
+void RichText::requireIdle() const {
+    if (applyingEffects) {
+        throw std::logic_error("A text effect cannot change or lay out the rich text it runs on.");
     }
 }
 
 // Unknown tags name effects, which must be registered, so a typo in a tag reads as a missing effect at the place it was written.
 void RichText::setMarkup(std::string value) {
+    requireIdle();
     RichTextDocument parsed = parse(value);
     std::vector<TextEffect::Function> functions;
     std::vector<TextEffect::Parameters> attributes;
@@ -61,19 +80,24 @@ void RichText::setMarkup(std::string value) {
 }
 
 void RichText::setOptions(RichTextOptions value) {
+    requireIdle();
     validate(value);
     options = std::move(value);
+    effectStarts.clear();
     layouts.clear();
     resetReveal();
 }
 
 void RichText::setMaxWidth(float value) {
+    requireIdle();
+    validateWidth(value);
     options.maxWidth = value;
     frameDirty = true;
 }
 
 void RichText::setScale(float value) {
-    if (!(value > 0.0F)) {
+    requireIdle();
+    if (!isPositive(value)) {
         throw std::invalid_argument("Rich text needs a positive scale.");
     }
     options.scale = value;
@@ -88,6 +112,7 @@ void RichText::resetReveal() noexcept {
 }
 
 void RichText::update(float deltaSeconds) {
+    requireIdle();
     if (deltaSeconds < 0.0F) {
         throw std::invalid_argument("Rich text cannot go back in time.");
     }
@@ -104,6 +129,7 @@ void RichText::update(float deltaSeconds) {
 
 // Layouts stay cached for the last few widths, so a container that measures at one width and draws at another lays out once for each.
 RichText::CachedLayout& RichText::getCachedLayout(float maxWidth) {
+    requireIdle();
     for (auto entry = layouts.begin(); entry != layouts.end(); ++entry) {
         if (entry->maxWidth == maxWidth && entry->scale == options.scale) {
             layouts.splice(layouts.begin(), layouts, entry);
@@ -125,6 +151,7 @@ const TextLayout& RichText::getLayout() {
 }
 
 const TextLayout& RichText::getLayout(float maxWidth) {
+    validateWidth(maxWidth);
     return getCachedLayout(maxWidth).layout;
 }
 
@@ -198,16 +225,16 @@ std::optional<std::string> RichText::getHintAt(math::Vec2 point) {
     return std::nullopt;
 }
 
-// Effects see every glyph of their tag, counted from the first character inside the tag, and apply from the outermost tag in.
+// Effects see every glyph of their tag, counted from the first character inside the tag, even one that draws nothing, such as a space or an image, and apply from the outermost tag in.
 void RichText::applyEffects(TextLayout& moved) {
     if (effectStarts.size() != effects.size()) {
         effectStarts.assign(effects.size(), 0);
         std::vector<bool> seen(effects.size(), false);
-        for (const TextLayout::Glyph& glyph : moved.glyphs) {
-            for (const std::size_t effect : document.styles[glyph.style].effects) {
+        for (std::size_t character = 0; character < moved.characters.size(); ++character) {
+            for (const std::size_t effect : document.styles[moved.characters[character].style].effects) {
                 if (!seen[effect]) {
                     seen[effect] = true;
-                    effectStarts[effect] = glyph.character;
+                    effectStarts[effect] = character;
                 }
             }
         }
@@ -267,7 +294,14 @@ const TextLayout& RichText::getFrame() {
     }
 
     frame = current.layout;
-    applyEffects(frame);
+    applyingEffects = true;
+    try {
+        applyEffects(frame);
+    } catch (...) {
+        applyingEffects = false;
+        throw;
+    }
+    applyingEffects = false;
     if (revealing) {
         applyReveal(frame, visible);
     }

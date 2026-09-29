@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <limits>
@@ -292,7 +293,7 @@ TEST(HierarchicalPathfinderTest, FindsNearOptimalPathsAndFollowsLocalChanges) {
             const Cell start{random.range(0, 95), random.range(0, 95)};
             const Cell goal{random.range(0, 95), random.range(0, 95)};
             const std::span<const Cell> expected = search.findPath(grid, start, goal);
-            const std::span<const Cell> path = hierarchy.findPath(start, goal);
+            const std::span<const Cell> path = hierarchy.findPath(grid, start, goal);
             ASSERT_EQ(path.empty(), expected.empty()) << start.x << "," << start.y << " to " << goal.x << "," << goal.y;
             if (path.empty()) {
                 continue;
@@ -311,12 +312,39 @@ TEST(HierarchicalPathfinderTest, FindsNearOptimalPathsAndFollowsLocalChanges) {
     for (int x = 0; x < 90; ++x) {
         grid.setWalkable({x, 48}, false);
     }
-    hierarchy.update({0, 48}, {89, 48});
+    hierarchy.update(grid, {0, 48}, {89, 48});
     compare(60);
-    EXPECT_TRUE(hierarchy.findPath({0, 0}, {0, 0}).size() == 1 || !grid.isWalkable({0, 0}));
+    EXPECT_TRUE(hierarchy.findPath(grid, {0, 0}, {0, 0}).size() == 1 || !grid.isWalkable({0, 0}));
 
     EXPECT_THROW(navigation2d::HierarchicalPathfinder(navigation2d::Grid(8, 8, {.topology = navigation2d::Grid::Topology::Hexagonal})), std::invalid_argument);
     EXPECT_THROW(navigation2d::HierarchicalPathfinder(grid, {.clusterSize = 1}), std::invalid_argument);
+    EXPECT_THROW((void)hierarchy.findPath(navigation2d::Grid(8, 8), {0, 0}, {1, 1}), std::invalid_argument);
+}
+
+TEST(HierarchicalPathfinderTest, FindsNoPathThroughCellsThatChangedWithoutAnUpdate) {
+    // Three clusters in a row, joined by one entrance on each border at row 2.
+    navigation2d::Grid grid(12, 4);
+    navigation2d::HierarchicalPathfinder hierarchy(grid, {.clusterSize = 4});
+    ASSERT_FALSE(hierarchy.findPath(grid, {0, 1}, {11, 1}).empty());
+
+    // A wall splits the middle cluster, whose stale entrances still claim a way through.
+    for (int y = 0; y < 4; ++y) {
+        grid.setWalkable({5, y}, false);
+    }
+    EXPECT_TRUE(hierarchy.findPath(grid, {0, 1}, {11, 1}).empty());
+    EXPECT_TRUE(std::isinf(hierarchy.getCost()));
+
+    // A blocked entrance cell is never stepped on either.
+    for (int y = 0; y < 4; ++y) {
+        grid.setWalkable({5, y}, true);
+    }
+    grid.setWalkable({4, 2}, false);
+    EXPECT_TRUE(hierarchy.findPath(grid, {0, 1}, {11, 1}).empty());
+
+    hierarchy.update(grid, {4, 2}, {4, 2});
+    const std::span<const Cell> path = hierarchy.findPath(grid, {0, 1}, {11, 1});
+    ASSERT_FALSE(path.empty());
+    EXPECT_TRUE(std::ranges::all_of(path, [&grid](Cell cell) { return grid.isWalkable(cell); }));
 }
 
 TEST(GraphTest, FindsPathsThroughEnabledWaypoints) {

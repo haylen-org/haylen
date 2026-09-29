@@ -2,6 +2,7 @@
 
 #include <lua.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <optional>
@@ -13,7 +14,6 @@
 #include "haylen/2d/physics/Terrain.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
-#include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
@@ -95,23 +95,23 @@ int DestructionLua::newTerrain(lua_State* L) {
     return 1;
 }
 
-// Sets every sample from a list of values from 0 to 1 stored row by row, or from a function of the column and row that returns them.
+// Sets every sample with terrain.samples = values, from a list of values from 0 to 1 stored row by row or from a function of the column and row that returns them.
 int DestructionLua::terrainSetSamples(lua_State* L) {
     Terrain& terrain = lua::Userdata::check<ScriptedOwner<Terrain>>(L, 1).object;
-    std::vector<std::uint8_t> values(static_cast<std::size_t>(terrain.getColumns()) * static_cast<std::size_t>(terrain.getRows()));
-    const bool computed = lua_isfunction(L, 2);
+    const auto columns = static_cast<std::size_t>(terrain.getColumns());
+    const bool computed = lua_isfunction(L, 3);
     if (!computed) {
-        luaL_checktype(L, 2, LUA_TTABLE);
-        luaL_argcheck(L, static_cast<std::size_t>(luaL_len(L, 2)) == values.size(), 2, "expected one value per sample");
+        luaL_checktype(L, 3, LUA_TTABLE);
     }
+    std::vector<std::uint8_t> values(computed ? columns * static_cast<std::size_t>(terrain.getRows()) : lua_rawlen(L, 3));
     for (std::size_t index = 0; index < values.size(); ++index) {
         if (computed) {
-            lua_pushvalue(L, 2);
-            lua_pushinteger(L, static_cast<lua_Integer>(index % static_cast<std::size_t>(terrain.getColumns())));
-            lua_pushinteger(L, static_cast<lua_Integer>(index / static_cast<std::size_t>(terrain.getColumns())));
+            lua_pushvalue(L, 3);
+            lua_pushinteger(L, static_cast<lua_Integer>(index % columns));
+            lua_pushinteger(L, static_cast<lua_Integer>(index / columns));
             lua_call(L, 2, 1);
         } else {
-            lua_rawgeti(L, 2, static_cast<lua_Integer>(index + 1));
+            lua_rawgeti(L, 3, static_cast<lua_Integer>(index + 1));
         }
         const double value = luaL_checknumber(L, -1);
         values[index] = static_cast<std::uint8_t>(std::lround(std::clamp(value, 0.0, 1.0) * 255.0));
@@ -127,7 +127,7 @@ int DestructionLua::terrainSample(lua_State* L) {
     return 1;
 }
 
-int DestructionLua::terrainSamples(lua_State* L) {
+int DestructionLua::terrainGetSamples(lua_State* L) {
     const std::span<const std::uint8_t> samples = lua::Userdata::check<ScriptedOwner<Terrain>>(L, 1).object.getSamples();
     lua_createtable(L, static_cast<int>(samples.size()), 0);
     for (std::size_t index = 0; index < samples.size(); ++index) {
@@ -263,7 +263,7 @@ int DestructionLua::splitPolygon(lua_State* L) {
 }
 
 void DestructionLua::install(lua_State* L) {
-    lua::ClassBuilder<ScriptedOwner<Terrain>>(L).function("setSamples", &lua::Binding::native<&terrainSetSamples>).function("sample", &lua::Binding::native<&terrainSample>).function("samples", &lua::Binding::native<&terrainSamples>).function("isSolid", &lua::Binding::native<&terrainIsSolid>).function("fill", &lua::Binding::native<&terrainFill>).function("carve", &lua::Binding::native<&terrainCarve>).function("fillPolygon", &lua::Binding::native<&terrainFillPolygon>).function("carvePolygon", &lua::Binding::native<&terrainCarvePolygon>).function("explode", &lua::Binding::native<&terrainExplode>).function("update", &lua::Binding::native<&terrainUpdate>).function("outlines", &lua::Binding::native<&terrainOutlines>).function("bodies", &lua::Binding::native<&terrainBodies>).property("columns", &terrainColumns).property("rows", &terrainRows).property("cellSize", &terrainCellSize).property("bounds", &terrainBounds).property("chunkCount", &terrainChunkCount).property("dirtyChunkCount", &terrainDirtyChunkCount).install();
+    lua::ClassBuilder<ScriptedOwner<Terrain>>(L).function("sample", &lua::Binding::native<&terrainSample>).function("isSolid", &lua::Binding::native<&terrainIsSolid>).function("fill", &lua::Binding::native<&terrainFill>).function("carve", &lua::Binding::native<&terrainCarve>).function("fillPolygon", &lua::Binding::native<&terrainFillPolygon>).function("carvePolygon", &lua::Binding::native<&terrainCarvePolygon>).function("explode", &lua::Binding::native<&terrainExplode>).function("update", &lua::Binding::native<&terrainUpdate>).function("outlines", &lua::Binding::native<&terrainOutlines>).function("bodies", &lua::Binding::native<&terrainBodies>).property("samples", &lua::Binding::native<&terrainGetSamples>, &lua::Binding::native<&terrainSetSamples>).property("columns", &terrainColumns).property("rows", &terrainRows).property("cellSize", &terrainCellSize).property("bounds", &terrainBounds).property("chunkCount", &terrainChunkCount).property("dirtyChunkCount", &terrainDirtyChunkCount).install();
 }
 
 void DestructionLua::addFunctions(lua_State* L) {

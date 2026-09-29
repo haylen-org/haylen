@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -70,6 +71,8 @@ class Document final {
     };
 
     static void collectIds(const Component& component, std::vector<std::string>& found);
+    [[nodiscard]] static std::size_t countNodes(const Component& component);
+    [[nodiscard]] static std::optional<std::size_t> findDepth(const Component& component, const Component& target, std::size_t depth);
     [[nodiscard]] static math::Rect place(const Context& context, const Component& component, math::Vec2 size, const math::Rect& area);
 
     [[nodiscard]] Built build(const core::Json& node, std::size_t depth, std::size_t& count) const;
@@ -79,6 +82,7 @@ class Document final {
     std::unique_ptr<Component> root;
     std::map<std::string, Component*, std::less<>> ids;
     std::map<std::string, core::Json, std::less<>> properties;
+    std::size_t nodeCount = 0;
     std::vector<Event> events;
     Placement placement;
     bool visible = true;

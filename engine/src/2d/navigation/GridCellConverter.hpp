@@ -4,6 +4,7 @@
 
 #include "haylen/2d/navigation/Grid.hpp"
 #include "haylen/lua/Converter.hpp"
+#include "haylen/lua/Stack.hpp"
 
 namespace haylen::lua {
 
@@ -29,7 +30,7 @@ template <> struct Converter<navigation2d::Grid::Cell> {
             lua_rawgeti(L, table, 1);
             lua_rawgeti(L, table, 2);
         }
-        const navigation2d::Grid::Cell cell{static_cast<int>(luaL_checkinteger(L, -2)), static_cast<int>(luaL_checkinteger(L, -1))};
+        const navigation2d::Grid::Cell cell{Stack::read<int>(L, -2), Stack::read<int>(L, -1)};
         lua_pop(L, 2);
         return cell;
     }

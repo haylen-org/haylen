@@ -310,7 +310,7 @@ int Graphics2DLua::drawMesh(lua_State* L) {
     return 0;
 }
 
-// Draws text with drawText(font, family or nil, text, x, y, style), where the style also takes the layer, depth and blend of the draw. A family draws what its faces lack from its fallbacks.
+// Draws text with drawText(font, text, x, y, style), where the font is a Font, a FontFamily or nil for the default font, and the style also takes the layer, depth and blend of the draw. A family draws what its faces lack from its fallbacks.
 int Graphics2DLua::drawText(lua_State* L) {
     const std::string_view content = lua::Stack::read<std::string_view>(L, 2);
     const math::Vec2 position{lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4)};

@@ -31,9 +31,7 @@ class DebugDraw final {
     static void drawSolidCircle(b2Transform transform, float radius, b2HexColor color, void* context);
     static void drawSolidCapsule(b2Vec2 first, b2Vec2 second, float radius, b2HexColor color, void* context);
     static void drawSegment(b2Vec2 first, b2Vec2 second, b2HexColor color, void* context);
-    static void drawTransform(b2Transform transform, void* context);
     static void drawPoint(b2Vec2 point, float size, b2HexColor color, void* context);
-    static void drawString(b2Vec2 point, const char* text, b2HexColor color, void* context);
 
     graphics2d::Renderer& renderer;
     graphics2d::DrawOrder order;

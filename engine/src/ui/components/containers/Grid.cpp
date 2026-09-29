@@ -25,7 +25,9 @@ math::Vec2 Grid::measureContent(Context& context, float availableWidth) {
         height += row;
     }
     height += layout.rows.empty() ? 0.0F : getGap(context) * static_cast<float>(layout.rows.size() - 1);
-    return {layout.widest * static_cast<float>(std::min<std::size_t>(static_cast<std::size_t>(columns), getLayoutChildren().size())) + padding.getHorizontal(), height + padding.getVertical()};
+    const auto across = static_cast<float>(std::min<std::size_t>(static_cast<std::size_t>(columns), getLayoutChildren().size()));
+    const float width = across > 0.0F ? layout.widest * across + getGap(context) * (across - 1.0F) : 0.0F;
+    return {width + padding.getHorizontal(), height + padding.getVertical()};
 }
 
 // Cells fill every row from its start, the right in a right-to-left UI.
@@ -52,10 +54,11 @@ float Grid::getGap(Context& context) const {
     return gap.value_or(context.getMetric(Theme::Metric::ItemSpacing));
 }
 
+// An unbounded width, such as the one of a horizontal scroll, stays unbounded for the cells, so every child measures at its natural width.
 Grid::Layout Grid::measureRows(Context& context, float width) {
     Layout layout;
     const auto count = static_cast<float>(columns);
-    layout.cell = std::max(0.0F, (width - getGap(context) * (count - 1.0F)) / count);
+    layout.cell = width < CommonProperties::kUnbounded ? std::max(0.0F, (width - getGap(context) * (count - 1.0F)) / count) : width;
     const std::vector<Component*> visible = getLayoutChildren();
     for (std::size_t index = 0; index < visible.size(); ++index) {
         const math::Vec2 size = visible[index]->measure(context, layout.cell);

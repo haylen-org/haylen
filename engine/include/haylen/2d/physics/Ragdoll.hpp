@@ -45,7 +45,7 @@ class Ragdoll final {
         math::Vec2 velocity{};
     };
 
-    // Throws std::invalid_argument when the height is not positive or the group is not negative.
+    // Throws std::invalid_argument when the height is not positive, the group is not negative or the material is invalid, and then leaves no bodies behind.
     [[nodiscard]] static Ragdoll create(World& world, const Options& options);
 
     [[nodiscard]] static std::optional<Part> partFromName(std::string_view name) noexcept;
@@ -84,6 +84,8 @@ class Ragdoll final {
     static const std::array<std::string_view, kPartCount> kNames;
     static const std::array<Bone, kPartCount> kBones;
     static const std::array<Link, kPartCount - 1> kLinks;
+
+    void build(World& world, const Options& options);
 
     std::array<Body, kPartCount> bodies{};
     std::vector<Joint> joints;

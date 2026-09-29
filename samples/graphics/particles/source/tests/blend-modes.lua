@@ -1,4 +1,4 @@
--- Blend modes: the same emitter with each blend of the renderer, over a light band and a dark band. Additive and screen brighten, multiply darkens and alpha covers. Multiply, screen and premultiplied blend colors already multiplied by their alpha, so those columns use a premultiplied image and colors.
+-- Blend modes: the same emitter with each blend of the renderer, over a light band and a dark band. Additive and screen brighten, multiply darkens and alpha covers. Only the premultiplied blend takes colors already multiplied by their alpha, so that column uses a premultiplied image and colors.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local particles2d = require('haylen.particles2d')
@@ -19,7 +19,7 @@ function BlendModes:init(entry)
     self.camera = graphics2d.newCamera()
     self.emitters = {}
     for index, mode in ipairs(BlendModes.modes) do
-        local look = (mode == 'alpha' or mode == 'additive') and BlendModes.straight or BlendModes.premultiplied
+        local look = mode == 'premultiplied' and BlendModes.premultiplied or BlendModes.straight
         local emitter = particles2d.newEmitter({texture = art.texture(look.texture), rate = 40, lifetime = {1.6, 2}, speed = {200, 260}, direction = -1.5708, spread = 0.4, startSize = {50, 70}, endSize = {20, 30}, colors = look.colors, blend = mode, layer = 2, seed = 80 + index})
         emitter.position = {(index - 3) * 330, 250}
         self.emitters[index] = emitter

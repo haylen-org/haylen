@@ -1,6 +1,6 @@
 # haylen.graphics
 
-`haylen.graphics` creates the GPU resources that every kind of drawing shares, textures, render targets, bitmap fonts and font families, and names the GPU backend. It also describes the `Texture`, `RenderTarget`, `Font`, `FontFamily` and `Shader` values the rest of the engine passes around. Drawing in 2D, and the materials that draw with shaders, live in [haylen.graphics2d](graphics2d.md).
+`haylen.graphics` creates the GPU resources that every kind of drawing shares, textures, render targets, bitmap fonts and font families, and names the GPU backend and its texture size limit. It also describes the `Texture`, `RenderTarget`, `Font`, `FontFamily` and `Shader` values the rest of the engine passes around. Drawing in 2D, and the materials that draw with shaders, live in [haylen.graphics2d](graphics2d.md).
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -10,7 +10,7 @@ local graphics = require('haylen.graphics')
 
 ### graphics.newRenderTarget(width, height, options)
 
-Creates a `RenderTarget`, an offscreen texture that `graphics2d.beginTarget` draws into. `options` accepts `filter` (`'nearest'` or `'linear'`, default `'nearest'`) and `wrap` (`'clamp'`, `'repeat'` or `'mirror'`, default `'clamp'`). Sizes of 0 or less raise `Texture dimensions must be positive.` and sizes above the device limit raise `Texture dimensions exceed the device limit.`
+Creates a `RenderTarget`, an offscreen texture that `graphics2d.beginTarget` draws into. `options` accepts `filter` (`'nearest'` or `'linear'`, default `'nearest'`) and `wrap` (`'clamp'`, `'repeat'` or `'mirror'`, default `'clamp'`). Sizes of 0 or less raise `Texture dimensions must be positive.` and sizes above [graphics.maxTextureSize()](#graphicsmaxtexturesize) raise `Texture dimensions exceed the device limit.`
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -29,6 +29,8 @@ Creates a `Texture` from code. `options` is optional:
 | `pixels` | string | none | Raw RGBA bytes, four per pixel, row by row from the top. Its length must be `width * height * 4`, otherwise the call raises `Image pixel data does not match its dimensions.` |
 | `filter` | string | `'nearest'` | `'nearest'` or `'linear'` sampling. |
 | `wrap` | string | `'clamp'` | `'clamp'`, `'repeat'` or `'mirror'` addressing. |
+
+Sizes of 0 or less raise `Texture dimensions must be positive.` and sizes above [graphics.maxTextureSize()](#graphicsmaxtexturesize) raise `Texture dimensions exceed the device limit.`, and a filled texture checks its size before it makes any pixel.
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -70,7 +72,7 @@ local pixel = graphics.newBitmapFont(assets.bytes('fonts/pixel.fnt'), {assets.te
 
 ### graphics.newGridFont(texture, options)
 
-Creates a bitmap `Font` from an image of equal cells, read left to right and top to bottom. `options` takes `characters` (the characters of the cells in order, as UTF-8), `cellWidth` and `cellHeight` (the size of a cell in pixels), and the optional `spacing` and `margin` (Vec2 gaps between cells and around the grid), `advance` (the pen advance of every character), `lineHeight` and `baseline` (the baseline below the top of a cell), where 0 takes the size of the cell. An image with fewer cells than characters raises an error.
+Creates a bitmap `Font` from an image of equal cells, read left to right and top to bottom. `options` takes `characters` (the characters of the cells in order, as UTF-8), `cellWidth` and `cellHeight` (the size of a cell in pixels, at least 1), and the optional `spacing` and `margin` (Vec2 gaps between cells and around the grid, never negative), `advance` (the pen advance of every character), `lineHeight` and `baseline` (the baseline below the top of a cell), where 0 takes the size of the cell. An image with fewer cells than characters, such as one whose margins leave no room, raises an error such as `The grid font image holds 0 cells, fewer than its 10 characters.`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -101,6 +103,18 @@ local log = require('haylen.log')
 log.info('Rendering with ' .. graphics.backend())
 ```
 
+### graphics.maxTextureSize()
+
+Returns the largest width and height in pixels that a texture or render target can have on the GPU, which depends on the device. Larger sizes raise `Texture dimensions exceed the device limit.`
+
+```lua
+local graphics = require('haylen.graphics')
+
+local size = math.min(4096, graphics.maxTextureSize())
+local atlas = graphics.newRenderTarget(size, size)
+print(atlas.width, graphics.maxTextureSize())
+```
+
 ## Texture
 
 A `Texture` is a shared handle to a GPU image. `assets.texture(path, options)` from [haylen.assets](assets.md) loads one from the package, where `options` accepts the same `filter` and `wrap` keys as `graphics.newTexture` and the same image loaded with the same options returns the same texture. Other textures come from `graphics.newTexture`, `graphics.whiteTexture`, `target.texture`, `atlas.texture` and `animation.texture`. Two texture values compare equal with `==` when they refer to the same GPU image.
@@ -127,19 +141,19 @@ A `RenderTarget` is an offscreen color texture created by `graphics.newRenderTar
 | --- | --- | --- | --- |
 | `width` | integer | read | Width in pixels. |
 | `height` | integer | read | Height in pixels. |
-| `texture` | Texture | read | The texture to draw the target with. |
+| `texture` | Texture | read | The texture to draw the target with. It holds colors premultiplied by their alpha, so draw it with `blend = 'premultiplied'` wherever it is not fully opaque. |
 
 ```lua
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 
 local target = graphics.newRenderTarget(128, 64)
-local preview = graphics2d.newSprite(target.texture, {x = 64, y = 32})
+local preview = graphics2d.newSprite(target.texture, {x = 64, y = 32, blend = 'premultiplied'})
 ```
 
 ## Font
 
-A `Font` is a TrueType or OpenType font drawn through a signed distance field, or a bitmap font drawn from its own images. `assets.font(path, options)` loads either one by the extension of the file: a `.ttf` or `.otf` file takes `bakeSize` (the em size of the glyphs in the atlas, default 48), `spread` (how far the distance field reaches past a glyph, in pixels at the bake size, default 8, which bounds outlines, glows and blurred shadows) and `atlasSize` (initial atlas size, default 512), and a `.fnt` BMFont file takes the `filter` and `wrap` of its page textures. `graphics.newGridFont` and `graphics.newBitmapFont` make bitmap fonts from textures, and `graphics2d.defaultFont()` returns the built-in one. Every function that takes a font takes either kind. A bitmap font draws pixel for pixel at its native size, scales at other sizes and draws nothing for the characters it lacks. Two font values compare equal with `==` when they refer to the same font, such as a face read twice from a family or a font loaded twice with the same options.
+A `Font` is a TrueType or OpenType font drawn through a signed distance field, or a bitmap font drawn from its own images. `assets.font(path, options)` loads either one by the extension of the file: a `.ttf` or `.otf` file takes `bakeSize` (the em size of the glyphs in the atlas, default 48), `spread` (how far the distance field reaches past a glyph, in pixels at the bake size, default 8, which bounds outlines, glows and blurred shadows) and `atlasSize` (initial atlas size, default 512), which must be positive and at most the maximum texture size of the device or raise an error such as `The bake size of a TrueType font must be positive and at most the maximum texture size of 4096.`, and a `.fnt` BMFont file takes the `filter` and `wrap` of its page textures. `graphics.newGridFont` and `graphics.newBitmapFont` make bitmap fonts from textures, and `graphics2d.defaultFont()` returns the built-in one. Every function that takes a font takes either kind. A bitmap font draws pixel for pixel at its native size, scales at other sizes and draws nothing for the characters it lacks. Two font values compare equal with `==` when they refer to the same font, such as a face read twice from a family or a font loaded twice with the same options.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -156,7 +170,7 @@ print(pixel.nativeSize, pixel.distanceField, pixel.pageCount)
 
 ### font:measure(text, style)
 
-Returns the width and height of `text` shaped and laid out with `style`. The style takes the text keys of `graphics2d.drawText` without its draw order keys, which raise `Unknown option 'name'.` because a font draws nothing itself.
+Returns the width and height of `text` shaped and laid out with `style`. The style takes the text keys of `graphics2d.drawText` without its draw order keys, which raise `Unknown option 'name'.` because a font draws nothing itself. A `size`, `maxWidth` or `lineSpacing` that is not a finite number raises `Text needs a finite size, maximum width and line spacing.`.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -215,9 +229,23 @@ local glyph = graphics2d.defaultFont():glyph('g')
 print(glyph.index, glyph.advance, glyph.offset.y, glyph.source.height)
 ```
 
+### font:glyphByIndex(index)
+
+Returns the glyph with an index that `font:shape` gave, as the same table as `font:glyph`, which is how an app draws shaped text from the atlas itself. The index of a glyph of a bitmap font is its code point. A TrueType font raises `The font has no glyph with index N.` for an index it does not have, and a glyph too large for any atlas the device allows raises `The font atlas exceeded the maximum texture size.` every time it is used.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+
+local font = graphics2d.defaultFont()
+for _, shaped in ipairs(font:shape('office', {size = 48})) do
+    local glyph = font:glyphByIndex(shaped.index)
+    print(shaped.cluster, glyph.source.width, glyph.page)
+end
+```
+
 ### font:shape(text, options)
 
-Shapes `text` as one run and returns its glyphs in visual order, each as a table with `index` (the glyph index in the font), `cluster` (the position of the first character of its cluster in the text, counted in code points from 1), `advance` and `offset` (Vec2 from the pen, where positive y points down). A TrueType font shapes with HarfBuzz in the script of the first letter, so the glyphs show ligatures, the joining forms of Arabic, the conjuncts of Indic scripts, kerning and the marks placed on their letters. A bitmap font maps every character to its glyph and applies its kerning pairs. `options` takes `size` (the text size of the lengths, the native size by default), `direction` (`'auto'`, the default, which reads the direction of the first strong letter, `'ltr'` or `'rtl'`) and `language` (a BCP 47 tag such as `'fa'` or `'sr'`, which picks the forms a language prefers). `font:layout` and the draw functions split mixed text into runs and shape each one themselves.
+Shapes `text` as one run and returns its glyphs in visual order, each as a table with `index` (the glyph index in the font, which `font:glyphByIndex` reads), `cluster` (the position of the first character of its cluster in the text, counted in code points from 1), `advance` and `offset` (Vec2 from the pen, where positive y points down). A TrueType font shapes with HarfBuzz in the script of the first letter, so the glyphs show ligatures, the joining forms of Arabic, the conjuncts of Indic scripts, kerning and the marks placed on their letters. A bitmap font maps every character to its glyph and applies its kerning pairs. `options` takes `size` (the text size of the lengths, the native size by default), `direction` (`'auto'`, the default, which reads the direction of the first strong letter of the first paragraph, `'ltr'` or `'rtl'`) and `language` (a BCP 47 tag such as `'fa'` or `'sr'`, which picks the forms a language prefers). `font:layout` and the draw functions split mixed text into runs and shape each one themselves.
 
 ```lua
 local assets = require('haylen.assets')
@@ -231,7 +259,7 @@ print(#assets.font('fonts/serif.ttf'):shape('office'))
 
 ### font:page(index)
 
-Returns the texture of a page, counted from 1, with the glyphs used so far uploaded. An index out of range raises `page out of range`.
+Returns the texture of a page, counted from 1, with the glyphs used so far uploaded. An index out of range raises `page out of range`. The atlas of a TrueType font becomes a new, larger texture when it grows, so a page read earlier keeps only the glyphs of its time, and an app that draws from the page reads it again after using new glyphs.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')

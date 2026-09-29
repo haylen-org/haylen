@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iterator>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -16,6 +17,7 @@
 #include "haylen/text/RichText.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
 #include "support/EngineFixture.hpp"
+#include "text/BidiParagraph.hpp"
 
 namespace haylen::text {
 
@@ -190,6 +192,15 @@ TEST_F(ShapingTest, FormsDevanagariConjunctsAndPlacesMarks) {
     ASSERT_EQ(marked.glyphs.size(), 2U);
     EXPECT_LT(marked.glyphs[1].position.y + marked.glyphs[1].size.y, marked.glyphs[0].position.y + marked.glyphs[0].size.y * 0.5F);
     EXPECT_FLOAT_EQ(marked.characters[0].box.width, family->measure("क", {.size = 32.0F}).x);
+}
+
+// Every paragraph separator ends a paragraph, and the carriage return of CRLF stays at the end of its paragraph, so the characters of plain text keep counting its code points.
+TEST_F(ShapingTest, EndsPlainParagraphsAtEverySeparator) {
+    const TextLayout& laid = lay("a\rb\u2029c\u0085d\r\ne");
+    ASSERT_EQ(laid.lines.size(), 5U);
+    EXPECT_EQ(laid.characters.back().begin, 9U);
+    EXPECT_EQ(laid.lines[3].end, 8U);
+    EXPECT_THROW(BidiParagraph(U"a\u2029b", Direction::Auto), std::invalid_argument);
 }
 
 // Lines wrap where the Unicode rules allow in every script: at spaces in Latin, Arabic, Hebrew and Devanagari, between ideographs in Japanese, and never inside a cluster of Thai, which has no spaces.

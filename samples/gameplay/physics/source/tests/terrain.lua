@@ -41,11 +41,11 @@ function Terrain:build()
     self.crates = {}
     self.terrain = physics2d.newTerrain(self.world, {columns = kColumns, rows = kRows, cellSize = kCellSize, x = kOrigin.x, y = kOrigin.y, chunkSize = 32})
     local noise = m.noise(self.random:integer(1, 1000))
-    self.terrain:setSamples(function(column, row)
+    self.terrain.samples = function(column, row)
         local surface = 180 + noise:fractal(column / 70, 0.3, 4) * 140
         local cave = noise:fractal(column / 30, row / 30 + 5, 2) > 0.45
         return (row * kCellSize > surface and not cave) and 1 or 0
-    end)
+    end
     self:rebuild()
     self:dropCrates()
 end

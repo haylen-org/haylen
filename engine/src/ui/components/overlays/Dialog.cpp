@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <imgui.h>
+#include <imgui_internal.h>
 
 #include "haylen/core/JsonValidator.hpp"
 #include "haylen/math/Insets.hpp"
@@ -35,16 +36,17 @@ math::Vec2 Dialog::measureContent(Context&, float) {
 }
 
 void Dialog::render(Context& context, const math::Rect&) {
-    const bool shown = ImGui::IsPopupOpen("##dialog");
-    if (open && !shown) {
+    if (open && !ImGui::IsPopupOpen("##dialog") && !isWaiting()) {
         ImGui::OpenPopup("##dialog");
     }
 
+    // A dialog keeps a margin inside the display, and its content scrolls when it is taller than that.
     const math::Rect display = context.getBackend().getDisplayRect();
+    const float margin = context.getMetric(Theme::Metric::PanelPadding);
     const math::Insets padding = getContentPadding(context);
-    const float width = std::min(context.getMetric(Theme::Metric::DialogWidth), display.width - context.getMetric(Theme::Metric::PanelPadding) * 2.0F);
+    const float width = std::min(context.getMetric(Theme::Metric::DialogWidth), display.width - margin * 2.0F);
     const float inner = width - padding.getHorizontal();
-    const float height = getContentHeight(context, inner) + padding.getVertical();
+    const float height = std::min(getContentHeight(context, inner) + padding.getVertical(), std::max(0.0F, display.height - margin * 2.0F));
     ImGui::SetNextWindowPos(ImGuiConverter::toImVec2(display.getCenter()), ImGuiCond_Always, {0.5F, 0.5F});
     ImGui::SetNextWindowSize({width, height});
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0F, 0.0F});
@@ -70,6 +72,17 @@ void Dialog::render(Context& context, const math::Rect&) {
         ImGui::CloseCurrentPopup();
     }
     ImGui::EndPopup();
+}
+
+// Only one dialog shows at a time, so a dialog that opens while another one shows waits until that one closes.
+bool Dialog::isWaiting() {
+    const ImGuiContext& state = *GImGui;
+    const int level = state.BeginPopupStack.Size;
+    if (state.OpenPopupStack.Size <= level) {
+        return false;
+    }
+    const ImGuiWindow* shown = state.OpenPopupStack[level].Window;
+    return shown != nullptr && (shown->Flags & ImGuiWindowFlags_Modal) != 0 && (shown->Active || shown->WasActive);
 }
 
 std::vector<Dialog::Answer> Dialog::readButtons(PropertyReader& reader, const core::Json& value) {
@@ -129,26 +142,20 @@ float Dialog::getContentHeight(Context& context, float width) {
 
 void Dialog::drawContent(Context& context, const math::Rect& inner) {
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
-    float y = inner.y;
-    if (const std::string titleText = context.getText(title); !titleText.empty()) {
-        const float height = Typography::measureParagraph(context, Theme::Font::Heading, titleText, inner.width).y;
-        Typography::drawParagraph(context, Theme::Font::Heading, {inner.x, y, inner.width, height}, context.getColor(Theme::Color::Text), titleText, Alignment::Start);
-        y += height + spacing;
-    }
-    if (const std::string messageText = context.getText(message); !messageText.empty()) {
-        const float height = Typography::measureParagraph(context, Theme::Font::Body, messageText, inner.width).y;
-        Typography::drawParagraph(context, Theme::Font::Body, {inner.x, y, inner.width, height}, context.getColor(Theme::Color::TextMuted), messageText, Alignment::Start);
-        y += height + spacing;
-    }
-    for (Component* child : getLayoutChildren()) {
-        const math::Vec2 size = child->measure(context, inner.width);
-        child->draw(context, {inner.x, y, inner.width, size.y});
-        y += size.y + spacing;
+    const float height = context.getMetric(Theme::Metric::ControlHeight);
+
+    // The title, the message and the children scroll inside the room the buttons leave.
+    const math::Rect body{inner.x, inner.y, inner.width, std::max(0.0F, inner.height - (buttons.empty() ? 0.0F : height + spacing))};
+    if (!body.isEmpty()) {
+        ImGui::SetCursorScreenPos(ImGuiConverter::toImVec2(body.getMin()));
+        if (ImGui::BeginChild("##body", ImGuiConverter::toImVec2(body.getSize()), ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNavInputs)) {
+            drawBody(context);
+        }
+        ImGui::EndChild();
     }
 
     // Buttons line up at the bottom end, the right or the left of a right-to-left UI, and the last one, usually the main answer, starts with the navigation focus.
     float x = inner.getRight();
-    const float height = context.getMetric(Theme::Metric::ControlHeight);
     for (auto button = buttons.rbegin(); button != buttons.rend(); ++button) {
         const std::string text = context.getText(button->text);
         const math::Vec2 size = Widgets::measureButton(context, text, false, button->variant);
@@ -165,6 +172,30 @@ void Dialog::drawContent(Context& context, const math::Rect& inner) {
             context.emit(*this, "answer", {{"button", button->id}});
         }
     }
+}
+
+void Dialog::drawBody(Context& context) {
+    const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
+    const ImVec2 origin = ImGui::GetCursorScreenPos();
+    const float width = ImGui::GetContentRegionAvail().x;
+    float y = origin.y;
+    if (const std::string titleText = context.getText(title); !titleText.empty()) {
+        const float height = Typography::measureParagraph(context, Theme::Font::Heading, titleText, width).y;
+        Typography::drawParagraph(context, Theme::Font::Heading, {origin.x, y, width, height}, context.getColor(Theme::Color::Text), titleText, Alignment::Start);
+        y += height + spacing;
+    }
+    if (const std::string messageText = context.getText(message); !messageText.empty()) {
+        const float height = Typography::measureParagraph(context, Theme::Font::Body, messageText, width).y;
+        Typography::drawParagraph(context, Theme::Font::Body, {origin.x, y, width, height}, context.getColor(Theme::Color::TextMuted), messageText, Alignment::Start);
+        y += height + spacing;
+    }
+    for (Component* child : getLayoutChildren()) {
+        const math::Vec2 size = child->measure(context, width);
+        child->draw(context, {origin.x, y, width, size.y});
+        y += size.y + spacing;
+    }
+    ImGui::SetCursorScreenPos(origin);
+    ImGui::Dummy({width, std::max(0.0F, y - spacing - origin.y)});
 }
 
 } // namespace haylen::ui

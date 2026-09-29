@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <limits>
 #include <string>
 
 #include <imgui.h>
@@ -29,11 +28,15 @@ math::Vec2 Scroll::measureContent(Context& context, float availableWidth) {
     if (visible.empty()) {
         return {};
     }
-    const math::Vec2 size = visible.front()->measure(context, horizontal ? std::numeric_limits<float>::max() : availableWidth);
+    const math::Vec2 size = visible.front()->measure(context, horizontal ? CommonProperties::kUnbounded : availableWidth);
     return {std::min(size.x, availableWidth), size.y};
 }
 
 void Scroll::render(Context& context, const math::Rect& bounds) {
+    // ImGui gives a child without a width or a height the rest of its window, so an empty scroll draws nothing instead.
+    if (bounds.isEmpty()) {
+        return;
+    }
     ImGui::SetCursorScreenPos(ImGuiConverter::toImVec2(bounds.getMin()));
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNavInputs;
     if (!scrollbar) {
@@ -49,7 +52,7 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
             Component& child = *visible.front();
             const ImVec2 origin = ImGui::GetCursorScreenPos();
             const ImVec2 available = ImGui::GetContentRegionAvail();
-            const math::Vec2 size = child.measure(context, horizontal ? std::numeric_limits<float>::max() : available.x);
+            const math::Vec2 size = child.measure(context, horizontal ? CommonProperties::kUnbounded : available.x);
             const math::Rect area = horizontal ? math::Rect{origin.x, origin.y, size.x, available.y} : math::Rect{origin.x, origin.y, available.x, size.y};
             child.draw(context, area);
             ImGui::SetCursorScreenPos(origin);

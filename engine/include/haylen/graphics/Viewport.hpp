@@ -23,7 +23,7 @@ class Viewport final {
         Stretch,
         // Keeps the design area whole and centered, and extends the visible area to fill the screen.
         Expand,
-        // Like Fit, but only with integer scale factors.
+        // Like Fit, but only with integer scale factors, or integer divisors on framebuffers smaller than the design area.
         PixelPerfect,
     };
 

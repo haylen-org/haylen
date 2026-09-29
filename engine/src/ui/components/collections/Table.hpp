@@ -40,6 +40,7 @@ class Table final : public Component {
 
     [[nodiscard]] static std::vector<Column> readColumns(PropertyReader& reader, const core::Json& value);
     [[nodiscard]] static std::vector<Row> readRows(PropertyReader& reader, const core::Json& value);
+    [[nodiscard]] float measureWidth(Context& context) const;
     [[nodiscard]] std::vector<float> getColumnWidths(float total) const;
 
     std::vector<Column> columns;

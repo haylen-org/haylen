@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cmath>
 #include <stdexcept>
 #include <utility>
 
@@ -25,6 +26,12 @@ Map MapParser::parse(const core::Json& document, std::string_view file, const Ma
     result.width = document.at("width").get<int>();
     result.height = document.at("height").get<int>();
     result.tileSize = {document.at("tilewidth").get<float>(), document.at("tileheight").get<float>()};
+    if (result.width < 0 || result.height < 0) {
+        throw std::invalid_argument("The Tiled map " + result.path + " has a negative size.");
+    }
+    if (!(result.tileSize.x > 0.0F && result.tileSize.y > 0.0F && std::isfinite(result.tileSize.x) && std::isfinite(result.tileSize.y))) {
+        throw std::invalid_argument("The Tiled map " + result.path + " needs a positive tile size.");
+    }
     result.infinite = document.value("infinite", false);
     result.hexSideLength = document.value("hexsidelength", 0);
     result.staggerX = document.value("staggeraxis", std::string("y")) == "x";
@@ -104,6 +111,18 @@ std::vector<std::uint8_t> MapParser::inflate(const std::vector<std::uint8_t>& co
         throw std::runtime_error("Tile layer data could not be decompressed.");
     }
     return output;
+}
+
+std::size_t MapParser::countCells(int width, int height, std::string_view layer) {
+    if (width < 0 || height < 0) {
+        throw std::invalid_argument("The Tiled tile layer '" + std::string(layer) + "' has a negative size.");
+    }
+    const auto columns = static_cast<std::size_t>(width);
+    const auto rows = static_cast<std::size_t>(height);
+    if (columns != 0 && rows > kMaxCells / columns) {
+        throw std::invalid_argument("The Tiled tile layer '" + std::string(layer) + "' has more cells than a layer can hold.");
+    }
+    return columns * rows;
 }
 
 std::vector<std::uint32_t> MapParser::readTileData(const core::Json& layer, const core::Json& data, std::size_t cells) {
@@ -383,7 +402,7 @@ Layer MapParser::readLayer(const core::Json& entry, std::string_view directory) 
     }
 
     Layer layer{
-        .id = entry.value("id", 0U),
+        .id = entry.at("id").get<std::uint32_t>(),
         .name = name,
         .type = entry.value("class", std::string{}),
         .visible = entry.value("visible", true),
@@ -402,11 +421,11 @@ Layer MapParser::readLayer(const core::Json& entry, std::string_view directory) 
         if (entry.contains("chunks")) {
             for (const core::Json& chunk : entry.at("chunks")) {
                 Layer::Chunk parsed{.x = chunk.at("x").get<int>(), .y = chunk.at("y").get<int>(), .width = chunk.at("width").get<int>(), .height = chunk.at("height").get<int>()};
-                parsed.gids = readTileData(entry, chunk.at("data"), static_cast<std::size_t>(parsed.width * parsed.height));
+                parsed.gids = readTileData(entry, chunk.at("data"), countCells(parsed.width, parsed.height, name));
                 layer.chunks.push_back(std::move(parsed));
             }
         } else {
-            layer.gids = readTileData(entry, entry.at("data"), static_cast<std::size_t>(layer.width * layer.height));
+            layer.gids = readTileData(entry, entry.at("data"), countCells(layer.width, layer.height, name));
         }
     } else if (kind == "objectgroup") {
         layer.kind = Layer::Kind::Object;

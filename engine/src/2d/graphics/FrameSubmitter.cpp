@@ -4,6 +4,7 @@
 #include <bit>
 #include <cmath>
 #include <numeric>
+#include <optional>
 
 #include "2d/graphics/MaterialResource.hpp"
 #include "2d/graphics/RendererState.hpp"
@@ -17,7 +18,6 @@
 #include "shaders/blend.glsl.h"
 #include "shaders/composite.glsl.h"
 #include "shaders/light.glsl.h"
-#include "shaders/mesh.glsl.h"
 #include "shaders/metaball.glsl.h"
 #include "shaders/sprite.glsl.h"
 #include "shaders/sprite_lit.glsl.h"
@@ -26,6 +26,8 @@ namespace haylen::graphics2d {
 
 // Every program reads its view projection from slot 0 and the lighting of lit passes from slot 7, which the shader library reserves.
 static_assert(UB_sprite_haylen_vs_params == 0 && UB_sprite_lit_haylen_lit_params == 7);
+
+const PostProcess FrameSubmitter::kNoPostProcess{};
 
 FrameSubmitter::Matrix FrameSubmitter::translated(Matrix matrix, math::Vec2 offset) noexcept {
     for (std::size_t row = 0; row < 4; ++row) {
@@ -70,8 +72,18 @@ void FrameSubmitter::submit() {
     castShadows();
     buildCommands();
     upload();
-    renderOffscreen();
-    renderSwapchain();
+
+    // A draw can still fail inside a pass, such as a material whose program the backend rejects, so the pass and the frame end before the error goes on and the next frame starts clean.
+    try {
+        renderOffscreen();
+        renderSwapchain();
+    } catch (...) {
+        if (passOpen) {
+            endPass();
+        }
+        sg_commit();
+        throw;
+    }
 }
 
 void FrameSubmitter::prepareTargets() {
@@ -94,6 +106,10 @@ void FrameSubmitter::prepareTargets() {
             getField(fieldCount++, size);
         }
     }
+
+    // Targets past what this frame uses go back to the device, so a peak such as a transition between two lit scenes does not keep its images.
+    state.litTargets.resize(litCount);
+    state.fields.resize(fieldCount);
 }
 
 LitTargets& FrameSubmitter::getLitTargets(std::size_t index, math::Vec2 size, bool lit, bool post) {
@@ -259,7 +275,8 @@ void FrameSubmitter::append(const DrawItem& item) {
     // Neighbours that share state and continue each other's data become one draw call.
     if (state.commands.size() > commandFloor) {
         Command& previous = state.commands.back();
-        const bool sameState = previous.program == command.program && previous.blend == command.blend && previous.clip == command.clip && previous.shade == command.shade && previous.texture == command.texture;
+        const bool sameShade = previous.shade == command.shade || state.shades[previous.shade].matches(state.shades[command.shade]);
+        const bool sameState = previous.program == command.program && previous.blend == command.blend && previous.clip == command.clip && sameShade && previous.texture == command.texture;
         const bool single = command.program == Program::ImageBlend || command.program == Program::Metaball;
         const bool mergeable = !single && previous.batch == nullptr && command.batch == nullptr && previous.first + previous.count == command.first;
         if (sameState && mergeable) {
@@ -323,18 +340,19 @@ void FrameSubmitter::writeBuffer(sg_buffer& buffer, std::size_t& capacity, const
     state.stats.uploadedBytes += count * elementSize;
 }
 
-// Passes run in the order the frame recorded them, so a capture renders once the canvases it holds have their offscreen passes, and before any later canvas that draws its texture.
+// Passes run in the order the frame recorded them, so a capture renders once the canvases it holds have their offscreen passes, and before any later canvas that draws its texture. Captures render in the order they closed, which puts a capture inside another one before the outer one.
 void FrameSubmitter::renderOffscreen() {
+    const std::vector<std::size_t>& captures = state.closedCaptures;
     std::size_t nextCapture = 0;
     for (std::size_t index = 0; index < state.canvases.size(); ++index) {
-        while (nextCapture < state.captures.size() && state.captures[nextCapture].canvasEnd <= index) {
-            renderCapture(nextCapture++);
+        while (nextCapture < captures.size() && state.captures[captures[nextCapture]].canvasEnd <= index) {
+            renderCapture(captures[nextCapture++]);
         }
         renderFields(state.canvases[index]);
         renderCanvasOffscreen(state.canvases[index]);
     }
-    while (nextCapture < state.captures.size()) {
-        renderCapture(nextCapture++);
+    while (nextCapture < captures.size()) {
+        renderCapture(captures[nextCapture++]);
     }
 }
 
@@ -346,7 +364,7 @@ void FrameSubmitter::renderFields(const Canvas& canvas) {
         const MetaballDraw& draw = state.metaballs[index];
         beginOffscreenPass(state.fields[draw.field], math::Color::transparent());
         sg_apply_pipeline(state.getPipeline(Program::Sprite, static_cast<std::uint8_t>(graphics::BlendMode::Type::Additive), graphics::PassTarget::Offscreen));
-        applyUniforms(matrix);
+        applyUniforms(matrix, graphics::BlendMode::Type::Additive);
 
         sg_bindings bindings{};
         bindings.vertex_buffers[0] = state.quad;
@@ -357,7 +375,7 @@ void FrameSubmitter::renderFields(const Canvas& canvas) {
         sg_apply_bindings(&bindings);
         sg_draw(0, 4, static_cast<int>(draw.count));
         ++state.stats.drawCalls;
-        sg_end_pass();
+        endPass();
     }
 }
 
@@ -365,26 +383,26 @@ void FrameSubmitter::renderCanvasOffscreen(Canvas& canvas) {
     if (!canvas.isComposited()) {
         if (canvas.kind == Canvas::Kind::Target) {
             const math::Rect rect = getPassRect(canvas);
-            beginOffscreenPass(canvas.target, canvas.options.clear.value_or(math::Color::transparent()));
+            beginOffscreenPass(canvas.target, canvas.options.clear.value_or(math::Color::transparent()).getPremultiplied());
             sg_apply_viewportf(rect.x, rect.y, rect.width, rect.height, true);
             drawCommands(canvas, canvas.sceneBegin, canvas.sceneEnd, graphics::PassTarget::Offscreen, rect);
-            sg_end_pass();
+            endPass();
         }
         return;
     }
 
     const LitTargets& targets = state.litTargets[canvas.litIndex];
     const math::Rect full{0.0F, 0.0F, static_cast<float>(targets.scene.getWidth()), static_cast<float>(targets.scene.getHeight())};
-    const math::Color clear = canvas.options.clear.value_or(canvas.kind == Canvas::Kind::Target ? math::Color::transparent() : state.clearColor);
+    const math::Color clear = canvas.options.clear.value_or(canvas.kind == Canvas::Kind::Target ? math::Color::transparent() : state.clearColor).getPremultiplied();
     if (canvas.isLit()) {
         beginLitPass(targets, clear);
         drawCommands(canvas, canvas.sceneBegin, canvas.sceneEnd, graphics::PassTarget::LitScene, full);
-        sg_end_pass();
+        endPass();
         renderLights(canvas, targets);
     } else {
         beginOffscreenPass(targets.scene, clear);
         drawCommands(canvas, canvas.sceneBegin, canvas.sceneEnd, graphics::PassTarget::Offscreen, full);
-        sg_end_pass();
+        endPass();
     }
     renderPostChain(canvas, targets);
 
@@ -394,7 +412,7 @@ void FrameSubmitter::renderCanvasOffscreen(Canvas& canvas) {
         beginOffscreenPass(canvas.target, clear);
         sg_apply_viewportf(rect.x, rect.y, rect.width, rect.height, true);
         drawFinal(canvas, graphics::PassTarget::Offscreen);
-        sg_end_pass();
+        endPass();
     }
 }
 
@@ -452,7 +470,7 @@ void FrameSubmitter::renderLights(const Canvas& canvas, const LitTargets& target
         sg_draw(0, 4, 1);
         ++state.stats.drawCalls;
     }
-    sg_end_pass();
+    endPass();
 }
 
 // The composite writes into the first post target, and every material but the last draws the image before it into the other one, which leaves the input of the last material in postImage.
@@ -463,14 +481,14 @@ void FrameSubmitter::renderPostChain(Canvas& canvas, const LitTargets& targets) 
 
     beginOffscreenPass(targets.post[0], math::Color::transparent());
     composite(canvas, graphics::PassTarget::Offscreen);
-    sg_end_pass();
+    endPass();
 
     std::size_t current = 0;
     const std::size_t count = canvas.options.postProcess->materials.size();
     for (std::size_t index = 0; index + 1 < count; ++index) {
         beginOffscreenPass(targets.post[1 - current], math::Color::transparent());
         drawPostMaterial(canvas.postShade + index, targets.post[current].getTexture(), graphics::PassTarget::Offscreen);
-        sg_end_pass();
+        endPass();
         current = 1 - current;
     }
     canvas.postImage = current;
@@ -478,24 +496,25 @@ void FrameSubmitter::renderPostChain(Canvas& canvas, const LitTargets& targets) 
 
 void FrameSubmitter::renderCapture(std::size_t index) {
     const Capture& capture = state.captures[index];
-    beginOffscreenPass(capture.target, capture.clear);
+    beginOffscreenPass(capture.target, capture.clear.getPremultiplied());
     drawCanvases(index + 1, graphics::PassTarget::Offscreen);
-    sg_end_pass();
+    endPass();
 }
 
-// The frame of an opaque window clears its alpha to 1 and never writes it, whatever the clear color and the blends of the app.
+// The frame of an opaque window clears its alpha to 1 and never writes it, whatever the clear color and the blends of the app, and a transparent window holds premultiplied colors.
 void FrameSubmitter::renderSwapchain() {
-    const math::Color& clear = state.clearColor;
+    const math::Color clear = target.transparent ? state.clearColor.getPremultiplied() : state.clearColor.withAlpha(1.0F);
     sg_pass pass{};
     pass.action.colors[0].load_action = SG_LOADACTION_CLEAR;
-    pass.action.colors[0].clear_value = {clear.r, clear.g, clear.b, target.transparent ? clear.a : 1.0F};
+    pass.action.colors[0].clear_value = {clear.r, clear.g, clear.b, clear.a};
     pass.swapchain = target.swapchain;
     pass.label = "haylen-swapchain-pass";
     sg_begin_pass(&pass);
+    passOpen = true;
     ++state.stats.passes;
 
     drawCanvases(0, target.transparent ? graphics::PassTarget::TransparentSwapchain : graphics::PassTarget::Swapchain);
-    sg_end_pass();
+    endPass();
     sg_commit();
 }
 
@@ -513,6 +532,8 @@ void FrameSubmitter::drawCanvases(std::size_t capture, graphics::PassTarget pass
         const math::Rect rect = getPassRect(*canvas);
         sg_apply_viewportf(rect.x, rect.y, rect.width, rect.height, true);
         if (canvas->isComposited()) {
+            // The clip of an earlier canvas stays applied until something sets another one.
+            sg_apply_scissor_rectf(rect.x, rect.y, rect.width, rect.height, true);
             drawFinal(*canvas, pass);
             continue;
         }
@@ -536,6 +557,7 @@ void FrameSubmitter::beginOffscreenPass(const graphics::RenderTarget& renderTarg
     pass.attachments.colors[0] = renderTarget.getResource()->attachment;
     pass.label = "haylen-offscreen-pass";
     sg_begin_pass(&pass);
+    passOpen = true;
     ++state.stats.passes;
 }
 
@@ -551,15 +573,21 @@ void FrameSubmitter::beginLitPass(const LitTargets& targets, math::Color clear) 
     }
     pass.label = "haylen-lit-scene-pass";
     sg_begin_pass(&pass);
+    passOpen = true;
     ++state.stats.passes;
+}
+
+void FrameSubmitter::endPass() {
+    sg_end_pass();
+    passOpen = false;
 }
 
 void FrameSubmitter::composite(const Canvas& canvas, graphics::PassTarget pass) {
     const LitTargets& targets = state.litTargets[canvas.litIndex];
-    const PostProcess post = canvas.options.postProcess.value_or(PostProcess{});
+    const PostProcess& post = canvas.options.postProcess ? *canvas.options.postProcess : kNoPostProcess;
     const bool lit = canvas.isLit();
 
-    sg_apply_pipeline(state.getPipeline(Program::Composite, static_cast<std::uint8_t>(graphics::BlendMode::Type::Opaque), pass));
+    sg_apply_pipeline(state.getPipeline(Program::Composite, static_cast<std::uint8_t>(graphics::BlendMode::Type::Premultiplied), pass));
     sg_bindings bindings{};
     bindings.views[VIEW_composite_scene_texture] = targets.scene.getTexture().getResource()->view;
     bindings.views[VIEW_composite_light_texture] = (lit ? targets.light : targets.scene).getTexture().getResource()->view;
@@ -583,8 +611,8 @@ void FrameSubmitter::composite(const Canvas& canvas, graphics::PassTarget pass) 
 void FrameSubmitter::drawPostMaterial(std::size_t shadeIndex, const graphics::Texture& image, graphics::PassTarget pass) {
     const Shade& shade = state.shades[shadeIndex];
     const graphics::TextureResource& resource = *image.getResource();
-    sg_apply_pipeline(state.getMaterialPipeline(*shade.material, Program::Sprite, static_cast<std::uint8_t>(graphics::BlendMode::Type::Opaque), pass));
-    applyUniforms(projection(math::Transform2D::identity(), {1.0F, 1.0F}));
+    sg_apply_pipeline(state.getMaterialPipeline(*shade.material, Program::Sprite, static_cast<std::uint8_t>(graphics::BlendMode::Type::Premultiplied), pass));
+    applyUniforms(projection(math::Transform2D::identity(), {1.0F, 1.0F}), graphics::BlendMode::Type::Premultiplied);
     applyShade(shade, pass, Program::Sprite);
 
     sg_bindings bindings{};
@@ -597,7 +625,7 @@ void FrameSubmitter::drawPostMaterial(std::size_t shadeIndex, const graphics::Te
     ++state.stats.drawCalls;
 }
 
-void FrameSubmitter::applyClip(const Canvas& canvas, std::uint16_t clip, const math::Rect& passRect) {
+void FrameSubmitter::applyClip(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect) {
     if (clip == 0) {
         sg_apply_scissor_rectf(passRect.x, passRect.y, passRect.width, passRect.height, true);
         return;
@@ -615,7 +643,7 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
     const Matrix matrix = projection(canvas.view, canvas.viewSize);
     sg_pipeline currentPipeline{};
     graphics::TextureResource* currentTexture = nullptr;
-    int currentClip = -1;
+    std::optional<std::uint32_t> currentClip;
     std::uint32_t currentShade = 0;
     math::Vec2 currentOffset{};
 
@@ -633,7 +661,7 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
                 drawMetaball(command, matrix);
             }
             currentPipeline = {};
-            currentClip = -1;
+            currentClip.reset();
             continue;
         }
 
@@ -643,10 +671,10 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
         if (fresh) {
             sg_apply_pipeline(pipeline);
             currentPipeline = pipeline;
-            currentClip = -1;
+            currentClip.reset();
         }
         if (fresh || command.offset != currentOffset) {
-            applyUniforms(translated(matrix, command.offset));
+            applyUniforms(translated(matrix, command.offset), command.blend);
             currentOffset = command.offset;
         }
         if (fresh || command.shade != currentShade) {
@@ -709,6 +737,7 @@ void FrameSubmitter::drawImageBlend(const Command& command, const Matrix& matrix
     vertex.area[1] = blend.area.y;
     vertex.area[2] = blend.area.width;
     vertex.area[3] = blend.area.height;
+    vertex.premultiply = RendererState::expectsPremultiplied(command.blend) ? 1.0F : 0.0F;
     sg_apply_uniforms(UB_blend_blend_vs_params, SG_RANGE(vertex));
 
     const float flips = (from.flipped ? 1.0F : 0.0F) + (to.flipped ? 2.0F : 0.0F);
@@ -740,6 +769,7 @@ void FrameSubmitter::drawMetaball(const Command& command, const Matrix& matrix) 
     vertex.area[2] = draw.area.width;
     vertex.area[3] = draw.area.height;
     vertex.field[0] = field.flipped ? 1.0F : 0.0F;
+    vertex.field[1] = RendererState::expectsPremultiplied(command.blend) ? 1.0F : 0.0F;
     sg_apply_uniforms(UB_metaball_metaball_vs_params, SG_RANGE(vertex));
 
     const Renderer::MetaballStyle& style = draw.style;
@@ -753,9 +783,10 @@ void FrameSubmitter::drawMetaball(const Command& command, const Matrix& matrix) 
     ++state.stats.drawCalls;
 }
 
-void FrameSubmitter::applyUniforms(const Matrix& matrix) {
+void FrameSubmitter::applyUniforms(const Matrix& matrix, graphics::BlendMode::Type blend) {
     sprite_haylen_vs_params_t params{};
     std::copy(matrix.begin(), matrix.end(), params.view_projection);
+    params.haylen_premultiply = RendererState::expectsPremultiplied(blend) ? 1.0F : 0.0F;
     sg_apply_uniforms(UB_sprite_haylen_vs_params, SG_RANGE(params));
 }
 

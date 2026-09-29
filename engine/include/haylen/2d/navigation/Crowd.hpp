@@ -15,7 +15,7 @@ class JobSystem;
 
 namespace haylen::navigation2d {
 
-// Moves many agents at once with optimal reciprocal collision avoidance, the ORCA of the RVO2 library. Every step, each agent takes the velocity closest to the one it prefers among those that keep it clear of its neighbors for a time horizon, sharing the effort with them, and clear of static obstacles for a shorter one. Flocking weights can bend the preferred velocities. Steps are deterministic and allocate nothing once the buffers have grown, and a job system spreads them over its workers.
+// Moves many agents at once with optimal reciprocal collision avoidance (ORCA). Every step, each agent takes the velocity closest to the one it prefers among those that keep it clear of its neighbors for a time horizon, sharing the effort with them, and clear of static obstacles for a shorter one. Flocking weights can bend the preferred velocities. Steps are deterministic and allocate nothing once the buffers have grown, and a job system spreads them over its workers.
 class Crowd final {
   public:
     struct AgentOptions {
@@ -83,7 +83,7 @@ class Crowd final {
         bool active = false;
     };
 
-    // One vertex of an obstacle outline and the edge that leaves it, as RVO2 stores obstacles.
+    // One vertex of an obstacle outline and the edge that leaves it.
     struct Vertex {
         math::Vec2 point{};
         math::Vec2 direction{};
@@ -113,6 +113,7 @@ class Crowd final {
     static constexpr std::size_t kChunkAgents = 64;
 
     [[nodiscard]] static float leftOf(math::Vec2 a, math::Vec2 b, math::Vec2 c) noexcept;
+    static void requireFinite(math::Vec2 value);
     [[nodiscard]] static bool solveLine(std::span<const Line> lines, std::size_t lineIndex, float radius, math::Vec2 optimal, bool directionOptimal, math::Vec2& result) noexcept;
     [[nodiscard]] static std::size_t solvePlanes(std::span<const Line> lines, float radius, math::Vec2 optimal, bool directionOptimal, math::Vec2& result) noexcept;
     static void solveFallback(std::span<const Line> lines, std::size_t obstacleLines, std::size_t beginLine, float radius, std::vector<Line>& projected, math::Vec2& result);

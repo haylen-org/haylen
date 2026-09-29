@@ -139,7 +139,7 @@ void GridSearch::searchAStar(const Grid& grid, Grid::Cell start, Grid::Cell goal
 }
 
 std::size_t GridSearch::prunedNeighbors(const Grid& grid, Grid::Cell point, std::optional<Grid::Cell> parent, bool diagonal, std::array<Grid::Cell, 8>& candidates) {
-    const auto open = [&grid](int x, int y) { return grid.isWalkable(grid.fromLattice({x, y})); };
+    const auto passable = [&grid](int x, int y) { return grid.isWalkable(grid.fromLattice({x, y})); };
     const int x = point.x;
     const int y = point.y;
     std::size_t count = 0;
@@ -157,7 +157,7 @@ std::size_t GridSearch::prunedNeighbors(const Grid& grid, Grid::Cell point, std:
         const Grid::Cell sideA = dx != 0 ? Grid::Cell{x, y - 1} : Grid::Cell{x - 1, y};
         const Grid::Cell sideB = dx != 0 ? Grid::Cell{x, y + 1} : Grid::Cell{x + 1, y};
         for (const Grid::Cell next : {sideA, sideB, Grid::Cell{x + dx, y + dy}}) {
-            if (open(next.x, next.y)) {
+            if (passable(next.x, next.y)) {
                 add(next.x, next.y);
             }
         }
@@ -165,8 +165,8 @@ std::size_t GridSearch::prunedNeighbors(const Grid& grid, Grid::Cell point, std:
     }
 
     if (dx != 0 && dy != 0) {
-        const bool alongY = open(x, y + dy);
-        const bool alongX = open(x + dx, y);
+        const bool alongY = passable(x, y + dy);
+        const bool alongX = passable(x + dx, y);
         if (alongY) {
             add(x, y + dy);
         }
@@ -183,9 +183,9 @@ std::size_t GridSearch::prunedNeighbors(const Grid& grid, Grid::Cell point, std:
     const Grid::Cell ahead{x + dx, y + dy};
     const Grid::Cell sideA = dx != 0 ? Grid::Cell{x, y + 1} : Grid::Cell{x + 1, y};
     const Grid::Cell sideB = dx != 0 ? Grid::Cell{x, y - 1} : Grid::Cell{x - 1, y};
-    const bool aheadOpen = open(ahead.x, ahead.y);
-    const bool sideAOpen = open(sideA.x, sideA.y);
-    const bool sideBOpen = open(sideB.x, sideB.y);
+    const bool aheadOpen = passable(ahead.x, ahead.y);
+    const bool sideAOpen = passable(sideA.x, sideA.y);
+    const bool sideBOpen = passable(sideB.x, sideB.y);
     if (aheadOpen) {
         add(ahead.x, ahead.y);
         if (sideAOpen) {
@@ -205,13 +205,13 @@ std::size_t GridSearch::prunedNeighbors(const Grid& grid, Grid::Cell point, std:
 }
 
 std::optional<Grid::Cell> GridSearch::jump(const Grid& grid, Grid::Cell point, Grid::Cell direction, Grid::Cell goal, bool diagonal) {
-    const auto open = [&grid](int x, int y) { return grid.isWalkable(grid.fromLattice({x, y})); };
+    const auto passable = [&grid](int x, int y) { return grid.isWalkable(grid.fromLattice({x, y})); };
     const int dx = direction.x;
     const int dy = direction.y;
     for (;;) {
         const int x = point.x;
         const int y = point.y;
-        if (!open(x, y)) {
+        if (!passable(x, y)) {
             return std::nullopt;
         }
         if (point == goal) {
@@ -223,15 +223,15 @@ std::optional<Grid::Cell> GridSearch::jump(const Grid& grid, Grid::Cell point, G
             if (jump(grid, {x + dx, y}, {dx, 0}, goal, diagonal) || jump(grid, {x, y + dy}, {0, dy}, goal, diagonal)) {
                 return point;
             }
-            if (!open(x + dx, y) || !open(x, y + dy)) {
+            if (!passable(x + dx, y) || !passable(x, y + dy)) {
                 return std::nullopt;
             }
         } else if (dx != 0) {
-            if ((open(x, y - 1) && !open(x - dx, y - 1)) || (open(x, y + 1) && !open(x - dx, y + 1))) {
+            if ((passable(x, y - 1) && !passable(x - dx, y - 1)) || (passable(x, y + 1) && !passable(x - dx, y + 1))) {
                 return point;
             }
         } else {
-            if ((open(x - 1, y) && !open(x - 1, y - dy)) || (open(x + 1, y) && !open(x + 1, y - dy))) {
+            if ((passable(x - 1, y) && !passable(x - 1, y - dy)) || (passable(x + 1, y) && !passable(x + 1, y - dy))) {
                 return point;
             }
             if (!diagonal && (jump(grid, {x + 1, y}, {1, 0}, goal, diagonal) || jump(grid, {x - 1, y}, {-1, 0}, goal, diagonal))) {

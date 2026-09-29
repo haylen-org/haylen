@@ -3,7 +3,6 @@
 #include "haylen/2d/graphics/Camera.hpp"
 #include "haylen/2d/graphics/Parallax.hpp"
 #include "haylen/core/Engine.hpp"
-#include "haylen/graphics/Viewport.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/Runtime.hpp"
@@ -22,7 +21,7 @@ int ParallaxLua::offset(lua_State* L) {
 
 int ParallaxLua::draw(lua_State* L) {
     core::Engine& engine = lua::Runtime::getEngine(L);
-    lua::Userdata::check<Parallax>(L, 1).draw(engine.getRenderer2D(), lua::Userdata::check<Camera>(L, 2), engine.getViewport().getVisibleRect(), lua::TypeConverter::readDrawOrder(L, 3));
+    lua::Userdata::check<Parallax>(L, 1).draw(engine.getRenderer2D(), lua::Userdata::check<Camera>(L, 2), lua::TypeConverter::readDrawOrder(L, 3));
     return 0;
 }
 

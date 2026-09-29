@@ -50,7 +50,7 @@ void Animator::play(std::string_view name, bool restart) {
 void Animator::queue(std::string_view name) {
     (void)getAnimation(name);
     if (current.empty() || isFinished()) {
-        play(name);
+        play(name, true);
         return;
     }
     pending.emplace_back(name);

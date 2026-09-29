@@ -28,9 +28,9 @@ class RichText final : public Component {
     [[nodiscard]] Alignment getDefaultAlignment() const noexcept override {
         return Alignment::Start;
     }
-    // Only text with links takes the focus.
+    // Only text with links takes the focus. Literal markup knows its links as soon as it is set, and a translation once it has been drawn.
     [[nodiscard]] bool isFocusable() const noexcept override {
-        return richText && !richText->getDocument().links.empty();
+        return linked;
     }
 
     void readProperties(PropertyReader& reader) override;
@@ -68,6 +68,7 @@ class RichText final : public Component {
     float reveal = 0.0F;
     int visibleCharacters = -1;
     bool changed = true;
+    bool linked = false;
     std::shared_ptr<text::RichText> richText;
     const Context* preparedFor = nullptr;
     std::uint64_t updatedFrame = 0;

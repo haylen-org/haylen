@@ -1,6 +1,7 @@
 #include "haylen/graphics/Image.hpp"
 
-#include <algorithm>
+#include <cstddef>
+#include <limits>
 #include <stdexcept>
 #include <string>
 
@@ -15,7 +16,14 @@ std::size_t Image::byteCount(int columns, int rows) {
     if (columns < 0 || rows < 0) {
         throw std::invalid_argument("Image dimensions cannot be negative.");
     }
-    return static_cast<std::size_t>(columns) * static_cast<std::size_t>(rows) * 4U;
+
+    // The byte count must fit in a pointer difference, which also keeps it from overflowing on 32-bit platforms.
+    const auto columnCount = static_cast<std::size_t>(columns);
+    const auto rowCount = static_cast<std::size_t>(rows);
+    if (rowCount != 0 && columnCount > static_cast<std::size_t>(std::numeric_limits<std::ptrdiff_t>::max()) / 4U / rowCount) {
+        throw std::invalid_argument("Image dimensions are too large to hold in memory.");
+    }
+    return columnCount * rowCount * 4U;
 }
 
 Image::Image(int imageWidth, int imageHeight, math::Color fill) : width(imageWidth), height(imageHeight), pixels(byteCount(imageWidth, imageHeight)) {
@@ -66,54 +74,6 @@ void Image::setPixel(int x, int y, math::Color color) noexcept {
     pixels[offset + 1] = static_cast<std::uint8_t>((packed >> 8U) & 0xFFU);
     pixels[offset + 2] = static_cast<std::uint8_t>((packed >> 16U) & 0xFFU);
     pixels[offset + 3] = static_cast<std::uint8_t>((packed >> 24U) & 0xFFU);
-}
-
-void Image::blit(const Image& source, int x, int y) {
-    const int startX = std::max(0, x);
-    const int startY = std::max(0, y);
-    const int endX = std::min(width, x + source.width);
-    const int endY = std::min(height, y + source.height);
-    if (startX >= endX) {
-        return;
-    }
-
-    const auto rowBytes = static_cast<std::size_t>((endX - startX) * 4);
-    for (int row = startY; row < endY; ++row) {
-        const auto sourceOffset = static_cast<std::size_t>(((row - y) * source.width + (startX - x)) * 4);
-        const auto targetOffset = static_cast<std::size_t>((row * width + startX) * 4);
-        std::copy_n(source.pixels.begin() + static_cast<std::ptrdiff_t>(sourceOffset), rowBytes, pixels.begin() + static_cast<std::ptrdiff_t>(targetOffset));
-    }
-}
-
-Image Image::crop(const math::Rect& area) const {
-    const int x = static_cast<int>(area.x);
-    const int y = static_cast<int>(area.y);
-    Image result(static_cast<int>(area.width), static_cast<int>(area.height));
-    result.blit(*this, -x, -y);
-    return result;
-}
-
-math::Rect Image::getOpaqueBounds(std::uint8_t alphaThreshold) const noexcept {
-    int minX = width;
-    int minY = height;
-    int maxX = -1;
-    int maxY = -1;
-
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            if (pixels[static_cast<std::size_t>((y * width + x) * 4 + 3)] > alphaThreshold) {
-                minX = std::min(minX, x);
-                minY = std::min(minY, y);
-                maxX = std::max(maxX, x);
-                maxY = std::max(maxY, y);
-            }
-        }
-    }
-
-    if (maxX < 0) {
-        return {};
-    }
-    return {static_cast<float>(minX), static_cast<float>(minY), static_cast<float>(maxX - minX + 1), static_cast<float>(maxY - minY + 1)};
 }
 
 } // namespace haylen::graphics

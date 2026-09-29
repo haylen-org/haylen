@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <fstream>
 #include <iterator>
@@ -14,6 +15,7 @@
 
 #include "core/EmbeddedFiles.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/graphics/Device.hpp"
 #include "haylen/text/Font.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
 #include "support/EngineFixture.hpp"
@@ -87,9 +89,19 @@ TEST(FontTest, GrowsTheAtlasWhenGlyphsDoNotFit) {
     const std::span<const std::uint8_t> data = core::EmbeddedFiles::getDefaultFont();
     text::TrueTypeFont font(fixture.engine().getGraphics(), std::vector<std::uint8_t>(data.begin(), data.end()), {.bakeSize = 48.0F, .spread = 6, .atlasSize = 64});
 
+    // Glyphs that fit replace the pixels of the page in place, and a grown atlas becomes a new page, so text queued before keeps the image its coordinates were measured on.
+    (void)font.layout(".", {.size = 48.0F});
+    font.sync();
+    const graphics::Texture first = font.getPage(0);
+    (void)font.layout(",", {.size = 48.0F});
+    font.sync();
+    EXPECT_EQ(font.getPage(0), first);
+
     const std::shared_ptr<const text::TextLayout> layout = font.layout("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", {.size = 48.0F});
     font.sync();
     EXPECT_EQ(layout->glyphs.size(), 62U);
+    EXPECT_NE(font.getPage(0), first);
+    EXPECT_EQ(first.getWidth(), 64);
     EXPECT_GT(font.getPage(0).getWidth(), 64);
     EXPECT_GT(font.getPage(0).getHeight(), 64);
 
@@ -97,6 +109,68 @@ TEST(FontTest, GrowsTheAtlasWhenGlyphsDoNotFit) {
         EXPECT_LE(glyph.source.x + glyph.source.width, static_cast<float>(font.getPage(0).getWidth()));
         EXPECT_LE(glyph.source.y + glyph.source.height, static_cast<float>(font.getPage(0).getHeight()));
     }
+}
+
+// A glyph wider than any texture of the device fails every time it is drawn, rather than drawing nothing after the first failure.
+TEST(FontTest, FailsAgainForAGlyphNoAtlasHolds) {
+    test::EngineFixture fixture;
+    graphics::Device& device = fixture.engine().getGraphics();
+    const int limit = device.getMaxTextureSize();
+    const std::span<const std::uint8_t> data = core::EmbeddedFiles::getDefaultFont();
+    text::TrueTypeFont font(device, std::vector<std::uint8_t>(data.begin(), data.end()), {.bakeSize = static_cast<float>(limit), .spread = limit / 8});
+    EXPECT_THROW((void)font.layout("W", {.size = 32.0F}), std::runtime_error);
+    EXPECT_THROW((void)font.layout("W", {.size = 32.0F}), std::runtime_error);
+    EXPECT_THROW((void)font.getGlyph(100000), std::out_of_range);
+
+    const std::vector<std::uint8_t> bytes(data.begin(), data.end());
+    EXPECT_THROW(text::TrueTypeFont(device, bytes, {.bakeSize = static_cast<float>(limit) * 2.0F}), std::invalid_argument);
+    EXPECT_THROW(text::TrueTypeFont(device, bytes, {.spread = -1}), std::invalid_argument);
+    EXPECT_THROW(text::TrueTypeFont(device, bytes, {.atlasSize = 0}), std::invalid_argument);
+}
+
+// The table directory of a font, and every table it lists, must lie inside the file before stb_truetype reads them.
+TEST_F(FontFileTest, RejectsTablesOutsideTheFile) {
+    test::EngineFixture fixture;
+    graphics::Device& device = fixture.engine().getGraphics();
+    EXPECT_THROW(TrueTypeFont(device, {0, 1, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}), std::runtime_error);
+
+    std::vector<std::uint8_t> data = read("default");
+    const std::size_t tables = static_cast<std::size_t>(data[4]) << 8U | data[5];
+    for (std::size_t record = 12; record < 12 + tables * 16; record += 16) {
+        if (std::string_view(reinterpret_cast<const char*>(&data[record]), 4) == "cmap") {
+            std::fill_n(data.begin() + static_cast<std::ptrdiff_t>(record + 8), 3, std::uint8_t{0xFF});
+        }
+    }
+    EXPECT_THROW(TrueTypeFont(device, data), std::runtime_error);
+}
+
+// A CFF charstring may draw lines before its first move, which start a contour at the origin. The one of the ampersand becomes two lines of 500 units that the end of the charstring closes into a triangle.
+TEST_F(FontFileTest, ReadsOutlinesThatDrawBeforeTheirFirstMove) {
+    std::vector<std::uint8_t> data = read("fira_sans_regular.otf");
+    const stbtt_fontinfo info = open(data);
+    const int glyph = stbtt_FindGlyphIndex(&info, '&');
+
+    // The CharStrings INDEX holds a count, the size of its offsets, the offsets counted from 1 and then the charstrings.
+    const auto index = static_cast<std::size_t>(info.charstrings.data - data.data());
+    const std::size_t count = static_cast<std::size_t>(data[index]) << 8U | data[index + 1];
+    const std::size_t offsetSize = data[index + 2];
+    // clang-format off
+    const auto offsetAt = [&](std::size_t at) {
+        std::size_t value = 0;
+        for (std::size_t byte = 0; byte < offsetSize; ++byte) {
+            value = value << 8U | data[index + 3 + at * offsetSize + byte];
+        }
+        return value;
+    };
+    // clang-format on
+    const std::size_t offset = offsetAt(static_cast<std::size_t>(glyph));
+    const std::vector<std::uint8_t> lines{248, 136, 139, 5, 139, 248, 136, 5, 14};
+    ASSERT_GE(offsetAt(static_cast<std::size_t>(glyph) + 1) - offset, lines.size());
+    std::ranges::copy(lines, data.begin() + static_cast<std::ptrdiff_t>(index + 3 + (count + 1) * offsetSize - 1 + offset));
+
+    const std::optional<DistanceField> field = DistanceField::build(open(data), glyph, stbtt_ScaleForMappingEmToPixels(&info, 64.0F), 8);
+    ASSERT_TRUE(field.has_value());
+    EXPECT_TRUE(std::ranges::any_of(field->pixels, [](std::uint8_t distance) { return distance >= 128; }));
 }
 
 // The inside of a distance field covers the pixels the glyph covers, for the quadratic curves of TrueType outlines and the cubic curves of CFF outlines alike.

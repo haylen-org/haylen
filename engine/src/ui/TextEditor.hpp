@@ -57,7 +57,7 @@ class TextEditor final {
     [[nodiscard]] static std::string getShown(std::string_view value, bool password);
 
   private:
-    // What the callback of the focused editor needs to place the caret by the shaped text: the session, the text style, the bounds of the field, the area the text scrolls in and by how much, the side the text lines up with, and where the caret and the start of the selection stood before this frame, in bytes, or -1 when the field was not focused.
+    // The caret and the anchor of the selection are where they stood before this frame, in bytes, or -1 when the field was not focused.
     struct Editing {
         TextSession* session = nullptr;
         Context* context = nullptr;

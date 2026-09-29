@@ -18,6 +18,7 @@
 #include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Type.hpp"
+#include "haylen/lua/Userdata.hpp"
 #include "haylen/math/Random.hpp"
 
 namespace haylen::lua {
@@ -31,7 +32,7 @@ template <> struct Type<procedural2d::Region> {
 
 namespace haylen::procedural2d {
 
-// Installs haylen.procedural2d with regions, scattering and triangulations, and the map generators of MapGeneratorsLua. Functions that take options read the generator from a random field or seed a new one from a seed field.
+// Installs haylen.procedural2d with regions, scattering, the Delaunay class and Voronoi diagrams, and the map generators of MapGeneratorsLua. Functions that take options read the generator from a random field or seed a new one from a seed field.
 class Procedural2DLua final {
   public:
     static void install(lua_State* L);
@@ -77,6 +78,17 @@ class Procedural2DLua final {
         }
     }
 
+    // Pushes the value kept under name in the user value of the object at index 1, which push builds and pushes the first time.
+    template <typename Push> static void pushCached(lua_State* L, const char* name, Push&& push) {
+        lua::Userdata::pushField(L, 1, name);
+        if (!lua_isnil(L, -1)) {
+            return;
+        }
+        lua_pop(L, 1);
+        push();
+        lua::Userdata::setField(L, 1, name, -1);
+    }
+
     [[nodiscard]] static Region readTiledObject(lua_State* L, int table);
     // Reads a noise table {seed, frequency, octaves, gain} into a function of fractal noise, mapped from [-1, 1] to [0, 1] when normalized.
     [[nodiscard]] static std::function<float(math::Vec2)> readNoise(lua_State* L, int index, bool normalized);
@@ -94,8 +106,16 @@ class Procedural2DLua final {
 
     static int scatter(lua_State* L);
     static int scatterAsync(lua_State* L);
-    static void pushDelaunay(lua_State* L, const Delaunay& triangulation);
+
     static int delaunay(lua_State* L);
+    static int delaunayPoints(lua_State* L);
+    static int delaunayTriangles(lua_State* L);
+    static int delaunayHalfedges(lua_State* L);
+    static int delaunayHull(lua_State* L);
+    static int delaunayNeighbors(lua_State* L);
+    static int delaunayTriangleCount(lua_State* L);
+    static int delaunayCircumcenter(lua_State* L);
+    static int delaunayFindNearest(lua_State* L);
     static int voronoi(lua_State* L);
     static int voronoiAsync(lua_State* L);
     static int relax(lua_State* L);

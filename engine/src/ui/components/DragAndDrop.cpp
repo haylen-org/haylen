@@ -70,4 +70,11 @@ void DragAndDrop::drawCarried(Context& context, ImGuiID item, const math::Rect& 
     Surfaces::drawImage(context, context.getImage(carried->image), {bounds.getRight() - side * 0.75F, bounds.y - side * 0.25F, side, side}, math::Color::white().withAlpha(0.85F));
 }
 
+void DragAndDrop::dropCarriedFrom(Context& context, const Component& component) {
+    FocusNavigator& focus = context.getFocus();
+    if (focus.getCarried() && focus.getCarried()->source == component.getId()) {
+        focus.dropCarried();
+    }
+}
+
 } // namespace haylen::ui

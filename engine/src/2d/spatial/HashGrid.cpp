@@ -22,12 +22,33 @@ std::uint64_t HashGrid::cellKey(int x, int y) noexcept {
     return (static_cast<std::uint64_t>(static_cast<std::uint32_t>(x)) << 32U) | static_cast<std::uint32_t>(y);
 }
 
-int HashGrid::cellOf(float value) const noexcept {
-    return static_cast<int>(std::floor(value / cellSize));
+float HashGrid::cellOf(float value) const noexcept {
+    return std::floor(value / cellSize);
 }
 
-HashGrid::CellRange HashGrid::cellsOf(const math::Rect& bounds) const noexcept {
-    return {.left = cellOf(bounds.getLeft()), .top = cellOf(bounds.getTop()), .right = cellOf(bounds.getRight()), .bottom = cellOf(bounds.getBottom())};
+HashGrid::CellRange HashGrid::entryCellsOf(const math::Rect& bounds) const {
+    const float left = cellOf(bounds.getLeft());
+    const float top = cellOf(bounds.getTop());
+    const float right = cellOf(bounds.getRight());
+    const float bottom = cellOf(bounds.getBottom());
+    if (!(left >= -kMaxCell && top >= -kMaxCell && right <= kMaxCell && bottom <= kMaxCell)) {
+        throw std::invalid_argument("A spatial hash entry must lie within 536870912 cells of the origin.");
+    }
+    if ((static_cast<double>(right) - left + 1.0) * (static_cast<double>(bottom) - top + 1.0) > kMaxEntryCells) {
+        throw std::invalid_argument("A spatial hash entry may cover at most 65536 cells, so the cell size should be closer to the size of the entries.");
+    }
+    return {.left = static_cast<int>(left), .top = static_cast<int>(top), .right = static_cast<int>(right), .bottom = static_cast<int>(bottom)};
+}
+
+HashGrid::CellRange HashGrid::occupiedCellsOf(const math::Rect& area) const noexcept {
+    const double left = std::max<double>(cellOf(area.getLeft()), occupied.left);
+    const double top = std::max<double>(cellOf(area.getTop()), occupied.top);
+    const double right = std::min<double>(cellOf(area.getRight()), occupied.right);
+    const double bottom = std::min<double>(cellOf(area.getBottom()), occupied.bottom);
+    if (left > right || top > bottom) {
+        return {};
+    }
+    return {.left = static_cast<int>(left), .top = static_cast<int>(top), .right = static_cast<int>(right), .bottom = static_cast<int>(bottom)};
 }
 
 void HashGrid::link(std::uint64_t id, const CellRange& cells) {
@@ -58,7 +79,7 @@ void HashGrid::unlink(std::uint64_t id, const CellRange& cells) {
 
 void HashGrid::set(std::uint64_t id, const math::Rect& bounds) {
     EntryBounds::requireValid(bounds);
-    const CellRange cells = cellsOf(bounds);
+    const CellRange cells = entryCellsOf(bounds);
 
     const auto existing = entries.find(id);
     if (existing == entries.end()) {
@@ -107,11 +128,25 @@ std::optional<math::Rect> HashGrid::getBounds(std::uint64_t id) const {
 
 void HashGrid::collect(const CellRange& cells, std::vector<std::uint64_t>& ids) const {
     ids.clear();
-    for (int y = cells.top; y <= cells.bottom; ++y) {
-        for (int x = cells.left; x <= cells.right; ++x) {
-            const auto bucket = buckets.find(cellKey(x, y));
-            if (bucket != buckets.end()) {
-                ids.insert(ids.end(), bucket->second.begin(), bucket->second.end());
+
+    // A range that covers more cells than there are buckets is cheaper to answer by visiting every bucket.
+    const auto columns = static_cast<std::uint64_t>(std::int64_t{cells.right} - cells.left + 1);
+    const auto rows = static_cast<std::uint64_t>(std::int64_t{cells.bottom} - cells.top + 1);
+    if (columns * rows > buckets.size()) {
+        for (const auto& [key, bucket] : buckets) {
+            const auto x = static_cast<std::int32_t>(key >> 32U);
+            const auto y = static_cast<std::int32_t>(key & 0xFFFFFFFFU);
+            if (x >= cells.left && x <= cells.right && y >= cells.top && y <= cells.bottom) {
+                ids.insert(ids.end(), bucket.begin(), bucket.end());
+            }
+        }
+    } else {
+        for (int y = cells.top; y <= cells.bottom; ++y) {
+            for (int x = cells.left; x <= cells.right; ++x) {
+                const auto bucket = buckets.find(cellKey(x, y));
+                if (bucket != buckets.end()) {
+                    ids.insert(ids.end(), bucket->second.begin(), bucket->second.end());
+                }
             }
         }
     }
@@ -121,7 +156,7 @@ void HashGrid::collect(const CellRange& cells, std::vector<std::uint64_t>& ids) 
 
 void HashGrid::query(const math::Rect& area, std::vector<std::uint64_t>& ids) const {
     EntryBounds::requireValid(area);
-    collect(cellsOf(area), ids);
+    collect(occupiedCellsOf(area), ids);
     std::erase_if(ids, [&](std::uint64_t id) { return !EntryBounds::overlaps(entries.at(id).bounds, area); });
 }
 
@@ -129,7 +164,7 @@ void HashGrid::queryCircle(math::Vec2 center, float radius, std::vector<std::uin
     EntryBounds::requireRadius(radius);
     const math::Rect area = math::Rect::fromCenter(center, {radius * 2.0F, radius * 2.0F});
     EntryBounds::requireValid(area);
-    collect(cellsOf(area), ids);
+    collect(occupiedCellsOf(area), ids);
     std::erase_if(ids, [&](std::uint64_t id) { return EntryBounds::distanceSquared(entries.at(id).bounds, center) > radius * radius; });
 }
 
@@ -145,9 +180,21 @@ void HashGrid::raycast(const math::Ray& ray, std::size_t limit, std::vector<RayH
         return;
     }
 
-    // Cells are visited in the order the ray crosses them, so once the ray enters a cell beyond the last kept hit, no later entry can come closer.
-    const auto closer = [](const RayHit& lhs, const RayHit& rhs) { return lhs.distance != rhs.distance ? lhs.distance < rhs.distance : lhs.id < rhs.id; };
+    // A ray that crosses more cells than there are entries costs less when it tests every entry.
     const math::Ray inside{ray.at((*travel)[0]), ray.direction, (*travel)[1] - (*travel)[0]};
+    const math::Vec2 end = inside.getEnd();
+    const double crossed = std::fabs(static_cast<double>(cellOf(end.x)) - cellOf(inside.origin.x)) + std::fabs(static_cast<double>(cellOf(end.y)) - cellOf(inside.origin.y)) + 1.0;
+    if (crossed > static_cast<double>(entries.size())) {
+        for (const auto& [id, entry] : entries) {
+            if (const std::optional<math::RayHit> hit = math::Raycast::rect(ray, entry.bounds)) {
+                EntryBounds::insertHit(hits, {.id = id, .point = hit->point, .normal = hit->normal, .distance = hit->distance});
+            }
+        }
+        EntryBounds::finishHits(hits, limit);
+        return;
+    }
+
+    // Cells are visited in the order the ray crosses them, so once the ray enters a cell beyond the last kept hit, no later entry can come closer.
     // clang-format off
     GridRay::traverse(inside, {cellSize, cellSize}, [&](Cell cell, float distance, math::Vec2) {
         if (limit > 0 && hits.size() >= limit && hits[limit - 1].distance <= (*travel)[0] + distance) {
@@ -162,8 +209,7 @@ void HashGrid::raycast(const math::Ray& ray, std::size_t limit, std::vector<RayH
                 continue;
             }
             if (const std::optional<math::RayHit> hit = math::Raycast::rect(ray, entries.at(id).bounds)) {
-                const RayHit found{.id = id, .point = hit->point, .normal = hit->normal, .distance = hit->distance};
-                hits.insert(std::ranges::upper_bound(hits, found, closer), found);
+                EntryBounds::insertHit(hits, {.id = id, .point = hit->point, .normal = hit->normal, .distance = hit->distance});
             }
         }
         return true;
@@ -172,24 +218,40 @@ void HashGrid::raycast(const math::Ray& ray, std::size_t limit, std::vector<RayH
     EntryBounds::finishHits(hits, limit);
 }
 
-void HashGrid::offerBucket(int x, int y, math::Vec2 point, std::size_t count, float maxDistance, std::vector<Neighbor>& neighbors) const {
-    if (x < occupied.left || x > occupied.right || y < occupied.top || y > occupied.bottom) {
+void HashGrid::offerBucket(Cell cell, Cell center, math::Vec2 point, std::size_t count, float maxDistance, std::vector<Neighbor>& neighbors) const {
+    if (cell.x < occupied.left || cell.x > occupied.right || cell.y < occupied.top || cell.y > occupied.bottom) {
         return;
     }
-    const auto bucket = buckets.find(cellKey(x, y));
+    const auto bucket = buckets.find(cellKey(cell.x, cell.y));
     if (bucket == buckets.end()) {
         return;
     }
 
     for (const std::uint64_t id : bucket->second) {
-        const float distance = std::sqrt(EntryBounds::distanceSquared(entries.at(id).bounds, point));
-        if (distance <= maxDistance && std::ranges::none_of(neighbors, [id](const Neighbor& neighbor) { return neighbor.id == id; })) {
+        const Entry& entry = entries.at(id);
+        if (cell != Cell{std::clamp(center.x, entry.cells.left, entry.cells.right), std::clamp(center.y, entry.cells.top, entry.cells.bottom)}) {
+            continue;
+        }
+        const float distance = std::sqrt(EntryBounds::distanceSquared(entry.bounds, point));
+        if (distance <= maxDistance) {
             EntryBounds::keepNearest(neighbors, {.id = id, .distance = distance}, count);
         }
     }
 }
 
+void HashGrid::scanNearest(math::Vec2 point, std::size_t count, float maxDistance, std::vector<Neighbor>& neighbors) const {
+    neighbors.clear();
+    for (const auto& [id, entry] : entries) {
+        const float distance = std::sqrt(EntryBounds::distanceSquared(entry.bounds, point));
+        if (distance <= maxDistance) {
+            EntryBounds::keepNearest(neighbors, {.id = id, .distance = distance}, count);
+        }
+    }
+    EntryBounds::finishNearest(neighbors);
+}
+
 void HashGrid::nearest(math::Vec2 point, std::size_t count, float maxDistance, std::vector<Neighbor>& neighbors) const {
+    EntryBounds::requirePoint(point);
     EntryBounds::requireRadius(maxDistance);
     neighbors.clear();
     if (count == 0 || entries.empty()) {
@@ -197,28 +259,44 @@ void HashGrid::nearest(math::Vec2 point, std::size_t count, float maxDistance, s
     }
 
     // Rings of cells grow around the cell of the point. An entry first met in ring r misses the inner rings, so it lies at least r - 1 cells away.
-    const int centerX = cellOf(point.x);
-    const int centerY = cellOf(point.y);
-    const int firstRing = std::max({0, occupied.left - centerX, centerX - occupied.right, occupied.top - centerY, centerY - occupied.bottom});
-    const int lastRing = std::max({std::abs(centerX - occupied.left), std::abs(centerX - occupied.right), std::abs(centerY - occupied.top), std::abs(centerY - occupied.bottom)});
+    const double pointX = cellOf(point.x);
+    const double pointY = cellOf(point.y);
+    const double gap = std::max({0.0, occupied.left - pointX, pointX - occupied.right, occupied.top - pointY, pointY - occupied.bottom});
+    if ((gap - 1.0) * cellSize > maxDistance) {
+        return;
+    }
+
+    // A point beyond the occupied cells searches from the cell next to them, which only lowers the bounds of the rings.
+    const Cell center{static_cast<int>(std::clamp(pointX, occupied.left - 1.0, occupied.right + 1.0)), static_cast<int>(std::clamp(pointY, occupied.top - 1.0, occupied.bottom + 1.0))};
+    const int firstRing = std::max({0, occupied.left - center.x, center.x - occupied.right, occupied.top - center.y, center.y - occupied.bottom});
+    const int lastRing = std::max({std::abs(center.x - occupied.left), std::abs(center.x - occupied.right), std::abs(center.y - occupied.top), std::abs(center.y - occupied.bottom)});
+    std::size_t visited = 0;
     for (int ring = firstRing; ring <= lastRing; ++ring) {
         const float nearestPossible = static_cast<float>(ring - 1) * cellSize;
-        if (nearestPossible > maxDistance || (neighbors.size() == count && neighbors.back().distance <= nearestPossible)) {
+        if (nearestPossible > maxDistance || (neighbors.size() == count && EntryBounds::getFarthest(neighbors).distance < nearestPossible)) {
+            break;
+        }
+
+        // Rings that visit more cells than there are entries cost more than measuring every entry.
+        visited += ring == 0 ? 1 : 8 * static_cast<std::size_t>(ring);
+        if (visited > entries.size()) {
+            scanNearest(point, count, maxDistance, neighbors);
             return;
         }
         if (ring == 0) {
-            offerBucket(centerX, centerY, point, count, maxDistance, neighbors);
+            offerBucket(center, center, point, count, maxDistance, neighbors);
             continue;
         }
-        for (int x = std::max(centerX - ring, occupied.left); x <= std::min(centerX + ring, occupied.right); ++x) {
-            offerBucket(x, centerY - ring, point, count, maxDistance, neighbors);
-            offerBucket(x, centerY + ring, point, count, maxDistance, neighbors);
+        for (int x = std::max(center.x - ring, occupied.left); x <= std::min(center.x + ring, occupied.right); ++x) {
+            offerBucket({x, center.y - ring}, center, point, count, maxDistance, neighbors);
+            offerBucket({x, center.y + ring}, center, point, count, maxDistance, neighbors);
         }
-        for (int y = std::max(centerY - ring + 1, occupied.top); y <= std::min(centerY + ring - 1, occupied.bottom); ++y) {
-            offerBucket(centerX - ring, y, point, count, maxDistance, neighbors);
-            offerBucket(centerX + ring, y, point, count, maxDistance, neighbors);
+        for (int y = std::max(center.y - ring + 1, occupied.top); y <= std::min(center.y + ring - 1, occupied.bottom); ++y) {
+            offerBucket({center.x - ring, y}, center, point, count, maxDistance, neighbors);
+            offerBucket({center.x + ring, y}, center, point, count, maxDistance, neighbors);
         }
     }
+    EntryBounds::finishNearest(neighbors);
 }
 
 } // namespace haylen::spatial2d

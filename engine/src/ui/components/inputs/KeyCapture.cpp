@@ -48,12 +48,12 @@ std::string KeyCapture::describe(std::string_view binding) {
     return name + sign;
 }
 
-std::vector<std::string> KeyCapture::readBindings(PropertyReader& reader, std::string_view key, const core::Json& value) {
-    if (!PropertyReader::isList(value)) {
+std::vector<std::string> KeyCapture::readBindings(PropertyReader& reader, std::string_view key, const core::Json& listed) {
+    if (!PropertyReader::isList(listed)) {
         reader.fail(key, "must be a list of bindings");
     }
     std::vector<std::string> bindings;
-    for (const core::Json& entry : value) {
+    for (const core::Json& entry : listed) {
         if (!entry.is_string() || !input::ActionMap::Binding::parse(entry.get<std::string>())) {
             reader.fail(key, "must be a list of bindings such as key:escape");
         }
@@ -107,7 +107,7 @@ void KeyCapture::render(Context& context, const math::Rect& bounds) {
         }
         if (context.getFrame() > startedFrame) {
             if (const std::optional<std::string> binding = listen(context.getInput())) {
-                finish(context, binding);
+                finish(context, *binding);
             }
         }
     }
@@ -169,21 +169,21 @@ std::optional<std::string> KeyCapture::listen(const input::Input& devices) const
 }
 
 // A binding of cancelWith stops listening, a binding of a kind the field does not take is ignored, and any other becomes the value.
-void KeyCapture::finish(Context& context, const std::optional<std::string>& binding) {
-    if (std::ranges::find(cancelWith, *binding) != cancelWith.end()) {
+void KeyCapture::finish(Context& context, const std::string& binding) {
+    if (std::ranges::find(cancelWith, binding) != cancelWith.end()) {
         capturing = false;
         ImGui::ClearActiveID();
         context.emit(*this, "cancel");
         return;
     }
-    const std::string_view kind = std::string_view(*binding).substr(0, binding->find(':'));
+    const std::string_view kind = std::string_view(binding).substr(0, binding.find(':'));
     const auto source = static_cast<Source>(std::ranges::find(kSourceNames, kind) - kSourceNames.begin());
     if (!accepts(source)) {
         return;
     }
     capturing = false;
     ImGui::ClearActiveID();
-    value = *binding;
+    value = binding;
     context.emit(*this, "change", {{"value", value}});
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <memory>
 #include <optional>
 #include <string>
@@ -37,13 +38,14 @@ class UiLua final {
     // The registry keeps one entry per mounted document, keyed by the document address: its userdata and the handlers of its nodes by id and event name.
     static constexpr const char* kHandlersKey = "haylen.ui.handlers";
     static constexpr std::array<std::string_view, 3> kMountFields{"placement", "layer", "owner"};
+    static constexpr std::array<std::string_view, 1> kEventFields{"owner"};
 
     [[nodiscard]] static plugins::UiPlugin& getPlugin(lua_State* L);
     static void pushRoot(lua_State* L);
     [[nodiscard]] static std::optional<std::string> handlerEvent(lua_State* L, int key, int value);
     static void storeHandler(lua_State* L, int handlers, const std::string& id, const std::string& event, int value);
     [[nodiscard]] static std::string nextGeneratedId(lua_State* L);
-    [[nodiscard]] static core::Json convertNode(lua_State* L, int index, int handlers);
+    [[nodiscard]] static core::Json convertNode(lua_State* L, int index, int handlers, std::size_t depth, std::size_t& count);
     [[nodiscard]] static core::Json convertProperties(lua_State* L, int index, int collected);
     static void collectIds(const core::Json& node, std::vector<std::string>& ids);
     [[nodiscard]] static bool pushHandlers(lua_State* L, const Document& document);

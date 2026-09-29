@@ -27,7 +27,10 @@ class Segmenter final {
 
     [[nodiscard]] static bool isSpace(char32_t codePoint) noexcept;
 
-    // Tells whether a code point draws nothing of its own, such as joiners, variation selectors and direction marks, so a font needs no glyph for it.
+    // Tells whether a code point ends a paragraph by the Unicode Bidirectional Algorithm: a line feed, a carriage return, next line, the paragraph separator or an information separator from U+001C to U+001E.
+    [[nodiscard]] static bool isParagraphSeparator(char32_t codePoint) noexcept;
+
+    // Tells whether a code point draws nothing of its own, such as joiners, variation selectors, direction marks and control characters like the tab, so a font needs no glyph for it.
     [[nodiscard]] static bool isInvisible(char32_t codePoint) noexcept;
 
     // Tells whether a code point belongs to no script of its own, such as spaces, punctuation and digits, so it may draw with the font of the text around it.

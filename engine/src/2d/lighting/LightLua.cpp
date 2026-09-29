@@ -78,6 +78,11 @@ int LightLua::illuminate(lua_State* L) {
     return 1;
 }
 
+int LightLua::falloff(lua_State* L) {
+    lua::Stack::push(L, Light::falloff(lua::Stack::read<float>(L, 1)));
+    return 1;
+}
+
 int LightLua::getTexture(lua_State* L) {
     const Light& light = lua::Userdata::check<Light>(L, 1);
     if (!light.texture.isValid()) {
@@ -117,7 +122,6 @@ int LightLua::shadowedAt(lua_State* L) {
     for (std::size_t index = 0; index < occluders.size(); ++index) {
         lua_rawgeti(L, 4, static_cast<lua_Integer>(index + 1));
         occluders[index] = OccluderLua::read(L, -1);
-        occluders[index].validate();
         lua_pop(L, 1);
     }
     lua::Stack::push(L, light.isShadowedAt({lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}, occluders));

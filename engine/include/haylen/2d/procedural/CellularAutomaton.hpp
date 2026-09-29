@@ -30,13 +30,12 @@ class CellularAutomaton final {
 
     [[nodiscard]] static spatial2d::CellGrid generate(const Options& options, math::Random& random);
 
-    // Runs one smoothing step over the grid.
+    // Runs one smoothing step over any grid, which only reads the birth and survival limits and the solid border of the options.
     [[nodiscard]] static spatial2d::CellGrid step(const spatial2d::CellGrid& grid, const Options& options);
-
-    [[nodiscard]] static int countWalls(const spatial2d::CellGrid& grid, spatial2d::Cell cell, bool solidBorder) noexcept;
 
   private:
     [[nodiscard]] static bool isBorder(spatial2d::Cell cell, int width, int height) noexcept;
+    [[nodiscard]] static int countWalls(const spatial2d::CellGrid& grid, spatial2d::Cell cell, bool solidBorder) noexcept;
 };
 
 } // namespace haylen::procedural2d

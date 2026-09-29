@@ -13,8 +13,8 @@ void Slider::readProperties(PropertyReader& reader) {
     double lowest = minimum;
     double highest = maximum;
     reader.read("value", value);
-    reader.read("min", lowest);
-    reader.read("max", highest);
+    reader.read("min", lowest, -Widgets::kSliderLimit, Widgets::kSliderLimit);
+    reader.read("max", highest, -Widgets::kSliderLimit, Widgets::kSliderLimit);
     reader.read("step", step, 0.0);
     reader.read("showValue", showValue);
     reader.read("decimals", decimals, 0, 6);
@@ -30,13 +30,14 @@ math::Vec2 Slider::measureContent(Context& context, float availableWidth) {
     return {std::min(availableWidth, 360.0F), context.getMetric(Theme::Metric::ControlHeight)};
 }
 
+// The shown value takes the room of the wider end of the track, so the track keeps its length while the value changes.
 void Slider::render(Context& context, const math::Rect& bounds) {
-    const float label = showValue ? Typography::measure(context, Theme::Font::Body, Typography::formatNumber(maximum, decimals)).x + context.getMetric(Theme::Metric::ItemSpacing) : 0.0F;
+    const float label = showValue ? std::max(Typography::measure(context, Theme::Font::Body, Typography::formatNumber(minimum, decimals)).x, Typography::measure(context, Theme::Font::Body, Typography::formatNumber(maximum, decimals)).x) + context.getMetric(Theme::Metric::ItemSpacing) : 0.0F;
     const math::Rect track = context.mirror({bounds.x, bounds.y, std::max(0.0F, bounds.width - label), bounds.height}, bounds);
     bool changed = Widgets::slider(context, track, value, minimum, maximum, step);
     if (const std::optional<FocusDirection> direction = takeFocusDirection(context)) {
         const double amount = step > 0.0 ? step : (maximum - minimum) / kFocusSteps;
-        const double moved = std::clamp(value + amount * Widgets::getStep(context, *direction), minimum, maximum);
+        const double moved = Widgets::snap(value + amount * Widgets::getStep(context, *direction), minimum, maximum, step);
         changed = changed || moved != value;
         value = moved;
     }

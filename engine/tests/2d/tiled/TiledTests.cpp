@@ -323,6 +323,39 @@ TEST(MapTest, RejectsBrokenData) {
     map["tilesets"].erase(0);
     EXPECT_THROW((void)parse(map), std::invalid_argument) << "the rock template needs the terrain tileset";
 
+    map = orthogonalMap();
+    map["layers"][2].erase("id");
+    EXPECT_THROW((void)parse(map), core::Json::out_of_range) << "layer caches tell layers apart by their ids";
+
+    // Sizes are checked before any cell is read, so a layer whose cell count overflows cannot pass with empty data.
+    // clang-format off
+    const auto failure = [&parse](const core::Json& document) {
+        try {
+            (void)parse(document);
+        } catch (const std::invalid_argument& error) {
+            return std::string(error.what());
+        }
+        return std::string("no error");
+    };
+    // clang-format on
+    map = orthogonalMap();
+    map["layers"][3]["width"] = 65536;
+    map["layers"][3]["height"] = 65536;
+    map["layers"][3]["data"] = core::Json::array();
+    EXPECT_EQ(failure(map), "The Tiled tile layer 'raw' has more cells than a layer can hold.");
+    map["layers"][3]["width"] = -4;
+    map["layers"][3]["height"] = -3;
+    EXPECT_EQ(failure(map), "The Tiled tile layer 'raw' has a negative size.");
+    map = infiniteMap();
+    map["layers"][0]["chunks"][1]["width"] = -2;
+    EXPECT_EQ(failure(map), "The Tiled tile layer 'ground' has a negative size.");
+    map = orthogonalMap();
+    map["height"] = -1;
+    EXPECT_EQ(failure(map), "The Tiled map maps/broken.tmj has a negative size.");
+    map = orthogonalMap();
+    map["tilewidth"] = 0;
+    EXPECT_EQ(failure(map), "The Tiled map maps/broken.tmj needs a positive tile size.");
+
     tiled::Layer layer{.width = 2, .height = 2, .gids = std::vector<std::uint32_t>(4, 0)};
     EXPECT_THROW(layer.setGid(2, 0, 1), std::out_of_range);
     tiled::Layer chunked{.chunks = {{.x = 0, .y = 0, .width = 1, .height = 1, .gids = {0}}}};
@@ -330,6 +363,20 @@ TEST(MapTest, RejectsBrokenData) {
     EXPECT_EQ(chunked.getGid(0, 0), 3U);
     EXPECT_THROW(chunked.setGid(5, 5, 1), std::out_of_range);
     EXPECT_THROW((void)tiled::Tileset{}.getSource(0), std::out_of_range);
+}
+
+TEST(MapTest, FindsTheTilesOfImageCollectionsPastTheirTileCount) {
+    // Tiled keeps the ids of the tiles removed from a collection unused, so the rock keeps the id 3 in a collection of two tiles.
+    core::Json document = orthogonalMap();
+    document["tilesets"][1]["tiles"][1]["id"] = 3;
+    tiled::MapRenderer map(tiled::Map::parse(document, "maps/island.tmj", reader()));
+
+    EXPECT_EQ(map.getMap().findTileset(103)->firstGid, 100U);
+    EXPECT_EQ(map.getMap().findTileset(101), nullptr);
+    EXPECT_EQ(map.getMap().findTileset(104), nullptr);
+    map.setTile("inner", 0, 0, 103);
+    EXPECT_EQ(map.getTile("inner", 0, 0), 103U);
+    EXPECT_THROW(map.setTile("inner", 0, 0, 101), std::invalid_argument);
 }
 
 TEST(MapTest, ConvertsCellsForEveryOrientation) {
@@ -515,6 +562,45 @@ TEST(MapRendererTest, LoadsDrawsAndAnimatesMaps) {
     EXPECT_THROW((void)assets.load("tiled", "maps/island.tmj", {{"scale", 2}}), std::invalid_argument);
 }
 
+TEST(MapRendererTest, BakesTheRegionsOfChangedCellsAgain) {
+    // The ground is 40 cells wide, which makes two regions across, with one tile on the left and none on the right.
+    core::Json document = orthogonalMap();
+    document["width"] = 40;
+    std::vector<std::uint32_t> ground(120, 0);
+    ground[0] = 5;
+    document["layers"] = core::Json::array({{{"id", 1}, {"name", "ground"}, {"type", "tilelayer"}, {"width", 40}, {"height", 3}, {"data", ground}}});
+    std::map<std::string, std::string> files = packageFiles();
+    files["content/maps/island.tmj"] = document.dump();
+    test::EngineFixture fixture(files);
+    tiled::MapRenderer map(*std::static_pointer_cast<tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj")));
+    // clang-format off
+    const auto sprites = [&](const tiled::MapRenderer::View& view, bool ysort) {
+        fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](core::Engine& engine) {
+            engine.getRenderer2D().beginWorld(graphics2d::Camera{});
+            map.drawLayer(engine.getRenderer2D(), "ground", view, {.ysort = ysort});
+        }));
+        fixture.frames(1);
+        EXPECT_EQ(fixture.engine().getError(), nullptr);
+        return fixture.engine().getRenderer2D().getStats().sprites;
+    };
+    // clang-format on
+
+    // A tile in an empty region makes a region that culling finds, and emptying it again removes the region, in both kinds of cache.
+    const tiled::MapRenderer::View right{.center = {570.0F, 24.0F}, .visible = {520.0F, 0.0F, 100.0F, 48.0F}};
+    for (const bool ysort : {false, true}) {
+        EXPECT_EQ(sprites({}, ysort), 1U);
+        map.setTile("ground", 35, 2, 5);
+        EXPECT_EQ(sprites({}, ysort), 2U);
+        EXPECT_EQ(sprites(right, ysort), 1U);
+        map.setTile("ground", 1, 0, 5);
+        EXPECT_EQ(sprites({}, ysort), 3U);
+        map.setTile("ground", 35, 2, 0);
+        EXPECT_EQ(sprites(right, ysort), 0U);
+        map.setTile("ground", 1, 0, 0);
+        EXPECT_EQ(sprites({}, ysort), 1U);
+    }
+}
+
 TEST(MapRendererTest, PlacesMapsAtAWorldOffset) {
     test::EngineFixture fixture(packageFiles());
     tiled::MapRenderer map(*std::static_pointer_cast<tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj")), fixture.engine().getDefaultFont());
@@ -666,6 +752,36 @@ TEST(MapRendererTest, BuildsObliqueAndCapsuleCollision) {
     EXPECT_TRUE(other.queryPoint({200.5F, 0.5F}).empty());
 }
 
+TEST(MapRendererTest, PlacesTileObjectCollisionLikeTheirImagesAndReadsLayerFilters) {
+    // The tree tileset aligns its objects by their bottom center, so the tree at 16, 48 covers 8 to 24 across and 16 to 48 down.
+    core::Json document = orthogonalMap();
+    document["layers"][4]["objects"] = core::Json::parse(R"([{"id": 1, "type": "collision", "x": 16, "y": 48, "width": 16, "height": 32, "gid": 100}])");
+    document["layers"][4]["properties"] = core::Json::parse(R"([{"name": "category", "type": "int", "value": 4}, {"name": "mask", "type": "int", "value": 6}])");
+    const tiled::MapRenderer map(tiled::Map::parse(document, "maps/island.tmj", reader()));
+    physics2d::World world({.gravity = {}});
+    const std::vector<physics2d::Body> bodies = map.buildCollision(world);
+    ASSERT_EQ(bodies.size(), 2U);
+
+    const physics2d::CollisionFilter probe{.category = 2};
+    const std::vector<physics2d::Shape> tree = world.queryPoint({10.0F, 24.0F}, probe);
+    ASSERT_EQ(tree.size(), 1U);
+    EXPECT_EQ(tree.front().getFilter().category, 4U);
+    EXPECT_EQ(tree.front().getFilter().mask, 6U);
+    EXPECT_TRUE(world.queryPoint({28.0F, 24.0F}, probe).empty());
+    EXPECT_EQ(bodies[0].getShapes().front().getFilter().category, 1U);
+
+    // Collision bits are integers of at least 0, which a negative mask is not.
+    document["layers"][4]["properties"][1]["value"] = -1;
+    const tiled::MapRenderer negative(tiled::Map::parse(document, "maps/island.tmj", reader()));
+    physics2d::World other({.gravity = {}});
+    try {
+        (void)negative.buildCollision(other);
+        FAIL() << "The negative mask was accepted.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_EQ(std::string(error.what()), "The collision property 'mask' of the Tiled layer 'things' needs an integer of at least 0.");
+    }
+}
+
 TEST(MapRendererTest, SpawnsObjectsThroughFactories) {
     core::Json document = orthogonalMap();
     document["layers"][6]["layers"].push_back(core::Json::parse(R"({"id": 9, "name": "camp", "type": "objectgroup", "offsetx": 10, "offsety": 20, "objects": [{"id": 20, "type": "player", "x": 1, "y": 2}]})"));
@@ -767,7 +883,7 @@ TEST(TiledLuaTest, UsesMapsFromLua) {
     )"), "spawn@10.0,20.0 1 3 1");
     // clang-format on
     EXPECT_NE(fixture.lua("map:spawn({rock = 5})").find("The factory for the Tiled class 'rock' is not a function."), std::string::npos);
-    EXPECT_NE(fixture.lua("map:spawn({}, 'ground')").find("Unknown object layer: ground"), std::string::npos);
+    EXPECT_NE(fixture.lua("map:spawn({}, 'ground')").find("The map has no object layer named 'ground'."), std::string::npos);
     EXPECT_EQ(fixture.lua("local x, y = map:cellToWorld(2, 1) local c, r = map:worldToCell(40, 20) local ox, oy = map:objectToWorld(3, 4) return x .. ',' .. y .. ' ' .. c .. ',' .. r .. ' ' .. ox .. ',' .. oy"), "32.0,16.0 2,1 3.0,4.0");
 
     fixture.runLua("map:setTile('ground', 0, 0, 3) map:setLayerVisible('decor', false) map:update(0.1)");
@@ -777,7 +893,7 @@ TEST(TiledLuaTest, UsesMapsFromLua) {
 
     EXPECT_NE(fixture.lua("map:layer('missing')").find("Unknown layer: missing"), std::string::npos);
     EXPECT_NE(fixture.lua("map:draw(camera, {layer = 1, z = 2})").find("Unknown option 'z'"), std::string::npos);
-    EXPECT_NE(fixture.lua("map:objects('ground')").find("Unknown object layer: ground"), std::string::npos);
+    EXPECT_NE(fixture.lua("map:objects('ground')").find("The map has no object layer named 'ground'."), std::string::npos);
     EXPECT_NE(fixture.lua("map:setTile('things', 0, 0, 1)").find("Unknown tile layer: things"), std::string::npos);
     EXPECT_NE(fixture.lua("tiled.newMap('map')").find("error: "), std::string::npos);
 }

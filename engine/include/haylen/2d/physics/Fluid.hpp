@@ -2,12 +2,12 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <span>
 #include <utility>
 #include <vector>
 
 #include "haylen/2d/physics/Body.hpp"
 #include "haylen/2d/physics/CollisionFilter.hpp"
+#include "haylen/2d/physics/Shape.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 
@@ -15,7 +15,7 @@ namespace haylen::physics2d {
 
 class World;
 
-// A liquid made of small circle bodies that collide with the world, held together and spread apart by the double density relaxation of particle fluids. Positions come out in bulk for metaball rendering. The fluid owns its particle bodies and must go before its world.
+// A liquid made of small circle bodies that collide with the world, held together and spread apart by the double density relaxation of particle fluids. World::readTransforms reads the positions of its bodies in bulk for metaball rendering. The fluid owns its particle bodies and must go before its world, and a particle whose body is destroyed elsewhere, such as in a contact callback, leaves the fluid the next time it is updated, counted or read.
 class Fluid final {
   public:
     // Particles interact within the smoothing radius. Pressure pulls them toward the rest density, near pressure keeps them from clumping and viscosity evens out their speeds. Stiffness values are tuned for 60 steps per second and scale with the step.
@@ -33,7 +33,7 @@ class Fluid final {
         CollisionFilter filter{};
     };
 
-    // Throws std::invalid_argument when the radius is not positive or the smoothing radius is not larger than it.
+    // Throws std::invalid_argument when the radius is not positive, the smoothing radius is not larger than it or the material is invalid.
     Fluid(World& owner, const Options& settings);
     ~Fluid();
 
@@ -51,18 +51,11 @@ class Fluid final {
     // Applies the fluid forces for the next world step, so call it right before World::step with the same time.
     void update(float deltaSeconds);
 
-    [[nodiscard]] std::size_t size() const noexcept {
-        return bodies.size();
-    }
+    [[nodiscard]] std::size_t size();
+    [[nodiscard]] const std::vector<Body>& getBodies();
     [[nodiscard]] const Options& getOptions() const noexcept {
         return options;
     }
-    [[nodiscard]] const std::vector<Body>& getBodies() const noexcept {
-        return bodies;
-    }
-    // Writes x and y of each particle, two values per particle, and returns how many particles it wrote, which fits the buffer.
-    std::size_t copyPositions(std::span<float> target) const;
-    std::size_t copyVelocities(std::span<float> target) const;
 
   private:
     struct Pair {
@@ -73,10 +66,12 @@ class Fluid final {
     };
 
     [[nodiscard]] static std::uint64_t cellKey(int column, int row) noexcept;
+    void dropDestroyed();
     void findPairs();
 
     World& world;
     Options options;
+    Shape::Options particle;
     std::vector<Body> bodies;
     std::vector<math::Vec2> positions;
     std::vector<math::Vec2> velocities;

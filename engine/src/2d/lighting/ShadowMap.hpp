@@ -46,9 +46,6 @@ class ShadowMap final {
     // Returns the distance the depths of a point or spot light are fractions of: its radius times its largest scale.
     [[nodiscard]] static float getRange(const Light& light) noexcept;
 
-    // Tells whether a row shadows a point, reading the one texel the light pass reads without filtering.
-    [[nodiscard]] static bool isShadowed(const Light& light, std::span<const float> row, const Axis& axis, math::Vec2 point) noexcept;
-
     // Tells whether a segment that casts the light's shadows stands between the light and a point, which a row approximates with one direction per texel.
     [[nodiscard]] static bool blocks(const Light& light, std::span<const Segment> segments, math::Vec2 point) noexcept;
 

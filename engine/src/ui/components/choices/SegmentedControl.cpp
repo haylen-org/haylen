@@ -78,10 +78,13 @@ void SegmentedControl::render(Context& context, const math::Rect& bounds) {
     }
 }
 
+// Without a selection the search starts just outside the end it moves away from, so it can reach every segment.
 int SegmentedControl::findNext(int from, int direction, bool wrap) const {
     const auto count = static_cast<int>(items.size());
-    for (int step = 1; step < count; ++step) {
-        const int index = from + direction * step;
+    const int origin = from >= 0 ? from : (direction > 0 ? -1 : count);
+    const int steps = from >= 0 ? count - 1 : count;
+    for (int step = 1; step <= steps; ++step) {
+        const int index = origin + direction * step;
         if (!wrap && (index < 0 || index >= count)) {
             break;
         }

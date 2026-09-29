@@ -1,5 +1,6 @@
 #include "haylen/ui/Document.hpp"
 
+#include <optional>
 #include <stdexcept>
 #include <utility>
 
@@ -34,6 +35,7 @@ Document::Document(const ComponentRegistry& componentRegistry, const core::Json&
     root = std::move(built.component);
     ids = std::move(built.ids);
     properties = std::move(built.properties);
+    nodeCount = count;
 }
 
 void Document::collectIds(const Component& component, std::vector<std::string>& found) {
@@ -43,6 +45,26 @@ void Document::collectIds(const Component& component, std::vector<std::string>& 
     for (const auto& child : component.getChildren()) {
         collectIds(*child, found);
     }
+}
+
+std::size_t Document::countNodes(const Component& component) {
+    std::size_t count = 1;
+    for (const auto& child : component.getChildren()) {
+        count += countNodes(*child);
+    }
+    return count;
+}
+
+std::optional<std::size_t> Document::findDepth(const Component& component, const Component& target, std::size_t depth) {
+    if (&component == &target) {
+        return depth;
+    }
+    for (const auto& child : component.getChildren()) {
+        if (const std::optional<std::size_t> found = findDepth(*child, target, depth + 1)) {
+            return found;
+        }
+    }
+    return std::nullopt;
 }
 
 math::Rect Document::place(const Context& context, const Component& component, math::Vec2 size, const math::Rect& area) {
@@ -56,7 +78,7 @@ Document::Built Document::build(const core::Json& node, std::size_t depth, std::
     if (!node.is_object()) {
         throw std::invalid_argument("A UI node must be an object with a kind.");
     }
-    if (depth > kMaxDepth || ++count > kMaxNodes) {
+    if (depth >= kMaxDepth || ++count > kMaxNodes) {
         throw std::invalid_argument("A UI document is limited to " + std::to_string(kMaxDepth) + " levels and " + std::to_string(kMaxNodes) + " nodes.");
     }
     const auto kind = node.find("kind");
@@ -145,9 +167,12 @@ void Document::replaceChildren(std::string_view id, const core::Json& trees) {
         throw std::invalid_argument("A " + std::string(component.getKind()) + " takes at most " + std::to_string(component.getChildLimit()) + " children.");
     }
 
+    // The new children count against the limits of the whole document, from the level of the node on and with the nodes they replace left out.
     std::vector<std::string> removed;
+    std::size_t count = nodeCount;
     for (const auto& child : component.getChildren()) {
         collectIds(*child, removed);
+        count -= countNodes(*child);
     }
     std::map<std::string, Component*, std::less<>> remainingIds = ids;
     std::map<std::string, core::Json, std::less<>> remainingProperties = properties;
@@ -157,9 +182,9 @@ void Document::replaceChildren(std::string_view id, const core::Json& trees) {
     }
 
     std::vector<std::unique_ptr<Component>> built;
-    std::size_t count = ids.size();
+    const std::size_t depth = *findDepth(*root, component, 0) + 1;
     for (const core::Json& child : trees) {
-        Built nested = build(child, 1, count);
+        Built nested = build(child, depth, count);
         for (auto& [childId, target] : nested.ids) {
             if (!remainingIds.emplace(childId, target).second) {
                 throw std::invalid_argument("The UI id " + childId + " is used more than once.");
@@ -172,6 +197,7 @@ void Document::replaceChildren(std::string_view id, const core::Json& trees) {
     component.children = std::move(built);
     ids = std::move(remainingIds);
     properties = std::move(remainingProperties);
+    nodeCount = count;
 }
 
 void Document::command(Context& context, std::string_view id, std::string_view name, const core::Json& arguments) {

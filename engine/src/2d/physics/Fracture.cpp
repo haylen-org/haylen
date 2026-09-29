@@ -109,16 +109,23 @@ std::vector<Body> Fracture::shatter(Body body, const Options& options) {
     const math::Vec2 center = Box2DConverter::toPixels(b2Body_GetWorldCenterOfMass(source), scale);
     const Body::Options settings{.type = body.getType(), .position = position, .rotation = rotation, .angularVelocity = spin, .linearDamping = body.getLinearDamping(), .angularDamping = body.getAngularDamping(), .gravityScale = body.getGravityScale(), .bullet = body.isBullet()};
 
+    // A piece that Box2D cannot hold, such as a sliver thinner than its tolerance, fails the whole fracture and leaves the body whole.
     std::vector<Body> fragments;
-    for (const std::vector<std::vector<math::Vec2>>& piece : split(outlines, local)) {
-        const math::Vec2 offset = position + math::Geometry::centroid(piece.front()).rotated(rotation) - center;
-        Body::Options placed = settings;
-        placed.velocity = velocity + math::Vec2{-spin * offset.y, spin * offset.x};
-        Body fragment = world.createBody(placed);
-        for (const std::vector<math::Vec2>& part : math::Polygon::decompose(piece)) {
-            fragment.addPolygon(part, material);
+    try {
+        for (const std::vector<std::vector<math::Vec2>>& piece : split(outlines, local)) {
+            const math::Vec2 offset = position + math::Geometry::centroid(piece.front()).rotated(rotation) - center;
+            Body::Options placed = settings;
+            placed.velocity = velocity + math::Vec2{-spin * offset.y, spin * offset.x};
+            Body& fragment = fragments.emplace_back(world.createBody(placed));
+            for (const std::vector<math::Vec2>& part : math::Polygon::decompose(piece)) {
+                fragment.addPolygon(part, material);
+            }
         }
-        fragments.push_back(fragment);
+    } catch (...) {
+        for (Body& fragment : fragments) {
+            fragment.destroy();
+        }
+        throw;
     }
     body.destroy();
     return fragments;

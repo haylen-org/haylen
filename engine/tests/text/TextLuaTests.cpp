@@ -66,6 +66,32 @@ TEST_F(TextLuaTest, InspectsFontsAndBuildsFamilies) {
     EXPECT_EQ(lua("local face, bold, italic = family:resolve('H', {italic = true}) return tostring(face.distanceField) .. ' ' .. tostring(italic)"), "true true");
     EXPECT_NE(lua("graphics.newFontFamily({bold = font})").find("A font family needs a regular face."), std::string::npos);
     EXPECT_NE(lua("graphics.newFontFamily({regular = font, heavy = font})").find("Unknown option 'heavy'"), std::string::npos);
+
+    // A glyph index from shaping reads its glyph back, and a bitmap font numbers its glyphs by code point.
+    EXPECT_EQ(lua("local shaped = font:shape('A') local glyph = font:glyphByIndex(shaped[1].index) return tostring(glyph.index == shaped[1].index and glyph.advance == font:glyph('A').advance) .. ' ' .. pixel:glyphByIndex(65).advance"), "true 9.0");
+    EXPECT_NE(lua("font:glyphByIndex(1000000)").find("The font has no glyph with index 1000000."), std::string::npos);
+    EXPECT_NE(lua("font:glyphByIndex(-1)").find("expected a glyph index"), std::string::npos);
+}
+
+TEST_F(TextLuaTest, RejectsFontOptionsAndLengthsOutOfRange) {
+    EXPECT_NE(lua("assets.font('fonts/hebrew.ttf', {bakeSize = 0})").find("The bake size of a TrueType font must be positive and at most the maximum texture size of"), std::string::npos);
+    EXPECT_NE(lua("assets.font('fonts/hebrew.ttf', {spread = 0})").find("The spread of a TrueType font must be positive"), std::string::npos);
+    EXPECT_NE(lua("assets.font('fonts/hebrew.ttf', {atlasSize = 100000})").find("The atlas size of a TrueType font must be positive"), std::string::npos);
+    EXPECT_NE(lua("graphics.newGridFont(assets.texture('images/coin.png'), {characters = 'A', cellWidth = 8, cellHeight = 8, margin = {20, 20}})").find("The grid font image holds 0 cells, fewer than its 1 characters."), std::string::npos);
+
+    // A length that is not a number could never be found in the layout cache again.
+    EXPECT_NE(lua("graphics2d.measureText(nil, 'x', {size = 0 / 0})").find("Text needs a finite size, maximum width and line spacing."), std::string::npos);
+    EXPECT_NE(lua("font:layout('x', {maxWidth = math.huge})").find("Text needs a finite size, maximum width and line spacing."), std::string::npos);
+    EXPECT_NE(lua("graphics2d.newRichText('x', {maxWidth = 0 / 0})").find("Rich text needs a finite maximum width."), std::string::npos);
+    EXPECT_NE(lua("graphics2d.newRichText('x').maxWidth = math.huge").find("Rich text needs a finite maximum width."), std::string::npos);
+}
+
+TEST_F(TextLuaTest, EndsParagraphsAtEverySeparatorAndHidesControlCharacters) {
+    EXPECT_EQ(lua(R"(local function lines(text) return font:layout(text, {size = 20}).lineCount end return lines('a\rb') .. ' ' .. lines('a\r\nb') .. ' ' .. lines('a\u{2029}b\u{85}c\u{1C}d') .. ' ' .. lines('a\u{2028}b') .. ' ' .. lines('a\vb'))"), "2 2 4 2 2");
+    EXPECT_EQ(lua(R"(return graphics2d.newRichText('a\r\nb\rc\u{2029}d'):layout().lineCount .. ' ' .. graphics2d.newRichText('[center]\r\nx\r\n[/center]\r\ny'):layout().lineCount)"), "4 2");
+
+    // A tab draws no missing glyph box and takes no room.
+    EXPECT_EQ(lua(R"(local laid = font:layout('a\tb', {size = 20}) return #laid.quads .. ' ' .. tostring(math.abs(laid.size.x - font:measure('a', {size = 20}) - font:measure('b', {size = 20})) < 0.01))"), "2 true");
 }
 
 TEST_F(TextLuaTest, SameFontsCompareEqual) {
@@ -105,7 +131,22 @@ TEST_F(TextLuaTest, MakesDrawsAndMeasuresRichText) {
     EXPECT_NE(lua("graphics2d.newRichText('[b]open')").find("[b] is never closed."), std::string::npos);
     EXPECT_NE(lua("graphics2d.newRichText('x', {sizes = 3})").find("Unknown option 'sizes'"), std::string::npos);
     EXPECT_NE(lua("graphics2d.newRichText('x', {family = 3})").find("expected a FontFamily or a Font"), std::string::npos);
+    EXPECT_NE(lua("graphics2d.newRichText('x', {fonts = {graphics.newFontFamily({regular = font})}})").find("The fonts option maps font names to families, so its keys must be strings."), std::string::npos);
     EXPECT_NE(render("graphics2d.drawRichText('x', 0, 0)").find("No canvas is active"), std::string::npos);
+}
+
+TEST_F(TextLuaTest, ChangesRichTextOptionsAsProperties) {
+    lua("story = graphics2d.newRichText('ab', {reveal = 10}) story:update(0.15)");
+    lua("story.color = '#FFFF0000' story.bold = true story.italic = true story.align = 'center' story.direction = 'rtl' story.language = 'he' story.lineSpacing = 2 story.underlineLinks = false");
+    EXPECT_EQ(lua("return story.color:toHex() .. ' ' .. tostring(story.bold) .. ' ' .. tostring(story.italic) .. ' ' .. story.align .. ' ' .. story.direction .. ' ' .. story.language .. ' ' .. story.lineSpacing .. ' ' .. tostring(story.underlineLinks) .. ' ' .. story.reveal"), "#FFFF0000 true true center rtl he 2.0 false 10.0");
+
+    // Changing an option lays the text out again and starts its reveal over.
+    EXPECT_EQ(lua("local glyph = story:layout().glyphs[1] return story.visibleCharacters .. ' ' .. tostring(glyph.syntheticBold) .. ' ' .. glyph.color:toHex()"), "0 true #FFFF0000");
+    EXPECT_EQ(lua("story.reveal = 0 story.family = assets.font('fonts/pixel.fnt') return story.visibleCharacters .. ' ' .. tostring(story.family.regular == assets.font('fonts/pixel.fnt'))"), "2 true");
+    EXPECT_NE(lua("story.lineSpacing = 0").find("Rich text needs a positive size, scale and line spacing."), std::string::npos);
+
+    // The size at another width measures the text without changing its own width.
+    EXPECT_EQ(lua("local wide = graphics2d.newRichText('one two three') local width = wide:size(40) return width .. ' ' .. tostring(wide:size() > 40) .. ' ' .. wide.maxWidth"), "40.0 true 0.0");
 }
 
 TEST_F(TextLuaTest, ShapesAndOrdersRightToLeftText) {
@@ -136,6 +177,20 @@ TEST_F(TextLuaTest, RegistersEffectsIconsAndFonts) {
 
     lua("graphics2d.registerTextEffect('broken', function(glyph) error('effect failed') end)");
     EXPECT_NE(lua("graphics2d.newRichText('[broken]x[/broken]'):layout()").find("effect failed"), std::string::npos);
+
+    // An effect cannot change the text it runs on, and the text works again once the effect is gone.
+    lua("graphics2d.registerTextEffect('rewrite', function(glyph) story.markup = 'other' end) story = graphics2d.newRichText('[rewrite]ab[/rewrite]')");
+    EXPECT_NE(lua("story:layout()").find("A text effect cannot change or lay out the rich text it runs on."), std::string::npos);
+    EXPECT_EQ(lua("story.markup = 'plain' return #story:layout().glyphs"), "5");
+
+    // The index of a glyph counts every character inside the tag, spaces and icons included, from the one the tag starts with.
+    lua("indices = {} graphics2d.registerTextEffect('probe', function(glyph) indices[#indices + 1] = glyph.index end) graphics2d.registerTextIcon('dot', assets.texture('images/coin.png'))");
+    EXPECT_EQ(lua("graphics2d.newRichText('x[probe] a[icon=dot]b[/probe]'):layout() return table.concat(indices, ',')"), "2,4");
+
+    // A new family may cluster the text differently, so the characters the tags start at are found again.
+    lua(R"(indices = {} probed = graphics2d.newRichText('e\u{301}[probe]x[/probe]') probed:layout())");
+    lua("probed.family = graphics.newGridFont(assets.texture('images/coin.png'), {characters = 'ex', cellWidth = 8, cellHeight = 8}) probed:layout()");
+    EXPECT_EQ(lua("return table.concat(indices, ',') .. ' ' .. probed.characterCount"), "1,1 3");
 
     lua("graphics2d.registerTextIcon('coin', assets.texture('images/coin.png'), {source = {0, 0, 16, 16}, width = 20, height = 20})");
     EXPECT_EQ(lua("local layout = graphics2d.newRichText('pay [icon=coin] [icon=coin height=10]'):layout() return layout.images[1].rect.width .. ' ' .. layout.images[2].rect.width"), "20.0 10.0");

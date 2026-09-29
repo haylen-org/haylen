@@ -14,8 +14,16 @@
 
 namespace haylen::spatial2d {
 
+bool VisibilityPolygon::isFinite(math::Vec2 point) noexcept {
+    return std::isfinite(point.x) && std::isfinite(point.y);
+}
+
 const std::vector<math::Vec2>& VisibilityPolygon::compute(math::Vec2 origin, std::span<const math::Segment> walls, const math::Rect& bounds) {
-    if (origin.x <= bounds.getLeft() || origin.x >= bounds.getRight() || origin.y <= bounds.getTop() || origin.y >= bounds.getBottom()) {
+    const bool finite = isFinite(bounds.getMin()) && isFinite(bounds.getMax()) && std::ranges::all_of(walls, [](const math::Segment& wall) { return isFinite(wall.start) && isFinite(wall.end); });
+    if (!finite) {
+        throw std::invalid_argument("A visibility polygon needs finite walls and bounds.");
+    }
+    if (!(origin.x > bounds.getLeft() && origin.x < bounds.getRight() && origin.y > bounds.getTop() && origin.y < bounds.getBottom())) {
         throw std::invalid_argument("A visibility polygon needs an origin inside its bounds.");
     }
 

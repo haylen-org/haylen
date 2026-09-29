@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 #include "haylen/2d/tiled/MapRenderer.hpp"
 
@@ -28,17 +29,18 @@ bool ObjectFactories::has(std::string_view type) const noexcept {
 }
 
 std::size_t ObjectFactories::spawn(const MapRenderer& map, std::string_view layer) const {
+    std::vector<std::pair<const Object*, math::Vec2>> objects;
+    map.forEachObject(layer, [&objects](const Object& object, math::Vec2 position) { objects.emplace_back(&object, position); });
+
+    // The factories run after the walk over the map, and a factory may add or remove factories, its own too, so each one runs from a copy.
     std::size_t spawned = 0;
-    // clang-format off
-    map.forEachObject(layer, [&](const Object& object, math::Vec2 position) {
-        // A factory may add or remove factories, its own too, so it runs from a copy.
-        if (const auto found = factories.find(object.type); found != factories.end()) {
+    for (const auto& [object, position] : objects) {
+        if (const auto found = factories.find(object->type); found != factories.end()) {
             const Factory factory = found->second;
-            factory(object, position);
+            factory(*object, position);
             ++spawned;
         }
-    });
-    // clang-format on
+    }
     return spawned;
 }
 

@@ -39,6 +39,8 @@ class WorldLua final {
 
     // Fetches the named callback from the world state, leaving it on the stack when it exists.
     [[nodiscard]] static bool pushCallback(lua_State* L, int worldIndex, const char* name);
+    [[nodiscard]] static bool hasCallbacks(lua_State* L, int worldIndex);
+    static void releaseDestroyedData(lua_State* L, int worldIndex);
     static void dispatchContacts(lua_State* L, int worldIndex, const char* name, const std::vector<ContactEvent>& events);
     static void dispatchSensors(lua_State* L, int worldIndex, const char* name, const std::vector<SensorEvent>& events);
 

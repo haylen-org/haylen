@@ -51,8 +51,6 @@ namespace haylen::lighting2d {
 // Installs the Light class of haylen.lighting2d, whose properties write straight into the light that graphics2d.drawLight draws.
 class LightLua final {
   public:
-    static constexpr std::array<std::string_view, 24> kFields{"type", "x", "y", "radius", "color", "intensity", "rotation", "scaleX", "scaleY", "texture", "innerAngle", "outerAngle", "height", "enabled", "blend", "itemMask", "layerMin", "layerMax", "shadows", "shadowFilter", "shadowColor", "shadowSmoothness", "shadowMask", "position"};
-
     static void install(lua_State* L);
 
     // Reads a Light, or a table with its properties over the defaults, at index.
@@ -64,7 +62,11 @@ class LightLua final {
     // Returns the light map value at x and y with illuminate(ambient, lights, x, y, {lightMask, layer}).
     static int illuminate(lua_State* L);
 
+    // Returns the radial falloff of lights without a texture with falloff(distance), for a distance given as a fraction of the radius.
+    static int falloff(lua_State* L);
+
   private:
+    static constexpr std::array<std::string_view, 24> kFields{"type", "x", "y", "radius", "color", "intensity", "rotation", "scaleX", "scaleY", "texture", "innerAngle", "outerAngle", "height", "enabled", "blend", "itemMask", "layerMin", "layerMax", "shadows", "shadowFilter", "shadowColor", "shadowSmoothness", "shadowMask", "position"};
     static constexpr std::array<std::string_view, 2> kIlluminateFields{"lightMask", "layer"};
 
     static int getTexture(lua_State* L);

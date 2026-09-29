@@ -46,12 +46,34 @@ void Joint::destroy() {
     }
 }
 
-void Joint::setTarget(math::Vec2 value) {
-    const b2JointId joint = b2LoadJointId(checkedId());
-    if (b2Joint_GetType(joint) != b2_mouseJoint) {
+std::uint64_t Joint::checkedMouseId() const {
+    const std::uint64_t checked = checkedId();
+    if (b2Joint_GetType(b2LoadJointId(checked)) != b2_mouseJoint) {
         throw std::logic_error("Only mouse joints have a target.");
     }
-    b2MouseJoint_SetTarget(joint, Box2DConverter::toMeters(value, world->getPixelsPerMeter()));
+    return checked;
+}
+
+math::Vec2 Joint::getTarget() const {
+    return Box2DConverter::toPixels(b2MouseJoint_GetTarget(b2LoadJointId(checkedMouseId())), world->getPixelsPerMeter());
+}
+
+void Joint::setTarget(math::Vec2 value) {
+    b2MouseJoint_SetTarget(b2LoadJointId(checkedMouseId()), Box2DConverter::toMeters(value, world->getPixelsPerMeter()));
+}
+
+float Joint::getMotorSpeed() const {
+    const b2JointId joint = b2LoadJointId(checkedId());
+    switch (b2Joint_GetType(joint)) {
+    case b2_revoluteJoint:
+        return b2RevoluteJoint_GetMotorSpeed(joint);
+    case b2_prismaticJoint:
+        return b2PrismaticJoint_GetMotorSpeed(joint) * world->getPixelsPerMeter();
+    case b2_wheelJoint:
+        return b2WheelJoint_GetMotorSpeed(joint);
+    default:
+        throw std::logic_error("Only revolute, prismatic and wheel joints have a motor speed.");
+    }
 }
 
 void Joint::setMotorSpeed(float value) {

@@ -260,7 +260,7 @@ Backend::Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow,
     platform.Renderer_TextureMaxHeight = graphicsDevice.getMaxTextureSize();
 
     ImGui::GetStyle().FontSizeBase = kBaseFontSize;
-    defaultFont = addFont(std::string(kDefaultFontName), {.regular = {defaultFontData.begin(), defaultFontData.end()}});
+    addFont(std::string(kDefaultFontName), {.regular = {defaultFontData.begin(), defaultFontData.end()}});
 }
 
 Backend::~Backend() {
@@ -495,6 +495,17 @@ void Backend::handleTextAction(const platform::Event& event) {
     io.AddKeyEvent(ImGuiKey_Tab, false);
 }
 
+void Backend::closeAbandonedPopups() {
+    const ImGuiContext& state = *GImGui;
+    for (int level = 0; level < state.OpenPopupStack.Size; ++level) {
+        const ImGuiWindow* window = state.OpenPopupStack[level].Window;
+        if (window != nullptr && !window->Active) {
+            ImGui::ClosePopupToLevel(level, true);
+            return;
+        }
+    }
+}
+
 void Backend::feedGamepad(const input::Input& input, const NavigationInput& navigation) {
     ImGuiIO& io = ImGui::GetIO();
     constexpr std::array<std::pair<NavigationInput::Action, ImGuiKey>, 6> kNavigation{{
@@ -505,8 +516,16 @@ void Backend::feedGamepad(const input::Input& input, const NavigationInput& navi
         {NavigationInput::Action::Up, ImGuiKey_GamepadDpadUp},
         {NavigationInput::Action::Down, ImGuiKey_GamepadDpadDown},
     }};
+
+    // While a text field takes text, the keys that type it never press the navigation actions they are bound to, so Space types a space and Enter starts a new line, while gamepad buttons still accept and cancel.
+    // clang-format off
+    const auto typed = [&](NavigationInput::Action action) {
+        const auto held = [&](const input::ActionMap::Binding& binding) { return binding.source == input::ActionMap::Binding::Source::Key && input.isKeyDown(binding.key); };
+        return io.WantTextInput && std::ranges::any_of(navigation.getBindings(action), held);
+    };
+    // clang-format on
     for (const auto& [action, key] : kNavigation) {
-        io.AddKeyEvent(key, navigation.isDown(action));
+        io.AddKeyEvent(key, navigation.isDown(action) && !typed(action));
     }
 
     // The other buttons and the triggers come from the first connected gamepad, for the windows ImGui navigates itself.
@@ -566,6 +585,7 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     io.DisplayFramebufferScale = {density.x, density.y};
     io.DeltaTime = std::max(deltaSeconds, 1.0F / 1000.0F);
     textSession->beginFrame(viewport, deltaSeconds);
+    closeAbandonedPopups();
     feedGamepad(input, navigation);
 
     blockedPrevious = std::exchange(blocked, {});
@@ -691,8 +711,6 @@ void Backend::render(graphics2d::Renderer& renderer) {
     }
     renderer.beginScreen();
     rendering = &renderer;
-    std::vector<graphics2d::MeshVertex> vertices;
-    std::vector<std::uint32_t> indices;
     for (const ImDrawList* list : data.CmdLists) {
         for (const ImDrawCmd& command : list->CmdBuffer) {
             if (command.UserCallback != nullptr) {
@@ -710,18 +728,18 @@ void Backend::render(graphics2d::Renderer& renderer) {
             const std::span<const ImDrawIdx> used(list->IdxBuffer.Data + command.IdxOffset, command.ElemCount);
             const auto [lowest, highest] = std::ranges::minmax(used);
             const std::size_t first = command.VtxOffset + lowest;
-            vertices.clear();
+            meshVertices.clear();
             for (std::size_t index = first; index <= command.VtxOffset + highest; ++index) {
                 const ImDrawVert& vertex = list->VtxBuffer[static_cast<int>(index)];
-                vertices.push_back({.position = math::Vec2{vertex.pos.x, vertex.pos.y} + origin, .uv = {vertex.uv.x, vertex.uv.y}, .color = toColor(vertex.col)});
+                meshVertices.push_back({.position = math::Vec2{vertex.pos.x, vertex.pos.y} + origin, .uv = {vertex.uv.x, vertex.uv.y}, .color = toColor(vertex.col)});
             }
-            indices.clear();
+            meshIndices.clear();
             for (const ImDrawIdx index : used) {
-                indices.push_back(static_cast<std::uint32_t>(index - lowest));
+                meshIndices.push_back(static_cast<std::uint32_t>(index - lowest));
             }
 
             renderer.pushClip(clip);
-            renderer.drawMesh(*texture, vertices, indices);
+            renderer.drawMesh(*texture, meshVertices, meshIndices);
             renderer.popClip();
         }
     }

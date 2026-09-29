@@ -5,14 +5,16 @@ layout(binding=0) uniform metaball_vs_params {
     mat4 view_projection;
     // Area: the world rectangle the surface can cover, xy its top-left corner and zw its size.
     vec4 area;
-    // Field: x is 1 when the field image starts at its bottom row.
+    // Field: x is 1 when the field image starts at its bottom row, and y is 1 when the blend mode of the draw expects colors premultiplied by their alpha.
     vec4 field;
 };
 
 in vec2 corner;
 out vec2 field_uv;
+out float haylen_output_premultiply;
 
 void main() {
+    haylen_output_premultiply = field.y;
     vec4 position = view_projection * vec4(area.xy + corner * area.zw, 0.0, 1.0);
     gl_Position = position;
     vec2 device = position.xy / position.w;

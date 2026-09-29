@@ -19,11 +19,17 @@ float Crowd::leftOf(math::Vec2 a, math::Vec2 b, math::Vec2 c) noexcept {
     return math::Vec2::cross(a - c, b - a);
 }
 
+void Crowd::requireFinite(math::Vec2 value) {
+    if (!std::isfinite(value.x) || !std::isfinite(value.y)) {
+        throw std::invalid_argument("Crowd positions, targets and velocities must be finite.");
+    }
+}
+
 std::uint32_t Crowd::addAgent(const AgentOptions& options) {
     const bool valid = options.radius >= 0.0F && options.maxSpeed >= 0.0F && options.neighborDistance >= 0.0F && options.timeHorizon > 0.0F && options.obstacleTimeHorizon > 0.0F;
-    const bool finite = std::isfinite(options.position.x) && std::isfinite(options.position.y) && std::isfinite(options.radius) && std::isfinite(options.maxSpeed) && std::isfinite(options.neighborDistance);
+    const bool finite = std::isfinite(options.position.x) && std::isfinite(options.position.y) && std::isfinite(options.velocity.x) && std::isfinite(options.velocity.y) && std::isfinite(options.radius) && std::isfinite(options.maxSpeed) && std::isfinite(options.neighborDistance);
     if (!valid || !finite) {
-        throw std::invalid_argument("A crowd agent needs a finite position, radius, speed and neighbor distance and positive time horizons.");
+        throw std::invalid_argument("A crowd agent needs a finite position, velocity, radius, speed and neighbor distance and positive time horizons.");
     }
 
     std::uint32_t id = 0;
@@ -71,6 +77,9 @@ void Crowd::addObstacle(std::span<const math::Vec2> polygon) {
     if (polygon.size() < 2) {
         throw std::invalid_argument("A crowd obstacle needs at least two points.");
     }
+    if (!std::ranges::all_of(polygon, [](math::Vec2 point) { return std::isfinite(point.x) && std::isfinite(point.y); })) {
+        throw std::invalid_argument("A crowd obstacle needs finite points.");
+    }
 
     // The solver expects solid outlines with a positive signed area, whose outside lies to the right of every edge.
     std::vector<math::Vec2> points(polygon.begin(), polygon.end());
@@ -96,7 +105,9 @@ math::Vec2 Crowd::getPosition(std::uint32_t id) const {
 }
 
 void Crowd::setPosition(std::uint32_t id, math::Vec2 value) {
-    agentAt(id).options.position = value;
+    Agent& agent = agentAt(id);
+    requireFinite(value);
+    agent.options.position = value;
 }
 
 math::Vec2 Crowd::getVelocity(std::uint32_t id) const {
@@ -113,6 +124,7 @@ float Crowd::getMaxSpeed(std::uint32_t id) const {
 
 void Crowd::setPreferredVelocity(std::uint32_t id, math::Vec2 value) {
     Agent& agent = agentAt(id);
+    requireFinite(value);
     agent.preferred = value;
     agent.target.reset();
 }
@@ -123,6 +135,7 @@ math::Vec2 Crowd::getPreferredVelocity(std::uint32_t id) const {
 
 void Crowd::setTarget(std::uint32_t id, math::Vec2 value) {
     Agent& agent = agentAt(id);
+    requireFinite(value);
     agent.target = value;
     agent.preferred = {};
 }
@@ -247,9 +260,12 @@ math::Vec2 Crowd::preferredVelocity(std::uint32_t id, const Scratch& scratch, fl
     const AgentOptions& self = agent.options;
     math::Vec2 preferred = agent.preferred;
     if (agent.target) {
-        const math::Vec2 offset = *agent.target - self.position;
-        const float distance = offset.getLength();
-        preferred = distance > kEpsilon ? offset / distance * std::min(self.maxSpeed, distance / deltaSeconds) : math::Vec2{};
+        // Double precision keeps the distance to targets far across the float range from overflowing.
+        const double offsetX = static_cast<double>(agent.target->x) - self.position.x;
+        const double offsetY = static_cast<double>(agent.target->y) - self.position.y;
+        const double distance = std::sqrt(offsetX * offsetX + offsetY * offsetY);
+        const double speed = std::min(static_cast<double>(self.maxSpeed), distance / deltaSeconds);
+        preferred = distance > kEpsilon ? math::Vec2{static_cast<float>(offsetX / distance * speed), static_cast<float>(offsetY / distance * speed)} : math::Vec2{};
     }
     const bool flocks = flocking.separation != 0.0F || flocking.alignment != 0.0F || flocking.cohesion != 0.0F;
     if (!flocks || scratch.neighbors.empty()) {

@@ -11,11 +11,11 @@
 #include "core/EventsLua.hpp"
 #include "graphics/FontLua.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/Signal.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/JsonConverter.hpp"
-#include "haylen/lua/Reference.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
@@ -23,6 +23,7 @@
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
+#include "haylen/ui/Document.hpp"
 #include "lua/Owners.hpp"
 #include "ui/MountLink.hpp"
 #include "ui/TransformLua.hpp"
@@ -100,9 +101,12 @@ std::string UiLua::nextGeneratedId(lua_State* L) {
     return "#" + std::to_string(next);
 }
 
-// Converts a node table into the JSON the document reads, pulling its handlers into the handlers table. Children come from a children list or from the array part of the node, which lets trees read like ui.column{ui.label{...}}.
-core::Json UiLua::convertNode(lua_State* L, int index, int handlers) {
+// Converts a node table into the JSON the document reads, pulling its handlers into the handlers table. Children come from a children list or from the array part of the node, which lets trees read like ui.column{ui.label{...}}. The limits of a document apply while converting, so a table that holds itself or shares its children many times over raises an error instead of growing without end.
+core::Json UiLua::convertNode(lua_State* L, int index, int handlers, std::size_t depth, std::size_t& count) {
     luaL_checktype(L, index, LUA_TTABLE);
+    if (depth >= Document::kMaxDepth || ++count > Document::kMaxNodes) {
+        luaL_error(L, "A UI document is limited to %d levels and %d nodes.", static_cast<int>(Document::kMaxDepth), static_cast<int>(Document::kMaxNodes));
+    }
     luaL_checkstack(L, LUA_MINSTACK, "the UI tree is nested too deeply");
     const int node = lua_absindex(L, index);
     const int base = lua_gettop(L);
@@ -160,10 +164,10 @@ core::Json UiLua::convertNode(lua_State* L, int index, int handlers) {
         const int children = listed ? lua_gettop(L) : node;
         luaL_checktype(L, children, LUA_TTABLE);
         core::Json list = core::Json::array();
-        const auto count = static_cast<lua_Integer>(lua_rawlen(L, children));
-        for (lua_Integer child = 1; child <= count; ++child) {
+        const auto length = static_cast<lua_Integer>(lua_rawlen(L, children));
+        for (lua_Integer child = 1; child <= length; ++child) {
             lua_rawgeti(L, children, child);
-            list.push_back(convertNode(L, -1, handlers));
+            list.push_back(convertNode(L, -1, handlers, depth + 1, count));
             lua_pop(L, 1);
         }
         json["children"] = std::move(list);
@@ -278,7 +282,8 @@ int UiLua::mount(lua_State* L) {
 
     lua_newtable(L);
     const int handlers = lua_gettop(L);
-    const core::Json tree = convertNode(L, 1, handlers);
+    std::size_t count = 0;
+    const core::Json tree = convertNode(L, 1, handlers, 0, count);
     std::shared_ptr<Document> created = getPlugin(L).createDocument(tree, placement);
 
     // The document is registered before it mounts, so listeners of the mount event already receive its userdata.
@@ -345,10 +350,11 @@ int UiLua::documentReplace(lua_State* L) {
     const int collected = lua_gettop(L);
 
     core::Json children = core::Json::array();
-    const auto count = static_cast<lua_Integer>(lua_rawlen(L, 3));
-    for (lua_Integer child = 1; child <= count; ++child) {
+    const auto length = static_cast<lua_Integer>(lua_rawlen(L, 3));
+    std::size_t count = 0;
+    for (lua_Integer child = 1; child <= length; ++child) {
         lua_rawgeti(L, 3, child);
-        children.push_back(convertNode(L, -1, collected));
+        children.push_back(convertNode(L, -1, collected, 1, count));
         lua_pop(L, 1);
     }
     self.replaceChildren(id, children);
@@ -602,23 +608,41 @@ int UiLua::themeSurface(lua_State* L) {
     return 1;
 }
 
-// Calls listener(event) for every event of every mounted document with onEvent(listener) and returns the connection.
+// Calls listener(event) for every event of every mounted document with onEvent(listener[, {owner = scene}]) and returns the connection. A listener with an owner ends when the owner is released, such as a scene when it unloads.
 int UiLua::onEvent(lua_State* L) {
     luaL_checktype(L, 1, LUA_TFUNCTION);
-    auto function = std::make_shared<lua::Reference>(L, 1);
+    int owner = 0;
+    if (!lua_isnoneornil(L, 2)) {
+        luaL_checktype(L, 2, LUA_TTABLE);
+        lua::Table::checkFields(L, 2, {kEventFields});
+        if (lua_getfield(L, 2, "owner") != LUA_TNIL) {
+            lua::Owners::checkOwner(L, -1);
+            owner = lua_gettop(L);
+        }
+    }
+    core::Signal<Document&, const Event&>::Options options;
+    if (owner != 0) {
+        options.owner = lua::Owners::getLifetime(L, owner);
+    }
+    auto function = std::make_shared<lua::Owners::Function>(L, 1, owner);
+    lua_State* main = lua::Runtime::getMainThread(L);
 
     // clang-format off
-    core::Connection connection = getPlugin(L).events.connect([function](Document& document, const Event& event) {
-        lua_State* main = function->getState();
+    core::Connection connection = getPlugin(L).events.connect([function, main](Document& document, const Event& event) {
         lua::Runtime::runReporting(main, [&] {
             const StackScope scope(main);
-            function->push(main);
+            if (!function->push(main)) {
+                return;
+            }
             pushEventTable(main, document, event);
             lua::Runtime::protectedCall(main, 1, 0);
         });
-    });
+    }, std::move(options));
     // clang-format on
 
+    if (owner != 0) {
+        lua::Owners::add(L, owner, connection);
+    }
     lua::Userdata::emplace<core::Connection>(L, std::move(connection));
     return 1;
 }

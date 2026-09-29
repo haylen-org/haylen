@@ -34,6 +34,10 @@ class Tree final : public Component {
     void render(Context& context, const math::Rect& bounds) override;
 
   private:
+    [[nodiscard]] float measureWidth(Context& context, const std::vector<ChoiceItem>& branch, int depth) const;
+
+    // Returns the first item that shows and can take the focus, the one with the id when an id is given.
+    [[nodiscard]] const ChoiceItem* findShown(const std::vector<ChoiceItem>& branch, std::string_view id) const;
     [[nodiscard]] std::size_t countVisible(const std::vector<ChoiceItem>& branch) const;
     void drawItems(Context& context, const math::Rect& bounds, const std::vector<ChoiceItem>& branch, int depth, float& y);
     void toggle(Context& context, const ChoiceItem& item);
@@ -42,7 +46,7 @@ class Tree final : public Component {
     std::string selected;
     std::set<std::string, std::less<>> expanded;
     std::optional<FocusDirection> pressedDirection;
-    bool focusing = false;
+    std::string focused;
 };
 
 } // namespace haylen::ui

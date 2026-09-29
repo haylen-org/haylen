@@ -77,6 +77,10 @@ TEST_F(Procedural2DLuaTest, ScattersPointsWithTypesAndMaps) {
     EXPECT_EQ(lua("local a = procedural.scatter({region = {0, 0, 100, 100}, density = 0.01, seed = 5}) local b = procedural.scatter({region = {0, 0, 100, 100}, density = 0.01, seed = 5}) return a[3].x == b[3].x"), "true");
     EXPECT_NE(lua("procedural.scatter({region = {0, 0, 10, 10}, method = 'hex'})").find("unknown value 'hex'"), std::string::npos);
     EXPECT_NE(lua("procedural.scatter({region = {0, 0, 10, 10}, amount = 3})").find("Unknown option 'amount'"), std::string::npos);
+    EXPECT_NE(lua("procedural.scatter({region = {0, 0, 10, 10}, densityMap = 0.5})").find("The densityMap option takes a function or a noise table."), std::string::npos);
+    EXPECT_NE(lua("procedural.scatterAsync({region = {0, 0, 10, 10}, biome = 'forest'})").find("The biome option takes a function or a noise table."), std::string::npos);
+    EXPECT_NE(lua("procedural.scatter({region = {0, 0, 100, 100}, method = 'poisson', spacing = 10, densityMap = {seed = 1}})").find("maximumSpacing"), std::string::npos);
+    EXPECT_NE(lua("procedural.scatter({region = {0, 0, 100, 100}, method = 'grid', spacing = 0 / 0})").find("finite positive spacing"), std::string::npos);
 
     await("procedural.scatterAsync({region = {0, 0, 100, 100}, density = 0.01, seed = 5, densityMap = {seed = 1}})");
     EXPECT_EQ(lua("return tostring(#done[1] > 0)"), "true");
@@ -101,7 +105,21 @@ TEST_F(Procedural2DLuaTest, GeneratesMapsAsCellGrids) {
     EXPECT_EQ(lua("local open = procedural.maze({width = 2, height = 1}) return open:openings(0, 0) == procedural.east"), "true");
     EXPECT_EQ(lua("local closed = procedural.maze({width = 1, height = 1}) return closed:openings(0, 0)"), "0");
     EXPECT_NE(lua("procedural.maze({width = 2, height = 2, algorithm = 'eller'})").find("unknown value 'eller'"), std::string::npos);
+    EXPECT_NE(lua("procedural.maze({width = 40000, height = 40000})").find("fits in 32-bit cell indices"), std::string::npos);
     EXPECT_NE(lua("procedural.caves({size = 3})").find("Unknown option 'size'"), std::string::npos);
+
+    // Mazes built by hand start closed and open wall by wall, on both sides of each wall.
+    fixture.runLua("room = procedural.newMaze(3, 2) room:open(0, 0, procedural.east) room:open(1, 0, procedural.south)");
+    EXPECT_EQ(lua("return room.width .. ' ' .. room.height .. ' ' .. room.passageCount .. ' ' .. room:openings(1, 0) .. ' ' .. room:openings(1, 1) .. ' ' .. room:openings(2, 1)"), "3 2 2 12 1 0");
+    EXPECT_EQ(lua("local tiles = room:toGrid() return tiles:get(2, 1) .. tiles:get(3, 2) .. tiles:get(4, 1)"), "001");
+    EXPECT_NE(lua("room:open(2, 0, procedural.east)").find("Only walls between two cells of the maze can open."), std::string::npos);
+    EXPECT_NE(lua("procedural.newMaze(0, 4)").find("at least one cell on each side"), std::string::npos);
+
+    // One smoothing step works on any grid, such as a hand-painted one.
+    fixture.runLua("painted = spatial.newCellGrid(5, 5, 0) painted:set(2, 2, 1)");
+    EXPECT_EQ(lua("local smooth = procedural.cavesStep(painted, {solidBorder = false}) return smooth:get(2, 2) .. smooth:get(0, 0) .. ' ' .. smooth.width"), "00 5");
+    EXPECT_EQ(lua("local walled = procedural.cavesStep(painted) return walled:get(0, 0) .. walled:get(2, 2)"), "10");
+    EXPECT_NE(lua("procedural.cavesStep(painted, {width = 3})").find("Unknown option 'width'"), std::string::npos);
 
     await("procedural.cavesAsync({width = 20, height = 20, seed = 3})");
     EXPECT_EQ(lua("return done[1].width"), "20");
@@ -147,13 +165,40 @@ TEST_F(Procedural2DLuaTest, CollapsesWavesFromRulesAndSamples) {
     EXPECT_NE(lua("return procedural.waveFunctionCollapse({tiles = 3, allow = coast, width = 3, height = 1, fixed = fixed})").find("must match the size"), std::string::npos);
     EXPECT_NE(lua("return procedural.waveFunctionCollapse({tiles = 2, allow = {{0, 1, 'diagonal'}}})").find("unknown value 'diagonal'"), std::string::npos);
 
+    // Rules objects answer what the rules allow and check maps against them.
+    fixture.runLua("coastRules = procedural.waveFunctionCollapseRules({tiles = 3, allow = coast, weights = {1, 2, 1}}) learned = procedural.waveFunctionCollapseRules({sample = sample, periodicSample = true})");
+    EXPECT_EQ(lua("return coastRules.tileCount .. ' ' .. tostring(coastRules:allowed(1, 0, 'left')) .. ' ' .. tostring(coastRules:allowed(0, 2, 'up')) .. ' ' .. coastRules:weight(1)"), "3 true false 2.0");
+    EXPECT_EQ(lua("return tostring(coastRules:valid(tiles)) .. ' ' .. tostring(learned:valid(stripes, true)) .. ' ' .. tostring(learned:valid(tiles))"), "true true false");
+    EXPECT_EQ(lua("return learned.tileCount .. ' ' .. learned:weight(0) .. ' ' .. tostring(learned:allowed(1, 0, 'right'))"), "2 2.0 true");
+    EXPECT_NE(lua("procedural.waveFunctionCollapseRules({tiles = 2, width = 4})").find("Unknown option 'width'"), std::string::npos);
+
     await("procedural.waveFunctionCollapseAsync({sample = sample, periodicSample = true, width = 6, height = 2, periodic = true, seed = 2})");
     EXPECT_EQ(lua("return done[1].width"), "6");
 }
 
 TEST_F(Procedural2DLuaTest, TriangulatesAndRelaxesPoints) {
-    fixture.runLua("points = {{0, 0}, {100, 0}, {0, 100}, {100, 100}, {50, 40}}");
-    EXPECT_EQ(lua("local d = procedural.delaunay(points) return #d.triangles .. ' ' .. #d.hull .. ' ' .. #d.halfedges .. ' ' .. #d.neighbors[5]"), "12 4 12 4");
+    fixture.runLua("points = {{0, 0}, {100, 0}, {0, 100}, {100, 100}, {50, 40}} mesh = procedural.delaunay(points)");
+    EXPECT_EQ(lua("return #mesh.triangles .. ' ' .. #mesh.hull .. ' ' .. #mesh.halfedges .. ' ' .. #mesh.neighbors[5] .. ' ' .. mesh.triangleCount .. ' ' .. #mesh.points"), "12 4 12 4 4 5");
+    EXPECT_EQ(lua("return tostring(rawequal(mesh.triangles, mesh.triangles)) .. ' ' .. mesh.points[5].y"), "true 40.0");
+
+    // Every circumcenter lies at the same distance from the three corners of its triangle.
+    // clang-format off
+    fixture.runLua(R"(
+        centered = true
+        for triangle = 1, mesh.triangleCount do
+            local center = mesh:circumcenter(triangle)
+            local a, b, c = mesh.triangles[triangle * 3 - 2], mesh.triangles[triangle * 3 - 1], mesh.triangles[triangle * 3]
+            local ra, rb, rc = center:distance(points[a]), center:distance(points[b]), center:distance(points[c])
+            if math.abs(ra - rb) > 1e-3 or math.abs(ra - rc) > 1e-3 then centered = false end
+        end
+    )");
+    // clang-format on
+    EXPECT_EQ(lua("return tostring(centered)"), "true");
+    EXPECT_EQ(lua("return mesh:findNearest({90, 95}) .. ' ' .. mesh:findNearest({52, 45}, 1) .. ' ' .. tostring(procedural.delaunay({}):findNearest({0, 0}))"), "4 5 nil");
+    EXPECT_NE(lua("mesh:circumcenter(5)").find("the triangle is outside the triangulation"), std::string::npos);
+    EXPECT_NE(lua("mesh:findNearest({0, 0}, 6)").find("the start is outside the points"), std::string::npos);
+    EXPECT_NE(lua("procedural.delaunay({{0, 0}, {0 / 0, 1}, {1, 0}})").find("finite points"), std::string::npos);
+    EXPECT_NE(lua("procedural.voronoi(points, {0, 0, math.huge, 100})").find("finite area"), std::string::npos);
     EXPECT_EQ(lua("local cells = procedural.voronoi(points, {0, 0, 100, 100}) local total = 0 for _, cell in ipairs(cells) do total = total + m.polygonArea(cell) end return #cells .. ' ' .. math.floor(total + 0.5)"), "5 10000");
     EXPECT_EQ(lua("local relaxed = procedural.relax(points, {0, 0, 100, 100}, 2) return #relaxed .. ' ' .. tostring(relaxed[1].x > 0)"), "5 true");
     await("procedural.voronoiAsync(points, {0, 0, 100, 100})");

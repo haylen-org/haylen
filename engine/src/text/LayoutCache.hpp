@@ -18,18 +18,19 @@ class LayoutCache final {
   public:
     using Builder = std::function<TextLayout()>;
 
-    // Returns the cached layout of the text in the style, or builds and caches it.
+    // Returns the cached layout of the text in the style, or builds and caches it. A size, maximum width or line spacing that is not finite throws std::invalid_argument.
     [[nodiscard]] std::shared_ptr<const TextLayout> get(std::string_view text, const TextStyle& style, const Builder& build);
 
   private:
+    // The text and the language are views: a lookup views what it is given, and a cached key views the strings of its entry, which stays where the list built it.
     struct Key {
-        std::string text;
+        std::string_view text;
         float size = 0.0F;
         float maxWidth = 0.0F;
         float lineSpacing = 0.0F;
         TextAlign align = TextAlign::Start;
         Direction direction = Direction::Auto;
-        std::string language;
+        std::string_view language;
         bool bold = false;
         bool italic = false;
 
@@ -41,6 +42,8 @@ class LayoutCache final {
     };
 
     struct Entry {
+        std::string text;
+        std::string language;
         Key key;
         std::shared_ptr<const TextLayout> layout;
     };

@@ -28,6 +28,7 @@ class SlotGrid final : public Component {
     void readProperties(PropertyReader& reader) override;
     [[nodiscard]] math::Vec2 measureContent(Context& context, float availableWidth) override;
     void render(Context& context, const math::Rect& bounds) override;
+    void drawingStopped(Context& context) override;
 
   private:
     struct Slot {
@@ -41,6 +42,9 @@ class SlotGrid final : public Component {
     [[nodiscard]] float getSlotSize(Context& context) const;
     [[nodiscard]] float getGap(Context& context) const;
     void drawSlot(Context& context, const Slot& slot, const math::Rect& area, bool focusTarget);
+
+    // Paints the surface, the picture and the count of a slot in view.
+    void drawContent(Context& context, const Slot& slot, const math::Rect& area, bool hovered) const;
 
     std::vector<Slot> slots;
     std::string selected;

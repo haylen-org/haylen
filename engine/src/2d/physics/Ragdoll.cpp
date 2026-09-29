@@ -55,20 +55,31 @@ Ragdoll Ragdoll::create(World& world, const Options& options) {
         throw std::invalid_argument("A ragdoll needs a positive height and a negative collision group.");
     }
 
+    // A ragdoll that fails halfway, such as on a bad material, leaves no bodies behind.
     Ragdoll ragdoll;
+    try {
+        ragdoll.build(world, options);
+    } catch (...) {
+        ragdoll.destroy();
+        throw;
+    }
+    return ragdoll;
+}
+
+void Ragdoll::build(World& world, const Options& options) {
     const float scale = options.height;
     const Shape::Options shape{.density = options.density, .friction = options.friction, .filter = {.group = options.group}};
     for (std::size_t part = 0; part < kPartCount; ++part) {
         const Bone& bone = kBones[part];
         const float middle = (bone.top + bone.bottom) * 0.5F;
         const float reach = (bone.bottom - bone.top) * 0.5F * scale;
-        Body body = world.createBody({.position = options.position + math::Vec2{0.0F, middle * scale}, .velocity = options.velocity});
+        Body& body = bodies[part];
+        body = world.createBody({.position = options.position + math::Vec2{0.0F, middle * scale}, .velocity = options.velocity});
         if (reach > 0.0F) {
             body.addCapsule({0.0F, -reach}, {0.0F, reach}, bone.radius * scale, shape);
         } else {
             body.addCircle(bone.radius * scale, shape);
         }
-        ragdoll.bodies[part] = body;
     }
 
     for (const Link& link : kLinks) {
@@ -77,9 +88,8 @@ Ragdoll Ragdoll::create(World& world, const Options& options) {
             joint.enableMotor = true;
             joint.maxMotorTorque = options.jointFriction;
         }
-        ragdoll.joints.push_back(world.createJoint(Joint::Type::Revolute, ragdoll.getBody(link.parent), ragdoll.getBody(link.child), joint));
+        joints.push_back(world.createJoint(Joint::Type::Revolute, getBody(link.parent), getBody(link.child), joint));
     }
-    return ragdoll;
 }
 
 bool Ragdoll::isValid() const noexcept {

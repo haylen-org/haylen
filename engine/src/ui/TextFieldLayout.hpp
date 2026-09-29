@@ -20,9 +20,6 @@ class TextFieldLayout final {
     [[nodiscard]] const text::TextLayout& getLayout() const noexcept {
         return *layout;
     }
-    [[nodiscard]] std::size_t getLength() const noexcept {
-        return content.size();
-    }
 
     // Returns the caret at a position as a line from the top to the bottom of its line.
     [[nodiscard]] math::Rect getCaret(std::size_t position) const;

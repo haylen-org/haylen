@@ -23,13 +23,26 @@ void Window::readMore(PropertyReader& reader) {
     reader.read("open", open);
     reader.read("closable", closable);
     reader.read("movable", movable);
-    if (reader.has("x") || reader.has("y")) {
-        math::Vec2 place = requested.value_or(math::Vec2{});
-        reader.read("x", place.x);
-        reader.read("y", place.y);
-        requested = place;
-        position.reset();
+    if (!reader.has("x") && !reader.has("y")) {
+        return;
     }
+
+    // A coordinate given alone keeps the other one where the window is.
+    if (position) {
+        requestedX = position->x;
+        requestedY = position->y;
+    }
+    if (reader.has("x")) {
+        float x = 0.0F;
+        reader.read("x", x);
+        requestedX = x;
+    }
+    if (reader.has("y")) {
+        float y = 0.0F;
+        reader.read("y", y);
+        requestedY = y;
+    }
+    position.reset();
 }
 
 math::Insets Window::getPadding(Context& context) const {
@@ -60,7 +73,8 @@ void Window::render(Context& context, const math::Rect&) {
     const math::Vec2 size = getSize(context);
     const math::Rect display = context.getBackend().getDisplayRect();
     const float header = context.getMetric(Theme::Metric::WindowTitleHeight);
-    const math::Vec2 start = position.value_or(requested.value_or(context.getBackend().getSafeRect().getCenter() - size * 0.5F));
+    const math::Vec2 centered = context.getBackend().getSafeRect().getCenter() - size * 0.5F;
+    const math::Vec2 start = position.value_or(math::Vec2{requestedX.value_or(centered.x), requestedY.value_or(centered.y)});
     position = math::Vec2{std::clamp(start.x, display.x, std::max(display.x, display.getRight() - size.x)), std::clamp(start.y, display.y, std::max(display.y, display.getBottom() - header))};
     setBounds({position->x, position->y, size.x, size.y});
 

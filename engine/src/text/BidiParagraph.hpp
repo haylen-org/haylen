@@ -19,12 +19,9 @@ class BidiParagraph final {
         std::uint8_t level = 0;
     };
 
-    // Analyzes the text, which must stay alive and unchanged while the paragraph is used.
+    // Analyzes the text, which must stay alive and unchanged while the paragraph is used. A paragraph separator, such as a line feed or U+2029, may only end the text, and one before its end throws std::invalid_argument.
     BidiParagraph(std::u32string_view text, Direction direction);
     ~BidiParagraph();
-
-    BidiParagraph(BidiParagraph&& other) noexcept;
-    BidiParagraph& operator=(BidiParagraph&& other) noexcept;
 
     [[nodiscard]] bool isRightToLeft() const noexcept;
     [[nodiscard]] std::uint8_t getLevel(std::size_t index) const noexcept;

@@ -35,6 +35,9 @@ class Device final {
     [[nodiscard]] Texture createAlphaTexture(int width, int height, std::span<const std::uint8_t> alpha, Texture::Options options = {});
     [[nodiscard]] RenderTarget createRenderTarget(int width, int height, Texture::Options options = {});
 
+    // Creates a texture of one color, checking the size against the device before any pixel exists.
+    [[nodiscard]] Texture createTexture(int width, int height, math::Color fill, Texture::Options options = {});
+
     // Returns the shared 1 by 1 white texture that untextured draws use.
     [[nodiscard]] const Texture& getWhiteTexture() const noexcept;
 
@@ -57,6 +60,7 @@ class Device final {
 
   private:
     static void validateSize(int width, int height, int limit);
+    static void validateAlpha(int width, int height, std::span<const std::uint8_t> alpha, int limit);
 
     std::unique_ptr<DeviceState> state;
 };

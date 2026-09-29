@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 #include <vector>
 
@@ -103,6 +104,32 @@ TEST_F(Procedural2DTest, ScatterMethodsExclusionsAndWeights) {
     EXPECT_THROW((void)Scatter::generate(area, {.layers = {{}}}, random), std::invalid_argument);
 }
 
+TEST_F(Procedural2DTest, ScatterRefusesSettingsThatNeverFinish) {
+    const Region area = Region::rect({0.0F, 0.0F, 400.0F, 400.0F});
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    math::Random random(3);
+
+    // Values that are not numbers slip past plain comparisons, and counts beyond 16777216 points would run for ages.
+    EXPECT_THROW((void)Scatter::generate(area, {.density = nan}, random), std::invalid_argument);
+    EXPECT_THROW((void)Scatter::generate(area, {.method = Scatter::Method::Grid, .spacing = nan}, random), std::invalid_argument);
+    EXPECT_THROW((void)Scatter::generate(area, {.density = 1000.0F}, random), std::invalid_argument);
+    EXPECT_THROW((void)Scatter::generate(area, {.method = Scatter::Method::Grid, .spacing = 1e-4F}, random), std::invalid_argument);
+    EXPECT_THROW((void)Scatter::generate(Region::rect({0.0F, 0.0F, 3e38F, 3e38F}), {.method = Scatter::Method::Grid}, random), std::invalid_argument);
+    EXPECT_TRUE(Scatter::generate(Region::rect({0.0F, 0.0F, 0.0F, 3e38F}), {.method = Scatter::Method::Grid}, random).empty());
+
+    // Poisson spacing that follows a density map needs the far end of its range.
+    Scatter::Options poisson{.method = Scatter::Method::Poisson, .spacing = 10.0F};
+    poisson.densityMap = [](math::Vec2) { return 0.5F; };
+    try {
+        (void)Scatter::generate(area, poisson, random);
+        FAIL() << "a density map without maximumSpacing was accepted";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_STREQ(error.what(), "Poisson scattering with a density map needs a finite maximumSpacing of at least the spacing.");
+    }
+    poisson.maximumSpacing = 20.0F;
+    EXPECT_FALSE(Scatter::generate(area, poisson, random).empty());
+}
+
 TEST_F(Procedural2DTest, BiomeLayersAndDensityMapsShapeTheScatter) {
     const Region area = Region::rect({0.0F, 0.0F, 400.0F, 400.0F});
     const math::Noise2D noise(3);
@@ -173,7 +200,6 @@ TEST_F(Procedural2DTest, CavesAreDeterministicWithSolidBorders) {
     // A lone wall with no wall neighbors disappears in one step.
     spatial2d::CellGrid lone(5, 5, CellularAutomaton::kFloor);
     lone.set({2, 2}, CellularAutomaton::kWall);
-    EXPECT_EQ(CellularAutomaton::countWalls(lone, {2, 1}, false), 1);
     const spatial2d::CellGrid smoothed = CellularAutomaton::step(lone, {.solidBorder = false});
     EXPECT_EQ(countValue(smoothed, CellularAutomaton::kWall), 0U);
 }
@@ -233,6 +259,10 @@ TEST_F(Procedural2DTest, MazesArePerfect) {
     EXPECT_THROW(maze.open(0, 0, Maze::kNorth), std::invalid_argument);
     EXPECT_THROW((void)maze.getOpenings(2, 0), std::out_of_range);
     EXPECT_EQ(Maze::algorithmFromName("kruskal"), Maze::Algorithm::Kruskal);
+
+    // The tile grid of a maze has to fit in 32-bit cell indices like every CellGrid.
+    EXPECT_THROW(Maze(40000, 40000), std::invalid_argument);
+    EXPECT_THROW(Maze(std::numeric_limits<int>::max(), 1), std::invalid_argument);
 }
 
 } // namespace haylen::procedural2d

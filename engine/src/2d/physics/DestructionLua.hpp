@@ -29,9 +29,9 @@ class DestructionLua final {
     static void pushHits(lua_State* L, int worldIndex, const std::vector<Explosion::Hit>& hits);
 
     static int newTerrain(lua_State* L);
+    static int terrainGetSamples(lua_State* L);
     static int terrainSetSamples(lua_State* L);
     static int terrainSample(lua_State* L);
-    static int terrainSamples(lua_State* L);
     static int terrainIsSolid(lua_State* L);
     static int terrainFill(lua_State* L);
     static int terrainCarve(lua_State* L);

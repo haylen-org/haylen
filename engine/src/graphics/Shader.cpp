@@ -69,6 +69,7 @@ Shader Shader::parse(std::span<const std::uint8_t> bytes) {
         if (!resource->programs.is_object()) {
             throw std::invalid_argument("Its programs are not an object.");
         }
+        resource->validate();
     } catch (const core::Json::exception& error) {
         throw std::invalid_argument(std::format("The shader file is malformed: {}", error.what()));
     } catch (const std::invalid_argument& error) {

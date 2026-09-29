@@ -39,7 +39,8 @@ class Window final : public Linear {
     bool open = true;
     bool closable = false;
     bool movable = true;
-    std::optional<math::Vec2> requested;
+    std::optional<float> requestedX;
+    std::optional<float> requestedY;
     std::optional<math::Vec2> position;
     bool dragging = false;
 };

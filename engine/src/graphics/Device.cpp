@@ -19,6 +19,13 @@ void Device::validateSize(int width, int height, int limit) {
     }
 }
 
+void Device::validateAlpha(int width, int height, std::span<const std::uint8_t> alpha, int limit) {
+    validateSize(width, height, limit);
+    if (alpha.size() != static_cast<std::size_t>(width) * static_cast<std::size_t>(height)) {
+        throw std::invalid_argument("Alpha texture data does not match its dimensions.");
+    }
+}
+
 Device::Device(const DeviceSetup& setup) : state(std::make_unique<DeviceState>()) {
     // Sokol keeps one global device, so a process can run only one engine at a time.
     if (sg_isvalid()) {
@@ -68,11 +75,13 @@ Texture Device::createTexture(const Image& image, Texture::Options options) {
     return Texture(std::move(resource));
 }
 
-Texture Device::createAlphaTexture(int width, int height, std::span<const std::uint8_t> alpha, Texture::Options options) {
+Texture Device::createTexture(int width, int height, math::Color fill, Texture::Options options) {
     validateSize(width, height, getMaxTextureSize());
-    if (alpha.size() != static_cast<std::size_t>(width) * static_cast<std::size_t>(height)) {
-        throw std::invalid_argument("Alpha texture data does not match its dimensions.");
-    }
+    return createTexture(Image(width, height, fill), options);
+}
+
+Texture Device::createAlphaTexture(int width, int height, std::span<const std::uint8_t> alpha, Texture::Options options) {
+    validateAlpha(width, height, alpha, getMaxTextureSize());
 
     auto resource = std::make_shared<TextureResource>();
     const DeviceState::ImageViews created = DeviceState::createImage(width, height, SG_PIXELFORMAT_R8, alpha, "haylen-alpha-texture");
@@ -112,7 +121,7 @@ void Device::replaceTexture(const Texture& texture, const Image& image) {
 }
 
 void Device::replaceAlphaTexture(const Texture& texture, int width, int height, std::span<const std::uint8_t> alpha) {
-    validateSize(width, height, getMaxTextureSize());
+    validateAlpha(width, height, alpha, getMaxTextureSize());
     TextureResource& resource = *texture.getResource();
 
     const DeviceState::ImageViews created = DeviceState::createImage(width, height, SG_PIXELFORMAT_R8, alpha, "haylen-alpha-texture");

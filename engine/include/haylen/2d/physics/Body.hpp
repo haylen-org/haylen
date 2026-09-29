@@ -84,7 +84,7 @@ class Body final {
     // Adds any simple polygon. Convex outlines with at most eight points become one shape, and other outlines are split into convex pieces of at most eight points.
     std::vector<Shape> addPolygon(std::span<const math::Vec2> points, const Shape::Options& options = {});
 
-    // Adds a one-sided chain of segments, which suits terrain outlines. Loops close the outline.
+    // Adds a one-sided chain of segments, which suits terrain outlines. Each segment collides on its left as seen on screen when walking from one point to the next, so a loop listed counter-clockwise on screen holds bodies inside it. Loops close the outline.
     std::vector<Shape> addChain(std::span<const math::Vec2> points, bool loop, const Shape::Options& options = {});
 
     [[nodiscard]] std::vector<Shape> getShapes() const;

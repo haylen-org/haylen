@@ -5,42 +5,38 @@
 #include <cmath>
 #include <numeric>
 #include <stdexcept>
-#include <utility>
 
 namespace haylen::navigation2d {
 
 const HierarchicalPathfinder::Options HierarchicalPathfinder::kDefaultOptions{};
 
-HierarchicalPathfinder::HierarchicalPathfinder(const Grid& navigationGrid, const Options& value) : grid(&navigationGrid), options(value) {
-    if (grid->getLayout().topology != Grid::Topology::Square) {
-        throw std::invalid_argument("Hierarchical path finding needs a square grid->");
+HierarchicalPathfinder::HierarchicalPathfinder(const Grid& grid, const Options& value) : options(value), width(grid.getWidth()), height(grid.getHeight()) {
+    requireValid(grid, value);
+
+    const int size = value.clusterSize;
+    clustersX = (width - 1) / size + 1;
+    clustersY = (height - 1) / size + 1;
+    clusterNodes.resize(static_cast<std::size_t>(clustersX) * static_cast<std::size_t>(clustersY));
+    horizontalBorders.resize(static_cast<std::size_t>(clustersX - 1) * static_cast<std::size_t>(clustersY));
+    verticalBorders.resize(static_cast<std::size_t>(clustersX) * static_cast<std::size_t>(clustersY - 1));
+    localColumns = std::min(size, width);
+    local.resize(static_cast<std::size_t>(localColumns) * static_cast<std::size_t>(std::min(size, height)));
+    rebuild(grid);
+}
+
+void HierarchicalPathfinder::requireValid(const Grid& grid, const Options& value) {
+    if (grid.getLayout().topology != Grid::Topology::Square) {
+        throw std::invalid_argument("Hierarchical path finding needs a square grid.");
     }
     if (value.clusterSize < 2) {
         throw std::invalid_argument("Hierarchical path finding needs clusters of at least 2 cells.");
     }
-
-    const int size = value.clusterSize;
-    clustersX = (grid->getWidth() + size - 1) / size;
-    clustersY = (grid->getHeight() + size - 1) / size;
-    clusterNodes.resize(static_cast<std::size_t>(clustersX) * static_cast<std::size_t>(clustersY));
-    horizontalBorders.resize(static_cast<std::size_t>(clustersX - 1) * static_cast<std::size_t>(clustersY));
-    verticalBorders.resize(static_cast<std::size_t>(clustersX) * static_cast<std::size_t>(clustersY - 1));
-    local.resize(static_cast<std::size_t>(size) * static_cast<std::size_t>(size));
-    rebuild();
 }
 
-void HierarchicalPathfinder::buildAsync(core::JobSystem& jobs, const Grid& navigationGrid, const Options& value, BuildCompletion completion) {
-    // clang-format off
-    jobs.run([copy = navigationGrid, value] {
-        return HierarchicalPathfinder(copy, value);
-    }, [target = &navigationGrid, completion = std::move(completion)](core::JobSystem::Result<HierarchicalPathfinder> result) {
-        // The job built the path finder on a copy with the same cells, so it reads the grid itself from here on.
-        if (result.value) {
-            result.value->grid = target;
-        }
-        completion(std::move(result));
-    });
-    // clang-format on
+void HierarchicalPathfinder::requireGrid(const Grid& grid) const {
+    if (grid.getWidth() != width || grid.getHeight() != height) {
+        throw std::invalid_argument("A hierarchical path finder only works with a grid of the size it was built on.");
+    }
 }
 
 bool HierarchicalPathfinder::isWorse(const OpenNode& lhs, const OpenNode& rhs) noexcept {
@@ -55,30 +51,32 @@ HierarchicalPathfinder::Bounds HierarchicalPathfinder::boundsOf(int cluster) con
     const int size = options.clusterSize;
     const int left = (cluster % clustersX) * size;
     const int top = (cluster / clustersX) * size;
-    return {.left = left, .top = top, .right = std::min(left + size, grid->getWidth()), .bottom = std::min(top + size, grid->getHeight())};
+    return {.left = left, .top = top, .right = left + std::min(size, width - left), .bottom = top + std::min(size, height - top)};
 }
 
-void HierarchicalPathfinder::rebuild() {
+void HierarchicalPathfinder::rebuild(const Grid& grid) {
+    requireGrid(grid);
     std::vector<int> all(clusterNodes.size());
     std::iota(all.begin(), all.end(), 0);
-    rebuildClusters(all);
+    rebuildClusters(grid, all);
 }
 
-void HierarchicalPathfinder::update(Grid::Cell first, Grid::Cell last) {
-    const int left = std::clamp(std::min(first.x, last.x), 0, grid->getWidth() - 1) / options.clusterSize;
-    const int right = std::clamp(std::max(first.x, last.x), 0, grid->getWidth() - 1) / options.clusterSize;
-    const int top = std::clamp(std::min(first.y, last.y), 0, grid->getHeight() - 1) / options.clusterSize;
-    const int bottom = std::clamp(std::max(first.y, last.y), 0, grid->getHeight() - 1) / options.clusterSize;
+void HierarchicalPathfinder::update(const Grid& grid, Grid::Cell first, Grid::Cell last) {
+    requireGrid(grid);
+    const int left = std::clamp(std::min(first.x, last.x), 0, width - 1) / options.clusterSize;
+    const int right = std::clamp(std::max(first.x, last.x), 0, width - 1) / options.clusterSize;
+    const int top = std::clamp(std::min(first.y, last.y), 0, height - 1) / options.clusterSize;
+    const int bottom = std::clamp(std::max(first.y, last.y), 0, height - 1) / options.clusterSize;
     std::vector<int> dirty;
     for (int y = top; y <= bottom; ++y) {
         for (int x = left; x <= right; ++x) {
             dirty.push_back(y * clustersX + x);
         }
     }
-    rebuildClusters(dirty);
+    rebuildClusters(grid, dirty);
 }
 
-std::int32_t HierarchicalPathfinder::addNode(Grid::Cell cell, int cluster) {
+std::int32_t HierarchicalPathfinder::addNode(const Grid& grid, Grid::Cell cell, int cluster) {
     std::int32_t id = 0;
     if (freeNodes.empty()) {
         id = static_cast<std::int32_t>(nodes.size());
@@ -88,7 +86,7 @@ std::int32_t HierarchicalPathfinder::addNode(Grid::Cell cell, int cluster) {
         freeNodes.pop_back();
     }
     Node& node = nodes[static_cast<std::size_t>(id)];
-    node.cell = static_cast<std::int32_t>(grid->indexOf(cell));
+    node.cell = static_cast<std::int32_t>(grid.indexOf(cell));
     node.cluster = cluster;
     node.edges.clear();
     clusterNodes[static_cast<std::size_t>(cluster)].push_back(id);
@@ -105,7 +103,7 @@ void HierarchicalPathfinder::removeBorder(std::vector<std::int32_t>& border) {
     border.clear();
 }
 
-void HierarchicalPathfinder::createBorder(int first, int second, bool horizontal, std::vector<std::int32_t>& border) {
+void HierarchicalPathfinder::createBorder(const Grid& grid, int first, int second, bool horizontal, std::vector<std::int32_t>& border) {
     const Bounds bounds = boundsOf(first);
     const int start = horizontal ? bounds.top : bounds.left;
     const int end = horizontal ? bounds.bottom : bounds.right;
@@ -120,10 +118,10 @@ void HierarchicalPathfinder::createBorder(int first, int second, bool horizontal
             const int along = crossings[crossing];
             const Grid::Cell near = pairAt(along, false);
             const Grid::Cell far = pairAt(along, true);
-            const std::int32_t nearNode = addNode(near, first);
-            const std::int32_t farNode = addNode(far, second);
-            nodes[static_cast<std::size_t>(nearNode)].edges.push_back({.target = farNode, .cost = grid->getCostAt(grid->indexOf(far)), .inter = true});
-            nodes[static_cast<std::size_t>(farNode)].edges.push_back({.target = nearNode, .cost = grid->getCostAt(grid->indexOf(near)), .inter = true});
+            const std::int32_t nearNode = addNode(grid, near, first);
+            const std::int32_t farNode = addNode(grid, far, second);
+            nodes[static_cast<std::size_t>(nearNode)].edges.push_back({.target = farNode, .cost = grid.getCostAt(grid.indexOf(far)), .inter = true});
+            nodes[static_cast<std::size_t>(farNode)].edges.push_back({.target = nearNode, .cost = grid.getCostAt(grid.indexOf(near)), .inter = true});
             border.push_back(nearNode);
             border.push_back(farNode);
         }
@@ -132,7 +130,7 @@ void HierarchicalPathfinder::createBorder(int first, int second, bool horizontal
 
     int runStart = -1;
     for (int along = start; along <= end; ++along) {
-        const bool passable = along < end && grid->isWalkable(pairAt(along, false)) && grid->isWalkable(pairAt(along, true));
+        const bool passable = along < end && grid.isWalkable(pairAt(along, false)) && grid.isWalkable(pairAt(along, true));
         if (passable && runStart < 0) {
             runStart = along;
         } else if (!passable && runStart >= 0) {
@@ -142,7 +140,7 @@ void HierarchicalPathfinder::createBorder(int first, int second, bool horizontal
     }
 }
 
-void HierarchicalPathfinder::connectInside(int cluster) {
+void HierarchicalPathfinder::connectInside(const Grid& grid, int cluster) {
     const Bounds bounds = boundsOf(cluster);
     const std::vector<std::int32_t>& members = clusterNodes[static_cast<std::size_t>(cluster)];
     for (const std::int32_t member : members) {
@@ -150,9 +148,9 @@ void HierarchicalPathfinder::connectInside(int cluster) {
     }
 
     for (const std::int32_t from : members) {
-        searchLocal(bounds, grid->cellAt(static_cast<std::size_t>(nodes[static_cast<std::size_t>(from)].cell)), false, -1);
+        searchLocal(grid, bounds, grid.cellAt(static_cast<std::size_t>(nodes[static_cast<std::size_t>(from)].cell)), false, -1);
         for (const std::int32_t to : members) {
-            const float score = localScore(bounds, grid->cellAt(static_cast<std::size_t>(nodes[static_cast<std::size_t>(to)].cell)));
+            const float score = localScore(bounds, grid.cellAt(static_cast<std::size_t>(nodes[static_cast<std::size_t>(to)].cell)));
             if (to != from && std::isfinite(score)) {
                 nodes[static_cast<std::size_t>(from)].edges.push_back({.target = to, .cost = score});
             }
@@ -160,7 +158,7 @@ void HierarchicalPathfinder::connectInside(int cluster) {
     }
 }
 
-void HierarchicalPathfinder::rebuildClusters(std::span<const int> dirty) {
+void HierarchicalPathfinder::rebuildClusters(const Grid& grid, std::span<const int> dirty) {
     std::vector<std::uint8_t> horizontal(horizontalBorders.size(), 0);
     std::vector<std::uint8_t> vertical(verticalBorders.size(), 0);
     std::vector<std::uint8_t> reconnect(clusterNodes.size(), 0);
@@ -201,24 +199,24 @@ void HierarchicalPathfinder::rebuildClusters(std::span<const int> dirty) {
     for (std::size_t border = 0; border < horizontal.size(); ++border) {
         if (horizontal[border] != 0) {
             const int cluster = static_cast<int>(border) / (clustersX - 1) * clustersX + static_cast<int>(border) % (clustersX - 1);
-            createBorder(cluster, cluster + 1, true, horizontalBorders[border]);
+            createBorder(grid, cluster, cluster + 1, true, horizontalBorders[border]);
         }
     }
     for (std::size_t border = 0; border < vertical.size(); ++border) {
         if (vertical[border] != 0) {
             const auto cluster = static_cast<int>(border);
-            createBorder(cluster, cluster + clustersX, false, verticalBorders[border]);
+            createBorder(grid, cluster, cluster + clustersX, false, verticalBorders[border]);
         }
     }
     for (std::size_t cluster = 0; cluster < reconnect.size(); ++cluster) {
         if (reconnect[cluster] != 0) {
-            connectInside(static_cast<int>(cluster));
+            connectInside(grid, static_cast<int>(cluster));
         }
     }
 }
 
 std::int32_t HierarchicalPathfinder::localIndex(const Bounds& bounds, Grid::Cell cell) const noexcept {
-    return (cell.y - bounds.top) * options.clusterSize + (cell.x - bounds.left);
+    return (cell.y - bounds.top) * localColumns + (cell.x - bounds.left);
 }
 
 float HierarchicalPathfinder::localScore(const Bounds& bounds, Grid::Cell cell) const noexcept {
@@ -226,7 +224,7 @@ float HierarchicalPathfinder::localScore(const Bounds& bounds, Grid::Cell cell) 
     return node.visit == localVisit ? node.score : std::numeric_limits<float>::infinity();
 }
 
-bool HierarchicalPathfinder::searchLocal(const Bounds& bounds, Grid::Cell source, bool backward, std::int32_t target) {
+bool HierarchicalPathfinder::searchLocal(const Grid& grid, const Bounds& bounds, Grid::Cell source, bool backward, std::int32_t target) {
     ++localVisit;
     if (localVisit == 0) {
         std::ranges::fill(local, LocalNode{});
@@ -259,16 +257,16 @@ bool HierarchicalPathfinder::searchLocal(const Bounds& bounds, Grid::Cell source
         }
 
         // Walking backward toward the source steps into the current cell, and walking forward steps into the neighbor.
-        const Grid::Cell cell{bounds.left + current.index % options.clusterSize, bounds.top + current.index / options.clusterSize};
-        const float entry = grid->getCostAt(grid->indexOf(cell));
+        const Grid::Cell cell{bounds.left + current.index % localColumns, bounds.top + current.index / localColumns};
+        const float entry = grid.getCostAt(grid.indexOf(cell));
         // clang-format off
-        grid->forEachStep(cell, options.diagonal, [&](Grid::Cell next, float length) {
+        grid.forEachStep(cell, options.diagonal, [&](Grid::Cell next, float length) {
             if (!bounds.contains(next)) {
                 return;
             }
             const std::int32_t nextIndex = localIndex(bounds, next);
             LocalNode& state = stateOf(nextIndex);
-            const float candidate = score + length * (backward ? entry : grid->getCostAt(grid->indexOf(next)));
+            const float candidate = score + length * (backward ? entry : grid.getCostAt(grid.indexOf(next)));
             if (candidate < state.score) {
                 state.score = candidate;
                 state.parent = current.index;
@@ -290,7 +288,7 @@ void HierarchicalPathfinder::appendCell(Grid::Cell cell) {
 void HierarchicalPathfinder::appendLocalPath(const Bounds& bounds, Grid::Cell cell) {
     const std::size_t begin = path.size();
     for (std::int32_t index = localIndex(bounds, cell); index >= 0; index = local[static_cast<std::size_t>(index)].parent) {
-        path.push_back({bounds.left + index % options.clusterSize, bounds.top + index / options.clusterSize});
+        path.push_back({bounds.left + index % localColumns, bounds.top + index / localColumns});
     }
     std::reverse(path.begin() + static_cast<std::ptrdiff_t>(begin), path.end());
     if (begin > 0 && path[begin] == path[begin - 1]) {
@@ -298,10 +296,11 @@ void HierarchicalPathfinder::appendLocalPath(const Bounds& bounds, Grid::Cell ce
     }
 }
 
-std::span<const Grid::Cell> HierarchicalPathfinder::findPath(Grid::Cell start, Grid::Cell goal) {
+std::span<const Grid::Cell> HierarchicalPathfinder::findPath(const Grid& grid, Grid::Cell start, Grid::Cell goal) {
+    requireGrid(grid);
     path.clear();
     cost = std::numeric_limits<float>::infinity();
-    if (!grid->isWalkable(start) || !grid->isWalkable(goal)) {
+    if (!grid.isWalkable(start) || !grid.isWalkable(goal)) {
         return {};
     }
     if (start == goal) {
@@ -317,16 +316,16 @@ std::span<const Grid::Cell> HierarchicalPathfinder::findPath(Grid::Cell start, G
 
     // A path inside one cluster may never need to leave it, so the local path competes with the abstract one.
     float localCost = std::numeric_limits<float>::infinity();
-    if (startCluster == goalCluster && searchLocal(startBounds, start, false, localIndex(startBounds, goal))) {
+    if (startCluster == goalCluster && searchLocal(grid, startBounds, start, false, localIndex(startBounds, goal))) {
         localCost = localScore(startBounds, goal);
     }
 
     // The goal joins the abstract graph as one more node, reached from every entrance of its cluster.
     const std::size_t goalNode = nodes.size();
     goalCosts.assign(nodes.size(), std::numeric_limits<float>::infinity());
-    searchLocal(goalBounds, goal, true, -1);
+    searchLocal(grid, goalBounds, goal, true, -1);
     for (const std::int32_t id : clusterNodes[static_cast<std::size_t>(goalCluster)]) {
-        goalCosts[static_cast<std::size_t>(id)] = localScore(goalBounds, grid->cellAt(static_cast<std::size_t>(nodes[static_cast<std::size_t>(id)].cell)));
+        goalCosts[static_cast<std::size_t>(id)] = localScore(goalBounds, grid.cellAt(static_cast<std::size_t>(nodes[static_cast<std::size_t>(id)].cell)));
     }
 
     // The start seeds the search with the cost of reaching every entrance of its cluster.
@@ -334,13 +333,13 @@ std::span<const Grid::Cell> HierarchicalPathfinder::findPath(Grid::Cell start, G
     abstractParents.assign(nodes.size() + 1, -1);
     abstractClosed.assign(nodes.size() + 1, 0);
     const Grid::Heuristic heuristic = options.diagonal ? Grid::Heuristic::Octile : Grid::Heuristic::Manhattan;
-    searchLocal(startBounds, start, false, -1);
+    searchLocal(grid, startBounds, start, false, -1);
     for (const std::int32_t id : clusterNodes[static_cast<std::size_t>(startCluster)]) {
-        const Grid::Cell cell = grid->cellAt(static_cast<std::size_t>(nodes[static_cast<std::size_t>(id)].cell));
+        const Grid::Cell cell = grid.cellAt(static_cast<std::size_t>(nodes[static_cast<std::size_t>(id)].cell));
         const float score = localScore(startBounds, cell);
         if (std::isfinite(score)) {
             abstractScores[static_cast<std::size_t>(id)] = score;
-            open.push_back({.estimate = score + grid->estimate(cell, goal, heuristic), .index = id});
+            open.push_back({.estimate = score + grid.estimate(cell, goal, heuristic), .index = id});
         }
     }
     std::ranges::make_heap(open, &HierarchicalPathfinder::isWorse);
@@ -374,8 +373,8 @@ std::span<const Grid::Cell> HierarchicalPathfinder::findPath(Grid::Cell start, G
             relax(static_cast<std::int32_t>(goalNode), score + goalCosts[index], current.index, 0.0F);
         }
         for (const Edge& edge : nodes[index].edges) {
-            const Grid::Cell cell = grid->cellAt(static_cast<std::size_t>(nodes[static_cast<std::size_t>(edge.target)].cell));
-            relax(edge.target, score + edge.cost, current.index, grid->estimate(cell, goal, heuristic));
+            const Grid::Cell cell = grid.cellAt(static_cast<std::size_t>(nodes[static_cast<std::size_t>(edge.target)].cell));
+            relax(edge.target, score + edge.cost, current.index, grid.estimate(cell, goal, heuristic));
         }
     }
 
@@ -384,37 +383,58 @@ std::span<const Grid::Cell> HierarchicalPathfinder::findPath(Grid::Cell start, G
         return {};
     }
     if (localCost <= abstractCost) {
-        searchLocal(startBounds, start, false, localIndex(startBounds, goal));
+        searchLocal(grid, startBounds, start, false, localIndex(startBounds, goal));
         appendLocalPath(startBounds, goal);
         cost = localCost;
         return path;
     }
 
-    // Refines the route entrance by entrance: crossings between clusters are single steps, and paths inside a cluster come from a local search.
     route.clear();
     for (std::int32_t node = abstractParents[goalNode]; node >= 0; node = abstractParents[static_cast<std::size_t>(node)]) {
         route.push_back(node);
     }
     std::ranges::reverse(route);
-    const auto cellOf = [this](std::int32_t node) { return grid->cellAt(static_cast<std::size_t>(nodes[static_cast<std::size_t>(node)].cell)); };
+    if (!refineRoute(grid, start, goal)) {
+        path.clear();
+        return {};
+    }
+    cost = abstractCost;
+    return path;
+}
 
-    searchLocal(startBounds, start, false, localIndex(startBounds, cellOf(route.front())));
+bool HierarchicalPathfinder::refineRoute(const Grid& grid, Grid::Cell start, Grid::Cell goal) {
+    const auto cellOf = [this, &grid](std::int32_t node) { return grid.cellAt(static_cast<std::size_t>(nodes[static_cast<std::size_t>(node)].cell)); };
+
+    // Crossings between clusters are single steps, and paths inside a cluster come from a local search. Cells that changed without an update can break either.
+    const Bounds startBounds = boundsOf(clusterOf(start));
+    if (!searchLocal(grid, startBounds, start, false, localIndex(startBounds, cellOf(route.front())))) {
+        return false;
+    }
     appendLocalPath(startBounds, cellOf(route.front()));
     for (std::size_t step = 1; step < route.size(); ++step) {
         const Node& from = nodes[static_cast<std::size_t>(route[step - 1])];
         const Node& to = nodes[static_cast<std::size_t>(route[step])];
+        const Grid::Cell cell = cellOf(route[step]);
         if (from.cluster != to.cluster) {
-            appendCell(cellOf(route[step]));
+            if (!grid.isWalkable(cell)) {
+                return false;
+            }
+            appendCell(cell);
             continue;
         }
         const Bounds bounds = boundsOf(from.cluster);
-        searchLocal(bounds, cellOf(route[step - 1]), false, localIndex(bounds, cellOf(route[step])));
-        appendLocalPath(bounds, cellOf(route[step]));
+        if (!searchLocal(grid, bounds, cellOf(route[step - 1]), false, localIndex(bounds, cell))) {
+            return false;
+        }
+        appendLocalPath(bounds, cell);
     }
-    searchLocal(goalBounds, cellOf(route.back()), false, localIndex(goalBounds, goal));
+
+    const Bounds goalBounds = boundsOf(clusterOf(goal));
+    if (!searchLocal(grid, goalBounds, cellOf(route.back()), false, localIndex(goalBounds, goal))) {
+        return false;
+    }
     appendLocalPath(goalBounds, goal);
-    cost = abstractCost;
-    return path;
+    return true;
 }
 
 } // namespace haylen::navigation2d

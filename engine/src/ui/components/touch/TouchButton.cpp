@@ -33,7 +33,11 @@ void TouchButton::render(Context& context, const math::Rect& bounds) {
     }
     context.blockPointer(bounds);
 
-    const bool pressed = tracker.update(context, bounds).has_value();
+    // A disabled button lets go of what it held and waits for a new press once it is enabled again.
+    if (!getCommon().enabled) {
+        tracker.reset();
+    }
+    const bool pressed = getCommon().enabled && tracker.update(context, bounds).has_value();
     if (pressed) {
         context.holdButton(action);
     }

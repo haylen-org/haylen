@@ -9,6 +9,7 @@
 #include <fast_float/fast_float.h>
 
 #include "haylen/core/Utf8.hpp"
+#include "text/Segmenter.hpp"
 
 namespace haylen::text {
 
@@ -214,24 +215,28 @@ RichTextDocument MarkupParser::parse() {
     blocks.emplace_back();
     beginParagraph(false);
 
+    // Every paragraph separator ends a paragraph, and the carriage return of CRLF belongs to its line feed, so markup with CRLF line endings reads like markup with LF ones.
     std::size_t textStart = 0;
     // clang-format off
     const auto flushText = [&](std::size_t end) {
+        const std::u32string text = core::Utf8::decode(markup.substr(textStart, end - textStart));
         std::u32string pending;
-        for (const char32_t codePoint : core::Utf8::decode(markup.substr(textStart, end - textStart))) {
-            if (std::exchange(skipNewline, false) && codePoint == U'\n') {
+        for (std::size_t index = 0; index < text.size(); ++index) {
+            const char32_t codePoint = text[index];
+            if (codePoint == U'\r' && index + 1 < text.size() && text[index + 1] == U'\n') {
+                continue;
+            }
+            const bool separator = Segmenter::isParagraphSeparator(codePoint);
+            if (std::exchange(skipNewline, false) && separator) {
                 continue;
             }
             if (insideTableRows()) {
-                if (codePoint != U' ' && codePoint != U'\t' && codePoint != U'\n' && codePoint != U'\r') {
+                if (codePoint != U' ' && codePoint != U'\t' && !separator) {
                     fail(textStart, "Text inside a [table] must be inside a [cell].");
                 }
                 continue;
             }
-            if (codePoint == U'\r') {
-                continue;
-            }
-            if (codePoint == U'\n') {
+            if (separator) {
                 appendText(std::exchange(pending, {}));
                 newline();
                 continue;

@@ -194,6 +194,8 @@ Sokol preallocates its resource pools, and the `Gpu` class of `engine/src/graphi
 | `kImagePoolSize` | 4096 | Textures and render targets alive at once. |
 | `kViewPoolSize` | 8192 | Texture and attachment views. |
 | `kBufferPoolSize` | 4096 | Baked static sprite batches and draw buffers. |
+| `kShaderPoolSize` | 512 | Shader programs, the renderer's own and those of custom shaders. |
+| `kPipelinePoolSize` | 2048 | Pipelines, one per program, blend mode and kind of target. |
 
 Going past a limit throws an error that names it, such as `The graphics device has no room for another texture. At most 4096 textures and render targets can exist at once.`, and the app stops on the error screen.
 

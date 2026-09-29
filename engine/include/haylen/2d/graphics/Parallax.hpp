@@ -50,8 +50,8 @@ class Parallax final {
         return scrolled;
     }
 
-    // Draws the texture at the offset position, repeated over the part of the world the camera shows on the axes that repeat.
-    void draw(Renderer& renderer, const Camera& camera, const math::Rect& screen, const DrawOrder& order = {}) const;
+    // Draws the texture at the offset position in the active canvas, repeated over the part of the world the canvas shows on the axes that repeat.
+    void draw(Renderer& renderer, const Camera& camera, const DrawOrder& order = {}) const;
 
   private:
     // Returns the first copy at or before the start of the visible range, on a grid of the step anchored at the origin.

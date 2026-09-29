@@ -63,6 +63,9 @@ class RichTextLua final {
     static int setMaxWidth(lua_State* L);
     static int getScale(lua_State* L);
     static int setScale(lua_State* L);
+    template <auto Option> static int getOption(lua_State* L);
+    template <auto Option> static int setOption(lua_State* L);
+    static int setFamily(lua_State* L);
     static int getVisibleCharacters(lua_State* L);
     static int getVisibleRatio(lua_State* L);
     static int setVisibleRatio(lua_State* L);

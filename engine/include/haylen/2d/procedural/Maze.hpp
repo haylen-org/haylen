@@ -29,7 +29,7 @@ class Maze final {
     static constexpr std::uint8_t kSouth = 4;
     static constexpr std::uint8_t kWest = 8;
 
-    // Starts with every wall closed. Throws std::invalid_argument when a side is below 1.
+    // Starts with every wall closed. Throws std::invalid_argument when a side is below 1 or the grid of toGrid would not fit in 32-bit cell indices.
     Maze(int columns, int rows);
 
     [[nodiscard]] static Maze generate(int columns, int rows, Algorithm algorithm, math::Random& random);

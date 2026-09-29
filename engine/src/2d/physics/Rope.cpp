@@ -8,52 +8,60 @@
 namespace haylen::physics2d {
 
 Rope Rope::create(World& world, const Options& options) {
-    const math::Vec2 span = options.end - options.start;
-    if (options.segments < 1 || span.isZero() || options.thickness <= 0.0F) {
+    if (options.segments < 1 || (options.end - options.start).isZero() || options.thickness <= 0.0F) {
         throw std::invalid_argument("A rope needs at least one segment, two distinct ends and a positive thickness.");
     }
 
+    // A rope that fails halfway, such as on a bad material or an end body of another world, leaves no bodies behind.
     Rope rope;
+    try {
+        rope.build(world, options);
+    } catch (...) {
+        rope.destroy();
+        throw;
+    }
+    return rope;
+}
+
+void Rope::build(World& world, const Options& options) {
+    const math::Vec2 span = options.end - options.start;
     const math::Vec2 direction = span.getNormalized();
     const float angle = span.getAngle();
-    rope.segmentLength = span.getLength() / static_cast<float>(options.segments);
+    segmentLength = span.getLength() / static_cast<float>(options.segments);
     const float radius = options.thickness * 0.5F;
     const Shape::Options shape{.density = options.density, .friction = options.friction, .filter = options.filter};
 
     for (int index = 0; index < options.segments; ++index) {
-        const math::Vec2 center = options.start + direction * (rope.segmentLength * (static_cast<float>(index) + 0.5F));
-        Body body = world.createBody({.position = center, .rotation = angle, .linearDamping = options.linearDamping, .angularDamping = options.angularDamping});
+        const math::Vec2 center = options.start + direction * (segmentLength * (static_cast<float>(index) + 0.5F));
+        Body body = bodies.emplace_back(world.createBody({.position = center, .rotation = angle, .linearDamping = options.linearDamping, .angularDamping = options.angularDamping}));
 
         // Capsules shorter than their own thickness become circles.
-        const float reach = rope.segmentLength * 0.5F - radius;
+        const float reach = segmentLength * 0.5F - radius;
         if (options.planks) {
-            body.addBox({rope.segmentLength, options.thickness}, shape);
+            body.addBox({segmentLength, options.thickness}, shape);
         } else if (reach > 0.0F) {
             body.addCapsule({-reach, 0.0F}, {reach, 0.0F}, radius, shape);
         } else {
             body.addCircle(radius, shape);
         }
 
-        if (!rope.bodies.empty()) {
-            rope.joints.push_back(world.createJoint(Joint::Type::Revolute, rope.bodies.back(), body, {.anchorA = center - direction * (rope.segmentLength * 0.5F)}));
+        if (bodies.size() > 1) {
+            joints.push_back(world.createJoint(Joint::Type::Revolute, bodies[bodies.size() - 2], body, {.anchorA = center - direction * (segmentLength * 0.5F)}));
         }
-        rope.bodies.push_back(body);
     }
 
     // clang-format off
     const auto attach = [&](std::optional<Body> holder, bool pinned, math::Vec2 point, Body segment) {
         if (!holder && pinned) {
-            holder = world.createBody({.type = Body::Type::Static, .position = point});
-            rope.anchors.push_back(*holder);
+            holder = anchors.emplace_back(world.createBody({.type = Body::Type::Static, .position = point}));
         }
         if (holder) {
-            rope.joints.push_back(world.createJoint(Joint::Type::Revolute, *holder, segment, {.anchorA = point}));
+            joints.push_back(world.createJoint(Joint::Type::Revolute, *holder, segment, {.anchorA = point}));
         }
     };
     // clang-format on
-    attach(options.startBody, options.pinStart, options.start, rope.bodies.front());
-    attach(options.endBody, options.pinEnd, options.end, rope.bodies.back());
-    return rope;
+    attach(options.startBody, options.pinStart, options.start, bodies.front());
+    attach(options.endBody, options.pinEnd, options.end, bodies.back());
 }
 
 Rope Rope::createBridge(World& world, Options options) {

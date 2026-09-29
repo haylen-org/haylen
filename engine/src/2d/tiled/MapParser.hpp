@@ -1,7 +1,9 @@
 #pragma once
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
@@ -29,8 +31,12 @@ class MapParser final {
     [[nodiscard]] static std::string resolve(std::string_view directory, std::string_view relative);
 
   private:
+    // Cells are indexed with int and their data takes four bytes each, so a layer holds as many cells as both allow.
+    static constexpr std::size_t kMaxCells = std::min<std::size_t>(std::numeric_limits<int>::max(), std::numeric_limits<std::size_t>::max() / 4);
+
     MapParser(const Map::JsonReader& reader, Map& target) noexcept : read(reader), map(target) {}
 
+    [[nodiscard]] static std::size_t countCells(int width, int height, std::string_view layer);
     [[nodiscard]] static std::vector<std::uint8_t> decodeBase64(std::string_view text);
     [[nodiscard]] static std::vector<std::uint8_t> inflate(const std::vector<std::uint8_t>& compressed, bool gzip, std::size_t expected);
     [[nodiscard]] static std::vector<std::uint32_t> readTileData(const core::Json& layer, const core::Json& data, std::size_t cells);

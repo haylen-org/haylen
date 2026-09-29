@@ -11,6 +11,10 @@
 #include "haylen/math/Transform2D.hpp"
 #include "haylen/math/Vec2.hpp"
 
+namespace haylen::graphics {
+struct TextureResource;
+}
+
 namespace haylen::graphics2d {
 
 // One canvas of a frame, with the ranges of the draw items, commands, lights, occluder edges and metaballs that belong to it.
@@ -32,6 +36,9 @@ struct Canvas {
 
     // The capture the canvas renders into, counted from 1, or 0 for the screen.
     std::size_t capture = 0;
+
+    // The image a canvas that is not composited draws into, its render target or its capture, which its draws cannot sample.
+    const graphics::TextureResource* destination = nullptr;
     std::size_t itemBegin = 0;
     std::size_t itemEnd = 0;
     std::size_t sceneBegin = 0;

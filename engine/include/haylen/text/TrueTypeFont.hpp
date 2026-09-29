@@ -19,13 +19,14 @@ namespace haylen::text {
 // A TrueType or OpenType font shaped by HarfBuzz and rendered through a signed distance field atlas that grows as new glyphs are used, so text stays sharp at any size and takes outlines, weights and soft edges.
 class TrueTypeFont final : public Font {
   public:
-    // The spread is how far in pixels at the bake size the distance field reaches past the edge of a glyph, which bounds outlines, weights, glows and blurred shadows.
+    // The spread is how far in pixels at the bake size the distance field reaches past the edge of a glyph, which bounds outlines, weights, glows and blurred shadows. The bake size, the spread and the atlas size must be positive and at most the maximum texture size of the device.
     struct Options {
         float bakeSize = 48.0F;
         int spread = 8;
         int atlasSize = 512;
     };
 
+    // Reads the font file, which throws std::runtime_error when it is not a TrueType or OpenType font, and std::invalid_argument for options out of range.
     TrueTypeFont(graphics::Device& graphicsDevice, std::vector<std::uint8_t> ttf, const Options& fontOptions = kDefaultOptions);
     ~TrueTypeFont() override;
 
@@ -34,11 +35,15 @@ class TrueTypeFont final : public Font {
     }
     [[nodiscard]] bool hasGlyph(char32_t codePoint) override;
     void shape(const Run& run, std::vector<ShapedGlyph>& shaped) override;
+
+    // Returns a glyph, which adds it to the atlas the first time. An index the font does not have throws std::out_of_range, and a glyph that no atlas the device allows can hold throws std::runtime_error.
     [[nodiscard]] const Glyph& getGlyph(std::uint32_t index) override;
     [[nodiscard]] std::size_t getPageCount() const noexcept override {
         return 1;
     }
     [[nodiscard]] const graphics::Texture& getPage(std::size_t index) const override;
+
+    // Uploads the glyphs added since the last call. An atlas that grew becomes a new texture, so text queued for drawing before keeps the image its coordinates were measured on.
     void sync() override;
 
     // The font file itself, which the UI hands to Dear ImGui for the widgets it draws.
@@ -49,15 +54,19 @@ class TrueTypeFont final : public Font {
 
     static const Options kDefaultOptions;
 
-    // The offset table alone takes this many bytes, and stb_truetype reads it before checking anything.
-    static constexpr std::size_t kHeaderSize = 12;
+    // A font collection header takes this many bytes, the most stb_truetype reads to find where the first font starts. The offset table of a font and each record of its table directory follow with their own sizes.
+    static constexpr std::size_t kHeaderSize = 16;
+    static constexpr std::size_t kOffsetTableSize = 12;
+    static constexpr std::size_t kTableRecordSize = 16;
 
     TrueTypeFont(graphics::Device& graphicsDevice, std::unique_ptr<Face> opened, const Options& fontOptions);
 
+    [[nodiscard]] static const Options& validate(const Options& value, const graphics::Device& graphicsDevice);
+    [[nodiscard]] static bool hasTables(std::span<const std::uint8_t> ttf, std::size_t start) noexcept;
     [[nodiscard]] static std::unique_ptr<Face> open(std::vector<std::uint8_t> ttf, const Options& fontOptions);
     [[nodiscard]] static Metrics readMetrics(const Face& opened, const Options& fontOptions) noexcept;
 
-    void rasterize(std::uint32_t index, Glyph& glyph);
+    [[nodiscard]] Glyph rasterize(std::uint32_t index);
     void grow();
 
     std::unique_ptr<Face> face;

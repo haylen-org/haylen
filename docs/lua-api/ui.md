@@ -390,9 +390,9 @@ local set, drawn = ui.direction()
 print(set, drawn)
 ```
 
-### ui.onEvent(listener)
+### ui.onEvent(listener, options)
 
-Calls `listener(event)` for every event of every mounted document, with the same table [handlers](#events-and-handlers) receive, and returns a `haylen.Connection`. Its `disconnect()` method stops the listener, and its `connected` property is `true` until then. Listeners run before the handlers of the node. It suits screens loaded from JSON, sound effects for every click and analytics. `event.document` is `nil` for documents that C++ code mounted. An error raised inside a listener stops the app and shows the error screen with the message and its stack trace.
+Calls `listener(event)` for every event of every mounted document, with the same table [handlers](#events-and-handlers) receive, and returns a `haylen.Connection`. Its `disconnect()` method stops the listener, and its `connected` property is `true` until then. The optional options table takes `owner`, a table or userdata that ends the listener when it is released, such as a scene when it unloads, or collected, like the other [owners of haylen.events](events.md#owners). Unknown keys raise `Unknown option '<key>'.`, and an owner that is not a table or a userdata raises `An owner must be a table or a userdata, not <type>.` Listeners run before the handlers of the node. It suits screens loaded from JSON, sound effects for every click and analytics. `event.document` is `nil` for documents that C++ code mounted. An error raised inside a listener stops the app and shows the error screen with the message and its stack trace.
 
 ```lua
 local assets = require('haylen.assets')
@@ -405,6 +405,23 @@ local sounds = ui.onEvent(function(event)
         audio.play(click, {bus = 'ui'})
     end
 end)
+```
+
+```lua
+local scene = require('haylen.scene')
+local ui = require('haylen.ui')
+
+local shop = {}
+
+function shop:enter()
+    ui.onEvent(function(event)
+        if event.name == 'click' then
+            print('clicked ' .. event.id)
+        end
+    end, {owner = self})
+end
+
+scene.push(shop)
 ```
 
 ## UiDocument
@@ -516,7 +533,7 @@ scene.push({
 
 Sends a command to the node `id`. `arguments` is optional, and both commands take none.
 
-- `'focus'` moves the keyboard, gamepad and remote focus to the node. The focus ring stays visible when the player was already navigating and shows at once when they last used a gamepad or have no pointer device, while a mouse or touch player sees it only once they start navigating. The first accept press also counts as navigation: it shows the ring and activates the focused node. The focusable kinds are `button`, `imageButton`, `menuButton`, `popover`, `chip`, `checkbox`, `toggle`, `radioGroup`, `combo`, `segmentedControl`, `textField`, `secretField`, `textArea`, `filterField`, `numberField`, `slider`, `rangeSlider`, `stepper`, `keyCapture`, `colorField`, `list`, `slotGrid`, `accordion` and `carousel`. A radio group, a list and a slot grid focus their selected entry, or their first entry that can be picked when none is selected, and an accordion focuses its first header.
+- `'focus'` moves the keyboard, gamepad and remote focus to the node. The focus ring stays visible when the player was already navigating and shows at once when they last used a gamepad or have no pointer device, while a mouse or touch player sees it only once they start navigating. The first accept press also counts as navigation: it shows the ring and activates the focused node. The focusable kinds are `button`, `imageButton`, `menuButton`, `popover`, `chip`, `checkbox`, `toggle`, `radioGroup`, `combo`, `segmentedControl`, `textField`, `secretField`, `textArea`, `filterField`, `numberField`, `slider`, `rangeSlider`, `stepper`, `keyCapture`, `colorField`, `list`, `tree`, `slotGrid`, `accordion`, `carousel` and a `richText` with links. A radio group, a list, a tree and a slot grid focus their selected entry, or their first entry that can be picked when none is selected or the selected one cannot take the focus, such as an item of a closed branch, an accordion focuses its first header, and rich text focuses its first link. Rich text written as literal markup takes the focus as soon as it is mounted or set, and translated rich text once it has been drawn.
 - `'open'` opens a `contextMenu` below its child, as a right click would.
 
 A kind without that command raises `A <kind> does not answer the command <name>.`, arguments raise `The focus command takes no arguments.` or `The open command takes no arguments.`, and an unknown id raises `The UI document has no node with the id <id>.`.
@@ -655,7 +672,7 @@ A node is a table with these keys, and the same shape works as JSON.
 
 In Lua the children can also go in the array part of the node, which lets trees read like `ui.column{ui.label{...}, ui.button{...}}`. A node takes its children from `children` or from its array part, never from both.
 
-A document has at most 64 levels and 20000 nodes. Every property is checked when the tree is built, so a misspelled key or a wrong value is reported instead of ignored.
+A document has at most 64 levels, the root included, and 20000 nodes, counted over the whole document when `replace` adds children. A node table that holds itself, such as `c[1] = c`, raises the same error instead of nesting without end. Every property is checked when the tree is built, so a misspelled key or a wrong value is reported instead of ignored.
 
 Errors raised for invalid trees:
 
@@ -919,6 +936,8 @@ Events are collected while the document draws and handed to the handlers once pe
 | `colorField` | `change` | `value` (color string `'#AARRGGBB'`) |
 | `tabs`, `menuButton`, `contextMenu`, `list`, `tree`, `table`, `slotGrid` | `select` | `item` (item, row or slot id) |
 | `tree`, `accordion` | `toggle` | `item` (item id), `expanded` (boolean) |
+| `richText` | `link` | `link` (payload of the link) |
+| `richText` | `linkHover` | `link` (payload of the link), `hovered` (boolean) |
 | `list` with `draggable`, `slotGrid` | `drag` | `item` (id of the row or slot picked up or dragged) |
 | `list` with `draggable`, `slotGrid` | `drop` | `item` (id of the row or slot dropped on), `source` (id of the node the item left), `sourceItem` (its row or slot id) |
 | `carousel` | `change` | `page` (number, from 1) |
@@ -1034,7 +1053,7 @@ Shows one child in an area that scrolls up and down or sideways. The mouse wheel
 | `axis` | string | `'vertical'` | `'vertical'` or `'horizontal'`, which lays the child out at its full width and scrolls it sideways, also with the mouse wheel. |
 | `snap` | boolean | `false` | Settles, once the player lets go, on the start of the item of the child nearest to the scrolled position, such as a card of a row. |
 
-An axis other than `'vertical'` or `'horizontal'` raises `scroll.axis must be vertical or horizontal.`.
+A horizontal scroll lays its child out at the width of its content. Kinds that otherwise fill the width they get, `list`, `tree`, `table`, `accordion`, `carousel` and `splitter`, take the width of their content there, and grids and splitters give each of their children its own. An axis other than `'vertical'` or `'horizontal'` raises `scroll.axis must be vertical or horizontal.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -1148,7 +1167,7 @@ ui.mount(ui.tabs{
 
 ### ui.accordion(properties)
 
-Sections under headers that open and close, one child per item in the order of the items. A click, a tap or accept on a header opens or closes its section and reports `toggle` with the item id as `item` and the new state as `expanded`. Opening a section closes the others unless `multiple` is set. The headers take the focus.
+Sections under headers that open and close, one child per item in the order of the items. A click, a tap or accept on a header opens or closes its section and reports `toggle` with the item id as `item` and the new state as `expanded`. Opening a section closes the others unless `multiple` is set, and each section it closes reports `toggle` with `expanded` set to `false` first. The headers take the focus.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1229,7 +1248,7 @@ ui.mount(ui.formField{
 
 ### ui.splitter(properties)
 
-Two children beside each other, or one above the other, with a handle between them that the player drags.
+Two children beside each other, or one above the other, with a handle between them that the player drags. Without a `height`, a splitter side by side is as tall as its taller child at its share of the width, and a stacked splitter is as tall as both children.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1374,7 +1393,7 @@ A placeholder for a view with nothing to show yet, with an optional picture, a t
 local ui = require('haylen.ui')
 
 ui.mount(ui.emptyState{
-    image = 'ui/empty-chest.png',
+    image = 'ui/empty_chest.png',
     title = 'Nothing here',
     message = 'Chop some trees to fill your inventory.',
 })
@@ -1449,9 +1468,9 @@ A picture that works as a button, with optional pictures for hover and press and
 local ui = require('haylen.ui')
 
 ui.mount(ui.imageButton{
-    image = 'ui/wood-button.png',
-    hoverImage = 'ui/wood-button-hover.png',
-    pressedImage = 'ui/wood-button-pressed.png',
+    image = 'ui/wood_button.png',
+    hoverImage = 'ui/wood_button_hover.png',
+    pressedImage = 'ui/wood_button_pressed.png',
     text = 'Start',
     scale = 2,
     onClick = function() print('start') end,
@@ -1598,7 +1617,7 @@ ui.mount(ui.combo{
 
 ### ui.segmentedControl(properties)
 
-A row of joined segments of which one is selected, such as a switch between views. A click or a tap picks a segment and reports `change` with the item id as `value`. It takes the focus as a whole: left and right move the selection, skipping disabled segments, and accept moves it to the next segment, starting over after the last one.
+A row of joined segments of which one is selected, such as a switch between views. A click or a tap picks a segment and reports `change` with the item id as `value`. It takes the focus as a whole: left and right move the selection, skipping disabled segments, and accept moves it to the next segment, starting over after the last one. Without a selection, accept picks the first segment that can be picked.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1700,7 +1719,7 @@ end})
 
 ### ui.numberField(properties)
 
-A number between a minimum and a maximum, changed with its minus and plus buttons or typed into the middle. A change reports `change` with the number as `value`. It can take the focus.
+A number between a minimum and a maximum, changed with its minus and plus buttons or typed into the middle. A change reports `change` with the number as `value`. A typed number inside the range reports it at once, and one outside it waits until the player submits or leaves the field, which brings it into the range. Text that is not a finite number, such as `nan`, changes nothing, and the field shows the number again once the editing ends. It can take the focus.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1728,13 +1747,13 @@ A track with a knob the player drags. A change reports `change` with the number 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `value` | number | `0` | The number, kept between `min` and `max`. |
-| `min` | number | `0` | Value at the start of the track. |
-| `max` | number | `1` | Value at the end of the track. |
-| `step` | number, at least 0 | `0` | Snaps the value to multiples of the step once the player moves it. `0` lets it move freely. |
-| `showValue` | boolean | `false` | Shows the value after the track. |
+| `min` | number from -1e15 to 1e15 | `0` | Value at the start of the track. |
+| `max` | number from -1e15 to 1e15 | `1` | Value at the end of the track. |
+| `step` | number, at least 0 | `0` | Snaps the value to multiples of the step once the player moves it, with the pointer or with left and right. `0` lets it move freely. |
+| `showValue` | boolean | `false` | Shows the value after the track, in the room the wider of `min` and `max` takes. |
 | `decimals` | integer from 0 to 6 | `2` | Decimals of the shown value. |
 
-Only the player changes the value, so a slider reports `change` only when the player moves it, and a `value` given off its step stays as it was given until then. A minimum that is not smaller than the maximum raises `slider.min must be smaller than max.`.
+Only the player changes the value, so a slider reports `change` only when the player moves it, and a `value` given off its step stays as it was given until then. A minimum that is not smaller than the maximum raises `slider.min must be smaller than max.`, and an end outside the range raises `slider.min is out of range.` or `slider.max is out of range.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -1752,13 +1771,13 @@ A track with two knobs that pick a range, such as a price filter. The pointer dr
 | --- | --- | --- | --- |
 | `low` | number | `0` | Start of the range. |
 | `high` | number | `1` | End of the range, at least `low`. |
-| `min` | number | `0` | Value at the start of the track. |
-| `max` | number | `1` | Value at the end of the track. |
+| `min` | number from -1e15 to 1e15 | `0` | Value at the start of the track. |
+| `max` | number from -1e15 to 1e15 | `1` | Value at the end of the track. |
 | `step` | number, at least 0 | `0` | Snaps both ends to multiples of the step. `0` lets them move freely, and left and right then move by a twentieth of the track. |
-| `showValue` | boolean | `false` | Shows the range after the track. |
+| `showValue` | boolean | `false` | Shows the range after the track, in the room the wider of `min` and `max` takes at both ends. |
 | `decimals` | integer from 0 to 6 | `2` | Decimals of the shown range. |
 
-A minimum that is not smaller than the maximum raises `rangeSlider.min must be smaller than max.`, and a `low` above `high` raises `rangeSlider.low must not be greater than high.`.
+A minimum that is not smaller than the maximum raises `rangeSlider.min must be smaller than max.`, an end of the track outside its range raises `rangeSlider.min is out of range.` or `rangeSlider.max is out of range.`, and a `low` above `high` raises `rangeSlider.low must not be greater than high.`. A `set` of one end past the other end, where the player moved it, takes that end along.
 
 ```lua
 local ui = require('haylen.ui')
@@ -2077,10 +2096,10 @@ A column is a table with these keys.
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `text` | text | none | Header text. |
-| `width` | non-negative number | shared | Fixed width of the column. |
+| `width` | number from 0 to 10000 | shared | Fixed width of the column. |
 | `align` | string | `'start'` | `'start'`, `'center'` or `'end'` for the header and the cells. |
 
-A row is a table with a unique `id` string and a `cells` list of texts, one per column. Rows without an id or cells raise `table.rows must hold objects with an id and a list of cells.`, a repeated id raises `table.rows uses the row id <id> more than once.`, an unknown column key raises `Unknown key '<key>' in table.columns.`, and an unknown column alignment raises `table.columns has an align other than start, center or end.`.
+A row is a table with a unique `id` string and a `cells` list of texts, one per column. Rows without an id or cells raise `table.rows must hold objects with an id and a list of cells.`, a repeated id raises `table.rows uses the row id <id> more than once.`, an unknown column key raises `Unknown key '<key>' in table.columns.`, a column width out of range raises `table.columns has a width that is not a number from 0 to 10000.`, and an unknown column alignment raises `table.columns has an align other than start, center or end.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -2193,7 +2212,7 @@ ui.mount(ui.settingsForm{
 
 ### ui.dialog(properties)
 
-A modal window over the whole screen with a title, a message, optional children and answer buttons. It takes no room in the layout that holds it. The last button starts with the focus. Pressing a button closes the dialog and reports `answer` with the button id as `button`. Escape or the east gamepad button closes a dismissible dialog and reports `dismiss`. A dialog the player closed shows again when `set` sets `open = true`.
+A modal window over the whole screen with a title, a message, optional children and answer buttons. It takes no room in the layout that holds it. The last button starts with the focus. Pressing a button closes the dialog and reports `answer` with the button id as `button`. Escape or the east gamepad button closes a dismissible dialog and reports `dismiss`. A dialog the player closed shows again when `set` sets `open = true`. A dialog stays inside the screen, and its title, message and children scroll above the buttons when they are taller than it. One dialog shows at a time, so a dialog that opens while another one shows waits until that one closes. A dialog closes when its node stops drawing, because it, a node around it or its document was hidden, and shows again once it draws while `open` is still `true`. The popups of menu buttons, popovers, combos, color fields and context menus close the same way.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -2255,7 +2274,7 @@ A floating window with a title bar that the pointer drags around, holding a colu
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `title` | text | none | Title in the title bar. |
-| `x`, `y` | number | the middle of the safe area | Position of the top left corner from the top left of the screen. Setting them moves the window there. |
+| `x`, `y` | number | the middle of the safe area | Position of the top left corner from the top left of the screen. Setting them moves the window there, and setting only one keeps the other coordinate where the window is. |
 | `open` | boolean | `true` | Shows the window. A window the player closed shows again when `set` sets `open = true`. |
 | `closable` | boolean | `false` | Adds the close button to the title bar and lets `ui_cancel` close the window. |
 | `movable` | boolean | `true` | Lets the pointer drag the title bar. |
@@ -2295,7 +2314,7 @@ ui.mount(ui.contextMenu{
 
 ## Touch controls
 
-On-screen controls drive the virtual buttons and sticks of the action layer, which [haylen.input](input.md) actions read through the bindings `virtual:<name>` and `virtual_stick:<name>`. Every control follows its own finger, so a stick and several buttons work at the same time, and the mouse drives them when no finger is down. They keep the pointer from reaching the app behind them. A control that stops drawing, because it, a container around it or its document was hidden or removed, releases the virtual button or stick it held in that frame. A touch button that was pressed then reports `release`, unless its document was unmounted, and a control that shows again under a finger that is still down waits for a new press.
+On-screen controls drive the virtual buttons and sticks of the action layer, which [haylen.input](input.md) actions read through the bindings `virtual:<name>` and `virtual_stick:<name>`. Every control follows its own finger, so a stick and several buttons work at the same time, and the mouse drives them when no finger is down. They keep the pointer from reaching the app behind them. A control that stops drawing, because it, a container around it or its document was hidden or removed, releases the virtual button or stick it held in that frame. A touch button that was pressed then reports `release`, unless its document was unmounted, and a control that shows again under a finger that is still down waits for a new press. A control with `enabled = false` lets go the same way, ignores fingers and the mouse, and waits for a new press once it is enabled again.
 
 ### ui.touchStick(properties)
 

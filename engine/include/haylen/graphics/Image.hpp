@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "haylen/math/Color.hpp"
-#include "haylen/math/Rect.hpp"
 
 namespace haylen::graphics {
 
@@ -38,11 +37,6 @@ class Image final {
 
     [[nodiscard]] math::Color getPixel(int x, int y) const noexcept;
     void setPixel(int x, int y, math::Color color) noexcept;
-    void blit(const Image& source, int x, int y);
-    [[nodiscard]] Image crop(const math::Rect& area) const;
-
-    // Returns the smallest rectangle that contains every pixel whose alpha is above the threshold.
-    [[nodiscard]] math::Rect getOpaqueBounds(std::uint8_t alphaThreshold = 0) const noexcept;
 
   private:
     [[nodiscard]] static std::size_t byteCount(int columns, int rows);

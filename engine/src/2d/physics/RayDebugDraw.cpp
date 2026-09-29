@@ -8,7 +8,11 @@ const math::Color RayDebugDraw::kMissColor = math::Color::fromHex(0x66CC66CCU);
 const math::Color RayDebugDraw::kHitColor = math::Color::fromHex(0xFF5544EEU);
 const math::Color RayDebugDraw::kNormalColor = math::Color::fromHex(0x55AAFFEEU);
 
-void RayDebugDraw::add(math::Vec2 from, math::Vec2 to, const std::optional<Hit>& hit) {
+void RayDebugDraw::add(std::uint64_t frameIndex, math::Vec2 from, math::Vec2 to, const std::optional<Hit>& hit) {
+    if (frameIndex != frame) {
+        rays.clear();
+        frame = frameIndex;
+    }
     rays.push_back({.from = from, .to = to, .hit = hit});
 }
 

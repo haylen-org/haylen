@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -111,6 +112,35 @@ TEST(EmitterTest, RunsEmissionCyclesWithBurstsAndLoops) {
     EXPECT_THROW(particles2d::Emitter({.texture = texture, .prewarm = -1.0F}), std::invalid_argument);
 }
 
+TEST(EmitterTest, KeepsHugeRatesBurstsAndFramesWithinItsRoom) {
+    test::EngineFixture fixture;
+    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
+
+    // Spawning stops at maxParticles at once, however many particles a burst or a rate asks for.
+    particles2d::Emitter flood({.texture = texture, .rate = 1.0e30F, .maxParticles = 5, .lifetime = {10.0F, 10.0F}});
+    flood.update(0.1F);
+    EXPECT_EQ(flood.getCount(), 5U);
+    flood.clear();
+    flood.burst(std::numeric_limits<std::size_t>::max());
+    EXPECT_EQ(flood.getCount(), 5U);
+
+    // A frame far longer than the loop counts its whole loops at once, bursts included.
+    particles2d::Emitter looping({.texture = texture, .rate = 0.0F, .bursts = {{.time = 0.0F, .count = 1}}, .duration = 0.01F, .loop = true, .maxParticles = 1000, .lifetime = {1.0e7F, 1.0e7F}});
+    looping.update(1.0e6F);
+    EXPECT_EQ(looping.getCount(), 1000U);
+    EXPECT_GE(looping.getCycleTime(), 0.0F);
+    EXPECT_LE(looping.getCycleTime(), 0.01F);
+
+    // Values that cannot end in a frame are rejected: infinite rates and durations, loops shorter than a millisecond, prewarm times beyond a minute and more than a million particles.
+    const float infinity = std::numeric_limits<float>::infinity();
+    EXPECT_THROW(particles2d::Emitter({.texture = texture, .rate = infinity}), std::invalid_argument);
+    EXPECT_THROW(particles2d::Emitter({.texture = texture, .duration = infinity}), std::invalid_argument);
+    EXPECT_THROW(particles2d::Emitter({.texture = texture, .duration = 1.0e-10F, .loop = true}), std::invalid_argument);
+    EXPECT_THROW(particles2d::Emitter({.texture = texture, .prewarm = 61.0F}), std::invalid_argument);
+    EXPECT_THROW(particles2d::Emitter({.texture = texture, .maxParticles = 1000001}), std::invalid_argument);
+    EXPECT_NO_THROW(particles2d::Emitter({.texture = texture, .duration = 0.001F, .loop = true, .prewarm = 60.0F}));
+}
+
 TEST(EmitterTest, PrewarmsConesAndAcceleratesAroundTheEmitter) {
     test::EngineFixture fixture;
     const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
@@ -176,6 +206,8 @@ TEST(EffectTest, LoadsEffectFilesAsAssets) {
             "spin": [-2, 2], "colors": ["#FFFFE080", "#00FF4000"], "shape": "cone", "shapeSize": [6, 0], "localSpace": true, "layer": 4, "depth": 0.5, "blend": "additive"
         })"},
         {"content/effects/broken.particles", R"({"texture": "../images/spark.png", "sped": 3})"},
+        {"content/effects/negative.particles", R"({"texture": "../images/spark.png", "bursts": [{"time": 0, "count": -1}]})"},
+        {"content/effects/unbounded.particles", R"({"texture": "../images/spark.png", "maxParticles": -1})"},
         {"content/images/spark.png", std::string(png.begin(), png.end())},
     });
 
@@ -191,6 +223,20 @@ TEST(EffectTest, LoadsEffectFilesAsAssets) {
     EXPECT_EQ(effect->config.order.layer, 4);
     EXPECT_EQ(fixture.engine().getAssets().getTypeForPath("effects/sparks.particles"), "particles");
     EXPECT_THROW((void)fixture.engine().getAssets().load("particles", "effects/broken.particles"), std::invalid_argument);
+
+    // Counts are integers of at least 0, so a negative count never turns into a huge one.
+    // clang-format off
+    const auto failure = [&fixture](const std::string& path) {
+        try {
+            (void)fixture.engine().getAssets().load("particles", path);
+        } catch (const std::invalid_argument& error) {
+            return std::string(error.what());
+        }
+        return std::string("no error");
+    };
+    // clang-format on
+    EXPECT_EQ(failure("effects/negative.particles"), "The particle effect value 'count' needs an integer of at least 0.");
+    EXPECT_EQ(failure("effects/unbounded.particles"), "The particle effect value 'maxParticles' needs an integer of at least 0.");
 
     // clang-format off
     fixture.runLua(R"(
@@ -255,6 +301,7 @@ TEST(Particles2DLuaTest, CreatesAndConfiguresEmittersFromLua) {
     EXPECT_EQ(fixture.lua("local positions = fire:positions() return #positions == fire.count and math.abs(positions[1].x - 10) < 40"), "true");
     fixture.runLua("fire:clear()");
     EXPECT_EQ(fixture.lua("return fire.count"), "0");
+    EXPECT_EQ(fixture.lua("fire:burst(1e12) return fire.count"), "50");
 
     EXPECT_NE(fixture.lua("particles2d.newEmitter({texture = graphics.whiteTexture(), sped = 3})").find("Unknown option 'sped'"), std::string::npos);
     EXPECT_NE(fixture.lua("particles2d.newEmitter({texture = graphics.whiteTexture(), shape = 'fan'})").find("unknown value 'fan'"), std::string::npos);

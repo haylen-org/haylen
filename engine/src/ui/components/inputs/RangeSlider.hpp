@@ -31,7 +31,7 @@ class RangeSlider final : public Component {
     // Left and right move a range without a step by a twentieth of its span.
     static constexpr double kFocusSteps = 20.0;
 
-    [[nodiscard]] double snap(double candidate) const noexcept;
+    [[nodiscard]] float measureLabel(Context& context) const;
     [[nodiscard]] float toPosition(const Context& context, double amount, const math::Rect& track) const noexcept;
     [[nodiscard]] bool follow(Context& context, const math::Rect& bounds, const math::Rect& track);
     void drawKnob(Context& context, const math::Rect& bounds, float x, bool active, bool pressed) const;

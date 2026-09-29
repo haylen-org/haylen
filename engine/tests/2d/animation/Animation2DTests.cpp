@@ -218,6 +218,25 @@ TEST_F(AnimatorTest, QueuesAfterTheCycleInProgress) {
     EXPECT_TRUE(animator.isPlaying());
 }
 
+TEST_F(AnimatorTest, QueuesAFinishedOneShotAnimationAgainFromItsStart) {
+    test::EngineFixture fixture;
+    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 16));
+    animation2d::Animator animator;
+    animator.add("attack", makeStrip(texture, animation2d::Animation::Loop::Once));
+    int finished = 0;
+    animator.onFinish = [&finished](std::string_view) { ++finished; };
+
+    animator.play("attack");
+    animator.update(1.0F);
+    ASSERT_TRUE(animator.isFinished());
+    animator.queue("attack");
+    EXPECT_TRUE(animator.isPlaying());
+    EXPECT_FALSE(animator.isFinished());
+    EXPECT_EQ(animator.getFrame(), 0U);
+    animator.update(1.0F);
+    EXPECT_EQ(finished, 2);
+}
+
 TEST_F(SpriteAtlasTest, ReadsAsepriteFramesTagsAndSlices) {
     test::EngineFixture fixture;
     const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 32));
@@ -350,6 +369,7 @@ TEST_F(Animation2DLuaTest, AnimatesSpritesFromLua) {
     EXPECT_EQ(fixture.lua("return animation2d.newAnimator().current"), "nil");
     EXPECT_EQ(fixture.lua("animator.onFinish = nil animator.speed = 1 animator:play('slash') animator:queue('run') local before = animator.queued animator:update(0.5) return before .. ' ' .. animator.queued .. ' ' .. animator.current"), "1 0 run");
     EXPECT_EQ(fixture.lua("animator:queue('slash') animator:clearQueue() return animator.queued"), "0");
+    EXPECT_EQ(fixture.lua("animator:play('slash', true) animator:update(5) animator:queue('slash') return animator.frame .. ' ' .. tostring(animator.finished) .. ' ' .. tostring(animator.playing)"), "1 false true");
     EXPECT_EQ(fixture.lua("local a = animator:animation('slash') return a.frameCount .. ' ' .. a.loop .. ' ' .. string.format('%.2f %.2f', run.cycleDuration, animation2d.grid(sheet, {frameWidth = 16, frameHeight = 16, loop = 'ping_pong'}).cycleDuration)"), "2 once 0.80 1.40");
     EXPECT_NE(fixture.lua("animator:animation('fly')").find("Unknown animation: fly"), std::string::npos);
 

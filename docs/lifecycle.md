@@ -227,7 +227,7 @@ A failed load, an error in `load`, a rejected promise it returned or an asset of
 - **Background and focus loss**: a halted app lets no time pass, so a change stands still in its phase and its loading delay and minimum time wait too. Its load keeps going, since Varn's event loop still runs, promises still settle and the worker pools still decode, but an app in the background creates no GPU resources, so decoded assets wait for it to come back. Once the app runs again, the finished load settles in the next update and the change goes on.
 - **Restart and stop**: the engine removes every scene, the scene that is still loading and the preloaded scenes unload too, their tasks are cancelled and the pending asset callbacks are dropped, so a hot reload in the middle of a load leaves nothing behind.
 
-Everything a scene creates belongs to it and ends when it unloads, so no timer, tween, listener, UI document or coroutine of a scene ever runs once it is gone, as [Subscription scopes](#subscription-scopes) explains.
+Everything a scene creates with itself as the owner belongs to it and ends when it unloads, so no timer, tween, listener, UI document or coroutine of a scene ever runs once it is gone, as [Subscription scopes](#subscription-scopes) explains.
 
 ```lua
 local async = require('async')
@@ -387,7 +387,7 @@ print(haylen.autoloads.music == music)
 
 ## Subscription scopes
 
-A listener, a timer or a tween that outlives the thing it belongs to keeps running code for something that is gone. Owners prevent that. Every function that registers something takes an `owner` option, a table or a userdata, and ends what it registered when the owner ends: `events.on`, `signal:connect`, `timer.after`, `timer.every`, every tween of `haylen.tween` and `ui.mount`. `scene.spawn(owner, fn)` runs a task that the owner holds, which stops for good with it, so it never resumes even when a promise it waits for settles later.
+A listener, a timer or a tween that outlives the thing it belongs to keeps running code for something that is gone. Owners prevent that. Every function that registers something takes an `owner` option, a table or a userdata, and ends what it registered when the owner ends: `events.on`, `signal:connect`, `socket:on`, `timer.after`, `timer.every`, every tween of `haylen.tween`, `ui.mount` and `ui.onEvent`. `scene.spawn(owner, fn)` runs a task that the owner holds, which stops for good with it, so it never resumes even when a promise it waits for settles later.
 
 | Owner | Ends |
 | --- | --- |

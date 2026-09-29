@@ -24,6 +24,11 @@ template <> struct Type<procedural2d::Maze> {
     using Storage = procedural2d::Maze;
 };
 
+template <> struct Type<procedural2d::WaveFunctionCollapse::Rules> {
+    static constexpr const char* name = "haylen.WaveFunctionCollapseRules";
+    using Storage = procedural2d::WaveFunctionCollapse::Rules;
+};
+
 template <> struct EnumNames<procedural2d::Dungeon::Method> {
     static std::optional<procedural2d::Dungeon::Method> fromName(std::string_view name) {
         if (name == "bsp") {
@@ -184,14 +189,14 @@ WaveFunctionCollapse::Options MapGeneratorsLua::readCollapse(lua_State* L, int i
 }
 
 // Rooms and connections count from 1 like Lua lists.
-void MapGeneratorsLua::pushDungeon(lua_State* L, Dungeon::Result dungeon) {
+void MapGeneratorsLua::pushDungeon(lua_State* L, Dungeon::Result result) {
     lua_createtable(L, 0, 3);
-    lua::Userdata::emplace<spatial2d::CellGrid>(L, std::move(dungeon.grid));
+    lua::Userdata::emplace<spatial2d::CellGrid>(L, std::move(result.grid));
     lua_setfield(L, -2, "grid");
 
-    lua_createtable(L, static_cast<int>(dungeon.rooms.size()), 0);
-    for (std::size_t index = 0; index < dungeon.rooms.size(); ++index) {
-        const Dungeon::Room& room = dungeon.rooms[index];
+    lua_createtable(L, static_cast<int>(result.rooms.size()), 0);
+    for (std::size_t index = 0; index < result.rooms.size(); ++index) {
+        const Dungeon::Room& room = result.rooms[index];
         lua_createtable(L, 0, 4);
         lua_pushinteger(L, room.x);
         lua_setfield(L, -2, "x");
@@ -205,12 +210,12 @@ void MapGeneratorsLua::pushDungeon(lua_State* L, Dungeon::Result dungeon) {
     }
     lua_setfield(L, -2, "rooms");
 
-    lua_createtable(L, static_cast<int>(dungeon.connections.size()), 0);
-    for (std::size_t index = 0; index < dungeon.connections.size(); ++index) {
+    lua_createtable(L, static_cast<int>(result.connections.size()), 0);
+    for (std::size_t index = 0; index < result.connections.size(); ++index) {
         lua_createtable(L, 2, 0);
-        lua_pushinteger(L, static_cast<lua_Integer>(dungeon.connections[index].first) + 1);
+        lua_pushinteger(L, static_cast<lua_Integer>(result.connections[index].first) + 1);
         lua_rawseti(L, -2, 1);
-        lua_pushinteger(L, static_cast<lua_Integer>(dungeon.connections[index].second) + 1);
+        lua_pushinteger(L, static_cast<lua_Integer>(result.connections[index].second) + 1);
         lua_rawseti(L, -2, 2);
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
@@ -241,6 +246,21 @@ int MapGeneratorsLua::cavesAsync(lua_State* L) {
         return CellularAutomaton::generate(options, random);
     }, [](lua_State* state, spatial2d::CellGrid grid) { lua::Userdata::emplace<spatial2d::CellGrid>(state, std::move(grid)); });
     // clang-format on
+}
+
+// Smooths any grid with cavesStep(grid[, {birthLimit = 5, survivalLimit = 4, solidBorder = true}]) and returns the smoothed grid.
+int MapGeneratorsLua::cavesStep(lua_State* L) {
+    const auto& grid = lua::Userdata::check<spatial2d::CellGrid>(L, 1);
+    CellularAutomaton::Options options;
+    if (!lua_isnoneornil(L, 2)) {
+        luaL_checktype(L, 2, LUA_TTABLE);
+        lua::Table::checkFields(L, 2, {kStepFields});
+        lua::Table::readField(L, 2, "birthLimit", options.birthLimit);
+        lua::Table::readField(L, 2, "survivalLimit", options.survivalLimit);
+        lua::Table::readField(L, 2, "solidBorder", options.solidBorder);
+    }
+    lua::Userdata::emplace<spatial2d::CellGrid>(L, CellularAutomaton::step(grid, options));
+    return 1;
 }
 
 int MapGeneratorsLua::drunkardWalk(lua_State* L) {
@@ -294,6 +314,14 @@ int MapGeneratorsLua::maze(lua_State* L) {
     return 1;
 }
 
+// Creates a maze with every wall closed with newMaze(width, height).
+int MapGeneratorsLua::newMaze(lua_State* L) {
+    const auto width = lua::Stack::read<int>(L, 1);
+    const auto height = lua::Stack::read<int>(L, 2);
+    lua::Userdata::emplace<Maze>(L, width, height);
+    return 1;
+}
+
 int MapGeneratorsLua::mazeAsync(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     lua::Table::checkFields(L, 1, {kMazeFields});
@@ -334,6 +362,40 @@ int MapGeneratorsLua::waveFunctionCollapseAsync(lua_State* L) {
         return WaveFunctionCollapse::generate(rules, options, random);
     }, [](lua_State* state, std::optional<spatial2d::CellGrid> tiles) { pushCollapse(state, std::move(tiles)); });
     // clang-format on
+}
+
+// Reads the rules of waveFunctionCollapse into an object with waveFunctionCollapseRules(options), to inspect them or check tile maps against them.
+int MapGeneratorsLua::newRules(lua_State* L) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+    lua::Table::checkFields(L, 1, {kRulesFields});
+    lua::Userdata::emplace<WaveFunctionCollapse::Rules>(L, readRules(L, 1));
+    return 1;
+}
+
+int MapGeneratorsLua::rulesAllowed(lua_State* L) {
+    const auto& rules = lua::Userdata::check<WaveFunctionCollapse::Rules>(L, 1);
+    const auto first = lua::Stack::read<std::size_t>(L, 2);
+    const auto second = lua::Stack::read<std::size_t>(L, 3);
+    lua::Stack::push(L, rules.isAllowed(first, second, lua::Stack::read<WaveFunctionCollapse::Direction>(L, 4)));
+    return 1;
+}
+
+int MapGeneratorsLua::rulesWeight(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<WaveFunctionCollapse::Rules>(L, 1).getWeight(lua::Stack::read<std::size_t>(L, 2)));
+    return 1;
+}
+
+int MapGeneratorsLua::rulesTileCount(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<WaveFunctionCollapse::Rules>(L, 1).getTileCount());
+    return 1;
+}
+
+// Tells whether every pair of neighbors of a tile map follows the rules with rules:valid(grid[, periodic]).
+int MapGeneratorsLua::rulesValid(lua_State* L) {
+    const auto& rules = lua::Userdata::check<WaveFunctionCollapse::Rules>(L, 1);
+    const auto& tiles = lua::Userdata::check<spatial2d::CellGrid>(L, 2);
+    lua::Stack::push(L, WaveFunctionCollapse::isValid(tiles, rules, !lua_isnoneornil(L, 3) && lua::Stack::read<bool>(L, 3)));
+    return 1;
 }
 
 int MapGeneratorsLua::mazeOpenings(lua_State* L) {
@@ -424,11 +486,12 @@ int MapGeneratorsLua::wang(lua_State* L) {
 
 void MapGeneratorsLua::install(lua_State* L) {
     lua::ClassBuilder<Maze>(L).function("openings", &lua::Binding::native<&mazeOpenings>).function("open", &lua::Binding::native<&mazeOpen>).function("toGrid", &lua::Binding::native<&mazeToGrid>).property("width", &mazeWidth).property("height", &mazeHeight).property("passageCount", &mazePassageCount).install();
+    lua::ClassBuilder<WaveFunctionCollapse::Rules>(L).function("allowed", &lua::Binding::native<&rulesAllowed>).function("weight", &lua::Binding::native<&rulesWeight>).function("valid", &lua::Binding::native<&rulesValid>).property("tileCount", &rulesTileCount).install();
 }
 
 void MapGeneratorsLua::addFunctions(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"caves", &lua::Binding::native<&caves>}, {"cavesAsync", &lua::Binding::native<&cavesAsync>}, {"drunkardWalk", &lua::Binding::native<&drunkardWalk>}, {"drunkardWalkAsync", &lua::Binding::native<&drunkardWalkAsync>}, {"dungeon", &lua::Binding::native<&dungeon>}, {"dungeonAsync", &lua::Binding::native<&dungeonAsync>}, {"maze", &lua::Binding::native<&maze>}, {"mazeAsync", &lua::Binding::native<&mazeAsync>}, {"waveFunctionCollapse", &lua::Binding::native<&waveFunctionCollapse>}, {"waveFunctionCollapseAsync", &lua::Binding::native<&waveFunctionCollapseAsync>}, {"mask4", &lua::Binding::native<&mask4>}, {"mask8", &lua::Binding::native<&mask8>}, {"blobIndex", &lua::Binding::native<&blobIndex>}, {"autotile4", &lua::Binding::native<&autotile4>}, {"autotile8", &lua::Binding::native<&autotile8>}, {"wang", &lua::Binding::native<&wang>}, {nullptr, nullptr},
+        {"caves", &lua::Binding::native<&caves>}, {"cavesAsync", &lua::Binding::native<&cavesAsync>}, {"cavesStep", &lua::Binding::native<&cavesStep>}, {"drunkardWalk", &lua::Binding::native<&drunkardWalk>}, {"drunkardWalkAsync", &lua::Binding::native<&drunkardWalkAsync>}, {"dungeon", &lua::Binding::native<&dungeon>}, {"dungeonAsync", &lua::Binding::native<&dungeonAsync>}, {"maze", &lua::Binding::native<&maze>}, {"mazeAsync", &lua::Binding::native<&mazeAsync>}, {"newMaze", &lua::Binding::native<&newMaze>}, {"waveFunctionCollapse", &lua::Binding::native<&waveFunctionCollapse>}, {"waveFunctionCollapseAsync", &lua::Binding::native<&waveFunctionCollapseAsync>}, {"waveFunctionCollapseRules", &lua::Binding::native<&newRules>}, {"mask4", &lua::Binding::native<&mask4>}, {"mask8", &lua::Binding::native<&mask8>}, {"blobIndex", &lua::Binding::native<&blobIndex>}, {"autotile4", &lua::Binding::native<&autotile4>}, {"autotile8", &lua::Binding::native<&autotile8>}, {"wang", &lua::Binding::native<&wang>}, {nullptr, nullptr},
     };
     luaL_setfuncs(L, functions, 0);
     for (const auto& [name, side] : {std::pair{"north", Maze::kNorth}, std::pair{"east", Maze::kEast}, std::pair{"south", Maze::kSouth}, std::pair{"west", Maze::kWest}}) {

@@ -53,7 +53,7 @@ The file uses the keys of the emitter options below, except `seed`, with JSON va
 | `maxParticles`, `layer` | Integers. |
 | `loop`, `localSpace` | Booleans. |
 
-Errors while loading: `Unknown particle effect option 'name' in path`, `Invalid particle color: text`, `Unknown particle emitter shape: name` and `Unknown blend mode: name`, plus the validation errors listed under emitter options.
+Errors while loading: `Unknown particle effect option 'name' in path`, `Invalid particle color: text`, `Unknown particle emitter shape: name`, `Unknown blend mode: name` and, for a `maxParticles` or a burst `count` that is not an integer of at least 0, `The particle effect value 'name' needs an integer of at least 0.`, plus the validation errors listed under emitter options.
 
 ```json
 {
@@ -114,12 +114,12 @@ local blue = particles2d.newEmitter(sparks, {colors = {'#FFA0E0FF', '#002080FF'}
 | --- | --- | --- | --- |
 | `texture` | Texture | required | Particle image. |
 | `frames` | table | none | Source Rects played across each particle's lifetime. Without frames each particle shows the whole texture. |
-| `rate` | number | `20` | Particles spawned per second while emitting. Fractional rates carry over between frames. |
+| `rate` | number | `20` | Particles spawned per second while emitting, a finite number of at least 0. Fractional rates carry over between frames. |
 | `bursts` | table | none | List of `{time = seconds, count = particles}`. Each burst spawns its particles when the emission cycle reaches its time. |
-| `duration` | number | `0` | Length of the emission cycle in seconds. 0 emits until the app stops the emitter, and each burst then fires once. |
-| `loop` | boolean | `false` | Starts the cycle again when it ends. Needs a duration. Without `loop` the emitter stops emitting at the end of the cycle. |
-| `prewarm` | number | `0` | Seconds simulated on the first update, so effects such as smoke start fully grown. |
-| `maxParticles` | integer | `256` | Upper limit of live particles. New particles are skipped while the emitter is full. |
+| `duration` | number | `0` | Length of the emission cycle in seconds, a finite number of at least 0. 0 emits until the app stops the emitter, and each burst then fires once. |
+| `loop` | boolean | `false` | Starts the cycle again when it ends. Needs a duration of at least 0.001 seconds. A frame longer than the cycle runs every loop it spans, firing the bursts of each. Without `loop` the emitter stops emitting at the end of the cycle. |
+| `prewarm` | number | `0` | Seconds simulated on the first update, from 0 to 60, so effects such as smoke start fully grown. |
+| `maxParticles` | integer | `256` | Upper limit of live particles, from 1 to 1000000. New particles are skipped while the emitter is full, however many a burst or the rate asks for. |
 | `lifetime` | range | `1` | Seconds each particle lives. |
 | `speed` | range | `{50, 100}` | Initial speed in units per second. |
 | `direction` | number | `-1.5708` | Emission angle in radians. The default points up. |
@@ -141,8 +141,10 @@ local blue = particles2d.newEmitter(sparks, {colors = {'#FFA0E0FF', '#002080FF'}
 A range is a number or a `{min, max}` pair, and each particle picks its own value inside it. Unknown keys raise `Unknown option 'name'.`, and an unknown shape raises an error that contains `unknown value 'name'`. The configuration is validated and these errors are raised:
 
 - `A particle emitter needs a texture, room for particles and at least one color.`
-- `Particles need a non-negative rate and a positive lifetime range.`
-- `Particle durations and prewarm times cannot be negative, and a looping emitter needs a duration.`
+- `A particle emitter holds at most 1000000 particles.`
+- `Particles need a finite, non-negative rate and a positive lifetime range.`
+- `Particle durations must be finite and not negative, and prewarm times must be from 0 to 60 seconds.`
+- `A looping particle emitter needs a duration of at least 0.001 seconds.`
 - `Particle bursts need a time inside the emission cycle.`
 
 ```lua
@@ -290,7 +292,7 @@ print(count) -- 400
 
 ### emitter:burst(count)
 
-Spawns `count` particles at once, up to `maxParticles`.
+Spawns `count` particles at once, up to `maxParticles`, so a huge count simply fills the emitter.
 
 ```lua
 local graphics = require('haylen.graphics')

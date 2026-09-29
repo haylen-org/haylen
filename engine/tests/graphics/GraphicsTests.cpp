@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <cstddef>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -9,6 +11,7 @@
 #include "haylen/graphics/BlendMode.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
+#include "haylen/graphics/Viewport.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen {
@@ -31,18 +34,9 @@ TEST(ImageTest, CreatesDecodesAndEditsPixels) {
     EXPECT_THROW((void)graphics::Image::decode(test::bytes("not an image")), std::runtime_error);
     EXPECT_THROW(graphics::Image(2, 2, std::vector<std::uint8_t>(3)), std::invalid_argument);
     EXPECT_THROW(graphics::Image(-1, 2), std::invalid_argument);
-}
 
-TEST(ImageTest, BlitsCropsAndFindsOpaqueBounds) {
-    graphics::Image canvas(8, 8);
-    canvas.blit(graphics::Image(2, 3, math::Color::white()), 3, 2);
-    canvas.blit(graphics::Image(4, 4, math::Color::white()), 20, 20);
-    EXPECT_EQ(canvas.getOpaqueBounds(), (math::Rect{3.0F, 2.0F, 2.0F, 3.0F}));
-    EXPECT_EQ(graphics::Image(4, 4).getOpaqueBounds(), math::Rect{});
-
-    const graphics::Image cropped = canvas.crop({3.0F, 2.0F, 2.0F, 3.0F});
-    EXPECT_EQ(cropped.getWidth(), 2);
-    EXPECT_EQ(cropped.getPixel(1, 2), math::Color::white());
+    // A size whose bytes no pointer difference can span fails before any pixel is allocated.
+    EXPECT_THROW(graphics::Image(std::numeric_limits<int>::max(), std::numeric_limits<int>::max()), std::invalid_argument);
 }
 
 TEST(DeviceTest, CreatesReplacesAndReleasesResources) {
@@ -68,8 +62,15 @@ TEST(DeviceTest, CreatesReplacesAndReleasesResources) {
     device.replaceAlphaTexture(alpha, 4, 4, std::vector<std::uint8_t>(16, 0));
     EXPECT_EQ(alpha.getHeight(), 4);
     EXPECT_THROW((void)device.createAlphaTexture(2, 2, std::vector<std::uint8_t>(3)), std::invalid_argument);
+    EXPECT_THROW(device.replaceAlphaTexture(alpha, 4, 4, std::vector<std::uint8_t>(3)), std::invalid_argument);
+    EXPECT_EQ(alpha.getHeight(), 4);
     EXPECT_THROW((void)device.createTexture(graphics::Image(0, 0)), std::invalid_argument);
     EXPECT_THROW((void)device.createRenderTarget(1, 1 << 20), std::invalid_argument);
+
+    // A texture of one color checks its size before its pixels exist.
+    EXPECT_EQ(device.createTexture(3, 2, math::Color::white()).getSize(), math::Vec2(3.0F, 2.0F));
+    EXPECT_THROW((void)device.createTexture(1 << 20, 1 << 20, math::Color::white()), std::invalid_argument);
+    EXPECT_THROW((void)device.createTexture(0, 2, math::Color::white()), std::invalid_argument);
 
     const graphics::RenderTarget target = device.createRenderTarget(64, 32);
     EXPECT_TRUE(target.isValid());
@@ -107,6 +108,44 @@ TEST(DeviceTest, ReportsAFullTexturePool) {
     textures.clear();
     device.collectGarbage();
     EXPECT_TRUE(device.createTexture(pixel).isValid());
+}
+
+TEST(DeviceTest, ReportsAFullPipelinePool) {
+    test::EngineFixture fixture;
+    sg_shader_desc shaderDesc{};
+    shaderDesc.label = "empty";
+    const sg_shader shader = graphics::Gpu::makeShader(shaderDesc);
+    sg_pipeline_desc pipelineDesc{};
+    pipelineDesc.shader = shader;
+    pipelineDesc.label = "empty";
+
+    std::vector<sg_pipeline> pipelines;
+    std::string error;
+    try {
+        while (pipelines.size() <= static_cast<std::size_t>(graphics::Gpu::kPipelinePoolSize)) {
+            pipelines.push_back(graphics::Gpu::makePipeline(pipelineDesc));
+        }
+    } catch (const std::runtime_error& failure) {
+        error = failure.what();
+    }
+    EXPECT_EQ(error, "The graphics device has no room for another pipeline. At most 2048 pipelines can exist at once.");
+    EXPECT_LE(pipelines.size(), static_cast<std::size_t>(graphics::Gpu::kPipelinePoolSize));
+
+    for (const sg_pipeline pipeline : pipelines) {
+        sg_destroy_pipeline(pipeline);
+    }
+    sg_destroy_shader(shader);
+}
+
+TEST(ViewportTest, PixelPerfectShrinksByWholeDivisorsOnSmallFramebuffers) {
+    graphics::Viewport viewport;
+    viewport.update(math::Vec2(800.0F, 600.0F), math::Vec2(1920.0F, 1080.0F), graphics::Viewport::ScalingPolicy::PixelPerfect);
+    EXPECT_EQ(viewport.getPixelRect(), (math::Rect{80.0F, 120.0F, 640.0F, 360.0F}));
+    EXPECT_EQ(viewport.getVisibleRect(), (math::Rect{0.0F, 0.0F, 1920.0F, 1080.0F}));
+    EXPECT_EQ(viewport.getPixelsPerUnit(), math::Vec2(1.0F / 3.0F, 1.0F / 3.0F));
+
+    viewport.update(math::Vec2(960.0F, 540.0F), math::Vec2(1920.0F, 1080.0F), graphics::Viewport::ScalingPolicy::PixelPerfect);
+    EXPECT_EQ(viewport.getPixelRect(), (math::Rect{0.0F, 0.0F, 960.0F, 540.0F}));
 }
 
 TEST(GraphicsNamesTest, ParsesBlendFilterAndWrapNames) {

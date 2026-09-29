@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <misc/cpp/imgui_stdlib.h>
 
 #include "haylen/core/Engine.hpp"
@@ -236,8 +237,12 @@ int ImGuiLua::treeNode(lua_State* L) {
     return 1;
 }
 
+// Dear ImGui does not check this call before it changes the window, so a stray one is caught here.
 int ImGuiLua::treePop(lua_State* L) {
     (void)requireFrame(L);
+    if (ImGui::GetCurrentWindow()->DC.TreeDepth <= 0) {
+        return luaL_error(L, "There is no open tree node for imgui.treePop to close.");
+    }
     ImGui::TreePop();
     return 0;
 }
@@ -332,8 +337,12 @@ int ImGuiLua::tableHeadersRow(lua_State* L) {
     return 0;
 }
 
+// Dear ImGui does not check this call and reads the table it assumes is open, so a stray one is caught here.
 int ImGuiLua::tableNextRow(lua_State* L) {
     (void)requireFrame(L);
+    if (ImGui::GetCurrentTable() == nullptr) {
+        return luaL_error(L, "There is no open table for imgui.tableNextRow to add a row to.");
+    }
     ImGui::TableNextRow();
     return 0;
 }

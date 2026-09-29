@@ -42,8 +42,10 @@ class Dialog final : public Component {
 
     [[nodiscard]] static std::vector<Answer> readButtons(PropertyReader& reader, const core::Json& value);
     [[nodiscard]] static math::Insets getContentPadding(Context& context);
+    [[nodiscard]] static bool isWaiting();
     [[nodiscard]] float getContentHeight(Context& context, float width);
     void drawContent(Context& context, const math::Rect& inner);
+    void drawBody(Context& context);
 
     bool open = false;
     bool dismissible = true;

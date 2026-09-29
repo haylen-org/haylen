@@ -14,7 +14,9 @@ Positions and sizes are design units, with the origin at the top left of the vis
 
 Widgets are identified by their label within the current window. Text after `##` in a label is part of the identity but is not shown, so `'Delete##slot1'` and `'Delete##slot2'` are two buttons that both read `Delete`. `imgui.pushId` scopes the identities of the widgets of a loop.
 
-Misuse that Dear ImGui detects, such as an `endWindow` without a `beginWindow`, raises `Dear ImGui check failed: <check> (<file>:<line>)`. An error inside a scene callback shows the error screen, and the next frame closes whatever the failed script left open.
+Misuse that Dear ImGui detects, such as an `endWindow` without a `beginWindow`, raises `Dear ImGui check failed: <check> (<file>:<line>)` in the call that caused it. `imgui.tableNextRow` outside a table and `imgui.treePop` without an open tree node raise errors of their own, listed with those functions. An error inside a scene callback shows the error screen, and the next frame closes whatever the failed script left open.
+
+A `beginWindow` whose `endWindow` never comes is found only when the frame draws the interface, after every script of the frame has run. It stops the app with `Dear ImGui check failed: (0) && "Missing End()" (<file>:<line>)`, where `Missing EndChild()` or `Missing EndTable()` takes the place of `Missing End()` when a region or a table inside that window was left open too. That error carries no Lua stack trace, so the code to look at is a path that begins a window without ending it. A `beginChild`, `beginTable`, `beginTabBar`, `treeNode` or `pushId` left open inside a window that does end is reported by its `endWindow` instead, with the stack trace of the script.
 
 Functions that edit a value take the current value and return two values: `true` when the player changed it this frame, and the new value. The app keeps the value and passes it back on the next frame.
 
@@ -552,7 +554,7 @@ scene.push({
 
 ### imgui.treePop()
 
-Ends the content of a node `treeNode` opened.
+Ends the content of a node `treeNode` opened. Without an open node in the current window it raises `There is no open tree node for imgui.treePop to close.`.
 
 ```lua
 local imgui = require('haylen.imgui')
@@ -784,7 +786,7 @@ scene.push({
 
 ### imgui.tableNextRow()
 
-Starts a new row of the current table.
+Starts a new row of the current table. Outside a table, including after a `beginTable` that returned `false`, it raises `There is no open table for imgui.tableNextRow to add a row to.`.
 
 ```lua
 local imgui = require('haylen.imgui')

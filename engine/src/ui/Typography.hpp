@@ -32,9 +32,6 @@ class Typography final {
     [[nodiscard]] static float getLineHeight(Context& context, Theme::Font font);
     [[nodiscard]] static math::Vec2 measure(Context& context, Theme::Font font, std::string_view text, float wrapWidth = -1.0F);
 
-    // Draws text with the top of its block at the position, whose lines start from the left or, in a right-to-left UI, end at the wrap width.
-    static void draw(Context& context, Theme::Font font, math::Vec2 position, math::Color color, std::string_view text, float wrapWidth = -1.0F);
-
     // Draws one line centered vertically in the bounds, shortened with an ellipsis when it does not fit.
     static void drawAligned(Context& context, Theme::Font font, const math::Rect& bounds, math::Color color, std::string_view text, Alignment horizontal);
     [[nodiscard]] static std::string elide(Context& context, Theme::Font font, std::string_view text, float width);

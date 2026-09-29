@@ -20,23 +20,31 @@ namespace haylen::ui {
 void RangeSlider::readProperties(PropertyReader& reader) {
     double lowest = minimum;
     double highest = maximum;
-    reader.read("low", low);
-    reader.read("high", high);
-    reader.read("min", lowest);
-    reader.read("max", highest);
+    double from = low;
+    double to = high;
+    reader.read("low", from);
+    reader.read("high", to);
+    reader.read("min", lowest, -Widgets::kSliderLimit, Widgets::kSliderLimit);
+    reader.read("max", highest, -Widgets::kSliderLimit, Widgets::kSliderLimit);
     reader.read("step", step, 0.0);
     reader.read("showValue", showValue);
     reader.read("decimals", decimals, 0, 6);
     if (lowest >= highest) {
         reader.fail("min", "must be smaller than max");
     }
-    if (low > high) {
+    if (reader.has("low") && reader.has("high") && from > to) {
         reader.fail("low", "must not be greater than high");
     }
+
+    // An end given alone that passes the other end, such as where the player left it, takes that end along.
     minimum = lowest;
     maximum = highest;
-    low = std::clamp(low, minimum, maximum);
-    high = std::clamp(high, low, maximum);
+    low = std::clamp(from, minimum, maximum);
+    high = std::clamp(to, minimum, maximum);
+    if (low > high && !reader.has("low")) {
+        low = high;
+    }
+    high = std::max(low, high);
 }
 
 math::Vec2 RangeSlider::measureContent(Context& context, float availableWidth) {
@@ -45,7 +53,7 @@ math::Vec2 RangeSlider::measureContent(Context& context, float availableWidth) {
 
 void RangeSlider::render(Context& context, const math::Rect& bounds) {
     const std::string range = Typography::formatNumber(low, decimals) + " - " + Typography::formatNumber(high, decimals);
-    const float label = showValue ? Typography::measure(context, Theme::Font::Body, Typography::formatNumber(maximum, decimals) + " - " + Typography::formatNumber(maximum, decimals)).x + context.getMetric(Theme::Metric::ItemSpacing) : 0.0F;
+    const float label = showValue ? measureLabel(context) : 0.0F;
     const math::Rect area = context.mirror({bounds.x, bounds.y, std::max(0.0F, bounds.width - label), bounds.height}, bounds);
     const float knob = context.getMetric(Theme::Metric::SliderKnobSize);
     const float trackHeight = context.getMetric(Theme::Metric::SliderTrackHeight);
@@ -62,7 +70,7 @@ void RangeSlider::render(Context& context, const math::Rect& bounds) {
     if (const std::optional<FocusDirection> direction = takeFocusDirection(context)) {
         const double amount = (step > 0.0 ? step : (maximum - minimum) / kFocusSteps) * Widgets::getStep(context, *direction);
         double& moved = highActive ? high : low;
-        const double next = std::clamp(snap(moved + amount), highActive ? low : minimum, highActive ? maximum : high);
+        const double next = std::clamp(Widgets::snap(moved + amount, minimum, maximum, step), highActive ? low : minimum, highActive ? maximum : high);
         changed = changed || next != moved;
         moved = next;
     }
@@ -84,11 +92,12 @@ void RangeSlider::render(Context& context, const math::Rect& bounds) {
     }
 }
 
-double RangeSlider::snap(double candidate) const noexcept {
-    if (step <= 0.0) {
-        return std::clamp(candidate, minimum, maximum);
-    }
-    return std::clamp(minimum + std::round((candidate - minimum) / step) * step, minimum, maximum);
+// The shown range takes the room of its widest text, with both ends as wide as the wider end of the track, so the track keeps its length while the knobs move.
+float RangeSlider::measureLabel(Context& context) const {
+    const std::string first = Typography::formatNumber(minimum, decimals);
+    const std::string last = Typography::formatNumber(maximum, decimals);
+    const std::string& wider = Typography::measure(context, Theme::Font::Body, first).x > Typography::measure(context, Theme::Font::Body, last).x ? first : last;
+    return Typography::measure(context, Theme::Font::Body, wider + " - " + wider).x + context.getMetric(Theme::Metric::ItemSpacing);
 }
 
 // The range grows toward the end of the UI, the left of a right-to-left UI.
@@ -132,7 +141,7 @@ bool RangeSlider::follow(Context& context, const math::Rect& bounds, const math:
     }
 
     const float along = context.isRightToLeft() ? track.getRight() - pointer : pointer - track.x;
-    const double picked = snap(minimum + static_cast<double>(std::clamp(along / std::max(1.0F, track.width), 0.0F, 1.0F)) * (maximum - minimum));
+    const double picked = Widgets::snap(minimum + static_cast<double>(std::clamp(along / std::max(1.0F, track.width), 0.0F, 1.0F)) * (maximum - minimum), minimum, maximum, step);
     double& moved = highActive ? high : low;
     const double next = std::clamp(picked, highActive ? low : minimum, highActive ? maximum : high);
     const bool changed = next != moved;

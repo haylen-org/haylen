@@ -184,7 +184,7 @@ TEST_F(BackendTest, RecoversFromFramesLeftOpenAndReportsMisuse) {
 }
 
 TEST_F(BackendTest, ManagesFontsAndAppTextures) {
-    EXPECT_EQ(backend.getFont("default"), backend.getDefaultFont());
+    EXPECT_TRUE(backend.hasFont(Backend::kDefaultFontName));
     EXPECT_THROW((void)backend.getFont("missing"), std::invalid_argument);
     EXPECT_THROW(backend.addFont("default", {}), std::invalid_argument);
     EXPECT_THROW(backend.addFont("broken", {.regular = {1, 2, 3}}), std::runtime_error);
@@ -219,7 +219,7 @@ TEST_F(BackendTest, DrawsMissingCharactersFromFallbacksAtTheEmSize) {
             EXPECT_TRUE(face->IsGlyphInFont(U'☀'));
             EXPECT_NEAR(face->GetFontBaked(30.0F)->GetCharAdvance(U'日'), em, 0.5F);
         }
-        EXPECT_FALSE(backend.getDefaultFont()->IsGlyphInFont(U'日'));
+        EXPECT_FALSE(backend.getFont(Backend::kDefaultFontName)->IsGlyphInFont(U'日'));
     });
     // clang-format on
 }

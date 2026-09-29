@@ -9,16 +9,27 @@
 
 namespace haylen::spatial2d {
 
-void GridRay::requireCastable(const math::Ray& ray, math::Vec2 cellSize) {
+void GridRay::requireCellSize(math::Vec2 cellSize) {
     if (!(cellSize.x > 0.0F) || !(cellSize.y > 0.0F) || !std::isfinite(cellSize.x) || !std::isfinite(cellSize.y)) {
         throw std::invalid_argument("Grid cells need a positive and finite size.");
     }
+}
+
+void GridRay::requireCastable(const math::Ray& ray, math::Vec2 cellSize) {
+    requireCellSize(cellSize);
     if (!std::isfinite(ray.length)) {
         throw std::invalid_argument("A ray across an unbounded grid needs a finite length.");
+    }
+    const math::Vec2 end = ray.getEnd();
+    for (const float cell : {ray.origin.x / cellSize.x, ray.origin.y / cellSize.y, end.x / cellSize.x, end.y / cellSize.y}) {
+        if (!(std::fabs(cell) < kCellLimit)) {
+            throw std::invalid_argument("A grid ray must stay within the 32-bit range of cells.");
+        }
     }
 }
 
 std::optional<GridRay::Hit> GridRay::cast(const math::Ray& ray, math::Vec2 cellSize, const CellGrid& grid) {
+    requireCellSize(cellSize);
     const math::Rect area{0.0F, 0.0F, static_cast<float>(grid.getWidth()) * cellSize.x, static_cast<float>(grid.getHeight()) * cellSize.y};
     const std::optional<math::RayHit> entry = math::Raycast::rect(ray, area);
     const std::optional<std::array<float, 2>> travel = math::Raycast::clip(ray, area);

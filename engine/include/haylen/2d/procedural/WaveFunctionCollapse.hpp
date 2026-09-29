@@ -64,13 +64,13 @@ class WaveFunctionCollapse final {
     // Returns the tile of every cell, or nothing when every attempt ran into a contradiction. Throws std::invalid_argument when the fixed grid does not match the size.
     [[nodiscard]] static std::optional<spatial2d::CellGrid> generate(const Rules& rules, const Options& options, math::Random& random);
 
-    // Tells whether every pair of neighbors in the grid follows the rules.
+    // Tells whether every pair of neighbors in the grid follows the rules. Cells that hold no tile of the rules break them.
     [[nodiscard]] static bool isValid(const spatial2d::CellGrid& tiles, const Rules& rules, bool periodic = false) noexcept;
-
-    [[nodiscard]] static Direction opposite(Direction direction) noexcept;
 
   private:
     class Solver;
+
+    [[nodiscard]] static Direction opposite(Direction direction) noexcept;
 };
 
 } // namespace haylen::procedural2d

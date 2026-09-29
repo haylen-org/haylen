@@ -20,7 +20,6 @@ class AssemblyLua final {
     static constexpr std::array<std::string_view, 9> kRagdollFields{"x", "y", "height", "density", "friction", "jointFriction", "group", "vx", "vy"};
     static constexpr std::array<std::string_view, 16> kVehicleFields{"x", "y", "chassisWidth", "chassisHeight", "wheelRadius", "rearWheel", "frontWheel", "density", "wheelDensity", "wheelFriction", "suspensionHertz", "suspensionDamping", "suspensionTravel", "maxMotorTorque", "drive", "group"};
 
-    // Pushes the Lua world object of the assembly at index 1.
     static void pushWorld(lua_State* L);
     static int createRope(lua_State* L, bool bridge);
 

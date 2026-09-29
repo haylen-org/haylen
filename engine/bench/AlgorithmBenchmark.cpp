@@ -113,7 +113,7 @@ class AlgorithmBenchmark final {
         navigation2d::HierarchicalPathfinder hierarchy(grid, {.clusterSize = 16});
         // clang-format off
         measure("HPA* 512x512, one path across", kPathPairs, [&, pair = std::size_t{0}]() mutable {
-            (void)hierarchy.findPath(pairs[pair].first, pairs[pair].second);
+            (void)hierarchy.findPath(grid, pairs[pair].first, pairs[pair].second);
             pair = (pair + 1) % pairs.size();
         });
         // clang-format on

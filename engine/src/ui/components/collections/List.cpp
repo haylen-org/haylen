@@ -20,8 +20,17 @@ void List::readProperties(PropertyReader& reader) {
     reader.read("draggable", draggable);
 }
 
+// A list fills the width it gets, and an unbounded width, such as the one of a horizontal scroll, gets the width of its widest row.
 math::Vec2 List::measureContent(Context& context, float availableWidth) {
-    return {availableWidth, context.getMetric(Theme::Metric::ListRowHeight) * static_cast<float>(items.size())};
+    const float height = context.getMetric(Theme::Metric::ListRowHeight) * static_cast<float>(items.size());
+    if (availableWidth < CommonProperties::kUnbounded) {
+        return {availableWidth, height};
+    }
+    float widest = 0.0F;
+    for (const ChoiceItem& item : items) {
+        widest = std::max(widest, ListRow::measure(context, item));
+    }
+    return {widest, height};
 }
 
 void List::render(Context& context, const math::Rect& bounds) {
@@ -69,6 +78,10 @@ void List::render(Context& context, const math::Rect& bounds) {
             context.emit(*this, "select", {{"item", item.id}});
         }
     }
+}
+
+void List::drawingStopped(Context& context) {
+    DragAndDrop::dropCarriedFrom(context, *this);
 }
 
 } // namespace haylen::ui

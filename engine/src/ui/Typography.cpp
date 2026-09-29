@@ -61,12 +61,6 @@ void Typography::drawLayout(Context& context, Theme::Font font, std::string_view
     // clang-format on
 }
 
-void Typography::draw(Context& context, Theme::Font font, math::Vec2 position, math::Color color, std::string_view text, float wrapWidth) {
-    text::TextStyle style = getStyle(context, font, wrapWidth);
-    style.color = color;
-    drawLayout(context, font, text, style, position);
-}
-
 // The longest run of whole characters in reading order that fits with the ellipsis stays, and since shaping may change the width where the text is cut, the run shortens until the result fits.
 std::string Typography::elide(Context& context, Theme::Font font, std::string_view text, float width) {
     const text::TextStyle style = getStyle(context, font);

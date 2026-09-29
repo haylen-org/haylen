@@ -62,6 +62,14 @@ TEST_F(RichTextComponentTest, FocusesEachLinkOnceAndActivatesIt) {
     EXPECT_EQ(findLastEvent("link").value, (core::Json{{"link", "two"}}));
 }
 
+TEST_F(RichTextComponentTest, TakesTheFocusBeforeItFirstDraws) {
+    std::shared_ptr<Document> document = getUi().createDocument(core::Json::parse(R"({"kind": "column", "padding": 40, "children": [{"kind": "richText", "id": "story", "text": "[url=go]Go on now[/url]"}]})"), Placement::Screen);
+    getUi().mount(document);
+    document->command(getUi().getContext(), "story", "focus", core::Json::object());
+    frames(2);
+    EXPECT_TRUE(isFocused(*document, "story"));
+}
+
 TEST_F(RichTextComponentTest, DrawsThroughTheRendererAndRevealsOverTime) {
     auto document = mount(R"({"kind": "column", "children": [{"kind": "richText", "id": "story", "text": "[b]abcd[/b] [img=icons/coin.png]", "reveal": 30}]})");
     EXPECT_LT(drawnSprites(), 2U);

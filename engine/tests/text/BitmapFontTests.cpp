@@ -133,6 +133,7 @@ TEST(BitmapFontTest, DescribesGridsOfCells) {
     EXPECT_THROW((void)BitmapFont::describeGrid({.characters = "ABCDEFG", .cellWidth = 8.0F, .cellHeight = 8.0F}, {16.0F, 16.0F}), std::invalid_argument);
     EXPECT_THROW((void)BitmapFont::describeGrid({.characters = "", .cellWidth = 8.0F, .cellHeight = 8.0F}, {16.0F, 16.0F}), std::invalid_argument);
     EXPECT_THROW((void)BitmapFont::describeGrid({.characters = "A", .cellWidth = 0.0F, .cellHeight = 8.0F}, {16.0F, 16.0F}), std::invalid_argument);
+    EXPECT_THROW((void)BitmapFont::describeGrid({.characters = "A", .cellWidth = 8.0F, .cellHeight = 8.0F, .spacing = {-8.0F, 0.0F}}, {16.0F, 16.0F}), std::invalid_argument);
 }
 
 TEST(BitmapFontTest, LoadsAsAssetsAndDrawsLikeAnyFont) {

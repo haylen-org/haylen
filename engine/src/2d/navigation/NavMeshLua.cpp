@@ -1,5 +1,6 @@
 #include "2d/navigation/NavMeshLua.hpp"
 
+#include <memory>
 #include <optional>
 #include <span>
 #include <utility>
@@ -59,15 +60,16 @@ int NavMeshLua::buildAsync(lua_State* L) {
     const lua::Promise promise(engine);
 
     // clang-format off
-    engine.getJobs().run([mesh]() mutable {
+    engine.getJobs().run([mesh = std::move(mesh)]() mutable {
         mesh.build();
-        return mesh;
+        return std::move(mesh);
     }, [promise](core::JobSystem::Result<NavMesh> result) {
         if (!result.isOk()) {
             promise.reject(result.error);
             return;
         }
-        promise.resolveWith([mesh = std::move(*result.value)](lua_State* state) { lua::Userdata::emplace<NavMesh>(state, mesh); });
+        // The promise pushes the mesh once for every coroutine that awaits it, and each one gets its own copy.
+        promise.resolveWith([mesh = std::make_shared<const NavMesh>(std::move(*result.value))](lua_State* state) { lua::Userdata::emplace<NavMesh>(state, *mesh); });
     });
     // clang-format on
     promise.push(L);

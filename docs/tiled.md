@@ -17,13 +17,13 @@ Every path inside a map is resolved relative to the file that contains it, so a 
 - **Layer types**: tile layers, object layers, image layers (repeating on x, y or both) and nested group layers.
 - **Layer attributes**: visibility, opacity, offsets, tint colors, parallax factors with the map parallax origin, classes and custom properties. Groups pass their offset, parallax, tint, opacity and visibility on to their children, and tints and opacities multiply down the tree. Layer locking is an editor feature and has no effect at runtime.
 - **Blend modes**: `normal`, `add`, `multiply` and `screen`, drawn with the matching GPU blend. Every other mode Tiled offers, such as `overlay`, `darken`, `lighten` or `difference`, cannot be reproduced with fixed-function blending, so the map fails to load with an error that names the layer and the mode. Tiled draws the children of a group with their own modes and never blends a group as a whole, so a group layer with any mode other than `normal` fails to load with an error instead of being ignored.
-- **Tilesets**: embedded or external, image tilesets with margin, spacing and tile offsets, image collection tilesets whose tiles can use a sub-rectangle of their image, transparent colors, object alignment, the `grid` tile render size with the `preserve-aspect-fit` fill mode, tile classes, probabilities and properties.
+- **Tilesets**: embedded or external, image tilesets with margin, spacing and tile offsets, image collection tilesets whose tiles can use a sub-rectangle of their image and keep the ids of removed tiles unused, transparent colors, object alignment, the `grid` tile render size with the `preserve-aspect-fit` fill mode, tile classes, probabilities and properties.
 - **Tile flips**: horizontal, vertical and diagonal, plus the 120-degree rotation flag of hexagonal maps.
 - **Animated tiles**: tile animations play on tile layers and on tile objects, driven by `map:update(dt)`.
 - **Wang sets**: corner, edge and mixed sets with their colors and tiles are read and returned by `map:tilesets()`. They are editor data for terrain brushes, and the runtime does not repaint tiles with them.
 - **Objects**: rectangles, ellipses, capsules, points, polygons, polylines, text and tile objects, with rotation, visibility, per-object opacity, classes and custom properties.
 - **Templates**: `.tj` object templates, whose fields and properties are defaults that each instance overrides one by one. A tile template maps its tile to the map's own copy of the template's tileset.
-- **Properties**: `string`, `int`, `float`, `bool`, `color`, `file`, `object` and `class` values, including classes nested in classes. Colors become `Color` values, files become paths inside the `content/` folder, object references become object ids and class values become nested tables.
+- **Properties**: `string`, `int`, `float`, `bool`, `color`, `file`, `object`, `class` and `list` values, including classes nested in classes and lists nested in lists. Colors become `Color` values, files become paths inside the `content/` folder, object references become object ids, class values become nested tables and lists become sequences of their items.
 - **Worlds**: `.world` files with listed maps and filename patterns.
 
 ## Loading maps
@@ -55,9 +55,9 @@ See [Lua](lua.md) for async code with Varn Promises and coroutines.
 
 `map:draw(camera, options)` draws every visible layer in map order into the active canvas. `map:drawLayer(name, camera, options)` draws one layer, including the children of a group, with the offset, parallax, tint and visibility it inherits from the groups above it. Drawing layer by layer is how the app's own sprites go between map layers.
 
-- The `camera` gives the position for parallax, and culling and repeated image layers use the area the active canvas shows, including render target canvases. Without a camera nothing is culled and parallax is measured from the world origin. Repeated image layers need it.
+- The `camera` gives the position for parallax, and culling and repeated image layers use the area the active canvas shows, including render target canvases. Without a camera nothing is culled and parallax layers shift as if the camera stood at the world origin. Repeated image layers need it.
 - The `options` table holds a [draw order](lua-api/graphics2d.md#draw-order) with `layer` and `depth`, where each map layer replaces `blend` with its own blend mode, and `x` and `y`, the world position of the map origin, so the maps of a `.world` file draw at their places through one camera.
-- Tile layers are baked into static GPU batches in regions of 32 by 32 cells the first time they draw, and only the regions the camera sees are submitted. `map:setTile` rebakes the layer on its next draw. Animated tiles are drawn every frame with the frame that matches the map time.
+- Tile layers are baked into static GPU batches in regions of 32 by 32 cells the first time they draw, and only the regions the camera sees are submitted. `map:setTile` bakes only the region of its cell again, on the next draw. Animated tiles are drawn every frame with the frame that matches the map time.
 - Object layers draw their visible tile objects and text objects. Other shapes are data for the app and for collision. Objects sort by their y position unless the layer draw order is `index`, and tile objects are placed by the tileset object alignment.
 - A layer with a parallax factor other than 1 shifts by the distance between the camera position and the map parallax origin, times one minus the factor. A factor below 1 makes a distant background, and a factor above 1 makes a foreground that moves faster than the camera.
 - `map:update(dt)` advances animated tiles and belongs in the scene `update`.
@@ -114,9 +114,9 @@ Map properties are on `map.properties`, and the map class is `map.type`. Tiny Is
 `map:buildCollision(world)` creates static bodies in a [haylen.physics2d](lua-api/physics2d.md) world for the collision shapes of the map and returns them, one body per layer that has shapes.
 
 - Tile layers add the collision shapes that tiles have in the tileset collision editor, placed and flipped with each tile. A tile layer with a `collision` property set to `false` adds nothing. On orthogonal maps, tiles whose collision is one rectangle covering the whole cell merge into one box per horizontal run of cells.
-- Object layers whose class is `collision` add every object. Other object layers add only the objects whose class is `collision`. Points and text add nothing, polylines become one segment per line, and ellipses and capsules become polygons.
+- Object layers whose class is `collision` add every object. Other object layers add only the objects whose class is `collision`. Points and text add nothing, polylines become one segment per line, ellipses and capsules become polygons, and tile objects cover their image where it draws, placed by the tileset object alignment.
 - Objects and tile shapes with a `sensor` property set to `true` become sensors.
-- The layer properties `category` and `mask` set the collision filter of the layer's shapes. The category defaults to 1.
+- The layer properties `category` and `mask` set the collision filter of the layer's shapes. Both are integers of at least 0, the category defaults to 1 and the mask to every bit.
 - Layer visibility does not matter, so a hidden collision layer still collides.
 
 ```lua

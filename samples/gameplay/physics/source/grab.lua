@@ -15,7 +15,7 @@ function Grab:update(pointer, camera)
     elseif pointer.released or (self.joint ~= nil and not self.joint.valid) then
         self:release()
     elseif self.joint ~= nil then
-        self.joint:setTarget(pointer.worldX, pointer.worldY)
+        self.joint.target = {pointer.worldX, pointer.worldY}
     end
     self.targetX, self.targetY = pointer.worldX, pointer.worldY
 end

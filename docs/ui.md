@@ -37,7 +37,7 @@ function pause:exit()
 end
 ```
 
-Every property is checked when the tree is built, so a misspelled key or a wrong value raises an error that names the kind and the key, such as `label.width must be a non-negative number or auto.`, and nothing is mounted. A document holds at most 64 levels and 20000 nodes.
+Every property is checked when the tree is built, so a misspelled key or a wrong value raises an error that names the kind and the key, such as `label.width must be a non-negative number or auto.`, and nothing is mounted. A document holds at most 64 levels, the root included, and 20000 nodes, and `document:replace` keeps it within them. A node table that holds itself, such as `c[1] = c`, raises the same error instead of nesting without end.
 
 ### Screens in JSON
 
@@ -51,7 +51,7 @@ local menu = ui.mount(assets.json('ui/main-menu.json'))
 menu:set('play', {onClick = function() print('play') end})
 ```
 
-An empty Lua table converts to an empty JSON object, so list properties such as `items`, `rows`, `columns`, `buttons`, `expanded` and `padding` reject `{}`. A JSON screen with an empty list in one of them fails the same way once it passes through Lua. Empty `children` lists work because the engine builds them itself.
+An empty Lua table converts to an empty JSON object, and list properties such as `items`, `rows`, `columns`, `buttons` and `expanded` read an empty object as an empty list, so `items = {}` works, and so does a JSON screen with an empty list once it passes through Lua. An empty `children` table works too, because the engine builds the children list itself.
 
 ### Changing a mounted document
 
@@ -88,12 +88,13 @@ self:show('day', 'text', widgets.text('hud.day', {day = game.cycle.day}), game.c
 
 Sizes and positions are design units of the `design` resolution in `app.json`, which is 1920 by 1080 in Tiny Island and by default. The metrics of the built-in themes suit that resolution. See [Rendering](rendering.md) for the scaling policies that map design units to the screen. [viewport.setScaling](lua-api/viewport.md#viewportsetscalingpolicy) and [viewport.setDesignSize](lua-api/viewport.md#viewportsetdesignsizewidth-height) change them while the app runs, and every document lays out in the new visible and safe areas from the next frame on.
 
-`ui.mount` takes two options.
+`ui.mount` takes three options.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `placement` | `'safe'` | `'safe'` lays the root out inside the safe area, away from notches, rounded corners and system bars. `'screen'` lays it out over the whole visible screen. |
 | `layer` | `0` | Documents draw in ascending layer order, and documents on the same layer draw in mount order. |
+| `owner` | none | A table or userdata, such as a scene, that owns the document. The document unmounts when the owner is released, as a scene is when it unloads, so a scene that mounts with `owner = self` needs no `unmount` of its own. |
 
 The root fills the whole area when its `align` is `stretch`, which is the default of containers. With `start`, `center` or `end` the root keeps its measured size and sits at the top left, the center or the bottom right of the area.
 
@@ -211,6 +212,8 @@ The [event table](lua-api/ui.md#events-and-handlers) of the reference lists whic
 `ui.wantsPointer()` returns `true` while the pointer is over something the interface owns: an interactive component, an open dialog, menu or picker, an ImGui window, or a card, panel or touch control. Empty space inside columns, rows and stacks lets the pointer through. `ui.wantsKeyboard()` returns `true` while a text field has the focus. Gameplay that reacts to raw clicks or key presses checks them first.
 
 A press the interface answers itself never reaches the actions of the app, like a click on a button. Escape, the east button and the Menu button of a TV remote that close a popup, a combo list, a dialog, a closable window or a carried item, or that end the editing of a control, accept presses that press the focused control, every key while a text field edits, and every key and button while a `keyCapture` listens, stay with the interface until they are released, so an action bound to the same key, such as a `pause` bound to Escape, fires only when the interface answers nothing. A screen goes back with the `onCancel` handler of its document root, which hears `ui_cancel` only when nothing else in the interface answers it. The keys and buttons are those of `ui_cancel` and `ui_accept`, remapped or built in. The [input guide](input.md#ui-and-gameplay-input) explains how this relates to the action map.
+
+While a text field edits, the keys it types belong to the field alone and never navigate, so Space types a space and Enter starts a new line in a `textArea` instead of pressing the field. Enter still submits a single line and Escape still cancels, as keys of the field, and the gamepad buttons of `ui_accept` and `ui_cancel` still end the editing.
 
 ### Focus, navigation and TV remotes
 
@@ -339,7 +342,7 @@ A surface image is an object with these keys.
 | `tint` | Color multiplied with the image. |
 | `colorize` | Also multiplies the image with the color the component would fill the area with, such as the tone of a progress bar or the accent of a slider. It defaults to `false`. |
 | `filter` | `'nearest'` (the default) or `'linear'`. |
-| `fill` | `'stretch'` (the default) or `'tile'` for the edges and the center. |
+| `fill` | `'stretch'` (the default) or `'tile'` for the edges and the center. A tiled edge or center that is not empty must be at least 1 design unit wide and tall at `scale`, and a smaller one raises an error that names the surface. |
 
 The corners keep their texture size times `scale`, and the edges and center stretch or tile. When the bounds are too small for both borders, the borders shrink together.
 

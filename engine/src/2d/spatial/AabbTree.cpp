@@ -50,7 +50,7 @@ void AabbTree::insertLeaf(std::int32_t leaf) {
         return;
     }
 
-    // Descends toward the sibling whose box grows the least, with the surface area heuristic of Box2D measured by perimeters.
+    // Finds the sibling that adds the least box perimeter to the tree. Pairing the leaf with a node costs the box of their new parent, and descending into a child costs what the child box grows plus what the node box grows on the way.
     const math::Rect box = at(leaf).box;
     std::int32_t sibling = root;
     while (!at(sibling).isLeaf()) {
@@ -301,7 +301,7 @@ void AabbTree::raycast(const math::Ray& ray, std::size_t limit, std::vector<RayH
 void AabbTree::collectNearest(std::int32_t node, math::Vec2 point, std::size_t count, float maxDistance, std::vector<Neighbor>& neighbors) const {
     const Node& current = at(node);
     const float reach = std::sqrt(EntryBounds::distanceSquared(current.box, point));
-    if (reach > maxDistance || (neighbors.size() == count && reach > neighbors.back().distance)) {
+    if (reach > maxDistance || (neighbors.size() == count && reach > EntryBounds::getFarthest(neighbors).distance)) {
         return;
     }
     if (current.isLeaf()) {
@@ -318,11 +318,13 @@ void AabbTree::collectNearest(std::int32_t node, math::Vec2 point, std::size_t c
 }
 
 void AabbTree::nearest(math::Vec2 point, std::size_t count, float maxDistance, std::vector<Neighbor>& neighbors) const {
+    EntryBounds::requirePoint(point);
     EntryBounds::requireRadius(maxDistance);
     neighbors.clear();
     if (count > 0 && root >= 0) {
         collectNearest(root, point, count, maxDistance, neighbors);
     }
+    EntryBounds::finishNearest(neighbors);
 }
 
 } // namespace haylen::spatial2d

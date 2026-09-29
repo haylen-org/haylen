@@ -9,6 +9,7 @@
 
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/physics/World.hpp"
+#include "haylen/2d/tiled/MapQuery.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/text/Font.hpp"
 
@@ -20,38 +21,6 @@ MapRenderer::MapRenderer(Map data, std::shared_ptr<text::Font> textFont) : map(s
 
 graphics2d::SpriteFlip MapRenderer::flipsOf(std::uint32_t gid, bool diagonal) noexcept {
     return {.horizontal = (gid & Map::kFlipHorizontal) != 0, .vertical = (gid & Map::kFlipVertical) != 0, .diagonal = diagonal && (gid & Map::kFlipDiagonal) != 0};
-}
-
-math::Vec2 MapRenderer::alignmentPivot(std::string_view alignment, Map::Orientation orientation) noexcept {
-    if (alignment == "topleft") {
-        return {0.0F, 0.0F};
-    }
-    if (alignment == "top") {
-        return {0.5F, 0.0F};
-    }
-    if (alignment == "topright") {
-        return {1.0F, 0.0F};
-    }
-    if (alignment == "left") {
-        return {0.0F, 0.5F};
-    }
-    if (alignment == "center") {
-        return {0.5F, 0.5F};
-    }
-    if (alignment == "right") {
-        return {1.0F, 0.5F};
-    }
-    if (alignment == "bottom") {
-        return {0.5F, 1.0F};
-    }
-    if (alignment == "bottomright") {
-        return {1.0F, 1.0F};
-    }
-    if (alignment == "bottomleft") {
-        return {0.0F, 1.0F};
-    }
-    // Unspecified alignment is bottom left on most maps and bottom center on isometric ones.
-    return orientation == Map::Orientation::Isometric ? math::Vec2{0.5F, 1.0F} : math::Vec2{0.0F, 1.0F};
 }
 
 math::Vec2 MapRenderer::drawSize(const Tileset& tileset, math::Rect source, math::Vec2 grid) noexcept {
@@ -74,43 +43,6 @@ math::Color MapRenderer::fade(math::Color color, float opacity) noexcept {
     return color.withAlpha(color.a * opacity);
 }
 
-std::vector<math::Vec2> MapRenderer::ellipseOutline(math::Vec2 center, math::Vec2 radii) {
-    std::vector<math::Vec2> points;
-    for (int index = 0; index < kEllipseSegments; ++index) {
-        const float angle = math::Math::kTau * static_cast<float>(index) / static_cast<float>(kEllipseSegments);
-        points.push_back(center + math::Vec2{std::cos(angle) * radii.x, std::sin(angle) * radii.y});
-    }
-    return points;
-}
-
-std::vector<math::Vec2> MapRenderer::capsuleOutline(math::Vec2 topLeft, math::Vec2 size) {
-    const float radius = std::min(size.x, size.y) * 0.5F;
-    if (size.x == size.y) {
-        return ellipseOutline(topLeft + size * 0.5F, {radius, radius});
-    }
-
-    const bool wide = size.x > size.y;
-    const math::Vec2 first = topLeft + math::Vec2{radius, radius};
-    const math::Vec2 second = topLeft + (wide ? math::Vec2{size.x - radius, radius} : math::Vec2{radius, size.y - radius});
-    const float start = wide ? -math::Math::kTau * 0.25F : 0.0F;
-    constexpr int steps = kEllipseSegments / 2;
-    std::vector<math::Vec2> points;
-    for (const auto& [center, from] : {std::pair{second, start}, std::pair{first, start + math::Math::kTau * 0.5F}}) {
-        for (int step = 0; step <= steps; ++step) {
-            const float angle = from + math::Math::kTau * 0.5F * static_cast<float>(step) / static_cast<float>(steps);
-            points.push_back(center + math::Vec2{std::cos(angle), std::sin(angle)} * radius);
-        }
-    }
-    return points;
-}
-
-math::Vec2 MapRenderer::rotateAround(math::Vec2 point, math::Vec2 origin, float angle) noexcept {
-    const math::Vec2 local = point - origin;
-    const float cosine = std::cos(angle);
-    const float sine = std::sin(angle);
-    return origin + math::Vec2{local.x * cosine - local.y * sine, local.x * sine + local.y * cosine};
-}
-
 math::Vec2 MapRenderer::flipInTile(math::Vec2 point, math::Vec2 tileSize, std::uint32_t gid) noexcept {
     math::Vec2 result = point;
     math::Vec2 size = tileSize;
@@ -127,57 +59,35 @@ math::Vec2 MapRenderer::flipInTile(math::Vec2 point, math::Vec2 tileSize, std::u
     return result;
 }
 
-template <typename Transform> void MapRenderer::addObjectShape(physics2d::Body& body, const Object& object, const physics2d::Shape::Options& options, Transform&& transform) {
-    const math::Vec2 origin = object.position;
-    switch (object.shape) {
-    case Object::Shape::Point:
-    case Object::Shape::Text:
-        return;
-    case Object::Shape::Rectangle:
-    case Object::Shape::Tile: {
-        // Tile objects sit on their bottom-left corner while rectangles hang from their top-left corner.
-        const math::Vec2 top = object.shape == Object::Shape::Tile ? origin - math::Vec2{0.0F, object.size.y} : origin;
-        std::vector<math::Vec2> corners{top, top + math::Vec2{object.size.x, 0.0F}, top + object.size, top + math::Vec2{0.0F, object.size.y}};
-        for (math::Vec2& corner : corners) {
-            corner = transform(rotateAround(corner, origin, object.rotation));
-        }
-        body.addPolygon(corners, options);
+void MapRenderer::addOutline(physics2d::Body& body, const Object& object, std::span<const math::Vec2> points, const physics2d::Shape::Options& options) {
+    if (points.empty()) {
         return;
     }
-    case Object::Shape::Ellipse:
-    case Object::Shape::Capsule: {
-        std::vector<math::Vec2> outline = object.shape == Object::Shape::Ellipse ? ellipseOutline(origin + object.size * 0.5F, object.size * 0.5F) : capsuleOutline(origin, object.size);
-        for (math::Vec2& point : outline) {
-            point = transform(rotateAround(point, origin, object.rotation));
-        }
-        body.addPolygon(outline, options);
-        return;
-    }
-    case Object::Shape::Polygon: {
-        std::vector<math::Vec2> points;
-        for (const math::Vec2 point : object.points) {
-            points.push_back(transform(rotateAround(origin + point, origin, object.rotation)));
-        }
+    if (object.shape != Object::Shape::Polyline) {
         body.addPolygon(points, options);
         return;
     }
-    case Object::Shape::Polyline:
-        for (std::size_t index = 1; index < object.points.size(); ++index) {
-            const math::Vec2 first = transform(rotateAround(origin + object.points[index - 1], origin, object.rotation));
-            const math::Vec2 second = transform(rotateAround(origin + object.points[index], origin, object.rotation));
-            body.addSegment(first, second, options);
-        }
-        return;
+    for (std::size_t index = 1; index < points.size(); ++index) {
+        body.addSegment(points[index - 1], points[index], options);
     }
 }
 
-physics2d::CollisionFilter MapRenderer::layerFilter(const Properties& properties) {
+physics2d::CollisionFilter MapRenderer::layerFilter(const Layer& layer) {
     physics2d::CollisionFilter filter;
-    filter.category = static_cast<std::uint64_t>(properties.getNumber("category", 1.0));
-    if (properties.has("mask")) {
-        filter.mask = static_cast<std::uint64_t>(properties.getNumber("mask", 0.0));
-    }
+    filter.category = readCollisionBits(layer, "category", filter.category);
+    filter.mask = readCollisionBits(layer, "mask", filter.mask);
     return filter;
+}
+
+std::uint64_t MapRenderer::readCollisionBits(const Layer& layer, std::string_view name, std::uint64_t fallback) {
+    const Property* property = layer.properties.find(name);
+    if (property == nullptr) {
+        return fallback;
+    }
+    if (!property->value.is_number_integer() || property->value < 0) {
+        throw std::invalid_argument("The collision property '" + std::string(name) + "' of the Tiled layer '" + layer.name + "' needs an integer of at least 0.");
+    }
+    return property->value.get<std::uint64_t>();
 }
 
 bool MapRenderer::isFullCell(const Object& object, math::Vec2 tileSize) noexcept {
@@ -278,8 +188,13 @@ void MapRenderer::setTile(std::string_view layer, int column, int row, std::uint
         throw std::invalid_argument("No tileset holds the tile " + std::to_string(Map::tileId(gid)));
     }
     found->setGid(column, row, gid);
-    caches.erase({found->id, false});
-    caches.erase({found->id, true});
+
+    // Only the region of the cell bakes again, in every cache of the layer that baked already.
+    for (const bool rows : {false, true}) {
+        if (const auto cache = caches.find({found->id, rows}); cache != caches.end() && cache->second.baked) {
+            cache->second.stale.insert(regionOf(column, row, cellAnchor(column, row).y + cache->second.offset.y, rows));
+        }
+    }
 }
 
 void MapRenderer::setLayerVisible(std::string_view layer, bool visible) {
@@ -370,26 +285,36 @@ void MapRenderer::drawTree(graphics2d::Renderer& renderer, const Layer& layer, c
     }
 }
 
+MapRenderer::RegionKey MapRenderer::regionOf(int column, int row, float ground, bool rows) noexcept {
+    // Rows group the cells that stand on the same y, which covers the diagonals of isometric maps too.
+    const int block = static_cast<int>(std::floor(static_cast<float>(column) / kRegionCells));
+    const long band = rows ? std::lround(ground) : static_cast<long>(std::floor(static_cast<float>(row) / kRegionCells));
+    return {band, block};
+}
+
 void MapRenderer::bake(graphics2d::Renderer& renderer, const Layer& layer, const Inherited& state, LayerCache& cache, bool rows) const {
-    std::map<std::pair<long, int>, Region> regions;
+    std::map<RegionKey, Region> regions;
     const math::Color color = state.tint;
+    const bool partial = cache.baked;
 
     // clang-format off
     forEachCell(layer, [&](int column, int row, std::uint32_t gid) {
+        const math::Vec2 anchor = cellAnchor(column, row) + state.offset;
+        const RegionKey key = regionOf(column, row, anchor.y, rows);
+        if (partial && !cache.stale.contains(key)) {
+            return;
+        }
+
         const Map::TilesetReference* reference = map.findTileset(gid);
         if (reference == nullptr) {
             throw std::invalid_argument("A tile layer uses a tile that no tileset holds: " + std::to_string(Map::tileId(gid)));
         }
         const Tileset& tileset = *reference->tileset;
         const std::uint32_t localId = Map::tileId(gid) - reference->firstGid;
-        const math::Vec2 anchor = cellAnchor(column, row) + state.offset;
         graphics2d::SpriteInstance instance = tileInstance(tileset, localId, gid, anchor);
         instance.color = color;
 
-        // Rows group the cells that stand on the same y, which covers the diagonals of isometric maps too.
-        const int block = static_cast<int>(std::floor(static_cast<float>(column) / kRegionCells));
-        const long band = rows ? std::lround(anchor.y) : static_cast<long>(std::floor(static_cast<float>(row) / kRegionCells));
-        Region& region = regions[{band, block}];
+        Region& region = regions[key];
         region.ground = anchor.y;
         region.bounds = region.runs.empty() ? instanceBounds(instance) : region.bounds.merged(instanceBounds(instance));
 
@@ -408,7 +333,12 @@ void MapRenderer::bake(graphics2d::Renderer& renderer, const Layer& layer, const
     });
     // clang-format on
 
-    cache.regions.clear();
+    // Stale regions whose cells all emptied disappear, and the others replace their old batches.
+    if (partial) {
+        for (const RegionKey& key : cache.stale) {
+            cache.regions.erase(key);
+        }
+    }
     for (auto& [key, region] : regions) {
         for (Run& run : region.runs) {
             if (!run.instances.empty()) {
@@ -416,21 +346,23 @@ void MapRenderer::bake(graphics2d::Renderer& renderer, const Layer& layer, const
                 run.instances = {};
             }
         }
-        cache.regions.push_back(std::move(region));
+        cache.regions.insert_or_assign(key, std::move(region));
     }
+    cache.stale.clear();
+    cache.offset = state.offset;
     cache.baked = true;
 }
 
 void MapRenderer::drawTiles(graphics2d::Renderer& renderer, const Layer& layer, const Inherited& state, const View& view, const DrawOptions& options) {
     LayerCache& cache = caches[{layer.id, options.ysort}];
-    if (!cache.baked) {
+    if (!cache.baked || !cache.stale.empty()) {
         bake(renderer, layer, state, cache, options.ysort);
     }
 
     // Baked batches hold the layer offsets, so only the map origin and the parallax move them at draw time.
     const math::Vec2 shift = state.origin + parallaxOffset(state, view);
     const bool culling = !view.visible.isEmpty();
-    for (const Region& region : cache.regions) {
+    for (const auto& [key, region] : cache.regions) {
         if (culling && !region.bounds.translated(shift).intersects(view.visible)) {
             continue;
         }
@@ -454,19 +386,30 @@ void MapRenderer::drawTiles(graphics2d::Renderer& renderer, const Layer& layer, 
     }
 }
 
-void MapRenderer::drawObjects(graphics2d::Renderer& renderer, const Layer& layer, const Inherited& state, const View& view, const DrawOptions& options) const {
-    std::vector<const Object*> objects;
-    for (const Object& object : layer.objects) {
+std::vector<std::size_t> MapRenderer::drawnObjects(const Layer& layer) const {
+    std::vector<std::size_t> drawn;
+    for (std::size_t index = 0; index < layer.objects.size(); ++index) {
+        const Object& object = layer.objects[index];
         if (object.visible && (object.shape == Object::Shape::Tile || object.shape == Object::Shape::Text)) {
-            objects.push_back(&object);
+            drawn.push_back(index);
         }
     }
     if (!layer.indexDrawOrder) {
-        std::stable_sort(objects.begin(), objects.end(), [](const Object* lhs, const Object* rhs) { return lhs->position.y < rhs->position.y; });
+        std::stable_sort(drawn.begin(), drawn.end(), [&layer](std::size_t lhs, std::size_t rhs) { return layer.objects[lhs].position.y < layer.objects[rhs].position.y; });
+    }
+    return drawn;
+}
+
+void MapRenderer::drawObjects(graphics2d::Renderer& renderer, const Layer& layer, const Inherited& state, const View& view, const DrawOptions& options) {
+    // Objects never change once the map loads, so each layer sorts them once.
+    auto drawn = objectOrders.find(layer.id);
+    if (drawn == objectOrders.end()) {
+        drawn = objectOrders.emplace(layer.id, drawnObjects(layer)).first;
     }
 
     const math::Vec2 shift = state.origin + state.offset + parallaxOffset(state, view);
-    for (const Object* object : objects) {
+    for (const std::size_t index : drawn->second) {
+        const Object* object = &layer.objects[index];
         const math::Vec2 position = map.objectToWorld(object->position) + shift;
         if (object->shape == Object::Shape::Text) {
             if (font == nullptr) {
@@ -478,7 +421,7 @@ void MapRenderer::drawObjects(graphics2d::Renderer& renderer, const Layer& layer
             const float slack = object->size.y - height;
             const float down = text.verticalAlign == "center" ? slack * 0.5F : (text.verticalAlign == "bottom" ? slack : 0.0F);
             const float across = align == text::TextAlign::Center ? object->size.x * 0.5F : (align == text::TextAlign::Right ? object->size.x : 0.0F);
-            const math::Vec2 origin = rotateAround(position + math::Vec2{across, down}, position, object->rotation);
+            const math::Vec2 origin = MapQuery::rotateAround(position + math::Vec2{across, down}, position, object->rotation);
             const graphics2d::DrawOrder order = options.ysort ? groundOrder(options.order, position.y + object->size.y, origin.y) : options.order;
             renderer.drawText(*font, text.text, origin, {.size = text.pixelSize, .color = fade(state.tint * text.color, object->opacity), .align = align, .maxWidth = text.wrap ? object->size.x : 0.0F, .anchor = {align == text::TextAlign::Center ? 0.5F : (align == text::TextAlign::Right ? 1.0F : 0.0F), 0.0F}, .rotation = object->rotation}, order);
             continue;
@@ -498,7 +441,7 @@ void MapRenderer::drawObjects(graphics2d::Renderer& renderer, const Layer& layer
             .position = position,
             .size = object->size.isZero() ? source.getSize() : object->size,
             .source = source,
-            .pivot = alignmentPivot(tileset.objectAlignment, map.orientation),
+            .pivot = MapQuery::alignmentPivot(tileset.objectAlignment, map.orientation),
             .rotation = object->rotation,
             .color = fade(state.tint, object->opacity),
             .flip = flipsOf(object->gid, false),
@@ -541,30 +484,13 @@ void MapRenderer::drawImage(graphics2d::Renderer& renderer, const Layer& layer, 
 }
 
 void MapRenderer::forEachObject(std::string_view layer, const ObjectVisitor& visit) const {
-    // clang-format off
-    const auto walk = [&](const auto& self, const std::vector<Layer>& layers, math::Vec2 offset) -> bool {
-        bool found = false;
-        for (const Layer& child : layers) {
-            const math::Vec2 origin = offset + child.offset;
-            const bool matches = layer.empty() || child.name == layer;
-            if (matches && child.kind == Layer::Kind::Object) {
-                for (const Object& object : child.objects) {
-                    visit(object, map.objectToWorld(object.position) + origin);
-                }
-                found = true;
-            }
-            found = self(self, child.layers, origin) || found;
-        }
-        return found;
-    };
-    // clang-format on
-    if (!walk(walk, map.layers, {}) && !layer.empty()) {
-        throw std::invalid_argument("Unknown object layer: " + std::string(layer));
-    }
+    MapQuery(map).forEachObject(layer, [&](const Object& object, math::Vec2 offset) { visit(object, map.objectToWorld(object.position) + offset); });
 }
 
 std::vector<physics2d::Body> MapRenderer::buildCollision(physics2d::World& world) const {
     std::vector<physics2d::Body> bodies;
+    const MapQuery query(map);
+    std::vector<math::Vec2> points;
 
     // clang-format off
     const auto finish = [&bodies](physics2d::Body body) {
@@ -583,14 +509,14 @@ std::vector<physics2d::Body> MapRenderer::buildCollision(physics2d::World& world
             return;
         }
 
-        const physics2d::CollisionFilter filter = layerFilter(layer.properties);
         if (layer.kind == Layer::Kind::Object) {
+            const physics2d::CollisionFilter filter = layerFilter(layer);
             physics2d::Body body = world.createBody({.type = physics2d::Body::Type::Static});
             const bool wholeLayer = layer.type == "collision";
             for (const Object& object : layer.objects) {
                 if (wholeLayer || object.type == "collision") {
-                    const physics2d::Shape::Options options{.filter = filter, .sensor = object.properties.getBool("sensor", false)};
-                    addObjectShape(body, object, options, [&](math::Vec2 point) { return map.objectToWorld(point) + origin; });
+                    query.getOutline(object, origin, points);
+                    addOutline(body, object, points, {.filter = filter, .sensor = object.properties.getBool("sensor", false)});
                 }
             }
             finish(body);
@@ -601,6 +527,7 @@ std::vector<physics2d::Body> MapRenderer::buildCollision(physics2d::World& world
         }
 
         // Tiles whose whole cell is solid merge into row-wide boxes, which keeps large blocked areas cheap.
+        const physics2d::CollisionFilter filter = layerFilter(layer);
         physics2d::Body body = world.createBody({.type = physics2d::Body::Type::Static});
         std::map<int, std::vector<int>> fullCells;
         forEachCell(layer, [&](int column, int row, std::uint32_t gid) {
@@ -623,8 +550,11 @@ std::vector<physics2d::Body> MapRenderer::buildCollision(physics2d::World& world
                     fullCells[row].push_back(column);
                     continue;
                 }
-                const physics2d::Shape::Options options{.filter = filter, .sensor = object.properties.getBool("sensor", false)};
-                addObjectShape(body, object, options, [&](math::Vec2 point) { return topLeft + flipInTile(point, imageSize, gid); });
+                query.traceOutline(object, points);
+                for (math::Vec2& point : points) {
+                    point = topLeft + flipInTile(point, imageSize, gid);
+                }
+                addOutline(body, object, points, {.filter = filter, .sensor = object.properties.getBool("sensor", false)});
             }
         });
 

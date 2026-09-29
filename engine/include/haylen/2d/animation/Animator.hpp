@@ -29,7 +29,7 @@ class Animator final {
     // Switches animations and clears the queue. Playing the current animation again keeps its time unless restart is set.
     void play(std::string_view name, bool restart = false);
 
-    // Plays an animation once the current pass ends: when a one-shot animation finishes or a looping one completes the cycle it is in. A finished one-shot animation hands over at once. Queued animations play in order.
+    // Plays an animation once the current pass ends: when a one-shot animation finishes or a looping one completes the cycle it is in. A finished one-shot animation hands over at once. Queued animations play in order, each from its first frame, even the animation that just finished.
     void queue(std::string_view name);
     void clearQueue() noexcept {
         pending.clear();

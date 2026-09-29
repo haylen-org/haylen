@@ -3,6 +3,7 @@
 #include <lua.hpp>
 
 #include <array>
+#include <memory>
 #include <span>
 #include <string_view>
 #include <vector>
@@ -11,6 +12,12 @@
 #include "haylen/2d/navigation/Grid.hpp"
 #include "haylen/2d/navigation/GridSearch.hpp"
 #include "haylen/2d/navigation/HierarchicalPathfinder.hpp"
+#include "haylen/core/JobSystem.hpp"
+
+namespace haylen::lua {
+class Promise;
+class Reference;
+} // namespace haylen::lua
 
 namespace haylen::navigation2d {
 
@@ -44,6 +51,12 @@ class NavGridLua final {
     // Fetches the grid of the map, field or hierarchy at index 1 from its user value, leaving it on the stack.
     [[nodiscard]] static Grid& ownerGrid(lua_State* L);
 
+    // Returns the copy of the grid at index 1 that background work reads, made once and shared until the grid changes.
+    [[nodiscard]] static std::shared_ptr<const Grid> snapshotOf(lua_State* L);
+
+    // Settles the promise with the result of a background job as an object that keeps the grid of owner alive. The promise pushes it once for every coroutine that awaits it, and each one gets its own copy.
+    template <typename T> static void settleOwned(const lua::Promise& promise, const std::shared_ptr<lua::Reference>& owner, core::JobSystem::Result<T> result);
+
     static int newGrid(lua_State* L);
     static int getWidth(lua_State* L);
     static int getHeight(lua_State* L);
@@ -51,11 +64,13 @@ class NavGridLua final {
     static int isStaggerX(lua_State* L);
     static int isStaggerEven(lua_State* L);
     static int hasUniformCost(lua_State* L);
+    static int getExpandedCount(lua_State* L);
     static int contains(lua_State* L);
     static int setWalkable(lua_State* L);
     static int isWalkable(lua_State* L);
     static int setCost(lua_State* L);
     static int getCost(lua_State* L);
+    static int estimate(lua_State* L);
     static int findPath(lua_State* L);
     static int findPathAsync(lua_State* L);
     static int lineOfSight(lua_State* L);
@@ -73,6 +88,7 @@ class NavGridLua final {
     static int mapFlee(lua_State* L);
     static int mapWidth(lua_State* L);
     static int mapHeight(lua_State* L);
+    static int mapValues(lua_State* L);
 
     static int fieldNext(lua_State* L);
     static int fieldDirection(lua_State* L);
@@ -85,6 +101,7 @@ class NavGridLua final {
     static int hierarchyRebuild(lua_State* L);
     static int hierarchyNodeCount(lua_State* L);
     static int hierarchyClusterSize(lua_State* L);
+    static int hierarchyDiagonal(lua_State* L);
 };
 
 } // namespace haylen::navigation2d

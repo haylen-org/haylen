@@ -115,7 +115,21 @@ Theme::Image Theme::readImage(const core::Json& value, const std::string& contex
         }
         image.colorize = value.at("colorize").get<bool>();
     }
+    if (image.slice.fill == graphics2d::NineSlice::Fill::Tile) {
+        checkTiles(image, context);
+    }
     return image;
+}
+
+// Every copy of a tiled piece covers at least one design unit, so tiling always ends and never draws an unbounded number of copies. A piece without area draws nothing and needs no check.
+void Theme::checkTiles(const Image& image, const std::string& context) {
+    for (const std::size_t index : kTiledPieces) {
+        const math::Rect& piece = image.slice.pieces[index];
+        const bool drawn = piece.width > 0.0F && piece.height > 0.0F;
+        if (drawn && (piece.width * image.scale < kMinTileSize || piece.height * image.scale < kMinTileSize)) {
+            throw std::invalid_argument(context + " tiles its edges and center, so each of them must be at least 1 unit wide and tall at its scale.");
+        }
+    }
 }
 
 const core::Json& Theme::readSection(const core::Json& document, const char* key) {
@@ -127,32 +141,16 @@ const core::Json& Theme::readSection(const core::Json& document, const char* key
     return value;
 }
 
-std::string_view Theme::colorName(Color role) noexcept {
-    return kColorNames[static_cast<std::size_t>(role)];
-}
-
 std::optional<Theme::Color> Theme::colorFromName(std::string_view value) noexcept {
     return fromName<Color>(kColorNames, value);
-}
-
-std::string_view Theme::metricName(Metric role) noexcept {
-    return kMetricNames[static_cast<std::size_t>(role)];
 }
 
 std::optional<Theme::Metric> Theme::metricFromName(std::string_view value) noexcept {
     return fromName<Metric>(kMetricNames, value);
 }
 
-std::string_view Theme::fontName(Font role) noexcept {
-    return kFontNames[static_cast<std::size_t>(role)];
-}
-
 std::optional<Theme::Font> Theme::fontFromName(std::string_view value) noexcept {
     return fromName<Font>(kFontNames, value);
-}
-
-std::string_view Theme::surfaceName(Surface role) noexcept {
-    return kSurfaceNames[static_cast<std::size_t>(role)];
 }
 
 std::optional<Theme::Surface> Theme::surfaceFromName(std::string_view value) noexcept {

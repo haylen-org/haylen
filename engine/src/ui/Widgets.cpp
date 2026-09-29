@@ -87,6 +87,13 @@ Widgets::Interaction Widgets::interact(Context& context, const math::Rect& bound
     return state;
 }
 
+bool Widgets::isVisible(const Context& context, const math::Rect& bounds) {
+    const Context::Reshape shape = context.getReshape();
+    const math::Vec2 first = bounds.getMin() * shape.scale + shape.offset;
+    const math::Vec2 second = bounds.getMax() * shape.scale + shape.offset;
+    return ImGui::IsRectVisible(ImGuiConverter::toImVec2(math::Vec2::min(first, second)), ImGuiConverter::toImVec2(math::Vec2::max(first, second)));
+}
+
 void Widgets::drawFocusRing(Context& context, const math::Rect& bounds, ImGuiID id, float radius) {
     if (!context.getFocus().isRingShown(id)) {
         return;
@@ -313,8 +320,8 @@ bool Widgets::slider(Context& context, const math::Rect& bounds, double& value, 
     ImGui::PopStyleVar();
 
     // Only a value the player moves lands on the step, so a value given off the step stays as it is until then.
-    if (step > 0.0 && value != before) {
-        value = std::clamp(minimum + std::round((value - minimum) / step) * step, minimum, maximum);
+    if (value != before) {
+        value = snap(value, minimum, maximum, step);
     }
     drawFocusRing(context, bounds, id, bounds.height * 0.5F);
 
@@ -333,6 +340,13 @@ bool Widgets::slider(Context& context, const math::Rect& bounds, double& value, 
         ImGui::MarkItemEdited(id);
     }
     return changed;
+}
+
+double Widgets::snap(double value, double minimum, double maximum, double step) noexcept {
+    if (step <= 0.0) {
+        return std::clamp(value, minimum, maximum);
+    }
+    return std::clamp(minimum + std::round((value - minimum) / step) * step, minimum, maximum);
 }
 
 void Widgets::progress(Context& context, const math::Rect& bounds, float value, Tone tone) {

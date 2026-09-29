@@ -7,7 +7,7 @@
 
 namespace haylen::graphics2d {
 
-// A capture of the frame. The world and screen canvases that began while it was open render into its target, and it renders once every canvas before its end has its own offscreen passes.
+// A capture of the frame. The world and screen canvases that began while it was the innermost open capture render into its target, and it renders once every canvas before its end has its own offscreen passes.
 struct Capture {
     graphics::RenderTarget target;
     math::Color clear = math::Color::transparent();

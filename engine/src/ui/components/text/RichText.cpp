@@ -17,9 +17,9 @@ namespace haylen::ui {
 
 // Literal markup is read at once, so malformed markup fails the change that brings it.
 void RichText::readProperties(PropertyReader& reader) {
-    reader.read("text", text);
-    if (text.key.empty()) {
-        (void)text::RichText::parse(text.literal);
+    if (reader.has("text")) {
+        reader.read("text", text);
+        linked = text.key.empty() && !text::RichText::parse(text.literal).links.empty();
     }
     reader.readChoice<Theme::Font>("font", font, kFonts);
     reader.read("color", color);
@@ -60,6 +60,7 @@ text::RichText& RichText::prepare(Context& context) {
         richText->setMarkup(std::move(markup));
         hoveredLink.reset();
     }
+    linked = !richText->getDocument().links.empty();
     if (std::exchange(changed, false) && visibleCharacters >= 0) {
         richText->setVisibleCharacters(static_cast<std::size_t>(visibleCharacters));
     }

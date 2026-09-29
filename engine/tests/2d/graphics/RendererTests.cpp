@@ -1,10 +1,15 @@
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <functional>
+#include <memory>
 #include <span>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 #include <vector>
 
+#include "graphics/ShaderResource.hpp"
 #include "haylen/2d/graphics/Camera.hpp"
 #include "haylen/2d/graphics/NineSlice.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
@@ -174,6 +179,10 @@ TEST(RendererTest, RejectsInvalidUse) {
     EXPECT_THROW(renderer.draw({}), std::invalid_argument);
     EXPECT_THROW(renderer.drawBatch({}, std::vector<graphics2d::SpriteInstance>(1)), std::invalid_argument);
     EXPECT_THROW(renderer.drawNineSlice({}, {}), std::invalid_argument);
+    EXPECT_THROW(renderer.drawNineSlice({.texture = texture, .fill = graphics2d::NineSlice::Fill::Tile}, {0.0F, 0.0F, 100.0F, 40.0F}, math::Color::white(), {}, 0.0F), std::invalid_argument);
+    graphics2d::Camera shapeless;
+    shapeless.viewport = math::Rect{0.0F, 0.0F, std::nanf(""), 10.0F};
+    EXPECT_THROW(renderer.beginWorld(shapeless), std::invalid_argument);
     EXPECT_THROW(renderer.drawMesh(texture, std::vector<graphics2d::MeshVertex>(1), std::vector<std::uint32_t>{3}), std::out_of_range);
     EXPECT_THROW(renderer.drawLight({}), std::logic_error);
     EXPECT_THROW(renderer.popClip(), std::logic_error);
@@ -189,6 +198,84 @@ TEST(RendererTest, RejectsInvalidUse) {
     EXPECT_TRUE(fixture.engine().getGraphics().getWhiteTexture().isValid());
     EXPECT_TRUE(renderer.getLightTexture().isValid());
     fixture.frames(1);
+}
+
+// Draws that shade and clip alike merge, even when the app made other draws between them.
+TEST(RendererTest, MergesDrawsThatShadeAndClipAlike) {
+    test::EngineFixture fixture;
+    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
+
+    // clang-format off
+    const graphics2d::Renderer::Stats stats = renderOnce(fixture, [&](core::Engine& engine) {
+        graphics2d::Renderer& renderer = engine.getRenderer2D();
+        renderer.beginWorld(graphics2d::Camera{}, {.ambientLight = math::Color::white()});
+        for (int index = 0; index < 8; ++index) {
+            renderer.draw({.texture = texture, .order = {.layer = 0}});
+            renderer.draw({.texture = texture, .order = {.layer = 1}});
+        }
+        renderer.beginScreen();
+        for (int index = 0; index < 8; ++index) {
+            renderer.pushClip({0.0F, 0.0F, 100.0F, 100.0F});
+            renderer.draw({.texture = texture});
+            renderer.popClip();
+        }
+    });
+    // clang-format on
+
+    // One draw call per layer of the lit canvas, its composite, and one for every clipped draw of the screen.
+    EXPECT_EQ(stats.drawCalls, 4U);
+}
+
+// A canvas that draws straight into an image cannot sample it, and a lit canvas can, since it draws into images of its own first.
+TEST(RendererTest, RejectsDrawsThatSampleTheirOwnTarget) {
+    test::EngineFixture fixture;
+    graphics2d::Renderer& renderer = fixture.engine().getRenderer2D();
+    const graphics::RenderTarget target = fixture.engine().getGraphics().createRenderTarget(16, 16);
+    const graphics::Texture& image = target.getTexture();
+    const graphics::Texture white = fixture.engine().getGraphics().getWhiteTexture();
+
+    renderer.beginTarget(target, graphics2d::Camera{});
+    EXPECT_THROW(renderer.draw({.texture = image}), std::invalid_argument);
+    EXPECT_THROW(renderer.drawImageBlend({.from = white, .to = image}), std::invalid_argument);
+    renderer.beginTarget(target, graphics2d::Camera{}, {.ambientLight = math::Color::white()});
+    renderer.draw({.texture = image});
+
+    renderer.beginCapture(target);
+    renderer.beginScreen();
+    EXPECT_THROW(renderer.draw({.texture = image}), std::invalid_argument);
+    renderer.endCapture();
+    renderer.beginScreen();
+    renderer.draw({.texture = image});
+    fixture.frames(1);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+// A material compiled with another version of the shader library fails when a pass first draws with it, and the pass ends with the frame, so the next frames draw normally.
+TEST(RendererTest, EndsTheFrameWhenAMaterialFailsInsideAPass) {
+    test::EngineFixture fixture;
+    auto stale = std::make_shared<graphics::ShaderResource>();
+    stale->name = "stale";
+    stale->sources = {"void main() {}"};
+    const core::Json program = core::Json::parse(R"({"glsl430": {"vertex": {"source": 0, "entry": "main"}, "fragment": {"source": 0, "entry": "main"}, "attrs": [], "views": [], "samplers": [], "texture_sampler_pairs": [],
+        "uniform_blocks": [{"slot": 0, "stage": "vertex", "size": 64, "glsl_uniforms": [{"type": "mat4", "array_count": 1, "glsl_name": "view_projection"}]}]}})");
+    for (const std::string_view name : {"sprite", "sprite_lit", "text", "text_lit", "mesh", "mesh_lit"}) {
+        stale->programs[std::string(name)] = program;
+    }
+    const graphics2d::Material material{graphics::Shader(stale)};
+    const graphics::Texture white = fixture.engine().getGraphics().getWhiteTexture();
+
+    // clang-format off
+    renderOnce(fixture, [&](core::Engine& engine) {
+        engine.getRenderer2D().beginScreen();
+        engine.getRenderer2D().draw({.texture = white, .size = {4.0F, 4.0F}, .order = {.material = material}});
+    });
+    // clang-format on
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+    EXPECT_NE(std::string(fixture.engine().getError()->what()).find("The shader stale was compiled with another version of the shader library."), std::string::npos);
+
+    // The error screen draws the next frames with new passes.
+    fixture.frames(2);
+    EXPECT_GT(fixture.engine().getRenderer2D().getStats().passes, 0U);
 }
 
 TEST(RendererTest, SortsByTheYDrawsStandOn) {
@@ -274,6 +361,7 @@ TEST(RendererTest, CapturesCanvasesIntoTargets) {
     const graphics::Texture texture = engine.getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
     const graphics::RenderTarget first = engine.getGraphics().createRenderTarget(640, 360);
     const graphics::RenderTarget second = engine.getGraphics().createRenderTarget(640, 360);
+    const graphics::RenderTarget nested = engine.getGraphics().createRenderTarget(64, 64);
 
     // clang-format off
     const graphics2d::Renderer::Stats stats = renderOnce(fixture, [&](core::Engine& current) {
@@ -289,6 +377,12 @@ TEST(RendererTest, CapturesCanvasesIntoTargets) {
         renderer.beginCapture(second);
         renderer.beginScreen();
         renderer.draw({.texture = first.getTexture()});
+        renderer.beginCapture(nested);
+        renderer.beginScreen();
+        renderer.draw({.texture = texture});
+        renderer.endCapture();
+        renderer.beginScreen();
+        renderer.draw({.texture = nested.getTexture()});
         renderer.endCapture();
         EXPECT_FALSE(renderer.isCapturing());
 
@@ -301,19 +395,22 @@ TEST(RendererTest, CapturesCanvasesIntoTargets) {
     });
     // clang-format on
 
-    // The lit canvas renders its scene and light maps, then each capture and the capture left open, then the screen.
-    EXPECT_EQ(stats.passes, 6U);
-    EXPECT_EQ(stats.drawCalls, 7U);
+    // The lit canvas renders its scene and light maps, then each capture, the one inside the second before it, and the capture left open, then the screen.
+    EXPECT_EQ(stats.passes, 7U);
+    EXPECT_EQ(stats.drawCalls, 9U);
 
     graphics2d::Renderer& renderer = engine.getRenderer2D();
     engine.getScenes().clear();
     EXPECT_THROW(renderer.beginCapture({}), std::invalid_argument);
     EXPECT_THROW(renderer.endCapture(), std::logic_error);
     renderer.beginCapture(first);
-    EXPECT_THROW(renderer.beginCapture(second), std::logic_error);
+    renderer.beginCapture(second);
+    renderer.endCapture();
+    EXPECT_TRUE(renderer.isCapturing());
     renderer.beginScreen();
     EXPECT_THROW(renderer.drawImageBlend({.from = texture}), std::invalid_argument);
     renderer.endCapture();
+    EXPECT_FALSE(renderer.isCapturing());
     fixture.frames(1);
     EXPECT_EQ(engine.getError(), nullptr);
 }

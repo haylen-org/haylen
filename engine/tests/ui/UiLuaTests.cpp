@@ -8,6 +8,9 @@
 #include <string>
 #include <vector>
 
+#include <imgui.h>
+#include <imgui_internal.h>
+
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
@@ -138,12 +141,17 @@ TEST_F(UiLuaTest, PublishesMountsAndEndsWhatDocumentsOwn) {
 }
 
 TEST_F(UiLuaTest, MountsDeeplyNestedTrees) {
-    fixture.runLua("ui = require('haylen.ui') function nested(levels) local node = ui.label{id = 'leaf', text = 'deep'} for level = 1, levels do node = ui.column{node} end return node end");
-    fixture.runLua("deep = ui.mount(nested(62), {placement = 'screen'})");
+    fixture.runLua("ui = require('haylen.ui') function nested(levels) local node = ui.label{id = 'leaf', text = 'deep'} for level = 2, levels do node = ui.column{node} end return node end");
+    fixture.runLua("deep = ui.mount(nested(64), {placement = 'screen'})");
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return deep:get('leaf').text"), "deep");
     EXPECT_EQ(getEngine().getError(), nullptr);
-    EXPECT_NE(fixture.lua("ui.mount(nested(1000))").find("limited to 64 levels"), std::string::npos);
+    EXPECT_NE(fixture.lua("ui.mount(nested(65))").find("limited to 64 levels"), std::string::npos);
+
+    // A table that holds itself, or shares its children until the tree outgrows a document, fails instead of converting without end.
+    EXPECT_NE(fixture.lua("local c = ui.column{} c[1] = c ui.mount(c)").find("limited to 64 levels"), std::string::npos);
+    EXPECT_NE(fixture.lua("local c = ui.column{} c[1] = c ui.mount(ui.column{id = 'list'}):replace('list', {c})").find("limited to 64 levels"), std::string::npos);
+    EXPECT_NE(fixture.lua("local node = ui.label{} for level = 1, 40 do node = ui.column{node, node} end ui.mount(node)").find("20000 nodes"), std::string::npos);
 }
 
 TEST_F(UiLuaTest, ChangesHandlersOnlyAfterTheDocumentAcceptsTheChange) {
@@ -206,6 +214,30 @@ TEST_F(UiLuaTest, HandsEventValuesAndListenersToLua) {
     // Lua turns an empty table into an empty JSON object, and list properties read it as an empty list.
     EXPECT_EQ(fixture.lua("ui.mount(ui.column{ui.list{items = {}}, ui.tree{items = {}, expanded = {}}, ui.table{columns = {}, rows = {}}, ui.dialog{buttons = {}}}) return 'ok'"), "ok");
     EXPECT_NE(fixture.lua("listener = ui.onEvent('not a function')").find("error: "), std::string::npos);
+}
+
+TEST_F(UiLuaTest, EndsEventListenersWithTheirOwner) {
+    // clang-format off
+    fixture.runLua(R"(
+        ui = require('haylen.ui')
+        scene = require('haylen.scene')
+        heard = {}
+        menu = ui.mount(ui.button{id = 'play', text = 'Play'}, {placement = 'screen'})
+        scene.push({enter = function(self)
+            ui.onEvent(function(event) if event.name == 'click' then heard[#heard + 1] = event.id end end, {owner = self})
+        end})
+    )");
+    // clang-format on
+    fixture.frames(1);
+    click("menu", "play");
+    EXPECT_EQ(fixture.lua("return table.concat(heard, ',')"), "play");
+
+    fixture.runLua("scene.pop()");
+    fixture.frames(2);
+    click("menu", "play");
+    EXPECT_EQ(fixture.lua("return table.concat(heard, ',')"), "play");
+    EXPECT_NE(fixture.lua("ui.onEvent(function() end, {depth = 1})").find("Unknown option 'depth'"), std::string::npos);
+    EXPECT_NE(fixture.lua("ui.onEvent(function() end, {owner = 3})").find("An owner must be a table or a userdata"), std::string::npos);
 }
 
 TEST_F(UiLuaTest, ReplacesChildrenAndUnmounts) {
@@ -469,6 +501,37 @@ TEST_F(UiLuaTest, TurnsImGuiMisuseIntoScriptErrors) {
     fixture.frames(2);
     ASSERT_NE(getEngine().getError(), nullptr);
     EXPECT_NE(std::string_view(getEngine().getError()->what()).find("Dear ImGui check failed"), std::string::npos);
+}
+
+// Dear ImGui trusts that a row goes into an open table and a tree pop closes an open node, so these checks happen before it runs.
+TEST_F(UiLuaTest, RaisesMisuseDearImGuiDoesNotCheck) {
+    // clang-format off
+    fixture.runLua(R"(
+        imgui = require('haylen.imgui')
+        results = {}
+        require('haylen.scene').push({renderUi = function()
+            imgui.beginWindow('Misuse')
+            results.row = select(2, pcall(imgui.tableNextRow))
+            imgui.pushId('scope')
+            results.pop = select(2, pcall(imgui.treePop))
+            imgui.popId()
+            imgui.endWindow()
+        end})
+    )");
+    // clang-format on
+    fixture.frames(2);
+    ASSERT_EQ(getEngine().getError(), nullptr) << getEngine().getError()->what();
+    EXPECT_EQ(fixture.lua("return results.row"), "There is no open table for imgui.tableNextRow to add a row to.");
+    EXPECT_EQ(fixture.lua("return results.pop"), "There is no open tree node for imgui.treePop to close.");
+}
+
+TEST_F(UiLuaTest, ShowsTheToolWindowsOfDearImGui) {
+    fixture.runLua("imgui = require('haylen.imgui') require('haylen.scene').push({renderUi = function() imgui.showDemoWindow() imgui.showMetricsWindow() end})");
+    fixture.frames(2);
+    ASSERT_EQ(getEngine().getError(), nullptr) << getEngine().getError()->what();
+    getEngine().getPlugin<plugins::UiPlugin>().getBackend().makeCurrent();
+    EXPECT_NE(ImGui::FindWindowByName("Dear ImGui Demo"), nullptr);
+    EXPECT_NE(ImGui::FindWindowByName("Dear ImGui Metrics/Debugger"), nullptr);
 }
 
 TEST_F(UiLuaTest, NavigatesTheFocusAndHearsCancel) {

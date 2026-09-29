@@ -5,6 +5,7 @@
 #include <span>
 #include <vector>
 
+#include "haylen/2d/graphics/SpriteInstance.hpp"
 #include "haylen/2d/particles/EmitterConfig.hpp"
 #include "haylen/debug/ObjectCounter.hpp"
 #include "haylen/debug/TrackedCount.hpp"
@@ -79,6 +80,9 @@ class Emitter final {
     };
 
     static constexpr float kPrewarmStep = 1.0F / 30.0F;
+    static constexpr float kMaxPrewarm = 60.0F;
+    static constexpr float kMinimumCycle = 0.001F;
+    static constexpr std::size_t kMaxParticles = 1000000;
     static debug::ObjectCounter emitterCounter;
     static debug::ObjectCounter particleCounter;
     static constexpr std::size_t kParallelGrain = 4096;
@@ -86,17 +90,23 @@ class Emitter final {
     static void validate(const EmitterConfig& settings);
     [[nodiscard]] static EmitterConfig prepared(EmitterConfig settings);
 
-    void spawn();
+    // Spawns up to count particles, as many as maxParticles leaves room for.
+    void spawn(std::size_t count);
+    void spawnParticle();
     void prewarm();
     void step(float deltaSeconds, core::JobSystem* jobs);
     void emit(float deltaSeconds);
     void simulate(float deltaSeconds, std::size_t begin, std::size_t end) noexcept;
+
+    // Returns how many particles the bursts that the cycle time reached since the last call spawn.
+    [[nodiscard]] double takeBursts() noexcept;
     [[nodiscard]] float pick(math::FloatRange range);
     [[nodiscard]] math::Color colorAt(float life) const noexcept;
 
     EmitterConfig config;
     math::Random random;
     Particles particles;
+    mutable std::vector<graphics2d::SpriteInstance> instances;
     float emitDebt = 0.0F;
     float time = 0.0F;
     std::size_t nextBurst = 0;

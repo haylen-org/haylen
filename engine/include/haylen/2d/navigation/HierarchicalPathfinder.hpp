@@ -2,37 +2,34 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 #include <limits>
 #include <span>
 #include <vector>
 
 #include "haylen/2d/navigation/Grid.hpp"
-#include "haylen/core/JobSystem.hpp"
 
 namespace haylen::navigation2d {
 
-// Finds paths on large square navigation grids in two levels, the HPA* of Botea, Müller and Schaeffer. The grid splits into square clusters joined by entrances on their shared sides, which form a small abstract graph that is searched first, and then only the cells along the chosen route are searched. Paths are near optimal, usually within a few percent of the cheapest one. It keeps a reference to its grid, which must outlive it, and after cells change, update rebuilds only the clusters around them.
+// Finds paths on large square navigation grids in two levels, the HPA* of Botea, Müller and Schaeffer. The grid splits into square clusters joined by entrances on their shared sides, which form a small abstract graph that is searched first, and then only the cells along the chosen route are searched. Paths are near optimal, usually within a few percent of the cheapest one. Every call takes the grid it was built from, and after cells change, update rebuilds only the clusters around them.
 class HierarchicalPathfinder final {
   public:
     struct Options {
+        // A cluster size above the size of the grid makes one cluster that covers it.
         int clusterSize = 16;
         bool diagonal = true;
     };
 
-    using BuildCompletion = std::function<void(core::JobSystem::Result<HierarchicalPathfinder> result)>;
+    explicit HierarchicalPathfinder(const Grid& grid, const Options& value = kDefaultOptions);
 
-    explicit HierarchicalPathfinder(const Grid& navigationGrid, const Options& value = kDefaultOptions);
-
-    // Builds the path finder of the grid from a copy of its cells on the task pool, which keeps large grids from stalling a frame, and calls completion on the frame thread with a path finder that reads the grid itself, or with the error. The grid must outlive the build, and cells that change before the completion need update.
-    static void buildAsync(core::JobSystem& jobs, const Grid& navigationGrid, const Options& value, BuildCompletion completion);
+    // Throws std::invalid_argument when the grid is not square or the clusters are smaller than 2 cells, which lets background builds reject bad arguments before they start.
+    static void requireValid(const Grid& grid, const Options& value);
 
     // Rebuilds the clusters that hold the cells from first to last, both included, after their walkability or costs changed.
-    void update(Grid::Cell first, Grid::Cell last);
-    void rebuild();
+    void update(const Grid& grid, Grid::Cell first, Grid::Cell last);
+    void rebuild(const Grid& grid);
 
-    // Returns the cells from start to goal, both included, or an empty path when either end is blocked or the goal is unreachable. The path stays valid until the next search.
-    std::span<const Grid::Cell> findPath(Grid::Cell start, Grid::Cell goal);
+    // Returns the cells from start to goal, both included, or an empty path when either end is blocked, the goal is unreachable or the route crosses cells that changed without an update. The path stays valid until the next search.
+    std::span<const Grid::Cell> findPath(const Grid& grid, Grid::Cell start, Grid::Cell goal);
 
     // Returns the cost of the last path found, which is infinite when there was none.
     [[nodiscard]] float getCost() const noexcept {
@@ -88,19 +85,20 @@ class HierarchicalPathfinder final {
     static constexpr int kLongEntrance = 6;
 
     [[nodiscard]] static bool isWorse(const OpenNode& lhs, const OpenNode& rhs) noexcept;
+    void requireGrid(const Grid& grid) const;
 
     [[nodiscard]] int clusterOf(Grid::Cell cell) const noexcept;
     [[nodiscard]] Bounds boundsOf(int cluster) const noexcept;
 
     // Rebuilds the entrances on every side of the given clusters and the paths inside them and inside their neighbors.
-    void rebuildClusters(std::span<const int> dirty);
+    void rebuildClusters(const Grid& grid, std::span<const int> dirty);
     void removeBorder(std::vector<std::int32_t>& border);
-    void createBorder(int first, int second, bool horizontal, std::vector<std::int32_t>& border);
-    [[nodiscard]] std::int32_t addNode(Grid::Cell cell, int cluster);
-    void connectInside(int cluster);
+    void createBorder(const Grid& grid, int first, int second, bool horizontal, std::vector<std::int32_t>& border);
+    [[nodiscard]] std::int32_t addNode(const Grid& grid, Grid::Cell cell, int cluster);
+    void connectInside(const Grid& grid, int cluster);
 
     // Searches the cells of one cluster from the source, forward along steps or backward toward the source, until it settles the target or, without one, every cell. Returns true when it reached the target.
-    bool searchLocal(const Bounds& bounds, Grid::Cell source, bool backward, std::int32_t target);
+    bool searchLocal(const Grid& grid, const Bounds& bounds, Grid::Cell source, bool backward, std::int32_t target);
     [[nodiscard]] float localScore(const Bounds& bounds, Grid::Cell cell) const noexcept;
     [[nodiscard]] std::int32_t localIndex(const Bounds& bounds, Grid::Cell cell) const noexcept;
 
@@ -108,8 +106,12 @@ class HierarchicalPathfinder final {
     void appendLocalPath(const Bounds& bounds, Grid::Cell cell);
     void appendCell(Grid::Cell cell);
 
-    const Grid* grid;
+    // Turns the route of entrances into cells, and returns false when a cell of the route or a path between its entrances no longer exists.
+    bool refineRoute(const Grid& grid, Grid::Cell start, Grid::Cell goal);
+
     Options options;
+    int width = 0;
+    int height = 0;
     int clustersX = 0;
     int clustersY = 0;
 
@@ -119,7 +121,9 @@ class HierarchicalPathfinder final {
     std::vector<std::vector<std::int32_t>> horizontalBorders;
     std::vector<std::vector<std::int32_t>> verticalBorders;
 
+    // The local search buffers cover one cluster, clipped to the grid, row by row.
     std::vector<LocalNode> local;
+    int localColumns = 0;
     std::uint32_t localVisit = 0;
     std::vector<OpenNode> open;
 

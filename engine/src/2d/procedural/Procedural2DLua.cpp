@@ -20,6 +20,11 @@
 
 namespace haylen::lua {
 
+template <> struct Type<procedural2d::Delaunay> {
+    static constexpr const char* name = "haylen.Delaunay";
+    using Storage = procedural2d::Delaunay;
+};
+
 template <> struct EnumNames<procedural2d::Scatter::Method> {
     static std::optional<procedural2d::Scatter::Method> fromName(std::string_view name) {
         if (name == "random") {
@@ -168,6 +173,9 @@ Scatter::Options Procedural2DLua::readScatter(lua_State* L, int index, bool asyn
     // Maps are noise tables, or Lua functions of the point outside of asynchronous calls.
     for (const auto& [field, map, normalized] : {std::tuple{"densityMap", &options.densityMap, true}, std::tuple{"biome", &options.biome, false}}) {
         const int type = lua_getfield(L, index, field);
+        if (type != LUA_TNIL && type != LUA_TFUNCTION && type != LUA_TTABLE) {
+            throw std::invalid_argument(std::string("The ") + field + " option takes a function or a noise table.");
+        }
         if (type == LUA_TFUNCTION && asynchronous) {
             throw std::invalid_argument(std::string("Asynchronous scattering takes a noise table for ") + field + " instead of a function.");
         }
@@ -281,27 +289,83 @@ int Procedural2DLua::scatterAsync(lua_State* L) {
     // clang-format on
 }
 
-// Pushes {triangles, halfedges, hull, neighbors} with point and edge numbers counted from 1, and 0 for halfedges on the hull.
-void Procedural2DLua::pushDelaunay(lua_State* L, const Delaunay& triangulation) {
-    lua_createtable(L, 0, 4);
-    pushIndices(L, triangulation.getTriangles());
-    lua_setfield(L, -2, "triangles");
-    pushIndices(L, triangulation.getHalfedges());
-    lua_setfield(L, -2, "halfedges");
-    pushIndices(L, triangulation.getHull());
-    lua_setfield(L, -2, "hull");
-
-    const auto& neighbors = triangulation.getNeighbors();
-    lua_createtable(L, static_cast<int>(neighbors.size()), 0);
-    for (std::size_t point = 0; point < neighbors.size(); ++point) {
-        pushIndices(L, neighbors[point]);
-        lua_rawseti(L, -2, static_cast<lua_Integer>(point + 1));
-    }
-    lua_setfield(L, -2, "neighbors");
+// Triangulates a list of points with delaunay(points) into a Delaunay object, whose lists count points and edges from 1.
+int Procedural2DLua::delaunay(lua_State* L) {
+    auto points = lua::Stack::read<std::vector<math::Vec2>>(L, 1);
+    lua::Userdata::emplace<Delaunay>(L, std::move(points));
+    return 1;
 }
 
-int Procedural2DLua::delaunay(lua_State* L) {
-    pushDelaunay(L, Delaunay(lua::Stack::read<std::vector<math::Vec2>>(L, 1)));
+int Procedural2DLua::delaunayPoints(lua_State* L) {
+    const Delaunay& triangulation = lua::Userdata::check<Delaunay>(L, 1);
+    pushCached(L, "points", [L, &triangulation] { lua::Stack::push(L, triangulation.getPoints()); });
+    return 1;
+}
+
+int Procedural2DLua::delaunayTriangles(lua_State* L) {
+    const Delaunay& triangulation = lua::Userdata::check<Delaunay>(L, 1);
+    pushCached(L, "triangles", [L, &triangulation] { pushIndices(L, triangulation.getTriangles()); });
+    return 1;
+}
+
+// Edges on the hull have no twin, so their halfedge is 0.
+int Procedural2DLua::delaunayHalfedges(lua_State* L) {
+    const Delaunay& triangulation = lua::Userdata::check<Delaunay>(L, 1);
+    pushCached(L, "halfedges", [L, &triangulation] { pushIndices(L, triangulation.getHalfedges()); });
+    return 1;
+}
+
+int Procedural2DLua::delaunayHull(lua_State* L) {
+    const Delaunay& triangulation = lua::Userdata::check<Delaunay>(L, 1);
+    pushCached(L, "hull", [L, &triangulation] { pushIndices(L, triangulation.getHull()); });
+    return 1;
+}
+
+int Procedural2DLua::delaunayNeighbors(lua_State* L) {
+    const Delaunay& triangulation = lua::Userdata::check<Delaunay>(L, 1);
+    // clang-format off
+    pushCached(L, "neighbors", [L, &triangulation] {
+        const auto& neighbors = triangulation.getNeighbors();
+        lua_createtable(L, static_cast<int>(neighbors.size()), 0);
+        for (std::size_t point = 0; point < neighbors.size(); ++point) {
+            pushIndices(L, neighbors[point]);
+            lua_rawseti(L, -2, static_cast<lua_Integer>(point + 1));
+        }
+    });
+    // clang-format on
+    return 1;
+}
+
+int Procedural2DLua::delaunayTriangleCount(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<Delaunay>(L, 1).getTriangleCount());
+    return 1;
+}
+
+int Procedural2DLua::delaunayCircumcenter(lua_State* L) {
+    const Delaunay& triangulation = lua::Userdata::check<Delaunay>(L, 1);
+    const auto triangle = lua::Stack::read<lua_Integer>(L, 2);
+    luaL_argcheck(L, triangle >= 1 && static_cast<std::size_t>(triangle) <= triangulation.getTriangleCount(), 2, "the triangle is outside the triangulation");
+    lua::Stack::push(L, triangulation.getCircumcenter(static_cast<std::size_t>(triangle - 1)));
+    return 1;
+}
+
+// Finds the point nearest to a position with findNearest(position[, start]), walking from the point start, or returns nil without points.
+int Procedural2DLua::delaunayFindNearest(lua_State* L) {
+    const Delaunay& triangulation = lua::Userdata::check<Delaunay>(L, 1);
+    const auto position = lua::Stack::read<math::Vec2>(L, 2);
+    const std::size_t count = triangulation.getPoints().size();
+    if (count == 0) {
+        lua_pushnil(L);
+        return 1;
+    }
+    if (lua_isnoneornil(L, 3)) {
+        lua::Stack::push(L, triangulation.findNearest(position) + 1);
+        return 1;
+    }
+
+    const auto start = lua::Stack::read<lua_Integer>(L, 3);
+    luaL_argcheck(L, start >= 1 && static_cast<std::size_t>(start) <= count, 3, "the start is outside the points");
+    lua::Stack::push(L, triangulation.findNearest(position, static_cast<std::uint32_t>(start - 1)) + 1);
     return 1;
 }
 
@@ -315,8 +379,8 @@ int Procedural2DLua::voronoiAsync(lua_State* L) {
     auto points = lua::Stack::read<std::vector<math::Vec2>>(L, 1);
     const auto bounds = lua::Stack::read<math::Rect>(L, 2);
     // clang-format off
-    return spawn(L, [points = std::move(points), bounds] {
-        return Voronoi(points, bounds).getCells();
+    return spawn(L, [points = std::move(points), bounds]() mutable {
+        return Voronoi(std::move(points), bounds).getCells();
     }, [](lua_State* state, const std::vector<std::vector<math::Vec2>>& cells) { lua::Stack::push(state, cells); });
     // clang-format on
 }
@@ -331,8 +395,8 @@ int Procedural2DLua::relaxAsync(lua_State* L) {
     const auto bounds = lua::Stack::read<math::Rect>(L, 2);
     const auto iterations = static_cast<int>(luaL_optinteger(L, 3, 1));
     // clang-format off
-    return spawn(L, [points = std::move(points), bounds, iterations] {
-        return Voronoi::relax(points, bounds, iterations);
+    return spawn(L, [points = std::move(points), bounds, iterations]() mutable {
+        return Voronoi::relax(std::move(points), bounds, iterations);
     }, [](lua_State* state, const std::vector<math::Vec2>& sites) { lua::Stack::push(state, sites); });
     // clang-format on
 }
@@ -348,6 +412,7 @@ int Procedural2DLua::open(lua_State* L) {
 
 void Procedural2DLua::install(lua_State* L) {
     lua::ClassBuilder<Region>(L).function("contains", &lua::Binding::native<&regionContains>).function("randomPoint", &lua::Binding::native<&regionRandomPoint>).property("area", &regionArea).property("bounds", &regionBounds).property("kind", &regionKind).install();
+    lua::ClassBuilder<Delaunay>(L).function("circumcenter", &lua::Binding::native<&delaunayCircumcenter>).function("findNearest", &lua::Binding::native<&delaunayFindNearest>).property("points", &delaunayPoints).property("triangles", &delaunayTriangles).property("halfedges", &delaunayHalfedges).property("hull", &delaunayHull).property("neighbors", &delaunayNeighbors).property("triangleCount", &delaunayTriangleCount).install();
     MapGeneratorsLua::install(L);
     lua::Binding::preload(L, "haylen.procedural2d", &open);
 }

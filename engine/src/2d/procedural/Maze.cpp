@@ -2,6 +2,8 @@
 
 #include <array>
 #include <bit>
+#include <cstdint>
+#include <limits>
 #include <span>
 #include <stdexcept>
 #include <utility>
@@ -12,8 +14,8 @@
 namespace haylen::procedural2d {
 
 Maze::Maze(int columns, int rows) : width(columns), height(rows) {
-    if (columns < 1 || rows < 1) {
-        throw std::invalid_argument("A maze needs at least one cell on each side.");
+    if (columns < 1 || rows < 1 || (2 * std::int64_t{columns} + 1) * (2 * std::int64_t{rows} + 1) > std::numeric_limits<std::int32_t>::max()) {
+        throw std::invalid_argument("A maze needs at least one cell on each side and a tile grid that fits in 32-bit cell indices.");
     }
     openings.assign(static_cast<std::size_t>(columns) * static_cast<std::size_t>(rows), 0);
 }

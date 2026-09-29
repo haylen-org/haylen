@@ -20,9 +20,16 @@ bool Scatter::keepsByDensity(const Options& options, math::Vec2 point, math::Ran
     return !options.densityMap || random.chance(math::Math::saturate(options.densityMap(point)));
 }
 
+void Scatter::requirePointCount(double count) {
+    if (count > kMaxPoints) {
+        throw std::invalid_argument("Scattering over this region would need more than 16777216 points, so the density must be lower or the spacing larger.");
+    }
+}
+
 // The fraction of the expected count becomes one more point with that probability, so the count matches the area on average.
 std::vector<math::Vec2> Scatter::placeRandom(const Region& region, const Options& options, math::Random& random) {
     const float expected = region.getArea() * options.density;
+    requirePointCount(expected);
     const float whole = std::floor(expected);
     const auto count = static_cast<std::size_t>(whole) + (random.chance(expected - whole) ? 1U : 0U);
 
@@ -39,13 +46,17 @@ std::vector<math::Vec2> Scatter::placeRandom(const Region& region, const Options
 
 std::vector<math::Vec2> Scatter::placeGrid(const Region& region, const Options& options, math::Random& random) {
     const math::Rect bounds = region.getBounds();
-    const auto columns = static_cast<int>(std::ceil(bounds.width / options.spacing));
-    const auto rows = static_cast<int>(std::ceil(bounds.height / options.spacing));
+    const float columns = std::ceil(bounds.width / options.spacing);
+    const float rows = std::ceil(bounds.height / options.spacing);
+    if (!(columns > 0.0F && rows > 0.0F)) {
+        return {};
+    }
+    requirePointCount(static_cast<double>(columns) * rows);
     const float reach = options.jitter * options.spacing * 0.5F;
 
     std::vector<math::Vec2> points;
-    for (int row = 0; row < rows; ++row) {
-        for (int column = 0; column < columns; ++column) {
+    for (int row = 0; row < static_cast<int>(rows); ++row) {
+        for (int column = 0; column < static_cast<int>(columns); ++column) {
             const math::Vec2 center = bounds.getMin() + math::Vec2{static_cast<float>(column) + 0.5F, static_cast<float>(row) + 0.5F} * options.spacing;
             const math::Vec2 point = center + math::Vec2{random.range(-reach, reach), random.range(-reach, reach)};
             if (region.contains(point) && !isExcluded(options, point) && keepsByDensity(options, point, random)) {
@@ -79,8 +90,11 @@ std::vector<math::Vec2> Scatter::place(const Region& region, const Options& opti
 }
 
 std::vector<Scatter::Point> Scatter::generate(const Region& region, const Options& options, math::Random& random) {
-    if (options.density < 0.0F || options.spacing <= 0.0F) {
-        throw std::invalid_argument("Scattering needs a density of at least zero and a positive spacing.");
+    if (!(options.density >= 0.0F) || !std::isfinite(options.density) || !(options.spacing > 0.0F) || !std::isfinite(options.spacing)) {
+        throw std::invalid_argument("Scattering needs a finite density of at least zero and a finite positive spacing.");
+    }
+    if (options.method == Method::Poisson && options.densityMap && !(options.maximumSpacing >= options.spacing && std::isfinite(options.maximumSpacing))) {
+        throw std::invalid_argument("Poisson scattering with a density map needs a finite maximumSpacing of at least the spacing.");
     }
     if (!options.layers.empty() && !options.biome) {
         throw std::invalid_argument("Scatter layers need a biome function.");

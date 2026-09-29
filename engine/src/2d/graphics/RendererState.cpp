@@ -1,6 +1,7 @@
 #include "2d/graphics/RendererState.hpp"
 
 #include <algorithm>
+#include <format>
 #include <stdexcept>
 
 #include "2d/graphics/MaterialResource.hpp"
@@ -12,6 +13,7 @@
 #include "haylen/graphics/Device.hpp"
 #include "shaders/mesh.glsl.h"
 #include "shaders/sprite.glsl.h"
+#include "shaders/sprite_lit.glsl.h"
 
 namespace haylen::graphics2d {
 
@@ -42,8 +44,13 @@ void RendererState::openCanvas(Canvas next) {
     next.segmentEnd = segments.size();
     next.metaballBegin = metaballs.size();
     next.metaballEnd = metaballs.size();
-    if (captureOpen && next.kind != Canvas::Kind::Target) {
-        next.capture = captures.size();
+    if (!openCaptures.empty() && next.kind != Canvas::Kind::Target) {
+        next.capture = openCaptures.back() + 1;
+    }
+    if (!next.isComposited() && next.kind == Canvas::Kind::Target) {
+        next.destination = next.target.getTexture().getResource().get();
+    } else if (!next.isComposited() && next.capture != 0) {
+        next.destination = captures[next.capture - 1].target.getTexture().getResource().get();
     }
     canvases.push_back(std::move(next));
     clipStack.clear();
@@ -66,11 +73,10 @@ void RendererState::closeCanvas() {
 }
 
 void RendererState::closeCapture() {
-    if (captureOpen) {
-        closeCanvas();
-        captures.back().canvasEnd = canvases.size();
-        captureOpen = false;
-    }
+    closeCanvas();
+    captures[openCaptures.back()].canvasEnd = canvases.size();
+    closedCaptures.push_back(openCaptures.back());
+    openCaptures.pop_back();
 }
 
 void RendererState::resetFrame() noexcept {
@@ -85,6 +91,8 @@ void RendererState::resetFrame() noexcept {
     commands.clear();
     canvases.clear();
     captures.clear();
+    openCaptures.clear();
+    closedCaptures.clear();
     clips.clear();
     clipStack.clear();
     layerOffsets.clear();
@@ -101,7 +109,6 @@ void RendererState::resetFrame() noexcept {
     sequence = 0;
     layerOffset = 0;
     canvasOpen = false;
-    captureOpen = false;
 }
 
 std::uint32_t RendererState::getShade(const DrawOrder& order) {
@@ -166,10 +173,23 @@ std::uint32_t RendererState::pushShade(Shade shade, const Material& material) {
     return static_cast<std::uint32_t>(shades.size() - 1);
 }
 
+void RendererState::requireReadable(const graphics::TextureResource* texture) {
+    if (texture != nullptr && texture == getCanvas().destination) {
+        throw std::invalid_argument("A draw cannot sample the render target that its canvas draws into.");
+    }
+}
+
 DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphics::TextureResource* texture, float standingY) {
     Canvas& current = getCanvas();
     if (order.material.isValid() && (program == Program::ImageBlend || program == Program::Metaball)) {
         throw std::invalid_argument("Image blends and metaballs do not take a material.");
+    }
+    requireReadable(texture);
+    if (order.material.isValid() && current.destination != nullptr) {
+        const MaterialResource& material = *order.material.getResource();
+        for (const graphics::Shader::TextureSlot& slot : material.shader.getTextures()) {
+            requireReadable(material.getTextureAt(slot.slot).getResource().get());
+        }
     }
 
     DrawItem item{
@@ -177,7 +197,7 @@ DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphi
         .sequence = sequence++,
         .program = program,
         .blend = order.blend,
-        .clip = clipStack.empty() ? std::uint16_t{0} : clipStack.back(),
+        .clip = clipStack.empty() ? 0U : clipStack.back(),
         .shade = getShade(order),
         .texture = texture,
     };
@@ -213,6 +233,10 @@ void RendererState::addMesh(const graphics::Texture& texture, std::span<const Gp
 
 std::uint32_t RendererState::pipelineKey(Program program, std::uint8_t blend, graphics::PassTarget target) noexcept {
     return static_cast<std::uint32_t>(program) | (static_cast<std::uint32_t>(blend) << 4U) | (static_cast<std::uint32_t>(target) << 8U);
+}
+
+bool RendererState::expectsPremultiplied(graphics::BlendMode::Type mode) noexcept {
+    return mode == graphics::BlendMode::Type::Multiply || mode == graphics::BlendMode::Type::Screen;
 }
 
 sg_blend_state RendererState::blendState(graphics::BlendMode::Type mode) noexcept {
@@ -290,7 +314,7 @@ void RendererState::describeLayout(sg_pipeline_desc& desc, Program program) cons
     desc.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP;
 }
 
-void RendererState::describeTargets(sg_pipeline_desc& desc, Program program, std::uint8_t blend, graphics::PassTarget target) const {
+void RendererState::describeTargets(sg_pipeline_desc& desc, std::uint8_t blend, graphics::PassTarget target) const {
     using Mode = graphics::BlendMode::Type;
     const auto mode = static_cast<Mode>(blend);
     const sg_pixel_format offscreen = device.getState().offscreenFormat;
@@ -302,15 +326,15 @@ void RendererState::describeTargets(sg_pipeline_desc& desc, Program program, std
     switch (target) {
     case graphics::PassTarget::Swapchain:
         // The swapchain of an opaque window keeps the alpha of its clear, so no blend can let the desktop through.
-        desc.colors[0].blend = program == Program::Composite ? sg_blend_state{} : blendState(mode);
+        desc.colors[0].blend = blendState(mode);
         desc.colors[0].write_mask = SG_COLORMASK_RGB;
         return;
     case graphics::PassTarget::TransparentSwapchain:
-        desc.colors[0].blend = program == Program::Composite ? sg_blend_state{} : blendState(mode);
+        desc.colors[0].blend = blendState(mode);
         return;
     case graphics::PassTarget::Offscreen:
         desc.colors[0].pixel_format = offscreen;
-        desc.colors[0].blend = program == Program::Composite ? sg_blend_state{} : blendState(mode);
+        desc.colors[0].blend = blendState(mode);
         return;
     case graphics::PassTarget::LightMap:
         desc.colors[0].pixel_format = lightFormat;
@@ -341,20 +365,19 @@ void RendererState::describeTargets(sg_pipeline_desc& desc, Program program, std
 }
 
 sg_pipeline RendererState::getPipeline(Program program, std::uint8_t blend, graphics::PassTarget target) {
-    const std::uint8_t used = program == Program::Composite ? static_cast<std::uint8_t>(graphics::BlendMode::Type::Opaque) : blend;
-    const std::uint32_t key = pipelineKey(program, used, target);
+    const std::uint32_t key = pipelineKey(program, blend, target);
     if (const auto found = pipelines.find(key); found != pipelines.end()) {
         return found->second;
     }
 
     sg_pipeline_desc desc{};
     describeLayout(desc, program);
-    describeTargets(desc, program, used, target);
+    describeTargets(desc, blend, target);
     const auto index = static_cast<std::size_t>(program);
     desc.shader = target == graphics::PassTarget::LitScene ? litShaders[index] : shaders[index];
     desc.label = "haylen-pipeline";
 
-    const sg_pipeline created = sg_make_pipeline(&desc);
+    const sg_pipeline created = graphics::Gpu::makePipeline(desc);
     pipelines.emplace(key, created);
     return created;
 }
@@ -383,7 +406,14 @@ const graphics::ShaderResource::Program& RendererState::getMaterialProgram(Mater
     if (shader.graveyard.expired()) {
         shader.graveyard = device.getState().graveyard;
     }
-    return shader.getProgram(materialProgramName(program, target));
+    const graphics::ShaderResource::Program& made = shader.getProgram(materialProgramName(program, target));
+
+    // The renderer fills the blocks of the shader library itself, so a shader compiled with another version of the library cannot draw.
+    const bool lit = target == graphics::PassTarget::LitScene;
+    if (made.blockSizes[UB_sprite_haylen_vs_params] != sizeof(sprite_haylen_vs_params_t) || (lit && made.blockSizes[UB_sprite_lit_haylen_lit_params] != sizeof(sprite_lit_haylen_lit_params_t))) {
+        throw std::invalid_argument(std::format("The shader {} was compiled with another version of the shader library. Compile it again with make.py shaders.", shader.name));
+    }
+    return made;
 }
 
 sg_pipeline RendererState::getMaterialPipeline(MaterialResource& material, Program program, std::uint8_t blend, graphics::PassTarget target) {
@@ -395,11 +425,11 @@ sg_pipeline RendererState::getMaterialPipeline(MaterialResource& material, Progr
 
     sg_pipeline_desc desc{};
     describeLayout(desc, program);
-    describeTargets(desc, program, blend, target);
+    describeTargets(desc, blend, target);
     desc.shader = getMaterialProgram(material, program, target).shader;
     desc.label = "haylen-material-pipeline";
 
-    const sg_pipeline created = sg_make_pipeline(&desc);
+    const sg_pipeline created = graphics::Gpu::makePipeline(desc);
     shader.pipelines.emplace(key, created);
     return created;
 }

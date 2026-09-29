@@ -1,6 +1,7 @@
 #include "ui/components/inputs/NumberField.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <system_error>
 
 #include <fast_float/fast_float.h>
@@ -53,13 +54,16 @@ void NumberField::render(Context& context, const math::Rect& bounds) {
     const platform::TextInput::Keyboard keyboard = minimum < 0.0 ? platform::TextInput::Keyboard::Text : (decimals > 0 ? platform::TextInput::Keyboard::Decimal : platform::TextInput::Keyboard::Number);
     const TextEditor::Result typed = TextEditor::draw(context, middle, text, {.input = {.keyboard = keyboard, .returnKey = returnKey, .capitalization = platform::TextInput::Capitalization::None, .autocorrect = false}, .focus = takeFocusRequest()});
     const bool editing = ImGui::IsItemActive();
+    const bool committed = typed.submitted || ImGui::IsItemDeactivated();
     double next = value;
     if (lower || raise) {
         next = std::clamp(value + (raise ? step : -step), minimum, maximum);
-    } else if (typed.changed || typed.submitted) {
+    } else if (typed.changed || committed) {
+        // A typed number inside the range counts at once, and one outside it waits until the editing ends, which brings it into the range.
         double parsed = 0.0;
         const auto [end, error] = fast_float::from_chars(text.data(), text.data() + text.size(), parsed);
-        if (error == std::errc{} && end == text.data() + text.size()) {
+        const bool number = error == std::errc{} && end == text.data() + text.size() && std::isfinite(parsed);
+        if (number && (committed || (parsed >= minimum && parsed <= maximum))) {
             next = std::clamp(parsed, minimum, maximum);
         }
     }

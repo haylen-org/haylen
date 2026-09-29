@@ -224,7 +224,7 @@ scene.push({
 
 ### animator:queue(name)
 
-Adds `name` to the queue. The next queued animation starts from its first frame on the update that ends the current pass: when a one-shot animation finishes, or when a looping animation reaches the end of the cycle it is in, measured with `cycleDuration`. A looping animation that has already played for a while still finishes its current cycle before the queued one starts. With no current animation, or when the current one-shot animation has already finished, `queue` plays `name` at once. An unknown name raises `Unknown animation: name`.
+Adds `name` to the queue. The next queued animation starts from its first frame on the update that ends the current pass: when a one-shot animation finishes, or when a looping animation reaches the end of the cycle it is in, measured with `cycleDuration`. A looping animation that has already played for a while still finishes its current cycle before the queued one starts. With no current animation, or when the current one-shot animation has already finished, `queue` plays `name` at once from its first frame, which replays a one-shot animation that just finished when `name` is that animation. An unknown name raises `Unknown animation: name`.
 
 ### animator:clearQueue()
 

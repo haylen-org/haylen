@@ -106,7 +106,7 @@ class Renderer final {
     void beginScreen(const CanvasOptions& options = kDefaultCanvas);
     void beginTarget(const graphics::RenderTarget& target, const Camera& camera, const CanvasOptions& options = kDefaultCanvas);
 
-    // Sends the world and screen canvases that begin until the capture ends into the target instead of the screen, cleared to the color first. The visible area covers the whole target, so a target with the pixel size of the viewport captures the frame as the screen would show it. A capture left open ends with the frame.
+    // Sends the world and screen canvases that begin until the capture ends into the target instead of the screen, cleared to the color first. The visible area covers the whole target, so a target with the pixel size of the viewport captures the frame as the screen would show it. A capture can begin inside another one, which takes the canvases back once it ends. A capture left open ends with the frame.
     void beginCapture(const graphics::RenderTarget& target, math::Color clear = math::Color::transparent());
     void endCapture();
 
@@ -162,7 +162,7 @@ class Renderer final {
     [[nodiscard]] float getCanvasUnitSize() const;
     [[nodiscard]] bool isCapturing() const noexcept;
 
-    // Frame lifecycle driven by the engine.
+    // The engine begins and ends every frame, and submits everything drawn in between at its end.
     void beginFrame(const graphics::Viewport& viewport, math::Color clearColor);
     void endFrame(const graphics::FrameTarget& target);
 

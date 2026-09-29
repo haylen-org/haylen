@@ -70,10 +70,16 @@ class Widgets final {
         {"information", Tone::Information},
     }};
 
+    // The largest magnitude of the ends of a slider, which keeps its span a finite number.
+    static constexpr double kSliderLimit = 1e15;
+
     [[nodiscard]] static ToneColors getToneColors(Tone tone) noexcept;
 
     // Registers an interactive item for mouse and touch and as a focus target, and draws the focus ring around it while it has the visible focus. The radius is the corner radius of the control. Items outside the visible clip report nothing.
     [[nodiscard]] static Interaction interact(Context& context, const math::Rect& bounds, float radius, std::string_view label = "##item", ImGuiButtonFlags flags = ImGuiButtonFlags_None);
+
+    // Whether any part of the bounds shows inside the clip of the window being drawn, where the transforms of the nodes around them move and scale them, so long collections skip drawing what is scrolled out of view.
+    [[nodiscard]] static bool isVisible(const Context& context, const math::Rect& bounds);
 
     // Draws the themed focus ring a small gap outside the bounds while the item has the visible focus, with corners concentric to the corners of the control.
     static void drawFocusRing(Context& context, const math::Rect& bounds, ImGuiID id, float radius);
@@ -92,6 +98,9 @@ class Widgets final {
     static bool toggle(Context& context, const math::Rect& bounds, bool& value, std::string_view label);
 
     static bool slider(Context& context, const math::Rect& bounds, double& value, double minimum, double maximum, double step);
+
+    // Returns the value inside the range, on the nearest multiple of the step from the minimum when the step is above zero.
+    [[nodiscard]] static double snap(double value, double minimum, double maximum, double step) noexcept;
     static void progress(Context& context, const math::Rect& bounds, float value, Tone tone);
     static void spinner(Context& context, math::Vec2 center, float radius, math::Color color);
 

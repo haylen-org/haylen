@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <limits>
 #include <memory>
 #include <numbers>
 #include <optional>
@@ -183,8 +184,12 @@ TEST(RaycasterTest, CastsBatchesInParallelLikeOneByOne) {
 TEST(RaycasterTest, DrawsRaysHitsAndNormalsForDebugging) {
     test::EngineFixture fixture;
     physics2d::RayDebugDraw rays;
-    rays.add({0.0F, 0.0F}, {100.0F, 0.0F}, std::nullopt);
-    rays.add({0.0F, 10.0F}, {100.0F, 10.0F}, physics2d::RayDebugDraw::Hit{.point = {50.0F, 10.0F}, .normal = {-1.0F, 0.0F}});
+
+    // The first ray of a frame drops the rays of earlier frames that were never drawn.
+    rays.add(1, {0.0F, 0.0F}, {100.0F, 0.0F}, std::nullopt);
+    rays.add(1, {0.0F, 0.0F}, {100.0F, 0.0F}, std::nullopt);
+    rays.add(2, {0.0F, 0.0F}, {100.0F, 0.0F}, std::nullopt);
+    rays.add(2, {0.0F, 10.0F}, {100.0F, 10.0F}, physics2d::RayDebugDraw::Hit{.point = {50.0F, 10.0F}, .normal = {-1.0F, 0.0F}});
     EXPECT_EQ(rays.size(), 2U);
 
     std::optional<physics2d::RayDebugDraw::Hit> mark;
@@ -247,6 +252,7 @@ TEST(WorldRaycastLuaTest, CastsRaysAndShapesFromLua) {
 
     EXPECT_EQ(fixture.lua("local hits, x, y = world:bounceRay(0, 50, 1, 0, 5000, 2, {mask = 4}) return names(hits) .. ' ' .. math.floor(hits[2].distance + 0.5) .. ' ' .. math.floor(x + 0.5)"), "right,left,right 1185 395");
     EXPECT_EQ(fixture.lua("return names(world:rayFan(0, 0, 0, math.pi, 5, 1000, {mask = 4}))"), "miss,right,right,right,miss");
+    EXPECT_NE(fixture.lua("world:rayFan(0, 0, 0, 1, 3, math.huge)").find("the length must be finite"), std::string::npos);
 
     // clang-format off
     fixture.runLua(R"(

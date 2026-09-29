@@ -36,8 +36,14 @@ int GraphicsLua::newTexture(lua_State* L) {
         lua::Table::readField(L, 3, "pixels", pixels);
     }
 
-    const Image image = pixels.empty() ? Image(width, height, fill) : Image(width, height, std::vector<std::uint8_t>(pixels.begin(), pixels.end()));
-    lua::Stack::push(L, lua::Runtime::getEngine(L).getGraphics().createTexture(image, lua::TypeConverter::readTextureOptions(L, 3, {kTextureContentFields})));
+    Device& device = lua::Runtime::getEngine(L).getGraphics();
+    const Texture::Options options = lua::TypeConverter::readTextureOptions(L, 3, {kTextureContentFields});
+    lua::Stack::push(L, pixels.empty() ? device.createTexture(width, height, fill, options) : device.createTexture(Image(width, height, std::vector<std::uint8_t>(pixels.begin(), pixels.end())), options));
+    return 1;
+}
+
+int GraphicsLua::maxTextureSize(lua_State* L) {
+    lua::Stack::push(L, lua::Runtime::getEngine(L).getGraphics().getMaxTextureSize());
     return 1;
 }
 
@@ -120,7 +126,7 @@ int GraphicsLua::shaderTextures(lua_State* L) {
 
 int GraphicsLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"newTexture", &lua::Binding::native<&newTexture>}, {"newRenderTarget", &lua::Binding::native<&newRenderTarget>}, {"whiteTexture", &whiteTexture}, {"backend", &backend}, {"newFontFamily", &lua::Binding::native<&FontLua::newFontFamily>}, {"newBitmapFont", &lua::Binding::native<&FontLua::newBitmapFont>}, {"newGridFont", &lua::Binding::native<&FontLua::newGridFont>}, {nullptr, nullptr},
+        {"newTexture", &lua::Binding::native<&newTexture>}, {"newRenderTarget", &lua::Binding::native<&newRenderTarget>}, {"whiteTexture", &whiteTexture}, {"backend", &backend}, {"maxTextureSize", &maxTextureSize}, {"newFontFamily", &lua::Binding::native<&FontLua::newFontFamily>}, {"newBitmapFont", &lua::Binding::native<&FontLua::newBitmapFont>}, {"newGridFont", &lua::Binding::native<&FontLua::newGridFont>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

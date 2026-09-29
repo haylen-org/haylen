@@ -153,8 +153,8 @@ int SpatialIndexLua::newKdTree(lua_State* L) {
 // Stores a value with set(value, rect), or moves it when it is already stored.
 template <typename Structure> int SpatialIndexLua::set(lua_State* L) {
     ScriptedIndex<Structure>& self = lua::Userdata::check<ScriptedIndex<Structure>>(L, 1);
-    const math::Rect bounds = lua::Stack::read<math::Rect>(L, 3);
-    store(L, self, [&self, &bounds](std::uint64_t id) { self.index.set(id, bounds); });
+    const math::Rect rect = lua::Stack::read<math::Rect>(L, 3);
+    store(L, self, [&self, &rect](std::uint64_t id) { self.index.set(id, rect); });
     return 0;
 }
 
@@ -260,13 +260,14 @@ template <typename Structure> int SpatialIndexLua::nearest(lua_State* L) {
         luaL_checktype(L, 5, LUA_TFUNCTION);
     }
 
-    // Accept runs on every candidate from the closest one on, and it may remove values, so a value that is gone is skipped.
+    // Accept runs on every candidate from the closest one on, and it may remove values or clear the structure, which replaces the values table, so each candidate is looked up in the current table and a value that is gone is skipped.
     std::vector<Neighbor> candidates;
     structure.nearest(point, filtered ? structure.size() : 1, maxDistance, candidates);
-    lua::Userdata::pushField(L, 1, "values");
-    const int values = lua_gettop(L);
     for (const Neighbor& candidate : candidates) {
-        if (lua_rawgeti(L, values, static_cast<lua_Integer>(candidate.id)) == LUA_TNIL) {
+        lua::Userdata::pushField(L, 1, "values");
+        const int type = lua_rawgeti(L, -1, static_cast<lua_Integer>(candidate.id));
+        lua_remove(L, -2);
+        if (type == LUA_TNIL) {
             lua_pop(L, 1);
             continue;
         }

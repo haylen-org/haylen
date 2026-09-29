@@ -6,6 +6,7 @@
 #include <stdexcept>
 
 #include "2d/physics/Box2DConverter.hpp"
+#include "haylen/2d/physics/Raycaster.hpp"
 #include "haylen/2d/physics/World.hpp"
 #include "haylen/math/Math.hpp"
 
@@ -77,11 +78,13 @@ std::vector<Explosion::Hit> Explosion::apply(World& world, const Options& option
         }
     }
 
+    // Only solid shapes that pass the filter of the blast shield the bodies behind them.
+    const Raycaster::Filter shield{.collision = options.filter, .accept = [](const RaycastHit& candidate) { return !candidate.shape.isSensor(); }};
     std::vector<Hit> pushed;
     for (std::size_t index = 0; index < hits.size(); ++index) {
         Hit& hit = hits[index];
         if (options.occlusion) {
-            const std::optional<RaycastHit> blocker = world.raycast(options.center, hit.point);
+            const std::optional<RaycastHit> blocker = Raycaster(world).castRay(options.center, hit.point, shield);
             if (blocker && !(blocker->shape.getBody() == hit.body)) {
                 continue;
             }
