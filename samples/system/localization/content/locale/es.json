@@ -1,5 +1,5 @@
 {
-    "language": {"en": "Inglés", "pt-BR": "Portugués", "es": "Español", "ja": "Japonés"},
+    "language": {"en": "Inglés", "pt-BR": "Portugués", "es": "Español", "ja": "Japonés", "ar": "Árabe", "hi": "Hindi"},
     "menu": {
         "title": "Cuentos de la Isla",
         "subtitle": "Una pequeña aventura junto al mar",
@@ -43,5 +43,6 @@
         "difficulty": "Dificultad",
         "hard": "Difícil"
     },
-    "fonts": {"sample": "Cada idioma dibuja con una fuente que tiene sus letras."}
+    "fonts": {"sample": "Cada idioma dibuja con una fuente que tiene sus letras."},
+    "direction": {"settings": "Ajustes", "music": "Música", "vibration": "Vibración", "volume": "Volumen", "name": "Nombre del capitán", "placeholder": "Escribe un nombre", "inbox": "Bandeja de entrada", "inboxCaption": "3 mensajes sin leer", "profile": "Perfil", "profileCaption": "Nivel 12", "save": "Guardar", "cancel": "Cancelar", "note": "Filas, casillas, interruptores, deslizadores, listas y diálogos se reflejan cuando la interfaz se lee de derecha a izquierda."}
 }

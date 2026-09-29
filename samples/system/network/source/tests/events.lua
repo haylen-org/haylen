@@ -79,11 +79,11 @@ function Events:content()
                 end},
             },
             ui.label{id = 'open', text = '', color = 'accentText'},
-            ui.scroll{height = 0, grow = 1, ui.table{id = 'counters', columns = {{text = 'Source', width = 190}, {text = 'Event'}, {text = 'Count', width = 110, align = 'end'}}, rows = counters}},
+            ui.scroll{grow = 1, ui.table{id = 'counters', columns = {{text = 'Source', width = 190}, {text = 'Event'}, {text = 'Count', width = 110, align = 'end'}}, rows = counters}},
         },
         ui.panel{grow = 1, align = 'stretch', gap = 12,
             ui.sectionTitle{text = 'Timeline'},
-            ui.scroll{height = 0, grow = 1, focusable = false, ui.list{id = 'timeline', items = {}}},
+            ui.scroll{grow = 1, focusable = false, ui.list{id = 'timeline', items = {}}},
         },
     }
 end

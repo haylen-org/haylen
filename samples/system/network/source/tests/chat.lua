@@ -31,7 +31,7 @@ function Chat:content()
                 ui.spacer{grow = 1},
                 ui.badge{id = 'queued', text = '', tone = 'warning', visible = false},
             },
-            ui.scroll{id = 'scroll', height = 0, grow = 1, ui.column{id = 'messages', gap = 12, padding = {0, 24, 0, 0}}},
+            ui.scroll{id = 'scroll', grow = 1, ui.column{id = 'messages', gap = 12, padding = {0, 24, 0, 0}}},
             ui.row{gap = 12,
                 ui.textField{id = 'name', value = self.name, width = 220, maxLength = 16, autocapitalize = 'words', returnKey = 'next', onChange = function(event)
                     self.name = event.value

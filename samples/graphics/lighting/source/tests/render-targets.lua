@@ -44,7 +44,6 @@ function RenderTargets:pointInside(screen)
 end
 
 function RenderTargets:update(dt)
-    RenderTargets.super.update(self, dt)
     self.cursor:update(dt)
     self.time = self.time + dt
 

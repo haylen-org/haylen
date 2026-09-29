@@ -1,0 +1,6 @@
+// Haylen Native answers the platform handlers test with Kotlin and Java handlers that its own Application class registers before the first activity starts.
+android {
+    defaultConfig {
+        manifestPlaceholders.haylenApplication = "dev.haylen.samples.nativesample.NativeSampleApplication"
+    }
+}

@@ -10,5 +10,9 @@ Every font is free to redistribute under the SIL Open Font License 1.1, whose te
 | `fonts/space_mono_regular.ttf` | Space Mono, The Space Mono Project Authors | [Google Fonts](https://github.com/google/fonts/tree/main/ofl/spacemono) | OFL 1.1, `fonts/space_mono_license.txt` |
 | `fonts/mplus_1p_regular.ttf` | M PLUS 1p, The M+ Fonts Project | [Google Fonts](https://fonts.google.com/specimen/M+PLUS+1p) | OFL 1.1, `fonts/mplus_1p_license.txt` |
 | `fonts/noto_sans_symbols_2_regular.ttf` | Noto Sans Symbols 2, The Noto Project Authors | [Google Fonts](https://github.com/google/fonts/tree/main/ofl/notosanssymbols2) | OFL 1.1, `fonts/noto_sans_symbols_2_license.txt` |
+| `fonts/noto_sans_arabic_regular.ttf` | Noto Sans Arabic 2.013, The Noto Project Authors | [notofonts/arabic](https://github.com/notofonts/arabic/releases) | OFL 1.1, `fonts/noto_sans_arabic_license.txt` |
+| `fonts/noto_sans_hebrew_regular.ttf` | Noto Sans Hebrew 3.001, The Noto Project Authors | [notofonts/hebrew](https://github.com/notofonts/hebrew/releases) | OFL 1.1, `fonts/noto_sans_hebrew_license.txt` |
+| `fonts/noto_sans_devanagari_regular.ttf` | Noto Sans Devanagari 2.007, The Noto Project Authors | [notofonts/devanagari](https://github.com/notofonts/devanagari/releases) | OFL 1.1, `fonts/noto_sans_devanagari_license.txt` |
+| `fonts/noto_sans_thai_regular.ttf` | Noto Sans Thai 2.002, The Noto Project Authors | [notofonts/thai](https://github.com/notofonts/thai/releases) | OFL 1.1, `fonts/noto_sans_thai_license.txt` |
 
 Haylen Pixel (`fonts/haylen_pixel.fnt`, `fonts/haylen_pixel_gold.fnt` and their pages), the LCD digits of `fonts/lcd_digits.png` and the pictures in `images/` are drawn for this sample by `tools/generate_content.py`.

@@ -6,9 +6,10 @@ return {
     {id = 'fallback', title = 'Fallback fonts', description = 'Japanese, Chinese and symbols drawn by fallback fonts that the family resolves character by character.', module = 'tests.fallback'},
     {id = 'bitmap', title = 'Bitmap fonts', description = 'A BMFont in the text format, a colored BMFont in the binary format and a grid font of LCD digits.', module = 'tests.bitmap'},
     {id = 'alignment', title = 'Alignment', description = 'Left, center, right and fill alignment, and the anchor point of a text block.', module = 'tests.alignment'},
+    {id = 'complex-scripts', title = 'Complex scripts and right-to-left text', description = 'Arabic, Persian, Urdu, Hebrew, Hindi and Thai shaped by HarfBuzz, right-to-left paragraphs with English and numbers inside, wrapping in every script and a right-to-left typewriter.', module = 'tests.complex-scripts'},
     {id = 'wrapping', title = 'Wrapping', description = 'Words that wrap at a width, lines that break between Chinese and Japanese characters, long words and line spacing.', module = 'tests.wrapping'},
     {id = 'rich-text', title = 'Rich text tags', description = 'Every tag of the markup: styles, colors, sizes, outlines, links, hints, images, icons, paragraphs, lists, rules, tables and drop caps.', module = 'tests.rich-text'},
     {id = 'typewriter', title = 'Effects and typewriter', description = 'The built-in effects with their attributes, and a dialogue revealed like a typewriter with pauses and speed changes.', module = 'tests.typewriter'},
     {id = 'custom-effects', title = 'Custom effects', description = 'Text effects and inline icons registered from Lua.', module = 'tests.custom-effects'},
-    {id = 'measuring', title = 'Measuring text', description = 'Text sizes, glyph quads, ascent, baseline and line height, glyph metrics and kerning, and rich text layouts.', module = 'tests.measuring'},
+    {id = 'measuring', title = 'Measuring text', description = 'Text sizes, glyph quads, ascent, baseline and line height, glyph metrics, shaped advances with kerning, and rich text layouts.', module = 'tests.measuring'},
 }

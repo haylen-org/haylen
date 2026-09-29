@@ -27,7 +27,6 @@ function BlendModes:init(entry)
 end
 
 function BlendModes:update(dt)
-    BlendModes.super.update(self, dt)
     for _, emitter in ipairs(self.emitters) do
         emitter:update(dt)
     end

@@ -27,17 +27,16 @@ end
 -- Keeps the minimap in the corner of the safe area, which moves when the window is resized.
 function Minimap:layout()
     local safe = viewport.safeRect()
-    self.minimap.viewport = {safe:right() - 520, safe:bottom() - 330, 480, 290}
+    self.minimap.viewport = {safe:right() - 520, safe:bottom() - 370, 480, 290}
 end
 
 function Minimap:controls()
-    return {ui.toggle{align = 'stretch', text = 'Details on the minimap', onChange = function(event)
+    return {ui.toggle{text = 'Details on the minimap', onChange = function(event)
         self.details = event.checked
     end}}
 end
 
 function Minimap:update(dt)
-    Minimap.super.update(self, dt)
     self:layout()
     self.player:update(dt, self.camera)
     self.camera:follow(self.player.x, self.player.y, dt)

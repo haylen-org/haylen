@@ -32,7 +32,6 @@ function BlendModes:controls()
 end
 
 function BlendModes:update(dt)
-    BlendModes.super.update(self, dt)
     self.cursor:update(dt)
     self.held.x, self.held.y = self.cursor:world(self.camera)
     self:setStatus('cursor light blend = ' .. self.held.blend)

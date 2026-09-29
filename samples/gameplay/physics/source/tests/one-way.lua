@@ -26,7 +26,7 @@ function OneWay:enter()
         },
         stats = true,
     })
-    self.touch = ui.mount(ui.column{justify = 'end', padding = {0, 40, 110, 40},
+    self.touch = ui.mount(ui.column{justify = 'end', padding = {0, 40, 110, 40}, onCancel = sample.back,
         ui.row{
             ui.touchStick{action = 'move', radius = 110, floating = true, touchOnly = true},
             ui.spacer{grow = 1},

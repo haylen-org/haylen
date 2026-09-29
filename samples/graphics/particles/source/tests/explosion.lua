@@ -42,7 +42,6 @@ function Explosion:blast(x, y)
 end
 
 function Explosion:update(dt)
-    Explosion.super.update(self, dt)
     self.cursor:update(dt)
     self.quiet = self.quiet + dt
     if sample.pressed() then

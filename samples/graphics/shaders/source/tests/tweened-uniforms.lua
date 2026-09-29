@@ -49,7 +49,6 @@ function TweenedUniforms:controls()
 end
 
 function TweenedUniforms:update(dt)
-    TweenedUniforms.super.update(self, dt)
     local values, materials = self.values, self.materials
     materials.dissolve:set('amount', values.dissolve)
     materials.outline:set('outline_color', values.glow)

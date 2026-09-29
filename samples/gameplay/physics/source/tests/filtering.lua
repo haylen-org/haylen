@@ -135,8 +135,8 @@ function Filtering:render()
     parts.drawAll(self.statics)
     parts.drawAll(self.balls, {layer = 1})
     parts.drawAll(self.groups, {layer = 1})
-    graphics2d.drawText(nil, 'group -1\nnever collide', 540, 200, {size = 24, anchor = {0.5, 0}, align = 'center'})
-    graphics2d.drawText(nil, 'group 1\nalways collide', 680, 200, {size = 24, anchor = {0.5, 0}, align = 'center'})
+    graphics2d.drawText(nil, 'group -1\nnever collide', 540, 170, {size = 20, anchor = {0.5, 0}, align = 'center'})
+    graphics2d.drawText(nil, 'group 1\nalways collide', 680, 170, {size = 20, anchor = {0.5, 0}, align = 'center'})
     self.grab:draw()
 end
 

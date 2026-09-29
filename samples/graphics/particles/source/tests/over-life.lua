@@ -35,7 +35,6 @@ function OverLife:init(entry)
 end
 
 function OverLife:update(dt)
-    OverLife.super.update(self, dt)
     local count = 0
     for _, column in ipairs(self.columns) do
         column.emitter:update(dt)

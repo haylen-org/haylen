@@ -15,6 +15,10 @@ local kFiles = {
     mono = {'fonts/space_mono_regular.ttf'},
     cjk = {'fonts/mplus_1p_regular.ttf'},
     symbols = {'fonts/noto_sans_symbols_2_regular.ttf'},
+    arabic = {'fonts/noto_sans_arabic_regular.ttf'},
+    hebrew = {'fonts/noto_sans_hebrew_regular.ttf'},
+    devanagari = {'fonts/noto_sans_devanagari_regular.ttf'},
+    thai = {'fonts/noto_sans_thai_regular.ttf'},
     pixel = {'fonts/haylen_pixel.fnt', {filter = 'nearest'}},
     pixelGold = {'fonts/haylen_pixel_gold.fnt', {filter = 'nearest'}},
 }
@@ -34,7 +38,7 @@ function fonts.get(name)
     return loaded[name]
 end
 
--- The families of the sample: Crimson Text with its real faces, a mono face and fallbacks for CJK and symbols, and families of one face whose bold and italic are synthesized.
+-- The families of the sample: Crimson Text with its real faces, a mono face and fallbacks for CJK and symbols, Fira Sans with the Noto fonts of Arabic, Hebrew, Devanagari and Thai as fallbacks, and families of one face whose bold and italic are synthesized.
 function fonts.family(name)
     if families[name] == nil then
         if name == 'crimson' then
@@ -45,6 +49,11 @@ function fonts.family(name)
                 boldItalic = fonts.get('crimsonBoldItalic'),
                 mono = fonts.get('mono'),
                 fallback = {fonts.get('cjk'), fonts.get('symbols')},
+            })
+        elseif name == 'scripts' then
+            families[name] = graphics.newFontFamily({
+                regular = fonts.get('fira'),
+                fallback = {fonts.get('arabic'), fonts.get('hebrew'), fonts.get('devanagari'), fonts.get('thai'), fonts.get('cjk')},
             })
         else
             families[name] = graphics.newFontFamily({regular = fonts.get(name)})

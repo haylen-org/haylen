@@ -1,0 +1,23 @@
+{
+    "name": "Haylen Taskbar Quest",
+    "identifier": "dev.haylen.samples.taskbarquest",
+    "version": "1.0.0",
+    "orientation": "landscape",
+    "window": {
+        "title": "Taskbar Quest",
+        "width": 1280,
+        "height": 200,
+        "resizable": false,
+        "decorated": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "focusable": false,
+        "mousePassthrough": true,
+        "position": {"anchor": "bottom", "area": "work", "monitor": "primary", "fill": "width"}
+    },
+    "design": {
+        "width": 1600,
+        "height": 200,
+        "scaling": "expand"
+    }
+}

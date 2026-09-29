@@ -41,11 +41,11 @@ function Actions:enter()
             ui.formField{label = 'Gamepad the bindings read', ui.segmentedControl{id = 'pad', items = kIndices, selected = 'all', onChange = function(event)
                 input.setGamepadIndex(event.value ~= 'all' and tonumber(event.value) or nil)
             end}},
-            ui.toggle{id = 'touchOnly', text = 'Touch controls only after a touch', onChange = function(event)
+            ui.formField{label = 'Touch controls', ui.toggle{id = 'touchOnly', text = 'Only after a touch', onChange = function(event)
                 for _, id in ipairs({'stick', 'jump', 'dash'}) do
                     self:set(id, {touchOnly = event.checked})
                 end
-            end},
+            end}},
             ui.sectionTitle{text = 'Reading actions'},
             ui.label{font = 'monospace', text = "input.down('jump')\ninput.pressed('dash')\ninput.value('throttle')\ninput.vector('move')\ninput.lastDevice()"},
         },
@@ -79,7 +79,7 @@ function Actions:drawRow(row, top, width)
     graphics2d.drawRect({12, top, width - 24, 120}, sample.surface)
     sample.caption(row.name, 32, top + 14, {size = 30, color = sample.ink})
     sample.caption(row.type, 32, top + 56, {color = sample.accent})
-    graphics2d.drawText(nil, row.bindings, 200, top + 12, {size = 17, color = sample.muted, maxWidth = width * 0.5, layer = 2})
+    graphics2d.drawText(nil, row.bindings, 200, top + 12, {size = 15, color = sample.muted, maxWidth = width * 0.5, layer = 2})
 
     local stateX = width * 0.66
     local down = input.down(row.name)

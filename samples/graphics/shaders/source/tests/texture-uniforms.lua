@@ -38,7 +38,6 @@ function TextureUniforms:controls()
 end
 
 function TextureUniforms:update(dt)
-    TextureUniforms.super.update(self, dt)
     local time = haylen.time()
     self.material:set('scroll', {time * 0.1, time * 0.05})
     self:setStatus('textures of the shader: ' .. table.concat(self.material.shader.textures, ', ') .. ', gradient ' .. self.ramp)

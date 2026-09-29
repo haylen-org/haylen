@@ -27,7 +27,7 @@ function UiNodes:enter()
         },
         focus = 'slide',
     })
-    self.card = ui.mount(ui.card{id = 'card', anchor = 'topLeft', width = 560, gap = 16,
+    self.card = ui.mount(ui.card{id = 'card', anchor = 'topLeft', width = 560, gap = 16, onCancel = sample.back,
         ui.label{id = 'title', text = 'Treasure found', font = 'title'},
         ui.label{id = 'reward', text = '+250 coins', font = 'heading', color = 'accentText'},
         ui.progress{id = 'bar', value = 0.6, tone = 'success', text = 'Level 3'},

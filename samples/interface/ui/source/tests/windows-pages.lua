@@ -52,7 +52,7 @@ function WindowsPages:content()
                 },
             }),
             sample.section('scroll with snapping', {
-                ui.scroll{direction = 'horizontal', snap = true, height = 150, ui.row{gap = 24, children = levels()}},
+                ui.scroll{axis = 'horizontal', snap = true, height = 150, ui.row{gap = 24, children = levels()}},
             }),
         },
         ui.window{id = 'bag', title = 'Bag', x = 1100, y = 560, width = 620, closable = true,

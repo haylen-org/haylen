@@ -36,7 +36,7 @@ function CustomHandler:call(text)
     self:spawn(function()
         local result, err = platform.call('sample.echo', {text = text}):await()
         self.result, self.error, self.pending = result, err, false
-        self.missing = err ~= nil and err:find('No native handler is registered', 1, true) ~= nil
+        self.missing = err ~= nil and err.code == 'no_handler'
         self:set('standIn', {enabled = self.missing and not platform.hasHandler('sample.echo')})
     end)
 end
@@ -63,7 +63,7 @@ function CustomHandler:draw(area)
         sample.caption('Waiting for sample.echo', 24, y, {size = 34, color = sample.warm})
     elseif self.error then
         sample.caption('sample.echo failed', 24, y, {size = 34, color = sample.red})
-        sample.caption(self.error, 24, y + 50, {size = 24, color = sample.ink, maxWidth = width})
+        sample.caption(self.error.message, 24, y + 50, {size = 24, color = sample.ink, maxWidth = width})
         if self.missing then
             sample.caption(kMissing, 24, y + 100, {size = 22, maxWidth = width})
         end

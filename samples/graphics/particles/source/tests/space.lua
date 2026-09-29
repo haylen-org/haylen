@@ -31,7 +31,6 @@ function Space:controls()
 end
 
 function Space:update(dt)
-    Space.super.update(self, dt)
     self.time = self.time + dt * self.speed
     for _, entry in ipairs(self.orbits) do
         entry.emitter.position = {entry.x + math.cos(self.time) * 220, 40 + math.sin(self.time) * 220}

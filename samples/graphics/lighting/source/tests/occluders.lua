@@ -67,7 +67,6 @@ function Occluders:fixedUpdate(step)
 end
 
 function Occluders:update(dt)
-    Occluders.super.update(self, dt)
     self.cursor:update(dt)
     local x, y = self.cursor:world(self.camera)
     self.lamp.x, self.lamp.y = x, y

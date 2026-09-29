@@ -94,7 +94,7 @@ end
 
 function NormalMaps:controls()
     return {
-        ui.toggle{align = 'stretch', text = 'Normal maps', checked = true, onChange = function(event)
+        ui.toggle{text = 'Normal maps', checked = true, onChange = function(event)
             self.normalMapped = event.checked
         end},
         ui.formField{label = 'Light height', ui.slider{min = 0, max = 400, value = self.lamp.height, showValue = true, decimals = 0, onChange = function(event)
@@ -110,7 +110,6 @@ function NormalMaps:controls()
 end
 
 function NormalMaps:update(dt)
-    NormalMaps.super.update(self, dt)
     self.cursor:update(dt)
     self.lamp.x, self.lamp.y = self.cursor:world(self.camera)
     self:setStatus(string.format('height %.0f, specular %.2f, shininess %.0f', self.lamp.height, self.specular, self.shininess))

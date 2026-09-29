@@ -27,7 +27,6 @@ function HotReload:init(entry)
 end
 
 function HotReload:update(dt)
-    HotReload.super.update(self, dt)
     self.material:set('time', haylen.time())
     local uniforms = {}
     for _, uniform in ipairs(self.material.shader.uniforms) do

@@ -18,7 +18,6 @@ function TextShader:init(entry)
 end
 
 function TextShader:update(dt)
-    TextShader.super.update(self, dt)
     if sample.pressed() then
         self.hit = 1
     end

@@ -58,7 +58,7 @@ function Transitions:enter()
             self:play(effect)
         end}
     end
-    self.gallery = ui.mount(ui.column{padding = {250, 540, 110, 24}, ui.grid{columns = 4, gap = 12, children = buttons}}, {owner = self})
+    self.gallery = ui.mount(ui.column{padding = {250, 540, 110, 24}, onCancel = function() self:cancel() end, ui.grid{columns = 4, gap = 12, children = buttons}}, {owner = self})
 end
 
 -- Hides the interface while a card covers the gallery, which the scene receives at the switch of the change, so the card never shows it.

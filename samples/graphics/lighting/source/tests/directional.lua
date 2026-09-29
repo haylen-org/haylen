@@ -23,7 +23,7 @@ end
 
 function Directional:controls()
     return {
-        ui.toggle{align = 'stretch', text = 'Turn by itself', onChange = function(event)
+        ui.toggle{text = 'Turn by itself', onChange = function(event)
             self.turning = event.checked
         end},
         ui.formField{label = 'Shadow strength', ui.slider{min = 0, max = 1, value = self.sun.shadowColor.a, showValue = true, onChange = function(event)
@@ -33,7 +33,6 @@ function Directional:controls()
 end
 
 function Directional:update(dt)
-    Directional.super.update(self, dt)
     self.cursor:update(dt)
     if self.turning then
         self.sun.rotation = m.wrapAngle(self.sun.rotation + dt * 0.4)

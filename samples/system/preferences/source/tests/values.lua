@@ -89,17 +89,17 @@ function Values:content()
             ui.grid{columns = 3, gap = 12, children = buttons},
             ui.label{id = 'result', text = 'Pick an example or type a key.', color = 'accentText'},
             ui.sectionTitle{text = 'Examples'},
-            ui.scroll{height = 0, grow = 1, ui.list{id = 'examples', items = examples, onSelect = function(event)
+            ui.scroll{grow = 1, ui.list{id = 'examples', items = examples, onSelect = function(event)
                 self:pick(event.item)
             end}},
         },
         ui.panel{grow = 1, align = 'stretch', gap = 12,
             ui.row{gap = 12, ui.sectionTitle{text = 'preferences.values()'}, ui.badge{id = 'dirty', text = 'Saved', tone = 'success'}},
-            ui.scroll{height = 0, grow = 1, ui.label{id = 'memory', text = '', font = 'monospace'}},
+            ui.scroll{grow = 1, ui.label{id = 'memory', text = '', font = 'monospace'}},
         },
         ui.panel{grow = 1, align = 'stretch', gap = 12,
             ui.sectionTitle{text = 'preferences.json'},
-            ui.scroll{height = 0, grow = 1, ui.label{id = 'disk', text = '', font = 'monospace'}},
+            ui.scroll{grow = 1, ui.label{id = 'disk', text = '', font = 'monospace'}},
         },
     }
 end

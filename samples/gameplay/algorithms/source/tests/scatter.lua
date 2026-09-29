@@ -24,10 +24,10 @@ function Scatter:enter()
     Scatter.super.enter(self, {
         hint = 'Every change scatters again on a worker thread. Biomes give forests of trees and bushes and meadows of rocks and flowers, and density follows noise.',
         controls = {
-            ui.radioGroup{id = 'method', items = {{id = 'random', text = 'Random by area and density'}, {id = 'grid', text = 'Jittered grid'}, {id = 'poisson', text = 'Poisson spacing'}}, selected = 'poisson', onChange = function(event) self:change('method', event.value) end},
+            ui.radioGroup{id = 'method', items = {{id = 'random', text = 'Random by density'}, {id = 'grid', text = 'Jittered grid'}, {id = 'poisson', text = 'Poisson spacing'}}, selected = 'poisson', onChange = function(event) self:change('method', event.value) end},
             ui.label{text = 'Density', font = 'caption', color = 'textMuted'},
             ui.slider{id = 'density', value = 1, min = 0.2, max = 3, step = 0.1, showValue = true, onChange = function(event) self:change('density', event.value) end},
-            ui.checkbox{id = 'exclude', text = 'Keep out of lakes and the village', checked = true, onChange = function(event) self:change('exclude', event.checked) end},
+            ui.checkbox{id = 'exclude', text = 'Exclude lakes and village', checked = true, onChange = function(event) self:change('exclude', event.checked) end},
             ui.checkbox{id = 'biomes', text = 'Biomes by noise', checked = true, onChange = function(event) self:change('biomes', event.checked) end},
             ui.button{id = 'seed', text = 'New seed', onClick = function() self:change('seed', self.options.seed + 1) end},
         },

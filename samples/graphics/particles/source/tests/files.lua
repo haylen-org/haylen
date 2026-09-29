@@ -47,7 +47,6 @@ function Files:controls()
 end
 
 function Files:update(dt)
-    Files.super.update(self, dt)
     self.cursor:update(dt)
     self.emitter.position = {self.cursor:world(self.camera)}
     self.emitter:update(dt)

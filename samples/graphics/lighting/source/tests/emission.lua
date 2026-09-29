@@ -31,14 +31,13 @@ function Emission:controls()
         ui.formField{label = 'Emission of windows and neon', ui.slider{min = 0, max = 3, value = self.emission, showValue = true, onChange = function(event)
             self.emission = event.value
         end}},
-        ui.toggle{align = 'stretch', text = 'Unshaded road signs', checked = true, onChange = function(event)
+        ui.toggle{text = 'Unshaded road signs', checked = true, onChange = function(event)
             self.unshaded = event.checked
         end},
     }
 end
 
 function Emission:update(dt)
-    Emission.super.update(self, dt)
     self.cursor:update(dt)
     self.time = self.time + dt
     self.lamp.x, self.lamp.y = self.cursor:world(self.camera)

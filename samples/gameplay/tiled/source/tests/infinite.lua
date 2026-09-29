@@ -62,7 +62,7 @@ function Infinite:render()
         for _, chunk in ipairs(self.chunks) do
             local x, y = map:cellToWorld(chunk.x, chunk.y)
             graphics2d.drawRectOutline({x, y, chunk.width * map.tileWidth, chunk.height * map.tileHeight}, 2 * unit, '#AAFFD54F', {layer = 5})
-            graphics2d.drawText(nil, string.format('%d, %d', chunk.x, chunk.y), x + 8, y + 6, {size = 18 * unit, layer = 5})
+            graphics2d.drawText(nil, string.format('%d, %d', chunk.x, chunk.y), x + 8, y + 6, {size = 18 * unit, outlineWidth = 2 * unit, layer = 5})
         end
     end
     graphics2d.drawCircle(0, 0, 6 * graphics2d.canvasUnitSize(), '#FFEF5350', {layer = 6})

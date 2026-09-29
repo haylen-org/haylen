@@ -33,6 +33,7 @@ python3 make.py assets ~/Downloads/"Tiny Swords (Free Pack).zip"
 | Special | Left Shift or right click | West button | Shield button |
 | Feed the fire from further away | E | East button | Wood button |
 | Pause | Escape | Start | Gear button |
+| Back from the class choice or the settings | Escape | East button | Back button |
 
 Walking next to the fire with wood feeds it. The touch controls appear once the screen is touched, and the settings screen can turn them off.
 

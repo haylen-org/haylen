@@ -30,7 +30,6 @@ function Hdr:controls()
 end
 
 function Hdr:update(dt)
-    Hdr.super.update(self, dt)
     self.cursor:update(dt)
     self.held.x, self.held.y = self.cursor:world(self.camera)
     local mode = graphics2d.hdrLighting() and 'floating point, light goes past 1' or 'saturates at 1 on this backend'

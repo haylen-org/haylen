@@ -31,7 +31,7 @@ function Fallback:content()
     return {
         ui.panel{width = 560, align = 'stretch', gap = 12,
             ui.sectionTitle{text = 'Fallback language'},
-            ui.segmentedControl{id = 'fallback', items = language.items(), selected = localization.fallback(), onChange = function(event)
+            ui.radioGroup{id = 'fallback', items = language.items(), selected = localization.fallback(), onChange = function(event)
                 localization.setFallback(event.value)
                 self:languageChanged()
             end},

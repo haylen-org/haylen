@@ -28,7 +28,7 @@ function Vehicle:enter()
         },
         stats = true,
     })
-    self.pedals = ui.mount(ui.column{justify = 'end', padding = {0, 40, 110, 40},
+    self.pedals = ui.mount(ui.column{justify = 'end', padding = {0, 40, 110, 40}, onCancel = sample.back,
         ui.row{
             ui.touchButton{action = 'reverse', text = 'Back', size = 150, touchOnly = true},
             ui.spacer{grow = 1},

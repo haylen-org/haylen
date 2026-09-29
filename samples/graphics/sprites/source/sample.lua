@@ -57,6 +57,7 @@ function Test:frame(options)
     self.document = ui.mount(ui.column{
         padding = 24,
         gap = 12,
+        onCancel = sample.back,
         ui.row{gap = 24, align = 'start',
             ui.button{id = 'back', text = 'Back', onClick = sample.back},
             ui.column{grow = 1, gap = 4,
@@ -71,11 +72,8 @@ function Test:frame(options)
     self.document:command(options.focus or 'back', 'focus')
 end
 
--- Goes back on the back action and follows the stage, calling `resize` with the stage-local area whenever its size changes. Tests call it first from their own update.
+-- Follows the stage, calling `resize` with the stage-local area whenever its size changes. Tests call it first from their own update.
 function Test:update(dt)
-    if input.pressed('back') then
-        sample.back()
-    end
     self.statusTime = self.statusTime + haylen.unscaledDelta()
 
     local stage = self.document:bounds('stage')

@@ -35,7 +35,6 @@ function Fire:controls()
 end
 
 function Fire:update(dt)
-    Fire.super.update(self, dt)
     self.cursor:update(dt)
     local x, y = self.cursor:world(self.camera)
     local count = 0

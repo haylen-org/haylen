@@ -115,11 +115,11 @@ function Buses:draw(area)
         local muted = audio.busMuted(bus.name)
         graphics2d.drawRect({x, y, width, height}, sample.surface, {layer = 1})
         graphics2d.drawRectOutline({x, y, width, height}, 3, stats.processing and sample.green or sample.red, {layer = 2})
-        sample.caption(bus.name, x + 14, y + 10, {size = 26, color = sample.ink, layer = 3})
+        sample.caption(bus.name, x + 14, y + 10, {size = 22, color = sample.ink, layer = 3})
         sample.bar(x + 14, y + 52, width - 28, 12, audio.busVolume(bus.name), muted and sample.muted or sample.accent)
-        sample.caption(string.format('%s%s', audio.busProcessMode(bus.name), muted and ', muted' or ''), x + 14, y + 74, {size = 19, layer = 3})
-        sample.caption(stats.processing and 'processing' or 'held by the pause', x + 14, y + 102, {size = 19, color = stats.processing and sample.green or sample.red, layer = 3})
-        sample.caption(string.format('%d voices, %d playing, %d paused', stats.voices, stats.playing, stats.paused), x + 14, y + 132, {size = 18, layer = 3})
+        sample.caption(string.format('%s%s', audio.busProcessMode(bus.name), muted and ', muted' or ''), x + 14, y + 74, {size = 16, layer = 3})
+        sample.caption(stats.processing and 'processing' or 'held by the pause', x + 14, y + 102, {size = 16, color = stats.processing and sample.green or sample.red, layer = 3})
+        sample.caption(string.format('%d voices, %d playing, %d paused', stats.voices, stats.playing, stats.paused), x + 14, y + 132, {size = 15, layer = 3})
     end
 end
 

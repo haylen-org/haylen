@@ -44,7 +44,6 @@ function Fireworks:burst(x, y)
 end
 
 function Fireworks:update(dt)
-    Fireworks.super.update(self, dt)
     self.cursor:update(dt)
     self.clock = self.clock + dt
     if sample.pressed() then

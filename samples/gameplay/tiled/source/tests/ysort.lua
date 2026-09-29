@@ -21,12 +21,12 @@ function YSort:enter()
         hint = 'Walk with WASD, the arrows, the left stick or the touch stick, or tap or click where the hero should go. Switch y sorting off to see the hero drawn over everything.',
         controls = {
             ui.toggle{id = 'sort', text = 'Sort by y', checked = true, onChange = function(event) self.sorting = event.checked end},
-            ui.checkbox{id = 'feet', text = 'Show where each draw stands', onChange = function(event) self.showFeet = event.checked end},
+            ui.checkbox{id = 'feet', text = 'Mark the sort lines', onChange = function(event) self.showFeet = event.checked end},
         },
         stats = true,
         view = {bounds.width + 64, bounds.height + 64},
     })
-    self.touch = ui.mount(ui.column{justify = 'end', padding = {0, 0, 110, 40},
+    self.touch = ui.mount(ui.column{justify = 'end', padding = {0, 0, 110, 40}, onCancel = sample.back,
         ui.row{ui.touchStick{action = 'move', radius = 110, floating = true, touchOnly = true}},
     })
     self.sorting = true

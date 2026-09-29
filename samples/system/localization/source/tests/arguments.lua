@@ -46,7 +46,7 @@ function Arguments:content()
             },
         },
         ui.panel{grow = 1, align = 'stretch', gap = 4,
-            ui.scroll{height = 0, grow = 1, ui.column{gap = 6, padding = {0, 24, 0, 0}, children = lines}},
+            ui.scroll{grow = 1, ui.column{gap = 6, padding = {0, 24, 0, 0}, children = lines}},
         },
     }
 end

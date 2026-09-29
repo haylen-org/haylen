@@ -31,13 +31,12 @@ function Parallax:init(entry)
 end
 
 function Parallax:controls()
-    return {ui.toggle{id = 'travel', align = 'stretch', text = 'Camera travels by itself', checked = true, onChange = function(event)
+    return {ui.toggle{id = 'travel', text = 'Camera travels by itself', checked = true, onChange = function(event)
         self.traveling = event.checked
     end}}
 end
 
 function Parallax:update(dt)
-    Parallax.super.update(self, dt)
     local direction = input.vector('move')
     local x = input.touches()[1] and input.touches()[1].x or (input.down('point') and input.mousePosition())
     if x and not ui.wantsPointer() then

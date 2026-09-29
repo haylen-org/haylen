@@ -24,10 +24,10 @@ function Fallback:init(entry)
     local family = fonts.family('crimson')
     self.lines = {}
     for index, line in ipairs(kLines) do
-        self.lines[index] = {label = line[1], text = graphics2d.newRichText(line[2], {family = family, size = 44})}
+        self.lines[index] = {label = line[1], text = graphics2d.newRichText(line[2], {family = family, size = 34})}
     end
-    self.alone = graphics2d.newRichText('Without fallbacks: 日本 ★ ♥', {family = graphics.newFontFamily({regular = fonts.get('crimson')}), size = 44})
-    self.missing = graphics2d.newRichText('In no font: ⚓', {family = family, size = 44})
+    self.alone = graphics2d.newRichText('Without fallbacks: 日本 ★ ♥', {family = graphics.newFontFamily({regular = fonts.get('crimson')}), size = 34})
+    self.missing = graphics2d.newRichText('In no font: ⚓', {family = family, size = 34})
 
     local candidates = {{fonts.get('crimson'), 'Crimson Text'}, {fonts.get('cjk'), 'M PLUS 1p'}, {fonts.get('symbols'), 'Symbols 2'}}
     local notes = {}
@@ -60,7 +60,7 @@ function Fallback:render()
     self.alone:draw(stage.x + 180, y + 16)
     self.missing:draw(stage.x + 180, y + 92)
     sample.caption('the first font that has it, and family:resolve for bold', stage.x + 1260, stage.y, {size = 26, color = '#FF8FB0FF'})
-    graphics2d.drawRichText(self.notes, stage.x + 1260, stage.y + 44, {family = fonts.family('crimson'), size = 34})
+    graphics2d.drawRichText(self.notes, stage.x + 1260, stage.y + 44, {family = fonts.family('crimson'), size = 26})
 end
 
 return Fallback

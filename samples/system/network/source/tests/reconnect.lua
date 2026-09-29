@@ -46,7 +46,7 @@ function Reconnect:content()
             ui.sectionTitle{text = 'Waits before each attempt'},
             ui.column{id = 'attempts', gap = 8},
             ui.sectionTitle{text = 'Events'},
-            ui.scroll{height = 0, grow = 1, focusable = false, ui.list{id = 'log', items = {}}},
+            ui.scroll{grow = 1, focusable = false, ui.list{id = 'log', items = {}}},
         },
     }
 end

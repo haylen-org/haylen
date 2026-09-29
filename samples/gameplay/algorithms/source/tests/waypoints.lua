@@ -20,7 +20,7 @@ function Waypoints:enter()
         hint = 'Tap or click a point with the selected brush. Closed doors block every path, and heavy points cost four times their distance.',
         controls = {
             ui.radioGroup{id = 'brush', items = {{id = 'start', text = 'Move the start'}, {id = 'goal', text = 'Move the goal'}, {id = 'door', text = 'Open or close a door'}, {id = 'weight', text = 'Make a point heavy'}}, selected = 'goal', onChange = function(event) self.brush = event.value end},
-            ui.checkbox{id = 'costs', text = 'Dijkstra costs from the start', checked = true, onChange = function(event) self.showCosts = event.checked end},
+            ui.checkbox{id = 'costs', text = 'Show Dijkstra costs', checked = true, onChange = function(event) self.showCosts = event.checked end},
             ui.button{id = 'reset', text = 'New roads', onClick = function() self:build() end},
         },
         stats = true,

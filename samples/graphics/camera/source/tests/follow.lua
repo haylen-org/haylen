@@ -37,7 +37,6 @@ function Follow:controls()
 end
 
 function Follow:update(dt)
-    Follow.super.update(self, dt)
     self.player:update(dt, self.camera)
     self.camera:follow(self.player.x, self.player.y, dt)
     self.camera:update(dt)

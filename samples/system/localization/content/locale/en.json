@@ -1,5 +1,5 @@
 {
-    "language": {"en": "English", "pt-BR": "Portuguese", "es": "Spanish", "ja": "Japanese"},
+    "language": {"en": "English", "pt-BR": "Portuguese", "es": "Spanish", "ja": "Japanese", "ar": "Arabic", "hi": "Hindi"},
     "menu": {
         "title": "Island Tales",
         "subtitle": "A short adventure by the sea",
@@ -45,5 +45,6 @@
         "difficulty": "Difficulty",
         "hard": "Hard"
     },
-    "fonts": {"sample": "Every language draws with a font that has its letters."}
+    "fonts": {"sample": "Every language draws with a font that has its letters."},
+    "direction": {"settings": "Settings", "music": "Music", "vibration": "Vibration", "volume": "Volume", "name": "Captain name", "placeholder": "Type a name", "inbox": "Inbox", "inboxCaption": "3 unread messages", "profile": "Profile", "profileCaption": "Level 12", "save": "Save", "cancel": "Cancel", "note": "Rows, check boxes, toggles, sliders, lists and dialogs mirror when the interface reads from right to left."}
 }

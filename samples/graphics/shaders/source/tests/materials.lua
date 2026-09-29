@@ -59,7 +59,6 @@ function Materials:controls()
 end
 
 function Materials:update(dt)
-    Materials.super.update(self, dt)
     if sample.pressed() then
         self.flash = 1
     end

@@ -50,7 +50,7 @@ function DayNight:controls()
         end}
     end
     return {
-        ui.toggle{align = 'stretch', text = 'Clock runs', checked = true, onChange = function(event)
+        ui.toggle{text = 'Clock runs', checked = true, onChange = function(event)
             self.running = event.checked
         end},
         ui.formField{label = 'Hours per second', ui.slider{min = 0.1, max = 4, value = self.rate, showValue = true, onChange = function(event)
@@ -75,7 +75,6 @@ function DayNight.colorsAt(hour)
 end
 
 function DayNight:update(dt)
-    DayNight.super.update(self, dt)
     if self.running then
         self.hour = (self.hour + dt * self.rate) % 24
     end

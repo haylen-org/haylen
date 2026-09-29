@@ -26,7 +26,7 @@ end
 
 function Limits:controls()
     return {
-        ui.toggle{align = 'stretch', text = 'Limit smoothing', checked = true, onChange = function(event)
+        ui.toggle{text = 'Limit smoothing', checked = true, onChange = function(event)
             self.camera.limitSmoothing = event.checked
         end},
         ui.formField{label = 'Limits', ui.radioGroup{selected = 'wide', items = {{id = 'wide', text = 'Wider than the view'}, {id = 'narrow', text = 'Narrower, so the view centers'}}, onChange = function(event)
@@ -37,7 +37,6 @@ function Limits:controls()
 end
 
 function Limits:update(dt)
-    Limits.super.update(self, dt)
     self.player:update(dt, self.camera)
     self.camera:follow(self.player.x, self.player.y, dt)
     self.camera:update(dt)

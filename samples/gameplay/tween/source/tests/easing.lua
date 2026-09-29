@@ -92,7 +92,7 @@ function Easing:draw(area)
         if index == self.selected then
             graphics2d.drawRect({left + 3, top + 3, width - 6, height - 6}, '#FF232A3A')
         end
-        graphics2d.drawText(nil, entry.name, left + width / 2, top + 16, {size = 20, color = sample.ink, anchor = {0.5, 0.5}})
+        graphics2d.drawText(nil, entry.name, left + width / 2, top + 16, {size = 17, color = sample.ink, anchor = {0.5, 0.5}})
         graphics2d.drawLine(plotX, plotY + plotHeight, plotX + plotWidth, plotY + plotHeight, 1, sample.line)
         graphics2d.drawLine(plotX, plotY, plotX + plotWidth, plotY, 1, sample.line)
 

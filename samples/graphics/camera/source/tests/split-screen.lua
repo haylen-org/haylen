@@ -46,7 +46,6 @@ function SplitScreen:layout()
 end
 
 function SplitScreen:update(dt)
-    SplitScreen.super.update(self, dt)
     self:layout()
     for index, player in ipairs(self.players) do
         player:update(dt, self.cameras[index])

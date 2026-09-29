@@ -32,15 +32,6 @@ function sample.pressed()
     return touch ~= nil and touch.phase == 'began' and not ui.wantsPointer()
 end
 
--- Tells whether the player pressed the place action this frame, with its keys, buttons or a click, or tapped outside the interface.
-function sample.pressed()
-    if input.pressed('place') then
-        return true
-    end
-    local touch = input.touches()[1]
-    return touch ~= nil and touch.phase == 'began' and not ui.wantsPointer()
-end
-
 -- The base of every test scene. A test sets hints, may return controls for the panel on the right and calls the methods it overrides here. The header belongs to the scene, so it goes away when the scene unloads.
 local Test = haylen.class('Test', scene.Scene)
 sample.Test = Test
@@ -81,16 +72,13 @@ function Test:enter()
     self.header = ui.mount(ui.column{
         padding = 24,
         gap = 16,
+        onCancel = function()
+            sample.back(entry)
+        end,
         top,
         ui.spacer{grow = 1},
         ui.label{text = self.hints, font = 'body', color = 'text', outline = '#FF000000', outlineWidth = 3},
     }, {owner = self})
-end
-
-function Test:update(dt)
-    if input.pressed('back') then
-        sample.back(self.entry)
-    end
 end
 
 -- Shows a line of live values under the description, touching the document only when the text changes.

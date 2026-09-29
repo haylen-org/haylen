@@ -82,7 +82,7 @@ function Engine:content()
             },
             ui.label{id = 'result', text = 'Nothing captured in this visit yet.', color = 'accentText'},
             ui.sectionTitle{text = 'Stored engine keys'},
-            ui.scroll{height = 0, grow = 1, ui.label{id = 'stored', text = '', font = 'monospace'}},
+            ui.scroll{grow = 1, ui.label{id = 'stored', text = '', font = 'monospace'}},
         },
     }
 end

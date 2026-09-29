@@ -25,7 +25,7 @@ end
 function Masks:controls()
     local checks = {}
     for bit = 1, 3 do
-        checks[bit] = ui.checkbox{text = 'Mask ' .. (1 << (bit - 1)), checked = true, align = 'stretch', onChange = function(event)
+        checks[bit] = ui.checkbox{text = 'Mask ' .. (1 << (bit - 1)), checked = true, onChange = function(event)
             self.bits[bit] = event.checked
             self:applyMask()
         end}
@@ -60,7 +60,6 @@ function Masks:applyMask()
 end
 
 function Masks:update(dt)
-    Masks.super.update(self, dt)
     self.cursor:update(dt)
     self.lamp.x, self.lamp.y = self.cursor:world(self.camera)
     self:setStatus(string.format('itemMask %d, layerMin %d, layerMax %d', self.lamp.itemMask, self.lamp.layerMin, self.lamp.layerMax))

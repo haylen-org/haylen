@@ -42,13 +42,14 @@ function BuiltIns:callOpening()
     end
 end
 
--- Calls one method in a task of the scene, which waits for its promise and ends with the scene.
+-- Calls one method in a task of the scene, which waits for the call and ends with the scene.
 function BuiltIns:call(index)
     local call = self.calls[index]
-    local promise, id = platform.call(call.entry.method, call.entry.params)
+    local pending = platform.call(call.entry.method, call.entry.params)
+    local id = pending.id
     call.id, call.frame, call.done, call.result, call.error = id, haylen.frame(), nil, nil, nil
     self:spawn(function()
-        local result, err = promise:await()
+        local result, err = pending:await()
         if call.id == id then
             call.done = haylen.frame() - call.frame
             call.result, call.error = result, err
@@ -74,7 +75,7 @@ function BuiltIns:draw(area)
         elseif not call.done then
             text, color = 'waiting for the answer', sample.warm
         elseif call.error then
-            text, color = string.format('failed after %d frames: %s', call.done, call.error), sample.red
+            text, color = string.format('failed after %d frames: %s', call.done, call.error.message), sample.red
         else
             text, color = string.format('answered after %d frames: %s', call.done, sample.json(call.result)), sample.green
         end

@@ -32,17 +32,16 @@ end
 -- Keeps the overview in the corner of the safe area, which moves when the window is resized.
 function Debug:layout()
     local safe = viewport.safeRect()
-    self.overview.viewport = {safe:right() - 560, safe:bottom() - 340, 520, 300}
+    self.overview.viewport = {safe:right() - 560, safe:bottom() - 380, 520, 300}
 end
 
 function Debug:controls()
-    return {ui.toggle{align = 'stretch', text = 'Draw on the main view', onChange = function(event)
+    return {ui.toggle{text = 'Draw on the main view', onChange = function(event)
         self.onMain = event.checked
     end}}
 end
 
 function Debug:update(dt)
-    Debug.super.update(self, dt)
     self:layout()
     self.player:update(dt, self.camera)
     self.camera:follow(self.player.x, self.player.y, dt)

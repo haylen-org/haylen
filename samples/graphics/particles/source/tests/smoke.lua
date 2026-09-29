@@ -47,7 +47,6 @@ function Smoke:controls()
 end
 
 function Smoke:update(dt)
-    Smoke.super.update(self, dt)
     local count = 0
     for _, emitter in ipairs(self.chimneys) do
         emitter:update(dt)

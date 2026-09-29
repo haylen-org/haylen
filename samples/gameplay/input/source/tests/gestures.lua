@@ -126,7 +126,7 @@ function Gestures:draw(area)
     local half = 150 * self.scale
     graphics2d.drawRect({cx - half, cy - half * 0.66, half * 2, half * 1.32}, sample.surface)
     graphics2d.drawRectOutline({cx - half, cy - half * 0.66, half * 2, half * 1.32}, 3, sample.line, {layer = 1})
-    sample.caption('Pinch to zoom, double tap to reset', cx, cy, {anchor = {0.5, 0.5}, color = sample.ink, size = 20 * math.max(0.6, self.scale)})
+    sample.caption('Pinch to zoom, double tap to reset', cx, cy, {anchor = {0.5, 0.5}, color = sample.ink, size = 17 * math.max(0.6, self.scale)})
 
     for _, marker in ipairs(self.markers) do
         self:drawMarker(marker)

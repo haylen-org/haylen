@@ -26,7 +26,7 @@ end
 
 function PostProcessing:controls()
     local function toggle(key, text)
-        return ui.toggle{align = 'stretch', text = text, checked = self.enabled[key], onChange = function(event)
+        return ui.toggle{text = text, checked = self.enabled[key], onChange = function(event)
             self.enabled[key] = event.checked
         end}
     end
@@ -66,7 +66,6 @@ function PostProcessing:chain()
 end
 
 function PostProcessing:update(dt)
-    PostProcessing.super.update(self, dt)
     local _, names = self:chain()
     local vignette = self.enabled.vignette and 'vignette' or 'no vignette'
     self:setStatus(vignette .. (#names > 0 and ', then ' .. table.concat(names, ', ') or ', no materials'))

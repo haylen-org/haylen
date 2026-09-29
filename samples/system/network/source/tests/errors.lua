@@ -64,7 +64,7 @@ function Errors:content()
         ui.panel{width = 520, align = 'stretch', gap = 12, children = buttons},
         ui.panel{grow = 1, align = 'stretch', gap = 12,
             ui.sectionTitle{text = 'Results'},
-            ui.scroll{height = 0, grow = 1, ui.column{id = 'results', gap = 16, padding = {0, 24, 0, 0}}},
+            ui.scroll{grow = 1, ui.column{id = 'results', gap = 16, padding = {0, 24, 0, 0}}},
         },
     }
 end

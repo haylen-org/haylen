@@ -35,7 +35,7 @@ function Shadows:controls()
         ui.formField{label = 'Shadow color', ui.radioGroup{selected = 'black', items = {{id = 'black', text = 'Black'}, {id = 'blue', text = 'Blue'}, {id = 'soft', text = 'Half transparent'}}, onChange = function(event)
             self.held.shadowColor = Shadows.colors[event.value]
         end}},
-        ui.toggle{align = 'stretch', text = 'Cull the lit sides', checked = true, onChange = function(event)
+        ui.toggle{text = 'Cull the lit sides', checked = true, onChange = function(event)
             for _, occluder in ipairs(self.stage.occluders) do
                 occluder.cull = event.checked and 'counterClockwise' or 'disabled'
             end
@@ -44,7 +44,6 @@ function Shadows:controls()
 end
 
 function Shadows:update(dt)
-    Shadows.super.update(self, dt)
     self.cursor:update(dt)
     self.held.x, self.held.y = self.cursor:world(self.camera)
     self.door.rotation = self.door.rotation + dt * 0.8

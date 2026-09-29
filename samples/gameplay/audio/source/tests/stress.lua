@@ -28,7 +28,7 @@ function Stress:enter()
                 ui.button{id = 'burst160', text = 'Burst of 160', variant = 'primary', onClick = function() self:burst(160) end},
             },
             ui.formField{label = 'Voices per second', ui.slider{id = 'rate', min = 0, max = 240, step = 10, value = 0, showValue = true, decimals = 0, onChange = function(event) self.rate = event.value end}},
-            ui.toggle{id = 'long', text = 'Long sounds, so voices pile up', onChange = function(event) self.long = event.checked end},
+            ui.toggle{id = 'long', text = 'Long sounds that pile up', onChange = function(event) self.long = event.checked end},
             ui.button{id = 'stopAll', text = 'Stop every voice, music too', variant = 'destructive', onClick = function() audio.stopAll(0.2) end},
             ui.button{id = 'music', text = 'Start the music again', onClick = function() audio.playMusic(sounds.track(sounds.tracks[1].path), {fade = 1, volume = 0.4}) end},
             ui.label{text = 'At most 128 voices play at once. A new voice past the limit stops the oldest voice that is not music, and finished voices leave once per frame.', color = 'textMuted', font = 'caption'},

@@ -86,7 +86,7 @@ function Settings:content()
 
     return {
         ui.panel{grow = 1, align = 'stretch', gap = 12,
-            ui.scroll{height = 0, grow = 1, ui.column{padding = {0, 24, 0, 0}, ui.settingsForm{children = form}}},
+            ui.scroll{grow = 1, ui.column{padding = {0, 24, 0, 0}, ui.settingsForm{children = form}}},
             ui.row{gap = 16,
                 ui.label{id = 'status', text = '', color = 'textMuted', grow = 1},
                 ui.button{id = 'save', text = text('save'), variant = 'primary', onClick = function()

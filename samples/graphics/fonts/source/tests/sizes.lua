@@ -12,7 +12,7 @@ Sizes.hints = 'Drag the zoom slider, or focus it and press left and right. With 
 Sizes.focus = 'zoom'
 
 local kSizes = {12, 16, 20, 24, 32, 48, 64, 96}
-local kLine = 'Sphinx of black quartz'
+local kLine = 'Black sphinx'
 
 function Sizes:init(entry)
     Sizes.super.init(self, entry)
@@ -28,7 +28,7 @@ function Sizes:controls()
             self.pulse = false
             event.document:set('pulse', {checked = false})
         end},
-        ui.toggle{id = 'pulse', text = 'Pulse', checked = self.pulse, align = 'stretch', onChange = function(event) self.pulse = event.checked end},
+        ui.toggle{id = 'pulse', text = 'Pulse', checked = self.pulse, onChange = function(event) self.pulse = event.checked end},
     }
 end
 

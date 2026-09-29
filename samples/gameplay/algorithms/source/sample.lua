@@ -1,12 +1,12 @@
 -- The frame every test shares: a header with the Back button, the title and the description, a panel of options, a hint line and the stage the test draws in.
 local haylen = require('haylen')
 local graphics2d = require('haylen.graphics2d')
-local input = require('haylen.input')
 local m = require('haylen.math')
 local profiler = require('haylen.debug')
 local scene = require('haylen.scene')
 local ui = require('haylen.ui')
 local viewport = require('haylen.viewport')
+local window = require('haylen.window')
 
 local Pointer = require('pointer')
 
@@ -49,9 +49,12 @@ function Test:enter(options)
         middle[2] = ui.panel{width = kPanelWidth, align = 'start', gap = kGap, children = controls}
     end
 
+    -- The Menu button of a TV remote and the Back button of Android reach the test as Escape instead of leaving the app.
+    window.setBackLeavesApp(false)
     self.document = ui.mount(ui.column{
         padding = kMargin,
         gap = kGap,
+        onCancel = sample.back,
         ui.row{height = kHeaderHeight, gap = 24, align = 'stretch',
             ui.button{id = 'back', text = 'Back', align = 'start', onClick = sample.back},
             ui.column{grow = 1, gap = 4, align = 'start',
@@ -72,11 +75,8 @@ function Test:exit()
     self.document:unmount()
 end
 
--- Handles the way back and keeps the stage and the pointer current. Tests call it first from their own update.
+-- Keeps the stage and the pointer current. Tests call it first from their own update.
 function Test:update(dt)
-    if input.pressed('back') then
-        sample.back()
-    end
     self:layout()
     self.pointer:update(dt, self.stage, self.camera)
     self.statsTime = self.statsTime + dt

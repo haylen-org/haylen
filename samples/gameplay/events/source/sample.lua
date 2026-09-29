@@ -1,7 +1,6 @@
 -- The frame every test shares: the Back button with the title and the description, the stage the test draws in, the code the test runs under the stage, a panel of controls on the right, a status line and a line of hints. Overlays are the small scenes some tests push on top of themselves.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
-local input = require('haylen.input')
 local m = require('haylen.math')
 local scene = require('haylen.scene')
 local ui = require('haylen.ui')
@@ -49,6 +48,7 @@ function Test:frame(options)
     self.document = ui.mount(ui.column{
         padding = 24,
         gap = 12,
+        onCancel = sample.back,
         ui.row{gap = 24, align = 'start',
             ui.button{id = 'back', text = 'Back', onClick = sample.back},
             ui.column{grow = 1, gap = 4,
@@ -63,11 +63,8 @@ function Test:frame(options)
     self.document:command(options.focus or 'back', 'focus')
 end
 
--- Goes back on the back action and follows the stage, calling `resize` with the stage-local area whenever its size changes. Tests call it first from their own update.
+-- Follows the stage, calling `resize` with the stage-local area whenever its size changes. Tests call it first from their own update.
 function Test:update(dt)
-    if input.pressed('back') then
-        sample.back()
-    end
     self.statusTime = self.statusTime + haylen.unscaledDelta()
 
     local stage = self.document:bounds('stage')
@@ -107,7 +104,7 @@ function Test:set(id, properties)
     self.document:set(id, properties)
 end
 
--- A transparent scene over a test with a card in the middle of the screen that closes with its button or the back action.
+-- A transparent scene over a test with a card in the middle of the screen that closes with its button or a cancel.
 local Overlay = haylen.class('Overlay', scene.Scene)
 sample.Overlay = Overlay
 Overlay.transparent = true
@@ -119,19 +116,13 @@ function Overlay:card(title, children)
         nodes[#nodes + 1] = child
     end
     nodes[#nodes + 1] = ui.button{id = 'close', text = 'Close', variant = 'primary', onClick = function() self:close() end}
-    self.document = ui.mount(ui.card{anchor = 'center', width = 760, gap = 16, children = nodes}, {owner = self, layer = 1})
+    self.document = ui.mount(ui.card{anchor = 'center', width = 760, gap = 16, onCancel = function() self:close() end, children = nodes}, {owner = self, layer = 1})
     self.document:command('close', 'focus')
 end
 
 function Overlay:close()
     if not scene.transitioning() then
         scene.pop(kOverlayTransition)
-    end
-end
-
-function Overlay:update(dt)
-    if input.pressed('back') then
-        self:close()
     end
 end
 

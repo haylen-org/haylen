@@ -1,8 +1,8 @@
 -- The settings sheet, shown over the menu or the paused run. It also tries the platform bridge with device info and Google sign-in.
-local input = require('haylen.input')
 local platform = require('haylen.platform')
 local scene = require('haylen.scene')
 local ui = require('haylen.ui')
+local window = require('haylen.window')
 
 local preferences = require('systems.preferences')
 local sound = require('systems.sound')
@@ -19,6 +19,7 @@ function settings.new(animate)
 end
 
 function settings:enter()
+    window.setBackLeavesApp(false)
     local rows = {
         ui.settingsRow{label = widgets.text('settings.music'), ui.slider{value = preferences.get('music'), width = 440, onChange = function(event)
             preferences.set('music', event.value)
@@ -55,6 +56,10 @@ function settings:enter()
     self.document = ui.mount(ui.column{
         justify = 'center',
         padding = 48,
+        onCancel = function()
+            sound.play('back')
+            self:close()
+        end,
         ui.panel{
             width = 1040,
             align = 'center',
@@ -78,7 +83,7 @@ function settings:ask(method, params, describe)
         if not result then
             sound.play('error')
         end
-        self.document:set('bridge', {text = result and describe(result) or err})
+        self.document:set('bridge', {text = result and describe(result) or err.message})
     end)
 end
 
@@ -95,10 +100,6 @@ function settings:exit()
 end
 
 function settings:update(dt)
-    if input.pressed('pause') then
-        sound.play('back')
-        self:close()
-    end
     if self.animate then
         self.animate(dt)
     end

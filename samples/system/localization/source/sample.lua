@@ -57,11 +57,11 @@ function Test:enter()
                 ui.label{text = self.entry.title, font = 'heading'},
                 ui.label{text = self.entry.description, color = 'textMuted'},
             },
-            ui.segmentedControl{id = 'language', width = 640, align = 'start', items = language.items(), selected = self.language, onChange = function(event)
+            ui.segmentedControl{id = 'language', width = 1080, align = 'start', items = language.items(), selected = self.language, onChange = function(event)
                 language.use(event.value)
             end},
         },
-        ui.row{height = 0, grow = 1, gap = 24, children = self:content()},
+        ui.row{grow = 1, gap = 24, children = self:content()},
         ui.label{text = self.hints .. ' L or the right shoulder picks the next language, K or the left shoulder the previous one.', font = 'caption', color = 'textMuted'},
     }, {owner = self})
     self.document:command(self.focus, 'focus')
@@ -72,12 +72,11 @@ function Test:exit()
     window.setBackLeavesApp(true)
 end
 
--- Follows the language keys, unless a text field is taking the keyboard, and tells the test when the language changed.
+-- Follows the language keys, which read as up while a text field takes the keyboard, and tells the test when the language changed.
 function Test:update(dt)
-    local typing = ui.wantsKeyboard()
-    if not typing and input.pressed('nextLanguage') then
+    if input.pressed('nextLanguage') then
         language.step(1)
-    elseif not typing and input.pressed('previousLanguage') then
+    elseif input.pressed('previousLanguage') then
         language.step(-1)
     end
     if localization.language() ~= self.language then

@@ -48,7 +48,7 @@ function Test:frame(options)
         },
         ui.row{grow = 1, gap = 16,
             ui.spacer{id = 'stage', grow = 1, align = 'stretch'},
-            ui.panel{id = 'panel', width = options.panelWidth or kPanelWidth, align = 'stretch', ui.scroll{grow = 1, height = 0, ui.column{gap = 12, children = options.controls}}},
+            ui.panel{id = 'panel', width = options.panelWidth or kPanelWidth, align = 'stretch', ui.scroll{grow = 1, ui.column{gap = 12, children = options.controls}}},
         },
         ui.label{id = 'status', text = '', font = 'monospace', color = 'accentText'},
         ui.label{text = (options.hint and options.hint .. ' ' or '') .. back, font = 'caption', color = 'textMuted'},
@@ -120,7 +120,7 @@ end
 -- Draws a small caption, the way every test labels what it draws.
 function sample.caption(text, x, y, options)
     options = options or {}
-    graphics2d.drawText(nil, text, x, y, {size = options.size or 22, color = options.color or sample.muted, anchor = options.anchor or {0, 0}, layer = options.layer or 2})
+    graphics2d.drawText(nil, text, x, y, {size = options.size or 19, color = options.color or sample.muted, anchor = options.anchor or {0, 0}, layer = options.layer or 2})
 end
 
 function sample.open(info)

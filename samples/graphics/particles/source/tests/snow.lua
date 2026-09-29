@@ -41,7 +41,6 @@ function Snow:controls()
 end
 
 function Snow:update(dt)
-    Snow.super.update(self, dt)
     local count = 0
     for _, layer in ipairs(self.layers) do
         layer.emitter:update(dt)

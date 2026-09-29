@@ -42,7 +42,7 @@ function Browser:content()
     return {
         ui.panel{width = 760, align = 'stretch', gap = 12,
             ui.label{id = 'path', text = '', font = 'monospace', color = 'accentText'},
-            ui.scroll{height = 0, grow = 1, ui.list{id = 'entries', items = {}, onSelect = function(event)
+            ui.scroll{grow = 1, ui.list{id = 'entries', items = {}, onSelect = function(event)
                 self:pick(event.item)
             end}},
             ui.row{gap = 12,
@@ -68,7 +68,7 @@ function Browser:content()
         ui.panel{grow = 1, align = 'stretch', gap = 12,
             ui.sectionTitle{id = 'name', text = 'Nothing selected'},
             ui.label{id = 'details', text = 'Pick a file to see its size, its date and its first bytes.', color = 'textMuted'},
-            ui.scroll{height = 0, grow = 1, ui.label{id = 'preview', text = '', font = 'monospace'}},
+            ui.scroll{grow = 1, ui.label{id = 'preview', text = '', font = 'monospace'}},
         },
         ui.dialog{id = 'confirm', title = 'Delete it?', buttons = {{id = 'keep', text = 'Keep'}, {id = 'delete', text = 'Delete', variant = 'destructive'}}, onAnswer = function(event)
             if event.button == 'delete' then

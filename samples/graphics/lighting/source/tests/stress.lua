@@ -38,14 +38,13 @@ function Stress:controls()
         ui.formField{label = 'Lights', ui.slider{min = 16, max = Stress.maxLights, step = 16, value = self.count, showValue = true, decimals = 0, onChange = function(event)
             self.count = math.floor(event.value)
         end}},
-        ui.toggle{align = 'stretch', text = 'Shadows on the first 16 lights', onChange = function(event)
+        ui.toggle{text = 'Shadows on 16 lights', onChange = function(event)
             self.shadows = event.checked
         end},
     }
 end
 
 function Stress:update(dt)
-    Stress.super.update(self, dt)
     local time = haylen.time()
     for index = 1, self.count do
         local entry = self.lights[index]

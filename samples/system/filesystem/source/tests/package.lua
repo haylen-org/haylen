@@ -70,7 +70,7 @@ function Package:content()
         ui.panel{grow = 1, align = 'stretch', gap = 12,
             ui.label{id = 'call', text = '', font = 'monospace', color = 'accentText'},
             ui.label{id = 'summary', text = '', color = 'textMuted'},
-            ui.scroll{height = 0, grow = 1, ui.label{id = 'preview', text = '', font = 'monospace'}},
+            ui.scroll{grow = 1, ui.label{id = 'preview', text = '', font = 'monospace'}},
         },
     }
 end

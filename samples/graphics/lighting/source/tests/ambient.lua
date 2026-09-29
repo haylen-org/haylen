@@ -46,7 +46,6 @@ function Ambient:choose(id)
 end
 
 function Ambient:update(dt)
-    Ambient.super.update(self, dt)
     self:setStatus('ambientLight = ' .. self.ambient:toHex())
 end
 

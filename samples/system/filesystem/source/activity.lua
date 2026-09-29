@@ -16,7 +16,7 @@ end
 
 -- Returns the node that shows the lines, a list in a scroll area that grows to fill its column.
 function Activity:node()
-    return ui.scroll{height = 0, grow = 1, focusable = false, ui.list{id = self.id, items = self.items}}
+    return ui.scroll{grow = 1, focusable = false, ui.list{id = self.id, items = self.items}}
 end
 
 -- Adds a line, with an optional detail under it.

@@ -29,17 +29,16 @@ function Rotation:controls()
             ui.button{text = 'Quarter turn', onClick = function() camera.rotation = camera.rotation + math.pi / 2 end},
             ui.button{text = 'Shake', onClick = function() camera:addTrauma(0.8) end},
         }},
-        ui.toggle{align = 'stretch', text = 'Rotation smoothing', checked = true, onChange = function(event)
+        ui.toggle{text = 'Rotation smoothing', checked = true, onChange = function(event)
             camera.rotationSmoothing = event.checked
         end},
-        ui.toggle{align = 'stretch', text = 'ignoreRotation', onChange = function(event)
+        ui.toggle{text = 'ignoreRotation', onChange = function(event)
             camera.ignoreRotation = event.checked
         end},
     }
 end
 
 function Rotation:update(dt)
-    Rotation.super.update(self, dt)
     local camera = self.camera
     camera.rotation = camera.rotation + input.value('rotate') * 1.5 * dt
     self.player:update(dt, camera)

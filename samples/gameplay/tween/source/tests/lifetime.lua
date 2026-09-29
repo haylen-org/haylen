@@ -2,7 +2,6 @@
 local graphics2d = require('haylen.graphics2d')
 local graphics = require('haylen.graphics')
 local haylen = require('haylen')
-local input = require('haylen.input')
 local scene = require('haylen.scene')
 local tween = require('haylen.tween')
 local ui = require('haylen.ui')
@@ -24,17 +23,11 @@ Child.transparent = true
 function Child:enter()
     self.spinner = {rotation = 0}
     tween.rotate(self.spinner, 0.5, math.pi / 2, {owner = self, loop = 'incremental', repeatCount = -1, ease = 'back_out'})
-    ui.mount(ui.card{anchor = 'center', gap = 16,
+    ui.mount(ui.card{anchor = 'center', gap = 16, onCancel = function() scene.pop() end,
         ui.label{text = 'A child scene owns this spinner.', font = 'heading'},
         ui.label{text = 'Close it and its tween ends with it.', color = 'textMuted'},
         ui.button{id = 'close', text = 'Close', variant = 'primary', onClick = function() scene.pop() end},
     }, {owner = self}):command('close', 'focus')
-end
-
-function Child:update(dt)
-    if input.pressed('back') and not scene.transitioning() then
-        scene.pop()
-    end
 end
 
 function Child:render()

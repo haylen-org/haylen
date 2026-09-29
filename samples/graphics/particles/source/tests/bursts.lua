@@ -42,7 +42,6 @@ function Bursts:controls()
 end
 
 function Bursts:update(dt)
-    Bursts.super.update(self, dt)
     for _, emitter in ipairs(self.emitters) do
         emitter:update(dt)
     end

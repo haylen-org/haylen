@@ -25,7 +25,7 @@ end
 function Smoothing:controls()
     local camera = self.camera
     return {
-        ui.toggle{align = 'stretch', text = 'Position smoothing', checked = true, onChange = function(event)
+        ui.toggle{text = 'Position smoothing', checked = true, onChange = function(event)
             camera.positionSmoothing = event.checked
         end},
         ui.formField{label = 'Smoothing speed', ui.slider{min = 0.5, max = 15, value = camera.positionSmoothingSpeed, showValue = true, onChange = function(event)
@@ -38,7 +38,6 @@ function Smoothing:controls()
 end
 
 function Smoothing:update(dt)
-    Smoothing.super.update(self, dt)
     self.player:update(dt, self.camera)
     self.camera:follow(self.player.x, self.player.y, dt)
     self.camera:update(dt)

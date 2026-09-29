@@ -62,7 +62,7 @@ function UiTheme:enter()
     for index, tone in ipairs(kTones) do
         bars[index] = ui.progress{id = tone, value = 0.6, tone = tone, text = tone}
     end
-    self.demo = ui.mount(ui.column{id = 'demo', anchor = 'topLeft', width = kDemoWidth, gap = 16,
+    self.demo = ui.mount(ui.column{id = 'demo', anchor = 'topLeft', width = kDemoWidth, gap = 16, onCancel = sample.back,
         ui.pageHeader{title = 'Workshop', caption = 'Every surface is a nine-slice', banner = true, textAlign = 'center'},
         ui.panel{gap = 14,
             ui.row{gap = 12,

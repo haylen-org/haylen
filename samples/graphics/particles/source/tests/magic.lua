@@ -44,7 +44,6 @@ function Magic:controls()
 end
 
 function Magic:update(dt)
-    Magic.super.update(self, dt)
     self.cursor:update(dt)
     local x, y = self.cursor:world(self.camera)
     local follow = m.damp(3, dt)

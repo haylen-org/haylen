@@ -22,7 +22,6 @@ function Trail:init(entry)
 end
 
 function Trail:update(dt)
-    Trail.super.update(self, dt)
     self.cursor:update(dt)
     self.time = self.time + dt
     self.pen.position = {self.cursor:world(self.camera)}

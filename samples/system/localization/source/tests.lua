@@ -6,6 +6,7 @@ return {
     {id = 'nested', title = 'Nested keys', description = 'Groups of keys in the language files, read with dotted keys.', module = 'tests.nested'},
     {id = 'fallback', title = 'Fallback language', description = 'Keys a language lacks, taken from the fallback language, and keys no language has.', module = 'tests.fallback'},
     {id = 'best-match', title = 'Best match', description = 'The device language and other tags matched to the languages of the app.', module = 'tests.best-match'},
-    {id = 'fonts', title = 'Fonts per language', description = 'A Japanese interface font, and a family whose fallback mixes scripts.', module = 'tests.fonts'},
+    {id = 'fonts', title = 'Fonts per language', description = 'One font family whose fallback draws Japanese in every component.', module = 'tests.fonts'},
     {id = 'relayout', title = 'Layout follows the text', description = 'Buttons and paragraphs that measure again when the language changes.', module = 'tests.relayout'},
+    {id = 'direction', title = 'Right-to-left interface', description = 'Arabic mirrors the whole interface, and nodes with a direction of their own keep it.', module = 'tests.direction'},
 }

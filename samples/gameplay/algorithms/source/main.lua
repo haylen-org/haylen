@@ -3,7 +3,8 @@ local input = require('haylen.input')
 local scene = require('haylen.scene')
 
 input.loadActions({actions = {
-    {name = 'back', type = 'button', bindings = {'key:escape', 'key:menu', 'button:east', 'button:back'}},
+    -- The Back button of a gamepad goes back too, next to Escape and the east button that ui_cancel reads by default.
+    {name = 'ui_cancel', type = 'button', bindings = {'key:escape', 'button:east', 'button:back'}},
     {name = 'reset', type = 'button', bindings = {'key:r', 'button:west'}},
     {name = 'previous', type = 'button', bindings = {'key:q', 'button:left_shoulder'}},
     {name = 'next', type = 'button', bindings = {'key:e', 'button:right_shoulder'}},

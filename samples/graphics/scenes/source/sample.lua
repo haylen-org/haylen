@@ -1,6 +1,5 @@
 -- What every test of the sample shares: the base scene with the header and the Back button, and the way back to the menu.
 local haylen = require('haylen')
-local input = require('haylen.input')
 local scene = require('haylen.scene')
 local ui = require('haylen.ui')
 local window = require('haylen.window')
@@ -64,14 +63,18 @@ function Test:enter()
     self.header = ui.mount(ui.column{
         padding = 24,
         gap = 16,
+        onCancel = function()
+            self:cancel()
+        end,
         top,
         ui.spacer{grow = 1},
         ui.label{text = self.hints, font = 'body', color = 'text', outline = '#FF000000', outlineWidth = 3},
     }, {owner = self})
 end
 
-function Test:update(dt)
-    if input.pressed('back') then
+-- Goes back to the menu while the test is on top. The cards and overlays the tests push have no document and pop themselves on the back action, so a cancel that reaches the header under them does nothing.
+function Test:cancel()
+    if scene.top() == self then
         sample.back(self.entry)
     end
 end

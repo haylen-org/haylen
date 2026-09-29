@@ -28,6 +28,9 @@ function PauseMenu:enter()
     tween.to(self.glow, 0.6, {alpha = 1}, {loop = 'yoyo', repeatCount = -1, ease = 'sine_in_out', owner = self})
     self.document = ui.mount(ui.column{
         justify = 'center',
+        onCancel = function()
+            self:close()
+        end,
         ui.panel{
             width = 560,
             align = 'center',
@@ -52,7 +55,7 @@ end
 
 function PauseMenu:update(dt)
     self.world:describe()
-    if input.pressed('back') or input.pressed('pause') then
+    if input.pressed('pause') then
         self:close()
     end
 end
@@ -101,7 +104,6 @@ function Pause:describe()
 end
 
 function Pause:update(dt)
-    Pause.super.update(self, dt)
     if input.pressed('pause') then
         self:openMenu()
     end

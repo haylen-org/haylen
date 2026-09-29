@@ -46,7 +46,7 @@ function Nested:content()
     return {
         ui.panel{width = 820, align = 'stretch', gap = 12,
             ui.sectionTitle{text = 'The groups of locale/en.json'},
-            ui.scroll{height = 0, grow = 1, ui.tree{id = 'tree', items = items(assets.json('locale/en.json'), ''), expanded = {'story', 'story.chapters', 'story.chapters.first'}, onSelect = function(event)
+            ui.scroll{grow = 1, ui.tree{id = 'tree', items = items(assets.json('locale/en.json'), ''), expanded = {'story', 'story.chapters', 'story.chapters.first'}, onSelect = function(event)
                 self:pick(event.item)
             end}},
         },

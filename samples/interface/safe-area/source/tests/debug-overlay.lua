@@ -19,7 +19,7 @@ end
 function DebugOverlay:controls()
     local simulation = viewport.safeAreaSimulation()
     return {
-        ui.toggle{id = 'overlay', text = 'Show the safe area overlay', checked = true, align = 'stretch', onChange = function(event)
+        ui.toggle{id = 'overlay', text = 'Show the safe area overlay', checked = true, onChange = function(event)
             ui.setSafeAreaVisible(event.checked)
         end},
         ui.settingsRow{label = 'Device', ui.combo{id = 'device', width = 480, items = sample.devices, selected = type(simulation) == 'string' and simulation or 'device', onChange = function(event)

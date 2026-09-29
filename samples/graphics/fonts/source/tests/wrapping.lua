@@ -32,7 +32,7 @@ function Wrapping:controls()
         end},
         ui.label{text = 'Line spacing'},
         ui.slider{id = 'spacing', min = 0.8, max = 2, step = 0.1, value = self.spacing, showValue = true, decimals = 1, onChange = function(event) self.spacing = event.value end},
-        ui.toggle{id = 'sweep', text = 'Sweep the width', checked = self.sweep, align = 'stretch', onChange = function(event) self.sweep = event.checked end},
+        ui.toggle{id = 'sweep', text = 'Sweep the width', checked = self.sweep, onChange = function(event) self.sweep = event.checked end},
     }
 end
 

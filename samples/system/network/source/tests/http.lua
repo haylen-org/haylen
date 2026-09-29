@@ -64,7 +64,7 @@ function Http:content()
                 ui.label{id = 'timing', text = '', color = 'textMuted'},
             },
             ui.label{id = 'request', text = '', font = 'monospace', color = 'accentText'},
-            ui.tabs{id = 'tabs', grow = 1, height = 0, items = {{id = 'body', text = 'Body'}, {id = 'headers', text = 'Headers'}}, selected = 'body',
+            ui.tabs{id = 'tabs', grow = 1, items = {{id = 'body', text = 'Body'}, {id = 'headers', text = 'Headers'}}, selected = 'body',
                 ui.scroll{ui.label{id = 'body', text = '', font = 'monospace'}},
                 ui.scroll{ui.table{id = 'headers', columns = {{text = 'Header', width = 420}, {text = 'Value'}}, rows = {}}},
             },

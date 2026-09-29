@@ -1,5 +1,5 @@
 {
-    "language": {"en": "Inglês", "pt-BR": "Português", "es": "Espanhol", "ja": "Japonês"},
+    "language": {"en": "Inglês", "pt-BR": "Português", "es": "Espanhol", "ja": "Japonês", "ar": "Árabe", "hi": "Híndi"},
     "menu": {
         "title": "Contos da Ilha",
         "subtitle": "Uma pequena aventura à beira-mar",
@@ -45,5 +45,6 @@
         "difficulty": "Dificuldade",
         "hard": "Difícil"
     },
-    "fonts": {"sample": "Cada idioma desenha com uma fonte que tem as suas letras."}
+    "fonts": {"sample": "Cada idioma desenha com uma fonte que tem as suas letras."},
+    "direction": {"settings": "Configurações", "music": "Música", "vibration": "Vibração", "volume": "Volume", "name": "Nome do capitão", "placeholder": "Digite um nome", "inbox": "Caixa de entrada", "inboxCaption": "3 mensagens não lidas", "profile": "Perfil", "profileCaption": "Nível 12", "save": "Salvar", "cancel": "Cancelar", "note": "Linhas, caixas de seleção, interruptores, controles deslizantes, listas e diálogos se espelham quando a interface é lida da direita para a esquerda."}
 }

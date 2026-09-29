@@ -29,11 +29,11 @@ function Character:enter()
         navigation = not window.hasPointerDevice(),
         focus = 'touchOnly',
         controls = {
-            ui.toggle{id = 'touchOnly', text = 'Touch controls only after a touch', checked = true, onChange = function(event)
+            ui.formField{label = 'Touch controls', ui.toggle{id = 'touchOnly', text = 'Only after a touch', checked = true, onChange = function(event)
                 for _, id in ipairs({'stick', 'jump', 'dash'}) do
                     self:set(id, {touchOnly = event.checked})
                 end
-            end},
+            end}},
             ui.button{id = 'respawn', text = 'Put the hero back', onClick = function() self:spawn() end},
             ui.label{text = 'Holding jump jumps higher, a jump pressed just before landing still counts, and a jump just after running off a ledge too.', color = 'textMuted', font = 'caption'},
             ui.sectionTitle{text = 'All it reads'},

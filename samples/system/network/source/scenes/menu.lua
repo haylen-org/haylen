@@ -28,7 +28,7 @@ function Menu:enter()
         padding = {32, 48},
         gap = 24,
         ui.pageHeader{title = haylen.config.name, caption = 'Pick a test. Back, Escape or the B button returns to this menu.'},
-        ui.scroll{height = 0, grow = 1, ui.column{gap = 12, padding = {0, 24, 0, 0}, children = rows}},
+        ui.scroll{grow = 1, ui.column{gap = 12, padding = {0, 24, 0, 0}, children = rows}},
     }, {owner = self})
     self.document:command(self.selected, 'focus')
 end

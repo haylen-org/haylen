@@ -42,7 +42,6 @@ function PointLights:controls()
 end
 
 function PointLights:update(dt)
-    PointLights.super.update(self, dt)
     self.cursor:update(dt)
     self.held.x, self.held.y = self.cursor:world(self.camera)
     if sample.pressed() then

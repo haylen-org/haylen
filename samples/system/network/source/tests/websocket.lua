@@ -59,7 +59,7 @@ function WebSocket:content()
         },
         ui.panel{grow = 1, align = 'stretch', gap = 12,
             ui.sectionTitle{text = 'What happened'},
-            ui.scroll{height = 0, grow = 1, focusable = false, ui.list{id = 'log', items = {}}},
+            ui.scroll{grow = 1, focusable = false, ui.list{id = 'log', items = {}}},
         },
     }
 end

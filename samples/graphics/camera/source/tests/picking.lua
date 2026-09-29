@@ -35,7 +35,6 @@ function Picking:objectAt(x, y)
 end
 
 function Picking:update(dt)
-    Picking.super.update(self, dt)
     self.cursor:update(dt)
     local camera = self.camera
     camera.rotation = camera.rotation + input.value('rotate') * dt

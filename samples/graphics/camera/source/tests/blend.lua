@@ -38,7 +38,6 @@ function Blend:controls()
 end
 
 function Blend:update(dt)
-    Blend.super.update(self, dt)
     self.player:update(dt, self.view)
     self.follow:follow(self.player.x, self.player.y, dt)
     self.follow:update(dt)

@@ -49,7 +49,7 @@ function Storage:content()
         },
         ui.panel{width = 520, align = 'stretch', gap = 12,
             ui.sectionTitle{text = 'storage.list()'},
-            ui.scroll{height = 0, grow = 1, focusable = false, ui.list{id = 'files', items = {}}},
+            ui.scroll{grow = 1, focusable = false, ui.list{id = 'files', items = {}}},
         },
         ui.panel{grow = 1, align = 'stretch', gap = 12,
             ui.sectionTitle{text = 'Activity'},

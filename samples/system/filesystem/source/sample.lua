@@ -93,7 +93,7 @@ function Test:enter()
                 ui.label{text = self.entry.description, color = 'textMuted'},
             },
         },
-        ui.row{height = 0, grow = 1, gap = 24, children = self:content()},
+        ui.row{grow = 1, gap = 24, children = self:content()},
         ui.label{text = self.hints, font = 'caption', color = 'textMuted'},
     }, {owner = self})
     self.document:command(self.focus, 'focus')

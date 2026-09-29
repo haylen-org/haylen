@@ -25,7 +25,7 @@ function Lock:content()
                 self.lock = event.value
                 window.lockOrientation(event.value)
             end},
-            ui.toggle{id = 'fullscreen', text = 'Fullscreen', checked = window.fullscreen(), align = 'stretch', onChange = function(event)
+            ui.toggle{id = 'fullscreen', text = 'Fullscreen', checked = window.fullscreen(), onChange = function(event)
                 window.setFullscreen(event.checked)
             end},
         }),

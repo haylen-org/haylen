@@ -59,7 +59,7 @@ function Zip:content()
         },
         ui.panel{width = 560, align = 'stretch', gap = 12,
             ui.sectionTitle{id = 'entriesTitle', text = 'Entries'},
-            ui.scroll{height = 0, grow = 1, focusable = false, ui.list{id = 'entries', items = {}}},
+            ui.scroll{grow = 1, focusable = false, ui.list{id = 'entries', items = {}}},
             ui.label{id = 'preview', text = '', font = 'monospace', color = 'accentText'},
         },
         ui.panel{grow = 1, align = 'stretch', gap = 12,

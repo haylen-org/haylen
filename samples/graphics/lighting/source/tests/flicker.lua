@@ -34,7 +34,7 @@ function Flicker:controls()
         ui.formField{label = 'Amount', ui.slider{min = 0, max = 0.8, value = self.amount, showValue = true, onChange = function(event)
             self.amount = event.value
         end}},
-        ui.toggle{align = 'stretch', text = 'One seed for every torch', onChange = function(event)
+        ui.toggle{text = 'One seed for every torch', onChange = function(event)
             self.shared = event.checked
         end},
     }
@@ -46,7 +46,6 @@ function Flicker:wave(flame)
 end
 
 function Flicker:update(dt)
-    Flicker.super.update(self, dt)
     for _, torch in ipairs(self.torches) do
         torch.wave = self:wave(torch)
         torch.light.intensity = 1.2 * torch.wave

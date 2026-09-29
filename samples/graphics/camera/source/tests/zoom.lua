@@ -29,7 +29,6 @@ function Zoom:controls()
 end
 
 function Zoom:update(dt)
-    Zoom.super.update(self, dt)
     local camera = self.camera
     local _, wheel = input.mouseScroll()
     if wheel ~= 0 and not ui.wantsPointer() then

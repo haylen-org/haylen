@@ -41,7 +41,6 @@ function Shake:controls()
 end
 
 function Shake:update(dt)
-    Shake.super.update(self, dt)
     if sample.pressed() then
         self.camera:addTrauma(0.5)
     end

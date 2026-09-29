@@ -22,13 +22,12 @@ function Sparks:init(entry)
 end
 
 function Sparks:controls()
-    return {ui.toggle{align = 'stretch', text = 'Only while held', onChange = function(event)
+    return {ui.toggle{text = 'Only while held', onChange = function(event)
         self.held = event.checked
     end}}
 end
 
 function Sparks:update(dt)
-    Sparks.super.update(self, dt)
     self.cursor:update(dt)
     local x, y = self.cursor:world(self.camera)
     local touching = #input.touches() > 0 and not ui.wantsPointer()

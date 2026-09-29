@@ -37,7 +37,6 @@ function Stress:controls()
 end
 
 function Stress:update(dt)
-    Stress.super.update(self, dt)
     local count = 0
     for _, emitter in ipairs(self.emitters) do
         emitter:update(dt)

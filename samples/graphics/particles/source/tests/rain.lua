@@ -32,7 +32,6 @@ function Rain:controls()
 end
 
 function Rain:update(dt)
-    Rain.super.update(self, dt)
     self.drops:update(dt)
     self.splashes:update(dt)
     self:setStatus(string.format('%d drops, %d splashes, intensity %.2f', self.drops.count, self.splashes.count, self.intensity))

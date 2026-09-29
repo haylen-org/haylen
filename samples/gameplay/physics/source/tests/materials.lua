@@ -13,7 +13,7 @@ local Materials = haylen.class('Materials', sample.Test)
 
 local kFrictions = {0, 0.05, 0.1, 0.3, 0.6}
 local kRestitutions = {0, 0.25, 0.5, 0.75, 0.95}
-local kLabel = {size = 22, color = '#FFE8EAF2', anchor = {0.5, 0}, layer = 10}
+local kLabel = {size = 19, color = '#FFE8EAF2', anchor = {0.5, 0}, layer = 10}
 
 function Materials:enter()
     Materials.super.enter(self, {

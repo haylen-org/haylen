@@ -36,7 +36,7 @@ function Themes:content()
                 ui.pageHeader{title = 'Harbor', caption = 'A banner header', banner = true},
                 ui.row{gap = 12, ui.button{text = 'Default'}, ui.button{text = 'Primary', variant = 'primary'}, ui.button{text = 'Delete', variant = 'destructive'}},
                 ui.row{gap = 24, ui.checkbox{text = 'Check', checked = true}, ui.checkbox{text = 'Box'}},
-                ui.toggle{text = 'Toggle', checked = true, align = 'stretch'},
+                ui.toggle{text = 'Toggle', checked = true},
                 ui.row{gap = 12, ui.chip{text = 'Chip', selected = true}, ui.chip{text = 'Another'}, ui.badge{text = 'Badge', tone = 'accent'}, ui.badge{text = '3', tone = 'danger', solid = true}},
             },
             ui.card{grow = 1, gap = 16,

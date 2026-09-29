@@ -42,7 +42,7 @@ function art.cells(count, columns)
 end
 
 function art.caption(text, x, y)
-    graphics2d.drawText(nil, text, x, y, {size = 30, anchor = {0.5, 0}, outlineWidth = 3, layer = 10})
+    graphics2d.drawText(nil, text, x, y, {size = 26, anchor = {0.5, 0}, outlineWidth = 3, layer = 10})
 end
 
 return art

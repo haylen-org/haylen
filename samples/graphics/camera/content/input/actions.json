@@ -1,6 +1,6 @@
 {
     "actions": [
-        {"name": "back", "type": "button", "bindings": ["key:escape", "button:east", "button:back"]},
+        {"name": "ui_cancel", "type": "button", "bindings": ["key:escape", "button:east", "button:back"]},
         {"name": "move", "type": "vector", "up": ["key:w"], "down": ["key:s"], "left": ["key:a"], "right": ["key:d"], "bindings": ["stick:left"]},
         {"name": "move2", "type": "vector", "up": ["key:i"], "down": ["key:k"], "left": ["key:j"], "right": ["key:l"], "bindings": ["stick:right"]},
         {"name": "zoom", "type": "axis", "positive": ["key:x", "key:equal", "key:keypad_add", "button:right_shoulder", "axis:right_trigger+"], "negative": ["key:z", "key:minus", "key:keypad_subtract", "button:left_shoulder", "axis:left_trigger+"]},

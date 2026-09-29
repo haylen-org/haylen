@@ -43,7 +43,6 @@ function PauseMenu:unpaused()
 end
 
 function PauseMenu:update(dt)
-    PauseMenu.super.update(self, dt)
     if input.pressed('pause') then
         self:close()
     end

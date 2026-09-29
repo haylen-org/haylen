@@ -51,7 +51,7 @@ function Test:frame(options)
         },
         ui.row{grow = 1, gap = 16,
             ui.spacer{id = 'stage', grow = 1, align = 'stretch'},
-            ui.panel{id = 'panel', width = kPanelWidth, align = 'stretch', ui.scroll{grow = 1, height = 0, ui.column{gap = 12, children = options.controls}}},
+            ui.panel{id = 'panel', width = kPanelWidth, align = 'stretch', ui.scroll{grow = 1, ui.column{gap = 12, children = options.controls}}},
         },
         ui.label{id = 'status', text = '', font = 'monospace', color = 'accentText'},
         ui.label{text = (options.hint and options.hint .. ' ' or '') .. 'Escape, the east button or Back returns to the menu.', font = 'caption', color = 'textMuted'},

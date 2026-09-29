@@ -55,7 +55,7 @@ function Positional:enter()
         end}}
     end
     controls[#controls + 1] = ui.formField{label = 'Speed of the hum', ui.slider{id = 'orbit', min = 0, max = 1500, step = 50, value = self.orbitSpeed, showValue = true, decimals = 0, onChange = function(event) self.orbitSpeed = event.value end}}
-    controls[#controls + 1] = ui.toggle{id = 'follow', text = 'The listener follows the camera', checked = true, onChange = function(event)
+    controls[#controls + 1] = ui.toggle{id = 'follow', text = 'Listener on the camera', checked = true, onChange = function(event)
         self.following = event.checked
         audio.followCamera(event.checked and self.world or nil)
     end}

@@ -1,7 +1,7 @@
 -- The survivor choice: the camera frames the chosen class at the fire while a paper sheet compares its stats.
-local input = require('haylen.input')
 local scene = require('haylen.scene')
 local ui = require('haylen.ui')
+local window = require('haylen.window')
 
 local art = require('systems.art')
 local classes = require('data.classes')
@@ -35,7 +35,9 @@ function classSelect.new(scenery)
     return setmetatable({backdrop = scenery}, classSelect)
 end
 
+-- The Menu button of a TV remote and the Back button of Android reach this screen and the ones after it as Escape instead of leaving the app.
 function classSelect:enter()
+    window.setBackLeavesApp(false)
     local cards = {}
     for _, class in ipairs(classes) do
         cards[#cards + 1] = ui.column{
@@ -63,6 +65,10 @@ function classSelect:enter()
     self.document = ui.mount(ui.column{
         padding = {40, 64},
         gap = 24,
+        onCancel = function()
+            sound.play('back')
+            self:back()
+        end,
         ui.pageHeader{title = widgets.text('classes.title'), banner = true, textAlign = 'center', align = 'center'},
         ui.row{
             grow = 1,
@@ -131,10 +137,6 @@ function classSelect:start()
 end
 
 function classSelect:update(dt)
-    if input.pressed('pause') then
-        sound.play('back')
-        self:back()
-    end
     self.backdrop:update(dt)
 end
 

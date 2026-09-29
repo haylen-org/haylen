@@ -74,16 +74,13 @@ function Test:enter()
     self.header = ui.mount(ui.column{
         padding = 24,
         gap = 16,
+        onCancel = function()
+            sample.back(entry)
+        end,
         top,
         ui.spacer{grow = 1},
         ui.label{text = self.hints, font = 'body', color = 'text', outline = '#FF000000', outlineWidth = 3},
     }, {owner = self})
-end
-
-function Test:update(dt)
-    if input.pressed('back') then
-        sample.back(self.entry)
-    end
 end
 
 -- Shows a line of live values under the description, touching the document only when the text changes.

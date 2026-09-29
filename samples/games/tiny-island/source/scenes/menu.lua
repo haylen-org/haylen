@@ -2,6 +2,7 @@
 local haylen = require('haylen')
 local scene = require('haylen.scene')
 local ui = require('haylen.ui')
+local window = require('haylen.window')
 
 local backdrop = require('systems.backdrop')
 local preferences = require('systems.preferences')
@@ -22,7 +23,9 @@ function menu:load(context)
     self.backdrop = self.backdrop or backdrop.new()
 end
 
+-- The title screen is the root screen, where the back button of a TV or an Android device leaves the app.
 function menu:enter()
+    window.setBackLeavesApp(true)
     self.backdrop:focus(nil)
     sound.music('menu')
 
@@ -61,6 +64,7 @@ function menu:pause()
 end
 
 function menu:resume()
+    window.setBackLeavesApp(true)
     self.document.visible = true
 end
 

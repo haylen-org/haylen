@@ -1,0 +1,28 @@
+{
+    "name": "strip",
+    "colors": {
+        "panel": "#E61B1E2B",
+        "raised": "#FF2C3147",
+        "accent": "#FFE0A030",
+        "accentHover": "#FFF2B84A",
+        "accentStrong": "#FFC88A20",
+        "onAccent": "#FF1B1E2B"
+    },
+    "metrics": {
+        "controlHeight": 44,
+        "controlRadius": 10,
+        "controlPaddingX": 12,
+        "itemSpacing": 8,
+        "panelPadding": 6,
+        "iconSize": 32,
+        "progressHeight": 22,
+        "badgePaddingX": 8,
+        "tooltipWidth": 360
+    },
+    "fonts": {
+        "body": {"size": 22},
+        "caption": {"size": 18},
+        "button": {"size": 22},
+        "heading": {"size": 26}
+    }
+}

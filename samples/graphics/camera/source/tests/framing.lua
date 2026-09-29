@@ -36,7 +36,6 @@ function Framing:controls()
 end
 
 function Framing:update(dt)
-    Framing.super.update(self, dt)
     self.time = self.time + dt
     self.players[1]:update(dt)
     self.players[2]:update(dt)

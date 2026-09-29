@@ -1,6 +1,6 @@
 # Haylen Fonts
 
-Haylen Fonts is a Lua sample of text in Haylen: TrueType and OpenType fonts drawn from one signed distance field at any size, outlines, blurred shadows and glows, font families with real and synthesized styles, fallback fonts for Chinese, Japanese and symbols, BMFont bitmap fonts in the text and binary formats and grid fonts, alignment and wrapping, every tag and effect of rich text with a typewriter reveal, custom effects from Lua and text measurement. A menu lists one test per feature, each test is a scene with a Back button, and Escape, the east or Back button of a gamepad, the Menu button of an Apple TV remote or the Back button of an Android device returns to the menu.
+Haylen Fonts is a Lua sample of text in Haylen: TrueType and OpenType fonts drawn from one signed distance field at any size, outlines, blurred shadows and glows, font families with real and synthesized styles, fallback fonts for Chinese, Japanese and symbols, BMFont bitmap fonts in the text and binary formats and grid fonts, alignment and wrapping, complex scripts and right-to-left text, every tag and effect of rich text with a typewriter reveal, custom effects from Lua and text measurement. A menu lists one test per feature, each test is a scene with a Back button, and Escape, the east or Back button of a gamepad, the Menu button of an Apple TV remote or the Back button of an Android device returns to the menu.
 
 | Test | What it shows |
 | --- | --- |
@@ -10,11 +10,12 @@ Haylen Fonts is a Lua sample of text in Haylen: TrueType and OpenType fonts draw
 | Fallback fonts | Japanese, Chinese and symbols drawn by M PLUS 1p and Noto Sans Symbols 2 as fallbacks, styles on fallback characters, a family without fallbacks and a character no font has, with `family:resolve`. |
 | Bitmap fonts | Haylen Pixel as a BMFont in the text format at whole multiples of its size, tinted and with a shadow, the same font in the binary format with gold glyphs that keep their colors, synthesized bold and italic, and a clock and a counter in a grid font of LCD digits. |
 | Alignment | `align` left, center, right and fill, `anchor` with rotation, and rich text paragraphs with their own alignment. |
+| Complex scripts and right-to-left text | Arabic, Persian, Urdu, Hebrew, Hindi and Thai drawn with `graphics2d.drawText` from a family whose Noto fallbacks HarfBuzz shapes, a mixed Arabic line with a number and English words in the direction a segmented control picks, a right-to-left rich text paragraph with bold, colored and underlined spans that wraps at a width from a slider, Thai wrapping between phrases, and a typewriter that reveals Arabic from the right. |
 | Wrapping | English wrapping after spaces, Japanese breaking between characters, a word longer than its line and line spacing, with sliders and a sweeping width. |
 | Rich text tags | Every tag: `b`, `i`, `u`, `s`, `code`, `color`, `bgcolor`, `alpha`, `font`, `size`, `outline`, `shadow`, `glow`, `url`, `hint`, `img`, `icon`, `lb`, `rb`, `br`, `center`, `right`, `p` with `align` and `indent`, `ul`, `ol`, `hr`, `table` with `cell` and `dropcap`, and `linkAt` and `hintAt` under the pointer. |
 | Effects and typewriter | `wave`, `shake`, `tornado`, `fade`, `rainbow` and `pulse` with their attributes and nested, and a dialogue revealed with `pause` and `speed` tags, skipped and replayed, at a speed from a slider. |
 | Custom effects | Six effects registered with `graphics2d.registerTextEffect`, nested with a built-in one, and icons registered with `graphics2d.registerTextIcon`. |
-| Measuring text | `measureText` and `font:layout` with the quad under the pointer, `ascent` and `lineHeight`, `font:glyph` metrics, `font:kerning`, and `measureRichText` with the links and images of `text:layout`. |
+| Measuring text | `measureText` and `font:layout` with the quad under the pointer, `ascent` and `lineHeight`, `font:glyph` metrics, the kerned advances of `font:shape`, and `measureRichText` with the links and images of `text:layout`. |
 
 ## Controls
 
@@ -44,7 +45,7 @@ fonts/
     scenes/menu.lua      The menu.
     tests/               One scene per test.
   content/
-    fonts/               The TrueType and OpenType fonts with their licenses, Haylen Pixel and the LCD digits.
+    fonts/               The TrueType and OpenType fonts with their licenses, including Noto Sans Arabic, Hebrew, Devanagari and Thai, Haylen Pixel and the LCD digits.
     images/              The pictures of rich text and the gamepad prompts.
     CREDITS.md           Authors and licenses.
   tools/                 The generator of Haylen Pixel, the LCD digits and the pictures, which is not part of the package.

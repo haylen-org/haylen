@@ -39,7 +39,7 @@ function Overlay:renderUi()
     graphics2d.drawRect(panel, self.kind == 'hud' and '#C0203048' or '#F0283048', {layer = 1})
     graphics2d.drawRectOutline(panel, 4, '#FF8FB0FF', {layer = 2})
     local text = string.format('%s overlay %d\nupdates while on top: %d', self.kind, self.depth, self.updates)
-    graphics2d.drawText(nil, text, panel[1] + 30, panel[2] + 24, {size = 36, layer = 3})
+    graphics2d.drawText(nil, text, panel[1] + 30, panel[2] + 24, {size = 30, layer = 3})
 end
 
 function Overlays:init(entry)
@@ -72,7 +72,6 @@ function Overlays:popTop()
 end
 
 function Overlays:update(dt)
-    Overlays.super.update(self, dt)
     self.updates = self.updates + 1
     for _, ball in ipairs(self.balls) do
         ball.x = (ball.x + ball.speed * dt) % 1920

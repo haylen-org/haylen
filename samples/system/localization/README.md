@@ -1,6 +1,6 @@
 # Haylen Localization
 
-A Lua sample with one scene per feature of [haylen.localization](../../../docs/lua-api/localization.md) in English, Portuguese, Spanish and Japanese. The menu lists the tests, each test opens as its own scene with a Back button and a language picker, and Escape, the east gamepad button or the Menu button of a TV remote return to the menu. Every text of the tests is a translation such as `{key = 'menu.play'}`, which [haylen.ui](../../../docs/lua-api/ui.md) resolves every time it draws, so a new language shows at once.
+A Lua sample with one scene per feature of [haylen.localization](../../../docs/lua-api/localization.md) in English, Portuguese, Spanish, Japanese, Arabic and Hindi. The menu lists the tests, each test opens as its own scene with a Back button and a language picker, and Escape, the east gamepad button or the Menu button of a TV remote return to the menu. Every text of the tests is a translation such as `{key = 'menu.play'}`, which [haylen.ui](../../../docs/lua-api/ui.md) resolves every time it draws, so a new language shows at once.
 
 | Test | What it shows |
 | --- | --- |
@@ -10,16 +10,17 @@ A Lua sample with one scene per feature of [haylen.localization](../../../docs/l
 | Nested keys | The groups of a language file as a tree, read with dotted keys such as `story.chapters.first.title`, and `localization.has` telling keys from groups. |
 | Fallback language | Keys the current language lacks taken from the fallback language, which the test changes with `localization.setFallback`, and a key no language has showing itself. |
 | Best match | The language of the device from the `system.locale` call of [haylen.platform](../../../docs/lua-api/platform.md), matched with `localization.bestMatch`, and a table of other tags with the reason of each match. |
-| Fonts per language | The interface switching to a theme whose fonts are M PLUS 1p for Japanese, rich text drawn from a [font family](../../../docs/lua-api/graphics.md#graphicsnewfontfamilyfaces) whose fallback font fills in the Japanese letters the default font lacks, and the same line without the fallback. |
+| Fonts per language | Labels, buttons and rich text drawn from one [font family](../../../docs/lua-api/graphics.md#graphicsnewfontfamilyfaces) whose fallback font fills in the Japanese letters the default font lacks, and the same line without the fallback. |
 | Layout follows the text | Buttons, a wrapped paragraph and a row that take new sizes when the language changes, with the bounds of each node read live. |
+| Right-to-left interface | A settings card that mirrors when Arabic becomes current, because Arabic declares `"@direction": "rtl"` and the sample calls `ui.setDirection('auto')`: rows, check boxes, toggles, the slider, the list, the buttons and the text field all start from the right. Beside it, a column with `direction = 'rtl'` and one with `direction = 'ltr'` and `language = 'hi'` keep their own direction in every language, with an Arabic field that mixes numbers and Latin letters and a Hindi one with conjuncts. |
 
 ## Languages and fonts
 
-`source/language.lua` loads the files of `content/locale` with `localization.loadFolder`, makes English the fallback and registers two UI fonts. The Latin languages use a family with the default font as its regular face and M PLUS 1p as its fallback, and Japanese uses M PLUS 1p itself. Widgets such as labels and buttons draw with the regular face of their theme font only, while rich text uses the whole family, so picking Japanese also switches the theme to the one whose fonts have Japanese letters. The names of the languages in the picker are translations too, so each one is written in the current language and its font.
+`source/language.lua` loads the files of `content/locale` with `localization.loadFolder`, makes English the fallback and registers one UI font, a family with the default font as its regular face and M PLUS 1p, Noto Sans Arabic and Noto Sans Devanagari as its fallbacks, which a theme gives to every font role. Every text component draws the letters the default font lacks from the fallbacks, shaped so Arabic letters join and Devanagari forms its conjuncts, so one theme serves every language. The names of the languages in the picker are translations too, so each one is written in the current language.
 
-The sample has no right-to-left language. The text layout of the engine has no bidirectional reordering or shaping, so Arabic or Hebrew would draw their letters unjoined and from left to right, and the sample leaves them out rather than show them wrong.
+`content/locale/ar.json` declares `"@direction": "rtl"`, and the sample calls `ui.setDirection('auto')`, so the whole interface mirrors while Arabic is current and every Arabic paragraph reads from the right. The plural forms of Arabic use the `zero`, `one` and `other` texts the module has, which cover its counts less finely than the six forms of the language.
 
-The Japanese font is M PLUS 1p under the SIL Open Font License, listed in [content/CREDITS.md](content/CREDITS.md).
+The fonts are under the SIL Open Font License and listed in [content/CREDITS.md](content/CREDITS.md).
 
 ## Running it
 

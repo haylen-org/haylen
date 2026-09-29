@@ -35,7 +35,7 @@ function HexIso:enter()
     HexIso.super.enter(self, {
         hint = 'Tap or click cells with the selected brush. The path steps through six sides on hexagons and through sides and corners on diamonds.',
         controls = {
-            ui.radioGroup{id = 'layout', items = {{id = 'hexRows', text = 'Hexagons, shifted rows'}, {id = 'hexColumns', text = 'Hexagons, shifted columns'}, {id = 'isometric', text = 'Isometric'}, {id = 'staggered', text = 'Staggered isometric'}}, selected = 'hexRows', onChange = function(event) self:build(event.value) end},
+            ui.radioGroup{id = 'layout', items = {{id = 'hexRows', text = 'Hex, shifted rows'}, {id = 'hexColumns', text = 'Hex, shifted columns'}, {id = 'isometric', text = 'Isometric'}, {id = 'staggered', text = 'Staggered isometric'}}, selected = 'hexRows', onChange = function(event) self:build(event.value) end},
             ui.radioGroup{id = 'brush', items = {{id = 'wall', text = 'Toggle walls'}, {id = 'start', text = 'Move the start'}, {id = 'goal', text = 'Move the goal'}}, selected = 'wall', onChange = function(event) self.brush = event.value end},
             ui.button{id = 'random', text = 'Random walls', onClick = function() self:build(self.name) end},
         },

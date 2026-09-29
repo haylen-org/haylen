@@ -47,7 +47,6 @@ function Forces:controls()
 end
 
 function Forces:update(dt)
-    Forces.super.update(self, dt)
     self.emitter:update(dt)
     local values = self.values
     self:setStatus(string.format('gravity %.0f, %.0f, radial %.0f, tangential %.0f, damping %.2f, %d particles', values.gravityX, values.gravityY, values.radial, values.tangential, values.damping, self.emitter.count))

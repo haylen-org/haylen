@@ -41,7 +41,6 @@ function Shapes:controls()
 end
 
 function Shapes:update(dt)
-    Shapes.super.update(self, dt)
     for _, emitter in ipairs(self.emitters) do
         emitter:update(dt)
     end

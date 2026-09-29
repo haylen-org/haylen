@@ -1,5 +1,5 @@
 {
-    "language": {"en": "英語", "pt-BR": "ポルトガル語", "es": "スペイン語", "ja": "日本語"},
+    "language": {"en": "英語", "pt-BR": "ポルトガル語", "es": "スペイン語", "ja": "日本語", "ar": "アラビア語", "hi": "ヒンディー語"},
     "menu": {
         "title": "島の物語",
         "subtitle": "海辺の小さな冒険",
@@ -43,5 +43,6 @@
         "difficulty": "難易度",
         "hard": "むずかしい"
     },
-    "fonts": {"sample": "どの言語も、その文字を持つフォントで描かれます。"}
+    "fonts": {"sample": "どの言語も、その文字を持つフォントで描かれます。"},
+    "direction": {"settings": "設定", "music": "音楽", "vibration": "振動", "volume": "音量", "name": "船長の名前", "placeholder": "名前を入力", "inbox": "受信箱", "inboxCaption": "未読メッセージ3件", "profile": "プロフィール", "profileCaption": "レベル12", "save": "保存", "cancel": "キャンセル", "note": "インターフェースが右から左に読まれるとき、行、チェックボックス、トグル、スライダー、リスト、ダイアログは左右反転します。"}
 }

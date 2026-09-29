@@ -36,7 +36,6 @@ function Confetti:fire(x, y, direction)
 end
 
 function Confetti:update(dt)
-    Confetti.super.update(self, dt)
     self.clock = self.clock + dt
     if sample.pressed() or self.clock > 3 then
         self:fire(-860, 480, -1.1)

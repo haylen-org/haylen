@@ -38,7 +38,6 @@ function SpotLights:controls()
 end
 
 function SpotLights:update(dt)
-    SpotLights.super.update(self, dt)
     self.cursor:update(dt)
     self.time = self.time + dt
 

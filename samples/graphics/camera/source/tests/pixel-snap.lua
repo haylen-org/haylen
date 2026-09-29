@@ -54,7 +54,6 @@ function PixelSnap:controls()
 end
 
 function PixelSnap:update(dt)
-    PixelSnap.super.update(self, dt)
     self.time = self.time + dt
     self:place()
     local position, drawn = self.cameras[1].position, self.cameras[2]:renderPosition()

@@ -19,8 +19,8 @@ end
 
 function EdgeToEdge:controls()
     return {
-        ui.toggle{id = 'edge', text = 'Draw the world edge to edge', checked = self.edge, align = 'stretch', onChange = function(event) self.edge = event.checked end},
-        ui.toggle{id = 'border', text = 'Show the border of the safe area', checked = self.border, align = 'stretch', onChange = function(event) self.border = event.checked end},
+        ui.toggle{id = 'edge', text = 'Draw the world edge to edge', checked = self.edge, onChange = function(event) self.edge = event.checked end},
+        ui.toggle{id = 'border', text = 'Show the border of the safe area', checked = self.border, onChange = function(event) self.border = event.checked end},
     }
 end
 

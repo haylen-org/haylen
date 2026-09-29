@@ -53,7 +53,7 @@ function Reset:content()
         },
         ui.panel{grow = 1, align = 'stretch', gap = 12,
             ui.label{id = 'summary', text = '', color = 'textMuted'},
-            ui.scroll{height = 0, grow = 1, ui.table{id = 'values', columns = {{text = 'Setting'}, {text = 'Stored', width = 240}, {text = 'Default', width = 240}, {text = '', width = 150}}, rows = {}}},
+            ui.scroll{grow = 1, ui.table{id = 'values', columns = {{text = 'Setting'}, {text = 'Stored', width = 240}, {text = 'Default', width = 240}, {text = '', width = 150}}, rows = {}}},
         },
         ui.dialog{id = 'confirm', title = 'Reset everything?', message = 'Every preference goes back to its default and is saved at once.', buttons = {{id = 'cancel', text = 'Cancel'}, {id = 'reset', text = 'Reset', variant = 'destructive'}}, onAnswer = function(event)
             if event.button == 'reset' then
