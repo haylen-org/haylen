@@ -1,0 +1,479 @@
+{
+    "name": "parchment",
+    "colors": {
+        "window": "#ffead9ae",
+        "panel": "#ffead9ae",
+        "raised": "#fff3e6c4",
+        "tooltip": "#f23b2614",
+        "overlay": "#99201008",
+        "hover": "#1a3b2614",
+        "pressed": "#333b2614",
+        "selection": "#592f8f83",
+        "focus": "#ffe3a92b",
+        "border": "#ff9a5b2e",
+        "borderStrong": "#ff4a2a14",
+        "scrollbar": "#ff9a5b2e",
+        "scrollbarHover": "#ff4a2a14",
+        "text": "#ff3b2614",
+        "textMuted": "#ff7a5a3a",
+        "textDisabled": "#ffa89070",
+        "onTooltip": "#fff3e6c4",
+        "accent": "#ff2f8f83",
+        "accentHover": "#ff3aa596",
+        "accentStrong": "#ff26756b",
+        "onAccent": "#ffffffff",
+        "accentBackground": "#332f8f83",
+        "accentText": "#ff1f6f66"
+    },
+    "metrics": {
+        "controlHeight": 72,
+        "controlRadius": 8,
+        "panelPadding": 20,
+        "choiceSize": 40,
+        "sliderTrackHeight": 24,
+        "sliderKnobSize": 32,
+        "toggleWidth": 80,
+        "toggleHeight": 40,
+        "progressHeight": 28,
+        "focusWidth": 4,
+        "slotSize": 96
+    },
+    "fontFiles": {
+        "kenneyFuture": "fonts/kenney_future.ttf",
+        "kenneyFutureNarrow": "fonts/kenney_future_narrow.ttf"
+    },
+    "fonts": {
+        "title": {
+            "font": "kenneyFuture",
+            "size": 60
+        },
+        "heading": {
+            "font": "kenneyFuture",
+            "size": 40
+        },
+        "button": {
+            "font": "kenneyFuture",
+            "size": 28
+        },
+        "body": {
+            "font": "kenneyFutureNarrow",
+            "size": 30
+        },
+        "caption": {
+            "font": "kenneyFutureNarrow",
+            "size": 24
+        }
+    },
+    "surfaces": {
+        "panel": {
+            "image": "themes/parchment.png",
+            "source": [
+                0,
+                0,
+                32,
+                32
+            ],
+            "slice": 10,
+            "scale": 2,
+            "fill": "tile",
+            "padding": 4
+        },
+        "card": {
+            "image": "themes/parchment.png",
+            "source": [
+                34,
+                0,
+                32,
+                32
+            ],
+            "slice": 10,
+            "scale": 2,
+            "fill": "tile",
+            "padding": 4
+        },
+        "menu": {
+            "image": "themes/parchment.png",
+            "source": [
+                34,
+                0,
+                32,
+                32
+            ],
+            "slice": 10,
+            "scale": 2,
+            "fill": "tile",
+            "padding": 4
+        },
+        "dialog": {
+            "image": "themes/parchment.png",
+            "source": [
+                68,
+                0,
+                48,
+                48
+            ],
+            "slice": 16,
+            "scale": 2,
+            "padding": 8
+        },
+        "window": {
+            "image": "themes/parchment.png",
+            "source": [
+                68,
+                0,
+                48,
+                48
+            ],
+            "slice": 16,
+            "scale": 2,
+            "padding": 8
+        },
+        "tooltip": {
+            "image": "themes/parchment.png",
+            "source": [
+                118,
+                0,
+                24,
+                24
+            ],
+            "slice": 8,
+            "scale": 2,
+            "padding": 4
+        },
+        "toast": {
+            "image": "themes/parchment.png",
+            "source": [
+                118,
+                0,
+                24,
+                24
+            ],
+            "slice": 8,
+            "scale": 2,
+            "padding": 4
+        },
+        "button": {
+            "image": "themes/parchment.png",
+            "source": [
+                144,
+                0,
+                32,
+                32
+            ],
+            "slice": 10,
+            "scale": 2
+        },
+        "buttonHover": {
+            "image": "themes/parchment.png",
+            "source": [
+                178,
+                0,
+                32,
+                32
+            ],
+            "slice": 10,
+            "scale": 2
+        },
+        "buttonPressed": {
+            "image": "themes/parchment.png",
+            "source": [
+                212,
+                0,
+                32,
+                32
+            ],
+            "slice": 10,
+            "scale": 2
+        },
+        "buttonPrimary": {
+            "image": "themes/parchment.png",
+            "source": [
+                0,
+                50,
+                32,
+                32
+            ],
+            "slice": 10,
+            "scale": 2
+        },
+        "buttonPrimaryHover": {
+            "image": "themes/parchment.png",
+            "source": [
+                34,
+                50,
+                32,
+                32
+            ],
+            "slice": 10,
+            "scale": 2
+        },
+        "buttonPrimaryPressed": {
+            "image": "themes/parchment.png",
+            "source": [
+                68,
+                50,
+                32,
+                32
+            ],
+            "slice": 10,
+            "scale": 2
+        },
+        "buttonDestructive": {
+            "image": "themes/parchment.png",
+            "source": [
+                102,
+                50,
+                32,
+                32
+            ],
+            "slice": 10,
+            "scale": 2
+        },
+        "buttonDestructiveHover": {
+            "image": "themes/parchment.png",
+            "source": [
+                136,
+                50,
+                32,
+                32
+            ],
+            "slice": 10,
+            "scale": 2
+        },
+        "buttonDestructivePressed": {
+            "image": "themes/parchment.png",
+            "source": [
+                170,
+                50,
+                32,
+                32
+            ],
+            "slice": 10,
+            "scale": 2
+        },
+        "field": {
+            "image": "themes/parchment.png",
+            "source": [
+                204,
+                50,
+                24,
+                24
+            ],
+            "slice": 8,
+            "scale": 2
+        },
+        "fieldFocused": {
+            "image": "themes/parchment.png",
+            "source": [
+                230,
+                50,
+                24,
+                24
+            ],
+            "slice": 8,
+            "scale": 2
+        },
+        "check": {
+            "image": "themes/parchment.png",
+            "source": [
+                0,
+                84,
+                20,
+                20
+            ]
+        },
+        "checkChecked": {
+            "image": "themes/parchment.png",
+            "source": [
+                22,
+                84,
+                20,
+                20
+            ]
+        },
+        "track": {
+            "image": "themes/parchment.png",
+            "source": [
+                44,
+                84,
+                24,
+                12
+            ],
+            "slice": 5,
+            "scale": 2,
+            "padding": 4
+        },
+        "segment": {
+            "image": "themes/parchment.png",
+            "source": [
+                70,
+                84,
+                24,
+                24
+            ],
+            "slice": 8,
+            "scale": 2
+        },
+        "trackFill": {
+            "image": "themes/parchment.png",
+            "source": [
+                96,
+                84,
+                24,
+                12
+            ],
+            "slice": 5,
+            "scale": 2,
+            "colorize": true
+        },
+        "knob": {
+            "image": "themes/parchment.png",
+            "source": [
+                122,
+                84,
+                16,
+                16
+            ]
+        },
+        "tab": {
+            "image": "themes/parchment.png",
+            "source": [
+                140,
+                84,
+                32,
+                24
+            ],
+            "slice": [
+                8,
+                8,
+                2,
+                8
+            ],
+            "scale": 2
+        },
+        "tabSelected": {
+            "image": "themes/parchment.png",
+            "source": [
+                174,
+                84,
+                32,
+                24
+            ],
+            "slice": [
+                8,
+                8,
+                2,
+                8
+            ],
+            "scale": 2
+        },
+        "chip": {
+            "image": "themes/parchment.png",
+            "source": [
+                208,
+                84,
+                32,
+                20
+            ],
+            "slice": [
+                0,
+                10,
+                0,
+                10
+            ],
+            "scale": 2
+        },
+        "badge": {
+            "image": "themes/parchment.png",
+            "source": [
+                208,
+                84,
+                32,
+                20
+            ],
+            "slice": [
+                0,
+                10,
+                0,
+                10
+            ],
+            "scale": 2
+        },
+        "chipSelected": {
+            "image": "themes/parchment.png",
+            "source": [
+                0,
+                110,
+                32,
+                20
+            ],
+            "slice": [
+                0,
+                10,
+                0,
+                10
+            ],
+            "scale": 2
+        },
+        "segmentSelected": {
+            "image": "themes/parchment.png",
+            "source": [
+                34,
+                110,
+                32,
+                20
+            ],
+            "slice": [
+                0,
+                10,
+                0,
+                10
+            ],
+            "scale": 2
+        },
+        "slot": {
+            "image": "themes/parchment.png",
+            "source": [
+                68,
+                110,
+                24,
+                24
+            ],
+            "slice": 7,
+            "scale": 2
+        },
+        "slotHighlighted": {
+            "image": "themes/parchment.png",
+            "source": [
+                94,
+                110,
+                24,
+                24
+            ],
+            "slice": 7,
+            "scale": 2
+        },
+        "banner": {
+            "image": "themes/parchment.png",
+            "source": [
+                120,
+                110,
+                64,
+                28
+            ],
+            "slice": [
+                0,
+                16,
+                0,
+                16
+            ],
+            "scale": 2,
+            "padding": [
+                4,
+                24,
+                12,
+                24
+            ]
+        }
+    }
+}

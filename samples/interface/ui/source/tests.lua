@@ -1,0 +1,22 @@
+-- The tests of the sample in menu order. Each module returns a scene class that takes its entry.
+return {
+    {id = 'containers', title = 'Containers', description = 'Rows, columns, grids, stacks, scrolls, cards, panels, dividers, tabs, form fields and splitters.', module = 'tests.containers'},
+    {id = 'text', title = 'Text', description = 'Labels in every font role and color, alignment, wrapping, page headers, empty states and alerts.', module = 'tests.text'},
+    {id = 'buttons', title = 'Buttons', description = 'Every button variant, image buttons, chips and menu buttons.', module = 'tests.buttons'},
+    {id = 'choices', title = 'Choices', description = 'Check boxes, toggles and radio groups.', module = 'tests.choices'},
+    {id = 'inputs', title = 'Text fields', description = 'Text fields with every keyboard and return key, secret fields, text areas and filter fields.', module = 'tests.inputs'},
+    {id = 'pickers', title = 'Pickers', description = 'Combos, color fields, number fields and sliders.', module = 'tests.pickers'},
+    {id = 'indicators', title = 'Indicators', description = 'Badges, status dots, busy rings, progress bars, circular progress and cooldowns, icons, images and avatars.', module = 'tests.indicators'},
+    {id = 'collections', title = 'Collections', description = 'Lists with draggable rows, trees and tables.', module = 'tests.collections'},
+    {id = 'settings', title = 'Settings', description = 'A settings screen built from a settings form, rows and actions.', module = 'tests.settings'},
+    {id = 'overlays', title = 'Overlays', description = 'Dialogs, toasts, tooltips, popovers and context menus.', module = 'tests.overlays'},
+    {id = 'game-controls', title = 'Game controls', description = 'Steppers, segmented controls, range sliders and key capture for a controls screen.', module = 'tests.game-controls'},
+    {id = 'windows-pages', title = 'Windows and pages', description = 'A draggable window, accordions, a carousel and a scroll that snaps to its cards.', module = 'tests.windows-pages'},
+    {id = 'slot-grid', title = 'Slot grid', description = 'An inventory, a hotbar in another document and a chest list that trade items by drag and drop.', module = 'tests.slot-grid'},
+    {id = 'rich-text', title = 'Rich text', description = 'Markup with styles, links, hints, images, icons, lists, tables, effects and a typewriter reveal.', module = 'tests.rich-text'},
+    {id = 'themes', title = 'Themes', description = 'The dark and light themes and a textured theme drawn with nine-slice surfaces.', module = 'tests.themes'},
+    {id = 'focus', title = 'Focus navigation', description = 'Directional and explicit neighbours, focus scopes, wrapping and going back with keys, gamepads and TV remotes.', module = 'tests.focus'},
+    {id = 'tweens', title = 'UI tweens', description = 'Node transforms that move, scale, fade and tint controls with native tweens.', module = 'tests.tweens'},
+    {id = 'text-input', title = 'Text input', description = 'The hidden native field behind text fields, the on-screen keyboard and the plain keyboard on every platform.', module = 'tests.text-input'},
+    {id = 'touch-controls', title = 'Touch controls', description = 'A touch stick and touch buttons that drive actions of the action map.', module = 'tests.touch-controls'},
+}
