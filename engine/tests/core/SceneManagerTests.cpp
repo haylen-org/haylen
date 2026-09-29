@@ -877,11 +877,19 @@ TEST(SceneManagerTest, ChangesHoldInputBack) {
     EXPECT_FALSE(engine.getActions().isDown("jump"));
     EXPECT_EQ(std::count(log.begin(), log.end(), "scene:event"), 0);
 
-    transition.blockInput = false;
+    // A key still held when the change ends counts as pressed only after it is released and pressed again.
     fixture.frames(60);
-    engine.getScenes().pop(transition);
+    ASSERT_FALSE(engine.getScenes().isInputBlocked());
     fixture.frames(1);
-    EXPECT_TRUE(engine.getActions().isDown("jump"));
+    EXPECT_FALSE(engine.getActions().isDown("jump"));
+    engine.handleEvent({.type = platform::Event::Type::KeyUp, .key = input::Key::Space});
+    fixture.frames(1);
+
+    transition.blockInput = false;
+    engine.getScenes().pop(transition);
+    engine.handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::Space});
+    fixture.frames(1);
+    EXPECT_TRUE(engine.getActions().isPressed("jump"));
 }
 
 TEST(SceneManagerTest, EasesTransitionsOnRealTime) {

@@ -635,7 +635,7 @@ Bindings are strings with a source and a name.
 | `virtual:<name>` | A virtual button set with `input.setVirtualButton()` or an on-screen `touchButton`. |
 | `virtual_stick:<name>` | A virtual stick set with `input.setVirtualStick()` or an on-screen `touchStick`, for vector actions. |
 
-Gamepad bindings read every connected gamepad and use the strongest one, unless `input.setGamepadIndex()` picks one gamepad. Mouse bindings read as released while the interface owns the pointer, as [input.pointerCaptured()](#inputpointercaptured) explains, and key and gamepad button bindings read as up for a press the interface answers itself, as [input.keyCaptured()](#inputkeycapturedkey) explains. Action names that were never defined read as not down and 0.
+Gamepad bindings read every connected gamepad and use the strongest one, unless `input.setGamepadIndex()` picks one gamepad. Mouse bindings read as released while the interface owns the pointer, as [input.pointerCaptured()](#inputpointercaptured) explains, and key and gamepad button bindings read as up for a press the interface answers itself, as [input.keyCaptured()](#inputkeycapturedkey) explains. While a scene change holds input back, as the `blockInput` option of [haylen.scene](scene.md) sets, every action reads as up and 0, and an action whose bindings are still held when the change ends stays up until they are released. Action names that were never defined read as not down and 0.
 
 An action map document is a table or a JSON file with an `actions` list. Each action has `name`, `type` and the binding lists its type uses.
 

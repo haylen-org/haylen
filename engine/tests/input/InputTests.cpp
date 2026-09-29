@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <array>
 #include <stdexcept>
 #include <string>
 
@@ -296,7 +297,7 @@ TEST_F(ActionMapTest, LoadsSavesAndReportsActions) {
     input.handleEvent(makeKeyEvent(platform::Event::Type::KeyDown, Key::W), viewport);
     input.handleEvent(makeKeyEvent(platform::Event::Type::KeyDown, Key::E), viewport);
     input.handleEvent(makeMouseEvent(platform::Event::Type::MouseDown, MouseButton::Left), viewport);
-    actions.update(input, virtualInput);
+    actions.update(input, virtualInput, false);
 
     EXPECT_TRUE(actions.isPressed("attack"));
     EXPECT_TRUE(actions.isDown("attack"));
@@ -307,7 +308,7 @@ TEST_F(ActionMapTest, LoadsSavesAndReportsActions) {
 
     input.endFrame();
     input.handleEvent(makeMouseEvent(platform::Event::Type::MouseUp, MouseButton::Left), viewport);
-    actions.update(input, virtualInput);
+    actions.update(input, virtualInput, false);
     EXPECT_FALSE(actions.isPressed("attack"));
     EXPECT_TRUE(actions.isReleased("attack"));
 
@@ -328,7 +329,7 @@ TEST_F(ActionMapTest, VirtualControlsAndGamepadsDriveActions) {
     VirtualInput virtualInput;
     virtualInput.setButton("attack", true);
     virtualInput.setStick("move", math::Vec2(0.0F, -1.0F));
-    actions.update(input, virtualInput);
+    actions.update(input, virtualInput, false);
     EXPECT_TRUE(actions.isDown("attack"));
     EXPECT_EQ(actions.getVector("move"), math::Vec2(0.0F, -1.0F));
 
@@ -336,20 +337,20 @@ TEST_F(ActionMapTest, VirtualControlsAndGamepadsDriveActions) {
     std::array<GamepadState, 2> states{GamepadState{}, makeGamepad(GamepadButton::East, 1.0F)};
     states[0].connected = true;
     input.updateGamepads(states);
-    actions.update(input, virtualInput);
+    actions.update(input, virtualInput, false);
     EXPECT_TRUE(actions.isDown("attack"));
     EXPECT_NEAR(actions.getVector("move").x, 1.0F, 1e-5F);
     EXPECT_NEAR(actions.getValue("aim"), 1.0F, 1e-5F);
 
     actions.setGamepadIndex(0);
-    actions.update(input, virtualInput);
+    actions.update(input, virtualInput, false);
     EXPECT_FALSE(actions.isDown("attack"));
     EXPECT_EQ(actions.getVector("move"), math::Vec2{});
     EXPECT_EQ(actions.getValue("aim"), 0.0F);
 
     actions.setGamepadIndex(std::nullopt);
     actions.setPressThreshold(2.0F);
-    actions.update(input, virtualInput);
+    actions.update(input, virtualInput, false);
     EXPECT_FALSE(actions.isDown("attack"));
 
     actions.define({.name = "attack", .type = ActionMap::Action::Type::Button});
@@ -359,6 +360,70 @@ TEST_F(ActionMapTest, VirtualControlsAndGamepadsDriveActions) {
     EXPECT_EQ(actions.findAction("attack"), nullptr);
     actions.clear();
     EXPECT_TRUE(actions.getNames().empty());
+}
+
+TEST_F(ActionMapTest, BlockedInputHoldsEveryControlUntilItIsReleased) {
+    ActionMap actions;
+    actions.define({.name = "key", .type = ActionMap::Action::Type::Button, .bindings = {*ActionMap::Binding::parse("key:p")}});
+    actions.define({.name = "mouse", .type = ActionMap::Action::Type::Button, .bindings = {*ActionMap::Binding::parse("mouse:right")}});
+    actions.define({.name = "button", .type = ActionMap::Action::Type::Button, .bindings = {*ActionMap::Binding::parse("button:start")}});
+    actions.define({.name = "axis", .type = ActionMap::Action::Type::Axis, .positive = {*ActionMap::Binding::parse("axis:left_x+")}});
+    actions.define({.name = "virtual", .type = ActionMap::Action::Type::Button, .bindings = {*ActionMap::Binding::parse("virtual:attack")}});
+    actions.define({.name = "stick", .type = ActionMap::Action::Type::Vector, .bindings = {*ActionMap::Binding::parse("virtual_stick:move")}});
+    const std::array<std::string, 6> names{"key", "mouse", "button", "axis", "virtual", "stick"};
+    // clang-format off
+    const auto read = [&actions, &names](bool (ActionMap::*query)(std::string_view) const noexcept) {
+        std::string result;
+        for (const std::string& name : names) {
+            result += (actions.*query)(name) ? '1' : '0';
+        }
+        return result;
+    };
+    // clang-format on
+
+    Input input;
+    VirtualInput virtualInput;
+    const graphics::Viewport viewport = makeIdentityViewport();
+    std::array<GamepadState, 1> gamepads{makeGamepad(GamepadButton::Start, 1.0F)};
+    input.handleEvent(makeKeyEvent(platform::Event::Type::KeyDown, Key::P), viewport);
+    actions.update(input, virtualInput, false);
+    EXPECT_EQ(read(&ActionMap::isPressed), "100000");
+
+    // Blocked input reads as idle, so the held key releases, and controls pressed meanwhile stay up.
+    input.endFrame();
+    input.handleEvent(makeMouseEvent(platform::Event::Type::MouseDown, MouseButton::Right), viewport);
+    input.updateGamepads(gamepads);
+    virtualInput.setButton("attack", true);
+    virtualInput.setStick("move", math::Vec2(1.0F, 0.0F));
+    actions.update(input, virtualInput, true);
+    EXPECT_TRUE(actions.isReleased("key"));
+    EXPECT_EQ(read(&ActionMap::isDown), "000000");
+    EXPECT_EQ(actions.getValue("axis"), 0.0F);
+
+    // Controls still held when input returns read as up until they are released, instead of pressing again.
+    input.endFrame();
+    actions.update(input, virtualInput, false);
+    EXPECT_EQ(read(&ActionMap::isDown), "000000");
+    EXPECT_EQ(actions.getVector("stick"), math::Vec2{});
+
+    input.handleEvent(makeKeyEvent(platform::Event::Type::KeyUp, Key::P), viewport);
+    input.handleEvent(makeMouseEvent(platform::Event::Type::MouseUp, MouseButton::Right), viewport);
+    gamepads[0] = GamepadState{.connected = true};
+    input.updateGamepads(gamepads);
+    virtualInput.clear();
+    actions.update(input, virtualInput, false);
+    EXPECT_EQ(read(&ActionMap::isDown), "000000");
+
+    input.endFrame();
+    input.handleEvent(makeKeyEvent(platform::Event::Type::KeyDown, Key::P), viewport);
+    input.handleEvent(makeMouseEvent(platform::Event::Type::MouseDown, MouseButton::Right), viewport);
+    gamepads[0] = makeGamepad(GamepadButton::Start, 1.0F);
+    input.updateGamepads(gamepads);
+    virtualInput.setButton("attack", true);
+    virtualInput.setStick("move", math::Vec2(1.0F, 0.0F));
+    actions.update(input, virtualInput, false);
+    EXPECT_EQ(read(&ActionMap::isPressed), "111111");
+    EXPECT_EQ(actions.getVector("stick"), math::Vec2(1.0F, 0.0F));
 }
 
 TEST_F(ActionMapTest, RejectsInvalidDocuments) {

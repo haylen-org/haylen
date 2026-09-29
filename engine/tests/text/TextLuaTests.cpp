@@ -12,12 +12,12 @@ namespace haylen {
 
 namespace {
 
-// A bitmap font, an image and the Hebrew font of the fonts sample.
+// A bitmap font, an image and the Hebrew test font.
 std::map<std::string, std::string> fontFiles() {
     const std::vector<std::uint8_t> image = test::pngImage(32, 16, 0xFFFFFFFFU);
     const std::string png(image.begin(), image.end());
     const std::string bmfont = "info face=\"Pixel\" size=8\ncommon lineHeight=10 base=8 pages=1\npage id=0 file=\"pixel.png\"\nchar id=65 x=0 y=0 width=8 height=8 xoffset=0 yoffset=0 xadvance=9 page=0\nchar id=66 x=8 y=0 width=8 height=8 xoffset=0 yoffset=0 xadvance=9 page=0\nkerning first=65 second=66 amount=-1\n";
-    std::ifstream hebrew(std::string(HAYLEN_SAMPLE_FONTS) + "/noto_sans_hebrew_regular.ttf", std::ios::binary);
+    std::ifstream hebrew(std::string(HAYLEN_TEST_FONTS) + "/noto_sans_hebrew_regular.ttf", std::ios::binary);
     return {{"content/fonts/pixel.fnt", bmfont}, {"content/fonts/pixel.png", png}, {"content/images/coin.png", png}, {"content/fonts/hebrew.ttf", {std::istreambuf_iterator<char>(hebrew), std::istreambuf_iterator<char>()}}};
 }
 

@@ -2,14 +2,18 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "core/ErrorScreen.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/core/Log.hpp"
+#include "haylen/core/SceneManager.hpp"
 #include "haylen/core/Version.hpp"
+#include "haylen/graphics/Viewport.hpp"
 #include "haylen/lua/Error.hpp"
 #include "haylen/platform/Event.hpp"
 #include "support/EngineFixture.hpp"
@@ -30,6 +34,17 @@ class ErrorScreenTest : public ::testing::Test {
         event.type = platform::Event::Type::KeyDown;
         event.key = key;
         fixture.engine().handleEvent(event);
+    }
+
+    // Sends a mouse or touch event at a point in design units, which the platform reports in framebuffer pixels.
+    static void point(test::EngineFixture& fixture, ErrorScreen& screen, platform::Event::Type type, math::Vec2 design, input::MouseButton button = input::MouseButton::Left) {
+        platform::Event event;
+        event.type = type;
+        event.mouseButton = button;
+        event.position = fixture.engine().getViewport().toFramebuffer(design);
+        event.touchCount = 1;
+        event.touches[0] = {.id = 1, .position = event.position, .changed = true};
+        screen.handleEvent(event);
     }
 };
 
@@ -87,6 +102,79 @@ TEST_F(ErrorScreenTest, CopiesTheReportAndRestartsTheAppFromTheKeyboard) {
 
     press(fixture, input::Key::R);
     EXPECT_TRUE(fixture.engine().isRestartRequested());
+}
+
+TEST_F(ErrorScreenTest, CopiesAndRestartsWithAClickOrATap) {
+    test::EngineFixture fixture({{"source/scenes/battle.lua", std::string(kBattle)}, {"source/main.lua", ""}});
+    ErrorScreen screen(fixture.engine(), lua::Error("source/scenes/battle.lua:6: attempt to call a nil value"));
+    fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([&screen](Engine&) { screen.render(); }));
+    fixture.frames(2);
+
+    // Only the left button clicks, and the action runs as the button goes down.
+    point(fixture, screen, platform::Event::Type::MouseDown, screen.getCopyButton().getCenter(), input::MouseButton::Right);
+    EXPECT_TRUE(fixture.host().getClipboard().empty());
+    point(fixture, screen, platform::Event::Type::MouseDown, screen.getCopyButton().getCenter());
+    point(fixture, screen, platform::Event::Type::MouseUp, screen.getCopyButton().getCenter());
+    EXPECT_EQ(fixture.host().getClipboard(), screen.getReport());
+    EXPECT_FALSE(fixture.engine().isRestartRequested());
+
+    point(fixture, screen, platform::Event::Type::TouchBegan, screen.getRestartButton().getCenter());
+    point(fixture, screen, platform::Event::Type::TouchEnded, screen.getRestartButton().getCenter());
+    EXPECT_TRUE(fixture.engine().isRestartRequested());
+}
+
+TEST_F(ErrorScreenTest, ScrollsContentTallerThanTheScreen) {
+    test::EngineFixture fixture({{"source/scenes/battle.lua", std::string(kBattle)}, {"source/main.lua", ""}});
+    fixture.host().resize({480.0F, 320.0F});
+    ErrorScreen screen(fixture.engine(), lua::Error("source/scenes/battle.lua:6: attempt to call a nil value"));
+    fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([&screen](Engine&) { screen.render(); }));
+    fixture.frames(2);
+    ASSERT_GT(screen.getMaxScroll(), 0.0F);
+    const math::Vec2 content = fixture.engine().getViewport().getSafeRect().getCenter();
+
+    platform::Event wheel;
+    wheel.type = platform::Event::Type::MouseScroll;
+    wheel.scroll = {0.0F, -1.0F};
+    screen.handleEvent(wheel);
+    const float step = screen.getScroll();
+    EXPECT_GT(step, 0.0F);
+    wheel.scroll = {0.0F, 1.0F};
+    screen.handleEvent(wheel);
+    EXPECT_EQ(screen.getScroll(), 0.0F);
+
+    // A drag moves the content with the pointer and stops at its end, and a press on a button starts no drag.
+    point(fixture, screen, platform::Event::Type::MouseDown, content);
+    point(fixture, screen, platform::Event::Type::MouseMove, content - math::Vec2{0.0F, 10.0F});
+    EXPECT_NEAR(screen.getScroll(), 10.0F, 0.01F);
+    point(fixture, screen, platform::Event::Type::MouseMove, content - math::Vec2{0.0F, 10000.0F});
+    EXPECT_EQ(screen.getScroll(), screen.getMaxScroll());
+    point(fixture, screen, platform::Event::Type::MouseUp, content);
+    point(fixture, screen, platform::Event::Type::MouseMove, content);
+    EXPECT_EQ(screen.getScroll(), screen.getMaxScroll());
+
+    // The first finger drags, and a second finger that lands on a button meanwhile presses nothing.
+    point(fixture, screen, platform::Event::Type::TouchBegan, content);
+    platform::Event second;
+    second.type = platform::Event::Type::TouchBegan;
+    second.touchCount = 2;
+    second.touches[0] = {.id = 1, .position = fixture.engine().getViewport().toFramebuffer(content)};
+    second.touches[1] = {.id = 2, .position = fixture.engine().getViewport().toFramebuffer(screen.getRestartButton().getCenter()), .changed = true};
+    screen.handleEvent(second);
+    second.type = platform::Event::Type::TouchEnded;
+    screen.handleEvent(second);
+    EXPECT_FALSE(fixture.engine().isRestartRequested());
+    point(fixture, screen, platform::Event::Type::TouchMoved, content + math::Vec2{0.0F, 10000.0F});
+    EXPECT_EQ(screen.getScroll(), 0.0F);
+    point(fixture, screen, platform::Event::Type::TouchEnded, content);
+    point(fixture, screen, platform::Event::Type::MouseDown, screen.getCopyButton().getCenter());
+    point(fixture, screen, platform::Event::Type::MouseMove, content - math::Vec2{0.0F, 10000.0F});
+    EXPECT_EQ(screen.getScroll(), 0.0F);
+
+    // The arrow keys move a line, and Home and End jump to the ends.
+    for (const auto& [key, expected] : std::vector<std::pair<input::Key, float>>{{input::Key::Down, step}, {input::Key::End, screen.getMaxScroll()}, {input::Key::Up, screen.getMaxScroll() - step}, {input::Key::Home, 0.0F}}) {
+        screen.handleEvent({.type = platform::Event::Type::KeyDown, .key = key});
+        EXPECT_NEAR(screen.getScroll(), expected, 0.01F);
+    }
 }
 
 TEST_F(ErrorScreenTest, DrawsAndScrollsInTheHeadlessEngine) {

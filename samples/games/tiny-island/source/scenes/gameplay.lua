@@ -1,4 +1,5 @@
--- A run on the island. It opens the pause menu on the pause action and ends shortly after the survivor falls. The engine halts the run while the app is out of focus or in the background.
+-- A run on the island. It opens the pause menu on the pause action and when the app leaves the foreground, and ends shortly after the survivor falls.
+local haylen = require('haylen')
 local input = require('haylen.input')
 local scene = require('haylen.scene')
 
@@ -30,6 +31,16 @@ function gameplay:enter()
         self.hud:notice(key)
     end
     self.endTime = 0
+
+    -- The engine only stops time while the app is away, so the pause menu keeps the run paused for the player who comes back.
+    scene.listen(self, 'app_background', function()
+        self:openPause()
+    end)
+    scene.listen(self, 'app_inactive', function()
+        if haylen.lifecycle().pauseOnFocusLoss then
+            self:openPause()
+        end
+    end)
 end
 
 function gameplay:exit()

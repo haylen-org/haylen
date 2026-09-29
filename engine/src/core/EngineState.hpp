@@ -56,11 +56,6 @@ struct EngineState {
     input::GestureRecognizer gestures;
     input::ActionMap actions;
     input::VirtualInput virtualInput;
-
-    // What the action map reads while input is held back, so held actions release and nothing new is pressed.
-    input::Input idleInput;
-    input::VirtualInput idleVirtualInput;
-
     FrameClock clock;
     FrameQueue frameQueue;
     EventBus events;

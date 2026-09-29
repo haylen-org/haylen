@@ -23,7 +23,7 @@ namespace {
 class RightToLeftTest : public ::testing::Test {
   protected:
     [[nodiscard]] std::shared_ptr<text::Font> load(const std::string& name) {
-        std::ifstream file(std::string(HAYLEN_SAMPLE_FONTS) + "/" + name, std::ios::binary);
+        std::ifstream file(std::string(HAYLEN_TEST_FONTS) + "/" + name, std::ios::binary);
         return std::make_shared<text::TrueTypeFont>(ui.getEngine().getGraphics(), std::vector<std::uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()));
     }
 

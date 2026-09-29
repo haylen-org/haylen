@@ -56,6 +56,8 @@ ANDROID_NDK_VERSION = "30.0.16248370"
 EMSDK_VERSION = "6.0.10"
 # miniaudio plays through AAudio from Android 8.1 on, and the engine builds it without OpenSL ES, like the minSdk of the Android library and template.
 ANDROID_MIN_SDK = 27
+# The ABIs of the haylen Android library, which the native libraries of an app match: 32-bit ARM keeps the Android TV devices that still run it, and x86_64 serves emulators.
+ANDROID_ABIS = ("arm64-v8a", "armeabi-v7a", "x86_64")
 # The oldest Apple systems the engine runs on: std::format with floating point, which the engine formats text and logs with, reaches their C++ library in iOS and tvOS 16.3 and macOS 13.3.
 # Mac Catalyst takes its minimum, the iOS version, from engine/cmake/haylen-catalyst.toolchain.cmake.
 APPLE_MINIMUM_VERSIONS = {"iOS": "16.3", "tvOS": "16.3", "macOS": "13.3"}
@@ -227,6 +229,12 @@ def adb() -> Path:
     return android_sdk() / "platform-tools" / executable_name("adb")
 
 
+def android_options(abi: str) -> list[str]:
+    """Returns the CMake options that build for one Android ABI with the NDK, which the engine and the native libraries of apps share."""
+    toolchain = android_ndk() / "build" / "cmake" / "android.toolchain.cmake"
+    return [f"-DCMAKE_TOOLCHAIN_FILE={toolchain}", f"-DANDROID_ABI={abi}", f"-DANDROID_PLATFORM=android-{ANDROID_MIN_SDK}", "-DANDROID_STL=c++_static", "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"]
+
+
 def require_host(platform_name: str) -> None:
     apple = {"macos", "ios", "tvos", "apple", "ios-simulator", "tvos-simulator", "catalyst"}
     required = "macos" if platform_name in apple else {"linux": "linux", "windows": "windows"}.get(platform_name)
@@ -267,8 +275,7 @@ def configure_command(args: argparse.Namespace) -> tuple[list, dict[str, str]]:
         system = "iOS" if args.platform == "ios" else "tvOS"
         command += ["-G", "Xcode", f"-DCMAKE_SYSTEM_NAME={system}", "-DCMAKE_OSX_ARCHITECTURES=arm64", f"-DCMAKE_OSX_DEPLOYMENT_TARGET={APPLE_MINIMUM_VERSIONS[system]}", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_PLAYER=OFF"]
     elif args.platform == "android":
-        toolchain = android_ndk() / "build" / "cmake" / "android.toolchain.cmake"
-        command += ["-G", "Ninja", f"-DCMAKE_TOOLCHAIN_FILE={toolchain}", "-DANDROID_ABI=arm64-v8a", f"-DANDROID_PLATFORM=android-{ANDROID_MIN_SDK}", "-DANDROID_STL=c++_static", "-DHAYLEN_BUILD_TESTS=OFF"]
+        command += ["-G", "Ninja", *android_options("arm64-v8a"), "-DHAYLEN_BUILD_TESTS=OFF"]
     elif args.platform in WEB_PLATFORMS:
         command = [ensure_emsdk(), *command, "-G", "Ninja", "-DHAYLEN_BUILD_TESTS=OFF"]
     elif args.platform == "linux":
@@ -554,17 +561,27 @@ def build_apple_artifacts(config: str, jobs: int) -> None:
     run(command + ["-output", output])
 
 
-def android_varn_sources(config: str) -> str:
-    """Configures the native Android tree, whose CMake cache tells where CPM placed Varn, because Gradle compiles the Kotlin transport of Varn."""
-    return cmake_cache_value(ensure_configured(build_options("android", config)), "varn_SOURCE_DIR")
+def build_android_players(config: str, jobs: int) -> Path:
+    """Builds libhaylen.so, the Lua player, for one ABI after the other with every job, so the configures never write into the shared CPM sources together and the compilers stay within the jobs, and gathers the libraries in the jniLibs layout."""
+    libraries = ENGINE_BUILDS_DIR / f"android-{config.lower()}" / "jniLibs"
+    shutil.rmtree(libraries, ignore_errors=True)
+    for abi in ANDROID_ABIS:
+        directory = ENGINE_BUILDS_DIR / f"android-{abi}-{config.lower()}"
+        if not (directory / "CMakeCache.txt").exists():
+            run(["cmake", "-S", ENGINE_DIR, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={config}", "-DHAYLEN_BUILD_PLAYER=ON", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF", *android_options(abi)])
+        run(["cmake", "--build", directory, "--target", "haylen", "--parallel", str(jobs)])
+        copy_native(directory / "lib" / "libhaylen.so", libraries / abi)
+    return libraries
 
 
 def build_android_artifacts(config: str, jobs: int) -> None:
-    """Builds the haylen Android library with the Lua player for every ABI and publishes it to the local Maven repository of the artifacts."""
+    """Packages the players of every ABI with the Java side into the haylen Android library, together with the Kotlin transport of Varn from where CPM placed it for the native build, and publishes it to the local Maven repository of the artifacts."""
+    libraries = build_android_players(config, jobs)
+    varn = cmake_cache_value(ENGINE_BUILDS_DIR / f"android-{ANDROID_ABIS[0]}-{config.lower()}", "varn_SOURCE_DIR")
     maven = ARTIFACTS_DIR / "android" / "maven"
     shutil.rmtree(maven, ignore_errors=True)
     task = ":haylen:publishReleasePublicationToArtifactsRepository"
-    run([ensure_gradle(), "-p", ANDROID_LIBRARY_PROJECT, task, f"--max-workers={jobs}", f"-PhaylenSokolShdc={ensure_shdc()}", f"-PhaylenVarnSourceDir={android_varn_sources(config)}", f"-PhaylenMavenDir={maven}"])
+    run([ensure_gradle(), "-p", ANDROID_LIBRARY_PROJECT, task, f"--max-workers={jobs}", f"-PhaylenNativeLibraries={libraries}", f"-PhaylenVarnSourceDir={varn}", f"-PhaylenMavenDir={maven}"])
 
 
 def build_web_artifacts(config: str, jobs: int) -> None:
@@ -714,8 +731,6 @@ def package_folder(folder: Path, output: Path) -> None:
 # Native libraries: what the native section of app.json lists, prebuilt or built from a CMake project, placed where each platform package loads it.
 
 NATIVE_PLATFORMS = ("macos", "ios", "tvos", "android", "windows", "linux")
-# The ABIs of the haylen Android library, which the native libraries of an app match.
-ANDROID_ABIS = ("arm64-v8a", "armeabi-v7a", "x86_64")
 # The slice of APPLE_SLICES that each Apple run platform builds, and the target and platform whose embed phase ships its libraries in App.xcodeproj.
 APPLE_NATIVE_SLICES = {"macos": "macos", "catalyst": "ios-maccatalyst", "ios": "ios", "ios-simulator": "ios-simulator", "tvos": "tvos", "tvos-simulator": "tvos-simulator"}
 APPLE_NATIVE_KEYS = {"macos": "macOS-macosx", "ios-maccatalyst": "iOS-macosx", "ios": "iOS-iphoneos", "ios-simulator": "iOS-iphonesimulator", "tvos": "tvOS-appletvos", "tvos-simulator": "tvOS-appletvsimulator"}
@@ -910,10 +925,8 @@ def prepare_android_native(app: App, project: Path, jobs: int) -> None:
         if library.cmake is None:
             shutil.copytree(library.files["android"], libraries, dirs_exist_ok=True)
             continue
-        toolchain = android_ndk() / "build" / "cmake" / "android.toolchain.cmake"
         for abi in ANDROID_ABIS:
-            options = [f"-DCMAKE_TOOLCHAIN_FILE={toolchain}", f"-DANDROID_ABI={abi}", f"-DANDROID_PLATFORM=android-{ANDROID_MIN_SDK}", "-DANDROID_STL=c++_static", "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"]
-            output = build_native_target(library, APPS_DIR / app.slug / "native" / library.name / f"android-{abi}", options, jobs)
+            output = build_native_target(library, APPS_DIR / app.slug / "native" / library.name / f"android-{abi}", android_options(abi), jobs)
             copy_native(output / f"lib{library.name}.so", libraries / abi)
 
 

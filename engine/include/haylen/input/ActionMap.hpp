@@ -100,7 +100,8 @@ class ActionMap final {
     void setPressThreshold(float value) noexcept {
         pressThreshold = value;
     }
-    void update(const Input& input, const VirtualInput& virtualInput);
+    // Blocked input, such as during a scene change or while the app is halted, reads every action as up. An action still down when input returns stays up until its bindings let go, so a key held across a scene change never reads as a second press.
+    void update(const Input& input, const VirtualInput& virtualInput, bool blocked);
 
     // A key or gamepad button pressed while the UI captures it stays with the UI until it is released, and every binding reads it as up meanwhile, like mouse buttons while the UI owns the pointer.
     void setCapture(const Capture& value) noexcept {
@@ -121,6 +122,7 @@ class ActionMap final {
         bool down = false;
         bool pressed = false;
         bool released = false;
+        bool held = false;
         float value = 0.0F;
         math::Vec2 vector{};
     };

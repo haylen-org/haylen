@@ -1,0 +1,77 @@
+Ends Android apps the way Android expects. When the activity is destroyed, the cleanup callback runs even though the native window is already gone, by binding the GL context without a surface, and the activity then finishes normally instead of calling exit(), which ran the static destructors of the process while the rendering threads of Android still used them and aborted the process on every close. A new activity in the same process starts from the cleared state, as it already did. sapp_quit() and sapp_request_quit() also work on Android now: a requested quit sends SAPP_EVENTTYPE_QUIT_REQUESTED, which the app may cancel, and a quit calls the cleanup callback and finishes the activity, like the back button.
+
+--- a/sokol_app.h
++++ b/sokol_app.h
+@@ -143,7 +143,7 @@
+     iconifed/restored   | YES     | YES   | YES    | ---   | ---     | ---
+     focused/unfocused   | YES     | YES   | YES    | ---   | ---     | YES
+     suspended/resumed   | ---     | ---   | ---    | YES   | YES     | TODO
+-    programmatic quit   | YES     | YES   | YES    | ---   | ---     | YES
++    programmatic quit   | YES     | YES   | YES    | ---   | YES     | YES
+     key repeat flag     | YES     | YES   | YES    | ---   | ---     | YES
+     windowed            | YES     | YES   | YES    | ---   | ---     | YES
+     fullscreen          | YES     | YES   | YES    | YES   | YES     | YES(3)
+@@ -840,6 +840,15 @@
+           sapp_request_quit() function. The event handler callback code can handle
+           this event by calling sapp_cancel_quit() to cancel the quit.
+           If the event is ignored, the application will quit as usual.
++
++    On Android, a programmatic quit calls the cleanup callback and finishes
++    the activity, the same way the back button does. When the activity is
++    destroyed, the cleanup callback is called as well, also when the native
++    window is already gone, by binding the GL context without a surface. The
++    activity then finishes like any other activity: the process isn't
++    terminated with exit(), which would run the static destructors of the
++    process while Android's own rendering threads still use them, and a new
++    activity in the same process starts with a cleared sokol_app state.
+ 
+     On the web platform, the quit behaviour differs from native platforms,
+     because of web-specific restrictions:
+@@ -11192,11 +11201,14 @@
+ }
+ 
+ _SOKOL_PRIVATE void _sapp_android_cleanup(void) {
+-    if (_sapp.android.surface != EGL_NO_SURFACE) {
+-        /* egl context is bound, cleanup gracefully */
+-        if (_sapp.init_called && !_sapp.cleanup_called) {
+-            _sapp_call_cleanup();
++    if (_sapp.init_called && !_sapp.cleanup_called) {
++        /* the native window is usually gone when the activity is destroyed, so bind
++           the context without a surface (EGL_KHR_surfaceless_context), which lets
++           the cleanup callback still release its GL resources */
++        if ((_sapp.android.surface == EGL_NO_SURFACE) && (_sapp.android.context != EGL_NO_CONTEXT)) {
++            eglMakeCurrent(_sapp.android.display, EGL_NO_SURFACE, EGL_NO_SURFACE, _sapp.android.context);
+         }
++        _sapp_call_cleanup();
+     }
+     /* always try to cleanup by destroying egl context */
+     _sapp_android_cleanup_egl();
+@@ -11217,6 +11229,16 @@
+     _sapp_android_update_dimensions(_sapp.android.current.window, false);
+     _sapp_frame();
+     eglSwapBuffers(_sapp.android.display, _sapp.android.surface);
++    /* programmatic quit, the application may cancel a requested quit in the event handler */
++    if (_sapp.quit_requested && !_sapp.quit_ordered) {
++        _sapp_android_app_event(SAPP_EVENTTYPE_QUIT_REQUESTED);
++        if (_sapp.quit_requested) {
++            _sapp.quit_ordered = true;
++        }
++    }
++    if (_sapp.quit_ordered) {
++        _sapp_android_shutdown();
++    }
+ }
+ 
+ _SOKOL_PRIVATE bool _sapp_android_touch_event(const AInputEvent* e) {
+@@ -11647,8 +11669,9 @@
+ 
+     _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_DONE);
+ 
+-    /* this is a bit naughty, but causes a clean restart of the app (static globals are reset) */
+-    exit(0);
++    /* the activity finishes normally, since exit() would run the static destructors
++       of the process while Android's rendering threads still use them, and a new
++       activity in this process starts from a cleared _sapp state */
+ }
+ 
+ JNIEXPORT

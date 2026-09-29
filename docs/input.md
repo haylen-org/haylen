@@ -66,12 +66,12 @@ Each platform reads gamepads through its own API: GameController on Apple platfo
 
 ### Events
 
-A scene with an `event(self, e)` callback receives every platform event as a table as soon as it arrives, such as `key_down`, `mouse_down`, `touch_began`, `focus_lost` or `suspended`. Tiny Island uses it to open the pause menu when the app loses focus or goes to the background.
+A scene with an `event(self, e)` callback receives every platform event as a table as soon as it arrives, such as `key_down`, `mouse_down`, `touch_began`, `focus_lost` or `suspended`. A key remapping screen uses it to take the next key the player presses, whatever the action map says. An app that reacts to leaving the foreground listens to the lifecycle events instead, such as `app_background`, as the [lifecycle guide](lifecycle.md#app-states) explains.
 
 ```lua
-function gameplay:event(event)
-    if event.type == 'suspended' or event.type == 'focus_lost' then
-        self:openPause()
+function remap:event(event)
+    if event.type == 'key_down' and not event['repeat'] then
+        self:bind('key:' .. event.key)
     end
 end
 ```
@@ -136,6 +136,8 @@ input.loadActions({actions = {
 
 An action name that was never defined reads as not down and 0, so optional actions need no checks.
 
+While a scene change holds input back, every action reads as up and 0. A key, button, stick or touch control that is still held when the change ends keeps its actions up until it is released, so the press that opened a menu never reaches the menu as a second press. The navigation actions of the interface, such as `ui_cancel`, follow the same rule.
+
 ## Virtual buttons and sticks
 
 Virtual buttons and sticks are named inputs that on-screen controls or app code write and the action map reads through `virtual:` and `virtual_stick:` bindings.
@@ -194,21 +196,31 @@ Input the interface answers itself never triggers an action, the same way the ac
 - every key while a text field edits, on Mac Catalyst too, where a hardware keyboard still reports keys while the native field edits,
 - every key and gamepad button while a `keyCapture` listens.
 
-A key or button pressed while it is captured belongs to the interface until it is released, so an action bound to it reads as up for that whole press, even after the popup it closed is gone. A `back` action bound to Escape therefore never leaves the screen when Escape only closed a combo list, and fires as usual when no popup is open. `input.keyCaptured(key)` and `input.gamepadCaptured(button)` tell whether a press belongs to the interface, for apps that also read the raw keyboard, whose functions keep reporting every key.
+A key or button pressed while it is captured belongs to the interface until it is released, so an action bound to it reads as up for that whole press, even after the popup it closed is gone. `input.keyCaptured(key)` and `input.gamepadCaptured(button)` tell whether a press belongs to the interface, for apps that also read the raw keyboard, whose functions keep reporting every key.
+
+A screen therefore goes back with the `onCancel` handler of its document root instead of an action of its own. `ui_cancel` reaches the root only when no popup, combo list, dialog or edit answers it first, so the Escape that closes a combo list never leaves the screen, and the next Escape does.
 
 ```lua
-local input = require('haylen.input')
 local scene = require('haylen.scene')
+local ui = require('haylen.ui')
 
-input.defineAction({name = 'back', type = 'button', bindings = {'key:escape', 'button:east'}})
+local Settings = {}
+Settings.__index = Settings
 
-scene.push({
-    update = function(self, dt)
-        if input.pressed('back') then
+function Settings:enter()
+    self.document = ui.mount(ui.column{
+        onCancel = function()
             scene.pop()
-        end
-    end,
-})
+        end,
+        ui.combo{id = 'quality', autofocus = true, items = {{id = 'low', text = 'Low'}, {id = 'high', text = 'High'}}, selected = 'high'},
+    })
+end
+
+function Settings:exit()
+    self.document:unmount()
+end
+
+scene.push(setmetatable({}, Settings))
 ```
 
 ## The Tiny Island actions
@@ -255,7 +267,7 @@ elseif self.class.special ~= 'guard' and input.pressed('special') and self.speci
 end
 ```
 
-The same action can mean different things per class. The warrior guards while `special` is held, so the game reads `input.down('special')`, and the other classes trigger their special once per press with `input.pressed('special')`. `interact` is read with `input.down` to double the reach for feeding the fire while it is held. The gameplay, pause, settings and class selection scenes all read `input.pressed('pause')`, so Escape and Start open the pause menu during a run and go back from every menu.
+The same action can mean different things per class. The warrior guards while `special` is held, so the game reads `input.down('special')`, and the other classes trigger their special once per press with `input.pressed('special')`. `interact` is read with `input.down` to double the reach for feeding the fire while it is held. The gameplay and pause scenes read `input.pressed('pause')`, so Escape and Start open and close the pause menu during a run. The settings and class selection screens go back with the `onCancel` handler of their document root, which the `ui_cancel` action of the interface triggers with Escape and the east button, as [UI and gameplay input](#ui-and-gameplay-input) describes.
 
 The HUD in `samples/games/tiny-island/source/ui/hud.lua` drives the virtual inputs with a floating `touchStick` for `move` and `touchButton` controls for `attack`, `special` and `interact`, all with `touchOnly = true`. The pause button of the HUD is a regular icon button that opens the pause menu directly. When the pause menu covers the run, the gameplay scene hides the HUD and calls `input.clearVirtual()`, so nothing stays pressed while the game is paused.
 

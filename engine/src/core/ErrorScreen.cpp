@@ -194,6 +194,30 @@ void ErrorScreen::drag(math::Vec2 point) {
     }
 }
 
+// The first finger down presses and drags until it lifts, and the fingers that follow leave the screen alone.
+void ErrorScreen::handleTouch(const platform::Event& event) {
+    for (std::size_t index = 0; index < event.touchCount; ++index) {
+        const platform::TouchPoint& touch = event.touches[index];
+        if (event.type == platform::Event::Type::TouchBegan) {
+            if (touch.changed && !finger) {
+                finger = touch.id;
+                press(toCanvas(touch.position));
+            }
+            continue;
+        }
+        if (touch.id != finger) {
+            continue;
+        }
+
+        if (event.type == platform::Event::Type::TouchMoved) {
+            drag(toCanvas(touch.position));
+        } else if (touch.changed) {
+            finger.reset();
+            dragging.reset();
+        }
+    }
+}
+
 void ErrorScreen::handleEvent(const platform::Event& event) {
     switch (event.type) {
     case platform::Event::Type::KeyDown:
@@ -210,20 +234,14 @@ void ErrorScreen::handleEvent(const platform::Event& event) {
     case platform::Event::Type::MouseMove:
         drag(toCanvas(event.position));
         break;
-    case platform::Event::Type::TouchBegan:
-        if (event.touchCount > 0) {
-            press(toCanvas(event.touches[0].position));
-        }
-        break;
-    case platform::Event::Type::TouchMoved:
-        if (event.touchCount > 0) {
-            drag(toCanvas(event.touches[0].position));
-        }
-        break;
     case platform::Event::Type::MouseUp:
+        dragging.reset();
+        break;
+    case platform::Event::Type::TouchBegan:
+    case platform::Event::Type::TouchMoved:
     case platform::Event::Type::TouchEnded:
     case platform::Event::Type::TouchCancelled:
-        dragging.reset();
+        handleTouch(event);
         break;
     default:
         break;

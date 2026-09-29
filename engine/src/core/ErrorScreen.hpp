@@ -54,6 +54,20 @@ class ErrorScreen final {
         return report;
     }
 
+    // The content scrolls from 0 at its top to the maximum the last frame measured, in design units like the buttons.
+    [[nodiscard]] float getScroll() const noexcept {
+        return scroll;
+    }
+    [[nodiscard]] float getMaxScroll() const noexcept {
+        return maxScroll;
+    }
+    [[nodiscard]] const math::Rect& getCopyButton() const noexcept {
+        return copyButton;
+    }
+    [[nodiscard]] const math::Rect& getRestartButton() const noexcept {
+        return restartButton;
+    }
+
     void handleEvent(const platform::Event& event);
     void render();
 
@@ -104,6 +118,7 @@ class ErrorScreen final {
     [[nodiscard]] math::Vec2 toCanvas(math::Vec2 framebufferPoint) const;
 
     void handleKey(const platform::Event& event);
+    void handleTouch(const platform::Event& event);
     void press(math::Vec2 point);
     void drag(math::Vec2 point);
     void scrollBy(float amount);
@@ -123,6 +138,7 @@ class ErrorScreen final {
     float maxScroll = 0.0F;
     float page = 0.0F;
     std::optional<Drag> dragging;
+    std::optional<std::uint64_t> finger;
     math::Rect copyButton{};
     math::Rect restartButton{};
     bool copied = false;

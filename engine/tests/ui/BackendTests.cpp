@@ -57,7 +57,7 @@ class BackendTest : public ::testing::Test {
             const std::span<const std::uint8_t> data = core::EmbeddedFiles::getDefaultFont();
             return {data.begin(), data.end()};
         }
-        std::ifstream file(std::string(HAYLEN_SAMPLE_FONTS) + "/" + name, std::ios::binary);
+        std::ifstream file(std::string(HAYLEN_TEST_FONTS) + "/" + name, std::ios::binary);
         return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
     }
 

@@ -27,6 +27,9 @@ class AndroidActivity final {
 
     // Lets the splash screen of the activity end once the app has drawn a frame, so nothing black shows between the two. The runtime calls it after every frame.
     static void endSplashScreen() noexcept;
+
+    // Keeps the splash screen of a new activity until the app draws in it, since the process outlives its activities.
+    static void holdSplashScreen() noexcept;
     [[nodiscard]] static bool isFramePresented() noexcept;
 
   private:

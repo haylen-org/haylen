@@ -29,7 +29,7 @@ void NavigationInput::update(const input::ActionMap& actions, const input::Input
             resolved.define(wanted);
         }
     }
-    resolved.update(blocked ? idleInput : devices, blocked ? idleVirtualInput : virtualInput);
+    resolved.update(devices, virtualInput, blocked);
     for (std::size_t index = 0; index < kActionCount; ++index) {
         down[index] = resolved.isDown(kNames[index]);
     }

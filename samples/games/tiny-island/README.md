@@ -35,7 +35,7 @@ python3 make.py assets ~/Downloads/"Tiny Swords (Free Pack).zip"
 | Pause | Escape | Start | Gear button |
 | Back from the class choice or the settings | Escape | East button | Back button |
 
-Walking next to the fire with wood feeds it. The touch controls appear once the screen is touched, and the settings screen can turn them off.
+Walking next to the fire with wood feeds it. The touch controls appear once the screen is touched, and the settings screen can turn them off. The run also pauses when the app goes to the background or its window loses the focus, so the pause menu waits for the player who comes back.
 
 ## Classes
 

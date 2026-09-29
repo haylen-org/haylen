@@ -1,5 +1,5 @@
-// Android side of the Haylen runtime: the Lua player library built from the engine CMake project, the activity with its splash screen, the platform bridge and the Kotlin transport of the Varn HTTP client.
-// make.py engine --platform android publishes it as dev.haylen:haylen to a local Maven repository, so apps made from the Android template depend on it without compiling C++.
+// Android side of the Haylen runtime: the Lua player library, the activity with its splash screen, the platform bridge and the Kotlin transport of the Varn HTTP client.
+// make.py engine --platform android builds the player with the engine CMake project for every ABI and publishes this library as dev.haylen:haylen to a local Maven repository, so apps made from the Android template depend on it without compiling C++.
 plugins {
     id("com.android.library")
     `maven-publish`
@@ -7,8 +7,8 @@ plugins {
 
 val engineDir = projectDir.resolve("../../..").canonicalFile
 val engineVersion = engineDir.resolve("VERSION").readText().trim()
-val sokolShdc = providers.gradleProperty("haylenSokolShdc").orNull
-    ?: error("Pass -PhaylenSokolShdc with the sokol-shdc executable. make.py installs it into .tools.")
+val nativeLibraries = providers.gradleProperty("haylenNativeLibraries").orNull
+    ?: error("Pass -PhaylenNativeLibraries with the folder that holds libhaylen.so in a subfolder for each ABI. make.py builds it with the engine CMake project.")
 val varnSourceDir = providers.gradleProperty("haylenVarnSourceDir").orNull
     ?: error("Pass -PhaylenVarnSourceDir with the Varn source folder. make.py resolves it from the native build.")
 val mavenDir = providers.gradleProperty("haylenMavenDir").orNull
@@ -17,31 +17,13 @@ val mavenDir = providers.gradleProperty("haylenMavenDir").orNull
 android {
     namespace = "dev.haylen"
     compileSdk = 37
+    // Gradle strips the players with the tools of the NDK that make.py builds them with.
     ndkVersion = "30.0.16248370"
 
     // miniaudio plays through AAudio from Android 8.1 on, because AAudio of Android 8.0 has known faults, and the engine builds it without OpenSL ES.
     defaultConfig {
         minSdk = 27
         consumerProguardFiles("consumer-rules.pro")
-
-        // 32-bit ARM keeps the Android TV devices that still run it, and x86_64 serves emulators.
-        ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
-        }
-
-        externalNativeBuild {
-            cmake {
-                arguments += listOf("-DHAYLEN_SOKOL_SHDC=$sokolShdc", "-DHAYLEN_BUILD_PLAYER=ON", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF", "-DANDROID_STL=c++_static", "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON")
-                targets += "haylen"
-            }
-        }
-    }
-
-    externalNativeBuild {
-        cmake {
-            path = engineDir.resolve("CMakeLists.txt")
-            version = "4.1.2"
-        }
     }
 
     compileOptions {
@@ -83,6 +65,7 @@ val varnTransport = tasks.register<VarnTransportTask>("copyVarnTransport") {
 androidComponents {
     onVariants { variant ->
         variant.sources.kotlin?.addGeneratedSourceDirectory(varnTransport, VarnTransportTask::outputDir)
+        variant.sources.jniLibs?.addStaticSourceDirectory(nativeLibraries)
     }
 }
 

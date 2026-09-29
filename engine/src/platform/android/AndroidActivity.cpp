@@ -44,6 +44,10 @@ void AndroidActivity::endSplashScreen() noexcept {
     framePresented.store(true, std::memory_order_release);
 }
 
+void AndroidActivity::holdSplashScreen() noexcept {
+    framePresented.store(false, std::memory_order_release);
+}
+
 bool AndroidActivity::isFramePresented() noexcept {
     return framePresented.load(std::memory_order_acquire);
 }

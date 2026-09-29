@@ -9,6 +9,7 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/lua/Error.hpp"
+#include "haylen/platform/Event.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::core {
@@ -391,6 +392,35 @@ TEST(SceneLuaTest, PreloadsAndCancelsPreloads) {
     EXPECT_NE(fixture.lua("scene.pop({params = 1})").find("Unknown option 'params'"), std::string::npos);
     EXPECT_NE(fixture.lua("scene.push({}, {loadingDelay = -1})").find("cannot be negative"), std::string::npos);
     EXPECT_NE(fixture.lua("scene.push({}, {loadingFadeOut = -0.5})").find("the loading fade-out cannot be negative"), std::string::npos);
+}
+
+TEST(SceneLuaTest, AKeyHeldAcrossAChangePressesOnce) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        input = require('haylen.input')
+        scene = require('haylen.scene')
+        log = {}
+        input.loadActions({actions = {{name = 'toggle', type = 'button', bindings = {'key:p'}}}})
+        local menu = {update = function() if input.pressed('toggle') then log[#log + 1] = 'close' scene.pop() end end}
+        scene.push({update = function() if input.pressed('toggle') then log[#log + 1] = 'open' scene.push(menu) end end})
+    )");
+    // clang-format on
+    fixture.frames(2);
+
+    // A tap of a few frames opens the menu, which is still held when the change ends and does not close it at once.
+    Engine& engine = fixture.engine();
+    engine.handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::P});
+    fixture.frames(3);
+    engine.handleEvent({.type = platform::Event::Type::KeyUp, .key = input::Key::P});
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("return table.concat(log, ' ') .. ' ' .. scene.size()"), "open 2");
+
+    engine.handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::P});
+    fixture.frames(3);
+    engine.handleEvent({.type = platform::Event::Type::KeyUp, .key = input::Key::P});
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("return table.concat(log, ' ') .. ' ' .. scene.size()"), "open close 1");
 }
 
 } // namespace haylen::core

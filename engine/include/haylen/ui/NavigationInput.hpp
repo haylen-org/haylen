@@ -30,7 +30,7 @@ class NavigationInput final {
 
     NavigationInput();
 
-    // Reads every action with the bindings the app map gives it when it defines it and with the built-in bindings otherwise. The UI reads the presses it captures from the app map itself, and blocked input, such as during a scene transition, holds every action up.
+    // Reads every action with the bindings the app map gives it when it defines it and with the built-in bindings otherwise. The UI reads the presses it captures from the app map itself, and blocked input, such as during a scene transition, holds every action up until it is released, like the actions of the app map.
     void update(const input::ActionMap& actions, const input::Input& devices, const input::VirtualInput& virtualInput, bool blocked);
 
     // The bindings an action reads, remapped by the app or built in.
@@ -51,8 +51,6 @@ class NavigationInput final {
   private:
     input::ActionMap defaults;
     input::ActionMap resolved;
-    input::Input idleInput;
-    input::VirtualInput idleVirtualInput;
     std::array<bool, kActionCount> down{};
     std::array<bool, kActionCount> wasDown{};
 };

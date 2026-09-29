@@ -148,7 +148,7 @@ Every change takes an optional table of options. Unknown keys raise `Unknown opt
 | `effect` | string or table | `'fade'` | The name of a [built-in effect](#built-in-effects), or a table that draws its own, as [Custom effects](#custom-effects) describes. |
 | `direction` | string | `'left'` | Where the motion, wipe, wave or page turn of a built-in effect goes: `'left'`, `'right'`, `'up'`, `'down'`, `'upLeft'`, `'upRight'`, `'downLeft'` or `'downRight'`. |
 | `color` | Color | `'#FF000000'` | The color that fades and irises pass through, which also shows behind effects that uncover the screen, given as a `Color`, a `'#AARRGGBB'` string or a color table of `haylen.math`. |
-| `blockInput` | boolean | `true` | Holds input back from the scenes and the action map until the change ends, from the start of the load to the end of the reveal. |
+| `blockInput` | boolean | `true` | Holds input back from the scenes and the action map until the change ends, from the start of the load to the end of the reveal. Actions whose bindings are still held when the change ends stay up until they are released. |
 | `onComplete` | function | `nil` | Called with `true` once the change ended, or with `false` when it was dropped or failed. |
 | `params` | any | `nil` | Reaches the `load` and `enter` hooks of the next scene. A preloaded scene keeps the params of its preload. |
 | `loading` | table | `nil` | A [loading view](#loading-views) to show while the next scene loads. |

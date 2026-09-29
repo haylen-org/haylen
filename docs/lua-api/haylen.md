@@ -385,7 +385,7 @@ print(haylen.autoloads.soundtrack == music, require('systems.music') == music) -
 
 ### haylen.quit()
 
-Stops the app and asks the platform to close it. No further frames run.
+Stops the app and asks the platform to close it. No further frames run. On Android the activity of the app finishes.
 
 ```lua
 local haylen = require('haylen')

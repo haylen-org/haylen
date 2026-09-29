@@ -21,7 +21,7 @@ Every frame then runs the same steps.
 
 Platform events, such as keys, touches and focus changes, arrive between frames. The autoloads get them first and then the top scene, as the [scene reference](lua-api/scene.md#events) describes.
 
-When the app stops, the engine publishes `app_stopping`, removes every scene from the top down, together with a scene that is still loading and the preloaded scenes, stops the autoloads from the last to the first and stops the plugins in reverse order. A restart, such as a hot reload of an edited script, stops the app the same way, even in the middle of a load, and creates a new engine with a fresh Lua state that runs the whole sequence again.
+When the app stops, the engine publishes `app_stopping`, removes every scene from the top down, together with a scene that is still loading and the preloaded scenes, stops the autoloads from the last to the first and stops the plugins in reverse order. A restart, such as a hot reload of an edited script, stops the app the same way, even in the middle of a load, and creates a new engine with a fresh Lua state that runs the whole sequence again. On Android the app stops the same way when its activity closes, through `haylen.quit()`, the back button of the root screen or the player removing it from the recent apps, and the activity then finishes normally.
 
 ```lua
 local events = require('haylen.events')
@@ -66,7 +66,7 @@ Whether the app keeps running while it is not active depends on the lifecycle op
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `pauseOnBackground` | `true` | Halts the app in the background. |
-| `pauseOnFocusLoss` | `false` | Halts the app while it is inactive. Tiny Island turns it on, so the run stands still whenever the window loses focus. |
+| `pauseOnFocusLoss` | `false` | Halts the app while it is inactive. Tiny Island turns it on, so the run stands still whenever the window loses focus, and opens its pause menu on `app_inactive` and `app_background`, so the run stays paused when the player comes back. |
 | `muteOnFocusLoss` | `false` | Mutes the master bus while the app is not active, and restores the mute the player chose when it comes back. |
 
 ```json
@@ -223,7 +223,7 @@ A failed load, an error in `load`, a rejected promise it returned or an asset of
 
 - **Queue**: changes requested during a change wait for it in request order, including changes that its hooks and `onError` request, and `scene.clear` drops them all, resolving their promises with `false`.
 - **Game pause**: transitions, loads and loading views run on real time, so they go on at full speed while the game is paused or the time scale is zero. The top scene still updates only when its process mode runs, and a covered scene never updates.
-- **Input**: by default a change holds input back from its start to its end, including the load, so neither the scenes nor the action map see a key or a touch. `blockInput = false` lets input through.
+- **Input**: by default a change holds input back from its start to its end, including the load, so neither the scenes nor the action map see a key or a touch. A key or button that is still held when the change ends counts as pressed again only after it is released, so the press that opened a menu never closes it. `blockInput = false` lets input through.
 - **Background and focus loss**: a halted app lets no time pass, so a change stands still in its phase and its loading delay and minimum time wait too. Its load keeps going, since Varn's event loop still runs, promises still settle and the worker pools still decode, but an app in the background creates no GPU resources, so decoded assets wait for it to come back. Once the app runs again, the finished load settles in the next update and the change goes on.
 - **Restart and stop**: the engine removes every scene, the scene that is still loading and the preloaded scenes unload too, their tasks are cancelled and the pending asset callbacks are dropped, so a hot reload in the middle of a load leaves nothing behind.
 

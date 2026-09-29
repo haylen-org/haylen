@@ -61,9 +61,9 @@ class UiLuaTest : public ::testing::Test {
     test::EngineFixture fixture;
 };
 
-// Reads a font of the fonts sample.
-std::string readSampleFont(const std::string& name) {
-    std::ifstream file(std::string(HAYLEN_SAMPLE_FONTS) + "/" + name, std::ios::binary);
+// Reads a test font.
+std::string readTestFont(const std::string& name) {
+    std::ifstream file(std::string(HAYLEN_TEST_FONTS) + "/" + name, std::ios::binary);
     return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
 }
 
@@ -344,7 +344,7 @@ TEST(UiLuaThemeTest, ReadsAndAddsThemes) {
 
 // Labels and every other text component draw with the faces of the family of their role, bold where the role asks for it, and take the characters the face lacks from the fallbacks, while rich text of a role lines up with them.
 TEST(UiLuaFontTest, DrawsTextComponentsWithTheFacesAndFallbacksOfAFamily) {
-    test::EngineFixture fixture({{"content/fonts/cjk.ttf", readSampleFont("mplus_1p_regular.ttf")}, {"content/fonts/bold.ttf", readSampleFont("crimson_text_bold.ttf")}});
+    test::EngineFixture fixture({{"content/fonts/cjk.ttf", readTestFont("mplus_1p_regular.ttf")}, {"content/fonts/bold.ttf", readTestFont("crimson_text_bold.ttf")}});
     // clang-format off
     fixture.runLua(R"(
         assets = require('haylen.assets')
@@ -497,6 +497,36 @@ TEST_F(UiLuaTest, NavigatesTheFocusAndHearsCancel) {
     fixture.runLua("ui.clearFocus()");
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return tostring(ui.focused())"), "nil");
+}
+
+TEST_F(UiLuaTest, TheKeyThatOpensAMenuDoesNotCancelIt) {
+    // clang-format off
+    fixture.runLua(R"(
+        input = require('haylen.input')
+        scene = require('haylen.scene')
+        ui = require('haylen.ui')
+        heard = {}
+        input.loadActions({actions = {{name = 'pause', type = 'button', bindings = {'key:escape'}}}})
+        local menu = {enter = function()
+            ui.mount(ui.column{onCancel = function() heard[#heard + 1] = 'cancel' scene.pop() end, ui.button{id = 'resume', text = 'Resume', autofocus = true}})
+        end}
+        scene.push({update = function() if input.pressed('pause') then heard[#heard + 1] = 'pause' scene.push(menu) end end})
+    )");
+    // clang-format on
+    fixture.frames(2);
+
+    // Escape opens the menu, and the same press still held once the menu shows is no cancel.
+    platform::Event event{.type = platform::Event::Type::KeyDown, .key = input::Key::Escape};
+    getEngine().handleEvent(event);
+    fixture.frames(4);
+    event.type = platform::Event::Type::KeyUp;
+    getEngine().handleEvent(event);
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("return table.concat(heard, ' ') .. ' ' .. scene.size()"), "pause 2");
+
+    key(input::Key::Escape);
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("return table.concat(heard, ' ') .. ' ' .. scene.size()"), "pause cancel 1");
 }
 
 TEST_F(UiLuaTest, ReportsThePressesTheInterfaceCaptures) {

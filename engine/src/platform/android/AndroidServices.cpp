@@ -22,7 +22,10 @@ std::string_view Services::getName() noexcept {
     return "android";
 }
 
-void Services::initialize() {}
+// Every activity of the process starts the runtime anew, and the first one may have ended before.
+void Services::initialize() {
+    AndroidActivity::holdSplashScreen();
+}
 
 void Services::shutdown() noexcept {}
 

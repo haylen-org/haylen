@@ -340,7 +340,7 @@ float ActionMap::getStrongest(const std::vector<Binding>& list, const Input& inp
     return result;
 }
 
-void ActionMap::update(const Input& input, const VirtualInput& virtualInput) {
+void ActionMap::update(const Input& input, const VirtualInput& virtualInput, bool blocked) {
     holdCaptured(input);
     for (State& state : actions) {
         const Action& action = state.action;
@@ -369,7 +369,15 @@ void ActionMap::update(const Input& input, const VirtualInput& virtualInput) {
         }
         }
 
-        state.down = std::fabs(state.value) >= pressThreshold;
+        // Blocked input reads as idle, and an action that is down meanwhile stays held, reading as up, until its bindings let go.
+        const bool active = std::fabs(state.value) >= pressThreshold;
+        state.held = active && (blocked || state.held);
+        if (blocked || state.held) {
+            state.value = 0.0F;
+            state.vector = {};
+        }
+
+        state.down = active && !state.held;
         state.pressed = state.down && !wasDown;
         state.released = !state.down && wasDown;
     }

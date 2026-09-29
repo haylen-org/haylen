@@ -21,7 +21,7 @@ namespace haylen::text {
 
 namespace {
 
-// Lays out text in the default font with the fonts of the fonts sample as fallbacks for Arabic, Hebrew, Devanagari, Thai and Japanese.
+// Lays out text in the default font with the test fonts as fallbacks for Arabic, Hebrew, Devanagari, Thai and Japanese.
 class ShapingTest : public ::testing::Test {
   protected:
     ShapingTest() {
@@ -34,7 +34,7 @@ class ShapingTest : public ::testing::Test {
     }
 
     [[nodiscard]] std::shared_ptr<Font> load(std::string_view name) {
-        std::ifstream file(std::string(HAYLEN_SAMPLE_FONTS) + "/" + std::string(name), std::ios::binary);
+        std::ifstream file(std::string(HAYLEN_TEST_FONTS) + "/" + std::string(name), std::ios::binary);
         return std::make_shared<TrueTypeFont>(fixture.engine().getGraphics(), std::vector<std::uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()));
     }
 

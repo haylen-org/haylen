@@ -23,7 +23,7 @@ namespace haylen::text {
 
 namespace {
 
-// Reads the fonts of the fonts sample next to the built-in font, and opens them with stb_truetype to compare against.
+// Reads the test fonts next to the built-in font, and opens them with stb_truetype to compare against.
 class FontFileTest : public ::testing::Test {
   protected:
     [[nodiscard]] static std::vector<std::uint8_t> read(std::string_view name) {
@@ -31,7 +31,7 @@ class FontFileTest : public ::testing::Test {
             const std::span<const std::uint8_t> data = core::EmbeddedFiles::getDefaultFont();
             return {data.begin(), data.end()};
         }
-        std::ifstream file(std::string(HAYLEN_SAMPLE_FONTS) + "/" + std::string(name), std::ios::binary);
+        std::ifstream file(std::string(HAYLEN_TEST_FONTS) + "/" + std::string(name), std::ios::binary);
         return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
     }
 

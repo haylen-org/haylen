@@ -95,14 +95,15 @@ public class HaylenActivity extends NativeActivity implements InputManager.Input
         splash.showOverlay();
     }
 
+    // The app stops inside the native activity, which runs its cleanup and lets the activity finish, while the bridge, the editor and the listeners it may still use are attached.
     @Override
     protected void onDestroy() {
+        super.onDestroy();
         splash.dismiss();
         getSystemService(InputManager.class).unregisterInputDeviceListener(this);
         network.unregister();
         HaylenEditText.attach(null);
         HaylenBridge.detach();
-        super.onDestroy();
     }
 
     // Hiding the interface is the only trim level that says nothing about memory pressure.

@@ -134,7 +134,7 @@ Platform services such as sign-in or purchases go through `platform::Bridge` wit
 `Engine::frame(frameSeconds)` in `engine/src/core/Engine.cpp` runs one frame in this order.
 
 1. The viewport updates from the framebuffer size, the design size, the scaling policy and the safe area.
-2. The host fills the gamepad states and the action map updates from every device.
+2. The host fills the gamepad states and the action map updates from every device, blocked while the app is halted or a scene change holds input back, so held actions read as up until they are released.
 3. The frame clock advances with the frame time, clamped to `maxFrameTime` and scaled by the time scale, and touches and gestures update.
 4. The engine publishes changes of fullscreen, orientation, safe area and gamepad connections on its `EventBus`. Unless the app is in the background, the asset manager finalizes the assets that finished decoding, creating their GPU objects, until the upload budget of the frame runs out and at least one per frame. `Runtime::poll()` advances Varn's event loop. Promises settle, `async` coroutines and scene tasks resume, Varn timers fire, HTTP and socket callbacks run, and completions posted from worker threads run, such as decoded assets that join the upload queue. Then `Bridge::pump()` delivers bridge replies and native events.
 5. Every plugin runs `beginFrame`.

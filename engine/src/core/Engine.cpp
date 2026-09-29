@@ -179,8 +179,7 @@ void Engine::frame(double frameSeconds) {
     current.viewport.update(current.host.getFramebufferSize(), current.config.designSize, current.config.scaling, getSafeAreaInsets());
     current.host.pollGamepads(current.gamepads);
     current.input.updateGamepads(current.gamepads);
-    const bool inputHeld = halted || current.scenes->isInputBlocked();
-    current.actions.update(inputHeld ? current.idleInput : current.input, inputHeld ? current.idleVirtualInput : current.virtualInput);
+    current.actions.update(current.input, current.virtualInput, halted || current.scenes->isInputBlocked());
     current.clock.advance(halted ? 0.0 : frameSeconds);
     const auto delta = static_cast<float>(current.clock.getDelta());
     current.input.updateTouchDurations(static_cast<float>(current.clock.getUnscaledDelta()));
