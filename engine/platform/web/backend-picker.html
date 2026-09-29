@@ -1,0 +1,15 @@
+<script>
+    // Runs the WebGPU build when the browser offers a WebGPU adapter and the WebGL2 build otherwise. The backend parameter of the address forces either one.
+    (async () => {
+        const forced = new URLSearchParams(location.search).get("backend");
+        let backend = forced === "webgpu" || forced === "webgl2" ? forced : null;
+        if (!backend) {
+            const adapter = navigator.gpu ? await navigator.gpu.requestAdapter().catch(() => null) : null;
+            backend = adapter ? "webgpu" : "webgl2";
+        }
+        Module.locateFile = (path) => backend + "/" + path;
+        const script = document.createElement("script");
+        script.src = backend + "/{{TARGET}}.js";
+        document.body.appendChild(script);
+    })();
+</script>

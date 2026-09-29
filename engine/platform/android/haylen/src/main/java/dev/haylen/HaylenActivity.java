@@ -1,0 +1,163 @@
+package dev.haylen;
+
+import android.app.Activity;
+import android.app.NativeActivity;
+import android.app.UiModeManager;
+import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
+import android.content.res.Configuration;
+import android.hardware.input.InputManager;
+import android.os.Build;
+import android.os.Bundle;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.FrameLayout;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
+
+// Hosts a Haylen app. The app library is named by the android.app.lib_name meta-data, like any native activity.
+// The manifest gives the activity the Theme.Haylen.Splash theme, whose splash screen stays until the app has drawn its first frame.
+public class HaylenActivity extends NativeActivity implements InputManager.InputDeviceListener {
+    private final HaylenSplash splash = new HaylenSplash(this);
+    private HaylenEditText editor;
+    private HaylenAudioFocus audioFocus;
+    private HaylenNetwork network;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        splash.install();
+        // A native activity only opens its library with dlopen, so loading it here first is what binds the JNI methods and runs JNI_OnLoad.
+        System.loadLibrary(libraryName());
+        HaylenBridge.attach(this);
+        nativeTelevision(getSystemService(UiModeManager.class).getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION);
+        super.onCreate(savedInstanceState);
+
+        // The app draws edge to edge, under the cutout, with the system bars hidden until a swipe shows them.
+        Window window = getWindow();
+        WindowCompat.setDecorFitsSystemWindows(window, false);
+        WindowManager.LayoutParams attributes = window.getAttributes();
+        coverCutouts(attributes);
+        window.setAttributes(attributes);
+        WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, window.getDecorView());
+        controller.hide(WindowInsetsCompat.Type.systemBars());
+        controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+
+        // The software keyboard lies over the app without resizing it, and the engine lifts the focused field above it.
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING);
+        editor = new HaylenEditText(this);
+        addContentView(editor, new FrameLayout.LayoutParams(1, 1));
+        HaylenEditText.attach(editor);
+        ViewCompat.setOnApplyWindowInsetsListener(window.getDecorView(), (view, insets) -> {
+            // Hidden bars only appear transiently over the app, so the safe area covers the cutout and any bars that stay visible, as in multi-window mode.
+            Insets safe = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+            nativeSafeArea(safe.left, safe.top, safe.right, safe.bottom);
+            boolean keyboardShown = insets.isVisible(WindowInsetsCompat.Type.ime());
+            int keyboardHeight = keyboardShown ? insets.getInsets(WindowInsetsCompat.Type.ime()).bottom : 0;
+            nativeKeyboard(0, view.getHeight() - keyboardHeight, keyboardHeight > 0 ? view.getWidth() : 0, keyboardHeight);
+            editor.setKeyboardShown(keyboardShown);
+            return ViewCompat.onApplyWindowInsets(view, insets);
+        });
+        getSystemService(InputManager.class).registerInputDeviceListener(this, null);
+        nativeOrientation(getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);
+        audioFocus = new HaylenAudioFocus(this);
+        network = new HaylenNetwork(this);
+        network.register();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        audioFocus.request();
+    }
+
+    @Override
+    protected void onPause() {
+        audioFocus.abandon();
+        super.onPause();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration configuration) {
+        super.onConfigurationChanged(configuration);
+        nativeOrientation(configuration.orientation == Configuration.ORIENTATION_PORTRAIT);
+    }
+
+    @Override
+    public void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        splash.showOverlay();
+    }
+
+    @Override
+    protected void onDestroy() {
+        splash.dismiss();
+        getSystemService(InputManager.class).unregisterInputDeviceListener(this);
+        network.unregister();
+        HaylenEditText.attach(null);
+        HaylenBridge.detach();
+        super.onDestroy();
+    }
+
+    // Hiding the interface is the only trim level that says nothing about memory pressure.
+    @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        if (level != TRIM_MEMORY_UI_HIDDEN) {
+            nativeLowMemory();
+        }
+    }
+
+    @Override
+    public void onInputDeviceAdded(int deviceId) {}
+
+    @Override
+    public void onInputDeviceRemoved(int deviceId) {
+        nativeControllerRemoved(deviceId);
+    }
+
+    @Override
+    public void onInputDeviceChanged(int deviceId) {}
+
+    // Android 11 lets a window cover every cutout, Android 9 and 10 only those on the short edges, and earlier versions have no cutouts.
+    static void coverCutouts(WindowManager.LayoutParams attributes) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
+    }
+
+    // Called from the frame thread of the engine with 0 for landscape, 1 for portrait and 2 for any orientation, the values app.json gives the manifest.
+    static void lockOrientation(int value) {
+        Activity activity = HaylenBridge.activity();
+        if (activity == null) {
+            return;
+        }
+        int requested = value == 0 ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE : value == 1 ? ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT : ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR;
+        activity.runOnUiThread(() -> activity.setRequestedOrientation(requested));
+    }
+
+    private String libraryName() {
+        try {
+            ActivityInfo info = getPackageManager().getActivityInfo(getComponentName(), PackageManager.GET_META_DATA);
+            return info.metaData.getString("android.app.lib_name");
+        } catch (PackageManager.NameNotFoundException error) {
+            throw new IllegalStateException("The activity is missing from the manifest.", error);
+        }
+    }
+
+    private static native void nativeSafeArea(int left, int top, int right, int bottom);
+
+    private static native void nativeControllerRemoved(int deviceId);
+
+    private static native void nativeTelevision(boolean television);
+
+    private static native void nativeLowMemory();
+
+    private static native void nativeKeyboard(int x, int y, int width, int height);
+
+    private static native void nativeOrientation(boolean portrait);
+}

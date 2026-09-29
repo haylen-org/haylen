@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The splash screen draws its icon in a 288 dp square and masks it to a circle of 192 dp, so the logo keeps a margin that fits it inside that circle. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/haylen_splash_logo"
+    android:inset="23%" />

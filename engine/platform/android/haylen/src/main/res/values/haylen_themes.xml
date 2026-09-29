@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The window of the app, whose background matches the splash screen so nothing flashes while the first frame is on its way. -->
+    <style name="Theme.Haylen" parent="@android:style/Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@color/haylen_splash_background</item>
+    </style>
+
+    <!-- The theme of HaylenActivity in the manifest. The activity installs the splash screen, which switches to Theme.Haylen once the app has drawn its first frame. -->
+    <style name="Theme.Haylen.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/haylen_splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/haylen_splash_icon</item>
+        <item name="postSplashScreenTheme">@style/Theme.Haylen</item>
+    </style>
+</resources>
