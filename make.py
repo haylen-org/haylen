@@ -249,15 +249,11 @@ def android_sdk() -> Path:
 
 
 def android_ndk() -> Path:
-    for variable in ("ANDROID_NDK_HOME", "ANDROID_NDK_ROOT"):
-        value = os.environ.get(variable)
-        if value and Path(value).exists():
-            return Path(value)
-
+    """The pinned NDK inside the Android SDK, whatever other NDK the environment names, because the engine and its dependencies build against its headers."""
     candidate = android_sdk() / "ndk" / ANDROID_NDK_VERSION
     if candidate.exists():
         return candidate
-    raise BuildError(f"Android NDK {ANDROID_NDK_VERSION} was not found. Install it with the SDK manager or set ANDROID_NDK_HOME.")
+    raise BuildError(f"Android NDK {ANDROID_NDK_VERSION} was not found in {android_sdk() / 'ndk'}. Install it with: sdkmanager \"ndk;{ANDROID_NDK_VERSION}\"")
 
 
 def adb() -> Path:

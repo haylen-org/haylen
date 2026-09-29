@@ -96,7 +96,7 @@ Generates the build tree with the options above. Every tree receives `-DHAYLEN_S
 - Android uses the NDK toolchain with `ANDROID_ABI=arm64-v8a`, `ANDROID_PLATFORM=android-27` and the static C++ library, with the tests turned off. The player is the shared library `libhaylen.so`, the one the [Android library](distribution.md#the-android-library) packages.
 - The web platforms run CMake through `emcmake`, turn the tests off and force `WGPU` for `web` and `GLES3` for `web-webgl2`.
 
-`make.py` finds the NDK through `ANDROID_NDK_HOME` or `ANDROID_NDK_ROOT`, and otherwise through `ndk/30.0.16248370` inside `ANDROID_HOME` or `ANDROID_SDK_ROOT`.
+`make.py` builds with the pinned NDK, `ndk/30.0.16248370` inside the SDK that `ANDROID_HOME` or `ANDROID_SDK_ROOT` names, even when the environment names another NDK, because the engine and its dependencies build against its headers.
 
 ### build
 

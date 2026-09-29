@@ -104,7 +104,7 @@ std::vector<Dialog::Answer> Dialog::readButtons(PropertyReader& reader, const co
             button.text = TextValue::fromJson(*text, "dialog.buttons.text");
         }
         if (const auto variant = entry.find("variant"); variant != entry.end()) {
-            const auto found = std::ranges::find_if(Widgets::kButtonVariants, [&](const auto& choice) { return *variant == choice.first; });
+            const auto found = std::ranges::find_if(Widgets::kButtonVariants, [&](const auto& choice) { return variant->is_string() && variant->get_ref<const std::string&>() == choice.first; });
             if (found == Widgets::kButtonVariants.end()) {
                 reader.fail("buttons", "has a variant other than default, primary, destructive, toolbar, icon or link");
             }
