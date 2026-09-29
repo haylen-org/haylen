@@ -1024,7 +1024,28 @@ Todo sample Lua tem um menu simples para escolher o teste, cada teste é uma cen
 
 - [ ] Testes GoogleTest e Lua de cada recurso novo, com cobertura da engine perto de 100%.
 - [ ] Páginas `docs/lua-api/` e guias atualizados, incluindo um guia de distribuição (templates, artefatos e comandos) e um de ciclo de vida.
-- [ ] Revisão final de bugs, código morto, race conditions e riscos de crash.
+- [x] Revisão final de bugs, código morto, race conditions e riscos de crash, em duas frentes (core, Lua, plugins, storage, io, math, IA, debug, net, áudio e input, e gráficos, texto, UI e os contextos 2D): cerca de 60 e dezenas de correções com testes (crashes na saída e no reinício, use-after-free, estouro de pilha Lua, travamentos por entradas do Lua, asserts do Box2D, leituras fora dos limites, alfa pré-multiplicado, lotes de desenho e memória por frame), ThreadSanitizer limpo, 892 testes. As sobras estão nos itens abaixo.
+- [ ] O teste `FontTest.FailsAgainForAGlyphNoAtlasHolds` leva cerca de 250 s em Debug: deixar o teste rápido sem perder o que ele verifica.
+- [ ] Quatro testes de gráficos falham ou abortam só sob ThreadSanitizer (`MaterialTest.*`, `MaterialLuaTest.*`, `RendererTest.CapturesCanvasesIntoTargets` e `Graphics2DLuaTest.KeepsGpuPoolsSteadyAcrossFrames`, um deles com a validação de tamanho do `apply_uniforms` do sokol): investigar e corrigir.
+- [ ] O destrutor do `PocoWebSocket` espera a thread que ainda conecta (até 10 s ou mais sem timeout de DNS) e o laço ocioso acorda 500 vezes por segundo: refazer a conexão para ser interrompível.
+- [ ] `lua::Promise::resolve` com JSON aninhado além de 128 níveis ou binário nunca retoma quem espera: rejeitar com erro claro.
+- [ ] Chamar o `__gc` na mão ou trocar o `__native` passa pelas checagens de vida: proteger as metatables.
+- [ ] Timers e tweens leem o modo de processamento do dono uma vez só, na criação: seguir o dono quando o modo muda.
+- [ ] `debug.addMonitor` sem a opção `owner`.
+- [ ] Armazenamento síncrono na thread do frame e o `PackageWatcher` varrendo o pacote na thread do frame no modo de desenvolvimento: oferecer as versões assíncronas e tirar a varredura do frame.
+- [ ] O `load` global ainda aceita bytecode e o `string.dump` existe: aplicar a regra de só carregar texto também ao código do app.
+- [ ] Nomes Lua que não batem com o C++: `translationPart`, `state`, `highest`, `setDeadzone` e `gamepadDeadzone`, `'bspline'`.
+- [ ] Os slots de controle na Apple mudam quando um controle desconecta, e ganhos de filtro finitos muito grandes ainda estouram os coeficientes.
+- [ ] Decisão de mistura: `multiply` e `screen` agora recebem cores retas, como os outros modos (fora `premultiplied`). Documentado.
+- [ ] Tipos do contexto `text` que repetem o namespace (`text::TextLayout`, `TextStyle`, `TextAlign` e `TextEffect`): renomear para nomes precisos sem repetir o contexto.
+- [ ] Funções auxiliares livres em cerca de 40 arquivos de teste, criados depois da conversão dos testes: levar para fixtures ou classes de apoio.
+- [ ] Nomes Lua que diferem dos nomes C++ (`TileMap` e `TiledMap`, `HierarchicalPath`, `closest` e `smooth`), as opções Lua `scale` e `tint` do texto e o flip diagonal de sprites no `TypeConverter`, e as tabelas de nomes de enums duplicadas em `TypeConverter.cpp` e `AppConfig.cpp`.
+- [ ] Cache de imagens do `[img]` do rich text no `TextPlugin` (hoje a imagem é carregada de novo a cada frame em Lua).
+- [ ] Atualização parcial de texturas no `graphics::Device`, para os atlas da UI e das fontes não subirem inteiros a cada mudança.
+- [ ] `JobSystem::parallelFor` com roubo de trabalho, porque o `crowd:step` pode ficar esperando atrás de jobs longos de fundo.
+- [ ] `PoissonDisk::reachOf` converte uma distância enorme para `int`, o zoom NaN da câmera é aceito, handles C++ de física ficam velhos depois que o slot do mundo é reusado, e `GridRay::traverse` pode travar em raios com mais de 2^23 células.
+- [ ] `make.py` sem opção de ThreadSanitizer, e o openssl-cmake compila com todos os núcleos se não receber `-DOPENSSL_ENABLE_PARALLEL=OFF`, furando o limite de 6 jobs.
+- [ ] Caminhos do navmesh com raio: 0,8% dos caminhos com início ou fim mais perto de uma parede que o raio cruzam a borda da malha perto dessa ponta (documentado), e a triangulação com restrições não convergiu num layout aleatório (semente 97).
 - [ ] Encerramento por uma thread de fundo derruba o app: `SokolRuntime::current` é um `unique_ptr` estático, e um `exit()` fora da thread do frame (no simulador iOS, o IOSurface faz isso quando o servidor de render cai) destrói a engine nessa thread enquanto o frame ainda roda. A engine precisa ser destruída só na thread do frame, no fim normal do app.
 - [ ] `make.py`: os builds das bibliotecas nativas vão para `build/apps/<nome da pasta>/native/`, e apps com o mesmo nome de pasta colidem (cache do CMake de outra origem). O caminho precisa identificar o app de forma única.
 - [ ] `make.py run` nas plataformas Apple não mostra a saída do app no terminal, porque o log do Varn na Apple só escreve no os_log: transmitir o log do app no `run` (simulador, Catalyst e macOS), como a documentação promete.
