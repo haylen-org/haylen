@@ -1025,10 +1025,12 @@ Todo sample Lua tem um menu simples para escolher o teste, cada teste é uma cen
 - [ ] Testes GoogleTest e Lua de cada recurso novo, com cobertura da engine perto de 100%.
 - [ ] Páginas `docs/lua-api/` e guias atualizados, incluindo um guia de distribuição (templates, artefatos e comandos) e um de ciclo de vida.
 - [ ] Revisão final de bugs, código morto, race conditions e riscos de crash.
-- [ ] Android 16 (predictive back): o Back sai do app de dentro de qualquer tela e ignora `window.setBackLeavesApp(false)`, porque a `HaylenActivity` não registra um `OnBackInvokedCallback` (ou o `OnBackPressedCallback` do AndroidX) para o alvo SDK 37.
-- [ ] `audio.playMusic` não devolve um id de voz, então não dá para pausar só a música: dar um handle ou `pauseMusic` e `resumeMusic`.
+- [ ] Android: ao fechar o app, o sokol chama `exit(0)` quando a activity é destruída e o processo aborta com "pthread_mutex_lock called on a destroyed mutex" nas threads de UI do Android, deixando um relatório de crash a cada saída. O app precisa sair sem crash.
+- [ ] `make.py engine --platform android --jobs 6` não limita o build nativo: sobe três ninja sem limite (cerca de 51 compiladores ao mesmo tempo). O `--jobs` precisa valer para cada ABI, e as ABIs devem compilar uma de cada vez.
+- [x] Android 16 (predictive back): o Back sai do app de dentro de qualquer tela e ignora `window.setBackLeavesApp(false)`, porque a `HaylenActivity` não registra um `OnBackInvokedCallback` (ou o `OnBackPressedCallback` do AndroidX) para o alvo SDK 37. Feito: `android:enableOnBackInvokedCallback` no manifesto do AAR e o callback registrado só enquanto o app segura o Back, validado no emulador API 36.
+- [x] `audio.playMusic` não devolve um id de voz, então não dá para pausar só a música: dar um handle ou `pauseMusic` e `resumeMusic`. Feito: `playMusic` devolve a voz da música.
 - [ ] Um `ui.scroll{grow = 1}` dentro de um painel fica da altura do conteúdo e empurra a página para fora da tela: um filho que cresce deve partir da altura que sobra no pai, e não da altura do conteúdo.
-- [ ] Documentação contraditória: o guia da bridge diz que a API mínima do Android é 30 e usa `Map.of`, enquanto o template usa minSdk 27, e dois guias discordam sobre quando os handlers embutidos do Android são registrados.
+- [x] Documentação contraditória: o guia da bridge diz que a API mínima do Android é 30 e usa `Map.of`, enquanto o template usa minSdk 27, e dois guias discordam sobre quando os handlers embutidos do Android são registrados. Feito.
 - [ ] Fontes OpenType CFF saem quebradas em qualquer tamanho: o `stbtt_GetGlyphSDF` só trata linhas e curvas quadráticas, e os contornos CFF são cúbicos. Gerar o campo de distância a partir do contorno completo (curvas cúbicas incluídas).
 - [ ] Glifos de fallback de algumas fontes saem pequenos demais: o `TrueTypeFont` usa `stbtt_ScaleForPixelHeight` (ascendente a descendente) e não o tamanho do em.
 - [ ] As setas do carrossel são desenhadas antes das páginas e ficam embaixo de imagens largas.
@@ -1049,7 +1051,7 @@ Todo sample Lua tem um menu simples para escolher o teste, cada teste é uma cen
 - [x] O Lua não consegue ler a geometria de uma forma de física (tipo, pontos e raio), então não dá para desenhar as peças de um ragdoll ou de uma fratura. Expor `shape.kind`, `shape.points`, `shape.radius` e o que mais a forma tiver. Feito: `shape.kind`, `shape.points`, `shape.worldPoints`, `shape.radius`, `shape:outline()` e `body:outlines()`.
 - [x] HPA\* sem versão assíncrona (a construção trava uns 60 ms no mapa grande do sample). Feito: `grid:hierarchicalAsync`.
 - [ ] No Mac Catalyst as teclas ainda chegam ao mapa de ações enquanto um campo nativo edita texto: a navegação por foco deve ignorar setas e Enter enquanto há edição de texto ativa.
-- [ ] Reconstruir o AAR do Android com a correção do teclado que reabria depois do Back e validar no emulador.
+- [x] Reconstruir o AAR do Android com a correção do teclado que reabria depois do Back e validar no emulador. Feito e validado no emulador.
 - [x] Host headless com limite de textura igual ao das GPUs reais (patch do backend dummy do Sokol com os limites de desktop, 16384), para o teste de fumaça sem janela chegar ao gameplay do Tiny Island (hoje o backend dummy do Sokol recusa texturas acima de 1024 pixels e o mapa da ilha não carrega).
 - [x] Regras de commit e push na `main` por bloco, com prefixo e frase curta em minúsculas e sem coautor, a conferência de arquivos privados e temporários antes de cada commit e a proibição de citar outras engines, no CLAUDE.md. Commits feitos e publicados em `github.com/haylen-org/haylen`.
 - [x] Nenhuma menção a outras engines no repositório (código, comentários, testes, docs, README, CLAUDE.md e este documento).
