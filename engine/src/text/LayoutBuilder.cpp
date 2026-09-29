@@ -15,7 +15,7 @@ LayoutBuilder::LayoutBuilder(const RichTextDocument& source, const RichTextOptio
 LayoutBuilder::LayoutBuilder(const RichTextDocument& source, const RichTextOptions& layoutOptions, const RichTextRegistry* textRegistry, const FontFamily* baseFamily, Font* baseFont) : document(source), options(layoutOptions), registry(textRegistry), family(baseFamily), loneFont(baseFont), styleFonts(source.styles.size()) {}
 
 // The carriage return of CRLF stays at the end of its paragraph, where it draws nothing, so the characters keep counting the code points of the text.
-TextLayout LayoutBuilder::layoutPlainText(std::string_view text, const TextStyle& style, const FontFamily* baseFamily, Font* baseFont) {
+Layout LayoutBuilder::layoutPlainText(std::string_view text, const Style& style, const FontFamily* baseFamily, Font* baseFont) {
     RichTextDocument plain{.styles = {RichTextDocument::Style{}}};
     const std::u32string codePoints = core::Utf8::decode(text);
     // clang-format off
@@ -50,27 +50,27 @@ Direction LayoutBuilder::getDirection(const RichTextDocument::Paragraph& paragra
     return paragraph.direction.value_or(options.direction);
 }
 
-TextAlign LayoutBuilder::resolveAlign(TextAlign align, bool rightToLeft, bool lastLine) noexcept {
+Alignment LayoutBuilder::resolveAlign(Alignment align, bool rightToLeft, bool lastLine) noexcept {
     switch (align) {
-    case TextAlign::Start:
-        return rightToLeft ? TextAlign::Right : TextAlign::Left;
-    case TextAlign::End:
-        return rightToLeft ? TextAlign::Left : TextAlign::Right;
-    case TextAlign::Fill:
-        return lastLine ? resolveAlign(TextAlign::Start, rightToLeft, false) : TextAlign::Fill;
-    case TextAlign::Left:
-    case TextAlign::Center:
-    case TextAlign::Right:
+    case Alignment::Start:
+        return rightToLeft ? Alignment::Right : Alignment::Left;
+    case Alignment::End:
+        return rightToLeft ? Alignment::Left : Alignment::Right;
+    case Alignment::Fill:
+        return lastLine ? resolveAlign(Alignment::Start, rightToLeft, false) : Alignment::Fill;
+    case Alignment::Left:
+    case Alignment::Center:
+    case Alignment::Right:
         break;
     }
     return align;
 }
 
-float LayoutBuilder::alignOffset(TextAlign align, float room, float width) noexcept {
+float LayoutBuilder::alignOffset(Alignment align, float room, float width) noexcept {
     switch (align) {
-    case TextAlign::Center:
+    case Alignment::Center:
         return (room - width) * 0.5F;
-    case TextAlign::Right:
+    case Alignment::Right:
         return room - width;
     default:
         return 0.0F;
@@ -119,7 +119,7 @@ std::size_t LayoutBuilder::getLook(std::size_t style, const FontFamily::Selectio
     const RichTextDocument::Style& described = document.styles[style];
     const float size = getStyleFont(style).size;
     const bool field = face.font->isDistanceField();
-    TextLayout::Look look{
+    Layout::Look look{
         .font = face.font,
         .size = size,
         .outlineWidth = described.outlineWidth * options.scale,
@@ -158,7 +158,7 @@ void LayoutBuilder::shapeRun(const Source& source, std::size_t begin, std::size_
     const StyleFont& font = getStyleFont(style);
     Font& drawing = *face.font;
     const std::size_t look = getLook(style, face);
-    const TextLayout::Look& drawn = layout.looks[look];
+    const Layout::Look& drawn = layout.looks[look];
     const float factor = font.size / drawing.getNativeSize();
 
     shapedGlyphs.clear();
@@ -659,7 +659,7 @@ LayoutBuilder::Block LayoutBuilder::measureTable(const RichTextDocument::Paragra
     return block;
 }
 
-TextLayout LayoutBuilder::build() {
+Layout LayoutBuilder::build() {
     if (options.family) {
         layout.families.push_back(options.family);
     }
@@ -709,7 +709,7 @@ void LayoutBuilder::emitParagraph(const Block& block, math::Vec2 origin, float w
     const Flow& flow = block.flow;
     const bool rightToLeft = flow.rightToLeft;
     const float indent = paragraph.indent * getIndentUnit();
-    const TextAlign align = paragraph.align.value_or(options.align);
+    const Alignment align = paragraph.align.value_or(options.align);
     const float room = std::max(width - indent, 0.0F);
     const float left = rightToLeft ? origin.x : origin.x + indent;
     const std::size_t textStart = textOffset + flow.dropCapText.size();
@@ -733,7 +733,7 @@ void LayoutBuilder::emitParagraph(const Block& block, math::Vec2 origin, float w
     for (std::size_t lineIndex = 0; lineIndex < flow.lines.size(); ++lineIndex) {
         const Line& line = flow.lines[lineIndex];
         const bool lastLine = lineIndex + 1 == flow.lines.size() || !line.wrapped;
-        const TextAlign resolved = resolveAlign(align, rightToLeft, lastLine);
+        const Alignment resolved = resolveAlign(align, rightToLeft, lastLine);
         const float lineRoom = room - line.shift;
         const float lineTop = origin.y + line.top;
         const float baseline = lineTop + line.ascent;
@@ -752,7 +752,7 @@ void LayoutBuilder::emitParagraph(const Block& block, math::Vec2 origin, float w
         }
 
         float spacing = 0.0F;
-        if (resolved == TextAlign::Fill) {
+        if (resolved == Alignment::Fill) {
             const auto spaces = std::count_if(flow.pieces.begin() + static_cast<std::ptrdiff_t>(line.begin), flow.pieces.begin() + static_cast<std::ptrdiff_t>(line.visibleEnd), [](const Piece& piece) { return piece.space; });
             spacing = spaces > 0 ? (lineRoom - line.width) / static_cast<float>(spaces) : 0.0F;
         }
@@ -796,7 +796,7 @@ void LayoutBuilder::emitParagraph(const Block& block, math::Vec2 origin, float w
         for (std::size_t index = line.begin; index < line.end; ++index) {
             lineEnd = std::max(lineEnd, flow.pieces[index].end);
         }
-        layout.lines.push_back({.box = {contentLeft, lineTop, resolved == TextAlign::Fill ? lineRoom : line.width, lineHeight}, .baseline = baseline, .firstCharacter = firstCharacter, .endCharacter = layout.characters.size(), .begin = textStart + lineStart, .end = textStart + lineEnd, .rightToLeft = rightToLeft});
+        layout.lines.push_back({.box = {contentLeft, lineTop, resolved == Alignment::Fill ? lineRoom : line.width, lineHeight}, .baseline = baseline, .firstCharacter = firstCharacter, .endCharacter = layout.characters.size(), .begin = textStart + lineStart, .end = textStart + lineEnd, .rightToLeft = rightToLeft});
         lineStart = lineEnd;
         emitDecorations(flow, line, placed, baseline);
     }
@@ -822,7 +822,7 @@ void LayoutBuilder::emitPiece(const Flow& flow, std::u32string_view text, const 
         return;
     }
 
-    const TextLayout::Look& look = layout.looks[piece.look];
+    const Layout::Look& look = layout.looks[piece.look];
     for (std::size_t index = piece.firstGlyph; index < piece.firstGlyph + piece.glyphCount; ++index) {
         const PlacedGlyph& placed = flow.glyphs[index];
         if (!placed.glyph.visible) {
@@ -874,7 +874,7 @@ void LayoutBuilder::emitDecorations(const Flow& flow, const Line& line, const st
     // clang-format on
 
     const auto styleOf = [this](const Piece& piece) -> const RichTextDocument::Style& { return document.styles[piece.style]; };
-    runs([&](const Piece& piece) { return styleOf(piece).background; }, true, [&](math::Color color, const math::Rect& rect, std::size_t first, std::size_t last, bool rightToLeft) { addBox(TextLayout::Box::Kind::Background, rect, color, first, last, rightToLeft); });
+    runs([&](const Piece& piece) { return styleOf(piece).background; }, true, [&](math::Color color, const math::Rect& rect, std::size_t first, std::size_t last, bool rightToLeft) { addBox(Layout::Box::Kind::Background, rect, color, first, last, rightToLeft); });
 
     // clang-format off
     const auto decorate = [&](bool underline) {
@@ -886,7 +886,7 @@ void LayoutBuilder::emitDecorations(const Flow& flow, const Line& line, const st
             const float size = getStyleFont(style).size;
             const float thickness = std::max(1.0F, size * kDecorationThickness);
             const float y = underline ? baseline + size * kUnderlineOffset : baseline - size * kStrikeOffset;
-            addBox(underline ? TextLayout::Box::Kind::Underline : TextLayout::Box::Kind::Strike, {rect.x, y - thickness * 0.5F, rect.width, thickness}, getColor(style), first, last, rightToLeft);
+            addBox(underline ? Layout::Box::Kind::Underline : Layout::Box::Kind::Strike, {rect.x, y - thickness * 0.5F, rect.width, thickness}, getColor(style), first, last, rightToLeft);
         });
     };
     // clang-format on
@@ -897,7 +897,7 @@ void LayoutBuilder::emitDecorations(const Flow& flow, const Line& line, const st
     runs([&](const Piece& piece) { return styleOf(piece).hint; }, false, [&](std::size_t hint, const math::Rect& rect, std::size_t, std::size_t, bool) { layout.hints.push_back({.rect = rect, .index = hint}); });
 }
 
-void LayoutBuilder::addBox(TextLayout::Box::Kind kind, const math::Rect& rect, math::Color color, std::size_t firstCharacter, std::size_t lastCharacter, bool rightToLeft) {
+void LayoutBuilder::addBox(Layout::Box::Kind kind, const math::Rect& rect, math::Color color, std::size_t firstCharacter, std::size_t lastCharacter, bool rightToLeft) {
     layout.boxes.push_back({.kind = kind, .rect = rect, .color = color, .firstCharacter = firstCharacter, .lastCharacter = lastCharacter, .rightToLeft = rightToLeft});
 }
 
@@ -909,10 +909,10 @@ void LayoutBuilder::emitRule(const Block& block, math::Vec2 origin, float width)
     const float room = std::max(width - indent, 0.0F);
     const float length = room * paragraph.ruleWidth;
     const float left = rightToLeft ? origin.x : origin.x + indent;
-    const float x = left + alignOffset(resolveAlign(paragraph.align.value_or(TextAlign::Center), rightToLeft, false), room, length);
+    const float x = left + alignOffset(resolveAlign(paragraph.align.value_or(Alignment::Center), rightToLeft, false), room, length);
     const float margin = options.size * options.scale * kRuleMarginEms;
     const std::size_t next = layout.characters.size();
-    addBox(TextLayout::Box::Kind::Rule, {x, origin.y + margin, length, paragraph.ruleThickness * options.scale}, paragraph.ruleColor.value_or(options.color), next, next);
+    addBox(Layout::Box::Kind::Rule, {x, origin.y + margin, length, paragraph.ruleThickness * options.scale}, paragraph.ruleColor.value_or(options.color), next, next);
 }
 
 void LayoutBuilder::emitTable(const Block& block, math::Vec2 origin, float width) {
@@ -935,11 +935,11 @@ void LayoutBuilder::emitTable(const Block& block, math::Vec2 origin, float width
         const std::size_t next = layout.characters.size();
 
         if (cell.background) {
-            addBox(TextLayout::Box::Kind::CellBackground, area, *cell.background, next, next);
+            addBox(Layout::Box::Kind::CellBackground, area, *cell.background, next, next);
         }
         if (cell.border) {
             for (const math::Rect& edge : {math::Rect{area.x, area.y, area.width, border}, math::Rect{area.x, area.getBottom() - border, area.width, border}, math::Rect{area.x, area.y, border, area.height}, math::Rect{area.getRight() - border, area.y, border, area.height}}) {
-                addBox(TextLayout::Box::Kind::CellBorder, edge, *cell.border, next, next);
+                addBox(Layout::Box::Kind::CellBorder, edge, *cell.border, next, next);
             }
         }
         const float padding = cell.padding * options.scale;

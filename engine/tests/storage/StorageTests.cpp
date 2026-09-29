@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "haylen/core/Engine.hpp"
@@ -50,8 +51,8 @@ TEST(UserStorageTest, FailedWriteKeepsThePreviousFile) {
     UserStorage storage(directory.getPath());
     storage.writeText("save.json", "good");
 
-    // A folder where the temporary file goes makes the write fail before anything replaces the file, and the cleanup that cannot remove the folder keeps the original error.
-    std::filesystem::create_directories(directory.getPath() / "save.json.tmp" / "blocked");
+    // A folder where the temporary file of the second write goes makes that write fail before anything replaces the file, and the cleanup that cannot remove the folder keeps the original error.
+    std::filesystem::create_directories(directory.getPath() / "save.json.2.tmp" / "blocked");
     std::string error;
     try {
         storage.writeText("save.json", "lost");
@@ -264,10 +265,82 @@ TEST(StorageLuaTest, SavesSlotsPreferencesAndEngineState) {
     EXPECT_NE(fixture.lua("preferences.load()").find("preferences.json is damaged"), std::string::npos);
 }
 
+TEST(StorageLuaTest, RunsAsynchronousOperationsInOrderOnTheIoPool) {
+    test::EngineFixture fixture;
+    const int persisted = fixture.host().getPersistCount();
+    // clang-format off
+    fixture.runLua(R"(
+        storage = require('haylen.storage')
+        results = {}
+        storage.writeAsync('notes.txt', 'first')
+        storage.writeAsync('notes.txt', 'second')
+        require('async').spawn(function()
+            results[#results + 1] = storage.readAsync('notes.txt'):await()
+            results[#results + 1] = tostring(storage.writeJsonAsync('cache/world.json', {seed = 42}):await())
+            results[#results + 1] = storage.readJsonAsync('cache/world.json'):await().seed
+            results[#results + 1] = table.concat(storage.listAsync():await(), ',')
+            results[#results + 1] = tostring(storage.removeAsync('notes.txt'):await())
+            results[#results + 1] = select(2, storage.readAsync('notes.txt'):await())
+            results[#results + 1] = select(2, storage.readAsync('../outside.txt'):await())
+            results[#results + 1] = tostring(storage.writeSlotAsync('slot-1', {day = 3}, {day = 3}):await())
+            results[#results + 1] = storage.readSlotAsync('slot-1'):await().day
+            results[#results + 1] = storage.slotInfoAsync('slot-1'):await().summary.day
+            results[#results + 1] = tostring(storage.readSlotAsync('none'):await()) .. ' ' .. tostring(storage.slotInfoAsync('none'):await())
+            results[#results + 1] = #storage.listSlotsAsync():await()
+            results[#results + 1] = select(2, storage.writeSlotAsync('bad name', {}):await())
+            results[#results + 1] = tostring(storage.removeSlotAsync('slot-1'):await()) .. ' ' .. tostring(storage.removeSlotAsync('slot-1'):await())
+            done = true
+        end)
+    )");
+    // clang-format on
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(done)") == "true"; }));
+    // clang-format off
+    EXPECT_EQ(fixture.lua("return table.concat(results, ' | ')"), "second | true | 42 | cache/world.json,notes.txt | true | Storage file was not found: notes.txt | Paths cannot leave their root folder: ../outside.txt | "
+        "true | 3 | 3 | nil nil | 1 | A save slot name uses 1 to 64 letters, digits, dashes or underscores: bad name | true false");
+    // clang-format on
+    EXPECT_EQ(fixture.host().getPersistCount(), persisted + 3) << "the slot write and both removals flush before they settle";
+
+    // Values become JSON on the frame thread, so a value that cannot raises at once.
+    EXPECT_NE(fixture.lua("storage.writeJsonAsync('bad.json', {callback = print})").find("A function cannot be converted to JSON."), std::string::npos);
+    EXPECT_NE(fixture.lua("storage.writeSlotAsync('slot', {}, {print})").find("cannot be converted to JSON"), std::string::npos);
+    EXPECT_NE(fixture.lua("storage.readAsync()").find("error: "), std::string::npos);
+}
+
+TEST(StorageLuaTest, FinishesQueuedOperationsWhenTheAppStops) {
+    test::EngineFixture fixture;
+    fixture.runLua("local storage = require('haylen.storage') for index = 1, 50 do storage.writeSlotAsync('slot-' .. index, {index = index}) end");
+    plugins::StoragePlugin& plugin = fixture.engine().getPlugin<plugins::StoragePlugin>();
+    plugin.stop(fixture.engine());
+    EXPECT_EQ(plugin.getSaveSlots().list().size(), 50U);
+    EXPECT_EQ(plugin.getSaveSlots().read("slot-50"), (core::Json{{"index", 50}}));
+}
+
 TEST(StoragePluginTest, RequiresAStartedEngine) {
     plugins::StoragePlugin plugin;
     EXPECT_THROW((void)plugin.getSaveSlots(), std::logic_error);
     EXPECT_THROW((void)plugin.getPreferences(), std::logic_error);
+    EXPECT_THROW(plugin.queueOperation([] {}), std::logic_error);
+}
+
+TEST(UserStorageTest, WritesOfTheSameFileOnTwoThreadsNeverMix) {
+    const test::TemporaryDirectory directory;
+    UserStorage storage(directory.getPath());
+    const std::string first(1U << 20U, 'a');
+    const std::string second(1U << 20U, 'b');
+    // clang-format off
+    std::thread writer([&] {
+        for (int round = 0; round < 20; ++round) {
+            storage.writeText("shared.bin", first);
+        }
+    });
+    // clang-format on
+    for (int round = 0; round < 20; ++round) {
+        storage.writeText("shared.bin", second);
+    }
+    writer.join();
+    const std::string stored = storage.readText("shared.bin");
+    EXPECT_TRUE(stored == first || stored == second);
+    EXPECT_EQ(storage.list(""), (std::vector<std::string>{"shared.bin"}));
 }
 
 } // namespace haylen::storage

@@ -26,15 +26,19 @@
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/Shader.hpp"
+#include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen {
 
 namespace {
 
-// A material with two uniform blocks of every kind of member and a texture of its own.
-constexpr const char* kTintSource = R"(@include haylen/material.glsl
+class ShaderTest : public ::testing::Test {
+  protected:
+    // A material with two uniform blocks of every kind of member and a texture of its own.
+    static constexpr const char* kTintSource = R"(@include haylen/material.glsl
 
 @fs tint_fs
 @include_block haylen_fragment
@@ -63,8 +67,8 @@ void main() {
 @program tint haylen_vs tint_fs
 )";
 
-// A small shader file with a block, a texture and one program for the desktop GLSL of the headless backend, which the malformed cases change field by field.
-constexpr const char* kSmallShader = R"({"format": "haylen-shader", "version": 1, "name": "small",
+    // A small shader file with a block, a texture and one program for the desktop GLSL of the headless backend, which the malformed cases change field by field.
+    static constexpr const char* kSmallShader = R"({"format": "haylen-shader", "version": 1, "name": "small",
     "blocks": [{"name": "params", "slot": 1, "size": 16, "uniforms": [{"name": "tint", "type": "vec4", "count": 1, "offset": 0}]}],
     "textures": [{"name": "mask", "slot": 1}],
     "sources": ["void main() {}"],
@@ -77,47 +81,52 @@ constexpr const char* kSmallShader = R"({"format": "haylen-shader", "version": 1
         "samplers": [{"slot": 1, "stage": "fragment", "sampler_type": "filtering"}],
         "texture_sampler_pairs": [{"slot": 0, "stage": "fragment", "view_slot": 1, "sampler_slot": 1, "glsl_name": "mask_sampler"}]}}}})";
 
-// Parses the small shader with the values of `changes` written at their JSON pointers, and returns the error, which is empty when the file parses.
-std::string parseError(const core::Json& changes) {
-    core::Json document = core::Json::parse(kSmallShader);
-    for (const auto& [pointer, value] : changes.items()) {
-        document[core::Json::json_pointer(pointer)] = value;
-    }
-    try {
-        (void)graphics::Shader::parse(test::bytes(document.dump()));
-    } catch (const std::invalid_argument& error) {
-        return error.what();
-    }
-    return {};
-}
-
-// Compiles the material with make.py shaders, the way apps compile theirs, once for every test that needs it.
-const std::vector<std::uint8_t>& tintShader() {
-    // clang-format off
-    static const std::vector<std::uint8_t> compiled = [] {
-        const test::TemporaryDirectory app;
-        app.write("app.json", R"({"name": "Shaders", "identifier": "dev.haylen.shaders", "version": "1.0.0"})");
-        app.write("content/shaders/tint.glsl", kTintSource);
-        const std::string command = std::string("\"") + HAYLEN_PYTHON + "\" \"" + HAYLEN_MAKE_SCRIPT + "\" shaders \"" + app.getPath().string() + "\"";
-        if (std::system(command.c_str()) != 0) {
-            throw std::runtime_error("make.py shaders failed.");
+    // Parses the small shader with the values of `changes` written at their JSON pointers, and returns the error, which is empty when the file parses.
+    [[nodiscard]] static std::string parseError(const core::Json& changes) {
+        core::Json document = core::Json::parse(kSmallShader);
+        for (const auto& [pointer, value] : changes.items()) {
+            document[core::Json::json_pointer(pointer)] = value;
         }
-        std::ifstream file(app.getPath() / "content" / "shaders" / "tint.shader", std::ios::binary);
-        return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
-    }();
-    // clang-format on
-    return compiled;
-}
+        try {
+            (void)graphics::Shader::parse(test::TestFiles::bytes(document.dump()));
+        } catch (const std::invalid_argument& error) {
+            return error.what();
+        }
+        return {};
+    }
 
-float floatAt(const std::vector<std::uint8_t>& bytes, std::size_t offset) {
-    float value = 0.0F;
-    std::memcpy(&value, bytes.data() + offset, sizeof(value));
-    return value;
-}
+    // Compiles the material with make.py shaders, the way apps compile theirs, once for every test that needs it.
+    [[nodiscard]] static const std::vector<std::uint8_t>& tintShader() {
+        // clang-format off
+        static const std::vector<std::uint8_t> compiled = [] {
+            const test::TemporaryDirectory app;
+            app.write("app.json", R"({"name": "Shaders", "identifier": "dev.haylen.shaders", "version": "1.0.0"})");
+            app.write("content/shaders/tint.glsl", kTintSource);
+            const std::string command = std::string("\"") + HAYLEN_PYTHON + "\" \"" + HAYLEN_MAKE_SCRIPT + "\" shaders \"" + app.getPath().string() + "\"";
+            if (std::system(command.c_str()) != 0) {
+                throw std::runtime_error("make.py shaders failed.");
+            }
+            std::ifstream file(app.getPath() / "content" / "shaders" / "tint.shader", std::ios::binary);
+            return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+        }();
+        // clang-format on
+        return compiled;
+    }
+
+    [[nodiscard]] static float floatAt(const std::vector<std::uint8_t>& bytes, std::size_t offset) {
+        float value = 0.0F;
+        std::memcpy(&value, bytes.data() + offset, sizeof(value));
+        return value;
+    }
+};
+
+class MaterialTest : public ShaderTest {};
+
+class MaterialLuaTest : public ShaderTest {};
 
 } // namespace
 
-TEST(ShaderTest, CompilesWithMakePyIntoEveryProgramWithItsReflection) {
+TEST_F(ShaderTest, CompilesWithMakePyIntoEveryProgramWithItsReflection) {
     const graphics::Shader shader = graphics::Shader::parse(tintShader());
     EXPECT_EQ(shader.getName(), "tint");
     EXPECT_EQ(shader.getVersion(), 1U);
@@ -158,8 +167,8 @@ TEST(ShaderTest, CompilesWithMakePyIntoEveryProgramWithItsReflection) {
     EXPECT_FALSE(graphics::Shader::uniformTypeFromName("mat3").has_value());
 }
 
-TEST(ShaderTest, RejectsFilesThatAreNotShaders) {
-    const auto parse = [](const std::string& text) { return graphics::Shader::parse(test::bytes(text)); };
+TEST_F(ShaderTest, RejectsFilesThatAreNotShaders) {
+    const auto parse = [](const std::string& text) { return graphics::Shader::parse(test::TestFiles::bytes(text)); };
     EXPECT_THROW((void)parse("not json"), std::invalid_argument);
     EXPECT_THROW((void)parse(R"({"format": "haylen-shader", "version": 2})"), std::invalid_argument);
     EXPECT_THROW((void)parse(R"({"format": "haylen-shader", "version": 1, "name": "x", "blocks": [], "textures": [], "sources": [], "programs": [], "extra": 1})"), std::invalid_argument);
@@ -173,7 +182,7 @@ TEST(ShaderTest, RejectsFilesThatAreNotShaders) {
     EXPECT_THROW(target.replace(graphics::Shader::parse(tintShader())), std::logic_error);
 }
 
-TEST(ShaderTest, RejectsProgramsAndReflectionThatBreakTheGpuLimits) {
+TEST_F(ShaderTest, RejectsProgramsAndReflectionThatBreakTheGpuLimits) {
     const std::string malformed = "The shader file is malformed: ";
     const std::string program = "/programs/sprite/glsl430";
     EXPECT_EQ(parseError(core::Json::object()), "");
@@ -211,14 +220,14 @@ TEST(ShaderTest, RejectsProgramsAndReflectionThatBreakTheGpuLimits) {
     EXPECT_EQ(parseError({{"/textures/0/slot", 32}}), malformed + "The texture slot 32 is out of range.");
 }
 
-TEST(ShaderTest, ReportsAFullShaderPool) {
+TEST_F(ShaderTest, ReportsAFullShaderPool) {
     test::EngineFixture fixture;
     graphics::Device& device = fixture.engine().getGraphics();
     std::vector<graphics::Shader> shaders;
     std::string error;
     try {
         while (shaders.size() <= static_cast<std::size_t>(graphics::Gpu::kShaderPoolSize)) {
-            shaders.push_back(graphics::Shader::parse(test::bytes(kSmallShader)));
+            shaders.push_back(graphics::Shader::parse(test::TestFiles::bytes(kSmallShader)));
             shaders.back().getResource()->graveyard = device.getState().graveyard;
             (void)shaders.back().getResource()->getProgram("sprite");
         }
@@ -231,7 +240,7 @@ TEST(ShaderTest, ReportsAFullShaderPool) {
     device.collectGarbage();
 }
 
-TEST(MaterialTest, SetsUniformsByNameAndPacksThemInTheirBlocks) {
+TEST_F(MaterialTest, SetsUniformsByNameAndPacksThemInTheirBlocks) {
     graphics2d::Material material(graphics::Shader::parse(tintShader()));
     EXPECT_TRUE(material.isValid());
     EXPECT_EQ(material.getShader().getName(), "tint");
@@ -283,10 +292,10 @@ TEST(MaterialTest, SetsUniformsByNameAndPacksThemInTheirBlocks) {
     EXPECT_THROW(graphics2d::Material{graphics::Shader{}}, std::invalid_argument);
     EXPECT_THROW((void)graphics2d::Material{}.getShader(), std::logic_error);
     const std::string bare = R"({"format": "haylen-shader", "version": 1, "name": "bare", "blocks": [], "textures": [], "sources": [], "programs": {"sprite": {}}})";
-    EXPECT_THROW(graphics2d::Material{graphics::Shader::parse(test::bytes(bare))}, std::invalid_argument);
+    EXPECT_THROW(graphics2d::Material{graphics::Shader::parse(test::TestFiles::bytes(bare))}, std::invalid_argument);
 }
 
-TEST(MaterialTest, DrawsEveryKindOfDrawAndPostProcessesCanvases) {
+TEST_F(MaterialTest, DrawsEveryKindOfDrawAndPostProcessesCanvases) {
     const std::string compiled(tintShader().begin(), tintShader().end());
     test::EngineFixture fixture({{"content/shaders/tint.shader", compiled}});
     graphics::Device& device = fixture.engine().getGraphics();
@@ -331,7 +340,7 @@ TEST(MaterialTest, DrawsEveryKindOfDrawAndPostProcessesCanvases) {
     fixture.frames(1);
 }
 
-TEST(MaterialTest, ReloadsItsShaderInPlace) {
+TEST_F(MaterialTest, ReloadsItsShaderInPlace) {
     const std::string compiled(tintShader().begin(), tintShader().end());
     test::EngineFixture fixture({{"content/shaders/tint.shader", compiled}});
     assets::Manager& assets = fixture.engine().getAssets();
@@ -341,17 +350,17 @@ TEST(MaterialTest, ReloadsItsShaderInPlace) {
     EXPECT_EQ(assets.shader("shaders/tint.shader"), shader);
 
     // A reload keeps every handle and the values that still fit, and the next draws create the programs again.
-    fixture.package().setFile("content/shaders/tint.shader", test::bytes(compiled));
+    fixture.package().setFile("content/shaders/tint.shader", test::TestFiles::bytes(compiled));
     EXPECT_EQ(assets.reload("shaders/tint.shader"), 1U);
     EXPECT_EQ(shader.getVersion(), 2U);
     EXPECT_EQ(material.get("strength"), std::vector<float>{0.25F});
-    fixture.package().setFile("content/shaders/tint.shader", test::bytes("{}"));
+    fixture.package().setFile("content/shaders/tint.shader", test::TestFiles::bytes("{}"));
     EXPECT_THROW((void)assets.reload("shaders/tint.shader"), std::invalid_argument);
     EXPECT_EQ(shader.getVersion(), 2U);
     EXPECT_THROW((void)assets.load("shader", "shaders/tint.shader", core::Json{{"filter", "linear"}}), std::invalid_argument);
 }
 
-TEST(MaterialLuaTest, LoadsShadersAndDrawsWithMaterials) {
+TEST_F(MaterialLuaTest, LoadsShadersAndDrawsWithMaterials) {
     const std::string compiled(tintShader().begin(), tintShader().end());
     test::EngineFixture fixture({{"content/shaders/tint.shader", compiled}});
     fixture.runLua(R"(

@@ -46,7 +46,7 @@ class FontLua final {
     [[nodiscard]] static char32_t readCharacter(lua_State* L, int index);
     [[nodiscard]] static std::shared_ptr<text::Font> findFace(const text::FontFamily& family, const text::Font* font);
     static int pushSelection(lua_State* L, const text::FontFamily& family, const text::FontFamily::Selection& selection);
-    static int pushLayout(lua_State* L, const text::TextLayout& laid, const text::TextStyle& style, const std::function<std::shared_ptr<text::Font>(const text::Font*)>& fontOf);
+    static int pushLayout(lua_State* L, const text::Layout& laid, const text::Style& style, const std::function<std::shared_ptr<text::Font>(const text::Font*)>& fontOf);
     static int pushGlyph(lua_State* L, text::Font& font, std::uint32_t index);
     [[nodiscard]] static std::vector<text::Font::ShapedGlyph> shapeText(text::Font& font, std::u32string_view text, text::Direction direction, std::string_view language);
 

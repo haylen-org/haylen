@@ -317,8 +317,8 @@ const Map& TiledLua::checkMap(lua_State* L) {
     return checkRenderer(L).getMap();
 }
 
-// Creates a playable map from a loaded map asset with newMap(asset).
-int TiledLua::newMap(lua_State* L) {
+// Creates a playable map from a loaded map asset with newMapRenderer(asset).
+int TiledLua::newMapRenderer(lua_State* L) {
     const Map& data = lua::Userdata::check<Map>(L, 1);
     lua::Userdata::emplace<MapRenderer>(L, std::make_shared<MapRenderer>(data, lua::Runtime::getEngine(L).getDefaultFont()));
     return 1;
@@ -614,7 +614,7 @@ int TiledLua::tileId(lua_State* L) {
 
 int TiledLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"newMap", &lua::Binding::native<&newMap>},
+        {"newMapRenderer", &lua::Binding::native<&newMapRenderer>},
         {"tileId", &tileId},
         {nullptr, nullptr},
     };

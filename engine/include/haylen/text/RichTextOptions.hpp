@@ -7,9 +7,9 @@
 
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/math/Color.hpp"
+#include "haylen/text/Alignment.hpp"
 #include "haylen/text/Direction.hpp"
 #include "haylen/text/FontFamily.hpp"
-#include "haylen/text/TextAlign.hpp"
 
 namespace haylen::text {
 
@@ -21,7 +21,7 @@ struct RichTextOptions {
     bool italic = false;
     math::Color color = math::Color::white();
     float maxWidth = 0.0F;
-    TextAlign align = TextAlign::Start;
+    Alignment align = Alignment::Start;
     Direction direction = Direction::Auto;
     std::string language;
     float lineSpacing = 1.2F;

@@ -13,7 +13,7 @@ local Spawning = haylen.class('Spawning', sample.Test)
 local kTouchDistance = 28
 
 function Spawning:enter()
-    self.map = tiled.newMap(assets.load('maps/spawning.tmj'))
+    self.map = tiled.newMapRenderer(assets.load('maps/spawning.tmj'))
     self.texture = self.map:tilesets()[1].texture
     local bounds = self.map.bounds
     Spawning.super.enter(self, {

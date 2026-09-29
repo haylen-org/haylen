@@ -60,6 +60,40 @@ DeviceState::ImageViews DeviceState::createImage(int width, int height, sg_pixel
     return result;
 }
 
+Texture DeviceState::createDynamicTexture(int width, int height, sg_pixel_format format, std::span<const std::uint8_t> pixels, Texture::Options options) {
+    sg_image_desc imageDesc{};
+    imageDesc.usage.immutable = false;
+    imageDesc.usage.dynamic_update = true;
+    imageDesc.width = width;
+    imageDesc.height = height;
+    imageDesc.pixel_format = format;
+    imageDesc.label = "haylen-dynamic-texture";
+
+    auto resource = std::make_shared<TextureResource>();
+    resource->image = Gpu::makeImage(imageDesc);
+    sg_view_desc viewDesc{};
+    viewDesc.texture.image = resource->image;
+    viewDesc.label = imageDesc.label;
+    resource->view = sg_make_view(&viewDesc);
+    resource->tracked.setBytes(getImageBytes(width, height, format));
+    resource->sampler = getSampler(options);
+    resource->width = width;
+    resource->height = height;
+    resource->id = nextTextureId++;
+    resource->options = options;
+    resource->dynamic = true;
+    resource->graveyard = graveyard;
+    stagePixels(resource, pixels);
+    return Texture(std::move(resource));
+}
+
+void DeviceState::stagePixels(const std::shared_ptr<TextureResource>& resource, std::span<const std::uint8_t> pixels) {
+    if (resource->staged.empty()) {
+        changedTextures.push_back(resource);
+    }
+    resource->staged.assign(pixels.begin(), pixels.end());
+}
+
 std::size_t DeviceState::getImageBytes(int width, int height, sg_pixel_format format) {
     return static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * static_cast<std::size_t>(sg_query_pixelformat(format).bytes_per_pixel);
 }

@@ -15,12 +15,14 @@
 #include "haylen/debug/Stats.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/EnumNames.hpp"
-#include "haylen/lua/Reference.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
+#include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
+#include "haylen/lua/Userdata.hpp"
 #include "haylen/plugins/DebugPlugin.hpp"
 #include "haylen/plugins/HotReloadPlugin.hpp"
+#include "lua/Owners.hpp"
 
 namespace haylen::lua {
 
@@ -210,15 +212,27 @@ int DebugLua::stats(lua_State* L) {
     return 1;
 }
 
-// Adds a monitor with addMonitor(name, fn), where fn returns the number to show and runs once per frame.
+// Adds a monitor with addMonitor(name, fn, {owner}), where fn returns the number to show and runs once per frame, and returns its connection. An owner holds the function and removes the monitor when it ends.
 int DebugLua::addMonitor(lua_State* L) {
     std::string name = lua::Stack::read<std::string>(L, 1);
     luaL_checktype(L, 2, LUA_TFUNCTION);
-    auto function = std::make_shared<lua::Reference>(L, 2);
+    int owner = 0;
+    if (!lua_isnoneornil(L, 3)) {
+        luaL_checktype(L, 3, LUA_TTABLE);
+        lua::Table::checkFields(L, 3, {kMonitorFields});
+        if (lua_getfield(L, 3, "owner") != LUA_TNIL) {
+            lua::Owners::checkOwner(L, -1);
+            owner = lua_gettop(L);
+        }
+    }
+
+    auto function = std::make_shared<lua::Owners::Function>(L, 2, owner);
+    lua_State* main = lua::Runtime::getMainThread(L);
     // clang-format off
-    getPlugin(L).addMonitor(std::move(name), [function] {
-        lua_State* main = function->getState();
-        function->push(main);
+    core::Connection connection = getPlugin(L).addMonitor(std::move(name), [function, main]() -> std::optional<double> {
+        if (!function->push(main)) {
+            return std::nullopt;
+        }
         lua::Runtime::protectedCall(main, 0, 1);
         int isNumber = 0;
         const lua_Number value = lua_tonumberx(main, -1, &isNumber);
@@ -229,7 +243,11 @@ int DebugLua::addMonitor(lua_State* L) {
         return static_cast<double>(value);
     });
     // clang-format on
-    return 0;
+    if (owner != 0) {
+        lua::Owners::add(L, owner, connection);
+    }
+    lua::Userdata::emplace<core::Connection>(L, std::move(connection));
+    return 1;
 }
 
 int DebugLua::removeMonitor(lua_State* L) {
@@ -239,7 +257,7 @@ int DebugLua::removeMonitor(lua_State* L) {
 
 // Returns {name, value, history} for every monitor, with the history oldest first.
 int DebugLua::monitors(lua_State* L) {
-    const std::vector<std::shared_ptr<Monitor>>& all = getPlugin(L).getMonitors();
+    const std::vector<std::shared_ptr<Monitor>> all = getPlugin(L).getMonitors();
     lua_createtable(L, static_cast<int>(all.size()), 0);
     for (std::size_t index = 0; index < all.size(); ++index) {
         lua_createtable(L, 0, 3);

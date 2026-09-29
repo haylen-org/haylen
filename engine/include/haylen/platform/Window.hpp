@@ -1,9 +1,12 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/math/Polygon.hpp"
@@ -40,6 +43,10 @@ class Window {
     };
 
     virtual ~Window() = default;
+
+    // Resolves the orientation names "landscape", "portrait" and "any" that app.json and Lua share.
+    [[nodiscard]] static std::optional<Orientation> orientationFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view orientationName(Orientation value) noexcept;
 
     [[nodiscard]] virtual math::Vec2 getFramebufferSize() const noexcept = 0;
     [[nodiscard]] virtual float getDpiScale() const noexcept = 0;
@@ -98,6 +105,9 @@ class Window {
 
     // Returns the monitor that holds most of the window, or the primary monitor while the window is off every monitor.
     [[nodiscard]] Monitor getCurrentMonitor() const;
+
+  private:
+    static const std::array<std::pair<std::string_view, Orientation>, 3> kOrientationNames;
 };
 
 } // namespace haylen::platform

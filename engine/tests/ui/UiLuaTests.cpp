@@ -19,6 +19,7 @@
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen::ui {
 
@@ -64,11 +65,14 @@ class UiLuaTest : public ::testing::Test {
     test::EngineFixture fixture;
 };
 
-// Reads a test font.
-std::string readTestFont(const std::string& name) {
-    std::ifstream file(std::string(HAYLEN_TEST_FONTS) + "/" + name, std::ios::binary);
-    return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
-}
+class UiLuaFontTest : public ::testing::Test {
+  protected:
+    // Reads a test font.
+    [[nodiscard]] static std::string readTestFont(const std::string& name) {
+        std::ifstream file(std::string(HAYLEN_TEST_FONTS) + "/" + name, std::ios::binary);
+        return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+    }
+};
 
 } // namespace
 
@@ -344,7 +348,7 @@ TEST_F(UiLuaTest, SwitchesThemesAndReadsInputCapture) {
 }
 
 TEST(UiLuaThemeTest, ReadsAndAddsThemes) {
-    const std::vector<std::uint8_t> panel = test::pngImage(24, 24, 0xFFFFFFFFU);
+    const std::vector<std::uint8_t> panel = test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU);
     test::EngineFixture fixture({{"content/ui/panel.png", std::string(panel.begin(), panel.end())}});
     fixture.runLua("ui = require('haylen.ui')");
     EXPECT_EQ(fixture.lua("return ui.themeColor('accent'):toHex() .. ' ' .. ui.themeMetric('controlHeight') .. ' ' .. ui.themeMetric('caretWidth')"), "#FF4C7DFF 64.0 2.0");
@@ -375,7 +379,7 @@ TEST(UiLuaThemeTest, ReadsAndAddsThemes) {
 }
 
 // Labels and every other text component draw with the faces of the family of their role, bold where the role asks for it, and take the characters the face lacks from the fallbacks, while rich text of a role lines up with them.
-TEST(UiLuaFontTest, DrawsTextComponentsWithTheFacesAndFallbacksOfAFamily) {
+TEST_F(UiLuaFontTest, DrawsTextComponentsWithTheFacesAndFallbacksOfAFamily) {
     test::EngineFixture fixture({{"content/fonts/cjk.ttf", readTestFont("mplus_1p_regular.ttf")}, {"content/fonts/bold.ttf", readTestFont("crimson_text_bold.ttf")}});
     // clang-format off
     fixture.runLua(R"(

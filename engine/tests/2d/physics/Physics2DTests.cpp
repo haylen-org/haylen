@@ -3,31 +3,37 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <numbers>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/physics/World.hpp"
 #include "haylen/core/SceneManager.hpp"
+#include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen {
 
 namespace {
 
-void simulate(physics2d::World& world, float seconds) {
-    for (float time = 0.0F; time < seconds; time += 1.0F / 60.0F) {
-        world.step(1.0F / 60.0F);
+class PhysicsWorldTest : public ::testing::Test {
+  protected:
+    static void simulate(physics2d::World& world, float seconds) {
+        for (float time = 0.0F; time < seconds; time += 1.0F / 60.0F) {
+            world.step(1.0F / 60.0F);
+        }
     }
-}
+};
 
 } // namespace
 
-TEST(PhysicsWorldTest, DropsBodiesOntoGroundAndReportsContacts) {
+TEST_F(PhysicsWorldTest, DropsBodiesOntoGroundAndReportsContacts) {
     physics2d::World world({.gravity = {0.0F, 980.0F}, .pixelsPerMeter = 64.0F});
     physics2d::Body ground = world.createBody({.type = physics2d::Body::Type::Static, .position = {0.0F, 400.0F}});
     ground.addBox({1000.0F, 20.0F});
@@ -59,7 +65,7 @@ TEST(PhysicsWorldTest, DropsBodiesOntoGroundAndReportsContacts) {
     crate.destroy();
 }
 
-TEST(PhysicsWorldTest, MovesAndConfiguresBodies) {
+TEST_F(PhysicsWorldTest, MovesAndConfiguresBodies) {
     physics2d::World world({.gravity = {}});
     physics2d::Body body = world.createBody({.position = {10.0F, 20.0F}, .rotation = 0.5F, .velocity = {64.0F, 0.0F}, .linearDamping = 0.5F, .angularDamping = 0.25F, .gravityScale = 2.0F, .fixedRotation = true, .bullet = true});
     body.addCircle(16.0F);
@@ -105,7 +111,7 @@ TEST(PhysicsWorldTest, MovesAndConfiguresBodies) {
     EXPECT_EQ(world.getGravity(), math::Vec2(0.0F, 10.0F));
 }
 
-TEST(PhysicsWorldTest, UsesWorldUnitsForTorquesAndMotors) {
+TEST_F(PhysicsWorldTest, UsesWorldUnitsForTorquesAndMotors) {
     // A disc spins and a slider moves by the same amounts at every scale, because inertia, torque and force all use world units.
     for (const float scale : {32.0F, 64.0F}) {
         physics2d::World world({.gravity = {}, .pixelsPerMeter = scale});
@@ -132,7 +138,7 @@ TEST(PhysicsWorldTest, UsesWorldUnitsForTorquesAndMotors) {
     }
 }
 
-TEST(PhysicsWorldTest, SensesQueriesAndCastsRays) {
+TEST_F(PhysicsWorldTest, SensesQueriesAndCastsRays) {
     physics2d::World world({.gravity = {0.0F, 980.0F}});
     physics2d::Body zone = world.createBody({.type = physics2d::Body::Type::Static, .position = {0.0F, 200.0F}});
     const physics2d::Shape sensor = zone.addBox({200.0F, 40.0F}, {.sensor = true});
@@ -176,7 +182,7 @@ TEST(PhysicsWorldTest, SensesQueriesAndCastsRays) {
     EXPECT_EQ(moved.getFilter().mask, 1U);
 }
 
-TEST(PhysicsWorldTest, BuildsPolygonsChainsAndCapsules) {
+TEST_F(PhysicsWorldTest, BuildsPolygonsChainsAndCapsules) {
     physics2d::World world;
     physics2d::Body body = world.createBody({.type = physics2d::Body::Type::Static});
 
@@ -207,7 +213,7 @@ TEST(PhysicsWorldTest, BuildsPolygonsChainsAndCapsules) {
     EXPECT_THROW(physics2d::World({.pixelsPerMeter = 0.0F}), std::invalid_argument);
 }
 
-TEST(PhysicsWorldTest, RejectsWhatBox2DCannotHoldBeforeCreatingIt) {
+TEST_F(PhysicsWorldTest, RejectsWhatBox2DCannotHoldBeforeCreatingIt) {
     physics2d::World world;
     physics2d::Body body = world.createBody();
     const std::vector<math::Vec2> outline{{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}};
@@ -230,7 +236,7 @@ TEST(PhysicsWorldTest, RejectsWhatBox2DCannotHoldBeforeCreatingIt) {
     EXPECT_EQ(world.queryRect({0.0F, 0.0F, 20.0F, 0.0F}).size(), 1U);
 }
 
-TEST(PhysicsWorldTest, ReportsWhenBox2DHoldsTooManyWorlds) {
+TEST_F(PhysicsWorldTest, ReportsWhenBox2DHoldsTooManyWorlds) {
     std::vector<std::unique_ptr<physics2d::World>> worlds;
     EXPECT_THROW(for (int index = 0; index < 1000; ++index) { worlds.push_back(std::make_unique<physics2d::World>()); }, std::runtime_error);
 
@@ -239,7 +245,54 @@ TEST(PhysicsWorldTest, ReportsWhenBox2DHoldsTooManyWorlds) {
     EXPECT_NO_THROW(worlds.push_back(std::make_unique<physics2d::World>()));
 }
 
-TEST(PhysicsWorldTest, ReportsTheGeometryAndOutlinesOfShapes) {
+// A new world reuses the slot of a destroyed one and hands out the same body, shape and joint ids, so a handle checks the generation of its world as well.
+TEST_F(PhysicsWorldTest, DetectsHandlesOfADestroyedWorldWhoseSlotANewWorldReuses) {
+    physics2d::Body staleBody;
+    physics2d::Shape staleShape;
+    physics2d::Joint staleJoint;
+    {
+        physics2d::World old;
+        staleBody = old.createBody();
+        staleShape = staleBody.addBox({10.0F, 10.0F});
+        staleJoint = old.createJoint(physics2d::Joint::Type::Weld, staleBody, old.createBody({.position = {20.0F, 0.0F}}));
+    }
+
+    physics2d::World reused;
+    physics2d::Body body = reused.createBody();
+    const physics2d::Shape shape = body.addBox({10.0F, 10.0F});
+    const physics2d::Joint joint = reused.createJoint(physics2d::Joint::Type::Weld, body, reused.createBody({.position = {20.0F, 0.0F}}));
+    EXPECT_EQ(body.getId(), staleBody.getId());
+    EXPECT_EQ(shape.getId(), staleShape.getId());
+    EXPECT_EQ(joint.getId(), staleJoint.getId());
+
+    EXPECT_TRUE(body.isValid());
+    EXPECT_FALSE(staleBody.isValid());
+    EXPECT_FALSE(staleShape.isValid());
+    EXPECT_FALSE(staleJoint.isValid());
+    EXPECT_NE(staleBody, body);
+    EXPECT_NE(staleShape, shape);
+    for (const auto& [use, message] : std::array<std::pair<std::function<void()>, std::string>, 3>{{
+             {[&staleBody] { (void)staleBody.getPosition(); }, "The physics world of the body was destroyed."},
+             {[&staleShape] { (void)staleShape.getBounds(); }, "The physics world of the shape was destroyed."},
+             {[&staleJoint] { (void)staleJoint.getMotorSpeed(); }, "The physics world of the joint was destroyed."},
+         }}) {
+        try {
+            use();
+            ADD_FAILURE() << message;
+        } catch (const std::logic_error& error) {
+            EXPECT_EQ(std::string(error.what()), message);
+        }
+    }
+
+    // Destroying through a stale handle leaves the new world alone.
+    staleBody.destroy();
+    staleShape.destroy();
+    staleJoint.destroy();
+    EXPECT_TRUE(body.isValid() && shape.isValid() && joint.isValid());
+    EXPECT_EQ(reused.getBodyCount(), 2U);
+}
+
+TEST_F(PhysicsWorldTest, ReportsTheGeometryAndOutlinesOfShapes) {
     physics2d::World world;
     physics2d::Body body = world.createBody({.type = physics2d::Body::Type::Static, .position = {100.0F, 50.0F}, .rotation = std::numbers::pi_v<float> * 0.5F});
     // clang-format off
@@ -312,7 +365,7 @@ TEST(PhysicsWorldTest, ReportsTheGeometryAndOutlinesOfShapes) {
     EXPECT_FALSE(physics2d::Shape::kindFromName("triangle").has_value());
 }
 
-TEST(PhysicsWorldTest, ConnectsBodiesWithJoints) {
+TEST_F(PhysicsWorldTest, ConnectsBodiesWithJoints) {
     physics2d::World world({.gravity = {0.0F, 980.0F}});
     physics2d::Body anchor = world.createBody({.type = physics2d::Body::Type::Static, .position = {0.0F, 0.0F}});
     anchor.addCircle(4.0F);
@@ -384,7 +437,7 @@ TEST(PhysicsWorldTest, ConnectsBodiesWithJoints) {
     EXPECT_FALSE(physics2d::Body::typeFromName("ghost").has_value());
 }
 
-TEST(PhysicsWorldTest, MeasuresJointAnglesFromThePoseAtCreation) {
+TEST_F(PhysicsWorldTest, MeasuresJointAnglesFromThePoseAtCreation) {
     // A tight revolute limit and a prismatic joint both keep a body turned the way it was when they joined it.
     physics2d::World world({.gravity = {}});
     const physics2d::Body anchor = world.createBody({.type = physics2d::Body::Type::Static});
@@ -401,7 +454,7 @@ TEST(PhysicsWorldTest, MeasuresJointAnglesFromThePoseAtCreation) {
     EXPECT_GT(slider.getPosition().x, 10.0F);
 }
 
-TEST(PhysicsWorldTest, DrawsDebugShapes) {
+TEST_F(PhysicsWorldTest, DrawsDebugShapes) {
     test::EngineFixture fixture;
     physics2d::World world;
     physics2d::Body body = world.createBody({.type = physics2d::Body::Type::Static});

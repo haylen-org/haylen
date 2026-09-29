@@ -54,8 +54,8 @@ void Filter::requireQ(float value) {
 }
 
 void Filter::requireGain(float value) {
-    if (!std::isfinite(value)) {
-        throw std::invalid_argument("A filter gain must be a finite number of decibels.");
+    if (!(value >= -kMaxGain && value <= kMaxGain)) {
+        throw std::invalid_argument("A filter gain must be between -96 and 96 decibels.");
     }
 }
 

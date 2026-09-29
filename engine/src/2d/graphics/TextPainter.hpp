@@ -8,8 +8,8 @@
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Vec2.hpp"
-#include "haylen/text/TextLayout.hpp"
-#include "haylen/text/TextStyle.hpp"
+#include "haylen/text/Layout.hpp"
+#include "haylen/text/Style.hpp"
 
 namespace haylen::graphics2d {
 
@@ -25,10 +25,10 @@ class TextPainter final {
     explicit TextPainter(graphics::Texture whiteTexture);
 
     // Paints a layout of plain text in the color, outline and shadow of the style, scaled and turned as one piece around the position, where the anchor of the style lands.
-    void paintText(const text::TextLayout& layout, math::Vec2 position, const text::TextStyle& style, math::Vec2 scale = {1.0F, 1.0F});
+    void paintText(const text::Layout& layout, math::Vec2 position, const text::Style& style, math::Vec2 scale = {1.0F, 1.0F});
 
     // Paints rich text with the top-left of its block at the position, scaled from that corner and with every color multiplied by the tint.
-    void paintRichText(const text::TextLayout& layout, math::Vec2 position, math::Vec2 scale = {1.0F, 1.0F}, math::Color tint = math::Color::white());
+    void paintRichText(const text::Layout& layout, math::Vec2 position, math::Vec2 scale = {1.0F, 1.0F}, math::Color tint = math::Color::white());
 
     [[nodiscard]] const std::vector<Batch>& getBatches() const noexcept {
         return batches;
@@ -36,15 +36,15 @@ class TextPainter final {
 
   private:
     // A glyph leans around its baseline, so its pivot sits on the baseline at its left edge.
-    [[nodiscard]] SpriteInstance placeGlyph(const text::TextLayout::Glyph& glyph, math::Vec2 offset, math::Color color, math::Color flash) const noexcept;
+    [[nodiscard]] SpriteInstance placeGlyph(const text::Layout::Glyph& glyph, math::Vec2 offset, math::Color color, math::Color flash) const noexcept;
     [[nodiscard]] math::Vec2 place(math::Vec2 local) const noexcept;
 
     void add(Program program, const graphics::Texture& texture, const GpuInstance& instance);
-    void paintPlainGlyphs(const text::TextLayout& layout, const text::TextStyle& style, bool shadow);
-    void paintBoxes(const text::TextLayout& layout, bool underText);
-    void paintGlows(const text::TextLayout& layout);
-    void paintShadows(const text::TextLayout& layout);
-    void paintGlyphs(const text::TextLayout& layout);
+    void paintPlainGlyphs(const text::Layout& layout, const text::Style& style, bool shadow);
+    void paintBoxes(const text::Layout& layout, bool underText);
+    void paintGlows(const text::Layout& layout);
+    void paintShadows(const text::Layout& layout);
+    void paintGlyphs(const text::Layout& layout);
 
     graphics::Texture white;
     std::vector<Batch> batches;

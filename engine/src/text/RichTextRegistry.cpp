@@ -16,15 +16,15 @@ RichTextRegistry::RichTextRegistry(std::shared_ptr<FontFamily> defaultFamily) : 
 }
 
 void RichTextRegistry::registerBuiltInEffects() {
-    effects.insert_or_assign("wave", &TextEffect::wave);
-    effects.insert_or_assign("shake", &TextEffect::shake);
-    effects.insert_or_assign("tornado", &TextEffect::tornado);
-    effects.insert_or_assign("fade", &TextEffect::fade);
-    effects.insert_or_assign("rainbow", &TextEffect::rainbow);
-    effects.insert_or_assign("pulse", &TextEffect::pulse);
+    effects.insert_or_assign("wave", &Effect::wave);
+    effects.insert_or_assign("shake", &Effect::shake);
+    effects.insert_or_assign("tornado", &Effect::tornado);
+    effects.insert_or_assign("fade", &Effect::fade);
+    effects.insert_or_assign("rainbow", &Effect::rainbow);
+    effects.insert_or_assign("pulse", &Effect::pulse);
 }
 
-void RichTextRegistry::registerEffect(std::string name, TextEffect::Function effect) {
+void RichTextRegistry::registerEffect(std::string name, Effect::Function effect) {
     if (name.empty() || name.find_first_of(" =[]/") != std::string::npos) {
         throw std::invalid_argument("A text effect name must be a single word, not '" + name + "'.");
     }
@@ -40,7 +40,7 @@ void RichTextRegistry::registerEffect(std::string name, TextEffect::Function eff
     effects.insert_or_assign(std::move(name), std::move(effect));
 }
 
-const TextEffect::Function* RichTextRegistry::findEffect(std::string_view name) const noexcept {
+const Effect::Function* RichTextRegistry::findEffect(std::string_view name) const noexcept {
     const auto found = effects.find(name);
     return found != effects.end() ? &found->second : nullptr;
 }

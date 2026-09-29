@@ -29,7 +29,12 @@ std::string_view Joint::typeName(Type value) noexcept {
     return kTypeNames.front().first;
 }
 
+Joint::Joint(World* owner, std::uint64_t handle) noexcept : world(owner), worldHandle(owner != nullptr ? owner->getHandle() : 0), id(handle) {}
+
 std::uint64_t Joint::checkedId() const {
+    if (world != nullptr && !b2World_IsValid(b2LoadWorldId(worldHandle))) {
+        throw std::logic_error("The physics world of the joint was destroyed.");
+    }
     if (!isValid()) {
         throw std::logic_error("The physics joint was destroyed.");
     }
@@ -37,7 +42,7 @@ std::uint64_t Joint::checkedId() const {
 }
 
 bool Joint::isValid() const noexcept {
-    return world != nullptr && b2Joint_IsValid(b2LoadJointId(id));
+    return world != nullptr && b2World_IsValid(b2LoadWorldId(worldHandle)) && b2Joint_IsValid(b2LoadJointId(id));
 }
 
 void Joint::destroy() {

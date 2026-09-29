@@ -1,5 +1,6 @@
 #include "haylen/lua/Promise.hpp"
 
+#include <stdexcept>
 #include <utility>
 
 #include "haylen/core/Engine.hpp"
@@ -18,7 +19,14 @@ void Promise::push(lua_State* L) const {
     varn::async::Promise::push(L, promise);
 }
 
+// A value Lua cannot hold would fail while the awaiting coroutines resume and leave them waiting forever, so it rejects the promise instead.
 void Promise::resolve(core::Json value) const {
+    try {
+        JsonConverter::validate(value);
+    } catch (const std::invalid_argument& error) {
+        reject(error.what());
+        return;
+    }
     promise->resolveCustom([value = std::move(value)](lua_State* L) { JsonConverter::push(L, value); });
 }
 

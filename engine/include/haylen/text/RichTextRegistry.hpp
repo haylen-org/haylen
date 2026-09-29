@@ -10,8 +10,8 @@
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/text/Effect.hpp"
 #include "haylen/text/FontFamily.hpp"
-#include "haylen/text/TextEffect.hpp"
 
 namespace haylen::text {
 
@@ -32,8 +32,8 @@ class RichTextRegistry final {
     }
 
     // Registers an effect under a tag name, replacing an effect the app registered before. Markup tags and built-in effects keep their names.
-    void registerEffect(std::string name, TextEffect::Function effect);
-    [[nodiscard]] const TextEffect::Function* findEffect(std::string_view name) const noexcept;
+    void registerEffect(std::string name, Effect::Function effect);
+    [[nodiscard]] const Effect::Function* findEffect(std::string_view name) const noexcept;
     [[nodiscard]] std::vector<std::string> getEffectNames() const;
 
     void registerIcon(std::string name, Icon icon);
@@ -48,7 +48,7 @@ class RichTextRegistry final {
     void registerBuiltInEffects();
 
     std::shared_ptr<FontFamily> family;
-    std::map<std::string, TextEffect::Function, std::less<>> effects;
+    std::map<std::string, Effect::Function, std::less<>> effects;
     std::map<std::string, Icon, std::less<>> icons;
 };
 

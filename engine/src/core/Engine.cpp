@@ -14,6 +14,7 @@
 #include "haylen/core/Log.hpp"
 #include "haylen/debug/ProfileScope.hpp"
 #include "haylen/platform/Event.hpp"
+#include "haylen/platform/Window.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
 #include "lua/Environment.hpp"
 #include "platform/native/NativeApi.hpp"
@@ -260,7 +261,7 @@ void Engine::publishDeviceChanges() {
     const platform::Orientation orientation = current.host.getOrientation();
     if (orientation != current.orientation) {
         current.orientation = orientation;
-        current.events.emit(LifecycleEvent::kWindowOrientationChanged, {{"orientation", orientation == platform::Orientation::Portrait ? "portrait" : "landscape"}});
+        current.events.emit(LifecycleEvent::kWindowOrientationChanged, {{"orientation", platform::Window::orientationName(orientation)}});
     }
 
     const math::Rect safe = current.viewport.getSafeRect();

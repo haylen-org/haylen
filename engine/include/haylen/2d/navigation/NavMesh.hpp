@@ -14,7 +14,7 @@
 
 namespace haylen::navigation2d {
 
-// A navigation mesh of triangles over the walkable area of a level, built with a constrained Delaunay triangulation from a boundary polygon and obstacle polygons, such as the collision objects of a Tiled map or generated shapes. Obstacles may overlap each other and cross the boundary. Paths run through the triangles with A* and are pulled straight with the funnel algorithm, and every leg keeps an agent radius clear of the corners the path turns around. Changing the polygons marks the mesh for a rebuild, which happens on the next query or on build.
+// A navigation mesh of triangles over the walkable area of a level, built with a constrained Delaunay triangulation from a boundary polygon and obstacle polygons, such as the collision objects of a Tiled map or generated shapes. Obstacles may overlap each other and cross the boundary. The triangulation gains points on the walls where corners come close to them, so a corridor of triangles has room for an agent exactly when every edge it crosses is at least as long as the agent is wide. Paths run through the corridors with A* and are pulled straight with the funnel algorithm around circles of the agent radius at the corners they turn around. Changing the polygons marks the mesh for a rebuild, which happens on the next query or on build.
 class NavMesh final {
   public:
     // Vertices run counterclockwise in a y-up frame, which is clockwise on screen. The neighbor at index i shares the edge from vertex i to vertex i + 1, and -1 marks a wall.
@@ -44,7 +44,7 @@ class NavMesh final {
     }
     void build();
 
-    // Returns the start, the points to turn at and the goal, or an empty path when either point lies outside the mesh or no corridor is wide enough for the agent. With a radius, the path turns at points off the corners that keep every leg at least the radius away from them, as long as the start and the goal are that far from walls. The path stays valid until the next search.
+    // Returns the start, the points to turn at and the goal, or an empty path when either point lies outside the mesh or no corridor is wide enough for the agent. With a radius, every leg stays inside the mesh, and the path turns at points off each corner it turns around that keep the legs on both sides of the corner at least the radius away from it. A start closer than the radius to a wall first steps straight to its room, the closest point within twice the radius that is the radius away from every wall, and a goal that close to a wall is reached last from its room in the same way. There is no path when the start or the goal has no room or the straight step to it leaves the mesh. The path stays valid until the next search.
     std::span<const math::Vec2> findPath(math::Vec2 start, math::Vec2 goal, float agentRadius = 0.0F);
 
     // Returns the length of the last path found, which is infinite when there was none.
@@ -93,25 +93,35 @@ class NavMesh final {
     // Returns the direction of the line from the point that passes the target at the signed offset, positive on its left, turning a right angle when the target is closer than the offset.
     [[nodiscard]] static math::Vec2 tangentDirection(math::Vec2 from, math::Vec2 to, float offset) noexcept;
 
+    // These add the points where a segment or a second circle crosses the circle of the radius around the center.
+    static void addCrossings(const math::Segment& piece, math::Vec2 center, float radius, std::vector<math::Vec2>& crossings);
+    static void addCrossings(math::Vec2 center, math::Vec2 other, float radius, std::vector<math::Vec2>& crossings);
+
     void ensureBuilt();
     [[nodiscard]] bool isInside(std::size_t triangle, math::Vec2 point) const noexcept;
     [[nodiscard]] math::Vec2 vertexAt(std::uint32_t index) const noexcept {
         return vertices[index];
     }
 
-    // Returns how wide the way through a triangle is between the edge it enters by and the edge it leaves by, the width of Demyen and Buro: the distance from their shared corner to the closest wall across the third edge, and at most the shorter of the two edges.
-    [[nodiscard]] float passageWidth(std::size_t triangle, std::size_t entry, std::size_t exit) const noexcept;
+    // Returns the point itself when it is the radius away from every wall, otherwise its room as findPath describes it, or nothing when the point lies outside the mesh, has no room or cannot step straight to it.
+    std::optional<math::Vec2> findRoom(math::Vec2 point, float agentRadius);
 
-    // Lowers the width to the distance from the corner to a wall beyond the side of the triangle, crossing into the triangles that come closer than the width.
-    [[nodiscard]] float searchWidth(math::Vec2 corner, std::size_t triangle, std::size_t side, float width) const noexcept;
+    // Gathers the walls of the triangles closer than the distance to the point.
+    void gatherWalls(math::Vec2 point, float distance);
 
-    // Finds the corridor of triangles from the start to the goal triangle with A* over their shared edges, skipping edges and passages narrower than the agent.
+    // Tells whether the spot lies at least the radius away from every gathered wall.
+    [[nodiscard]] bool hasRoom(math::Vec2 spot, float agentRadius) const noexcept;
+
+    // Tells whether the straight leg between two points crosses no gathered wall away from its start, which may lie on a wall.
+    [[nodiscard]] bool canStep(math::Vec2 from, math::Vec2 to) const noexcept;
+
+    // Finds the corridor of triangles from the start to the goal triangle with A* over their shared edges, skipping edges shorter than the agent is wide, which the refined triangulation makes the exact test of room.
     bool findCorridor(std::int32_t start, std::int32_t goal, math::Vec2 from, math::Vec2 to, float agentRadius);
 
     // Finds the corners the path turns around with the funnel algorithm, over portals narrowed by the agent radius.
     void pullString(math::Vec2 start, math::Vec2 goal, float agentRadius);
 
-    // Builds the path along the lines that touch a circle of the agent radius around every turn, turning at the corners of polygons drawn around those circles.
+    // Extends the path to the goal along the lines that touch a circle of the agent radius around every turn, turning at the corners of polygons drawn around those circles.
     void bendAroundTurns(math::Vec2 start, math::Vec2 goal, float agentRadius);
 
     std::vector<math::Vec2> boundary;
@@ -125,10 +135,12 @@ class NavMesh final {
     std::vector<math::Segment> walls;
     spatial2d::AabbTree triangleIndex;
     std::vector<std::uint64_t> candidates;
+    std::vector<math::Segment> nearWalls;
+    std::vector<math::Segment> offsets;
+    std::vector<math::Vec2> spots;
 
     std::vector<float> scores;
     std::vector<std::int32_t> parents;
-    std::vector<std::int32_t> entrySides;
     std::vector<math::Vec2> entries;
     std::vector<std::uint32_t> visits;
     std::uint32_t visit = 0;

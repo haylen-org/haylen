@@ -204,6 +204,25 @@ TEST(TimerSchedulerTest, ProcessModesAndUnscaledTime) {
     EXPECT_EQ(timers.size(), 1U);
 }
 
+TEST(TimerSchedulerTest, InheritingTimersFollowTheModeOfTheirParent) {
+    core::TimerScheduler timers;
+    core::FrameClock clock(0.1, 10.0);
+    core::ProcessMode parent = core::ProcessMode::Pausable;
+    int calls = 0;
+    timers.every(0.1F, [&] { ++calls; }, -1, {.parentMode = [&parent] { return parent; }});
+    timers.every(0.1F, [&] { calls += 100; }, -1, {.processMode = core::ProcessMode::Pausable, .parentMode = [] { return core::ProcessMode::Always; }});
+
+    clock.setPaused(true);
+    clock.advance(0.1);
+    timers.update(clock);
+    EXPECT_EQ(calls, 0);
+
+    parent = core::ProcessMode::WhenPaused;
+    clock.advance(0.1);
+    timers.update(clock);
+    EXPECT_EQ(calls, 1) << "an own mode wins over the parent";
+}
+
 TEST(TimerSchedulerTest, ConnectionsCancelAndBlockTimers) {
     core::TimerScheduler timers;
     core::FrameClock clock(0.1, 10.0);

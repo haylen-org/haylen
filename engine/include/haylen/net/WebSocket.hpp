@@ -110,7 +110,7 @@ class WebSocket final {
   private:
     struct Inbox;
 
-    static const Options kDefaultOptions;
+    static const Options& kDefaultOptions;
     static constexpr std::size_t kMaxPingPayload = 125;
 
     [[nodiscard]] static double getSteadySeconds();

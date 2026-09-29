@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -119,15 +121,36 @@ class AlgorithmBenchmark final {
         // clang-format on
     }
 
-    static void measureNavMesh() {
+    // Times runs without a warm-up, since the first run matters, and prints the slowest run next to the average.
+    static void measureCold(const char* name, int runs, const std::function<void()>& work) {
+        double total = 0.0;
+        double slowest = 0.0;
+        for (int run = 0; run < runs; ++run) {
+            const auto start = std::chrono::steady_clock::now();
+            work();
+            const double milliseconds = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+            total += milliseconds;
+            slowest = std::max(slowest, milliseconds);
+        }
+        std::printf("%-52s %12.3f %8d\n", name, total / runs, runs);
+        std::printf("%-52s %12.3f %8d\n", "  slowest run", slowest, 1);
+    }
+
+    // Returns a navmesh of 4096 by 4096 units with 400 square obstacles, before it is built.
+    [[nodiscard]] static navigation2d::NavMesh obstacleMesh(math::Random& random) {
         navigation2d::NavMesh mesh;
         mesh.setBoundary(std::vector<math::Vec2>{{0.0F, 0.0F}, {4096.0F, 0.0F}, {4096.0F, 4096.0F}, {0.0F, 4096.0F}});
-        math::Random random(12);
         for (int obstacle = 0; obstacle < 400; ++obstacle) {
             const math::Vec2 center{random.range(100.0F, 3996.0F), random.range(100.0F, 3996.0F)};
             const float size = random.range(10.0F, 60.0F);
             mesh.addObstacle(std::vector<math::Vec2>{center + math::Vec2{-size, -size}, center + math::Vec2{size, -size}, center + math::Vec2{size, size}, center + math::Vec2{-size, size}});
         }
+        return mesh;
+    }
+
+    static void measureNavMesh() {
+        math::Random random(12);
+        navigation2d::NavMesh mesh = obstacleMesh(random);
         measure("Navmesh build 4096x4096, 400 obstacles", 5, [&mesh] { mesh.build(); });
 
         std::vector<std::pair<math::Vec2, math::Vec2>> trips;
@@ -156,6 +179,22 @@ class AlgorithmBenchmark final {
         }
         measure("Crowd step, 2000 ORCA agents, one thread", 20, [&crowd] { crowd.step(1.0F / 60.0F); });
         measure("Crowd step, 2000 ORCA agents, job system", 20, [&crowd, &jobs] { crowd.step(1.0F / 60.0F, &jobs); });
+
+        // Navmesh builds keep every worker busy, like a level that builds its mesh in the background while its crowd walks.
+        navigation2d::NavMesh mesh = obstacleMesh(random);
+        std::atomic<std::size_t> building = jobs.getWorkerCount() * 4;
+        for (std::size_t build = building; build > 0; --build) {
+            // clang-format off
+            jobs.post([mesh, &building]() mutable {
+                mesh.build();
+                --building;
+            });
+            // clang-format on
+        }
+        measureCold("Crowd step, 2000 ORCA agents, pool busy building", 20, [&crowd, &jobs] { crowd.step(1.0F / 60.0F, &jobs); });
+        while (building > 0) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
     }
 
     static void measureSpatial() {

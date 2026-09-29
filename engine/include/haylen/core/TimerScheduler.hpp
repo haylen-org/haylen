@@ -18,8 +18,11 @@ class TimerScheduler final {
     using Id = std::uint64_t;
 
     struct Options {
-        // Inherit counts as Pausable, since a timer has no parent of its own.
+        // Inherit follows the parent mode, and counts as Pausable without one.
         ProcessMode processMode = ProcessMode::Inherit;
+
+        // Returns the mode of the parent that an inheriting timer follows, such as the scene that owns it. Every update asks again, so the timer follows the parent when its mode changes.
+        std::function<ProcessMode()> parentMode;
 
         // Counts real time, ignoring the time scale.
         bool unscaled = false;
@@ -68,6 +71,8 @@ class TimerScheduler final {
             return paused;
         }
     };
+
+    [[nodiscard]] static ProcessMode resolveMode(const Options& options);
 
     Id add(float interval, float delay, int repeatCount, std::function<void()> callback, Options options);
     [[nodiscard]] Timer* find(Id id) const noexcept;

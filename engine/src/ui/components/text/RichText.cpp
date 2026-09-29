@@ -8,6 +8,7 @@
 
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/text/FontFamily.hpp"
+#include "haylen/text/Style.hpp"
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Context.hpp"
 #include "ui/ImGuiConverter.hpp"
@@ -23,7 +24,7 @@ void RichText::readProperties(PropertyReader& reader) {
     }
     reader.readChoice<Theme::Font>("font", font, kFonts);
     reader.read("color", color);
-    reader.readChoice<text::TextAlign>("textAlign", textAlign, kAligns);
+    reader.readChoice<text::Alignment>("textAlign", textAlign, text::Style::kAlignmentNames);
     reader.read("wrap", wrap);
     reader.read("reveal", reveal, 0.0F);
     reader.read("visibleCharacters", visibleCharacters, -1);
@@ -38,8 +39,8 @@ text::RichText& RichText::prepare(Context& context) {
     const Theme::FontStyle& style = context.getTheme().getFont(font);
     const math::Color ink = context.getColor(color.value_or(Theme::Color::Text));
     const bool rightToLeft = context.isRightToLeft();
-    const bool sided = textAlign == text::TextAlign::Start || textAlign == text::TextAlign::End;
-    const text::TextAlign align = sided ? ((textAlign == text::TextAlign::Start) != rightToLeft ? text::TextAlign::Left : text::TextAlign::Right) : textAlign;
+    const bool sided = textAlign == text::Alignment::Start || textAlign == text::Alignment::End;
+    const text::Alignment align = sided ? ((textAlign == text::Alignment::Start) != rightToLeft ? text::Alignment::Left : text::Alignment::Right) : textAlign;
     const text::RichTextOptions* current = richText ? &richText->getOptions() : nullptr;
     const bool sameOptions = current != nullptr && preparedFor == &context && current->family == family && current->size == size && current->bold == style.bold && current->italic == style.italic && current->color == ink && current->align == align && current->language == context.getLanguage() && current->revealSpeed == reveal;
 
@@ -88,8 +89,8 @@ void RichText::render(Context& context, const math::Rect& bounds) {
     // Text that does not wrap aligns as one block inside the bounds, where start and end follow the direction of the UI.
     const float room = bounds.width - prepared.getSize().x;
     const bool rightToLeft = context.isRightToLeft();
-    const bool toRight = textAlign == text::TextAlign::Right || (textAlign == text::TextAlign::Start && rightToLeft) || (textAlign == text::TextAlign::End && !rightToLeft);
-    const float shift = wrap ? 0.0F : (textAlign == text::TextAlign::Center ? room * 0.5F : (toRight ? room : 0.0F));
+    const bool toRight = textAlign == text::Alignment::Right || (textAlign == text::Alignment::Start && rightToLeft) || (textAlign == text::Alignment::End && !rightToLeft);
+    const float shift = wrap ? 0.0F : (textAlign == text::Alignment::Center ? room * 0.5F : (toRight ? room : 0.0F));
     const math::Vec2 origin{bounds.x + shift, bounds.y};
     interactWithLinks(context, origin);
     showHint(context, origin);
@@ -105,14 +106,14 @@ void RichText::render(Context& context, const math::Rect& bounds) {
 
 // Every piece of a wrapped link reacts to the pointer, and only its first piece takes the focus, so the focus stops once per link.
 void RichText::interactWithLinks(Context& context, math::Vec2 origin) {
-    const text::TextLayout& layout = richText->getLayout();
+    const text::Layout& layout = richText->getLayout();
     const std::vector<std::string>& links = richText->getDocument().links;
     const bool takesFocus = takeFocusRequest();
     std::vector<bool> reached(links.size(), false);
     std::optional<std::size_t> hovered;
 
     for (std::size_t index = 0; index < layout.links.size(); ++index) {
-        const text::TextLayout::Area& area = layout.links[index];
+        const text::Layout::Area& area = layout.links[index];
         const bool first = !reached[area.index];
         reached[area.index] = true;
         const std::string label = "##link" + std::to_string(index);
@@ -145,7 +146,7 @@ void RichText::showHint(Context&, math::Vec2 origin) {
     if (!ImGui::IsWindowHovered()) {
         return;
     }
-    for (const text::TextLayout::Area& area : richText->getLayout().hints) {
+    for (const text::Layout::Area& area : richText->getLayout().hints) {
         const math::Rect rect = area.rect.translated(origin);
         if (ImGui::IsMouseHoveringRect(ImGuiConverter::toImVec2(rect.getMin()), ImGuiConverter::toImVec2(rect.getMax()))) {
             ImGui::SetTooltip("%s", richText->getDocument().hints[area.index].c_str());

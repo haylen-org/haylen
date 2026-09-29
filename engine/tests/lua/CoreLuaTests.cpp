@@ -404,8 +404,8 @@ TEST(SignalLuaTest, ConnectsEmitsAndDisconnects) {
     // clang-format on
     EXPECT_NE(fixture.lua("local s = require('haylen.signal').new() s:connect(function() error('listener broke') end) s:emit()").find("listener broke"), std::string::npos);
 
-    // The finalizer of a bound type reaches Lua through the metatable, and misusing it never destroys anything twice or destroys what is not that type.
-    EXPECT_EQ(fixture.lua("local s = require('haylen.signal').new() setmetatable({}, getmetatable(s)) collectgarbage() getmetatable(s).__gc(s) local ok = pcall(function() return s.size end) s = nil collectgarbage() return tostring(ok)"), "false");
+    // Lua cannot reach the metatable of a bound type, so its finalizer never runs by hand and its members never move to another value.
+    EXPECT_EQ(fixture.lua("local s = require('haylen.signal').new() return getmetatable(s) .. ' ' .. tostring(pcall(setmetatable, {}, getmetatable(s))) .. ' ' .. tostring(pcall(debug.setmetatable, s, nil)) .. ' ' .. s.size"), "haylen.Signal false false 0");
     EXPECT_EQ(fixture.lua("local s, values, seen = require('haylen.signal').new(), {}, 0 for i = 1, 300 do values[i] = i end s:connect(function(...) seen = seen + select('#', ...) end) s:connect(function(...) seen = seen + select(300, ...) end) s:emit(table.unpack(values)) return seen"), "600");
 
     // clang-format off

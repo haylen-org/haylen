@@ -98,7 +98,7 @@ core::Json JsonConverter::convert(lua_State* L, int index, int depth) {
 
 void JsonConverter::pushConverted(lua_State* L, const core::Json& value, int depth) {
     if (depth > kMaxDepth || lua_checkstack(L, 3) == 0) {
-        throw std::invalid_argument("JSON value is nested too deeply to push to Lua.");
+        throw std::invalid_argument(kTooDeep);
     }
 
     switch (value.type()) {
@@ -131,7 +131,7 @@ void JsonConverter::pushConverted(lua_State* L, const core::Json& value, int dep
         return;
     }
     case core::Json::value_t::binary:
-        throw std::invalid_argument("Binary JSON values cannot be converted to Lua.");
+        throw std::invalid_argument(kBinary);
     case core::Json::value_t::array:
         lua_createtable(L, static_cast<int>(value.size()), 0);
         for (std::size_t element = 0; element < value.size(); ++element) {
@@ -150,8 +150,26 @@ void JsonConverter::pushConverted(lua_State* L, const core::Json& value, int dep
     }
 }
 
+void JsonConverter::validateNested(const core::Json& value, int depth) {
+    if (depth > kMaxDepth) {
+        throw std::invalid_argument(kTooDeep);
+    }
+    if (value.is_binary()) {
+        throw std::invalid_argument(kBinary);
+    }
+    if (value.is_structured()) {
+        for (const core::Json& element : value) {
+            validateNested(element, depth + 1);
+        }
+    }
+}
+
 void JsonConverter::push(lua_State* L, const core::Json& value) {
     pushConverted(L, value, 0);
+}
+
+void JsonConverter::validate(const core::Json& value) {
+    validateNested(value, 0);
 }
 
 core::Json JsonConverter::read(lua_State* L, int index) {

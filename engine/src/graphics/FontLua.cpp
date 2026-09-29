@@ -93,18 +93,18 @@ int FontLua::measure(lua_State* L) {
 }
 
 // Pushes the glyph quads of a layout in visual order with the anchor of the style applied, each with the font that draws it, and the size and line count of the block. The font of every look is pushed once below the result, which the quads of the look share.
-int FontLua::pushLayout(lua_State* L, const text::TextLayout& laid, const text::TextStyle& style, const std::function<std::shared_ptr<text::Font>(const text::Font*)>& fontOf) {
+int FontLua::pushLayout(lua_State* L, const text::Layout& laid, const text::Style& style, const std::function<std::shared_ptr<text::Font>(const text::Font*)>& fontOf) {
     const math::Vec2 anchorOffset = laid.size * style.anchor;
     const int fonts = lua_gettop(L) + 1;
     luaL_checkstack(L, static_cast<int>(laid.looks.size()) + 4, "too many fonts in one layout");
-    for (const text::TextLayout::Look& look : laid.looks) {
+    for (const text::Layout::Look& look : laid.looks) {
         lua::Stack::push(L, fontOf(look.font));
     }
 
     lua_createtable(L, 0, 3);
     lua_createtable(L, static_cast<int>(laid.glyphs.size()), 0);
     for (std::size_t index = 0; index < laid.glyphs.size(); ++index) {
-        const text::TextLayout::Glyph& glyph = laid.glyphs[index];
+        const text::Layout::Glyph& glyph = laid.glyphs[index];
         lua_createtable(L, 0, 5);
         lua::Stack::push(L, glyph.position - anchorOffset);
         lua_setfield(L, -2, "position");
@@ -131,7 +131,7 @@ int FontLua::pushLayout(lua_State* L, const text::TextLayout& laid, const text::
 // Lays text out with layout(text, style) and returns its glyph quads, its size and its line count.
 int FontLua::layout(lua_State* L) {
     const std::shared_ptr<text::Font> font = lua::Userdata::checkShared<text::Font>(L, 1);
-    const text::TextStyle style = lua::TypeConverter::readTextStyle(L, 3);
+    const text::Style style = lua::TypeConverter::readTextStyle(L, 3);
     return pushLayout(L, *font->layout(lua::Stack::read<std::string_view>(L, 2), style), style, [&font](const text::Font*) { return font; });
 }
 
@@ -337,7 +337,7 @@ int FontLua::familyMeasure(lua_State* L) {
 // Lays text out with family:layout(text, style) like a font does, where each quad names the face or fallback that draws it.
 int FontLua::familyLayout(lua_State* L) {
     const std::shared_ptr<text::FontFamily> family = lua::Userdata::checkShared<text::FontFamily>(L, 1);
-    const text::TextStyle style = lua::TypeConverter::readTextStyle(L, 3);
+    const text::Style style = lua::TypeConverter::readTextStyle(L, 3);
     return pushLayout(L, *family->layout(lua::Stack::read<std::string_view>(L, 2), style), style, [&family](const text::Font* font) { return findFace(*family, font); });
 }
 

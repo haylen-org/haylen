@@ -1,4 +1,4 @@
-#include "haylen/text/TextEffect.hpp"
+#include "haylen/text/Effect.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -13,7 +13,7 @@
 
 namespace haylen::text {
 
-TextEffect::Parameters::Parameters(std::string effectName, std::map<std::string, std::string, std::less<>> attributes) : effect(std::move(effectName)), values(std::move(attributes)) {
+Effect::Parameters::Parameters(std::string effectName, std::map<std::string, std::string, std::less<>> attributes) : effect(std::move(effectName)), values(std::move(attributes)) {
     for (const auto& [key, text] : values) {
         float value = 0.0F;
         const auto [end, error] = fast_float::from_chars(text.data(), text.data() + text.size(), value);
@@ -26,11 +26,11 @@ TextEffect::Parameters::Parameters(std::string effectName, std::map<std::string,
     }
 }
 
-bool TextEffect::Parameters::has(std::string_view key) const {
+bool Effect::Parameters::has(std::string_view key) const {
     return values.contains(key);
 }
 
-float TextEffect::Parameters::getNumber(std::string_view key, float byDefault) const {
+float Effect::Parameters::getNumber(std::string_view key, float byDefault) const {
     if (const auto found = numbers.find(key); found != numbers.end()) {
         return found->second;
     }
@@ -41,7 +41,7 @@ float TextEffect::Parameters::getNumber(std::string_view key, float byDefault) c
     throw std::invalid_argument("The " + std::string(key) + " of [" + effect + "] must be a number, not " + found->second + ".");
 }
 
-math::Color TextEffect::Parameters::getColor(std::string_view key, math::Color byDefault) const {
+math::Color Effect::Parameters::getColor(std::string_view key, math::Color byDefault) const {
     if (const auto found = colors.find(key); found != colors.end()) {
         return found->second;
     }
@@ -53,7 +53,7 @@ math::Color TextEffect::Parameters::getColor(std::string_view key, math::Color b
 }
 
 // The easing curve of the effects, where a curve above 1 eases in, between 0 and 1 eases out and below 0 eases in and out.
-float TextEffect::ease(float value, float curve) noexcept {
+float Effect::ease(float value, float curve) noexcept {
     const float x = std::clamp(value, 0.0F, 1.0F);
     if (curve > 0.0F) {
         return curve < 1.0F ? 1.0F - std::pow(1.0F - x, 1.0F / curve) : std::pow(x, curve);
@@ -64,7 +64,7 @@ float TextEffect::ease(float value, float curve) noexcept {
     return 0.0F;
 }
 
-float TextEffect::pingPong(float value, float length) noexcept {
+float Effect::pingPong(float value, float length) noexcept {
     if (length == 0.0F) {
         return 0.0F;
     }
@@ -73,7 +73,7 @@ float TextEffect::pingPong(float value, float length) noexcept {
 }
 
 // A stable pseudo-random angle for a character at a step of the shake, so the same time always shakes the same way.
-float TextEffect::randomAngle(std::size_t character, std::int64_t step) noexcept {
+float Effect::randomAngle(std::size_t character, std::int64_t step) noexcept {
     std::uint64_t hash = static_cast<std::uint64_t>(character) * 0x9E3779B97F4A7C15ULL ^ static_cast<std::uint64_t>(step) * 0xC2B2AE3D27D4EB4FULL;
     hash ^= hash >> 31U;
     hash *= 0xBF58476D1CE4E5B9ULL;
@@ -81,14 +81,14 @@ float TextEffect::randomAngle(std::size_t character, std::int64_t step) noexcept
     return static_cast<float>(hash >> 40U) / static_cast<float>(1U << 24U) * math::Math::kTau;
 }
 
-void TextEffect::wave(Glyph& glyph, const Parameters& parameters) {
+void Effect::wave(Glyph& glyph, const Parameters& parameters) {
     const float amplitude = parameters.getNumber("amp", 20.0F);
     const float frequency = parameters.getNumber("freq", 5.0F);
     glyph.offset.y += std::sin(frequency * glyph.time + glyph.position.x / kPhaseSpan) * amplitude / 10.0F;
 }
 
 // Each character jumps to a new random offset rate times a second, easing there over the first half of the step.
-void TextEffect::shake(Glyph& glyph, const Parameters& parameters) {
+void Effect::shake(Glyph& glyph, const Parameters& parameters) {
     const float rate = std::max(parameters.getNumber("rate", 20.0F), 0.001F);
     const float level = parameters.getNumber("level", 5.0F);
     const float steps = glyph.time * rate;
@@ -101,14 +101,14 @@ void TextEffect::shake(Glyph& glyph, const Parameters& parameters) {
     glyph.offset += (from + (to - from) * blend) * (level / 10.0F);
 }
 
-void TextEffect::tornado(Glyph& glyph, const Parameters& parameters) {
+void Effect::tornado(Glyph& glyph, const Parameters& parameters) {
     const float radius = parameters.getNumber("radius", 10.0F);
     const float frequency = parameters.getNumber("freq", 1.0F);
     const float phase = frequency * glyph.time + glyph.position.x / kPhaseSpan;
     glyph.offset += math::Vec2{std::sin(phase), std::cos(phase)} * radius;
 }
 
-void TextEffect::fade(Glyph& glyph, const Parameters& parameters) {
+void Effect::fade(Glyph& glyph, const Parameters& parameters) {
     const float start = parameters.getNumber("start", 0.0F);
     const float length = std::max(parameters.getNumber("length", 10.0F), 1.0F);
     const auto index = static_cast<float>(glyph.index);
@@ -117,7 +117,7 @@ void TextEffect::fade(Glyph& glyph, const Parameters& parameters) {
     }
 }
 
-void TextEffect::rainbow(Glyph& glyph, const Parameters& parameters) {
+void Effect::rainbow(Glyph& glyph, const Parameters& parameters) {
     const float frequency = std::max(parameters.getNumber("freq", 1.0F), 0.0F);
     const float saturation = parameters.getNumber("sat", 0.8F);
     const float value = parameters.getNumber("val", 0.8F);
@@ -125,7 +125,7 @@ void TextEffect::rainbow(Glyph& glyph, const Parameters& parameters) {
     glyph.color = math::Color::fromHsv(frequency * std::fabs(glyph.time * speed + glyph.position.x / kPhaseSpan), saturation, value, glyph.color.a);
 }
 
-void TextEffect::pulse(Glyph& glyph, const Parameters& parameters) {
+void Effect::pulse(Glyph& glyph, const Parameters& parameters) {
     const float frequency = std::max(parameters.getNumber("freq", 1.0F), 0.001F);
     const math::Color tint = parameters.getColor("color", math::Color{1.0F, 1.0F, 1.0F, 0.25F});
     const float amount = ease(pingPong(glyph.time, 1.0F / frequency) * frequency, parameters.getNumber("ease", -2.0F));

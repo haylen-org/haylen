@@ -224,6 +224,37 @@ TEST(CoreLuaTest, PausesAndConfiguresTheLifecycle) {
     EXPECT_NE(fixture.lua("timer.after(1, function() end, {count = 2})").find("Unknown option 'count'"), std::string::npos);
 }
 
+TEST(CoreLuaTest, TimersAndTweensFollowTheModeOfTheirOwner) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        haylen = require('haylen')
+        scene = require('haylen.scene')
+        timer = require('haylen.timer')
+        tween = require('haylen.tween')
+        counts = {scene = 0, table = 0}
+        level = {}
+        music = {processMode = 'whenPaused'}
+        box = {v = 0}
+        scene.push(level)
+        timer.every(0.1, function() counts.scene = counts.scene + 1 end, {owner = level})
+        timer.every(0.1, function() counts.table = counts.table + 1 end, {owner = music})
+        tween.to(box, 100, {v = 100}, {owner = level})
+        haylen.setPaused(true)
+    )");
+    // clang-format on
+    fixture.frames(5, 0.1);
+    EXPECT_EQ(fixture.lua("return counts.scene .. ' ' .. counts.table .. ' ' .. box.v"), "0 5 0");
+
+    fixture.runLua("level.processMode = 'always' music.processMode = 'pausable'");
+    fixture.frames(5, 0.1);
+    EXPECT_EQ(fixture.lua("return counts.scene .. ' ' .. counts.table .. ' ' .. tostring(box.v > 0)"), "5 5 true");
+
+    fixture.runLua("level.processMode = nil moved = box.v");
+    fixture.frames(5, 0.1);
+    EXPECT_EQ(fixture.lua("return counts.scene .. ' ' .. tostring(box.v == moved)"), "5 true");
+}
+
 TEST(AutoloadTest, LoadsModulesBeforeMainAndRunsTheirCallbacks) {
     // clang-format off
     test::EngineFixture fixture({

@@ -31,6 +31,16 @@ int SpriteLua::setFlipY(lua_State* L) {
     return 0;
 }
 
+int SpriteLua::getFlipDiagonal(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<Sprite>(L, 1).flip.diagonal);
+    return 1;
+}
+
+int SpriteLua::setFlipDiagonal(lua_State* L) {
+    lua::Userdata::check<Sprite>(L, 1).flip.diagonal = lua::Stack::read<bool>(L, 3);
+    return 0;
+}
+
 int SpriteLua::getMaterial(lua_State* L) {
     const Material& material = lua::Userdata::check<Sprite>(L, 1).order.material;
     if (!material.isValid()) {
@@ -67,7 +77,7 @@ int SpriteLua::draw(lua_State* L) {
 }
 
 void SpriteLua::install(lua_State* L) {
-    lua::ClassBuilder<Sprite>(L).field<&Sprite::texture>("texture").nestedField<&Sprite::position, &math::Vec2::x>("x").nestedField<&Sprite::position, &math::Vec2::y>("y").field<&Sprite::position>("position").nestedField<&Sprite::size, &math::Vec2::x>("width").nestedField<&Sprite::size, &math::Vec2::y>("height").nestedField<&Sprite::scale, &math::Vec2::x>("scaleX").nestedField<&Sprite::scale, &math::Vec2::y>("scaleY").nestedField<&Sprite::pivot, &math::Vec2::x>("pivotX").nestedField<&Sprite::pivot, &math::Vec2::y>("pivotY").field<&Sprite::rotation>("rotation").field<&Sprite::color>("color").field<&Sprite::flash>("flash").field<&Sprite::source>("source").nestedField<&Sprite::order, &DrawOrder::layer>("layer").nestedField<&Sprite::order, &DrawOrder::depth>("depth").nestedField<&Sprite::order, &DrawOrder::sortOffset>("sortOffset").nestedField<&Sprite::order, &DrawOrder::visibility>("visibility").nestedField<&Sprite::order, &DrawOrder::blend>("blend").property("material", &getMaterial, &setMaterial).property("normalMap", &getNormalMap, &setNormalMap).nestedField<&Sprite::order, &DrawOrder::specular>("specular").nestedField<&Sprite::order, &DrawOrder::shininess>("shininess").nestedField<&Sprite::order, &DrawOrder::emission>("emission").nestedField<&Sprite::order, &DrawOrder::lightMask>("lightMask").nestedField<&Sprite::order, &DrawOrder::unshaded>("unshaded").property("flipX", &getFlipX, &setFlipX).property("flipY", &getFlipY, &setFlipY).function("draw", &lua::Binding::native<&draw>).install();
+    lua::ClassBuilder<Sprite>(L).field<&Sprite::texture>("texture").nestedField<&Sprite::position, &math::Vec2::x>("x").nestedField<&Sprite::position, &math::Vec2::y>("y").field<&Sprite::position>("position").nestedField<&Sprite::size, &math::Vec2::x>("width").nestedField<&Sprite::size, &math::Vec2::y>("height").nestedField<&Sprite::scale, &math::Vec2::x>("scaleX").nestedField<&Sprite::scale, &math::Vec2::y>("scaleY").nestedField<&Sprite::pivot, &math::Vec2::x>("pivotX").nestedField<&Sprite::pivot, &math::Vec2::y>("pivotY").field<&Sprite::rotation>("rotation").field<&Sprite::color>("color").field<&Sprite::flash>("flash").field<&Sprite::source>("source").nestedField<&Sprite::order, &DrawOrder::layer>("layer").nestedField<&Sprite::order, &DrawOrder::depth>("depth").nestedField<&Sprite::order, &DrawOrder::sortOffset>("sortOffset").nestedField<&Sprite::order, &DrawOrder::visibility>("visibility").nestedField<&Sprite::order, &DrawOrder::blend>("blend").property("material", &getMaterial, &setMaterial).property("normalMap", &getNormalMap, &setNormalMap).nestedField<&Sprite::order, &DrawOrder::specular>("specular").nestedField<&Sprite::order, &DrawOrder::shininess>("shininess").nestedField<&Sprite::order, &DrawOrder::emission>("emission").nestedField<&Sprite::order, &DrawOrder::lightMask>("lightMask").nestedField<&Sprite::order, &DrawOrder::unshaded>("unshaded").property("flipX", &getFlipX, &setFlipX).property("flipY", &getFlipY, &setFlipY).property("flipDiagonal", &getFlipDiagonal, &setFlipDiagonal).function("draw", &lua::Binding::native<&draw>).install();
 }
 
 } // namespace haylen::graphics2d

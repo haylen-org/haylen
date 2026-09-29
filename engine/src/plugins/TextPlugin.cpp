@@ -143,6 +143,23 @@ void TextPlugin::start(core::Engine& engine) {
 // Effects registered from Lua hold Lua functions, which must go before the Lua state closes.
 void TextPlugin::stop(core::Engine&) {
     registry->clear();
+    images.clear();
+}
+
+void TextPlugin::endFrame(core::Engine&) {
+    std::erase_if(images, [](const auto& entry) { return !entry.second.used; });
+    for (auto& [path, image] : images) {
+        image.used = false;
+    }
+}
+
+graphics::Texture TextPlugin::getImage(core::Engine& engine, std::string_view path) {
+    auto found = images.find(path);
+    if (found == images.end()) {
+        found = images.emplace(std::string(path), CachedImage{.texture = engine.getAssets().texture(path)}).first;
+    }
+    found->second.used = true;
+    return found->second.texture;
 }
 
 const std::shared_ptr<text::RichTextRegistry>& TextPlugin::getRegistry() const {

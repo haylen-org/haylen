@@ -20,68 +20,73 @@
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/math/Math.hpp"
+#include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen {
 
 namespace {
 
-std::string base64(const std::vector<std::uint8_t>& bytes) {
-    const char* alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    std::string text;
-    std::size_t index = 0;
-    for (; index + 2 < bytes.size(); index += 3) {
-        const std::uint32_t value = (static_cast<std::uint32_t>(bytes[index]) << 16U) | (static_cast<std::uint32_t>(bytes[index + 1]) << 8U) | bytes[index + 2];
-        for (const unsigned shift : {18U, 12U, 6U, 0U}) {
-            text.push_back(alphabet[(value >> shift) & 63U]);
+// Builds the test maps with their tilesets and templates, and the package that holds them.
+class TiledTest : public ::testing::Test {
+  protected:
+    [[nodiscard]] static std::string base64(const std::vector<std::uint8_t>& bytes) {
+        const char* alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        std::string text;
+        std::size_t index = 0;
+        for (; index + 2 < bytes.size(); index += 3) {
+            const std::uint32_t value = (static_cast<std::uint32_t>(bytes[index]) << 16U) | (static_cast<std::uint32_t>(bytes[index + 1]) << 8U) | bytes[index + 2];
+            for (const unsigned shift : {18U, 12U, 6U, 0U}) {
+                text.push_back(alphabet[(value >> shift) & 63U]);
+            }
         }
-    }
-    if (index < bytes.size()) {
-        std::uint32_t value = static_cast<std::uint32_t>(bytes[index]) << 16U;
-        if (index + 1 < bytes.size()) {
-            value |= static_cast<std::uint32_t>(bytes[index + 1]) << 8U;
+        if (index < bytes.size()) {
+            std::uint32_t value = static_cast<std::uint32_t>(bytes[index]) << 16U;
+            if (index + 1 < bytes.size()) {
+                value |= static_cast<std::uint32_t>(bytes[index + 1]) << 8U;
+            }
+            text.push_back(alphabet[(value >> 18U) & 63U]);
+            text.push_back(alphabet[(value >> 12U) & 63U]);
+            text.push_back(index + 1 < bytes.size() ? alphabet[(value >> 6U) & 63U] : '=');
+            text.push_back('=');
         }
-        text.push_back(alphabet[(value >> 18U) & 63U]);
-        text.push_back(alphabet[(value >> 12U) & 63U]);
-        text.push_back(index + 1 < bytes.size() ? alphabet[(value >> 6U) & 63U] : '=');
-        text.push_back('=');
+        return text;
     }
-    return text;
-}
 
-// Encodes gids the way Tiled stores base64 tile data with the given compression.
-std::string encodeTiles(const std::vector<std::uint32_t>& gids, const std::string& compression) {
-    std::vector<std::uint8_t> raw;
-    for (const std::uint32_t gid : gids) {
-        for (const unsigned shift : {0U, 8U, 16U, 24U}) {
-            raw.push_back(static_cast<std::uint8_t>((gid >> shift) & 0xFFU));
+    // Encodes gids the way Tiled stores base64 tile data with the given compression.
+    [[nodiscard]] static std::string encodeTiles(const std::vector<std::uint32_t>& gids, const std::string& compression) {
+        std::vector<std::uint8_t> raw;
+        for (const std::uint32_t gid : gids) {
+            for (const unsigned shift : {0U, 8U, 16U, 24U}) {
+                raw.push_back(static_cast<std::uint8_t>((gid >> shift) & 0xFFU));
+            }
         }
+        if (compression == "zstd") {
+            std::vector<std::uint8_t> packed(ZSTD_compressBound(raw.size()));
+            packed.resize(ZSTD_compress(packed.data(), packed.size(), raw.data(), raw.size(), 1));
+            return base64(packed);
+        }
+        if (compression == "zlib" || compression == "gzip") {
+            std::vector<std::uint8_t> packed(raw.size() + 64);
+            z_stream stream{};
+            deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, compression == "gzip" ? 16 + MAX_WBITS : MAX_WBITS, 8, Z_DEFAULT_STRATEGY);
+            stream.next_in = raw.data();
+            stream.avail_in = static_cast<uInt>(raw.size());
+            stream.next_out = packed.data();
+            stream.avail_out = static_cast<uInt>(packed.size());
+            deflate(&stream, Z_FINISH);
+            packed.resize(stream.total_out);
+            deflateEnd(&stream);
+            return base64(packed);
+        }
+        return base64(raw);
     }
-    if (compression == "zstd") {
-        std::vector<std::uint8_t> packed(ZSTD_compressBound(raw.size()));
-        packed.resize(ZSTD_compress(packed.data(), packed.size(), raw.data(), raw.size(), 1));
-        return base64(packed);
-    }
-    if (compression == "zlib" || compression == "gzip") {
-        std::vector<std::uint8_t> packed(raw.size() + 64);
-        z_stream stream{};
-        deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, compression == "gzip" ? 16 + MAX_WBITS : MAX_WBITS, 8, Z_DEFAULT_STRATEGY);
-        stream.next_in = raw.data();
-        stream.avail_in = static_cast<uInt>(raw.size());
-        stream.next_out = packed.data();
-        stream.avail_out = static_cast<uInt>(packed.size());
-        deflate(&stream, Z_FINISH);
-        packed.resize(stream.total_out);
-        deflateEnd(&stream);
-        return base64(packed);
-    }
-    return base64(raw);
-}
 
-// A 4 by 3 orthogonal map exercising every layer type, both tileset kinds, templates and all tile data encodings.
-core::Json orthogonalMap() {
-    const std::vector<std::uint32_t> ground{1, 2, 1, 2, 3, 3, 3, 3, 5, 0, 5, 5};
-    return core::Json::parse(R"({
+    // A 4 by 3 orthogonal map exercising every layer type, both tileset kinds, templates and all tile data encodings.
+    [[nodiscard]] static core::Json orthogonalMap() {
+        const std::vector<std::uint32_t> ground{1, 2, 1, 2, 3, 3, 3, 3, 5, 0, 5, 5};
+        return core::Json::parse(R"({
         "type": "map", "orientation": "orthogonal", "renderorder": "right-down", "width": 4, "height": 3,
         "tilewidth": 16, "tileheight": 16, "infinite": false, "class": "level", "backgroundcolor": "#FF102030",
         "parallaxoriginx": 0, "parallaxoriginy": 0,
@@ -111,14 +116,14 @@ core::Json orthogonalMap() {
         ],
         "layers": [
             {"id": 1, "name": "ground", "type": "tilelayer", "width": 4, "height": 3, "encoding": "base64", "compression": "zlib", "data": ")" +
-                             encodeTiles(ground, "zlib") + R"("},
+                                 encodeTiles(ground, "zlib") + R"("},
             {"id": 2, "name": "decor", "type": "tilelayer", "width": 4, "height": 3, "encoding": "base64", "compression": "gzip", "data": ")" +
-                             encodeTiles({0, 0, 0, 0, 0, 2147483652, 0, 0, 0, 0, 0, 4}, "gzip") + R"(",
+                                 encodeTiles({0, 0, 0, 0, 0, 2147483652, 0, 0, 0, 0, 0, 4}, "gzip") + R"(",
              "properties": [{"name": "collision", "type": "bool", "value": false}]},
             {"id": 3, "name": "packed", "type": "tilelayer", "width": 4, "height": 3, "encoding": "base64", "compression": "zstd", "data": ")" +
-                             encodeTiles(std::vector<std::uint32_t>(12, 0), "zstd") + R"("},
+                                 encodeTiles(std::vector<std::uint32_t>(12, 0), "zstd") + R"("},
             {"id": 4, "name": "raw", "type": "tilelayer", "width": 4, "height": 3, "encoding": "base64", "data": ")" +
-                             encodeTiles(std::vector<std::uint32_t>(12, 0), "") + R"("},
+                                 encodeTiles(std::vector<std::uint32_t>(12, 0), "") + R"("},
             {"id": 5, "name": "things", "type": "objectgroup", "draworder": "topdown", "class": "entities", "objects": [
                 {"id": 1, "name": "spawn", "type": "player", "x": 10, "y": 20, "point": true, "properties": [{"name": "hp", "type": "int", "value": 3}]},
                 {"id": 2, "name": "zone", "type": "collision", "x": 0, "y": 0, "width": 8, "height": 8, "rotation": 90, "properties": [{"name": "sensor", "type": "bool", "value": true}]},
@@ -136,10 +141,10 @@ core::Json orthogonalMap() {
             ]}
         ]
     })");
-}
+    }
 
-core::Json terrainTileset() {
-    return core::Json::parse(R"({
+    [[nodiscard]] static core::Json terrainTileset() {
+        return core::Json::parse(R"({
         "type": "tileset", "name": "terrain", "tilewidth": 16, "tileheight": 16, "tilecount": 8, "columns": 4,
         "image": "../images/terrain.png", "imagewidth": 64, "imageheight": 32, "margin": 0, "spacing": 0,
         "tileoffset": {"x": 0, "y": 0}, "properties": [{"name": "theme", "type": "string", "value": "grass"}],
@@ -154,52 +159,74 @@ core::Json terrainTileset() {
                       "colors": [{"name": "sand", "class": "ground", "color": "#ffe0c080", "tile": 0, "probability": 0.5, "properties": [{"name": "speed", "type": "float", "value": 0.8}]}],
                       "wangtiles": [{"tileid": 0, "wangid": [0, 1, 0, 1, 0, 1, 0, 1]}]}]
     })");
-}
+    }
 
-core::Json rockTemplate() {
-    return core::Json::parse(R"({"type": "template", "tileset": {"firstgid": 1, "source": "../tiles/terrain.tsj"},
+    [[nodiscard]] static core::Json rockTemplate() {
+        return core::Json::parse(R"({"type": "template", "tileset": {"firstgid": 1, "source": "../tiles/terrain.tsj"},
         "object": {"name": "rock", "type": "rock", "width": 16, "height": 16, "gid": 5, "properties": [{"name": "size", "type": "int", "value": 1}, {"name": "hard", "type": "bool", "value": true}]}})");
-}
+    }
 
-// The test map as an infinite map whose ground layer is stored in two chunks, one of them left of the origin.
-core::Json infiniteMap() {
-    core::Json map = orthogonalMap();
-    map["infinite"] = true;
-    map["layers"] = core::Json::parse(R"([{"id": 1, "name": "ground", "type": "tilelayer", "width": 4, "height": 2, "startx": -2, "starty": 0,
+    // The test map as an infinite map whose ground layer is stored in two chunks, one of them left of the origin.
+    [[nodiscard]] static core::Json infiniteMap() {
+        core::Json map = orthogonalMap();
+        map["infinite"] = true;
+        map["layers"] = core::Json::parse(R"([{"id": 1, "name": "ground", "type": "tilelayer", "width": 4, "height": 2, "startx": -2, "starty": 0,
         "chunks": [{"x": -2, "y": 0, "width": 2, "height": 2, "data": [1, 2, 3, 4]}, {"x": 0, "y": 0, "width": 2, "height": 2, "data": [5, 6, 7, 8]}]}])");
-    return map;
-}
+        return map;
+    }
 
-tiled::Map::JsonReader reader() {
-    // clang-format off
-    return [](const std::string& path) {
-        if (path == "maps/tiles/terrain.tsj") {
-            return terrainTileset();
-        }
-        if (path == "maps/templates/rock.tj") {
-            return rockTemplate();
-        }
-        throw std::runtime_error("Unexpected read: " + path);
-    };
-    // clang-format on
-}
+    [[nodiscard]] static tiled::Map::JsonReader reader() {
+        // clang-format off
+        return [](const std::string& path) {
+            if (path == "maps/tiles/terrain.tsj") {
+                return terrainTileset();
+            }
+            if (path == "maps/templates/rock.tj") {
+                return rockTemplate();
+            }
+            throw std::runtime_error("Unexpected read: " + path);
+        };
+        // clang-format on
+    }
 
-std::map<std::string, std::string> packageFiles() {
-    // clang-format off
-    const auto png = [](int width, int height, std::uint32_t color) {
-        const std::vector<std::uint8_t> image = test::pngImage(width, height, color);
-        return std::string(image.begin(), image.end());
-    };
-    // clang-format on
-    std::string map = orthogonalMap().dump();
-    return {
-        {"content/maps/island.tmj", map}, {"content/maps/tiles/terrain.tsj", terrainTileset().dump()}, {"content/maps/templates/rock.tj", rockTemplate().dump()}, {"content/maps/images/terrain.png", png(64, 32, 0xFFFFFFFFU)}, {"content/maps/props/tree.png", png(16, 32, 0x00FF00FFU)}, {"content/maps/props/rock.png", png(16, 16, 0x808080FFU)}, {"content/maps/backgrounds/sky.png", png(8, 8, 0xFF00FFFFU)}, {"content/maps/infinite.tmj", infiniteMap().dump()}, {"content/maps/world/level_0_0.tmj", map}, {"content/maps/world/level_1_0.tmj", map}, {"content/maps/world/level.world", R"({"type": "world", "maps": [{"fileName": "../island.tmj", "x": -64, "y": 0, "width": 64, "height": 48}], "patterns": [{"regexp": "level_(\\d+)_(\\d+)\\.tmj", "multiplierX": 64, "multiplierY": 48, "offsetX": 0, "offsetY": 0, "mapWidth": 64, "mapHeight": 48}]})"},
-    };
-}
+    [[nodiscard]] static std::map<std::string, std::string> packageFiles() {
+        // clang-format off
+        const auto png = [](int width, int height, std::uint32_t color) {
+            const std::vector<std::uint8_t> image = test::TestFiles::pngImage(width, height, color);
+            return std::string(image.begin(), image.end());
+        };
+        // clang-format on
+        std::string map = orthogonalMap().dump();
+        return {
+            {"content/maps/island.tmj", map}, {"content/maps/tiles/terrain.tsj", terrainTileset().dump()}, {"content/maps/templates/rock.tj", rockTemplate().dump()}, {"content/maps/images/terrain.png", png(64, 32, 0xFFFFFFFFU)}, {"content/maps/props/tree.png", png(16, 32, 0x00FF00FFU)}, {"content/maps/props/rock.png", png(16, 16, 0x808080FFU)}, {"content/maps/backgrounds/sky.png", png(8, 8, 0xFF00FFFFU)}, {"content/maps/infinite.tmj", infiniteMap().dump()}, {"content/maps/world/level_0_0.tmj", map}, {"content/maps/world/level_1_0.tmj", map}, {"content/maps/world/level.world", R"({"type": "world", "maps": [{"fileName": "../island.tmj", "x": -64, "y": 0, "width": 64, "height": 48}], "patterns": [{"regexp": "level_(\\d+)_(\\d+)\\.tmj", "multiplierX": 64, "multiplierY": 48, "offsetX": 0, "offsetY": 0, "mapWidth": 64, "mapHeight": 48}]})"},
+        };
+    }
+
+    // The test map skewed into an oblique map, with Tiled 1.12 blend modes, a capsule and a faded tree.
+    [[nodiscard]] static core::Json obliqueMap() {
+        core::Json map = orthogonalMap();
+        map["orientation"] = "oblique";
+        map["skewx"] = 8;
+        map["skewy"] = 4;
+        map["layers"][0]["mode"] = "multiply";
+        map["layers"][1]["mode"] = "add";
+        map["layers"][4]["mode"] = "screen";
+        map["layers"][5]["visible"] = false;
+        map["layers"][4]["objects"][6]["opacity"] = 0.25;
+        map["layers"][4]["objects"].push_back(core::Json::parse(R"({"id": 10, "name": "log", "type": "collision", "x": 100, "y": 0, "width": 40, "height": 10, "capsule": true})"));
+        return map;
+    }
+};
+
+class MapTest : public TiledTest {};
+
+class MapRendererTest : public TiledTest {};
+
+class TiledLuaTest : public TiledTest {};
 
 } // namespace
 
-TEST(MapTest, ParsesMapsTilesetsLayersAndTemplates) {
+TEST_F(MapTest, ParsesMapsTilesetsLayersAndTemplates) {
     const tiled::Map map = tiled::Map::parse(orthogonalMap(), "maps/island.tmj", reader());
 
     EXPECT_EQ(map.path, "maps/island.tmj");
@@ -285,7 +312,7 @@ TEST(MapTest, ParsesMapsTilesetsLayersAndTemplates) {
     EXPECT_EQ(images.back().path, "maps/backgrounds/sky.png");
 }
 
-TEST(MapTest, RejectsBrokenData) {
+TEST_F(MapTest, RejectsBrokenData) {
     const auto parse = [](core::Json document) { return tiled::Map::parse(document, "maps/broken.tmj", reader()); };
     core::Json map = orthogonalMap();
     map["orientation"] = "diagonal";
@@ -365,7 +392,7 @@ TEST(MapTest, RejectsBrokenData) {
     EXPECT_THROW((void)tiled::Tileset{}.getSource(0), std::out_of_range);
 }
 
-TEST(MapTest, FindsTheTilesOfImageCollectionsPastTheirTileCount) {
+TEST_F(MapTest, FindsTheTilesOfImageCollectionsPastTheirTileCount) {
     // Tiled keeps the ids of the tiles removed from a collection unused, so the rock keeps the id 3 in a collection of two tiles.
     core::Json document = orthogonalMap();
     document["tilesets"][1]["tiles"][1]["id"] = 3;
@@ -379,7 +406,7 @@ TEST(MapTest, FindsTheTilesOfImageCollectionsPastTheirTileCount) {
     EXPECT_THROW(map.setTile("inner", 0, 0, 101), std::invalid_argument);
 }
 
-TEST(MapTest, ConvertsCellsForEveryOrientation) {
+TEST_F(MapTest, ConvertsCellsForEveryOrientation) {
     tiled::Map map;
     map.width = 10;
     map.height = 10;
@@ -421,22 +448,7 @@ TEST(MapTest, ConvertsCellsForEveryOrientation) {
     EXPECT_EQ(tiled::Object::shapeName(tiled::Object::Shape::Polyline), "polyline");
 }
 
-// The test map skewed into an oblique map, with Tiled 1.12 blend modes, a capsule and a faded tree.
-core::Json obliqueMap() {
-    core::Json map = orthogonalMap();
-    map["orientation"] = "oblique";
-    map["skewx"] = 8;
-    map["skewy"] = 4;
-    map["layers"][0]["mode"] = "multiply";
-    map["layers"][1]["mode"] = "add";
-    map["layers"][4]["mode"] = "screen";
-    map["layers"][5]["visible"] = false;
-    map["layers"][4]["objects"][6]["opacity"] = 0.25;
-    map["layers"][4]["objects"].push_back(core::Json::parse(R"({"id": 10, "name": "log", "type": "collision", "x": 100, "y": 0, "width": 40, "height": 10, "capsule": true})"));
-    return map;
-}
-
-TEST(MapTest, ReadsObliqueMapsBlendModesAndCapsules) {
+TEST_F(MapTest, ReadsObliqueMapsBlendModesAndCapsules) {
     tiled::Map map = tiled::Map::parse(obliqueMap(), "maps/oblique.tmj", reader());
     EXPECT_EQ(map.orientation, tiled::Map::Orientation::Oblique);
     EXPECT_EQ(tiled::Map::orientationName(map.orientation), "oblique");
@@ -489,7 +501,7 @@ TEST(MapTest, ReadsObliqueMapsBlendModesAndCapsules) {
     EXPECT_EQ(tiled::Map::parse(blendedGroup, "maps/group.tmj", reader()).findLayer("group")->blend, graphics::BlendMode::Type::Alpha);
 }
 
-TEST(MapTest, ReadsInfiniteMapsAndWorlds) {
+TEST_F(MapTest, ReadsInfiniteMapsAndWorlds) {
     const tiled::Map infinite = tiled::Map::parse(infiniteMap(), "maps/infinite.tmj", reader());
     EXPECT_TRUE(infinite.infinite);
     EXPECT_EQ(infinite.findLayer("ground")->getGid(-1, 1), 4U);
@@ -505,7 +517,7 @@ TEST(MapTest, ReadsInfiniteMapsAndWorlds) {
     EXPECT_EQ(world.maps[2].bounds, (math::Rect{64.0F, 0.0F, 64.0F, 48.0F}));
 }
 
-TEST(MapRendererTest, LoadsDrawsAndAnimatesMaps) {
+TEST_F(MapRendererTest, LoadsDrawsAndAnimatesMaps) {
     test::EngineFixture fixture(packageFiles());
     assets::Manager& assets = fixture.engine().getAssets();
     const auto data = std::static_pointer_cast<tiled::Map>(assets.load("tiled", "maps/island.tmj"));
@@ -562,7 +574,7 @@ TEST(MapRendererTest, LoadsDrawsAndAnimatesMaps) {
     EXPECT_THROW((void)assets.load("tiled", "maps/island.tmj", {{"scale", 2}}), std::invalid_argument);
 }
 
-TEST(MapRendererTest, BakesTheRegionsOfChangedCellsAgain) {
+TEST_F(MapRendererTest, BakesTheRegionsOfChangedCellsAgain) {
     // The ground is 40 cells wide, which makes two regions across, with one tile on the left and none on the right.
     core::Json document = orthogonalMap();
     document["width"] = 40;
@@ -601,7 +613,7 @@ TEST(MapRendererTest, BakesTheRegionsOfChangedCellsAgain) {
     }
 }
 
-TEST(MapRendererTest, PlacesMapsAtAWorldOffset) {
+TEST_F(MapRendererTest, PlacesMapsAtAWorldOffset) {
     test::EngineFixture fixture(packageFiles());
     tiled::MapRenderer map(*std::static_pointer_cast<tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj")), fixture.engine().getDefaultFont());
     // clang-format off
@@ -624,7 +636,7 @@ TEST(MapRendererTest, PlacesMapsAtAWorldOffset) {
     EXPECT_LT(render(home, {1000.0F, 0.0F}), 16U);
 }
 
-TEST(MapRendererTest, SortsRowsAndObjectsByTheYTheyStandOn) {
+TEST_F(MapRendererTest, SortsRowsAndObjectsByTheYTheyStandOn) {
     test::EngineFixture fixture(packageFiles());
     tiled::MapRenderer map(*std::static_pointer_cast<tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj")), fixture.engine().getDefaultFont());
     const graphics::Texture unit = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
@@ -661,7 +673,7 @@ TEST(MapRendererTest, SortsRowsAndObjectsByTheYTheyStandOn) {
     EXPECT_EQ(fixture.engine().getRenderer2D().getStats().sprites, 27U);
 }
 
-TEST(MapRendererTest, DrawsObliqueMapsWithLayerBlendModes) {
+TEST_F(MapRendererTest, DrawsObliqueMapsWithLayerBlendModes) {
     std::map<std::string, std::string> files = packageFiles();
     files["content/maps/island.tmj"] = obliqueMap().dump();
     test::EngineFixture fixture(files);
@@ -679,7 +691,7 @@ TEST(MapRendererTest, DrawsObliqueMapsWithLayerBlendModes) {
     EXPECT_EQ(fixture.engine().getRenderer2D().getStats().sprites, 19U);
 }
 
-TEST(MapRendererTest, RejectsDrawingWhatItCannotPlace) {
+TEST_F(MapRendererTest, RejectsDrawingWhatItCannotPlace) {
     test::EngineFixture fixture(packageFiles());
     const auto data = std::static_pointer_cast<tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj"));
 
@@ -705,7 +717,7 @@ TEST(MapRendererTest, RejectsDrawingWhatItCannotPlace) {
     EXPECT_NE(error.find("visible area"), std::string::npos);
 }
 
-TEST(MapRendererTest, BuildsCollisionBodies) {
+TEST_F(MapRendererTest, BuildsCollisionBodies) {
     test::EngineFixture fixture(packageFiles());
     const auto data = std::static_pointer_cast<tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj"));
     tiled::MapRenderer map(*data);
@@ -726,7 +738,7 @@ TEST(MapRendererTest, BuildsCollisionBodies) {
     EXPECT_GE(bodies[1].getShapes().size(), 5U);
 }
 
-TEST(MapRendererTest, BuildsObliqueAndCapsuleCollision) {
+TEST_F(MapRendererTest, BuildsObliqueAndCapsuleCollision) {
     const tiled::MapRenderer map(tiled::Map::parse(obliqueMap(), "maps/oblique.tmj", reader()));
     physics2d::World world({.gravity = {}});
     ASSERT_EQ(map.buildCollision(world).size(), 2U);
@@ -752,7 +764,7 @@ TEST(MapRendererTest, BuildsObliqueAndCapsuleCollision) {
     EXPECT_TRUE(other.queryPoint({200.5F, 0.5F}).empty());
 }
 
-TEST(MapRendererTest, PlacesTileObjectCollisionLikeTheirImagesAndReadsLayerFilters) {
+TEST_F(MapRendererTest, PlacesTileObjectCollisionLikeTheirImagesAndReadsLayerFilters) {
     // The tree tileset aligns its objects by their bottom center, so the tree at 16, 48 covers 8 to 24 across and 16 to 48 down.
     core::Json document = orthogonalMap();
     document["layers"][4]["objects"] = core::Json::parse(R"([{"id": 1, "type": "collision", "x": 16, "y": 48, "width": 16, "height": 32, "gid": 100}])");
@@ -782,7 +794,7 @@ TEST(MapRendererTest, PlacesTileObjectCollisionLikeTheirImagesAndReadsLayerFilte
     }
 }
 
-TEST(MapRendererTest, SpawnsObjectsThroughFactories) {
+TEST_F(MapRendererTest, SpawnsObjectsThroughFactories) {
     core::Json document = orthogonalMap();
     document["layers"][6]["layers"].push_back(core::Json::parse(R"({"id": 9, "name": "camp", "type": "objectgroup", "offsetx": 10, "offsety": 20, "objects": [{"id": 20, "type": "player", "x": 1, "y": 2}]})"));
     const tiled::MapRenderer map(tiled::Map::parse(document, "maps/island.tmj", reader()));
@@ -824,7 +836,7 @@ TEST(MapRendererTest, SpawnsObjectsThroughFactories) {
     EXPECT_EQ(spawned[1].first, "once rock");
 }
 
-TEST(TiledLuaTest, HandsDeeplyNestedGroupsToLua) {
+TEST_F(TiledLuaTest, HandsDeeplyNestedGroupsToLua) {
     core::Json document = orthogonalMap();
     core::Json group = core::Json::parse(R"({"id": 100, "name": "deepest", "type": "group", "layers": []})");
     for (int level = 1; level <= 60; ++level) {
@@ -835,10 +847,10 @@ TEST(TiledLuaTest, HandsDeeplyNestedGroupsToLua) {
     files["content/maps/island.tmj"] = document.dump();
 
     test::EngineFixture fixture(files);
-    EXPECT_EQ(fixture.lua("local layers = require('haylen.tiled').newMap(require('haylen.assets').load('maps/island.tmj')):layers() local layer = layers[#layers] for level = 1, 60 do layer = layer.layers[1] end return layer.name"), "deepest");
+    EXPECT_EQ(fixture.lua("local layers = require('haylen.tiled').newMapRenderer(require('haylen.assets').load('maps/island.tmj')):layers() local layer = layers[#layers] for level = 1, 60 do layer = layer.layers[1] end return layer.name"), "deepest");
 }
 
-TEST(TiledLuaTest, UsesMapsFromLua) {
+TEST_F(TiledLuaTest, UsesMapsFromLua) {
     test::EngineFixture fixture(packageFiles());
     // clang-format off
     fixture.runLua(R"(
@@ -847,7 +859,7 @@ TEST(TiledLuaTest, UsesMapsFromLua) {
         graphics2d = require('haylen.graphics2d')
         physics2d = require('haylen.physics2d')
         data = assets.load('maps/island.tmj')
-        map = tiled.newMap(data)
+        map = tiled.newMapRenderer(data)
         camera = graphics2d.newCamera()
         require('haylen.scene').push({render = function()
             graphics2d.beginWorld(camera)
@@ -895,17 +907,20 @@ TEST(TiledLuaTest, UsesMapsFromLua) {
     EXPECT_NE(fixture.lua("map:draw(camera, {layer = 1, z = 2})").find("Unknown option 'z'"), std::string::npos);
     EXPECT_NE(fixture.lua("map:objects('ground')").find("The map has no object layer named 'ground'."), std::string::npos);
     EXPECT_NE(fixture.lua("map:setTile('things', 0, 0, 1)").find("Unknown tile layer: things"), std::string::npos);
-    EXPECT_NE(fixture.lua("tiled.newMap('map')").find("error: "), std::string::npos);
+    EXPECT_NE(fixture.lua("tiled.newMapRenderer('map')").find("error: "), std::string::npos);
+
+    // The Lua types carry the names of the C++ classes they wrap.
+    EXPECT_NE(fixture.lua("local draw = map.draw draw(assets.load('maps/island.tmj'))").find("haylen.MapRenderer expected, got haylen.TiledMap"), std::string::npos);
 }
 
-TEST(TiledLuaTest, CullsWithTheActiveCanvasAndPlacesWorldMaps) {
+TEST_F(TiledLuaTest, CullsWithTheActiveCanvasAndPlacesWorldMaps) {
     test::EngineFixture fixture(packageFiles());
     // clang-format off
     fixture.runLua(R"(
         tiled = require('haylen.tiled')
         graphics = require('haylen.graphics')
         graphics2d = require('haylen.graphics2d')
-        map = tiled.newMap(require('haylen.assets').load('maps/island.tmj'))
+        map = tiled.newMapRenderer(require('haylen.assets').load('maps/island.tmj'))
         camera = graphics2d.newCamera()
         target = graphics.newRenderTarget(64, 64)
         require('haylen.scene').push({render = function()
@@ -934,9 +949,9 @@ TEST(TiledLuaTest, CullsWithTheActiveCanvasAndPlacesWorldMaps) {
     EXPECT_NE(fixture.lua("map:drawLayer('ground', camera, {ysort = 1})").find("bad option 'ysort'"), std::string::npos);
 }
 
-TEST(TiledLuaTest, ExposesMapTilesetLayerAndPropertyDetails) {
+TEST_F(TiledLuaTest, ExposesMapTilesetLayerAndPropertyDetails) {
     test::EngineFixture fixture(packageFiles());
-    fixture.runLua("tiled = require('haylen.tiled') assets = require('haylen.assets') map = tiled.newMap(assets.load('maps/island.tmj')) endless = tiled.newMap(assets.load('maps/infinite.tmj'))");
+    fixture.runLua("tiled = require('haylen.tiled') assets = require('haylen.assets') map = tiled.newMapRenderer(assets.load('maps/island.tmj')) endless = tiled.newMapRenderer(assets.load('maps/infinite.tmj'))");
 
     EXPECT_EQ(fixture.lua("return tostring(map.infinite) .. ' ' .. map.renderOrder .. ' ' .. map.hexSideLength .. ' ' .. tostring(map.staggerX) .. ' ' .. tostring(map.staggerEven) .. ' ' .. map.parallaxOrigin.x .. ' ' .. tostring(endless.infinite)"), "false right-down 0 false false 0.0 true");
     EXPECT_EQ(fixture.lua("local types = map.propertyTypes return types.spawn .. ' ' .. tostring(types.title)"), "Spawn nil");

@@ -28,16 +28,18 @@ class GridRay final {
         Cell cell{static_cast<int>(std::floor(ray.origin.x / cellSize.x)), static_cast<int>(std::floor(ray.origin.y / cellSize.y))};
         const int stepX = ray.direction.x > 0.0F ? 1 : -1;
         const int stepY = ray.direction.y > 0.0F ? 1 : -1;
-        float nextX = boundary(ray.origin.x, ray.direction.x, cellSize.x, cell.x);
-        float nextY = boundary(ray.origin.y, ray.direction.y, cellSize.y, cell.y);
-        const float deltaX = ray.direction.x != 0.0F ? cellSize.x / std::fabs(ray.direction.x) : kUnreachable;
-        const float deltaY = ray.direction.y != 0.0F ? cellSize.y / std::fabs(ray.direction.y) : kUnreachable;
+
+        // The distances to the next boundaries add up in double precision, which keeps them growing across every cell of the 32-bit range where a float stops changing after about 2^24 steps.
+        double nextX = boundary(ray.origin.x, ray.direction.x, cellSize.x, cell.x);
+        double nextY = boundary(ray.origin.y, ray.direction.y, cellSize.y, cell.y);
+        const double deltaX = ray.direction.x != 0.0F ? static_cast<double>(cellSize.x) / std::fabs(static_cast<double>(ray.direction.x)) : kUnreachable;
+        const double deltaY = ray.direction.y != 0.0F ? static_cast<double>(cellSize.y) / std::fabs(static_cast<double>(ray.direction.y)) : kUnreachable;
         if (!visit(cell, 0.0F, math::Vec2{})) {
             return;
         }
 
         for (;;) {
-            float distance = 0.0F;
+            double distance = 0.0;
             math::Vec2 normal;
             if (nextX <= nextY) {
                 distance = nextX;
@@ -50,7 +52,7 @@ class GridRay final {
                 nextY += deltaY;
                 normal.y = static_cast<float>(-stepY);
             }
-            if (distance > ray.length || !visit(cell, distance, normal)) {
+            if (distance > static_cast<double>(ray.length) || !visit(cell, static_cast<float>(distance), normal)) {
                 return;
             }
         }
@@ -77,7 +79,7 @@ class GridRay final {
     [[nodiscard]] static std::optional<Hit> cast(const math::Ray& ray, math::Vec2 cellSize, const CellGrid& grid);
 
   private:
-    static constexpr float kUnreachable = std::numeric_limits<float>::infinity();
+    static constexpr double kUnreachable = std::numeric_limits<double>::infinity();
 
     // Cells stay below this magnitude, so stepping past the last cell never overflows.
     static constexpr float kCellLimit = 2147483648.0F;
@@ -85,12 +87,12 @@ class GridRay final {
     static void requireCellSize(math::Vec2 cellSize);
     static void requireCastable(const math::Ray& ray, math::Vec2 cellSize);
 
-    [[nodiscard]] static float boundary(float origin, float direction, float size, int cell) noexcept {
+    [[nodiscard]] static double boundary(float origin, float direction, float size, int cell) noexcept {
         if (direction > 0.0F) {
-            return (static_cast<float>(cell + 1) * size - origin) / direction;
+            return ((static_cast<double>(cell) + 1.0) * size - origin) / direction;
         }
         if (direction < 0.0F) {
-            return (static_cast<float>(cell) * size - origin) / direction;
+            return (static_cast<double>(cell) * size - origin) / direction;
         }
         return kUnreachable;
     }

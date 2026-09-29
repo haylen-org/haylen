@@ -10,9 +10,11 @@
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/TypeConverter.hpp"
+#include "haylen/lua/Userdata.hpp"
 #include "input/InputLua.hpp"
 #include "lua/Owners.hpp"
 #include "lua/Task.hpp"
+#include "lua/WeakReference.hpp"
 
 namespace haylen::lua {
 
@@ -33,11 +35,7 @@ void ScriptedScene::pushScenes(lua_State* L) {
 }
 
 int ScriptedScene::collectHandle(lua_State* L) {
-    auto* handle = static_cast<std::weak_ptr<ScriptedScene>*>(luaL_testudata(L, 1, kHandleType));
-    if (handle == nullptr) {
-        return 0;
-    }
-    handle->~weak_ptr();
+    static_cast<std::weak_ptr<ScriptedScene>*>(lua_touserdata(L, 1))->~weak_ptr();
     lua_pushnil(L);
     lua_setmetatable(L, 1);
     return 0;
@@ -74,7 +72,7 @@ std::shared_ptr<ScriptedScene> ScriptedScene::get(lua_State* L, int index) {
     auto created = std::make_shared<ScriptedScene>(L, key);
     pushScenes(L);
     lua_pushvalue(L, key);
-    if (luaL_newmetatable(L, kHandleType) != 0) {
+    if (Userdata::newMetatable(L, kHandleType)) {
         lua_pushcfunction(L, &collectHandle);
         lua_setfield(L, -2, "__gc");
     }
@@ -254,6 +252,23 @@ core::ProcessMode ScriptedScene::resolveOwnerMode(lua_State* L, int owner) {
         }
     }
     return readProcessMode(L, index);
+}
+
+std::function<core::ProcessMode()> ScriptedScene::followOwnerMode(lua_State* L, int owner) {
+    auto reference = std::make_shared<WeakReference>(L, owner);
+    lua_State* main = Runtime::getMainThread(L);
+    // clang-format off
+    return [reference, main] {
+        core::ProcessMode mode = core::ProcessMode::Inherit;
+        Runtime::protectedRun(main, [&](lua_State* state) {
+            if (reference->push(state)) {
+                mode = resolveOwnerMode(state, -1);
+                lua_pop(state, 1);
+            }
+        });
+        return mode;
+    };
+    // clang-format on
 }
 
 bool ScriptedScene::isTransparent() const {

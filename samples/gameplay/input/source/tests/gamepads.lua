@@ -39,17 +39,17 @@ function Gamepads:enter()
         focus = 'deadzone',
         controls = {
             ui.formField{label = 'Dead zone of every stick and axis', ui.slider{id = 'deadzone', min = 0, max = 0.9, step = 0.05, value = self.defaultDeadzone, showValue = true, onChange = function(event)
-                input.setDeadzone(event.value)
+                input.setGamepadDeadzone(event.value)
             end}},
             ui.label{text = 'Movement inside the dead zone reads 0 and does not make the gamepad the last device. The rest is rescaled to the full range, and sticks apply it to their radius, which keeps diagonals smooth.', color = 'textMuted', font = 'caption'},
             ui.sectionTitle{text = 'Reading gamepads'},
-            ui.label{font = 'monospace', text = "input.gamepadConnected(2)\ninput.gamepadName(2)\ninput.gamepadDown('south', 2)\ninput.gamepadAxis('left_trigger', 2)\ninput.gamepadStick('left', 2)\ninput.setDeadzone(0.2)"},
+            ui.label{font = 'monospace', text = "input.gamepadConnected(2)\ninput.gamepadName(2)\ninput.gamepadDown('south', 2)\ninput.gamepadAxis('left_trigger', 2)\ninput.gamepadStick('left', 2)\ninput.setGamepadDeadzone(0.2)"},
         },
     })
 end
 
 function Gamepads:exit()
-    input.setDeadzone(self.defaultDeadzone)
+    input.setGamepadDeadzone(self.defaultDeadzone)
 end
 
 -- The east button is the cancel of the UI, so a tap on it shows on the card and holding it for a second goes back.

@@ -10,7 +10,7 @@
 
 namespace haylen::core {
 
-debug::ObjectCounter Tween::counter("Tween", debug::ObjectCounter::Kind::Native);
+debug::ObjectCounter& Tween::counter = *new debug::ObjectCounter("Tween", debug::ObjectCounter::Kind::Native);
 
 void Tween::setDelay(float seconds) {
     if (!(seconds >= 0.0F)) {
@@ -43,6 +43,10 @@ void Tween::setTag(std::string value) {
         throw std::logic_error("The tag of a tween is fixed once it plays.");
     }
     tag = std::move(value);
+}
+
+ProcessMode Tween::resolveProcessMode() const {
+    return processMode == ProcessMode::Inherit && parentMode ? parentMode() : processMode;
 }
 
 float Tween::getTotalDuration() const noexcept {

@@ -77,6 +77,14 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
     [[nodiscard]] ProcessMode getProcessMode() const noexcept {
         return processMode;
     }
+
+    // Gives an inheriting tween the mode of its parent, such as the scene that owns it. The manager asks on every update, so the tween follows the parent when its mode changes. Without one, Inherit counts as Pausable.
+    void setParentMode(std::function<ProcessMode()> value) {
+        parentMode = std::move(value);
+    }
+
+    // Returns the mode the tween runs by: its own, or the one of its parent while it inherits.
+    [[nodiscard]] ProcessMode resolveProcessMode() const;
     void setUnscaledTime(bool value) noexcept {
         unscaledTime = value;
     }
@@ -224,7 +232,7 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
         float time = 0.0F;
     };
 
-    static debug::ObjectCounter counter;
+    static debug::ObjectCounter& counter;
 
     [[nodiscard]] Position locate(float totalTime) const noexcept;
     [[nodiscard]] float getLoopStart(int loop) const noexcept;
@@ -239,6 +247,7 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
     void end(bool justCompleted);
 
     Callbacks callbacks;
+    std::function<ProcessMode()> parentMode;
     std::string tag;
     TweenManager* manager = nullptr;
     Timeline* parent = nullptr;

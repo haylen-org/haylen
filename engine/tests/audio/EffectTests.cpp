@@ -126,6 +126,23 @@ TEST_F(AudioEffectTest, FilterParametersChangeWhileItPlays) {
     EXPECT_EQ(shelf.getGain(), -3.0F);
 }
 
+TEST_F(AudioEffectTest, FilterGainsStayInTheRangeTheirCoefficientsHold) {
+    for (const Filter::Kind kind : {Filter::Kind::Peak, Filter::Kind::LowShelf, Filter::Kind::HighShelf}) {
+        for (const float gain : {-96.0F, 96.0F}) {
+            for (const float cutoff : {20.0F, 20000.0F, 1e30F}) {
+                EXPECT_TRUE(std::isfinite(measure(std::make_shared<Filter>(kind, Filter::Settings{.cutoff = cutoff, .gain = gain}), 1000.0F, 0.001F))) << static_cast<int>(kind) << " " << gain << " " << cutoff;
+            }
+        }
+    }
+
+    // Larger finite gains would overflow the coefficients, so they are refused.
+    EXPECT_THROW(Filter(Filter::Kind::Peak, {.gain = 1e30F}), std::invalid_argument);
+    Filter shelf(Filter::Kind::LowShelf, {});
+    EXPECT_THROW(shelf.setGain(96.5F), std::invalid_argument);
+    EXPECT_THROW(shelf.setGain(-1000.0F), std::invalid_argument);
+    EXPECT_EQ(shelf.getGain(), 0.0F);
+}
+
 TEST_F(AudioEffectTest, EffectsChainInOrderOnBusesAndVoices) {
     const auto cut = std::make_shared<Filter>(Filter::Kind::Peak, Filter::Settings{.cutoff = 1000.0F, .q = 1.0F, .gain = -20.0F});
     const auto boost = std::make_shared<Filter>(Filter::Kind::Peak, Filter::Settings{.cutoff = 1000.0F, .q = 1.0F, .gain = 6.0206F});

@@ -416,14 +416,14 @@ void MapRenderer::drawObjects(graphics2d::Renderer& renderer, const Layer& layer
                 throw std::logic_error("Drawing Tiled text objects needs a font.");
             }
             const Object::Text& text = object->text;
-            const text::TextAlign align = text.horizontalAlign == "center" ? text::TextAlign::Center : (text.horizontalAlign == "right" ? text::TextAlign::Right : (text.horizontalAlign == "justify" ? text::TextAlign::Fill : text::TextAlign::Left));
+            const text::Alignment align = text.horizontalAlign == "center" ? text::Alignment::Center : (text.horizontalAlign == "right" ? text::Alignment::Right : (text.horizontalAlign == "justify" ? text::Alignment::Fill : text::Alignment::Left));
             const float height = font->measure(text.text, {.size = text.pixelSize, .maxWidth = text.wrap ? object->size.x : 0.0F}).y;
             const float slack = object->size.y - height;
             const float down = text.verticalAlign == "center" ? slack * 0.5F : (text.verticalAlign == "bottom" ? slack : 0.0F);
-            const float across = align == text::TextAlign::Center ? object->size.x * 0.5F : (align == text::TextAlign::Right ? object->size.x : 0.0F);
+            const float across = align == text::Alignment::Center ? object->size.x * 0.5F : (align == text::Alignment::Right ? object->size.x : 0.0F);
             const math::Vec2 origin = MapQuery::rotateAround(position + math::Vec2{across, down}, position, object->rotation);
             const graphics2d::DrawOrder order = options.ysort ? groundOrder(options.order, position.y + object->size.y, origin.y) : options.order;
-            renderer.drawText(*font, text.text, origin, {.size = text.pixelSize, .color = fade(state.tint * text.color, object->opacity), .align = align, .maxWidth = text.wrap ? object->size.x : 0.0F, .anchor = {align == text::TextAlign::Center ? 0.5F : (align == text::TextAlign::Right ? 1.0F : 0.0F), 0.0F}, .rotation = object->rotation}, order);
+            renderer.drawText(*font, text.text, origin, {.size = text.pixelSize, .color = fade(state.tint * text.color, object->opacity), .align = align, .maxWidth = text.wrap ? object->size.x : 0.0F, .anchor = {align == text::Alignment::Center ? 0.5F : (align == text::Alignment::Right ? 1.0F : 0.0F), 0.0F}, .rotation = object->rotation}, order);
             continue;
         }
 

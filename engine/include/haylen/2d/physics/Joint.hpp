@@ -46,7 +46,8 @@ class Joint final {
     };
 
     Joint() = default;
-    Joint(World* owner, std::uint64_t handle) noexcept : world(owner), id(handle) {}
+    // A handle remembers the generation of its world, so it turns invalid once that world is destroyed, even after a new world reuses its slot.
+    Joint(World* owner, std::uint64_t handle) noexcept;
 
     [[nodiscard]] static std::optional<Type> typeFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view typeName(Type value) noexcept;
@@ -73,6 +74,7 @@ class Joint final {
     [[nodiscard]] std::uint64_t checkedMouseId() const;
 
     World* world = nullptr;
+    std::uint32_t worldHandle = 0;
     std::uint64_t id = 0;
 };
 

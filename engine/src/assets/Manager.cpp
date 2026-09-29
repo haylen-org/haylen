@@ -75,8 +75,7 @@ graphics::Texture::Options Manager::textureOptionsFromJson(const core::Json& opt
 }
 
 core::Json Manager::textureOptionsToJson(graphics::Texture::Options options) {
-    using Wrap = graphics::Texture::Wrap;
-    return {{"filter", options.filter == graphics::Texture::Filter::Nearest ? "nearest" : "linear"}, {"wrap", options.wrap == Wrap::Clamp ? "clamp" : (options.wrap == Wrap::Repeat ? "repeat" : "mirror")}};
+    return {{"filter", graphics::Texture::filterName(options.filter)}, {"wrap", graphics::Texture::wrapName(options.wrap)}};
 }
 
 Manager::Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphics::Device& graphicsDevice, core::EventBus& eventBus) : package(contentPackage), jobs(jobSystem), device(graphicsDevice), publisher(std::make_shared<Publisher>(eventBus)) {

@@ -2,9 +2,11 @@
 
 #include <exception>
 #include <stdexcept>
+#include <utility>
 
 #include "haylen/audio/Mixer.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/JobSystem.hpp"
 #include "haylen/core/JsonNumber.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/input/ActionMap.hpp"
@@ -34,6 +36,7 @@ core::Json StoragePlugin::getStoredPreference(const storage::Preferences& source
 }
 
 void StoragePlugin::start(core::Engine& engine) {
+    jobs = &engine.getJobs();
     saveSlots = std::make_unique<storage::SaveSlots>(engine.getStorage());
     preferences = std::make_unique<storage::Preferences>(engine.getStorage());
     try {
@@ -53,9 +56,42 @@ void StoragePlugin::start(core::Engine& engine) {
 
 void StoragePlugin::stop(core::Engine&) {
     appStateConnection.disconnect();
+    runOperations(*operations);
+    jobs = nullptr;
     if (preferences) {
         saveQuietly(*preferences);
     }
+}
+
+void StoragePlugin::queueOperation(std::function<void()> operation) {
+    if (jobs == nullptr) {
+        throw std::logic_error("The storage plugin has not started.");
+    }
+    bool schedule = false;
+    {
+        const std::scoped_lock lock(operations->mutex);
+        operations->waiting.push_back(std::move(operation));
+        schedule = !std::exchange(operations->scheduled, true);
+    }
+    if (schedule) {
+        jobs->postIo([queue = operations] { runOperations(*queue); });
+    }
+}
+
+void StoragePlugin::runOperations(Operations& queue) {
+    std::unique_lock lock(queue.mutex);
+    queue.idle.wait(lock, [&queue] { return !queue.running; });
+    queue.running = true;
+    while (!queue.waiting.empty()) {
+        std::function<void()> operation = std::move(queue.waiting.front());
+        queue.waiting.pop_front();
+        lock.unlock();
+        operation();
+        lock.lock();
+    }
+    queue.running = false;
+    queue.scheduled = false;
+    queue.idle.notify_all();
 }
 
 void StoragePlugin::installLua(core::Engine&, lua_State* L) {

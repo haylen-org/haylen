@@ -24,28 +24,31 @@ struct Drawn {
     std::uint32_t green = 0;
 };
 
-Drawn getDrawn(plugins::UiPlugin& plugin) {
-    plugin.getBackend().makeCurrent();
-    const ImDrawData& data = *ImGui::GetDrawData();
-    math::Vec2 lowest{std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
-    math::Vec2 highest{std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()};
-    Drawn drawn;
-    for (const ImDrawList* list : data.CmdLists) {
-        for (const ImDrawVert& vertex : list->VtxBuffer) {
-            lowest = {std::min(lowest.x, vertex.pos.x), std::min(lowest.y, vertex.pos.y)};
-            highest = {std::max(highest.x, vertex.pos.x), std::max(highest.y, vertex.pos.y)};
-            drawn.alpha = std::max(drawn.alpha, (vertex.col >> IM_COL32_A_SHIFT) & 0xFFU);
-            drawn.green = std::max(drawn.green, (vertex.col >> IM_COL32_G_SHIFT) & 0xFFU);
+class UiTransformTest : public ::testing::Test {
+  protected:
+    [[nodiscard]] static Drawn getDrawn(plugins::UiPlugin& plugin) {
+        plugin.getBackend().makeCurrent();
+        const ImDrawData& data = *ImGui::GetDrawData();
+        math::Vec2 lowest{std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
+        math::Vec2 highest{std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()};
+        Drawn drawn;
+        for (const ImDrawList* list : data.CmdLists) {
+            for (const ImDrawVert& vertex : list->VtxBuffer) {
+                lowest = {std::min(lowest.x, vertex.pos.x), std::min(lowest.y, vertex.pos.y)};
+                highest = {std::max(highest.x, vertex.pos.x), std::max(highest.y, vertex.pos.y)};
+                drawn.alpha = std::max(drawn.alpha, (vertex.col >> IM_COL32_A_SHIFT) & 0xFFU);
+                drawn.green = std::max(drawn.green, (vertex.col >> IM_COL32_G_SHIFT) & 0xFFU);
+            }
         }
+        drawn.box = math::Rect::fromMinMax(lowest, highest);
+        return drawn;
     }
-    drawn.box = math::Rect::fromMinMax(lowest, highest);
-    return drawn;
-}
+};
 
 } // namespace
 
 // The offset moves the node where input finds it, while scale, opacity and tint reshape only what it drew.
-TEST(UiTransformTest, MovesScalesFadesAndTintsANode) {
+TEST_F(UiTransformTest, MovesScalesFadesAndTintsANode) {
     test::EngineFixture fixture;
     plugins::UiPlugin& plugin = fixture.engine().getPlugin<plugins::UiPlugin>();
     const std::shared_ptr<Document> document = plugin.createDocument({{"kind", "button"}, {"id", "title"}, {"text", "Hello there"}}, Placement::Screen);
@@ -73,7 +76,7 @@ TEST(UiTransformTest, MovesScalesFadesAndTintsANode) {
     EXPECT_EQ(after.green, 0U);
 }
 
-TEST(UiTransformTest, TweensNodesNativelyFromLua) {
+TEST_F(UiTransformTest, TweensNodesNativelyFromLua) {
     test::EngineFixture fixture;
     // clang-format off
     fixture.runLua(R"(

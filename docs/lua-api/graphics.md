@@ -27,6 +27,7 @@ Creates a `Texture` from code. `options` is optional:
 | --- | --- | --- | --- |
 | `fill` | Color | `'#FFFFFFFF'` | Color of every pixel when `pixels` is absent. |
 | `pixels` | string | none | Raw RGBA bytes, four per pixel, row by row from the top. Its length must be `width * height * 4`, otherwise the call raises `Image pixel data does not match its dimensions.` |
+| `dynamic` | boolean | `false` | Makes a texture whose pixels change in place with [texture:update(pixels)](#textureupdatepixels), such as a minimap drawn by code. |
 | `filter` | string | `'nearest'` | `'nearest'` or `'linear'` sampling. |
 | `wrap` | string | `'clamp'` | `'clamp'`, `'repeat'` or `'mirror'` addressing. |
 
@@ -131,6 +132,30 @@ local assets = require('haylen.assets')
 
 local texture = assets.texture('tiny_swords/units/blue/warrior/warrior_run.png', {filter = 'linear'})
 print(texture.width, texture.height, texture.filter, texture.wrap, texture == assets.texture('tiny_swords/units/blue/warrior/warrior_run.png', {filter = 'linear'}))
+```
+
+### texture:update(pixels)
+
+Replaces every pixel of a texture made with `dynamic = true` by `pixels`, a string of raw RGBA bytes, four per pixel, row by row from the top, whose length is `width * height * 4`. The texture keeps its size, and every draw of the frame shows the new pixels. The GPU takes whole textures, so a texture that changes several times in one frame sends only its last pixels, once, before the frame draws, which `graphics2d.stats().uploadedBytes` counts. A texture that is not dynamic raises `Only a dynamic texture changes its pixels in place.`, and pixels of another length raise `The pixels do not match the size of the dynamic texture.`
+
+```lua
+local graphics = require('haylen.graphics')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local minimap = graphics.newTexture(2, 2, {dynamic = true})
+local black, white = string.char(0, 0, 0, 255), string.char(255, 255, 255, 255)
+
+scene.push({
+    update = function(self, dt)
+        local on = math.floor(os.clock() * 2) % 2 == 0
+        minimap:update(on and (white .. black .. black .. white) or (black .. white .. white .. black))
+    end,
+    render = function(self)
+        graphics2d.beginScreen()
+        graphics2d.draw(minimap, 20, 20, {width = 64, height = 64})
+    end,
+})
 ```
 
 ## RenderTarget

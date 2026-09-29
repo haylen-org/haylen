@@ -74,9 +74,9 @@ function Influence:think()
         local enemy = self.maps[unit.team == 'blue' and 'red' or 'blue']
         local tx, ty
         if advantage > -0.1 then
-            tx, ty = enemy:highest(unit.x, unit.y, 400)
+            tx, ty = enemy:findHighest(unit.x, unit.y, 400)
         else
-            tx, ty = enemy:lowest(unit.x, unit.y, 150)
+            tx, ty = enemy:findLowest(unit.x, unit.y, 150)
         end
         unit.target = tx and {tx, ty} or nil
     end

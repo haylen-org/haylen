@@ -31,7 +31,7 @@ std::string TextEditor::getShown(std::string_view value, bool password) {
     return bullets;
 }
 
-TextFieldLayout TextEditor::layOut(Context& context, std::string_view value, const text::TextStyle& style, bool password) {
+TextFieldLayout TextEditor::layOut(Context& context, std::string_view value, const text::Style& style, bool password) {
     const std::string shown = getShown(value, password);
     return {Typography::layout(context, Theme::Font::Body, shown, style), core::Utf8::decode(shown)};
 }
@@ -142,7 +142,7 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     const float paddingY = multiline ? context.getMetric(Theme::Metric::ControlPaddingY) : std::max(0.0F, (inner.height - fontSize) * 0.5F);
     const math::Rect area = multiline ? inner.inset({paddingX, paddingY, paddingX, paddingY}) : inner.inset({paddingX, 0.0F, paddingX, 0.0F});
     const bool rightToLeft = context.isRightToLeft();
-    const text::TextStyle style = Typography::getStyle(context, Theme::Font::Body);
+    const text::Style style = Typography::getStyle(context, Theme::Font::Body);
 
     // The scroll of the text lives with the field, and the caret and the selection it had start the frame.
     ImGuiStorage& storage = *ImGui::GetStateStorage();
@@ -220,7 +220,7 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     }
 
     // An empty field shows its placeholder where its text would start.
-    text::TextStyle ink = style;
+    text::Style ink = style;
     if (value.empty()) {
         ink.color = context.getColor(Theme::Color::TextMuted);
         const math::Vec2 size = Typography::layout(context, Theme::Font::Body, options.placeholder, ink)->size;

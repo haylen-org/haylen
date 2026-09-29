@@ -4,13 +4,14 @@
 
 #include "core/EmbeddedFiles.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen::assets {
 
 class AssetsLuaTest : public ::testing::Test {
   protected:
     [[nodiscard]] static std::map<std::string, std::string> getAssetFiles() {
-        const std::vector<std::uint8_t> image = test::pngImage(8, 4, 0xFFFFFFFFU);
+        const std::vector<std::uint8_t> image = test::TestFiles::pngImage(8, 4, 0xFFFFFFFFU);
         const std::span<const std::uint8_t> font = core::EmbeddedFiles::getDefaultFont();
         return {
             {"content/images/hero.png", std::string(image.begin(), image.end())}, {"content/images/tree.png", std::string(image.begin(), image.end())}, {"content/fonts/ui.ttf", std::string(font.begin(), font.end())}, {"content/data/level.json", R"({"trees": [1, 2, 3]})"}, {"content/data/notes.txt", "notes"}, {"content/preload.json", R"({"groups": {"world": ["images/"], "broken": ["images/missing.png"]}})"},
@@ -52,7 +53,7 @@ TEST_F(AssetsLuaTest, InspectsTypesFilesAndTheCache) {
     EXPECT_NE(lua("return assets.typeForPath('data/notes.txt')").find("No asset type handles the file data/notes.txt"), std::string::npos);
     EXPECT_EQ(lua("return tostring(assets.hasType('texture')) .. ' ' .. tostring(assets.hasType('mesh'))"), "true false");
 
-    EXPECT_EQ(lua("local data = assets.bytes('images/hero.png') return #data .. ' ' .. data:sub(2, 4)"), std::to_string(test::pngImage(8, 4, 0xFFFFFFFFU).size()) + " PNG");
+    EXPECT_EQ(lua("local data = assets.bytes('images/hero.png') return #data .. ' ' .. data:sub(2, 4)"), std::to_string(test::TestFiles::pngImage(8, 4, 0xFFFFFFFFU).size()) + " PNG");
     EXPECT_EQ(lua("return assets.bytes('data/notes.txt')"), "notes");
     EXPECT_NE(lua("return assets.bytes('data/missing.bin')").find("error: "), std::string::npos);
 

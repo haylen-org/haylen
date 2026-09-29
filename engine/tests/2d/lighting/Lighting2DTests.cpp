@@ -54,10 +54,13 @@ struct CastRow {
     }
 };
 
-// A 40 by 40 box around a center, wound clockwise on screen.
-lighting2d::Occluder box(math::Vec2 center, lighting2d::Occluder::Cull cull = lighting2d::Occluder::Cull::Disabled) {
-    return {.points = {{-20.0F, -20.0F}, {20.0F, -20.0F}, {20.0F, 20.0F}, {-20.0F, 20.0F}}, .cull = cull, .position = center};
-}
+class ShadowMapTest : public ::testing::Test {
+  protected:
+    // A 40 by 40 box around a center, wound clockwise on screen.
+    [[nodiscard]] static lighting2d::Occluder box(math::Vec2 center, lighting2d::Occluder::Cull cull = lighting2d::Occluder::Cull::Disabled) {
+        return {.points = {{-20.0F, -20.0F}, {20.0F, -20.0F}, {20.0F, 20.0F}, {-20.0F, 20.0F}}, .cull = cull, .position = center};
+    }
+};
 
 } // namespace
 
@@ -180,7 +183,7 @@ TEST(LightTest, ReachesDrawsByLightMaskAndLayerRange) {
     EXPECT_FLOAT_EQ(Light::illuminate(ambient, lights, {}, 0b0001, 0).r, 0.0F);
 }
 
-TEST(ShadowMapTest, ShadowsWhatLiesBehindOccludersOfPointLights) {
+TEST_F(ShadowMapTest, ShadowsWhatLiesBehindOccludersOfPointLights) {
     const lighting2d::Light light{.position = {100.0F, 100.0F}, .radius = 400.0F, .shadows = true};
     const std::vector<lighting2d::Occluder> occluders{box({300.0F, 100.0F})};
     const CastRow cast(light, occluders);
@@ -205,7 +208,7 @@ TEST(ShadowMapTest, ShadowsWhatLiesBehindOccludersOfPointLights) {
     EXPECT_THROW((void)light.isShadowedAt({400.0F, 100.0F}, empty), std::invalid_argument);
 }
 
-TEST(ShadowMapTest, SkipsEdgesByCullModeAndMask) {
+TEST_F(ShadowMapTest, SkipsEdgesByCullModeAndMask) {
     const lighting2d::Light light{.position = {100.0F, 100.0F}, .radius = 400.0F, .shadows = true};
     const math::Vec2 inside{300.0F, 100.0F};
     const math::Vec2 behind{400.0F, 100.0F};
@@ -230,7 +233,7 @@ TEST(ShadowMapTest, SkipsEdgesByCullModeAndMask) {
     EXPECT_FALSE(CastRow(light, {open}).shadows(light, behind));
 }
 
-TEST(ShadowMapTest, CastsParallelShadowsOfDirectionalLights) {
+TEST_F(ShadowMapTest, CastsParallelShadowsOfDirectionalLights) {
     // The sun travels down and to the right at 45 degrees.
     const lighting2d::Light sun{.type = lighting2d::Light::Type::Directional, .rotation = math::Math::kPi * 0.25F, .shadows = true};
     const std::vector<lighting2d::Occluder> occluders{box({200.0F, 200.0F})};

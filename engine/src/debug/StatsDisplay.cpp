@@ -43,7 +43,7 @@ void StatsDisplay::drawCompact(core::Engine& engine, const Numbers& numbers) {
     graphics2d::Renderer& renderer = engine.getRenderer2D();
     text::Font& font = *engine.getDefaultFont();
     const float unit = engine.getWindow().getDpiScale() / engine.getViewport().getPixelsPerUnit().y;
-    const text::TextStyle style{.size = kTextSize * unit, .color = math::Color::fromHex(0xE8F0FFFFU)};
+    const text::Style style{.size = kTextSize * unit, .color = math::Color::fromHex(0xE8F0FFFFU)};
     const std::array<std::string, 3> lines{
         std::format("{:.1f} FPS  {:.2f} ms", numbers.fps, numbers.milliseconds),
         std::format("{} draws  {} vertices", numbers.drawCalls, numbers.vertices),

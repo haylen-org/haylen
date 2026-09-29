@@ -10,20 +10,21 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/platform/Event.hpp"
+#include "support/TestFiles.hpp"
 #include "support/UiFixture.hpp"
 
 namespace haylen::ui {
 
 namespace {
 
-std::map<std::string, std::string> imageFiles() {
-    const std::vector<std::uint8_t> image = test::pngImage(16, 16, 0xFFFFFFFFU);
-    return {{"content/icons/coin.png", std::string(image.begin(), image.end())}};
-}
-
 class RichTextComponentTest : public ::testing::Test, public test::UiFixture {
   protected:
     RichTextComponentTest() : UiFixture(imageFiles()) {}
+
+    [[nodiscard]] static std::map<std::string, std::string> imageFiles() {
+        const std::vector<std::uint8_t> image = test::TestFiles::pngImage(16, 16, 0xFFFFFFFFU);
+        return {{"content/icons/coin.png", std::string(image.begin(), image.end())}};
+    }
 
     [[nodiscard]] std::size_t drawnSprites() {
         return getEngine().getRenderer2D().getStats().sprites;

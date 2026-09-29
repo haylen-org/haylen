@@ -23,7 +23,7 @@
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
-#include "haylen/text/TextStyle.hpp"
+#include "haylen/text/Style.hpp"
 
 namespace haylen::core {
 class JobSystem;
@@ -44,7 +44,7 @@ namespace haylen::text {
 class Font;
 class FontFamily;
 class RichText;
-struct TextLayout;
+struct Layout;
 } // namespace haylen::text
 
 namespace haylen::graphics2d {
@@ -119,8 +119,8 @@ class Renderer final {
     void drawStatic(const StaticSpriteBatch& batch, const DrawOrder& order = {}, math::Vec2 offset = {});
     void drawNineSlice(const NineSlice& slice, const math::Rect& area, math::Color color = math::Color::white(), const DrawOrder& order = {}, float borderScale = 1.0F);
     // Draws plain text with a font alone or with a family and its fallbacks, scaled from the position, where the anchor of the style lands.
-    void drawText(text::Font& font, std::string_view content, math::Vec2 position, const text::TextStyle& style = {}, const DrawOrder& order = {}, math::Vec2 scale = {1.0F, 1.0F});
-    void drawText(text::FontFamily& family, std::string_view content, math::Vec2 position, const text::TextStyle& style = {}, const DrawOrder& order = {}, math::Vec2 scale = {1.0F, 1.0F});
+    void drawText(text::Font& font, std::string_view content, math::Vec2 position, const text::Style& style = {}, const DrawOrder& order = {}, math::Vec2 scale = {1.0F, 1.0F});
+    void drawText(text::FontFamily& family, std::string_view content, math::Vec2 position, const text::Style& style = {}, const DrawOrder& order = {}, math::Vec2 scale = {1.0F, 1.0F});
     // Draws rich text with the top-left of its block at the position, scaled from that corner and with its colors multiplied by the tint. A y-sorted canvas sorts it by the bottom of the block.
     void drawRichText(text::RichText& richText, math::Vec2 position, const DrawOrder& order = {}, math::Vec2 scale = {1.0F, 1.0F}, math::Color tint = math::Color::white());
     void drawMesh(const graphics::Texture& texture, std::span<const MeshVertex> vertices, std::span<const std::uint32_t> indices, const DrawOrder& order = {});
@@ -179,7 +179,7 @@ class Renderer final {
     [[nodiscard]] static std::vector<std::uint8_t> metaballKernel(int size);
     [[nodiscard]] static float lowestPoint(std::span<const math::Vec2> points) noexcept;
 
-    void drawTextLayout(const text::TextLayout& layout, math::Vec2 position, const text::TextStyle& style, const DrawOrder& order, math::Vec2 scale);
+    void drawTextLayout(const text::Layout& layout, math::Vec2 position, const text::Style& style, const DrawOrder& order, math::Vec2 scale);
 
     // Adds count sprites of one texture, where spriteAt returns the sprite at an index from any worker thread.
     template <typename SpriteAt> void addBatch(const graphics::Texture& texture, std::size_t count, const DrawOrder& order, const SpriteAt& spriteAt);

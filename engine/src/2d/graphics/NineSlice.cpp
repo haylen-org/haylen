@@ -1,8 +1,20 @@
 #include "haylen/2d/graphics/NineSlice.hpp"
 
+#include <algorithm>
 #include <utility>
 
 namespace haylen::graphics2d {
+
+const std::array<std::pair<std::string_view, NineSlice::Fill>, 2> NineSlice::kFillNames{{{"stretch", Fill::Stretch}, {"tile", Fill::Tile}}};
+
+std::optional<NineSlice::Fill> NineSlice::fillFromName(std::string_view name) noexcept {
+    const auto found = std::ranges::find(kFillNames, name, &std::pair<std::string_view, Fill>::first);
+    return found != kFillNames.end() ? std::optional(found->second) : std::nullopt;
+}
+
+std::string_view NineSlice::fillName(Fill value) noexcept {
+    return std::ranges::find(kFillNames, value, &std::pair<std::string_view, Fill>::second)->first;
+}
 
 NineSlice NineSlice::fromBorders(graphics::Texture image, math::Rect source, math::Insets borders) {
     if (source.isEmpty()) {

@@ -25,7 +25,7 @@ The file extension picks the asset type, and the type decides what Lua receives.
 | `sound` | `.wav`, `.ogg`, `.mp3`, `.flac` | Sound from [haylen.audio](audio.md). | `stream` keeps the encoded file and decodes it while it plays (default `false`). |
 | `atlas` | None, so load it with the type `'atlas'` | SpriteAtlas from [haylen.animation2d](animation2d.md). | `filter` and `wrap` of its texture. |
 | `particles` | `.particles` | Particle effect for `particles2d.newEmitter()` from [haylen.particles2d](particles2d.md). | `filter` and `wrap` of its texture. |
-| `tiled` | `.tmj` | Tiled map data for `tiled.newMap()` from [haylen.tiled](tiled.md). | `filter` and `wrap` of its tileset and layer images. |
+| `tiled` | `.tmj` | Tiled map data for `tiled.newMapRenderer()` from [haylen.tiled](tiled.md). | `filter` and `wrap` of its tileset and layer images. |
 | `tiled_world` | `.world` | List of the maps of a Tiled world. | None. |
 
 Assets are cached by type, path and options. Loading the same asset again returns the same object while anything still holds it, such as a Lua variable, another asset or a preload group, so two loads of one asset compare equal with `==`, whatever its type. Different options load a separate asset. Atlases, particle effects and Tiled maps share their images with textures loaded directly with the same `filter` and `wrap`, except Tiled images with a transparent color, which stay private to their map.
@@ -526,7 +526,7 @@ scene.push({
 
 ### Tiled maps
 
-`.tmj` files are Tiled maps in the JSON format. Their tilesets and images load with them. The asset is map data with a `path` property, and `tiled.newMap()` from [haylen.tiled](tiled.md) turns it into a map to draw and query.
+`.tmj` files are Tiled maps in the JSON format. Their tilesets and images load with them. The asset is map data with a `path` property, and `tiled.newMapRenderer()` from [haylen.tiled](tiled.md) turns it into a map to draw and query.
 
 ```lua
 local assets = require('haylen.assets')
@@ -534,7 +534,7 @@ local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 local tiled = require('haylen.tiled')
 
-local map = tiled.newMap(assets.load('maps/island.tmj'))
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 
 scene.push({
     enter = function(self)
@@ -557,7 +557,7 @@ local tiled = require('haylen.tiled')
 
 local maps = {}
 for _, entry in ipairs(assets.load('maps/world/overworld.world')) do
-    maps[#maps + 1] = {map = tiled.newMap(assets.load(entry.path)), x = entry.x, y = entry.y}
+    maps[#maps + 1] = {map = tiled.newMapRenderer(assets.load(entry.path)), x = entry.x, y = entry.y}
 end
 ```
 

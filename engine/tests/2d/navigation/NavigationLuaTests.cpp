@@ -97,18 +97,19 @@ TEST_F(NavigationLuaTest, BuildsDijkstraMapsFlowFieldsAndHierarchies) {
     fixture.runLua(R"(
         big = navigation2d.newGrid(64, 64)
         for y = 0, 63 do big:setWalkable(32, y, y == 60) end
-        router = big:hierarchical({clusterSize = 16})
+        router = big:hierarchicalPathfinder({clusterSize = 16})
     )");
     // clang-format on
     EXPECT_EQ(lua("local path, cost = router:findPath(0, 0, 63, 0) local _, best = big:findPath(0, 0, 63, 0) return path[1].x .. ':' .. path[#path].x .. ' ' .. tostring(cost >= best - 1e-3 and cost <= best * 1.25 + 2)"), "0:63 true");
-    EXPECT_EQ(lua("return router.clusterSize .. ' ' .. tostring(router.nodeCount > 0) .. ' ' .. tostring(router.diagonal) .. ' ' .. tostring(big:hierarchical({diagonal = false}).diagonal)"), "16 true true false");
+    EXPECT_EQ(lua("return router.clusterSize .. ' ' .. tostring(router.nodeCount > 0) .. ' ' .. tostring(router.diagonal) .. ' ' .. tostring(big:hierarchicalPathfinder({diagonal = false}).diagonal)"), "16 true true false");
     EXPECT_EQ(lua("big:setWalkable(32, 60, false) router:update(32, 60) return tostring(router:findPath(0, 0, 63, 0))"), "nil");
     EXPECT_EQ(lua("big:setWalkable(32, 10, true) router:update(32, 0, 32, 63) return tostring(router:findPath(0, 0, 63, 0) ~= nil)"), "true");
     EXPECT_EQ(lua("router:rebuild() return tostring(router:findPath(0, 0, 63, 0) ~= nil)"), "true");
     // A cluster larger than the grid covers all of it, with search buffers no larger than the grid.
-    EXPECT_EQ(lua("local whole = big:hierarchical({clusterSize = 2147483647}) return whole.clusterSize .. ' ' .. whole.nodeCount .. ' ' .. tostring(whole:findPath(0, 0, 63, 0) ~= nil)"), "2147483647 0 true");
-    EXPECT_NE(lua("big:hierarchical({clusterSize = 1})").find("at least 2 cells"), std::string::npos);
-    EXPECT_EQ(lua("navigation2d.newGrid(8, 8, {topology = 'staggered'}):hierarchical()"), "error: test:1: Hierarchical path finding needs a square grid.");
+    EXPECT_EQ(lua("local whole = big:hierarchicalPathfinder({clusterSize = 2147483647}) return whole.clusterSize .. ' ' .. whole.nodeCount .. ' ' .. tostring(whole:findPath(0, 0, 63, 0) ~= nil)"), "2147483647 0 true");
+    EXPECT_NE(lua("big:hierarchicalPathfinder({clusterSize = 1})").find("at least 2 cells"), std::string::npos);
+    EXPECT_NE(lua("local update = router.update update(big, 0, 0)").find("haylen.HierarchicalPathfinder expected, got haylen.NavGrid"), std::string::npos);
+    EXPECT_EQ(lua("navigation2d.newGrid(8, 8, {topology = 'staggered'}):hierarchicalPathfinder()"), "error: test:1: Hierarchical path finding needs a square grid.");
 
     EXPECT_EQ(lua("corridor:dijkstraMapAsync({{0, 0, value = math.huge}})"), "error: test:1: A Dijkstra map source needs a finite value.");
     await("corridor:dijkstraMapAsync({{0, 0}})");
@@ -117,7 +118,7 @@ TEST_F(NavigationLuaTest, BuildsDijkstraMapsFlowFieldsAndHierarchies) {
     EXPECT_EQ(lua("return done[1]:distance(0, 0)"), "9.0");
 
     // A hierarchy built in the background from a copy of the grid reads the grid itself once it arrives.
-    fixture.runLua("pending = big:hierarchicalAsync({clusterSize = 16})");
+    fixture.runLua("pending = big:hierarchicalPathfinderAsync({clusterSize = 16})");
     await("pending");
     EXPECT_EQ(lua("background = done[1] return background.clusterSize .. ' ' .. tostring(background.nodeCount == router.nodeCount) .. ' ' .. tostring(background:findPath(0, 0, 63, 0) ~= nil)"), "16 true true");
 
@@ -127,9 +128,9 @@ TEST_F(NavigationLuaTest, BuildsDijkstraMapsFlowFieldsAndHierarchies) {
     EXPECT_EQ(lua("return tostring(done[1]:findPath(0, 0, 63, 0) ~= nil)"), "true");
 
     EXPECT_EQ(lua("big:setWalkable(32, 10, false) background:update(32, 10) return tostring(background:findPath(0, 0, 63, 0))"), "nil");
-    EXPECT_EQ(lua("navigation2d.newGrid(8, 8, {topology = 'staggered'}):hierarchicalAsync()"), "error: test:1: Hierarchical path finding needs a square grid.");
-    EXPECT_EQ(lua("big:hierarchicalAsync({clusterSize = 1})"), "error: test:1: Hierarchical path finding needs clusters of at least 2 cells.");
-    EXPECT_NE(lua("big:hierarchicalAsync({size = 8})").find("Unknown option 'size'"), std::string::npos);
+    EXPECT_EQ(lua("navigation2d.newGrid(8, 8, {topology = 'staggered'}):hierarchicalPathfinderAsync()"), "error: test:1: Hierarchical path finding needs a square grid.");
+    EXPECT_EQ(lua("big:hierarchicalPathfinderAsync({clusterSize = 1})"), "error: test:1: Hierarchical path finding needs clusters of at least 2 cells.");
+    EXPECT_NE(lua("big:hierarchicalPathfinderAsync({size = 8})").find("Unknown option 'size'"), std::string::npos);
 }
 
 TEST_F(NavigationLuaTest, FindsGraphPathsAroundDisabledPoints) {
@@ -149,14 +150,14 @@ TEST_F(NavigationLuaTest, FindsGraphPathsAroundDisabledPoints) {
 
     EXPECT_EQ(lua("local route, cost = roads:findPath(1, 3) return table.concat(route, ' ') .. ' ' .. cost"), "1 2 3 200.0");
     EXPECT_EQ(lua("roads:setEnabled(2, false) local route, cost = roads:findPath(1, 3) return table.concat(route, ' ') .. ' ' .. cost .. ' ' .. tostring(roads:enabled(2))"), "1 4 3 400.0 false");
-    EXPECT_EQ(lua("return roads:closest(90, 10) .. ' ' .. roads:closest(90, 10, true)"), "1 2");
+    EXPECT_EQ(lua("return roads:closestPoint(90, 10) .. ' ' .. roads:closestPoint(90, 10, true)"), "1 2");
     EXPECT_EQ(lua("local costs = roads:distances(1) return costs[4] .. ' ' .. costs[3] .. ' ' .. tostring(costs[2])"), "300.0 400.0 nil");
     EXPECT_EQ(lua("return table.concat(roads:neighbors(1), ' ') .. ' ' .. table.concat(roads:points(), ' ') .. ' ' .. roads.size"), "2 4 1 2 3 4 4");
     EXPECT_EQ(lua("roads:disconnect(1, 2) roads:connect(1, 2, false) return tostring(roads:connected(1, 2)) .. tostring(roads:connected(2, 1))"), "truefalse");
     EXPECT_EQ(lua("roads:setPosition(4, 0, 50) roads:setWeight(4, 2) return roads:position(4).y .. ' ' .. roads:weight(4)"), "50.0 2.0");
     EXPECT_EQ(lua("return tostring(roads:removePoint(4)) .. tostring(roads:removePoint(4)) .. tostring(roads:hasPoint(4)) .. ' ' .. tostring(roads:findPath(1, 3))"), "truefalsefalse nil");
-    EXPECT_EQ(lua("roads:clear() return roads.size .. ' ' .. tostring(roads:closest(0, 0))"), "0 nil");
-    EXPECT_EQ(lua("local far = navigation2d.newGraph() far:addPoint(7, 3e38, 0) far:addPoint(3, 3e38, 1) return far:closest(-3e38, 0)"), "3");
+    EXPECT_EQ(lua("roads:clear() return roads.size .. ' ' .. tostring(roads:closestPoint(0, 0))"), "0 nil");
+    EXPECT_EQ(lua("local far = navigation2d.newGraph() far:addPoint(7, 3e38, 0) far:addPoint(3, 3e38, 1) return far:closestPoint(-3e38, 0)"), "3");
 
     EXPECT_NE(lua("roads:addPoint(1, 0, 0, 0.5)").find("at least 1"), std::string::npos);
     EXPECT_NE(lua("roads:addPoint(1, 0, 0) roads:connect(1, 1)").find("cannot connect to itself"), std::string::npos);

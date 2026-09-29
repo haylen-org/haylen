@@ -1,5 +1,6 @@
 #include "haylen/graphics/Device.hpp"
 
+#include <memory>
 #include <stdexcept>
 #include <utility>
 
@@ -80,23 +81,6 @@ Texture Device::createTexture(int width, int height, math::Color fill, Texture::
     return createTexture(Image(width, height, fill), options);
 }
 
-Texture Device::createAlphaTexture(int width, int height, std::span<const std::uint8_t> alpha, Texture::Options options) {
-    validateAlpha(width, height, alpha, getMaxTextureSize());
-
-    auto resource = std::make_shared<TextureResource>();
-    const DeviceState::ImageViews created = DeviceState::createImage(width, height, SG_PIXELFORMAT_R8, alpha, "haylen-alpha-texture");
-    resource->image = created.image;
-    resource->view = created.view;
-    resource->tracked.setBytes(DeviceState::getImageBytes(width, height, SG_PIXELFORMAT_R8));
-    resource->sampler = state->getSampler(options);
-    resource->width = width;
-    resource->height = height;
-    resource->id = state->nextTextureId++;
-    resource->options = options;
-    resource->graveyard = state->graveyard;
-    return Texture(std::move(resource));
-}
-
 const Texture& Device::getWhiteTexture() const noexcept {
     return state->white;
 }
@@ -109,6 +93,9 @@ RenderTarget Device::createRenderTarget(int width, int height, Texture::Options 
 void Device::replaceTexture(const Texture& texture, const Image& image) {
     validateSize(image.getWidth(), image.getHeight(), getMaxTextureSize());
     TextureResource& resource = *texture.getResource();
+    if (resource.dynamic) {
+        throw std::logic_error("A dynamic texture changes its pixels with updateTexture.");
+    }
 
     // The old image is released only once the new one exists, so a failed creation leaves the texture intact.
     const DeviceState::ImageViews created = DeviceState::createImage(image.getWidth(), image.getHeight(), SG_PIXELFORMAT_RGBA8, image.getPixels(), "haylen-texture");
@@ -120,17 +107,47 @@ void Device::replaceTexture(const Texture& texture, const Image& image) {
     resource.tracked.setBytes(DeviceState::getImageBytes(image.getWidth(), image.getHeight(), SG_PIXELFORMAT_RGBA8));
 }
 
-void Device::replaceAlphaTexture(const Texture& texture, int width, int height, std::span<const std::uint8_t> alpha) {
-    validateAlpha(width, height, alpha, getMaxTextureSize());
-    TextureResource& resource = *texture.getResource();
+Texture Device::createDynamicTexture(const Image& image, Texture::Options options) {
+    validateSize(image.getWidth(), image.getHeight(), getMaxTextureSize());
+    return state->createDynamicTexture(image.getWidth(), image.getHeight(), SG_PIXELFORMAT_RGBA8, image.getPixels(), options);
+}
 
-    const DeviceState::ImageViews created = DeviceState::createImage(width, height, SG_PIXELFORMAT_R8, alpha, "haylen-alpha-texture");
-    state->graveyard->bury(resource.image, resource.view);
-    resource.image = created.image;
-    resource.view = created.view;
-    resource.width = width;
-    resource.height = height;
-    resource.tracked.setBytes(DeviceState::getImageBytes(width, height, SG_PIXELFORMAT_R8));
+Texture Device::createDynamicTexture(int width, int height, math::Color fill, Texture::Options options) {
+    validateSize(width, height, getMaxTextureSize());
+    return createDynamicTexture(Image(width, height, fill), options);
+}
+
+Texture Device::createDynamicAlphaTexture(int width, int height, std::span<const std::uint8_t> alpha, Texture::Options options) {
+    validateAlpha(width, height, alpha, getMaxTextureSize());
+    return state->createDynamicTexture(width, height, SG_PIXELFORMAT_R8, alpha, options);
+}
+
+void Device::updateTexture(const Texture& texture, std::span<const std::uint8_t> pixels) {
+    const std::shared_ptr<TextureResource>& resource = texture.getResource();
+    if (!resource || !resource->dynamic) {
+        throw std::logic_error("Only a dynamic texture changes its pixels in place.");
+    }
+    if (pixels.size() != DeviceState::getImageBytes(resource->width, resource->height, sg_query_image_desc(resource->image).pixel_format)) {
+        throw std::invalid_argument("The pixels do not match the size of the dynamic texture.");
+    }
+    state->stagePixels(resource, pixels);
+}
+
+// Sokol takes one update of an image per frame, holding its whole mip level, so every texture uploads the last pixels it received.
+std::size_t Device::uploadTextures() {
+    std::size_t bytes = 0;
+    for (const std::weak_ptr<TextureResource>& changed : std::exchange(state->changedTextures, {})) {
+        const std::shared_ptr<TextureResource> resource = changed.lock();
+        if (!resource) {
+            continue;
+        }
+        sg_image_data data{};
+        data.mip_levels[0] = {.ptr = resource->staged.data(), .size = resource->staged.size()};
+        sg_update_image(resource->image, &data);
+        bytes += resource->staged.size();
+        resource->staged = {};
+    }
+    return bytes;
 }
 
 std::string_view Device::getBackendName() const noexcept {

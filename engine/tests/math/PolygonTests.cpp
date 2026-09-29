@@ -220,7 +220,7 @@ TEST(SplineTest, RejectsWrongPointCounts) {
     EXPECT_THROW(Spline({{0.0F, 0.0F}, {1.0F, 0.0F}, {2.0F, 0.0F}}, Spline::Kind::Bezier), std::invalid_argument);
     EXPECT_THROW(Spline({{0.0F, 0.0F}, {1.0F, 0.0F}}, Spline::Kind::BSpline, true), std::invalid_argument);
     EXPECT_THROW((void)Spline({{0.0F, 0.0F}, {1.0F, 0.0F}}).sampleByDistance(0.0F), std::invalid_argument);
-    EXPECT_EQ(Spline::kindFromName("bspline"), Spline::Kind::BSpline);
+    EXPECT_EQ(Spline::kindFromName("bSpline"), Spline::Kind::BSpline);
     EXPECT_EQ(Spline::kindName(Spline::Kind::CatmullRom), "catmullRom");
 }
 

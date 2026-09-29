@@ -14,12 +14,12 @@ const std::array<std::pair<std::string_view, Viewport::ScalingPolicy>, 5> Viewpo
 }};
 
 std::optional<Viewport::ScalingPolicy> Viewport::scalingPolicyFromName(std::string_view name) noexcept {
-    for (const auto& [candidate, value] : kPolicyNames) {
-        if (candidate == name) {
-            return value;
-        }
-    }
-    return std::nullopt;
+    const auto found = std::ranges::find(kPolicyNames, name, &std::pair<std::string_view, ScalingPolicy>::first);
+    return found != kPolicyNames.end() ? std::optional(found->second) : std::nullopt;
+}
+
+std::string_view Viewport::scalingPolicyName(ScalingPolicy value) noexcept {
+    return std::ranges::find(kPolicyNames, value, &std::pair<std::string_view, ScalingPolicy>::second)->first;
 }
 
 math::Rect Viewport::centered(math::Vec2 container, math::Vec2 size) noexcept {

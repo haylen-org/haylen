@@ -12,7 +12,7 @@ local sample = require('sample')
 local Infinite = haylen.class('Infinite', sample.Test)
 
 function Infinite:enter()
-    self.map = tiled.newMap(assets.load('maps/infinite.tmj'))
+    self.map = tiled.newMapRenderer(assets.load('maps/infinite.tmj'))
     self.chunks = self.map:layer('ground').chunks
     Infinite.super.enter(self, {
         hint = 'Drag the map, or use WASD, the arrows or the left stick, and the mouse wheel zooms. The cell under the pointer can be negative, and R or X comes back to the origin.',

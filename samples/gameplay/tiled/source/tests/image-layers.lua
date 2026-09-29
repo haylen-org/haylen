@@ -13,7 +13,7 @@ local ImageLayers = haylen.class('ImageLayers', sample.Test)
 local kScrollSpeed = 160
 
 function ImageLayers:enter()
-    self.map = tiled.newMap(assets.load('maps/parallax.tmj'))
+    self.map = tiled.newMapRenderer(assets.load('maps/parallax.tmj'))
     local bounds = self.map.bounds
     ImageLayers.super.enter(self, {
         hint = 'The camera travels along the map. Drag it, or use the arrows or the left stick, to see the far layers move less than the near ones.',

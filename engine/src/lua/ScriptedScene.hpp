@@ -47,8 +47,8 @@ class ScriptedScene final : public core::Scene {
 
     void pushTable(lua_State* L) const;
 
-    // Returns the mode that something owned by the value at index inherits: the resolved mode of the scene on the stack whose table it is, the processMode field of any other table, such as an autoload, or Inherit.
-    [[nodiscard]] static core::ProcessMode resolveOwnerMode(lua_State* L, int owner);
+    // Returns a function that resolves the mode of the owner at index on every call, so a timer or tween follows its owner when the mode changes. It returns Inherit once the owner is gone, and it must be destroyed while the Lua state is open.
+    [[nodiscard]] static std::function<core::ProcessMode()> followOwnerMode(lua_State* L, int owner);
 
     // Reads a processMode field of the table at index, or Inherit when it has none.
     [[nodiscard]] static core::ProcessMode readProcessMode(lua_State* L, int index);
@@ -60,6 +60,9 @@ class ScriptedScene final : public core::Scene {
 
     static void pushScenes(lua_State* L);
     static int collectHandle(lua_State* L);
+
+    // Returns the mode that something owned by the value at index inherits: the resolved mode of the scene on the stack whose table it is, the processMode field of any other table, such as an autoload, or Inherit.
+    [[nodiscard]] static core::ProcessMode resolveOwnerMode(lua_State* L, int owner);
 
     // Calls the method named name, when the table has one, with the table as self and the arguments that pushArguments pushes. The lookup is protected like the call, because a metatable may raise errors for fields it lacks.
     void call(const char* name, int arguments = 0, const std::function<void(lua_State*)>& pushArguments = {}) const;

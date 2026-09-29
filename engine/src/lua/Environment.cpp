@@ -1,7 +1,6 @@
 #include "lua/Environment.hpp"
 
-#include <lua.hpp>
-
+#include <algorithm>
 #include <stdexcept>
 
 #include "haylen/core/Engine.hpp"
@@ -86,6 +85,95 @@ int Environment::searchPackage(lua_State* L) {
     // clang-format on
 }
 
+int Environment::loadAsText(lua_State* L) {
+    const auto mode = static_cast<int>(lua_tointeger(L, lua_upvalueindex(2)));
+    if (!lua_isnoneornil(L, mode) && std::string_view(luaL_checkstring(L, mode)) != "t") {
+        return luaL_argerror(L, mode, "chunks load only as text, so the mode is 't'");
+    }
+
+    // An environment argument after the mode counts even when it is nil, so the arguments keep the count the caller gave.
+    lua_settop(L, std::max(lua_gettop(L), mode));
+    lua_pushliteral(L, "t");
+    lua_replace(L, mode);
+    lua_pushvalue(L, lua_upvalueindex(1));
+    lua_insert(L, 1);
+    lua_call(L, lua_gettop(L) - 1, LUA_MULTRET);
+    return lua_gettop(L);
+}
+
+int Environment::doFileAsText(lua_State* L) {
+    const char* name = luaL_optstring(L, 1, nullptr);
+    lua_settop(L, 1);
+    if (luaL_loadfilex(L, name, "t") != LUA_OK) {
+        return lua_error(L);
+    }
+    lua_callk(L, 0, LUA_MULTRET, 0, &finishDoFile);
+    return finishDoFile(L, LUA_OK, 0);
+}
+
+int Environment::finishDoFile(lua_State* L, int, lua_KContext) {
+    return lua_gettop(L) - 1;
+}
+
+void Environment::wrapLoader(lua_State* L, const char* name, int modeIndex) {
+    lua_getglobal(L, name);
+    lua_pushinteger(L, modeIndex);
+    lua_pushcclosure(L, &loadAsText, 2);
+    lua_setglobal(L, name);
+}
+
+// Bytecode can craft values the virtual machine never checks, so app code loads chunks only as text, like the engine.
+void Environment::restrictLoading(lua_State* L) {
+    wrapLoader(L, "load", kLoadMode);
+    wrapLoader(L, "loadfile", kLoadFileMode);
+    lua_pushcfunction(L, &doFileAsText);
+    lua_setglobal(L, "dofile");
+
+    lua_getglobal(L, "string");
+    lua_pushnil(L);
+    lua_setfield(L, -2, "dump");
+    lua_pop(L, 1);
+}
+
+int Environment::setUnprotectedMetatable(lua_State* L) {
+    if (luaL_getmetafield(L, 1, "__metatable") != LUA_TNIL) {
+        return luaL_error(L, "cannot change a protected metatable");
+    }
+    lua_pushvalue(L, lua_upvalueindex(1));
+    lua_insert(L, 1);
+    lua_call(L, lua_gettop(L) - 1, LUA_MULTRET);
+    return lua_gettop(L);
+}
+
+// Native functions show no upvalues, which hold the method tables and state of engine types.
+int Environment::accessScriptUpvalue(lua_State* L) {
+    if (lua_iscfunction(L, 1) != 0) {
+        return 0;
+    }
+    lua_pushvalue(L, lua_upvalueindex(1));
+    lua_insert(L, 1);
+    lua_call(L, lua_gettop(L) - 1, LUA_MULTRET);
+    return lua_gettop(L);
+}
+
+// The debug library would otherwise reach around the protected metatables of the engine, whose finalizers and native properties must never run on the wrong object.
+void Environment::restrictDebug(lua_State* L) {
+    lua_getglobal(L, "debug");
+    lua_getglobal(L, "getmetatable");
+    lua_setfield(L, -2, "getmetatable");
+    lua_getfield(L, -1, "setmetatable");
+    lua_pushcclosure(L, &setUnprotectedMetatable, 1);
+    lua_setfield(L, -2, "setmetatable");
+    for (const char* name : {"getupvalue", "setupvalue"}) {
+        lua_getfield(L, -1, name);
+        lua_pushcclosure(L, &accessScriptUpvalue, 1);
+        lua_setfield(L, -2, name);
+    }
+    lua_pushnil(L);
+    lua_setfield(L, -2, "getregistry");
+    lua_pop(L, 1);
+}
+
 void Environment::install(core::Engine& engine, lua_State* L) {
     lua_pushlightuserdata(L, &engine);
     lua_setfield(L, LUA_REGISTRYINDEX, Runtime::kEngineKey);
@@ -108,6 +196,8 @@ void Environment::install(core::Engine& engine, lua_State* L) {
     lua_pop(L, 1);
 
     installTaskErrors(L);
+    restrictLoading(L);
+    restrictDebug(L);
 }
 
 } // namespace haylen::lua

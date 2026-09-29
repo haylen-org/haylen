@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -95,10 +96,11 @@ Theme::Image Theme::readImage(const core::Json& value, const std::string& contex
     }
     if (value.contains("fill")) {
         const core::Json& fill = value.at("fill");
-        if (!fill.is_string() || (fill != "stretch" && fill != "tile")) {
+        const std::optional<graphics2d::NineSlice::Fill> named = fill.is_string() ? graphics2d::NineSlice::fillFromName(fill.get<std::string>()) : std::nullopt;
+        if (!named) {
             throw std::invalid_argument(context + ".fill must be stretch or tile.");
         }
-        image.slice.fill = fill == "tile" ? graphics2d::NineSlice::Fill::Tile : graphics2d::NineSlice::Fill::Stretch;
+        image.slice.fill = *named;
     }
     if (value.contains("scale")) {
         image.scale = readNumber(value.at("scale"), context + ".scale");

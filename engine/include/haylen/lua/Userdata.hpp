@@ -74,9 +74,12 @@ class Userdata final {
 
     // Counts the userdata of the type that Lua created and collected, which the debug statistics list by the type name.
     template <Bound T> [[nodiscard]] static debug::ObjectCounter& getCounter() {
-        static debug::ObjectCounter counter(Type<T>::name, debug::ObjectCounter::Kind::Userdata);
+        static debug::ObjectCounter& counter = *new debug::ObjectCounter(Type<T>::name, debug::ObjectCounter::Kind::Userdata);
         return counter;
     }
+
+    // Pushes the metatable registered under name and returns whether it was created, like luaL_newmetatable. A new metatable is protected by its __metatable field, so getmetatable returns the name and Lua code can neither reach nor replace the metatable, its finalizer or its native properties.
+    static bool newMetatable(lua_State* L, const char* name);
 
     // Userdata keep callbacks and other Lua values in a table stored as their first user value, so a value that refers back to its owner never keeps it alive forever.
     static void pushField(lua_State* L, int index, const char* name);

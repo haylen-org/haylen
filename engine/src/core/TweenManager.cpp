@@ -52,7 +52,7 @@ void TweenManager::advanceAll(const FrameClock& clock, bool fixed) {
         const std::size_t count = tweens.size();
         for (std::size_t index = 0; index < count; ++index) {
             Tween& tween = *tweens[index];
-            if (tween.manager != this || !tween.isPlaying() || tween.isFixedStep() != fixed || !clock.canProcess(tween.getProcessMode())) {
+            if (tween.manager != this || !tween.isPlaying() || tween.isFixedStep() != fixed || !clock.canProcess(tween.resolveProcessMode())) {
                 continue;
             }
             const double delta = fixed ? clock.getFixedStep() : (tween.isUnscaledTime() ? clock.getUnscaledDelta() : clock.getDelta());

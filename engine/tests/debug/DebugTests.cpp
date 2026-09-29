@@ -3,6 +3,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstdlib>
 #include <mutex>
 #include <stdexcept>
 #include <string>
@@ -12,6 +13,7 @@
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Log.hpp"
+#include "haylen/debug/ObjectCounter.hpp"
 #include "haylen/debug/ProfileScope.hpp"
 #include "haylen/debug/Profiler.hpp"
 #include "haylen/platform/Event.hpp"
@@ -158,6 +160,31 @@ TEST(LogTest, RemovingAListenerWaitsForTheLineItIsWriting) {
     writer.join();
     remover.join();
     EXPECT_TRUE(removed);
+}
+
+// An exit() on another thread, such as the one the iOS simulator calls when its render server dies, runs the destructors of static objects while the frame thread still logs and counts objects. The exit handler, registered before the loop first adds a listener, runs after the listeners would have been destroyed and lets the loop go on for a while.
+TEST(LogTest, KeepsWorkingWhileAnotherThreadExits) {
+    GTEST_FLAG_SET(death_test_style, "threadsafe");
+    // clang-format off
+    EXPECT_EXIT({
+        static std::atomic<int> iterations = 0;
+        std::atexit([] {
+            const int seen = iterations.load();
+            while (iterations.load() < seen + 1000) {
+                std::this_thread::yield();
+            }
+        });
+        std::thread([] {
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            std::exit(0);
+        }).detach();
+        for (;;) {
+            core::Log::removeListener(core::Log::addListener([](core::Log::Level, std::string_view) {}));
+            const ObjectCounter counter("Probe", ObjectCounter::Kind::Native);
+            ++iterations;
+        }
+    }, testing::ExitedWithCode(0), "");
+    // clang-format on
 }
 
 TEST(DebugPluginTest, CyclesTheStatisticsAndKeepsRecentLines) {

@@ -8,8 +8,8 @@
 #include "haylen/debug/TrackedObject.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/text/Font.hpp"
-#include "haylen/text/TextLayout.hpp"
-#include "haylen/text/TextStyle.hpp"
+#include "haylen/text/Layout.hpp"
+#include "haylen/text/Style.hpp"
 
 namespace haylen::text {
 
@@ -51,8 +51,8 @@ class FontFamily final {
     [[nodiscard]] Selection resolve(const Selection& face, std::u32string_view cluster, bool bold, bool italic, Font* previous = nullptr) const;
 
     // Lays UTF-8 text out like a font does, with the faces the bold and italic of the style pick and the fallbacks for what they lack. Layouts are cached by text and style.
-    [[nodiscard]] std::shared_ptr<const TextLayout> layout(std::string_view text, const TextStyle& style);
-    [[nodiscard]] math::Vec2 measure(std::string_view text, const TextStyle& style);
+    [[nodiscard]] std::shared_ptr<const Layout> layout(std::string_view text, const Style& style);
+    [[nodiscard]] math::Vec2 measure(std::string_view text, const Style& style);
 
   private:
     static debug::ObjectCounter counter;

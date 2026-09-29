@@ -256,7 +256,7 @@ local tiled = require('haylen.tiled')
 local assets = require('haylen.assets')
 local scene = require('haylen.scene')
 
-local map = tiled.newMap(assets.load('maps/level.tmj'))
+local map = tiled.newMapRenderer(assets.load('maps/level.tmj'))
 local walls = lighting2d.occludersFromMap(map, 'walls')
 local camera = graphics2d.newCamera()
 local lamp = lighting2d.newLight({x = 200, y = 150, radius = 500, shadows = true})

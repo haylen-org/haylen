@@ -22,7 +22,7 @@ local kMargin = 48
 function Orientations:enter()
     self.maps = {}
     for _, entry in ipairs(kMaps) do
-        self.maps[entry.id] = tiled.newMap(assets.load('maps/' .. entry.id .. '.tmj'))
+        self.maps[entry.id] = tiled.newMapRenderer(assets.load('maps/' .. entry.id .. '.tmj'))
     end
     Orientations.super.enter(self, {
         hint = 'Move the pointer over the map to see the cell under it. Q and E or the shoulder buttons switch the map.',

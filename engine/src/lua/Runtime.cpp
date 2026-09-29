@@ -6,6 +6,7 @@
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/Binding.hpp"
+#include "haylen/lua/Userdata.hpp"
 #include "lua/Task.hpp"
 
 namespace haylen::lua {
@@ -144,7 +145,7 @@ int Runtime::handleMessage(lua_State* L) {
 
 // The metatable comes first, so the error is never built inside a userdata that could miss its finalizer.
 void Runtime::pushError(lua_State* L, Error error) {
-    if (luaL_newmetatable(L, kErrorType) != 0) {
+    if (Userdata::newMetatable(L, kErrorType)) {
         lua_pushcfunction(L, &collectError);
         lua_setfield(L, -2, "__gc");
         lua_pushcfunction(L, &errorToString);
@@ -156,12 +157,9 @@ void Runtime::pushError(lua_State* L, Error error) {
     lua_setmetatable(L, -2);
 }
 
+// Only the collector calls it, and dropping the metatable keeps an error that another finalizer brings back away from the destroyed object.
 int Runtime::collectError(lua_State* L) {
-    auto* error = static_cast<Error*>(luaL_testudata(L, 1, kErrorType));
-    if (error == nullptr) {
-        return 0;
-    }
-    error->~Error();
+    static_cast<Error*>(lua_touserdata(L, 1))->~Error();
     lua_pushnil(L);
     lua_setmetatable(L, 1);
     return 0;

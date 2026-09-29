@@ -8,8 +8,11 @@
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
 #include <Poco/Net/ServerSocket.h>
+#include <Poco/Net/StreamSocket.h>
 #include <Poco/Net/WebSocket.h>
 
+#include <array>
+#include <atomic>
 #include <chrono>
 #include <functional>
 #include <memory>
@@ -99,6 +102,58 @@ class EchoServer final {
     Poco::Net::HTTPServer server;
 };
 
+// Accepts one connection and never answers, like a server that hangs, and records whether the client sent something and whether it hung up.
+class SilentServer final {
+  public:
+    SilentServer() : listener(Poco::Net::SocketAddress("127.0.0.1", 0)), thread([this] { serve(); }) {}
+    ~SilentServer() {
+        done = true;
+        thread.join();
+    }
+
+    SilentServer(const SilentServer&) = delete;
+    SilentServer& operator=(const SilentServer&) = delete;
+
+    [[nodiscard]] std::string getUrl(const std::string& scheme) const {
+        return scheme + "://127.0.0.1:" + std::to_string(listener.address().port()) + "/";
+    }
+    [[nodiscard]] bool hasReceived() const noexcept {
+        return received;
+    }
+    [[nodiscard]] bool hasHungUp() const noexcept {
+        return hungUp;
+    }
+
+  private:
+    static constexpr int kTickMicroseconds = 10000;
+
+    void serve() {
+        while (!listener.poll(Poco::Timespan(0, kTickMicroseconds), Poco::Net::Socket::SELECT_READ)) {
+            if (done) {
+                return;
+            }
+        }
+        Poco::Net::StreamSocket peer = listener.acceptConnection();
+        std::array<char, 1024> buffer{};
+        while (!done) {
+            if (!peer.poll(Poco::Timespan(0, kTickMicroseconds), Poco::Net::Socket::SELECT_READ)) {
+                continue;
+            }
+            if (peer.receiveBytes(buffer.data(), static_cast<int>(buffer.size())) == 0) {
+                hungUp = true;
+                return;
+            }
+            received = true;
+        }
+    }
+
+    Poco::Net::ServerSocket listener;
+    std::atomic<bool> done = false;
+    std::atomic<bool> received = false;
+    std::atomic<bool> hungUp = false;
+    std::thread thread;
+};
+
 class WebSocketTest : public ::testing::Test {
   protected:
     // Pumps until the condition holds, since the connection works on a thread of its own.
@@ -112,6 +167,14 @@ class WebSocketTest : public ::testing::Test {
             std::this_thread::sleep_for(std::chrono::milliseconds(2));
         }
         return false;
+    }
+
+    static bool waitUntil(const std::function<bool()>& done, std::chrono::milliseconds timeout = std::chrono::seconds(10)) {
+        const auto deadline = std::chrono::steady_clock::now() + timeout;
+        while (!done() && std::chrono::steady_clock::now() < deadline) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        }
+        return done();
     }
 
     // Returns an address where nothing listens, so every connection attempt fails at once.
@@ -360,6 +423,43 @@ TEST_F(NetPluginTest, ClosesOpenSocketsWhenTheAppStops) {
     }
     EXPECT_TRUE(socket->opened.empty());
     EXPECT_EQ(socket->getState(), WebSocket::State::Closing);
+}
+
+TEST_F(WebSocketTest, DestroyingNeverWaitsForAConnectionThatHangs) {
+    const SilentServer server;
+    auto socket = std::make_unique<WebSocket>(server.getUrl("ws"));
+    ASSERT_TRUE(waitUntil([&] { return server.hasReceived(); })) << "the upgrade request waits for an answer that never comes";
+
+    const auto start = std::chrono::steady_clock::now();
+    socket.reset();
+    EXPECT_LT(std::chrono::steady_clock::now() - start, std::chrono::milliseconds(100));
+}
+
+TEST_F(WebSocketTest, AbandonsATlsHandshakeAtOnce) {
+    const SilentServer server;
+    auto socket = std::make_unique<WebSocket>(server.getUrl("wss"));
+    ASSERT_TRUE(waitUntil([&] { return server.hasReceived(); })) << "the client hello waits for a server hello that never comes";
+
+    // The thread leaves the handshake as soon as the socket is gone and closes its connection, long before the handshake would time out.
+    socket.reset();
+    EXPECT_TRUE(waitUntil([&] { return server.hasHungUp(); }, std::chrono::seconds(2)));
+}
+
+TEST_F(WebSocketTest, SleepingConnectionsWakeForTheApp) {
+    const EchoServer server;
+    WebSocket socket(server.getUrl());
+    std::vector<std::string> received;
+    socket.received.connect([&received](std::string_view data, bool) { received.emplace_back(data); });
+    ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Open; }));
+
+    // The connection thread sleeps until the socket or the app has something for it, so a send after a quiet moment goes out at once.
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    const auto start = std::chrono::steady_clock::now();
+    socket.send("awake");
+    ASSERT_TRUE(pumpUntil(socket, [&] { return received.size() == 1; }));
+    EXPECT_LT(std::chrono::steady_clock::now() - start, std::chrono::seconds(1));
+    socket.close();
+    ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Closed; }));
 }
 
 TEST_F(WebSocketTest, BacksOffBetweenReconnectAttempts) {

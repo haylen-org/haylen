@@ -18,7 +18,7 @@ function Worlds:enter()
     self.placed = {}
     local area
     for _, entry in ipairs(assets.load('maps/world/overworld.world')) do
-        local map = tiled.newMap(assets.load(entry.path))
+        local map = tiled.newMapRenderer(assets.load(entry.path))
         self.placed[#self.placed + 1] = {map = map, path = entry.path, bounds = m.rect(entry.x, entry.y, entry.width, entry.height), title = map.properties.title}
         area = area and area:merged(self.placed[#self.placed].bounds) or m.rect(entry.x, entry.y, entry.width, entry.height)
     end

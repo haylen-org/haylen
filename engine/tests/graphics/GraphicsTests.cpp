@@ -1,18 +1,23 @@
 #include <gtest/gtest.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "graphics/Gpu.hpp"
+#include "graphics/TextureResource.hpp"
+#include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/graphics/BlendMode.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen {
 
@@ -28,10 +33,10 @@ TEST(ImageTest, CreatesDecodesAndEditsPixels) {
     image.setPixel(-1, 0, math::Color::white());
     EXPECT_EQ(image.getPixel(1, 1), math::Color::white());
 
-    const graphics::Image decoded = graphics::Image::decode(test::pngImage(3, 5, 0x00FF00FFU));
+    const graphics::Image decoded = graphics::Image::decode(test::TestFiles::pngImage(3, 5, 0x00FF00FFU));
     EXPECT_EQ(decoded.getWidth(), 3);
     EXPECT_EQ(decoded.getPixel(2, 4), math::Color::fromHex(0x00FF00FFU));
-    EXPECT_THROW((void)graphics::Image::decode(test::bytes("not an image")), std::runtime_error);
+    EXPECT_THROW((void)graphics::Image::decode(test::TestFiles::bytes("not an image")), std::runtime_error);
     EXPECT_THROW(graphics::Image(2, 2, std::vector<std::uint8_t>(3)), std::invalid_argument);
     EXPECT_THROW(graphics::Image(-1, 2), std::invalid_argument);
 
@@ -58,12 +63,6 @@ TEST(DeviceTest, CreatesReplacesAndReleasesResources) {
     device.replaceTexture(texture, graphics::Image(8, 8));
     EXPECT_EQ(texture.getWidth(), 8);
 
-    const graphics::Texture alpha = device.createAlphaTexture(2, 2, std::vector<std::uint8_t>(4, 255));
-    device.replaceAlphaTexture(alpha, 4, 4, std::vector<std::uint8_t>(16, 0));
-    EXPECT_EQ(alpha.getHeight(), 4);
-    EXPECT_THROW((void)device.createAlphaTexture(2, 2, std::vector<std::uint8_t>(3)), std::invalid_argument);
-    EXPECT_THROW(device.replaceAlphaTexture(alpha, 4, 4, std::vector<std::uint8_t>(3)), std::invalid_argument);
-    EXPECT_EQ(alpha.getHeight(), 4);
     EXPECT_THROW((void)device.createTexture(graphics::Image(0, 0)), std::invalid_argument);
     EXPECT_THROW((void)device.createRenderTarget(1, 1 << 20), std::invalid_argument);
 
@@ -83,6 +82,48 @@ TEST(DeviceTest, CreatesReplacesAndReleasesResources) {
     EXPECT_EQ(empty.getId(), 0U);
     EXPECT_EQ(empty.getOptions(), graphics::Texture::Options{});
     device.collectGarbage();
+}
+
+// Dynamic textures change in place and reach the GPU once per frame, with the last pixels they received however many updates the frame made.
+TEST(DeviceTest, UploadsEachChangedDynamicTextureOncePerFrame) {
+    test::EngineFixture fixture;
+    graphics::Device& device = fixture.engine().getGraphics();
+
+    // The first frame sends the atlases of the default font and of the UI.
+    fixture.frames(1);
+    const graphics::Texture atlas = device.createDynamicAlphaTexture(4, 4, std::vector<std::uint8_t>(16, 0), {.filter = graphics::Texture::Filter::Linear});
+    const graphics::Texture image = device.createDynamicTexture(2, 2, math::Color::white());
+    const std::uint32_t atlasImage = atlas.getResource()->image.id;
+    EXPECT_EQ(atlas.getOptions().filter, graphics::Texture::Filter::Linear);
+    EXPECT_EQ(image.getSize(), math::Vec2(2.0F, 2.0F));
+
+    // The first pixels wait for the next frame like any later change.
+    fixture.frames(1);
+    EXPECT_EQ(sg_query_stats().prev_frame.num_update_image, 2U);
+    EXPECT_EQ(sg_query_stats().prev_frame.size_update_image, 16U + 16U);
+
+    for (std::uint8_t glyph = 1; glyph <= 12; ++glyph) {
+        device.updateTexture(atlas, std::vector<std::uint8_t>(16, glyph));
+    }
+    fixture.frames(1);
+    EXPECT_EQ(sg_query_stats().prev_frame.num_update_image, 1U);
+    EXPECT_EQ(sg_query_stats().prev_frame.size_update_image, 16U);
+    EXPECT_EQ(fixture.engine().getRenderer2D().getStats().uploadedBytes, 16U);
+    EXPECT_EQ(atlas.getResource()->image.id, atlasImage);
+
+    fixture.frames(1);
+    EXPECT_EQ(sg_query_stats().prev_frame.num_update_image, 0U);
+
+    // A texture released before the upload is skipped.
+    graphics::Texture temporary = device.createDynamicTexture(graphics::Image(1, 1, math::Color::white()));
+    temporary = {};
+    EXPECT_EQ(device.uploadTextures(), 0U);
+
+    EXPECT_THROW(device.updateTexture(atlas, std::vector<std::uint8_t>(3)), std::invalid_argument);
+    EXPECT_THROW(device.updateTexture(device.createTexture(2, 2, math::Color::white()), std::vector<std::uint8_t>(16)), std::logic_error);
+    EXPECT_THROW(device.replaceTexture(atlas, graphics::Image(8, 8)), std::logic_error);
+    EXPECT_THROW((void)device.createDynamicAlphaTexture(2, 2, std::vector<std::uint8_t>(3)), std::invalid_argument);
+    EXPECT_THROW((void)device.createDynamicTexture(1 << 20, 1 << 20, math::Color::white()), std::invalid_argument);
 }
 
 TEST(DeviceTest, ReportsAFullTexturePool) {
@@ -148,17 +189,27 @@ TEST(ViewportTest, PixelPerfectShrinksByWholeDivisorsOnSmallFramebuffers) {
     EXPECT_EQ(viewport.getPixelRect(), (math::Rect{0.0F, 0.0F, 960.0F, 540.0F}));
 }
 
-TEST(GraphicsNamesTest, ParsesBlendFilterAndWrapNames) {
+// Each enum keeps its names in one place, which Lua, asset options and app.json all read, and every value reads back as the name it came from.
+TEST(GraphicsNamesTest, ParsesAndNamesBlendFilterWrapAndScalingValues) {
     EXPECT_EQ(graphics::BlendMode::parse("additive"), graphics::BlendMode::Type::Additive);
     EXPECT_EQ(graphics::BlendMode::name(graphics::BlendMode::Type::Screen), "screen");
     EXPECT_FALSE(graphics::BlendMode::parse("burn").has_value());
-    EXPECT_EQ(graphics::Texture::filterFromName("linear"), graphics::Texture::Filter::Linear);
-    EXPECT_EQ(graphics::Texture::filterFromName("nearest"), graphics::Texture::Filter::Nearest);
     EXPECT_FALSE(graphics::Texture::filterFromName("cubic").has_value());
-    EXPECT_EQ(graphics::Texture::wrapFromName("mirror"), graphics::Texture::Wrap::Mirror);
-    EXPECT_EQ(graphics::Texture::wrapFromName("clamp"), graphics::Texture::Wrap::Clamp);
-    EXPECT_EQ(graphics::Texture::wrapFromName("repeat"), graphics::Texture::Wrap::Repeat);
     EXPECT_FALSE(graphics::Texture::wrapFromName("border").has_value());
+    EXPECT_FALSE(graphics::Viewport::scalingPolicyFromName("zoom").has_value());
+
+    for (const std::string_view name : {"nearest", "linear"}) {
+        EXPECT_EQ(graphics::Texture::filterName(*graphics::Texture::filterFromName(name)), name);
+    }
+    for (const std::string_view name : {"clamp", "repeat", "mirror"}) {
+        EXPECT_EQ(graphics::Texture::wrapName(*graphics::Texture::wrapFromName(name)), name);
+    }
+    for (const std::string_view name : {"fit", "fill", "stretch", "expand", "pixel_perfect"}) {
+        EXPECT_EQ(graphics::Viewport::scalingPolicyName(*graphics::Viewport::scalingPolicyFromName(name)), name);
+    }
+    EXPECT_EQ(graphics::Texture::filterFromName("linear"), graphics::Texture::Filter::Linear);
+    EXPECT_EQ(graphics::Texture::wrapFromName("mirror"), graphics::Texture::Wrap::Mirror);
+    EXPECT_EQ(graphics::Viewport::scalingPolicyFromName("pixel_perfect"), graphics::Viewport::ScalingPolicy::PixelPerfect);
 }
 
 } // namespace haylen

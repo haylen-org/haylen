@@ -58,6 +58,24 @@ TEST(GridRayTest, WalksCrossedCellsInOrder) {
     EXPECT_THROW((void)spatial2d::GridRay::cast(math::Ray::between({0.0F, 0.0F}, {1e30F, 0.0F}), {10.0F, 10.0F}, blocked), std::invalid_argument);
 }
 
+// The distances to the next cell sides add up in double precision, so a ray across more than 2^24 cells, where a float sum stops growing, still walks to its end.
+TEST(GridRayTest, WalksRaysLongerThanAFloatSumCanCount) {
+    std::int64_t visits = 0;
+    spatial2d::Cell last{};
+    float lastDistance = 0.0F;
+    // clang-format off
+    spatial2d::GridRay::traverse(math::Ray{{0.5F, 0.5F}, {1.0F, 0.0F}, 16800000.0F}, {1.0F, 1.0F}, [&](spatial2d::Cell cell, float distance, math::Vec2) {
+        ++visits;
+        last = cell;
+        lastDistance = distance;
+        return true;
+    });
+    // clang-format on
+    EXPECT_EQ(visits, 16800001);
+    EXPECT_EQ(last, (spatial2d::Cell{16800000, 0}));
+    EXPECT_FLOAT_EQ(lastDistance, 16799999.5F);
+}
+
 TEST(GridRayTest, CastsOverCellGridsFromInsideAndOutside) {
     spatial2d::CellGrid grid(8, 8);
     grid.set({5, 3}, 1);

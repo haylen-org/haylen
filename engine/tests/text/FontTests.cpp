@@ -14,11 +14,13 @@
 #include <stb_truetype.h>
 
 #include "core/EmbeddedFiles.hpp"
+#include "graphics/TextureResource.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/text/Font.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/TestFiles.hpp"
 #include "text/DistanceField.hpp"
 
 namespace haylen::text {
@@ -50,23 +52,23 @@ TEST(FontTest, LaysOutWrapsAndAlignsText) {
     test::EngineFixture fixture;
     text::Font& font = *fixture.engine().getDefaultFont();
 
-    const std::shared_ptr<const text::TextLayout> single = font.layout("Hello", {.size = 32.0F});
+    const std::shared_ptr<const text::Layout> single = font.layout("Hello", {.size = 32.0F});
     EXPECT_EQ(single->lineCount, 1U);
     EXPECT_EQ(single->glyphs.size(), 5U);
     EXPECT_EQ(single->characters.size(), 5U);
     EXPECT_GT(single->size.x, 40.0F);
     EXPECT_NEAR(single->size.y, font.getLineHeight(32.0F), 0.01F);
 
-    const std::shared_ptr<const text::TextLayout> wrapped = font.layout("one two three four five", {.size = 32.0F, .maxWidth = 120.0F});
+    const std::shared_ptr<const text::Layout> wrapped = font.layout("one two three four five", {.size = 32.0F, .maxWidth = 120.0F});
     EXPECT_GT(wrapped->lineCount, 2U);
     EXPECT_FLOAT_EQ(wrapped->size.x, 120.0F);
 
-    const std::shared_ptr<const text::TextLayout> lines = font.layout("a\n\nb", {.size = 20.0F});
+    const std::shared_ptr<const text::Layout> lines = font.layout("a\n\nb", {.size = 20.0F});
     EXPECT_EQ(lines->lineCount, 3U);
     EXPECT_EQ(lines->characters[1].begin, 3U);
 
-    const std::shared_ptr<const text::TextLayout> centered = font.layout("i\nwide text", {.size = 20.0F, .align = text::TextAlign::Center});
-    const std::shared_ptr<const text::TextLayout> right = font.layout("i\nwide text", {.size = 20.0F, .align = text::TextAlign::Right});
+    const std::shared_ptr<const text::Layout> centered = font.layout("i\nwide text", {.size = 20.0F, .align = text::Alignment::Center});
+    const std::shared_ptr<const text::Layout> right = font.layout("i\nwide text", {.size = 20.0F, .align = text::Alignment::Right});
     EXPECT_GT(centered->glyphs.front().position.x, 0.0F);
     EXPECT_GT(right->glyphs.front().position.x, centered->glyphs.front().position.x);
     EXPECT_EQ(font.measure("Hello", {.size = 32.0F}), single->size);
@@ -74,12 +76,12 @@ TEST(FontTest, LaysOutWrapsAndAlignsText) {
     EXPECT_GT(font.toDistance(2.0F, 32.0F), 0.0F);
     EXPECT_FLOAT_EQ(font.toDistance(4.0F, 32.0F), font.toDistance(2.0F, 16.0F));
 
-    const std::shared_ptr<const text::TextLayout> unicode = font.layout("Olá 世界", {.size = 24.0F});
+    const std::shared_ptr<const text::Layout> unicode = font.layout("Olá 世界", {.size = 24.0F});
     EXPECT_GE(unicode->glyphs.size(), 3U);
     font.sync();
     EXPECT_TRUE(font.getPage(0).isValid());
 
-    EXPECT_THROW(text::TrueTypeFont(fixture.engine().getGraphics(), test::bytes("not a font")), std::runtime_error);
+    EXPECT_THROW(text::TrueTypeFont(fixture.engine().getGraphics(), test::TestFiles::bytes("not a font")), std::runtime_error);
     EXPECT_THROW(text::TrueTypeFont(fixture.engine().getGraphics(), {}), std::runtime_error);
     EXPECT_THROW(text::TrueTypeFont(fixture.engine().getGraphics(), {0, 1, 0}), std::runtime_error);
 }
@@ -97,7 +99,7 @@ TEST(FontTest, GrowsTheAtlasWhenGlyphsDoNotFit) {
     font.sync();
     EXPECT_EQ(font.getPage(0), first);
 
-    const std::shared_ptr<const text::TextLayout> layout = font.layout("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", {.size = 48.0F});
+    const std::shared_ptr<const text::Layout> layout = font.layout("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", {.size = 48.0F});
     font.sync();
     EXPECT_EQ(layout->glyphs.size(), 62U);
     EXPECT_NE(font.getPage(0), first);
@@ -105,13 +107,33 @@ TEST(FontTest, GrowsTheAtlasWhenGlyphsDoNotFit) {
     EXPECT_GT(font.getPage(0).getWidth(), 64);
     EXPECT_GT(font.getPage(0).getHeight(), 64);
 
-    for (const text::TextLayout::Glyph& glyph : layout->glyphs) {
+    for (const text::Layout::Glyph& glyph : layout->glyphs) {
         EXPECT_LE(glyph.source.x + glyph.source.width, static_cast<float>(font.getPage(0).getWidth()));
         EXPECT_LE(glyph.source.y + glyph.source.height, static_cast<float>(font.getPage(0).getHeight()));
     }
 }
 
-// A glyph wider than any texture of the device fails every time it is drawn, rather than drawing nothing after the first failure.
+// Every draw that adds glyphs hands the atlas to the device, and the frame sends it to the GPU once, in place.
+TEST(FontTest, UploadsItsAtlasOncePerFrameForTheGlyphsOfEveryDraw) {
+    test::EngineFixture fixture;
+    fixture.frames(1);
+    const std::span<const std::uint8_t> data = core::EmbeddedFiles::getDefaultFont();
+    text::TrueTypeFont font(fixture.engine().getGraphics(), std::vector<std::uint8_t>(data.begin(), data.end()));
+    fixture.frames(1);
+    const graphics::Texture page = font.getPage(0);
+    const std::uint32_t image = page.getResource()->image.id;
+
+    for (const char* line : {"Harbor", "Lighthouse", "Quay 42", "Market", "Pier & dock", "Zephyr"}) {
+        (void)font.layout(line, {.size = 24.0F});
+        font.sync();
+    }
+    fixture.frames(1);
+    EXPECT_EQ(sg_query_stats().prev_frame.num_update_image, 1U);
+    EXPECT_EQ(sg_query_stats().prev_frame.size_update_image, static_cast<std::uint32_t>(page.getWidth() * page.getHeight()));
+    EXPECT_EQ(font.getPage(0).getResource()->image.id, image);
+}
+
+// A glyph wider than any texture of the device fails every time it is drawn, rather than drawing nothing after the first failure, and it fails before its distance field is computed.
 TEST(FontTest, FailsAgainForAGlyphNoAtlasHolds) {
     test::EngineFixture fixture;
     graphics::Device& device = fixture.engine().getGraphics();

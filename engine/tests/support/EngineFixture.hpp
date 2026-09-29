@@ -13,7 +13,6 @@
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Application.hpp"
 #include "haylen/core/Engine.hpp"
-#include "haylen/core/Scene.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/lua/Application.hpp"
@@ -21,19 +20,6 @@
 #include "support/TemporaryDirectory.hpp"
 
 namespace haylen::test {
-
-// Scene that runs a drawing function inside a real engine frame.
-class DrawingScene final : public core::Scene {
-  public:
-    explicit DrawingScene(std::function<void(core::Engine&)> function) : draw(std::move(function)) {}
-
-    void render(core::Engine& engine) override {
-        draw(engine);
-    }
-
-  private:
-    std::function<void(core::Engine&)> draw;
-};
 
 // A running engine on the headless host with an in-memory package.
 class EngineFixture final {
@@ -67,8 +53,5 @@ class EngineFixture final {
     std::shared_ptr<io::MemoryPackage> memoryPackage;
     std::unique_ptr<core::Engine> runningEngine;
 };
-
-[[nodiscard]] std::vector<std::uint8_t> bytes(const std::string& text);
-[[nodiscard]] std::vector<std::uint8_t> pngImage(int width, int height, std::uint32_t rgba);
 
 } // namespace haylen::test

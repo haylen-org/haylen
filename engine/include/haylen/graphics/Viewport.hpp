@@ -29,6 +29,7 @@ class Viewport final {
 
     // Resolves the names "fit", "fill", "stretch", "expand" and "pixel_perfect".
     [[nodiscard]] static std::optional<ScalingPolicy> scalingPolicyFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view scalingPolicyName(ScalingPolicy value) noexcept;
 
     void update(math::Vec2 framebuffer, math::Vec2 design, ScalingPolicy scaling, const math::Insets& safeInsetsPixels = {}) noexcept;
 

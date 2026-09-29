@@ -10,8 +10,8 @@
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/text/Alignment.hpp"
 #include "haylen/text/Direction.hpp"
-#include "haylen/text/TextAlign.hpp"
 
 namespace haylen::text {
 
@@ -127,7 +127,7 @@ struct RichTextDocument {
         };
 
         Kind kind = Kind::Text;
-        std::optional<TextAlign> align;
+        std::optional<Alignment> align;
         std::optional<Direction> direction;
         float indent = 0.0F;
         std::u32string marker;

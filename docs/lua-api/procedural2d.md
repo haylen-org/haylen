@@ -434,7 +434,7 @@ local spatial = require('haylen.spatial2d')
 local tiled = require('haylen.tiled')
 local assets = require('haylen.assets')
 
-local map = tiled.newMap(assets.load('maps/island.tmj'))
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 local terrain = map:tilesets()[1].wangSets[1]
 local corners = spatial.newCellGrid(33, 33, 1)
 for i = 10, 20 do

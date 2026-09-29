@@ -15,6 +15,7 @@
 #include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/platform/Event.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen::assets {
 
@@ -26,8 +27,8 @@ class AssetsManagerTest : public ::testing::Test {
     }
 
     [[nodiscard]] static std::map<std::string, std::string> getAssetFiles() {
-        const std::vector<std::uint8_t> red = test::pngImage(4, 4, 0xFF0000FFU);
-        const std::vector<std::uint8_t> blue = test::pngImage(2, 2, 0x0000FFFFU);
+        const std::vector<std::uint8_t> red = test::TestFiles::pngImage(4, 4, 0xFF0000FFU);
+        const std::vector<std::uint8_t> blue = test::TestFiles::pngImage(2, 2, 0x0000FFFFU);
         return {
             {"content/images/red.png", std::string(red.begin(), red.end())}, {"content/images/blue.png", std::string(blue.begin(), blue.end())}, {"content/images/readme.txt", "not an asset type"}, {"content/data/config.json", R"({"speed": 3})"}, {"content/data/broken.json", "{"}, {"content/fonts/ui.ttf", getFontFile()}, {"content/preload.json", R"({"groups": {"menu": ["images/", {"path": "data/config.json", "type": "json"}], "broken": ["data/broken.json", "images/missing.png"], "empty": []}})"},
         };
@@ -88,7 +89,7 @@ TEST_F(AssetsManagerTest, PublishesLoadedUnloadedAndReloadedEvents) {
         fixture.frames(1);
         EXPECT_EQ(log, (std::vector<std::string>{"loaded texture images/red.png"}));
 
-        fixture.package().setFile("content/images/red.png", test::pngImage(8, 8, 0x00FF00FFU));
+        fixture.package().setFile("content/images/red.png", test::TestFiles::pngImage(8, 8, 0x00FF00FFU));
         EXPECT_EQ(assets.reload("images/red.png"), 1U);
         fixture.frames(1);
         EXPECT_EQ(log.back(), "reloaded texture images/red.png");

@@ -19,8 +19,9 @@ struct Log::Listeners {
 
 std::atomic<Log::Level> Log::currentLevel{applyDefaultLevel()};
 
+// The listeners are never destroyed, because an exit() on another thread runs the destructors of static objects while the frame thread still logs.
 Log::Listeners& Log::getListeners() {
-    static Listeners instance;
+    static Listeners& instance = *new Listeners();
     return instance;
 }
 

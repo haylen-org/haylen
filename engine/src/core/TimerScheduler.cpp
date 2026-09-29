@@ -26,6 +26,10 @@ TimerScheduler::Id TimerScheduler::every(float intervalSeconds, std::function<vo
     return add(intervalSeconds, intervalSeconds, repeatCount, std::move(callback), options);
 }
 
+ProcessMode TimerScheduler::resolveMode(const Options& options) {
+    return options.processMode == ProcessMode::Inherit && options.parentMode ? options.parentMode() : options.processMode;
+}
+
 TimerScheduler::Id TimerScheduler::add(float interval, float delay, int repeatCount, std::function<void()> callback, Options options) {
     if (!callback) {
         throw std::invalid_argument("A timer needs a callback.");
@@ -35,7 +39,7 @@ TimerScheduler::Id TimerScheduler::add(float interval, float delay, int repeatCo
     timer->interval = std::max(0.0F, interval);
     timer->remaining = std::max(0.0F, delay);
     timer->repeatsLeft = repeatCount;
-    timer->options = options;
+    timer->options = std::move(options);
     timer->callback = std::move(callback);
 
     // Timers created from a callback start on the next update so the running iteration stays valid.
@@ -113,7 +117,7 @@ void TimerScheduler::update(const FrameClock& clock) {
 
     // A timer that its process mode holds keeps its remaining time and cannot fire in this update.
     for (const std::shared_ptr<Timer>& timer : timers) {
-        const bool running = !timer->cancelled && !timer->paused && clock.canProcess(timer->options.processMode);
+        const bool running = !timer->cancelled && !timer->paused && clock.canProcess(resolveMode(timer->options));
         timer->firedThisUpdate = !running;
         if (running) {
             timer->remaining -= static_cast<float>(timer->options.unscaled ? clock.getUnscaledDelta() : clock.getDelta());

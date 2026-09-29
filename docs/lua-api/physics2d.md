@@ -1730,7 +1730,7 @@ local assets = require('haylen.assets')
 local tiled = require('haylen.tiled')
 
 local world = physics2d.newWorld()
-local map = tiled.newMap(assets.load('maps/island.tmj'))
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 local walls = map:buildCollision(world)
 print(#walls, walls[1].type)
 ```

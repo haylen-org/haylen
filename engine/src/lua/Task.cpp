@@ -8,6 +8,7 @@
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/Userdata.hpp"
 #include "lua/Owners.hpp"
 
 namespace haylen::lua {
@@ -33,7 +34,7 @@ void Task::run(lua_State* L, int function, int arguments) {
     threadReference = luaL_ref(L, LUA_REGISTRYINDEX);
 
     // The body holds the task, so the task lives for as long as its coroutine may still run.
-    if (luaL_newmetatable(thread, kHolderType) != 0) {
+    if (Userdata::newMetatable(thread, kHolderType)) {
         lua_pushcfunction(thread, &collectHolder);
         lua_setfield(thread, -2, "__gc");
     }
@@ -86,11 +87,7 @@ int Task::continueBody(lua_State* L, int status, lua_KContext context) {
 }
 
 int Task::collectHolder(lua_State* L) {
-    auto* holder = static_cast<std::shared_ptr<Task>*>(luaL_testudata(L, 1, kHolderType));
-    if (holder == nullptr) {
-        return 0;
-    }
-    holder->~shared_ptr();
+    static_cast<std::shared_ptr<Task>*>(lua_touserdata(L, 1))->~shared_ptr();
     lua_pushnil(L);
     lua_setmetatable(L, 1);
     return 0;

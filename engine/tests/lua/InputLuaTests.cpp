@@ -101,7 +101,7 @@ TEST_F(InputLuaTest, ReadsGamepads) {
     EXPECT_EQ(lua("local x, y = input.gamepadStick('left', 2) return x .. ',' .. y"), "1.0,0.0");
     EXPECT_EQ(lua("return input.lastDevice()"), "gamepad");
 
-    lua("input.setDeadzone(0)");
+    lua("input.setGamepadDeadzone(0)");
     fixture.frames(1);
     EXPECT_EQ(lua("return input.gamepadAxis('right_trigger', 2) > 0"), "true");
 
@@ -195,7 +195,7 @@ TEST_F(InputLuaTest, ReadsSingleTouchesAndDeviceSettings) {
     EXPECT_EQ(lua("local x, y = input.mouseFramebufferPosition() return x .. ',' .. y"), "30.0,15.0");
 
     EXPECT_EQ(lua("return input.gamepadDeadzone() > 0.19 and input.gamepadDeadzone() < 0.21"), "true");
-    EXPECT_EQ(lua("input.setDeadzone(0.5) return input.gamepadDeadzone()"), "0.5");
+    EXPECT_EQ(lua("input.setGamepadDeadzone(0.5) return input.gamepadDeadzone()"), "0.5");
 
     EXPECT_EQ(lua("local s = input.gestureSettings() return s.longPressDuration .. ' ' .. s.swipeMinDistance .. ' ' .. tostring(s.mouse)"), "0.5 90.0 true");
     lua("input.setGestureSettings({longPressDuration = 0.75, mouse = false})");

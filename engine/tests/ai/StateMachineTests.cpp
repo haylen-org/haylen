@@ -130,13 +130,13 @@ TEST(AiLuaTest, RunsLuaStatesWithArguments) {
     )");
     // clang-format on
 
-    EXPECT_EQ(fixture.lua("return tostring(machine.state) .. ' ' .. tostring(machine.previous)"), "nil nil");
+    EXPECT_EQ(fixture.lua("return tostring(machine.current) .. ' ' .. tostring(machine.previous)"), "nil nil");
     EXPECT_EQ(fixture.lua("machine:change('idle', 'start') machine:update(0.5) machine:update(2) return table.concat(log, ', ')"), "nil>idle, enter idle start, update idle 0.5, update idle 2.0, exit idle, idle>chase, enter chase player 3");
-    EXPECT_EQ(fixture.lua("return machine.state .. ' ' .. machine.previous .. ' ' .. machine.elapsed"), "chase idle 0.0");
+    EXPECT_EQ(fixture.lua("return machine.current .. ' ' .. machine.previous .. ' ' .. machine.elapsed"), "chase idle 0.0");
 
     fixture.runLua("log = {} machine:change('chase', 'goblin', 9)");
     EXPECT_EQ(fixture.lua("return table.concat(log, ', ')"), "exit chase, chase>chase, enter chase goblin 9, exit chase, chase>idle, enter idle tired");
-    EXPECT_EQ(fixture.lua("machine:change('rest') machine:update(1.5) return machine.state .. ' ' .. machine.elapsed .. ' ' .. tostring(machine:has('rest')) .. tostring(machine:has('fly'))"), "rest 1.5 truefalse");
+    EXPECT_EQ(fixture.lua("machine:change('rest') machine:update(1.5) return machine.current .. ' ' .. machine.elapsed .. ' ' .. tostring(machine:has('rest')) .. tostring(machine:has('fly'))"), "rest 1.5 truefalse");
 
     EXPECT_NE(fixture.lua("machine:change('fly')").find("no state named fly"), std::string::npos);
     EXPECT_NE(fixture.lua("ai.newStateMachine({idle = 3})").find("each state must be a table"), std::string::npos);
@@ -154,7 +154,7 @@ TEST(AiLuaTest, RunsLuaStatesWithArguments) {
     )");
     // clang-format on
     EXPECT_NE(fixture.lua("fragile:change('broken')").find("enter failed"), std::string::npos);
-    EXPECT_EQ(fixture.lua("fragile:change('calm', 'fresh') return table.concat(seen, ',') .. ' ' .. fragile.state"), "fresh calm");
+    EXPECT_EQ(fixture.lua("fragile:change('calm', 'fresh') return table.concat(seen, ',') .. ' ' .. fragile.current"), "fresh calm");
     EXPECT_EQ(fixture.lua("machine.onChange = nil machine:change('idle') return tostring(machine.onChange)"), "nil");
 }
 

@@ -93,7 +93,7 @@ function Waypoints:update(dt)
     end
     local pointer = self.pointer
     if pointer.pressed then
-        local point = self.graph:closest(pointer.worldX, pointer.worldY, true)
+        local point = self.graph:closestPoint(pointer.worldX, pointer.worldY, true)
         if point and self.graph:position(point):distance({pointer.worldX, pointer.worldY}) < kPickDistance then
             self:apply(point)
         end

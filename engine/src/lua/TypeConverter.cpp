@@ -10,16 +10,12 @@
 
 namespace haylen::lua {
 
-const TypeConverter::NameTable<graphics::Texture::Wrap, 3> TypeConverter::kWraps = {{{"clamp", graphics::Texture::Wrap::Clamp}, {"repeat", graphics::Texture::Wrap::Repeat}, {"mirror", graphics::Texture::Wrap::Mirror}}};
-const TypeConverter::NameTable<graphics::Viewport::ScalingPolicy, 5> TypeConverter::kScaling = {{{"fit", graphics::Viewport::ScalingPolicy::Fit}, {"fill", graphics::Viewport::ScalingPolicy::Fill}, {"stretch", graphics::Viewport::ScalingPolicy::Stretch}, {"expand", graphics::Viewport::ScalingPolicy::Expand}, {"pixel_perfect", graphics::Viewport::ScalingPolicy::PixelPerfect}}};
 const TypeConverter::NameTable<graphics2d::Renderer::SortMode, 3> TypeConverter::kSortModes = {{{"layer", graphics2d::Renderer::SortMode::Layer}, {"depth", graphics2d::Renderer::SortMode::Depth}, {"y", graphics2d::Renderer::SortMode::Y}}};
 const TypeConverter::NameTable<graphics2d::ImageBlend::Pattern, 5> TypeConverter::kBlendPatterns = {{{"dissolve", graphics2d::ImageBlend::Pattern::Dissolve}, {"pixelate", graphics2d::ImageBlend::Pattern::Pixelate}, {"radial", graphics2d::ImageBlend::Pattern::Radial}, {"iris", graphics2d::ImageBlend::Pattern::Iris}, {"pageTurn", graphics2d::ImageBlend::Pattern::PageTurn}}};
 const TypeConverter::NameTable<graphics2d::SceneTransition::Kind, 24> TypeConverter::kTransitions = {{
     {"fade", graphics2d::SceneTransition::Kind::Fade}, {"crossFade", graphics2d::SceneTransition::Kind::CrossFade}, {"moveIn", graphics2d::SceneTransition::Kind::MoveIn}, {"slideIn", graphics2d::SceneTransition::Kind::SlideIn}, {"push", graphics2d::SceneTransition::Kind::Push}, {"shrinkGrow", graphics2d::SceneTransition::Kind::ShrinkGrow}, {"flipX", graphics2d::SceneTransition::Kind::FlipX}, {"flipY", graphics2d::SceneTransition::Kind::FlipY}, {"zoomFlip", graphics2d::SceneTransition::Kind::ZoomFlip}, {"rotoZoom", graphics2d::SceneTransition::Kind::RotoZoom}, {"jumpZoom", graphics2d::SceneTransition::Kind::JumpZoom}, {"splitColumns", graphics2d::SceneTransition::Kind::SplitColumns}, {"splitRows", graphics2d::SceneTransition::Kind::SplitRows}, {"turnOffTiles", graphics2d::SceneTransition::Kind::TurnOffTiles}, {"fadeTiles", graphics2d::SceneTransition::Kind::FadeTiles}, {"pageTurn", graphics2d::SceneTransition::Kind::PageTurn}, {"radialClockwise", graphics2d::SceneTransition::Kind::RadialClockwise}, {"radialCounterclockwise", graphics2d::SceneTransition::Kind::RadialCounterclockwise}, {"wipe", graphics2d::SceneTransition::Kind::Wipe}, {"inOut", graphics2d::SceneTransition::Kind::InOut}, {"outIn", graphics2d::SceneTransition::Kind::OutIn}, {"iris", graphics2d::SceneTransition::Kind::Iris}, {"dissolve", graphics2d::SceneTransition::Kind::Dissolve}, {"pixelate", graphics2d::SceneTransition::Kind::Pixelate},
 }};
 const TypeConverter::NameTable<graphics2d::SceneTransition::Direction, 8> TypeConverter::kDirections = {{{"left", graphics2d::SceneTransition::Direction::Left}, {"right", graphics2d::SceneTransition::Direction::Right}, {"up", graphics2d::SceneTransition::Direction::Up}, {"down", graphics2d::SceneTransition::Direction::Down}, {"upLeft", graphics2d::SceneTransition::Direction::UpLeft}, {"upRight", graphics2d::SceneTransition::Direction::UpRight}, {"downLeft", graphics2d::SceneTransition::Direction::DownLeft}, {"downRight", graphics2d::SceneTransition::Direction::DownRight}}};
-const TypeConverter::NameTable<text::TextAlign, 6> TypeConverter::kAligns = {{{"start", text::TextAlign::Start}, {"end", text::TextAlign::End}, {"left", text::TextAlign::Left}, {"center", text::TextAlign::Center}, {"right", text::TextAlign::Right}, {"fill", text::TextAlign::Fill}}};
-const TypeConverter::NameTable<text::Direction, 3> TypeConverter::kTextDirections = {{{"auto", text::Direction::Auto}, {"ltr", text::Direction::LeftToRight}, {"rtl", text::Direction::RightToLeft}}};
 const TypeConverter::NameTable<input::InputDevice, 3> TypeConverter::kDevices = {{{"keyboard_mouse", input::InputDevice::KeyboardMouse}, {"touch", input::InputDevice::Touch}, {"gamepad", input::InputDevice::Gamepad}}};
 const TypeConverter::NameTable<input::TouchPhase, 5> TypeConverter::kPhases = {{{"began", input::TouchPhase::Began}, {"moved", input::TouchPhase::Moved}, {"stationary", input::TouchPhase::Stationary}, {"ended", input::TouchPhase::Ended}, {"cancelled", input::TouchPhase::Cancelled}}};
 const TypeConverter::NameTable<platform::Window::Cursor, 11> TypeConverter::kCursors = {{
@@ -42,7 +38,6 @@ const TypeConverter::NameTable<platform::Event::Type, 28> TypeConverter::kEvents
     {"key_down", platform::Event::Type::KeyDown}, {"key_up", platform::Event::Type::KeyUp}, {"character", platform::Event::Type::Character}, {"mouse_down", platform::Event::Type::MouseDown}, {"mouse_up", platform::Event::Type::MouseUp}, {"mouse_move", platform::Event::Type::MouseMove}, {"mouse_scroll", platform::Event::Type::MouseScroll}, {"mouse_enter", platform::Event::Type::MouseEnter}, {"mouse_leave", platform::Event::Type::MouseLeave}, {"touch_began", platform::Event::Type::TouchBegan}, {"touch_moved", platform::Event::Type::TouchMoved}, {"touch_ended", platform::Event::Type::TouchEnded}, {"touch_cancelled", platform::Event::Type::TouchCancelled}, {"resized", platform::Event::Type::Resized}, {"suspended", platform::Event::Type::Suspended}, {"resumed", platform::Event::Type::Resumed}, {"focus_gained", platform::Event::Type::FocusGained}, {"focus_lost", platform::Event::Type::FocusLost}, {"quit_requested", platform::Event::Type::QuitRequested}, {"low_memory", platform::Event::Type::LowMemory}, {"text_edited", platform::Event::Type::TextEdited}, {"text_action", platform::Event::Type::TextAction}, {"keyboard_changed", platform::Event::Type::KeyboardChanged}, {"network_changed", platform::Event::Type::NetworkChanged}, {"interruption_began", platform::Event::Type::InterruptionBegan}, {"interruption_ended", platform::Event::Type::InterruptionEnded}, {"window_moved", platform::Event::Type::WindowMoved}, {"monitors_changed", platform::Event::Type::MonitorsChanged},
 }};
 
-const TypeConverter::NameTable<platform::Orientation, 3> TypeConverter::kOrientations = {{{"landscape", platform::Orientation::Landscape}, {"portrait", platform::Orientation::Portrait}, {"any", platform::Orientation::Any}}};
 const TypeConverter::NameTable<platform::TextInput::Action, 4> TypeConverter::kTextActions = {{{"submit", platform::TextInput::Action::Submit}, {"next", platform::TextInput::Action::Next}, {"cancel", platform::TextInput::Action::Cancel}, {"dismissed", platform::TextInput::Action::Dismissed}}};
 
 const TypeConverter::NameTable<core::ProcessMode, 5> TypeConverter::kProcessModes = {{{"inherit", core::ProcessMode::Inherit}, {"pausable", core::ProcessMode::Pausable}, {"whenPaused", core::ProcessMode::WhenPaused}, {"always", core::ProcessMode::Always}, {"disabled", core::ProcessMode::Disabled}}};
@@ -282,8 +277,8 @@ graphics2d::DrawOrder TypeConverter::readDrawOrder(lua_State* L, int index, std:
     return order;
 }
 
-text::TextStyle TypeConverter::readTextStyle(lua_State* L, int index, std::initializer_list<Table::FieldNames> extraFields) {
-    text::TextStyle style;
+text::Style TypeConverter::readTextStyle(lua_State* L, int index, std::initializer_list<Table::FieldNames> extraFields) {
+    text::Style style;
     if (lua_isnoneornil(L, index)) {
         return style;
     }
@@ -339,6 +334,7 @@ graphics2d::SpriteInstance TypeConverter::readSpriteInstance(lua_State* L, int i
 
     Table::readField(L, table, "flipX", base.flip.horizontal);
     Table::readField(L, table, "flipY", base.flip.vertical);
+    Table::readField(L, table, "flipDiagonal", base.flip.diagonal);
 
     if (base.size.isZero()) {
         base.size = base.source.isEmpty() ? texture.getSize() : base.source.getSize();

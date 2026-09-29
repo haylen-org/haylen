@@ -11,6 +11,7 @@
 #include "haylen/2d/particles/Emitter.hpp"
 #include "haylen/2d/physics/World.hpp"
 #include "haylen/core/AppConfig.hpp"
+#include "haylen/core/Connection.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/debug/ObjectCounter.hpp"
 #include "haylen/debug/Stats.hpp"
@@ -23,25 +24,24 @@
 
 namespace haylen::debug {
 
-namespace {
-
-// Reads a counter the way the statistics do, as zero before its first object.
-ObjectCounter::Snapshot counted(std::string_view name) {
-    return ObjectCounter::find(name).value_or(ObjectCounter::Snapshot{});
-}
-
-graphics::Device::Pool pool(graphics::Device& device, std::string_view name) {
-    for (const graphics::Device::Pool& found : device.getPools()) {
-        if (found.name == name) {
-            return found;
-        }
+class ObjectCounterTest : public ::testing::Test {
+  protected:
+    // Reads a counter the way the statistics do, as zero before its first object.
+    [[nodiscard]] static ObjectCounter::Snapshot counted(std::string_view name) {
+        return ObjectCounter::find(name).value_or(ObjectCounter::Snapshot{});
     }
-    return {};
-}
 
-} // namespace
+    [[nodiscard]] static graphics::Device::Pool pool(graphics::Device& device, std::string_view name) {
+        for (const graphics::Device::Pool& found : device.getPools()) {
+            if (found.name == name) {
+                return found;
+            }
+        }
+        return {};
+    }
+};
 
-TEST(ObjectCounterTest, CountsTrackedObjectsAndTheirMemory) {
+TEST_F(ObjectCounterTest, CountsTrackedObjectsAndTheirMemory) {
     ObjectCounter counter("StatsTests.Thing", ObjectCounter::Kind::Native);
     {
         TrackedObject first(counter);
@@ -87,7 +87,7 @@ TEST(ObjectCounterTest, CountsTrackedObjectsAndTheirMemory) {
     EXPECT_EQ(seen, (std::vector<std::string>{"+1", "-1"}));
 }
 
-TEST(ObjectCounterTest, CountsLuaUserdataUntilTheyAreCollected) {
+TEST_F(ObjectCounterTest, CountsLuaUserdataUntilTheyAreCollected) {
     test::EngineFixture fixture;
     const ObjectCounter::Snapshot before = counted("haylen.Signal");
     fixture.runLua("signals = {} for index = 1, 5 do signals[index] = require('haylen.signal').new() end");
@@ -100,7 +100,7 @@ TEST(ObjectCounterTest, CountsLuaUserdataUntilTheyAreCollected) {
     EXPECT_EQ(counted("haylen.Signal").alive, before.alive);
 }
 
-TEST(ObjectCounterTest, CountsEngineResources) {
+TEST_F(ObjectCounterTest, CountsEngineResources) {
     test::EngineFixture fixture;
     graphics::Device& device = fixture.engine().getGraphics();
     const ObjectCounter::Snapshot textures = counted("Texture");
@@ -214,6 +214,66 @@ TEST(StatsTest, SamplesMonitorsEveryFrame) {
     fixture.frames(1);
     ASSERT_NE(fixture.engine().getError(), nullptr);
     EXPECT_NE(std::string(fixture.engine().getError()->what()).find("A debug monitor function returns a number."), std::string::npos);
+}
+
+TEST(StatsTest, MonitorConnectionsRemoveAndHoldMonitors) {
+    test::EngineFixture fixture;
+    plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
+    int calls = 0;
+    core::Connection connection = plugin.addMonitor("enemies", [&calls] { return ++calls; });
+    fixture.frames(1);
+    connection.setBlocked(true);
+    fixture.frames(2);
+    EXPECT_TRUE(connection.isBlocked());
+    connection.setBlocked(false);
+    fixture.frames(1);
+    EXPECT_EQ(plugin.getMonitors()[0]->getHistory(), (std::vector<float>{1.0F, 2.0F}));
+
+    // A replaced monitor ends its connection, so disconnecting it leaves the replacement alone.
+    core::Connection replacement = plugin.addMonitor("enemies", [] { return 5.0; });
+    EXPECT_FALSE(connection.isConnected());
+    connection.disconnect();
+    ASSERT_EQ(plugin.getMonitors().size(), 1U);
+    replacement.disconnect();
+    EXPECT_TRUE(plugin.getMonitors().empty());
+    EXPECT_FALSE(replacement.isConnected());
+
+    // A sampler that returns nothing skips the frame and keeps the last value.
+    plugin.addMonitor("even", [&calls]() -> std::optional<double> { return ++calls % 2 == 0 ? std::optional<double>(calls) : std::nullopt; });
+    fixture.frames(4);
+    EXPECT_EQ(plugin.getMonitors()[0]->getHistory().size(), 2U);
+    EXPECT_EQ(plugin.getMonitors()[0]->getValue(), 6.0);
+}
+
+TEST(StatsTest, EndsMonitorsWithTheirOwner) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        debugging = require('haylen.debug')
+        scene = require('haylen.scene')
+        level = {}
+        local held = {}
+        owned = debugging.addMonitor('level', function() return 1 end, {owner = level})
+        debugging.addMonitor('held', function() return 2 end, {owner = held})
+        free = debugging.addMonitor('free', function() return 3 end)
+        blocked = debugging.addMonitor('blocked', function() blockedCalls = (blockedCalls or 0) + 1 return 4 end)
+        blocked.blocked = true
+        scene.push(level)
+        held = nil
+        collectgarbage()
+        collectgarbage()
+    )");
+    // clang-format on
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("local names = {} for _, monitor in ipairs(debugging.monitors()) do names[#names + 1] = monitor.name end return table.concat(names, ' ')"), "level free blocked");
+
+    fixture.runLua("scene.pop()");
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("local names = {} for _, monitor in ipairs(debugging.monitors()) do names[#names + 1] = monitor.name end return table.concat(names, ' ') .. ' ' .. tostring(owned.connected) .. ' ' .. tostring(blockedCalls)"), "free blocked false nil");
+    EXPECT_EQ(fixture.lua("free:disconnect() return #debugging.monitors() .. ' ' .. tostring(free.connected)"), "1 false");
+    EXPECT_NE(fixture.lua("debugging.addMonitor('weak', function() return 1 end, {weak = true})").find("Unknown option 'weak'"), std::string::npos);
+    EXPECT_NE(fixture.lua("debugging.addMonitor('number', function() return 1 end, {owner = 5})").find("An owner must be a table or a userdata, not number."), std::string::npos);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
 TEST(StatsTest, ReturnsStatisticsToLua) {

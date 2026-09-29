@@ -1,16 +1,20 @@
 #pragma once
 
+#include <array>
+#include <optional>
 #include <string>
+#include <string_view>
+#include <utility>
 
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/text/Alignment.hpp"
 #include "haylen/text/Direction.hpp"
-#include "haylen/text/TextAlign.hpp"
 
 namespace haylen::text {
 
 // How a block of text looks and where it sits. A positive maximum width wraps lines where the Unicode line breaking rules allow, and the anchor is a fraction of the block size that lands on the draw position. Outlines and blurred shadows need a font with a distance field. Bold and italic pick those faces of a family, synthesized when it lacks them. The direction reads every paragraph left to right, right to left, or from its first strong letter, and the language, a BCP 47 tag such as ar, hi or ja, picks the letter forms and line breaks of its script.
-struct TextStyle {
+struct Style {
     float size = 32.0F;
     math::Color color = math::Color::white();
     float outlineWidth = 0.0F;
@@ -18,7 +22,7 @@ struct TextStyle {
     math::Vec2 shadowOffset{};
     math::Color shadowColor = math::Color::transparent();
     float shadowBlur = 0.0F;
-    TextAlign align = TextAlign::Start;
+    Alignment align = Alignment::Start;
     float maxWidth = 0.0F;
     float lineSpacing = 1.2F;
     math::Vec2 anchor{};
@@ -27,6 +31,15 @@ struct TextStyle {
     bool italic = false;
     Direction direction = Direction::Auto;
     std::string language;
+
+    // The alignment names "start", "end", "left", "center", "right" and "fill" and the direction names "auto", "ltr" and "rtl", which Lua, markup and UI documents share.
+    static const std::array<std::pair<std::string_view, Alignment>, 6> kAlignmentNames;
+    static const std::array<std::pair<std::string_view, Direction>, 3> kDirectionNames;
+
+    [[nodiscard]] static std::optional<Alignment> alignmentFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view alignmentName(Alignment value) noexcept;
+    [[nodiscard]] static std::optional<Direction> directionFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view directionName(Direction value) noexcept;
 };
 
 } // namespace haylen::text

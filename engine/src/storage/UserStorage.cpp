@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <fstream>
 #include <stdexcept>
+#include <string>
 #include <system_error>
 
 #include "haylen/io/Path.hpp"
@@ -53,9 +54,9 @@ void UserStorage::write(std::string_view path, std::span<const std::uint8_t> byt
     const std::filesystem::path file = resolve(path);
     std::filesystem::create_directories(file.parent_path());
 
-    // The data goes to a sibling file first so a crash mid-write never leaves a truncated save behind.
+    // The data goes to a sibling file first so a crash mid-write never leaves a truncated save behind, and each write has a sibling of its own, so writes of the same file on two threads never mix.
     std::filesystem::path temporary = file;
-    temporary += ".tmp";
+    temporary += "." + std::to_string(++writeCount) + ".tmp";
     std::ofstream stream(temporary, std::ios::binary | std::ios::trunc);
     stream.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
 

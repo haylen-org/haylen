@@ -347,6 +347,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/text/BidiParagraph.cpp
   src/text/BitmapFont.cpp
   src/text/DistanceField.cpp
+  src/text/Effect.cpp
   src/text/Font.cpp
   src/text/FontFamily.cpp
   src/text/LayoutBuilder.cpp
@@ -356,7 +357,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/text/RichText.cpp
   src/text/RichTextRegistry.cpp
   src/text/Segmenter.cpp
-  src/text/TextEffect.cpp
+  src/text/Style.cpp
   src/text/TrueTypeFont.cpp
   src/ui/Anchor.cpp
   src/ui/Backend.cpp

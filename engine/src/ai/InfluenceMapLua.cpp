@@ -109,11 +109,11 @@ int InfluenceMapLua::pushSpot(lua_State* L, bool highest) {
     return 3;
 }
 
-int InfluenceMapLua::highest(lua_State* L) {
+int InfluenceMapLua::findHighest(lua_State* L) {
     return pushSpot(L, true);
 }
 
-int InfluenceMapLua::lowest(lua_State* L) {
+int InfluenceMapLua::findLowest(lua_State* L) {
     return pushSpot(L, false);
 }
 
@@ -156,7 +156,7 @@ int InfluenceMapLua::origin(lua_State* L) {
 }
 
 void InfluenceMapLua::install(lua_State* L) {
-    lua::ClassBuilder<InfluenceMap>(L).function("stamp", &lua::Binding::native<&stamp>).function("propagate", &lua::Binding::native<&propagate>).function("scale", &lua::Binding::native<&scale>).function("add", &lua::Binding::native<&add>).function("fill", &lua::Binding::native<&fill>).function("get", &lua::Binding::native<&get>).function("set", &lua::Binding::native<&set>).function("sample", &lua::Binding::native<&sample>).function("highest", &lua::Binding::native<&highest>).function("lowest", &lua::Binding::native<&lowest>).function("cellCenter", &lua::Binding::native<&cellCenter>).function("values", &lua::Binding::native<&values>).property("columns", &columns).property("rows", &rows).property("cellSize", &cellSize).property("origin", &origin).install();
+    lua::ClassBuilder<InfluenceMap>(L).function("stamp", &lua::Binding::native<&stamp>).function("propagate", &lua::Binding::native<&propagate>).function("scale", &lua::Binding::native<&scale>).function("add", &lua::Binding::native<&add>).function("fill", &lua::Binding::native<&fill>).function("get", &lua::Binding::native<&get>).function("set", &lua::Binding::native<&set>).function("sample", &lua::Binding::native<&sample>).function("findHighest", &lua::Binding::native<&findHighest>).function("findLowest", &lua::Binding::native<&findLowest>).function("cellCenter", &lua::Binding::native<&cellCenter>).function("values", &lua::Binding::native<&values>).property("columns", &columns).property("rows", &rows).property("cellSize", &cellSize).property("origin", &origin).install();
 }
 
 void InfluenceMapLua::addFunctions(lua_State* L) {

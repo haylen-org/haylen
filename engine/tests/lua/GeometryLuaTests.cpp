@@ -67,13 +67,13 @@ TEST_F(GeometryLuaTest, TracesFieldsAndBitmaps) {
 }
 
 TEST_F(GeometryLuaTest, SamplesSplines) {
-    fixture.runLua("curve = m.spline({{0, 0}, {100, 0}, {100, 100}}) loop = m.spline({{0, 0}, {10, 0}, {10, 10}}, {kind = 'bspline', closed = true})");
+    fixture.runLua("curve = m.spline({{0, 0}, {100, 0}, {100, 100}}) loop = m.spline({{0, 0}, {10, 0}, {10, 10}}, {kind = 'bSpline', closed = true})");
     EXPECT_EQ(lua("return curve.kind .. ' ' .. tostring(curve.closed) .. ' ' .. curve.segmentCount .. ' ' .. #curve.points"), "catmullRom false 2 3");
     EXPECT_EQ(lua("return curve:point(0).x .. ' ' .. math.floor(curve:point(1).y + 0.5)"), "0.0 100");
     EXPECT_EQ(lua("return tostring(curve.length > 200) .. ' ' .. tostring(math.abs(curve:tangent(0):length() - 1) < 1e-4)"), "true true");
     EXPECT_EQ(lua("local points = curve:sampleByDistance(20) return tostring(#points >= 10) .. ' ' .. tostring(points[#points] == curve:point(1))"), "true true");
     EXPECT_EQ(lua("return #curve:sample(5) .. ' ' .. tostring(curve:pointAtDistance(0) == curve:point(0)) .. ' ' .. curve:parameterAtDistance(0)"), "5 true 0.0");
-    EXPECT_EQ(lua("return tostring(math.abs(curve:tangentAtDistance(10).x - 1) < 0.1) .. ' ' .. loop.kind .. ' ' .. tostring(loop.closed)"), "true bspline true");
+    EXPECT_EQ(lua("return tostring(math.abs(curve:tangentAtDistance(10).x - 1) < 0.1) .. ' ' .. loop.kind .. ' ' .. tostring(loop.closed)"), "true bSpline true");
     EXPECT_NE(lua("return m.spline({{0, 0}, {1, 0}}, {kind = 'bezier'})").find("3n + 1"), std::string::npos);
     EXPECT_NE(lua("return m.spline({{0, 0}, {1, 0}}, {kind = 'nurbs'})").find("unknown value 'nurbs'"), std::string::npos);
 }

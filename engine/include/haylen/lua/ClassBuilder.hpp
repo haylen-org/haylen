@@ -17,7 +17,7 @@ namespace haylen::lua {
 template <Bound T> class ClassBuilder final {
   public:
     explicit ClassBuilder(lua_State* L) : state(L) {
-        luaL_newmetatable(L, Type<T>::name);
+        Userdata::newMetatable(L, Type<T>::name);
         metatable = lua_gettop(L);
         lua_newtable(L);
         methods = lua_gettop(L);
@@ -199,14 +199,10 @@ template <Bound T> class ClassBuilder final {
     template <auto Outer, auto Inner> static inline NativeProperty nestedProperty{NativeProperty::kindOf<typename FunctionTraits<decltype(Inner)>::Field>().value_or(NativeProperty::Kind::Number), &readNested<Outer, Inner>, &writeNested<Outer, Inner>};
     template <auto Getter, auto Setter> static inline NativeProperty accessorProperty{NativeProperty::kindOf<std::remove_cvref_t<typename FunctionTraits<decltype(Getter)>::Result>>().value_or(NativeProperty::Kind::Number), &readAccessor<Getter>, &writeAccessor<Getter, Setter>};
 
-    // Lua code can reach __gc through the metatable, call it by hand or give the metatable to a table, so only a userdata of this type is destroyed, and only once.
+    // Only the collector calls it, because Lua cannot reach the protected metatable. Dropping the metatable keeps a userdata that another finalizer brings back away from the destroyed object.
     static int collect(lua_State* L) {
         using Storage = typename Type<T>::Storage;
-        auto* storage = static_cast<Storage*>(luaL_testudata(L, 1, Type<T>::name));
-        if (storage == nullptr) {
-            return 0;
-        }
-        storage->~Storage();
+        static_cast<Storage*>(lua_touserdata(L, 1))->~Storage();
         lua_pushnil(L);
         lua_setmetatable(L, 1);
         Userdata::getCounter<T>().remove();

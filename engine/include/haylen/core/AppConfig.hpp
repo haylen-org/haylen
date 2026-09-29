@@ -93,8 +93,6 @@ struct AppConfig {
     template <typename T> static void readValue(const Json& object, const char* key, T& target);
     static void requirePositive(double value, const char* key);
     [[nodiscard]] static platform::Orientation orientationFromName(const std::string& text);
-    [[nodiscard]] static std::string_view orientationName(platform::Orientation value);
-    [[nodiscard]] static std::string_view scalingName(graphics::Viewport::ScalingPolicy policy);
     [[nodiscard]] static audio::Session::Category sessionCategoryFromName(const std::string& text);
     [[nodiscard]] static std::string_view sessionCategoryName(audio::Session::Category value);
 };

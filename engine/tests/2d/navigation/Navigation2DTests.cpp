@@ -20,33 +20,36 @@ namespace {
 using Cell = navigation2d::Grid::Cell;
 using Path = std::vector<Cell>;
 
-// Checks that every step moves to a walkable neighbor and that diagonal steps never cut a blocked corner.
-void expectWalkable(const navigation2d::Grid& grid, const Path& path) {
-    for (std::size_t index = 1; index < path.size(); ++index) {
-        const Cell from = path[index - 1];
-        const Cell to = path[index];
-        EXPECT_TRUE(grid.isWalkable(to));
-        EXPECT_LE(std::abs(to.x - from.x), 1);
-        EXPECT_LE(std::abs(to.y - from.y), 1);
-        if (to.x != from.x && to.y != from.y) {
-            EXPECT_TRUE(grid.isWalkable({to.x, from.y}) && grid.isWalkable({from.x, to.y}));
+class GridTest : public ::testing::Test {
+  protected:
+    // Checks that every step moves to a walkable neighbor and that diagonal steps never cut a blocked corner.
+    static void expectWalkable(const navigation2d::Grid& grid, const Path& path) {
+        for (std::size_t index = 1; index < path.size(); ++index) {
+            const Cell from = path[index - 1];
+            const Cell to = path[index];
+            EXPECT_TRUE(grid.isWalkable(to));
+            EXPECT_LE(std::abs(to.x - from.x), 1);
+            EXPECT_LE(std::abs(to.y - from.y), 1);
+            if (to.x != from.x && to.y != from.y) {
+                EXPECT_TRUE(grid.isWalkable({to.x, from.y}) && grid.isWalkable({from.x, to.y}));
+            }
         }
     }
-}
 
-bool visits(const Path& path, Cell cell) {
-    return std::ranges::find(path, cell) != path.end();
-}
+    [[nodiscard]] static bool visits(const Path& path, Cell cell) {
+        return std::ranges::find(path, cell) != path.end();
+    }
 
-Path findPath(const navigation2d::Grid& grid, Cell start, Cell goal, const navigation2d::GridSearch::Options& options = {}) {
-    navigation2d::GridSearch search;
-    const std::span<const Cell> path = search.findPath(grid, start, goal, options);
-    return {path.begin(), path.end()};
-}
+    [[nodiscard]] static Path findPath(const navigation2d::Grid& grid, Cell start, Cell goal, const navigation2d::GridSearch::Options& options = {}) {
+        navigation2d::GridSearch search;
+        const std::span<const Cell> path = search.findPath(grid, start, goal, options);
+        return {path.begin(), path.end()};
+    }
+};
 
 } // namespace
 
-TEST(GridTest, FindsShortestPathsWithAndWithoutDiagonals) {
+TEST_F(GridTest, FindsShortestPathsWithAndWithoutDiagonals) {
     navigation2d::Grid grid(6, 6);
     EXPECT_EQ(findPath(grid, {0, 0}, {4, 0}, {.diagonal = false}), (Path{{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}}));
     EXPECT_EQ(findPath(grid, {0, 0}, {3, 3}), (Path{{0, 0}, {1, 1}, {2, 2}, {3, 3}}));
@@ -55,7 +58,7 @@ TEST(GridTest, FindsShortestPathsWithAndWithoutDiagonals) {
     EXPECT_EQ(findPath(grid, {0, 0}, {9, 0}), Path{});
 }
 
-TEST(GridTest, RoutesAroundWallsCostsAndCorners) {
+TEST_F(GridTest, RoutesAroundWallsCostsAndCorners) {
     navigation2d::Grid grid(7, 5);
     for (int y = 0; y < 4; ++y) {
         grid.setWalkable({3, y}, false);
@@ -83,7 +86,7 @@ TEST(GridTest, RoutesAroundWallsCostsAndCorners) {
     EXPECT_EQ(swamp.getCost({2, 0}), 1.0F);
 }
 
-TEST(GridTest, ReportsMissingPaths) {
+TEST_F(GridTest, ReportsMissingPaths) {
     navigation2d::Grid grid(5, 5);
     for (const Cell wall : {Cell{1, 0}, Cell{1, 1}, Cell{0, 1}}) {
         grid.setWalkable(wall, false);
@@ -97,7 +100,7 @@ TEST(GridTest, ReportsMissingPaths) {
     EXPECT_TRUE(grid.contains({4, 4}));
 }
 
-TEST(GridTest, TracesLinesAndSmoothsPaths) {
+TEST_F(GridTest, TracesLinesAndSmoothsPaths) {
     navigation2d::Grid grid(8, 8);
     EXPECT_TRUE(grid.hasLineOfSight({0, 0}, {7, 3}));
     EXPECT_TRUE(grid.hasLineOfSight({7, 7}, {0, 0}));
@@ -134,7 +137,7 @@ TEST(GridTest, TracesLinesAndSmoothsPaths) {
     EXPECT_EQ(pair, (Path{{1, 1}, {2, 2}}));
 }
 
-TEST(GridTest, RejectsInvalidInput) {
+TEST_F(GridTest, RejectsInvalidInput) {
     EXPECT_THROW(navigation2d::Grid(0, 4), std::invalid_argument);
     EXPECT_THROW(navigation2d::Grid(70000, 70000), std::invalid_argument);
 
@@ -214,7 +217,7 @@ TEST(Navigation2DLuaTest, FindsPathsAndSteersAgents) {
     EXPECT_EQ(fixture.lua("return cells(grid:findPath(0, 4, 6, 4))"), "0:4 1:4 2:4 3:4 4:4 5:4 6:4");
     EXPECT_EQ(fixture.lua("return cells(grid:findPath(0, 0, 2, 0, {diagonal = false}))"), "0:0 1:0 2:0");
     EXPECT_EQ(fixture.lua("local path = grid:findPath(0, 0, 6, 0, {smooth = true}) return path[1].x .. ':' .. path[#path].x .. ' ' .. tostring(#path < 9)"), "0:6 true");
-    EXPECT_EQ(fixture.lua("return cells(grid:smooth({{0, 4}, {1, 4}, {2, 4}}))"), "0:4 2:4");
+    EXPECT_EQ(fixture.lua("return cells(grid:smoothPath({{0, 4}, {1, 4}, {2, 4}}))"), "0:4 2:4");
     EXPECT_EQ(fixture.lua("return tostring(grid:lineOfSight(0, 0, 6, 0)) .. tostring(grid:lineOfSight(0, 4, 6, 4))"), "falsetrue");
     EXPECT_EQ(fixture.lua("grid:setWalkable(3, 4, false) return tostring(grid:findPath(0, 0, 6, 0))"), "nil");
     EXPECT_EQ(fixture.lua("grid:setCost(1, 1, 4) return grid:cost(1, 1) .. ' ' .. grid:cost(0, 0)"), "4.0 1.0");
@@ -242,7 +245,7 @@ TEST(Navigation2DLuaTest, FindsPathsAndSteersAgents) {
     EXPECT_NE(fixture.lua("grid:setWalkable(9, 9, true)").find("outside the navigation grid"), std::string::npos);
     EXPECT_NE(fixture.lua("grid:setCost(0, 0, 0)").find("at least 1"), std::string::npos);
     EXPECT_NE(fixture.lua("navigation2d.newAgent({speed = 3})").find("Unknown option 'speed'"), std::string::npos);
-    EXPECT_NE(fixture.lua("grid:smooth({{x = 'a'}})").find("error: "), std::string::npos);
+    EXPECT_NE(fixture.lua("grid:smoothPath({{x = 'a'}})").find("error: "), std::string::npos);
 }
 
 } // namespace haylen

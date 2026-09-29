@@ -1,17 +1,23 @@
 #pragma once
 
+#include <Poco/Crypto/OpenSSLInitializer.h>
 #include <Poco/Net/Context.h>
+#include <Poco/Net/PollSet.h>
+#include <Poco/Net/SecureStreamSocket.h>
+#include <Poco/Net/SocketAddress.h>
+#include <Poco/Net/StreamSocket.h>
 #include <Poco/Net/WebSocket.h>
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
 #include <string_view>
-#include <thread>
 #include <utility>
 #include <vector>
 
@@ -19,10 +25,10 @@
 
 namespace haylen::net {
 
-// Owns one connection on a thread of its own, which is the only thread that touches the socket, so TLS never sees two threads at once.
+// Owns one connection on a thread of its own, which is the only thread that touches the socket, so TLS never sees two threads at once. Closing and destroying never wait for that thread: it keeps what it needs alive by itself, stops as soon as it can and reports nothing more. The thread sleeps until the socket or the app has something for it.
 class PocoWebSocket final : public WebSocketTransport {
   public:
-    PocoWebSocket(std::string url, std::vector<std::string> protocols, std::size_t messageLimit, Sink target);
+    PocoWebSocket(const std::string& url, std::vector<std::string> protocols, std::size_t messageLimit, Sink target);
     ~PocoWebSocket() override;
 
     PocoWebSocket(const PocoWebSocket&) = delete;
@@ -38,9 +44,57 @@ class PocoWebSocket final : public WebSocketTransport {
         int flags = 0;
     };
 
-    static constexpr int kConnectSeconds = 10;
+    // What the transport and its thread share. The thread holds it, so it never touches the transport, which the app may destroy at any time, and the mutex keeps the sink quiet once stopping is set.
+    struct Connection {
+        std::string host;
+        std::uint16_t port = 0;
+        std::string path;
+        bool secure = false;
+        std::vector<std::string> protocols;
+        std::size_t maxMessageSize = 0;
+        Sink sink;
+        std::mutex mutex;
+        std::vector<Outgoing> outgoing;
+        std::optional<std::pair<int, std::string>> closeRequest;
+        bool wakePending = false;
+        std::atomic<bool> stopping = false;
+        Poco::Net::PollSet poller;
+    };
+
+    // Owns what every connection thread shares: OpenSSL, the TLS context of wss:// and the count of threads that use Poco or OpenSSL. When the process exits it stops every connection and waits for those threads, because the static state of both libraries goes away right after. A thread still resolving its host by then never touches either library again, since resolving has no timeout.
+    class Workers final {
+      public:
+        Workers();
+        ~Workers();
+
+        Workers(const Workers&) = delete;
+        Workers& operator=(const Workers&) = delete;
+
+        void add(const std::shared_ptr<Connection>& added);
+
+        // Counts the calling thread in, unless the process exits. The caller holds the mutex of a connection the workers have not stopped yet, so the workers still exist.
+        [[nodiscard]] bool enter();
+        void leave();
+
+        // Returns the TLS context every wss:// connection shares, which checks certificates strictly.
+        [[nodiscard]] Poco::Net::Context::Ptr getClientContext();
+
+      private:
+        // Declared first, so OpenSSL stays initialized until everything else of the workers is gone.
+        Poco::Crypto::OpenSSLInitializer openSsl;
+        std::mutex mutex;
+        std::condition_variable idle;
+        std::vector<std::weak_ptr<Connection>> connections;
+        Poco::Net::Context::Ptr clientContext;
+        int active = 0;
+        bool exiting = false;
+    };
+
+    static constexpr auto kConnectTimeout = std::chrono::seconds(10);
     static constexpr auto kCloseTimeout = std::chrono::seconds(5);
-    static constexpr int kPollMicroseconds = 2000;
+
+    // Bounds a sleep that every event of the socket or the app interrupts, so an idle connection wakes only once a minute.
+    static constexpr auto kIdleWait = std::chrono::minutes(1);
     static constexpr std::size_t kMaxControlPayload = 125;
     static constexpr int kNoStatus = 1005;
     static constexpr int kAbnormalClosure = 1006;
@@ -48,30 +102,37 @@ class PocoWebSocket final : public WebSocketTransport {
     static constexpr int kPongFrame = static_cast<int>(Poco::Net::WebSocket::FRAME_FLAG_FIN) | static_cast<int>(Poco::Net::WebSocket::FRAME_OP_PONG);
     static constexpr int kCloseFrame = static_cast<int>(Poco::Net::WebSocket::FRAME_FLAG_FIN) | static_cast<int>(Poco::Net::WebSocket::FRAME_OP_CLOSE);
 
-    // Returns the TLS context every wss:// connection shares, which checks certificates strictly.
-    [[nodiscard]] static Poco::Net::Context::Ptr getClientContext();
-    [[nodiscard]] static std::unique_ptr<Poco::Net::WebSocket> connect(const std::string& url, const std::vector<std::string>& protocols, std::string& protocol);
+    // Returns the workers, created after OpenSSL started so they are destroyed before it cleans up.
+    [[nodiscard]] static Workers& getWorkers();
 
-    void report(Event event);
-    void run(const std::string& url, const std::vector<std::string>& protocols);
+    static void report(Connection& target, Event event);
+    static void fail(Connection& target, const std::string& message);
+    static void wake(Connection& target);
+
+    static void run(const std::shared_ptr<Connection>& target, Workers& workers);
+    [[nodiscard]] static std::optional<Poco::Net::SocketAddress> resolve(Connection& target);
+    [[nodiscard]] static bool enter(Connection& target, Workers& workers);
+    static void connectAndServe(Connection& target, Workers& workers, const Poco::Net::SocketAddress& address);
+
+    // Waits until the socket is ready for the mode, the app wakes the thread or the deadline passes, and returns whether the socket is ready.
+    static bool waitFor(Connection& target, const Poco::Net::Socket& socket, int mode, std::chrono::steady_clock::time_point deadline);
+
+    // Connects, completes the TLS handshake of wss:// and upgrades to a WebSocket, or returns nothing once the app abandoned the connection.
+    [[nodiscard]] static std::unique_ptr<Poco::Net::WebSocket> open(Connection& target, Workers& workers, const Poco::Net::SocketAddress& address, std::string& protocol);
+    [[nodiscard]] static bool connectSocket(Connection& target, Poco::Net::StreamSocket& socket, const Poco::Net::SocketAddress& address, std::chrono::steady_clock::time_point deadline);
+    [[nodiscard]] static bool completeHandshake(Connection& target, Poco::Net::SecureStreamSocket& socket, std::chrono::steady_clock::time_point deadline);
 
     // Non-blocking sends can stop halfway through a frame, and Poco finishes it when the same frame is sent again.
-    void write(Poco::Net::WebSocket& socket, std::string_view data, int flags) const;
-    void writeClose(Poco::Net::WebSocket& socket, int code, std::string_view reason) const;
+    static void write(Connection& target, Poco::Net::WebSocket& socket, std::string_view data, int flags);
+    static void writeClose(Connection& target, Poco::Net::WebSocket& socket, int code, std::string_view reason);
 
     // Ends the connection with status 1009 after the server sent a message larger than the maximum size.
-    void refuseMessage(Poco::Net::WebSocket& socket, bool closing);
+    static void refuseMessage(Connection& target, Poco::Net::WebSocket& socket, bool closing);
 
-    // Alternates between writing queued frames and waiting briefly for incoming ones until either side closes.
-    void serve(Poco::Net::WebSocket& socket);
+    // Writes queued frames and reads incoming ones until either side closes or the app abandons the connection.
+    static void serve(Connection& target, Poco::Net::WebSocket& socket);
 
-    Sink sink;
-    std::size_t maxMessageSize = 0;
-    std::mutex mutex;
-    std::vector<Outgoing> outgoing;
-    std::optional<std::pair<int, std::string>> closeRequest;
-    std::atomic<bool> stopping = false;
-    std::thread thread;
+    std::shared_ptr<Connection> connection;
 };
 
 } // namespace haylen::net

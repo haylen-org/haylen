@@ -15,7 +15,7 @@ local assets = require('haylen.assets')
 local tiled = require('haylen.tiled')
 
 local data = assets.load('maps/island.tmj')
-local map = tiled.newMap(data)
+local map = tiled.newMapRenderer(data)
 ```
 
 `assets.load(path, nil, options)` and `assets.loadAsync(path, nil, options)` accept the texture options `filter` (`'nearest'` or `'linear'`, default `'nearest'`) and `wrap` (`'clamp'`, `'repeat'` or `'mirror'`, default `'clamp'`) for every image of the map. Map images share the texture cache with `assets.texture`, except images with a transparent color, which get a private color-keyed texture. Loading with `loadAsync` parses the map and decodes its images on worker threads:
@@ -34,11 +34,11 @@ async.spawn(function()
         log.error(failure)
         return
     end
-    map = tiled.newMap(data)
+    map = tiled.newMapRenderer(data)
 end)
 ```
 
-The loaded asset is a `TiledMap` value that holds the parsed data. Its only member is the read-only `path` property, the map path inside the content folder. `tiled.newMap` makes a playable `TileMap` from it.
+The loaded asset is a `TiledMap` value that holds the parsed data. Its only member is the read-only `path` property, the map path inside the content folder. `tiled.newMapRenderer` makes a playable `MapRenderer` from it.
 
 A Tiled world file with the `.world` extension loads as a plain list with one table per map, each with `path` (the map path inside the content folder), `x`, `y`, `width` and `height` (the map area in world pixels). Maps listed in `maps` keep their order, followed by the maps that `patterns` match. A pattern's `regexp` is matched against the files in the world's folder, its first two capture groups are multiplied by `multiplierX` and `multiplierY` and moved by `offsetX` and `offsetY`, and `mapWidth` and `mapHeight` give the size. World loading accepts no options, and any key raises `Unknown key 'name' in Tiled world options.`
 
@@ -83,9 +83,9 @@ Every layer needs the `id` that Tiled writes. Other load errors: `Unknown Tiled 
 
 ## Functions
 
-### tiled.newMap(asset)
+### tiled.newMapRenderer(asset)
 
-Creates a `TileMap` from a loaded `TiledMap`. The playable map owns its own copy of the data, so changes such as `map:setTile` never touch the cached asset, and several maps made from one asset are independent.
+Creates a `MapRenderer` from a loaded `TiledMap`. The playable map owns its own copy of the data, so changes such as `map:setTile` never touch the cached asset, and several maps made from one asset are independent.
 
 ```lua
 local assets = require('haylen.assets')
@@ -93,7 +93,7 @@ local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 local tiled = require('haylen.tiled')
 
-local map = tiled.newMap(assets.load('maps/island.tmj'))
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 local camera = graphics2d.newCamera()
 camera.limits = map.bounds
 camera:snapTo(map.bounds.width / 2, map.bounds.height / 2)
@@ -109,7 +109,7 @@ scene.push({
 })
 ```
 
-## TileMap
+## MapRenderer
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -138,7 +138,7 @@ Every table that has `properties` also has `propertyTypes`, a table from propert
 local assets = require('haylen.assets')
 local tiled = require('haylen.tiled')
 
-local map = tiled.newMap(assets.load('maps/island.tmj'))
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 print(map.infinite, map.renderOrder, map.hexSideLength, map.staggerX, map.staggerEven, map.parallaxOrigin.x)
 for name, value in pairs(map.properties) do
     print(name, value, map.propertyTypes[name])
@@ -165,7 +165,7 @@ local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 local tiled = require('haylen.tiled')
 
-local map = tiled.newMap(assets.load('maps/island.tmj'))
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 local camera = graphics2d.newCamera()
 local hero = graphics2d.newSprite(assets.texture('tiny_swords/units/blue/warrior/warrior_idle.png'), {source = {0, 0, 192, 192}, x = 800, y = 600, layer = 1})
 
@@ -187,7 +187,7 @@ local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 local tiled = require('haylen.tiled')
 
-local map = tiled.newMap(assets.load('maps/island.tmj'))
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 local camera = graphics2d.newCamera()
 local hero = graphics2d.newSprite(assets.texture('tiny_swords/units/blue/warrior/warrior_idle.png'), {source = {0, 0, 192, 192}, x = 800, y = 600, pivotY = 0.7, sortOffset = 50, layer = 1})
 
@@ -222,7 +222,7 @@ The flip flags are the module constants described in [Flip flags](#flip-flags). 
 local assets = require('haylen.assets')
 local tiled = require('haylen.tiled')
 
-local map = tiled.newMap(assets.load('maps/island.tmj'))
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 local gid = map:tileAt('ground', 10, 10)
 if gid ~= 0 then
     map:setTile('ground', 11, 10, gid)
@@ -239,7 +239,7 @@ Shows or hides a layer, which also hides the children of a group. An unknown nam
 local assets = require('haylen.assets')
 local tiled = require('haylen.tiled')
 
-local map = tiled.newMap(assets.load('maps/island.tmj'))
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 map:setLayerVisible('shadow', false)
 print(map:layer('shadow').visible)
 ```
@@ -263,7 +263,7 @@ local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 local tiled = require('haylen.tiled')
 
-local map = tiled.newMap(assets.load('maps/island.tmj'))
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 local camera = graphics2d.newCamera()
 
 scene.push({
@@ -319,7 +319,7 @@ Every layer table has these fields:
 local assets = require('haylen.assets')
 local tiled = require('haylen.tiled')
 
-local map = tiled.newMap(assets.load('maps/island.tmj'))
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 for _, layer in ipairs(map:layers()) do
     print(layer.name, layer.kind, layer.blend, layer.opacity)
 end
@@ -357,7 +357,7 @@ Every object table has these fields:
 local assets = require('haylen.assets')
 local tiled = require('haylen.tiled')
 
-local map = tiled.newMap(assets.load('maps/island.tmj'))
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 for _, object in ipairs(map:objects()) do
     if object.shape == 'polygon' then
         print(object.name, #object.points)
@@ -379,7 +379,7 @@ local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local tiled = require('haylen.tiled')
 
-local map = tiled.newMap(assets.load('maps/island.tmj'))
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 local warrior = assets.texture('tiny_swords/units/blue/warrior/warrior_idle.png')
 
 local entities = map:spawn({
@@ -415,7 +415,7 @@ Describes a global tile id, or returns `nil` for 0 and for ids no tileset holds.
 local assets = require('haylen.assets')
 local tiled = require('haylen.tiled')
 
-local map = tiled.newMap(assets.load('maps/island.tmj'))
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 local info = map:tileInfo(map:tileAt('ground', 3, 3))
 if info then
     print(info.tileset, info.id, info.type, info.probability, #info.collision, #info.animation, tostring(info.properties.water))
@@ -452,7 +452,7 @@ Each Wang set has `name`, `type` (its class), `kind` (`'corner'`, `'edge'` or `'
 local assets = require('haylen.assets')
 local tiled = require('haylen.tiled')
 
-local map = tiled.newMap(assets.load('maps/island.tmj'))
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 for _, tileset in ipairs(map:tilesets()) do
     print(tileset.name, tileset.firstGid, tileset.tileCount, tileset.margin, tileset.spacing, tileset.objectAlignment, tileset.imageSize.x, #tileset.wangSets)
     for _, set in ipairs(tileset.wangSets) do
@@ -478,7 +478,7 @@ local physics2d = require('haylen.physics2d')
 local scene = require('haylen.scene')
 local tiled = require('haylen.tiled')
 
-local map = tiled.newMap(assets.load('maps/island.tmj'))
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 local world = physics2d.newWorld({gravity = {0, 0}})
 local walls = map:buildCollision(world)
 print(#walls .. ' collision bodies')
@@ -498,7 +498,7 @@ Casts a ray from `x1, y1` to `x2, y2` in map world coordinates over the cells of
 local assets = require('haylen.assets')
 local tiled = require('haylen.tiled')
 
-local map = tiled.newMap(assets.load('maps/island.tmj'))
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 local water = 1
 local hit = map:raycastTiles('ground', 100, 100, 900, 100, function(gid)
     return tiled.tileId(gid) ~= water
@@ -516,7 +516,7 @@ Casts a ray from `x1, y1` to `x2, y2` against the objects of the object layer na
 local assets = require('haylen.assets')
 local tiled = require('haylen.tiled')
 
-local map = tiled.newMap(assets.load('maps/island.tmj'))
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 local hit = map:raycastObjects(nil, 0, 200, 2000, 200)
 if hit then
     print('the arrow hits ' .. hit.name .. ' of class ' .. hit.type .. ' at ' .. hit.x)
@@ -532,7 +532,7 @@ local assets = require('haylen.assets')
 local navigation2d = require('haylen.navigation2d')
 local tiled = require('haylen.tiled')
 
-local map = tiled.newMap(assets.load('maps/island.tmj'))
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 local area = map.bounds
 local right, bottom = area.x + area.width, area.y + area.height
 local mesh = navigation2d.newNavMesh({{area.x, area.y}, {right, area.y}, {right, bottom}, {area.x, bottom}})
@@ -556,7 +556,7 @@ local tiled = require('haylen.tiled')
 local camera = graphics2d.newCamera()
 local placed = {}
 for _, entry in ipairs(assets.load('maps/world/overworld.world')) do
-    placed[#placed + 1] = {map = tiled.newMap(assets.load(entry.path)), x = entry.x, y = entry.y}
+    placed[#placed + 1] = {map = tiled.newMapRenderer(assets.load(entry.path)), x = entry.x, y = entry.y}
 end
 
 scene.push({
@@ -594,7 +594,7 @@ Returns `gid` without its flag bits, which is the global id of the tile itself.
 local assets = require('haylen.assets')
 local tiled = require('haylen.tiled')
 
-local map = tiled.newMap(assets.load('maps/island.tmj'))
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 local gid = map:tileAt('ground', 2, 2)
 local flippedX = (gid & tiled.flipHorizontal) ~= 0
 print(tiled.tileId(gid), flippedX, gid & tiled.flagMask)

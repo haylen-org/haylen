@@ -14,6 +14,7 @@
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Json.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen::audio {
 
@@ -45,7 +46,7 @@ TEST_F(SoundTest, DecodesAndStreamsAudioFiles) {
     EXPECT_FALSE(empty.isValid());
     EXPECT_EQ(empty.getDuration(), 0.0F);
     EXPECT_EQ(empty.getChannels(), 0U);
-    EXPECT_THROW((void)Sound::decode(test::bytes("not audio")), std::runtime_error);
+    EXPECT_THROW((void)Sound::decode(test::TestFiles::bytes("not audio")), std::runtime_error);
     EXPECT_THROW((void)Sound::stream({}), std::runtime_error);
     EXPECT_THROW((void)Sound::decode(makeWav(kRate, 1, {})), std::runtime_error);
 }

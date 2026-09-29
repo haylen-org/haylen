@@ -15,7 +15,7 @@ Timer callbacks receive no arguments. An error raised inside a callback stops th
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `owner` | table or userdata | `nil` | Cancels the timer when the owner ends, as the [owners of haylen.events](events.md#owners) describe. The owner keeps the callback, so the callback may refer to the owner without keeping it alive. |
-| `processMode` | string | `'inherit'` | `'inherit'`, `'pausable'`, `'whenPaused'`, `'always'` or `'disabled'`. A timer that inherits takes the mode of its owner, and without an owner it counts as `'pausable'`. The [lifecycle guide](../lifecycle.md#pause-and-process-modes) explains the modes. |
+| `processMode` | string | `'inherit'` | `'inherit'`, `'pausable'`, `'whenPaused'`, `'always'` or `'disabled'`. A timer that inherits follows the mode of its owner every frame, so it changes along with the owner, and without an owner it counts as `'pausable'`. The [lifecycle guide](../lifecycle.md#pause-and-process-modes) explains the modes. |
 | `unscaled` | boolean | `false` | Counts real time, ignoring the time scale. |
 | `count` | integer | `-1` | `timer.every` only. Stops after that many calls, or repeats until the timer is cancelled when it is negative. |
 

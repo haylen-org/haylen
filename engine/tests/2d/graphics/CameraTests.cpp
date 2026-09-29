@@ -2,7 +2,7 @@
 
 #include <array>
 #include <cmath>
-#include <functional>
+#include <limits>
 #include <stdexcept>
 #include <vector>
 
@@ -16,22 +16,20 @@
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/math/Math.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/FrameRenderer.hpp"
 
 namespace haylen {
 
 namespace {
 
-constexpr math::Rect kScreen{0.0F, 0.0F, 200.0F, 100.0F};
-
-graphics2d::Renderer::Stats renderOnce(test::EngineFixture& fixture, std::function<void(core::Engine&)> draw) {
-    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>(std::move(draw)));
-    fixture.frames(1);
-    return fixture.engine().getRenderer2D().getStats();
-}
+class CameraTest : public ::testing::Test {
+  protected:
+    static constexpr math::Rect kScreen{0.0F, 0.0F, 200.0F, 100.0F};
+};
 
 } // namespace
 
-TEST(CameraTest, FollowsThroughTheDeadZoneSmoothingAndLimits) {
+TEST_F(CameraTest, FollowsThroughTheDeadZoneSmoothingAndLimits) {
     graphics2d::Camera camera;
     camera.limits = math::Rect{0.0F, 0.0F, 1000.0F, 1000.0F};
     camera.deadZone = {20.0F, 20.0F};
@@ -66,7 +64,7 @@ TEST(CameraTest, FollowsThroughTheDeadZoneSmoothingAndLimits) {
     EXPECT_NEAR(eased.position.x, 500.0F - 400.0F * (1.0F - std::exp(-0.5F)), 1e-3F);
 }
 
-TEST(CameraTest, DragsInsideItsMarginsAndRestsAtTheDragOffset) {
+TEST_F(CameraTest, DragsInsideItsMarginsAndRestsAtTheDragOffset) {
     graphics2d::Camera camera;
     camera.dragHorizontal = true;
     camera.dragMargins = {0.5F, 0.2F, 0.25F, 0.2F};
@@ -100,7 +98,7 @@ TEST(CameraTest, DragsInsideItsMarginsAndRestsAtTheDragOffset) {
     EXPECT_EQ(still.position, math::Vec2(7.0F, 3.0F));
 }
 
-TEST(CameraTest, LooksAheadOfAMovingTarget) {
+TEST_F(CameraTest, LooksAheadOfAMovingTarget) {
     graphics2d::Camera camera;
     camera.lookAheadTime = 0.5F;
     camera.lookAheadSmoothingSpeed = 1000.0F;
@@ -119,7 +117,7 @@ TEST(CameraTest, LooksAheadOfAMovingTarget) {
     EXPECT_NEAR(camera.position.x, 130.0F, 1e-2F);
 }
 
-TEST(CameraTest, ZoomsWithinLimitsAroundPointsAndFramesTargets) {
+TEST_F(CameraTest, ZoomsWithinLimitsAroundPointsAndFramesTargets) {
     graphics2d::Camera camera;
     camera.setZoom({2.0F, 30.0F});
     EXPECT_EQ(camera.getZoom(), math::Vec2(2.0F, 20.0F));
@@ -164,7 +162,22 @@ TEST(CameraTest, ZoomsWithinLimitsAroundPointsAndFramesTargets) {
     EXPECT_NEAR(topLeft.worldToScreen({50.0F, 20.0F}, kScreen).x, 100.0F, 1e-3F);
 }
 
-TEST(CameraTest, AnchorsRotatesAndConvertsThroughViewports) {
+// A zoom that is not a number would spread through every transform of the view, so it is rejected and the zoom stays as it was.
+TEST_F(CameraTest, RejectsAZoomThatIsNotANumber) {
+    graphics2d::Camera camera;
+    camera.setZoom({2.0F, 2.0F});
+    EXPECT_THROW(camera.setZoom({std::nanf(""), 1.0F}), std::invalid_argument);
+    EXPECT_THROW(camera.setZoom({1.0F, std::nanf("")}), std::invalid_argument);
+    EXPECT_THROW(camera.zoomAt(std::nanf(""), {100.0F, 50.0F}, kScreen), std::invalid_argument);
+    EXPECT_THROW(camera.frame(std::array<math::Vec2, 1>{math::Vec2{std::nanf(""), 0.0F}}, 0.0F, 1.0F, kScreen), std::invalid_argument);
+    EXPECT_EQ(camera.getZoom(), math::Vec2(2.0F, 2.0F));
+
+    // Infinite zooms still stop at the limits.
+    camera.setZoom({std::numeric_limits<float>::infinity(), 0.0F});
+    EXPECT_EQ(camera.getZoom(), math::Vec2(camera.getMaxZoom(), camera.getMinZoom()));
+}
+
+TEST_F(CameraTest, AnchorsRotatesAndConvertsThroughViewports) {
     graphics2d::Camera camera;
     camera.setZoom({2.0F, 2.0F});
     EXPECT_EQ(camera.worldToScreen({10.0F, 0.0F}, kScreen), math::Vec2(120.0F, 50.0F));
@@ -199,7 +212,7 @@ TEST(CameraTest, AnchorsRotatesAndConvertsThroughViewports) {
     EXPECT_FLOAT_EQ(smooth.getRenderRotation(), 1.0F);
 }
 
-TEST(CameraTest, ShakesWithTraumaFrequencyAndDirection) {
+TEST_F(CameraTest, ShakesWithTraumaFrequencyAndDirection) {
     graphics2d::Camera camera;
     camera.addTrauma(0.8F);
     camera.addTrauma(0.8F);
@@ -240,7 +253,7 @@ TEST(CameraTest, ShakesWithTraumaFrequencyAndDirection) {
     EXPECT_TRUE(camera.getShakeOffset().isZero());
 }
 
-TEST(CameraTest, BlendsBetweenTwoViews) {
+TEST_F(CameraTest, BlendsBetweenTwoViews) {
     graphics2d::Camera from;
     from.viewport = math::Rect{100.0F, 100.0F, 300.0F, 300.0F};
     graphics2d::Camera to;
@@ -258,7 +271,7 @@ TEST(CameraTest, BlendsBetweenTwoViews) {
     EXPECT_EQ(graphics2d::Camera::blend(from, to, 0.25F).viewport, to.viewport);
 }
 
-TEST(CameraTest, DrawsItsDebugShapes) {
+TEST_F(CameraTest, DrawsItsDebugShapes) {
     test::EngineFixture fixture;
     const math::Rect screen = fixture.engine().getViewport().getVisibleRect();
     graphics2d::Camera camera;
@@ -268,7 +281,7 @@ TEST(CameraTest, DrawsItsDebugShapes) {
 
     // clang-format off
     const auto sprites = [&] {
-        return renderOnce(fixture, [&](core::Engine& engine) {
+        return test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
             engine.getRenderer2D().beginWorld(camera);
             camera.drawDebug(engine.getRenderer2D(), screen);
         }).sprites;
@@ -299,7 +312,7 @@ TEST(ParallaxTest, ScrollsRepeatsAndStopsOutsideItsLimits) {
 
     // clang-format off
     const auto sprites = [&] {
-        return renderOnce(fixture, [&](core::Engine& engine) {
+        return test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
             engine.getRenderer2D().beginWorld(camera);
             layer.draw(engine.getRenderer2D(), camera, {.layer = -1});
         }).sprites;

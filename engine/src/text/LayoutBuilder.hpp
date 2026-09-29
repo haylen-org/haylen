@@ -16,11 +16,11 @@
 #include "haylen/math/Vec2.hpp"
 #include "haylen/text/Font.hpp"
 #include "haylen/text/FontFamily.hpp"
+#include "haylen/text/Layout.hpp"
 #include "haylen/text/RichTextDocument.hpp"
 #include "haylen/text/RichTextOptions.hpp"
 #include "haylen/text/RichTextRegistry.hpp"
-#include "haylen/text/TextLayout.hpp"
-#include "haylen/text/TextStyle.hpp"
+#include "haylen/text/Style.hpp"
 #include "text/Segmenter.hpp"
 
 namespace haylen::text {
@@ -32,10 +32,10 @@ class LayoutBuilder final {
   public:
     LayoutBuilder(const RichTextDocument& source, const RichTextOptions& layoutOptions, const RichTextRegistry& textRegistry);
 
-    [[nodiscard]] TextLayout build();
+    [[nodiscard]] Layout build();
 
     // Lays plain text out with a family, or with a lone font when there is no family, where every paragraph separator of the text ends a paragraph and CRLF counts as one.
-    [[nodiscard]] static TextLayout layoutPlainText(std::string_view text, const TextStyle& style, const FontFamily* baseFamily, Font* baseFont);
+    [[nodiscard]] static Layout layoutPlainText(std::string_view text, const Style& style, const FontFamily* baseFamily, Font* baseFont);
 
   private:
     // One unit a line holds in reading order: a cluster of glyphs, an inline image or icon, a line break, or a pause of the reveal before the next character. Code points count in the text of the paragraph, the glyphs of a cluster stand in visual order from its left edge, and the break before it is what the Unicode rules allow there.
@@ -177,8 +177,8 @@ class LayoutBuilder final {
     LayoutBuilder(const RichTextDocument& source, const RichTextOptions& layoutOptions, const RichTextRegistry* textRegistry, const FontFamily* baseFamily, Font* baseFont);
 
     [[nodiscard]] static Segmenter::Break breakBefore(const std::vector<Piece>& pieces, std::size_t index) noexcept;
-    [[nodiscard]] static TextAlign resolveAlign(TextAlign align, bool rightToLeft, bool lastLine) noexcept;
-    [[nodiscard]] static float alignOffset(TextAlign align, float room, float width) noexcept;
+    [[nodiscard]] static Alignment resolveAlign(Alignment align, bool rightToLeft, bool lastLine) noexcept;
+    [[nodiscard]] static float alignOffset(Alignment align, float room, float width) noexcept;
     [[nodiscard]] static std::vector<std::size_t> orderPieces(const std::vector<Piece>& pieces, std::size_t begin, std::size_t end, const BidiParagraph& bidi);
 
     [[nodiscard]] const StyleFont& getStyleFont(std::size_t style);
@@ -206,7 +206,7 @@ class LayoutBuilder final {
     void emitTable(const Block& block, math::Vec2 origin, float width);
     void emitPiece(const Flow& flow, std::u32string_view text, const Piece& piece, math::Vec2 pen, float lineTop, float lineHeight, std::size_t character);
     void emitDecorations(const Flow& flow, const Line& line, const std::vector<Placed>& placed, float baseline);
-    void addBox(TextLayout::Box::Kind kind, const math::Rect& rect, math::Color color, std::size_t firstCharacter, std::size_t lastCharacter, bool rightToLeft = false);
+    void addBox(Layout::Box::Kind kind, const math::Rect& rect, math::Color color, std::size_t firstCharacter, std::size_t lastCharacter, bool rightToLeft = false);
     [[nodiscard]] std::size_t addCharacter(const Piece& piece, std::size_t offset, bool rightToLeft);
 
     const RichTextDocument& document;
@@ -214,7 +214,7 @@ class LayoutBuilder final {
     const RichTextRegistry* registry;
     const FontFamily* family;
     Font* loneFont;
-    TextLayout layout;
+    Layout layout;
     std::vector<std::optional<StyleFont>> styleFonts;
     std::map<std::string, std::shared_ptr<FontFamily>, std::less<>> families;
     std::map<std::pair<std::size_t, const Font*>, std::size_t> looks;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <span>
@@ -32,7 +33,6 @@ class Device final {
     Device& operator=(const Device&) = delete;
 
     [[nodiscard]] Texture createTexture(const Image& image, Texture::Options options = {});
-    [[nodiscard]] Texture createAlphaTexture(int width, int height, std::span<const std::uint8_t> alpha, Texture::Options options = {});
     [[nodiscard]] RenderTarget createRenderTarget(int width, int height, Texture::Options options = {});
 
     // Creates a texture of one color, checking the size against the device before any pixel exists.
@@ -41,9 +41,19 @@ class Device final {
     // Returns the shared 1 by 1 white texture that untextured draws use.
     [[nodiscard]] const Texture& getWhiteTexture() const noexcept;
 
-    // Replaces the pixels and size of an existing texture. Every handle to it sees the new contents from the next draw.
+    // Replaces the pixels and size of an existing texture, which is not dynamic. Every handle to it sees the new contents from the next draw.
     void replaceTexture(const Texture& texture, const Image& image);
-    void replaceAlphaTexture(const Texture& texture, int width, int height, std::span<const std::uint8_t> alpha);
+
+    // Creates a texture whose pixels change in place with updateTexture, such as a glyph atlas. Its pixels reach the GPU with the next upload.
+    [[nodiscard]] Texture createDynamicTexture(const Image& image, Texture::Options options = {});
+    [[nodiscard]] Texture createDynamicTexture(int width, int height, math::Color fill, Texture::Options options = {});
+    [[nodiscard]] Texture createDynamicAlphaTexture(int width, int height, std::span<const std::uint8_t> alpha, Texture::Options options = {});
+
+    // Replaces every pixel of a dynamic texture, keeping its size. The GPU only takes whole textures, so the device keeps the last pixels a texture received and sends each changed texture once per frame, however many updates it had.
+    void updateTexture(const Texture& texture, std::span<const std::uint8_t> pixels);
+
+    // Sends the pixels of the dynamic textures that changed since the last upload and returns how many bytes they took. The renderer calls it once per frame, before its passes.
+    std::size_t uploadTextures();
 
     [[nodiscard]] std::string_view getBackendName() const noexcept;
     [[nodiscard]] int getMaxTextureSize() const noexcept;

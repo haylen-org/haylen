@@ -7,7 +7,6 @@
 
 namespace haylen::debug {
 
-// The first counter builds the registry while it registers, so the registry outlives every counter.
 struct ObjectCounter::Registry {
     std::mutex mutex;
     std::vector<ObjectCounter*> counters;
@@ -16,8 +15,9 @@ struct ObjectCounter::Registry {
 
 std::atomic<bool> ObjectCounter::observed{false};
 
+// The registry is never destroyed, so it outlives every counter, and an exit() on another thread, which runs the destructors of static objects, leaves it to the threads that still count.
 ObjectCounter::Registry& ObjectCounter::getRegistry() {
-    static Registry registry;
+    static Registry& registry = *new Registry();
     return registry;
 }
 

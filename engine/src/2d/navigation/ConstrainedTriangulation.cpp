@@ -8,8 +8,46 @@
 
 namespace haylen::navigation2d {
 
-double ConstrainedTriangulation::orient(const Point& a, const Point& b, const Point& c) noexcept {
-    return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+int ConstrainedTriangulation::orient(const Point& a, const Point& b, const Point& c) noexcept {
+    const double left = (a.x - c.x) * (b.y - c.y);
+    const double right = (a.y - c.y) * (b.x - c.x);
+    const double determinant = left - right;
+    const double bound = kOrientErrorBound * (std::fabs(left) + std::fabs(right));
+    if (determinant > bound) {
+        return 1;
+    }
+    if (determinant < -bound) {
+        return -1;
+    }
+    return exactOrient(a, b, c);
+}
+
+int ConstrainedTriangulation::exactOrient(const Point& a, const Point& b, const Point& c) noexcept {
+    // The determinant expands into six products of coordinates, and each product is the sum of its rounded value and the error fma recovers.
+    const std::array<std::pair<double, double>, 6> products{{{b.x, c.y}, {-b.x, a.y}, {-a.x, c.y}, {-b.y, c.x}, {b.y, a.x}, {a.y, c.x}}};
+    std::array<double, 12> expansion{};
+    std::size_t size = 0;
+    for (const auto& [lhs, rhs] : products) {
+        const double product = lhs * rhs;
+        for (double term : {product, std::fma(lhs, rhs, -product)}) {
+            // Adding a term to the expansion keeps every rounding error as a component, so the components sum to the determinant exactly.
+            for (std::size_t index = 0; index < size; ++index) {
+                const double sum = term + expansion[index];
+                const double added = sum - term;
+                expansion[index] = (term - (sum - added)) + (expansion[index] - added);
+                term = sum;
+            }
+            expansion[size++] = term;
+        }
+    }
+
+    // The components grow in magnitude and never overlap, so the largest one that is not zero carries the sign.
+    for (std::size_t index = size; index-- > 0;) {
+        if (expansion[index] != 0.0) {
+            return expansion[index] > 0.0 ? 1 : -1;
+        }
+    }
+    return 0;
 }
 
 bool ConstrainedTriangulation::inCircle(const Point& a, const Point& b, const Point& c, const Point& d) noexcept {
@@ -28,7 +66,7 @@ bool ConstrainedTriangulation::inCircle(const Point& a, const Point& b, const Po
 }
 
 bool ConstrainedTriangulation::crosses(std::int32_t a, std::int32_t b, std::int32_t c, std::int32_t d) const noexcept {
-    return orient(pointAt(a), pointAt(b), pointAt(c)) * orient(pointAt(a), pointAt(b), pointAt(d)) < 0.0 && orient(pointAt(c), pointAt(d), pointAt(a)) * orient(pointAt(c), pointAt(d), pointAt(b)) < 0.0;
+    return orient(pointAt(a), pointAt(b), pointAt(c)) * orient(pointAt(a), pointAt(b), pointAt(d)) < 0 && orient(pointAt(c), pointAt(d), pointAt(a)) * orient(pointAt(c), pointAt(d), pointAt(b)) < 0;
 }
 
 std::int32_t ConstrainedTriangulation::weld(const Point& point) {
@@ -207,6 +245,7 @@ void ConstrainedTriangulation::addSuperTriangle() {
     points.push_back({center.x, center.y + 3.0 * size});
     vertexTriangles.assign(points.size(), 0);
     triangles.assign(1, {});
+    kept.assign(1, false);
     setTriangle(0, {firstSuper, firstSuper + 1, firstSuper + 2}, {-1, -1, -1}, {});
     lastTriangle = 0;
 }
@@ -219,7 +258,7 @@ std::int32_t ConstrainedTriangulation::locate(const Point& point) const {
         // Starting from a different side each step keeps the walk from circling.
         for (int offset = 0; offset < 3 && !moved; ++offset) {
             const auto side = static_cast<std::size_t>((offset + step) % 3);
-            if (orient(pointAt(current.vertices[side]), pointAt(current.vertices[(side + 1) % 3]), point) < 0.0) {
+            if (orient(pointAt(current.vertices[side]), pointAt(current.vertices[(side + 1) % 3]), point) < 0) {
                 triangle = current.neighbors[side];
                 moved = true;
             }
@@ -237,6 +276,7 @@ void ConstrainedTriangulation::splitTriangle(std::int32_t triangle, std::int32_t
     const auto second = static_cast<std::int32_t>(triangles.size());
     const std::int32_t third = second + 1;
     triangles.resize(triangles.size() + 2);
+    kept.resize(triangles.size(), kept[static_cast<std::size_t>(triangle)]);
 
     setTriangle(triangle, {a, b, vertex}, {old.neighbors[0], second, third}, {old.constrained[0], false, false});
     setTriangle(second, {b, c, vertex}, {old.neighbors[1], third, triangle}, {old.constrained[1], false, false});
@@ -262,6 +302,10 @@ void ConstrainedTriangulation::splitEdge(std::int32_t triangle, int side, std::i
     const std::int32_t d = opposite.vertices[(otherSide + 2) % 3];
     const std::int32_t last = first + 1;
     triangles.resize(triangles.size() + 2);
+    const bool keptTriangle = kept[static_cast<std::size_t>(triangle)];
+    const bool keptOther = kept[static_cast<std::size_t>(other)];
+    kept.push_back(keptTriangle);
+    kept.push_back(keptOther);
 
     setTriangle(triangle, {vertex, b, c}, {last, old.neighbors[(index + 1) % 3], first}, {fixed, old.constrained[(index + 1) % 3], false});
     setTriangle(first, {a, vertex, c}, {other, triangle, old.neighbors[(index + 2) % 3]}, {fixed, false, old.constrained[(index + 2) % 3]});
@@ -280,7 +324,7 @@ void ConstrainedTriangulation::insertPoint(std::int32_t vertex) {
     std::vector<std::pair<std::int32_t, int>> pending;
     int onEdge = -1;
     for (int side = 0; side < 3; ++side) {
-        if (orient(pointAt(current.vertices[static_cast<std::size_t>(side)]), points[static_cast<std::size_t>(current.vertices[static_cast<std::size_t>((side + 1) % 3)])], point) == 0.0) {
+        if (orient(pointAt(current.vertices[static_cast<std::size_t>(side)]), pointAt(current.vertices[static_cast<std::size_t>((side + 1) % 3)]), point) == 0) {
             onEdge = side;
         }
     }
@@ -381,7 +425,7 @@ bool ConstrainedTriangulation::collectCrossings(std::int32_t from, std::int32_t 
     // clang-format off
     const auto between = [&](std::int32_t vertex) {
         const Point& point = pointAt(vertex);
-        return orient(a, b, point) == 0.0 && (point.x - a.x) * (b.x - a.x) + (point.y - a.y) * (b.y - a.y) > 0.0;
+        return orient(a, b, point) == 0 && (point.x - a.x) * (b.x - a.x) + (point.y - a.y) * (b.y - a.y) > 0.0;
     };
     // clang-format on
 
@@ -398,7 +442,7 @@ bool ConstrainedTriangulation::collectCrossings(std::int32_t from, std::int32_t 
             onSegment = between(u) ? u : w;
             return false;
         }
-        if (orient(a, pointAt(u), b) > 0.0 && orient(a, pointAt(w), b) < 0.0) {
+        if (orient(a, pointAt(u), b) > 0 && orient(a, pointAt(w), b) < 0) {
             right = u;
             left = w;
             break;
@@ -422,7 +466,7 @@ bool ConstrainedTriangulation::collectCrossings(std::int32_t from, std::int32_t 
             onSegment = apex;
             return false;
         }
-        if (orient(a, b, pointAt(apex)) < 0.0) {
+        if (orient(a, b, pointAt(apex)) < 0) {
             right = apex;
         } else {
             left = apex;
@@ -499,30 +543,174 @@ void ConstrainedTriangulation::insertConstraint(std::int32_t from, std::int32_t 
     }
 }
 
-void ConstrainedTriangulation::finish() {
-    vertices.clear();
-    for (std::int32_t vertex = 0; vertex < firstSuper; ++vertex) {
-        vertices.push_back({static_cast<float>(pointAt(vertex).x), static_cast<float>(pointAt(vertex).y)});
+double ConstrainedTriangulation::distance(const Point& a, const Point& b) noexcept {
+    return std::hypot(b.x - a.x, b.y - a.y);
+}
+
+std::optional<ConstrainedTriangulation::Point> ConstrainedTriangulation::projectInside(const Point& point, const Point& a, const Point& b) noexcept {
+    const Point direction{b.x - a.x, b.y - a.y};
+    const double along = ((point.x - a.x) * direction.x + (point.y - a.y) * direction.y) / (direction.x * direction.x + direction.y * direction.y);
+    if (!(along > 0.0 && along < 1.0)) {
+        return std::nullopt;
+    }
+    return Point{a.x + direction.x * along, a.y + direction.y * along};
+}
+
+std::optional<ConstrainedTriangulation::Side> ConstrainedTriangulation::findConstraint(const Point& point, Side side, double reach) const {
+    // Every side beyond lies farther from the point than the one before, which ends the walk.
+    double nearest = 0.0;
+    for (;;) {
+        const Triangle& current = triangles[static_cast<std::size_t>(side.triangle)];
+        const auto index = static_cast<std::size_t>(side.index);
+        const std::int32_t a = current.vertices[index];
+        const std::int32_t b = current.vertices[(index + 1) % 3];
+        const std::optional<Point> foot = projectInside(point, pointAt(a), pointAt(b));
+        const double gap = foot ? distance(point, *foot) : reach;
+        if (gap >= reach || gap <= nearest) {
+            return std::nullopt;
+        }
+        if (current.constrained[index]) {
+            return side;
+        }
+        const std::int32_t next = current.neighbors[index];
+        if (next < 0) {
+            return std::nullopt;
+        }
+
+        // By the Delaunay rule only the longer of the two far sides of the next triangle can hold a point nearer than the reach.
+        const int back = edgeIndex(next, b, a);
+        const std::int32_t apex = triangles[static_cast<std::size_t>(next)].vertices[static_cast<std::size_t>((back + 2) % 3)];
+        side = {.triangle = next, .index = distance(pointAt(apex), pointAt(a)) > distance(pointAt(apex), pointAt(b)) ? (back + 1) % 3 : (back + 2) % 3};
+        nearest = gap;
+    }
+}
+
+bool ConstrainedTriangulation::refineCorner(std::int32_t triangle, int corner) {
+    const Triangle& current = triangles[static_cast<std::size_t>(triangle)];
+    const auto index = static_cast<std::size_t>(corner);
+    if (current.constrained[index] || current.constrained[(index + 2) % 3]) {
+        return false;
+    }
+    const Point apex = pointAt(current.vertices[index]);
+    const Point& next = pointAt(current.vertices[(index + 1) % 3]);
+    const Point& previous = pointAt(current.vertices[(index + 2) % 3]);
+    const double reach = std::min(distance(apex, next), distance(apex, previous));
+    const Side far{.triangle = triangle, .index = (corner + 1) % 3};
+
+    // A vertex that comes too close lies between the corner and its mirror across the perpendicular bisector of the far side, which lies on the circumcircle, so testing both ends covers it.
+    std::optional<Side> constraint = findConstraint(apex, far, reach);
+    if (!constraint) {
+        const Point direction{previous.x - next.x, previous.y - next.y};
+        const double shift = 2.0 * ((apex.x - (next.x + previous.x) * 0.5) * direction.x + (apex.y - (next.y + previous.y) * 0.5) * direction.y) / (direction.x * direction.x + direction.y * direction.y);
+        constraint = findConstraint({apex.x - direction.x * shift, apex.y - direction.y * shift}, far, reach);
+    }
+    if (!constraint) {
+        return false;
     }
 
-    // Triangles that touch the super triangle go away, and the neighbors of the others are renumbered.
-    std::vector<std::int32_t> remap(triangles.size(), -1);
-    std::vector<Triangle> kept;
-    for (std::size_t triangle = 0; triangle < triangles.size(); ++triangle) {
-        if (std::ranges::all_of(triangles[triangle].vertices, [this](std::int32_t vertex) { return vertex < firstSuper; })) {
-            remap[triangle] = static_cast<std::int32_t>(kept.size());
-            kept.push_back(triangles[triangle]);
+    // A foot that falls within the weld tolerance of an end of the edge would only duplicate that end.
+    const Triangle& holder = triangles[static_cast<std::size_t>(constraint->triangle)];
+    const Point& start = pointAt(holder.vertices[static_cast<std::size_t>(constraint->index)]);
+    const Point& end = pointAt(holder.vertices[static_cast<std::size_t>((constraint->index + 1) % 3)]);
+    const std::optional<Point> foot = projectInside(apex, start, end);
+    if (!foot || distance(*foot, start) <= tolerance || distance(*foot, end) <= tolerance) {
+        return false;
+    }
+    points.push_back(*foot);
+    vertexTriangles.push_back(constraint->triangle);
+    std::vector<std::pair<std::int32_t, int>> pending;
+    splitEdge(constraint->triangle, constraint->index, static_cast<std::int32_t>(points.size() - 1), pending);
+    legalize(pending);
+    return true;
+}
+
+void ConstrainedTriangulation::refine() {
+    for (bool changed = true; changed;) {
+        changed = false;
+        for (std::int32_t triangle = 0; triangle < static_cast<std::int32_t>(triangles.size()); ++triangle) {
+            if (!kept[static_cast<std::size_t>(triangle)]) {
+                continue;
+            }
+            for (int corner = 0; corner < 3; ++corner) {
+                changed = refineCorner(triangle, corner) || changed;
+            }
         }
     }
-    for (Triangle& triangle : kept) {
+}
+
+void ConstrainedTriangulation::classify(const std::function<bool(math::Vec2)>& keeps) {
+    std::vector<bool> seen(triangles.size(), false);
+    std::vector<std::int32_t> area;
+    for (std::size_t seed = 0; seed < triangles.size(); ++seed) {
+        if (seen[seed]) {
+            continue;
+        }
+
+        // An area is every triangle reached from the seed without crossing a segment, and the area around everything touches the super triangle.
+        area.assign(1, static_cast<std::int32_t>(seed));
+        seen[seed] = true;
+        bool enclosed = true;
+        std::int32_t largest = area.front();
+        double largestSize = 0.0;
+        for (std::size_t next = 0; next < area.size(); ++next) {
+            const Triangle& current = triangles[static_cast<std::size_t>(area[next])];
+            enclosed = enclosed && std::ranges::none_of(current.vertices, [this](std::int32_t vertex) { return isSuper(vertex); });
+            const Point& a = pointAt(current.vertices[0]);
+            const Point& b = pointAt(current.vertices[1]);
+            const Point& c = pointAt(current.vertices[2]);
+            const double size = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+            if (size > largestSize) {
+                largest = area[next];
+                largestSize = size;
+            }
+            for (std::size_t side = 0; side < 3; ++side) {
+                const std::int32_t neighbor = current.neighbors[side];
+                if (neighbor >= 0 && !current.constrained[side] && !seen[static_cast<std::size_t>(neighbor)]) {
+                    seen[static_cast<std::size_t>(neighbor)] = true;
+                    area.push_back(neighbor);
+                }
+            }
+        }
+
+        // The centroid of the largest triangle stands for the whole area, since no segment crosses it.
+        const std::array<std::int32_t, 3>& corners = triangles[static_cast<std::size_t>(largest)].vertices;
+        const math::Vec2 centroid{static_cast<float>((pointAt(corners[0]).x + pointAt(corners[1]).x + pointAt(corners[2]).x) / 3.0), static_cast<float>((pointAt(corners[0]).y + pointAt(corners[1]).y + pointAt(corners[2]).y) / 3.0)};
+        const bool keep = enclosed && keeps(centroid);
+        for (const std::int32_t triangle : area) {
+            kept[static_cast<std::size_t>(triangle)] = keep;
+        }
+    }
+}
+
+void ConstrainedTriangulation::finish() {
+    vertices.clear();
+    for (std::int32_t vertex = 0; vertex < static_cast<std::int32_t>(points.size()); ++vertex) {
+        if (!isSuper(vertex)) {
+            vertices.push_back({static_cast<float>(pointAt(vertex).x), static_cast<float>(pointAt(vertex).y)});
+        }
+    }
+
+    // Only the kept triangles stay, their neighbors are renumbered, and the points added after the super triangle move down to fill its three corners.
+    std::vector<std::int32_t> remap(triangles.size(), -1);
+    std::vector<Triangle> output;
+    for (std::size_t triangle = 0; triangle < triangles.size(); ++triangle) {
+        if (kept[triangle]) {
+            remap[triangle] = static_cast<std::int32_t>(output.size());
+            output.push_back(triangles[triangle]);
+        }
+    }
+    for (Triangle& triangle : output) {
         for (std::int32_t& neighbor : triangle.neighbors) {
             neighbor = neighbor < 0 ? -1 : remap[static_cast<std::size_t>(neighbor)];
         }
+        for (std::int32_t& vertex : triangle.vertices) {
+            vertex = vertex < firstSuper ? vertex : vertex - 3;
+        }
     }
-    triangles = std::move(kept);
+    triangles = std::move(output);
 }
 
-void ConstrainedTriangulation::build(std::span<const math::Segment> segments) {
+void ConstrainedTriangulation::build(std::span<const math::Segment> segments, const std::function<bool(math::Vec2)>& keeps) {
     triangles.clear();
     vertices.clear();
     prepare(segments);
@@ -541,6 +729,8 @@ void ConstrainedTriangulation::build(std::span<const math::Segment> segments) {
     for (const auto& [from, to] : constraints) {
         insertConstraint(from, to);
     }
+    classify(keeps);
+    refine();
     finish();
 }
 

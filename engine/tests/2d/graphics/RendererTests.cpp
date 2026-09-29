@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
-#include <functional>
 #include <memory>
 #include <span>
 #include <stdexcept>
@@ -17,7 +16,6 @@
 #include "haylen/2d/lighting/Light.hpp"
 #include "haylen/2d/lighting/Occluder.hpp"
 #include "haylen/core/Engine.hpp"
-#include "haylen/core/Scene.hpp"
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/graphics/BlendMode.hpp"
 #include "haylen/graphics/Device.hpp"
@@ -25,18 +23,9 @@
 #include "haylen/math/Insets.hpp"
 #include "haylen/text/Font.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/FrameRenderer.hpp"
 
 namespace haylen {
-
-namespace {
-
-graphics2d::Renderer::Stats renderOnce(test::EngineFixture& fixture, std::function<void(core::Engine&)> draw) {
-    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>(std::move(draw)));
-    fixture.frames(1);
-    return fixture.engine().getRenderer2D().getStats();
-}
-
-} // namespace
 
 TEST(RendererTest, BatchesSpritesByTextureAndLayer) {
     test::EngineFixture fixture;
@@ -45,7 +34,7 @@ TEST(RendererTest, BatchesSpritesByTextureAndLayer) {
     const graphics::Texture second = device.createTexture(graphics::Image(16, 16, math::Color::white()));
 
     // clang-format off
-    const graphics2d::Renderer::Stats stats = renderOnce(fixture, [&](core::Engine& engine) {
+    const graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
         graphics2d::Renderer& renderer = engine.getRenderer2D();
         renderer.beginScreen();
         for (int index = 0; index < 10; ++index) {
@@ -68,7 +57,7 @@ TEST(RendererTest, SortsByDepthInsideLayers) {
     const graphics::Texture other = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
 
     // clang-format off
-    const graphics2d::Renderer::Stats stats = renderOnce(fixture, [&](core::Engine& engine) {
+    const graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
         graphics2d::Camera camera;
         engine.getRenderer2D().beginWorld(camera, {.sort = graphics2d::Renderer::SortMode::Depth});
         engine.getRenderer2D().draw({.texture = texture, .order = {.depth = 30.0F}});
@@ -92,7 +81,7 @@ TEST(RendererTest, DrawsPrimitivesMeshesTextAndNineSlices) {
     const std::vector<math::Vec2> polygon{{0.0F, 0.0F}, {10.0F, 0.0F}, {5.0F, 3.0F}, {10.0F, 10.0F}, {0.0F, 10.0F}};
 
     // clang-format off
-    const graphics2d::Renderer::Stats stats = renderOnce(fixture, [&](core::Engine& current) {
+    const graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& current) {
         graphics2d::Renderer& renderer = current.getRenderer2D();
         renderer.beginScreen();
         renderer.drawRect({0.0F, 0.0F, 10.0F, 10.0F}, math::Color::white());
@@ -140,7 +129,7 @@ TEST(RendererTest, RendersLitWorldsTargetsAndStaticBatches) {
     EXPECT_EQ(batch.getTexture(), texture);
 
     // clang-format off
-    const graphics2d::Renderer::Stats stats = renderOnce(fixture, [&](core::Engine& current) {
+    const graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& current) {
         graphics2d::Renderer& renderer = current.getRenderer2D();
         graphics2d::Camera camera;
         renderer.beginTarget(target, camera, {.clear = math::Color::transparent()});
@@ -206,7 +195,7 @@ TEST(RendererTest, MergesDrawsThatShadeAndClipAlike) {
     const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
 
     // clang-format off
-    const graphics2d::Renderer::Stats stats = renderOnce(fixture, [&](core::Engine& engine) {
+    const graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
         graphics2d::Renderer& renderer = engine.getRenderer2D();
         renderer.beginWorld(graphics2d::Camera{}, {.ambientLight = math::Color::white()});
         for (int index = 0; index < 8; ++index) {
@@ -265,7 +254,7 @@ TEST(RendererTest, EndsTheFrameWhenAMaterialFailsInsideAPass) {
     const graphics::Texture white = fixture.engine().getGraphics().getWhiteTexture();
 
     // clang-format off
-    renderOnce(fixture, [&](core::Engine& engine) {
+    test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
         engine.getRenderer2D().beginScreen();
         engine.getRenderer2D().draw({.texture = white, .size = {4.0F, 4.0F}, .order = {.material = material}});
     });
@@ -286,7 +275,7 @@ TEST(RendererTest, SortsByTheYDrawsStandOn) {
 
     // clang-format off
     const auto sorted = [&](graphics2d::Renderer::SortMode mode) {
-        return renderOnce(fixture, [&, mode](core::Engine& engine) {
+        return test::FrameRenderer::renderOnce(fixture, [&, mode](core::Engine& engine) {
             graphics2d::Renderer& renderer = engine.getRenderer2D();
             renderer.beginWorld(graphics2d::Camera{}, {.sort = mode});
             renderer.draw({.texture = first, .position = {0.0F, 10.0F}});
@@ -303,7 +292,7 @@ TEST(RendererTest, SortsByTheYDrawsStandOn) {
     EXPECT_EQ(sorted(graphics2d::Renderer::SortMode::Layer), 5U);
 
     // clang-format off
-    const graphics2d::Renderer::Stats shapes = renderOnce(fixture, [&](core::Engine& engine) {
+    const graphics2d::Renderer::Stats shapes = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
         graphics2d::Renderer& renderer = engine.getRenderer2D();
         renderer.beginWorld(graphics2d::Camera{}, {.sort = graphics2d::Renderer::SortMode::Y});
         renderer.drawRect({0.0F, 0.0F, 10.0F, 50.0F}, math::Color::white());
@@ -323,7 +312,7 @@ TEST(RendererTest, OffsetsLayersInScopesAndMasksVisibility) {
     const graphics::Texture second = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
 
     // clang-format off
-    const graphics2d::Renderer::Stats stats = renderOnce(fixture, [&](core::Engine& engine) {
+    const graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
         graphics2d::Renderer& renderer = engine.getRenderer2D();
         renderer.beginScreen({.visibilityMask = 0b011U});
         renderer.draw({.texture = first});
@@ -364,7 +353,7 @@ TEST(RendererTest, CapturesCanvasesIntoTargets) {
     const graphics::RenderTarget nested = engine.getGraphics().createRenderTarget(64, 64);
 
     // clang-format off
-    const graphics2d::Renderer::Stats stats = renderOnce(fixture, [&](core::Engine& current) {
+    const graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& current) {
         graphics2d::Renderer& renderer = current.getRenderer2D();
         renderer.beginCapture(first, math::Color::black());
         EXPECT_TRUE(renderer.isCapturing());
@@ -428,7 +417,7 @@ TEST(RendererTest, DrawsCameraViewports) {
     minimap.viewport = math::Rect{16.0F, 16.0F, 32.0F, 32.0F};
 
     // clang-format off
-    const graphics2d::Renderer::Stats stats = renderOnce(fixture, [&](core::Engine& engine) {
+    const graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
         graphics2d::Renderer& renderer = engine.getRenderer2D();
         renderer.beginWorld(left, {.ambientLight = math::Color::black()});
         EXPECT_EQ(renderer.getCanvasBounds(), (math::Rect{-480.0F, -540.0F, 960.0F, 1080.0F}));
@@ -481,7 +470,7 @@ TEST(SpriteBatchTest, AddsUpdatesRemovesDrawsAndBakes) {
     EXPECT_EQ(batch.getTexture(), texture);
 
     // clang-format off
-    const graphics2d::Renderer::Stats stats = renderOnce(fixture, [&](core::Engine& engine) {
+    const graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
         engine.getRenderer2D().beginScreen();
         batch.draw(engine.getRenderer2D());
     });
@@ -509,7 +498,7 @@ TEST(RendererTest, LightsShadowsAndShadesLitCanvases) {
     const lighting2d::Occluder wall{.points = {{10.0F, -20.0F}, {10.0F, 20.0F}, {20.0F, 20.0F}}, .cull = lighting2d::Occluder::Cull::CounterClockwise};
 
     // clang-format off
-    const graphics2d::Renderer::Stats stats = renderOnce(fixture, [&](core::Engine& engine) {
+    const graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
         graphics2d::Renderer& renderer = engine.getRenderer2D();
         renderer.beginWorld(graphics2d::Camera{}, {.sort = graphics2d::Renderer::SortMode::Y, .ambientLight = math::Color{0.1F, 0.1F, 0.1F, 1.0F}});
         renderer.draw({.texture = texture, .order = {.normalMap = normals, .specular = 0.5F, .shininess = 64.0F}});
@@ -571,7 +560,7 @@ TEST(RendererTest, DrawsMetaballsFromManyPoints) {
     }
 
     // clang-format off
-    const graphics2d::Renderer::Stats stats = renderOnce(fixture, [&](core::Engine& engine) {
+    const graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
         graphics2d::Renderer& renderer = engine.getRenderer2D();
         renderer.beginWorld(graphics2d::Camera{});
         renderer.drawMetaballs(points, 6.0F, {.color = math::Color{0.2F, 0.5F, 1.0F, 1.0F}, .outlineColor = math::Color::white(), .outlineWidth = 0.1F});

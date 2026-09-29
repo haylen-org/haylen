@@ -7,6 +7,7 @@
 
 #include "haylen/text/RichText.hpp"
 #include "haylen/text/RichTextDocument.hpp"
+#include "haylen/text/Style.hpp"
 
 namespace haylen::text {
 
@@ -14,18 +15,36 @@ namespace {
 
 using Kind = RichTextDocument::Inline::Kind;
 
-std::string errorOf(const std::string& markup) {
-    try {
-        (void)RichText::parse(markup);
-    } catch (const std::invalid_argument& error) {
-        return error.what();
+class RichTextMarkupTest : public ::testing::Test {
+  protected:
+    [[nodiscard]] static std::string errorOf(const std::string& markup) {
+        try {
+            (void)RichText::parse(markup);
+        } catch (const std::invalid_argument& error) {
+            return error.what();
+        }
+        return "no error";
     }
-    return "no error";
-}
+};
 
 } // namespace
 
-TEST(RichTextMarkupTest, NestsInlineStylesAndMergesRuns) {
+// Paragraph markup reads the alignment and direction names that Lua and UI documents use, from the one table the text style keeps.
+TEST_F(RichTextMarkupTest, ReadsTheAlignmentAndDirectionNamesOfTheTextStyle) {
+    for (const auto& [name, alignment] : Style::kAlignmentNames) {
+        EXPECT_EQ(RichText::parse("[p align=" + std::string(name) + "]x[/p]").paragraphs[0].align, alignment);
+        EXPECT_EQ(Style::alignmentName(alignment), name);
+    }
+    for (const auto& [name, direction] : Style::kDirectionNames) {
+        EXPECT_EQ(RichText::parse("[p dir=" + std::string(name) + "]x[/p]").paragraphs[0].direction, direction);
+        EXPECT_EQ(Style::directionName(direction), name);
+    }
+    EXPECT_FALSE(Style::alignmentFromName("justify").has_value());
+    EXPECT_FALSE(Style::directionFromName("up").has_value());
+    EXPECT_NE(errorOf("[p dir=up]x[/p]").find("The dir of [p] must be auto, ltr or rtl."), std::string::npos);
+}
+
+TEST_F(RichTextMarkupTest, NestsInlineStylesAndMergesRuns) {
     const RichTextDocument document = RichText::parse("plain [b]bold [i]both[/i][/b] [color=#FF0000][u]red[/u][/color] [size=150%][s]big[/s][/size]");
     ASSERT_EQ(document.paragraphs.size(), 1U);
     const auto& inlines = document.paragraphs[0].inlines;
@@ -50,7 +69,7 @@ TEST(RichTextMarkupTest, NestsInlineStylesAndMergesRuns) {
     EXPECT_EQ(merged.paragraphs[0].inlines[0].text, U"ab");
 }
 
-TEST(RichTextMarkupTest, ReadsStylesWithAttributes) {
+TEST_F(RichTextMarkupTest, ReadsStylesWithAttributes) {
     const RichTextDocument document = RichText::parse("[outline=3 color=blue][shadow=2,4 color=#80000000 blur=3][glow=5 color=gold][alpha=0.5][alpha=0.5][font=title][size=20][code][bgcolor=yellow]x[/bgcolor][/code][/size][/font][/alpha][/alpha][/glow][/shadow][/outline]");
     const RichTextDocument::Style& style = document.styles[document.paragraphs[0].inlines[0].style];
     EXPECT_FLOAT_EQ(style.outlineWidth, 3.0F);
@@ -68,7 +87,7 @@ TEST(RichTextMarkupTest, ReadsStylesWithAttributes) {
     EXPECT_EQ(style.background, math::Color::fromHex(0xFFFF00FFU));
 }
 
-TEST(RichTextMarkupTest, EscapesBracketsAndSplitsParagraphs) {
+TEST_F(RichTextMarkupTest, EscapesBracketsAndSplitsParagraphs) {
     const RichTextDocument document = RichText::parse("[lb]b[rb] is not bold]\nsecond[br]line\n");
     ASSERT_EQ(document.paragraphs.size(), 3U);
     EXPECT_EQ(document.paragraphs[0].inlines[0].text, U"[b] is not bold]");
@@ -80,13 +99,13 @@ TEST(RichTextMarkupTest, EscapesBracketsAndSplitsParagraphs) {
     const RichTextDocument centered = RichText::parse("intro\n[center]\ntitle\n[/center]\nafter");
     ASSERT_EQ(centered.paragraphs.size(), 3U);
     EXPECT_FALSE(centered.paragraphs[0].align);
-    EXPECT_EQ(centered.paragraphs[1].align, TextAlign::Center);
+    EXPECT_EQ(centered.paragraphs[1].align, Alignment::Center);
     EXPECT_EQ(centered.paragraphs[1].inlines[0].text, U"title");
     EXPECT_EQ(centered.paragraphs[2].inlines[0].text, U"after");
     EXPECT_EQ(RichText::parse("").paragraphs.size(), 1U);
 }
 
-TEST(RichTextMarkupTest, NumbersListsAndIndentsBlocks) {
+TEST_F(RichTextMarkupTest, NumbersListsAndIndentsBlocks) {
     const RichTextDocument document = RichText::parse("[ol type=I]\none\ntwo\n[ol type=a]\nsub\n[/ol]\nthree\n[/ol][ul bullet=*]dot[/ul][p align=fill indent=2]para[/p][right]r[/right][ol type=A]x\n\ny[/ol]");
     const auto& paragraphs = document.paragraphs;
     ASSERT_EQ(paragraphs.size(), 10U);
@@ -96,9 +115,9 @@ TEST(RichTextMarkupTest, NumbersListsAndIndentsBlocks) {
     EXPECT_FLOAT_EQ(paragraphs[2].indent, 2.0F);
     EXPECT_EQ(paragraphs[3].marker, U"III.");
     EXPECT_EQ(paragraphs[4].marker, U"*");
-    EXPECT_EQ(paragraphs[5].align, TextAlign::Fill);
+    EXPECT_EQ(paragraphs[5].align, Alignment::Fill);
     EXPECT_FLOAT_EQ(paragraphs[5].indent, 2.0F);
-    EXPECT_EQ(paragraphs[6].align, TextAlign::Right);
+    EXPECT_EQ(paragraphs[6].align, Alignment::Right);
 
     // A blank line inside a list takes no number.
     EXPECT_EQ(paragraphs[7].marker, U"A.");
@@ -108,7 +127,7 @@ TEST(RichTextMarkupTest, NumbersListsAndIndentsBlocks) {
     EXPECT_EQ(RichText::parse("[ol]" + std::string(27, 'x') + "[/ol]").paragraphs[0].marker, U"1.");
 }
 
-TEST(RichTextMarkupTest, ReadsObjectsLinksHintsAndRevealTags) {
+TEST_F(RichTextMarkupTest, ReadsObjectsLinksHintsAndRevealTags) {
     const RichTextDocument document = RichText::parse("[url]https://haylen.dev[/url] [url=\"shop item\"]buy[/url] [hint=Costs 5 coins]price[/hint][img=icons/coin.png width=24 region=0,0,16,16 color=#80FFFFFF valign=top][icon=jump height=30][pause=0.5][speed=2]fast[/speed][hr width=50% height=4 color=red]");
     ASSERT_EQ(document.links.size(), 2U);
     EXPECT_EQ(document.links[0], "https://haylen.dev");
@@ -136,7 +155,7 @@ TEST(RichTextMarkupTest, ReadsObjectsLinksHintsAndRevealTags) {
     EXPECT_FLOAT_EQ(rule.ruleThickness, 4.0F);
 }
 
-TEST(RichTextMarkupTest, RecordsEffectsAndBuildsTablesAndDropCaps) {
+TEST_F(RichTextMarkupTest, RecordsEffectsAndBuildsTablesAndDropCaps) {
     const RichTextDocument document = RichText::parse("[wave amp=40][sparkle=3]x[/sparkle][/wave]\n[table=2]\n[cell bg=#202020 border=white padding=6]a[/cell][cell]b\nc[/cell]\n[cell][b]d[/b][/cell]\n[/table]\n[dropcap size=64 color=red margin=8]O[/dropcap]nce upon a time");
     ASSERT_EQ(document.effects.size(), 2U);
     EXPECT_EQ(document.effects[0].name, "wave");
@@ -162,7 +181,7 @@ TEST(RichTextMarkupTest, RecordsEffectsAndBuildsTablesAndDropCaps) {
     EXPECT_EQ(story.inlines[0].text, U"nce upon a time");
 }
 
-TEST(RichTextMarkupTest, ReportsMalformedMarkupWithItsPlace) {
+TEST_F(RichTextMarkupTest, ReportsMalformedMarkupWithItsPlace) {
     EXPECT_EQ(errorOf("ok [/b]"), "Rich text markup at line 1, column 4: [/b] closes nothing.");
     EXPECT_EQ(errorOf("[b]\n [i]x[/b]"), "Rich text markup at line 2, column 6: [/b] closes [i], which is still open.");
     EXPECT_EQ(errorOf("é[b]never"), "Rich text markup at line 1, column 2: [b] is never closed.");

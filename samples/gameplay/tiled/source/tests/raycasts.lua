@@ -17,7 +17,7 @@ local kFanRays = 48
 local kLength = 1200
 
 function Raycasts:enter()
-    self.map = tiled.newMap(assets.load('maps/raycasts.tmj'))
+    self.map = tiled.newMapRenderer(assets.load('maps/raycasts.tmj'))
     local bounds = self.map.bounds
     Raycasts.super.enter(self, {
         hint = 'The ray aims at the pointer, and tapping or clicking moves the eye. Tile hits show the cell and its tile, object hits the name of the object.',

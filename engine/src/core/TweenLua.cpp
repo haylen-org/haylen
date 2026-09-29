@@ -190,11 +190,11 @@ void TweenLua::configure(lua_State* L, int options, int owner, Tween& tween) {
     readCallbacks(L, options, owner, tween.getCallbacks());
 }
 
-// Hands the tween to the manager, ties it to its owner and pushes its handle. A tween that inherits its process mode takes the one of its owner.
+// Hands the tween to the manager, ties it to its owner and pushes its handle. A tween that inherits its process mode follows the one of its owner.
 void TweenLua::start(lua_State* L, const std::shared_ptr<Tween>& tween, int options, int owner) {
     Engine& engine = lua::Runtime::getEngine(L);
     if (tween->getProcessMode() == ProcessMode::Inherit && owner != 0) {
-        tween->setProcessMode(lua::ScriptedScene::resolveOwnerMode(L, owner));
+        tween->setParentMode(lua::ScriptedScene::followOwnerMode(L, owner));
     }
     engine.getTweens().add(tween);
     if (owner != 0) {

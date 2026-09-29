@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 #include "graphics/ResourceGraveyard.hpp"
 #include "haylen/debug/ObjectCounter.hpp"
@@ -24,6 +25,10 @@ struct TextureResource {
     std::uint32_t id = 0;
     Texture::Options options{};
     bool flipped = false;
+
+    // A dynamic texture changes in place, and keeps the pixels it received since the last upload until the device sends them.
+    bool dynamic = false;
+    std::vector<std::uint8_t> staged;
     std::weak_ptr<ResourceGraveyard> graveyard;
     debug::TrackedObject tracked;
 

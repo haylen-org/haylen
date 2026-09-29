@@ -11,7 +11,7 @@ local sample = require('sample')
 local Animations = haylen.class('Animations', sample.Test)
 
 function Animations:enter()
-    self.map = tiled.newMap(assets.load('maps/animations.tmj'))
+    self.map = tiled.newMapRenderer(assets.load('maps/animations.tmj'))
     local bounds = self.map.bounds
     Animations.super.enter(self, {
         hint = 'Water, lava and torches animate on tile layers, and the coins and slimes are animated tile objects. Point at a tile to read its frames.',

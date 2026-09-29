@@ -24,6 +24,7 @@
 #include "support/EngineFixture.hpp"
 #include "support/RecordingEffect.hpp"
 #include "support/RecordingScene.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen::core {
 
@@ -452,7 +453,7 @@ TEST(SceneManagerTest, ShowsTheLoadingViewAfterItsDelayForItsMinimumTime) {
 }
 TEST(SceneManagerTest, PreloadsAssetGroupsIntoTheProgressOfTheLoad) {
     std::vector<std::string> log;
-    const std::vector<std::uint8_t> image = test::pngImage(4, 4, 0xFFFFFFFFU);
+    const std::vector<std::uint8_t> image = test::TestFiles::pngImage(4, 4, 0xFFFFFFFFU);
     test::EngineFixture fixture({{"content/world/grass.png", std::string(image.begin(), image.end())}, {"content/world/stone.png", std::string(image.begin(), image.end())}});
     assets::Manager& assets = fixture.engine().getAssets();
     assets.defineGroup("world", {{.path = "world/"}});

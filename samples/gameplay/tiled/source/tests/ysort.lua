@@ -14,7 +14,7 @@ local kSpeed = 220
 local kArrive = 6
 
 function YSort:enter()
-    self.map = tiled.newMap(assets.load('maps/ysort.tmj'))
+    self.map = tiled.newMapRenderer(assets.load('maps/ysort.tmj'))
     self.hero = graphics2d.newSprite(assets.texture('sprites/hero.png'), {pivotY = 1, layer = 1})
     local bounds = self.map.bounds
     YSort.super.enter(self, {

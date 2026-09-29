@@ -9,6 +9,7 @@
 #include <fast_float/fast_float.h>
 
 #include "haylen/core/Utf8.hpp"
+#include "haylen/text/Style.hpp"
 #include "text/Segmenter.hpp"
 
 namespace haylen::text {
@@ -420,22 +421,18 @@ void MarkupParser::openBlock(const Tag& tag) {
         requireNoValue(tag);
         checkAttributes(tag, {"align", "dir", "indent"});
         if (tag.attributes.contains("align")) {
-            const std::string& align = tag.attributes.at("align");
-            constexpr std::array<std::pair<std::string_view, TextAlign>, 6> kAligns{{{"start", TextAlign::Start}, {"end", TextAlign::End}, {"left", TextAlign::Left}, {"center", TextAlign::Center}, {"right", TextAlign::Right}, {"fill", TextAlign::Fill}}};
-            const auto found = std::find_if(kAligns.begin(), kAligns.end(), [&](const auto& entry) { return entry.first == align; });
-            if (found == kAligns.end()) {
+            const std::optional<Alignment> align = Style::alignmentFromName(tag.attributes.at("align"));
+            if (!align) {
                 fail(tag.offset, "The align of [p] must be start, end, left, center, right or fill.");
             }
-            block.align = found->second;
+            block.align = *align;
         }
         if (tag.attributes.contains("dir")) {
-            const std::string& direction = tag.attributes.at("dir");
-            constexpr std::array<std::pair<std::string_view, Direction>, 3> kDirections{{{"auto", Direction::Auto}, {"ltr", Direction::LeftToRight}, {"rtl", Direction::RightToLeft}}};
-            const auto found = std::find_if(kDirections.begin(), kDirections.end(), [&](const auto& entry) { return entry.first == direction; });
-            if (found == kDirections.end()) {
+            const std::optional<Direction> direction = Style::directionFromName(tag.attributes.at("dir"));
+            if (!direction) {
                 fail(tag.offset, "The dir of [p] must be auto, ltr or rtl.");
             }
-            block.direction = found->second;
+            block.direction = *direction;
         }
         if (tag.attributes.contains("indent")) {
             block.indent += number(tag, tag.attributes.at("indent"), "indent");
@@ -460,7 +457,7 @@ void MarkupParser::openBlock(const Tag& tag) {
     } else {
         requireNoValue(tag);
         checkAttributes(tag, {});
-        block.align = name == "center" ? TextAlign::Center : (name == "right" ? TextAlign::Right : (name == "fill" ? TextAlign::Fill : TextAlign::Left));
+        block.align = name == "center" ? Alignment::Center : (name == "right" ? Alignment::Right : (name == "fill" ? Alignment::Fill : Alignment::Left));
     }
 
     discardOrFinishParagraph();

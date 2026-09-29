@@ -21,7 +21,7 @@ class Renderer;
 
 namespace haylen::text {
 class Font;
-struct TextStyle;
+struct Style;
 } // namespace haylen::text
 
 namespace haylen::core {
@@ -123,7 +123,7 @@ class ErrorScreen final {
     void drag(math::Vec2 point);
     void scrollBy(float amount);
 
-    float drawLine(graphics2d::Renderer& renderer, text::Font& font, std::string_view text, math::Vec2 position, const text::TextStyle& style) const;
+    float drawLine(graphics2d::Renderer& renderer, text::Font& font, std::string_view text, math::Vec2 position, const text::Style& style) const;
     [[nodiscard]] float drawContent(graphics2d::Renderer& renderer, text::Font& font, math::Vec2 origin, float width, float unit) const;
     [[nodiscard]] float drawExcerpt(graphics2d::Renderer& renderer, text::Font& font, math::Vec2 origin, float width, float unit) const;
     [[nodiscard]] float drawStack(graphics2d::Renderer& renderer, text::Font& font, math::Vec2 origin, float unit) const;

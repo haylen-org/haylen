@@ -17,7 +17,7 @@ function Splines:enter()
     Splines.super.enter(self, {
         hint = 'Drag the control points. Bezier curves pass through every third point and bend toward the others, and a closed Bezier uses the first six points.',
         controls = {
-            ui.radioGroup{id = 'kind', items = {{id = 'catmullRom', text = 'Catmull-Rom'}, {id = 'bezier', text = 'Bezier'}, {id = 'bspline', text = 'B-spline'}}, selected = 'catmullRom', onChange = function(event) self:change('kind', event.value) end},
+            ui.radioGroup{id = 'kind', items = {{id = 'catmullRom', text = 'Catmull-Rom'}, {id = 'bezier', text = 'Bezier'}, {id = 'bSpline', text = 'B-spline'}}, selected = 'catmullRom', onChange = function(event) self:change('kind', event.value) end},
             ui.checkbox{id = 'closed', text = 'Closed curve', onChange = function(event) self:change('closed', event.checked) end},
             ui.label{text = 'Sample spacing', font = 'caption', color = 'textMuted'},
             ui.slider{id = 'spacing', value = 60, min = 20, max = 200, step = 5, showValue = true, decimals = 0, onChange = function(event) self:change('spacing', event.value) end},

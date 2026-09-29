@@ -108,7 +108,7 @@ TrueTypeFont::TrueTypeFont(graphics::Device& graphicsDevice, std::unique_ptr<Fac
     atlasWidth = options.atlasSize;
     atlasHeight = options.atlasSize;
     atlas.assign(static_cast<std::size_t>(atlasWidth) * static_cast<std::size_t>(atlasHeight), 0);
-    texture = device.createAlphaTexture(atlasWidth, atlasHeight, atlas, {.filter = graphics::Texture::Filter::Linear});
+    texture = device.createDynamicAlphaTexture(atlasWidth, atlasHeight, atlas, {.filter = graphics::Texture::Filter::Linear});
 }
 
 TrueTypeFont::~TrueTypeFont() = default;
@@ -176,6 +176,13 @@ Font::Glyph TrueTypeFont::rasterize(std::uint32_t index) {
     stbtt_GetGlyphHMetrics(&face->info, static_cast<int>(index), &advance, &bearing);
     Glyph glyph{.advance = static_cast<float>(advance) * face->scale};
 
+    // A glyph that no atlas could hold, with its pixel of padding on each side, fails before its field is built, which takes long at such sizes.
+    const std::optional<DistanceField> box = DistanceField::measure(face->info, static_cast<int>(index), face->scale, options.spread);
+    const int largest = device.getMaxTextureSize() - 2;
+    if (box && (box->width > largest || box->height > largest)) {
+        throw std::runtime_error("The glyph is larger than the largest font atlas the device can hold.");
+    }
+
     const std::optional<DistanceField> field = DistanceField::build(face->info, static_cast<int>(index), face->scale, options.spread);
     if (!field) {
         return glyph;
@@ -227,14 +234,15 @@ void TrueTypeFont::grow() {
     dirty = true;
 }
 
+// The atlas changes in place, so draws that add glyphs during a frame upload it once, while a grown atlas becomes a new texture that the draws already made keep.
 void TrueTypeFont::sync() {
     if (!dirty) {
         return;
     }
     if (texture.getWidth() == atlasWidth && texture.getHeight() == atlasHeight) {
-        device.replaceAlphaTexture(texture, atlasWidth, atlasHeight, atlas);
+        device.updateTexture(texture, atlas);
     } else {
-        texture = device.createAlphaTexture(atlasWidth, atlasHeight, atlas, {.filter = graphics::Texture::Filter::Linear});
+        texture = device.createDynamicAlphaTexture(atlasWidth, atlasHeight, atlas, {.filter = graphics::Texture::Filter::Linear});
     }
     dirty = false;
 }

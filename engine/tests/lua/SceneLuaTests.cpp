@@ -11,6 +11,7 @@
 #include "haylen/lua/Error.hpp"
 #include "haylen/platform/Event.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen::core {
 
@@ -147,7 +148,7 @@ TEST(SceneLuaTest, PlaysBuiltInEffectsWithBothScenesAlive) {
 }
 
 TEST(SceneLuaTest, LoadsScenesInCoroutinesBehindALoadingView) {
-    const std::vector<std::uint8_t> image = test::pngImage(8, 8, 0xFFFFFFFFU);
+    const std::vector<std::uint8_t> image = test::TestFiles::pngImage(8, 8, 0xFFFFFFFFU);
     test::EngineFixture fixture({{"content/world/grass.png", std::string(image.begin(), image.end())}, {"content/world/stone.png", std::string(image.begin(), image.end())}});
     // clang-format off
     fixture.runLua(R"(

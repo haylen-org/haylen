@@ -14,7 +14,9 @@
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
+#include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen::particles2d {
 
@@ -197,7 +199,7 @@ TEST(EmitterTest, UpdatesLargeEmittersInParallel) {
 }
 
 TEST(EffectTest, LoadsEffectFilesAsAssets) {
-    const std::vector<std::uint8_t> png = test::pngImage(8, 8, 0xFFFFFFFFU);
+    const std::vector<std::uint8_t> png = test::TestFiles::pngImage(8, 8, 0xFFFFFFFFU);
     test::EngineFixture fixture({
         {"content/effects/sparks.particles", R"({
             "texture": "../images/spark.png", "frames": [[0, 0, 4, 4], [4, 0, 4, 4]], "rate": 0, "bursts": [{"time": 0, "count": 12}],

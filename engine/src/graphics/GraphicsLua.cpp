@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "graphics/FontLua.hpp"
@@ -24,22 +25,37 @@ int GraphicsLua::newRenderTarget(lua_State* L) {
     return 1;
 }
 
-// Creates a texture from raw RGBA bytes or a fill color with newTexture(width, height, {pixels = string or fill = color, filter, wrap}).
+// Creates a texture from raw RGBA bytes or a fill color with newTexture(width, height, {pixels = string or fill = color, dynamic, filter, wrap}), where a dynamic texture changes its pixels with update.
 int GraphicsLua::newTexture(lua_State* L) {
     const int width = lua::Stack::read<int>(L, 1);
     const int height = lua::Stack::read<int>(L, 2);
     math::Color fill = math::Color::white();
     std::string pixels;
+    bool dynamic = false;
     if (!lua_isnoneornil(L, 3)) {
         luaL_checktype(L, 3, LUA_TTABLE);
         lua::Table::readField(L, 3, "fill", fill);
         lua::Table::readField(L, 3, "pixels", pixels);
+        lua::Table::readField(L, 3, "dynamic", dynamic);
     }
 
     Device& device = lua::Runtime::getEngine(L).getGraphics();
     const Texture::Options options = lua::TypeConverter::readTextureOptions(L, 3, {kTextureContentFields});
-    lua::Stack::push(L, pixels.empty() ? device.createTexture(width, height, fill, options) : device.createTexture(Image(width, height, std::vector<std::uint8_t>(pixels.begin(), pixels.end())), options));
+    if (pixels.empty()) {
+        lua::Stack::push(L, dynamic ? device.createDynamicTexture(width, height, fill, options) : device.createTexture(width, height, fill, options));
+        return 1;
+    }
+    const Image image(width, height, std::vector<std::uint8_t>(pixels.begin(), pixels.end()));
+    lua::Stack::push(L, dynamic ? device.createDynamicTexture(image, options) : device.createTexture(image, options));
     return 1;
+}
+
+// Replaces every pixel of a dynamic texture with texture:update(pixels), a string of RGBA bytes of the same size.
+int GraphicsLua::updateTexture(lua_State* L) {
+    const Texture& texture = lua::Userdata::check<Texture>(L, 1);
+    const std::string_view pixels = lua::Stack::read<std::string_view>(L, 2);
+    lua::Runtime::getEngine(L).getGraphics().updateTexture(texture, {reinterpret_cast<const std::uint8_t*>(pixels.data()), pixels.size()});
+    return 0;
 }
 
 int GraphicsLua::maxTextureSize(lua_State* L) {
@@ -133,7 +149,7 @@ int GraphicsLua::open(lua_State* L) {
 }
 
 void GraphicsLua::install(lua_State* L) {
-    lua::ClassBuilder<Texture>(L).property("width", &textureWidth).property("height", &textureHeight).property("filter", &textureFilter).property("wrap", &textureWrap).meta("__eq", &lua::Userdata::equal<Texture>).install();
+    lua::ClassBuilder<Texture>(L).function("update", &lua::Binding::native<&updateTexture>).property("width", &textureWidth).property("height", &textureHeight).property("filter", &textureFilter).property("wrap", &textureWrap).meta("__eq", &lua::Userdata::equal<Texture>).install();
     lua::ClassBuilder<RenderTarget>(L).property("width", &targetWidth).property("height", &targetHeight).property("texture", &targetTexture).meta("__eq", &lua::Userdata::equal<RenderTarget>).install();
     lua::ClassBuilder<Shader>(L).property("name", &shaderName).property("uniforms", &shaderUniforms).property("textures", &shaderTextures).meta("__eq", &lua::Userdata::equal<Shader>).install();
     FontLua::install(L);

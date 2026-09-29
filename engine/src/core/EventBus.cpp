@@ -4,7 +4,7 @@
 
 namespace haylen::core {
 
-const Json EventBus::kNull;
+const Json& EventBus::kNull = *new const Json();
 
 EventBus::EventBus(FrameQueue& frameQueue) : queue(frameQueue), state(std::make_shared<State>()) {}
 

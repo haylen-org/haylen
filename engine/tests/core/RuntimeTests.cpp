@@ -111,20 +111,62 @@ TEST(JobSystemTest, ParallelForPropagatesTheFirstException) {
     core::JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
 
     // clang-format off
-    const auto failInWorkers = [](std::size_t begin, std::size_t) {
+    const auto failAfterTheFirstChunk = [](std::size_t begin, std::size_t) {
         if (begin > 0) {
-            throw std::runtime_error("worker chunk failed");
+            throw std::runtime_error("later chunk failed");
         }
     };
-    const auto failInCaller = [](std::size_t begin, std::size_t) {
+    const auto failInTheFirstChunk = [](std::size_t begin, std::size_t) {
         if (begin == 0) {
-            throw std::logic_error("caller chunk failed");
+            throw std::logic_error("first chunk failed");
         }
     };
     // clang-format on
 
-    EXPECT_THROW(jobs.parallelFor(0, 1000, 1, failInWorkers), std::runtime_error);
-    EXPECT_THROW(jobs.parallelFor(0, 1000, 1, failInCaller), std::logic_error);
+    EXPECT_THROW(jobs.parallelFor(0, 1000, 1, failAfterTheFirstChunk), std::runtime_error);
+    EXPECT_THROW(jobs.parallelFor(0, 1000, 1, failInTheFirstChunk), std::logic_error);
+}
+
+TEST(JobSystemTest, ParallelForNeverWaitsBehindBusyWorkers) {
+    test::VarnRuntime varn;
+    core::JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
+
+    // Every worker runs a long job, like an asynchronous navmesh build, so no worker can take a chunk.
+    std::atomic<std::size_t> started{0};
+    std::atomic<bool> open{false};
+    for (std::size_t worker = 0; worker < jobs.getWorkerCount(); ++worker) {
+        // clang-format off
+        jobs.post([&] {
+            ++started;
+            while (!open) {
+                std::this_thread::yield();
+            }
+        });
+        // clang-format on
+    }
+    ASSERT_TRUE(varn.pumpUntil([&] { return started.load() == jobs.getWorkerCount(); }));
+
+    std::vector<int> values(1000, 0);
+    std::atomic<bool> finished{false};
+    // clang-format off
+    std::thread caller([&] {
+        jobs.parallelFor(0, values.size(), 1, [&](std::size_t begin, std::size_t end) {
+            for (std::size_t index = begin; index < end; ++index) {
+                values[index] = 1;
+            }
+        });
+        finished = true;
+    });
+    // clang-format on
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (!finished && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    const bool finishedWhileBusy = finished;
+    open = true;
+    caller.join();
+    EXPECT_TRUE(finishedWhileBusy) << "the caller ran every chunk while the workers were busy";
+    EXPECT_EQ(std::accumulate(values.begin(), values.end(), 0), 1000);
 }
 
 TEST(JobSystemTest, DiscardsQueuedWorkWithoutRunningIt) {

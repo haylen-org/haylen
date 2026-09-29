@@ -48,7 +48,8 @@ class Shape final {
     };
 
     Shape() = default;
-    Shape(World* owner, std::uint64_t handle) noexcept : world(owner), id(handle) {}
+    // A handle remembers the generation of its world, so it turns invalid once that world is destroyed, even after a new world reuses its slot.
+    Shape(World* owner, std::uint64_t handle) noexcept;
 
     [[nodiscard]] static std::optional<Kind> kindFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view kindName(Kind value) noexcept;
@@ -88,7 +89,7 @@ class Shape final {
         return id;
     }
     [[nodiscard]] bool operator==(const Shape& other) const noexcept {
-        return id == other.id;
+        return worldHandle == other.worldHandle && id == other.id;
     }
 
   private:
@@ -102,6 +103,7 @@ class Shape final {
     [[nodiscard]] std::vector<math::Vec2> readPoints(bool inWorld) const;
 
     World* world = nullptr;
+    std::uint32_t worldHandle = 0;
     std::uint64_t id = 0;
 };
 

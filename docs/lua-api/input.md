@@ -572,24 +572,24 @@ scene.push({
 })
 ```
 
-### input.setDeadzone(deadzone)
+### input.setGamepadDeadzone(deadzone)
 
 Sets the dead zone of every gamepad axis and stick, from 0 to below 1, and the default is 0.2. Any other value raises `The gamepad dead zone must be at least 0 and below 1.` and keeps the current dead zone. Movement inside the dead zone reads as 0 and does not make the gamepad the last used device.
 
 ```lua
 local input = require('haylen.input')
 
-input.setDeadzone(0.12)
+input.setGamepadDeadzone(0.12)
 ```
 
 ### input.gamepadDeadzone()
 
-Returns the dead zone of every gamepad axis and stick, as `input.setDeadzone()` set it.
+Returns the dead zone of every gamepad axis and stick, as `input.setGamepadDeadzone()` set it.
 
 ```lua
 local input = require('haylen.input')
 
-input.setDeadzone(input.gamepadDeadzone() + 0.05)
+input.setGamepadDeadzone(input.gamepadDeadzone() + 0.05)
 ```
 
 ## Devices
@@ -985,7 +985,7 @@ scene.push({
 | `gamepad index out of range` | A gamepad index is outside 1 to 4. It comes inside a bad argument error. |
 | `expected left or right` | `input.gamepadStick()` received another side. It comes inside a bad argument error. |
 | `Unknown option '<key>'.` | `input.setGestureSettings()` received an unknown field. |
-| `The gamepad dead zone must be at least 0 and below 1.` | `input.setDeadzone()` received a value outside that range. |
+| `The gamepad dead zone must be at least 0 and below 1.` | `input.setGamepadDeadzone()` received a value outside that range. |
 | `The press threshold must be above 0 and at most 1.` | `input.setPressThreshold()` received a value outside that range. |
 | `the action map must be a JSON object.` | An action map document is not a table with string keys. |
 | `an action must be a JSON object.` | An entry of the `actions` list is not a table with string keys. |

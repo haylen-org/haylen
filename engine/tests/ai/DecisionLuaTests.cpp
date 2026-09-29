@@ -128,12 +128,12 @@ TEST_F(DecisionLuaTest, SpreadsInfluence) {
     )");
     // clang-format on
     EXPECT_EQ(lua("return threat.columns .. ' ' .. threat.rows .. ' ' .. threat.cellSize .. ' ' .. threat.origin.x .. ' ' .. #threat:values()"), "20 10 10.0 100.0 200");
-    EXPECT_EQ(lua("local x, y, value = threat:highest(150, 50, 100) return x .. ' ' .. y .. ' ' .. tostring(value > 0.5)"), "155.0 55.0 true");
-    EXPECT_EQ(lua("local x, y = threat:lowest(285, 5, 1) return x .. ' ' .. y .. ' ' .. tostring(threat:lowest(-500, 0, 1))"), "285.0 5.0 nil");
+    EXPECT_EQ(lua("local x, y, value = threat:findHighest(150, 50, 100) return x .. ' ' .. y .. ' ' .. tostring(value > 0.5)"), "155.0 55.0 true");
+    EXPECT_EQ(lua("local x, y = threat:findLowest(285, 5, 1) return x .. ' ' .. y .. ' ' .. tostring(threat:findLowest(-500, 0, 1))"), "285.0 5.0 nil");
     EXPECT_EQ(lua("return tostring(threat:sample(155, 55) > 0.5) .. ' ' .. tostring(threat:get(5, 5) > threat:get(9, 5)) .. ' ' .. allies:get(0, 0)"), "true true 2.0");
     EXPECT_EQ(lua("threat:set(0, 0, 3) local x, y = threat:cellCenter(0, 0) return threat:get(0, 0) .. ' ' .. x .. ' ' .. y"), "3.0 105.0 5.0");
     EXPECT_EQ(lua("threat:stamp(105, 5, 1, 20, 'constant') return threat:get(0, 0)"), "4.0");
-    EXPECT_EQ(lua("local x, y, value = threat:highest(150, 50, math.huge) return x .. ' ' .. y .. ' ' .. value .. ' ' .. threat:sample(0 / 0, 55) .. ' ' .. tostring(threat:highest(0 / 0, 0, 10))"), "105.0 5.0 4.0 0.0 nil");
+    EXPECT_EQ(lua("local x, y, value = threat:findHighest(150, 50, math.huge) return x .. ' ' .. y .. ' ' .. value .. ' ' .. threat:sample(0 / 0, 55) .. ' ' .. tostring(threat:findHighest(0 / 0, 0, 10))"), "105.0 5.0 4.0 0.0 nil");
     EXPECT_NE(lua("threat:stamp(0, 0, 1, 10, 'spiky')").find("unknown value 'spiky'"), std::string::npos);
     EXPECT_NE(lua("threat:get(20, 0)").find("outside the influence map"), std::string::npos);
     EXPECT_NE(lua("ai.newInfluenceMap({columns = 0, rows = 1})").find("at least one cell"), std::string::npos);

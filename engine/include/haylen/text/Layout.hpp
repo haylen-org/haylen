@@ -18,7 +18,7 @@ class Font;
 class FontFamily;
 
 // Text shaped and placed in a block whose top-left is the origin, plain text and rich text alike: every glyph with how it draws, the filled boxes of backgrounds, underlines, strikes, rules and table borders, the inline images, the boxes of links and hints, the characters and the lines. Glyphs sit in visual order, so right-to-left runs read from the right. Characters are the clusters of the text, a letter with its marks or the letters a ligature joins, and they count in reading order, one more per image or icon, so a reveal shows them in the order they are read.
-struct TextLayout {
+struct Layout {
     // How the glyphs of one style draw with one font besides their color. Lengths are pixels: the outline, the weight a synthetic bold adds to each side of a stroke of a font with a distance field, and the offset of the second copy a synthetic bold draws with a bitmap font. The skew leans a synthetic italic.
     struct Look {
         Font* font = nullptr;

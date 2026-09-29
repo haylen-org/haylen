@@ -16,32 +16,35 @@ namespace haylen {
 
 namespace {
 
-// Places agents on a circle, each heading for the opposite side, which makes them all meet in the middle.
-std::vector<std::uint32_t> swapAcrossCircle(navigation2d::Crowd& crowd, int count, float radius) {
-    std::vector<std::uint32_t> ids;
-    for (int index = 0; index < count; ++index) {
-        const float angle = std::numbers::pi_v<float> * 2.0F * static_cast<float>(index) / static_cast<float>(count);
-        const math::Vec2 start = math::Vec2::fromAngle(angle, radius);
-        ids.push_back(crowd.addAgent({.position = start, .radius = 12.0F, .maxSpeed = 60.0F, .neighborDistance = 90.0F}));
-        crowd.setTarget(ids.back(), -start);
-    }
-    return ids;
-}
-
-float closestPair(const navigation2d::Crowd& crowd, const std::vector<std::uint32_t>& ids) {
-    float closest = std::numeric_limits<float>::infinity();
-    for (std::size_t first = 0; first < ids.size(); ++first) {
-        for (std::size_t second = first + 1; second < ids.size(); ++second) {
-            const float gap = math::Vec2::distance(crowd.getPosition(ids[first]), crowd.getPosition(ids[second])) - crowd.getRadius(ids[first]) - crowd.getRadius(ids[second]);
-            closest = std::min(closest, gap);
+class CrowdTest : public ::testing::Test {
+  protected:
+    // Places agents on a circle, each heading for the opposite side, which makes them all meet in the middle.
+    static std::vector<std::uint32_t> swapAcrossCircle(navigation2d::Crowd& crowd, int count, float radius) {
+        std::vector<std::uint32_t> ids;
+        for (int index = 0; index < count; ++index) {
+            const float angle = std::numbers::pi_v<float> * 2.0F * static_cast<float>(index) / static_cast<float>(count);
+            const math::Vec2 start = math::Vec2::fromAngle(angle, radius);
+            ids.push_back(crowd.addAgent({.position = start, .radius = 12.0F, .maxSpeed = 60.0F, .neighborDistance = 90.0F}));
+            crowd.setTarget(ids.back(), -start);
         }
+        return ids;
     }
-    return closest;
-}
+
+    [[nodiscard]] static float closestPair(const navigation2d::Crowd& crowd, const std::vector<std::uint32_t>& ids) {
+        float closest = std::numeric_limits<float>::infinity();
+        for (std::size_t first = 0; first < ids.size(); ++first) {
+            for (std::size_t second = first + 1; second < ids.size(); ++second) {
+                const float gap = math::Vec2::distance(crowd.getPosition(ids[first]), crowd.getPosition(ids[second])) - crowd.getRadius(ids[first]) - crowd.getRadius(ids[second]);
+                closest = std::min(closest, gap);
+            }
+        }
+        return closest;
+    }
+};
 
 } // namespace
 
-TEST(CrowdTest, SwapsSidesWithoutAgentsOverlapping) {
+TEST_F(CrowdTest, SwapsSidesWithoutAgentsOverlapping) {
     navigation2d::Crowd crowd;
     const std::vector<std::uint32_t> ring = swapAcrossCircle(crowd, 8, 200.0F);
 
@@ -69,7 +72,7 @@ TEST(CrowdTest, SwapsSidesWithoutAgentsOverlapping) {
     }
 }
 
-TEST(CrowdTest, WalksAroundObstaclesAndWalls) {
+TEST_F(CrowdTest, WalksAroundObstaclesAndWalls) {
     navigation2d::Crowd crowd;
     const std::vector<math::Vec2> block{{-40.0F, -40.0F}, {-40.0F, 40.0F}, {40.0F, 40.0F}, {40.0F, -40.0F}};
     crowd.addObstacle(block);
@@ -101,7 +104,7 @@ TEST(CrowdTest, WalksAroundObstaclesAndWalls) {
     EXPECT_GT(crowd.getPosition(walker).x, 150.0F);
 }
 
-TEST(CrowdTest, StepsTheSameWayOnEveryThread) {
+TEST_F(CrowdTest, StepsTheSameWayOnEveryThread) {
     test::EngineFixture fixture;
     navigation2d::Crowd serial;
     navigation2d::Crowd parallel;
@@ -116,7 +119,7 @@ TEST(CrowdTest, StepsTheSameWayOnEveryThread) {
     }
 }
 
-TEST(CrowdTest, FlocksAndManagesAgents) {
+TEST_F(CrowdTest, FlocksAndManagesAgents) {
     navigation2d::Crowd crowd({.separation = 0.0F, .alignment = 0.0F, .cohesion = 1.0F});
     const std::uint32_t left = crowd.addAgent({.position = {-60.0F, 0.0F}, .radius = 5.0F, .maxSpeed = 40.0F});
     const std::uint32_t right = crowd.addAgent({.position = {60.0F, 0.0F}, .radius = 5.0F, .maxSpeed = 40.0F});

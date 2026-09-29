@@ -10,7 +10,6 @@
 
 #include "graphics/FontLua.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
-#include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/FrameClock.hpp"
 #include "haylen/core/Utf8.hpp"
@@ -30,8 +29,9 @@ const std::shared_ptr<text::RichTextRegistry>& RichTextLua::getRegistry(lua_Stat
 }
 
 text::RichTextOptions RichTextLua::readOptions(lua_State* L, int index, std::initializer_list<lua::Table::FieldNames> extraFields) {
-    assets::Manager& assets = lua::Runtime::getEngine(L).getAssets();
-    text::RichTextOptions options{.family = getRegistry(L)->getDefaultFamily(), .images = [&assets](std::string_view path) { return assets.texture(path); }};
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    plugins::TextPlugin& plugin = engine.getPlugin<plugins::TextPlugin>();
+    text::RichTextOptions options{.family = plugin.getRegistry()->getDefaultFamily(), .images = [&engine, &plugin](std::string_view path) { return plugin.getImage(engine, path); }};
     if (lua_isnoneornil(L, index)) {
         return options;
     }
@@ -87,17 +87,25 @@ int RichTextLua::newRichText(lua_State* L) {
     return 1;
 }
 
-// Draws markup once with drawRichText(markup, x, y, options), where the options also take the draw order, and effects follow the time the app has run.
+math::Color RichTextLua::readTint(lua_State* L, int index) {
+    math::Color tint = math::Color::white();
+    if (!lua_isnoneornil(L, index)) {
+        lua::Table::readField(L, index, "tint", tint);
+    }
+    return tint;
+}
+
+// Draws markup once with drawRichText(markup, x, y, options), where the options also take the tint and the draw order, and effects follow the time the app has run.
 int RichTextLua::drawRichText(lua_State* L) {
     core::Engine& engine = lua::Runtime::getEngine(L);
-    text::RichText richText(lua::Stack::read<std::string>(L, 1), readOptions(L, 4, {lua::TypeConverter::kDrawOrderFields}), getRegistry(L));
+    text::RichText richText(lua::Stack::read<std::string>(L, 1), readOptions(L, 4, {lua::TypeConverter::kDrawOrderFields, kTintFields}), getRegistry(L));
     richText.update(static_cast<float>(engine.getClock().getElapsed()));
-    engine.getRenderer2D().drawRichText(richText, {lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}, lua::TypeConverter::readDrawOrder(L, 4, {kOptionFields}));
+    engine.getRenderer2D().drawRichText(richText, {lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}, lua::TypeConverter::readDrawOrder(L, 4, {kOptionFields, kTintFields}), {1.0F, 1.0F}, readTint(L, 4));
     return 0;
 }
 
 int RichTextLua::measureRichText(lua_State* L) {
-    text::RichText richText(lua::Stack::read<std::string>(L, 1), readOptions(L, 2, {lua::TypeConverter::kDrawOrderFields}), getRegistry(L));
+    text::RichText richText(lua::Stack::read<std::string>(L, 1), readOptions(L, 2, {lua::TypeConverter::kDrawOrderFields, kTintFields}), getRegistry(L));
     const math::Vec2 size = richText.getSize();
     lua::Stack::push(L, size.x);
     lua::Stack::push(L, size.y);
@@ -105,7 +113,7 @@ int RichTextLua::measureRichText(lua_State* L) {
 }
 
 // The glyph table holds index and character counted from 1, char, codePoint, x and y on the baseline, time, offsetX, offsetY, color and visible, and the attributes of the tag come as the second argument, with numbers as numbers.
-void RichTextLua::runEffect(const lua::Reference& function, text::TextEffect::Glyph& glyph, const text::TextEffect::Parameters& parameters) {
+void RichTextLua::runEffect(const lua::Reference& function, text::Effect::Glyph& glyph, const text::Effect::Parameters& parameters) {
     // clang-format off
     lua::Runtime::protectedRun(function.getState(), [&](lua_State* L) {
         function.push(L);
@@ -155,7 +163,7 @@ int RichTextLua::registerTextEffect(lua_State* L) {
     std::string name = lua::Stack::read<std::string>(L, 1);
     luaL_checktype(L, 2, LUA_TFUNCTION);
     auto function = std::make_shared<lua::Reference>(L, 2);
-    getRegistry(L)->registerEffect(std::move(name), [function](text::TextEffect::Glyph& glyph, const text::TextEffect::Parameters& parameters) { runEffect(*function, glyph, parameters); });
+    getRegistry(L)->registerEffect(std::move(name), [function](text::Effect::Glyph& glyph, const text::Effect::Parameters& parameters) { runEffect(*function, glyph, parameters); });
     return 0;
 }
 
@@ -184,9 +192,14 @@ int RichTextLua::update(lua_State* L) {
     return 0;
 }
 
-// Draws the text with text:draw(x, y, order), where order takes the draw order keys.
+// Draws the text with text:draw(x, y, options), where the options take the scale of the block from its top-left corner, the tint of every color and the draw order keys.
 int RichTextLua::draw(lua_State* L) {
-    lua::Runtime::getEngine(L).getRenderer2D().drawRichText(lua::Userdata::check<text::RichText>(L, 1), {lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}, lua::TypeConverter::readDrawOrder(L, 4));
+    const DrawOrder order = lua::TypeConverter::readDrawOrder(L, 4, {kDrawFields});
+    math::Vec2 scale{1.0F, 1.0F};
+    if (!lua_isnoneornil(L, 4)) {
+        lua::Table::readField(L, 4, "scale", scale);
+    }
+    lua::Runtime::getEngine(L).getRenderer2D().drawRichText(lua::Userdata::check<text::RichText>(L, 1), {lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}, order, scale, readTint(L, 4));
     return 0;
 }
 
@@ -220,7 +233,7 @@ int RichTextLua::setVisibleCharacters(lua_State* L) {
 // Returns the layout of this moment as {size, lineCount, glyphs, boxes, images, links, hints, characters, lines}, the way the text draws now.
 int RichTextLua::layout(lua_State* L) {
     text::RichText& richText = lua::Userdata::check<text::RichText>(L, 1);
-    const text::TextLayout& frame = richText.getFrame();
+    const text::Layout& frame = richText.getFrame();
     lua_createtable(L, 0, 9);
     lua::Stack::push(L, frame.size);
     lua_setfield(L, -2, "size");
@@ -229,8 +242,8 @@ int RichTextLua::layout(lua_State* L) {
 
     lua_createtable(L, static_cast<int>(frame.glyphs.size()), 0);
     for (std::size_t index = 0; index < frame.glyphs.size(); ++index) {
-        const text::TextLayout::Glyph& glyph = frame.glyphs[index];
-        const text::TextLayout::Look& look = frame.looks[glyph.look];
+        const text::Layout::Glyph& glyph = frame.glyphs[index];
+        const text::Layout::Look& look = frame.looks[glyph.look];
         std::string character;
         core::Utf8::append(character, glyph.codePoint);
         lua_createtable(L, 0, 11);
@@ -261,7 +274,7 @@ int RichTextLua::layout(lua_State* L) {
     constexpr std::array<std::string_view, 6> kKinds{"background", "underline", "strike", "rule", "cellBackground", "cellBorder"};
     lua_createtable(L, static_cast<int>(frame.boxes.size()), 0);
     for (std::size_t index = 0; index < frame.boxes.size(); ++index) {
-        const text::TextLayout::Box& box = frame.boxes[index];
+        const text::Layout::Box& box = frame.boxes[index];
         lua_createtable(L, 0, 4);
         lua::Stack::push(L, kKinds[static_cast<std::size_t>(box.kind)]);
         lua_setfield(L, -2, "kind");
@@ -289,7 +302,7 @@ int RichTextLua::layout(lua_State* L) {
     lua_setfield(L, -2, "images");
 
     // clang-format off
-    const auto pushAreas = [&](const std::vector<text::TextLayout::Area>& areas, const std::vector<std::string>& values, const char* key) {
+    const auto pushAreas = [&](const std::vector<text::Layout::Area>& areas, const std::vector<std::string>& values, const char* key) {
         lua_createtable(L, static_cast<int>(areas.size()), 0);
         for (std::size_t index = 0; index < areas.size(); ++index) {
             lua_createtable(L, 0, 2);
@@ -309,7 +322,7 @@ int RichTextLua::layout(lua_State* L) {
     // Characters come in reading order with the code points of the text without markup they draw, counted from 1.
     lua_createtable(L, static_cast<int>(frame.characters.size()), 0);
     for (std::size_t index = 0; index < frame.characters.size(); ++index) {
-        const text::TextLayout::Character& character = frame.characters[index];
+        const text::Layout::Character& character = frame.characters[index];
         lua_createtable(L, 0, 4);
         lua::Stack::push(L, character.box);
         lua_setfield(L, -2, "rect");
@@ -325,7 +338,7 @@ int RichTextLua::layout(lua_State* L) {
 
     lua_createtable(L, static_cast<int>(frame.lines.size()), 0);
     for (std::size_t index = 0; index < frame.lines.size(); ++index) {
-        const text::TextLayout::Line& line = frame.lines[index];
+        const text::Layout::Line& line = frame.lines[index];
         lua_createtable(L, 0, 3);
         lua::Stack::push(L, line.box);
         lua_setfield(L, -2, "rect");

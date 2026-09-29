@@ -84,87 +84,93 @@ struct Reference {
     }
 };
 
-template <typename Structure> Structure makeStructure();
-template <> spatial2d::HashGrid makeStructure() {
-    return spatial2d::HashGrid(24.0F);
-}
-template <> spatial2d::QuadTree makeStructure() {
-    return spatial2d::QuadTree({-400.0F, -400.0F, 800.0F, 800.0F}, {.maxEntries = 4, .maxDepth = 6});
-}
-template <> spatial2d::AabbTree makeStructure() {
-    return spatial2d::AabbTree(3.0F);
-}
+// Builds each structure under test and checks that it answers like the reference.
+template <typename Structure> class SpatialStructureTest : public ::testing::Test {
+  protected:
+    [[nodiscard]] static Structure makeStructure();
 
-math::Rect randomBounds(math::Random& random) {
-    // Some entries fall outside the quadtree area and some have no size, which every structure must handle.
-    return {random.range(-500.0F, 500.0F), random.range(-500.0F, 500.0F), random.chance(0.2F) ? 0.0F : random.range(0.0F, 40.0F), random.chance(0.2F) ? 0.0F : random.range(0.0F, 40.0F)};
-}
-
-template <typename Structure> void expectSameAnswers(const Structure& structure, const Reference& reference, math::Random& random) {
-    Ids ids;
-    std::vector<spatial2d::RayHit> hits;
-    std::vector<spatial2d::Neighbor> neighbors;
-    for (int probe = 0; probe < 40; ++probe) {
-        const math::Rect area = randomBounds(random).expanded(random.range(0.0F, 60.0F));
-        structure.query(area, ids);
-        EXPECT_EQ(ids, reference.query(area));
-
-        const math::Vec2 point{random.range(-550.0F, 550.0F), random.range(-550.0F, 550.0F)};
-        const float radius = random.range(0.0F, 120.0F);
-        structure.queryCircle(point, radius, ids);
-        EXPECT_EQ(ids, reference.queryCircle(point, radius));
-        structure.queryPoint(point, ids);
-        EXPECT_EQ(ids, reference.query({point.x, point.y, 0.0F, 0.0F}));
-
-        const math::Ray ray = math::Ray::between(point, {random.range(-550.0F, 550.0F), random.range(-550.0F, 550.0F)});
-        const std::size_t limit = static_cast<std::size_t>(random.range(0, 3));
-        structure.raycast(ray, limit, hits);
-        const std::vector<spatial2d::RayHit> expectedHits = reference.raycast(ray, limit);
-        ASSERT_EQ(hits.size(), expectedHits.size());
-        for (std::size_t index = 0; index < hits.size(); ++index) {
-            EXPECT_EQ(hits[index].id, expectedHits[index].id);
-            EXPECT_EQ(hits[index].distance, expectedHits[index].distance);
-            EXPECT_EQ(hits[index].normal, expectedHits[index].normal);
-        }
-
-        // Small counts stop early, and a count of every entry ranks the whole structure.
-        const std::size_t count = probe % 10 == 0 ? reference.entries.size() : static_cast<std::size_t>(random.range(1, 6));
-        const float maxDistance = random.chance(0.5F) ? std::numeric_limits<float>::infinity() : random.range(0.0F, 200.0F);
-        structure.nearest(point, count, maxDistance, neighbors);
-        const std::vector<spatial2d::Neighbor> expectedNeighbors = reference.nearest(point, count, maxDistance);
-        ASSERT_EQ(neighbors.size(), expectedNeighbors.size());
-        for (std::size_t index = 0; index < neighbors.size(); ++index) {
-            EXPECT_EQ(neighbors[index].id, expectedNeighbors[index].id);
-            EXPECT_EQ(neighbors[index].distance, expectedNeighbors[index].distance);
-        }
+    [[nodiscard]] static math::Rect randomBounds(math::Random& random) {
+        // Some entries fall outside the quadtree area and some have no size, which every structure must handle.
+        return {random.range(-500.0F, 500.0F), random.range(-500.0F, 500.0F), random.chance(0.2F) ? 0.0F : random.range(0.0F, 40.0F), random.chance(0.2F) ? 0.0F : random.range(0.0F, 40.0F)};
     }
 
-    const math::Rect everything{-1000.0F, -1000.0F, 2000.0F, 2000.0F};
-    structure.query(everything, ids);
-    EXPECT_EQ(ids, reference.query(everything));
+    static void expectSameAnswers(const Structure& structure, const Reference& reference, math::Random& random) {
+        Ids ids;
+        std::vector<spatial2d::RayHit> hits;
+        std::vector<spatial2d::Neighbor> neighbors;
+        for (int probe = 0; probe < 40; ++probe) {
+            const math::Rect area = randomBounds(random).expanded(random.range(0.0F, 60.0F));
+            structure.query(area, ids);
+            EXPECT_EQ(ids, reference.query(area));
+
+            const math::Vec2 point{random.range(-550.0F, 550.0F), random.range(-550.0F, 550.0F)};
+            const float radius = random.range(0.0F, 120.0F);
+            structure.queryCircle(point, radius, ids);
+            EXPECT_EQ(ids, reference.queryCircle(point, radius));
+            structure.queryPoint(point, ids);
+            EXPECT_EQ(ids, reference.query({point.x, point.y, 0.0F, 0.0F}));
+
+            const math::Ray ray = math::Ray::between(point, {random.range(-550.0F, 550.0F), random.range(-550.0F, 550.0F)});
+            const std::size_t limit = static_cast<std::size_t>(random.range(0, 3));
+            structure.raycast(ray, limit, hits);
+            const std::vector<spatial2d::RayHit> expectedHits = reference.raycast(ray, limit);
+            ASSERT_EQ(hits.size(), expectedHits.size());
+            for (std::size_t index = 0; index < hits.size(); ++index) {
+                EXPECT_EQ(hits[index].id, expectedHits[index].id);
+                EXPECT_EQ(hits[index].distance, expectedHits[index].distance);
+                EXPECT_EQ(hits[index].normal, expectedHits[index].normal);
+            }
+
+            // Small counts stop early, and a count of every entry ranks the whole structure.
+            const std::size_t count = probe % 10 == 0 ? reference.entries.size() : static_cast<std::size_t>(random.range(1, 6));
+            const float maxDistance = random.chance(0.5F) ? std::numeric_limits<float>::infinity() : random.range(0.0F, 200.0F);
+            structure.nearest(point, count, maxDistance, neighbors);
+            const std::vector<spatial2d::Neighbor> expectedNeighbors = reference.nearest(point, count, maxDistance);
+            ASSERT_EQ(neighbors.size(), expectedNeighbors.size());
+            for (std::size_t index = 0; index < neighbors.size(); ++index) {
+                EXPECT_EQ(neighbors[index].id, expectedNeighbors[index].id);
+                EXPECT_EQ(neighbors[index].distance, expectedNeighbors[index].distance);
+            }
+        }
+
+        const math::Rect everything{-1000.0F, -1000.0F, 2000.0F, 2000.0F};
+        structure.query(everything, ids);
+        EXPECT_EQ(ids, reference.query(everything));
+    }
+};
+
+template <> spatial2d::HashGrid SpatialStructureTest<spatial2d::HashGrid>::makeStructure() {
+    return spatial2d::HashGrid(24.0F);
+}
+
+template <> spatial2d::QuadTree SpatialStructureTest<spatial2d::QuadTree>::makeStructure() {
+    return spatial2d::QuadTree({-400.0F, -400.0F, 800.0F, 800.0F}, {.maxEntries = 4, .maxDepth = 6});
+}
+
+template <> spatial2d::AabbTree SpatialStructureTest<spatial2d::AabbTree>::makeStructure() {
+    return spatial2d::AabbTree(3.0F);
 }
 
 } // namespace
 
-template <typename Structure> class SpatialStructureTest : public ::testing::Test {};
 using SpatialStructures = ::testing::Types<spatial2d::HashGrid, spatial2d::QuadTree, spatial2d::AabbTree>;
 TYPED_TEST_SUITE(SpatialStructureTest, SpatialStructures);
 
 TYPED_TEST(SpatialStructureTest, AnswersLikeTestingEveryEntry) {
-    TypeParam structure = makeStructure<TypeParam>();
+    TypeParam structure = TestFixture::makeStructure();
     Reference reference;
     math::Random random(42);
     for (std::uint64_t id = 1; id <= 300; ++id) {
-        const math::Rect bounds = randomBounds(random);
+        const math::Rect bounds = TestFixture::randomBounds(random);
         structure.set(id, bounds);
         reference.set(id, bounds);
     }
     EXPECT_EQ(structure.size(), 300U);
-    expectSameAnswers(structure, reference, random);
+    TestFixture::expectSameAnswers(structure, reference, random);
 
     // Small moves stay in place, large moves travel, and removals leave the rest intact.
     for (std::uint64_t id = 1; id <= 300; id += 3) {
-        const math::Rect bounds = id % 2 == 0 ? reference.entries[id - 1].second.translated({random.range(-2.0F, 2.0F), random.range(-2.0F, 2.0F)}) : randomBounds(random);
+        const math::Rect bounds = id % 2 == 0 ? reference.entries[id - 1].second.translated({random.range(-2.0F, 2.0F), random.range(-2.0F, 2.0F)}) : TestFixture::randomBounds(random);
         structure.set(id, bounds);
         reference.set(id, bounds);
     }
@@ -176,7 +182,7 @@ TYPED_TEST(SpatialStructureTest, AnswersLikeTestingEveryEntry) {
     EXPECT_FALSE(structure.contains(2));
     EXPECT_TRUE(structure.contains(3));
     EXPECT_EQ(structure.size(), reference.entries.size());
-    expectSameAnswers(structure, reference, random);
+    TestFixture::expectSameAnswers(structure, reference, random);
 
     structure.clear();
     Ids ids;
@@ -186,7 +192,7 @@ TYPED_TEST(SpatialStructureTest, AnswersLikeTestingEveryEntry) {
 }
 
 TYPED_TEST(SpatialStructureTest, CountsTouchingBoundsAndRejectsInvalidInput) {
-    TypeParam structure = makeStructure<TypeParam>();
+    TypeParam structure = TestFixture::makeStructure();
     structure.set(7, {10.0F, 10.0F, 0.0F, 0.0F});
     structure.set(8, {30.0F, 0.0F, 10.0F, 10.0F});
     EXPECT_EQ(structure.getBounds(8), (math::Rect{30.0F, 0.0F, 10.0F, 10.0F}));

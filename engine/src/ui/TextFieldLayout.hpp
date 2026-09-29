@@ -8,16 +8,16 @@
 
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
-#include "haylen/text/TextLayout.hpp"
+#include "haylen/text/Layout.hpp"
 
 namespace haylen::ui {
 
 // The text of a field as it shows, shaped and ordered for display, and where its caret goes. Positions are code points of the text, the caret stops between characters, a letter with its marks or the letters a ligature joins, and points are relative to the top-left of the text block. Right-to-left runs place the caret on the side a character starts, and the caret moves on screen, so the right arrow always moves it right.
 class TextFieldLayout final {
   public:
-    TextFieldLayout(std::shared_ptr<const text::TextLayout> laid, std::u32string codePoints);
+    TextFieldLayout(std::shared_ptr<const text::Layout> laid, std::u32string codePoints);
 
-    [[nodiscard]] const text::TextLayout& getLayout() const noexcept {
+    [[nodiscard]] const text::Layout& getLayout() const noexcept {
         return *layout;
     }
 
@@ -41,10 +41,10 @@ class TextFieldLayout final {
 
   private:
     [[nodiscard]] std::size_t findLine(std::size_t position) const;
-    [[nodiscard]] float getCaretX(const text::TextLayout::Line& line, std::size_t position) const;
-    [[nodiscard]] std::size_t hitLine(const text::TextLayout::Line& line, float x) const;
+    [[nodiscard]] float getCaretX(const text::Layout::Line& line, std::size_t position) const;
+    [[nodiscard]] std::size_t hitLine(const text::Layout::Line& line, float x) const;
 
-    std::shared_ptr<const text::TextLayout> layout;
+    std::shared_ptr<const text::Layout> layout;
     std::u32string content;
 };
 

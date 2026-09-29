@@ -15,6 +15,7 @@
 #include "haylen/2d/physics/Raycaster.hpp"
 #include "haylen/2d/physics/World.hpp"
 #include "haylen/core/SceneManager.hpp"
+#include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen {

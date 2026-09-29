@@ -14,7 +14,7 @@ local Groups = haylen.class('Groups', sample.Test)
 local kSway = 160
 
 function Groups:enter()
-    self.map = tiled.newMap(assets.load('maps/groups.tmj'))
+    self.map = tiled.newMapRenderer(assets.load('maps/groups.tmj'))
     local bounds = self.map.bounds
     Groups.super.enter(self, {
         hint = 'The camera sways so the parallax of the groups shows: the background lags and the roofs lead. Drag to move it yourself, and switch the groups on and off.',

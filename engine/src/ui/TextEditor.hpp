@@ -10,7 +10,7 @@
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/platform/TextInput.hpp"
-#include "haylen/text/TextStyle.hpp"
+#include "haylen/text/Style.hpp"
 #include "ui/TextFieldLayout.hpp"
 
 namespace haylen::ui {
@@ -53,7 +53,7 @@ class TextEditor final {
     static Result draw(Context& context, const math::Rect& bounds, std::string& value, const Options& options);
 
     // Lays out the text a field shows, where a password shows one bullet per character.
-    [[nodiscard]] static TextFieldLayout layOut(Context& context, std::string_view value, const text::TextStyle& style, bool password);
+    [[nodiscard]] static TextFieldLayout layOut(Context& context, std::string_view value, const text::Style& style, bool password);
     [[nodiscard]] static std::string getShown(std::string_view value, bool password);
 
   private:
@@ -61,7 +61,7 @@ class TextEditor final {
     struct Editing {
         TextSession* session = nullptr;
         Context* context = nullptr;
-        text::TextStyle style;
+        text::Style style;
         math::Rect bounds;
         math::Rect area;
         math::Vec2 scroll{};

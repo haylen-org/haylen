@@ -8,10 +8,11 @@
 #include "haylen/lua/Reference.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/Type.hpp"
+#include "haylen/math/Color.hpp"
+#include "haylen/text/Effect.hpp"
 #include "haylen/text/RichText.hpp"
 #include "haylen/text/RichTextOptions.hpp"
 #include "haylen/text/RichTextRegistry.hpp"
-#include "haylen/text/TextEffect.hpp"
 
 struct lua_State;
 
@@ -45,9 +46,14 @@ class RichTextLua final {
   private:
     static constexpr std::array<std::string_view, 14> kOptionFields{"family", "size", "bold", "italic", "color", "maxWidth", "align", "direction", "language", "lineSpacing", "scale", "reveal", "underlineLinks", "fonts"};
     static constexpr std::array<std::string_view, 3> kIconFields{"source", "width", "height"};
+    static constexpr std::array<std::string_view, 2> kDrawFields{"scale", "tint"};
+    static constexpr std::array<std::string_view, 1> kTintFields{"tint"};
+
+    // Reads the tint of a rich text draw, which multiplies every color of the text.
+    [[nodiscard]] static math::Color readTint(lua_State* L, int index);
 
     // Runs a Lua effect on one glyph, which reads and writes the fields of a glyph table and reads the attributes of its tag.
-    static void runEffect(const lua::Reference& function, text::TextEffect::Glyph& glyph, const text::TextEffect::Parameters& parameters);
+    static void runEffect(const lua::Reference& function, text::Effect::Glyph& glyph, const text::Effect::Parameters& parameters);
 
     static int update(lua_State* L);
     static int draw(lua_State* L);

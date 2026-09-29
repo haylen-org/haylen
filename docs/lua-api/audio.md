@@ -741,7 +741,7 @@ print(hit.duration, hit.channels, hit.sampleRate, hit.frames, hit.streamed)
 | `kind` | string | The kind it was created with. Read-only. |
 | `cutoff` | number | Corner or center frequency in hertz. It must be positive, and cutoffs at or above half the sample rate act just below it. |
 | `q` | number | Resonance of the pass and shelf kinds and width of the band of the others, where larger is narrower. It must be positive. |
-| `gain` | number | Decibels that `'peak'`, `'lowShelf'` and `'highShelf'` add or remove. It must be finite. Setting it on another kind raises `Only peak and shelf filters have a gain.`. |
+| `gain` | number | Decibels that `'peak'`, `'lowShelf'` and `'highShelf'` add or remove, from -96 to 96. Setting it on another kind raises `Only peak and shelf filters have a gain.`. |
 | `attached` | boolean | Whether it processes a bus or a voice now. Read-only. |
 | `tail` | number | Seconds it keeps sounding after its input falls silent, 0 for filters. Read-only. |
 
@@ -855,7 +855,7 @@ end)
 | `A filter cutoff must be a positive frequency.` | A filter received a cutoff of 0 or less. |
 | `A filter q must be positive.` | A filter received a `q` of 0 or less. |
 | `Only peak and shelf filters have a gain.` | Another filter received a gain. |
-| `A filter gain must be a finite number of decibels.` | A peak or shelf filter received a gain that is not finite. |
+| `A filter gain must be between -96 and 96 decibels.` | A peak or shelf filter received a gain outside that range or one that is not a number. |
 | `audio effect expected` | A function that takes an effect received another value. It comes inside a bad argument error. |
 | `expected a non-negative integer` | A voice id is negative. It comes inside a bad argument error. |
 | `haylen.Sound has no member '<name>'.` | A sound property does not exist. |

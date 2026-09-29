@@ -12,7 +12,11 @@ Monitor::Monitor(std::string monitorName, Sampler source, std::size_t historySiz
 }
 
 void Monitor::sample() {
-    value = sampler();
+    const std::optional<double> sampled = sampler();
+    if (!sampled) {
+        return;
+    }
+    value = *sampled;
     history.push(static_cast<float>(value));
 }
 

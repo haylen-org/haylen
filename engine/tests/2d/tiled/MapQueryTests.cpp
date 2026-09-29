@@ -13,40 +13,44 @@
 #include "haylen/2d/tiled/MapQuery.hpp"
 #include "haylen/math/Geometry.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen {
 
 namespace {
 
-// An 8 by 6 map of 16 pixel tiles with a wall down column 5 that leaves row 3 open, and objects in a group moved by 4, 2.
-tiled::Map queryMap(tiled::Map::Orientation orientation) {
-    tiled::Map map;
-    map.orientation = orientation;
-    map.width = 8;
-    map.height = 6;
-    map.tileSize = orientation == tiled::Map::Orientation::Isometric ? math::Vec2{32.0F, 16.0F} : math::Vec2{16.0F, 16.0F};
-    map.skew = orientation == tiled::Map::Orientation::Oblique ? math::Vec2{8.0F, 0.0F} : math::Vec2{};
+class MapQueryTest : public ::testing::Test {
+  protected:
+    // An 8 by 6 map of 16 pixel tiles with a wall down column 5 that leaves row 3 open, and objects in a group moved by 4, 2.
+    [[nodiscard]] static tiled::Map queryMap(tiled::Map::Orientation orientation) {
+        tiled::Map map;
+        map.orientation = orientation;
+        map.width = 8;
+        map.height = 6;
+        map.tileSize = orientation == tiled::Map::Orientation::Isometric ? math::Vec2{32.0F, 16.0F} : math::Vec2{16.0F, 16.0F};
+        map.skew = orientation == tiled::Map::Orientation::Oblique ? math::Vec2{8.0F, 0.0F} : math::Vec2{};
 
-    tiled::Layer walls{.name = "walls", .kind = tiled::Layer::Kind::Tile, .width = 8, .height = 6};
-    walls.gids.assign(48, 0);
-    for (int row = 0; row < 6; ++row) {
-        walls.gids[static_cast<std::size_t>(row * 8 + 5)] = row == 3 ? 0U : (row == 4 ? 2U : 1U);
+        tiled::Layer walls{.name = "walls", .kind = tiled::Layer::Kind::Tile, .width = 8, .height = 6};
+        walls.gids.assign(48, 0);
+        for (int row = 0; row < 6; ++row) {
+            walls.gids[static_cast<std::size_t>(row * 8 + 5)] = row == 3 ? 0U : (row == 4 ? 2U : 1U);
+        }
+
+        tiled::Layer rocks{.name = "rocks", .kind = tiled::Layer::Kind::Object};
+        rocks.objects = {
+            {.id = 1, .name = "crate", .type = "block", .position = {20.0F, 20.0F}, .size = {10.0F, 10.0F}}, {.id = 2, .name = "pond", .position = {40.0F, 20.0F}, .size = {20.0F, 10.0F}, .shape = tiled::Object::Shape::Ellipse}, {.id = 3, .name = "wedge", .position = {70.0F, 20.0F}, .shape = tiled::Object::Shape::Polygon, .points = {{0.0F, 0.0F}, {10.0F, 5.0F}, {0.0F, 10.0F}}}, {.id = 4, .name = "fence", .position = {90.0F, 10.0F}, .shape = tiled::Object::Shape::Polyline, .points = {{0.0F, 0.0F}, {0.0F, 30.0F}}}, {.id = 5, .name = "tree", .position = {100.0F, 40.0F}, .size = {16.0F, 32.0F}, .shape = tiled::Object::Shape::Tile, .gid = 1}, {.id = 6, .name = "spawn", .position = {5.0F, 5.0F}, .shape = tiled::Object::Shape::Point}, {.id = 7, .name = "log", .position = {120.0F, 20.0F}, .size = {30.0F, 10.0F}, .shape = tiled::Object::Shape::Capsule},
+        };
+        tiled::Layer group{.name = "things", .kind = tiled::Layer::Kind::Group, .offset = {4.0F, 2.0F}};
+        group.layers.push_back(rocks);
+        map.layers = {walls, group};
+        map.tilesets = {{.firstGid = 1, .tileset = std::make_shared<tiled::Tileset>(tiled::Tileset{.image = "tiles.png", .tileSize = {16.0F, 16.0F}, .columns = 2, .tileCount = 2})}};
+        return map;
     }
-
-    tiled::Layer rocks{.name = "rocks", .kind = tiled::Layer::Kind::Object};
-    rocks.objects = {
-        {.id = 1, .name = "crate", .type = "block", .position = {20.0F, 20.0F}, .size = {10.0F, 10.0F}}, {.id = 2, .name = "pond", .position = {40.0F, 20.0F}, .size = {20.0F, 10.0F}, .shape = tiled::Object::Shape::Ellipse}, {.id = 3, .name = "wedge", .position = {70.0F, 20.0F}, .shape = tiled::Object::Shape::Polygon, .points = {{0.0F, 0.0F}, {10.0F, 5.0F}, {0.0F, 10.0F}}}, {.id = 4, .name = "fence", .position = {90.0F, 10.0F}, .shape = tiled::Object::Shape::Polyline, .points = {{0.0F, 0.0F}, {0.0F, 30.0F}}}, {.id = 5, .name = "tree", .position = {100.0F, 40.0F}, .size = {16.0F, 32.0F}, .shape = tiled::Object::Shape::Tile, .gid = 1}, {.id = 6, .name = "spawn", .position = {5.0F, 5.0F}, .shape = tiled::Object::Shape::Point}, {.id = 7, .name = "log", .position = {120.0F, 20.0F}, .size = {30.0F, 10.0F}, .shape = tiled::Object::Shape::Capsule},
-    };
-    tiled::Layer group{.name = "things", .kind = tiled::Layer::Kind::Group, .offset = {4.0F, 2.0F}};
-    group.layers.push_back(rocks);
-    map.layers = {walls, group};
-    map.tilesets = {{.firstGid = 1, .tileset = std::make_shared<tiled::Tileset>(tiled::Tileset{.image = "tiles.png", .tileSize = {16.0F, 16.0F}, .columns = 2, .tileCount = 2})}};
-    return map;
-}
+};
 
 } // namespace
 
-TEST(MapQueryTest, CastsRaysOverTileLayers) {
+TEST_F(MapQueryTest, CastsRaysOverTileLayers) {
     const tiled::Map map = queryMap(tiled::Map::Orientation::Orthogonal);
     const tiled::MapQuery query(map);
 
@@ -73,7 +77,7 @@ TEST(MapQueryTest, CastsRaysOverTileLayers) {
     EXPECT_THROW((void)tiled::MapQuery(staggered).castTiles("walls", math::Ray::between({}, {1.0F, 0.0F})), std::invalid_argument);
 }
 
-TEST(MapQueryTest, CastsTileRaysOnlyOverTheCellsOfTheLayer) {
+TEST_F(MapQueryTest, CastsTileRaysOnlyOverTheCellsOfTheLayer) {
     const tiled::Map map = queryMap(tiled::Map::Orientation::Orthogonal);
     const tiled::MapQuery query(map);
 
@@ -109,7 +113,7 @@ TEST(MapQueryTest, CastsTileRaysOnlyOverTheCellsOfTheLayer) {
     EXPECT_NEAR(chunk->point.x, -48.0F, 1e-3F);
 }
 
-TEST(MapQueryTest, CastsRaysOverIsometricAndObliqueTiles) {
+TEST_F(MapQueryTest, CastsRaysOverIsometricAndObliqueTiles) {
     for (const tiled::Map::Orientation orientation : {tiled::Map::Orientation::Isometric, tiled::Map::Orientation::Oblique}) {
         const tiled::Map map = queryMap(orientation);
         const tiled::MapQuery query(map);
@@ -127,7 +131,7 @@ TEST(MapQueryTest, CastsRaysOverIsometricAndObliqueTiles) {
     }
 }
 
-TEST(MapQueryTest, OutlinesObjectsAndCastsRaysAgainstThem) {
+TEST_F(MapQueryTest, OutlinesObjectsAndCastsRaysAgainstThem) {
     const tiled::Map map = queryMap(tiled::Map::Orientation::Orthogonal);
     const tiled::MapQuery query(map);
     const std::vector<tiled::Object>& objects = map.findLayer("rocks")->objects;
@@ -169,7 +173,7 @@ TEST(MapQueryTest, OutlinesObjectsAndCastsRaysAgainstThem) {
     EXPECT_THROW((void)query.castObjects("walls", math::Ray::between({}, {1.0F, 0.0F})), std::invalid_argument);
 }
 
-TEST(MapQueryTest, OutlinesTileObjectsWhereTheirImagesDraw) {
+TEST_F(MapQueryTest, OutlinesTileObjectsWhereTheirImagesDraw) {
     // The tree tileset aligns its objects by their bottom center, so the tree at 100, 40 covers 92 to 108 across.
     tiled::Map map = queryMap(tiled::Map::Orientation::Orthogonal);
     map.tilesets.front().tileset->objectAlignment = "bottom";
@@ -191,7 +195,7 @@ TEST(MapQueryTest, OutlinesTileObjectsWhereTheirImagesDraw) {
 }
 
 TEST(MapQueryLuaTest, CastsRaysOverMapsFromLua) {
-    const std::vector<std::uint8_t> image = test::pngImage(32, 16, 0xFFFFFFFFU);
+    const std::vector<std::uint8_t> image = test::TestFiles::pngImage(32, 16, 0xFFFFFFFFU);
     // clang-format off
     const std::string map = R"({
         "type": "map", "orientation": "orthogonal", "renderorder": "right-down", "width": 8, "height": 6, "tilewidth": 16, "tileheight": 16, "infinite": false,
@@ -207,7 +211,7 @@ TEST(MapQueryLuaTest, CastsRaysOverMapsFromLua) {
     test::EngineFixture fixture({{"content/maps/query.tmj", map}, {"content/maps/tiles.png", std::string(image.begin(), image.end())}});
     fixture.runLua(R"(
         tiled = require('haylen.tiled')
-        map = tiled.newMap(require('haylen.assets').load('maps/query.tmj'))
+        map = tiled.newMapRenderer(require('haylen.assets').load('maps/query.tmj'))
     )");
     // clang-format on
 

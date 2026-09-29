@@ -25,6 +25,7 @@
 #include "haylen/lua/Error.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/Plugin.hpp"
+#include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/RecordingScene.hpp"
 #include "support/TemporaryDirectory.hpp"

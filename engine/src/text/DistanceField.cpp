@@ -60,13 +60,21 @@ bool DistanceField::mayOverlap(const msdfgen::Shape& shape) {
     return false;
 }
 
-std::optional<DistanceField> DistanceField::build(const stbtt_fontinfo& font, int glyph, float scale, int spread) {
+std::optional<DistanceField> DistanceField::measure(const stbtt_fontinfo& font, int glyph, float scale, int spread) {
     int left = 0;
     int top = 0;
     int right = 0;
     int bottom = 0;
     stbtt_GetGlyphBitmapBox(&font, glyph, scale, scale, &left, &top, &right, &bottom);
     if (left == right || top == bottom) {
+        return std::nullopt;
+    }
+    return DistanceField{.width = right - left + spread * 2, .height = bottom - top + spread * 2, .offsetX = left - spread, .offsetY = top - spread};
+}
+
+std::optional<DistanceField> DistanceField::build(const stbtt_fontinfo& font, int glyph, float scale, int spread) {
+    std::optional<DistanceField> field = measure(font, glyph, scale, spread);
+    if (!field) {
         return std::nullopt;
     }
     msdfgen::Shape shape = readShape(font, glyph, scale);
@@ -85,13 +93,12 @@ std::optional<DistanceField> DistanceField::build(const stbtt_fontinfo& font, in
     }
 
     // Each pixel samples its center, and distances across twice the spread fill the range of a byte.
-    DistanceField field{.width = right - left + spread * 2, .height = bottom - top + spread * 2, .offsetX = left - spread, .offsetY = top - spread};
-    std::vector<float> distances(static_cast<std::size_t>(field.width) * static_cast<std::size_t>(field.height));
-    const msdfgen::BitmapSection<float, 1> output(distances.data(), field.width, field.height, msdfgen::Y_DOWNWARD);
-    const msdfgen::Projection projection(msdfgen::Vector2(1.0), msdfgen::Vector2(-field.offsetX, -field.offsetY));
+    std::vector<float> distances(static_cast<std::size_t>(field->width) * static_cast<std::size_t>(field->height));
+    const msdfgen::BitmapSection<float, 1> output(distances.data(), field->width, field->height, msdfgen::Y_DOWNWARD);
+    const msdfgen::Projection projection(msdfgen::Vector2(1.0), msdfgen::Vector2(-field->offsetX, -field->offsetY));
     msdfgen::generateSDF(output, shape, msdfgen::SDFTransformation(projection, msdfgen::Range(spread * 2.0)), msdfgen::GeneratorConfig(mayOverlap(shape)));
-    field.pixels.resize(distances.size());
-    std::ranges::transform(distances, field.pixels.begin(), [](float distance) { return msdfgen::pixelFloatToByte(distance); });
+    field->pixels.resize(distances.size());
+    std::ranges::transform(distances, field->pixels.begin(), [](float distance) { return msdfgen::pixelFloatToByte(distance); });
     return field;
 }
 

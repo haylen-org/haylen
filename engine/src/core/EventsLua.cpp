@@ -16,7 +16,7 @@
 
 namespace haylen::core {
 
-std::unordered_map<std::type_index, EventsLua::Payload> EventsLua::payloads;
+std::unordered_map<std::type_index, EventsLua::Payload>& EventsLua::payloads = *new std::unordered_map<std::type_index, Payload>();
 
 int EventsLua::pushPayload(lua_State* L, const EventBus::Event& event) {
     if (const StackArguments* arguments = event.get<StackArguments>()) {

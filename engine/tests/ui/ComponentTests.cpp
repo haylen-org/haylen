@@ -22,6 +22,7 @@
 #include "haylen/plugins/LocalizationPlugin.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/TestFiles.hpp"
 #include "ui/Typography.hpp"
 
 namespace haylen::ui {
@@ -1025,8 +1026,8 @@ class ComponentAssetTest : public ComponentTest {
   protected:
     ComponentAssetTest()
         : ComponentTest({
-              {"content/ui/icon.png", toText(test::pngImage(16, 16, 0xFF0000FFU))},
-              {"content/ui/panel.png", toText(test::pngImage(24, 24, 0xFFFFFFFFU))},
+              {"content/ui/icon.png", toText(test::TestFiles::pngImage(16, 16, 0xFF0000FFU))},
+              {"content/ui/panel.png", toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))},
               {"content/fonts/ui.ttf", toText(core::EmbeddedFiles::getDefaultFont())},
               {"content/themes/wood.json", R"({"name": "wood", "fontFiles": {"ui": "fonts/ui.ttf"}, "fonts": {"title": {"font": "ui", "size": 64}},
                   "surfaces": {"panel": {"image": "ui/panel.png", "slice": 8}, "button": {"image": "ui/panel.png", "slice": 8, "padding": 4}, "track": {"image": "ui/panel.png", "slice": 4},

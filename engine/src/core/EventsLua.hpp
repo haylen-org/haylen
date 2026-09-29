@@ -34,7 +34,7 @@ class EventsLua final {
 
     static constexpr std::array<std::string_view, 5> kListenFields{"channel", "priority", "once", "owner", "filter"};
 
-    static std::unordered_map<std::type_index, Payload> payloads;
+    static std::unordered_map<std::type_index, Payload>& payloads;
 
     // The values of an event emitted from Lua, where they sit on the stack of the emitting thread.
     struct StackArguments {

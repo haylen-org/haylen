@@ -10,8 +10,8 @@
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
-#include "haylen/text/TextLayout.hpp"
-#include "haylen/text/TextStyle.hpp"
+#include "haylen/text/Layout.hpp"
+#include "haylen/text/Style.hpp"
 #include "haylen/ui/Alignment.hpp"
 #include "haylen/ui/Theme.hpp"
 
@@ -42,11 +42,11 @@ class Typography final {
     static void drawParagraph(Context& context, Theme::Font font, const math::Rect& bounds, math::Color color, std::string_view text, Alignment horizontal, std::optional<math::Color> outline = std::nullopt, float outlineWidth = 2.0F);
 
     // Returns the style that lays text out in a font role of the theme in the language of the node being drawn, where start and end become the sides of the UI they name.
-    [[nodiscard]] static text::TextStyle getStyle(Context& context, Theme::Font font, float wrapWidth = -1.0F, text::TextAlign align = text::TextAlign::Start);
-    [[nodiscard]] static std::shared_ptr<const text::TextLayout> layout(Context& context, Theme::Font font, std::string_view text, const text::TextStyle& style);
+    [[nodiscard]] static text::Style getStyle(Context& context, Theme::Font font, float wrapWidth = -1.0F, text::Alignment align = text::Alignment::Start);
+    [[nodiscard]] static std::shared_ptr<const text::Layout> layout(Context& context, Theme::Font font, std::string_view text, const text::Style& style);
 
     // Draws a layout of the text in the style at the position of the top-left of its block, moved, scaled and tinted by the transforms of the nodes around it.
-    static void drawLayout(Context& context, Theme::Font font, std::string_view text, const text::TextStyle& style, math::Vec2 position);
+    static void drawLayout(Context& context, Theme::Font font, std::string_view text, const text::Style& style, math::Vec2 position);
 
     // Formats a number with a fixed count of decimals.
     [[nodiscard]] static std::string formatNumber(double value, int decimals);

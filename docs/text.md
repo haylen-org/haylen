@@ -94,7 +94,7 @@ Markup is text with tags in square brackets. Inline tags open with `[name]` or `
 | `[alpha=0.5]` | Multiplies the opacity of the text, images and icons inside. |
 | `[url=payload]`, `[url]text[/url]` | A link, underlined unless the host turns that off, whose payload hit tests and the UI report. Without a payload the text is the payload. |
 | `[hint=text]` | A hint the UI shows as a tooltip and `text:hintAt` reports. |
-| `[img=path width=24 height=24 region=x,y,w,h color=c valign=center]` | An inline image of the package content, which keeps the shape of its region when only one side is given. |
+| `[img=path width=24 height=24 region=x,y,w,h color=c valign=center]` | An inline image of the package content, which keeps the shape of its region when only one side is given. Rich text that draws every frame, such as `graphics2d.drawRichText`, loads each image once and keeps it while frames draw it. |
 | `[icon=name width= height= color= valign=]` | An icon that `graphics2d.registerTextIcon` registered, as tall as its text unless sized. |
 | `[pause=0.5]` | Holds the typewriter reveal for half a second before the next character. |
 | `[speed=2]` | Reveals the text inside twice as fast. |
@@ -135,7 +135,7 @@ Effects animate the glyphs of their tag every frame, changing their offset, colo
 | `[rainbow]` | `freq` (1), `sat` (0.8), `val` (0.8), `speed` (1) | Glyphs cycle through the hues. |
 | `[pulse]` | `freq` (1), `color` (`#40FFFFFF`), `ease` (-2) | Glyphs pulse toward their color multiplied by `color`. |
 
-Apps register their own effects from Lua with `graphics2d.registerTextEffect(name, effect)`, whose function receives each glyph and the attributes of the tag, and from C++ with `text::RichTextRegistry::registerEffect`, whose function receives a `text::TextEffect::Glyph` and its `text::TextEffect::Parameters`. An effect sees the index of the glyph inside its tag, which counts every character from the first one of the tag, spaces and images included, its character in the whole text, its pen position on the baseline and the time. Effects run while the text builds the picture of the moment, so an effect cannot change or lay out the text it runs on: setting its markup, options, width or scale, updating it or measuring it from inside the effect raises `A text effect cannot change or lay out the rich text it runs on.`.
+Apps register their own effects from Lua with `graphics2d.registerTextEffect(name, effect)`, whose function receives each glyph and the attributes of the tag, and from C++ with `text::RichTextRegistry::registerEffect`, whose function receives a `text::Effect::Glyph` and its `text::Effect::Parameters`. An effect sees the index of the glyph inside its tag, which counts every character from the first one of the tag, spaces and images included, its character in the whole text, its pen position on the baseline and the time. Effects run while the text builds the picture of the moment, so an effect cannot change or lay out the text it runs on: setting its markup, options, width or scale, updating it or measuring it from inside the effect raises `A text effect cannot change or lay out the rich text it runs on.`.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -226,7 +226,7 @@ ui.mount(ui.card{padding = 24,
 
 ## C++
 
-The text types live in `haylen::text` under `engine/include/haylen/text/`. `text::Font` is the interface of both kinds of font, with `text::TrueTypeFont` and `text::BitmapFont` behind it, and `BitmapFont::parse` and `BitmapFont::describeGrid` read BMFont files and grids. `Font::shape` shapes one run into `Font::ShapedGlyph` values, and `Font::layout` and `FontFamily::layout` lay plain text out into a cached `text::TextLayout` of glyphs, characters and lines. `text::FontFamily` selects faces and resolves fallbacks, and `text::Direction` and `text::TextAlign` set the direction and alignment of a `text::TextStyle`. `text::RichText::parse` reads markup into a `text::RichTextDocument` of paragraphs, runs, objects, links, hints and effects, and a `text::RichText` made from markup, `text::RichTextOptions` and the `text::RichTextRegistry` of effects and icons lays it out into a `text::TextLayout` and animates it. `graphics2d::Renderer::drawText` draws plain text with a font or a family. `graphics2d::Renderer::drawRichText` draws the frame of this moment. The registry of an engine belongs to `plugins::TextPlugin`, which also registers the `bitmapFont` and `gridFont` asset types.
+The text types live in `haylen::text` under `engine/include/haylen/text/`. `text::Font` is the interface of both kinds of font, with `text::TrueTypeFont` and `text::BitmapFont` behind it, and `BitmapFont::parse` and `BitmapFont::describeGrid` read BMFont files and grids. `Font::shape` shapes one run into `Font::ShapedGlyph` values, and `Font::layout` and `FontFamily::layout` lay plain text out into a cached `text::Layout` of glyphs, characters and lines. `text::FontFamily` selects faces and resolves fallbacks, and `text::Direction` and `text::Alignment` set the direction and alignment of a `text::Style`, which also owns their names (`Style::alignmentFromName`, `Style::directionName` and the tables behind them) for Lua, markup and UI documents. `text::RichText::parse` reads markup into a `text::RichTextDocument` of paragraphs, runs, objects, links, hints and effects, and a `text::RichText` made from markup, `text::RichTextOptions` and the `text::RichTextRegistry` of effects and icons lays it out into a `text::Layout` and animates it. `graphics2d::Renderer::drawText` draws plain text with a font or a family. `graphics2d::Renderer::drawRichText` draws the frame of this moment. The registry of an engine belongs to `plugins::TextPlugin`, which also registers the `bitmapFont` and `gridFont` asset types, and whose `getImage` loads the images of `[img]` tags for rich text from Lua, keeping each one while frames draw it.
 
 ```cpp
 #include "haylen/2d/graphics/Renderer.hpp"
@@ -235,7 +235,7 @@ The text types live in `haylen::text` under `engine/include/haylen/text/`. `text
 #include "haylen/text/RichText.hpp"
 
 const std::shared_ptr<haylen::text::RichTextRegistry>& registry = engine.getPlugin<haylen::plugins::TextPlugin>().getRegistry();
-registry->registerEffect("blink", [](haylen::text::TextEffect::Glyph& glyph, const haylen::text::TextEffect::Parameters& parameters) {
+registry->registerEffect("blink", [](haylen::text::Effect::Glyph& glyph, const haylen::text::Effect::Parameters& parameters) {
     glyph.visible = static_cast<int>(glyph.time * parameters.getNumber("rate", 2.0F)) % 2 == 0;
 });
 haylen::text::RichText banner("[b]Night 3[/b] [blink]begins[/blink]", {.family = registry->getDefaultFamily(), .size = 48.0F}, registry);
@@ -243,8 +243,8 @@ banner.update(deltaSeconds);
 engine.getRenderer2D().drawRichText(banner, {48.0F, 48.0F});
 
 haylen::text::FontFamily world({.regular = engine.getDefaultFont(), .fallbacks = {arabicFont, devanagariFont}});
-const haylen::text::TextStyle arabic{.size = 32.0F, .maxWidth = 600.0F, .direction = haylen::text::Direction::RightToLeft, .language = "ar"};
-const std::shared_ptr<const haylen::text::TextLayout> laid = world.layout("مرحبا 42 (Harbor)", arabic);
+const haylen::text::Style arabic{.size = 32.0F, .maxWidth = 600.0F, .direction = haylen::text::Direction::RightToLeft, .language = "ar"};
+const std::shared_ptr<const haylen::text::Layout> laid = world.layout("مرحبا 42 (Harbor)", arabic);
 engine.getRenderer2D().drawText(world, "مرحبا 42 (Harbor)", {48.0F, 160.0F}, arabic);
 ```
 

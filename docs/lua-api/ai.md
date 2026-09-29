@@ -90,7 +90,7 @@ local machine = ai.newStateMachine({
 machine:change('alive')
 machine:change('hurt', 2)
 machine:change('hurt', 2)
-print(machine.state) -- dead
+print(machine.current) -- dead
 ```
 
 ### machine:update(dt)
@@ -140,7 +140,7 @@ command('attack')
 command('fly')
 ```
 
-### machine.state
+### machine.current
 
 Read-only name of the current state, or `nil` before the first change.
 
@@ -149,7 +149,7 @@ local ai = require('haylen.ai')
 
 local door = ai.newStateMachine({open = {}, closed = {}})
 door:change('closed')
-if door.state == 'closed' then
+if door.current == 'closed' then
     print('the door is closed')
 end
 ```
@@ -172,7 +172,7 @@ local function back()
 end
 
 back()
-print(menu.state) -- main
+print(menu.current) -- main
 ```
 
 ### machine.elapsed
@@ -195,7 +195,7 @@ local turret = ai.newStateMachine({
 turret:change('charging')
 turret:update(1)
 turret:update(1)
-print(turret.state) -- firing
+print(turret.current) -- firing
 ```
 
 ### machine.onChange
@@ -455,16 +455,16 @@ heat:set(2, 3, 5)
 print(heat:get(2, 3), heat:sample(40, 56), #heat:values()) -- 5.0 5.0 100
 ```
 
-### map:highest(x, y, radius), map:lowest(x, y, radius), map:cellCenter(column, row)
+### map:findHighest(x, y, radius), map:findLowest(x, y, radius), map:cellCenter(column, row)
 
-`highest` and `lowest` return the center and value of the cell with the highest or lowest value among the cells whose centers lie within `radius` of the point, as three numbers, or `nil` when no cell does. A `radius` of `math.huge` searches the whole map. `cellCenter` returns the center of a cell.
+`findHighest` and `findLowest` return the center and value of the cell with the highest or lowest value among the cells whose centers lie within `radius` of the point, as three numbers, or `nil` when no cell does. A `radius` of `math.huge` searches the whole map. `cellCenter` returns the center of a cell.
 
 ```lua
 local ai = require('haylen.ai')
 
 local threat = ai.newInfluenceMap({columns = 32, rows = 18, cellSize = 40})
 threat:stamp(600, 300, 1, 200)
-local x, y, danger = threat:lowest(620, 320, 300)
+local x, y, danger = threat:findLowest(620, 320, 300)
 print('retreat to', x, y, danger)
 print(threat:cellCenter(0, 0)) -- 20.0 20.0
 ```

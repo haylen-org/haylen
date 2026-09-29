@@ -2,6 +2,15 @@
 
 namespace haylen::lua {
 
+bool Userdata::newMetatable(lua_State* L, const char* name) {
+    if (luaL_newmetatable(L, name) == 0) {
+        return false;
+    }
+    lua_pushstring(L, name);
+    lua_setfield(L, -2, "__metatable");
+    return true;
+}
+
 void Userdata::pushField(lua_State* L, int index, const char* name) {
     if (lua_getiuservalue(L, index, 1) != LUA_TTABLE) {
         lua_pop(L, 1);

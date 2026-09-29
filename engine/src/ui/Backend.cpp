@@ -655,13 +655,13 @@ void Backend::updateTextures(ImDrawData& data) {
         switch (texture->Status) {
         case ImTextureStatus_WantCreate: {
             const ImTextureID id = nextAtlasTexture++;
-            atlasTextures.emplace(id, device.createTexture(toImage(*texture), {.filter = graphics::Texture::Filter::Linear}));
+            atlasTextures.emplace(id, device.createDynamicTexture(toImage(*texture), {.filter = graphics::Texture::Filter::Linear}));
             texture->SetTexID(id);
             texture->SetStatus(ImTextureStatus_OK);
             break;
         }
         case ImTextureStatus_WantUpdates:
-            device.replaceTexture(atlasTextures.at(texture->TexID), toImage(*texture));
+            device.updateTexture(atlasTextures.at(texture->TexID), toImage(*texture).getPixels());
             texture->SetStatus(ImTextureStatus_OK);
             break;
         case ImTextureStatus_WantDestroy:

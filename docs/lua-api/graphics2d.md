@@ -188,6 +188,7 @@ Draws `texture` once with its pivot at `x`, `y`. `options` is optional:
 | `color` | Color | `'#FFFFFFFF'` | Multiplies the texture color. |
 | `flash` | Color | `'#00000000'` | Mixes the result toward this color by its alpha, for hit flashes. |
 | `flipX`, `flipY` | boolean | `false` | Mirror the image horizontally or vertically. |
+| `flipDiagonal` | boolean | `false` | Mirror the image across its diagonal from the top-left corner, which with `flipX` and `flipY` turns it by quarter turns, the way Tiled rotates tiles. |
 | `x`, `y` | number | the arguments | Replace the position arguments. |
 | `layer`, `depth`, `sortOffset`, `visibility`, `blend`, `material`, `normalMap`, `specular`, `shininess`, `emission`, `lightMask`, `unshaded` | | | [Draw order](#draw-order). |
 
@@ -442,6 +443,7 @@ Draws UTF-8 `text` with `font`, a `Font` or a `FontFamily`, or with the engine's
 | `bold`, `italic` | boolean | `false` | With a `FontFamily`, pick its bold and italic faces or synthesize them. A `Font` synthesizes them. |
 | `anchor` | Vec2 | `{0, 0}` | Point of the block placed at `x`, `y`, as a fraction of its size. `{0.5, 0.5}` centers the text. |
 | `rotation` | number | `0` | Rotation in radians. |
+| `scale` | Vec2 | `{1, 1}` | Stretches the drawn block from its anchor point on each axis, without laying the text out again. `graphics2d.measureText` returns the stretched size for the same style. |
 | `layer`, `depth`, `blend` | | | Draw order. |
 
 ```lua
@@ -490,7 +492,7 @@ scene.push({
 
 ### graphics2d.measureText(font, text, style)
 
-Returns the width and height of the text block that `graphics2d.drawText` would draw with the same arguments. `font` can be a `Font`, a `FontFamily` or `nil` for the default font. Only the layout keys of `style` change the result.
+Returns the width and height of the text block that `graphics2d.drawText` would draw with the same arguments. `font` can be a `Font`, a `FontFamily` or `nil` for the default font. Only the layout keys of `style` and its `scale` change the result.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -508,7 +510,7 @@ scene.push({
 
 ### graphics2d.newRichText(markup, options)
 
-Creates a [`RichText`](#richtext) from BBCode markup, laid out once and drawn every frame with `text:draw(x, y, order)`. The [text guide](../text.md#markup) lists every tag. `options` is optional:
+Creates a [`RichText`](#richtext) from BBCode markup, laid out once and drawn every frame with `text:draw(x, y, options)`. The [text guide](../text.md#markup) lists every tag. `options` is optional:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -553,7 +555,7 @@ scene.push({
 
 ### graphics2d.drawRichText(markup, x, y, options)
 
-Draws markup once with its top-left corner at `x`, `y`, laying it out on every call. `options` takes the keys of `graphics2d.newRichText` and the [draw order](#draw-order) keys, and effects follow the time the app has run. Text that stays on screen draws faster as a `RichText`.
+Draws markup once with its top-left corner at `x`, `y`, laying it out on every call. `options` takes the keys of `graphics2d.newRichText`, `tint`, a Color that multiplies every color of the text and defaults to white, and the [draw order](#draw-order) keys, and effects follow the time the app has run. The images of `[img]` tags load once and stay loaded while frames keep drawing them, and they go back to the assets after a frame that no longer draws them. Text that stays on screen draws faster as a `RichText`.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -562,7 +564,7 @@ local scene = require('haylen.scene')
 scene.push({
     renderUi = function(self)
         graphics2d.beginScreen()
-        graphics2d.drawRichText('[outline=3 color=#402000][size=64]Level [color=gold]3[/color][/size][/outline]', 40, 40, {layer = 5})
+        graphics2d.drawRichText('[outline=3 color=#402000][size=64]Level [color=gold]3[/color][/size][/outline]', 40, 40, {layer = 5, tint = '#FFFFE0C0'})
     end,
 })
 ```
@@ -1155,7 +1157,7 @@ Returns a table with the renderer counters of the current frame. The draw counte
 | `occluders` | Occluders drawn. |
 | `shadows` | Shadow maps cast, one per light with shadows. |
 | `textureSwitches` | Texture changes between draw calls. |
-| `uploadedBytes` | Bytes uploaded to GPU buffers. |
+| `uploadedBytes` | Bytes uploaded to GPU buffers and to the textures that change in place, such as the atlases of fonts and of the UI and dynamic textures. |
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -1251,6 +1253,7 @@ A `Sprite` is a value that describes one quad and draws it with `sprite:draw()`.
 | `flash` | Color | `'#00000000'` | Mixes the result toward this color by its alpha. |
 | `source` | Rect | empty | Region of the texture in pixels. An empty rectangle covers the whole texture. |
 | `flipX`, `flipY` | boolean | `false` | Mirror the image. |
+| `flipDiagonal` | boolean | `false` | Mirror the image across its diagonal from the top-left corner. |
 | `layer`, `depth`, `sortOffset`, `visibility`, `blend` | | `0`, `0`, `0`, `1`, `'alpha'` | [Draw order](#draw-order). |
 | `material` | Material or nil | nil | Custom shader of the sprite. |
 | `normalMap`, `specular`, `shininess`, `emission`, `lightMask`, `unshaded` | | nil, `0`, `32`, `0`, `1`, `false` | Lighting in lit canvases, as the [draw order](#draw-order) describes. |
@@ -1293,6 +1296,7 @@ A `SpriteBatch` holds many sprites that share one texture. Indices count from 1.
 | `color` | Color | `'#FFFFFFFF'` | Multiplies the texture color. |
 | `flash` | Color | `'#00000000'` | Mixes the result toward this color by its alpha. |
 | `flipX`, `flipY` | boolean | `false` | Mirror the image. |
+| `flipDiagonal` | boolean | `false` | Mirror the image across its diagonal from the top-left corner. |
 
 ### Sprite fields
 
@@ -1547,7 +1551,7 @@ The methods measure the view with the screen, the visible design area of `viewpo
 | `x`, `y` | number | `0` | The position components. |
 | `offset` | Vec2 | `{0, 0}` | Moves the view in world units after the limits, so it can show past them, for a look around or a cutscene nudge. |
 | `anchor` | string | `'center'` | `'center'` puts the position at the center of the view, which zooms and rotates around it. `'topLeft'` puts it at the top-left corner, and following then ignores the dead zone and the drag margins. |
-| `zoom` | Vec2 | `{1, 1}` | View scale on each axis. 2 shows half the area at twice the size. It stays between `minZoom` and `maxZoom`. |
+| `zoom` | Vec2 | `{1, 1}` | View scale on each axis. 2 shows half the area at twice the size. It stays between `minZoom` and `maxZoom`, and an axis that is not a number raises `The camera zoom must be a number.` |
 | `minZoom`, `maxZoom` | number | `0.05`, `20` | Zoom limits of every zoom change. The smallest zoom must be above 0 and not above the largest, otherwise the assignment raises `The smallest zoom must be above 0 and not above the largest zoom.` or `The largest zoom must not be below the smallest zoom.` |
 | `rotation` | number | `0` | View rotation in radians. |
 | `ignoreRotation` | boolean | `false` | Keeps the view upright, ignoring `rotation` and the rotation of the shake. |
@@ -1707,7 +1711,7 @@ print(camera.x, camera.y)
 
 ### camera:zoomAt(factor, x, y)
 
-Multiplies the zoom by `factor`, within the zoom limits, and keeps the world point under the screen point `x`, `y` in place, which is how the mouse wheel and pinch gestures zoom toward the pointer.
+Multiplies the zoom by `factor`, within the zoom limits, and keeps the world point under the screen point `x`, `y` in place, which is how the mouse wheel and pinch gestures zoom toward the pointer. A factor that is not a number raises `The camera zoom must be a number.`
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -2102,9 +2106,9 @@ scene.push({
 })
 ```
 
-### text:draw(x, y, order)
+### text:draw(x, y, options)
 
-Draws the text with the top-left corner of its block at `x`, `y`, where `order` takes the [draw order](#draw-order) keys. A y-sorted canvas sorts it by the bottom of its block.
+Draws the text with the top-left corner of its block at `x`, `y`. `options` is optional and takes `scale`, a Vec2 that stretches the block from that corner without laying it out again, which suits pulses and pops, `tint`, a Color that multiplies every color of the text, and the [draw order](#draw-order) keys. A y-sorted canvas sorts it by the bottom of its block.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -2115,7 +2119,7 @@ local sign = graphics2d.newRichText('[center][b]Village[/b]\n[size=70%]Populatio
 scene.push({
     render = function(self)
         graphics2d.beginWorld(graphics2d.newCamera())
-        sign:draw(-120, -200, {layer = 3})
+        sign:draw(-120, -200, {layer = 3, scale = {1.1, 1.1}, tint = '#FFFFF0D0'})
     end,
 })
 ```

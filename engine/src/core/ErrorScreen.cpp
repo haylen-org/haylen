@@ -248,7 +248,7 @@ void ErrorScreen::handleEvent(const platform::Event& event) {
     }
 }
 
-float ErrorScreen::drawLine(graphics2d::Renderer& renderer, text::Font& font, std::string_view text, math::Vec2 position, const text::TextStyle& style) const {
+float ErrorScreen::drawLine(graphics2d::Renderer& renderer, text::Font& font, std::string_view text, math::Vec2 position, const text::Style& style) const {
     renderer.drawText(font, text, position, style);
     return font.measure(text, style).y;
 }
@@ -295,7 +295,7 @@ float ErrorScreen::drawContent(graphics2d::Renderer& renderer, text::Font& font,
 
 // Line numbers sit right-aligned in a column of their own, so the code starts at the same place on every line, and the error line is highlighted.
 float ErrorScreen::drawExcerpt(graphics2d::Renderer& renderer, text::Font& font, math::Vec2 origin, float width, float unit) const {
-    const text::TextStyle code{.size = kBodySize * unit, .color = kCodeColor};
+    const text::Style code{.size = kBodySize * unit, .color = kCodeColor};
     const float padding = kPadding * unit;
     const float lineHeight = font.getLineHeight(code.size) * code.lineSpacing;
     const float numberWidth = font.measure(std::to_string(excerpt.back().number), code).x;
@@ -310,7 +310,7 @@ float ErrorScreen::drawExcerpt(graphics2d::Renderer& renderer, text::Font& font,
             renderer.drawRect({origin.x, y, width, lineHeight}, kHighlightColor);
         }
 
-        text::TextStyle numberStyle = code;
+        text::Style numberStyle = code;
         numberStyle.color = failing ? kTitleColor : kMutedColor;
         const std::string number = std::to_string(line.number);
         renderer.drawText(font, number, {origin.x + padding + numberWidth - font.measure(number, numberStyle).x, y}, numberStyle);
@@ -322,9 +322,9 @@ float ErrorScreen::drawExcerpt(graphics2d::Renderer& renderer, text::Font& font,
 
 // The stack shows the location of every frame in one column and the function in the next, innermost first.
 float ErrorScreen::drawStack(graphics2d::Renderer& renderer, text::Font& font, math::Vec2 origin, float unit) const {
-    const text::TextStyle heading{.size = kSmallSize * unit, .color = kMutedColor};
-    const text::TextStyle location{.size = kBodySize * unit, .color = kTextColor};
-    const text::TextStyle function{.size = kBodySize * unit, .color = kMutedColor};
+    const text::Style heading{.size = kSmallSize * unit, .color = kMutedColor};
+    const text::Style location{.size = kBodySize * unit, .color = kTextColor};
+    const text::Style function{.size = kBodySize * unit, .color = kMutedColor};
     const float lineHeight = font.getLineHeight(location.size) * location.lineSpacing;
 
     float y = origin.y + drawLine(renderer, font, "Stack", origin, heading) + kGap * unit * 0.4F;
@@ -344,7 +344,7 @@ float ErrorScreen::drawStack(graphics2d::Renderer& renderer, text::Font& font, m
 
 // Keyboards see the key of each action in front of its label, while touch devices get plain buttons. Both answer to a click or a tap.
 math::Rect ErrorScreen::drawAction(graphics2d::Renderer& renderer, text::Font& font, math::Vec2 position, std::string_view key, std::string_view label, float unit) const {
-    const text::TextStyle style{.size = kBodySize * unit, .color = kTextColor};
+    const text::Style style{.size = kBodySize * unit, .color = kTextColor};
     const float padding = kPadding * unit;
     const float height = kButtonHeight * unit;
     const math::Vec2 labelSize = font.measure(label, style);
@@ -373,7 +373,7 @@ float ErrorScreen::drawFooter(graphics2d::Renderer& renderer, text::Font& font, 
 
     float top = buttonsTop - gap;
     if (isReloadWatching()) {
-        const text::TextStyle hint{.size = kSmallSize * unit, .color = kMutedColor};
+        const text::Style hint{.size = kSmallSize * unit, .color = kMutedColor};
         const std::string_view text = "Saving a file of the app reloads it.";
         top -= font.measure(text, hint).y;
         renderer.drawText(font, text, {area.x, top}, hint);

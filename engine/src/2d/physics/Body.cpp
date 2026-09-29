@@ -32,7 +32,12 @@ std::string_view Body::typeName(Type value) noexcept {
     return kTypeNames.back().first;
 }
 
+Body::Body(World* owner, std::uint64_t handle) noexcept : world(owner), worldHandle(owner != nullptr ? owner->getHandle() : 0), id(handle) {}
+
 std::uint64_t Body::checkedId() const {
+    if (world != nullptr && !b2World_IsValid(b2LoadWorldId(worldHandle))) {
+        throw std::logic_error("The physics world of the body was destroyed.");
+    }
     if (!isValid()) {
         throw std::logic_error("The physics body was destroyed.");
     }
@@ -40,7 +45,7 @@ std::uint64_t Body::checkedId() const {
 }
 
 bool Body::isValid() const noexcept {
-    return world != nullptr && b2Body_IsValid(b2LoadBodyId(id));
+    return world != nullptr && b2World_IsValid(b2LoadWorldId(worldHandle)) && b2Body_IsValid(b2LoadBodyId(id));
 }
 
 Body::Type Body::getType() const {

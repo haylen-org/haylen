@@ -36,7 +36,7 @@ SpriteLayout SpriteBatchLua::readLayout(lua_State* L, int index, const SpriteIns
 }
 
 void SpriteBatchLua::pushSpriteInstance(lua_State* L, const SpriteInstance& sprite) {
-    lua_createtable(L, 0, 12);
+    lua_createtable(L, 0, 13);
     lua::Stack::push(L, sprite.position.x);
     lua_setfield(L, -2, "x");
     lua::Stack::push(L, sprite.position.y);
@@ -61,6 +61,8 @@ void SpriteBatchLua::pushSpriteInstance(lua_State* L, const SpriteInstance& spri
     lua_setfield(L, -2, "flipX");
     lua::Stack::push(L, sprite.flip.vertical);
     lua_setfield(L, -2, "flipY");
+    lua::Stack::push(L, sprite.flip.diagonal);
+    lua_setfield(L, -2, "flipDiagonal");
 }
 
 std::size_t SpriteBatchLua::checkIndex(lua_State* L, int index, const SpriteBatch& batch) {

@@ -376,6 +376,28 @@ TEST(TweenManagerTest, RunsByProcessModeTimeKindAndGroup) {
     EXPECT_THROW(rig.tweens.setTimeScale("world", -1.0F), std::invalid_argument);
 }
 
+TEST(TweenManagerTest, InheritingTweensFollowTheModeOfTheirParent) {
+    TweenRig rig;
+    Box box;
+    core::ProcessMode parent = core::ProcessMode::Pausable;
+    const auto tween = rig.tweenX(box, 1.0F, core::TweenProperty::to(1.0));
+    tween->setParentMode([&parent] { return parent; });
+    EXPECT_EQ(tween->resolveProcessMode(), core::ProcessMode::Pausable);
+
+    rig.clock.setPaused(true);
+    rig.step(0.25);
+    EXPECT_DOUBLE_EQ(box.x, 0.0);
+
+    parent = core::ProcessMode::Always;
+    rig.step(0.25);
+    EXPECT_DOUBLE_EQ(box.x, 0.25);
+
+    tween->setProcessMode(core::ProcessMode::Disabled);
+    rig.step(0.25);
+    EXPECT_DOUBLE_EQ(box.x, 0.25);
+    EXPECT_EQ(tween->resolveProcessMode(), core::ProcessMode::Disabled);
+}
+
 TEST(TweenManagerTest, ActsOnTagsTargetsAndOverwrites) {
     TweenRig rig;
     Box first;

@@ -13,7 +13,7 @@ local Objects = haylen.class('Objects', sample.Test)
 local kColors = {rectangle = '#FF4FC3F7', ellipse = '#FF81C784', capsule = '#FFBA68C8', point = '#FFFFD54F', polygon = '#FFFF8A65', polyline = '#FFE57373', text = '#FFB0BEC5', tile = '#FFFFFFFF'}
 
 function Objects:enter()
-    self.map = tiled.newMap(assets.load('maps/objects.tmj'))
+    self.map = tiled.newMapRenderer(assets.load('maps/objects.tmj'))
     local bounds = self.map.bounds
     Objects.super.enter(self, {
         hint = 'Point at an object to read it. The lamps and the signs come from templates, and the second lamp and the second sign override what their template says.',

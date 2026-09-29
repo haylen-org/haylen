@@ -1,9 +1,11 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <optional>
 #include <string_view>
+#include <utility>
 
 #include "haylen/math/Vec2.hpp"
 
@@ -37,7 +39,9 @@ class Texture final {
 
     // Resolves the filter names "nearest" and "linear" and the wrap names "clamp", "repeat" and "mirror".
     [[nodiscard]] static std::optional<Filter> filterFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view filterName(Filter value) noexcept;
     [[nodiscard]] static std::optional<Wrap> wrapFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view wrapName(Wrap value) noexcept;
 
     [[nodiscard]] bool isValid() const noexcept {
         return resource != nullptr;
@@ -55,6 +59,9 @@ class Texture final {
     }
 
   private:
+    static const std::array<std::pair<std::string_view, Filter>, 2> kFilterNames;
+    static const std::array<std::pair<std::string_view, Wrap>, 3> kWrapNames;
+
     std::shared_ptr<TextureResource> resource;
 };
 

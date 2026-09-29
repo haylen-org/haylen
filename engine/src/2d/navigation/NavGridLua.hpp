@@ -21,7 +21,7 @@ class Reference;
 
 namespace haylen::navigation2d {
 
-// Installs the NavGrid, DijkstraMap, FlowField and HierarchicalPath classes of haylen.navigation2d. Cells cross into Lua as {x = column, y = row} tables, and maps, fields and hierarchies keep their grid alive in their user value.
+// Installs the NavGrid, DijkstraMap, FlowField and HierarchicalPathfinder classes of haylen.navigation2d. Cells cross into Lua as {x = column, y = row} tables, and maps, fields and hierarchies keep their grid alive in their user value.
 class NavGridLua final {
   public:
     static void install(lua_State* L);
@@ -74,14 +74,14 @@ class NavGridLua final {
     static int findPath(lua_State* L);
     static int findPathAsync(lua_State* L);
     static int lineOfSight(lua_State* L);
-    static int smooth(lua_State* L);
+    static int smoothPath(lua_State* L);
     static int raycast(lua_State* L);
     static int dijkstraMap(lua_State* L);
     static int dijkstraMapAsync(lua_State* L);
     static int flowField(lua_State* L);
     static int flowFieldAsync(lua_State* L);
-    static int hierarchical(lua_State* L);
-    static int hierarchicalAsync(lua_State* L);
+    static int hierarchicalPathfinder(lua_State* L);
+    static int hierarchicalPathfinderAsync(lua_State* L);
 
     static int mapValue(lua_State* L);
     static int mapNext(lua_State* L);

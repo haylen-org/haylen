@@ -20,7 +20,7 @@ Functions whose name ends in `Async` copy what they need, run on a worker thread
 | --- | --- |
 | `grid:findPath` | One unit at a time on a tile map, with costs for terrain. |
 | `grid:findPath` with `jumpPoint` | Long paths on large open grids where every cell costs the same. |
-| `grid:hierarchical` | Many long searches on large grids that change a little at a time. |
+| `grid:hierarchicalPathfinder` | Many long searches on large grids that change a little at a time. |
 | `grid:flowField` | Many units heading to the same goals, as in strategy and tower defense games. |
 | `grid:dijkstraMap` | Monsters that chase or flee the player, mixing several goals of different appeal. |
 | `newGraph` | Hand-placed waypoints, roads, doors that open and close. |
@@ -183,7 +183,7 @@ Finds the cheapest path from the start cell to the goal cell and returns it as a
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `diagonal` | boolean | `true` | Allows diagonal steps, which cost the square root of 2 times the cell cost. Hexagonal grids ignore it. |
-| `smooth` | boolean | `false` | Returns the path after `grid:smooth`, keeping only the cells where it turns. The cost stays the cost of the unsmoothed path. |
+| `smooth` | boolean | `false` | Returns the path after `grid:smoothPath`, keeping only the cells where it turns. The cost stays the cost of the unsmoothed path. |
 | `heuristic` | string | `'octile'` or `'manhattan'` | How the search estimates the distance left: `'manhattan'`, `'octile'`, `'euclidean'` or `'chebyshev'`. The default is `'octile'` with diagonal steps and `'manhattan'` without them, which are exact on open ground. With diagonal steps, `'manhattan'` overestimates the distance left, so it can return a path that is not the cheapest. Hexagonal grids always count hex steps and reject this option with `Hexagonal grids count hex steps and take no heuristic.` |
 | `weight` | number | `1` | Weighted A*. Values above 1 explore fewer cells and return paths that cost at most `weight` times the cheapest one. Values below 1 raise `A search weight must be finite and at least 1.` |
 | `jumpPoint` | boolean | `false` | Jump point search, which skips over runs of open ground and returns paths as cheap as A* while expanding far fewer cells, most of all on large open maps. It needs a square or staggered grid where every cell costs 1, and raises `Jump point search needs a square or staggered grid.` or `Jump point search needs a grid where every cell costs 1.` otherwise. |
@@ -243,7 +243,7 @@ grid:setWalkable(3, 1, false)
 print(grid:lineOfSight(0, 1, 7, 1), grid:lineOfSight(0, 0, 7, 0))
 ```
 
-### grid:smooth(path)
+### grid:smoothPath(path)
 
 Returns a shorter copy of `path` that keeps the start, the goal and every cell where a straight walk would leave walkable ground. Smoothing looks at walkability only, so the result may cross costly cells.
 
@@ -252,9 +252,9 @@ local navigation2d = require('haylen.navigation2d')
 
 local grid = navigation2d.newGrid(10, 10)
 local path = grid:findPath(0, 0, 9, 3, {diagonal = false})
-local waypoints = grid:smooth(path)
+local waypoints = grid:smoothPath(path)
 print(#path, #waypoints)
-print(#grid:smooth({{0, 4}, {1, 4}, {2, 4}}))
+print(#grid:smoothPath({{0, 4}, {1, 4}, {2, 4}}))
 ```
 
 ### grid:raycast(from, to, cellSize)
@@ -317,9 +317,9 @@ async.spawn(function()
 end)
 ```
 
-### grid:hierarchical(options)
+### grid:hierarchicalPathfinder(options)
 
-Creates a `HierarchicalPath` over a square grid, the HPA* of Botea, Müller and Schaeffer. The grid splits into square clusters joined by entrances, a small graph of entrances is searched first and then only the cells along the chosen route, which makes long searches on large grids much faster than A*. Paths are near optimal, usually within a few percent of the cheapest one. It keeps its grid alive and reads it on every search, so after cells change, `path:update` must rebuild the clusters around them. Until then, a search whose route crosses the changed cells finds no path. Other topologies raise `Hierarchical path finding needs a square grid.` `options` is optional:
+Creates a `HierarchicalPathfinder` over a square grid, the HPA* of Botea, Müller and Schaeffer. The grid splits into square clusters joined by entrances, a small graph of entrances is searched first and then only the cells along the chosen route, which makes long searches on large grids much faster than A*. Paths are near optimal, usually within a few percent of the cheapest one. It keeps its grid alive and reads it on every search, so after cells change, `path:update` must rebuild the clusters around them. Until then, a search whose route crosses the changed cells finds no path. Other topologies raise `Hierarchical path finding needs a square grid.` `options` is optional:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -333,14 +333,14 @@ local grid = navigation2d.newGrid(256, 256)
 for row = 0, 200 do
     grid:setWalkable(128, row, false)
 end
-local router = grid:hierarchical({clusterSize = 32})
+local router = grid:hierarchicalPathfinder({clusterSize = 32})
 local path, cost = router:findPath(0, 0, 255, 0)
 print(#path, cost, router.nodeCount)
 ```
 
-### grid:hierarchicalAsync(options)
+### grid:hierarchicalPathfinderAsync(options)
 
-Builds a `HierarchicalPath` like `grid:hierarchical` from a copy of the grid on a worker thread, so building one over a large map never stalls a frame, and returns a promise that resolves with it. The path finder reads the grid itself once it arrives, so cells changed after the call and before the promise resolved need `path:update`. Invalid options and grids that are not square raise the error at once.
+Builds a `HierarchicalPathfinder` like `grid:hierarchicalPathfinder` from a copy of the grid on a worker thread, so building one over a large map never stalls a frame, and returns a promise that resolves with it. The path finder reads the grid itself once it arrives, so cells changed after the call and before the promise resolved need `path:update`. Invalid options and grids that are not square raise the error at once.
 
 ```lua
 local navigation2d = require('haylen.navigation2d')
@@ -348,7 +348,7 @@ local async = require('async')
 
 local grid = navigation2d.newGrid(1024, 1024)
 async.spawn(function()
-    local router = grid:hierarchicalAsync({clusterSize = 32}):await()
+    local router = grid:hierarchicalPathfinderAsync({clusterSize = 32}):await()
     print(#router:findPath(0, 0, 1023, 1023), router.nodeCount)
 end)
 ```
@@ -450,7 +450,7 @@ scene.push({
 })
 ```
 
-## HierarchicalPath
+## HierarchicalPathfinder
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -474,7 +474,7 @@ Rebuilds every cluster.
 local navigation2d = require('haylen.navigation2d')
 
 local grid = navigation2d.newGrid(128, 128)
-local router = grid:hierarchical({diagonal = false})
+local router = grid:hierarchicalPathfinder({diagonal = false})
 print(router:findPath(0, 64, 127, 64))
 print(router.clusterSize, router.diagonal)
 
@@ -585,7 +585,7 @@ print(rails:connected(1, 2), rails:connected(2, 1), rails:connected(3, 1))
 print(table.concat(rails:neighbors(1), ' '), table.concat(rails:points(), ' '))
 ```
 
-### graph:closest(x, y, includeDisabled)
+### graph:closestPoint(x, y, includeDisabled)
 
 Returns the id of the enabled point closest to `x`, `y`, or of any point when `includeDisabled` is true, with ties going to the smaller id, or `nil` for an empty graph.
 
@@ -621,15 +621,15 @@ roads:setEnabled(2, false)
 route, cost = roads:findPath(1, 3)
 print(table.concat(route, ' > '), cost)
 
-print(roads:closest(90, 10), roads:closest(90, 10, true), roads:distances(1)[4], roads.size)
+print(roads:closestPoint(90, 10), roads:closestPoint(90, 10, true), roads:distances(1)[4], roads.size)
 
 roads:clear()
-print(roads.size, roads:closest(0, 0))
+print(roads.size, roads:closestPoint(0, 0))
 ```
 
 ## NavMesh
 
-A `NavMesh` covers the walkable area of a level with triangles, built with a constrained Delaunay triangulation from a boundary polygon and obstacle polygons, such as the collision objects of a Tiled map from `tileMap:objectOutlines`. Obstacles may overlap each other and cross the boundary. Paths run through the triangles with A* and are pulled straight with the funnel algorithm, so they turn only around obstacle corners, and they skip passages narrower than the agent. With an agent radius, a path turns at points just off each corner, one for a turn up to a right angle and two for a wider one, so every leg stays at least the radius away from the corners it turns around. That needs the start and the goal to be at least the radius away from walls: next to a wall the agent has no room, and the path near that end can cross the edge of the mesh. Changing a polygon marks the mesh as dirty, and it rebuilds on the next query or on `mesh:build`. Polygons are lists of points, and fewer than three points raise `A navigation mesh polygon needs at least three points.`
+A `NavMesh` covers the walkable area of a level with triangles, built with a constrained Delaunay triangulation from a boundary polygon and obstacle polygons, such as the collision objects of a Tiled map from `tileMap:objectOutlines`. Obstacles may overlap each other and cross the boundary. The triangulation adds points on the walls where corners come close to them, so a way through the triangles has room for an agent exactly when every edge it crosses is at least as long as the agent is wide. Paths run through the triangles with A* and are pulled straight with the funnel algorithm, so they turn only around obstacle corners, and they skip passages narrower than the agent. With an agent radius, every leg stays inside the mesh, and a path turns at points just off each corner, one for a turn up to a right angle and two for a wider one, so the legs on both sides of a corner stay at least the radius away from it. A start closer than the radius to a wall first steps straight to its room, the closest point within twice the radius that is the radius away from every wall, and a goal that close to a wall is reached last from its room, so an agent pushed against a wall or sent to a point on one still finds its way. Changing a polygon marks the mesh as dirty, and it rebuilds on the next query or on `mesh:build`. Polygons are lists of points, and fewer than three points raise `A navigation mesh polygon needs at least three points.`
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -677,7 +677,22 @@ print(mesh.dirty, mesh.obstacleCount)
 
 ### mesh:findPath(x1, y1, x2, y2, agentRadius)
 
-Returns the path from the start point to the goal point as a list of `Vec2` with the start, the points to turn at and the goal, followed by its length, or `nil` when either point lies outside the mesh or no corridor is wide enough for the agent. `agentRadius` defaults to 0.
+Returns the path from the start point to the goal point as a list of `Vec2` with the start, the points to turn at and the goal, followed by its length, or `nil` when either point lies outside the mesh, no corridor is wide enough for the agent, or the start or the goal has no room or cannot step straight to it. `agentRadius` defaults to 0.
+
+```lua
+local navigation2d = require('haylen.navigation2d')
+
+local mesh = navigation2d.newNavMesh({{0, 0}, {300, 0}, {300, 200}, {0, 200}})
+mesh:addObstacle({{140, -20}, {160, -20}, {160, 130}, {140, 130}})
+
+-- The start touches the left wall, so the path first steps to 10, 50, where an agent of radius 10 has room.
+local path, length = mesh:findPath(3, 50, 290, 50, 10)
+print(#path, path[2].x, path[2].y, length)
+
+-- A corridor narrower than the agent leaves it no room at all.
+local corridor = navigation2d.newNavMesh({{0, 0}, {200, 0}, {200, 12}, {0, 12}})
+print(corridor:findPath(20, 6, 180, 6, 10))
+```
 
 ### mesh:findTriangle(x, y)
 

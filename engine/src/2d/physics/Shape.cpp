@@ -33,7 +33,12 @@ std::string_view Shape::kindName(Kind value) noexcept {
     return kKindNames.back().first;
 }
 
+Shape::Shape(World* owner, std::uint64_t handle) noexcept : world(owner), worldHandle(owner != nullptr ? owner->getHandle() : 0), id(handle) {}
+
 std::uint64_t Shape::checkedId() const {
+    if (world != nullptr && !b2World_IsValid(b2LoadWorldId(worldHandle))) {
+        throw std::logic_error("The physics world of the shape was destroyed.");
+    }
     if (!isValid()) {
         throw std::logic_error("The physics shape was destroyed.");
     }
@@ -41,7 +46,7 @@ std::uint64_t Shape::checkedId() const {
 }
 
 bool Shape::isValid() const noexcept {
-    return world != nullptr && b2Shape_IsValid(b2LoadShapeId(id));
+    return world != nullptr && b2World_IsValid(b2LoadWorldId(worldHandle)) && b2Shape_IsValid(b2LoadShapeId(id));
 }
 
 Body Shape::getBody() const {

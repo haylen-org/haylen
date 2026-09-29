@@ -14,7 +14,7 @@ std::size_t LayoutCache::KeyHash::operator()(const Key& key) const noexcept {
 }
 
 // The most recently used layouts stay, and the one used longest ago makes room for a new one. Lengths must be finite, since a key holding NaN never equals itself and could never be found or evicted.
-std::shared_ptr<const TextLayout> LayoutCache::get(std::string_view text, const TextStyle& style, const Builder& build) {
+std::shared_ptr<const Layout> LayoutCache::get(std::string_view text, const Style& style, const Builder& build) {
     if (!std::isfinite(style.size) || !std::isfinite(style.maxWidth) || !std::isfinite(style.lineSpacing)) {
         throw std::invalid_argument("Text needs a finite size, maximum width and line spacing.");
     }
@@ -24,7 +24,7 @@ std::shared_ptr<const TextLayout> LayoutCache::get(std::string_view text, const 
         return found->second->layout;
     }
 
-    auto layout = std::make_shared<const TextLayout>(build());
+    auto layout = std::make_shared<const Layout>(build());
     Entry& entry = entries.emplace_front(std::string(text), style.language, key, layout);
     entry.key.text = entry.text;
     entry.key.language = entry.language;

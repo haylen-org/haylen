@@ -4,6 +4,7 @@
 #include <string_view>
 
 #include "haylen/2d/graphics/Renderer.hpp"
+#include "haylen/math/Vec2.hpp"
 
 struct lua_State;
 
@@ -24,10 +25,14 @@ class Graphics2DLua final {
     static constexpr std::array<std::string_view, 9> kPostProcessFields{"tint", "saturation", "brightness", "contrast", "vignetteStrength", "vignetteRadius", "vignetteSoftness", "fade", "materials"};
     static constexpr std::array<std::string_view, 4> kMetaballFields{"color", "outlineColor", "outlineWidth", "threshold"};
     static constexpr std::array<std::string_view, 2> kScaleFields{"scaleX", "scaleY"};
+    static constexpr std::array<std::string_view, 1> kTextDrawFields{"scale"};
     static constexpr std::array<std::string_view, 5> kMeshVertexFields{"x", "y", "u", "v", "color"};
     static constexpr std::array<std::string_view, 4> kNineSliceFields{"source", "borders", "pieces", "fill"};
 
     [[nodiscard]] static Renderer& getRenderer(lua_State* L);
+
+    // Reads the scale of a text draw from its style table, which stretches the block from its anchor.
+    [[nodiscard]] static math::Vec2 readTextScale(lua_State* L, int index);
     [[nodiscard]] static text::Font& fontArgument(lua_State* L, int index);
     [[nodiscard]] static Renderer::CanvasOptions readCanvasOptions(lua_State* L, int index);
 

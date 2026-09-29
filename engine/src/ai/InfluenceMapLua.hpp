@@ -30,8 +30,8 @@ class InfluenceMapLua final {
     static int get(lua_State* L);
     static int set(lua_State* L);
     static int sample(lua_State* L);
-    static int highest(lua_State* L);
-    static int lowest(lua_State* L);
+    static int findHighest(lua_State* L);
+    static int findLowest(lua_State* L);
     static int cellCenter(lua_State* L);
     static int values(lua_State* L);
     static int columns(lua_State* L);

@@ -145,20 +145,33 @@ if debug.objectEvents() then
 end
 ```
 
-### debug.addMonitor(name, fn)
+### debug.addMonitor(name, fn, options)
 
-Adds a [monitor](#monitors) named `name` that calls `fn` once per frame and shows the number it returns in the full overlay. A monitor with the same name is replaced.
+Adds a [monitor](#monitors) named `name` that calls `fn` once per frame and shows the number it returns in the full overlay, and returns its [Connection](signal.md#connection). A monitor with the same name is replaced, which ends the connection of the old one. `connection:disconnect()` removes the monitor, and while `connection.blocked` is `true` the monitor keeps its value and history without calling `fn`.
+
+`options` is an optional table. Its `owner`, a table or a userdata such as a scene, removes the monitor when the owner ends, as the [owners of haylen.events](events.md#owners) describe. The owner keeps `fn`, so `fn` may refer to the owner without keeping it alive. An owner of another type raises `An owner must be a table or a userdata, not <type>.`, and an unknown option raises `Unknown option '<name>'`.
 
 ```lua
 local debug = require('haylen.debug')
+local scene = require('haylen.scene')
 
 local enemies = {}
 debug.addMonitor('enemies', function()
     return #enemies
 end)
-debug.addMonitor('lua memory (KB)', function()
+local memory = debug.addMonitor('lua memory (KB)', function()
     return collectgarbage('count')
 end)
+memory.blocked = true
+
+local level = {}
+function level:enter()
+    self.bullets = {}
+    debug.addMonitor('bullets', function()
+        return #self.bullets
+    end, {owner = self})
+end
+scene.push(level)
 ```
 
 ### debug.removeMonitor(name)

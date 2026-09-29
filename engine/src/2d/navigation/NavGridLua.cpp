@@ -43,7 +43,7 @@ template <> struct Type<navigation2d::FlowField> {
 };
 
 template <> struct Type<navigation2d::HierarchicalPathfinder> {
-    static constexpr const char* name = "haylen.HierarchicalPath";
+    static constexpr const char* name = "haylen.HierarchicalPathfinder";
     using Storage = navigation2d::HierarchicalPathfinder;
 };
 
@@ -325,7 +325,7 @@ int NavGridLua::lineOfSight(lua_State* L) {
     return 1;
 }
 
-int NavGridLua::smooth(lua_State* L) {
+int NavGridLua::smoothPath(lua_State* L) {
     const Grid& grid = check(L);
     std::vector<Grid::Cell> path = lua::Stack::read<std::vector<Grid::Cell>>(L, 2);
     grid.smoothPath(path);
@@ -432,15 +432,15 @@ HierarchicalPathfinder::Options NavGridLua::readHierarchyOptions(lua_State* L, i
     return options;
 }
 
-// Builds a hierarchical path finder over the grid with hierarchical([options]).
-int NavGridLua::hierarchical(lua_State* L) {
+// Builds a hierarchical path finder over the grid with hierarchicalPathfinder([options]).
+int NavGridLua::hierarchicalPathfinder(lua_State* L) {
     const Grid& grid = check(L);
     pushOwned<HierarchicalPathfinder>(L, 1, grid, readHierarchyOptions(L, 2));
     return 1;
 }
 
-// Returns a promise for the path finder of hierarchical, built from the snapshot of the grid in the background.
-int NavGridLua::hierarchicalAsync(lua_State* L) {
+// Returns a promise for the path finder of hierarchicalPathfinder, built from the snapshot of the grid in the background.
+int NavGridLua::hierarchicalPathfinderAsync(lua_State* L) {
     const HierarchicalPathfinder::Options options = readHierarchyOptions(L, 2);
     HierarchicalPathfinder::requireValid(check(L), options);
     const std::shared_ptr<const Grid> grid = snapshotOf(L);
@@ -586,7 +586,7 @@ void NavGridLua::addFunctions(lua_State* L) {
 }
 
 void NavGridLua::install(lua_State* L) {
-    lua::ClassBuilder<ScriptedGrid>(L).property("width", &getWidth).property("height", &getHeight).property("topology", &getTopology).property("staggerX", &isStaggerX).property("staggerEven", &isStaggerEven).property("uniformCost", &hasUniformCost).property("expandedCount", &getExpandedCount).function("contains", &lua::Binding::native<&contains>).function("setWalkable", &lua::Binding::native<&setWalkable>).function("walkable", &lua::Binding::native<&isWalkable>).function("setCost", &lua::Binding::native<&setCost>).function("cost", &lua::Binding::native<&getCost>).function("estimate", &lua::Binding::native<&estimate>).function("findPath", &lua::Binding::native<&findPath>).function("findPathAsync", &lua::Binding::native<&findPathAsync>).function("lineOfSight", &lua::Binding::native<&lineOfSight>).function("smooth", &lua::Binding::native<&smooth>).function("raycast", &lua::Binding::native<&raycast>).function("dijkstraMap", &lua::Binding::native<&dijkstraMap>).function("dijkstraMapAsync", &lua::Binding::native<&dijkstraMapAsync>).function("flowField", &lua::Binding::native<&flowField>).function("flowFieldAsync", &lua::Binding::native<&flowFieldAsync>).function("hierarchical", &lua::Binding::native<&hierarchical>).function("hierarchicalAsync", &lua::Binding::native<&hierarchicalAsync>).install();
+    lua::ClassBuilder<ScriptedGrid>(L).property("width", &getWidth).property("height", &getHeight).property("topology", &getTopology).property("staggerX", &isStaggerX).property("staggerEven", &isStaggerEven).property("uniformCost", &hasUniformCost).property("expandedCount", &getExpandedCount).function("contains", &lua::Binding::native<&contains>).function("setWalkable", &lua::Binding::native<&setWalkable>).function("walkable", &lua::Binding::native<&isWalkable>).function("setCost", &lua::Binding::native<&setCost>).function("cost", &lua::Binding::native<&getCost>).function("estimate", &lua::Binding::native<&estimate>).function("findPath", &lua::Binding::native<&findPath>).function("findPathAsync", &lua::Binding::native<&findPathAsync>).function("lineOfSight", &lua::Binding::native<&lineOfSight>).function("smoothPath", &lua::Binding::native<&smoothPath>).function("raycast", &lua::Binding::native<&raycast>).function("dijkstraMap", &lua::Binding::native<&dijkstraMap>).function("dijkstraMapAsync", &lua::Binding::native<&dijkstraMapAsync>).function("flowField", &lua::Binding::native<&flowField>).function("flowFieldAsync", &lua::Binding::native<&flowFieldAsync>).function("hierarchicalPathfinder", &lua::Binding::native<&hierarchicalPathfinder>).function("hierarchicalPathfinderAsync", &lua::Binding::native<&hierarchicalPathfinderAsync>).install();
     lua::ClassBuilder<DijkstraMap>(L).function("value", &lua::Binding::native<&mapValue>).function("next", &lua::Binding::native<&mapNext>).function("flee", &lua::Binding::native<&mapFlee>).function("values", &lua::Binding::native<&mapValues>).property("width", &mapWidth).property("height", &mapHeight).install();
     lua::ClassBuilder<FlowField>(L).function("next", &lua::Binding::native<&fieldNext>).function("direction", &lua::Binding::native<&fieldDirection>).function("distance", &lua::Binding::native<&fieldDistance>).property("width", &fieldWidth).property("height", &fieldHeight).install();
     lua::ClassBuilder<HierarchicalPathfinder>(L).function("findPath", &lua::Binding::native<&hierarchyFindPath>).function("update", &lua::Binding::native<&hierarchyUpdate>).function("rebuild", &lua::Binding::native<&hierarchyRebuild>).property("nodeCount", &hierarchyNodeCount).property("clusterSize", &hierarchyClusterSize).property("diagonal", &hierarchyDiagonal).install();

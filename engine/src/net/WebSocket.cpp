@@ -17,7 +17,7 @@ struct WebSocket::Inbox {
     std::vector<WebSocketTransport::Event> events;
 };
 
-const WebSocket::Options WebSocket::kDefaultOptions{};
+const WebSocket::Options& WebSocket::kDefaultOptions = *new const Options();
 
 std::string_view WebSocket::stateName(State value) noexcept {
     switch (value) {

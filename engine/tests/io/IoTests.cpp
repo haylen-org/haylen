@@ -10,6 +10,7 @@
 #include "haylen/io/Path.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen::io {
 
@@ -66,7 +67,7 @@ class PackageTest : public ::testing::TestWithParam<std::string> {
 
         std::map<std::string, std::vector<std::uint8_t>> contents;
         for (const auto& [path, content] : files) {
-            contents.emplace(path, test::bytes(content));
+            contents.emplace(path, test::TestFiles::bytes(content));
         }
         return std::make_unique<MemoryPackage>("memory", std::move(contents));
     }
@@ -132,14 +133,14 @@ TEST(PackageOpenTest, RejectsMissingAndInvalidPackages) {
     test::TemporaryDirectory directory;
     EXPECT_THROW((void)Package::openDirectory(directory.getPath() / "missing"), std::runtime_error);
     EXPECT_THROW((void)Package::open(directory.getPath() / "missing.zip"), std::runtime_error);
-    EXPECT_THROW((void)Package::openZip(test::bytes("not a zip"), "broken.zip"), std::runtime_error);
+    EXPECT_THROW((void)Package::openZip(test::TestFiles::bytes("not a zip"), "broken.zip"), std::runtime_error);
 }
 
 TEST(MemoryPackageTest, ReplacesAndRemovesFiles) {
     MemoryPackage package("editor");
-    package.setFile("main.lua", test::bytes("a"));
+    package.setFile("main.lua", test::TestFiles::bytes("a"));
     EXPECT_EQ(package.readText("main.lua"), "a");
-    package.setFile("./main.lua", test::bytes("b"));
+    package.setFile("./main.lua", test::TestFiles::bytes("b"));
     EXPECT_EQ(package.readText("main.lua"), "b");
     EXPECT_TRUE(package.removeFile("main.lua"));
     EXPECT_FALSE(package.removeFile("main.lua"));

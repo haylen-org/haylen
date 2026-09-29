@@ -162,7 +162,7 @@ class EventBus final {
         static bool deliver(Listeners* listeners, Event event);
     };
 
-    static const Json kNull;
+    static const Json& kNull;
 
     static Connection subscribe(std::unique_ptr<Listeners>& listeners, Handler handler, Options options);
 

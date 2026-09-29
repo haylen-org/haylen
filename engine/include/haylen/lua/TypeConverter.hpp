@@ -2,6 +2,7 @@
 
 #include <lua.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <initializer_list>
@@ -58,8 +59,7 @@
 #include "haylen/platform/Window.hpp"
 #include "haylen/text/Direction.hpp"
 #include "haylen/text/Font.hpp"
-#include "haylen/text/TextAlign.hpp"
-#include "haylen/text/TextStyle.hpp"
+#include "haylen/text/Style.hpp"
 
 namespace haylen::lua {
 
@@ -69,11 +69,11 @@ class TypeConverter final {
     static constexpr std::array<std::string_view, 12> kDrawOrderFields{"layer", "depth", "sortOffset", "visibility", "blend", "material", "normalMap", "specular", "shininess", "emission", "lightMask", "unshaded"};
     static constexpr std::array<std::string_view, 16> kTextStyleFields{"size", "color", "outlineWidth", "outlineColor", "shadowOffset", "shadowColor", "shadowBlur", "align", "maxWidth", "lineSpacing", "anchor", "rotation", "bold", "italic", "direction", "language"};
     static constexpr std::array<std::string_view, 2> kTextureOptionFields{"filter", "wrap"};
-    static constexpr std::array<std::string_view, 12> kSpriteInstanceFields{"x", "y", "width", "height", "source", "pivotX", "pivotY", "rotation", "color", "flash", "flipX", "flipY"};
+    static constexpr std::array<std::string_view, 13> kSpriteInstanceFields{"x", "y", "width", "height", "source", "pivotX", "pivotY", "rotation", "color", "flash", "flipX", "flipY", "flipDiagonal"};
 
     // Option readers accept nil for the defaults and reject keys outside their own fields and the extra fields the caller reads from the same table.
     [[nodiscard]] static graphics2d::DrawOrder readDrawOrder(lua_State* L, int index, std::initializer_list<Table::FieldNames> extraFields = {});
-    [[nodiscard]] static text::TextStyle readTextStyle(lua_State* L, int index, std::initializer_list<Table::FieldNames> extraFields = {});
+    [[nodiscard]] static text::Style readTextStyle(lua_State* L, int index, std::initializer_list<Table::FieldNames> extraFields = {});
     [[nodiscard]] static graphics::Texture::Options readTextureOptions(lua_State* L, int index, std::initializer_list<Table::FieldNames> extraFields = {});
 
     // Reads a sprite table over base. A sprite left without a size takes the size of its source, or of the whole texture when it has no source, like a sprite drawn with graphics.draw.
@@ -85,40 +85,27 @@ class TypeConverter final {
 
     template <typename T, std::size_t Size> using NameTable = std::array<std::pair<std::string_view, T>, Size>;
 
-    static const NameTable<graphics::Texture::Wrap, 3> kWraps;
-    static const NameTable<graphics::Viewport::ScalingPolicy, 5> kScaling;
     static const NameTable<graphics2d::Renderer::SortMode, 3> kSortModes;
     static const NameTable<graphics2d::ImageBlend::Pattern, 5> kBlendPatterns;
     static const NameTable<graphics2d::SceneTransition::Kind, 24> kTransitions;
     static const NameTable<graphics2d::SceneTransition::Direction, 8> kDirections;
-    static const NameTable<text::TextAlign, 6> kAligns;
-    static const NameTable<text::Direction, 3> kTextDirections;
     static const NameTable<input::InputDevice, 3> kDevices;
     static const NameTable<input::TouchPhase, 5> kPhases;
     static const NameTable<platform::Window::Cursor, 11> kCursors;
     static const NameTable<platform::Event::Type, 28> kEvents;
     static const NameTable<platform::Window::Passthrough, 3> kPassthroughs;
-    static const NameTable<platform::Orientation, 3> kOrientations;
     static const NameTable<platform::TextInput::Action, 4> kTextActions;
     static const NameTable<core::ProcessMode, 5> kProcessModes;
     static constexpr std::array<std::string_view, 8> kEasingFields{"curve", "overshoot", "amplitude", "period", "steps", "position", "bezier", "points"};
 
     template <typename T, std::size_t Size> [[nodiscard]] static std::optional<T> fromTable(const NameTable<T, Size>& names, std::string_view name) {
-        for (const auto& [candidate, value] : names) {
-            if (candidate == name) {
-                return value;
-            }
-        }
-        return std::nullopt;
+        const auto found = std::ranges::find(names, name, &std::pair<std::string_view, T>::first);
+        return found != names.end() ? std::optional(found->second) : std::nullopt;
     }
 
+    // Every value of an enum has its name in the table.
     template <typename T, std::size_t Size> [[nodiscard]] static std::string_view toName(const NameTable<T, Size>& names, T value) {
-        for (const auto& [name, candidate] : names) {
-            if (candidate == value) {
-                return name;
-            }
-        }
-        return names.front().first;
+        return std::ranges::find(names, value, &std::pair<std::string_view, T>::second)->first;
     }
 
     // Reads a named component, or the positional one when the name is absent, so {x = 1, y = 2} and {1, 2} both work.
@@ -302,7 +289,7 @@ template <> struct EnumNames<graphics::Texture::Filter> {
         return graphics::Texture::filterFromName(name);
     }
     static std::string_view name(graphics::Texture::Filter value) {
-        return value == graphics::Texture::Filter::Nearest ? "nearest" : "linear";
+        return graphics::Texture::filterName(value);
     }
 };
 
@@ -311,7 +298,7 @@ template <> struct EnumNames<graphics::Texture::Wrap> {
         return graphics::Texture::wrapFromName(name);
     }
     static std::string_view name(graphics::Texture::Wrap value) {
-        return TypeConverter::toName(TypeConverter::kWraps, value);
+        return graphics::Texture::wrapName(value);
     }
 };
 
@@ -320,7 +307,7 @@ template <> struct EnumNames<graphics::Viewport::ScalingPolicy> {
         return graphics::Viewport::scalingPolicyFromName(name);
     }
     static std::string_view name(graphics::Viewport::ScalingPolicy value) {
-        return TypeConverter::toName(TypeConverter::kScaling, value);
+        return graphics::Viewport::scalingPolicyName(value);
     }
 };
 
@@ -386,34 +373,28 @@ template <> struct EnumNames<graphics2d::SceneTransition::Direction> {
 
 template <> struct EnumNames<graphics2d::NineSlice::Fill> {
     static std::optional<graphics2d::NineSlice::Fill> fromName(std::string_view name) {
-        if (name == "stretch") {
-            return graphics2d::NineSlice::Fill::Stretch;
-        }
-        if (name == "tile") {
-            return graphics2d::NineSlice::Fill::Tile;
-        }
-        return std::nullopt;
+        return graphics2d::NineSlice::fillFromName(name);
     }
     static std::string_view name(graphics2d::NineSlice::Fill value) {
-        return value == graphics2d::NineSlice::Fill::Tile ? "tile" : "stretch";
+        return graphics2d::NineSlice::fillName(value);
     }
 };
 
-template <> struct EnumNames<text::TextAlign> {
-    static std::optional<text::TextAlign> fromName(std::string_view name) {
-        return TypeConverter::fromTable(TypeConverter::kAligns, name);
+template <> struct EnumNames<text::Alignment> {
+    static std::optional<text::Alignment> fromName(std::string_view name) {
+        return text::Style::alignmentFromName(name);
     }
-    static std::string_view name(text::TextAlign value) {
-        return TypeConverter::toName(TypeConverter::kAligns, value);
+    static std::string_view name(text::Alignment value) {
+        return text::Style::alignmentName(value);
     }
 };
 
 template <> struct EnumNames<text::Direction> {
     static std::optional<text::Direction> fromName(std::string_view name) {
-        return TypeConverter::fromTable(TypeConverter::kTextDirections, name);
+        return text::Style::directionFromName(name);
     }
     static std::string_view name(text::Direction value) {
-        return TypeConverter::toName(TypeConverter::kTextDirections, value);
+        return text::Style::directionName(value);
     }
 };
 
@@ -527,10 +508,10 @@ template <> struct EnumNames<platform::Event::Type> {
 
 template <> struct EnumNames<platform::Orientation> {
     static std::optional<platform::Orientation> fromName(std::string_view name) {
-        return TypeConverter::fromTable(TypeConverter::kOrientations, name);
+        return platform::Window::orientationFromName(name);
     }
     static std::string_view name(platform::Orientation value) {
-        return TypeConverter::toName(TypeConverter::kOrientations, value);
+        return platform::Window::orientationName(value);
     }
 };
 

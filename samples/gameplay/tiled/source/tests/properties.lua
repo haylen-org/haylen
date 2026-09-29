@@ -34,7 +34,7 @@ local function items(prefix, properties, types)
 end
 
 function Properties:enter()
-    self.map = tiled.newMap(assets.load('maps/properties.tmj'))
+    self.map = tiled.newMapRenderer(assets.load('maps/properties.tmj'))
     local map = self.map
     local owners = {
         {id = 'map', text = 'Map of class ' .. map.type, properties = map.properties, types = map.propertyTypes},

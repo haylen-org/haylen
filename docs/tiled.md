@@ -34,10 +34,10 @@ Maps are assets of [haylen.assets](lua-api/assets.md). The asset type `tiled` ha
 local assets = require('haylen.assets')
 local tiled = require('haylen.tiled')
 
-local map = tiled.newMap(assets.load('maps/island.tmj'))
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 ```
 
-The loaded asset is a `TiledMap` value that holds the parsed data and is cached by path like any asset. `tiled.newMap` makes a playable `TileMap` from it. Each playable map owns its own copy of the data, so `map:setTile` never changes the cached asset, and two maps made from the same asset are independent.
+The loaded asset is a `TiledMap` value that holds the parsed data and is cached by path like any asset. `tiled.newMapRenderer` makes a playable `MapRenderer` from it. Each playable map owns its own copy of the data, so `map:setTile` never changes the cached asset, and two maps made from the same asset are independent.
 
 `assets.load(path, nil, options)` and `assets.loadAsync(path, nil, options)` accept the texture options `filter` (`'nearest'` by default, or `'linear'`) and `wrap` for every image of the map. `loadAsync` parses the map and decodes its images on worker threads and returns a Promise that a coroutine can `:await()`. Maps can also be part of a preload group, which is how Tiny Island loads its island while the boot screen shows progress:
 
@@ -191,7 +191,7 @@ The conventions the game relies on are these.
 `island.lua` uses these conventions in a few lines. It builds physics collision with `map:buildCollision`, marks every cell under a `collision` rectangle as blocked in a [navigation grid](lua-api/navigation2d.md) with `map:worldToCell`, collects the gameplay points by class, and scatters trees with Poisson disk sampling inside the tree regions, away from the fire.
 
 ```lua
-self.map = tiled.newMap(assets.load('maps/island.tmj'))
+self.map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 self.world = physics2d.newWorld({gravity = {0, 0}, pixelsPerMeter = 64})
 self.walls = self.map:buildCollision(self.world)
 
@@ -231,4 +231,4 @@ Regenerating overwrites the five files, including any edit made to them in Tiled
 
 ## From C++
 
-The runtime is plain C++ under `haylen/2d/tiled/`, in the `haylen::tiled` namespace. `tiled::Map` (`Map.hpp`) holds the parsed data, with one header per model type such as `Layer`, `Object`, `Tileset`, `Tile`, `WangSet` and `Properties`, and `tiled::World` (`World.hpp`) reads `.world` files. `tiled::MapRenderer` (`MapRenderer.hpp`), the class behind the Lua `TileMap`, draws a map through a `graphics2d::Renderer`, visits objects with `forEachObject` and builds collision into a `physics2d::World`, and `tiled::ObjectFactories` (`ObjectFactories.hpp`) registers one factory per object class and spawns them, like `map:spawn` does in Lua.
+The runtime is plain C++ under `haylen/2d/tiled/`, in the `haylen::tiled` namespace. `tiled::Map` (`Map.hpp`) holds the parsed data, with one header per model type such as `Layer`, `Object`, `Tileset`, `Tile`, `WangSet` and `Properties`, and `tiled::World` (`World.hpp`) reads `.world` files. `tiled::MapRenderer` (`MapRenderer.hpp`), the class behind the Lua `MapRenderer`, draws a map through a `graphics2d::Renderer`, visits objects with `forEachObject` and builds collision into a `physics2d::World`, and `tiled::ObjectFactories` (`ObjectFactories.hpp`) registers one factory per object class and spawns them, like `map:spawn` does in Lua.

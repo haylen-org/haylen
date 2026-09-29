@@ -27,11 +27,11 @@ float Font::toDistance(float pixels, float size) const noexcept {
     return pixels * metrics.nativeSize / size / (metrics.spread * 2.0F);
 }
 
-std::shared_ptr<const TextLayout> Font::layout(std::string_view text, const TextStyle& style) {
+std::shared_ptr<const Layout> Font::layout(std::string_view text, const Style& style) {
     return layouts->get(text, style, [&] { return LayoutBuilder::layoutPlainText(text, style, nullptr, this); });
 }
 
-math::Vec2 Font::measure(std::string_view text, const TextStyle& style) {
+math::Vec2 Font::measure(std::string_view text, const Style& style) {
     return layout(text, style)->size;
 }
 

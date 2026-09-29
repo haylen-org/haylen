@@ -61,7 +61,7 @@ function Hpa:build()
     end
     self.start, self.goal = self:open(4, 4), self:open(kSize - 5, kSize - 5)
     profiler.beginScope('hpa build')
-    self.router = self.grid:hierarchical({clusterSize = kClusterSize})
+    self.router = self.grid:hierarchicalPathfinder({clusterSize = kClusterSize})
     profiler.endScope()
     self:repaint()
     self:search()

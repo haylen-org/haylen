@@ -121,8 +121,8 @@ int NavGraphLua::points(lua_State* L) {
     return 1;
 }
 
-// Returns the id of the point closest to x, y with closest(x, y[, includeDisabled]), or nil for an empty graph.
-int NavGraphLua::closest(lua_State* L) {
+// Returns the id of the point closest to x, y with closestPoint(x, y[, includeDisabled]), or nil for an empty graph.
+int NavGraphLua::closestPoint(lua_State* L) {
     const bool includeDisabled = !lua_isnoneornil(L, 4) && lua::Stack::read<bool>(L, 4);
     const std::optional<std::int64_t> id = check(L).getClosestPoint({lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}, includeDisabled);
     lua::Stack::push(L, id);
@@ -178,7 +178,7 @@ void NavGraphLua::addFunctions(lua_State* L) {
 }
 
 void NavGraphLua::install(lua_State* L) {
-    lua::ClassBuilder<ScriptedGraph>(L).function("addPoint", &lua::Binding::native<&addPoint>).function("removePoint", &lua::Binding::native<&removePoint>).function("hasPoint", &lua::Binding::native<&hasPoint>).function("position", &lua::Binding::native<&getPosition>).function("setPosition", &lua::Binding::native<&setPosition>).function("weight", &lua::Binding::native<&getWeight>).function("setWeight", &lua::Binding::native<&setWeight>).function("enabled", &lua::Binding::native<&isEnabled>).function("setEnabled", &lua::Binding::native<&setEnabled>).function("connect", &lua::Binding::native<&connect>).function("disconnect", &lua::Binding::native<&disconnect>).function("connected", &lua::Binding::native<&isConnected>).function("neighbors", &lua::Binding::native<&neighbors>).function("points", &lua::Binding::native<&points>).function("closest", &lua::Binding::native<&closest>).function("findPath", &lua::Binding::native<&findPath>).function("distances", &lua::Binding::native<&distances>).function("clear", &lua::Binding::native<&clear>).property("size", &size).install();
+    lua::ClassBuilder<ScriptedGraph>(L).function("addPoint", &lua::Binding::native<&addPoint>).function("removePoint", &lua::Binding::native<&removePoint>).function("hasPoint", &lua::Binding::native<&hasPoint>).function("position", &lua::Binding::native<&getPosition>).function("setPosition", &lua::Binding::native<&setPosition>).function("weight", &lua::Binding::native<&getWeight>).function("setWeight", &lua::Binding::native<&setWeight>).function("enabled", &lua::Binding::native<&isEnabled>).function("setEnabled", &lua::Binding::native<&setEnabled>).function("connect", &lua::Binding::native<&connect>).function("disconnect", &lua::Binding::native<&disconnect>).function("connected", &lua::Binding::native<&isConnected>).function("neighbors", &lua::Binding::native<&neighbors>).function("points", &lua::Binding::native<&points>).function("closestPoint", &lua::Binding::native<&closestPoint>).function("findPath", &lua::Binding::native<&findPath>).function("distances", &lua::Binding::native<&distances>).function("clear", &lua::Binding::native<&clear>).property("size", &size).install();
 }
 
 } // namespace haylen::navigation2d

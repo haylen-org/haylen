@@ -9,11 +9,11 @@
 
 namespace haylen::ui {
 
-TextFieldLayout::TextFieldLayout(std::shared_ptr<const text::TextLayout> laid, std::u32string codePoints) : layout(std::move(laid)), content(std::move(codePoints)) {}
+TextFieldLayout::TextFieldLayout(std::shared_ptr<const text::Layout> laid, std::u32string codePoints) : layout(std::move(laid)), content(std::move(codePoints)) {}
 
 std::size_t TextFieldLayout::findLine(std::size_t position) const {
     for (std::size_t index = 0; index < layout->lines.size(); ++index) {
-        const text::TextLayout::Line& line = layout->lines[index];
+        const text::Layout::Line& line = layout->lines[index];
         if (line.begin <= position && position <= line.end) {
             return index;
         }
@@ -22,23 +22,23 @@ std::size_t TextFieldLayout::findLine(std::size_t position) const {
 }
 
 // At either end of its line the caret stands at that end of the line in the direction of its paragraph, and elsewhere on the side where the character after it starts, the left of a left-to-right character and the right of a right-to-left one, or at the end of the character before it.
-float TextFieldLayout::getCaretX(const text::TextLayout::Line& line, std::size_t position) const {
+float TextFieldLayout::getCaretX(const text::Layout::Line& line, std::size_t position) const {
     const auto characters = std::span(layout->characters).subspan(line.firstCharacter, line.endCharacter - line.firstCharacter);
     if (characters.empty()) {
         return line.box.x;
     }
     if (position <= line.begin || position >= line.end) {
         const bool leftEnd = (position <= line.begin) != line.rightToLeft;
-        const auto left = std::ranges::min_element(characters, {}, [](const text::TextLayout::Character& character) { return character.box.x; });
-        const auto right = std::ranges::max_element(characters, {}, [](const text::TextLayout::Character& character) { return character.box.getRight(); });
+        const auto left = std::ranges::min_element(characters, {}, [](const text::Layout::Character& character) { return character.box.x; });
+        const auto right = std::ranges::max_element(characters, {}, [](const text::Layout::Character& character) { return character.box.getRight(); });
         return leftEnd ? left->box.x : right->box.getRight();
     }
-    for (const text::TextLayout::Character& character : characters) {
+    for (const text::Layout::Character& character : characters) {
         if (character.begin <= position && position < character.end) {
             return character.rightToLeft ? character.box.getRight() : character.box.x;
         }
     }
-    for (const text::TextLayout::Character& character : characters) {
+    for (const text::Layout::Character& character : characters) {
         if (character.end == position) {
             return character.rightToLeft ? character.box.x : character.box.getRight();
         }
@@ -47,29 +47,29 @@ float TextFieldLayout::getCaretX(const text::TextLayout::Line& line, std::size_t
 }
 
 math::Rect TextFieldLayout::getCaret(std::size_t position) const {
-    const text::TextLayout::Line& line = layout->lines[findLine(position)];
+    const text::Layout::Line& line = layout->lines[findLine(position)];
     return {getCaretX(line, position), line.box.y, 0.0F, line.box.height};
 }
 
 // A point on the first half of a character puts the caret on that side of it, and a point past either end of the line puts it at that end of the line.
-std::size_t TextFieldLayout::hitLine(const text::TextLayout::Line& line, float x) const {
+std::size_t TextFieldLayout::hitLine(const text::Layout::Line& line, float x) const {
     const auto characters = std::span(layout->characters).subspan(line.firstCharacter, line.endCharacter - line.firstCharacter);
     if (characters.empty()) {
         return line.begin;
     }
-    for (const text::TextLayout::Character& character : characters) {
+    for (const text::Layout::Character& character : characters) {
         if (character.box.x <= x && x < character.box.getRight()) {
             const bool leftSide = x < character.box.getCenter().x;
             return leftSide != character.rightToLeft ? character.begin : character.end;
         }
     }
-    const auto left = std::ranges::min_element(characters, {}, [](const text::TextLayout::Character& character) { return character.box.x; });
+    const auto left = std::ranges::min_element(characters, {}, [](const text::Layout::Character& character) { return character.box.x; });
     const bool pastLeft = x < left->box.x;
     return pastLeft != line.rightToLeft ? line.begin : line.end;
 }
 
 std::size_t TextFieldLayout::hitTest(math::Vec2 point) const {
-    for (const text::TextLayout::Line& line : layout->lines) {
+    for (const text::Layout::Line& line : layout->lines) {
         if (point.y < line.box.getBottom()) {
             return hitLine(line, point.x);
         }
@@ -80,7 +80,7 @@ std::size_t TextFieldLayout::hitTest(math::Vec2 point) const {
 // The caret stops at the ends of the line and between its characters, and moves to the nearest stop that shows on the side it goes to, so it never jumps back where the direction of the text changes. Past the end of its line it goes on to the line after it in reading order, or back to the one before.
 std::size_t TextFieldLayout::moveAcross(std::size_t position, bool right) const {
     const std::size_t lineIndex = findLine(position);
-    const text::TextLayout::Line& line = layout->lines[lineIndex];
+    const text::Layout::Line& line = layout->lines[lineIndex];
     const float current = getCaretX(line, position);
     std::vector<std::size_t> stops{line.begin, line.end};
     for (std::size_t index = line.firstCharacter; index < line.endCharacter; ++index) {
@@ -119,10 +119,10 @@ std::size_t TextFieldLayout::moveAlong(std::size_t position, bool down) const {
 
 std::vector<math::Rect> TextFieldLayout::getSelection(std::size_t begin, std::size_t end) const {
     std::vector<math::Rect> boxes;
-    for (const text::TextLayout::Line& line : layout->lines) {
+    for (const text::Layout::Line& line : layout->lines) {
         std::vector<math::Rect> covered;
         for (std::size_t index = line.firstCharacter; index < line.endCharacter; ++index) {
-            const text::TextLayout::Character& character = layout->characters[index];
+            const text::Layout::Character& character = layout->characters[index];
             if (character.begin >= begin && character.end <= end) {
                 covered.push_back({character.box.x, line.box.y, character.box.width, line.box.height});
             }

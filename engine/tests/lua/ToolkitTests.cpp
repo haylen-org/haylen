@@ -13,6 +13,7 @@
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/TemporaryDirectory.hpp"
 
 namespace haylen::lua {
 
@@ -73,6 +74,57 @@ TEST(EnvironmentTest, NamesTheOptionThatHoldsABadValue) {
     EXPECT_EQ(fixture.lua("tween.to(box, 1, {x = 1}, {delay = 0.5}) return 'ok'"), "ok");
 }
 
+TEST(EnvironmentTest, LoadsChunksOnlyAsText) {
+    test::EngineFixture fixture;
+    lua_State* L = fixture.lua();
+    const test::TemporaryDirectory folder;
+    folder.write("text.lua", "return 7");
+    folder.write("binary.lua", "\x1bLua");
+    lua_pushstring(L, folder.getPath().generic_string().c_str());
+    lua_setglobal(L, "folder");
+
+    // Real bytecode comes from the C API, since app code has no string.dump.
+    std::string bytecode;
+    ASSERT_EQ(luaL_loadstring(L, "return 42"), LUA_OK);
+    // clang-format off
+    lua_dump(L, [](lua_State*, const void* data, std::size_t size, void* output) {
+        static_cast<std::string*>(output)->append(static_cast<const char*>(data), size);
+        return 0;
+    }, &bytecode, 0);
+    // clang-format on
+    lua_pop(L, 1);
+    lua_pushlstring(L, bytecode.data(), bytecode.size());
+    lua_setglobal(L, "bytecode");
+
+    EXPECT_EQ(fixture.lua("return load('return 1 + 1')() + load('return 3', 'three', 't')()"), "5");
+    EXPECT_EQ(fixture.lua("local parts = {'return ', '4'} return load(function() return table.remove(parts, 1) end)()"), "4");
+    EXPECT_EQ(fixture.lua("local env = {} load('value = 5', 'chunk', nil, env)() return env.value .. ' ' .. tostring(value)"), "5 nil");
+    EXPECT_EQ(fixture.lua("return select(2, load(bytecode))"), "attempt to load a binary chunk (mode is 't')");
+    EXPECT_NE(fixture.lua("return load(bytecode, 'bytes', 'b')").find("bad argument #3 to 'load' (chunks load only as text, so the mode is 't')"), std::string::npos);
+    EXPECT_EQ(fixture.lua("return type(string.dump) .. ' ' .. type(('').dump)"), "nil nil");
+
+    EXPECT_EQ(fixture.lua("return loadfile(folder .. '/text.lua')() + dofile(folder .. '/text.lua')"), "14");
+    EXPECT_NE(fixture.lua("return select(2, loadfile(folder .. '/binary.lua'))").find("attempt to load a binary chunk (mode is 't')"), std::string::npos);
+    EXPECT_NE(fixture.lua("return loadfile(folder .. '/text.lua', 'bt')").find("bad argument #2 to 'loadfile'"), std::string::npos);
+    EXPECT_NE(fixture.lua("return dofile(folder .. '/binary.lua')").find("attempt to load a binary chunk (mode is 't')"), std::string::npos);
+}
+
+TEST(EnvironmentTest, KeepsEngineMetatablesOutOfReach) {
+    test::EngineFixture fixture;
+    fixture.runLua("point = require('haylen.math').vec2(1, 2)");
+
+    EXPECT_EQ(fixture.lua("return getmetatable(point) .. ' ' .. debug.getmetatable(point)"), "haylen.Vec2 haylen.Vec2");
+    EXPECT_NE(fixture.lua("setmetatable({}, getmetatable(point))").find("bad argument #2 to 'setmetatable'"), std::string::npos);
+    EXPECT_NE(fixture.lua("debug.setmetatable(point, nil)").find("cannot change a protected metatable"), std::string::npos);
+    EXPECT_EQ(fixture.lua("return point.x + point:length() * 0"), "1.0");
+    EXPECT_EQ(fixture.lua("return type(debug.getregistry)"), "nil");
+
+    // Lua values keep their ordinary metatables and upvalues, while native functions show none.
+    EXPECT_EQ(fixture.lua("local t = debug.setmetatable({}, {__index = {answer = 42}}) return t.answer"), "42");
+    EXPECT_EQ(fixture.lua("local hidden = 3 local function f() return hidden end return select('#', debug.getupvalue(load, 1)) .. ' ' .. select('#', debug.setupvalue(load, 1, print)) .. ' ' .. debug.getupvalue(f, 1) .. ' ' .. debug.setupvalue(f, 1, 4) .. ' ' .. f()"), "0 0 hidden hidden 4");
+    EXPECT_EQ(fixture.lua("return load('return 6')()"), "6");
+}
+
 TEST(PromiseTest, SettlesFromNativeCodeOnAnyThread) {
     test::EngineFixture fixture;
     lua_State* L = fixture.lua();
@@ -105,6 +157,37 @@ TEST(PromiseTest, SettlesFromNativeCodeOnAnyThread) {
     EXPECT_TRUE(loaded.isSettled());
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #results") == "5"; }));
     EXPECT_EQ(fixture.lua("return table.concat(results, ' ')"), "island 36 nil The map is missing. 7");
+}
+
+TEST(PromiseTest, RejectsValuesThatLuaCannotHold) {
+    test::EngineFixture fixture;
+    lua_State* L = fixture.lua();
+    const Promise deep(fixture.engine());
+    const Promise binary(fixture.engine());
+    const Promise shallow(fixture.engine());
+    deep.push(L);
+    lua_setglobal(L, "deep");
+    binary.push(L);
+    lua_setglobal(L, "binary");
+    shallow.push(L);
+    lua_setglobal(L, "shallow");
+
+    // clang-format off
+    fixture.runLua(R"(
+        results = {}
+        require('async').spawn(function()
+            for _, promise in ipairs({deep, binary, shallow}) do
+                local value, err = promise:await()
+                results[#results + 1] = err or type(value)
+            end
+        end)
+    )");
+    // clang-format on
+    deep.resolve(core::Json::parse(std::string(200, '[') + std::string(200, ']')));
+    binary.resolve(core::Json{{"payload", core::Json::binary({1, 2})}});
+    shallow.resolve(core::Json::parse(std::string(100, '[') + std::string(100, ']')));
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #results") == "3"; }));
+    EXPECT_EQ(fixture.lua("return table.concat(results, ' | ')"), "JSON value is nested too deeply to push to Lua. | Binary JSON values cannot be converted to Lua. | table");
 }
 
 TEST(ErrorTest, CapturesTheStackOfSceneCallbacks) {

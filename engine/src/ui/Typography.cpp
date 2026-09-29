@@ -18,16 +18,16 @@ float Typography::getLineHeight(Context& context, Theme::Font font) {
 }
 
 // Text takes the em size that lines its letters up with the widgets of its role, since the theme sizes a font by its height from ascent to descent, and lines follow each other by the height of their fonts. Every paragraph reads in the direction of its first strong letter, while start and end line it up with the side of the UI they name.
-text::TextStyle Typography::getStyle(Context& context, Theme::Font font, float wrapWidth, text::TextAlign align) {
+text::Style Typography::getStyle(Context& context, Theme::Font font, float wrapWidth, text::Alignment align) {
     const Theme::FontStyle& role = context.getTheme().getFont(font);
     const bool rightToLeft = context.isRightToLeft();
-    if (align == text::TextAlign::Start || align == text::TextAlign::End) {
-        align = (align == text::TextAlign::Start) != rightToLeft ? text::TextAlign::Left : text::TextAlign::Right;
+    if (align == text::Alignment::Start || align == text::Alignment::End) {
+        align = (align == text::Alignment::Start) != rightToLeft ? text::Alignment::Left : text::Alignment::Right;
     }
     return {.size = context.getEmSize(font), .align = align, .maxWidth = wrapWidth > 0.0F ? wrapWidth : 0.0F, .lineSpacing = 1.0F, .bold = role.bold, .italic = role.italic, .direction = text::Direction::Auto, .language = context.getLanguage()};
 }
 
-std::shared_ptr<const text::TextLayout> Typography::layout(Context& context, Theme::Font font, std::string_view text, const text::TextStyle& style) {
+std::shared_ptr<const text::Layout> Typography::layout(Context& context, Theme::Font font, std::string_view text, const text::Style& style) {
     return context.getFontFamily(font)->layout(text, style);
 }
 
@@ -36,21 +36,21 @@ math::Vec2 Typography::measure(Context& context, Theme::Font font, std::string_v
     if (text.empty()) {
         return {0.0F, getLineHeight(context, font)};
     }
-    const std::shared_ptr<const text::TextLayout> laid = layout(context, font, text, getStyle(context, font, wrapWidth));
+    const std::shared_ptr<const text::Layout> laid = layout(context, font, text, getStyle(context, font, wrapWidth));
     float width = 0.0F;
-    for (const text::TextLayout::Line& line : laid->lines) {
+    for (const text::Layout::Line& line : laid->lines) {
         width = std::max(width, line.box.width);
     }
     return {std::ceil(width), laid->size.y};
 }
 
 // The text draws through the renderer once the frame renders, at its place among the ImGui draws of the window and inside their clip.
-void Typography::drawLayout(Context& context, Theme::Font font, std::string_view text, const text::TextStyle& style, math::Vec2 position) {
+void Typography::drawLayout(Context& context, Theme::Font font, std::string_view text, const text::Style& style, math::Vec2 position) {
     if (text.empty()) {
         return;
     }
     const Context::Reshape shape = context.getReshape();
-    text::TextStyle painted = style;
+    text::Style painted = style;
     painted.color = style.color * shape.color;
     painted.outlineColor = style.outlineColor * shape.color;
     const math::Vec2 origin = math::Vec2{std::floor(position.x), std::floor(position.y)} * shape.scale + shape.offset;
@@ -63,8 +63,8 @@ void Typography::drawLayout(Context& context, Theme::Font font, std::string_view
 
 // The longest run of whole characters in reading order that fits with the ellipsis stays, and since shaping may change the width where the text is cut, the run shortens until the result fits.
 std::string Typography::elide(Context& context, Theme::Font font, std::string_view text, float width) {
-    const text::TextStyle style = getStyle(context, font);
-    const std::shared_ptr<const text::TextLayout> full = layout(context, font, text, style);
+    const text::Style style = getStyle(context, font);
+    const std::shared_ptr<const text::Layout> full = layout(context, font, text, style);
     if (full->size.x <= width) {
         return std::string(text);
     }
@@ -91,8 +91,8 @@ math::Vec2 Typography::measureParagraph(Context& context, Theme::Font font, std:
 }
 
 void Typography::drawParagraph(Context& context, Theme::Font font, const math::Rect& bounds, math::Color color, std::string_view text, Alignment horizontal, std::optional<math::Color> outline, float outlineWidth) {
-    const text::TextAlign align = horizontal == Alignment::Center ? text::TextAlign::Center : (horizontal == Alignment::End ? text::TextAlign::End : text::TextAlign::Start);
-    text::TextStyle style = getStyle(context, font, bounds.width, align);
+    const text::Alignment align = horizontal == Alignment::Center ? text::Alignment::Center : (horizontal == Alignment::End ? text::Alignment::End : text::Alignment::Start);
+    text::Style style = getStyle(context, font, bounds.width, align);
     style.color = color;
     if (outline) {
         style.outlineWidth = outlineWidth;
@@ -103,7 +103,7 @@ void Typography::drawParagraph(Context& context, Theme::Font font, const math::R
 
 void Typography::drawAligned(Context& context, Theme::Font font, const math::Rect& bounds, math::Color color, std::string_view text, Alignment horizontal) {
     const std::string shown = elide(context, font, text, bounds.width);
-    text::TextStyle style = getStyle(context, font);
+    text::Style style = getStyle(context, font);
     style.color = color;
     const math::Vec2 size = layout(context, font, shown, style)->size;
     drawLayout(context, font, shown, style, {context.alignHorizontally(horizontal, bounds.x, bounds.width, size.x), bounds.y + (bounds.height - size.y) * 0.5F});

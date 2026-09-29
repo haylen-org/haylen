@@ -105,6 +105,10 @@ scene.push(require('scenes.boot').new())
 
 When `require` loads a module for the first time, it returns a second value, which for a package module is the path of its file. Wrap the call in parentheses when it is the last argument of another call, as in `scene.push((require('scenes.level')))`, because otherwise the path becomes an extra argument.
 
+App code loads chunks the same way. `load` and `loadfile` take only text, so a mode other than `'t'` raises `chunks load only as text, so the mode is 't'` and binary chunks fail to load, `dofile` runs only text files, and `string.dump` does not exist. Precompiled bytecode is never checked by the Lua virtual machine and could build values that crash it.
+
+The metatables of engine types are protected. `getmetatable(value)` returns the type name, such as `'haylen.Sprite'`, so it can tell engine values apart, and neither `setmetatable` nor the debug library can read or replace their metatables. `debug.getmetatable` returns the same as `getmetatable`, `debug.setmetatable` raises `cannot change a protected metatable` for an engine value, `debug.getregistry` does not exist, and `debug.getupvalue` and `debug.setupvalue` see no upvalues in native functions. A value can therefore never be finalized by hand or given the members of another type.
+
 Varn's modules live in the same state: `async`, `http`, `socket`, `json`, `fs`, `zip`, `crypto`, `log`, `platform`, `process`, `datetime`, `xml` and `ffi`. The [Varn documentation](https://github.com/varn-org/varn) describes them. Apps use `haylen.storage` for their own files and `haylen.log` and `haylen.platform` for logging and native calls, which are different modules from Varn's `log` and `platform`. Browsers have no raw TCP, so the `socket` module works only in native builds.
 
 ## Asset paths
@@ -366,7 +370,7 @@ The runtime stays alive on the error screen. Fixing the script restarts the app 
 
 ## Hot reload
 
-The desktop player treats a package folder named on its command line as an app in development when it also receives `--dev`, as in `haylen --dev samples/games/tiny-island` or `python3 make.py run samples/games/tiny-island`. It checks `app.json`, `source/` and `content/` for changes every half second and ignores everything else in the folder.
+The desktop player treats a package folder named on its command line as an app in development when it also receives `--dev`, as in `haylen --dev samples/games/tiny-island` or `python3 make.py run samples/games/tiny-island`. It checks `app.json`, `source/` and `content/` for changes every half second on the I/O pool, so frames never wait for the file system, and ignores everything else in the folder.
 
 - A changed file under `source/` or a changed `app.json` restarts the app with a fresh Lua state, and `source/main.lua` runs again. This also works from the error screen.
 - A changed file under `content/` reloads the assets read from it without a restart. Textures change in place, so sprites that already use them show the new pixels, and other asset types leave the cache so the next load reads the new file.
@@ -562,7 +566,7 @@ haylen_add_app(my-app CPP
 
 `Binding::native<&f>` wraps a function that takes the Lua state, so a C++ exception thrown inside it, such as the `std::logic_error` of a missing plugin, becomes a Lua error with the same message. `Binding::function<&f>` goes one step further and converts the parameters and the result of a plain C++ function or static method, so `static int clampScore(int points)` is exposed with `&haylen::lua::Binding::function<&clampScore>`.
 
-A C++ type becomes a Lua type with a `Type<T>` specialization, which names its metatable and says whether Lua holds the value itself or a `std::shared_ptr` to it, and a `ClassBuilder` that fills the metatable in `installLua`.
+A C++ type becomes a Lua type with a `Type<T>` specialization, which names its metatable and says whether Lua holds the value itself or a `std::shared_ptr` to it, and a `ClassBuilder` that fills the metatable in `installLua`. The metatable is protected like the ones of the engine, so `getmetatable` returns the type name and Lua code never reaches the finalizer. A binding that creates a userdata metatable of its own does it with `Userdata::newMetatable`, which protects it the same way.
 
 ```cpp
 namespace app {
@@ -628,7 +632,7 @@ print(wallet.coins)
 
 Reading a member the type does not have raises `app.Wallet has no member '<name>'.`, and assigning one without a setter raises `app.Wallet has no writable property '<name>'.`.
 
-A binding that finishes later returns a `lua::Promise`. The binding creates it, pushes it as its result and settles it once with `resolve` (a JSON value that arrives in Lua as plain tables), `resolveWith` (a function that pushes one value on the frame thread) or `reject` (a message that `:await()` returns as its second value). It may be settled from a worker thread, and the waiting coroutine resumes on the frame thread in a later `Runtime::poll()` of Varn.
+A binding that finishes later returns a `lua::Promise`. The binding creates it, pushes it as its result and settles it once with `resolve` (a JSON value that arrives in Lua as plain tables), `resolveWith` (a function that pushes one value on the frame thread) or `reject` (a message that `:await()` returns as its second value). It may be settled from a worker thread, and the waiting coroutine resumes on the frame thread in a later `Runtime::poll()` of Varn. A JSON value that Lua cannot hold, which is binary JSON or JSON nested more than 128 levels deep, rejects the promise with the reason instead, so its coroutines still resume.
 
 ```cpp
 #include "haylen/core/Engine.hpp"

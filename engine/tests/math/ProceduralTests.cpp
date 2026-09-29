@@ -237,11 +237,15 @@ TEST(PoissonDiskTest, RejectsDegenerateInput) {
 TEST(PoissonDiskTest, BoundsHugeDistancesAndRejectsOnesThatAreNotFinite) {
     Random random(5);
     const Rect area{0.0F, 0.0F, 100.0F, 100.0F};
-    const std::vector<Vec2> points = PoissonDisk::sample(PoissonDisk::Options{.area = area, .minimumDistance = 10.0F, .maximumDistance = 1e30F, .distance = [](Vec2) { return 10.0F; }}, random);
-    ASSERT_GT(points.size(), 10U);
-    for (std::size_t first = 0; first < points.size(); ++first) {
-        for (std::size_t second = first + 1; second < points.size(); ++second) {
-            EXPECT_GE(Vec2::distance(points[first], points[second]), 10.0F - 1e-3F);
+
+    // The largest distances reach far beyond any int number of cells, and the search stays within the grid.
+    for (const float maximum : {1e30F, std::numeric_limits<float>::max()}) {
+        const std::vector<Vec2> points = PoissonDisk::sample(PoissonDisk::Options{.area = area, .minimumDistance = 10.0F, .maximumDistance = maximum, .distance = [](Vec2) { return 10.0F; }}, random);
+        ASSERT_GT(points.size(), 10U);
+        for (std::size_t first = 0; first < points.size(); ++first) {
+            for (std::size_t second = first + 1; second < points.size(); ++second) {
+                EXPECT_GE(Vec2::distance(points[first], points[second]), 10.0F - 1e-3F);
+            }
         }
     }
 

@@ -1551,7 +1551,7 @@ local sprite = m.transform({0, 0}, 0.3, {2, -3})
 print(sprite:determinant() < 0) -- true
 ```
 
-### transform:translationPart()
+### transform:translation()
 
 Returns `tx` and `ty` as a `Vec2`, which is where the transform moves the origin.
 
@@ -1559,7 +1559,7 @@ Returns `tx` and `ty` as a `Vec2`, which is where the transform moves the origin
 local m = require('haylen.math')
 
 local parent = m.transform({300, 200}, m.pi / 3)
-print(parent:translationPart()) -- Vec2(300.0, 200.0)
+print(parent:translation()) -- Vec2(300.0, 200.0)
 ```
 
 ### transform:inverse()
@@ -1913,7 +1913,7 @@ Creates a `Spline` from a list of points. A kind that needs other point counts r
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `kind` | string | `'catmullRom'` | `'catmullRom'` passes through every point with centripetal parameterization. `'bezier'` chains cubic segments whose points go end, control, control, end and so on. `'bspline'` stays near the points without passing through them, except for the ends of open curves. |
+| `kind` | string | `'catmullRom'` | `'catmullRom'` passes through every point with centripetal parameterization. `'bezier'` chains cubic segments whose points go end, control, control, end and so on. `'bSpline'` stays near the points without passing through them, except for the ends of open curves. |
 | `closed` | boolean | `false` | Joins the last point back to the first. Closed curves wrap parameters and distances around. |
 
 ```lua

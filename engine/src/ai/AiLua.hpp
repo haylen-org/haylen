@@ -33,7 +33,7 @@ class AiLua final {
     static int machineChange(lua_State* L);
     static int machineUpdate(lua_State* L);
     static int machineHas(lua_State* L);
-    static int machineState(lua_State* L);
+    static int machineCurrent(lua_State* L);
     static int machinePrevious(lua_State* L);
     static int machineElapsed(lua_State* L);
     static int machineGetOnChange(lua_State* L);

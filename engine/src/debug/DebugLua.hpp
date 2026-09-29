@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <string_view>
 
 struct lua_State;
 
@@ -19,6 +20,7 @@ class DebugLua final {
 
   private:
     static constexpr std::array<const char*, 4> kLevelNames{"debug", "info", "warning", "error"};
+    static constexpr std::array<std::string_view, 1> kMonitorFields{"owner"};
 
     [[nodiscard]] static plugins::DebugPlugin& getPlugin(lua_State* L);
     static void pushStats(lua_State* L, const Stats& snapshot);

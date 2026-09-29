@@ -14,7 +14,7 @@ local groundLayers = {'foam', 'ground', 'shadow', 'cliffs', 'plateau'}
 
 function island.new()
     local self = setmetatable({}, island)
-    self.map = tiled.newMap(assets.load('maps/island.tmj'))
+    self.map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
     self.world = physics2d.newWorld({gravity = {0, 0}, pixelsPerMeter = 64})
     self.map:buildCollision(self.world)
     self.bounds = self.map.bounds

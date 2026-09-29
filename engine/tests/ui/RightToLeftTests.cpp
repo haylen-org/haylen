@@ -44,10 +44,10 @@ class RightToLeftTest : public ::testing::Test {
 // Right-to-left text starts at the right, so the caret before its first letter stands at the right end and the left arrow moves it forward, while the left-to-right run inside keeps its own order.
 TEST_F(RightToLeftTest, PlacesTheCaretOnTheRightClusterOfRightToLeftText) {
     const TextFieldLayout field = lay("שלום abc");
-    const text::TextLayout& laid = field.getLayout();
+    const text::Layout& laid = field.getLayout();
     ASSERT_TRUE(laid.lines[0].rightToLeft);
-    const float right = std::ranges::max(laid.characters, {}, [](const text::TextLayout::Character& character) { return character.box.getRight(); }).box.getRight();
-    const float left = std::ranges::min(laid.characters, {}, [](const text::TextLayout::Character& character) { return character.box.x; }).box.x;
+    const float right = std::ranges::max(laid.characters, {}, [](const text::Layout::Character& character) { return character.box.getRight(); }).box.getRight();
+    const float left = std::ranges::min(laid.characters, {}, [](const text::Layout::Character& character) { return character.box.x; }).box.x;
     EXPECT_NEAR(field.getCaret(0).x, right, 0.5F);
     EXPECT_NEAR(field.getCaret(8).x, left, 0.5F);
     EXPECT_GT(field.getCaret(1).x, field.getCaret(2).x);

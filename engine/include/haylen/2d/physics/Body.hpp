@@ -39,7 +39,8 @@ class Body final {
     };
 
     Body() = default;
-    Body(World* owner, std::uint64_t handle) noexcept : world(owner), id(handle) {}
+    // A handle remembers the generation of its world, so it turns invalid once that world is destroyed, even after a new world reuses its slot.
+    Body(World* owner, std::uint64_t handle) noexcept;
 
     [[nodiscard]] static std::optional<Type> typeFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view typeName(Type value) noexcept;
@@ -100,7 +101,7 @@ class Body final {
         return world;
     }
     [[nodiscard]] bool operator==(const Body& other) const noexcept {
-        return id == other.id;
+        return worldHandle == other.worldHandle && id == other.id;
     }
 
   private:
@@ -112,6 +113,7 @@ class Body final {
     [[nodiscard]] Shape::Outline getChainOutline(std::uint64_t chainId) const;
 
     World* world = nullptr;
+    std::uint32_t worldHandle = 0;
     std::uint64_t id = 0;
 };
 

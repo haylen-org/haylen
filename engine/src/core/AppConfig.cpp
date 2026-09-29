@@ -1,9 +1,11 @@
 #include "haylen/core/AppConfig.hpp"
 
+#include <optional>
 #include <stdexcept>
 
 #include "haylen/core/JsonNumber.hpp"
 #include "haylen/core/JsonValidator.hpp"
+#include "haylen/platform/Window.hpp"
 
 namespace haylen::core {
 
@@ -25,44 +27,11 @@ void AppConfig::requirePositive(double value, const char* key) {
 }
 
 platform::Orientation AppConfig::orientationFromName(const std::string& text) {
-    if (text == "landscape") {
-        return platform::Orientation::Landscape;
+    const std::optional<platform::Orientation> orientation = platform::Window::orientationFromName(text);
+    if (!orientation) {
+        throw std::invalid_argument("app.json has an unknown orientation: " + text);
     }
-    if (text == "portrait") {
-        return platform::Orientation::Portrait;
-    }
-    if (text == "any") {
-        return platform::Orientation::Any;
-    }
-    throw std::invalid_argument("app.json has an unknown orientation: " + text);
-}
-
-std::string_view AppConfig::orientationName(platform::Orientation value) {
-    switch (value) {
-    case platform::Orientation::Landscape:
-        return "landscape";
-    case platform::Orientation::Portrait:
-        return "portrait";
-    case platform::Orientation::Any:
-        return "any";
-    }
-    return "landscape";
-}
-
-std::string_view AppConfig::scalingName(graphics::Viewport::ScalingPolicy policy) {
-    switch (policy) {
-    case graphics::Viewport::ScalingPolicy::Fit:
-        return "fit";
-    case graphics::Viewport::ScalingPolicy::Fill:
-        return "fill";
-    case graphics::Viewport::ScalingPolicy::Stretch:
-        return "stretch";
-    case graphics::Viewport::ScalingPolicy::Expand:
-        return "expand";
-    case graphics::Viewport::ScalingPolicy::PixelPerfect:
-        return "pixel_perfect";
-    }
-    return "expand";
+    return *orientation;
 }
 
 audio::Session::Category AppConfig::sessionCategoryFromName(const std::string& text) {
@@ -259,7 +228,7 @@ Json AppConfig::toJson() const {
         windowJson["position"] = window.position->toJson();
     }
     return {
-        {"name", name}, {"identifier", identifier}, {"version", version}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", scalingName(scaling)}}}, {"orientation", orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", {{"logo", splash.logo}, {"background", splash.background.toHex()}}}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", sessionCategoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}}}, {"debug", debugJson}, {"autoload", autoloads}, {"native", native},
+        {"name", name}, {"identifier", identifier}, {"version", version}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", {{"logo", splash.logo}, {"background", splash.background.toHex()}}}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", sessionCategoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}}}, {"debug", debugJson}, {"autoload", autoloads}, {"native", native},
     };
 }
 

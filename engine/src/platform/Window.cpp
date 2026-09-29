@@ -4,6 +4,17 @@
 
 namespace haylen::platform {
 
+const std::array<std::pair<std::string_view, Orientation>, 3> Window::kOrientationNames{{{"landscape", Orientation::Landscape}, {"portrait", Orientation::Portrait}, {"any", Orientation::Any}}};
+
+std::optional<Orientation> Window::orientationFromName(std::string_view name) noexcept {
+    const auto found = std::ranges::find(kOrientationNames, name, &std::pair<std::string_view, Orientation>::first);
+    return found != kOrientationNames.end() ? std::optional(found->second) : std::nullopt;
+}
+
+std::string_view Window::orientationName(Orientation value) noexcept {
+    return std::ranges::find(kOrientationNames, value, &std::pair<std::string_view, Orientation>::second)->first;
+}
+
 Monitor Window::getCurrentMonitor() const {
     const std::vector<Monitor> monitors = getMonitors();
     const math::Rect frame = getFrame();

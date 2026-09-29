@@ -25,31 +25,43 @@ namespace {
 using Cell = navigation2d::Grid::Cell;
 using Path = std::vector<Cell>;
 
-navigation2d::Grid randomGrid(int width, int height, float wallChance, std::uint64_t seed, const navigation2d::Grid::Layout& layout = {}) {
-    navigation2d::Grid grid(width, height, layout);
-    math::Random random(seed);
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            grid.setWalkable({x, y}, !random.chance(wallChance));
+// Builds random grids and prices paths the way the searches do.
+class PathfindingTest : public ::testing::Test {
+  protected:
+    [[nodiscard]] static navigation2d::Grid randomGrid(int width, int height, float wallChance, std::uint64_t seed, const navigation2d::Grid::Layout& layout = {}) {
+        navigation2d::Grid grid(width, height, layout);
+        math::Random random(seed);
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < width; ++x) {
+                grid.setWalkable({x, y}, !random.chance(wallChance));
+            }
         }
+        return grid;
     }
-    return grid;
-}
 
-// Adds up a path the way searches price it: every step costs its length times the cost of the cell it enters.
-float pathCost(const navigation2d::Grid& grid, std::span<const Cell> path, bool diagonal) {
-    float cost = 0.0F;
-    for (std::size_t index = 1; index < path.size(); ++index) {
-        float length = std::numeric_limits<float>::infinity();
-        grid.forEachStep(path[index - 1], diagonal, [&](Cell next, float step) { length = next == path[index] ? step : length; });
-        cost += length * grid.getCost(path[index]);
+    // Adds up a path the way searches price it: every step costs its length times the cost of the cell it enters.
+    [[nodiscard]] static float pathCost(const navigation2d::Grid& grid, std::span<const Cell> path, bool diagonal) {
+        float cost = 0.0F;
+        for (std::size_t index = 1; index < path.size(); ++index) {
+            float length = std::numeric_limits<float>::infinity();
+            grid.forEachStep(path[index - 1], diagonal, [&](Cell next, float step) { length = next == path[index] ? step : length; });
+            cost += length * grid.getCost(path[index]);
+        }
+        return cost;
     }
-    return cost;
-}
+};
+
+class GridSearchTest : public PathfindingTest {};
+
+class DijkstraMapTest : public PathfindingTest {};
+
+class FlowFieldTest : public PathfindingTest {};
+
+class HierarchicalPathfinderTest : public PathfindingTest {};
 
 } // namespace
 
-TEST(GridSearchTest, FindsCheapestPathsWithEveryAdmissibleHeuristic) {
+TEST_F(GridSearchTest, FindsCheapestPathsWithEveryAdmissibleHeuristic) {
     navigation2d::Grid grid = randomGrid(40, 30, 0.25F, 3);
     grid.setCost({10, 10}, 5.0F);
     navigation2d::DijkstraMap exact;
@@ -78,7 +90,7 @@ TEST(GridSearchTest, FindsCheapestPathsWithEveryAdmissibleHeuristic) {
     EXPECT_GT(found, 20);
 }
 
-TEST(GridSearchTest, TradesLengthForSpeedWithWeights) {
+TEST_F(GridSearchTest, TradesLengthForSpeedWithWeights) {
     const navigation2d::Grid grid = randomGrid(80, 80, 0.2F, 5);
     navigation2d::GridSearch search;
     const std::span<const Cell> exact = search.findPath(grid, {0, 0}, {79, 79});
@@ -97,7 +109,7 @@ TEST(GridSearchTest, TradesLengthForSpeedWithWeights) {
     EXPECT_THROW((void)search.findPath(grid, {0, 0}, {1, 1}, {.weight = 0.5F}), std::invalid_argument);
 }
 
-TEST(GridSearchTest, JumpPointSearchMatchesAStar) {
+TEST_F(GridSearchTest, JumpPointSearchMatchesAStar) {
     navigation2d::GridSearch astar;
     navigation2d::GridSearch jumps;
     std::size_t astarWork = 0;
@@ -134,7 +146,7 @@ TEST(GridSearchTest, JumpPointSearchMatchesAStar) {
     EXPECT_TRUE(costly.hasUniformCost());
 }
 
-TEST(GridSearchTest, WalksHexagonalGrids) {
+TEST_F(GridSearchTest, WalksHexagonalGrids) {
     for (const bool staggerX : {false, true}) {
         for (const bool staggerEven : {false, true}) {
             navigation2d::Grid grid(9, 9, {.topology = navigation2d::Grid::Topology::Hexagonal, .staggerX = staggerX, .staggerEven = staggerEven});
@@ -172,7 +184,7 @@ TEST(GridSearchTest, WalksHexagonalGrids) {
     }
 }
 
-TEST(GridSearchTest, WalksStaggeredGridsAsTurnedSquares) {
+TEST_F(GridSearchTest, WalksStaggeredGridsAsTurnedSquares) {
     for (const bool staggerX : {false, true}) {
         for (const bool staggerEven : {false, true}) {
             const navigation2d::Grid grid(12, 12, {.topology = navigation2d::Grid::Topology::Staggered, .staggerX = staggerX, .staggerEven = staggerEven});
@@ -197,7 +209,7 @@ TEST(GridSearchTest, WalksStaggeredGridsAsTurnedSquares) {
     }
 }
 
-TEST(DijkstraMapTest, LeadsDownhillToTheClosestSourceAndAwayWhenFleeing) {
+TEST_F(DijkstraMapTest, LeadsDownhillToTheClosestSourceAndAwayWhenFleeing) {
     navigation2d::Grid grid(20, 10);
     for (int y = 0; y < 8; ++y) {
         grid.setWalkable({10, y}, false);
@@ -236,7 +248,7 @@ TEST(DijkstraMapTest, LeadsDownhillToTheClosestSourceAndAwayWhenFleeing) {
     EXPECT_THROW((void)map.getValue({20, 0}), std::out_of_range);
 }
 
-TEST(FlowFieldTest, PointsEveryCellAlongACheapestPathToAGoal) {
+TEST_F(FlowFieldTest, PointsEveryCellAlongACheapestPathToAGoal) {
     const navigation2d::Grid grid = randomGrid(30, 30, 0.25F, 17);
     const std::vector<Cell> goals{{3, 3}, {26, 20}};
     navigation2d::FlowField field;
@@ -280,7 +292,7 @@ TEST(FlowFieldTest, PointsEveryCellAlongACheapestPathToAGoal) {
     EXPECT_THROW((void)field.getNext({30, 0}), std::out_of_range);
 }
 
-TEST(HierarchicalPathfinderTest, FindsNearOptimalPathsAndFollowsLocalChanges) {
+TEST_F(HierarchicalPathfinderTest, FindsNearOptimalPathsAndFollowsLocalChanges) {
     navigation2d::Grid grid = randomGrid(96, 96, 0.22F, 31);
     navigation2d::HierarchicalPathfinder hierarchy(grid, {.clusterSize = 12});
     EXPECT_GT(hierarchy.getNodeCount(), 0U);
@@ -321,7 +333,7 @@ TEST(HierarchicalPathfinderTest, FindsNearOptimalPathsAndFollowsLocalChanges) {
     EXPECT_THROW((void)hierarchy.findPath(navigation2d::Grid(8, 8), {0, 0}, {1, 1}), std::invalid_argument);
 }
 
-TEST(HierarchicalPathfinderTest, FindsNoPathThroughCellsThatChangedWithoutAnUpdate) {
+TEST_F(HierarchicalPathfinderTest, FindsNoPathThroughCellsThatChangedWithoutAnUpdate) {
     // Three clusters in a row, joined by one entrance on each border at row 2.
     navigation2d::Grid grid(12, 4);
     navigation2d::HierarchicalPathfinder hierarchy(grid, {.clusterSize = 4});

@@ -44,7 +44,7 @@ class Filter final : public Effect {
         return gain.load(std::memory_order_relaxed);
     }
 
-    // Only the peak and shelf kinds have a gain.
+    // Only the peak and shelf kinds have a gain, from -96 to 96 decibels, a range whose coefficients always fit the filter.
     void setGain(float value);
     [[nodiscard]] bool hasGain() const noexcept;
 
@@ -61,6 +61,8 @@ class Filter final : public Effect {
         float a1 = 0.0F;
         float a2 = 0.0F;
     };
+
+    static constexpr float kMaxGain = 96.0F;
 
     [[nodiscard]] static Coefficients design(Kind type, float rate, float frequency, float quality, float decibels) noexcept;
     static void requireCutoff(float value);

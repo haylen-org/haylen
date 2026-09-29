@@ -34,7 +34,6 @@ void SaveSlots::write(std::string_view slot, const core::Json& data, const core:
     }
     const core::Json saved{{"savedAt", clock()}, {"summary", summary}, {"data", data}};
     userStorage.writeText(pathOf(slot), saved.dump());
-    userStorage.flush();
 }
 
 std::optional<core::Json> SaveSlots::document(std::string_view slot) const {
@@ -72,11 +71,7 @@ bool SaveSlots::exists(std::string_view slot) const {
 }
 
 bool SaveSlots::remove(std::string_view slot) {
-    const bool removed = userStorage.remove(pathOf(slot));
-    if (removed) {
-        userStorage.flush();
-    }
-    return removed;
+    return userStorage.remove(pathOf(slot));
 }
 
 std::vector<SaveSlots::Info> SaveSlots::list() const {

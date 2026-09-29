@@ -13,6 +13,7 @@
 #include "haylen/graphics/Image.hpp"
 #include "haylen/math/Insets.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen::animation2d {
 
@@ -302,7 +303,7 @@ TEST_F(SpriteAtlasTest, KeepsHashFramesInFileOrder) {
     for (int index = 0; index < 12; ++index) {
         frames += (index == 0 ? "" : ", ") + std::string(R"("hero )") + std::to_string(index) + R"(": {"frame": {"x": )" + std::to_string(index * 8) + R"(, "y": 0, "w": 8, "h": 8}})";
     }
-    const std::vector<std::uint8_t> image = test::pngImage(96, 8, 0xFFFFFFFFU);
+    const std::vector<std::uint8_t> image = test::TestFiles::pngImage(96, 8, 0xFFFFFFFFU);
     test::EngineFixture fixture({{"content/hero.json", R"({"frames": {)" + frames + R"(}, "meta": {"image": "hero.png", "frameTags": [{"name": "walk", "from": 0, "to": 11}]}})"}, {"content/hero.png", std::string(image.begin(), image.end())}});
 
     const auto atlas = std::static_pointer_cast<animation2d::SpriteAtlas>(fixture.engine().getAssets().load("atlas", "hero.json"));
@@ -315,7 +316,7 @@ TEST_F(SpriteAtlasTest, KeepsHashFramesInFileOrder) {
 }
 
 TEST_F(SpriteAtlasTest, LoadsThroughAssetsAndSharesItsTexture) {
-    const std::vector<std::uint8_t> image = test::pngImage(64, 32, 0xFFFFFFFFU);
+    const std::vector<std::uint8_t> image = test::TestFiles::pngImage(64, 32, 0xFFFFFFFFU);
     test::EngineFixture fixture({{"content/ui/hero.json", kAsepriteAtlas}, {"content/ui/hero.png", std::string(image.begin(), image.end())}});
     assets::Manager& assets = fixture.engine().getAssets();
 
@@ -340,7 +341,7 @@ TEST_F(SpriteAtlasTest, LoadsThroughAssetsAndSharesItsTexture) {
 }
 
 TEST_F(Animation2DLuaTest, AnimatesSpritesFromLua) {
-    const std::vector<std::uint8_t> image = test::pngImage(64, 32, 0xFFFFFFFFU);
+    const std::vector<std::uint8_t> image = test::TestFiles::pngImage(64, 32, 0xFFFFFFFFU);
     test::EngineFixture fixture({{"content/ui/hero.json", kAsepriteAtlas}, {"content/ui/hero.png", std::string(image.begin(), image.end())}, {"content/units/warrior.png", std::string(image.begin(), image.end())}});
     // clang-format off
     fixture.runLua(R"(

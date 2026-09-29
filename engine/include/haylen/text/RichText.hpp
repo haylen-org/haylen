@@ -12,11 +12,11 @@
 #include "haylen/debug/ObjectCounter.hpp"
 #include "haylen/debug/TrackedObject.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/text/Effect.hpp"
+#include "haylen/text/Layout.hpp"
 #include "haylen/text/RichTextDocument.hpp"
 #include "haylen/text/RichTextOptions.hpp"
 #include "haylen/text/RichTextRegistry.hpp"
-#include "haylen/text/TextEffect.hpp"
-#include "haylen/text/TextLayout.hpp"
 
 namespace haylen::text {
 
@@ -51,12 +51,12 @@ class RichText final {
     }
 
     // Returns the layout at the current width, or at another width without changing it, which is how a container measures the text.
-    [[nodiscard]] const TextLayout& getLayout();
-    [[nodiscard]] const TextLayout& getLayout(float maxWidth);
+    [[nodiscard]] const Layout& getLayout();
+    [[nodiscard]] const Layout& getLayout(float maxWidth);
     [[nodiscard]] math::Vec2 getSize();
 
     // Returns the layout of this moment, with the effects applied and the characters the reveal has not reached hidden.
-    [[nodiscard]] const TextLayout& getFrame();
+    [[nodiscard]] const Layout& getFrame();
 
     // Return the payload of the link or the text of the hint under a point of the text block.
     [[nodiscard]] std::optional<std::string> getLinkAt(math::Vec2 point);
@@ -78,7 +78,7 @@ class RichText final {
         float maxWidth = 0.0F;
         float scale = 1.0F;
         std::uint64_t generation = 0;
-        TextLayout layout;
+        Layout layout;
     };
 
     static constexpr std::size_t kCachedLayouts = 4;
@@ -87,25 +87,25 @@ class RichText final {
     static void validate(const RichTextOptions& value);
     static void validateWidth(float value);
     [[nodiscard]] static bool isPositive(float value) noexcept;
-    static void applyReveal(TextLayout& revealed, std::size_t visible);
+    static void applyReveal(Layout& revealed, std::size_t visible);
 
     void requireIdle() const;
     void resetReveal() noexcept;
     [[nodiscard]] CachedLayout& getCachedLayout(float maxWidth);
     [[nodiscard]] const std::vector<float>& getRevealTimes();
     [[nodiscard]] std::size_t countRevealed(float clock);
-    void applyEffects(TextLayout& moved);
+    void applyEffects(Layout& moved);
 
     std::string source;
     RichTextDocument document;
     RichTextOptions options;
     std::shared_ptr<RichTextRegistry> registry;
-    std::vector<TextEffect::Function> effects;
-    std::vector<TextEffect::Parameters> parameters;
+    std::vector<Effect::Function> effects;
+    std::vector<Effect::Parameters> parameters;
     std::list<CachedLayout> layouts;
     std::vector<float> revealTimes;
     std::vector<std::size_t> effectStarts;
-    TextLayout frame;
+    Layout frame;
     std::optional<std::size_t> visibleCharacters;
     std::uint64_t builds = 0;
     std::uint64_t framedGeneration = 0;

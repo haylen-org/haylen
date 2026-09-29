@@ -11,7 +11,7 @@
 
 namespace haylen::audio {
 
-debug::ObjectCounter SoundData::counter("Sound", debug::ObjectCounter::Kind::Native);
+debug::ObjectCounter& SoundData::counter = *new debug::ObjectCounter("Sound", debug::ObjectCounter::Kind::Native);
 
 Sound Sound::decode(std::span<const std::uint8_t> encoded) {
     MemoryDecoder decoder(encoded);

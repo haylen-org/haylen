@@ -77,6 +77,7 @@ set(HAYLEN_TEST_SOURCES
   storage/StorageTests.cpp
   support/EngineFixture.cpp
   support/TemporaryDirectory.cpp
+  support/TestFiles.cpp
   support/UiFixture.cpp
   text/BitmapFontTests.cpp
   text/FontTests.cpp

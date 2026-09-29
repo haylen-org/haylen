@@ -18,7 +18,7 @@ std::optional<Spline::Kind> Spline::kindFromName(std::string_view name) noexcept
     if (name == "bezier") {
         return Kind::Bezier;
     }
-    if (name == "bspline") {
+    if (name == "bSpline") {
         return Kind::BSpline;
     }
     return std::nullopt;
@@ -29,7 +29,7 @@ std::string_view Spline::kindName(Kind value) noexcept {
     case Kind::Bezier:
         return "bezier";
     case Kind::BSpline:
-        return "bspline";
+        return "bSpline";
     case Kind::CatmullRom:
         break;
     }

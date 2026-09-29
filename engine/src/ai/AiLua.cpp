@@ -205,7 +205,7 @@ void AiLua::pushName(lua_State* L, const std::string& name) {
     lua::Stack::push(L, name);
 }
 
-int AiLua::machineState(lua_State* L) {
+int AiLua::machineCurrent(lua_State* L) {
     pushName(L, lua::Userdata::check<Scripted>(L, 1).machine.getCurrent());
     return 1;
 }
@@ -248,7 +248,7 @@ int AiLua::open(lua_State* L) {
 }
 
 void AiLua::install(lua_State* L) {
-    lua::ClassBuilder<Scripted>(L).function("change", &lua::Binding::native<&machineChange>).function("update", &lua::Binding::native<&machineUpdate>).function("has", &lua::Binding::native<&machineHas>).property("state", &machineState).property("previous", &machinePrevious).property("elapsed", &machineElapsed).property("onChange", &machineGetOnChange, &machineSetOnChange).install();
+    lua::ClassBuilder<Scripted>(L).function("change", &lua::Binding::native<&machineChange>).function("update", &lua::Binding::native<&machineUpdate>).function("has", &lua::Binding::native<&machineHas>).property("current", &machineCurrent).property("previous", &machinePrevious).property("elapsed", &machineElapsed).property("onChange", &machineGetOnChange, &machineSetOnChange).install();
     BehaviorTreeLua::install(L);
     UtilityLua::install(L);
     InfluenceMapLua::install(L);

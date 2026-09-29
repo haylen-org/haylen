@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -11,6 +12,7 @@
 #include <vector>
 
 #include "haylen/2d/graphics/Renderer.hpp"
+#include "haylen/core/Connection.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/debug/LogLine.hpp"
 #include "haylen/debug/Monitor.hpp"
@@ -59,22 +61,41 @@ class DebugPlugin final : public Plugin {
     // Takes a snapshot of the engine statistics, with the rendering of the last frame the renderer finished.
     [[nodiscard]] debug::Stats captureStats(core::Engine& engine) const;
 
-    // Adds a monitor sampled once per frame, replacing the monitor with the same name.
-    void addMonitor(std::string name, debug::Monitor::Sampler sampler);
+    // Adds a monitor sampled once per frame, replacing the monitor with the same name. Disconnecting the connection removes the monitor, and blocking it holds the value and history without sampling.
+    core::Connection addMonitor(std::string name, debug::Monitor::Sampler sampler);
     bool removeMonitor(std::string_view name);
-    [[nodiscard]] const std::vector<std::shared_ptr<debug::Monitor>>& getMonitors() const noexcept {
-        return monitors;
-    }
+    [[nodiscard]] std::vector<std::shared_ptr<debug::Monitor>> getMonitors() const;
 
     // The latest printed lines, oldest first, from any thread that logged.
     [[nodiscard]] std::vector<debug::LogLine> getRecentLog() const;
 
   private:
+    // A registered monitor and the link of its connection, which ends once the monitor is removed or replaced.
+    struct MonitorEntry final : core::Connection::Link {
+        DebugPlugin* plugin = nullptr;
+        std::shared_ptr<debug::Monitor> monitor;
+        bool blocked = false;
+
+        void disconnect() override;
+        [[nodiscard]] bool isConnected() const noexcept override {
+            return plugin != nullptr;
+        }
+        void setBlocked(bool value) override {
+            blocked = value;
+        }
+        [[nodiscard]] bool isBlocked() const noexcept override {
+            return blocked;
+        }
+    };
+
     void record(core::Log::Level level, std::string_view line);
+
+    // Removes the entries that match, ending their connections.
+    bool removeMonitors(const std::function<bool(const MonitorEntry&)>& matches);
 
     mutable std::mutex linesMutex;
     std::deque<debug::LogLine> lines;
-    std::vector<std::shared_ptr<debug::Monitor>> monitors;
+    std::vector<std::shared_ptr<MonitorEntry>> monitors;
     core::Engine* owner = nullptr;
     graphics2d::Renderer::Stats lastRendering;
     std::uint64_t listener = 0;

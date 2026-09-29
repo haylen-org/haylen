@@ -10,7 +10,7 @@ namespace haylen::audio {
 
 // The samples of a decoded sound, or the encoded file of a streamed one, with its format.
 struct SoundData {
-    static debug::ObjectCounter counter;
+    static debug::ObjectCounter& counter;
 
     std::vector<float> samples;
     std::vector<std::uint8_t> encoded;

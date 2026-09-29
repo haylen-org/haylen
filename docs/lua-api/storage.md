@@ -6,6 +6,23 @@
 local storage = require('haylen.storage')
 ```
 
+## Synchronous and asynchronous calls
+
+The functions without a suffix read and write the disk on the frame thread and return once the work is done. That takes little time for small files on local storage, so they suit settings, small saves and loading at the start of a scene, but the time a large file or slow storage takes shows as a hitch in the frame. The functions whose names end in `Async` do the same work on the I/O pool and return a promise from Varn's `async` module at once. Call `:await()` on it inside a coroutine started with `async.spawn()` or `scene.spawn()`. It returns the result, or `nil` and the error message when the operation failed. Arguments of the wrong type and values that cannot become JSON raise at once, and every other failure, such as a path that leaves the folder, a bad slot name or a missing file, rejects the promise with the message the synchronous function raises.
+
+Asynchronous operations run one at a time in the order they were started, so a read that starts after a write sees what the write stored. The synchronous functions do not wait for them, and a file written both ways at once ends up with one of the two contents, never with a mix. When the app stops, the operations still waiting run before it quits, so a save started just before the app closes reaches the disk.
+
+```lua
+local async = require('async')
+local storage = require('haylen.storage')
+
+async.spawn(function()
+    storage.writeJsonAsync('cache/world.json', {seed = 42, chunks = {1, 2, 3}})
+    local world, err = storage.readJsonAsync('cache/world.json'):await()
+    print(world and #world.chunks or err) -- 3
+end)
+```
+
 ## Paths
 
 Paths are relative to the storage folder of the app and use `/` as the separator, for example `'saves/slot1.json'`. `.` segments are ignored and `..` may only go back inside the folder. The following paths raise errors:
@@ -153,6 +170,50 @@ async.spawn(function()
 end)
 ```
 
+### storage.readAsync(path), storage.readJsonAsync(path)
+
+Return promises for what `storage.read` and `storage.readJson` return, read and parsed on the I/O pool. A missing file or invalid JSON rejects the promise with the same message those functions raise.
+
+```lua
+local async = require('async')
+local storage = require('haylen.storage')
+
+async.spawn(function()
+    local notes, err = storage.readAsync('notes.txt'):await()
+    print(notes or err)
+end)
+```
+
+### storage.writeAsync(path, text), storage.writeJsonAsync(path, value)
+
+Return promises that resolve with `true` once `text`, or `value` converted to JSON with two-space indentation, replaced the file with the same atomic write as `storage.write`. The value is converted when the function is called, so later changes to the table do not reach the file. Call `storage.flush()` after awaiting when the file must survive a crash of a web build.
+
+```lua
+local async = require('async')
+local storage = require('haylen.storage')
+
+local replay = {frames = {1, 2, 3}}
+async.spawn(function()
+    storage.writeJsonAsync('replays/last.json', replay):await()
+    storage.flush()
+end)
+```
+
+### storage.removeAsync(path), storage.listAsync(directory)
+
+Return promises for what `storage.remove` and `storage.list` return.
+
+```lua
+local async = require('async')
+local storage = require('haylen.storage')
+
+async.spawn(function()
+    for _, path in ipairs(storage.listAsync('cache'):await()) do
+        storage.removeAsync(path):await()
+    end
+end)
+```
+
 ## Save slots
 
 Save slots hold the progress of the app, with a small summary of each slot for a load menu. Each slot is a JSON file at `saves/<slot>.json` among the other files of the app, so `storage.list('saves')` lists them too. A slot holds the app data, a summary table for load menus and the time it was saved. Slot names use 1 to 64 letters, digits, dashes or underscores, such as `'slot-1'` or `'auto_save'`, and other names raise `A save slot name uses 1 to 64 letters, digits, dashes or underscores: <slot>`. Every write and remove reaches the disk at once, including the browser storage of web builds.
@@ -247,6 +308,37 @@ scene.push({
 })
 ```
 
+### storage.writeSlotAsync(slot, data, summary), storage.removeSlotAsync(slot)
+
+Return promises for what `storage.writeSlot` and `storage.removeSlot` do. The data and summary are converted when the function is called, the file is written or removed on the I/O pool, and the promise settles once the change is durable, including the browser storage of web builds. `storage.writeSlotAsync` resolves with `true`, and `storage.removeSlotAsync` with whether the slot existed. A value that cannot become JSON raises at once, and a bad slot name or a summary that is not a table with string keys rejects the promise.
+
+```lua
+local async = require('async')
+local storage = require('haylen.storage')
+
+local game = {day = 7, wood = 30}
+async.spawn(function()
+    local saved, err = storage.writeSlotAsync('auto_save', game, {day = game.day}):await()
+    print(saved and 'saved' or err)
+end)
+```
+
+### storage.readSlotAsync(slot), storage.slotInfoAsync(slot), storage.listSlotsAsync()
+
+Return promises for what `storage.readSlot`, `storage.slotInfo` and `storage.listSlots` return. A damaged slot rejects the promise with `The save slot <slot> is damaged.`.
+
+```lua
+local async = require('async')
+local storage = require('haylen.storage')
+
+async.spawn(function()
+    for _, info in ipairs(storage.listSlotsAsync():await()) do
+        local game = storage.readSlotAsync(info.slot):await()
+        print(info.slot, info.savedAt, game and game.day)
+    end
+end)
+```
+
 ### Autosave example
 
 ```lua
@@ -259,7 +351,7 @@ local game = storage.readSlot('auto_save') or {day = 1, wood = 0}
 scene.push({
     enter = function(self)
         self.autosave = timer.every(60, function()
-            storage.writeSlot('auto_save', game, {day = game.day})
+            storage.writeSlotAsync('auto_save', game, {day = game.day})
         end)
     end,
     exit = function(self)

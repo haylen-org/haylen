@@ -13,7 +13,7 @@ namespace haylen::storage {
 
 class UserStorage;
 
-// Named save slots kept as JSON files in user storage. Each file holds the saved data and a small summary, such as a title and a progress label, for load menus. Slot names use letters, digits, dashes and underscores.
+// Named save slots kept as JSON files in user storage. Each file holds the saved data and a small summary, such as a title and a progress label, for load menus. Slot names use letters, digits, dashes and underscores. Like other files of user storage, writes and removes become durable with UserStorage::flush, and every method may run on any thread.
 class SaveSlots final {
   public:
     struct Info {

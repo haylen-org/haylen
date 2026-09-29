@@ -6,25 +6,25 @@
 #include <string>
 #include <vector>
 
+#include "haylen/core/Engine.hpp"
+#include "haylen/core/EventBus.hpp"
+#include "haylen/core/LifecycleEvent.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen {
 
-namespace {
-
-// A bitmap font, an image and the Hebrew test font.
-std::map<std::string, std::string> fontFiles() {
-    const std::vector<std::uint8_t> image = test::pngImage(32, 16, 0xFFFFFFFFU);
-    const std::string png(image.begin(), image.end());
-    const std::string bmfont = "info face=\"Pixel\" size=8\ncommon lineHeight=10 base=8 pages=1\npage id=0 file=\"pixel.png\"\nchar id=65 x=0 y=0 width=8 height=8 xoffset=0 yoffset=0 xadvance=9 page=0\nchar id=66 x=8 y=0 width=8 height=8 xoffset=0 yoffset=0 xadvance=9 page=0\nkerning first=65 second=66 amount=-1\n";
-    std::ifstream hebrew(std::string(HAYLEN_TEST_FONTS) + "/noto_sans_hebrew_regular.ttf", std::ios::binary);
-    return {{"content/fonts/pixel.fnt", bmfont}, {"content/fonts/pixel.png", png}, {"content/images/coin.png", png}, {"content/fonts/hebrew.ttf", {std::istreambuf_iterator<char>(hebrew), std::istreambuf_iterator<char>()}}};
-}
-
-} // namespace
-
 class TextLuaTest : public ::testing::Test {
   protected:
+    // A bitmap font, an image and the Hebrew test font.
+    [[nodiscard]] static std::map<std::string, std::string> fontFiles() {
+        const std::vector<std::uint8_t> image = test::TestFiles::pngImage(32, 16, 0xFFFFFFFFU);
+        const std::string png(image.begin(), image.end());
+        const std::string bmfont = "info face=\"Pixel\" size=8\ncommon lineHeight=10 base=8 pages=1\npage id=0 file=\"pixel.png\"\nchar id=65 x=0 y=0 width=8 height=8 xoffset=0 yoffset=0 xadvance=9 page=0\nchar id=66 x=8 y=0 width=8 height=8 xoffset=0 yoffset=0 xadvance=9 page=0\nkerning first=65 second=66 amount=-1\n";
+        std::ifstream hebrew(std::string(HAYLEN_TEST_FONTS) + "/noto_sans_hebrew_regular.ttf", std::ios::binary);
+        return {{"content/fonts/pixel.fnt", bmfont}, {"content/fonts/pixel.png", png}, {"content/images/coin.png", png}, {"content/fonts/hebrew.ttf", {std::istreambuf_iterator<char>(hebrew), std::istreambuf_iterator<char>()}}};
+    }
+
     void SetUp() override {
         fixture.runLua("graphics = require('haylen.graphics') graphics2d = require('haylen.graphics2d') assets = require('haylen.assets') ui = require('haylen.ui') font = graphics2d.defaultFont()");
     }
@@ -133,6 +133,38 @@ TEST_F(TextLuaTest, MakesDrawsAndMeasuresRichText) {
     EXPECT_NE(lua("graphics2d.newRichText('x', {family = 3})").find("expected a FontFamily or a Font"), std::string::npos);
     EXPECT_NE(lua("graphics2d.newRichText('x', {fonts = {graphics.newFontFamily({regular = font})}})").find("The fonts option maps font names to families, so its keys must be strings."), std::string::npos);
     EXPECT_NE(render("graphics2d.drawRichText('x', 0, 0)").find("No canvas is active"), std::string::npos);
+}
+
+// Rich text drawn every frame lays out again each time, and the images of its [img] tags load once while frames keep drawing them.
+TEST_F(TextLuaTest, KeepsTheImagesOfRichTextThatFramesKeepDrawing) {
+    std::vector<std::string> log;
+    // clang-format off
+    const auto record = [&log](std::string kind) {
+        return [&log, kind](core::EventBus::Event& event) {
+            log.push_back(kind + " " + event.getData().at("path").get<std::string>());
+        };
+    };
+    // clang-format on
+    const core::Connection loaded = fixture.engine().getEvents().on(core::LifecycleEvent::kAssetLoaded, record("loaded"));
+    const core::Connection unloaded = fixture.engine().getEvents().on(core::LifecycleEvent::kAssetUnloaded, record("unloaded"));
+
+    lua("drawn = true require('haylen.scene').push({render = function() graphics2d.beginScreen() if drawn then graphics2d.drawRichText('Coins [img=images/coin.png]', 0, 0, {tint = '#FF8080'}) end end})");
+    fixture.frames(5);
+    EXPECT_EQ(log, (std::vector<std::string>{"loaded images/coin.png"}));
+    EXPECT_EQ(lua("local w = graphics2d.measureRichText('[img=images/coin.png]', {tint = '#FFFFFF'}) return w"), "32.0");
+
+    lua("drawn = false");
+    fixture.frames(3);
+    EXPECT_EQ(log, (std::vector<std::string>{"loaded images/coin.png", "unloaded images/coin.png"}));
+}
+
+// Rich text objects and immediate rich text draw with a tint, and objects also with a scale from the top-left corner.
+TEST_F(TextLuaTest, TintsAndScalesDrawnRichText) {
+    lua("label = graphics2d.newRichText('[b]Gold[/b]', {size = 20})");
+    EXPECT_EQ(render("graphics2d.beginScreen() label:draw(0, 0, {scale = {2, 3}, tint = '#80FFFFFF', layer = 1}) graphics2d.drawRichText('Gold', 0, 40, {tint = '#FF0000', layer = 2})"), "nil");
+    EXPECT_NE(render("graphics2d.beginScreen() label:draw(0, 0, {scale = 'big'})").find("bad option 'scale' to 'draw'"), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() label:draw(0, 0, {tints = '#FFFFFF'})").find("Unknown option 'tints'"), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawRichText('Gold', 0, 0, {tint = 5})").find("bad option 'tint' to 'drawRichText'"), std::string::npos);
 }
 
 TEST_F(TextLuaTest, ChangesRichTextOptionsAsProperties) {

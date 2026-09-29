@@ -27,7 +27,7 @@ void DebugPlugin::start(core::Engine& engine) {
 void DebugPlugin::stop(core::Engine&) {
     setObjectEvents(false);
     core::Log::removeListener(listener);
-    monitors.clear();
+    removeMonitors([](const MonitorEntry&) { return true; });
     owner = nullptr;
 }
 
@@ -63,14 +63,44 @@ debug::Stats DebugPlugin::captureStats(core::Engine& engine) const {
     return debug::Stats::capture(engine, lastRendering);
 }
 
-void DebugPlugin::addMonitor(std::string name, debug::Monitor::Sampler sampler) {
-    auto monitor = std::make_shared<debug::Monitor>(std::move(name), std::move(sampler));
-    removeMonitor(monitor->getName());
-    monitors.push_back(std::move(monitor));
+void DebugPlugin::MonitorEntry::disconnect() {
+    if (plugin != nullptr) {
+        plugin->removeMonitors([this](const MonitorEntry& entry) { return &entry == this; });
+    }
+}
+
+core::Connection DebugPlugin::addMonitor(std::string name, debug::Monitor::Sampler sampler) {
+    auto entry = std::make_shared<MonitorEntry>();
+    entry->monitor = std::make_shared<debug::Monitor>(std::move(name), std::move(sampler));
+    removeMonitor(entry->monitor->getName());
+    entry->plugin = this;
+    monitors.push_back(entry);
+    return core::Connection(std::weak_ptr<core::Connection::Link>(entry));
 }
 
 bool DebugPlugin::removeMonitor(std::string_view name) {
-    return std::erase_if(monitors, [name](const std::shared_ptr<debug::Monitor>& monitor) { return monitor->getName() == name; }) > 0;
+    return removeMonitors([name](const MonitorEntry& entry) { return entry.monitor->getName() == name; });
+}
+
+bool DebugPlugin::removeMonitors(const std::function<bool(const MonitorEntry&)>& matches) {
+    // clang-format off
+    return std::erase_if(monitors, [&matches](const std::shared_ptr<MonitorEntry>& entry) {
+        if (!matches(*entry)) {
+            return false;
+        }
+        entry->plugin = nullptr;
+        return true;
+    }) > 0;
+    // clang-format on
+}
+
+std::vector<std::shared_ptr<debug::Monitor>> DebugPlugin::getMonitors() const {
+    std::vector<std::shared_ptr<debug::Monitor>> registered;
+    registered.reserve(monitors.size());
+    for (const std::shared_ptr<MonitorEntry>& entry : monitors) {
+        registered.push_back(entry->monitor);
+    }
+    return registered;
 }
 
 void DebugPlugin::event(core::Engine&, const platform::Event& event) {
@@ -101,7 +131,7 @@ void DebugPlugin::renderUi(core::Engine& engine) {
     ImGui::SetNextWindowPos({safe.x + 16.0F, safe.y + 16.0F}, ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize({720.0F, std::min(860.0F, safe.height - 32.0F)}, ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowBgAlpha(0.9F);
-    if (!debug::OverlayWindow::draw(engine, captureStats(engine), monitors, getRecentLog())) {
+    if (!debug::OverlayWindow::draw(engine, captureStats(engine), getMonitors(), getRecentLog())) {
         statsMode = debug::StatsDisplay::Mode::Off;
     }
 }
@@ -115,12 +145,14 @@ void DebugPlugin::renderOverlay(core::Engine& engine) {
     debug::StatsDisplay::drawCompact(engine, {.fps = average > 0.0 ? 1000.0 / average : 0.0, .milliseconds = profiler.getLastFrameMilliseconds(), .drawCalls = lastRendering.drawCalls, .vertices = lastRendering.vertices, .instances = lastRendering.instances});
 }
 
-// The renderer has just submitted the frame, so its statistics are complete, and monitors sample what the frame left behind. A monitor may add or remove monitors while it samples, so the loop walks a copy.
+// The renderer has just submitted the frame, so its statistics are complete, and monitors sample what the frame left behind. A monitor may add or remove monitors while it samples, so the loop walks a copy and skips the ones removed meanwhile.
 void DebugPlugin::endFrame(core::Engine& engine) {
     lastRendering = engine.getRenderer2D().getStats();
-    const std::vector<std::shared_ptr<debug::Monitor>> snapshot = monitors;
-    for (const std::shared_ptr<debug::Monitor>& monitor : snapshot) {
-        monitor->sample();
+    const std::vector<std::shared_ptr<MonitorEntry>> snapshot = monitors;
+    for (const std::shared_ptr<MonitorEntry>& entry : snapshot) {
+        if (entry->isConnected() && !entry->blocked) {
+            entry->monitor->sample();
+        }
     }
 }
 

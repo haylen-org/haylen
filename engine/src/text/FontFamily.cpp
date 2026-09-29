@@ -83,11 +83,11 @@ FontFamily::Selection FontFamily::resolve(const Selection& face, std::u32string_
     return face;
 }
 
-std::shared_ptr<const TextLayout> FontFamily::layout(std::string_view text, const TextStyle& style) {
+std::shared_ptr<const Layout> FontFamily::layout(std::string_view text, const Style& style) {
     return layouts->get(text, style, [&] { return LayoutBuilder::layoutPlainText(text, style, this, nullptr); });
 }
 
-math::Vec2 FontFamily::measure(std::string_view text, const TextStyle& style) {
+math::Vec2 FontFamily::measure(std::string_view text, const Style& style) {
     return layout(text, style)->size;
 }
 

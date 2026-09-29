@@ -274,7 +274,7 @@ Scenes, autoloads, timers, tweens and sounds each have a process mode that decid
 | `'always'` | Yes | Yes |
 | `'disabled'` | No | No |
 
-`'inherit'` is the default. A scene inherits the mode of the scene below it on the stack and resolves to `'pausable'` at the bottom, so a settings screen pushed over a pause menu runs while the game is paused, like the menu. A timer or tween with an owner inherits the mode of its owner: the resolved mode of a scene, or the `processMode` field of any other table, such as an autoload. Without an owner it counts as `'pausable'`.
+`'inherit'` is the default. A scene inherits the mode of the scene below it on the stack and resolves to `'pausable'` at the bottom, so a settings screen pushed over a pause menu runs while the game is paused, like the menu. A timer or tween with an owner inherits the mode of its owner: the resolved mode of a scene, or the `processMode` field of any other table, such as an autoload. It reads that mode again every frame, so changing the `processMode` of the owner, or of a scene below it, changes what its timers and tweens do at once. Without an owner it counts as `'pausable'`.
 
 The mode decides whether the top scene gets `update`, `fixedUpdate` and input events, and whether an autoload gets `update`, `fixedUpdate` and input events. Scenes and autoloads keep rendering in every mode, so a paused level stays on screen under its menu. Other events, such as focus changes, reach them in every mode.
 
@@ -395,7 +395,7 @@ A listener, a timer or a tween that outlives the thing it belongs to keeps runni
 | A UI document | When it is unmounted. |
 | Any other table or userdata, such as an autoload or a game object | When the garbage collector frees it. What it held ends at the end of that frame. |
 
-The owner holds the functions of its listeners and the bus does not hold the owner, so a function may refer to its owner without keeping it alive. `scene.listen(owner, signalOrName, fn, options)` connects to a signal or subscribes to an event in one call, and a scene built on `scene.Scene` with `haylen.class` calls it as `self:listen(signalOrName, fn, options)`. A timer or tween that inherits its process mode takes the one of its owner too.
+The owner holds the functions of its listeners and the bus does not hold the owner, so a function may refer to its owner without keeping it alive. `scene.listen(owner, signalOrName, fn, options)` connects to a signal or subscribes to an event in one call, and a scene built on `scene.Scene` with `haylen.class` calls it as `self:listen(signalOrName, fn, options)`. A timer or tween that inherits its process mode follows the one of its owner too.
 
 ```lua
 local haylen = require('haylen')

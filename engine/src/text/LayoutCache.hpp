@@ -8,18 +8,18 @@
 #include <string_view>
 #include <unordered_map>
 
-#include "haylen/text/TextLayout.hpp"
-#include "haylen/text/TextStyle.hpp"
+#include "haylen/text/Layout.hpp"
+#include "haylen/text/Style.hpp"
 
 namespace haylen::text {
 
 // Keeps the layouts of plain text a font or family made most recently, by text and by the fields of the style that change the layout, so labels and text drawn every frame shape once.
 class LayoutCache final {
   public:
-    using Builder = std::function<TextLayout()>;
+    using Builder = std::function<Layout()>;
 
     // Returns the cached layout of the text in the style, or builds and caches it. A size, maximum width or line spacing that is not finite throws std::invalid_argument.
-    [[nodiscard]] std::shared_ptr<const TextLayout> get(std::string_view text, const TextStyle& style, const Builder& build);
+    [[nodiscard]] std::shared_ptr<const Layout> get(std::string_view text, const Style& style, const Builder& build);
 
   private:
     // The text and the language are views: a lookup views what it is given, and a cached key views the strings of its entry, which stays where the list built it.
@@ -28,7 +28,7 @@ class LayoutCache final {
         float size = 0.0F;
         float maxWidth = 0.0F;
         float lineSpacing = 0.0F;
-        TextAlign align = TextAlign::Start;
+        Alignment align = Alignment::Start;
         Direction direction = Direction::Auto;
         std::string_view language;
         bool bold = false;
@@ -45,7 +45,7 @@ class LayoutCache final {
         std::string text;
         std::string language;
         Key key;
-        std::shared_ptr<const TextLayout> layout;
+        std::shared_ptr<const Layout> layout;
     };
 
     static constexpr std::size_t kCapacity = 512;

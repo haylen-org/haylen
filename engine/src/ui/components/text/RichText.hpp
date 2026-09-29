@@ -9,8 +9,8 @@
 
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/text/Alignment.hpp"
 #include "haylen/text/RichText.hpp"
-#include "haylen/text/TextAlign.hpp"
 #include "haylen/ui/Component.hpp"
 #include "haylen/ui/TextValue.hpp"
 #include "haylen/ui/Theme.hpp"
@@ -46,14 +46,6 @@ class RichText final : public Component {
         {"title", Theme::Font::Title},
         {"monospace", Theme::Font::Monospace},
     }};
-    static constexpr std::array<std::pair<std::string_view, text::TextAlign>, 6> kAligns{{
-        {"start", text::TextAlign::Start},
-        {"end", text::TextAlign::End},
-        {"left", text::TextAlign::Left},
-        {"center", text::TextAlign::Center},
-        {"right", text::TextAlign::Right},
-        {"fill", text::TextAlign::Fill},
-    }};
 
     // Makes the rich text match the properties and the theme, keeping its effects and reveal while only the width changes.
     [[nodiscard]] text::RichText& prepare(Context& context);
@@ -63,7 +55,7 @@ class RichText final : public Component {
     TextValue text;
     Theme::Font font = Theme::Font::Body;
     std::optional<Theme::Color> color;
-    text::TextAlign textAlign = text::TextAlign::Start;
+    text::Alignment textAlign = text::Alignment::Start;
     bool wrap = true;
     float reveal = 0.0F;
     int visibleCharacters = -1;

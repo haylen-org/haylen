@@ -37,7 +37,10 @@ Camera Camera::blend(const Camera& from, const Camera& to, float amount) {
     return result;
 }
 
-void Camera::setZoom(math::Vec2 value) noexcept {
+void Camera::setZoom(math::Vec2 value) {
+    if (std::isnan(value.x) || std::isnan(value.y)) {
+        throw std::invalid_argument("The camera zoom must be a number.");
+    }
     zoom = {std::clamp(value.x, minZoom, maxZoom), std::clamp(value.y, minZoom, maxZoom)};
 }
 
@@ -205,7 +208,7 @@ void Camera::snapTo(math::Vec2 point, const math::Rect& screen) noexcept {
     smoothedRotation = rotation;
 }
 
-void Camera::zoomAt(float factor, math::Vec2 screenPoint, const math::Rect& screen) noexcept {
+void Camera::zoomAt(float factor, math::Vec2 screenPoint, const math::Rect& screen) {
     const math::Vec2 before = screenToWorld(screenPoint, screen);
     setZoom(zoom * factor);
     const math::Vec2 moved = before - screenToWorld(screenPoint, screen);

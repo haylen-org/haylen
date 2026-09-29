@@ -60,9 +60,9 @@ Up to four gamepads are tracked, with indices from 1 to 4 that default to 1. But
 - `input.gamepadDown`, `input.gamepadPressed` and `input.gamepadReleased` read buttons, and `input.gamepadConnected` and `input.gamepadName` describe the pad.
 - `input.gamepadAxis(axis, index)` returns one axis with the dead zone removed and the rest rescaled. Sticks go from -1 to 1 with positive y pointing down, and triggers from 0 to 1.
 - `input.gamepadStick(side, index)` returns a whole stick with the dead zone applied to its radius, which keeps diagonals smooth.
-- `input.setDeadzone(value)` sets the dead zone of every axis and stick, from 0 to below 1, 0.2 by default.
+- `input.setGamepadDeadzone(value)` sets the dead zone of every axis and stick, from 0 to below 1, 0.2 by default.
 
-Each platform reads gamepads through its own API: GameController on Apple platforms, XInput on Windows, the joystick devices under `/dev/input` on Linux, input events on Android and the Gamepad API in browsers. Browsers only report gamepads that use their `standard` mapping, and they only reveal a gamepad to the page after one of its buttons is pressed.
+Each platform reads gamepads through its own API: GameController on Apple platforms, XInput on Windows, the joystick devices under `/dev/input` on Linux, input events on Android and the Gamepad API in browsers. Browsers only report gamepads that use their `standard` mapping, and they only reveal a gamepad to the page after one of its buttons is pressed. Every platform keeps a gamepad at its index for as long as it stays connected, so a pad that disconnects never moves the others, and a pad that connects takes the lowest free index.
 
 ### Events
 

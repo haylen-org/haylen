@@ -37,7 +37,7 @@ class NavGraphLua final {
     static int isConnected(lua_State* L);
     static int neighbors(lua_State* L);
     static int points(lua_State* L);
-    static int closest(lua_State* L);
+    static int closestPoint(lua_State* L);
     static int findPath(lua_State* L);
     static int distances(lua_State* L);
     static int clear(lua_State* L);

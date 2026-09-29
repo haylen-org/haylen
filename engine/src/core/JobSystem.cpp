@@ -1,6 +1,7 @@
 #include "haylen/core/JobSystem.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <condition_variable>
 #include <cstdint>
 #include <mutex>
@@ -11,11 +12,37 @@
 
 namespace haylen::core {
 
-struct JobSystem::ChunkCompletion {
+// The chunks of one parallelFor. A thread touches the body only after it claimed a chunk, and the caller waits for every claimed chunk, so a worker that starts after the range ended finds nothing to claim and returns.
+struct JobSystem::ParallelRange {
+    const std::function<void(std::size_t, std::size_t)>* body = nullptr;
+    std::size_t begin = 0;
+    std::size_t end = 0;
+    std::size_t chunkSize = 0;
+    std::size_t chunkCount = 0;
+    std::atomic<std::size_t> nextChunk = 0;
+    std::atomic<std::size_t> finishedChunks = 0;
     std::mutex mutex;
     std::condition_variable finished;
-    std::size_t remaining = 0;
     std::exception_ptr error;
+
+    // Claims and runs chunks until none is left.
+    void runChunks() {
+        for (std::size_t chunk = nextChunk.fetch_add(1); chunk < chunkCount; chunk = nextChunk.fetch_add(1)) {
+            const std::size_t chunkBegin = begin + chunk * chunkSize;
+            try {
+                (*body)(chunkBegin, std::min(end, chunkBegin + chunkSize));
+            } catch (...) {
+                const std::scoped_lock lock(mutex);
+                if (!error) {
+                    error = std::current_exception();
+                }
+            }
+            if (finishedChunks.fetch_add(1) + 1 == chunkCount) {
+                const std::scoped_lock lock(mutex);
+                finished.notify_all();
+            }
+        }
+    }
 };
 
 // The work posted to the pools, kept here rather than in the queues of the pools, which outlive the Lua state when the runtime shuts down.
@@ -115,7 +142,7 @@ void JobSystem::parallelFor(std::size_t begin, std::size_t end, [[maybe_unused]]
 #else
     const std::size_t count = end - begin;
     const std::size_t grain = std::max<std::size_t>(1, grainSize);
-    const std::size_t chunkLimit = std::min(workerCount, (count + grain - 1) / grain);
+    const std::size_t chunkLimit = std::min(workerCount * kChunksPerWorker, (count + grain - 1) / grain);
     const std::size_t chunkSize = (count + chunkLimit - 1) / chunkLimit;
     const std::size_t chunkCount = (count + chunkSize - 1) / chunkSize;
     if (chunkCount <= 1) {
@@ -123,49 +150,25 @@ void JobSystem::parallelFor(std::size_t begin, std::size_t end, [[maybe_unused]]
         return;
     }
 
-    // Every chunk after the first goes to the task pool while the caller runs the first chunk itself.
-    auto completion = std::make_shared<ChunkCompletion>();
-    completion->remaining = chunkCount - 1;
-    for (std::size_t chunk = 1; chunk < chunkCount; ++chunk) {
-        const std::size_t chunkBegin = begin + chunk * chunkSize;
-        const std::size_t chunkEnd = std::min(end, chunkBegin + chunkSize);
+    auto range = std::make_shared<ParallelRange>();
+    range->body = &body;
+    range->begin = begin;
+    range->end = end;
+    range->chunkSize = chunkSize;
+    range->chunkCount = chunkCount;
 
-        // clang-format off
-        post([&body, chunkBegin, chunkEnd, completion] {
-            std::exception_ptr error;
-            try {
-                body(chunkBegin, chunkEnd);
-            } catch (...) {
-                error = std::current_exception();
-            }
-
-            std::scoped_lock lock(completion->mutex);
-            if (error && !completion->error) {
-                completion->error = error;
-            }
-            if (--completion->remaining == 0) {
-                completion->finished.notify_all();
-            }
-        });
-        // clang-format on
+    // Workers help with the chunks while the caller takes them too, and a worker that only starts once the caller took the last chunk does nothing.
+    const std::size_t helpers = std::min(workerCount, chunkCount) - 1;
+    for (std::size_t helper = 0; helper < helpers; ++helper) {
+        post([range] { range->runChunks(); });
     }
+    range->runChunks();
 
-    std::exception_ptr callerError;
-    try {
-        body(begin, begin + chunkSize);
-    } catch (...) {
-        callerError = std::current_exception();
-    }
-
-    // The pool chunks reference body, so the caller waits for all of them even when its own chunk failed.
-    std::unique_lock lock(completion->mutex);
-    completion->finished.wait(lock, [&completion] { return completion->remaining == 0; });
-
-    if (callerError) {
-        std::rethrow_exception(callerError);
-    }
-    if (completion->error) {
-        std::rethrow_exception(completion->error);
+    // Chunks that workers claimed may still run, and they reference body, so the caller waits for them even when a chunk failed.
+    std::unique_lock lock(range->mutex);
+    range->finished.wait(lock, [&range] { return range->finishedChunks.load() == range->chunkCount; });
+    if (range->error) {
+        std::rethrow_exception(range->error);
     }
 #endif
 }

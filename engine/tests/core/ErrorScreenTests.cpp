@@ -16,6 +16,7 @@
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/lua/Error.hpp"
 #include "haylen/platform/Event.hpp"
+#include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::core {

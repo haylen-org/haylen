@@ -13,10 +13,11 @@ class GraphicsLua final {
     static void install(lua_State* L);
 
   private:
-    static constexpr std::array<std::string_view, 2> kTextureContentFields{"fill", "pixels"};
+    static constexpr std::array<std::string_view, 3> kTextureContentFields{"fill", "pixels", "dynamic"};
 
     static int newRenderTarget(lua_State* L);
     static int newTexture(lua_State* L);
+    static int updateTexture(lua_State* L);
     static int maxTextureSize(lua_State* L);
     static int whiteTexture(lua_State* L);
     static int backend(lua_State* L);

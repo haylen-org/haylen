@@ -7,6 +7,7 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/FrameQueue.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/Userdata.hpp"
 #include "lua/Task.hpp"
 
 namespace haylen::lua {
@@ -33,10 +34,7 @@ void Owners::checkOwner(lua_State* L, int index) {
 }
 
 int Owners::collectScope(lua_State* L) {
-    auto* scope = static_cast<Scope*>(luaL_testudata(L, 1, kScopeType));
-    if (scope == nullptr) {
-        return 0;
-    }
+    auto* scope = static_cast<Scope*>(lua_touserdata(L, 1));
 
     // The collector may run in the middle of any Lua call, so what the owner held ends at the end of the frame instead of here, where kill callbacks and to-be-closed variables could run Lua inside the collector.
     if ((!scope->connections.empty() || !scope->links.empty() || !scope->tasks.empty()) && scope->queue != nullptr) {
@@ -63,7 +61,7 @@ Owners::Scope& Owners::pushScope(lua_State* L, int owner) {
     }
     lua_pop(L, 1);
 
-    if (luaL_newmetatable(L, kScopeType) != 0) {
+    if (Userdata::newMetatable(L, kScopeType)) {
         lua_pushcfunction(L, &collectScope);
         lua_setfield(L, -2, "__gc");
     }

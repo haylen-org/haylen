@@ -11,8 +11,8 @@
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
-#include "haylen/text/TextLayout.hpp"
-#include "haylen/text/TextStyle.hpp"
+#include "haylen/text/Layout.hpp"
+#include "haylen/text/Style.hpp"
 
 namespace haylen::text {
 
@@ -54,8 +54,8 @@ class Font {
     Font& operator=(const Font&) = delete;
 
     // Lays UTF-8 text out with this font alone, with the top-left of the block at the origin and the anchor left to the drawing. Layouts are cached by text and style, so text drawn every frame shapes once.
-    [[nodiscard]] std::shared_ptr<const TextLayout> layout(std::string_view text, const TextStyle& style);
-    [[nodiscard]] math::Vec2 measure(std::string_view text, const TextStyle& style);
+    [[nodiscard]] std::shared_ptr<const Layout> layout(std::string_view text, const Style& style);
+    [[nodiscard]] math::Vec2 measure(std::string_view text, const Style& style);
 
     // Tells whether the pages hold signed distance fields, which the text shader draws with outlines, weights and soft edges, rather than plain images.
     [[nodiscard]] virtual bool isDistanceField() const noexcept = 0;
