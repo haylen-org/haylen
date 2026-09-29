@@ -1,0 +1,36 @@
+# Shared by every language below, which covers the C, C++ and Objective-C++ sources of the engine and samples.
+BasedOnStyle: LLVM
+Standard: c++20
+AccessModifierOffset: -2
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortBlocksOnASingleLine: Empty
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: All
+AllowShortLoopsOnASingleLine: false
+BinPackArguments: true
+BinPackParameters: true
+BreakBeforeBraces: Attach
+BreakBeforeBinaryOperators: None
+BreakArrays: false
+ColumnLimit: 1000000
+MaxEmptyLinesToKeep: 1
+ConstructorInitializerIndentWidth: 4
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+NamespaceIndentation: None
+PointerAlignment: Left
+ReferenceAlignment: Left
+SortIncludes: CaseSensitive
+IncludeBlocks: Preserve
+IncludeCategories:
+  - Regex: '.*'
+    Priority: 1
+SpaceAfterTemplateKeyword: true
+SpaceBeforeParens: ControlStatements
+---
+Language: Cpp
+---
+Language: ObjC

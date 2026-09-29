@@ -1,0 +1,17 @@
+--- a/sokol_gfx.h
++++ b/sokol_gfx.h
+@@ -9347,10 +9347,10 @@
+     }
+     _sg.formats[SG_PIXELFORMAT_DEPTH].depth = true;
+     _sg.formats[SG_PIXELFORMAT_DEPTH_STENCIL].depth = true;
+-    _sg.limits.max_image_size_2d = 1024;
+-    _sg.limits.max_image_size_cube = 1024;
+-    _sg.limits.max_image_size_3d = 1024;
+-    _sg.limits.max_image_size_array = 1024;
++    _sg.limits.max_image_size_2d = 16 * 1024;
++    _sg.limits.max_image_size_cube = 16 * 1024;
++    _sg.limits.max_image_size_3d = 2 * 1024;
++    _sg.limits.max_image_size_array = 16 * 1024;
+     _sg.limits.max_image_array_layers = 1024;
+     _sg.limits.max_vertex_attrs = 16;
+     _sg.limits.max_color_attachments = SG_MAX_PORTABLE_COLOR_ATTACHMENTS;

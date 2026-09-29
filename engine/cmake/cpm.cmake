@@ -1,0 +1,23 @@
+if(COMMAND CPMAddPackage)
+  return()
+endif()
+
+if(NOT DEFINED CPM_SOURCE_CACHE AND NOT DEFINED ENV{CPM_SOURCE_CACHE})
+  set(CPM_SOURCE_CACHE "${CMAKE_SOURCE_DIR}/.cache/cpm" CACHE PATH "Shared CPM source cache.")
+endif()
+
+set(CPM_DOWNLOAD_VERSION 0.43.2)
+set(CPM_HASH_SUM "49a3bef91ceb65bb66d57255e12d1ffd22abc2f6408fa9fe4534c544a2f232aa")
+if(DEFINED CPM_SOURCE_CACHE)
+  set(CPM_DOWNLOAD_LOCATION "${CPM_SOURCE_CACHE}/cpm/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
+else()
+  set(CPM_DOWNLOAD_LOCATION "$ENV{CPM_SOURCE_CACHE}/cpm/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
+endif()
+
+file(
+  DOWNLOAD "https://github.com/cpm-cmake/CPM.cmake/releases/download/v${CPM_DOWNLOAD_VERSION}/CPM.cmake"
+  "${CPM_DOWNLOAD_LOCATION}"
+  EXPECTED_HASH SHA256=${CPM_HASH_SUM}
+)
+
+include("${CPM_DOWNLOAD_LOCATION}")

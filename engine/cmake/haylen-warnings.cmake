@@ -1,0 +1,16 @@
+function(haylen_enable_warnings target)
+  if(MSVC)
+    target_compile_options(${target} PRIVATE /W4 /permissive- /Zc:preprocessor /utf-8)
+  else()
+    target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wshadow)
+    # Designated initializers that leave fields to their default member values are the intended style.
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+      target_compile_options(${target} PRIVATE -Wno-missing-designated-field-initializers)
+    endif()
+  endif()
+
+  if(HAYLEN_ENABLE_SANITIZERS AND HAYLEN_DESKTOP AND NOT MSVC)
+    target_compile_options(${target} PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+    target_link_options(${target} PRIVATE -fsanitize=address,undefined)
+  endif()
+endfunction()

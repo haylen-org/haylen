@@ -1,0 +1,11 @@
+--- a/sokol_app.h
++++ b/sokol_app.h
+@@ -6957,7 +6957,7 @@
+ }
+ 
+ _SOKOL_PRIVATE void _sapp_ios_update_dimensions(void) {
+-    CGRect screen_rect = _sapp.ios.window.windowScene.screen.bounds;
++    CGRect screen_rect = _sapp.ios.view.bounds;
+     _sapp.window_width = _sapp_roundf_gzero(screen_rect.size.width);
+     _sapp.window_height = _sapp_roundf_gzero(screen_rect.size.height);
+     #if defined(SOKOL_METAL)
