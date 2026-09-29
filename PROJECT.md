@@ -890,7 +890,7 @@ Esta seção cobre os itens 51 a 82 da seção 2.1. As decisões vieram da pesqu
 - [x] Player desktop como artefato (`make.py engine --platform desktop`).
 - [x] `make.py engine`, `new`, `run`, `run-cpp`, `package` e `serve` como descritos em 14.1, com montagem em `build/apps/<app>/<plataforma>/`, personalização por `platform/<plataforma>/` e plataformas descobertas pelas pastas de `templates/platform/` (uma tabela `RUN_TARGETS` no `make.py`). O `serve` entrega isolamento de origem (`crossOriginIsolated` verdadeiro no Chrome) e aceita `--coep off`.
 - [x] Modo de desenvolvimento explícito (`--dev`) no player, sem hot reload em apps publicados. A web nunca passa `--dev`.
-- [~] Rodar os samples Lua em macOS, simulador iOS, simulador tvOS, Mac Catalyst, emulador Android e web, e o sample C++ em macOS e web. Feito com o Tiny Island e o app inicial. Faltam Windows e Linux (não rodam nesta máquina), aparelhos físicos (precisam do time da Apple, `HAYLEN_APPLE_TEAM`), o Siri Remote e uma imagem de Android TV.
+- [x] Rodar os samples Lua em macOS, simulador iOS, simulador tvOS, Mac Catalyst, emulador Android e web, e o sample C++ em macOS e web. Os 26 samples rodaram sem crash na web (WebGPU e WebGL2, 60 fps), no iPhone, no iPad e no Android, com o menu, testes abertos por toque e o voltar. No tvOS rodaram o Tiny Island, a UI com o controle remoto e um sample por categoria, e no Catalyst o Tiny Island e a UI abriram. Faltam Windows e Linux (não rodam nesta máquina) e aparelhos físicos.
 
 #### C. Cenas e transições
 
@@ -1025,6 +1025,13 @@ Todo sample Lua tem um menu simples para escolher o teste, cada teste é uma cen
 - [ ] Testes GoogleTest e Lua de cada recurso novo, com cobertura da engine perto de 100%.
 - [ ] Páginas `docs/lua-api/` e guias atualizados, incluindo um guia de distribuição (templates, artefatos e comandos) e um de ciclo de vida.
 - [ ] Revisão final de bugs, código morto, race conditions e riscos de crash.
+- [ ] Encerramento por uma thread de fundo derruba o app: `SokolRuntime::current` é um `unique_ptr` estático, e um `exit()` fora da thread do frame (no simulador iOS, o IOSurface faz isso quando o servidor de render cai) destrói a engine nessa thread enquanto o frame ainda roda. A engine precisa ser destruída só na thread do frame, no fim normal do app.
+- [ ] `make.py`: os builds das bibliotecas nativas vão para `build/apps/<nome da pasta>/native/`, e apps com o mesmo nome de pasta colidem (cache do CMake de outra origem). O caminho precisa identificar o app de forma única.
+- [ ] `make.py run` nas plataformas Apple não mostra a saída do app no terminal, porque o log do Varn na Apple só escreve no os_log: transmitir o log do app no `run` (simulador, Catalyst e macOS), como a documentação promete.
+- [ ] O shell web dos apps C++ não tem ícone e cada página registra um 404 de `/favicon.ico`: usar a logo da engine.
+- [ ] Áudio na web usa `ScriptProcessorNode` (obsoleto no Chrome). O backend AudioWorklet do miniaudio exige wasm workers e isolamento de origem (COOP e COEP), o que impede páginas com scripts de terceiros e hospedagens sem esses cabeçalhos. Decidir com o dono e documentar.
+- [ ] As janelas do Mac Catalyst abrem com 1024x768 e não com o tamanho do `app.json`.
+- [ ] `make.py run-cpp` só roda no desktop e na web: os apps C++ precisam rodar também no iOS, tvOS, Catalyst e Android.
 - [x] Uma tecla ainda segurada quando uma troca de cena termina conta como uma pressão nova (durante a troca o input fica bloqueado e o mapa de ações vê a tecla solta): um toque normal em Escape ou Start abre e fecha o menu de pausa do Tiny Island. Uma tecla que já estava segurada antes do desbloqueio só pode disparar de novo depois de ser solta. Repro no scratchpad `sr/repro-held`. Feito no `ActionMap`: uma ligação segurada quando o input volta só dispara de novo depois de solta.
 - [x] O exemplo de `docs/input.md` ainda usa uma ação `back`, que os samples trocaram pelo `onCancel` do documento. Feito.
 - [x] Os testes da engine (`engine/tests/text/ShapingTests.cpp`) leem fontes de `samples/graphics/fonts`, o que quebra a regra de a engine nunca depender dos samples: mover as fontes de teste (subconjuntos pequenos, com as licenças) para os dados de teste da engine. Feito: subconjuntos em `engine/tests/data/fonts` com as licenças OFL.
