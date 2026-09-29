@@ -339,7 +339,7 @@ int TiledLua::mapUpdate(lua_State* L) {
     return 0;
 }
 
-int TiledLua::mapTileAt(lua_State* L) {
+int TiledLua::mapTile(lua_State* L) {
     lua::Stack::push(L, checkRenderer(L).getTile(lua::Stack::read<std::string_view>(L, 2), lua::Stack::read<int>(L, 3), lua::Stack::read<int>(L, 4)));
     return 1;
 }
@@ -522,7 +522,7 @@ int TiledLua::mapTileHeight(lua_State* L) {
     return 1;
 }
 
-int TiledLua::mapBounds(lua_State* L) {
+int TiledLua::mapPixelBounds(lua_State* L) {
     lua::Stack::push(L, checkMap(L).getPixelBounds());
     return 1;
 }
@@ -648,7 +648,7 @@ void TiledLua::pushWorld(lua_State* L, const World& world) {
 void TiledLua::install(lua_State* L) {
     lua::ClassBuilder<Map>(L).property("path", &assetPath).meta("__eq", &lua::Userdata::equal<Map>).install();
 
-    lua::ClassBuilder<MapRenderer>(L).function("draw", &lua::Binding::native<&mapDraw>).function("drawLayer", &lua::Binding::native<&mapDrawLayer>).function("update", &lua::Binding::native<&mapUpdate>).function("tileAt", &lua::Binding::native<&mapTileAt>).function("setTile", &lua::Binding::native<&mapSetTile>).function("setLayerVisible", &lua::Binding::native<&mapSetLayerVisible>).function("cellToWorld", &lua::Binding::native<&mapCellToWorld>).function("worldToCell", &lua::Binding::native<&mapWorldToCell>).function("objectToWorld", &lua::Binding::native<&mapObjectToWorld>).function("layer", &lua::Binding::native<&mapLayer>).function("layers", &lua::Binding::native<&mapLayers>).function("objects", &lua::Binding::native<&mapObjects>).function("spawn", &lua::Binding::native<&mapSpawn>).function("tileInfo", &lua::Binding::native<&mapTileInfo>).function("tilesets", &lua::Binding::native<&mapTilesets>).function("buildCollision", &lua::Binding::native<&mapBuildCollision>).function("raycastTiles", &lua::Binding::native<&MapQueryLua::raycastTiles>).function("raycastObjects", &lua::Binding::native<&MapQueryLua::raycastObjects>).function("objectOutlines", &lua::Binding::native<&MapQueryLua::objectOutlines>).property("width", &mapWidth).property("height", &mapHeight).property("tileWidth", &mapTileWidth).property("tileHeight", &mapTileHeight).property("bounds", &mapBounds).property("orientation", &mapOrientation).property("skewX", &mapSkewX).property("skewY", &mapSkewY).property("backgroundColor", &mapBackgroundColor).property("type", &mapType).property("properties", &lua::Binding::native<&mapProperties>).property("propertyTypes", &mapPropertyTypes).property("infinite", &mapInfinite).property("renderOrder", &mapRenderOrder).property("hexSideLength", &mapHexSideLength).property("staggerX", &mapStaggerX).property("staggerEven", &mapStaggerEven).property("parallaxOrigin", &mapParallaxOrigin).property("path", &mapPath).install();
+    lua::ClassBuilder<MapRenderer>(L).function("draw", &lua::Binding::native<&mapDraw>).function("drawLayer", &lua::Binding::native<&mapDrawLayer>).function("update", &lua::Binding::native<&mapUpdate>).function("tile", &lua::Binding::native<&mapTile>).function("setTile", &lua::Binding::native<&mapSetTile>).function("setLayerVisible", &lua::Binding::native<&mapSetLayerVisible>).function("cellToWorld", &lua::Binding::native<&mapCellToWorld>).function("worldToCell", &lua::Binding::native<&mapWorldToCell>).function("objectToWorld", &lua::Binding::native<&mapObjectToWorld>).function("layer", &lua::Binding::native<&mapLayer>).function("layers", &lua::Binding::native<&mapLayers>).function("objects", &lua::Binding::native<&mapObjects>).function("spawn", &lua::Binding::native<&mapSpawn>).function("tileInfo", &lua::Binding::native<&mapTileInfo>).function("tilesets", &lua::Binding::native<&mapTilesets>).function("buildCollision", &lua::Binding::native<&mapBuildCollision>).function("raycastTiles", &lua::Binding::native<&MapQueryLua::raycastTiles>).function("raycastObjects", &lua::Binding::native<&MapQueryLua::raycastObjects>).function("objectOutlines", &lua::Binding::native<&MapQueryLua::objectOutlines>).property("width", &mapWidth).property("height", &mapHeight).property("tileWidth", &mapTileWidth).property("tileHeight", &mapTileHeight).property("pixelBounds", &mapPixelBounds).property("orientation", &mapOrientation).property("skewX", &mapSkewX).property("skewY", &mapSkewY).property("backgroundColor", &mapBackgroundColor).property("type", &mapType).property("properties", &lua::Binding::native<&mapProperties>).property("propertyTypes", &mapPropertyTypes).property("infinite", &mapInfinite).property("renderOrder", &mapRenderOrder).property("hexSideLength", &mapHexSideLength).property("staggerX", &mapStaggerX).property("staggerEven", &mapStaggerEven).property("parallaxOrigin", &mapParallaxOrigin).property("path", &mapPath).install();
 
     lua::Binding::preload(L, "haylen.tiled", &open);
 }

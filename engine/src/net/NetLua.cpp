@@ -37,8 +37,8 @@ WebSocket::Reconnect NetLua::readReconnect(lua_State* L, int index) {
     return reconnect;
 }
 
-// Opens a WebSocket with websocket(url, {protocols = {...}, maxMessageSize = bytes, reconnect = true or {...}}). The socket keeps delivering events until it closes, even when the app no longer holds it.
-int NetLua::websocket(lua_State* L) {
+// Opens a WebSocket with connectWebSocket(url, {protocols = {...}, maxMessageSize = bytes, reconnect = true or {...}}). The socket keeps delivering events until it closes, even when the app no longer holds it.
+int NetLua::connectWebSocket(lua_State* L) {
     std::string url = lua::Stack::read<std::string>(L, 1);
     WebSocket::Options options;
     if (!lua_isnoneornil(L, 2)) {
@@ -201,15 +201,15 @@ int NetLua::getAttempt(lua_State* L) {
     return 1;
 }
 
-int NetLua::openSockets(lua_State* L) {
+int NetLua::openSocketCount(lua_State* L) {
     lua::Stack::push(L, lua::Runtime::getEngine(L).getPlugin<plugins::NetPlugin>().getOpenSocketCount());
     return 1;
 }
 
 int NetLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"websocket", &lua::Binding::native<&websocket>},
-        {"openSockets", &lua::Binding::native<&openSockets>},
+        {"connectWebSocket", &lua::Binding::native<&connectWebSocket>},
+        {"openSocketCount", &lua::Binding::native<&openSocketCount>},
         {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);

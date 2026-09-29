@@ -47,7 +47,7 @@ end)
 
 Pauses the running job until the next frame when this frame's budget is spent, and returns right away otherwise. Call it regularly inside loops. It is the only way a job may pause. Awaiting a promise or calling `coroutine.yield` inside a job rejects its promise with `A job may only pause at jobs.checkpoint. Wait for promises inside async.spawn instead.`
 
-Calling it outside a job raises `jobs.checkpoint only runs inside a job started with jobs.spawn.`
+Calling it outside a job raises `A jobs.checkpoint call only runs inside a job started with jobs.spawn.`
 
 ```lua
 local jobs = require('haylen.jobs')
@@ -83,7 +83,7 @@ local jobs = require('haylen.jobs')
 print('jobs may use ' .. jobs.budget() .. ' ms per frame')
 ```
 
-### jobs.running()
+### jobs.runningCount()
 
 Returns the number of jobs that have not finished yet, including jobs that have not started.
 
@@ -99,7 +99,7 @@ end)
 
 require('haylen.scene').push({
     renderUi = function(self)
-        if jobs.running() > 0 then
+        if jobs.runningCount() > 0 then
             graphics2d.beginScreen()
             graphics2d.drawText(nil, 'Loading...', 80, 980, {size = 36, color = '#FFFFFFFF'})
         end

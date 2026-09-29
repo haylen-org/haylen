@@ -16,7 +16,7 @@ The design size and the scaling policy come from the `design` section of `app.js
 | `'fill'` | Fills the screen and crops the design area. The visible rectangle is smaller than the design area. |
 | `'stretch'` | Fills the screen with non-uniform scaling. |
 | `'expand'` | Keeps the design area whole and centered and extends the visible area to fill the screen. The visible rectangle can start at negative coordinates and exceed the design size. |
-| `'pixel_perfect'` | Like `fit`, but only with integer scale factors, so every design unit covers the same whole number of pixels. A framebuffer smaller than the design area shrinks it by the smallest integer divisor that fits, such as a half or a third, so the whole design area stays visible and every pixel covers the same whole number of design units. |
+| `'pixelPerfect'` | Like `fit`, but only with integer scale factors, so every design unit covers the same whole number of pixels. A framebuffer smaller than the design area shrinks it by the smallest integer divisor that fits, such as a half or a third, so the whole design area stays visible and every pixel covers the same whole number of design units. |
 
 ## Functions
 
@@ -51,7 +51,7 @@ require('haylen.scene').push({
 
 ### viewport.safeRect()
 
-Returns the visible design region that is not covered by notches, rounded corners or system bars, as a `Rect`. Place buttons and important HUD text inside it. The `window_safe_area_changed` event of [haylen.events](events.md#engine-events) announces every change with the new rectangle.
+Returns the visible design region that is not covered by notches, rounded corners or system bars, as a `Rect`. Place buttons and important HUD text inside it. The `windowSafeAreaChanged` event of [haylen.events](events.md#engine-events) announces every change with the new rectangle.
 
 ```lua
 local viewport = require('haylen.viewport')
@@ -69,14 +69,14 @@ require('haylen.scene').push({
 
 ### viewport.pixelRect()
 
-Returns the framebuffer region, in pixels, that shows the visible design rectangle, as a `Rect`. It covers the whole framebuffer for `fill`, `stretch` and `expand`, and it leaves the letterbox bars outside for `fit` and `pixel_perfect`.
+Returns the framebuffer region, in pixels, that shows the visible design rectangle, as a `Rect`. It covers the whole framebuffer for `fill`, `stretch` and `expand`, and it leaves the letterbox bars outside for `fit` and `pixelPerfect`.
 
 ```lua
 local viewport = require('haylen.viewport')
 local window = require('haylen.window')
 
 local pixels = viewport.pixelRect()
-local width, height = window.size()
+local width, height = window.framebufferSize()
 print('letterbox bars', pixels.x, width - pixels:right(), pixels.y, height - pixels:bottom())
 ```
 
@@ -101,7 +101,7 @@ Converts a framebuffer position in pixels to design units and returns the two co
 local viewport = require('haylen.viewport')
 local window = require('haylen.window')
 
-local width, height = window.size()
+local width, height = window.framebufferSize()
 local x, y = viewport.toDesign(width, height)
 print('bottom right corner in design units', x, y)
 ```
@@ -119,7 +119,7 @@ print('design center lands on pixel', x, y)
 
 ### viewport.scaling()
 
-Returns the name of the active scaling policy, one of `'fit'`, `'fill'`, `'stretch'`, `'expand'` or `'pixel_perfect'`.
+Returns the name of the active scaling policy, one of `'fit'`, `'fill'`, `'stretch'`, `'expand'` or `'pixelPerfect'`.
 
 ```lua
 local viewport = require('haylen.viewport')
@@ -138,7 +138,7 @@ local ui = require('haylen.ui')
 local viewport = require('haylen.viewport')
 
 ui.mount(ui.segmentedControl{
-    items = {{id = 'expand', text = 'Expand'}, {id = 'fit', text = 'Fit'}, {id = 'pixel_perfect', text = 'Pixel perfect'}},
+    items = {{id = 'expand', text = 'Expand'}, {id = 'fit', text = 'Fit'}, {id = 'pixelPerfect', text = 'Pixel perfect'}},
     selected = viewport.scaling(),
     onChange = function(event)
         viewport.setScaling(event.value)
@@ -155,7 +155,7 @@ local viewport = require('haylen.viewport')
 
 -- A pixel art scene lays out on a small canvas that pixel perfect scaling enlarges.
 viewport.setDesignSize(480, 270)
-viewport.setScaling('pixel_perfect')
+viewport.setScaling('pixelPerfect')
 print(viewport.designSize())
 ```
 

@@ -118,7 +118,7 @@ std::vector<Vec2> PoissonDisk::sample(const Options& options, Random& random) {
     // clang-format on
 
     // Seed the process with the first acceptable random point.
-    for (int attempt = 0; attempt < options.attemptsPerPoint * 4; ++attempt) {
+    for (int attempt = 0; attempt < options.attempts * 4; ++attempt) {
         const Vec2 seed{random.range(options.area.getLeft(), options.area.getRight()), random.range(options.area.getTop(), options.area.getBottom())};
         if (accepted(seed)) {
             addSample(seed, distanceAt(seed));
@@ -133,7 +133,7 @@ std::vector<Vec2> PoissonDisk::sample(const Options& options, Random& random) {
         const float spacing = distances[active[slot]];
         bool placed = false;
 
-        for (int attempt = 0; attempt < options.attemptsPerPoint; ++attempt) {
+        for (int attempt = 0; attempt < options.attempts; ++attempt) {
             const float angle = random.range(0.0F, Math::kTau);
             const float radius = random.range(spacing, spacing * 2.0F);
             const Vec2 candidate = origin + Vec2::fromAngle(angle, radius);

@@ -159,7 +159,7 @@ int EventsLua::postTo(lua_State* L) {
 }
 
 // Returns {name, listeners, emissions, stale} for every event that has ever had a listener.
-int EventsLua::stats(lua_State* L) {
+int EventsLua::topics(lua_State* L) {
     const std::vector<EventBus::Topic> topics = lua::Runtime::getEngine(L).getEvents().getTopics();
     lua_createtable(L, static_cast<int>(topics.size()), 0);
     lua_Integer index = 0;
@@ -180,7 +180,7 @@ int EventsLua::stats(lua_State* L) {
 
 int EventsLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"on", &lua::Binding::native<&on>}, {"emit", &lua::Binding::native<&emit>}, {"emitTo", &lua::Binding::native<&emitTo>}, {"post", &lua::Binding::native<&post>}, {"postTo", &lua::Binding::native<&postTo>}, {"stats", &lua::Binding::native<&stats>}, {nullptr, nullptr},
+        {"on", &lua::Binding::native<&on>}, {"emit", &lua::Binding::native<&emit>}, {"emitTo", &lua::Binding::native<&emitTo>}, {"post", &lua::Binding::native<&post>}, {"postTo", &lua::Binding::native<&postTo>}, {"topics", &lua::Binding::native<&topics>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

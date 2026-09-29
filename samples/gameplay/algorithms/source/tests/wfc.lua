@@ -74,14 +74,14 @@ end
 
 function Wfc:generate()
     self.request = (self.request or 0) + 1
-    local request, started = self.request, haylen.time()
+    local request, started = self.request, haylen.elapsed()
     local options = {tiles = #kTiles, allow = self.allow, weights = kWeights, width = kColumns, height = kRows, periodic = self.periodic, fixed = self.fixed, seed = self.seed, attempts = 20}
     async.spawn(function()
         local map = procedural2d.waveFunctionCollapseAsync(options):await()
         if self.fixed == nil or request ~= self.request then
             return
         end
-        self.latency = (haylen.time() - started) * 1000
+        self.latency = (haylen.elapsed() - started) * 1000
         self.failed = map == nil
         if map then
             self.picture = picture.cells(kColumns, kRows, function(column, row)

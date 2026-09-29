@@ -49,7 +49,7 @@ function Utility:enter()
     self.brain = selector()
     self.villagers = {}
     for index = 1, 8 do
-        self.villagers[index] = {x = self.random:range(-300, 300), y = self.random:range(-200, 200), hunger = self.random:float() * 0.6, tiredness = self.random:float() * 0.6, boredom = self.random:float() * 0.6, color = m.hsv(index / 8, 0.5, 0.95):toHex()}
+        self.villagers[index] = {x = self.random:range(-300, 300), y = self.random:range(-200, 200), hunger = self.random:nextFloat() * 0.6, tiredness = self.random:nextFloat() * 0.6, boredom = self.random:nextFloat() * 0.6, color = m.fromHsv(index / 8, 0.5, 0.95):toHex()}
     end
     self.selected = self.villagers[1]
 end

@@ -8,7 +8,7 @@ local function sheet(path, frameWidth, frameHeight, animations)
     local texture = assets.texture(path)
     local result = {texture = texture}
     for name, spec in pairs(animations) do
-        result[name] = animation2d.grid(texture, {frameWidth = frameWidth, frameHeight = frameHeight, frames = spec.frames, fps = spec.fps, loop = spec.loop})
+        result[name] = animation2d.fromGrid(texture, {frameWidth = frameWidth, frameHeight = frameHeight, cells = spec.frames, framesPerSecond = spec.fps, loop = spec.loop})
     end
     return result
 end

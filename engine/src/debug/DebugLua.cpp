@@ -303,18 +303,18 @@ int DebugLua::frame(lua_State* L) {
     return 1;
 }
 
-int DebugLua::frameTimes(lua_State* L) {
+int DebugLua::frameHistory(lua_State* L) {
     lua::Stack::push(L, lua::Runtime::getEngine(L).getProfiler().getFrameHistory());
     return 1;
 }
 
 int DebugLua::beginScope(lua_State* L) {
-    lua::Runtime::getEngine(L).getProfiler().begin(lua::Stack::read<std::string_view>(L, 1));
+    lua::Runtime::getEngine(L).getProfiler().beginScope(lua::Stack::read<std::string_view>(L, 1));
     return 0;
 }
 
 int DebugLua::endScope(lua_State* L) {
-    lua::Runtime::getEngine(L).getProfiler().end();
+    lua::Runtime::getEngine(L).getProfiler().endScope();
     return 0;
 }
 
@@ -346,7 +346,7 @@ int DebugLua::recentLog(lua_State* L) {
 
 int DebugLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"setStatsMode", &lua::Binding::native<&setStatsMode>}, {"statsMode", &lua::Binding::native<&statsMode>}, {"setToggleKey", &lua::Binding::native<&setToggleKey>}, {"toggleKey", &lua::Binding::native<&toggleKey>}, {"setObjectEvents", &lua::Binding::native<&setObjectEvents>}, {"objectEvents", &lua::Binding::native<&objectEvents>}, {"hotReloadWatching", &lua::Binding::native<&hotReloadWatching>}, {"stats", &lua::Binding::native<&stats>}, {"addMonitor", &lua::Binding::native<&addMonitor>}, {"removeMonitor", &lua::Binding::native<&removeMonitor>}, {"monitors", &lua::Binding::native<&monitors>}, {"frame", &lua::Binding::native<&frame>}, {"frameTimes", &lua::Binding::native<&frameTimes>}, {"beginScope", &lua::Binding::native<&beginScope>}, {"endScope", &lua::Binding::native<&endScope>}, {"profile", &lua::Binding::native<&profile>}, {"recentLog", &lua::Binding::native<&recentLog>}, {nullptr, nullptr},
+        {"setStatsMode", &lua::Binding::native<&setStatsMode>}, {"statsMode", &lua::Binding::native<&statsMode>}, {"setToggleKey", &lua::Binding::native<&setToggleKey>}, {"toggleKey", &lua::Binding::native<&toggleKey>}, {"setObjectEvents", &lua::Binding::native<&setObjectEvents>}, {"objectEvents", &lua::Binding::native<&objectEvents>}, {"hotReloadWatching", &lua::Binding::native<&hotReloadWatching>}, {"stats", &lua::Binding::native<&stats>}, {"addMonitor", &lua::Binding::native<&addMonitor>}, {"removeMonitor", &lua::Binding::native<&removeMonitor>}, {"monitors", &lua::Binding::native<&monitors>}, {"frame", &lua::Binding::native<&frame>}, {"frameHistory", &lua::Binding::native<&frameHistory>}, {"beginScope", &lua::Binding::native<&beginScope>}, {"endScope", &lua::Binding::native<&endScope>}, {"profile", &lua::Binding::native<&profile>}, {"recentLog", &lua::Binding::native<&recentLog>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

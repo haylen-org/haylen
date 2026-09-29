@@ -11,8 +11,8 @@ local sample = require('sample')
 local Lifetime = haylen.class('Lifetime', sample.Test)
 
 local kCode = [[
-tween.rotate(spinner, 1, math.pi / 2, {owner = childScene, loop = 'incremental', repeatCount = -1})  -- ends when the child unloads
-tween.to(target, 1, {x = 750}, {loop = 'yoyo', repeatCount = -1})  -- holds the target weakly
+tween.rotate(spinner, 1, math.pi / 2, {owner = childScene, loopMode = 'incremental', repeatCount = -1})  -- ends when the child unloads
+tween.to(target, 1, {x = 750}, {loopMode = 'yoyo', repeatCount = -1})  -- holds the target weakly
 target = nil
 collectgarbage()  -- the tween stops before it writes again]]
 
@@ -22,7 +22,7 @@ Child.transparent = true
 
 function Child:enter()
     self.spinner = {rotation = 0}
-    tween.rotate(self.spinner, 0.5, math.pi / 2, {owner = self, loop = 'incremental', repeatCount = -1, ease = 'back_out'})
+    tween.rotate(self.spinner, 0.5, math.pi / 2, {owner = self, loopMode = 'incremental', repeatCount = -1, ease = 'backOut'})
     ui.mount(ui.card{anchor = 'center', gap = 16, onCancel = function() scene.pop() end,
         ui.label{text = 'A child scene owns this spinner.', font = 'heading'},
         ui.label{text = 'Close it and its tween ends with it.', color = 'textMuted'},
@@ -62,8 +62,8 @@ end
 function Lifetime:spawn()
     self.table = {x = 150}
     self.sprite = graphics2d.newSprite(graphics.whiteTexture(), {x = 150, width = 60, height = 60, color = sample.green})
-    tween.to(self.table, 1, {x = 750}, {loop = 'yoyo', repeatCount = -1, ease = 'sine_in_out'})
-    tween.to(self.sprite, 1, {x = 750}, {loop = 'yoyo', repeatCount = -1, ease = 'sine_in_out'})
+    tween.to(self.table, 1, {x = 750}, {loopMode = 'yoyo', repeatCount = -1, ease = 'sineInOut'})
+    tween.to(self.sprite, 1, {x = 750}, {loopMode = 'yoyo', repeatCount = -1, ease = 'sineInOut'})
     self.watch.table, self.watch.sprite = self.table, self.sprite
 end
 
@@ -75,7 +75,7 @@ end
 
 function Lifetime:update(dt)
     Lifetime.super.update(self, dt)
-    self:status(string.format('tweens %d   table target %s   sprite target %s', tween.count(), self.watch.table and 'alive' or 'collected', self.watch.sprite and 'alive' or 'collected'))
+    self:status(string.format('tweens %d   table target %s   sprite target %s', tween.size(), self.watch.table and 'alive' or 'collected', self.watch.sprite and 'alive' or 'collected'))
 end
 
 function Lifetime:draw(area)
@@ -90,7 +90,7 @@ function Lifetime:draw(area)
         sprite.y = top + 160
         sprite:draw()
     end
-    graphics2d.drawText(nil, string.format('%d tweens', tween.count()), area.width - 60, 60, {size = 56, color = sample.warm, anchor = {1, 0}})
+    graphics2d.drawText(nil, string.format('%d tweens', tween.size()), area.width - 60, 60, {size = 56, color = sample.warm, anchor = {1, 0}})
 end
 
 return Lifetime

@@ -48,7 +48,7 @@ scene.push({
         graphics2d.drawRect({-600, -400, 1200, 800}, '#FF6A6A62')
         graphics2d.drawRect({-20, -20, 40, 40}, '#FF5A4A3A', {layer = 1})
         graphics2d.drawOccluder(crate)
-        torch.intensity = 1.4 * lighting2d.flicker(haylen.time(), {seed = 2})
+        torch.intensity = 1.4 * lighting2d.flicker(haylen.elapsed(), {seed = 2})
         graphics2d.drawLight(torch)
     end,
 })
@@ -327,7 +327,7 @@ local camera = graphics2d.newCamera()
 scene.push({
     render = function(self)
         graphics2d.beginWorld(camera, {ambientLight = '#FF101830'})
-        local wave = lighting2d.flicker(haylen.time(), {speed = 6, amount = 0.2, seed = 4})
+        local wave = lighting2d.flicker(haylen.elapsed(), {speed = 6, amount = 0.2, seed = 4})
         graphics2d.drawLight({x = 0, y = 0, radius = 140 * wave, color = '#FFFF9040', intensity = 0.8 * wave})
     end,
 })

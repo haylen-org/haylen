@@ -169,8 +169,8 @@ TEST(StorageLuaTest, ReadsAndWritesUserFiles) {
     test::EngineFixture fixture;
     fixture.runLua("storage = require('haylen.storage')");
 
-    fixture.runLua("storage.write('notes.txt', 'hello') storage.writeJson('saves/slot.json', {day = 4, inventory = {'wood', 'stone'}})");
-    EXPECT_EQ(fixture.lua("return storage.read('notes.txt')"), "hello");
+    fixture.runLua("storage.writeText('notes.txt', 'hello') storage.writeJson('saves/slot.json', {day = 4, inventory = {'wood', 'stone'}})");
+    EXPECT_EQ(fixture.lua("return storage.readText('notes.txt')"), "hello");
     EXPECT_EQ(fixture.lua("local save = storage.readJson('saves/slot.json') return save.day .. save.inventory[2]"), "4stone");
     EXPECT_EQ(fixture.lua("return table.concat(storage.list(), ',')"), "notes.txt,saves/slot.json");
     EXPECT_EQ(fixture.lua("return table.concat(storage.list('saves'), ',')"), "saves/slot.json");
@@ -181,8 +181,8 @@ TEST(StorageLuaTest, ReadsAndWritesUserFiles) {
     const int before = fixture.host().getPersistCount();
     fixture.runLua("storage.flush()");
     EXPECT_EQ(fixture.host().getPersistCount(), before + 1);
-    EXPECT_NE(fixture.lua("return storage.read('missing.txt')").find("Storage file was not found"), std::string::npos);
-    EXPECT_NE(fixture.lua("storage.write('../escape.txt', 'x')").find("error: "), std::string::npos);
+    EXPECT_NE(fixture.lua("return storage.readText('missing.txt')").find("Storage file was not found"), std::string::npos);
+    EXPECT_NE(fixture.lua("storage.writeText('../escape.txt', 'x')").find("error: "), std::string::npos);
     EXPECT_NE(fixture.lua("storage.writeJson('bad.json', {callback = print})").find("cannot be converted to JSON"), std::string::npos);
 }
 
@@ -193,7 +193,7 @@ TEST(StorageLuaTest, SharesTheFolderWithVarnFs) {
         storage = require('haylen.storage')
         fs = require('fs')
         async = require('async')
-        storage.write('notes/today.txt', 'from storage')
+        storage.writeText('notes/today.txt', 'from storage')
         async.spawn(function()
             local root = storage.root()
             local text = fs.readFile(root .. '/notes/today.txt'):await()
@@ -272,16 +272,16 @@ TEST(StorageLuaTest, RunsAsynchronousOperationsInOrderOnTheIoPool) {
     fixture.runLua(R"(
         storage = require('haylen.storage')
         results = {}
-        storage.writeAsync('notes.txt', 'first')
-        storage.writeAsync('notes.txt', 'second')
+        storage.writeTextAsync('notes.txt', 'first')
+        storage.writeTextAsync('notes.txt', 'second')
         require('async').spawn(function()
-            results[#results + 1] = storage.readAsync('notes.txt'):await()
+            results[#results + 1] = storage.readTextAsync('notes.txt'):await()
             results[#results + 1] = tostring(storage.writeJsonAsync('cache/world.json', {seed = 42}):await())
             results[#results + 1] = storage.readJsonAsync('cache/world.json'):await().seed
             results[#results + 1] = table.concat(storage.listAsync():await(), ',')
             results[#results + 1] = tostring(storage.removeAsync('notes.txt'):await())
-            results[#results + 1] = select(2, storage.readAsync('notes.txt'):await())
-            results[#results + 1] = select(2, storage.readAsync('../outside.txt'):await())
+            results[#results + 1] = select(2, storage.readTextAsync('notes.txt'):await())
+            results[#results + 1] = select(2, storage.readTextAsync('../outside.txt'):await())
             results[#results + 1] = tostring(storage.writeSlotAsync('slot-1', {day = 3}, {day = 3}):await())
             results[#results + 1] = storage.readSlotAsync('slot-1'):await().day
             results[#results + 1] = storage.slotInfoAsync('slot-1'):await().summary.day
@@ -303,7 +303,7 @@ TEST(StorageLuaTest, RunsAsynchronousOperationsInOrderOnTheIoPool) {
     // Values become JSON on the frame thread, so a value that cannot raises at once.
     EXPECT_NE(fixture.lua("storage.writeJsonAsync('bad.json', {callback = print})").find("A function cannot be converted to JSON."), std::string::npos);
     EXPECT_NE(fixture.lua("storage.writeSlotAsync('slot', {}, {print})").find("cannot be converted to JSON"), std::string::npos);
-    EXPECT_NE(fixture.lua("storage.readAsync()").find("error: "), std::string::npos);
+    EXPECT_NE(fixture.lua("storage.readTextAsync()").find("error: "), std::string::npos);
 }
 
 TEST(StorageLuaTest, FinishesQueuedOperationsWhenTheAppStops) {

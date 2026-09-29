@@ -63,11 +63,11 @@ function Calls:runLibrary()
         return string.format('filled %s with checksum %08x', bytes:gsub('.', function(byte) return string.format('%02x ', byte:byte()) end), expect(checksum, library.checksum(bytes), 'the checksum'))
     end)
     checks:run('Symbol', function()
-        local address = native.symbol('native_test_add')
+        local address = native.findSymbol('native_test_add')
         if address == nil then
-            error('native.symbol found no native_test_add', 0)
+            error('native.findSymbol found no native_test_add', 0)
         end
-        return 'native.symbol found native_test_add at ' .. tostring(address)
+        return 'native.findSymbol found native_test_add at ' .. tostring(address)
     end)
 end
 

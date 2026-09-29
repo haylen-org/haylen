@@ -25,27 +25,26 @@ std::string KeyCapture::describe(std::string_view binding) {
         name.pop_back();
     }
 
-    // Words split at underscores and start with a capital letter, so left_shift reads Left Shift.
-    bool wordStart = true;
-    for (char& letter : name) {
-        if (letter == '_') {
-            letter = ' ';
-            wordStart = true;
-        } else if (wordStart) {
-            letter = static_cast<char>(std::toupper(static_cast<unsigned char>(letter)));
-            wordStart = false;
+    // A word starts at each capital letter and at a number after a word, and the first letter is capitalized, so leftShift reads Left Shift, keypad0 reads Keypad 0 and f12 stays F12.
+    std::string label;
+    for (std::size_t index = 0; index < name.size(); ++index) {
+        const auto letter = static_cast<unsigned char>(name[index]);
+        const bool number = index > 1 && std::isdigit(letter) != 0 && std::isalpha(static_cast<unsigned char>(name[index - 1])) != 0;
+        if (index > 0 && (std::isupper(letter) != 0 || number)) {
+            label += ' ';
         }
+        label += static_cast<char>(index == 0 ? std::toupper(letter) : letter);
     }
     if (kind == "mouse") {
-        return "Mouse " + name;
+        return "Mouse " + label;
     }
     if (kind == "button") {
-        return "Button " + name;
+        return "Button " + label;
     }
     if (kind == "stick") {
-        return name + " Stick";
+        return label + " Stick";
     }
-    return name + sign;
+    return label + sign;
 }
 
 std::vector<std::string> KeyCapture::readBindings(PropertyReader& reader, std::string_view key, const core::Json& listed) {

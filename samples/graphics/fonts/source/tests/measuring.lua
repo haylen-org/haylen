@@ -98,7 +98,7 @@ function Measuring:render()
     local width, height = graphics2d.measureRichText(kRich, {family = fonts.family('crimson'), size = 40, maxWidth = 640})
     graphics2d.drawRectOutline({richX, richY, width, height}, 3, '#FF4C7DFF')
     self.rich:draw(richX, richY)
-    local laid = self.rich:layout()
+    local laid = self.rich:frame()
     for _, link in ipairs(laid.links) do
         graphics2d.drawRectOutline({richX + link.rect.x, richY + link.rect.y, link.rect.width, link.rect.height}, 2, '#FFF2B23A')
     end

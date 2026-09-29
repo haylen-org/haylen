@@ -13,7 +13,7 @@ function Journal:init(capacity)
 end
 
 function Journal:add(text, color)
-    self.lines:push({frame = haylen.frame(), text = text, color = color or kInk})
+    self.lines:push({frame = haylen.frameIndex(), text = text, color = color or kInk})
 end
 
 function Journal:clear()

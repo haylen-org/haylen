@@ -15,7 +15,7 @@ Draws only exist inside that window, so they belong in `render` and `renderUi`. 
 
 `graphics::Device` (`engine/src/graphics/Device.cpp`) owns the Sokol graphics context and creates textures, single-channel alpha textures for font atlases, and render targets. Every method runs on the frame thread, and Sokol keeps one global device, so a process holds one engine at a time and a second device raises `Only one graphics device can exist at a time.` Builds without `NDEBUG` turn Sokol's validation layer on, which checks every GPU call.
 
-| Platform | Backend | `graphics.backend()` |
+| Platform | Backend | `graphics.backendName()` |
 | --- | --- | --- |
 | macOS, iOS, tvOS | Metal | `'metal'` |
 | Windows | Direct3D 11 | `'d3d11'` |
@@ -282,7 +282,7 @@ Creating an object in a full pool throws, which in Lua raises an error that show
 | `The graphics device could not create the pipeline <label>.` | The backend rejected a pipeline. |
 | `Texture dimensions must be positive.` and `Texture dimensions exceed the device limit.` | A texture or render target size outside the device limits, which `Device::getMaxTextureSize()` and `graphics.maxTextureSize()` report. |
 
-A slot is freed when the last handle to its object goes away, and the object is destroyed at the end of that frame, once no queued draw can use it. Lua handles go away when the garbage collector finalizes them, and assets loaded through a preload group stay alive until `assets.unload` releases the group, as the [assets reference](lua-api/assets.md) explains.
+A slot is freed when the last handle to its object goes away, and the object is destroyed at the end of that frame, once no queued draw can use it. Lua handles go away when the garbage collector finalizes them, and assets loaded through a preload group stay alive until `assets.unloadGroup` releases the group, as the [assets reference](lua-api/assets.md) explains.
 
 ## Performance guidance
 

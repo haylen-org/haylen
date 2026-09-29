@@ -57,7 +57,7 @@ function SaveSlots:content()
                     event.document:set('confirm', {open = true, message = 'The slot ' .. self.selected .. ' will be gone for good.'})
                 end},
                 ui.button{id = 'damage', text = 'Damage the file', onClick = function()
-                    storage.write('saves/' .. self.selected .. '.json', '{"data": ')
+                    storage.writeText('saves/' .. self.selected .. '.json', '{"data": ')
                     self:refresh()
                 end},
             },

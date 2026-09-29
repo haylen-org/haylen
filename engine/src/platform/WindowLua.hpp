@@ -17,7 +17,7 @@ class WindowLua final {
     [[nodiscard]] static math::Polygon::Outline readRegion(lua_State* L, int index);
     static void pushMonitor(lua_State* L, const Monitor& monitor);
 
-    static int size(lua_State* L);
+    static int framebufferSize(lua_State* L);
     static int dpiScale(lua_State* L);
     static int fullscreen(lua_State* L);
     static int setFullscreen(lua_State* L);
@@ -27,7 +27,7 @@ class WindowLua final {
     static int setCursor(lua_State* L);
     static int setCursorVisible(lua_State* L);
     static int setMouseLocked(lua_State* L);
-    static int showKeyboard(lua_State* L);
+    static int setKeyboardVisible(lua_State* L);
     static int orientation(lua_State* L);
     static int lockOrientation(lua_State* L);
     static int clipboard(lua_State* L);

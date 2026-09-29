@@ -63,7 +63,7 @@ end
 
 function Signals:update(dt)
     Signals.super.update(self, dt)
-    self:status(string.format('listeners %d   emissions %d   signal blocked %s   health bar blocked %s', self.hit.size, self.hit.emissions, self.hit.blocked, self.healthBar.blocked))
+    self:status(string.format('listeners %d   emissions %d   signal blocked %s   health bar blocked %s', self.hit.size, self.hit.emissionCount, self.hit.blocked, self.healthBar.blocked))
 end
 
 function Signals:draw(area)

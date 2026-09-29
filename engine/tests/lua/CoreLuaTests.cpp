@@ -23,8 +23,8 @@ TEST(CoreLuaTest, ExposesEngineInformationAndClock) {
     EXPECT_EQ(fixture.lua("return type(haylen.version)"), "string");
 
     fixture.frames(3, 0.5);
-    EXPECT_EQ(fixture.lua("return haylen.frame()"), "3");
-    EXPECT_EQ(fixture.lua("return haylen.delta() > 0 and haylen.unscaledDelta() > 0 and haylen.time() > 0"), "true");
+    EXPECT_EQ(fixture.lua("return haylen.frameIndex()"), "3");
+    EXPECT_EQ(fixture.lua("return haylen.delta() > 0 and haylen.unscaledDelta() > 0 and haylen.elapsed() > 0"), "true");
 
     fixture.runLua("haylen.setTimeScale(0.5)");
     EXPECT_EQ(fixture.lua("return haylen.timeScale()"), "0.5");
@@ -112,10 +112,10 @@ TEST(CoreLuaTest, SchedulesTimersOnTheFrameClock) {
 TEST(CoreLuaTest, ControlsTheWindow) {
     test::EngineFixture fixture;
     fixture.runLua("window = require('haylen.window')");
-    EXPECT_EQ(fixture.lua("local w, h = window.size() return w .. 'x' .. h"), "1920.0x1080.0");
+    EXPECT_EQ(fixture.lua("local w, h = window.framebufferSize() return w .. 'x' .. h"), "1920.0x1080.0");
     EXPECT_EQ(fixture.lua("return window.dpiScale()"), "1.0");
 
-    fixture.runLua("window.setTitle('Tiny Island') window.setFullscreen(true) window.setCursor('pointing_hand') window.setCursorVisible(false) window.setMouseLocked(true) window.showKeyboard(true) window.setClipboard('copied')");
+    fixture.runLua("window.setTitle('Tiny Island') window.setFullscreen(true) window.setCursor('pointingHand') window.setCursorVisible(false) window.setMouseLocked(true) window.setKeyboardVisible(true) window.setClipboard('copied')");
     EXPECT_EQ(fixture.host().getTitle(), "Tiny Island");
     EXPECT_EQ(fixture.lua("return window.fullscreen()"), "true");
     EXPECT_EQ(fixture.host().getCursor(), platform::Window::Cursor::PointingHand);
@@ -133,7 +133,7 @@ TEST(CoreLuaTest, ControlsTheWindow) {
 
 TEST(CoreLuaTest, ReadsAndLocksTheOrientation) {
     test::EngineFixture fixture;
-    fixture.runLua("window = require('haylen.window') events = require('haylen.events') heard = {} events.on('window_orientation_changed', function(info) heard[#heard + 1] = info.orientation end)");
+    fixture.runLua("window = require('haylen.window') events = require('haylen.events') heard = {} events.on('windowOrientationChanged', function(info) heard[#heard + 1] = info.orientation end)");
     EXPECT_EQ(fixture.lua("return window.orientation()"), "landscape");
 
     fixture.runLua("window.lockOrientation('portrait')");
@@ -146,14 +146,14 @@ TEST(CoreLuaTest, ReadsAndLocksTheOrientation) {
 
 TEST(CoreLuaTest, HearsTheKeyboardAndTheNetwork) {
     test::EngineFixture fixture;
-    fixture.runLua("haylen = require('haylen') events = require('haylen.events') heard = {} for _, name in ipairs({'keyboard_shown', 'keyboard_hidden', 'network_offline', 'network_online'}) do events.on(name, function(info) heard[#heard + 1] = name .. (info and (' ' .. info.y .. ' ' .. info.height) or '') .. ' ' .. haylen.networkState() end) end");
+    fixture.runLua("haylen = require('haylen') events = require('haylen.events') heard = {} for _, name in ipairs({'keyboardShown', 'keyboardHidden', 'networkOffline', 'networkOnline'}) do events.on(name, function(info) heard[#heard + 1] = name .. (info and (' ' .. info.y .. ' ' .. info.height) or '') .. ' ' .. haylen.networkState() end) end");
     EXPECT_EQ(fixture.lua("return haylen.networkState()"), "unknown");
     fixture.engine().handleEvent({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 700.0F, 1920.0F, 380.0F}});
     fixture.engine().handleEvent({.type = platform::Event::Type::NetworkChanged, .online = false});
     fixture.engine().handleEvent({.type = platform::Event::Type::KeyboardChanged});
     fixture.engine().handleEvent({.type = platform::Event::Type::NetworkChanged, .online = true});
     fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return table.concat(heard, ', ')"), "keyboard_shown 700.0 380.0 unknown, network_offline offline, keyboard_hidden offline, network_online online");
+    EXPECT_EQ(fixture.lua("return table.concat(heard, ', ')"), "keyboardShown 700.0 380.0 unknown, networkOffline offline, keyboardHidden offline, networkOnline online");
 }
 
 TEST(CoreLuaTest, AppliesTheResizableSettingOfAppJson) {
@@ -316,7 +316,7 @@ TEST(JobsLuaTest, SplitsLongWorkAcrossFrames) {
         async.spawn(function() result = sum:await() end)
     )");
     // clang-format on
-    EXPECT_EQ(fixture.lua("return jobs.running() .. ' ' .. jobs.budget()"), "2 1.0");
+    EXPECT_EQ(fixture.lua("return jobs.runningCount() .. ' ' .. jobs.budget()"), "2 1.0");
 
     // The first job uses the whole budget of the first frame, and the second one gets the next frame first.
     fixture.frames(1);
@@ -363,7 +363,7 @@ TEST(JobsLuaTest, RejectsFailuresAndMisuse) {
     EXPECT_NE(outcomes.find("global 'error'"), std::string::npos) << outcomes;
     EXPECT_EQ(outcomes.find('\t'), std::string::npos) << outcomes;
     EXPECT_NE(outcomes.find("may only pause at jobs.checkpoint"), std::string::npos) << outcomes;
-    EXPECT_EQ(fixture.lua("return jobs.running()"), "0");
+    EXPECT_EQ(fixture.lua("return jobs.runningCount()"), "0");
 
     EXPECT_NE(fixture.lua("jobs.checkpoint()").find("only runs inside a job"), std::string::npos);
     EXPECT_NE(fixture.lua("jobs.setBudget(0)").find("positive number"), std::string::npos);

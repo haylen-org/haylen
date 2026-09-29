@@ -85,11 +85,11 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
 
     // Returns the mode the tween runs by: its own, or the one of its parent while it inherits.
     [[nodiscard]] ProcessMode resolveProcessMode() const;
-    void setUnscaledTime(bool value) noexcept {
-        unscaledTime = value;
+    void setUnscaled(bool value) noexcept {
+        unscaled = value;
     }
-    [[nodiscard]] bool isUnscaledTime() const noexcept {
-        return unscaledTime;
+    [[nodiscard]] bool isUnscaled() const noexcept {
+        return unscaled;
     }
     void setFixedStep(bool value) noexcept {
         fixedStep = value;
@@ -260,7 +260,7 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
     int repeatCount = 0;
     LoopMode loopMode = LoopMode::Restart;
     ProcessMode processMode = ProcessMode::Inherit;
-    bool unscaledTime = false;
+    bool unscaled = false;
     bool fixedStep = false;
     bool autoKill = true;
     bool paused = false;

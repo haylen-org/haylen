@@ -38,7 +38,7 @@ The mouse, touch, the keyboard, gamepads and TV remotes reach the controls in th
 fonts/
   app.json               Window, design resolution of 1920 by 1080 and identifier.
   source/
-    main.lua             Adds the Back button of gamepads to ui_cancel and opens the menu.
+    main.lua             Adds the Back button of gamepads to uiCancel and opens the menu.
     tests.lua            The tests in menu order.
     sample.lua           The frame of every test with its Back button, controls and hints, and the way back to the menu.
     fonts.lua            The fonts and families of the sample, loaded on first use.

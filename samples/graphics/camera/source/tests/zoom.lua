@@ -31,7 +31,7 @@ end
 function Zoom:update(dt)
     local camera = self.camera
     local _, wheel = input.mouseScroll()
-    if wheel ~= 0 and not ui.wantsPointer() then
+    if wheel ~= 0 and not ui.usingPointer() then
         camera:zoomAt(1.15 ^ wheel, input.mousePosition())
     end
 
@@ -58,7 +58,7 @@ function Zoom:update(dt)
     local dragX, dragY = 0, 0
     if input.down('point') and #input.touches() == 0 then
         dragX, dragY = input.mouseDelta()
-    elseif #input.touches() == 1 and not ui.wantsPointer() then
+    elseif #input.touches() == 1 and not ui.usingPointer() then
         dragX, dragY = input.touches()[1].dx, input.touches()[1].dy
     end
     camera.x = camera.x + moveX * 700 * dt / camera.zoom.x - dragX / camera.zoom.x

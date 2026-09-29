@@ -27,7 +27,7 @@ class Viewport final {
         PixelPerfect,
     };
 
-    // Resolves the names "fit", "fill", "stretch", "expand" and "pixel_perfect".
+    // Resolves the names "fit", "fill", "stretch", "expand" and "pixelPerfect".
     [[nodiscard]] static std::optional<ScalingPolicy> scalingPolicyFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view scalingPolicyName(ScalingPolicy value) noexcept;
 
@@ -39,7 +39,7 @@ class Viewport final {
     [[nodiscard]] math::Vec2 getDesignSize() const noexcept {
         return designSize;
     }
-    [[nodiscard]] ScalingPolicy getPolicy() const noexcept {
+    [[nodiscard]] ScalingPolicy getScaling() const noexcept {
         return policy;
     }
 

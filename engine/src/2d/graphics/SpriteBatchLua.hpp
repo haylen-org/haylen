@@ -16,7 +16,7 @@ namespace haylen::graphics2d {
 class SpriteBatch;
 class StaticSpriteBatch;
 
-// Installs the SpriteBatch and StaticBatch classes of haylen.graphics2d. Sprites of a batch are numbered from one.
+// Installs the SpriteBatch and StaticSpriteBatch classes of haylen.graphics2d. Sprites of a batch are numbered from one.
 class SpriteBatchLua final {
   public:
     // The key of a sprite table that lists the fields a float buffer holds, as drawBatch reads it.

@@ -9,6 +9,8 @@
 
 #if defined(__EMSCRIPTEN__)
 #include <emscripten/emscripten.h>
+
+#include "platform/web/BrowserAudioOutput.hpp"
 #endif
 
 namespace haylen::platform {
@@ -204,7 +206,11 @@ graphics::DeviceSetup SokolHost::getGraphicsSetup() {
 }
 
 audio::Mixer::Setup SokolHost::getAudioSetup() const {
+#if defined(__EMSCRIPTEN__)
+    return {.device = true, .backend = &audio::BrowserAudioOutput::kBackend};
+#else
     return {.device = true};
+#endif
 }
 
 graphics::FrameTarget SokolHost::getFrameTarget() {

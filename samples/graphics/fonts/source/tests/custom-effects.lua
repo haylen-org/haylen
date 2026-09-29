@@ -72,7 +72,7 @@ function CustomEffects:init(entry)
     for index, line in ipairs(kLines) do
         self.lines[index] = {label = line[1], text = graphics2d.newRichText(line[2], {family = fonts.family('lilita'), size = 52})}
     end
-    self.effects = table.concat(graphics2d.textEffects(), ', ')
+    self.effects = table.concat(graphics2d.textEffectNames(), ', ')
 end
 
 function CustomEffects:update(dt)

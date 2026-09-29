@@ -42,7 +42,7 @@ class PlatformLua final {
     static int getPromise(lua_State* L);
     static int resolve(lua_State* L);
     static int emit(lua_State* L);
-    static int pendingCalls(lua_State* L);
+    static int pendingCallCount(lua_State* L);
     static int on(lua_State* L);
     static int registerHandler(lua_State* L);
     static int hasHandler(lua_State* L);

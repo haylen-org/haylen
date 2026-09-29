@@ -167,17 +167,17 @@ TEST(RaycasterTest, CastsBatchesInParallelLikeOneByOne) {
     for (std::size_t index = 0; index < batch.size(); ++index) {
         const math::Segment& ray = batch.getRay(index);
         const std::optional<physics2d::RaycastHit> expected = caster.castRay(ray.start, ray.end);
-        ASSERT_EQ(batch.getResult(index).has_value(), expected.has_value());
+        ASSERT_EQ(batch.getHit(index).has_value(), expected.has_value());
         if (expected) {
-            EXPECT_EQ(batch.getResult(index)->shape, expected->shape);
-            EXPECT_EQ(batch.getResult(index)->point, expected->point);
+            EXPECT_EQ(batch.getHit(index)->shape, expected->shape);
+            EXPECT_EQ(batch.getHit(index)->point, expected->point);
             ++hits;
         }
     }
     EXPECT_GT(hits, 100U);
 
     caster.castBatch(batch, {.mask = 4});
-    EXPECT_EQ(batch.getResult(250)->shape, range.rightMirror);
+    EXPECT_EQ(batch.getHit(250)->shape, range.rightMirror);
     EXPECT_THROW((void)batch.getRay(500), std::out_of_range);
     EXPECT_THROW(batch.setRay(500, {}, {}), std::out_of_range);
 }
@@ -264,10 +264,10 @@ TEST(WorldRaycastLuaTest, CastsRaysAndShapesFromLua) {
         world:raycastBatch(batch, {mask = 5})
     )");
     // clang-format on
-    EXPECT_EQ(fixture.lua("local hit, x, y, nx, ny, fraction = batch:hit(1) return tostring(hit) .. ' ' .. math.floor(x + 0.5) .. ' ' .. nx .. ' ' .. string.format('%.3f', fraction) .. ' ' .. tostring(batch:hit(3)) .. ' ' .. batch.count"), "true 95 -1.0 0.095 true 3");
+    EXPECT_EQ(fixture.lua("local hit, x, y, nx, ny, fraction = batch:hit(1) return tostring(hit) .. ' ' .. math.floor(x + 0.5) .. ' ' .. nx .. ' ' .. string.format('%.3f', fraction) .. ' ' .. tostring(batch:hit(3)) .. ' ' .. batch.size"), "true 95 -1.0 0.095 true 3");
     EXPECT_EQ(fixture.lua("return batch:body(1).data.name .. ' ' .. batch:body(2).data.name .. ' ' .. tostring(batch:shape(1).valid) .. ' ' .. select(3, batch:ray(2))"), "post1 right true 1000.0");
-    EXPECT_EQ(fixture.lua("batch.count = 1 return batch.count"), "1");
-    EXPECT_EQ(fixture.lua("local empty = physics2d.newRayBatch() local before = empty.count empty.count = 2 return before .. ' ' .. empty.count .. ' ' .. select(3, empty:ray(2)) .. ' ' .. tostring(empty:hit(2))"), "0 2 0.0 false");
+    EXPECT_EQ(fixture.lua("batch.size = 1 return batch.size"), "1");
+    EXPECT_EQ(fixture.lua("local empty = physics2d.newRayBatch() local before = empty.size empty.size = 2 return before .. ' ' .. empty.size .. ' ' .. select(3, empty:ray(2)) .. ' ' .. tostring(empty:hit(2))"), "0 2 0.0 false");
 
     fixture.runLua("world.debugRays = true world:raycast(0, 0, 1000, 0) world:raycastAll(0, 20, 1000, 20)");
     EXPECT_EQ(fixture.lua("return tostring(world.debugRays)"), "true");

@@ -58,7 +58,7 @@ function PostProcessing:chain()
         names[#names + 1] = 'grading'
     end
     if self.enabled.crt then
-        self.crt:set('time', haylen.time())
+        self.crt:set('time', haylen.elapsed())
         materials[#materials + 1] = self.crt
         names[#names + 1] = 'CRT'
     end
@@ -74,7 +74,7 @@ end
 function PostProcessing:render()
     local materials = self:chain()
     graphics2d.beginWorld(self.camera, {clear = '#FF203048', postProcess = {vignetteStrength = self.enabled.vignette and 0.7 or 0, materials = materials}})
-    local time = haylen.time()
+    local time = haylen.elapsed()
     for index = 0, 11 do
         graphics2d.drawRect({-1400 + index * 240, -900, 120, 1800}, index % 2 == 0 and '#FF2A3E5C' or '#FF33486A')
     end

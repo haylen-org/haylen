@@ -12,11 +12,11 @@ namespace haylen::core {
 // A shape that a tween property follows instead of a straight line between its start and end values. The end value of the property is the destination of jumps, paths and Bézier curves, the strength of shakes and punches, and the hidden value of blinks, which all come back to the start.
 class TweenMotion final {
   public:
-    // Makes the given number of hops on the way to the end, each rising power units toward negative y, which is up on screen.
-    [[nodiscard]] static std::shared_ptr<TweenMotion> jump(float power, int hops);
+    // Makes the given number of jumps on the way to the end, each rising power units toward negative y, which is up on screen.
+    [[nodiscard]] static std::shared_ptr<TweenMotion> jump(float power, int jumps);
 
-    // Travels through the waypoints at constant speed, starting from the start value and ending at the end value, which must be the last waypoint. Smooth paths pass through every waypoint as a Catmull-Rom spline, and looping paths return to the start.
-    [[nodiscard]] static std::shared_ptr<TweenMotion> path(std::vector<math::Vec2> waypoints, bool smooth, bool looping);
+    // Travels through the waypoints at constant speed, starting from the start value and ending at the end value, which must be the last waypoint. Curved paths pass through every waypoint as a Catmull-Rom spline, and closed paths return to the start.
+    [[nodiscard]] static std::shared_ptr<TweenMotion> path(std::vector<math::Vec2> waypoints, bool curved, bool closed);
 
     // Follows a quadratic or cubic Bézier curve from the start to the end through one or two control points.
     [[nodiscard]] static std::shared_ptr<TweenMotion> bezier(std::vector<math::Vec2> controls);
@@ -67,8 +67,8 @@ class TweenMotion final {
     Kind kind;
     int count = 1;
     float amount = 0.0F;
-    bool curved = false;
-    bool closed = false;
+    bool curvedPath = false;
+    bool closedPath = false;
     std::uint32_t seed = 0;
     std::vector<math::Vec2> points;
     std::vector<math::Vec2> nodes;

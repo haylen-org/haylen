@@ -120,7 +120,7 @@ Creates a body and returns it. A body has no collision until shapes are added to
 | `gravityScale` | number | `1` | Multiplies the world gravity for this body. |
 | `fixedRotation` | boolean | `false` | Keeps the body from rotating. |
 | `bullet` | boolean | `false` | Enables continuous collision against other dynamic bodies, for fast projectiles. |
-| `sleep` | boolean | `true` | Lets the body fall asleep when it comes to rest. |
+| `sleepEnabled` | boolean | `true` | Lets the body fall asleep when it comes to rest. |
 
 A damping that is negative or not finite raises `A physics body needs a finite damping of zero or more.`, and so does assigning one to `body.linearDamping` or `body.angularDamping`.
 
@@ -133,7 +133,7 @@ local world = physics2d.newWorld()
 local floor = world:createBody({type = 'static', x = 0, y = 300})
 local platform = world:createBody({type = 'kinematic', x = 0, y = 100, vx = 60})
 local arrow = world:createBody({x = -300, y = 0, vx = 900, rotation = 0.1, bullet = true, gravityScale = 0.5})
-local player = world:createBody({x = 0, y = 0, fixedRotation = true, linearDamping = 0.2, sleep = false})
+local player = world:createBody({x = 0, y = 0, fixedRotation = true, linearDamping = 0.2, sleepEnabled = false})
 ```
 
 ### world:createJoint(type, a, b, options)
@@ -429,7 +429,7 @@ for _, wall in ipairs({{0, -300, 620, 20}, {0, 300, 620, 20}, {-300, 0, 20, 620}
 end
 
 local batch = physics2d.newRayBatch(360)
-for index = 1, batch.count do
+for index = 1, batch.size do
     local angle = math.rad(index)
     batch:setRay(index, 0, 0, math.cos(angle) * 1000, math.sin(angle) * 1000)
 end
@@ -1205,7 +1205,7 @@ A `RayBatch` holds rays cast together by `world:raycastBatch()` with a result sl
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
-| `count` | integer | read and write | Number of rays. Growing the batch adds rays of zero length and keeps the existing ones. |
+| `size` | integer | read and write | Number of rays. Growing the batch adds rays of zero length and keeps the existing ones. |
 
 ### batch:setRay(index, x1, y1, x2, y2)
 
@@ -1717,7 +1717,7 @@ require('haylen.scene').push({
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
-| `count` | integer | read | Number of particles. |
+| `size` | integer | read | Number of particles. |
 | `radius` | number | read | Radius of the particles. |
 
 ## Tiled collision
@@ -1780,5 +1780,5 @@ Invalid input raises Lua errors with these messages.
 | `A bouncing physics ray needs a finite length.` | `world:bounceRay()` received an infinite length. |
 | `the length must be finite` | `world:rayFan()` received an infinite length. It comes inside a bad argument error. |
 | `Ray batches take no accept function, because their rays run on worker threads.` | `world:raycastBatch()` received a filter with `accept`. |
-| `haylen.Body has no member '<name>'.` | A body, shape, joint or world member does not exist. The type name changes with the userdata. |
-| `haylen.Body has no writable property '<name>'.` | A read-only property was assigned. The type name changes with the userdata. |
+| `The type haylen.Body has no member '<name>'.` | A body, shape, joint or world member does not exist. The type name changes with the userdata. |
+| `The type haylen.Body has no writable property '<name>'.` | A read-only property was assigned. The type name changes with the userdata. |

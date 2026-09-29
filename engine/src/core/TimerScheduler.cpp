@@ -15,22 +15,22 @@ TimerScheduler::Id TimerScheduler::after(float delaySeconds, std::function<void(
     return add(0.0F, delaySeconds, 1, std::move(callback), options);
 }
 
-TimerScheduler::Id TimerScheduler::every(float intervalSeconds, std::function<void()> callback, int repeatCount) {
-    return every(intervalSeconds, std::move(callback), repeatCount, Options{});
+TimerScheduler::Id TimerScheduler::every(float intervalSeconds, std::function<void()> callback, int count) {
+    return every(intervalSeconds, std::move(callback), count, Options{});
 }
 
-TimerScheduler::Id TimerScheduler::every(float intervalSeconds, std::function<void()> callback, int repeatCount, Options options) {
-    if (repeatCount == 0) {
+TimerScheduler::Id TimerScheduler::every(float intervalSeconds, std::function<void()> callback, int count, Options options) {
+    if (count == 0) {
         throw std::invalid_argument("A repeating timer needs a positive count, or a negative count to repeat until it is cancelled.");
     }
-    return add(intervalSeconds, intervalSeconds, repeatCount, std::move(callback), options);
+    return add(intervalSeconds, intervalSeconds, count, std::move(callback), options);
 }
 
 ProcessMode TimerScheduler::resolveMode(const Options& options) {
     return options.processMode == ProcessMode::Inherit && options.parentMode ? options.parentMode() : options.processMode;
 }
 
-TimerScheduler::Id TimerScheduler::add(float interval, float delay, int repeatCount, std::function<void()> callback, Options options) {
+TimerScheduler::Id TimerScheduler::add(float interval, float delay, int count, std::function<void()> callback, Options options) {
     if (!callback) {
         throw std::invalid_argument("A timer needs a callback.");
     }
@@ -38,7 +38,7 @@ TimerScheduler::Id TimerScheduler::add(float interval, float delay, int repeatCo
     timer->id = nextId++;
     timer->interval = std::max(0.0F, interval);
     timer->remaining = std::max(0.0F, delay);
-    timer->repeatsLeft = repeatCount;
+    timer->repeatsLeft = count;
     timer->options = std::move(options);
     timer->callback = std::move(callback);
 

@@ -79,7 +79,7 @@ public final class HaylenBridge {
             reply.success(info);
         });
         register("system.locale", (params, reply) -> reply.success(Locale.getDefault().toLanguageTag()));
-        register("system.open_url", (params, reply) -> {
+        register("system.openUrl", (params, reply) -> {
             String url = params instanceof JSONObject ? ((JSONObject) params).optString("url", "") : "";
             if (url.isEmpty()) {
                 reply.failure("The url is missing.");
@@ -135,7 +135,7 @@ public final class HaylenBridge {
         PendingReply reply = new PendingReply(call);
         MethodHandler handler = handlers.get(method);
         if (handler == null) {
-            reply.failure("No native handler is registered for " + method + ".", "no_handler", null);
+            reply.failure("No native handler is registered for " + method + ".", "noHandler", null);
             return;
         }
         Object parsed;

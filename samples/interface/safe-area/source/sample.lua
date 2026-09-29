@@ -42,7 +42,7 @@ function sample.back(entry)
     end
 end
 
--- Mounts a document that belongs to the test, whose root goes back to the menu when ui_cancel reaches it.
+-- Mounts a document that belongs to the test, whose root goes back to the menu when uiCancel reaches it.
 function sample.mount(test, tree, options)
     tree.onCancel = tree.onCancel or function()
         sample.back(test.entry)

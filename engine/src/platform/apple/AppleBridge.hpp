@@ -16,7 +16,7 @@ class AppleBridge final {
     static void removeHandler(NSString* method);
     static void clearHandlers();
 
-    // Registers device.info, system.locale, system.open_url and haptics.vibrate. A built-in method never replaces a handler the app registered first under the same name.
+    // Registers device.info, system.locale, system.openUrl and haptics.vibrate. A built-in method never replaces a handler the app registered first under the same name.
     static void registerBuiltIns();
 
     // Runs the handler of a call on the main queue, or fails the call when no handler is registered.

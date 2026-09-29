@@ -16,8 +16,8 @@ TEST(PlatformLuaTest, CallsNativeAndLuaHandlersWithPromises) {
     fixture.runLua(R"(
         platform = require('haylen.platform')
         async = require('async')
-        platform.register('math.double', function(params) return {value = params.value * 2} end)
-        platform.register('math.fail', function() error('handler failed') end)
+        platform.registerHandler('math.double', function(params) return {value = params.value * 2} end)
+        platform.registerHandler('math.fail', function() error('handler failed') end)
         async.spawn(function()
             local info = platform.call('engine.info'):await()
             local doubled = platform.call('math.double', {value = 21}):await()
@@ -38,7 +38,7 @@ TEST(PlatformLuaTest, CallsNativeAndLuaHandlersWithPromises) {
 
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return summary ~= nil") == "true"; }));
     EXPECT_EQ(fixture.lua("return summary"), "headless 42 true phone denied");
-    EXPECT_NE(fixture.lua("platform.register('x', 'not a function')").find("error: "), std::string::npos);
+    EXPECT_NE(fixture.lua("platform.registerHandler('x', 'not a function')").find("error: "), std::string::npos);
 }
 
 TEST(PlatformLuaTest, SubscribesToNativeEvents) {
@@ -81,13 +81,13 @@ TEST(PlatformLuaTest, AnswersCallsAndSendsEventsFromLua) {
         end)
     )");
     // clang-format on
-    EXPECT_EQ(fixture.lua("return platform.pendingCalls() .. ' ' .. tostring(math.type(slowId)) .. ' ' .. tostring(slowId ~= deniedId)"), "2 integer true");
+    EXPECT_EQ(fixture.lua("return platform.pendingCallCount() .. ' ' .. tostring(math.type(slowId)) .. ' ' .. tostring(slowId ~= deniedId)"), "2 integer true");
     EXPECT_EQ(fixture.host().getPlatformCalls().back().id, std::stoull(fixture.lua("return deniedId")));
 
     fixture.runLua("platform.resolve(slowId, true, {done = true}) platform.resolve(deniedId, false, {message = 'no network'})");
     fixture.runLua("platform.emit('app.link', {url = 'island://beach'})");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return summary ~= nil") == "true"; }));
-    EXPECT_EQ(fixture.lua("return summary .. ' ' .. platform.pendingCalls() .. ' ' .. table.concat(links, ',')"), "true no network 0 island://beach");
+    EXPECT_EQ(fixture.lua("return summary .. ' ' .. platform.pendingCallCount() .. ' ' .. table.concat(links, ',')"), "true no network 0 island://beach");
     EXPECT_NE(fixture.lua("platform.emit('app.link', print)").find("cannot be converted to JSON"), std::string::npos);
     EXPECT_NE(fixture.lua("platform.resolve(-1, true)").find("expected a non-negative integer"), std::string::npos);
 }
@@ -126,7 +126,7 @@ TEST(PlatformLuaTest, FailsCallsWithTypedErrorsTimeoutsAndCancellation) {
 
 TEST(PlatformLuaTest, CppCallsToLuaHandlersReturnErrorsInsteadOfCrashing) {
     test::EngineFixture fixture;
-    fixture.runLua("require('haylen.platform').register('bad.result', function() return {callback = print} end)");
+    fixture.runLua("require('haylen.platform').registerHandler('bad.result', function() return {callback = print} end)");
 
     Bridge::Result received;
     fixture.engine().getPlatform().call("bad.result", core::Json::object(), [&](Bridge::Result result) { received = std::move(result); });

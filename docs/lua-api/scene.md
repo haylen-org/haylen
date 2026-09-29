@@ -83,7 +83,7 @@ Every scene goes through the same states, which `scene.state(scene)` returns.
 
 ## Load context
 
-`load` receives a context, a `haylen.SceneLoad` userdata, which lives until the scene enters or unloads. Using it later raises `haylen.SceneLoad was already released.`
+`load` receives a context, a `haylen.SceneLoad` userdata, which lives until the scene enters or unloads. Using it later raises `This haylen.SceneLoad was already released.`
 
 | Member | Meaning |
 | --- | --- |
@@ -91,7 +91,7 @@ Every scene goes through the same states, which `scene.state(scene)` returns.
 | `context:progress(value, message)` | Reports the progress of the work the scene does itself, from 0 to 1, with an optional message for the loading view. A value outside that range raises `A load progress runs from 0 to 1.` |
 | `context:preload(groups)` | Loads one [preload group of haylen.assets](assets.md#preload-groups), or a list of them, and holds the load until they loaded. It returns a promise that resolves with `true` once all of them loaded. An asset that fails fails the load, and the promise rejects with the error. Calling it once the load is over raises `The scene load is over.` |
 
-The progress of the load, which loading views receive and `scene.progress` returns, is the mean of the progress the scene reports and of the progress of each group it preloads. Heavy work stays in the background, since the asset manager decodes on the worker pools and creates the GPU resources of the decoded assets within the [upload budget](assets.md#assetssetuploadbudgetseconds) of each frame.
+The progress of the load, which loading views receive and `scene.loadProgress` returns, is the mean of the progress the scene reports and of the progress of each group it preloads. Heavy work stays in the background, since the asset manager decodes on the worker pools and creates the GPU resources of the decoded assets within the [upload budget](assets.md#assetssetuploadbudgetseconds) of each frame.
 
 ```lua
 local scene = require('haylen.scene')
@@ -195,7 +195,7 @@ Crossfades, slides, pushes and the other effects that show both scenes at once l
 local scene = require('haylen.scene')
 
 scene.push({name = 'map'})
-scene.push({name = 'inventory', load = function(self) self.items = {'rope', 'lamp'} end}, {effect = 'slideIn', direction = 'up', duration = 0.4, ease = 'quad_out'})
+scene.push({name = 'inventory', load = function(self) self.items = {'rope', 'lamp'} end}, {effect = 'slideIn', direction = 'up', duration = 0.4, ease = 'quadOut'})
 ```
 
 ### Without a transition
@@ -220,7 +220,7 @@ A loading view is a table with optional hooks, the same ones as a scene, so an o
 | `update` | Once per frame while it shows. | `self`, the real frame duration in seconds, the progress of the load from 0 to 1 and its message. |
 | `render`, `renderUi` | Every frame while it shows. | `self`, the progress and the message. |
 
-Ordinary loading scenes remain possible too: a scene on the stack can preload the next scene with `scene.preload`, draw `scene.progress` and replace itself once the preload resolved.
+Ordinary loading scenes remain possible too: a scene on the stack can preload the next scene with `scene.preload`, draw `scene.loadProgress` and replace itself once the preload resolved.
 
 ```lua
 local scene = require('haylen.scene')
@@ -253,7 +253,7 @@ scene.replace(world, {duration = 0.6, loading = bar, loadingDelay = 0.2, minimum
 
 ### Errors
 
-An error raised in `load`, a promise it returned that rejected, or an asset of a group it preloads that failed fails the load. The scene unloads, the event `scene_load_failed` announces it, and the change ends without it: its promise rejects with the error and `onComplete` receives `false`.
+An error raised in `load`, a promise it returned that rejected, or an asset of a group it preloads that failed fails the load. The scene unloads, the event `sceneLoadFailed` announces it, and the change ends without it: its promise rejects with the error and `onComplete` receives `false`.
 
 - When the scene on top before the change is still there, the change keeps it. An effect that covers the screen reveals it again, and it receives `enterTransitionFinished`. The failure goes to `onError` when the change has one, and to the log otherwise.
 - When that scene already unloaded, because a replace unloaded it before the load, the failure goes to `onError`, which may route the app to another scene, and to the error screen without one. The first scene of the app has nothing to fall back to either.
@@ -304,7 +304,7 @@ end})
 | `'dissolve'` | The incoming scene appears in random order, a few pixels at a time. | None. | Shows both scenes. |
 | `'pixelate'` | The outgoing scene breaks into growing blocks and the incoming one comes back out of them. | None. | Covers the screen. |
 
-The effects that cover the screen do so halfway. An unknown name raises `bad option 'effect' to 'replace' (unknown value '<name>')`, and the direction raises the same for an unknown direction. Every effect runs through the eased progress, so `ease` shapes the motion of the effects that move.
+The effects that cover the screen do so halfway. An unknown name raises `The option 'effect' of 'replace' is invalid: unknown value '<name>'.`, and the direction raises the same for an unknown direction. Every effect runs through the eased progress, so `ease` shapes the motion of the effects that move.
 
 ```lua
 local scene = require('haylen.scene')
@@ -322,7 +322,7 @@ local function level(name, color)
 end
 
 scene.push(level('Forest', '#FF2E5E3A'))
-scene.replace(level('Cave', '#FF2B2340'), {effect = 'slideIn', direction = 'left', duration = 0.5, ease = 'quad_out'})
+scene.replace(level('Cave', '#FF2B2340'), {effect = 'slideIn', direction = 'left', duration = 0.5, ease = 'quadOut'})
 scene.push(level('Map', '#FF1B3A5E'), {effect = 'pageTurn', direction = 'left', duration = 0.8})
 scene.pop({effect = 'iris', color = '#FF000000', duration = 0.6})
 scene.replace(level('Boss', '#FF5E1B1B'), {effect = 'fadeTiles', direction = 'upRight', duration = 0.7})
@@ -355,7 +355,7 @@ local door = {
 }
 
 scene.push({name = 'map'})
-scene.replace({name = 'battle', enter = function() print('the battle begins') end}, {duration = 0.8, ease = 'quad_in_out', effect = door})
+scene.replace({name = 'battle', enter = function() print('the battle begins') end}, {duration = 0.8, ease = 'quadInOut', effect = door})
 ```
 
 ## Functions
@@ -490,7 +490,7 @@ scene.push({
     end,
     render = function(self)
         graphics2d.beginScreen()
-        graphics2d.drawRect({560, 700, 800 * scene.progress(level), 24}, '#FFF2C14E')
+        graphics2d.drawRect({560, 700, 800 * scene.loadProgress(level), 24}, '#FFF2C14E')
     end,
 })
 ```
@@ -646,7 +646,7 @@ require('haylen.timer').after(0.5, function()
 end)
 ```
 
-### scene.progress(scene)
+### scene.loadProgress(scene)
 
 Returns the progress of the load of a scene, from 0 to 1, and its message: the running load of a scene that loads, 1 once it loaded, and 0 before it starts loading or after it unloaded.
 
@@ -656,7 +656,7 @@ local async = require('async')
 
 local level = {load = function(self, context) context:progress(0.25, 'reading the map') async.sleep(200):await() end}
 scene.preload(level)
-local value, message = scene.progress(level)
+local value, message = scene.loadProgress(level)
 print(value, message) -- 0.25 reading the map
 ```
 
@@ -674,13 +674,13 @@ local scoreChanged = signal.new('scoreChanged')
 local hud = {}
 function hud:enter()
     scene.listen(self, scoreChanged, function(score) print('score', score) end)
-    scene.listen(self, 'player_died', function() print('game over') end, {once = true})
+    scene.listen(self, 'playerDied', function() print('game over') end, {once = true})
 end
 
 scene.push(hud)
 require('haylen.timer').after(0.1, function()
     scoreChanged:emit(120)
-    events.emit('player_died')
+    events.emit('playerDied')
 end)
 ```
 
@@ -740,24 +740,24 @@ The `event` hook receives one table per platform event. Its `type` field names t
 
 | `type` | Extra fields |
 | --- | --- |
-| `'key_down'`, `'key_up'` | `key` (key name such as `'space'`, `'a'`, `'escape'` or `'left'`), `repeat` (`true` for auto-repeated key downs), `modifiers` (a table with the booleans `shift`, `control`, `alt` and `super` for the modifier keys held during the event). |
+| `'keyDown'`, `'keyUp'` | `key` (key name such as `'space'`, `'a'`, `'escape'` or `'left'`), `repeat` (`true` for auto-repeated key downs), `modifiers` (a table with the booleans `shift`, `control`, `alt` and `super` for the modifier keys held during the event). |
 | `'character'` | `character` (the typed text as a UTF-8 string), `modifiers`. |
-| `'mouse_down'`, `'mouse_up'` | `button` (`'left'`, `'right'` or `'middle'`), `x`, `y`, `modifiers`. |
-| `'mouse_move'` | `x`, `y`, `dx`, `dy` (the movement of this event, also while the mouse is locked), `modifiers`. |
-| `'mouse_scroll'` | `scrollX`, `scrollY`, `modifiers`. |
-| `'mouse_enter'`, `'mouse_leave'` | None. |
-| `'touch_began'`, `'touch_moved'`, `'touch_ended'`, `'touch_cancelled'` | `touches`, a sequence of `{id, x, y, changed}` tables where `changed` marks the touches that caused the event, `modifiers`. |
+| `'mouseDown'`, `'mouseUp'` | `button` (`'left'`, `'right'` or `'middle'`), `x`, `y`, `modifiers`. |
+| `'mouseMove'` | `x`, `y`, `dx`, `dy` (the movement of this event, also while the mouse is locked), `modifiers`. |
+| `'mouseScroll'` | `scrollX`, `scrollY`, `modifiers`. |
+| `'mouseEnter'`, `'mouseLeave'` | None. |
+| `'touchBegan'`, `'touchMoved'`, `'touchEnded'`, `'touchCancelled'` | `touches`, a sequence of `{id, x, y, changed}` tables where `changed` marks the touches that caused the event, `modifiers`. |
 | `'resized'` | None. |
 | `'suspended'`, `'resumed'` | None. The app went to the background or came back. |
-| `'focus_gained'`, `'focus_lost'` | None. |
-| `'quit_requested'` | None. The player asked to close the window. |
-| `'low_memory'` | None. The platform is short of memory. |
-| `'text_edited'` | `field`, the id of the text field of the UI, and `text`, what its native field holds now. The UI applies these edits itself. |
-| `'text_action'` | `field` and `action`: `'submit'`, `'next'`, `'cancel'` or `'dismissed'`, which the UI applies to its text field itself. |
-| `'keyboard_changed'` | `frame`, the rectangle the on-screen keyboard covers in design units, empty while it is hidden. |
-| `'network_changed'` | `online`, whether the device has a network. |
-| `'interruption_began'`, `'interruption_ended'` | None. The system interrupted the app, such as for a phone call, or gave it back. |
-| `'window_moved'`, `'monitors_changed'` | None. The desktop window moved, or the monitors of the desktop changed, as the `window_moved` and `window_monitors_changed` events of [haylen.events](events.md#engine-events) report with their details. |
+| `'focusGained'`, `'focusLost'` | None. |
+| `'quitRequested'` | None. The player asked to close the window. |
+| `'lowMemory'` | None. The platform is short of memory. |
+| `'textEdited'` | `field`, the id of the text field of the UI, and `text`, what its native field holds now. The UI applies these edits itself. |
+| `'textAction'` | `field` and `action`: `'submit'`, `'next'`, `'cancel'` or `'dismissed'`, which the UI applies to its text field itself. |
+| `'keyboardChanged'` | `frame`, the rectangle the on-screen keyboard covers in design units, empty while it is hidden. |
+| `'networkChanged'` | `online`, whether the device has a network. |
+| `'interruptionBegan'`, `'interruptionEnded'` | None. The system interrupted the app, such as for a phone call, or gave it back. |
+| `'windowMoved'`, `'monitorsChanged'` | None. The desktop window moved, or the monitors of the desktop changed, as the `windowMoved` and `windowMonitorsChanged` events of [haylen.events](events.md#engine-events) report with their details. |
 
 The full list of key names is in the `haylen.input` reference. Gameplay should read input through the action map of `haylen.input`, and events are best for text entry and pointer tracking.
 
@@ -769,11 +769,11 @@ local nameEntry = {text = ''}
 function nameEntry:event(event)
     if event.type == 'character' then
         self.text = self.text .. event.character
-    elseif event.type == 'key_down' and event.key == 'backspace' and #self.text > 0 then
+    elseif event.type == 'keyDown' and event.key == 'backspace' and #self.text > 0 then
         self.text = self.text:sub(1, utf8.offset(self.text, -1) - 1)
-    elseif event.type == 'mouse_down' then
+    elseif event.type == 'mouseDown' then
         print('clicked at', event.x, event.y, 'with', event.button)
-    elseif event.type == 'touch_began' then
+    elseif event.type == 'touchBegan' then
         for _, touch in ipairs(event.touches) do
             if touch.changed then
                 print('finger', touch.id, 'at', touch.x, touch.y)

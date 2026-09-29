@@ -18,7 +18,7 @@ function boot:enter()
     scene.spawn(self, function()
         if not stored.has('language') then
             local locale = platform.call('system.locale'):await()
-            local language = locale and localization.bestMatch(locale)
+            local language = locale and localization.findBestMatch(locale)
             if language then
                 preferences.set('language', language)
                 preferences.save()
@@ -40,7 +40,7 @@ function boot:render()
     local width = 720
     local x = area.x + (area.width - width) / 2
     local y = area.y + area.height * 0.62
-    local progress = self.menu and scene.progress(self.menu) or 0
+    local progress = self.menu and scene.loadProgress(self.menu) or 0
     graphics2d.drawRect(area, '#FF1B1E2B')
     graphics2d.drawText(nil, localization.text('title'), area.x + area.width / 2, y - 90, {size = 96, color = '#FFF2E3C6', anchor = {0.5, 0.5}})
     graphics2d.drawRect({x, y, width, 18}, '#FF3A3F55')

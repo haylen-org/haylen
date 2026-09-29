@@ -230,14 +230,14 @@ void MapGeneratorsLua::pushCollapse(lua_State* L, std::optional<spatial2d::CellG
     lua::Userdata::emplace<spatial2d::CellGrid>(L, std::move(*tiles));
 }
 
-int MapGeneratorsLua::caves(lua_State* L) {
+int MapGeneratorsLua::cellularAutomaton(lua_State* L) {
     const CellularAutomaton::Options options = readCaves(L, 1);
     math::Random local(0);
     lua::Userdata::emplace<spatial2d::CellGrid>(L, CellularAutomaton::generate(options, Procedural2DLua::readGenerator(L, 1, local)));
     return 1;
 }
 
-int MapGeneratorsLua::cavesAsync(lua_State* L) {
+int MapGeneratorsLua::cellularAutomatonAsync(lua_State* L) {
     const CellularAutomaton::Options options = readCaves(L, 1);
     math::Random local(0);
     math::Random random = Procedural2DLua::readGenerator(L, 1, local);
@@ -248,8 +248,8 @@ int MapGeneratorsLua::cavesAsync(lua_State* L) {
     // clang-format on
 }
 
-// Smooths any grid with cavesStep(grid[, {birthLimit = 5, survivalLimit = 4, solidBorder = true}]) and returns the smoothed grid.
-int MapGeneratorsLua::cavesStep(lua_State* L) {
+// Smooths any grid with cellularAutomatonStep(grid[, {birthLimit = 5, survivalLimit = 4, solidBorder = true}]) and returns the smoothed grid.
+int MapGeneratorsLua::cellularAutomatonStep(lua_State* L) {
     const auto& grid = lua::Userdata::check<spatial2d::CellGrid>(L, 1);
     CellularAutomaton::Options options;
     if (!lua_isnoneornil(L, 2)) {
@@ -461,8 +461,8 @@ int MapGeneratorsLua::autotile8(lua_State* L) {
     return 1;
 }
 
-// Picks Wang tiles with wang(colors, wangSet, seed), where wangSet is a table of haylen.tiled tilesets with kind and tiles = {{tileId, wangId}}.
-int MapGeneratorsLua::wang(lua_State* L) {
+// Picks Wang tiles with autotileWang(colors, wangSet, seed), where wangSet is a table of haylen.tiled tilesets with kind and tiles = {{tileId, wangId}}.
+int MapGeneratorsLua::autotileWang(lua_State* L) {
     const auto& colors = lua::Userdata::check<spatial2d::CellGrid>(L, 1);
     luaL_checktype(L, 2, LUA_TTABLE);
     const auto seed = static_cast<std::uint64_t>(luaL_optinteger(L, 3, 0));
@@ -491,7 +491,7 @@ void MapGeneratorsLua::install(lua_State* L) {
 
 void MapGeneratorsLua::addFunctions(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"caves", &lua::Binding::native<&caves>}, {"cavesAsync", &lua::Binding::native<&cavesAsync>}, {"cavesStep", &lua::Binding::native<&cavesStep>}, {"drunkardWalk", &lua::Binding::native<&drunkardWalk>}, {"drunkardWalkAsync", &lua::Binding::native<&drunkardWalkAsync>}, {"dungeon", &lua::Binding::native<&dungeon>}, {"dungeonAsync", &lua::Binding::native<&dungeonAsync>}, {"maze", &lua::Binding::native<&maze>}, {"mazeAsync", &lua::Binding::native<&mazeAsync>}, {"newMaze", &lua::Binding::native<&newMaze>}, {"waveFunctionCollapse", &lua::Binding::native<&waveFunctionCollapse>}, {"waveFunctionCollapseAsync", &lua::Binding::native<&waveFunctionCollapseAsync>}, {"waveFunctionCollapseRules", &lua::Binding::native<&newRules>}, {"mask4", &lua::Binding::native<&mask4>}, {"mask8", &lua::Binding::native<&mask8>}, {"blobIndex", &lua::Binding::native<&blobIndex>}, {"autotile4", &lua::Binding::native<&autotile4>}, {"autotile8", &lua::Binding::native<&autotile8>}, {"wang", &lua::Binding::native<&wang>}, {nullptr, nullptr},
+        {"cellularAutomaton", &lua::Binding::native<&cellularAutomaton>}, {"cellularAutomatonAsync", &lua::Binding::native<&cellularAutomatonAsync>}, {"cellularAutomatonStep", &lua::Binding::native<&cellularAutomatonStep>}, {"drunkardWalk", &lua::Binding::native<&drunkardWalk>}, {"drunkardWalkAsync", &lua::Binding::native<&drunkardWalkAsync>}, {"dungeon", &lua::Binding::native<&dungeon>}, {"dungeonAsync", &lua::Binding::native<&dungeonAsync>}, {"maze", &lua::Binding::native<&maze>}, {"mazeAsync", &lua::Binding::native<&mazeAsync>}, {"newMaze", &lua::Binding::native<&newMaze>}, {"waveFunctionCollapse", &lua::Binding::native<&waveFunctionCollapse>}, {"waveFunctionCollapseAsync", &lua::Binding::native<&waveFunctionCollapseAsync>}, {"waveFunctionCollapseRules", &lua::Binding::native<&newRules>}, {"mask4", &lua::Binding::native<&mask4>}, {"mask8", &lua::Binding::native<&mask8>}, {"blobIndex", &lua::Binding::native<&blobIndex>}, {"autotile4", &lua::Binding::native<&autotile4>}, {"autotile8", &lua::Binding::native<&autotile8>}, {"autotileWang", &lua::Binding::native<&autotileWang>}, {nullptr, nullptr},
     };
     luaL_setfuncs(L, functions, 0);
     for (const auto& [name, side] : {std::pair{"north", Maze::kNorth}, std::pair{"east", Maze::kEast}, std::pair{"south", Maze::kSouth}, std::pair{"west", Maze::kWest}}) {

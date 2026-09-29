@@ -9,13 +9,13 @@ namespace haylen::ui {
 NavigationInput::NavigationInput() {
     defaults.load({{"actions",
                     {
-                        {{"name", "ui_accept"}, {"type", "button"}, {"bindings", {"key:enter", "key:keypad_enter", "key:space", "button:south"}}},
-                        {{"name", "ui_cancel"}, {"type", "button"}, {"bindings", {"key:escape", "button:east"}}},
-                        {{"name", "ui_left"}, {"type", "button"}, {"bindings", {"key:left", "button:dpad_left", "axis:left_x-"}}},
-                        {{"name", "ui_right"}, {"type", "button"}, {"bindings", {"key:right", "button:dpad_right", "axis:left_x+"}}},
-                        {{"name", "ui_up"}, {"type", "button"}, {"bindings", {"key:up", "button:dpad_up", "axis:left_y-"}}},
-                        {{"name", "ui_down"}, {"type", "button"}, {"bindings", {"key:down", "button:dpad_down", "axis:left_y+"}}},
-                        {{"name", "ui_menu"}, {"type", "button"}, {"bindings", {"key:menu", "button:north"}}},
+                        {{"name", "uiAccept"}, {"type", "button"}, {"bindings", {"key:enter", "key:keypadEnter", "key:space", "button:south"}}},
+                        {{"name", "uiCancel"}, {"type", "button"}, {"bindings", {"key:escape", "button:east"}}},
+                        {{"name", "uiLeft"}, {"type", "button"}, {"bindings", {"key:left", "button:dpadLeft", "axis:leftX-"}}},
+                        {{"name", "uiRight"}, {"type", "button"}, {"bindings", {"key:right", "button:dpadRight", "axis:leftX+"}}},
+                        {{"name", "uiUp"}, {"type", "button"}, {"bindings", {"key:up", "button:dpadUp", "axis:leftY-"}}},
+                        {{"name", "uiDown"}, {"type", "button"}, {"bindings", {"key:down", "button:dpadDown", "axis:leftY+"}}},
+                        {{"name", "uiMenu"}, {"type", "button"}, {"bindings", {"key:menu", "button:north"}}},
                     }}});
     resolved = defaults;
 }

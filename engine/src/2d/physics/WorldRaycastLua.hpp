@@ -50,8 +50,8 @@ class WorldRaycastLua final {
     static void record(lua_State* L, math::Vec2 from, math::Vec2 to, const std::optional<RaycastHit>& hit);
 
     static int newRayBatch(lua_State* L);
-    static int batchCount(lua_State* L);
-    static int setBatchCount(lua_State* L);
+    static int batchSize(lua_State* L);
+    static int setBatchSize(lua_State* L);
     static int batchSetRay(lua_State* L);
     static int batchRay(lua_State* L);
     static int batchHit(lua_State* L);

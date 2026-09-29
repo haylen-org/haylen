@@ -48,7 +48,7 @@ class EventRecorder final {
         // clang-format off
         connections.push_back(engine.getEvents().on(LifecycleEvent::kSceneLoadFailed, [this](EventBus::Event& event) {
             const SceneManager::LoadFailure& failure = *event.get<SceneManager::LoadFailure>();
-            log.push_back("scene_load_failed " + describe(failure.scene) + " " + failure.error->what());
+            log.push_back("sceneLoadFailed " + describe(failure.scene) + " " + failure.error->what());
         }));
         // clang-format on
     }
@@ -244,7 +244,7 @@ TEST(SceneManagerTest, CoversHoldsWhileTheNextSceneLoadsAndReveals) {
     // The cover takes the menu off the screen while it still updates.
     const int updates = menu->updates;
     fixture.frames(1, 0.25);
-    EXPECT_EQ(log, (std::vector<std::string>{"menu:exitTransitionStarted", "scene_exit_transition_started menu", "scene_cover_started menu>game"}));
+    EXPECT_EQ(log, (std::vector<std::string>{"menu:exitTransitionStarted", "sceneExitTransitionStarted menu", "sceneCoverStarted menu>game"}));
     EXPECT_EQ(menu->getState(), Scene::State::Exiting);
     EXPECT_EQ(menu->updates, updates + 1);
     EXPECT_EQ(fixture.engine().getRenderer2D().getStats().passes, 3U);
@@ -253,7 +253,7 @@ TEST(SceneManagerTest, CoversHoldsWhileTheNextSceneLoadsAndReveals) {
     log.clear();
     const int renders = menu->renders;
     fixture.frames(1, 0.25);
-    EXPECT_EQ(log, (std::vector<std::string>{"scene_cover_finished menu>game", "menu:exit", "scene_exited menu", "menu:unload", "scene_unloaded menu", "scene_loading game", "game:load", "scene_hold_started menu>game"}));
+    EXPECT_EQ(log, (std::vector<std::string>{"sceneCoverFinished menu>game", "menu:exit", "sceneExited menu", "menu:unload", "sceneUnloaded menu", "sceneLoading game", "game:load", "sceneHoldStarted menu>game"}));
     EXPECT_EQ(menu->getState(), Scene::State::Unloaded);
     EXPECT_EQ(game->getState(), Scene::State::Loading);
     EXPECT_TRUE(scenes.empty());
@@ -267,7 +267,7 @@ TEST(SceneManagerTest, CoversHoldsWhileTheNextSceneLoadsAndReveals) {
     log.clear();
     game->deferral->complete();
     fixture.frames(1, 0.25);
-    EXPECT_EQ(log, (std::vector<std::string>{"scene_loaded game", "scene_hold_finished menu>game", "game:enter", "scene_entered game", "scene_reveal_started menu>game"}));
+    EXPECT_EQ(log, (std::vector<std::string>{"sceneLoaded game", "sceneHoldFinished menu>game", "game:enter", "sceneEntered game", "sceneRevealStarted menu>game"}));
     EXPECT_EQ(game->getState(), Scene::State::Entering);
     EXPECT_EQ(std::any_cast<std::string>(game->enterParams), "level 3");
     EXPECT_EQ(effect->progresses.back(), 0.5F);
@@ -277,7 +277,7 @@ TEST(SceneManagerTest, CoversHoldsWhileTheNextSceneLoadsAndReveals) {
 
     log.clear();
     fixture.frames(1, 0.25);
-    EXPECT_EQ(log, (std::vector<std::string>{"scene_reveal_finished menu>game", "game:enterTransitionFinished", "scene_enter_transition_finished game"}));
+    EXPECT_EQ(log, (std::vector<std::string>{"sceneRevealFinished menu>game", "game:enterTransitionFinished", "sceneEnterTransitionFinished game"}));
     EXPECT_EQ(game->getState(), Scene::State::Active);
     EXPECT_EQ(outcomes, std::vector<SceneManager::Outcome>{SceneManager::Outcome::Completed});
     EXPECT_FALSE(scenes.isTransitioning());
@@ -502,7 +502,7 @@ TEST(SceneManagerTest, FailedLoadsKeepTheCurrentSceneAndRejectTheChange) {
     scenes.push(broken, {.transition = SceneManager::Transition::fade(0.5F), .completion = [&](const SceneManager::Result& result) { results.push_back(result); }});
     log.clear();
     fixture.frames(4, 0.125);
-    EXPECT_EQ(log, (std::vector<std::string>{"menu:exitTransitionStarted", "scene_exit_transition_started menu", "scene_cover_started menu>broken", "scene_loading broken", "broken:load", "scene_load_failed broken broken cannot load", "broken:unload", "scene_unloaded broken", "scene_cover_finished menu>broken", "scene_hold_started menu>broken", "scene_hold_finished menu>broken", "scene_reveal_started menu>menu", "scene_reveal_finished menu>menu", "menu:enterTransitionFinished", "scene_enter_transition_finished menu"}));
+    EXPECT_EQ(log, (std::vector<std::string>{"menu:exitTransitionStarted", "sceneExitTransitionStarted menu", "sceneCoverStarted menu>broken", "sceneLoading broken", "broken:load", "sceneLoadFailed broken broken cannot load", "broken:unload", "sceneUnloaded broken", "sceneCoverFinished menu>broken", "sceneHoldStarted menu>broken", "sceneHoldFinished menu>broken", "sceneRevealStarted menu>menu", "sceneRevealFinished menu>menu", "menu:enterTransitionFinished", "sceneEnterTransitionFinished menu"}));
     ASSERT_EQ(results.size(), 1U);
     EXPECT_EQ(results[0].outcome, SceneManager::Outcome::Failed);
     EXPECT_STREQ(results[0].error->what(), "broken cannot load");
@@ -521,7 +521,7 @@ TEST(SceneManagerTest, FailedLoadsKeepTheCurrentSceneAndRejectTheChange) {
     log.clear();
     late->deferral->fail(lua::Error("late failed"));
     fixture.frames(3, 0.125);
-    EXPECT_EQ(log, (std::vector<std::string>{"scene_load_failed late late failed", "late:unload", "scene_unloaded late", "scene_hold_finished menu>late", "scene_reveal_started menu>menu", "scene_reveal_finished menu>menu", "menu:enterTransitionFinished", "scene_enter_transition_finished menu"}));
+    EXPECT_EQ(log, (std::vector<std::string>{"sceneLoadFailed late late failed", "late:unload", "sceneUnloaded late", "sceneHoldFinished menu>late", "sceneRevealStarted menu>menu", "sceneRevealFinished menu>menu", "menu:enterTransitionFinished", "sceneEnterTransitionFinished menu"}));
     EXPECT_EQ(scenes.getTop(), menu.get());
     EXPECT_EQ(menu->getState(), Scene::State::Active);
 }
@@ -844,7 +844,7 @@ TEST(SceneManagerTest, ClearingDropsPendingChangesAndEndsConnections) {
     EXPECT_EQ(calls, 1);
     EXPECT_FALSE(listened.isConnected());
     EXPECT_EQ(outcomes, (std::vector<SceneManager::Outcome>{SceneManager::Outcome::Dropped, SceneManager::Outcome::Dropped}));
-    EXPECT_EQ(events, (std::vector<std::string>{"scene_exited scene", "scene_unloaded scene"}));
+    EXPECT_EQ(events, (std::vector<std::string>{"sceneExited scene", "sceneUnloaded scene"}));
 }
 
 TEST(SceneManagerTest, ProcessModesInheritDownTheStack) {

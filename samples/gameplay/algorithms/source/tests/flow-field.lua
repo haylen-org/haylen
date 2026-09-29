@@ -62,7 +62,7 @@ function FlowField:scatter()
         if not self.walls[row * kColumns + column] then
             local x, y = self.board:center(column, row)
             self.units[#self.units + 1] = {x = x + self.random:range(-8, 8), y = y + self.random:range(-8, 8)}
-            self.sprites[#self.sprites + 1] = {width = 8, height = 8, color = m.hsv(self.random:float() * 0.15 + 0.5, 0.6, 1):toHex()}
+            self.sprites[#self.sprites + 1] = {width = 8, height = 8, color = m.fromHsv(self.random:nextFloat() * 0.15 + 0.5, 0.6, 1):toHex()}
         end
     end
 end
@@ -72,7 +72,7 @@ function FlowField:request()
     if self.pending or self.wanted == nil or (self.goal and self.goal[1] == self.wanted[1] and self.goal[2] == self.wanted[2]) then
         return
     end
-    local goal, started = self.wanted, haylen.time()
+    local goal, started = self.wanted, haylen.elapsed()
     self.pending = true
     async.spawn(function()
         local field = self.grid:flowFieldAsync({goal}):await()
@@ -81,7 +81,7 @@ function FlowField:request()
             return
         end
         self.field, self.goal = field, goal
-        self.latency = (haylen.time() - started) * 1000
+        self.latency = (haylen.elapsed() - started) * 1000
     end)
 end
 

@@ -14,7 +14,7 @@ local kColors = {rectangle = '#FF4FC3F7', ellipse = '#FF81C784', capsule = '#FFB
 
 function Objects:enter()
     self.map = tiled.newMapRenderer(assets.load('maps/objects.tmj'))
-    local bounds = self.map.bounds
+    local bounds = self.map.pixelBounds
     Objects.super.enter(self, {
         hint = 'Point at an object to read it. The lamps and the signs come from templates, and the second lamp and the second sign override what their template says.',
         controls = {

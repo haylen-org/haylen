@@ -30,7 +30,7 @@ class FluidLua final {
     static int positions(lua_State* L);
     static int velocities(lua_State* L);
     static int bodies(lua_State* L);
-    static int count(lua_State* L);
+    static int size(lua_State* L);
     static int radius(lua_State* L);
 };
 

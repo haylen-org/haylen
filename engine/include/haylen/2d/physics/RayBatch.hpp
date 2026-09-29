@@ -25,7 +25,7 @@ class RayBatch final {
     [[nodiscard]] const math::Segment& getRay(std::size_t index) const;
 
     // Returns the closest hit of the ray from the last cast, or nothing when it hit nothing.
-    [[nodiscard]] const std::optional<RaycastHit>& getResult(std::size_t index) const;
+    [[nodiscard]] const std::optional<RaycastHit>& getHit(std::size_t index) const;
 
   private:
     friend class Raycaster;

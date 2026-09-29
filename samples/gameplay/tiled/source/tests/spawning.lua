@@ -15,7 +15,7 @@ local kTouchDistance = 28
 function Spawning:enter()
     self.map = tiled.newMapRenderer(assets.load('maps/spawning.tmj'))
     self.texture = self.map:tilesets()[1].texture
-    local bounds = self.map.bounds
+    local bounds = self.map.pixelBounds
     Spawning.super.enter(self, {
         hint = 'Tap or click entities: coins are collected, chests open and slimes get squashed. The layer of the objects is hidden, so only the spawned entities show, and the marker has no factory.',
         controls = {

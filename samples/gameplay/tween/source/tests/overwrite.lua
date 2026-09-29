@@ -10,7 +10,7 @@ local sample = require('sample')
 local Overwrite = haylen.class('Overwrite', sample.Test)
 
 local kCode = [[
-tween.to(ball, 1.6, {x = target.x, y = target.y}, {ease = 'sine_in_out', overwrite = true})]]
+tween.to(ball, 1.6, {x = target.x, y = target.y}, {ease = 'sineInOut', overwrite = true})]]
 
 function Overwrite:enter()
     self.ball = {x = 400, y = 300}
@@ -32,7 +32,7 @@ function Overwrite:randomTarget()
 end
 
 function Overwrite:send(x, y)
-    local handle = tween.to(self.ball, 1.6, {x = x, y = y}, {owner = self, ease = 'sine_in_out', overwrite = self.overwrite})
+    local handle = tween.to(self.ball, 1.6, {x = x, y = y}, {owner = self, ease = 'sineInOut', overwrite = self.overwrite})
     table.insert(self.targets, {x = x, y = y, handle = handle})
 end
 
@@ -46,7 +46,7 @@ function Overwrite:update(dt)
         end
     end
     for index = #self.targets, 1, -1 do
-        if not self.targets[index].handle.active then
+        if not self.targets[index].handle.alive then
             table.remove(self.targets, index)
         end
     end

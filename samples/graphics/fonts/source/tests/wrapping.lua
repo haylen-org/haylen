@@ -38,7 +38,7 @@ end
 
 function Wrapping:update(dt)
     if self.sweep then
-        self.width = 400 + 240 * math.sin(haylen.time() * 0.7)
+        self.width = 400 + 240 * math.sin(haylen.elapsed() * 0.7)
     end
     local style = {size = 34, maxWidth = self.width, lineSpacing = self.spacing}
     local english = fonts.get('crimson'):layout(kEnglish, style).lineCount

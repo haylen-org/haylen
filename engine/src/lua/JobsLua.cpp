@@ -58,14 +58,14 @@ int JobsLua::budget(lua_State* L) {
     return 1;
 }
 
-int JobsLua::running(lua_State* L) {
+int JobsLua::runningCount(lua_State* L) {
     Stack::push(L, getPlugin(L).getRunningCount());
     return 1;
 }
 
 int JobsLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"spawn", &Binding::native<&spawn>}, {"checkpoint", &checkpoint}, {"setBudget", &Binding::native<&setBudget>}, {"budget", &budget}, {"running", &running}, {nullptr, nullptr},
+        {"spawn", &Binding::native<&spawn>}, {"checkpoint", &checkpoint}, {"setBudget", &Binding::native<&setBudget>}, {"budget", &budget}, {"runningCount", &runningCount}, {nullptr, nullptr},
     };
     Binding::newModule(L, functions);
     return 1;

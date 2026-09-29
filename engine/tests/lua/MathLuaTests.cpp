@@ -69,7 +69,7 @@ TEST_F(MathLuaTest, WorksWithColors) {
     EXPECT_EQ(lua("return m.color(1, 1, 1):withAlpha(0):toHex()"), "#00FFFFFF");
     EXPECT_EQ(lua("return m.color(0, 0, 0):lerp({1, 1, 1, 1}, 0.5).r"), "0.5");
     EXPECT_EQ(lua("return (m.color(1, 0.5, 1) * m.color(0.5, 1, 1)).g"), "0.5");
-    EXPECT_EQ(lua("return m.hsv(1 / 3, 1, 1):toHex()"), "#FF00FF00");
+    EXPECT_EQ(lua("return m.fromHsv(1 / 3, 1, 1):toHex()"), "#FF00FF00");
     EXPECT_EQ(lua("return m.color('#00000000') == m.color(0, 0, 0, 0)"), "true");
     EXPECT_NE(lua("return m.color('#GG0000')").find("error: "), std::string::npos);
 
@@ -96,14 +96,14 @@ TEST_F(MathLuaTest, ComposesTransforms) {
 }
 
 TEST_F(MathLuaTest, GeneratesDeterministicRandomValuesAndNoise) {
-    EXPECT_EQ(lua("local a, b = m.random(7), m.random(7) return a:float() == b:float() and a:integer(1, 6) == b:integer(1, 6)"), "true");
+    EXPECT_EQ(lua("local a, b = m.random(7), m.random(7) return a:nextFloat() == b:nextFloat() and a:integer(1, 6) == b:integer(1, 6)"), "true");
     EXPECT_EQ(lua("local r = m.random(1) for i = 1, 100 do local v = r:range(2, 3) if v < 2 or v > 3 then return false end end return true"), "true");
     EXPECT_EQ(lua("local r = m.random(1) return r:chance(1) and not r:chance(0)"), "true");
-    EXPECT_EQ(lua("local r = m.random(1) return r:pick({0, 0, 1})"), "3");
+    EXPECT_EQ(lua("local r = m.random(1) return r:weightedIndex({0, 0, 1})"), "3");
     EXPECT_EQ(lua("local r = m.random(3) local t = r:shuffle({1, 2, 3, 4, 5}) table.sort(t) return table.concat(t)"), "12345");
-    EXPECT_EQ(lua("local r = m.random(5) local first = r:float() r:reseed(5) return r:float() == first"), "true");
-    EXPECT_EQ(lua("return type(m.random():float())"), "number");
-    EXPECT_NE(lua("return m.random(1):pick({})").find("expected at least one weight"), std::string::npos);
+    EXPECT_EQ(lua("local r = m.random(5) local first = r:nextFloat() r:reseed(5) return r:nextFloat() == first"), "true");
+    EXPECT_EQ(lua("return type(m.random():nextFloat())"), "number");
+    EXPECT_NE(lua("return m.random(1):weightedIndex({})").find("expected at least one weight"), std::string::npos);
 
     EXPECT_EQ(lua("local n = m.noise(4) return n:perlin(1.5, 2.5) == m.noise(4):perlin(1.5, 2.5)"), "true");
     EXPECT_EQ(lua("local n = m.noise(4) local v = n:simplex(0.3, 0.7) return v >= -1 and v <= 1"), "true");
@@ -111,12 +111,12 @@ TEST_F(MathLuaTest, GeneratesDeterministicRandomValuesAndNoise) {
 }
 
 TEST_F(MathLuaTest, ProvidesScalarHelpers) {
-    EXPECT_EQ(lua("return m.ease('linear', 0.25) .. ' ' .. m.ease('quad_in', 0.5)"), "0.25 0.25");
+    EXPECT_EQ(lua("return m.ease('linear', 0.25) .. ' ' .. m.ease('quadIn', 0.5)"), "0.25 0.25");
     EXPECT_NE(lua("return m.ease('bouncy', 0.5)").find("error: "), std::string::npos);
     EXPECT_EQ(lua("return m.clamp(5, 0, 1) .. ' ' .. m.lerp(0, 10, 0.5) .. ' ' .. m.inverseLerp(0, 10, 5)"), "1.0 5.0 0.5");
     EXPECT_EQ(lua("return m.remap(5, 0, 10, 100, 200) .. ' ' .. m.smoothstep(0, 1, 0.5) .. ' ' .. m.moveToward(0, 10, 3)"), "150.0 0.5 3.0");
     EXPECT_EQ(lua("return m.approximately(m.wrapAngle(3 * m.pi), m.pi) or m.approximately(m.wrapAngle(3 * m.pi), -m.pi)"), "true");
-    EXPECT_EQ(lua("return m.damp(10, 0) .. ' ' .. m.degrees(m.pi) .. ' ' .. tostring(m.approximately(m.radians(180), m.pi))"), "0.0 180.0 true");
+    EXPECT_EQ(lua("return m.dampFactor(10, 0) .. ' ' .. m.degrees(m.pi) .. ' ' .. tostring(m.approximately(m.radians(180), m.pi))"), "0.0 180.0 true");
     EXPECT_EQ(lua("return m.approximately(1, 1.05, 0.1) and not m.approximately(1, 1.05)"), "true");
     EXPECT_EQ(lua("return m.tau == 2 * m.pi and m.halfPi == m.pi / 2"), "true");
     EXPECT_EQ(lua("return m.sign(-3) .. ' ' .. m.sign(0) .. ' ' .. m.sign(0.2)"), "-1.0 0.0 1.0");
@@ -147,11 +147,11 @@ TEST_F(MathLuaTest, MeasuresCirclesAndSegments) {
 TEST_F(MathLuaTest, AnalyzesPolygons) {
     lua("square = {{0, 0}, {10, 0}, {10, 10}, {0, 10}} dent = {{0, 0}, {10, 0}, {5, 3}, {10, 10}, {0, 10}}");
     EXPECT_EQ(lua("return m.polygonContains(square, {5, 5}) and not m.polygonContains(square, {15, 5})"), "true");
-    EXPECT_EQ(lua("return m.polygonArea(square) .. ' ' .. m.polygonCentroid(square).x"), "100.0 5.0");
+    EXPECT_EQ(lua("return m.polygonSignedArea(square) .. ' ' .. m.polygonCentroid(square).x"), "100.0 5.0");
     EXPECT_EQ(lua("return m.polygonConvex(square) and not m.polygonConvex(dent)"), "true");
     EXPECT_EQ(lua("return #m.convexHull({{0, 0}, {10, 0}, {5, 5}, {10, 10}, {0, 10}})"), "4");
     EXPECT_EQ(lua("local t = m.triangulate(dent) return #t .. ' ' .. math.min(table.unpack(t)) .. ' ' .. math.max(table.unpack(t))"), "9 1 5");
-    EXPECT_NE(lua("return m.polygonArea({{0, 0}, 'x'})").find("error: "), std::string::npos);
+    EXPECT_NE(lua("return m.polygonSignedArea({{0, 0}, 'x'})").find("error: "), std::string::npos);
 }
 
 TEST_F(MathLuaTest, SamplesPoissonDisks) {

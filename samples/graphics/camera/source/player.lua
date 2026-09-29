@@ -23,7 +23,7 @@ end
 -- Returns the screen point held with the left mouse button or a finger outside the interface, or nothing.
 function Player.heldPoint()
     local touch = input.touches()[1]
-    if touch and touch.phase ~= 'ended' and touch.phase ~= 'cancelled' and not ui.wantsPointer() then
+    if touch and touch.phase ~= 'ended' and touch.phase ~= 'cancelled' and not ui.usingPointer() then
         return touch.x, touch.y
     end
     if input.down('point') then

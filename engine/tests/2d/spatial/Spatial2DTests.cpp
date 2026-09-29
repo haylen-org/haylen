@@ -470,7 +470,7 @@ TEST(Spatial2DLuaTest, PicksAndAimsFromScreenPoints) {
         cx, cy = screen.x + screen.width / 2, screen.y + screen.height / 2
         wx, wy = camera:screenToWorld(cx + 50, cy)
         crate = {name = 'crate'}
-        hash = spatial2d.newHash(32)
+        hash = spatial2d.newHashGrid(32)
         hash:set(crate, {wx - 5, wy - 5, 10, 10})
     )");
     // clang-format on
@@ -529,10 +529,10 @@ TEST(Spatial2DLuaTest, StoresLuaValuesInEveryStructure) {
     // clang-format on
 
     const std::string expected = "3 goblin,tree rock goblin goblin,tree goblin 40.0 goblin tree nil rock,tree rock truefalsefalse 0false";
-    EXPECT_EQ(fixture.lua("return check(spatial2d.newHash(32))"), expected);
+    EXPECT_EQ(fixture.lua("return check(spatial2d.newHashGrid(32))"), expected);
     EXPECT_EQ(fixture.lua("return check(spatial2d.newQuadTree({-500, -500, 1000, 1000}, {maxEntries = 1, maxDepth = 4}))"), expected);
     EXPECT_EQ(fixture.lua("return check(spatial2d.newAabbTree(2))"), expected);
-    EXPECT_EQ(fixture.lua("local hash = fill(spatial2d.newHash(16)) return hash.cellSize .. ' ' .. hash:bounds(tree).x .. ' ' .. tostring(hash:bounds({}))"), "16.0 40.0 nil");
+    EXPECT_EQ(fixture.lua("local hash = fill(spatial2d.newHashGrid(16)) return hash.cellSize .. ' ' .. hash:bounds(tree).x .. ' ' .. tostring(hash:bounds({}))"), "16.0 40.0 nil");
     EXPECT_EQ(fixture.lua("local quad = fill(spatial2d.newQuadTree({0, 0, 400, 400}, {maxEntries = 1})) return quad.area.width .. ' ' .. quad.nodeCount"), "400.0 13");
     EXPECT_EQ(fixture.lua("local aabb = fill(spatial2d.newAabbTree()) return aabb.margin .. ' ' .. aabb.height"), "4.0 2");
 
@@ -546,16 +546,16 @@ TEST(Spatial2DLuaTest, StoresLuaValuesInEveryStructure) {
     // clang-format on
     EXPECT_EQ(fixture.lua("return tostring(points.built)"), "false");
     EXPECT_NE(fixture.lua("points:kNearest(0, 0, 1)").find("needs build"), std::string::npos);
-    EXPECT_EQ(fixture.lua("points:build() return names(points:kNearest(45, 0, 2)) .. ' ' .. points:position(tree).x .. ' ' .. names(points:queryPoint(55, 0)) .. ' ' .. hitNames(points:raycast(-5, 0, 100, 0))"), "tree,goblin 50.0 tree goblin,tree");
+    EXPECT_EQ(fixture.lua("points:build() return names(points:kNearest(45, 0, 2)) .. ' ' .. points:point(tree).x .. ' ' .. names(points:queryPoint(55, 0)) .. ' ' .. hitNames(points:raycast(-5, 0, 100, 0))"), "tree,goblin 50.0 tree goblin,tree");
 
-    EXPECT_NE(fixture.lua("spatial2d.newHash(32):set(nil, {0, 0, 1, 1})").find("a value to store is required"), std::string::npos);
-    EXPECT_EQ(fixture.lua("local hash = spatial2d.newHash(8) pcall(hash.set, hash, rock, {0, 0, -1, 1}) return hash:has(rock)"), "false");
+    EXPECT_NE(fixture.lua("spatial2d.newHashGrid(32):set(nil, {0, 0, 1, 1})").find("a value to store is required"), std::string::npos);
+    EXPECT_EQ(fixture.lua("local hash = spatial2d.newHashGrid(8) pcall(hash.set, hash, rock, {0, 0, -1, 1}) return hash:has(rock)"), "false");
     EXPECT_NE(fixture.lua("fill(spatial2d.newAabbTree()):nearest(0, 0, 10, function() error('filter failed') end)").find("filter failed"), std::string::npos);
-    EXPECT_NE(fixture.lua("spatial2d.newHash(-2)").find("positive cell size"), std::string::npos);
+    EXPECT_NE(fixture.lua("spatial2d.newHashGrid(-2)").find("positive cell size"), std::string::npos);
     EXPECT_NE(fixture.lua("spatial2d.newQuadTree({0, 0, 10, 10}, {depth = 3})").find("Unknown option 'depth'"), std::string::npos);
     EXPECT_NE(fixture.lua("spatial2d.newQuadTree({0, 0, 10, 10}, {maxDepth = 40})").find("a depth from 0 to 16"), std::string::npos);
-    EXPECT_NE(fixture.lua("spatial2d.newHash(1):set(rock, {0, 0, 1000, 1000})").find("at most 65536 cells"), std::string::npos);
-    EXPECT_NE(fixture.lua("fill(spatial2d.newHash(8)):nearest(0 / 0, 0, 10)").find("point must be finite"), std::string::npos);
+    EXPECT_NE(fixture.lua("spatial2d.newHashGrid(1):set(rock, {0, 0, 1000, 1000})").find("at most 65536 cells"), std::string::npos);
+    EXPECT_NE(fixture.lua("fill(spatial2d.newHashGrid(8)):nearest(0 / 0, 0, 10)").find("point must be finite"), std::string::npos);
 }
 
 TEST(Spatial2DLuaTest, NearestNeverOffersValuesThatAcceptRemoved) {
@@ -563,7 +563,7 @@ TEST(Spatial2DLuaTest, NearestNeverOffersValuesThatAcceptRemoved) {
     // clang-format off
     fixture.runLua(R"(
         spatial2d = require('haylen.spatial2d')
-        hash = spatial2d.newHash(32)
+        hash = spatial2d.newHashGrid(32)
         near, middle, far = {name = 'near'}, {name = 'middle'}, {name = 'far'}
         hash:set(near, {0, 0, 4, 4})
         hash:set(middle, {50, 0, 4, 4})

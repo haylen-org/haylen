@@ -32,7 +32,7 @@ function TextInput:init(entry)
 end
 
 function TextInput:record(line)
-    table.insert(self.log, 1, string.format('%6.2f  %s', haylen.time(), line))
+    table.insert(self.log, 1, string.format('%6.2f  %s', haylen.elapsed(), line))
     self.log[kLogSize + 1] = nil
     self.document:set('log', {text = table.concat(self.log, '\n')})
 end
@@ -45,7 +45,7 @@ function TextInput:content()
                 ui.label{id = 'typed', text = 'Nothing typed yet', font = 'monospace'},
                 ui.button{id = 'plain', text = 'Show the plain keyboard', onClick = function(event)
                     self.plain = not self.plain
-                    window.showKeyboard(self.plain)
+                    window.setKeyboardVisible(self.plain)
                     event.document:set('plain', {text = self.plain and 'Hide the plain keyboard' or 'Show the plain keyboard'})
                 end},
             }),
@@ -65,30 +65,30 @@ function TextInput:content()
 end
 
 function TextInput:started()
-    self:listen('keyboard_shown', function(frame)
+    self:listen('keyboardShown', function(frame)
         self:record(string.format('keyboard shown, top at %.0f', frame.y))
     end)
-    self:listen('keyboard_hidden', function()
+    self:listen('keyboardHidden', function()
         self:record('keyboard hidden')
     end)
 end
 
 function TextInput:exit()
     if self.plain then
-        window.showKeyboard(false)
+        window.setKeyboardVisible(false)
     end
 end
 
 -- The platform events behind the fields, and the typing of the plain keyboard, which arrives as characters and editing keys.
 function TextInput:event(event)
-    if event.type == 'text_action' then
+    if event.type == 'textAction' then
         self:record('text action ' .. event.action)
-    elseif event.type == 'keyboard_changed' then
+    elseif event.type == 'keyboardChanged' then
         self:record(string.format('keyboard frame %.0f x %.0f', event.frame.width, event.frame.height))
-    elseif self.plain and not ui.wantsKeyboard() then
+    elseif self.plain and not ui.usingKeyboard() then
         if event.type == 'character' then
             self.typed = self.typed .. event.character
-        elseif event.type == 'key_down' and event.key == 'backspace' and #self.typed > 0 then
+        elseif event.type == 'keyDown' and event.key == 'backspace' and #self.typed > 0 then
             self.typed = self.typed:sub(1, utf8.offset(self.typed, -1) - 1)
         end
         self.document:set('typed', {text = self.typed == '' and 'Nothing typed yet' or self.typed})
@@ -96,7 +96,7 @@ function TextInput:event(event)
 end
 
 function TextInput:update(dt)
-    self:setStatus(string.format('platform %s, the UI %s the keyboard, last device %s', haylen.platform, ui.wantsKeyboard() and 'uses' or 'does not use', input.lastDevice()))
+    self:setStatus(string.format('platform %s, the UI %s the keyboard, last device %s', haylen.platform, ui.usingKeyboard() and 'uses' or 'does not use', input.lastDevice()))
 end
 
 return TextInput

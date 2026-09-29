@@ -21,7 +21,7 @@ function Stress:init(entry)
     self.frameTime = 1 / 60
     self.emitters = {}
     for index = 1, Stress.fountains do
-        local emitter = particles2d.newEmitter({texture = art.texture('spark'), rate = self.rate / Stress.fountains, lifetime = {2.2, 2.8}, speed = {500, 900}, direction = -1.5708, spread = 0.9, gravity = {0, 600}, startSize = {5, 8}, endSize = 2, colors = {m.hsv(index / Stress.fountains, 0.6, 1), m.hsv(index / Stress.fountains + 0.2, 0.8, 1):withAlpha(0)}, blend = 'additive', maxParticles = 25000, layer = 2, seed = 90 + index})
+        local emitter = particles2d.newEmitter({texture = art.texture('spark'), rate = self.rate / Stress.fountains, lifetime = {2.2, 2.8}, speed = {500, 900}, direction = -1.5708, spread = 0.9, gravity = {0, 600}, startSize = {5, 8}, endSize = 2, colors = {m.fromHsv(index / Stress.fountains, 0.6, 1), m.fromHsv(index / Stress.fountains + 0.2, 0.8, 1):withAlpha(0)}, blend = 'additive', maxParticles = 25000, layer = 2, seed = 90 + index})
         emitter.position = {(index - 2.5) * 420, 460}
         self.emitters[index] = emitter
     end

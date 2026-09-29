@@ -179,7 +179,7 @@ class Engine final {
     void setSafeAreaSimulation(std::optional<platform::SafeAreaSimulation> value);
     [[nodiscard]] const std::optional<platform::SafeAreaSimulation>& getSafeAreaSimulation() const noexcept;
 
-    // Whether the back button of the platform, the Menu button of the Apple TV remote and the Back button of Android, leaves the app, which is right on the root screen. Otherwise the app keeps the press, which reaches it as ui_cancel, and an open UI popup always keeps it.
+    // Whether the back button of the platform, the Menu button of the Apple TV remote and the Back button of Android, leaves the app, which is right on the root screen. Otherwise the app keeps the press, which reaches it as uiCancel, and an open UI popup always keeps it.
     void setBackLeavesApp(bool value) noexcept;
     [[nodiscard]] bool canBackLeaveApp() const noexcept;
     [[nodiscard]] bool isBackCaptured() const;

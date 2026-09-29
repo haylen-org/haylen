@@ -30,7 +30,7 @@ end
 function Sparks:update(dt)
     self.cursor:update(dt)
     local x, y = self.cursor:world(self.camera)
-    local touching = #input.touches() > 0 and not ui.wantsPointer()
+    local touching = #input.touches() > 0 and not ui.usingPointer()
     local on = not self.held or input.down('place') or touching
     for _, emitter in ipairs({self.sparks, self.glow}) do
         emitter.position = {x, y}

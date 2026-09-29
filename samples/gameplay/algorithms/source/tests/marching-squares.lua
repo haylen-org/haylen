@@ -125,7 +125,7 @@ function MarchingSquares:render()
     self:beginWorld()
     self.board:drawPicture(self.picture)
     for _, outline in ipairs(self.outlines) do
-        graphics2d.drawPolyline(outline, 3, m.polygonArea(outline) >= 0 and '#FFFFD54F' or '#FF4FC3F7', true, {layer = 1})
+        graphics2d.drawPolyline(outline, 3, m.polygonSignedArea(outline) >= 0 and '#FFFFD54F' or '#FF4FC3F7', true, {layer = 1})
     end
 end
 

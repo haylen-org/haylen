@@ -299,8 +299,8 @@ TEST(StatsTest, PublishesObjectEventsWhenAsked) {
         debugging = require('haylen.debug')
         local events = require('haylen.events')
         seen = {}
-        events.on('object_created', function(data) if data.type == 'haylen.Signal' then seen[#seen + 1] = 'created ' .. data.count end end)
-        events.on('object_destroyed', function(data) if data.type == 'haylen.Signal' then seen[#seen + 1] = 'destroyed ' .. data.count end end)
+        events.on('objectCreated', function(data) if data.type == 'haylen.Signal' then seen[#seen + 1] = 'created ' .. data.count end end)
+        events.on('objectDestroyed', function(data) if data.type == 'haylen.Signal' then seen[#seen + 1] = 'destroyed ' .. data.count end end)
         local quiet = require('haylen.signal').new()
         debugging.setObjectEvents(true)
         local loud = require('haylen.signal').new()

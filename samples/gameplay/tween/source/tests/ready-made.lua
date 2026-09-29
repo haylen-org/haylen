@@ -13,7 +13,7 @@ local ReadyMade = haylen.class('ReadyMade', sample.Test)
 local kColumns = 4
 local kKinds = {'move', 'scale', 'rotate', 'fade', 'tint', 'jump', 'path', 'bezier', 'blink', 'shake', 'punch'}
 local kCode = [[
-tween.move(sprite, 1.2, {x + 90, y})  tween.scale(sprite, 0.8, 1.6)  tween.rotate(sprite, 0.6, math.pi / 2, {loop = 'incremental'})
+tween.move(sprite, 1.2, {x + 90, y})  tween.scale(sprite, 0.8, 1.6)  tween.rotate(sprite, 0.6, math.pi / 2, {loopMode = 'incremental'})
 tween.fade(sprite, 0.8, 0.1)  tween.tint(sprite, 1, '#FFFF4060')  tween.jump(sprite, 1.2, {x + 80, y}, {power = 70, jumps = 3})
 tween.path(sprite, 3, points, {closed = true, orient = true})  tween.bezier(sprite, 1.4, {control1, control2, finish})
 tween.blink(sprite, 1.2, 5)  tween.shake(sprite, 0.6, 14, {vibrato = 20})  tween.punch(sprite, 0.6, {0, -50}, {elasticity = 0.6})]]
@@ -63,7 +63,7 @@ function ReadyMade:play()
         local x, y = self:cell(index)
         tween.killTarget(sprite)
         sprite.x, sprite.y, sprite.scaleX, sprite.scaleY, sprite.rotation, sprite.color = x, y, 1, 1, 0, sample.accent
-        local loop = {owner = self, loop = 'yoyo', repeatCount = -1, repeatDelay = 0.2, ease = 'sine_in_out'}
+        local loop = {owner = self, loopMode = 'yoyo', repeatCount = -1, repeatDelay = 0.2, ease = 'sineInOut'}
         local again = {owner = self, repeatCount = -1, repeatDelay = 0.6}
 
         if kind == 'move' then
@@ -72,14 +72,14 @@ function ReadyMade:play()
         elseif kind == 'scale' then
             tween.scale(sprite, 0.8, 1.6, loop)
         elseif kind == 'rotate' then
-            tween.rotate(sprite, 0.6, math.pi / 2, {owner = self, loop = 'incremental', repeatCount = -1, repeatDelay = 0.2, ease = 'back_out'})
+            tween.rotate(sprite, 0.6, math.pi / 2, {owner = self, loopMode = 'incremental', repeatCount = -1, repeatDelay = 0.2, ease = 'backOut'})
         elseif kind == 'fade' then
             tween.fade(sprite, 0.8, 0.1, loop)
         elseif kind == 'tint' then
             tween.tint(sprite, 1, '#FFFF4060', loop)
         elseif kind == 'jump' then
             sprite.x = x - 80
-            tween.jump(sprite, 1.2, {x + 80, y}, {owner = self, power = 70, jumps = 3, loop = 'yoyo', repeatCount = -1, repeatDelay = 0.2})
+            tween.jump(sprite, 1.2, {x + 80, y}, {owner = self, power = 70, jumps = 3, loopMode = 'yoyo', repeatCount = -1, repeatDelay = 0.2})
         elseif kind == 'path' then
             local points = {{x + 90, y - 40}, {x, y + 40}, {x - 90, y - 40}, {x, y - 60}}
             sprite.x, sprite.y = x, y - 60
@@ -102,7 +102,7 @@ function ReadyMade:update(dt)
     if input.pressed('replay') then
         self:play()
     end
-    self:status(string.format('%d tweens play natively', tween.count()))
+    self:status(string.format('%d tweens play natively', tween.size()))
 end
 
 function ReadyMade:draw(area)

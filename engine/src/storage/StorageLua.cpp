@@ -39,12 +39,12 @@ void StorageLua::pushInfo(lua_State* L, const SaveSlots::Info& info) {
     lua_setfield(L, -2, "summary");
 }
 
-int StorageLua::read(lua_State* L) {
+int StorageLua::readText(lua_State* L) {
     lua::Stack::push(L, getUserStorage(L).readText(lua::Stack::read<std::string_view>(L, 1)));
     return 1;
 }
 
-int StorageLua::write(lua_State* L) {
+int StorageLua::writeText(lua_State* L) {
     getUserStorage(L).writeText(lua::Stack::read<std::string_view>(L, 1), lua::Stack::read<std::string_view>(L, 2));
     return 0;
 }
@@ -179,7 +179,7 @@ int StorageLua::queue(lua_State* L, bool durable, std::function<Pusher()> work) 
     return 1;
 }
 
-int StorageLua::readAsync(lua_State* L) {
+int StorageLua::readTextAsync(lua_State* L) {
     UserStorage& storage = getUserStorage(L);
     // clang-format off
     return queue(L, false, [&storage, path = lua::Stack::read<std::string>(L, 1)] {
@@ -188,7 +188,7 @@ int StorageLua::readAsync(lua_State* L) {
     // clang-format on
 }
 
-int StorageLua::writeAsync(lua_State* L) {
+int StorageLua::writeTextAsync(lua_State* L) {
     UserStorage& storage = getUserStorage(L);
     // clang-format off
     return queue(L, false, [&storage, path = lua::Stack::read<std::string>(L, 1), text = lua::Stack::read<std::string>(L, 2)] {
@@ -284,7 +284,7 @@ int StorageLua::listSlotsAsync(lua_State* L) {
 
 int StorageLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"read", &lua::Binding::native<&read>}, {"write", &lua::Binding::native<&write>}, {"readJson", &lua::Binding::native<&readJson>}, {"writeJson", &lua::Binding::native<&writeJson>}, {"exists", &lua::Binding::native<&exists>}, {"remove", &lua::Binding::native<&remove>}, {"list", &lua::Binding::native<&list>}, {"flush", &lua::Binding::native<&flush>}, {"root", &lua::Binding::native<&root>}, {"writeSlot", &lua::Binding::native<&writeSlot>}, {"readSlot", &lua::Binding::native<&readSlot>}, {"slotInfo", &lua::Binding::native<&slotInfo>}, {"slotExists", &lua::Binding::native<&slotExists>}, {"removeSlot", &lua::Binding::native<&removeSlot>}, {"listSlots", &lua::Binding::native<&listSlots>}, {"readAsync", &lua::Binding::native<&readAsync>}, {"writeAsync", &lua::Binding::native<&writeAsync>}, {"readJsonAsync", &lua::Binding::native<&readJsonAsync>}, {"writeJsonAsync", &lua::Binding::native<&writeJsonAsync>}, {"removeAsync", &lua::Binding::native<&removeAsync>}, {"listAsync", &lua::Binding::native<&listAsync>}, {"writeSlotAsync", &lua::Binding::native<&writeSlotAsync>}, {"readSlotAsync", &lua::Binding::native<&readSlotAsync>}, {"slotInfoAsync", &lua::Binding::native<&slotInfoAsync>}, {"removeSlotAsync", &lua::Binding::native<&removeSlotAsync>}, {"listSlotsAsync", &lua::Binding::native<&listSlotsAsync>}, {nullptr, nullptr},
+        {"readText", &lua::Binding::native<&readText>}, {"writeText", &lua::Binding::native<&writeText>}, {"readJson", &lua::Binding::native<&readJson>}, {"writeJson", &lua::Binding::native<&writeJson>}, {"exists", &lua::Binding::native<&exists>}, {"remove", &lua::Binding::native<&remove>}, {"list", &lua::Binding::native<&list>}, {"flush", &lua::Binding::native<&flush>}, {"root", &lua::Binding::native<&root>}, {"writeSlot", &lua::Binding::native<&writeSlot>}, {"readSlot", &lua::Binding::native<&readSlot>}, {"slotInfo", &lua::Binding::native<&slotInfo>}, {"slotExists", &lua::Binding::native<&slotExists>}, {"removeSlot", &lua::Binding::native<&removeSlot>}, {"listSlots", &lua::Binding::native<&listSlots>}, {"readTextAsync", &lua::Binding::native<&readTextAsync>}, {"writeTextAsync", &lua::Binding::native<&writeTextAsync>}, {"readJsonAsync", &lua::Binding::native<&readJsonAsync>}, {"writeJsonAsync", &lua::Binding::native<&writeJsonAsync>}, {"removeAsync", &lua::Binding::native<&removeAsync>}, {"listAsync", &lua::Binding::native<&listAsync>}, {"writeSlotAsync", &lua::Binding::native<&writeSlotAsync>}, {"readSlotAsync", &lua::Binding::native<&readSlotAsync>}, {"slotInfoAsync", &lua::Binding::native<&slotInfoAsync>}, {"removeSlotAsync", &lua::Binding::native<&removeSlotAsync>}, {"listSlotsAsync", &lua::Binding::native<&listSlotsAsync>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

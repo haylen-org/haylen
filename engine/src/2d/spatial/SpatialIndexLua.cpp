@@ -24,7 +24,7 @@
 namespace haylen::lua {
 
 template <> struct Type<spatial2d::ScriptedIndex<spatial2d::HashGrid>> {
-    static constexpr const char* name = "haylen.SpatialHash";
+    static constexpr const char* name = "haylen.HashGrid";
     using Storage = spatial2d::ScriptedIndex<spatial2d::HashGrid>;
 };
 
@@ -115,7 +115,7 @@ void SpatialIndexLua::pushHits(lua_State* L, const std::vector<RayHit>& hits, fl
     lua_remove(L, values);
 }
 
-int SpatialIndexLua::newHash(lua_State* L) {
+int SpatialIndexLua::newHashGrid(lua_State* L) {
     HashGrid grid(lua::Stack::read<float>(L, 1));
     lua::Userdata::emplace<ScriptedIndex<HashGrid>>(L, ScriptedIndex<HashGrid>{.index = std::move(grid)});
     resetTables(L, lua_gettop(L));
@@ -201,7 +201,7 @@ template <typename Structure> int SpatialIndexLua::bounds(lua_State* L) {
     return 1;
 }
 
-int SpatialIndexLua::position(lua_State* L) {
+int SpatialIndexLua::point(lua_State* L) {
     ScriptedIndex<KdTree>& self = lua::Userdata::check<ScriptedIndex<KdTree>>(L, 1);
     const std::optional<std::uint64_t> id = idOf(L, 2);
     lua::Stack::push(L, id ? self.index.getPoint(*id) : std::nullopt);
@@ -358,7 +358,7 @@ template <typename Structure> lua::ClassBuilder<ScriptedIndex<Structure>>& Spati
 
 void SpatialIndexLua::addFunctions(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"newHash", &lua::Binding::native<&newHash>}, {"newQuadTree", &lua::Binding::native<&newQuadTree>}, {"newAabbTree", &lua::Binding::native<&newAabbTree>}, {"newKdTree", &lua::Binding::native<&newKdTree>}, {nullptr, nullptr},
+        {"newHashGrid", &lua::Binding::native<&newHashGrid>}, {"newQuadTree", &lua::Binding::native<&newQuadTree>}, {"newAabbTree", &lua::Binding::native<&newAabbTree>}, {"newKdTree", &lua::Binding::native<&newKdTree>}, {nullptr, nullptr},
     };
     luaL_setfuncs(L, functions, 0);
 }
@@ -374,7 +374,7 @@ void SpatialIndexLua::install(lua_State* L) {
     addQueries(aabbTree).function("set", &lua::Binding::native<&set<AabbTree>>).function("bounds", &lua::Binding::native<&bounds<AabbTree>>).property("height", &height).property("margin", &margin).install();
 
     lua::ClassBuilder<ScriptedIndex<KdTree>> kdTree(L);
-    addQueries(kdTree).function("set", &lua::Binding::native<&setPoint>).function("position", &lua::Binding::native<&position>).function("build", &lua::Binding::native<&build>).property("built", &isBuilt).install();
+    addQueries(kdTree).function("set", &lua::Binding::native<&setPoint>).function("point", &lua::Binding::native<&point>).function("build", &lua::Binding::native<&build>).property("built", &isBuilt).install();
 }
 
 } // namespace haylen::spatial2d

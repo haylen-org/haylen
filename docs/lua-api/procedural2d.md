@@ -19,7 +19,7 @@ local procedural = require('haylen.procedural2d')
 local async = require('async')
 
 async.spawn(function()
-    local cave = procedural.cavesAsync({width = 256, height = 256, seed = 7}):await()
+    local cave = procedural.cellularAutomatonAsync({width = 256, height = 256, seed = 7}):await()
     print(cave.width, cave:get(0, 0)) -- 256 1
 end)
 ```
@@ -126,7 +126,7 @@ end)
 
 ## Caves and dungeons
 
-### procedural.caves(options), procedural.cavesAsync(options)
+### procedural.cellularAutomaton(options), procedural.cellularAutomatonAsync(options)
 
 Grows a cave map with a cellular automaton: random walls smoothed by counting the walls around each cell, and returns it as a `CellGrid`. A floor cell turns into a wall with at least `birthLimit` walls among its eight neighbors, and a wall stays a wall with at least `survivalLimit`.
 
@@ -142,12 +142,12 @@ Grows a cave map with a cellular automaton: random walls smoothed by counting th
 local procedural = require('haylen.procedural2d')
 local spatial = require('haylen.spatial2d')
 
-local cave = procedural.caves({width = 80, height = 50, fillChance = 0.47, seed = 3})
+local cave = procedural.cellularAutomaton({width = 80, height = 50, fillChance = 0.47, seed = 3})
 local labels, regions = spatial.components(cave, {background = 1})
 print(cave:get(40, 25), regions, labels.width)
 ```
 
-### procedural.cavesStep(grid, options)
+### procedural.cellularAutomatonStep(grid, options)
 
 Runs one smoothing step of the cave automaton over any `CellGrid` of walls (1) and floors (0), such as a painted map or a noise threshold, and returns the smoothed grid. `options` is optional and takes `birthLimit`, `survivalLimit` and `solidBorder` with the defaults and meaning of `caves`.
 
@@ -157,8 +157,8 @@ local spatial = require('haylen.spatial2d')
 
 local painted = spatial.newCellGrid(5, 5)
 painted:set(2, 2, 1)
-local smooth = procedural.cavesStep(painted, {solidBorder = false})
-print(smooth:get(2, 2), procedural.cavesStep(painted):get(0, 0)) -- 0 1
+local smooth = procedural.cellularAutomatonStep(painted, {solidBorder = false})
+print(smooth:get(2, 2), procedural.cellularAutomatonStep(painted):get(0, 0)) -- 0 1
 ```
 
 ### procedural.drunkardWalk(options), procedural.drunkardWalkAsync(options)
@@ -315,7 +315,7 @@ Returns the Delaunay triangulation of a list of points as a `Delaunay` object, b
 | Member | Meaning |
 | --- | --- |
 | `mesh.points` | The points as a list of `Vec2`. |
-| `mesh.triangles` | Three point positions from 1 per triangle, wound with a positive `m.polygonArea`. |
+| `mesh.triangles` | Three point positions from 1 per triangle, wound with a positive `m.polygonSignedArea`. |
 | `mesh.halfedges` | For each edge of `triangles`, the position of the same edge in the neighboring triangle, or 0 on the convex hull. Edge `e` runs from point `triangles[e]` to the next point of its triangle. |
 | `mesh.hull` | The points on the convex hull in order, or every distinct point along the line when they all lie on one. |
 | `mesh.neighbors` | For each point, the points joined to it by an edge, in increasing order. |
@@ -365,7 +365,7 @@ for i = 1, 30 do
     sites[i] = {rng:range(0, 800), rng:range(0, 600)}
 end
 local provinces = procedural.voronoi(sites, {0, 0, 800, 600})
-print(#provinces, m.polygonArea(provinces[1]))
+print(#provinces, m.polygonSignedArea(provinces[1]))
 ```
 
 ### procedural.relax(points, bounds, iterations), procedural.relaxAsync(points, bounds, iterations)
@@ -419,12 +419,12 @@ Return a `CellGrid` with the 4-bit mask or the blob index of every cell that hol
 ```lua
 local procedural = require('haylen.procedural2d')
 
-local cave = procedural.caves({width = 32, height = 32, seed = 4})
+local cave = procedural.cellularAutomaton({width = 32, height = 32, seed = 4})
 local walls = procedural.autotile8(cave, 1)
 print(walls:get(0, 0))
 ```
 
-### procedural.wang(colors, wangSet, seed)
+### procedural.autotileWang(colors, wangSet, seed)
 
 Picks the tiles of a Tiled Wang set and returns a `CellGrid` of tileset tile ids, or -1 where no tile matches. `wangSet` is one of the `wangSets` of a tileset of [haylen.tiled](tiled.md), or a table `{kind, tiles = {{tileId, wangId}}}` alike, and colors are the Wang color numbers of Tiled, from 1, with 0 for no color. Corner and mixed sets read colors at the corners of the cells from a grid one cell wider and taller than the result, where cell `(x, y)` has its corners at `(x, y)`, `(x + 1, y)`, `(x + 1, y + 1)` and `(x, y + 1)`, and mixed sets color an edge when both of its corners agree and accept any color otherwise. Edge sets read one color per cell and color each side whose neighbor shares that color, which suits paths and fences. When several tiles match, a hash of the cell and the seed picks one. Other kinds raise `Wang sets must be of the corner, edge or mixed kind.`
 
@@ -440,6 +440,6 @@ local corners = spatial.newCellGrid(33, 33, 1)
 for i = 10, 20 do
     corners:set(i, i, 2)
 end
-local tiles = procedural.wang(corners, terrain, 7)
+local tiles = procedural.autotileWang(corners, terrain, 7)
 print(tiles.width, tiles:get(10, 10))
 ```

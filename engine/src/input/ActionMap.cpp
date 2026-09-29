@@ -77,7 +77,7 @@ std::optional<ActionMap::Binding> ActionMap::Binding::parse(std::string_view tex
         return binding;
     }
 
-    if ((kind == "virtual" || kind == "virtual_stick") && !value.empty()) {
+    if ((kind == "virtual" || kind == "virtualStick") && !value.empty()) {
         binding.source = kind == "virtual" ? Source::VirtualButton : Source::VirtualStick;
         binding.name = std::string(value);
         return binding;
@@ -100,7 +100,7 @@ std::string ActionMap::Binding::toString() const {
     case Source::VirtualButton:
         return "virtual:" + name;
     case Source::VirtualStick:
-        return "virtual_stick:" + name;
+        return "virtualStick:" + name;
     }
     return {};
 }

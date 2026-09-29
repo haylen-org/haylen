@@ -25,7 +25,7 @@ class JobsLua final {
     static int checkpoint(lua_State* L);
     static int setBudget(lua_State* L);
     static int budget(lua_State* L);
-    static int running(lua_State* L);
+    static int runningCount(lua_State* L);
     static int open(lua_State* L);
 };
 

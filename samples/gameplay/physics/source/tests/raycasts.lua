@@ -182,20 +182,20 @@ end
 function casts.batch(test)
     local x, y = test.target[1], test.target[2]
     local rays = test.rays
-    for index = 1, rays.count do
-        local angle = index / rays.count * math.pi * 2
+    for index = 1, rays.size do
+        local angle = index / rays.size * math.pi * 2
         rays:setRay(index, x, y, x + math.cos(angle) * 900, y + math.sin(angle) * 900)
     end
     test.world:raycastBatch(rays)
     local points, count = {}, 0
-    for index = 1, rays.count do
+    for index = 1, rays.size do
         local hit, hx, hy = rays:hit(index)
         if hit then
             points[#points + 1] = {x = hx, y = hy}
             count = count + 1
         end
     end
-    return {lidar = points, summary = string.format('%d of %d rays hit', count, rays.count)}
+    return {lidar = points, summary = string.format('%d of %d rays hit', count, rays.size)}
 end
 
 function casts.pick(test)

@@ -21,7 +21,7 @@ function Classic:enter()
     self.stretched = graphics2d.newNineSlice(self.texture, {borders = {kBorder, kBorder, kBorder, kBorder}})
     self.tiled = graphics2d.newNineSlice(self.texture, {borders = {kBorder, kBorder, kBorder, kBorder}, fill = 'tile'})
     self.grow = {amount = 0}
-    self.growing = tween.to(self.grow, 2.4, {amount = 1}, {owner = self, loop = 'yoyo', repeatCount = -1, ease = 'sine_in_out'})
+    self.growing = tween.to(self.grow, 2.4, {amount = 1}, {owner = self, loopMode = 'yoyo', repeatCount = -1, ease = 'sineInOut'})
     self:frame({
         hint = 'The stripes of the center show the difference: stretched they widen, tiled they repeat.',
         code = kCode,

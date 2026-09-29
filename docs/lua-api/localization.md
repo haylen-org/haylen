@@ -172,7 +172,7 @@ scene.push({
 })
 ```
 
-### localization.bestMatch(tag)
+### localization.findBestMatch(tag)
 
 Returns the added language that best matches a BCP 47 language tag, or `nil` when none matches. The match ignores case and treats `_` like `-`. An exact match wins, and otherwise a language with the same base language matches, preferring the plain base language, so `pt-BR` matches `pt` before `pt-PT`.
 
@@ -193,7 +193,7 @@ if chosen then
 else
     async.spawn(function()
         local tag = platform.call('system.locale'):await()
-        local language = tag and localization.bestMatch(tag)
+        local language = tag and localization.findBestMatch(tag)
         if language then
             localization.setLanguage(language)
         end

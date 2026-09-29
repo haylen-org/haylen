@@ -40,7 +40,7 @@ end
 function Ambient:choose(id)
     for _, preset in ipairs(Ambient.presets) do
         if preset.id == id then
-            tween.to(self, 0.8, {ambient = preset.color}, {ease = 'sine_in_out', owner = self, overwrite = true})
+            tween.to(self, 0.8, {ambient = preset.color}, {ease = 'sineInOut', owner = self, overwrite = true})
         end
     end
 end

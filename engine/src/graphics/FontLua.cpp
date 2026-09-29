@@ -43,7 +43,7 @@ char32_t FontLua::readCharacter(lua_State* L, int index) {
     return decoded.front();
 }
 
-// Creates a family with newFontFamily({regular = font, bold = font, italic = font, boldItalic = font, mono = font, fallback = {font, ...}}).
+// Creates a family with newFontFamily({regular = font, bold = font, italic = font, boldItalic = font, mono = font, fallbacks = {font, ...}}).
 int FontLua::newFontFamily(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     lua::Table::checkFields(L, 1, {kFamilyFields});
@@ -53,7 +53,7 @@ int FontLua::newFontFamily(lua_State* L) {
     lua::Table::readField(L, 1, "italic", faces.italic);
     lua::Table::readField(L, 1, "boldItalic", faces.boldItalic);
     lua::Table::readField(L, 1, "mono", faces.mono);
-    lua::Table::readField(L, 1, "fallback", faces.fallbacks);
+    lua::Table::readField(L, 1, "fallbacks", faces.fallbacks);
     lua::Stack::push(L, std::make_shared<text::FontFamily>(std::move(faces)));
     return 1;
 }
@@ -288,7 +288,7 @@ int FontLua::familyFace(lua_State* L) {
     return 1;
 }
 
-int FontLua::familyFallback(lua_State* L) {
+int FontLua::familyFallbacks(lua_State* L) {
     lua::Stack::push(L, lua::Userdata::check<text::FontFamily>(L, 1).getFaces().fallbacks);
     return 1;
 }
@@ -343,7 +343,7 @@ int FontLua::familyLayout(lua_State* L) {
 
 void FontLua::install(lua_State* L) {
     lua::ClassBuilder<text::Font>(L).function("measure", &lua::Binding::native<&measure>).function("layout", &lua::Binding::native<&layout>).function("lineHeight", &lua::Binding::function<&lineHeight>).function("ascent", &lua::Binding::function<&ascent>).function("toDistance", &lua::Binding::function<&toDistance>).function("hasGlyph", &lua::Binding::native<&hasGlyph>).function("glyph", &lua::Binding::native<&glyph>).function("glyphByIndex", &lua::Binding::native<&glyphByIndex>).function("shape", &lua::Binding::native<&shape>).function("page", &lua::Binding::native<&page>).property("nativeSize", &nativeSize).property("distanceField", &distanceField).property("pageCount", &pageCount).meta("__eq", &lua::Userdata::equal<text::Font>).install();
-    lua::ClassBuilder<text::FontFamily>(L).property("regular", &familyFace).property("bold", &familyFace).property("italic", &familyFace).property("boldItalic", &familyFace).property("mono", &familyFace).property("fallback", &familyFallback).function("select", &lua::Binding::native<&familySelect>).function("resolve", &lua::Binding::native<&familyResolve>).function("measure", &lua::Binding::native<&familyMeasure>).function("layout", &lua::Binding::native<&familyLayout>).meta("__eq", &lua::Userdata::equal<text::FontFamily>).install();
+    lua::ClassBuilder<text::FontFamily>(L).property("regular", &familyFace).property("bold", &familyFace).property("italic", &familyFace).property("boldItalic", &familyFace).property("mono", &familyFace).property("fallbacks", &familyFallbacks).function("select", &lua::Binding::native<&familySelect>).function("resolve", &lua::Binding::native<&familyResolve>).function("measure", &lua::Binding::native<&familyMeasure>).function("layout", &lua::Binding::native<&familyLayout>).meta("__eq", &lua::Userdata::equal<text::FontFamily>).install();
 }
 
 } // namespace haylen::graphics

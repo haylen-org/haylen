@@ -48,12 +48,12 @@ function fonts.family(name)
                 italic = fonts.get('crimsonItalic'),
                 boldItalic = fonts.get('crimsonBoldItalic'),
                 mono = fonts.get('mono'),
-                fallback = {fonts.get('cjk'), fonts.get('symbols')},
+                fallbacks = {fonts.get('cjk'), fonts.get('symbols')},
             })
         elseif name == 'scripts' then
             families[name] = graphics.newFontFamily({
                 regular = fonts.get('fira'),
-                fallback = {fonts.get('arabic'), fonts.get('hebrew'), fonts.get('devanagari'), fonts.get('thai'), fonts.get('cjk')},
+                fallbacks = {fonts.get('arabic'), fonts.get('hebrew'), fonts.get('devanagari'), fonts.get('thai'), fonts.get('cjk')},
             })
         else
             families[name] = graphics.newFontFamily({regular = fonts.get(name)})

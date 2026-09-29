@@ -63,7 +63,7 @@ The rules of Varn's `ffi` that matter most:
 - Variadic functions are called with Lua numbers, strings and pointers after the fixed arguments.
 - A struct with an array field, such as `char name[33]`, trips an assertion of libffi in Debug builds of the engine, whose libffi checks its inputs, because Varn's `ffi` describes array fields to libffi without their elements. Release builds, which every packaged app uses, declare and fill such structs correctly, and they pass them by pointer.
 
-`native.symbol(name)` returns the address of a symbol of the linked libraries, the loaded ones or the app, as a light userdata that goes wherever C takes a pointer.
+`native.findSymbol(name)` returns the address of a symbol of the linked libraries, the loaded ones or the app, as a light userdata that goes wherever C takes a pointer.
 
 ## Callbacks
 
@@ -174,7 +174,7 @@ make.py places each library where the app loads it:
 
 ### Static libraries on iOS and tvOS
 
-An iOS app may link a library statically instead of embedding a framework, which some SDKs require. Dead code stripping would then remove every function the app never calls from native code, so make.py writes `source/HaylenNativeSymbols.mm`, whose `+load` registers the listed symbols with `haylen::platform::NativeLibraries::registerLinked`. The references keep the functions in the app, and `native.load('native_test_static')` then returns `ffi.C`, whose declared functions resolve through the app, while `native.symbol` finds the listed ones in the table. The symbols list names the functions Lua calls, including an `init` function.
+An iOS app may link a library statically instead of embedding a framework, which some SDKs require. Dead code stripping would then remove every function the app never calls from native code, so make.py writes `source/HaylenNativeSymbols.mm`, whose `+load` registers the listed symbols with `haylen::platform::NativeLibraries::registerLinked`. The references keep the functions in the app, and `native.load('native_test_static')` then returns `ffi.C`, whose declared functions resolve through the app, while `native.findSymbol` finds the listed ones in the table. The symbols list names the functions Lua calls, including an `init` function.
 
 ### Development
 

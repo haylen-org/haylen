@@ -16,7 +16,7 @@ local kArrive = 6
 function YSort:enter()
     self.map = tiled.newMapRenderer(assets.load('maps/ysort.tmj'))
     self.hero = graphics2d.newSprite(assets.texture('sprites/hero.png'), {pivotY = 1, layer = 1})
-    local bounds = self.map.bounds
+    local bounds = self.map.pixelBounds
     YSort.super.enter(self, {
         hint = 'Walk with WASD, the arrows, the left stick or the touch stick, or tap or click where the hero should go. Switch y sorting off to see the hero drawn over everything.',
         controls = {
@@ -58,7 +58,7 @@ function YSort:update(dt)
             x, y = dx / distance, dy / distance
         end
     end
-    local bounds = self.map.bounds
+    local bounds = self.map.pixelBounds
     self.position[1] = math.max(16, math.min(bounds.width - 16, self.position[1] + x * kSpeed * dt))
     self.position[2] = math.max(48, math.min(bounds.height, self.position[2] + y * kSpeed * dt))
     if x ~= 0 then

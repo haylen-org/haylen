@@ -125,10 +125,10 @@ end
 function sample.pointer()
     local touch = input.touches()[1]
     if touch then
-        return touch.x, touch.y, touch.phase == 'began' and not ui.wantsPointer()
+        return touch.x, touch.y, touch.phase == 'began' and not ui.usingPointer()
     end
     local x, y = input.mousePosition()
-    return x, y, input.mousePressed('left') and not ui.wantsPointer()
+    return x, y, input.mousePressed('left') and not ui.usingPointer()
 end
 
 -- Splits the area into `count` horizontal lanes and returns their rectangles, top to bottom, leaving room for labels on the left.

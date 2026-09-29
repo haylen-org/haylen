@@ -25,7 +25,7 @@ end
 
 function PauseMenu:enter()
     haylen.setPaused(true)
-    tween.to(self.glow, 0.6, {alpha = 1}, {loop = 'yoyo', repeatCount = -1, ease = 'sine_in_out', owner = self})
+    tween.to(self.glow, 0.6, {alpha = 1}, {loopMode = 'yoyo', repeatCount = -1, ease = 'sineInOut', owner = self})
     self.document = ui.mount(ui.column{
         justify = 'center',
         onCancel = function()
@@ -78,7 +78,7 @@ function Pause:enter()
     Pause.super.enter(self)
     timer.every(0.4, function() self:spawn() end, {owner = self})
     timer.every(0.1, function() self.always = self.always + 0.1 end, {owner = self, processMode = 'always'})
-    tween.to(self.platform, 1.5, {x = 1400}, {loop = 'yoyo', repeatCount = -1, ease = 'sine_in_out', owner = self})
+    tween.to(self.platform, 1.5, {x = 1400}, {loopMode = 'yoyo', repeatCount = -1, ease = 'sineInOut', owner = self})
 end
 
 function Pause:controls()

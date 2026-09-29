@@ -120,13 +120,13 @@ function Loading:render()
     graphics2d.beginScreen()
     local area = graphics2d.canvasBounds()
     graphics2d.drawRect(area, '#FF1C2230')
-    local time = haylen.time()
+    local time = haylen.elapsed()
     for index = 0, 9 do
         local x = area.x + area.width * (index + 0.5) / 10
         graphics2d.drawCircle(x, area.y + area.height * 0.7 + math.sin(time * 3 + index * 0.6) * 60, 26, '#FF4C7DFF')
     end
     if self.preloading then
-        local progress, message = scene.progress(self.preloading)
+        local progress, message = scene.loadProgress(self.preloading)
         graphics2d.drawRect({area.x + 200, area.y + 520, 900, 24}, '#FF3A4058')
         graphics2d.drawRect({area.x + 200, area.y + 520, 900 * progress, 24}, '#FFF2C14E', {layer = 1})
         graphics2d.drawText(nil, string.format('preload %d%%, %s', math.floor(progress * 100), message or ''), area.x + 200, area.y + 470, {size = 32, layer = 1})

@@ -14,9 +14,9 @@ TouchControls.hints = 'Drag the stick with a finger or the mouse, or use WASD or
 
 local kSpeed = 520
 local kActions = {
-    {name = 'demo_move', type = 'vector', up = {'key:w'}, down = {'key:s'}, left = {'key:a'}, right = {'key:d'}, bindings = {'stick:left', 'virtual_stick:move'}},
-    {name = 'demo_jump', type = 'button', bindings = {'key:space', 'button:south', 'virtual:jump'}},
-    {name = 'demo_dash', type = 'button', bindings = {'key:left_shift', 'button:west', 'virtual:dash'}},
+    {name = 'demoMove', type = 'vector', up = {'key:w'}, down = {'key:s'}, left = {'key:a'}, right = {'key:d'}, bindings = {'stick:left', 'virtualStick:move'}},
+    {name = 'demoJump', type = 'button', bindings = {'key:space', 'button:south', 'virtual:jump'}},
+    {name = 'demoDash', type = 'button', bindings = {'key:leftShift', 'button:west', 'virtual:dash'}},
 }
 
 function TouchControls:init(entry)
@@ -59,8 +59,8 @@ end
 
 function TouchControls:update(dt)
     local ball = self.ball
-    local x, y = input.vector('demo_move')
-    if input.pressed('demo_dash') then
+    local x, y = input.vector('demoMove')
+    if input.pressed('demoDash') then
         ball.dash = 0.25
     end
     ball.dash = math.max(0, ball.dash - dt)
@@ -68,7 +68,7 @@ function TouchControls:update(dt)
     local area = viewport.safeRect()
     ball.x = m.clamp(ball.x + x * speed * dt, area.x + 60, area:right() - 60)
     ball.y = m.clamp(ball.y + y * speed * dt, area.y + 220, area:bottom() - 120)
-    if input.pressed('demo_jump') and ball.height == 0 then
+    if input.pressed('demoJump') and ball.height == 0 then
         ball.lift = 900
     end
     ball.height = math.max(0, ball.height + ball.lift * dt)

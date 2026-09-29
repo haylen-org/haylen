@@ -50,7 +50,7 @@ function Infinite:update(dt)
     end
     self.pan:update(dt)
     local column, row = self.map:worldToCell(self.pointer.worldX, self.pointer.worldY)
-    self:showStats(string.format('infinite %s\nchunks %d of 16 x 16\ncell %d, %d\ntile %d', tostring(self.map.infinite), #self.chunks, column, row, tiled.tileId(self.map:tileAt('ground', column, row))))
+    self:showStats(string.format('infinite %s\nchunks %d of 16 x 16\ncell %d, %d\ntile %d', tostring(self.map.infinite), #self.chunks, column, row, tiled.tileId(self.map:tile('ground', column, row))))
 end
 
 function Infinite:render()

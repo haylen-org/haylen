@@ -50,14 +50,14 @@ end
 -- The title drops in and the cards rise one after another with a stagger.
 function Tweens:entrance()
     local title = self.document:transform('title')
-    tween.fromTo(title, 0.6, {offset = m.vec2(0, -80), opacity = 0}, {offset = m.vec2(0, 0), opacity = 1}, {ease = 'back_out', owner = self})
+    tween.fromTo(title, 0.6, {offset = m.vec2(0, -80), opacity = 0}, {offset = m.vec2(0, 0), opacity = 1}, {ease = 'backOut', owner = self})
     local cards = {}
     for index = 1, 5 do
         cards[index] = self.document:transform('card-' .. index)
         cards[index].opacity = 0
     end
     tween.stagger(cards, 0.08, function(card)
-        return tween.fromTo(card, 0.4, {offset = m.vec2(0, 60), opacity = 0, scale = m.vec2(0.8, 0.8)}, {offset = m.vec2(0, 0), opacity = 1, scale = m.vec2(1, 1)}, {ease = 'quad_out'})
+        return tween.fromTo(card, 0.4, {offset = m.vec2(0, 60), opacity = 0, scale = m.vec2(0.8, 0.8)}, {offset = m.vec2(0, 0), opacity = 1, scale = m.vec2(1, 1)}, {ease = 'quadOut'})
     end, {owner = self, delay = 0.2})
     self:setStatus('entrance with a stagger of five cards')
 end
@@ -69,7 +69,7 @@ end
 
 function Tweens:fade()
     self.shown = not self.shown
-    tween.to(self.document:transform('panel'), 0.4, {opacity = self.shown and 1 or 0.2}, {ease = 'sine_in_out', owner = self, overwrite = true})
+    tween.to(self.document:transform('panel'), 0.4, {opacity = self.shown and 1 or 0.2}, {ease = 'sineInOut', owner = self, overwrite = true})
     self:setStatus(self.shown and 'panel faded in' or 'panel faded out')
 end
 
@@ -80,7 +80,7 @@ function Tweens:cycleTint()
 end
 
 function Tweens:started()
-    tween.to(self.document:transform('pulse'), 0.6, {scale = m.vec2(1.06, 1.06)}, {repeatCount = -1, loop = 'yoyo', ease = 'sine_in_out', owner = self})
+    tween.to(self.document:transform('pulse'), 0.6, {scale = m.vec2(1.06, 1.06)}, {repeatCount = -1, loopMode = 'yoyo', ease = 'sineInOut', owner = self})
     self:entrance()
 end
 

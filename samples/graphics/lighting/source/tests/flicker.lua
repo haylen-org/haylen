@@ -42,7 +42,7 @@ end
 
 -- Returns the flicker of a flame now, with its own seed unless every torch shares one.
 function Flicker:wave(flame)
-    return lighting2d.flicker(haylen.time(), {speed = self.speed, amount = self.amount, seed = self.shared and 0 or flame.seed})
+    return lighting2d.flicker(haylen.elapsed(), {speed = self.speed, amount = self.amount, seed = self.shared and 0 or flame.seed})
 end
 
 function Flicker:update(dt)

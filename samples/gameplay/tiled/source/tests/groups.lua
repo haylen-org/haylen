@@ -15,7 +15,7 @@ local kSway = 160
 
 function Groups:enter()
     self.map = tiled.newMapRenderer(assets.load('maps/groups.tmj'))
-    local bounds = self.map.bounds
+    local bounds = self.map.pixelBounds
     Groups.super.enter(self, {
         hint = 'The camera sways so the parallax of the groups shows: the background lags and the roofs lead. Drag to move it yourself, and switch the groups on and off.',
         controls = {
@@ -68,7 +68,7 @@ end
 function Groups:render()
     self:beginWorld()
     self.map:draw(self.camera)
-    graphics2d.drawRectOutline(self.map.bounds, 2 * graphics2d.canvasUnitSize(), '#44FFFFFF', {layer = 5})
+    graphics2d.drawRectOutline(self.map.pixelBounds, 2 * graphics2d.canvasUnitSize(), '#44FFFFFF', {layer = 5})
 end
 
 return Groups

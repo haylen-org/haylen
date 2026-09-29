@@ -90,7 +90,7 @@ int CoreLua::rootQuit(lua_State* L) {
     return 0;
 }
 
-int CoreLua::rootTime(lua_State* L) {
+int CoreLua::rootElapsed(lua_State* L) {
     lua::Stack::push(L, lua::Runtime::getEngine(L).getClock().getElapsed());
     return 1;
 }
@@ -105,7 +105,7 @@ int CoreLua::rootUnscaledDelta(lua_State* L) {
     return 1;
 }
 
-int CoreLua::rootFrame(lua_State* L) {
+int CoreLua::rootFrameIndex(lua_State* L) {
     lua::Stack::push(L, lua::Runtime::getEngine(L).getClock().getFrameIndex());
     return 1;
 }
@@ -219,7 +219,7 @@ int CoreLua::rootAutoload(lua_State* L) {
 int CoreLua::openRoot(lua_State* L) {
     Engine& owner = lua::Runtime::getEngine(L);
     const luaL_Reg functions[] = {
-        {"quit", &rootQuit}, {"time", &rootTime}, {"delta", &rootDelta}, {"unscaledDelta", &rootUnscaledDelta}, {"frame", &rootFrame}, {"timeScale", &rootTimeScale}, {"setTimeScale", &rootSetTimeScale}, {"fixedStep", &rootFixedStep}, {"interpolation", &rootInterpolation}, {"reportError", &lua::Binding::native<&rootReportError>}, {"paused", &rootPaused}, {"setPaused", &lua::Binding::native<&rootSetPaused>}, {"appState", &rootAppState}, {"networkState", &rootNetworkState}, {"halted", &rootHalted}, {"lifecycle", &rootLifecycle}, {"setLifecycle", &lua::Binding::native<&rootSetLifecycle>}, {"autoload", &lua::Binding::native<&rootAutoload>}, {nullptr, nullptr},
+        {"quit", &rootQuit}, {"elapsed", &rootElapsed}, {"delta", &rootDelta}, {"unscaledDelta", &rootUnscaledDelta}, {"frameIndex", &rootFrameIndex}, {"timeScale", &rootTimeScale}, {"setTimeScale", &rootSetTimeScale}, {"fixedStep", &rootFixedStep}, {"interpolation", &rootInterpolation}, {"reportError", &lua::Binding::native<&rootReportError>}, {"paused", &rootPaused}, {"setPaused", &lua::Binding::native<&rootSetPaused>}, {"appState", &rootAppState}, {"networkState", &rootNetworkState}, {"halted", &rootHalted}, {"lifecycle", &rootLifecycle}, {"setLifecycle", &lua::Binding::native<&rootSetLifecycle>}, {"autoload", &lua::Binding::native<&rootAutoload>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     ClassLua::push(L);
@@ -281,7 +281,7 @@ int CoreLua::viewportToFramebuffer(lua_State* L) {
 }
 
 int CoreLua::viewportScaling(lua_State* L) {
-    lua::Stack::push(L, lua::Runtime::getEngine(L).getViewport().getPolicy());
+    lua::Stack::push(L, lua::Runtime::getEngine(L).getViewport().getScaling());
     return 1;
 }
 

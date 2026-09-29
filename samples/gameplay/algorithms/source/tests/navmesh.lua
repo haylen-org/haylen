@@ -55,14 +55,14 @@ function NavMesh:build()
         self.rocks[index] = self:randomObstacle(self.random:range(-600, 600), self.random:range(-300, 250))
     end
     self.mesh, self.path = nil, nil
-    local started = haylen.time()
+    local started = haylen.elapsed()
     async.spawn(function()
         local mesh = navigation2d.buildNavMeshAsync(kBoundary, self.rocks):await()
         if mesh == nil or self.rocks == nil then
             return
         end
         self.mesh = mesh
-        self.buildLatency = (haylen.time() - started) * 1000
+        self.buildLatency = (haylen.elapsed() - started) * 1000
         self:route()
     end)
 end

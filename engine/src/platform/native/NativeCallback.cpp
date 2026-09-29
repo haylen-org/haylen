@@ -72,7 +72,7 @@ NativeCallback::NativeCallback(NativeSignature value, Thread mode, Link target) 
     }
 
     if (ffi_prep_cif(&closure->cif, FFI_DEFAULT_ABI, static_cast<unsigned>(closure->types.size()), &ffi_type_void, closure->types.data()) != FFI_OK) {
-        throw std::runtime_error("libffi could not prepare the native callback.");
+        throw std::runtime_error("The native callback could not be prepared by libffi.");
     }
     closure->closure = static_cast<ffi_closure*>(ffi_closure_alloc(sizeof(ffi_closure), &address));
     if (closure->closure == nullptr) {
@@ -80,7 +80,7 @@ NativeCallback::NativeCallback(NativeSignature value, Thread mode, Link target) 
     }
     if (ffi_prep_closure_loc(closure->closure, &closure->cif, &Closure::run, this, address) != FFI_OK) {
         ffi_closure_free(closure->closure);
-        throw std::runtime_error("libffi could not create the native callback.");
+        throw std::runtime_error("The native callback could not be created by libffi.");
     }
 }
 

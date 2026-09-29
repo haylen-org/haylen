@@ -17,15 +17,15 @@ function controls.defaults()
         {
             name = 'move',
             type = 'vector',
-            up = {'key:w', 'key:up', 'button:dpad_up'},
-            down = {'key:s', 'key:down', 'button:dpad_down'},
-            left = {'key:a', 'key:left', 'button:dpad_left'},
-            right = {'key:d', 'key:right', 'button:dpad_right'},
-            bindings = {'stick:left', 'virtual_stick:move'},
+            up = {'key:w', 'key:up', 'button:dpadUp'},
+            down = {'key:s', 'key:down', 'button:dpadDown'},
+            left = {'key:a', 'key:left', 'button:dpadLeft'},
+            right = {'key:d', 'key:right', 'button:dpadRight'},
+            bindings = {'stick:left', 'virtualStick:move'},
         },
         {name = 'jump', type = 'button', bindings = {'key:space', 'mouse:left', 'button:south', 'virtual:jump'}},
-        {name = 'dash', type = 'button', bindings = {'key:left_shift', 'mouse:right', 'button:west', 'virtual:dash'}},
-        {name = 'throttle', type = 'axis', positive = {'key:e', 'axis:right_trigger+'}, negative = {'key:q', 'axis:left_trigger+'}},
+        {name = 'dash', type = 'button', bindings = {'key:leftShift', 'mouse:right', 'button:west', 'virtual:dash'}},
+        {name = 'throttle', type = 'axis', positive = {'key:e', 'axis:rightTrigger+'}, negative = {'key:q', 'axis:leftTrigger+'}},
     }}
 end
 

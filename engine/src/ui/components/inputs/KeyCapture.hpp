@@ -23,7 +23,7 @@ class KeyCapture final : public Component {
         return "keyCapture";
     }
 
-    // Writes a binding for people, such as Left Shift for key:left_shift.
+    // Writes a binding for people, such as Left Shift for key:leftShift.
     [[nodiscard]] static std::string describe(std::string_view binding);
 
   protected:

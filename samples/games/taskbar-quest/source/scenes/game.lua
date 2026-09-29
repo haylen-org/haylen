@@ -35,7 +35,7 @@ end
 
 -- A press on the ground or the grip drags the window, which has to start while the button is still down.
 function game:event(event)
-    if event.type ~= 'mouse_down' or event.button ~= 'left' or ui.wantsPointer() then
+    if event.type ~= 'mouseDown' or event.button ~= 'left' or ui.usingPointer() then
         return
     end
     if self.quest:targetAt(event.x, event.y) == nil and self.stage:grabs(event.x, event.y) then
@@ -66,7 +66,7 @@ end
 
 function game:render()
     graphics2d.beginScreen()
-    self.stage:draw(not self.desktop.strip, haylen.time())
+    self.stage:draw(not self.desktop.strip, haylen.elapsed())
     self.quest:draw()
     self.effects:draw()
 end

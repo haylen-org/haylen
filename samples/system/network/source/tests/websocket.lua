@@ -1,4 +1,4 @@
--- WebSocket echo with haylen.net: net.websocket connects in the background and reports open, message, error and close, send and sendBinary send text and raw bytes, and close ends the connection with a code. The socket answers the pings of the server by itself, so the ping here is a message the echo server sends back, which measures the round trip.
+-- WebSocket echo with haylen.net: net.connectWebSocket connects in the background and reports open, message, error and close, send and sendBinary send text and raw bytes, and close ends the connection with a code. The socket answers the pings of the server by itself, so the ping here is a message the echo server sends back, which measures the round trip.
 local haylen = require('haylen')
 local net = require('haylen.net')
 local ui = require('haylen.ui')
@@ -90,9 +90,9 @@ function WebSocket:connect()
         self:log('The socket is ' .. self.socket.state .. ' already')
         return
     end
-    local socket = self:keep(net.websocket(services.echo))
+    local socket = self:keep(net.connectWebSocket(services.echo))
     self.socket = socket
-    self:log('net.websocket(url)', 'connecting to ' .. socket.url)
+    self:log('net.connectWebSocket(url)', 'connecting to ' .. socket.url)
     self:on(socket, 'open', function()
         self:log('open', 'the connection is up')
     end)
@@ -134,7 +134,7 @@ end
 function WebSocket:sendBinary()
     if self:ready() then
         self.sent = self.sent + 1
-        local bytes = string.pack('<I4f', self.sent, haylen.time())
+        local bytes = string.pack('<I4f', self.sent, haylen.elapsed())
         self.socket:sendBinary(bytes)
         self:log('sendBinary', #bytes .. ' bytes: ' .. sample.hex(bytes))
     end

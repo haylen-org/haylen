@@ -91,7 +91,7 @@ function Errors:showResults()
             ui.label{text = result.outcome, color = result.color},
         }
     end
-    self.document:replace('results', nodes)
+    self.document:replaceChildren('results', nodes)
 end
 
 return Errors

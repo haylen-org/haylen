@@ -7,9 +7,9 @@ std::string_view Gesture::typeName(Type value) noexcept {
     case Type::Tap:
         return "tap";
     case Type::DoubleTap:
-        return "double_tap";
+        return "doubleTap";
     case Type::LongPress:
-        return "long_press";
+        return "longPress";
     case Type::Swipe:
         return "swipe";
     case Type::Pinch:

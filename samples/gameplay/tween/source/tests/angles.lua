@@ -35,7 +35,7 @@ end
 function Angles:turn()
     self.step = self.step % #kHeadings + 1
     local target = math.rad(kHeadings[self.step])
-    local options = {owner = self, ease = 'cubic_in_out', overwrite = true}
+    local options = {owner = self, ease = 'cubicInOut', overwrite = true}
     tween.to(self.plain, 1.2, {heading = target}, options)
     options.angles = {'heading'}
     tween.to(self.short, 1.2, {heading = target}, options)

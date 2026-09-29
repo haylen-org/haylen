@@ -13,9 +13,9 @@ local kTags = {'idle', 'hop', 'splat'}
 local kRunFrames = {9, 10, 11, 12, 13, 14, 15, 16}
 local kCode = [[
 local gems = assets.load('atlases/gems.json', 'atlas')  gems:apply(sprite, 'gem_red.png')
-local coin = gems:animationFromFrames({'coin_0.png', 'coin_1.png', ...}, {fps = 10})
+local coin = gems:animationFromFrames({'coin_0.png', 'coin_1.png', ...}, {framesPerSecond = 10})
 local slime = assets.load('atlases/slime.json', 'atlas')  animator:add('hop', slime:animation('hop'))  local bubble = slime:slice('bubble')
-local run = animation2d.grid(assets.texture('sheets/walker.png'), {frameWidth = 64, frameHeight = 64, frames = {9, 10, 11, 12, 13, 14, 15, 16}, fps = 12})]]
+local run = animation2d.fromGrid(assets.texture('sheets/walker.png'), {frameWidth = 64, frameHeight = 64, cells = {9, 10, 11, 12, 13, 14, 15, 16}, framesPerSecond = 12})]]
 
 -- An animator that plays one animation on its own sprite.
 local function player(texture, name, animation)
@@ -40,11 +40,11 @@ function Atlases:enter()
     for index = 0, 5 do
         coinFrames[#coinFrames + 1] = 'coin_' .. index .. '.png'
     end
-    self.players = {coin = player(self.gems.texture, 'spin', self.gems:animationFromFrames(coinFrames, {fps = 10}))}
+    self.players = {coin = player(self.gems.texture, 'spin', self.gems:animationFromFrames(coinFrames, {framesPerSecond = 10}))}
     for _, tag in ipairs(kTags) do
         self.players[tag] = player(self.slime.texture, tag, self.slime:animation(tag))
     end
-    self.players.walker = player(self.sheet, 'run', animation2d.grid(self.sheet, {frameWidth = 64, frameHeight = 64, frames = kRunFrames, fps = 12}))
+    self.players.walker = player(self.sheet, 'run', animation2d.fromGrid(self.sheet, {frameWidth = 64, frameHeight = 64, cells = kRunFrames, framesPerSecond = 12}))
 
     -- The splat plays once, so it starts over a moment after it finishes.
     local splat = self.players.splat.animator

@@ -86,7 +86,7 @@ TEST_F(NativeLuaTest, CallsValuesStructsTextAndBuffersOfALoadedLibrary) {
         summary = table.concat({
             byPath.native_test_add(20, 22), lib.native_test_scale(1.5, 4), ffi.string(lib.native_test_origin()),
             sum.x, sum.y, rect.origin.x, rect.origin.y, rect.width, rect.height,
-            tostring(native.available()), tostring(native.symbol('native_test_add') ~= nil), tostring(native.symbol('native_test_nowhere')),
+            tostring(native.available()), tostring(native.findSymbol('native_test_add') ~= nil), tostring(native.findSymbol('native_test_nowhere')),
         }, ' ')
     )");
     // clang-format on

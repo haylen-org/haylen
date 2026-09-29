@@ -30,7 +30,7 @@ function ComplexScripts:init(entry)
     self.direction = 'auto'
     local family = fonts.family('scripts')
     self.paragraph = graphics2d.newRichText(kParagraph, {family = family, size = 30, maxWidth = self.width, lineSpacing = 1, direction = 'rtl', language = 'ar'})
-    self.typed = graphics2d.newRichText(kTyped, {family = family, size = 30, maxWidth = 600, lineSpacing = 1, reveal = 14})
+    self.typed = graphics2d.newRichText(kTyped, {family = family, size = 30, maxWidth = 600, lineSpacing = 1, revealSpeed = 14})
 end
 
 function ComplexScripts:controls()
@@ -53,7 +53,7 @@ end
 function ComplexScripts:update(dt)
     self.paragraph:update(dt)
     self.typed:update(dt)
-    self:setStatus(string.format('%d lines of Arabic, %d of %d characters revealed', self.paragraph:layout().lineCount, self.typed.visibleCharacters, self.typed.characterCount))
+    self:setStatus(string.format('%d lines of Arabic, %d of %d characters revealed', self.paragraph:frame().lineCount, self.typed.visibleCharacters, self.typed.characterCount))
 end
 
 function ComplexScripts:render()

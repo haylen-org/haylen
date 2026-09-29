@@ -27,7 +27,7 @@ function Blend:init(entry)
 end
 
 function Blend:blendTo(amount)
-    tween.to(self.cut, 1.4, {amount = amount}, {ease = 'cubic_in_out', owner = self, overwrite = true})
+    tween.to(self.cut, 1.4, {amount = amount}, {ease = 'cubicInOut', owner = self, overwrite = true})
 end
 
 function Blend:controls()

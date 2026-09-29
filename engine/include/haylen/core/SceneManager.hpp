@@ -89,7 +89,7 @@ class SceneManager final {
         const Scene* to = nullptr;
     };
 
-    // What scene_load_failed carries.
+    // What sceneLoadFailed carries.
     struct LoadFailure {
         const Scene* scene = nullptr;
         const lua::Error* error = nullptr;

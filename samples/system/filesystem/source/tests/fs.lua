@@ -67,9 +67,9 @@ end
 -- Runs an operation as a task of the scene and reports its result, or its error, with the frames it took.
 function Fs:run(title, operation)
     self:spawn(function()
-        local started = haylen.frame()
+        local started = haylen.frameIndex()
         local ok, result = pcall(operation, self)
-        local frames = haylen.frame() - started
+        local frames = haylen.frameIndex() - started
         local timing = string.format('after %d frame%s', frames, frames == 1 and '' or 's')
         if ok then
             self.activity:add(result, timing)

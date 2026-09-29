@@ -37,7 +37,7 @@ end
 
 function Autoloads:enter()
     self.journal = Journal()
-    self:listen('autoload_started', function(info) self.journal:add('autoload_started ' .. info.name, sample.accent) end)
+    self:listen('autoloadStarted', function(info) self.journal:add('autoloadStarted ' .. info.name, sample.accent) end)
     self:frame({
         hint = 'Earn coins here and spend them in the shop. The counter in the corner is drawn by the autoload on every screen.',
         code = kCode,

@@ -33,10 +33,10 @@ class TweenLua final {
     static void install(lua_State* L);
 
   private:
-    static constexpr std::array<std::string_view, 17> kCommonFields{"delay", "repeatCount", "loop", "repeatDelay", "timeScale", "tag", "owner", "processMode", "unscaled", "fixed", "autoKill", "paused", "onStart", "onUpdate", "onLoop", "onComplete", "onKill"};
+    static constexpr std::array<std::string_view, 17> kCommonFields{"delay", "repeatCount", "loopMode", "repeatDelay", "timeScale", "tag", "owner", "processMode", "unscaled", "fixedStep", "autoKill", "paused", "onStart", "onUpdate", "onLoop", "onComplete", "onKill"};
     static constexpr std::array<std::string_view, 6> kTweenFields{"ease", "overwrite", "speedBased", "angles", "integers", "colorSpace"};
     static constexpr std::array<std::string_view, 1> kTimelineFields{"onStep"};
-    static constexpr std::array<std::string_view, 1> kStaggerFields{"from"};
+    static constexpr std::array<std::string_view, 1> kStaggerFields{"origin"};
     static constexpr std::array<std::string_view, 1> kFieldFields{"field"};
     static constexpr std::array<std::string_view, 2> kJumpFields{"power", "jumps"};
     static constexpr std::array<std::string_view, 4> kPathFields{"curved", "closed", "orient", "orientField"};
@@ -123,7 +123,7 @@ class TweenLua final {
     static int getTimeScale(lua_State* L);
     static int killTarget(lua_State* L);
     static int killAll(lua_State* L);
-    static int count(lua_State* L);
+    static int size(lua_State* L);
     static int open(lua_State* L);
 
     static int handlePlay(lua_State* L);
@@ -135,7 +135,7 @@ class TweenLua final {
     static int handleComplete(lua_State* L);
     static int handleKill(lua_State* L);
     static int handleWait(lua_State* L);
-    static int handleActive(lua_State* L);
+    static int handleAlive(lua_State* L);
     static int handlePlaying(lua_State* L);
     static int handlePaused(lua_State* L);
     static int handleReversed(lua_State* L);
@@ -154,7 +154,7 @@ class TweenLua final {
     static int timelineAppend(lua_State* L);
     static int timelineJoin(lua_State* L);
     static int timelineInsert(lua_State* L);
-    static int timelineLabel(lua_State* L);
+    static int timelineAddLabel(lua_State* L);
     static int timelineSize(lua_State* L);
 
     template <typename T> static void installHandle(lua_State* L, bool timeline);

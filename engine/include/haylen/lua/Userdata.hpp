@@ -33,13 +33,13 @@ class Userdata final {
         auto* storage = static_cast<typename Type<T>::Storage*>(luaL_checkudata(L, index, Type<T>::name));
         if constexpr (SharedBound<T>) {
             if (!*storage) {
-                luaL_error(L, "%s was already released.", Type<T>::name);
+                luaL_error(L, "This %s was already released.", Type<T>::name);
             }
             return **storage;
         } else if constexpr (WeakBound<T>) {
             T* object = storage->lock().get();
             if (object == nullptr) {
-                luaL_error(L, "%s was already released.", Type<T>::name);
+                luaL_error(L, "This %s was already released.", Type<T>::name);
             }
             return *object;
         } else {
@@ -50,7 +50,7 @@ class Userdata final {
     template <SharedBound T> [[nodiscard]] static const std::shared_ptr<T>& checkShared(lua_State* L, int index) {
         auto* storage = static_cast<std::shared_ptr<T>*>(luaL_checkudata(L, index, Type<T>::name));
         if (!*storage) {
-            luaL_error(L, "%s was already released.", Type<T>::name);
+            luaL_error(L, "This %s was already released.", Type<T>::name);
         }
         return *storage;
     }

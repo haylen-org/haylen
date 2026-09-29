@@ -86,7 +86,7 @@ function Card:render()
     graphics2d.beginScreen()
     local area = graphics2d.canvasBounds()
     graphics2d.drawRect(area, self.color)
-    local time = haylen.time()
+    local time = haylen.elapsed()
     for index = 0, 5 do
         local angle = time * 0.4 + index * math.pi / 3
         local x, y = area.x + area.width * 0.5 + math.cos(angle) * 520, area.y + area.height * 0.55 + math.sin(angle) * 260

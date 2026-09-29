@@ -50,8 +50,8 @@ class CollectionsLua final {
     static int newRingBuffer(lua_State* L);
     static int bufferPush(lua_State* L);
     static int bufferPop(lua_State* L);
-    static int bufferPeek(lua_State* L);
-    static int bufferLast(lua_State* L);
+    static int bufferFront(lua_State* L);
+    static int bufferBack(lua_State* L);
     static int bufferGet(lua_State* L);
     static int bufferValues(lua_State* L);
     static int bufferClear(lua_State* L);

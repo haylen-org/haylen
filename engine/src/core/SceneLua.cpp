@@ -359,7 +359,7 @@ int SceneLua::state(lua_State* L) {
 }
 
 // Returns the progress of the load of a scene and its message.
-int SceneLua::progress(lua_State* L) {
+int SceneLua::sceneLoadProgress(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     const std::shared_ptr<lua::ScriptedScene> scene = lua::ScriptedScene::find(L, 1);
     const SceneLoad::Progress current = scene ? scene->getLoadProgress() : SceneLoad::Progress{};
@@ -438,7 +438,7 @@ int SceneLua::loadParams(lua_State* L) {
 
 int SceneLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"push", &lua::Binding::native<&push>}, {"replace", &lua::Binding::native<&replace>}, {"pop", &lua::Binding::native<&pop>}, {"popTo", &lua::Binding::native<&popTo>}, {"popToRoot", &lua::Binding::native<&popToRoot>}, {"preload", &lua::Binding::native<&preload>}, {"cancelPreload", &lua::Binding::native<&cancelPreload>}, {"clear", &lua::Binding::native<&clear>}, {"size", &size}, {"top", &top}, {"at", &lua::Binding::native<&at>}, {"list", &list}, {"transitioning", &transitioning}, {"loadingViewOpacity", &loadingViewOpacity}, {"state", &lua::Binding::native<&state>}, {"progress", &lua::Binding::native<&progress>}, {"listen", &lua::Binding::native<&listen>}, {"spawn", &lua::Binding::native<&spawn>}, {nullptr, nullptr},
+        {"push", &lua::Binding::native<&push>}, {"replace", &lua::Binding::native<&replace>}, {"pop", &lua::Binding::native<&pop>}, {"popTo", &lua::Binding::native<&popTo>}, {"popToRoot", &lua::Binding::native<&popToRoot>}, {"preload", &lua::Binding::native<&preload>}, {"cancelPreload", &lua::Binding::native<&cancelPreload>}, {"clear", &lua::Binding::native<&clear>}, {"size", &size}, {"top", &top}, {"at", &lua::Binding::native<&at>}, {"list", &list}, {"transitioning", &transitioning}, {"loadingViewOpacity", &loadingViewOpacity}, {"state", &lua::Binding::native<&state>}, {"loadProgress", &lua::Binding::native<&sceneLoadProgress>}, {"listen", &lua::Binding::native<&listen>}, {"spawn", &lua::Binding::native<&spawn>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
 

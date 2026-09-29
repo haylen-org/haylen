@@ -12,7 +12,7 @@
 
 namespace haylen::ui {
 
-// A menu of items that opens over its one child: with a right click, a long press on a touch screen, ui_menu while the focus is inside the child, or the open command.
+// A menu of items that opens over its one child: with a right click, a long press on a touch screen, uiMenu while the focus is inside the child, or the open command.
 class ContextMenu final : public Component {
   public:
     [[nodiscard]] std::string_view getKind() const noexcept override {

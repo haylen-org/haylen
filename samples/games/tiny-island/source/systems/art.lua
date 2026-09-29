@@ -54,7 +54,7 @@ end
 
 function art.strip(path, frame, options)
     local texture = art.texture(path)
-    return animation2d.grid(texture, {frameWidth = frame, frameHeight = options.height or frame, fps = options.fps or 10, loop = options.loop == false and 'once' or 'loop'})
+    return animation2d.fromGrid(texture, {frameWidth = frame, frameHeight = options.height or frame, framesPerSecond = options.fps or 10, loop = options.loop == false and 'once' or 'loop'})
 end
 
 -- Returns the clips of a unit kind in a team color, with the pivot that puts the feet of the unit on its position.

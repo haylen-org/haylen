@@ -242,7 +242,7 @@ int MathLua::randomNew(lua_State* L) {
     return 1;
 }
 
-float MathLua::randomFloat(Random& self) {
+float MathLua::randomNextFloat(Random& self) {
     return self.nextFloat();
 }
 
@@ -262,7 +262,7 @@ void MathLua::randomReseed(Random& self, lua_Integer seed) {
     self.reseed(static_cast<std::uint64_t>(seed));
 }
 
-int MathLua::randomPick(lua_State* L) {
+int MathLua::randomWeightedIndex(lua_State* L) {
     Random& self = lua::Userdata::check<Random>(L, 1);
     const std::vector<float> weights = lua::Stack::read<std::vector<float>>(L, 2);
     if (weights.empty()) {
@@ -347,7 +347,7 @@ bool MathLua::polygonContains(std::vector<Vec2> polygon, Vec2 point) {
     return Geometry::contains(polygon, point);
 }
 
-float MathLua::polygonArea(std::vector<Vec2> polygon) {
+float MathLua::polygonSignedArea(std::vector<Vec2> polygon) {
     return Geometry::signedArea(polygon);
 }
 
@@ -381,7 +381,7 @@ int MathLua::poissonDisk(lua_State* L) {
     lua::Table::readField(L, 1, "area", options.area);
     lua::Table::readField(L, 1, "minimumDistance", options.minimumDistance);
     lua::Table::readField(L, 1, "maximumDistance", options.maximumDistance);
-    lua::Table::readField(L, 1, "attempts", options.attemptsPerPoint);
+    lua::Table::readField(L, 1, "attempts", options.attempts);
 
     // The generator stays on the stack while sampling, so an accept function that drops it from the options cannot free it.
     Random local(0);
@@ -438,7 +438,7 @@ void MathLua::installClasses(lua_State* L) {
 
     lua::ClassBuilder<Transform2D>(L).field<&Transform2D::a>("a").field<&Transform2D::b>("b").field<&Transform2D::c>("c").field<&Transform2D::d>("d").field<&Transform2D::tx>("tx").field<&Transform2D::ty>("ty").function("apply", &lua::Binding::function<&transformApply>).function("applyVector", &lua::Binding::function<&transformApplyVector>).method<&Transform2D::getDeterminant>("determinant").method<&Transform2D::getTranslation>("translation").function("inverse", &lua::Binding::function<&transformInverse>).meta("__mul", &transformMultiply).install();
 
-    lua::ClassBuilder<Random>(L).function("float", &lua::Binding::function<&randomFloat>).function("range", &lua::Binding::function<&randomRange>).function("integer", &lua::Binding::function<&randomInteger>).function("chance", &lua::Binding::function<&randomChance>).function("reseed", &lua::Binding::function<&randomReseed>).function("pick", &lua::Binding::native<&randomPick>).function("shuffle", &randomShuffle).install();
+    lua::ClassBuilder<Random>(L).function("nextFloat", &lua::Binding::function<&randomNextFloat>).function("range", &lua::Binding::function<&randomRange>).function("integer", &lua::Binding::function<&randomInteger>).function("chance", &lua::Binding::function<&randomChance>).function("reseed", &lua::Binding::function<&randomReseed>).function("weightedIndex", &lua::Binding::native<&randomWeightedIndex>).function("shuffle", &randomShuffle).install();
 
     lua::ClassBuilder<Noise2D>(L).function("perlin", &lua::Binding::function<&noisePerlin>).function("simplex", &lua::Binding::function<&noiseSimplex>).function("fractal", &lua::Binding::function<&noiseFractal>).function("worley", &lua::Binding::native<&noiseWorley>).function("warp", &lua::Binding::native<&noiseWarp>).install();
 
@@ -449,7 +449,7 @@ void MathLua::installClasses(lua_State* L) {
 
 int MathLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"vec2", &vec2New}, {"fromAngle", &lua::Binding::function<&vec2FromAngle>}, {"rect", &rectNew}, {"fromMinMax", &lua::Binding::function<&Rect::fromMinMax>}, {"fromCenter", &lua::Binding::function<&Rect::fromCenter>}, {"color", &lua::Binding::native<&colorNew>}, {"white", &lua::Binding::function<&Color::white>}, {"black", &lua::Binding::function<&Color::black>}, {"transparent", &lua::Binding::function<&Color::transparent>}, {"fromRgba8", &colorFromRgba8}, {"fromHex", &colorFromHex}, {"hsv", &lua::Binding::function<&colorFromHsv>}, {"transform", &lua::Binding::function<&transformCompose>}, {"identity", &lua::Binding::function<&Transform2D::identity>}, {"translation", &lua::Binding::function<&Transform2D::translation>}, {"rotation", &lua::Binding::function<&Transform2D::rotation>}, {"scaling", &lua::Binding::function<&Transform2D::scaling>}, {"random", &randomNew}, {"noise", &noiseNew}, {"ease", &lua::Binding::function<&ease>}, {"clamp", &clampValue}, {"lerp", &lua::Binding::function<&Math::lerp>}, {"inverseLerp", &lua::Binding::function<&Math::inverseLerp>}, {"remap", &lua::Binding::function<&Math::remap>}, {"smoothstep", &lua::Binding::function<&Math::smoothstep>}, {"moveToward", &lua::Binding::function<&Math::moveToward>}, {"wrapAngle", &lua::Binding::function<&Math::wrapAngle>}, {"damp", &lua::Binding::function<&Math::dampFactor>}, {"radians", &lua::Binding::function<&Math::radians>}, {"degrees", &lua::Binding::function<&Math::degrees>}, {"approximately", &lua::Binding::function<&approximatelyValue>}, {"sign", &lua::Binding::function<&Math::sign>}, {"saturate", &lua::Binding::function<&Math::saturate>}, {"intersects", &circleIntersects}, {"intersection", &lua::Binding::function<&Geometry::intersection>}, {"closestPoint", &lua::Binding::function<&Geometry::closestPoint>}, {"distanceToSegment", &lua::Binding::function<&Geometry::distanceToSegment>}, {"bounds", &lua::Binding::function<&pointBounds>}, {"polygonContains", &lua::Binding::function<&polygonContains>}, {"polygonArea", &lua::Binding::function<&polygonArea>}, {"polygonCentroid", &lua::Binding::function<&polygonCentroid>}, {"polygonConvex", &lua::Binding::function<&polygonConvex>}, {"convexHull", &lua::Binding::function<&hull>}, {"triangulate", &lua::Binding::native<&triangulatePolygon>}, {"poissonDisk", &lua::Binding::native<&poissonDisk>}, {nullptr, nullptr},
+        {"vec2", &vec2New}, {"fromAngle", &lua::Binding::function<&vec2FromAngle>}, {"rect", &rectNew}, {"fromMinMax", &lua::Binding::function<&Rect::fromMinMax>}, {"fromCenter", &lua::Binding::function<&Rect::fromCenter>}, {"color", &lua::Binding::native<&colorNew>}, {"white", &lua::Binding::function<&Color::white>}, {"black", &lua::Binding::function<&Color::black>}, {"transparent", &lua::Binding::function<&Color::transparent>}, {"fromRgba8", &colorFromRgba8}, {"fromHex", &colorFromHex}, {"fromHsv", &lua::Binding::function<&colorFromHsv>}, {"transform", &lua::Binding::function<&transformCompose>}, {"identity", &lua::Binding::function<&Transform2D::identity>}, {"translation", &lua::Binding::function<&Transform2D::translation>}, {"rotation", &lua::Binding::function<&Transform2D::rotation>}, {"scaling", &lua::Binding::function<&Transform2D::scaling>}, {"random", &randomNew}, {"noise", &noiseNew}, {"ease", &lua::Binding::function<&ease>}, {"clamp", &clampValue}, {"lerp", &lua::Binding::function<&Math::lerp>}, {"inverseLerp", &lua::Binding::function<&Math::inverseLerp>}, {"remap", &lua::Binding::function<&Math::remap>}, {"smoothstep", &lua::Binding::function<&Math::smoothstep>}, {"moveToward", &lua::Binding::function<&Math::moveToward>}, {"wrapAngle", &lua::Binding::function<&Math::wrapAngle>}, {"dampFactor", &lua::Binding::function<&Math::dampFactor>}, {"radians", &lua::Binding::function<&Math::radians>}, {"degrees", &lua::Binding::function<&Math::degrees>}, {"approximately", &lua::Binding::function<&approximatelyValue>}, {"sign", &lua::Binding::function<&Math::sign>}, {"saturate", &lua::Binding::function<&Math::saturate>}, {"intersects", &circleIntersects}, {"intersection", &lua::Binding::function<&Geometry::intersection>}, {"closestPoint", &lua::Binding::function<&Geometry::closestPoint>}, {"distanceToSegment", &lua::Binding::function<&Geometry::distanceToSegment>}, {"bounds", &lua::Binding::function<&pointBounds>}, {"polygonContains", &lua::Binding::function<&polygonContains>}, {"polygonSignedArea", &lua::Binding::function<&polygonSignedArea>}, {"polygonCentroid", &lua::Binding::function<&polygonCentroid>}, {"polygonConvex", &lua::Binding::function<&polygonConvex>}, {"convexHull", &lua::Binding::function<&hull>}, {"triangulate", &lua::Binding::native<&triangulatePolygon>}, {"poissonDisk", &lua::Binding::native<&poissonDisk>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     RaycastLua::addFunctions(L);

@@ -37,14 +37,14 @@ class RichTextLua final {
     static int measureRichText(lua_State* L);
     static int registerTextEffect(lua_State* L);
     static int registerTextIcon(lua_State* L);
-    static int textEffects(lua_State* L);
+    static int textEffectNames(lua_State* L);
 
     // Reads the options of rich text, where a missing family takes the default font and fonts maps the names of [font] tags to families or fonts.
     [[nodiscard]] static text::RichTextOptions readOptions(lua_State* L, int index, std::initializer_list<lua::Table::FieldNames> extraFields = {});
     [[nodiscard]] static const std::shared_ptr<text::RichTextRegistry>& getRegistry(lua_State* L);
 
   private:
-    static constexpr std::array<std::string_view, 14> kOptionFields{"family", "size", "bold", "italic", "color", "maxWidth", "align", "direction", "language", "lineSpacing", "scale", "reveal", "underlineLinks", "fonts"};
+    static constexpr std::array<std::string_view, 14> kOptionFields{"family", "size", "bold", "italic", "color", "maxWidth", "align", "direction", "language", "lineSpacing", "scale", "revealSpeed", "underlineLinks", "fonts"};
     static constexpr std::array<std::string_view, 3> kIconFields{"source", "width", "height"};
     static constexpr std::array<std::string_view, 2> kDrawFields{"scale", "tint"};
     static constexpr std::array<std::string_view, 1> kTintFields{"tint"};
@@ -61,7 +61,7 @@ class RichTextLua final {
     static int linkAt(lua_State* L);
     static int hintAt(lua_State* L);
     static int setVisibleCharacters(lua_State* L);
-    static int layout(lua_State* L);
+    static int frame(lua_State* L);
 
     static int getMarkup(lua_State* L);
     static int setMarkup(lua_State* L);

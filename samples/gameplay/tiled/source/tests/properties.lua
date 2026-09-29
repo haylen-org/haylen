@@ -45,7 +45,7 @@ function Properties:enter()
     for _, object in ipairs(self.objects) do
         owners[#owners + 1] = {id = 'object ' .. object.id, text = string.format('Object %s (id %d)', object.name, object.id), properties = object.properties, types = object.propertyTypes, object = object}
     end
-    for _, gid in ipairs({self.objects[1].gid, map:tileAt('ground', 20, 5)}) do
+    for _, gid in ipairs({self.objects[1].gid, map:tile('ground', 20, 5)}) do
         local info = map:tileInfo(gid)
         owners[#owners + 1] = {id = 'tile ' .. info.id, text = string.format('Tile %d of %s (%s)', info.id, info.tileset, info.type), properties = info.properties, types = info.propertyTypes}
     end
@@ -56,7 +56,7 @@ function Properties:enter()
         tree[#tree + 1] = {id = owner.id, text = owner.text, children = items(owner.id, owner.properties, owner.types)}
         self.owners[owner.id] = owner
     end
-    local bounds = map.bounds
+    local bounds = map.pixelBounds
     Properties.super.enter(self, {
         hint = 'Open the entries of the tree to read every value. Picking an object entry outlines the object on the map, and object properties hold the id of the object they point to.',
         controls = {

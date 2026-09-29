@@ -1,4 +1,4 @@
--- Tiles picked from their neighbors while the player paints: 4-bit masks that join the sides, 47-tile blob masks that also round the corners, and a corner Wang set looked up by procedural2d.wang.
+-- Tiles picked from their neighbors while the player paints: 4-bit masks that join the sides, 47-tile blob masks that also round the corners, and a corner Wang set looked up by procedural2d.autotileWang.
 local haylen = require('haylen')
 local graphics2d = require('haylen.graphics2d')
 local input = require('haylen.input')
@@ -70,7 +70,7 @@ function Autotile:retile()
     elseif self.mode == 'blob' then
         self.tiles = procedural2d.autotile8(self.cells, 1)
     else
-        self.tiles = procedural2d.wang(self.corners, self.set, 3)
+        self.tiles = procedural2d.autotileWang(self.corners, self.set, 3)
     end
 end
 

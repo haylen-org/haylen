@@ -67,24 +67,24 @@ end
 function Storage:refresh()
     local items = {}
     for index, path in ipairs(storage.list()) do
-        items[index] = {id = path, text = path, caption = sample.bytes(#storage.read(path))}
+        items[index] = {id = path, text = path, caption = sample.bytes(#storage.readText(path))}
     end
     self:show('files', {items = items})
 end
 
 function Storage:write()
     local text = string.format('Notes of %s\n', os.date('%Y-%m-%d'))
-    storage.write(kNote, text)
+    storage.writeText(kNote, text)
     self.lines = 0
-    self.activity:add(string.format("storage.write('%s', text)", kNote), sample.bytes(#text) .. ', the folder notes was created on the way')
+    self.activity:add(string.format("storage.writeText('%s', text)", kNote), sample.bytes(#text) .. ', the folder notes was created on the way')
 end
 
 -- The storage API writes whole files, so appending reads the file and writes it back longer, still atomically.
 function Storage:append()
     self.lines = self.lines + 1
-    local old = storage.exists(kNote) and storage.read(kNote) or ''
-    storage.write(kNote, old .. string.format('%s line %d\n', os.date('%H:%M:%S'), self.lines))
-    self.activity:add(string.format("storage.write('%s', old .. line)", kNote), 'now ' .. sample.bytes(#storage.read(kNote)))
+    local old = storage.exists(kNote) and storage.readText(kNote) or ''
+    storage.writeText(kNote, old .. string.format('%s line %d\n', os.date('%H:%M:%S'), self.lines))
+    self.activity:add(string.format("storage.writeText('%s', old .. line)", kNote), 'now ' .. sample.bytes(#storage.readText(kNote)))
 end
 
 function Storage:read()
@@ -92,8 +92,8 @@ function Storage:read()
         self.activity:add(string.format("storage.exists('%s') is false", kNote), 'write the note first')
         return
     end
-    local text = storage.read(kNote)
-    self.activity:add(string.format("storage.read('%s')", kNote), sample.bytes(#text) .. ': ' .. text:gsub('\n', ' | '))
+    local text = storage.readText(kNote)
+    self.activity:add(string.format("storage.readText('%s')", kNote), sample.bytes(#text) .. ': ' .. text:gsub('\n', ' | '))
 end
 
 function Storage:writeJson()
@@ -118,13 +118,13 @@ end
 
 function Storage:missing()
     local ok, failure = pcall(storage.read, 'notes/missing.txt')
-    self.activity:add("storage.read('notes/missing.txt') raised", ok and 'nothing' or failure)
+    self.activity:add("storage.readText('notes/missing.txt') raised", ok and 'nothing' or failure)
 end
 
 -- Paths cannot leave the folder of the app, so another app's files stay out of reach.
 function Storage:outside()
     local ok, failure = pcall(storage.write, '../other-app/secret.txt', 'hello')
-    self.activity:add("storage.write('../other-app/secret.txt') raised", ok and 'nothing' or failure)
+    self.activity:add("storage.writeText('../other-app/secret.txt') raised", ok and 'nothing' or failure)
 end
 
 function Storage:remove()

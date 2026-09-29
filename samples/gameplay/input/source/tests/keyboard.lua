@@ -13,10 +13,10 @@ local Keyboard = haylen.class('Keyboard', sample.Test)
 -- Each row lists key names with an optional label and width in key units.
 local kRows = {
     {{'escape', 'esc'}, {'1'}, {'2'}, {'3'}, {'4'}, {'5'}, {'6'}, {'7'}, {'8'}, {'9'}, {'0'}, {'minus', '-'}, {'equal', '='}, {'backspace', 'back', 1.6}},
-    {{'tab', 'tab', 1.4}, {'q'}, {'w'}, {'e'}, {'r'}, {'t'}, {'y'}, {'u'}, {'i'}, {'o'}, {'p'}, {'left_bracket', '['}, {'right_bracket', ']'}, {'backslash', '\\', 1.2}},
-    {{'caps_lock', 'caps', 1.7}, {'a'}, {'s'}, {'d'}, {'f'}, {'g'}, {'h'}, {'j'}, {'k'}, {'l'}, {'semicolon', ';'}, {'apostrophe', "'"}, {'enter', 'enter', 1.9}},
-    {{'left_shift', 'shift', 2.2}, {'z'}, {'x'}, {'c'}, {'v'}, {'b'}, {'n'}, {'m'}, {'comma', ','}, {'period', '.'}, {'slash', '/'}, {'right_shift', 'shift', 2.4}},
-    {{'left_control', 'ctrl', 1.4}, {'left_super', 'super', 1.4}, {'left_alt', 'alt', 1.4}, {'space', 'space', 5.2}, {'right_alt', 'alt', 1.4}, {'left', '<'}, {'up', '^'}, {'down', 'v'}, {'right', '>'}},
+    {{'tab', 'tab', 1.4}, {'q'}, {'w'}, {'e'}, {'r'}, {'t'}, {'y'}, {'u'}, {'i'}, {'o'}, {'p'}, {'leftBracket', '['}, {'rightBracket', ']'}, {'backslash', '\\', 1.2}},
+    {{'capsLock', 'caps', 1.7}, {'a'}, {'s'}, {'d'}, {'f'}, {'g'}, {'h'}, {'j'}, {'k'}, {'l'}, {'semicolon', ';'}, {'apostrophe', "'"}, {'enter', 'enter', 1.9}},
+    {{'leftShift', 'shift', 2.2}, {'z'}, {'x'}, {'c'}, {'v'}, {'b'}, {'n'}, {'m'}, {'comma', ','}, {'period', '.'}, {'slash', '/'}, {'rightShift', 'shift', 2.4}},
+    {{'leftControl', 'ctrl', 1.4}, {'leftSuper', 'super', 1.4}, {'leftAlt', 'alt', 1.4}, {'space', 'space', 5.2}, {'rightAlt', 'alt', 1.4}, {'left', '<'}, {'up', '^'}, {'down', 'v'}, {'right', '>'}},
 }
 local kUnits = 15.6
 local kFlash = 0.35
@@ -41,7 +41,7 @@ function Keyboard:enter()
         focus = 'onScreen',
         controls = {
             ui.label{text = 'The keys belong to the test, so the panel answers the pointer and touch only.', color = 'textMuted', font = 'caption'},
-            ui.toggle{id = 'onScreen', text = 'On-screen keyboard', onChange = function(event) window.showKeyboard(event.checked) end},
+            ui.toggle{id = 'onScreen', text = 'On-screen keyboard', onChange = function(event) window.setKeyboardVisible(event.checked) end},
             ui.button{id = 'clear', text = 'Clear the text and the log', onClick = function()
                 self.text = ''
                 self.journal:clear()
@@ -53,7 +53,7 @@ function Keyboard:enter()
 end
 
 function Keyboard:exit()
-    window.showKeyboard(false)
+    window.setKeyboardVisible(false)
 end
 
 function Keyboard:resize(area)
@@ -62,9 +62,9 @@ end
 
 -- Key events arrive here as soon as the platform sends them, with the repeats of a held key.
 function Keyboard:event(event)
-    if event.type == 'key_down' or event.type == 'key_up' then
+    if event.type == 'keyDown' or event.type == 'keyUp' then
         local repeated = event['repeat'] and ' (repeat)' or ''
-        self.journal:add(event.type .. ' ' .. event.key .. repeated, event.type == 'key_down' and sample.warm or sample.red)
+        self.journal:add(event.type .. ' ' .. event.key .. repeated, event.type == 'keyDown' and sample.warm or sample.red)
     elseif event.type == 'character' then
         self.journal:add('character ' .. event.character, sample.green)
     end
@@ -129,7 +129,7 @@ function Keyboard:draw(area)
     local box = {left, below + 64, kUnits * self.unit, area.height - below - 88}
     graphics2d.drawRect(box, sample.surface)
     sample.caption('input.text()', box[1] + 12, box[2] + 10)
-    local caret = math.floor(haylen.time() * 2) % 2 == 0 and '|' or ''
+    local caret = math.floor(haylen.elapsed() * 2) % 2 == 0 and '|' or ''
     graphics2d.drawText(nil, self.text .. caret, box[1] + 12, box[2] + 44, {size = 30, color = sample.ink, maxWidth = box[3] - 24, layer = 2})
 
     local logLeft = left + kUnits * self.unit + 32

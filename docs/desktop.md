@@ -51,14 +51,14 @@ Frames and monitors are in desktop points, with the origin at the top left corne
 | `offset` | `[0, 0]` | Points added to the anchored position. |
 | `fill` | `"none"` | `"width"`, `"height"` or `"both"` stretch the window across the area. |
 
-`window.frame()` returns the content area of the window, `window.setFrame` moves and resizes it, and `window.currentMonitor()` returns the monitor that holds most of it. The `window_moved` event of [haylen.events](lua-api/events.md#engine-events) follows every move, by the player, the app or the system, and `window_monitors_changed` follows monitors that connect, disconnect or change, and work areas that change when the taskbar or the Dock moves.
+`window.frame()` returns the content area of the window, `window.setFrame` moves and resizes it, and `window.currentMonitor()` returns the monitor that holds most of it. The `windowMoved` event of [haylen.events](lua-api/events.md#engine-events) follows every move, by the player, the app or the system, and `windowMonitorsChanged` follows monitors that connect, disconnect or change, and work areas that change when the taskbar or the Dock moves.
 
 ```lua
 local events = require('haylen.events')
 local window = require('haylen.window')
 
 -- Keep the strip above the taskbar when the monitors change.
-events.on('window_monitors_changed', function()
+events.on('windowMonitorsChanged', function()
     window.place({anchor = 'bottom', fill = 'width'})
 end)
 ```
@@ -71,7 +71,7 @@ A transparent window lets the desktop show through wherever the app draws nothin
 
 ## Dragging the window
 
-A window without a title bar moves with `window.startDrag()`, which hands the window to the system for as long as the left mouse button stays down. The system moves the window smoothly, even while the app is busy, and the app hears the release of the button once the drag ends. Call it from a press, such as a `mouse_down` event of a scene or the `onPress` of a touch button of the UI, and not from `onClick`, which runs once the button is up.
+A window without a title bar moves with `window.startDrag()`, which hands the window to the system for as long as the left mouse button stays down. The system moves the window smoothly, even while the app is busy, and the app hears the release of the button once the drag ends. Call it from a press, such as a `mouseDown` event of a scene or the `onPress` of a touch button of the UI, and not from `onClick`, which runs once the button is up.
 
 ```lua
 local scene = require('haylen.scene')
@@ -81,7 +81,7 @@ local grip = {x = 0, y = 140, width = 48, height = 40}
 
 scene.push({
     event = function(self, event)
-        local inside = event.type == 'mouse_down' and event.x >= grip.x and event.x < grip.x + grip.width and event.y >= grip.y and event.y < grip.y + grip.height
+        local inside = event.type == 'mouseDown' and event.x >= grip.x and event.x < grip.x + grip.width and event.y >= grip.y and event.y < grip.y + grip.height
         if inside and event.button == 'left' then
             window.startDrag()
         end
@@ -124,7 +124,7 @@ A strip above the taskbar puts these together:
 2. The scene draws the ground, the hero and the UI, and leaves the rest of the strip transparent.
 3. Every frame, the scene gives the regions of what the player can click, and presses on the ground or on a grip call `window.startDrag()`.
 4. A button switches to a normal window and back: `setTransparent(false)`, `setDecorated(true)`, `setAlwaysOnTop(false)`, `setFocusable(true)`, `setMousePassthrough(false)` and a frame in the middle of the screen, then the strip options with `setTransparent(true)` and `window.place({anchor = 'bottom', fill = 'width'})` again.
-5. `window_monitors_changed` places the strip again when the taskbar moves or a monitor changes.
+5. `windowMonitorsChanged` places the strip again when the taskbar moves or a monitor changes.
 
 ```json
 {

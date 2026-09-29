@@ -29,7 +29,7 @@ TEST(SignalLuaTest, ConnectsWithPriorityOnceOwnersAndDeferral) {
     // clang-format on
     EXPECT_EQ(fixture.lua("return table.concat(calls, ' ')"), "first:1/2 normal:1/2 once:1/2 owned:1/2");
     fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return calls[#calls] .. ' ' .. hit.size .. ' ' .. hit.emissions .. ' ' .. hit.name"), "later:1/2 4 1 hit");
+    EXPECT_EQ(fixture.lua("return calls[#calls] .. ' ' .. hit.size .. ' ' .. hit.emissionCount .. ' ' .. hit.name"), "later:1/2 4 1 hit");
 
     fixture.runLua("calls = {} owner = nil collectgarbage() collectgarbage() later.blocked = true hit:emit(3)");
     EXPECT_EQ(fixture.lua("return table.concat(calls, ' ') .. ' ' .. tostring(later.blocked)"), "first:3 normal:3 true");
@@ -70,7 +70,7 @@ TEST(EventsLuaTest, PublishesAndSubscribesByName) {
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return table.concat(calls, ', ', 5)"), "any queued 1, shield late, any late 2");
 
-    EXPECT_EQ(fixture.lua("local s = events.stats()[1] return s.name .. ' ' .. s.listeners .. ' ' .. s.emissions"), "damage 2 5");
+    EXPECT_EQ(fixture.lua("local s = events.topics()[1] return s.name .. ' ' .. s.listeners .. ' ' .. s.emissions"), "damage 2 5");
     EXPECT_NE(fixture.lua("events.on('x', function() end, {channels = 'a'})").find("Unknown option 'channels'"), std::string::npos);
     EXPECT_NE(fixture.lua("events.on('x', function() end, {filter = 3})").find("error: "), std::string::npos);
     EXPECT_NE(fixture.lua("events.on('boom', function() error('listener broke') end) events.emit('boom')").find("listener broke"), std::string::npos);
@@ -84,7 +84,7 @@ TEST(EventsLuaTest, ReceivesEngineLifecycleEvents) {
         events = require('haylen.events')
         scene = require('haylen.scene')
         log = {}
-        for _, name in ipairs({'paused', 'unpaused', 'app_inactive', 'app_active', 'app_background', 'window_resized', 'scene_entered', 'scene_exited', 'scene_enter_transition_finished'}) do
+        for _, name in ipairs({'paused', 'unpaused', 'appInactive', 'appActive', 'appBackground', 'windowResized', 'sceneEntered', 'sceneExited', 'sceneEnterTransitionFinished'}) do
             events.on(name, function(payload) log[#log + 1] = name .. (type(payload) == 'table' and (payload.width and (' ' .. payload.width) or (payload == menu and ' menu' or ' table')) or '') end)
         end
         menu = {}
@@ -97,7 +97,7 @@ TEST(EventsLuaTest, ReceivesEngineLifecycleEvents) {
     fixture.engine().handleEvent({.type = platform::Event::Type::FocusLost});
     fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
     fixture.engine().handleEvent({.type = platform::Event::Type::Resized});
-    EXPECT_EQ(fixture.lua("return table.concat(log, ', ')"), "scene_entered menu, scene_enter_transition_finished menu, paused, unpaused, scene_exited menu, app_inactive, app_background, window_resized 1920.0");
+    EXPECT_EQ(fixture.lua("return table.concat(log, ', ')"), "sceneEntered menu, sceneEnterTransitionFinished menu, paused, unpaused, sceneExited menu, appInactive, appBackground, windowResized 1920.0");
     EXPECT_EQ(fixture.lua("return haylen.appState() .. ' ' .. tostring(haylen.halted()) .. ' ' .. tostring(haylen.paused())"), "background true false");
     fixture.engine().handleEvent({.type = platform::Event::Type::Resumed});
     EXPECT_EQ(fixture.lua("return haylen.appState() .. ' ' .. tostring(haylen.halted())"), "active false");
@@ -154,7 +154,7 @@ TEST(EventsLuaTest, OwnerFunctionsDoNotKeepTheirOwnerAlive) {
     )");
     // clang-format on
     fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return tostring(next(tracker)) .. ' ' .. require('haylen.events').stats()[1].listeners"), "nil 0");
+    EXPECT_EQ(fixture.lua("return tostring(next(tracker)) .. ' ' .. require('haylen.events').topics()[1].listeners"), "nil 0");
 }
 
 TEST(EventsLuaTest, ListenersOfACollectedOwnerCountAsStaleUntilRemoved) {
@@ -166,7 +166,7 @@ TEST(EventsLuaTest, ListenersOfACollectedOwnerCountAsStaleUntilRemoved) {
         tick = signal.new('tick')
         function counts()
             local topic
-            for _, entry in ipairs(events.stats()) do
+            for _, entry in ipairs(events.topics()) do
                 if entry.name == 'pulse' then topic = entry end
             end
             local named = signal.list()[1]
@@ -274,7 +274,7 @@ TEST(AutoloadTest, LoadsModulesBeforeMainAndRunsTheirCallbacks) {
     EXPECT_EQ(fixture.lua("return startCoins .. ' ' .. tostring(sameTable)"), "0 true");
     fixture.frames(3);
     fixture.engine().handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::A});
-    EXPECT_EQ(fixture.lua("local data = require('state.player-data') return data.coins .. ' ' .. table.concat(data.log, ',')"), "3 start,key_down");
+    EXPECT_EQ(fixture.lua("local data = require('state.player-data') return data.coins .. ' ' .. table.concat(data.log, ',')"), "3 start,keyDown");
 
     fixture.runLua("haylen = require('haylen') music = haylen.autoload('soundtrack', 'state.menu-music')");
     fixture.frames(1);

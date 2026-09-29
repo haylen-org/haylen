@@ -115,8 +115,8 @@ TEST_F(UiLuaTest, PublishesMountsAndEndsWhatDocumentsOwn) {
         events = require('haylen.events')
         timer = require('haylen.timer')
         heard = {}
-        events.on('ui_document_mounted', function(document) mounted = document end)
-        events.on('ui_document_unmounted', function(document) heard[#heard + 1] = 'unmounted ' .. tostring(document == hud) end)
+        events.on('uiDocumentMounted', function(document) mounted = document end)
+        events.on('uiDocumentUnmounted', function(document) heard[#heard + 1] = 'unmounted ' .. tostring(document == hud) end)
         hud = ui.mount(ui.label{text = 'Day 1'})
         ticks = 0
         timer.every(0.01, function() ticks = ticks + 1 end, {owner = hud})
@@ -154,7 +154,7 @@ TEST_F(UiLuaTest, MountsDeeplyNestedTrees) {
 
     // A table that holds itself, or shares its children until the tree outgrows a document, fails instead of converting without end.
     EXPECT_NE(fixture.lua("local c = ui.column{} c[1] = c ui.mount(c)").find("limited to 64 levels"), std::string::npos);
-    EXPECT_NE(fixture.lua("local c = ui.column{} c[1] = c ui.mount(ui.column{id = 'list'}):replace('list', {c})").find("limited to 64 levels"), std::string::npos);
+    EXPECT_NE(fixture.lua("local c = ui.column{} c[1] = c ui.mount(ui.column{id = 'list'}):replaceChildren('list', {c})").find("limited to 64 levels"), std::string::npos);
     EXPECT_NE(fixture.lua("local node = ui.label{} for level = 1, 40 do node = ui.column{node, node} end ui.mount(node)").find("20000 nodes"), std::string::npos);
 }
 
@@ -168,13 +168,13 @@ TEST_F(UiLuaTest, ChangesHandlersOnlyAfterTheDocumentAcceptsTheChange) {
     // clang-format on
     fixture.frames(1);
     EXPECT_NE(fixture.lua("hud:set('play', {colour = 'red', onClick = function() clicks[#clicks + 1] = 'set' end})").find("button.colour is not a property"), std::string::npos);
-    EXPECT_NE(fixture.lua("hud:replace('list', {ui.button{id = 'play', onClick = function() clicks[#clicks + 1] = 'replaced' end}, ui.label{id = 'list'}})").find("used more than once"), std::string::npos);
+    EXPECT_NE(fixture.lua("hud:replaceChildren('list', {ui.button{id = 'play', onClick = function() clicks[#clicks + 1] = 'replaced' end}, ui.label{id = 'list'}})").find("used more than once"), std::string::npos);
     EXPECT_NE(fixture.lua("hud:set('missing', {onClick = function() end})").find("no node with the id missing"), std::string::npos);
     click("hud", "play");
     EXPECT_EQ(fixture.lua("return table.concat(clicks, ',')"), "old");
 
     // A node built anew by a replace keeps none of the handlers of the node it replaced.
-    fixture.runLua("hud:replace('list', {ui.button{id = 'play', text = 'Play'}})");
+    fixture.runLua("hud:replaceChildren('list', {ui.button{id = 'play', text = 'Play'}})");
     fixture.frames(1);
     click("hud", "play");
     EXPECT_EQ(fixture.lua("return table.concat(clicks, ',')"), "old");
@@ -250,7 +250,7 @@ TEST_F(UiLuaTest, ReplacesChildrenAndUnmounts) {
         ui = require('haylen.ui')
         picked = {}
         menu = ui.mount(ui.node('column', {id = 'list', children = {ui.button{id = 'old', text = 'Old', onClick = function() end}}}), {placement = 'screen'})
-        menu:replace('list', {ui.button{id = 'new', text = 'New', onClick = function(e) picked[#picked + 1] = e.id end}})
+        menu:replaceChildren('list', {ui.button{id = 'new', text = 'New', onClick = function(e) picked[#picked + 1] = e.id end}})
     )");
     // clang-format on
     fixture.frames(1);
@@ -258,7 +258,7 @@ TEST_F(UiLuaTest, ReplacesChildrenAndUnmounts) {
     click("menu", "new");
     EXPECT_EQ(fixture.lua("return table.concat(picked, ',')"), "new");
 
-    EXPECT_NE(fixture.lua("menu:replace('list', {ui.label{id = 'list'}})").find("used more than once"), std::string::npos);
+    EXPECT_NE(fixture.lua("menu:replaceChildren('list', {ui.label{id = 'list'}})").find("used more than once"), std::string::npos);
     EXPECT_EQ(fixture.lua("menu.visible = false return tostring(menu.visible)"), "false");
     EXPECT_EQ(fixture.lua("return tostring(menu:unmount()) .. tostring(menu:unmount()) .. tostring(menu.mounted)"), "truefalsefalse");
     EXPECT_NE(fixture.lua("menu:set('new', {text = 'x'})").find("not mounted"), std::string::npos);
@@ -341,7 +341,7 @@ TEST_F(UiLuaTest, SwitchesThemesAndReadsInputCapture) {
     EXPECT_EQ(fixture.lua("return ui.theme() .. ' ' .. table.concat(ui.themes(), ',')"), "dark dark,light");
     EXPECT_EQ(fixture.lua("ui.setTheme('light') return ui.theme()"), "light");
     EXPECT_NE(fixture.lua("ui.setTheme('marble')").find("no theme named marble"), std::string::npos);
-    EXPECT_EQ(fixture.lua("return tostring(ui.wantsPointer()) .. tostring(ui.wantsKeyboard())"), "falsefalse");
+    EXPECT_EQ(fixture.lua("return tostring(ui.usingPointer()) .. tostring(ui.usingKeyboard())"), "falsefalse");
     EXPECT_EQ(fixture.lua("local kinds = ui.kinds() return #kinds .. ' ' .. kinds[1]"), "62 accordion");
     EXPECT_NE(fixture.lua("ui.loadTheme('themes/none.json')").find("error: "), std::string::npos);
     EXPECT_NE(fixture.lua("ui.addFont('pixel', 'fonts/none.ttf')").find("error: "), std::string::npos);
@@ -387,7 +387,7 @@ TEST_F(UiLuaFontTest, DrawsTextComponentsWithTheFacesAndFallbacksOfAFamily) {
         graphics = require('haylen.graphics')
         graphics2d = require('haylen.graphics2d')
         ui = require('haylen.ui')
-        ui.addFont('story', graphics.newFontFamily({regular = graphics2d.defaultFont(), bold = assets.font('fonts/bold.ttf'), fallback = {assets.font('fonts/cjk.ttf')}}))
+        ui.addFont('story', graphics.newFontFamily({regular = graphics2d.defaultFont(), bold = assets.font('fonts/bold.ttf'), fallbacks = {assets.font('fonts/cjk.ttf')}}))
         ui.setTheme(ui.addTheme({name = 'story', fonts = {body = {font = 'story'}, heading = {font = 'story', bold = true}}}))
         screen = ui.mount(ui.column{
             ui.label{id = 'plain', text = 'Harbor lights', align = 'start'},
@@ -614,7 +614,7 @@ TEST_F(UiLuaTest, ReportsThePressesTheInterfaceCaptures) {
     event.key = input::Key::Escape;
     getEngine().handleEvent(event);
     fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return tostring(input.keyCaptured('escape')) .. ' ' .. tostring(input.keyDown('escape')) .. ' ' .. tostring(input.down('back')) .. ' ' .. tostring(input.gamepadCaptured('east'))"), "true true false false");
+    EXPECT_EQ(fixture.lua("return tostring(input.keyCaptured('escape')) .. ' ' .. tostring(input.keyDown('escape')) .. ' ' .. tostring(input.down('back')) .. ' ' .. tostring(input.gamepadButtonCaptured('east'))"), "true true false false");
     event.type = platform::Event::Type::KeyUp;
     getEngine().handleEvent(event);
     fixture.frames(1);

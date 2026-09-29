@@ -42,7 +42,7 @@ local camera = graphics2d.newCamera()
 
 scene.push({
     render = function(self)
-        ripple:set('time', haylen.time())
+        ripple:set('time', haylen.elapsed())
         graphics2d.beginWorld(camera)
         graphics2d.draw(graphics.whiteTexture(), 0, 0, {width = 200, height = 200, color = '#FF4080C0', material = ripple})
         graphics2d.drawText(nil, 'Ripple', 0, 150, {size = 48, anchor = {0.5, 0.5}, material = ripple})

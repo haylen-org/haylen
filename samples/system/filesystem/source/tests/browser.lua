@@ -59,7 +59,7 @@ function Browser:content()
                 end},
                 ui.button{id = 'examples', text = 'Add examples', onClick = function()
                     for path, data in pairs(kExamples) do
-                        storage.write(path, data)
+                        storage.writeText(path, data)
                     end
                     self:open(self.folder)
                 end},

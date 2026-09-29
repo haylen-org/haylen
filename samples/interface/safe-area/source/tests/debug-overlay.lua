@@ -1,4 +1,4 @@
--- Debug overlay: ui.setSafeAreaVisible shades the screen outside the safe area, outlines it and prints its insets over everything, and window_safe_area_changed reports every move of the safe area.
+-- Debug overlay: ui.setSafeAreaVisible shades the screen outside the safe area, outlines it and prints its insets over everything, and windowSafeAreaChanged reports every move of the safe area.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 local viewport = require('haylen.viewport')
@@ -31,7 +31,7 @@ end
 
 function DebugOverlay:started()
     ui.setSafeAreaVisible(true)
-    self:listen('window_safe_area_changed', function(safe)
+    self:listen('windowSafeAreaChanged', function(safe)
         self.changes = self.changes + 1
         self.last = string.format('changed to %.0f, %.0f, %.0f x %.0f', safe.x, safe.y, safe.width, safe.height)
     end)

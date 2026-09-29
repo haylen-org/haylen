@@ -45,7 +45,7 @@ function Anchors:nodes()
 end
 
 function Anchors:refresh()
-    self.demo:replace('demo', self:nodes())
+    self.demo:replaceChildren('demo', self:nodes())
     self:setStatus(string.format('%s, %s, margin %d', self.anchor == 'points' and 'the nine points' or self.anchor, self.area == 'both' and 'safe area and screen' or self.area, self.margin))
 end
 

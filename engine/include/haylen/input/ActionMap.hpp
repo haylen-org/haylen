@@ -25,7 +25,7 @@ class VirtualInput;
 // Maps named gameplay actions to devices in definition order. Buttons report edges, axes report [-1, 1] and vectors report a length up to 1.
 class ActionMap final {
   public:
-    // One physical or virtual input written as "key:w", "mouse:left", "button:south", "axis:left_y-", "stick:left", "virtual:attack" or "virtual_stick:move".
+    // One physical or virtual input written as "key:w", "mouse:left", "button:south", "axis:leftY-", "stick:left", "virtual:attack" or "virtualStick:move".
     struct Binding {
         enum class Source : std::uint8_t {
             Key,

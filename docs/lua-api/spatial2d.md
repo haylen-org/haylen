@@ -10,23 +10,23 @@ local spatial2d = require('haylen.spatial2d')
 
 | Structure | Best for |
 | --- | --- |
-| `SpatialHash` | Many entries of similar size that move every frame, such as enemies and bullets. |
+| `HashGrid` | Many entries of similar size that move every frame, such as enemies and bullets. |
 | `QuadTree` | Entries of very different sizes spread over a known area, such as the objects of a level. |
 | `AabbTree` | Many moving entries of any size over an unbounded area. Small moves inside the enlarged box of an entry cost nothing. |
 | `KdTree` | Points that rarely change, when nearest-neighbor queries dominate, such as resources or spawn points. |
 
 ## Functions
 
-### spatial2d.newHash(cellSize)
+### spatial2d.newHashGrid(cellSize)
 
-Creates a `SpatialHash` whose grid cells are `cellSize` units wide and high. A cell size about the size of a typical entity, or a little larger, keeps queries fast. A size that is not positive and finite raises `A spatial hash needs a positive cell size.`
+Creates a `HashGrid` whose grid cells are `cellSize` units wide and high. A cell size about the size of a typical entity, or a little larger, keeps queries fast. A size that is not positive and finite raises `A spatial hash needs a positive cell size.`
 
 A stored rectangle may cover at most 65536 cells, or `set` raises `A spatial hash entry may cover at most 65536 cells, so the cell size should be closer to the size of the entries.`, and it must lie within 536870912 cells of the origin, or `set` raises `A spatial hash entry must lie within 536870912 cells of the origin.` A query never costs much more than a visit to every stored value, so an area far larger than the stored values, or a point or a ray far away from them, stays cheap.
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
 
-local hash = spatial2d.newHash(64)
+local hash = spatial2d.newHashGrid(64)
 print(hash.cellSize)
 ```
 
@@ -248,7 +248,7 @@ scene.push({
 
 The four structures store any non-nil Lua value, usually the entity table itself, and compare values by identity, the way table keys do. A structure keeps a reference to every stored value until it is removed or the structure is cleared. Queries return new lists of values. `query`, `queryCircle`, `queryPoint` and `pick` list them in the order the values were added, so results never depend on how entries moved, while `raycast` and `kNearest` list them by distance, with ties going to the value added first. A value removed and stored again counts as added again. Bounds that touch count as overlapping, so zero-sized rectangles work as points.
 
-`SpatialHash`, `QuadTree` and `AabbTree` store rectangles, which accept a `Rect` or a table `{x, y, width, height}` or `{x = 0, y = 0, width = 0, height = 0}`. A rectangle with a negative size or a non-finite component raises `Spatial bounds must be finite and have a non-negative size.` The `KdTree` stores points with an optional radius and treats them as circles in every query.
+`HashGrid`, `QuadTree` and `AabbTree` store rectangles, which accept a `Rect` or a table `{x, y, width, height}` or `{x = 0, y = 0, width = 0, height = 0}`. A rectangle with a negative size or a non-finite component raises `Spatial bounds must be finite and have a non-negative size.` The `KdTree` stores points with an optional radius and treats them as circles in every query.
 
 ### structure:set(value, rect)
 
@@ -257,7 +257,7 @@ Stores `value` with the bounds `rect`, or moves it when it is already stored. A 
 ```lua
 local spatial2d = require('haylen.spatial2d')
 
-local hash = spatial2d.newHash(64)
+local hash = spatial2d.newHashGrid(64)
 local goblin = {name = 'goblin', x = 100, y = 80}
 hash:set(goblin, {goblin.x - 16, goblin.y - 16, 32, 32})
 
@@ -275,7 +275,7 @@ Returns true when `value` is stored.
 
 ### structure:bounds(value)
 
-Returns the `Rect` stored for `value`, or `nil` when it is not stored. `KdTree` has `position(value)` instead, which returns its point as a `Vec2`.
+Returns the `Rect` stored for `value`, or `nil` when it is not stored. `KdTree` has `point(value)` instead, which returns its point as a `Vec2`.
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -312,7 +312,7 @@ Returns the list of values whose bounds come within `radius` of the point `x`, `
 ```lua
 local spatial2d = require('haylen.spatial2d')
 
-local hash = spatial2d.newHash(64)
+local hash = spatial2d.newHashGrid(64)
 local barrel = {name = 'barrel'}
 hash:set(barrel, {120, 100, 32, 32})
 
@@ -328,7 +328,7 @@ Returns the list of values whose bounds contain or touch the point `x`, `y`.
 ```lua
 local spatial2d = require('haylen.spatial2d')
 
-local hash = spatial2d.newHash(64)
+local hash = spatial2d.newHashGrid(64)
 hash:set({name = 'button'}, {100, 100, 200, 60})
 print(hash:queryPoint(150, 120)[1].name)
 ```
@@ -357,7 +357,7 @@ Returns the value whose bounds lie closest to the point `x`, `y`, within `maxDis
 ```lua
 local spatial2d = require('haylen.spatial2d')
 
-local hash = spatial2d.newHash(64)
+local hash = spatial2d.newHashGrid(64)
 local tree = {kind = 'tree', wood = 0}
 local goldMine = {kind = 'gold', gold = 50}
 hash:set(tree, {40, 0, 32, 32})
@@ -396,7 +396,7 @@ local graphics2d = require('haylen.graphics2d')
 local input = require('haylen.input')
 local scene = require('haylen.scene')
 
-local units = spatial2d.newHash(64)
+local units = spatial2d.newHashGrid(64)
 units:set({name = 'knight'}, {-20, -20, 40, 40})
 local camera = graphics2d.newCamera()
 
@@ -418,7 +418,7 @@ Removes every value.
 ```lua
 local spatial2d = require('haylen.spatial2d')
 
-local hash = spatial2d.newHash(64)
+local hash = spatial2d.newHashGrid(64)
 hash:set('marker', {0, 0, 0, 0})
 hash:clear()
 print(hash.size)
@@ -429,7 +429,7 @@ print(hash.size)
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
 | `size` | integer | read | Number of stored values, on every structure. |
-| `cellSize` | number | read | The cell size of a `SpatialHash`. |
+| `cellSize` | number | read | The cell size of a `HashGrid`. |
 | `area` | Rect | read | The area of a `QuadTree`. |
 | `nodeCount` | integer | read | The quadrants a `QuadTree` uses now, including the root. |
 | `margin` | number | read | The margin of an `AabbTree`. |
@@ -448,7 +448,7 @@ stars:set('sun', 0, 0, 10)
 stars:set('comet', 300, 40)
 print(stars.built)
 stars:build()
-print(stars.built, stars:kNearest(290, 40, 1)[1], stars:position('sun').x)
+print(stars.built, stars:kNearest(290, 40, 1)[1], stars:point('sun').x)
 ```
 
 ## CellGrid

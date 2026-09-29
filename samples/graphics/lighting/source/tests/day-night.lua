@@ -88,7 +88,7 @@ function DayNight:update(dt)
     self.night = self.hour < 6.5 or self.hour > 18
     for _, lamp in ipairs(self.lamps) do
         lamp.enabled = self.night
-        lamp.intensity = 1.2 * lighting2d.flicker(haylen.time(), {amount = 0.05})
+        lamp.intensity = 1.2 * lighting2d.flicker(haylen.elapsed(), {amount = 0.05})
     end
     self:setStatus(string.format('%02d:%02d, ambient %s, %s', math.floor(self.hour), math.floor(self.hour % 1 * 60), self.ambient:toHex(), self.night and 'lamps on' or 'lamps off'))
 end

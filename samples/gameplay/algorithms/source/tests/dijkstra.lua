@@ -44,7 +44,7 @@ function Dijkstra:enter()
 end
 
 function Dijkstra:build()
-    local cave = procedural2d.caves({width = kColumns, height = kRows, fillChance = 0.4, steps = 4, seed = self.random:integer(1, 9999)})
+    local cave = procedural2d.cellularAutomaton({width = kColumns, height = kRows, fillChance = 0.4, steps = 4, seed = self.random:integer(1, 9999)})
     self.cave = cave
     self.grid = navigation2d.newGrid(kColumns, kRows)
     local open = {}

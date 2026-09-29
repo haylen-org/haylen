@@ -11,9 +11,9 @@ local UiNodes = haylen.class('UiNodes', sample.Test)
 
 local kCode = [[
 local card = document:transform('card')
-tween.fromTo(card, 0.7, {offset = m.vec2(0, -400), opacity = 0}, {offset = m.vec2(0, 0), opacity = 1}, {ease = 'back_out'})
-tween.to(document:transform('claim'), 0.4, {scale = m.vec2(1.12, 1.12)}, {loop = 'yoyo', repeatCount = -1})
-tween.to(document:transform('title'), 0.5, {tint = '#FFFFD166'}, {loop = 'yoyo', repeatCount = 3})]]
+tween.fromTo(card, 0.7, {offset = m.vec2(0, -400), opacity = 0}, {offset = m.vec2(0, 0), opacity = 1}, {ease = 'backOut'})
+tween.to(document:transform('claim'), 0.4, {scale = m.vec2(1.12, 1.12)}, {loopMode = 'yoyo', repeatCount = -1})
+tween.to(document:transform('title'), 0.5, {tint = '#FFFFD166'}, {loopMode = 'yoyo', repeatCount = 3})]]
 
 function UiNodes:enter()
     self:frame({
@@ -36,7 +36,7 @@ function UiNodes:enter()
             ui.button{id = 'later', text = 'Later', grow = 1},
         },
     }, {owner = self, layer = 1})
-    tween.to(self.card:transform('claim'), 0.4, {scale = m.vec2(1.12, 1.12)}, {owner = self, loop = 'yoyo', repeatCount = -1, ease = 'sine_in_out'})
+    tween.to(self.card:transform('claim'), 0.4, {scale = m.vec2(1.12, 1.12)}, {owner = self, loopMode = 'yoyo', repeatCount = -1, ease = 'sineInOut'})
     self:slideIn()
 end
 
@@ -47,15 +47,15 @@ function UiNodes:resize(area)
 end
 
 function UiNodes:slideIn()
-    tween.fromTo(self.card:transform('card'), 0.7, {offset = m.vec2(0, -400), opacity = 0}, {offset = m.vec2(0, 0), opacity = 1}, {owner = self, ease = 'back_out', overwrite = true})
+    tween.fromTo(self.card:transform('card'), 0.7, {offset = m.vec2(0, -400), opacity = 0}, {offset = m.vec2(0, 0), opacity = 1}, {owner = self, ease = 'backOut', overwrite = true})
 end
 
 function UiNodes:tintTitle()
-    tween.to(self.card:transform('title'), 0.5, {tint = '#FFFFD166'}, {owner = self, loop = 'yoyo', repeatCount = 3, overwrite = true})
+    tween.to(self.card:transform('title'), 0.5, {tint = '#FFFFD166'}, {owner = self, loopMode = 'yoyo', repeatCount = 3, overwrite = true})
 end
 
 function UiNodes:fade()
-    tween.to(self.card:transform('card'), 0.5, {opacity = 0.15}, {owner = self, loop = 'yoyo', repeatCount = 1, overwrite = true})
+    tween.to(self.card:transform('card'), 0.5, {opacity = 0.15}, {owner = self, loopMode = 'yoyo', repeatCount = 1, overwrite = true})
 end
 
 function UiNodes:shake()

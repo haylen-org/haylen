@@ -16,7 +16,7 @@ local kLines = {
     'Typewriters, subtitles and tutorial hints all work this way.',
 }
 local kCode = [[
-tween.to(hud, 1.5, {score = hud.score + 250, plain = hud.plain + 250}, {integers = {'score'}, ease = 'quad_out'})
+tween.to(hud, 1.5, {score = hud.score + 250, plain = hud.plain + 250}, {integers = {'score'}, ease = 'quadOut'})
 tween.to(dialog, 2.5, {text = 'The tide is coming in. Gather the wood before dark.'})]]
 
 function Counters:enter()
@@ -37,7 +37,7 @@ function Counters:enter()
 end
 
 function Counters:addPoints()
-    tween.to(self.hud, 1.5, {score = math.floor(self.hud.score) + 250, plain = math.floor(self.hud.plain + 0.5) + 250}, {owner = self, integers = {'score'}, ease = 'quad_out', overwrite = true})
+    tween.to(self.hud, 1.5, {score = math.floor(self.hud.score) + 250, plain = math.floor(self.hud.plain + 0.5) + 250}, {owner = self, integers = {'score'}, ease = 'quadOut', overwrite = true})
 end
 
 function Counters:nextLine()

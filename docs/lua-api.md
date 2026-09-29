@@ -38,7 +38,7 @@ Apps for Haylen are written in Lua. Every engine capability is a module that `re
 | [haylen.spatial2d](lua-api/spatial2d.md) | Spatial hashes, quadtrees, dynamic AABB trees and k-d trees with area, circle, point, ray and nearest queries, screen picking, and grid algorithms: ray casts, Bresenham lines and circles, field of view, visibility polygons, flood fills, connected regions and union-find. |
 | [haylen.procedural2d](lua-api/procedural2d.md) | Scattering over regions, caves, dungeons, mazes, Wave Function Collapse, Delaunay and Voronoi, and autotiling, all deterministic by seed and with asynchronous versions. |
 | [haylen.ai](lua-api/ai.md) | Finite state machines, behavior trees, utility selectors and influence maps. |
-| [haylen.math](lua-api/math.md) | `Vec2`, `Rect`, `Color`, `Transform`, random numbers, noise, easing, geometry, ray casts against shapes, polygon booleans, marching squares, splines, springs, shuffle bags, weighted choices and Poisson disk sampling. |
+| [haylen.math](lua-api/math.md) | `Vec2`, `Rect`, `Color`, `Transform2D`, random numbers, noise, easing, geometry, ray casts against shapes, polygon booleans, marching squares, splines, springs, shuffle bags, weighted choices and Poisson disk sampling. |
 
 ## Player interaction
 

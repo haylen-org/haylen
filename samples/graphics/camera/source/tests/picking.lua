@@ -20,7 +20,7 @@ function Picking:init(entry)
     local random = m.random(8)
     self.objects = {}
     for index = 1, 40 do
-        self.objects[index] = {name = 'object ' .. index, x = random:range(-900, 900), y = random:range(-500, 500), radius = random:range(26, 60), color = m.hsv(random:float(), 0.6, 0.9)}
+        self.objects[index] = {name = 'object ' .. index, x = random:range(-900, 900), y = random:range(-500, 500), radius = random:range(26, 60), color = m.fromHsv(random:nextFloat(), 0.6, 0.9)}
     end
 end
 

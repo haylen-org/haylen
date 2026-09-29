@@ -116,7 +116,7 @@ int PlatformLua::emit(lua_State* L) {
     return 0;
 }
 
-int PlatformLua::pendingCalls(lua_State* L) {
+int PlatformLua::pendingCallCount(lua_State* L) {
     lua::Stack::push(L, lua::Runtime::getEngine(L).getPlatform().getPendingCallCount());
     return 1;
 }
@@ -143,7 +143,7 @@ int PlatformLua::on(lua_State* L) {
     return 1;
 }
 
-// Implements a platform method in Lua with register(method, function(params) return result end), which is useful on desktop and in tests.
+// Implements a platform method in Lua with registerHandler(method, function(params) return result end), which is useful on desktop and in tests.
 int PlatformLua::registerHandler(lua_State* L) {
     core::Engine& owner = lua::Runtime::getEngine(L);
     const std::string method = lua::Stack::read<std::string>(L, 1);
@@ -220,7 +220,7 @@ int PlatformLua::open(lua_State* L) {
     lua::ClassBuilder<Call>(L).function("await", &await).function("cancel", &cancel).property("id", &getId).property("done", &isDone).property("promise", &getPromise).install();
 
     const luaL_Reg functions[] = {
-        {"call", &lua::Binding::native<&call>}, {"on", &lua::Binding::native<&on>}, {"register", &lua::Binding::native<&registerHandler>}, {"hasHandler", &hasHandler}, {"resolve", &lua::Binding::native<&resolve>}, {"emit", &lua::Binding::native<&emit>}, {"pendingCalls", &pendingCalls}, {nullptr, nullptr},
+        {"call", &lua::Binding::native<&call>}, {"on", &lua::Binding::native<&on>}, {"registerHandler", &lua::Binding::native<&registerHandler>}, {"hasHandler", &hasHandler}, {"resolve", &lua::Binding::native<&resolve>}, {"emit", &lua::Binding::native<&emit>}, {"pendingCallCount", &pendingCallCount}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

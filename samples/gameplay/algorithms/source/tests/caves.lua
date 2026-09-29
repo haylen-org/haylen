@@ -44,10 +44,10 @@ end
 
 function Caves:generate()
     local options = self.options
-    local started = haylen.time()
+    local started = haylen.elapsed()
     local promise
     if options.method == 'automaton' then
-        promise = procedural2d.cavesAsync({width = kColumns, height = kRows, fillChance = options.fill, steps = math.tointeger(options.steps), seed = options.seed})
+        promise = procedural2d.cellularAutomatonAsync({width = kColumns, height = kRows, fillChance = options.fill, steps = math.tointeger(options.steps), seed = options.seed})
     else
         promise = procedural2d.drunkardWalkAsync({width = kColumns, height = kRows, coverage = options.fill, walkers = math.tointeger(options.steps), seed = options.seed})
     end
@@ -56,7 +56,7 @@ function Caves:generate()
     async.spawn(function()
         local cave = promise:await()
         if cave and self.options and request == self.request then
-            self.latency = (haylen.time() - started) * 1000
+            self.latency = (haylen.elapsed() - started) * 1000
             self:show(cave)
         end
     end)
@@ -74,7 +74,7 @@ function Caves:show(cave)
         if not self.options.regions then
             return '#FFBCAAA4'
         end
-        return m.hsv((labels:get(column, row) * 0.618) % 1, 0.45, 0.9):toHex()
+        return m.fromHsv((labels:get(column, row) * 0.618) % 1, 0.45, 0.9):toHex()
     end)
     self.open = open
 end

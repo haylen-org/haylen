@@ -21,7 +21,7 @@ Haylen UI is a Lua sample of `haylen.ui`, the retained interface of the engine: 
 | Themes | The built-in `dark` and `light` themes and the `parchment` theme of this sample, loaded from `content/themes/parchment.json`, whose surfaces cut one atlas into nine-slices. |
 | Focus navigation | The nearest control in a direction, explicit neighbours, a focus scope, a wrapping row and the way back, with the bindings of keyboards, gamepads and TV remotes and the state of the focus ring. |
 | UI tweens | `document:transform` animated by `haylen.tween`: an entrance with a stagger, a shake, a fade, a tint and a pulse that never ends. |
-| Text input | The hidden native field of each platform, the events of the on-screen keyboard, the UI moving above it and the plain keyboard of `window.showKeyboard`. |
+| Text input | The hidden native field of each platform, the events of the on-screen keyboard, the UI moving above it and the plain keyboard of `window.setKeyboardVisible`. |
 | Touch controls | `touchStick` and `touchButton` driving actions that keys and a gamepad drive too. |
 
 ## Controls
@@ -45,7 +45,7 @@ The mouse, touch, the keyboard, gamepads and TV remotes reach every control. The
 ui/
   app.json               Window, design resolution of 1920 by 1080 and identifier.
   source/
-    main.lua             Adds the Back button of gamepads to ui_cancel, loads the parchment theme and opens the menu.
+    main.lua             Adds the Back button of gamepads to uiCancel, loads the parchment theme and opens the menu.
     tests.lua            The tests in menu order.
     sample.lua           The frame of every test with its Back button and hints, and the way back to the menu.
     scenes/menu.lua      The menu.

@@ -1,6 +1,6 @@
 # haylen.math
 
-`haylen.math` provides the math types that the rest of the engine uses, `Vec2`, `Rect`, `Color` and `Transform`, together with a seeded random generator, gradient and cellular noise, easing curves, scalar helpers, circle and segment tests, ray casts against shapes, polygon utilities, polygon booleans and offsets, marching squares, splines, critically damped springs, shuffle bags, weighted choices and Poisson disk sampling. Use it for gameplay math, procedural generation and anything that passes positions, areas or colors to other modules. Lua's standard `math` library stays available for everything else.
+`haylen.math` provides the math types that the rest of the engine uses, `Vec2`, `Rect`, `Color` and `Transform2D`, together with a seeded random generator, gradient and cellular noise, easing curves, scalar helpers, circle and segment tests, ray casts against shapes, polygon utilities, polygon booleans and offsets, marching squares, splines, critically damped springs, shuffle bags, weighted choices and Poisson disk sampling. Use it for gameplay math, procedural generation and anything that passes positions, areas or colors to other modules. Lua's standard `math` library stays available for everything else.
 
 ```lua
 local m = require('haylen.math')
@@ -35,7 +35,7 @@ print(red:lerp({0, 0, 1}, 0.5), red == m.color('FF0000')) -- #FF800080 true
 
 ### Userdata behavior
 
-`Vec2`, `Rect`, `Color`, `Transform`, `Random` and `Noise` values are userdata. Assigning one to another variable shares the same object, so changing a field through one variable changes it for both. Operators and methods always return new values, and engine functions copy the values they receive. Reading a member that does not exist raises `haylen.Vec2 has no member 'z'.`, and assigning one raises `haylen.Vec2 has no writable property 'z'.`, with the type name of the value.
+`Vec2`, `Rect`, `Color`, `Transform2D`, `Random` and `Noise2D` values are userdata. Assigning one to another variable shares the same object, so changing a field through one variable changes it for both. Operators and methods always return new values, and engine functions copy the values they receive. Reading a member that does not exist raises `The type haylen.Vec2 has no member 'z'.`, and assigning one raises `The type haylen.Vec2 has no writable property 'z'.`, with the type name of the value.
 
 ```lua
 local m = require('haylen.math')
@@ -257,7 +257,7 @@ local glass = m.fromHex(0x3399FF40)
 print(orange, glass) -- #FFFF8000 #403399FF
 ```
 
-### m.hsv(hue, saturation, value, alpha)
+### m.fromHsv(hue, saturation, value, alpha)
 
 Returns a new `Color` from hue, saturation and value. `hue` is measured in turns, so `0` is red, `1/3` is green and `2/3` is blue, and values outside `0` to `1` wrap around. `saturation`, `value` and `alpha` go from `0` to `1`, and `alpha` defaults to `1`.
 
@@ -266,16 +266,16 @@ local m = require('haylen.math')
 local haylen = require('haylen')
 
 local function rainbow()
-    return m.hsv(haylen.time() * 0.2, 0.8, 1)
+    return m.fromHsv(haylen.elapsed() * 0.2, 0.8, 1)
 end
 
-print(m.hsv(1 / 3, 1, 1)) -- #FF00FF00
+print(m.fromHsv(1 / 3, 1, 1)) -- #FF00FF00
 print(rainbow())
 ```
 
 ### m.transform(position, rotation, scale, skew)
 
-Returns a new `Transform` that scales by `scale`, then skews by `skew`, then rotates by `rotation` radians, then moves by `position`. `position` is a `Vec2` and is required. `rotation` defaults to `0`, and `scale` is a `Vec2` that defaults to `{1, 1}`. `skew` is a `Vec2` of angles in radians that defaults to `{0, 0}`. `skew.x` turns the local y axis and `skew.y` turns the local x axis by that angle, in the same direction as `rotation`, which shears the shape.
+Returns a new `Transform2D` that scales by `scale`, then skews by `skew`, then rotates by `rotation` radians, then moves by `position`. `position` is a `Vec2` and is required. `rotation` defaults to `0`, and `scale` is a `Vec2` that defaults to `{1, 1}`. `skew` is a `Vec2` of angles in radians that defaults to `{0, 0}`. `skew.x` turns the local y axis and `skew.y` turns the local x axis by that angle, in the same direction as `rotation`, which shears the shape.
 
 ```lua
 local m = require('haylen.math')
@@ -291,7 +291,7 @@ print(banner:apply({0, 100})) -- close to Vec2(-25.9, 96.6)
 
 ### m.identity()
 
-Returns a new `Transform` that leaves every point where it is.
+Returns a new `Transform2D` that leaves every point where it is.
 
 ```lua
 local m = require('haylen.math')
@@ -306,7 +306,7 @@ print(world:apply({10, 0})) -- close to Vec2(100.0, 10.0)
 
 ### m.translation(offset)
 
-Returns a new `Transform` that moves points by the `Vec2` `offset`.
+Returns a new `Transform2D` that moves points by the `Vec2` `offset`.
 
 ```lua
 local m = require('haylen.math')
@@ -317,7 +317,7 @@ print(shake:apply({100, 100})) -- Vec2(104.0, 98.0)
 
 ### m.rotation(radians)
 
-Returns a new `Transform` that rotates points around the origin by `radians`, clockwise on screen.
+Returns a new `Transform2D` that rotates points around the origin by `radians`, clockwise on screen.
 
 ```lua
 local m = require('haylen.math')
@@ -328,7 +328,7 @@ print(quarterTurn:apply({10, 0})) -- close to Vec2(0.0, 10.0)
 
 ### m.scaling(scale)
 
-Returns a new `Transform` that scales points from the origin by the `Vec2` `scale`.
+Returns a new `Transform2D` that scales points from the origin by the `Vec2` `scale`.
 
 ```lua
 local m = require('haylen.math')
@@ -346,12 +346,12 @@ local m = require('haylen.math')
 
 local levelRandom = m.random(2024)
 local lootRandom = m.random(os.time())
-print(levelRandom:integer(1, 6), lootRandom:float())
+print(levelRandom:integer(1, 6), lootRandom:nextFloat())
 ```
 
 ### m.noise(seed)
 
-Returns a new `Noise` generator. `seed` is an integer that defaults to `0`, and each seed gives a different noise field.
+Returns a new `Noise2D` generator. `seed` is an integer that defaults to `0`, and each seed gives a different noise field.
 
 ```lua
 local m = require('haylen.math')
@@ -368,28 +368,28 @@ Evaluates an easing curve at `t` and returns the eased value. `t` is clamped to 
 
 | Form | Example | Curve |
 | --- | --- | --- |
-| Name | `'quad_out'` | `'linear'` or the `in`, `out` and `in_out` variants of `sine`, `quad`, `cubic`, `quart`, `quint`, `expo`, `circ`, `back`, `elastic` and `bounce`, such as `'quad_out'`, `'back_in'` or `'elastic_in_out'`. A table `{curve = 'quad_out'}` names the same curve. |
-| Back | `{curve = 'back_out', overshoot = 3}` | A `back` curve with its overshoot, `1.70158` by default. |
-| Elastic | `{curve = 'elastic_out', amplitude = 1.5, period = 0.4}` | An `elastic` curve with its amplitude and period, `1` and `0.3` by default. Either key alone keeps the default of the other. |
+| Name | `'quadOut'` | `'linear'` or the `In`, `Out` and `InOut` variants of `sine`, `quad`, `cubic`, `quart`, `quint`, `expo`, `circ`, `back`, `elastic` and `bounce`, such as `'quadOut'`, `'backIn'` or `'elasticInOut'`. A table `{curve = 'quadOut'}` names the same curve. |
+| Back | `{curve = 'backOut', overshoot = 3}` | A `back` curve with its overshoot, `1.70158` by default. |
+| Elastic | `{curve = 'elasticOut', amplitude = 1.5, period = 0.4}` | An `elastic` curve with its amplitude and period, `1` and `0.3` by default. Either key alone keeps the default of the other. |
 | Steps | `{steps = 4, position = 'end'}` | Jumps in `steps` equal steps like CSS `steps()`, with `position` `'start'`, `'end'` (the default), `'both'` or `'none'`. |
-| Bézier | `{bezier = {0.25, 0.1, 0.25, 1}}` | The cubic Bézier `{x1, y1, x2, y2}` like CSS `cubic-bezier()`, with both x values between `0` and `1`. |
+| Bézier | `{cubicBezier = {0.25, 0.1, 0.25, 1}}` | The cubic Bézier `{x1, y1, x2, y2}` like CSS `cubic-bezier()`, with both x values between `0` and `1`. |
 | Points | `{points = {0, 1.5, 1}}` | Straight lines through numbers spread evenly from `t = 0` to `t = 1`, or through points such as `{{0, 0}, {0.8, 1.2}, {1, 1}}` whose x grows from one point to the next. Before the first point and after the last one the curve keeps their values. |
 | Function | `function(t) return t * t end` | Any function from progress to eased progress, which receives `t` clamped to `0` to `1` and must return a number. |
 
-An unknown name raises `bad argument #1 to 'ease' (unknown value 'bouncy')`, another value raises `bad argument #1 to 'ease' (easing curve name, function or table expected, got boolean)`, and an unknown key raises `Unknown option '<key>'.` An `overshoot` on another curve raises `An overshoot only applies to the back curves.`, an `amplitude` or `period` on another curve raises `An amplitude and a period only apply to the elastic curves.`, and a period that is not positive raises `An elastic curve needs a positive period.` Fewer than one step raises `A steps curve needs at least one step.`, a `bezier` list without four numbers raises `A bezier curve needs the four numbers x1, y1, x2 and y2.`, and an x outside `0` to `1` raises `The x coordinates of a cubic Bézier curve must be between 0 and 1.` Fewer than two points raise `A points curve needs at least two points.`, points out of order raise `The points of a curve must be ordered by x.`, and a function that returns anything but a number raises `An easing function must return a number.`
+An unknown name raises `bad argument #1 to 'ease' (unknown value 'bouncy')`, another value raises `bad argument #1 to 'ease' (easing curve name, function or table expected, got boolean)`, and an unknown key raises `Unknown option '<key>'.` An `overshoot` on another curve raises `An overshoot only applies to the back curves.`, an `amplitude` or `period` on another curve raises `An amplitude and a period only apply to the elastic curves.`, and a period that is not positive raises `An elastic curve needs a positive period.` Fewer than one step raises `A steps curve needs at least one step.`, a `cubicBezier` list without four numbers raises `A cubicBezier curve needs the four numbers x1, y1, x2 and y2.`, and an x outside `0` to `1` raises `The x coordinates of a cubic Bézier curve must be between 0 and 1.` Fewer than two points raise `A points curve needs at least two points.`, points out of order raise `The points of a curve must be ordered by x.`, and a function that returns anything but a number raises `An easing function must return a number.`
 
 ```lua
 local m = require('haylen.math')
 
 local startY, endY, duration = 1200, 540, 0.8
 local elapsed = 0.4
-local y = m.lerp(startY, endY, m.ease('back_out', elapsed / duration))
+local y = m.lerp(startY, endY, m.ease('backOut', elapsed / duration))
 print(y)
 
-print(m.ease({curve = 'back_out', overshoot = 3}, 0.5))
-print(m.ease({curve = 'elastic_out', amplitude = 1.5, period = 0.4}, 0.5))
+print(m.ease({curve = 'backOut', overshoot = 3}, 0.5))
+print(m.ease({curve = 'elasticOut', amplitude = 1.5, period = 0.4}, 0.5))
 print(m.ease({steps = 4}, 0.6)) -- 0.5
-print(m.ease({bezier = {0.25, 0.1, 0.25, 1}}, 0.5))
+print(m.ease({cubicBezier = {0.25, 0.1, 0.25, 1}}, 0.5))
 print(m.ease({points = {0, 1.5, 1}}, 0.25)) -- 0.75
 print(m.ease({points = {{0, 0}, {0.5, 1}, {1, 1}}}, 0.75)) -- 1.0
 print(m.ease(function(t) return t * t end, 0.5)) -- 0.25
@@ -479,7 +479,7 @@ local turn = m.wrapAngle(desired - heading)
 print(m.degrees(turn)) -- close to 20
 ```
 
-### m.damp(rate, dt)
+### m.dampFactor(rate, dt)
 
 Returns the interpolation factor `1 - exp(-rate * dt)` for smoothing that behaves the same at any frame rate. A higher `rate` follows the target faster.
 
@@ -491,7 +491,7 @@ local player = {x = 500}
 
 require('haylen.scene').push({
     update = function(self, dt)
-        camera.x = m.lerp(camera.x, player.x, m.damp(8, dt))
+        camera.x = m.lerp(camera.x, player.x, m.dampFactor(8, dt))
     end,
 })
 ```
@@ -624,7 +624,7 @@ print(m.polygonContains(pond, {200, 200})) -- true
 print(m.polygonContains(pond, {400, 200})) -- false
 ```
 
-### m.polygonArea(polygon)
+### m.polygonSignedArea(polygon)
 
 Returns the signed area of `polygon`. It is positive when the vertices run clockwise on screen, where the y axis points down, and negative for the other direction.
 
@@ -632,8 +632,8 @@ Returns the signed area of `polygon`. It is positive when the vertices run clock
 local m = require('haylen.math')
 
 local field = {{0, 0}, {10, 0}, {10, 10}, {0, 10}}
-print(m.polygonArea(field)) -- 100.0
-print(math.abs(m.polygonArea({{0, 0}, {0, 10}, {10, 10}, {10, 0}}))) -- 100.0
+print(m.polygonSignedArea(field)) -- 100.0
+print(math.abs(m.polygonSignedArea({{0, 0}, {0, 10}, {10, 10}, {10, 0}}))) -- 100.0
 ```
 
 ### m.polygonCentroid(polygon)
@@ -680,7 +680,7 @@ print(#outline) -- 4
 
 ### m.triangulate(polygon)
 
-Splits a simple polygon into triangles and returns a flat sequence of 1-based vertex indices, three per triangle. The polygon may be concave and may use either winding, and every triangle comes out with the winding that `m.polygonArea` reports as positive. Fewer than three points give an empty table, and an outline that crosses itself may leave part of its area without triangles.
+Splits a simple polygon into triangles and returns a flat sequence of 1-based vertex indices, three per triangle. The polygon may be concave and may use either winding, and every triangle comes out with the winding that `m.polygonSignedArea` reports as positive. Fewer than three points give an empty table, and an outline that crosses itself may leave part of its area without triangles.
 
 ```lua
 local m = require('haylen.math')
@@ -1464,14 +1464,14 @@ print(m.color('#FFFFFFFF'):lerpHsv(red, 0.5)) -- #FFFF8080
 
 ### color:toHsv()
 
-Returns four numbers: the hue, saturation, value and alpha of the color. The hue is measured in turns from `0` up to but not including `1`, like `m.hsv` reads it, and a gray has a hue and saturation of `0`.
+Returns four numbers: the hue, saturation, value and alpha of the color. The hue is measured in turns from `0` up to but not including `1`, like `m.fromHsv` reads it, and a gray has a hue and saturation of `0`.
 
 ```lua
 local m = require('haylen.math')
 
 local sky = m.color('#FF3399FF')
 local hue, saturation, value, alpha = sky:toHsv()
-print(m.hsv(hue + 0.5, saturation, value, alpha)) -- #FFFF9933
+print(m.fromHsv(hue + 0.5, saturation, value, alpha)) -- #FFFF9933
 ```
 
 ### color:toHex()
@@ -1482,7 +1482,7 @@ Returns the color as `'#AARRGGBB'` text with uppercase digits, which `m.color` a
 local m = require('haylen.math')
 local storage = require('haylen.storage')
 
-local favorite = m.hsv(0.6, 0.7, 0.9)
+local favorite = m.fromHsv(0.6, 0.7, 0.9)
 storage.writeJson('settings/theme.json', {accent = favorite:toHex()})
 ```
 
@@ -1499,7 +1499,7 @@ print(sprite * shade) -- #FF8080FF
 print(m.color('#00000000') == m.color(0, 0, 0, 0)) -- true
 ```
 
-## Transform
+## Transform2D
 
 An affine 2D transform built with `m.transform`, `m.identity`, `m.translation`, `m.rotation` or `m.scaling`. It maps a point `p` to `(a * p.x + c * p.y + tx, b * p.x + d * p.y + ty)`.
 
@@ -1575,7 +1575,7 @@ local localPoint = body:inverse():apply(world)
 print(m.approximately(localPoint.x, 10), m.approximately(localPoint.y, 5)) -- true true
 ```
 
-### Transform operators
+### Transform2D operators
 
 `a * b` composes two transforms. The result applies `b` first and then `a`, so `(a * b):apply(p)` equals `a:apply(b:apply(p))`.
 
@@ -1592,7 +1592,7 @@ print(world:apply({0, 0})) -- close to Vec2(300.0, 250.0)
 
 A deterministic xoshiro256** generator created with `m.random`.
 
-### random:float()
+### random:nextFloat()
 
 Returns a number from `0` up to but not including `1`.
 
@@ -1600,7 +1600,7 @@ Returns a number from `0` up to but not including `1`.
 local m = require('haylen.math')
 
 local random = m.random(5)
-if random:float() < 0.1 then
+if random:nextFloat() < 0.1 then
     print('critical hit')
 end
 ```
@@ -1642,7 +1642,7 @@ if random:chance(0.25) then
 end
 ```
 
-### random:pick(weights)
+### random:weightedIndex(weights)
 
 Picks an index of the `weights` sequence with a probability proportional to each weight and returns it, starting at `1`. An index whose weight is zero is never picked. An empty sequence raises `bad argument #1 to 'pick' (expected at least one weight)`, a negative, infinite or NaN weight raises `Weights must be finite and not negative.`, and weights that are all zero raise `A weighted pick needs at least one positive weight.`
 
@@ -1652,7 +1652,7 @@ local m = require('haylen.math')
 local random = m.random(11)
 local loot = {'coin', 'potion', 'sword'}
 local weights = {70, 25, 5}
-print(loot[random:pick(weights)])
+print(loot[random:weightedIndex(weights)])
 ```
 
 ### random:shuffle(list)
@@ -1675,12 +1675,12 @@ Restarts the generator from the integer `seed`, so it repeats the sequence of a 
 local m = require('haylen.math')
 
 local random = m.random(1)
-local first = random:float()
+local first = random:nextFloat()
 random:reseed(1)
-print(random:float() == first) -- true
+print(random:nextFloat() == first) -- true
 ```
 
-## Noise
+## Noise2D
 
 Seeded gradient noise created with `m.noise`. Every function returns values between `-1` and `1` that change smoothly with the coordinates, and features are about one unit apart, so scale world coordinates down before sampling.
 
@@ -1754,7 +1754,7 @@ print(height)
 
 ## Polygon operations
 
-`m.polygon` combines, grows, simplifies and splits shapes with Clipper2. A shape is a list of outlines, each a list of points, and any single outline is also accepted as a shape. One outline alone is filled in either winding, and an outline wound opposite to the outline around it is a hole. Results always wind outer outlines so that `m.polygonArea` is positive and holes so that it is negative, and they keep three decimal places.
+`m.polygon` combines, grows, simplifies and splits shapes with Clipper2. A shape is a list of outlines, each a list of points, and any single outline is also accepted as a shape. One outline alone is filled in either winding, and an outline wound opposite to the outline around it is a hole. Results always wind outer outlines so that `m.polygonSignedArea` is positive and holes so that it is negative, and they keep three decimal places.
 
 ### m.polygon.unite(shape, other)
 

@@ -68,7 +68,7 @@ int GraphicsLua::whiteTexture(lua_State* L) {
     return 1;
 }
 
-int GraphicsLua::backend(lua_State* L) {
+int GraphicsLua::backendName(lua_State* L) {
     lua::Stack::push(L, lua::Runtime::getEngine(L).getGraphics().getBackendName());
     return 1;
 }
@@ -142,7 +142,7 @@ int GraphicsLua::shaderTextures(lua_State* L) {
 
 int GraphicsLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"newTexture", &lua::Binding::native<&newTexture>}, {"newRenderTarget", &lua::Binding::native<&newRenderTarget>}, {"whiteTexture", &whiteTexture}, {"backend", &backend}, {"maxTextureSize", &maxTextureSize}, {"newFontFamily", &lua::Binding::native<&FontLua::newFontFamily>}, {"newBitmapFont", &lua::Binding::native<&FontLua::newBitmapFont>}, {"newGridFont", &lua::Binding::native<&FontLua::newGridFont>}, {nullptr, nullptr},
+        {"newTexture", &lua::Binding::native<&newTexture>}, {"newRenderTarget", &lua::Binding::native<&newRenderTarget>}, {"whiteTexture", &whiteTexture}, {"backendName", &backendName}, {"maxTextureSize", &maxTextureSize}, {"newFontFamily", &lua::Binding::native<&FontLua::newFontFamily>}, {"newBitmapFont", &lua::Binding::native<&FontLua::newBitmapFont>}, {"newGridFont", &lua::Binding::native<&FontLua::newGridFont>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

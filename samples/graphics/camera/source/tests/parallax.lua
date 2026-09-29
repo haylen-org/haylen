@@ -39,7 +39,7 @@ end
 function Parallax:update(dt)
     local direction = input.vector('move')
     local x = input.touches()[1] and input.touches()[1].x or (input.down('point') and input.mousePosition())
-    if x and not ui.wantsPointer() then
+    if x and not ui.usingPointer() then
         direction = x < self.camera:worldToScreen(self.walker.x, 0) and -1 or 1
     end
     if direction ~= 0 and self.traveling then

@@ -162,18 +162,18 @@ void TweenLua::configure(lua_State* L, int options, int owner, Tween& tween) {
     float repeatDelay = tween.getRepeatDelay();
     float timeScale = tween.getTimeScale();
     ProcessMode processMode = tween.getProcessMode();
-    bool unscaled = tween.isUnscaledTime();
+    bool unscaled = tween.isUnscaled();
     bool fixed = tween.isFixedStep();
     bool autoKill = tween.isAutoKill();
     std::string tag;
     lua::Table::readField(L, options, "delay", delay);
     lua::Table::readField(L, options, "repeatCount", repeatCount);
-    lua::Table::readField(L, options, "loop", loop);
+    lua::Table::readField(L, options, "loopMode", loop);
     lua::Table::readField(L, options, "repeatDelay", repeatDelay);
     lua::Table::readField(L, options, "timeScale", timeScale);
     lua::Table::readField(L, options, "processMode", processMode);
     lua::Table::readField(L, options, "unscaled", unscaled);
-    lua::Table::readField(L, options, "fixed", fixed);
+    lua::Table::readField(L, options, "fixedStep", fixed);
     lua::Table::readField(L, options, "autoKill", autoKill);
     lua::Table::readField(L, options, "tag", tag);
 
@@ -183,7 +183,7 @@ void TweenLua::configure(lua_State* L, int options, int owner, Tween& tween) {
     tween.setRepeatDelay(repeatDelay);
     tween.setTimeScale(timeScale);
     tween.setProcessMode(processMode);
-    tween.setUnscaledTime(unscaled);
+    tween.setUnscaled(unscaled);
     tween.setFixedStep(fixed);
     tween.setAutoKill(autoKill);
     tween.setTag(std::move(tag));
@@ -465,7 +465,7 @@ int TweenLua::startValues(lua_State* L, TweenProperty::Mode mode) {
             property = TweenProperty::by(given);
         } else if (pair) {
             if (lua_getfield(L, ends, name.c_str()) == LUA_TNIL) {
-                luaL_error(L, "tween.fromTo needs an end value for the field '%s'.", name.c_str());
+                luaL_error(L, "A tween.fromTo call needs an end value for the field '%s'.", name.c_str());
             }
             property = TweenProperty::fromTo(given, readLike(L, -1, current, name));
             lua_pop(L, 1);
@@ -772,7 +772,7 @@ int TweenLua::stagger(lua_State* L) {
     if (!lua_isnoneornil(L, 4)) {
         luaL_checktype(L, 4, LUA_TTABLE);
         lua::Table::checkFields(L, 4, {kCommonFields, kTimelineFields, kStaggerFields});
-        lua::Table::readField(L, 4, "from", origin);
+        lua::Table::readField(L, 4, "origin", origin);
         options = 4;
     }
 
@@ -836,14 +836,14 @@ int TweenLua::killAll(lua_State* L) {
     return 0;
 }
 
-int TweenLua::count(lua_State* L) {
+int TweenLua::size(lua_State* L) {
     lua::Stack::push(L, lua::Runtime::getEngine(L).getTweens().size());
     return 1;
 }
 
 int TweenLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"to", &lua::Binding::native<&to>}, {"from", &lua::Binding::native<&from>}, {"by", &lua::Binding::native<&by>}, {"fromTo", &lua::Binding::native<&fromTo>}, {"move", &lua::Binding::native<&move>}, {"scale", &lua::Binding::native<&scale>}, {"rotate", &lua::Binding::native<&rotate>}, {"fade", &lua::Binding::native<&fade>}, {"tint", &lua::Binding::native<&tint>}, {"jump", &lua::Binding::native<&jump>}, {"path", &lua::Binding::native<&path>}, {"bezier", &lua::Binding::native<&bezier>}, {"blink", &lua::Binding::native<&blink>}, {"shake", &lua::Binding::native<&shake>}, {"punch", &lua::Binding::native<&punch>}, {"timeline", &lua::Binding::native<&timeline>}, {"stagger", &lua::Binding::native<&stagger>}, {"killTag", &lua::Binding::native<&killTag>}, {"completeTag", &lua::Binding::native<&completeTag>}, {"pauseTag", &lua::Binding::native<&pauseTag>}, {"resumeTag", &lua::Binding::native<&resumeTag>}, {"setTimeScale", &lua::Binding::native<&setTimeScale>}, {"timeScale", &lua::Binding::native<&getTimeScale>}, {"killTarget", &lua::Binding::native<&killTarget>}, {"killAll", &lua::Binding::native<&killAll>}, {"count", &count}, {nullptr, nullptr},
+        {"to", &lua::Binding::native<&to>}, {"from", &lua::Binding::native<&from>}, {"by", &lua::Binding::native<&by>}, {"fromTo", &lua::Binding::native<&fromTo>}, {"move", &lua::Binding::native<&move>}, {"scale", &lua::Binding::native<&scale>}, {"rotate", &lua::Binding::native<&rotate>}, {"fade", &lua::Binding::native<&fade>}, {"tint", &lua::Binding::native<&tint>}, {"jump", &lua::Binding::native<&jump>}, {"path", &lua::Binding::native<&path>}, {"bezier", &lua::Binding::native<&bezier>}, {"blink", &lua::Binding::native<&blink>}, {"shake", &lua::Binding::native<&shake>}, {"punch", &lua::Binding::native<&punch>}, {"timeline", &lua::Binding::native<&timeline>}, {"stagger", &lua::Binding::native<&stagger>}, {"killTag", &lua::Binding::native<&killTag>}, {"completeTag", &lua::Binding::native<&completeTag>}, {"pauseTag", &lua::Binding::native<&pauseTag>}, {"resumeTag", &lua::Binding::native<&resumeTag>}, {"setTimeScale", &lua::Binding::native<&setTimeScale>}, {"timeScale", &lua::Binding::native<&getTimeScale>}, {"killTarget", &lua::Binding::native<&killTarget>}, {"killAll", &lua::Binding::native<&killAll>}, {"size", &size}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;
@@ -922,7 +922,7 @@ int TweenLua::handleWait(lua_State* L) {
     return 1;
 }
 
-int TweenLua::handleActive(lua_State* L) {
+int TweenLua::handleAlive(lua_State* L) {
     lua::Stack::push(L, check(L, 1)->isAlive());
     return 1;
 }
@@ -1047,7 +1047,7 @@ int TweenLua::timelineInsert(lua_State* L) {
     return 1;
 }
 
-int TweenLua::timelineLabel(lua_State* L) {
+int TweenLua::timelineAddLabel(lua_State* L) {
     Timeline& target = checkTimeline(L, 1);
     std::string name = lua::Stack::read<std::string>(L, 2);
     if (lua_isnoneornil(L, 3)) {
@@ -1067,9 +1067,9 @@ int TweenLua::timelineSize(lua_State* L) {
 template <typename T> void TweenLua::installHandle(lua_State* L, bool withTimeline) {
     lua::ClassBuilder<T> builder(L);
     builder.function("play", &lua::Binding::native<&handlePlay>).function("pause", &lua::Binding::native<&handlePause>).function("resume", &lua::Binding::native<&handleResume>).function("restart", &lua::Binding::native<&handleRestart>).function("reverse", &lua::Binding::native<&handleReverse>).function("seek", &lua::Binding::native<&handleSeek>).function("complete", &lua::Binding::native<&handleComplete>).function("kill", &lua::Binding::native<&handleKill>).function("wait", &lua::Binding::native<&handleWait>);
-    builder.property("active", &handleActive).property("playing", &handlePlaying).property("paused", &handlePaused).property("reversed", &handleReversed).property("completed", &handleCompleted).property("progress", &handleProgress, &lua::Binding::native<&handleSetProgress>).property("time", &handleTime, &lua::Binding::native<&handleSetTime>).property("timeScale", &handleTimeScale, &lua::Binding::native<&handleSetTimeScale>).property("duration", &handleDuration).property("totalDuration", &handleTotalDuration).property("delay", &handleDelay).property("tag", &handleTag);
+    builder.property("alive", &handleAlive).property("playing", &handlePlaying).property("paused", &handlePaused).property("reversed", &handleReversed).property("completed", &handleCompleted).property("progress", &handleProgress, &lua::Binding::native<&handleSetProgress>).property("time", &handleTime, &lua::Binding::native<&handleSetTime>).property("timeScale", &handleTimeScale, &lua::Binding::native<&handleSetTimeScale>).property("duration", &handleDuration).property("totalDuration", &handleTotalDuration).property("delay", &handleDelay).property("tag", &handleTag);
     if (withTimeline) {
-        builder.function("append", &lua::Binding::native<&timelineAppend>).function("join", &lua::Binding::native<&timelineJoin>).function("insert", &lua::Binding::native<&timelineInsert>).function("label", &lua::Binding::native<&timelineLabel>).property("size", &timelineSize);
+        builder.function("append", &lua::Binding::native<&timelineAppend>).function("join", &lua::Binding::native<&timelineJoin>).function("insert", &lua::Binding::native<&timelineInsert>).function("addLabel", &lua::Binding::native<&timelineAddLabel>).property("size", &timelineSize);
     }
     builder.install();
 }

@@ -92,14 +92,14 @@ function Polygons:render()
         graphics2d.drawPolyline(outline, 2, '#66FFFFFF', true)
     end
     for index, piece in ipairs(self.pieces) do
-        local color = self.options.pieces and m.hsv((index * 0.618) % 1, 0.5, 0.85) or '#FF4FC3F7'
+        local color = self.options.pieces and m.fromHsv((index * 0.618) % 1, 0.5, 0.85) or '#FF4FC3F7'
         graphics2d.drawPolygon(piece, color, {layer = 1})
         if self.options.pieces then
             graphics2d.drawPolyline(piece, 1.5, '#AA1A2029', true, {layer = 2})
         end
     end
     for _, outline in ipairs(self.result) do
-        graphics2d.drawPolyline(outline, 3, m.polygonArea(outline) >= 0 and '#FFFFFFFF' or '#FFFFD54F', true, {layer = 3})
+        graphics2d.drawPolyline(outline, 3, m.polygonSignedArea(outline) >= 0 and '#FFFFFFFF' or '#FFFFD54F', true, {layer = 3})
     end
 end
 

@@ -33,10 +33,10 @@ function gameplay:enter()
     self.endTime = 0
 
     -- The engine only stops time while the app is away, so the pause menu keeps the run paused for the player who comes back.
-    scene.listen(self, 'app_background', function()
+    scene.listen(self, 'appBackground', function()
         self:openPause()
     end)
-    scene.listen(self, 'app_inactive', function()
+    scene.listen(self, 'appInactive', function()
         if haylen.lifecycle().pauseOnFocusLoss then
             self:openPause()
         end

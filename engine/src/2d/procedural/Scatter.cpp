@@ -68,7 +68,7 @@ std::vector<math::Vec2> Scatter::placeGrid(const Region& region, const Options& 
 }
 
 std::vector<math::Vec2> Scatter::placePoisson(const Region& region, const Options& options, math::Random& random) {
-    math::PoissonDisk::Options poisson{.area = region.getBounds(), .minimumDistance = options.spacing, .attemptsPerPoint = options.attempts};
+    math::PoissonDisk::Options poisson{.area = region.getBounds(), .minimumDistance = options.spacing, .attempts = options.attempts};
     poisson.accept = [&](math::Vec2 point) { return region.contains(point) && !isExcluded(options, point); };
     if (options.densityMap) {
         poisson.maximumDistance = options.maximumSpacing;

@@ -17,7 +17,7 @@ The engine updates device state, gamepads, gestures and the action map once at t
 
 ### Keyboard
 
-`input.keyDown(key)`, `input.keyPressed(key)` and `input.keyReleased(key)` take key names such as `'space'`, `'left_shift'`, `'a'` or `'f3'`, listed under [Key names](lua-api/input.md#key-names). Key repeat from holding a key is not a new press. `input.anyKeyPressed()` suits title screens, and `input.modifiers()` returns the `shift`, `control`, `alt` and `super` state of the latest key event.
+`input.keyDown(key)`, `input.keyPressed(key)` and `input.keyReleased(key)` take key names such as `'space'`, `'leftShift'`, `'a'` or `'f3'`, listed under [Key names](lua-api/input.md#key-names). Key repeat from holding a key is not a new press. `input.anyKeyPressed()` suits title screens, and `input.modifiers()` returns the `shift`, `control`, `alt` and `super` state of the latest key event.
 
 Text entry reads `input.text()`, the UTF-8 text typed in this frame, which follows the keyboard layout and input methods of the platform. [UI text fields](ui.md) already handle typing, so most apps never read it.
 
@@ -41,13 +41,13 @@ local worldX, worldY = camera:screenToWorld(input.mousePosition())
 
 ### Gestures
 
-`input.gestures()` returns the gestures recognized in this frame: `'tap'`, `'double_tap'`, `'long_press'`, `'swipe'` and `'pinch'`, each with a position, the movement of a swipe and the scale of a pinch. While no finger is down, the left mouse button acts as a finger, so gestures also work with a mouse on desktop. `input.setGestureSettings` changes the thresholds, such as `longPressDuration` or `swipeMinDistance`, and `mouse = false` turns the mouse off as a finger.
+`input.gestures()` returns the gestures recognized in this frame: `'tap'`, `'doubleTap'`, `'longPress'`, `'swipe'` and `'pinch'`, each with a position, the movement of a swipe and the scale of a pinch. While no finger is down, the left mouse button acts as a finger, so gestures also work with a mouse on desktop. `input.setGestureSettings` changes the thresholds, such as `longPressDuration` or `swipeMinDistance`, and `mouse = false` turns the mouse off as a finger.
 
 ```lua
 for _, gesture in ipairs(input.gestures()) do
     if gesture.type == 'pinch' then
         camera.zoom = {baseZoom * gesture.scale, baseZoom * gesture.scale}
-    elseif gesture.type == 'double_tap' then
+    elseif gesture.type == 'doubleTap' then
         camera.zoom = {1, 1}
     end
 end
@@ -55,7 +55,7 @@ end
 
 ### Gamepads
 
-Up to four gamepads are tracked, with indices from 1 to 4 that default to 1. Buttons use the positional names `south`, `east`, `west` and `north` for the face buttons, so `south` is A on an Xbox pad and Cross on a PlayStation pad, plus `left_shoulder`, `right_shoulder`, `left_stick`, `right_stick`, `back`, `start`, `guide` and the d-pad. Axes are `left_x`, `left_y`, `right_x`, `right_y`, `left_trigger` and `right_trigger`.
+Up to four gamepads are tracked, with indices from 1 to 4 that default to 1. Buttons use the positional names `south`, `east`, `west` and `north` for the face buttons, so `south` is A on an Xbox pad and Cross on a PlayStation pad, plus `leftShoulder`, `rightShoulder`, `leftStick`, `rightStick`, `back`, `start`, `guide` and the d-pad. Axes are `leftX`, `leftY`, `rightX`, `rightY`, `leftTrigger` and `rightTrigger`.
 
 - `input.gamepadDown`, `input.gamepadPressed` and `input.gamepadReleased` read buttons, and `input.gamepadConnected` and `input.gamepadName` describe the pad.
 - `input.gamepadAxis(axis, index)` returns one axis with the dead zone removed and the rest rescaled. Sticks go from -1 to 1 with positive y pointing down, and triggers from 0 to 1.
@@ -66,11 +66,11 @@ Each platform reads gamepads through its own API: GameController on Apple platfo
 
 ### Events
 
-A scene with an `event(self, e)` callback receives every platform event as a table as soon as it arrives, such as `key_down`, `mouse_down`, `touch_began`, `focus_lost` or `suspended`. A key remapping screen uses it to take the next key the player presses, whatever the action map says. An app that reacts to leaving the foreground listens to the lifecycle events instead, such as `app_background`, as the [lifecycle guide](lifecycle.md#app-states) explains.
+A scene with an `event(self, e)` callback receives every platform event as a table as soon as it arrives, such as `keyDown`, `mouseDown`, `touchBegan`, `focusLost` or `suspended`. A key remapping screen uses it to take the next key the player presses, whatever the action map says. An app that reacts to leaving the foreground listens to the lifecycle events instead, such as `appBackground`, as the [lifecycle guide](lifecycle.md#app-states) explains.
 
 ```lua
 function remap:event(event)
-    if event.type == 'key_down' and not event['repeat'] then
+    if event.type == 'keyDown' and not event['repeat'] then
         self:bind('key:' .. event.key)
     end
 end
@@ -96,13 +96,13 @@ Every binding is a string with a source and a name.
 
 | Binding | Meaning | Example |
 | --- | --- | --- |
-| `key:<key>` | A keyboard key by its [key name](lua-api/input.md#key-names). | `key:space`, `key:left_shift`, `key:w` |
+| `key:<key>` | A keyboard key by its [key name](lua-api/input.md#key-names). | `key:space`, `key:leftShift`, `key:w` |
 | `mouse:<button>` | A mouse button. | `mouse:left`, `mouse:right` |
-| `button:<button>` | A gamepad button by its [gamepad name](lua-api/input.md#gamepad-names). | `button:south`, `button:dpad_up`, `button:start` |
-| `axis:<axis>+` or `axis:<axis>-` | One direction of a gamepad axis, from 0 to 1. | `axis:right_trigger+`, `axis:left_y-` (the left stick pushed up) |
+| `button:<button>` | A gamepad button by its [gamepad name](lua-api/input.md#gamepad-names). | `button:south`, `button:dpadUp`, `button:start` |
+| `axis:<axis>+` or `axis:<axis>-` | One direction of a gamepad axis, from 0 to 1. | `axis:rightTrigger+`, `axis:leftY-` (the left stick pushed up) |
 | `stick:left` or `stick:right` | A whole gamepad stick, for vector actions. | `stick:left` |
 | `virtual:<name>` | A virtual button, written by a `touchButton` of the UI or by `input.setVirtualButton`. | `virtual:attack` |
-| `virtual_stick:<name>` | A virtual stick, written by a `touchStick` of the UI or by `input.setVirtualStick`. | `virtual_stick:move` |
+| `virtualStick:<name>` | A virtual stick, written by a `touchStick` of the UI or by `input.setVirtualStick`. | `virtualStick:move` |
 
 Gamepad bindings read every connected gamepad and use the strongest one. `input.setGamepadIndex(index)` makes them read one pad only, which suits local multiplayer, and `input.setGamepadIndex(nil)` reads every pad again.
 
@@ -117,8 +117,8 @@ input.loadActions('input/actions.json')
 
 input.loadActions({actions = {
     {name = 'jump', type = 'button', bindings = {'key:space', 'button:south', 'virtual:jump'}},
-    {name = 'throttle', type = 'axis', positive = {'key:up', 'axis:right_trigger+'}, negative = {'key:down', 'axis:left_trigger+'}},
-    {name = 'move', type = 'vector', left = {'key:a'}, right = {'key:d'}, up = {'key:w'}, down = {'key:s'}, bindings = {'stick:left', 'virtual_stick:move'}},
+    {name = 'throttle', type = 'axis', positive = {'key:up', 'axis:rightTrigger+'}, negative = {'key:down', 'axis:leftTrigger+'}},
+    {name = 'move', type = 'vector', left = {'key:a'}, right = {'key:d'}, up = {'key:w'}, down = {'key:s'}, bindings = {'stick:left', 'virtualStick:move'}},
 }})
 ```
 
@@ -136,11 +136,11 @@ input.loadActions({actions = {
 
 An action name that was never defined reads as not down and 0, so optional actions need no checks.
 
-While a scene change holds input back, every action reads as up and 0. A key, button, stick or touch control that is still held when the change ends keeps its actions up until it is released, so the press that opened a menu never reaches the menu as a second press. The navigation actions of the interface, such as `ui_cancel`, follow the same rule.
+While a scene change holds input back, every action reads as up and 0. A key, button, stick or touch control that is still held when the change ends keeps its actions up until it is released, so the press that opened a menu never reaches the menu as a second press. The navigation actions of the interface, such as `uiCancel`, follow the same rule.
 
 ## Virtual buttons and sticks
 
-Virtual buttons and sticks are named inputs that on-screen controls or app code write and the action map reads through `virtual:` and `virtual_stick:` bindings.
+Virtual buttons and sticks are named inputs that on-screen controls or app code write and the action map reads through `virtual:` and `virtualStick:` bindings.
 
 The usual writers are the `touchButton` and `touchStick` components of [haylen.ui](ui.md#touch-controls). A `touchButton` with `action = 'attack'` holds the virtual button `attack` down while a finger presses it, and a `touchStick` with `action = 'move'` sets the virtual stick `move` to a vector of length 0 to 1. Each control follows its own finger, so a stick and several buttons work at the same time, and a control that stops drawing releases what it held.
 
@@ -156,10 +156,10 @@ Values written during a frame reach the actions at the start of the next frame, 
 
 ## Last device and touch-only controls
 
-`input.lastDevice()` returns the kind of device the player used last: `'keyboard_mouse'`, `'touch'` or `'gamepad'`. Key presses and mouse button presses select `'keyboard_mouse'`, touches select `'touch'`, and a gamepad button going down or an axis leaving the dead zone selects `'gamepad'`. Moving the mouse alone does not change it, and neither do key repeats or a gamepad button or stick that stays held, so a player who holds a trigger and then presses a key gets keyboard prompts. Use it to show matching button prompts.
+`input.lastDevice()` returns the kind of device the player used last: `'keyboardMouse'`, `'touch'` or `'gamepad'`. Key presses and mouse button presses select `'keyboardMouse'`, touches select `'touch'`, and a gamepad button going down or an axis leaving the dead zone selects `'gamepad'`. Moving the mouse alone does not change it, and neither do key repeats or a gamepad button or stick that stays held, so a player who holds a trigger and then presses a key gets keyboard prompts. Use it to show matching button prompts.
 
 ```lua
-local prompts = {keyboard_mouse = 'Press Space', touch = 'Tap the screen', gamepad = 'Press A'}
+local prompts = {keyboardMouse = 'Press Space', touch = 'Tap the screen', gamepad = 'Press A'}
 
 function title:update(dt)
     local device = input.lastDevice()
@@ -174,31 +174,31 @@ Touch controls use the same rule through their `touchOnly` property. A `touchSti
 
 ## UI and gameplay input
 
-The action map reads `mouse:` bindings as released while the interface owns the pointer, so an action bound to `mouse:left` never goes down when the player clicks a HUD button. The raw mouse and keyboard functions still report every click and key. `ui.wantsPointer()` returns `true` while the pointer is over something the interface owns, and `ui.wantsKeyboard()` returns `true` while a text field has the focus, so code that reads the raw devices checks them first.
+The action map reads `mouse:` bindings as released while the interface owns the pointer, so an action bound to `mouse:left` never goes down when the player clicks a HUD button. The raw mouse and keyboard functions still report every click and key. `ui.usingPointer()` returns `true` while the pointer is over something the interface owns, and `ui.usingKeyboard()` returns `true` while a text field has the focus, so code that reads the raw devices checks them first.
 
 ```lua
 local input = require('haylen.input')
 local ui = require('haylen.ui')
 
 function level:update(dt)
-    if input.mousePressed('left') and not ui.wantsPointer() then
+    if input.mousePressed('left') and not ui.usingPointer() then
         self:selectAt(input.mousePosition())
     end
 end
 ```
 
-Touch controls count as interface for `ui.wantsPointer()`, so an app that checks it never treats a tap on a touch button as a tap on the world. The UI also moves its focus with the arrow keys and the d-pad and activates controls with Space, Enter and the south gamepad button, as the [UI guide](ui.md#pointer-keyboard-and-gamepad) explains. The action map reads the directions at the same time, so a menu with focusable controls usually covers a paused scene, as the Tiny Island pause menu does.
+Touch controls count as interface for `ui.usingPointer()`, so an app that checks it never treats a tap on a touch button as a tap on the world. The UI also moves its focus with the arrow keys and the d-pad and activates controls with Space, Enter and the south gamepad button, as the [UI guide](ui.md#pointer-keyboard-and-gamepad) explains. The action map reads the directions at the same time, so a menu with focusable controls usually covers a paused scene, as the Tiny Island pause menu does.
 
 Input the interface answers itself never triggers an action, the same way the action map leaves mouse buttons alone while the interface owns the pointer. At the end of every frame the interface captures, for the next frame, the keys and gamepad buttons of the presses it will answer:
 
-- the `ui_cancel` bindings, Escape, the east button and the Menu button of a TV remote by default, while a popup, a combo list, a menu or a dialog is open, a control is being edited, an item is carried or the focus is inside a closable window,
-- the `ui_accept` bindings, Enter, Space and the south button by default, while a control has the focus,
+- the `uiCancel` bindings, Escape, the east button and the Menu button of a TV remote by default, while a popup, a combo list, a menu or a dialog is open, a control is being edited, an item is carried or the focus is inside a closable window,
+- the `uiAccept` bindings, Enter, Space and the south button by default, while a control has the focus,
 - every key while a text field edits, on Mac Catalyst too, where a hardware keyboard still reports keys while the native field edits,
 - every key and gamepad button while a `keyCapture` listens.
 
-A key or button pressed while it is captured belongs to the interface until it is released, so an action bound to it reads as up for that whole press, even after the popup it closed is gone. `input.keyCaptured(key)` and `input.gamepadCaptured(button)` tell whether a press belongs to the interface, for apps that also read the raw keyboard, whose functions keep reporting every key.
+A key or button pressed while it is captured belongs to the interface until it is released, so an action bound to it reads as up for that whole press, even after the popup it closed is gone. `input.keyCaptured(key)` and `input.gamepadButtonCaptured(button)` tell whether a press belongs to the interface, for apps that also read the raw keyboard, whose functions keep reporting every key.
 
-A screen therefore goes back with the `onCancel` handler of its document root instead of an action of its own. `ui_cancel` reaches the root only when no popup, combo list, dialog or edit answers it first, so the Escape that closes a combo list never leaves the screen, and the next Escape does.
+A screen therefore goes back with the `onCancel` handler of its document root instead of an action of its own. `uiCancel` reaches the root only when no popup, combo list, dialog or edit answers it first, so the Escape that closes a combo list never leaves the screen, and the next Escape does.
 
 ```lua
 local scene = require('haylen.scene')
@@ -233,14 +233,14 @@ Tiny Island defines five actions in `samples/games/tiny-island/content/input/act
         {
             "name": "move",
             "type": "vector",
-            "up": ["key:w", "key:up", "button:dpad_up"],
-            "down": ["key:s", "key:down", "button:dpad_down"],
-            "left": ["key:a", "key:left", "button:dpad_left"],
-            "right": ["key:d", "key:right", "button:dpad_right"],
-            "bindings": ["stick:left", "virtual_stick:move"]
+            "up": ["key:w", "key:up", "button:dpadUp"],
+            "down": ["key:s", "key:down", "button:dpadDown"],
+            "left": ["key:a", "key:left", "button:dpadLeft"],
+            "right": ["key:d", "key:right", "button:dpadRight"],
+            "bindings": ["stick:left", "virtualStick:move"]
         },
         {"name": "attack", "type": "button", "bindings": ["key:space", "mouse:left", "button:south", "virtual:attack"]},
-        {"name": "special", "type": "button", "bindings": ["key:left_shift", "mouse:right", "button:west", "virtual:special"]},
+        {"name": "special", "type": "button", "bindings": ["key:leftShift", "mouse:right", "button:west", "virtual:special"]},
         {"name": "interact", "type": "button", "bindings": ["key:e", "button:east", "virtual:interact"]},
         {"name": "pause", "type": "button", "bindings": ["key:escape", "button:start"]}
     ]
@@ -267,7 +267,7 @@ elseif self.class.special ~= 'guard' and input.pressed('special') and self.speci
 end
 ```
 
-The same action can mean different things per class. The warrior guards while `special` is held, so the game reads `input.down('special')`, and the other classes trigger their special once per press with `input.pressed('special')`. `interact` is read with `input.down` to double the reach for feeding the fire while it is held. The gameplay and pause scenes read `input.pressed('pause')`, so Escape and Start open and close the pause menu during a run. The settings and class selection screens go back with the `onCancel` handler of their document root, which the `ui_cancel` action of the interface triggers with Escape and the east button, as [UI and gameplay input](#ui-and-gameplay-input) describes.
+The same action can mean different things per class. The warrior guards while `special` is held, so the game reads `input.down('special')`, and the other classes trigger their special once per press with `input.pressed('special')`. `interact` is read with `input.down` to double the reach for feeding the fire while it is held. The gameplay and pause scenes read `input.pressed('pause')`, so Escape and Start open and close the pause menu during a run. The settings and class selection screens go back with the `onCancel` handler of their document root, which the `uiCancel` action of the interface triggers with Escape and the east button, as [UI and gameplay input](#ui-and-gameplay-input) describes.
 
 The HUD in `samples/games/tiny-island/source/ui/hud.lua` drives the virtual inputs with a floating `touchStick` for `move` and `touchButton` controls for `attack`, `special` and `interact`, all with `touchOnly = true`. The pause button of the HUD is a regular icon button that opens the pause menu directly. When the pause menu covers the run, the gameplay scene hides the HUD and calls `input.clearVirtual()`, so nothing stays pressed while the game is paused.
 

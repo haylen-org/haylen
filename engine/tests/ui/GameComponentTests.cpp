@@ -338,10 +338,12 @@ TEST_F(GameComponentTest, CapturesBindingsForRemapping) {
     key(input::Key::A);
     stick({0.9F, 0.0F});
     stick({});
-    EXPECT_EQ(findLastEvent("change").value, (core::Json{{"value", "axis:left_x+"}}));
+    EXPECT_EQ(findLastEvent("change").value, (core::Json{{"value", "axis:leftX+"}}));
     EXPECT_THROW(document->set("jump", {{"value", "key:nothing"}}), std::invalid_argument);
-    EXPECT_EQ(KeyCapture::describe("key:left_shift"), "Left Shift");
-    EXPECT_EQ(KeyCapture::describe("axis:left_x+"), "Left X +");
+    EXPECT_EQ(KeyCapture::describe("key:leftShift"), "Left Shift");
+    EXPECT_EQ(KeyCapture::describe("axis:leftX+"), "Left X +");
+    EXPECT_EQ(KeyCapture::describe("key:keypad0"), "Keypad 0");
+    EXPECT_EQ(KeyCapture::describe("key:f12"), "F12");
     EXPECT_EQ(KeyCapture::describe("mouse:right"), "Mouse Right");
 }
 

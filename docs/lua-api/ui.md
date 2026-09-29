@@ -48,7 +48,7 @@ Builds a document from the node table `tree`, shows it and returns its [UiDocume
 
 The root fills the whole area when its `align` is `stretch`, which is the default of containers. With `start`, `center` or `end` the root keeps its measured size and sits at the top left, the center or the bottom right of the area.
 
-A placement other than `safe` or `screen` raises `placement must be safe or screen.`, and an owner that is not a table or a userdata raises `An owner must be a table or a userdata, not <type>.` A tree that breaks the [screen format](#screen-format) or has an invalid property raises an error that names the problem, such as `There is no UI component kind named spaceship.` or `label.width must be a non-negative number or auto.`, and nothing is mounted. Mounting publishes the `ui_document_mounted` event of [haylen.events](events.md) with the document.
+A placement other than `safe` or `screen` raises `The placement option must be safe or screen.`, and an owner that is not a table or a userdata raises `An owner must be a table or a userdata, not <type>.` A tree that breaks the [screen format](#screen-format) or has an invalid property raises an error that names the problem, such as `There is no UI component kind named spaceship.` or `label.width must be a non-negative number or auto.`, and nothing is mounted. Mounting publishes the `uiDocumentMounted` event of [haylen.events](events.md) with the document.
 
 ```lua
 local ui = require('haylen.ui')
@@ -92,7 +92,7 @@ local document = ui.mount(tree)
 
 ### ui.&lt;kind&gt;(properties)
 
-Every component kind is also a function of the module, so `ui.button{text = 'Play'}` is the same as `ui.node('button', {text = 'Play'})`. Reading any other missing name from the module raises `haylen.ui has no member '<name>'.`.
+Every component kind is also a function of the module, so `ui.button{text = 'Play'}` is the same as `ui.node('button', {text = 'Play'})`. Reading any other missing name from the module raises `The module haylen.ui has no member '<name>'.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -254,7 +254,7 @@ local graphics = require('haylen.graphics')
 local ui = require('haylen.ui')
 
 ui.addFont('serif', 'fonts/serif.ttf')
-ui.addFont('story', graphics.newFontFamily({regular = assets.font('fonts/serif.ttf'), bold = assets.font('fonts/serif_bold.ttf'), fallback = {assets.font('fonts/cjk.ttf')}}))
+ui.addFont('story', graphics.newFontFamily({regular = assets.font('fonts/serif.ttf'), bold = assets.font('fonts/serif_bold.ttf'), fallbacks = {assets.font('fonts/cjk.ttf')}}))
 ui.addFont('pixel', assets.font('fonts/pixel.fnt', {filter = 'nearest'}))
 
 -- Labels draw Japanese from the fallback, and headings draw with the bold face.
@@ -262,7 +262,7 @@ ui.setTheme(ui.addTheme({name = 'story', fonts = {body = {font = 'story'}, headi
 ui.mount(ui.column{ui.label{text = 'Chapter 1', font = 'heading'}, ui.label{text = '灯台守の物語'}})
 ```
 
-### ui.wantsPointer()
+### ui.usingPointer()
 
 Returns `true` while the pointer is over something the interface owns: an interactive component, an open dialog, menu or picker, a [haylen.imgui](imgui.md) window, or a card, panel, touch stick or touch button, which keep the pointer from reaching the app. Empty space inside columns, rows and stacks lets the pointer through, even while a mouse button is held down on it. Apps check it before they treat a raw click or tap as a world action. The action map of [haylen.input](input.md) checks it on its own: while it is `true`, `mouse:` bindings read as released, so clicking a menu button never triggers an action bound to the same mouse button.
 
@@ -273,14 +273,14 @@ local ui = require('haylen.ui')
 
 scene.push({
     update = function(self, dt)
-        if input.mousePressed('left') and not ui.wantsPointer() then
+        if input.mousePressed('left') and not ui.usingPointer() then
             print('clicked the world')
         end
     end,
 })
 ```
 
-### ui.wantsKeyboard()
+### ui.usingKeyboard()
 
 Returns `true` while the interface uses the keyboard, such as when a text field has the focus. Apps check it before they treat key presses as gameplay input.
 
@@ -291,7 +291,7 @@ local ui = require('haylen.ui')
 
 scene.push({
     update = function(self, dt)
-        if input.keyPressed('space') and not ui.wantsKeyboard() then
+        if input.keyPressed('space') and not ui.usingKeyboard() then
             print('jump')
         end
     end,
@@ -426,7 +426,7 @@ scene.push(shop)
 
 ## UiDocument
 
-A `UiDocument` is the mounted tree `ui.mount` returns. Its methods find nodes by id. Reading a member it does not have raises `haylen.UiDocument has no member '<name>'.`, and writing a read-only property raises `haylen.UiDocument has no writable property '<name>'.`.
+A `UiDocument` is the mounted tree `ui.mount` returns. Its methods find nodes by id. Reading a member it does not have raises `The type haylen.UiDocument has no member '<name>'.`, and writing a read-only property raises `The type haylen.UiDocument has no writable property '<name>'.`.
 
 ### document:set(id, properties)
 
@@ -438,7 +438,7 @@ Errors raised:
 
 - `The UI document is not mounted.` after `unmount`.
 - `The UI document has no node with the id <id>.` for an unknown id.
-- `set changes properties only, so it takes an object without kind, id or children.` when `properties` holds `kind`, `id` or `children`.
+- `The set method of a document changes properties only, so it takes an object without kind, id or children.` when `properties` holds `kind`, `id` or `children`.
 - The property errors of the kind, such as `slider.min must be smaller than max.` or `slider.colour is not a property of this component.`.
 
 ```lua
@@ -456,7 +456,7 @@ hud:set('sleep', {onClick = function()
 end})
 ```
 
-### document:replace(id, children)
+### document:replaceChildren(id, children)
 
 Replaces every child of the node `id` with the nodes of the list `children`, and an empty list removes them all. The ids of the new nodes are checked before anything changes, so a failed replace leaves the document and its handlers as they were. Once the new children are in place, the handlers of removed nodes are dropped, and a new node that reuses the id of a removed one gets only the handlers of its own table.
 
@@ -479,7 +479,7 @@ local function showItems(names)
             print('bought ' .. name)
         end}
     end
-    shop:replace('items', rows)
+    shop:replaceChildren('items', rows)
 end
 
 showItems({'Axe', 'Rope', 'Lantern'})
@@ -562,7 +562,7 @@ end})
 
 ### document:unmount()
 
-Removes the document from the screen and forgets its handlers. Returns `true` when the document was mounted and `false` when it was already unmounted. An unmounted document still answers `get`, `has` and `bounds`, while `set` and `replace` raise `The UI document is not mounted.`. Unmounting publishes the `ui_document_unmounted` event of [haylen.events](events.md) with the document, and then ends every listener, timer and tween that has the document as its `owner`.
+Removes the document from the screen and forgets its handlers. Returns `true` when the document was mounted and `false` when it was already unmounted. An unmounted document still answers `get`, `has` and `bounds`, while `set` and `replace` raise `The UI document is not mounted.`. Unmounting publishes the `uiDocumentUnmounted` event of [haylen.events](events.md) with the document, and then ends every listener, timer and tween that has the document as its `owner`.
 
 ```lua
 local events = require('haylen.events')
@@ -572,14 +572,14 @@ local ui = require('haylen.ui')
 local banner = ui.mount(ui.label{id = 'score', text = 'Score 0', font = 'title', align = 'center'})
 
 -- The listener belongs to the banner, so it ends when the banner is unmounted.
-events.on('score_changed', function(score)
+events.on('scoreChanged', function(score)
     banner:set('score', {text = 'Score ' .. score})
 end, {owner = banner})
 
-events.emit('score_changed', 120)
+events.emit('scoreChanged', 120)
 timer.after(2, function()
     banner:unmount()
-    events.emit('score_changed', 200)
+    events.emit('scoreChanged', 200)
 end)
 ```
 
@@ -594,7 +594,7 @@ Returns the transform of the node with the id, a `haylen.UiTransform` that moves
 | `opacity` | number | `1` | Multiplies the alpha of what the node draws, from `0` to `1`. |
 | `tint` | Color | white | Multiplies the colors of what the node draws. |
 
-Scale, opacity and tint change only how the node looks, so its input areas keep their layout size. They reach what the node draws in its document, while popups, tooltips and the content of scroll areas, which draw in windows of their own, keep their look. The four properties are native properties, so [haylen.tween](tween.md#native-properties) animates them without running Lua every frame. Replacing the node with `replace` releases its transform: reading it raises `haylen.UiTransform was already released.`, a tween on it stops, and `transform` returns the transform of the new node.
+Scale, opacity and tint change only how the node looks, so its input areas keep their layout size. They reach what the node draws in its document, while popups, tooltips and the content of scroll areas, which draw in windows of their own, keep their look. The four properties are native properties, so [haylen.tween](tween.md#native-properties) animates them without running Lua every frame. Replacing the node with `replace` releases its transform: reading it raises `This haylen.UiTransform was already released.`, a tween on it stops, and `transform` returns the transform of the new node.
 
 ```lua
 local math2d = require('haylen.math')
@@ -609,8 +609,8 @@ local menu = ui.mount(ui.column{align = 'center', gap = 16,
 local title = menu:transform('title')
 title.opacity = 0
 title.offset = math2d.vec2(0, -40)
-tween.to(title, 0.6, {opacity = 1, offset = math2d.vec2(0, 0)}, {ease = 'back_out'})
-tween.to(menu:transform('play'), 0.4, {scale = math2d.vec2(1.1, 1.1)}, {repeatCount = -1, loop = 'yoyo'})
+tween.to(title, 0.6, {opacity = 1, offset = math2d.vec2(0, 0)}, {ease = 'backOut'})
+tween.to(menu:transform('play'), 0.4, {scale = math2d.vec2(1.1, 1.1)}, {repeatCount = -1, loopMode = 'yoyo'})
 ```
 
 ### document.visible
@@ -825,10 +825,10 @@ Buttons, choices, inputs, list rows, slots and the other interactive parts of a 
 
 | Action | Built-in bindings | Use |
 | --- | --- | --- |
-| `ui_accept` | `key:enter`, `key:keypad_enter`, `key:space`, `button:south` | Presses the focused control. |
-| `ui_cancel` | `key:escape`, `button:east` | Goes back: closes the open popup or dialog, puts back a carried item, or sends `cancel`. |
-| `ui_left`, `ui_right`, `ui_up`, `ui_down` | the arrow keys, the directional pad and the left stick | Moves the focus. |
-| `ui_menu` | `key:menu`, `button:north` | Opens the context menu around the focus. |
+| `uiAccept` | `key:enter`, `key:keypadEnter`, `key:space`, `button:south` | Presses the focused control. |
+| `uiCancel` | `key:escape`, `button:east` | Goes back: closes the open popup or dialog, puts back a carried item, or sends `cancel`. |
+| `uiLeft`, `uiRight`, `uiUp`, `uiDown` | the arrow keys, the directional pad and the left stick | Moves the focus. |
+| `uiMenu` | `key:menu`, `button:north` | Opens the context menu around the focus. |
 
 - A direction moves the focus to the nearest control in that direction, preferring controls in line with the focused one, unless the focused node names a neighbor with `focusLeft`, `focusRight`, `focusUp` or `focusDown`. Some controls use left and right themselves while they have the focus: sliders, range sliders, steppers, segmented controls and the page dots of a carousel.
 - Tab and Shift Tab walk the controls in the order they draw, also out of a text field being edited, and a text field they reach starts editing.
@@ -836,12 +836,12 @@ Buttons, choices, inputs, list rows, slots and the other interactive parts of a 
 - `focusWrap` wraps a move that would leave a node around to its other side, such as the end of a row of cards back to its first card.
 - A scroll brings the focused control into view.
 - The focused node reports `focus` and its previous node reports `blur`, as long as that node still draws.
-- `ui_cancel` closes the open popup or dialog, puts back an item carried from a slot grid or a list, and otherwise sends `cancel` to the innermost node with `focusScope` around the focus, or to the root of the document that holds the focus, or of the topmost document when nothing has it. A screen goes back from its root handler, as in the example below.
+- `uiCancel` closes the open popup or dialog, puts back an item carried from a slot grid or a list, and otherwise sends `cancel` to the innermost node with `focusScope` around the focus, or to the root of the document that holds the focus, or of the topmost document when nothing has it. A screen goes back from its root handler, as in the example below.
 - The ring shows around the focus once the player navigates, and a click or a touch hides it. On a device without a pointer, such as an Apple TV or an Android TV, it shows from the start. `ui.focusRingVisible()` tells whether it shows.
 - The first press of a direction while the ring is hidden only shows where the focus is, and the first accept shows the ring and presses the control.
-- A press the UI answers itself never reaches the actions of the app. The keys and buttons of `ui_cancel` that close a popup, a dialog, a closable window or a carried item or that end the editing of a control, those of `ui_accept` while a control has the focus, every key while a text field edits and every key and button while a `keyCapture` listens read as up in the action map until they are released, and [input.keyCaptured](input.md#inputkeycapturedkey) tells when a key belongs to the UI.
+- A press the UI answers itself never reaches the actions of the app. The keys and buttons of `uiCancel` that close a popup, a dialog, a closable window or a carried item or that end the editing of a control, those of `uiAccept` while a control has the focus, every key while a text field edits and every key and button while a `keyCapture` listens read as up in the action map until they are released, and [input.keyCaptured](input.md#inputkeycapturedkey) tells when a key belongs to the UI.
 
-On an Apple TV, a swipe on the touch surface of the Siri Remote moves the focus, a click presses the focused control, and Menu is `ui_cancel`. On an Android TV, the directional pad of the remote and gamepads move it, select presses, and Back is `ui_cancel`. Both platforms leave the app when the player goes back from its root screen, as Apple and Google ask, while [window.setBackLeavesApp](window.md#windowsetbackleavesappenabled) keeps the press inside the app on other screens. An open popup or dialog always keeps it.
+On an Apple TV, a swipe on the touch surface of the Siri Remote moves the focus, a click presses the focused control, and Menu is `uiCancel`. On an Android TV, the directional pad of the remote and gamepads move it, select presses, and Back is `uiCancel`. Both platforms leave the app when the player goes back from its root screen, as Apple and Google ask, while [window.setBackLeavesApp](window.md#windowsetbackleavesappenabled) keeps the press inside the app on other screens. An open popup or dialog always keeps it.
 
 ```lua
 local scene = require('haylen.scene')
@@ -1321,7 +1321,7 @@ Text written in the BBCode markup of the [text guide](../text.md#markup), with b
 | `color` | theme color | `'text'` | Color of text without a `[color]` tag. |
 | `textAlign` | string | `'start'` | `'start'`, `'end'`, `'left'`, `'center'`, `'right'` or `'fill'` for paragraphs without their own alignment, where start and end follow the direction of the UI and left and right name fixed sides. Every paragraph reads in the direction of its first strong letter unless its markup sets `[p dir]`. |
 | `wrap` | boolean | `true` | Wraps the paragraphs at the width of the node. Without wrapping the text keeps its natural width and aligns as one block. |
-| `reveal` | number | `0` | Characters per second of the typewriter reveal, which starts again whenever the text or the theme changes. 0 shows everything at once. |
+| `revealSpeed` | number | `0` | Characters per second of the typewriter reveal, which starts again whenever the text or the theme changes. 0 shows everything at once. |
 | `visibleCharacters` | integer | `-1` | Shows only the first characters, from where the reveal continues. -1 shows everything. |
 
 | Event | Values | When |
@@ -1333,7 +1333,7 @@ Text written in the BBCode markup of the [text guide](../text.md#markup), with b
 local ui = require('haylen.ui')
 
 ui.mount(ui.column{padding = 40, gap = 16,
-    ui.richText{id = 'intro', text = '[b]Welcome![/b] Read the [url=rules]rules[/url] or [url=play]start playing[/url].\n[ul]Collect [color=gold]wood[/color]\nKeep the [wave]fire[/wave] burning[/ul]', reveal = 40, onLink = function(event)
+    ui.richText{id = 'intro', text = '[b]Welcome![/b] Read the [url=rules]rules[/url] or [url=play]start playing[/url].\n[ul]Collect [color=gold]wood[/color]\nKeep the [wave]fire[/wave] burning[/ul]', revealSpeed = 40, onLink = function(event)
         print('open', event.link)
     end, onLinkHover = function(event)
         print(event.link, event.hovered)
@@ -1836,11 +1836,11 @@ end})
 
 ### ui.keyCapture(properties)
 
-A field that shows an [action map binding](input.md#bindings) and, once pressed, listens for the next key, mouse button, gamepad button or gamepad axis and takes it as its binding, which a controls screen hands to `input.defineAction`. A binding it takes reports `change` with the binding string as `value`, such as `'key:w'`, `'mouse:right'`, `'button:south'` or `'axis:left_x+'`. Sticks and triggers count once they travel well away from where they rested when listening started. While it listens it keeps every input from the rest of the UI, and a binding of `cancelWith` stops it and reports `cancel`. It takes the focus, and accept starts listening.
+A field that shows an [action map binding](input.md#bindings) and, once pressed, listens for the next key, mouse button, gamepad button or gamepad axis and takes it as its binding, which a controls screen hands to `input.defineAction`. A binding it takes reports `change` with the binding string as `value`, such as `'key:w'`, `'mouse:right'`, `'button:south'` or `'axis:leftX+'`. Sticks and triggers count once they travel well away from where they rested when listening started. While it listens it keeps every input from the rest of the UI, and a binding of `cancelWith` stops it and reports `cancel`. It takes the focus, and accept starts listening.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `value` | string | `''` | The binding, shown for people, such as `Left Shift` for `'key:left_shift'`. |
+| `value` | string | `''` | The binding, shown for people, such as `Left Shift` for `'key:leftShift'`. |
 | `placeholder` | text | none | Text shown while there is no binding. |
 | `prompt` | text | `'…'` | Text shown while it listens. |
 | `sources` | list of strings | every source | Kinds of input it takes: `'key'`, `'mouse'`, `'button'` and `'axis'`. It ignores the others and goes on listening. |
@@ -2116,7 +2116,7 @@ ui.mount(ui.table{
 
 ### ui.slotGrid(properties)
 
-A grid of square slots that hold pictures and counts, such as an inventory, a chest or a hotbar. A click or a tap selects a slot and reports `select` with the slot id as `item`. The pointer drags the item of a slot onto another slot or a row of any slot grid or draggable list, in the same document or another one, and the keyboard, gamepads and remotes carry it: accept picks the focused slot up, the focus moves, and accept drops it on another slot, while accept on the carried slot or `ui_cancel` puts it back. Picking up reports `drag` with the slot id as `item`, and a drop reports `drop` on the node it lands on, with the slot or row it lands on as `item`, the id of the node the item left as `source` and its slot or row as `sourceItem`. The grid only reports moves, so the app moves its items and sets the new slots. Every slot takes the focus.
+A grid of square slots that hold pictures and counts, such as an inventory, a chest or a hotbar. A click or a tap selects a slot and reports `select` with the slot id as `item`. The pointer drags the item of a slot onto another slot or a row of any slot grid or draggable list, in the same document or another one, and the keyboard, gamepads and remotes carry it: accept picks the focused slot up, the focus moves, and accept drops it on another slot, while accept on the carried slot or `uiCancel` puts it back. Picking up reports `drag` with the slot id as `item`, and a drop reports `drop` on the node it lands on, with the slot or row it lands on as `item`, the id of the node the item left as `source` and its slot or row as `sourceItem`. The grid only reports moves, so the app moves its items and sets the new slots. Every slot takes the focus.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -2269,14 +2269,14 @@ showSaved()
 
 ### ui.window(properties)
 
-A floating window with a title bar that the pointer drags around, holding a column of children, such as an inventory or a map over the game. It takes no room in the layout that holds it and sizes itself to its children unless it has a `width` or `height`. It takes the properties of `column` for its children, pads like a panel and draws with the theme `window` surface. Dragging the title bar reports `move` with the new `x` and `y` once the pointer lets go, and closing reports `close`. Moves reach the controls of the window from the rest of its document and bring it to the front, and `ui_cancel` closes a closable window while the focus is inside it.
+A floating window with a title bar that the pointer drags around, holding a column of children, such as an inventory or a map over the game. It takes no room in the layout that holds it and sizes itself to its children unless it has a `width` or `height`. It takes the properties of `column` for its children, pads like a panel and draws with the theme `window` surface. Dragging the title bar reports `move` with the new `x` and `y` once the pointer lets go, and closing reports `close`. Moves reach the controls of the window from the rest of its document and bring it to the front, and `uiCancel` closes a closable window while the focus is inside it.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `title` | text | none | Title in the title bar. |
 | `x`, `y` | number | the middle of the safe area | Position of the top left corner from the top left of the screen. Setting them moves the window there, and setting only one keeps the other coordinate where the window is. |
 | `open` | boolean | `true` | Shows the window. A window the player closed shows again when `set` sets `open = true`. |
-| `closable` | boolean | `false` | Adds the close button to the title bar and lets `ui_cancel` close the window. |
+| `closable` | boolean | `false` | Adds the close button to the title bar and lets `uiCancel` close the window. |
 | `movable` | boolean | `true` | Lets the pointer drag the title bar. |
 
 ```lua
@@ -2294,7 +2294,7 @@ ui.mount(ui.stack{
 
 ### ui.contextMenu(properties)
 
-A menu of items that opens over its one child: with a right click on it, a long press on a touch screen, `ui_menu` while the focus is inside it, or the `open` command. Picking an item reports `select` with the item id as `item`, and `ui_cancel` or a click outside closes the menu. The menu takes the focus while it is open and gives it back when it closes.
+A menu of items that opens over its one child: with a right click on it, a long press on a touch screen, `uiMenu` while the focus is inside it, or the `open` command. Picking an item reports `select` with the item id as `item`, and `uiCancel` or a click outside closes the menu. The menu takes the focus while it is open and gives it back when it closes.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -2314,7 +2314,7 @@ ui.mount(ui.contextMenu{
 
 ## Touch controls
 
-On-screen controls drive the virtual buttons and sticks of the action layer, which [haylen.input](input.md) actions read through the bindings `virtual:<name>` and `virtual_stick:<name>`. Every control follows its own finger, so a stick and several buttons work at the same time, and the mouse drives them when no finger is down. They keep the pointer from reaching the app behind them. A control that stops drawing, because it, a container around it or its document was hidden or removed, releases the virtual button or stick it held in that frame. A touch button that was pressed then reports `release`, unless its document was unmounted, and a control that shows again under a finger that is still down waits for a new press. A control with `enabled = false` lets go the same way, ignores fingers and the mouse, and waits for a new press once it is enabled again.
+On-screen controls drive the virtual buttons and sticks of the action layer, which [haylen.input](input.md) actions read through the bindings `virtual:<name>` and `virtualStick:<name>`. Every control follows its own finger, so a stick and several buttons work at the same time, and the mouse drives them when no finger is down. They keep the pointer from reaching the app behind them. A control that stops drawing, because it, a container around it or its document was hidden or removed, releases the virtual button or stick it held in that frame. A touch button that was pressed then reports `release`, unless its document was unmounted, and a control that shows again under a finger that is still down waits for a new press. A control with `enabled = false` lets go the same way, ignores fingers and the mouse, and waits for a new press once it is enabled again.
 
 ### ui.touchStick(properties)
 
@@ -2336,7 +2336,7 @@ local scene = require('haylen.scene')
 local ui = require('haylen.ui')
 
 input.loadActions({actions = {
-    {name = 'move', type = 'vector', bindings = {'virtual_stick:move', 'stick:left'}},
+    {name = 'move', type = 'vector', bindings = {'virtualStick:move', 'stick:left'}},
 }})
 ui.mount(ui.touchStick{action = 'move', radius = 140, floating = true, touchOnly = true, align = 'end'}, {placement = 'screen'})
 

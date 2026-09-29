@@ -39,14 +39,14 @@ end
 
 function Mazes:generate()
     self.request = (self.request or 0) + 1
-    local request, started = self.request, haylen.time()
+    local request, started = self.request, haylen.elapsed()
     local options = {width = kWidth, height = kHeight, algorithm = self.algorithm, seed = self.seed}
     async.spawn(function()
         local maze = procedural2d.mazeAsync(options):await()
         if maze == nil or self.board == nil or request ~= self.request then
             return
         end
-        self.latency = (haylen.time() - started) * 1000
+        self.latency = (haylen.elapsed() - started) * 1000
         self:show(maze)
     end)
 end

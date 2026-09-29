@@ -18,14 +18,14 @@
 namespace haylen::animation2d {
 
 float Animation2DLua::readFramesPerSecond(lua_State* L, int index) {
-    float fps = 10.0F;
-    lua::Table::readField(L, index, "fps", fps);
-    luaL_argcheck(L, fps > 0.0F, index, "fps must be positive");
-    return fps;
+    float framesPerSecond = 10.0F;
+    lua::Table::readField(L, index, "framesPerSecond", framesPerSecond);
+    luaL_argcheck(L, framesPerSecond > 0.0F, index, "framesPerSecond must be positive");
+    return framesPerSecond;
 }
 
-// Cuts a grid animation with grid(texture, {frameWidth, frameHeight, frames = {1, 2, 3}, fps, loop, margin = {x, y}, spacing = {x, y}}). Frames count from one, left to right and top to bottom.
-int Animation2DLua::grid(lua_State* L) {
+// Cuts a grid animation with fromGrid(texture, {frameWidth, frameHeight, cells = {1, 2, 3}, framesPerSecond, loop, margin = {x, y}, spacing = {x, y}}). Cells count from one, left to right and top to bottom.
+int Animation2DLua::fromGrid(lua_State* L) {
     graphics::Texture texture = lua::Stack::read<graphics::Texture>(L, 1);
     luaL_checktype(L, 2, LUA_TTABLE);
     lua::Table::checkFields(L, 2, {kGridFields});
@@ -37,16 +37,16 @@ int Animation2DLua::grid(lua_State* L) {
     lua::Table::readField(L, 2, "margin", options.margin);
     lua::Table::readField(L, 2, "spacing", options.spacing);
     options.framesPerSecond = readFramesPerSecond(L, 2);
-    std::vector<int> frames;
-    lua::Table::readField(L, 2, "frames", frames);
-    for (const int frame : frames) {
-        options.cells.push_back(frame - 1);
+    std::vector<int> cells;
+    lua::Table::readField(L, 2, "cells", cells);
+    for (const int cell : cells) {
+        options.cells.push_back(cell - 1);
     }
     lua::Userdata::emplace<Animation>(L, Animation::fromGrid(std::move(texture), options));
     return 1;
 }
 
-// Builds an animation from source rectangles with fromFrames(texture, {rect, ...}, {fps, loop}).
+// Builds an animation from source rectangles with fromFrames(texture, {rect, ...}, {framesPerSecond, loop}).
 int Animation2DLua::fromFrames(lua_State* L) {
     Animation animation{.texture = lua::Stack::read<graphics::Texture>(L, 1)};
     const std::vector<math::Rect> sources = lua::Stack::read<std::vector<math::Rect>>(L, 2);
@@ -123,7 +123,7 @@ int Animation2DLua::animatorClearQueue(lua_State* L) {
     return 0;
 }
 
-int Animation2DLua::animatorQueued(lua_State* L) {
+int Animation2DLua::animatorQueuedCount(lua_State* L) {
     lua::Stack::push(L, lua::Userdata::check<Animator>(L, 1).getQueuedCount());
     return 1;
 }
@@ -333,7 +333,7 @@ int Animation2DLua::atlasAnimationFromFrames(lua_State* L) {
 
 int Animation2DLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"grid", &lua::Binding::native<&grid>},
+        {"fromGrid", &lua::Binding::native<&fromGrid>},
         {"fromFrames", &lua::Binding::native<&fromFrames>},
         {"newAnimator", &newAnimator},
         {nullptr, nullptr},
@@ -345,7 +345,7 @@ int Animation2DLua::open(lua_State* L) {
 void Animation2DLua::install(lua_State* L) {
     lua::ClassBuilder<Animation>(L).property("duration", &animationDuration).property("cycleDuration", &animationCycleDuration).property("frameCount", &animationFrameCount).property("texture", &animationTexture).field<&Animation::loop>("loop").function("frame", &animationFrame).function("frameAt", &animationFrameAt).install();
 
-    lua::ClassBuilder<Animator>(L).function("add", &lua::Binding::native<&animatorAdd>).function("play", &lua::Binding::native<&animatorPlay>).function("queue", &lua::Binding::native<&animatorQueue>).function("clearQueue", &lua::Binding::native<&animatorClearQueue>).property("queued", &animatorQueued).function("stop", &animatorStop).function("has", &animatorHas).function("animation", &lua::Binding::native<&animatorAnimation>).function("update", &lua::Binding::native<&animatorUpdate>).function("apply", &lua::Binding::native<&animatorApply>).property("current", &animatorCurrent).property("frame", &animatorFrame).property("time", &animatorTime).property("playing", &animatorPlaying).property("finished", &animatorFinished).field<&Animator::speed>("speed").nestedField<&Animator::pivot, &math::Vec2::x>("pivotX").nestedField<&Animator::pivot, &math::Vec2::y>("pivotY").property("onFrame", &animatorGetOnFrame, &animatorSetOnFrame).property("onFinish", &animatorGetOnFinish, &animatorSetOnFinish).install();
+    lua::ClassBuilder<Animator>(L).function("add", &lua::Binding::native<&animatorAdd>).function("play", &lua::Binding::native<&animatorPlay>).function("queue", &lua::Binding::native<&animatorQueue>).function("clearQueue", &lua::Binding::native<&animatorClearQueue>).property("queuedCount", &animatorQueuedCount).function("stop", &animatorStop).function("has", &animatorHas).function("animation", &lua::Binding::native<&animatorAnimation>).function("update", &lua::Binding::native<&animatorUpdate>).function("apply", &lua::Binding::native<&animatorApply>).property("current", &animatorCurrent).property("frame", &animatorFrame).property("time", &animatorTime).property("playing", &animatorPlaying).property("finished", &animatorFinished).field<&Animator::speed>("speed").nestedField<&Animator::pivot, &math::Vec2::x>("pivotX").nestedField<&Animator::pivot, &math::Vec2::y>("pivotY").property("onFrame", &animatorGetOnFrame, &animatorSetOnFrame).property("onFinish", &animatorGetOnFinish, &animatorSetOnFinish).install();
 
     lua::ClassBuilder<SpriteAtlas>(L).property("texture", &atlasTexture).function("hasFrame", &atlasHasFrame).function("hasAnimation", &atlasHasAnimation).function("hasSlice", &atlasHasSlice).function("frame", &lua::Binding::native<&atlasFrame>).function("frameNames", &atlasFrameNames).function("animationNames", &atlasAnimationNames).function("sliceNames", &atlasSliceNames).function("animation", &lua::Binding::native<&atlasAnimation>).function("slice", &lua::Binding::native<&atlasSlice>).function("source", &lua::Binding::native<&atlasSource>).function("apply", &lua::Binding::native<&atlasApply>).function("animationFromFrames", &lua::Binding::native<&atlasAnimationFromFrames>).meta("__eq", &lua::Userdata::equal<SpriteAtlas>).install();
 

@@ -26,7 +26,7 @@ const math::Segment& RayBatch::getRay(std::size_t index) const {
     return rays[index];
 }
 
-const std::optional<RaycastHit>& RayBatch::getResult(std::size_t index) const {
+const std::optional<RaycastHit>& RayBatch::getHit(std::size_t index) const {
     requireIndex(index);
     return results[index];
 }

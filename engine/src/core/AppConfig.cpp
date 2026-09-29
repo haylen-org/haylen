@@ -16,20 +16,20 @@ template <typename T> void AppConfig::readValue(const Json& object, const char* 
     try {
         target = object.at(key).get<T>();
     } catch (const Json::exception&) {
-        throw std::invalid_argument(std::string("app.json has an invalid value for '") + key + "'.");
+        throw std::invalid_argument(std::string("The value of '") + key + "' in app.json has the wrong type.");
     }
 }
 
 void AppConfig::requirePositive(double value, const char* key) {
     if (value <= 0.0) {
-        throw std::invalid_argument(std::string("app.json requires a positive value for '") + key + "'.");
+        throw std::invalid_argument(std::string("The value of '") + key + "' in app.json must be positive.");
     }
 }
 
 platform::Orientation AppConfig::orientationFromName(const std::string& text) {
     const std::optional<platform::Orientation> orientation = platform::Window::orientationFromName(text);
     if (!orientation) {
-        throw std::invalid_argument("app.json has an unknown orientation: " + text);
+        throw std::invalid_argument("The orientation " + text + " in app.json is unknown. It is landscape, portrait or any.");
     }
     return *orientation;
 }
@@ -44,7 +44,7 @@ audio::Session::Category AppConfig::sessionCategoryFromName(const std::string& t
     if (text == "playback") {
         return audio::Session::Category::Playback;
     }
-    throw std::invalid_argument("app.json has an unknown audio.iosSession: " + text);
+    throw std::invalid_argument("The audio.iosSession " + text + " in app.json is unknown. It is ambient, soloAmbient or playback.");
 }
 
 std::string_view AppConfig::sessionCategoryName(audio::Session::Category value) {
@@ -92,7 +92,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
             try {
                 config.window.position = platform::WindowPlacement::fromJson(windowJson.at("position"));
             } catch (const std::invalid_argument& error) {
-                throw std::invalid_argument(std::string("app.json has an invalid window.position. ") + error.what());
+                throw std::invalid_argument(std::string("The window.position in app.json is invalid. ") + error.what());
             }
         }
     }
@@ -110,7 +110,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
         if (!scalingText.empty()) {
             const auto policy = graphics::Viewport::scalingPolicyFromName(scalingText);
             if (!policy) {
-                throw std::invalid_argument("app.json has an unknown scaling policy: " + scalingText);
+                throw std::invalid_argument("The design.scaling " + scalingText + " in app.json is unknown. It is fit, fill, stretch, expand or pixelPerfect.");
             }
             config.scaling = *policy;
         }
@@ -135,7 +135,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
     if (!clearColorText.empty()) {
         const auto color = math::Color::parse(clearColorText);
         if (!color) {
-            throw std::invalid_argument("app.json has an invalid clearColor: " + clearColorText);
+            throw std::invalid_argument("The clearColor " + clearColorText + " in app.json is not a color such as #RRGGBB or #AARRGGBB.");
         }
         config.clearColor = *color;
     }
@@ -151,7 +151,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
         if (!background.empty()) {
             const auto color = math::Color::parse(background);
             if (!color) {
-                throw std::invalid_argument("app.json has an invalid splash.background: " + background);
+                throw std::invalid_argument("The splash.background " + background + " in app.json is not a color such as #RRGGBB or #AARRGGBB.");
             }
             config.splash.background = *color;
         }
@@ -175,7 +175,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
         }
         readValue(audioJson, "mixWithOthers", config.audioSession.mixWithOthers);
         if (config.audioSession.mixWithOthers && config.audioSession.category != audio::Session::Category::Playback) {
-            throw std::invalid_argument("app.json audio.mixWithOthers needs the playback iosSession.");
+            throw std::invalid_argument("The audio.mixWithOthers option in app.json needs the playback iosSession.");
         }
     }
 
@@ -187,7 +187,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
         if (!stats.empty()) {
             const auto mode = debug::StatsDisplay::modeFromName(stats);
             if (!mode) {
-                throw std::invalid_argument("app.json has an unknown debug.stats: " + stats + ". It is off, compact or full.");
+                throw std::invalid_argument("The debug.stats " + stats + " in app.json is unknown. It is off, compact or full.");
             }
             config.debug.stats = *mode;
         }
@@ -196,7 +196,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
             try {
                 config.debug.safeArea = platform::SafeAreaSimulation::fromJson(debugJson.at("safeArea"));
             } catch (const std::invalid_argument& error) {
-                throw std::invalid_argument(std::string("app.json has an invalid debug.safeArea. ") + error.what());
+                throw std::invalid_argument(std::string("The debug.safeArea in app.json is invalid. ") + error.what());
             }
         }
         readValue(debugJson, "showSafeArea", config.debug.showSafeArea);
@@ -205,13 +205,13 @@ AppConfig AppConfig::fromJson(const Json& document) {
     readValue(document, "autoload", config.autoloads);
     for (const std::string& module : config.autoloads) {
         if (module.empty()) {
-            throw std::invalid_argument("app.json has an empty module name in 'autoload'.");
+            throw std::invalid_argument("The autoload list in app.json has an empty module name.");
         }
     }
 
     if (document.contains("native")) {
         if (!document.at("native").is_object()) {
-            throw std::invalid_argument("app.json has a 'native' section that is not an object of libraries.");
+            throw std::invalid_argument("The native section of app.json must be an object of libraries.");
         }
         config.native = document.at("native");
     }

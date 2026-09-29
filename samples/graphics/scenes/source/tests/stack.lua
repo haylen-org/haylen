@@ -14,7 +14,7 @@ Stack.hints = 'Change the stack with the buttons. Escape or the B button pops th
 Stack.colors = {'#FF2E5E8A', '#FF8A3E5E', '#FF3E8A5E', '#FF8A6E2E', '#FF5E3E8A'}
 Stack.transitions = {
     none = {},
-    slide = {arrive = {effect = 'slideIn', direction = 'left', duration = 0.45, ease = 'quad_out'}, leave = {effect = 'slideIn', direction = 'right', duration = 0.45, ease = 'quad_out'}},
+    slide = {arrive = {effect = 'slideIn', direction = 'left', duration = 0.45, ease = 'quadOut'}, leave = {effect = 'slideIn', direction = 'right', duration = 0.45, ease = 'quadOut'}},
     fade = {arrive = {effect = 'fade', duration = 0.5}, leave = {effect = 'fade', duration = 0.5}},
 }
 
@@ -68,7 +68,7 @@ end
 
 -- Adds a hook to the log, newest first, with the params it received, and shows the stack as it is now.
 function Stack:record(name, hook, detail)
-    table.insert(self.lines, 1, string.format('%.2f  %s: %s%s', haylen.time(), name, hook, detail and ' (' .. tostring(detail) .. ')' or ''))
+    table.insert(self.lines, 1, string.format('%.2f  %s: %s%s', haylen.elapsed(), name, hook, detail and ' (' .. tostring(detail) .. ')' or ''))
     self.lines[13] = nil
     local names = {}
     for index, entry in ipairs(scene.list()) do

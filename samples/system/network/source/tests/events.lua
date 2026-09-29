@@ -1,4 +1,4 @@
--- Connection events: a socket reports open, message, error, disconnect, reconnecting and close to its own listeners, and the event bus hears websocket_connected, websocket_disconnected and websocket_reconnecting from every socket, together with network_online and network_offline where the platform reports the network. net.openSockets counts the sockets the engine keeps alive.
+-- Connection events: a socket reports open, message, error, disconnect, reconnecting and close to its own listeners, and the event bus hears webSocketConnected, webSocketDisconnected and webSocketReconnecting from every socket, together with networkOnline and networkOffline where the platform reports the network. net.openSocketCount counts the sockets the engine keeps alive.
 local haylen = require('haylen')
 local net = require('haylen.net')
 local ui = require('haylen.ui')
@@ -12,7 +12,7 @@ Events.hints = 'Open and close sockets and watch both kinds of events arrive. Th
 Events.focus = 'echo'
 
 local kSocketEvents = {'open', 'message', 'error', 'disconnect', 'reconnecting', 'close'}
-local kBusEvents = {'websocket_connected', 'websocket_disconnected', 'websocket_reconnecting', 'network_online', 'network_offline', 'app_background', 'app_active'}
+local kBusEvents = {'webSocketConnected', 'webSocketDisconnected', 'webSocketReconnecting', 'networkOnline', 'networkOffline', 'appBackground', 'appActive'}
 
 -- Formats one value of an event, with strings quoted so an empty reason still shows.
 local function format(value)
@@ -99,10 +99,10 @@ function Events:enter()
 end
 
 function Events:update(dt)
-    local open = net.openSockets()
+    local open = net.openSocketCount()
     if open ~= self.openCount then
         self.openCount = open
-        self:show('open', {text = string.format('net.openSockets() is %d', open)})
+        self:show('open', {text = string.format('net.openSocketCount() is %d', open)})
     end
 end
 
@@ -123,7 +123,7 @@ end
 
 -- Opens a socket, with reconnection when settings are given, and records every event it reports.
 function Events:open(url, reconnect)
-    local socket = self:keep(net.websocket(url, {reconnect = reconnect or false}))
+    local socket = self:keep(net.connectWebSocket(url, {reconnect = reconnect or false}))
     for _, name in ipairs(kSocketEvents) do
         self:on(socket, name, function(...)
             self:record('socket', name, table.pack(...))

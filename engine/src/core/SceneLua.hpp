@@ -45,7 +45,7 @@ class SceneLua final {
     static int transitioning(lua_State* L);
     static int loadingViewOpacity(lua_State* L);
     static int state(lua_State* L);
-    static int progress(lua_State* L);
+    static int sceneLoadProgress(lua_State* L);
     static int listen(lua_State* L);
     static int spawn(lua_State* L);
     static int loadProgress(lua_State* L);

@@ -28,7 +28,7 @@ function Stress:init(entry)
             speedX = random:range(0.2, 0.9),
             speedY = random:range(0.2, 0.9),
             phase = random:range(0, m.tau),
-            light = lighting2d.newLight({radius = random:range(50, 140), color = m.hsv(random:float(), 0.7, 1), intensity = 0.6}),
+            light = lighting2d.newLight({radius = random:range(50, 140), color = m.fromHsv(random:nextFloat(), 0.7, 1), intensity = 0.6}),
         }
     end
 end
@@ -45,7 +45,7 @@ function Stress:controls()
 end
 
 function Stress:update(dt)
-    local time = haylen.time()
+    local time = haylen.elapsed()
     for index = 1, self.count do
         local entry = self.lights[index]
         entry.light.x = math.sin(time * entry.speedX + entry.phase) * 900

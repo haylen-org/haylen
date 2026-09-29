@@ -16,7 +16,7 @@ void DesktopMethods::dispatch(std::uint64_t call, std::string_view method, std::
             BridgeRelay::resolve(call, true, core::Json(getLocale()).dump());
             return;
         }
-        if (method == "system.open_url") {
+        if (method == "system.openUrl") {
             const core::Json params = core::Json::parse(paramsJson, nullptr, false);
             const auto url = params.find("url");
             if (url == params.end() || !url->is_string() || url->get<std::string>().empty()) {
@@ -42,7 +42,7 @@ void DesktopMethods::dispatch(std::uint64_t call, std::string_view method, std::
         fail(call, error.what());
         return;
     }
-    BridgeRelay::resolve(call, false, core::Json{{"message", "No native handler is registered for " + std::string(method) + "."}, {"code", "no_handler"}}.dump());
+    BridgeRelay::resolve(call, false, core::Json{{"message", "No native handler is registered for " + std::string(method) + "."}, {"code", "noHandler"}}.dump());
 }
 
 void DesktopMethods::fail(std::uint64_t call, const std::string& message) {

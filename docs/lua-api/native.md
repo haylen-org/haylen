@@ -7,7 +7,7 @@ local ffi = require('ffi')
 local native = require('haylen.native')
 ```
 
-The browser loads no native libraries. There `native.available()` returns `false`, `native.load` and `native.callback` raise `Native libraries are not available in the browser. Call JavaScript through haylen.platform instead.`, and `native.symbol` returns `nil`.
+The browser loads no native libraries. There `native.available()` returns `false`, `native.load` and `native.callback` raise `Native libraries are not available in the browser. Call JavaScript through haylen.platform instead.`, and `native.findSymbol` returns `nil`.
 
 ## Functions
 
@@ -71,7 +71,7 @@ lib.native_test_fill(buffer, 8, 1)
 print(lib.native_test_checksum(ffi.cast('const uint8_t*', buffer), 8))
 ```
 
-### native.symbol(name)
+### native.findSymbol(name)
 
 Returns the address of the symbol `name` as a light userdata, or `nil`. The lookup covers the symbols of the libraries linked into the app, the libraries loaded so far in load order, and the app itself. The address goes where C takes a pointer, such as a parameter declared `void*` or a function pointer, and `ffi.cast` turns it into a typed pointer. Varn's `ffi` calls only the functions of a namespace, so a function is called through `native.load` rather than through its address.
 
@@ -80,7 +80,7 @@ local ffi = require('ffi')
 local native = require('haylen.native')
 
 native.load('native_test')
-local address = native.symbol('native_test_add')
+local address = native.findSymbol('native_test_add')
 print(address ~= nil, ffi.cast('void*', address))
 ```
 
@@ -140,7 +140,7 @@ visitor:free()
 
 | Member | Meaning |
 | --- | --- |
-| `callback.pointer` | The C function pointer as a light userdata, which an ffi function takes for any pointer parameter, including a function pointer. Reading it after `free` raises `haylen.NativeCallback was already released.`. |
+| `callback.pointer` | The C function pointer as a light userdata, which an ffi function takes for any pointer parameter, including a function pointer. Reading it after `free` raises `This haylen.NativeCallback was already released.`. |
 | `callback.freed` | Whether `free` was called. |
 | `callback:free()` | Releases the function pointer, which native code must no longer call. Freeing twice does nothing. |
 

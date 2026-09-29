@@ -180,7 +180,7 @@ function Values:refresh()
     local dirty = preferences.dirty()
     self:show('dirty', {text = dirty and 'Unsaved changes' or 'Saved', tone = dirty and 'warning' or 'success'})
     self:show('memory', {text = sample.json(preferences.values())})
-    self:show('disk', {text = storage.exists('preferences.json') and storage.read('preferences.json') or 'There is no preferences.json yet.'})
+    self:show('disk', {text = storage.exists('preferences.json') and storage.readText('preferences.json') or 'There is no preferences.json yet.'})
 end
 
 return Values

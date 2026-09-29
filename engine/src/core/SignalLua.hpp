@@ -34,7 +34,7 @@ class SignalLua final {
     static int emit(lua_State* L);
     static int clear(lua_State* L);
     static int size(lua_State* L);
-    static int emissions(lua_State* L);
+    static int emissionCount(lua_State* L);
     static int name(lua_State* L);
     static int blocked(lua_State* L);
     static int setBlocked(lua_State* L);

@@ -37,7 +37,7 @@ class FontLua final {
     [[nodiscard]] static std::shared_ptr<text::FontFamily> readFamily(lua_State* L, int index);
 
   private:
-    static constexpr std::array<std::string_view, 6> kFamilyFields{"regular", "bold", "italic", "boldItalic", "mono", "fallback"};
+    static constexpr std::array<std::string_view, 6> kFamilyFields{"regular", "bold", "italic", "boldItalic", "mono", "fallbacks"};
     static constexpr std::array<std::string_view, 8> kGridFields{"characters", "cellWidth", "cellHeight", "spacing", "margin", "advance", "lineHeight", "baseline"};
     static constexpr std::array<std::string_view, 3> kStyleFields{"bold", "italic", "mono"};
     static constexpr std::array<std::string_view, 3> kShapeFields{"size", "direction", "language"};
@@ -65,7 +65,7 @@ class FontLua final {
     static int pageCount(lua_State* L);
 
     static int familyFace(lua_State* L);
-    static int familyFallback(lua_State* L);
+    static int familyFallbacks(lua_State* L);
     static int familySelect(lua_State* L);
     static int familyResolve(lua_State* L);
     static int familyMeasure(lua_State* L);

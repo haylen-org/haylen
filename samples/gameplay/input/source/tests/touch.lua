@@ -28,7 +28,7 @@ function Touch:enter()
 end
 
 function Touch:event(event)
-    if event.type:sub(1, 6) == 'touch_' then
+    if event.type:sub(1, 5) == 'touch' then
         self.events = self.events + 1
     end
 end

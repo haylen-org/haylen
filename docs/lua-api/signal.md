@@ -121,7 +121,7 @@ print(waveStarted.size) -- 0
 | Property | Access | Meaning |
 | --- | --- | --- |
 | `size` | read | The number of connected listeners. |
-| `emissions` | read | Every emit since the signal was created, blocked ones included. |
+| `emissionCount` | read | Every emit since the signal was created, blocked ones included. |
 | `name` | read | The name given to `signal.new`, or an empty string. |
 | `blocked` | read and write | While `true`, emits call no listener and still count. |
 
@@ -137,7 +137,7 @@ stepped.blocked = true
 stepped:emit()
 stepped.blocked = false
 stepped:emit()
-print(steps, stepped.emissions, stepped.name) -- 1 2 stepped
+print(steps, stepped.emissionCount, stepped.name) -- 1 2 stepped
 ```
 
 ## Connection

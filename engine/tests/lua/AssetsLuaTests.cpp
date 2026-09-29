@@ -101,12 +101,12 @@ TEST_F(AssetsLuaTest, PreloadsGroupsWithProgress) {
     EXPECT_EQ(lua("return summary"), "0 0 1");
     EXPECT_EQ(lua("return #progress .. ' ' .. progress[#progress]"), "2 1.0");
     EXPECT_EQ(lua("return table.concat(assets.groups(), ',')"), "broken,level,world");
-    EXPECT_EQ(lua("return assets.loaded('world') and assets.progress('world') == 1"), "true");
+    EXPECT_EQ(lua("return assets.groupLoaded('world') and assets.groupProgress('world') == 1"), "true");
 
-    lua("assets.unload('world')");
-    EXPECT_EQ(lua("return assets.loaded('world') or assets.progress('world') ~= 0"), "false");
+    lua("assets.unloadGroup('world')");
+    EXPECT_EQ(lua("return assets.groupLoaded('world') or assets.groupProgress('world') ~= 0"), "false");
     EXPECT_NE(lua("assets.preload('unknown')").find("Unknown asset group: unknown"), std::string::npos);
-    EXPECT_NE(lua("assets.unload('unknown')").find("Unknown asset group: unknown"), std::string::npos);
+    EXPECT_NE(lua("assets.unloadGroup('unknown')").find("Unknown asset group: unknown"), std::string::npos);
 }
 
 TEST_F(AssetsLuaTest, ReportsFailingProgressCallbacks) {

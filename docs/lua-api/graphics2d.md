@@ -224,7 +224,7 @@ scene.push({
         graphics2d.beginScreen()
         local dots = {}
         for index = 1, 12 do
-            local angle = haylen.time() + index * 0.5236
+            local angle = haylen.elapsed() + index * 0.5236
             dots[index] = {x = 960 + math.cos(angle) * 200, y = 540 + math.sin(angle) * 200, width = 12, height = 12, color = '#FFFFD040'}
         end
         graphics2d.drawBatch(pixel, dots, {layer = 1, blend = 'additive'})
@@ -234,7 +234,7 @@ scene.push({
 
 ### graphics2d.drawBatch(texture, buffer, layout, order)
 
-Draws the sprites a float buffer of [haylen.collections](collections.md#float-buffers) holds, without a table for each sprite and without a list of sprites in between. `layout` is a sprite table, with the keys of [SpriteBatch](#spritebatch), that every sprite starts from, plus `fields`, the [sprite fields](#sprite-fields) each sprite takes from the buffer in order. The buffer holds as many sprites as it has whole groups of fields. A layout without `fields` raises `drawBatch with a float buffer needs the fields each sprite takes, such as fields = {'x', 'y'}.`. The [performance section of the Lua guide](../lua.md#performance) compares it with sprite tables.
+Draws the sprites a float buffer of [haylen.collections](collections.md#float-buffers) holds, without a table for each sprite and without a list of sprites in between. `layout` is a sprite table, with the keys of [SpriteBatch](#spritebatch), that every sprite starts from, plus `fields`, the [sprite fields](#sprite-fields) each sprite takes from the buffer in order. The buffer holds as many sprites as it has whole groups of fields. A layout without `fields` raises `A drawBatch call with a float buffer needs the fields each sprite takes, such as fields = {'x', 'y'}.`. The [performance section of the Lua guide](../lua.md#performance) compares it with sprite tables.
 
 ```lua
 local collections = require('haylen.collections')
@@ -477,7 +477,7 @@ local scene = require('haylen.scene')
 
 local family = graphics.newFontFamily({
     regular = graphics2d.defaultFont(),
-    fallback = {assets.font('fonts/noto_sans_arabic_regular.ttf'), assets.font('fonts/noto_sans_devanagari_regular.ttf')},
+    fallbacks = {assets.font('fonts/noto_sans_arabic_regular.ttf'), assets.font('fonts/noto_sans_devanagari_regular.ttf')},
 })
 
 scene.push({
@@ -525,7 +525,7 @@ Creates a [`RichText`](#richtext) from BBCode markup, laid out once and drawn ev
 | `direction` | string | `'auto'` | Direction of paragraphs without a `[p dir]` of their own: `'auto'` takes the direction of the first strong letter of each paragraph, and `'ltr'` and `'rtl'` force it. |
 | `language` | string | `''` | BCP 47 language tag the text is shaped for, such as `'ar'` or `'hi'`. |
 | `scale` | number | `1` | Multiplies every size of the markup and the options. |
-| `reveal` | number | `0` | Characters per second the typewriter reveal shows as `text:update` advances. 0 shows everything at once. |
+| `revealSpeed` | number | `0` | Characters per second the typewriter reveal shows as `text:update` advances. 0 shows everything at once. |
 | `underlineLinks` | boolean | `true` | Whether `[url]` text is underlined. |
 | `fonts` | table | none | The families or fonts that `[font=name]` tags name, as `{name = family}`. A key that is not a string raises `The fonts option maps font names to families, so its keys must be strings.`. |
 
@@ -538,7 +538,7 @@ local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 
 local family = graphics.newFontFamily({regular = graphics2d.defaultFont()})
-local story = graphics2d.newRichText('[b]Welcome[/b], traveler!\nPress [color=gold]Start[/color] to [wave]begin[/wave].', {family = family, size = 36, maxWidth = 600, reveal = 25})
+local story = graphics2d.newRichText('[b]Welcome[/b], traveler!\nPress [color=gold]Start[/color] to [wave]begin[/wave].', {family = family, size = 36, maxWidth = 600, revealSpeed = 25})
 local chapter = graphics2d.newRichText('Chapter [i]One[/i]', {family = family, size = 48, bold = true})
 
 scene.push({
@@ -608,14 +608,14 @@ graphics2d.registerTextIcon('confirm', prompts, {source = {0, 0, 64, 64}})
 local hint = graphics2d.newRichText('Press [icon=confirm] to open the chest.', {size = 28})
 ```
 
-### graphics2d.textEffects()
+### graphics2d.textEffectNames()
 
 Returns the names of every registered text effect, the built-in ones included.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
 
-print(table.concat(graphics2d.textEffects(), ', '))
+print(table.concat(graphics2d.textEffectNames(), ', '))
 ```
 
 ### graphics2d.drawNineSlice(slice, rect, color, order, borderScale)
@@ -654,7 +654,7 @@ scene.push({
     render = function(self)
         graphics2d.beginWorld(camera, {ambientLight = '#FF202040'})
         graphics2d.drawRect({-400, -300, 800, 600}, '#FF5A8A50')
-        graphics2d.drawLight({x = -100, y = 0, radius = 200, color = '#FFFFB060', intensity = 0.85 * lighting2d.flicker(haylen.time())})
+        graphics2d.drawLight({x = -100, y = 0, radius = 200, color = '#FFFFB060', intensity = 0.85 * lighting2d.flicker(haylen.elapsed())})
         graphics2d.drawLight(beam)
     end,
 })
@@ -705,7 +705,7 @@ local drops = {}
 
 scene.push({
     render = function(self)
-        local time = haylen.time()
+        local time = haylen.elapsed()
         for index = 0, 199 do
             drops[index * 2 + 1] = math.cos(index * 2.4 + time) * math.sqrt(index) * 12
             drops[index * 2 + 2] = math.sin(index * 2.4 + time) * math.sqrt(index) * 9
@@ -760,7 +760,7 @@ scene.push({
 
 ### graphics2d.popClip()
 
-Removes the clip added by the last `graphics2d.pushClip`. Calling it without a matching push raises `popClip was called without a matching pushClip.`
+Removes the clip added by the last `graphics2d.pushClip`. Calling it without a matching push raises `The popClip call has no matching pushClip.`
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -804,7 +804,7 @@ scene.push({
 
 ### graphics2d.popLayerOffset()
 
-Removes the offset added by the last `graphics2d.pushLayerOffset`. Calling it without a matching push raises `popLayerOffset was called without a matching pushLayerOffset.`
+Removes the offset added by the last `graphics2d.pushLayerOffset`. Calling it without a matching push raises `The popLayerOffset call has no matching pushLayerOffset.`
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -855,7 +855,7 @@ scene.push({
 
 ### graphics2d.endCapture()
 
-Ends the capture begun by `graphics2d.beginCapture`, so the following canvases reach the screen again. Calling it without an open capture raises `endCapture was called without a matching beginCapture.`
+Ends the capture begun by `graphics2d.beginCapture`, so the following canvases reach the screen again. Calling it without an open capture raises `The endCapture call has no matching beginCapture.`
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -946,7 +946,7 @@ scene.push({
 
 ### graphics2d.newSprite(texture, properties)
 
-Creates a `Sprite`, a reusable description of one textured quad. `properties` is an optional table of `Sprite` properties, each assigned through the property setter, so a misspelled key raises `haylen.Sprite has no writable property 'name'.`
+Creates a `Sprite`, a reusable description of one textured quad. `properties` is an optional table of `Sprite` properties, each assigned through the property setter, so a misspelled key raises `The type haylen.Sprite has no writable property 'name'.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -1045,7 +1045,7 @@ scene.push({
 
 ### graphics2d.newParallax(texture, properties)
 
-Creates a [Parallax](#parallax) layer that draws `texture`. `properties` is an optional table of `Parallax` properties, each assigned through the property setter, so a misspelled key raises `haylen.Parallax has no writable property 'name'.`
+Creates a [Parallax](#parallax) layer that draws `texture`. `properties` is an optional table of `Parallax` properties, each assigned through the property setter, so a misspelled key raises `The type haylen.Parallax has no writable property 'name'.`
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -1089,7 +1089,7 @@ local boss = graphics2d.newCamera()
 boss.position = {1200, 300}
 boss.zoom = {0.5, 0.5}
 local cut = {amount = 0}
-tween.to(cut, 2, {amount = 1}, {ease = 'quad_in_out'})
+tween.to(cut, 2, {amount = 1}, {ease = 'quadInOut'})
 
 scene.push({
     render = function(self)
@@ -1217,7 +1217,7 @@ local camera = graphics2d.newCamera()
 
 scene.push({
     render = function(self)
-        ripple:set('time', haylen.time())
+        ripple:set('time', haylen.elapsed())
         graphics2d.beginWorld(camera, {clear = '#FF203040', postProcess = {materials = {ripple}}})
         graphics2d.drawRect({-200, -100, 400, 200}, '#FF3A7D44')
         graphics2d.draw(graphics.whiteTexture(), 0, 0, {width = 64, height = 64, material = ripple})
@@ -1258,7 +1258,7 @@ A `Sprite` is a value that describes one quad and draws it with `sprite:draw()`.
 | `material` | Material or nil | nil | Custom shader of the sprite. |
 | `normalMap`, `specular`, `shininess`, `emission`, `lightMask`, `unshaded` | | nil, `0`, `32`, `0`, `1`, `false` | Lighting in lit canvases, as the [draw order](#draw-order) describes. |
 
-Reading or writing any other key raises `haylen.Sprite has no member 'name'.` or `haylen.Sprite has no writable property 'name'.`
+Reading or writing any other key raises `The type haylen.Sprite has no member 'name'.` or `The type haylen.Sprite has no writable property 'name'.`
 
 ### sprite:draw()
 
@@ -1484,7 +1484,7 @@ scene.push({
 
 ### batch:bake()
 
-Copies the sprites into an immutable `StaticBatch` on the GPU, which draws every frame without uploading sprite data again. Later changes to the batch do not affect the baked copy. An empty batch raises `A static batch needs a texture and at least one sprite.`
+Copies the sprites into an immutable `StaticSpriteBatch` on the GPU, which draws every frame without uploading sprite data again. Later changes to the batch do not affect the baked copy. An empty batch raises `A static batch needs a texture and at least one sprite.`
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -1505,9 +1505,9 @@ scene.push({
 })
 ```
 
-## StaticBatch
+## StaticSpriteBatch
 
-A `StaticBatch` is the GPU copy made by `batch:bake()` and drawn with `graphics2d.drawStatic`.
+A `StaticSpriteBatch` is the GPU copy made by `batch:bake()` and drawn with `graphics2d.drawStatic`.
 
 ### staticBatch:size()
 
@@ -1724,7 +1724,7 @@ camera.maxZoom = 4
 
 scene.push({
     event = function(self, event)
-        if event.type == 'mouse_scroll' then
+        if event.type == 'mouseScroll' then
             local x, y = input.mousePosition()
             camera:zoomAt(event.scrollY > 0 and 1.1 or 1 / 1.1, x, y)
         end
@@ -1772,7 +1772,7 @@ scene.push({
 
 ### camera:viewTransform()
 
-Returns the `Transform` from [haylen.math](math.md) that maps world coordinates to view coordinates, where 0, 0 is the top-left corner of the view, including zoom, rotation, offset and shake. Its inverse maps view coordinates back to the world.
+Returns the `Transform2D` from [haylen.math](math.md) that maps world coordinates to view coordinates, where 0, 0 is the top-left corner of the view, including zoom, rotation, offset and shake. Its inverse maps view coordinates back to the world.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -2016,7 +2016,7 @@ Sets a uniform or a texture of the shader by name. The value fits the type of th
 | `vec2`, `ivec2` | A Vec2, a table `{x, y}` or `{x = 0, y = 0}`. |
 | `vec3` | A Color, whose red, green and blue fill it, or a list of 3 numbers. |
 | `vec4` | A Color, a color string or a list of 4 numbers. |
-| `mat4` | A Transform, which moves x and y like the transform, or a list of 16 numbers in column order. |
+| `mat4` | A Transform2D, which moves x and y like the transform, or a list of 16 numbers in column order. |
 | arrays | A list of every number of every element, such as 12 numbers for `vec4 palette[3]`. |
 | texture | A Texture, or `nil` for a white texture. |
 
@@ -2062,7 +2062,7 @@ A `RichText` is BBCode markup laid out with a font family, created by `graphics2
 | `direction` | string | read-write | The direction of paragraphs without a `[p dir]` of their own, like the `direction` option. |
 | `language` | string | read-write | The BCP 47 language tag the text is shaped for. |
 | `lineSpacing` | number | read-write | The distance between lines as a multiple of their height. |
-| `reveal` | number | read-write | Characters per second the typewriter reveal shows, 0 for everything at once. |
+| `revealSpeed` | number | read-write | Characters per second the typewriter reveal shows, 0 for everything at once. |
 | `underlineLinks` | boolean | read-write | Whether `[url]` text is underlined. |
 | `visibleCharacters` | integer | read-write | How many characters show. Setting it moves the reveal there, and a negative count shows everything. |
 | `visibleRatio` | number | read-write | The share of characters that show, from 0 to 1. |
@@ -2075,14 +2075,14 @@ The option properties take the values of the options of `graphics2d.newRichText`
 ```lua
 local graphics2d = require('haylen.graphics2d')
 
-local line = graphics2d.newRichText('Hello [b]there[/b]', {reveal = 20})
+local line = graphics2d.newRichText('Hello [b]there[/b]', {revealSpeed = 20})
 line:update(0.25)
 print(line.visibleCharacters, line.characterCount, line.revealing)
 line.visibleRatio = 1
 line.markup = 'Goodbye'
 line.color = '#FFFFD070'
 line.italic = true
-line.reveal = 0
+line.revealSpeed = 0
 ```
 
 ### text:update(dt)
@@ -2093,7 +2093,7 @@ Moves the effects and the reveal `dt` seconds forward. A `[pause=seconds]` tag h
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 
-local dialogue = graphics2d.newRichText('Wait for it...[pause=1] [shake]Boo![/shake]', {size = 40, reveal = 15})
+local dialogue = graphics2d.newRichText('Wait for it...[pause=1] [shake]Boo![/shake]', {size = 40, revealSpeed = 15})
 
 scene.push({
     update = function(self, dt)
@@ -2169,12 +2169,12 @@ Shows the first `count` characters, like setting `visibleCharacters`, where a ne
 ```lua
 local graphics2d = require('haylen.graphics2d')
 
-local page = graphics2d.newRichText('A long page of the story.', {reveal = 30})
+local page = graphics2d.newRichText('A long page of the story.', {revealSpeed = 30})
 page:setVisibleCharacters(-1)
 print(page.revealing)
 ```
 
-### text:layout()
+### text:frame()
 
 Returns the text as it draws at this moment, with its effects applied and the characters the reveal has not reached hidden, as a table with `size` (Vec2), `lineCount` and these lists:
 
@@ -2191,7 +2191,7 @@ Returns the text as it draws at this moment, with its effects applied and the ch
 ```lua
 local graphics2d = require('haylen.graphics2d')
 
-local laid = graphics2d.newRichText('[b]Bold[/b] and [url=more]a link[/url]'):layout()
+local laid = graphics2d.newRichText('[b]Bold[/b] and [url=more]a link[/url]'):frame()
 for _, glyph in ipairs(laid.glyphs) do
     print(glyph.char, glyph.rect.x, glyph.syntheticBold)
 end

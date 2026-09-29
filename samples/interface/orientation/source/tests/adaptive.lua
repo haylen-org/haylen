@@ -62,7 +62,7 @@ function Adaptive:update(dt)
     local shape = sample.tall() and 'portrait' or 'landscape'
     if shape ~= self.shape then
         self.shape = shape
-        self.document:replace('layout', {self:layout(shape)})
+        self.document:replaceChildren('layout', {self:layout(shape)})
         self.document:command('equip', 'focus')
     end
     local visible = viewport.visibleRect()

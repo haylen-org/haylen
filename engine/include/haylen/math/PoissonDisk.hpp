@@ -18,7 +18,7 @@ class PoissonDisk final {
         Rect area{};
         float minimumDistance = 64.0F;
         float maximumDistance = 0.0F;
-        int attemptsPerPoint = 30;
+        int attempts = 30;
         std::function<bool(Vec2)> accept;
         std::function<float(Vec2)> distance;
     };

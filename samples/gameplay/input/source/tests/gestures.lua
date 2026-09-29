@@ -9,8 +9,8 @@ local sample = require('sample')
 
 local Gestures = haylen.class('Gestures', sample.Test)
 
-local kTypes = {'tap', 'double_tap', 'long_press', 'swipe', 'pinch'}
-local kColors = {tap = sample.accent, double_tap = sample.warm, long_press = sample.violet, swipe = sample.green, pinch = sample.red}
+local kTypes = {'tap', 'doubleTap', 'longPress', 'swipe', 'pinch'}
+local kColors = {tap = sample.accent, doubleTap = sample.warm, longPress = sample.violet, swipe = sample.green, pinch = sample.red}
 local kLife = 0.9
 local kSettings = {
     {key = 'longPressDuration', label = 'Long press seconds', min = 0.2, max = 1.5, step = 0.05},
@@ -87,7 +87,7 @@ function Gestures:update(dt)
                 self.markers[#self.markers + 1] = {type = gesture.type, x = x, y = y, dx = gesture.dx, dy = gesture.dy, age = 0}
                 self.journal:add(self:describe(gesture), kColors[gesture.type])
             end
-            if gesture.type == 'double_tap' then
+            if gesture.type == 'doubleTap' then
                 self.scale = 1
             end
         end
@@ -110,11 +110,11 @@ function Gestures:drawMarker(marker)
         local fromX, fromY = marker.x - marker.dx, marker.y - marker.dy
         graphics2d.drawLine(fromX, fromY, marker.x, marker.y, 8, color, {layer = 3})
         graphics2d.drawCircle(marker.x, marker.y, 14, color, {layer = 3})
-    elseif marker.type == 'long_press' then
+    elseif marker.type == 'longPress' then
         graphics2d.drawCircle(marker.x, marker.y, 30 + 30 * t, '#80C9A0FF', {layer = 3})
     else
         graphics2d.drawRing(marker.x, marker.y, 20 + 70 * t, 6, color, {layer = 3})
-        if marker.type == 'double_tap' then
+        if marker.type == 'doubleTap' then
             graphics2d.drawRing(marker.x, marker.y, 10 + 40 * t, 4, color, {layer = 3})
         end
     end

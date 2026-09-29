@@ -321,7 +321,7 @@ TEST(GridAlgorithmsLuaTest, RunsGridAlgorithmsFromLua) {
     EXPECT_EQ(fixture.lua("spatial2d.floodFill(grid, 7, 5, {value = 3}) return grid:get(0, 0) .. grid:get(6, 0)"), "33");
     EXPECT_EQ(fixture.lua("local labels, count = spatial2d.components(grid, {background = 3}) return count .. ' ' .. labels:get(5, 0) .. labels:get(5, 3) .. labels:get(0, 0)"), "2 120");
     EXPECT_EQ(fixture.lua("local labels, count = spatial2d.components(grid) return count"), "3");
-    EXPECT_EQ(fixture.lua("local outline = spatial2d.visibilityPolygon({50, 50}, {{{70, 40}, {70, 60}}}, {0, 0, 100, 100}) return tostring(#outline >= 6) .. ' ' .. tostring(math.abs(require('haylen.math').polygonArea(outline)) < 10000)"), "true true");
+    EXPECT_EQ(fixture.lua("local outline = spatial2d.visibilityPolygon({50, 50}, {{{70, 40}, {70, 60}}}, {0, 0, 100, 100}) return tostring(#outline >= 6) .. ' ' .. tostring(math.abs(require('haylen.math').polygonSignedArea(outline)) < 10000)"), "true true");
 
     fixture.runLua("sets = spatial2d.newUnionFind(4)");
     EXPECT_EQ(fixture.lua("return tostring(sets:unite(1, 2)) .. tostring(sets:unite(2, 1)) .. ' ' .. sets:find(2) .. ' ' .. tostring(sets:connected(1, 3)) .. ' ' .. sets:setSize(1) .. ' ' .. sets.setCount .. ' ' .. sets:add() .. ' ' .. sets.size"), "truefalse 1 false 2 3 5 5");

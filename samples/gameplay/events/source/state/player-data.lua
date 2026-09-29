@@ -6,11 +6,11 @@ local viewport = require('haylen.viewport')
 local playerData = {coins = 30, hats = {}, playTime = 0, inputs = 0, startFrame = -1, processMode = 'always'}
 
 function playerData:start()
-    self.startFrame = haylen.frame()
+    self.startFrame = haylen.frameIndex()
 end
 
 function playerData:event(event)
-    if event.type == 'key_down' or event.type == 'mouse_down' or event.type == 'touch_began' then
+    if event.type == 'keyDown' or event.type == 'mouseDown' or event.type == 'touchBegan' then
         self.inputs = self.inputs + 1
     end
 end

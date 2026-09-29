@@ -63,7 +63,7 @@ function Primitives:cell(index, x, y, size)
     elseif index == 5 then
         for ring = 1, 4 do
             local radius = ring * 16 + math.sin(time * 2 + ring) * 4
-            graphics2d.drawRing(x, y, radius, 3 + ring, m.hsv(ring / 5, 0.6, 1))
+            graphics2d.drawRing(x, y, radius, 3 + ring, m.fromHsv(ring / 5, 0.6, 1))
         end
     elseif index == 6 then
         local progress = (time * 0.35) % 1

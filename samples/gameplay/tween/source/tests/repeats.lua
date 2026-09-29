@@ -10,9 +10,9 @@ local Repeats = haylen.class('Repeats', sample.Test)
 
 local kModes = {'restart', 'yoyo', 'incremental'}
 local kCode = [[
-tween.to(a, 0.8, {x = 700}, {repeatCount = 3, repeatDelay = 0.3, loop = 'restart'})
-tween.to(b, 0.8, {x = 700}, {repeatCount = 3, repeatDelay = 0.3, loop = 'yoyo'})
-tween.by(c, 0.8, {x = 200}, {repeatCount = 3, repeatDelay = 0.3, loop = 'incremental', onLoop = function(loop) print(loop) end})]]
+tween.to(a, 0.8, {x = 700}, {repeatCount = 3, repeatDelay = 0.3, loopMode = 'restart'})
+tween.to(b, 0.8, {x = 700}, {repeatCount = 3, repeatDelay = 0.3, loopMode = 'yoyo'})
+tween.by(c, 0.8, {x = 200}, {repeatCount = 3, repeatDelay = 0.3, loopMode = 'incremental', onLoop = function(loop) print(loop) end})]]
 
 function Repeats:enter()
     self:frame({
@@ -36,7 +36,7 @@ function Repeats:play()
     self.boxes = {{x = 100}, {x = 100}, {x = 100}}
     self.loops = {0, 0, 0}
     for index, mode in ipairs(kModes) do
-        local options = {owner = self, ease = 'quad_in_out', repeatCount = 3, repeatDelay = 0.3, loop = mode, onLoop = function(loop)
+        local options = {owner = self, ease = 'quadInOut', repeatCount = 3, repeatDelay = 0.3, loopMode = mode, onLoop = function(loop)
             self.loops[index] = loop
         end}
         if mode == 'incremental' then

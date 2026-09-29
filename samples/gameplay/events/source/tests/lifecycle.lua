@@ -20,18 +20,18 @@ local Lifecycle = haylen.class('Lifecycle', sample.Test)
 Lifecycle.processMode = 'always'
 
 local kEvents = {
-    'app_active', 'app_inactive', 'app_background', 'app_low_memory', 'app_quit_requested', 'paused', 'unpaused',
-    'scene_loading', 'scene_loaded', 'scene_load_failed', 'scene_entered', 'scene_exited', 'scene_unloaded', 'scene_paused', 'scene_resumed',
-    'scene_exit_transition_started', 'scene_enter_transition_finished', 'scene_cover_started', 'scene_cover_finished',
-    'scene_hold_started', 'scene_hold_finished', 'scene_reveal_started', 'scene_reveal_finished', 'autoload_started', 'autoload_stopped',
-    'window_resized', 'window_focus_gained', 'window_focus_lost', 'window_fullscreen_changed', 'window_orientation_changed', 'window_safe_area_changed',
-    'ui_document_mounted', 'ui_document_unmounted', 'gamepad_connected', 'gamepad_disconnected', 'audio_interrupted', 'audio_resumed', 'audio_route_changed',
-    'keyboard_shown', 'keyboard_hidden', 'network_online', 'network_offline', 'websocket_connected', 'websocket_disconnected', 'websocket_reconnecting',
-    'asset_loaded', 'asset_unloaded', 'asset_reloaded', 'object_created', 'object_destroyed',
+    'appActive', 'appInactive', 'appBackground', 'appLowMemory', 'appQuitRequested', 'paused', 'unpaused',
+    'sceneLoading', 'sceneLoaded', 'sceneLoadFailed', 'sceneEntered', 'sceneExited', 'sceneUnloaded', 'scenePaused', 'sceneResumed',
+    'sceneExitTransitionStarted', 'sceneEnterTransitionFinished', 'sceneCoverStarted', 'sceneCoverFinished',
+    'sceneHoldStarted', 'sceneHoldFinished', 'sceneRevealStarted', 'sceneRevealFinished', 'autoloadStarted', 'autoloadStopped',
+    'windowResized', 'windowFocusGained', 'windowFocusLost', 'windowFullscreenChanged', 'windowOrientationChanged', 'windowSafeAreaChanged',
+    'uiDocumentMounted', 'uiDocumentUnmounted', 'gamepadConnected', 'gamepadDisconnected', 'audioInterrupted', 'audioResumed', 'audioRouteChanged',
+    'keyboardShown', 'keyboardHidden', 'networkOnline', 'networkOffline', 'webSocketConnected', 'webSocketDisconnected', 'webSocketReconnecting',
+    'assetLoaded', 'assetUnloaded', 'assetReloaded', 'objectCreated', 'objectDestroyed',
 }
-local kColors = {app = sample.warm, scene = sample.accent, window = sample.green, asset = '#FFC9A0FF', websocket = sample.red}
+local kColors = {app = sample.warm, scene = sample.accent, window = sample.green, asset = '#FFC9A0FF', webSocket = sample.red}
 local kCode = [[
-events.on('scene_hold_started', function(transfer) print(transfer.from, transfer.to) end, {owner = self})
+events.on('sceneHoldStarted', function(transfer) print(transfer.from, transfer.to) end, {owner = self})
 scene.push(room, {duration = 0.8, loading = view, loadingDelay = 0.1, minimumLoadingTime = 0.6})
 function room:load(context) context:progress(0.5, 'building the room') async.sleep(100):await() end]]
 
@@ -106,9 +106,9 @@ function Lifecycle:enter()
     local journal = Journal(80)
     self.journal = journal
     for _, name in ipairs(kEvents) do
-        local color = kColors[name:match('^[^_]+')] or sample.ink
+        local color = kColors[name:match('^webSocket') or name:match('^%l+')] or sample.ink
         events.on(name, function(value)
-            if name:match('^object_') and value.type ~= 'haylen.Sprite' then
+            if name:match('^object') and value.type ~= 'haylen.Sprite' then
                 return
             end
             journal:add(name .. '  ' .. describe(value), color)
@@ -182,13 +182,13 @@ function Lifecycle:openSocket()
     if self.socket then
         self.socket:close()
     end
-    self.socket = net.websocket('ws://127.0.0.1:9/', {reconnect = {initialDelay = 0.5, maxDelay = 1, maxAttempts = 2}})
+    self.socket = net.connectWebSocket('ws://127.0.0.1:9/', {reconnect = {initialDelay = 0.5, maxDelay = 1, maxAttempts = 2}})
     self.socket:on('close', function(code) self.journal:add('the socket gave up with code ' .. code, sample.red) end)
 end
 
 function Lifecycle:update(dt)
     Lifecycle.super.update(self, dt)
-    self:status(string.format('app %s   paused %s   halted %s   scenes %d   sockets %d', haylen.appState(), haylen.paused(), haylen.halted(), scene.size(), net.openSockets()))
+    self:status(string.format('app %s   paused %s   halted %s   scenes %d   sockets %d', haylen.appState(), haylen.paused(), haylen.halted(), scene.size(), net.openSocketCount()))
 end
 
 function Lifecycle:draw(area)

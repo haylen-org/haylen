@@ -16,7 +16,7 @@ function language.setup()
     language.japanese = assets.font('fonts/mplus_1p_regular.ttf')
     language.arabic = assets.font('fonts/noto_sans_arabic_regular.ttf')
     language.devanagari = assets.font('fonts/noto_sans_devanagari_regular.ttf')
-    language.family = graphics.newFontFamily({regular = graphics2d.defaultFont(), fallback = {language.japanese, language.arabic, language.devanagari}})
+    language.family = graphics.newFontFamily({regular = graphics2d.defaultFont(), fallbacks = {language.japanese, language.arabic, language.devanagari}})
     ui.addFont('text', language.family)
     local role = {font = 'text'}
     ui.setTheme(ui.addTheme({name = 'localized', fonts = {body = role, caption = role, button = role, heading = role, title = role, monospace = role}}, 'dark'))

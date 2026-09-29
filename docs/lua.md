@@ -45,7 +45,7 @@ The runtime reads `app.json` before the window exists, so it configures everythi
 | `window.mousePassthrough` | boolean | `false` | Lets every click pass through the window to what is behind it, until the app gives regions that keep the mouse. |
 | `window.position` | string or object | centered | Where the desktop window opens: `"center"`, a point `{"x": 40, "y": 60}` in desktop points, or an anchored placement such as `{"anchor": "bottom", "area": "work", "monitor": "primary", "offset": [0, -8], "fill": "width"}`, described in the [desktop guide](desktop.md#placing-the-window). |
 | `design.width`, `design.height` | number | `1920`, `1080` | Design resolution, the coordinate space the app draws and receives input in. |
-| `design.scaling` | string | `"expand"` | `"fit"`, `"fill"`, `"stretch"`, `"expand"` or `"pixel_perfect"`, described in [`haylen.viewport`](lua-api/viewport.md). |
+| `design.scaling` | string | `"expand"` | `"fit"`, `"fill"`, `"stretch"`, `"expand"` or `"pixelPerfect"`, described in [`haylen.viewport`](lua-api/viewport.md). |
 | `orientation` | string | `"landscape"` | `"landscape"`, `"portrait"` or `"any"`. |
 | `fixedRate` | number | `60` | Fixed updates per second. `haylen.fixedStep()` returns the matching step length in seconds. |
 | `maxFrameTime` | number | `0.25` | Longest frame time in seconds that the clock accepts, so a stall never causes a burst of fixed steps. |
@@ -58,7 +58,7 @@ The runtime reads `app.json` before the window exists, so it configures everythi
 | `audio.iosSession` | string | `"ambient"` | Category of the audio session on iOS and tvOS: `"ambient"`, `"soloAmbient"` or `"playback"`, described in the [audio guide](audio.md#sessions-and-interruptions). |
 | `audio.mixWithOthers` | boolean | `false` | Lets the `"playback"` session play along with other apps. Other sessions reject `true`. |
 | `debug.stats` | string | `"off"` | Debug statistics the app starts with: `"off"`, `"compact"` for the frame rate, frame time, draw calls, vertices and instances in a corner, or `"full"` for the debug overlay, described in [`haylen.debug`](lua-api/debug.md). |
-| `debug.objectEvents` | boolean | `false` | Publishes `object_created` and `object_destroyed` for every counted object, as [`haylen.debug`](lua-api/debug.md#object-counts-and-events) describes. |
+| `debug.objectEvents` | boolean | `false` | Publishes `objectCreated` and `objectDestroyed` for every counted object, as [`haylen.debug`](lua-api/debug.md#object-counts-and-events) describes. |
 | `debug.safeArea` | string or insets | none | Safe area to simulate instead of the one of the device: a device name such as `"iphoneDynamicIsland"` or insets in window points, as [`viewport.setSafeAreaSimulation`](lua-api/viewport.md#viewportsetsafeareasimulationvalue) describes. |
 | `debug.showSafeArea` | boolean | `false` | Shows the debug view of the safe area from the start, as [`ui.setSafeAreaVisible`](lua-api/ui.md#uisetsafeareavisiblevisible) describes. |
 | `autoload` | array of strings | `[]` | Modules that load as [autoloads](#autoloads) before `source/main.lua`, such as `"state.player-data"`. |
@@ -107,7 +107,7 @@ When `require` loads a module for the first time, it returns a second value, whi
 
 App code loads chunks the same way. `load` and `loadfile` take only text, so a mode other than `'t'` raises `chunks load only as text, so the mode is 't'` and binary chunks fail to load, `dofile` runs only text files, and `string.dump` does not exist. Precompiled bytecode is never checked by the Lua virtual machine and could build values that crash it.
 
-The metatables of engine types are protected. `getmetatable(value)` returns the type name, such as `'haylen.Sprite'`, so it can tell engine values apart, and neither `setmetatable` nor the debug library can read or replace their metatables. `debug.getmetatable` returns the same as `getmetatable`, `debug.setmetatable` raises `cannot change a protected metatable` for an engine value, `debug.getregistry` does not exist, and `debug.getupvalue` and `debug.setupvalue` see no upvalues in native functions. A value can therefore never be finalized by hand or given the members of another type.
+The metatables of engine types are protected. `getmetatable(value)` returns the type name, such as `'haylen.Sprite'`, so it can tell engine values apart, and neither `setmetatable` nor the debug library can read or replace their metatables. `debug.getmetatable` returns the same as `getmetatable`, `debug.setmetatable` raises `The metatable of this value is protected and cannot be changed.` for an engine value, `debug.getregistry` does not exist, and `debug.getupvalue` and `debug.setupvalue` see no upvalues in native functions. A value can therefore never be finalized by hand or given the members of another type.
 
 Varn's modules live in the same state: `async`, `http`, `socket`, `json`, `fs`, `zip`, `crypto`, `log`, `platform`, `process`, `datetime`, `xml` and `ffi`. The [Varn documentation](https://github.com/varn-org/varn) describes them. Apps use `haylen.storage` for their own files and `haylen.log` and `haylen.platform` for logging and native calls, which are different modules from Varn's `log` and `platform`. Browsers have no raw TCP, so the `socket` module works only in native builds.
 
@@ -254,8 +254,8 @@ Varn's `fs` module reads and writes asynchronously, on the I/O pool, and returns
 
 | Task | haylen.storage | Varn fs |
 | --- | --- | --- |
-| Read a file | `storage.read(path)`, `storage.readJson(path)` | `fs.readFile(path)`, or `fs.open(path, 'r')` to stream |
-| Write a file | `storage.write(path, text)`, `storage.writeJson(path, value)` | `fs.writeFile(path, data)`, `fs.append(path, data)` |
+| Read a file | `storage.readText(path)`, `storage.readJson(path)` | `fs.readFile(path)`, or `fs.open(path, 'r')` to stream |
+| Write a file | `storage.writeText(path, text)`, `storage.writeJson(path, value)` | `fs.writeFile(path, data)`, `fs.append(path, data)` |
 | List files | `storage.list(folder)`, every file below the folder | `fs.readdir(path)`, the entries of one folder |
 | Create a folder | Implicit on write | `fs.mkdir(path)` |
 | Remove | `storage.remove(path)` | `fs.removeRecursive(path)` |
@@ -630,7 +630,7 @@ wallet:add(5)
 print(wallet.coins)
 ```
 
-Reading a member the type does not have raises `app.Wallet has no member '<name>'.`, and assigning one without a setter raises `app.Wallet has no writable property '<name>'.`.
+Reading a member the type does not have raises `The type app.Wallet has no member '<name>'.`, and assigning one without a setter raises `The type app.Wallet has no writable property '<name>'.`.
 
 A binding that finishes later returns a `lua::Promise`. The binding creates it, pushes it as its result and settles it once with `resolve` (a JSON value that arrives in Lua as plain tables), `resolveWith` (a function that pushes one value on the frame thread) or `reject` (a message that `:await()` returns as its second value). It may be settled from a worker thread, and the waiting coroutine resumes on the frame thread in a later `Runtime::poll()` of Varn. A JSON value that Lua cannot hold, which is binary JSON or JSON nested more than 128 levels deep, rejects the promise with the reason instead, so its coroutines still resume.
 

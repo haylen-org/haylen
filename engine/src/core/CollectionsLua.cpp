@@ -247,7 +247,7 @@ int CollectionsLua::bufferPop(lua_State* L) {
     return 1;
 }
 
-int CollectionsLua::bufferPeek(lua_State* L) {
+int CollectionsLua::bufferFront(lua_State* L) {
     const ValueBuffer& buffer = lua::Userdata::check<ValueBuffer>(L, 1);
     if (buffer.empty()) {
         lua_pushnil(L);
@@ -257,7 +257,7 @@ int CollectionsLua::bufferPeek(lua_State* L) {
     return 1;
 }
 
-int CollectionsLua::bufferLast(lua_State* L) {
+int CollectionsLua::bufferBack(lua_State* L) {
     const ValueBuffer& buffer = lua::Userdata::check<ValueBuffer>(L, 1);
     if (buffer.empty()) {
         lua_pushnil(L);
@@ -323,7 +323,7 @@ int CollectionsLua::open(lua_State* L) {
 
 void CollectionsLua::install(lua_State* L) {
     lua::ClassBuilder<Pool>(L).function("acquire", &lua::Binding::native<&poolAcquire>).function("release", &lua::Binding::native<&poolRelease>).function("releaseAll", &lua::Binding::native<&poolReleaseAll>).function("each", &lua::Binding::native<&poolEach>).function("prewarm", &lua::Binding::native<&poolPrewarm>).property("active", &poolActive).property("idle", &poolIdle).property("capacity", &poolCapacity).install();
-    lua::ClassBuilder<ValueBuffer>(L).function("push", &lua::Binding::native<&bufferPush>).function("pop", &lua::Binding::native<&bufferPop>).function("peek", &lua::Binding::native<&bufferPeek>).function("last", &lua::Binding::native<&bufferLast>).function("get", &lua::Binding::native<&bufferGet>).function("values", &lua::Binding::native<&bufferValues>).function("clear", &lua::Binding::native<&bufferClear>).property("size", &bufferSize).property("capacity", &bufferCapacity).property("full", &bufferFull).install();
+    lua::ClassBuilder<ValueBuffer>(L).function("push", &lua::Binding::native<&bufferPush>).function("pop", &lua::Binding::native<&bufferPop>).function("front", &lua::Binding::native<&bufferFront>).function("back", &lua::Binding::native<&bufferBack>).function("get", &lua::Binding::native<&bufferGet>).function("values", &lua::Binding::native<&bufferValues>).function("clear", &lua::Binding::native<&bufferClear>).property("size", &bufferSize).property("capacity", &bufferCapacity).property("full", &bufferFull).install();
     FloatBufferLua::install(L);
     lua::Binding::preload(L, "haylen.collections", &open);
 }

@@ -28,12 +28,12 @@ void Profiler::beginFrame() {
 
 void Profiler::endFrame() {
     if (!inFrame) {
-        throw std::logic_error("endFrame was called without beginFrame.");
+        throw std::logic_error("The endFrame call has no matching beginFrame.");
     }
 
     // Scopes left open by an error close at the end of the frame, so one failure never skews the next frame.
     const double now = clock();
-    endTo(0);
+    endScopesTo(0);
     lastFrameMilliseconds = (now - frameStart) * 1000.0;
     history[next] = static_cast<float>(lastFrameMilliseconds);
     next = (next + 1) % history.size();
@@ -42,7 +42,7 @@ void Profiler::endFrame() {
     inFrame = false;
 }
 
-void Profiler::begin(std::string_view name) {
+void Profiler::beginScope(std::string_view name) {
     const int parent = open.empty() ? -1 : open.back().sample;
     int index = -1;
     for (std::size_t sample = 0; sample < current.size(); ++sample) {
@@ -59,7 +59,7 @@ void Profiler::begin(std::string_view name) {
     open.push_back({.sample = index, .start = clock()});
 }
 
-void Profiler::end() {
+void Profiler::endScope() {
     if (open.empty()) {
         throw std::logic_error("A profiler scope was closed without being opened.");
     }
@@ -68,9 +68,9 @@ void Profiler::end() {
     current[static_cast<std::size_t>(scope.sample)].milliseconds += (clock() - scope.start) * 1000.0;
 }
 
-void Profiler::endTo(std::size_t depth) noexcept {
+void Profiler::endScopesTo(std::size_t depth) noexcept {
     while (open.size() > depth) {
-        end();
+        endScope();
     }
 }
 

@@ -122,7 +122,7 @@ int FluidLua::bodies(lua_State* L) {
     return 1;
 }
 
-int FluidLua::count(lua_State* L) {
+int FluidLua::size(lua_State* L) {
     lua::Stack::push(L, lua::Userdata::check<ScriptedOwner<Fluid>>(L, 1).object.size());
     return 1;
 }
@@ -133,7 +133,7 @@ int FluidLua::radius(lua_State* L) {
 }
 
 void FluidLua::install(lua_State* L) {
-    lua::ClassBuilder<ScriptedOwner<Fluid>>(L).function("spawn", &lua::Binding::native<&spawn>).function("fill", &lua::Binding::native<&fill>).function("remove", &lua::Binding::native<&remove>).function("clear", &lua::Binding::native<&clear>).function("update", &lua::Binding::native<&update>).function("positions", &lua::Binding::native<&positions>).function("velocities", &lua::Binding::native<&velocities>).function("bodies", &lua::Binding::native<&bodies>).property("count", &count).property("radius", &radius).install();
+    lua::ClassBuilder<ScriptedOwner<Fluid>>(L).function("spawn", &lua::Binding::native<&spawn>).function("fill", &lua::Binding::native<&fill>).function("remove", &lua::Binding::native<&remove>).function("clear", &lua::Binding::native<&clear>).function("update", &lua::Binding::native<&update>).function("positions", &lua::Binding::native<&positions>).function("velocities", &lua::Binding::native<&velocities>).function("bodies", &lua::Binding::native<&bodies>).property("size", &size).property("radius", &radius).install();
 }
 
 void FluidLua::addFunctions(lua_State* L) {

@@ -57,7 +57,7 @@ class UiPlugin final : public Plugin {
 
     [[nodiscard]] std::shared_ptr<ui::Document> createDocument(const core::Json& tree, ui::Placement placement = ui::Placement::Safe) const;
 
-    // Documents draw in layer order, and documents on the same layer in the order they were mounted. Mounting and unmounting publish ui_document_mounted and ui_document_unmounted with the shared pointer of the document.
+    // Documents draw in layer order, and documents on the same layer in the order they were mounted. Mounting and unmounting publish uiDocumentMounted and uiDocumentUnmounted with the shared pointer of the document.
     void mount(std::shared_ptr<ui::Document> document, int layer = 0);
     bool unmount(const ui::Document& document);
     [[nodiscard]] bool isMounted(const ui::Document& document) const;

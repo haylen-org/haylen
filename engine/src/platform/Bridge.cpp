@@ -207,7 +207,7 @@ Bridge::Error Bridge::readFailure(core::Json payload) {
 Bridge::Result Bridge::parseResult(bool ok, std::string_view json) {
     core::Json parsed = json.empty() ? core::Json(nullptr) : core::Json::parse(json, nullptr, false);
     if (parsed.is_discarded()) {
-        return {.error = {.message = "The platform returned invalid JSON.", .code = "invalid_json"}};
+        return {.error = {.message = "The platform returned invalid JSON.", .code = "invalidJson"}};
     }
     if (ok) {
         return {.ok = true, .value = std::move(parsed)};

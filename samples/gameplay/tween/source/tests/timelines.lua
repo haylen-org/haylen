@@ -14,7 +14,7 @@ local kLogLines = 9
 local kCode = [[
 tween.timeline({onStep = logStep, onComplete = logDone})
     :append(tween.to(door, 0.6, {open = 1})):append(tween.to(hero, 1.2, {x = 700})):join(tween.to(hero, 0.4, {alpha = 1}))
-    :append(0.3):append(function() log('the hero waves') end):label('fight'):append(tween.to(hero, 0.25, {hop = 1}, {loop = 'yoyo', repeatCount = 3}))
+    :append(0.3):append(function() log('the hero waves') end):addLabel('fight'):append(tween.to(hero, 0.25, {hop = 1}, {loopMode = 'yoyo', repeatCount = 3}))
     :insert('fight', tween.to(sky, 1, {light = 0.3})):insert(1, function() log('the door creaks') end)]]
 
 function Timelines:enter()
@@ -54,13 +54,13 @@ function Timelines:play()
     end
     self.door, self.hero, self.sky = {open = 0}, {x = 60, alpha = 0, hop = 0}, {light = 1}
     self.line = tween.timeline({owner = self, autoKill = false, onStep = function(step) self:log('step ' .. step .. ' ended') end, onComplete = function() self:log('complete') end})
-    self.line:append(tween.to(self.door, 0.6, {open = 1}, {ease = 'quad_out'}))
-        :append(tween.to(self.hero, 1.2, {x = 700}, {ease = 'sine_in_out'}))
+    self.line:append(tween.to(self.door, 0.6, {open = 1}, {ease = 'quadOut'}))
+        :append(tween.to(self.hero, 1.2, {x = 700}, {ease = 'sineInOut'}))
         :join(tween.to(self.hero, 0.4, {alpha = 1}))
         :append(0.3)
         :append(function() self:log('the hero waves') end)
-        :label('fight')
-        :append(tween.to(self.hero, 0.25, {hop = 1}, {ease = 'quad_out', loop = 'yoyo', repeatCount = 3}))
+        :addLabel('fight')
+        :append(tween.to(self.hero, 0.25, {hop = 1}, {ease = 'quadOut', loopMode = 'yoyo', repeatCount = 3}))
         :insert('fight', tween.to(self.sky, 1, {light = 0.3}))
         :insert(1, function() self:log('the door creaks') end)
 end

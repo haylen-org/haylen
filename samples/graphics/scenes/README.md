@@ -6,7 +6,7 @@ Haylen Scenes is a Lua sample of the scene stack of `haylen.scene`: every transi
 | --- | --- |
 | Transition gallery | The 24 built-in effects, each pushing a card with the chosen direction, easing, duration and color, and popping it back with the opposite direction. |
 | Custom effect | Blinds and a curtain written in Lua as effect tables that draw both scenes. |
-| Loading and errors | A fade that holds its covered frame as the loading screen, a custom loading view with the progress and message of the load, `scene.preload` with `scene.progress` drawn by the test, and a load that fails and reaches `onError`, which routes to a card with the message. |
+| Loading and errors | A fade that holds its covered frame as the loading screen, a custom loading view with the progress and message of the load, `scene.preload` with `scene.loadProgress` drawn by the test, and a load that fails and reaches `onError`, which routes to a card with the message. |
 | Stack and hooks | Push, pop, replace, popTo and popToRoot with instant, slide or fade transitions, the stack listed on screen and every hook logged, from `load` to `unload`, with the `params` of each change. |
 | Transparent overlays | HUD and dialog overlays that keep the world rendering below while only the top scene updates. |
 | Pause and process modes | A paused world whose pausable timer and tween stop, a pause menu in `whenPaused`, and an `always` timer that keeps counting. |

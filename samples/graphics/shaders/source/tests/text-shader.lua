@@ -22,8 +22,8 @@ function TextShader:update(dt)
         self.hit = 1
     end
     self.hit = math.max(0, self.hit - dt * 2.5)
-    self.rainbow:set('time', haylen.time())
-    self.dissolve:set('amount', 0.5 + 0.5 * math.sin(haylen.time() * 0.8))
+    self.rainbow:set('time', haylen.elapsed())
+    self.dissolve:set('amount', 0.5 + 0.5 * math.sin(haylen.elapsed() * 0.8))
     self.flash:set('amount', self.hit)
     self:setStatus(string.format('dissolve amount %.2f, flash %.2f', self.dissolve:get('amount'), self.hit))
 end

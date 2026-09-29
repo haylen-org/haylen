@@ -28,7 +28,7 @@ TEST(GraphicsLuaTest, CreatesTexturesAndRenderTargets) {
     EXPECT_EQ(fixture.lua("local target = graphics.newRenderTarget(64, 32, {wrap = 'repeat'}) return target.width .. 'x' .. target.height .. ' ' .. target.texture.width"), "64x32 64");
     EXPECT_NE(fixture.lua("return graphics.newRenderTarget(0, 32)").find("error: "), std::string::npos);
     EXPECT_NE(fixture.lua("return graphics.newRenderTarget(4, 4, {filter = 'blurry'})").find("error: "), std::string::npos);
-    EXPECT_EQ(fixture.lua("return graphics.backend()"), "dummy");
+    EXPECT_EQ(fixture.lua("return graphics.backendName()"), "dummy");
 }
 
 // A dynamic texture takes new pixels from Lua, and the frame sends only the last pixels it received.

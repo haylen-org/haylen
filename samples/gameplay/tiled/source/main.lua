@@ -3,14 +3,14 @@ local input = require('haylen.input')
 local scene = require('haylen.scene')
 
 input.loadActions({actions = {
-    -- The Back button of a gamepad goes back too, next to Escape and the east button that ui_cancel reads by default.
-    {name = 'ui_cancel', type = 'button', bindings = {'key:escape', 'button:east', 'button:back'}},
+    -- The Back button of a gamepad goes back too, next to Escape and the east button that uiCancel reads by default.
+    {name = 'uiCancel', type = 'button', bindings = {'key:escape', 'button:east', 'button:back'}},
     {name = 'reset', type = 'button', bindings = {'key:r', 'button:west'}},
-    {name = 'previous', type = 'button', bindings = {'key:q', 'button:left_shoulder'}},
-    {name = 'next', type = 'button', bindings = {'key:e', 'button:right_shoulder'}},
+    {name = 'previous', type = 'button', bindings = {'key:q', 'button:leftShoulder'}},
+    {name = 'next', type = 'button', bindings = {'key:e', 'button:rightShoulder'}},
     {name = 'cursor', type = 'vector', bindings = {'stick:right'}},
-    {name = 'press', type = 'button', bindings = {'axis:right_trigger+'}},
-    {name = 'move', type = 'vector', up = {'key:w', 'key:up'}, down = {'key:s', 'key:down'}, left = {'key:a', 'key:left'}, right = {'key:d', 'key:right'}, bindings = {'stick:left', 'virtual_stick:move'}},
+    {name = 'press', type = 'button', bindings = {'axis:rightTrigger+'}},
+    {name = 'move', type = 'vector', up = {'key:w', 'key:up'}, down = {'key:s', 'key:down'}, left = {'key:a', 'key:left'}, right = {'key:d', 'key:right'}, bindings = {'stick:left', 'virtualStick:move'}},
 }})
 
 scene.push(require('scenes.menu').new())

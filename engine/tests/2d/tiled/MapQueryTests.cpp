@@ -223,7 +223,7 @@ TEST(MapQueryLuaTest, CastsRaysOverMapsFromLua) {
     EXPECT_NE(fixture.lua("map:raycastTiles('rocks', 0, 0, 1, 0)").find("no tile layer named 'rocks'"), std::string::npos);
 
     // The solid callback runs once the ray has gathered its tiles, so a tile it places behind the wall does not stop the ray.
-    EXPECT_EQ(fixture.lua("local hit = map:raycastTiles('walls', 8, 8, 200, 8, function(gid) map:setTile('walls', 6, 0, 2) return gid == 2 end) return tostring(hit) .. ' ' .. map:tileAt('walls', 6, 0)"), "nil 2");
+    EXPECT_EQ(fixture.lua("local hit = map:raycastTiles('walls', 8, 8, 200, 8, function(gid) map:setTile('walls', 6, 0, 2) return gid == 2 end) return tostring(hit) .. ' ' .. map:tile('walls', 6, 0)"), "nil 2");
 }
 
 } // namespace haylen

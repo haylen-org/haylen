@@ -218,7 +218,7 @@ TEST_F(FocusTest, TabsFromFieldToFieldWhileTyping) {
 }
 
 TEST_F(FocusTest, TakesAcceptFromTheActionMapWhenTheAppRemapsIt) {
-    getEngine().getActions().load(core::Json::parse(R"({"actions": [{"name": "ui_accept", "type": "button", "bindings": ["key:x"]}]})"));
+    getEngine().getActions().load(core::Json::parse(R"({"actions": [{"name": "uiAccept", "type": "button", "bindings": ["key:x"]}]})"));
     auto document = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "play", "text": "Play", "autofocus": true}]})");
     key(input::Key::Enter);
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"play:focus"}));

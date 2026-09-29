@@ -58,8 +58,8 @@ TEST_F(TextLuaTest, InspectsFontsAndBuildsFamilies) {
     EXPECT_NE(lua("assets.font('images/coin.png')").find("expected a .ttf, .otf or .fnt file"), std::string::npos);
     EXPECT_NE(lua("graphics.newBitmapFont('garbage', {})").find("info and common"), std::string::npos);
 
-    lua("family = graphics.newFontFamily({regular = font, bold = pixel, fallback = {grid}})");
-    EXPECT_EQ(lua("return tostring(family.regular == nil) .. ' ' .. tostring(family.italic == nil) .. ' ' .. #family.fallback .. ' ' .. tostring(family.bold.distanceField)"), "false true 1 false");
+    lua("family = graphics.newFontFamily({regular = font, bold = pixel, fallbacks = {grid}})");
+    EXPECT_EQ(lua("return tostring(family.regular == nil) .. ' ' .. tostring(family.italic == nil) .. ' ' .. #family.fallbacks .. ' ' .. tostring(family.bold.distanceField)"), "false true 1 false");
     EXPECT_EQ(lua("local face, bold, italic = family:select({bold = true, italic = true}) return tostring(face.distanceField) .. ' ' .. tostring(bold) .. ' ' .. tostring(italic)"), "false false true");
     EXPECT_EQ(lua("local face, bold = family:select({bold = true}) local regular, synthetic = family:select() return tostring(bold) .. ' ' .. tostring(synthetic) .. ' ' .. tostring(regular.distanceField)"), "false false true");
     EXPECT_EQ(lua("local face, bold = family:resolve(0xE000) return tostring(face == nil) .. ' ' .. tostring(bold)"), "false false");
@@ -88,15 +88,15 @@ TEST_F(TextLuaTest, RejectsFontOptionsAndLengthsOutOfRange) {
 
 TEST_F(TextLuaTest, EndsParagraphsAtEverySeparatorAndHidesControlCharacters) {
     EXPECT_EQ(lua(R"(local function lines(text) return font:layout(text, {size = 20}).lineCount end return lines('a\rb') .. ' ' .. lines('a\r\nb') .. ' ' .. lines('a\u{2029}b\u{85}c\u{1C}d') .. ' ' .. lines('a\u{2028}b') .. ' ' .. lines('a\vb'))"), "2 2 4 2 2");
-    EXPECT_EQ(lua(R"(return graphics2d.newRichText('a\r\nb\rc\u{2029}d'):layout().lineCount .. ' ' .. graphics2d.newRichText('[center]\r\nx\r\n[/center]\r\ny'):layout().lineCount)"), "4 2");
+    EXPECT_EQ(lua(R"(return graphics2d.newRichText('a\r\nb\rc\u{2029}d'):frame().lineCount .. ' ' .. graphics2d.newRichText('[center]\r\nx\r\n[/center]\r\ny'):frame().lineCount)"), "4 2");
 
     // A tab draws no missing glyph box and takes no room.
     EXPECT_EQ(lua(R"(local laid = font:layout('a\tb', {size = 20}) return #laid.quads .. ' ' .. tostring(math.abs(laid.size.x - font:measure('a', {size = 20}) - font:measure('b', {size = 20})) < 0.01))"), "2 true");
 }
 
 TEST_F(TextLuaTest, SameFontsCompareEqual) {
-    lua("pixel = assets.font('fonts/pixel.fnt') family = graphics.newFontFamily({regular = font, fallback = {pixel}}) target = graphics.newRenderTarget(8, 8)");
-    EXPECT_EQ(lua("return tostring(family.fallback[1] == family.fallback[1]) .. ' ' .. tostring(family:resolve('A') == family.regular) .. ' ' .. tostring(family.regular == font) .. ' ' .. tostring(pixel == assets.font('fonts/pixel.fnt'))"), "true true true true");
+    lua("pixel = assets.font('fonts/pixel.fnt') family = graphics.newFontFamily({regular = font, fallbacks = {pixel}}) target = graphics.newRenderTarget(8, 8)");
+    EXPECT_EQ(lua("return tostring(family.fallbacks[1] == family.fallbacks[1]) .. ' ' .. tostring(family:resolve('A') == family.regular) .. ' ' .. tostring(family.regular == font) .. ' ' .. tostring(pixel == assets.font('fonts/pixel.fnt'))"), "true true true true");
     EXPECT_EQ(lua("return tostring(pixel == font) .. ' ' .. tostring(family == graphics.newFontFamily({regular = font})) .. ' ' .. tostring(target == graphics.newRenderTarget(8, 8))"), "false false false");
 
     // Values of different types are never equal, and comparing them raises no error.
@@ -106,22 +106,22 @@ TEST_F(TextLuaTest, SameFontsCompareEqual) {
 TEST_F(TextLuaTest, MakesDrawsAndMeasuresRichText) {
     lua("text = graphics2d.newRichText('[b]Hi[/b] [url=next]there[/url] [hint=Tip]you[/hint]', {size = 24, maxWidth = 300, align = 'center', color = '#FFFFFF'})");
     EXPECT_EQ(lua("local w, h = text:size() return w .. ' ' .. tostring(h > 20) .. ' ' .. text.characterCount .. ' ' .. text.markup"), "300.0 true 12 [b]Hi[/b] [url=next]there[/url] [hint=Tip]you[/hint]");
-    EXPECT_EQ(lua("local layout = text:layout() local link = layout.links[1].rect return text:linkAt(link.x + 2, link.y + 2) .. ' ' .. tostring(text:linkAt(0, 0)) .. ' ' .. text:hintAt(layout.hints[1].rect.x + 1, layout.hints[1].rect.y + 1)"), "next nil Tip");
-    EXPECT_EQ(lua("local layout = text:layout() return #layout.glyphs .. ' ' .. layout.lineCount .. ' ' .. layout.glyphs[1].char .. ' ' .. tostring(layout.glyphs[1].syntheticBold) .. ' ' .. layout.boxes[1].kind .. ' ' .. layout.links[1].link"), "10 1 H true underline next");
+    EXPECT_EQ(lua("local layout = text:frame() local link = layout.links[1].rect return text:linkAt(link.x + 2, link.y + 2) .. ' ' .. tostring(text:linkAt(0, 0)) .. ' ' .. text:hintAt(layout.hints[1].rect.x + 1, layout.hints[1].rect.y + 1)"), "next nil Tip");
+    EXPECT_EQ(lua("local layout = text:frame() return #layout.glyphs .. ' ' .. layout.lineCount .. ' ' .. layout.glyphs[1].char .. ' ' .. tostring(layout.glyphs[1].syntheticBold) .. ' ' .. layout.boxes[1].kind .. ' ' .. layout.links[1].link"), "10 1 H true underline next");
 
     lua("text.maxWidth = 40 text.scale = 2");
     EXPECT_EQ(lua("local w, h = text:size() return w .. ' ' .. tostring(h > 100) .. ' ' .. text.maxWidth .. ' ' .. text.scale"), "40.0 true 40.0 2.0");
     lua("text.markup = 'abc'");
     EXPECT_EQ(lua("return text.characterCount .. ' ' .. text.visibleCharacters .. ' ' .. tostring(text.revealing)"), "3 3 false");
     lua("text:setVisibleCharacters(1)");
-    EXPECT_EQ(lua("return text.visibleCharacters .. ' ' .. tostring(text.revealing) .. ' ' .. tostring(text:layout().glyphs[2].visible)"), "1 true false");
+    EXPECT_EQ(lua("return text.visibleCharacters .. ' ' .. tostring(text.revealing) .. ' ' .. tostring(text:frame().glyphs[2].visible)"), "1 true false");
     lua("text.visibleRatio = 1 text.visibleCharacters = -1");
     EXPECT_EQ(lua("return text.visibleCharacters .. ' ' .. text.visibleRatio"), "3 1.0");
 
     // The bold and italic options style all the text as [b] and [i] would, here synthesized from the default font.
-    EXPECT_EQ(lua("local glyph = graphics2d.newRichText('ab', {bold = true, italic = true}):layout().glyphs[2] return tostring(glyph.syntheticBold) .. ' ' .. tostring(glyph.syntheticItalic)"), "true true");
+    EXPECT_EQ(lua("local glyph = graphics2d.newRichText('ab', {bold = true, italic = true}):frame().glyphs[2] return tostring(glyph.syntheticBold) .. ' ' .. tostring(glyph.syntheticItalic)"), "true true");
 
-    lua("typed = graphics2d.newRichText('abcd', {reveal = 20})");
+    lua("typed = graphics2d.newRichText('abcd', {revealSpeed = 20})");
     EXPECT_EQ(lua("typed:update(0.11) return typed.visibleCharacters .. ' ' .. string.format('%.2f', typed.time)"), "2 0.11");
 
     EXPECT_EQ(render("graphics2d.beginScreen() text:draw(10, 20, {layer = 1}) graphics2d.drawRichText('[wave]hello[/wave] [img=images/coin.png]', 10, 60, {size = 20, layer = 2})"), "nil");
@@ -162,19 +162,19 @@ TEST_F(TextLuaTest, KeepsTheImagesOfRichTextThatFramesKeepDrawing) {
 TEST_F(TextLuaTest, TintsAndScalesDrawnRichText) {
     lua("label = graphics2d.newRichText('[b]Gold[/b]', {size = 20})");
     EXPECT_EQ(render("graphics2d.beginScreen() label:draw(0, 0, {scale = {2, 3}, tint = '#80FFFFFF', layer = 1}) graphics2d.drawRichText('Gold', 0, 40, {tint = '#FF0000', layer = 2})"), "nil");
-    EXPECT_NE(render("graphics2d.beginScreen() label:draw(0, 0, {scale = 'big'})").find("bad option 'scale' to 'draw'"), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() label:draw(0, 0, {scale = 'big'})").find("The option 'scale' of 'draw'"), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() label:draw(0, 0, {tints = '#FFFFFF'})").find("Unknown option 'tints'"), std::string::npos);
-    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawRichText('Gold', 0, 0, {tint = 5})").find("bad option 'tint' to 'drawRichText'"), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawRichText('Gold', 0, 0, {tint = 5})").find("The option 'tint' of 'drawRichText'"), std::string::npos);
 }
 
 TEST_F(TextLuaTest, ChangesRichTextOptionsAsProperties) {
-    lua("story = graphics2d.newRichText('ab', {reveal = 10}) story:update(0.15)");
+    lua("story = graphics2d.newRichText('ab', {revealSpeed = 10}) story:update(0.15)");
     lua("story.color = '#FFFF0000' story.bold = true story.italic = true story.align = 'center' story.direction = 'rtl' story.language = 'he' story.lineSpacing = 2 story.underlineLinks = false");
-    EXPECT_EQ(lua("return story.color:toHex() .. ' ' .. tostring(story.bold) .. ' ' .. tostring(story.italic) .. ' ' .. story.align .. ' ' .. story.direction .. ' ' .. story.language .. ' ' .. story.lineSpacing .. ' ' .. tostring(story.underlineLinks) .. ' ' .. story.reveal"), "#FFFF0000 true true center rtl he 2.0 false 10.0");
+    EXPECT_EQ(lua("return story.color:toHex() .. ' ' .. tostring(story.bold) .. ' ' .. tostring(story.italic) .. ' ' .. story.align .. ' ' .. story.direction .. ' ' .. story.language .. ' ' .. story.lineSpacing .. ' ' .. tostring(story.underlineLinks) .. ' ' .. story.revealSpeed"), "#FFFF0000 true true center rtl he 2.0 false 10.0");
 
     // Changing an option lays the text out again and starts its reveal over.
-    EXPECT_EQ(lua("local glyph = story:layout().glyphs[1] return story.visibleCharacters .. ' ' .. tostring(glyph.syntheticBold) .. ' ' .. glyph.color:toHex()"), "0 true #FFFF0000");
-    EXPECT_EQ(lua("story.reveal = 0 story.family = assets.font('fonts/pixel.fnt') return story.visibleCharacters .. ' ' .. tostring(story.family.regular == assets.font('fonts/pixel.fnt'))"), "2 true");
+    EXPECT_EQ(lua("local glyph = story:frame().glyphs[1] return story.visibleCharacters .. ' ' .. tostring(glyph.syntheticBold) .. ' ' .. glyph.color:toHex()"), "0 true #FFFF0000");
+    EXPECT_EQ(lua("story.revealSpeed = 0 story.family = assets.font('fonts/pixel.fnt') return story.visibleCharacters .. ' ' .. tostring(story.family.regular == assets.font('fonts/pixel.fnt'))"), "2 true");
     EXPECT_NE(lua("story.lineSpacing = 0").find("Rich text needs a positive size, scale and line spacing."), std::string::npos);
 
     // The size at another width measures the text without changing its own width.
@@ -182,7 +182,7 @@ TEST_F(TextLuaTest, ChangesRichTextOptionsAsProperties) {
 }
 
 TEST_F(TextLuaTest, ShapesAndOrdersRightToLeftText) {
-    lua("hebrew = assets.font('fonts/hebrew.ttf') scripts = graphics.newFontFamily({regular = font, fallback = {hebrew}})");
+    lua("hebrew = assets.font('fonts/hebrew.ttf') scripts = graphics.newFontFamily({regular = font, fallbacks = {hebrew}})");
 
     // Left-to-right text puts the Hebrew word after it reversed, drawn by the fallback, and the first Hebrew letter stands last on the right.
     EXPECT_EQ(lua("local laid = scripts:layout('abc שלום', {size = 20}) local last = laid.quads[#laid.quads] return #laid.quads .. ' ' .. tostring(laid.quads[1].font == font) .. ' ' .. tostring(last.font == hebrew) .. ' ' .. laid.lineCount"), "7 true true 1");
@@ -192,8 +192,8 @@ TEST_F(TextLuaTest, ShapesAndOrdersRightToLeftText) {
     EXPECT_EQ(lua("return hebrew:glyph('ש').index .. ' ' .. tostring(hebrew:glyph('ש').visible)"), lua("return hebrew:shape('ש')[1].index .. ' true'"));
 
     // Rich text reads a paragraph right to left when asked or from its first letter, and markup sets the direction of a paragraph.
-    EXPECT_EQ(lua("local laid = graphics2d.newRichText('שלום abc', {family = scripts, direction = 'rtl', language = 'he'}):layout() return tostring(laid.lines[1].rightToLeft) .. ' ' .. tostring(laid.characters[1].rightToLeft) .. ' ' .. tostring(laid.characters[6].rightToLeft) .. ' ' .. laid.characters[6].first .. '-' .. laid.characters[6].last"), "true true false 6-6");
-    EXPECT_EQ(lua("local laid = graphics2d.newRichText('abc\\n[p dir=rtl align=start]abc[/p]', {family = scripts, maxWidth = 200}):layout() return tostring(laid.lines[1].rightToLeft) .. ' ' .. tostring(laid.lines[2].rightToLeft) .. ' ' .. tostring(laid.lines[2].rect.x > 100)"), "false true true");
+    EXPECT_EQ(lua("local laid = graphics2d.newRichText('שלום abc', {family = scripts, direction = 'rtl', language = 'he'}):frame() return tostring(laid.lines[1].rightToLeft) .. ' ' .. tostring(laid.characters[1].rightToLeft) .. ' ' .. tostring(laid.characters[6].rightToLeft) .. ' ' .. laid.characters[6].first .. '-' .. laid.characters[6].last"), "true true false 6-6");
+    EXPECT_EQ(lua("local laid = graphics2d.newRichText('abc\\n[p dir=rtl align=start]abc[/p]', {family = scripts, maxWidth = 200}):frame() return tostring(laid.lines[1].rightToLeft) .. ' ' .. tostring(laid.lines[2].rightToLeft) .. ' ' .. tostring(laid.lines[2].rect.x > 100)"), "false true true");
     EXPECT_EQ(render("graphics2d.beginScreen() graphics2d.drawText(scripts, 'שלום abc', 10, 10, {size = 24, direction = 'auto', language = 'he', bold = true, italic = true, align = 'end', maxWidth = 300})"), "nil");
     EXPECT_NE(lua("graphics2d.measureText(nil, 'x', {direction = 'up'})").find("direction"), std::string::npos);
     EXPECT_NE(lua("graphics2d.newRichText('[p dir=up]x[/p]')").find("The dir of [p] must be auto, ltr or rtl."), std::string::npos);
@@ -202,30 +202,30 @@ TEST_F(TextLuaTest, ShapesAndOrdersRightToLeftText) {
 TEST_F(TextLuaTest, RegistersEffectsIconsAndFonts) {
     lua("graphics2d.registerTextEffect('lift', function(glyph, attributes) glyph.offsetY = glyph.offsetY - attributes.by * glyph.index glyph.visible = glyph.char ~= 'x' glyph.color = '#FF0000' end)");
     lua("lifted = graphics2d.newRichText('[lift by=3]axb[/lift]c')");
-    EXPECT_EQ(lua("local moved, still = lifted:layout(), graphics2d.newRichText('axbc'):layout() return string.format('%.1f %.1f', still.glyphs[1].rect.y - moved.glyphs[1].rect.y, still.glyphs[3].rect.y - moved.glyphs[3].rect.y) .. ' ' .. tostring(moved.glyphs[2].visible) .. ' ' .. moved.glyphs[1].color:toHex() .. ' ' .. tostring(still.glyphs[4].rect.y == moved.glyphs[4].rect.y)"), "3.0 9.0 false #FFFF0000 true");
-    EXPECT_NE(lua("local names = table.concat(graphics2d.textEffects(), ',') return names").find("lift"), std::string::npos);
-    EXPECT_NE(lua("graphics2d.registerTextEffect('wave', function() end)").find("[wave] is a built-in text effect."), std::string::npos);
+    EXPECT_EQ(lua("local moved, still = lifted:frame(), graphics2d.newRichText('axbc'):frame() return string.format('%.1f %.1f', still.glyphs[1].rect.y - moved.glyphs[1].rect.y, still.glyphs[3].rect.y - moved.glyphs[3].rect.y) .. ' ' .. tostring(moved.glyphs[2].visible) .. ' ' .. moved.glyphs[1].color:toHex() .. ' ' .. tostring(still.glyphs[4].rect.y == moved.glyphs[4].rect.y)"), "3.0 9.0 false #FFFF0000 true");
+    EXPECT_NE(lua("local names = table.concat(graphics2d.textEffectNames(), ',') return names").find("lift"), std::string::npos);
+    EXPECT_NE(lua("graphics2d.registerTextEffect('wave', function() end)").find("The name wave belongs to a built-in text effect, so no other effect can take it."), std::string::npos);
     EXPECT_NE(lua("graphics2d.newRichText('[unknown]x[/unknown]')").find("[unknown] is neither a tag nor a registered text effect."), std::string::npos);
 
     lua("graphics2d.registerTextEffect('broken', function(glyph) error('effect failed') end)");
-    EXPECT_NE(lua("graphics2d.newRichText('[broken]x[/broken]'):layout()").find("effect failed"), std::string::npos);
+    EXPECT_NE(lua("graphics2d.newRichText('[broken]x[/broken]'):frame()").find("effect failed"), std::string::npos);
 
     // An effect cannot change the text it runs on, and the text works again once the effect is gone.
     lua("graphics2d.registerTextEffect('rewrite', function(glyph) story.markup = 'other' end) story = graphics2d.newRichText('[rewrite]ab[/rewrite]')");
-    EXPECT_NE(lua("story:layout()").find("A text effect cannot change or lay out the rich text it runs on."), std::string::npos);
-    EXPECT_EQ(lua("story.markup = 'plain' return #story:layout().glyphs"), "5");
+    EXPECT_NE(lua("story:frame()").find("A text effect cannot change or lay out the rich text it runs on."), std::string::npos);
+    EXPECT_EQ(lua("story.markup = 'plain' return #story:frame().glyphs"), "5");
 
     // The index of a glyph counts every character inside the tag, spaces and icons included, from the one the tag starts with.
     lua("indices = {} graphics2d.registerTextEffect('probe', function(glyph) indices[#indices + 1] = glyph.index end) graphics2d.registerTextIcon('dot', assets.texture('images/coin.png'))");
-    EXPECT_EQ(lua("graphics2d.newRichText('x[probe] a[icon=dot]b[/probe]'):layout() return table.concat(indices, ',')"), "2,4");
+    EXPECT_EQ(lua("graphics2d.newRichText('x[probe] a[icon=dot]b[/probe]'):frame() return table.concat(indices, ',')"), "2,4");
 
     // A new family may cluster the text differently, so the characters the tags start at are found again.
-    lua(R"(indices = {} probed = graphics2d.newRichText('e\u{301}[probe]x[/probe]') probed:layout())");
-    lua("probed.family = graphics.newGridFont(assets.texture('images/coin.png'), {characters = 'ex', cellWidth = 8, cellHeight = 8}) probed:layout()");
+    lua(R"(indices = {} probed = graphics2d.newRichText('e\u{301}[probe]x[/probe]') probed:frame())");
+    lua("probed.family = graphics.newGridFont(assets.texture('images/coin.png'), {characters = 'ex', cellWidth = 8, cellHeight = 8}) probed:frame()");
     EXPECT_EQ(lua("return table.concat(indices, ',') .. ' ' .. probed.characterCount"), "1,1 3");
 
     lua("graphics2d.registerTextIcon('coin', assets.texture('images/coin.png'), {source = {0, 0, 16, 16}, width = 20, height = 20})");
-    EXPECT_EQ(lua("local layout = graphics2d.newRichText('pay [icon=coin] [icon=coin height=10]'):layout() return layout.images[1].rect.width .. ' ' .. layout.images[2].rect.width"), "20.0 10.0");
+    EXPECT_EQ(lua("local layout = graphics2d.newRichText('pay [icon=coin] [icon=coin height=10]'):frame() return layout.images[1].rect.width .. ' ' .. layout.images[2].rect.width"), "20.0 10.0");
     EXPECT_NE(lua("graphics2d.registerTextIcon('bad', nil)").find("error"), std::string::npos);
 
     lua("family = graphics.newFontFamily({regular = font}) ui.addFont('story', family) ui.addFont('pixel', assets.font('fonts/pixel.fnt'))");

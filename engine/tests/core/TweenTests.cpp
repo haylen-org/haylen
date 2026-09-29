@@ -343,7 +343,7 @@ TEST(TweenManagerTest, RunsByProcessModeTimeKindAndGroup) {
     rig.tweenX(pausable, 1.0F, core::TweenProperty::to(1.0));
     rig.tweenX(menu, 1.0F, core::TweenProperty::to(1.0))->setProcessMode(core::ProcessMode::WhenPaused);
     auto real = rig.tweenX(unscaled, 1.0F, core::TweenProperty::to(1.0), false);
-    real->setUnscaledTime(true);
+    real->setUnscaled(true);
     real->setProcessMode(core::ProcessMode::Always);
     rig.tweens.add(real);
     auto physics = rig.tweenX(fixed, 1.0F, core::TweenProperty::to(1.0), false);

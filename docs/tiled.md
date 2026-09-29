@@ -28,7 +28,7 @@ Every path inside a map is resolved relative to the file that contains it, so a 
 
 ## Loading maps
 
-Maps are assets of [haylen.assets](lua-api/assets.md). The asset type `tiled` handles `.tmj` files and `tiled_world` handles `.world` files, so `assets.load` finds the type from the extension. Loading a map also loads its external tilesets, templates and images.
+Maps are assets of [haylen.assets](lua-api/assets.md). The asset type `tiled` handles `.tmj` files and `tiledWorld` handles `.world` files, so `assets.load` finds the type from the extension. Loading a map also loads its external tilesets, templates and images.
 
 ```lua
 local assets = require('haylen.assets')
@@ -89,7 +89,7 @@ self.player:draw()
 self.island:drawClouds(self.camera)
 ```
 
-`map.bounds` is the world area the grid covers, which suits the camera limits. Tiny Island sets `camera.limits = map.bounds` so the camera never shows past the edge of the island map. Drawing a layer with `{ysort = true}` sorts its rows and objects by the y they stand on, so entities in the same layer of a canvas that sorts by `'y'` or by depth walk behind and in front of trees and walls, as the [haylen.tiled reference](lua-api/tiled.md#drawing-rules) describes. See [Rendering](rendering.md) for canvases, cameras and batching.
+`map.pixelBounds` is the world area the grid covers, which suits the camera limits. Tiny Island sets `camera.limits = map.pixelBounds` so the camera never shows past the edge of the island map. Drawing a layer with `{ysort = true}` sorts its rows and objects by the y they stand on, so entities in the same layer of a canvas that sorts by `'y'` or by depth walk behind and in front of trees and walls, as the [haylen.tiled reference](lua-api/tiled.md#drawing-rules) describes. See [Rendering](rendering.md) for canvases, cameras and batching.
 
 ## Reading the map
 
@@ -99,7 +99,7 @@ The map answers questions about its structure, so app code can read everything t
 | --- | --- |
 | `map:layers()` and `map:layer(name)` | Layer tables with their kind, visibility, opacity, blend, offset, parallax, tint and properties. Tile layers add their size, object layers their objects, image layers their image and group layers their children. |
 | `map:objects(layer)` | The objects of one object layer, or of every object layer when `layer` is omitted, with their class in `type`, their shape, size, rotation, points and properties. |
-| `map:tileAt(layer, column, row)` and `map:setTile(layer, column, row, gid)` | The global tile id of a cell with its flip flags, and a way to change it. |
+| `map:tile(layer, column, row)` and `map:setTile(layer, column, row, gid)` | The global tile id of a cell with its flip flags, and a way to change it. |
 | `map:tileInfo(gid)` | The tileset, class, properties, collision shapes and animation of a tile. |
 | `map:tilesets()` | Every tileset with its Wang sets. |
 | `map:cellToWorld(column, row)` and `map:worldToCell(x, y)` | Conversions between cells and world positions in every orientation. |

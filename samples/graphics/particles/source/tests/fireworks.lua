@@ -32,8 +32,8 @@ function Fireworks:launch(targetX)
 end
 
 function Fireworks:burst(x, y)
-    local hue = self.random:float()
-    local color, tint = m.hsv(hue, 0.7, 1), m.hsv(hue + 0.1, 0.9, 1)
+    local hue = self.random:nextFloat()
+    local color, tint = m.fromHsv(hue, 0.7, 1), m.fromHsv(hue + 0.1, 0.9, 1)
     local seed = self.random:integer(1, 100000)
     local stars = particles2d.newEmitter({texture = self.soft, rate = 0, bursts = {{time = 0, count = 110}}, duration = 0.1, lifetime = {1.2, 1.8}, speed = {260, 420}, spread = m.tau, gravity = {0, 160}, damping = 1.3, startSize = {18, 26}, endSize = 2, colors = {'#FFFFFFFF', color, tint:withAlpha(0)}, blend = 'additive', maxParticles = 128, layer = 3, seed = seed})
     local crackle = particles2d.newEmitter({texture = self.sparkle, frames = art.frames(self.sparkle), rate = 0, bursts = {{time = 0.5, count = 40}}, duration = 0.6, lifetime = {0.4, 0.8}, speed = {80, 300}, spread = m.tau, gravity = {0, 200}, startSize = {18, 28}, endSize = {18, 28}, colors = {'#FFFFFFFF', tint}, blend = 'additive', layer = 4, seed = seed + 1})

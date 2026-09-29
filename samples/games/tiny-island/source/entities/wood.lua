@@ -12,10 +12,10 @@ function wood.new(x, y, targetX, targetY)
     local self = setmetatable({x = x, y = y, lift = 0, landed = false, time = math.random() * 3}, wood)
     self.texture = art.texture('terrain/resources/wood/wood_resource/wood_resource.png')
     -- The piece hops from the trunk to where it lands, and only then can it be picked up.
-    tween.to(self, 0.45, {x = targetX, y = targetY}, {ease = 'quad_out'})
+    tween.to(self, 0.45, {x = targetX, y = targetY}, {ease = 'quadOut'})
     tween.timeline({onComplete = function()
         self.landed = true
-    end}):append(tween.to(self, 0.2, {lift = 40}, {ease = 'quad_out'})):append(tween.to(self, 0.25, {lift = 0}, {ease = 'bounce_out'}))
+    end}):append(tween.to(self, 0.2, {lift = 40}, {ease = 'quadOut'})):append(tween.to(self, 0.25, {lift = 0}, {ease = 'bounceOut'}))
     return self
 end
 

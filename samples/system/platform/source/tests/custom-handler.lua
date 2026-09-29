@@ -12,7 +12,7 @@ local kSources = {
     {'Apple', 'platform/apple/source/main.mm', 'registered in main before haylen_main'},
     {'Web', 'platform/web/app.js', 'registered in Module.preRun'},
 }
-local kMissing = 'The desktop player runs the Lua of the app and nothing else, so no native code of this app answers here, and the bridge fails the call. A C++ handler needs a C++ app built with haylen_add_app that calls engine.getPlatform().registerHandler, which the Lua player cannot load. platform.register answers with Lua instead, and the stand-in below does that for this session.'
+local kMissing = 'The desktop player runs the Lua of the app and nothing else, so no native code of this app answers here, and the bridge fails the call. A C++ handler needs a C++ app built with haylen_add_app that calls engine.getPlatform().registerHandler, which the Lua player cannot load. platform.registerHandler answers with Lua instead, and the stand-in below does that for this session.'
 
 function CustomHandler:enter()
     self.text = 'Hello from Lua'
@@ -36,13 +36,13 @@ function CustomHandler:call(text)
     self:spawn(function()
         local result, err = platform.call('sample.echo', {text = text}):await()
         self.result, self.error, self.pending = result, err, false
-        self.missing = err ~= nil and err.code == 'no_handler'
+        self.missing = err ~= nil and err.code == 'noHandler'
         self:set('standIn', {enabled = self.missing and not platform.hasHandler('sample.echo')})
     end)
 end
 
 function CustomHandler:registerStandIn()
-    platform.register('sample.echo', function(params)
+    platform.registerHandler('sample.echo', function(params)
         if params.text == nil or params.text == '' then
             error('sample.echo needs a text.')
         end
@@ -53,7 +53,7 @@ end
 
 function CustomHandler:update(dt)
     CustomHandler.super.update(self, dt)
-    self:status(string.format('platform %s   engine handler for sample.echo %s   pending calls %d', haylen.platform, platform.hasHandler('sample.echo'), platform.pendingCalls()))
+    self:status(string.format('platform %s   engine handler for sample.echo %s   pending calls %d', haylen.platform, platform.hasHandler('sample.echo'), platform.pendingCallCount()))
 end
 
 function CustomHandler:draw(area)

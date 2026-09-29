@@ -63,7 +63,7 @@ int NativeLua::load(lua_State* L) {
 }
 
 // Returns the address of a symbol as a light userdata that ffi.cast turns into a typed pointer, or nil.
-int NativeLua::symbol(lua_State* L) {
+int NativeLua::findSymbol(lua_State* L) {
     void* address = NativeLibraries::findSymbol(lua::Stack::read<std::string_view>(L, 1));
     if (address == nullptr) {
         lua_pushnil(L);
@@ -136,7 +136,7 @@ int NativeLua::open(lua_State* L) {
     lua::ClassBuilder<NativeCallback>(L).property("pointer", &getPointer).property("freed", &isFreed).function("free", &lua::Binding::native<&freeCallback>).install();
 
     const luaL_Reg functions[] = {
-        {"available", &available}, {"load", &lua::Binding::native<&load>}, {"symbol", &lua::Binding::native<&symbol>}, {"callback", &lua::Binding::native<&callback>}, {nullptr, nullptr},
+        {"available", &available}, {"load", &lua::Binding::native<&load>}, {"findSymbol", &lua::Binding::native<&findSymbol>}, {"callback", &lua::Binding::native<&callback>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

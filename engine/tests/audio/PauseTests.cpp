@@ -185,7 +185,7 @@ TEST_F(AudioInterruptionTest, TheEngineResumesAudioOnlyWhileTheAppIsActive) {
     EXPECT_TRUE(audio.isInterrupted());
     audio.reportDeviceEvent(Mixer::DeviceEvent::InterruptionBegan);
     fixture.frames(1);
-    EXPECT_EQ(published, (std::vector<std::string>{"audio_interrupted"}));
+    EXPECT_EQ(published, (std::vector<std::string>{"audioInterrupted"}));
 
     // An interruption that ends while the app is inactive waits for the app to become active, because the system gives the audio back only to an active app.
     engine.handleEvent({.type = platform::Event::Type::FocusLost});
@@ -194,12 +194,12 @@ TEST_F(AudioInterruptionTest, TheEngineResumesAudioOnlyWhileTheAppIsActive) {
     EXPECT_TRUE(audio.isInterrupted());
     engine.handleEvent({.type = platform::Event::Type::FocusGained});
     EXPECT_FALSE(audio.isInterrupted());
-    EXPECT_EQ(published, (std::vector<std::string>{"audio_interrupted", "audio_resumed"}));
+    EXPECT_EQ(published, (std::vector<std::string>{"audioInterrupted", "audioResumed"}));
 
     audio.reportDeviceEvent(Mixer::DeviceEvent::InterruptionEnded);
     audio.reportDeviceEvent(Mixer::DeviceEvent::RouteChanged);
     fixture.frames(1);
-    EXPECT_EQ(published.back(), "audio_route_changed");
+    EXPECT_EQ(published.back(), "audioRouteChanged");
     EXPECT_EQ(published.size(), 3U);
 
     // Because iOS does not always report the end of an interruption, becoming active again brings the audio back anyway.
@@ -208,7 +208,7 @@ TEST_F(AudioInterruptionTest, TheEngineResumesAudioOnlyWhileTheAppIsActive) {
     engine.handleEvent({.type = platform::Event::Type::FocusLost});
     engine.handleEvent({.type = platform::Event::Type::FocusGained});
     EXPECT_FALSE(audio.isInterrupted());
-    EXPECT_EQ(published, (std::vector<std::string>{"audio_interrupted", "audio_resumed", "audio_route_changed", "audio_interrupted", "audio_resumed"}));
+    EXPECT_EQ(published, (std::vector<std::string>{"audioInterrupted", "audioResumed", "audioRouteChanged", "audioInterrupted", "audioResumed"}));
 }
 
 TEST_F(AudioInterruptionTest, PlatformInterruptionsTakeTheSamePath) {
@@ -221,7 +221,7 @@ TEST_F(AudioInterruptionTest, PlatformInterruptionsTakeTheSamePath) {
     EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Inactive);
     engine.handleEvent({.type = platform::Event::Type::InterruptionEnded});
     EXPECT_FALSE(engine.getAudio().isInterrupted());
-    EXPECT_EQ(published, (std::vector<std::string>{"audio_interrupted", "audio_resumed"}));
+    EXPECT_EQ(published, (std::vector<std::string>{"audioInterrupted", "audioResumed"}));
 
     // The device and the platform often report the same interruption, and it still pauses, resumes and publishes once.
     published.clear();
@@ -234,7 +234,7 @@ TEST_F(AudioInterruptionTest, PlatformInterruptionsTakeTheSamePath) {
     engine.handleEvent({.type = platform::Event::Type::InterruptionEnded});
     fixture.frames(1);
     EXPECT_FALSE(engine.getAudio().isInterrupted());
-    EXPECT_EQ(published, (std::vector<std::string>{"audio_interrupted", "audio_resumed"}));
+    EXPECT_EQ(published, (std::vector<std::string>{"audioInterrupted", "audioResumed"}));
 
     engine.setPaused(true);
     EXPECT_TRUE(engine.getAudio().isProcessPaused());

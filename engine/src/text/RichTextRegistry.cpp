@@ -29,10 +29,10 @@ void RichTextRegistry::registerEffect(std::string name, Effect::Function effect)
         throw std::invalid_argument("A text effect name must be a single word, not '" + name + "'.");
     }
     if (MarkupParser::isTag(name)) {
-        throw std::invalid_argument("[" + name + "] is a rich text tag, so no effect can take its name.");
+        throw std::invalid_argument("The name " + name + " belongs to a rich text tag, so no effect can take it.");
     }
     if (std::find(kBuiltInEffects.begin(), kBuiltInEffects.end(), name) != kBuiltInEffects.end()) {
-        throw std::invalid_argument("[" + name + "] is a built-in text effect.");
+        throw std::invalid_argument("The name " + name + " belongs to a built-in text effect, so no other effect can take it.");
     }
     if (!effect) {
         throw std::invalid_argument("The text effect " + name + " needs a function.");

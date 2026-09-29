@@ -12,7 +12,7 @@ A Lua sample with one scene per feature of [haylen.signal](../../../docs/lua-api
 | Pause | A pause menu in the `whenPaused` mode, the paused and unpaused hooks of both scenes, and timers in the pausable and always modes. |
 | Autoloads | The player data autoload that `app.json` lists, shared with a shop scene and drawing the coin counter on every screen, and a jukebox added at run time. |
 | Classes | `haylen.class` with inheritance, `super`, a copied `__eq`, walking and flying mixins with their `included` hook and `is` checks. |
-| Diagnostics | Live tables of `events.stats()` and `signal.list()`, the counts around the collection of an owner and the debug overlay. |
+| Diagnostics | Live tables of `events.topics()` and `signal.list()`, the counts around the collection of an owner and the debug overlay. |
 
 ## Running it
 

@@ -11,7 +11,7 @@ local Actions = haylen.class('Actions', sample.Test)
 
 local kLists = {button = {'bindings'}, axis = {'positive', 'negative'}, vector = {'up', 'down', 'left', 'right', 'bindings'}}
 local kPrompts = {
-    keyboard_mouse = 'Keyboard and mouse: WASD or the arrows move, Space or a left click jumps, Left Shift or a right click dashes, E and Q throttle.',
+    keyboardMouse = 'Keyboard and mouse: WASD or the arrows move, Space or a left click jumps, Left Shift or a right click dashes, E and Q throttle.',
     gamepad = 'Gamepad: the left stick or the d-pad moves, south jumps, west dashes, the triggers throttle.',
     touch = 'Touch: the stick moves, and the Jump and Dash buttons jump and dash.',
 }

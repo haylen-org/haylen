@@ -12,7 +12,7 @@ local Animations = haylen.class('Animations', sample.Test)
 
 function Animations:enter()
     self.map = tiled.newMapRenderer(assets.load('maps/animations.tmj'))
-    local bounds = self.map.bounds
+    local bounds = self.map.pixelBounds
     Animations.super.enter(self, {
         hint = 'Water, lava and torches animate on tile layers, and the coins and slimes are animated tile objects. Point at a tile to read its frames.',
         controls = {
@@ -38,7 +38,7 @@ function Animations:describe(x, y)
     end
     local column, row = map:worldToCell(x, y)
     for _, layer in ipairs({'walls', 'ground'}) do
-        local gid = map:tileAt(layer, column, row)
+        local gid = map:tile(layer, column, row)
         if gid ~= 0 then
             return layer .. ' layer', map:tileInfo(gid)
         end

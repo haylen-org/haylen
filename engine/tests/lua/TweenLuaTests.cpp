@@ -34,7 +34,7 @@ TEST(TweenLuaTest, TweensEveryKindOfValue) {
     EXPECT_EQ(fixture.lua("return string.format('%.2f %.2f %.2f | %.2f %.2f %.2f', box.tint.r, box.tint.g, box.tint.b, box.hue.r, box.hue.g, box.hue.b)"), "0.50 0.00 0.50 | 1.00 0.00 1.00");
     EXPECT_EQ(fixture.lua("return faded.alpha .. ' ' .. moved.x .. ' ' .. both.x"), "0.5 10.0 150.0");
     fixture.frames(2, 0.25);
-    EXPECT_EQ(fixture.lua("return box.label .. ' ' .. moved.x .. ' ' .. tween.count()"), "hello 15.0 0");
+    EXPECT_EQ(fixture.lua("return box.label .. ' ' .. moved.x .. ' ' .. tween.size()"), "hello 15.0 0");
 }
 
 TEST(TweenLuaTest, RunsCallbacksAndControlsHandles) {
@@ -47,7 +47,7 @@ TEST(TweenLuaTest, RunsCallbacksAndControlsHandles) {
         handle = tween.to(box, 1, {x = 100}, {
             delay = 0.25,
             repeatCount = 1,
-            loop = 'yoyo',
+            loopMode = 'yoyo',
             ease = 'linear',
             onStart = function() log[#log + 1] = 'start' end,
             onUpdate = function(p) log[#log + 1] = string.format('%.2f', p) end,
@@ -63,7 +63,7 @@ TEST(TweenLuaTest, RunsCallbacksAndControlsHandles) {
     fixture.frames(4, 0.25);
     EXPECT_EQ(fixture.lua("return box.x .. ' ' .. table.concat(log, ',')"), "50.0 start,0.00,0.25,0.50,0.75,loop 1,1.00,0.75,0.50");
     fixture.frames(2, 0.25);
-    EXPECT_EQ(fixture.lua("return box.x .. ' ' .. log[#log - 1] .. ' ' .. log[#log] .. ' ' .. tostring(handle.active) .. ' ' .. tostring(handle.completed)"), "0.0 done kill false true");
+    EXPECT_EQ(fixture.lua("return box.x .. ' ' .. log[#log - 1] .. ' ' .. log[#log] .. ' ' .. tostring(handle.alive) .. ' ' .. tostring(handle.completed)"), "0.0 done kill false true");
 
     // clang-format off
     fixture.runLua(R"(
@@ -83,14 +83,14 @@ TEST(TweenLuaTest, RunsCallbacksAndControlsHandles) {
     EXPECT_EQ(fixture.lua("return box.x"), "5.0");
     fixture.runLua("toggle:complete()");
     fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return box.x .. ' ' .. table.concat(results, ',') .. ' ' .. tostring(toggle.active)"), "20.0 true true");
+    EXPECT_EQ(fixture.lua("return box.x .. ' ' .. table.concat(results, ',') .. ' ' .. tostring(toggle.alive)"), "20.0 true true");
     fixture.runLua("toggle:reverse()");
     EXPECT_EQ(fixture.lua("return tostring(toggle.reversed)"), "true");
     fixture.frames(4, 0.25);
     EXPECT_EQ(fixture.lua("return box.x .. ' ' .. tostring(toggle.completed)"), "0.0 true");
     fixture.runLua("toggle:restart():pause() toggle:resume() stopped = toggle:wait() toggle:kill()");
     fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return tostring(toggle.active) .. ' ' .. tween.count()"), "false 0");
+    EXPECT_EQ(fixture.lua("return tostring(toggle.alive) .. ' ' .. tween.size()"), "false 0");
 }
 
 TEST(TweenLuaTest, AwaitsCompletionAndKills) {
@@ -100,7 +100,7 @@ TEST(TweenLuaTest, AwaitsCompletionAndKills) {
         tween = require('haylen.tween')
         async = require('async')
         box = {x = 0}
-        spin = tween.to(box, 1, {x = 10}, {repeatCount = -1, loop = 'yoyo', ease = 'sine_in_out'})
+        spin = tween.to(box, 1, {x = 10}, {repeatCount = -1, loopMode = 'yoyo', ease = 'sineInOut'})
         results = {}
         local function record(value) results[#results + 1] = tostring(value) end
         async.spawn(function()
@@ -118,7 +118,7 @@ TEST(TweenLuaTest, AwaitsCompletionAndKills) {
     EXPECT_EQ(fixture.lua("return table.concat(results, ',')"), "true,false,false");
     fixture.runLua("stopped = nil local all = tween.to(box, 1, {x = 0}) async.spawn(function() stopped = all:wait():await() end) tween.killAll()");
     fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return tween.count() .. ' ' .. tostring(stopped)"), "0 false");
+    EXPECT_EQ(fixture.lua("return tween.size() .. ' ' .. tostring(stopped)"), "0 false");
 
     // A kept tween that already completed waits for its next completion, and a kill settles the wait with false.
     fixture.runLua("kept = tween.to(box, 0.1, {x = 1}, {autoKill = false})");
@@ -139,14 +139,14 @@ TEST(TweenLuaTest, BuildsTimelinesAndStaggers) {
         line:append(tween.to(box, 1, {x = 10}))
             :join(tween.to(box, 0.5, {y = 5}))
             :append(function() log[#log + 1] = 'call ' .. box.x end)
-            :label('rest')
+            :addLabel('rest')
             :append(0.5)
             :append(tween.to(box, 1, {x = 0}))
             :insert(0.25, function() log[#log + 1] = 'early' end)
             :insert('rest', tween.to(box, 0.5, {y = 0}))
     )");
     // clang-format on
-    EXPECT_EQ(fixture.lua("return line.duration .. ' ' .. line.size .. ' ' .. tween.count()"), "2.5 7 1");
+    EXPECT_EQ(fixture.lua("return line.duration .. ' ' .. line.size .. ' ' .. tween.size()"), "2.5 7 1");
     fixture.frames(3, 0.25);
     EXPECT_EQ(fixture.lua("return box.x .. ' ' .. box.y"), "7.5 5.0");
     fixture.frames(7, 0.25);
@@ -155,7 +155,7 @@ TEST(TweenLuaTest, BuildsTimelinesAndStaggers) {
     // clang-format off
     fixture.runLua(R"(
         rows = {{v = 0}, {v = 0}, {v = 0}}
-        wave = tween.stagger(rows, 0.5, function(row, index) return tween.to(row, 1, {v = index}) end, {from = 'end', tag = 'wave'})
+        wave = tween.stagger(rows, 0.5, function(row, index) return tween.to(row, 1, {v = index}) end, {origin = 'end', tag = 'wave'})
     )");
     // clang-format on
     fixture.frames(2, 0.25);
@@ -163,7 +163,7 @@ TEST(TweenLuaTest, BuildsTimelinesAndStaggers) {
     fixture.runLua("wave:seek(2)");
     EXPECT_EQ(fixture.lua("return rows[1].v .. ' ' .. rows[2].v .. ' ' .. rows[3].v"), "1.0 2.0 3.0");
 
-    fixture.runLua("marked = tween.timeline({autoKill = false}):append(tween.to(box, 1, {x = 4})):label('half', 0.5)");
+    fixture.runLua("marked = tween.timeline({autoKill = false}):append(tween.to(box, 1, {x = 4})):addLabel('half', 0.5)");
     fixture.runLua("marked:seek('half')");
     EXPECT_EQ(fixture.lua("return box.x"), "2.0");
     EXPECT_NE(fixture.lua("tween.timeline():append(tween.to(box, 1, {x = 1}, {speedBased = true}))").find("speed-based"), std::string::npos);
@@ -241,7 +241,7 @@ TEST(TweenLuaTest, AnimatesNativePropertiesWithoutLua) {
     fixture.runLua("point = nil collectgarbage() collectgarbage()");
     fixture.frames(1, 0.25);
     fixture.frames(2, 0.25);
-    EXPECT_EQ(fixture.lua("return tween.count()"), "0");
+    EXPECT_EQ(fixture.lua("return tween.size()"), "0");
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
@@ -260,15 +260,15 @@ TEST(TweenLuaTest, TiesTweensToTargetsOwnersAndTags) {
     )");
     // clang-format on
     fixture.frames(1, 0.25);
-    EXPECT_EQ(fixture.lua("return tween.count() .. ' ' .. tostring(owned.active)"), "1 true");
+    EXPECT_EQ(fixture.lua("return tween.size() .. ' ' .. tostring(owned.alive)"), "1 true");
     fixture.runLua("scene.pop()");
     fixture.frames(1, 0.25);
-    EXPECT_EQ(fixture.lua("return tostring(owned.active) .. ' ' .. string.format('%.2f', box.x)"), "false 0.50");
+    EXPECT_EQ(fixture.lua("return tostring(owned.alive) .. ' ' .. string.format('%.2f', box.x)"), "false 0.50");
 
     // An owner that is collected ends its tweens at the end of the frame, and the callbacks it held went away with it.
     fixture.runLua("local owner = {} held = tween.to(box, 10, {y = 10}, {owner = owner, onKill = function() killed = true end}) owner = nil collectgarbage() collectgarbage()");
     fixture.frames(1, 0.25);
-    EXPECT_EQ(fixture.lua("return tostring(killed) .. ' ' .. tostring(held.active)"), "nil false");
+    EXPECT_EQ(fixture.lua("return tostring(killed) .. ' ' .. tostring(held.alive)"), "nil false");
 
     // clang-format off
     fixture.runLua(R"(
@@ -280,14 +280,14 @@ TEST(TweenLuaTest, TiesTweensToTargetsOwnersAndTags) {
     )");
     // clang-format on
     fixture.frames(1, 0.25);
-    EXPECT_EQ(fixture.lua("return tostring(first.active) .. ' ' .. other.v .. ' ' .. tween.timeScale('hud')"), "true 0.5 2.0");
+    EXPECT_EQ(fixture.lua("return tostring(first.alive) .. ' ' .. other.v .. ' ' .. tween.timeScale('hud')"), "true 0.5 2.0");
     fixture.runLua("tween.pauseTag('hud')");
     fixture.frames(1, 0.25);
     EXPECT_EQ(fixture.lua("return other.v"), "0.5");
     fixture.runLua("tween.resumeTag('hud') tween.completeTag('hud')");
-    EXPECT_EQ(fixture.lua("return other.v .. ' ' .. tostring(tagged.active)"), "1.0 false");
+    EXPECT_EQ(fixture.lua("return other.v .. ' ' .. tostring(tagged.alive)"), "1.0 false");
     fixture.runLua("tween.killTag('none') tween.killTarget(box)");
-    EXPECT_EQ(fixture.lua("return tostring(first.active) .. ' ' .. tostring(second.active) .. ' ' .. tween.count()"), "false false 0");
+    EXPECT_EQ(fixture.lua("return tostring(first.alive) .. ' ' .. tostring(second.alive) .. ' ' .. tween.size()"), "false false 0");
 }
 
 TEST(TweenLuaTest, RunsByProcessModeAndTime) {
@@ -300,7 +300,7 @@ TEST(TweenLuaTest, RunsByProcessModeAndTime) {
         tween.to(a, 1, {v = 1})
         tween.to(b, 1, {v = 1}, {processMode = 'whenPaused'})
         tween.to(c, 1, {v = 1}, {processMode = 'always', unscaled = true})
-        tween.to(d, 1, {v = 1}, {fixed = true, speedBased = false})
+        tween.to(d, 1, {v = 1}, {fixedStep = true, speedBased = false})
         haylen.setTimeScale(0.5)
         haylen.setPaused(true)
     )");
@@ -320,17 +320,17 @@ TEST(TweenLuaTest, RunsByProcessModeAndTime) {
 TEST(TweenLuaTest, EasesWithEveryKindOfCurve) {
     test::EngineFixture fixture;
     fixture.runLua("m = require('haylen.math') tween = require('haylen.tween')");
-    EXPECT_EQ(fixture.lua("return string.format('%.3f', m.ease('quad_in', 0.5))"), "0.250");
+    EXPECT_EQ(fixture.lua("return string.format('%.3f', m.ease('quadIn', 0.5))"), "0.250");
     EXPECT_EQ(fixture.lua("return m.ease({steps = 4}, 0.3) .. ' ' .. m.ease({steps = 4, position = 'start'}, 0.3)"), "0.25 0.5");
-    EXPECT_EQ(fixture.lua("return string.format('%.3f', m.ease({bezier = {0.25, 0.1, 0.25, 1}}, 0.5))"), "0.802");
+    EXPECT_EQ(fixture.lua("return string.format('%.3f', m.ease({cubicBezier = {0.25, 0.1, 0.25, 1}}, 0.5))"), "0.802");
     EXPECT_EQ(fixture.lua("return m.ease({points = {0, 1, 0}}, 0.25) .. ' ' .. string.format('%.2f', m.ease({points = {{0, 0}, {0.5, 0.2}, {1, 1}}}, 0.75))"), "0.5 0.60");
     EXPECT_EQ(fixture.lua("return m.ease(function(t) return t * t * t end, 0.5)"), "0.125");
-    EXPECT_EQ(fixture.lua("return tostring(m.ease({curve = 'back_out', overshoot = 3}, 0.6) > m.ease('back_out', 0.6))"), "true");
-    EXPECT_EQ(fixture.lua("return tostring(m.ease({curve = 'elastic_out', amplitude = 2, period = 0.5}, 0.2) ~= m.ease('elastic_out', 0.2))"), "true");
-    EXPECT_NE(fixture.lua("m.ease({curve = 'quad_in', overshoot = 2}, 0.5)").find("overshoot only applies"), std::string::npos);
-    EXPECT_NE(fixture.lua("m.ease({bezier = {2, 0, 0, 1}}, 0.5)").find("between 0 and 1"), std::string::npos);
+    EXPECT_EQ(fixture.lua("return tostring(m.ease({curve = 'backOut', overshoot = 3}, 0.6) > m.ease('backOut', 0.6))"), "true");
+    EXPECT_EQ(fixture.lua("return tostring(m.ease({curve = 'elasticOut', amplitude = 2, period = 0.5}, 0.2) ~= m.ease('elasticOut', 0.2))"), "true");
+    EXPECT_NE(fixture.lua("m.ease({curve = 'quadIn', overshoot = 2}, 0.5)").find("overshoot only applies"), std::string::npos);
+    EXPECT_NE(fixture.lua("m.ease({cubicBezier = {2, 0, 0, 1}}, 0.5)").find("between 0 and 1"), std::string::npos);
     EXPECT_NE(fixture.lua("m.ease({speed = 1}, 0.5)").find("Unknown option 'speed'"), std::string::npos);
-    EXPECT_NE(fixture.lua("m.ease({steps = 4294967297}, 0.5)").find("bad option 'steps'"), std::string::npos);
+    EXPECT_NE(fixture.lua("m.ease({steps = 4294967297}, 0.5)").find("The option 'steps'"), std::string::npos);
     EXPECT_NE(fixture.lua("m.ease(function() return 'x' end, 0.5)").find("must return a number"), std::string::npos);
 
     fixture.runLua("box = {x = 0} tween.to(box, 1, {x = 10}, {ease = {steps = 2}})");

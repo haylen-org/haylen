@@ -13,7 +13,7 @@ class EventBus;
 
 namespace haylen::plugins {
 
-// Opens WebSockets and delivers their events at the start of every frame. The plugin keeps each socket alive until it closes, so an app can hold on to its listeners alone, and it closes whatever is still open when the app stops. Every socket publishes websocket_connected, websocket_disconnected and websocket_reconnecting on the event bus with its address.
+// Opens WebSockets and delivers their events at the start of every frame. The plugin keeps each socket alive until it closes, so an app can hold on to its listeners alone, and it closes whatever is still open when the app stops. Every socket publishes webSocketConnected, webSocketDisconnected and webSocketReconnecting on the event bus with its address.
 class NetPlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {

@@ -36,9 +36,9 @@ class AssetsLua final {
     static int defineGroups(lua_State* L);
     static int defineGroup(lua_State* L);
     static int preload(lua_State* L);
-    static int unload(lua_State* L);
-    static int progress(lua_State* L);
-    static int loaded(lua_State* L);
+    static int unloadGroup(lua_State* L);
+    static int groupProgress(lua_State* L);
+    static int groupLoaded(lua_State* L);
     static int groups(lua_State* L);
     static int cachedCount(lua_State* L);
     static int pendingCount(lua_State* L);

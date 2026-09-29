@@ -270,7 +270,7 @@ int UiLua::mount(lua_State* L) {
         std::string name = "safe";
         lua::Table::readField(L, 2, "placement", name);
         if (name != "safe" && name != "screen") {
-            return luaL_error(L, "placement must be safe or screen.");
+            return luaL_error(L, "The placement option must be safe or screen.");
         }
         placement = name == "safe" ? Placement::Safe : Placement::Screen;
         lua::Table::readField(L, 2, "layer", layer);
@@ -338,7 +338,7 @@ int UiLua::documentSet(lua_State* L) {
 }
 
 // Handlers change only after the document accepted the new children. Then nodes that left the document or were built anew lose their old handlers and the new nodes get theirs.
-int UiLua::documentReplace(lua_State* L) {
+int UiLua::documentReplaceChildren(lua_State* L) {
     Document& self = checkDocument(L);
     const std::string id = lua::Stack::read<std::string>(L, 2);
     luaL_checktype(L, 3, LUA_TTABLE);
@@ -505,7 +505,7 @@ int UiLua::kindBuilder(lua_State* L) {
 int UiLua::moduleIndex(lua_State* L) {
     const std::string_view key = lua::Stack::read<std::string_view>(L, 2);
     if (!getPlugin(L).getComponents().contains(key)) {
-        return luaL_error(L, "haylen.ui has no member '%s'.", std::string(key).c_str());
+        return luaL_error(L, "The module haylen.ui has no member '%s'.", std::string(key).c_str());
     }
     lua_pushvalue(L, 2);
     lua_pushcclosure(L, &lua::Binding::native<&kindBuilder>, 1);
@@ -657,12 +657,12 @@ int UiLua::addFont(lua_State* L) {
     return 0;
 }
 
-int UiLua::wantsPointer(lua_State* L) {
+int UiLua::usingPointer(lua_State* L) {
     lua::Stack::push(L, getPlugin(L).isUsingPointer());
     return 1;
 }
 
-int UiLua::wantsKeyboard(lua_State* L) {
+int UiLua::usingKeyboard(lua_State* L) {
     lua::Stack::push(L, getPlugin(L).isUsingKeyboard());
     return 1;
 }
@@ -727,7 +727,7 @@ int UiLua::kinds(lua_State* L) {
 
 int UiLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"mount", &lua::Binding::native<&mount>}, {"node", &lua::Binding::native<&node>}, {"setTheme", &lua::Binding::native<&setTheme>}, {"theme", &lua::Binding::native<&theme>}, {"themes", &lua::Binding::native<&themes>}, {"loadTheme", &lua::Binding::native<&loadTheme>}, {"addTheme", &lua::Binding::native<&addTheme>}, {"themeColor", &lua::Binding::native<&themeColor>}, {"themeMetric", &lua::Binding::native<&themeMetric>}, {"themeFont", &lua::Binding::native<&themeFont>}, {"themeSurface", &lua::Binding::native<&themeSurface>}, {"addFont", &lua::Binding::native<&addFont>}, {"wantsPointer", &lua::Binding::native<&wantsPointer>}, {"wantsKeyboard", &lua::Binding::native<&wantsKeyboard>}, {"focused", &lua::Binding::native<&focused>}, {"clearFocus", &lua::Binding::native<&clearFocus>}, {"focusRingVisible", &lua::Binding::native<&focusRingVisible>}, {"safeAreaVisible", &lua::Binding::native<&safeAreaVisible>}, {"setSafeAreaVisible", &lua::Binding::native<&setSafeAreaVisible>}, {"setDirection", &lua::Binding::native<&setDirection>}, {"direction", &lua::Binding::native<&direction>}, {"kinds", &lua::Binding::native<&kinds>}, {"onEvent", &lua::Binding::native<&onEvent>}, {nullptr, nullptr},
+        {"mount", &lua::Binding::native<&mount>}, {"node", &lua::Binding::native<&node>}, {"setTheme", &lua::Binding::native<&setTheme>}, {"theme", &lua::Binding::native<&theme>}, {"themes", &lua::Binding::native<&themes>}, {"loadTheme", &lua::Binding::native<&loadTheme>}, {"addTheme", &lua::Binding::native<&addTheme>}, {"themeColor", &lua::Binding::native<&themeColor>}, {"themeMetric", &lua::Binding::native<&themeMetric>}, {"themeFont", &lua::Binding::native<&themeFont>}, {"themeSurface", &lua::Binding::native<&themeSurface>}, {"addFont", &lua::Binding::native<&addFont>}, {"usingPointer", &lua::Binding::native<&usingPointer>}, {"usingKeyboard", &lua::Binding::native<&usingKeyboard>}, {"focused", &lua::Binding::native<&focused>}, {"clearFocus", &lua::Binding::native<&clearFocus>}, {"focusRingVisible", &lua::Binding::native<&focusRingVisible>}, {"safeAreaVisible", &lua::Binding::native<&safeAreaVisible>}, {"setSafeAreaVisible", &lua::Binding::native<&setSafeAreaVisible>}, {"setDirection", &lua::Binding::native<&setDirection>}, {"direction", &lua::Binding::native<&direction>}, {"kinds", &lua::Binding::native<&kinds>}, {"onEvent", &lua::Binding::native<&onEvent>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     lua_createtable(L, 0, 1);
@@ -742,7 +742,7 @@ void UiLua::install(lua_State* L) {
     lua_setfield(L, LUA_REGISTRYINDEX, kHandlersKey);
     core::EventsLua::addPayload<std::shared_ptr<Document>>(&pushDocument);
     TransformLua::install(L);
-    lua::ClassBuilder<Document>(L).function("set", &lua::Binding::native<&documentSet>).function("replace", &lua::Binding::native<&documentReplace>).function("get", &lua::Binding::native<&documentGet>).function("has", &lua::Binding::native<&documentHas>).function("bounds", &lua::Binding::native<&documentBounds>).function("command", &lua::Binding::native<&documentCommand>).function("removeHandler", &lua::Binding::native<&documentRemoveHandler>).function("unmount", &lua::Binding::native<&documentUnmount>).property("visible", &documentVisible, &lua::Binding::native<&documentSetVisible>).property("mounted", &documentMounted).property("placement", &documentPlacement).function("transform", &lua::Binding::native<&documentTransform>).install();
+    lua::ClassBuilder<Document>(L).function("set", &lua::Binding::native<&documentSet>).function("replaceChildren", &lua::Binding::native<&documentReplaceChildren>).function("get", &lua::Binding::native<&documentGet>).function("has", &lua::Binding::native<&documentHas>).function("bounds", &lua::Binding::native<&documentBounds>).function("command", &lua::Binding::native<&documentCommand>).function("removeHandler", &lua::Binding::native<&documentRemoveHandler>).function("unmount", &lua::Binding::native<&documentUnmount>).property("visible", &documentVisible, &lua::Binding::native<&documentSetVisible>).property("mounted", &documentMounted).property("placement", &documentPlacement).function("transform", &lua::Binding::native<&documentTransform>).install();
     lua::Binding::preload(L, "haylen.ui", &open);
 }
 

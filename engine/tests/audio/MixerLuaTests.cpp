@@ -50,15 +50,15 @@ TEST_F(MixerLuaTest, PausesEveryVoiceAndReportsInterruptions) {
     fixture->runLua("mine = audio.play(hit, {loop = true}) other = audio.play(hit, {loop = true}) audio.pause(mine) audio.pauseAll() audio.resumeAll()");
     EXPECT_EQ(fixture->lua("return tostring(audio.paused(mine)) .. ' ' .. tostring(audio.paused(other))"), "true false");
 
-    fixture->runLua("heard = {} for _, name in ipairs({'audio_interrupted', 'audio_resumed', 'audio_route_changed'}) do events.on(name, function() heard[#heard + 1] = name end) end");
+    fixture->runLua("heard = {} for _, name in ipairs({'audioInterrupted', 'audioResumed', 'audioRouteChanged'}) do events.on(name, function() heard[#heard + 1] = name end) end");
     Mixer& mixer = fixture->engine().getAudio();
     mixer.reportDeviceEvent(Mixer::DeviceEvent::InterruptionBegan);
     fixture->frames(1);
-    EXPECT_EQ(fixture->lua("return tostring(audio.interrupted()) .. ' ' .. table.concat(heard, ',')"), "true audio_interrupted");
+    EXPECT_EQ(fixture->lua("return tostring(audio.interrupted()) .. ' ' .. table.concat(heard, ',')"), "true audioInterrupted");
     mixer.reportDeviceEvent(Mixer::DeviceEvent::InterruptionEnded);
     mixer.reportDeviceEvent(Mixer::DeviceEvent::RouteChanged);
     fixture->frames(1);
-    EXPECT_EQ(fixture->lua("return tostring(audio.interrupted()) .. ' ' .. table.concat(heard, ',')"), "false audio_interrupted,audio_resumed,audio_route_changed");
+    EXPECT_EQ(fixture->lua("return tostring(audio.interrupted()) .. ' ' .. table.concat(heard, ',')"), "false audioInterrupted,audioResumed,audioRouteChanged");
 }
 
 TEST_F(MixerLuaTest, CreatesAndWiresEffects) {

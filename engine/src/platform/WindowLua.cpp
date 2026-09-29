@@ -68,7 +68,7 @@ void WindowLua::pushMonitor(lua_State* L, const Monitor& monitor) {
     lua_setfield(L, -2, "primary");
 }
 
-int WindowLua::size(lua_State* L) {
+int WindowLua::framebufferSize(lua_State* L) {
     const math::Vec2 value = lua::Runtime::getEngine(L).getWindow().getFramebufferSize();
     lua::Stack::push(L, value.x);
     lua::Stack::push(L, value.y);
@@ -120,7 +120,7 @@ int WindowLua::setMouseLocked(lua_State* L) {
     return 0;
 }
 
-int WindowLua::showKeyboard(lua_State* L) {
+int WindowLua::setKeyboardVisible(lua_State* L) {
     lua::Runtime::getEngine(L).getWindow().setKeyboardVisible(lua::Stack::read<bool>(L, 1));
     return 0;
 }
@@ -294,7 +294,7 @@ int WindowLua::currentMonitor(lua_State* L) {
 
 int WindowLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"size", &size}, {"dpiScale", &dpiScale}, {"fullscreen", &fullscreen}, {"setFullscreen", &lua::Binding::native<&setFullscreen>}, {"resizable", &resizable}, {"setResizable", &lua::Binding::native<&setResizable>}, {"setTitle", &lua::Binding::native<&setTitle>}, {"setCursor", &lua::Binding::native<&setCursor>}, {"setCursorVisible", &lua::Binding::native<&setCursorVisible>}, {"setMouseLocked", &lua::Binding::native<&setMouseLocked>}, {"showKeyboard", &lua::Binding::native<&showKeyboard>}, {"orientation", &orientation}, {"lockOrientation", &lua::Binding::native<&lockOrientation>}, {"clipboard", &lua::Binding::native<&clipboard>}, {"setClipboard", &lua::Binding::native<&setClipboard>}, {"hasPointerDevice", &hasPointerDevice}, {"backLeavesApp", &backLeavesApp}, {"setBackLeavesApp", &lua::Binding::native<&setBackLeavesApp>}, {"canBeTransparent", &canBeTransparent}, {"transparent", &transparent}, {"setTransparent", &lua::Binding::native<&setTransparent>}, {"decorated", &decorated}, {"setDecorated", &lua::Binding::native<&setDecorated>}, {"alwaysOnTop", &alwaysOnTop}, {"setAlwaysOnTop", &lua::Binding::native<&setAlwaysOnTop>}, {"showInTaskbar", &showInTaskbar}, {"setShowInTaskbar", &lua::Binding::native<&setShowInTaskbar>}, {"focusable", &focusable}, {"setFocusable", &lua::Binding::native<&setFocusable>}, {"frame", &lua::Binding::native<&frame>}, {"setFrame", &lua::Binding::native<&setFrame>}, {"place", &lua::Binding::native<&place>}, {"mousePassthrough", &mousePassthrough}, {"setMousePassthrough", &lua::Binding::native<&setMousePassthrough>}, {"startDrag", &lua::Binding::native<&startDrag>}, {"monitors", &lua::Binding::native<&monitors>}, {"currentMonitor", &lua::Binding::native<&currentMonitor>}, {nullptr, nullptr},
+        {"framebufferSize", &framebufferSize}, {"dpiScale", &dpiScale}, {"fullscreen", &fullscreen}, {"setFullscreen", &lua::Binding::native<&setFullscreen>}, {"resizable", &resizable}, {"setResizable", &lua::Binding::native<&setResizable>}, {"setTitle", &lua::Binding::native<&setTitle>}, {"setCursor", &lua::Binding::native<&setCursor>}, {"setCursorVisible", &lua::Binding::native<&setCursorVisible>}, {"setMouseLocked", &lua::Binding::native<&setMouseLocked>}, {"setKeyboardVisible", &lua::Binding::native<&setKeyboardVisible>}, {"orientation", &orientation}, {"lockOrientation", &lua::Binding::native<&lockOrientation>}, {"clipboard", &lua::Binding::native<&clipboard>}, {"setClipboard", &lua::Binding::native<&setClipboard>}, {"hasPointerDevice", &hasPointerDevice}, {"backLeavesApp", &backLeavesApp}, {"setBackLeavesApp", &lua::Binding::native<&setBackLeavesApp>}, {"canBeTransparent", &canBeTransparent}, {"transparent", &transparent}, {"setTransparent", &lua::Binding::native<&setTransparent>}, {"decorated", &decorated}, {"setDecorated", &lua::Binding::native<&setDecorated>}, {"alwaysOnTop", &alwaysOnTop}, {"setAlwaysOnTop", &lua::Binding::native<&setAlwaysOnTop>}, {"showInTaskbar", &showInTaskbar}, {"setShowInTaskbar", &lua::Binding::native<&setShowInTaskbar>}, {"focusable", &focusable}, {"setFocusable", &lua::Binding::native<&setFocusable>}, {"frame", &lua::Binding::native<&frame>}, {"setFrame", &lua::Binding::native<&setFrame>}, {"place", &lua::Binding::native<&place>}, {"mousePassthrough", &mousePassthrough}, {"setMousePassthrough", &lua::Binding::native<&setMousePassthrough>}, {"startDrag", &lua::Binding::native<&startDrag>}, {"monitors", &lua::Binding::native<&monitors>}, {"currentMonitor", &lua::Binding::native<&currentMonitor>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

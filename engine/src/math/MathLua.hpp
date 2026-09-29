@@ -18,7 +18,7 @@
 
 namespace haylen::math {
 
-// Installs haylen.math and the Vec2, Rect, Color, Transform, Random, Noise, Spline, Spring, ShuffleBag and WeightedChoice classes.
+// Installs haylen.math and the Vec2, Rect, Color, Transform2D, Random, Noise2D, Spline, Spring, ShuffleBag and WeightedChoice classes.
 class MathLua final {
   public:
     static void install(lua_State* L);
@@ -68,12 +68,12 @@ class MathLua final {
     [[nodiscard]] static Transform2D transformInverse(const Transform2D& self);
 
     static int randomNew(lua_State* L);
-    [[nodiscard]] static float randomFloat(Random& self);
+    [[nodiscard]] static float randomNextFloat(Random& self);
     [[nodiscard]] static float randomRange(Random& self, float minimum, float maximum);
     [[nodiscard]] static int randomInteger(Random& self, int minimum, int maximum);
     [[nodiscard]] static bool randomChance(Random& self, float probability);
     static void randomReseed(Random& self, lua_Integer seed);
-    static int randomPick(lua_State* L);
+    static int randomWeightedIndex(lua_State* L);
     static int randomShuffle(lua_State* L);
 
     static int noiseNew(lua_State* L);
@@ -89,7 +89,7 @@ class MathLua final {
     static int circleIntersects(lua_State* L);
     [[nodiscard]] static Rect pointBounds(std::vector<Vec2> points);
     [[nodiscard]] static bool polygonContains(std::vector<Vec2> polygon, Vec2 point);
-    [[nodiscard]] static float polygonArea(std::vector<Vec2> polygon);
+    [[nodiscard]] static float polygonSignedArea(std::vector<Vec2> polygon);
     [[nodiscard]] static Vec2 polygonCentroid(std::vector<Vec2> polygon);
     [[nodiscard]] static bool polygonConvex(std::vector<Vec2> polygon);
     [[nodiscard]] static std::vector<Vec2> hull(std::vector<Vec2> points);

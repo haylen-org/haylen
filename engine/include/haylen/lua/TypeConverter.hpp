@@ -96,7 +96,7 @@ class TypeConverter final {
     static const NameTable<platform::Window::Passthrough, 3> kPassthroughs;
     static const NameTable<platform::TextInput::Action, 4> kTextActions;
     static const NameTable<core::ProcessMode, 5> kProcessModes;
-    static constexpr std::array<std::string_view, 8> kEasingFields{"curve", "overshoot", "amplitude", "period", "steps", "position", "bezier", "points"};
+    static constexpr std::array<std::string_view, 8> kEasingFields{"curve", "overshoot", "amplitude", "period", "steps", "position", "cubicBezier", "points"};
 
     template <typename T, std::size_t Size> [[nodiscard]] static std::optional<T> fromTable(const NameTable<T, Size>& names, std::string_view name) {
         const auto found = std::ranges::find(names, name, &std::pair<std::string_view, T>::first);
@@ -132,7 +132,7 @@ template <> struct Type<math::Color> {
 };
 
 template <> struct Type<math::Transform2D> {
-    static constexpr const char* name = "haylen.Transform";
+    static constexpr const char* name = "haylen.Transform2D";
     using Storage = math::Transform2D;
 };
 
@@ -142,7 +142,7 @@ template <> struct Type<math::Random> {
 };
 
 template <> struct Type<math::Noise2D> {
-    static constexpr const char* name = "haylen.Noise";
+    static constexpr const char* name = "haylen.Noise2D";
     using Storage = math::Noise2D;
 };
 
@@ -217,7 +217,7 @@ template <> struct Type<graphics2d::SpriteBatch> {
 };
 
 template <> struct Type<graphics2d::StaticSpriteBatch> {
-    static constexpr const char* name = "haylen.StaticBatch";
+    static constexpr const char* name = "haylen.StaticSpriteBatch";
     using Storage = graphics2d::StaticSpriteBatch;
 };
 
@@ -270,7 +270,7 @@ template <> struct Converter<math::Insets> {
     static math::Insets read(lua_State* L, int index);
 };
 
-// Easing curves accept a curve name such as 'quad_out', a function of the progress that returns the eased progress, or a table: {curve = 'back_out', overshoot = 3}, {curve = 'elastic_out', amplitude = 1.5, period = 0.4}, {steps = 4, position = 'end'}, {bezier = {x1, y1, x2, y2}} or {points = {{x, y}, ...}}, where points can also be plain numbers spread evenly from 0 to 1.
+// Easing curves accept a curve name such as 'quadOut', a function of the progress that returns the eased progress, or a table: {curve = 'backOut', overshoot = 3}, {curve = 'elasticOut', amplitude = 1.5, period = 0.4}, {steps = 4, position = 'end'}, {cubicBezier = {x1, y1, x2, y2}} or {points = {{x, y}, ...}}, where points can also be plain numbers spread evenly from 0 to 1.
 template <> struct Converter<math::EasingCurve> {
     static math::EasingCurve read(lua_State* L, int index);
 };

@@ -16,26 +16,26 @@ const TypeConverter::NameTable<graphics2d::SceneTransition::Kind, 24> TypeConver
     {"fade", graphics2d::SceneTransition::Kind::Fade}, {"crossFade", graphics2d::SceneTransition::Kind::CrossFade}, {"moveIn", graphics2d::SceneTransition::Kind::MoveIn}, {"slideIn", graphics2d::SceneTransition::Kind::SlideIn}, {"push", graphics2d::SceneTransition::Kind::Push}, {"shrinkGrow", graphics2d::SceneTransition::Kind::ShrinkGrow}, {"flipX", graphics2d::SceneTransition::Kind::FlipX}, {"flipY", graphics2d::SceneTransition::Kind::FlipY}, {"zoomFlip", graphics2d::SceneTransition::Kind::ZoomFlip}, {"rotoZoom", graphics2d::SceneTransition::Kind::RotoZoom}, {"jumpZoom", graphics2d::SceneTransition::Kind::JumpZoom}, {"splitColumns", graphics2d::SceneTransition::Kind::SplitColumns}, {"splitRows", graphics2d::SceneTransition::Kind::SplitRows}, {"turnOffTiles", graphics2d::SceneTransition::Kind::TurnOffTiles}, {"fadeTiles", graphics2d::SceneTransition::Kind::FadeTiles}, {"pageTurn", graphics2d::SceneTransition::Kind::PageTurn}, {"radialClockwise", graphics2d::SceneTransition::Kind::RadialClockwise}, {"radialCounterclockwise", graphics2d::SceneTransition::Kind::RadialCounterclockwise}, {"wipe", graphics2d::SceneTransition::Kind::Wipe}, {"inOut", graphics2d::SceneTransition::Kind::InOut}, {"outIn", graphics2d::SceneTransition::Kind::OutIn}, {"iris", graphics2d::SceneTransition::Kind::Iris}, {"dissolve", graphics2d::SceneTransition::Kind::Dissolve}, {"pixelate", graphics2d::SceneTransition::Kind::Pixelate},
 }};
 const TypeConverter::NameTable<graphics2d::SceneTransition::Direction, 8> TypeConverter::kDirections = {{{"left", graphics2d::SceneTransition::Direction::Left}, {"right", graphics2d::SceneTransition::Direction::Right}, {"up", graphics2d::SceneTransition::Direction::Up}, {"down", graphics2d::SceneTransition::Direction::Down}, {"upLeft", graphics2d::SceneTransition::Direction::UpLeft}, {"upRight", graphics2d::SceneTransition::Direction::UpRight}, {"downLeft", graphics2d::SceneTransition::Direction::DownLeft}, {"downRight", graphics2d::SceneTransition::Direction::DownRight}}};
-const TypeConverter::NameTable<input::InputDevice, 3> TypeConverter::kDevices = {{{"keyboard_mouse", input::InputDevice::KeyboardMouse}, {"touch", input::InputDevice::Touch}, {"gamepad", input::InputDevice::Gamepad}}};
+const TypeConverter::NameTable<input::InputDevice, 3> TypeConverter::kDevices = {{{"keyboardMouse", input::InputDevice::KeyboardMouse}, {"touch", input::InputDevice::Touch}, {"gamepad", input::InputDevice::Gamepad}}};
 const TypeConverter::NameTable<input::TouchPhase, 5> TypeConverter::kPhases = {{{"began", input::TouchPhase::Began}, {"moved", input::TouchPhase::Moved}, {"stationary", input::TouchPhase::Stationary}, {"ended", input::TouchPhase::Ended}, {"cancelled", input::TouchPhase::Cancelled}}};
 const TypeConverter::NameTable<platform::Window::Cursor, 11> TypeConverter::kCursors = {{
     {"default", platform::Window::Cursor::Default},
     {"arrow", platform::Window::Cursor::Arrow},
-    {"ibeam", platform::Window::Cursor::IBeam},
+    {"iBeam", platform::Window::Cursor::IBeam},
     {"crosshair", platform::Window::Cursor::Crosshair},
-    {"pointing_hand", platform::Window::Cursor::PointingHand},
-    {"resize_horizontal", platform::Window::Cursor::ResizeHorizontal},
-    {"resize_vertical", platform::Window::Cursor::ResizeVertical},
-    {"resize_diagonal_down", platform::Window::Cursor::ResizeDiagonalDown},
-    {"resize_diagonal_up", platform::Window::Cursor::ResizeDiagonalUp},
-    {"resize_all", platform::Window::Cursor::ResizeAll},
-    {"not_allowed", platform::Window::Cursor::NotAllowed},
+    {"pointingHand", platform::Window::Cursor::PointingHand},
+    {"resizeHorizontal", platform::Window::Cursor::ResizeHorizontal},
+    {"resizeVertical", platform::Window::Cursor::ResizeVertical},
+    {"resizeDiagonalDown", platform::Window::Cursor::ResizeDiagonalDown},
+    {"resizeDiagonalUp", platform::Window::Cursor::ResizeDiagonalUp},
+    {"resizeAll", platform::Window::Cursor::ResizeAll},
+    {"notAllowed", platform::Window::Cursor::NotAllowed},
 }};
 
 const TypeConverter::NameTable<platform::Window::Passthrough, 3> TypeConverter::kPassthroughs = {{{"off", platform::Window::Passthrough::Off}, {"whole", platform::Window::Passthrough::Whole}, {"regions", platform::Window::Passthrough::Regions}}};
 
 const TypeConverter::NameTable<platform::Event::Type, 28> TypeConverter::kEvents = {{
-    {"key_down", platform::Event::Type::KeyDown}, {"key_up", platform::Event::Type::KeyUp}, {"character", platform::Event::Type::Character}, {"mouse_down", platform::Event::Type::MouseDown}, {"mouse_up", platform::Event::Type::MouseUp}, {"mouse_move", platform::Event::Type::MouseMove}, {"mouse_scroll", platform::Event::Type::MouseScroll}, {"mouse_enter", platform::Event::Type::MouseEnter}, {"mouse_leave", platform::Event::Type::MouseLeave}, {"touch_began", platform::Event::Type::TouchBegan}, {"touch_moved", platform::Event::Type::TouchMoved}, {"touch_ended", platform::Event::Type::TouchEnded}, {"touch_cancelled", platform::Event::Type::TouchCancelled}, {"resized", platform::Event::Type::Resized}, {"suspended", platform::Event::Type::Suspended}, {"resumed", platform::Event::Type::Resumed}, {"focus_gained", platform::Event::Type::FocusGained}, {"focus_lost", platform::Event::Type::FocusLost}, {"quit_requested", platform::Event::Type::QuitRequested}, {"low_memory", platform::Event::Type::LowMemory}, {"text_edited", platform::Event::Type::TextEdited}, {"text_action", platform::Event::Type::TextAction}, {"keyboard_changed", platform::Event::Type::KeyboardChanged}, {"network_changed", platform::Event::Type::NetworkChanged}, {"interruption_began", platform::Event::Type::InterruptionBegan}, {"interruption_ended", platform::Event::Type::InterruptionEnded}, {"window_moved", platform::Event::Type::WindowMoved}, {"monitors_changed", platform::Event::Type::MonitorsChanged},
+    {"keyDown", platform::Event::Type::KeyDown}, {"keyUp", platform::Event::Type::KeyUp}, {"character", platform::Event::Type::Character}, {"mouseDown", platform::Event::Type::MouseDown}, {"mouseUp", platform::Event::Type::MouseUp}, {"mouseMove", platform::Event::Type::MouseMove}, {"mouseScroll", platform::Event::Type::MouseScroll}, {"mouseEnter", platform::Event::Type::MouseEnter}, {"mouseLeave", platform::Event::Type::MouseLeave}, {"touchBegan", platform::Event::Type::TouchBegan}, {"touchMoved", platform::Event::Type::TouchMoved}, {"touchEnded", platform::Event::Type::TouchEnded}, {"touchCancelled", platform::Event::Type::TouchCancelled}, {"resized", platform::Event::Type::Resized}, {"suspended", platform::Event::Type::Suspended}, {"resumed", platform::Event::Type::Resumed}, {"focusGained", platform::Event::Type::FocusGained}, {"focusLost", platform::Event::Type::FocusLost}, {"quitRequested", platform::Event::Type::QuitRequested}, {"lowMemory", platform::Event::Type::LowMemory}, {"textEdited", platform::Event::Type::TextEdited}, {"textAction", platform::Event::Type::TextAction}, {"keyboardChanged", platform::Event::Type::KeyboardChanged}, {"networkChanged", platform::Event::Type::NetworkChanged}, {"interruptionBegan", platform::Event::Type::InterruptionBegan}, {"interruptionEnded", platform::Event::Type::InterruptionEnded}, {"windowMoved", platform::Event::Type::WindowMoved}, {"monitorsChanged", platform::Event::Type::MonitorsChanged},
 }};
 
 const TypeConverter::NameTable<platform::TextInput::Action, 4> TypeConverter::kTextActions = {{{"submit", platform::TextInput::Action::Submit}, {"next", platform::TextInput::Action::Next}, {"cancel", platform::TextInput::Action::Cancel}, {"dismissed", platform::TextInput::Action::Dismissed}}};
@@ -204,11 +204,11 @@ math::EasingCurve Converter<math::EasingCurve>::read(lua_State* L, int index) {
         return math::EasingCurve::steps(count, position);
     }
     lua_pop(L, 1);
-    if (lua_getfield(L, table, "bezier") != LUA_TNIL) {
+    if (lua_getfield(L, table, "cubicBezier") != LUA_TNIL) {
         const std::vector<float> handles = Stack::read<std::vector<float>>(L, -1);
         lua_pop(L, 1);
         if (handles.size() != 4) {
-            luaL_error(L, "A bezier curve needs the four numbers x1, y1, x2 and y2.");
+            luaL_error(L, "A cubicBezier curve needs the four numbers x1, y1, x2 and y2.");
         }
         return math::EasingCurve::cubicBezier(handles[0], handles[1], handles[2], handles[3]);
     }

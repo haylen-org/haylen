@@ -48,7 +48,7 @@ TEST_F(Graphics2DLuaTest, MeasuresTextWithFonts) {
     // A scaled draw covers the block measured with the same scale.
     EXPECT_EQ(lua("local w, h = graphics2d.measureText(nil, 'Hello', {size = 32}) local sw, sh = graphics2d.measureText(nil, 'Hello', {size = 32, scale = {2, 3}}) return tostring(sw == 2 * w and sh == 3 * h)"), "true");
     EXPECT_EQ(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'Hello', 0, 0, {size = 32, scale = {2, 0.5}, layer = 1})"), "nil");
-    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'Hello', 0, 0, {scale = 'wide'})").find("bad option 'scale' to 'drawText'"), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'Hello', 0, 0, {scale = 'wide'})").find("The option 'scale' of 'drawText'"), std::string::npos);
     EXPECT_NE(lua("graphics2d.defaultFont():measure('Hello', {layer = 2})").find("Unknown option 'layer'"), std::string::npos);
 }
 
@@ -186,11 +186,11 @@ TEST_F(Graphics2DLuaTest, SortsMasksOffsetsAndCapturesCanvases) {
     EXPECT_EQ(render(body), "nil");
     EXPECT_EQ(lua("return tostring(capturing) .. ' ' .. tostring(after) .. ' ' .. graphics2d.stats().sprites"), "true false 3");
     EXPECT_EQ(lua("return unit"), "0.25");
-    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.popLayerOffset()").find("popLayerOffset was called without a matching pushLayerOffset"), std::string::npos);
-    EXPECT_NE(render("graphics2d.endCapture()").find("endCapture was called without a matching beginCapture"), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.popLayerOffset()").find("The popLayerOffset call has no matching pushLayerOffset"), std::string::npos);
+    EXPECT_NE(render("graphics2d.endCapture()").find("The endCapture call has no matching beginCapture"), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawImageBlend(hero, hero, {0, 0, 1, 1}, {pattern = 'swirl'})").find("unknown value 'swirl'"), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawImageBlend(hero, hero, {0, 0, 1, 1}, {speed = 1})").find("Unknown option 'speed'"), std::string::npos);
-    EXPECT_NE(render("graphics2d.beginScreen({order = 'first'})").find("bad option 'order'"), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen({order = 'first'})").find("The option 'order'"), std::string::npos);
 }
 
 TEST_F(Graphics2DLuaTest, DrawsParallaxLayers) {
@@ -239,7 +239,7 @@ TEST_F(Graphics2DLuaTest, DrawsShapesTextMeshesAndLights) {
     EXPECT_EQ(lua("return bounds.width"), "32.0");
 
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawMesh(hero, {{x = 0, y = 0}}, {0})").find("mesh indices start at 1"), std::string::npos);
-    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.popClip()").find("popClip was called without a matching pushClip"), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.popClip()").find("The popClip call has no matching pushClip"), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen({sort = 'random'})").find("random"), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen({clear = '#000000'})").find("Screen canvases do not support a clear color."), std::string::npos);
     EXPECT_NE(render("graphics2d.beginWorld(graphics2d.newCamera(), {clear = '#000000'})").find("World canvases only support a clear color with lighting or post-processing."), std::string::npos);

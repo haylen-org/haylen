@@ -56,7 +56,7 @@ class UiLua final {
 
     static int mount(lua_State* L);
     static int documentSet(lua_State* L);
-    static int documentReplace(lua_State* L);
+    static int documentReplaceChildren(lua_State* L);
     static int documentRemoveHandler(lua_State* L);
     static int documentGet(lua_State* L);
     static int documentBounds(lua_State* L);
@@ -82,8 +82,8 @@ class UiLua final {
     static int themeSurface(lua_State* L);
     static int onEvent(lua_State* L);
     static int addFont(lua_State* L);
-    static int wantsPointer(lua_State* L);
-    static int wantsKeyboard(lua_State* L);
+    static int usingPointer(lua_State* L);
+    static int usingKeyboard(lua_State* L);
     static int focused(lua_State* L);
     static int clearFocus(lua_State* L);
     static int focusRingVisible(lua_State* L);

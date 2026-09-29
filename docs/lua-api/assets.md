@@ -26,7 +26,7 @@ The file extension picks the asset type, and the type decides what Lua receives.
 | `atlas` | None, so load it with the type `'atlas'` | SpriteAtlas from [haylen.animation2d](animation2d.md). | `filter` and `wrap` of its texture. |
 | `particles` | `.particles` | Particle effect for `particles2d.newEmitter()` from [haylen.particles2d](particles2d.md). | `filter` and `wrap` of its texture. |
 | `tiled` | `.tmj` | Tiled map data for `tiled.newMapRenderer()` from [haylen.tiled](tiled.md). | `filter` and `wrap` of its tileset and layer images. |
-| `tiled_world` | `.world` | List of the maps of a Tiled world. | None. |
+| `tiledWorld` | `.world` | List of the maps of a Tiled world. | None. |
 
 Assets are cached by type, path and options. Loading the same asset again returns the same object while anything still holds it, such as a Lua variable, another asset or a preload group, so two loads of one asset compare equal with `==`, whatever its type. Different options load a separate asset. Atlases, particle effects and Tiled maps share their images with textures loaded directly with the same `filter` and `wrap`, except Tiled images with a transparent color, which stay private to their map.
 
@@ -294,7 +294,7 @@ assets.defineGroup('forest', {
 
 Starts loading every asset of a group and returns a promise. The promise resolves once every asset finished, with a list of error messages in the form `'<path>: <error>'` for the assets that failed, so an empty list means everything loaded. It never rejects. The optional `progress` function receives the fraction of finished assets, from above 0 to 1, after each asset. Preloading a group that is already loaded loads nothing again, reports progress 1 and resolves with its earlier errors. An error raised by the progress function shows the engine error screen. An unknown group raises `Unknown asset group: <name>`, and an entry without a type whose extension no type handles raises `No asset type handles the file <path>`.
 
-The group holds its assets until `assets.unload()`, so they stay cached even when nothing else refers to them, and later `assets.load()` calls return them at once.
+The group holds its assets until `assets.unloadGroup()`, so they stay cached even when nothing else refers to them, and later `assets.load()` calls return them at once.
 
 ```lua
 local async = require('async')
@@ -326,7 +326,7 @@ local loading = {
 scene.push(loading)
 ```
 
-### assets.unload(name)
+### assets.unloadGroup(name)
 
 Releases the hold of a group on its assets. Assets that nothing else refers to leave memory, and assets still in use stay loaded. The group stays defined and can be preloaded again. An unknown group raises `Unknown asset group: <name>`.
 
@@ -336,12 +336,12 @@ local scene = require('haylen.scene')
 
 scene.push({
     exit = function(self)
-        assets.unload('island')
+        assets.unloadGroup('island')
     end,
 })
 ```
 
-### assets.progress(name)
+### assets.groupProgress(name)
 
 Returns the fraction of the group that finished loading, from 0 to 1. A loaded group returns 1. An unknown group raises `Unknown asset group: <name>`.
 
@@ -356,12 +356,12 @@ assets.preload('menu')
 scene.push({
     render = function(self)
         graphics2d.beginScreen()
-        graphics2d.drawText(nil, string.format('%d%%', assets.progress('menu') * 100), 40, 40)
+        graphics2d.drawText(nil, string.format('%d%%', assets.groupProgress('menu') * 100), 40, 40)
     end,
 })
 ```
 
-### assets.loaded(name)
+### assets.groupLoaded(name)
 
 Returns true when the group finished loading. An unknown group returns false.
 
@@ -371,7 +371,7 @@ local scene = require('haylen.scene')
 
 scene.push({
     update = function(self, dt)
-        if assets.loaded('menu') then
+        if assets.groupLoaded('menu') then
             scene.replace(require('scenes.menu'))
         end
     end,
@@ -386,7 +386,7 @@ Returns a sorted list of the names of every defined group.
 local assets = require('haylen.assets')
 
 for _, name in ipairs(assets.groups()) do
-    print(name, assets.loaded(name))
+    print(name, assets.groupLoaded(name))
 end
 ```
 

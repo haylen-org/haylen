@@ -66,7 +66,7 @@ function RichText:content()
         ui.column{grow = 2, gap = 24,
             sample.section('lists, rules and tables', {ui.richText{text = kBlocks}}),
             sample.section('typewriter reveal', {
-                ui.richText{id = 'dialogue', text = RichText.dialogue[1], reveal = 30, font = 'heading'},
+                ui.richText{id = 'dialogue', text = RichText.dialogue[1], revealSpeed = 30, font = 'heading'},
                 ui.row{gap = 12,
                     ui.button{id = 'next', text = 'Next line', variant = 'primary', onClick = function(event)
                         self.line = self.line % #RichText.dialogue + 1

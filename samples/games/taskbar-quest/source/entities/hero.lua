@@ -104,7 +104,7 @@ function hero:cheer()
         self.quest.effects:text(self.x, self.y - 64, 'Zzz', '#FFC0D8EC')
         return
     end
-    tween.to(self, 0.16, {lift = -24}, {ease = 'quad_out', repeatCount = 1, loop = 'yoyo', overwrite = true, owner = self.quest.owner})
+    tween.to(self, 0.16, {lift = -24}, {ease = 'quadOut', repeatCount = 1, loopMode = 'yoyo', overwrite = true, owner = self.quest.owner})
     self.quest.effects:text(self.x, self.y - 70, greetings[math.random(#greetings)], '#FFFFFFFF')
 end
 

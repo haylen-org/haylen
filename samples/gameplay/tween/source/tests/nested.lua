@@ -14,7 +14,7 @@ local kCode = [[
 local square = tween.timeline():append(tween.to(a, 0.4, {x = 300})):append(tween.to(a, 0.4, {y = 300})) ...
 local glow = tween.timeline():append(tween.to(c, 0.8, {color = '#FFF2B23A'})):append(tween.to(c, 0.8, {color = '#FF3DBE7A'}))
 local spin = tween.timeline():append(tween.to(b, 0.8, {angle = math.pi})):append(tween.to(b, 0.6, {scale = 1.6}))
-tween.timeline({repeatCount = -1, loop = 'yoyo'}):append(square):join(glow):append(spin)]]
+tween.timeline({repeatCount = -1, loopMode = 'yoyo'}):append(square):join(glow):append(spin)]]
 
 function Nested:enter()
     self:frame({
@@ -41,17 +41,17 @@ function Nested:play()
     self.a, self.b, self.c = a, b, c
 
     self.square = tween.timeline()
-        :append(tween.to(a, 0.4, {x = 300}, {ease = 'quad_in_out'}))
-        :append(tween.to(a, 0.4, {y = 300}, {ease = 'quad_in_out'}))
-        :append(tween.to(a, 0.4, {x = 0}, {ease = 'quad_in_out'}))
-        :append(tween.to(a, 0.4, {y = 0}, {ease = 'quad_in_out'}))
+        :append(tween.to(a, 0.4, {x = 300}, {ease = 'quadInOut'}))
+        :append(tween.to(a, 0.4, {y = 300}, {ease = 'quadInOut'}))
+        :append(tween.to(a, 0.4, {x = 0}, {ease = 'quadInOut'}))
+        :append(tween.to(a, 0.4, {y = 0}, {ease = 'quadInOut'}))
     self.glow = tween.timeline()
         :append(tween.to(c, 0.8, {color = '#FFF2B23A'}))
         :append(tween.to(c, 0.8, {color = '#FF3DBE7A'}))
     self.spin = tween.timeline()
-        :append(tween.to(b, 0.8, {angle = math.pi}, {ease = 'back_out'}))
-        :append(tween.to(b, 0.6, {scale = 1.6}, {ease = 'elastic_out'}))
-    self.parent = tween.timeline({owner = self, repeatCount = -1, loop = 'yoyo', repeatDelay = 0.3})
+        :append(tween.to(b, 0.8, {angle = math.pi}, {ease = 'backOut'}))
+        :append(tween.to(b, 0.6, {scale = 1.6}, {ease = 'elasticOut'}))
+    self.parent = tween.timeline({owner = self, repeatCount = -1, loopMode = 'yoyo', repeatDelay = 0.3})
         :append(self.square)
         :join(self.glow)
         :append(self.spin)

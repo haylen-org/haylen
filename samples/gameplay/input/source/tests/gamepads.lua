@@ -10,9 +10,9 @@ local sample = require('sample')
 
 local Gamepads = haylen.class('Gamepads', sample.Test)
 
-local kButtons = {'south', 'east', 'west', 'north', 'left_shoulder', 'right_shoulder', 'left_stick', 'right_stick', 'back', 'start', 'guide', 'dpad_up', 'dpad_down', 'dpad_left', 'dpad_right'}
+local kButtons = {'south', 'east', 'west', 'north', 'leftShoulder', 'rightShoulder', 'leftStick', 'rightStick', 'back', 'start', 'guide', 'dpadUp', 'dpadDown', 'dpadLeft', 'dpadRight'}
 local kFace = {north = {0, -1}, south = {0, 1}, west = {-1, 0}, east = {1, 0}}
-local kPad = {dpad_up = {0, -1}, dpad_down = {0, 1}, dpad_left = {-1, 0}, dpad_right = {1, 0}}
+local kPad = {dpadUp = {0, -1}, dpadDown = {0, 1}, dpadLeft = {-1, 0}, dpadRight = {1, 0}}
 local kFlash = 0.3
 local kHoldToLeave = 1
 local kIdle = '#FF3A4258'
@@ -30,8 +30,8 @@ function Gamepads:enter()
             self.journal:add('already connected ' .. index .. ': ' .. input.gamepadName(index), sample.muted)
         end
     end
-    self:listen('gamepad_connected', function(pad) self.journal:add('gamepad_connected ' .. pad.gamepad .. ': ' .. pad.name, sample.green) end)
-    self:listen('gamepad_disconnected', function(pad) self.journal:add('gamepad_disconnected ' .. pad.gamepad .. ': ' .. pad.name, sample.red) end)
+    self:listen('gamepadConnected', function(pad) self.journal:add('gamepadConnected ' .. pad.gamepad .. ': ' .. pad.name, sample.green) end)
+    self:listen('gamepadDisconnected', function(pad) self.journal:add('gamepadDisconnected ' .. pad.gamepad .. ': ' .. pad.name, sample.red) end)
     self:frame({
         hint = 'Plug in up to four gamepads. A browser shows a gamepad once one of its buttons is pressed.',
         navigation = not window.hasPointerDevice(),
@@ -43,7 +43,7 @@ function Gamepads:enter()
             end}},
             ui.label{text = 'Movement inside the dead zone reads 0 and does not make the gamepad the last device. The rest is rescaled to the full range, and sticks apply it to their radius, which keeps diagonals smooth.', color = 'textMuted', font = 'caption'},
             ui.sectionTitle{text = 'Reading gamepads'},
-            ui.label{font = 'monospace', text = "input.gamepadConnected(2)\ninput.gamepadName(2)\ninput.gamepadDown('south', 2)\ninput.gamepadAxis('left_trigger', 2)\ninput.gamepadStick('left', 2)\ninput.setGamepadDeadzone(0.2)"},
+            ui.label{font = 'monospace', text = "input.gamepadConnected(2)\ninput.gamepadName(2)\ninput.gamepadDown('south', 2)\ninput.gamepadAxis('leftTrigger', 2)\ninput.gamepadStick('left', 2)\ninput.setGamepadDeadzone(0.2)"},
         },
     })
 end
@@ -91,7 +91,7 @@ end
 
 function Gamepads:drawStick(index, side, x, y, radius)
     local sx, sy = input.gamepadStick(side, index)
-    local clicked = input.gamepadDown(side .. '_stick', index)
+    local clicked = input.gamepadDown(side .. 'Stick', index)
     graphics2d.drawCircle(x, y, radius, sample.surface, {layer = 1})
     graphics2d.drawRing(x, y, radius * input.gamepadDeadzone(), 2, sample.muted, {layer = 2})
     graphics2d.drawRing(x, y, radius, 3, clicked and sample.warm or sample.line, {layer = 2})
@@ -125,9 +125,9 @@ function Gamepads:drawPad(index, rect)
     end
 
     local r = math.min(w, h) * 0.12
-    self:drawTrigger(index, 'left_trigger', x + 16, y + h * 0.22, h * 0.66)
-    self:drawTrigger(index, 'right_trigger', x + w - 36, y + h * 0.22, h * 0.66)
-    for side, left in pairs({left_shoulder = x + w * 0.1, right_shoulder = x + w * 0.66}) do
+    self:drawTrigger(index, 'leftTrigger', x + 16, y + h * 0.22, h * 0.66)
+    self:drawTrigger(index, 'rightTrigger', x + w - 36, y + h * 0.22, h * 0.66)
+    for side, left in pairs({leftShoulder = x + w * 0.1, rightShoulder = x + w * 0.66}) do
         graphics2d.drawRect({left, y + h * 0.14, w * 0.24, 14}, input.gamepadDown(side, index) and sample.accent or kIdle, {layer = 2})
     end
     self:drawStick(index, 'left', x + w * 0.22, y + h * 0.45, r)

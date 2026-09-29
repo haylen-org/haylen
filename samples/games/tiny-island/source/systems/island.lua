@@ -17,7 +17,7 @@ function island.new()
     self.map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
     self.world = physics2d.newWorld({gravity = {0, 0}, pixelsPerMeter = 64})
     self.map:buildCollision(self.world)
-    self.bounds = self.map.bounds
+    self.bounds = self.map.pixelBounds
 
     -- Cells under a collision rectangle are water, cliff or plateau, so paths go around them.
     self.grid = navigation2d.newGrid(self.map.width, self.map.height)

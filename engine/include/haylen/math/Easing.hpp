@@ -69,7 +69,7 @@ class Easing final {
     // Evaluates the CSS cubic Bézier curve through (0, 0), (x1, y1), (x2, y2) and (1, 1) at t clamped to [0, 1]. The x coordinates are clamped to [0, 1] like CSS requires.
     [[nodiscard]] static float cubicBezier(float t, float x1, float y1, float x2, float y2) noexcept;
 
-    // Resolves names such as "linear", "quad_out" or "elastic_in_out".
+    // Resolves names such as "linear", "quadOut" or "elasticInOut".
     [[nodiscard]] static std::optional<Type> parse(std::string_view text) noexcept;
     [[nodiscard]] static std::string_view name(Type curve) noexcept;
 

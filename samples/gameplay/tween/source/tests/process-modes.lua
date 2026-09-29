@@ -25,7 +25,7 @@ function ProcessModes:enter()
     self.boxes = {}
     for index, lane in ipairs(kLanes) do
         self.boxes[index] = {x = 0}
-        local options = {owner = self, ease = 'sine_in_out', loop = 'yoyo', repeatCount = -1}
+        local options = {owner = self, ease = 'sineInOut', loopMode = 'yoyo', repeatCount = -1}
         for key, value in pairs(lane.options) do
             options[key] = value
         end

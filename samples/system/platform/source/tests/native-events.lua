@@ -9,8 +9,8 @@ local sample = require('sample')
 local NativeEvents = haylen.class('NativeEvents', sample.Test)
 
 local kPlatformEvents = {
-    focus_gained = true, focus_lost = true, suspended = true, resumed = true, low_memory = true, quit_requested = true,
-    network_changed = true, interruption_began = true, interruption_ended = true, keyboard_changed = true, resized = true,
+    focusGained = true, focusLost = true, suspended = true, resumed = true, lowMemory = true, quitRequested = true,
+    networkChanged = true, interruptionBegan = true, interruptionEnded = true, keyboardChanged = true, resized = true,
 }
 
 function NativeEvents:enter()
@@ -55,7 +55,7 @@ end
 -- The platform reports these events to the top scene as soon as they arrive.
 function NativeEvents:event(event)
     if kPlatformEvents[event.type] then
-        local detail = event.type == 'network_changed' and ' online ' .. tostring(event.online) or ''
+        local detail = event.type == 'networkChanged' and ' online ' .. tostring(event.online) or ''
         self.system:add(event.type .. detail, sample.warm)
     end
 end
@@ -66,7 +66,7 @@ function NativeEvents:update(dt)
     for _, connection in ipairs(self.connections) do
         connected = connected + (connection.connected and 1 or 0)
     end
-    self:status(string.format('platform %s   listeners connected %d   pending calls %d   app state %s', haylen.platform, connected, platform.pendingCalls(), haylen.appState()))
+    self:status(string.format('platform %s   listeners connected %d   pending calls %d   app state %s', haylen.platform, connected, platform.pendingCallCount(), haylen.appState()))
 end
 
 function NativeEvents:draw(area)

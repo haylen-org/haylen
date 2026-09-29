@@ -160,12 +160,12 @@ TEST_F(PhysicsFeaturesLuaTest, FluidsExposePositionsInBulk) {
         velocities = water:velocities()
     )");
     // clang-format on
-    EXPECT_EQ(lua("return added .. ' ' .. tostring(spawned) .. ' ' .. water.count .. ' ' .. water.radius .. ' ' .. #buffer .. ' ' .. #velocities .. ' ' .. #water:bodies()"), "50 true 51 4.0 102 102 51");
-    EXPECT_EQ(lua("water:remove(1) water:positions(buffer) return water.count .. ' ' .. #buffer .. ' ' .. tostring(buffer[101])"), "50 100 nil");
+    EXPECT_EQ(lua("return added .. ' ' .. tostring(spawned) .. ' ' .. water.size .. ' ' .. water.radius .. ' ' .. #buffer .. ' ' .. #velocities .. ' ' .. #water:bodies()"), "50 true 51 4.0 102 102 51");
+    EXPECT_EQ(lua("water:remove(1) water:positions(buffer) return water.size .. ' ' .. #buffer .. ' ' .. tostring(buffer[101])"), "50 100 nil");
 
     // A particle whose body a script destroys leaves the fluid instead of breaking it.
-    EXPECT_EQ(lua("water:bodies()[1]:destroy() water:positions(buffer) water:update(1 / 60) return water.count .. ' ' .. #buffer .. ' ' .. #water:velocities()"), "49 98 98");
-    EXPECT_EQ(lua("water:clear() return water.count .. ' ' .. world.bodyCount"), "0 1");
+    EXPECT_EQ(lua("water:bodies()[1]:destroy() water:positions(buffer) water:update(1 / 60) return water.size .. ' ' .. #buffer .. ' ' .. #water:velocities()"), "49 98 98");
+    EXPECT_EQ(lua("water:clear() return water.size .. ' ' .. world.bodyCount"), "0 1");
     EXPECT_NE(lua("water:remove(0)").find("particles count from 1"), std::string::npos);
     EXPECT_NE(lua("physics2d.newFluid(world, {radius = 4, smoothingRadius = 3})").find("larger smoothing radius"), std::string::npos);
     EXPECT_NE(lua("physics2d.newFluid(world, {density = -1})").find("A physics shape needs a finite density, friction and restitution of zero or more."), std::string::npos);

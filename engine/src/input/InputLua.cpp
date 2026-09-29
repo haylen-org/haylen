@@ -138,7 +138,7 @@ int InputLua::keyCaptured(lua_State* L) {
     return 1;
 }
 
-int InputLua::gamepadCaptured(lua_State* L) {
+int InputLua::gamepadButtonCaptured(lua_State* L) {
     lua::Stack::push(L, lua::Runtime::getEngine(L).getActions().isGamepadButtonCaptured(readGamepadIndex(L, 2), lua::Stack::read<GamepadButton>(L, 1)));
     return 1;
 }
@@ -175,7 +175,7 @@ int InputLua::touches(lua_State* L) {
     return 1;
 }
 
-int InputLua::touch(lua_State* L) {
+int InputLua::findTouch(lua_State* L) {
     const Touch* found = getInput(L).findTouch(lua::Stack::read<std::uint64_t>(L, 1));
     if (found == nullptr) {
         lua_pushnil(L);
@@ -396,7 +396,7 @@ int InputLua::clearVirtual(lua_State* L) {
 
 int InputLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"keyDown", &keyDown}, {"keyPressed", &keyPressed}, {"keyReleased", &keyReleased}, {"anyKeyPressed", &anyKeyPressed}, {"modifiers", &modifiers}, {"text", &text}, {"mouseDown", &mouseDown}, {"mousePressed", &mousePressed}, {"mouseReleased", &mouseReleased}, {"mousePosition", &mousePosition}, {"mouseFramebufferPosition", &mouseFramebufferPosition}, {"mouseDelta", &mouseDelta}, {"mouseScroll", &mouseScroll}, {"mouseInside", &mouseInside}, {"pointerCaptured", &pointerCaptured}, {"keyCaptured", &keyCaptured}, {"gamepadCaptured", &gamepadCaptured}, {"touches", &touches}, {"touch", &touch}, {"gestures", &lua::Binding::native<&gestures>}, {"setGestureSettings", &lua::Binding::native<&setGestureSettings>}, {"gestureSettings", &gestureSettings}, {"gamepadConnected", &gamepadConnected}, {"gamepadName", &gamepadName}, {"gamepadDown", &gamepadDown}, {"gamepadPressed", &gamepadPressed}, {"gamepadReleased", &gamepadReleased}, {"gamepadAxis", &gamepadAxis}, {"gamepadStick", &gamepadStick}, {"setGamepadDeadzone", &lua::Binding::native<&setGamepadDeadzone>}, {"gamepadDeadzone", &gamepadDeadzone}, {"lastDevice", &lastDevice}, {"loadActions", &lua::Binding::native<&loadActions>}, {"saveActions", &saveActions}, {"actionNames", &actionNames}, {"defineAction", &lua::Binding::native<&defineAction>}, {"removeAction", &removeAction}, {"clearActions", &clearActions}, {"actionDefinition", &actionDefinition}, {"setPressThreshold", &lua::Binding::native<&setPressThreshold>}, {"down", &actionDown}, {"pressed", &actionPressed}, {"released", &actionReleased}, {"value", &actionValue}, {"vector", &actionVector}, {"setGamepadIndex", &setGamepadIndex}, {"setVirtualButton", &setVirtualButton}, {"setVirtualStick", &setVirtualStick}, {"clearVirtual", &clearVirtual}, {nullptr, nullptr},
+        {"keyDown", &keyDown}, {"keyPressed", &keyPressed}, {"keyReleased", &keyReleased}, {"anyKeyPressed", &anyKeyPressed}, {"modifiers", &modifiers}, {"text", &text}, {"mouseDown", &mouseDown}, {"mousePressed", &mousePressed}, {"mouseReleased", &mouseReleased}, {"mousePosition", &mousePosition}, {"mouseFramebufferPosition", &mouseFramebufferPosition}, {"mouseDelta", &mouseDelta}, {"mouseScroll", &mouseScroll}, {"mouseInside", &mouseInside}, {"pointerCaptured", &pointerCaptured}, {"keyCaptured", &keyCaptured}, {"gamepadButtonCaptured", &gamepadButtonCaptured}, {"touches", &touches}, {"findTouch", &findTouch}, {"gestures", &lua::Binding::native<&gestures>}, {"setGestureSettings", &lua::Binding::native<&setGestureSettings>}, {"gestureSettings", &gestureSettings}, {"gamepadConnected", &gamepadConnected}, {"gamepadName", &gamepadName}, {"gamepadDown", &gamepadDown}, {"gamepadPressed", &gamepadPressed}, {"gamepadReleased", &gamepadReleased}, {"gamepadAxis", &gamepadAxis}, {"gamepadStick", &gamepadStick}, {"setGamepadDeadzone", &lua::Binding::native<&setGamepadDeadzone>}, {"gamepadDeadzone", &gamepadDeadzone}, {"lastDevice", &lastDevice}, {"loadActions", &lua::Binding::native<&loadActions>}, {"saveActions", &saveActions}, {"actionNames", &actionNames}, {"defineAction", &lua::Binding::native<&defineAction>}, {"removeAction", &removeAction}, {"clearActions", &clearActions}, {"actionDefinition", &actionDefinition}, {"setPressThreshold", &lua::Binding::native<&setPressThreshold>}, {"down", &actionDown}, {"pressed", &actionPressed}, {"released", &actionReleased}, {"value", &actionValue}, {"vector", &actionVector}, {"setGamepadIndex", &setGamepadIndex}, {"setVirtualButton", &setVirtualButton}, {"setVirtualStick", &setVirtualStick}, {"clearVirtual", &clearVirtual}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

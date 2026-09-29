@@ -20,7 +20,7 @@ function PixelSnap:init(entry)
     local batch = graphics2d.newSpriteBatch(tiles)
     for row = -20, 20 do
         for column = -40, 40 do
-            local kind = random:pick({8, 1, 1, 0.3})
+            local kind = random:weightedIndex({8, 1, 1, 0.3})
             batch:add({x = column * 16, y = row * 16, pivotX = 0, pivotY = 0, source = {(kind - 1) * 16, 0, 16, 16}})
         end
     end

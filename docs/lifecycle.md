@@ -6,10 +6,10 @@ This guide explains what happens to an app from start to stop: the order in whic
 
 The engine starts an app in a fixed order.
 
-1. The runtime reads `app.json`, creates the window and the engine, and every built-in plugin starts and installs its Lua modules, each one publishing `plugin_started`.
-2. The autoloads that `app.json` lists load in order, and each one gets `start` and publishes `autoload_started`.
+1. The runtime reads `app.json`, creates the window and the engine, and every built-in plugin starts and installs its Lua modules, each one publishing `pluginStarted`.
+2. The autoloads that `app.json` lists load in order, and each one gets `start` and publishes `autoloadStarted`.
 3. `source/main.lua` runs, which usually subscribes listeners and pushes the first scene.
-4. The engine publishes `app_started`, and the first frame begins.
+4. The engine publishes `appStarted`, and the first frame begins.
 
 Every frame then runs the same steps.
 
@@ -21,13 +21,13 @@ Every frame then runs the same steps.
 
 Platform events, such as keys, touches and focus changes, arrive between frames. The autoloads get them first and then the top scene, as the [scene reference](lua-api/scene.md#events) describes.
 
-When the app stops, the engine publishes `app_stopping`, removes every scene from the top down, together with a scene that is still loading and the preloaded scenes, stops the autoloads from the last to the first and stops the plugins in reverse order. A restart, such as a hot reload of an edited script, stops the app the same way, even in the middle of a load, and creates a new engine with a fresh Lua state that runs the whole sequence again. On Android the app stops the same way when its activity closes, through `haylen.quit()`, the back button of the root screen or the player removing it from the recent apps, and the activity then finishes normally.
+When the app stops, the engine publishes `appStopping`, removes every scene from the top down, together with a scene that is still loading and the preloaded scenes, stops the autoloads from the last to the first and stops the plugins in reverse order. A restart, such as a hot reload of an edited script, stops the app the same way, even in the middle of a load, and creates a new engine with a fresh Lua state that runs the whole sequence again. On Android the app stops the same way when its activity closes, through `haylen.quit()`, the back button of the root screen or the player removing it from the recent apps, and the activity then finishes normally.
 
 ```lua
 local events = require('haylen.events')
 local scene = require('haylen.scene')
 
-for _, name in ipairs({'app_started', 'scene_loaded', 'scene_entered', 'scene_enter_transition_finished', 'app_stopping'}) do
+for _, name in ipairs({'appStarted', 'sceneLoaded', 'sceneEntered', 'sceneEnterTransitionFinished', 'appStopping'}) do
     events.on(name, function() print(name) end)
 end
 
@@ -48,25 +48,25 @@ The platform moves the app between three states, which `haylen.appState()` retur
 
 | State | Meaning | Event |
 | --- | --- | --- |
-| `'active'` | In the foreground with the focus. | `app_active` |
-| `'inactive'` | Still visible, but the window lost the focus or the system interrupted the app, such as with a phone call. | `app_inactive` |
-| `'background'` | Hidden, such as a minimized window, another app on a phone or a hidden browser tab. | `app_background` |
+| `'active'` | In the foreground with the focus. | `appActive` |
+| `'inactive'` | Still visible, but the window lost the focus or the system interrupted the app, such as with a phone call. | `appInactive` |
+| `'background'` | Hidden, such as a minimized window, another app on a phone or a hidden browser tab. | `appBackground` |
 
 On the web the page tells the engine: a hidden tab (`visibilitychange`) sends the app to `'background'` and a visible one brings it back, and a page that goes away (`pagehide`) makes the files of [haylen.storage](lua-api/storage.md) durable once more. On Android the app holds the audio focus while it is in the foreground, and another app that takes it, for a phone call or an alarm, interrupts the app, which stays `'inactive'` until the focus comes back, even when its window has the focus.
 
 The engine takes care of what every app needs when the state changes.
 
 - Leaving `'active'` releases every held key, mouse button and touch, and every virtual button and stick of the on-screen controls, so nothing stays pressed when the player comes back.
-- Going to `'background'` stops rendering, so the app does no GPU work, and suspends the audio device. Preferences with unsaved changes are saved, and once the listeners of `app_background` have run the files of [haylen.storage](lua-api/storage.md) become durable, because the platform may end an app in the background without warning. An app saves its own progress in a listener of `app_background`.
+- Going to `'background'` stops rendering, so the app does no GPU work, and suspends the audio device. Preferences with unsaved changes are saved, and once the listeners of `appBackground` have run the files of [haylen.storage](lua-api/storage.md) become durable, because the platform may end an app in the background without warning. An app saves its own progress in a listener of `appBackground`.
 - Coming back from `'background'` resumes the audio, and the first frame after a halt takes no time, so timers, tweens and physics do not jump by the time the app was away.
-- A system interruption of the audio, such as a phone call, an alarm, Siri or another Android app taking the audio focus, pauses every voice and publishes `audio_interrupted`. Its end resumes them and publishes `audio_resumed` once the app is active, and a change of the audio output publishes `audio_route_changed`, as the [audio guide](audio.md#sessions-and-interruptions) explains.
+- A system interruption of the audio, such as a phone call, an alarm, Siri or another Android app taking the audio focus, pauses every voice and publishes `audioInterrupted`. Its end resumes them and publishes `audioResumed` once the app is active, and a change of the audio output publishes `audioRouteChanged`, as the [audio guide](audio.md#sessions-and-interruptions) explains.
 
 Whether the app keeps running while it is not active depends on the lifecycle options, which `app.json` sets in its `lifecycle` object and `haylen.setLifecycle` changes at run time. A halted app lets no time pass: scenes, autoloads, timers, tweens and fixed steps stand still and input is held back, while Varn's event loop still delivers network replies and `async` results. `haylen.halted()` tells whether the app is halted right now.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `pauseOnBackground` | `true` | Halts the app in the background. |
-| `pauseOnFocusLoss` | `false` | Halts the app while it is inactive. Tiny Island turns it on, so the run stands still whenever the window loses focus, and opens its pause menu on `app_inactive` and `app_background`, so the run stays paused when the player comes back. |
+| `pauseOnFocusLoss` | `false` | Halts the app while it is inactive. Tiny Island turns it on, so the run stands still whenever the window loses focus, and opens its pause menu on `appInactive` and `appBackground`, so the run stays paused when the player comes back. |
 | `muteOnFocusLoss` | `false` | Mutes the master bus while the app is not active, and restores the mute the player chose when it comes back. |
 
 ```json
@@ -84,11 +84,11 @@ local storage = require('haylen.storage')
 
 local progress = {day = 3, wood = 12}
 
-events.on('app_background', function()
+events.on('appBackground', function()
     storage.writeJson('saves/progress.json', progress)
 end)
 
-events.on('app_active', function()
+events.on('appActive', function()
     print('welcome back, the app is ' .. haylen.appState())
 end)
 
@@ -97,44 +97,44 @@ haylen.setLifecycle({muteOnFocusLoss = false})
 print(haylen.lifecycle().pauseOnFocusLoss, haylen.halted())
 ```
 
-Low memory warnings publish `app_low_memory` after the engine has dropped every asset that nothing holds anymore, which is the moment to unload preload groups and caches the app can rebuild. A request to close the window publishes `app_quit_requested`, and `haylen.quit()` ends the app.
+Low memory warnings publish `appLowMemory` after the engine has dropped every asset that nothing holds anymore, which is the moment to unload preload groups and caches the app can rebuild. A request to close the window publishes `appQuitRequested`, and `haylen.quit()` ends the app.
 
-The device and its screen publish their changes too. `keyboard_shown` and `keyboard_hidden` follow the on-screen keyboard, whose frame the UI already avoids by lifting the focused text field above it, as the [text input guide](text-input.md) explains. `network_online` and `network_offline` follow the network where browsers, Android and Apple platforms, macOS included, report it: the first report publishes the state the app starts in, usually on its first frame, and later reports publish each change, while `haylen.networkState()` returns the last state at any time. `window_orientation_changed` follows the screen, whose orientation `window.orientation()` reads and `window.lockOrientation` locks, as [haylen.window](lua-api/window.md) describes. On desktops, `window_moved` follows the position of the window and `window_monitors_changed` the monitors and their work areas, as the [desktop guide](desktop.md) describes.
+The device and its screen publish their changes too. `keyboardShown` and `keyboardHidden` follow the on-screen keyboard, whose frame the UI already avoids by lifting the focused text field above it, as the [text input guide](text-input.md) explains. `networkOnline` and `networkOffline` follow the network where browsers, Android and Apple platforms, macOS included, report it: the first report publishes the state the app starts in, usually on its first frame, and later reports publish each change, while `haylen.networkState()` returns the last state at any time. `windowOrientationChanged` follows the screen, whose orientation `window.orientation()` reads and `window.lockOrientation` locks, as [haylen.window](lua-api/window.md) describes. On desktops, `windowMoved` follows the position of the window and `windowMonitorsChanged` the monitors and their work areas, as the [desktop guide](desktop.md) describes.
 
 ```lua
 local events = require('haylen.events')
 
-events.on('network_offline', function()
+events.on('networkOffline', function()
     print('playing offline until the network comes back')
 end)
 
-events.on('keyboard_shown', function(frame)
+events.on('keyboardShown', function(frame)
     print('the keyboard covers the screen from y = ' .. frame.y)
 end)
 ```
 
 ## Assets, connections and objects
 
-Assets announce their life as well. `asset_loaded` follows an asset into the cache of [haylen.assets](lua-api/assets.md), `asset_unloaded` follows the moment its last holder lets go, whether a script, a sprite or the last preload group that held it, and `asset_reloaded` follows a changed file that hot reload applied to a live asset. The asset manager learns about a release wherever it happens, even inside the garbage collector or on a worker thread, so these events are queued and arrive at the end of the frame, in the order they happened.
+Assets announce their life as well. `assetLoaded` follows an asset into the cache of [haylen.assets](lua-api/assets.md), `assetUnloaded` follows the moment its last holder lets go, whether a script, a sprite or the last preload group that held it, and `assetReloaded` follows a changed file that hot reload applied to a live asset. The asset manager learns about a release wherever it happens, even inside the garbage collector or on a worker thread, so these events are queued and arrive at the end of the frame, in the order they happened.
 
-Every WebSocket of [haylen.net](lua-api/net.md) publishes `websocket_connected` when it opens and `websocket_disconnected` when an open connection ends. A socket opened with reconnection publishes `websocket_reconnecting` with the attempt number and the wait before it, each time it schedules an attempt, until a connection opens again or it gives up.
+Every WebSocket of [haylen.net](lua-api/net.md) publishes `webSocketConnected` when it opens and `webSocketDisconnected` when an open connection ends. A socket opened with reconnection publishes `webSocketReconnecting` with the attempt number and the wait before it, each time it schedules an attempt, until a connection opens again or it gives up.
 
-The debug statistics count objects by type: every userdata type exported to Lua, and engine resources such as textures, fonts, sounds, bodies, emitters, UI documents and tweens. While object events are on, through `debug.setObjectEvents(true)` or `debug.objectEvents` in `app.json`, every creation and destruction also publishes `object_created` or `object_destroyed` with the type name, queued for the end of the frame. They are off by default because a busy app creates many objects every frame.
+The debug statistics count objects by type: every userdata type exported to Lua, and engine resources such as textures, fonts, sounds, bodies, emitters, UI documents and tweens. While object events are on, through `debug.setObjectEvents(true)` or `debug.objectEvents` in `app.json`, every creation and destruction also publishes `objectCreated` or `objectDestroyed` with the type name, queued for the end of the frame. They are off by default because a busy app creates many objects every frame.
 
 ```lua
 local events = require('haylen.events')
 local debugging = require('haylen.debug')
 
-events.on('asset_unloaded', function(asset)
+events.on('assetUnloaded', function(asset)
     print('freed ' .. asset.type .. ' ' .. asset.path)
 end)
 
-events.on('websocket_disconnected', function(socket)
+events.on('webSocketDisconnected', function(socket)
     print('lost ' .. socket.url .. ' with code ' .. socket.code)
 end)
 
 debugging.setObjectEvents(true)
-events.on('object_created', function(object)
+events.on('objectCreated', function(object)
     if object.type == 'haylen.Sprite' then
         print('a sprite was created')
     end
@@ -152,14 +152,14 @@ Every scene goes through the same states, which `scene.state(scene)` and `Scene:
 | State | Reached when | Hook | Event |
 | --- | --- | --- | --- |
 | `created` | A change or a preload takes the scene. | None. | None. |
-| `loading` | Its load starts. | `load` | `scene_loading` |
-| `loaded` | Its load finished. | None. | `scene_loaded` |
-| `entering` | It enters the stack, or comes back to the top. | `enter`, or `resume` | `scene_entered`, or `scene_resumed` |
-| `active` | The transition that shows it finished. | `enterTransitionFinished` | `scene_enter_transition_finished` |
-| `covered` | Another scene is pushed on top of it. | `pause` | `scene_paused` |
-| `exiting` | A change starts taking it off the stack. | `exitTransitionStarted` on the top scene | `scene_exit_transition_started` |
-| `exited` | It left the stack. | `exit` | `scene_exited` |
-| `unloaded` | It released what it loaded, right after `exit`, after a failed load or when its preload was cancelled. | `unload` | `scene_unloaded` |
+| `loading` | Its load starts. | `load` | `sceneLoading` |
+| `loaded` | Its load finished. | None. | `sceneLoaded` |
+| `entering` | It enters the stack, or comes back to the top. | `enter`, or `resume` | `sceneEntered`, or `sceneResumed` |
+| `active` | The transition that shows it finished. | `enterTransitionFinished` | `sceneEnterTransitionFinished` |
+| `covered` | Another scene is pushed on top of it. | `pause` | `scenePaused` |
+| `exiting` | A change starts taking it off the stack. | `exitTransitionStarted` on the top scene | `sceneExitTransitionStarted` |
+| `exited` | It left the stack. | `exit` | `sceneExited` |
+| `unloaded` | It released what it loaded, right after `exit`, after a failed load or when its preload was cancelled. | `unload` | `sceneUnloaded` |
 
 A scene that unloaded can load again, since the same scene table may be pushed again later. Every scene that started loading unloads exactly once, so `unload` pairs with `load` the way `exit` pairs with `enter`, and it also releases a load that stopped halfway.
 
@@ -172,21 +172,21 @@ scene.replace(game, {duration = 1, loading = view, loadingDelay = 0.2, minimumLo
 
   time   menu (on top)              game (next)                  screen                          events
   ----   -------------------------  ---------------------------  ------------------------------  -----------------------------------------
-  0      exitTransitionStarted                                    cover: the menu fades out        scene_exit_transition_started menu
-                                                                                                   scene_cover_started
+  0      exitTransitionStarted                                    cover: the menu fades out        sceneExitTransitionStarted menu
+                                                                                                   sceneCoverStarted
   ...    update, render                                           the menu, fading
-  0.5    exit                                                     full cover                       scene_cover_finished, scene_exited menu
-         unload                     load starts                                                    scene_unloaded menu, scene_loading game
-                                                                                                   scene_hold_started
+  0.5    exit                                                     full cover                       sceneCoverFinished, sceneExited menu
+         unload                     load starts                                                    sceneUnloaded menu, sceneLoading game
+                                                                                                   sceneHoldStarted
   ...                               load runs, :await()           hold: the covered frame
   0.7                               progress reaches the view     view:enter, then view:update     (the view appears after loadingDelay)
-  ...                               loaded                        the view stays its minimum time  scene_loaded game
+  ...                               loaded                        the view stays its minimum time  sceneLoaded game
   1.2                                                             the view fades out
-  1.45                              enter                         view:exit, reveal starts         scene_hold_finished, scene_entered game
-                                                                                                   scene_reveal_started
+  1.45                              enter                         view:exit, reveal starts         sceneHoldFinished, sceneEntered game
+                                                                                                   sceneRevealStarted
   ...                               update, render                the game fades in
-  1.95                              enterTransitionFinished       the change ended                 scene_reveal_finished
-                                                                                                   scene_enter_transition_finished game
+  1.95                              enterTransitionFinished       the change ended                 sceneRevealFinished
+                                                                                                   sceneEnterTransitionFinished game
 ```
 
 The hold draws the effect at its switch point with the last frame of the outgoing scenes and no scene at all, so the transition itself is the loading screen when the change has no loading view, and waiting costs almost no GPU work. Once the load is done and the view stayed its minimum time, the view fades out into the covered frame over `loadingFadeOut` seconds, 0.25 by default, so the reveal starts from the covered frame without a cut. During the fade the view, the autoloads and the UI documents render over the covered frame into an image of their own, which the effect blends over the covered frame with the opacity left, and a `loadingFadeOut` of 0 takes the view away at once. A view over the current scenes, before an effect that shows both scenes or a change without an effect, goes away at once, since the scenes under it keep running. A pushed-over scene only receives `pause` at full cover and `resume` when the pushed scene pops, and popped scenes exit and unload at full cover while the scene below them receives `resume`.
@@ -200,15 +200,15 @@ scene.replace(game, {effect = 'slideIn', duration = 0.5})
 
   time   menu (on top)              game (next)                  screen                          events
   ----   -------------------------  ---------------------------  ------------------------------  -----------------------------------------
-  0      update, render             load starts                  the menu                         scene_loading game
+  0      update, render             load starts                  the menu                         sceneLoading game
   ...    update, render             load runs, :await()          the menu, and the view if any
-  0.3                               loaded                                                         scene_loaded game
-         exitTransitionStarted      enter                        the effect starts                scene_exit_transition_started menu
-                                                                                                   scene_entered game, scene_reveal_started
+  0.3                               loaded                                                         sceneLoaded game
+         exitTransitionStarted      enter                        the effect starts                sceneExitTransitionStarted menu
+                                                                                                   sceneEntered game, sceneRevealStarted
   ...    render (outgoing image)    update, render (incoming)    both scenes, each in its image
-  0.8    exit, unload               enterTransitionFinished      exit point at the end            scene_exited menu, scene_unloaded menu
-                                                                                                   scene_reveal_finished
-                                                                                                   scene_enter_transition_finished game
+  0.8    exit, unload               enterTransitionFinished      exit point at the end            sceneExited menu, sceneUnloaded menu
+                                                                                                   sceneRevealFinished
+                                                                                                   sceneEnterTransitionFinished game
 ```
 
 The scenes that leave the stack exit at the exit point of the effect, in the update that reaches it and before that frame renders, so nothing draws them after they exit.
@@ -217,7 +217,7 @@ The scenes that leave the stack exit at the exit point of the effect, in the upd
 
 `load` runs as a task that the scene owns, so it can wait on promises with `:await()`, and it can also return a promise. The load context reports progress with `context:progress(value, message)`, reads the `params` of the change and preloads asset groups with `context:preload(groups)`, whose progress folds into the progress of the load. The asset manager decodes on the worker pools and creates GPU resources within the upload budget of each frame, so the frame never stalls and the reveal stays smooth right after the load. `scene.preload(scene, params)` starts a load in the background without changing the stack, and a later change that takes the scene is instant, or waits only for the rest of its load.
 
-A failed load, an error in `load`, a rejected promise it returned or an asset of a group it preloads that failed, unloads the scene, publishes `scene_load_failed` and ends the change without it: its promise rejects and `onComplete` receives `false`. When the scene that was on top is still alive, the change keeps it, an effect that covers the screen reveals it again, and the failure goes to the `onError` of the change or to the log. When it already unloaded, the failure goes to `onError`, which may route the app to another scene, and to the error screen without one.
+A failed load, an error in `load`, a rejected promise it returned or an asset of a group it preloads that failed, unloads the scene, publishes `sceneLoadFailed` and ends the change without it: its promise rejects and `onComplete` receives `false`. When the scene that was on top is still alive, the change keeps it, an effect that covers the screen reveals it again, and the failure goes to the `onError` of the change or to the log. When it already unloaded, the failure goes to `onError`, which may route the app to another scene, and to the error screen without one.
 
 ### Queues, the pause and the background
 
@@ -247,7 +247,7 @@ local function tracked(name)
     }
 end
 
-for _, name in ipairs({'scene_cover_started', 'scene_hold_started', 'scene_reveal_started', 'scene_reveal_finished'}) do
+for _, name in ipairs({'sceneCoverStarted', 'sceneHoldStarted', 'sceneRevealStarted', 'sceneRevealFinished'}) do
     events.on(name, function(transfer) print(name) end)
 end
 
@@ -302,7 +302,7 @@ local menu = {
     enter = function(self)
         haylen.setPaused(true)
         -- The owner makes the tween run while paused, like the menu.
-        tween.to(self.glow, 0.5, {alpha = 1}, {owner = self, repeatCount = -1, loop = 'yoyo'})
+        tween.to(self.glow, 0.5, {alpha = 1}, {owner = self, repeatCount = -1, loopMode = 'yoyo'})
         timer.after(1, function() scene.pop() end, {owner = self})
     end,
     exit = function(self)
@@ -333,7 +333,7 @@ Autoloads are Lua modules that load before the first scene and live for the whol
 | `render`, `renderUi` | Every frame, after the scenes of the same pass. |
 | `stop` | When the app stops, after the scenes left, from the last autoload to the first. |
 
-The `autoload` list of `app.json` names the modules, which load in order before `source/main.lua` runs. `haylen.autoload(module)` adds one later, and `haylen.autoload(name, module)` gives it a name of its own. The name defaults to the last part of the module in camel case, so `state.player-data` becomes `playerData`, and `haylen.autoloads.playerData` holds the table, which `require('state.player-data')` returns too. The `processMode` field of the table sets its process mode, and without one an autoload counts as `'pausable'`. Starting and stopping an autoload publishes `autoload_started` and `autoload_stopped` with its name.
+The `autoload` list of `app.json` names the modules, which load in order before `source/main.lua` runs. `haylen.autoload(module)` adds one later, and `haylen.autoload(name, module)` gives it a name of its own. The name defaults to the last part of the module in camel case, so `state.player-data` becomes `playerData`, and `haylen.autoloads.playerData` holds the table, which `require('state.player-data')` returns too. The `processMode` field of the table sets its process mode, and without one an autoload counts as `'pausable'`. Starting and stopping an autoload publishes `autoloadStarted` and `autoloadStopped` with its name.
 
 ```json
 {
@@ -410,14 +410,14 @@ local Arena = haylen.class('Arena', scene.Scene)
 
 function Arena:enter()
     self:listen(healthChanged, function(health) print('health', health) end)
-    self:listen('wave_started', function(wave) print('wave', wave) end)
+    self:listen('waveStarted', function(wave) print('wave', wave) end)
     timer.every(0.25, function() print('arena tick') end, {owner = self, count = 2})
 end
 
 scene.push(Arena())
 timer.after(0.1, function()
     healthChanged:emit(80)
-    events.emit('wave_started', 1)
+    events.emit('waveStarted', 1)
 end)
 
 timer.after(1, function()
@@ -425,7 +425,7 @@ timer.after(1, function()
     timer.after(0.1, function()
         -- The arena unloaded, so nothing it registered runs anymore.
         healthChanged:emit(40)
-        events.emit('wave_started', 2)
+        events.emit('waveStarted', 2)
         print('listeners left', healthChanged.size)
     end)
 end)

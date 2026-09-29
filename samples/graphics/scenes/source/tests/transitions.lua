@@ -14,7 +14,7 @@ Transitions.hints = 'Pick an effect to push a card with it. The card leaves by i
 Transitions.effects = {'fade', 'crossFade', 'moveIn', 'slideIn', 'push', 'shrinkGrow', 'flipX', 'flipY', 'zoomFlip', 'rotoZoom', 'jumpZoom', 'splitColumns', 'splitRows', 'turnOffTiles', 'fadeTiles', 'pageTurn', 'radialClockwise', 'radialCounterclockwise', 'wipe', 'inOut', 'outIn', 'iris', 'dissolve', 'pixelate'}
 Transitions.directions = {'left', 'right', 'up', 'down', 'upLeft', 'upRight', 'downLeft', 'downRight'}
 Transitions.opposite = {left = 'right', right = 'left', up = 'down', down = 'up', upLeft = 'downRight', upRight = 'downLeft', downLeft = 'upRight', downRight = 'upLeft'}
-Transitions.eases = {'linear', 'sine_in_out', 'quad_out', 'cubic_in_out', 'expo_in_out', 'back_out', 'elastic_out', 'bounce_out'}
+Transitions.eases = {'linear', 'sineInOut', 'quadOut', 'cubicInOut', 'expoInOut', 'backOut', 'elasticOut', 'bounceOut'}
 Transitions.colors = {'#FF2E5E8A', '#FF8A3E5E', '#FF3E8A5E', '#FF8A6E2E', '#FF5E3E8A'}
 
 -- Turns a list of names into the items of a picker.
@@ -28,7 +28,7 @@ end
 
 function Transitions:init(entry)
     Transitions.super.init(self, entry)
-    self.options = {direction = 'left', ease = 'cubic_in_out', duration = 0.8, color = '#FF000000'}
+    self.options = {direction = 'left', ease = 'cubicInOut', duration = 0.8, color = '#FF000000'}
     self.played = 0
 end
 

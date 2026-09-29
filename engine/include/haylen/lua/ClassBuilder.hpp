@@ -222,7 +222,7 @@ template <Bound T> class ClassBuilder final {
             lua_pop(L, 1);
             return getter(L);
         }
-        return luaL_error(L, "%s has no member '%s'.", Type<T>::name, luaL_tolstring(L, 2, nullptr));
+        return luaL_error(L, "The type %s has no member '%s'.", Type<T>::name, luaL_tolstring(L, 2, nullptr));
     }
 
     static int indexWithIntegers(lua_State* L) {
@@ -246,7 +246,7 @@ template <Bound T> class ClassBuilder final {
             lua_pop(L, 1);
             return setter(L);
         }
-        return luaL_error(L, "%s has no writable property '%s'.", Type<T>::name, luaL_tolstring(L, 2, nullptr));
+        return luaL_error(L, "The type %s has no writable property '%s'.", Type<T>::name, luaL_tolstring(L, 2, nullptr));
     }
 
     lua_State* state;

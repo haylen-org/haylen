@@ -12,8 +12,8 @@ local Owners = haylen.class('Owners', sample.Test)
 
 local kCode = [[
 alarm:connect(function() guard.alert = guard.alert + 1 end, {owner = guard})
-events.on('alarm_raised', function() guard.heard = guard.heard + 1 end, {owner = guard})
-events.on('alarm_raised', showBanner, {owner = bannerDocument})  -- ends when the banner is unmounted
+events.on('alarmRaised', function() guard.heard = guard.heard + 1 end, {owner = guard})
+events.on('alarmRaised', showBanner, {owner = bannerDocument})  -- ends when the banner is unmounted
 guards[#guards] = nil  collectgarbage()  -- the listeners of that guard end at the end of the frame]]
 
 function Owners:enter()
@@ -43,7 +43,7 @@ function Owners:spawn()
     self.names = self.names + 1
     local guard = {name = 'guard ' .. self.names, alert = 0, heard = 0}
     self.alarm:connect(function() guard.alert = guard.alert + 1 end, {owner = guard})
-    events.on('alarm_raised', function() guard.heard = guard.heard + 1 end, {owner = guard})
+    events.on('alarmRaised', function() guard.heard = guard.heard + 1 end, {owner = guard})
     table.insert(self.guards, guard)
     self.journal:add(guard.name .. ' connects to the signal and the event', sample.green)
 end
@@ -62,7 +62,7 @@ function Owners:showBanner(visible)
     if visible and not self.banner then
         self.banner = ui.mount(ui.label{id = 'text', text = 'The banner listens', font = 'heading', color = 'warningText', anchor = 'top', margin = {140, 0}}, {owner = self, layer = 1})
         local banner = self.banner
-        events.on('alarm_raised', function() banner:set('text', {text = 'The banner heard the alarm at frame ' .. haylen.frame()}) end, {owner = banner})
+        events.on('alarmRaised', function() banner:set('text', {text = 'The banner heard the alarm at frame ' .. haylen.frameIndex()}) end, {owner = banner})
         self.journal:add('banner mounted with a listener it owns', sample.green)
     elseif not visible and self.banner then
         self.banner:unmount()
@@ -73,13 +73,13 @@ end
 
 function Owners:raise()
     self.alarm:emit()
-    events.emit('alarm_raised')
+    events.emit('alarmRaised')
     self.journal:add(string.format('alarm: %d signal listeners, %d event listeners', self.alarm.size, self:eventListeners()), sample.warm)
 end
 
 function Owners:eventListeners()
-    for _, topic in ipairs(events.stats()) do
-        if topic.name == 'alarm_raised' then
+    for _, topic in ipairs(events.topics()) do
+        if topic.name == 'alarmRaised' then
             return topic.listeners, topic.stale
         end
     end

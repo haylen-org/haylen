@@ -16,7 +16,7 @@ local kGravity, kJump, kCut = 2600, 1080, 0.45
 local kCoyote, kBuffer = 0.1, 0.12
 local kDashSpeed, kDashTime, kDashCooldown = 1400, 0.18, 0.6
 local kPrompts = {
-    keyboard_mouse = 'A and D or the arrows run, Space or a left click jumps, Left Shift or a right click dashes.',
+    keyboardMouse = 'A and D or the arrows run, Space or a left click jumps, Left Shift or a right click dashes.',
     gamepad = 'The left stick or the d-pad runs, south jumps, west dashes.',
     touch = 'The stick runs, Jump jumps and Dash dashes.',
 }
@@ -166,7 +166,7 @@ function Character:draw(area)
     end
     for _, spot in ipairs(self.spots) do
         if not spot.taken then
-            local bob = math.sin(haylen.time() * 3 + spot.x) * 6
+            local bob = math.sin(haylen.elapsed() * 3 + spot.x) * 6
             graphics2d.drawCircle(spot.x, spot.y + bob, 16, sample.warm, {layer = 1})
         end
     end

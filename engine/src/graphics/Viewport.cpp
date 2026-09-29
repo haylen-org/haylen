@@ -10,7 +10,7 @@ const std::array<std::pair<std::string_view, Viewport::ScalingPolicy>, 5> Viewpo
     {"fill", ScalingPolicy::Fill},
     {"stretch", ScalingPolicy::Stretch},
     {"expand", ScalingPolicy::Expand},
-    {"pixel_perfect", ScalingPolicy::PixelPerfect},
+    {"pixelPerfect", ScalingPolicy::PixelPerfect},
 }};
 
 std::optional<Viewport::ScalingPolicy> Viewport::scalingPolicyFromName(std::string_view name) noexcept {

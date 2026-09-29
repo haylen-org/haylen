@@ -8,19 +8,19 @@ local sample = require('sample')
 
 local Animation = haylen.class('Animation', sample.Test)
 
-local kLoops = {'loop', 'once', 'ping_pong'}
+local kLoops = {'loop', 'once', 'pingPong'}
 local kLogLines = 8
 local kCode = [[
-animator:add('attack', animation2d.grid(sheet, {frameWidth = 64, frameHeight = 64, frames = {17, 18, 19, 20, 21, 22}, fps = 12, loop = 'once'}))
+animator:add('attack', animation2d.fromGrid(sheet, {frameWidth = 64, frameHeight = 64, cells = {17, 18, 19, 20, 21, 22}, framesPerSecond = 12, loop = 'once'}))
 animator.onFrame = function(name, frame) if name == 'attack' and frame == 3 then print('hit') end end
 animator.onFinish = function(name) print(name .. ' finished') end
 animator:play('attack', true)  animator:queue('run')  animator:queue('idle')  animator.speed = 1.5  animator:update(dt)  animator:apply(sprite)]]
 
 -- Adds the clips of the walker sheet to an animator, with the run clip in the given loop mode.
 local function clips(animator, sheet, runLoop)
-    animator:add('idle', animation2d.grid(sheet, {frameWidth = 64, frameHeight = 64, frames = {1, 2, 3, 4}, fps = 6}))
-    animator:add('run', animation2d.grid(sheet, {frameWidth = 64, frameHeight = 64, frames = {9, 10, 11, 12, 13, 14, 15, 16}, fps = 12, loop = runLoop}))
-    animator:add('attack', animation2d.grid(sheet, {frameWidth = 64, frameHeight = 64, frames = {17, 18, 19, 20, 21, 22}, fps = 12, loop = 'once'}))
+    animator:add('idle', animation2d.fromGrid(sheet, {frameWidth = 64, frameHeight = 64, cells = {1, 2, 3, 4}, framesPerSecond = 6}))
+    animator:add('run', animation2d.fromGrid(sheet, {frameWidth = 64, frameHeight = 64, cells = {9, 10, 11, 12, 13, 14, 15, 16}, framesPerSecond = 12, loop = runLoop}))
+    animator:add('attack', animation2d.fromGrid(sheet, {frameWidth = 64, frameHeight = 64, cells = {17, 18, 19, 20, 21, 22}, framesPerSecond = 12, loop = 'once'}))
 end
 
 function Animation:enter()
@@ -83,7 +83,7 @@ function Animation:combo()
     self:play('attack')
     self.hero.animator:queue('run')
     self.hero.animator:queue('idle')
-    self:log('queued run and idle, ' .. self.hero.animator.queued .. ' waiting')
+    self:log('queued run and idle, ' .. self.hero.animator.queuedCount .. ' waiting')
 end
 
 function Animation:update(dt)
@@ -97,7 +97,7 @@ function Animation:update(dt)
         entry.animator:apply(entry.sprite)
     end
     local animator = self.hero.animator
-    self:status(string.format('%s frame %d   time %.2f   playing %s   finished %s   queued %d   speed %.2f', animator.current, animator.frame, animator.time, animator.playing, animator.finished, animator.queued, animator.speed))
+    self:status(string.format('%s frame %d   time %.2f   playing %s   finished %s   queued %d   speed %.2f', animator.current, animator.frame, animator.time, animator.playing, animator.finished, animator.queuedCount, animator.speed))
 end
 
 function Animation:draw(area)

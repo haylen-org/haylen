@@ -27,7 +27,7 @@ function TimeScale:enter()
     self.boxes, self.handles = {}, {}
     for index, lane in ipairs(kLanes) do
         self.boxes[index] = {x = 0}
-        self.handles[index] = tween.to(self.boxes[index], 2, {x = 1000}, {owner = self, ease = 'sine_in_out', loop = 'yoyo', repeatCount = -1, tag = lane.tag, unscaled = lane.unscaled})
+        self.handles[index] = tween.to(self.boxes[index], 2, {x = 1000}, {owner = self, ease = 'sineInOut', loopMode = 'yoyo', repeatCount = -1, tag = lane.tag, unscaled = lane.unscaled})
     end
     self:frame({
         hint = 'The enemies share a tag, the fourth tween has its own scale and the last one runs on real time.',

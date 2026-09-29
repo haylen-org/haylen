@@ -10,14 +10,14 @@ Functions that take a boolean require a real `true` or `false`. Other values rai
 
 ## Functions
 
-### window.size()
+### window.framebufferSize()
 
 Returns the framebuffer width and height in pixels, as two numbers. On high-density displays these are physical pixels, not window points.
 
 ```lua
 local window = require('haylen.window')
 
-local width, height = window.size()
+local width, height = window.framebufferSize()
 print(string.format('rendering at %dx%d pixels', width, height))
 ```
 
@@ -45,7 +45,7 @@ print('fullscreen:', window.fullscreen())
 
 ### window.setFullscreen(enabled)
 
-Switches between fullscreen and windowed mode. Nothing happens when the window is already in the requested mode. Every change, from the app or from the player, publishes the `window_fullscreen_changed` event of [haylen.events](events.md#engine-events) on the next frame.
+Switches between fullscreen and windowed mode. Nothing happens when the window is already in the requested mode. Every change, from the app or from the player, publishes the `windowFullscreenChanged` event of [haylen.events](events.md#engine-events) on the next frame.
 
 ```lua
 local window = require('haylen.window')
@@ -96,21 +96,21 @@ Sets the mouse cursor shape shown over the window. An unknown name raises `bad a
 | --- | --- |
 | `'default'` | The platform default cursor. |
 | `'arrow'` | Arrow pointer. |
-| `'ibeam'` | Text insertion bar. |
+| `'iBeam'` | Text insertion bar. |
 | `'crosshair'` | Crosshair. |
-| `'pointing_hand'` | Hand used for links and buttons. |
-| `'resize_horizontal'` | Left and right arrows. |
-| `'resize_vertical'` | Up and down arrows. |
-| `'resize_diagonal_down'` | Arrows from the top left to the bottom right. |
-| `'resize_diagonal_up'` | Arrows from the bottom left to the top right. |
-| `'resize_all'` | Arrows in four directions. |
-| `'not_allowed'` | Blocked action. |
+| `'pointingHand'` | Hand used for links and buttons. |
+| `'resizeHorizontal'` | Left and right arrows. |
+| `'resizeVertical'` | Up and down arrows. |
+| `'resizeDiagonalDown'` | Arrows from the top left to the bottom right. |
+| `'resizeDiagonalUp'` | Arrows from the bottom left to the top right. |
+| `'resizeAll'` | Arrows in four directions. |
+| `'notAllowed'` | Blocked action. |
 
 ```lua
 local window = require('haylen.window')
 
 local function hoverButton(hovered)
-    window.setCursor(hovered and 'pointing_hand' or 'default')
+    window.setCursor(hovered and 'pointingHand' or 'default')
 end
 
 hoverButton(true)
@@ -147,7 +147,7 @@ require('haylen.scene').push({
 })
 ```
 
-### window.showKeyboard(visible)
+### window.setKeyboardVisible(visible)
 
 Shows or hides the plain on-screen keyboard, for apps that take typing without a text field of the UI, such as a typing game. It opens through the same native text input as the text fields of [haylen.ui](ui.md), with an empty field of its own, so phones, tablets, TVs and browsers show their keyboard and input methods work. Typed text arrives as `character` events in the scene `event` callback and through `input.text()` from `haylen.input`, a correction erases with `backspace` key events and types again, return, tab and escape arrive as `enter`, `tab` and `escape` key events, and text the input method still composes arrives once it is committed. Desktop apps type with the physical keyboard either way. Safari on iOS only opens the keyboard from a tap, so there a text field of the UI is the reliable way to type. The [text input guide](../text-input.md) describes each platform.
 
@@ -158,12 +158,12 @@ local nameField = {text = '', editing = false}
 
 local function beginEditing()
     nameField.editing = true
-    window.showKeyboard(true)
+    window.setKeyboardVisible(true)
 end
 
 local function endEditing()
     nameField.editing = false
-    window.showKeyboard(false)
+    window.setKeyboardVisible(false)
 end
 
 beginEditing()
@@ -172,7 +172,7 @@ endEditing()
 
 ### window.orientation()
 
-Returns the orientation of the screen, `'landscape'` or `'portrait'`. Phones, tablets and mobile browsers report the way the screen is turned, while desktop windows, Mac Catalyst windows and TVs always count as landscape. The `window_orientation_changed` event of [haylen.events](events.md) announces every change.
+Returns the orientation of the screen, `'landscape'` or `'portrait'`. Phones, tablets and mobile browsers report the way the screen is turned, while desktop windows, Mac Catalyst windows and TVs always count as landscape. The `windowOrientationChanged` event of [haylen.events](events.md) announces every change.
 
 ```lua
 local window = require('haylen.window')
@@ -241,7 +241,7 @@ print(window.backLeavesApp())
 
 ### window.setBackLeavesApp(enabled)
 
-Decides whether the back button of the platform, the Menu button of the Apple TV remote and the Back button of Android, leaves the app. Apple and Google ask that it leaves from the root screen, where the Apple TV goes back to its home screen and Android closes the app, so an app keeps the default there and sets `false` on the screens back returns from. The press then reaches the app as the escape key, which the UI reads as `ui_cancel`. While a UI popup or dialog is open the app keeps the press either way, and it closes them. On Android 13 and later the system plays its predictive back animation only when back leaves the app. Other platforms have no such button, so it changes nothing there.
+Decides whether the back button of the platform, the Menu button of the Apple TV remote and the Back button of Android, leaves the app. Apple and Google ask that it leaves from the root screen, where the Apple TV goes back to its home screen and Android closes the app, so an app keeps the default there and sets `false` on the screens back returns from. The press then reaches the app as the escape key, which the UI reads as `uiCancel`. While a UI popup or dialog is open the app keeps the press either way, and it closes them. On Android 13 and later the system plays its predictive back animation only when back leaves the app. Other platforms have no such button, so it changes nothing there.
 
 ```lua
 local scene = require('haylen.scene')
@@ -408,7 +408,7 @@ print(string.format('the window is at %d, %d', frame.x, frame.y))
 
 ### window.setFrame(x, y, width, height)
 
-Moves the content area of the window to `x`, `y` and resizes it to `width` by `height`, all in desktop points. The size must be positive. The change reaches the app as `window_moved` and `window_resized` events of [haylen.events](events.md#engine-events) when the window lands there.
+Moves the content area of the window to `x`, `y` and resizes it to `width` by `height`, all in desktop points. The size must be positive. The change reaches the app as `windowMoved` and `windowResized` events of [haylen.events](events.md#engine-events) when the window lands there.
 
 ```lua
 local window = require('haylen.window')
@@ -450,7 +450,7 @@ Returns the monitors of the desktop as a list of tables, with the primary monito
 | `scale` | Pixels in a point, such as `2` on a Retina display or a Windows monitor at 200 percent. |
 | `primary` | `true` for the primary monitor. |
 
-Every change of the monitors, such as a monitor that connects or a taskbar that moves, publishes `window_monitors_changed` on [haylen.events](events.md#engine-events).
+Every change of the monitors, such as a monitor that connects or a taskbar that moves, publishes `windowMonitorsChanged` on [haylen.events](events.md#engine-events).
 
 ```lua
 local window = require('haylen.window')
@@ -473,7 +473,7 @@ print('the window is on', monitor.name, 'at scale', monitor.scale)
 
 ### window.startDrag()
 
-Moves the window with the mouse for as long as the left button that just went down stays down, so the player drags a window without a title bar by its content. Call it while the button is still down, such as from a `mouse_down` event of a scene or the `onPress` of a touch button of [haylen.ui](ui.md), and not from `onClick`, which runs once the button is up. The system moves the window, and the app hears the release of the button once the drag ends. It does nothing when the button is already up.
+Moves the window with the mouse for as long as the left button that just went down stays down, so the player drags a window without a title bar by its content. Call it while the button is still down, such as from a `mouseDown` event of a scene or the `onPress` of a touch button of [haylen.ui](ui.md), and not from `onClick`, which runs once the button is up. The system moves the window, and the app hears the release of the button once the drag ends. It does nothing when the button is already up.
 
 ```lua
 local scene = require('haylen.scene')
@@ -482,7 +482,7 @@ local window = require('haylen.window')
 local Strip = {}
 
 function Strip:event(event)
-    if event.type == 'mouse_down' and event.button == 'left' and event.y < 40 then
+    if event.type == 'mouseDown' and event.button == 'left' and event.y < 40 then
         window.startDrag()
     end
 end

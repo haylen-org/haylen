@@ -1,7 +1,6 @@
 #include "plugins/AudioPlugin.hpp"
 
 #include <memory>
-#include <stdexcept>
 
 #include "audio/AudioLua.hpp"
 #include "audio/SoundData.hpp"
@@ -11,7 +10,6 @@
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/JsonValidator.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
-#include "haylen/core/Log.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/platform/Event.hpp"
@@ -43,7 +41,7 @@ void AudioPlugin::start(core::Engine& engine) {
     mixer.setProcessPaused(engine.isPaused());
     pauseConnection = engine.pausedChanged.connect([&mixer](bool paused) { mixer.setProcessPaused(paused); });
     deviceConnection = mixer.deviceEventReceived.connect([this, &engine](audio::Mixer::DeviceEvent deviceEvent) { handleDeviceEvent(engine, deviceEvent); });
-    // Because iOS does not always report the end of an interruption, the audio comes back whenever the app becomes active again, as Apple recommends.
+    // Because iOS does not always report the end of an interruption, the audio comes back whenever the app becomes active again, as Apple recommends, and an output that the system refused tries to open again then.
     // clang-format off
     appStateConnection = engine.appStateChanged.connect([this, &engine](core::Engine::AppState value) {
         if (value == core::Engine::AppState::Active) {
@@ -102,18 +100,11 @@ void AudioPlugin::beginInterruption(core::Engine& engine) {
 
 void AudioPlugin::endInterruption(core::Engine& engine) {
     audio::Mixer& mixer = engine.getAudio();
-    if (!mixer.isInterrupted()) {
-        return;
+    const bool interrupted = mixer.isInterrupted();
+    mixer.endInterruption();
+    if (interrupted) {
+        engine.getEvents().emit(core::LifecycleEvent::kAudioResumed);
     }
-
-    // The system may still hold the audio, and the next time the app becomes active tries again.
-    try {
-        mixer.endInterruption();
-    } catch (const std::runtime_error& error) {
-        core::Log::warning("{}", error.what());
-        return;
-    }
-    engine.getEvents().emit(core::LifecycleEvent::kAudioResumed);
 }
 
 } // namespace haylen::plugins

@@ -22,7 +22,7 @@ function sample.back(entry)
     end
 end
 
--- Mounts a document that belongs to the test. Its root goes back to the menu when ui_cancel reaches it, which Escape, the east button, the Back button of a gamepad, the Menu button of an Apple TV remote and the Back button of Android send once no popup, dialog or focus scope takes it.
+-- Mounts a document that belongs to the test. Its root goes back to the menu when uiCancel reaches it, which Escape, the east button, the Back button of a gamepad, the Menu button of an Apple TV remote and the Back button of Android send once no popup, dialog or focus scope takes it.
 function sample.mount(test, tree, options)
     tree.onCancel = tree.onCancel or function()
         sample.back(test.entry)

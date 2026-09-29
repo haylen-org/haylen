@@ -119,8 +119,8 @@ TEST_F(AssetsManagerTest, PublishesLoadedUnloadedAndReloadedEvents) {
     fixture.runLua(R"(
         local events = require('haylen.events')
         seen = {}
-        events.on('asset_loaded', function(data) seen[#seen + 1] = 'loaded ' .. data.type .. ' ' .. data.path end)
-        events.on('asset_unloaded', function(data) seen[#seen + 1] = 'unloaded ' .. data.path end)
+        events.on('assetLoaded', function(data) seen[#seen + 1] = 'loaded ' .. data.type .. ' ' .. data.path end)
+        events.on('assetUnloaded', function(data) seen[#seen + 1] = 'unloaded ' .. data.path end)
         local font = require('haylen.assets').load('fonts/ui.ttf')
         font = nil
         collectgarbage() collectgarbage()

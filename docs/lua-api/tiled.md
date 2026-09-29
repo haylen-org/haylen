@@ -8,7 +8,7 @@ local tiled = require('haylen.tiled')
 
 ## Loading maps and worlds
 
-Maps and worlds are assets of [haylen.assets](assets.md), with the asset types `tiled` for `.tmj` files and `tiled_world` for `.world` files, so `assets.load` finds the type from the extension. Save maps in the Tiled JSON format with the `.tmj` extension, and keep external tilesets and templates in JSON too (`.tsj` and `.tj`). The XML formats (`.tmx`, `.tsx` and `.tx`) are not read. Every path inside a map is resolved relative to the file that contains it, so the map, its tilesets, templates and images can live in any folder of the package `content/` directory.
+Maps and worlds are assets of [haylen.assets](assets.md), with the asset types `tiled` for `.tmj` files and `tiledWorld` for `.world` files, so `assets.load` finds the type from the extension. Save maps in the Tiled JSON format with the `.tmj` extension, and keep external tilesets and templates in JSON too (`.tsj` and `.tj`). The XML formats (`.tmx`, `.tsx` and `.tx`) are not read. Every path inside a map is resolved relative to the file that contains it, so the map, its tilesets, templates and images can live in any folder of the package `content/` directory.
 
 ```lua
 local assets = require('haylen.assets')
@@ -95,8 +95,8 @@ local tiled = require('haylen.tiled')
 
 local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 local camera = graphics2d.newCamera()
-camera.limits = map.bounds
-camera:snapTo(map.bounds.width / 2, map.bounds.height / 2)
+camera.limits = map.pixelBounds
+camera:snapTo(map.pixelBounds.width / 2, map.pixelBounds.height / 2)
 
 scene.push({
     update = function(self, dt)
@@ -116,7 +116,7 @@ scene.push({
 | `path` | string | read | Map path inside the content folder. |
 | `width`, `height` | integer | read | Map size in cells. |
 | `tileWidth`, `tileHeight` | number | read | Grid cell size in pixels. |
-| `bounds` | Rect | read | World area the grid covers. It starts left of or above 0 on oblique maps with a negative skew. |
+| `pixelBounds` | Rect | read | World area the grid covers. It starts left of or above 0 on oblique maps with a negative skew. |
 | `orientation` | string | read | `'orthogonal'`, `'isometric'`, `'staggered'`, `'hexagonal'` or `'oblique'`. |
 | `skewX`, `skewY` | number | read | Skew of oblique maps in pixels. |
 | `backgroundColor` | Color or nil | read | Map background color, or `nil` when the map has none. |
@@ -208,7 +208,7 @@ scene.push({
 
 Advances the time of animated tiles by `dt` seconds.
 
-### map:tileAt(layer, column, row)
+### map:tile(layer, column, row)
 
 Returns the global tile id at a cell of the tile layer `layer`, with its flip flags, or 0 for an empty cell or a cell outside the layer. Columns and rows count from 0. A name that is not a tile layer raises `Unknown tile layer: name`.
 
@@ -223,7 +223,7 @@ local assets = require('haylen.assets')
 local tiled = require('haylen.tiled')
 
 local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
-local gid = map:tileAt('ground', 10, 10)
+local gid = map:tile('ground', 10, 10)
 if gid ~= 0 then
     map:setTile('ground', 11, 10, gid)
     map:setTile('ground', 12, 10, gid | tiled.flipHorizontal)
@@ -416,7 +416,7 @@ local assets = require('haylen.assets')
 local tiled = require('haylen.tiled')
 
 local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
-local info = map:tileInfo(map:tileAt('ground', 3, 3))
+local info = map:tileInfo(map:tile('ground', 3, 3))
 if info then
     print(info.tileset, info.id, info.type, info.probability, #info.collision, #info.animation, tostring(info.properties.water))
 end
@@ -533,7 +533,7 @@ local navigation2d = require('haylen.navigation2d')
 local tiled = require('haylen.tiled')
 
 local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
-local area = map.bounds
+local area = map.pixelBounds
 local right, bottom = area.x + area.width, area.y + area.height
 local mesh = navigation2d.newNavMesh({{area.x, area.y}, {right, area.y}, {right, bottom}, {area.x, bottom}})
 for _, outline in ipairs(map:objectOutlines('collision')) do
@@ -595,7 +595,7 @@ local assets = require('haylen.assets')
 local tiled = require('haylen.tiled')
 
 local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
-local gid = map:tileAt('ground', 2, 2)
+local gid = map:tile('ground', 2, 2)
 local flippedX = (gid & tiled.flipHorizontal) ~= 0
 print(tiled.tileId(gid), flippedX, gid & tiled.flagMask)
 map:setTile('ground', 2, 2, tiled.tileId(gid) | tiled.flipVertical)

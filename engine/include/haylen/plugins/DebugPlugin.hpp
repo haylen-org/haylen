@@ -52,7 +52,7 @@ class DebugPlugin final : public Plugin {
         return toggleKey;
     }
 
-    // Publishes object_created and object_destroyed on the event bus, queued for the end of the frame, for every object the statistics count. It costs time with many objects, so it starts off.
+    // Publishes objectCreated and objectDestroyed on the event bus, queued for the end of the frame, for every object the statistics count. It costs time with many objects, so it starts off.
     void setObjectEvents(bool value);
     [[nodiscard]] bool hasObjectEvents() const noexcept {
         return objectEvents;

@@ -26,7 +26,7 @@ namespace haylen::ui {
 Backend& ImGuiLua::requireFrame(lua_State* L) {
     Backend& backend = lua::Runtime::getEngine(L).getPlugin<plugins::UiPlugin>().getBackend();
     if (!backend.isFrameActive()) {
-        luaL_error(L, "haylen.imgui can only be used while a frame is running.");
+        luaL_error(L, "The module haylen.imgui can only be used while a frame is running.");
     }
     backend.makeCurrent();
     return backend;

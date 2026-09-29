@@ -17,17 +17,17 @@ local kFamilies = {'sine', 'quad', 'cubic', 'quart', 'quint', 'expo', 'circ', 'b
 local function curves()
     local list = {{name = 'linear', curve = 'linear', code = "'linear'"}}
     for _, family in ipairs(kFamilies) do
-        for _, variant in ipairs({'in', 'out', 'in_out'}) do
-            local name = family .. '_' .. variant
+        for _, variant in ipairs({'In', 'Out', 'InOut'}) do
+            local name = family .. variant
             list[#list + 1] = {name = name, curve = name, code = "'" .. name .. "'"}
         end
     end
-    list[#list + 1] = {name = 'back overshoot 3', curve = {curve = 'back_out', overshoot = 3}, code = "{curve = 'back_out', overshoot = 3}"}
-    list[#list + 1] = {name = 'elastic 1.5, 0.4', curve = {curve = 'elastic_out', amplitude = 1.5, period = 0.4}, code = "{curve = 'elastic_out', amplitude = 1.5, period = 0.4}"}
+    list[#list + 1] = {name = 'back overshoot 3', curve = {curve = 'backOut', overshoot = 3}, code = "{curve = 'backOut', overshoot = 3}"}
+    list[#list + 1] = {name = 'elastic 1.5, 0.4', curve = {curve = 'elasticOut', amplitude = 1.5, period = 0.4}, code = "{curve = 'elasticOut', amplitude = 1.5, period = 0.4}"}
     list[#list + 1] = {name = 'steps 5 end', curve = {steps = 5, position = 'end'}, code = "{steps = 5, position = 'end'}"}
     list[#list + 1] = {name = 'steps 4 start', curve = {steps = 4, position = 'start'}, code = "{steps = 4, position = 'start'}"}
-    list[#list + 1] = {name = 'css ease', curve = {bezier = {0.25, 0.1, 0.25, 1}}, code = '{bezier = {0.25, 0.1, 0.25, 1}}'}
-    list[#list + 1] = {name = 'bezier overshoot', curve = {bezier = {0.68, -0.6, 0.32, 1.6}}, code = '{bezier = {0.68, -0.6, 0.32, 1.6}}'}
+    list[#list + 1] = {name = 'css ease', curve = {cubicBezier = {0.25, 0.1, 0.25, 1}}, code = '{cubicBezier = {0.25, 0.1, 0.25, 1}}'}
+    list[#list + 1] = {name = 'bezier overshoot', curve = {cubicBezier = {0.68, -0.6, 0.32, 1.6}}, code = '{cubicBezier = {0.68, -0.6, 0.32, 1.6}}'}
     list[#list + 1] = {name = 'points even', curve = {points = {0, 1.2, 0.8, 1}}, code = '{points = {0, 1.2, 0.8, 1}}'}
     list[#list + 1] = {name = 'points x, y', curve = {points = {{0, 0}, {0.3, 0.8}, {0.6, 0.2}, {1, 1}}}, code = '{points = {{0, 0}, {0.3, 0.8}, {0.6, 0.2}, {1, 1}}}'}
     return list

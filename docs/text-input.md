@@ -10,9 +10,9 @@ What the user types comes back as the whole text of the native field, its select
 
 Return, tab and escape of the native field arrive as actions. Submit reports `submit` and lets the field go, next moves the focus to the next field like tab, cancel brings back the text the field had when it took the focus and lets it go, and a keyboard the user closed lets the field go and keeps its text. A return key labelled next moves on like tab. While a platform edits the field natively, the UI ignores the character events and the editing keys that reach it for that field, so nothing types twice.
 
-The platform also reports the frame of the on-screen keyboard. When the keyboard would cover the focused field, every mounted document moves up together until the field shows above it with a small margin, never past the top of the screen, and moves back when the keyboard closes. The engine publishes `keyboard_shown`, with the frame in design units, and `keyboard_hidden` on the [event bus](lua-api/events.md).
+The platform also reports the frame of the on-screen keyboard. When the keyboard would cover the focused field, every mounted document moves up together until the field shows above it with a small margin, never past the top of the screen, and moves back when the keyboard closes. The engine publishes `keyboardShown`, with the frame in design units, and `keyboardHidden` on the [event bus](lua-api/events.md).
 
-`window.showKeyboard(true)` of [haylen.window](lua-api/window.md) opens the same native field without a text field of the UI, for apps that read typing themselves. The runtime turns its edits into the `character` events and `backspace`, `enter`, `tab` and `escape` key events that a physical keyboard would send, and text inside an open composition types once the input method commits it. ImGui text inputs of [haylen.imgui](lua-api/imgui.md) use this plain keyboard too.
+`window.setKeyboardVisible(true)` of [haylen.window](lua-api/window.md) opens the same native field without a text field of the UI, for apps that read typing themselves. The runtime turns its edits into the `character` events and `backspace`, `enter`, `tab` and `escape` key events that a physical keyboard would send, and text inside an open composition types once the input method commits it. ImGui text inputs of [haylen.imgui](lua-api/imgui.md) use this plain keyboard too.
 
 ## Web
 
@@ -44,7 +44,7 @@ While a field is edited, an invisible `NSTextView` over it is the first responde
 
 ## Windows and Linux
 
-Windows types through `WM_CHAR`, which `sokol_app` turns into character events, and the input method composes in its own window. The text input places the composition window at the caret of the focused field with `ImmSetCompositionWindow` and the candidate list below the caret line with `ImmSetCandidateWindow`, so it never covers the text being typed. Linux types through the key and character events of X11. Neither has a native field, so the UI edits the text itself. While a field edits, the keys it types never reach the navigation actions, so Space types a space and Enter starts a new line in a text area, while Enter submits a single line, Escape cancels and the gamepad buttons of `ui_accept` and `ui_cancel` end the editing.
+Windows types through `WM_CHAR`, which `sokol_app` turns into character events, and the input method composes in its own window. The text input places the composition window at the caret of the focused field with `ImmSetCompositionWindow` and the candidate list below the caret line with `ImmSetCandidateWindow`, so it never covers the text being typed. Linux types through the key and character events of X11. Neither has a native field, so the UI edits the text itself. While a field edits, the keys it types never reach the navigation actions, so Space types a space and Enter starts a new line in a text area, while Enter submits a single line, Escape cancels and the gamepad buttons of `uiAccept` and `uiCancel` end the editing.
 
 ## Complex scripts and right-to-left text
 

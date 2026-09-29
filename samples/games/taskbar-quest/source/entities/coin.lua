@@ -32,7 +32,7 @@ function coin:fly(delay)
     local control = {(self.x + x) / 2, math.min(self.y, y) - 60}
     tween.bezier(self, 0.7, {control, {x, y + size / 2}}, {
         delay = delay,
-        ease = 'sine_in',
+        ease = 'sineIn',
         owner = self.quest.owner,
         onStart = function() self.flying = true end,
         onComplete = function() self.quest:collect(self) end,

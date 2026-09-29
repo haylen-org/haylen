@@ -36,7 +36,7 @@ TEST(SceneLuaTest, ManagesTheStackWithPromisesAndHooks) {
         scene.push(root)
         scene.push(a)
         async.spawn(function()
-            local done = scene.push(b, {duration = 0.4, ease = 'quad_in_out', blockInput = false, onComplete = function(done) results[#results + 1] = 'callback ' .. tostring(done) end}):await()
+            local done = scene.push(b, {duration = 0.4, ease = 'quadInOut', blockInput = false, onComplete = function(done) results[#results + 1] = 'callback ' .. tostring(done) end}):await()
             results[#results + 1] = tostring(done)
         end)
     )");
@@ -123,7 +123,7 @@ TEST(SceneLuaTest, PlaysBuiltInEffectsWithBothScenesAlive) {
     )");
     // clang-format on
     fixture.frames(1);
-    fixture.runLua("log = {} done = nil scene.replace(game, {effect = 'slideIn', direction = 'up', duration = 0.5, ease = 'quad_out', onComplete = function(completed) done = completed end})");
+    fixture.runLua("log = {} done = nil scene.replace(game, {effect = 'slideIn', direction = 'up', duration = 0.5, ease = 'quadOut', onComplete = function(completed) done = completed end})");
     fixture.frames(1, 0.25);
     EXPECT_EQ(fixture.lua("return table.concat(log, ', ')"), "game enter, menu render, game render");
     fixture.frames(1, 0.25);
@@ -177,7 +177,7 @@ TEST(SceneLuaTest, LoadsScenesInCoroutinesBehindALoadingView) {
             update = function(self, dt, progress, message) self.progress, self.message, self.lowest = progress, message, math.min(self.lowest or 1, scene.loadingViewOpacity()) end,
             render = function(self, progress) self.rendered = progress end,
         }
-        for _, name in ipairs({'scene_cover_started', 'scene_hold_started', 'scene_reveal_finished'}) do
+        for _, name in ipairs({'sceneCoverStarted', 'sceneHoldStarted', 'sceneRevealFinished'}) do
             events.on(name, function(transfer) phases[#phases + 1] = name .. ' ' .. (transfer.from and transfer.from.name or 'none') .. '>' .. (transfer.to == level and 'level' or 'other') end)
         end
         scene.push(menu)
@@ -190,13 +190,13 @@ TEST(SceneLuaTest, LoadsScenesInCoroutinesBehindALoadingView) {
     EXPECT_EQ(fixture.lua("return table.concat(log, ', ') .. ' | ' .. scene.state(level) .. ' ' .. scene.state(menu)"), "load forest, view enter | loading unloaded");
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return view.progress .. ' ' .. view.message .. ' ' .. view.rendered"), "0.5 reading the map 0.5");
-    EXPECT_EQ(fixture.lua("local value, message = scene.progress(level) return value .. ' ' .. message"), "0.5 reading the map");
+    EXPECT_EQ(fixture.lua("local value, message = scene.loadProgress(level) return value .. ' ' .. message"), "0.5 reading the map");
 
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(done)") == "true"; }));
     EXPECT_EQ(fixture.lua("return table.concat(log, ', ')"), "load forest, view enter, loaded, view exit, enter forest, finished");
     EXPECT_EQ(fixture.lua("return tostring(view.lowest < 1) .. ' ' .. scene.loadingViewOpacity()"), "true 0.0");
-    EXPECT_EQ(fixture.lua("return table.concat(phases, ', ')"), "scene_cover_started menu>level, scene_hold_started menu>level, scene_reveal_finished menu>level");
-    EXPECT_EQ(fixture.lua("return scene.state(level) .. ' ' .. scene.progress(level)"), "active 1.0");
+    EXPECT_EQ(fixture.lua("return table.concat(phases, ', ')"), "sceneCoverStarted menu>level, sceneHoldStarted menu>level, sceneRevealFinished menu>level");
+    EXPECT_EQ(fixture.lua("return scene.state(level) .. ' ' .. scene.loadProgress(level)"), "active 1.0");
     EXPECT_NE(fixture.lua("level.context:progress(1)").find("haylen.SceneLoad was already released."), std::string::npos);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
@@ -214,7 +214,7 @@ TEST(SceneLuaTest, LoadsThatReturnPromisesOrFailRouteTheChange) {
         promising = {name = 'promising', load = function() return async.promise(function() async.sleep(5):await() return true end) end}
         rejecting = {name = 'rejecting', load = function() return async.promise(function() error('rejected load', 0) end) end}
         fallback = {name = 'fallback'}
-        events.on('scene_load_failed', function(failure) log[#log + 1] = failure.scene.name .. ' failed' end)
+        events.on('sceneLoadFailed', function(failure) log[#log + 1] = failure.scene.name .. ' failed' end)
         scene.push(menu)
     )");
     // clang-format on

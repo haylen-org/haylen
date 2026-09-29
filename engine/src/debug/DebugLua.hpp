@@ -37,7 +37,7 @@ class DebugLua final {
     static int removeMonitor(lua_State* L);
     static int monitors(lua_State* L);
     static int frame(lua_State* L);
-    static int frameTimes(lua_State* L);
+    static int frameHistory(lua_State* L);
     static int beginScope(lua_State* L);
     static int endScope(lua_State* L);
     static int profile(lua_State* L);

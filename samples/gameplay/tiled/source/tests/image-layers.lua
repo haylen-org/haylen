@@ -14,7 +14,7 @@ local kScrollSpeed = 160
 
 function ImageLayers:enter()
     self.map = tiled.newMapRenderer(assets.load('maps/parallax.tmj'))
-    local bounds = self.map.bounds
+    local bounds = self.map.pixelBounds
     ImageLayers.super.enter(self, {
         hint = 'The camera travels along the map. Drag it, or use the arrows or the left stick, to see the far layers move less than the near ones.',
         controls = {
@@ -42,7 +42,7 @@ end
 -- The camera rides from one end of the map to the other and turns back, and the height stays on the map.
 function ImageLayers:update(dt)
     ImageLayers.super.update(self, dt)
-    local bounds = self.map.bounds
+    local bounds = self.map.pixelBounds
     local half = self.camera:visibleBounds().width / 2
     if input.pressed('reset') then
         self.camera:snapTo(half, bounds.height / 2)

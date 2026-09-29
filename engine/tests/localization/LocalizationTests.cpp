@@ -116,9 +116,9 @@ TEST(LocalizationLuaTest, LoadsLanguageFoldersFromThePackage) {
     EXPECT_EQ(fixture.lua("return table.concat(localization.loadFolder('i18n'), ',')"), "en,pt-BR");
     EXPECT_EQ(fixture.lua("return localization.language() .. ' ' .. localization.fallback() .. ' ' .. #localization.languages()"), "en en 2");
     EXPECT_EQ(fixture.lua("return localization.text('hud.day', {day = 3}) .. ' / ' .. localization.text('hud.wood', {count = 1})"), "Day 3 / 1 log");
-    EXPECT_EQ(fixture.lua("localization.setLanguage(localization.bestMatch('pt_BR')) return localization.text('hud.day', {day = 4}) .. ' / ' .. localization.text('hud.wood', {count = 7})"), "Dia 4 / 7 logs");
+    EXPECT_EQ(fixture.lua("localization.setLanguage(localization.findBestMatch('pt_BR')) return localization.text('hud.day', {day = 4}) .. ' / ' .. localization.text('hud.wood', {count = 7})"), "Dia 4 / 7 logs");
     EXPECT_EQ(fixture.lua("localization.add('fr', {hud = {day = 'Jour {day}'}}) localization.setFallback('fr') return localization.fallback() .. ' ' .. tostring(localization.has('hud.wood'))"), "fr false");
-    EXPECT_EQ(fixture.lua("return tostring(localization.bestMatch('de')) .. ' ' .. localization.text('nothing.here')"), "nil nothing.here");
+    EXPECT_EQ(fixture.lua("return tostring(localization.findBestMatch('de')) .. ' ' .. localization.text('nothing.here')"), "nil nothing.here");
 
     EXPECT_EQ(fixture.lua("localization.add('ar', {['@direction'] = 'rtl', hud = {day = 'اليوم {day}'}}) return localization.direction('ar') .. ' ' .. localization.direction()"), "rtl ltr");
     EXPECT_NE(fixture.lua("localization.loadFolder('broken')").find("broken/en.json is not valid JSON"), std::string::npos);

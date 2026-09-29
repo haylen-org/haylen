@@ -12,7 +12,7 @@ local sample = require('sample')
 local Mouse = haylen.class('Mouse', sample.Test)
 
 local kButtons = {'left', 'middle', 'right'}
-local kCursors = {'default', 'arrow', 'ibeam', 'crosshair', 'pointing_hand', 'resize_horizontal', 'resize_vertical', 'resize_diagonal_down', 'resize_diagonal_up', 'resize_all', 'not_allowed'}
+local kCursors = {'default', 'arrow', 'iBeam', 'crosshair', 'pointingHand', 'resizeHorizontal', 'resizeVertical', 'resizeDiagonalDown', 'resizeDiagonalUp', 'resizeAll', 'notAllowed'}
 local kFlash = 0.3
 
 function Mouse:enter()
@@ -34,7 +34,7 @@ function Mouse:enter()
             ui.label{text = 'A captured mouse stays hidden over this toggle and reports only its movement, which moves the white crosshair. A click releases it.', color = 'textMuted', font = 'caption'},
             ui.button{id = 'reset', text = 'Reset the wheel totals', onClick = function() self.scrollX, self.scrollY = 0, 0 end},
             ui.sectionTitle{text = 'Reading the mouse'},
-            ui.label{font = 'monospace', text = "input.mouseDown('left')\ninput.mousePosition()\ninput.mouseDelta()\ninput.mouseScroll()\ninput.pointerCaptured()\nwindow.setCursor('ibeam')\nwindow.setMouseLocked(true)"},
+            ui.label{font = 'monospace', text = "input.mouseDown('left')\ninput.mousePosition()\ninput.mouseDelta()\ninput.mouseScroll()\ninput.pointerCaptured()\nwindow.setCursor('iBeam')\nwindow.setMouseLocked(true)"},
         },
     })
 end
@@ -66,11 +66,11 @@ end
 
 -- Mouse events arrive with the position of each event, while the functions of haylen.input read the state of the frame.
 function Mouse:event(event)
-    if event.type == 'mouse_down' or event.type == 'mouse_up' then
-        self.journal:add(string.format('%s %s at %.0f, %.0f', event.type, event.button, event.x, event.y), event.type == 'mouse_down' and sample.warm or sample.red)
-    elseif event.type == 'mouse_scroll' then
-        self.journal:add(string.format('mouse_scroll %.1f, %.1f', event.scrollX, event.scrollY), sample.green)
-    elseif event.type == 'mouse_enter' or event.type == 'mouse_leave' then
+    if event.type == 'mouseDown' or event.type == 'mouseUp' then
+        self.journal:add(string.format('%s %s at %.0f, %.0f', event.type, event.button, event.x, event.y), event.type == 'mouseDown' and sample.warm or sample.red)
+    elseif event.type == 'mouseScroll' then
+        self.journal:add(string.format('mouseScroll %.1f, %.1f', event.scrollX, event.scrollY), sample.green)
+    elseif event.type == 'mouseEnter' or event.type == 'mouseLeave' then
         self.journal:add(event.type, sample.accent)
     end
 end
@@ -107,12 +107,12 @@ function Mouse:update(dt)
     if self.locked then
         self.aimX = math.max(0, math.min(self.area.width, self.aimX + self.deltaX))
         self.aimY = math.max(0, math.min(self.area.height, self.aimY + self.deltaY))
-        if input.mousePressed('left') and not ui.wantsPointer() then
+        if input.mousePressed('left') and not ui.usingPointer() then
             self:capture(false)
         end
     end
 
-    local cursor = (not ui.wantsPointer() and self:hoveredZone(x, y)) or 'default'
+    local cursor = (not ui.usingPointer() and self:hoveredZone(x, y)) or 'default'
     if cursor ~= self.cursor then
         self.cursor = cursor
         window.setCursor(cursor)

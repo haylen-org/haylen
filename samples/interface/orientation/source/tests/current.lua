@@ -1,4 +1,4 @@
--- Orientation and its event: window.orientation reads how the screen is turned, and window_orientation_changed announces every turn, next to window_resized and window_safe_area_changed.
+-- Orientation and its event: window.orientation reads how the screen is turned, and windowOrientationChanged announces every turn, next to windowResized and windowSafeAreaChanged.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local tween = require('haylen.tween')
@@ -10,7 +10,7 @@ local sample = require('sample')
 
 local Current = haylen.class('Current', sample.Test)
 
-Current.hints = 'Turn a phone or a tablet, or resize a browser on one. Desktop windows, Mac Catalyst and TVs always count as landscape, so resizing a desktop window reports window_resized but never a turn.'
+Current.hints = 'Turn a phone or a tablet, or resize a browser on one. Desktop windows, Mac Catalyst and TVs always count as landscape, so resizing a desktop window reports windowResized but never a turn.'
 
 local kLogSize = 8
 
@@ -34,27 +34,27 @@ function Current:content()
 end
 
 function Current:record(line)
-    table.insert(self.log, 1, string.format('%7.2f  %s', haylen.time(), line))
+    table.insert(self.log, 1, string.format('%7.2f  %s', haylen.elapsed(), line))
     self.log[kLogSize + 1] = nil
     self.document:set('log', {text = table.concat(self.log, '\n')})
 end
 
 function Current:started()
-    self:listen('window_orientation_changed', function(event)
-        self:record('window_orientation_changed ' .. event.orientation)
+    self:listen('windowOrientationChanged', function(event)
+        self:record('windowOrientationChanged ' .. event.orientation)
         self.document:set('orientation', {text = event.orientation})
-        tween.to(self.phone, 0.5, {angle = event.orientation == 'portrait' and 0 or -math.pi / 2}, {ease = 'back_out', owner = self, overwrite = true})
+        tween.to(self.phone, 0.5, {angle = event.orientation == 'portrait' and 0 or -math.pi / 2}, {ease = 'backOut', owner = self, overwrite = true})
     end)
-    self:listen('window_resized', function(event)
-        self:record(string.format('window_resized %.0f x %.0f', event.width, event.height))
+    self:listen('windowResized', function(event)
+        self:record(string.format('windowResized %.0f x %.0f', event.width, event.height))
     end)
-    self:listen('window_safe_area_changed', function(safe)
-        self:record(string.format('window_safe_area_changed %.0f x %.0f', safe.width, safe.height))
+    self:listen('windowSafeAreaChanged', function(safe)
+        self:record(string.format('windowSafeAreaChanged %.0f x %.0f', safe.width, safe.height))
     end)
 end
 
 function Current:update(dt)
-    local width, height = window.size()
+    local width, height = window.framebufferSize()
     local visible = viewport.visibleRect()
     self:show('values', string.format('window  %.0f x %.0f pixels, dpi scale %g\nvisible %.0f x %.0f design units\nshape   %s', width, height, window.dpiScale(), visible.width, visible.height, sample.tall() and 'taller than wide' or 'wider than tall'))
     self:setStatus('window.orientation() = ' .. window.orientation())

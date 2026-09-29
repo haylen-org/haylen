@@ -64,12 +64,12 @@ function Callbacks:runLibrary()
     checks:run('Callback at the next frame', function()
         visits = {}
         self.later = native.callback('void (int32_t index, const char* label)', visitor('next '))
-        local frame = haylen.frame()
+        local frame = haylen.frameIndex()
         lib.native_test_visit(2, self.later.pointer)
         expect(#visits, 0, 'the visits during the call')
         sample.waitFor(function() return #visits == 2 end, 1)
         expect(table.concat(visits, ', '), 'next 0zero, next 1one', 'the visits of the next frame')
-        return string.format('visited %s at frame %d after the call at frame %d', table.concat(visits, ', '), haylen.frame(), frame)
+        return string.format('visited %s at frame %d after the call at frame %d', table.concat(visits, ', '), haylen.frameIndex(), frame)
     end)
 
     local report

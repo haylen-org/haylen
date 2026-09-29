@@ -45,7 +45,7 @@ void JobsPlugin::setBudget(std::chrono::microseconds value) {
 
 bool JobsPlugin::isOutOfTime(lua_State* L) const {
     if (L != current) {
-        throw std::logic_error("jobs.checkpoint only runs inside a job started with jobs.spawn.");
+        throw std::logic_error("A jobs.checkpoint call only runs inside a job started with jobs.spawn.");
     }
     return std::chrono::steady_clock::now() >= deadline;
 }

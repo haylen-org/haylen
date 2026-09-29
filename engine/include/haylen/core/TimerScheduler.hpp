@@ -30,8 +30,8 @@ class TimerScheduler final {
 
     Id after(float delaySeconds, std::function<void()> callback);
     Id after(float delaySeconds, std::function<void()> callback, Options options);
-    Id every(float intervalSeconds, std::function<void()> callback, int repeatCount = -1);
-    Id every(float intervalSeconds, std::function<void()> callback, int repeatCount, Options options);
+    Id every(float intervalSeconds, std::function<void()> callback, int count = -1);
+    Id every(float intervalSeconds, std::function<void()> callback, int count, Options options);
 
     void cancel(Id id) noexcept;
     void pause(Id id, bool paused) noexcept;
@@ -74,7 +74,7 @@ class TimerScheduler final {
 
     [[nodiscard]] static ProcessMode resolveMode(const Options& options);
 
-    Id add(float interval, float delay, int repeatCount, std::function<void()> callback, Options options);
+    Id add(float interval, float delay, int count, std::function<void()> callback, Options options);
     [[nodiscard]] Timer* find(Id id) const noexcept;
     [[nodiscard]] Timer* findNextDue() const noexcept;
     void finishUpdate();

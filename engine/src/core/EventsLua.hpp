@@ -62,7 +62,7 @@ class EventsLua final {
     static int emitTo(lua_State* L);
     static int post(lua_State* L);
     static int postTo(lua_State* L);
-    static int stats(lua_State* L);
+    static int topics(lua_State* L);
     static int open(lua_State* L);
 };
 

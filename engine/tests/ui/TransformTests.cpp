@@ -94,11 +94,11 @@ TEST_F(UiTransformTest, TweensNodesNativelyFromLua) {
     EXPECT_EQ(fixture.lua("title.opacity = 0.25 return title.opacity"), "0.25");
 
     // Replacing the node releases its handle, and the tween stops before it writes again.
-    fixture.runLua("doc:replace('menu', {ui.label{id = 'title', text = 'Again'}})");
+    fixture.runLua("doc:replaceChildren('menu', {ui.label{id = 'title', text = 'Again'}})");
     EXPECT_NE(fixture.lua("return title.opacity").find("haylen.UiTransform was already released."), std::string::npos);
     EXPECT_EQ(fixture.lua("return tostring(rawequal(title, doc:transform('title'))) .. ' ' .. doc:transform('title').opacity"), "false 1.0");
     fixture.frames(2, 0.25);
-    EXPECT_EQ(fixture.lua("return tween.count()"), "0");
+    EXPECT_EQ(fixture.lua("return tween.size()"), "0");
     EXPECT_NE(fixture.lua("doc:transform('missing')").find("no node with the id missing"), std::string::npos);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }

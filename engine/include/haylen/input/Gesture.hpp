@@ -22,7 +22,7 @@ struct Gesture {
     math::Vec2 delta;
     float scale = 1.0F;
 
-    // Returns "tap", "double_tap", "long_press", "swipe" or "pinch".
+    // Returns "tap", "doubleTap", "longPress", "swipe" or "pinch".
     [[nodiscard]] static std::string_view typeName(Type value) noexcept;
 };
 

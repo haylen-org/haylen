@@ -78,7 +78,7 @@ A table with the configuration read from `app.json`, with defaults filled in for
 | `audio.iosSession` | string | `'ambient'` | Category of the audio session on iOS and tvOS: `'ambient'`, `'soloAmbient'` or `'playback'`, described in the [audio guide](../audio.md#sessions-and-interruptions). |
 | `audio.mixWithOthers` | boolean | `false` | Whether the `'playback'` session plays along with other apps. |
 | `debug.stats` | string | `'off'` | Debug statistics the app starts with: `'off'`, `'compact'` or `'full'`, see [`haylen.debug`](debug.md). |
-| `debug.objectEvents` | boolean | `false` | Whether every counted object publishes `object_created` and `object_destroyed`, see [`haylen.debug`](debug.md#object-counts-and-events). |
+| `debug.objectEvents` | boolean | `false` | Whether every counted object publishes `objectCreated` and `objectDestroyed`, see [`haylen.debug`](debug.md#object-counts-and-events). |
 | `debug.safeArea` | string or table | absent | The safe area simulated instead of the one of the device, present only when `app.json` sets it, see [`viewport.setSafeAreaSimulation`](viewport.md#viewportsetsafeareasimulationvalue). |
 | `debug.showSafeArea` | boolean | `false` | Whether the debug view of the safe area shows from the start, see [`ui.setSafeAreaVisible`](ui.md#uisetsafeareavisiblevisible). |
 | `autoload` | list of strings | `{}` | Modules that load as autoloads before `source/main.lua`, see `haylen.autoload`. |
@@ -125,7 +125,7 @@ print(knight.name, knight:is(Unit), tostring(Unit)) -- Knight true class Unit
 
 ## Functions
 
-### haylen.time()
+### haylen.elapsed()
 
 Returns the app time in seconds since the app started. It is the sum of every scaled frame delta, so it stops while the time scale is zero.
 
@@ -135,7 +135,7 @@ local graphics2d = require('haylen.graphics2d')
 
 require('haylen.scene').push({
     render = function(self)
-        local pulse = 0.5 + 0.5 * math.sin(haylen.time() * 4)
+        local pulse = 0.5 + 0.5 * math.sin(haylen.elapsed() * 4)
         graphics2d.beginScreen()
         graphics2d.drawCircle(960, 540, 40 + 20 * pulse, '#FFFFD166')
     end,
@@ -179,7 +179,7 @@ require('haylen.scene').push({
 })
 ```
 
-### haylen.frame()
+### haylen.frameIndex()
 
 Returns the number of frames the engine has started, as an integer. It is `0` while `source/main.lua` runs and `1` during the first frame.
 
@@ -189,8 +189,8 @@ local haylen = require('haylen')
 require('haylen.scene').push({
     update = function(self, dt)
         -- Expensive checks run on every tenth frame only.
-        if haylen.frame() % 10 == 0 then
-            print('checking quests on frame', haylen.frame())
+        if haylen.frameIndex() % 10 == 0 then
+            print('checking quests on frame', haylen.frameIndex())
         end
     end,
 })
@@ -209,7 +209,7 @@ print('frozen:', frozen)
 
 ### haylen.setTimeScale(scale)
 
-Sets the speed of app time. `0.5` plays at half speed, `0` freezes app time and values above `1` speed the app up. Negative values count as `0`. A frozen app still calls updates, with a delta of zero, and `haylen.setPaused` is the way to stop what the pause should stop. The scale applies to `haylen.delta()`, `haylen.time()`, the `dt` of scene updates, and timers and tweens that are not `unscaled`. Fixed updates keep their step length but run less or more often, so a physics world stepped from `fixedUpdate` slows down with the rest of the app. `haylen.unscaledDelta()` is not affected.
+Sets the speed of app time. `0.5` plays at half speed, `0` freezes app time and values above `1` speed the app up. Negative values count as `0`. A frozen app still calls updates, with a delta of zero, and `haylen.setPaused` is the way to stop what the pause should stop. The scale applies to `haylen.delta()`, `haylen.elapsed()`, the `dt` of scene updates, and timers and tweens that are not `unscaled`. Fixed updates keep their step length but run less or more often, so a physics world stepped from `fixedUpdate` slows down with the rest of the app. `haylen.unscaledDelta()` is not affected.
 
 ```lua
 local haylen = require('haylen')
@@ -312,7 +312,7 @@ end
 
 ### haylen.networkState()
 
-Returns whether the device reaches the network, as the platform last reported it: `'online'`, `'offline'`, or `'unknown'` until a report arrives. Browsers, Android and Apple platforms, macOS included, report the network from the start, usually by the first frame, and then publish every change as the `network_online` and `network_offline` events of [haylen.events](events.md#engine-events). Windows, Linux and the headless host never report it, so it stays `'unknown'` there.
+Returns whether the device reaches the network, as the platform last reported it: `'online'`, `'offline'`, or `'unknown'` until a report arrives. Browsers, Android and Apple platforms, macOS included, report the network from the start, usually by the first frame, and then publish every change as the `networkOnline` and `networkOffline` events of [haylen.events](events.md#engine-events). Windows, Linux and the headless host never report it, so it stays `'unknown'` there.
 
 ```lua
 local haylen = require('haylen')
@@ -323,8 +323,8 @@ local function show(state)
 end
 
 show(haylen.networkState())
-events.on('network_online', function() show('online') end)
-events.on('network_offline', function() show('offline') end)
+events.on('networkOnline', function() show('online') end)
+events.on('networkOffline', function() show('offline') end)
 ```
 
 ### haylen.halted()

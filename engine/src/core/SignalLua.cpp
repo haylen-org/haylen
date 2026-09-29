@@ -163,7 +163,7 @@ int SignalLua::size(lua_State* L) {
     return 1;
 }
 
-int SignalLua::emissions(lua_State* L) {
+int SignalLua::emissionCount(lua_State* L) {
     lua::Stack::push(L, lua::Userdata::check<ScriptedSignal>(L, 1).signal.getEmissionCount());
     return 1;
 }
@@ -252,7 +252,7 @@ int SignalLua::connectionSetBlocked(lua_State* L) {
 
 void SignalLua::install(lua_State* L) {
     lua::ClassBuilder<Connection>(L).function("disconnect", &lua::Binding::native<&connectionDisconnect>).property("connected", &connectionConnected).property("blocked", &connectionBlocked, &lua::Binding::native<&connectionSetBlocked>).install();
-    lua::ClassBuilder<ScriptedSignal>(L).function("connect", &lua::Binding::native<&connectFunction>).function("emit", &lua::Binding::native<&emit>).function("clear", &clear).property("size", &size).property("emissions", &emissions).property("name", &name).property("blocked", &blocked, &setBlocked).install();
+    lua::ClassBuilder<ScriptedSignal>(L).function("connect", &lua::Binding::native<&connectFunction>).function("emit", &lua::Binding::native<&emit>).function("clear", &clear).property("size", &size).property("emissionCount", &emissionCount).property("name", &name).property("blocked", &blocked, &setBlocked).install();
     lua::Binding::preload(L, "haylen.signal", &open);
 }
 

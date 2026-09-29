@@ -36,7 +36,7 @@ function Modes:play()
         c.x = 100
     end
 
-    local options = {owner = self, ease = 'quad_in_out', delay = 0.2}
+    local options = {owner = self, ease = 'quadInOut', delay = 0.2}
     tween.to(a, 1.2, {x = 900}, options)
     tween.from(b, 1.2, {x = 900}, options)
     tween.by(c, 1.2, {x = 250}, options)

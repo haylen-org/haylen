@@ -15,7 +15,7 @@
 
 namespace haylen::spatial2d {
 
-// Installs the SpatialHash, QuadTree, AabbTree and KdTree classes of haylen.spatial2d. Each stores any Lua value, keyed by identity like table keys, and all share their query methods. The user value of a structure holds ids, which maps each stored value to its id, and values, which maps ids back.
+// Installs the HashGrid, QuadTree, AabbTree and KdTree classes of haylen.spatial2d. Each stores any Lua value, keyed by identity like table keys, and all share their query methods. The user value of a structure holds ids, which maps each stored value to its id, and values, which maps ids back.
 class SpatialIndexLua final {
   public:
     static void install(lua_State* L);
@@ -37,7 +37,7 @@ class SpatialIndexLua final {
     // Stores the value at index 2 in the structure with storeEntry(id), reusing its id or giving it the next one.
     template <typename Structure, typename Store> static void store(lua_State* L, ScriptedIndex<Structure>& self, Store&& storeEntry);
 
-    static int newHash(lua_State* L);
+    static int newHashGrid(lua_State* L);
     static int newQuadTree(lua_State* L);
     static int newAabbTree(lua_State* L);
     static int newKdTree(lua_State* L);
@@ -47,7 +47,7 @@ class SpatialIndexLua final {
     template <typename Structure> static int remove(lua_State* L);
     template <typename Structure> static int has(lua_State* L);
     template <typename Structure> static int bounds(lua_State* L);
-    static int position(lua_State* L);
+    static int point(lua_State* L);
     static int build(lua_State* L);
     static int isBuilt(lua_State* L);
     template <typename Structure> static int query(lua_State* L);

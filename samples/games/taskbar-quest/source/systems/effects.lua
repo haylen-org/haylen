@@ -72,7 +72,7 @@ function effects:draw()
     for _, item in ipairs(self.texts) do
         local progress = item.time / textLife
         local alpha = 1 - m.smoothstep(0.6, 1, progress)
-        graphics2d.drawText(nil, item.text, item.x, item.y - m.ease('quad_out', progress) * 36, {
+        graphics2d.drawText(nil, item.text, item.x, item.y - m.ease('quadOut', progress) * 36, {
             size = 26,
             color = item.color:withAlpha(alpha),
             outlineWidth = 3,

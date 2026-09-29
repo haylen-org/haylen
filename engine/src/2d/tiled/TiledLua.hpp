@@ -84,7 +84,7 @@ class TiledLua final {
     static int mapDraw(lua_State* L);
     static int mapDrawLayer(lua_State* L);
     static int mapUpdate(lua_State* L);
-    static int mapTileAt(lua_State* L);
+    static int mapTile(lua_State* L);
     static int mapSetTile(lua_State* L);
     static int mapSetLayerVisible(lua_State* L);
     static int mapCellToWorld(lua_State* L);
@@ -101,7 +101,7 @@ class TiledLua final {
     static int mapHeight(lua_State* L);
     static int mapTileWidth(lua_State* L);
     static int mapTileHeight(lua_State* L);
-    static int mapBounds(lua_State* L);
+    static int mapPixelBounds(lua_State* L);
     static int mapSkewX(lua_State* L);
     static int mapSkewY(lua_State* L);
     static int mapOrientation(lua_State* L);

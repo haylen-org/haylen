@@ -64,10 +64,10 @@ TEST(CollectionsLuaTest, RingBuffersKeepTheNewestValues) {
     fixture.runLua("collections = require('haylen.collections') history = collections.newRingBuffer(3)");
     EXPECT_EQ(fixture.lua("return tostring(history:push('a')) .. ' ' .. tostring(history:push({name = 'b'})) .. ' ' .. tostring(history:push(3))"), "false false false");
     EXPECT_EQ(fixture.lua("return tostring(history.full) .. ' ' .. tostring(history:push('d')) .. ' ' .. history.size .. ' ' .. history.capacity"), "true true 3 3");
-    EXPECT_EQ(fixture.lua("return history:peek().name .. ' ' .. history:last() .. ' ' .. history:get(2) .. ' ' .. tostring(history:get(4))"), "b d 3 nil");
+    EXPECT_EQ(fixture.lua("return history:front().name .. ' ' .. history:back() .. ' ' .. history:get(2) .. ' ' .. tostring(history:get(4))"), "b d 3 nil");
     EXPECT_EQ(fixture.lua("local values = history:values() return #values .. ' ' .. values[3]"), "3 d");
     EXPECT_EQ(fixture.lua("return history:pop().name .. ' ' .. history.size"), "b 2");
-    EXPECT_EQ(fixture.lua("history:clear() return history.size .. ' ' .. tostring(history:pop()) .. ' ' .. tostring(history:peek()) .. ' ' .. tostring(history:last())"), "0 nil nil nil");
+    EXPECT_EQ(fixture.lua("history:clear() return history.size .. ' ' .. tostring(history:pop()) .. ' ' .. tostring(history:front()) .. ' ' .. tostring(history:back())"), "0 nil nil nil");
     EXPECT_NE(fixture.lua("collections.newRingBuffer(0)").find("capacity of at least one"), std::string::npos);
 }
 

@@ -293,7 +293,7 @@ int WorldRaycastLua::raycastBatch(lua_State* L) {
     lua_pushvalue(L, 1);
     lua_setiuservalue(L, 2, 1);
     for (std::size_t index = 0; index < batch.size(); ++index) {
-        record(L, batch.getRay(index).start, batch.getRay(index).end, batch.getResult(index));
+        record(L, batch.getRay(index).start, batch.getRay(index).end, batch.getHit(index));
     }
     return 0;
 }
@@ -363,12 +363,12 @@ int WorldRaycastLua::newRayBatch(lua_State* L) {
     return 1;
 }
 
-int WorldRaycastLua::batchCount(lua_State* L) {
+int WorldRaycastLua::batchSize(lua_State* L) {
     lua::Stack::push(L, lua::Userdata::check<RayBatch>(L, 1).size());
     return 1;
 }
 
-int WorldRaycastLua::setBatchCount(lua_State* L) {
+int WorldRaycastLua::setBatchSize(lua_State* L) {
     lua::Userdata::check<RayBatch>(L, 1).resize(lua::Stack::read<std::size_t>(L, 3));
     return 0;
 }
@@ -391,7 +391,7 @@ int WorldRaycastLua::batchRay(lua_State* L) {
 
 // Returns false for a ray that hit nothing, and otherwise true, x, y, normalX, normalY and fraction, so reading results creates no tables.
 int WorldRaycastLua::batchHit(lua_State* L) {
-    const std::optional<RaycastHit>& hit = lua::Userdata::check<RayBatch>(L, 1).getResult(readBatchIndex(L, 2));
+    const std::optional<RaycastHit>& hit = lua::Userdata::check<RayBatch>(L, 1).getHit(readBatchIndex(L, 2));
     if (!hit) {
         lua::Stack::push(L, false);
         return 1;
@@ -406,7 +406,7 @@ int WorldRaycastLua::batchHit(lua_State* L) {
 }
 
 int WorldRaycastLua::batchShape(lua_State* L) {
-    const std::optional<RaycastHit>& hit = lua::Userdata::check<RayBatch>(L, 1).getResult(readBatchIndex(L, 2));
+    const std::optional<RaycastHit>& hit = lua::Userdata::check<RayBatch>(L, 1).getHit(readBatchIndex(L, 2));
     if (!hit || lua_getiuservalue(L, 1, 1) != LUA_TUSERDATA) {
         lua_pushnil(L);
         return 1;
@@ -416,7 +416,7 @@ int WorldRaycastLua::batchShape(lua_State* L) {
 }
 
 int WorldRaycastLua::batchBody(lua_State* L) {
-    const std::optional<RaycastHit>& hit = lua::Userdata::check<RayBatch>(L, 1).getResult(readBatchIndex(L, 2));
+    const std::optional<RaycastHit>& hit = lua::Userdata::check<RayBatch>(L, 1).getHit(readBatchIndex(L, 2));
     if (!hit || !hit->shape.isValid() || lua_getiuservalue(L, 1, 1) != LUA_TUSERDATA) {
         lua_pushnil(L);
         return 1;
@@ -452,7 +452,7 @@ void WorldRaycastLua::addFunctions(lua_State* L) {
 }
 
 void WorldRaycastLua::install(lua_State* L) {
-    lua::ClassBuilder<RayBatch>(L).property("count", &batchCount, &lua::Binding::native<&setBatchCount>).function("setRay", &lua::Binding::native<&batchSetRay>).function("ray", &lua::Binding::native<&batchRay>).function("hit", &lua::Binding::native<&batchHit>).function("shape", &lua::Binding::native<&batchShape>).function("body", &lua::Binding::native<&batchBody>).install();
+    lua::ClassBuilder<RayBatch>(L).property("size", &batchSize, &lua::Binding::native<&setBatchSize>).function("setRay", &lua::Binding::native<&batchSetRay>).function("ray", &lua::Binding::native<&batchRay>).function("hit", &lua::Binding::native<&batchHit>).function("shape", &lua::Binding::native<&batchShape>).function("body", &lua::Binding::native<&batchBody>).install();
     lua::ClassBuilder<RayDebugDraw>(L).install();
 }
 

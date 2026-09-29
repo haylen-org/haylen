@@ -20,7 +20,7 @@ Occluders.maxCrates = 40
 function Occluders.shadeBehind(occluders)
     for _, occluder in ipairs(occluders) do
         if occluder.closed then
-            occluder.cull = m.polygonArea(occluder.points) > 0 and 'counterClockwise' or 'clockwise'
+            occluder.cull = m.polygonSignedArea(occluder.points) > 0 and 'counterClockwise' or 'clockwise'
         end
     end
     return occluders
@@ -33,7 +33,7 @@ function Occluders:init(entry)
     self.map:buildCollision(self.world)
     self.walls = Occluders.shadeBehind(lighting2d.occludersFromMap(self.map, 'walls'))
 
-    local bounds = self.map.bounds
+    local bounds = self.map.pixelBounds
     self.camera = graphics2d.newCamera()
     self.camera.position = {bounds.x + bounds.width / 2, bounds.y + bounds.height / 2}
     self.cursor = sample.Cursor()
@@ -94,7 +94,7 @@ end
 
 function Occluders:render()
     graphics2d.beginWorld(self.camera, {ambientLight = '#FF1A1E2A'})
-    graphics2d.drawRect(self.map.bounds, '#FF5A6068')
+    graphics2d.drawRect(self.map.pixelBounds, '#FF5A6068')
     for _, wall in ipairs(self.walls) do
         Occluders.drawOutline(wall, '#FF4A7A9A')
         graphics2d.drawOccluder(wall)

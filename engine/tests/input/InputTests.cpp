@@ -64,17 +64,17 @@ class InputTest : public InputEventTest {};
 class ActionMapTest : public InputEventTest {};
 
 TEST(ControlsTest, NamesRoundTrip) {
-    EXPECT_EQ(Controls::keyFromName("left_shift"), Key::LeftShift);
+    EXPECT_EQ(Controls::keyFromName("leftShift"), Key::LeftShift);
     EXPECT_EQ(Controls::keyName(Key::F12), "f12");
     EXPECT_EQ(Controls::keyName(Key::Unknown), "unknown");
     EXPECT_FALSE(Controls::keyFromName("hyper").has_value());
     EXPECT_EQ(Controls::mouseButtonFromName("middle"), MouseButton::Middle);
     EXPECT_EQ(Controls::mouseButtonName(MouseButton::Right), "right");
     EXPECT_FALSE(Controls::mouseButtonFromName("extra").has_value());
-    EXPECT_EQ(Controls::gamepadButtonFromName("dpad_left"), GamepadButton::DpadLeft);
+    EXPECT_EQ(Controls::gamepadButtonFromName("dpadLeft"), GamepadButton::DpadLeft);
     EXPECT_EQ(Controls::gamepadButtonName(GamepadButton::Start), "start");
-    EXPECT_EQ(Controls::gamepadAxisFromName("right_trigger"), GamepadAxis::RightTrigger);
-    EXPECT_EQ(Controls::gamepadAxisName(GamepadAxis::LeftY), "left_y");
+    EXPECT_EQ(Controls::gamepadAxisFromName("rightTrigger"), GamepadAxis::RightTrigger);
+    EXPECT_EQ(Controls::gamepadAxisName(GamepadAxis::LeftY), "leftY");
 }
 
 TEST_F(InputTest, KeyboardEdgesSurviveATapWithinOneFrame) {
@@ -316,13 +316,13 @@ TEST(VirtualInputTest, StoresButtonsAndClampedSticks) {
 }
 
 TEST(BindingTest, ParsesAndPrintsEveryForm) {
-    for (const std::string text : {"key:w", "mouse:left", "button:south", "axis:left_y-", "axis:right_trigger+", "stick:right", "virtual:attack", "virtual_stick:move"}) {
+    for (const std::string text : {"key:w", "mouse:left", "button:south", "axis:leftY-", "axis:rightTrigger+", "stick:right", "virtual:attack", "virtualStick:move"}) {
         const auto binding = ActionMap::Binding::parse(text);
         ASSERT_TRUE(binding.has_value()) << text;
         EXPECT_EQ(binding->toString(), text);
     }
 
-    for (const std::string text : {"w", "key:hyper", "mouse:extra", "button:x", "axis:left_y", "axis:bad+", "stick:middle", "virtual:", "device:foo"}) {
+    for (const std::string text : {"w", "key:hyper", "mouse:extra", "button:x", "axis:leftY", "axis:bad+", "stick:middle", "virtual:", "device:foo"}) {
         EXPECT_FALSE(ActionMap::Binding::parse(text).has_value()) << text;
     }
 }
@@ -331,8 +331,8 @@ TEST_F(ActionMapTest, LoadsSavesAndReportsActions) {
     const core::Json document = core::Json::parse(R"({
         "actions": [
             {"name": "attack", "type": "button", "bindings": ["key:space", "mouse:left", "button:south", "virtual:attack"]},
-            {"name": "zoom", "type": "axis", "positive": ["key:e", "axis:right_trigger+"], "negative": ["key:q"]},
-            {"name": "move", "type": "vector", "up": ["key:w"], "down": ["key:s"], "left": ["key:a"], "right": ["key:d"], "bindings": ["stick:left", "virtual_stick:move"]}
+            {"name": "zoom", "type": "axis", "positive": ["key:e", "axis:rightTrigger+"], "negative": ["key:q"]},
+            {"name": "move", "type": "vector", "up": ["key:w"], "down": ["key:s"], "left": ["key:a"], "right": ["key:d"], "bindings": ["stick:left", "virtualStick:move"]}
         ]
     })");
 
@@ -377,8 +377,8 @@ TEST_F(ActionMapTest, LoadsSavesAndReportsActions) {
 TEST_F(ActionMapTest, VirtualControlsAndGamepadsDriveActions) {
     ActionMap actions;
     actions.define({.name = "attack", .type = ActionMap::Action::Type::Button, .bindings = {*ActionMap::Binding::parse("virtual:attack"), *ActionMap::Binding::parse("button:east")}});
-    actions.define({.name = "move", .type = ActionMap::Action::Type::Vector, .bindings = {*ActionMap::Binding::parse("virtual_stick:move"), *ActionMap::Binding::parse("stick:left")}});
-    actions.define({.name = "aim", .type = ActionMap::Action::Type::Axis, .positive = {*ActionMap::Binding::parse("axis:left_x+")}});
+    actions.define({.name = "move", .type = ActionMap::Action::Type::Vector, .bindings = {*ActionMap::Binding::parse("virtualStick:move"), *ActionMap::Binding::parse("stick:left")}});
+    actions.define({.name = "aim", .type = ActionMap::Action::Type::Axis, .positive = {*ActionMap::Binding::parse("axis:leftX+")}});
 
     Input input;
     VirtualInput virtualInput;
@@ -418,7 +418,7 @@ TEST_F(ActionMapTest, VirtualControlsAndGamepadsDriveActions) {
 
 TEST_F(ActionMapTest, PressThresholdDecidesWhenAnActionIsDown) {
     ActionMap actions;
-    actions.define({.name = "aim", .type = ActionMap::Action::Type::Axis, .positive = {*ActionMap::Binding::parse("axis:left_x+")}});
+    actions.define({.name = "aim", .type = ActionMap::Action::Type::Axis, .positive = {*ActionMap::Binding::parse("axis:leftX+")}});
     Input input;
     VirtualInput virtualInput;
     std::array<GamepadState, 1> states{makeGamepad(GamepadButton::South, 0.7F)};
@@ -445,9 +445,9 @@ TEST_F(ActionMapTest, BlockedInputHoldsEveryControlUntilItIsReleased) {
     actions.define({.name = "key", .type = ActionMap::Action::Type::Button, .bindings = {*ActionMap::Binding::parse("key:p")}});
     actions.define({.name = "mouse", .type = ActionMap::Action::Type::Button, .bindings = {*ActionMap::Binding::parse("mouse:right")}});
     actions.define({.name = "button", .type = ActionMap::Action::Type::Button, .bindings = {*ActionMap::Binding::parse("button:start")}});
-    actions.define({.name = "axis", .type = ActionMap::Action::Type::Axis, .positive = {*ActionMap::Binding::parse("axis:left_x+")}});
+    actions.define({.name = "axis", .type = ActionMap::Action::Type::Axis, .positive = {*ActionMap::Binding::parse("axis:leftX+")}});
     actions.define({.name = "virtual", .type = ActionMap::Action::Type::Button, .bindings = {*ActionMap::Binding::parse("virtual:attack")}});
-    actions.define({.name = "stick", .type = ActionMap::Action::Type::Vector, .bindings = {*ActionMap::Binding::parse("virtual_stick:move")}});
+    actions.define({.name = "stick", .type = ActionMap::Action::Type::Vector, .bindings = {*ActionMap::Binding::parse("virtualStick:move")}});
     const std::array<std::string, 6> names{"key", "mouse", "button", "axis", "virtual", "stick"};
     // clang-format off
     const auto read = [&actions, &names](bool (ActionMap::*query)(std::string_view) const noexcept) {
@@ -560,7 +560,7 @@ TEST(ViewportTest, FitLetterboxesAndConvertsCoordinates) {
     EXPECT_EQ(viewport.getVisibleRect(), (math::Rect{0.0F, 0.0F, 1920.0F, 1080.0F}));
     EXPECT_EQ(viewport.toDesign(math::Vec2(960.0F, 600.0F)), math::Vec2(960.0F, 540.0F));
     EXPECT_EQ(viewport.toFramebuffer(math::Vec2(0.0F, 0.0F)), math::Vec2(0.0F, 60.0F));
-    EXPECT_EQ(viewport.getPolicy(), graphics::Viewport::ScalingPolicy::Fit);
+    EXPECT_EQ(viewport.getScaling(), graphics::Viewport::ScalingPolicy::Fit);
     EXPECT_EQ(viewport.getDesignSize(), math::Vec2(1920.0F, 1080.0F));
     EXPECT_EQ(viewport.getFramebufferSize(), math::Vec2(1920.0F, 1200.0F));
 }

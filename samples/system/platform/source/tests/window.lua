@@ -11,9 +11,9 @@ local sample = require('sample')
 local Window = haylen.class('Window', sample.Test)
 
 local kEvents = {
-    window_resized = sample.muted, window_focus_gained = sample.accent, window_focus_lost = sample.accent, window_fullscreen_changed = sample.warm,
-    window_orientation_changed = sample.warm, window_safe_area_changed = sample.violet, keyboard_shown = sample.green, keyboard_hidden = sample.green,
-    network_online = sample.green, network_offline = sample.red, app_active = sample.accent, app_inactive = sample.accent, app_background = sample.accent,
+    windowResized = sample.muted, windowFocusGained = sample.accent, windowFocusLost = sample.accent, windowFullscreenChanged = sample.warm,
+    windowOrientationChanged = sample.warm, windowSafeAreaChanged = sample.violet, keyboardShown = sample.green, keyboardHidden = sample.green,
+    networkOnline = sample.green, networkOffline = sample.red, appActive = sample.accent, appInactive = sample.accent, appBackground = sample.accent,
 }
 local kSimulations = {
     {id = 'none', text = 'The device'}, {id = 'iphoneNotch', text = 'iPhone notch'}, {id = 'iphoneDynamicIsland', text = 'iPhone dynamic island'},
@@ -39,8 +39,8 @@ function Window:enter()
         focus = 'fullscreen',
         controls = {
             ui.toggle{id = 'fullscreen', text = 'Fullscreen', checked = window.fullscreen(), onChange = function(event) window.setFullscreen(event.checked) end},
-            ui.button{id = 'showKeyboard', text = 'Show the on-screen keyboard', onClick = function() window.showKeyboard(true) end},
-            ui.button{id = 'hideKeyboard', text = 'Hide the on-screen keyboard', onClick = function() window.showKeyboard(false) end},
+            ui.button{id = 'showKeyboard', text = 'Show the on-screen keyboard', onClick = function() window.setKeyboardVisible(true) end},
+            ui.button{id = 'hideKeyboard', text = 'Hide the on-screen keyboard', onClick = function() window.setKeyboardVisible(false) end},
             ui.formField{label = 'A text field opens the keyboard too', ui.textField{id = 'typing', placeholder = 'Type here'}},
             ui.formField{label = 'Safe area', ui.combo{id = 'simulation', items = kSimulations, selected = 'none', onChange = function(event)
                 viewport.setSafeAreaSimulation(event.value ~= 'none' and event.value or nil)
@@ -52,7 +52,7 @@ function Window:enter()
 end
 
 function Window:exit()
-    window.showKeyboard(false)
+    window.setKeyboardVisible(false)
     viewport.setSafeAreaSimulation(self.simulation)
     ui.setSafeAreaVisible(self.safeAreaVisible)
 end
@@ -69,18 +69,18 @@ function Window:record(name, value, color)
             detail = ' ' .. value.orientation
         end
     end
-    if name == 'keyboard_shown' then
+    if name == 'keyboardShown' then
         self.keyboard = value
-    elseif name == 'keyboard_hidden' then
+    elseif name == 'keyboardHidden' then
         self.keyboard = nil
-    elseif name == 'network_online' or name == 'network_offline' then
-        self.network = name == 'network_online' and 'online' or 'offline'
+    elseif name == 'networkOnline' or name == 'networkOffline' then
+        self.network = name == 'networkOnline' and 'online' or 'offline'
     end
     self.journal:add(name .. detail, color)
 end
 
 function Window:rows()
-    local width, height = window.size()
+    local width, height = window.framebufferSize()
     local designWidth, designHeight = viewport.designSize()
     local simulation = viewport.safeAreaSimulation()
     return {
@@ -88,7 +88,7 @@ function Window:rows()
         {'haylen.backend', haylen.backend},
         {'haylen.version', haylen.version},
         {'app', string.format('%s %s, %s', haylen.config.name, haylen.config.version, haylen.config.identifier)},
-        {'window.size()', string.format('%.0f x %.0f pixels, dpi scale %.2f', width, height, window.dpiScale())},
+        {'window.framebufferSize()', string.format('%.0f x %.0f pixels, dpi scale %.2f', width, height, window.dpiScale())},
         {'viewport.designSize()', string.format('%.0f x %.0f, scaling %s', designWidth, designHeight, viewport.scaling())},
         {'viewport.visibleRect()', rectText(viewport.visibleRect())},
         {'viewport.safeRect()', rectText(viewport.safeRect()) .. (simulation and ', simulated ' .. tostring(simulation) or '')},
@@ -103,7 +103,7 @@ end
 
 function Window:update(dt)
     Window.super.update(self, dt)
-    self:status(string.format('%s on %s   ui wants the keyboard %s   back leaves the app %s', haylen.platform, haylen.backend, ui.wantsKeyboard(), window.backLeavesApp()))
+    self:status(string.format('%s on %s   ui wants the keyboard %s   back leaves the app %s', haylen.platform, haylen.backend, ui.usingKeyboard(), window.backLeavesApp()))
 end
 
 -- Draws the visible area scaled into a box with the safe area and the keyboard inside it.

@@ -12,7 +12,7 @@ local Scaling = haylen.class('Scaling', sample.Test)
 Scaling.hints = 'Left and right change the focused stepper. The policy is design.scaling in app.json, and this app uses expand. The preview draws the design area of 1920 by 1080 on a simulated screen: black bars are letterboxing, the striped band is the extra visible area of expand, and whatever leaves the screen is cropped.'
 Scaling.focus = 'policy'
 
-Scaling.policies = {{id = 'fit', text = 'fit'}, {id = 'fill', text = 'fill'}, {id = 'stretch', text = 'stretch'}, {id = 'expand', text = 'expand'}, {id = 'pixel_perfect', text = 'pixel perfect'}}
+Scaling.policies = {{id = 'fit', text = 'fit'}, {id = 'fill', text = 'fill'}, {id = 'stretch', text = 'stretch'}, {id = 'expand', text = 'expand'}, {id = 'pixelPerfect', text = 'pixel perfect'}}
 Scaling.screens = {
     {id = 'phone-portrait', text = 'Phone in portrait', width = 1170, height = 2532},
     {id = 'phone-landscape', text = 'Phone in landscape', width = 2532, height = 1170},
@@ -63,7 +63,7 @@ function Scaling:map(width, height)
     local scale = math.min(ratioX, ratioY)
     if policy == 'fill' then
         scale = math.max(ratioX, ratioY)
-    elseif policy == 'pixel_perfect' then
+    elseif policy == 'pixelPerfect' then
         scale = scale >= 1 and math.floor(scale) or 1 / math.ceil(math.max(designWidth / width, designHeight / height))
     end
     local offsetX, offsetY = (width - designWidth * scale) / 2, (height - designHeight * scale) / 2
@@ -80,7 +80,7 @@ function Scaling:update(dt)
     self:show('mapping', string.format('scale    %.3f x %.3f\ndesign   %.0f x %.0f pixels at %.0f, %.0f\nvisible  %.0f x %.0f design units', scaleX, scaleY, designWidth * scaleX, designHeight * scaleY, offsetX, offsetY, visibleWidth, visibleHeight))
     local visible, pixels = viewport.visibleRect(), viewport.pixelRect()
     local unitX, unitY = viewport.pixelsPerUnit()
-    local width, height = window.size()
+    local width, height = window.framebufferSize()
     self:show('live', string.format('design   %.0f x %.0f, %s\nwindow   %.0f x %.0f pixels\nvisible  %.0f, %.0f, %.0f x %.0f units\npixels   %.0f, %.0f, %.0f x %.0f\nper unit %.3f x %.3f pixels', designWidth, designHeight, viewport.scaling(), width, height, visible.x, visible.y, visible.width, visible.height, pixels.x, pixels.y, pixels.width, pixels.height, unitX, unitY))
     self:setStatus(string.format('%s on the %s', self.policy, self.screen.text:lower()))
 end

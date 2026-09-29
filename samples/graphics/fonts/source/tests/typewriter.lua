@@ -42,7 +42,7 @@ end
 
 -- Starts the current line of the dialogue with the reveal speed of the slider.
 function Typewriter:say()
-    self.dialogue = graphics2d.newRichText(kDialogue[self.line], {family = fonts.family('crimson'), size = 40, maxWidth = 1300, reveal = self.speed})
+    self.dialogue = graphics2d.newRichText(kDialogue[self.line], {family = fonts.family('crimson'), size = 40, maxWidth = 1300, revealSpeed = self.speed})
 end
 
 function Typewriter:controls()

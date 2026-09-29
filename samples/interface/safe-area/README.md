@@ -8,7 +8,7 @@ Every test keeps its controls in a card in the middle of the safe area, with Bac
 | --- | --- |
 | Anchors | The 9 point presets and the 7 stretch presets of `anchor`, anchored with `anchorTo = 'safe'`, `'screen'` or both at once, with a margin from 0 to 96, over red bands that mark what lies outside the safe area. |
 | Edge to edge | A world drawn over the whole visible screen, or boxed into the safe area to compare, a HUD whose column `ui.safeArea` keeps in the safe area inside a screen document, and a label anchored to the screen under the notch. |
-| Debug overlay | `ui.setSafeAreaVisible` with the visible rectangle, the safe rectangle and the insets, and the `window_safe_area_changed` event as the device changes. |
+| Debug overlay | `ui.setSafeAreaVisible` with the visible rectangle, the safe rectangle and the insets, and the `windowSafeAreaChanged` event as the device changes. |
 | Device simulations | `viewport.setSafeAreaSimulation` with every simulated device and with custom insets in window points, switched while a HUD anchored to the safe area follows. |
 
 ## Controls
@@ -34,7 +34,7 @@ To start any app with a simulated device and the overlay, add `"debug": {"safeAr
 safe-area/
   app.json               Window, design resolution of 1920 by 1080, any orientation and identifier.
   source/
-    main.lua             Adds the Back button of gamepads to ui_cancel, simulates an iPhone on desktops and opens the menu.
+    main.lua             Adds the Back button of gamepads to uiCancel, simulates an iPhone on desktops and opens the menu.
     tests.lua            The tests in menu order.
     sample.lua           The frame of every test, the way back to the menu, the simulated devices and the insets of the safe area.
     scenes/menu.lua      The menu.

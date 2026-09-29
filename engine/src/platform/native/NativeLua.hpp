@@ -31,7 +31,7 @@ class NativeLua final {
 
     static int available(lua_State* L);
     static int load(lua_State* L);
-    static int symbol(lua_State* L);
+    static int findSymbol(lua_State* L);
     static int callback(lua_State* L);
     static int getPointer(lua_State* L);
     static int isFreed(lua_State* L);

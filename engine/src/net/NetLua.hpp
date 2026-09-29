@@ -33,8 +33,8 @@ class NetLua final {
     [[nodiscard]] static WebSocket& check(lua_State* L);
     [[nodiscard]] static WebSocket::Reconnect readReconnect(lua_State* L, int index);
 
-    static int websocket(lua_State* L);
-    static int openSockets(lua_State* L);
+    static int connectWebSocket(lua_State* L);
+    static int openSocketCount(lua_State* L);
     static int send(lua_State* L);
     static int sendBinary(lua_State* L);
     static int ping(lua_State* L);

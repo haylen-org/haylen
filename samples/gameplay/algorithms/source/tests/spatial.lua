@@ -52,7 +52,7 @@ end
 function Spatial:use(kind)
     self.kind = kind
     if kind == 'hash' then
-        self.structure = spatial2d.newHash(kHashCell)
+        self.structure = spatial2d.newHashGrid(kHashCell)
     elseif kind == 'quad' then
         self.structure = spatial2d.newQuadTree(kArea, {maxEntries = 6, maxDepth = 7})
     elseif kind == 'aabb' then

@@ -17,7 +17,7 @@ local kMaxBalls = 60
 
 function Collision:enter()
     self.map = tiled.newMapRenderer(assets.load('maps/collision.tmj'))
-    local bounds = self.map.bounds
+    local bounds = self.map.pixelBounds
     Collision.super.enter(self, {
         hint = 'Tap or click to throw a ball from there. Blue balls pass the fences, whose layer puts them in their own category. Balls in the water or the pit turn gold while they overlap the sensor.',
         controls = {
@@ -67,7 +67,7 @@ end
 
 function Collision:rain()
     for _ = 1, 10 do
-        self:throw(self.random:range(64, self.map.bounds.width - 64), self.random:range(64, 160))
+        self:throw(self.random:range(64, self.map.pixelBounds.width - 64), self.random:range(64, 160))
     end
 end
 

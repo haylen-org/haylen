@@ -64,7 +64,7 @@ function Materials:update(dt)
     end
     self.flash = math.max(0, self.flash - dt * 3)
 
-    local time = haylen.time()
+    local time = haylen.elapsed()
     local materials = self.materials
     materials.dissolve:set('amount', 0.5 + 0.5 * math.sin(time * 1.2))
     materials.outline:set('thickness', 1 + (math.sin(time * 4) + 1) * 0.5)

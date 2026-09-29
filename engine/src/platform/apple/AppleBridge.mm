@@ -43,7 +43,7 @@ void AppleBridge::registerBuiltIns() {
 #endif
     });
     registerBuiltIn(@"system.locale", ^(id, HaylenReply reply) { reply(YES, getLanguageTag()); });
-    registerBuiltIn(@"system.open_url", ^(id params, HaylenReply reply) {
+    registerBuiltIn(@"system.openUrl", ^(id params, HaylenReply reply) {
       id address = [params isKindOfClass:NSDictionary.class] ? params[@"url"] : nil;
       if (![address isKindOfClass:NSString.class] || [address length] == 0) {
           reply(NO, @"The url is missing.");
@@ -93,7 +93,7 @@ void AppleBridge::dispatch(std::uint64_t call, std::string_view method, std::str
         }
     }
     if (handler == nil) {
-        fail(call, @{@"message" : [NSString stringWithFormat:@"No native handler is registered for %@.", name], @"code" : @"no_handler"});
+        fail(call, @{@"message" : [NSString stringWithFormat:@"No native handler is registered for %@.", name], @"code" : @"noHandler"});
         return;
     }
 

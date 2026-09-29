@@ -20,11 +20,11 @@ class Profiler final {
     void beginFrame();
     void endFrame();
 
-    void begin(std::string_view name);
-    void end();
+    void beginScope(std::string_view name);
+    void endScope();
 
     // Closes every scope open at the depth or deeper, which does nothing when app code already closed them.
-    void endTo(std::size_t depth) noexcept;
+    void endScopesTo(std::size_t depth) noexcept;
     [[nodiscard]] std::size_t getDepth() const noexcept {
         return open.size();
     }

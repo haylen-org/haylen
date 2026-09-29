@@ -73,7 +73,7 @@ function CustomEffect:push(name)
     if scene.transitioning() then
         return
     end
-    local transition = {effect = CustomEffect[name], duration = 1.1, ease = 'cubic_in_out'}
+    local transition = {effect = CustomEffect[name], duration = 1.1, ease = 'cubicInOut'}
     self.pushed = self.pushed + 1
     scene.push(Card({title = name, caption = 'a Lua transition effect', color = self.pushed % 2 == 0 and '#FF3E6E8A' or '#FF8A4E3E', stay = 1.2, leave = transition}), transition)
     self:setStatus(string.format('%d cards pushed with custom effects', self.pushed))
@@ -83,7 +83,7 @@ function CustomEffect:render()
     graphics2d.beginScreen()
     local area = graphics2d.canvasBounds()
     graphics2d.drawRect(area, '#FF222A20')
-    local time = haylen.time()
+    local time = haylen.elapsed()
     for index = 0, 7 do
         local x = area.x + area.width * (index + 0.5) / 8
         graphics2d.drawCircle(x, area.y + area.height * 0.6 + math.sin(time * 2 + index) * 80, 50, '#FF5A8A4A')

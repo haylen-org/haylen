@@ -51,7 +51,7 @@ end
 -- A sea at sunset with sailing boats, drawn over the visible screen or only over the safe area.
 function EdgeToEdge:render()
     local area = self.edge and viewport.visibleRect() or viewport.safeRect()
-    local time = haylen.time()
+    local time = haylen.elapsed()
     graphics2d.beginScreen()
     local horizon = area.y + area.height * 0.58
     graphics2d.drawMesh(nil, {

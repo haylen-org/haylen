@@ -9,12 +9,12 @@
 
 namespace haylen::platform {
 
-// Native methods of the desktop platforms: device.info, system.locale, system.open_url and haptics.vibrate. Each desktop platform supplies the answers.
+// Native methods of the desktop platforms: device.info, system.locale, system.openUrl and haptics.vibrate. Each desktop platform supplies the answers.
 class DesktopMethods {
   public:
     virtual ~DesktopMethods() = default;
 
-    // Answers a platform call through the bridge relay. Failures carry an object with a message, and a method without a handler fails with the code no_handler.
+    // Answers a platform call through the bridge relay. Failures carry an object with a message, and a method without a handler fails with the code noHandler.
     void dispatch(std::uint64_t call, std::string_view method, std::string_view paramsJson);
 
   protected:

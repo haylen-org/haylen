@@ -88,7 +88,7 @@ end
 
 function Zip:writeFiles()
     for name, text in pairs(kFiles) do
-        storage.write('zip-demo/files/' .. name, text)
+        storage.writeText('zip-demo/files/' .. name, text)
     end
     return string.format('Wrote %d files under zip-demo/files with haylen.storage', #storage.list('zip-demo/files'))
 end
@@ -116,7 +116,7 @@ function Zip:extract()
     need(zip.extract(self.archive, self.base .. '/extracted'))
     local files = storage.list('zip-demo/extracted')
     self:showEntries('Extracted files', files)
-    self:show('preview', {text = storage.read('zip-demo/extracted/data/map.txt')})
+    self:show('preview', {text = storage.readText('zip-demo/extracted/data/map.txt')})
     return string.format('zip.extract unpacked %d files into zip-demo/extracted', #files)
 end
 
@@ -127,7 +127,7 @@ function Zip:postcards()
     local names = need(zip.list(archive))
     need(zip.extract(archive, self.base .. '/postcards'))
     self:showEntries('zip.list(postcards.zip)', names)
-    self:show('preview', {text = storage.read('zip-demo/postcards/postcards/palm-cove.txt')})
+    self:show('preview', {text = storage.readText('zip-demo/postcards/postcards/palm-cove.txt')})
     return string.format('Copied archives/postcards.zip from the package and extracted its %d entries', #names)
 end
 

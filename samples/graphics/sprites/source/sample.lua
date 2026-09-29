@@ -111,11 +111,11 @@ function Test:pointer()
     local touch = input.touches()[1]
     if touch then
         local x, y = self:toStage(touch.x, touch.y)
-        local held = touch.phase ~= 'ended' and touch.phase ~= 'cancelled' and not ui.wantsPointer()
+        local held = touch.phase ~= 'ended' and touch.phase ~= 'cancelled' and not ui.usingPointer()
         return x, y, touch.phase == 'began' and held, held
     end
     local x, y = self:toStage(input.mousePosition())
-    local free = not ui.wantsPointer()
+    local free = not ui.usingPointer()
     return x, y, input.mousePressed('left') and free, input.mouseDown('left') and free
 end
 

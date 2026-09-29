@@ -130,7 +130,7 @@ TEST(AppConfigTest, ReadsEveryField) {
 
     const core::AppConfig roundTrip = core::AppConfig::fromJson(config.toJson());
     EXPECT_EQ(roundTrip.toJson(), config.toJson());
-    for (const char* scaling : {"fit", "fill", "stretch", "expand", "pixel_perfect"}) {
+    for (const char* scaling : {"fit", "fill", "stretch", "expand", "pixelPerfect"}) {
         EXPECT_EQ(core::AppConfig::fromJson(core::Json{{"design", {{"scaling", scaling}}}}).toJson().at("design").at("scaling"), scaling);
     }
     for (const char* orientation : {"landscape", "portrait", "any"}) {
@@ -227,7 +227,7 @@ TEST(EngineTest, TracksAppStatesFromPlatformEvents) {
     for (const platform::Event::Type type : {platform::Event::Type::FocusLost, platform::Event::Type::FocusGained, platform::Event::Type::Suspended, platform::Event::Type::FocusGained, platform::Event::Type::Resumed, platform::Event::Type::Resized, platform::Event::Type::QuitRequested}) {
         engine.handleEvent({.type = type});
     }
-    EXPECT_EQ(log, (std::vector<std::string>{"window_focus_lost", "state 1", "app_inactive", "window_focus_gained", "state 0", "app_active", "state 2", "app_background", "window_focus_gained", "state 0", "app_active", "resized", R"(window_resized {"height":1080.0,"width":1920.0})", "quit", "app_quit_requested"}));
+    EXPECT_EQ(log, (std::vector<std::string>{"windowFocusLost", "state 1", "appInactive", "windowFocusGained", "state 0", "appActive", "state 2", "appBackground", "windowFocusGained", "state 0", "appActive", "resized", R"(windowResized {"height":1080.0,"width":1920.0})", "quit", "appQuitRequested"}));
     EXPECT_FALSE(engine.getInput().isKeyDown(input::Key::A));
     EXPECT_FALSE(engine.getVirtualInput().isButtonDown("jump"));
     EXPECT_EQ(fixture.host().getPersistCount(), persisted + 1) << "going to the background makes the files of the app durable";
@@ -280,7 +280,7 @@ TEST(EngineTest, PublishesTheKeyboardAndTheNetwork) {
         engine.handleEvent({.type = platform::Event::Type::NetworkChanged, .online = online});
     }
     EXPECT_EQ(engine.getNetworkState(), core::Engine::NetworkState::Online);
-    EXPECT_EQ(log, (std::vector<std::string>{R"(keyboard_shown {"height":240.0,"width":960.0,"x":0.0,"y":300.0})", "keyboard_hidden", "network_online", "network_offline", "network_online"}));
+    EXPECT_EQ(log, (std::vector<std::string>{R"(keyboardShown {"height":240.0,"width":960.0,"x":0.0,"y":300.0})", "keyboardHidden", "networkOnline", "networkOffline", "networkOnline"}));
 }
 
 TEST(EngineTest, PublishesWindowAndGamepadChanges) {
@@ -292,22 +292,22 @@ TEST(EngineTest, PublishesWindowAndGamepadChanges) {
     }
     fixture.host().setGamepad(1, {.connected = true, .name = "Pad"});
     fixture.frames(2);
-    EXPECT_EQ(log, (std::vector<std::string>{R"(gamepad_connected {"gamepad":2,"name":"Pad"})"}));
+    EXPECT_EQ(log, (std::vector<std::string>{R"(gamepadConnected {"gamepad":2,"name":"Pad"})"}));
 
     log.clear();
     fixture.host().setFullscreen(true);
     fixture.host().setSafeAreaInsets({.top = 108.0F});
     fixture.host().setGamepad(1, {});
     fixture.frames(2);
-    EXPECT_EQ(log, (std::vector<std::string>{R"(window_fullscreen_changed {"fullscreen":true})", R"(window_safe_area_changed {"height":972.0,"width":1920.0,"x":0.0,"y":108.0})", R"(gamepad_disconnected {"gamepad":2,"name":"Pad"})"}));
+    EXPECT_EQ(log, (std::vector<std::string>{R"(windowFullscreenChanged {"fullscreen":true})", R"(windowSafeAreaChanged {"height":972.0,"width":1920.0,"x":0.0,"y":108.0})", R"(gamepadDisconnected {"gamepad":2,"name":"Pad"})"}));
 
     log.clear();
     fixture.host().setSafeAreaInsets({});
     fixture.host().resize({1080.0F, 1920.0F});
     fixture.frames(1);
     ASSERT_EQ(log.size(), 2U);
-    EXPECT_EQ(log[0], R"(window_orientation_changed {"orientation":"portrait"})");
-    EXPECT_EQ(log[1].rfind("window_safe_area_changed", 0), 0U);
+    EXPECT_EQ(log[0], R"(windowOrientationChanged {"orientation":"portrait"})");
+    EXPECT_EQ(log[1].rfind("windowSafeAreaChanged", 0), 0U);
 }
 
 TEST(EngineTest, KeepsHeldTouchesOnTheirScreenPointAcrossAResize) {
@@ -399,7 +399,7 @@ TEST(EngineTest, ReportsLowMemoryToTheApp) {
 
     int warnings = 0;
     const core::ScopedConnection lowMemory = fixture.engine().lowMemory.connect([&] { ++warnings; });
-    fixture.runLua("warnings = 0 require('haylen.scene').push({event = function(_, event) if event.type == 'low_memory' then warnings = warnings + 1 end end})");
+    fixture.runLua("warnings = 0 require('haylen.scene').push({event = function(_, event) if event.type == 'lowMemory' then warnings = warnings + 1 end end})");
     fixture.frames(1);
     platform::Event event;
     event.type = platform::Event::Type::LowMemory;

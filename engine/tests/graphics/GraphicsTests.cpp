@@ -204,12 +204,12 @@ TEST(GraphicsNamesTest, ParsesAndNamesBlendFilterWrapAndScalingValues) {
     for (const std::string_view name : {"clamp", "repeat", "mirror"}) {
         EXPECT_EQ(graphics::Texture::wrapName(*graphics::Texture::wrapFromName(name)), name);
     }
-    for (const std::string_view name : {"fit", "fill", "stretch", "expand", "pixel_perfect"}) {
+    for (const std::string_view name : {"fit", "fill", "stretch", "expand", "pixelPerfect"}) {
         EXPECT_EQ(graphics::Viewport::scalingPolicyName(*graphics::Viewport::scalingPolicyFromName(name)), name);
     }
     EXPECT_EQ(graphics::Texture::filterFromName("linear"), graphics::Texture::Filter::Linear);
     EXPECT_EQ(graphics::Texture::wrapFromName("mirror"), graphics::Texture::Wrap::Mirror);
-    EXPECT_EQ(graphics::Viewport::scalingPolicyFromName("pixel_perfect"), graphics::Viewport::ScalingPolicy::PixelPerfect);
+    EXPECT_EQ(graphics::Viewport::scalingPolicyFromName("pixelPerfect"), graphics::Viewport::ScalingPolicy::PixelPerfect);
 }
 
 } // namespace haylen

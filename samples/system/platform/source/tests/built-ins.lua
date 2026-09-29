@@ -14,8 +14,8 @@ local kCalls = {
     {method = 'app.version', open = true},
     {method = 'device.info', open = true},
     {method = 'system.locale', open = true},
-    {method = 'system.open_url', params = {url = 'https://example.com'}, text = 'Open example.com'},
-    {method = 'system.open_url', params = {}, text = 'Open without a url'},
+    {method = 'system.openUrl', params = {url = 'https://example.com'}, text = 'Open example.com'},
+    {method = 'system.openUrl', params = {}, text = 'Open without a url'},
     {method = 'haptics.vibrate', params = {duration = 80}, text = 'Vibrate for 80 ms'},
 }
 
@@ -47,11 +47,11 @@ function BuiltIns:call(index)
     local call = self.calls[index]
     local pending = platform.call(call.entry.method, call.entry.params)
     local id = pending.id
-    call.id, call.frame, call.done, call.result, call.error = id, haylen.frame(), nil, nil, nil
+    call.id, call.frame, call.done, call.result, call.error = id, haylen.frameIndex(), nil, nil, nil
     self:spawn(function()
         local result, err = pending:await()
         if call.id == id then
-            call.done = haylen.frame() - call.frame
+            call.done = haylen.frameIndex() - call.frame
             call.result, call.error = result, err
         end
     end)
@@ -59,7 +59,7 @@ end
 
 function BuiltIns:update(dt)
     BuiltIns.super.update(self, dt)
-    self:status(string.format('platform %s   pending calls %d   engine.info handler %s   device.info handler %s', haylen.platform, platform.pendingCalls(), platform.hasHandler('engine.info'), platform.hasHandler('device.info')))
+    self:status(string.format('platform %s   pending calls %d   engine.info handler %s   device.info handler %s', haylen.platform, platform.pendingCallCount(), platform.hasHandler('engine.info'), platform.hasHandler('device.info')))
 end
 
 function BuiltIns:draw(area)

@@ -330,7 +330,7 @@ TEST_F(NetLuaTest, TalksThroughWebSocketsFromLua) {
     fixture.runLua(R"(
         net = require('haylen.net')
         log = {}
-        local socket = net.websocket(')" + server.getUrl() + R"(', {protocols = {'chat'}})
+        local socket = net.connectWebSocket(')" + server.getUrl() + R"(', {protocols = {'chat'}})
         socket:on('open', function() log[#log + 1] = 'open ' .. socket.protocol socket:send('hi') socket:ping('beat') end)
         socket:on('pong', function(payload) log[#log + 1] = 'pong ' .. payload socket:sendBinary('\0\1') end)
         socket:on('message', function(data, binary) log[#log + 1] = (binary and 'binary ' .. #data or 'text ' .. data) if binary then socket:close(4000, 'thanks') end end)
@@ -338,7 +338,7 @@ TEST_F(NetLuaTest, TalksThroughWebSocketsFromLua) {
         state = socket.state
     )");
     // clang-format on
-    EXPECT_EQ(fixture.lua("return state .. ' ' .. net.openSockets()"), "connecting 1");
+    EXPECT_EQ(fixture.lua("return state .. ' ' .. net.openSocketCount()"), "connecting 1");
 
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
     while (fixture.lua("return #log") != "5" && std::chrono::steady_clock::now() < deadline) {
@@ -346,20 +346,20 @@ TEST_F(NetLuaTest, TalksThroughWebSocketsFromLua) {
         std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
     EXPECT_EQ(fixture.lua("return table.concat(log, ', ')"), "open chat, text hi, pong beat, binary 2, close 1000");
-    EXPECT_EQ(fixture.lua("return net.openSockets()"), "0");
+    EXPECT_EQ(fixture.lua("return net.openSocketCount()"), "0");
     EXPECT_EQ(fixture.engine().getError(), nullptr) << fixture.engine().getError()->what();
 
-    EXPECT_NE(fixture.lua("net.websocket('" + server.getUrl() + "'):on('data', print)").find("Unknown WebSocket event 'data'"), std::string::npos);
-    EXPECT_NE(fixture.lua("net.websocket('" + server.getUrl() + "'):ping()").find("is not open"), std::string::npos);
-    EXPECT_NE(fixture.lua("net.websocket('" + server.getUrl() + "', {protocol = 'x'})").find("Unknown option 'protocol'"), std::string::npos);
-    EXPECT_NE(fixture.lua("net.websocket('ftp://nowhere')").find("ws:// or wss://"), std::string::npos);
-    EXPECT_NE(fixture.lua("net.websocket('" + server.getUrl() + "', {maxMessageSize = 0})").find("maximum message size between 1 and 2147483647 bytes"), std::string::npos);
+    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "'):on('data', print)").find("Unknown WebSocket event 'data'"), std::string::npos);
+    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "'):ping()").find("is not open"), std::string::npos);
+    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {protocol = 'x'})").find("Unknown option 'protocol'"), std::string::npos);
+    EXPECT_NE(fixture.lua("net.connectWebSocket('ftp://nowhere')").find("ws:// or wss://"), std::string::npos);
+    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {maxMessageSize = 0})").find("maximum message size between 1 and 2147483647 bytes"), std::string::npos);
 }
 
 TEST_F(NetLuaTest, ReportsFailedConnectionsWithTheirAddress) {
     const std::string url = refusedUrl();
     test::EngineFixture fixture;
-    fixture.runLua("local socket = require('haylen.net').websocket('" + url + "') socket:on('error', function(message) failure = socket.url .. ' ' .. tostring(#message > 0) end)");
+    fixture.runLua("local socket = require('haylen.net').connectWebSocket('" + url + "') socket:on('error', function(message) failure = socket.url .. ' ' .. tostring(#message > 0) end)");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(failure)") != "nil"; }));
     EXPECT_EQ(fixture.lua("return failure"), url + " true");
 }
@@ -370,7 +370,7 @@ TEST_F(NetLuaTest, EndsListenersWithTheirOwner) {
     // clang-format off
     fixture.runLua(R"(
         heard = {}
-        local socket = require('haylen.net').websocket(')" + url + R"(')
+        local socket = require('haylen.net').connectWebSocket(')" + url + R"(')
         local holder = {}
         socket:on('error', function() heard[#heard + 1] = 'owned' end, {owner = holder})
         socket:on('error', function() heard[#heard + 1] = 'free' end)
@@ -381,7 +381,7 @@ TEST_F(NetLuaTest, EndsListenersWithTheirOwner) {
     // clang-format on
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #heard") != "0"; }));
     EXPECT_EQ(fixture.lua("return table.concat(heard, ' ')"), "free");
-    EXPECT_NE(fixture.lua("require('haylen.net').websocket('" + url + "'):on('open', function() end, {weak = true})").find("Unknown option 'weak'"), std::string::npos);
+    EXPECT_NE(fixture.lua("require('haylen.net').connectWebSocket('" + url + "'):on('open', function() end, {weak = true})").find("Unknown option 'weak'"), std::string::npos);
 }
 
 TEST_F(NetLuaTest, KeepsListenersAwayFromEndedAndOversizedConnections) {
@@ -391,7 +391,7 @@ TEST_F(NetLuaTest, KeepsListenersAwayFromEndedAndOversizedConnections) {
     fixture.runLua(R"(
         local net = require('haylen.net')
         log = {}
-        local dropped = net.websocket(')" + server.getUrl() + R"(')
+        local dropped = net.connectWebSocket(')" + server.getUrl() + R"(')
         dropped:on('open', function() dropped:send('bye') end)
         dropped:on('disconnect', function()
             local sent, message = pcall(dropped.send, dropped, 'late')
@@ -400,7 +400,7 @@ TEST_F(NetLuaTest, KeepsListenersAwayFromEndedAndOversizedConnections) {
         end)
         dropped:on('close', function(code) log[#log + 1] = 'dropped close ' .. code end)
 
-        local limited = net.websocket(')" + server.getUrl() + R"(', {maxMessageSize = 4})
+        local limited = net.connectWebSocket(')" + server.getUrl() + R"(', {maxMessageSize = 4})
         limited:on('open', function() limited:send('hello') end)
         limited:on('error', function(message) log[#log + 1] = 'limited error ' .. tostring(message:find('maximum of 4 bytes') ~= nil) end)
         limited:on('close', function(code) log[#log + 1] = 'limited close ' .. code end)
@@ -549,11 +549,11 @@ TEST_F(NetPluginTest, PublishesConnectionEvents) {
         local net = require('haylen.net')
         local events = require('haylen.events')
         log = {}
-        events.on('websocket_connected', function(data) log[#log + 1] = 'connected ' .. tostring(data.url == url) end)
-        events.on('websocket_disconnected', function(data) log[#log + 1] = 'disconnected ' .. data.code .. ' ' .. data.reason end)
-        events.on('websocket_reconnecting', function(data) log[#log + 1] = 'reconnecting ' .. data.attempt .. ' ' .. tostring(data.delay <= 0.01) end)
+        events.on('webSocketConnected', function(data) log[#log + 1] = 'connected ' .. tostring(data.url == url) end)
+        events.on('webSocketDisconnected', function(data) log[#log + 1] = 'disconnected ' .. data.code .. ' ' .. data.reason end)
+        events.on('webSocketReconnecting', function(data) log[#log + 1] = 'reconnecting ' .. data.attempt .. ' ' .. tostring(data.delay <= 0.01) end)
         url = ')" + server.getUrl() + R"('
-        socket = net.websocket(url, {reconnect = {initialDelay = 0.01, maxDelay = 0.05, multiplier = 3, jitter = 0, maxAttempts = 4}})
+        socket = net.connectWebSocket(url, {reconnect = {initialDelay = 0.01, maxDelay = 0.05, multiplier = 3, jitter = 0, maxAttempts = 4}})
         socket:on('open', function() if socket.attempt == 0 and not said then said = true socket:send('bye') end end)
         socket:on('reconnecting', function(attempt, delay) log[#log + 1] = 'socket reconnecting ' .. attempt end)
         socket:on('disconnect', function(code) log[#log + 1] = 'socket disconnect ' .. code end)
@@ -564,11 +564,11 @@ TEST_F(NetPluginTest, PublishesConnectionEvents) {
     EXPECT_EQ(fixture.lua("return socket.state .. ' ' .. socket.attempt"), "open 0");
 
     // A socket gives up after its attempts, and true picks the default backoff.
-    fixture.runLua("failing = require('haylen.net').websocket('" + refusedUrl() + "', {reconnect = {initialDelay = 0, maxAttempts = 2}}) failing:on('close', function(code) gaveUp = code end)");
+    fixture.runLua("failing = require('haylen.net').connectWebSocket('" + refusedUrl() + "', {reconnect = {initialDelay = 0, maxAttempts = 2}}) failing:on('close', function(code) gaveUp = code end)");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(gaveUp)") == "1006"; }));
-    EXPECT_EQ(fixture.lua("return require('haylen.net').websocket('" + server.getUrl() + "', {reconnect = true}).state"), "connecting");
-    EXPECT_NE(fixture.lua("require('haylen.net').websocket('" + server.getUrl() + "', {reconnect = {delay = 1}})").find("Unknown option 'delay'"), std::string::npos);
-    EXPECT_NE(fixture.lua("require('haylen.net').websocket('" + server.getUrl() + "', {reconnect = {jitter = 3}})").find("jitter between 0 and 1"), std::string::npos);
+    EXPECT_EQ(fixture.lua("return require('haylen.net').connectWebSocket('" + server.getUrl() + "', {reconnect = true}).state"), "connecting");
+    EXPECT_NE(fixture.lua("require('haylen.net').connectWebSocket('" + server.getUrl() + "', {reconnect = {delay = 1}})").find("Unknown option 'delay'"), std::string::npos);
+    EXPECT_NE(fixture.lua("require('haylen.net').connectWebSocket('" + server.getUrl() + "', {reconnect = {jitter = 3}})").find("jitter between 0 and 1"), std::string::npos);
 }
 
 } // namespace haylen::net

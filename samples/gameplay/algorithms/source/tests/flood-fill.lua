@@ -69,7 +69,7 @@ function FloodFill:repaint()
             return kColors[0]
         end
         local root = self.sets:find(label)
-        return m.hsv((root * 0.618) % 1, 0.55, 0.85):toHex()
+        return m.fromHsv((root * 0.618) % 1, 0.55, 0.85):toHex()
     end)
 end
 

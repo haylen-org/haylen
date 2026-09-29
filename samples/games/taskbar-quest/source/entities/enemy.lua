@@ -11,7 +11,7 @@ enemy.__index = enemy
 function enemy.new(quest, kindName, x)
     local kind = config.enemies[kindName]
     local self = setmetatable({quest = quest, kind = kind, art = quest.art[kindName], x = x, facing = -1, health = kind.health, time = math.random(), cooldown = kind.interval / 2, grow = 0, push = 0, flash = 0}, enemy)
-    tween.to(self, 0.4, {grow = 1}, {ease = 'back_out', owner = quest.owner})
+    tween.to(self, 0.4, {grow = 1}, {ease = 'backOut', owner = quest.owner})
     quest.effects:burst('dust', x, quest.lane.ground, 10)
     return self
 end

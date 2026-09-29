@@ -8,5 +8,5 @@ return {
     {id = 'pause', title = 'Pause', description = 'A pause menu that stops the game, and the paused and unpaused hooks and events.', module = 'tests.pause'},
     {id = 'autoloads', title = 'Autoloads', description = 'A player data singleton that lives through every scene, and an autoload added at run time.', module = 'tests.autoloads'},
     {id = 'classes', title = 'Classes', description = 'haylen.class with inheritance, super calls, metamethods, is checks and mixins.', module = 'tests.classes'},
-    {id = 'diagnostics', title = 'Diagnostics', description = 'The live counts of events.stats() and signal.list(), and the counts around the collection of an owner.', module = 'tests.diagnostics'},
+    {id = 'diagnostics', title = 'Diagnostics', description = 'The live counts of events.topics() and signal.list(), and the counts around the collection of an owner.', module = 'tests.diagnostics'},
 }

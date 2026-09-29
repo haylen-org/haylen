@@ -130,9 +130,9 @@ end
 print(inputs:pop(), inputs.size) -- left 2
 ```
 
-### buffer:peek(), buffer:last(), buffer:get(position), buffer:values()
+### buffer:front(), buffer:back(), buffer:get(position), buffer:values()
 
-`peek` returns the oldest value and `last` the newest one, or `nil` when the buffer is empty. `get` returns the value at a position from 1 for the oldest, or `nil` past the newest. `values` returns a list from the oldest to the newest value.
+`front` returns the oldest value and `back` the newest one, or `nil` when the buffer is empty. `get` returns the value at a position from 1 for the oldest, or `nil` past the newest. `values` returns a list from the oldest to the newest value.
 
 ```lua
 local collections = require('haylen.collections')

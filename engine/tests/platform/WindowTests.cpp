@@ -265,8 +265,8 @@ TEST(WindowEngineTest, KeepsTheAlphaOfOpaqueWindowsAtOne) {
 TEST(WindowEngineTest, PublishesMovesAndMonitorChanges) {
     test::EngineFixture fixture;
     fixture.runLua("events = require('haylen.events') heard = {} "
-                   "events.on('window_moved', function(info) heard[#heard + 1] = 'moved ' .. info.x .. ' ' .. info.y end) "
-                   "events.on('window_monitors_changed', function() heard[#heard + 1] = 'monitors' end)");
+                   "events.on('windowMoved', function(info) heard[#heard + 1] = 'moved ' .. info.x .. ' ' .. info.y end) "
+                   "events.on('windowMonitorsChanged', function() heard[#heard + 1] = 'monitors' end)");
 
     // Platforms report every step of a move, and the app hears each new position once.
     fixture.host().setFrame({120.0F, 80.0F, 1920.0F, 1080.0F});

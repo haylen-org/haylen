@@ -72,7 +72,7 @@ TEST_F(RichTextComponentTest, TakesTheFocusBeforeItFirstDraws) {
 }
 
 TEST_F(RichTextComponentTest, DrawsThroughTheRendererAndRevealsOverTime) {
-    auto document = mount(R"({"kind": "column", "children": [{"kind": "richText", "id": "story", "text": "[b]abcd[/b] [img=icons/coin.png]", "reveal": 30}]})");
+    auto document = mount(R"({"kind": "column", "children": [{"kind": "richText", "id": "story", "text": "[b]abcd[/b] [img=icons/coin.png]", "revealSpeed": 30}]})");
     EXPECT_LT(drawnSprites(), 2U);
     frames(12);
     EXPECT_TRUE(getFixture().frameUntil([&] { return drawnSprites() == 5U; }));
@@ -81,7 +81,7 @@ TEST_F(RichTextComponentTest, DrawsThroughTheRendererAndRevealsOverTime) {
     frames();
     EXPECT_EQ(drawnSprites(), 2U);
 
-    document->set("story", core::Json{{"text", "plain"}, {"reveal", 0}, {"visibleCharacters", -1}, {"textAlign", "center"}, {"wrap", false}});
+    document->set("story", core::Json{{"text", "plain"}, {"revealSpeed", 0}, {"visibleCharacters", -1}, {"textAlign", "center"}, {"wrap", false}});
     frames();
     EXPECT_EQ(drawnSprites(), 5U);
 

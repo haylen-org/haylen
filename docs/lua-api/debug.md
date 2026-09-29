@@ -24,7 +24,7 @@ F3 cycles through off, compact and full, `debug.setToggleKey` picks another key,
 
 The statistics count the objects of every type that were created, are alive and were destroyed. Every userdata type exported to Lua counts under its type name, such as `haylen.Sprite` or `haylen.Tween`, from the moment Lua creates the value until the garbage collector frees it. Engine resources count under their own names: `Texture` and `RenderTarget` with the bytes of their pixels, `Font`, `FontFamily`, `RichText`, `Sound` with the bytes of its samples or its encoded file, `PhysicsBody`, `PhysicsContact`, `ParticleEmitter`, `Particle`, `UiDocument` and `Tween`. A C++ project counts its own types with `haylen::debug::ObjectCounter` and `TrackedObject`.
 
-`debug.setObjectEvents(true)` also publishes `object_created` and `object_destroyed` on [haylen.events](events.md) for every counted object, with `{type, count}`, queued for the end of the frame because objects come and go on any thread, even inside the garbage collector. The events cost time in an app that creates many objects every frame, so they start off, and `"debug": {"objectEvents": true}` in `app.json` turns them on from the start.
+`debug.setObjectEvents(true)` also publishes `objectCreated` and `objectDestroyed` on [haylen.events](events.md) for every counted object, with `{type, count}`, queued for the end of the frame because objects come and go on any thread, even inside the garbage collector. The events cost time in an app that creates many objects every frame, so they start off, and `"debug": {"objectEvents": true}` in `app.json` turns them on from the start.
 
 ## Monitors
 
@@ -66,12 +66,12 @@ scene.push({
 
 ### debug.setToggleKey(key)
 
-Picks the key that cycles the statistics through off, compact and full, by the key names of [haylen.input](input.md) such as `'f3'`, `'f5'` or `'grave_accent'`. `nil` turns the shortcut off, which suits release builds. The default key is `'f3'`. An unknown name raises an error that ends with `(unknown value '<name>')`.
+Picks the key that cycles the statistics through off, compact and full, by the key names of [haylen.input](input.md) such as `'f3'`, `'f5'` or `'graveAccent'`. `nil` turns the shortcut off, which suits release builds. The default key is `'f3'`. An unknown name raises an error that ends with `(unknown value '<name>')`.
 
 ```lua
 local debug = require('haylen.debug')
 
-debug.setToggleKey('grave_accent')
+debug.setToggleKey('graveAccent')
 
 local release = true
 if release then
@@ -121,14 +121,14 @@ end)
 
 ### debug.setObjectEvents(enabled)
 
-Turns the `object_created` and `object_destroyed` events on or off, as [object counts](#object-counts-and-events) describes.
+Turns the `objectCreated` and `objectDestroyed` events on or off, as [object counts](#object-counts-and-events) describes.
 
 ```lua
 local debug = require('haylen.debug')
 local events = require('haylen.events')
 
 debug.setObjectEvents(true)
-events.on('object_destroyed', function(object)
+events.on('objectDestroyed', function(object)
     print(object.count .. ' ' .. object.type .. ' destroyed')
 end)
 ```
@@ -246,7 +246,7 @@ timer.every(1, function()
 end)
 ```
 
-### debug.frameTimes()
+### debug.frameHistory()
 
 Returns the durations of the recent frames in milliseconds, oldest first. The history holds up to 240 frames.
 
@@ -256,7 +256,7 @@ local timer = require('haylen.timer')
 
 timer.every(5, function()
     local slowest = 0
-    for _, milliseconds in ipairs(debug.frameTimes()) do
+    for _, milliseconds in ipairs(debug.frameHistory()) do
         slowest = math.max(slowest, milliseconds)
     end
     print(string.format('slowest recent frame %.2f ms', slowest))

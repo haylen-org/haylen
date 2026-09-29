@@ -70,7 +70,7 @@ TEST_F(GestureTest, RecognizesTapsAndDoubleTaps) {
     touch(platform::Event::Type::TouchBegan, {{2, {110.0F, 100.0F}}});
     frame();
     touch(platform::Event::Type::TouchEnded, {{2, {110.0F, 102.0F}}});
-    EXPECT_EQ(frame(), (Names{"tap", "double_tap"}));
+    EXPECT_EQ(frame(), (Names{"tap", "doubleTap"}));
     EXPECT_EQ(gestures.getGestures()[1].position, math::Vec2(110.0F, 102.0F));
 
     // A third tap starts a new pair, and a tap that lands and lifts in one frame still counts from where it began.
@@ -126,7 +126,7 @@ TEST_F(GestureTest, RecognizesLongPressesAndSwipes) {
             seen.push_back(name);
         }
     }
-    EXPECT_EQ(seen, Names{"long_press"});
+    EXPECT_EQ(seen, Names{"longPress"});
     touch(platform::Event::Type::TouchEnded, {{1, {100.0F, 100.0F}}});
     EXPECT_EQ(frame(), Names{});
 
@@ -191,7 +191,7 @@ TEST(GestureLuaTest, ListsGesturesOfTheFrame) {
     EXPECT_EQ(fixture.lua("return table.concat(seen, ' ')"), "tap@400.0,300.0");
     EXPECT_EQ(fixture.lua("input.setGestureSettings({longPressDuration = 1, mouse = false}) return 'ok'"), "ok");
     EXPECT_NE(fixture.lua("input.setGestureSettings({hold = 1})").find("Unknown option 'hold'"), std::string::npos);
-    EXPECT_EQ(Gesture::typeName(Gesture::Type::LongPress), "long_press");
+    EXPECT_EQ(Gesture::typeName(Gesture::Type::LongPress), "longPress");
 }
 
 TEST(GestureEngineTest, FocusLossDropsTheHeldPress) {

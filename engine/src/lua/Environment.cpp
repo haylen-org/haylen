@@ -137,7 +137,7 @@ void Environment::restrictLoading(lua_State* L) {
 
 int Environment::setUnprotectedMetatable(lua_State* L) {
     if (luaL_getmetafield(L, 1, "__metatable") != LUA_TNIL) {
-        return luaL_error(L, "cannot change a protected metatable");
+        return luaL_error(L, "The metatable of this value is protected and cannot be changed.");
     }
     lua_pushvalue(L, lua_upvalueindex(1));
     lua_insert(L, 1);

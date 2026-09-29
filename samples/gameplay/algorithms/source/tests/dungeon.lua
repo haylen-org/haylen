@@ -41,7 +41,7 @@ end
 function Dungeon:generate()
     local options = self.options
     self.request = (self.request or 0) + 1
-    local request, started = self.request, haylen.time()
+    local request, started = self.request, haylen.elapsed()
     local description = {method = options.method, width = kColumns, height = kRows, minimumRoomSize = 4, maximumRoomSize = math.tointeger(options.size), minimumLeafSize = math.tointeger(options.size) + 2, maximumRooms = 18, seed = options.seed}
     async.spawn(function()
         local dungeon, failure = procedural2d.dungeonAsync(description):await()
@@ -50,7 +50,7 @@ function Dungeon:generate()
         end
         self.failure = failure
         if dungeon then
-            self.latency = (haylen.time() - started) * 1000
+            self.latency = (haylen.elapsed() - started) * 1000
             self.dungeon = dungeon
             self.picture = picture.cells(kColumns, kRows, function(column, row)
                 return dungeon.grid:get(column, row) == 1 and '#FF263238' or '#FFA1887F'

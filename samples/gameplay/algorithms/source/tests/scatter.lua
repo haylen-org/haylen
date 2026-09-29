@@ -71,12 +71,12 @@ end
 -- Only the latest request lands, so dragging a slider never shows an older scatter over a newer one.
 function Scatter:scatter()
     self.request = (self.request or 0) + 1
-    local request, started = self.request, haylen.time()
+    local request, started = self.request, haylen.elapsed()
     async.spawn(function()
         local points = procedural2d.scatterAsync(self:describe()):await()
         if points and self.options and request == self.request then
             self.points = points
-            self.latency = (haylen.time() - started) * 1000
+            self.latency = (haylen.elapsed() - started) * 1000
         end
     end)
 end

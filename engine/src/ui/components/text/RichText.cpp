@@ -26,7 +26,7 @@ void RichText::readProperties(PropertyReader& reader) {
     reader.read("color", color);
     reader.readChoice<text::Alignment>("textAlign", textAlign, text::Style::kAlignmentNames);
     reader.read("wrap", wrap);
-    reader.read("reveal", reveal, 0.0F);
+    reader.read("revealSpeed", revealSpeed, 0.0F);
     reader.read("visibleCharacters", visibleCharacters, -1);
     changed = true;
 }
@@ -42,12 +42,12 @@ text::RichText& RichText::prepare(Context& context) {
     const bool sided = textAlign == text::Alignment::Start || textAlign == text::Alignment::End;
     const text::Alignment align = sided ? ((textAlign == text::Alignment::Start) != rightToLeft ? text::Alignment::Left : text::Alignment::Right) : textAlign;
     const text::RichTextOptions* current = richText ? &richText->getOptions() : nullptr;
-    const bool sameOptions = current != nullptr && preparedFor == &context && current->family == family && current->size == size && current->bold == style.bold && current->italic == style.italic && current->color == ink && current->align == align && current->language == context.getLanguage() && current->revealSpeed == reveal;
+    const bool sameOptions = current != nullptr && preparedFor == &context && current->family == family && current->size == size && current->bold == style.bold && current->italic == style.italic && current->color == ink && current->align == align && current->language == context.getLanguage() && current->revealSpeed == revealSpeed;
 
     if (!sameOptions) {
         Context* owner = &context;
         preparedFor = owner;
-        text::RichTextOptions options{.family = std::move(family), .size = size, .bold = style.bold, .italic = style.italic, .color = ink, .align = align, .language = context.getLanguage(), .revealSpeed = reveal};
+        text::RichTextOptions options{.family = std::move(family), .size = size, .bold = style.bold, .italic = style.italic, .color = ink, .align = align, .language = context.getLanguage(), .revealSpeed = revealSpeed};
         options.fonts = [owner](std::string_view name) { return owner->getFontFamily(name); };
         options.images = [owner](std::string_view path) { return owner->getImage(path); };
         if (richText) {

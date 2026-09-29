@@ -73,7 +73,7 @@ end
 function Voronoi:glide(dt)
     local moves = self.moves
     moves.time = math.min(kGlide, moves.time + dt)
-    local t = m.ease('quad_in_out', moves.time / kGlide)
+    local t = m.ease('quadInOut', moves.time / kGlide)
     local points = {}
     for index, point in ipairs(moves.from) do
         local target = moves.to[index]
@@ -111,7 +111,7 @@ function Voronoi:render()
     if self.showCells and self.cells then
         for index, cell in ipairs(self.cells) do
             if #cell >= 3 then
-                graphics2d.drawPolygon(cell, m.hsv((index * 0.618) % 1, 0.35, 0.45))
+                graphics2d.drawPolygon(cell, m.fromHsv((index * 0.618) % 1, 0.35, 0.45))
                 graphics2d.drawPolyline(cell, 2, '#FF1A2029', true, {layer = 1})
             end
         end

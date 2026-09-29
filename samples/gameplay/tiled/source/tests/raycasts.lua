@@ -18,7 +18,7 @@ local kLength = 1200
 
 function Raycasts:enter()
     self.map = tiled.newMapRenderer(assets.load('maps/raycasts.tmj'))
-    local bounds = self.map.bounds
+    local bounds = self.map.pixelBounds
     Raycasts.super.enter(self, {
         hint = 'The ray aims at the pointer, and tapping or clicking moves the eye. Tile hits show the cell and its tile, object hits the name of the object.',
         controls = {
@@ -58,7 +58,7 @@ end
 function Raycasts:update(dt)
     Raycasts.super.update(self, dt)
     if input.pressed('reset') then
-        self.eye = {self.map.bounds.width * 0.3, self.map.bounds.height * 0.55}
+        self.eye = {self.map.pixelBounds.width * 0.3, self.map.pixelBounds.height * 0.55}
     end
     if self.pointer.pressed then
         self.eye = {self.pointer.worldX, self.pointer.worldY}

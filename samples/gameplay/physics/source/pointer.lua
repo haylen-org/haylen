@@ -33,7 +33,7 @@ end
 
 function Pointer:follow(dt)
     if self.finger ~= nil then
-        local touch = input.touch(self.finger)
+        local touch = input.findTouch(self.finger)
         if touch ~= nil then
             self.x, self.y = touch.x, touch.y
         end
@@ -63,7 +63,7 @@ function Pointer:start(area)
         if area:contains({first.x, first.y}) then
             self.source, self.finger = 'touch', first.id
         end
-    elseif area:contains({self.x, self.y}) and not ui.wantsPointer() then
+    elseif area:contains({self.x, self.y}) and not ui.usingPointer() then
         if input.mousePressed('left') then
             self.source = 'mouse'
         elseif input.pressed('press') then
@@ -74,7 +74,7 @@ end
 
 function Pointer:held()
     if self.source == 'touch' then
-        local touch = input.touch(self.finger)
+        local touch = input.findTouch(self.finger)
         return touch ~= nil and touch.phase ~= 'ended' and touch.phase ~= 'cancelled'
     elseif self.source == 'mouse' then
         return input.mouseDown('left')

@@ -211,7 +211,7 @@ void Renderer::beginCapture(const graphics::RenderTarget& target, math::Color cl
 
 void Renderer::endCapture() {
     if (state->openCaptures.empty()) {
-        throw std::logic_error("endCapture was called without a matching beginCapture.");
+        throw std::logic_error("The endCapture call has no matching beginCapture.");
     }
     state->closeCapture();
 }
@@ -635,7 +635,7 @@ void Renderer::pushClip(const math::Rect& rect) {
 
 void Renderer::popClip() {
     if (state->clipStack.empty()) {
-        throw std::logic_error("popClip was called without a matching pushClip.");
+        throw std::logic_error("The popClip call has no matching pushClip.");
     }
     state->clipStack.pop_back();
 }
@@ -648,7 +648,7 @@ void Renderer::pushLayerOffset(int offset) {
 
 void Renderer::popLayerOffset() {
     if (state->layerOffsets.empty()) {
-        throw std::logic_error("popLayerOffset was called without a matching pushLayerOffset.");
+        throw std::logic_error("The popLayerOffset call has no matching pushLayerOffset.");
     }
     state->layerOffset = state->layerOffsets.back();
     state->layerOffsets.pop_back();

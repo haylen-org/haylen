@@ -24,7 +24,7 @@ local ui = require('haylen.ui')
 local hud = ui.mount(ui.label{id = 'combo', text = 'Combo x3', font = 'title'})
 local combo = hud:transform('combo')
 combo.scale = math2d.vec2(1.6, 1.6)
-tween.to(combo, 0.3, {scale = math2d.vec2(1, 1), opacity = 0.8, tint = '#FFFFD040'}, {ease = 'quad_out'})
+tween.to(combo, 0.3, {scale = math2d.vec2(1, 1), opacity = 0.8, tint = '#FFFFD040'}, {ease = 'quadOut'})
 ```
 
 ## Values
@@ -64,14 +64,14 @@ Every tween and timeline takes an optional options table, and unknown keys raise
 | --- | --- | --- | --- |
 | `delay` | number | `0` | Seconds to wait before the tween starts. Times such as `time` and `duration` exclude it. |
 | `repeatCount` | integer | `0` | Extra loops after the first one. A negative count repeats forever. |
-| `loop` | string | `'restart'` | `'restart'` plays every loop from the start, `'yoyo'` plays every other loop backwards and `'incremental'` continues every loop from where the previous one ended. |
+| `loopMode` | string | `'restart'` | `'restart'` plays every loop from the start, `'yoyo'` plays every other loop backwards and `'incremental'` continues every loop from where the previous one ended. |
 | `repeatDelay` | number | `0` | Seconds to wait between loops. |
 | `timeScale` | number | `1` | Speed of this tween, multiplied with the time scale of its tag. |
 | `tag` | string | `''` | Group name for the tag functions, such as `tween.killTag` and `tween.setTimeScale`. |
 | `owner` | table or userdata | `nil` | Kills the tween when the owner ends, as the [owners of haylen.events](events.md#owners) describe. A tween that inherits its process mode follows the mode of its owner every frame, so it changes along with the owner. |
 | `processMode` | string | `'inherit'` | `'inherit'`, `'pausable'`, `'whenPaused'`, `'always'` or `'disabled'`. |
 | `unscaled` | boolean | `false` | Counts real time, ignoring the time scale. |
-| `fixed` | boolean | `false` | Advances with the fixed steps of physics instead of once per frame. |
+| `fixedStep` | boolean | `false` | Advances with the fixed steps of physics instead of once per frame. |
 | `autoKill` | boolean | `true` | Leaves the engine when it completes. Turn it off to replay, reverse or seek a finished tween. |
 | `paused` | boolean | `false` | Creates the tween paused, so it waits for `play`. |
 | `onStart` | function | `nil` | Called when the tween starts playing forward after its delay. |
@@ -96,11 +96,11 @@ The `ease` option takes a curve in one of these forms, the same ones `m.ease` of
 
 | Form | Example | Curve |
 | --- | --- | --- |
-| Name | `'quad_out'` | `'linear'` or the `in`, `out` and `in_out` variants of `sine`, `quad`, `cubic`, `quart`, `quint`, `expo`, `circ`, `back`, `elastic` and `bounce`. |
-| Back | `{curve = 'back_out', overshoot = 3}` | A `back` curve with its overshoot, 1.70158 by default. |
-| Elastic | `{curve = 'elastic_out', amplitude = 1.5, period = 0.4}` | An `elastic` curve with its amplitude and period, 1 and 0.3 by default. |
+| Name | `'quadOut'` | `'linear'` or the `In`, `Out` and `InOut` variants of `sine`, `quad`, `cubic`, `quart`, `quint`, `expo`, `circ`, `back`, `elastic` and `bounce`. |
+| Back | `{curve = 'backOut', overshoot = 3}` | A `back` curve with its overshoot, 1.70158 by default. |
+| Elastic | `{curve = 'elasticOut', amplitude = 1.5, period = 0.4}` | An `elastic` curve with its amplitude and period, 1 and 0.3 by default. |
 | Steps | `{steps = 4, position = 'end'}` | Jumps in steps like CSS `steps()`, with `position` `'start'`, `'end'`, `'both'` or `'none'`. |
-| Bézier | `{bezier = {0.25, 0.1, 0.25, 1}}` | A cubic Bézier like CSS `cubic-bezier()`, with x values between 0 and 1. |
+| Bézier | `{cubicBezier = {0.25, 0.1, 0.25, 1}}` | A cubic Bézier like CSS `cubic-bezier()`, with x values between 0 and 1. |
 | Points | `{points = {0, 1.2, 1}}` | Straight lines through evenly spaced values, or through `{x, y}` points with growing x. |
 | Function | `function(t) return t * t end` | Any function from progress to eased progress. |
 
@@ -109,8 +109,8 @@ local tween = require('haylen.tween')
 
 local card = {x = 0, y = 0, scale = 1}
 
-tween.to(card, 0.6, {x = 400}, {ease = {curve = 'back_out', overshoot = 3}})
-tween.to(card, 0.6, {y = 200}, {ease = {bezier = {0.68, -0.6, 0.32, 1.6}}})
+tween.to(card, 0.6, {x = 400}, {ease = {curve = 'backOut', overshoot = 3}})
+tween.to(card, 0.6, {y = 200}, {ease = {cubicBezier = {0.68, -0.6, 0.32, 1.6}}})
 tween.to(card, 0.6, {scale = 2}, {ease = function(t) return math.sin(t * math.pi / 2) end})
 ```
 
@@ -125,11 +125,11 @@ local tween = require('haylen.tween')
 local graphics2d = require('haylen.graphics2d')
 
 local panel = {x = -600, alpha = 0}
-tween.to(panel, 0.4, {x = 80, alpha = 1}, {ease = 'back_out'})
+tween.to(panel, 0.4, {x = 80, alpha = 1}, {ease = 'backOut'})
 
 -- The camera is an engine object, so its zoom and position animate without running Lua.
 local camera = graphics2d.newCamera()
-tween.to(camera, 2, {zoom = {1.5, 1.5}, ['position.x'] = 320}, {ease = 'sine_in_out', delay = 0.4})
+tween.to(camera, 2, {zoom = {1.5, 1.5}, ['position.x'] = 320}, {ease = 'sineInOut', delay = 0.4})
 ```
 
 ### tween.from(target, seconds, values, options)
@@ -140,32 +140,32 @@ Animates fields of `target` from `values` back to the values they have when the 
 local tween = require('haylen.tween')
 
 local title = {y = 200, alpha = 1}
-tween.from(title, 0.8, {y = -150, alpha = 0}, {ease = 'bounce_out', delay = 0.2})
+tween.from(title, 0.8, {y = -150, alpha = 0}, {ease = 'bounceOut', delay = 0.2})
 print(title.y, title.alpha) -- -150.0 0.0
 ```
 
 ### tween.by(target, seconds, offsets, options)
 
-Animates fields of `target` by the given offsets, from their current values to the current values plus the offsets. With `loop = 'incremental'` every loop moves by the offsets again.
+Animates fields of `target` by the given offsets, from their current values to the current values plus the offsets. With `loopMode = 'incremental'` every loop moves by the offsets again.
 
 ```lua
 local tween = require('haylen.tween')
 
 local conveyor = {x = 0}
-tween.by(conveyor, 0.5, {x = 64}, {repeatCount = 3, loop = 'incremental'})
+tween.by(conveyor, 0.5, {x = 64}, {repeatCount = 3, loopMode = 'incremental'})
 
 require('haylen.timer').after(2.1, function() print(conveyor.x) end) -- 256.0
 ```
 
 ### tween.fromTo(target, seconds, from, to, options)
 
-Animates fields of `target` from the values of `from` to the values of `to`, whatever the fields hold before. Every field of `from` needs an end value, otherwise the call raises `tween.fromTo needs an end value for the field '<name>'.`
+Animates fields of `target` from the values of `from` to the values of `to`, whatever the fields hold before. Every field of `from` needs an end value, otherwise the call raises `A tween.fromTo call needs an end value for the field '<name>'.`
 
 ```lua
 local tween = require('haylen.tween')
 
 local meter = {fill = 0.8}
-tween.fromTo(meter, 1, {fill = 0}, {fill = 1}, {ease = 'quad_out'})
+tween.fromTo(meter, 1, {fill = 0}, {fill = 1}, {ease = 'quadOut'})
 ```
 
 ## Ready-made tweens
@@ -191,7 +191,7 @@ The motions of jumps, paths, Bézier curves, blinks, shakes and punches take the
 | Function | Key | Default | Meaning |
 | --- | --- | --- | --- |
 | `jump` | `power` | `100` | Height of each hop, toward negative y, which is up on screen. |
-| `jump` | `jumps` | `1` | Number of hops on the way. |
+| `jump` | `jumps` | `1` | Number of jumps on the way. |
 | `path` | `curved` | `true` | Passes smoothly through every point as a Catmull-Rom spline, or in straight lines when `false`. |
 | `path` | `closed` | `false` | Travels back to the start after the last point. |
 | `path` | `orient` | `false` | Turns a rotation field along the path. |
@@ -210,7 +210,7 @@ local m = require('haylen.math')
 
 local coin = {x = 100, y = 500, scaleX = 1, scaleY = 1, rotation = 0, color = m.color('#FFFFFFFF')}
 tween.jump(coin, 0.6, {400, 500}, {power = 120, jumps = 2})
-tween.scale(coin, 0.6, 1.5, {ease = 'back_out'})
+tween.scale(coin, 0.6, 1.5, {ease = 'backOut'})
 tween.rotate(coin, 0.6, math.pi)
 tween.tint(coin, 0.6, '#FFFFD166', {delay = 0.6})
 tween.fade(coin, 0.3, 0, {delay = 1.2})
@@ -253,7 +253,7 @@ cutscene:append(tween.to(door, 0.5, {angle = 90}))
 
 ### tween.stagger(targets, seconds, make, options)
 
-Builds one tween per target of the sequence `targets` with `make(target, index)`, which returns the tween, and plays them in a new timeline, each one starting `seconds` after the previous one. The `from` option picks the order: `'start'`, the default, starts with the first target, `'end'` with the last and `'center'` from the middle outwards. The timeline takes every other timeline option.
+Builds one tween per target of the sequence `targets` with `make(target, index)`, which returns the tween, and plays them in a new timeline, each one starting `seconds` after the previous one. The `origin` option picks the order: `'start'`, the default, starts with the first target, `'end'` with the last and `'center'` from the middle outwards. The timeline takes every other timeline option.
 
 ```lua
 local tween = require('haylen.tween')
@@ -264,8 +264,8 @@ for index = 1, 5 do
 end
 
 tween.stagger(tiles, 0.08, function(tile, index)
-    return tween.to(tile, 0.3, {y = -40}, {ease = 'quad_out', repeatCount = 1, loop = 'yoyo'})
-end, {from = 'center', tag = 'board'})
+    return tween.to(tile, 0.3, {y = -40}, {ease = 'quadOut', repeatCount = 1, loopMode = 'yoyo'})
+end, {origin = 'center', tag = 'board'})
 ```
 
 ## Groups
@@ -280,7 +280,7 @@ local tween = require('haylen.tween')
 local clouds = {x = 0}
 tween.to(clouds, 30, {x = 1920}, {repeatCount = -1, tag = 'world'})
 tween.killTag('world')
-print(tween.count()) -- 0
+print(tween.size()) -- 0
 ```
 
 ### tween.completeTag(tag, withCallbacks)
@@ -364,7 +364,7 @@ local function defeat()
 end
 
 defeat()
-print(tween.count()) -- 0
+print(tween.size()) -- 0
 ```
 
 ### tween.killAll()
@@ -384,7 +384,7 @@ end
 restartLevel({})
 ```
 
-### tween.count()
+### tween.size()
 
 Returns the number of tweens the engine plays, including delayed and paused ones and finished ones without `autoKill`. Tweens inside timelines count as their timeline.
 
@@ -392,9 +392,9 @@ Returns the number of tweens the engine plays, including delayed and paused ones
 local tween = require('haylen.tween')
 
 local coin = {y = 0}
-tween.to(coin, 0.3, {y = -40}, {loop = 'yoyo', repeatCount = 1})
+tween.to(coin, 0.3, {y = -40}, {loopMode = 'yoyo', repeatCount = 1})
 
-if tween.count() > 0 then
+if tween.size() > 0 then
     print('animations are still playing')
 end
 ```
@@ -515,9 +515,9 @@ Stops the tween for good and runs its `onKill`. A tween inside a timeline leaves
 local tween = require('haylen.tween')
 
 local spinner = {rotation = 0}
-local spinning = tween.rotate(spinner, 1, math.pi / 2, {repeatCount = -1, loop = 'incremental', onKill = function() print('stopped') end})
+local spinning = tween.rotate(spinner, 1, math.pi / 2, {repeatCount = -1, loopMode = 'incremental', onKill = function() print('stopped') end})
 spinning:kill()
-print(spinning.active) -- false
+print(spinning.alive) -- false
 ```
 
 ### handle:wait()
@@ -531,7 +531,7 @@ local async = require('async')
 local chest = {scale = 1, alpha = 1}
 
 async.spawn(function()
-    tween.to(chest, 0.2, {scale = 1.3}, {ease = 'back_out'}):wait():await()
+    tween.to(chest, 0.2, {scale = 1.3}, {ease = 'backOut'}):wait():await()
     local completed = tween.to(chest, 0.4, {alpha = 0}):wait():await()
     print('chest opened', completed)
 end)
@@ -541,7 +541,7 @@ end)
 
 | Property | Access | Meaning |
 | --- | --- | --- |
-| `active` | read | `true` until the tween is killed or leaves the engine after completing. |
+| `alive` | read | `true` until the tween is killed or leaves the engine after completing. |
 | `playing` | read | `true` while the tween is active, not paused and not completed. |
 | `paused` | read | `true` while the tween is paused. |
 | `reversed` | read | `true` while the tween plays backwards. |
@@ -558,7 +558,7 @@ end)
 local tween = require('haylen.tween')
 
 local ring = {radius = 0}
-local growing = tween.to(ring, 1, {radius = 50}, {delay = 0.25, repeatCount = 1, loop = 'yoyo', autoKill = false})
+local growing = tween.to(ring, 1, {radius = 50}, {delay = 0.25, repeatCount = 1, loopMode = 'yoyo', autoKill = false})
 print(growing.duration, growing.totalDuration, growing.delay) -- 1.0 2.0 0.25
 
 growing.timeScale = 2
@@ -579,10 +579,10 @@ local tween = require('haylen.tween')
 
 local ball = {y = 0}
 tween.timeline()
-    :append(tween.to(ball, 0.4, {y = 300}, {ease = 'quad_in'}))
+    :append(tween.to(ball, 0.4, {y = 300}, {ease = 'quadIn'}))
     :append(0.1)
     :append(function() print('bounce') end)
-    :append(tween.to(ball, 0.4, {y = 0}, {ease = 'quad_out'}))
+    :append(tween.to(ball, 0.4, {y = 0}, {ease = 'quadOut'}))
 ```
 
 ### timeline:join(item)
@@ -595,7 +595,7 @@ local m = require('haylen.math')
 
 local logo = {scale = 0.5, color = m.color('#00FFFFFF')}
 tween.timeline()
-    :append(tween.to(logo, 0.6, {scale = 1}, {ease = 'back_out'}))
+    :append(tween.to(logo, 0.6, {scale = 1}, {ease = 'backOut'}))
     :join(tween.fade(logo, 0.6, 1))
     :join(function() print('logo appears') end)
 ```
@@ -611,12 +611,12 @@ local sky = {brightness = 1}
 local sun = {y = 0}
 tween.timeline()
     :append(tween.to(sun, 4, {y = 600}))
-    :label('dusk', 3)
+    :addLabel('dusk', 3)
     :insert('dusk', tween.to(sky, 1, {brightness = 0.2}))
     :insert(2, function() print('the shadows grow') end)
 ```
 
-### timeline:label(name, seconds)
+### timeline:addLabel(name, seconds)
 
 Names a time for `insert` and `seek`, the current end of the timeline when `seconds` is left out.
 
@@ -626,7 +626,7 @@ local tween = require('haylen.tween')
 local hero = {x = 0}
 local intro = tween.timeline({autoKill = false, paused = true})
     :append(tween.to(hero, 1, {x = 100}))
-    :label('fight')
+    :addLabel('fight')
     :append(tween.to(hero, 1, {x = 300}))
 
 -- Skipping the intro jumps straight to the fight.

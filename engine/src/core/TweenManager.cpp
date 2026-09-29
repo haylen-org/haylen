@@ -55,7 +55,7 @@ void TweenManager::advanceAll(const FrameClock& clock, bool fixed) {
             if (tween.manager != this || !tween.isPlaying() || tween.isFixedStep() != fixed || !clock.canProcess(tween.resolveProcessMode())) {
                 continue;
             }
-            const double delta = fixed ? clock.getFixedStep() : (tween.isUnscaledTime() ? clock.getUnscaledDelta() : clock.getDelta());
+            const double delta = fixed ? clock.getFixedStep() : (tween.isUnscaled() ? clock.getUnscaledDelta() : clock.getDelta());
             tween.advance(static_cast<float>(delta) * groups[tween.group].timeScale);
         }
     } catch (...) {

@@ -47,7 +47,7 @@ function Bitmap:render()
     local panelY = stage.y + stage.height * 0.55
     sample.caption('lcd_digits.png as a grid font of 12 by 20 cells', x, panelY, {color = '#FF8FB0FF'})
     graphics2d.drawRect({x, panelY + 36, 560, 270}, '#FF0B1A10')
-    local time = haylen.time()
+    local time = haylen.elapsed()
     graphics2d.drawText(lcd, string.format('%02d:%04.1f', math.floor(time / 60), time % 60), x + 30, panelY + 56, {size = 60})
     graphics2d.drawText(lcd, string.format('-%07.1f', 1024 + time * 3.7), x + 30, panelY + 136, {size = 60})
     graphics2d.drawText(lcd, '88:88.8', x + 30, panelY + 226, {size = 40})

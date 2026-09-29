@@ -11,21 +11,21 @@ GameControls.hints = 'Left and right change a focused stepper, segmented control
 GameControls.focus = 'players'
 
 GameControls.bindings = {
-    {id = 'jump', label = 'Jump', value = 'key:space', sources = {'key', 'mouse', 'button'}},
-    {id = 'dash', label = 'Dash', value = 'button:west', sources = {'button', 'axis'}},
-    {id = 'pause', label = 'Pause', value = 'key:p', sources = {'key'}},
+    {id = 'jump', action = 'demoJump', label = 'Jump', value = 'key:space', sources = {'key', 'mouse', 'button'}},
+    {id = 'dash', action = 'demoDash', label = 'Dash', value = 'button:west', sources = {'button', 'axis'}},
+    {id = 'pause', action = 'demoPause', label = 'Pause', value = 'key:p', sources = {'key'}},
 }
 
 function GameControls:enter()
     for _, binding in ipairs(GameControls.bindings) do
-        input.defineAction({name = 'demo_' .. binding.id, type = 'button', bindings = {binding.value}})
+        input.defineAction({name = binding.action, type = 'button', bindings = {binding.value}})
     end
     GameControls.super.enter(self)
 end
 
 function GameControls:exit()
     for _, binding in ipairs(GameControls.bindings) do
-        input.removeAction('demo_' .. binding.id)
+        input.removeAction(binding.action)
     end
 end
 
@@ -45,7 +45,7 @@ function GameControls:captureRows()
         rows[index] = ui.settingsRow{label = binding.label, caption = 'takes ' .. table.concat(binding.sources, ', '),
             ui.keyCapture{id = 'bind-' .. binding.id, value = binding.value, prompt = 'Press a ' .. binding.sources[1], sources = binding.sources, width = 360,
                 onChange = function(event)
-                    input.defineAction({name = 'demo_' .. binding.id, type = 'button', bindings = {event.value}})
+                    input.defineAction({name = binding.action, type = 'button', bindings = {event.value}})
                     self:setStatus(binding.label .. ' is now ' .. event.value)
                 end,
                 onCancel = function() self:setStatus('the capture of ' .. binding.label .. ' was cancelled') end,
@@ -85,8 +85,8 @@ end
 
 function GameControls:update(dt)
     for _, binding in ipairs(GameControls.bindings) do
-        if input.pressed('demo_' .. binding.id) then
-            self.document:set('fired', {text = binding.label .. ' fired at ' .. string.format('%.1f', haylen.time()) .. ' s'})
+        if input.pressed(binding.action) then
+            self.document:set('fired', {text = binding.label .. ' fired at ' .. string.format('%.1f', haylen.elapsed()) .. ' s'})
         end
     end
 end

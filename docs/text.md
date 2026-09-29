@@ -38,7 +38,7 @@ local story = graphics.newFontFamily({
     bold = assets.font('fonts/serif_bold.ttf'),
     italic = assets.font('fonts/serif_italic.ttf'),
     mono = assets.font('fonts/mono.ttf'),
-    fallback = {assets.font('fonts/cjk.ttf')},
+    fallbacks = {assets.font('fonts/cjk.ttf')},
 })
 local face, syntheticBold, syntheticItalic = story:select({bold = true, italic = true})
 ```
@@ -62,13 +62,13 @@ local graphics2d = require('haylen.graphics2d')
 
 local family = graphics.newFontFamily({
     regular = graphics2d.defaultFont(),
-    fallback = {assets.font('fonts/noto_sans_arabic_regular.ttf'), assets.font('fonts/noto_sans_hebrew_regular.ttf'), assets.font('fonts/noto_sans_devanagari_regular.ttf'), assets.font('fonts/noto_sans_thai_regular.ttf')},
+    fallbacks = {assets.font('fonts/noto_sans_arabic_regular.ttf'), assets.font('fonts/noto_sans_hebrew_regular.ttf'), assets.font('fonts/noto_sans_devanagari_regular.ttf'), assets.font('fonts/noto_sans_thai_regular.ttf')},
 })
 
 graphics2d.drawText(family, 'السعر 42 دولارًا (USD)', 1000, 100, {size = 32, anchor = {1, 0}})
 graphics2d.drawText(family, 'Hebrew: שלום עולם', 100, 160, {size = 32})
 graphics2d.drawText(family, 'Order 7 السعر', 1000, 220, {size = 32, direction = 'rtl', anchor = {1, 0}})
-local story = graphics2d.newRichText('[p dir=rtl align=start][b]الرحلة[/b] بدأت في [u]الصباح[/u] الباكر.[/p]', {family = family, size = 30, maxWidth = 500, language = 'ar', reveal = 20})
+local story = graphics2d.newRichText('[p dir=rtl align=start][b]الرحلة[/b] بدأت في [u]الصباح[/u] الباكر.[/p]', {family = family, size = 30, maxWidth = 500, language = 'ar', revealSpeed = 20})
 ```
 
 A bitmap font has no shaping tables, so it maps every code point to its own glyph and applies the kerning pairs of its file. It lays out and orders right-to-left text, with mirrored brackets, but it draws neither joined Arabic letters nor Indic conjuncts, which need a TrueType or OpenType font.
@@ -159,7 +159,7 @@ local graphics2d = require('haylen.graphics2d')
 local input = require('haylen.input')
 local scene = require('haylen.scene')
 
-local line = graphics2d.newRichText('Hello, traveler.[pause=0.6] [speed=0.5]The sea is calm today.[/speed]', {size = 32, maxWidth = 700, reveal = 30})
+local line = graphics2d.newRichText('Hello, traveler.[pause=0.6] [speed=0.5]The sea is calm today.[/speed]', {size = 32, maxWidth = 700, revealSpeed = 30})
 
 scene.push({
     update = function(self, dt)
@@ -218,7 +218,7 @@ local ui = require('haylen.ui')
 
 ui.addFont('story', graphics.newFontFamily({regular = assets.font('fonts/serif.ttf'), bold = assets.font('fonts/serif_bold.ttf')}))
 ui.mount(ui.card{padding = 24,
-    ui.richText{id = 'quest', text = '[b]New quest:[/b] find the [url=map]lost map[/url].', reveal = 40, onLink = function(event)
+    ui.richText{id = 'quest', text = '[b]New quest:[/b] find the [url=map]lost map[/url].', revealSpeed = 40, onLink = function(event)
         print('open', event.link)
     end},
 })

@@ -31,7 +31,7 @@ function sample.pressed()
         return true
     end
     local touch = input.touches()[1]
-    return touch ~= nil and touch.phase == 'began' and not ui.wantsPointer()
+    return touch ~= nil and touch.phase == 'began' and not ui.usingPointer()
 end
 
 -- The base of every test scene. A test sets hints, may return controls for the panel on the right and calls the methods it overrides here. The header belongs to the scene, so it goes away when the scene unloads.
@@ -105,7 +105,7 @@ end
 function Cursor:update(dt)
     local touch = input.touches()[1]
     local mouseX, mouseY = input.mouseDelta()
-    if touch and not ui.wantsPointer() then
+    if touch and not ui.usingPointer() then
         self.x, self.y = touch.x, touch.y
     elseif mouseX ~= 0 or mouseY ~= 0 then
         self.x, self.y = input.mousePosition()

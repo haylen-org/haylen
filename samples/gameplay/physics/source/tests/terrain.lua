@@ -75,7 +75,7 @@ function Terrain:rebuild()
     self.rebuilt = self.rebuilt + rebuilt
     self.solids, self.holes = {}, {}
     for _, outline in ipairs(self.terrain:outlines()) do
-        local list = m.polygonArea(outline) >= 0 and self.solids or self.holes
+        local list = m.polygonSignedArea(outline) >= 0 and self.solids or self.holes
         list[#list + 1] = outline
     end
     return rebuilt

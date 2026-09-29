@@ -57,7 +57,7 @@ class RichText final : public Component {
     std::optional<Theme::Color> color;
     text::Alignment textAlign = text::Alignment::Start;
     bool wrap = true;
-    float reveal = 0.0F;
+    float revealSpeed = 0.0F;
     int visibleCharacters = -1;
     bool changed = true;
     bool linked = false;

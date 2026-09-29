@@ -69,8 +69,8 @@ TEST(EnvironmentTest, NamesTheOptionThatHoldsABadValue) {
     test::EngineFixture fixture;
     fixture.runLua("graphics2d = require('haylen.graphics2d') tween = require('haylen.tween') box = {x = 0}");
 
-    EXPECT_NE(fixture.lua("graphics2d.beginScreen({sort = 'random'})").find("bad option 'sort' to 'beginScreen' (unknown value 'random')"), std::string::npos);
-    EXPECT_NE(fixture.lua("tween.to(box, 1, {x = 1}, {delay = 'soon'})").find("bad option 'delay' to 'to' (number expected, got string)"), std::string::npos);
+    EXPECT_NE(fixture.lua("graphics2d.beginScreen({sort = 'random'})").find("The option 'sort' of 'beginScreen' is invalid: unknown value 'random'."), std::string::npos);
+    EXPECT_NE(fixture.lua("tween.to(box, 1, {x = 1}, {delay = 'soon'})").find("The option 'delay' of 'to' is invalid: number expected, got string."), std::string::npos);
     EXPECT_EQ(fixture.lua("tween.to(box, 1, {x = 1}, {delay = 0.5}) return 'ok'"), "ok");
 }
 
@@ -115,7 +115,7 @@ TEST(EnvironmentTest, KeepsEngineMetatablesOutOfReach) {
 
     EXPECT_EQ(fixture.lua("return getmetatable(point) .. ' ' .. debug.getmetatable(point)"), "haylen.Vec2 haylen.Vec2");
     EXPECT_NE(fixture.lua("setmetatable({}, getmetatable(point))").find("bad argument #2 to 'setmetatable'"), std::string::npos);
-    EXPECT_NE(fixture.lua("debug.setmetatable(point, nil)").find("cannot change a protected metatable"), std::string::npos);
+    EXPECT_NE(fixture.lua("debug.setmetatable(point, nil)").find("The metatable of this value is protected and cannot be changed."), std::string::npos);
     EXPECT_EQ(fixture.lua("return point.x + point:length() * 0"), "1.0");
     EXPECT_EQ(fixture.lua("return type(debug.getregistry)"), "nil");
 

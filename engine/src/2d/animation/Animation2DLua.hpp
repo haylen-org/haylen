@@ -15,11 +15,11 @@ class Animation2DLua final {
     static void install(lua_State* L);
 
   private:
-    static constexpr std::array<std::string_view, 7> kGridFields{"frameWidth", "frameHeight", "frames", "fps", "loop", "margin", "spacing"};
-    static constexpr std::array<std::string_view, 2> kTimingFields{"fps", "loop"};
+    static constexpr std::array<std::string_view, 7> kGridFields{"frameWidth", "frameHeight", "cells", "framesPerSecond", "loop", "margin", "spacing"};
+    static constexpr std::array<std::string_view, 2> kTimingFields{"framesPerSecond", "loop"};
 
     [[nodiscard]] static float readFramesPerSecond(lua_State* L, int index);
-    static int grid(lua_State* L);
+    static int fromGrid(lua_State* L);
     static int fromFrames(lua_State* L);
 
     static int animationDuration(lua_State* L);
@@ -34,7 +34,7 @@ class Animation2DLua final {
     static int animatorPlay(lua_State* L);
     static int animatorQueue(lua_State* L);
     static int animatorClearQueue(lua_State* L);
-    static int animatorQueued(lua_State* L);
+    static int animatorQueuedCount(lua_State* L);
     static int animatorStop(lua_State* L);
     static int animatorHas(lua_State* L);
     static int animatorAnimation(lua_State* L);

@@ -46,7 +46,7 @@ print(red.width, checker.height)
 
 ### graphics.newFontFamily(faces)
 
-Creates a `FontFamily` from its faces: `regular`, which it needs, and the optional `bold`, `italic`, `boldItalic` and `mono` faces, plus `fallback`, a list of fonts for the characters a face lacks, such as a CJK, Arabic, Devanagari or symbol font. A family picks the font of every character with its marks as one unit, so a letter and its marks always come from one font, and each run of one font is shaped on its own. `graphics2d.drawText` and `graphics2d.measureText` take a family in place of a font to draw plain text in every script its fonts cover. Rich text draws `[b]` and `[i]` with the real faces the family has and synthesizes the others: a TrueType face grows its strokes and leans its glyphs through its distance field, and a bitmap face draws a bold glyph twice a native pixel apart and leans italic ones. `[code]` uses the mono face, or the regular faces when the family has none. A family without `regular` raises `A font family needs a regular face.`.
+Creates a `FontFamily` from its faces: `regular`, which it needs, and the optional `bold`, `italic`, `boldItalic` and `mono` faces, plus `fallbacks`, a list of fonts for the characters a face lacks, such as a CJK, Arabic, Devanagari or symbol font. A family picks the font of every character with its marks as one unit, so a letter and its marks always come from one font, and each run of one font is shaped on its own. `graphics2d.drawText` and `graphics2d.measureText` take a family in place of a font to draw plain text in every script its fonts cover. Rich text draws `[b]` and `[i]` with the real faces the family has and synthesizes the others: a TrueType face grows its strokes and leans its glyphs through its distance field, and a bitmap face draws a bold glyph twice a native pixel apart and leans italic ones. `[code]` uses the mono face, or the regular faces when the family has none. A family without `regular` raises `A font family needs a regular face.`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -56,7 +56,7 @@ local serif = graphics.newFontFamily({
     regular = assets.font('fonts/serif.ttf'),
     bold = assets.font('fonts/serif_bold.ttf'),
     mono = assets.font('fonts/mono.ttf'),
-    fallback = {assets.font('fonts/cjk.ttf'), assets.font('fonts/symbols.ttf')},
+    fallbacks = {assets.font('fonts/cjk.ttf'), assets.font('fonts/symbols.ttf')},
 })
 ```
 
@@ -93,7 +93,7 @@ local graphics2d = require('haylen.graphics2d')
 local pixel = graphics2d.newSprite(graphics.whiteTexture(), {width = 8, height = 8, color = '#FF40FF80'})
 ```
 
-### graphics.backend()
+### graphics.backendName()
 
 Returns the name of the GPU backend: `'glcore'`, `'gles3'`, `'d3d11'`, `'metal'`, `'webgpu'` or `'dummy'` in headless tests.
 
@@ -101,7 +101,7 @@ Returns the name of the GPU backend: `'glcore'`, `'gles3'`, `'d3d11'`, `'metal'`
 local graphics = require('haylen.graphics')
 local log = require('haylen.log')
 
-log.info('Rendering with ' .. graphics.backend())
+log.info('Rendering with ' .. graphics.backendName())
 ```
 
 ### graphics.maxTextureSize()
@@ -335,14 +335,14 @@ scene.push({
 
 ## FontFamily
 
-A `FontFamily` is the set of faces rich text draws with, created by `graphics.newFontFamily`. Its faces are read-only properties named like the keys of `graphics.newFontFamily`, which are `nil` for the faces it lacks, and `fallback` is the list of its fallback fonts. Two family values compare equal with `==` when they refer to the same family.
+A `FontFamily` is the set of faces rich text draws with, created by `graphics.newFontFamily`. Its faces are read-only properties named like the keys of `graphics.newFontFamily`, which are `nil` for the faces it lacks, and `fallbacks` is the list of its fallback fonts. Two family values compare equal with `==` when they refer to the same family.
 
 ```lua
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 
 local family = graphics.newFontFamily({regular = graphics2d.defaultFont()})
-print(family.regular.nativeSize, family.bold, #family.fallback)
+print(family.regular.nativeSize, family.bold, #family.fallbacks)
 ```
 
 ### family:select(style)
@@ -367,9 +367,9 @@ local assets = require('haylen.assets')
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 
-local family = graphics.newFontFamily({regular = graphics2d.defaultFont(), fallback = {assets.font('fonts/cjk.ttf')}})
+local family = graphics.newFontFamily({regular = graphics2d.defaultFont(), fallbacks = {assets.font('fonts/cjk.ttf')}})
 local font, syntheticBold = family:resolve('世', {bold = true})
-print(font == family.fallback[1], syntheticBold)
+print(font == family.fallbacks[1], syntheticBold)
 ```
 
 ### family:measure(text, style)
@@ -381,7 +381,7 @@ local assets = require('haylen.assets')
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 
-local family = graphics.newFontFamily({regular = graphics2d.defaultFont(), fallback = {assets.font('fonts/noto_sans_hebrew_regular.ttf')}})
+local family = graphics.newFontFamily({regular = graphics2d.defaultFont(), fallbacks = {assets.font('fonts/noto_sans_hebrew_regular.ttf')}})
 print(family:measure('Shalom שלום', {size = 32}))
 ```
 
@@ -394,7 +394,7 @@ local assets = require('haylen.assets')
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 
-local family = graphics.newFontFamily({regular = graphics2d.defaultFont(), fallback = {assets.font('fonts/noto_sans_devanagari_regular.ttf')}})
+local family = graphics.newFontFamily({regular = graphics2d.defaultFont(), fallbacks = {assets.font('fonts/noto_sans_devanagari_regular.ttf')}})
 local layout = family:layout('Hindi हिन्दी', {size = 32})
 for _, quad in ipairs(layout.quads) do
     print(quad.font == family.regular, quad.position.x)

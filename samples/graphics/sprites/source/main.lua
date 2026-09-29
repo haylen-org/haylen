@@ -13,10 +13,10 @@ assets.defineGroups({groups = {sprites = {
 }}})
 
 input.loadActions({actions = {
-    -- The Back button of a gamepad goes back too, next to Escape and the east button that ui_cancel reads by default.
-    {name = 'ui_cancel', type = 'button', bindings = {'key:escape', 'button:east', 'button:back'}},
-    {name = 'add', type = 'button', bindings = {'key:equal', 'key:keypad_add', 'button:right_shoulder'}},
-    {name = 'remove', type = 'button', bindings = {'key:minus', 'key:keypad_subtract', 'button:left_shoulder'}},
+    -- The Back button of a gamepad goes back too, next to Escape and the east button that uiCancel reads by default.
+    {name = 'uiCancel', type = 'button', bindings = {'key:escape', 'button:east', 'button:back'}},
+    {name = 'add', type = 'button', bindings = {'key:equal', 'key:keypadAdd', 'button:rightShoulder'}},
+    {name = 'remove', type = 'button', bindings = {'key:minus', 'key:keypadSubtract', 'button:leftShoulder'}},
 }})
 
 scene.push(require('scenes.menu')())

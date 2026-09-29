@@ -1,4 +1,4 @@
--- Diagnostics: live tables of events.stats() and signal.list() while the test adds listeners, emits, and drops the owner of two listeners to compare the counts before and after the collection.
+-- Diagnostics: live tables of events.topics() and signal.list() while the test adds listeners, emits, and drops the owner of two listeners to compare the counts before and after the collection.
 local debugging = require('haylen.debug')
 local events = require('haylen.events')
 local graphics2d = require('haylen.graphics2d')
@@ -11,7 +11,7 @@ local sample = require('sample')
 local Diagnostics = haylen.class('Diagnostics', sample.Test)
 
 local kCode = [[
-for _, topic in ipairs(events.stats()) do print(topic.name, topic.listeners, topic.emissions, topic.stale) end
+for _, topic in ipairs(events.topics()) do print(topic.name, topic.listeners, topic.emissions, topic.stale) end
 for _, entry in ipairs(signal.list()) do print(entry.name, entry.listeners, entry.emissions, entry.stale) end
 debug.setStatsMode('full')  -- the overlay lists the same counts and warns about dead owners]]
 
@@ -32,7 +32,7 @@ function Diagnostics:enter()
     self.health = signal.new('demo.health')
     self.score:connect(function() end, {owner = self})
     self.health:connect(function() end, {owner = self})
-    self:listen('demo_ping', function() end)
+    self:listen('demoPing', function() end)
     self:frame({
         hint = 'Add listeners and emit to see the counts grow, then drop an owner and compare the counts before and after the collection.',
         code = kCode,
@@ -53,29 +53,29 @@ end
 function Diagnostics:emit()
     self.score:emit(10)
     self.health:emit(90)
-    events.emit('demo_ping')
+    events.emit('demoPing')
 end
 
 function Diagnostics:addListeners()
     self.score:connect(function() end, {owner = self})
-    events.on('demo_ping', function() end, {owner = self})
+    events.on('demoPing', function() end, {owner = self})
 end
 
 -- Gives two listeners to a new owner and drops it. The note keeps the counts with the owner and right after the collector freed it.
 function Diagnostics:dropOwner()
     local owner = {}
     self.score:connect(function() end, {owner = owner})
-    events.on('demo_ping', function() end, {owner = owner})
-    local held = find(events.stats(), 'demo_ping').listeners
+    events.on('demoPing', function() end, {owner = owner})
+    local held = find(events.topics(), 'demoPing').listeners
     owner = nil
     collectgarbage()
-    local freed = find(events.stats(), 'demo_ping')
-    self.note = string.format('demo_ping: %d listeners with the owner, %d right after the collection, %d of them stale.', held, freed.listeners, freed.stale)
+    local freed = find(events.topics(), 'demoPing')
+    self.note = string.format('demoPing: %d listeners with the owner, %d right after the collection, %d of them stale.', held, freed.listeners, freed.stale)
 end
 
 function Diagnostics:update(dt)
     Diagnostics.super.update(self, dt)
-    self:status(string.format('%d event names, %d named signals', #events.stats(), #signal.list()))
+    self:status(string.format('%d event names, %d named signals', #events.topics(), #signal.list()))
 end
 
 -- Draws the rows of one table in columns, with the demo rows of this test highlighted.
@@ -100,7 +100,7 @@ local function drawTable(title, rows, x, y, height)
 end
 
 function Diagnostics:draw(area)
-    drawTable('events.stats()', events.stats(), 30, 20, area.height - 80)
+    drawTable('events.topics()', events.topics(), 30, 20, area.height - 80)
     drawTable('signal.list()', signal.list(), area.width / 2 + 30, 20, area.height - 80)
     graphics2d.drawText(nil, self.note, 30, area.height - 50, {size = 24, color = sample.red})
 end

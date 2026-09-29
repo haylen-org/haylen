@@ -38,7 +38,7 @@ function Virtual:enter()
                 end
             end},
             ui.sectionTitle{text = 'Wiring'},
-            ui.label{font = 'monospace', text = "ui.touchStick{action = 'move'}\nui.touchButton{action = 'jump'}\n-- the action map binds\n-- virtual_stick:move\n-- virtual:jump and virtual:dash"},
+            ui.label{font = 'monospace', text = "ui.touchStick{action = 'move'}\nui.touchButton{action = 'jump'}\n-- the action map binds\n-- virtualStick:move\n-- virtual:jump and virtual:dash"},
         },
         overlay = {
             ui.touchStick{id = 'stick', action = 'move', floating = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 420, height = 420},

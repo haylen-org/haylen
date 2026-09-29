@@ -7,7 +7,7 @@
 
 namespace haylen::platform {
 
-// The keys of TV remotes that reach Android as raw input events, which sokol_app does not translate: the directional pad, select, back and play and pause. Back becomes escape, which the UI reads as ui_cancel, and it stays with Android, which leaves the app, unless the app captures it. From Android 13 on, back reaches the app through the back callback of the activity instead of a key.
+// The keys of TV remotes that reach Android as raw input events, which sokol_app does not translate: the directional pad, select, back and play and pause. Back becomes escape, which the UI reads as uiCancel, and it stays with Android, which leaves the app, unless the app captures it. From Android 13 on, back reaches the app through the back callback of the activity instead of a key.
 class AndroidKeys final {
   public:
     // Takes a raw input event before sokol_app sees it and returns whether the app took it. It runs on the frame thread.

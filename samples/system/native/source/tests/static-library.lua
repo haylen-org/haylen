@@ -1,4 +1,4 @@
--- Static library: iOS and tvOS apps link native_test_static into the app, and make.py writes a table of its symbols that native.load and native.symbol find, while Varn ffi calls it through ffi.C. The other platforms load dynamic libraries only, and the browser none.
+-- Static library: iOS and tvOS apps link native_test_static into the app, and make.py writes a table of its symbols that native.load and native.findSymbol find, while Varn ffi calls it through ffi.C. The other platforms load dynamic libraries only, and the browser none.
 local ffi = require('ffi')
 local haylen = require('haylen')
 local native = require('haylen.native')
@@ -45,11 +45,11 @@ function StaticLibrary:run()
             return 'native.load returned ffi.C'
         end)
         checks:run('Symbol table', function()
-            local address = native.symbol('native_test_origin')
+            local address = native.findSymbol('native_test_origin')
             if address == nil then
-                error('native.symbol found no native_test_origin', 0)
+                error('native.findSymbol found no native_test_origin', 0)
             end
-            return 'native.symbol found native_test_origin at ' .. tostring(address)
+            return 'native.findSymbol found native_test_origin at ' .. tostring(address)
         end)
         checks:run('Text from the linked copy', function()
             return 'native_test_origin() = ' .. expect(ffi.string(lib.native_test_origin()), 'static', 'the origin')

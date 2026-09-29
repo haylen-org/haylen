@@ -54,7 +54,7 @@ function OneWay:build()
     end
     self.lift = self:platform('kinematic', 60, -250, 220)
 
-    self.hero = self.world:createBody({x = -600, y = 330, fixedRotation = true, sleep = false})
+    self.hero = self.world:createBody({x = -600, y = 330, fixedRotation = true, sleepEnabled = false})
     self.heroShape = parts.capsule(self.hero, 0, -22, 0, 22, 20, {friction = 0, category = kHero})
     parts.paint(self.hero, '#FF4DD0E1')
 end

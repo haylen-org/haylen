@@ -11,10 +11,10 @@ namespace haylen::debug {
 class ProfileScope final {
   public:
     ProfileScope(Profiler& target, std::string_view name) : profiler(target), depth(target.getDepth()) {
-        profiler.begin(name);
+        profiler.beginScope(name);
     }
     ~ProfileScope() {
-        profiler.endTo(depth);
+        profiler.endScopesTo(depth);
     }
 
     ProfileScope(const ProfileScope&) = delete;

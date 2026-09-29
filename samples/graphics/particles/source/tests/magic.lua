@@ -46,7 +46,7 @@ end
 function Magic:update(dt)
     self.cursor:update(dt)
     local x, y = self.cursor:world(self.camera)
-    local follow = m.damp(3, dt)
+    local follow = m.dampFactor(3, dt)
     self.orb.x, self.orb.y = m.lerp(self.orb.x, x, follow), m.lerp(self.orb.y, y, follow)
     for _, emitter in ipairs({self.vortex, self.stars, self.core}) do
         emitter.position = {self.orb.x, self.orb.y}

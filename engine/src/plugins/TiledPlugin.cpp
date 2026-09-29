@@ -80,7 +80,7 @@ void TiledPlugin::start(core::Engine& engine) {
         },
     });
     engine.getAssets().registerType({
-        .name = "tiled_world",
+        .name = "tiledWorld",
         .extensions = {".world"},
         .normalize = [](const core::Json& options) {
             core::JsonValidator::requireKnownKeys(options, {}, "Tiled world options");
@@ -97,7 +97,7 @@ void TiledPlugin::start(core::Engine& engine) {
     assetsPlugin.registerLuaPusher("tiled", [](lua_State* L, const std::shared_ptr<void>& asset) {
         tiled::TiledLua::pushMap(L, std::static_pointer_cast<tiled::Map>(asset));
     });
-    assetsPlugin.registerLuaPusher("tiled_world", [](lua_State* L, const std::shared_ptr<void>& asset) {
+    assetsPlugin.registerLuaPusher("tiledWorld", [](lua_State* L, const std::shared_ptr<void>& asset) {
         tiled::TiledLua::pushWorld(L, *std::static_pointer_cast<tiled::World>(asset));
     });
     // clang-format on

@@ -38,7 +38,7 @@ function TextureUniforms:controls()
 end
 
 function TextureUniforms:update(dt)
-    local time = haylen.time()
+    local time = haylen.elapsed()
     self.material:set('scroll', {time * 0.1, time * 0.05})
     self:setStatus('textures of the shader: ' .. table.concat(self.material.shader.textures, ', ') .. ', gradient ' .. self.ramp)
 end
@@ -46,9 +46,9 @@ end
 -- Redraws the live gradient: four bands of color that slide along it.
 function TextureUniforms:renderLive()
     graphics2d.beginTarget(self.live, self.liveCamera, {clear = '#FF000000'})
-    local time = haylen.time()
+    local time = haylen.elapsed()
     for index = 0, 3 do
-        local color = m.hsv(time * 0.1 + index * 0.25, 0.8, 0.3 + index * 0.23)
+        local color = m.fromHsv(time * 0.1 + index * 0.25, 0.8, 0.3 + index * 0.23)
         graphics2d.drawRect({index * 64, 0, 64, 4}, color)
     end
 end

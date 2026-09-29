@@ -23,10 +23,10 @@ class CoreLua final {
     static int openLog(lua_State* L);
 
     static int rootQuit(lua_State* L);
-    static int rootTime(lua_State* L);
+    static int rootElapsed(lua_State* L);
     static int rootDelta(lua_State* L);
     static int rootUnscaledDelta(lua_State* L);
-    static int rootFrame(lua_State* L);
+    static int rootFrameIndex(lua_State* L);
     static int rootTimeScale(lua_State* L);
     static int rootSetTimeScale(lua_State* L);
     static int rootFixedStep(lua_State* L);

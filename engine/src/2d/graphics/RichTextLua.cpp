@@ -55,7 +55,7 @@ text::RichTextOptions RichTextLua::readOptions(lua_State* L, int index, std::ini
     lua::Table::readField(L, table, "language", options.language);
     lua::Table::readField(L, table, "lineSpacing", options.lineSpacing);
     lua::Table::readField(L, table, "scale", options.scale);
-    lua::Table::readField(L, table, "reveal", options.revealSpeed);
+    lua::Table::readField(L, table, "revealSpeed", options.revealSpeed);
     lua::Table::readField(L, table, "underlineLinks", options.underlineLinks);
 
     if (lua_getfield(L, table, "fonts") != LUA_TNIL) {
@@ -80,7 +80,7 @@ text::RichTextOptions RichTextLua::readOptions(lua_State* L, int index, std::ini
     return options;
 }
 
-// Creates rich text with newRichText(markup, {family, size, bold, italic, color, maxWidth, align, direction, language, lineSpacing, scale, reveal, underlineLinks, fonts}).
+// Creates rich text with newRichText(markup, {family, size, bold, italic, color, maxWidth, align, direction, language, lineSpacing, scale, revealSpeed, underlineLinks, fonts}).
 int RichTextLua::newRichText(lua_State* L) {
     std::string markup = lua::Stack::read<std::string>(L, 1);
     lua::Stack::push(L, std::make_shared<text::RichText>(std::move(markup), readOptions(L, 2), getRegistry(L)));
@@ -182,7 +182,7 @@ int RichTextLua::registerTextIcon(lua_State* L) {
     return 0;
 }
 
-int RichTextLua::textEffects(lua_State* L) {
+int RichTextLua::textEffectNames(lua_State* L) {
     lua::Stack::push(L, getRegistry(L)->getEffectNames());
     return 1;
 }
@@ -231,7 +231,7 @@ int RichTextLua::setVisibleCharacters(lua_State* L) {
 }
 
 // Returns the layout of this moment as {size, lineCount, glyphs, boxes, images, links, hints, characters, lines}, the way the text draws now.
-int RichTextLua::layout(lua_State* L) {
+int RichTextLua::frame(lua_State* L) {
     text::RichText& richText = lua::Userdata::check<text::RichText>(L, 1);
     const text::Layout& frame = richText.getFrame();
     lua_createtable(L, 0, 9);
@@ -435,7 +435,7 @@ int RichTextLua::time(lua_State* L) {
 }
 
 void RichTextLua::install(lua_State* L) {
-    lua::ClassBuilder<text::RichText>(L).function("update", &lua::Binding::native<&update>).function("draw", &lua::Binding::native<&draw>).function("size", &lua::Binding::native<&size>).function("linkAt", &lua::Binding::native<&linkAt>).function("hintAt", &lua::Binding::native<&hintAt>).function("setVisibleCharacters", &lua::Binding::native<&setVisibleCharacters>).function("layout", &lua::Binding::native<&layout>).property("markup", &lua::Binding::native<&getMarkup>, &lua::Binding::native<&setMarkup>).property("maxWidth", &lua::Binding::native<&getMaxWidth>, &lua::Binding::native<&setMaxWidth>).property("scale", &lua::Binding::native<&getScale>, &lua::Binding::native<&setScale>).property("family", &lua::Binding::native<&getOption<&text::RichTextOptions::family>>, &lua::Binding::native<&setFamily>).property("bold", &lua::Binding::native<&getOption<&text::RichTextOptions::bold>>, &lua::Binding::native<&setOption<&text::RichTextOptions::bold>>).property("italic", &lua::Binding::native<&getOption<&text::RichTextOptions::italic>>, &lua::Binding::native<&setOption<&text::RichTextOptions::italic>>).property("color", &lua::Binding::native<&getOption<&text::RichTextOptions::color>>, &lua::Binding::native<&setOption<&text::RichTextOptions::color>>).property("align", &lua::Binding::native<&getOption<&text::RichTextOptions::align>>, &lua::Binding::native<&setOption<&text::RichTextOptions::align>>).property("direction", &lua::Binding::native<&getOption<&text::RichTextOptions::direction>>, &lua::Binding::native<&setOption<&text::RichTextOptions::direction>>).property("language", &lua::Binding::native<&getOption<&text::RichTextOptions::language>>, &lua::Binding::native<&setOption<&text::RichTextOptions::language>>).property("lineSpacing", &lua::Binding::native<&getOption<&text::RichTextOptions::lineSpacing>>, &lua::Binding::native<&setOption<&text::RichTextOptions::lineSpacing>>).property("reveal", &lua::Binding::native<&getOption<&text::RichTextOptions::revealSpeed>>, &lua::Binding::native<&setOption<&text::RichTextOptions::revealSpeed>>).property("underlineLinks", &lua::Binding::native<&getOption<&text::RichTextOptions::underlineLinks>>, &lua::Binding::native<&setOption<&text::RichTextOptions::underlineLinks>>).property("visibleCharacters", &lua::Binding::native<&getVisibleCharacters>, &lua::Binding::native<&setVisibleCharacters>).property("visibleRatio", &lua::Binding::native<&getVisibleRatio>, &lua::Binding::native<&setVisibleRatio>).property("characterCount", &lua::Binding::native<&characterCount>).property("revealing", &lua::Binding::native<&revealing>).property("time", &time).install();
+    lua::ClassBuilder<text::RichText>(L).function("update", &lua::Binding::native<&update>).function("draw", &lua::Binding::native<&draw>).function("size", &lua::Binding::native<&size>).function("linkAt", &lua::Binding::native<&linkAt>).function("hintAt", &lua::Binding::native<&hintAt>).function("setVisibleCharacters", &lua::Binding::native<&setVisibleCharacters>).function("frame", &lua::Binding::native<&frame>).property("markup", &lua::Binding::native<&getMarkup>, &lua::Binding::native<&setMarkup>).property("maxWidth", &lua::Binding::native<&getMaxWidth>, &lua::Binding::native<&setMaxWidth>).property("scale", &lua::Binding::native<&getScale>, &lua::Binding::native<&setScale>).property("family", &lua::Binding::native<&getOption<&text::RichTextOptions::family>>, &lua::Binding::native<&setFamily>).property("bold", &lua::Binding::native<&getOption<&text::RichTextOptions::bold>>, &lua::Binding::native<&setOption<&text::RichTextOptions::bold>>).property("italic", &lua::Binding::native<&getOption<&text::RichTextOptions::italic>>, &lua::Binding::native<&setOption<&text::RichTextOptions::italic>>).property("color", &lua::Binding::native<&getOption<&text::RichTextOptions::color>>, &lua::Binding::native<&setOption<&text::RichTextOptions::color>>).property("align", &lua::Binding::native<&getOption<&text::RichTextOptions::align>>, &lua::Binding::native<&setOption<&text::RichTextOptions::align>>).property("direction", &lua::Binding::native<&getOption<&text::RichTextOptions::direction>>, &lua::Binding::native<&setOption<&text::RichTextOptions::direction>>).property("language", &lua::Binding::native<&getOption<&text::RichTextOptions::language>>, &lua::Binding::native<&setOption<&text::RichTextOptions::language>>).property("lineSpacing", &lua::Binding::native<&getOption<&text::RichTextOptions::lineSpacing>>, &lua::Binding::native<&setOption<&text::RichTextOptions::lineSpacing>>).property("revealSpeed", &lua::Binding::native<&getOption<&text::RichTextOptions::revealSpeed>>, &lua::Binding::native<&setOption<&text::RichTextOptions::revealSpeed>>).property("underlineLinks", &lua::Binding::native<&getOption<&text::RichTextOptions::underlineLinks>>, &lua::Binding::native<&setOption<&text::RichTextOptions::underlineLinks>>).property("visibleCharacters", &lua::Binding::native<&getVisibleCharacters>, &lua::Binding::native<&setVisibleCharacters>).property("visibleRatio", &lua::Binding::native<&getVisibleRatio>, &lua::Binding::native<&setVisibleRatio>).property("characterCount", &lua::Binding::native<&characterCount>).property("revealing", &lua::Binding::native<&revealing>).property("time", &time).install();
 }
 
 } // namespace haylen::graphics2d

@@ -25,7 +25,7 @@ function Pieces:enter()
     self.stretched = graphics2d.newNineSlice(self.texture, {pieces = pieces})
     self.tiled = graphics2d.newNineSlice(self.texture, {pieces = pieces, fill = 'tile'})
     self.grow = {amount = 0}
-    tween.to(self.grow, 2.4, {amount = 1}, {owner = self, loop = 'yoyo', repeatCount = -1, ease = 'sine_in_out'})
+    tween.to(self.grow, 2.4, {amount = 1}, {owner = self, loopMode = 'yoyo', repeatCount = -1, ease = 'sineInOut'})
     self:frame({hint = 'The gaps between the pieces never show, since each region is read on its own.', code = kCode})
 end
 

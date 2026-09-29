@@ -40,7 +40,7 @@ TEST_F(GeometryLuaTest, SimplifiesAndDecomposesPolygons) {
         total = 0
         convex = true
         for _, piece in ipairs(pieces) do
-            total = total + m.polygonArea(piece)
+            total = total + m.polygonSignedArea(piece)
             convex = convex and m.polygonConvex(piece)
         end
     )");
@@ -60,7 +60,7 @@ TEST_F(GeometryLuaTest, TracesFieldsAndBitmaps) {
         end
     )");
     // clang-format on
-    EXPECT_EQ(lua("local outlines = m.marchingSquares.trace(field, 5, 5, {threshold = 0.5, spacing = 2, origin = {100, 0}}) return #outlines .. ' ' .. m.polygonArea(outlines[1])"), "1 34.0");
+    EXPECT_EQ(lua("local outlines = m.marchingSquares.trace(field, 5, 5, {threshold = 0.5, spacing = 2, origin = {100, 0}}) return #outlines .. ' ' .. m.polygonSignedArea(outlines[1])"), "1 34.0");
     EXPECT_EQ(lua("local outlines = m.marchingSquares.traceBitmap({1, 0, 1, true, false, 0}, 3, 2) return #outlines"), "2");
     EXPECT_NE(lua("return m.marchingSquares.trace(field, 4, 5)").find("width times height"), std::string::npos);
     EXPECT_NE(lua("return m.marchingSquares.trace(field, 5, 5, {level = 1})").find("Unknown option 'level'"), std::string::npos);

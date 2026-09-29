@@ -43,7 +43,7 @@ The storage folder is located here on each platform:
 
 ## Files
 
-### storage.read(path)
+### storage.readText(path)
 
 Returns the whole content of a file as a string. Lua strings hold any bytes, so binary files work too. A missing file raises `Storage file was not found: <path>`.
 
@@ -51,24 +51,24 @@ Returns the whole content of a file as a string. Lua strings hold any bytes, so 
 local storage = require('haylen.storage')
 
 if storage.exists('notes.txt') then
-    local notes = storage.read('notes.txt')
+    local notes = storage.readText('notes.txt')
     print(#notes .. ' bytes of notes')
 end
 ```
 
-### storage.write(path, text)
+### storage.writeText(path, text)
 
 Writes `text` to a file, replacing any previous content and creating missing folders. The data goes to a temporary sibling file first and then replaces the target, so a crash never leaves a half-written file behind.
 
 ```lua
 local storage = require('haylen.storage')
 
-storage.write('logs/last-run.txt', 'finished day 3 with 42 coins')
+storage.writeText('logs/last-run.txt', 'finished day 3 with 42 coins')
 ```
 
 ### storage.readJson(path)
 
-Reads a JSON file and returns it as plain Lua values. Objects become tables with string keys, arrays become sequences and `null` becomes `nil`. A missing file raises the same error as `storage.read`, and invalid JSON raises the parser error, which starts with `[json.exception.parse_error.101]`.
+Reads a JSON file and returns it as plain Lua values. Objects become tables with string keys, arrays become sequences and `null` becomes `nil`. A missing file raises the same error as `storage.readText`, and invalid JSON raises the parser error, which starts with `[json.exception.parse_error.101]`.
 
 ```lua
 local storage = require('haylen.storage')
@@ -82,7 +82,7 @@ print('day', progress.day)
 
 ### storage.writeJson(path, value)
 
-Converts `value` to JSON and writes it with two-space indentation, with the same atomic write as `storage.write`. Sequences become arrays, other tables become objects, and an empty table becomes an empty object. Numeric keys of non-sequence tables become strings. Functions, userdata such as `Vec2`, threads and cyclic tables cannot be converted and raise errors such as `A function cannot be converted to JSON.` or `A userdata cannot be converted to JSON.`
+Converts `value` to JSON and writes it with two-space indentation, with the same atomic write as `storage.writeText`. Sequences become arrays, other tables become objects, and an empty table becomes an empty object. Numeric keys of non-sequence tables become strings. Functions, userdata such as `Vec2`, threads and cyclic tables cannot be converted and raise errors such as `A function cannot be converted to JSON.` or `A userdata cannot be converted to JSON.`
 
 ```lua
 local storage = require('haylen.storage')
@@ -129,8 +129,8 @@ Returns a sorted sequence with the paths of every file inside `directory` and it
 ```lua
 local storage = require('haylen.storage')
 
-storage.write('saves/slot1.json', '{}')
-storage.write('saves/slot2.json', '{}')
+storage.writeText('saves/slot1.json', '{}')
+storage.writeText('saves/slot2.json', '{}')
 for _, path in ipairs(storage.list('saves')) do
     print(path) -- saves/slot1.json, then saves/slot2.json
 end
@@ -139,7 +139,7 @@ print(#storage.list() .. ' files in total')
 
 ### storage.flush()
 
-Makes previous writes durable on platforms that buffer storage. On the web it copies the file system to IndexedDB, and elsewhere it returns right away because writes are already on disk. Call it after saving important data, for example when a level ends. The engine flushes by itself when the app goes to the background, right after the listeners of the `app_background` event of [haylen.events](events.md) have run, so saves written there are durable too.
+Makes previous writes durable on platforms that buffer storage. On the web it copies the file system to IndexedDB, and elsewhere it returns right away because writes are already on disk. Call it after saving important data, for example when a level ends. The engine flushes by itself when the app goes to the background, right after the listeners of the `appBackground` event of [haylen.events](events.md) have run, so saves written there are durable too.
 
 ```lua
 local storage = require('haylen.storage')
@@ -170,23 +170,23 @@ async.spawn(function()
 end)
 ```
 
-### storage.readAsync(path), storage.readJsonAsync(path)
+### storage.readTextAsync(path), storage.readJsonAsync(path)
 
-Return promises for what `storage.read` and `storage.readJson` return, read and parsed on the I/O pool. A missing file or invalid JSON rejects the promise with the same message those functions raise.
+Return promises for what `storage.readText` and `storage.readJson` return, read and parsed on the I/O pool. A missing file or invalid JSON rejects the promise with the same message those functions raise.
 
 ```lua
 local async = require('async')
 local storage = require('haylen.storage')
 
 async.spawn(function()
-    local notes, err = storage.readAsync('notes.txt'):await()
+    local notes, err = storage.readTextAsync('notes.txt'):await()
     print(notes or err)
 end)
 ```
 
-### storage.writeAsync(path, text), storage.writeJsonAsync(path, value)
+### storage.writeTextAsync(path, text), storage.writeJsonAsync(path, value)
 
-Return promises that resolve with `true` once `text`, or `value` converted to JSON with two-space indentation, replaced the file with the same atomic write as `storage.write`. The value is converted when the function is called, so later changes to the table do not reach the file. Call `storage.flush()` after awaiting when the file must survive a crash of a web build.
+Return promises that resolve with `true` once `text`, or `value` converted to JSON with two-space indentation, replaced the file with the same atomic write as `storage.writeText`. The value is converted when the function is called, so later changes to the table do not reach the file. Call `storage.flush()` after awaiting when the file must survive a crash of a web build.
 
 ```lua
 local async = require('async')

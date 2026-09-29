@@ -34,7 +34,7 @@ function PlatformHandlers:run()
     self:spawn(function()
         local checks = self.checks
         local greeting, err = platform.call('native_sample.greet', {name = 'Lua'}):await()
-        if err and err.code == 'no_handler' then
+        if err and err.code == 'noHandler' then
             checks:skip('Async handler', 'No platform code of this app runs here: ' .. err.message)
             return
         end

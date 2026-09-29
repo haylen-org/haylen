@@ -38,7 +38,7 @@ end
 function Orientations:show(id)
     self.current = id
     self.map = self.maps[id]
-    local bounds = self.map.bounds
+    local bounds = self.map.pixelBounds
     self.viewSize = {bounds.width + kMargin * 2, bounds.height + kMargin * 2}
     self.camera:snapTo(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
 end
@@ -92,7 +92,7 @@ end
 function Orientations:render()
     self:beginWorld()
     self.map:draw(self.camera)
-    graphics2d.drawRectOutline(self.map.bounds, 2 * graphics2d.canvasUnitSize(), '#66FFFFFF', {layer = 5})
+    graphics2d.drawRectOutline(self.map.pixelBounds, 2 * graphics2d.canvasUnitSize(), '#66FFFFFF', {layer = 5})
     graphics2d.drawPolyline(self:cellOutline(), 3 * graphics2d.canvasUnitSize(), '#FFFFD54F', true, {layer = 6})
 end
 

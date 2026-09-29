@@ -34,7 +34,7 @@ end
 
 function Sizes:update(dt)
     if self.pulse then
-        self.zoom = 164 + 156 * math.sin(haylen.time() * 0.8)
+        self.zoom = 164 + 156 * math.sin(haylen.elapsed() * 0.8)
     end
     local ttf, otf = fonts.get('crimson'), fonts.get('fira')
     self:setStatus(string.format('TrueType bake size %d, %d atlas pages. OpenType bake size %d, %d atlas pages. Zoom %.0f.', ttf.nativeSize, ttf.pageCount, otf.nativeSize, otf.pageCount, self.zoom))

@@ -6,7 +6,7 @@
 
 namespace haylen::animation2d {
 
-const std::array<std::pair<std::string_view, Animation::Loop>, 3> Animation::kLoopNames{{{"loop", Loop::Loop}, {"once", Loop::Once}, {"ping_pong", Loop::PingPong}}};
+const std::array<std::pair<std::string_view, Animation::Loop>, 3> Animation::kLoopNames{{{"loop", Loop::Loop}, {"once", Loop::Once}, {"pingPong", Loop::PingPong}}};
 
 std::optional<Animation::Loop> Animation::loopFromName(std::string_view name) noexcept {
     for (const auto& [text, mode] : kLoopNames) {

@@ -23,7 +23,7 @@ class LocalizationLua final {
     static int languages(lua_State* L);
     static int has(lua_State* L);
     static int text(lua_State* L);
-    static int bestMatch(lua_State* L);
+    static int findBestMatch(lua_State* L);
     static int direction(lua_State* L);
     static int open(lua_State* L);
 };

@@ -72,12 +72,12 @@ end
 
 function Poisson:sampleNoise()
     self.request = (self.request or 0) + 1
-    local request, started = self.request, haylen.time()
+    local request, started = self.request, haylen.elapsed()
     async.spawn(function()
         local points = procedural2d.scatterAsync({region = kArea, method = 'poisson', spacing = kNearest, maximumSpacing = kFarthest, densityMap = {seed = self.seed, frequency = 0.0035, octaves = 3}, seed = self.seed}):await()
         if points and self.points and request == self.request then
             self.points = points
-            self.latency = (haylen.time() - started) * 1000
+            self.latency = (haylen.elapsed() - started) * 1000
         end
     end)
 end

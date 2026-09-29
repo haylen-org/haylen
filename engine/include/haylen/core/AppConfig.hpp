@@ -51,7 +51,7 @@ struct AppConfig {
         bool muteOnFocusLoss = false;
     };
 
-    // The debug statistics the app starts with, whether counted objects publish object_created and object_destroyed, the safe area to simulate instead of the one of the device, and whether the safe area shows over the app.
+    // The debug statistics the app starts with, whether counted objects publish objectCreated and objectDestroyed, the safe area to simulate instead of the one of the device, and whether the safe area shows over the app.
     struct Debug {
         debug::StatsDisplay::Mode stats = debug::StatsDisplay::Mode::Off;
         bool objectEvents = false;

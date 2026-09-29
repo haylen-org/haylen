@@ -236,11 +236,11 @@ TEST(DesktopMethodsTest, AnswersTheBuiltInMethods) {
 
     ask(methods, "device.info", "{}");
     ask(methods, "system.locale", "{}");
-    ask(methods, "system.open_url", R"({"url": "https://example.com"})");
-    ask(methods, "system.open_url", R"({"url": "https://refused.example"})");
-    ask(methods, "system.open_url", R"({"url": ""})");
-    ask(methods, "system.open_url", "{}");
-    ask(methods, "system.open_url", R"({"url": 7})");
+    ask(methods, "system.openUrl", R"({"url": "https://example.com"})");
+    ask(methods, "system.openUrl", R"({"url": "https://refused.example"})");
+    ask(methods, "system.openUrl", R"({"url": ""})");
+    ask(methods, "system.openUrl", "{}");
+    ask(methods, "system.openUrl", R"({"url": 7})");
     ask(methods, "haptics.vibrate", "{}");
     ask(methods, "store.buy", "{}");
     ask(broken, "device.info", "{}");
@@ -261,7 +261,7 @@ TEST(DesktopMethodsTest, AnswersTheBuiltInMethods) {
     }
     EXPECT_TRUE(results[7].ok);
     EXPECT_EQ(results[8].error.message, "No native handler is registered for store.buy.");
-    EXPECT_EQ(results[8].error.code, "no_handler");
+    EXPECT_EQ(results[8].error.code, "noHandler");
     EXPECT_EQ(results[9].error.message, "no version");
 }
 
@@ -290,7 +290,7 @@ TEST(BridgeTest, KeepsTheMessageCodeAndDataOfEveryFailure) {
     EXPECT_EQ(results[7].error.code, "offline");
     EXPECT_EQ(results[7].error.data.at("retry"), 5);
     EXPECT_EQ(results[8].error.message, "The platform returned invalid JSON.");
-    EXPECT_EQ(results[8].error.code, "invalid_json");
+    EXPECT_EQ(results[8].error.code, "invalidJson");
 }
 
 TEST(BridgeTest, TimesOutAndCancelsCallsAndTellsNativeCode) {

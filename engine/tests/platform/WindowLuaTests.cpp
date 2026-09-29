@@ -124,7 +124,7 @@ TEST(WindowLuaTest, StartsDragsAndHearsTheDesktop) {
     fixture.engine().handleEvent({.type = Event::Type::WindowMoved});
     fixture.engine().handleEvent({.type = Event::Type::MonitorsChanged});
     fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return table.concat(heard, ' ')"), "window_moved monitors_changed");
+    EXPECT_EQ(fixture.lua("return table.concat(heard, ' ')"), "windowMoved monitorsChanged");
 }
 
 } // namespace haylen::platform

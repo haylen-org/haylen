@@ -10,11 +10,11 @@ local platform = require('haylen.platform')
 
 `platform.call` looks for a handler in this order:
 
-1. A handler registered in the engine, either from Lua with `platform.register` or from C++. The engine itself registers `engine.info` and `app.version` this way.
+1. A handler registered in the engine, either from Lua with `platform.registerHandler` or from C++. The engine itself registers `engine.info` and `app.version` this way.
 2. A handler that a native library registered through the `HaylenNativeApi` of the engine, as [haylen.native](native.md#library-handlers) describes.
 3. The native handler of the running platform: `HaylenBridge` on Android and Apple platforms, `Module.haylen` on the web, and the desktop handlers on Windows and Linux.
 
-A method that no handler answers fails with the code `no_handler` and `No native handler is registered for <method>.`, or `No page handler is registered for <method>.` on the web.
+A method that no handler answers fails with the code `noHandler` and `No native handler is registered for <method>.`, or `No page handler is registered for <method>.` on the web.
 
 Parameters and results cross the bridge as JSON. Lua tables with only consecutive integer keys starting at 1 become arrays, other tables become objects, and an empty table becomes an empty object. Functions, userdata and other values that JSON cannot hold raise `A <type> cannot be converted to JSON.`. JSON `null` arrives in Lua as `nil`.
 
@@ -66,7 +66,7 @@ local function leaveMenu()
 end
 ```
 
-### platform.register(method, handler)
+### platform.registerHandler(method, handler)
 
 Answers the method named `method` with the Lua function `handler(params)`, which returns the result. The function runs during the `platform.call` that asks for it and must return at once, and its result must convert to JSON. An error raised inside it fails the call with the error message and its stack trace instead of stopping the app. A registered handler replaces any earlier engine handler of the same method, including `engine.info` and `app.version`, and it takes precedence over native handlers. Lua handlers suit desktop builds and tests that stand in for mobile services.
 
@@ -80,7 +80,7 @@ local platform = require('haylen.platform')
 -- Desktop builds and tests have no store, so a Lua stand-in answers there. Phones keep their native handler, which hasHandler cannot see.
 local standIn = {windows = true, linux = true, headless = true}
 if standIn[haylen.platform] then
-    platform.register('store.buy', function(params)
+    platform.registerHandler('store.buy', function(params)
         if params.item == nil then
             error('store.buy needs an item')
         end
@@ -96,7 +96,7 @@ end)
 
 ### platform.hasHandler(method)
 
-Returns `true` when an engine handler answers `method`, which covers `engine.info`, `app.version`, methods registered with `platform.register` and methods C++ code registered. It does not see native handlers, so it returns `false` for `device.info` even where the platform answers it.
+Returns `true` when an engine handler answers `method`, which covers `engine.info`, `app.version`, methods registered with `platform.registerHandler` and methods C++ code registered. It does not see native handlers, so it returns `false` for `device.info` even where the platform answers it.
 
 ```lua
 local platform = require('haylen.platform')
@@ -105,7 +105,7 @@ print(platform.hasHandler('engine.info'))
 print(platform.hasHandler('device.info'))
 ```
 
-### platform.pendingCalls()
+### platform.pendingCallCount()
 
 Returns how many calls still wait for their result, counting calls whose answer arrived but has not reached Lua at the start of a frame yet.
 
@@ -115,7 +115,7 @@ local scene = require('haylen.scene')
 
 scene.push({
     update = function(self, dt)
-        self.busy = platform.pendingCalls() > 0
+        self.busy = platform.pendingCallCount() > 0
     end,
 })
 ```
@@ -197,11 +197,11 @@ A failed call returns a table with three fields, which reads as its message in `
 | --- | --- |
 | `timeout` | The `timeout` of the call passed first. |
 | `cancelled` | `call:cancel()` gave up the call. |
-| `no_handler` | No handler answers the method. |
-| `invalid_json` | Native code answered with text that is not JSON, with the message `The platform returned invalid JSON.`. |
+| `noHandler` | No handler answers the method. |
+| `invalidJson` | Native code answered with text that is not JSON, with the message `The platform returned invalid JSON.`. |
 | `exception` | A Java, Kotlin, Swift or JavaScript handler threw an error without a code of its own instead of answering. `data.type` names the class of the exception or the type of the error. |
 
-A native failure that is a string becomes the message. A failure object gives its `message`, `code` and `data`, and one without a string `message`, like any other failure payload such as `null` or a number, fails with `The native platform call failed without a message.`. A Lua handler registered with `platform.register` fails with the error it raised and its stack trace as the message.
+A native failure that is a string becomes the message. A failure object gives its `message`, `code` and `data`, and one without a string `message`, like any other failure payload such as `null` or a number, fails with `The native platform call failed without a message.`. A Lua handler registered with `platform.registerHandler` fails with the error it raised and its stack trace as the message.
 
 ```lua
 local async = require('async')
@@ -290,7 +290,7 @@ async.spawn(function()
 end)
 ```
 
-### system.open_url
+### system.openUrl
 
 Opens `params.url` in the browser or the app that handles it and returns `true` once the system took it, on every platform. A missing or empty URL fails the call with `The url is missing.`, and a URL that no application opens, or that the browser blocks, fails it with `The url could not be opened.`. Windows and Linux find out without holding up the app, since Linux waits for `xdg-open` on a helper thread.
 
@@ -299,7 +299,7 @@ local async = require('async')
 local platform = require('haylen.platform')
 
 async.spawn(function()
-    local _, err = platform.call('system.open_url', {url = 'https://example.com/tiny-island'}):await()
+    local _, err = platform.call('system.openUrl', {url = 'https://example.com/tiny-island'}):await()
     if err then
         print('could not open the page: ' .. err)
     end
@@ -347,7 +347,7 @@ public final class StorePlugin {
         HaylenBridge.register("store.buy", (params, reply) -> {
             String item = params instanceof JSONObject ? ((JSONObject) params).optString("item", "") : "";
             if (item.isEmpty()) {
-                throw new HaylenBridge.Failure("store.buy needs an item.", "missing_item", null);
+                throw new HaylenBridge.Failure("store.buy needs an item.", "missingItem", null);
             }
             reply.success(new JSONObject().put("item", item).put("receipt", "play-store-token"));
         });
@@ -372,7 +372,7 @@ object ProfilePlugin {
         HaylenCoroutines.register("profile.load") { params ->
             val id = (params as? JSONObject)?.optString("id").orEmpty()
             if (id.isEmpty()) {
-                throw HaylenBridge.Failure("profile.load needs an id.", "missing_id", null)
+                throw HaylenBridge.Failure("profile.load needs an id.", "missingId", null)
             }
             delay(100)
             mapOf("id" to id, "name" to "Player")
@@ -397,7 +397,7 @@ object ProfilePlugin {
     [HaylenBridge registerHandler:@"store.buy" handler:^(id params, HaylenReply reply) {
         NSString* item = [params isKindOfClass:NSDictionary.class] ? params[@"item"] : nil;
         if (item == nil) {
-            reply(NO, @{@"message" : @"store.buy needs an item.", @"code" : @"missing_item"});
+            reply(NO, @{@"message" : @"store.buy needs an item.", @"code" : @"missingItem"});
             return;
         }
         reply(YES, @{@"item" : item, @"receipt" : @"app-store-token"});
@@ -429,7 +429,7 @@ import Foundation
     @objc static func registerHandlers() {
         HaylenBridge.register("profile.load") { (request: Request) async throws -> Profile in
             if request.id.isEmpty {
-                throw HaylenFailure("profile.load needs an id.", code: "missing_id")
+                throw HaylenFailure("profile.load needs an id.", code: "missingId")
             }
             try await Task.sleep(nanoseconds: 100_000_000)
             return Profile(id: request.id, name: "Player")
@@ -440,7 +440,7 @@ import Foundation
 
 ## Web handlers
 
-`Module.haylen` in the page holds the handlers, and the page answers `device.info`, `system.locale`, `system.open_url` and `haptics.vibrate` itself. `Module.haylen.register(method, handler)` adds or replaces a handler, `Module.haylen.unregister(method)` removes it and `Module.haylen.emit(event, payload)` sends an event. A handler runs after the frame that made the call and receives the parsed parameters and a context with the `call` id and a `signal`, an `AbortSignal` that aborts when the app cancels the call or its timeout passes, and it returns the result or a promise for it. A call cancelled in the frame that made it never runs its handler. A thrown error or a rejected promise fails the call with the error message and the `code` and `data` properties of the error, or with the code `exception` and the `name` of the error in `data.type` when the error has no code. The page registers its handlers before the runtime starts, for example in `Module.preRun`.
+`Module.haylen` in the page holds the handlers, and the page answers `device.info`, `system.locale`, `system.openUrl` and `haptics.vibrate` itself. `Module.haylen.register(method, handler)` adds or replaces a handler, `Module.haylen.unregister(method)` removes it and `Module.haylen.emit(event, payload)` sends an event. A handler runs after the frame that made the call and receives the parsed parameters and a context with the `call` id and a `signal`, an `AbortSignal` that aborts when the app cancels the call or its timeout passes, and it returns the result or a promise for it. A call cancelled in the frame that made it never runs its handler. A thrown error or a rejected promise fails the call with the error message and the `code` and `data` properties of the error, or with the code `exception` and the `name` of the error in `data.type` when the error has no code. The page registers its handlers before the runtime starts, for example in `Module.preRun`.
 
 ```html
 <script>
@@ -449,7 +449,7 @@ import Foundation
         preRun: [function () {
             Module.haylen.register("store.buy", async (params, context) => {
                 if (!params.item) {
-                    throw Object.assign(new Error("store.buy needs an item."), { code: "missing_item" });
+                    throw Object.assign(new Error("store.buy needs an item."), { code: "missingItem" });
                 }
                 const response = await fetch("/api/buy", { method: "POST", body: JSON.stringify(params), signal: context.signal });
                 return await response.json();
@@ -471,7 +471,7 @@ C++ code registers handlers that run inside the engine with `engine.getPlatform(
 ```cpp
 engine.getPlatform().registerHandler("save.cloudSync", [](const haylen::core::Json& params, haylen::platform::Bridge::Reply reply) {
     if (!params.contains("slot")) {
-        reply({.error = {.message = "save.cloudSync needs a slot.", .code = "missing_slot"}});
+        reply({.error = {.message = "save.cloudSync needs a slot.", .code = "missingSlot"}});
         return;
     }
     reply({.ok = true, .value = {{"synced", params.at("slot")}}});

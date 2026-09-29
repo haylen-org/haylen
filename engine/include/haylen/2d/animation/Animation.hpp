@@ -35,7 +35,7 @@ struct Animation {
     std::vector<SpriteFrame> frames;
     Loop loop = Loop::Loop;
 
-    // Resolves the loop names "loop", "once" and "ping_pong".
+    // Resolves the loop names "loop", "once" and "pingPong".
     [[nodiscard]] static std::optional<Loop> loopFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view loopName(Loop mode) noexcept;
 

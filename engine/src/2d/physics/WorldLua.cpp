@@ -42,7 +42,7 @@ Body::Options WorldLua::readBodyOptions(lua_State* L, int index) {
     lua::Table::readField(L, index, "gravityScale", options.gravityScale);
     lua::Table::readField(L, index, "fixedRotation", options.fixedRotation);
     lua::Table::readField(L, index, "bullet", options.bullet);
-    lua::Table::readField(L, index, "sleep", options.sleepEnabled);
+    lua::Table::readField(L, index, "sleepEnabled", options.sleepEnabled);
     return options;
 }
 

@@ -9,24 +9,24 @@
 
 namespace haylen::core {
 
-std::shared_ptr<TweenMotion> TweenMotion::jump(float power, int hops) {
-    if (hops < 1) {
+std::shared_ptr<TweenMotion> TweenMotion::jump(float power, int jumps) {
+    if (jumps < 1) {
         throw std::invalid_argument("A jump needs at least one hop.");
     }
     auto motion = std::shared_ptr<TweenMotion>(new TweenMotion(Kind::Jump));
     motion->amount = power;
-    motion->count = hops;
+    motion->count = jumps;
     return motion;
 }
 
-std::shared_ptr<TweenMotion> TweenMotion::path(std::vector<math::Vec2> waypoints, bool smooth, bool looping) {
+std::shared_ptr<TweenMotion> TweenMotion::path(std::vector<math::Vec2> waypoints, bool curved, bool closed) {
     if (waypoints.empty()) {
         throw std::invalid_argument("A path needs at least one point.");
     }
     auto motion = std::shared_ptr<TweenMotion>(new TweenMotion(Kind::Path));
     motion->points = std::move(waypoints);
-    motion->curved = smooth;
-    motion->closed = looping;
+    motion->curvedPath = curved;
+    motion->closedPath = closed;
     return motion;
 }
 
@@ -108,7 +108,7 @@ void TweenMotion::prepare(const TweenValue& from, const TweenValue& to) {
     nodes.clear();
     nodes.push_back(vector(from));
     nodes.insert(nodes.end(), points.begin(), points.end());
-    if (closed) {
+    if (closedPath) {
         nodes.push_back(nodes.front());
     }
 
@@ -133,14 +133,14 @@ math::Vec2 TweenMotion::pathPoint(float t) const noexcept {
     const float f = position - static_cast<float>(segment);
     const math::Vec2 p1 = nodes[static_cast<std::size_t>(segment)];
     const math::Vec2 p2 = nodes[static_cast<std::size_t>(segment) + 1];
-    if (!curved) {
+    if (!curvedPath) {
         return math::Vec2::lerp(p1, p2, f);
     }
 
     // A closed path wraps its neighbours around, and an open one repeats its end points.
     const int last = segments;
-    const int before = segment > 0 ? segment - 1 : (closed ? last - 1 : 0);
-    const int after = segment + 2 <= last ? segment + 2 : (closed ? 1 : last);
+    const int before = segment > 0 ? segment - 1 : (closedPath ? last - 1 : 0);
+    const int after = segment + 2 <= last ? segment + 2 : (closedPath ? 1 : last);
     const math::Vec2 p0 = nodes[static_cast<std::size_t>(before)];
     const math::Vec2 p3 = nodes[static_cast<std::size_t>(after)];
     const float f2 = f * f;

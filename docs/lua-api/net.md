@@ -15,7 +15,7 @@ On native builds every socket runs on a thread of its own, which sleeps until th
 ```lua
 local net = require('haylen.net')
 
-local socket = net.websocket('wss://game.example.com/lobby', {protocols = {'lobby.v1'}})
+local socket = net.connectWebSocket('wss://game.example.com/lobby', {protocols = {'lobby.v1'}})
 
 socket:on('open', function()
     socket:send('{"type": "join", "name": "Ana"}')
@@ -40,12 +40,12 @@ end)
 
 A socket opened with the `reconnect` option connects again on its own when the connection drops or an attempt fails, until the app closes it. It waits before every attempt: the first attempt waits `initialDelay`, every further attempt waits `multiplier` times longer, up to `maxDelay`, and `jitter` shortens each wait at random by up to that fraction, so many players who lost the same server do not all retry at the same moment. A connection that opens starts the count over. After `maxAttempts` failed attempts in a row the socket gives up and reports `close` with the code of the last failure, and `0` never gives up. Reconnection works the same way on native builds and in the browser.
 
-While it reconnects, the socket keeps its listeners. Each lost connection reports `disconnect`, each scheduled attempt reports `reconnecting` with the attempt number and the wait, and each connection that opens reports `open` again. The event bus hears the same moments as `websocket_disconnected`, `websocket_reconnecting` and `websocket_connected`, as [haylen.events](events.md#engine-events) lists. Messages sent while the socket is not open raise an error, so an app queues what it wants to send until the next `open`. `close()` during a wait ends the socket at once with the code it gives.
+While it reconnects, the socket keeps its listeners. Each lost connection reports `disconnect`, each scheduled attempt reports `reconnecting` with the attempt number and the wait, and each connection that opens reports `open` again. The event bus hears the same moments as `webSocketDisconnected`, `webSocketReconnecting` and `webSocketConnected`, as [haylen.events](events.md#engine-events) lists. Messages sent while the socket is not open raise an error, so an app queues what it wants to send until the next `open`. `close()` during a wait ends the socket at once with the code it gives.
 
 ```lua
 local net = require('haylen.net')
 
-local socket = net.websocket('wss://game.example.com/lobby', {reconnect = {initialDelay = 1, maxDelay = 20, maxAttempts = 10}})
+local socket = net.connectWebSocket('wss://game.example.com/lobby', {reconnect = {initialDelay = 1, maxDelay = 20, maxAttempts = 10}})
 
 socket:on('open', function()
     socket:send('{"type": "hello"}')
@@ -93,7 +93,7 @@ Other codes a server sends, such as `1008` or `1011`, reach the `close` event as
 
 ## Functions
 
-### net.websocket(url, options)
+### net.connectWebSocket(url, options)
 
 Starts connecting to `url` and returns a `haylen.WebSocket` in the `connecting` state. The options table is optional, and unknown keys raise `Unknown option '<key>'.`.
 
@@ -116,27 +116,27 @@ An address that does not start with `ws://` or `wss://` raises `A WebSocket addr
 ```lua
 local net = require('haylen.net')
 
-local chat = net.websocket('ws://127.0.0.1:8080/chat', {protocols = {'chat', 'json'}})
+local chat = net.connectWebSocket('ws://127.0.0.1:8080/chat', {protocols = {'chat', 'json'}})
 print(chat.state)
 
-local lobby = net.websocket('wss://game.example.com/lobby', {reconnect = true})
-local scores = net.websocket('wss://game.example.com/scores', {maxMessageSize = 64 * 1024})
+local lobby = net.connectWebSocket('wss://game.example.com/lobby', {reconnect = true})
+local scores = net.connectWebSocket('wss://game.example.com/scores', {maxMessageSize = 64 * 1024})
 ```
 
-### net.openSockets()
+### net.openSocketCount()
 
-Returns how many sockets the engine keeps alive, which is every socket from `net.websocket` that has not reached the `closed` state yet, whether or not the app still holds it. A socket leaves the count at the start of the frame after it closed.
+Returns how many sockets the engine keeps alive, which is every socket from `net.connectWebSocket` that has not reached the `closed` state yet, whether or not the app still holds it. A socket leaves the count at the start of the frame after it closed.
 
 ```lua
 local net = require('haylen.net')
 
-net.websocket('ws://127.0.0.1:8080/chat')
-print(net.openSockets())
+net.connectWebSocket('ws://127.0.0.1:8080/chat')
+print(net.openSocketCount())
 ```
 
 ## WebSocket
 
-A `haylen.WebSocket` is the socket `net.websocket` returns. Reading a member it does not have raises `haylen.WebSocket has no member '<name>'.`.
+A `haylen.WebSocket` is the socket `net.connectWebSocket` returns. Reading a member it does not have raises `The type haylen.WebSocket has no member '<name>'.`.
 
 ### socket:on(event, listener, options)
 
@@ -155,7 +155,7 @@ Calls `listener` every time the socket reports `event` and returns a `haylen.Con
 ```lua
 local net = require('haylen.net')
 
-local socket = net.websocket('wss://game.example.com/match')
+local socket = net.connectWebSocket('wss://game.example.com/match')
 local messages = socket:on('message', function(data, binary)
     print((binary and 'binary ' or 'text ') .. #data .. ' bytes')
 end)
@@ -178,7 +178,7 @@ Sends `text` as a text message. The text should be valid UTF-8, which browsers r
 ```lua
 local net = require('haylen.net')
 
-local socket = net.websocket('wss://game.example.com/match')
+local socket = net.connectWebSocket('wss://game.example.com/match')
 socket:on('open', function()
     socket:send('{"type": "ready"}')
 end)
@@ -191,7 +191,7 @@ Sends the Lua string `bytes` as a binary message, byte for byte. Sending while t
 ```lua
 local net = require('haylen.net')
 
-local socket = net.websocket('wss://game.example.com/state')
+local socket = net.connectWebSocket('wss://game.example.com/state')
 socket:on('open', function()
     socket:sendBinary(string.pack('<I2ff', 7, 120.5, 48.25))
 end)
@@ -206,7 +206,7 @@ local net = require('haylen.net')
 local timer = require('haylen.timer')
 
 -- Pings every 5 seconds and gives up on a connection that left three pings in a row unanswered.
-local socket = net.websocket('wss://game.example.com/match')
+local socket = net.connectWebSocket('wss://game.example.com/match')
 local unanswered = 0
 socket:on('open', function()
     timer.every(5, function()
@@ -230,7 +230,7 @@ Starts the closing handshake with `code`, which defaults to `1000`, and `reason`
 ```lua
 local net = require('haylen.net')
 
-local socket = net.websocket('wss://game.example.com/match')
+local socket = net.connectWebSocket('wss://game.example.com/match')
 socket:on('message', function(data, binary)
     if data == 'match over' then
         socket:close(4000, 'finished')
@@ -249,7 +249,7 @@ Read-only string with the [state](#states) of the socket.
 local net = require('haylen.net')
 local scene = require('haylen.scene')
 
-local socket = net.websocket('wss://game.example.com/match')
+local socket = net.connectWebSocket('wss://game.example.com/match')
 
 scene.push({
     update = function(self, dt)
@@ -268,7 +268,7 @@ Read-only string with the address the socket was opened with.
 ```lua
 local net = require('haylen.net')
 
-local socket = net.websocket('wss://game.example.com/match')
+local socket = net.connectWebSocket('wss://game.example.com/match')
 socket:on('error', function(message)
     print('could not reach ' .. socket.url .. ': ' .. message)
 end)
@@ -281,7 +281,7 @@ Read-only integer with the attempts made since the connection was last open, whi
 ```lua
 local net = require('haylen.net')
 
-local socket = net.websocket('wss://game.example.com/match', {reconnect = {maxAttempts = 5}})
+local socket = net.connectWebSocket('wss://game.example.com/match', {reconnect = {maxAttempts = 5}})
 socket:on('reconnecting', function()
     print('attempt ' .. socket.attempt .. ' of 5')
 end)
@@ -294,7 +294,7 @@ Read-only string with the subprotocol the server picked from `protocols`. It is 
 ```lua
 local net = require('haylen.net')
 
-local socket = net.websocket('wss://game.example.com/match', {protocols = {'match.v2', 'match.v1'}})
+local socket = net.connectWebSocket('wss://game.example.com/match', {protocols = {'match.v2', 'match.v1'}})
 socket:on('open', function()
     if socket.protocol == 'match.v1' then
         print('talking to an older server')

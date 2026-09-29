@@ -90,7 +90,7 @@ function Overlays:render()
     for _, ball in ipairs(self.balls) do
         graphics2d.drawCircle(ball.x, ball.y, 34, '#FFFFD040')
     end
-    local angle = haylen.time()
+    local angle = haylen.elapsed()
     for spoke = 0, 5 do
         local turn = angle + spoke * math.pi / 3
         graphics2d.drawLine(1600, 820, 1600 + math.cos(turn) * 140, 820 + math.sin(turn) * 140, 12, '#FFE0E0E0')

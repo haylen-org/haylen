@@ -28,20 +28,20 @@ TEST(ProfilerTest, AddsUpScopesPerFrame) {
 
     profiler.beginFrame();
     now = 0.001;
-    profiler.begin("update");
+    profiler.beginScope("update");
     now = 0.003;
-    profiler.begin("physics");
+    profiler.beginScope("physics");
     now = 0.004;
-    profiler.end();
+    profiler.endScope();
     {
         const ProfileScope scope(profiler, "physics");
         now = 0.006;
     }
     now = 0.007;
-    profiler.end();
-    profiler.begin("render");
+    profiler.endScope();
+    profiler.beginScope("render");
     now = 0.010;
-    profiler.end();
+    profiler.endScope();
     now = 0.016;
     profiler.endFrame();
 
@@ -64,14 +64,14 @@ TEST(ProfilerTest, ScopesCloseWhatTheyContain) {
     profiler.beginFrame();
     {
         const ProfileScope outer(profiler, "outer");
-        profiler.begin("left open");
+        profiler.beginScope("left open");
     }
     EXPECT_EQ(profiler.getDepth(), 0U);
 
     // A scope that something else already closed ends quietly.
     {
         const ProfileScope closed(profiler, "closed early");
-        profiler.end();
+        profiler.endScope();
     }
     EXPECT_EQ(profiler.getDepth(), 0U);
     profiler.endFrame();
@@ -97,13 +97,13 @@ TEST(ProfilerTest, KeepsARingOfFrameTimes) {
 
     // A scope an error left open closes with the frame.
     profiler.beginFrame();
-    profiler.begin("broken");
+    profiler.beginScope("broken");
     now += 0.002;
     profiler.endFrame();
     EXPECT_EQ(profiler.getLastFrame().front().name, "broken");
     EXPECT_NEAR(profiler.getLastFrame().front().milliseconds, 2.0, 1e-6);
 
-    EXPECT_THROW(profiler.end(), std::logic_error);
+    EXPECT_THROW(profiler.endScope(), std::logic_error);
     EXPECT_THROW(profiler.endFrame(), std::logic_error);
     EXPECT_THROW(Profiler(0), std::invalid_argument);
 }
@@ -247,7 +247,7 @@ TEST(DebugPluginTest, ProfilesFromLua) {
         local frame = debugging.frame()
         local found
         for _, scope in ipairs(frame.scopes) do if scope.name == 'work' then found = scope end end
-        return found.depth .. ' ' .. found.calls .. ' ' .. tostring(frame.milliseconds >= 0 and frame.fps >= 0 and frame.average >= 0) .. ' ' .. tostring(#debugging.frameTimes() >= 2)
+        return found.depth .. ' ' .. found.calls .. ' ' .. tostring(frame.milliseconds >= 0 and frame.fps >= 0 and frame.average >= 0) .. ' ' .. tostring(#debugging.frameHistory() >= 2)
     )"), "1 1 true true");
     // clang-format on
 

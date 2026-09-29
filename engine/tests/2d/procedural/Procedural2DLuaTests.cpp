@@ -88,7 +88,7 @@ TEST_F(Procedural2DLuaTest, ScattersPointsWithTypesAndMaps) {
 }
 
 TEST_F(Procedural2DLuaTest, GeneratesMapsAsCellGrids) {
-    fixture.runLua("cave = procedural.caves({width = 40, height = 30, seed = 3})");
+    fixture.runLua("cave = procedural.cellularAutomaton({width = 40, height = 30, seed = 3})");
     EXPECT_EQ(lua("return cave.width .. ' ' .. cave.height .. ' ' .. cave:get(0, 0)"), "40 30 1");
     EXPECT_EQ(lua("local walk = procedural.drunkardWalk({width = 20, height = 20, coverage = 0.3, seed = 2}) return walk:get(10, 10)"), "0");
     // clang-format off
@@ -106,7 +106,7 @@ TEST_F(Procedural2DLuaTest, GeneratesMapsAsCellGrids) {
     EXPECT_EQ(lua("local closed = procedural.maze({width = 1, height = 1}) return closed:openings(0, 0)"), "0");
     EXPECT_NE(lua("procedural.maze({width = 2, height = 2, algorithm = 'eller'})").find("unknown value 'eller'"), std::string::npos);
     EXPECT_NE(lua("procedural.maze({width = 40000, height = 40000})").find("fits in 32-bit cell indices"), std::string::npos);
-    EXPECT_NE(lua("procedural.caves({size = 3})").find("Unknown option 'size'"), std::string::npos);
+    EXPECT_NE(lua("procedural.cellularAutomaton({size = 3})").find("Unknown option 'size'"), std::string::npos);
 
     // Mazes built by hand start closed and open wall by wall, on both sides of each wall.
     fixture.runLua("room = procedural.newMaze(3, 2) room:open(0, 0, procedural.east) room:open(1, 0, procedural.south)");
@@ -117,11 +117,11 @@ TEST_F(Procedural2DLuaTest, GeneratesMapsAsCellGrids) {
 
     // One smoothing step works on any grid, such as a hand-painted one.
     fixture.runLua("painted = spatial.newCellGrid(5, 5, 0) painted:set(2, 2, 1)");
-    EXPECT_EQ(lua("local smooth = procedural.cavesStep(painted, {solidBorder = false}) return smooth:get(2, 2) .. smooth:get(0, 0) .. ' ' .. smooth.width"), "00 5");
-    EXPECT_EQ(lua("local walled = procedural.cavesStep(painted) return walled:get(0, 0) .. walled:get(2, 2)"), "10");
-    EXPECT_NE(lua("procedural.cavesStep(painted, {width = 3})").find("Unknown option 'width'"), std::string::npos);
+    EXPECT_EQ(lua("local smooth = procedural.cellularAutomatonStep(painted, {solidBorder = false}) return smooth:get(2, 2) .. smooth:get(0, 0) .. ' ' .. smooth.width"), "00 5");
+    EXPECT_EQ(lua("local walled = procedural.cellularAutomatonStep(painted) return walled:get(0, 0) .. walled:get(2, 2)"), "10");
+    EXPECT_NE(lua("procedural.cellularAutomatonStep(painted, {width = 3})").find("Unknown option 'width'"), std::string::npos);
 
-    await("procedural.cavesAsync({width = 20, height = 20, seed = 3})");
+    await("procedural.cellularAutomatonAsync({width = 20, height = 20, seed = 3})");
     EXPECT_EQ(lua("return done[1].width"), "20");
     await("procedural.dungeonAsync({width = 50, height = 40, seed = 1})");
     EXPECT_EQ(lua("return tostring(#done[1].rooms > 0)"), "true");
@@ -199,7 +199,7 @@ TEST_F(Procedural2DLuaTest, TriangulatesAndRelaxesPoints) {
     EXPECT_NE(lua("mesh:findNearest({0, 0}, 6)").find("the start is outside the points"), std::string::npos);
     EXPECT_NE(lua("procedural.delaunay({{0, 0}, {0 / 0, 1}, {1, 0}})").find("finite points"), std::string::npos);
     EXPECT_NE(lua("procedural.voronoi(points, {0, 0, math.huge, 100})").find("finite area"), std::string::npos);
-    EXPECT_EQ(lua("local cells = procedural.voronoi(points, {0, 0, 100, 100}) local total = 0 for _, cell in ipairs(cells) do total = total + m.polygonArea(cell) end return #cells .. ' ' .. math.floor(total + 0.5)"), "5 10000");
+    EXPECT_EQ(lua("local cells = procedural.voronoi(points, {0, 0, 100, 100}) local total = 0 for _, cell in ipairs(cells) do total = total + m.polygonSignedArea(cell) end return #cells .. ' ' .. math.floor(total + 0.5)"), "5 10000");
     EXPECT_EQ(lua("local relaxed = procedural.relax(points, {0, 0, 100, 100}, 2) return #relaxed .. ' ' .. tostring(relaxed[1].x > 0)"), "5 true");
     await("procedural.voronoiAsync(points, {0, 0, 100, 100})");
     EXPECT_EQ(lua("return #done[1]"), "5");
@@ -221,9 +221,9 @@ TEST_F(Procedural2DLuaTest, AutotilesByNeighborsAndWangSets) {
     EXPECT_EQ(lua("return procedural.blobIndex(0) .. ' ' .. procedural.blobIndex(255) .. ' ' .. procedural.blobIndex(2)"), "0 46 -1");
     EXPECT_EQ(lua("local masks = procedural.autotile4(ground, 1) return masks:get(0, 0) .. ' ' .. masks:get(1, 1)"), "-1 15");
     EXPECT_EQ(lua("local blobs = procedural.autotile8(ground, 1) return blobs:get(1, 1) == procedural.blobIndex(85)"), "true");
-    EXPECT_EQ(lua("local tiles = procedural.wang(colors, set) return tiles.width .. ' ' .. tiles:get(0, 0) .. ' ' .. tiles:get(1, 1)"), "2 4 9");
+    EXPECT_EQ(lua("local tiles = procedural.autotileWang(colors, set) return tiles.width .. ' ' .. tiles:get(0, 0) .. ' ' .. tiles:get(1, 1)"), "2 4 9");
     EXPECT_NE(lua("procedural.mask4(ground, 5, 5)").find("outside the grid"), std::string::npos);
-    EXPECT_NE(lua("procedural.wang(colors, {kind = 'diagonal', tiles = {}})").find("corner, edge or mixed"), std::string::npos);
+    EXPECT_NE(lua("procedural.autotileWang(colors, {kind = 'diagonal', tiles = {}})").find("corner, edge or mixed"), std::string::npos);
 }
 
 } // namespace haylen

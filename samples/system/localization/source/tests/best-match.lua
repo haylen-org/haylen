@@ -1,4 +1,4 @@
--- Best match: the system.locale call of haylen.platform returns the language of the device as a tag such as pt-BR, and localization.bestMatch finds the language of the app closest to it: the exact tag, or the same base language, ignoring case and treating _ like -.
+-- Best match: the system.locale call of haylen.platform returns the language of the device as a tag such as pt-BR, and localization.findBestMatch finds the language of the app closest to it: the exact tag, or the same base language, ignoring case and treating _ like -.
 local haylen = require('haylen')
 local localization = require('haylen.localization')
 local platform = require('haylen.platform')
@@ -32,7 +32,7 @@ end
 function BestMatch:content()
     local rows = {}
     for index, tag in ipairs(kTags) do
-        local match = localization.bestMatch(tag)
+        local match = localization.findBestMatch(tag)
         rows[index] = {id = tag, cells = {tag, match or 'none', reason(tag, match)}}
     end
     return {
@@ -46,7 +46,7 @@ function BestMatch:content()
             ui.textField{id = 'tag', value = self.typed, maxLength = 35, autocorrect = false, autocapitalize = 'none', returnKey = 'done', onChange = function(event)
                 self:typeTag(event.value)
             end, onSubmit = function(event)
-                local match = localization.bestMatch(event.value)
+                local match = localization.findBestMatch(event.value)
                 if match then
                     language.use(match)
                 end
@@ -55,8 +55,8 @@ function BestMatch:content()
         },
         ui.panel{grow = 1, align = 'stretch', gap = 12,
             ui.label{text = 'The app has ' .. table.concat(localization.languages(), ', ') .. '.', color = 'textMuted'},
-            ui.table{id = 'tags', columns = {{text = 'Tag', width = 260}, {text = 'localization.bestMatch', width = 360}, {text = 'Why'}}, rows = rows, onSelect = function(event)
-                local match = localization.bestMatch(event.item)
+            ui.table{id = 'tags', columns = {{text = 'Tag', width = 260}, {text = 'localization.findBestMatch', width = 360}, {text = 'Why'}}, rows = rows, onSelect = function(event)
+                local match = localization.findBestMatch(event.item)
                 if match then
                     language.use(match)
                 end
@@ -75,7 +75,7 @@ function BestMatch:enter()
             self:show('locale', {text = 'The platform did not answer: ' .. tostring(failure), color = 'dangerText'})
             return
         end
-        self.deviceMatch = localization.bestMatch(tag)
+        self.deviceMatch = localization.findBestMatch(tag)
         self:show('locale', {text = string.format('The device language is %s, and bestMatch picks %s.', tag, self.deviceMatch or 'nothing')})
         self:show('device', {enabled = self.deviceMatch ~= nil})
     end)
@@ -83,8 +83,8 @@ end
 
 function BestMatch:typeTag(tag)
     self.typed = tag
-    local match = tag ~= '' and localization.bestMatch(tag) or nil
-    self:show('typed', {text = string.format("localization.bestMatch('%s')\nreturns %s\n%s", tag, match and "'" .. match .. "'" or 'nil', reason(tag, match))})
+    local match = tag ~= '' and localization.findBestMatch(tag) or nil
+    self:show('typed', {text = string.format("localization.findBestMatch('%s')\nreturns %s\n%s", tag, match and "'" .. match .. "'" or 'nil', reason(tag, match))})
 end
 
 return BestMatch

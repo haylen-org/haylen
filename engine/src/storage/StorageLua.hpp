@@ -30,8 +30,8 @@ class StorageLua final {
     // Queues work with the other storage operations on the I/O pool and pushes a promise that settles on the frame thread with what work returns, or rejects with what it threw. A durable operation flushes user storage before it settles.
     static int queue(lua_State* L, bool durable, std::function<Pusher()> work);
 
-    static int read(lua_State* L);
-    static int write(lua_State* L);
+    static int readText(lua_State* L);
+    static int writeText(lua_State* L);
     static int readJson(lua_State* L);
     static int writeJson(lua_State* L);
     static int exists(lua_State* L);
@@ -45,8 +45,8 @@ class StorageLua final {
     static int slotExists(lua_State* L);
     static int removeSlot(lua_State* L);
     static int listSlots(lua_State* L);
-    static int readAsync(lua_State* L);
-    static int writeAsync(lua_State* L);
+    static int readTextAsync(lua_State* L);
+    static int writeTextAsync(lua_State* L);
     static int readJsonAsync(lua_State* L);
     static int writeJsonAsync(lua_State* L);
     static int removeAsync(lua_State* L);

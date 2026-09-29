@@ -13,8 +13,8 @@ local Stagger = haylen.class('Stagger', sample.Test)
 local kCount = 17
 local kCode = [[
 tween.stagger(dots, 0.05, function(dot, index)
-    return tween.to(dot, 0.35, {lift = 1}, {ease = 'quad_out', loop = 'yoyo', repeatCount = 1})
-end, {from = 'center'})]]
+    return tween.to(dot, 0.35, {lift = 1}, {ease = 'quadOut', loopMode = 'yoyo', repeatCount = 1})
+end, {origin = 'center'})]]
 
 function Stagger:enter()
     self.dots, self.bars = {}, {}
@@ -22,7 +22,7 @@ function Stagger:enter()
         self.dots[index] = {lift = 0}
         self.bars[index] = {fill = 0.1}
     end
-    self.from = 'start'
+    self.origin = 'start'
     self:frame({
         hint = 'Start the wave from each place. It plays again every few seconds from the last place picked.',
         code = kCode,
@@ -34,23 +34,23 @@ function Stagger:enter()
         focus = 'start',
     })
     self:play('start')
-    timer.every(2.5, function() self:play(self.from) end, {owner = self})
+    timer.every(2.5, function() self:play(self.origin) end, {owner = self})
 end
 
-function Stagger:play(from)
-    self.from = from
+function Stagger:play(origin)
+    self.origin = origin
     tween.killTag('wave')
     tween.stagger(self.dots, 0.05, function(dot)
-        return tween.to(dot, 0.35, {lift = 1}, {ease = 'quad_out', loop = 'yoyo', repeatCount = 1})
-    end, {from = from, owner = self, tag = 'wave'})
+        return tween.to(dot, 0.35, {lift = 1}, {ease = 'quadOut', loopMode = 'yoyo', repeatCount = 1})
+    end, {origin = origin, owner = self, tag = 'wave'})
     tween.stagger(self.bars, 0.04, function(bar)
-        return tween.fromTo(bar, 0.6, {fill = 0.1}, {fill = 1}, {ease = 'back_out'})
-    end, {from = from, owner = self, tag = 'wave', delay = 0.2})
+        return tween.fromTo(bar, 0.6, {fill = 0.1}, {fill = 1}, {ease = 'backOut'})
+    end, {origin = origin, owner = self, tag = 'wave', delay = 0.2})
 end
 
 function Stagger:update(dt)
     Stagger.super.update(self, dt)
-    self:status(string.format('from %s   %d staggers playing', self.from, tween.count()))
+    self:status(string.format('origin %s   %d staggers playing', self.origin, tween.size()))
 end
 
 function Stagger:draw(area)
@@ -58,7 +58,7 @@ function Stagger:draw(area)
     for index = 1, kCount do
         local x = 80 + (index - 1) * step
         local dot, bar = self.dots[index], self.bars[index]
-        local color = m.hsv(index / kCount * 0.7, 0.6, 1)
+        local color = m.fromHsv(index / kCount * 0.7, 0.6, 1)
         graphics2d.drawCircle(x, area.height * 0.32 - dot.lift * 120, 22, color)
         local height = (area.height * 0.38) * bar.fill
         graphics2d.drawRect({x - 18, area.height - 40 - height, 36, height}, color)

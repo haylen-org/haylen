@@ -12,8 +12,8 @@ local Fields = haylen.class('Fields', sample.Test)
 
 local kCode = [[
 local a = {position = m.vec2(80, 60), size = {width = 220, height = 120}, style = {color = m.color('#FF4C7DFF')}}
-tween.to(a, 1.4, {['position.x'] = 760, ['size.height'] = 220, ['style.color.a'] = 0.35}, {loop = 'yoyo', repeatCount = -1})
-tween.to(b, 1.4, {x = 760, y = 420, width = 320, height = 80, color = '#FFF2B23A'}, {loop = 'yoyo', repeatCount = -1})]]
+tween.to(a, 1.4, {['position.x'] = 760, ['size.height'] = 220, ['style.color.a'] = 0.35}, {loopMode = 'yoyo', repeatCount = -1})
+tween.to(b, 1.4, {x = 760, y = 420, width = 320, height = 80, color = '#FFF2B23A'}, {loopMode = 'yoyo', repeatCount = -1})]]
 
 function Fields:enter()
     self.a = {position = m.vec2(80, 60), size = {width = 220, height = 120}, style = {color = m.color('#FF4C7DFF')}}
@@ -33,7 +33,7 @@ function Fields:play()
     self.a.position, self.a.size.width, self.a.size.height, self.a.style.color = m.vec2(80, 60), 220, 120, m.color('#FF4C7DFF')
     self.b.x, self.b.y, self.b.width, self.b.height, self.b.color = 80, 360, 220, 120, m.color('#FF3DBE7A')
 
-    local options = {owner = self, ease = 'cubic_in_out', loop = 'yoyo', repeatCount = -1, repeatDelay = 0.3}
+    local options = {owner = self, ease = 'cubicInOut', loopMode = 'yoyo', repeatCount = -1, repeatDelay = 0.3}
     tween.to(self.a, 1.4, {['position.x'] = 760, ['size.height'] = 220, ['style.color.a'] = 0.35}, options)
     tween.to(self.b, 1.4, {x = 760, y = 420, width = 320, height = 80, color = '#FFF2B23A'}, options)
 end

@@ -17,8 +17,8 @@ local kPairs = {
 }
 local kTrail = 90
 local kCode = [[
-tween.to(rgb, 1.5, {color = '#FF3040FF'}, {loop = 'yoyo', repeatCount = -1})
-tween.to(hsv, 1.5, {color = '#FF3040FF'}, {loop = 'yoyo', repeatCount = -1, colorSpace = 'hsv'})]]
+tween.to(rgb, 1.5, {color = '#FF3040FF'}, {loopMode = 'yoyo', repeatCount = -1})
+tween.to(hsv, 1.5, {color = '#FF3040FF'}, {loopMode = 'yoyo', repeatCount = -1, colorSpace = 'hsv'})]]
 
 function Colors:enter()
     local items = {}
@@ -45,7 +45,7 @@ function Colors:play(id)
             self.rgb.color, self.hsv.color = m.color(pair.from), m.color(pair.from)
             self.trails.rgb:clear()
             self.trails.hsv:clear()
-            local options = {owner = self, ease = 'sine_in_out', loop = 'yoyo', repeatCount = -1, repeatDelay = 0.4}
+            local options = {owner = self, ease = 'sineInOut', loopMode = 'yoyo', repeatCount = -1, repeatDelay = 0.4}
             tween.to(self.rgb, 1.5, {color = pair.to}, options)
             options.colorSpace = 'hsv'
             tween.to(self.hsv, 1.5, {color = pair.to}, options)

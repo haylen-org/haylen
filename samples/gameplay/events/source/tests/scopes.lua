@@ -15,7 +15,7 @@ local Scopes = haylen.class('Scopes', sample.Test)
 
 local kCode = [[
 function Arena:enter(params)
-    self:listen(params.wave, onWave)  self:listen('wave_started', onWave)  self:spawn(function() ... end)
+    self:listen(params.wave, onWave)  self:listen('waveStarted', onWave)  self:spawn(function() ... end)
     timer.every(0.5, tick, {owner = self})  tween.to(glow, 1, {value = 1}, {owner = self})  ui.mount(card, {owner = self})
 end  -- no exit or unload needed: everything ends when the arena unloads]]
 
@@ -31,12 +31,12 @@ function Arena:enter(params)
         ui.button{id = 'wave', text = 'Start a wave', onClick = params.startWave},
     })
     self:listen(params.wave, function(number) journal:add('arena hears wave ' .. number .. ' on the signal', sample.green) end)
-    self:listen('wave_started', function(number) journal:add('arena hears wave ' .. number .. ' on the bus', sample.green) end)
+    self:listen('waveStarted', function(number) journal:add('arena hears wave ' .. number .. ' on the bus', sample.green) end)
     timer.every(0.5, function()
         self.ticks = self.ticks + 1
         self.document:set('ticks', {text = 'timer ticks ' .. self.ticks})
     end, {owner = self})
-    tween.to(self.glow, 1, {value = 1}, {owner = self, loop = 'yoyo', repeatCount = -1, onUpdate = function() self.document:set('glow', {value = self.glow.value}) end})
+    tween.to(self.glow, 1, {value = 1}, {owner = self, loopMode = 'yoyo', repeatCount = -1, onUpdate = function() self.document:set('glow', {value = self.glow.value}) end})
     self:spawn(function()
         while true do
             async.sleep(1000):await()
@@ -74,12 +74,12 @@ function Scopes:startWave()
     self.waves = self.waves + 1
     self.journal:add(string.format('wave %d starts: %d signal listeners, %d bus listeners', self.waves, self.wave.size, self:busListeners()), sample.warm)
     self.wave:emit(self.waves)
-    events.emit('wave_started', self.waves)
+    events.emit('waveStarted', self.waves)
 end
 
 function Scopes:busListeners()
-    for _, topic in ipairs(events.stats()) do
-        if topic.name == 'wave_started' then
+    for _, topic in ipairs(events.topics()) do
+        if topic.name == 'waveStarted' then
             return topic.listeners
         end
     end

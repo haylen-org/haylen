@@ -94,7 +94,7 @@ end
 
 function LibraryHandlers:update(dt)
     LibraryHandlers.super.update(self, dt)
-    self:status(self.checks:summary() .. '   pending calls ' .. platform.pendingCalls())
+    self:status(self.checks:summary() .. '   pending calls ' .. platform.pendingCallCount())
 end
 
 function LibraryHandlers:draw(area)

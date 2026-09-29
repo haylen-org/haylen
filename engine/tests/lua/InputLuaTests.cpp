@@ -42,7 +42,7 @@ TEST_F(InputLuaTest, ReadsKeyboardState) {
     EXPECT_EQ(lua("return input.keyDown('space') and input.keyPressed('space') and input.anyKeyPressed()"), "true");
     EXPECT_EQ(lua("return input.modifiers().shift and not input.modifiers().control"), "true");
     EXPECT_EQ(lua("return input.text()"), "é");
-    EXPECT_EQ(lua("return input.lastDevice()"), "keyboard_mouse");
+    EXPECT_EQ(lua("return input.lastDevice()"), "keyboardMouse");
 
     fixture.frames(1);
     EXPECT_EQ(lua("return input.keyDown('space') and not input.keyPressed('space')"), "true");
@@ -97,13 +97,13 @@ TEST_F(InputLuaTest, ReadsGamepads) {
     EXPECT_EQ(lua("return input.gamepadConnected(2) and not input.gamepadConnected()"), "true");
     EXPECT_EQ(lua("return input.gamepadName(2)"), "Test Pad");
     EXPECT_EQ(lua("return input.gamepadDown('south', 2) and input.gamepadPressed('south', 2)"), "true");
-    EXPECT_EQ(lua("return input.gamepadAxis('left_x', 2) .. ' ' .. input.gamepadAxis('right_trigger', 2)"), "1.0 0.0");
+    EXPECT_EQ(lua("return input.gamepadAxis('leftX', 2) .. ' ' .. input.gamepadAxis('rightTrigger', 2)"), "1.0 0.0");
     EXPECT_EQ(lua("local x, y = input.gamepadStick('left', 2) return x .. ',' .. y"), "1.0,0.0");
     EXPECT_EQ(lua("return input.lastDevice()"), "gamepad");
 
     lua("input.setGamepadDeadzone(0)");
     fixture.frames(1);
-    EXPECT_EQ(lua("return input.gamepadAxis('right_trigger', 2) > 0"), "true");
+    EXPECT_EQ(lua("return input.gamepadAxis('rightTrigger', 2) > 0"), "true");
 
     pad.buttons.fill(false);
     fixture.host().setGamepad(1, pad);
@@ -119,7 +119,7 @@ TEST_F(InputLuaTest, MapsActionsFromEveryDevice) {
         input.loadActions({actions = {
             {name = 'jump', type = 'button', bindings = {'key:space', 'button:south', 'virtual:jump'}},
             {name = 'throttle', type = 'axis', positive = {'key:w'}, negative = {'key:s'}},
-            {name = 'move', type = 'vector', up = {'key:up'}, down = {'key:down'}, left = {'key:left'}, right = {'key:right'}, bindings = {'virtual_stick:move'}},
+            {name = 'move', type = 'vector', up = {'key:up'}, down = {'key:down'}, left = {'key:left'}, right = {'key:right'}, bindings = {'virtualStick:move'}},
         }})
     )");
     // clang-format on
@@ -175,13 +175,13 @@ TEST_F(InputLuaTest, DeliversEventsToScenesInDesignCoordinates) {
     engine.handleEvent({.type = platform::Event::Type::FocusLost});
     engine.handleEvent({.type = platform::Event::Type::MouseMove, .modifiers = {.control = true, .alt = true}, .position = {30.0F, 40.0F}, .delta = {3.0F, -4.0F}});
 
-    EXPECT_EQ(lua("return events[1].type .. ' ' .. events[1].key .. ' ' .. tostring(events[1]['repeat'])"), "key_down a false");
+    EXPECT_EQ(lua("return events[1].type .. ' ' .. events[1].key .. ' ' .. tostring(events[1]['repeat'])"), "keyDown a false");
     EXPECT_EQ(lua("local m = events[1].modifiers return tostring(m.shift) .. tostring(m.control) .. tostring(m.alt) .. tostring(m.super)"), "truefalsefalsefalse");
     EXPECT_EQ(lua("return events[2].character"), "a");
-    EXPECT_EQ(lua("return events[3].type .. ' ' .. events[3].button .. ' ' .. events[3].x .. ',' .. events[3].y"), "mouse_down left 20.0,40.0");
+    EXPECT_EQ(lua("return events[3].type .. ' ' .. events[3].button .. ' ' .. events[3].x .. ',' .. events[3].y"), "mouseDown left 20.0,40.0");
     EXPECT_EQ(lua("return events[4].scrollX"), "1.0");
     EXPECT_EQ(lua("local t = events[5].touches[1] return t.id .. ' ' .. t.x .. ' ' .. tostring(t.changed)"), "7 10.0 true");
-    EXPECT_EQ(lua("return events[6].type .. ' ' .. tostring(events[6].modifiers)"), "focus_lost nil");
+    EXPECT_EQ(lua("return events[6].type .. ' ' .. tostring(events[6].modifiers)"), "focusLost nil");
     EXPECT_EQ(lua("local e = events[7] return e.x .. ',' .. e.y .. ' ' .. e.dx .. ',' .. e.dy .. ' ' .. tostring(e.button) .. ' ' .. tostring(e.modifiers.control and e.modifiers.alt)"), "60.0,80.0 6.0,-8.0 nil true");
 }
 
@@ -191,7 +191,7 @@ TEST_F(InputLuaTest, ReadsSingleTouchesAndDeviceSettings) {
     fixture.frames(1);
     engine.handleEvent(makeTouchEvent(platform::Event::Type::TouchBegan, {100.0F, 200.0F}));
     engine.handleEvent(makeMouseEvent(platform::Event::Type::MouseMove, {30.0F, 15.0F}));
-    EXPECT_EQ(lua("local t = input.touch(7) return t.x .. ',' .. t.y .. ' ' .. t.phase .. ' ' .. tostring(input.touch(8))"), "200.0,400.0 began nil");
+    EXPECT_EQ(lua("local t = input.findTouch(7) return t.x .. ',' .. t.y .. ' ' .. t.phase .. ' ' .. tostring(input.findTouch(8))"), "200.0,400.0 began nil");
     EXPECT_EQ(lua("local x, y = input.mouseFramebufferPosition() return x .. ',' .. y"), "30.0,15.0");
 
     EXPECT_EQ(lua("return input.gamepadDeadzone() > 0.19 and input.gamepadDeadzone() < 0.21"), "true");

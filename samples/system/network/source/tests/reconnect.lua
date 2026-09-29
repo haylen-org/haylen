@@ -40,7 +40,7 @@ function Reconnect:content()
                 end},
             },
             ui.statusIndicator{id = 'state', text = 'Not started', tone = 'neutral'},
-            ui.label{text = 'net.websocket(url, {reconnect = ' .. json.encode(kSettings) .. '})', font = 'monospace', color = 'accentText'},
+            ui.label{text = 'net.connectWebSocket(url, {reconnect = ' .. json.encode(kSettings) .. '})', font = 'monospace', color = 'accentText'},
         },
         ui.panel{grow = 1, align = 'stretch', gap = 12,
             ui.sectionTitle{text = 'Waits before each attempt'},
@@ -72,10 +72,10 @@ function Reconnect:start()
         self.socket:close()
     end
     local url = services[self.target]
-    local socket = self:keep(net.websocket(url, {reconnect = kSettings}))
+    local socket = self:keep(net.connectWebSocket(url, {reconnect = kSettings}))
     self.socket = socket
     self.bars = {}
-    self.document:replace('attempts', {})
+    self.document:replaceChildren('attempts', {})
     self:show('url', {text = url})
     self:log('Connecting', url)
     self:on(socket, 'open', function()
@@ -93,7 +93,7 @@ function Reconnect:start()
             ui.label{text = 'Attempt ' .. attempt, width = 160},
             ui.progress{value = delay / kSettings.maxDelay, text = string.format('%.2f s', delay), grow = 1},
         }
-        self.document:replace('attempts', self.bars)
+        self.document:replaceChildren('attempts', self.bars)
     end)
     self:on(socket, 'close', function(code, reason)
         self:log('close', string.format('code %d%s', code, reason ~= '' and ', ' .. reason or ''))

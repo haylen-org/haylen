@@ -79,7 +79,7 @@ function hud:counter()
 end
 
 function hud:pulse(id)
-    tween.fromTo(self.document:transform(id), 0.25, {scale = m.vec2(1.5, 1.5)}, {scale = m.vec2(1, 1)}, {ease = 'quad_out', overwrite = true})
+    tween.fromTo(self.document:transform(id), 0.25, {scale = m.vec2(1.5, 1.5)}, {scale = m.vec2(1, 1)}, {ease = 'quadOut', overwrite = true})
 end
 
 -- Adds the two panels, once drawn, to the regions that keep the mouse.

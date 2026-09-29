@@ -42,11 +42,11 @@ Animations and option tables use these loop names:
 | --- | --- |
 | `'loop'` | Starts again after the last frame. |
 | `'once'` | Stops on the last frame and reports the finish. |
-| `'ping_pong'` | Plays forward and then backward, without showing the end frames twice in a row. |
+| `'pingPong'` | Plays forward and then backward, without showing the end frames twice in a row. |
 
 ## Functions
 
-### animation2d.grid(texture, options)
+### animation2d.fromGrid(texture, options)
 
 Cuts an `Animation` from a grid of equally sized cells in `texture`. Cells are numbered from 1, left to right and top to bottom. `options`:
 
@@ -54,26 +54,26 @@ Cuts an `Animation` from a grid of equally sized cells in `texture`. Cells are n
 | --- | --- | --- | --- |
 | `frameWidth` | number | required | Cell width in pixels. |
 | `frameHeight` | number | required | Cell height in pixels. |
-| `frames` | table | every cell | Cell numbers to play, in order. Cells can repeat. |
-| `fps` | number | `10` | Frames per second. |
+| `cells` | table | every cell | Cell numbers to play, in order. Cells can repeat. |
+| `framesPerSecond` | number | `10` | Frames per second. |
 | `loop` | string | `'loop'` | Loop mode. |
 | `margin` | Vec2 | `{0, 0}` | Empty pixels around the whole grid, as `{x, y}`. |
 | `spacing` | Vec2 | `{0, 0}` | Empty pixels between cells, as `{x, y}`. |
 
-Errors: `fps must be positive`, `A grid animation needs a texture, a positive frame size and a positive frame rate.`, `The frame size does not fit the texture.` and `A grid animation refers to a cell outside the texture.`
+Errors: `framesPerSecond must be positive`, `A grid animation needs a texture, a positive frame size and a positive frame rate.`, `The frame size does not fit the texture.` and `A grid animation refers to a cell outside the texture.`
 
 ```lua
 local animation2d = require('haylen.animation2d')
 local assets = require('haylen.assets')
 
-local idle = animation2d.grid(assets.texture('tiny_swords/units/blue/warrior/warrior_idle.png'), {frameWidth = 192, frameHeight = 192, fps = 10})
-local slash = animation2d.grid(assets.texture('tiny_swords/units/blue/warrior/warrior_attack1.png'), {frameWidth = 192, frameHeight = 192, frames = {1, 2, 3, 4}, fps = 12, loop = 'once'})
+local idle = animation2d.fromGrid(assets.texture('tiny_swords/units/blue/warrior/warrior_idle.png'), {frameWidth = 192, frameHeight = 192, framesPerSecond = 10})
+local slash = animation2d.fromGrid(assets.texture('tiny_swords/units/blue/warrior/warrior_attack1.png'), {frameWidth = 192, frameHeight = 192, cells = {1, 2, 3, 4}, framesPerSecond = 12, loop = 'once'})
 print(idle.frameCount, slash.duration)
 ```
 
 ### animation2d.fromFrames(texture, frames, options)
 
-Builds an `Animation` from a list of source rectangles in `texture`. `options` is optional and accepts `fps` (default 10) and `loop` (default `'loop'`). An empty list raises `expected at least one frame`.
+Builds an `Animation` from a list of source rectangles in `texture`. `options` is optional and accepts `framesPerSecond` (default 10) and `loop` (default `'loop'`). An empty list raises `expected at least one frame`.
 
 ```lua
 local animation2d = require('haylen.animation2d')
@@ -84,7 +84,7 @@ local fire = animation2d.fromFrames(assets.texture('tiny_swords/effects/fire_01.
     {64, 0, 64, 64},
     {128, 0, 64, 64},
     {192, 0, 64, 64},
-}, {fps = 8, loop = 'ping_pong'})
+}, {framesPerSecond = 8, loop = 'pingPong'})
 ```
 
 ### animation2d.newAnimator()
@@ -100,7 +100,7 @@ local scene = require('haylen.scene')
 local sheet = assets.texture('tiny_swords/units/blue/warrior/warrior_run.png')
 local warrior = graphics2d.newSprite(sheet, {x = 400, y = 300})
 local animator = animation2d.newAnimator()
-animator:add('run', animation2d.grid(sheet, {frameWidth = 192, frameHeight = 192, fps = 12}))
+animator:add('run', animation2d.fromGrid(sheet, {frameWidth = 192, frameHeight = 192, framesPerSecond = 12}))
 animator:play('run')
 
 scene.push({
@@ -139,8 +139,8 @@ Returns the frame number, counting from 1, that the animation shows `seconds` af
 local animation2d = require('haylen.animation2d')
 local assets = require('haylen.assets')
 
-local run = animation2d.grid(assets.texture('tiny_swords/units/blue/warrior/warrior_run.png'), {frameWidth = 192, frameHeight = 192, fps = 10})
-run.loop = 'ping_pong'
+local run = animation2d.fromGrid(assets.texture('tiny_swords/units/blue/warrior/warrior_run.png'), {frameWidth = 192, frameHeight = 192, framesPerSecond = 10})
+run.loop = 'pingPong'
 print(run.duration, run.cycleDuration)
 run.loop = 'once'
 local source = run:frame(2)
@@ -158,7 +158,7 @@ An `Animator` plays named animations and applies the current frame to sprites. I
 | `time` | number | read | Seconds the current animation has played, scaled by `speed`. |
 | `playing` | boolean | read | False after `stop` and after a one-shot animation finishes. |
 | `finished` | boolean | read | True when the current animation plays once and has reached its end. |
-| `queued` | integer | read | Number of animations waiting in the queue. |
+| `queuedCount` | integer | read | Number of animations waiting in the queue. |
 | `speed` | number | read and write | Playback speed multiplier. Defaults to 1. |
 | `pivotX`, `pivotY` | number | read and write | Pivot that `apply` gives sprites, as a fraction of the untrimmed frame. Default to 0.5. |
 | `onFrame` | function or nil | read and write | Called when the frame changes. |
@@ -181,7 +181,7 @@ local animation2d = require('haylen.animation2d')
 local assets = require('haylen.assets')
 
 local animator = animation2d.newAnimator()
-animator:add('idle', animation2d.grid(assets.texture('tiny_swords/units/blue/warrior/warrior_idle.png'), {frameWidth = 192, frameHeight = 192}))
+animator:add('idle', animation2d.fromGrid(assets.texture('tiny_swords/units/blue/warrior/warrior_idle.png'), {frameWidth = 192, frameHeight = 192}))
 print(animator:has('idle'), animator:has('fly'))
 local idle = animator:animation('idle')
 print(idle.frameCount, idle.duration)
@@ -205,8 +205,8 @@ input.loadActions({actions = {{name = 'attack', type = 'button', bindings = {'ke
 
 local warrior = 'tiny_swords/units/blue/warrior/'
 local animator = animation2d.newAnimator()
-animator:add('idle', animation2d.grid(assets.texture(warrior .. 'warrior_idle.png'), {frameWidth = 192, frameHeight = 192}))
-animator:add('attack', animation2d.grid(assets.texture(warrior .. 'warrior_attack1.png'), {frameWidth = 192, frameHeight = 192, fps = 12, loop = 'once'}))
+animator:add('idle', animation2d.fromGrid(assets.texture(warrior .. 'warrior_idle.png'), {frameWidth = 192, frameHeight = 192}))
+animator:add('attack', animation2d.fromGrid(assets.texture(warrior .. 'warrior_attack1.png'), {frameWidth = 192, frameHeight = 192, framesPerSecond = 12, loop = 'once'}))
 animator:play('idle')
 
 scene.push({
@@ -236,14 +236,14 @@ local assets = require('haylen.assets')
 
 local warrior = 'tiny_swords/units/blue/warrior/'
 local animator = animation2d.newAnimator()
-animator:add('attack', animation2d.grid(assets.texture(warrior .. 'warrior_attack1.png'), {frameWidth = 192, frameHeight = 192, loop = 'once'}))
-animator:add('guard', animation2d.grid(assets.texture(warrior .. 'warrior_guard.png'), {frameWidth = 192, frameHeight = 192, loop = 'once'}))
-animator:add('idle', animation2d.grid(assets.texture(warrior .. 'warrior_idle.png'), {frameWidth = 192, frameHeight = 192}))
+animator:add('attack', animation2d.fromGrid(assets.texture(warrior .. 'warrior_attack1.png'), {frameWidth = 192, frameHeight = 192, loop = 'once'}))
+animator:add('guard', animation2d.fromGrid(assets.texture(warrior .. 'warrior_guard.png'), {frameWidth = 192, frameHeight = 192, loop = 'once'}))
+animator:add('idle', animation2d.fromGrid(assets.texture(warrior .. 'warrior_idle.png'), {frameWidth = 192, frameHeight = 192}))
 
 animator:play('attack')
 animator:queue('guard')
 animator:queue('idle')
-print(animator.queued)
+print(animator.queuedCount)
 animator:clearQueue()
 ```
 
@@ -264,7 +264,7 @@ local scene = require('haylen.scene')
 local sheet = assets.texture('tiny_swords/units/blue/warrior/warrior_idle.png')
 local warrior = graphics2d.newSprite(sheet, {x = 400, y = 400})
 local animator = animation2d.newAnimator()
-animator:add('idle', animation2d.grid(sheet, {frameWidth = 192, frameHeight = 192}))
+animator:add('idle', animation2d.fromGrid(sheet, {frameWidth = 192, frameHeight = 192}))
 animator:play('idle')
 animator.pivotY = 0.75
 animator.speed = 1.5
@@ -300,8 +300,8 @@ local log = require('haylen.log')
 
 local warrior = 'tiny_swords/units/blue/warrior/'
 local animator = animation2d.newAnimator()
-animator:add('idle', animation2d.grid(assets.texture(warrior .. 'warrior_idle.png'), {frameWidth = 192, frameHeight = 192}))
-animator:add('attack', animation2d.grid(assets.texture(warrior .. 'warrior_attack1.png'), {frameWidth = 192, frameHeight = 192, fps = 12, loop = 'once'}))
+animator:add('idle', animation2d.fromGrid(assets.texture(warrior .. 'warrior_idle.png'), {frameWidth = 192, frameHeight = 192}))
+animator:add('attack', animation2d.fromGrid(assets.texture(warrior .. 'warrior_attack1.png'), {frameWidth = 192, frameHeight = 192, framesPerSecond = 12, loop = 'once'}))
 
 animator.onFrame = function(name, frame)
     if name == 'attack' and frame == 3 then
@@ -443,12 +443,12 @@ atlas:apply(sprite, 'hero 0')
 
 ### atlas:animationFromFrames(names, options)
 
-Builds an `Animation` that shows the named frames in order at a fixed rate. `options` is optional and accepts `fps` (default 10) and `loop` (default `'loop'`). An empty list raises `An atlas animation needs frames and a positive frame rate.` and an unknown frame raises `Unknown atlas frame: name`.
+Builds an `Animation` that shows the named frames in order at a fixed rate. `options` is optional and accepts `framesPerSecond` (default 10) and `loop` (default `'loop'`). An empty list raises `An atlas animation needs frames and a positive frame rate.` and an unknown frame raises `Unknown atlas frame: name`.
 
 ```lua
 local assets = require('haylen.assets')
 
 local atlas = assets.load('ui/hero.json', 'atlas')
-local blink = atlas:animationFromFrames({'hero 1', 'hero 2', 'hero 1'}, {fps = 6, loop = 'once'})
+local blink = atlas:animationFromFrames({'hero 1', 'hero 2', 'hero 1'}, {framesPerSecond = 6, loop = 'once'})
 print(blink.duration)
 ```

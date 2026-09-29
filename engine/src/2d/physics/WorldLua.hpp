@@ -25,7 +25,7 @@ class WorldLua final {
     static void install(lua_State* L);
 
   private:
-    static constexpr std::array<std::string_view, 13> kBodyFields{"type", "x", "y", "rotation", "vx", "vy", "angularVelocity", "linearDamping", "angularDamping", "gravityScale", "fixedRotation", "bullet", "sleep"};
+    static constexpr std::array<std::string_view, 13> kBodyFields{"type", "x", "y", "rotation", "vx", "vy", "angularVelocity", "linearDamping", "angularDamping", "gravityScale", "fixedRotation", "bullet", "sleepEnabled"};
     static constexpr std::array<std::string_view, 18> kJointFields{"ax", "ay", "bx", "by", "collideConnected", "enableLimit", "lower", "upper", "enableMotor", "motorSpeed", "maxMotorForce", "maxMotorTorque", "enableSpring", "hertz", "dampingRatio", "axisX", "axisY", "length"};
     static constexpr std::array<std::string_view, 2> kFilterFields{"category", "mask"};
     static constexpr std::array<std::string_view, 5> kCallbacks{"onContactBegin", "onContactEnd", "onHit", "onSensorBegin", "onSensorEnd"};

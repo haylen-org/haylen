@@ -52,7 +52,7 @@ end
 -- The socket reconnects forever with the default waits, so the chat comes back whenever the network does.
 function Chat:enter()
     Chat.super.enter(self)
-    local socket = self:keep(net.websocket(services.echo, {reconnect = true}))
+    local socket = self:keep(net.connectWebSocket(services.echo, {reconnect = true}))
     self.socket = socket
     self:on(socket, 'open', function()
         self:note('Connected to ' .. socket.url)
@@ -140,7 +140,7 @@ function Chat:showMessages()
             nodes[#nodes + 1] = ui.row{mine and ui.spacer{grow = 1} or bubble, mine and bubble or ui.spacer{grow = 1}}
         end
     end
-    self.document:replace('messages', nodes)
+    self.document:replaceChildren('messages', nodes)
 end
 
 return Chat

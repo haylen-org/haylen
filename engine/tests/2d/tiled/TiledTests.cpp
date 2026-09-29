@@ -872,10 +872,10 @@ TEST_F(TiledLuaTest, UsesMapsFromLua) {
     EXPECT_EQ(fixture.engine().getError(), nullptr) << fixture.engine().getError()->what();
 
     EXPECT_EQ(fixture.lua("return data.path .. ' ' .. map.path .. ' ' .. tostring(data == assets.load('maps/island.tmj'))"), "maps/island.tmj maps/island.tmj true");
-    EXPECT_EQ(fixture.lua("return map.width .. 'x' .. map.height .. ' ' .. map.tileWidth .. ' ' .. map.tileHeight .. ' ' .. map.bounds.width .. ' ' .. map.bounds.height .. ' ' .. map.skewX"), "4x3 16.0 16.0 64.0 48.0 0.0");
+    EXPECT_EQ(fixture.lua("return map.width .. 'x' .. map.height .. ' ' .. map.tileWidth .. ' ' .. map.tileHeight .. ' ' .. map.pixelBounds.width .. ' ' .. map.pixelBounds.height .. ' ' .. map.skewX"), "4x3 16.0 16.0 64.0 48.0 0.0");
     EXPECT_EQ(fixture.lua("return map.orientation .. ' ' .. map.type .. ' ' .. map.backgroundColor:toHex()"), "orthogonal level #FF102030");
     EXPECT_EQ(fixture.lua("local p = map.properties return p.title .. p.level .. p.gravity .. tostring(p.safe) .. p.sky:toHex() .. tostring(p.unset) .. p.music .. p.boss .. p.spawn.kind"), "Island39.5true#FF0000FFnilaudio/theme.ogg7goblin");
-    EXPECT_EQ(fixture.lua("return map:tileAt('ground', 1, 0) .. ' ' .. #map:layers() .. ' ' .. map:layer('group').layers[1].name .. ' ' .. map:layer('ground').width"), "2 7 inner 4");
+    EXPECT_EQ(fixture.lua("return map:tile('ground', 1, 0) .. ' ' .. #map:layers() .. ' ' .. map:layer('group').layers[1].name .. ' ' .. map:layer('ground').width"), "2 7 inner 4");
     EXPECT_EQ(fixture.lua("local layer = map:layer('things') return layer.kind .. ' ' .. layer.type .. ' ' .. #layer.objects .. ' ' .. layer.objects[1].properties.hp"), "object entities 9 3");
     EXPECT_EQ(fixture.lua("local sky = map:layer('sky') return sky.kind .. ' ' .. sky.image .. ' ' .. tostring(sky.repeatX) .. ' ' .. sky.parallaxX"), "image maps/backgrounds/sky.png true 0.5");
     EXPECT_EQ(fixture.lua("local o = map:objects('things')[6] return o.shape .. ' ' .. o.text.text .. ' ' .. o.text.horizontalAlign .. ' ' .. o.text.color:toHex()"), "text Hi center #FF00FF00");
@@ -899,7 +899,7 @@ TEST_F(TiledLuaTest, UsesMapsFromLua) {
     EXPECT_EQ(fixture.lua("local x, y = map:cellToWorld(2, 1) local c, r = map:worldToCell(40, 20) local ox, oy = map:objectToWorld(3, 4) return x .. ',' .. y .. ' ' .. c .. ',' .. r .. ' ' .. ox .. ',' .. oy"), "32.0,16.0 2,1 3.0,4.0");
 
     fixture.runLua("map:setTile('ground', 0, 0, 3) map:setLayerVisible('decor', false) map:update(0.1)");
-    EXPECT_EQ(fixture.lua("return map:tileAt('ground', 0, 0) .. ' ' .. tostring(map:layer('decor').visible)"), "3 false");
+    EXPECT_EQ(fixture.lua("return map:tile('ground', 0, 0) .. ' ' .. tostring(map:layer('decor').visible)"), "3 false");
     EXPECT_EQ(fixture.lua("local world = physics2d.newWorld({gravity = {0, 0}}) local bodies = map:buildCollision(world) return #bodies .. ' ' .. bodies[1].type .. ' ' .. tostring(bodies[1].world == world)"), "2 static true");
     EXPECT_EQ(fixture.lua("local w = assets.load('maps/world/level.world') return #w .. ' ' .. w[1].path .. ' ' .. w[3].x .. ' ' .. w[3].width"), "3 maps/island.tmj 64.0 64.0");
 
@@ -946,7 +946,7 @@ TEST_F(TiledLuaTest, CullsWithTheActiveCanvasAndPlacesWorldMaps) {
     EXPECT_EQ(groundSprites("canvas = 'target' offsetX = 600 camera.position = {632, 24}"), "11");
     EXPECT_EQ(groundSprites("canvas = 'world' offsetX = 3000"), "0");
     EXPECT_EQ(groundSprites("canvas = 'world' offsetX = 0 ysort = true"), "11");
-    EXPECT_NE(fixture.lua("map:drawLayer('ground', camera, {ysort = 1})").find("bad option 'ysort'"), std::string::npos);
+    EXPECT_NE(fixture.lua("map:drawLayer('ground', camera, {ysort = 1})").find("The option 'ysort'"), std::string::npos);
 }
 
 TEST_F(TiledLuaTest, ExposesMapTilesetLayerAndPropertyDetails) {

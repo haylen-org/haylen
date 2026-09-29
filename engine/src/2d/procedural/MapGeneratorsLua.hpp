@@ -39,9 +39,9 @@ class MapGeneratorsLua final {
     static void pushDungeon(lua_State* L, Dungeon::Result result);
     static void pushCollapse(lua_State* L, std::optional<spatial2d::CellGrid> tiles);
 
-    static int caves(lua_State* L);
-    static int cavesAsync(lua_State* L);
-    static int cavesStep(lua_State* L);
+    static int cellularAutomaton(lua_State* L);
+    static int cellularAutomatonAsync(lua_State* L);
+    static int cellularAutomatonStep(lua_State* L);
     static int drunkardWalk(lua_State* L);
     static int drunkardWalkAsync(lua_State* L);
     static int dungeon(lua_State* L);
@@ -70,7 +70,7 @@ class MapGeneratorsLua final {
     static int blobIndex(lua_State* L);
     static int autotile4(lua_State* L);
     static int autotile8(lua_State* L);
-    static int wang(lua_State* L);
+    static int autotileWang(lua_State* L);
 };
 
 } // namespace haylen::procedural2d

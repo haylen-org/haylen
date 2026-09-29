@@ -22,16 +22,19 @@ void Table::checkFields(lua_State* L, int index, std::span<const FieldNames> all
 }
 
 int Table::raiseFieldError(lua_State* L, const char* field) {
-    // The protected reader failed as an anonymous function, so only the reason in the parentheses of its argument error is kept.
-    std::string reason = lua_type(L, -1) == LUA_TSTRING ? lua_tostring(L, -1) : "invalid value";
+    // The protected reader failed as an anonymous function, so only the reason in the parentheses of its argument error is kept. A reason that is a sentence of its own keeps its period.
+    std::string reason = lua_type(L, -1) == LUA_TSTRING ? lua_tostring(L, -1) : "its value cannot be read";
     if (const std::size_t open = reason.find(" ("); reason.starts_with("bad argument") && open != std::string::npos && reason.ends_with(')')) {
         reason = reason.substr(open + 2, reason.size() - open - 3);
+    }
+    if (!reason.ends_with('.')) {
+        reason += '.';
     }
     lua_pop(L, 1);
 
     lua_Debug frame{};
     const char* name = lua_getstack(L, 0, &frame) != 0 && lua_getinfo(L, "n", &frame) != 0 && frame.name != nullptr ? frame.name : "?";
-    return luaL_error(L, "bad option '%s' to '%s' (%s)", field, name, reason.c_str());
+    return luaL_error(L, "The option '%s' of '%s' is invalid: %s", field, name, reason.c_str());
 }
 
 } // namespace haylen::lua
