@@ -541,14 +541,23 @@ if(APPLE)
     src/platform/apple/AppleGamepads.mm
     src/platform/apple/AppleNetwork.mm
     src/platform/apple/AppleOrientation.mm
+    src/platform/apple/ApplePlugins.mm
     src/platform/apple/AppleRemote.mm
+    src/platform/apple/AppleRuntime.mm
     src/platform/apple/AppleServices.mm
     src/platform/apple/AppleTextInput.mm
     src/platform/apple/CatalystInput.mm
     src/platform/apple/CatalystWindow.mm
+    src/platform/apple/HaylenAppDelegate.mm
     src/platform/apple/HaylenBridge.mm
     src/platform/apple/HaylenFieldEditor.mm
+    src/platform/apple/HaylenOverlay.mm
+    src/platform/apple/HaylenOverlayItem.mm
+    src/platform/apple/HaylenOverlayLayer.mm
+    src/platform/apple/HaylenPlacement.mm
+    src/platform/apple/HaylenPluginContext.mm
     src/platform/apple/HaylenPointer.mm
+    src/platform/apple/HaylenSceneDelegate.mm
     src/platform/apple/HaylenTextEditor.mm
     src/platform/apple/HaylenTextField.mm
     src/platform/apple/HaylenTextView.mm

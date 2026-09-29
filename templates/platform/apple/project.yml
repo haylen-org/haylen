@@ -53,6 +53,7 @@ targets:
       - sdk: AudioToolbox.framework
       - sdk: CoreAudio.framework
       - sdk: Network.framework
+      - sdk: UserNotifications.framework
     settings:
       base:
         PRODUCT_NAME: $(HAYLEN_PRODUCT_NAME)
@@ -117,6 +118,7 @@ targets:
       - sdk: AudioToolbox.framework
       - sdk: CoreAudio.framework
       - sdk: Network.framework
+      - sdk: UserNotifications.framework
     settings:
       base:
         PRODUCT_NAME: $(HAYLEN_PRODUCT_NAME)
@@ -174,6 +176,7 @@ targets:
       - sdk: AudioToolbox.framework
       - sdk: CoreAudio.framework
       - sdk: Network.framework
+      - sdk: UserNotifications.framework
     settings:
       base:
         PRODUCT_NAME: $(HAYLEN_PRODUCT_NAME)

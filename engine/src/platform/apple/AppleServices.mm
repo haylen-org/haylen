@@ -16,6 +16,7 @@
 #import "platform/apple/AppleGamepads.hpp"
 #import "platform/apple/AppleNetwork.hpp"
 #import "platform/apple/AppleOrientation.hpp"
+#import "platform/apple/ApplePlugins.hpp"
 #import "platform/apple/AppleTextInput.hpp"
 #import "platform/apple/CatalystInput.hpp"
 #import "platform/apple/CatalystWindow.hpp"
@@ -50,10 +51,12 @@ void Services::shutdown() noexcept {
     AppleBridge::clearHandlers();
 }
 
-void Services::reportError(const core::Json&) {}
+void Services::reportError(const core::Json& report) {
+    ApplePlugins::reportError(report);
+}
 
 std::vector<std::string> Services::getNativePlugins() {
-    return {};
+    return ApplePlugins::getIds();
 }
 
 std::shared_ptr<io::Package> Services::openBundledPackage() {

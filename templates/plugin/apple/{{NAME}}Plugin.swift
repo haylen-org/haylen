@@ -10,7 +10,7 @@ final class {{NAME}}Plugin: NSObject, HaylenPlugin {
     func load(with context: HaylenPluginContext) {
         // Answers {{ID}}.echo with the message it receives, and sends it to the app again as the {{ID}}.echoed event.
         context.register("echo") { (params: Echo) async throws -> Echo in
-            context.emit("echoed", payload: ["message": params.message])
+            try context.emit("echoed", params)
             return params
         }
     }

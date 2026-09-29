@@ -72,7 +72,7 @@ When the plugins of an app add sources, Swift packages, system frameworks, resou
 2. It writes `plugins.json`, the XcodeGen include of `project.yml`, which adds the sources, the Swift packages with the products they link, the system frameworks, the resources and the build scripts of each plugin to the `iOS`, `tvOS` and `macOS` targets of the platforms the plugin lists. The `iOS` target builds iOS and Mac Catalyst, so a plugin that lists only one of `ios` and `catalyst` joins it with `destinationFilters`, which keep its sources, products and frameworks to that destination. A product or a framework that several plugins link joins a target once.
 3. It generates `App.xcodeproj` again with the pinned XcodeGen in `.tools/xcodegen`, which `make.py tools` and the first such build download. An app whose plugins add nothing to the project keeps the committed project.
 
-The sources of a plugin compile into the targets like the files of `source/`, so Swift reaches the engine through `HaylenBridging.h`. The resources land at the root of the app bundle. Build scripts run as post-build phases for every destination of their targets, so a script of a plugin that leaves out Mac Catalyst checks `IS_MACCATALYST` itself.
+The sources of a plugin compile into the targets like the files of `source/`, so Swift reaches the engine through `HaylenBridging.h`, and [the Apple part](#the-apple-part) describes the plugin class they hold. The resources land at the root of the app bundle. Build scripts run as post-build phases for every destination of their targets, so a script of a plugin that leaves out Mac Catalyst checks `IS_MACCATALYST` itself.
 
 Every Apple build also merges the `infoPlist` keys of the plugins into the `Info.plist` of each platform that make.py writes, with `HaylenPlugins`, the array of the plugin classes of that platform in load order. `ios/Info.plist` serves iOS and Mac Catalyst, and the runtime skips a class that a destination leaves out, which is how Mac Catalyst leaves out plugins that list only `ios`. The `entitlements` of the plugins go to `ios/App.entitlements`, `catalyst/App.entitlements`, `tvos/App.entitlements` and `macos/App.entitlements`, and `App.xcconfig` signs each target and SDK platform with its file through `CODE_SIGN_ENTITLEMENTS`. Objects merge key by key and arrays gain the items they lack, so two ad plugins share `SKAdNetworkItems`, while a key that two plugins, or a plugin and `app.json`, set to different values fails the build with both named.
 
@@ -84,7 +84,7 @@ Every Apple build also merges the `infoPlist` keys of the plugins into the `Info
 4. `app/build.gradle.kts` adds the placeholders to `manifestPlaceholders`, where the manifests of the plugin modules find them when the manifests merge.
 5. make.py copies the `files` of the plugins into the project, such as `google-services.json` into `app/`.
 
-The manifest of every module merges into the app with its permissions, its `dev.haylen.plugin.<id>` meta-data and its other entries.
+The manifest of every module merges into the app with its permissions, its `dev.haylen.plugin.<id>` meta-data and its other entries, and the engine library loads the plugin classes that the meta-data names when the app process starts, as [the Android part](#the-android-part) describes.
 
 ### Web
 
@@ -284,15 +284,15 @@ Native UI that covers the app, such as a full screen ad, a consent form, a sign-
 
 ### Errors of the app
 
-Every error that stops the app, the one its error screen shows, reaches the native parts of plugins as `{message, file, line, traceback, frames}`, where `frames` lists `{source, line, function, kind}` from the innermost call outward with the kind `lua`, `c` or `main`, the shape the web page receives in `onError`. A crash reporter records it as a non-fatal error with the stack of the Lua code. On the web, `context.onAppError(listener)` receives it.
+Every error that stops the app, the one its error screen shows, reaches the native parts of plugins as `{message, file, line, traceback, frames}`, where `frames` lists `{source, line, function, kind}` from the innermost call outward with the kind `lua`, `c` or `main`, the shape the web page receives in `onError`. A crash reporter records it as a non-fatal error with the stack of the Lua code. On the web, `context.onAppError(listener)` receives it, on Apple platforms the `appDidFailWithError:` method of the plugin class, and on Android the `onAppError(JSONObject)` method of the plugin class, on the main thread.
 
 ### Retained events
 
-Events that native code sends before the app listens, such as the deep link or the notification that opened the app or a purchase that finished while it was closed, are sent retained. A retained event waits, up to 32 per name, for the first listener of its name, which receives the waiting events in order, as the [platform bridge guide](platform_bridge.md#retained-events) describes. The web context sends one with `context.emit(event, payload, {retain: true})`, and a native library with `emit(event, payload, 1)` of `HaylenNativeApi`.
+Events that native code sends before the app listens, such as the deep link or the notification that opened the app or a purchase that finished while it was closed, are sent retained. A retained event waits, up to 32 per name, for the first listener of its name, which receives the waiting events in order, as the [platform bridge guide](platform_bridge.md#retained-events) describes. The web context sends one with `context.emit(event, payload, {retain: true})`, the context of an Apple plugin with `emitRetained:payload:`, the context of an Android plugin with `emitRetained(event, payload)`, and a native library with `emit(event, payload, 1)` of `HaylenNativeApi`.
 
 ### The native plugin list
 
-`handle.native` and the `native` field of `platform.plugins()` come from the platform, which reports the plugins whose native part it loaded: on the web, the plugins whose module received a context. A native library of the app declares itself the native part of a plugin with `registerPlugin(id)` of [`HaylenNativeApi`](lua-api/native.md#library-handlers), which is how the `native` part of a plugin counts on the desktops.
+`handle.native` and the `native` field of `platform.plugins()` come from the platform, which reports the plugins whose native part it loaded: on the web, the plugins whose module received a context, on Apple platforms the plugins whose class the runtime created, and on Android the plugins whose class the engine library created and loaded. A native library of the app declares itself the native part of a plugin with `registerPlugin(id)` of [`HaylenNativeApi`](lua-api/native.md#library-handlers), which is how the `native` part of a plugin counts on the desktops.
 
 ### Web modules
 
@@ -357,3 +357,381 @@ export default function load(context) {
     context.onAppError((error) => console.warn("The app failed: " + error.message));
 }
 ```
+
+## The Apple part
+
+The Apple part of a plugin is Swift or Objective-C in the `sources` folder of its `apple` section, which compiles into the targets of the Apple template for the platforms the plugin lists, next to the files of the app. The template's `source/HaylenBridging.h` imports `haylen/platform/apple/HaylenBridge.h` and `haylen/platform/apple/HaylenPlugin.h`, so Swift sources reach the whole plugin API without imports of their own, and Objective-C sources import `HaylenPlugin.h`.
+
+### The plugin class
+
+The `class` of the `apple` section names a class that conforms to the `HaylenPlugin` protocol. make.py lists the classes of the plugins of each platform, in load order, in the `HaylenPlugins` array of its `Info.plist`, and while the app launches, inside `application:willFinishLaunchingWithOptions:` on iOS, tvOS and Mac Catalyst and inside `applicationWillFinishLaunching:` on macOS, the runtime creates each class once with `init` and calls `loadWithContext:`, `load(with:)` in Swift, with its context, so SDKs set up before launching ends. A Swift class names its Objective-C class with `@objc(Name)`, the name that `class` repeats. The runtime finds the id and the parameters of each class in the `plugin.json` files of the bundled package and reports the ids it loaded, which `handle.native` and `platform.plugins()` show in Lua.
+
+- A class that a destination leaves out, such as the class of a plugin for `ios` alone on Mac Catalyst, is skipped without a message, and its plugin runs without its native part there.
+- A class that is missing on a platform its plugin lists, and a class that does not conform to `HaylenPlugin`, are logged as errors that name the class and the plugin, and the plugin runs without its native part.
+
+```swift
+// plugins/share-sheet/apple/ShareSheetPlugin.swift
+import UIKit
+
+@objc(ShareSheetPlugin)
+final class ShareSheetPlugin: NSObject, HaylenPlugin {
+    struct Share: Decodable {
+        let text: String
+    }
+
+    struct Shared: Encodable {
+        let completed: Bool
+    }
+
+    func load(with context: HaylenPluginContext) {
+        // Answers share-sheet.share once the person closes the sheet, which covers the app while it shows.
+        context.register("share") { (params: Share) async throws -> Shared in
+            guard let presenter = context.viewController else {
+                throw HaylenFailure("The app has no window yet.", code: "noWindow")
+            }
+            let sheet = UIActivityViewController(activityItems: [params.text], applicationActivities: nil)
+            sheet.popoverPresentationController?.sourceView = presenter.view
+            context.coverApp()
+            defer { context.uncoverApp() }
+            return await withCheckedContinuation { continuation in
+                sheet.completionWithItemsHandler = { _, completed, _, _ in continuation.resume(returning: Shared(completed: completed)) }
+                presenter.present(sheet, animated: true)
+            }
+        }
+    }
+}
+```
+
+The same plugin in Objective-C:
+
+```objc
+// plugins/share-sheet/apple/ShareSheetPlugin.m
+#import <UIKit/UIKit.h>
+
+#import "haylen/platform/apple/HaylenPlugin.h"
+
+@interface ShareSheetPlugin : NSObject <HaylenPlugin>
+@end
+
+@implementation ShareSheetPlugin
+
+- (void)loadWithContext:(HaylenPluginContext*)context {
+    [context registerHandler:@"share" handler:^(id params, HaylenReply reply) {
+        UIViewController* presenter = context.viewController;
+        if (presenter == nil) {
+            reply(NO, @{@"message" : @"The app has no window yet.", @"code" : @"noWindow"});
+            return;
+        }
+        UIActivityViewController* sheet = [[UIActivityViewController alloc] initWithActivityItems:@[ params[@"text"] ] applicationActivities:nil];
+        sheet.popoverPresentationController.sourceView = presenter.view;
+        [context coverApp];
+        sheet.completionWithItemsHandler = ^(UIActivityType type, BOOL completed, NSArray* items, NSError* error) {
+            [context uncoverApp];
+            reply(YES, @{@"completed" : @(completed)});
+        };
+        [presenter presentViewController:sheet animated:YES completion:nil];
+    }];
+}
+
+@end
+```
+
+### The context
+
+`HaylenPluginContext` is the part of the runtime that a plugin sees. Registering, emitting and covering work from any thread, and handlers run on the main queue, while the window, the view controller and the overlay belong to the main thread, which Swift enforces with the main actor.
+
+| Member | Meaning |
+| --- | --- |
+| `identifier` | The id of the plugin. |
+| `config` | The parameters of the plugin in `app.json` over the `default` of every parameter of `plugin.json`, the same values as `handle.config` in Lua, as an `NSDictionary`. |
+| `registerHandler:handler:`, `registerCancellableHandler:handler:` | Answer `<id>.<method>`, like the handlers of `HaylenBridge` in the [platform bridge guide](platform_bridge.md#apple-platforms). |
+| `emit:payload:`, `emitRetained:payload:` | Send the event `<id>.<event>`, retained for the first listener of its name with `emitRetained:payload:`. A payload is any value `NSJSONSerialization` accepts, or `nil`. |
+| `overlay` | The overlay that places native views of the plugin over the app, as [overlays](#overlays) describes. |
+| `coverApp`, `uncoverApp` | Cover the app while native UI of the plugin covers it, and end the cover, as [covering the app](#covering-the-app) describes. The covers of a plugin end when the window of the app goes away, and an `uncoverApp` without a cover of the plugin is logged as an error. |
+| `viewController`, `windowScene` | The root view controller of the window of the app and its window scene on iOS, tvOS and Mac Catalyst, for SDKs that present UI or need a scene. Both are `nil` until the scene connects. |
+| `window` | The window of the app on macOS, `nil` until the app finished launching. |
+
+Events that native code sends while no app runs, such as while the app launches or restarts, wait in the runtime and reach the next app in order once it starts. A link that opens the app, which the plugin sends retained, therefore reaches the first Lua listener of its name however late it comes.
+
+### Events of the app
+
+The runtime's application delegate hands every event below to the plugins that implement its method, in load order, on the main thread. On iOS, tvOS and Mac Catalyst it is `HaylenSceneDelegate`, which also delegates the scene, and on macOS `HaylenAppDelegate`. Both derive from the delegates of `sokol_app`, which the patch that the [distribution guide](distribution.md#notes-on-dependencies) describes lets the runtime name.
+
+| Platforms | Methods |
+| --- | --- |
+| iOS, tvOS, Mac Catalyst | `application:willFinishLaunchingWithOptions:`, `application:didFinishLaunchingWithOptions:` |
+| iOS, tvOS, Mac Catalyst | `scene:willConnectToSession:options:`, `scene:openURLContexts:`, `scene:continueUserActivity:`, `windowScene:performActionForShortcutItem:completionHandler:` (not tvOS) |
+| iOS, tvOS, Mac Catalyst | `sceneDidBecomeActive:`, `sceneWillResignActive:`, `sceneWillEnterForeground:`, `sceneDidEnterBackground:` |
+| iOS, tvOS, Mac Catalyst | `application:didRegisterForRemoteNotificationsWithDeviceToken:`, `application:didFailToRegisterForRemoteNotificationsWithError:`, `application:didReceiveRemoteNotification:fetchCompletionHandler:`, `application:handleEventsForBackgroundURLSession:completionHandler:` |
+| macOS | `applicationWillFinishLaunching:`, `applicationDidFinishLaunching:`, `application:openURLs:`, `application:didRegisterForRemoteNotificationsWithDeviceToken:`, `application:didFailToRegisterForRemoteNotificationsWithError:`, `application:didReceiveRemoteNotification:` |
+| Every Apple platform | `userNotificationCenter:willPresentNotification:withCompletionHandler:`, `userNotificationCenter:didReceiveNotificationResponse:withCompletionHandler:` (not tvOS) |
+| Every Apple platform | `appDidFailWithError:`, `appDidFail(with:)` in Swift, with the report of every error that stops the app, `{message, file, line, traceback, frames}`, as [errors of the app](#errors-of-the-app) describes |
+
+- **Links that open the app.** UIKit hands the links, the user activities and the shortcut item that launch an app only to the connection options of its scene. Right after `scene:willConnectToSession:options:`, the runtime hands them to `scene:openURLContexts:`, `scene:continueUserActivity:` and `windowScene:performActionForShortcutItem:completionHandler:`, so one method serves a link whether it opened the app or arrived while the app ran. The window of the app exists by then.
+- **Completion handlers.** Each plugin that implements a method with a completion handler receives a handler of its own, which it calls once, and the runtime calls the handler of the system once after every plugin called its own, or at once when no plugin implements the method. A background fetch counts as new data when any plugin received new data, and otherwise as failed when any plugin failed. A shortcut action counts as handled when any plugin handled it, and a notification that arrives while the app is in front shows with the union of the options the plugins ask for, or not at all when none asks.
+- **The notification center.** When the app has plugins, the runtime makes its application delegate the delegate of `UNUserNotificationCenter` in `willFinishLaunching`, which is what the system needs to deliver the response to a notification that launched the app, through `userNotificationCenter:didReceiveNotificationResponse:withCompletionHandler:`. Plugins implement the methods of the notification center delegate on their class and never replace the delegate. SDKs that swizzle the application delegate to find these events, such as Firebase with `FirebaseAppDelegateProxyEnabled`, can have that turned off in the `infoPlist` of their plugin, because the runtime already hands the events over.
+- **The window going away.** When the scene of the app disconnects, the runtime ends the covers that plugins left open and takes the overlay off the window, and the overlay comes back when a scene connects again.
+
+### Overlays
+
+`context.overlay` places native views of the plugin over the app, such as a banner. Its `addView:placement:`, `add(_:placement:)` in Swift, takes a view and a `HaylenPlacement` and returns a `HaylenOverlayItem`, `HaylenOverlay.Item` in Swift:
+
+| Member | Meaning |
+| --- | --- |
+| `updatePlacement:`, `update(_:)` in Swift | Places the view again with another placement. |
+| `visible`, `isVisible` in Swift | Shows or hides the view, which reserves its edge only while it shows. |
+| `bounds` | The frame of the view over the app, in points from the top left corner, after the overlay laid it out. |
+| `remove` | Takes the view off the overlay and gives its edge back. A removed item ignores later updates. |
+
+A placement has the fields of the placements of the [web overlay](#web-modules), in points:
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `anchor` | `HaylenPlacementAnchorBottom`, `.bottom` in Swift | Where the view sits: top, bottom, left, right, the four corners or center. |
+| `margin` | `0` | The distance from the edges the anchor names. |
+| `insideSafeArea` | `YES` | Whether the view stays inside the safe area of the window, away from the home indicator, the camera housing and the overscan of TVs. |
+| `reserve` | `NO` | Whether the view reserves the edge its anchor names, from the edge of the window to its far side, while it shows. A centered view reserves nothing. |
+| `width`, `height` | `0` | The size of the view. Zero keeps the size its own constraints or its intrinsic content size give it, as for a button or a label. |
+
+The overlay is a view over the view of the app. Touches and clicks reach the views of the overlay where they are, and the app everywhere else. It places its views with Auto Layout against its safe area layout guide, or against its edges when `insideSafeArea` is `NO`, so they follow rotation, iPad split view and resized Mac Catalyst and macOS windows, and whenever its layout changes it reports the edges that views reserve in framebuffer pixels, which the app sees as its safe area shrinking. A view added before the window exists shows once it does. On tvOS, and for the keyboard focus of iPad and Mac Catalyst, the views of the overlay never take the focus, so the remote and the keyboard keep driving the app, and a plugin whose UI the remote must drive presents a view controller over the app with a cover.
+
+```swift
+// Shows a banner at the bottom of the safe area, which the UI of the app anchored to the safe area moves above.
+let placement = HaylenPlacement(anchor: .bottom)
+placement.reserve = true
+placement.width = 320
+placement.height = 50
+let banner = context.overlay.add(bannerView, placement: placement)
+
+// Later, the banner moves to the top, and finally goes away.
+banner.update(HaylenPlacement(anchor: .top))
+banner.remove()
+```
+
+### Info.plist keys, entitlements and resources
+
+The `infoPlist` and `entitlements` of the `apple` section merge into the files make.py writes for every platform of the plugin, as [Apple platforms](#apple-platforms) describes, so a plugin declares there the URL schemes it answers, the background modes it needs, the usage descriptions of the permissions it asks for and the capabilities it uses:
+
+```json
+"apple": {
+    "class": "PushPlugin",
+    "sources": "apple",
+    "frameworks": ["UserNotifications.framework"],
+    "infoPlist": {
+        "CFBundleURLTypes": [{"CFBundleURLName": "com.example.push", "CFBundleURLSchemes": ["${urlScheme}"]}],
+        "UIBackgroundModes": ["remote-notification"]
+    },
+    "entitlements": {"aps-environment": "${apsEnvironment}"}
+}
+```
+
+A URL scheme of `CFBundleURLTypes` opens the app, whose plugins receive the link in `scene:openURLContexts:`, or in `application:openURLs:` on macOS. Remote notifications need the `aps-environment` entitlement, which the app signs with through the entitlements file of its platform.
+
+### Swift helpers
+
+`source/HaylenBridgeAsync.swift` of the Apple template adds Swift helpers on top of the Objective-C API:
+
+| Helper | Meaning |
+| --- | --- |
+| `context.register(method) { (params: Params) async throws -> Result in ... }` | Answers `<id>.<method>` with an async function on the main actor. `Params` decodes from the parameters of the call with `JSONDecoder` and `Result` encodes the answer with `JSONEncoder`. A thrown `HaylenFailure(message, code:, data:)` fails the call with its code and data, any other error fails it with the code `exception` and the type of the error in `data.type`, and the task of the call is cancelled when the app cancels the call or its timeout passes. |
+| `try context.emit(event, payload, retain: false)` | Sends `<id>.<event>` with an `Encodable` payload, retained when `retain` is `true`. It throws the error of the encoder when the payload does not encode. |
+| `HaylenBridge.register(method) { ... }`, `try HaylenBridge.emit(event, payload, retain: false)` | The same for handlers and events outside plugins, without the prefix. |
+
+```swift
+struct Purchase: Encodable {
+    let product: String
+    let token: String
+}
+
+// A purchase that finished while the app was closed reaches the first listener of purchaseUpdated.
+try context.emit("purchaseUpdated", Purchase(product: "coins", token: transaction.jwsRepresentation), retain: true)
+```
+
+## The Android part
+
+The Android part of a plugin is the Android library module that `module` of its `android` section names, which make.py includes in the Android project of the app as [Android](#android) describes. The module depends on the engine library with `compileOnly`, so the app brings the library once, and its manifest names the plugin class in a meta-data entry of its `<application>`, whose name is `dev.haylen.plugin.` followed by the id of the plugin:
+
+```xml
+<!-- plugins/share-sheet/android/src/main/AndroidManifest.xml -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <meta-data android:name="dev.haylen.plugin.share-sheet" android:value="com.example.sharesheet.ShareSheetPlugin" />
+    </application>
+</manifest>
+```
+
+### The plugin class
+
+A plugin class extends `dev.haylen.HaylenPlugin` and has a public constructor without parameters. `HaylenPluginProvider`, a content provider of the engine library, starts with the app process, before `Application.onCreate`. It reads every `dev.haylen.plugin.<id>` entry of the merged manifest, creates each class once and calls `onLoad` with the context of the plugin, in the [load order](#load-order) of the `app.json` of the package, so SDKs set up before any app code runs. Its `initOrder` is 50, so the providers that SDKs start with at 100, such as the one of Firebase, have run by then. The engine receives the ids of the plugins that loaded, which `handle.native` and `platform.plugins()` show in Lua.
+
+- A class that cannot be found or created, such as a class the module lacks or one without a public constructor without parameters, and a class that does not extend `HaylenPlugin`, are logged as errors with the tag `haylen` that name the class and the plugin, and the plugin runs without its native part.
+- An `onLoad` that throws is logged the same way, the methods it registered go away, and the plugin runs without its native part.
+
+```kotlin
+// plugins/share-sheet/android/src/main/kotlin/com/example/sharesheet/ShareSheetPlugin.kt
+package com.example.sharesheet
+
+import android.app.Activity
+import android.content.Intent
+import dev.haylen.HaylenBridge
+import dev.haylen.HaylenPlugin
+import dev.haylen.HaylenPluginContext
+import org.json.JSONObject
+
+class ShareSheetPlugin : HaylenPlugin() {
+    private var pending: HaylenBridge.Reply? = null
+
+    override fun onLoad(context: HaylenPluginContext) {
+        // Answers share-sheet.share once the person leaves the chooser, which reports its result to the activity.
+        context.register("share") { params, reply ->
+            val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, (params as JSONObject).getString("text"))
+            pending = reply
+            context.activity()!!.startActivityForResult(Intent.createChooser(send, null), SHARE_REQUEST)
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
+        if (requestCode != SHARE_REQUEST) {
+            return false
+        }
+        pending?.success(JSONObject().put("completed", resultCode == Activity.RESULT_OK))
+        pending = null
+        return true
+    }
+
+    private companion object {
+        const val SHARE_REQUEST = 0x5AE7
+    }
+}
+```
+
+The same plugin in Java:
+
+```java
+// plugins/share-sheet/android/src/main/java/com/example/sharesheet/ShareSheetPlugin.java
+package com.example.sharesheet;
+
+import android.app.Activity;
+import android.content.Intent;
+import dev.haylen.HaylenBridge;
+import dev.haylen.HaylenPlugin;
+import dev.haylen.HaylenPluginContext;
+import org.json.JSONObject;
+
+public final class ShareSheetPlugin extends HaylenPlugin {
+    private static final int SHARE_REQUEST = 0x5AE7;
+
+    private HaylenBridge.Reply pending;
+
+    @Override
+    public void onLoad(HaylenPluginContext context) {
+        context.register("share", (params, reply) -> {
+            Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, ((JSONObject) params).getString("text"));
+            pending = reply;
+            context.activity().startActivityForResult(Intent.createChooser(send, null), SHARE_REQUEST);
+        });
+    }
+
+    @Override
+    public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode != SHARE_REQUEST) {
+            return false;
+        }
+        pending.success(java.util.Collections.singletonMap("completed", resultCode == Activity.RESULT_OK));
+        pending = null;
+        return true;
+    }
+}
+```
+
+### The context
+
+`HaylenPluginContext` is the part of the engine library that a plugin sees, one for each plugin. Registering, emitting and covering work from any thread, while the activity and the overlay belong to the main thread.
+
+| Member | Meaning |
+| --- | --- |
+| `id()` | The id of the plugin. |
+| `application()` | The `Application` of the app. |
+| `activity()` | The running `HaylenActivity`, or `null` while there is none, as in `onLoad`. |
+| `config()` | The parameters of the plugin in `app.json` over the `default` of every parameter of `plugin.json`, the same values as `handle.config` in Lua, as a `JSONObject`. |
+| `register(method, handler)`, `register(method, handler, threading)` | Answer `<id>.<method>` like `HaylenBridge.register` in the [platform bridge guide](platform_bridge.md#android), on the main thread or, with `HaylenBridge.Threading.BACKGROUND`, on the shared background thread described in [threads](#threads). |
+| `registerSuspend(method) { params -> result }` | Kotlin only. Answers `<id>.<method>` with a suspending function, like `HaylenCoroutines.register`. |
+| `emit(event, payload)`, `emitRetained(event, payload)` | Send the event `<id>.<event>`, retained for the first listener of its name with `emitRetained`. The payload is converted like the value of `reply.success`. |
+| `overlay()` | The overlay that places native views of the plugin over the app, as [Android overlays](#android-overlays) describes. |
+| `coverApp()`, `uncoverApp()` | Cover the app while native UI of the plugin covers it, and end the cover, as [covering the app](#covering-the-app) describes. The covers of a plugin end with the activity, an `uncoverApp` without a cover of the plugin is logged as an error, and a `coverApp` while no activity exists is logged as a warning and covers nothing. |
+| `runOnMainThread(task)` | Runs the task at once on the main thread, and posts it there from any other thread, for callbacks of SDKs that arrive on threads of their own. |
+
+Events that native code sends while no app runs, such as from `onLoad` before the first activity loads the native library, while the app restarts or between two activities, wait in the engine library, up to 32 per name with the oldest dropped first, and reach the next app in order once it starts. A link that opens the app, which the plugin sends retained, therefore reaches the first Lua listener of its name however late it comes.
+
+```kotlin
+import dev.haylen.registerSuspend
+import kotlinx.coroutines.delay
+
+override fun onLoad(context: HaylenPluginContext) {
+    context.registerSuspend("loadProfile") { params ->
+        delay(100)
+        mapOf("id" to (params as JSONObject).getString("id"), "name" to "Player")
+    }
+}
+```
+
+### Events of the activity
+
+`HaylenActivity` hands its events to every plugin in load order, on the main thread. A native activity has no activity result API, so plugins that start activities for a result, ask for permissions or follow the intents of the app receive them here:
+
+| Method | When |
+| --- | --- |
+| `onActivityCreated(activity, savedInstanceState)` | A new activity created its window and loaded the native library. `activity.getIntent()` is the intent that launched it, such as a link or a notification that opened the app. |
+| `onActivityStarted(activity)`, `onActivityResumed(activity)`, `onActivityPaused(activity)`, `onActivityStopped(activity)` | The activity changes state. |
+| `onActivityDestroyed(activity)` | The activity goes away after its app stopped. The panels of the plugins leave and their covers end right after. |
+| `onNewIntent(intent)` | A launch reaches the running activity, such as a link or a notification, since the activity of the template is `singleTask`. The activity already holds the intent, so `getIntent()` returns it too. |
+| `onActivityResult(requestCode, resultCode, data)` | An activity that a plugin started with `startActivityForResult` returns. The first plugin that returns `true` ends the search, so a plugin answers only the request codes it started. |
+| `onRequestPermissionsResult(requestCode, permissions, grantResults)` | The answer to `activity.requestPermissions`, with the same search. |
+| `onConfigurationChanged(configuration)` | A change that the activity handles itself, which the manifest of the template lists: orientation, screen size and layout, density, keyboard, navigation and UI mode. Other changes, such as the language, create a new activity. |
+| `onWindowFocusChanged(hasFocus)` | The window of the activity gains or loses the focus. The app draws only while it has it. |
+| `onTrimMemory(level)` | The system asks for memory. |
+| `onAppError(error)` | An error stopped the app, with the report that [errors of the app](#errors-of-the-app) describes. |
+
+### Android overlays
+
+`context.overlay().add(view, placement)` places a native view over the app, such as a banner, and returns a `HaylenOverlay.Panel`:
+
+| Member | Meaning |
+| --- | --- |
+| `update(placement)` | Places the view again with another placement. |
+| `setVisible(visible)` | Shows or hides the view, which reserves its edge only while it shows. |
+| `bounds()` | The frame of the view in the pixels of the activity window, or `null` while it does not show. |
+| `remove()` | Takes the view off the app and gives its edge back. The view leaves its panel, so the plugin may place it again, and a removed panel ignores later updates. |
+
+A `HaylenPlacement` has the fields of the placements of the [web overlay](#web-modules), in dp:
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `anchor` | `HaylenPlacement.Anchor.BOTTOM` | Where the view sits: `TOP`, `BOTTOM`, `LEFT`, `RIGHT`, `TOP_LEFT`, `TOP_RIGHT`, `BOTTOM_LEFT`, `BOTTOM_RIGHT` or `CENTER`. The view is centered along every axis its anchor leaves free. |
+| `marginDp` | `0` | The distance from the edges the anchor names. |
+| `insideSafeArea` | `true` | Whether the view stays inside the safe area of the device, the one the app sees without reservations, clear of cutouts and of the system bars that stay on screen. |
+| `reserve` | `false` | Whether the view reserves the edge its anchor names, from the edge of the window to its far side, while it shows. A centered view reserves nothing. |
+| `widthDp`, `heightDp` | `HaylenPlacement.MEASURED` | The size of the view. `MEASURED` keeps the size of the layout parameters the view had when it was added, or its measured size when it had none. |
+
+Views inside a native activity never draw, and the app takes every touch of the activity window, so each view of the overlay lives in a panel window of its own over the activity window. A panel never takes the focus, because the app draws only while its window has it, so touches inside the frame of the view reach the view, every other touch, the keyboard and gamepads reach the app, and several fingers split between them. Panels join the window once it has had the focus, place themselves again when the safe area, the orientation, the density or the size of the window changes, such as in multi-window mode, hide while the activity is stopped and come back when it starts, and leave before the activity is destroyed. A plugin therefore places its views again for a new activity, such as from `onActivityCreated` or when the app asks for them again. A view that needs the keyboard, such as a form in a web view, cannot take it in a panel, so it opens in an activity of its own. The overlay works on the main thread, and `add` throws an `IllegalStateException` on other threads and while no activity exists.
+
+```java
+// Shows a banner at the bottom of the safe area, which the UI of the app anchored to the safe area moves above.
+HaylenPlacement placement = new HaylenPlacement(HaylenPlacement.Anchor.BOTTOM);
+placement.reserve = true;
+placement.widthDp = 320;
+placement.heightDp = 50;
+HaylenOverlay.Panel banner = context.overlay().add(bannerView, placement);
+
+// Later, the banner moves to the top, and finally goes away.
+banner.update(new HaylenPlacement(HaylenPlacement.Anchor.TOP));
+banner.remove();
+```
+
+### Threads
+
+Handlers run on the main thread, where they may touch the activity and views. A handler registered with `HaylenBridge.Threading.BACKGROUND` runs on one background thread that every such handler shares, in the order the calls arrive, which suits work that does not touch the UI, such as disk, database or network access through blocking APIs. A handler that starts its own asynchronous work answers from any thread, and `onCancel` listeners always run on the main thread. The parameters of a call are parsed on the thread of its handler, so the frame thread of the app only hands the call over. The events of the activity, `onAppError` and the overlay use the main thread, and `context.runOnMainThread` brings a callback of an SDK there.
+
+### R8
+
+The consumer rules of the engine library keep every class that extends `HaylenPlugin` with its constructor, so the class names of the manifest survive minified release builds, and a plugin needs no rule for its own class. A plugin keeps what its own code or its SDKs reach by reflection in the `consumer-rules.pro` of its module, which its `build.gradle.kts` names with `consumerProguardFiles`, and never adds global options there, since they would change the build of the whole app.

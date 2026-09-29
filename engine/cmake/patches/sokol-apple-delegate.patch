@@ -1,0 +1,52 @@
+Lets the app name the Objective-C class of the application delegate that sokol_app creates, through sapp_desc.apple.delegate_class. UIApplicationMain creates it on iOS and tvOS, and the scene configuration names the class of the application delegate for the scenes, so one subclass receives every event of the application and its scenes. AppKit creates it on macOS. The subclass calls sokol_app for the events that sokol_app handles and hands every event to native plugins.
+
+--- a/sokol_app.h
++++ b/sokol_app.h
+@@ -2119,6 +2119,10 @@
+ typedef struct sapp_android_desc {
+     bool (*native_event_cb)(const void* native_event);
+ } sapp_android_desc;
++
++typedef struct sapp_apple_desc {
++    const char* delegate_class; // name of a subclass of the sokol_app application delegate that UIKit or AppKit creates instead, which also delegates the scenes on iOS
++} sapp_apple_desc;
+ 
+ typedef struct sapp_desktop_desc {
+     bool borderless;            // if true, the window has no title bar and no border
+@@ -2170,6 +2174,7 @@
+     sapp_html5_desc html5;
+     sapp_ios_desc ios;
+     sapp_android_desc android;
++    sapp_apple_desc apple;
+     sapp_desktop_desc desktop;          // window options of desktop platforms, see DESKTOP WINDOW OPTIONS
+ } sapp_desc;
+ 
+@@ -5963,7 +5968,8 @@
+     // set the application dock icon as early as possible, otherwise
+     // the dummy icon will be visible for a short time
+     sapp_set_icon(&_sapp.desc.icon);
+-    _sapp.macos.app_dlg = [[_sapp_macos_app_delegate alloc] init];
++    Class app_dlg_class = _sapp.desc.apple.delegate_class ? NSClassFromString(@(_sapp.desc.apple.delegate_class)) : [_sapp_macos_app_delegate class];
++    _sapp.macos.app_dlg = [[app_dlg_class alloc] init];
+     NSApp.delegate = _sapp.macos.app_dlg;
+ 
+     // workaround for "no key-up sent while Cmd is pressed" taken from GLFW:
+@@ -7056,7 +7062,8 @@
+     _sapp_init_state(desc);
+     static int argc = 1;
+     static char* argv[] = { (char*)"sokol_app" };
+-    UIApplicationMain(argc, argv, nil, NSStringFromClass([_sapp_scene_delegate class]));
++    NSString* delegate_class = _sapp.desc.apple.delegate_class ? @(_sapp.desc.apple.delegate_class) : NSStringFromClass([_sapp_scene_delegate class]);
++    UIApplicationMain(argc, argv, nil, delegate_class);
+ }
+ 
+ /* iOS entry function */
+@@ -7193,7 +7200,7 @@
+     options:(UISceneConnectionOptions*)options
+ {
+     UISceneConfiguration* config = [[UISceneConfiguration alloc] initWithName:@"SokolSceneConfiguration" sessionRole:connectingSceneSession.role];
+-    config.delegateClass = [_sapp_scene_delegate class];
++    config.delegateClass = [self class];
+     return config;
+ }
+ 

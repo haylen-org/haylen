@@ -18,7 +18,10 @@ typedef HaylenCancel _Nullable (^HaylenCancellableHandler)(id params, HaylenRepl
 + (void)registerHandler:(NSString*)method handler:(HaylenHandler)handler;
 + (void)registerCancellableHandler:(NSString*)method handler:(HaylenCancellableHandler)handler;
 + (void)removeHandler:(NSString*)method;
+
+// Sends an event to the app from any thread. A retained event waits for the first listener of its name, and events sent while the app launches reach the first app once it starts.
 + (void)emit:(NSString*)event payload:(nullable id)payload;
++ (void)emit:(NSString*)event payload:(nullable id)payload retain:(BOOL)retain;
 
 @end
 

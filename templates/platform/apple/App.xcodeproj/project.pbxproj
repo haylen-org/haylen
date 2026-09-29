@@ -19,11 +19,13 @@
 		4DABBEF89CF0C18F1E854F34 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FBB2073FE2C3FA8CF2F2F81 /* Foundation.framework */; };
 		4F61DECEEE65FCDB7B0E1E14 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 609349DF20D01EF9541FA51A /* QuartzCore.framework */; };
 		575303CDA0129B2DBC14134A /* GameController.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E659DE470F86E25B0A48DA55 /* GameController.framework */; };
+		58D9643A83D89DDB2DDD5060 /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C5198534719CD290B045238E /* UserNotifications.framework */; };
 		59F4004C3E5C9A5C5D01DDA0 /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 93773212B32C9B1B03E2D35B /* Network.framework */; };
 		60599AA4A83960FF8E2F2B05 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EE11E27F8C2F86913015C6E1 /* Assets.xcassets */; };
 		62116A99E5DDE88777E66A57 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 609349DF20D01EF9541FA51A /* QuartzCore.framework */; };
 		6D1F225E2D7EF62C24A9E97E /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB92594DDC4336170D045976 /* MetalKit.framework */; };
 		6FC6F99C15B8AE622764191B /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0A753EF2BDFD938E5832DBA1 /* CoreGraphics.framework */; };
+		7065987717988B25C639D79D /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C5198534719CD290B045238E /* UserNotifications.framework */; };
 		76CC76D52C0629A8E894892B /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E11F866B40772B2B88C0599A /* CoreAudio.framework */; };
 		76D9EC0BE57B0494D7CD8BE2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 079F253040E2E950B67E7CD6 /* Assets.xcassets */; };
 		82B9F4EBB2E70AB30A1D008E /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 93773212B32C9B1B03E2D35B /* Network.framework */; };
@@ -39,6 +41,7 @@
 		AFDB71E3022589F5FD377E68 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FCA3C5FAA7EFDD728B5A5DA0 /* UIKit.framework */; };
 		B0F7448653804229F4472B29 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 58FBB2D1052B9870DDD312D5 /* Metal.framework */; };
 		BFE0D896A7BC13AA8D475879 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 609349DF20D01EF9541FA51A /* QuartzCore.framework */; };
+		C9BD644F6636F11BDE5F15D4 /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C5198534719CD290B045238E /* UserNotifications.framework */; };
 		CB8A68DC5A5A5C05524C10A8 /* Haylen.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8DBB0B5A6BA934671179571C /* Haylen.xcframework */; };
 		CD954826551848E10E9FE362 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E11F866B40772B2B88C0599A /* CoreAudio.framework */; };
 		D0727CE8C557A6FABACAC5DF /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB92594DDC4336170D045976 /* MetalKit.framework */; };
@@ -72,6 +75,7 @@
 		93773212B32C9B1B03E2D35B /* Network.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Network.framework; path = System/Library/Frameworks/Network.framework; sourceTree = SDKROOT; };
 		93F3218FCDA28E2691FA5B40 /* tvOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = tvOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AB92594DDC4336170D045976 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
+		C5198534719CD290B045238E /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
 		C566608AF6B9452AFB3B18B2 /* App.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = App.xcconfig; sourceTree = "<group>"; };
 		D61A2ED27AC9820EBB332146 /* macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = macOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E11F866B40772B2B88C0599A /* CoreAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudio.framework; path = System/Library/Frameworks/CoreAudio.framework; sourceTree = SDKROOT; };
@@ -111,6 +115,7 @@
 				A2709552647909DD2982048D /* AudioToolbox.framework in Frameworks */,
 				76CC76D52C0629A8E894892B /* CoreAudio.framework in Frameworks */,
 				914F3304D2A9BB099291F289 /* Network.framework in Frameworks */,
+				58D9643A83D89DDB2DDD5060 /* UserNotifications.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -129,6 +134,7 @@
 				D78069BD0E4A7CFF77925501 /* AudioToolbox.framework in Frameworks */,
 				DAF4DD7196A0F372A87D5D0F /* CoreAudio.framework in Frameworks */,
 				82B9F4EBB2E70AB30A1D008E /* Network.framework in Frameworks */,
+				C9BD644F6636F11BDE5F15D4 /* UserNotifications.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -148,6 +154,7 @@
 				1526223C7B74A786EDC6B392 /* AudioToolbox.framework in Frameworks */,
 				CD954826551848E10E9FE362 /* CoreAudio.framework in Frameworks */,
 				59F4004C3E5C9A5C5D01DDA0 /* Network.framework in Frameworks */,
+				7065987717988B25C639D79D /* UserNotifications.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -213,6 +220,7 @@
 				93773212B32C9B1B03E2D35B /* Network.framework */,
 				609349DF20D01EF9541FA51A /* QuartzCore.framework */,
 				FCA3C5FAA7EFDD728B5A5DA0 /* UIKit.framework */,
+				C5198534719CD290B045238E /* UserNotifications.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";

@@ -17,6 +17,7 @@
 
 #if defined(__APPLE__)
 #include "haylen/platform/apple/HaylenMain.h"
+#include "platform/apple/AppleRuntime.hpp"
 #elif defined(__ANDROID__)
 #include "platform/android/AndroidActivity.hpp"
 #include "platform/android/AndroidGamepads.hpp"
@@ -31,7 +32,8 @@ namespace haylen::platform {
 
 #if defined(__APPLE__)
 int SokolRuntime::run(int argc, char* argv[]) {
-    const sapp_desc desc = describe(argc, argv);
+    sapp_desc desc = describe(argc, argv);
+    desc.apple.delegate_class = AppleRuntime::getDelegateClass();
     sapp_run(&desc);
     return 0;
 }
@@ -314,6 +316,8 @@ void SokolRuntime::launch() {
     }
 #elif defined(__ANDROID__)
     JavaBridge::setAppRunning(true);
+#elif defined(__APPLE__)
+    AppleRuntime::setAppRunning(true);
 #endif
 }
 
@@ -324,6 +328,8 @@ void SokolRuntime::close() noexcept {
 #if defined(__ANDROID__)
     // Native events wait in Java from here on, so the ones that come while the app stops reach the next app instead of none.
     JavaBridge::setAppRunning(false);
+#elif defined(__APPLE__)
+    AppleRuntime::setAppRunning(false);
 #endif
     engine.reset();
 #if defined(__EMSCRIPTEN__)

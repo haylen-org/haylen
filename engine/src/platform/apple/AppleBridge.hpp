@@ -6,6 +6,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace haylen::platform {
 
@@ -25,10 +26,21 @@ class AppleBridge final {
     // Runs the cancel block that the handler of a pending call returned, and drops the answer that may still come.
     static void cancel(std::uint64_t call);
 
-    // Sends a native event to the engine, which keeps a retained one for the first listener of its name, and drops a payload that JSON cannot hold.
+    // Sends a native event to the engine, which keeps a retained one for the first listener of its name, and drops a payload that JSON cannot hold. Events sent while no app runs, such as while the app launches or restarts, wait for the next app.
     static void emit(NSString* event, id payload, bool retain);
 
+    // Follows whether an app runs. When one starts, the events that waited reach its bridge in order.
+    static void setAppRunning(bool value);
+
+    [[nodiscard]] static id fromJson(std::string_view text);
+
   private:
+    struct WaitingEvent {
+        std::string event;
+        std::string payload;
+        bool retain = false;
+    };
+
     [[nodiscard]] static NSMutableDictionary<NSString*, HaylenCancellableHandler>* getHandlers();
 
     // The calls that wait for their answer, each with the cancel block its handler returned or NSNull.
@@ -36,12 +48,15 @@ class AppleBridge final {
     static void registerBuiltIn(NSString* method, HaylenHandler handler);
 
     [[nodiscard]] static std::optional<std::string> toJson(id value);
-    [[nodiscard]] static id fromJson(std::string_view text);
     [[nodiscard]] static NSString* toString(std::string_view text);
     [[nodiscard]] static NSString* getLanguageTag();
 
     static void fail(std::uint64_t call, NSDictionary* failure);
     static void answer(std::uint64_t call, NSString* method, BOOL ok, id result);
+
+    // The events sent while no app runs, such as the link that opened the app, which native plugins send while it launches.
+    static std::vector<WaitingEvent>& waiting;
+    static bool running;
 };
 
 } // namespace haylen::platform

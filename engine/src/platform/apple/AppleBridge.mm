@@ -13,6 +13,9 @@
 
 namespace haylen::platform {
 
+std::vector<AppleBridge::WaitingEvent>& AppleBridge::waiting = *new std::vector<WaitingEvent>();
+bool AppleBridge::running = false;
+
 void AppleBridge::setHandler(NSString* method, HaylenCancellableHandler handler) {
     @synchronized([HaylenBridge class]) {
         getHandlers()[method] = [handler copy];
@@ -135,7 +138,27 @@ void AppleBridge::emit(NSString* event, id payload, bool retain) {
         core::Log::error("The native event '{}' carried a payload that is not JSON and was dropped.", event.UTF8String);
         return;
     }
+    @synchronized([HaylenBridge class]) {
+        if (!running) {
+            waiting.push_back({.event = event.UTF8String, .payload = *json, .retain = retain});
+            return;
+        }
+    }
     BridgeRelay::emit(event.UTF8String, *json, retain);
+}
+
+// The events reach the bridge under the lock, so an event that another thread sends meanwhile never overtakes them.
+void AppleBridge::setAppRunning(bool value) {
+    @synchronized([HaylenBridge class]) {
+        running = value;
+        if (!running) {
+            return;
+        }
+        for (const WaitingEvent& entry : waiting) {
+            BridgeRelay::emit(entry.event, entry.payload, entry.retain);
+        }
+        waiting.clear();
+    }
 }
 
 // Native code may register handlers before the engine starts, even before haylen_main, so the table exists from the first registration.

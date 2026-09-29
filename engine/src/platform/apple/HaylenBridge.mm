@@ -23,4 +23,8 @@
     haylen::platform::AppleBridge::emit(event, payload, false);
 }
 
++ (void)emit:(NSString*)event payload:(nullable id)payload retain:(BOOL)retain {
+    haylen::platform::AppleBridge::emit(event, payload, retain);
+}
+
 @end

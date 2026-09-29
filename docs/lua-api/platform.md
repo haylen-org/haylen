@@ -397,7 +397,7 @@ Native handlers receive the parameters as parsed JSON and answer once, with succ
 
 ## Android handlers
 
-`dev.haylen.HaylenBridge` in the engine Android library holds the handlers. `HaylenBridge.register(method, handler)` adds a handler, `HaylenBridge.unregister(method)` removes it and `HaylenBridge.emit(event, payload)` sends an event. Handlers run on the main thread. `params` is what `org.json.JSONTokener` reads from the parameters, usually a `JSONObject`. The reply of a call has these members:
+`dev.haylen.HaylenBridge` in the engine Android library holds the handlers. `HaylenBridge.register(method, handler)` adds a handler, `HaylenBridge.unregister(method)` removes it and `HaylenBridge.emit(event, payload)` sends an event, which `HaylenBridge.emit(event, payload, true)` sends retained. Handlers run on the main thread, and `HaylenBridge.register(method, handler, HaylenBridge.Threading.BACKGROUND)` runs one on the background thread that such handlers share, for work that does not touch the UI. `params` is what `org.json.JSONTokener` reads from the parameters on the thread of the handler, usually a `JSONObject`. Plugins register through their context, as the [plugin guide](../plugins.md#the-android-part) describes. The reply of a call has these members:
 
 | Member | Meaning |
 | --- | --- |
@@ -458,7 +458,7 @@ object ProfilePlugin {
 
 ## Apple handlers
 
-`HaylenBridge` in `haylen/platform/apple/HaylenBridge.h` holds the handlers on iOS, tvOS and macOS. `+registerHandler:handler:` adds a handler, `+registerCancellableHandler:handler:` adds one that returns a block to run when the app cancels the call or its timeout passes, `+removeHandler:` removes a handler and `+emit:payload:` sends an event. Handlers run on the main queue, and so does the cancel block. `params` is the parsed JSON, an `NSDictionary` for object parameters, and the handler answers with `reply(YES, result)` or `reply(NO, failure)`. `result` is any value `NSJSONSerialization` accepts or `nil`, and a success value it rejects fails the call with `The native handler for <method> returned a value that is not JSON.`. A failure passes a message string or a dictionary with a `message` string and optional `code` and `data`, and anything else fails with `The native handler for <method> failed.`. Handlers can be registered at any time, even before the app starts, and a handler under the name of a built-in method replaces it. An event payload that is not JSON is logged as an error and dropped.
+`HaylenBridge` in `haylen/platform/apple/HaylenBridge.h` holds the handlers on iOS, tvOS and macOS. `+registerHandler:handler:` adds a handler, `+registerCancellableHandler:handler:` adds one that returns a block to run when the app cancels the call or its timeout passes, `+removeHandler:` removes a handler, `+emit:payload:` sends an event and `+emit:payload:retain:` sends one that waits for the first listener of its name when `retain` is `YES`. Handlers run on the main queue, and so does the cancel block. `params` is the parsed JSON, an `NSDictionary` for object parameters, and the handler answers with `reply(YES, result)` or `reply(NO, failure)`. `result` is any value `NSJSONSerialization` accepts or `nil`, and a success value it rejects fails the call with `The native handler for <method> returned a value that is not JSON.`. A failure passes a message string or a dictionary with a `message` string and optional `code` and `data`, and anything else fails with `The native handler for <method> failed.`. Handlers can be registered at any time, even before the app starts, and a handler under the name of a built-in method replaces it. An event payload that is not JSON is logged as an error and dropped.
 
 ```objc
 #import "haylen/platform/apple/HaylenBridge.h"
@@ -483,10 +483,11 @@ object ProfilePlugin {
 ```
 
 ```objc
-[HaylenBridge emit:@"app.link" payload:@{@"url" : url.absoluteString}];
+// The link that opened the app arrives before the app listens, so it waits for the first listener of app.link.
+[HaylenBridge emit:@"app.link" payload:@{@"url" : url.absoluteString} retain:YES];
 ```
 
-Swift handlers written as async functions register with `HaylenBridge.register(method) { (params: Params) async throws -> Result in ... }` from `HaylenBridgeAsync.swift` of the Apple template, where `Params` is `Decodable` and `Result` is `Encodable`. A handler runs on the main actor, a thrown `HaylenFailure(message, code:, data:)` fails the call with its code and data, any other error fails it with the code `exception`, and the task is cancelled when the app cancels the call or its timeout passes.
+Swift handlers written as async functions register with `HaylenBridge.register(method) { (params: Params) async throws -> Result in ... }` from `HaylenBridgeAsync.swift` of the Apple template, where `Params` is `Decodable` and `Result` is `Encodable`. A handler runs on the main actor, a thrown `HaylenFailure(message, code:, data:)` fails the call with its code and data, any other error fails it with the code `exception`, and the task is cancelled when the app cancels the call or its timeout passes. `try HaylenBridge.emit(event, payload, retain: false)` sends an event with an `Encodable` payload. The native parts of plugins register and emit through the context of their plugin instead, which puts the id of the plugin in front of the names, as the [plugin guide](../plugins.md#the-apple-part) describes.
 
 ```swift
 import Foundation
