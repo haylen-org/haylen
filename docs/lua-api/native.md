@@ -161,12 +161,13 @@ print(done.freed)
 
 | Entry | Meaning |
 | --- | --- |
-| `version` | `HAYLEN_NATIVE_API_VERSION` of the engine, 2 for the interface this page describes. A library checks that it is at least the version of the header it was built with. |
+| `version` | `HAYLEN_NATIVE_API_VERSION` of the engine, 3 for the interface this page describes. A library checks that it is at least the version of the header it was built with. |
 | `emit(event, payloadJson, retain)` | Sends an event that `platform.on` receives. With `retain` other than 0, an event that nothing listens to yet waits for the first listener of its name, as the [platform reference](platform.md#platformonevent-listener) describes. |
 | `resolve(call, ok, resultJson)` | Answers a call once, with a JSON result or a failure that is a message string or an object with `message`, `code` and `data`. |
 | `registerHandler(method, handler, cancel, user)` | Answers `platform.call(method)` with the C function `handler(user, call, method, paramsJson)`, which runs on the frame thread and answers through `resolve`, at once or later. `cancel(user, call)` runs on the frame thread when the app cancels a call or its timeout passes, and may be null. A null `handler` removes the method. Handlers belong to the process, like the library, so they keep answering after the app restarts. |
 | `log(level, text)` | Writes a line to the engine log at a `HaylenNativeLogLevel`. |
 | `registerPlugin(id)` | Declares the library the native part of the plugin `id`, so `platform.plugin(id).native` and the `native` field of `platform.plugins()` are `true` from then on, for every app the process runs. A null or empty id is logged as an error. |
+| `registerErrorHandler(handler, user)` | Calls `handler(user, reportJson)` on the frame thread with the report of every error that stops an app of the process from then on, the one its error screen shows, as JSON text of `{message, file, line, traceback, frames}`, like the native parts of [plugins](../plugins.md#errors-of-the-app) receive it. Registering the same handler with the same `user` again changes nothing, so an init function that runs again after a restart registers it once, and a null `handler` is logged as an error. |
 
 Library handlers answer after the handlers registered in the engine and before the handlers of the platform. The init function runs every time the app loads the library with `init`, so it registers its handlers again after a restart.
 
@@ -179,9 +180,14 @@ static void answer(void* user, uint64_t call, const char* method, const char* pa
     engine->resolve(call, 1, paramsJson);
 }
 
+static void appFailed(void* user, const char* reportJson) {
+    engine->log(HAYLEN_NATIVE_LOG_INFO, reportJson);
+}
+
 int my_library_haylen_init(const HaylenNativeApi* api) {
     engine = api;
     api->registerHandler("my_library.echo", answer, 0, 0);
+    api->registerErrorHandler(appFailed, 0);
     api->emit("my_library.ready", "{\"version\": 1}", 1);
     return 0;
 }

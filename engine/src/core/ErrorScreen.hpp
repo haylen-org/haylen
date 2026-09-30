@@ -28,9 +28,11 @@ namespace haylen::core {
 
 class Engine;
 
-// What the engine draws in place of the app once a script error stops it: the app and engine it ran on, the message, a source excerpt, the stack and the actions. Content taller than the screen scrolls with the mouse wheel, a drag and the arrow keys. C copies the report and R restarts the app, and both actions are buttons too, the only way to reach them on touch devices. It draws with the renderer alone, so it keeps working when the UI is what failed.
+// What the engine draws in place of the app once a script error stops it: the app and engine it ran on, the message, a source excerpt, the stack and the actions. Content taller than the screen scrolls with the mouse wheel, a drag, the arrow keys and the directional pad. C copies the report and R restarts the app, and both actions are buttons too, the only way to reach them on touch devices. Gamepads and TV remotes move the focus between the buttons with the directional pad, or the arrow keys that TV remotes also send, and press the focused one with the south button or Enter, and the focus starts on Restart. It draws with the renderer alone, so it keeps working when the UI is what failed.
 class ErrorScreen final {
   public:
+    enum class Action { Copy, Restart };
+
     struct SourceLine {
         int number = 0;
         std::string text;
@@ -67,8 +69,13 @@ class ErrorScreen final {
     [[nodiscard]] const math::Rect& getRestartButton() const noexcept {
         return restartButton;
     }
+    [[nodiscard]] Action getFocusedAction() const noexcept {
+        return focused;
+    }
 
     void handleEvent(const platform::Event& event);
+    // Reads the gamepads once per frame, since their buttons arrive as state rather than as events.
+    void update();
     void render();
 
     void copyReport();
@@ -111,6 +118,7 @@ class ErrorScreen final {
     [[nodiscard]] std::string getLocation() const;
     [[nodiscard]] std::string buildReport() const;
     [[nodiscard]] bool isTouchDevice() const;
+    [[nodiscard]] bool isGamepadDriven() const;
     [[nodiscard]] bool isReloadWatching() const;
 
     // Design units per point, from the pixel density of the window and the scale of the viewport.
@@ -118,6 +126,7 @@ class ErrorScreen final {
     [[nodiscard]] math::Vec2 toCanvas(math::Vec2 framebufferPoint) const;
 
     void handleKey(const platform::Event& event);
+    void pressFocus(const platform::Event& event);
     void handleTouch(const platform::Event& event);
     void press(math::Vec2 point);
     void drag(math::Vec2 point);
@@ -128,7 +137,7 @@ class ErrorScreen final {
     [[nodiscard]] float drawExcerpt(graphics2d::Renderer& renderer, text::Font& font, math::Vec2 origin, float width, float unit) const;
     [[nodiscard]] float drawStack(graphics2d::Renderer& renderer, text::Font& font, math::Vec2 origin, float unit) const;
     [[nodiscard]] float drawFooter(graphics2d::Renderer& renderer, text::Font& font, const math::Rect& area, float unit);
-    [[nodiscard]] math::Rect drawAction(graphics2d::Renderer& renderer, text::Font& font, math::Vec2 position, std::string_view key, std::string_view label, float unit) const;
+    [[nodiscard]] math::Rect drawAction(graphics2d::Renderer& renderer, text::Font& font, math::Vec2 position, Action action, std::string_view key, std::string_view label, float unit) const;
 
     Engine& engine;
     lua::Error error;
@@ -141,6 +150,7 @@ class ErrorScreen final {
     std::optional<std::uint64_t> finger;
     math::Rect copyButton{};
     math::Rect restartButton{};
+    Action focused = Action::Restart;
     bool copied = false;
 };
 

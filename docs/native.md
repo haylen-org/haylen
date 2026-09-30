@@ -95,7 +95,7 @@ Varn callbacks fit SDKs that call back only on the thread that pumps them, such 
 
 ## Libraries that talk to the app
 
-A library written for Haylen receives the C interface of the engine, `HaylenNativeApi` from `haylen/platform/native/HaylenNative.h`, when the app loads it with `native.load(name, {init = 'my_library_haylen_init'})`. With it the library registers bridge handlers in C, answers them from any thread, sends events and writes to the engine log, the same way on every platform. The [reference](lua-api/native.md#library-handlers) lists the entries.
+A library written for Haylen receives the C interface of the engine, `HaylenNativeApi` from `haylen/platform/native/HaylenNative.h`, when the app loads it with `native.load(name, {init = 'my_library_haylen_init'})`. With it the library registers bridge handlers in C, answers them from any thread, sends events, writes to the engine log and hears the errors that stop the app, the same way on every platform. The [reference](lua-api/native.md#library-handlers) lists the entries.
 
 ```c
 #include "haylen/platform/native/HaylenNative.h"

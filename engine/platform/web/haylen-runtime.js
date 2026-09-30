@@ -577,8 +577,15 @@ Module.haylen = Module.haylen || {};
 
     const isElement = (target) => target === text.elements.textarea || target === text.elements.password;
 
+    // Other elements of the page own the keys they receive, such as the buttons of a plugin dialog or the fields of an editor next to the canvas, while the app owns the keys of the canvas, the body and the page.
+    const isForeign = (target) => target instanceof Element && target !== Module.canvas && target !== document.body && target !== document.documentElement && !isElement(target);
+
     // sokol_app listens for keys on the window in the capture phase, before the element sees them. A field of the UI owns every key, so sokol_app never applies them twice, and its return, tab and escape become actions. The plain keyboard of haylen.window.setKeyboardVisible leaves keys to sokol_app and only takes their text.
     const onKey = (event) => {
+        if (isForeign(event.target)) {
+            event.stopImmediatePropagation();
+            return;
+        }
         const field = text.field;
         if (!field || !isElement(event.target)) {
             return;
@@ -600,13 +607,13 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-    // The focus moving to or from an element is no focus change of the page, which sokol_app would report as the app losing its focus. A blur while the page keeps the focus means the user closed the keyboard or left the field, unless the engine ended the editing.
+    // The focus moving to or from an element, such as a field, the canvas or the button of a plugin dialog, is no focus change of the page, which sokol_app would report as the app losing its focus, so only the focus of the window reaches it. A blur of a field while the page keeps the focus means the user closed the keyboard or left the field, unless the engine ended the editing.
     const onFocus = (event) => {
-        if (!isElement(event.target)) {
+        if (event.target === window) {
             return;
         }
         event.stopImmediatePropagation();
-        if (event.type !== "blur" || text.finishing) {
+        if (!isElement(event.target) || event.type !== "blur" || text.finishing) {
             return;
         }
         const target = event.target;

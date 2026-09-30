@@ -14,6 +14,7 @@
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/core/Version.hpp"
 #include "haylen/graphics/Viewport.hpp"
+#include "haylen/input/GamepadState.hpp"
 #include "haylen/lua/Error.hpp"
 #include "haylen/platform/Event.hpp"
 #include "support/DrawingScene.hpp"
@@ -102,6 +103,57 @@ TEST_F(ErrorScreenTest, CopiesTheReportAndRestartsTheAppFromTheKeyboard) {
     EXPECT_FALSE(fixture.engine().isRestartRequested());
 
     press(fixture, input::Key::R);
+    EXPECT_TRUE(fixture.engine().isRestartRequested());
+}
+
+TEST_F(ErrorScreenTest, CopiesAndRestartsWithAGamepadOrATvRemote) {
+    test::EngineFixture fixture = startFailingApp();
+    fixture.frames(2);
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+    const std::string report = core::ErrorScreen(fixture.engine(), *fixture.engine().getError()).getReport();
+
+    // A button counts as pressed in the frame it goes down, so each press is one frame down and one frame up.
+    // clang-format off
+    const auto tap = [&fixture](input::GamepadButton button) {
+        input::GamepadState state{.connected = true, .name = "Remote"};
+        state.buttons[static_cast<std::size_t>(button)] = true;
+        fixture.host().setGamepad(0, state);
+        fixture.frames(1);
+        fixture.host().setGamepad(0, {.connected = true, .name = "Remote"});
+        fixture.frames(1);
+    };
+    // clang-format on
+
+    // The focus starts on Restart, and the directional pad moves it to Copy, which the south button presses.
+    tap(input::GamepadButton::DpadLeft);
+    tap(input::GamepadButton::South);
+    EXPECT_EQ(fixture.host().getClipboard(), report);
+    EXPECT_FALSE(fixture.engine().isRestartRequested());
+
+    tap(input::GamepadButton::DpadRight);
+    tap(input::GamepadButton::South);
+    EXPECT_TRUE(fixture.engine().isRestartRequested());
+}
+
+TEST_F(ErrorScreenTest, FollowsTheArrowKeysAndEnterOfATvRemote) {
+    test::EngineFixture fixture = startFailingApp();
+    fixture.frames(2);
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+
+    // A keyboard with a pointer leaves the focus alone, since it shows no focus there.
+    press(fixture, input::Key::Left);
+    press(fixture, input::Key::Enter);
+    EXPECT_TRUE(fixture.host().getClipboard().empty());
+    EXPECT_FALSE(fixture.engine().isRestartRequested());
+
+    // A TV has no pointer, and its remote sends arrow keys and Enter.
+    fixture.host().setPointerDevice(false);
+    press(fixture, input::Key::Left);
+    press(fixture, input::Key::Enter);
+    EXPECT_FALSE(fixture.host().getClipboard().empty());
+    EXPECT_FALSE(fixture.engine().isRestartRequested());
+    press(fixture, input::Key::Right);
+    press(fixture, input::Key::Enter);
     EXPECT_TRUE(fixture.engine().isRestartRequested());
 }
 

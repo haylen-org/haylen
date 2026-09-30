@@ -1,0 +1,32 @@
+{
+    "id": "native-demo",
+    "name": "Native Demo",
+    "version": "1.0.0",
+    "description": "Exercises every capability of native plugins with the APIs of each platform alone.",
+    "platforms": ["ios", "catalyst", "tvos", "macos", "android", "web", "windows", "linux"],
+    "requires": [],
+    "parameters": {
+        "greeting": {"type": "string", "default": "Hello from the native demo", "description": "Text of the native banner."},
+        "bannerColor": {"type": "string", "default": "#264653", "description": "Background of the native banner and the native screen, as #RRGGBB."},
+        "tickInterval": {"type": "number", "default": 1, "description": "Seconds between two tick events."},
+        "urlScheme": {"type": "string", "default": "haylendemo", "description": "URL scheme that opens the app, such as haylendemo://hello."}
+    },
+    "apple": {
+        "class": "NativeDemoPlugin",
+        "sources": "apple",
+        "infoPlist": {
+            "CFBundleURLTypes": [{"CFBundleURLName": "dev.haylen.plugins.native-demo", "CFBundleURLSchemes": ["${urlScheme}"]}]
+        }
+    },
+    "android": {
+        "module": "android",
+        "placeholders": {"nativeDemoUrlScheme": "${urlScheme}"}
+    },
+    "web": {
+        "module": "web/native-demo.js"
+    },
+    "native": {
+        "cmake": "native",
+        "platforms": ["macos", "windows", "linux"]
+    }
+}

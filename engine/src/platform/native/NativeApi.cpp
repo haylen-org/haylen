@@ -7,10 +7,11 @@
 
 namespace haylen::platform {
 
-const HaylenNativeApi NativeApi::api{.version = HAYLEN_NATIVE_API_VERSION, .emit = &emit, .resolve = &resolve, .registerHandler = &registerHandler, .log = &log, .registerPlugin = &registerPlugin};
+const HaylenNativeApi NativeApi::api{.version = HAYLEN_NATIVE_API_VERSION, .emit = &emit, .resolve = &resolve, .registerHandler = &registerHandler, .log = &log, .registerPlugin = &registerPlugin, .registerErrorHandler = &registerErrorHandler};
 std::mutex& NativeApi::mutex = *new std::mutex();
 std::unordered_map<std::string, NativeApi::Handler>& NativeApi::handlers = *new std::unordered_map<std::string, Handler>();
 std::set<std::string, std::less<>>& NativeApi::plugins = *new std::set<std::string, std::less<>>();
+std::vector<NativeApi::ErrorHandler>& NativeApi::errorHandlers = *new std::vector<ErrorHandler>();
 
 const HaylenNativeApi& NativeApi::get() noexcept {
     return api;
@@ -51,6 +52,23 @@ std::vector<std::string> NativeApi::getPlugins() {
     return {plugins.begin(), plugins.end()};
 }
 
+// The handlers run outside the lock, so they may register more handlers or send events.
+void NativeApi::reportError(const core::Json& report) {
+    std::vector<ErrorHandler> snapshot;
+    {
+        const std::scoped_lock lock(mutex);
+        snapshot = errorHandlers;
+    }
+    if (snapshot.empty()) {
+        return;
+    }
+
+    const std::string text = report.dump(-1, ' ', false, core::Json::error_handler_t::replace);
+    for (const ErrorHandler& entry : snapshot) {
+        entry.handler(entry.user, text.c_str());
+    }
+}
+
 void NativeApi::emit(const char* event, const char* payloadJson, int retain) {
     BridgeRelay::emit(event, payloadJson != nullptr ? payloadJson : "null", retain != 0);
 }
@@ -75,6 +93,18 @@ void NativeApi::registerPlugin(const char* id) {
     }
     const std::scoped_lock lock(mutex);
     plugins.emplace(id);
+}
+
+void NativeApi::registerErrorHandler(HaylenNativeErrorHandler handler, void* user) {
+    if (handler == nullptr) {
+        core::Log::error("A native library registered an error handler without a function.");
+        return;
+    }
+    const ErrorHandler entry{.handler = handler, .user = user};
+    const std::scoped_lock lock(mutex);
+    if (std::ranges::find(errorHandlers, entry) == errorHandlers.end()) {
+        errorHandlers.push_back(entry);
+    }
 }
 
 void NativeApi::log(int level, const char* text) {

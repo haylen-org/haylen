@@ -113,6 +113,11 @@ bool ErrorScreen::isTouchDevice() const {
     return platform == "android" || platform == "ios" || engine.getInput().getLastDevice() == input::InputDevice::Touch;
 }
 
+// A gamepad drives the screen once it was the last device, and on TVs, which have no pointer, from the start.
+bool ErrorScreen::isGamepadDriven() const {
+    return engine.getInput().getLastDevice() == input::InputDevice::Gamepad || !engine.getWindow().hasPointerDevice();
+}
+
 bool ErrorScreen::isReloadWatching() const {
     const auto* hotReload = engine.getPlugins().find<plugins::HotReloadPlugin>();
     return hotReload != nullptr && hotReload->isWatching();
@@ -152,6 +157,11 @@ void ErrorScreen::handleKey(const platform::Event& event) {
             restartApp();
         }
         break;
+    case input::Key::Left:
+    case input::Key::Right:
+    case input::Key::Enter:
+        pressFocus(event);
+        break;
     case input::Key::Up:
         scrollBy(-line);
         break;
@@ -172,6 +182,22 @@ void ErrorScreen::handleKey(const platform::Event& event) {
         break;
     default:
         break;
+    }
+}
+
+// The remote of a TV also reaches the app as arrow keys and Enter, which move and press the focus while it shows.
+void ErrorScreen::pressFocus(const platform::Event& event) {
+    if (!isGamepadDriven() || event.repeat) {
+        return;
+    }
+    if (event.key == input::Key::Left) {
+        focused = Action::Copy;
+    } else if (event.key == input::Key::Right) {
+        focused = Action::Restart;
+    } else if (focused == Action::Copy) {
+        copyReport();
+    } else {
+        restartApp();
     }
 }
 
@@ -214,6 +240,30 @@ void ErrorScreen::handleTouch(const platform::Event& event) {
         } else if (touch.changed) {
             finger.reset();
             dragging.reset();
+        }
+    }
+}
+
+void ErrorScreen::update() {
+    const input::Input& input = engine.getInput();
+    const float line = kLineStep * getUnit();
+    for (std::size_t index = 0; index < input::Input::kMaxGamepads; ++index) {
+        if (input.isGamepadPressed(index, input::GamepadButton::DpadLeft)) {
+            focused = Action::Copy;
+        }
+        if (input.isGamepadPressed(index, input::GamepadButton::DpadRight)) {
+            focused = Action::Restart;
+        }
+        if (input.isGamepadPressed(index, input::GamepadButton::DpadUp)) {
+            scrollBy(-line);
+        }
+        if (input.isGamepadPressed(index, input::GamepadButton::DpadDown)) {
+            scrollBy(line);
+        }
+        if (input.isGamepadPressed(index, input::GamepadButton::South) && focused == Action::Copy) {
+            copyReport();
+        } else if (input.isGamepadPressed(index, input::GamepadButton::South)) {
+            restartApp();
         }
     }
 }
@@ -342,16 +392,20 @@ float ErrorScreen::drawStack(graphics2d::Renderer& renderer, text::Font& font, m
     return y - origin.y;
 }
 
-// Keyboards see the key of each action in front of its label, while touch devices get plain buttons. Both answer to a click or a tap.
-math::Rect ErrorScreen::drawAction(graphics2d::Renderer& renderer, text::Font& font, math::Vec2 position, std::string_view key, std::string_view label, float unit) const {
+// Keyboards see the key of each action in front of its label, touch devices get plain buttons, and gamepads see the focused button outlined. Every button answers to a click or a tap.
+math::Rect ErrorScreen::drawAction(graphics2d::Renderer& renderer, text::Font& font, math::Vec2 position, Action action, std::string_view key, std::string_view label, float unit) const {
     const text::Style style{.size = kBodySize * unit, .color = kTextColor};
     const float padding = kPadding * unit;
     const float height = kButtonHeight * unit;
     const math::Vec2 labelSize = font.measure(label, style);
-    const bool keyboard = !isTouchDevice();
+    const bool gamepad = isGamepadDriven();
+    const bool keyboard = !gamepad && !isTouchDevice();
     const float keyWidth = keyboard ? font.measure(key, style).x + padding * 1.6F : 0.0F;
     const math::Rect button{position.x, position.y, keyWidth + labelSize.x + padding * 2.0F, height};
     renderer.drawRect(button, kButtonColor);
+    if (gamepad && action == focused) {
+        renderer.drawRectOutline(button, std::max(2.0F, 2.0F * unit), kAccentColor);
+    }
 
     float x = button.x + padding;
     const float textY = button.y + (height - labelSize.y) * 0.5F;
@@ -368,8 +422,8 @@ math::Rect ErrorScreen::drawAction(graphics2d::Renderer& renderer, text::Font& f
 float ErrorScreen::drawFooter(graphics2d::Renderer& renderer, text::Font& font, const math::Rect& area, float unit) {
     const float gap = kGap * unit;
     const float buttonsTop = area.getBottom() - kButtonHeight * unit;
-    copyButton = drawAction(renderer, font, {area.x, buttonsTop}, "C", copied ? "Report copied" : "Copy report", unit);
-    restartButton = drawAction(renderer, font, {copyButton.getRight() + gap, buttonsTop}, "R", "Restart app", unit);
+    copyButton = drawAction(renderer, font, {area.x, buttonsTop}, Action::Copy, "C", copied ? "Report copied" : "Copy report", unit);
+    restartButton = drawAction(renderer, font, {copyButton.getRight() + gap, buttonsTop}, Action::Restart, "R", "Restart app", unit);
 
     float top = buttonsTop - gap;
     if (isReloadWatching()) {

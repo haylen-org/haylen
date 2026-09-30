@@ -151,7 +151,7 @@ macOS uses the Apple registry above. Windows and Linux have no registry in the l
 
 ## Native library handlers
 
-A native library answers methods in C on every platform that loads native libraries. `native.load(name, {init = 'symbol'})` hands its init function the `HaylenNativeApi` of `haylen/platform/native/HaylenNative.h`, whose `registerHandler` adds a handler with an optional cancel function, `resolve` answers a call from any thread, `emit` sends an event from any thread, retained or not, `log` writes to the engine log and `registerPlugin` declares the library the native part of a plugin. The handlers belong to the process and answer after the engine handlers and before the platform handlers. The [native code guide](native.md#libraries-that-talk-to-the-app) shows a library, and the [reference](lua-api/native.md#library-handlers) lists the entries.
+A native library answers methods in C on every platform that loads native libraries. `native.load(name, {init = 'symbol'})` hands its init function the `HaylenNativeApi` of `haylen/platform/native/HaylenNative.h`, whose `registerHandler` adds a handler with an optional cancel function, `resolve` answers a call from any thread, `emit` sends an event from any thread, retained or not, `log` writes to the engine log, `registerPlugin` declares the library the native part of a plugin and `registerErrorHandler` hands it the errors that stop the app. The handlers belong to the process and answer after the engine handlers and before the platform handlers. The [native code guide](native.md#libraries-that-talk-to-the-app) shows a library, and the [reference](lua-api/native.md#library-handlers) lists the entries.
 
 ## C++ handlers and calls
 

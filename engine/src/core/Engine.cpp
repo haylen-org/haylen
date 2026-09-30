@@ -204,6 +204,9 @@ void Engine::frame(double frameSeconds) {
     try {
         // Window and gamepad changes, asynchronous results and platform replies arrive before the app updates, and their callbacks may fail like any app code.
         publishDeviceChanges();
+        if (current.errorScreen) {
+            current.errorScreen->update();
+        }
 
         // Decoded assets create their GPU resources within the upload budget of the frame, so a burst of loads never stalls it, and before the event loop runs, so the promises they settle resume their coroutines in this frame. An app in the background creates none.
         if (!hidden) {
@@ -689,7 +692,9 @@ void Engine::reportError(const std::exception& exception) {
     const auto* scriptError = dynamic_cast<const lua::Error*>(&exception);
     current.errorScreen = std::make_unique<ErrorScreen>(*this, scriptError != nullptr ? *scriptError : lua::Error(exception.what()));
     Log::error("{}", current.errorScreen->getReport());
-    current.host.reportError(current.errorScreen->getError().toJson());
+    const Json report = current.errorScreen->getError().toJson();
+    current.host.reportError(report);
+    platform::NativeApi::reportError(report);
     errorRaised.emit(current.errorScreen->getError());
 }
 

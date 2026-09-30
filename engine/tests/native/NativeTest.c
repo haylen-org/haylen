@@ -44,6 +44,8 @@ typedef struct NativeTestJob {
 } NativeTestJob;
 
 static const HaylenNativeApi* nativeTestApi = NULL;
+static int32_t nativeTestErrors = 0;
+static char* nativeTestLastError = NULL;
 
 #if defined(_WIN32)
 static DWORD WINAPI native_test_thread(LPVOID context) {
@@ -176,7 +178,25 @@ static void native_test_cancel(void* user, uint64_t call) {
     nativeTestApi->emit("native_test.cancelled", payload, 0);
 }
 
-// Registers the handlers of the library, declares it the native part of the native-test plugin and announces it from a thread of its own with a retained event, which waits for a listener that connects later.
+// Keeps the report of the last error that stopped an app and counts the reports, which the tests read back.
+static void native_test_app_failed(void* user, const char* reportJson) {
+    (void)user;
+    const size_t length = strlen(reportJson) + 1;
+    free(nativeTestLastError);
+    nativeTestLastError = (char*)malloc(length);
+    memcpy(nativeTestLastError, reportJson, length);
+    ++nativeTestErrors;
+}
+
+NATIVE_TEST_EXPORT int32_t native_test_error_count(void) {
+    return nativeTestErrors;
+}
+
+NATIVE_TEST_EXPORT const char* native_test_last_error(void) {
+    return nativeTestLastError != NULL ? nativeTestLastError : "";
+}
+
+// Registers the handlers of the library and its error handler, declares it the native part of the native-test plugin and announces it from a thread of its own with a retained event, which waits for a listener that connects later.
 NATIVE_TEST_EXPORT int native_test_haylen_init(const HaylenNativeApi* api) {
     if (api->version < HAYLEN_NATIVE_API_VERSION) {
         return 1;
@@ -185,6 +205,7 @@ NATIVE_TEST_EXPORT int native_test_haylen_init(const HaylenNativeApi* api) {
     api->registerHandler("native_test.echo", native_test_handle, NULL, NULL);
     api->registerHandler("native_test.fail", native_test_handle, NULL, NULL);
     api->registerHandler("native_test.wait", native_test_handle, native_test_cancel, NULL);
+    api->registerErrorHandler(native_test_app_failed, NULL);
     api->registerPlugin("native-test");
     api->log(HAYLEN_NATIVE_LOG_INFO, "The native test library is ready.");
 

@@ -1,0 +1,26 @@
+{
+    "name": "Haylen Plugins",
+    "identifier": "dev.haylen.samples.plugins",
+    "version": "1.0.0",
+    "orientation": "landscape",
+    "window": {
+        "title": "Haylen Plugins",
+        "width": 1280,
+        "height": 720,
+        "resizable": true,
+        "highDpi": true
+    },
+    "design": {
+        "width": 1920,
+        "height": 1080,
+        "scaling": "expand"
+    },
+    "clearColor": "#FF101418",
+    "plugins": {
+        "native-demo": {
+            "greeting": "Hello from app.json",
+            "bannerColor": "#1D3557",
+            "urlScheme": "haylendemo"
+        }
+    }
+}

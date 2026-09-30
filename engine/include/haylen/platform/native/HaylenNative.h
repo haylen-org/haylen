@@ -7,7 +7,7 @@ extern "C" {
 #endif
 
 // The version of HaylenNativeApi that this header describes. The engine hands libraries a table whose version is at least this one.
-enum { HAYLEN_NATIVE_API_VERSION = 2 };
+enum { HAYLEN_NATIVE_API_VERSION = 3 };
 
 enum HaylenNativeLogLevel { HAYLEN_NATIVE_LOG_DEBUG = 0, HAYLEN_NATIVE_LOG_INFO = 1, HAYLEN_NATIVE_LOG_WARNING = 2, HAYLEN_NATIVE_LOG_ERROR = 3 };
 
@@ -16,6 +16,9 @@ typedef void (*HaylenNativeHandler)(void* user, uint64_t call, const char* metho
 
 // Tells a handler that the app cancelled the call or that its timeout passed, on the frame thread. An answer that still comes is dropped.
 typedef void (*HaylenNativeCancel)(void* user, uint64_t call);
+
+// Receives the report of every error that stops the app, the one its error screen shows, as JSON text of {message, file, line, traceback, frames}. It runs on the frame thread.
+typedef void (*HaylenNativeErrorHandler)(void* user, const char* reportJson);
 
 // The entry points of the engine for native libraries. Every entry may be called from any thread, and what it sends reaches the app on the frame thread.
 typedef struct HaylenNativeApi {
@@ -30,6 +33,8 @@ typedef struct HaylenNativeApi {
     void (*log)(int level, const char* text);
     // Declares the library the native part of the plugin id, so the app sees the native part of that plugin as present on this platform from then on.
     void (*registerPlugin)(const char* id);
+    // Hands handler the report of every error that stops an app of the process from then on. Registering the same handler with the same user again changes nothing.
+    void (*registerErrorHandler)(HaylenNativeErrorHandler handler, void* user);
 } HaylenNativeApi;
 
 // The function that native.load(name, {init = 'symbol'}) calls after loading the library. It returns 0 on success, and any other value fails the load with that code.

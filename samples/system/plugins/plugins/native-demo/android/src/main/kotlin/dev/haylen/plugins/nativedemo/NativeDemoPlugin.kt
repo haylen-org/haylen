@@ -1,0 +1,257 @@
+package dev.haylen.plugins.nativedemo
+
+import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.graphics.Color
+import android.net.Uri
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
+import android.provider.OpenableColumns
+import dev.haylen.HaylenBridge
+import dev.haylen.HaylenPlacement
+import dev.haylen.HaylenPlugin
+import dev.haylen.HaylenPluginContext
+import org.json.JSONObject
+
+// Native part of the Native Demo plugin on Android, built on the views, dialogs and intents of the platform alone. The haylen library creates it from the meta-data of its manifest and loads it when the app process starts.
+class NativeDemoPlugin : HaylenPlugin() {
+    private lateinit var context: HaylenPluginContext
+    private val mainThread = Handler(Looper.getMainLooper())
+    private var ticker: Runnable? = null
+    private var ticks = 0
+    private var banner: NativeDemoBanner? = null
+    private var bannerState = JSONObject()
+    private var bannerTaps = 0
+    private var picking: HaylenBridge.Reply? = null
+    private var lastError: JSONObject? = null
+
+    override fun onLoad(context: HaylenPluginContext) {
+        this.context = context
+        registerCalls()
+        registerEvents()
+        registerBanner()
+        registerScreens()
+        context.emitRetained("loaded", JSONObject().put("language", LANGUAGE).put("platform", "android"))
+    }
+
+    private fun registerCalls() {
+        context.register("echo") { params, reply ->
+            reply.success(JSONObject().put("echo", (params as JSONObject).opt("value")).put("thread", threadName()).put("language", LANGUAGE))
+        }
+
+        // Handlers registered with the BACKGROUND threading share one background thread of the haylen library.
+        context.register("compute", { params, reply ->
+            val primes = countPrimes((params as JSONObject).getInt("limit"))
+            reply.success(JSONObject().put("primes", primes).put("thread", threadName()).put("detail", "the thread " + Thread.currentThread().name).put("language", LANGUAGE))
+        }, HaylenBridge.Threading.BACKGROUND)
+
+        context.register("fail") { _, reply ->
+            reply.failure("The native demo failed on purpose.", "demoFailure", JSONObject().put("reason", "requested").put("language", LANGUAGE))
+        }
+
+        // The call never answers by itself, so only a cancel or a timeout of the app ends it, and the plugin tells the app that it heard it.
+        context.register("wait") { params, reply ->
+            val token = (params as JSONObject).getInt("token")
+            reply.onCancel { context.emit("waitCancelled", JSONObject().put("token", token).put("language", LANGUAGE)) }
+        }
+
+        context.register("config") { _, reply -> reply.success(context.config()) }
+
+        // Every app that loads the Lua API sends start. The plugin ends what an earlier app of the process left running and hands the new app the error that stopped the earlier one.
+        context.register("start") { _, reply ->
+            stopTicking()
+            banner?.remove()
+            banner = null
+            lastError?.let { context.emitRetained("lastError", it) }
+            lastError = null
+            reply.success(null)
+        }
+    }
+
+    private fun registerEvents() {
+        context.register("ticks") { params, reply ->
+            val enabled = (params as JSONObject).getBoolean("enabled")
+            val interval = params.getDouble("interval")
+            stopTicking()
+            if (enabled) {
+                ticks = 0
+                val delay = (interval * 1000).toLong()
+                val tick = object : Runnable {
+                    override fun run() {
+                        ticks += 1
+                        context.emit("tick", JSONObject().put("count", ticks).put("thread", threadName()).put("language", LANGUAGE))
+                        mainThread.postDelayed(this, delay)
+                    }
+                }
+                ticker = tick
+                mainThread.postDelayed(tick, delay)
+            }
+            reply.success(JSONObject().put("enabled", enabled).put("interval", interval))
+        }
+    }
+
+    private fun stopTicking() {
+        ticker?.let { mainThread.removeCallbacks(it) }
+        ticker = null
+    }
+
+    private fun registerBanner() {
+        context.register("showBanner") { params, reply ->
+            val json = params as JSONObject
+            val anchor = when (json.getString("anchor")) {
+                "top" -> HaylenPlacement.Anchor.TOP
+                "bottom" -> HaylenPlacement.Anchor.BOTTOM
+                else -> throw HaylenBridge.Failure("The anchor of the banner is top or bottom, not ${json.getString("anchor")}.", "invalidAnchor", null)
+            }
+            val placement = HaylenPlacement(anchor)
+            placement.reserve = json.getBoolean("reserve")
+            placement.widthDp = NativeDemoBanner.WIDTH_DP
+            placement.heightDp = NativeDemoBanner.HEIGHT_DP
+            val activity = context.activity() ?: throw HaylenBridge.Failure("The app has no activity yet.", "noWindow", null)
+            val current = banner
+            if (current == null) {
+                banner = NativeDemoBanner(activity, context.config().getString("greeting"), bannerColor(), context.overlay(), placement) {
+                    bannerTaps += 1
+                    context.emit("bannerTapped", JSONObject().put("count", bannerTaps).put("language", LANGUAGE))
+                }
+            } else {
+                current.place(placement)
+            }
+            bannerState = JSONObject().put("anchor", json.getString("anchor")).put("reserve", placement.reserve).put("visible", banner!!.isVisible)
+            reply.success(bannerState)
+        }
+
+        context.register("setBannerVisible") { params, reply ->
+            val current = banner ?: throw HaylenBridge.Failure("No banner shows. Call showBanner first.", "noBanner", null)
+            current.isVisible = (params as JSONObject).getBoolean("visible")
+            bannerState.put("visible", current.isVisible)
+            reply.success(bannerState)
+        }
+
+        context.register("removeBanner") { _, reply ->
+            banner?.remove()
+            banner = null
+            reply.success(null)
+        }
+    }
+
+    // The native screen covers the app while it shows, so the app stands still and stays silent until Close ends the cover. The document picker is an activity of its own, which pauses the app the usual way.
+    private fun registerScreens() {
+        context.register("showScreen") { params, reply ->
+            val activity = context.activity() ?: throw HaylenBridge.Failure("The app has no activity yet.", "noWindow", null)
+            val title = (params as JSONObject).optString("title", "Native screen")
+            val color = bannerColor()
+            val started = SystemClock.elapsedRealtime()
+            context.coverApp()
+            NativeDemoScreen(activity, title, color) {
+                context.uncoverApp()
+                reply.success(JSONObject().put("seconds", (SystemClock.elapsedRealtime() - started) / 1000.0))
+            }.show()
+        }
+
+        context.register("pickFile") { _, reply ->
+            val activity = context.activity() ?: throw HaylenBridge.Failure("The app has no activity yet.", "noWindow", null)
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*")
+            try {
+                activity.startActivityForResult(intent, PICK_REQUEST)
+                picking = reply
+            } catch (missing: ActivityNotFoundException) {
+                reply.failure("No app on this device picks documents.", "unsupported", null)
+            }
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
+        if (requestCode != PICK_REQUEST) {
+            return false
+        }
+        val reply = picking ?: return true
+        picking = null
+        val uri = data?.data
+        if (resultCode != Activity.RESULT_OK || uri == null) {
+            reply.success(null)
+            return true
+        }
+        val name = displayName(uri)
+        if (name == null) {
+            reply.failure("The picked document has no name.", "noName", null)
+        } else {
+            reply.success(JSONObject().put("name", name))
+        }
+        return true
+    }
+
+    private fun displayName(uri: Uri): String? {
+        val activity = context.activity() ?: return null
+        return activity.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) cursor.getString(0) else null
+        }
+    }
+
+    // A link that launches the app arrives with the intent of the new activity, and one that reaches the running app arrives as a new intent. The retained event waits for the first listener either way.
+    override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
+        if (savedInstanceState == null) {
+            openUrl(activity.intent)
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        openUrl(intent)
+    }
+
+    private fun openUrl(intent: Intent?) {
+        val url = intent?.data ?: return
+        if (intent.action == Intent.ACTION_VIEW && url.scheme == context.config().getString("urlScheme")) {
+            context.emitRetained("urlOpened", JSONObject().put("url", url.toString()))
+        }
+    }
+
+    // The activity takes the panels of the overlay with it, so a new activity starts without a banner.
+    override fun onActivityDestroyed(activity: Activity) {
+        banner = null
+    }
+
+    // The error screen of the app shows this error. The plugin keeps it and hands it to the next app when that app sends start.
+    override fun onAppError(error: JSONObject) {
+        lastError = JSONObject().put("message", error.optString("message")).put("file", error.optString("file")).put("line", error.optInt("line")).put("language", LANGUAGE)
+    }
+
+    private fun bannerColor(): Int {
+        val text = context.config().getString("bannerColor")
+        if (!COLOR.matches(text)) {
+            throw HaylenBridge.Failure("The bannerColor parameter must be a color as #RRGGBB, not $text.", "invalidColor", null)
+        }
+        return Color.parseColor(text)
+    }
+
+    private companion object {
+        const val LANGUAGE = "Kotlin"
+        const val PICK_REQUEST = 0x4E44
+        val COLOR = Regex("#[0-9A-Fa-f]{6}")
+
+        fun threadName(): String = if (Looper.myLooper() == Looper.getMainLooper()) "main" else "background"
+
+        fun countPrimes(limit: Int): Int {
+            if (limit <= 2) {
+                return 0
+            }
+            val composite = BooleanArray(limit)
+            var count = 0
+            for (number in 2 until limit) {
+                if (composite[number]) {
+                    continue
+                }
+                count += 1
+                var multiple = number.toLong() * number
+                while (multiple < limit) {
+                    composite[multiple.toInt()] = true
+                    multiple += number
+                }
+            }
+            return count
+        }
+    }
+}

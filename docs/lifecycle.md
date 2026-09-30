@@ -52,7 +52,7 @@ The platform moves the app between three states, which `haylen.appState()` retur
 | `'inactive'` | Still visible, but the window lost the focus, the system interrupted the app, such as with a phone call, or native UI of a plugin covers it. | `appInactive` |
 | `'background'` | Hidden, such as a minimized window, another app on a phone or a hidden browser tab. | `appBackground` |
 
-On the web the page tells the engine: a hidden tab (`visibilitychange`) sends the app to `'background'` and a visible one brings it back, and a page that goes away (`pagehide`) makes the files of [haylen.storage](lua-api/storage.md) durable once more. On Android the app holds the audio focus while it is in the foreground, and another app that takes it, for a phone call or an alarm, interrupts the app, which stays `'inactive'` until the focus comes back, even when its window has the focus.
+On the web the page tells the engine: the window of the page losing the focus makes the app `'inactive'`, while the focus moving between the canvas and other elements of the page, such as the buttons of a plugin dialog, changes nothing, a hidden tab (`visibilitychange`) sends the app to `'background'` and a visible one brings it back, and a page that goes away (`pagehide`) makes the files of [haylen.storage](lua-api/storage.md) durable once more. On Android the app holds the audio focus while it is in the foreground, and another app that takes it, for a phone call or an alarm, interrupts the app, which stays `'inactive'` until the focus comes back, even when its window has the focus.
 
 The engine takes care of what every app needs when the state changes.
 

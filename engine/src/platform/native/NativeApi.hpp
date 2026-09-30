@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "haylen/core/Json.hpp"
 #include "haylen/platform/native/HaylenNative.h"
 
 namespace haylen::platform {
@@ -27,6 +28,9 @@ class NativeApi final {
     // The ids of the plugins whose native part a library declared, in the order of their ids.
     [[nodiscard]] static std::vector<std::string> getPlugins();
 
+    // Hands the report of an error that stopped the app to the error handlers of the libraries, in the order they registered. Runs on the frame thread.
+    static void reportError(const core::Json& report);
+
   private:
     struct Handler {
         HaylenNativeHandler handler = nullptr;
@@ -34,11 +38,19 @@ class NativeApi final {
         void* user = nullptr;
     };
 
+    struct ErrorHandler {
+        HaylenNativeErrorHandler handler = nullptr;
+        void* user = nullptr;
+
+        friend bool operator==(const ErrorHandler&, const ErrorHandler&) = default;
+    };
+
     static void emit(const char* event, const char* payloadJson, int retain);
     static void resolve(std::uint64_t call, int ok, const char* resultJson);
     static void registerHandler(const char* method, HaylenNativeHandler handler, HaylenNativeCancel cancel, void* user);
     static void log(int level, const char* text);
     static void registerPlugin(const char* id);
+    static void registerErrorHandler(HaylenNativeErrorHandler handler, void* user);
 
     [[nodiscard]] static std::optional<Handler> find(std::string_view method);
 
@@ -46,6 +58,7 @@ class NativeApi final {
     static std::mutex& mutex;
     static std::unordered_map<std::string, Handler>& handlers;
     static std::set<std::string, std::less<>>& plugins;
+    static std::vector<ErrorHandler>& errorHandlers;
 };
 
 } // namespace haylen::platform

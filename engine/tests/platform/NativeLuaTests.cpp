@@ -12,6 +12,7 @@
 
 #include "haylen/core/Application.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/Json.hpp"
 #include "haylen/lua/Application.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/Runtime.hpp"
@@ -238,7 +239,7 @@ TEST_F(NativeLuaTest, GivesLibrariesTheInterfaceOfTheEngine) {
     // The library announced itself with a retained event, which waits for a listener that connects late.
     fixture.runLua("platform.on('native_test.ready', function(payload) ready = payload end)");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return ready ~= nil") == "true"; }));
-    EXPECT_EQ(fixture.lua("return ready.version .. ' ' .. ready.origin"), "2 dynamic");
+    EXPECT_EQ(fixture.lua("return ready.version .. ' ' .. ready.origin"), "3 dynamic");
     EXPECT_EQ(fixture.lua("return failed.message .. ' ' .. failed.code .. ' ' .. failed.data.reason"), "The native test failed on purpose. native_test_failure requested");
     EXPECT_EQ(fixture.lua("return tostring(failed) .. ' | ' .. ('error: ' .. failed) .. ' | ' .. (failed .. '!')"), "The native test failed on purpose. | error: The native test failed on purpose. | The native test failed on purpose.!");
 
@@ -246,6 +247,27 @@ TEST_F(NativeLuaTest, GivesLibrariesTheInterfaceOfTheEngine) {
     EXPECT_EQ(fixture.lua("return givenUp"), "timeout cancelled true false true");
     EXPECT_EQ(fixture.lua("return cancelled[1] == timedId and cancelled[2] == givenId"), "true");
     EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+TEST_F(NativeLuaTest, HandsTheErrorsThatStopAppsToLibraries) {
+    const std::string declarations = "ffi.cdef[[ int32_t native_test_error_count(void); const char* native_test_last_error(void); ]] before = lib.native_test_error_count()";
+    {
+        test::EngineFixture fixture;
+        prepare(fixture);
+        fixture.runLua("native.load('native_test', {init = 'native_test_haylen_init'}) native.load('native_test', {init = 'native_test_haylen_init'}) " + declarations);
+        fixture.runLua("require('haylen').reportError('the first app failed')");
+        ASSERT_NE(fixture.engine().getError(), nullptr);
+        EXPECT_EQ(fixture.lua("return lib.native_test_error_count() - before"), "1") << "a handler that registered twice hears an error once";
+        EXPECT_EQ(core::Json::parse(fixture.lua("return ffi.string(lib.native_test_last_error())")), fixture.engine().getError()->toJson());
+    }
+
+    // The handler belongs to the process, so it hears the errors of the next app without registering again.
+    test::EngineFixture restarted;
+    prepare(restarted);
+    restarted.runLua(declarations);
+    restarted.runLua("require('haylen').reportError('the next app failed')");
+    EXPECT_EQ(restarted.lua("return lib.native_test_error_count() - before"), "1");
+    EXPECT_EQ(core::Json::parse(restarted.lua("return ffi.string(lib.native_test_last_error())")).at("message"), "the next app failed");
 }
 
 TEST_F(NativeLuaTest, ExplainsWhyALibraryDidNotLoad) {

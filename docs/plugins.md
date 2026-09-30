@@ -2,7 +2,7 @@
 
 A plugin gives Lua apps a capability that each platform implements natively, such as ads, analytics, sign-in or purchases. It is a folder with a manifest, `plugin.json`, a Lua API under `source/` and a native part for each platform it supports: Swift or Objective-C sources with Swift packages for Apple platforms, a Gradle library module for Android, ES modules for the web and a CMake library for desktops. The Lua API is the same on every platform. An app lists the plugins it uses in its `app.json`, and make.py checks them, puts their Lua code into the package and assembles their native parts into the project of each platform, so an app still never compiles the engine.
 
-These plugins are distributable folders, not the engine plugins of `haylen::plugins`, which are the C++ subsystems that make up the engine. Plugins that bring third-party SDKs, such as ads, analytics, crash reporting, sign-in or purchases, live in their own repositories under [haylen-org](https://github.com/haylen-org), and apps add them with `make.py plugin add` and the address of the repository. The engine repository holds no third-party SDK: the demo plugin of the plugins sample, built on platform APIs alone, exercises every capability a plugin uses.
+These plugins are distributable folders, not the engine plugins of `haylen::plugins`, which are the C++ subsystems that make up the engine. Plugins that bring third-party SDKs, such as ads, analytics, crash reporting, sign-in or purchases, live in their own repositories under [haylen-org](https://github.com/haylen-org), and apps add them with `make.py plugin add` and the address of the repository. The engine repository holds no third-party SDK: [the demo plugin of the plugins sample](#demo-plugin-and-sample), built on platform APIs alone, exercises every capability a plugin uses.
 
 ## Using plugins
 
@@ -284,7 +284,7 @@ Native UI that covers the app, such as a full screen ad, a consent form, a sign-
 
 ### Errors of the app
 
-Every error that stops the app, the one its error screen shows, reaches the native parts of plugins as `{message, file, line, traceback, frames}`, where `frames` lists `{source, line, function, kind}` from the innermost call outward with the kind `lua`, `c` or `main`, the shape the web page receives in `onError`. A crash reporter records it as a non-fatal error with the stack of the Lua code. On the web, `context.onAppError(listener)` receives it, on Apple platforms the `appDidFailWithError:` method of the plugin class, and on Android the `onAppError(JSONObject)` method of the plugin class, on the main thread.
+Every error that stops the app, the one its error screen shows, reaches the native parts of plugins as `{message, file, line, traceback, frames}`, where `frames` lists `{source, line, function, kind}` from the innermost call outward with the kind `lua`, `c` or `main`, the shape the web page receives in `onError`. A crash reporter records it as a non-fatal error with the stack of the Lua code. On the web, `context.onAppError(listener)` receives it, on Apple platforms the `appDidFailWithError:` method of the plugin class, and on Android the `onAppError(JSONObject)` method of the plugin class, on the main thread. A native library receives it as JSON text in the handler it gives `registerErrorHandler` of [`HaylenNativeApi`](lua-api/native.md#library-handlers), on the frame thread, which is how the native part of a plugin hears errors on the desktops.
 
 ### Retained events
 
@@ -310,7 +310,7 @@ The web module of a plugin exports `default function load(context)`, which the l
 
 A module may register, emit, cover and place elements from `load` already: the runtime keeps the events until the first app starts and the covers and reservations until the WebAssembly runtime is ready.
 
-The overlay is a layer over the canvas that lets the pointer through, so the app keeps its clicks and touches everywhere but on the elements of plugins, which receive their own. A placement has these fields:
+The overlay is a layer over the canvas that lets the pointer through, so the app keeps its clicks and touches everywhere but on the elements of plugins, which receive their own. Keys belong to the element that has the focus: the app receives the keys of the canvas and the page, while an element of a plugin with the focus, such as the button of a modal dialog, receives its own keys with their default actions, like Escape closing the dialog. The focus moving between the canvas and elements of the page never makes the app inactive, since only the focus of the window of the page does, so an element that should leave the keyboard with the app keeps the focus from moving to it, as a button that calls `preventDefault` on `pointerdown` does. A placement has these fields:
 
 | Field | Default | Meaning |
 | --- | --- | --- |
@@ -735,3 +735,60 @@ Handlers run on the main thread, where they may touch the activity and views. A 
 ### R8
 
 The consumer rules of the engine library keep every class that extends `HaylenPlugin` with its constructor, so the class names of the manifest survive minified release builds, and a plugin needs no rule for its own class. A plugin keeps what its own code or its SDKs reach by reflection in the `consumer-rules.pro` of its module, which its `build.gradle.kts` names with `consumerProguardFiles`, and never adds global options there, since they would change the build of the whole app.
+
+## Demo plugin and sample
+
+The plugins sample, [`samples/system/plugins`](../samples/system/plugins), carries its own plugin, [`native-demo`](../samples/system/plugins/plugins/native-demo), which exercises every capability of this guide with the APIs of each platform alone: UIKit and AppKit on Apple platforms, the views, dialogs and intents of Android, the DOM on the web and the threads of the system in C on the desktops. It is the reference for writing a plugin: each of its parts is a small, complete example of the platform side of one capability, and its [README](../samples/system/plugins/plugins/native-demo/README.md) documents its Lua API the way every plugin documents its own. The [sample README](../samples/system/plugins/README.md) explains its tests and how to run them on each platform.
+
+### The package
+
+| File | What it shows |
+| --- | --- |
+| [`plugin.json`](../samples/system/plugins/plugins/native-demo/plugin.json) | Every platform, four parameters with defaults, `${urlScheme}` in the `CFBundleURLTypes` of `infoPlist` and in the Android placeholder `nativeDemoUrlScheme`, and a `native` library for the desktops. |
+| [`source/init.lua`](../samples/system/plugins/plugins/native-demo/source/init.lua) | The Lua API on the plugin handle, the load of the C library where no other native part loaded, and the `start` call that tells the native part of every new app. |
+| [`apple/`](../samples/system/plugins/plugins/native-demo/apple) | `NativeDemoPlugin.swift`, the plugin class, `NativeDemoBanner.swift`, `NativeDemoScreen.swift` and `NativeDemoPicker.swift`, each for UIKit and AppKit. |
+| [`android/`](../samples/system/plugins/plugins/native-demo/android) | The library module with its manifest and `NativeDemoPlugin.kt`, `NativeDemoBanner.kt` and `NativeDemoScreen.kt`. |
+| [`web/native-demo.js`](../samples/system/plugins/plugins/native-demo/web/native-demo.js) | The web module. |
+| [`native/`](../samples/system/plugins/plugins/native-demo/native) | `CMakeLists.txt` and `NativeDemo.c`, the library of the desktops. |
+
+### The Lua API
+
+`source/init.lua` wraps every method and event of the plugin in a function of its own, so apps never write method names, and reads `handle.native` to tell whether the native part runs. Apple platforms, Android and the web load their native parts before any Lua runs. The desktops run the C library, so on macOS, Windows and Linux, when no other native part loaded, the module calls `native.load('native_demo', {init = 'native_demo_haylen_init'})`, whose init function declares the library the native part of the plugin with `registerPlugin`. That happens once per process, since `handle.native` stays true after a restart, and the macOS app built from the Apple template runs the Swift part instead. The module then sends `start`, which every native part answers by ending what an earlier app of the process left running, the ticks and the banner, and by sending the error that stopped that app as the retained event `lastError`. A plugin that needs to know when a new app starts, since the engine restarts apps inside one process, uses such a call.
+
+### Calls
+
+| Capability | Apple, Swift | Android, Kotlin | Web | Desktops, C |
+| --- | --- | --- | --- | --- |
+| An answer on the main thread, `echo` | `context.registerHandler`, the Objective-C API, which takes any JSON value. | `context.register`, whose handlers run on the main thread. | `context.register`. | `registerHandler` of `HaylenNativeApi`, whose handlers run on the frame thread. |
+| Work off the main thread, `compute` | `context.register` with `Decodable` parameters and an `Encodable` result, awaiting a global dispatch queue. | `context.register` with `HaylenBridge.Threading.BACKGROUND`. | An async handler that yields to the page between slices. | A thread of the library that calls `resolve`. |
+| A typed failure, `fail` | A thrown `HaylenFailure` with a code and data. | `reply.failure(message, code, data)`, or a thrown `HaylenBridge.Failure`. | A thrown error with `code` and `data`. | `resolve` with `ok` 0 and an object with `message`, `code` and `data`. |
+| Cancellation, `wait` | The task of the call is cancelled, which ends `Task.sleep`. | `reply.onCancel`. | The `abort` event of the `signal` of the call. | The cancel function of `registerHandler`. |
+| An unsupported call | `HaylenFailure` with the code `unsupported`, for `pickFile` on tvOS. | | | `resolve` with the code `unsupported`, for the banner, the screen, the picker and the parameters. |
+
+### Events
+
+`tick` comes from a `Timer` on the main run loop on Apple platforms, a `Runnable` posted to the main `Handler` on Android, `setInterval` on the web and a thread of the library on the desktops, which each send with `context.emit`, `HaylenNativeApi.emit` or their equivalent from their thread. `loaded` goes out retained from `load(with:)`, `onLoad`, `load(context)` and the init function, before any app listens, and waits for the first listener of the process, which the sample connects only when its Events test opens.
+
+### Parameters
+
+The native parts read their parameters from the context, `context.config` on Apple platforms and the web and `context.config()` on Android, with the defaults of `plugin.json` applied, and `nativeConfig` answers with them. Native libraries receive no parameters, so the Lua API passes what the C library needs in its calls, such as the interval of `ticks`, and the C part fails `config` with the code `unsupported`.
+
+### Views over the app
+
+The banner is a native view that the overlay of the context places at the top or the bottom of the safe area, 360 by 56 points, dp or page pixels, with `reserve` set or not: `context.overlay.add(view, placement:)` with a `HaylenPlacement` on Apple platforms, `context.overlay().add(view, placement)` on Android, which puts it in a panel window of its own, and `context.overlay.add(element, placement)` on the web. `update`, the visibility and `remove` of the item it returns move, hide and remove the banner, and a native button inside it sends `bannerTapped`. The sample shows that its frame, laid out in the safe area, moves out of the way of a banner that reserves its edge, and that taps outside the banner reach the app.
+
+### Covering the app
+
+The native screen is a `UIViewController` presented full screen on iOS, iPadOS, Mac Catalyst and tvOS, a sheet of the window on macOS, a full screen `Dialog` on Android and a modal `<dialog>` element on the web. Each part calls `coverApp` right before it shows and `uncoverApp` once it closed, with `defer` in Swift and `finally` in JavaScript, and answers the call after the cover ended. The file picker of Apple platforms covers the app the same way, while the document picker of Android is an activity of its own, which pauses the app through its lifecycle.
+
+### Native results
+
+`pickFile` shows the platform side of a result: `startActivityForResult` with `ACTION_OPEN_DOCUMENT` on Android, where `onActivityResult` of the plugin class answers the call for its own request code, a `UIDocumentPickerViewController` that is its own delegate on iOS, iPadOS and Mac Catalyst, `NSOpenPanel` on macOS and an `<input type="file">` with its `change` and `cancel` events on the web. A cancelled picker answers `nil`.
+
+### Links and errors of the app
+
+The scheme of `urlScheme` opens the app. On Apple platforms `scene(_:openURLContexts:)` and `application(_:open:)` receive the links, including the one that launched the app, and on Android `onActivityCreated` receives the intent that launched the activity and `onNewIntent` the ones that reach it later. Each part sends `urlOpened` retained, so a link that launched the app waits for the first listener. The web stands in with the hash of the page address. The errors of the app reach `appDidFail(with:)`, `onAppError`, `context.onAppError` and the handler of `registerErrorHandler`, which keep the message until the next app sends `start`.
+
+### Testing without the native part
+
+The headless host of the engine tests loads no native parts, so `platform.plugins()` reports the plugin with `native` false and the sample shows `The native part is not available on this platform.` in every test that needs it, which is how a plugin with a Lua API of its own keeps an app running where its native part is missing.
