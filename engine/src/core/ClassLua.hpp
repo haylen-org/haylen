@@ -6,7 +6,7 @@ struct lua_State;
 
 namespace haylen::core {
 
-// Provides haylen.class, the helper for app-wide Lua classes: named classes with inheritance, an init constructor, super, is checks, mixins and a readable __tostring.
+// Provides `haylen.class`, the helper for app-wide Lua classes: named classes with inheritance, an `init` constructor, `super`, `is` checks, mixins and a readable `__tostring`.
 class ClassLua final {
   public:
     // Pushes the class function, which is created once per Lua state.

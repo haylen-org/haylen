@@ -28,7 +28,7 @@ struct NineSlice {
     [[nodiscard]] static NineSlice fromBorders(graphics::Texture image, math::Rect source, math::Insets borders);
     [[nodiscard]] static NineSlice fromPieces(graphics::Texture image, const std::array<math::Rect, 9>& regions);
 
-    // Resolves the fill names "stretch" and "tile".
+    // Resolves the fill names `stretch` and `tile`.
     [[nodiscard]] static std::optional<Fill> fillFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view fillName(Fill value) noexcept;
 

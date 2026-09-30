@@ -7,7 +7,7 @@
 
 namespace haylen::navigation2d {
 
-// A moving body for steering behaviors. Each behavior returns the velocity change it wants, and apply turns the velocity toward the sum of those changes.
+// A moving body for steering behaviors. Each behavior returns the velocity change it wants, and `apply` turns the velocity toward the sum of those changes.
 struct SteeringAgent {
     math::Vec2 position;
     math::Vec2 velocity;
@@ -32,7 +32,7 @@ struct SteeringAgent {
     // Swerves around the closest circle that the path ahead of the agent enters within the look-ahead distance, sideways and harder the closer it is, the obstacle avoidance of Reynolds. Circles should include the radius of the agent.
     [[nodiscard]] math::Vec2 avoid(std::span<const math::Circle> obstacles, float lookAhead) const noexcept;
 
-    // Changes the velocity by the wanted amount at up to maxForce per second, caps the speed at maxSpeed and moves the agent.
+    // Changes the velocity by the wanted amount at up to `maxForce` per second, caps the speed at `maxSpeed` and moves the agent.
     void apply(math::Vec2 force, float deltaSeconds) noexcept;
 };
 

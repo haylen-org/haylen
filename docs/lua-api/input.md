@@ -8,7 +8,7 @@ local input = require('haylen.input')
 
 ## Frame timing
 
-The engine updates device state and the action map once at the start of every frame from the events that arrived before it. States such as `keyPressed`, `mouseReleased`, `gamepadPressed` and the action `pressed` stay true for that whole frame, in every scene callback, and are false again on the next frame. Read edges in `update`, because `fixedUpdate` can run zero or several times in one frame. Positions are in design coordinates, the coordinate space set by `design` in `app.json`.
+The engine updates device state and the action map once at the start of every frame from the events that arrived before it. States such as `keyPressed`, `mouseReleased`, `gamepadPressed` and the action `pressed` stay `true` for that whole frame, in every scene callback, and are `false` again on the next frame. Read edges in `update`, because `fixedUpdate` can run zero or several times in one frame. Positions are in design coordinates, the coordinate space set by `design` in `app.json`.
 
 ## Keyboard
 
@@ -16,7 +16,7 @@ Keys are named with the strings listed in [Key names](#key-names). An unknown na
 
 ### input.keyDown(key)
 
-Returns true while the key is held.
+Returns `true` while the key is held.
 
 ```lua
 local input = require('haylen.input')
@@ -33,7 +33,7 @@ scene.push({
 
 ### input.keyPressed(key)
 
-Returns true in the frame the key went down. Key repeat from holding a key does not count as a new press.
+Returns `true` in the frame the key went down. Key repeat from holding a key does not count as a new press.
 
 ```lua
 local input = require('haylen.input')
@@ -50,7 +50,7 @@ scene.push({
 
 ### input.keyReleased(key)
 
-Returns true in the frame the key went up. Keys held when the window loses focus or the app is suspended are released in that frame.
+Returns `true` in the frame the key went up. Keys held when the window loses focus or the app is suspended are released in that frame.
 
 ```lua
 local input = require('haylen.input')
@@ -67,7 +67,7 @@ scene.push({
 
 ### input.anyKeyPressed()
 
-Returns true when any key went down in this frame, which suits title screens.
+Returns `true` when any key went down in this frame, which suits title screens.
 
 ```lua
 local input = require('haylen.input')
@@ -122,7 +122,7 @@ scene.push({
 
 ### input.keyCaptured(key)
 
-Returns true while the current press of a key belongs to the interface of [haylen.ui](ui.md), such as the Escape that closes a combo list or a key typed into a text field, as the [input guide](../input.md#ui-and-gameplay-input) lists. The press stays with the interface until the key is released, and meanwhile `key:` bindings of the [action map](#action-map) read it as up. The raw keyboard functions keep reporting the key.
+Returns `true` while the current press of a key belongs to the interface of [`haylen.ui`](ui.md), such as the Escape that closes a combo list or a key typed into a text field, as the [input guide](../input.md#ui-and-gameplay-input) lists. The press stays with the interface until the key is released, and meanwhile `key:` bindings of the [action map](#action-map) read it as up. The raw keyboard functions keep reporting the key.
 
 ```lua
 local input = require('haylen.input')
@@ -143,7 +143,7 @@ Mouse buttons are named `'left'`, `'right'` and `'middle'`, and the button argum
 
 ### input.mouseDown(button)
 
-Returns true while the mouse button is held.
+Returns `true` while the mouse button is held.
 
 ```lua
 local input = require('haylen.input')
@@ -160,7 +160,7 @@ scene.push({
 
 ### input.mousePressed(button)
 
-Returns true in the frame the mouse button went down.
+Returns `true` in the frame the mouse button went down.
 
 ```lua
 local input = require('haylen.input')
@@ -177,7 +177,7 @@ scene.push({
 
 ### input.mouseReleased(button)
 
-Returns true in the frame the mouse button went up.
+Returns `true` in the frame the mouse button went up.
 
 ```lua
 local input = require('haylen.input')
@@ -194,7 +194,7 @@ scene.push({
 
 ### input.mousePosition()
 
-Returns the mouse position in design coordinates as two numbers. Convert it to world coordinates with `camera:screenToWorld()` from [haylen.graphics2d](graphics2d.md), which takes design coordinates and accounts for the camera viewport.
+Returns the mouse position in design coordinates as two numbers. Convert it to world coordinates with `camera:screenToWorld()` from [`haylen.graphics2d`](graphics2d.md), which takes design coordinates and accounts for the camera viewport.
 
 ```lua
 local input = require('haylen.input')
@@ -274,7 +274,7 @@ scene.push({
 
 ### input.mouseInside()
 
-Returns true while the mouse is inside the window.
+Returns `true` while the mouse is inside the window.
 
 ```lua
 local input = require('haylen.input')
@@ -289,7 +289,7 @@ scene.push({
 
 ### input.pointerCaptured()
 
-Returns true while the interface of [haylen.ui](ui.md) owns the pointer, which is what `ui.usingPointer()` reported at the end of the previous frame. Meanwhile `mouse:` bindings of the [action map](#action-map) read as released, so a click on a menu button never swings a sword bound to `mouse:left`. The raw mouse functions above keep reporting the buttons, and virtual buttons of touch controls keep driving their actions.
+Returns `true` while the interface of [`haylen.ui`](ui.md) owns the pointer, which is what `ui.usingPointer()` reported at the end of the previous frame. Meanwhile `mouse:` bindings of the [action map](#action-map) read as released, so a click on a menu button never swings a sword bound to `mouse:left`. The raw mouse functions above keep reporting the buttons, and virtual buttons of touch controls keep driving their actions.
 
 ```lua
 local input = require('haylen.input')
@@ -316,7 +316,7 @@ Returns a list of the fingers on the screen, including fingers that lifted in th
 | `x`, `y` | number | Current position in design coordinates. |
 | `startX`, `startY` | number | Where the finger landed. |
 | `dx`, `dy` | number | Movement since the previous frame, adding up every move the frame received. |
-| `phase` | string | `'began'`, `'moved'`, `'stationary'`, `'ended'` or `'cancelled'`. |
+| `phase` | string | One of `'began'`, `'moved'`, `'stationary'`, `'ended'` or `'cancelled'`. |
 | `duration` | number | Seconds since the finger landed. |
 
 A finger that lands and moves in the same frame keeps the `'began'` phase for that frame. Fingers in the `'ended'` or `'cancelled'` phase leave the list on the next frame. A platform may give a new finger the identifier of a finger that lifted in the same frame, and then the list holds both for that frame, the lifted finger first.
@@ -372,7 +372,7 @@ Returns a list of the gestures recognized in this frame. Each gesture is a table
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `type` | string | `'tap'`, `'doubleTap'`, `'longPress'`, `'swipe'` or `'pinch'`. |
+| `type` | string | One of `'tap'`, `'doubleTap'`, `'longPress'`, `'swipe'` or `'pinch'`. |
 | `x`, `y` | number | Where the gesture happened in design coordinates. A pinch reports the center between the two fingers. |
 | `dx`, `dy` | number | The movement of a swipe, from where the finger landed to where it lifted. Other gestures report 0. |
 | `scale` | number | The spread of a pinch divided by the spread when the second finger landed. Other gestures report 1. |
@@ -410,7 +410,7 @@ scene.push({
 
 ### input.setGestureSettings(settings)
 
-Changes the thresholds of gesture recognition. Only the fields present change, and unknown keys raise `Unknown option '<key>'.`. Distances are in design units and times in seconds.
+Changes the thresholds of gesture recognition. Only the fields present change, and unknown keys raise `Unknown option "<key>".`. Distances are in design units and times in seconds.
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -446,7 +446,7 @@ Up to four gamepads are tracked. Gamepad indices start at 1, default to 1 and ra
 
 ### input.gamepadConnected(index)
 
-Returns true when a gamepad is connected at the index. The `gamepadConnected` and `gamepadDisconnected` events of [haylen.events](events.md#engine-events) announce the changes with the index and the name.
+Returns `true` when a gamepad is connected at the index. The `gamepadConnected` and `gamepadDisconnected` events of [`haylen.events`](events.md#engine-events) announce the changes with the index and the name.
 
 ```lua
 local input = require('haylen.input')
@@ -470,7 +470,7 @@ print(input.gamepadName(1))
 
 ### input.gamepadDown(button, index)
 
-Returns true while the button is held.
+Returns `true` while the button is held.
 
 ```lua
 local input = require('haylen.input')
@@ -487,7 +487,7 @@ scene.push({
 
 ### input.gamepadPressed(button, index)
 
-Returns true in the frame the button went down.
+Returns `true` in the frame the button went down.
 
 ```lua
 local input = require('haylen.input')
@@ -504,7 +504,7 @@ scene.push({
 
 ### input.gamepadReleased(button, index)
 
-Returns true in the frame the button went up.
+Returns `true` in the frame the button went up.
 
 ```lua
 local input = require('haylen.input')
@@ -521,7 +521,7 @@ scene.push({
 
 ### input.gamepadButtonCaptured(button, index)
 
-Returns true while the current press of a gamepad button belongs to the interface, such as the east button that closes a popup, and `button:` bindings read it as up meanwhile. `index` picks the gamepad from 1 to 4 and defaults to 1.
+Returns `true` while the current press of a gamepad button belongs to the interface, such as the east button that closes a popup, and `button:` bindings read it as up meanwhile. The argument `index` picks the gamepad from 1 to 4 and defaults to 1.
 
 ```lua
 local input = require('haylen.input')
@@ -617,11 +617,11 @@ The action map gives names to gameplay actions and binds each one to any number 
 
 | Type | Bindings | Reports |
 | --- | --- | --- |
-| `'button'` | `bindings` | `value` is the strongest binding from 0 to 1. The action is down while the value is at least the press threshold, 0.5 by default. |
-| `'axis'` | `positive` and `negative` | `value` is the strongest positive binding minus the strongest negative binding, from -1 to 1. The action is down while the absolute value is at least the press threshold. |
-| `'vector'` | `up`, `down`, `left`, `right` and stick bindings in `bindings` | `vector` is right minus left and down minus up, plus every stick binding, limited to a length of 1. `value` is the length, and the action is down while it is at least the press threshold. |
+| `'button'` | `bindings` | The field `value` is the strongest binding from 0 to 1. The action is down while the value is at least the press threshold, 0.5 by default. |
+| `'axis'` | `positive` and `negative` | The field `value` is the strongest positive binding minus the strongest negative binding, from -1 to 1. The action is down while the absolute value is at least the press threshold. |
+| `'vector'` | `up`, `down`, `left`, `right` and stick bindings in `bindings` | The field `vector` is right minus left and down minus up, plus every stick binding, limited to a length of 1. The field `value` is the length, and the action is down while it is at least the press threshold. |
 
-An action takes only the binding lists its type reads, so a `positive` list on a button raises `The button action <name> does not read positive.`, and the `bindings` of a vector action hold only `stick:` and `virtualStick:` bindings, so a key there raises `The vector action <name> takes only sticks in bindings, not key:w.`.
+An action takes only the binding lists its type reads, so a `positive` list on a button raises `The button action "<name>" does not read "positive".`, and the `bindings` of a vector action hold only `stick:` and `virtualStick:` bindings, so a key there raises `The vector action "<name>" takes only sticks in "bindings", not "key:w".`.
 
 Bindings are strings with a source and a name.
 
@@ -635,7 +635,7 @@ Bindings are strings with a source and a name.
 | `virtual:<name>` | A virtual button set with `input.setVirtualButton()` or an on-screen `touchButton`. |
 | `virtualStick:<name>` | A virtual stick set with `input.setVirtualStick()` or an on-screen `touchStick`, for vector actions. |
 
-Gamepad bindings read every connected gamepad and use the strongest one, unless `input.setGamepadIndex()` picks one gamepad. Mouse bindings read as released while the interface owns the pointer, as [input.pointerCaptured()](#inputpointercaptured) explains, and key and gamepad button bindings read as up for a press the interface answers itself, as [input.keyCaptured()](#inputkeycapturedkey) explains. While a scene change holds input back, as the `blockInput` option of [haylen.scene](scene.md) sets, every action reads as up and 0, and an action whose bindings are still held when the change ends stays up until they are released. Action names that were never defined read as not down and 0.
+Gamepad bindings read every connected gamepad and use the strongest one, unless `input.setGamepadIndex()` picks one gamepad. Mouse bindings read as released while the interface owns the pointer, as [`input.pointerCaptured()`](#inputpointercaptured) explains, and key and gamepad button bindings read as up for a press the interface answers itself, as [`input.keyCaptured()`](#inputkeycapturedkey) explains. While a scene change holds input back, as the `blockInput` option of [`haylen.scene`](scene.md) sets, every action reads as up and 0, and an action whose bindings are still held when the change ends stays up until they are released. Action names that were never defined read as not down and 0.
 
 An action map document is a table or a JSON file with an `actions` list. Each action has `name`, `type` and the binding lists its type uses.
 
@@ -651,7 +651,7 @@ An action map document is a table or a JSON file with an `actions` list. Each ac
 
 ### input.loadActions(document)
 
-Replaces the action map with a document, given as a table or as a path to a JSON file in the content folder. Nothing changes when the document is invalid. A document that is not a table with string keys raises `Expected the action map to be a JSON object.`, and an action that is not one raises `Expected an action to be a JSON object.`. Unknown keys raise `Unknown key '<key>' in the action map.` or `Unknown key '<key>' in an action.`, a missing list raises `The action map needs a list of actions.`, an action without a name or type raises `An action needs a name and a type.`, bad types raise `The type of an action must be button, axis or vector, not '<type>'.`, a binding list that is not a list raises `The <list> of an action must be a list of bindings.`, bad bindings raise `The input binding '<binding>' is invalid. Use a binding such as key:space, mouse:left, button:south, axis:leftX+ or stick:left.` and a name used by two actions raises `The action name '<name>' is used by more than one action.` An empty Lua table counts as an empty list.
+Replaces the action map with a document, given as a table or as a path to a JSON file in the content folder. Nothing changes when the document is invalid. A document that is not a table with string keys raises `Expected the action map to be a JSON object.`, and an action that is not one raises `Expected an action to be a JSON object.`. Unknown keys raise `Unknown key "<key>" in the action map.` or `Unknown key "<key>" in an action.`, a missing list raises `The action map needs a list of actions.`, an action without a name or type raises `An action needs a name and a type.`, bad types raise `The type of an action must be "button", "axis" or "vector", not "<type>".`, a binding list that is not a list raises `The "<list>" of an action must be a list of bindings.`, bad bindings raise `The input binding "<binding>" is invalid. Use a binding such as "key:space", "mouse:left", "button:south", "axis:leftX+" or "stick:left".` and a name used by two actions raises `The action name "<name>" is used by more than one action.` An empty Lua table counts as an empty list.
 
 ```lua
 local input = require('haylen.input')
@@ -666,7 +666,7 @@ input.loadActions({actions = {
 
 ### input.saveActions()
 
-Returns the current action map as a document table, in the same format `input.loadActions()` accepts. Use it with [haylen.preferences](preferences.md) to keep rebound controls, or call `preferences.capture()`, which stores it under `input.actions`.
+Returns the current action map as a document table, in the same format `input.loadActions()` accepts. Use it with [`haylen.preferences`](preferences.md) to keep rebound controls, or call `preferences.capture()`, which stores it under `input.actions`.
 
 ```lua
 local input = require('haylen.input')
@@ -746,7 +746,7 @@ input.setPressThreshold(0.3)
 
 ### input.down(action)
 
-Returns true while the action is down.
+Returns `true` while the action is down.
 
 ```lua
 local input = require('haylen.input')
@@ -763,7 +763,7 @@ scene.push({
 
 ### input.pressed(action)
 
-Returns true in the frame the action went down.
+Returns `true` in the frame the action went down.
 
 ```lua
 local input = require('haylen.input')
@@ -780,7 +780,7 @@ scene.push({
 
 ### input.released(action)
 
-Returns true in the frame the action went up.
+Returns `true` in the frame the action went up.
 
 ```lua
 local input = require('haylen.input')
@@ -844,7 +844,7 @@ input.setGamepadIndex(nil)
 
 ## Virtual controls
 
-Virtual buttons and sticks are named inputs that code or on-screen controls write and the action map reads through `virtual:` and `virtualStick:` bindings. The `touchButton` and `touchStick` components of [haylen.ui](ui.md) write them from their `action` property, and an app can write them itself for custom controls. Values written during a frame reach the actions at the start of the next frame.
+Virtual buttons and sticks are named inputs that code or on-screen controls write and the action map reads through `virtual:` and `virtualStick:` bindings. The `touchButton` and `touchStick` components of [`haylen.ui`](ui.md) write them from their `action` property, and an app can write them itself for custom controls. Values written during a frame reach the actions at the start of the next frame.
 
 ### input.setVirtualButton(name, down)
 
@@ -914,19 +914,19 @@ A scene with an `event(self, e)` callback receives every platform event as a tab
 
 | Type | Fields |
 | --- | --- |
-| `'keyDown'`, `'keyUp'` | `key` is the key name, or `'unknown'` for keys without one. `repeat` is true for repeats generated by holding a key. |
-| `'character'` | `character` is the typed character as a UTF-8 string. |
-| `'mouseDown'`, `'mouseUp'` | `button` is the mouse button name. `x` and `y` are the mouse position. |
-| `'mouseMove'` | `x` and `y` are the mouse position. `dx` and `dy` are the movement of this event, which keeps coming while the mouse is locked. |
-| `'mouseScroll'` | `scrollX` and `scrollY` are the wheel movement. |
-| `'touchBegan'`, `'touchMoved'`, `'touchEnded'`, `'touchCancelled'` | `touches` is a list of every finger with `id`, `x`, `y` and `changed`, which is true for the fingers this event is about. |
-| `'textEdited'` | `field` is the id of the text field of the UI and `text` what its native field holds. |
-| `'textAction'` | `field` is the id of the text field and `action` is `'submit'`, `'next'`, `'cancel'` or `'dismissed'`. |
-| `'keyboardChanged'` | `frame` is the rectangle the on-screen keyboard covers, empty while it is hidden. |
-| `'networkChanged'` | `online` is whether the device has a network. |
+| `'keyDown'`, `'keyUp'` | The field `key` is the key name, or `'unknown'` for keys without one. The field `repeat` is `true` for repeats generated by holding a key. |
+| `'character'` | The field `character` is the typed character as a UTF-8 string. |
+| `'mouseDown'`, `'mouseUp'` | The field `button` is the mouse button name. The fields `x` and `y` are the mouse position. |
+| `'mouseMove'` | The fields `x` and `y` are the mouse position. The fields `dx` and `dy` are the movement of this event, which keeps coming while the mouse is locked. |
+| `'mouseScroll'` | The fields `scrollX` and `scrollY` are the wheel movement. |
+| `'touchBegan'`, `'touchMoved'`, `'touchEnded'`, `'touchCancelled'` | The field `touches` is a list of every finger with `id`, `x`, `y` and `changed`, which is `true` for the fingers this event is about. |
+| `'textEdited'` | The field `field` is the id of the text field of the UI and `text` what its native field holds. |
+| `'textAction'` | The field `field` is the id of the text field and `action` is `'submit'`, `'next'`, `'cancel'` or `'dismissed'`. |
+| `'keyboardChanged'` | The field `frame` is the rectangle the on-screen keyboard covers, empty while it is hidden. |
+| `'networkChanged'` | The field `online` is whether the device has a network. |
 | `'mouseEnter'`, `'mouseLeave'`, `'resized'`, `'suspended'`, `'resumed'`, `'focusGained'`, `'focusLost'`, `'quitRequested'`, `'lowMemory'`, `'interruptionBegan'`, `'interruptionEnded'` | No other fields. |
 
-`repeat` is a Lua keyword, so read it as `e['repeat']`.
+The name `repeat` is a Lua keyword, so read it as `e['repeat']`.
 
 ```lua
 local scene = require('haylen.scene')
@@ -983,19 +983,19 @@ scene.push({
 | --- | --- |
 | `unknown value '<name>'` | A key, mouse button, gamepad button or gamepad axis name does not exist. It comes inside a bad argument error. |
 | `gamepad index out of range` | A gamepad index is outside 1 to 4. It comes inside a bad argument error. |
-| `expected left or right` | `input.gamepadStick()` received another side. It comes inside a bad argument error. |
-| `Unknown option '<key>'.` | `input.setGestureSettings()` received an unknown field. |
-| `The gamepad dead zone must be at least 0 and below 1.` | `input.setGamepadDeadzone()` received a value outside that range. |
-| `The press threshold must be above 0 and at most 1.` | `input.setPressThreshold()` received a value outside that range. |
+| `expected left or right` | The function `input.gamepadStick()` received another side. It comes inside a bad argument error. |
+| `Unknown option "<key>".` | The function `input.setGestureSettings()` received an unknown field. |
+| `The gamepad dead zone must be at least 0 and below 1.` | The function `input.setGamepadDeadzone()` received a value outside that range. |
+| `The press threshold must be above 0 and at most 1.` | The function `input.setPressThreshold()` received a value outside that range. |
 | `Expected the action map to be a JSON object.` | An action map document is not a table with string keys. |
 | `Expected an action to be a JSON object.` | An entry of the `actions` list is not a table with string keys. |
-| `Unknown key '<key>' in the action map.` | An action map document has a key other than `actions`. |
-| `Unknown key '<key>' in an action.` | An action has a key other than `name`, `type` and the binding lists. |
+| `Unknown key "<key>" in the action map.` | An action map document has a key other than `actions`. |
+| `Unknown key "<key>" in an action.` | An action has a key other than `name`, `type` and the binding lists. |
 | `The action map needs a list of actions.` | An action map document has no `actions` list. |
 | `An action needs a name and a type.` | An action lacks a string `name` or `type`. |
-| `The type of an action must be button, axis or vector, not '<type>'.` | An action type is not `button`, `axis` or `vector`. |
-| `The <list> of an action must be a list of bindings.` | A binding list is not a list. |
-| `The input binding '<binding>' is invalid. Use a binding such as key:space, mouse:left, button:south, axis:leftX+ or stick:left.` | A binding is not a string in one of the formats in [Action map](#action-map). |
-| `The <type> action <name> does not read <list>.` | An action has a binding list its type never reads. |
-| `The vector action <name> takes only sticks in bindings, not <binding>.` | The `bindings` of a vector action hold something other than a stick. |
-| `The action name '<name>' is used by more than one action.` | Two actions of an action map document have the same name. |
+| `The type of an action must be "button", "axis" or "vector", not "<type>".` | An action type is not `button`, `axis` or `vector`. |
+| `The "<list>" of an action must be a list of bindings.` | A binding list is not a list. |
+| `The input binding "<binding>" is invalid. Use a binding such as "key:space", "mouse:left", "button:south", "axis:leftX+" or "stick:left".` | A binding is not a string in one of the formats in [Action map](#action-map). |
+| `The <type> action "<name>" does not read "<list>".` | An action has a binding list its type never reads. |
+| `The vector action "<name>" takes only sticks in "bindings", not "<binding>".` | The `bindings` of a vector action hold something other than a stick. |
+| `The action name "<name>" is used by more than one action.` | Two actions of an action map document have the same name. |

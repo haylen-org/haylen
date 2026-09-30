@@ -15,7 +15,7 @@ for step = 0, kHeatSteps - 1 do
     heatRamp[step] = kHeatStops[index + 1]:lerp(kHeatStops[index + 2], scaled - index):toHex()
 end
 
--- Builds a texture where `color(column, row)` gives each pixel as a Color or a color string.
+-- Builds a texture where `color(column, row)` gives each pixel as a `Color` or a color string.
 function picture.cells(width, height, color)
     local bytes = {}
     local char = string.char

@@ -12,7 +12,7 @@
 
 namespace haylen::ui {
 
-// The actions that move the UI focus, press the focused control, go back and open context menus: uiAccept, uiCancel, uiLeft, uiRight, uiUp, uiDown and uiMenu. An app remaps one by defining an action with its name in its action map, and the others keep their built-in bindings.
+// The actions that move the UI focus, press the focused control, go back and open context menus: `uiAccept`, `uiCancel`, `uiLeft`, `uiRight`, `uiUp`, `uiDown` and `uiMenu`. An app remaps one by defining an action with its name in its action map, and the others keep their built-in bindings.
 class NavigationInput final {
   public:
     enum class Action : std::uint8_t {

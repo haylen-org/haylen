@@ -11,7 +11,7 @@
 
 namespace haylen::lighting2d {
 
-// Returns a flame-like intensity multiplier between 1 - amount and 1 with flicker(time, {speed = 8, amount = 0.15, seed = 0}).
+// Returns a flame-like intensity multiplier between `1 - amount` and 1 with `flicker(time, {speed = 8, amount = 0.15, seed = 0})`.
 int Lighting2DLua::flicker(lua_State* L) {
     const auto time = lua::Stack::read<float>(L, 1);
     float speed = 8.0F;

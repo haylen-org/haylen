@@ -16,7 +16,7 @@ struct lua_State;
 
 namespace haylen::core {
 
-// Installs haylen.events, the event bus of the engine for Lua: listeners by name with channels, priorities, filters, owners and consumption, and events delivered at once or at the end of the frame. Lifecycle events that the engine publishes reach Lua listeners with their JSON data as a table, or with the Lua value of the native value they carry, such as the table of a scene.
+// Installs `haylen.events`, the event bus of the engine for Lua: listeners by name with channels, priorities, filters, owners and consumption, and events delivered at once or at the end of the frame. Lifecycle events that the engine publishes reach Lua listeners with their JSON data as a table, or with the Lua value of the native value they carry, such as the table of a scene.
 class EventsLua final {
   public:
     static void install(lua_State* L);
@@ -24,7 +24,7 @@ class EventsLua final {
     // Subscribes the function at index to the event named at index with the listen options at index, or 0 for none, and ties it to the owner at index, or 0 for none. Scenes listen through it.
     static Connection subscribe(lua_State* L, int name, int function, int options, int owner);
 
-    // Lets Lua listeners receive the native value of type T that engine events carry, which the function pushes as one Lua value. A context adds the types it publishes when it installs its Lua module.
+    // Lets Lua listeners receive the native value of type `T` that engine events carry, which the function pushes as one Lua value. A context adds the types it publishes when it installs its Lua module.
     template <typename T> static void addPayload(void (*push)(lua_State* L, const T& value)) {
         payloads.insert_or_assign(std::type_index(typeid(T)), [push](lua_State* L, const EventBus::Event& event) { push(L, *event.get<T>()); });
     }
@@ -49,7 +49,7 @@ class EventsLua final {
         int count = 0;
     };
 
-    // Pushes the values of the event onto L and returns how many there are.
+    // Pushes the values of the event onto `L` and returns how many there are.
     static int pushPayload(lua_State* L, const EventBus::Event& event);
 
     // Calls the function with the values of the event and returns whether it returned a true value. Events emitted from Lua run the function on the emitting thread, where errors reach the emitter, and other events run it on the main thread in a protected call.

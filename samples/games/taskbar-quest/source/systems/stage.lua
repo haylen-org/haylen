@@ -45,7 +45,7 @@ function stage:layout()
     self.lane = {left = visible.x + config.hero.marginLeft, right = visible:right() - config.hero.marginRight, ground = self.groundTop + 3 * pixel}
 end
 
--- Returns whether a press at x, y grabs the window: on the ground band or on the grip.
+-- Returns whether a press at `x`, `y` grabs the window: on the ground band or on the grip.
 function stage:grabs(x, y)
     return self.band:contains({x, y}) or self.grip:contains({x, y})
 end

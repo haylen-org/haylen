@@ -39,7 +39,7 @@ int AssetsLua::texture(lua_State* L) {
     return 1;
 }
 
-// Loads a TrueType or OpenType font, or a BMFont from a .fnt file, by the extension of the path.
+// Loads a TrueType or OpenType font, or a BMFont from a `.fnt` file, by the extension of the path.
 int AssetsLua::font(lua_State* L) {
     const std::string_view path = lua::Stack::read<std::string_view>(L, 1);
     const std::string type = getAssets(L).getTypeForPath(path);
@@ -90,7 +90,7 @@ int AssetsLua::list(lua_State* L) {
     return 1;
 }
 
-// Loads any registered asset type synchronously with load(path, type?, options?).
+// Loads any registered asset type synchronously with `load(path, type?, options?)`.
 int AssetsLua::load(lua_State* L) {
     const std::string path = lua::Stack::read<std::string>(L, 1);
     const std::string type = readType(L, 2, path);
@@ -99,7 +99,7 @@ int AssetsLua::load(lua_State* L) {
     return 1;
 }
 
-// Returns a promise that resolves with the asset, for use with :await() inside async.run or async.spawn.
+// Returns a promise that resolves with the asset, for use with `:await()` inside `async.run` or `async.spawn`.
 int AssetsLua::loadAsync(lua_State* L) {
     core::Engine& owner = lua::Runtime::getEngine(L);
     const std::string path = lua::Stack::read<std::string>(L, 1);

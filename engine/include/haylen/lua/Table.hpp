@@ -24,7 +24,7 @@ class Table final {
         checkFields(L, index, std::span<const FieldNames>(allowed.begin(), allowed.size()));
     }
 
-    // Reads an optional field of the table at index into target, leaving target untouched when the field is absent.
+    // Reads an optional field of the table at index into `target`, leaving `target` untouched when the field is absent.
     // Converters report problems as argument errors, so the value is read in a protected call and a failure names the option instead.
     template <typename T> static void readField(lua_State* L, int index, const char* field, T& target) {
         lua_getfield(L, index, field);
@@ -52,7 +52,7 @@ class Table final {
         return luaL_error(L, "%s", message.c_str());
     }
 
-    // Raises the error at the top of the stack again as a problem with the option named field of the running function.
+    // Raises the error at the top of the stack again as a problem with the option named `field` of the running function.
     static int raiseFieldError(lua_State* L, const char* field);
 };
 

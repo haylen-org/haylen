@@ -545,14 +545,14 @@ TEST(Spatial2DLuaTest, StoresLuaValuesInEveryStructure) {
     )");
     // clang-format on
     EXPECT_EQ(fixture.lua("return tostring(points.built)"), "false");
-    EXPECT_NE(fixture.lua("points:kNearest(0, 0, 1)").find("needs build"), std::string::npos);
+    EXPECT_NE(fixture.lua("points:kNearest(0, 0, 1)").find("needs \"build\""), std::string::npos);
     EXPECT_EQ(fixture.lua("points:build() return names(points:kNearest(45, 0, 2)) .. ' ' .. points:point(tree).x .. ' ' .. names(points:queryPoint(55, 0)) .. ' ' .. hitNames(points:raycast(-5, 0, 100, 0))"), "tree,goblin 50.0 tree goblin,tree");
 
     EXPECT_NE(fixture.lua("spatial2d.newHashGrid(32):set(nil, {0, 0, 1, 1})").find("a value to store is required"), std::string::npos);
     EXPECT_EQ(fixture.lua("local hash = spatial2d.newHashGrid(8) pcall(hash.set, hash, rock, {0, 0, -1, 1}) return hash:has(rock)"), "false");
     EXPECT_NE(fixture.lua("fill(spatial2d.newAabbTree()):nearest(0, 0, 10, function() error('filter failed') end)").find("filter failed"), std::string::npos);
     EXPECT_NE(fixture.lua("spatial2d.newHashGrid(-2)").find("positive cell size"), std::string::npos);
-    EXPECT_NE(fixture.lua("spatial2d.newQuadTree({0, 0, 10, 10}, {depth = 3})").find("Unknown option 'depth'"), std::string::npos);
+    EXPECT_NE(fixture.lua("spatial2d.newQuadTree({0, 0, 10, 10}, {depth = 3})").find("Unknown option \"depth\""), std::string::npos);
     EXPECT_NE(fixture.lua("spatial2d.newQuadTree({0, 0, 10, 10}, {maxDepth = 40})").find("a depth from 0 to 16"), std::string::npos);
     EXPECT_NE(fixture.lua("spatial2d.newHashGrid(1):set(rock, {0, 0, 1000, 1000})").find("at most 65536 cells"), std::string::npos);
     EXPECT_NE(fixture.lua("fill(spatial2d.newHashGrid(8)):nearest(0 / 0, 0, 10)").find("point must be finite"), std::string::npos);

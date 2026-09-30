@@ -13,7 +13,7 @@ local kGrab = 22
 local kFills = {{id = 'stretch', text = 'Stretch'}, {id = 'tile', text = 'Tile'}}
 local kText = 'Drag the middle to move the panel and the edges or corners to resize it. The corners keep their size, the edges and the center follow, and this text wraps inside the borders.'
 local kCode = [[
-graphics2d.drawNineSlice(frame, panel, '#FFFFFFFF', nil, scale)  -- panel is the rectangle the pointer edits
+graphics2d.drawNineSlice(frame, panel, '#FFFFFFFF', nil, scale)  -- The variable `panel` is the rectangle the pointer edits.
 graphics2d.pushClip(inner)  graphics2d.drawText(nil, text, inner.x, inner.y, {maxWidth = inner.width})  graphics2d.popClip()]]
 
 function Resizable:enter()

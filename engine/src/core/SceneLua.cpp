@@ -65,7 +65,7 @@ template <> struct EnumNames<core::Scene::State> {
 
 namespace haylen::core {
 
-// A transition with a duration draws a built-in effect named by effect, with its direction and color, or a custom effect table, and fades through its color, black by default, without one.
+// A transition with a duration draws a built-in effect named by `effect`, with its direction and color, or a custom effect table, and fades through its color, black by default, without one.
 SceneManager::Transition SceneLua::readTransition(lua_State* L, int index) {
     SceneManager::Transition transition;
     if (index == 0) {
@@ -88,7 +88,7 @@ SceneManager::Transition SceneLua::readTransition(lua_State* L, int index) {
         return transition;
     }
     if (!lua_isnil(L, -1) && lua_type(L, -1) != LUA_TSTRING) {
-        throw std::invalid_argument("The transition effect must be the name of a built-in effect or a table with a render method.");
+        throw std::invalid_argument("The transition effect must be the name of a built-in effect or a table with a \"render\" method.");
     }
     lua_pop(L, 1);
 
@@ -150,7 +150,7 @@ SceneManager::Completion SceneLua::pushCompletion(lua_State* L, int options) {
     }
     promise.push(L);
 
-    // The promise resolves with true once the change is done and with false once it was dropped, and a failed load rejects it with the error.
+    // The promise resolves with `true` once the change is done and with `false` once it was dropped, and a failed load rejects it with the error.
     // clang-format off
     return [promise, callback](const SceneManager::Result& result) {
         const bool completed = result.outcome == SceneManager::Outcome::Completed;
@@ -169,7 +169,7 @@ SceneManager::Completion SceneLua::pushCompletion(lua_State* L, int options) {
     // clang-format on
 }
 
-// Pushes the table of a Lua scene, or false for a scene pushed from C++, so positions in lists stay aligned. Lua listeners of scene events receive the same value.
+// Pushes the table of a Lua scene, or `false` for a scene pushed from C++, so positions in lists stay aligned. Lua listeners of scene events receive the same value.
 void SceneLua::pushScene(lua_State* L, const Scene& scene) {
     if (const auto* scripted = dynamic_cast<const lua::ScriptedScene*>(&scene)) {
         scripted->pushTable(L);
@@ -267,7 +267,7 @@ int SceneLua::popToRoot(lua_State* L) {
     return 1;
 }
 
-// Starts loading a scene with preload(scene, params) and returns a promise that resolves with true once it loaded, or with false when the preload was cancelled.
+// Starts loading a scene with `preload(scene, params)` and returns a promise that resolves with `true` once it loaded, or with `false` when the preload was cancelled.
 int SceneLua::preload(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     (void)lua::ScriptedScene::readProcessMode(L, 1);
@@ -310,7 +310,7 @@ int SceneLua::top(lua_State* L) {
     return 1;
 }
 
-// Returns the scene at a position counted from 1 at the bottom of the stack, or nil past its ends.
+// Returns the scene at a position counted from 1 at the bottom of the stack, or `nil` past its ends.
 int SceneLua::at(lua_State* L) {
     const auto index = lua::Stack::read<lua_Integer>(L, 1);
     const SceneManager& scenes = lua::Runtime::getEngine(L).getScenes();
@@ -343,7 +343,7 @@ int SceneLua::loadingViewOpacity(lua_State* L) {
     return 1;
 }
 
-// Returns the state of the scene of a table, 'unloaded' for a table whose scene the engine no longer holds, or nil for a table that never was a scene.
+// Returns the state of the scene of a table, `unloaded` for a table whose scene the engine no longer holds, or `nil` for a table that never was a scene.
 int SceneLua::state(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     if (const std::shared_ptr<lua::ScriptedScene> scene = lua::ScriptedScene::find(L, 1)) {
@@ -368,7 +368,7 @@ int SceneLua::sceneLoadProgress(lua_State* L) {
     return 2;
 }
 
-// Connects a function to a signal, or subscribes it to a named event, for as long as the owner lives: scene.listen(owner, signalOrName, fn, options). A scene owner ends it when it unloads.
+// Connects a function to a signal, or subscribes it to a named event, for as long as the owner lives: `scene.listen(owner, signalOrName, fn, options)`. A scene owner ends it when it unloads.
 int SceneLua::listen(lua_State* L) {
     lua::Owners::checkOwner(L, 1);
     const int options = lua_isnoneornil(L, 4) ? 0 : 4;
@@ -383,7 +383,7 @@ int SceneLua::listen(lua_State* L) {
     return 1;
 }
 
-// Runs a function as a task that the owner holds, with spawn(owner, fn): it waits on promises like a task of async.spawn, its errors reach the error screen with its stack, and it never resumes once the owner is released or collected.
+// Runs a function as a task that the owner holds, with `spawn(owner, fn)`: it waits on promises like a task of `async.spawn`, its errors reach the error screen with its stack, and it never resumes once the owner is released or collected.
 int SceneLua::spawn(lua_State* L) {
     lua::Owners::checkOwner(L, 1);
     luaL_checktype(L, 2, LUA_TFUNCTION);
@@ -398,14 +398,14 @@ int SceneLua::spawn(lua_State* L) {
     return 0;
 }
 
-// Reports the progress of the work the scene does itself with context:progress(value, message).
+// Reports the progress of the work the scene does itself with `context:progress(value, message)`.
 int SceneLua::loadProgress(lua_State* L) {
     SceneLoad& load = lua::Userdata::check<SceneLoad>(L, 1);
     load.setProgress(lua::Stack::read<float>(L, 2), lua_isnoneornil(L, 3) ? std::string() : lua::Stack::read<std::string>(L, 3));
     return 0;
 }
 
-// Preloads one asset group or a list of them with context:preload(groups) and returns a promise that resolves with true once all of them loaded, or rejects with the first failure, which also fails the load.
+// Preloads one asset group or a list of them with `context:preload(groups)` and returns a promise that resolves with `true` once all of them loaded, or rejects with the first failure, which also fails the load.
 int SceneLua::loadPreload(lua_State* L) {
     SceneLoad& load = lua::Userdata::check<SceneLoad>(L, 1);
     const std::vector<std::string> groups = lua_type(L, 2) == LUA_TSTRING ? std::vector<std::string>{lua::Stack::read<std::string>(L, 2)} : lua::Stack::read<std::vector<std::string>>(L, 2);
@@ -442,7 +442,7 @@ int SceneLua::open(lua_State* L) {
     };
     lua::Binding::newModule(L, functions);
 
-    // The Scene base class gives scenes built with haylen.class the listen and spawn methods.
+    // The `Scene` base class gives scenes built with `haylen.class` the `listen` and `spawn` methods.
     ClassLua::push(L);
     lua_pushliteral(L, "Scene");
     lua_call(L, 1, 1);

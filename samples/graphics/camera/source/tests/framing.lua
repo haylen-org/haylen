@@ -1,4 +1,4 @@
--- Framing several targets: camera:frame follows the middle of a list of points and zooms until they all fit with padding, within the zoom limits.
+-- Framing several targets: `camera:frame` follows the middle of a list of points and zooms until they all fit with padding, within the zoom limits.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')

@@ -11,7 +11,7 @@
 
 namespace haylen::ui {
 
-// A page title with an optional caption, drawn on the banner surface when banner is set, such as a ribbon in a textured theme.
+// A page title with an optional caption, drawn on the `banner` surface when `banner` is set, such as a ribbon in a textured theme.
 class PageHeader final : public Component {
   public:
     [[nodiscard]] std::string_view getKind() const noexcept override {

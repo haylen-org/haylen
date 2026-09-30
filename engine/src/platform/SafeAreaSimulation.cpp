@@ -22,7 +22,7 @@ SafeAreaSimulation SafeAreaSimulation::fromJson(const core::Json& value) {
     if (value.is_string()) {
         const auto found = std::ranges::find(kDevices, value.get<std::string>(), &Device::name);
         if (found == kDevices.end()) {
-            throw std::invalid_argument("There is no simulated device named " + value.get<std::string>() + ".");
+            throw std::invalid_argument("There is no simulated device named \"" + value.get<std::string>() + "\".");
         }
         simulation.device = static_cast<std::size_t>(found - kDevices.begin());
         return simulation;

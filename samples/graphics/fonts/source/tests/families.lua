@@ -7,7 +7,7 @@ local sample = require('sample')
 
 local Families = haylen.class('Families', sample.Test)
 
-Families.hints = 'A distance field face grows its strokes for bold and leans its glyphs for italic, and a bitmap face draws a bold glyph twice a pixel apart. The captions come from family:select, which tells which faces are real.'
+Families.hints = 'A distance field face grows its strokes for bold and leans its glyphs for italic, and a bitmap face draws a bold glyph twice a pixel apart. The captions come from "family:select", which tells which faces are real.'
 
 local kMarkup = 'Regular [b]Bold[/b] [i]Italic[/i] [b][i]Bold italic[/i][/b] [code]mono()[/code]'
 local kParagraph = 'The keeper wrote: [i]"The beacon went dark on the [b]third[/b] night."[/i] Call [code]light(beacon)[/code] before dawn.'

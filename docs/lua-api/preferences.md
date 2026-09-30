@@ -1,6 +1,6 @@
 # haylen.preferences
 
-Player preferences that persist between sessions, such as volumes, language, difficulty and rebound controls. Use it for values that belong to the player rather than to one playthrough, and use the save slots of [haylen.storage](storage.md) for app progress.
+Player preferences that persist between sessions, such as volumes, language, difficulty and rebound controls. Use it for values that belong to the player rather than to one playthrough, and use the save slots of [`haylen.storage`](storage.md) for app progress.
 
 ```lua
 local preferences = require('haylen.preferences')
@@ -8,9 +8,9 @@ local preferences = require('haylen.preferences')
 
 ## Keys and storage
 
-Preferences are one JSON object kept in `preferences.json` in the private user storage of the app. Keys are dotted paths into nested tables, so `preferences.set('audio.volume.music', 0.5)` stores `{audio = {volume = {music = 0.5}}}` and `preferences.get('audio.volume')` returns the table `{music = 0.5}`. A key with an empty part, such as `'audio..music'` or `'.audio'`, raises `The preference key '<key>' must be a dotted path without empty parts.`.
+Preferences are one JSON object kept in `preferences.json` in the private user storage of the app. Keys are dotted paths into nested tables, so `preferences.set('audio.volume.music', 0.5)` stores `{audio = {volume = {music = 0.5}}}` and `preferences.get('audio.volume')` returns the table `{music = 0.5}`. A key with an empty part, such as `'audio..music'` or `'.audio'`, raises `The preference key "<key>" must be a dotted path without empty parts.`.
 
-Values are converted to JSON the same way as the data of the save slots of [haylen.storage](storage.md): booleans, numbers, strings and tables of them are kept, and sequences become lists.
+Values are converted to JSON the same way as the data of the save slots of [`haylen.storage`](storage.md): booleans, numbers, strings and tables of them are kept, and sequences become lists.
 
 The engine loads the preferences when it starts. A damaged file is logged as a warning, the app starts with empty preferences and the next save replaces the file. Changes stay in memory until `preferences.save()`, and the engine also saves unsaved changes when the app is suspended and when it stops.
 
@@ -30,7 +30,7 @@ print(difficulty, volumes.music)
 
 ### preferences.set(key, value)
 
-Stores a value under the key and marks the preferences as changed. Missing tables along the path are created. Storing `nil` removes the key the same way `preferences.remove()` does, so `preferences.has()` reports false and `preferences.get()` returns the default again. A path that passes through a stored value that is not a table raises `The preference key <key> passes through <part>, which holds a value instead of a group.`.
+Stores a value under the key and marks the preferences as changed. Missing tables along the path are created. Storing `nil` removes the key the same way `preferences.remove()` does, so `preferences.has()` reports `false` and `preferences.get()` returns the default again. A path that passes through a stored value that is not a table raises `The preference key "<key>" passes through "<part>", which holds a value instead of a group.`.
 
 ```lua
 local preferences = require('haylen.preferences')
@@ -44,7 +44,7 @@ preferences.set('video.scale', nil)
 
 ### preferences.has(key)
 
-Returns true when a value or a group is stored under the key.
+Returns `true` when a value or a group is stored under the key.
 
 ```lua
 local preferences = require('haylen.preferences')
@@ -56,7 +56,7 @@ end
 
 ### preferences.remove(key)
 
-Removes the value or group stored under the key and returns true, or returns false when nothing was stored there.
+Removes the value or group stored under the key and returns `true`, or returns `false` when nothing was stored there.
 
 ```lua
 local preferences = require('haylen.preferences')
@@ -88,7 +88,7 @@ preferences.save()
 
 ### preferences.load()
 
-Replaces the preferences in memory with the stored file, discarding unsaved changes, or empties them when no file exists yet. A file that is not a JSON object empties the preferences and raises `The preferences file 'preferences.json' is damaged.`.
+Replaces the preferences in memory with the stored file, discarding unsaved changes, or empties them when no file exists yet. A file that is not a JSON object empties the preferences and raises `The preferences file "preferences.json" is damaged.`.
 
 ```lua
 local preferences = require('haylen.preferences')
@@ -100,7 +100,7 @@ print(preferences.get('game.difficulty'))
 
 ### preferences.dirty()
 
-Returns true when the preferences changed since they were last loaded or saved.
+Returns `true` when the preferences changed since they were last loaded or saved.
 
 ```lua
 local preferences = require('haylen.preferences')
@@ -154,7 +154,7 @@ preferences.save()
 
 ### preferences.apply()
 
-Applies the engine preferences that are stored under the keys of `preferences.capture()`. Missing keys leave the current state alone, buses the app has not created yet are skipped, and a stored action map replaces the current one or raises the errors of `input.loadActions()` when it is invalid. A stored value of the wrong type raises `The preference '<key>' has a value of the wrong type.`. Call it at startup after creating custom buses and loading the default action map, so stored choices override the defaults.
+Applies the engine preferences that are stored under the keys of `preferences.capture()`. Missing keys leave the current state alone, buses the app has not created yet are skipped, and a stored action map replaces the current one or raises the errors of `input.loadActions()` when it is invalid. A stored value of the wrong type raises `The preference "<key>" has a value of the wrong type.`. Call it at startup after creating custom buses and loading the default action map, so stored choices override the defaults.
 
 ```lua
 local preferences = require('haylen.preferences')
@@ -199,8 +199,8 @@ scene.push({
 
 | Message | Cause |
 | --- | --- |
-| `The preference key '<key>' must be a dotted path without empty parts.` | The key is empty or has an empty part. |
-| `The preference key <key> passes through <part>, which holds a value instead of a group.` | `preferences.set()` would have to replace a stored value with a group. |
-| `The preferences file 'preferences.json' is damaged.` | `preferences.load()` found a file that is not a JSON object. |
-| `The preference '<key>' has a value of the wrong type.` | `preferences.apply()` found an engine key with a value of another type. |
-| `A <type> cannot be converted to JSON.` | `preferences.set()` or `preferences.get()` received a function, userdata or thread. |
+| `The preference key "<key>" must be a dotted path without empty parts.` | The key is empty or has an empty part. |
+| `The preference key "<key>" passes through "<part>", which holds a value instead of a group.` | The function `preferences.set()` would have to replace a stored value with a group. |
+| `The preferences file "preferences.json" is damaged.` | The function `preferences.load()` found a file that is not a JSON object. |
+| `The preference "<key>" has a value of the wrong type.` | The function `preferences.apply()` found an engine key with a value of another type. |
+| `A <type> cannot be converted to JSON.` | The function `preferences.set()` or `preferences.get()` received a function, userdata or thread. |

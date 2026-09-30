@@ -1,4 +1,4 @@
--- Loading and errors: every scene loads before it enters. A fade holds its covered frame while the next scene loads, a loading view shows the progress the load reports, scene.preload loads a scene in the background, and onError receives a load that failed.
+-- Loading and errors: every scene loads before it enters. A fade holds its covered frame while the next scene loads, a loading view shows the progress the load reports, `scene.preload` loads a scene in the background, and `onError` receives a load that failed.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local scene = require('haylen.scene')
@@ -62,7 +62,7 @@ end
 function Loading:fade()
     if not scene.transitioning() then
         scene.push(self:card('Behind the fade', '#FF2E5E8A'), {effect = 'fade', duration = 0.8, color = '#FF101418'})
-        self:setStatus('the fade holds its covered frame while the card loads')
+        self:setStatus('The fade holds its covered frame while the card loads')
     end
 end
 
@@ -70,7 +70,7 @@ end
 function Loading:view()
     if not scene.transitioning() then
         scene.push(self:card('With a view', '#FF3E8A5E'), {effect = 'iris', duration = 0.8, loading = LoadingView(), loadingDelay = 0.2, minimumLoadingTime = 0.6, params = 'a custom loading view'})
-        self:setStatus('the loading view shows the progress the card reports')
+        self:setStatus('The loading view shows the progress the card reports')
     end
 end
 
@@ -79,7 +79,7 @@ function Loading:preload()
     if self.preloading or scene.transitioning() then
         return
     end
-    local card = self:card('Preloaded', '#FF8A6E2E', {caption = 'it loaded while the test kept running'})
+    local card = self:card('Preloaded', '#FF8A6E2E', {caption = 'It loaded while the test kept running'})
     self.preloading = card
     self.header:set('preload', {enabled = false})
     self:spawn(function()
@@ -92,12 +92,12 @@ function Loading:preload()
     end)
 end
 
--- The load fails halfway, the test stays on top, and onError receives the message and routes to a card that shows it.
+-- The load fails halfway, the test stays on top, and `onError` receives the message and routes to a card that shows it.
 function Loading:failing()
     if not scene.transitioning() then
-        local broken = self:card('Broken', '#FF5E3E8A', {fail = 'the save file is corrupt'})
+        local broken = self:card('Broken', '#FF5E3E8A', {fail = 'The save file is corrupt.'})
         scene.push(broken, {effect = 'fade', duration = 0.6, loading = LoadingView(), onError = function(message)
-            self:setStatus('onError received: ' .. message)
+            self:setStatus('The handler "onError" received: ' .. message)
             scene.push(self:card('Load failed', '#FF8A3E3E', {caption = message, work = 0}), {effect = 'fade', duration = 0.4})
         end})
     end

@@ -13,7 +13,7 @@
 
 namespace haylen::graphics2d {
 
-// Describes how a buffer of floats holds sprites: every sprite takes one float for each field, in the order of the fields, and the template sprite gives every value the fields leave out. Sprite batches and drawBatch read buffers through it, so scripts move thousands of sprites without a table for each one.
+// Describes how a buffer of floats holds sprites: every sprite takes one float for each field, in the order of the fields, and the template sprite gives every value the fields leave out. Sprite batches and `drawBatch` read buffers through it, so scripts move thousands of sprites without a table for each one.
 class SpriteLayout final {
   public:
     enum class Field : std::uint8_t {
@@ -34,10 +34,10 @@ class SpriteLayout final {
         SourceHeight,
     };
 
-    // Throws std::invalid_argument without fields.
+    // Throws `std::invalid_argument` without fields.
     explicit SpriteLayout(std::vector<Field> layoutFields, const SpriteInstance& sprite = {});
 
-    // Resolves the names x, y, width, height, rotation, pivotX, pivotY, red, green, blue, alpha, sourceX, sourceY, sourceWidth and sourceHeight.
+    // Resolves the names `x`, `y`, `width`, `height`, `rotation`, `pivotX`, `pivotY`, `red`, `green`, `blue`, `alpha`, `sourceX`, `sourceY`, `sourceWidth` and `sourceHeight`.
     [[nodiscard]] static std::optional<Field> fieldFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view fieldName(Field value) noexcept;
 

@@ -7,12 +7,12 @@ struct lua_State;
 
 namespace haylen::physics2d {
 
-// Installs the Rope, Ragdoll and Vehicle classes of haylen.physics2d, which build groups of bodies and joints in a world.
+// Installs the `Rope`, `Ragdoll` and `Vehicle` classes of `haylen.physics2d`, which build groups of bodies and joints in a world.
 class AssemblyLua final {
   public:
     static void install(lua_State* L);
 
-    // Sets newRope, newBridge, newRagdoll and newVehicle on the module table at the top of the stack.
+    // Sets `newRope`, `newBridge`, `newRagdoll` and `newVehicle` on the module table at the top of the stack.
     static void addFunctions(lua_State* L);
 
   private:

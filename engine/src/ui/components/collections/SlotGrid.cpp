@@ -43,10 +43,10 @@ std::vector<SlotGrid::Slot> SlotGrid::readSlots(PropertyReader& reader, const co
         if (!entry.is_object() || !entry.contains("id") || !entry.at("id").is_string() || entry.at("id").get<std::string>().empty()) {
             reader.fail("slots", "must hold objects with an id");
         }
-        core::JsonValidator::requireKnownKeys(entry, {"id", "image", "count", "enabled"}, "slotGrid.slots");
+        core::JsonValidator::requireKnownKeys(entry, {"id", "image", "count", "enabled"}, "\"slotGrid.slots\"");
         Slot slot{.id = entry.at("id").get<std::string>()};
         if (!ids.insert(slot.id).second) {
-            reader.fail("slots", "uses the slot id '" + slot.id + "' more than once");
+            reader.fail("slots", "uses the slot id \"" + slot.id + "\" more than once");
         }
         if (const auto image = entry.find("image"); image != entry.end()) {
             if (!image->is_string()) {
@@ -59,7 +59,7 @@ std::vector<SlotGrid::Slot> SlotGrid::readSlots(PropertyReader& reader, const co
         }
         if (const auto enabled = entry.find("enabled"); enabled != entry.end()) {
             if (!enabled->is_boolean()) {
-                reader.fail("slots", "has an enabled that is not true or false");
+                reader.fail("slots", "has an \"enabled\" that is not \"true\" or \"false\"");
             }
             slot.enabled = enabled->get<bool>();
         }

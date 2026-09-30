@@ -15,7 +15,7 @@
 
 namespace haylen::platform {
 
-// Where a desktop window opens or moves to, in desktop points: centered on a monitor, at a point of the desktop, or against a side or a corner of the whole area or the work area of a monitor, which the window can also fill along one or both axes. The position of the window section of app.json and window.place in Lua read it.
+// Where a desktop window opens or moves to, in desktop points: centered on a monitor, at a point of the desktop, or against a side or a corner of the whole area or the work area of a monitor, which the window can also fill along one or both axes. The position of the window section of `app.json` and `window.place` in Lua read it.
 class WindowPlacement final {
   public:
     enum class Anchor : std::uint8_t {
@@ -42,7 +42,7 @@ class WindowPlacement final {
         Both,
     };
 
-    // Reads "center", a point {"x": 40, "y": 60}, or an anchored placement such as {"anchor": "bottom", "area": "work", "monitor": "primary", "offset": [0, -8], "fill": "width"}, where the monitor is "primary" or a number from 1. Throws std::invalid_argument for anything else.
+    // Reads `"center"`, a point `{"x": 40, "y": 60}`, or an anchored placement such as `{"anchor": "bottom", "area": "work", "monitor": "primary", "offset": [0, -8], "fill": "width"}`, where the monitor is `"primary"` or a number from 1. Throws `std::invalid_argument` for anything else.
     [[nodiscard]] static WindowPlacement fromJson(const core::Json& value);
     [[nodiscard]] core::Json toJson() const;
 

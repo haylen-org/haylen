@@ -15,8 +15,8 @@ local kTints = {
     {id = 'ghost', text = 'Ghost', color = '#80FFFFFF'},
 }
 local kCode = [[
-graphics2d.drawNineSlice(frame, {x, y, 300, 180}, '#FFFFFFFF', nil, 0.5)  -- borders at half their size
-graphics2d.drawNineSlice(frame, {x, y, 300, 180}, '#FF7FCBF2', {layer = 1}, 2)  -- tinted, borders twice as large]]
+graphics2d.drawNineSlice(frame, {x, y, 300, 180}, '#FFFFFFFF', nil, 0.5)  -- Borders at half their size.
+graphics2d.drawNineSlice(frame, {x, y, 300, 180}, '#FF7FCBF2', {layer = 1}, 2)  -- Tinted, borders twice as large.]]
 
 function ScaleTint:enter()
     self.frameSlice = graphics2d.newNineSlice(sample.texture('frames/panel.png'), {borders = {28, 28, 28, 28}})

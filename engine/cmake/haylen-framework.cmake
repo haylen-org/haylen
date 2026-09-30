@@ -1,9 +1,9 @@
-# Merges the SDK libraries and the Lua player into the static library of one Haylen.xcframework slice, which apps made from the Apple template link instead of building the engine.
-# make.py engine --platform apple builds it for every slice, joins the architectures of each platform with lipo and creates the framework with xcodebuild -create-xcframework.
-# It runs after haylen-install.cmake, whose merged engine and runtime libraries it takes as inputs.
+# Merges the SDK libraries and the Lua player into the static library of one `Haylen.xcframework` slice, which apps made from the Apple template link instead of building the engine.
+# The command `make.py engine --platform apple` builds it for every slice, joins the architectures of each platform with `lipo` and creates the framework with `xcodebuild -create-xcframework`.
+# It runs after `haylen-install.cmake`, whose merged engine and runtime libraries it takes as inputs.
 
 if(NOT APPLE OR NOT HAYLEN_BUILD_SDK)
-  message(FATAL_ERROR "HAYLEN_BUILD_FRAMEWORK needs an Apple platform and HAYLEN_BUILD_SDK.")
+  message(FATAL_ERROR "The option \"HAYLEN_BUILD_FRAMEWORK\" needs an Apple platform and \"HAYLEN_BUILD_SDK\".")
 endif()
 
 add_library(haylen_framework_player OBJECT "${HAYLEN_ENGINE_DIR}/src/platform/sokol/LuaPlayer.cpp")

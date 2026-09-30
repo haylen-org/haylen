@@ -31,7 +31,7 @@ class Package;
 
 namespace haylen::platform {
 
-// Services every platform folder implements for the Sokol runtime. Exactly one implementation is compiled into a runtime build. The platform reports the theme and the battery of the device through SokolHost::getSystemState, from any thread, when it initializes and whenever the system changes them.
+// Services every platform folder implements for the Sokol runtime. Exactly one implementation is compiled into a runtime build. The platform reports the theme and the battery of the device through `SokolHost::getSystemState`, from any thread, when it initializes and whenever the system changes them.
 class Services final {
   public:
     [[nodiscard]] static std::string_view getName() noexcept;
@@ -39,7 +39,7 @@ class Services final {
     static void initialize();
     static void shutdown() noexcept;
 
-    // Tells the host environment about a failure that stopped the app, beyond the log and the error screen, with the JSON report of lua::Error::toJson. The web runtime passes it to the page and to the web parts of plugins, and the other platforms to the native parts of plugins.
+    // Tells the host environment about a failure that stopped the app, beyond the log and the error screen, with the JSON report of `lua::Error::toJson`. The web runtime passes it to the page and to the web parts of plugins, and the other platforms to the native parts of plugins.
     static void reportError(const core::Json& report);
 
     // The ids of the plugins whose native part the platform loaded.
@@ -70,7 +70,7 @@ class Services final {
     // Moves the window with the mouse while the button that went down last stays down.
     static void startWindowDrag();
 
-    // Starts following the window once sokol_app opened it, so its moves and the changes of the monitors reach the running app as events.
+    // Starts following the window once `sokol_app` opened it, so its moves and the changes of the monitors reach the running app as events.
     static void watchWindow();
 
     // Runs before every frame of the app, where platforms follow the mouse over the window for passthrough.
@@ -84,7 +84,7 @@ class Services final {
 
     static void pollGamepads(std::span<input::GamepadState> gamepads);
 
-    // Returns Landscape or Portrait. Desktop windows always count as landscape.
+    // Returns `Landscape` or `Portrait`. Desktop windows always count as landscape.
     [[nodiscard]] static Orientation getOrientation();
     static void lockOrientation(Orientation value);
 
@@ -97,7 +97,7 @@ class Services final {
     // Tells the native handler of a call that the app gave it up, so it can stop working on it.
     static void cancel(std::uint64_t id);
 
-    // What the device and its operating system are, read once per process. The graphics device names the GPU, so gpuName stays empty.
+    // What the device and its operating system are, read once per process. The graphics device names the GPU, so `gpuName` stays empty.
     [[nodiscard]] static SystemInfo getSystemInfo();
 
     // Opens the url with the app the system picks for it. The callback runs exactly once, on any thread, with whether an app took the url.
@@ -106,17 +106,17 @@ class Services final {
     // Vibrates the device for the given seconds where it can vibrate, and does nothing elsewhere.
     static void vibrate(float seconds);
 
-    // Shows a native dialog and answers it exactly once through DialogRelay::resolve with the same id, from any thread. Picked files that have no path of their own are copied into folder, which the platform creates when it needs it.
+    // Shows a native dialog and answers it exactly once through `DialogRelay::resolve` with the same id, from any thread. Picked files that have no path of their own are copied into `folder`, which the platform creates when it needs it.
     static void showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder);
 
     // Closes a dialog that the app gave up, where the platform can.
     static void cancelDialog(std::uint64_t id);
 
-    // Opens the screen of a plugin and ends it exactly once through ScreenRelay::finish, from any thread, as Host::openScreen describes, and dismisses a screen that the app gave up where the platform can.
+    // Opens the screen of a plugin and ends it exactly once through `ScreenRelay::finish`, from any thread, as `Host::openScreen` describes, and dismisses a screen that the app gave up where the platform can.
     static void openScreen(const ScreenRequest& request);
     static void cancelScreen(std::uint64_t id);
 
-    // The window of the app on the desktops for native libraries, as HaylenNativeWindow describes, and null handles where apps have no desktop window. It exists once sokol_app opened the window.
+    // The window of the app on the desktops for native libraries, as `HaylenNativeWindow` describes, and null handles where apps have no desktop window. It exists once `sokol_app` opened the window.
     [[nodiscard]] static HaylenNativeWindow getNativeWindow();
 };
 

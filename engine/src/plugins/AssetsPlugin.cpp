@@ -40,7 +40,7 @@ void AssetsPlugin::registerLuaPusher(std::string type, LuaPusher pusher) {
 void AssetsPlugin::pushAsset(lua_State* L, std::string_view type, const std::shared_ptr<void>& asset) const {
     const auto found = pushers.find(std::string(type));
     if (found == pushers.end()) {
-        throw std::logic_error("The asset type " + std::string(type) + " has no Lua representation.");
+        throw std::logic_error("The asset type \"" + std::string(type) + "\" has no Lua representation.");
     }
     found->second(L, asset);
 }

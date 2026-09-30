@@ -8,7 +8,7 @@
 
 namespace haylen::graphics2d {
 
-// One drawMetaballs: the soft circles it splats into its field target, the world area its surface can cover and how the surface shows.
+// One `drawMetaballs` call: the soft circles it splats into its field target, the world area its surface can cover and how the surface shows.
 struct MetaballDraw {
     std::uint32_t first = 0;
     std::uint32_t count = 0;

@@ -14,7 +14,7 @@ local kSources = {{0, 0, 16, 16}, {16, 0, 16, 16}, {32, 0, 16, 16}, {48, 0, 16, 
 local kCapacity = 5000
 local kCode = [[
 local bullets = collections.newPool({create = newBullet, reset = function(bullet, x, y, vx, vy) ... end, capacity = 5000, prewarm = 500})
-bullets:acquire(x, y, vx, vy)  bullets:release(bullet)  -- recycled, never collected
+bullets:acquire(x, y, vx, vy)  bullets:release(bullet)  -- Recycled, never collected.
 bullets:each(move)  graphics2d.drawBatch(texture, sprites, {blend = 'additive'})]]
 
 function Bullets:enter()

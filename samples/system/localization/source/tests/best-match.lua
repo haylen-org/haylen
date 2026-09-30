@@ -1,4 +1,4 @@
--- Best match: system.info of haylen.system reports the language of the device as a tag such as pt-BR, and localization.findBestMatch finds the language of the app closest to it: the exact tag, or the same base language, ignoring case and treating _ like -.
+-- Best match: `system.info` of `haylen.system` reports the language of the device as a tag such as `pt-BR`, and `localization.findBestMatch` finds the language of the app closest to it: the exact tag, or the same base language, ignoring case and treating `_` like `-`.
 local haylen = require('haylen')
 local localization = require('haylen.localization')
 local system = require('haylen.system')
@@ -54,7 +54,7 @@ function BestMatch:content()
             ui.label{id = 'typed', text = '', font = 'monospace'},
         },
         ui.panel{grow = 1, align = 'stretch', gap = 12,
-            ui.label{text = 'The app has ' .. table.concat(localization.languages(), ', ') .. '.', color = 'textMuted'},
+            ui.label{text = 'The app has "' .. table.concat(localization.languages(), '", "') .. '".', color = 'textMuted'},
             ui.table{id = 'tags', columns = {{text = 'Tag', width = 260}, {text = 'localization.findBestMatch', width = 360}, {text = 'Why'}}, rows = rows, onSelect = function(event)
                 local match = localization.findBestMatch(event.item)
                 if match then
@@ -65,7 +65,7 @@ function BestMatch:content()
     }
 end
 
--- A platform that does not report the language of the device leaves the locale of system.info nil.
+-- A platform that does not report the language of the device leaves the locale of `system.info` `nil`.
 function BestMatch:enter()
     BestMatch.super.enter(self)
     self:typeTag(self.typed)
@@ -75,7 +75,7 @@ function BestMatch:enter()
         return
     end
     self.deviceMatch = localization.findBestMatch(tag)
-    self:show('locale', {text = string.format('The device language is %s, and findBestMatch picks %s.', tag, self.deviceMatch or 'nothing')})
+    self:show('locale', {text = string.format('The device language is "%s", and "findBestMatch" picks %s.', tag, self.deviceMatch and '"' .. self.deviceMatch .. '"' or 'nothing')})
     self:show('device', {enabled = self.deviceMatch ~= nil})
 end
 

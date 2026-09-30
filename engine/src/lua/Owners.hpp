@@ -30,7 +30,7 @@ class Owners final {
         Function(const Function&) = delete;
         Function& operator=(const Function&) = delete;
 
-        // Pushes the function and returns true, or pushes nothing and returns false once its owner is gone.
+        // Pushes the function and returns `true`, or pushes nothing and returns `false` once its owner is gone.
         [[nodiscard]] bool push(lua_State* L) const;
 
       private:

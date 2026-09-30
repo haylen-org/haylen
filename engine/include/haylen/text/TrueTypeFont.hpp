@@ -26,7 +26,7 @@ class TrueTypeFont final : public Font {
         int atlasSize = 512;
     };
 
-    // Reads the font file, which throws std::runtime_error when it is not a TrueType or OpenType font, and std::invalid_argument for options out of range.
+    // Reads the font file, which throws `std::runtime_error` when it is not a TrueType or OpenType font, and `std::invalid_argument` for options out of range.
     TrueTypeFont(graphics::Device& graphicsDevice, std::vector<std::uint8_t> ttf, const Options& fontOptions = kDefaultOptions);
     ~TrueTypeFont() override;
 
@@ -36,7 +36,7 @@ class TrueTypeFont final : public Font {
     [[nodiscard]] bool hasGlyph(char32_t codePoint) override;
     void shape(const Run& run, std::vector<ShapedGlyph>& shaped) override;
 
-    // Returns a glyph, which adds it to the atlas the first time. An index the font does not have throws std::out_of_range, and a glyph that no atlas the device allows can hold throws std::runtime_error.
+    // Returns a glyph, which adds it to the atlas the first time. An index the font does not have throws `std::out_of_range`, and a glyph that no atlas the device allows can hold throws `std::runtime_error`.
     [[nodiscard]] const Glyph& getGlyph(std::uint32_t index) override;
     [[nodiscard]] std::size_t getPageCount() const noexcept override {
         return 1;

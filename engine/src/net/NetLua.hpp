@@ -20,7 +20,7 @@ template <> struct Type<net::WebSocket> {
 
 namespace haylen::net {
 
-// Installs haylen.net, which opens WebSockets, and the WebSocket class.
+// Installs `haylen.net`, which opens WebSockets, and the `WebSocket` class.
 class NetLua final {
   public:
     static void install(lua_State* L);

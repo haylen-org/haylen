@@ -313,7 +313,7 @@ TEST(Lighting2DLuaTest, FlickersFromLua) {
 
     EXPECT_EQ(fixture.lua("local f = lighting2d.flicker(1.25, {speed = 6, amount = 0.1, seed = 4}) return f > 0.85 and f < 1.15 and lighting2d.flicker(0) > 0"), "true");
     EXPECT_EQ(fixture.lua("return lighting2d.flicker(2, {amount = 0}) == 1"), "true");
-    EXPECT_NE(fixture.lua("lighting2d.flicker(1, {wobble = 1})").find("Unknown option 'wobble'"), std::string::npos);
+    EXPECT_NE(fixture.lua("lighting2d.flicker(1, {wobble = 1})").find("Unknown option \"wobble\""), std::string::npos);
     EXPECT_NE(fixture.lua("lighting2d.flicker(1, 'fast')").find("error: "), std::string::npos);
 }
 
@@ -343,10 +343,10 @@ TEST(Lighting2DLuaTest, CreatesLightsAndAsksWhereTheyReach) {
     // The falloff is the curve of lights without a texture, from 1 at the center to 0 at the radius.
     EXPECT_EQ(fixture.lua("return lighting2d.falloff(0) .. ' ' .. lighting2d.falloff(1) .. ' ' .. tostring(lighting2d.falloff(0.5) == lamp:strengthAt(50, 0))"), "1.0 0.0 true");
 
-    EXPECT_NE(fixture.lua("lighting2d.newLight({kind = 'spot'})").find("Unknown option 'kind'"), std::string::npos);
+    EXPECT_NE(fixture.lua("lighting2d.newLight({kind = 'spot'})").find("Unknown option \"kind\""), std::string::npos);
     EXPECT_NE(fixture.lua("lighting2d.newLight({type = 'area'})").find("unknown value 'area'"), std::string::npos);
     EXPECT_NE(fixture.lua("torch.itemMask = 300").find("integer out of range"), std::string::npos);
-    EXPECT_NE(fixture.lua("lighting2d.illuminate('#FF000000', {}, 0, 0, {mask = 1})").find("Unknown option 'mask'"), std::string::npos);
+    EXPECT_NE(fixture.lua("lighting2d.illuminate('#FF000000', {}, 0, 0, {mask = 1})").find("Unknown option \"mask\""), std::string::npos);
 }
 
 TEST(Lighting2DLuaTest, BuildsOccludersFromTablesBodiesAndMaps) {
@@ -367,7 +367,7 @@ TEST(Lighting2DLuaTest, BuildsOccludersFromTablesBodiesAndMaps) {
 
     EXPECT_NE(fixture.lua("wall.points = {1, 2, 3}").find("two numbers per point"), std::string::npos);
     EXPECT_NE(fixture.lua("lighting2d.newOccluder({cull = 'both'})").find("unknown value 'both'"), std::string::npos);
-    EXPECT_NE(fixture.lua("lighting2d.newOccluder({point = {}})").find("Unknown option 'point'"), std::string::npos);
+    EXPECT_NE(fixture.lua("lighting2d.newOccluder({point = {}})").find("Unknown option \"point\""), std::string::npos);
 }
 
 } // namespace haylen

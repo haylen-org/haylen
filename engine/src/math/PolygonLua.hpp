@@ -10,7 +10,7 @@
 
 namespace haylen::math {
 
-// Adds the polygon and marchingSquares tables of haylen.math. Shapes cross into Lua as lists of outlines, each a list of points, and a single outline also works wherever a shape does.
+// Adds the `polygon` and `marchingSquares` tables of `haylen.math`. Shapes cross into Lua as lists of outlines, each a list of points, and a single outline also works wherever a shape does.
 class PolygonLua final {
   public:
     // Sets the tables on the module table at the top of the stack.

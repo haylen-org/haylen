@@ -4,7 +4,7 @@
 
 namespace haylen::plugins {
 
-// Installs haylen.spatial2d, the spatial hash for neighbor queries.
+// Installs `haylen.spatial2d`, the spatial hash for neighbor queries.
 class Spatial2DPlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {

@@ -4,7 +4,7 @@
 
 namespace haylen::lua {
 
-// Runs source/main.lua from the app package, after loading the autoloads that app.json lists. Apps written in Lua use it as their application.
+// Runs `source/main.lua` from the app package, after loading the autoloads that `app.json` lists. Apps written in Lua use it as their application.
 class Application final : public core::Application {
   public:
     void start(core::Engine& engine) override;

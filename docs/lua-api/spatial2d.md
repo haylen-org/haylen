@@ -1,6 +1,6 @@
 # haylen.spatial2d
 
-`haylen.spatial2d` finds things in space quickly. It offers four structures that store Lua values by their bounds or positions and answer area, circle, point, ray and nearest-neighbor queries without testing every entity: a spatial hash, a quadtree, a dynamic AABB tree and a k-d tree. It also offers the classic grid algorithms of 2D games on a grid of integer cells: ray casts and walks across cells, Bresenham lines and circles, a symmetric field of view, visibility polygons, flood fills, connected regions and union-find. Screen picking turns the cursor or a touch into world points, rays and the values under them.
+The module `haylen.spatial2d` finds things in space quickly. It offers four structures that store Lua values by their bounds or positions and answer area, circle, point, ray and nearest-neighbor queries without testing every entity: a spatial hash, a quadtree, a dynamic AABB tree and a k-d tree. It also offers the classic grid algorithms of 2D games on a grid of integer cells: ray casts and walks across cells, Bresenham lines and circles, a symmetric field of view, visibility polygons, flood fills, connected regions and union-find. Screen picking turns the cursor or a touch into world points, rays and the values under them.
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -32,7 +32,7 @@ print(hash.cellSize)
 
 ### spatial2d.newQuadTree(area, options)
 
-Creates a `QuadTree` over the rectangle `area`. Entries outside the area still work and stay in the root quadrant. `options` is optional:
+Creates a `QuadTree` over the rectangle `area`. Entries outside the area still work and stay in the root quadrant. The table `options` is optional:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -98,7 +98,7 @@ print(sets:connected(2, 1), sets.setCount)
 
 ### spatial2d.raycastGrid(grid, from, to, cellSize)
 
-Walks the cells of a `CellGrid` that the ray from `from` to `to` crosses, where each cell is `cellSize` units wide, given as a number or a `{width, height}` pair, and the first cell sits at the origin. Returns the hit on the first solid cell, a hit table like those of [haylen.math](math.md#ray-casts) with the extra fields `column` and `row`, or `nil`. The ray only travels over the grid, and a ray that starts in a solid cell hits it at distance 0. A cell size that is not positive and finite raises `Grid cells need a positive and finite size.`
+Walks the cells of a `CellGrid` that the ray from `from` to `to` crosses, where each cell is `cellSize` units wide, given as a number or a `{width, height}` pair, and the first cell sits at the origin. Returns the hit on the first solid cell, a hit table like those of [`haylen.math`](math.md#ray-casts) with the extra fields `column` and `row`, or `nil`. The ray only travels over the grid, and a ray that starts in a solid cell hits it at distance 0. A cell size that is not positive and finite raises `Grid cells need a positive and finite size.`
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -183,7 +183,7 @@ scene.push({
 
 ### spatial2d.floodFill(grid, x, y, options)
 
-Returns the cells connected to the cell `x`, `y` that hold its value, starting with it, in breadth-first order, like the paint bucket of an image editor. A start outside the grid returns an empty list. `options` is optional:
+Returns the cells connected to the cell `x`, `y` that hold its value, starting with it, in breadth-first order, like the paint bucket of an image editor. A start outside the grid returns an empty list. The table `options` is optional:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -203,7 +203,7 @@ print(#left, canvas:get(3, 3), canvas:get(12, 3))
 
 ### spatial2d.components(grid, options)
 
-Splits the grid into regions of connected cells that share a value, such as the islands of a map or the rooms of a dungeon. Returns a new `CellGrid` with the region number of every cell, numbered from 1 in the order their first cell appears row by row, and the number of regions. `options` is optional:
+Splits the grid into regions of connected cells that share a value, such as the islands of a map or the rooms of a dungeon. Returns a new `CellGrid` with the region number of every cell, numbered from 1 in the order their first cell appears row by row, and the number of regions. The table `options` is optional:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -223,7 +223,7 @@ print(count, islands:get(2, 1), islands:get(8, 5))
 
 ### spatial2d.screenRay(camera, x, y)
 
-Returns the ray from the world point at the center of the view of `camera` to the world point under the screen point `x`, `y`, as `x1, y1, x2, y2`, ready for any ray cast. Screen points are in design coordinates, like the pointer positions of [haylen.input](input.md), and the camera draws a world canvas. To turn a screen point into a world point, use `camera:screenToWorld(x, y)` from [haylen.graphics2d](graphics2d.md).
+Returns the ray from the world point at the center of the view of `camera` to the world point under the screen point `x`, `y`, as `x1, y1, x2, y2`, ready for any ray cast. Screen points are in design coordinates, like the pointer positions of [`haylen.input`](input.md), and the camera draws a world canvas. To turn a screen point into a world point, use `camera:screenToWorld(x, y)` from [`haylen.graphics2d`](graphics2d.md).
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -246,13 +246,13 @@ scene.push({
 
 ## Structures
 
-The four structures store any non-nil Lua value, usually the entity table itself, and compare values by identity, the way table keys do. A structure keeps a reference to every stored value until it is removed or the structure is cleared. Queries return new lists of values. `query`, `queryCircle`, `queryPoint` and `pick` list them in the order the values were added, so results never depend on how entries moved, while `raycast` and `kNearest` list them by distance, with ties going to the value added first. A value removed and stored again counts as added again. Bounds that touch count as overlapping, so zero-sized rectangles work as points.
+The four structures store any non-nil Lua value, usually the entity table itself, and compare values by identity, the way table keys do. A structure keeps a reference to every stored value until it is removed or the structure is cleared. Queries return new lists of values. The methods `query`, `queryCircle`, `queryPoint` and `pick` list them in the order the values were added, so results never depend on how entries moved, while `raycast` and `kNearest` list them by distance, with ties going to the value added first. A value removed and stored again counts as added again. Bounds that touch count as overlapping, so zero-sized rectangles work as points.
 
-`HashGrid`, `QuadTree` and `AabbTree` store rectangles, which accept a `Rect` or a table `{x, y, width, height}` or `{x = 0, y = 0, width = 0, height = 0}`. A rectangle with a negative size or a non-finite component raises `Spatial bounds must be finite and have a non-negative size.` The `KdTree` stores points with an optional radius and treats them as circles in every query.
+The structures `HashGrid`, `QuadTree` and `AabbTree` store rectangles, which accept a `Rect` or a table `{x, y, width, height}` or `{x = 0, y = 0, width = 0, height = 0}`. A rectangle with a negative size or a non-finite component raises `Spatial bounds must be finite and have a non-negative size.` The `KdTree` stores points with an optional radius and treats them as circles in every query.
 
 ### structure:set(value, rect)
 
-Stores `value` with the bounds `rect`, or moves it when it is already stored. A `nil` value raises `a value to store is required`. `KdTree` takes `set(value, x, y, radius)` instead, with a radius of 0 by default.
+Stores `value` with the bounds `rect`, or moves it when it is already stored. A `nil` value raises `a value to store is required`. The `KdTree` takes `set(value, x, y, radius)` instead, with a radius of 0 by default.
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -267,15 +267,15 @@ hash:set(goblin, {goblin.x - 16, goblin.y - 16, 32, 32})
 
 ### structure:remove(value)
 
-Removes `value` and returns true, or returns false when it was not stored.
+Removes `value` and returns `true`, or returns `false` when it was not stored.
 
 ### structure:has(value)
 
-Returns true when `value` is stored.
+Returns `true` when `value` is stored.
 
 ### structure:bounds(value)
 
-Returns the `Rect` stored for `value`, or `nil` when it is not stored. `KdTree` has `point(value)` instead, which returns its point as a `Vec2`.
+Returns the `Rect` stored for `value`, or `nil` when it is not stored. The `KdTree` has `point(value)` instead, which returns its point as a `Vec2`.
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -335,7 +335,7 @@ print(hash:queryPoint(150, 120)[1].name)
 
 ### structure:raycast(x1, y1, x2, y2, limit)
 
-Casts a ray from `x1`, `y1` to `x2`, `y2` against the stored bounds and returns the hits from the start of the ray on, each a hit table like those of [haylen.math](math.md#ray-casts) with the stored value in `value`. The optional `limit` keeps the first hits only, so a limit of 1 finds the closest value and larger limits pierce through several.
+Casts a ray from `x1`, `y1` to `x2`, `y2` against the stored bounds and returns the hits from the start of the ray on, each a hit table like those of [`haylen.math`](math.md#ray-casts) with the stored value in `value`. The optional `limit` keeps the first hits only, so a limit of 1 finds the closest value and larger limits pierce through several.
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -434,11 +434,11 @@ print(hash.size)
 | `nodeCount` | integer | read | The quadrants a `QuadTree` uses now, including the root. |
 | `margin` | number | read | The margin of an `AabbTree`. |
 | `height` | integer | read | The levels below the root of an `AabbTree`, which balancing keeps near the logarithm of its size. |
-| `built` | boolean | read | False when a `KdTree` changed since its last `build`. |
+| `built` | boolean | read | The value is `false` when a `KdTree` changed since its last `build`. |
 
 ### kdTree:build()
 
-Rebuilds a `KdTree` from its current points. Queries on a tree that changed since its last build raise `The k-d tree changed since it was last built, so it needs build before a query.`
+Rebuilds a `KdTree` from its current points. Queries on a tree that changed since its last build raise `The k-d tree changed since it was last built, so it needs "build" before a query.`
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -453,7 +453,7 @@ print(stars.built, stars:kNearest(290, 40, 1)[1], stars:point('sun').x)
 
 ## CellGrid
 
-A `CellGrid` holds one integer per cell. Cells are addressed by column and row, counting from 0 like Tiled cells. `set` and `get` raise an error such as `Cell 9,9 is outside the cell grid.` for cells outside the grid.
+A `CellGrid` holds one integer per cell. Cells are addressed by column and row, counting from 0 like Tiled cells. The methods `set` and `get` raise an error such as `Cell 9,9 is outside the cell grid.` for cells outside the grid.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -474,7 +474,7 @@ Sets every cell to `value`.
 
 ### grid:contains(x, y)
 
-Returns true when the cell is inside the grid.
+Returns `true` when the cell is inside the grid.
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -504,11 +504,11 @@ Returns the representative element of the set that holds `element`.
 
 ### sets:unite(first, second)
 
-Merges the sets of both elements and returns false when they already shared one.
+Merges the sets of both elements and returns `false` when they already shared one.
 
 ### sets:connected(first, second)
 
-Returns true when both elements share a set.
+Returns `true` when both elements share a set.
 
 ### sets:setSize(element)
 

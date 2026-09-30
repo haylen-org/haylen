@@ -78,7 +78,7 @@ std::vector<Table::Column> Table::readColumns(PropertyReader& reader, const core
         if (!entry.is_object()) {
             reader.fail("columns", "must hold objects");
         }
-        core::JsonValidator::requireKnownKeys(entry, {"text", "width", "align"}, "table.columns");
+        core::JsonValidator::requireKnownKeys(entry, {"text", "width", "align"}, "\"table.columns\"");
         Column column;
         if (const auto text = entry.find("text"); text != entry.end()) {
             column.text = TextValue::fromJson(*text, "table.columns.text");
@@ -91,7 +91,7 @@ std::vector<Table::Column> Table::readColumns(PropertyReader& reader, const core
         }
         if (const auto align = entry.find("align"); align != entry.end()) {
             if (!align->is_string() || (*align != "start" && *align != "center" && *align != "end")) {
-                reader.fail("columns", "has an align other than start, center or end");
+                reader.fail("columns", "has an \"align\" other than \"start\", \"center\" or \"end\"");
             }
             column.align = *align == "center" ? Alignment::Center : (*align == "end" ? Alignment::End : Alignment::Start);
         }
@@ -110,10 +110,10 @@ std::vector<Table::Row> Table::readRows(PropertyReader& reader, const core::Json
         if (!entry.is_object() || !entry.contains("id") || !entry.at("id").is_string() || !entry.contains("cells") || !PropertyReader::isList(entry.at("cells"))) {
             reader.fail("rows", "must hold objects with an id and a list of cells");
         }
-        core::JsonValidator::requireKnownKeys(entry, {"id", "cells"}, "table.rows");
+        core::JsonValidator::requireKnownKeys(entry, {"id", "cells"}, "\"table.rows\"");
         Row row{.id = entry.at("id").get<std::string>(), .cells = {}};
         if (!ids.insert(row.id).second) {
-            reader.fail("rows", "uses the row id '" + row.id + "' more than once");
+            reader.fail("rows", "uses the row id \"" + row.id + "\" more than once");
         }
         for (const core::Json& cell : entry.at("cells")) {
             row.cells.push_back(TextValue::fromJson(cell, "table.rows.cells"));

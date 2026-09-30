@@ -14,7 +14,7 @@ struct lua_State;
 
 namespace haylen::platform {
 
-// Installs haylen.dialogs, which shows native message boxes and pickers of files and folders. Each function returns a call like the ones of platform.call, whose await gives the choice of the user.
+// Installs `haylen.dialogs`, which shows native message boxes and pickers of files and folders. Each function returns a call like the ones of `platform.call`, whose `await` gives the choice of the user.
 class DialogsLua final {
   public:
     static void install(lua_State* L);
@@ -32,7 +32,7 @@ class DialogsLua final {
     [[nodiscard]] static std::optional<std::chrono::steady_clock::duration> readTimeout(lua_State* L, int options);
     [[nodiscard]] static std::vector<DialogRequest::Filter> readFilters(lua_State* L, int options);
 
-    // Pushes the choice of the user as Lua sees it: the button counted from one, the list of opened files, the saved file, the folder, or nil when the user dismissed the dialog.
+    // Pushes the choice of the user as Lua sees it: the button counted from one, the list of opened files, the saved file, the folder, or `nil` when the user dismissed the dialog.
     static void pushChoice(lua_State* L, const DialogResult& result);
     static void pushFile(lua_State* L, const DialogResult::File& file);
 

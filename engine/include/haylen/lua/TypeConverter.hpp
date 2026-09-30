@@ -71,12 +71,12 @@ class TypeConverter final {
     static constexpr std::array<std::string_view, 2> kTextureOptionFields{"filter", "wrap"};
     static constexpr std::array<std::string_view, 13> kSpriteInstanceFields{"x", "y", "width", "height", "source", "pivotX", "pivotY", "rotation", "color", "flash", "flipX", "flipY", "flipDiagonal"};
 
-    // Option readers accept nil for the defaults and reject keys outside their own fields and the extra fields the caller reads from the same table.
+    // Option readers accept `nil` for the defaults and reject keys outside their own fields and the extra fields the caller reads from the same table.
     [[nodiscard]] static graphics2d::DrawOrder readDrawOrder(lua_State* L, int index, std::initializer_list<Table::FieldNames> extraFields = {});
     [[nodiscard]] static text::Style readTextStyle(lua_State* L, int index, std::initializer_list<Table::FieldNames> extraFields = {});
     [[nodiscard]] static graphics::Texture::Options readTextureOptions(lua_State* L, int index, std::initializer_list<Table::FieldNames> extraFields = {});
 
-    // Reads a sprite table over base. A sprite left without a size takes the size of its source, or of the whole texture when it has no source, like a sprite drawn with graphics.draw.
+    // Reads a sprite table over `base`. A sprite left without a size takes the size of its source, or of the whole texture when it has no source, like a sprite drawn with `graphics.draw`.
     [[nodiscard]] static graphics2d::SpriteInstance readSpriteInstance(lua_State* L, int index, const graphics::Texture& texture, graphics2d::SpriteInstance base = {}, std::initializer_list<Table::FieldNames> extraFields = {});
 
   private:
@@ -108,7 +108,7 @@ class TypeConverter final {
         return std::ranges::find(names, value, &std::pair<std::string_view, T>::second)->first;
     }
 
-    // Reads a named component, or the positional one when the name is absent, so {x = 1, y = 2} and {1, 2} both work.
+    // Reads a named component, or the positional one when the name is absent, so `{x = 1, y = 2}` and `{1, 2}` both work.
     static void pushComponent(lua_State* L, int table, const char* name, lua_Integer position);
     [[nodiscard]] static float numberComponent(lua_State* L, int table, const char* name, lua_Integer position, std::optional<float> fallback = std::nullopt);
     [[nodiscard]] static math::Vec2 pointComponent(lua_State* L, int table, const char* name, lua_Integer position);
@@ -226,7 +226,7 @@ template <> struct Type<core::Connection> {
     using Storage = core::Connection;
 };
 
-// Vectors accept a Vec2 or a table with x and y fields or the two values in order.
+// Vectors accept a `Vec2` or a table with `x` and `y` fields or the two values in order.
 template <> struct Converter<math::Vec2> {
     static void push(lua_State* L, math::Vec2 value) {
         Userdata::emplace<math::Vec2>(L, value);
@@ -235,7 +235,7 @@ template <> struct Converter<math::Vec2> {
     static bool is(lua_State* L, int index);
 };
 
-// Rectangles accept a Rect or a table with x, y, width and height fields or the same four values in order.
+// Rectangles accept a `Rect` or a table with `x`, `y`, `width` and `height` fields or the same four values in order.
 template <> struct Converter<math::Rect> {
     static void push(lua_State* L, math::Rect value) {
         Userdata::emplace<math::Rect>(L, value);
@@ -244,7 +244,7 @@ template <> struct Converter<math::Rect> {
     static bool is(lua_State* L, int index);
 };
 
-// Colors accept a Color, a "#RRGGBB" or "#AARRGGBB" string, or a table with r, g, b and optional a fields or the same values in order.
+// Colors accept a `Color`, a `#RRGGBB` or `#AARRGGBB` string, or a table with `r`, `g`, `b` and optional `a` fields or the same values in order.
 template <> struct Converter<math::Color> {
     static void push(lua_State* L, math::Color value) {
         Userdata::emplace<math::Color>(L, value);
@@ -253,25 +253,25 @@ template <> struct Converter<math::Color> {
     static bool is(lua_State* L, int index);
 };
 
-// Circles accept a table with center and radius fields or the same two values in order.
+// Circles accept a table with `center` and `radius` fields or the same two values in order.
 template <> struct Converter<math::Circle> {
     static math::Circle read(lua_State* L, int index);
-    // A table counts as a circle when it has a radius field or holds exactly two values in order.
+    // A table counts as a circle when it has a `radius` field or holds exactly two values in order.
     static bool is(lua_State* L, int index);
 };
 
-// Segments accept a table with start and end fields or the two points in order.
+// Segments accept a table with `start` and `end` fields or the two points in order.
 template <> struct Converter<math::Segment> {
     static math::Segment read(lua_State* L, int index);
 };
 
-// Insets accept one number for every side, or a table with left, top, right and bottom fields or the same four values in order, and push as a table with the four fields.
+// Insets accept one number for every side, or a table with `left`, `top`, `right` and `bottom` fields or the same four values in order, and push as a table with the four fields.
 template <> struct Converter<math::Insets> {
     static void push(lua_State* L, const math::Insets& value);
     static math::Insets read(lua_State* L, int index);
 };
 
-// Easing curves accept a curve name such as 'quadOut', a function of the progress that returns the eased progress, or a table: {curve = 'backOut', overshoot = 3}, {curve = 'elasticOut', amplitude = 1.5, period = 0.4}, {steps = 4, position = 'end'}, {cubicBezier = {x1, y1, x2, y2}} or {points = {{x, y}, ...}}, where points can also be plain numbers spread evenly from 0 to 1.
+// Easing curves accept a curve name such as `quadOut`, a function of the progress that returns the eased progress, or a table: `{curve = 'backOut', overshoot = 3}`, `{curve = 'elasticOut', amplitude = 1.5, period = 0.4}`, `{steps = 4, position = 'end'}`, `{cubicBezier = {x1, y1, x2, y2}}` or `{points = {{x, y}, ...}}`, where `points` can also be plain numbers spread evenly from 0 to 1.
 template <> struct Converter<math::EasingCurve> {
     static math::EasingCurve read(lua_State* L, int index);
 };

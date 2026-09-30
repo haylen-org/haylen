@@ -64,7 +64,7 @@ text::RichTextOptions RichTextLua::readOptions(lua_State* L, int index, std::ini
         lua_pushnil(L);
         while (lua_next(L, -2) != 0) {
             if (lua_type(L, -2) != LUA_TSTRING) {
-                luaL_error(L, "The fonts option maps font names to families, so its keys must be strings.");
+                luaL_error(L, "The \"fonts\" option maps font names to families, so its keys must be strings.");
             }
             fonts.insert_or_assign(lua::Stack::read<std::string>(L, -2), graphics::FontLua::readFamily(L, lua_gettop(L)));
             lua_pop(L, 1);
@@ -80,7 +80,7 @@ text::RichTextOptions RichTextLua::readOptions(lua_State* L, int index, std::ini
     return options;
 }
 
-// Creates rich text with newRichText(markup, {family, size, bold, italic, color, maxWidth, align, direction, language, lineSpacing, scale, revealSpeed, underlineLinks, fonts}).
+// Creates rich text with `newRichText(markup, {family, size, bold, italic, color, maxWidth, align, direction, language, lineSpacing, scale, revealSpeed, underlineLinks, fonts})`.
 int RichTextLua::newRichText(lua_State* L) {
     std::string markup = lua::Stack::read<std::string>(L, 1);
     lua::Stack::push(L, std::make_shared<text::RichText>(std::move(markup), readOptions(L, 2), getRegistry(L)));
@@ -95,7 +95,7 @@ math::Color RichTextLua::readTint(lua_State* L, int index) {
     return tint;
 }
 
-// Draws markup once with drawRichText(markup, x, y, options), where the options also take the tint and the draw order, and effects follow the time the app has run.
+// Draws markup once with `drawRichText(markup, x, y, options)`, where the options also take the tint and the draw order, and effects follow the time the app has run.
 int RichTextLua::drawRichText(lua_State* L) {
     core::Engine& engine = lua::Runtime::getEngine(L);
     text::RichText richText(lua::Stack::read<std::string>(L, 1), readOptions(L, 4, {lua::TypeConverter::kDrawOrderFields, kTintFields}), getRegistry(L));
@@ -112,7 +112,7 @@ int RichTextLua::measureRichText(lua_State* L) {
     return 2;
 }
 
-// The glyph table holds index and character counted from 1, char, codePoint, x and y on the baseline, time, offsetX, offsetY, color and visible, and the attributes of the tag come as the second argument, with numbers as numbers.
+// The glyph table holds `index` and `character` counted from 1, `char`, `codePoint`, `x` and `y` on the baseline, `time`, `offsetX`, `offsetY`, `color` and `visible`, and the attributes of the tag come as the second argument, with numbers as numbers.
 void RichTextLua::runEffect(const lua::Reference& function, text::Effect::Glyph& glyph, const text::Effect::Parameters& parameters) {
     // clang-format off
     lua::Runtime::protectedRun(function.getState(), [&](lua_State* L) {
@@ -158,7 +158,7 @@ void RichTextLua::runEffect(const lua::Reference& function, text::Effect::Glyph&
     // clang-format on
 }
 
-// Registers a Lua effect with registerTextEffect(name, function(glyph, attributes) ... end), which runs for every glyph inside [name] each frame.
+// Registers a Lua effect with `registerTextEffect(name, function(glyph, attributes) ... end)`, which runs for every glyph inside `[name]` each frame.
 int RichTextLua::registerTextEffect(lua_State* L) {
     std::string name = lua::Stack::read<std::string>(L, 1);
     luaL_checktype(L, 2, LUA_TFUNCTION);
@@ -167,7 +167,7 @@ int RichTextLua::registerTextEffect(lua_State* L) {
     return 0;
 }
 
-// Registers an icon for [icon=name] with registerTextIcon(name, texture, {source, width, height}).
+// Registers an icon for `[icon=name]` with `registerTextIcon(name, texture, {source, width, height})`.
 int RichTextLua::registerTextIcon(lua_State* L) {
     std::string name = lua::Stack::read<std::string>(L, 1);
     text::RichTextRegistry::Icon icon{.texture = lua::Stack::read<graphics::Texture>(L, 2)};
@@ -192,7 +192,7 @@ int RichTextLua::update(lua_State* L) {
     return 0;
 }
 
-// Draws the text with text:draw(x, y, options), where the options take the scale of the block from its top-left corner, the tint of every color and the draw order keys.
+// Draws the text with `text:draw(x, y, options)`, where the options take the scale of the block from its top-left corner, the tint of every color and the draw order keys.
 int RichTextLua::draw(lua_State* L) {
     const DrawOrder order = lua::TypeConverter::readDrawOrder(L, 4, {kDrawFields});
     math::Vec2 scale{1.0F, 1.0F};
@@ -203,7 +203,7 @@ int RichTextLua::draw(lua_State* L) {
     return 0;
 }
 
-// Returns the size of the block, or with text:size(maxWidth) the size the block takes at another wrap width without changing the text, which is how a container measures text before placing it.
+// Returns the size of the block, or with `text:size(maxWidth)` the size the block takes at another wrap width without changing the text, which is how a container measures text before placing it.
 int RichTextLua::size(lua_State* L) {
     text::RichText& richText = lua::Userdata::check<text::RichText>(L, 1);
     const math::Vec2 measured = lua_isnoneornil(L, 2) ? richText.getSize() : richText.getLayout(lua::Stack::read<float>(L, 2)).size;
@@ -230,7 +230,7 @@ int RichTextLua::setVisibleCharacters(lua_State* L) {
     return 0;
 }
 
-// Returns the layout of this moment as {size, lineCount, glyphs, boxes, images, links, hints, characters, lines}, the way the text draws now.
+// Returns the layout of this moment as `{size, lineCount, glyphs, boxes, images, links, hints, characters, lines}`, the way the text draws now.
 int RichTextLua::frame(lua_State* L) {
     text::RichText& richText = lua::Userdata::check<text::RichText>(L, 1);
     const text::Layout& frame = richText.getFrame();

@@ -101,7 +101,7 @@ int SpriteBatchLua::reserve(lua_State* L) {
     return 0;
 }
 
-// Sets the number of sprites with resize(count[, sprite]), where new sprites copy the sprite table.
+// Sets the number of sprites with `resize(count[, sprite])`, where new sprites copy the sprite table.
 int SpriteBatchLua::resize(lua_State* L) {
     SpriteBatch& batch = lua::Userdata::check<SpriteBatch>(L, 1);
     const lua_Integer count = luaL_checkinteger(L, 2);
@@ -114,7 +114,7 @@ int SpriteBatchLua::resize(lua_State* L) {
     return 0;
 }
 
-// Copies the fields a buffer holds into the sprites with writeFields(buffer, {'x', 'y', ...}[, first]).
+// Copies the fields a buffer holds into the sprites with `writeFields(buffer, {'x', 'y', ...}[, first])`.
 int SpriteBatchLua::writeFields(lua_State* L) {
     SpriteBatch& batch = lua::Userdata::check<SpriteBatch>(L, 1);
     const core::FloatBuffer& buffer = lua::Userdata::check<core::FloatBuffer>(L, 2);
@@ -123,7 +123,7 @@ int SpriteBatchLua::writeFields(lua_State* L) {
     return 0;
 }
 
-// Copies the fields of the sprites into a buffer with readFields(buffer, {'x', 'y', ...}[, first]).
+// Copies the fields of the sprites into a buffer with `readFields(buffer, {'x', 'y', ...}[, first])`.
 int SpriteBatchLua::readFields(lua_State* L) {
     const SpriteBatch& batch = lua::Userdata::check<SpriteBatch>(L, 1);
     core::FloatBuffer& buffer = lua::Userdata::check<core::FloatBuffer>(L, 2);

@@ -16,7 +16,7 @@ std::vector<std::string> Preferences::splitKey(std::string_view key) {
         const std::size_t dot = key.find('.', start);
         const std::string_view part = key.substr(start, dot == std::string_view::npos ? std::string_view::npos : dot - start);
         if (part.empty()) {
-            throw std::invalid_argument("The preference key '" + std::string(key) + "' must be a dotted path without empty parts.");
+            throw std::invalid_argument("The preference key \"" + std::string(key) + "\" must be a dotted path without empty parts.");
         }
         parts.emplace_back(part);
         if (dot == std::string_view::npos) {
@@ -36,7 +36,7 @@ void Preferences::load() {
     core::Json stored = core::Json::parse(userStorage.readText(path), nullptr, false);
     if (stored.is_discarded() || !stored.is_object()) {
         values = core::Json::object();
-        throw std::runtime_error("The preferences file '" + path + "' is damaged.");
+        throw std::runtime_error("The preferences file \"" + path + "\" is damaged.");
     }
     values = std::move(stored);
 }
@@ -85,7 +85,7 @@ void Preferences::set(std::string_view key, core::Json value) {
             child = core::Json::object();
         }
         if (!child.is_object()) {
-            throw std::invalid_argument("The preference key " + std::string(key) + " passes through " + parts[index] + ", which holds a value instead of a group.");
+            throw std::invalid_argument("The preference key \"" + std::string(key) + "\" passes through \"" + parts[index] + "\", which holds a value instead of a group.");
         }
         node = &child;
     }

@@ -45,7 +45,7 @@ void JobsPlugin::setBudget(std::chrono::microseconds value) {
 
 bool JobsPlugin::isOutOfTime(lua_State* L) const {
     if (L != current) {
-        throw std::logic_error("A jobs.checkpoint call only runs inside a job started with jobs.spawn.");
+        throw std::logic_error("A \"jobs.checkpoint\" call only runs inside a job started with \"jobs.spawn\".");
     }
     return std::chrono::steady_clock::now() >= deadline;
 }
@@ -80,7 +80,7 @@ bool JobsPlugin::resume(Job& job) {
             return true;
         }
         const std::optional<lua::Error> failure = lua::Task::closeCoroutine(job.state, main);
-        job.promise.reject("A job may only pause at jobs.checkpoint. Wait for promises inside async.spawn instead.");
+        job.promise.reject("A job may only pause at \"jobs.checkpoint\". Wait for promises inside \"async.spawn\" instead.");
         if (failure) {
             lua::Runtime::reportError(main, *failure);
         }

@@ -1,4 +1,4 @@
--- Perfect mazes from the recursive backtracker, Prim and Kruskal, generated on a worker thread, drawn from maze:toGrid and solved with A* from corner to corner.
+-- Perfect mazes from the recursive backtracker, Prim and Kruskal, generated on a worker thread, drawn from `maze:toGrid` and solved with A* from corner to corner.
 local haylen = require('haylen')
 local async = require('async')
 local input = require('haylen.input')

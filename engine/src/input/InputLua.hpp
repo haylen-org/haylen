@@ -19,7 +19,7 @@ namespace haylen::input {
 
 class Input;
 
-// Installs haylen.input, which reads the keyboard, the mouse, touches, gamepads, gestures, virtual controls and the action map.
+// Installs `haylen.input`, which reads the keyboard, the mouse, touches, gamepads, gestures, virtual controls and the action map.
 class InputLua final {
   public:
     static void install(lua_State* L);

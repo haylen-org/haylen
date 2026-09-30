@@ -1,6 +1,6 @@
 """Imports the Tiny Swords pack by Pixel Frog into the Tiny Island package.
 
-Every image is copied with a snake_case path, and the UI sheets, which keep their nine-slice pieces apart with empty space, are packed into images the engine can stretch, with their borders in ui/sliced.json.
+Every image is copied with a `snake_case` path, and the UI sheets, which keep their nine-slice pieces apart with empty space, are packed into images the engine can stretch, with their borders in `ui/sliced.json`.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import png_image
 
 ROOT_FOLDER = "Tiny Swords (Free Pack)/"
 
-# Folder prefixes of the pack and where they land, before every path component turns snake_case.
+# Folder prefixes of the pack and where they land, before every path component turns `snake_case`.
 FOLDERS = [
     ("UI Elements/UI Elements/", "ui/"),
     ("UI Elements/UI Banners from the store page/", "ui/store/"),
@@ -55,14 +55,14 @@ def snake_case(component: str) -> str:
 
 
 def destination_path(name: str) -> str | None:
-    """Maps a path inside the pack to its path in the package, or returns None for files the game does not use."""
+    """Maps a path inside the pack to its path in the package, or returns `None` for files the game does not use."""
     relative = name[len(ROOT_FOLDER) :]
     if not relative.lower().endswith(".png"):
         return None
     for prefix, target in FOLDERS:
         if relative.startswith(prefix):
             rest = relative[len(prefix) :]
-            # Colored folders repeat the kind, as in "Blue Units" or "Red Buildings", and only the color matters.
+            # Colored folders repeat the kind, as in `Blue Units` or `Red Buildings`, and only the color matters.
             rest = re.sub(r"^(\w+) (Units|Buildings)/", r"\1/", rest)
             parts = [snake_case(part) for part in Path(rest).with_suffix("").parts]
             return target + "/".join(parts) + ".png"
@@ -104,11 +104,11 @@ def slice_sheet(sheet: png_image.Image, names: list[str], destination: Path) -> 
         band = sheet.crop(0, top, sheet.width, bottom - top)
         columns = band.opaque_runs("x")
         if len(columns) != 3 or len(rows) not in (1, 3):
-            raise ValueError(f"The UI sheet for {name} does not split into three columns and one or three rows.")
+            raise ValueError(f'The UI sheet for "{name}" does not split into three columns and one or three rows.')
         if len(rows) == 1:
             rows = band.opaque_runs("y")
             if len(rows) != 1:
-                raise ValueError(f"The UI sheet for {name} holds more than one row of pieces.")
+                raise ValueError(f'The UI sheet for "{name}" holds more than one row of pieces.')
         packed, borders = pack_band(band, 0, band.height, columns, rows)
         path = f"ui/sliced/{name}.png"
         png_image.write(packed, destination / path)
@@ -129,8 +129,8 @@ def lighten(image: png_image.Image) -> png_image.Image:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("archive", type=Path, help="Path to 'Tiny Swords (Free Pack).zip'.")
-    parser.add_argument("--destination", type=Path, required=True, help="The tiny_swords folder inside the content folder of the package.")
+    parser.add_argument("archive", type=Path, help='Path to "Tiny Swords (Free Pack).zip".')
+    parser.add_argument("--destination", type=Path, required=True, help='The "tiny_swords" folder inside the content folder of the package.')
     args = parser.parse_args()
 
     destination: Path = args.destination
@@ -156,7 +156,7 @@ def main() -> None:
     (destination / "ui" / "sliced.json").write_text(json.dumps(sliced, indent=4, sort_keys=True) + "\n")
     for source, target in LIGHTENED.items():
         png_image.write(lighten(png_image.read(destination / source)), destination / target)
-    print(f"Copied {copied} images and packed {len(sliced)} UI pieces into {destination}")
+    print(f'Copied {copied} images and packed {len(sliced)} UI pieces into "{destination}".')
 
 
 if __name__ == "__main__":

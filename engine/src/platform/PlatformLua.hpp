@@ -20,7 +20,7 @@ class Promise;
 
 namespace haylen::platform {
 
-// Installs haylen.platform, which calls native methods, answers them from Lua, listens to native events and hands plugin modules the handles of their plugins, and the class of the calls that it and haylen.dialogs return.
+// Installs `haylen.platform`, which calls native methods, answers them from Lua, listens to native events and hands plugin modules the handles of their plugins, and the class of the calls that it and `haylen.dialogs` return.
 class PlatformLua final {
   public:
     // A call as Lua holds it: the promise that its awaiters wait on, the error that it failed with and how the service that runs it gives it up, which returns whether it was still pending.
@@ -39,7 +39,7 @@ class PlatformLua final {
     static constexpr std::array<std::string_view, 2> kEmitOptions{"retain", "batched"};
     static constexpr std::array<std::string_view, 3> kScreenOptions{"state", "opaque", "timeout"};
 
-    // Reads the Lua value at index as the JSON of a payload, with the byte buffers of the strings that platform.bytes marked.
+    // Reads the Lua value at `index` as the JSON of a payload, with the byte buffers of the strings that `platform.bytes` marked.
     [[nodiscard]] static Bridge::Payload readPayload(lua_State* L, int index);
 
     // Pushes the JSON of a payload, with a Lua string in the place of every buffer it refers to.
@@ -54,10 +54,10 @@ class PlatformLua final {
     [[nodiscard]] static bool cancelBridgeCall(lua_State* L, std::uint64_t id);
     [[nodiscard]] static bool cancelScreen(lua_State* L, std::uint64_t id);
 
-    // Reads the options of openScreen at the given stack index: the state as JSON without bytes, whether the screen is opaque and its timeout in seconds.
+    // Reads the options of `openScreen` at the given stack index: the state as JSON without bytes, whether the screen is opaque and its timeout in seconds.
     [[nodiscard]] static Screens::Options readScreenOptions(lua_State* L, int index);
 
-    // Returns the callback that settles the promise of a call with its result, keeping the error of a failure for await.
+    // Returns the callback that settles the promise of a call with its result, keeping the error of a failure for `await`.
     [[nodiscard]] static Bridge::Callback settle(std::shared_ptr<Call> pending);
 
     static int call(lua_State* L);
@@ -92,7 +92,7 @@ class PlatformLua final {
     static int screenShowing(lua_State* L);
     static int open(lua_State* L);
 
-    // Pushes a table with message, code and data that reads as its message in tostring and concatenation.
+    // Pushes a table with `message`, `code` and `data` that reads as its message in `tostring` and concatenation.
     static void pushError(lua_State* L, const Bridge::Error& error);
     static int errorToString(lua_State* L);
     static int concatError(lua_State* L);

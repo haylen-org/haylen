@@ -6,7 +6,7 @@ namespace haylen::localization {
 
 class Catalog;
 
-// Installs haylen.localization, which adds languages, picks the current one and translates keys.
+// Installs `haylen.localization`, which adds languages, picks the current one and translates keys.
 class LocalizationLua final {
   public:
     static void install(lua_State* L);

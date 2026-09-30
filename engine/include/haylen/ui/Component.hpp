@@ -54,7 +54,7 @@ class Component {
         bool focusScope = false;
         FocusWrap focusWrap = FocusWrap::None;
 
-        // The node ids the focus moves to from this node, in the order of FocusDirection, where an empty id leaves the choice to the search.
+        // The node ids the focus moves to from this node, in the order of `FocusDirection`, where an empty id leaves the choice to the search.
         std::array<std::string, 4> focusNeighbors;
 
         // The direction and language of the node and its children, which inherit those of the node around them when unset.

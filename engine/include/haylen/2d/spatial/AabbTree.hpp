@@ -14,7 +14,7 @@
 
 namespace haylen::spatial2d {
 
-// Keeps rectangles in a balanced binary tree of enlarged bounding boxes, like the broad phase of a physics engine. Moves that stay inside the enlarged box of an entry cost nothing, and queries skip whole branches. It suits many moving entries of any size over an unbounded area. Queries follow the rules of HashGrid.
+// Keeps rectangles in a balanced binary tree of enlarged bounding boxes, like the broad phase of a physics engine. Moves that stay inside the enlarged box of an entry cost nothing, and queries skip whole branches. It suits many moving entries of any size over an unbounded area. Queries follow the rules of `HashGrid`.
 class AabbTree final {
   public:
     // The margin enlarges the box the tree keeps for each entry on every side.

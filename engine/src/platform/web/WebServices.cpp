@@ -19,7 +19,7 @@
 #include "platform/web/WebTextInput.hpp"
 #include "sokol_app.h"
 
-// The page side lives in platform/web/haylen-runtime.js, which defines Module.haylen before the runtime starts.
+// The page side lives in `platform/web/haylen-runtime.js`, which defines `Module.haylen` before the runtime starts.
 
 // clang-format off
 EM_JS(void, haylen_js_dispatch, (double call, const char* method, const char* params, const uint32_t* buffers, int count), {
@@ -116,7 +116,7 @@ std::shared_ptr<io::Package> Services::openBundledPackage() {
 }
 
 std::filesystem::path Services::getUserDataDirectory(std::string_view identifier) {
-    // The page mounts IndexedDB at /persistent and loads it before the runtime starts.
+    // The page mounts IndexedDB at `/persistent` and loads it before the runtime starts.
     return std::filesystem::path("/persistent") / std::string(identifier);
 }
 

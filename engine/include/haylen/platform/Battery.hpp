@@ -10,7 +10,7 @@
 
 namespace haylen::platform {
 
-// The battery of the device as the platform last reported it. The state is None on devices without a battery and Unknown where the platform does not tell it.
+// The battery of the device as the platform last reported it. The state is `None` on devices without a battery and `Unknown` where the platform does not tell it.
 struct Battery {
     enum class State : std::uint8_t {
         Unknown,
@@ -27,7 +27,7 @@ struct Battery {
 
     [[nodiscard]] bool operator==(const Battery&) const = default;
 
-    // The battery as the batteryChanged event and haylen.system report it, with level left out while it is empty.
+    // The battery as the `batteryChanged` event and `haylen.system` report it, with `level` left out while it is empty.
     [[nodiscard]] core::Json toJson() const;
 
     [[nodiscard]] static std::string_view stateName(State value) noexcept;

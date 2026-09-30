@@ -2,7 +2,7 @@
 return {
     {id = 'switch', title = 'Switching languages', description = 'A title screen whose every text changes the moment the language does.', module = 'tests.switch'},
     {id = 'arguments', title = 'Arguments', description = 'Names, numbers and booleans in placeholders, and escaped braces.', module = 'tests.arguments'},
-    {id = 'plurals', title = 'Plurals', description = 'The zero, one and other forms picked by count, with each language\'s rules.', module = 'tests.plurals'},
+    {id = 'plurals', title = 'Plurals', description = 'The "zero", "one" and "other" forms picked by count, with each language\'s rules.', module = 'tests.plurals'},
     {id = 'nested', title = 'Nested keys', description = 'Groups of keys in the language files, read with dotted keys.', module = 'tests.nested'},
     {id = 'fallback', title = 'Fallback language', description = 'Keys a language lacks, taken from the fallback language, and keys no language has.', module = 'tests.fallback'},
     {id = 'best-match', title = 'Best match', description = 'The device language and other tags matched to the languages of the app.', module = 'tests.best-match'},

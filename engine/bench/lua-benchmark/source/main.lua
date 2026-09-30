@@ -1,8 +1,8 @@
 -- A bunnymark for Lua: sprites fall, bounce off the edges of the screen and draw every frame. Each phase keeps them in a different way and logs the average CPU milliseconds of the process spent updating them, drawing them and on the whole frame. CPU time stays steady when other programs load the machine, while wall time does not.
---   tables  one Lua table for each sprite, drawn with graphics2d.drawBatch(texture, tables)
---   buffer  positions in a FloatBuffer written one value at a time, drawn with graphics2d.drawBatch(texture, buffer, layout)
---   bulk    positions in a plain Lua array copied into the FloatBuffer with one buffer:set call, drawn the same way
---   batch   the bulk update feeding a persistent SpriteBatch through batch:writeFields
+--   `tables`  One Lua table for each sprite, drawn with `graphics2d.drawBatch(texture, tables)`.
+--   `buffer`  Positions in a `FloatBuffer` written one value at a time, drawn with `graphics2d.drawBatch(texture, buffer, layout)`.
+--   `bulk`    Positions in a plain Lua array copied into the `FloatBuffer` with one `buffer:set` call, drawn the same way.
+--   `batch`   The bulk update feeding a persistent `SpriteBatch` through `batch:writeFields`.
 local haylen = require('haylen')
 local debugging = require('haylen.debug')
 local graphics = require('haylen.graphics')

@@ -14,7 +14,7 @@ function Pickers:report(name)
         if name == 'flag' then
             event.document:set('flag-preview', {tint = event.value})
         end
-        self:setStatus(string.format('%s changed to %s', name, tostring(event.value)))
+        self:setStatus(string.format('The %s changed to %s', name, type(event.value) == 'number' and tostring(event.value) or '"' .. tostring(event.value) .. '"'))
     end
 end
 
@@ -37,7 +37,7 @@ function Pickers:content()
             sample.section('numberField', {
                 ui.settingsRow{label = 'Players', caption = '1 to 8', ui.numberField{value = 2, min = 1, max = 8, width = 320, onChange = self:report('players')}},
                 ui.settingsRow{label = 'Sail area', caption = 'half steps with one decimal', ui.numberField{value = 12.5, min = 0, max = 40, step = 0.5, decimals = 1, width = 320, onChange = self:report('sail area')}},
-                ui.settingsRow{label = 'Depth', caption = 'a negative minimum types on the text keyboard', ui.numberField{value = -20, min = -200, max = 0, step = 10, width = 320, onChange = self:report('depth')}},
+                ui.settingsRow{label = 'Depth', caption = 'A negative minimum types on the text keyboard', ui.numberField{value = -20, min = -200, max = 0, step = 10, width = 320, onChange = self:report('depth')}},
             }),
             sample.section('slider', {
                 ui.slider{id = 'volume', value = 0.8, showValue = true, onChange = self:report('volume')},

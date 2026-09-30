@@ -11,7 +11,7 @@ struct lua_State;
 
 namespace haylen::core {
 
-// Installs haylen.signal, whose signals call Lua functions, and the Connection class that every listener registration returns.
+// Installs `haylen.signal`, whose signals call Lua functions, and the `Connection` class that every listener registration returns.
 class SignalLua final {
   public:
     static void install(lua_State* L);

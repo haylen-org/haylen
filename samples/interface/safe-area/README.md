@@ -8,8 +8,8 @@ Every test keeps its controls in a card in the middle of the safe area, with Bac
 | --- | --- |
 | Anchors | The 9 point presets and the 7 stretch presets of `anchor`, anchored with `anchorTo = 'safe'`, `'screen'` or both at once, with a margin from 0 to 96, over red bands that mark what lies outside the safe area. |
 | Edge to edge | A world drawn over the whole visible screen, or boxed into the safe area to compare, a HUD whose column `ui.safeArea` keeps in the safe area inside a screen document, and a label anchored to the screen under the notch. |
-| Debug overlay | `ui.setSafeAreaVisible` with the visible rectangle, the safe rectangle and the insets, and the `windowSafeAreaChanged` event as the device changes. |
-| Device simulations | `viewport.setSafeAreaSimulation` with every simulated device and with custom insets in window points, switched while a HUD anchored to the safe area follows. |
+| Debug overlay | The function `ui.setSafeAreaVisible` with the visible rectangle, the safe rectangle and the insets, and the `windowSafeAreaChanged` event as the device changes. |
+| Device simulations | The function `viewport.setSafeAreaSimulation` with every simulated device and with custom insets in window points, switched while a HUD anchored to the safe area follows. |
 
 ## Controls
 

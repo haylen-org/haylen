@@ -17,7 +17,7 @@ class PropertyTrack final : public TweenTrack {
     using Getter = std::function<TweenValue()>;
     using Setter = std::function<void(const TweenValue&)>;
 
-    // The target and the field names identify the value for overwriting and killing by target, and a value spread over two fields, such as x and y, names both. The alive check, when given, stops the tween once the object is gone, and a weak pointer to the object is the usual way to write it.
+    // The target and the field names identify the value for overwriting and killing by target, and a value spread over two fields, such as `x` and `y`, names both. The alive check, when given, stops the tween once the object is gone, and a weak pointer to the object is the usual way to write it.
     PropertyTrack(const void* owner, std::vector<std::string> names, Getter read, Setter write, TweenProperty value, std::function<bool()> alive = {});
 
     void begin() override;

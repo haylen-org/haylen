@@ -115,7 +115,7 @@ TEST_P(PackageTest, CarriesThePluginsOfTheApp) {
     EXPECT_EQ(core::AppConfig::fromPackage(*package).plugins.at("ads").at("testMode"), true);
     EXPECT_EQ(package->list(Path::kPluginsDirectory), (std::vector<std::string>{"plugins/ads/plugin.json", "plugins/ads/source/init.lua"}));
     EXPECT_EQ(package->readText(Path::plugin("ads", "source/init.lua")), "return {}");
-    EXPECT_EQ(package->listAssets("").size(), 2U) << "the files of plugins are no assets";
+    EXPECT_EQ(package->listAssets("").size(), 2U) << "The files of plugins are no assets.";
 }
 
 TEST_P(PackageTest, ListsFilesRecursively) {
@@ -125,14 +125,14 @@ TEST_P(PackageTest, ListsFilesRecursively) {
     EXPECT_EQ(package->listAssets("maps"), (std::vector<std::string>{"maps/island.tmj"}));
     EXPECT_TRUE(package->list("nothing").empty());
 
-    // A folder that climbs out of content is rejected like any asset path, instead of listing the whole package.
+    // A folder that climbs out of `content` is rejected like any asset path, instead of listing the whole package.
     EXPECT_THROW((void)package->listAssets(".."), std::invalid_argument);
     EXPECT_THROW((void)package->listAssets("maps/../.."), std::invalid_argument);
 }
 
 TEST(PackageLuaTest, ListingAssetsNeverLeavesTheContentFolder) {
     test::EngineFixture fixture({{"content/maps/island.tmj", "{}"}});
-    EXPECT_NE(fixture.lua("return require('haylen.assets').list('..')").find("The path '..' must stay inside its root folder."), std::string::npos);
+    EXPECT_NE(fixture.lua("return require('haylen.assets').list('..')").find("The path \"..\" must stay inside its root folder."), std::string::npos);
 }
 
 INSTANTIATE_TEST_SUITE_P(Sources, PackageTest, ::testing::Values("directory", "zip-file", "zip-memory", "memory"));

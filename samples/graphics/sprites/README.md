@@ -1,6 +1,6 @@
 # Haylen Sprites
 
-A Lua sample with one scene per feature of 2D drawing in [haylen.graphics2d](../../../docs/lua-api/graphics2d.md), [haylen.animation2d](../../../docs/lua-api/animation2d.md) and [haylen.collections](../../../docs/lua-api/collections.md). The menu lists the tests, each test opens as its own scene with a Back button, the code it runs and its live numbers, and Escape, the east gamepad button or the Menu button of a TV remote return to the menu. Every test preloads the images of the sample in its `load` hook while the fade covers the screen.
+A Lua sample with one scene per feature of 2D drawing in [`haylen.graphics2d`](../../../docs/lua-api/graphics2d.md), [`haylen.animation2d`](../../../docs/lua-api/animation2d.md) and [`haylen.collections`](../../../docs/lua-api/collections.md). The menu lists the tests, each test opens as its own scene with a Back button, the code it runs and its live numbers, and Escape, the east gamepad button or the Menu button of a TV remote return to the menu. Every test preloads the images of the sample in its `load` hook while the fade covers the screen.
 
 | Test | What it shows |
 | --- | --- |

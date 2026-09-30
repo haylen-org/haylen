@@ -12,7 +12,7 @@ local Controls = haylen.class('Controls', sample.Test)
 local kCode = [[
 local handle = tween.to(box, 3, {x = 1000, angle = math.pi * 2, color = '#FF3DBE7A'}, {autoKill = false, onComplete = ..., onKill = ...})
 handle:play()  handle:pause()  handle:resume()  handle:restart()  handle:reverse()
-handle:complete()  handle:kill()  handle.progress = 0.5  -- seeks]]
+handle:complete()  handle:kill()  handle.progress = 0.5  -- Seeks.]]
 
 function Controls:enter()
     self:frame({

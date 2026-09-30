@@ -48,21 +48,21 @@ template <> struct EnumNames<lighting2d::Light::ShadowFilter> {
 
 namespace haylen::lighting2d {
 
-// Installs the Light class of haylen.lighting2d, whose properties write straight into the light that graphics2d.drawLight draws.
+// Installs the `Light` class of `haylen.lighting2d`, whose properties write straight into the light that `graphics2d.drawLight` draws.
 class LightLua final {
   public:
     static void install(lua_State* L);
 
-    // Reads a Light, or a table with its properties over the defaults, at index.
+    // Reads a `Light`, or a table with its properties over the defaults, at index.
     [[nodiscard]] static Light read(lua_State* L, int index);
 
-    // Creates a light with newLight({type = 'spot', x = 10, y = 20, radius = 200, ...}).
+    // Creates a light with `newLight({type = 'spot', x = 10, y = 20, radius = 200, ...})`.
     static int newLight(lua_State* L);
 
-    // Returns the light map value at x and y with illuminate(ambient, lights, x, y, {lightMask, layer}).
+    // Returns the light map value at `x` and `y` with `illuminate(ambient, lights, x, y, {lightMask, layer})`.
     static int illuminate(lua_State* L);
 
-    // Returns the radial falloff of lights without a texture with falloff(distance), for a distance given as a fraction of the radius.
+    // Returns the radial falloff of lights without a texture with `falloff(distance)`, for a distance given as a fraction of the radius.
     static int falloff(lua_State* L);
 
   private:

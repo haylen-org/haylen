@@ -1,6 +1,6 @@
 # haylen.particles2d
 
-`haylen.particles2d` simulates and draws particle effects such as fire, smoke, sparks, dust and explosions. An emitter spawns particles at a rate or in bursts, moves them with speed, gravity and accelerations, fades their size and color over their lifetime and draws them all in one batch. Emitters are configured from Lua tables or from `.particles` effect files loaded as assets.
+The module `haylen.particles2d` simulates and draws particle effects such as fire, smoke, sparks, dust and explosions. An emitter spawns particles at a rate or in bursts, moves them with speed, gravity and accelerations, fades their size and color over their lifetime and draws them all in one batch. Emitters are configured from Lua tables or from `.particles` effect files loaded as assets.
 
 ```lua
 local particles2d = require('haylen.particles2d')
@@ -8,7 +8,7 @@ local particles2d = require('haylen.particles2d')
 
 ## Loading effect files
 
-A `.particles` file is a JSON object with the emitter options described below. Load it with [haylen.assets](assets.md), which maps the extension to the `particles` asset type, and pass the result to `particles2d.newEmitter`:
+A `.particles` file is a JSON object with the emitter options described below. Load it with [`haylen.assets`](assets.md), which maps the extension to the `particles` asset type, and pass the result to `particles2d.newEmitter`:
 
 ```lua
 local assets = require('haylen.assets')
@@ -53,7 +53,7 @@ The file uses the keys of the emitter options below, except `seed`, with JSON va
 | `maxParticles`, `layer` | Integers. |
 | `loop`, `localSpace` | Booleans. |
 
-Errors while loading: `The particle effect 'path' has the unknown option 'name'.`, `The particle color 'text' is not a #RRGGBB or #AARRGGBB color.`, `The emitter shape of a particle effect must be point, circle, ring, rectangle or cone, not 'name'.`, `The blend mode of a particle effect must be alpha, additive, multiply, screen, premultiplied or opaque, not 'name'.` and, for a `maxParticles` or a burst `count` that is not an integer of at least 0, `The particle effect value 'name' needs an integer of at least 0.`, plus the validation errors listed under emitter options.
+Errors while loading: `The particle effect "path" has the unknown option "name".`, `The particle color "text" is not a "#RRGGBB" or "#AARRGGBB" color.`, `The emitter shape of a particle effect must be "point", "circle", "ring", "rectangle" or "cone", not "name".`, `The blend mode of a particle effect must be "alpha", "additive", "multiply", "screen", "premultiplied" or "opaque", not "name".` and, for a `maxParticles` or a burst `count` that is not an integer of at least 0, `The particle effect value "name" needs an integer of at least 0.`, plus the validation errors listed under emitter options.
 
 ```json
 {
@@ -108,12 +108,12 @@ local blue = particles2d.newEmitter(sparks, {colors = {'#FFA0E0FF', '#002080FF'}
 
 ## Emitter options
 
-`particles2d.newEmitter`, its overrides table and `emitter:configure` accept these keys, except `seed`, which only `particles2d.newEmitter` accepts:
+The function `particles2d.newEmitter`, its overrides table and `emitter:configure` accept these keys, except `seed`, which only `particles2d.newEmitter` accepts:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `texture` | Texture | required | Particle image. |
-| `frames` | table | none | Source Rects played across each particle's lifetime. Without frames each particle shows the whole texture. |
+| `frames` | table | none | Source `Rect` values played across each particle's lifetime. Without frames each particle shows the whole texture. |
 | `rate` | number | `20` | Particles spawned per second while emitting, a finite number of at least 0. Fractional rates carry over between frames. |
 | `bursts` | table | none | List of `{time = seconds, count = particles}`. Each burst spawns its particles when the emission cycle reaches its time. |
 | `duration` | number | `0` | Length of the emission cycle in seconds, a finite number of at least 0. 0 emits until the app stops the emitter, and each burst then fires once. |
@@ -123,7 +123,7 @@ local blue = particles2d.newEmitter(sparks, {colors = {'#FFA0E0FF', '#002080FF'}
 | `lifetime` | range | `1` | Seconds each particle lives. |
 | `speed` | range | `{50, 100}` | Initial speed in units per second. |
 | `direction` | number | `-1.5708` | Emission angle in radians. The default points up. |
-| `spread` | number | `0.5` | Width of the emission cone in radians, centered on `direction`. `6.2832` emits in every direction. |
+| `spread` | number | `0.5` | Width of the emission cone in radians, centered on `direction`. The value `6.2832` emits in every direction. |
 | `gravity` | Vec2 | `{0, 0}` | Constant acceleration in units per second squared. |
 | `radialAcceleration` | range | `0` | Acceleration away from the emitter, or toward it when negative. |
 | `tangentialAcceleration` | range | `0` | Acceleration around the emitter. |
@@ -133,12 +133,12 @@ local blue = particles2d.newEmitter(sparks, {colors = {'#FFA0E0FF', '#002080FF'}
 | `spin` | range | `0` | Rotation speed in radians per second. |
 | `colors` | table | `{'#FFFFFFFF'}` | Colors spread evenly across the lifetime and blended between. |
 | `shape` | string | `'point'` | Spawn area: `'point'`, `'circle'`, `'ring'`, `'rectangle'` or `'cone'`. |
-| `shapeSize` | Vec2 | `{0, 0}` | Size of the spawn area. `circle` and `ring` use `x` as the radius. `rectangle` uses `x` and `y` as half the width and half the height. `cone` spawns inside the circular sector of radius `x` that `direction` and `spread` describe. |
+| `shapeSize` | Vec2 | `{0, 0}` | Size of the spawn area. The shapes `circle` and `ring` use `x` as the radius. The shape `rectangle` uses `x` and `y` as half the width and half the height. The shape `cone` spawns inside the circular sector of radius `x` that `direction` and `spread` describe. |
 | `localSpace` | boolean | `false` | Keeps live particles relative to the emitter, so they move with it. |
 | `seed` | integer | `0` | Seed of the emitter's random numbers. The same seed and configuration always give the same particles. Only `particles2d.newEmitter` accepts it, because it starts the random numbers of a new emitter. |
 | `layer`, `depth`, `blend` | | `0`, `0`, `'alpha'` | Draw order of the whole emitter. |
 
-A range is a number or a `{min, max}` pair, and each particle picks its own value inside it. Unknown keys raise `Unknown option 'name'.`, and an unknown shape raises an error that contains `unknown value 'name'`. The configuration is validated and these errors are raised:
+A range is a number or a `{min, max}` pair, and each particle picks its own value inside it. Unknown keys raise `Unknown option "name".`, and an unknown shape raises an error that contains `unknown value 'name'`. The configuration is validated and these errors are raised:
 
 - `A particle emitter needs a texture, room for particles and at least one color.`
 - `A particle emitter holds at most 1000000 particles.`
@@ -189,11 +189,11 @@ scene.push({
 | --- | --- | --- | --- |
 | `x`, `y` | number | read and write | Emitter position in world coordinates. |
 | `position` | Vec2 | read and write | The same position as a vector. Reading returns a copy. |
-| `emitting` | boolean | read and write | Whether the emitter spawns particles. Live particles keep moving when it is false. |
+| `emitting` | boolean | read and write | Whether the emitter spawns particles. Live particles keep moving when it is `false`. |
 | `count` | integer | read | Number of live particles. |
-| `alive` | boolean | read | True while the emitter is emitting or still has live particles. Remove finished one-shot effects when it turns false. |
+| `alive` | boolean | read | The value is `true` while the emitter is emitting or still has live particles. Remove finished one-shot effects when it turns `false`. |
 | `cycleTime` | number | read | Seconds elapsed in the current emission cycle. |
-| `config` | table | read | The current configuration as an emitter options table without `seed`. Ranges are `{min, max}` pairs, `gravity` and `shapeSize` are Vec2 values, `colors` are Color values and `frames` are Rects. The table is a copy, so change the emitter with `emitter:configure`. |
+| `config` | table | read | The current configuration as an emitter options table without `seed`. Ranges are `{min, max}` pairs, `gravity` and `shapeSize` are `Vec2` values, `colors` are `Color` values and `frames` are `Rect` values. The table is a copy, so change the emitter with `emitter:configure`. |
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -246,7 +246,7 @@ scene.push({
 
 ### emitter:positions()
 
-Returns a list with the position of every live particle as a Vec2, in world coordinates, or relative to the emitter position when `localSpace` is true. Use it for collisions, pickups or lights that follow particles.
+Returns a list with the position of every live particle as a `Vec2`, in world coordinates, or relative to the emitter position when `localSpace` is `true`. Use it for collisions, pickups or lights that follow particles.
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -273,7 +273,7 @@ scene.push({
 
 ### emitter:readPositions(buffer, first)
 
-Copies `x` and `y` of every live particle into a float buffer of [haylen.collections](collections.md#float-buffers), two values for each particle from the position `first`, which defaults to 1, and returns how many particles fit. Unlike `positions`, it creates no Vec2 for each particle, so it suits large emitters read every frame.
+Copies `x` and `y` of every live particle into a float buffer of [`haylen.collections`](collections.md#float-buffers), two values for each particle from the position `first`, which defaults to 1, and returns how many particles fit. Unlike `positions`, it creates no `Vec2` for each particle, so it suits large emitters read every frame.
 
 ```lua
 local collections = require('haylen.collections')
@@ -305,7 +305,7 @@ hit:burst(16)
 
 ### emitter:configure(options)
 
-Changes the configuration. Only the keys present in `options` change, with the same keys, validation and errors as `particles2d.newEmitter`. Live particles stay. `seed` raises `Unknown option 'seed'.` because the random numbers of a running emitter keep going.
+Changes the configuration. Only the keys present in `options` change, with the same keys, validation and errors as `particles2d.newEmitter`. Live particles stay. The key `seed` raises `Unknown option "seed".` because the random numbers of a running emitter keep going.
 
 ```lua
 local graphics = require('haylen.graphics')

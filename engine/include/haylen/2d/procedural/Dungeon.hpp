@@ -13,7 +13,7 @@ class Random;
 
 namespace haylen::procedural2d {
 
-// Lays out rooms joined by corridors, where 1 marks walls and 0 floors, and every room can reach every other one. Bsp splits the map in two again and again and puts one room in each part. Placement drops rooms at random free spots and joins them with a minimum spanning tree.
+// Lays out rooms joined by corridors, where 1 marks walls and 0 floors, and every room can reach every other one. The method `Bsp` splits the map in two again and again and puts one room in each part. The method `Placement` drops rooms at random free spots and joins them with a minimum spanning tree.
 class Dungeon final {
   public:
     static constexpr std::int32_t kFloor = 0;
@@ -38,7 +38,7 @@ class Dungeon final {
         }
     };
 
-    // Rooms keep padding wall cells from their part or from other rooms. Bsp stops splitting parts smaller than twice minimumLeafSize, and Placement tries roomAttempts positions for up to maximumRooms rooms.
+    // Rooms keep `padding` wall cells from their part or from other rooms. The method `Bsp` stops splitting parts smaller than twice `minimumLeafSize`, and `Placement` tries `roomAttempts` positions for up to `maximumRooms` rooms.
     struct Options {
         Method method = Method::Bsp;
         int width = 64;
@@ -58,7 +58,7 @@ class Dungeon final {
         std::vector<std::pair<std::size_t, std::size_t>> connections;
     };
 
-    // Throws std::invalid_argument when the room sizes are not positive and ordered or the map cannot hold one room.
+    // Throws `std::invalid_argument` when the room sizes are not positive and ordered or the map cannot hold one room.
     [[nodiscard]] static Result generate(const Options& options, math::Random& random);
 
   private:

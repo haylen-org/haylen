@@ -137,7 +137,7 @@ TEST_F(MixerTest, ControlsPlayback) {
     EXPECT_LT(peak(480), 0.05F);
     EXPECT_NEAR(peak(toFrames(0.6F)), 0.5F, 0.01F);
     mixer.stop(fading, 0.05F);
-    EXPECT_FALSE(mixer.isActive(fading)) << "a stopped voice is over while it fades out";
+    EXPECT_FALSE(mixer.isActive(fading)) << "A stopped voice is over while it fades out.";
     EXPECT_GT(peak(480), 0.0F);
     peak(toFrames(0.1F));
     mixer.update(1.0F / 60.0F);
@@ -425,13 +425,13 @@ TEST_F(AudioLuaTest, PlaysSoundsFromLua) {
     fixture.runLua("audio.setListener(5, 6) audio.setSpatialization({minDistance = 10, maxDistance = 20})");
     EXPECT_EQ(fixture.lua("local x, y = audio.listener() return x .. ',' .. y"), "5.0,6.0");
 
-    EXPECT_NE(fixture.lua("audio.play(hit, {volumen = 1})").find("Unknown option 'volumen'"), std::string::npos);
-    EXPECT_NE(fixture.lua("audio.playMusic(theme, {crossfade = 1})").find("Unknown option 'crossfade'"), std::string::npos);
+    EXPECT_NE(fixture.lua("audio.play(hit, {volumen = 1})").find("Unknown option \"volumen\""), std::string::npos);
+    EXPECT_NE(fixture.lua("audio.playMusic(theme, {crossfade = 1})").find("Unknown option \"crossfade\""), std::string::npos);
     EXPECT_NE(fixture.lua("audio.play('hit')").find("error: "), std::string::npos);
-    EXPECT_NE(fixture.lua("audio.play(hit, {bus = 'missing'})").find("The audio bus 'missing' does not exist."), std::string::npos);
+    EXPECT_NE(fixture.lua("audio.play(hit, {bus = 'missing'})").find("The audio bus \"missing\" does not exist."), std::string::npos);
     EXPECT_NE(fixture.lua("audio.play(hit, {pitch = 0})").find("Audio needs a finite pitch above 0."), std::string::npos);
     EXPECT_NE(fixture.lua("audio.setVolume(1, 0 / 0)").find("Audio needs a finite volume."), std::string::npos);
-    EXPECT_NE(fixture.lua("return hit.loudness").find("Sound has no member 'loudness'"), std::string::npos);
+    EXPECT_NE(fixture.lua("return hit.loudness").find("Sound\" has no member \"loudness\""), std::string::npos);
 }
 
 // The bytes of a sound file or of raw samples, such as the audio a plugin returns, become a sound.
@@ -449,11 +449,11 @@ TEST_F(AudioLuaTest, MakesSoundsFromBytes) {
 
     EXPECT_NE(fixture.lua("audio.newSound('not audio')").find("Audio data is not a supported"), std::string::npos);
     EXPECT_NE(fixture.lua("audio.newSound('abc', {format = 'int16', sampleRate = 8000, channels = 1})").find("Samples of this format take 2 bytes each, which 3 bytes do not fill."), std::string::npos);
-    EXPECT_NE(fixture.lua("audio.newSound('abcd', {format = 'int8', sampleRate = 8000, channels = 1})").find("The format of raw samples is 'float32' or 'int16', not 'int8'."), std::string::npos);
+    EXPECT_NE(fixture.lua("audio.newSound('abcd', {format = 'int8', sampleRate = 8000, channels = 1})").find("The format of raw samples is \"float32\" or \"int16\", not \"int8\"."), std::string::npos);
     EXPECT_NE(fixture.lua("audio.newSound('abcd', {format = 'int16'})").find("Raw audio needs a sample rate and channels."), std::string::npos);
     EXPECT_NE(fixture.lua("audio.newSound(wav, {sampleRate = 8000})").find("Only raw samples take a sample rate and channels"), std::string::npos);
     EXPECT_NE(fixture.lua("audio.newSound('abcd', {format = 'int16', sampleRate = 8000, channels = 1, stream = true})").find("cannot stream"), std::string::npos);
-    EXPECT_NE(fixture.lua("audio.newSound(wav, {loop = true})").find("Unknown option 'loop'"), std::string::npos);
+    EXPECT_NE(fixture.lua("audio.newSound(wav, {loop = true})").find("Unknown option \"loop\""), std::string::npos);
 }
 
 } // namespace haylen::audio

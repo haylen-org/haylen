@@ -1,4 +1,4 @@
--- Sprite batches: a field of gems kept in one SpriteBatch whose sprites the test adds, changes and removes, drawn as one batch or one draw at a time for comparison.
+-- Sprite batches: a field of gems kept in one `SpriteBatch` whose sprites the test adds, changes and removes, drawn as one batch or one draw at a time for comparison.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -13,7 +13,7 @@ local kCode = [[
 local batch = graphics2d.newSpriteBatch(gems.texture)  batch:reserve(4000)
 local index = batch:add({x = 100, y = 100, width = 28, height = 28, source = gems:source('star.png')})
 batch:set(index, {rotation = 0.5, color = '#FFFFD166'})  batch:remove(index)  batch:get(index)  batch:size()
-batch:draw()  -- one batch for every sprite]]
+batch:draw()  -- One batch for every sprite.]]
 
 function Batches:enter()
     self.gems = sample.atlas('atlases/gems.json')
@@ -26,7 +26,7 @@ function Batches:enter()
     self.oneByOne = false
     self.time = 0
     self:frame({
-        hint = 'Click or tap a gem to remove it, or empty space to add one. The wave turns one row per moment with batch:set.',
+        hint = 'Click or tap a gem to remove it, or empty space to add one. The wave turns one row per moment with "batch:set".',
         code = kCode,
         controls = {
             ui.button{id = 'add', text = 'Add 500 gems', variant = 'primary', onClick = function() self:scatter(500) end},

@@ -15,7 +15,7 @@
 
 namespace haylen::spatial2d {
 
-// Buckets rectangles into a uniform grid so queries only visit nearby entries. Callers pick the ids, and bounds that touch count as overlapping, so point-sized entries are found too. It suits many entries of similar size that move every frame. An entry may cover at most 65536 cells and must lie within 536870912 cells of the origin, and set throws std::invalid_argument otherwise.
+// Buckets rectangles into a uniform grid so queries only visit nearby entries. Callers pick the ids, and bounds that touch count as overlapping, so point-sized entries are found too. It suits many entries of similar size that move every frame. An entry may cover at most 65536 cells and must lie within 536870912 cells of the origin, and `set` throws `std::invalid_argument` otherwise.
 class HashGrid final {
   public:
     explicit HashGrid(float gridCellSize);
@@ -34,15 +34,15 @@ class HashGrid final {
         return cellSize;
     }
 
-    // Queries fill ids with each matching id once, in ascending order, so results never depend on insertion history.
+    // Queries fill `ids` with each matching id once, in ascending order, so results never depend on insertion history.
     void query(const math::Rect& area, std::vector<std::uint64_t>& ids) const;
     void queryCircle(math::Vec2 center, float radius, std::vector<std::uint64_t>& ids) const;
     void queryPoint(math::Vec2 point, std::vector<std::uint64_t>& ids) const;
 
-    // Fills hits with the entries the ray crosses, sorted by distance and then by id, keeping at most limit hits unless the limit is zero. The ray only travels across the cells that ever held entries, so its length may be infinite.
+    // Fills `hits` with the entries the ray crosses, sorted by distance and then by id, keeping at most `limit` hits unless the limit is zero. The ray only travels across the cells that ever held entries, so its length may be infinite.
     void raycast(const math::Ray& ray, std::size_t limit, std::vector<RayHit>& hits) const;
 
-    // Fills neighbors with up to count entries whose bounds lie within maxDistance of the point, closest first and then by id.
+    // Fills `neighbors` with up to `count` entries whose bounds lie within `maxDistance` of the point, closest first and then by id.
     void nearest(math::Vec2 point, std::size_t count, float maxDistance, std::vector<Neighbor>& neighbors) const;
 
   private:

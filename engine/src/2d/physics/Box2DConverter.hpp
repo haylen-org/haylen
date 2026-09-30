@@ -24,14 +24,14 @@ class Box2DConverter final {
     [[nodiscard]] static b2Filter toFilter(const CollisionFilter& filter) noexcept;
     [[nodiscard]] static b2QueryFilter toQueryFilter(const CollisionFilter& filter) noexcept;
 
-    // Throws std::invalid_argument for options that Box2D rejects: a density, friction or restitution that is negative or not finite, or a zero one-way direction.
+    // Throws `std::invalid_argument` for options that Box2D rejects: a density, friction or restitution that is negative or not finite, or a zero one-way direction.
     static void checkShapeOptions(const Shape::Options& options);
 
-    // Checks the options with checkShapeOptions before converting them.
+    // Checks the options with `checkShapeOptions` before converting them.
     [[nodiscard]] static b2ShapeDef toShapeDef(const Shape::Options& options);
     [[nodiscard]] static b2SurfaceMaterial toSurfaceMaterial(const Shape::Options& options);
 
-    // Returns the damping of a body, and throws std::invalid_argument when it is negative or not finite.
+    // Returns the damping of a body, and throws `std::invalid_argument` when it is negative or not finite.
     [[nodiscard]] static float toDamping(float value);
 
     // Moves local shape points by the shape offset and rotation and converts them to meters.

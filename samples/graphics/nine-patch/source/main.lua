@@ -3,7 +3,7 @@ local input = require('haylen.input')
 local scene = require('haylen.scene')
 
 input.loadActions({actions = {
-    -- The Back button of a gamepad goes back too, next to Escape and the east button that uiCancel reads by default.
+    -- The Back button of a gamepad goes back too, next to Escape and the east button that `uiCancel` reads by default.
     {name = 'uiCancel', type = 'button', bindings = {'key:escape', 'button:east', 'button:back'}},
     {name = 'resize', type = 'vector', up = {'key:w'}, down = {'key:s'}, left = {'key:a'}, right = {'key:d'}, bindings = {'stick:right'}},
 }})

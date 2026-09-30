@@ -9,7 +9,7 @@ struct lua_State;
 
 namespace haylen::animation2d {
 
-// Installs haylen.animation2d with the Animation, Animator and SpriteAtlas classes. Frames count from one in Lua.
+// Installs `haylen.animation2d` with the `Animation`, `Animator` and `SpriteAtlas` classes. Frames count from one in Lua.
 class Animation2DLua final {
   public:
     static void install(lua_State* L);

@@ -26,7 +26,7 @@ int NineSliceLua::setPieces(lua_State* L) {
     return 0;
 }
 
-// Returns the border sizes as {left, top, right, bottom}, the form newNineSlice accepts.
+// Returns the border sizes as `{left, top, right, bottom}`, the form `newNineSlice` accepts.
 int NineSliceLua::getBorders(lua_State* L) {
     const math::Insets borders = lua::Userdata::check<NineSlice>(L, 1).getBorders();
     lua::Stack::push(L, std::vector<float>{borders.left, borders.top, borders.right, borders.bottom});

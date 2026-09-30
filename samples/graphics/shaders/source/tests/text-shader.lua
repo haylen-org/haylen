@@ -1,4 +1,4 @@
--- Shaders on text: text draws with the text program of a material, where haylen_base returns the glyph with its fill and outline, so one shader serves sprites and text.
+-- Shaders on text: text draws with the text program of a material, where `haylen_base` returns the glyph with its fill and outline, so one shader serves sprites and text.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 

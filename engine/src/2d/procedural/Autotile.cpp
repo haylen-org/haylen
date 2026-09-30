@@ -95,7 +95,7 @@ std::int32_t Autotile::pickWangTile(const tiled::WangSet& set, const std::array<
 spatial2d::CellGrid Autotile::applyWang(const spatial2d::CellGrid& colors, const tiled::WangSet& set, std::uint64_t seed) {
     const bool corners = set.kind == "corner" || set.kind == "mixed";
     if (!corners && set.kind != "edge") {
-        throw std::invalid_argument("Wang sets must be of the corner, edge or mixed kind.");
+        throw std::invalid_argument("Wang sets must be of the \"corner\", \"edge\" or \"mixed\" kind.");
     }
 
     const int width = corners ? colors.getWidth() - 1 : colors.getWidth();

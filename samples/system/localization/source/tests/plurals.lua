@@ -1,4 +1,4 @@
--- Plurals: a key whose table holds zero, one and other texts is a plural form, and the count argument picks the text: zero for 0 and one for 1 when the form has them, other for everything else. Japanese counts without a singular, so its forms have no one text.
+-- Plurals: a key whose table holds `zero`, `one` and `other` texts is a plural form, and the `count` argument picks the text: `zero` for 0 and `one` for 1 when the form has them, `other` for everything else. Japanese counts without a singular, so its forms have no `one` text.
 local assets = require('haylen.assets')
 local haylen = require('haylen')
 local localization = require('haylen.localization')

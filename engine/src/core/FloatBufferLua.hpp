@@ -18,12 +18,12 @@ template <> struct Type<core::FloatBuffer> {
 
 namespace haylen::core {
 
-// Installs the FloatBuffer class of haylen.collections, whose values count from one like a Lua array. Index access and #buffer take the fast path of the binding toolkit, and set, get and fill move many values in one call.
+// Installs the `FloatBuffer` class of `haylen.collections`, whose values count from one like a Lua array. Index access and `#buffer` take the fast path of the binding toolkit, and `set`, `get` and `fill` move many values in one call.
 class FloatBufferLua final {
   public:
     static void install(lua_State* L);
 
-    // Creates a buffer with collections.newFloatBuffer(size[, value]).
+    // Creates a buffer with `collections.newFloatBuffer(size[, value])`.
     static int create(lua_State* L);
 
   private:

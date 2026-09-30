@@ -1,5 +1,5 @@
 # Merges static libraries and object files into one static library with the archiver of the platform.
-# Run with -DKIND=libtool|lib|mri -DTOOL=<archiver> -DOUTPUT=<library> -DINPUTS=<file with one input per line>.
+# Run with `-DKIND=libtool|lib|mri -DTOOL=<archiver> -DOUTPUT=<library> -DINPUTS=<file with one input per line>`.
 
 file(STRINGS "${INPUTS}" inputs)
 file(REMOVE "${OUTPUT}")
@@ -25,7 +25,7 @@ else()
 endif()
 
 if(NOT result EQUAL 0)
-  message(FATAL_ERROR "Merging ${OUTPUT} failed: ${messages}")
+  message(FATAL_ERROR "Merging \"${OUTPUT}\" failed: ${messages}")
 endif()
 if(messages)
   message(WARNING "${messages}")

@@ -1,5 +1,5 @@
-// Tiny Island answers auth.google.signIn with Credential Manager, registered by its own Application class.
-// The web client id of the game's Google Cloud project comes from -PgoogleServerClientId, and the handler explains how to set it when it is missing.
+// Tiny Island answers `auth.google.signIn` with Credential Manager, registered by its own `Application` class.
+// The web client id of the game's Google Cloud project comes from `-PgoogleServerClientId`, and the handler explains how to set it when it is missing.
 android {
     buildFeatures.resValues = true
     defaultConfig {

@@ -18,7 +18,7 @@ function PlatformHandlers:enter()
         focus = 'run',
         controls = {
             ui.button{id = 'run', text = 'Run the checks again', variant = 'primary', onClick = function() self:run() end},
-            ui.label{text = 'The handlers live in platform/android with HaylenCoroutines.register, platform/apple with HaylenBridge.register and platform/web with Module.haylen.register. The desktop player runs no platform code of the app.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'The handlers live in "platform/android" with "HaylenCoroutines.register", "platform/apple" with "HaylenBridge.register" and "platform/web" with "Module.haylen.register". The desktop player runs no platform code of the app.', color = 'textMuted', font = 'caption'},
             ui.label{font = 'monospace', text = "local call = platform.call('native_sample.slow')\ncall:cancel()"},
         },
     })
@@ -43,18 +43,18 @@ function PlatformHandlers:run()
             if err then
                 error(err, 0)
             end
-            return greeting.language .. ' answered ' .. expect(greeting.greeting, 'Hello, Lua', 'the greeting')
+            return greeting.language .. ' answered "' .. expect(greeting.greeting, 'Hello, Lua', 'the greeting') .. '"'
         end)
         checks:run('Typed error', function()
             local ok, failure = pcall(sample.call, 'native_sample.refuse')
-            expect(ok, false, 'the success of native_sample.refuse')
+            expect(ok, false, 'the success of "native_sample.refuse"')
             expect(failure.data.reason, 'requested', 'the reason')
-            return string.format('failed with the code %s: %s', expect(failure.code, 'refused', 'the code'), failure.message)
+            return string.format('Failed with the code "%s": %s', expect(failure.code, 'refused', 'the code'), failure.message)
         end)
         checks:run('Handler that throws', function()
             local ok, failure = pcall(sample.call, 'native_sample.explode')
-            expect(ok, false, 'the success of native_sample.explode')
-            return string.format('failed with the code %s instead of crashing: %s', expect(failure.code, 'exception', 'the code'), failure.message)
+            expect(ok, false, 'the success of "native_sample.explode"')
+            return string.format('Failed with the code "%s" instead of crashing: %s', expect(failure.code, 'exception', 'the code'), failure.message)
         end)
         checks:run('Cancel reaches the handler', function()
             local before = #self.stopped
@@ -62,18 +62,18 @@ function PlatformHandlers:run()
             sample.waitFor(function() return false end, 0.2)
             call:cancel()
             if not sample.waitFor(function() return #self.stopped > before end, 2) then
-                error('the handler did not stop within two seconds', 0)
+                error('The handler did not stop within two seconds.', 0)
             end
-            return 'the ' .. self.stopped[#self.stopped] .. ' handler stopped'
+            return 'The ' .. self.stopped[#self.stopped] .. ' handler stopped'
         end)
         checks:run('Timeout reaches the handler', function()
             local before = #self.stopped
             local _, failure = platform.call('native_sample.slow', nil, {timeout = 0.3}):await()
             expect(failure and failure.code, 'timeout', 'the code')
             if not sample.waitFor(function() return #self.stopped > before end, 2) then
-                error('the handler did not stop within two seconds', 0)
+                error('The handler did not stop within two seconds.', 0)
             end
-            return 'the ' .. self.stopped[#self.stopped] .. ' handler stopped after the timeout'
+            return 'The ' .. self.stopped[#self.stopped] .. ' handler stopped after the timeout'
         end)
     end)
 end

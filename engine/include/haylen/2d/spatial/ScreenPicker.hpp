@@ -24,7 +24,7 @@ class ScreenPicker final {
         return math::Ray::between(toWorld(camera.getViewRect(screen).getCenter()), toWorld(point));
     }
 
-    // Fills ids with the entries of a spatial structure whose bounds contain the world point under the screen point.
+    // Fills `ids` with the entries of a spatial structure whose bounds contain the world point under the screen point.
     template <typename Structure> void pick(const Structure& structure, math::Vec2 point, std::vector<std::uint64_t>& ids) const {
         structure.queryPoint(toWorld(point), ids);
     }

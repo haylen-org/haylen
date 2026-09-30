@@ -139,7 +139,7 @@ Dungeon::Options MapGeneratorsLua::readDungeon(lua_State* L, int index) {
     return options;
 }
 
-// Rules come from a sample grid, or from a tile count with allow = {{first, second, 'right'}, ...}. Weights list the tiles from tile 0 on.
+// Rules come from a sample grid, or from a tile count with `allow = {{first, second, 'right'}, ...}`. Weights list the tiles from tile 0 on.
 WaveFunctionCollapse::Rules MapGeneratorsLua::readRules(lua_State* L, int index) {
     std::optional<WaveFunctionCollapse::Rules> rules;
     if (lua_getfield(L, index, "sample") != LUA_TNIL) {
@@ -248,7 +248,7 @@ int MapGeneratorsLua::cellularAutomatonAsync(lua_State* L) {
     // clang-format on
 }
 
-// Smooths any grid with cellularAutomatonStep(grid[, {birthLimit = 5, survivalLimit = 4, solidBorder = true}]) and returns the smoothed grid.
+// Smooths any grid with `cellularAutomatonStep(grid[, {birthLimit = 5, survivalLimit = 4, solidBorder = true}])` and returns the smoothed grid.
 int MapGeneratorsLua::cellularAutomatonStep(lua_State* L) {
     const auto& grid = lua::Userdata::check<spatial2d::CellGrid>(L, 1);
     CellularAutomaton::Options options;
@@ -299,7 +299,7 @@ int MapGeneratorsLua::dungeonAsync(lua_State* L) {
     // clang-format on
 }
 
-// Generates a maze with maze({width, height, algorithm = 'backtracker', seed}).
+// Generates a maze with `maze({width, height, algorithm = 'backtracker', seed})`.
 int MapGeneratorsLua::maze(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     lua::Table::checkFields(L, 1, {kMazeFields});
@@ -314,7 +314,7 @@ int MapGeneratorsLua::maze(lua_State* L) {
     return 1;
 }
 
-// Creates a maze with every wall closed with newMaze(width, height).
+// Creates a maze with every wall closed with `newMaze(width, height)`.
 int MapGeneratorsLua::newMaze(lua_State* L) {
     const auto width = lua::Stack::read<int>(L, 1);
     const auto height = lua::Stack::read<int>(L, 2);
@@ -364,7 +364,7 @@ int MapGeneratorsLua::waveFunctionCollapseAsync(lua_State* L) {
     // clang-format on
 }
 
-// Reads the rules of waveFunctionCollapse into an object with waveFunctionCollapseRules(options), to inspect them or check tile maps against them.
+// Reads the rules of `waveFunctionCollapse` into an object with `waveFunctionCollapseRules(options)`, to inspect them or check tile maps against them.
 int MapGeneratorsLua::newRules(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     lua::Table::checkFields(L, 1, {kRulesFields});
@@ -390,7 +390,7 @@ int MapGeneratorsLua::rulesTileCount(lua_State* L) {
     return 1;
 }
 
-// Tells whether every pair of neighbors of a tile map follows the rules with rules:valid(grid[, periodic]).
+// Tells whether every pair of neighbors of a tile map follows the rules with `rules:valid(grid[, periodic])`.
 int MapGeneratorsLua::rulesValid(lua_State* L) {
     const auto& rules = lua::Userdata::check<WaveFunctionCollapse::Rules>(L, 1);
     const auto& tiles = lua::Userdata::check<spatial2d::CellGrid>(L, 2);
@@ -461,7 +461,7 @@ int MapGeneratorsLua::autotile8(lua_State* L) {
     return 1;
 }
 
-// Picks Wang tiles with autotileWang(colors, wangSet, seed), where wangSet is a table of haylen.tiled tilesets with kind and tiles = {{tileId, wangId}}.
+// Picks Wang tiles with `autotileWang(colors, wangSet, seed)`, where `wangSet` is a table of `haylen.tiled` tilesets with `kind` and `tiles = {{tileId, wangId}}`.
 int MapGeneratorsLua::autotileWang(lua_State* L) {
     const auto& colors = lua::Userdata::check<spatial2d::CellGrid>(L, 1);
     luaL_checktype(L, 2, LUA_TTABLE);

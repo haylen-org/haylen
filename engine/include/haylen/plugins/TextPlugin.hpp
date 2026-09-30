@@ -14,7 +14,7 @@
 
 namespace haylen::plugins {
 
-// Owns the text services the engine shares: the registry of the effects and icons rich text markup names, and the bitmapFont asset type for BMFont files and the gridFont type for images of equal cells. Fonts, families and rich text reach Lua through haylen.graphics and haylen.graphics2d.
+// Owns the text services the engine shares: the registry of the effects and icons rich text markup names, and the `bitmapFont` asset type for BMFont files and the `gridFont` type for images of equal cells. Fonts, families and rich text reach Lua through `haylen.graphics` and `haylen.graphics2d`.
 class TextPlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {
@@ -26,7 +26,7 @@ class TextPlugin final : public Plugin {
 
     [[nodiscard]] const std::shared_ptr<text::RichTextRegistry>& getRegistry() const;
 
-    // Returns the image of an [img] tag, loaded through the assets. An image stays loaded while frames keep drawing it, so text laid out again every frame loads it once, and it goes back to the assets after a frame that does not use it.
+    // Returns the image of an `[img]` tag, loaded through the assets. An image stays loaded while frames keep drawing it, so text laid out again every frame loads it once, and it goes back to the assets after a frame that does not use it.
     [[nodiscard]] graphics::Texture getImage(core::Engine& engine, std::string_view path);
 
   private:

@@ -10,7 +10,7 @@
 
 namespace haylen::plugins {
 
-// Exposes the asset manager to Lua as haylen.assets. Plugins that add asset types also register how their assets are pushed to Lua.
+// Exposes the asset manager to Lua as `haylen.assets`. Plugins that add asset types also register how their assets are pushed to Lua.
 class AssetsPlugin final : public Plugin {
   public:
     using LuaPusher = std::function<void(lua_State*, const std::shared_ptr<void>&)>;

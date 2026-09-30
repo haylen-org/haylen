@@ -94,7 +94,7 @@ std::vector<Scatter::Point> Scatter::generate(const Region& region, const Option
         throw std::invalid_argument("Scattering needs a finite density of at least zero and a finite positive spacing.");
     }
     if (options.method == Method::Poisson && options.densityMap && !(options.maximumSpacing >= options.spacing && std::isfinite(options.maximumSpacing))) {
-        throw std::invalid_argument("Poisson scattering with a density map needs a finite maximumSpacing of at least the spacing.");
+        throw std::invalid_argument("Poisson scattering with a density map needs a finite \"maximumSpacing\" of at least the spacing.");
     }
     if (!options.layers.empty() && !options.biome) {
         throw std::invalid_argument("Scatter layers need a biome function.");

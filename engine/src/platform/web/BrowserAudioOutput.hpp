@@ -6,7 +6,7 @@
 
 namespace haylen::audio {
 
-// The audio output of the page, the only backend miniaudio has in the browser. The engine mixes on the page thread whenever platform/web/haylen-runtime.js asks for a block, and the page posts the blocks to an AudioWorkletNode, whose processor in platform/web/haylen-audio-worklet.js plays them from a small ring buffer, so the output needs neither shared memory nor threads. The page keeps kBufferedMilliseconds of mixed audio ahead of the output, which a long frame of the app does not drain.
+// The audio output of the page, the only backend miniaudio has in the browser. The engine mixes on the page thread whenever `platform/web/haylen-runtime.js` asks for a block, and the page posts the blocks to an `AudioWorkletNode`, whose processor in `platform/web/haylen-audio-worklet.js` plays them from a small ring buffer, so the output needs neither shared memory nor threads. The page keeps `kBufferedMilliseconds` of mixed audio ahead of the output, which a long frame of the app does not drain.
 class BrowserAudioOutput final {
   public:
     // The backend the audio device plays through in browsers, which refuses to start when the browser offers no AudioWorklet.

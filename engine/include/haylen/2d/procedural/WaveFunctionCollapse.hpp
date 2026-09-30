@@ -27,15 +27,15 @@ class WaveFunctionCollapse final {
     // Which tiles may sit next to which, and how often each tile appears. Tiles are numbered from 0.
     class Rules final {
       public:
-        // Starts with no allowed neighbors and a weight of 1 for every tile. Throws std::invalid_argument without tiles.
+        // Starts with no allowed neighbors and a weight of 1 for every tile. Throws `std::invalid_argument` without tiles.
         explicit Rules(std::size_t tiles);
 
-        // Learns the neighbors and the tile frequencies of a sample whose cells hold tile numbers. Periodic samples also pair the cells across opposite edges. Throws std::invalid_argument for negative cells.
+        // Learns the neighbors and the tile frequencies of a sample whose cells hold tile numbers. Periodic samples also pair the cells across opposite edges. Throws `std::invalid_argument` for negative cells.
         [[nodiscard]] static Rules fromSample(const spatial2d::CellGrid& sample, bool periodic = false);
 
-        // Lets second sit on the given side of first, which also lets first sit on the opposite side of second. Throws std::out_of_range for unknown tiles.
+        // Lets `second` sit on the given side of `first`, which also lets `first` sit on the opposite side of `second`. Throws `std::out_of_range` for unknown tiles.
         void allow(std::size_t first, std::size_t second, Direction direction);
-        // Tiles with a weight of 0 never appear. Throws std::out_of_range for unknown tiles and std::invalid_argument for negative weights.
+        // Tiles with a weight of 0 never appear. Throws `std::out_of_range` for unknown tiles and `std::invalid_argument` for negative weights.
         void setWeight(std::size_t tile, float weight);
 
         [[nodiscard]] bool isAllowed(std::size_t first, std::size_t second, Direction direction) const noexcept;
@@ -52,7 +52,7 @@ class WaveFunctionCollapse final {
         std::array<std::vector<bool>, 4> allowed;
     };
 
-    // Fixed cells hold the tile a cell must take, or -1 to leave it free, and fixed must match the size when present. Periodic outputs also match the tiles across opposite edges.
+    // Fixed cells hold the tile a cell must take, or -1 to leave it free, and `fixed` must match the size when present. Periodic outputs also match the tiles across opposite edges.
     struct Options {
         int width = 32;
         int height = 32;
@@ -61,7 +61,7 @@ class WaveFunctionCollapse final {
         std::optional<spatial2d::CellGrid> fixed;
     };
 
-    // Returns the tile of every cell, or nothing when every attempt ran into a contradiction. Throws std::invalid_argument when the fixed grid does not match the size.
+    // Returns the tile of every cell, or nothing when every attempt ran into a contradiction. Throws `std::invalid_argument` when the fixed grid does not match the size.
     [[nodiscard]] static std::optional<spatial2d::CellGrid> generate(const Rules& rules, const Options& options, math::Random& random);
 
     // Tells whether every pair of neighbors in the grid follows the rules. Cells that hold no tile of the rules break them.

@@ -14,7 +14,7 @@ namespace haylen::graphics {
 
 struct ShaderResource;
 
-// Shared handle to a custom shader: a .shader file that make.py shaders compiles from annotated GLSL for every backend, with the reflection of the uniforms and textures of its own. The engine creates the GPU program of the active backend the first time a draw needs it, and a reloaded file updates every handle.
+// Shared handle to a custom shader: a `.shader` file that `make.py shaders` compiles from annotated GLSL for every backend, with the reflection of the uniforms and textures of its own. The engine creates the GPU program of the active backend the first time a draw needs it, and a reloaded file updates every handle.
 class Shader final {
   public:
     enum class UniformType : std::uint8_t {
@@ -53,10 +53,10 @@ class Shader final {
     Shader() = default;
     explicit Shader(std::shared_ptr<ShaderResource> value) noexcept : resource(std::move(value)) {}
 
-    // Reads a .shader file and checks its programs against the binding limits of the GPU. Throws std::invalid_argument when the bytes are not a valid shader file.
+    // Reads a `.shader` file and checks its programs against the binding limits of the GPU. Throws `std::invalid_argument` when the bytes are not a valid shader file.
     [[nodiscard]] static Shader parse(std::span<const std::uint8_t> bytes);
 
-    // Resolves the GLSL names "float", "vec2", "vec3", "vec4", "int", "ivec2", "ivec3", "ivec4" and "mat4".
+    // Resolves the GLSL names `float`, `vec2`, `vec3`, `vec4`, `int`, `ivec2`, `ivec3`, `ivec4` and `mat4`.
     [[nodiscard]] static std::optional<UniformType> uniformTypeFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view uniformTypeName(UniformType type) noexcept;
 

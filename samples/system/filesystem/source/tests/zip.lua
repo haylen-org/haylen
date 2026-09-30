@@ -1,4 +1,4 @@
--- Zip archives with Varn zip: zip.create packs files of the user folder, zip.list reads the names of the entries and zip.extract unpacks them into a folder. A package file cannot be opened in place, so the archive shipped in the package is first written to the user folder.
+-- Zip archives with Varn `zip`: `zip.create` packs files of the user folder, `zip.list` reads the names of the entries and `zip.extract` unpacks them into a folder. A package file cannot be opened in place, so the archive shipped in the package is first written to the user folder.
 local assets = require('haylen.assets')
 local fs = require('fs')
 local haylen = require('haylen')
@@ -20,7 +20,7 @@ local kFiles = {
     ['data/map.txt'] = '~~~..~~\n~.\"\".~\n~..^^.~\n~~~..~~\n',
 }
 
--- Waits for a promise and raises its error, so one pcall around a step catches every failure.
+-- Waits for a promise and raises its error, so one `pcall` around a step catches every failure.
 local function need(promise)
     local value, failure = promise:await()
     if value == nil then
@@ -90,7 +90,7 @@ function Zip:writeFiles()
     for name, text in pairs(kFiles) do
         storage.writeText('zip-demo/files/' .. name, text)
     end
-    return string.format('Wrote %d files under zip-demo/files with haylen.storage', #storage.list('zip-demo/files'))
+    return string.format('Wrote %d files under "zip-demo/files" with "haylen.storage"', #storage.list('zip-demo/files'))
 end
 
 function Zip:create()
@@ -128,7 +128,7 @@ function Zip:postcards()
     need(zip.extract(archive, self.base .. '/postcards'))
     self:showEntries('zip.list(postcards.zip)', names)
     self:show('preview', {text = storage.readText('zip-demo/postcards/postcards/palm-cove.txt')})
-    return string.format('Copied archives/postcards.zip from the package and extracted its %d entries', #names)
+    return string.format('Copied "archives/postcards.zip" from the package and extracted its %d entries', #names)
 end
 
 function Zip:remove()

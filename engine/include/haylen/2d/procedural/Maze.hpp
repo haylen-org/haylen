@@ -29,7 +29,7 @@ class Maze final {
     static constexpr std::uint8_t kSouth = 4;
     static constexpr std::uint8_t kWest = 8;
 
-    // Starts with every wall closed. Throws std::invalid_argument when a side is below 1 or the grid of toGrid would not fit in 32-bit cell indices.
+    // Starts with every wall closed. Throws `std::invalid_argument` when a side is below 1 or the grid of `toGrid` would not fit in 32-bit cell indices.
     Maze(int columns, int rows);
 
     [[nodiscard]] static Maze generate(int columns, int rows, Algorithm algorithm, math::Random& random);
@@ -42,13 +42,13 @@ class Maze final {
         return height;
     }
 
-    // Returns the sides the cell opens to as a mask of kNorth, kEast, kSouth and kWest. Throws std::out_of_range outside the maze.
+    // Returns the sides the cell opens to as a mask of `kNorth`, `kEast`, `kSouth` and `kWest`. Throws `std::out_of_range` outside the maze.
     [[nodiscard]] std::uint8_t getOpenings(int x, int y) const;
-    // Opens the wall on one side of the cell and the matching wall of its neighbor. Throws std::invalid_argument when the side leads out of the maze.
+    // Opens the wall on one side of the cell and the matching wall of its neighbor. Throws `std::invalid_argument` when the side leads out of the maze.
     void open(int x, int y, std::uint8_t side);
     [[nodiscard]] std::size_t getPassageCount() const noexcept;
 
-    // Draws the maze as 2 * width + 1 by 2 * height + 1 tiles, where 1 marks walls and 0 floors, and cell (x, y) sits on tile (2x + 1, 2y + 1).
+    // Draws the maze as `2 * width + 1` by `2 * height + 1` tiles, where 1 marks walls and 0 floors, and cell `(x, y)` sits on tile `(2x + 1, 2y + 1)`.
     [[nodiscard]] spatial2d::CellGrid toGrid() const;
 
   private:

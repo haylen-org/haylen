@@ -1,4 +1,4 @@
--- Pixel snap: at a zoom of 4 a view that moves slowly lands between the big pixels and makes pixel art shimmer, and pixelSnap rounds the drawn position to whole view pixels.
+-- Pixel snap: at a zoom of 4 a view that moves slowly lands between the big pixels and makes pixel art shimmer, and `pixelSnap` rounds the drawn position to whole view pixels.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')

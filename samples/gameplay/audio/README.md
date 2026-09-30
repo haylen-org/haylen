@@ -1,6 +1,6 @@
 # Haylen Audio
 
-A Lua sample with one scene per feature of [haylen.audio](../../../docs/lua-api/audio.md) and the [audio guide](../../../docs/audio.md). The menu lists the tests, each test opens as its own scene with a Back button, its live values and the calls it makes, and Escape, the east gamepad button or the Menu button of a TV remote return to the menu. Every test preloads the sounds of the sample in its `load` hook while the fade covers the screen: the effects decode into memory and the music streams from its file.
+A Lua sample with one scene per feature of [`haylen.audio`](../../../docs/lua-api/audio.md) and the [audio guide](../../../docs/audio.md). The menu lists the tests, each test opens as its own scene with a Back button, its live values and the calls it makes, and Escape, the east gamepad button or the Menu button of a TV remote return to the menu. Every test preloads the sounds of the sample in its `load` hook while the fade covers the screen: the effects decode into memory and the music streams from its file.
 
 | Test | What it shows |
 | --- | --- |

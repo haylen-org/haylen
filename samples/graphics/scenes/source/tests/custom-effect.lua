@@ -1,4 +1,4 @@
--- Custom effects: a transition effect is a table with a render method that draws the images of both scenes itself, and switch and exit points that say when the stack changes and when the leaving scene exits.
+-- Custom effects: a transition effect is a table with a `render` method that draws the images of both scenes itself, and switch and exit points that say when the stack changes and when the leaving scene exits.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local m = require('haylen.math')

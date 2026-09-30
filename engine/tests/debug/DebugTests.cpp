@@ -162,7 +162,7 @@ TEST(LogTest, RemovingAListenerWaitsForTheLineItIsWriting) {
     EXPECT_TRUE(removed);
 }
 
-// An exit() on another thread, such as the one the iOS simulator calls when its render server dies, runs the destructors of static objects while the frame thread still logs and counts objects. The exit handler, registered before the loop first adds a listener, runs after the listeners would have been destroyed and lets the loop go on for a while.
+// An `exit()` on another thread, such as the one the iOS simulator calls when its render server dies, runs the destructors of static objects while the frame thread still logs and counts objects. The exit handler, registered before the loop first adds a listener, runs after the listeners would have been destroyed and lets the loop go on for a while.
 TEST(LogTest, KeepsWorkingWhileAnotherThreadExits) {
     GTEST_FLAG_SET(death_test_style, "threadsafe");
     // clang-format off

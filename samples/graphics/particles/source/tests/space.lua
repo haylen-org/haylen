@@ -1,4 +1,4 @@
--- Local and world space: in world space live particles stay where they were born when the emitter moves, and with localSpace they move with the emitter, like the exhaust of a ship against a shield around it.
+-- Local and world space: in world space live particles stay where they were born when the emitter moves, and with `localSpace` they move with the emitter, like the exhaust of a ship against a shield around it.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local particles2d = require('haylen.particles2d')
@@ -9,7 +9,7 @@ local sample = require('sample')
 
 local Space = haylen.class('Space', sample.Test)
 
-Space.hints = 'Both emitters are the same except localSpace. Change how fast they circle.'
+Space.hints = 'Both emitters are the same except "localSpace". Change how fast they circle.'
 
 function Space:init(entry)
     Space.super.init(self, entry)

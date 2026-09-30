@@ -4,7 +4,7 @@
 
 namespace haylen::plugins {
 
-// Installs haylen.input, which reads the keyboard, the mouse, touches, gamepads, gestures and the action map.
+// Installs `haylen.input`, which reads the keyboard, the mouse, touches, gamepads, gestures and the action map.
 class InputPlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {

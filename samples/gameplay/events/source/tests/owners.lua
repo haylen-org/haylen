@@ -13,8 +13,8 @@ local Owners = haylen.class('Owners', sample.Test)
 local kCode = [[
 alarm:connect(function() guard.alert = guard.alert + 1 end, {owner = guard})
 events.on('alarmRaised', function() guard.heard = guard.heard + 1 end, {owner = guard})
-events.on('alarmRaised', showBanner, {owner = bannerDocument})  -- ends when the banner is unmounted
-guards[#guards] = nil  collectgarbage()  -- the listeners of that guard end at the end of the frame]]
+events.on('alarmRaised', showBanner, {owner = bannerDocument})  -- Ends when the banner is unmounted.
+guards[#guards] = nil  collectgarbage()  -- The listeners of that guard end at the end of the frame.]]
 
 function Owners:enter()
     self.journal = Journal()
@@ -41,7 +41,7 @@ end
 -- A guard is a plain table that owns its two listeners, so they end once the garbage collector frees it.
 function Owners:spawn()
     self.names = self.names + 1
-    local guard = {name = 'guard ' .. self.names, alert = 0, heard = 0}
+    local guard = {name = 'Guard ' .. self.names, alert = 0, heard = 0}
     self.alarm:connect(function() guard.alert = guard.alert + 1 end, {owner = guard})
     events.on('alarmRaised', function() guard.heard = guard.heard + 1 end, {owner = guard})
     table.insert(self.guards, guard)
@@ -63,18 +63,18 @@ function Owners:showBanner(visible)
         self.banner = ui.mount(ui.label{id = 'text', text = 'The banner listens', font = 'heading', color = 'warningText', anchor = 'top', margin = {140, 0}}, {owner = self, layer = 1})
         local banner = self.banner
         events.on('alarmRaised', function() banner:set('text', {text = 'The banner heard the alarm at frame ' .. haylen.frameIndex()}) end, {owner = banner})
-        self.journal:add('banner mounted with a listener it owns', sample.green)
+        self.journal:add('Banner mounted with a listener it owns', sample.green)
     elseif not visible and self.banner then
         self.banner:unmount()
         self.banner = nil
-        self.journal:add('banner unmounted', sample.red)
+        self.journal:add('Banner unmounted', sample.red)
     end
 end
 
 function Owners:raise()
     self.alarm:emit()
     events.emit('alarmRaised')
-    self.journal:add(string.format('alarm: %d signal listeners, %d event listeners', self.alarm.size, self:eventListeners()), sample.warm)
+    self.journal:add(string.format('Alarm: %d signal listeners, %d event listeners', self.alarm.size, self:eventListeners()), sample.warm)
 end
 
 function Owners:eventListeners()

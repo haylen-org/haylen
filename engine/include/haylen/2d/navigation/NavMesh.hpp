@@ -17,7 +17,7 @@ namespace haylen::navigation2d {
 // A navigation mesh of triangles over the walkable area of a level, built with a constrained Delaunay triangulation from a boundary polygon and obstacle polygons, such as the collision objects of a Tiled map or generated shapes. Obstacles may overlap each other and cross the boundary. The triangulation gains points on the walls where corners come close to them, so a corridor of triangles has room for an agent exactly when every edge it crosses is at least as long as the agent is wide, within a thousandth of its width. Paths run through the corridors with A* and are pulled straight with the funnel algorithm around circles of the agent radius at the corners they turn around. Changing the polygons marks the mesh for a rebuild, which happens on the next query or on build.
 class NavMesh final {
   public:
-    // Vertices run counterclockwise in a y-up frame, which is clockwise on screen. The neighbor at index i shares the edge from vertex i to vertex i + 1, and -1 marks a wall.
+    // Vertices run counterclockwise in a y-up frame, which is clockwise on screen. The neighbor at index `i` shares the edge from vertex `i` to vertex `i + 1`, and -1 marks a wall.
     struct Triangle {
         std::array<std::uint32_t, 3> vertices{};
         std::array<std::int32_t, 3> neighbors{-1, -1, -1};
@@ -29,7 +29,7 @@ class NavMesh final {
         return boundary;
     }
 
-    // Obstacles are polygons of at least three points, identified by the ids addObstacle returns.
+    // Obstacles are polygons of at least three points, identified by the ids `addObstacle` returns.
     std::uint32_t addObstacle(std::span<const math::Vec2> polygon);
     void setObstacle(std::uint32_t id, std::span<const math::Vec2> polygon);
     bool removeObstacle(std::uint32_t id);
@@ -75,7 +75,7 @@ class NavMesh final {
         math::Vec2 rightCorner{};
     };
 
-    // A corner the path turns around, on its left with side 1 and on its right with side -1.
+    // A corner the path turns around, on its left with `side` 1 and on its right with `side` -1.
     struct Turn {
         math::Vec2 corner{};
         float side = 0.0F;
@@ -86,7 +86,7 @@ class NavMesh final {
 
     [[nodiscard]] static bool isWorse(const OpenNode& lhs, const OpenNode& rhs) noexcept;
 
-    // Returns twice the signed area of the triangle a, b, c in the orientation the funnel algorithm uses.
+    // Returns twice the signed area of the triangle `a, b, c` in the orientation the funnel algorithm uses.
     [[nodiscard]] static float area(math::Vec2 a, math::Vec2 b, math::Vec2 c) noexcept;
     static void requirePolygon(std::span<const math::Vec2> polygon);
 
@@ -103,7 +103,7 @@ class NavMesh final {
         return vertices[index];
     }
 
-    // Returns the point itself when it is the radius away from every wall, otherwise its room as findPath describes it, or nothing when the point lies outside the mesh, has no room or cannot step straight to it.
+    // Returns the point itself when it is the radius away from every wall, otherwise its room as `findPath` describes it, or nothing when the point lies outside the mesh, has no room or cannot step straight to it.
     std::optional<math::Vec2> findRoom(math::Vec2 point, float agentRadius);
 
     // Gathers the walls of the triangles closer than the distance to the point.

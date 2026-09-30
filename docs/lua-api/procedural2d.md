@@ -1,6 +1,6 @@
 # haylen.procedural2d
 
-`haylen.procedural2d` generates 2D content: it scatters objects over areas, grows caves, dungeons and mazes, fills maps with Wave Function Collapse, builds Delaunay triangulations and Voronoi diagrams, and picks tiles by their neighbors at run time. Everything is deterministic: the same options and seed always give the same result. Large generations have asynchronous versions that run on the worker threads of the engine and return a promise.
+The module `haylen.procedural2d` generates 2D content: it scatters objects over areas, grows caves, dungeons and mazes, fills maps with Wave Function Collapse, builds Delaunay triangulations and Voronoi diagrams, and picks tiles by their neighbors at run time. Everything is deterministic: the same options and seed always give the same result. Large generations have asynchronous versions that run on the worker threads of the engine and return a promise.
 
 ```lua
 local procedural = require('haylen.procedural2d')
@@ -8,9 +8,9 @@ local procedural = require('haylen.procedural2d')
 
 ## Seeds, maps and promises
 
-Functions that take options read their generator from a `random` field holding a `Random` of [haylen.math](math.md), which advances as they draw, or seed a new one from a `seed` field, which defaults to `0`. Asynchronous versions copy the generator, so a `random` passed to them does not advance.
+Functions that take options read their generator from a `random` field holding a `Random` of [`haylen.math`](math.md), which advances as they draw, or seed a new one from a `seed` field, which defaults to `0`. Asynchronous versions copy the generator, so a `random` passed to them does not advance.
 
-Maps are `CellGrid` objects of [haylen.spatial2d](spatial2d.md), so flood fills, connected regions and field of view work on them directly. Cells count from 0, and generators mark walls with `1` and floors with `0`.
+Maps are `CellGrid` objects of [`haylen.spatial2d`](spatial2d.md), so flood fills, connected regions and field of view work on them directly. Cells count from 0, and generators mark walls with `1` and floors with `0`.
 
 Functions whose names end in `Async` take the same options, return a promise at once and resolve it on a later frame. Call `:await()` on the promise inside a coroutine started with `async.spawn()` of Varn's `async` module.
 
@@ -36,7 +36,7 @@ Creates a `Region`, an area to place things in, from any of these descriptions, 
 | `{center = {x, y}, radius = r}` | A circle. |
 | `{center = {x, y}, radius = r, innerRadius = r2}` | A ring between both radii. |
 | `{polygon = shape}` | A polygon given like the shapes of `m.polygon`, holes included. |
-| A Tiled object table from [haylen.tiled](tiled.md) | A rectangle, ellipse or polygon object in map pixels, rotation included. Other object shapes raise `Only rectangle, ellipse and polygon objects have an area.` |
+| A Tiled object table from [`haylen.tiled`](tiled.md) | A rectangle, ellipse or polygon object in map pixels, rotation included. Other object shapes raise `Only rectangle, ellipse and polygon objects have an area.` |
 
 Random points are uniform over the area.
 
@@ -51,7 +51,7 @@ print(meadow:contains({50, 50}), meadow:randomPoint(m.random(3)))
 
 ### region.kind, region.area, region.bounds, region:contains(point), region:randomPoint(random)
 
-`kind` is `'rect'`, `'circle'`, `'ring'` or `'polygon'`, `area` the size of the area and `bounds` its bounding `Rect`. `contains` tells whether a point lies inside, and `randomPoint` returns a uniform random point drawn from a `Random`.
+The property `kind` is `'rect'`, `'circle'`, `'ring'` or `'polygon'`, `area` the size of the area and `bounds` its bounding `Rect`. The method `contains` tells whether a point lies inside, and `randomPoint` returns a uniform random point drawn from a `Random`.
 
 ```lua
 local procedural = require('haylen.procedural2d')
@@ -68,27 +68,27 @@ end
 
 ### procedural.scatter(options)
 
-Places points over a region, keeps them out of exclusion zones and gives each one a type, and returns a list of `{x, y, type}` tables with types counted from 1. Unknown keys raise `Unknown option '<key>'.`
+Places points over a region, keeps them out of exclusion zones and gives each one a type, and returns a list of `{x, y, type}` tables with types counted from 1. Unknown keys raise `Unknown option "<key>".`
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `region` | region | required | Area to fill. |
-| `method` | string | `'random'` | `'random'` places the area times the density in points, `'grid'` places one point per cell of spacing size moved randomly by up to jitter times half the spacing, and `'poisson'` keeps points at least spacing apart. |
+| `method` | string | `'random'` | The method `'random'` places the area times the density in points, `'grid'` places one point per cell of `spacing` size moved randomly by up to `jitter` times half the spacing, and `'poisson'` keeps points at least `spacing` apart. |
 | `density` | number | `0.001` | Points per square unit for `'random'`. |
 | `spacing` | number | `32` | Cell size for `'grid'` and smallest distance for `'poisson'`. |
 | `maximumSpacing` | number | required with `'poisson'` and a density map | Largest distance for `'poisson'` where the density map is 0, at least `spacing`. |
 | `jitter` | number | `1` | Share of half the spacing a grid point may move. |
 | `attempts` | integer | `30` | Candidates tried around each Poisson point. |
-| `densityMap` | function or noise | `nil` | Value from 0 to 1 at a point. `'random'` and `'grid'` keep each point with that probability, and `'poisson'` spaces points from `spacing` where it is 1 to `maximumSpacing` where it is 0. |
+| `densityMap` | function or noise | `nil` | Value from 0 to 1 at a point. The methods `'random'` and `'grid'` keep each point with that probability, and `'poisson'` spaces points from `spacing` where it is 1 to `maximumSpacing` where it is 0. |
 | `exclude` | table | `{}` | List of regions that receive no points. |
 | `weights` | table | `{}` | Weight of each type, so the type of a point is drawn in proportion to them. |
 | `biome` | function or noise | `nil` | Value at a point that picks the layer. |
 | `layers` | table | `{}` | List of `{minimum, maximum, weights}`. A point takes the weights of the first layer whose range holds its biome value, and points outside every layer are dropped. |
 | `seed`, `random` | | | The generator, as described above. |
 
-A function map is called with the point as a `Vec2`. A noise map is a table `{seed = 0, frequency = 0.01, octaves = 4, gain = 0.5}` of fractal noise, which a density map rescales from -1 to 1 into 0 to 1. A map of another type raises `The densityMap option takes a function or a noise table.`, or the same error naming `biome`.
+A function map is called with the point as a `Vec2`. A noise map is a table `{seed = 0, frequency = 0.01, octaves = 4, gain = 0.5}` of fractal noise, which a density map rescales from -1 to 1 into 0 to 1. A map of another type raises `The "densityMap" option takes a function or a noise table.`, or the same error naming `biome`.
 
-A density that is negative or not finite, or a spacing that is not positive and finite, raises `Scattering needs a finite density of at least zero and a finite positive spacing.` A `'poisson'` scatter with a density map and without a finite `maximumSpacing` of at least `spacing` raises `Poisson scattering with a density map needs a finite maximumSpacing of at least the spacing.` A region that would take more than 16777216 points, or Poisson grid cells, raises an error that names the limit.
+A density that is negative or not finite, or a spacing that is not positive and finite, raises `Scattering needs a finite density of at least zero and a finite positive spacing.` A `'poisson'` scatter with a density map and without a finite `maximumSpacing` of at least `spacing` raises `Poisson scattering with a density map needs a finite "maximumSpacing" of at least the spacing.` A region that would take more than 16777216 points, or Poisson grid cells, raises an error that names the limit.
 
 ```lua
 local procedural = require('haylen.procedural2d')
@@ -112,7 +112,7 @@ print(#forest, forest[1].x, forest[1].y, forest[1].type)
 
 ### procedural.scatterAsync(options)
 
-Scatters on a worker thread and resolves with the list of points. Maps must be noise tables, and a function raises `Asynchronous scattering takes a noise table for densityMap instead of a function.`
+Scatters on a worker thread and resolves with the list of points. Maps must be noise tables, and a function raises `Asynchronous scattering takes a noise table for "densityMap" instead of a function.`
 
 ```lua
 local procedural = require('haylen.procedural2d')
@@ -149,7 +149,7 @@ print(cave:get(40, 25), regions, labels.width)
 
 ### procedural.cellularAutomatonStep(grid, options)
 
-Runs one smoothing step of the cave automaton over any `CellGrid` of walls (1) and floors (0), such as a painted map or a noise threshold, and returns the smoothed grid. `options` is optional and takes `birthLimit`, `survivalLimit` and `solidBorder` with the defaults and meaning of `caves`.
+Runs one smoothing step of the cave automaton over any `CellGrid` of walls (1) and floors (0), such as a painted map or a noise threshold, and returns the smoothed grid. The table `options` is optional and takes `birthLimit`, `survivalLimit` and `solidBorder` with the defaults and meaning of `caves`.
 
 ```lua
 local procedural = require('haylen.procedural2d')
@@ -181,7 +181,7 @@ print(tunnels:get(30, 20)) -- 0
 
 ### procedural.dungeon(options), procedural.dungeonAsync(options)
 
-Lays out rooms joined by corridors, and every room can reach every other one. `'bsp'` splits the map in two again and again and puts one room in each part, and `'placement'` drops rooms at random free spots and joins them with a minimum spanning tree. Returns `{grid, rooms, connections}`, where rooms are `{x, y, width, height}` tables and connections pairs of room positions from 1. Room sizes that are not positive and ordered, or a map or leaf too small for the smallest room with its padding, raise an error.
+Lays out rooms joined by corridors, and every room can reach every other one. The method `'bsp'` splits the map in two again and again and puts one room in each part, and `'placement'` drops rooms at random free spots and joins them with a minimum spanning tree. Returns `{grid, rooms, connections}`, where rooms are `{x, y, width, height}` tables and connections pairs of room positions from 1. Room sizes that are not positive and ordered, or a map or leaf too small for the smallest room with its padding, raise an error.
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -205,7 +205,7 @@ print(dungeon.grid:get(start.x, start.y)) -- 0
 
 ### procedural.maze(options), procedural.mazeAsync(options)
 
-Generates a perfect maze, where exactly one path joins any two cells, and returns a `Maze`. `'backtracker'` makes long winding corridors, while `'prim'` and `'kruskal'` make many short dead ends. Options are `{width = 16, height = 16, algorithm = 'backtracker'}` with the generator fields. Sides below 1, or a maze whose `toGrid` tiles would not fit in 32-bit cell indices, raise `A maze needs at least one cell on each side and a tile grid that fits in 32-bit cell indices.`
+Generates a perfect maze, where exactly one path joins any two cells, and returns a `Maze`. The algorithm `'backtracker'` makes long winding corridors, while `'prim'` and `'kruskal'` make many short dead ends. Options are `{width = 16, height = 16, algorithm = 'backtracker'}` with the generator fields. Sides below 1, or a maze whose `toGrid` tiles would not fit in 32-bit cell indices, raise `A maze needs at least one cell on each side and a tile grid that fits in 32-bit cell indices.`
 
 ```lua
 local procedural = require('haylen.procedural2d')
@@ -230,7 +230,7 @@ print(corridor.passageCount, corridor:openings(1, 0)) -- 3 10
 
 ### maze:openings(x, y), maze:open(x, y, side), maze:toGrid()
 
-`openings` returns the sides a cell opens to as a mask of `procedural.north` (1), `procedural.east` (2), `procedural.south` (4) and `procedural.west` (8). `open` opens the wall on one side of a cell and the matching wall of its neighbor, and walls that lead out of the maze raise `Only walls between two cells of the maze can open.` `toGrid` draws the maze as a `CellGrid` of `2 * width + 1` by `2 * height + 1` tiles, with cell `(x, y)` on tile `(2x + 1, 2y + 1)`.
+The method `openings` returns the sides a cell opens to as a mask of `procedural.north` (1), `procedural.east` (2), `procedural.south` (4) and `procedural.west` (8). The method `open` opens the wall on one side of a cell and the matching wall of its neighbor, and walls that lead out of the maze raise `Only walls between two cells of the maze can open.` The method `toGrid` draws the maze as a `CellGrid` of `2 * width + 1` by `2 * height + 1` tiles, with cell `(x, y)` on tile `(2x + 1, 2y + 1)`.
 
 ```lua
 local procedural = require('haylen.procedural2d')
@@ -253,7 +253,7 @@ Fills a map with tiles so that every pair of neighbors follows adjacency rules, 
 | `sample` | CellGrid | `nil` | Learns the rules and tile frequencies from the neighbors of a sample whose cells hold tile numbers from 0. |
 | `periodicSample` | boolean | `false` | Also pairs the sample cells across its opposite edges. |
 | `tiles` | integer | | Number of tiles when there is no sample. |
-| `allow` | table | `{}` | List of `{first, second, side}` rules: tile `second` may sit on `side` of tile `first`, where side is `'right'`, `'down'`, `'left'` or `'up'`, and the opposite also holds. |
+| `allow` | table | `{}` | List of `{first, second, side}` rules: tile `second` may sit on `side` of tile `first`, where `side` is `'right'`, `'down'`, `'left'` or `'up'`, and the opposite also holds. |
 | `weights` | table | | Weight of each tile from tile 0 on. A weight of 0 keeps a tile out. |
 | `width`, `height` | integer | `32` | Size of the output. |
 | `periodic` | boolean | `false` | Also matches the tiles across opposite edges of the output, so it tiles seamlessly. |
@@ -278,14 +278,14 @@ print(island and island:get(24, 16)) -- 2
 
 ### procedural.waveFunctionCollapseRules(options)
 
-Reads the rules keys of `waveFunctionCollapse` (`sample`, `periodicSample`, `tiles`, `allow` and `weights`) into a `WaveFunctionCollapseRules` object, to see what a sample taught or to check maps painted by hand against the rules. Other keys raise `Unknown option '<key>'.`
+Reads the rules keys of `waveFunctionCollapse` (`sample`, `periodicSample`, `tiles`, `allow` and `weights`) into a `WaveFunctionCollapseRules` object, to see what a sample taught or to check maps painted by hand against the rules. Other keys raise `Unknown option "<key>".`
 
 | Member | Meaning |
 | --- | --- |
 | `rules.tileCount` | Number of tiles, read only. |
-| `rules:allowed(first, second, side)` | True when tile `second` may sit on `side` of tile `first`, where side is `'right'`, `'down'`, `'left'` or `'up'`. |
+| `rules:allowed(first, second, side)` | Returns `true` when tile `second` may sit on `side` of tile `first`, where `side` is `'right'`, `'down'`, `'left'` or `'up'`. |
 | `rules:weight(tile)` | Weight of a tile, or 0 for a tile the rules do not have. |
-| `rules:valid(grid, periodic)` | True when every pair of neighbors of the `CellGrid` follows the rules, also across opposite edges when `periodic` is true. Cells that hold no tile of the rules make it false. |
+| `rules:valid(grid, periodic)` | Returns `true` when every pair of neighbors of the `CellGrid` follows the rules, also across opposite edges when `periodic` is `true`. Cells that hold no tile of the rules make it `false`. |
 
 ```lua
 local procedural = require('haylen.procedural2d')
@@ -337,7 +337,7 @@ print(mesh.triangleCount, #mesh.hull, #mesh.neighbors[5])
 
 ### mesh:circumcenter(triangle), mesh:findNearest(position, start)
 
-`circumcenter` returns the center of the circle through the corners of a triangle counted from 1 as a `Vec2`, where the Voronoi cells of its three corners meet, and a triangle outside `1` to `triangleCount` raises `the triangle is outside the triangulation`. `findNearest` returns the position of the point nearest to `position`, which is also the Voronoi cell that holds it, or `nil` without points. It walks the edges of the triangulation in about the square root of the point count in steps, from the point `start` when it is given, so a start near the answer, such as the previous answer of a moving position, makes it faster. A duplicate point given as start returns itself, and a start outside the points raises `the start is outside the points`.
+The method `circumcenter` returns the center of the circle through the corners of a triangle counted from 1 as a `Vec2`, where the Voronoi cells of its three corners meet, and a triangle outside `1` to `triangleCount` raises `the triangle is outside the triangulation`. The method `findNearest` returns the position of the point nearest to `position`, which is also the Voronoi cell that holds it, or `nil` without points. It walks the edges of the triangulation in about the square root of the point count in steps, from the point `start` when it is given, so a start near the answer, such as the previous answer of a moving position, makes it faster. A duplicate point given as `start` returns itself, and a start outside the points raises `the start is outside the points`.
 
 ```lua
 local procedural = require('haylen.procedural2d')
@@ -391,7 +391,7 @@ Autotiling picks tile variants at run time from the neighbors of each cell, so p
 
 ### procedural.mask4(grid, x, y, edgesMatch), procedural.mask8(grid, x, y, edgesMatch)
 
-`mask4` returns the sides whose neighbor holds the same value as the cell: north 1, east 2, south 4 and west 8. `mask8` returns the neighbors that hold the same value clockwise from north: north 1, north-east 2, east 4, south-east 8, south 16, south-west 32, west 64 and north-west 128, where a corner only counts when both sides next to it match, which leaves the 47 masks of a blob tile set. Cells beyond the grid match unless `edgesMatch` is `false`. A cell outside the grid raises `the cell is outside the grid`.
+The function `mask4` returns the sides whose neighbor holds the same value as the cell: north 1, east 2, south 4 and west 8. The function `mask8` returns the neighbors that hold the same value clockwise from north: north 1, north-east 2, east 4, south-east 8, south 16, south-west 32, west 64 and north-west 128, where a corner only counts when both sides next to it match, which leaves the 47 masks of a blob tile set. Cells beyond the grid match unless `edgesMatch` is `false`. A cell outside the grid raises `the cell is outside the grid`.
 
 ```lua
 local procedural = require('haylen.procedural2d')
@@ -426,7 +426,7 @@ print(walls:get(0, 0))
 
 ### procedural.autotileWang(colors, wangSet, seed)
 
-Picks the tiles of a Tiled Wang set and returns a `CellGrid` of tileset tile ids, or -1 where no tile matches. `wangSet` is one of the `wangSets` of a tileset of [haylen.tiled](tiled.md), or a table `{kind, tiles = {{tileId, wangId}}}` alike, and colors are the Wang color numbers of Tiled, from 1, with 0 for no color. Corner and mixed sets read colors at the corners of the cells from a grid one cell wider and taller than the result, where cell `(x, y)` has its corners at `(x, y)`, `(x + 1, y)`, `(x + 1, y + 1)` and `(x, y + 1)`, and mixed sets color an edge when both of its corners agree and accept any color otherwise. Edge sets read one color per cell and color each side whose neighbor shares that color, which suits paths and fences. When several tiles match, a hash of the cell and the seed picks one. Other kinds raise `Wang sets must be of the corner, edge or mixed kind.`
+Picks the tiles of a Tiled Wang set and returns a `CellGrid` of tileset tile ids, or -1 where no tile matches. The argument `wangSet` is one of the `wangSets` of a tileset of [`haylen.tiled`](tiled.md), or a table `{kind, tiles = {{tileId, wangId}}}` alike, and colors are the Wang color numbers of Tiled, from 1, with 0 for no color. Corner and mixed sets read colors at the corners of the cells from a grid one cell wider and taller than the result, where cell `(x, y)` has its corners at `(x, y)`, `(x + 1, y)`, `(x + 1, y + 1)` and `(x, y + 1)`, and mixed sets color an edge when both of its corners agree and accept any color otherwise. Edge sets read one color per cell and color each side whose neighbor shares that color, which suits paths and fences. When several tiles match, a hash of the cell and the seed picks one. Other kinds raise `Wang sets must be of the "corner", "edge" or "mixed" kind.`
 
 ```lua
 local procedural = require('haylen.procedural2d')

@@ -11,7 +11,7 @@ local sample = {}
 -- The fade that every change between the menu and a test plays.
 sample.transition = {effect = 'fade', duration = 0.3, color = '#FF101418'}
 
--- The simulated devices of haylen.viewport, and the device itself.
+-- The simulated devices of `haylen.viewport`, and the device itself.
 sample.devices = {
     {id = 'device', text = 'This device'},
     {id = 'iphoneNotch', text = 'iPhone with a notch'},
@@ -42,7 +42,7 @@ function sample.back(entry)
     end
 end
 
--- Mounts a document that belongs to the test, whose root goes back to the menu when uiCancel reaches it.
+-- Mounts a document that belongs to the test, whose root goes back to the menu when `uiCancel` reaches it.
 function sample.mount(test, tree, options)
     tree.onCancel = tree.onCancel or function()
         sample.back(test.entry)

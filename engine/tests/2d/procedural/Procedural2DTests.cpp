@@ -122,9 +122,9 @@ TEST_F(Procedural2DTest, ScatterRefusesSettingsThatNeverFinish) {
     poisson.densityMap = [](math::Vec2) { return 0.5F; };
     try {
         (void)Scatter::generate(area, poisson, random);
-        FAIL() << "a density map without maximumSpacing was accepted";
+        FAIL() << "A density map without \"maximumSpacing\" was accepted.";
     } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "Poisson scattering with a density map needs a finite maximumSpacing of at least the spacing.");
+        EXPECT_STREQ(error.what(), "Poisson scattering with a density map needs a finite \"maximumSpacing\" of at least the spacing.");
     }
     poisson.maximumSpacing = 20.0F;
     EXPECT_FALSE(Scatter::generate(area, poisson, random).empty());
@@ -260,7 +260,7 @@ TEST_F(Procedural2DTest, MazesArePerfect) {
     EXPECT_THROW((void)maze.getOpenings(2, 0), std::out_of_range);
     EXPECT_EQ(Maze::algorithmFromName("kruskal"), Maze::Algorithm::Kruskal);
 
-    // The tile grid of a maze has to fit in 32-bit cell indices like every CellGrid.
+    // The tile grid of a maze has to fit in 32-bit cell indices like every `CellGrid`.
     EXPECT_THROW(Maze(40000, 40000), std::invalid_argument);
     EXPECT_THROW(Maze(std::numeric_limits<int>::max(), 1), std::invalid_argument);
 }

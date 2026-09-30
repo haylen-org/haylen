@@ -19,17 +19,17 @@ class PropertyTween;
 class Timeline;
 class TweenManager;
 
-// Anything that plays over time: a PropertyTween that animates values or a Timeline that plays other tweens. A tween has a delay, repeats a number of times or forever with restart, yoyo or incremental loops and an optional pause between loops, and can play, pause, reverse, seek and complete. Times exclude the delay. The manager plays root tweens, and a timeline plays the tweens placed in it.
+// Anything that plays over time: a `PropertyTween` that animates values or a `Timeline` that plays other tweens. A tween has a delay, repeats a number of times or forever with restart, yoyo or incremental loops and an optional pause between loops, and can play, pause, reverse, seek and complete. Times exclude the delay. The manager plays root tweens, and a timeline plays the tweens placed in it.
 class Tween : public Connection::Link, public std::enable_shared_from_this<Tween> {
   public:
-    // Restart plays every loop from the start, Yoyo plays every other loop backwards and Incremental continues every loop from where the previous one ended.
+    // The mode `Restart` plays every loop from the start, `Yoyo` plays every other loop backwards and `Incremental` continues every loop from where the previous one ended.
     enum class LoopMode : std::uint8_t {
         Restart,
         Yoyo,
         Incremental,
     };
 
-    // Start runs when the tween starts playing forward after its delay, update after every render with the progress, loop with the number of the loop that begins, step with the index of a timeline step that ends, complete when the tween reaches its end in the direction it plays and kill once when it leaves.
+    // The callback `start` runs when the tween starts playing forward after its delay, `update` after every render with the progress, `loop` with the number of the loop that begins, `step` with the index of a timeline step that ends, `complete` when the tween reaches its end in the direction it plays and `kill` once when it leaves.
     struct Callbacks {
         std::function<void()> start;
         std::function<void(float progress)> update;
@@ -78,7 +78,7 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
         return processMode;
     }
 
-    // Gives an inheriting tween the mode of its parent, such as the scene that owns it. The manager asks on every update, so the tween follows the parent when its mode changes. Without one, Inherit counts as Pausable.
+    // Gives an inheriting tween the mode of its parent, such as the scene that owns it. The manager asks on every update, so the tween follows the parent when its mode changes. Without one, `Inherit` counts as `Pausable`.
     void setParentMode(std::function<ProcessMode()> value) {
         parentMode = std::move(value);
     }
@@ -106,7 +106,7 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
         return autoKill;
     }
 
-    // Groups the tween with others for TweenManager::killTag, pauseTag and setTimeScale. It is fixed once the manager plays the tween.
+    // Groups the tween with others for `TweenManager::killTag`, `pauseTag` and `setTimeScale`. It is fixed once the manager plays the tween.
     void setTag(std::string value);
     [[nodiscard]] const std::string& getTag() const noexcept {
         return tag;
@@ -139,7 +139,7 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
     // Jumps to the end in the direction the tween plays, with or without the callbacks on the way. It has no effect on a tween that repeats forever.
     void complete(bool withCallbacks = true);
 
-    // Stops the tween for good. It runs the kill callback, emits finished with false, and a tween in a timeline leaves it. The automatic kill of a tween that just completed emits nothing more.
+    // Stops the tween for good. It runs the `kill` callback, emits `finished` with `false`, and a tween in a timeline leaves it. The automatic kill of a tween that just completed emits nothing more.
     void kill();
 
     [[nodiscard]] bool isPlaying() const noexcept {
@@ -189,7 +189,7 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
         return paused;
     }
 
-    // Emits true every time the tween completes and false when it is killed before completing, which is what waiting on a tween resumes on.
+    // Emits `true` every time the tween completes and `false` when it is killed before completing, which is what waiting on a tween resumes on.
     Signal<bool> finished;
 
   protected:
@@ -198,10 +198,10 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
     // Resolves what the tween needs before its first render, such as the start values of its properties.
     virtual void prepare();
 
-    // Renders the tween at a time inside one loop. Previous is where the loop was before, and it lies outside the loop when the loop was just entered, so zero-length callbacks on its edges run. Loops counts the completed loops of an incremental tween.
+    // Renders the tween at a time inside one loop. The parameter `previous` is where the loop was before, and it lies outside the loop when the loop was just entered, so zero-length callbacks on its edges run. The parameter `loops` counts the completed loops of an incremental tween.
     virtual void renderLoop(float loopTime, float previous, int loops, bool silent) = 0;
 
-    // Returns the progress to report to the update callback.
+    // Returns the progress to report to the `update` callback.
     [[nodiscard]] virtual float getRenderedProgress() const noexcept;
 
     // Kills the tweens a timeline holds.

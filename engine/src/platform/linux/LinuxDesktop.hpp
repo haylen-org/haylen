@@ -13,7 +13,7 @@ struct _XDisplay;
 
 namespace haylen::platform {
 
-// The desktop window of X11. Desktop points are pixels divided by the scale of Xft.dpi, which sizes the window of app.json too. The input shape of the window lets clicks through outside the regions, and a connection of its own hears the moves of the window and the changes of the monitors, because the event loop of sokol_app drops what it does not handle. Window managers apply the hints, and transparency needs a compositing one.
+// The desktop window of X11. Desktop points are pixels divided by the scale of `Xft.dpi`, which sizes the window of `app.json` too. The input shape of the window lets clicks through outside the regions, and a connection of its own hears the moves of the window and the changes of the monitors, because the event loop of `sokol_app` drops what it does not handle. Window managers apply the hints, and transparency needs a compositing one.
 class LinuxDesktop final {
   public:
     static void setStyle(const WindowStyle& value);

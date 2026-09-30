@@ -7,7 +7,7 @@ namespace haylen::io {
 
 std::string Path::normalize(std::string_view path) {
     if (path.starts_with('/') || path.starts_with('\\') || (path.size() > 1 && path[1] == ':')) {
-        throw std::invalid_argument("The path '" + std::string(path) + "' must be relative.");
+        throw std::invalid_argument("The path \"" + std::string(path) + "\" must be relative.");
     }
 
     std::vector<std::string_view> segments;
@@ -21,7 +21,7 @@ std::string Path::normalize(std::string_view path) {
         const std::string_view segment = path.substr(start, end - start);
         if (segment == "..") {
             if (segments.empty()) {
-                throw std::invalid_argument("The path '" + std::string(path) + "' must stay inside its root folder.");
+                throw std::invalid_argument("The path \"" + std::string(path) + "\" must stay inside its root folder.");
             }
             segments.pop_back();
         } else if (!segment.empty() && segment != ".") {

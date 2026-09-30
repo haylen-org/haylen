@@ -51,7 +51,7 @@ sg_shader_stage ShaderResource::toStage(const std::string& value) {
     if (value == "fragment") {
         return SG_SHADERSTAGE_FRAGMENT;
     }
-    throw std::invalid_argument(std::format("Shaders do not support the {} stage.", value));
+    throw std::invalid_argument(std::format("Shaders do not support the \"{}\" stage.", value));
 }
 
 sg_uniform_type ShaderResource::toUniformType(Shader::UniformType type) noexcept {
@@ -91,7 +91,7 @@ sg_image_type ShaderResource::toImageType(const std::string& value) {
     if (value == "array") {
         return SG_IMAGETYPE_ARRAY;
     }
-    throw std::invalid_argument(std::format("Shaders do not support {} textures.", value));
+    throw std::invalid_argument(std::format("Shaders do not support \"{}\" textures.", value));
 }
 
 sg_image_sample_type ShaderResource::toSampleType(const std::string& value) {
@@ -110,7 +110,7 @@ sg_image_sample_type ShaderResource::toSampleType(const std::string& value) {
     if (value == "depth") {
         return SG_IMAGESAMPLETYPE_DEPTH;
     }
-    throw std::invalid_argument(std::format("Shaders do not support textures that sample {}.", value));
+    throw std::invalid_argument(std::format("Shaders do not support textures that sample \"{}\".", value));
 }
 
 sg_sampler_type ShaderResource::toSamplerType(const std::string& value) {
@@ -123,7 +123,7 @@ sg_sampler_type ShaderResource::toSamplerType(const std::string& value) {
     if (value == "comparison") {
         return SG_SAMPLERTYPE_COMPARISON;
     }
-    throw std::invalid_argument(std::format("Shaders do not support {} samplers.", value));
+    throw std::invalid_argument(std::format("Shaders do not support \"{}\" samplers.", value));
 }
 
 sg_shader_attr_base_type ShaderResource::toBaseType(const std::string& value) {
@@ -136,7 +136,7 @@ sg_shader_attr_base_type ShaderResource::toBaseType(const std::string& value) {
     if (value == "uint") {
         return SG_SHADERATTRBASETYPE_UINT;
     }
-    throw std::invalid_argument(std::format("Shaders do not support vertex attributes of type {}.", value));
+    throw std::invalid_argument(std::format("Shaders do not support vertex attributes of type \"{}\".", value));
 }
 
 void ShaderResource::describe(sg_shader_desc& desc, const core::Json& backend) const {
@@ -232,7 +232,7 @@ std::uint64_t ShaderResource::describeMember(sg_glsl_shader_uniform& member, con
     const std::string& typeName = uniform.at("type").get_ref<const std::string&>();
     const std::optional<Shader::UniformType> type = Shader::uniformTypeFromName(typeName);
     if (!type) {
-        throw std::invalid_argument(std::format("Shaders do not support uniforms of type {}.", typeName));
+        throw std::invalid_argument(std::format("Shaders do not support uniforms of type \"{}\".", typeName));
     }
     member.type = toUniformType(*type);
     member.array_count = uniform.at("array_count").get<std::uint16_t>();
@@ -258,11 +258,11 @@ void ShaderResource::validate() const {
     for (const Shader::Uniform& uniform : uniforms) {
         const Shader::Block& block = blocks[uniform.block];
         if (uniform.count < 1) {
-            throw std::invalid_argument(std::format("The uniform {} has no elements.", uniform.name));
+            throw std::invalid_argument(std::format("The uniform \"{}\" has no elements.", uniform.name));
         }
         const std::uint64_t bytes = static_cast<std::uint64_t>(uniform.count) * static_cast<std::uint64_t>(Shader::getComponentCount(uniform.type)) * 4U;
         if (uniform.offset + bytes > block.size) {
-            throw std::invalid_argument(std::format("The uniform {} does not fit in the block {}.", uniform.name, block.name));
+            throw std::invalid_argument(std::format("The uniform \"{}\" does not fit in the block \"{}\".", uniform.name, block.name));
         }
     }
 
@@ -274,7 +274,7 @@ void ShaderResource::validate() const {
             for (const Shader::Block& block : blocks) {
                 const sg_shader_uniform_block& described = desc.uniform_blocks[static_cast<std::size_t>(block.slot)];
                 if (described.stage == SG_SHADERSTAGE_FRAGMENT && described.size != block.size) {
-                    throw std::invalid_argument(std::format("The {} program for {} reads {} bytes from the block {}, which holds {}.", program, language, described.size, block.name, block.size));
+                    throw std::invalid_argument(std::format("The \"{}\" program for \"{}\" reads {} bytes from the block \"{}\", which holds {}.", program, language, described.size, block.name, block.size));
                 }
             }
         }
@@ -287,7 +287,7 @@ const ShaderResource::Program& ShaderResource::getProgram(std::string_view progr
         return found->second;
     }
     if (!programs.contains(key)) {
-        throw std::invalid_argument(std::format("The shader {} has no {} program.", name, program));
+        throw std::invalid_argument(std::format("The shader \"{}\" has no \"{}\" program.", name, program));
     }
 
     const core::Json& backend = programs.at(key).at(std::string(slangOf(sg_query_backend())));

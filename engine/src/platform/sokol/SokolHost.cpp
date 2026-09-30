@@ -120,7 +120,7 @@ bool SokolHost::isTransparent() const noexcept {
 
 void SokolHost::setTransparent(bool value) {
     if (value && !canBeTransparent()) {
-        throw std::logic_error("The window opened opaque, so it cannot turn transparent. Set window.transparent in app.json to open a window that can.");
+        throw std::logic_error("The window opened opaque, so it cannot turn transparent. Set \"window.transparent\" in \"app.json\" to open a window that can.");
     }
     style.transparent = value;
     applyStyle();

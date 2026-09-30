@@ -70,16 +70,16 @@ function Sensors:build()
     self.world.onHit = function(a, b, contact)
         self.counts.hits = self.counts.hits + 1
         self.sparks[#self.sparks + 1] = {x = contact.x, y = contact.y, radius = math.min(40, contact.speed / 25), life = kSparkLife}
-        self:log(string.format('hit at %.0f units per second', contact.speed))
+        self:log(string.format('Hit at %.0f units per second', contact.speed))
     end
     self.world.onSensorBegin = function(sensor, visitor, shapes)
         visitor.data.inside = true
-        self:log('a ball entered the zone')
+        self:log('A ball entered the zone')
     end
     self.world.onSensorEnd = function(sensor, visitor, shapes)
         if visitor then
             visitor.data.inside = false
-            self:log('a ball left the zone')
+            self:log('A ball left the zone')
         end
     end
 end

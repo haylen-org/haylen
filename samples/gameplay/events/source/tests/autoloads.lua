@@ -1,4 +1,4 @@
--- Autoloads: the player data that app.json loads before main.lua, shared by this test, a shop scene and the coin counter it draws on every screen, and a jukebox added at run time with haylen.autoload.
+-- Autoloads: the player data that `app.json` loads before `main.lua`, shared by this test, a shop scene and the coin counter it draws on every screen, and a jukebox added at run time with `haylen.autoload`.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -9,9 +9,9 @@ local sample = require('sample')
 local Autoloads = haylen.class('Autoloads', sample.Test)
 
 local kCode = [[
-"autoload": ["state.player-data"]  -- in app.json, loaded before source/main.lua
-local playerData = haylen.autoloads.playerData  -- the same table as require('state.player-data')
-haylen.autoload('state.jukebox')  -- one more autoload at run time, named jukebox]]
+"autoload": ["state.player-data"]  -- In `app.json`, loaded before `source/main.lua`.
+local playerData = haylen.autoloads.playerData  -- The same table as `require('state.player-data')`.
+haylen.autoload('state.jukebox')  -- One more autoload at run time, named `jukebox`.]]
 
 local kItems = {{id = 'hat', text = 'Buy a hat for 25', price = 25}, {id = 'scarf', text = 'Buy a scarf for 15', price = 15}}
 
@@ -25,9 +25,9 @@ function Shop:enter(params)
         children[#children + 1] = ui.button{id = item.id, text = item.text, onClick = function()
             if data:spend(item.price) then
                 table.insert(data.hats, item.id)
-                journal:add('the shop sold a ' .. item.id .. ', ' .. data.coins .. ' coins left', sample.green)
+                journal:add('The shop sold a ' .. item.id .. ', ' .. data.coins .. ' coins left', sample.green)
             else
-                journal:add('not enough coins for a ' .. item.id, sample.red)
+                journal:add('Not enough coins for a ' .. item.id, sample.red)
             end
             self.document:set('coins', {text = data.coins .. ' coins'})
         end}
@@ -44,7 +44,7 @@ function Autoloads:enter()
         controls = {
             ui.button{id = 'earn', text = 'Earn 10 coins', variant = 'primary', onClick = function()
                 haylen.autoloads.playerData:earn(10)
-                self.journal:add('earned 10 coins')
+                self.journal:add('Earned 10 coins')
             end},
             ui.button{id = 'shop', text = 'Open the shop', onClick = function() sample.overlay(Shop(), {journal = self.journal}) end},
             ui.button{id = 'jukebox', text = 'Add the jukebox autoload', enabled = haylen.autoloads.jukebox == nil, onClick = function() self:addJukebox() end},

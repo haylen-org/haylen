@@ -30,7 +30,7 @@ template <typename T, std::size_t Size> std::string_view WindowPlacement::getNam
 
 float WindowPlacement::readNumber(const core::Json& value, const char* key) {
     if (!value.is_number() || !std::isfinite(value.get<double>())) {
-        throw std::invalid_argument(std::string("A window position needs a number for ") + key + ".");
+        throw std::invalid_argument(std::string("A window position needs a number for \"") + key + "\".");
     }
     return value.get<float>();
 }

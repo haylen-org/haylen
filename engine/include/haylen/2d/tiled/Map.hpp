@@ -66,7 +66,7 @@ class Map final {
     [[nodiscard]] static std::string_view orientationName(Orientation value) noexcept;
     [[nodiscard]] static std::string_view renderOrderName(RenderOrder value) noexcept;
 
-    // Parses a map stored at file inside the package content folder. The reader loads external tilesets and templates by their resolved path.
+    // Parses a map stored at `file` inside the package content folder. The reader loads external tilesets and templates by their resolved path.
     [[nodiscard]] static Map parse(const core::Json& document, std::string_view file, const JsonReader& read);
 
     // Lists every image the map needs once, resolved against the package content folder.

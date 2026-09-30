@@ -23,7 +23,7 @@ bool JobsLua::isCheckpoint(lua_State* job, int results) {
     return results == 1 && lua_touserdata(job, -1) == &checkpointKey;
 }
 
-// Runs fn(...) as a job with spawn(fn, ...) and returns a promise for the first value fn returns.
+// Runs `fn(...)` as a job with `spawn(fn, ...)` and returns a promise for the first value `fn` returns.
 int JobsLua::spawn(lua_State* L) {
     luaL_checktype(L, 1, LUA_TFUNCTION);
     const Promise promise(Runtime::getEngine(L));
@@ -42,7 +42,7 @@ int JobsLua::checkpoint(lua_State* L) {
     return lua_yield(L, 1);
 }
 
-// A budget beyond what the clock counts, such as math.huge, lets the jobs run without a limit.
+// A budget beyond what the clock counts, such as `math.huge`, lets the jobs run without a limit.
 int JobsLua::setBudget(lua_State* L) {
     const double microseconds = Stack::read<double>(L, 1) * 1000.0;
     if (!(microseconds > 0.0)) {

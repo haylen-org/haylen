@@ -1,4 +1,4 @@
--- Classes: units built with haylen.class, a hero that inherits and calls super, walking and flying mixins that hear when a class includes them, an equality metamethod that subclasses copy, and is checks on objects and classes.
+-- Classes: units built with `haylen.class`, a hero that inherits and calls `super`, walking and flying mixins that hear when a class includes them, an equality metamethod that subclasses copy, and `is` checks on objects and classes.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -107,7 +107,7 @@ function Classes:check()
     local ana = classes.Hero('Ana', 0)
     journal:add('Hero(Ana):is(Unit) ' .. tostring(ana:is(classes.Unit)) .. ', is(Walker) ' .. tostring(ana:is(classes.Walker)) .. ', is(Flyer) ' .. tostring(ana:is(classes.Flyer)), sample.warm)
     journal:add('Dragon:is(Flyer) ' .. tostring(classes.Dragon:is(classes.Flyer)) .. ', Bat:is(Walker) ' .. tostring(classes.Bat:is(classes.Walker)), sample.warm)
-    journal:add('Hero(Ana) == Hero(Ana) ' .. tostring(ana == classes.Hero('Ana', 50)) .. ' through the __eq that Hero copied from Unit', sample.warm)
+    journal:add('Hero(Ana) == Hero(Ana) ' .. tostring(ana == classes.Hero('Ana', 50)) .. ' through the "__eq" that Hero copied from Unit', sample.warm)
     journal:add(tostring(classes.Hero) .. ', Hero.super == Unit ' .. tostring(classes.Hero.super == classes.Unit) .. ', Hero.name ' .. classes.Hero.name, sample.warm)
 end
 

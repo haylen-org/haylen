@@ -142,9 +142,9 @@ TEST(ThemeTest, RejectsBrokenThemes) {
     // Tiles smaller than a unit would repeat without end, while a piece without area draws nothing.
     try {
         (void)read(R"({"name": "x", "surfaces": {"panel": {"image": "a.png", "slice": 4, "fill": "tile", "scale": 0.0001}}})");
-        ADD_FAILURE() << "tiny tiles were accepted";
+        ADD_FAILURE() << "Tiny tiles were accepted.";
     } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The tiled edges and center of the theme surface 'panel' must each be at least 1 unit wide and tall at its scale.");
+        EXPECT_STREQ(error.what(), "The tiled edges and center of the theme surface \"panel\" must each be at least 1 unit wide and tall at its scale.");
     }
     EXPECT_THROW(read(R"({"name": "x", "surfaces": {"panel": {"image": "a.png", "pieces": [[0,0,4,4],[4,0,0.5,4],[8,0,4,4],[0,4,4,4],[4,4,4,4],[8,4,4,4],[0,8,4,4],[4,8,4,4],[8,8,4,4]], "fill": "tile"}}})"), std::invalid_argument);
     EXPECT_NO_THROW(read(R"({"name": "x", "surfaces": {"panel": {"image": "a.png", "slice": [0, 4], "fill": "tile", "scale": 0.5}}})"));

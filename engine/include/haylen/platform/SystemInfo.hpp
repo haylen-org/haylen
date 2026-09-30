@@ -44,14 +44,14 @@ struct SystemInfo {
     std::uint64_t memoryBytes = 0;
     std::string gpuName;
 
-    // The language of the user as a BCP 47 tag, such as pt-BR, and the languages the user prefers, the most preferred first.
+    // The language of the user as a BCP 47 tag, such as `pt-BR`, and the languages the user prefers, the most preferred first.
     std::string locale;
     std::vector<std::string> languages;
 
-    // The IANA name of the time zone, such as America/Sao_Paulo.
+    // The IANA name of the time zone, such as `America/Sao_Paulo`.
     std::string timeZone;
 
-    // The info as haylen.system reports it, with the enums as their names and every value the platform left empty left out, except the list of languages.
+    // The info as `haylen.system` reports it, with the enums as their names and every value the platform left empty left out, except the list of languages.
     [[nodiscard]] core::Json toJson() const;
 
     [[nodiscard]] static std::string_view osName(Os value) noexcept;

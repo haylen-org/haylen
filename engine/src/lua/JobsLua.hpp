@@ -8,16 +8,16 @@ class JobsPlugin;
 
 namespace haylen::lua {
 
-// Installs haylen.jobs, which starts Lua jobs and lets them pause at checkpoints.
+// Installs `haylen.jobs`, which starts Lua jobs and lets them pause at checkpoints.
 class JobsLua final {
   public:
     static void install(lua_State* L);
 
-    // Tells whether a job yielded the results on top of its stack from jobs.checkpoint.
+    // Tells whether a job yielded the results on top of its stack from `jobs.checkpoint`.
     [[nodiscard]] static bool isCheckpoint(lua_State* job, int results);
 
   private:
-    // Its address marks the yields that come from jobs.checkpoint.
+    // Its address marks the yields that come from `jobs.checkpoint`.
     inline static char checkpointKey = 0;
 
     [[nodiscard]] static plugins::JobsPlugin& getPlugin(lua_State* L);

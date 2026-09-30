@@ -214,7 +214,7 @@ class HeadlessHost final : public Host {
         pointerDevice = value;
     }
 
-    // Opens the headless window able to be transparent, and transparent, the way window.transparent of app.json opens a real one.
+    // Opens the headless window able to be transparent, and transparent, the way `window.transparent` of `app.json` opens a real one.
     void setTransparencySupported(bool value) noexcept {
         transparencySupported = value;
         transparent = value;
@@ -306,7 +306,7 @@ class HeadlessHost final : public Host {
         return cancelledDialogs;
     }
 
-    // The screens the engine opened on the headless platform and the ids of those it gave up, which tests end through ScreenRelay::finish the way native code does.
+    // The screens the engine opened on the headless platform and the ids of those it gave up, which tests end through `ScreenRelay::finish` the way native code does.
     [[nodiscard]] const std::vector<ScreenRequest>& getScreenRequests() const noexcept {
         return screenRequests;
     }

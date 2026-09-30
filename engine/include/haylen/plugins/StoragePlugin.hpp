@@ -20,7 +20,7 @@ class JobSystem;
 
 namespace haylen::plugins {
 
-// Owns the save slots and preferences of the app and exposes user storage to Lua as haylen.storage and haylen.preferences. Preferences load when the engine starts, and unsaved changes are written when the app goes to the background or stops. Background storage operations run on the I/O pool one at a time, in the order they were queued.
+// Owns the save slots and preferences of the app and exposes user storage to Lua as `haylen.storage` and `haylen.preferences`. Preferences load when the engine starts, and unsaved changes are written when the app goes to the background or stops. Background storage operations run on the I/O pool one at a time, in the order they were queued.
 class StoragePlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {
@@ -36,14 +36,14 @@ class StoragePlugin final : public Plugin {
     // Runs the operation on the I/O pool once every operation queued before it finished, so operations on the same files never overlap and reach the disk in order. The operation must not throw, and it hands its result back itself, such as through the frame queue of the job system. Stopping the plugin runs the operations still waiting on the frame thread, so a save queued just before the app quits still reaches the disk.
     void queueOperation(std::function<void()> operation);
 
-    // Stores the volume and mute state of every audio bus, the fullscreen state and the action map under audio.volume.<bus>, audio.muted.<bus>, window.fullscreen and input.actions.
+    // Stores the volume and mute state of every audio bus, the fullscreen state and the action map under `audio.volume.<bus>`, `audio.muted.<bus>`, `window.fullscreen` and `input.actions`.
     void captureEnginePreferences(core::Engine& engine);
 
     // Applies whichever of those keys are stored. Buses the app has not created are left alone, and a stored action map replaces the current one.
     void applyEnginePreferences(core::Engine& engine);
 
   private:
-    // The operations waiting for the I/O pool, shared with the pool jobs that run them. Running marks the thread that runs them now, and scheduled a pool job that will.
+    // The operations waiting for the I/O pool, shared with the pool jobs that run them. The flag `running` marks the thread that runs them now, and `scheduled` a pool job that will.
     struct Operations {
         std::mutex mutex;
         std::condition_variable idle;

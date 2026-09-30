@@ -26,7 +26,7 @@ void HotReloadPlugin::start(core::Engine& engine) {
     engine.getJobs().postIo([current = scan, root = *folder] {
         current->watcher = std::make_unique<io::PackageWatcher>(root);
         current->done.store(true, std::memory_order_release);
-        core::Log::info("Watching {} for changes.", root.generic_string());
+        core::Log::info("Watching \"{}\" for changes.", root.generic_string());
     });
     // clang-format on
 }
@@ -66,15 +66,15 @@ void HotReloadPlugin::apply(core::Engine& engine, const std::vector<std::string>
             const std::string asset = path.substr(io::Path::kContentDirectory.size() + 1);
             try {
                 if (engine.getAssets().reload(asset) > 0) {
-                    core::Log::info("Reloaded {}.", asset);
+                    core::Log::info("Reloaded \"{}\".", asset);
                 }
             } catch (const std::exception& error) {
-                core::Log::warning("{} could not be reloaded yet: {}", asset, error.what());
+                core::Log::warning("The asset \"{}\" could not be reloaded yet: {}", asset, error.what());
             }
             continue;
         }
         if (io::Path::isInside(path, io::Path::kSourceDirectory) || io::Path::isInside(path, io::Path::kPluginsDirectory) || path == io::Path::kAppConfigFile) {
-            core::Log::info("{} changed, restarting the app.", path);
+            core::Log::info("The file \"{}\" changed, restarting the app.", path);
             engine.requestRestart();
         }
     }

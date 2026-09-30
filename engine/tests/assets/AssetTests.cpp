@@ -85,7 +85,7 @@ TEST_F(AssetsManagerTest, PublishesLoadedUnloadedAndReloadedEvents) {
     {
         const graphics::Texture red = assets.texture("./images/red.png");
         const graphics::Texture again = assets.texture("images/red.png");
-        EXPECT_TRUE(log.empty()) << "asset events wait for the end of the frame";
+        EXPECT_TRUE(log.empty()) << "Asset events wait for the end of the frame.";
         fixture.frames(1);
         EXPECT_EQ(log, (std::vector<std::string>{"loaded texture images/red.png"}));
 

@@ -26,7 +26,7 @@ class ErrorScreenTest : public ::testing::Test {
   protected:
     static constexpr std::string_view kBattle = "local function strike(enemy)\n\treturn enemy.health\nend\n\nreturn function()\n\tlocal damage = strike(nil)\n\treturn damage\nend\n";
 
-    // Starts an app whose scene fails on its first update, in the strike function on line 2 of source/scenes/battle.lua.
+    // Starts an app whose scene fails on its first update, in the `strike` function on line 2 of `source/scenes/battle.lua`.
     [[nodiscard]] static test::EngineFixture startFailingApp() {
         return test::EngineFixture({{"source/scenes/battle.lua", std::string(kBattle)}, {"source/main.lua", "require('haylen.scene').push({update = require('scenes.battle')})"}});
     }

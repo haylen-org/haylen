@@ -9,7 +9,7 @@ namespace haylen::math {
 
 class Spline;
 
-// Installs the Spline class of haylen.math and its constructor.
+// Installs the `Spline` class of `haylen.math` and its constructor.
 class SplineLua final {
   public:
     static void install(lua_State* L);

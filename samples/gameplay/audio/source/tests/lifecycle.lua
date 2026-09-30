@@ -21,8 +21,8 @@ local kEvents = {
 local kOrder = {'audioInterrupted', 'audioResumed', 'audioRouteChanged', 'appActive', 'appInactive', 'appBackground'}
 local kNotes = {
     'Background: the engine stops the output and every voice keeps its place. The output starts again when the app comes back, unless an interruption still holds it.',
-    'Interruption: a phone call, an alarm, Siri or another Android app with the audio focus pauses every voice and sends audioInterrupted. audioResumed follows once it ends and the app is active again.',
-    'Route change: unplugging headphones sends audioRouteChanged, where a music player would pause.',
+    'Interruption: a phone call, an alarm, Siri or another Android app with the audio focus pauses every voice and sends "audioInterrupted". The event "audioResumed" follows once it ends and the app is active again.',
+    'Route change: unplugging headphones sends "audioRouteChanged", where a music player would pause.',
     'Web: the browser keeps the sound silent until the first click, tap or key on the page, and a hidden tab goes to the background.',
 }
 

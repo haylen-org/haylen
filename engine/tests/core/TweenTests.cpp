@@ -36,7 +36,7 @@ class TweenRig final {
         tweens.update(clock);
     }
 
-    // Returns a tween of the x of the box, added to the manager unless told otherwise.
+    // Returns a tween of the `x` of the box, added to the manager unless told otherwise.
     std::shared_ptr<core::PropertyTween> tweenX(Box& box, float duration, core::TweenProperty property, bool add = true) {
         auto tween = std::make_shared<core::PropertyTween>(duration);
         tween->addTrack(numberTrack(box, std::move(property)));

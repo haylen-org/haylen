@@ -156,7 +156,7 @@ TEST(SceneLoadTest, FinishesOnceTheHookAndEveryDeferralReleasedIt) {
     scenes.preload(std::make_shared<LoadScene>([](SceneLoad& load) { load.preload("missing"); }), {}, [&](const SceneManager::Result& value) { result = value; });
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->outcome, SceneManager::Outcome::Failed);
-    EXPECT_STREQ(result->error->what(), "The asset group 'missing' is not defined.");
+    EXPECT_STREQ(result->error->what(), "The asset group \"missing\" is not defined.");
 }
 
 TEST(SceneManagerTest, UsesTheDefaultHooksOfALoadingView) {
@@ -480,7 +480,7 @@ TEST(SceneManagerTest, PreloadsAssetGroupsIntoTheProgressOfTheLoad) {
     scenes.push(broken, {.completion = [&](const SceneManager::Result& value) { result = value; }});
     ASSERT_TRUE(fixture.frameUntil([&] { return result.has_value(); }));
     EXPECT_EQ(result->outcome, SceneManager::Outcome::Failed);
-    EXPECT_NE(std::string(result->error->what()).find("The asset group broken could not load world/missing.png"), std::string::npos);
+    EXPECT_NE(std::string(result->error->what()).find("The asset group \"broken\" could not load world/missing.png"), std::string::npos);
     EXPECT_EQ(scenes.getTop(), level.get());
     EXPECT_EQ(broken->getState(), Scene::State::Unloaded);
 }
@@ -670,7 +670,7 @@ TEST(SceneManagerTest, PreloadsScenesInTheBackground) {
     EXPECT_EQ(game->getState(), Scene::State::Loaded);
     EXPECT_EQ(preloads, std::vector<SceneManager::Outcome>{SceneManager::Outcome::Completed});
 
-    // A change takes the loaded scene at once, with the params of its preload.
+    // A change takes the loaded scene at once, with the `params` of its preload.
     log.clear();
     scenes.replace(game);
     fixture.frames(1);
@@ -699,13 +699,13 @@ TEST(SceneManagerTest, PreloadsScenesInTheBackground) {
     EXPECT_EQ(preloads.back(), SceneManager::Outcome::Dropped);
     EXPECT_THROW(scenes.cancelPreload(*spare), std::invalid_argument);
 
-    // A preloaded scene keeps the params of its preload.
+    // A preloaded scene keeps the `params` of its preload.
     auto keyed = std::make_shared<test::RecordingScene>("keyed", log);
     scenes.preload(keyed);
     scenes.push(keyed, {.params = 3});
     fixture.frames(4, 0.125);
     ASSERT_NE(fixture.engine().getError(), nullptr);
-    EXPECT_STREQ(fixture.engine().getError()->what(), "A preloaded scene keeps the params of its preload.");
+    EXPECT_STREQ(fixture.engine().getError()->what(), "A preloaded scene keeps the \"params\" of its preload.");
 }
 
 TEST(SceneManagerTest, UnloadsAFailedPreloadOnceWhenAListenerCancelsIt) {

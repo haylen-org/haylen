@@ -12,7 +12,7 @@
 
 namespace haylen::lua {
 
-// An app error split into the parts an error screen and an editor show: the message, the script position Lua put in front of it and the stack of calls that led to it, innermost first. what() returns the text as Lua raised it. An error whose text has no script position takes the position of its innermost script frame, and errors raised outside scripts keep an empty file, line zero and no frames.
+// An app error split into the parts an error screen and an editor show: the message, the script position Lua put in front of it and the stack of calls that led to it, innermost first. The method `what()` returns the text as Lua raised it. An error whose text has no script position takes the position of its innermost script frame, and errors raised outside scripts keep an empty file, line zero and no frames.
 class Error final : public std::runtime_error {
   public:
     struct Frame {
@@ -22,14 +22,14 @@ class Error final : public std::runtime_error {
             Main,
         };
 
-        // The chunk as Lua shows it, such as source/main.lua, or [C] for native functions.
+        // The chunk as Lua shows it, such as `source/main.lua`, or `[C]` for native functions.
         std::string source;
         int line = 0;
-        // The function as Lua describes it, such as method 'update', local 'spawn' or main chunk.
+        // The function as Lua describes it, such as `method 'update'`, `local 'spawn'` or `main chunk`.
         std::string function;
         Kind kind = Kind::Lua;
 
-        // Returns source:line, or the source alone when the frame has no current line.
+        // Returns `source:line`, or the source alone when the frame has no current line.
         [[nodiscard]] std::string getLocation() const;
     };
 

@@ -5,7 +5,7 @@
 
 namespace haylen::navigation2d {
 
-// A steering agent created from Lua. It carries its own wandering state, so agent:wander(dt) needs nothing else.
+// A steering agent created from Lua. It carries its own wandering state, so `agent:wander(dt)` needs nothing else.
 struct ScriptedAgent {
     SteeringAgent agent;
     Wanderer wanderer;

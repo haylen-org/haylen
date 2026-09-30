@@ -17,7 +17,7 @@ class CellularAutomaton final {
     static constexpr std::int32_t kFloor = 0;
     static constexpr std::int32_t kWall = 1;
 
-    // A floor cell turns into a wall with at least birthLimit walls among its eight neighbors, and a wall stays a wall with at least survivalLimit. A solid border keeps the outermost cells as walls and counts cells beyond the grid as walls.
+    // A floor cell turns into a wall with at least `birthLimit` walls among its eight neighbors, and a wall stays a wall with at least `survivalLimit`. A solid border keeps the outermost cells as walls and counts cells beyond the grid as walls.
     struct Options {
         int width = 64;
         int height = 64;

@@ -14,7 +14,7 @@ function CheckList:init(test)
     self.checks = {}
 end
 
--- Runs `body` inside the task of the caller, so it may wait on promises. The check passes with the text body returns and fails with the error it raises.
+-- Runs `body` inside the task of the caller, so it may wait on promises. The check passes with the text `body` returns and fails with the error it raises.
 function CheckList:run(name, body)
     local check = {name = name, state = 'running', detail = ''}
     self.checks[#self.checks + 1] = check
@@ -52,7 +52,7 @@ end
 -- Raises an error that names what was expected when a value differs.
 function CheckList.expect(value, expected, what)
     if value ~= expected then
-        error(string.format('%s is %s instead of %s', what, tostring(value), tostring(expected)), 2)
+        error(string.format('The value of %s is "%s" instead of "%s".', what, tostring(value), tostring(expected)), 2)
     end
     return value
 end

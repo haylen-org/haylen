@@ -14,8 +14,8 @@
         "score": "{name} scored {score} points on day {day}.",
         "accuracy": "Accuracy: {ratio}",
         "sound": "Sound on: {sound}",
-        "braces": "Write {{name}} to show a placeholder.",
-        "missing": "Unknown placeholders stay as they are: {treasure}."
+        "braces": "Write \"{{name}}\" to show a placeholder.",
+        "missing": "Unknown placeholders stay as they are: \"{treasure}\"."
     },
     "items": {
         "apples": {"zero": "No apples", "one": "{count} apple", "other": "{count} apples"},

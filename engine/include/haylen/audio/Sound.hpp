@@ -16,11 +16,11 @@ class Sound final {
     Sound() = default;
     explicit Sound(std::shared_ptr<const SoundData> value) noexcept : data(std::move(value)) {}
 
-    // Both factories accept WAV, FLAC, MP3 and Ogg Vorbis data and throw std::runtime_error when it cannot be decoded.
+    // Both factories accept WAV, FLAC, MP3 and Ogg Vorbis data and throw `std::runtime_error` when it cannot be decoded.
     [[nodiscard]] static Sound decode(std::span<const std::uint8_t> encoded);
     [[nodiscard]] static Sound stream(std::vector<std::uint8_t> encoded);
 
-    // Makes a decoded sound from raw samples, interleaved by channel, where 16-bit samples become floats. Throws std::invalid_argument for a sample rate or channels of 0 and for samples that do not fill whole frames, and std::runtime_error for no samples at all.
+    // Makes a decoded sound from raw samples, interleaved by channel, where 16-bit samples become floats. Throws `std::invalid_argument` for a sample rate or channels of 0 and for samples that do not fill whole frames, and `std::runtime_error` for no samples at all.
     [[nodiscard]] static Sound fromSamples(std::span<const float> samples, std::uint32_t channels, std::uint32_t sampleRate);
     [[nodiscard]] static Sound fromSamples(std::span<const std::int16_t> samples, std::uint32_t channels, std::uint32_t sampleRate);
 

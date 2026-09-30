@@ -1,4 +1,4 @@
--- The test library of the engine for Varn ffi: its C declarations, made once for the Lua state, and the library, loaded on first use. The browser has no native libraries, so there the same functions are methods that platform/web/app.js answers.
+-- The test library of the engine for Varn `ffi`: its C declarations, made once for the Lua state, and the library, loaded on first use. The browser has no native libraries, so there the same functions are methods that `platform/web/app.js` answers.
 local ffi = require('ffi')
 local native = require('haylen.native')
 

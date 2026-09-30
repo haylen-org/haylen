@@ -50,7 +50,7 @@ void Autoloads::add(lua_State* L, const std::string& name, const std::string& mo
     }
     for (const Entry& entry : entries) {
         if (entry.name == name) {
-            throw std::invalid_argument("An autoload named '" + name + "' already exists.");
+            throw std::invalid_argument("An autoload named \"" + name + "\" already exists.");
         }
     }
 
@@ -61,7 +61,7 @@ void Autoloads::add(lua_State* L, const std::string& name, const std::string& mo
     Runtime::protectedCall(main, 1, 1);
     if (!lua_istable(main, -1)) {
         lua_pop(main, 1);
-        throw std::invalid_argument("The autoload module '" + module + "' must return a table.");
+        throw std::invalid_argument("The autoload module \"" + module + "\" must return a table.");
     }
 
     // One table under two names would receive every callback twice.
@@ -71,7 +71,7 @@ void Autoloads::add(lua_State* L, const std::string& name, const std::string& mo
         lua_pop(main, 1);
         if (same) {
             lua_pop(main, 1);
-            throw std::invalid_argument("The module '" + module + "' is already the autoload '" + entry.name + "'.");
+            throw std::invalid_argument("The module \"" + module + "\" is already the autoload \"" + entry.name + "\".");
         }
     }
     pushTable(main);

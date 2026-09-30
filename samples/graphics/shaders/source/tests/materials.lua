@@ -1,4 +1,4 @@
--- Sprite materials: seven custom fragment shaders, each shading one sprite through graphics2d.newMaterial and the material key of the draw.
+-- Sprite materials: seven custom fragment shaders, each shading one sprite through `graphics2d.newMaterial` and the `material` key of the draw.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local m = require('haylen.math')
@@ -19,7 +19,7 @@ Materials.palettes = {
     {'#FF101010', '#FFB0B0B8', '#FF707078', '#FFF0F0F8', '#FF101010', '#FF505058'},
 }
 
--- Flattens a list of colors into the numbers of a vec4 array uniform.
+-- Flattens a list of colors into the numbers of a `vec4` array uniform.
 function Materials.colors(list)
     local numbers = {}
     for _, text in ipairs(list) do

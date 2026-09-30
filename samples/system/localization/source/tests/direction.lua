@@ -1,4 +1,4 @@
--- Right-to-left interface: Arabic declares that it reads right to left, and ui.setDirection('auto') lets the UI follow the language, so picking Arabic mirrors every row, check box, toggle, slider, list and text field while the text itself reads from the right. A node with a direction of its own keeps it whatever the language.
+-- Right-to-left interface: Arabic declares that it reads right to left, and `ui.setDirection('auto')` lets the UI follow the language, so picking Arabic mirrors every row, check box, toggle, slider, list and text field while the text itself reads from the right. A node with a direction of its own keeps it whatever the language.
 local haylen = require('haylen')
 local localization = require('haylen.localization')
 local ui = require('haylen.ui')
@@ -37,7 +37,7 @@ function Direction:content()
         ui.panel{grow = 1, align = 'stretch', gap = 16,
             ui.sectionTitle{text = 'Directions of their own'},
             ui.label{id = 'state', text = '', font = 'monospace', color = 'accentText'},
-            ui.label{text = "A column with direction = 'rightToLeft'", font = 'caption', color = 'textMuted'},
+            ui.label{text = "A column with \"direction = 'rightToLeft'\"", font = 'caption', color = 'textMuted'},
             ui.column{direction = 'rightToLeft', language = 'ar', gap = 12,
                 ui.label{text = 'مرحبًا بك في الجزيرة! رقم الغرفة 42، والمفتاح (A-7).'},
                 ui.textField{id = 'arabic', value = 'مرحبا 123 abc'},
@@ -46,7 +46,7 @@ function Direction:content()
                     ui.button{text = 'دخول', variant = 'primary'},
                 },
             },
-            ui.label{text = "A column with direction = 'leftToRight' and language = 'hi'", font = 'caption', color = 'textMuted'},
+            ui.label{text = "A column with \"direction = 'leftToRight'\" and \"language = 'hi'\"", font = 'caption', color = 'textMuted'},
             ui.column{direction = 'leftToRight', language = 'hi', gap = 12,
                 ui.label{text = 'नमस्ते! क्षत्रिय, कृष्ण और हिन्दी के संयुक्ताक्षर।'},
                 ui.textField{id = 'hindi', value = 'नमस्ते दुनिया'},

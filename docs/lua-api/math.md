@@ -1,6 +1,6 @@
 # haylen.math
 
-`haylen.math` provides the math types that the rest of the engine uses, `Vec2`, `Rect`, `Color` and `Transform2D`, together with a seeded random generator, gradient and cellular noise, easing curves, scalar helpers, circle and segment tests, ray casts against shapes, polygon utilities, polygon booleans and offsets, marching squares, splines, critically damped springs, shuffle bags, weighted choices and Poisson disk sampling. Use it for gameplay math, procedural generation and anything that passes positions, areas or colors to other modules. Lua's standard `math` library stays available for everything else.
+The module `haylen.math` provides the math types that the rest of the engine uses, `Vec2`, `Rect`, `Color` and `Transform2D`, together with a seeded random generator, gradient and cellular noise, easing curves, scalar helpers, circle and segment tests, ray casts against shapes, polygon utilities, polygon booleans and offsets, marching squares, splines, critically damped springs, shuffle bags, weighted choices and Poisson disk sampling. Use it for gameplay math, procedural generation and anything that passes positions, areas or colors to other modules. Lua's standard `math` library stays available for everything else.
 
 ```lua
 local m = require('haylen.math')
@@ -20,7 +20,7 @@ Functions of every engine module accept plain tables wherever they expect one of
 | `Rect` | A `Rect`, `{x = 0, y = 0, width = 100, height = 50}` or `{0, 0, 100, 50}`. |
 | `Color` | A `Color`, a `'#AARRGGBB'` or `'#RRGGBB'` string where the `#` is optional, `{r = 1, g = 0.5, b = 0, a = 1}` or `{1, 0.5, 0}`. Components go from `0` to `1`, and alpha defaults to `1` in tables. |
 
-The constructors `m.vec2`, `m.rect` and `m.color` take the same forms as a single argument, which also copies an existing value. A table with a missing or non-numeric component raises `Expected a number in field 'y'.`, naming the field. A value of another type raises an error such as `bad argument #2 to 'drawRect' (Color, color text or table with r, g and b expected, got number)`. Invalid color text raises `invalid color text, expected #RRGGBB or #AARRGGBB`.
+The constructors `m.vec2`, `m.rect` and `m.color` take the same forms as a single argument, which also copies an existing value. A table with a missing or non-numeric component raises `Expected a number in field "y".`, naming the field. A value of another type raises an error such as `bad argument #2 to 'drawRect' (Color, color text or table with r, g and b expected, got number)`. Invalid color text raises `invalid color text, expected #RRGGBB or #AARRGGBB`.
 
 ```lua
 local m = require('haylen.math')
@@ -35,7 +35,7 @@ print(red:lerp({0, 0, 1}, 0.5), red == m.color('FF0000')) -- #FF800080 true
 
 ### Userdata behavior
 
-`Vec2`, `Rect`, `Color`, `Transform2D`, `Random` and `Noise2D` values are userdata. Assigning one to another variable shares the same object, so changing a field through one variable changes it for both. Operators and methods always return new values, and engine functions copy the values they receive. Reading a member that does not exist raises `The type haylen.Vec2 has no member 'z'.`, and assigning one raises `The type haylen.Vec2 has no writable property 'z'.`, with the type name of the value.
+The `Vec2`, `Rect`, `Color`, `Transform2D`, `Random` and `Noise2D` values are userdata. Assigning one to another variable shares the same object, so changing a field through one variable changes it for both. Operators and methods always return new values, and engine functions copy the values they receive. Reading a member that does not exist raises `The type "haylen.Vec2" has no member "z".`, and assigning one raises `The type "haylen.Vec2" has no writable property "z".`, with the type name of the value.
 
 ```lua
 local m = require('haylen.math')
@@ -235,7 +235,7 @@ print(fadeIn) -- #80808080
 
 ### m.fromRgba8(red, green, blue, alpha)
 
-Returns a new `Color` from 8-bit channels, each an integer from `0` to `255`. `alpha` defaults to `255`. A value outside that range raises `bad argument #1 to 'fromRgba8' (expected an integer from 0 to 255)`, naming the argument.
+Returns a new `Color` from 8-bit channels, each an integer from `0` to `255`. The argument `alpha` defaults to `255`. A value outside that range raises `bad argument #1 to 'fromRgba8' (expected an integer from 0 to 255)`, naming the argument.
 
 ```lua
 local m = require('haylen.math')
@@ -259,7 +259,7 @@ print(orange, glass) -- #FFFF8000 #403399FF
 
 ### m.fromHsv(hue, saturation, value, alpha)
 
-Returns a new `Color` from hue, saturation and value. `hue` is measured in turns, so `0` is red, `1/3` is green and `2/3` is blue, and values outside `0` to `1` wrap around. `saturation`, `value` and `alpha` go from `0` to `1`, and `alpha` defaults to `1`.
+Returns a new `Color` from hue, saturation and value. The argument `hue` is measured in turns, so `0` is red, `1/3` is green and `2/3` is blue, and values outside `0` to `1` wrap around. The arguments `saturation`, `value` and `alpha` go from `0` to `1`, and `alpha` defaults to `1`.
 
 ```lua
 local m = require('haylen.math')
@@ -275,7 +275,7 @@ print(rainbow())
 
 ### m.transform(position, rotation, scale, skew)
 
-Returns a new `Transform2D` that scales by `scale`, then skews by `skew`, then rotates by `rotation` radians, then moves by `position`. `position` is a `Vec2` and is required. `rotation` defaults to `0`, and `scale` is a `Vec2` that defaults to `{1, 1}`. `skew` is a `Vec2` of angles in radians that defaults to `{0, 0}`. `skew.x` turns the local y axis and `skew.y` turns the local x axis by that angle, in the same direction as `rotation`, which shears the shape.
+Returns a new `Transform2D` that scales by `scale`, then skews by `skew`, then rotates by `rotation` radians, then moves by `position`. The argument `position` is a `Vec2` and is required. The argument `rotation` defaults to `0`, and `scale` is a `Vec2` that defaults to `{1, 1}`. The argument `skew` is a `Vec2` of angles in radians that defaults to `{0, 0}`. The field `skew.x` turns the local y axis and `skew.y` turns the local x axis by that angle, in the same direction as `rotation`, which shears the shape.
 
 ```lua
 local m = require('haylen.math')
@@ -339,7 +339,7 @@ print(mirror:apply({30, 40})) -- Vec2(-30.0, 40.0)
 
 ### m.random(seed)
 
-Returns a new `Random` generator. The same seed produces the same sequence on every platform. `seed` is an integer, and without one the generator uses a fixed default seed, so it repeats the same sequence every run. Pass something like `os.time()` for different results each run.
+Returns a new `Random` generator. The same seed produces the same sequence on every platform. The argument `seed` is an integer, and without one the generator uses a fixed default seed, so it repeats the same sequence every run. Pass something like `os.time()` for different results each run.
 
 ```lua
 local m = require('haylen.math')
@@ -351,7 +351,7 @@ print(levelRandom:integer(1, 6), lootRandom:nextFloat())
 
 ### m.noise(seed)
 
-Returns a new `Noise2D` generator. `seed` is an integer that defaults to `0`, and each seed gives a different noise field.
+Returns a new `Noise2D` generator. The argument `seed` is an integer that defaults to `0`, and each seed gives a different noise field.
 
 ```lua
 local m = require('haylen.math')
@@ -364,11 +364,11 @@ print(terrain:perlin(3.5, 8.25))
 
 ### m.ease(curve, t)
 
-Evaluates an easing curve at `t` and returns the eased value. `t` is clamped to `0` to `1`. The result goes from `0` to `1` and can overshoot for the `back` and `elastic` curves and for points and Bézier handles outside that range. `curve` takes one of these forms, the same ones the `ease` option of [haylen.tween](tween.md) accepts.
+Evaluates an easing curve at `t` and returns the eased value. The argument `t` is clamped to `0` to `1`. The result goes from `0` to `1` and can overshoot for the `back` and `elastic` curves and for points and Bézier handles outside that range. The argument `curve` takes one of these forms, the same ones the `ease` option of [`haylen.tween`](tween.md) accepts.
 
 | Form | Example | Curve |
 | --- | --- | --- |
-| Name | `'quadOut'` | `'linear'` or the `In`, `Out` and `InOut` variants of `sine`, `quad`, `cubic`, `quart`, `quint`, `expo`, `circ`, `back`, `elastic` and `bounce`, such as `'quadOut'`, `'backIn'` or `'elasticInOut'`. A table `{curve = 'quadOut'}` names the same curve. |
+| Name | `'quadOut'` | The name `'linear'` or the `In`, `Out` and `InOut` variants of `sine`, `quad`, `cubic`, `quart`, `quint`, `expo`, `circ`, `back`, `elastic` and `bounce`, such as `'quadOut'`, `'backIn'` or `'elasticInOut'`. A table `{curve = 'quadOut'}` names the same curve. |
 | Back | `{curve = 'backOut', overshoot = 3}` | A `back` curve with its overshoot, `1.70158` by default. |
 | Elastic | `{curve = 'elasticOut', amplitude = 1.5, period = 0.4}` | An `elastic` curve with its amplitude and period, `1` and `0.3` by default. Either key alone keeps the default of the other. |
 | Steps | `{steps = 4, position = 'end'}` | Jumps in `steps` equal steps like CSS `steps()`, with `position` `'start'`, `'end'` (the default), `'both'` or `'none'`. |
@@ -376,7 +376,7 @@ Evaluates an easing curve at `t` and returns the eased value. `t` is clamped to 
 | Points | `{points = {0, 1.5, 1}}` | Straight lines through numbers spread evenly from `t = 0` to `t = 1`, or through points such as `{{0, 0}, {0.8, 1.2}, {1, 1}}` whose x grows from one point to the next. Before the first point and after the last one the curve keeps their values. |
 | Function | `function(t) return t * t end` | Any function from progress to eased progress, which receives `t` clamped to `0` to `1` and must return a number. |
 
-An unknown name raises `bad argument #1 to 'ease' (unknown value 'bouncy')`, another value raises `bad argument #1 to 'ease' (easing curve name, function or table expected, got boolean)`, and an unknown key raises `Unknown option '<key>'.` An `overshoot` on another curve raises `An overshoot only applies to the back curves.`, an `amplitude` or `period` on another curve raises `An amplitude and a period only apply to the elastic curves.`, and a period that is not positive raises `An elastic curve needs a positive period.` Fewer than one step raises `A steps curve needs at least one step.`, a `cubicBezier` list without four numbers raises `A cubicBezier curve needs the four numbers x1, y1, x2 and y2.`, and an x outside `0` to `1` raises `The x coordinates of a cubic Bézier curve must be between 0 and 1.` Fewer than two points raise `A points curve needs at least two points.`, points out of order raise `The points of a curve must be ordered by x.`, and a function that returns anything but a number raises `An easing function must return a number.`
+An unknown name raises `bad argument #1 to 'ease' (unknown value 'bouncy')`, another value raises `bad argument #1 to 'ease' (easing curve name, function or table expected, got boolean)`, and an unknown key raises `Unknown option "<key>".` An `overshoot` on another curve raises `An overshoot only applies to the back curves.`, an `amplitude` or `period` on another curve raises `An amplitude and a period only apply to the elastic curves.`, and a period that is not positive raises `An elastic curve needs a positive period.` Fewer than one step raises `A steps curve needs at least one step.`, a `cubicBezier` list without four numbers raises `A "cubicBezier" curve needs the four numbers "x1", "y1", "x2" and "y2".`, and an x outside `0` to `1` raises `The x coordinates of a cubic Bézier curve must be between 0 and 1.` Fewer than two points raise `A points curve needs at least two points.`, points out of order raise `The points of a curve must be ordered by x.`, and a function that returns anything but a number raises `An easing function must return a number.`
 
 ```lua
 local m = require('haylen.math')
@@ -408,7 +408,7 @@ print(health) -- 100.0
 
 ### m.lerp(from, to, t)
 
-Returns the linear interpolation `from + (to - from) * t`. `t` is not clamped, so values outside `0` to `1` extrapolate.
+Returns the linear interpolation `from + (to - from) * t`. The argument `t` is not clamped, so values outside `0` to `1` extrapolate.
 
 ```lua
 local m = require('haylen.math')
@@ -543,7 +543,7 @@ print(m.saturate(charge), m.saturate(-0.2)) -- 1.0 0.0
 
 ### m.approximately(a, b, epsilon)
 
-Returns `true` when `a` and `b` differ by at most `epsilon` times the larger of `1`, `|a|` and `|b|`. `epsilon` defaults to `0.00001`.
+Returns `true` when `a` and `b` differ by at most `epsilon` times the larger of `1`, `|a|` and `|b|`. The argument `epsilon` defaults to `0.00001`.
 
 ```lua
 local m = require('haylen.math')
@@ -554,11 +554,11 @@ print(m.approximately(1, 1.05, 0.1)) -- true
 
 ## Circles and segments
 
-Circle arguments are tables with a `center` point and a `radius`, as `{center = {100, 50}, radius = 20}` or `{{100, 50}, 20}`. Segment arguments are tables with a `start` and an `end` point, as `{start = a, ['end'] = b}` or `{a, b}`. A table without a readable point raises `Expected a point in field 'center'.`, and one without a readable number raises `Expected a number in field 'radius'.`, naming the field.
+Circle arguments are tables with a `center` point and a `radius`, as `{center = {100, 50}, radius = 20}` or `{{100, 50}, 20}`. Segment arguments are tables with a `start` and an `end` point, as `{start = a, ['end'] = b}` or `{a, b}`. A table without a readable point raises `Expected a point in field "center".`, and one without a readable number raises `Expected a number in field "radius".`, naming the field.
 
 ### m.intersects(circle, other)
 
-Returns `true` when `circle` overlaps `other`, which is another circle or a rectangle. Shapes that only touch count as overlapping. `other` is a circle when it has a `radius` field or holds exactly two values in order, and a rectangle in any `Rect` form otherwise.
+Returns `true` when `circle` overlaps `other`, which is another circle or a rectangle. Shapes that only touch count as overlapping. The argument `other` is a circle when it has a `radius` field or holds exactly two values in order, and a rectangle in any `Rect` form otherwise.
 
 ```lua
 local m = require('haylen.math')
@@ -713,7 +713,7 @@ print(m.bounds(squad)) -- Rect(90.0, 260.0, 90.0, 80.0)
 
 ### m.poissonDisk(options)
 
-Returns evenly spread random points inside an area, where no two points are closer than a minimum distance, as a sequence of `Vec2`. Use it to scatter trees, rocks or spawn points without clumps. Unknown keys raise `Unknown option '<key>'.`
+Returns evenly spread random points inside an area, where no two points are closer than a minimum distance, as a sequence of `Vec2`. Use it to scatter trees, rocks or spawn points without clumps. Unknown keys raise `Unknown option "<key>".`
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -772,7 +772,7 @@ Ray casts without a physics world trace a straight line from one point to anothe
 | `fraction` | number | The distance over the length of the ray, from 0 at the start to 1 at the end. |
 | `index` | integer | For polygons, chains and segment lists, the 1-based edge or segment that was hit. |
 
-Circles, rectangles and polygons are solid, so a ray that starts inside one hits it at distance 0 with a zero normal. Segments and chains are hit from both sides. The ray casts of [haylen.spatial2d](spatial2d.md), [haylen.navigation2d](navigation2d.md) and [haylen.tiled](tiled.md) return the same tables with fields of their own.
+Circles, rectangles and polygons are solid, so a ray that starts inside one hits it at distance 0 with a zero normal. Segments and chains are hit from both sides. The ray casts of [`haylen.spatial2d`](spatial2d.md), [`haylen.navigation2d`](navigation2d.md) and [`haylen.tiled`](tiled.md) return the same tables with fields of their own.
 
 ### m.raycastSegment(from, to, segment)
 
@@ -825,7 +825,7 @@ print(hit.x, hit.index)
 
 ### m.raycastChain(from, to, points, loop)
 
-Casts a ray against the segments that join consecutive points. With `loop` set to true the last point also joins the first. The hit index is the first point of the segment that was hit.
+Casts a ray against the segments that join consecutive points. With `loop` set to `true` the last point also joins the first. The hit index is the first point of the segment that was hit.
 
 ```lua
 local m = require('haylen.math')
@@ -1109,7 +1109,7 @@ print(m.vec2(10.5, -3.5):round()) -- Vec2(11.0, -4.0)
 
 ### vec:lerp(to, t)
 
-Returns the linear interpolation toward `to`. `t` is not clamped.
+Returns the linear interpolation toward `to`. The argument `t` is not clamped.
 
 ```lua
 local m = require('haylen.math')
@@ -1131,7 +1131,7 @@ print(x + y) -- 46.0
 
 ### Vec2 operators
 
-`a + b` and `a - b` add and subtract component-wise. `a * b` and `a / b` multiply and divide component-wise when both are vectors, and `v * s`, `s * v` and `v / s` scale by a number. `-v` negates, `a == b` compares both components and `tostring(v)` gives `Vec2(x, y)`. The operand that is not a `Vec2` may be a point table.
+The operators `a + b` and `a - b` add and subtract component-wise. The operators `a * b` and `a / b` multiply and divide component-wise when both are vectors, and `v * s`, `s * v` and `v / s` scale by a number. The operator `-v` negates, `a == b` compares both components and `tostring(v)` gives `Vec2(x, y)`. The operand that is not a `Vec2` may be a point table.
 
 ```lua
 local m = require('haylen.math')
@@ -1286,7 +1286,7 @@ print(overlap:empty()) -- true
 
 ### rect:contains(value)
 
-Returns `true` when `value` lies inside the rectangle. `value` is a point or a rectangle. A point is inside when it is on the left or top edge or strictly between the edges, and a rectangle is inside when it lies entirely within. A table counts as a rectangle when it has a `width` field, so pass positional rectangles as `Rect` values.
+Returns `true` when `value` lies inside the rectangle. The argument `value` is a point or a rectangle. A point is inside when it is on the left or top edge or strictly between the edges, and a rectangle is inside when it lies entirely within. A table counts as a rectangle when it has a `width` field, so pass positional rectangles as `Rect` values.
 
 ```lua
 local m = require('haylen.math')
@@ -1351,7 +1351,7 @@ print(touchArea) -- Rect(84.0, 84.0, 232.0, 92.0)
 
 ### rect:inset(insets)
 
-Returns the rectangle shrunk by `insets` from its edges. `insets` is one number for every side, or a table with `left`, `top`, `right` and `bottom` by name or in that order. The width and the height never go below `0`. A value of another type raises `bad argument #1 to 'inset' (number or table with left, top, right and bottom expected, got string)`.
+Returns the rectangle shrunk by `insets` from its edges. The argument `insets` is one number for every side, or a table with `left`, `top`, `right` and `bottom` by name or in that order. The width and the height never go below `0`. A value of another type raises `bad argument #1 to 'inset' (number or table with left, top, right and bottom expected, got string)`.
 
 ```lua
 local m = require('haylen.math')
@@ -1386,7 +1386,7 @@ print(arena:clamp(player)) -- Vec2(1920.0, 0.0)
 
 ### Rect operators
 
-`a == b` compares all four fields, and `tostring(rect)` gives `Rect(x, y, width, height)`.
+The operator `a == b` compares all four fields, and `tostring(rect)` gives `Rect(x, y, width, height)`.
 
 ```lua
 local m = require('haylen.math')
@@ -1438,7 +1438,7 @@ print(ready.r, ready.g, ready.a) -- 0.5 0.25 0.5
 
 ### color:lerp(to, t)
 
-Returns the component-wise interpolation toward `to`. `t` is not clamped.
+Returns the component-wise interpolation toward `to`. The argument `t` is not clamped.
 
 ```lua
 local m = require('haylen.math')
@@ -1450,7 +1450,7 @@ print(day:lerp(night, 0.5))
 
 ### color:lerpHsv(to, t)
 
-Returns the interpolation toward `to` in hue, saturation, value and alpha. The hue takes the shorter way around the hue circle, so red to blue passes through magenta instead of the dark purple of `lerp`, and a gray takes the hue of the other color so only its saturation changes. `t` is not clamped.
+Returns the interpolation toward `to` in hue, saturation, value and alpha. The hue takes the shorter way around the hue circle, so red to blue passes through magenta instead of the dark purple of `lerp`, and a gray takes the hue of the other color so only its saturation changes. The argument `t` is not clamped.
 
 ```lua
 local m = require('haylen.math')
@@ -1488,7 +1488,7 @@ storage.writeJson('settings/theme.json', {accent = favorite:toHex()})
 
 ### Color operators
 
-`a * b` multiplies component-wise, which tints one color by another. `a == b` compares all components, and `tostring(color)` gives the same text as `toHex`.
+The operator `a * b` multiplies component-wise, which tints one color by another. The operator `a == b` compares all components, and `tostring(color)` gives the same text as `toHex`.
 
 ```lua
 local m = require('haylen.math')
@@ -1505,7 +1505,7 @@ An affine 2D transform built with `m.transform`, `m.identity`, `m.translation`, 
 
 ### transform.a, transform.b, transform.c, transform.d, transform.tx, transform.ty
 
-Readable and writable coefficients. `a` and `b` are where the local x axis points, `c` and `d` are where the local y axis points, and `tx` and `ty` are the translation.
+Readable and writable coefficients. The fields `a` and `b` are where the local x axis points, `c` and `d` are where the local y axis points, and `tx` and `ty` are the translation.
 
 ```lua
 local m = require('haylen.math')
@@ -1577,7 +1577,7 @@ print(m.approximately(localPoint.x, 10), m.approximately(localPoint.y, 5)) -- tr
 
 ### Transform2D operators
 
-`a * b` composes two transforms. The result applies `b` first and then `a`, so `(a * b):apply(p)` equals `a:apply(b:apply(p))`.
+The operator `a * b` composes two transforms. The result applies `b` first and then `a`, so `(a * b):apply(p)` equals `a:apply(b:apply(p))`.
 
 ```lua
 local m = require('haylen.math')
@@ -1710,7 +1710,7 @@ print(moisture)
 
 ### noise:fractal(x, y, octaves, lacunarity, gain)
 
-Returns several layers of simplex noise added together, normalized to stay between `-1` and `1`. `octaves` is the number of layers and defaults to `4`. `lacunarity` multiplies the frequency of each layer and defaults to `2`. `gain` multiplies the strength of each layer and defaults to `0.5`.
+Returns several layers of simplex noise added together, normalized to stay between `-1` and `1`. The argument `octaves` is the number of layers and defaults to `4`. The argument `lacunarity` multiplies the frequency of each layer and defaults to `2`. The argument `gain` multiplies the strength of each layer and defaults to `0.5`.
 
 ```lua
 local m = require('haylen.math')
@@ -1741,7 +1741,7 @@ print(nearest, crack, cell)
 
 ### noise:warp(x, y, amplitude, frequency, octaves)
 
-Moves the point by fractal noise sampled at `frequency`, up to `amplitude` away on each axis, and returns the new `x` and `y`. Sampling any noise at the warped point bends its patterns into swirls, which suits coastlines, marble and smoke. `frequency` defaults to `1` and `octaves` to `3`.
+Moves the point by fractal noise sampled at `frequency`, up to `amplitude` away on each axis, and returns the new `x` and `y`. Sampling any noise at the warped point bends its patterns into swirls, which suits coastlines, marble and smoke. The argument `frequency` defaults to `1` and `octaves` to `3`.
 
 ```lua
 local m = require('haylen.math')
@@ -1754,7 +1754,7 @@ print(height)
 
 ## Polygon operations
 
-`m.polygon` combines, grows, simplifies and splits shapes with Clipper2. A shape is a list of outlines, each a list of points, and any single outline is also accepted as a shape. One outline alone is filled in either winding, and an outline wound opposite to the outline around it is a hole. Results always wind outer outlines so that `m.polygonSignedArea` is positive and holes so that it is negative, and they keep three decimal places.
+The table `m.polygon` combines, grows, simplifies and splits shapes with Clipper2. A shape is a list of outlines, each a list of points, and any single outline is also accepted as a shape. One outline alone is filled in either winding, and an outline wound opposite to the outline around it is a hole. Results always wind outer outlines so that `m.polygonSignedArea` is positive and holes so that it is negative, and they keep three decimal places.
 
 ### m.polygon.unite(shape, other)
 
@@ -1807,7 +1807,7 @@ print(m.polygon.area(m.polygon.exclude(a, b))) -- 150.0
 
 ### m.polygon.offset(shape, distance, options)
 
-Grows the shape by `distance`, or shrinks it when `distance` is negative, and returns the result. Shrinking can split a shape or make it vanish. Unknown keys of `options` raise `Unknown option '<key>'.`
+Grows the shape by `distance`, or shrinks it when `distance` is negative, and returns the result. Shrinking can split a shape or make it vanish. Unknown keys of `options` raise `Unknown option "<key>".`
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1825,7 +1825,7 @@ print(#shallows)
 
 ### m.polygon.simplify(points, tolerance, closed)
 
-Drops the points of an outline or line that lie closer than `tolerance` to the simplified line, with the Ramer-Douglas-Peucker algorithm, and returns the points that stay. `closed` defaults to `true`, and closed outlines keep at least three points. Open lines keep both ends.
+Drops the points of an outline or line that lie closer than `tolerance` to the simplified line, with the Ramer-Douglas-Peucker algorithm, and returns the points that stay. The argument `closed` defaults to `true`, and closed outlines keep at least three points. Open lines keep both ends.
 
 ```lua
 local m = require('haylen.math')
@@ -1836,7 +1836,7 @@ print(#m.polygon.simplify(path, 2, false)) -- 3
 
 ### m.polygon.decompose(shape, maxVertices)
 
-Splits a shape, holes included, into convex pieces of at most `maxVertices` points, which defaults to `8`, the limit of a Box2D polygon. The pieces come from a constrained Delaunay triangulation whose triangles merge while they stay convex, and each one winds with a positive area. `body:addPolygon` of `haylen.physics2d` uses it for concave outlines. A negative `maxVertices` raises `bad argument #2 to 'decompose' (expected a non-negative integer)`, and one below `3` raises `Convex pieces need at least three vertices.`
+Splits a shape, holes included, into convex pieces of at most `maxVertices` points, which defaults to `8`, the limit of a Box2D polygon. The pieces come from a constrained Delaunay triangulation whose triangles merge while they stay convex, and each one winds with a positive area. The method `body:addPolygon` of `haylen.physics2d` uses it for concave outlines. A negative `maxVertices` raises `bad argument #2 to 'decompose' (expected a non-negative integer)`, and one below `3` raises `Convex pieces need at least three vertices.`
 
 ```lua
 local m = require('haylen.math')
@@ -1860,7 +1860,7 @@ print(m.polygon.area(frame)) -- 7500.0
 
 ## Marching squares
 
-`m.marchingSquares` traces the outlines of the areas of a grid that reach a threshold, such as the land of a height map or the solid pixels of a bitmap. Outlines are closed lists of `Vec2` that follow the same winding as the results of `m.polygon`, so they feed `m.polygon.simplify`, `body:addChain` and `graphics2d.drawPolygon` directly.
+The table `m.marchingSquares` traces the outlines of the areas of a grid that reach a threshold, such as the land of a height map or the solid pixels of a bitmap. Outlines are closed lists of `Vec2` that follow the same winding as the results of `m.polygon`, so they feed `m.polygon.simplify`, `body:addChain` and `graphics2d.drawPolygon` directly.
 
 ### m.marchingSquares.trace(values, width, height, options)
 
@@ -1913,7 +1913,7 @@ Creates a `Spline` from a list of points. A kind that needs other point counts r
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `kind` | string | `'catmullRom'` | `'catmullRom'` passes through every point with centripetal parameterization. `'bezier'` chains cubic segments whose points go end, control, control, end and so on. `'bSpline'` stays near the points without passing through them, except for the ends of open curves. |
+| `kind` | string | `'catmullRom'` | The kind `'catmullRom'` passes through every point with centripetal parameterization. The kind `'bezier'` chains cubic segments whose points go end, control, control, end and so on. The kind `'bSpline'` stays near the points without passing through them, except for the ends of open curves. |
 | `closed` | boolean | `false` | Joins the last point back to the first. Closed curves wrap parameters and distances around. |
 
 ```lua
@@ -2043,7 +2043,7 @@ Deals items in random order without repeats until the bag runs out, then refills
 
 ### m.shuffleBag(items, options)
 
-Creates a `ShuffleBag` of a list of items. Item `i` goes into the bag `counts[i]` times, once by default. The bag owns a generator seeded with `seed`, or with the default seed of `m.random`. A counts list of another length raises `expected one count per item`, and a bag without items raises `A shuffle bag needs at least one item.`
+Creates a `ShuffleBag` of a list of items. Item `i` goes into the bag `counts[i]` times, once by default. The bag owns a generator seeded with `seed`, or with the default seed of `m.random`. A `counts` list of another length raises `expected one count per item`, and a bag without items raises `A shuffle bag needs at least one item.`
 
 ```lua
 local m = require('haylen.math')
@@ -2067,7 +2067,7 @@ end
 
 ### bag:refill(), bag.remaining, bag.size
 
-`refill` puts every dealt item back. `remaining` is the number of items left before the next refill and `size` the number of items of a full bag.
+The method `refill` puts every dealt item back. The property `remaining` is the number of items left before the next refill and `size` the number of items of a full bag.
 
 ```lua
 local m = require('haylen.math')
@@ -2080,7 +2080,7 @@ print(bag.remaining) -- 2
 
 ## WeightedChoice
 
-Picks items in proportion to fixed weights in constant time with Vose's alias method, which pays off when the same weights serve many picks. `random:pick` suits weights that change between picks.
+Picks items in proportion to fixed weights in constant time with Vose's alias method, which pays off when the same weights serve many picks. The method `random:pick` suits weights that change between picks.
 
 ### m.weightedChoice(items, weights, seed)
 
@@ -2095,7 +2095,7 @@ print(loot.size) -- 3
 
 ### choice:pick(random), choice:probability(item), choice.size
 
-`pick` returns an item, drawing from `random` when a `Random` is passed. `probability` returns the chance of the item at 1-based position `item`, and `size` the number of items.
+The method `pick` returns an item, drawing from `random` when a `Random` is passed. The method `probability` returns the chance of the item at 1-based position `item`, and `size` the number of items.
 
 ```lua
 local m = require('haylen.math')

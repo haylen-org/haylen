@@ -11,7 +11,7 @@ class Utf8 final {
   public:
     static constexpr char32_t kReplacementCharacter = U'\U0000FFFD';
 
-    // Decodes the code point at offset and advances offset past it. Invalid sequences decode as U+FFFD.
+    // Decodes the code point at `offset` and advances `offset` past it. Invalid sequences decode as U+FFFD.
     [[nodiscard]] static char32_t decode(std::string_view text, std::size_t& offset) noexcept;
     [[nodiscard]] static std::u32string decode(std::string_view text);
     static void append(std::string& output, char32_t codePoint);

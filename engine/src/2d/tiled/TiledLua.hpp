@@ -39,7 +39,7 @@ namespace haylen::tiled {
 
 struct World;
 
-// Installs haylen.tiled with the TiledMap asset class and the playable MapRenderer class. Map data crosses into Lua as plain tables.
+// Installs `haylen.tiled` with the `TiledMap` asset class and the playable `MapRenderer` class. Map data crosses into Lua as plain tables.
 class TiledLua final {
   public:
     static void install(lua_State* L);
@@ -47,7 +47,7 @@ class TiledLua final {
     // Pushes a loaded map, which the asset loader of Tiled maps hands to Lua.
     static void pushMap(lua_State* L, std::shared_ptr<Map> data);
 
-    // Pushes the maps of a loaded world as {path, x, y, width, height} tables.
+    // Pushes the maps of a loaded world as `{path, x, y, width, height}` tables.
     static void pushWorld(lua_State* L, const World& world);
 
   private:
@@ -59,14 +59,14 @@ class TiledLua final {
     static void setBoolean(lua_State* L, const char* key, bool value);
     static void setOptionalColor(lua_State* L, const char* key, const std::optional<math::Color>& color);
 
-    // Colors become Color values and unset colors become nil, lists become sequences of their item values, and class values become nested tables.
+    // Colors become `Color` values and unset colors become `nil`, lists become sequences of their item values, and class values become nested tables.
     static void pushPropertyValue(lua_State* L, std::string_view type, const core::Json& value);
     static void pushProperties(lua_State* L, const Properties& properties);
 
     // Pushes a table from property name to custom property type name, for the properties that have one.
     static void pushPropertyTypes(lua_State* L, const Properties& properties);
 
-    // Sets the properties and propertyTypes fields of the table on top of the stack.
+    // Sets the `properties` and `propertyTypes` fields of the table on top of the stack.
     static void setProperties(lua_State* L, const Properties& properties);
     static void pushPoints(lua_State* L, const std::vector<math::Vec2>& points);
     static void pushObject(lua_State* L, const Object& object);

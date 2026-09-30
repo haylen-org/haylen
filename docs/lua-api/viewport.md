@@ -1,12 +1,12 @@
 # haylen.viewport
 
-`haylen.viewport` describes how the fixed design resolution from `app.json` maps onto the real framebuffer. Apps draw and lay out in design units, and the viewport scales them to any screen according to the scaling policy. Use this module to place the HUD inside the visible and safe areas and to convert between design units and framebuffer pixels. Positions in input events and in `haylen.input` are already in design units.
+The module `haylen.viewport` describes how the fixed design resolution from `app.json` maps onto the real framebuffer. Apps draw and lay out in design units, and the viewport scales them to any screen according to the scaling policy. Use this module to place the HUD inside the visible and safe areas and to convert between design units and framebuffer pixels. Positions in input events and in `haylen.input` are already in design units.
 
 ```lua
 local viewport = require('haylen.viewport')
 ```
 
-The design size and the scaling policy come from the `design` section of `app.json`, which defaults to 1920 by 1080 units with the `expand` policy, and [viewport.setScaling](#viewportsetscalingpolicy) and [viewport.setDesignSize](#viewportsetdesignsizewidth-height) change them while the app runs. The viewport is recomputed at the start of every frame, so after a resize or a rotation the new values are available from the next frame on.
+The design size and the scaling policy come from the `design` section of `app.json`, which defaults to 1920 by 1080 units with the `expand` policy, and [`viewport.setScaling`](#viewportsetscalingpolicy) and [`viewport.setDesignSize`](#viewportsetdesignsizewidth-height) change them while the app runs. The viewport is recomputed at the start of every frame, so after a resize or a rotation the new values are available from the next frame on.
 
 ## Scaling policies
 
@@ -51,7 +51,7 @@ require('haylen.scene').push({
 
 ### viewport.safeRect()
 
-Returns the visible design region that is not covered by notches, rounded corners, system bars or the native views of plugins that reserve an edge, such as a banner ad, as a `Rect`. Each edge of the safe area of the device grows to the largest reservation on it, which [viewport.reservedInsets](#viewportreservedinsets) reports. Place buttons and important HUD text inside it, and UI anchored to the safe area follows it on its own. The `windowSafeAreaChanged` event of [haylen.events](events.md#engine-events) announces every change with the new rectangle.
+Returns the visible design region that is not covered by notches, rounded corners, system bars or the native views of plugins that reserve an edge, such as a banner ad, as a `Rect`. Each edge of the safe area of the device grows to the largest reservation on it, which [`viewport.reservedInsets`](#viewportreservedinsets) reports. Place buttons and important HUD text inside it, and UI anchored to the safe area follows it on its own. The `windowSafeAreaChanged` event of [`haylen.events`](events.md#engine-events) announces every change with the new rectangle.
 
 ```lua
 local viewport = require('haylen.viewport')
@@ -69,7 +69,7 @@ require('haylen.scene').push({
 
 ### viewport.reservedInsets()
 
-Returns the edges of the screen that native views of plugins reserve, as a table with `left`, `top`, `right` and `bottom` in design units, the largest reservation on each edge. A plugin that shows a native view reserves the edge the view sits on, such as the bottom for a banner, and releases it when the view goes away. The engine reads the reservations at the start of every frame, and [viewport.safeRect](#viewportsaferect) already leaves them out.
+Returns the edges of the screen that native views of plugins reserve, as a table with `left`, `top`, `right` and `bottom` in design units, the largest reservation on each edge. A plugin that shows a native view reserves the edge the view sits on, such as the bottom for a banner, and releases it when the view goes away. The engine reads the reservations at the start of every frame, and [`viewport.safeRect`](#viewportsaferect) already leaves them out.
 
 ```lua
 local events = require('haylen.events')
@@ -164,7 +164,7 @@ ui.mount(ui.segmentedControl{
 
 ### viewport.setDesignSize(width, height)
 
-Changes the design resolution while the app runs, in design units, and the viewport, the UI, cameras and pointer input follow it like they follow [viewport.setScaling](#viewportsetscalingpolicy). A width or height that is not positive raises `The design size needs a positive width and height.`.
+Changes the design resolution while the app runs, in design units, and the viewport, the UI, cameras and pointer input follow it like they follow [`viewport.setScaling`](#viewportsetscalingpolicy). A width or height that is not positive raises `The design size needs a positive width and height.`.
 
 ```lua
 local viewport = require('haylen.viewport')
@@ -187,17 +187,17 @@ print(viewport.safeAreaSimulation())
 
 ### viewport.setSafeAreaSimulation(value)
 
-Replaces the safe area the device reports, to test a layout for other screens on a desktop. `value` is the name of a device, whose insets are scaled to the window in the orientation of the window, or insets in window points as one number, `{vertical, horizontal}` or `{top, right, bottom, left}`. `nil` goes back to the safe area of the device. The `debug.safeArea` option of `app.json` sets it at start, and [ui.setSafeAreaVisible](ui.md#uisetsafeareavisiblevisible) shows it.
+Replaces the safe area the device reports, to test a layout for other screens on a desktop. The argument `value` is the name of a device, whose insets are scaled to the window in the orientation of the window, or insets in window points as one number, `{vertical, horizontal}` or `{top, right, bottom, left}`. The value `nil` goes back to the safe area of the device. The `debug.safeArea` option of `app.json` sets it at start, and [`ui.setSafeAreaVisible`](ui.md#uisetsafeareavisiblevisible) shows it.
 
 | Device | Portrait | Landscape |
 | --- | --- | --- |
-| `'iphoneNotch'` | notch at the top, home indicator at the bottom | notch on the left and right, home indicator at the bottom |
-| `'iphoneDynamicIsland'` | dynamic island at the top, home indicator at the bottom | dynamic island on the left and right, home indicator at the bottom |
-| `'ipad'` | status bar at the top, home indicator at the bottom | the same |
-| `'androidGestureBar'` | camera cutout at the top, gesture bar at the bottom | camera cutout on the left, gesture bar at the bottom |
-| `'television'` | the title safe margins of a TV | the same |
+| `'iphoneNotch'` | Notch at the top, home indicator at the bottom | Notch on the left and right, home indicator at the bottom |
+| `'iphoneDynamicIsland'` | Dynamic island at the top, home indicator at the bottom | Dynamic island on the left and right, home indicator at the bottom |
+| `'ipad'` | Status bar at the top, home indicator at the bottom | The same |
+| `'androidGestureBar'` | Camera cutout at the top, gesture bar at the bottom | Camera cutout on the left, gesture bar at the bottom |
+| `'television'` | The title safe margins of a TV | The same |
 
-An unknown device raises `There is no simulated device named <name>.`, and anything else that is not insets raises `A simulated safe area is a device name or one, two or four insets.`.
+An unknown device raises `There is no simulated device named "<name>".`, and anything else that is not insets raises `A simulated safe area is a device name or one, two or four insets.`.
 
 ```lua
 local ui = require('haylen.ui')

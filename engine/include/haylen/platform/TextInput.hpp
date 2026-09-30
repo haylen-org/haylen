@@ -8,7 +8,7 @@
 
 namespace haylen::platform {
 
-// Text editing between the UI and the platform. The UI publishes the text field it focuses, and a platform that edits text natively, with a hidden field under the software keyboard and the input methods of the system, sends what the user types back as TextEdited and TextAction events on the frame thread. Rectangles are in framebuffer pixels and text ranges count code points. Platforms without a native field type through key and character events and keep the defaults of this class.
+// Text editing between the UI and the platform. The UI publishes the text field it focuses, and a platform that edits text natively, with a hidden field under the software keyboard and the input methods of the system, sends what the user types back as `TextEdited` and `TextAction` events on the frame thread. Rectangles are in framebuffer pixels and text ranges count code points. Platforms without a native field type through key and character events and keep the defaults of this class.
 class TextInput {
   public:
     enum class Keyboard : std::uint8_t {
@@ -86,7 +86,7 @@ class TextInput {
         }
     };
 
-    // The field of the plain on-screen keyboard that Window::setKeyboardVisible opens. Its typing reaches the app as key and character events instead of a text field.
+    // The field of the plain on-screen keyboard that `Window::setKeyboardVisible` opens. Its typing reaches the app as key and character events instead of a text field.
     static constexpr std::uint64_t kKeyboardField = 0;
 
     virtual ~TextInput() = default;

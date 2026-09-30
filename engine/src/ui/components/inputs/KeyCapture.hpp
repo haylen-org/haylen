@@ -16,14 +16,14 @@
 
 namespace haylen::ui {
 
-// A field that shows an action map binding and, once pressed, listens for the next key, mouse button, gamepad button or gamepad axis and takes it as its binding, such as key:w or button:south, for a controls settings screen.
+// A field that shows an action map binding and, once pressed, listens for the next key, mouse button, gamepad button or gamepad axis and takes it as its binding, such as `key:w` or `button:south`, for a controls settings screen.
 class KeyCapture final : public Component {
   public:
     [[nodiscard]] std::string_view getKind() const noexcept override {
         return "keyCapture";
     }
 
-    // Writes a binding for people, such as Left Shift for key:leftShift.
+    // Writes a binding for people, such as Left Shift for `key:leftShift`.
     [[nodiscard]] static std::string describe(std::string_view binding);
 
   protected:

@@ -12,7 +12,7 @@
 
 namespace haylen::lua {
 
-// Varn only logs an error that escapes a task of async.spawn or async.run, so the engine runs every task in a protected call with its own message handler and shows the error on the error screen with the stack of the task.
+// Varn only logs an error that escapes a task of `async.spawn` or `async.run`, so the engine runs every task in a protected call with its own message handler and shows the error on the error screen with the stack of the task.
 const std::string_view Environment::kTaskErrors = R"lua(
 local async, report, handleMessage = ...
 for _, name in ipairs({'spawn', 'run'}) do
@@ -41,7 +41,7 @@ std::string Environment::modulePath(std::string_view name) {
     return path;
 }
 
-// A module whose first name part is the id of a plugin of the app comes from the source folder of that plugin, where the id alone names init.lua. Every other module comes from the source folder of the app.
+// A module whose first name part is the id of a plugin of the app comes from the source folder of that plugin, where the id alone names `init.lua`. Every other module comes from the source folder of the app.
 std::vector<std::string> Environment::getCandidates(const core::AppConfig& config, std::string_view name) {
     const std::string head(name.substr(0, name.find('.')));
     if (!config.plugins.contains(head)) {
@@ -57,7 +57,7 @@ std::vector<std::string> Environment::getCandidates(const core::AppConfig& confi
     return {base + ".lua", base + "/init.lua"};
 }
 
-// A module of the app whose first name part is a plugin id could never load, because require finds the module of the plugin first.
+// A module of the app whose first name part is a plugin id could never load, because `require` finds the module of the plugin first.
 void Environment::checkModules(core::Engine& engine) {
     const core::AppConfig& config = engine.getConfig();
     if (config.plugins.empty()) {
@@ -78,7 +78,7 @@ void Environment::checkModules(core::Engine& engine) {
 
         const std::string id = module.substr(0, module.find('.'));
         if (config.plugins.contains(id)) {
-            throw std::runtime_error("The app module " + file + " has the name " + module + ", which require resolves to " + getCandidates(config, module).front() + " of the plugin " + id + ". Rename the module of the app.");
+            throw std::runtime_error("The app module \"" + file + "\" has the name \"" + module + "\", which \"require\" resolves to \"" + getCandidates(config, module).front() + "\" of the plugin \"" + id + "\". Rename the module of the app.");
         }
     }
 }
@@ -100,7 +100,7 @@ void Environment::installTaskErrors(lua_State* L) {
     Runtime::protectedCall(L, 3, 0);
 }
 
-// Searches the package for name.lua and then name/init.lua, the same order Lua uses on disk.
+// Searches the package for `name.lua` and then `name/init.lua`, the same order Lua uses on disk.
 int Environment::searchPackage(lua_State* L) {
     // clang-format off
     return Binding::guarded(L, [L] {
@@ -140,7 +140,7 @@ int Environment::loadAsText(lua_State* L) {
         return luaL_argerror(L, mode, "chunks load only as text, so the mode is 't'");
     }
 
-    // An environment argument after the mode counts even when it is nil, so the arguments keep the count the caller gave.
+    // An environment argument after the mode counts even when it is `nil`, so the arguments keep the count the caller gave.
     lua_settop(L, std::max(lua_gettop(L), mode));
     lua_pushliteral(L, "t");
     lua_replace(L, mode);

@@ -19,7 +19,7 @@ class BlendMode final {
         Opaque,
     };
 
-    // Resolves the names "alpha", "additive", "multiply", "screen", "premultiplied" and "opaque".
+    // Resolves the names `alpha`, `additive`, `multiply`, `screen`, `premultiplied` and `opaque`.
     [[nodiscard]] static std::optional<Type> parse(std::string_view text) noexcept;
     [[nodiscard]] static std::string_view name(Type mode) noexcept;
 

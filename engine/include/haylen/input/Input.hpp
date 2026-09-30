@@ -92,7 +92,7 @@ class Input final {
     [[nodiscard]] float getGamepadAxis(std::size_t index, GamepadAxis axis) const noexcept;
     [[nodiscard]] math::Vec2 getGamepadStick(std::size_t index, bool rightStick) const noexcept;
 
-    // Takes a dead zone from 0 to below 1 and throws std::invalid_argument for any other value.
+    // Takes a dead zone from 0 to below 1 and throws `std::invalid_argument` for any other value.
     void setGamepadDeadzone(float value);
     [[nodiscard]] float getGamepadDeadzone() const noexcept {
         return deadzone;

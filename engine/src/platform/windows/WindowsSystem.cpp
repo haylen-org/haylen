@@ -26,7 +26,7 @@ void WindowsSystem::openUrl(const std::string& url, std::function<void(bool open
     callback(reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", widen(url).c_str(), nullptr, nullptr, SW_SHOWNORMAL)) > 32);
 }
 
-// Reads the real version from ntdll, because GetVersionEx reports an older one to applications without a compatibility manifest.
+// Reads the real version from `ntdll`, because `GetVersionEx` reports an older one to applications without a compatibility manifest.
 std::string WindowsSystem::getSystemVersion() {
     using RtlGetVersion = LONG(WINAPI*)(PRTL_OSVERSIONINFOW);
     const auto readVersion = reinterpret_cast<RtlGetVersion>(GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlGetVersion"));

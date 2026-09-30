@@ -63,7 +63,7 @@ void RichText::setMarkup(std::string value) {
     for (const RichTextDocument::Effect& effect : parsed.effects) {
         const Effect::Function* found = registry->findEffect(effect.name);
         if (found == nullptr) {
-            throw std::invalid_argument("Rich text markup at line " + std::to_string(effect.line) + ", column " + std::to_string(effect.column) + ": [" + effect.name + "] is neither a tag nor a registered text effect.");
+            throw std::invalid_argument("Rich text markup at line " + std::to_string(effect.line) + ", column " + std::to_string(effect.column) + ": The markup \"[" + effect.name + "]\" is neither a tag nor a registered text effect.");
         }
         functions.push_back(*found);
         attributes.emplace_back(effect.name, effect.parameters);

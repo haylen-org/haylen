@@ -11,10 +11,10 @@ local sample = require('sample')
 local Lifetime = haylen.class('Lifetime', sample.Test)
 
 local kCode = [[
-tween.rotate(spinner, 1, math.pi / 2, {owner = childScene, loopMode = 'incremental', repeatCount = -1})  -- ends when the child unloads
-tween.to(target, 1, {x = 750}, {loopMode = 'yoyo', repeatCount = -1})  -- holds the target weakly
+tween.rotate(spinner, 1, math.pi / 2, {owner = childScene, loopMode = 'incremental', repeatCount = -1})  -- Ends when the child unloads.
+tween.to(target, 1, {x = 750}, {loopMode = 'yoyo', repeatCount = -1})  -- Holds the target weakly.
 target = nil
-collectgarbage()  -- the tween stops before it writes again]]
+collectgarbage()  -- The tween stops before it writes again.]]
 
 -- A transparent scene over the test that owns a spinning tween and a document, both of which end when it unloads.
 local Child = haylen.class('Child', scene.Scene)

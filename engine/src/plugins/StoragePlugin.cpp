@@ -30,7 +30,7 @@ core::Json StoragePlugin::getStoredPreference(const storage::Preferences& source
     core::Json value = source.get(key);
     const bool numeric = type == core::Json::value_t::number_float && value.is_number();
     if (!value.is_null() && !numeric && value.type() != type) {
-        throw std::invalid_argument("The preference '" + key + "' has a value of the wrong type.");
+        throw std::invalid_argument("The preference \"" + key + "\" has a value of the wrong type.");
     }
     return value;
 }

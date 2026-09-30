@@ -56,7 +56,7 @@ Shader Shader::parse(std::span<const std::uint8_t> bytes) {
             for (const core::Json& uniform : block.at("uniforms")) {
                 const std::optional<UniformType> type = uniformTypeFromName(uniform.at("type").get<std::string>());
                 if (!type) {
-                    throw std::invalid_argument(std::format("The uniform {} has an unsupported type.", uniform.at("name").get<std::string>()));
+                    throw std::invalid_argument(std::format("The uniform \"{}\" has an unsupported type.", uniform.at("name").get<std::string>()));
                 }
                 resource->uniforms.push_back({.name = uniform.at("name").get<std::string>(), .type = *type, .count = uniform.at("count").get<int>(), .offset = uniform.at("offset").get<std::uint32_t>(), .block = resource->blocks.size() - 1});
             }
@@ -71,7 +71,7 @@ Shader Shader::parse(std::span<const std::uint8_t> bytes) {
         }
         resource->validate();
     } catch (const core::Json::exception& error) {
-        throw std::invalid_argument(std::format("The shader file is malformed, and the JSON reader reported '{}'.", error.what()));
+        throw std::invalid_argument(std::format("The shader file is malformed, and the JSON reader reported \"{}\".", error.what()));
     } catch (const std::invalid_argument& error) {
         throw std::invalid_argument(std::format("The shader file is malformed: {}", error.what()));
     }

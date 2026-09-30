@@ -14,7 +14,7 @@ class Font;
 
 namespace haylen::graphics2d {
 
-// Installs haylen.graphics2d with the canvases, captures and draw functions of the 2D renderer, and the Sprite, SpriteBatch, StaticSpriteBatch, Camera, Parallax, NineSlice, Material and RichText classes.
+// Installs `haylen.graphics2d` with the canvases, captures and draw functions of the 2D renderer, and the `Sprite`, `SpriteBatch`, `StaticSpriteBatch`, `Camera`, `Parallax`, `NineSlice`, `Material` and `RichText` classes.
 class Graphics2DLua final {
   public:
     static void install(lua_State* L);

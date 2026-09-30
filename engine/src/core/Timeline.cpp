@@ -125,7 +125,7 @@ Timeline& Timeline::addLabel(std::string name, float at) {
 float Timeline::getLabelTime(std::string_view name) const {
     const auto found = labels.find(name);
     if (found == labels.end()) {
-        throw std::invalid_argument("The timeline has no label named '" + std::string(name) + "'.");
+        throw std::invalid_argument("The timeline has no label named \"" + std::string(name) + "\".");
     }
     return found->second;
 }

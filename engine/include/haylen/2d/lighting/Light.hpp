@@ -78,7 +78,7 @@ struct Light {
     float shadowSmoothness = 0.0F;
     std::uint32_t shadowMask = 1;
 
-    // Resolve the names "point", "spot" and "directional", "add", "subtract" and "mix", and "none", "pcf5" and "pcf13".
+    // Resolve the names `point`, `spot` and `directional`, `add`, `subtract` and `mix`, and `none`, `pcf5` and `pcf13`.
     [[nodiscard]] static std::optional<Type> typeFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view typeName(Type value) noexcept;
     [[nodiscard]] static std::optional<Blend> blendFromName(std::string_view name) noexcept;
@@ -92,7 +92,7 @@ struct Light {
     // Returns the light map value at a point of the canvas plane that the ambient color and the lights leave for draws with the light mask and the layer, in order and without normal maps or shadows, as the light pass computes it. Textured lights count with the radial falloff.
     [[nodiscard]] static math::Color illuminate(math::Color ambient, std::span<const Light> lights, math::Vec2 point, std::uint8_t lightMask = 1, int layer = 0) noexcept;
 
-    // Throws std::invalid_argument when a value is out of its range, such as a negative intensity, a spot cone whose inner angle exceeds its outer angle or a layer range that is empty.
+    // Throws `std::invalid_argument` when a value is out of its range, such as a negative intensity, a spot cone whose inner angle exceeds its outer angle or a layer range that is empty.
     void validate() const;
 
     // Tells whether the light reaches draws with the light mask and the layer.
@@ -104,7 +104,7 @@ struct Light {
     // Returns the light map value after the light draws over the value below at a point, with its blend mode.
     [[nodiscard]] math::Color apply(math::Color below, math::Vec2 point) const noexcept;
 
-    // Tells whether an occluder whose mask shares a bit with the shadow mask stands between the light and a point, following the cull mode of each occluder the way the shadow map does. Lights without shadows never shadow a point. Throws std::invalid_argument when an occluder has too few points.
+    // Tells whether an occluder whose mask shares a bit with the shadow mask stands between the light and a point, following the cull mode of each occluder the way the shadow map does. Lights without shadows never shadow a point. Throws `std::invalid_argument` when an occluder has too few points.
     [[nodiscard]] bool isShadowedAt(math::Vec2 point, std::span<const Occluder> occluders) const;
 
   private:

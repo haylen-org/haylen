@@ -50,7 +50,7 @@ function backdrop:drift()
     return {self.fire.x + math.cos(self.time * 0.07) * 420, self.fire.y + math.sin(self.time * 0.05) * 160 - 60}
 end
 
--- Frames a survivor on the left of the screen, or lets the camera drift again when id is nil.
+-- Frames a survivor on the left of the screen, or lets the camera drift again when `id` is `nil`.
 function backdrop:focus(id)
     self.focused = id and self.units[id]
 end

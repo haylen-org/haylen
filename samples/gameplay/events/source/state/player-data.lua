@@ -1,4 +1,4 @@
--- The player data every scene shares: an autoload that app.json lists, so it loads before main.lua, lives as long as the app and gets the callbacks of the engine. It keeps the coins, the hats bought in the shop, the time played and the input events it saw, and draws the coins in a corner of every screen.
+-- The player data every scene shares: an autoload that `app.json` lists, so it loads before `main.lua`, lives as long as the app and gets the callbacks of the engine. It keeps the coins, the hats bought in the shop, the time played and the input events it saw, and draws the coins in a corner of every screen.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local viewport = require('haylen.viewport')

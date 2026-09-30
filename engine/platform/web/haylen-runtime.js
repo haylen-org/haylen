@@ -1,5 +1,5 @@
 // Page side of the Haylen web runtime, included before the generated module code.
-// Pages talk to the running app through Module.haylen: native bridge handlers, the contexts of plugin modules with their overlay over the canvas, the editor API that swaps the app package without reloading the page, and the onLog, onError, onStarted, onStopped and onStats callbacks.
+// Pages talk to the running app through `Module.haylen`: native bridge handlers, the contexts of plugin modules with their overlay over the canvas, the editor API that swaps the app package without reloading the page, and the `onLog`, `onError`, `onStarted`, `onStopped` and `onStats` callbacks.
 
 Module.haylen = Module.haylen || {};
 
@@ -27,7 +27,7 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-    // Registers an async handler for a platform method. It receives the parsed params and a context with the id of the call and a signal that aborts when the app cancels the call or its timeout passes, and it returns any JSON value. A thrown error fails the call with its message and its code and data, or with the code exception when it has no code.
+    // Registers an async handler for a platform method. It receives the parsed params and a context with the id of the call and a signal that aborts when the app cancels the call or its timeout passes, and it returns any JSON value. A thrown error fails the call with its message and its code and data, or with the code `exception` when it has no code.
     haylen.register = function (method, handler) {
         handlers.set(method, handler);
     };
@@ -47,7 +47,7 @@ Module.haylen = Module.haylen || {};
         waiting.runtime.push(work);
     };
 
-    // Parameters, results and events cross as JSON with the bytes of every ArrayBuffer and ArrayBuffer view, such as a Uint8Array, in buffers of their own that the JSON refers to as {"$bytes": N}, so binary data never turns into text.
+    // Parameters, results and events cross as JSON with the bytes of every `ArrayBuffer` and `ArrayBuffer` view, such as a `Uint8Array`, in buffers of their own that the JSON refers to as `{"$bytes": N}`, so binary data never turns into text.
     const encodePayload = (value) => {
         const buffers = [];
         const prepare = (item) => {
@@ -67,7 +67,7 @@ Module.haylen = Module.haylen || {};
         return { json: json === undefined ? "null" : json, buffers };
     };
 
-    // Every {"$bytes": N} of the JSON becomes buffer N, a Uint8Array.
+    // Every `{"$bytes": N}` of the JSON becomes buffer `N`, a `Uint8Array`.
     const decodePayload = (json, buffers) => {
         return JSON.parse(json, (key, value) => {
             const index = value !== null && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length === 1 ? value.$bytes : undefined;
@@ -109,7 +109,7 @@ Module.haylen = Module.haylen || {};
         withBuffers(buffers, (table, count) => Module.ccall("haylen_web_emit", null, ["string", "string", "number", "number", "number"], [event, json, table, count, flags]));
     };
 
-    // Sends an event to the app, which receives it through haylen.platform.on, with ArrayBuffer and Uint8Array values as bytes. An event that nothing listens to is dropped, unless options.retain is true: then it waits for the first listener of its name. The events of a name with options.batched that arrive in one frame reach the app as one list in order. Events sent before the first app started reach it once it starts.
+    // Sends an event to the app, which receives it through `haylen.platform.on`, with `ArrayBuffer` and `Uint8Array` values as bytes. An event that nothing listens to is dropped, unless `options.retain` is `true`: then it waits for the first listener of its name. The events of a name with `options.batched` that arrive in one frame reach the app as one list in order. Events sent before the first app started reach it once it starts.
     haylen.emit = function (event, payload, options) {
         const encoded = encodePayload(payload);
         const flags = (options && options.retain ? 1 : 0) | (options && options.batched ? 2 : 0);
@@ -123,7 +123,7 @@ Module.haylen = Module.haylen || {};
     // The abort controllers of the calls that wait for their handler, so a cancel reaches the handler and its late answer is dropped.
     const pending = new Map();
 
-    // An error with a code keeps its code and data, and any other error fails with the code exception and its name in data.type, as on the other platforms.
+    // An error with a code keeps its code and data, and any other error fails with the code `exception` and its name in `data.type`, as on the other platforms.
     const describeFailure = function (error) {
         const message = String(error && error.message ? error.message : error);
         if (error && error.code !== undefined) {
@@ -132,7 +132,7 @@ Module.haylen = Module.haylen || {};
         return { message, code: "exception", data: { type: error && error.name ? error.name : typeof error } };
     };
 
-    // The handler receives the bytes of the app as Uint8Array values in its parameters, and its result carries ArrayBuffer and Uint8Array values as bytes. Failures carry JSON alone.
+    // The handler receives the bytes of the app as `Uint8Array` values in its parameters, and its result carries `ArrayBuffer` and `Uint8Array` values as bytes. Failures carry JSON alone.
     haylen.dispatch = function (call, method, params, buffers) {
         const reply = (ok, value) => {
             if (!pending.delete(call)) {
@@ -145,7 +145,7 @@ Module.haylen = Module.haylen || {};
         const controller = new AbortController();
         pending.set(call, controller);
         if (!handler) {
-            reply(false, { message: "No page handler is registered for " + method + ".", code: "noHandler" });
+            reply(false, { message: "No page handler is registered for \"" + method + "\".", code: "noHandler" });
             return;
         }
         // The handler starts after the frame that made the call, and a cancel in that frame keeps it from starting, as on the other platforms.
@@ -169,13 +169,13 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-    // Screens of plugins: the openers by <plugin>.<name>, the screen that shows, and the session storage entry where a redirect keeps its screen for the page that comes back. Every screen has a random token, which the pages of a popup or a redirect carry back to name the screen they answer.
+    // Screens of plugins: the openers by `<plugin>.<name>`, the screen that shows, and the session storage entry where a redirect keeps its screen for the page that comes back. Every screen has a random token, which the pages of a popup or a redirect carry back to name the screen they answer.
     const screens = { openers: new Map(), current: null };
     const kScreenKey = "haylen.screen";
 
     const screenFailure = (message, code) => Object.assign(new Error(message), { code });
 
-    // Ends the screen that shows once, which uncovers the app. A result carries ArrayBuffer and Uint8Array values as bytes, and a failure carries JSON alone.
+    // Ends the screen that shows once, which uncovers the app. A result carries `ArrayBuffer` and `Uint8Array` values as bytes, and a failure carries JSON alone.
     const endScreen = (screen, ok, value) => {
         if (screens.current !== screen) {
             return;
@@ -189,7 +189,7 @@ Module.haylen = Module.haylen || {};
         withBuffers(encoded.buffers, (table, count) => Module.ccall("haylen_web_finish_screen", null, ["number", "number", "string", "number", "number"], [screen.id, ok ? 1 : 0, encoded.json, table, count]));
     };
 
-    // A popup answers with {haylenScreen: token, result} or {haylenScreen: token, error: {message, code, data}}, which its page posts to the opener, from an origin the screen trusts, or on the BroadcastChannel haylen-screens, which only pages of this origin reach and which works even when the popup lost its opener.
+    // A popup answers with `{haylenScreen: token, result}` or `{haylenScreen: token, error: {message, code, data}}`, which its page posts to the opener, from an origin the screen trusts, or on the `BroadcastChannel` `haylen-screens`, which only pages of this origin reach and which works even when the popup lost its opener.
     const receiveScreenAnswer = (data, trusted) => {
         const screen = screens.current;
         if (!screen || !screen.answer || data === null || typeof data !== "object" || data.haylenScreen !== screen.token || !trusted(screen)) {
@@ -220,7 +220,7 @@ Module.haylen = Module.haylen || {};
         }
     });
 
-    // Opens a popup inside the activation of the tap that asked for the screen and returns a promise of its answer, which fails with the code popupBlocked when the browser blocks the popup and with the code cancelled when the popup closes without an answer.
+    // Opens a popup inside the activation of the tap that asked for the screen and returns a promise of its answer, which fails with the code `popupBlocked` when the browser blocks the popup and with the code `cancelled` when the popup closes without an answer.
     const openPopup = (screen, url, options) => {
         const settings = { width: 480, height: 640, origin: location.origin, ...options };
         const left = Math.max(0, (window.screenX || 0) + ((window.outerWidth || settings.width) - settings.width) / 2);
@@ -254,14 +254,14 @@ Module.haylen = Module.haylen || {};
         location.assign(url);
     };
 
-    // Opens the screen of a plugin in the frame that follows the tap that asked for it, while the tap still counts as an activation, so the opener may open a popup at once. A screen without an opener fails with the code noHandler.
+    // Opens the screen of a plugin in the frame that follows the tap that asked for it, while the tap still counts as an activation, so the opener may open a popup at once. A screen without an opener fails with the code `noHandler`.
     haylen.openScreen = function (id, plugin, name, params, buffers, state) {
         const token = crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + String(Date.now());
         const screen = { id, plugin, name, state, token, controller: new AbortController(), popup: null, origins: [], watch: null, answer: null, redirected: false };
         screens.current = screen;
         const open = screens.openers.get(plugin + "." + name);
         if (!open) {
-            endScreen(screen, false, { message: "No page screen is registered for " + plugin + "." + name + ".", code: "noHandler" });
+            endScreen(screen, false, { message: "No page screen is registered for \"" + plugin + "." + name + "\".", code: "noHandler" });
             return;
         }
         const handle = {
@@ -284,7 +284,7 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-    // The app gave the screen up: its opener hears it through the signal, a popup of the screen closes, and the screen ends as cancelled.
+    // The app gave the screen up: its opener hears it through the signal, a popup of the screen closes, and the screen ends as `cancelled`.
     haylen.cancelScreen = function (id) {
         const screen = screens.current;
         if (screen && screen.id === id) {
@@ -293,7 +293,7 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-    // The screen that a redirect of the plugin left before this page loaded, which the plugin ends once it read the result from the address of the page. Its end reaches the app as the retained event <plugin>.screenRestored with the state that the app gave.
+    // The screen that a redirect of the plugin left before this page loaded, which the plugin ends once it read the result from the address of the page. Its end reaches the app as the retained event `<plugin>.screenRestored` with the state that the app gave.
     const takeRestoredScreen = (plugin) => {
         let record = null;
         try {
@@ -329,7 +329,7 @@ Module.haylen = Module.haylen || {};
     const coverApp = () => whenRuntimeReady(() => Module._haylen_web_cover_app());
     const uncoverApp = () => whenRuntimeReady(() => Module._haylen_web_uncover_app());
 
-    // The overlay layer lies over the canvas and lets the pointer through everywhere except on the elements of plugins, which it places by the anchors of their placements. An element with reserve set reserves the edge it sits on, in canvas pixels, and the engine widens the safe area of the app by it.
+    // The overlay layer lies over the canvas and lets the pointer through everywhere except on the elements of plugins, which it places by the anchors of their placements. An element with `reserve` set reserves the edge it sits on, in canvas pixels, and the engine widens the safe area of the app by it.
     const overlay = { layer: null, resizes: null, items: new Set(), serial: 0 };
     const anchors = {
         top: [0.5, 0],
@@ -346,7 +346,7 @@ Module.haylen = Module.haylen || {};
     const readPlacement = (placement) => {
         const value = { anchor: "bottom", margin: 0, insideSafeArea: true, reserve: false, width: null, height: null, ...placement };
         if (!(value.anchor in anchors)) {
-            throw new Error("The overlay anchor " + value.anchor + " is unknown. It is one of " + Object.keys(anchors).join(", ") + ".");
+            throw new Error("The overlay anchor \"" + value.anchor + "\" is unknown. It is one of \"" + Object.keys(anchors).join("\", \"") + "\".");
         }
         return value;
     };
@@ -357,7 +357,7 @@ Module.haylen = Module.haylen || {};
         return { left: Math.max(0, left - box.left), top: Math.max(0, top - box.top), right: Math.max(0, right - (window.innerWidth - box.right)), bottom: Math.max(0, bottom - (window.innerHeight - box.bottom)) };
     };
 
-    // Tells the engine only what changed, and insets of null release the edge of the item.
+    // Tells the engine only what changed, and insets of `null` release the edge of the item.
     const reserve = (item, insets) => {
         const previous = item.reserved;
         if (insets === previous || (insets && previous && ["left", "top", "right", "bottom"].every((edge) => insets[edge] === previous[edge]))) {
@@ -451,7 +451,7 @@ Module.haylen = Module.haylen || {};
 
     const addToOverlay = (id, element, placement) => {
         if (!(element instanceof HTMLElement)) {
-            throw new Error("The plugin " + id + " can only place an HTML element over the app.");
+            throw new Error("The plugin \"" + id + "\" can only place an HTML element over the app.");
         }
         const original = { width: element.style.width, height: element.style.height, visibility: element.style.visibility };
         const item = { key: id + "#" + ++overlay.serial, element, original, placement: readPlacement(placement), visible: true, reserved: null };
@@ -496,7 +496,7 @@ Module.haylen = Module.haylen || {};
         return [source.width, source.height];
     };
 
-    // The timestamp in seconds of a VideoFrame, of the current frame of a video, or of the moment of the push.
+    // The timestamp in seconds of a `VideoFrame`, of the current frame of a video, or of the moment of the push.
     const sourceTime = (source) => {
         if (typeof VideoFrame !== "undefined" && source instanceof VideoFrame && source.timestamp !== null) {
             return source.timestamp / 1e6;
@@ -514,7 +514,7 @@ Module.haylen = Module.haylen || {};
         });
     };
 
-    // Keeps a block of wasm memory of at least size bytes for the pushes of a stream.
+    // Keeps a block of wasm memory of at least `size` bytes for the pushes of a stream.
     const reserveMemory = (stream, size) => {
         if (stream.size < size) {
             Module._free(stream.memory);
@@ -524,7 +524,7 @@ Module.haylen = Module.haylen || {};
         return stream.memory;
     };
 
-    // A video stream draws each source into a canvas of its size and copies the RGBA pixels into wasm memory, where the engine keeps the newest frame for its texture. Pushes before the runtime is ready, and of a video without its first frame yet, are dropped and return false.
+    // A video stream draws each source into a canvas of its size and copies the RGBA pixels into wasm memory, where the engine keeps the newest frame for its texture. Pushes before the runtime is ready, and of a video without its first frame yet, are dropped and return `false`.
     const openVideoStream = (id, name) => {
         const stream = { handle: 0, canvas: null, context: null, memory: 0, size: 0 };
         openStream(stream, () => Module.ccall("haylen_web_open_video_stream", "number", ["string", "string"], [id, name]));
@@ -547,7 +547,7 @@ Module.haylen = Module.haylen || {};
         };
     };
 
-    // An audio stream copies interleaved Float32Array samples into its ring in wasm memory, and push returns how many frames fit. The capacity defaults to one second of frames.
+    // An audio stream copies interleaved `Float32Array` samples into its ring in wasm memory, and `push` returns how many frames fit. The capacity defaults to one second of frames.
     const openAudioStream = (id, name, options) => {
         const { sampleRate, channels, capacity } = { capacity: options.sampleRate, ...options };
         const stream = { handle: 0, memory: 0, size: 0 };
@@ -567,10 +567,10 @@ Module.haylen = Module.haylen || {};
         };
     };
 
-    // Makes the context that the web module of a plugin receives in load(context). Methods and events take the id of the plugin in front of their names, as the Lua handle of the plugin expects. The loader calls it for every plugin before the runtime starts.
+    // Makes the context that the web module of a plugin receives in `load(context)`. Methods and events take the id of the plugin in front of their names, as the Lua handle of the plugin expects. The loader calls it for every plugin before the runtime starts.
     haylen.createPluginContext = function (id, config) {
         if (plugins.has(id)) {
-            throw new Error("The plugin " + id + " already has a context.");
+            throw new Error("The plugin \"" + id + "\" already has a context.");
         }
         const plugin = { errorListeners: [] };
         plugins.set(id, plugin);
@@ -612,12 +612,12 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-    // Varn also prints every line to stdout, which already reaches the browser console, so pages only get the structured copy here.
+    // Varn also prints every line to `stdout`, which already reaches the browser console, so pages only get the structured copy here.
     haylen.reportLog = function (level, message) {
         notify("onLog", levels[level] || "info", message);
     };
 
-    // Errors arrive as {message, file, line, traceback, frames}, with an empty file when no script position is known. The page and every plugin that listens with onAppError receive them.
+    // Errors arrive as `{message, file, line, traceback, frames}`, with an empty `file` when no script position is known. The page and every plugin that listens with `onAppError` receive them.
     haylen.reportError = function (error) {
         notify("onError", error);
         for (const plugin of plugins.values()) {
@@ -651,12 +651,12 @@ Module.haylen = Module.haylen || {};
 
     haylen.canvasSelector = function () {
         if (!(Module.canvas instanceof HTMLCanvasElement) || !Module.canvas.id) {
-            throw new Error("Module.canvas must be a canvas element with an id.");
+            throw new Error("The property \"Module.canvas\" must be a canvas element with an id.");
         }
         return "#" + CSS.escape(Module.canvas.id);
     };
 
-    // Reads env(safe-area-inset-*) through a hidden probe and returns the insets in framebuffer pixels.
+    // Reads `env(safe-area-inset-*)` through a hidden probe and returns the insets in framebuffer pixels.
     haylen.safeAreaInsets = function () {
         let probe = document.getElementById("haylen-safe-area");
         if (!probe) {
@@ -673,7 +673,7 @@ Module.haylen = Module.haylen || {};
     haylen.persist = function () {
         FS.syncfs(false, (error) => {
             if (error) {
-                console.error("Saving user data failed", error);
+                console.error("Saving user data failed.", error);
             }
         });
     };
@@ -690,7 +690,7 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-    // Editor API: build a package file by file, then run it. The running app reads edited files the next time it loads them, and run starts it again from source/main.lua.
+    // Editor API: build a package file by file, then run it. The running app reads edited files the next time it loads them, and `run` starts it again from `source/main.lua`.
     haylen.clearFiles = function () {
         Module._haylen_web_clear_files();
     };
@@ -748,12 +748,12 @@ Module.haylen = Module.haylen || {};
         return Module._haylen_web_paused() === 1;
     };
 
-    // Reloads assets read from a file changed with setFile, such as a texture the editor just painted, without restarting the app.
+    // Reloads assets read from a file changed with `setFile`, such as a texture the editor just painted, without restarting the app.
     haylen.reloadAsset = function (path) {
         return checked(Module.ccall("haylen_web_reload_asset", "number", ["string"], [path])) === 1;
     };
 
-    // WebSockets the app opened through haylen.net, by the id the runtime gave them. Their events reach the app on its next frame.
+    // WebSockets the app opened through `haylen.net`, by the id the runtime gave them. Their events reach the app on its next frame.
     const sockets = new Map();
 
     haylen.openSocket = function (id, url, protocols) {
@@ -771,7 +771,7 @@ Module.haylen = Module.haylen || {};
         }
         socket.binaryType = "arraybuffer";
         socket.onopen = () => report("haylen_web_socket_opened", ["string"], [socket.protocol]);
-        socket.onerror = () => report("haylen_web_socket_failed", ["string"], ["The WebSocket connection to " + url + " failed."]);
+        socket.onerror = () => report("haylen_web_socket_failed", ["string"], ["The WebSocket connection to \"" + url + "\" failed."]);
         socket.onclose = (event) => {
             sockets.delete(id);
             report("haylen_web_socket_closed", ["number", "string"], [event.code, event.reason]);
@@ -889,7 +889,7 @@ Module.haylen = Module.haylen || {};
     // Other elements of the page own the keys they receive, such as the buttons of a plugin dialog or the fields of an editor next to the canvas, while the app owns the keys of the canvas, the body and the page.
     const isForeign = (target) => target instanceof Element && target !== Module.canvas && target !== document.body && target !== document.documentElement && !isElement(target);
 
-    // sokol_app listens for keys on the window in the capture phase, before the element sees them. A field of the UI owns every key, so sokol_app never applies them twice, and its return, tab and escape become actions. The plain keyboard of haylen.window.setKeyboardVisible leaves keys to sokol_app and only takes their text.
+    // The library `sokol_app` listens for keys on the window in the capture phase, before the element sees them. A field of the UI owns every key, so `sokol_app` never applies them twice, and its return, tab and escape become actions. The plain keyboard of `haylen.window.setKeyboardVisible` leaves keys to `sokol_app` and only takes their text.
     const onKey = (event) => {
         if (isForeign(event.target)) {
             event.stopImmediatePropagation();
@@ -916,7 +916,7 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-    // The focus moving to or from an element, such as a field, the canvas or the button of a plugin dialog, is no focus change of the page, which sokol_app would report as the app losing its focus, so only the focus of the window reaches it. A blur of a field while the page keeps the focus means the user closed the keyboard or left the field, unless the engine ended the editing.
+    // The focus moving to or from an element, such as a field, the canvas or the button of a plugin dialog, is no focus change of the page, which `sokol_app` would report as the app losing its focus, so only the focus of the window reaches it. A blur of a field while the page keeps the focus means the user closed the keyboard or left the field, unless the engine ended the editing.
     const onFocus = (event) => {
         if (event.target === window) {
             return;
@@ -933,7 +933,7 @@ Module.haylen = Module.haylen || {};
         });
     };
 
-    // These listeners are added when the page loads, before sokol_app adds its own, so they run first.
+    // These listeners are added when the page loads, before `sokol_app` adds its own, so they run first.
     for (const type of ["keydown", "keyup", "keypress"]) {
         window.addEventListener(type, onKey, true);
     }
@@ -1053,11 +1053,11 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-    // The audio output that BrowserAudioOutput.cpp drives, one per audio device of the engine. The engine mixes blocks of interleaved samples on this thread and posts them to an AudioWorkletNode, whose processor in haylen-audio-worklet.js plays them from a ring buffer. The processor answers with the frames it played and the buffers of the blocks it copied, and the page mixes new blocks until the audio queued ahead of the output is back at its target, so neither shared memory nor threads are needed.
+    // The audio output that `BrowserAudioOutput.cpp` drives, one per audio device of the engine. The engine mixes blocks of interleaved samples on this thread and posts them to an `AudioWorkletNode`, whose processor in `haylen-audio-worklet.js` plays them from a ring buffer. The processor answers with the frames it played and the buffers of the blocks it copied, and the page mixes new blocks until the audio queued ahead of the output is back at its target, so neither shared memory nor threads are needed.
     const audio = { outputs: new Map() };
     haylen.audio = audio;
 
-    // Browsers offer AudioWorklet only to pages served over https or from localhost, and some keep the AudioWorkletNode constructor elsewhere while their contexts have no audioWorklet. Such pages run without sound, and the engine logs why.
+    // Browsers offer AudioWorklet only to pages served over https or from localhost, and some keep the `AudioWorkletNode` constructor elsewhere while their contexts have no `audioWorklet`. Such pages run without sound, and the engine logs why.
     audio.supported = function () {
         return typeof AudioContext !== "undefined" && typeof AudioWorkletNode !== "undefined" && "audioWorklet" in AudioContext.prototype;
     };
@@ -1106,7 +1106,7 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-    // Creates the context and loads the processor, which may still be loading when the engine starts the output. Returns false when the browser refuses the context.
+    // Creates the context and loads the processor, which may still be loading when the engine starts the output. Returns `false` when the browser refuses the context.
     audio.open = function (device, channels, sampleRate, blockFrames, bufferedFrames) {
         let context;
         try {
@@ -1131,7 +1131,7 @@ Module.haylen = Module.haylen || {};
             },
             (error) => {
                 if (isOpen()) {
-                    console.error("The audio processor " + worklet + " could not be loaded: " + error.message);
+                    console.error("The audio processor \"" + worklet + "\" could not be loaded: " + error.message);
                 }
             }
         );
@@ -1170,7 +1170,7 @@ Module.haylen = Module.haylen || {};
         Module._free(output.scratch);
     };
 
-    // Describes the output of the app for onStats, which is unavailable while the app runs without sound.
+    // Describes the output of the app for `onStats`, which is unavailable while the app runs without sound.
     audio.stats = function () {
         const [output] = audio.outputs.values();
         if (!output) {
@@ -1215,7 +1215,7 @@ Module.haylen = Module.haylen || {};
         orientation.lock(value === 1 ? "portrait" : "landscape").catch(() => {});
     };
 
-    // sokol_app follows window resizes only, so a canvas resized by the page layout announces its new size as a window resize. The runtime now takes the work that waited for it.
+    // The library `sokol_app` follows window resizes only, so a canvas resized by the page layout announces its new size as a window resize. The runtime now takes the work that waited for it.
     Module.postRun = Module.postRun || [];
     Module.postRun.push(function () {
         new ResizeObserver(() => window.dispatchEvent(new Event("resize"))).observe(Module.canvas);
@@ -1250,7 +1250,7 @@ Module.haylen = Module.haylen || {};
         }
     });
 
-    // User data lives in IndexedDB under /persistent, loaded before the app starts so saves are there on the first frame.
+    // User data lives in IndexedDB under `/persistent`, loaded before the app starts so saves are there on the first frame.
     Module.preRun = Module.preRun || [];
     Module.preRun.push(function () {
         FS.mkdir("/persistent");
@@ -1258,13 +1258,13 @@ Module.haylen = Module.haylen || {};
         addRunDependency("haylen-user-data");
         FS.syncfs(true, (error) => {
             if (error) {
-                console.error("Loading user data failed", error);
+                console.error("Loading user data failed.", error);
             }
             removeRunDependency("haylen-user-data");
         });
     });
 
-    // A page that already holds the zipped package, such as a loader that downloaded it with a progress bar, hands its bytes over as Module.haylen.packageData. The runtime plays it instead of the bundled package, and a page never turns on development mode.
+    // A page that already holds the zipped package, such as a loader that downloaded it with a progress bar, hands its bytes over as `Module.haylen.packageData`. The runtime plays it instead of the bundled package, and a page never turns on development mode.
     if (haylen.packageData) {
         Module.arguments = ["/package.zip"];
         Module.preRun.push(function () {
@@ -1272,7 +1272,7 @@ Module.haylen = Module.haylen || {};
             haylen.packageData = null;
         });
     } else if (haylen.packageUrl) {
-        // A page can instead name a zipped package with Module.haylen.packageUrl, which is downloaded before the app starts.
+        // A page can instead name a zipped package with `Module.haylen.packageUrl`, which is downloaded before the app starts.
         Module.arguments = ["/package.zip"];
         Module.preRun.push(function () {
             addRunDependency("haylen-package");
@@ -1285,7 +1285,7 @@ Module.haylen = Module.haylen || {};
                 })
                 .then((buffer) => FS.writeFile("/package.zip", new Uint8Array(buffer)))
                 .catch((error) => {
-                    const message = "The package '" + haylen.packageUrl + "' could not be downloaded, and the browser reported '" + error.message + "'.";
+                    const message = "The package \"" + haylen.packageUrl + "\" could not be downloaded, and the browser reported \"" + error.message + "\".";
                     console.error(message);
                     haylen.reportError({ message: message, file: "", line: 0, traceback: "" });
                 })

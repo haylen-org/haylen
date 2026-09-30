@@ -21,12 +21,12 @@ class Reference;
 
 namespace haylen::navigation2d {
 
-// Installs the NavGrid, DijkstraMap, FlowField and HierarchicalPathfinder classes of haylen.navigation2d. Cells cross into Lua as {x = column, y = row} tables, and maps, fields and hierarchies keep their grid alive in their user value.
+// Installs the `NavGrid`, `DijkstraMap`, `FlowField` and `HierarchicalPathfinder` classes of `haylen.navigation2d`. Cells cross into Lua as `{x = column, y = row}` tables, and maps, fields and hierarchies keep their grid alive in their user value.
 class NavGridLua final {
   public:
     static void install(lua_State* L);
 
-    // Sets newGrid on the module table at the top of the stack.
+    // Sets `newGrid` on the module table at the top of the stack.
     static void addFunctions(lua_State* L);
 
   private:
@@ -41,11 +41,11 @@ class NavGridLua final {
     [[nodiscard]] static bool readDiagonal(lua_State* L, int index);
     [[nodiscard]] static HierarchicalPathfinder::Options readHierarchyOptions(lua_State* L, int index);
 
-    // Reads a list of {x, y, value} cells, where the value defaults to 0.
+    // Reads a list of `{x, y, value}` cells, where the value defaults to 0.
     [[nodiscard]] static std::vector<DijkstraMap::Source> readSources(lua_State* L, int index);
     static void pushPath(lua_State* L, std::span<const Grid::Cell> path);
 
-    // Pushes a new object of type T that keeps the grid at index alive in its user value.
+    // Pushes a new object of type `T` that keeps the grid at index alive in its user value.
     template <typename T, typename... Args> static T& pushOwned(lua_State* L, int gridIndex, Args&&... args);
 
     // Fetches the grid of the map, field or hierarchy at index 1 from its user value, leaving it on the stack.
@@ -54,7 +54,7 @@ class NavGridLua final {
     // Returns the copy of the grid at index 1 that background work reads, made once and shared until the grid changes.
     [[nodiscard]] static std::shared_ptr<const Grid> snapshotOf(lua_State* L);
 
-    // Settles the promise with the result of a background job as an object that keeps the grid of owner alive. The promise pushes it once for every coroutine that awaits it, and each one gets its own copy.
+    // Settles the promise with the result of a background job as an object that keeps the grid of `owner` alive. The promise pushes it once for every coroutine that awaits it, and each one gets its own copy.
     template <typename T> static void settleOwned(const lua::Promise& promise, const std::shared_ptr<lua::Reference>& owner, core::JobSystem::Result<T> result);
 
     static int newGrid(lua_State* L);

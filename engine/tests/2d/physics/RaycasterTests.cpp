@@ -63,7 +63,7 @@ TEST(RaycasterTest, FindsTheClosestHitEveryHitAndFilteredHits) {
         EXPECT_LT(hits[index - 1].fraction, hits[index].fraction);
     }
 
-    // A limit pierces a number of shapes, and masks, groups and accept functions pick what the ray sees.
+    // A limit pierces a number of shapes, and masks, groups and `accept` functions pick what the ray sees.
     caster.castRayAll({0.0F, 0.0F}, {1000.0F, 0.0F}, {}, 2, hits);
     EXPECT_EQ(hits.size(), 2U);
     EXPECT_EQ(caster.castRay({0.0F, 0.0F}, {1000.0F, 0.0F}, {.collision = {.mask = 2}})->shape, range.posts[1]);
@@ -273,8 +273,8 @@ TEST(WorldRaycastLuaTest, CastsRaysAndShapesFromLua) {
     EXPECT_EQ(fixture.lua("return tostring(world.debugRays)"), "true");
     EXPECT_EQ(fixture.lua("world.debugRays = false return tostring(world.debugRays)"), "false");
 
-    EXPECT_NE(fixture.lua("world:raycastBatch(batch, {accept = function() return true end})").find("no accept function"), std::string::npos);
-    EXPECT_NE(fixture.lua("world:raycast(0, 0, 1, 0, {limit = 2})").find("Unknown option 'limit'"), std::string::npos);
+    EXPECT_NE(fixture.lua("world:raycastBatch(batch, {accept = function() return true end})").find("no \"accept\" function"), std::string::npos);
+    EXPECT_NE(fixture.lua("world:raycast(0, 0, 1, 0, {limit = 2})").find("Unknown option \"limit\""), std::string::npos);
     EXPECT_NE(fixture.lua("world:bounceRay(0, 0, 0, 0, 10, 1)").find("the direction must not be zero"), std::string::npos);
     EXPECT_NE(fixture.lua("world:raycast(0, 0, 1000, 0, {accept = function() error('filter failed') end})").find("filter failed"), std::string::npos);
     EXPECT_NE(fixture.lua("batch:hit(9)").find("outside the batch"), std::string::npos);
@@ -304,7 +304,7 @@ TEST(WorldRaycastLuaTest, CastsRaysAndShapesFromLua) {
 
     EXPECT_EQ(fixture.lua("camera.position = {200, 0} local picked = world:pick(camera, cx, cy) return #picked .. ' ' .. picked[1].body.data.name"), "1 post2");
     EXPECT_EQ(fixture.lua("return #world:pick(camera, cx, cy - 200) .. ' ' .. #world:pick(camera, cx, cy, {mask = 1})"), "0 0");
-    EXPECT_NE(fixture.lua("world:pick(camera, cx, cy, {group = 1})").find("Unknown option 'group'"), std::string::npos);
+    EXPECT_NE(fixture.lua("world:pick(camera, cx, cy, {group = 1})").find("Unknown option \"group\""), std::string::npos);
 }
 
 } // namespace haylen

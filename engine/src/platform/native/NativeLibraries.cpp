@@ -74,7 +74,7 @@ std::vector<std::string> NativeLibraries::getFileNames(std::string_view name) {
 
 NativeLibraries::Library NativeLibraries::open(std::string_view name) {
     if (!isAvailable()) {
-        throw std::runtime_error("Native libraries are not available in the browser. Call JavaScript through haylen.platform instead.");
+        throw std::runtime_error("Native libraries are not available in the browser. Call JavaScript through \"haylen.platform\" instead.");
     }
     if (name.empty()) {
         throw std::invalid_argument("A native library needs a name or a path.");
@@ -118,7 +118,7 @@ NativeLibraries::Library NativeLibraries::open(std::string_view name) {
     if (!given.has_parent_path()) {
         searched += "\n  the libraries linked into the app: not registered";
     }
-    throw std::runtime_error("The native library '" + std::string(name) + "' could not be loaded. These are the places it searched:" + searched + "\nPut the library in one of them or load it by its path.");
+    throw std::runtime_error("The native library \"" + std::string(name) + "\" could not be loaded. These are the places it searched:" + searched + "\nPut the library in one of them or load it by its path.");
 }
 
 void* NativeLibraries::findSymbol(const Library& library, std::string_view name) {
@@ -153,7 +153,7 @@ void* NativeLibraries::findSymbol(std::string_view name) {
     return lookupProcess(text);
 }
 
-// The engine loads the libraries of an app from inside its bundle or next to its executable, where make.py places them, so the system search paths never decide which file loads.
+// The engine loads the libraries of an app from inside its bundle or next to its executable, where `make.py` places them, so the system search paths never decide which file loads.
 std::vector<std::filesystem::path> NativeLibraries::getPlatformFolders() {
 #if defined(__ANDROID__)
     // The package manager extracts the libraries of the APK where the linker finds them by name.

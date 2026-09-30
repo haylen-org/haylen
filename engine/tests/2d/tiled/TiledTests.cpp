@@ -184,7 +184,7 @@ class TiledTest : public ::testing::Test {
             if (path == "maps/templates/rock.tj") {
                 return rockTemplate();
             }
-            throw std::runtime_error("Unexpected read: " + path);
+            throw std::runtime_error("The file \"" + path + "\" was read unexpectedly.");
         };
         // clang-format on
     }
@@ -348,11 +348,11 @@ TEST_F(MapTest, RejectsBrokenData) {
 
     map = orthogonalMap();
     map["tilesets"].erase(0);
-    EXPECT_THROW((void)parse(map), std::invalid_argument) << "the rock template needs the terrain tileset";
+    EXPECT_THROW((void)parse(map), std::invalid_argument) << "The rock template needs the terrain tileset.";
 
     map = orthogonalMap();
     map["layers"][2].erase("id");
-    EXPECT_THROW((void)parse(map), core::Json::out_of_range) << "layer caches tell layers apart by their ids";
+    EXPECT_THROW((void)parse(map), core::Json::out_of_range) << "Layer caches tell layers apart by their ids.";
 
     // Sizes are checked before any cell is read, so a layer whose cell count overflows cannot pass with empty data.
     // clang-format off
@@ -369,19 +369,19 @@ TEST_F(MapTest, RejectsBrokenData) {
     map["layers"][3]["width"] = 65536;
     map["layers"][3]["height"] = 65536;
     map["layers"][3]["data"] = core::Json::array();
-    EXPECT_EQ(failure(map), "The Tiled tile layer 'raw' has more cells than a layer can hold.");
+    EXPECT_EQ(failure(map), "The Tiled tile layer \"raw\" has more cells than a layer can hold.");
     map["layers"][3]["width"] = -4;
     map["layers"][3]["height"] = -3;
-    EXPECT_EQ(failure(map), "The Tiled tile layer 'raw' has a negative size.");
+    EXPECT_EQ(failure(map), "The Tiled tile layer \"raw\" has a negative size.");
     map = infiniteMap();
     map["layers"][0]["chunks"][1]["width"] = -2;
-    EXPECT_EQ(failure(map), "The Tiled tile layer 'ground' has a negative size.");
+    EXPECT_EQ(failure(map), "The Tiled tile layer \"ground\" has a negative size.");
     map = orthogonalMap();
     map["height"] = -1;
-    EXPECT_EQ(failure(map), "The Tiled map maps/broken.tmj has a negative size.");
+    EXPECT_EQ(failure(map), "The Tiled map \"maps/broken.tmj\" has a negative size.");
     map = orthogonalMap();
     map["tilewidth"] = 0;
-    EXPECT_EQ(failure(map), "The Tiled map maps/broken.tmj needs a positive tile size.");
+    EXPECT_EQ(failure(map), "The Tiled map \"maps/broken.tmj\" needs a positive tile size.");
 
     tiled::Layer layer{.width = 2, .height = 2, .gids = std::vector<std::uint32_t>(4, 0)};
     EXPECT_THROW(layer.setGid(2, 0, 1), std::out_of_range);
@@ -485,7 +485,7 @@ TEST_F(MapTest, ReadsObliqueMapsBlendModesAndCapsules) {
         (void)tiled::Map::parse(overlay, "maps/overlay.tmj", reader());
         FAIL() << "The overlay blend mode was accepted.";
     } catch (const std::invalid_argument& error) {
-        EXPECT_EQ(std::string(error.what()), "The Tiled layer 'inner' uses the blend mode 'overlay', which Haylen cannot draw. Layers can use normal, add, multiply or screen.");
+        EXPECT_EQ(std::string(error.what()), "The Tiled layer \"inner\" uses the blend mode \"overlay\", which Haylen cannot draw. Layers can use \"normal\", \"add\", \"multiply\" or \"screen\".");
     }
 
     // Tiled draws the layers of a group with their own modes, so a group mode would silently change nothing.
@@ -495,7 +495,7 @@ TEST_F(MapTest, ReadsObliqueMapsBlendModesAndCapsules) {
         (void)tiled::Map::parse(blendedGroup, "maps/group.tmj", reader());
         FAIL() << "The group blend mode was accepted.";
     } catch (const std::invalid_argument& error) {
-        EXPECT_EQ(std::string(error.what()), "The Tiled group layer 'group' uses the blend mode 'add', which Tiled does not apply to the layers inside it. Set the blend mode on those layers.");
+        EXPECT_EQ(std::string(error.what()), "The Tiled group layer \"group\" uses the blend mode \"add\", which Tiled does not apply to the layers inside it. Set the blend mode on those layers.");
     }
     blendedGroup["layers"][6]["mode"] = "normal";
     EXPECT_EQ(tiled::Map::parse(blendedGroup, "maps/group.tmj", reader()).findLayer("group")->blend, graphics::BlendMode::Type::Alpha);
@@ -523,7 +523,7 @@ TEST_F(MapRendererTest, LoadsDrawsAndAnimatesMaps) {
     const auto data = std::static_pointer_cast<tiled::Map>(assets.load("tiled", "maps/island.tmj"));
     EXPECT_EQ(data->tilesets[0].tileset->texture, assets.texture("maps/images/terrain.png"));
     EXPECT_TRUE(data->findLayer("sky")->texture.isValid());
-    EXPECT_NE(data->findLayer("sky")->texture, assets.texture("maps/backgrounds/sky.png")) << "keyed images stay private";
+    EXPECT_NE(data->findLayer("sky")->texture, assets.texture("maps/backgrounds/sky.png")) << "Keyed images stay private.";
 
     tiled::MapRenderer map(*data, fixture.engine().getDefaultFont());
     // clang-format off
@@ -790,7 +790,7 @@ TEST_F(MapRendererTest, PlacesTileObjectCollisionLikeTheirImagesAndReadsLayerFil
         (void)negative.buildCollision(other);
         FAIL() << "The negative mask was accepted.";
     } catch (const std::invalid_argument& error) {
-        EXPECT_EQ(std::string(error.what()), "The collision property 'mask' of the Tiled layer 'things' needs an integer of at least 0.");
+        EXPECT_EQ(std::string(error.what()), "The collision property \"mask\" of the Tiled layer \"things\" needs an integer of at least 0.");
     }
 }
 
@@ -894,8 +894,8 @@ TEST_F(TiledLuaTest, UsesMapsFromLua) {
         return table.concat(spawned, ' ') .. ' ' .. #map:spawn({player = function() return 1 end}, 'things')
     )"), "spawn@10.0,20.0 1 3 1");
     // clang-format on
-    EXPECT_NE(fixture.lua("map:spawn({rock = 5})").find("The factory for the Tiled class 'rock' is not a function."), std::string::npos);
-    EXPECT_NE(fixture.lua("map:spawn({}, 'ground')").find("The map has no object layer named 'ground'."), std::string::npos);
+    EXPECT_NE(fixture.lua("map:spawn({rock = 5})").find("The factory for the Tiled class \"rock\" is not a function."), std::string::npos);
+    EXPECT_NE(fixture.lua("map:spawn({}, 'ground')").find("The map has no object layer named \"ground\"."), std::string::npos);
     EXPECT_EQ(fixture.lua("local x, y = map:cellToWorld(2, 1) local c, r = map:worldToCell(40, 20) local ox, oy = map:objectToWorld(3, 4) return x .. ',' .. y .. ' ' .. c .. ',' .. r .. ' ' .. ox .. ',' .. oy"), "32.0,16.0 2,1 3.0,4.0");
 
     fixture.runLua("map:setTile('ground', 0, 0, 3) map:setLayerVisible('decor', false) map:update(0.1)");
@@ -903,10 +903,10 @@ TEST_F(TiledLuaTest, UsesMapsFromLua) {
     EXPECT_EQ(fixture.lua("local world = physics2d.newWorld({gravity = {0, 0}}) local bodies = map:buildCollision(world) return #bodies .. ' ' .. bodies[1].type .. ' ' .. tostring(bodies[1].world == world)"), "2 static true");
     EXPECT_EQ(fixture.lua("local w = assets.load('maps/world/level.world') return #w .. ' ' .. w[1].path .. ' ' .. w[3].x .. ' ' .. w[3].width"), "3 maps/island.tmj 64.0 64.0");
 
-    EXPECT_NE(fixture.lua("map:layer('missing')").find("The map has no layer named 'missing'."), std::string::npos);
-    EXPECT_NE(fixture.lua("map:draw(camera, {layer = 1, z = 2})").find("Unknown option 'z'"), std::string::npos);
-    EXPECT_NE(fixture.lua("map:objects('ground')").find("The map has no object layer named 'ground'."), std::string::npos);
-    EXPECT_NE(fixture.lua("map:setTile('things', 0, 0, 1)").find("The map has no tile layer named 'things'."), std::string::npos);
+    EXPECT_NE(fixture.lua("map:layer('missing')").find("The map has no layer named \"missing\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("map:draw(camera, {layer = 1, z = 2})").find("Unknown option \"z\""), std::string::npos);
+    EXPECT_NE(fixture.lua("map:objects('ground')").find("The map has no object layer named \"ground\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("map:setTile('things', 0, 0, 1)").find("The map has no tile layer named \"things\"."), std::string::npos);
     EXPECT_NE(fixture.lua("tiled.newMapRenderer('map')").find("error: "), std::string::npos);
 
     // The Lua types carry the names of the C++ classes they wrap.
@@ -946,7 +946,7 @@ TEST_F(TiledLuaTest, CullsWithTheActiveCanvasAndPlacesWorldMaps) {
     EXPECT_EQ(groundSprites("canvas = 'target' offsetX = 600 camera.position = {632, 24}"), "11");
     EXPECT_EQ(groundSprites("canvas = 'world' offsetX = 3000"), "0");
     EXPECT_EQ(groundSprites("canvas = 'world' offsetX = 0 ysort = true"), "11");
-    EXPECT_NE(fixture.lua("map:drawLayer('ground', camera, {ysort = 1})").find("The option 'ysort'"), std::string::npos);
+    EXPECT_NE(fixture.lua("map:drawLayer('ground', camera, {ysort = 1})").find("The option \"ysort\""), std::string::npos);
 }
 
 TEST_F(TiledLuaTest, ExposesMapTilesetLayerAndPropertyDetails) {

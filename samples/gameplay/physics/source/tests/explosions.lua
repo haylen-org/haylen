@@ -1,4 +1,4 @@
--- Radial blasts from physics2d.explode with a falloff and optional occlusion, set off by a tap or a click on a tower of crates and barrels.
+-- Radial blasts from `physics2d.explode` with a falloff and optional occlusion, set off by a tap or a click on a tower of crates and barrels.
 local haylen = require('haylen')
 local graphics2d = require('haylen.graphics2d')
 local input = require('haylen.input')

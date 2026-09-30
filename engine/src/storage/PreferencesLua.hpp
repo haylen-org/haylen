@@ -8,7 +8,7 @@ class StoragePlugin;
 
 namespace haylen::storage {
 
-// Installs haylen.preferences, which keeps the choices of the player between sessions.
+// Installs `haylen.preferences`, which keeps the choices of the player between sessions.
 class PreferencesLua final {
   public:
     static void install(lua_State* L);

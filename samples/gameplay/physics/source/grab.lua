@@ -4,7 +4,7 @@ local graphics2d = require('haylen.graphics2d')
 local Grab = {}
 Grab.__index = Grab
 
--- The optional filter of world:pick leaves out bodies that should not be dragged.
+-- The optional filter of `world:pick` leaves out bodies that should not be dragged.
 function Grab.new(world, filter)
     return setmetatable({world = world, filter = filter, anchor = world:createBody({type = 'static'}), joint = nil, body = nil}, Grab)
 end

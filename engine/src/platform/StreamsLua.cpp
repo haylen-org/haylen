@@ -65,12 +65,12 @@ int StreamsLua::getTimestamp(lua_State* L) {
     return 1;
 }
 
-// Listens with on('frame', function(timestamp), {owner}) to every frame the texture receives, and returns a connection. A listener with an owner ends with it, like the listeners of events and signals.
+// Listens with `on('frame', function(timestamp), {owner})` to every frame the texture receives, and returns a connection. A listener with an owner ends with it, like the listeners of events and signals.
 int StreamsLua::on(lua_State* L) {
     VideoStream& target = lua::Userdata::check<VideoStream>(L, 1);
     const std::string_view event = lua::Stack::read<std::string_view>(L, 2);
     if (event != "frame") {
-        return luaL_error(L, "Unknown video stream event '%s'. Video streams report frame.", std::string(event).c_str());
+        return luaL_error(L, "Unknown video stream event \"%s\". Video streams report \"frame\".", std::string(event).c_str());
     }
     luaL_checktype(L, 3, LUA_TFUNCTION);
     int owner = 0;
@@ -102,14 +102,14 @@ int StreamsLua::on(lua_State* L) {
     return 1;
 }
 
-// Plays the stream as a voice with play({bus, volume, pan, fadeIn, x, y, processMode, effects}) and returns the voice id. A new voice of the stream takes it over from the voice that played it before.
+// Plays the stream as a voice with `play({bus, volume, pan, fadeIn, x, y, processMode, effects})` and returns the voice id. A new voice of the stream takes it over from the voice that played it before.
 int StreamsLua::play(lua_State* L) {
     const std::shared_ptr<AudioStream>& stream = lua::Userdata::checkShared<AudioStream>(L, 1);
     lua::Stack::push(L, lua::Runtime::getEngine(L).getAudio().play(stream, audio::AudioLua::readPlayOptions(L, 2, kPlayFields)));
     return 1;
 }
 
-// Copies the newest samples into a float buffer of haylen.collections with read(buffer), interleaved and oldest first from the first value, and returns how many values it wrote.
+// Copies the newest samples into a float buffer of `haylen.collections` with `read(buffer)`, interleaved and oldest first from the first value, and returns how many values it wrote.
 int StreamsLua::read(lua_State* L) {
     const AudioStream& stream = lua::Userdata::check<AudioStream>(L, 1);
     lua::Stack::push(L, stream.copyLatest(lua::Userdata::check<core::FloatBuffer>(L, 2).getValues()));

@@ -30,7 +30,7 @@ class SafeAreaSimulation final {
         {"television", {1080.0F, 1920.0F}, {.left = 60.0F, .top = 80.0F, .right = 60.0F, .bottom = 80.0F}, {.left = 80.0F, .top = 60.0F, .right = 80.0F, .bottom = 60.0F}},
     }};
 
-    // Reads a device name such as "iphoneDynamicIsland", or insets in window points as one number, two numbers for the vertical and horizontal sides, or four numbers from the top clockwise. Throws std::invalid_argument for anything else.
+    // Reads a device name such as `iphoneDynamicIsland`, or insets in window points as one number, two numbers for the vertical and horizontal sides, or four numbers from the top clockwise. Throws `std::invalid_argument` for anything else.
     [[nodiscard]] static SafeAreaSimulation fromJson(const core::Json& value);
 
     // Returns the insets in framebuffer pixels for a framebuffer of the given size and pixels per point.

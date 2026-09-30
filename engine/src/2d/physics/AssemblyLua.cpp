@@ -51,7 +51,7 @@ void AssemblyLua::pushWorld(lua_State* L) {
     lua_getiuservalue(L, 1, 1);
 }
 
-// Builds a rope with newRope(world, {from, to, segments, thickness, density, friction, linearDamping, angularDamping, planks, pinStart, pinEnd, startBody, endBody, category, mask, group}).
+// Builds a rope with `newRope(world, {from, to, segments, thickness, density, friction, linearDamping, angularDamping, planks, pinStart, pinEnd, startBody, endBody, category, mask, group})`.
 int AssemblyLua::createRope(lua_State* L, bool bridge) {
     World& world = lua::Userdata::check<World>(L, 1);
     luaL_checktype(L, 2, LUA_TTABLE);
@@ -101,7 +101,7 @@ int AssemblyLua::ropeJoints(lua_State* L) {
     return 1;
 }
 
-// Returns {x, y, rotation, length} for each segment, which places a sprite on it.
+// Returns `{x, y, rotation, length}` for each segment, which places a sprite on it.
 int AssemblyLua::ropeSegments(lua_State* L) {
     const std::vector<Rope::Segment> segments = lua::Userdata::check<ScriptedHandle<Rope>>(L, 1).handle.getSegments();
     lua_createtable(L, static_cast<int>(segments.size()), 0);
@@ -140,7 +140,7 @@ int AssemblyLua::ropeSegmentLength(lua_State* L) {
     return 1;
 }
 
-// Builds a ragdoll with newRagdoll(world, {x, y, height, density, friction, jointFriction, group, vx, vy}).
+// Builds a ragdoll with `newRagdoll(world, {x, y, height, density, friction, jointFriction, group, vx, vy})`.
 int AssemblyLua::newRagdoll(lua_State* L) {
     World& world = lua::Userdata::check<World>(L, 1);
     Ragdoll::Options options;
@@ -173,7 +173,7 @@ int AssemblyLua::ragdollBody(lua_State* L) {
     return 1;
 }
 
-// Returns the bodies keyed by part name, such as head, chest and lowerLegLeft.
+// Returns the bodies keyed by part name, such as `head`, `chest` and `lowerLegLeft`.
 int AssemblyLua::ragdollBodies(lua_State* L) {
     const Ragdoll& ragdoll = lua::Userdata::check<ScriptedHandle<Ragdoll>>(L, 1).handle;
     pushWorld(L);
@@ -203,7 +203,7 @@ int AssemblyLua::ragdollValid(lua_State* L) {
     return 1;
 }
 
-// Builds a car with newVehicle(world, {x, y, chassisWidth, chassisHeight, wheelRadius, rearWheel, frontWheel, density, wheelDensity, wheelFriction, suspensionHertz, suspensionDamping, suspensionTravel, maxMotorTorque, drive, group}).
+// Builds a car with `newVehicle(world, {x, y, chassisWidth, chassisHeight, wheelRadius, rearWheel, frontWheel, density, wheelDensity, wheelFriction, suspensionHertz, suspensionDamping, suspensionTravel, maxMotorTorque, drive, group})`.
 int AssemblyLua::newVehicle(lua_State* L) {
     World& world = lua::Userdata::check<World>(L, 1);
     Vehicle::Options options;

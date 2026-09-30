@@ -1,4 +1,4 @@
--- Physics collision built by map:buildCollision from the collision shapes of tiles and from collision objects, with water tiles and a pit as sensors and fences in a category of their own.
+-- Physics collision built by `map:buildCollision` from the collision shapes of tiles and from collision objects, with water tiles and a pit as sensors and fences in a category of their own.
 local haylen = require('haylen')
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')

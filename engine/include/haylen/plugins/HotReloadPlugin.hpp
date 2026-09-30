@@ -11,7 +11,7 @@
 
 namespace haylen::plugins {
 
-// Watches the package folder of an app in development. Changed files under source, a changed app.json and changed Lua modules and manifests of plugins restart the app, and changed files under content reload in place, even while the error screen shows. The folder is scanned on the I/O pool, so a large package never slows a frame down.
+// Watches the package folder of an app in development. Changed files under `source`, a changed `app.json` and changed Lua modules and manifests of plugins restart the app, and changed files under `content` reload in place, even while the error screen shows. The folder is scanned on the I/O pool, so a large package never slows a frame down.
 class HotReloadPlugin final : public Plugin {
   public:
     static constexpr float kScanSeconds = 0.5F;
@@ -28,7 +28,7 @@ class HotReloadPlugin final : public Plugin {
     }
 
   private:
-    // The watcher and the changes of its last scan, which the frame thread and one job on the I/O pool hand to each other through done. The first job creates the watcher, whose snapshot is where changes start.
+    // The watcher and the changes of its last scan, which the frame thread and one job on the I/O pool hand to each other through `done`. The first job creates the watcher, whose snapshot is where changes start.
     struct Scan {
         std::unique_ptr<io::PackageWatcher> watcher;
         std::vector<std::string> changed;

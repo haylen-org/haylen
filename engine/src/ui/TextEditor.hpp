@@ -34,7 +34,7 @@ class TextEditor final {
         bool submitted = false;
     };
 
-    // The names that the returnKey and autocapitalize properties of text components take.
+    // The names that the `returnKey` and `autocapitalize` properties of text components take.
     static constexpr std::array<std::pair<std::string_view, platform::TextInput::ReturnKey>, 6> kReturnKeys{{
         {"default", platform::TextInput::ReturnKey::Default},
         {"done", platform::TextInput::ReturnKey::Done},

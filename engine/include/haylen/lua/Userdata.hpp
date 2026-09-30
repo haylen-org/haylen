@@ -33,13 +33,13 @@ class Userdata final {
         auto* storage = static_cast<typename Type<T>::Storage*>(luaL_checkudata(L, index, Type<T>::name));
         if constexpr (SharedBound<T>) {
             if (!*storage) {
-                luaL_error(L, "This %s was already released.", Type<T>::name);
+                luaL_error(L, "This \"%s\" was already released.", Type<T>::name);
             }
             return **storage;
         } else if constexpr (WeakBound<T>) {
             T* object = storage->lock().get();
             if (object == nullptr) {
-                luaL_error(L, "This %s was already released.", Type<T>::name);
+                luaL_error(L, "This \"%s\" was already released.", Type<T>::name);
             }
             return *object;
         } else {
@@ -50,7 +50,7 @@ class Userdata final {
     template <SharedBound T> [[nodiscard]] static const std::shared_ptr<T>& checkShared(lua_State* L, int index) {
         auto* storage = static_cast<std::shared_ptr<T>*>(luaL_checkudata(L, index, Type<T>::name));
         if (!*storage) {
-            luaL_error(L, "This %s was already released.", Type<T>::name);
+            luaL_error(L, "This \"%s\" was already released.", Type<T>::name);
         }
         return *storage;
     }
@@ -64,7 +64,7 @@ class Userdata final {
         return *storage;
     }
 
-    // The __eq metamethod of a type whose values compare with ==, so two userdata of the same resource or of the same shared object are equal, and a value of another type never is.
+    // The `__eq` metamethod of a type whose values compare with `==`, so two userdata of the same resource or of the same shared object are equal, and a value of another type never is.
     template <Bound T> static int equal(lua_State* L) {
         const auto* first = testStorage<T>(L, 1);
         const auto* second = testStorage<T>(L, 2);
@@ -78,14 +78,14 @@ class Userdata final {
         return counter;
     }
 
-    // Pushes the metatable registered under name and returns whether it was created, like luaL_newmetatable. A new metatable is protected by its __metatable field, so getmetatable returns the name and Lua code can neither reach nor replace the metatable, its finalizer or its native properties.
+    // Pushes the metatable registered under `name` and returns whether it was created, like `luaL_newmetatable`. A new metatable is protected by its `__metatable` field, so `getmetatable` returns the name and Lua code can neither reach nor replace the metatable, its finalizer or its native properties.
     static bool newMetatable(lua_State* L, const char* name);
 
     // Userdata keep callbacks and other Lua values in a table stored as their first user value, so a value that refers back to its owner never keeps it alive forever.
     static void pushField(lua_State* L, int index, const char* name);
     static void setField(lua_State* L, int index, const char* name, int valueIndex);
 
-    // Pushes the function stored under name and returns true, or leaves the stack unchanged and returns false.
+    // Pushes the function stored under `name` and returns `true`, or leaves the stack unchanged and returns `false`.
     static bool pushFunction(lua_State* L, int index, const char* name);
 
   private:

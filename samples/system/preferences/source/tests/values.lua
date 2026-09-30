@@ -1,4 +1,4 @@
--- Keys and values: preferences are one table of nested groups addressed by dotted keys, changed in memory by set and remove, written to preferences.json by save and read back by load, which also throws away unsaved changes.
+-- Keys and values: preferences are one table of nested groups addressed by dotted keys, changed in memory by `set` and `remove`, written to `preferences.json` by `save` and read back by `load`, which also throws away unsaved changes.
 local haylen = require('haylen')
 local preferences = require('haylen.preferences')
 local storage = require('haylen.storage')
@@ -26,15 +26,15 @@ local kExamples = {
     {id = 'reserved', key = 'audio.volume.music', value = '0.5', kind = 'number'},
 }
 
--- Turns the typed text into the value of its kind, or returns nil and why it cannot.
+-- Turns the typed text into the value of its kind, or returns `nil` and why it cannot.
 local function parse(text, kind)
     if kind == 'number' then
         local number = tonumber(text)
-        return number, number == nil and text .. ' is not a number' or nil
+        return number, number == nil and 'The value "' .. text .. '" is not a number.' or nil
     end
     if kind == 'boolean' then
         if text ~= 'true' and text ~= 'false' then
-            return nil, 'a boolean is true or false'
+            return nil, 'A boolean is "true" or "false".'
         end
         return text == 'true'
     end
@@ -129,9 +129,9 @@ end
 function Values:set()
     local value, problem = parse(self.value, self.kind)
     if kReserved[self.key:match('^[^.]*')] then
-        problem = 'The group ' .. self.key:match('^[^.]*') .. ' belongs to the other tests of the sample, so this playground leaves it alone.'
+        problem = 'The group "' .. self.key:match('^[^.]*') .. '" belongs to the other tests of the sample, so this playground leaves it alone.'
     elseif self.value == '' then
-        problem = 'Type a value first. A key that names a group, such as profile.stats, is read with Get.'
+        problem = 'Type a value first. A key that names a group, such as "profile.stats", is read with Get.'
     end
     if problem then
         self:show('result', {text = problem, color = 'dangerText'})
@@ -180,7 +180,7 @@ function Values:refresh()
     local dirty = preferences.dirty()
     self:show('dirty', {text = dirty and 'Unsaved changes' or 'Saved', tone = dirty and 'warning' or 'success'})
     self:show('memory', {text = sample.json(preferences.values())})
-    self:show('disk', {text = storage.exists('preferences.json') and storage.readText('preferences.json') or 'There is no preferences.json yet.'})
+    self:show('disk', {text = storage.exists('preferences.json') and storage.readText('preferences.json') or 'There is no "preferences.json" yet.'})
 end
 
 return Values

@@ -29,7 +29,7 @@ function sounds.defineGroup()
     }}})
 end
 
--- Returns a decoded sound, such as 'audio/effects/chop.ogg'.
+-- Returns a decoded sound, such as `audio/effects/chop.ogg`.
 function sounds.get(path)
     return assets.load(path)
 end

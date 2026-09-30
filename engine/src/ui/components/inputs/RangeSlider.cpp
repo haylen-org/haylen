@@ -30,10 +30,10 @@ void RangeSlider::readProperties(PropertyReader& reader) {
     reader.read("showValue", showValue);
     reader.read("decimals", decimals, 0, 6);
     if (lowest >= highest) {
-        reader.fail("min", "must be smaller than max");
+        reader.fail("min", "must be smaller than \"max\"");
     }
     if (reader.has("low") && reader.has("high") && from > to) {
-        reader.fail("low", "must not be greater than high");
+        reader.fail("low", "must not be greater than \"high\"");
     }
 
     // An end given alone that passes the other end, such as where the player left it, takes that end along.

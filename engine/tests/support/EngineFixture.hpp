@@ -46,7 +46,7 @@ class EngineFixture final {
     void frames(int count, double seconds = 1.0 / 60.0);
     bool frameUntil(const std::function<bool()>& condition, std::chrono::milliseconds timeout = std::chrono::seconds(10));
 
-    // Runs Lua and returns its first result converted to a string, or the error message prefixed with "error: ".
+    // Runs Lua and returns its first result converted to a string, or the error message prefixed with `error: `.
     std::string lua(const std::string& source);
     void runLua(const std::string& source);
 

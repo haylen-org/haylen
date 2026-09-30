@@ -17,7 +17,7 @@ Dialogs::Dialogs(Host& owner, std::filesystem::path root) : host(owner), folder(
     std::error_code error;
     std::filesystem::remove_all(folder, error);
     if (error) {
-        core::Log::warning("The copies of picked files in {} could not be removed: {}", folder.string(), error.message());
+        core::Log::warning("The copies of picked files in \"{}\" could not be removed: {}.", folder.string(), error.message());
     }
 }
 
@@ -142,7 +142,7 @@ void Dialogs::validate(const DialogRequest& request) {
             throw std::invalid_argument("A save dialog needs the name it suggests for the file.");
         }
         if (saveFile->name.find_first_of("/\\") != std::string::npos) {
-            throw std::invalid_argument(std::format("The name '{}' that a save dialog suggests is a file name, without folders.", saveFile->name));
+            throw std::invalid_argument(std::format("The name \"{}\" that a save dialog suggests is a file name, without folders.", saveFile->name));
         }
     }
 }
@@ -154,11 +154,11 @@ void Dialogs::validateFilters(const std::vector<DialogRequest::Filter>& filters)
             throw std::invalid_argument("Every filter of a file dialog needs a name.");
         }
         if (filter.extensions.empty()) {
-            throw std::invalid_argument(std::format("The filter '{}' needs at least one extension.", filter.name));
+            throw std::invalid_argument(std::format("The filter \"{}\" needs at least one extension.", filter.name));
         }
         for (const std::string& extension : filter.extensions) {
             if (extension.empty() || extension.front() == '.' || extension.find_first_of("*?/\\;, \t") != std::string::npos) {
-                throw std::invalid_argument(std::format("The extension '{}' of the filter '{}' is invalid. Extensions come without their dot, such as png or tar.gz.", extension, filter.name));
+                throw std::invalid_argument(std::format("The extension \"{}\" of the filter \"{}\" is invalid. Extensions come without their dot, such as \"png\" or \"tar.gz\".", extension, filter.name));
             }
         }
     }

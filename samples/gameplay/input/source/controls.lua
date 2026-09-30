@@ -11,7 +11,7 @@ controls.remappable = {
     {action = 'dash', list = 'bindings', title = 'Dash'},
 }
 
--- Returns a new copy of the default action map, since input.loadActions keeps no reference to it.
+-- Returns a new copy of the default action map, since `input.loadActions` keeps no reference to it.
 function controls.defaults()
     return {actions = {
         {

@@ -2,7 +2,7 @@
 
 On Windows, macOS and Linux a Haylen app runs in a window of the desktop, which can be much more than a rectangle with a title bar. A window can drop its decorations, let the desktop show through its transparent pixels, float above the other windows, stay out of the taskbar and the Dock, refuse the keyboard focus, let clicks pass through to the windows behind it, and move when the player drags its content. Together these make games that live on the desktop, such as a strip above the taskbar where a little hero walks and fights while the player works, a pet that walks along the bottom of the screen, or an overlay that shows information over other apps.
 
-This guide shows how the options fit together and what each system allows. [haylen.window](lua-api/window.md#desktop-windows) is the reference of every function, and `samples/games/taskbar-quest` is a complete game built this way.
+This guide shows how the options fit together and what each system allows. The module [`haylen.window`](lua-api/window.md#desktop-windows) is the reference of every function, and `samples/games/taskbar-quest` is a complete game built this way.
 
 ## The window options
 
@@ -27,31 +27,31 @@ The `window` section of `app.json` opens the window with its options already in 
 
 | Option | What it does | Changes at run time with |
 | --- | --- | --- |
-| `decorated` | `false` removes the title bar and the border. | `window.setDecorated` |
+| `decorated` | The value `false` removes the title bar and the border. | `window.setDecorated` |
 | `transparent` | The window opens able to be transparent, and transparent, so the desktop shows through its transparent pixels. | `window.setTransparent`, while the window opened transparent. |
 | `alwaysOnTop` | The window floats above normal windows. | `window.setAlwaysOnTop` |
-| `showInTaskbar` | `false` leaves the window out of the taskbar and the window switcher, and on macOS removes the Dock icon and the menu bar. | `window.setShowInTaskbar` |
-| `focusable` | `false` keeps clicks from activating the app or taking the keyboard. | `window.setFocusable` |
-| `mousePassthrough` | `true` lets every click through, until the app gives regions. | `window.setMousePassthrough` |
+| `showInTaskbar` | The value `false` leaves the window out of the taskbar and the window switcher, and on macOS removes the Dock icon and the menu bar. | `window.setShowInTaskbar` |
+| `focusable` | The value `false` keeps clicks from activating the app or taking the keyboard. | `window.setFocusable` |
+| `mousePassthrough` | The value `true` lets every click through, until the app gives regions. | `window.setMousePassthrough` |
 | `position` | Where the window opens. | `window.place`, `window.setFrame` |
 
 Every start of the app applies these options again, so an app that restarts from its package, such as after a hot reload, gets the window it asks for, while the window stays where the player moved it.
 
 ## Placing the window
 
-Frames and monitors are in desktop points, with the origin at the top left corner of the primary monitor and y growing down. On macOS a desktop point is a point of the system. On Windows and Linux it is a pixel divided by the scale of the primary monitor, which is also how the window size of `app.json` scales, so a window of 1280 by 180 points has a frame of 1280 by 180 points on every system. `window.monitors()` returns every monitor with its whole area in `bounds`, the area without the taskbar, the Dock and the menu bar in `workArea`, and the number of pixels in a point in `scale`.
+Frames and monitors are in desktop points, with the origin at the top left corner of the primary monitor and y growing down. On macOS a desktop point is a point of the system. On Windows and Linux it is a pixel divided by the scale of the primary monitor, which is also how the window size of `app.json` scales, so a window of 1280 by 180 points has a frame of 1280 by 180 points on every system. The function `window.monitors()` returns every monitor with its whole area in `bounds`, the area without the taskbar, the Dock and the menu bar in `workArea`, and the number of pixels in a point in `scale`.
 
-`position` in `app.json` and `window.place` take the same values: `"center"`, a point such as `{"x": 40, "y": 60}`, or an anchored placement.
+The option `position` in `app.json` and `window.place` take the same values: `"center"`, a point such as `{"x": 40, "y": 60}`, or an anchored placement.
 
 | Field | Default | Meaning |
 | --- | --- | --- |
 | `anchor` | `"center"` | `"center"`, `"top"`, `"bottom"`, `"left"`, `"right"`, `"topLeft"`, `"topRight"`, `"bottomLeft"` or `"bottomRight"`. |
-| `area` | `"work"` | `"work"` keeps clear of the taskbar, the Dock and the menu bar, and `"full"` uses the whole monitor. |
-| `monitor` | `"primary"` | `"primary"` or the number of a monitor from 1, in the order of `window.monitors()`. |
+| `area` | `"work"` | The value `"work"` keeps clear of the taskbar, the Dock and the menu bar, and `"full"` uses the whole monitor. |
+| `monitor` | `"primary"` | Either `"primary"` or the number of a monitor from 1, in the order of `window.monitors()`. |
 | `offset` | `[0, 0]` | Points added to the anchored position. |
-| `fill` | `"none"` | `"width"`, `"height"` or `"both"` stretch the window across the area. |
+| `fill` | `"none"` | The values `"width"`, `"height"` or `"both"` stretch the window across the area. |
 
-`window.frame()` returns the content area of the window, `window.setFrame` moves and resizes it, and `window.currentMonitor()` returns the monitor that holds most of it. The `windowMoved` event of [haylen.events](lua-api/events.md#engine-events) follows every move, by the player, the app or the system, and `windowMonitorsChanged` follows monitors that connect, disconnect or change, and work areas that change when the taskbar or the Dock moves.
+The function `window.frame()` returns the content area of the window, `window.setFrame` moves and resizes it, and `window.currentMonitor()` returns the monitor that holds most of it. The `windowMoved` event of [`haylen.events`](lua-api/events.md#engine-events) follows every move, by the player, the app or the system, and `windowMonitorsChanged` follows monitors that connect, disconnect or change, and work areas that change when the taskbar or the Dock moves.
 
 ```lua
 local events = require('haylen.events')
@@ -67,7 +67,7 @@ end)
 
 A transparent window lets the desktop show through wherever the app draws nothing. It clears to `#00000000` unless `clearColor` says otherwise, and the engine keeps its colors premultiplied by their alpha from the first draw to the window: sprites, text and the UI blend over the transparent clear, lit canvases keep the coverage of the scene through the light map and add the coverage of emissive light, post-processing grades colors around the coverage and fades cover the canvas with an opaque color, and scene transitions draw their captured scenes premultiplied. A pixel with half its coverage shows half of the desktop behind it, the way the system composes the window. An additive draw adds its alpha too, so a glow over the desktop covers part of what is behind it.
 
-`transparent` in `app.json` decides before the window opens whether the window can be transparent, because it chooses how the system composes the window. Such a window can then turn opaque and transparent again with `window.setTransparent`. While it is opaque, the engine clears the alpha of every frame to 1 and draws no alpha at all, whatever the clear color and the blend modes, so no pixel lets the desktop through, and on macOS the window also gets the background and the shadow of a normal window. A window that opened opaque stays opaque.
+The option `transparent` in `app.json` decides before the window opens whether the window can be transparent, because it chooses how the system composes the window. Such a window can then turn opaque and transparent again with `window.setTransparent`. While it is opaque, the engine clears the alpha of every frame to 1 and draws no alpha at all, whatever the clear color and the blend modes, so no pixel lets the desktop through, and on macOS the window also gets the background and the shadow of a normal window. A window that opened opaque stays opaque.
 
 ## Dragging the window
 
@@ -91,7 +91,7 @@ scene.push({
 
 ## Clicks through the window
 
-`window.setMousePassthrough(true)` lets every click through the window, for an overlay that only shows information. A list of regions lets clicks through everywhere except the regions, which keep the mouse for the app: the hero, the enemies, the buttons and the grip of a strip, while the empty sky around them passes clicks to the desktop. Regions are rectangles or polygons in design units, converted with the viewport of the moment, or in framebuffer pixels with `'pixels'`. Apps whose clickable things move give their regions every frame, which costs little.
+The call `window.setMousePassthrough(true)` lets every click through the window, for an overlay that only shows information. A list of regions lets clicks through everywhere except the regions, which keep the mouse for the app: the hero, the enemies, the buttons and the grip of a strip, while the empty sky around them passes clicks to the desktop. Regions are rectangles or polygons in design units, converted with the viewport of the moment, or in framebuffer pixels with `'pixels'`. Apps whose clickable things move give their regions every frame, which costs little.
 
 ```lua
 local scene = require('haylen.scene')
@@ -112,19 +112,19 @@ The window keeps the mouse it has while a button is down, so a press that starts
 
 ## Focus and the taskbar
 
-A game that the player keeps next to their work should not take the keyboard when clicked. `focusable = false` keeps the app inactive: clicks reach the app, and key presses go to the app the player was typing in. Such a game is played with the mouse, and a normal window mode with `window.setFocusable(true)` can bring the keyboard back.
+A game that the player keeps next to their work should not take the keyboard when clicked. The option `focusable = false` keeps the app inactive: clicks reach the app, and key presses go to the app the player was typing in. Such a game is played with the mouse, and a normal window mode with `window.setFocusable(true)` can bring the keyboard back.
 
-`showInTaskbar = false` makes the window a tool window without a taskbar button on Windows and Linux, and an accessory app without a Dock icon or a menu bar on macOS. A macOS app packaged by `make.py` or `haylen_add_app` with `showInTaskbar` set to `false` in `app.json` also declares `LSUIElement`, so its Dock icon never appears, not even while it starts. A window out of the taskbar needs a way to quit, such as a button of the UI.
+The option `showInTaskbar = false` makes the window a tool window without a taskbar button on Windows and Linux, and an accessory app without a Dock icon or a menu bar on macOS. A macOS app packaged by `make.py` or `haylen_add_app` with `showInTaskbar` set to `false` in `app.json` also declares `LSUIElement`, so its Dock icon never appears, not even while it starts. A window out of the taskbar needs a way to quit, such as a button of the UI.
 
 ## The taskbar strip
 
 A strip above the taskbar puts these together:
 
-1. `app.json` opens a frameless, transparent window above the others, anchored to the bottom of the work area and filling its width, with a design size shaped like the strip and `"expand"` scaling so the visible width follows the monitor.
+1. The file `app.json` opens a frameless, transparent window above the others, anchored to the bottom of the work area and filling its width, with a design size shaped like the strip and `"expand"` scaling so the visible width follows the monitor.
 2. The scene draws the ground, the hero and the UI, and leaves the rest of the strip transparent.
 3. Every frame, the scene gives the regions of what the player can click, and presses on the ground or on a grip call `window.startDrag()`.
 4. A button switches to a normal window and back: `setTransparent(false)`, `setDecorated(true)`, `setAlwaysOnTop(false)`, `setFocusable(true)`, `setMousePassthrough(false)` and a frame in the middle of the screen, then the strip options with `setTransparent(true)` and `window.place({anchor = 'bottom', fill = 'width'})` again.
-5. `windowMonitorsChanged` places the strip again when the taskbar moves or a monitor changes.
+5. The event `windowMonitorsChanged` places the strip again when the taskbar moves or a monitor changes.
 
 ```json
 {
@@ -146,7 +146,7 @@ A strip above the taskbar puts these together:
 
 ## C++
 
-C++ apps reach the same options through `platform::Window`, which `core::Engine::getWindow()` returns: `setDecorated`, `setAlwaysOnTop`, `setShowInTaskbar`, `setFocusable`, `getFrame` and `setFrame`, `setMousePassthrough` with regions in framebuffer pixels, `startDrag`, `getMonitors` and `getCurrentMonitor`, and `canBeTransparent`, `isTransparent` and `setTransparent`. `platform::WindowPlacement` reads and resolves the positions of `app.json`, and `core::AppConfig::Window` holds the options of `app.json`.
+C++ apps reach the same options through `platform::Window`, which `core::Engine::getWindow()` returns: `setDecorated`, `setAlwaysOnTop`, `setShowInTaskbar`, `setFocusable`, `getFrame` and `setFrame`, `setMousePassthrough` with regions in framebuffer pixels, `startDrag`, `getMonitors` and `getCurrentMonitor`, and `canBeTransparent`, `isTransparent` and `setTransparent`. The class `platform::WindowPlacement` reads and resolves the positions of `app.json`, and `core::AppConfig::Window` holds the options of `app.json`.
 
 ```cpp
 #include "haylen/core/Application.hpp"

@@ -4,7 +4,7 @@
 
 namespace haylen::math {
 
-// Affine 2D transform that maps a point p to (a * p.x + c * p.y + tx, b * p.x + d * p.y + ty).
+// Affine 2D transform that maps a point `p` to `(a * p.x + c * p.y + tx, b * p.x + d * p.y + ty)`.
 struct Transform2D {
     float a = 1.0F;
     float b = 0.0F;

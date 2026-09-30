@@ -34,7 +34,7 @@ int CameraLua::follow(lua_State* L) {
     return 0;
 }
 
-// Frames a list of points with frame({{x, y}, ...}, padding, dt).
+// Frames a list of points with `frame({{x, y}, ...}, padding, dt)`.
 int CameraLua::frame(lua_State* L) {
     lua::Userdata::check<Camera>(L, 1).frame(lua::Stack::read<std::vector<math::Vec2>>(L, 2), lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4), getScreen(L));
     return 0;
@@ -65,7 +65,7 @@ int CameraLua::zoomAt(lua_State* L) {
     return 0;
 }
 
-// Shakes along a direction with shake(amount, dx, dy).
+// Shakes along a direction with `shake(amount, dx, dy)`.
 int CameraLua::shake(lua_State* L) {
     lua::Userdata::check<Camera>(L, 1).shake(lua::Stack::read<float>(L, 2), readPoint(L, 3));
     return 0;

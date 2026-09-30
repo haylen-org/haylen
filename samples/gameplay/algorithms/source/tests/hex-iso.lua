@@ -1,4 +1,4 @@
--- Paths on the grid layouts of Tiled: hexagonal maps that shift rows or columns, isometric maps and staggered isometric maps, each with the topology navigation2d reads.
+-- Paths on the grid layouts of Tiled: hexagonal maps that shift rows or columns, isometric maps and staggered isometric maps, each with the topology `navigation2d` reads.
 local haylen = require('haylen')
 local graphics2d = require('haylen.graphics2d')
 local input = require('haylen.input')

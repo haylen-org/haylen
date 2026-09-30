@@ -89,7 +89,7 @@ void Graphics2DLua::assignFields(lua_State* L, int options) {
     }
 }
 
-// Creates a sprite with newSprite(texture, {x = 10, y = 20, layer = 2, ...}).
+// Creates a sprite with `newSprite(texture, {x = 10, y = 20, layer = 2, ...})`.
 int Graphics2DLua::newSprite(lua_State* L) {
     Sprite sprite;
     sprite.texture = lua::Stack::read<graphics::Texture>(L, 1);
@@ -102,7 +102,7 @@ int Graphics2DLua::newSprite(lua_State* L) {
     return 1;
 }
 
-// Creates a parallax layer with newParallax(texture, {scrollScale = {0.5, 0.5}, repeatX = true, autoscroll = {-20, 0}, ...}).
+// Creates a parallax layer with `newParallax(texture, {scrollScale = {0.5, 0.5}, repeatX = true, autoscroll = {-20, 0}, ...})`.
 int Graphics2DLua::newParallax(lua_State* L) {
     Parallax parallax;
     parallax.texture = lua::Stack::read<graphics::Texture>(L, 1);
@@ -130,7 +130,7 @@ int Graphics2DLua::newCamera(lua_State* L) {
     return 1;
 }
 
-// Builds a nine-slice with newNineSlice(texture, {source = rect, borders = {left, top, right, bottom}}) or newNineSlice(texture, {pieces = {nine rects}}).
+// Builds a nine-slice with `newNineSlice(texture, {source = rect, borders = {left, top, right, bottom}})` or `newNineSlice(texture, {pieces = {nine rects}})`.
 int Graphics2DLua::newNineSlice(lua_State* L) {
     const graphics::Texture texture = lua::Stack::read<graphics::Texture>(L, 1);
     luaL_checktype(L, 2, LUA_TTABLE);
@@ -177,7 +177,7 @@ int Graphics2DLua::beginTarget(lua_State* L) {
     return 0;
 }
 
-// Captures the following canvases with beginCapture(target[, clear]), where the clear color is transparent unless given.
+// Captures the following canvases with `beginCapture(target[, clear])`, where the clear color is transparent unless given.
 int Graphics2DLua::beginCapture(lua_State* L) {
     const math::Color clear = lua_isnoneornil(L, 2) ? math::Color::transparent() : lua::Stack::read<math::Color>(L, 2);
     getRenderer(L).beginCapture(lua::Userdata::check<graphics::RenderTarget>(L, 1), clear);
@@ -189,7 +189,7 @@ int Graphics2DLua::endCapture(lua_State* L) {
     return 0;
 }
 
-// Draws a texture immediately with draw(texture, x, y, {source, width, height, scaleX, scaleY, pivotX, pivotY, rotation, color, flash, flipX, flipY, flipDiagonal, layer, depth, blend}).
+// Draws a texture immediately with `draw(texture, x, y, {source, width, height, scaleX, scaleY, pivotX, pivotY, rotation, color, flash, flipX, flipY, flipDiagonal, layer, depth, blend})`.
 int Graphics2DLua::draw(lua_State* L) {
     Sprite sprite;
     sprite.texture = lua::Stack::read<graphics::Texture>(L, 1);
@@ -212,13 +212,13 @@ int Graphics2DLua::draw(lua_State* L) {
     return 0;
 }
 
-// Draws a list of sprite tables that share one texture as a single batch with drawBatch(texture, {{x, y, width, height, ...}, ...}, order), or the sprites a float buffer holds with drawBatch(texture, buffer, {fields = {'x', 'y', ...}, width = ..., ...}, order), where the table is the template of every sprite.
+// Draws a list of sprite tables that share one texture as a single batch with `drawBatch(texture, {{x, y, width, height, ...}, ...}, order)`, or the sprites a float buffer holds with `drawBatch(texture, buffer, {fields = {'x', 'y', ...}, width = ..., ...}, order)`, where the table is the template of every sprite.
 int Graphics2DLua::drawBatch(lua_State* L) {
     const graphics::Texture texture = lua::Stack::read<graphics::Texture>(L, 1);
     if (const core::FloatBuffer* buffer = lua::Userdata::test<core::FloatBuffer>(L, 2)) {
         const SpriteInstance sprite = lua::TypeConverter::readSpriteInstance(L, 3, texture, {}, {SpriteBatchLua::kLayoutFields});
         if (lua_getfield(L, 3, "fields") != LUA_TTABLE) {
-            return luaL_error(L, "A drawBatch call with a float buffer needs the fields each sprite takes, such as fields = {'x', 'y'}.");
+            return luaL_error(L, "A \"drawBatch\" call with a float buffer needs the fields each sprite takes, such as \"fields = {'x', 'y'}\".");
         }
         const SpriteLayout layout = SpriteBatchLua::readLayout(L, -1, sprite);
         lua_pop(L, 1);
@@ -236,7 +236,7 @@ int Graphics2DLua::drawBatch(lua_State* L) {
     return 0;
 }
 
-// Draws a baked batch with drawStatic(batch[, x, y[, order]]), where x and y shift the whole batch without rebaking it.
+// Draws a baked batch with `drawStatic(batch[, x, y[, order]])`, where `x` and `y` shift the whole batch without rebaking it.
 int Graphics2DLua::drawStatic(lua_State* L) {
     const math::Vec2 offset{static_cast<float>(luaL_optnumber(L, 2, 0.0)), static_cast<float>(luaL_optnumber(L, 3, 0.0))};
     getRenderer(L).drawStatic(lua::Userdata::check<StaticSpriteBatch>(L, 1), lua::TypeConverter::readDrawOrder(L, 4), offset);
@@ -283,7 +283,7 @@ int Graphics2DLua::drawPolyline(lua_State* L) {
     return 0;
 }
 
-// Draws triangles with drawMesh(texture or nil, {{x, y, u, v, color}, ...}, {1, 2, 3, ...}, order).
+// Draws triangles with `drawMesh(texture or nil, {{x, y, u, v, color}, ...}, {1, 2, 3, ...}, order)`.
 int Graphics2DLua::drawMesh(lua_State* L) {
     const graphics::Texture texture = lua_isnil(L, 1) ? graphics::Texture{} : lua::Stack::read<graphics::Texture>(L, 1);
     luaL_checktype(L, 2, LUA_TTABLE);
@@ -318,7 +318,7 @@ math::Vec2 Graphics2DLua::readTextScale(lua_State* L, int index) {
     return scale;
 }
 
-// Draws text with drawText(font, text, x, y, style), where the font is a Font, a FontFamily or nil for the default font, and the style also takes the scale and the layer, depth and blend of the draw. A family draws what its faces lack from its fallbacks.
+// Draws text with `drawText(font, text, x, y, style)`, where the font is a `Font`, a `FontFamily` or `nil` for the default font, and the style also takes the scale and the layer, depth and blend of the draw. A family draws what its faces lack from its fallbacks.
 int Graphics2DLua::drawText(lua_State* L) {
     const std::string_view content = lua::Stack::read<std::string_view>(L, 2);
     const math::Vec2 position{lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4)};
@@ -333,7 +333,7 @@ int Graphics2DLua::drawText(lua_State* L) {
     return 0;
 }
 
-// Measures text with the same font or family and style table drawText takes, whose draw order keys change nothing, so the size is the block drawText covers.
+// Measures text with the same font or family and style table `drawText` takes, whose draw order keys change nothing, so the size is the block `drawText` covers.
 int Graphics2DLua::measureText(lua_State* L) {
     const std::string_view content = lua::Stack::read<std::string_view>(L, 2);
     const text::Style style = lua::TypeConverter::readTextStyle(L, 3, {lua::TypeConverter::kDrawOrderFields, kTextDrawFields});
@@ -350,19 +350,19 @@ int Graphics2DLua::drawNineSlice(lua_State* L) {
     return 0;
 }
 
-// Draws a Light, or a table with the properties of one, with drawLight(light).
+// Draws a `Light`, or a table with the properties of one, with `drawLight(light)`.
 int Graphics2DLua::drawLight(lua_State* L) {
     getRenderer(L).drawLight(lighting2d::LightLua::read(L, 1));
     return 0;
 }
 
-// Draws an Occluder, or a table with the properties of one, with drawOccluder(occluder).
+// Draws an `Occluder`, or a table with the properties of one, with `drawOccluder(occluder)`.
 int Graphics2DLua::drawOccluder(lua_State* L) {
     getRenderer(L).drawOccluder(lighting2d::OccluderLua::read(L, 1));
     return 0;
 }
 
-// Draws metaballs with drawMetaballs({x1, y1, x2, y2, ...}, radius, {color, outlineColor, outlineWidth, threshold, layer, depth, ...}), whose flat list of positions needs no table per point.
+// Draws metaballs with `drawMetaballs({x1, y1, x2, y2, ...}, radius, {color, outlineColor, outlineWidth, threshold, layer, depth, ...})`, whose flat list of positions needs no table per point.
 int Graphics2DLua::drawMetaballs(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     const auto count = static_cast<std::size_t>(luaL_len(L, 1));
@@ -388,7 +388,7 @@ int Graphics2DLua::drawMetaballs(lua_State* L) {
     return 0;
 }
 
-// Blends two textures with drawImageBlend(from, to, rect, {pattern = 'dissolve', progress = 0.5, center = {0.5, 0.5}, cellSize, blockSize, color, reversed, angle, layer, depth, ...}).
+// Blends two textures with `drawImageBlend(from, to, rect, {pattern = 'dissolve', progress = 0.5, center = {0.5, 0.5}, cellSize, blockSize, color, reversed, angle, layer, depth, ...})`.
 int Graphics2DLua::drawImageBlend(lua_State* L) {
     ImageBlend blend{.from = lua::Stack::read<graphics::Texture>(L, 1), .to = lua::Stack::read<graphics::Texture>(L, 2), .area = lua::Stack::read<math::Rect>(L, 3)};
     if (!lua_isnoneornil(L, 4)) {

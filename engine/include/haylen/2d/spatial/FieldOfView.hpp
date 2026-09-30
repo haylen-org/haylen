@@ -11,7 +11,7 @@ namespace haylen::spatial2d {
 // Computes what a viewer on a grid sees with Albert Ford's symmetric shadowcasting, the field of view of roguelikes and fog of war.
 class FieldOfView final {
   public:
-    // Calls reveal(cell) for every cell visible from the origin within the radius, measured between cell centers, including the origin and the opaque cells that bound the view. Opaque(cell) tells which cells block sight. Sight between transparent cells is symmetric, so when one sees another the other sees it back. Cells on the diagonals and axes of the origin may be revealed twice.
+    // Calls `reveal(cell)` for every cell visible from the origin within the radius, measured between cell centers, including the origin and the opaque cells that bound the view. The function `opaque(cell)` tells which cells block sight. Sight between transparent cells is symmetric, so when one sees another the other sees it back. Cells on the diagonals and axes of the origin may be revealed twice.
     template <typename Opaque, typename Reveal> static void compute(Cell origin, int radius, Opaque&& opaque, Reveal&& reveal) {
         if (radius < 0) {
             throw std::invalid_argument("A field of view needs a radius of zero or more cells.");

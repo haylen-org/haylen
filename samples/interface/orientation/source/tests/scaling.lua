@@ -1,4 +1,4 @@
--- Design resolution and scaling: the app lays out in design units, and the scaling policy of app.json maps them onto the screen. The preview applies each policy to screens of other shapes, and the live values show how this app is mapped right now.
+-- Design resolution and scaling: the app lays out in design units, and the scaling policy of `app.json` maps them onto the screen. The preview applies each policy to screens of other shapes, and the live values show how this app is mapped right now.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -9,7 +9,7 @@ local sample = require('sample')
 
 local Scaling = haylen.class('Scaling', sample.Test)
 
-Scaling.hints = 'Left and right change the focused stepper. The policy is design.scaling in app.json, and this app uses expand. The preview draws the design area of 1920 by 1080 on a simulated screen: black bars are letterboxing, the striped band is the extra visible area of expand, and whatever leaves the screen is cropped.'
+Scaling.hints = 'Left and right change the focused stepper. The policy is "design.scaling" in "app.json", and this app uses "expand". The preview draws the design area of 1920 by 1080 on a simulated screen: black bars are letterboxing, the striped band is the extra visible area of "expand", and whatever leaves the screen is cropped.'
 Scaling.focus = 'policy'
 
 Scaling.policies = {{id = 'fit', text = 'fit'}, {id = 'fill', text = 'fill'}, {id = 'stretch', text = 'stretch'}, {id = 'expand', text = 'expand'}, {id = 'pixelPerfect', text = 'pixel perfect'}}
@@ -136,7 +136,7 @@ function Scaling:render()
     graphics2d.drawRect({screenRect[1] - 18, screenRect[2] - 18, screenRect[3] + 36, screenRect[4] + 36}, '#FF2C3147')
     graphics2d.drawRect(screenRect, '#FF000000')
     graphics2d.pushClip(screenRect)
-    -- Expand shows more than the design area, which the app is expected to fill.
+    -- The policy `expand` shows more than the design area, which the app is expected to fill.
     if self.policy == 'expand' then
         for offset = -screenRect[4], screenRect[3], 24 do
             graphics2d.drawLine(screenRect[1] + offset, screenRect[2] + screenRect[4], screenRect[1] + offset + screenRect[4], screenRect[2], 6, '#FF3A4058')

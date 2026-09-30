@@ -10,7 +10,7 @@ namespace haylen::core {
 // Checks the shape of the JSON documents and option objects that configure the engine.
 class JsonValidator final {
   public:
-    // Throws std::invalid_argument naming the first key of the object that is not allowed, so a misspelled setting never goes unnoticed.
+    // Throws `std::invalid_argument` naming the first key of the object that is not allowed, so a misspelled setting never goes unnoticed.
     static void requireKnownKeys(const Json& object, std::initializer_list<std::string_view> allowed, std::string_view context);
 };
 

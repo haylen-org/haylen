@@ -151,7 +151,7 @@ void WindowsDesktop::setClickThrough(bool value) {
     SetWindowLongPtrW(window, GWL_EXSTYLE, value ? exStyle | WS_EX_TRANSPARENT : exStyle & ~WS_EX_TRANSPARENT);
 }
 
-// The move loop of the system runs the frames of the app from a timer of sokol_app, so the drag starts from the window procedure between frames.
+// The move loop of the system runs the frames of the app from a timer of `sokol_app`, so the drag starts from the window procedure between frames.
 void WindowsDesktop::startDrag() {
     PostMessageW(getWindow(), kStartDragMessage, 0, 0);
 }
@@ -210,7 +210,7 @@ LRESULT CALLBACK WindowsDesktop::windowProcedure(HWND window, UINT message, WPAR
         ReleaseCapture();
         SendMessageW(window, WM_SYSCOMMAND, SC_MOVE | HTCAPTION, 0);
 
-        // The move loop keeps the release of the button, which sokol_app and the app still need to hear.
+        // The move loop keeps the release of the button, which `sokol_app` and the app still need to hear.
         POINT cursor{};
         GetCursorPos(&cursor);
         ScreenToClient(window, &cursor);

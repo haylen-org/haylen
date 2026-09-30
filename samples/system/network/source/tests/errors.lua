@@ -1,4 +1,4 @@
--- Errors: a request that cannot reach a server resolves its await with nil and the reason instead of raising, a server that answers with an error status still gives a response whose ok is false, async.timeout gives up on a slow promise, and response.json raises for a body that is not JSON, which pcall catches. Nothing here stops the app, with or without a network.
+-- Errors: a request that cannot reach a server resolves its `await` with `nil` and the reason instead of raising, a server that answers with an error status still gives a response whose `ok` is `false`, `async.timeout` gives up on a slow promise, and `response.json` raises for a body that is not JSON, which `pcall` catches. Nothing here stops the app, with or without a network.
 local async = require('async')
 local haylen = require('haylen')
 local http = require('http')
@@ -39,13 +39,13 @@ local kCases = {
     end},
 }
 
--- Describes a response: its status and ok flag, or the error json() raised when the case reads the body as JSON.
+-- Describes a response: its status and `ok` flag, or the error `json()` raised when the case reads the body as JSON.
 local function describe(case, response)
     if case.json then
         local ok, failure = pcall(response.json)
-        return ok and 'The body was JSON after all.' or 'Status ' .. response.status .. ', then json() raised: ' .. tostring(failure)
+        return ok and 'The body was JSON after all.' or 'Status ' .. response.status .. ', then "json()" raised: ' .. tostring(failure)
     end
-    return string.format('A response with status %d and ok %s', response.status, tostring(response.ok))
+    return string.format('A response with status %d and "ok" %s', response.status, tostring(response.ok))
 end
 
 function Errors:init(entry)

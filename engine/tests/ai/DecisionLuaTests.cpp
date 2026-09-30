@@ -59,9 +59,9 @@ TEST_F(DecisionLuaTest, TicksBehaviorTreesWithLuaLeaves) {
     EXPECT_EQ(lua("local both = ai.newBehaviorTree(ai.parallel({ai.action(function() return true end), ai.action(function() return 'running' end)}, 1)) return both:tick(0)"), "success");
 
     fixture.runLua("broken = ai.newBehaviorTree(ai.action(function() return 'maybe' end))");
-    EXPECT_NE(lua("broken:tick(0)").find("unknown status 'maybe'"), std::string::npos);
-    EXPECT_NE(lua("broken:tick(0)").find("unknown status 'maybe'"), std::string::npos);
-    EXPECT_NE(lua("ai.newBehaviorTree({kind = 'loop'})").find("Unknown behavior tree node 'loop'"), std::string::npos);
+    EXPECT_NE(lua("broken:tick(0)").find("unknown status \"maybe\""), std::string::npos);
+    EXPECT_NE(lua("broken:tick(0)").find("unknown status \"maybe\""), std::string::npos);
+    EXPECT_NE(lua("ai.newBehaviorTree({kind = 'loop'})").find("Unknown behavior tree node \"loop\""), std::string::npos);
     EXPECT_NE(lua("ai.newBehaviorTree(ai.parallel({}, 1))").find("parallel node"), std::string::npos);
     EXPECT_NE(lua("local tree tree = ai.newBehaviorTree(ai.action(function() tree:tick(0) end)) tree:tick(0)").find("already ticking"), std::string::npos);
 }

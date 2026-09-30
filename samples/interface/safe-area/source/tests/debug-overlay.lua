@@ -1,4 +1,4 @@
--- Debug overlay: ui.setSafeAreaVisible shades the screen outside the safe area, outlines it and prints its insets over everything, and windowSafeAreaChanged reports every move of the safe area.
+-- Debug overlay: `ui.setSafeAreaVisible` shades the screen outside the safe area, outlines it and prints its insets over everything, and `windowSafeAreaChanged` reports every move of the safe area.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 local viewport = require('haylen.viewport')
@@ -7,7 +7,7 @@ local sample = require('sample')
 
 local DebugOverlay = haylen.class('DebugOverlay', sample.Test)
 
-DebugOverlay.hints = 'The overlay is a debugging aid that app.json turns on at start with debug.showSafeArea. Switch the device to watch the overlay and the event follow the new safe area.'
+DebugOverlay.hints = 'The overlay is a debugging aid that "app.json" turns on at start with "debug.showSafeArea". Switch the device to watch the overlay and the event follow the new safe area.'
 DebugOverlay.focus = 'overlay'
 
 function DebugOverlay:init(entry)

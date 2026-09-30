@@ -50,7 +50,7 @@ function Containers:content()
         ui.column{grow = 1, gap = 24,
             sample.section('tabs', {
                 ui.tabs{id = 'journal', items = {{id = 'quests', text = 'Quests'}, {id = 'map', text = 'Map'}, {id = 'notes', text = 'Notes', enabled = false}}, selected = 'quests', onSelect = function(event)
-                    self:setStatus('tabs picked ' .. event.item)
+                    self:setStatus('The tabs picked "' .. event.item .. '"')
                 end,
                     ui.label{text = 'Find the lighthouse before the third night.'},
                     ui.image{image = 'images/landscape_day.png', height = 140, fit = 'contain'},

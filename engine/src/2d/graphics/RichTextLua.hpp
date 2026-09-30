@@ -27,7 +27,7 @@ template <> struct Type<text::RichText> {
 
 namespace haylen::graphics2d {
 
-// Installs the RichText class of haylen.graphics2d, and the functions that make, draw and measure rich text and register the effects and icons its markup names.
+// Installs the `RichText` class of `haylen.graphics2d`, and the functions that make, draw and measure rich text and register the effects and icons its markup names.
 class RichTextLua final {
   public:
     static void install(lua_State* L);
@@ -39,7 +39,7 @@ class RichTextLua final {
     static int registerTextIcon(lua_State* L);
     static int textEffectNames(lua_State* L);
 
-    // Reads the options of rich text, where a missing family takes the default font and fonts maps the names of [font] tags to families or fonts.
+    // Reads the options of rich text, where a missing family takes the default font and `fonts` maps the names of `[font]` tags to families or fonts.
     [[nodiscard]] static text::RichTextOptions readOptions(lua_State* L, int index, std::initializer_list<lua::Table::FieldNames> extraFields = {});
     [[nodiscard]] static const std::shared_ptr<text::RichTextRegistry>& getRegistry(lua_State* L);
 

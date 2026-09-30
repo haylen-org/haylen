@@ -28,7 +28,7 @@ void MarkupParser::fail(std::size_t offset, const std::string& problem) const {
     throw std::invalid_argument("Rich text markup at line " + std::to_string(line) + ", column " + std::to_string(column) + ": " + problem);
 }
 
-// Reads the tag between the brackets. The value of url and hint is the rest of the tag, so it may hold spaces, and other values and attributes may be quoted.
+// Reads the tag between the brackets. The value of `url` and `hint` is the rest of the tag, so it may hold spaces, and other values and attributes may be quoted.
 MarkupParser::Tag MarkupParser::readTag(std::size_t open, std::size_t close) const {
     Tag tag;
     tag.offset = open;
@@ -37,7 +37,7 @@ MarkupParser::Tag MarkupParser::readTag(std::size_t open, std::size_t close) con
         tag.closing = true;
         tag.name = std::string(content.substr(1));
         if (tag.name.empty() || tag.name.find_first_of(" =") != std::string::npos) {
-            fail(open, "[" + std::string(content) + "] is not a closing tag.");
+            fail(open, "The markup \"[" + std::string(content) + "]\" is not a closing tag.");
         }
         return tag;
     }
@@ -45,7 +45,7 @@ MarkupParser::Tag MarkupParser::readTag(std::size_t open, std::size_t close) con
     const std::size_t nameEnd = std::min(content.find_first_of(" ="), content.size());
     tag.name = std::string(content.substr(0, nameEnd));
     if (tag.name.empty()) {
-        fail(open, "[" + std::string(content) + "] has no tag name.");
+        fail(open, "The markup \"[" + std::string(content) + "]\" has no tag name.");
     }
     content.remove_prefix(nameEnd);
 
@@ -54,7 +54,7 @@ MarkupParser::Tag MarkupParser::readTag(std::size_t open, std::size_t close) con
         if (rest.starts_with('"')) {
             const std::size_t end = rest.find('"', 1);
             if (end == std::string_view::npos) {
-                fail(open, "[" + tag.name + "] has a quote that never ends.");
+                fail(open, "The tag \"[" + tag.name + "]\" has a quote that never ends.");
             }
             std::string value(rest.substr(1, end - 1));
             rest.remove_prefix(end + 1);
@@ -85,7 +85,7 @@ MarkupParser::Tag MarkupParser::readTag(std::size_t open, std::size_t close) con
         const std::size_t equals = content.find('=');
         const std::size_t space = std::min(content.find(' '), content.size());
         if (equals == std::string_view::npos || equals > space) {
-            fail(open, "The attribute " + std::string(content.substr(0, space)) + " of [" + tag.name + "] needs a value.");
+            fail(open, "The attribute \"" + std::string(content.substr(0, space)) + "\" of \"[" + tag.name + "]\" needs a value.");
         }
         std::string key(content.substr(0, equals));
         content.remove_prefix(equals + 1);
@@ -98,7 +98,7 @@ float MarkupParser::number(const Tag& tag, std::string_view text, std::string_vi
     float value = 0.0F;
     const auto [end, error] = fast_float::from_chars(text.data(), text.data() + text.size(), value);
     if (error != std::errc{} || end != text.data() + text.size() || text.empty()) {
-        fail(tag.offset, std::string(text) + " is not a number for the " + std::string(what) + " of [" + tag.name + "].");
+        fail(tag.offset, "The value \"" + std::string(text) + "\" is not a number for the " + std::string(what) + " of \"[" + tag.name + "]\".");
     }
     return value;
 }
@@ -119,7 +119,7 @@ bool MarkupParser::isTag(std::string_view name) noexcept {
 math::Color MarkupParser::color(const Tag& tag, std::string_view text) const {
     const std::optional<math::Color> parsed = parseColor(text);
     if (!parsed) {
-        fail(tag.offset, std::string(text) + " is not a color. Use a name such as red or #RRGGBB or #AARRGGBB.");
+        fail(tag.offset, "The value \"" + std::string(text) + "\" is not a color. Use a name such as \"red\" or \"#RRGGBB\" or \"#AARRGGBB\".");
     }
     return *parsed;
 }
@@ -127,7 +127,7 @@ math::Color MarkupParser::color(const Tag& tag, std::string_view text) const {
 math::Vec2 MarkupParser::pair(const Tag& tag, std::string_view text) const {
     const std::size_t comma = text.find(',');
     if (comma == std::string_view::npos) {
-        fail(tag.offset, std::string(text) + " is not a pair of numbers like 2,3 for [" + tag.name + "].");
+        fail(tag.offset, "The value \"" + std::string(text) + "\" is not a pair of numbers like \"2,3\" for \"[" + tag.name + "]\".");
     }
     return {number(tag, text.substr(0, comma), "x"), number(tag, text.substr(comma + 1), "y")};
 }
@@ -135,7 +135,7 @@ math::Vec2 MarkupParser::pair(const Tag& tag, std::string_view text) const {
 float MarkupParser::size(const Tag& tag, std::string_view text) const {
     const float value = number(tag, text, "size");
     if (!(value > 0.0F)) {
-        fail(tag.offset, "The size of [" + tag.name + "] must be positive.");
+        fail(tag.offset, "The size of \"[" + tag.name + "]\" must be positive.");
     }
     return value;
 }
@@ -148,26 +148,26 @@ RichTextDocument::VerticalAlign MarkupParser::verticalAlign(const Tag& tag, std:
             return align;
         }
     }
-    fail(tag.offset, "The valign of [" + tag.name + "] must be top, center, baseline or bottom.");
+    fail(tag.offset, "The \"valign\" of \"[" + tag.name + "]\" must be \"top\", \"center\", \"baseline\" or \"bottom\".");
 }
 
 std::string_view MarkupParser::requireValue(const Tag& tag) const {
     if (!tag.value || tag.value->empty()) {
-        fail(tag.offset, "[" + tag.name + "] needs a value, as in [" + tag.name + "=...].");
+        fail(tag.offset, "The tag \"[" + tag.name + "]\" needs a value, as in \"[" + tag.name + "=...]\".");
     }
     return *tag.value;
 }
 
 void MarkupParser::requireNoValue(const Tag& tag) const {
     if (tag.value) {
-        fail(tag.offset, "[" + tag.name + "] takes no value.");
+        fail(tag.offset, "The tag \"[" + tag.name + "]\" takes no value.");
     }
 }
 
 void MarkupParser::checkAttributes(const Tag& tag, std::initializer_list<std::string_view> known) const {
     for (const auto& [key, value] : tag.attributes) {
         if (std::find(known.begin(), known.end(), key) == known.end()) {
-            fail(tag.offset, "[" + tag.name + "] has no attribute named " + key + ".");
+            fail(tag.offset, "The tag \"[" + tag.name + "]\" has no attribute named \"" + key + "\".");
         }
     }
 }
@@ -199,7 +199,7 @@ std::u32string MarkupParser::listMarker(RichTextDocument::ListKind kind, std::si
         break;
     case Kind::LowerAlpha:
     case Kind::UpperAlpha:
-        // Letters count like spreadsheet columns, so z is followed by aa.
+        // Letters count like spreadsheet columns, so `z` is followed by `aa`.
         for (std::size_t rest = number; rest > 0; rest = (rest - 1) / 26) {
             label.insert(label.begin(), static_cast<char32_t>((kind == Kind::UpperAlpha ? U'A' : U'a') + (rest - 1) % 26));
         }
@@ -233,7 +233,7 @@ RichTextDocument MarkupParser::parse() {
             }
             if (insideTableRows()) {
                 if (codePoint != U' ' && codePoint != U'\t' && !separator) {
-                    fail(textStart, "Text inside a [table] must be inside a [cell].");
+                    fail(textStart, "Text inside a \"[table]\" must be inside a \"[cell]\".");
                 }
                 continue;
             }
@@ -266,7 +266,7 @@ RichTextDocument MarkupParser::parse() {
     flushText(markup.size());
 
     if (!openTags.empty()) {
-        fail(openTags.back().offset, "[" + openTags.back().name + "] is never closed.");
+        fail(openTags.back().offset, "The tag \"[" + openTags.back().name + "]\" is never closed.");
     }
     // A last paragraph that a newline began is an empty line, like a trailing newline of plain text.
     if (!paragraph.inlines.empty() || paragraph.dropCap || paragraphFromNewline || container().empty()) {
@@ -287,10 +287,10 @@ void MarkupParser::handleTag(const Tag& tag) {
         return;
     }
     if (insideTableRows() && tag.name != "cell") {
-        fail(tag.offset, "Only [cell] tags go directly inside a [table], not [" + tag.name + "].");
+        fail(tag.offset, "Only \"[cell]\" tags go directly inside a \"[table]\", not \"[" + tag.name + "]\".");
     }
     if (dropCap) {
-        fail(tag.offset, "A [dropcap] holds plain text, not [" + tag.name + "].");
+        fail(tag.offset, "A \"[dropcap]\" holds plain text, not \"[" + tag.name + "]\".");
     }
 
     if (tag.name == "br") {
@@ -301,7 +301,7 @@ void MarkupParser::handleTag(const Tag& tag) {
         const float seconds = number(tag, requireValue(tag), "seconds");
         checkAttributes(tag, {});
         if (seconds < 0.0F) {
-            fail(tag.offset, "A [pause] cannot last a negative time.");
+            fail(tag.offset, "A \"[pause]\" cannot last a negative time.");
         }
         appendInline({.kind = RichTextDocument::Inline::Kind::Pause, .style = currentStyle(), .seconds = seconds});
     } else if (tag.name == "img") {
@@ -378,14 +378,14 @@ void MarkupParser::openInline(const Tag& tag) {
         checkAttributes(tag, {});
         const float alpha = number(tag, requireValue(tag), "alpha");
         if (alpha < 0.0F || alpha > 1.0F) {
-            fail(tag.offset, "The alpha of [alpha] must be from 0 to 1.");
+            fail(tag.offset, "The alpha of \"[alpha]\" must be from 0 to 1.");
         }
         style.alpha *= alpha;
     } else if (name == "speed") {
         checkAttributes(tag, {});
         const float speed = number(tag, requireValue(tag), "speed");
         if (!(speed > 0.0F)) {
-            fail(tag.offset, "The speed of [speed] must be positive.");
+            fail(tag.offset, "The speed of \"[speed]\" must be positive.");
         }
         style.revealSpeed *= speed;
     } else if (name == "url") {
@@ -423,14 +423,14 @@ void MarkupParser::openBlock(const Tag& tag) {
         if (tag.attributes.contains("align")) {
             const std::optional<Alignment> align = Style::alignmentFromName(tag.attributes.at("align"));
             if (!align) {
-                fail(tag.offset, "The align of [p] must be start, end, left, center, right or fill.");
+                fail(tag.offset, "The \"align\" of \"[p]\" must be \"start\", \"end\", \"left\", \"center\", \"right\" or \"fill\".");
             }
             block.align = *align;
         }
         if (tag.attributes.contains("dir")) {
             const std::optional<Direction> direction = Style::directionFromName(tag.attributes.at("dir"));
             if (!direction) {
-                fail(tag.offset, "The dir of [p] must be auto, leftToRight or rightToLeft.");
+                fail(tag.offset, "The \"dir\" of \"[p]\" must be \"auto\", \"leftToRight\" or \"rightToLeft\".");
             }
             block.direction = *direction;
         }
@@ -450,7 +450,7 @@ void MarkupParser::openBlock(const Tag& tag) {
         constexpr std::array<std::pair<std::string_view, Kind>, 5> kTypes{{{"1", Kind::Decimal}, {"a", Kind::LowerAlpha}, {"A", Kind::UpperAlpha}, {"i", Kind::LowerRoman}, {"I", Kind::UpperRoman}}};
         const auto found = std::find_if(kTypes.begin(), kTypes.end(), [&](const auto& entry) { return entry.first == type; });
         if (found == kTypes.end()) {
-            fail(tag.offset, "The type of [ol] must be 1, a, A, i or I.");
+            fail(tag.offset, "The type of \"[ol]\" must be \"1\", \"a\", \"A\", \"i\" or \"I\".");
         }
         block.list = found->second;
         block.indent += 1.0F;
@@ -474,7 +474,7 @@ void MarkupParser::openTable(const Tag& tag) {
     checkAttributes(tag, {});
     const float columns = number(tag, requireValue(tag), "column count");
     if (columns < 1.0F || columns != static_cast<float>(static_cast<std::size_t>(columns))) {
-        fail(tag.offset, "A [table] needs a whole number of columns of at least 1.");
+        fail(tag.offset, "A \"[table]\" needs a whole number of columns of at least 1.");
     }
 
     discardOrFinishParagraph();
@@ -487,7 +487,7 @@ void MarkupParser::openTable(const Tag& tag) {
 
 void MarkupParser::openCell(const Tag& tag) {
     if (!table || cell) {
-        fail(tag.offset, "A [cell] goes directly inside a [table].");
+        fail(tag.offset, "A \"[cell]\" goes directly inside a \"[table]\".");
     }
     requireNoValue(tag);
     checkAttributes(tag, {"bg", "border", "padding"});
@@ -511,7 +511,7 @@ void MarkupParser::openCell(const Tag& tag) {
 
 void MarkupParser::openDropCap(const Tag& tag) {
     if (!paragraph.inlines.empty() || paragraph.dropCap) {
-        fail(tag.offset, "A [dropcap] must start its paragraph.");
+        fail(tag.offset, "A \"[dropcap]\" must start its paragraph.");
     }
     requireNoValue(tag);
     checkAttributes(tag, {"font", "size", "color", "margin"});
@@ -545,7 +545,7 @@ void MarkupParser::addImage(const Tag& tag) {
         const std::string& region = tag.attributes.at("region");
         const std::size_t middle = region.find(',', region.find(',') + 1);
         if (middle == std::string::npos) {
-            fail(tag.offset, "The region of [img] needs x,y,width,height.");
+            fail(tag.offset, "The region of \"[img]\" needs \"x,y,width,height\".");
         }
         const math::Vec2 origin = pair(tag, std::string_view(region).substr(0, middle));
         const math::Vec2 extent = pair(tag, std::string_view(region).substr(middle + 1));
@@ -587,7 +587,7 @@ void MarkupParser::addRule(const Tag& tag) {
     if (tag.attributes.contains("width")) {
         const std::string& width = tag.attributes.at("width");
         if (!width.ends_with('%')) {
-            fail(tag.offset, "The width of [hr] is a percentage such as 50%.");
+            fail(tag.offset, "The width of \"[hr]\" is a percentage such as \"50%\".");
         }
         rule.ruleWidth = std::clamp(number(tag, std::string_view(width).substr(0, width.size() - 1), "width") / 100.0F, 0.0F, 1.0F);
     }
@@ -606,10 +606,10 @@ void MarkupParser::addRule(const Tag& tag) {
 
 void MarkupParser::closeTag(const Tag& tag) {
     if (openTags.empty()) {
-        fail(tag.offset, "[/" + tag.name + "] closes nothing.");
+        fail(tag.offset, "The tag \"[/" + tag.name + "]\" closes nothing.");
     }
     if (openTags.back().name != tag.name) {
-        fail(tag.offset, "[/" + tag.name + "] closes [" + openTags.back().name + "], which is still open.");
+        fail(tag.offset, "The tag \"[/" + tag.name + "]\" closes \"[" + openTags.back().name + "]\", which is still open.");
     }
 
     OpenTag closed = std::move(openTags.back());
@@ -624,7 +624,7 @@ void MarkupParser::closeTag(const Tag& tag) {
         break;
     case TagKind::DropCap:
         if (dropCap->text.empty()) {
-            fail(tag.offset, "A [dropcap] needs some text.");
+            fail(tag.offset, "A \"[dropcap]\" needs some text.");
         }
         paragraph.dropCap = std::move(dropCap);
         dropCap.reset();
@@ -690,7 +690,7 @@ void MarkupParser::appendInline(RichTextDocument::Inline item) {
 
 void MarkupParser::newline() {
     if (dropCap) {
-        fail(openTags.back().offset, "A [dropcap] cannot hold a line break.");
+        fail(openTags.back().offset, "A \"[dropcap]\" cannot hold a line break.");
     }
     finishParagraph();
     beginParagraph(true);

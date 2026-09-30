@@ -1,4 +1,4 @@
-# Writes OUTPUT as a C++ source that defines the static method SYMBOL of haylen::core::EmbeddedFiles, which returns the bytes of INPUT.
+# Writes `OUTPUT` as a C++ source that defines the static method `SYMBOL` of `haylen::core::EmbeddedFiles`, which returns the bytes of `INPUT`.
 
 file(READ "${INPUT}" content HEX)
 string(LENGTH "${content}" length)

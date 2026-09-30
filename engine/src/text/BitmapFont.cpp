@@ -86,7 +86,7 @@ BitmapFont::Description BitmapFont::parse(std::span<const std::uint8_t> bytes) {
     return text.starts_with(kBinaryMagic) ? parseBinary(bytes) : parseText(text);
 }
 
-// The text format has one tag per line followed by key=value pairs, where values in quotes may hold spaces.
+// The text format has one tag per line followed by `key=value` pairs, where values in quotes may hold spaces.
 BitmapFont::Description BitmapFont::parseText(std::string_view text) {
     Description description;
     bool hasInfo = false;
@@ -135,7 +135,7 @@ BitmapFont::Description BitmapFont::parseText(std::string_view text) {
             const auto found = values.find(key);
             int value = 0;
             if (found == values.end() || std::from_chars(found->second.data(), found->second.data() + found->second.size(), value).ec != std::errc{}) {
-                throw std::invalid_argument("BMFont line " + std::to_string(lineNumber) + " needs a whole number for " + std::string(key) + ".");
+                throw std::invalid_argument("BMFont line " + std::to_string(lineNumber) + " needs a whole number for \"" + std::string(key) + "\".");
             }
             return value;
         };
@@ -152,7 +152,7 @@ BitmapFont::Description BitmapFont::parseText(std::string_view text) {
         } else if (tag == "page") {
             const int id = number("id");
             if (id < 0 || static_cast<std::size_t>(id) >= description.pages.size() || !values.contains("file")) {
-                throw std::invalid_argument("BMFont line " + std::to_string(lineNumber) + " names a page the common line does not count, or no file.");
+                throw std::invalid_argument("BMFont line " + std::to_string(lineNumber) + " names a page the \"common\" line does not count, or no file.");
             }
             description.pages[static_cast<std::size_t>(id)] = std::string(values.at("file"));
         } else if (tag == "char") {
@@ -169,7 +169,7 @@ BitmapFont::Description BitmapFont::parseText(std::string_view text) {
     }
 
     if (!hasInfo || !hasCommon) {
-        throw std::invalid_argument("A BMFont file needs its info and common lines.");
+        throw std::invalid_argument("A BMFont file needs its \"info\" and \"common\" lines.");
     }
     for (const std::string& page : description.pages) {
         if (page.empty()) {
@@ -179,7 +179,7 @@ BitmapFont::Description BitmapFont::parseText(std::string_view text) {
     return description;
 }
 
-// The binary format is the magic BMF, version 3 and a list of blocks, each a type byte and a 32-bit size, with little-endian numbers.
+// The binary format is the magic `BMF`, version 3 and a list of blocks, each a type byte and a 32-bit size, with little-endian numbers.
 BitmapFont::Description BitmapFont::parseBinary(std::span<const std::uint8_t> bytes) {
     if (bytes.size() < 4 || bytes[3] != 3) {
         throw std::invalid_argument("Only version 3 of the binary BMFont format is supported.");
@@ -257,7 +257,7 @@ BitmapFont::Description BitmapFont::parseBinary(std::span<const std::uint8_t> by
     }
 
     if (!hasInfo || !hasCommon) {
-        throw std::invalid_argument("A BMFont file needs its info and common blocks.");
+        throw std::invalid_argument("A BMFont file needs its \"info\" and \"common\" blocks.");
     }
     for (const std::string& page : description.pages) {
         if (page.empty()) {

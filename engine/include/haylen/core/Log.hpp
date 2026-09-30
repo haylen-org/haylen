@@ -23,7 +23,7 @@ class Log final {
         Error,
     };
 
-    // Listeners receive every printed line, from engine code and scripts alike, on whatever thread wrote it. They must not log, add listeners or remove listeners themselves. Once removeListener returns, the listener is never called again.
+    // Listeners receive every printed line, from engine code and scripts alike, on whatever thread wrote it. They must not log, add listeners or remove listeners themselves. Once `removeListener` returns, the listener is never called again.
     using Listener = std::function<void(Level level, std::string_view line)>;
 
     Log() = delete;
@@ -56,7 +56,7 @@ class Log final {
 
     static constexpr Level kDefaultLevel = Level::Info;
 
-    // Varn's logger starts at Debug, so the engine default reaches it at startup and lines from Varn's own log module obey the same level.
+    // Varn's logger starts at `Debug`, so the engine default reaches it at startup and lines from Varn's own log module obey the same level.
     static std::atomic<Level> currentLevel;
 
     template <typename... Args> static void emit(Level messageLevel, std::format_string<Args...> format, Args&&... args) {

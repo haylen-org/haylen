@@ -11,7 +11,7 @@
 
 namespace haylen::platform {
 
-// A native dialog the app asks for: a message with buttons, or a picker of files to open, of the destination of data to save or of a folder. Dialogs validates it before the platform shows it.
+// A native dialog the app asks for: a message with buttons, or a picker of files to open, of the destination of data to save or of a folder. The class `Dialogs` validates it before the platform shows it.
 struct DialogRequest {
     enum class MessageKind : std::uint8_t {
         Info,
@@ -19,7 +19,7 @@ struct DialogRequest {
         Error,
     };
 
-    // A named choice of file types, such as Images with png and jpg. Extensions come without their dot.
+    // A named choice of file types, such as Images with `png` and `jpg`. Extensions come without their dot.
     struct Filter {
         std::string name;
         std::vector<std::string> extensions;

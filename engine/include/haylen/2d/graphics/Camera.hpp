@@ -73,7 +73,7 @@ class Camera final {
         return zoom;
     }
 
-    // Keeps each axis of the zoom between the zoom limits, and throws std::invalid_argument for an axis that is not a number.
+    // Keeps each axis of the zoom between the zoom limits, and throws `std::invalid_argument` for an axis that is not a number.
     void setZoom(math::Vec2 value);
     [[nodiscard]] float getMinZoom() const noexcept {
         return minZoom;
@@ -106,7 +106,7 @@ class Camera final {
     // Moves the view to the point at once.
     void snapTo(math::Vec2 point, const math::Rect& screen) noexcept;
 
-    // Multiplies the zoom by the factor and keeps the world point under the screen point in place, for pinch and wheel zoom. A factor that is not a number throws std::invalid_argument.
+    // Multiplies the zoom by the factor and keeps the world point under the screen point in place, for pinch and wheel zoom. A factor that is not a number throws `std::invalid_argument`.
     void zoomAt(float factor, math::Vec2 screenPoint, const math::Rect& screen);
 
     void addTrauma(float amount) noexcept;

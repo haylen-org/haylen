@@ -109,7 +109,7 @@ int BehaviorTreeLua::action(lua_State* L) {
     return 1;
 }
 
-// Conditions pass when their function returns a true value. Actions return 'success', 'failure' or 'running', or true for success and false for failure, and nothing counts as success.
+// Conditions pass when their function returns a true value. Actions return `'success'`, `'failure'` or `'running'`, or `true` for success and `false` for failure, and nothing counts as success.
 BehaviorTree::Status BehaviorTreeLua::callLeaf(Scripted& self, lua_Integer leaf, const float* deltaSeconds) {
     lua_State* L = self.caller;
     lua::Userdata::pushField(L, 1, "leaves");
@@ -128,7 +128,7 @@ BehaviorTree::Status BehaviorTreeLua::callLeaf(Scripted& self, lua_Integer leaf,
     } else if (type == LUA_TSTRING) {
         const std::optional<BehaviorTree::Status> named = BehaviorTree::statusFromName(lua_tostring(L, -1));
         if (!named) {
-            luaL_error(L, "A behavior tree action returned the unknown status '%s'.", lua_tostring(L, -1));
+            luaL_error(L, "A behavior tree action returned the unknown status \"%s\".", lua_tostring(L, -1));
         }
         status = *named;
     } else if (type != LUA_TNIL) {
@@ -151,7 +151,7 @@ BehaviorTree::Node BehaviorTreeLua::readNode(lua_State* L, int index, int leaves
     lua_getfield(L, description, "kind");
     const auto found = std::find(kKinds.begin(), kKinds.end(), lua::Stack::read<std::string_view>(L, -1));
     if (found == kKinds.end()) {
-        luaL_error(L, "Unknown behavior tree node '%s'.", lua_tostring(L, -1));
+        luaL_error(L, "Unknown behavior tree node \"%s\".", lua_tostring(L, -1));
     }
     lua_pop(L, 1);
 
@@ -194,7 +194,7 @@ BehaviorTree::Node BehaviorTreeLua::readNode(lua_State* L, int index, int leaves
     return node;
 }
 
-// Builds a tree with newBehaviorTree(root, blackboard), where the blackboard table is optional.
+// Builds a tree with `newBehaviorTree(root, blackboard)`, where the blackboard table is optional.
 int BehaviorTreeLua::newTree(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     if (!lua_isnoneornil(L, 2)) {

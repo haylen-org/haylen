@@ -52,7 +52,7 @@ function TouchControls:content()
     }
 end
 
--- Space and the south button jump here, so no control keeps the focus that accept would press.
+-- Space and the south button jump here, so no control keeps the focus that `uiAccept` would press.
 function TouchControls:started()
     ui.clearFocus()
 end

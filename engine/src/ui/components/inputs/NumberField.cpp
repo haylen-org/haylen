@@ -24,7 +24,7 @@ void NumberField::readProperties(PropertyReader& reader) {
     reader.read("decimals", decimals, 0, 6);
     reader.readChoice<platform::TextInput::ReturnKey>("returnKey", returnKey, TextEditor::kReturnKeys);
     if (lowest > highest) {
-        reader.fail("min", "must not be greater than max");
+        reader.fail("min", "must not be greater than \"max\"");
     }
     minimum = lowest;
     maximum = highest;

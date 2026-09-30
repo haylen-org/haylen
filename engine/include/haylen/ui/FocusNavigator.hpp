@@ -71,10 +71,10 @@ class FocusNavigator final {
     }
     [[nodiscard]] bool isRingShown(ImGuiID item) const;
 
-    // Whether the player pressed uiCancel this frame for a window that closes with it, such as a dismissible dialog or a closable window: the topmost popup, or the window with the focus while no popup is open. The window being asked answers cancel, so the app actions leave the next press to it.
+    // Whether the player pressed `uiCancel` this frame for a window that closes with it, such as a dismissible dialog or a closable window: the topmost popup, or the window with the focus while no popup is open. The window being asked answers cancel, so the app actions leave the next press to it.
     [[nodiscard]] bool answerCancel(const ImGuiWindow* window);
 
-    // Whether the UI answers uiCancel and uiAccept itself in the next frame: cancel while a control is being edited, a popup is open, an item is carried or the focused window closes with it, and accept while a control has the focus.
+    // Whether the UI answers `uiCancel` and `uiAccept` itself in the next frame: cancel while a control is being edited, a popup is open, an item is carried or the focused window closes with it, and accept while a control has the focus.
     [[nodiscard]] bool answersCancel() const noexcept {
         return cancelAnswered;
     }
@@ -87,7 +87,7 @@ class FocusNavigator final {
         return editing;
     }
 
-    // Whether the player pressed uiMenu this frame, which opens the context menu around the focus.
+    // Whether the player pressed `uiMenu` this frame, which opens the context menu around the focus.
     [[nodiscard]] bool isMenuPressed() const noexcept {
         return menuPressed;
     }

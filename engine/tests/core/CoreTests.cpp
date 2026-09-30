@@ -220,7 +220,7 @@ TEST(TimerSchedulerTest, InheritingTimersFollowTheModeOfTheirParent) {
     parent = core::ProcessMode::WhenPaused;
     clock.advance(0.1);
     timers.update(clock);
-    EXPECT_EQ(calls, 1) << "an own mode wins over the parent";
+    EXPECT_EQ(calls, 1) << "An own mode wins over the parent.";
 }
 
 TEST(TimerSchedulerTest, ConnectionsCancelAndBlockTimers) {

@@ -1,4 +1,4 @@
--- Package files: assets.list finds what the content folder holds, and assets.text, assets.json and assets.bytes read a file as text, as Lua values or as raw bytes, the same way from a folder, a zip file or the browser.
+-- Package files: `assets.list` finds what the content folder holds, and `assets.text`, `assets.json` and `assets.bytes` read a file as text, as Lua values or as raw bytes, the same way from a folder, a zip file or the browser.
 local assets = require('haylen.assets')
 local haylen = require('haylen')
 local json = require('json')
@@ -17,11 +17,11 @@ local kMissing = 'data/missing.txt'
 -- The tiles of the level format, one character per tile kind.
 local kTiles = {[0] = '~', '.', '"', '^'}
 
--- Reads the custom level format: the magic HLVL, a version, the width and height, then one byte per tile.
+-- Reads the custom level format: the magic `HLVL`, a version, the width and height, then one byte per tile.
 local function readLevel(data)
     local magic, version, width, height, offset = string.unpack('<c4I2I2I2', data)
     if magic ~= 'HLVL' then
-        error('data/level.bin is not a level file')
+        error('The file "data/level.bin" is not a level file.')
     end
     local rows = {}
     for y = 0, height - 1 do
@@ -62,7 +62,7 @@ function Package:content()
     return {
         ui.panel{width = 560, align = 'stretch', gap = 12,
             ui.sectionTitle{text = 'content/data'},
-            ui.label{text = string.format('assets.list(\'data\') found %d files.', #self.paths - 1), color = 'textMuted'},
+            ui.label{text = string.format('The call "assets.list(\'data\')" found %d files.', #self.paths - 1), color = 'textMuted'},
             ui.list{id = 'files', items = items, selected = self.paths[1], onSelect = function(event)
                 self:open(event.item)
             end},
@@ -86,7 +86,7 @@ function Package:open(path)
     local ok, result = pcall(reader.read, path)
     self:show('call', {text = string.format(reader.call, path)})
     if ok then
-        self:show('summary', {text = string.format('Read %s at %s.', sample.bytes(#assets.bytes(path)), 'content/' .. path), color = 'textMuted'})
+        self:show('summary', {text = string.format('Read %s at "%s".', sample.bytes(#assets.bytes(path)), 'content/' .. path), color = 'textMuted'})
         self:show('preview', {text = result})
     else
         self:show('summary', {text = 'The call raised an error.', color = 'dangerText'})

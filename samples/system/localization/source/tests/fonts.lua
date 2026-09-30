@@ -31,16 +31,16 @@ function Fonts:content()
             ui.sectionTitle{text = 'One family with a fallback'},
             ui.label{text = 'Rich text with the family of the theme', font = 'caption', color = 'textMuted'},
             ui.richText{text = kMixed, font = 'heading'},
-            ui.label{text = 'The same line with [font=default], which has no fallback', font = 'caption', color = 'textMuted'},
+            ui.label{text = 'The same line with "[font=default]", which has no fallback', font = 'caption', color = 'textMuted'},
             ui.richText{text = '[font=default]' .. kMixed .. '[/font]', font = 'heading'},
-            ui.label{text = string.format('For the code point %X, family.regular:hasGlyph is %s and the font family:resolve returns has it: %s', character, tostring(language.family.regular:hasGlyph(character)), tostring(resolved:hasGlyph(character))), font = 'monospace', color = 'accentText'},
-            ui.label{text = 'The family has the default font as its regular face and M PLUS 1p as its fallback, and ui.addFont registers it for the theme roles.', color = 'textMuted'},
+            ui.label{text = string.format('For the code point %X, "family.regular:hasGlyph" is "%s" and the font "family:resolve" returns has it: "%s"', character, tostring(language.family.regular:hasGlyph(character)), tostring(resolved:hasGlyph(character))), font = 'monospace', color = 'accentText'},
+            ui.label{text = 'The family has the default font as its regular face and M PLUS 1p as its fallback, and "ui.addFont" registers it for the theme roles.', color = 'textMuted'},
         },
     }
 end
 
 function Fonts:languageChanged()
-    self:show('theme', {text = string.format("Language %s, theme '%s', font '%s'", localization.language(), ui.theme(), ui.themeFont('body').font)})
+    self:show('theme', {text = string.format('Language "%s", theme "%s", font "%s"', localization.language(), ui.theme(), ui.themeFont('body').font)})
 end
 
 return Fonts

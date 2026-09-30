@@ -92,7 +92,7 @@ std::size_t AudioStream::copyLatest(std::span<float> destination) const {
     return frames * channels;
 }
 
-// The reader only moves consumed forward and never past written, so reading consumed first never sees more frames consumed than written.
+// The reader only moves `consumed` forward and never past `written`, so reading `consumed` first never sees more frames consumed than written.
 std::size_t AudioStream::getBufferedFrames() const noexcept {
     const std::size_t tail = consumed.load(std::memory_order_acquire);
     return written.load(std::memory_order_acquire) - tail;

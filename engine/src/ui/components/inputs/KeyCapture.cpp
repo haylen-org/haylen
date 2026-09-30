@@ -25,7 +25,7 @@ std::string KeyCapture::describe(std::string_view binding) {
         name.pop_back();
     }
 
-    // A digit key reads as the number on its key. Otherwise a word starts at each capital letter and at a number after a word, and the first letter is capitalized, so leftShift reads Left Shift, keypad0 reads Keypad 0 and f12 stays F12.
+    // A digit key reads as the number on its key. Otherwise a word starts at each capital letter and at a number after a word, and the first letter is capitalized, so `leftShift` reads Left Shift, `keypad0` reads Keypad 0 and `f12` stays F12.
     if (constexpr std::string_view digit = "digit"; kind == "key" && name.starts_with(digit)) {
         return name.substr(digit.size());
     }
@@ -57,7 +57,7 @@ std::vector<std::string> KeyCapture::readBindings(PropertyReader& reader, std::s
     std::vector<std::string> bindings;
     for (const core::Json& entry : listed) {
         if (!entry.is_string() || !input::ActionMap::Binding::parse(entry.get<std::string>())) {
-            reader.fail(key, "must be a list of bindings such as key:escape");
+            reader.fail(key, "must be a list of bindings such as \"key:escape\"");
         }
         bindings.push_back(entry.get<std::string>());
     }
@@ -67,13 +67,13 @@ std::vector<std::string> KeyCapture::readBindings(PropertyReader& reader, std::s
 void KeyCapture::readProperties(PropertyReader& reader) {
     reader.read("value", value);
     if (!value.empty() && !input::ActionMap::Binding::parse(value)) {
-        reader.fail("value", "must be a binding such as key:space");
+        reader.fail("value", "must be a binding such as \"key:space\"");
     }
     reader.read("placeholder", placeholder);
     reader.read("prompt", prompt);
     if (const core::Json* listed = reader.take("sources")) {
         if (!PropertyReader::isList(*listed) || !std::ranges::all_of(*listed, [](const core::Json& entry) { return entry.is_string() && std::ranges::find(kSourceNames, entry.get<std::string>()) != kSourceNames.end(); })) {
-            reader.fail("sources", "must list key, mouse, button or axis");
+            reader.fail("sources", "must list \"key\", \"mouse\", \"button\" or \"axis\"");
         }
         sources.clear();
         for (const core::Json& entry : *listed) {
@@ -170,7 +170,7 @@ std::optional<std::string> KeyCapture::listen(const input::Input& devices) const
     return std::nullopt;
 }
 
-// A binding of cancelWith stops listening, a binding of a kind the field does not take is ignored, and any other becomes the value.
+// A binding of `cancelWith` stops listening, a binding of a kind the field does not take is ignored, and any other becomes the value.
 void KeyCapture::finish(Context& context, const std::string& binding) {
     if (std::ranges::find(cancelWith, binding) != cancelWith.end()) {
         capturing = false;

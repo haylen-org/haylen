@@ -11,7 +11,7 @@ namespace haylen::ui {
 
 class Backend;
 
-// Installs haylen.imgui, which draws immediate mode Dear ImGui windows and widgets from Lua for tools and debug panels.
+// Installs `haylen.imgui`, which draws immediate mode Dear ImGui windows and widgets from Lua for tools and debug panels.
 class ImGuiLua final {
   public:
     static void install(lua_State* L);

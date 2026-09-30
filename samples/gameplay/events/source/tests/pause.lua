@@ -1,4 +1,4 @@
--- Pause: a pause menu in the whenPaused mode pauses the game, which stops the bouncing balls and the pausable timer of the test while a timer in the always mode keeps counting, and both scenes hear paused and unpaused.
+-- Pause: a pause menu in the `whenPaused` mode pauses the game, which stops the bouncing balls and the pausable timer of the test while a timer in the `always` mode keeps counting, and both scenes hear `paused` and `unpaused`.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -13,8 +13,8 @@ local Pause = haylen.class('Pause', sample.Test)
 local kCode = [[
 PauseMenu.processMode = 'whenPaused'
 function PauseMenu:enter() haylen.setPaused(true) end  function PauseMenu:exit() haylen.setPaused(false) end
-timer.every(0.5, tick, {owner = level})  -- inherits pausable from the level
-timer.every(0.5, tick, {owner = level, processMode = 'always'})  -- counts through the pause]]
+timer.every(0.5, tick, {owner = level})  -- Inherits `pausable` from the level.
+timer.every(0.5, tick, {owner = level, processMode = 'always'})  -- Counts through the pause.]]
 
 local PauseMenu = haylen.class('PauseMenu', sample.Overlay)
 PauseMenu.processMode = 'whenPaused'
@@ -35,11 +35,11 @@ function PauseMenu:exit()
 end
 
 function PauseMenu:paused()
-    self.journal:add('the pause menu got the paused hook', sample.muted)
+    self.journal:add('The pause menu got the "paused" hook', sample.muted)
 end
 
 function PauseMenu:unpaused()
-    self.journal:add('the pause menu got the unpaused hook, so it runs now', sample.green)
+    self.journal:add('The pause menu got the "unpaused" hook, so it runs now', sample.green)
 end
 
 function PauseMenu:update(dt)
@@ -54,8 +54,8 @@ function Pause:enter()
     self.balls = {}
     timer.every(0.5, function() self.ticks.pausable = self.ticks.pausable + 1 end, {owner = self})
     timer.every(0.5, function() self.ticks.always = self.ticks.always + 1 end, {owner = self, processMode = 'always'})
-    self:listen('paused', function() self.journal:add('event paused', sample.warm) end)
-    self:listen('unpaused', function() self.journal:add('event unpaused', sample.warm) end)
+    self:listen('paused', function() self.journal:add('Event "paused"', sample.warm) end)
+    self:listen('unpaused', function() self.journal:add('Event "unpaused"', sample.warm) end)
     self:frame({
         hint = 'Open the pause menu with the button, P or the start button, and close it the same way.',
         code = kCode,
@@ -78,11 +78,11 @@ function Pause:openMenu()
 end
 
 function Pause:paused()
-    self.journal:add('the test got the paused hook, so it stops', sample.red)
+    self.journal:add('The test got the "paused" hook, so it stops', sample.red)
 end
 
 function Pause:unpaused()
-    self.journal:add('the test got the unpaused hook and runs again', sample.green)
+    self.journal:add('The test got the "unpaused" hook and runs again', sample.green)
 end
 
 function Pause:update(dt)

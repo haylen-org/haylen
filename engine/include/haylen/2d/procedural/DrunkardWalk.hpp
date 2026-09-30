@@ -17,7 +17,7 @@ class DrunkardWalk final {
     static constexpr std::int32_t kFloor = 0;
     static constexpr std::int32_t kWall = 1;
 
-    // Coverage is the share of the cells inside the border to open. Walking stops early after maxSteps steps in total.
+    // The field `coverage` is the share of the cells inside the border to open. Walking stops early after `maxSteps` steps in total.
     struct Options {
         int width = 64;
         int height = 64;
@@ -26,7 +26,7 @@ class DrunkardWalk final {
         int maxSteps = 100000;
     };
 
-    // Throws std::invalid_argument when a side is below 3 or there are no walkers.
+    // Throws `std::invalid_argument` when a side is below 3 or there are no walkers.
     [[nodiscard]] static spatial2d::CellGrid generate(const Options& options, math::Random& random);
 
   private:

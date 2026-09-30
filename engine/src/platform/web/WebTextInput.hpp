@@ -9,7 +9,7 @@
 
 namespace haylen::platform {
 
-// Text input of the web runtime. A hidden textarea, or a password input, lies over the focused field next to the canvas and edits it, which brings the software keyboard of phones, the input methods of every browser and native paste, copy and undo. platform/web/haylen-runtime.js holds the page side.
+// Text input of the web runtime. A hidden textarea, or a password input, lies over the focused field next to the canvas and edits it, which brings the software keyboard of phones, the input methods of every browser and native paste, copy and undo. The file `platform/web/haylen-runtime.js` holds the page side.
 class WebTextInput final : public TextInput {
   public:
     [[nodiscard]] bool isNative() const noexcept override {
@@ -25,7 +25,7 @@ class WebTextInput final : public TextInput {
     static void receiveKeyboard(float x, float y, float width, float height);
 
   private:
-    // Describes a field with the attributes of its element: inputmode, enterkeyhint, autocapitalize, autocorrect and maxlength.
+    // Describes a field with the attributes of its element: `inputmode`, `enterkeyhint`, `autocapitalize`, `autocorrect` and `maxlength`.
     [[nodiscard]] static core::Json toJson(const Field& field);
     [[nodiscard]] static std::string_view getInputMode(Keyboard keyboard) noexcept;
     [[nodiscard]] static std::string_view getEnterKeyHint(ReturnKey key) noexcept;

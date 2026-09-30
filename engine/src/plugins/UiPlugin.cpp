@@ -280,7 +280,7 @@ void UiPlugin::addTheme(ui::Theme theme) {
 void UiPlugin::setTheme(std::string_view name) {
     const auto found = themes.find(name);
     if (found == themes.end()) {
-        throw std::invalid_argument("The UI has no theme named " + std::string(name) + ".");
+        throw std::invalid_argument("The UI has no theme named \"" + std::string(name) + "\".");
     }
     themeName = found->first;
     if (!backend) {
@@ -312,7 +312,7 @@ std::vector<std::string> UiPlugin::getThemes() const {
 std::string UiPlugin::addTheme(core::Engine& engine, const core::Json& document, std::string_view base) {
     const auto baseTheme = themes.find(base);
     if (baseTheme == themes.end()) {
-        throw std::invalid_argument("The UI has no theme named " + std::string(base) + " to start from.");
+        throw std::invalid_argument("The UI has no theme named \"" + std::string(base) + "\" to start from.");
     }
 
     // clang-format off
@@ -328,7 +328,7 @@ std::string UiPlugin::addTheme(core::Engine& engine, const core::Json& document,
     for (std::size_t index = 0; index < ui::Theme::kFontCount; ++index) {
         const std::string& font = theme.getFont(static_cast<ui::Theme::Font>(index)).font;
         if (!getBackend().hasFont(font)) {
-            throw std::invalid_argument("The theme '" + theme.getName() + "' uses the font '" + font + "', which is neither registered nor listed in fontFiles.");
+            throw std::invalid_argument("The theme \"" + theme.getName() + "\" uses the font \"" + font + "\", which is neither registered nor listed in \"fontFiles\".");
         }
     }
 
@@ -353,10 +353,10 @@ std::vector<std::uint8_t> UiPlugin::getTrueTypeData(const std::shared_ptr<text::
 
 void UiPlugin::addFontFamily(const std::string& name, std::shared_ptr<text::FontFamily> family) {
     if (!family) {
-        throw std::invalid_argument("The UI font " + name + " needs a family.");
+        throw std::invalid_argument("The UI font \"" + name + "\" needs a family.");
     }
     if (fontFamilies.contains(name)) {
-        throw std::invalid_argument("The UI already has a font named " + name + ".");
+        throw std::invalid_argument("The UI already has a font named \"" + name + "\".");
     }
 
     // ImGui draws the TrueType faces of the family, each with the TrueType fallbacks, while rich text draws every face and fallback it has.
@@ -406,7 +406,7 @@ bool UiPlugin::isUsingKeyboard() const {
 graphics::Texture UiPlugin::requestImage(core::Engine& engine, std::string_view path) {
     if (const auto found = images.find(path); found != images.end()) {
         if (!found->second.error.empty()) {
-            throw std::runtime_error("The UI image '" + std::string(path) + "' could not be loaded. " + found->second.error);
+            throw std::runtime_error("The UI image \"" + std::string(path) + "\" could not be loaded. " + found->second.error);
         }
         return found->second.texture;
     }

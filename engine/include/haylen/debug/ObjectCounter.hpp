@@ -11,10 +11,10 @@
 
 namespace haylen::debug {
 
-// Counts the objects of one type that the process created and destroyed, with the memory they hold. Every userdata type exported to Lua has one through the binding toolkit, and engine resources such as textures, fonts, bodies and tweens keep their own. Counting takes no lock, so objects may come and go on any thread. A counter of a type is created with new and never destroyed, because an exit() on another thread runs the destructors of static objects while other threads still count.
+// Counts the objects of one type that the process created and destroyed, with the memory they hold. Every userdata type exported to Lua has one through the binding toolkit, and engine resources such as textures, fonts, bodies and tweens keep their own. Counting takes no lock, so objects may come and go on any thread. A counter of a type is created with `new` and never destroyed, because an `exit()` on another thread runs the destructors of static objects while other threads still count.
 class ObjectCounter final {
   public:
-    // Userdata counts the Lua values of a bound type, and Native counts engine objects and resources.
+    // The kind `Userdata` counts the Lua values of a bound type, and `Native` counts engine objects and resources.
     enum class Kind : std::uint8_t {
         Userdata,
         Native,

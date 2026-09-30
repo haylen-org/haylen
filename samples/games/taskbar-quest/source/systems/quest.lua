@@ -64,7 +64,7 @@ function quest:enemyInReach()
     return nearest
 end
 
--- Returns what the player points at, as the thing and its kind: 'enemy', 'coin' or 'hero'.
+-- Returns what the player points at, as the thing and its kind: `enemy`, `coin` or `hero`.
 function quest:targetAt(x, y)
     local point = {x, y}
     for _, candidate in ipairs(self.enemies) do

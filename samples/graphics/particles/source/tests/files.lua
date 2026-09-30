@@ -1,4 +1,4 @@
--- Effect files: every .particles file in content/effects is a JSON emitter that assets.load reads as a ParticleEffect, the template of new emitters.
+-- Effect files: every `.particles` file in `content/effects` is a JSON emitter that `assets.load` reads as a `ParticleEffect`, the template of new emitters.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')

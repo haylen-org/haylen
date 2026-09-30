@@ -33,13 +33,13 @@ SpriteFrame SpriteAtlas::readFrame(const Document& entry) {
 Animation::Loop SpriteAtlas::readTagLoop(const Document& tag) {
     const std::string direction = tag.value("direction", std::string("forward"));
     if (direction != "forward" && direction != "reverse" && direction != "pingpong" && direction != "pingpong_reverse") {
-        throw std::invalid_argument("The direction of an Aseprite tag must be forward, reverse, pingpong or pingpong_reverse, not '" + direction + "'.");
+        throw std::invalid_argument("The direction of an Aseprite tag must be \"forward\", \"reverse\", \"pingpong\" or \"pingpong_reverse\", not \"" + direction + "\".");
     }
 
     // Aseprite stores the repeat count as text, and an absent or zero count means forever.
     const int repeats = tag.contains("repeat") ? std::stoi(tag.at("repeat").get<std::string>()) : 0;
     if (repeats > 1) {
-        throw std::invalid_argument("The Aseprite tag '" + tag.at("name").get<std::string>() + "' repeats more than once, which atlases do not support. Leave its repeat count empty to loop forever or set it to 1 to play once.");
+        throw std::invalid_argument("The Aseprite tag \"" + tag.at("name").get<std::string>() + "\" repeats more than once, which atlases do not support. Leave its repeat count empty to loop forever or set it to 1 to play once.");
     }
     if (repeats == 1) {
         return Animation::Loop::Once;
@@ -116,7 +116,7 @@ bool SpriteAtlas::hasFrame(std::string_view name) const {
 const SpriteFrame& SpriteAtlas::getFrame(std::string_view name) const {
     const auto found = frames.find(name);
     if (found == frames.end()) {
-        throw std::invalid_argument("The frame '" + std::string(name) + "' does not exist in this atlas.");
+        throw std::invalid_argument("The frame \"" + std::string(name) + "\" does not exist in this atlas.");
     }
     return found->second;
 }
@@ -128,7 +128,7 @@ bool SpriteAtlas::hasAnimation(std::string_view name) const {
 const Animation& SpriteAtlas::getAnimation(std::string_view name) const {
     const auto found = animations.find(name);
     if (found == animations.end()) {
-        throw std::invalid_argument("The animation '" + std::string(name) + "' does not exist in this atlas.");
+        throw std::invalid_argument("The animation \"" + std::string(name) + "\" does not exist in this atlas.");
     }
     return found->second;
 }
@@ -148,7 +148,7 @@ bool SpriteAtlas::hasSlice(std::string_view name) const {
 const graphics2d::NineSlice& SpriteAtlas::getSlice(std::string_view name) const {
     const auto found = slices.find(name);
     if (found == slices.end()) {
-        throw std::invalid_argument("The slice '" + std::string(name) + "' does not exist in this atlas.");
+        throw std::invalid_argument("The slice \"" + std::string(name) + "\" does not exist in this atlas.");
     }
     return found->second;
 }

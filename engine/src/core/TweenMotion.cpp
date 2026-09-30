@@ -90,7 +90,7 @@ float TweenMotion::hash(std::uint32_t key, std::uint32_t index) noexcept {
 
 math::Vec2 TweenMotion::vector(const TweenValue& value) {
     if (value.getKind() != TweenValue::Kind::Vector) {
-        throw std::invalid_argument("This motion only moves Vec2 values.");
+        throw std::invalid_argument("This motion only moves \"Vec2\" values.");
     }
     return value.getVector();
 }

@@ -27,7 +27,7 @@ bool Animator::has(std::string_view name) const {
 const Animation& Animator::getAnimation(std::string_view name) const {
     const auto found = animations.find(name);
     if (found == animations.end()) {
-        throw std::invalid_argument("The animation '" + std::string(name) + "' does not exist in this animator.");
+        throw std::invalid_argument("The animation \"" + std::string(name) + "\" does not exist in this animator.");
     }
     return found->second;
 }

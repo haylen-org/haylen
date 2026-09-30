@@ -10,7 +10,7 @@ namespace haylen::math {
 // Seeded noise for procedural content. Gradient noise values are in [-1, 1].
 class Noise2D final {
   public:
-    // Distances run in cell units from the nearest and second nearest feature points, and cell tells the region of the nearest point apart with a value in [0, 1).
+    // Distances run in cell units from the nearest and second nearest feature points, and `cell` tells the region of the nearest point apart with a value in [0, 1).
     struct Cellular {
         float nearest = 0.0F;
         float second = 0.0F;
@@ -26,7 +26,7 @@ class Noise2D final {
     // Worley noise with one jittered feature point per unit cell.
     [[nodiscard]] Cellular worley(float x, float y) const noexcept;
 
-    // Moves the point by fractal noise sampled at frequency, up to amplitude away, so sampling any noise at the result bends its patterns.
+    // Moves the point by fractal noise sampled at `frequency`, up to `amplitude` away, so sampling any noise at the result bends its patterns.
     [[nodiscard]] Vec2 warp(float x, float y, float amplitude, float frequency = 1.0F, int octaves = 3) const noexcept;
 
   private:

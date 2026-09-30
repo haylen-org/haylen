@@ -4,12 +4,12 @@
 
 namespace haylen::math {
 
-// Installs the Spring class of haylen.math with its constructor and smoothDamp.
+// Installs the `Spring` class of `haylen.math` with its constructor and `smoothDamp`.
 class SpringLua final {
   public:
     static void install(lua_State* L);
 
-    // Sets spring and smoothDamp on the module table at the top of the stack.
+    // Sets `spring` and `smoothDamp` on the module table at the top of the stack.
     static void addFunctions(lua_State* L);
 
   private:

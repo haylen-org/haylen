@@ -9,7 +9,7 @@
 
 namespace haylen::core {
 
-// Installs haylen.collections with object pools that recycle Lua values, such as sprites and projectiles, ring buffers of Lua values over core::RingBuffer and float buffers shared with C++ over core::FloatBuffer.
+// Installs `haylen.collections` with object pools that recycle Lua values, such as sprites and projectiles, ring buffers of Lua values over `core::RingBuffer` and float buffers shared with C++ over `core::FloatBuffer`.
 class CollectionsLua final {
   public:
     static void install(lua_State* L);
@@ -28,9 +28,9 @@ class CollectionsLua final {
     static constexpr std::array<const char*, 2> kHooks{"reset", "release"};
     static constexpr std::array<const char*, 3> kLists{"idle", "active", "slots"};
 
-    // Calls the pool function under name with the object and the arguments from first on, when the pool has that function.
+    // Calls the pool function under `name` with the object and the arguments from `first` on, when the pool has that function.
     static void callHook(lua_State* L, const char* name, int object, int first, int count);
-    // Pushes a new object from the create function, raising an error when it returns nil.
+    // Pushes a new object from the `create` function, raising an error when it returns `nil`.
     static void create(lua_State* L);
     static void prewarm(lua_State* L, Pool& pool, std::size_t count);
     // Pushes a list of the active objects, which callbacks may change while it is walked.

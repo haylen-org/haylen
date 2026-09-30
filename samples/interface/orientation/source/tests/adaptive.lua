@@ -1,4 +1,4 @@
--- Adaptive layout: a character screen that stacks its parts when the screen is taller than wide and places them side by side otherwise, rebuilt with document:replace when the shape changes.
+-- Adaptive layout: a character screen that stacks its parts when the screen is taller than wide and places them side by side otherwise, rebuilt with `document:replace` when the shape changes.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 local viewport = require('haylen.viewport')
@@ -7,7 +7,7 @@ local sample = require('sample')
 
 local Adaptive = haylen.class('Adaptive', sample.Test)
 
-Adaptive.hints = 'Turn a phone or a tablet, or make a desktop window taller than wide: the expand policy shows more design units along the long side, and the screen lays itself out again.'
+Adaptive.hints = 'Turn a phone or a tablet, or make a desktop window taller than wide: the "expand" policy shows more design units along the long side, and the screen lays itself out again.'
 Adaptive.focus = 'equip'
 
 function Adaptive:init(entry)
@@ -33,7 +33,7 @@ function Adaptive:stats()
 end
 
 function Adaptive:actions(stacked)
-    local press = function(event) self.last = ', pressed ' .. event.id end
+    local press = function(event) self.last = ', pressed "' .. event.id .. '"' end
     local buttons = {
         ui.button{id = 'equip', text = 'Equip', variant = 'primary', grow = stacked and 0 or 1, align = stacked and 'stretch' or nil, onClick = press},
         ui.button{id = 'train', text = 'Train', grow = stacked and 0 or 1, align = stacked and 'stretch' or nil, onClick = press},
@@ -66,7 +66,7 @@ function Adaptive:update(dt)
         self.document:command('equip', 'focus')
     end
     local visible = viewport.visibleRect()
-    self:setStatus(string.format('laid out for %s, visible %.0f x %.0f design units%s', shape, visible.width, visible.height, self.last))
+    self:setStatus(string.format('Laid out for %s, visible %.0f x %.0f design units%s', shape, visible.width, visible.height, self.last))
 end
 
 return Adaptive

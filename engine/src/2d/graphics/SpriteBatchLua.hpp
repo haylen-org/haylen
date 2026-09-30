@@ -16,15 +16,15 @@ namespace haylen::graphics2d {
 class SpriteBatch;
 class StaticSpriteBatch;
 
-// Installs the SpriteBatch and StaticSpriteBatch classes of haylen.graphics2d. Sprites of a batch are numbered from one.
+// Installs the `SpriteBatch` and `StaticSpriteBatch` classes of `haylen.graphics2d`. Sprites of a batch are numbered from one.
 class SpriteBatchLua final {
   public:
-    // The key of a sprite table that lists the fields a float buffer holds, as drawBatch reads it.
+    // The key of a sprite table that lists the fields a float buffer holds, as `drawBatch` reads it.
     static constexpr std::array<std::string_view, 1> kLayoutFields{"fields"};
 
     static void install(lua_State* L);
 
-    // Reads a list of field names at index, such as {'x', 'y', 'rotation'}, into a layout over the template sprite.
+    // Reads a list of field names at index, such as `{'x', 'y', 'rotation'}`, into a layout over the template sprite.
     [[nodiscard]] static SpriteLayout readLayout(lua_State* L, int index, const SpriteInstance& sprite = {});
 
   private:

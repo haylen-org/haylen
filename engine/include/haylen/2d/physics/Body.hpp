@@ -90,7 +90,7 @@ class Body final {
 
     [[nodiscard]] std::vector<Shape> getShapes() const;
 
-    // Returns the outlines of every shape in world space for drawing, as Shape::getOutline makes them, with the segments of each chain joined into one outline that a loop closes.
+    // Returns the outlines of every shape in world space for drawing, as `Shape::getOutline` makes them, with the segments of each chain joined into one outline that a loop closes.
     [[nodiscard]] std::vector<Shape::Outline> getOutlines() const;
     void destroy();
 

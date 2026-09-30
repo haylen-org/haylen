@@ -10,7 +10,7 @@
 
 namespace haylen::navigation2d {
 
-// Finds paths on large square navigation grids in two levels, the HPA* of Botea, Müller and Schaeffer. The grid splits into square clusters joined by entrances on their shared sides, which form a small abstract graph that is searched first, and then only the cells along the chosen route are searched. Paths are near optimal, usually within a few percent of the cheapest one. Every call takes the grid it was built from, and after cells change, update rebuilds only the clusters around them.
+// Finds paths on large square navigation grids in two levels, the HPA* of Botea, Müller and Schaeffer. The grid splits into square clusters joined by entrances on their shared sides, which form a small abstract graph that is searched first, and then only the cells along the chosen route are searched. Paths are near optimal, usually within a few percent of the cheapest one. Every call takes the grid it was built from, and after cells change, `update` rebuilds only the clusters around them.
 class HierarchicalPathfinder final {
   public:
     struct Options {
@@ -21,7 +21,7 @@ class HierarchicalPathfinder final {
 
     explicit HierarchicalPathfinder(const Grid& grid, const Options& value = kDefaultOptions);
 
-    // Throws std::invalid_argument when the grid is not square or the clusters are smaller than 2 cells, which lets background builds reject bad arguments before they start.
+    // Throws `std::invalid_argument` when the grid is not square or the clusters are smaller than 2 cells, which lets background builds reject bad arguments before they start.
     static void requireValid(const Grid& grid, const Options& value);
 
     // Rebuilds the clusters that hold the cells from first to last, both included, after their walkability or costs changed.
@@ -97,7 +97,7 @@ class HierarchicalPathfinder final {
     [[nodiscard]] std::int32_t addNode(const Grid& grid, Grid::Cell cell, int cluster);
     void connectInside(const Grid& grid, int cluster);
 
-    // Searches the cells of one cluster from the source, forward along steps or backward toward the source, until it settles the target or, without one, every cell. Returns true when it reached the target.
+    // Searches the cells of one cluster from the source, forward along steps or backward toward the source, until it settles the target or, without one, every cell. Returns `true` when it reached the target.
     bool searchLocal(const Grid& grid, const Bounds& bounds, Grid::Cell source, bool backward, std::int32_t target);
     [[nodiscard]] float localScore(const Bounds& bounds, Grid::Cell cell) const noexcept;
     [[nodiscard]] std::int32_t localIndex(const Bounds& bounds, Grid::Cell cell) const noexcept;
@@ -106,7 +106,7 @@ class HierarchicalPathfinder final {
     void appendLocalPath(const Bounds& bounds, Grid::Cell cell);
     void appendCell(Grid::Cell cell);
 
-    // Turns the route of entrances into cells, and returns false when a cell of the route or a path between its entrances no longer exists.
+    // Turns the route of entrances into cells, and returns `false` when a cell of the route or a path between its entrances no longer exists.
     bool refineRoute(const Grid& grid, Grid::Cell start, Grid::Cell goal);
 
     Options options;

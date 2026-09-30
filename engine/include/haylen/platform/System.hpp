@@ -23,7 +23,7 @@ namespace haylen::platform {
 
 class Host;
 
-// The operating system of the device as the app sees it: what the device is, its theme and its battery, and the services it offers apps. The engine owns it and publishes systemThemeChanged and batteryChanged once per change. Every method runs on the frame thread, and so does every callback.
+// The operating system of the device as the app sees it: what the device is, its theme and its battery, and the services it offers apps. The engine owns it and publishes `systemThemeChanged` and `batteryChanged` once per change. Every method runs on the frame thread, and so does every callback.
 class System final {
     struct Inbox;
 
@@ -38,10 +38,10 @@ class System final {
     [[nodiscard]] Theme getTheme() const noexcept;
     [[nodiscard]] const Battery& getBattery() const noexcept;
 
-    // Opens the url with the app the system picks for it, such as the browser for a web page, and calls back at a later pump with whether an app took it. Throws std::invalid_argument for an empty url.
+    // Opens the url with the app the system picks for it, such as the browser for a web page, and calls back at a later pump with whether an app took it. Throws `std::invalid_argument` for an empty url.
     void openUrl(std::string_view url, std::function<void(bool opened)> callback);
 
-    // Vibrates the device for the given seconds where it can vibrate. Throws std::invalid_argument unless the seconds are positive.
+    // Vibrates the device for the given seconds where it can vibrate. Throws `std::invalid_argument` unless the seconds are positive.
     void vibrate(float seconds);
 
     // Delivers the answers the platform gave since the last pump and publishes the changes of the theme and the battery. The engine calls it at the start of every frame.

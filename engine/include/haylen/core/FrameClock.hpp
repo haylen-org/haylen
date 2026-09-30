@@ -31,7 +31,7 @@ class FrameClock final {
         return paused;
     }
 
-    // Returns whether something with the mode runs in the current pause state. Inherit counts as Pausable, so callers resolve it against the parent first.
+    // Returns whether something with the mode runs in the current pause state. The mode `Inherit` counts as `Pausable`, so callers resolve it against the parent first.
     [[nodiscard]] bool canProcess(ProcessMode mode) const noexcept {
         return canProcess(mode, paused);
     }

@@ -139,7 +139,7 @@ ActionMap::Action ActionMap::Action::fromJson(const core::Json& json) {
     }
     const std::optional<Type> actionType = typeFromName(typeField->get<std::string>());
     if (!actionType) {
-        throw std::invalid_argument("The type of an action must be button, axis or vector, not '" + typeField->get<std::string>() + "'.");
+        throw std::invalid_argument("The type of an action must be \"button\", \"axis\" or \"vector\", not \"" + typeField->get<std::string>() + "\".");
     }
 
     return {
@@ -179,14 +179,14 @@ std::vector<ActionMap::Binding> ActionMap::parseBindings(const core::Json& actio
         return bindings;
     }
     if (!isList(*list)) {
-        throw std::invalid_argument(std::string("The ") + field + " of an action must be a list of bindings.");
+        throw std::invalid_argument(std::string("The \"") + field + "\" of an action must be a list of bindings.");
     }
 
     for (const core::Json& entry : *list) {
         const std::string text = entry.is_string() ? entry.get<std::string>() : entry.dump();
         const std::optional<Binding> binding = entry.is_string() ? Binding::parse(text) : std::nullopt;
         if (!binding) {
-            throw std::invalid_argument("The input binding '" + text + "' is invalid. Use a binding such as key:space, mouse:left, button:south, axis:leftX+ or stick:left.");
+            throw std::invalid_argument("The input binding \"" + text + "\" is invalid. Use a binding such as \"key:space\", \"mouse:left\", \"button:south\", \"axis:leftX+\" or \"stick:left\".");
         }
         bindings.push_back(*binding);
     }
@@ -209,7 +209,7 @@ void ActionMap::validate(const Action& action) {
     };
     for (const auto& [field, list, read] : fields) {
         if (!read && !list->empty()) {
-            throw std::invalid_argument("The " + std::string(Action::typeName(action.type)) + " action " + action.name + " does not read " + field + ".");
+            throw std::invalid_argument("The " + std::string(Action::typeName(action.type)) + " action \"" + action.name + "\" does not read \"" + field + "\".");
         }
     }
 
@@ -218,7 +218,7 @@ void ActionMap::validate(const Action& action) {
     }
     for (const Binding& binding : action.bindings) {
         if (binding.source != Binding::Source::GamepadStick && binding.source != Binding::Source::VirtualStick) {
-            throw std::invalid_argument("The vector action " + action.name + " takes only sticks in bindings, not " + binding.toString() + ".");
+            throw std::invalid_argument("The vector action \"" + action.name + "\" takes only sticks in \"bindings\", not \"" + binding.toString() + "\".");
         }
     }
 }
@@ -235,7 +235,7 @@ void ActionMap::load(const core::Json& document) {
         Action action = Action::fromJson(entry);
         validate(action);
         if (std::ranges::any_of(loaded, [&action](const State& state) { return state.action.name == action.name; })) {
-            throw std::invalid_argument("The action name '" + action.name + "' is used by more than one action.");
+            throw std::invalid_argument("The action name \"" + action.name + "\" is used by more than one action.");
         }
         loaded.push_back(State{.action = std::move(action)});
     }

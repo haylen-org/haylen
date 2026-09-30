@@ -11,7 +11,7 @@ std::string Error::Frame::getLocation() const {
 }
 
 Error::Error(const std::string& text, std::vector<Frame> stack) : std::runtime_error(text), message(text), frames(std::move(stack)) {
-    // Lua writes the position as chunk:line: in front of the message, and errors raised through engine calls may carry it further in.
+    // Lua writes the position as `chunk:line:` in front of the message, and errors raised through engine calls may carry it further in.
     if (const std::optional<Position> position = findPosition(text)) {
         file = std::string(position->file);
         line = position->line;
@@ -29,7 +29,7 @@ Error::Error(const std::string& text, std::vector<Frame> stack) : std::runtime_e
     }
 }
 
-// Finds the first name.lua:line: whose chunk name holds no space or colon and whose line has at most the nine digits an int holds. Every name ends at the colon after it, so the scan stays linear in the length of the text.
+// Finds the first `name.lua:line:` whose chunk name holds no space or colon and whose line has at most the nine digits an int holds. Every name ends at the colon after it, so the scan stays linear in the length of the text.
 std::optional<Error::Position> Error::findPosition(std::string_view text) {
     constexpr std::string_view marker = ".lua:";
     constexpr std::size_t maximumDigits = 9;

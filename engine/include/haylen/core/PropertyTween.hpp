@@ -28,7 +28,7 @@ class PropertyTween final : public Tween {
         return speedBased;
     }
 
-    // Resolves every track and shows the start values right away, which from tweens do so the target does not show its end values while the delay runs.
+    // Resolves every track and shows the start values right away, which `from` tweens do so the target does not show its end values while the delay runs.
     void renderStart();
 
     [[nodiscard]] float getDuration() const noexcept override {

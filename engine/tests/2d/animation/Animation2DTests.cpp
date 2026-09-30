@@ -298,7 +298,7 @@ TEST_F(SpriteAtlasTest, ReadsTexturePackerHashesAndRejectsUnsupportedData) {
 }
 
 TEST_F(SpriteAtlasTest, KeepsHashFramesInFileOrder) {
-    // Aseprite names frames "hero 0" to "hero 11" and its tags count positions in the file, where "hero 10" comes after "hero 9".
+    // Aseprite names frames `hero 0` to `hero 11` and its tags count positions in the file, where `hero 10` comes after `hero 9`.
     std::string frames;
     for (int index = 0; index < 12; ++index) {
         frames += (index == 0 ? "" : ", ") + std::string(R"("hero )") + std::to_string(index) + R"(": {"frame": {"x": )" + std::to_string(index * 8) + R"(, "y": 0, "w": 8, "h": 8}})";
@@ -372,7 +372,7 @@ TEST_F(Animation2DLuaTest, AnimatesSpritesFromLua) {
     EXPECT_EQ(fixture.lua("animator:queue('slash') animator:clearQueue() return animator.queuedCount"), "0");
     EXPECT_EQ(fixture.lua("animator:play('slash', true) animator:update(5) animator:queue('slash') return animator.frame .. ' ' .. tostring(animator.finished) .. ' ' .. tostring(animator.playing)"), "1 false true");
     EXPECT_EQ(fixture.lua("local a = animator:animation('slash') return a.frameCount .. ' ' .. a.loop .. ' ' .. string.format('%.2f %.2f', run.cycleDuration, animation2d.fromGrid(sheet, {frameWidth = 16, frameHeight = 16, loop = 'pingPong'}).cycleDuration)"), "2 once 0.80 1.40");
-    EXPECT_NE(fixture.lua("animator:animation('fly')").find("The animation 'fly' does not exist in this animator."), std::string::npos);
+    EXPECT_NE(fixture.lua("animator:animation('fly')").find("The animation \"fly\" does not exist in this animator."), std::string::npos);
 
     fixture.runLua("atlas = assets.load('ui/hero.json', 'atlas')");
     EXPECT_EQ(fixture.lua("return #atlas:frameNames() .. ' ' .. table.concat(atlas:animationNames(), ',') .. ' ' .. table.concat(atlas:sliceNames(), ',')"), "4 back,bounce,hit,walk panel");
@@ -385,13 +385,13 @@ TEST_F(Animation2DLuaTest, AnimatesSpritesFromLua) {
     EXPECT_EQ(fixture.lua("local f = atlas:frame('hero 0') return f.source.width .. ' ' .. f.offset.x .. ' ' .. f.originalSize.x .. ' ' .. string.format('%.2f %.2f', f.duration, atlas:frame('hero 1').duration)"), "8.0 4.0 16.0 0.10 0.20");
     EXPECT_EQ(fixture.lua("return animation2d.fromFrames(sheet, {{0, 0, 8, 8}, {8, 0, 8, 8}}, {framesPerSecond = 4}).duration"), "0.5");
 
-    EXPECT_NE(fixture.lua("return animation2d.fromGrid(sheet, {frameWidth = 16, frameHeight = 16, speed = 2})").find("Unknown option 'speed'"), std::string::npos);
+    EXPECT_NE(fixture.lua("return animation2d.fromGrid(sheet, {frameWidth = 16, frameHeight = 16, speed = 2})").find("Unknown option \"speed\""), std::string::npos);
     EXPECT_NE(fixture.lua("return animation2d.fromGrid(sheet, {frameWidth = 16, frameHeight = 16, framesPerSecond = 0})").find("framesPerSecond must be positive"), std::string::npos);
     EXPECT_NE(fixture.lua("return animation2d.fromFrames(sheet, {})").find("expected at least one frame"), std::string::npos);
     EXPECT_NE(fixture.lua("return run:frame(9)").find("frame index out of range"), std::string::npos);
-    EXPECT_NE(fixture.lua("animator:play('fly')").find("The animation 'fly' does not exist in this animator."), std::string::npos);
+    EXPECT_NE(fixture.lua("animator:play('fly')").find("The animation \"fly\" does not exist in this animator."), std::string::npos);
     EXPECT_NE(fixture.lua("animator.onFinish = 3").find("error: "), std::string::npos);
-    EXPECT_NE(fixture.lua("return atlas:source('nope')").find("The frame 'nope' does not exist in this atlas."), std::string::npos);
+    EXPECT_NE(fixture.lua("return atlas:source('nope')").find("The frame \"nope\" does not exist in this atlas."), std::string::npos);
 
     fixture.runLua("animator:play('slash', true) animator.onFinish = function() error('finish failed') end");
     EXPECT_NE(fixture.lua("animator:update(5)").find("finish failed"), std::string::npos);

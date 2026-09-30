@@ -40,7 +40,7 @@ TEST_F(AnchorTest, AnchorsNodesToTheSafeAreaOrTheScreenOutsideTheLayout) {
     EXPECT_EQ(getBounds(*document, "middle"), (math::Rect{100.0F + (1740.0F - 300.0F) / 2.0F, 50.0F + (990.0F - 100.0F) / 2.0F, 300.0F, 100.0F}));
     EXPECT_EQ(getBounds(*document, "bar"), (math::Rect{120.0F, 1040.0F - 90.0F, 1700.0F, 90.0F}));
 
-    // A new safe area moves every anchored node with it, and anchor none puts a node back in the layout.
+    // A new safe area moves every anchored node with it, and the anchor `none` puts a node back in the layout.
     getFixture().host().setSafeAreaInsets({.left = 0.0F, .top = 0.0F, .right = 0.0F, .bottom = 0.0F});
     frames(2);
     EXPECT_EQ(getBounds(*document, "pause").getMin(), math::Vec2(1920.0F - 10.0F - 120.0F, 10.0F));

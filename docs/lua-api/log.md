@@ -1,6 +1,6 @@
 # haylen.log
 
-`haylen.log` writes messages to the engine log. Lines from scripts and from the engine go through the same logger, so they appear together in the same console on every platform. Use it for diagnostics that should carry a severity. Use `haylen.reportError` from the root module when the app must stop and show an error screen.
+The module `haylen.log` writes messages to the engine log. Lines from scripts and from the engine go through the same logger, so they appear together in the same console on every platform. Use it for diagnostics that should carry a severity. Use `haylen.reportError` from the root module when the app must stop and show an error screen.
 
 ```lua
 local log = require('haylen.log')
@@ -69,7 +69,7 @@ end
 
 ### log.setLevel(level)
 
-Sets the lowest level that is written, for script and engine messages alike. Lines written through Varn's `log` module follow the same level. `level` is one of `'debug'`, `'info'`, `'warning'` or `'error'`. Any other value raises `bad argument #1 to 'setLevel' (unknown value 'loud')`, naming the value.
+Sets the lowest level that is written, for script and engine messages alike. Lines written through Varn's `log` module follow the same level. The argument `level` is one of `'debug'`, `'info'`, `'warning'` or `'error'`. Any other value raises `bad argument #1 to 'setLevel' (unknown value 'loud')`, naming the value.
 
 ```lua
 local log = require('haylen.log')

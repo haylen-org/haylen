@@ -80,7 +80,7 @@ void SceneLoad::preload(std::string_view group, PreloadCompletion completion) {
         }, [deferral, name = std::string(group), completion = std::move(completion)](std::vector<std::string> failures) {
             std::optional<lua::Error> failure;
             if (!failures.empty()) {
-                std::string text = "The asset group " + name + " could not load " + failures.front();
+                std::string text = "The asset group \"" + name + "\" could not load " + failures.front();
                 for (std::size_t index = 1; index < failures.size(); ++index) {
                     text += ", " + failures[index];
                 }

@@ -1,4 +1,4 @@
--- Screen to world: camera:screenToWorld turns the pointer into a world point through zoom and rotation, which picks the object under it, and camera:worldToScreen places a screen label over the pick.
+-- Screen to world: `camera:screenToWorld` turns the pointer into a world point through zoom and rotation, which picks the object under it, and `camera:worldToScreen` places a screen label over the pick.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')

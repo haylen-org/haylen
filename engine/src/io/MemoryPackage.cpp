@@ -36,7 +36,7 @@ std::vector<std::uint8_t> MemoryPackage::read(std::string_view path) const {
     std::scoped_lock lock(mutex);
     const auto found = files.find(entry);
     if (found == files.end()) {
-        throw std::runtime_error("The package file '" + name + "/" + entry + "' was not found.");
+        throw std::runtime_error("The package file \"" + name + "/" + entry + "\" was not found.");
     }
     return found->second;
 }

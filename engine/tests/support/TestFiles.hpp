@@ -11,7 +11,7 @@ class TestFiles final {
   public:
     [[nodiscard]] static std::vector<std::uint8_t> bytes(const std::string& text);
 
-    // Encodes a PNG image of one color, given as 0xRRGGBBAA.
+    // Encodes a PNG image of one color, given as `0xRRGGBBAA`.
     [[nodiscard]] static std::vector<std::uint8_t> pngImage(int width, int height, std::uint32_t rgba);
 };
 

@@ -1,4 +1,4 @@
--- Zoom around a point: camera:zoomAt keeps the world point under a screen point in place, which is how the wheel and a pinch zoom toward the pointer, within the zoom limits.
+-- Zoom around a point: `camera:zoomAt` keeps the world point under a screen point in place, which is how the wheel and a pinch zoom toward the pointer, within the zoom limits.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')

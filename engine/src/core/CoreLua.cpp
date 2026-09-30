@@ -217,7 +217,7 @@ int CoreLua::rootSetLifecycle(lua_State* L) {
     return 0;
 }
 
-// Loads a module as an autoload with haylen.autoload(name, module) and returns its table. The name defaults to the last part of the module in camel case.
+// Loads a module as an autoload with `haylen.autoload(name, module)` and returns its table. The name defaults to the last part of the module in camel case.
 int CoreLua::rootAutoload(lua_State* L) {
     const std::string module = lua::Stack::read<std::string>(L, lua_isnoneornil(L, 2) ? 1 : 2);
     const std::string name = lua_isnoneornil(L, 2) ? lua::Autoloads::getName(module) : lua::Stack::read<std::string>(L, 1);
@@ -315,7 +315,7 @@ int CoreLua::viewportSetDesignSize(lua_State* L) {
     return 0;
 }
 
-// Returns the simulated safe area as a device name or insets from the top clockwise, or nil while the device reports its own.
+// Returns the simulated safe area as a device name or insets from the top clockwise, or `nil` while the device reports its own.
 int CoreLua::viewportSafeAreaSimulation(lua_State* L) {
     const std::optional<platform::SafeAreaSimulation>& simulation = lua::Runtime::getEngine(L).getSafeAreaSimulation();
     if (!simulation) {
@@ -326,7 +326,7 @@ int CoreLua::viewportSafeAreaSimulation(lua_State* L) {
     return 1;
 }
 
-// Simulates the safe area of a device by name or of insets in window points with setSafeAreaSimulation(value), and nil goes back to the safe area of the device.
+// Simulates the safe area of a device by name or of insets in window points with `setSafeAreaSimulation(value)`, and `nil` goes back to the safe area of the device.
 int CoreLua::viewportSetSafeAreaSimulation(lua_State* L) {
     core::Engine& engine = lua::Runtime::getEngine(L);
     if (lua_isnoneornil(L, 1)) {

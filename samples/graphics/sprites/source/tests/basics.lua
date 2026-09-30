@@ -21,7 +21,7 @@ local kVariants = {
 local kCode = [[
 local hero = graphics2d.newSprite(assets.texture('images/hero.png'), {x = 300, y = 300, pivotX = 0.5, pivotY = 1})
 hero.rotation, hero.scaleX, hero.flipX, hero.color = 0.3, 2, true, '#FFFF7070'
-tween.fromTo(hero, 0.4, {flash = '#FFFFFFFF'}, {flash = '#00FFFFFF'})  -- a hit flash
+tween.fromTo(hero, 0.4, {flash = '#FFFFFFFF'}, {flash = '#00FFFFFF'})  -- A hit flash.
 hero:draw()]]
 
 -- Returns the items of a list of choices, which take only an id and a text.

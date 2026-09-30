@@ -99,7 +99,7 @@ void AiLua::callState(Scripted& self, const std::string& name, const char* callb
     lua_call(L, deltaSeconds != nullptr ? 2 : 1, 0);
 }
 
-// Creates a machine with newStateMachine(states), where states maps names to tables with optional enter(machine, ...), update(machine, dt) and exit(machine) functions.
+// Creates a machine with `newStateMachine(states)`, where `states` maps names to tables with optional `enter(machine, ...)`, `update(machine, dt)` and `exit(machine)` functions.
 int AiLua::newStateMachine(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     Scripted& self = lua::Userdata::emplace<Scripted>(L);
@@ -143,12 +143,12 @@ int AiLua::newStateMachine(lua_State* L) {
     return 1;
 }
 
-// Changes state with change(name, ...), passing the extra arguments to the enter function of the new state.
+// Changes state with `change(name, ...)`, passing the extra arguments to the `enter` function of the new state.
 int AiLua::machineChange(lua_State* L) {
     Scripted& self = lua::Userdata::check<Scripted>(L, 1);
     const std::string name = lua::Stack::read<std::string>(L, 2);
     if (!self.machine.has(name)) {
-        return luaL_error(L, "The state machine has no state named %s.", name.c_str());
+        return luaL_error(L, "The state machine has no state named \"%s\".", name.c_str());
     }
 
     const int count = lua_gettop(L) - 2;

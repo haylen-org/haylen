@@ -56,7 +56,7 @@ class Context final {
     // Returns the texture of a UI image path, or an empty texture while it is still loading.
     using ImageSource = std::function<graphics::Texture(std::string_view path)>;
 
-    // Returns the family of a UI font name, which ui.addFont registers and themes name, or null for a name the UI does not know.
+    // Returns the family of a UI font name, which `ui.addFont` registers and themes name, or null for a name the UI does not know.
     using FontSource = std::function<std::shared_ptr<text::FontFamily>(std::string_view name)>;
 
     Context(Backend& uiBackend, FocusNavigator& focusNavigator, const localization::Catalog& textCatalog, const input::Input& devices, ImageSource imageSource, FontSource fontSource, std::shared_ptr<text::RichTextRegistry> registry);

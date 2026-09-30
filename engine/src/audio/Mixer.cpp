@@ -336,7 +336,7 @@ Sound Mixer::getMusic() const {
 
 void Mixer::createBus(const std::string& name, std::string_view parent) {
     if (name.empty() || state->buses.contains(name)) {
-        throw std::invalid_argument("An audio bus needs a non-empty name that no other bus uses, not '" + name + "'.");
+        throw std::invalid_argument("An audio bus needs a non-empty name that no other bus uses, not \"" + name + "\".");
     }
     state->addBus(name, &state->getBus(parent));
 }

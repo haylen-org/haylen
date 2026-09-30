@@ -46,7 +46,7 @@ TEST_F(PhysicsFeaturesLuaTest, BuildsRopesBridgesRagdollsAndVehicles) {
     EXPECT_NE(lua("doll:body('tail')").find("unknown ragdoll part"), std::string::npos);
     EXPECT_NE(lua("physics2d.newRope(world, {from = {0, 0}, to = {0, 0}})").find("two distinct ends"), std::string::npos);
     EXPECT_NE(lua("physics2d.newVehicle(world, {drive = 'tracks'})").find("unknown value 'tracks'"), std::string::npos);
-    EXPECT_NE(lua("physics2d.newRagdoll(world, {size = 2})").find("Unknown option 'size'"), std::string::npos);
+    EXPECT_NE(lua("physics2d.newRagdoll(world, {size = 2})").find("Unknown option \"size\""), std::string::npos);
 }
 
 TEST_F(PhysicsFeaturesLuaTest, OneWayPlatformsAndConveyors) {

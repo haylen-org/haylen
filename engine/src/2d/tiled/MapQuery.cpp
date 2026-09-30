@@ -83,7 +83,7 @@ void MapQuery::forEachObject(std::string_view layer, const ObjectVisitor& visit)
     if (!layer.empty()) {
         const std::optional<std::pair<const Layer*, math::Vec2>> found = findLayer(layer);
         if (!found || found->first->kind != Layer::Kind::Object) {
-            throw std::invalid_argument("The map has no object layer named '" + std::string(layer) + "'.");
+            throw std::invalid_argument("The map has no object layer named \"" + std::string(layer) + "\".");
         }
         for (const Object& object : found->first->objects) {
             visit(object, found->second);
@@ -127,7 +127,7 @@ void MapQuery::traceOutline(const Object& object, std::vector<math::Vec2>& point
     case Object::Shape::Tile: {
         const Map::TilesetReference* reference = map.findTileset(object.gid);
         if (reference == nullptr) {
-            throw std::invalid_argument("A tile object uses the tile '" + std::to_string(Map::tileId(object.gid)) + "', which no tileset of the map holds.");
+            throw std::invalid_argument("A tile object uses the tile \"" + std::to_string(Map::tileId(object.gid)) + "\", which no tileset of the map holds.");
         }
         const Tileset& tileset = *reference->tileset;
         const math::Vec2 size = object.size.isZero() ? tileset.getSource(Map::tileId(object.gid) - reference->firstGid).getSize() : object.size;
@@ -236,7 +236,7 @@ std::optional<MapQuery::TileHit> MapQuery::castTiles(std::string_view layer, con
     }
     const std::optional<std::pair<const Layer*, math::Vec2>> found = findLayer(layer);
     if (!found || found->first->kind != Layer::Kind::Tile) {
-        throw std::invalid_argument("The map has no tile layer named '" + std::string(layer) + "'.");
+        throw std::invalid_argument("The map has no tile layer named \"" + std::string(layer) + "\".");
     }
 
     // The ray crosses the layer in cell coordinates, where every cell is a unit square, and only between the sides of the cells the layer holds, so a ray of any length walks at most across the layer.
@@ -252,7 +252,7 @@ std::optional<MapQuery::TileHit> MapQuery::castTiles(std::string_view layer, con
         return std::nullopt;
     }
 
-    // The walk gathers the tiles first, so the solid callback runs after it and may even change the map.
+    // The walk gathers the tiles first, so the `solid` callback runs after it and may even change the map.
     std::vector<CrossedTile> crossed;
     const math::Ray inside{entry->point, cellRay.direction, (*travel)[1] - (*travel)[0]};
     // clang-format off

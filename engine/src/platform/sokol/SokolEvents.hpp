@@ -12,7 +12,7 @@
 
 namespace haylen::platform {
 
-// Converts sokol_app events into engine events.
+// Converts `sokol_app` events into engine events.
 class SokolEvents final {
   public:
     // Returns nothing for events the engine does not use.

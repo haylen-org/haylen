@@ -8,7 +8,7 @@
 namespace haylen::math {
 
 struct Color {
-    // Hue, saturation and value of a color, with the hue in turns like fromHsv.
+    // Hue, saturation and value of a color, with the hue in turns like `fromHsv`.
     struct Hsv {
         float hue = 0.0F;
         float saturation = 0.0F;
@@ -39,7 +39,7 @@ struct Color {
         return fromRgba8(static_cast<std::uint8_t>((rrggbbaa >> 24U) & 0xFFU), static_cast<std::uint8_t>((rrggbbaa >> 16U) & 0xFFU), static_cast<std::uint8_t>((rrggbbaa >> 8U) & 0xFFU), static_cast<std::uint8_t>(rrggbbaa & 0xFFU));
     }
 
-    // Parses "#RRGGBB" and "#AARRGGBB", the notations used by Tiled, with or without the hash.
+    // Parses `#RRGGBB` and `#AARRGGBB`, the notations used by Tiled, with or without the hash.
     [[nodiscard]] static std::optional<Color> parse(std::string_view text) noexcept;
     // Hue is measured in turns, so 1/3 is green and values outside 0 to 1 wrap around.
     [[nodiscard]] static Color fromHsv(float hue, float saturation, float value, float alpha = 1.0F) noexcept;
@@ -70,7 +70,7 @@ struct Color {
     // Packs the color as RGBA8 bytes in memory order, the layout of UBYTE4N vertex attributes.
     [[nodiscard]] std::uint32_t toRgba8() const noexcept;
 
-    // Formats the color as "#AARRGGBB", which parse reads back.
+    // Formats the color as `#AARRGGBB`, which `parse` reads back.
     [[nodiscard]] std::string toHex() const;
 };
 

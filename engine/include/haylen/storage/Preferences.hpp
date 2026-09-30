@@ -10,7 +10,7 @@ namespace haylen::storage {
 
 class UserStorage;
 
-// App preferences kept as one JSON object in user storage. Keys are dotted paths into nested objects, such as audio.volume.music, and changes reach the disk on save. Setting a key to null removes it.
+// App preferences kept as one JSON object in user storage. Keys are dotted paths into nested objects, such as `audio.volume.music`, and changes reach the disk on save. Setting a key to `null` removes it.
 class Preferences final {
   public:
     explicit Preferences(UserStorage& storage, std::string file = "preferences.json");

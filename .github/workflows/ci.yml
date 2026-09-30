@@ -49,7 +49,7 @@ jobs:
           key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
       - name: Test
         run: python make.py test --config Debug
-      - name: Build the SDK and an app that finds it with find_package
+      - name: Build the SDK and an app that finds it with "find_package"
         run: python make.py embedding --mode package --config Release
 
   coverage:
@@ -129,7 +129,7 @@ jobs:
         with:
           path: .cache/cpm
           key: cpm-apple-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
-      - name: Build Haylen.xcframework
+      - name: Build "Haylen.xcframework"
         run: python make.py engine --platform apple
       - uses: actions/upload-artifact@v7
         with:

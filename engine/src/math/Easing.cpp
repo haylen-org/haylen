@@ -207,7 +207,7 @@ float Easing::steps(float t, int count, StepPosition position) noexcept {
     return std::clamp(static_cast<float>(step) / static_cast<float>(jumps), 0.0F, 1.0F);
 }
 
-// Finds the curve parameter whose x is t with Newton steps, which converge fast on well-behaved curves, and falls back to bisection when the slope flattens.
+// Finds the curve parameter whose x is `t` with Newton steps, which converge fast on well-behaved curves, and falls back to bisection when the slope flattens.
 float Easing::cubicBezier(float t, float x1, float y1, float x2, float y2) noexcept {
     t = Math::saturate(t);
     x1 = Math::saturate(x1);

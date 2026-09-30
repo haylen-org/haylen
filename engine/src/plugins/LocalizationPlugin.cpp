@@ -17,7 +17,7 @@ std::vector<std::string> LocalizationPlugin::loadFolder(const io::Package& packa
         }
         const core::Json table = core::Json::parse(package.readAssetText(file), nullptr, false);
         if (table.is_discarded()) {
-            throw std::runtime_error("The localization file " + file + " is not valid JSON.");
+            throw std::runtime_error("The localization file \"" + file + "\" is not valid JSON.");
         }
         const std::string language = path.stem().string();
         catalog.add(language, table);

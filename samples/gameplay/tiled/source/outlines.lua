@@ -52,7 +52,7 @@ local function tileAnchor(map, object)
     end
 end
 
--- Returns the local points of an object and whether they close, or nil for points.
+-- Returns the local points of an object and whether they close, or `nil` for points.
 local function localPoints(map, object)
     local shape, width, height = object.shape, object.width, object.height
     if shape == 'rectangle' or shape == 'text' then
@@ -74,7 +74,7 @@ local function localPoints(map, object)
     end
 end
 
--- Returns the world points of the object, whether they close, and nothing for points. `dx` and `dy` add the offset of its layers.
+-- Returns the world points of the object, whether they close, and nothing for points. The arguments `dx` and `dy` add the offset of its layers.
 function outlines.of(map, object, dx, dy)
     local points, closed = localPoints(map, object)
     if points == nil then

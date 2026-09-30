@@ -36,7 +36,7 @@ class Image:
             self.pixels[start : start + source.width * 4] = source.pixels[row * source.width * 4 : (row + 1) * source.width * 4]
 
     def opaque_runs(self, axis: str) -> list[tuple[int, int]]:
-        """Returns the [start, end) spans of columns or rows that hold at least one visible pixel."""
+        """Returns the `[start, end)` spans of columns or rows that hold at least one visible pixel."""
         count = self.width if axis == "x" else self.height
         other = self.height if axis == "x" else self.width
         filled = []

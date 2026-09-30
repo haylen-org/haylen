@@ -13,7 +13,7 @@ struct TextValue {
     std::string key;
     core::Json arguments = core::Json::object();
 
-    // Reads text, a number or a translation such as {key = 'menu.play'}, naming the property as context in errors.
+    // Reads text, a number or a translation such as `{key = 'menu.play'}`, naming the property as `context` in errors.
     [[nodiscard]] static TextValue fromJson(const core::Json& value, std::string_view context);
 
     [[nodiscard]] bool isEmpty() const noexcept {

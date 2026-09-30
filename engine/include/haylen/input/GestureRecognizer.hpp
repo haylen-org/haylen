@@ -33,7 +33,7 @@ class GestureRecognizer final {
 
     void update(const Input& input, float deltaSeconds);
 
-    // Drops every finger, the mouse press and the pinch in progress without recognizing them, which the engine does together with Input::releaseAll when the app loses focus or leaves the foreground.
+    // Drops every finger, the mouse press and the pinch in progress without recognizing them, which the engine does together with `Input::releaseAll` when the app loses focus or leaves the foreground.
     void cancel() noexcept;
 
     [[nodiscard]] std::span<const Gesture> getGestures() const noexcept {

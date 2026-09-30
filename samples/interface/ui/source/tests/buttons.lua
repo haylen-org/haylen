@@ -11,7 +11,7 @@ Buttons.focus = 'default'
 
 function Buttons:pressed(name)
     return function()
-        self:setStatus('pressed ' .. name)
+        self:setStatus('Pressed ' .. name)
     end
 end
 
@@ -20,29 +20,29 @@ function Buttons:content()
         ui.column{grow = 1, gap = 24,
             sample.section('button variants', {
                 ui.row{gap = 16,
-                    ui.button{id = 'default', text = 'Default', onClick = self:pressed('default')},
-                    ui.button{text = 'Primary', variant = 'primary', onClick = self:pressed('primary')},
-                    ui.button{text = 'Destructive', variant = 'destructive', onClick = self:pressed('destructive')},
+                    ui.button{id = 'default', text = 'Default', onClick = self:pressed('"default"')},
+                    ui.button{text = 'Primary', variant = 'primary', onClick = self:pressed('"primary"')},
+                    ui.button{text = 'Destructive', variant = 'destructive', onClick = self:pressed('"destructive"')},
                 },
                 ui.row{gap = 16,
                     ui.button{text = 'With icon', icon = 'icons/sword.png', onClick = self:pressed('the button with an icon')},
-                    ui.button{text = 'Link', variant = 'link', onClick = self:pressed('link')},
+                    ui.button{text = 'Link', variant = 'link', onClick = self:pressed('"link"')},
                     ui.button{text = 'Disabled', enabled = false},
                 },
                 ui.row{gap = 8,
                     ui.button{id = 'hammer', icon = 'icons/hammer.png', variant = 'toolbar', checked = true, tooltip = 'Build', onClick = function(event)
                         local checked = not event.document:get('hammer').checked
                         event.document:set('hammer', {checked = checked})
-                        self:setStatus('hammer ' .. (checked and 'checked' or 'unchecked'))
+                        self:setStatus('Hammer ' .. (checked and 'checked' or 'unchecked'))
                     end},
-                    ui.button{icon = 'icons/gear.png', text = 'Toolbar', variant = 'toolbar', onClick = self:pressed('toolbar')},
+                    ui.button{icon = 'icons/gear.png', text = 'Toolbar', variant = 'toolbar', onClick = self:pressed('"toolbar"')},
                     ui.button{id = 'favorite', icon = 'icons/star.png', variant = 'icon', tooltip = 'Favorite', onClick = self:pressed('the icon button')},
                     ui.button{icon = 'icons/heart.png', variant = 'icon', tooltip = 'Like', onClick = self:pressed('the heart icon button')},
                 },
             }),
             sample.section('menuButton', {
                 ui.menuButton{id = 'file', text = 'File', icon = 'icons/key.png', items = {{id = 'save', text = 'Save'}, {id = 'load', text = 'Load'}, {id = 'cloud', text = 'Cloud sync', enabled = false}}, onSelect = function(event)
-                    self:setStatus('menu picked ' .. event.item)
+                    self:setStatus('The menu picked "' .. event.item .. '"')
                 end},
             }),
         },

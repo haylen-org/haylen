@@ -4,7 +4,7 @@
 
 namespace haylen::plugins {
 
-// Installs haylen.physics2d, the Lua side of the Box2D worlds.
+// Installs `haylen.physics2d`, the Lua side of the Box2D worlds.
 class Physics2DPlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {

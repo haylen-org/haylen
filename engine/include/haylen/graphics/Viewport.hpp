@@ -23,11 +23,11 @@ class Viewport final {
         Stretch,
         // Keeps the design area whole and centered, and extends the visible area to fill the screen.
         Expand,
-        // Like Fit, but only with integer scale factors, or integer divisors on framebuffers smaller than the design area.
+        // Like `Fit`, but only with integer scale factors, or integer divisors on framebuffers smaller than the design area.
         PixelPerfect,
     };
 
-    // Resolves the names "fit", "fill", "stretch", "expand" and "pixelPerfect".
+    // Resolves the names `fit`, `fill`, `stretch`, `expand` and `pixelPerfect`.
     [[nodiscard]] static std::optional<ScalingPolicy> scalingPolicyFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view scalingPolicyName(ScalingPolicy value) noexcept;
 
@@ -48,7 +48,7 @@ class Viewport final {
         return pixelRect;
     }
 
-    // Region of design space that is visible on screen. It can exceed the design size with Expand.
+    // Region of design space that is visible on screen. It can exceed the design size with `Expand`.
     [[nodiscard]] const math::Rect& getVisibleRect() const noexcept {
         return visibleRect;
     }

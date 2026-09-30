@@ -1,4 +1,4 @@
--- Remapping: a key capture for the keyboard or mouse binding and one for the gamepad binding of every gameplay action, which defines the action again and keeps the whole map in the preferences, so main.lua applies it on the next launch.
+-- Remapping: a key capture for the keyboard or mouse binding and one for the gamepad binding of every gameplay action, which defines the action again and keeps the whole map in the preferences, so `main.lua` applies it on the next launch.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -46,7 +46,7 @@ function Remap:enter()
 end
 
 function Remap:savedText()
-    return preferences.has('input.actions') and 'Saved in preferences.json under input.actions' or 'Using the defaults, nothing saved yet'
+    return preferences.has('input.actions') and 'Saved in "preferences.json" under "input.actions"' or 'Using the defaults, nothing saved yet'
 end
 
 -- Replaces every binding of the device group in the list with the new one, keeping the bindings of other devices, sticks and touch controls.

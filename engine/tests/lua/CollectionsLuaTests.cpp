@@ -55,8 +55,8 @@ TEST(CollectionsLuaTest, PoolsRecycleObjects) {
     EXPECT_EQ(fixture.lua("local open = collections.newPool({create = function() return {} end}) open:prewarm(5) return open.idle .. ' ' .. open.capacity"), "5 0");
 
     EXPECT_NE(fixture.lua("collections.newPool({})").find("create must be a function"), std::string::npos);
-    EXPECT_NE(fixture.lua("collections.newPool({create = function() return {} end, size = 3})").find("Unknown option 'size'"), std::string::npos);
-    EXPECT_NE(fixture.lua("collections.newPool({create = function() end}):acquire()").find("returned nil"), std::string::npos);
+    EXPECT_NE(fixture.lua("collections.newPool({create = function() return {} end, size = 3})").find("Unknown option \"size\""), std::string::npos);
+    EXPECT_NE(fixture.lua("collections.newPool({create = function() end}):acquire()").find("returned \"nil\""), std::string::npos);
 }
 
 TEST(CollectionsLuaTest, RingBuffersKeepTheNewestValues) {

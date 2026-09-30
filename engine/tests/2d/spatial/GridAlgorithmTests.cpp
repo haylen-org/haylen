@@ -328,7 +328,7 @@ TEST(GridAlgorithmsLuaTest, RunsGridAlgorithmsFromLua) {
     EXPECT_NE(fixture.lua("sets:find(0)").find("count from 1"), std::string::npos);
     EXPECT_EQ(fixture.lua("sets:reset(3) return sets.size .. ' ' .. sets.setCount .. ' ' .. tostring(sets:connected(1, 2))"), "3 3 false");
     EXPECT_NE(fixture.lua("grid:set(9, 0, 1)").find("outside the cell grid"), std::string::npos);
-    EXPECT_NE(fixture.lua("spatial2d.floodFill(grid, 0, 0, {fill = 2})").find("Unknown option 'fill'"), std::string::npos);
+    EXPECT_NE(fixture.lua("spatial2d.floodFill(grid, 0, 0, {fill = 2})").find("Unknown option \"fill\""), std::string::npos);
     EXPECT_NE(fixture.lua("spatial2d.newCellGrid(0, 3)").find("positive size"), std::string::npos);
 }
 

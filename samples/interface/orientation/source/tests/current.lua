@@ -1,4 +1,4 @@
--- Orientation and its event: window.orientation reads how the screen is turned, and windowOrientationChanged announces every turn, next to windowResized and windowSafeAreaChanged.
+-- Orientation and its event: `window.orientation` reads how the screen is turned, and `windowOrientationChanged` announces every turn, next to `windowResized` and `windowSafeAreaChanged`.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local tween = require('haylen.tween')
@@ -10,7 +10,7 @@ local sample = require('sample')
 
 local Current = haylen.class('Current', sample.Test)
 
-Current.hints = 'Turn a phone or a tablet, or resize a browser on one. Desktop windows, Mac Catalyst and TVs always count as landscape, so resizing a desktop window reports windowResized but never a turn.'
+Current.hints = 'Turn a phone or a tablet, or resize a browser on one. Desktop windows, Mac Catalyst and TVs always count as landscape, so resizing a desktop window reports "windowResized" but never a turn.'
 
 local kLogSize = 8
 

@@ -16,7 +16,7 @@ namespace haylen::net {
 
 class WebSocketTransport;
 
-// A WebSocket client connection to a ws:// or wss:// address. It connects in the background, and its signals fire on the thread that pumps it. After the close event it drops its listeners.
+// A WebSocket client connection to a `ws://` or `wss://` address. It connects in the background, and its signals fire on the thread that pumps it. After the close event it drops its listeners.
 // Native builds run the connection on a thread of its own and check certificates against the Windows root store or, elsewhere, the trust store Varn finds, while the browser build uses the WebSocket of the page. Reconnection works the same way on both.
 class WebSocket final {
   public:
@@ -57,7 +57,7 @@ class WebSocket final {
     WebSocket(const WebSocket&) = delete;
     WebSocket& operator=(const WebSocket&) = delete;
 
-    // Returns "connecting", "open", "closing", "closed" or "reconnecting".
+    // Returns `connecting`, `open`, `closing`, `closed` or `reconnecting`.
     [[nodiscard]] static std::string_view stateName(State value) noexcept;
 
     // Returns the wait before the attempt, which counts from one, before jitter shortens it.
@@ -66,7 +66,7 @@ class WebSocket final {
     void send(std::string_view text);
     void sendBinary(std::span<const std::uint8_t> bytes);
 
-    // Sends a ping frame with a payload of at most 125 bytes, which the server answers with a pong that ponged reports. Browsers cannot send ping frames, so the browser build throws std::logic_error.
+    // Sends a ping frame with a payload of at most 125 bytes, which the server answers with a pong that `ponged` reports. Browsers cannot send ping frames, so the browser build throws `std::logic_error`.
     void ping(std::string_view payload = {});
 
     // Starts the closing handshake, or ends a wait for the next attempt. The code is 1000 or between 3000 and 4999 and the reason fits in 123 bytes, as browsers require.

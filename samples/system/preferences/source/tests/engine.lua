@@ -1,4 +1,4 @@
--- Engine settings: preferences.capture stores the volume and mute of every audio bus, fullscreen and the action map under fixed keys, and preferences.apply puts stored values back into the engine, so a settings screen changes the engine directly and saves once.
+-- Engine settings: `preferences.capture` stores the volume and mute of every audio bus, fullscreen and the action map under fixed keys, and `preferences.apply` puts stored values back into the engine, so a settings screen changes the engine directly and saves once.
 local assets = require('haylen.assets')
 local audio = require('haylen.audio')
 local haylen = require('haylen')
@@ -63,12 +63,12 @@ function Engine:content()
                 ui.button{id = 'capture', text = 'Capture and save', variant = 'primary', align = 'stretch', onClick = function()
                     preferences.capture()
                     preferences.save()
-                    self:report('preferences.capture() and preferences.save() stored the engine state')
+                    self:report('The functions "preferences.capture()" and "preferences.save()" stored the engine state')
                 end},
                 ui.button{id = 'apply', text = 'Apply', align = 'stretch', onClick = function()
                     local ok, failure = pcall(preferences.apply)
                     self:sync()
-                    self:report(ok and 'preferences.apply() put the stored state back' or 'preferences.apply() raised: ' .. failure)
+                    self:report(ok and 'The function "preferences.apply()" put the stored state back' or 'The function "preferences.apply()" raised: ' .. failure)
                 end},
                 ui.button{id = 'mix', text = 'Mix it up', align = 'stretch', onClick = function()
                     self:mix()
@@ -77,7 +77,7 @@ function Engine:content()
                     preferences.load()
                     preferences.apply()
                     self:sync()
-                    self:report('preferences.load() and preferences.apply() read the file again')
+                    self:report('The functions "preferences.load()" and "preferences.apply()" read the file again')
                 end},
             },
             ui.label{id = 'result', text = 'Nothing captured in this visit yet.', color = 'accentText'},
@@ -124,7 +124,7 @@ function Engine:rebind(binding)
     local jump = input.actionDefinition('jump')
     jump.bindings[1] = binding
     input.defineAction(jump)
-    self:report('Jump is now ' .. binding .. '. Capture and save to keep it.')
+    self:report('Jump is now "' .. binding .. '". Capture and save to keep it.')
 end
 
 -- Changes the engine without touching the preferences, so Apply has something to undo.
@@ -138,7 +138,7 @@ function Engine:mix()
     jump.bindings[1] = kKeys[math.random(#kKeys)]
     input.defineAction(jump)
     self:sync()
-    self:report('Changed the volumes, the mute of ' .. bus .. ' and the jump key without saving.')
+    self:report('Changed the volumes, the mute of "' .. bus .. '" and the jump key without saving.')
 end
 
 -- Moves every control to the state of the engine.

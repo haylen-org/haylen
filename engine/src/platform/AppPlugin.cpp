@@ -11,11 +11,11 @@ AppPlugin AppPlugin::read(const io::Package& package, std::string_view id, const
     const std::string path = io::Path::plugin(id, io::Path::kPluginManifestFile);
     const core::Json manifest = core::Json::parse(package.readText(path), nullptr, false);
     if (!manifest.is_object()) {
-        throw std::runtime_error("The " + path + " of the package is not a JSON object.");
+        throw std::runtime_error("The file \"" + path + "\" of the package is not a JSON object.");
     }
     const auto version = manifest.find("version");
     if (version == manifest.end() || !version->is_string()) {
-        throw std::runtime_error("The " + path + " of the package has no version.");
+        throw std::runtime_error("The file \"" + path + "\" of the package has no version.");
     }
 
     AppPlugin plugin{.id = std::string(id), .version = version->get<std::string>(), .config = values};

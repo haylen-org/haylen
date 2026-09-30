@@ -33,13 +33,13 @@ class TextSession final {
     // Starts a frame over the visible area, whose origin is the origin of UI coordinates, and moves the UI toward the offset that keeps the focused field above the keyboard.
     void beginFrame(const graphics::Viewport& frameViewport, float deltaSeconds);
 
-    // Declares a text field drawn this frame before its InputText call, whose callback synchronizes it.
+    // Declares a text field drawn this frame before its `InputText` call, whose callback synchronizes it.
     void addField(ImGuiID id, const math::Rect& bounds, const platform::TextInput::Options& options);
 
     // Applies an edit of the native field and publishes what ImGui changed, called from the ImGui callback of the focused field.
     void synchronize(ImGuiInputTextCallbackData& data);
 
-    // Records where the focused field shows its caret after its InputText call.
+    // Records where the focused field shows its caret after its `InputText` call.
     void setCaret(const math::Rect& caret) noexcept {
         caretRect = caret;
     }

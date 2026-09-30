@@ -78,7 +78,7 @@ function SdfEffects:render()
     self.allText:draw(right, middle + 30)
 
     local bottom = middle + 30 + kSize * 1.5
-    sample.caption('a thin outline keeps small text readable over a busy picture', left, bottom)
+    sample.caption('A thin outline keeps small text readable over a busy picture', left, bottom)
     graphics2d.drawText(font, 'Wood 12   Stone 4   Night 3', left, bottom + 30, {size = 40, outlineWidth = 3, outlineColor = '#FF000000'})
     graphics2d.drawText(font, 'Wood 12   Stone 4   Night 3', right, bottom + 30, {size = 40})
 end

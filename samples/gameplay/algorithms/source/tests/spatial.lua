@@ -1,4 +1,4 @@
--- The four spatial structures of spatial2d holding hundreds of moving boxes and answering area, circle, point, ray and nearest queries under the pointer.
+-- The four spatial structures of `spatial2d` holding hundreds of moving boxes and answering area, circle, point, ray and nearest queries under the pointer.
 local haylen = require('haylen')
 local graphics2d = require('haylen.graphics2d')
 local input = require('haylen.input')

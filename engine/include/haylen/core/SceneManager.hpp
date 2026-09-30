@@ -59,14 +59,14 @@ class SceneManager final {
     using Completion = std::function<void(const Result& result)>;
     using ErrorHandler = std::function<void(const lua::Error& error)>;
 
-    // The options of push and replace.
+    // The options of `push` and `replace`.
     struct Options {
         Transition transition;
 
         // Reaches the load and enter hooks of the next scene.
         std::any params;
 
-        // Shows while the next scene loads, once the load took longer than loadingDelay, and stays for at least minimumLoadingTime once it appears. Without a view the covered frame of the transition shows, or the current scenes.
+        // Shows while the next scene loads, once the load took longer than `loadingDelay`, and stays for at least `minimumLoadingTime` once it appears. Without a view the covered frame of the transition shows, or the current scenes.
         std::shared_ptr<LoadingView> loading;
         float loadingDelay = 0.0F;
         float minimumLoadingTime = 0.0F;
@@ -89,7 +89,7 @@ class SceneManager final {
         const Scene* to = nullptr;
     };
 
-    // What sceneLoadFailed carries.
+    // What `sceneLoadFailed` carries.
     struct LoadFailure {
         const Scene* scene = nullptr;
         const lua::Error* error = nullptr;
@@ -109,7 +109,7 @@ class SceneManager final {
     SceneManager(const SceneManager&) = delete;
     SceneManager& operator=(const SceneManager&) = delete;
 
-    // Brings a scene that is not on the stack. A preloaded scene keeps the params of its preload, and a scene that unloaded may come again.
+    // Brings a scene that is not on the stack. A preloaded scene keeps the `params` of its preload, and a scene that unloaded may come again.
     void push(std::shared_ptr<Scene> scene);
     void push(std::shared_ptr<Scene> scene, Options options);
     void replace(std::shared_ptr<Scene> scene);
@@ -117,7 +117,7 @@ class SceneManager final {
     void pop();
     void pop(Transition transition, Completion completion = {});
 
-    // Pops scenes until level scenes remain, from the top down, and resumes the scene left on top. A stack with level scenes or fewer stays as it is.
+    // Pops scenes until `level` scenes remain, from the top down, and resumes the scene left on top. A stack with `level` scenes or fewer stays as it is.
     void popTo(std::size_t level);
     void popTo(std::size_t level, Transition transition, Completion completion = {});
     void popToRoot();
@@ -163,7 +163,7 @@ class SceneManager final {
     // Returns how much of the loading view still shows, which falls from 1 to 0 while it fades out.
     [[nodiscard]] float getLoadingViewOpacity() const noexcept;
 
-    // Returns the mode of the scene at the index with Inherit resolved against the scenes below it.
+    // Returns the mode of the scene at the index with `Inherit` resolved against the scenes below it.
     [[nodiscard]] ProcessMode getProcessMode(std::size_t index) const;
 
     // Tells every scene that the new pause state stops or starts, from the bottom of the stack up. The engine calls it when the game pause changes.

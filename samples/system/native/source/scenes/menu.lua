@@ -33,7 +33,7 @@ function Menu:enter()
     self.document = ui.mount(ui.column{
         padding = {kPadding, 48},
         gap = kGap,
-        ui.pageHeader{id = 'header', title = haylen.config.name, caption = 'The test library of the engine called from Lua through Varn ffi, its callbacks and handlers, a static library on iOS and tvOS, and the handlers of each platform, with a pass or fail list per test.'},
+        ui.pageHeader{id = 'header', title = haylen.config.name, caption = 'The test library of the engine called from Lua through Varn "ffi", its callbacks and handlers, a static library on iOS and tvOS, and the handlers of each platform, with a pass or fail list per test.'},
         ui.scroll{id = 'list', height = self:listHeight(), ui.column{gap = 12, padding = {0, 24, 0, 0}, children = rows}},
     }, {owner = self})
     self.document:command(self.selected, 'focus')

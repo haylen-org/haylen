@@ -43,7 +43,7 @@ class WindowPlacementTest : public MonitorLayoutTest {};
 
 class WindowTest : public MonitorLayoutTest {};
 
-// Records what the renderer asks of sokol_gfx while a frame reaches the swapchain: the alpha it clears to and the channels its pipelines write.
+// Records what the renderer asks of `sokol_gfx` while a frame reaches the swapchain: the alpha it clears to and the channels its pipelines write.
 class SwapchainTrace final {
   public:
     SwapchainTrace() {
@@ -112,7 +112,7 @@ TEST_F(WindowConfigTest, ReadsTheDesktopOptionsOfAppJson) {
     EXPECT_EQ(config.window.position->resolve(twoMonitors(), {400.0F, 100.0F}), (math::Rect{0.0F, 932.0F, 1920.0F, 100.0F}));
     EXPECT_EQ(core::AppConfig::fromJson(config.toJson()).toJson(), config.toJson());
 
-    // A transparent window clears to transparent unless clearColor says otherwise, and so does its splash screen.
+    // A transparent window clears to transparent unless `clearColor` says otherwise, and so does its splash screen.
     EXPECT_EQ(config.clearColor, math::Color::transparent());
     EXPECT_EQ(config.splash.background, math::Color::transparent());
     EXPECT_EQ(core::AppConfig::fromJson(core::Json::parse(R"({"window": {"transparent": true}, "clearColor": "#102030"})")).clearColor, math::Color::fromHex(0x102030FFU));

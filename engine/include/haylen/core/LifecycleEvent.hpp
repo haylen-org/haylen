@@ -4,7 +4,7 @@
 
 namespace haylen::core {
 
-// The names of the lifecycle events that the engine publishes on its event bus, shared by C++ and Lua. Payloads are described in docs/lifecycle.md.
+// The names of the lifecycle events that the engine publishes on its event bus, shared by C++ and Lua. Payloads are described in `docs/lifecycle.md`.
 class LifecycleEvent final {
   public:
     static constexpr std::string_view kAppStarted = "appStarted";

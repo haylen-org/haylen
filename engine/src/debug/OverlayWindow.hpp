@@ -25,7 +25,7 @@ class Profiler;
 // Draws the full debug overlay window with ImGui: frame times, profiler scopes, rendering, memory, GPU pools, counters, object counts, signals and event listeners, monitors and the recent log.
 class OverlayWindow final {
   public:
-    // Draws the window and returns false once the player closed it.
+    // Draws the window and returns `false` once the player closed it.
     static bool draw(core::Engine& engine, const Stats& stats, const std::vector<std::shared_ptr<Monitor>>& monitors, const std::vector<LogLine>& log);
 
   private:

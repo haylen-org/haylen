@@ -528,11 +528,11 @@ TEST_F(ActionMapTest, RejectsInvalidDocuments) {
         return std::string();
     };
     // clang-format on
-    EXPECT_EQ(message(R"({"actions": [{"name": "jump", "type": "button", "bindings": ["key:space"], "positive": ["key:w"]}]})"), "The button action jump does not read positive.");
-    EXPECT_EQ(message(R"({"actions": [{"name": "zoom", "type": "axis", "bindings": ["key:q"]}]})"), "The axis action zoom does not read bindings.");
-    EXPECT_EQ(message(R"({"actions": [{"name": "move", "type": "vector", "negative": ["key:s"]}]})"), "The vector action move does not read negative.");
-    EXPECT_EQ(message(R"({"actions": [{"name": "move", "type": "vector", "bindings": ["stick:left", "key:w"]}]})"), "The vector action move takes only sticks in bindings, not key:w.");
-    EXPECT_EQ(message(R"({"actions": [{"name": "jump", "type": "button"}, {"name": "jump", "type": "axis"}]})"), "The action name 'jump' is used by more than one action.");
+    EXPECT_EQ(message(R"({"actions": [{"name": "jump", "type": "button", "bindings": ["key:space"], "positive": ["key:w"]}]})"), "The button action \"jump\" does not read \"positive\".");
+    EXPECT_EQ(message(R"({"actions": [{"name": "zoom", "type": "axis", "bindings": ["key:q"]}]})"), "The axis action \"zoom\" does not read \"bindings\".");
+    EXPECT_EQ(message(R"({"actions": [{"name": "move", "type": "vector", "negative": ["key:s"]}]})"), "The vector action \"move\" does not read \"negative\".");
+    EXPECT_EQ(message(R"({"actions": [{"name": "move", "type": "vector", "bindings": ["stick:left", "key:w"]}]})"), "The vector action \"move\" takes only sticks in \"bindings\", not \"key:w\".");
+    EXPECT_EQ(message(R"({"actions": [{"name": "jump", "type": "button"}, {"name": "jump", "type": "axis"}]})"), "The action name \"jump\" is used by more than one action.");
     EXPECT_THROW(actions.define({.name = "fire", .type = ActionMap::Action::Type::Button, .up = {*ActionMap::Binding::parse("key:w")}}), std::invalid_argument);
     EXPECT_EQ(actions.findAction("fire"), nullptr);
 }

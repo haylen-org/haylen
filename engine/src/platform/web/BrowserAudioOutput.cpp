@@ -43,7 +43,7 @@ void BrowserAudioOutput::render(ma_device* device, float* samples, ma_uint32 fra
     ma_device_handle_backend_data_callback(device, samples, nullptr, frames);
 }
 
-// The page creates its AudioContext at the sample rate of the mixer, and the browser converts it to the rate of the hardware.
+// The page creates its `AudioContext` at the sample rate of the mixer, and the browser converts it to the rate of the hardware.
 ma_result BrowserAudioOutput::initDevice(ma_device* device, const ma_device_config* config, ma_device_descriptor* playback, ma_device_descriptor*) {
     if (config->deviceType != ma_device_type_playback) {
         return MA_DEVICE_TYPE_NOT_SUPPORTED;
@@ -78,7 +78,7 @@ ma_result BrowserAudioOutput::stopDevice(ma_device* device) {
 
 } // namespace haylen::audio
 
-// Entry point for the audio output of the page, called through Module.haylen.audio in platform/web/haylen-runtime.js.
+// Entry point for the audio output of the page, called through `Module.haylen.audio` in `platform/web/haylen-runtime.js`.
 extern "C" {
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_audio_render(ma_device* device, float* samples, int frames) {

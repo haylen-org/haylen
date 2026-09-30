@@ -24,7 +24,7 @@ float Animation2DLua::readFramesPerSecond(lua_State* L, int index) {
     return framesPerSecond;
 }
 
-// Cuts a grid animation with fromGrid(texture, {frameWidth, frameHeight, cells = {1, 2, 3}, framesPerSecond, loop, margin = {x, y}, spacing = {x, y}}). Cells count from one, left to right and top to bottom.
+// Cuts a grid animation with `fromGrid(texture, {frameWidth, frameHeight, cells = {1, 2, 3}, framesPerSecond, loop, margin = {x, y}, spacing = {x, y}})`. Cells count from one, left to right and top to bottom.
 int Animation2DLua::fromGrid(lua_State* L) {
     graphics::Texture texture = lua::Stack::read<graphics::Texture>(L, 1);
     luaL_checktype(L, 2, LUA_TTABLE);
@@ -46,7 +46,7 @@ int Animation2DLua::fromGrid(lua_State* L) {
     return 1;
 }
 
-// Builds an animation from source rectangles with fromFrames(texture, {rect, ...}, {framesPerSecond, loop}).
+// Builds an animation from source rectangles with `fromFrames(texture, {rect, ...}, {framesPerSecond, loop})`.
 int Animation2DLua::fromFrames(lua_State* L) {
     Animation animation{.texture = lua::Stack::read<graphics::Texture>(L, 1)};
     const std::vector<math::Rect> sources = lua::Stack::read<std::vector<math::Rect>>(L, 2);
@@ -274,7 +274,7 @@ int Animation2DLua::atlasHasSlice(lua_State* L) {
     return 1;
 }
 
-// Describes a frame with frame(name) as a table with its source, trim offset, original size and duration.
+// Describes a frame with `frame(name)` as a table with its source, trim offset, original size and duration.
 int Animation2DLua::atlasFrame(lua_State* L) {
     const SpriteFrame& frame = lua::Userdata::check<SpriteAtlas>(L, 1).getFrame(lua::Stack::read<std::string_view>(L, 2));
     lua_createtable(L, 0, 4);
@@ -304,7 +304,7 @@ int Animation2DLua::atlasSource(lua_State* L) {
     return 1;
 }
 
-// Shows one frame on a sprite with apply(sprite, name), keeping the sprite pivot at the center of the untrimmed frame.
+// Shows one frame on a sprite with `apply(sprite, name)`, keeping the sprite pivot at the center of the untrimmed frame.
 int Animation2DLua::atlasApply(lua_State* L) {
     const SpriteAtlas& atlas = lua::Userdata::check<SpriteAtlas>(L, 1);
     graphics2d::Sprite& sprite = lua::Userdata::check<graphics2d::Sprite>(L, 2);

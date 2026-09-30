@@ -36,13 +36,13 @@ class Timeline final : public Tween {
     Timeline& joinCall(std::function<void()> call);
     Timeline& insertCall(float at, std::function<void()> call);
 
-    // Names a time, the end of the timeline by default, for insert and seekLabel.
+    // Names a time, the end of the timeline by default, for `insert` and `seekLabel`.
     Timeline& addLabel(std::string name);
     Timeline& addLabel(std::string name, float at);
     [[nodiscard]] float getLabelTime(std::string_view name) const;
     void seekLabel(std::string_view name);
 
-    // Appends the tweens as one step, each one starting each seconds after the previous one in the order the origin gives.
+    // Appends the tweens as one step, each one starting `each` seconds after the previous one in the order the origin gives.
     Timeline& stagger(std::vector<std::shared_ptr<Tween>> tweens, float each, StaggerOrigin origin = StaggerOrigin::Start);
 
     [[nodiscard]] float getDuration() const noexcept override {

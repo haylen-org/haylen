@@ -27,7 +27,7 @@ local kModes = {
 }
 local kRay = {layer = 30}
 
--- Each mode casts and returns what render draws: rays with their hits, extra points and a summary line.
+-- Each mode casts and returns what `render` draws: rays with their hits, extra points and a summary line.
 local casts = {}
 
 function Raycasts:enter()

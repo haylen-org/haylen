@@ -1,6 +1,6 @@
 # Haylen Tween
 
-A Lua sample with one scene per feature of [haylen.tween](../../../docs/lua-api/tween.md). The menu lists the tests, each test opens as its own scene with a Back button, the code it runs under its stage and the live values of its tweens, and Escape, the east gamepad button or the Menu button of a TV remote return to the menu.
+A Lua sample with one scene per feature of [`haylen.tween`](../../../docs/lua-api/tween.md). The menu lists the tests, each test opens as its own scene with a Back button, the code it runs under its stage and the live values of its tweens, and Escape, the east gamepad button or the Menu button of a TV remote return to the menu.
 
 | Test | What it shows |
 | --- | --- |
@@ -11,7 +11,7 @@ A Lua sample with one scene per feature of [haylen.tween](../../../docs/lua-api/
 | Counters and typewriter | A score that counts in whole numbers next to a plain number, and dialog lines revealed one character at a time. |
 | Easing gallery | Every Penner family in its in, out and in-out forms, back and elastic with parameters, steps, cubic Bézier curves and curves by points. |
 | Custom easing | Curves written as Lua functions, plotted and driving balls. |
-| Timelines | A cutscene built with append, join, a pause, callbacks, a label and inserts, with a log of its steps and seeking to the label. |
+| Timelines | A cutscene built with `append`, `join`, a pause, callbacks, a label and inserts, with a log of its steps and seeking to the label. |
 | Nested timelines | Three child timelines inside a parent that yoyos forever, with the progress of each one. |
 | Repeat modes | Restart, yoyo and incremental loops with a delay between them and a loop counter. |
 | Playback controls | Play, pause, resume, restart, reverse, complete, kill and a seek slider on one tween, with its state and its callbacks counted. |

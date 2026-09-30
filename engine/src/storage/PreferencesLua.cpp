@@ -17,7 +17,7 @@ plugins::StoragePlugin& PreferencesLua::getPlugin(lua_State* L) {
     return lua::Runtime::getEngine(L).getPlugin<plugins::StoragePlugin>();
 }
 
-// Reads a preference with get(key[, default]).
+// Reads a preference with `get(key[, default])`.
 int PreferencesLua::get(lua_State* L) {
     const core::Json defaultValue = lua_isnoneornil(L, 2) ? core::Json() : lua::JsonConverter::read(L, 2);
     lua::JsonConverter::push(L, getPlugin(L).getPreferences().get(lua::Stack::read<std::string_view>(L, 1), defaultValue));

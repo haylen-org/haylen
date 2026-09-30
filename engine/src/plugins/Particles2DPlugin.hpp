@@ -4,7 +4,7 @@
 
 namespace haylen::plugins {
 
-// Registers the particle effect asset type for .particles files, whose texture shares the texture cache, and installs the haylen.particles2d module.
+// Registers the particle effect asset type for `.particles` files, whose texture shares the texture cache, and installs the `haylen.particles2d` module.
 class Particles2DPlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {

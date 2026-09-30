@@ -67,7 +67,7 @@ void KdTree::split(Range range) {
 
 void KdTree::requireBuilt() const {
     if (!built) {
-        throw std::logic_error("The k-d tree changed since it was last built, so it needs build before a query.");
+        throw std::logic_error("The k-d tree changed since it was last built, so it needs \"build\" before a query.");
     }
 }
 
@@ -91,7 +91,7 @@ template <typename Visit> void KdTree::visitBox(Range range, math::Vec2 low, mat
     const Entry& entry = tree[middle];
     visit(entry);
 
-    // The lower half holds entries up to the plane of the node and the upper half entries from it, and each circle reaches maxRadius past its center at most.
+    // The lower half holds entries up to the plane of the node and the upper half entries from it, and each circle reaches `maxRadius` past its center at most.
     const float plane = along(entry.point, range.depth);
     if (along(low, range.depth) - maxRadius <= plane) {
         visitBox({.begin = range.begin, .end = middle, .depth = range.depth + 1}, low, high, visit);

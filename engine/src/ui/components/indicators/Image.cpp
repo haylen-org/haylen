@@ -29,7 +29,7 @@ void Image::render(Context& context, const math::Rect& bounds) {
         return;
     }
 
-    // Contain shows the whole picture inside the bounds, and cover fills them and crops what spills over.
+    // The fit `contain` shows the whole picture inside the bounds, and `cover` fills them and crops what spills over.
     const math::Vec2 size = texture.getSize();
     const float factor = fit == Fit::Contain ? std::min(bounds.width / size.x, bounds.height / size.y) : std::max(bounds.width / size.x, bounds.height / size.y);
     const math::Vec2 shown = size * factor;

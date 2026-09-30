@@ -20,7 +20,7 @@ class EffectChain final {
     EffectChain(const EffectChain&) = delete;
     EffectChain& operator=(const EffectChain&) = delete;
 
-    // Throws std::invalid_argument for an empty effect, an effect that already processes another bus or voice, or an effect of another mixer.
+    // Throws `std::invalid_argument` for an empty effect, an effect that already processes another bus or voice, or an effect of another mixer.
     void add(std::shared_ptr<Effect> effect);
 
     // Does nothing for an effect that is not in the chain.

@@ -10,7 +10,7 @@
 
 namespace haylen::plugins {
 
-// Runs long Lua work as coroutines that share a time budget each frame, since the one Lua state cannot run on worker threads. Jobs pause at jobs.checkpoint once the budget is spent and continue on the next frame.
+// Runs long Lua work as coroutines that share a time budget each frame, since the one Lua state cannot run on worker threads. Jobs pause at `jobs.checkpoint` once the budget is spent and continue on the next frame.
 class JobsPlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {
@@ -30,7 +30,7 @@ class JobsPlugin final : public Plugin {
         return jobs.size();
     }
 
-    // Returns whether the job running on L has used up this frame's budget, and throws when L is not a running job.
+    // Returns whether the job running on `L` has used up this frame's budget, and throws when `L` is not a running job.
     [[nodiscard]] bool isOutOfTime(lua_State* L) const;
 
   private:

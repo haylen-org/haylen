@@ -11,12 +11,12 @@
 
 namespace haylen::navigation2d {
 
-// Installs the SteeringAgent and Crowd classes of haylen.navigation2d.
+// Installs the `SteeringAgent` and `Crowd` classes of `haylen.navigation2d`.
 class AgentLua final {
   public:
     static void install(lua_State* L);
 
-    // Sets newAgent and newCrowd on the module table at the top of the stack.
+    // Sets `newAgent` and `newCrowd` on the module table at the top of the stack.
     static void addFunctions(lua_State* L);
 
   private:

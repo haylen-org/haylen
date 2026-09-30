@@ -56,7 +56,7 @@ std::vector<std::uint8_t> Renderer::radialFalloff(int size) {
     return pixels;
 }
 
-// The kernel of a soft circle, (1 - d^2)^2 over the distance d from its center as a fraction of its reach, which sums smoothly with its neighbors.
+// The kernel of a soft circle, `(1 - d^2)^2` over the distance `d` from its center as a fraction of its reach, which sums smoothly with its neighbors.
 std::vector<std::uint8_t> Renderer::metaballKernel(int size) {
     std::vector<std::uint8_t> pixels(static_cast<std::size_t>(size * size * 4), 255);
     const float half = static_cast<float>(size) * 0.5F;
@@ -211,7 +211,7 @@ void Renderer::beginCapture(const graphics::RenderTarget& target, math::Color cl
 
 void Renderer::endCapture() {
     if (state->openCaptures.empty()) {
-        throw std::logic_error("The endCapture call has no matching beginCapture.");
+        throw std::logic_error("The \"endCapture\" call has no matching \"beginCapture\".");
     }
     state->closeCapture();
 }
@@ -635,7 +635,7 @@ void Renderer::pushClip(const math::Rect& rect) {
 
 void Renderer::popClip() {
     if (state->clipStack.empty()) {
-        throw std::logic_error("The popClip call has no matching pushClip.");
+        throw std::logic_error("The \"popClip\" call has no matching \"pushClip\".");
     }
     state->clipStack.pop_back();
 }
@@ -648,7 +648,7 @@ void Renderer::pushLayerOffset(int offset) {
 
 void Renderer::popLayerOffset() {
     if (state->layerOffsets.empty()) {
-        throw std::logic_error("The popLayerOffset call has no matching pushLayerOffset.");
+        throw std::logic_error("The \"popLayerOffset\" call has no matching \"pushLayerOffset\".");
     }
     state->layerOffset = state->layerOffsets.back();
     state->layerOffsets.pop_back();

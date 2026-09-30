@@ -271,7 +271,7 @@ TEST(StatsTest, EndsMonitorsWithTheirOwner) {
     fixture.frames(2);
     EXPECT_EQ(fixture.lua("local names = {} for _, monitor in ipairs(debugging.monitors()) do names[#names + 1] = monitor.name end return table.concat(names, ' ') .. ' ' .. tostring(owned.connected) .. ' ' .. tostring(blockedCalls)"), "free blocked false nil");
     EXPECT_EQ(fixture.lua("free:disconnect() return #debugging.monitors() .. ' ' .. tostring(free.connected)"), "1 false");
-    EXPECT_NE(fixture.lua("debugging.addMonitor('weak', function() return 1 end, {weak = true})").find("Unknown option 'weak'"), std::string::npos);
+    EXPECT_NE(fixture.lua("debugging.addMonitor('weak', function() return 1 end, {weak = true})").find("Unknown option \"weak\""), std::string::npos);
     EXPECT_NE(fixture.lua("debugging.addMonitor('number', function() return 1 end, {owner = 5})").find("An owner must be a table or a userdata, not number."), std::string::npos);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }

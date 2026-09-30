@@ -1,4 +1,4 @@
--- Moves the camera of a test: dragging the pointer pans it, the move action pans it with the keys or a stick, and the mouse wheel zooms it.
+-- Moves the camera of a test: dragging the pointer pans it, the `move` action pans it with the keys or a stick, and the mouse wheel zooms it.
 local input = require('haylen.input')
 local m = require('haylen.math')
 

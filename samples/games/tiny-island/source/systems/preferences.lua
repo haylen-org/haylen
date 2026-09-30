@@ -1,4 +1,4 @@
--- The player's preferences and best run. Preferences live in haylen.preferences and apply to the audio buses, the language and the window.
+-- The player's preferences and best run. Preferences live in `haylen.preferences` and apply to the audio buses, the language and the window.
 local audio = require('haylen.audio')
 local localization = require('haylen.localization')
 local haylen = require('haylen')
@@ -19,7 +19,7 @@ function preferences.get(key)
     return stored.get(key, defaults[key])
 end
 
--- Changes a preference and applies it at once. Sliders change preferences every frame, so writing them to storage waits for save.
+-- Changes a preference and applies it at once. Sliders change preferences every frame, so writing them to storage waits for `save`.
 function preferences.set(key, value)
     stored.set(key, value)
     preferences.apply()

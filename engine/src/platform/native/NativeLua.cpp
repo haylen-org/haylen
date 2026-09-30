@@ -26,7 +26,7 @@ int NativeLua::available(lua_State* L) {
     return 1;
 }
 
-// Loads a library with load(name or path, {init = 'symbol', global = false}) and returns the namespace of Varn's ffi that calls its declared functions. A library linked into the app returns ffi.C, where its symbols live.
+// Loads a library with `load(name or path, {init = 'symbol', global = false})` and returns the namespace of Varn's `ffi` that calls its declared functions. A library linked into the app returns `ffi.C`, where its symbols live.
 int NativeLua::load(lua_State* L) {
     const std::string name = lua::Stack::read<std::string>(L, 1);
     std::string init;
@@ -42,11 +42,11 @@ int NativeLua::load(lua_State* L) {
     if (!init.empty()) {
         void* address = NativeLibraries::findSymbol(library, init);
         if (address == nullptr) {
-            throw std::runtime_error("The native library '" + name + "' has no function '" + init + "'.");
+            throw std::runtime_error("The native library \"" + name + "\" has no function \"" + init + "\".");
         }
         const int code = reinterpret_cast<HaylenNativeInit>(address)(&NativeApi::get());
         if (code != 0) {
-            throw std::runtime_error("The function '" + init + "' of the native library '" + name + "' failed with code " + std::to_string(code) + ".");
+            throw std::runtime_error("The function \"" + init + "\" of the native library \"" + name + "\" failed with code " + std::to_string(code) + ".");
         }
     }
 
@@ -62,7 +62,7 @@ int NativeLua::load(lua_State* L) {
     return 1;
 }
 
-// Returns the address of a symbol as a light userdata that ffi.cast turns into a typed pointer, or nil.
+// Returns the address of a symbol as a light userdata that `ffi.cast` turns into a typed pointer, or `nil`.
 int NativeLua::findSymbol(lua_State* L) {
     void* address = NativeLibraries::findSymbol(lua::Stack::read<std::string_view>(L, 1));
     if (address == nullptr) {
@@ -73,7 +73,7 @@ int NativeLua::findSymbol(lua_State* L) {
     return 1;
 }
 
-// Creates a callback with callback(declaration, function, {thread = 'any' or 'frame'}). Its pointer goes to native code, and the function receives the copied arguments on the frame thread.
+// Creates a callback with `callback(declaration, function, {thread = 'any' or 'frame'})`. Its pointer goes to native code, and the function receives the copied arguments on the frame thread.
 int NativeLua::callback(lua_State* L) {
     NativeSignature signature = NativeSignature::parse(lua::Stack::read<std::string_view>(L, 1));
     luaL_checktype(L, 2, LUA_TFUNCTION);
@@ -84,7 +84,7 @@ int NativeLua::callback(lua_State* L) {
         lua::Table::readField(L, 3, "thread", thread);
     }
     if (thread != "any" && thread != "frame") {
-        throw std::invalid_argument("The thread of a native callback is 'any' or 'frame', not '" + thread + "'.");
+        throw std::invalid_argument("The thread of a native callback is \"any\" or \"frame\", not \"" + thread + "\".");
     }
 
     core::Engine& engine = lua::Runtime::getEngine(L);

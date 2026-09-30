@@ -29,7 +29,7 @@ TEST_F(AudioStreamTest, PlaysAsAVoiceResampledAndSilentWhereSamplesAreMissing) {
     EXPECT_GT(stream->getUnderrunCount(), 0U);
     EXPECT_EQ(peak(1024), 0.0F);
     mixer.update(1.0F / 60.0F);
-    EXPECT_TRUE(mixer.isActive(voice)) << "a stream never ends by itself";
+    EXPECT_TRUE(mixer.isActive(voice)) << "A stream never ends by itself.";
     EXPECT_GT(mixer.getCursor(voice), 0.0F);
 
     stream->push(std::vector<float>(toFrames(0.1F) / 2, 0.25F));
@@ -60,7 +60,7 @@ TEST_F(AudioStreamTest, HandsTheStreamToTheNewestVoice) {
 TEST_F(AudioStreamTest, KeepsTheNewestSamplesAndDropsWhatDoesNotFit) {
     platform::AudioStream stream(8000, 2, platform::AudioStream::Format::Int16, 4);
     EXPECT_EQ(stream.push(std::vector<std::int16_t>{16384, -16384, 8192, -8192, 0, 0}), 3U);
-    EXPECT_EQ(stream.push(std::vector<std::int16_t>{4096, -4096, 2048, -2048}), 1U) << "the ring holds four frames";
+    EXPECT_EQ(stream.push(std::vector<std::int16_t>{4096, -4096, 2048, -2048}), 1U) << "The ring holds four frames.";
     EXPECT_EQ(stream.getBufferedFrames(), 4U);
 
     std::vector<float> latest(6);

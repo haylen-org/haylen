@@ -12,7 +12,7 @@ namespace haylen::spatial2d {
 // Computes the area visible from a point among wall segments, the shape of 2D lights and lines of sight. It keeps its buffers between calls, so computing a polygon every frame allocates nothing once the buffers have grown.
 class VisibilityPolygon final {
   public:
-    // Returns the outline of the area visible from the origin, clipped to the bounds, as points in order of increasing angle from -pi. The points stay valid until the next call. Throws std::invalid_argument when a wall or the bounds are not finite or the origin lies outside the bounds.
+    // Returns the outline of the area visible from the origin, clipped to the bounds, as points in order of increasing angle from -pi. The points stay valid until the next call. Throws `std::invalid_argument` when a wall or the bounds are not finite or the origin lies outside the bounds.
     const std::vector<math::Vec2>& compute(math::Vec2 origin, std::span<const math::Segment> walls, const math::Rect& bounds);
 
   private:

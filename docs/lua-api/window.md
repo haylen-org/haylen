@@ -1,6 +1,6 @@
 # haylen.window
 
-`haylen.window` controls the native window, or the canvas on the web, that the app runs in: its size, fullscreen state, title, mouse cursor, on-screen keyboard, screen orientation and clipboard, and on desktops its decorations, level, taskbar presence, focus, frame, monitors, dragging and the clicks that pass through it. The initial window settings come from the `window` section of `app.json`. Use this module for options menus, text entry, mouse capture and apps that live on the desktop. Drawing sizes are in design units, so layout code normally uses `haylen.viewport` instead of the window size.
+The module `haylen.window` controls the native window, or the canvas on the web, that the app runs in: its size, fullscreen state, title, mouse cursor, on-screen keyboard, screen orientation and clipboard, and on desktops its decorations, level, taskbar presence, focus, frame, monitors, dragging and the clicks that pass through it. The initial window settings come from the `window` section of `app.json`. Use this module for options menus, text entry, mouse capture and apps that live on the desktop. Drawing sizes are in design units, so layout code normally uses `haylen.viewport` instead of the window size.
 
 ```lua
 local window = require('haylen.window')
@@ -45,7 +45,7 @@ print('fullscreen:', window.fullscreen())
 
 ### window.setFullscreen(enabled)
 
-Switches between fullscreen and windowed mode. Nothing happens when the window is already in the requested mode. Every change, from the app or from the player, publishes the `windowFullscreenChanged` event of [haylen.events](events.md#engine-events) on the next frame.
+Switches between fullscreen and windowed mode. Nothing happens when the window is already in the requested mode. Every change, from the app or from the player, publishes the `windowFullscreenChanged` event of [`haylen.events`](events.md#engine-events) on the next frame.
 
 ```lua
 local window = require('haylen.window')
@@ -149,7 +149,7 @@ require('haylen.scene').push({
 
 ### window.setKeyboardVisible(visible)
 
-Shows or hides the plain on-screen keyboard, for apps that take typing without a text field of the UI, such as a typing game. It opens through the same native text input as the text fields of [haylen.ui](ui.md), with an empty field of its own, so phones, tablets, TVs and browsers show their keyboard and input methods work. Typed text arrives as `character` events in the scene `event` callback and through `input.text()` from `haylen.input`, a correction erases with `backspace` key events and types again, return, tab and escape arrive as `enter`, `tab` and `escape` key events, and text the input method still composes arrives once it is committed. Desktop apps type with the physical keyboard either way. Safari on iOS only opens the keyboard from a tap, so there a text field of the UI is the reliable way to type. The [text input guide](../text-input.md) describes each platform.
+Shows or hides the plain on-screen keyboard, for apps that take typing without a text field of the UI, such as a typing game. It opens through the same native text input as the text fields of [`haylen.ui`](ui.md), with an empty field of its own, so phones, tablets, TVs and browsers show their keyboard and input methods work. Typed text arrives as `character` events in the scene `event` callback and through `input.text()` from `haylen.input`, a correction erases with `backspace` key events and types again, return, tab and escape arrive as `enter`, `tab` and `escape` key events, and text the input method still composes arrives once it is committed. Desktop apps type with the physical keyboard either way. Safari on iOS only opens the keyboard from a tap, so there a text field of the UI is the reliable way to type. The [text input guide](../text-input.md) describes each platform.
 
 ```lua
 local window = require('haylen.window')
@@ -172,7 +172,7 @@ endEditing()
 
 ### window.orientation()
 
-Returns the orientation of the screen, `'landscape'` or `'portrait'`. Phones, tablets and mobile browsers report the way the screen is turned, while desktop windows, Mac Catalyst windows and TVs always count as landscape. The `windowOrientationChanged` event of [haylen.events](events.md) announces every change.
+Returns the orientation of the screen, `'landscape'` or `'portrait'`. Phones, tablets and mobile browsers report the way the screen is turned, while desktop windows, Mac Catalyst windows and TVs always count as landscape. The `windowOrientationChanged` event of [`haylen.events`](events.md) announces every change.
 
 ```lua
 local window = require('haylen.window')
@@ -184,7 +184,7 @@ end
 
 ### window.lockOrientation(orientation)
 
-Keeps the screen in `'landscape'`, `'portrait'` or `'any'` orientation, which lets it turn freely again. `app.json` sets the orientations an app starts with, and this changes them while it runs. Android locks the activity, iPhones and iPads lock the app and turn the screen right away, and browsers lock through the Screen Orientation API, which usually works only for a fullscreen page on a phone. Desktop windows, Mac Catalyst and TVs ignore it. An unknown name raises an error.
+Keeps the screen in `'landscape'`, `'portrait'` or `'any'` orientation, which lets it turn freely again. The file `app.json` sets the orientations an app starts with, and this changes them while it runs. Android locks the activity, iPhones and iPads lock the app and turn the screen right away, and browsers lock through the Screen Orientation API, which usually works only for a fullscreen page on a phone. Desktop windows, Mac Catalyst and TVs ignore it. An unknown name raises an error.
 
 ```lua
 local window = require('haylen.window')
@@ -294,7 +294,7 @@ end
 
 ### window.setTransparent(enabled)
 
-Makes the window opaque, or transparent again. An opaque window shows alpha 1 everywhere, whatever the clear color and the blend modes of the app, and on macOS it gets the background and the shadow of a normal window, so a window mode that needs a regular window turns transparency off together with `window.setDecorated(true)`. Only a window that opened transparent can turn transparent, and on any other window `true` raises `The window opened opaque, so it cannot turn transparent. Set window.transparent in app.json to open a window that can.`
+Makes the window opaque, or transparent again. An opaque window shows alpha 1 everywhere, whatever the clear color and the blend modes of the app, and on macOS it gets the background and the shadow of a normal window, so a window mode that needs a regular window turns transparency off together with `window.setDecorated(true)`. Only a window that opened transparent can turn transparent, and on any other window `true` raises `The window opened opaque, so it cannot turn transparent. Set "window.transparent" in "app.json" to open a window that can.`
 
 ```lua
 local window = require('haylen.window')
@@ -408,7 +408,7 @@ print(string.format('the window is at %d, %d', frame.x, frame.y))
 
 ### window.setFrame(x, y, width, height)
 
-Moves the content area of the window to `x`, `y` and resizes it to `width` by `height`, all in desktop points. The size must be positive. The change reaches the app as `windowMoved` and `windowResized` events of [haylen.events](events.md#engine-events) when the window lands there.
+Moves the content area of the window to `x`, `y` and resizes it to `width` by `height`, all in desktop points. The size must be positive. The change reaches the app as `windowMoved` and `windowResized` events of [`haylen.events`](events.md#engine-events) when the window lands there.
 
 ```lua
 local window = require('haylen.window')
@@ -424,10 +424,10 @@ Moves the window to a position that reads like `window.position` in `app.json`, 
 | Field | Default | Meaning |
 | --- | --- | --- |
 | `anchor` | `'center'` | The side or the corner the window touches: `'center'`, `'top'`, `'bottom'`, `'left'`, `'right'`, `'topLeft'`, `'topRight'`, `'bottomLeft'` or `'bottomRight'`. |
-| `area` | `'work'` | `'work'` for the area without the taskbar, the Dock and the menu bar, or `'full'` for the whole monitor. |
-| `monitor` | `'primary'` | `'primary'`, or the number of a monitor in the order of `window.monitors()`. A number past the last monitor places the window on the primary one. |
+| `area` | `'work'` | Either `'work'` for the area without the taskbar, the Dock and the menu bar, or `'full'` for the whole monitor. |
+| `monitor` | `'primary'` | Either `'primary'`, or the number of a monitor in the order of `window.monitors()`. A number past the last monitor places the window on the primary one. |
 | `offset` | `{0, 0}` | Points added to the anchored position. |
-| `fill` | `'none'` | `'width'`, `'height'` or `'both'` stretch the window across the area. |
+| `fill` | `'none'` | The values `'width'`, `'height'` or `'both'` stretch the window across the area. |
 
 Anchored positions land on whole points. A position that cannot be read raises an error such as `A window position has an unknown anchor: "middle".`.
 
@@ -448,9 +448,9 @@ Returns the monitors of the desktop as a list of tables, with the primary monito
 | `bounds` | The whole monitor as a `Rect` in desktop points. |
 | `workArea` | The monitor without the taskbar, the Dock and the menu bar, as a `Rect` in desktop points. |
 | `scale` | Pixels in a point, such as `2` on a Retina display or a Windows monitor at 200 percent. |
-| `primary` | `true` for the primary monitor. |
+| `primary` | The value is `true` for the primary monitor. |
 
-Every change of the monitors, such as a monitor that connects or a taskbar that moves, publishes `windowMonitorsChanged` on [haylen.events](events.md#engine-events).
+Every change of the monitors, such as a monitor that connects or a taskbar that moves, publishes `windowMonitorsChanged` on [`haylen.events`](events.md#engine-events).
 
 ```lua
 local window = require('haylen.window')
@@ -473,7 +473,7 @@ print('the window is on', monitor.name, 'at scale', monitor.scale)
 
 ### window.startDrag()
 
-Moves the window with the mouse for as long as the left button that just went down stays down, so the player drags a window without a title bar by its content. Call it while the button is still down, such as from a `mouseDown` event of a scene or the `onPress` of a touch button of [haylen.ui](ui.md), and not from `onClick`, which runs once the button is up. The system moves the window, and the app hears the release of the button once the drag ends. It does nothing when the button is already up.
+Moves the window with the mouse for as long as the left button that just went down stays down, so the player drags a window without a title bar by its content. Call it while the button is still down, such as from a `mouseDown` event of a scene or the `onPress` of a touch button of [`haylen.ui`](ui.md), and not from `onClick`, which runs once the button is up. The system moves the window, and the app hears the release of the button once the drag ends. It does nothing when the button is already up.
 
 ```lua
 local scene = require('haylen.scene')
@@ -502,7 +502,7 @@ print('passthrough:', window.mousePassthrough())
 
 ### window.setMousePassthrough(value, units)
 
-Lets clicks pass through the window to the desktop and the windows behind it. `false` gives the whole window the mouse again, `true` lets every click through, and a list of regions lets clicks through everywhere except the regions, which keep the mouse for the app. A region is a `Rect`, a table `{x, y, width, height}` or `{x = 0, y = 0, width = 10, height = 10}`, or a polygon as a list of at least three points. Regions are in design units by default, converted with the viewport of the moment, so an app whose layout changes, or whose window resizes, gives them again. `units` set to `'pixels'` takes framebuffer pixels instead. `window.mousePassthrough` in `app.json` starts the app with `true`.
+Lets clicks pass through the window to the desktop and the windows behind it. The value `false` gives the whole window the mouse again, `true` lets every click through, and a list of regions lets clicks through everywhere except the regions, which keep the mouse for the app. A region is a `Rect`, a table `{x, y, width, height}` or `{x = 0, y = 0, width = 10, height = 10}`, or a polygon as a list of at least three points. Regions are in design units by default, converted with the viewport of the moment, so an app whose layout changes, or whose window resizes, gives them again. The argument `units` set to `'pixels'` takes framebuffer pixels instead. The option `window.mousePassthrough` in `app.json` starts the app with `true`.
 
 Apps usually give their regions every frame, around what the player can click. The window keeps the mouse it has while a button is down, so a press that starts over the app also ends there. While clicks pass through, the app still hears the mouse move over the window on Windows and macOS, while on Linux it hears the mouse only over the regions.
 

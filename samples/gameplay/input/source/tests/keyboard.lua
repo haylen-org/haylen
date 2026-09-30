@@ -1,4 +1,4 @@
--- Keyboard: a keyboard drawn from the key names that lights the keys held and flashes the keys pressed and released, the modifiers, the text typed through input.text() and a log of the key events with their repeats.
+-- Keyboard: a keyboard drawn from the key names that lights the keys held and flashes the keys pressed and released, the modifiers, the text typed through `input.text()` and a log of the key events with their repeats.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')

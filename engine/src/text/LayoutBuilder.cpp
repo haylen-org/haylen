@@ -98,7 +98,7 @@ const LayoutBuilder::StyleFont& LayoutBuilder::getStyleFont(std::size_t style) {
         if (found == families.end()) {
             std::shared_ptr<FontFamily> named = options.fonts ? options.fonts(described.font) : nullptr;
             if (!named) {
-                throw std::invalid_argument("The rich text uses the font '" + described.font + "', which is not registered.");
+                throw std::invalid_argument("The rich text uses the font \"" + described.font + "\", which is not registered.");
             }
             layout.families.push_back(named);
             found = families.emplace(described.font, std::move(named)).first;
@@ -320,7 +320,7 @@ LayoutBuilder::Piece LayoutBuilder::measureImage(const RichTextDocument::Inline&
     if (item.kind == RichTextDocument::Inline::Kind::Image) {
         const RichTextDocument::Image& image = document.images[item.object];
         if (!options.images) {
-            throw std::invalid_argument("The rich text has no image source for [img=" + image.path + "].");
+            throw std::invalid_argument("The rich text has no image source for \"[img=" + image.path + "]\".");
         }
         graphics::Texture texture = options.images(image.path);
         if (!texture.isValid()) {
@@ -334,7 +334,7 @@ LayoutBuilder::Piece LayoutBuilder::measureImage(const RichTextDocument::Inline&
     const RichTextDocument::Icon& icon = document.icons[item.object];
     const RichTextRegistry::Icon* registered = registry != nullptr ? registry->findIcon(icon.name) : nullptr;
     if (registered == nullptr) {
-        throw std::invalid_argument("The rich text uses the icon " + icon.name + ", which is not registered.");
+        throw std::invalid_argument("The rich text uses the icon \"" + icon.name + "\", which is not registered.");
     }
     const math::Vec2 shape = registered->source.getSize();
     const float textSize = getStyleFont(item.style).size;

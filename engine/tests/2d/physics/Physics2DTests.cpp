@@ -543,11 +543,11 @@ TEST(Physics2DLuaTest, SimulatesWorldsFromLua) {
 
     EXPECT_EQ(fixture.lua("crate:destroy() crate:destroy() return tostring(crate.valid) .. ' ' .. world.bodyCount"), "false 4");
     EXPECT_NE(fixture.lua("return crate.x").find("The body was destroyed."), std::string::npos);
-    EXPECT_NE(fixture.lua("world:createBody({kind = 'dynamic'})").find("Unknown option 'kind'"), std::string::npos);
-    EXPECT_NE(fixture.lua("bob:addBox(10, 10, {bounce = 1})").find("Unknown option 'bounce'"), std::string::npos);
+    EXPECT_NE(fixture.lua("world:createBody({kind = 'dynamic'})").find("Unknown option \"kind\""), std::string::npos);
+    EXPECT_NE(fixture.lua("bob:addBox(10, 10, {bounce = 1})").find("Unknown option \"bounce\""), std::string::npos);
     EXPECT_NE(fixture.lua("world:createJoint('rope', hinge, bob)").find("unknown value 'rope'"), std::string::npos);
-    EXPECT_NE(fixture.lua("world:createJoint('weld', hinge, bob, {speed = 1})").find("Unknown option 'speed'"), std::string::npos);
-    EXPECT_NE(fixture.lua("world:raycast(0, 0, 1, 1, {layer = 1})").find("Unknown option 'layer'"), std::string::npos);
+    EXPECT_NE(fixture.lua("world:createJoint('weld', hinge, bob, {speed = 1})").find("Unknown option \"speed\""), std::string::npos);
+    EXPECT_NE(fixture.lua("world:raycast(0, 0, 1, 1, {layer = 1})").find("Unknown option \"layer\""), std::string::npos);
     EXPECT_NE(fixture.lua("physics2d.newWorld({pixelsPerMeter = 0})").find("positive pixels per meter"), std::string::npos);
     EXPECT_NE(fixture.lua("world.onHit = 5").find("error: "), std::string::npos);
     EXPECT_NE(fixture.lua("bob:addBox(0, 10)").find("positive size"), std::string::npos);

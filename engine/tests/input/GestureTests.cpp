@@ -190,7 +190,7 @@ TEST(GestureLuaTest, ListsGesturesOfTheFrame) {
     send(platform::Event::Type::TouchEnded);
     EXPECT_EQ(fixture.lua("return table.concat(seen, ' ')"), "tap@400.0,300.0");
     EXPECT_EQ(fixture.lua("input.setGestureSettings({longPressDuration = 1, mouse = false}) return 'ok'"), "ok");
-    EXPECT_NE(fixture.lua("input.setGestureSettings({hold = 1})").find("Unknown option 'hold'"), std::string::npos);
+    EXPECT_NE(fixture.lua("input.setGestureSettings({hold = 1})").find("Unknown option \"hold\""), std::string::npos);
     EXPECT_EQ(Gesture::typeName(Gesture::Type::LongPress), "longPress");
 }
 

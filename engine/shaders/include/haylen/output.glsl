@@ -1,4 +1,4 @@
-// Writes the result of a fragment shader. Lit canvases compile it with HAYLEN_LIT, which fills four images at once: the color, the emission, the surface normal with its specular strength, and the light mask, layer and shininess that the light pass reads. Every vertex stage of a program that writes through it passes haylen_output_premultiply, which is 1 when the blend mode of the draw expects colors premultiplied by their alpha.
+// Writes the result of a fragment shader. Lit canvases compile it with `HAYLEN_LIT`, which fills four images at once: the color, the emission, the surface normal with its specular strength, and the light mask, layer and shininess that the light pass reads. Every vertex stage of a program that writes through it passes `haylen_output_premultiply`, which is 1 when the blend mode of the draw expects colors premultiplied by their alpha.
 @block haylen_output
 in float haylen_output_premultiply;
 

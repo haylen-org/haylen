@@ -60,7 +60,7 @@ TEST(EnvironmentTest, RequiresTheModulesOfThePluginsOfTheApp) {
     EXPECT_NE(fixture.lua("return require('ads-kit.broken')").find("plugins/ads-kit/source/broken.lua"), std::string::npos);
     EXPECT_NE(fixture.lua("return require('ads-kit.missing')").find("no file 'plugins/ads-kit/source/missing.lua' or 'plugins/ads-kit/source/missing/init.lua' in the app package"), std::string::npos);
 
-    // Only the plugins that app.json lists have modules, so the folder of any other plugin is invisible.
+    // Only the plugins that `app.json` lists have modules, so the folder of any other plugin is invisible.
     EXPECT_NE(fixture.lua("return require('other')").find("no file 'source/other.lua' or 'source/other/init.lua' in the app package"), std::string::npos);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
@@ -78,13 +78,13 @@ TEST(EnvironmentTest, StopsAnAppWhoseModuleHasTheNameOfAPlugin) {
         // clang-format on
 
         ASSERT_NE(fixture.engine().getError(), nullptr);
-        EXPECT_STREQ(fixture.engine().getError()->what(), "The app module source/ads-kit/banner.lua has the name ads-kit.banner, which require resolves to plugins/ads-kit/source/banner.lua of the plugin ads-kit. Rename the module of the app.");
+        EXPECT_STREQ(fixture.engine().getError()->what(), "The app module \"source/ads-kit/banner.lua\" has the name \"ads-kit.banner\", which \"require\" resolves to \"plugins/ads-kit/source/banner.lua\" of the plugin \"ads-kit\". Rename the module of the app.");
         EXPECT_EQ(fixture.lua("return started"), "nil");
     }
 
     test::EngineFixture shadowed({{"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "plugins": {"ads-kit": {}}})"}, {"plugins/ads-kit/plugin.json", "{}"}, {"source/ads-kit/init.lua", "return {}"}});
     ASSERT_NE(shadowed.engine().getError(), nullptr);
-    EXPECT_NE(std::string_view(shadowed.engine().getError()->what()).find("source/ads-kit/init.lua has the name ads-kit, which require resolves to plugins/ads-kit/source/init.lua"), std::string::npos);
+    EXPECT_NE(std::string_view(shadowed.engine().getError()->what()).find("source/ads-kit/init.lua\" has the name \"ads-kit\", which \"require\" resolves to \"plugins/ads-kit/source/init.lua\""), std::string::npos);
 }
 
 TEST(EnvironmentTest, ReportsErrorsWithTheirStack) {
@@ -118,8 +118,8 @@ TEST(EnvironmentTest, NamesTheOptionThatHoldsABadValue) {
     test::EngineFixture fixture;
     fixture.runLua("graphics2d = require('haylen.graphics2d') tween = require('haylen.tween') box = {x = 0}");
 
-    EXPECT_NE(fixture.lua("graphics2d.beginScreen({sort = 'random'})").find("The option 'sort' of 'beginScreen' is invalid: unknown value 'random'."), std::string::npos);
-    EXPECT_NE(fixture.lua("tween.to(box, 1, {x = 1}, {delay = 'soon'})").find("The option 'delay' of 'to' is invalid: number expected, got string."), std::string::npos);
+    EXPECT_NE(fixture.lua("graphics2d.beginScreen({sort = 'random'})").find("The option \"sort\" of \"beginScreen\" is invalid: unknown value 'random'."), std::string::npos);
+    EXPECT_NE(fixture.lua("tween.to(box, 1, {x = 1}, {delay = 'soon'})").find("The option \"delay\" of \"to\" is invalid: number expected, got string."), std::string::npos);
     EXPECT_EQ(fixture.lua("tween.to(box, 1, {x = 1}, {delay = 0.5}) return 'ok'"), "ok");
 }
 
@@ -132,7 +132,7 @@ TEST(EnvironmentTest, LoadsChunksOnlyAsText) {
     lua_pushstring(L, folder.getPath().generic_string().c_str());
     lua_setglobal(L, "folder");
 
-    // Real bytecode comes from the C API, since app code has no string.dump.
+    // Real bytecode comes from the C API, since app code has no `string.dump`.
     std::string bytecode;
     ASSERT_EQ(luaL_loadstring(L, "return 42"), LUA_OK);
     // clang-format off
@@ -414,8 +414,8 @@ TEST(BindingTest, ChecksBoundTypesAndMembers) {
     fixture.runLua("math2 = require('haylen.math') point = math2.vec2(1, 2)");
 
     EXPECT_EQ(fixture.lua("point.x = 5 return point.x"), "5.0");
-    EXPECT_NE(fixture.lua("return point.missing").find("Vec2 has no member 'missing'"), std::string::npos);
-    EXPECT_NE(fixture.lua("point.length = 1").find("Vec2 has no writable property 'length'"), std::string::npos);
+    EXPECT_NE(fixture.lua("return point.missing").find("Vec2\" has no member \"missing\""), std::string::npos);
+    EXPECT_NE(fixture.lua("point.length = 1").find("Vec2\" has no writable property \"length\""), std::string::npos);
     EXPECT_NE(fixture.lua("point.x = 'text'").find("error: "), std::string::npos);
     EXPECT_NE(fixture.lua("return point.length(42)").find("error: "), std::string::npos);
     EXPECT_EQ(fixture.lua("return point:length() > 0"), "true");

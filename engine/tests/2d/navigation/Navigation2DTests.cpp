@@ -241,10 +241,10 @@ TEST(Navigation2DLuaTest, FindsPathsAndSteersAgents) {
     EXPECT_EQ(fixture.lua("local a = agent:wander(0.1) local b = twin:wander(0.1) return a.x == b.x and a.y == b.y"), "false");
     EXPECT_NE(fixture.lua("twin.wanderRadius = 'wide'").find("number expected"), std::string::npos);
 
-    EXPECT_NE(fixture.lua("grid:findPath(0, 0, 1, 1, {cheap = true})").find("Unknown option 'cheap'"), std::string::npos);
+    EXPECT_NE(fixture.lua("grid:findPath(0, 0, 1, 1, {cheap = true})").find("Unknown option \"cheap\""), std::string::npos);
     EXPECT_NE(fixture.lua("grid:setWalkable(9, 9, true)").find("outside the navigation grid"), std::string::npos);
     EXPECT_NE(fixture.lua("grid:setCost(0, 0, 0)").find("at least 1"), std::string::npos);
-    EXPECT_NE(fixture.lua("navigation2d.newAgent({speed = 3})").find("Unknown option 'speed'"), std::string::npos);
+    EXPECT_NE(fixture.lua("navigation2d.newAgent({speed = 3})").find("Unknown option \"speed\""), std::string::npos);
     EXPECT_NE(fixture.lua("grid:smoothPath({{x = 'a'}})").find("error: "), std::string::npos);
 }
 

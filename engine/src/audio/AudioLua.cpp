@@ -63,14 +63,14 @@ std::vector<std::shared_ptr<Effect>> AudioLua::readEffects(lua_State* L, int ind
         return list;
     }
     if (!lua_istable(L, -1)) {
-        luaL_error(L, "The option 'effects' must be a list of audio effects.");
+        luaL_error(L, "The option \"effects\" must be a list of audio effects.");
     }
     const lua_Integer count = luaL_len(L, -1);
     for (lua_Integer position = 1; position <= count; ++position) {
         lua_geti(L, -1, position);
         std::shared_ptr<Effect> effect = EffectLua::test(L, -1);
         if (!effect) {
-            luaL_error(L, "The option 'effects' must be a list of audio effects.");
+            luaL_error(L, "The option \"effects\" must be a list of audio effects.");
         }
         list.push_back(std::move(effect));
         lua_pop(L, 1);
@@ -97,7 +97,7 @@ template <typename Sample> std::vector<Sample> AudioLua::readSamples(std::string
     return samples;
 }
 
-// Makes a sound from bytes with newSound(bytes, options): a WAV, Ogg Vorbis, MP3 or FLAC file, decoded unless {stream = true}, or raw samples with {format = 'float32' or 'int16', sampleRate, channels}.
+// Makes a sound from bytes with `newSound(bytes, options)`: a WAV, Ogg Vorbis, MP3 or FLAC file, decoded unless `{stream = true}`, or raw samples with `{format = 'float32' or 'int16', sampleRate, channels}`.
 int AudioLua::newSound(lua_State* L) {
     const std::string_view bytes = lua::Stack::read<std::string_view>(L, 1);
     bool stream = false;
@@ -132,10 +132,10 @@ int AudioLua::newSound(lua_State* L) {
         lua::Stack::push(L, Sound::fromSamples(std::span<const std::int16_t>(readSamples<std::int16_t>(bytes)), channels, sampleRate));
         return 1;
     }
-    throw std::invalid_argument("The format of raw samples is 'float32' or 'int16', not '" + format + "'.");
+    throw std::invalid_argument("The format of raw samples is \"float32\" or \"int16\", not \"" + format + "\".");
 }
 
-// Plays a sound with play(sound, {bus, volume, pitch, pan, loop, fadeIn, startAt, x, y, processMode, effects}) and returns the voice id.
+// Plays a sound with `play(sound, {bus, volume, pitch, pan, loop, fadeIn, startAt, x, y, processMode, effects})` and returns the voice id.
 int AudioLua::play(lua_State* L) {
     lua::Stack::push(L, getMixer(L).play(lua::Stack::read<Sound>(L, 1), readPlayOptions(L, 2, kPlayFields)));
     return 1;
@@ -246,7 +246,7 @@ int AudioLua::effects(lua_State* L) {
     return 1;
 }
 
-// Crossfades to a music track with playMusic(sound, {bus, volume, fade, loop}) and returns the voice id of the track.
+// Crossfades to a music track with `playMusic(sound, {bus, volume, fade, loop})` and returns the voice id of the track.
 int AudioLua::playMusic(lua_State* L) {
     Mixer::MusicOptions options;
     if (!lua_isnoneornil(L, 2)) {
@@ -331,7 +331,7 @@ int AudioLua::buses(lua_State* L) {
     return 1;
 }
 
-// Lists every bus in alphabetical order as {name, voices, playing, paused, processing}.
+// Lists every bus in alphabetical order as `{name, voices, playing, paused, processing}`.
 int AudioLua::busStats(lua_State* L) {
     const std::vector<Mixer::BusStats> stats = getMixer(L).getBusStats();
     lua_createtable(L, static_cast<int>(stats.size()), 0);
@@ -365,7 +365,7 @@ int AudioLua::listener(lua_State* L) {
     return 2;
 }
 
-// Follows a camera with followCamera(camera), or stops following with followCamera(nil).
+// Follows a camera with `followCamera(camera)`, or stops following with `followCamera(nil)`.
 int AudioLua::followCamera(lua_State* L) {
     const graphics2d::Camera* camera = lua_isnoneornil(L, 1) ? nullptr : &lua::Userdata::check<graphics2d::Camera>(L, 1);
     lua_settop(L, 1);
@@ -374,7 +374,7 @@ int AudioLua::followCamera(lua_State* L) {
     return 0;
 }
 
-// Changes the fields that setSpatialization({model, minDistance, maxDistance, rolloff, panDistance, doppler, speedOfSound}) names and keeps the others.
+// Changes the fields that `setSpatialization({model, minDistance, maxDistance, rolloff, panDistance, doppler, speedOfSound})` names and keeps the others.
 int AudioLua::setSpatialization(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     lua::Table::checkFields(L, 1, {kSpatializationFields});

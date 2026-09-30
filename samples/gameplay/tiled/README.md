@@ -1,6 +1,6 @@
 # Haylen Tiled
 
-A Lua sample with one scene per feature of [haylen.tiled](../../../docs/lua-api/tiled.md), on small maps in the JSON format of Tiled 1.12. The menu lists the tests, each test opens as its own scene with a Back button, and Escape, the east gamepad button or the Menu button of a TV remote return to the menu.
+A Lua sample with one scene per feature of [`haylen.tiled`](../../../docs/lua-api/tiled.md), on small maps in the JSON format of Tiled 1.12. The menu lists the tests, each test opens as its own scene with a Back button, and Escape, the east gamepad button or the Menu button of a TV remote return to the menu.
 
 | Test | What it shows |
 | --- | --- |

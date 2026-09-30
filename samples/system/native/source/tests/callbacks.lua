@@ -1,4 +1,4 @@
--- Callbacks: Lua functions that the test library calls during a call, at the next frame and from a thread of its own, through Varn ffi and haylen.native. The browser has no native callbacks, so there the page sends the same report as an event.
+-- Callbacks: Lua functions that the test library calls during a call, at the next frame and from a thread of its own, through Varn `ffi` and `haylen.native`. The browser has no native callbacks, so there the page sends the same report as an event.
 local ffi = require('ffi')
 local haylen = require('haylen')
 local native = require('haylen.native')
@@ -20,7 +20,7 @@ function Callbacks:enter()
         focus = 'run',
         controls = {
             ui.button{id = 'run', text = 'Run the checks again', variant = 'primary', onClick = function() self:run() end},
-            ui.label{text = "A native.callback copies its arguments and runs the Lua function on the frame thread: during the call with thread = 'frame', or at the next frame, which is always the case for a call from another thread. Varn ffi.cast callbacks run during the call on the thread that makes it.", color = 'textMuted', font = 'caption'},
+            ui.label{text = "A \"native.callback\" copies its arguments and runs the Lua function on the frame thread: during the call with \"thread = 'frame'\", or at the next frame, which is always the case for a call from another thread. Varn \"ffi.cast\" callbacks run during the call on the thread that makes it.", color = 'textMuted', font = 'caption'},
             ui.label{font = 'monospace', text = "local report = native.callback(\n  'void (int32_t value, const uint8_t data[size], size_t size)',\n  function(value, data, size) print(value, #data) end)\nlib.native_test_report_later(report.pointer, 42)"},
         },
     })
@@ -53,13 +53,13 @@ function Callbacks:runLibrary()
     checks:run('ffi.cast during the call', function()
         self.cast = ffi.cast('NativeTestVisitor', visitor('ffi '))
         lib.native_test_visit(2, self.cast)
-        return 'visited ' .. expect(table.concat(visits, ', '), 'ffi 0zero, ffi 1one', 'the visits')
+        return 'Visited ' .. expect(table.concat(visits, ', '), 'ffi 0zero, ffi 1one', 'the visits')
     end)
     checks:run('Frame callback during the call', function()
         visits = {}
         self.atOnce = native.callback('void (int32_t index, const char* label)', visitor('frame '), {thread = 'frame'})
         lib.native_test_visit(2, self.atOnce.pointer)
-        return 'visited ' .. expect(table.concat(visits, ', '), 'frame 0zero, frame 1one', 'the visits')
+        return 'Visited ' .. expect(table.concat(visits, ', '), 'frame 0zero, frame 1one', 'the visits')
     end)
     checks:run('Callback at the next frame', function()
         visits = {}
@@ -69,7 +69,7 @@ function Callbacks:runLibrary()
         expect(#visits, 0, 'the visits during the call')
         sample.waitFor(function() return #visits == 2 end, 1)
         expect(table.concat(visits, ', '), 'next 0zero, next 1one', 'the visits of the next frame')
-        return string.format('visited %s at frame %d after the call at frame %d', table.concat(visits, ', '), haylen.frameIndex(), frame)
+        return string.format('Visited %s at frame %d after the call at frame %d', table.concat(visits, ', '), haylen.frameIndex(), frame)
     end)
 
     local report
@@ -77,16 +77,16 @@ function Callbacks:runLibrary()
         self.reporter = native.callback(kReport, function(value, data, size) report = {value = value, data = data, size = size} end)
         lib.native_test_report_later(self.reporter.pointer, 42)
         if not sample.waitFor(function() return report ~= nil end, 2) then
-            error('no report arrived within two seconds', 0)
+            error('No report arrived within two seconds.', 0)
         end
-        return 'the thread of the library reported ' .. expect(report.value, 42, 'the value') .. ' on the frame thread'
+        return 'The thread of the library reported ' .. expect(report.value, 42, 'the value') .. ' on the frame thread'
     end)
     checks:run('Bytes bounded by a length', function()
         if report == nil then
-            error('no report arrived', 0)
+            error('No report arrived.', 0)
         end
         expect(report.size, 4, 'the size')
-        return 'received ' .. expect(report.data, '\1\2\3\4', 'the bytes'):gsub('.', function(byte) return string.format('%02x ', byte:byte()) end)
+        return 'Received ' .. expect(report.data, '\1\2\3\4', 'the bytes'):gsub('.', function(byte) return string.format('%02x ', byte:byte()) end)
     end)
 end
 
@@ -102,12 +102,12 @@ function Callbacks:runPage()
         local arrived = sample.waitFor(function() return report ~= nil end, 2)
         connection:disconnect()
         if not arrived then
-            error('no report arrived within two seconds', 0)
+            error('No report arrived within two seconds.', 0)
         end
-        return 'the page reported ' .. expect(report.value, 42, 'the value') .. ' through an event'
+        return 'The page reported ' .. expect(report.value, 42, 'the value') .. ' through an event'
     end)
     checks:run('Bytes of the report', function()
-        return 'received ' .. expect(table.concat(report.data, ' '), '1 2 3 4', 'the bytes')
+        return 'Received ' .. expect(table.concat(report.data, ' '), '1 2 3 4', 'the bytes')
     end)
 end
 

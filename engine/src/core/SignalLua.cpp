@@ -146,7 +146,7 @@ int SignalLua::connectFunction(lua_State* L) {
     return 1;
 }
 
-// Calls every connected function with the values of signal:emit(...). Errors reach the caller and skip the remaining listeners.
+// Calls every connected function with the values of `signal:emit(...)`. Errors reach the caller and skip the remaining listeners.
 int SignalLua::emit(lua_State* L) {
     ScriptedSignal& target = lua::Userdata::check<ScriptedSignal>(L, 1);
     target.signal.emit({.state = L, .first = 2, .count = lua_gettop(L) - 1});
@@ -200,7 +200,7 @@ std::vector<EventBus::Topic> SignalLua::getNamedSignals(lua_State* L) {
     return signals;
 }
 
-// Returns {name, listeners, emissions, stale} for every named signal that is still alive.
+// Returns `{name, listeners, emissions, stale}` for every named signal that is still alive.
 int SignalLua::list(lua_State* L) {
     const std::vector<EventBus::Topic> signals = getNamedSignals(L);
     lua_createtable(L, static_cast<int>(signals.size()), 0);

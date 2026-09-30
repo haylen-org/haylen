@@ -31,7 +31,7 @@ template <> struct EnumNames<math::Spline::Kind> {
 
 namespace haylen::math {
 
-// Creates a spline with spline(points, {kind = 'catmullRom', closed = false}).
+// Creates a spline with `spline(points, {kind = 'catmullRom', closed = false})`.
 int SplineLua::newSpline(lua_State* L) {
     auto points = lua::Stack::read<std::vector<Vec2>>(L, 1);
     Spline::Kind kind = Spline::Kind::CatmullRom;

@@ -1,13 +1,13 @@
 # haylen.native
 
-`haylen.native` loads native libraries for the `ffi` module of Varn, finds their symbols and creates callbacks that native code may call from any thread. Varn's `ffi` declares the C functions and types and calls them, and this module finds the file of a library where the app ships it, hands the library the interface of the engine, and brings the calls of native code back to the frame thread. The [native code guide](../native.md) explains when to use it, how to package libraries with an app and how to integrate SDKs with a C API.
+The module `haylen.native` loads native libraries for the `ffi` module of Varn, finds their symbols and creates callbacks that native code may call from any thread. Varn's `ffi` declares the C functions and types and calls them, and this module finds the file of a library where the app ships it, hands the library the interface of the engine, and brings the calls of native code back to the frame thread. The [native code guide](../native.md) explains when to use it, how to package libraries with an app and how to integrate SDKs with a C API.
 
 ```lua
 local ffi = require('ffi')
 local native = require('haylen.native')
 ```
 
-The browser loads no native libraries. There `native.available()` returns `false`, `native.load` and `native.callback` raise `Native libraries are not available in the browser. Call JavaScript through haylen.platform instead.`, and `native.findSymbol` returns `nil`.
+The browser loads no native libraries. There `native.available()` returns `false`, `native.load` and `native.callback` raise `Native libraries are not available in the browser. Call JavaScript through "haylen.platform" instead.`, and `native.findSymbol` returns `nil`.
 
 ## Functions
 
@@ -25,7 +25,7 @@ end
 
 ### native.load(name, options)
 
-Loads a library and returns the namespace of Varn's `ffi` whose fields are the functions that `ffi.cdef` declared, called with the C types of their parameters and results. `name` is one of:
+Loads a library and returns the namespace of Varn's `ffi` whose fields are the functions that `ffi.cdef` declared, called with the C types of their parameters and results. The argument `name` is one of:
 
 - A path, which is any name with a folder in it, such as `/opt/sdk/libsdk.so` or `./libsdk.dylib`. It loads as given.
 - A file name with an extension, such as `steam_api64.dll` or `libsteam_api.so`, which is looked up in the folders below.
@@ -35,15 +35,15 @@ A name is looked up in this order, and the first file that loads wins:
 
 1. The folders that the `--native` option of the player adds, which `make.py run` passes during development.
 2. The folders of the platform: `Contents/Frameworks` of the app bundle and then the folder of the executable on macOS and Mac Catalyst, `Frameworks` of the app bundle on iOS and tvOS, the folder of the executable on Windows, the folder of the executable and its `lib` folder on Linux, and the libraries of the APK, which the dynamic linker finds by name, on Android.
-3. The libraries linked into the app, which register their symbols, as iOS and tvOS apps do with static libraries. `native.load` returns `ffi.C` for them, because their symbols are part of the app.
+3. The libraries linked into the app, which register their symbols, as iOS and tvOS apps do with static libraries. The function `native.load` returns `ffi.C` for them, because their symbols are part of the app.
 
 Windows loads a library with its wide path and looks for the libraries it depends on in its own folder and the system folders. A library stays loaded for the rest of the process, even after the app restarts, because native code may still run from it. A library that does not load raises an error that lists every place the lookup tried and why each one failed, such as `not found` or the message of the dynamic linker.
 
-`options` is an optional table:
+The argument `options` is an optional table:
 
 | Option | Type | Meaning |
 | --- | --- | --- |
-| `init` | string | A function of the library that `native.load` calls with the `HaylenNativeApi` of the engine, declared in C as `int init(const HaylenNativeApi* api)`. A result other than 0 raises `The function '<init>' of the native library '<name>' failed with code <code>.`, and a missing function raises `The native library '<name>' has no function '<init>'.`. See [library handlers](#library-handlers). |
+| `init` | string | A function of the library that `native.load` calls with the `HaylenNativeApi` of the engine, declared in C as `int init(const HaylenNativeApi* api)`. A result other than 0 raises `The function "<init>" of the native library "<name>" failed with code <code>.`, and a missing function raises `The native library "<name>" has no function "<init>".`. See [library handlers](#library-handlers). |
 | `global` | boolean | Makes the symbols of the library visible to libraries loaded after it, which some SDKs expect from their plugins. It is `false` by default. |
 
 ```lua
@@ -86,7 +86,7 @@ print(address ~= nil, ffi.cast('void*', address))
 
 ### native.callback(declaration, fn, options)
 
-Creates a C function pointer that runs `fn` on the frame thread, and returns a [callback](#callbacks) whose `pointer` goes to native code. `declaration` is a C function type that returns `void`, with optional parameter names, such as `'void (int32_t code, const char* text)'`. Native code may call the pointer from any thread: the callback copies the arguments at once and returns, and `fn` receives them on the frame thread. `options` is an optional table:
+Creates a C function pointer that runs `fn` on the frame thread, and returns a [callback](#callbacks) whose `pointer` goes to native code. The argument `declaration` is a C function type that returns `void`, with optional parameter names, such as `'void (int32_t code, const char* text)'`. Native code may call the pointer from any thread: the callback copies the arguments at once and returns, and `fn` receives them on the frame thread. The argument `options` is an optional table:
 
 | Option | Value | Meaning |
 | --- | --- | --- |
@@ -126,7 +126,7 @@ local reporter = native.callback('void (int32_t value, const uint8_t data[size],
 end)
 lib.native_test_report_later(reporter.pointer, 42)
 
--- The library calls it during native_test_visit on the frame thread, so it runs at once.
+-- The library calls it during `native_test_visit` on the frame thread, so it runs at once.
 local visitor = native.callback('void (int32_t index, const char* label)', function(index, label)
     print('visited', index, label)
 end, {thread = 'frame'})
@@ -136,11 +136,11 @@ visitor:free()
 
 ## Callbacks
 
-`native.callback` returns a `haylen.NativeCallback`.
+The function `native.callback` returns a `haylen.NativeCallback`.
 
 | Member | Meaning |
 | --- | --- |
-| `callback.pointer` | The C function pointer as a light userdata, which an ffi function takes for any pointer parameter, including a function pointer. Reading it after `free` raises `This haylen.NativeCallback was already released.`. |
+| `callback.pointer` | The C function pointer as a light userdata, which an `ffi` function takes for any pointer parameter, including a function pointer. Reading it after `free` raises `This "haylen.NativeCallback" was already released.`. |
 | `callback.freed` | Whether `free` was called. |
 | `callback:free()` | Releases the function pointer, which native code must no longer call. Freeing twice does nothing. |
 
@@ -157,36 +157,36 @@ print(done.freed)
 
 ## Library handlers
 
-`haylen/platform/native/HaylenNative.h` declares the C interface of the engine for native libraries, `HaylenNativeApi`, which `native.load(name, {init = 'symbol'})` hands to the init function of the library. Every entry may be called from any thread, and what it sends reaches the app on the frame thread through the bridge.
+The header `haylen/platform/native/HaylenNative.h` declares the C interface of the engine for native libraries, `HaylenNativeApi`, which `native.load(name, {init = 'symbol'})` hands to the `init` function of the library. Every entry may be called from any thread, and what it sends reaches the app on the frame thread through the bridge.
 
 | Entry | Meaning |
 | --- | --- |
-| `version` | `HAYLEN_NATIVE_API_VERSION` of the engine, 5 for the interface this page describes. A new version may change any entry, so a library checks that the version equals the version of the header it was built with. |
-| `emit(event, payloadJson, buffers, bufferCount, flags)` | Sends an event that `platform.on` receives, with an array of `bufferCount` byte buffers that the JSON refers to as `{"$bytes": N}`, or null and 0 without bytes. `flags` combines `HAYLEN_NATIVE_EMIT_RETAIN`, which keeps an event that nothing listens to yet for the first listener of its name, and `HAYLEN_NATIVE_EMIT_BATCHED`, which hands the events of a name that arrive in one frame to the listeners as one list, as the [platform reference](platform.md#platformonevent-listener) describes. |
+| `version` | The constant `HAYLEN_NATIVE_API_VERSION` of the engine, 5 for the interface this page describes. A new version may change any entry, so a library checks that the version equals the version of the header it was built with. |
+| `emit(event, payloadJson, buffers, bufferCount, flags)` | Sends an event that `platform.on` receives, with an array of `bufferCount` byte buffers that the JSON refers to as `{"$bytes": N}`, or null and 0 without bytes. The argument `flags` combines `HAYLEN_NATIVE_EMIT_RETAIN`, which keeps an event that nothing listens to yet for the first listener of its name, and `HAYLEN_NATIVE_EMIT_BATCHED`, which hands the events of a name that arrive in one frame to the listeners as one list, as the [platform reference](platform.md#platformonevent-listener) describes. |
 | `resolve(call, ok, resultJson, buffers, bufferCount)` | Answers a call once, with a JSON result and the byte buffers it refers to, or a failure that is a message string or an object with `message`, `code` and `data`. |
-| `registerHandler(method, handler, cancel, user)` | Answers `platform.call(method)` with the C function `handler(user, call, method, paramsJson, buffers, bufferCount)`, which runs on the frame thread with the byte buffers of the parameters, valid until it returns, and answers through `resolve`, at once or later. `cancel(user, call)` runs on the frame thread when the app cancels a call or its timeout passes, and may be null. A null `handler` removes the method. Handlers belong to the process, like the library, so they keep answering after the app restarts. |
+| `registerHandler(method, handler, cancel, user)` | Answers `platform.call(method)` with the C function `handler(user, call, method, paramsJson, buffers, bufferCount)`, which runs on the frame thread with the byte buffers of the parameters, valid until it returns, and answers through `resolve`, at once or later. The function `cancel(user, call)` runs on the frame thread when the app cancels a call or its timeout passes, and may be null. A null `handler` removes the method. Handlers belong to the process, like the library, so they keep answering after the app restarts. |
 | `log(level, text)` | Writes a line to the engine log at a `HaylenNativeLogLevel`. |
 | `registerPlugin(id)` | Declares the library the native part of the plugin `id`, so `platform.plugin(id).native` and the `native` field of `platform.plugins()` are `true` from then on, for every app the process runs. A null or empty id is logged as an error. |
-| `registerErrorHandler(handler, user)` | Calls `handler(user, reportJson)` on the frame thread with the report of every error that stops an app of the process from then on, the one its error screen shows, as JSON text of `{message, file, line, traceback, frames}`, like the native parts of [plugins](../plugins.md#errors-of-the-app) receive it. Registering the same handler with the same `user` again changes nothing, so an init function that runs again after a restart registers it once, and a null `handler` is logged as an error. |
+| `registerErrorHandler(handler, user)` | Calls `handler(user, reportJson)` on the frame thread with the report of every error that stops an app of the process from then on, the one its error screen shows, as JSON text of `{message, file, line, traceback, frames}`, like the native parts of [plugins](../plugins.md#errors-of-the-app) receive it. Registering the same handler with the same `user` again changes nothing, so an `init` function that runs again after a restart registers it once, and a null `handler` is logged as an error. |
 | `openVideoStream(plugin, name, format, width, height)` | Returns the [video stream](platform.md#video-streams) `name` of the plugin `plugin`, which `platform.plugin(plugin):videoStream(name)` returns in Lua, opening it the first time with a `HaylenNativePixelFormat`, `HAYLEN_NATIVE_PIXELS_RGBA8` or `HAYLEN_NATIVE_PIXELS_BGRA8`, and a size, 0 by 0 until the first frame. Opening it again returns the same stream. It returns null and logs why for an empty id or name, an unknown format, a negative size or a stream that is open with another format. |
 | `pushVideoFrame(stream, pixels, width, height, stride, timestamp)` | Copies a frame of `width` by `height` pixels whose rows start `stride` bytes apart, with its timestamp in seconds. The stream keeps only the newest frame, which the app shows from its next frame, and a frame of another size resizes the stream. |
 | `openAudioStream(plugin, name, sampleRate, channels, format, capacityFrames)` | Returns the [audio stream](platform.md#audio-streams) `name` of the plugin `plugin`, which `platform.plugin(plugin):audioStream(name)` returns in Lua, opening it the first time with its sample rate, channels, a `HaylenNativeSampleFormat`, `HAYLEN_NATIVE_SAMPLES_FLOAT32` or `HAYLEN_NATIVE_SAMPLES_INT16`, and a ring of `capacityFrames` frames. It returns null and logs why for an empty id or name, a format, rate, channel count or capacity it cannot take, or a stream that is open with another rate, channel count or format. |
 | `pushAudioFrames(stream, samples, frames)` | Writes `frames` interleaved frames in the format of the stream and returns how many fit into the ring, dropping the rest while it is full. One thread at a time pushes into a stream. |
-| `registerScreen(plugin, name, open, cancel, user)` | Opens the [screen](platform.md#screens) `name` of the plugin `plugin` with the C function `open(user, screen, paramsJson, buffers, bufferCount)` whenever an app of the process asks for it with `platform.plugin(plugin):openScreen(name)`. `open` runs on the frame thread once the engine covered the app, with the byte buffers of the parameters, valid until it returns, and the library ends the screen through `finishScreen`. `cancel(user, screen)` runs on the frame thread when the app cancels the screen or its timeout passes, and may be null. A null `open` removes the screen, and a null or empty plugin or name is logged as an error. Screens of libraries open before the screens of the platform. |
+| `registerScreen(plugin, name, open, cancel, user)` | Opens the [screen](platform.md#screens) `name` of the plugin `plugin` with the C function `open(user, screen, paramsJson, buffers, bufferCount)` whenever an app of the process asks for it with `platform.plugin(plugin):openScreen(name)`. The function `open` runs on the frame thread once the engine covered the app, with the byte buffers of the parameters, valid until it returns, and the library ends the screen through `finishScreen`. The function `cancel(user, screen)` runs on the frame thread when the app cancels the screen or its timeout passes, and may be null. A null `open` removes the screen, and a null or empty plugin or name is logged as an error. Screens of libraries open before the screens of the platform. |
 | `finishScreen(screen, ok, resultJson, buffers, bufferCount)` | Ends a screen once, from any thread, with a JSON result and the byte buffers it refers to, or with a failure that is a message string or an object with `message`, `code` and `data`, such as the code `cancelled` when the person closed it. The engine uncovers the app and answers the call of the screen, or hands the end to the next app as `screenRestored` when the app restarted meanwhile. A screen that the app gave up still ends here once its window is gone. |
-| `getWindow(window)` | Fills a `HaylenNativeWindow` with the window of the app and returns 1, or returns 0 before the window opens and where apps have no desktop window. On macOS `handle` is the `NSWindow*`, read back with `(__bridge NSWindow*)handle`. On Windows `handle` is the `HWND`. On Linux `handle` is the X11 `Window`, read back with `(Window)(uintptr_t)handle`, and `display` is the `Display*` of the engine, which belongs to the frame thread, so a library that runs a window on a thread of its own opens a connection of its own, where the id names the same window. `display` is null elsewhere. |
+| `getWindow(window)` | Fills a `HaylenNativeWindow` with the window of the app and returns 1, or returns 0 before the window opens and where apps have no desktop window. On macOS `handle` is the `NSWindow*`, read back with `(__bridge NSWindow*)handle`. On Windows `handle` is the `HWND`. On Linux `handle` is the X11 `Window`, read back with `(Window)(uintptr_t)handle`, and `display` is the `Display*` of the engine, which belongs to the frame thread, so a library that runs a window on a thread of its own opens a connection of its own, where the id names the same window. The field `display` is null elsewhere. |
 | `coverApp()`, `uncoverApp()` | Cover the app while native UI of the library covers it, which makes it inactive, halted and muted, and end the cover. Covers nest and belong to the process, so they outlive the apps that restart under them, and an `uncoverApp` without a `coverApp` is logged as an error. |
 
 Streams and screens belong to the process, so the handles of streams stay valid for good, a library keeps them across the apps that the process runs, and a screen that shows while the app restarts ends in the next app. Every entry copies what it takes before it returns, so a library frees its buffers, pixels and samples as soon as the call is over.
 
-Library handlers answer after the handlers registered in the engine and before the handlers of the platform. The init function runs every time the app loads the library with `init`, so it registers its handlers again after a restart.
+Library handlers answer after the handlers registered in the engine and before the handlers of the platform. The `init` function runs every time the app loads the library with `init`, so it registers its handlers again after a restart.
 
 ```c
 #include "haylen/platform/native/HaylenNative.h"
 
 static const HaylenNativeApi* engine = 0;
 
-/* Answers with the parameters it received and the bytes they refer to, which resolve copies. */
+/* Answers with the parameters it received and the bytes they refer to, which `resolve` copies. */
 static void answer(void* user, uint64_t call, const char* method, const char* paramsJson, const HaylenNativeBuffer* buffers, size_t bufferCount) {
     engine->resolve(call, 1, paramsJson, buffers, bufferCount);
 }
@@ -214,7 +214,7 @@ local platform = require('haylen.platform')
 
 native.load('my_library', {init = 'my_library_haylen_init'})
 
--- The library sent ready retained, so this listener receives it although it connects after the load.
+-- The library sent `ready` retained, so this listener receives it although it connects after the load.
 platform.on('my_library.ready', function(payload)
     print('ready', payload.version)
 end)

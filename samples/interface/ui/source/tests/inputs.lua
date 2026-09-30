@@ -6,10 +6,10 @@ local sample = require('sample')
 
 local Inputs = haylen.class('Inputs', sample.Test)
 
-Inputs.hints = 'Phones, tablets, TVs and mobile browsers open the keyboard each field asks for, with the return key it names. Tab, or a return key labelled next, moves to the next field, and Escape brings back the text a field had when it took the focus.'
+Inputs.hints = 'Phones, tablets, TVs and mobile browsers open the keyboard each field asks for, with the return key it names. Tab, or a return key labelled "next", moves to the next field, and Escape brings back the text a field had when it took the focus.'
 Inputs.focus = 'field-text'
 
--- Every keyboard of textField, each with one of the return key labels.
+-- Every keyboard of `textField`, each with one of the return key labels.
 Inputs.fields = {
     {keyboard = 'text', returnKey = 'next', placeholder = 'Island name', autocapitalize = 'words'},
     {keyboard = 'number', returnKey = 'done', placeholder = '42'},
@@ -38,7 +38,7 @@ function Inputs:content()
     }
     cells[#cells + 1] = ui.formField{label = 'secretField', help = 'the password keyboard',
         ui.secretField{placeholder = 'Password', returnKey = 'go', onSubmit = function(event)
-            self:setStatus('password submitted with ' .. utf8.len(event.value) .. ' characters')
+            self:setStatus('Password submitted with ' .. utf8.len(event.value) .. ' characters')
         end},
     }
     cells[#cells + 1] = ui.formField{label = 'filterField', help = 'the search keyboard and a clear button',
@@ -48,7 +48,7 @@ function Inputs:content()
         ui.grid{columns = 3, gap = 20, grow = 3, children = cells},
         sample.section('textArea', {grow = 1,
             ui.textArea{rows = 6, value = 'Dear diary,\nthe raft is ready.', onChange = function(event)
-                self:setStatus('diary has ' .. utf8.len(event.value) .. ' characters')
+                self:setStatus('The diary has ' .. utf8.len(event.value) .. ' characters')
             end},
             ui.label{text = 'Enter starts a new line here, so a text area never submits.', color = 'textMuted'},
         }),

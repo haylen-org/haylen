@@ -11,20 +11,20 @@ local Bus = haylen.class('Bus', sample.Test)
 local kCode = [[
 events.on('damage', playerHud, {channel = 'player'})  events.on('damage', anyHud)
 events.on('damage', bigHit, {filter = function(amount) return amount >= 20 end})
-events.on('damage', function() if shield.up then return true end end, {priority = 10})  -- true consumes it
-local consumed = events.emitTo('player', 'damage', 8)  events.postTo('enemy', 'damage', 25)  -- delivered after rendering]]
+events.on('damage', function() if shield.up then return true end end, {priority = 10})  -- The value `true` consumes it.
+local consumed = events.emitTo('player', 'damage', 8)  events.postTo('enemy', 'damage', 25)  -- Delivered after rendering.]]
 
 function Bus:enter()
     local journal = Journal()
     self.journal = journal
     self.shield = false
-    events.on('damage', function(amount) journal:add('player hud takes ' .. amount, sample.accent) end, {owner = self, channel = 'player'})
-    events.on('damage', function(amount) journal:add('enemy hud takes ' .. amount, sample.red) end, {owner = self, channel = 'enemy'})
-    events.on('damage', function(amount) journal:add('combat log hears ' .. amount .. ' on any channel') end, {owner = self})
-    events.on('damage', function(amount) journal:add('big hit! ' .. amount .. ' passes the filter', sample.warm) end, {owner = self, filter = function(amount) return amount >= 20 end})
+    events.on('damage', function(amount) journal:add('Player hud takes ' .. amount, sample.accent) end, {owner = self, channel = 'player'})
+    events.on('damage', function(amount) journal:add('Enemy hud takes ' .. amount, sample.red) end, {owner = self, channel = 'enemy'})
+    events.on('damage', function(amount) journal:add('Combat log hears ' .. amount .. ' on any channel') end, {owner = self})
+    events.on('damage', function(amount) journal:add('Big hit! ' .. amount .. ' passes the filter', sample.warm) end, {owner = self, filter = function(amount) return amount >= 20 end})
     events.on('damage', function(amount)
         if self.shield then
-            journal:add('shield consumes ' .. amount .. ' (priority 10)', sample.green)
+            journal:add('Shield consumes ' .. amount .. ' (priority 10)', sample.green)
             return true
         end
     end, {owner = self, priority = 10})
@@ -50,12 +50,12 @@ function Bus:emit(channel, amount)
     else
         consumed = events.emit('damage', amount)
     end
-    self.journal:add(string.format('emit %s on %s returned %s', amount, channel or 'no channel', consumed), sample.muted)
+    self.journal:add(string.format('Emit %s on %s returned %s', amount, channel or 'no channel', consumed), sample.muted)
 end
 
 function Bus:post(channel, amount)
     events.postTo(channel, 'damage', amount)
-    self.journal:add('posted ' .. amount .. ' to ' .. channel .. ', nothing heard it yet', sample.muted)
+    self.journal:add('Posted ' .. amount .. ' to ' .. channel .. ', nothing heard it yet', sample.muted)
 end
 
 function Bus:update(dt)

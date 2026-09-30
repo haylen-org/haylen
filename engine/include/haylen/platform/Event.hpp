@@ -61,14 +61,14 @@ struct Event {
     std::array<TouchPoint, kMaxTouchPoints> touches{};
     std::size_t touchCount = 0;
 
-    // A native text field reports its edits in textEdit, and its actions in textAction for the field in textEdit.field.
+    // A native text field reports its edits in `textEdit`, and its actions in `textAction` for the field in `textEdit.field`.
     TextInput::Edit textEdit;
     TextInput::Action textAction = TextInput::Action::Submit;
 
     // The area the on-screen keyboard covers, in framebuffer pixels, which is empty while it is hidden.
     math::Rect keyboardFrame;
 
-    // Whether the device reaches the network, as NetworkChanged reports it.
+    // Whether the device reaches the network, as `NetworkChanged` reports it.
     bool online = false;
 
     // Returns whether the event is player input: keys, text, mouse buttons, movement and scrolling, touches and the edits of native text fields.

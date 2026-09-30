@@ -30,7 +30,7 @@ function tree:standing()
     return self.fellDay == nil
 end
 
--- Takes one hit of the given strength and returns true when the tree falls.
+-- Takes one hit of the given strength and returns `true` when the tree falls.
 function tree:chop(strength)
     self.health = self.health - strength
     self.shake = 1

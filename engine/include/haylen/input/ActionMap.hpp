@@ -25,7 +25,7 @@ class VirtualInput;
 // Maps named gameplay actions to devices in definition order. Buttons report edges, axes report [-1, 1] and vectors report a length up to 1.
 class ActionMap final {
   public:
-    // One physical or virtual input written as "key:w", "mouse:left", "button:south", "axis:leftY-", "stick:left", "virtual:attack" or "virtualStick:move".
+    // One physical or virtual input written as `key:w`, `mouse:left`, `button:south`, `axis:leftY-`, `stick:left`, `virtual:attack` or `virtualStick:move`.
     struct Binding {
         enum class Source : std::uint8_t {
             Key,
@@ -51,7 +51,7 @@ class ActionMap final {
         [[nodiscard]] bool operator==(const Binding&) const = default;
     };
 
-    // One action of an action map document, such as {"name": "jump", "type": "button", "bindings": ["key:space"]}.
+    // One action of an action map document, such as `{"name": "jump", "type": "button", "bindings": ["key:space"]}`.
     struct Action {
         enum class Type : std::uint8_t {
             Button,
@@ -72,13 +72,13 @@ class ActionMap final {
         [[nodiscard]] static Action fromJson(const core::Json& json);
         [[nodiscard]] core::Json toJson() const;
 
-        // Resolves the type names "button", "axis" and "vector".
+        // Resolves the type names `button`, `axis` and `vector`.
         [[nodiscard]] static std::optional<Type> typeFromName(std::string_view text) noexcept;
         [[nodiscard]] static std::string_view typeName(Type value) noexcept;
         [[nodiscard]] bool operator==(const Action&) const = default;
     };
 
-    // The keys and gamepad buttons the UI answers itself in the next frame: every key while a text field edits, and the bindings of the navigation actions it handles, such as cancel while a popup is open.
+    // The keys and gamepad buttons the UI answers itself in the next frame: every key while a text field edits, and the bindings of the navigation actions it handles, such as `cancel` while a popup is open.
     struct Capture {
         bool keyboard = false;
         std::bitset<Controls::kKeyCount> keys;
@@ -97,7 +97,7 @@ class ActionMap final {
     void setGamepadIndex(std::optional<std::size_t> value) noexcept {
         gamepadIndex = value;
     }
-    // Takes a threshold above 0 and up to 1 and throws std::invalid_argument for any other value.
+    // Takes a threshold above 0 and up to 1 and throws `std::invalid_argument` for any other value.
     void setPressThreshold(float value);
     // Blocked input, such as during a scene change or while the app is halted, reads every action as up. An action still down when input returns stays up until its bindings let go, so a key held across a scene change never reads as a second press.
     void update(const Input& input, const VirtualInput& virtualInput, bool blocked);

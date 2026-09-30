@@ -16,6 +16,6 @@ return {
     {id = 'forces', title = 'Gravity and accelerations', description = 'Gravity, radial and tangential acceleration and damping on sliders.', module = 'tests.forces'},
     {id = 'over-life', title = 'Color, size and frames', description = 'Color and size over the lifetime and frame animation.', module = 'tests.over-life'},
     {id = 'blend-modes', title = 'Blend modes', description = 'The same particles with alpha, additive, multiply, screen and premultiplied blending.', module = 'tests.blend-modes'},
-    {id = 'files', title = 'Effect files', description = 'Effects loaded from .particles files in the content folder.', module = 'tests.files'},
+    {id = 'files', title = 'Effect files', description = 'Effects loaded from ".particles" files in the content folder.', module = 'tests.files'},
     {id = 'stress', title = 'Many particles', description = 'Tens of thousands of particles with their live count.', module = 'tests.stress'},
 }

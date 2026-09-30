@@ -45,7 +45,7 @@ class Easing final {
         BounceInOut,
     };
 
-    // Where the jumps of a steps curve fall, like the jump terms of CSS steps(): Start jumps at the start of each step, End at its end, Both at both ends of the range and None at neither.
+    // Where the jumps of a steps curve fall, like the jump terms of CSS `steps()`: `Start` jumps at the start of each step, `End` at its end, `Both` at both ends of the range and `None` at neither.
     enum class StepPosition : std::uint8_t {
         Start,
         End,
@@ -57,19 +57,19 @@ class Easing final {
     static constexpr float kElasticAmplitude = 1.0F;
     static constexpr float kElasticPeriod = 0.3F;
 
-    // Evaluates the easing curve at t, which is clamped to [0, 1].
+    // Evaluates the easing curve at `t`, which is clamped to [0, 1].
     [[nodiscard]] static float apply(Type curve, float t) noexcept;
 
-    // Evaluates a back curve with its overshoot, or an elastic curve with its amplitude and period, at t clamped to [0, 1]. Any other curve ignores the parameters.
+    // Evaluates a back curve with its overshoot, or an elastic curve with its amplitude and period, at `t` clamped to [0, 1]. Any other curve ignores the parameters.
     [[nodiscard]] static float apply(Type curve, float t, float first, float second) noexcept;
 
-    // Evaluates count equal steps from 0 to 1 at t clamped to [0, 1].
+    // Evaluates `count` equal steps from 0 to 1 at `t` clamped to [0, 1].
     [[nodiscard]] static float steps(float t, int count, StepPosition position) noexcept;
 
-    // Evaluates the CSS cubic Bézier curve through (0, 0), (x1, y1), (x2, y2) and (1, 1) at t clamped to [0, 1]. The x coordinates are clamped to [0, 1] like CSS requires.
+    // Evaluates the CSS cubic Bézier curve through (0, 0), (x1, y1), (x2, y2) and (1, 1) at `t` clamped to [0, 1]. The x coordinates are clamped to [0, 1] like CSS requires.
     [[nodiscard]] static float cubicBezier(float t, float x1, float y1, float x2, float y2) noexcept;
 
-    // Resolves names such as "linear", "quadOut" or "elasticInOut".
+    // Resolves names such as `linear`, `quadOut` or `elasticInOut`.
     [[nodiscard]] static std::optional<Type> parse(std::string_view text) noexcept;
     [[nodiscard]] static std::string_view name(Type curve) noexcept;
 

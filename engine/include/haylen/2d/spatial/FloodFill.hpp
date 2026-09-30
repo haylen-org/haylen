@@ -13,7 +13,7 @@ namespace haylen::spatial2d {
 // Finds the cells connected to a start cell, like the paint bucket of an image editor. It keeps its visit marks between calls, so repeated fills allocate nothing once its buffers have grown.
 class FloodFill final {
   public:
-    // Fills cells with the cells of a width by height grid that connect to the start through cells for which inside(cell) is true, in breadth-first order from the start. Diagonal fills also step between cells that only share a corner. A start outside the grid or not inside gives no cells.
+    // Fills `cells` with the cells of a `width` by `height` grid that connect to the start through cells for which `inside(cell)` is `true`, in breadth-first order from the start. Diagonal fills also step between cells that only share a corner. A start outside the grid or not inside gives no cells.
     template <typename Inside> void fill(Cell start, int width, int height, bool diagonal, Inside&& inside, std::vector<Cell>& cells) {
         cells.clear();
         if (start.x < 0 || start.y < 0 || start.x >= width || start.y >= height || !inside(start)) {
@@ -39,7 +39,7 @@ class FloodFill final {
         }
     }
 
-    // Fills cells with the region of cells that hold the value of the start cell and connect to it.
+    // Fills `cells` with the region of cells that hold the value of the start cell and connect to it.
     void fill(const CellGrid& grid, Cell start, bool diagonal, std::vector<Cell>& cells);
 
   private:

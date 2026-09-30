@@ -1,4 +1,4 @@
--- A car from physics2d.newVehicle on a long hilly road, driven by its wheel motors with the keyboard, a gamepad or touch pedals.
+-- A car from `physics2d.newVehicle` on a long hilly road, driven by its wheel motors with the keyboard, a gamepad or touch pedals.
 local haylen = require('haylen')
 local graphics2d = require('haylen.graphics2d')
 local input = require('haylen.input')

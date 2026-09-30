@@ -170,7 +170,7 @@ function player:update(dt)
     self:animate(dt)
 end
 
--- Takes a hit, which a raised guard mostly blocks, and returns true when the player falls.
+-- Takes a hit, which a raised guard mostly blocks, and returns `true` when the player falls.
 function player:damage(amount, fromX, fromY)
     local x, y = self:position()
     if self.guarding then

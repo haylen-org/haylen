@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from tiled_json import animation, collision, item, prop, tileset
 
-# Local tile ids of the terrain tileset, in the order art.terrain draws them.
+# Local tile ids of the terrain tileset, in the order `art.terrain` draws them.
 GRASS, FLOWERS, DIRT, SAND, STONE, WALL, HALF_WALL, FENCE = range(8)
 WATER, LAVA = 8, 12
 TORCH, BUSH, ROCK, CRATE, CHEST, SPIKES, FLAG = 16, 18, 19, 20, 21, 22, 23

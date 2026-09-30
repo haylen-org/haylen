@@ -233,7 +233,7 @@ TEST_F(RichTextLayoutTest, RunsEffectsDeterministically) {
         (void)make("ok\n  [nope]x[/nope]");
         FAIL() << "An unregistered effect must be reported.";
     } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "Rich text markup at line 2, column 3: [nope] is neither a tag nor a registered text effect.");
+        EXPECT_STREQ(error.what(), "Rich text markup at line 2, column 3: The markup \"[nope]\" is neither a tag nor a registered text effect.");
     }
     RichText broken = make("[wave amp=loud]x[/wave]");
     EXPECT_THROW((void)broken.getFrame(), std::invalid_argument);

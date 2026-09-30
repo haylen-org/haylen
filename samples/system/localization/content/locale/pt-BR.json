@@ -14,8 +14,8 @@
         "score": "{name} fez {score} pontos no dia {day}.",
         "accuracy": "Precisão: {ratio}",
         "sound": "Som ligado: {sound}",
-        "braces": "Escreva {{name}} para mostrar um marcador.",
-        "missing": "Marcadores desconhecidos ficam como estão: {treasure}."
+        "braces": "Escreva \"{{name}}\" para mostrar um marcador.",
+        "missing": "Marcadores desconhecidos ficam como estão: \"{treasure}\"."
     },
     "items": {
         "apples": {"zero": "Nenhuma maçã", "one": "{count} maçã", "other": "{count} maçãs"},

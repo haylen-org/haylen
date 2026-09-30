@@ -1,6 +1,6 @@
 # haylen.navigation2d
 
-`haylen.navigation2d` moves characters through the world. Navigation grids plan routes over square, isometric, staggered and hexagonal tile maps with A*, weighted A*, jump point search and hierarchical path finding, and build Dijkstra maps and flow fields that guide any number of units at once. Waypoint graphs find routes between hand-placed points, and navigation meshes find smooth routes through open levels for agents of any size. Steering agents move one character at a time with seek, flee, arrive, flocking, obstacle avoidance and wander, and crowds move thousands of agents together without collisions using optimal reciprocal collision avoidance. Long searches can run in the background and return promises.
+The module `haylen.navigation2d` moves characters through the world. Navigation grids plan routes over square, isometric, staggered and hexagonal tile maps with A*, weighted A*, jump point search and hierarchical path finding, and build Dijkstra maps and flow fields that guide any number of units at once. Waypoint graphs find routes between hand-placed points, and navigation meshes find smooth routes through open levels for agents of any size. Steering agents move one character at a time with seek, flee, arrive, flocking, obstacle avoidance and wander, and crowds move thousands of agents together without collisions using optimal reciprocal collision avoidance. Long searches can run in the background and return promises.
 
 ```lua
 local navigation2d = require('haylen.navigation2d')
@@ -8,7 +8,7 @@ local navigation2d = require('haylen.navigation2d')
 
 ## Cells
 
-Grid cells are addressed by column and row, counting from 0 like Tiled cells, so `map:worldToCell` from [haylen.tiled](tiled.md) gives cells that the grid accepts. Hexagonal and staggered grids use the same offset coordinates as Tiled. Paths are lists of cell tables `{x = column, y = row}`. Functions that take cells in a list also accept cells written as `{column, row}`.
+Grid cells are addressed by column and row, counting from 0 like Tiled cells, so `map:worldToCell` from [`haylen.tiled`](tiled.md) gives cells that the grid accepts. Hexagonal and staggered grids use the same offset coordinates as Tiled. Paths are lists of cell tables `{x = column, y = row}`. Functions that take cells in a list also accept cells written as `{column, row}`.
 
 ## Background work
 
@@ -32,11 +32,11 @@ Functions whose name ends in `Async` copy what they need, run on a worker thread
 
 ### navigation2d.newGrid(width, height, layout)
 
-Creates a `NavGrid` of `width` columns and `height` rows. Every cell starts walkable with cost 1, and cells outside the grid count as blocked. A size that is not positive or does not fit 32-bit cell indices raises `A navigation grid needs a positive size that fits in 32-bit cell indices.` `layout` is optional and follows the map properties of Tiled:
+Creates a `NavGrid` of `width` columns and `height` rows. Every cell starts walkable with cost 1, and cells outside the grid count as blocked. A size that is not positive or does not fit 32-bit cell indices raises `A navigation grid needs a positive size that fits in 32-bit cell indices.` The table `layout` is optional and follows the map properties of Tiled:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `topology` | string | `'square'` | `'square'` for orthogonal, isometric and oblique maps, `'hexagonal'` for hexagonal maps and `'staggered'` for staggered isometric maps. |
+| `topology` | string | `'square'` | The value `'square'` stands for orthogonal, isometric and oblique maps, `'hexagonal'` for hexagonal maps and `'staggered'` for staggered isometric maps. |
 | `staggerX` | boolean | `false` | The columns shift instead of the rows, like a stagger axis of `x` in Tiled. |
 | `staggerEven` | boolean | `false` | The even rows or columns shift instead of the odd ones, like a stagger index of `even` in Tiled. |
 
@@ -56,7 +56,7 @@ Creates an empty `NavGraph`.
 
 ### navigation2d.newNavMesh(boundary)
 
-Creates a `NavMesh`. `boundary` is optional and sets the outline of the walkable area, a list of at least three points, which `mesh:setBoundary` can also set later.
+Creates a `NavMesh`. The argument `boundary` is optional and sets the outline of the walkable area, a list of at least three points, which `mesh:setBoundary` can also set later.
 
 ### navigation2d.buildNavMeshAsync(boundary, obstacles)
 
@@ -76,7 +76,7 @@ end)
 
 ### navigation2d.newAgent(options)
 
-Creates a `SteeringAgent`. `options` is optional:
+Creates a `SteeringAgent`. The table `options` is optional:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -96,7 +96,7 @@ local bat = navigation2d.newAgent({x = 100, y = 100, maxSpeed = 90, maxForce = 3
 
 ### navigation2d.newCrowd(flocking)
 
-Creates a `Crowd`. `flocking` is optional and sets the weights of the flocking forces added to the velocity every agent prefers, computed from the neighbors it avoids:
+Creates a `Crowd`. The table `flocking` is optional and sets the weights of the flocking forces added to the velocity every agent prefers, computed from the neighbors it avoids:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -120,14 +120,14 @@ print(sheep.agentCount)
 | `topology` | string | read | `'square'`, `'hexagonal'` or `'staggered'`. |
 | `staggerX` | boolean | read | Whether the columns shift instead of the rows. |
 | `staggerEven` | boolean | read | Whether the even rows or columns shift. |
-| `uniformCost` | boolean | read | True when every cell costs 1, which jump point search needs. |
+| `uniformCost` | boolean | read | The value is `true` when every cell costs 1, which jump point search needs. |
 | `expandedCount` | integer | read | Number of cells the last `grid:findPath` expanded, which shows how much work a heuristic, a weight or jump point search saves. |
 
-`setWalkable`, `setCost` and `cost` raise an error such as `Cell 9,9 is outside the navigation grid.` for cells outside the grid.
+The methods `setWalkable`, `setCost` and `cost` raise an error such as `Cell 9,9 is outside the navigation grid.` for cells outside the grid.
 
 ### grid:contains(x, y)
 
-Returns true when the cell is inside the grid.
+Returns `true` when the cell is inside the grid.
 
 ### grid:setWalkable(x, y, walkable)
 
@@ -135,7 +135,7 @@ Marks the cell as walkable or blocked.
 
 ### grid:walkable(x, y)
 
-Returns true when the cell is inside the grid and walkable.
+Returns `true` when the cell is inside the grid and walkable.
 
 ```lua
 local navigation2d = require('haylen.navigation2d')
@@ -167,7 +167,7 @@ print(grid:cost(8, 6), grid:cost(8, 5), grid.uniformCost)
 
 ### grid:estimate(fromX, fromY, toX, toY, heuristic)
 
-Returns the length of the walk between two cells that the heuristic estimates, ignoring walls and costs, the same estimate searches use. `heuristic` is `'manhattan'`, `'octile'`, `'euclidean'` or `'chebyshev'`. Hexagonal grids always count hex steps, whatever the heuristic.
+Returns the length of the walk between two cells that the heuristic estimates, ignoring walls and costs, the same estimate searches use. The argument `heuristic` is `'manhattan'`, `'octile'`, `'euclidean'` or `'chebyshev'`. Hexagonal grids always count hex steps, whatever the heuristic.
 
 ```lua
 local navigation2d = require('haylen.navigation2d')
@@ -178,7 +178,7 @@ print(grid:estimate(0, 0, 3, 4, 'manhattan'), grid:estimate(0, 0, 3, 4, 'octile'
 
 ### grid:findPath(startX, startY, goalX, goalY, options)
 
-Finds the cheapest path from the start cell to the goal cell and returns it as a list of cells that includes both ends, followed by its cost, or `nil` when either end is blocked or the goal cannot be reached. Diagonal steps never cut the corner of a blocked cell. Equal paths always resolve the same way, so the same grid gives the same path on every device. The grid keeps its search buffers, so repeated searches allocate nothing once they have grown. `options` is optional:
+Finds the cheapest path from the start cell to the goal cell and returns it as a list of cells that includes both ends, followed by its cost, or `nil` when either end is blocked or the goal cannot be reached. Diagonal steps never cut the corner of a blocked cell. Equal paths always resolve the same way, so the same grid gives the same path on every device. The grid keeps its search buffers, so repeated searches allocate nothing once they have grown. The table `options` is optional:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -188,7 +188,7 @@ Finds the cheapest path from the start cell to the goal cell and returns it as a
 | `weight` | number | `1` | Weighted A*. Values above 1 explore fewer cells and return paths that cost at most `weight` times the cheapest one. Values below 1 raise `A search weight must be finite and at least 1.` |
 | `jumpPoint` | boolean | `false` | Jump point search, which skips over runs of open ground and returns paths as cheap as A* while expanding far fewer cells, most of all on large open maps. It needs a square or staggered grid where every cell costs 1, and raises `Jump point search needs a square or staggered grid.` or `Jump point search needs a grid where every cell costs 1.` otherwise. |
 
-Unknown keys raise `Unknown option 'name'.`
+Unknown keys raise `Unknown option "name".`
 
 ```lua
 local navigation2d = require('haylen.navigation2d')
@@ -233,7 +233,7 @@ end)
 
 ### grid:lineOfSight(fromX, fromY, toX, toY)
 
-Returns true when the straight segment between the centers of both cells crosses only walkable cells. A segment that passes exactly through a corner needs both cells beside the corner to be walkable. Hexagonal grids check the cells along the line between both hexagon centers.
+Returns `true` when the straight segment between the centers of both cells crosses only walkable cells. A segment that passes exactly through a corner needs both cells beside the corner to be walkable. Hexagonal grids check the cells along the line between both hexagon centers.
 
 ```lua
 local navigation2d = require('haylen.navigation2d')
@@ -259,7 +259,7 @@ print(#grid:smoothPath({{0, 4}, {1, 4}, {2, 4}}))
 
 ### grid:raycast(from, to, cellSize)
 
-Casts a ray in world units from the point `from` to the point `to` over a square grid whose cells are `cellSize` units wide, given as a number or a `{width, height}` pair, with the first cell at the origin. Returns the hit on the first blocked cell, a hit table like those of [haylen.math](math.md#ray-casts) with the extra fields `column` and `row`, or `nil`. Cells outside the grid block the ray like any blocked cell. Other topologies raise `Grid ray casts need a square grid.`
+Casts a ray in world units from the point `from` to the point `to` over a square grid whose cells are `cellSize` units wide, given as a number or a `{width, height}` pair, with the first cell at the origin. Returns the hit on the first blocked cell, a hit table like those of [`haylen.math`](math.md#ray-casts) with the extra fields `column` and `row`, or `nil`. Cells outside the grid block the ray like any blocked cell. Other topologies raise `Grid ray casts need a square grid.`
 
 ```lua
 local navigation2d = require('haylen.navigation2d')
@@ -272,7 +272,7 @@ print(hit.column, hit.row, hit.x, hit.normalX)
 
 ### grid:dijkstraMap(sources, options)
 
-Computes a `DijkstraMap`, the distance map of roguelikes, which stores for every cell the cost of the cheapest walk to the nearest source plus the value of that source. `sources` is a list of cells, each with an optional `value` field that defaults to 0, where lower values attract more, so a treasure can pull harder than a lever. `options` is optional and takes `diagonal`, true by default. Blocked and unreachable cells get `math.huge`. The map keeps its grid alive and reads its current walkability when stepping.
+Computes a `DijkstraMap`, the distance map of roguelikes, which stores for every cell the cost of the cheapest walk to the nearest source plus the value of that source. The argument `sources` is a list of cells, each with an optional `value` field that defaults to 0, where lower values attract more, so a treasure can pull harder than a lever. The table `options` is optional and takes `diagonal`, `true` by default. Blocked and unreachable cells get `math.huge`. The map keeps its grid alive and reads its current walkability when stepping.
 
 ```lua
 local navigation2d = require('haylen.navigation2d')
@@ -290,7 +290,7 @@ Computes a Dijkstra map like `grid:dijkstraMap` on a copy of the grid on a worke
 
 ### grid:flowField(goals, options)
 
-Computes a `FlowField` that stores for every cell the step toward the nearest goal, so any number of units can move by reading the step of their cell. `goals` is a list of cells, and `options` is optional and takes `diagonal`, true by default. The field is a snapshot of the grid when it was computed.
+Computes a `FlowField` that stores for every cell the step toward the nearest goal, so any number of units can move by reading the step of their cell. The argument `goals` is a list of cells, and `options` is optional and takes `diagonal`, `true` by default. The field is a snapshot of the grid when it was computed.
 
 ```lua
 local navigation2d = require('haylen.navigation2d')
@@ -319,7 +319,7 @@ end)
 
 ### grid:hierarchicalPathfinder(options)
 
-Creates a `HierarchicalPathfinder` over a square grid, the HPA* of Botea, Müller and Schaeffer. The grid splits into square clusters joined by entrances, a small graph of entrances is searched first and then only the cells along the chosen route, which makes long searches on large grids much faster than A*. Paths are near optimal, usually within a few percent of the cheapest one. It keeps its grid alive and reads it on every search, so after cells change, `path:update` must rebuild the clusters around them. Until then, a search whose route crosses the changed cells finds no path. Other topologies raise `Hierarchical path finding needs a square grid.` `options` is optional:
+Creates a `HierarchicalPathfinder` over a square grid, the HPA* of Botea, Müller and Schaeffer. The grid splits into square clusters joined by entrances, a small graph of entrances is searched first and then only the cells along the chosen route, which makes long searches on large grids much faster than A*. Paths are near optimal, usually within a few percent of the cheapest one. It keeps its grid alive and reads it on every search, so after cells change, `path:update` must rebuild the clusters around them. Until then, a search whose route crosses the changed cells finds no path. Other topologies raise `Hierarchical path finding needs a square grid.` The table `options` is optional:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -496,15 +496,15 @@ A `NavGraph` finds paths through waypoints. The game picks the integer id of eve
 
 ### graph:addPoint(id, x, y, weight)
 
-Adds a point, or moves an existing one and changes its weight while keeping its connections. `weight` defaults to 1, and weights below 1 raise `A graph point weight must be finite and at least 1.`
+Adds a point, or moves an existing one and changes its weight while keeping its connections. The argument `weight` defaults to 1, and weights below 1 raise `A graph point weight must be finite and at least 1.`
 
 ### graph:removePoint(id)
 
-Removes the point and its connections and returns true, or returns false when it was not in the graph.
+Removes the point and its connections and returns `true`, or returns `false` when it was not in the graph.
 
 ### graph:hasPoint(id)
 
-Returns true when the point is in the graph.
+Returns `true` when the point is in the graph.
 
 ```lua
 local navigation2d = require('haylen.navigation2d')
@@ -533,7 +533,7 @@ Changes the weight of the point.
 
 ### graph:enabled(id)
 
-Returns true when paths may pass through the point.
+Returns `true` when paths may pass through the point.
 
 ### graph:setEnabled(id, enabled)
 
@@ -553,15 +553,15 @@ print(position.x, position.y, stops:weight(1), stops:enabled(1))
 
 ### graph:connect(from, to, bidirectional)
 
-Connects two points, both ways unless `bidirectional` is false. Connecting a point to itself raises `A graph point cannot connect to itself.`
+Connects two points, both ways unless `bidirectional` is `false`. Connecting a point to itself raises `A graph point cannot connect to itself.`
 
 ### graph:disconnect(from, to, bidirectional)
 
-Removes the connection, both ways unless `bidirectional` is false.
+Removes the connection, both ways unless `bidirectional` is `false`.
 
 ### graph:connected(from, to)
 
-Returns true when a path may step from the first point into the second.
+Returns `true` when a path may step from the first point into the second.
 
 ### graph:neighbors(id)
 
@@ -587,7 +587,7 @@ print(table.concat(rails:neighbors(1), ' '), table.concat(rails:points(), ' '))
 
 ### graph:closestPoint(x, y, includeDisabled)
 
-Returns the id of the enabled point closest to `x`, `y`, or of any point when `includeDisabled` is true, with ties going to the smaller id, or `nil` for an empty graph.
+Returns the id of the enabled point closest to `x`, `y`, or of any point when `includeDisabled` is `true`, with ties going to the smaller id, or `nil` for an empty graph.
 
 ### graph:findPath(from, to)
 
@@ -636,7 +636,7 @@ A `NavMesh` covers the walkable area of a level with triangles, built with a con
 | `boundary` | list of Vec2 | read | The outline of the walkable area. |
 | `obstacleCount` | integer | read | Number of obstacles. |
 | `triangleCount` | integer | read | Number of triangles, which rebuilds a dirty mesh first. |
-| `dirty` | boolean | read | True when the polygons changed since the last build. |
+| `dirty` | boolean | read | The value is `true` when the polygons changed since the last build. |
 
 ### mesh:setBoundary(polygon)
 
@@ -652,7 +652,7 @@ Changes the shape of an obstacle, such as a door that moves. Unknown ids raise a
 
 ### mesh:removeObstacle(id)
 
-Removes an obstacle and returns true, or returns false when it was not in the mesh.
+Removes an obstacle and returns `true`, or returns `false` when it was not in the mesh.
 
 ### mesh:clearObstacles()
 
@@ -677,7 +677,7 @@ print(mesh.dirty, mesh.obstacleCount)
 
 ### mesh:findPath(x1, y1, x2, y2, agentRadius)
 
-Returns the path from the start point to the goal point as a list of `Vec2` with the start, the points to turn at and the goal, followed by its length, or `nil` when either point lies outside the mesh, no corridor is wide enough for the agent, or the start or the goal has no room or cannot step straight to it. `agentRadius` defaults to 0.
+Returns the path from the start point to the goal point as a list of `Vec2` with the start, the points to turn at and the goal, followed by its length, or `nil` when either point lies outside the mesh, no corridor is wide enough for the agent, or the start or the goal has no room or cannot step straight to it. The argument `agentRadius` defaults to 0.
 
 ```lua
 local navigation2d = require('haylen.navigation2d')
@@ -700,7 +700,7 @@ Returns the index of the triangle under the point, counting from 1 like `mesh:tr
 
 ### mesh:contains(x, y)
 
-Returns true when the point lies on the walkable area.
+Returns `true` when the point lies on the walkable area.
 
 ```lua
 local navigation2d = require('haylen.navigation2d')
@@ -901,7 +901,7 @@ Agents that all want the same spot, or that meet head on in a symmetric formatio
 
 ### crowd:addAgent(options)
 
-Adds an agent and returns its id. `options` is optional:
+Adds an agent and returns its id. The table `options` is optional:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -918,11 +918,11 @@ Negative sizes, values that are not finite and time horizons that are not positi
 
 ### crowd:removeAgent(id)
 
-Removes the agent and returns true, or returns false when it was not in the crowd.
+Removes the agent and returns `true`, or returns `false` when it was not in the crowd.
 
 ### crowd:hasAgent(id)
 
-Returns true when the agent is in the crowd.
+Returns `true` when the agent is in the crowd.
 
 ```lua
 local navigation2d = require('haylen.navigation2d')

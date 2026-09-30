@@ -42,12 +42,12 @@ std::string PropertyReader::getQualifiedName(std::string_view key) const {
 
 std::string PropertyReader::describeProperty(std::string_view path) {
     const std::size_t dot = path.find('.');
-    return "The property '" + std::string(path.substr(dot + 1)) + "' of " + describeKind(path.substr(0, dot));
+    return "The property \"" + std::string(path.substr(dot + 1)) + "\" of " + describeKind(path.substr(0, dot));
 }
 
 std::string PropertyReader::describeKind(std::string_view componentKind) {
     const bool vowel = !componentKind.empty() && std::string_view("aeiou").find(componentKind.front()) != std::string_view::npos;
-    return (vowel ? "an " : "a ") + std::string(componentKind);
+    return (vowel ? "an \"" : "a \"") + std::string(componentKind) + "\"";
 }
 
 // Names the values a number may take, leaving out a maximum that only marks the limit of its type.
@@ -61,7 +61,7 @@ template <typename Number> std::string PropertyReader::describeRange(Number mini
 void PropertyReader::read(std::string_view key, bool& out) {
     if (const core::Json* value = take(key)) {
         if (!value->is_boolean()) {
-            fail(key, "must be true or false");
+            fail(key, "must be \"true\" or \"false\"");
         }
         out = value->get<bool>();
     }
@@ -119,7 +119,7 @@ void PropertyReader::read(std::string_view key, math::Color& out) {
     if (const core::Json* value = take(key)) {
         const std::optional<math::Color> color = value->is_string() ? math::Color::parse(value->get<std::string>()) : std::nullopt;
         if (!color) {
-            fail(key, "must be a color such as #FF2E7D32");
+            fail(key, "must be a color such as \"#FF2E7D32\"");
         }
         out = *color;
     }
@@ -155,7 +155,7 @@ void PropertyReader::read(std::string_view key, std::optional<Theme::Color>& out
     if (const core::Json* value = take(key)) {
         const std::optional<Theme::Color> role = value->is_string() ? Theme::colorFromName(value->get<std::string>()) : std::nullopt;
         if (!role) {
-            fail(key, "must name a theme color such as accent or textMuted");
+            fail(key, "must name a theme color such as \"accent\" or \"textMuted\"");
         }
         out = role;
     }
@@ -171,7 +171,7 @@ void PropertyReader::readLength(std::string_view key, std::optional<float>& out)
         return;
     }
     if (!value->is_number() || !(value->get<double>() >= 0.0) || !std::isfinite(value->get<double>())) {
-        fail(key, "must be a non-negative number or auto");
+        fail(key, "must be a non-negative number or \"auto\"");
     }
     out = value->get<float>();
 }

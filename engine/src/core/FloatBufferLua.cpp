@@ -23,7 +23,7 @@ std::size_t FloatBufferLua::checkPosition(lua_State* L, const FloatBuffer& buffe
     return static_cast<std::size_t>(position - 1);
 }
 
-// Reads buffer[index], which never goes through a method lookup.
+// Reads `buffer[index]`, which never goes through a method lookup.
 int FloatBufferLua::at(lua_State* L) {
     const FloatBuffer& buffer = check(L);
     lua_pushnumber(L, static_cast<lua_Number>(buffer.getValues()[checkPosition(L, buffer, 2, 1)]));
@@ -42,7 +42,7 @@ int FloatBufferLua::length(lua_State* L) {
     return 1;
 }
 
-// Copies numbers in from a position with set(first, ...) or from an array with set(first, list).
+// Copies numbers in from a position with `set(first, ...)` or from an array with `set(first, list)`.
 int FloatBufferLua::set(lua_State* L) {
     FloatBuffer& buffer = check(L);
     const bool list = lua_istable(L, 3);
@@ -65,7 +65,7 @@ int FloatBufferLua::set(lua_State* L) {
     return 0;
 }
 
-// Returns count values from a position with get(first[, count]), one value by default.
+// Returns `count` values from a position with `get(first[, count])`, one value by default.
 int FloatBufferLua::get(lua_State* L) {
     const FloatBuffer& buffer = check(L);
     const lua_Integer requested = luaL_optinteger(L, 3, 1);
@@ -79,7 +79,7 @@ int FloatBufferLua::get(lua_State* L) {
     return static_cast<int>(count);
 }
 
-// Sets every value with fill(value), or count values from a position with fill(value, first, count).
+// Sets every value with `fill(value)`, or `count` values from a position with `fill(value, first, count)`.
 int FloatBufferLua::fill(lua_State* L) {
     FloatBuffer& buffer = check(L);
     const auto value = static_cast<float>(luaL_checknumber(L, 2));

@@ -42,7 +42,7 @@ class BitmapFontTest : public ::testing::Test {
         }
     }
 
-    // The same font in the binary format: the magic, version 3 and its info, common, pages, chars and kerning blocks.
+    // The same font in the binary format: the magic, version 3 and its `info`, `common`, `pages`, `chars` and `kerning` blocks.
     [[nodiscard]] static std::vector<std::uint8_t> binaryFont() {
         std::vector<std::uint8_t> bytes{'B', 'M', 'F', 3};
         const std::string name = "Pixel Sans";

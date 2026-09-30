@@ -27,7 +27,7 @@
 
 namespace haylen::platform {
 
-// Parameters that Lua leaves out are an empty object, and strings marked with platform.bytes become byte buffers.
+// Parameters that Lua leaves out are an empty object, and strings marked with `platform.bytes` become byte buffers.
 Bridge::Payload PlatformLua::readPayload(lua_State* L, int index) {
     Bridge::Payload payload;
     payload.json = lua_isnoneornil(L, index) ? core::Json::object() : lua::JsonConverter::read(L, index, payload.buffers);
@@ -92,7 +92,7 @@ void PlatformLua::pushConnection(lua_State* L, const std::string& event, int lis
     lua::Userdata::emplace<core::Connection>(L, std::move(connection));
 }
 
-// Calls a native method with call(method, params, {timeout = seconds}) and returns the call, which Lua awaits and may cancel.
+// Calls a native method with `call(method, params, {timeout = seconds})` and returns the call, which Lua awaits and may cancel.
 int PlatformLua::call(lua_State* L) {
     pushCall(L, lua::Stack::read<std::string>(L, 1), 2, 3);
     return 1;
@@ -129,7 +129,7 @@ bool PlatformLua::cancelScreen(lua_State* L, std::uint64_t id) {
     return lua::Runtime::getEngine(L).getScreens().cancel(id);
 }
 
-// Gives up the call, which fails with the code cancelled, and returns whether it was still pending.
+// Gives up the call, which fails with the code `cancelled`, and returns whether it was still pending.
 int PlatformLua::cancel(lua_State* L) {
     const std::shared_ptr<Call>& pending = lua::Userdata::checkShared<Call>(L, 1);
     lua_pushboolean(L, pending->cancel(L, pending->id) ? 1 : 0);
@@ -146,13 +146,13 @@ int PlatformLua::isDone(lua_State* L) {
     return 1;
 }
 
-// The promise of Varn behind the call, for the combinators of async such as async.all, where a failure is only its message.
+// The promise of Varn behind the call, for the combinators of `async` such as `async.all`, where a failure is only its message.
 int PlatformLua::getPromise(lua_State* L) {
     varn::async::Promise::push(L, lua::Userdata::check<Call>(L, 1).promise);
     return 1;
 }
 
-// Answers a pending call with resolve(id, ok, result) the way native code does, where a failure passes a message or a table with message, code and data.
+// Answers a pending call with `resolve(id, ok, result)` the way native code does, where a failure passes a message or a table with `message`, `code` and `data`.
 int PlatformLua::resolve(lua_State* L) {
     const auto id = lua::Stack::read<std::uint64_t>(L, 1);
     const bool ok = lua::Stack::read<bool>(L, 2);
@@ -162,7 +162,7 @@ int PlatformLua::resolve(lua_State* L) {
     return 0;
 }
 
-// Sends an event with emit(event, payload, {retain = true, batched = true}) the way native code does, so platform.on listeners receive it at the start of the next frame.
+// Sends an event with `emit(event, payload, {retain = true, batched = true})` the way native code does, so `platform.on` listeners receive it at the start of the next frame.
 int PlatformLua::emit(lua_State* L) {
     const std::string event = lua::Stack::read<std::string>(L, 1);
     std::vector<std::vector<std::byte>> buffers;
@@ -178,7 +178,7 @@ int PlatformLua::emit(lua_State* L) {
     return 0;
 }
 
-// Marks a string with bytes(data) to cross the bridge as a byte buffer, since plain strings cross as text.
+// Marks a string with `bytes(data)` to cross the bridge as a byte buffer, since plain strings cross as text.
 int PlatformLua::bytes(lua_State* L) {
     const std::string_view data = lua::Stack::read<std::string_view>(L, 1);
     const auto* first = reinterpret_cast<const std::byte*>(data.data());
@@ -196,20 +196,20 @@ int PlatformLua::pendingCallCount(lua_State* L) {
     return 1;
 }
 
-// Subscribes to native events with on(name, function(payload)) and returns a connection with a disconnect method.
+// Subscribes to native events with `on(name, function(payload))` and returns a connection with a `disconnect` method.
 int PlatformLua::on(lua_State* L) {
     pushConnection(L, lua::Stack::read<std::string>(L, 1), 2);
     return 1;
 }
 
-// Calls a method with send(method, params) when nothing needs its answer, which creates no call and drops the answer.
+// Calls a method with `send(method, params)` when nothing needs its answer, which creates no call and drops the answer.
 int PlatformLua::send(lua_State* L) {
     const std::string method = lua::Stack::read<std::string>(L, 1);
     lua::Runtime::getEngine(L).getPlatform().send(method, readPayload(L, 2));
     return 0;
 }
 
-// Implements a platform method in Lua with registerHandler(method, function(params) return result end), which is useful on desktop and in tests.
+// Implements a platform method in Lua with `registerHandler(method, function(params) return result end)`, which is useful on desktop and in tests.
 int PlatformLua::registerHandler(lua_State* L) {
     core::Engine& owner = lua::Runtime::getEngine(L);
     const std::string method = lua::Stack::read<std::string>(L, 1);
@@ -242,7 +242,7 @@ int PlatformLua::hasHandler(lua_State* L) {
     return 1;
 }
 
-// Lists the plugins of app.json as tables with id, version and native.
+// Lists the plugins of `app.json` as tables with `id`, `version` and `native`.
 int PlatformLua::plugins(lua_State* L) {
     const std::vector<AppPlugin> all = lua::Runtime::getEngine(L).getAppPlugins();
     lua_createtable(L, static_cast<int>(all.size()), 0);
@@ -259,7 +259,7 @@ int PlatformLua::plugins(lua_State* L) {
     return 1;
 }
 
-// Returns the handle of a plugin of app.json with plugin(id), which the Lua modules of the plugin use to reach its native part.
+// Returns the handle of a plugin of `app.json` with `plugin(id)`, which the Lua modules of the plugin use to reach its native part.
 int PlatformLua::plugin(lua_State* L) {
     const std::string id = lua::Stack::read<std::string>(L, 1);
     for (AppPlugin& found : lua::Runtime::getEngine(L).getAppPlugins()) {
@@ -268,7 +268,7 @@ int PlatformLua::plugin(lua_State* L) {
             return 1;
         }
     }
-    throw std::invalid_argument("The plugin " + id + " is not among the plugins of app.json.");
+    throw std::invalid_argument("The plugin \"" + id + "\" is not among the plugins of \"app.json\".");
 }
 
 int PlatformLua::getPluginId(lua_State* L) {
@@ -298,7 +298,7 @@ std::string PlatformLua::getPluginName(lua_State* L) {
     const std::string& id = lua::Userdata::check<AppPlugin>(L, 1).id;
     const std::string name = lua::Stack::read<std::string>(L, 2);
     if (name.empty()) {
-        throw std::invalid_argument("A method or event of the plugin " + id + " needs a name.");
+        throw std::invalid_argument("A method or event of the plugin \"" + id + "\" needs a name.");
     }
     return id + "." + name;
 }
@@ -353,7 +353,7 @@ int PlatformLua::concatError(lua_State* L) {
     return 1;
 }
 
-// Returns the video stream name of the plugin with handle:videoStream(name), or nil while its native part has not opened it.
+// Returns the video stream `name` of the plugin with `handle:videoStream(name)`, or `nil` while its native part has not opened it.
 int PlatformLua::videoStreamOfPlugin(lua_State* L) {
     StreamsLua::pushVideoStream(L, lua::Userdata::check<AppPlugin>(L, 1).id, lua::Stack::read<std::string>(L, 2));
     return 1;
@@ -364,13 +364,13 @@ int PlatformLua::audioStreamOfPlugin(lua_State* L) {
     return 1;
 }
 
-// Opens a screen of the plugin with handle:openScreen(name, params, {state = value, opaque = true, timeout = seconds}) and returns its call, which Lua awaits and may cancel.
+// Opens a screen of the plugin with `handle:openScreen(name, params, {state = value, opaque = true, timeout = seconds})` and returns its call, which Lua awaits and may cancel.
 int PlatformLua::openScreenOfPlugin(lua_State* L) {
     core::Engine& owner = lua::Runtime::getEngine(L);
     const std::string& id = lua::Userdata::check<AppPlugin>(L, 1).id;
     std::string screen = lua::Stack::read<std::string>(L, 2);
     if (screen.empty()) {
-        throw std::invalid_argument("A screen of the plugin " + id + " needs a name.");
+        throw std::invalid_argument("A screen of the plugin \"" + id + "\" needs a name.");
     }
     Bridge::Payload params = readPayload(L, 3);
     Screens::Options options = readScreenOptions(L, 4);
@@ -427,7 +427,7 @@ int PlatformLua::open(lua_State* L) {
     return 1;
 }
 
-// Calls and their errors exist before any module is required, because haylen.dialogs returns calls too.
+// Calls and their errors exist before any module is required, because `haylen.dialogs` returns calls too.
 void PlatformLua::install(lua_State* L) {
     luaL_newmetatable(L, kErrorType);
     lua_pushcfunction(L, &errorToString);

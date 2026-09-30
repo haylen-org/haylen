@@ -27,7 +27,7 @@ function Gamepads:enter()
     self.journal = Journal(24)
     for index = 1, 4 do
         if input.gamepadConnected(index) then
-            self.journal:add('already connected ' .. index .. ': ' .. input.gamepadName(index), sample.muted)
+            self.journal:add('Already connected ' .. index .. ': ' .. input.gamepadName(index), sample.muted)
         end
     end
     self:listen('gamepadConnected', function(pad) self.journal:add('gamepadConnected ' .. pad.gamepad .. ': ' .. pad.name, sample.green) end)

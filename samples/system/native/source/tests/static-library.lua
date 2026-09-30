@@ -1,4 +1,4 @@
--- Static library: iOS and tvOS apps link native_test_static into the app, and make.py writes a table of its symbols that native.load and native.findSymbol find, while Varn ffi calls it through ffi.C. The other platforms load dynamic libraries only, and the browser none.
+-- Static library: iOS and tvOS apps link `native_test_static` into the app, and `make.py` writes a table of its symbols that `native.load` and `native.findSymbol` find, while Varn `ffi` calls it through `ffi.C`. The other platforms load dynamic libraries only, and the browser none.
 local ffi = require('ffi')
 local haylen = require('haylen')
 local native = require('haylen.native')
@@ -18,7 +18,7 @@ function StaticLibrary:enter()
         focus = 'run',
         controls = {
             ui.button{id = 'run', text = 'Run the checks again', variant = 'primary', onClick = function() self:run() end},
-            ui.label{text = 'The native section of app.json links native_test_static into iOS and tvOS apps and lists the symbols Lua reaches, which the generated HaylenNativeSymbols.mm keeps and registers. native.load returns ffi.C for a linked library, because its symbols are part of the app.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'The "native" section of "app.json" links "native_test_static" into iOS and tvOS apps and lists the symbols Lua reaches, which the generated "HaylenNativeSymbols.mm" keeps and registers. The function "native.load" returns "ffi.C" for a linked library, because its symbols are part of the app.', color = 'textMuted', font = 'caption'},
             ui.label{font = 'monospace', text = "local lib = native.load('native_test_static')\nprint(ffi.string(lib.native_test_origin()))"},
         },
     })
@@ -34,7 +34,7 @@ function StaticLibrary:run()
             return
         end
         if not kLinked[haylen.platform] then
-            checks:skip('Linked library', 'Static libraries link into iOS and tvOS apps, and ' .. haylen.platform .. ' loads dynamic libraries.')
+            checks:skip('Linked library', 'Static libraries link into iOS and tvOS apps, and "' .. haylen.platform .. '" loads dynamic libraries.')
             return
         end
 
@@ -47,7 +47,7 @@ function StaticLibrary:run()
         checks:run('Symbol table', function()
             local address = native.findSymbol('native_test_origin')
             if address == nil then
-                error('native.findSymbol found no native_test_origin', 0)
+                error('The function "native.findSymbol" found no "native_test_origin".', 0)
             end
             return 'native.findSymbol found native_test_origin at ' .. tostring(address)
         end)

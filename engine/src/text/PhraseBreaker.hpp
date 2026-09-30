@@ -19,7 +19,7 @@ class PhraseBreaker final {
     [[nodiscard]] static bool isThai(char32_t codePoint) noexcept;
 
   private:
-    // The weights of the letters and pairs and triples of letters before and after a place, in the order UW1 to UW6, BW1 to BW3 and TW1 to TW4, and the sum of every weight.
+    // The weights of the letters and pairs and triples of letters before and after a place, in the order `UW1` to `UW6`, `BW1` to `BW3` and `TW1` to `TW4`, and the sum of every weight.
     struct Model {
         std::array<std::unordered_map<std::u32string, int>, 13> weights;
         long long total = 0;

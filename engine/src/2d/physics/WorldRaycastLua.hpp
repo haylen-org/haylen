@@ -12,12 +12,12 @@
 
 namespace haylen::physics2d {
 
-// Binds the casts of physics2d::Raycaster as methods of PhysicsWorld, the RayBatch class and the ray debug drawing. Hits cross into Lua as {shape, body, x, y, normalX, normalY, fraction, distance} tables.
+// Binds the casts of `physics2d::Raycaster` as methods of `PhysicsWorld`, the `RayBatch` class and the ray debug drawing. Hits cross into Lua as `{shape, body, x, y, normalX, normalY, fraction, distance}` tables.
 class WorldRaycastLua final {
   public:
     static void install(lua_State* L);
 
-    // Sets newRayBatch and drawRay on the module table at the top of the stack.
+    // Sets `newRayBatch` and `drawRay` on the module table at the top of the stack.
     static void addFunctions(lua_State* L);
 
     static int raycast(lua_State* L);
@@ -40,13 +40,13 @@ class WorldRaycastLua final {
     static constexpr std::array<std::string_view, 1> kLimitFields{"limit"};
     static constexpr std::array<std::string_view, 2> kPickFields{"category", "mask"};
 
-    // Reads the filter at index, whose accept function, when given, receives each candidate hit table of the world at index 1.
+    // Reads the filter at `index`, whose `accept` function, when given, receives each candidate hit table of the world at index 1.
     [[nodiscard]] static Raycaster::Filter readFilter(lua_State* L, int index, bool withLimit = false);
     [[nodiscard]] static std::size_t readLimit(lua_State* L, int index);
     static void pushHit(lua_State* L, int worldIndex, const RaycastHit& hit);
     static void pushResult(lua_State* L, const std::optional<RaycastHit>& hit);
 
-    // Records a cast of the world at index 1 for debugDrawRays when debugRays is on.
+    // Records a cast of the world at index 1 for `debugDrawRays` when `debugRays` is on.
     static void record(lua_State* L, math::Vec2 from, math::Vec2 to, const std::optional<RaycastHit>& hit);
 
     static int newRayBatch(lua_State* L);

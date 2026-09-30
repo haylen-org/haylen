@@ -44,14 +44,14 @@ template <typename T> class RingBuffer final {
         std::size_t index;
     };
 
-    // Throws std::invalid_argument when the capacity is zero.
+    // Throws `std::invalid_argument` when the capacity is zero.
     explicit RingBuffer(std::size_t slotCount) : slots(slotCount) {
         if (slotCount == 0) {
             throw std::invalid_argument("A ring buffer needs a capacity of at least one.");
         }
     }
 
-    // Appends the value as the newest element and returns true when the oldest element had to go to make room.
+    // Appends the value as the newest element and returns `true` when the oldest element had to go to make room.
     bool push(T value) {
         const bool overwrote = full();
         slots[(head + count) % slots.size()] = std::move(value);
@@ -63,7 +63,7 @@ template <typename T> class RingBuffer final {
         return overwrote;
     }
 
-    // Removes and returns the oldest element. Throws std::out_of_range when the buffer is empty.
+    // Removes and returns the oldest element. Throws `std::out_of_range` when the buffer is empty.
     T pop() {
         if (empty()) {
             throw std::out_of_range("The ring buffer is empty.");
@@ -82,7 +82,7 @@ template <typename T> class RingBuffer final {
         return *slots[(head + index) % slots.size()];
     }
 
-    // Throws std::out_of_range when the index is past the newest element.
+    // Throws `std::out_of_range` when the index is past the newest element.
     [[nodiscard]] const T& at(std::size_t index) const {
         if (index >= count) {
             throw std::out_of_range("The ring buffer index is out of range.");

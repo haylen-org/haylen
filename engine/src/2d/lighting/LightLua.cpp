@@ -108,13 +108,13 @@ int LightLua::strengthAt(lua_State* L) {
     return 1;
 }
 
-// Returns the light map value after the light draws over a color with light:apply(color, x, y).
+// Returns the light map value after the light draws over a color with `light:apply(color, x, y)`.
 int LightLua::apply(lua_State* L) {
     lua::Stack::push(L, lua::Userdata::check<Light>(L, 1).apply(lua::Stack::read<math::Color>(L, 2), {lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4)}));
     return 1;
 }
 
-// Tells whether occluders shadow a point with light:shadowedAt(x, y, occluders), where occluders is a list of Occluder objects or tables.
+// Tells whether occluders shadow a point with `light:shadowedAt(x, y, occluders)`, where `occluders` is a list of `Occluder` objects or tables.
 int LightLua::shadowedAt(lua_State* L) {
     const Light& light = lua::Userdata::check<Light>(L, 1);
     luaL_checktype(L, 4, LUA_TTABLE);

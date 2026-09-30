@@ -11,7 +11,7 @@
 
 namespace haylen::storage {
 
-// Private, writable files of the current user and app. Writes are atomic, and flush makes them durable on platforms that buffer storage, such as the browser. Reads, writes, lists and removes may run on any thread, and two writes of the same file never mix, while flush runs on the frame thread.
+// Private, writable files of the current user and app. Writes are atomic, and `flush` makes them durable on platforms that buffer storage, such as the browser. Reads, writes, lists and removes may run on any thread, and two writes of the same file never mix, while `flush` runs on the frame thread.
 class UserStorage final {
   public:
     explicit UserStorage(std::filesystem::path folder, std::function<void()> onFlush = {});

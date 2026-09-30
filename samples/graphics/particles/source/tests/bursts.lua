@@ -1,4 +1,4 @@
--- Bursts and prewarm: bursts fire at their times in the emission cycle, a cycle without loop stops the emitter, and prewarm simulates seconds on the first update so an effect starts grown.
+-- Bursts and prewarm: bursts fire at their times in the emission cycle, a cycle without `loop` stops the emitter, and prewarm simulates seconds on the first update so an effect starts grown.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local particles2d = require('haylen.particles2d')

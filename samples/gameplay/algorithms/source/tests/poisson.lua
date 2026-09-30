@@ -1,4 +1,4 @@
--- Poisson disk sampling whose spacing follows a density: a noise map sampled on a worker thread by procedural2d.scatterAsync, or a distance function around a point you pick with math.poissonDisk.
+-- Poisson disk sampling whose spacing follows a density: a noise map sampled on a worker thread by `procedural2d.scatterAsync`, or a distance function around a point you pick with `math.poissonDisk`.
 local haylen = require('haylen')
 local async = require('async')
 local graphics2d = require('haylen.graphics2d')

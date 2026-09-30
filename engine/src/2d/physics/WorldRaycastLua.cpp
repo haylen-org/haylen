@@ -53,7 +53,7 @@ Raycaster::Filter WorldRaycastLua::readFilter(lua_State* L, int index, bool with
     }
     filter.collision = ShapeLua::readFilter(L, index, {});
 
-    // The accept function stays on the stack while the cast runs, and it receives the hit tables of the world at index 1.
+    // The `accept` function stays on the stack while the cast runs, and it receives the hit tables of the world at index 1.
     if (lua_getfield(L, index, "accept") == LUA_TNIL) {
         lua_pop(L, 1);
         return filter;
@@ -123,7 +123,7 @@ void WorldRaycastLua::record(lua_State* L, math::Vec2 from, math::Vec2 to, const
     lua_pop(L, 2);
 }
 
-// Returns the closest hit with raycast(x1, y1, x2, y2[, filter]), where the filter takes category, mask, group and accept.
+// Returns the closest hit with `raycast(x1, y1, x2, y2[, filter])`, where the filter takes `category`, `mask`, `group` and `accept`.
 int WorldRaycastLua::raycast(lua_State* L) {
     const World& world = lua::Userdata::check<World>(L, 1);
     const math::Vec2 from{lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)};
@@ -134,7 +134,7 @@ int WorldRaycastLua::raycast(lua_State* L) {
     return 1;
 }
 
-// Lists the hits in order with raycastAll(x1, y1, x2, y2[, filter]), where the filter also takes a limit of hits.
+// Lists the hits in order with `raycastAll(x1, y1, x2, y2[, filter])`, where the filter also takes a `limit` of hits.
 int WorldRaycastLua::raycastAll(lua_State* L) {
     const World& world = lua::Userdata::check<World>(L, 1);
     const math::Vec2 from{lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)};
@@ -151,7 +151,7 @@ int WorldRaycastLua::raycastAll(lua_State* L) {
     return 1;
 }
 
-// Sweeps a circle with castCircle(x, y, radius, dx, dy[, filter]).
+// Sweeps a circle with `castCircle(x, y, radius, dx, dy[, filter])`.
 int WorldRaycastLua::castCircle(lua_State* L) {
     const World& world = lua::Userdata::check<World>(L, 1);
     const math::Vec2 center{lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)};
@@ -162,7 +162,7 @@ int WorldRaycastLua::castCircle(lua_State* L) {
     return 1;
 }
 
-// Sweeps a box with castBox(x, y, width, height, rotation, dx, dy[, filter]).
+// Sweeps a box with `castBox(x, y, width, height, rotation, dx, dy[, filter])`.
 int WorldRaycastLua::castBox(lua_State* L) {
     const World& world = lua::Userdata::check<World>(L, 1);
     const math::Vec2 center{lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)};
@@ -174,7 +174,7 @@ int WorldRaycastLua::castBox(lua_State* L) {
     return 1;
 }
 
-// Sweeps a capsule with castCapsule(x1, y1, x2, y2, radius, dx, dy[, filter]).
+// Sweeps a capsule with `castCapsule(x1, y1, x2, y2, radius, dx, dy[, filter])`.
 int WorldRaycastLua::castCapsule(lua_State* L) {
     const World& world = lua::Userdata::check<World>(L, 1);
     const math::Vec2 first{lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)};
@@ -187,7 +187,7 @@ int WorldRaycastLua::castCapsule(lua_State* L) {
     return 1;
 }
 
-// Sweeps a convex polygon with castPolygon(points, dx, dy[, filter]).
+// Sweeps a convex polygon with `castPolygon(points, dx, dy[, filter])`.
 int WorldRaycastLua::castPolygon(lua_State* L) {
     const World& world = lua::Userdata::check<World>(L, 1);
     const std::vector<math::Vec2> points = lua::Stack::read<std::vector<math::Vec2>>(L, 2);
@@ -202,7 +202,7 @@ int WorldRaycastLua::castPolygon(lua_State* L) {
     return 1;
 }
 
-// Bounces a ray with bounceRay(x, y, dx, dy, length, bounces[, filter]) and returns the bounce hits and the point where the path ends. Hit distances and fractions measure the whole path up to each bounce.
+// Bounces a ray with `bounceRay(x, y, dx, dy, length, bounces[, filter])` and returns the bounce hits and the point where the path ends. Hit distances and fractions measure the whole path up to each bounce.
 int WorldRaycastLua::bounceRay(lua_State* L) {
     const World& world = lua::Userdata::check<World>(L, 1);
     const math::Vec2 origin{lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)};
@@ -236,7 +236,7 @@ int WorldRaycastLua::bounceRay(lua_State* L) {
     return 3;
 }
 
-// Casts a fan of rays with rayFan(x, y, angle, spread, count, length[, filter]). Each entry is the hit of one ray, or false when that ray hit nothing.
+// Casts a fan of rays with `rayFan(x, y, angle, spread, count, length[, filter])`. Each entry is the hit of one ray, or `false` when that ray hit nothing.
 int WorldRaycastLua::rayFan(lua_State* L) {
     const Raycaster caster(lua::Userdata::check<World>(L, 1));
     const math::Vec2 origin{lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)};
@@ -279,13 +279,13 @@ int WorldRaycastLua::lineOfSight(lua_State* L) {
     return 1;
 }
 
-// Casts every ray of a batch with raycastBatch(batch[, filter]), spread over the job system. Batches take category, mask and group, but no accept function.
+// Casts every ray of a batch with `raycastBatch(batch[, filter])`, spread over the job system. Batches take `category`, `mask` and `group`, but no `accept` function.
 int WorldRaycastLua::raycastBatch(lua_State* L) {
     const World& world = lua::Userdata::check<World>(L, 1);
     RayBatch& batch = lua::Userdata::check<RayBatch>(L, 2);
     const Raycaster::Filter filter = readFilter(L, 3);
     if (filter.accept) {
-        return luaL_error(L, "Ray batches take no accept function, because their rays run on worker threads.");
+        return luaL_error(L, "Ray batches take no \"accept\" function, because their rays run on worker threads.");
     }
     Raycaster(world).castBatch(batch, filter.collision, &lua::Runtime::getEngine(L).getJobs());
 
@@ -298,7 +298,7 @@ int WorldRaycastLua::raycastBatch(lua_State* L) {
     return 0;
 }
 
-// Lists the shapes under a screen point with pick(camera, x, y[, filter]), where the point is in design coordinates like pointer positions and the filter takes category and mask.
+// Lists the shapes under a screen point with `pick(camera, x, y[, filter])`, where the point is in design coordinates like pointer positions and the filter takes `category` and `mask`.
 int WorldRaycastLua::pick(lua_State* L) {
     const World& world = lua::Userdata::check<World>(L, 1);
     const spatial2d::ScreenPicker picker(lua::Userdata::check<graphics2d::Camera>(L, 2), lua::Runtime::getEngine(L).getViewport().getVisibleRect());
@@ -320,7 +320,7 @@ int WorldRaycastLua::isDebuggingRays(lua_State* L) {
     return 1;
 }
 
-// Turns ray recording on or off with world.debugRays = enabled, which keeps a recorder in the world state table while on.
+// Turns ray recording on or off with `world.debugRays = enabled`, which keeps a recorder in the world state table while on.
 int WorldRaycastLua::setDebuggingRays(lua_State* L) {
     (void)lua::Userdata::check<World>(L, 1);
     const bool enabled = lua::Stack::read<bool>(L, 3);
@@ -339,7 +339,7 @@ int WorldRaycastLua::setDebuggingRays(lua_State* L) {
     return 0;
 }
 
-// Draws the rays recorded since the last call with debugDrawRays([order]) and clears them.
+// Draws the rays recorded since the last call with `debugDrawRays([order])` and clears them.
 int WorldRaycastLua::debugDrawRays(lua_State* L) {
     (void)lua::Userdata::check<World>(L, 1);
     const graphics2d::DrawOrder order = lua::TypeConverter::readDrawOrder(L, 2);
@@ -373,7 +373,7 @@ int WorldRaycastLua::setBatchSize(lua_State* L) {
     return 0;
 }
 
-// Sets ray i with setRay(i, x1, y1, x2, y2), counting from 1.
+// Sets ray `i` with `setRay(i, x1, y1, x2, y2)`, counting from 1.
 int WorldRaycastLua::batchSetRay(lua_State* L) {
     RayBatch& batch = lua::Userdata::check<RayBatch>(L, 1);
     batch.setRay(readBatchIndex(L, 2), {lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4)}, {lua::Stack::read<float>(L, 5), lua::Stack::read<float>(L, 6)});
@@ -389,7 +389,7 @@ int WorldRaycastLua::batchRay(lua_State* L) {
     return 4;
 }
 
-// Returns false for a ray that hit nothing, and otherwise true, x, y, normalX, normalY and fraction, so reading results creates no tables.
+// Returns `false` for a ray that hit nothing, and otherwise `true`, `x`, `y`, `normalX`, `normalY` and `fraction`, so reading results creates no tables.
 int WorldRaycastLua::batchHit(lua_State* L) {
     const std::optional<RaycastHit>& hit = lua::Userdata::check<RayBatch>(L, 1).getHit(readBatchIndex(L, 2));
     if (!hit) {
@@ -425,7 +425,7 @@ int WorldRaycastLua::batchBody(lua_State* L) {
     return 1;
 }
 
-// Draws one ray with drawRay(x1, y1, x2, y2[, hit[, order]]), where hit is a hit table of any cast, or nil or false for a miss.
+// Draws one ray with `drawRay(x1, y1, x2, y2[, hit[, order]])`, where `hit` is a hit table of any cast, or `nil` or `false` for a miss.
 int WorldRaycastLua::drawRay(lua_State* L) {
     const math::Vec2 from{lua::Stack::read<float>(L, 1), lua::Stack::read<float>(L, 2)};
     const math::Vec2 to{lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4)};

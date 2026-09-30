@@ -118,7 +118,7 @@ TEST(EmitterTest, KeepsHugeRatesBurstsAndFramesWithinItsRoom) {
     test::EngineFixture fixture;
     const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
 
-    // Spawning stops at maxParticles at once, however many particles a burst or a rate asks for.
+    // Spawning stops at `maxParticles` at once, however many particles a burst or a rate asks for.
     particles2d::Emitter flood({.texture = texture, .rate = 1.0e30F, .maxParticles = 5, .lifetime = {10.0F, 10.0F}});
     flood.update(0.1F);
     EXPECT_EQ(flood.getCount(), 5U);
@@ -237,8 +237,8 @@ TEST(EffectTest, LoadsEffectFilesAsAssets) {
         return std::string("no error");
     };
     // clang-format on
-    EXPECT_EQ(failure("effects/negative.particles"), "The particle effect value 'count' needs an integer of at least 0.");
-    EXPECT_EQ(failure("effects/unbounded.particles"), "The particle effect value 'maxParticles' needs an integer of at least 0.");
+    EXPECT_EQ(failure("effects/negative.particles"), "The particle effect value \"count\" needs an integer of at least 0.");
+    EXPECT_EQ(failure("effects/unbounded.particles"), "The particle effect value \"maxParticles\" needs an integer of at least 0.");
 
     // clang-format off
     fixture.runLua(R"(
@@ -288,14 +288,14 @@ TEST(Particles2DLuaTest, CreatesAndConfiguresEmittersFromLua) {
 
     EXPECT_EQ(fixture.lua("return fire.count .. ' ' .. tostring(fire.alive) .. ' ' .. fire.position.x"), "10 true 10.0");
     EXPECT_EQ(fixture.lua("return blast.count .. ' ' .. tostring(blast.emitting)"), "6 false");
-    EXPECT_NE(fixture.lua("particles2d.newEmitter({texture = graphics.whiteTexture(), bursts = {{time = 0, amount = 1}}})").find("Unknown option 'amount'"), std::string::npos);
+    EXPECT_NE(fixture.lua("particles2d.newEmitter({texture = graphics.whiteTexture(), bursts = {{time = 0, amount = 1}}})").find("Unknown option \"amount\""), std::string::npos);
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return graphics2d.stats().sprites"), "10");
     fixture.runLua("fire:configure({rate = 0}) fire.emitting = false fire:burst(2) fire:update(0)");
     EXPECT_EQ(fixture.lua("return fire.count .. ' ' .. tostring(fire.emitting)"), "12 false");
 
     // The seed only feeds the random numbers of a new emitter, so reconfiguring an emitter rejects it.
-    EXPECT_NE(fixture.lua("fire:configure({rate = 5, seed = 3})").find("Unknown option 'seed'"), std::string::npos);
+    EXPECT_NE(fixture.lua("fire:configure({rate = 5, seed = 3})").find("Unknown option \"seed\""), std::string::npos);
     EXPECT_EQ(fixture.lua("local c = fire.config return c.rate .. ' ' .. c.maxParticles .. ' ' .. c.lifetime[1] .. ',' .. c.lifetime[2] .. ' ' .. c.shape .. ' ' .. c.blend .. ' ' .. c.layer .. ' ' .. #c.colors .. ' ' .. #c.bursts .. ' ' .. tostring(c.texture == graphics.whiteTexture())"), "0.0 50 0.5,1.0 circle additive 3 2 0 true");
     EXPECT_EQ(fixture.lua("local copy = particles2d.newEmitter(fire.config) return copy.config.spread == fire.config.spread and copy.config.damping == fire.config.damping and copy.config.colors[2] == fire.config.colors[2]"), "true");
 
@@ -305,7 +305,7 @@ TEST(Particles2DLuaTest, CreatesAndConfiguresEmittersFromLua) {
     EXPECT_EQ(fixture.lua("return fire.count"), "0");
     EXPECT_EQ(fixture.lua("fire:burst(1e12) return fire.count"), "50");
 
-    EXPECT_NE(fixture.lua("particles2d.newEmitter({texture = graphics.whiteTexture(), sped = 3})").find("Unknown option 'sped'"), std::string::npos);
+    EXPECT_NE(fixture.lua("particles2d.newEmitter({texture = graphics.whiteTexture(), sped = 3})").find("Unknown option \"sped\""), std::string::npos);
     EXPECT_NE(fixture.lua("particles2d.newEmitter({texture = graphics.whiteTexture(), shape = 'fan'})").find("unknown value 'fan'"), std::string::npos);
     EXPECT_NE(fixture.lua("particles2d.newEmitter({})").find("needs a texture"), std::string::npos);
     EXPECT_NE(fixture.lua("fire:configure({lifetime = 0})").find("positive lifetime"), std::string::npos);

@@ -424,7 +424,7 @@ void SceneManager::start(const std::shared_ptr<Change>& change) {
     }
     if (const auto taken = std::ranges::find(preloaded, scene); scene && taken != preloaded.end()) {
         if (change->options.params.has_value()) {
-            throw std::invalid_argument("A preloaded scene keeps the params of its preload.");
+            throw std::invalid_argument("A preloaded scene keeps the \"params\" of its preload.");
         }
         preloaded.erase(taken);
     }

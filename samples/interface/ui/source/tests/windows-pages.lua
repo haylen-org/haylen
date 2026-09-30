@@ -35,7 +35,7 @@ function WindowsPages:content()
             }),
             sample.section('accordion', {
                 ui.accordion{items = sections, expanded = {'controls'}, onToggle = function(event)
-                    self:setStatus(event.item .. (event.expanded and ' opened' or ' closed'))
+                    self:setStatus('The section "' .. event.item .. (event.expanded and '" opened' or '" closed'))
                 end,
                     ui.label{text = 'Move with the left stick and chop with the south button.'},
                     ui.label{text = 'Survive ten nights on the island.'},
@@ -56,11 +56,11 @@ function WindowsPages:content()
             }),
         },
         ui.window{id = 'bag', title = 'Bag', x = 1100, y = 560, width = 620, closable = true,
-            onMove = function(event) self:setStatus(string.format('window moved to %.0f, %.0f', event.x, event.y)) end,
-            onClose = function() self:setStatus('window closed') end,
-            ui.label{text = 'An accordion with multiple = true keeps several sections open.', color = 'textMuted'},
+            onMove = function(event) self:setStatus(string.format('Window moved to %.0f, %.0f', event.x, event.y)) end,
+            onClose = function() self:setStatus('Window closed') end,
+            ui.label{text = 'An accordion with "multiple = true" keeps several sections open.', color = 'textMuted'},
             ui.accordion{multiple = true, items = {{id = 'food', text = 'Food'}, {id = 'tools', text = 'Tools'}}, expanded = {'food', 'tools'},
-                ui.row{gap = 12, ui.icon{image = 'icons/apple.png', size = 56}, ui.icon{image = 'icons/fish.png', size = 56}, ui.button{text = 'Eat an apple', onClick = function() self:setStatus('ate an apple') end}},
+                ui.row{gap = 12, ui.icon{image = 'icons/apple.png', size = 56}, ui.icon{image = 'icons/fish.png', size = 56}, ui.button{text = 'Eat an apple', onClick = function() self:setStatus('Ate an apple') end}},
                 ui.row{gap = 12, ui.icon{image = 'icons/hammer.png', size = 56}, ui.icon{image = 'icons/key.png', size = 56}},
             },
         },

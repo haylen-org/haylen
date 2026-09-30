@@ -1,4 +1,4 @@
--- The paint bucket of spatial2d.floodFill, the connected regions of spatial2d.components and a union-find that joins islands with bridges.
+-- The paint bucket of `spatial2d.floodFill`, the connected regions of `spatial2d.components` and a union-find that joins islands with bridges.
 local haylen = require('haylen')
 local graphics2d = require('haylen.graphics2d')
 local input = require('haylen.input')

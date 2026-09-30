@@ -62,7 +62,7 @@ TEST(SceneLuaTest, ManagesTheStackWithPromisesAndHooks) {
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return tostring(dropped) .. ' ' .. scene.size()"), "false 0");
     EXPECT_NE(fixture.lua("scene.push({}, {duration = 1, onComplete = 3})").find("error: "), std::string::npos);
-    EXPECT_NE(fixture.lua("scene.push({}, {fade = 1})").find("Unknown option 'fade'"), std::string::npos);
+    EXPECT_NE(fixture.lua("scene.push({}, {fade = 1})").find("Unknown option \"fade\""), std::string::npos);
 }
 
 TEST(SceneLuaTest, DrawsCustomTransitionsAndHearsThePause) {
@@ -96,12 +96,12 @@ TEST(SceneLuaTest, DrawsCustomTransitionsAndHearsThePause) {
 
     fixture.runLua("log = {} haylen.setPaused(true) haylen.setPaused(false)");
     EXPECT_EQ(fixture.lua("return table.concat(log, ', ')"), "game paused, menu unpaused, game unpaused, menu paused");
-    EXPECT_NE(fixture.lua("scene.pop({duration = 1, effect = {}})").find("A transition effect needs a render method."), std::string::npos);
+    EXPECT_NE(fixture.lua("scene.pop({duration = 1, effect = {}})").find("A transition effect needs a \"render\" method."), std::string::npos);
     EXPECT_NE(fixture.lua("scene.pop({duration = 1, effect = wipe, color = '#FFFFFF'})").find("takes no color or direction"), std::string::npos);
     EXPECT_NE(fixture.lua("scene.pop({duration = 1, effect = wipe, direction = 'up'})").find("takes no color or direction"), std::string::npos);
     EXPECT_NE(fixture.lua("scene.pop({effect = {switchProgress = 2, render = wipe.render}})").find("between 0 and 1"), std::string::npos);
-    EXPECT_NE(fixture.lua("scene.pop({effect = {switchProgress = 0.5, exitProgress = 0.75, render = wipe.render}})").find("takes no exitProgress"), std::string::npos);
-    EXPECT_NE(fixture.lua("scene.pop({effect = {switchProgress = 0, exitProgress = 2, render = wipe.render}})").find("needs an exitProgress between 0 and 1"), std::string::npos);
+    EXPECT_NE(fixture.lua("scene.pop({effect = {switchProgress = 0.5, exitProgress = 0.75, render = wipe.render}})").find("takes no \"exitProgress\""), std::string::npos);
+    EXPECT_NE(fixture.lua("scene.pop({effect = {switchProgress = 0, exitProgress = 2, render = wipe.render}})").find("needs an \"exitProgress\" between 0 and 1"), std::string::npos);
     EXPECT_NE(fixture.lua("scene.pop({effect = 3})").find("must be the name of a built-in effect or a table"), std::string::npos);
     EXPECT_NE(fixture.lua("scene.pop({duration = 1, effect = 'swirl'})").find("unknown value 'swirl'"), std::string::npos);
     EXPECT_NE(fixture.lua("scene.pop({duration = 1, effect = 'wipe', direction = 'sideways'})").find("unknown value 'sideways'"), std::string::npos);
@@ -199,7 +199,7 @@ TEST(SceneLuaTest, LoadsScenesInCoroutinesBehindALoadingView) {
     EXPECT_EQ(fixture.lua("return tostring(view.lowest < 1) .. ' ' .. scene.loadingViewOpacity()"), "true 0.0");
     EXPECT_EQ(fixture.lua("return table.concat(phases, ', ')"), "sceneCoverStarted menu>level, sceneHoldStarted menu>level, sceneRevealFinished menu>level");
     EXPECT_EQ(fixture.lua("return scene.state(level) .. ' ' .. scene.loadProgress(level)"), "active 1.0");
-    EXPECT_NE(fixture.lua("level.context:progress(1)").find("haylen.SceneLoad was already released."), std::string::npos);
+    EXPECT_NE(fixture.lua("level.context:progress(1)").find("haylen.SceneLoad\" was already released."), std::string::npos);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
@@ -392,7 +392,7 @@ TEST(SceneLuaTest, PreloadsAndCancelsPreloads) {
     EXPECT_NE(fixture.lua("scene.cancelPreload(spare)").find("The scene is not preloaded."), std::string::npos);
     EXPECT_NE(fixture.lua("scene.preload(level)").find("already loaded or on the stack"), std::string::npos);
     EXPECT_NE(fixture.lua("scene.push({}, {loading = 3})").find("error: "), std::string::npos);
-    EXPECT_NE(fixture.lua("scene.pop({params = 1})").find("Unknown option 'params'"), std::string::npos);
+    EXPECT_NE(fixture.lua("scene.pop({params = 1})").find("Unknown option \"params\""), std::string::npos);
     EXPECT_NE(fixture.lua("scene.push({}, {loadingDelay = -1})").find("cannot be negative"), std::string::npos);
     EXPECT_NE(fixture.lua("scene.push({}, {loadingFadeOut = -0.5})").find("the loading fade-out cannot be negative"), std::string::npos);
 }

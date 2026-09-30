@@ -16,7 +16,7 @@ function Home:enter()
         gap = 32,
         ui.image{image = 'logo.png', width = 256, height = 256, align = 'center'},
         ui.label{text = haylen.config.name, font = 'title', align = 'center'},
-        ui.label{text = 'Made with Haylen ' .. haylen.version .. ' on ' .. haylen.platform, color = 'textMuted', align = 'center'},
+        ui.label{text = 'Made with Haylen ' .. haylen.version .. ' on "' .. haylen.platform .. '"', color = 'textMuted', align = 'center'},
         ui.button{id = 'press', text = 'Press me', variant = 'primary', align = 'center', onClick = function()
             self:press()
         end},

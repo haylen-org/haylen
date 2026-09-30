@@ -7,13 +7,13 @@ Haylen Camera is a Lua sample of the 2D camera of `haylen.graphics2d`: following
 | Dead zone and drag margins | A camera locked on the player, with a dead zone or with drag margins, drawn by `camera:drawDebug`. |
 | Smoothing and look-ahead | Position smoothing with its speed and a look-ahead by the velocity of the player. |
 | Limits | Limits wider and narrower than the view, with and without limit smoothing. |
-| Zoom | `camera:zoomAt` from the wheel and pinches toward the pointer, and from keys, shoulders and triggers toward the middle, within zoom limits. |
-| Framing several targets | `camera:frame` keeping two players and a wanderer in view. |
+| Zoom | The method `camera:zoomAt` from the wheel and pinches toward the pointer, and from keys, shoulders and triggers toward the middle, within zoom limits. |
+| Framing several targets | The method `camera:frame` keeping two players and a wanderer in view. |
 | Shake | Trauma shake, directional recoil, frequency, largest offset and decay. |
 | Rotation | A turning view with rotation smoothing and `ignoreRotation`. |
 | Split screen | Two players with a camera each, side by side or stacked. |
 | Minimap | A zoomed-out camera in a corner viewport whose visibility mask leaves the details out. |
-| Blending cameras | `graphics2d.blendCameras` tweened between the player and a landmark. |
+| Blending cameras | The function `graphics2d.blendCameras` tweened between the player and a landmark. |
 | Parallax layers | Clouds, mountains, hills and grass with their own scroll scales, repetition and autoscroll. |
 | Pixel snap | The same pixel art drifting with and without `pixelSnap`. |
 | Screen to world | Hovering and selecting objects through `camera:screenToWorld` in a zoomed and rotated view, labeled with `camera:worldToScreen`. |

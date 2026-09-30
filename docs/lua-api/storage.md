@@ -1,6 +1,6 @@
 # haylen.storage
 
-`haylen.storage` reads and writes private files of the current player and app, such as caches and exported data, and keeps named save slots for app progress among them. Every app gets its own folder, named after the `identifier` in `app.json`, so two apps never see each other's files. Use it whenever the app needs to keep data between sessions. Player preferences such as volume or controls belong in [haylen.preferences](preferences.md) instead.
+The module `haylen.storage` reads and writes private files of the current player and app, such as caches and exported data, and keeps named save slots for app progress among them. Every app gets its own folder, named after the `identifier` in `app.json`, so two apps never see each other's files. Use it whenever the app needs to keep data between sessions. Player preferences such as volume or controls belong in [`haylen.preferences`](preferences.md) instead.
 
 ```lua
 local storage = require('haylen.storage')
@@ -25,10 +25,10 @@ end)
 
 ## Paths
 
-Paths are relative to the storage folder of the app and use `/` as the separator, for example `'saves/slot1.json'`. `.` segments are ignored and `..` may only go back inside the folder. The following paths raise errors:
+Paths are relative to the storage folder of the app and use `/` as the separator, for example `'saves/slot1.json'`. The `.` segments are ignored and `..` may only go back inside the folder. The following paths raise errors:
 
-- An absolute path, such as `'/etc/hosts'` or `'C:/data'`, raises `The path '/etc/hosts' must be relative.`
-- A path that leaves the folder, such as `'../other.txt'`, raises `The path '../other.txt' must stay inside its root folder.`
+- An absolute path, such as `'/etc/hosts'` or `'C:/data'`, raises `The path "/etc/hosts" must be relative.`
+- A path that leaves the folder, such as `'../other.txt'`, raises `The path "../other.txt" must stay inside its root folder.`
 - An empty path raises `A storage path cannot be empty.`
 
 The storage folder is located here on each platform:
@@ -36,16 +36,16 @@ The storage folder is located here on each platform:
 | Platform | Folder |
 | --- | --- |
 | Windows | `%APPDATA%\<identifier>` |
-| macOS and iOS | `Application Support/<identifier>` in the user domain. tvOS uses `Caches/<identifier>`. |
-| Linux | `$XDG_DATA_HOME/<identifier>`, or `~/.local/share/<identifier>` when the variable is not set. |
-| Android | `<identifier>` inside the internal data folder of the app. |
-| Web | `/persistent/<identifier>` in a file system that the page keeps in IndexedDB. |
+| macOS and iOS | The folder is `Application Support/<identifier>` in the user domain. On tvOS, it is `Caches/<identifier>`. |
+| Linux | The folder is `$XDG_DATA_HOME/<identifier>`, or `~/.local/share/<identifier>` when the variable is not set. |
+| Android | The folder is `<identifier>` inside the internal data folder of the app. |
+| Web | The folder is `/persistent/<identifier>` in a file system that the page keeps in IndexedDB. |
 
 ## Files
 
 ### storage.readText(path)
 
-Returns the whole content of a file as a string. Lua strings hold any bytes, so binary files work too. A missing file raises `The storage file '<path>' was not found.`
+Returns the whole content of a file as a string. Lua strings hold any bytes, so binary files work too. A missing file raises `The storage file "<path>" was not found.`
 
 ```lua
 local storage = require('haylen.storage')
@@ -139,7 +139,7 @@ print(#storage.list() .. ' files in total')
 
 ### storage.flush()
 
-Makes previous writes durable on platforms that buffer storage. On the web it copies the file system to IndexedDB, and elsewhere it returns right away because writes are already on disk. Call it after saving important data, for example when a level ends. The engine flushes by itself when the app goes to the background, right after the listeners of the `appBackground` event of [haylen.events](events.md) have run, so saves written there are durable too.
+Makes previous writes durable on platforms that buffer storage. On the web it copies the file system to IndexedDB, and elsewhere it returns right away because writes are already on disk. Call it after saving important data, for example when a level ends. The engine flushes by itself when the app goes to the background, right after the listeners of the `appBackground` event of [`haylen.events`](events.md) have run, so saves written there are durable too.
 
 ```lua
 local storage = require('haylen.storage')
@@ -216,7 +216,7 @@ end)
 
 ## Save slots
 
-Save slots hold the progress of the app, with a small summary of each slot for a load menu. Each slot is a JSON file at `saves/<slot>.json` among the other files of the app, so `storage.list('saves')` lists them too. A slot holds the app data, a summary table for load menus and the time it was saved. Slot names use 1 to 64 letters, digits, dashes or underscores, such as `'slot-1'` or `'auto_save'`, and other names raise `The save slot name '<slot>' must use 1 to 64 letters, digits, dashes or underscores.`. Every write and remove reaches the disk at once, including the browser storage of web builds.
+Save slots hold the progress of the app, with a small summary of each slot for a load menu. Each slot is a JSON file at `saves/<slot>.json` among the other files of the app, so `storage.list('saves')` lists them too. A slot holds the app data, a summary table for load menus and the time it was saved. Slot names use 1 to 64 letters, digits, dashes or underscores, such as `'slot-1'` or `'auto_save'`, and other names raise `The save slot name "<slot>" must use 1 to 64 letters, digits, dashes or underscores.`. Every write and remove reaches the disk at once, including the browser storage of web builds.
 
 Data and summaries are converted to JSON. Booleans, numbers, strings and tables of them are kept. A table whose keys are exactly 1 to its length becomes a list, and any other table becomes an object whose keys come back as strings, so `{[1] = 'a', [3] = 'c'}` reads back as `{['1'] = 'a', ['3'] = 'c'}`. An empty table reads back as an empty table. Functions, userdata and threads raise an error, and so do tables nested deeper than 128 levels, which includes tables that contain themselves.
 
@@ -233,7 +233,7 @@ storage.writeSlot('slot-1', game, {day = game.day, place = 'Beach'})
 
 ### storage.readSlot(slot)
 
-Returns the data of the slot, or `nil` when the slot does not exist. A file that is not a valid save raises `The save slot '<slot>' is damaged.`.
+Returns the data of the slot, or `nil` when the slot does not exist. A file that is not a valid save raises `The save slot "<slot>" is damaged.`.
 
 ```lua
 local storage = require('haylen.storage')
@@ -246,7 +246,7 @@ end
 
 ### storage.slotInfo(slot)
 
-Returns a table describing the slot, or `nil` when the slot does not exist. A damaged file raises `The save slot '<slot>' is damaged.`.
+Returns a table describing the slot, or `nil` when the slot does not exist. A damaged file raises `The save slot "<slot>" is damaged.`.
 
 | Field | Type | Meaning |
 | --- | --- | --- |
@@ -265,7 +265,7 @@ end
 
 ### storage.slotExists(slot)
 
-Returns true when the slot exists.
+Returns `true` when the slot exists.
 
 ```lua
 local storage = require('haylen.storage')
@@ -276,7 +276,7 @@ print(label)
 
 ### storage.removeSlot(slot)
 
-Deletes the slot and returns true, or returns false when the slot did not exist.
+Deletes the slot and returns `true`, or returns `false` when the slot did not exist.
 
 ```lua
 local storage = require('haylen.storage')
@@ -288,7 +288,7 @@ end
 
 ### storage.listSlots()
 
-Returns a list of `storage.slotInfo()` tables for every slot, newest first, with slots saved in the same second ordered by name. Files in the `saves` folder that are not slots are skipped, and a damaged slot raises `The save slot '<slot>' is damaged.`.
+Returns a list of `storage.slotInfo()` tables for every slot, newest first, with slots saved in the same second ordered by name. Files in the `saves` folder that are not slots are skipped, and a damaged slot raises `The save slot "<slot>" is damaged.`.
 
 ```lua
 local storage = require('haylen.storage')
@@ -310,7 +310,7 @@ scene.push({
 
 ### storage.writeSlotAsync(slot, data, summary), storage.removeSlotAsync(slot)
 
-Return promises for what `storage.writeSlot` and `storage.removeSlot` do. The data and summary are converted when the function is called, the file is written or removed on the I/O pool, and the promise settles once the change is durable, including the browser storage of web builds. `storage.writeSlotAsync` resolves with `true`, and `storage.removeSlotAsync` with whether the slot existed. A value that cannot become JSON raises at once, and a bad slot name or a summary that is not a table with string keys rejects the promise.
+Return promises for what `storage.writeSlot` and `storage.removeSlot` do. The data and summary are converted when the function is called, the file is written or removed on the I/O pool, and the promise settles once the change is durable, including the browser storage of web builds. The function `storage.writeSlotAsync` resolves with `true`, and `storage.removeSlotAsync` with whether the slot existed. A value that cannot become JSON raises at once, and a bad slot name or a summary that is not a table with string keys rejects the promise.
 
 ```lua
 local async = require('async')
@@ -325,7 +325,7 @@ end)
 
 ### storage.readSlotAsync(slot), storage.slotInfoAsync(slot), storage.listSlotsAsync()
 
-Return promises for what `storage.readSlot`, `storage.slotInfo` and `storage.listSlots` return. A damaged slot rejects the promise with `The save slot '<slot>' is damaged.`.
+Return promises for what `storage.readSlot`, `storage.slotInfo` and `storage.listSlots` return. A damaged slot rejects the promise with `The save slot "<slot>" is damaged.`.
 
 ```lua
 local async = require('async')
@@ -365,8 +365,8 @@ scene.push({
 
 | Message | Cause |
 | --- | --- |
-| `The save slot name '<slot>' must use 1 to 64 letters, digits, dashes or underscores.` | The slot name is empty, too long or has other characters. |
+| `The save slot name "<slot>" must use 1 to 64 letters, digits, dashes or underscores.` | The slot name is empty, too long or has other characters. |
 | `A save summary must be a JSON object.` | The summary is not a table with string keys. |
-| `The save slot '<slot>' is damaged.` | The slot file is not valid JSON, misses its data, summary or time, or holds a summary that is not an object or a time that is not an integer. |
+| `The save slot "<slot>" is damaged.` | The slot file is not valid JSON, misses its data, summary or time, or holds a summary that is not an object or a time that is not an integer. |
 | `A <type> cannot be converted to JSON.` | The data or summary holds a function, userdata or thread. |
 | `Value is nested too deeply to convert to JSON.` | The data or summary nests tables deeper than 128 levels or contains itself. |

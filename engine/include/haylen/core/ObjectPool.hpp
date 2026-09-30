@@ -38,7 +38,7 @@ template <typename T> class ObjectPool final {
         return {index, slot.generation};
     }
 
-    // Destroys the object and frees its slot. Returns false when the handle was already released.
+    // Destroys the object and frees its slot. Returns `false` when the handle was already released.
     bool release(Handle handle) {
         if (!isAlive(handle)) {
             return false;
@@ -63,7 +63,7 @@ template <typename T> class ObjectPool final {
         return handle.index < slots.size() && slots[handle.index].generation == handle.generation && slots[handle.index].value.has_value();
     }
 
-    // Grows the pool to at least count slots, so the next acquisitions do not allocate.
+    // Grows the pool to at least `count` slots, so the next acquisitions do not allocate.
     void reserve(std::size_t count) {
         while (slots.size() < count) {
             freeSlots.push_back(static_cast<std::uint32_t>(slots.size()));
@@ -71,7 +71,7 @@ template <typename T> class ObjectPool final {
         }
     }
 
-    // Calls visitor with every live object and its handle, in slot order.
+    // Calls `visitor` with every live object and its handle, in slot order.
     template <typename Visitor> void forEach(Visitor&& visitor) {
         for (std::size_t index = 0; index < slots.size(); ++index) {
             Slot& slot = slots[index];

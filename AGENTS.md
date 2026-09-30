@@ -1,1 +1,1 @@
-Read CLAUDE.md. It is the whole of it.
+Read `CLAUDE.md`. It is the whole of it.

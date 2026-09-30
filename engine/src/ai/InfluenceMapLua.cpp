@@ -32,7 +32,7 @@ template <> struct EnumNames<ai::InfluenceMap::Falloff> {
 
 namespace haylen::ai {
 
-// Creates a map with newInfluenceMap({columns, rows, cellSize = 32, x = 0, y = 0}).
+// Creates a map with `newInfluenceMap({columns, rows, cellSize = 32, x = 0, y = 0})`.
 int InfluenceMapLua::newMap(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     lua::Table::checkFields(L, 1, {kMapFields});
@@ -49,7 +49,7 @@ int InfluenceMapLua::newMap(lua_State* L) {
     return 1;
 }
 
-// Adds influence with stamp(x, y, strength, radius, falloff = 'linear').
+// Adds influence with `stamp(x, y, strength, radius, falloff = 'linear')`.
 int InfluenceMapLua::stamp(lua_State* L) {
     InfluenceMap& map = lua::Userdata::check<InfluenceMap>(L, 1);
     const math::Vec2 center{lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)};

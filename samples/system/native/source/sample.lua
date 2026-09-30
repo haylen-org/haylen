@@ -37,7 +37,7 @@ function Test:init(info)
     self.camera.anchor = 'topLeft'
 end
 
--- Mounts the frame. `options` holds the `hint`, the `controls` of the panel and the id of the control to `focus` for gamepads and TV remotes.
+-- Mounts the frame. The table `options` holds the `hint`, the `controls` of the panel and the id of the control to `focus` for gamepads and TV remotes.
 function Test:frame(options)
     window.setBackLeavesApp(false)
     self.document = ui.mount(ui.column{

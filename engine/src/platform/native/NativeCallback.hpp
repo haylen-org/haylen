@@ -36,7 +36,7 @@ class NativeCallback final {
         std::uint64_t id = 0;
     };
 
-    // Throws std::runtime_error where the platform has no native code, such as the browser.
+    // Throws `std::runtime_error` where the platform has no native code, such as the browser.
     [[nodiscard]] static std::shared_ptr<NativeCallback> create(NativeSignature signature, Thread thread, Link link);
 
     // Lets the process forget a callback, which is destroyed with its last reference. Native code must not call it afterwards.

@@ -30,7 +30,7 @@ namespace haylen::net {
 
 namespace {
 
-// Echoes every message, answers pings with pongs and understands a few commands: fragments answers in two frames, ping-me pings the client and reports its pong, and bye closes from the server side.
+// Echoes every message, answers pings with pongs and understands a few commands: `fragments` answers in two frames, `ping-me` pings the client and reports its pong, and `bye` closes from the server side.
 class EchoHandler final : public Poco::Net::HTTPRequestHandler {
   public:
     void handleRequest(Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) override {
@@ -236,7 +236,7 @@ TEST_F(WebSocketTest, ExchangesMessagesAndCloses) {
     EXPECT_EQ(socket.getState(), WebSocket::State::Closing);
     ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Closed; }));
     EXPECT_EQ(closedCode, 1000);
-    EXPECT_TRUE(socket.received.empty()) << "a closed socket drops its listeners";
+    EXPECT_TRUE(socket.received.empty()) << "A closed socket drops its listeners.";
     socket.close();
 }
 
@@ -293,14 +293,14 @@ TEST_F(WebSocketTest, DisconnectListenersSeeTheStateThatFollows) {
     socket.send("bye");
     ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Closed; }));
     EXPECT_EQ(seen, "reconnecting");
-    EXPECT_EQ(closedCode, 4000) << "the close of the listener ends the socket instead of the next attempt";
+    EXPECT_EQ(closedCode, 4000) << "The close of the listener ends the socket instead of the next attempt.";
     EXPECT_EQ(socket.getAttempt(), 0);
 }
 
 TEST_F(WebSocketTest, RefusesMessagesLargerThanTheLimit) {
     const EchoServer server;
 
-    // Hello comes back in one frame, fragments grows past the limit with its second frame, and the long message is larger than any frame the socket reads.
+    // The message `hello` comes back in one frame, `fragments` grows past the limit with its second frame, and the long message is larger than any frame the socket reads.
     for (const std::string& request : {std::string("hello"), std::string("fragments"), std::string(200, 'x')}) {
         WebSocket socket(server.getUrl(), {.maxMessageSize = 4});
         std::vector<std::string> received;
@@ -349,10 +349,10 @@ TEST_F(NetLuaTest, TalksThroughWebSocketsFromLua) {
     EXPECT_EQ(fixture.lua("return net.openSocketCount()"), "0");
     EXPECT_EQ(fixture.engine().getError(), nullptr) << fixture.engine().getError()->what();
 
-    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "'):on('data', print)").find("Unknown WebSocket event 'data'"), std::string::npos);
+    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "'):on('data', print)").find("Unknown WebSocket event \"data\""), std::string::npos);
     EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "'):ping()").find("is not open"), std::string::npos);
-    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {protocol = 'x'})").find("Unknown option 'protocol'"), std::string::npos);
-    EXPECT_NE(fixture.lua("net.connectWebSocket('ftp://nowhere')").find("ws:// or wss://"), std::string::npos);
+    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {protocol = 'x'})").find("Unknown option \"protocol\""), std::string::npos);
+    EXPECT_NE(fixture.lua("net.connectWebSocket('ftp://nowhere')").find("\"ws://\" or \"wss://\""), std::string::npos);
     EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {maxMessageSize = 0})").find("maximum message size between 1 and 2147483647 bytes"), std::string::npos);
 }
 
@@ -381,7 +381,7 @@ TEST_F(NetLuaTest, EndsListenersWithTheirOwner) {
     // clang-format on
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #heard") != "0"; }));
     EXPECT_EQ(fixture.lua("return table.concat(heard, ' ')"), "free");
-    EXPECT_NE(fixture.lua("require('haylen.net').connectWebSocket('" + url + "'):on('open', function() end, {weak = true})").find("Unknown option 'weak'"), std::string::npos);
+    EXPECT_NE(fixture.lua("require('haylen.net').connectWebSocket('" + url + "'):on('open', function() end, {weak = true})").find("Unknown option \"weak\""), std::string::npos);
 }
 
 TEST_F(NetLuaTest, KeepsListenersAwayFromEndedAndOversizedConnections) {
@@ -428,7 +428,7 @@ TEST_F(NetPluginTest, ClosesOpenSocketsWhenTheAppStops) {
 TEST_F(WebSocketTest, DestroyingNeverWaitsForAConnectionThatHangs) {
     const SilentServer server;
     auto socket = std::make_unique<WebSocket>(server.getUrl("ws"));
-    ASSERT_TRUE(waitUntil([&] { return server.hasReceived(); })) << "the upgrade request waits for an answer that never comes";
+    ASSERT_TRUE(waitUntil([&] { return server.hasReceived(); })) << "The upgrade request waits for an answer that never comes.";
 
     const auto start = std::chrono::steady_clock::now();
     socket.reset();
@@ -438,7 +438,7 @@ TEST_F(WebSocketTest, DestroyingNeverWaitsForAConnectionThatHangs) {
 TEST_F(WebSocketTest, AbandonsATlsHandshakeAtOnce) {
     const SilentServer server;
     auto socket = std::make_unique<WebSocket>(server.getUrl("wss"));
-    ASSERT_TRUE(waitUntil([&] { return server.hasReceived(); })) << "the client hello waits for a server hello that never comes";
+    ASSERT_TRUE(waitUntil([&] { return server.hasReceived(); })) << "The client hello waits for a server hello that never comes.";
 
     // The thread leaves the handshake as soon as the socket is gone and closes its connection, long before the handshake would time out.
     socket.reset();
@@ -483,7 +483,7 @@ TEST_F(WebSocketTest, BacksOffBetweenReconnectAttempts) {
     EXPECT_EQ(socket.getAttempt(), 1);
     now = 0.9;
     socket.pump();
-    EXPECT_EQ(socket.getState(), WebSocket::State::Reconnecting) << "the first attempt waits a whole second";
+    EXPECT_EQ(socket.getState(), WebSocket::State::Reconnecting) << "The first attempt waits a whole second.";
     now = 1.0;
     ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getAttempt() == 2; }));
     now = 3.0;
@@ -514,7 +514,7 @@ TEST_F(WebSocketTest, ReconnectsAfterTheServerDropsAndStopsWhenClosed) {
     ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Open; }));
     socket.send("bye");
     ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Reconnecting; }));
-    EXPECT_GE(wait, 1.0F) << "jitter shortens the wait by half at most";
+    EXPECT_GE(wait, 1.0F) << "Jitter shortens the wait by half at most.";
     EXPECT_LE(wait, 2.0F);
     EXPECT_THROW(socket.send("early"), std::logic_error);
     now += static_cast<double>(wait);
@@ -563,11 +563,11 @@ TEST_F(NetPluginTest, PublishesConnectionEvents) {
     EXPECT_EQ(fixture.lua("return table.concat(log, ', ')"), "connected true, disconnected 4001 server bye, socket disconnect 4001, reconnecting 1 true, socket reconnecting 1, connected true");
     EXPECT_EQ(fixture.lua("return socket.state .. ' ' .. socket.attempt"), "open 0");
 
-    // A socket gives up after its attempts, and true picks the default backoff.
+    // A socket gives up after its attempts, and `true` picks the default backoff.
     fixture.runLua("failing = require('haylen.net').connectWebSocket('" + refusedUrl() + "', {reconnect = {initialDelay = 0, maxAttempts = 2}}) failing:on('close', function(code) gaveUp = code end)");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(gaveUp)") == "1006"; }));
     EXPECT_EQ(fixture.lua("return require('haylen.net').connectWebSocket('" + server.getUrl() + "', {reconnect = true}).state"), "connecting");
-    EXPECT_NE(fixture.lua("require('haylen.net').connectWebSocket('" + server.getUrl() + "', {reconnect = {delay = 1}})").find("Unknown option 'delay'"), std::string::npos);
+    EXPECT_NE(fixture.lua("require('haylen.net').connectWebSocket('" + server.getUrl() + "', {reconnect = {delay = 1}})").find("Unknown option \"delay\""), std::string::npos);
     EXPECT_NE(fixture.lua("require('haylen.net').connectWebSocket('" + server.getUrl() + "', {reconnect = {jitter = 3}})").find("jitter between 0 and 1"), std::string::npos);
 }
 

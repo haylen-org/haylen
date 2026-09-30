@@ -1,6 +1,6 @@
 # Text
 
-Haylen draws text from fonts of two kinds and styles it with BBCode markup. This guide explains fonts, font families and bitmap fonts, how text in every script is shaped, ordered in its direction and broken into lines, the markup of rich text with its effects and typewriter reveal, and how 2D drawing and the UI show it. The [haylen.graphics reference](lua-api/graphics.md#font) lists the font API, the [haylen.graphics2d reference](lua-api/graphics2d.md#richtext) the rich text API, and the [haylen.ui reference](lua-api/ui.md#uirichtextproperties) the `richText` component.
+Haylen draws text from fonts of two kinds and styles it with BBCode markup. This guide explains fonts, font families and bitmap fonts, how text in every script is shaped, ordered in its direction and broken into lines, the markup of rich text with its effects and typewriter reveal, and how 2D drawing and the UI show it. The [`haylen.graphics` reference](lua-api/graphics.md#font) lists the font API, the [`haylen.graphics2d` reference](lua-api/graphics2d.md#richtext) the rich text API, and the [`haylen.ui` reference](lua-api/ui.md#uirichtextproperties) the `richText` component.
 
 ## Fonts
 
@@ -21,13 +21,13 @@ graphics2d.drawText(pixel, 'PRESS START', 40, 200, {size = pixel.nativeSize * 2}
 graphics2d.drawText(digits, '1200', 40, 280, {size = 32, shadowOffset = {2, 2}, shadowColor = '#FF000000'})
 ```
 
-Every function that takes a font takes either kind: `graphics2d.drawText`, `measureText`, rich text families and Tiled text objects. `graphics2d.drawText` and `measureText` also take a font family, which draws text in every script its fonts cover.
+Every function that takes a font takes either kind: `graphics2d.drawText`, `measureText`, rich text families and Tiled text objects. The functions `graphics2d.drawText` and `measureText` also take a font family, which draws text in every script its fonts cover.
 
 ## Font families
 
 A family groups the faces of one typeface, regular, bold, italic, bold italic and mono, with fallback fonts for the characters its faces lack, such as an Arabic, Hebrew, Devanagari or Thai font, a CJK font for Chinese and Japanese or a symbol font for arrows and stars. Layout picks the face of each run from its style and each character, a letter with its marks as one unit, from the first font that has every code point of it: the face, then each fallback in order, and the face again when none has it, which draws its missing glyph box. Spaces, punctuation and digits keep the font of the text before them, so an Arabic sentence stays in the Arabic font up to its full stop. The fonts of the Noto family cover every script with a consistent look, and a fallback per script the game shows is enough.
 
-A style the family has no face for is synthesized from the face it has. A distance field face grows its strokes on both sides by 3 percent of the text size and widens its advance to match, and leans italic glyphs by one fifth of their height around the baseline in the vertex shader. A bitmap face draws a bold glyph a second time one native pixel to the right and leans italic glyphs the same way. A fallback font synthesizes the bold and italic its run asks for. `[code]` uses the mono face, or the regular faces when the family has none.
+A style the family has no face for is synthesized from the face it has. A distance field face grows its strokes on both sides by 3 percent of the text size and widens its advance to match, and leans italic glyphs by one fifth of their height around the baseline in the vertex shader. A bitmap face draws a bold glyph a second time one native pixel to the right and leans italic glyphs the same way. A fallback font synthesizes the bold and italic its run asks for. The tag `[code]` uses the mono face, or the regular faces when the family has none.
 
 ```lua
 local assets = require('haylen.assets')
@@ -53,7 +53,7 @@ A character is a cluster, the code points shaping keeps together: a letter with 
 
 Every paragraph runs through the Unicode Bidirectional Algorithm of SheenBidi. Its direction is `'auto'` by default, taken from its first strong letter, so an Arabic or Hebrew paragraph reads right to left and an English one left to right, and `direction = 'leftToRight'` or `'rightToLeft'` forces it. After a paragraph is broken into lines, every line is ordered for display on its own: runs that read right to left go from the right, numbers and Latin words inside them keep their own order, and brackets mirror so that `(USD)` reads correctly inside Arabic text. A paragraph that starts with a Latin word or a number but reads right to left needs a forced direction, or a right-to-left mark, U+200F, at its start.
 
-Alignment names the sides of a paragraph by its direction. `'start'`, the default, lines text up where its lines begin, the left of left-to-right text and the right of right-to-left text, and `'end'` the other side. `'left'`, `'center'` and `'right'` name fixed sides, and `'fill'` stretches every wrapped line to both edges and leaves the last line at its start. In rich text, `[p dir=rightToLeft]` sets the direction of a block and `[p align=end]` its alignment, the indent, the list markers and the drop cap stand on the side the paragraph starts, and a table reads in the direction of its first paragraph, so its first column stands at the right of a right-to-left table. Backgrounds, underlines, strikes and link areas cover the shaped text after it is ordered, split where the direction changes, and grow with the reveal from the side their text starts.
+Alignment names the sides of a paragraph by its direction. The alignment `'start'`, the default, lines text up where its lines begin, the left of left-to-right text and the right of right-to-left text, and `'end'` the other side. The alignments `'left'`, `'center'` and `'right'` name fixed sides, and `'fill'` stretches every wrapped line to both edges and leaves the last line at its start. In rich text, `[p dir=rightToLeft]` sets the direction of a block and `[p align=end]` its alignment, the indent, the list markers and the drop cap stand on the side the paragraph starts, and a table reads in the direction of its first paragraph, so its first column stands at the right of a right-to-left table. Backgrounds, underlines, strikes and link areas cover the shaped text after it is ordered, split where the direction changes, and grow with the reveal from the side their text starts.
 
 ```lua
 local assets = require('haylen.assets')
@@ -79,7 +79,7 @@ Lines break where the Unicode Line Breaking Algorithm of libunibreak allows: aft
 
 ## Markup
 
-Markup is text with tags in square brackets. Inline tags open with `[name]` or `[name=value attribute=value]` and close with `[/name]`, in reverse order of opening. Values and attributes may be quoted to hold spaces, and the values of `[url]` and `[hint]` run to the closing bracket. `[lb]` and `[rb]` write `[` and `]`. A newline ends a paragraph, whether the markup ends its lines with LF, CRLF or any other [paragraph separator](#line-breaking), and `[br]` breaks a line without ending it. Colors are names such as `red`, `gold` or `transparent`, `#RRGGBB` or `#AARRGGBB`, like the rest of the engine. Sizes are pixels at a scale of 1.
+Markup is text with tags in square brackets. Inline tags open with `[name]` or `[name=value attribute=value]` and close with `[/name]`, in reverse order of opening. Values and attributes may be quoted to hold spaces, and the values of `[url]` and `[hint]` run to the closing bracket. The tags `[lb]` and `[rb]` write `[` and `]`. A newline ends a paragraph, whether the markup ends its lines with LF, CRLF or any other [paragraph separator](#line-breaking), and `[br]` breaks a line without ending it. Colors are names such as `red`, `gold` or `transparent`, `#RRGGBB` or `#AARRGGBB`, like the rest of the engine. Sizes are pixels at a scale of 1.
 
 | Tag | Meaning |
 | --- | --- |
@@ -120,7 +120,7 @@ Press [icon=confirm] to light the [glow=6 color=#FF8000]beacon[/glow]
 ]]
 ```
 
-Any other tag name runs a text effect of that name. Malformed markup raises an error that names its line and column, counted from 1, such as `Rich text markup at line 2, column 6: [/b] closes [i], which is still open.`, `[b] is never closed.`, `blurple is not a color.` or `[wiggle] is neither a tag nor a registered text effect.`.
+Any other tag name runs a text effect of that name. Malformed markup raises an error that names its line and column, counted from 1, such as `Rich text markup at line 2, column 6: The tag "[/b]" closes "[i]", which is still open.`, `The tag "[b]" is never closed.`, `The value "blurple" is not a color.` or `The markup "[wiggle]" is neither a tag nor a registered text effect.`.
 
 ## Effects
 
@@ -150,9 +150,9 @@ end)
 
 ## Typewriter reveal
 
-Characters count in reading order, one per cluster, spaces included, and one per image or icon, and a list marker shows with the first character of its item. Right-to-left text appears from the right, and a mixed line reveals every run in the order it is read, whatever its place on screen. A reveal speed in characters per second, `reveal` in the options of rich text or of `ui.richText`, shows them one by one as time passes. `[pause=seconds]` holds the reveal before the next character and `[speed=factor]` changes its pace inside the tag. Hidden characters keep their place, so the text never reflows while it appears, and backgrounds, underlines and strikes grow with the revealed text.
+Characters count in reading order, one per cluster, spaces included, and one per image or icon, and a list marker shows with the first character of its item. Right-to-left text appears from the right, and a mixed line reveals every run in the order it is read, whatever its place on screen. A reveal speed in characters per second, `reveal` in the options of rich text or of `ui.richText`, shows them one by one as time passes. The tag `[pause=seconds]` holds the reveal before the next character and `[speed=factor]` changes its pace inside the tag. Hidden characters keep their place, so the text never reflows while it appears, and backgrounds, underlines and strikes grow with the revealed text.
 
-`text.visibleCharacters` and `text.visibleRatio` read and set how much shows. Setting them moves a running reveal there, and a dialogue box skips to the end by setting `visibleCharacters` to -1 when the player presses a button while `text.revealing` is `true`.
+The properties `text.visibleCharacters` and `text.visibleRatio` read and set how much shows. Setting them moves a running reveal there, and a dialogue box skips to the end by setting `visibleCharacters` to -1 when the player presses a button while `text.revealing` is `true`.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -185,7 +185,7 @@ Plain text lays out the same way, as a document of one paragraph per line, where
 
 ## Drawing in 2D
 
-`graphics2d.newRichText(markup, options)` makes a `RichText` that an app keeps, updates and draws every frame, and `graphics2d.drawRichText` draws markup once, which suits text that changes every frame. The options of a `RichText` are also properties, such as `text.color`, `text.bold` or `text.family`, and setting one lays the text out again and starts its reveal over. Both place the top-left corner of the block at the position. The renderer draws rich text in layers, backgrounds, glows, shadows, images, glyphs and then underlines and strikes, and neighbouring glyphs of one font share a draw call.
+The function `graphics2d.newRichText(markup, options)` makes a `RichText` that an app keeps, updates and draws every frame, and `graphics2d.drawRichText` draws markup once, which suits text that changes every frame. The options of a `RichText` are also properties, such as `text.color`, `text.bold` or `text.family`, and setting one lays the text out again and starts its reveal over. Both place the top-left corner of the block at the position. The renderer draws rich text in layers, backgrounds, glows, shadows, images, glyphs and then underlines and strikes, and neighbouring glyphs of one font share a draw call.
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -226,7 +226,7 @@ ui.mount(ui.card{padding = 24,
 
 ## C++
 
-The text types live in `haylen::text` under `engine/include/haylen/text/`. `text::Font` is the interface of both kinds of font, with `text::TrueTypeFont` and `text::BitmapFont` behind it, and `BitmapFont::parse` and `BitmapFont::describeGrid` read BMFont files and grids. `Font::shape` shapes one run into `Font::ShapedGlyph` values, and `Font::layout` and `FontFamily::layout` lay plain text out into a cached `text::Layout` of glyphs, characters and lines. `text::FontFamily` selects faces and resolves fallbacks, and `text::Direction` and `text::Alignment` set the direction and alignment of a `text::Style`, which also owns their names (`Style::alignmentFromName`, `Style::directionName` and the tables behind them) for Lua, markup and UI documents. `text::RichText::parse` reads markup into a `text::RichTextDocument` of paragraphs, runs, objects, links, hints and effects, and a `text::RichText` made from markup, `text::RichTextOptions` and the `text::RichTextRegistry` of effects and icons lays it out into a `text::Layout` and animates it. `graphics2d::Renderer::drawText` draws plain text with a font or a family. `graphics2d::Renderer::drawRichText` draws the frame of this moment. The registry of an engine belongs to `plugins::TextPlugin`, which also registers the `bitmapFont` and `gridFont` asset types, and whose `getImage` loads the images of `[img]` tags for rich text from Lua, keeping each one while frames draw it.
+The text types live in `haylen::text` under `engine/include/haylen/text/`. The class `text::Font` is the interface of both kinds of font, with `text::TrueTypeFont` and `text::BitmapFont` behind it, and `BitmapFont::parse` and `BitmapFont::describeGrid` read BMFont files and grids. The method `Font::shape` shapes one run into `Font::ShapedGlyph` values, and `Font::layout` and `FontFamily::layout` lay plain text out into a cached `text::Layout` of glyphs, characters and lines. The class `text::FontFamily` selects faces and resolves fallbacks, and `text::Direction` and `text::Alignment` set the direction and alignment of a `text::Style`, which also owns their names (`Style::alignmentFromName`, `Style::directionName` and the tables behind them) for Lua, markup and UI documents. The method `text::RichText::parse` reads markup into a `text::RichTextDocument` of paragraphs, runs, objects, links, hints and effects, and a `text::RichText` made from markup, `text::RichTextOptions` and the `text::RichTextRegistry` of effects and icons lays it out into a `text::Layout` and animates it. The method `graphics2d::Renderer::drawText` draws plain text with a font or a family. The method `graphics2d::Renderer::drawRichText` draws the frame of this moment. The registry of an engine belongs to `plugins::TextPlugin`, which also registers the `bitmapFont` and `gridFont` asset types, and whose `getImage` loads the images of `[img]` tags for rich text from Lua, keeping each one while frames draw it.
 
 ```cpp
 #include "haylen/2d/graphics/Renderer.hpp"

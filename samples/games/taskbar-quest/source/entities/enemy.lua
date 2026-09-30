@@ -40,7 +40,7 @@ function enemy:update(dt, hero, lane)
     end
 end
 
--- Takes a hit, flashes white and bounces back, and returns true when it has no health left.
+-- Takes a hit, flashes white and bounces back, and returns `true` when it has no health left.
 function enemy:hit(damage)
     self.health = self.health - damage
     self.flash = 1

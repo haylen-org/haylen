@@ -36,7 +36,7 @@ class LuaBenchmark final {
 
 int main(int argc, char** argv) {
     if (argc != 2) {
-        std::fprintf(stderr, "Usage: haylen-lua-benchmark <package folder>\n");
+        std::fprintf(stderr, "Usage: \"haylen-lua-benchmark <package folder>\".\n");
         return 2;
     }
     return haylen::bench::LuaBenchmark::run(argv[1]);

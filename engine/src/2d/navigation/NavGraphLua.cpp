@@ -44,7 +44,7 @@ int NavGraphLua::newGraph(lua_State* L) {
     return 1;
 }
 
-// Adds or moves a point with addPoint(id, x, y[, weight]).
+// Adds or moves a point with `addPoint(id, x, y[, weight])`.
 int NavGraphLua::addPoint(lua_State* L) {
     const float weight = lua_isnoneornil(L, 5) ? 1.0F : lua::Stack::read<float>(L, 5);
     check(L).addPoint(readId(L, 2), {lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4)}, weight);
@@ -91,7 +91,7 @@ int NavGraphLua::setEnabled(lua_State* L) {
     return 0;
 }
 
-// Joins two points with connect(from, to[, bidirectional = true]).
+// Joins two points with `connect(from, to[, bidirectional = true])`.
 int NavGraphLua::connect(lua_State* L) {
     check(L).connect(readId(L, 2), readId(L, 3), lua_isnoneornil(L, 4) || lua::Stack::read<bool>(L, 4));
     return 0;
@@ -121,7 +121,7 @@ int NavGraphLua::points(lua_State* L) {
     return 1;
 }
 
-// Returns the id of the point closest to x, y with closestPoint(x, y[, includeDisabled]), or nil for an empty graph.
+// Returns the id of the point closest to `x`, `y` with `closestPoint(x, y[, includeDisabled])`, or `nil` for an empty graph.
 int NavGraphLua::closestPoint(lua_State* L) {
     const bool includeDisabled = !lua_isnoneornil(L, 4) && lua::Stack::read<bool>(L, 4);
     const std::optional<std::int64_t> id = check(L).getClosestPoint({lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}, includeDisabled);
@@ -129,7 +129,7 @@ int NavGraphLua::closestPoint(lua_State* L) {
     return 1;
 }
 
-// Finds a path with findPath(from, to) and returns its point ids and cost, or nil when there is none.
+// Finds a path with `findPath(from, to)` and returns its point ids and cost, or `nil` when there is none.
 int NavGraphLua::findPath(lua_State* L) {
     ScriptedGraph& self = lua::Userdata::check<ScriptedGraph>(L, 1);
     const std::span<const std::int64_t> path = self.search.findPath(self.graph, readId(L, 2), readId(L, 3));
@@ -142,7 +142,7 @@ int NavGraphLua::findPath(lua_State* L) {
     return 2;
 }
 
-// Returns a table from point id to the cost of reaching it from the source with distances(source), holding only reachable points.
+// Returns a table from point id to the cost of reaching it from the source with `distances(source)`, holding only reachable points.
 int NavGraphLua::distances(lua_State* L) {
     ScriptedGraph& self = lua::Userdata::check<ScriptedGraph>(L, 1);
     self.search.computeDistances(self.graph, readId(L, 2));

@@ -12,7 +12,7 @@
 
 namespace haylen::text {
 
-// An animation that rich text runs on every glyph inside its tag each frame, such as [wave amp=20 freq=5]. The built-in effects are wave, shake, tornado, fade, rainbow and pulse.
+// An animation that rich text runs on every glyph inside its tag each frame, such as `[wave amp=20 freq=5]`. The built-in effects are `wave`, `shake`, `tornado`, `fade`, `rainbow` and `pulse`.
 class Effect final {
   public:
     // What an effect sees of one glyph, and the offset, color and visibility it may change. The index counts the characters inside the tag and the character counts them in the whole text. The position is the pen position on the baseline, and the time is the seconds the text has run.
@@ -27,7 +27,7 @@ class Effect final {
         bool visible = true;
     };
 
-    // The attributes of an effect tag, where a value given as [name=value] is the attribute named value. Numbers and colors are read once, when the markup is set, rather than for every glyph.
+    // The attributes of an effect tag, where a value given as `[name=value]` is the attribute named `value`. Numbers and colors are read once, when the markup is set, rather than for every glyph.
     class Parameters final {
       public:
         Parameters() = default;

@@ -13,7 +13,7 @@
 #include "platform/sokol/SokolRuntime.hpp"
 #include "sokol_app.h"
 
-// Xlib defines macros such as None and Bool, so it comes after the engine headers that use those names.
+// Xlib defines macros such as `None` and `Bool`, so it comes after the engine headers that use those names.
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <X11/Xresource.h>
@@ -39,7 +39,7 @@ Display* LinuxDesktop::getDisplay() {
     return static_cast<::Window>(reinterpret_cast<std::uintptr_t>(sapp_x11_get_window()));
 }
 
-// Desktop points follow Xft.dpi, the scale that the toolkits of the desktop share, and a desktop without it has the standard 96 DPI.
+// Desktop points follow `Xft.dpi`, the scale that the toolkits of the desktop share, and a desktop without it has the standard 96 DPI.
 float LinuxDesktop::getDesktopScale(Display* display) {
     constexpr float kStandardDpi = 96.0F;
     XrmInitialize();
@@ -118,7 +118,7 @@ std::vector<Monitor> LinuxDesktop::readMonitors(Display* display) {
     return monitors;
 }
 
-// The runtime places the window before sokol_app connects to the display, so it reads the monitors through a connection of its own then.
+// The runtime places the window before `sokol_app` connects to the display, so it reads the monitors through a connection of its own then.
 std::vector<Monitor> LinuxDesktop::getMonitors() {
     if (Display* display = getDisplay()) {
         return readMonitors(display);
@@ -262,7 +262,7 @@ void LinuxDesktop::startDrag() {
     dragging = true;
 }
 
-// The event loop of sokol_app drops events it does not handle, so a connection of its own hears the configure events of the window, the work area and RandR.
+// The event loop of `sokol_app` drops events it does not handle, so a connection of its own hears the configure events of the window, the work area and RandR.
 void LinuxDesktop::watch() {
     watcher = XOpenDisplay(nullptr);
     if (watcher == nullptr) {

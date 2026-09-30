@@ -43,7 +43,7 @@ char32_t FontLua::readCharacter(lua_State* L, int index) {
     return decoded.front();
 }
 
-// Creates a family with newFontFamily({regular = font, bold = font, italic = font, boldItalic = font, mono = font, fallbacks = {font, ...}}).
+// Creates a family with `newFontFamily({regular = font, bold = font, italic = font, boldItalic = font, mono = font, fallbacks = {font, ...}})`.
 int FontLua::newFontFamily(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     lua::Table::checkFields(L, 1, {kFamilyFields});
@@ -58,7 +58,7 @@ int FontLua::newFontFamily(lua_State* L) {
     return 1;
 }
 
-// Creates a BMFont from the text or binary contents of a .fnt file and one texture per page with newBitmapFont(data, {page, ...}).
+// Creates a BMFont from the text or binary contents of a `.fnt` file and one texture per page with `newBitmapFont(data, {page, ...})`.
 int FontLua::newBitmapFont(lua_State* L) {
     const std::string_view data = lua::Stack::read<std::string_view>(L, 1);
     std::vector<Texture> pages = lua::Stack::read<std::vector<Texture>>(L, 2);
@@ -67,7 +67,7 @@ int FontLua::newBitmapFont(lua_State* L) {
     return 1;
 }
 
-// Creates a font from an image of equal cells with newGridFont(texture, {characters = 'ABC', cellWidth = 8, cellHeight = 8, spacing, margin, advance, lineHeight, baseline}).
+// Creates a font from an image of equal cells with `newGridFont(texture, {characters = 'ABC', cellWidth = 8, cellHeight = 8, spacing, margin, advance, lineHeight, baseline})`.
 int FontLua::newGridFont(lua_State* L) {
     const Texture texture = lua::Stack::read<Texture>(L, 1);
     luaL_checktype(L, 2, LUA_TTABLE);
@@ -128,7 +128,7 @@ int FontLua::pushLayout(lua_State* L, const text::Layout& laid, const text::Styl
     return 1;
 }
 
-// Lays text out with layout(text, style) and returns its glyph quads, its size and its line count.
+// Lays text out with `layout(text, style)` and returns its glyph quads, its size and its line count.
 int FontLua::layout(lua_State* L) {
     const std::shared_ptr<text::Font> font = lua::Userdata::checkShared<text::Font>(L, 1);
     const text::Style style = lua::TypeConverter::readTextStyle(L, 3);
@@ -165,7 +165,7 @@ std::vector<text::Font::ShapedGlyph> FontLua::shapeText(text::Font& font, std::u
     return shaped;
 }
 
-// Pushes a glyph at the native size as {index, source, offset, advance, page, visible}.
+// Pushes a glyph at the native size as `{index, source, offset, advance, page, visible}`.
 int FontLua::pushGlyph(lua_State* L, text::Font& font, std::uint32_t index) {
     const text::Font::Glyph& found = font.getGlyph(index);
     lua_createtable(L, 0, 6);
@@ -192,7 +192,7 @@ int FontLua::glyph(lua_State* L) {
     return pushGlyph(L, font, shaped.empty() ? 0 : shaped.front().index);
 }
 
-// Returns the glyph with an index that font:shape gave, which is its code point in a bitmap font.
+// Returns the glyph with an index that `font:shape` gave, which is its code point in a bitmap font.
 int FontLua::glyphByIndex(lua_State* L) {
     text::Font& font = lua::Userdata::check<text::Font>(L, 1);
     const lua_Integer index = luaL_checkinteger(L, 2);
@@ -200,7 +200,7 @@ int FontLua::glyphByIndex(lua_State* L) {
     return pushGlyph(L, font, static_cast<std::uint32_t>(index));
 }
 
-// Shapes text with shape(text, {size, direction, language}) and returns its glyphs in visual order as {index, cluster, advance, offset}, where cluster counts code points from 1 and lengths are pixels at the size, the native size by default.
+// Shapes text with `shape(text, {size, direction, language})` and returns its glyphs in visual order as `{index, cluster, advance, offset}`, where `cluster` counts code points from 1 and lengths are pixels at the size, the native size by default.
 int FontLua::shape(lua_State* L) {
     text::Font& font = lua::Userdata::check<text::Font>(L, 1);
     const std::u32string text = core::Utf8::decode(lua::Stack::read<std::string_view>(L, 2));
@@ -279,7 +279,7 @@ int FontLua::pushSelection(lua_State* L, const text::FontFamily& family, const t
     return 3;
 }
 
-// Reads the faces as properties named like the fields of newFontFamily, which are nil for the faces the family lacks.
+// Reads the faces as properties named like the fields of `newFontFamily`, which are `nil` for the faces the family lacks.
 int FontLua::familyFace(lua_State* L) {
     const text::FontFamily::Faces& faces = lua::Userdata::check<text::FontFamily>(L, 1).getFaces();
     const std::string_view key = lua::Stack::read<std::string_view>(L, 2);
@@ -293,7 +293,7 @@ int FontLua::familyFallbacks(lua_State* L) {
     return 1;
 }
 
-// Picks the face of a style with family:select({bold, italic, mono}) and returns it with whether bold and italic are synthesized.
+// Picks the face of a style with `family:select({bold, italic, mono})` and returns it with whether bold and italic are synthesized.
 int FontLua::familySelect(lua_State* L) {
     const text::FontFamily& family = lua::Userdata::check<text::FontFamily>(L, 1);
     bool bold = false;
@@ -309,7 +309,7 @@ int FontLua::familySelect(lua_State* L) {
     return pushSelection(L, family, family.select(bold, italic, mono));
 }
 
-// Picks the font that draws a character in a style with family:resolve(character, {bold, italic, mono}), which is a fallback when the face lacks the glyph. The character may be a letter with its marks, given as one string.
+// Picks the font that draws a character in a style with `family:resolve(character, {bold, italic, mono})`, which is a fallback when the face lacks the glyph. The character may be a letter with its marks, given as one string.
 int FontLua::familyResolve(lua_State* L) {
     const text::FontFamily& family = lua::Userdata::check<text::FontFamily>(L, 1);
     const std::u32string character = lua_type(L, 2) == LUA_TNUMBER ? std::u32string(1, readCharacter(L, 2)) : core::Utf8::decode(lua::Stack::read<std::string_view>(L, 2));
@@ -334,7 +334,7 @@ int FontLua::familyMeasure(lua_State* L) {
     return 2;
 }
 
-// Lays text out with family:layout(text, style) like a font does, where each quad names the face or fallback that draws it.
+// Lays text out with `family:layout(text, style)` like a font does, where each quad names the face or fallback that draws it.
 int FontLua::familyLayout(lua_State* L) {
     const std::shared_ptr<text::FontFamily> family = lua::Userdata::checkShared<text::FontFamily>(L, 1);
     const text::Style style = lua::TypeConverter::readTextStyle(L, 3);

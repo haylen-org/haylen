@@ -37,7 +37,7 @@ class ShadowMap final {
     // Adds the edges of an occluder in world coordinates.
     static void appendSegments(const Occluder& occluder, std::vector<Segment>& segments);
 
-    // Fills a row of kResolution texels for the light from the segments that cast its shadows, and returns the axis of directional maps, which cover the bounds.
+    // Fills a row of `kResolution` texels for the light from the segments that cast its shadows, and returns the axis of directional maps, which cover the bounds.
     static Axis cast(const Light& light, std::span<const Segment> segments, const math::Rect& bounds, std::span<float> row);
 
     // Returns how far a point may lie behind the nearest occluder depth and still count as lit, as a fraction of the range, which keeps occluder edges from shadowing themselves.

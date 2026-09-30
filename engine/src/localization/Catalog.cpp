@@ -30,7 +30,7 @@ void Catalog::flatten(const core::Json& table, const std::string& prefix, Table&
         } else if (value.is_object()) {
             flatten(value, path, entries);
         } else {
-            throw std::invalid_argument("The localization entry " + path + " must be text, a plural form or a group of entries.");
+            throw std::invalid_argument("The localization entry \"" + path + "\" must be text, a plural form or a group of entries.");
         }
     }
 }
@@ -92,14 +92,14 @@ void Catalog::add(const std::string& name, const core::Json& table) {
         throw std::invalid_argument("A localization table needs a language.");
     }
     if (!table.is_object()) {
-        throw std::invalid_argument("The localization table of " + name + " must be a JSON object.");
+        throw std::invalid_argument("The localization table of \"" + name + "\" must be a JSON object.");
     }
 
     std::optional<text::Direction> direction;
     if (const auto declared = table.find(kDirectionKey); declared != table.end()) {
         direction = declared->is_string() ? text::Style::directionFromName(declared->get<std::string>()) : std::nullopt;
         if (!direction || *direction == text::Direction::Auto) {
-            throw std::invalid_argument("The @direction of the localization table of '" + name + "' must be leftToRight or rightToLeft.");
+            throw std::invalid_argument("The \"@direction\" of the localization table of \"" + name + "\" must be \"leftToRight\" or \"rightToLeft\".");
         }
     }
     core::Json texts = table;
@@ -122,7 +122,7 @@ void Catalog::add(const std::string& name, const core::Json& table) {
 
 void Catalog::requireLanguage(std::string_view name) const {
     if (!tables.contains(name)) {
-        throw std::invalid_argument("No localization table was added for " + std::string(name) + ".");
+        throw std::invalid_argument("No localization table was added for \"" + std::string(name) + "\".");
     }
 }
 

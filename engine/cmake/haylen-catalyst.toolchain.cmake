@@ -1,10 +1,10 @@
 # Builds for Mac Catalyst, the UIKit variant of iOS that runs on macOS, which CMake has no system name for.
-# Sources compile for the macabi flavor of iOS against the macOS SDK and its iOSSupport folder. Pass one architecture in CMAKE_OSX_ARCHITECTURES.
+# Sources compile for the `macabi` flavor of iOS against the macOS SDK and its `iOSSupport` folder. Pass one architecture in `CMAKE_OSX_ARCHITECTURES`.
 
 set(CMAKE_SYSTEM_NAME Darwin)
 set(CMAKE_OSX_SYSROOT macosx)
 
-# The minimum is Mac Catalyst 16.4, which is macOS 13.3, the first macOS release whose C++ library formats floating point with std::format.
+# The minimum is Mac Catalyst 16.4, which is macOS 13.3, the first macOS release whose C++ library formats floating point with `std::format`.
 # It lives in the target triple, so the macOS deployment target stays empty and dependencies that default it add no conflicting flag.
 set(HAYLEN_CATALYST_MINIMUM "16.4")
 set(CMAKE_OSX_DEPLOYMENT_TARGET "" CACHE STRING "Mac Catalyst takes its minimum from the target triple.")

@@ -22,7 +22,7 @@ class Vehicle final {
         All,
     };
 
-    // Wheel positions are offsets from the chassis center. The suspension travels up and down by suspensionTravel from where the wheels start.
+    // Wheel positions are offsets from the chassis center. The suspension travels up and down by `suspensionTravel` from where the wheels start.
     struct Options {
         math::Vec2 position{};
         math::Vec2 chassisSize{120.0F, 30.0F};
@@ -40,7 +40,7 @@ class Vehicle final {
         int group = -2;
     };
 
-    // Throws std::invalid_argument for a chassis or wheel without size, a negative suspension travel, a group that is not negative or an invalid material, and then leaves no bodies behind.
+    // Throws `std::invalid_argument` for a chassis or wheel without size, a negative suspension travel, a group that is not negative or an invalid material, and then leaves no bodies behind.
     [[nodiscard]] static Vehicle create(World& world, const Options& options);
 
     [[nodiscard]] static std::optional<Drive> driveFromName(std::string_view name) noexcept;

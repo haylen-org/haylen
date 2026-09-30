@@ -60,7 +60,7 @@ TEST_F(NativeSignatureTest, ReadsNumbersPointersTextAndRangesOfBytes) {
     EXPECT_EQ(parameters[9].count, 2U);
     EXPECT_FALSE(parameters[9].lengthParameter.has_value());
     EXPECT_EQ(parameters[10].kind, Kind::Text);
-    EXPECT_EQ(parameters[11].kind, Kind::Pointer) << "only constant text is copied as a string";
+    EXPECT_EQ(parameters[11].kind, Kind::Pointer) << "Only constant text is copied as a string.";
     EXPECT_EQ(parameters[12].kind, Kind::Integer);
 
     EXPECT_TRUE(NativeSignature::parse("void (void)").getParameters().empty());
@@ -78,13 +78,13 @@ TEST_F(NativeSignatureTest, RejectsWhatACallbackCannotReceive) {
     EXPECT_NE(failureOf("void (const uint8_t data[size], double size)").find("must name an integer parameter"), std::string::npos);
     EXPECT_NE(failureOf("void (const uint8_t data[missing])").find("must name an integer parameter"), std::string::npos);
     EXPECT_NE(failureOf("void (const uint8_t data[])").find("needs a count"), std::string::npos);
-    EXPECT_NE(failureOf("void (long double value)").find("unknown type 'long double'"), std::string::npos);
+    EXPECT_NE(failureOf("void (long double value)").find("unknown type \"long double\""), std::string::npos);
     EXPECT_NE(failureOf("void (int value) extra").find("continues after its parameters"), std::string::npos);
-    EXPECT_NE(failureOf("void (int value; int other)").find("unexpected character ';'"), std::string::npos);
-    EXPECT_NE(failureOf("void (int first int second)").find("unknown type 'int first int'"), std::string::npos);
-    EXPECT_NE(failureOf("void (int first[2] int second)").find("'int' where a comma or ) belongs"), std::string::npos);
+    EXPECT_NE(failureOf("void (int value; int other)").find("unexpected character \";\""), std::string::npos);
+    EXPECT_NE(failureOf("void (int first int second)").find("unknown type \"int first int\""), std::string::npos);
+    EXPECT_NE(failureOf("void (int first[2] int second)").find("\"int\" where a comma or \")\" belongs"), std::string::npos);
     EXPECT_NE(failureOf("void (int value,)").find("a comma without a parameter"), std::string::npos);
-    EXPECT_NE(failureOf("void (int value").find("ends before the )"), std::string::npos);
+    EXPECT_NE(failureOf("void (int value").find("ends before the \")\""), std::string::npos);
     EXPECT_NE(failureOf("void (,)").find("has no type"), std::string::npos);
 }
 
@@ -134,10 +134,10 @@ TEST_F(NativeLibrariesTest, SearchesAddedFoldersBeforeThePlatformFolders) {
 TEST_F(NativeLibrariesTest, ListsEveryPlaceItSearched) {
     try {
         (void)NativeLibraries::open("native_nowhere");
-        FAIL() << "a missing library loads";
+        FAIL() << "A missing library loads.";
     } catch (const std::runtime_error& error) {
         const std::string message = error.what();
-        EXPECT_NE(message.find("The native library 'native_nowhere' could not be loaded. These are the places it searched:"), std::string::npos);
+        EXPECT_NE(message.find("The native library \"native_nowhere\" could not be loaded. These are the places it searched:"), std::string::npos);
         EXPECT_NE(message.find(std::filesystem::path(HAYLEN_NATIVE_TEST_LIBRARY).parent_path().string()), std::string::npos);
         EXPECT_NE(message.find("not found"), std::string::npos);
         EXPECT_NE(message.find("the libraries linked into the app: not registered"), std::string::npos);
@@ -145,7 +145,7 @@ TEST_F(NativeLibrariesTest, ListsEveryPlaceItSearched) {
 
     try {
         (void)NativeLibraries::open("/nowhere/libnative_nowhere.so");
-        FAIL() << "a missing path loads";
+        FAIL() << "A missing path loads.";
     } catch (const std::runtime_error& error) {
         EXPECT_NE(std::string(error.what()).find("/nowhere/libnative_nowhere.so: not found"), std::string::npos);
         EXPECT_EQ(std::string(error.what()).find("linked into the app"), std::string::npos);

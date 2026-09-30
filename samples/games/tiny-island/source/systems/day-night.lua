@@ -14,7 +14,7 @@ local function blend(from, middle, to, progress)
     return middle:lerp(to, m.smoothstep(0.5, 1, progress))
 end
 
--- Lengths are the seconds of each phase, colors the ambient light of each phase, and time the second of the cycle to start at.
+-- The argument `lengths` holds the seconds of each phase, `colors` the ambient light of each phase, and `time` the second of the cycle to start at.
 function dayNight.new(lengths, colors, time)
     local self = setmetatable({lengths = lengths, colors = {}, day = 1}, dayNight)
     for _, phase in ipairs(phases) do
@@ -66,7 +66,7 @@ function dayNight:setTime(seconds)
     self:refresh()
 end
 
--- Advances the clock and reports every phase and day it passes, in order, through onPhase(phase, day) and onDay(day).
+-- Advances the clock and reports every phase and day it passes, in order, through `onPhase(phase, day)` and `onDay(day)`.
 function dayNight:update(dt)
     local remaining = dt
     while remaining > 0 do

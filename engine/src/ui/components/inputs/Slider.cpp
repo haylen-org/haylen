@@ -19,7 +19,7 @@ void Slider::readProperties(PropertyReader& reader) {
     reader.read("showValue", showValue);
     reader.read("decimals", decimals, 0, 6);
     if (lowest >= highest) {
-        reader.fail("min", "must be smaller than max");
+        reader.fail("min", "must be smaller than \"max\"");
     }
     minimum = lowest;
     maximum = highest;

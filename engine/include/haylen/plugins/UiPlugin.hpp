@@ -25,7 +25,7 @@
 
 namespace haylen::plugins {
 
-// Runs the app UI: Dear ImGui over the app, the themes, the component kinds and the documents the app mounts. Lua sees it as haylen.ui and haylen.imgui.
+// Runs the app UI: Dear ImGui over the app, the themes, the component kinds and the documents the app mounts. Lua sees it as `haylen.ui` and `haylen.imgui`.
 class UiPlugin final : public Plugin {
   public:
     UiPlugin();
@@ -57,7 +57,7 @@ class UiPlugin final : public Plugin {
 
     [[nodiscard]] std::shared_ptr<ui::Document> createDocument(const core::Json& tree, ui::Placement placement = ui::Placement::Safe) const;
 
-    // Documents draw in layer order, and documents on the same layer in the order they were mounted. Mounting and unmounting publish uiDocumentMounted and uiDocumentUnmounted with the shared pointer of the document.
+    // Documents draw in layer order, and documents on the same layer in the order they were mounted. Mounting and unmounting publish `uiDocumentMounted` and `uiDocumentUnmounted` with the shared pointer of the document.
     void mount(std::shared_ptr<ui::Document> document, int layer = 0);
     bool unmount(const ui::Document& document);
     [[nodiscard]] bool isMounted(const ui::Document& document) const;
@@ -73,7 +73,7 @@ class UiPlugin final : public Plugin {
     [[nodiscard]] const ui::Theme& getTheme() const;
     [[nodiscard]] std::vector<std::string> getThemes() const;
 
-    // Registers a theme from its JSON document on top of the theme named base, registers the fonts it lists and returns the theme name.
+    // Registers a theme from its JSON document on top of the theme named `base`, registers the fonts it lists and returns the theme name.
     std::string addTheme(core::Engine& engine, const core::Json& document, std::string_view base = "dark");
     std::string loadTheme(core::Engine& engine, std::string_view path, std::string_view base = "dark");
     void addFont(core::Engine& engine, const std::string& name, std::string_view path);
@@ -84,7 +84,7 @@ class UiPlugin final : public Plugin {
     // Returns the family of a UI font name: a registered family, the font file of a name, or the default font, and null for a name the UI does not know.
     [[nodiscard]] std::shared_ptr<text::FontFamily> getFontFamily(core::Engine& engine, std::string_view name);
 
-    // The direction of the whole UI, which mirrors its layouts and sets the direction its text reads in when right to left. Auto follows the direction the localization catalog declares for the current language, and nodes with a direction of their own keep it.
+    // The direction of the whole UI, which mirrors its layouts and sets the direction its text reads in when right to left. The direction `Auto` follows the direction the localization catalog declares for the current language, and nodes with a direction of their own keep it.
     void setDirection(text::Direction value) noexcept {
         direction = value;
     }
@@ -92,7 +92,7 @@ class UiPlugin final : public Plugin {
         return direction;
     }
 
-    // Shades the screen outside the safe area and outlines it over everything, to check layouts against notches and system bars. The debug.showSafeArea option of app.json turns it on at start.
+    // Shades the screen outside the safe area and outlines it over everything, to check layouts against notches and system bars. The `debug.showSafeArea` option of `app.json` turns it on at start.
     void setSafeAreaVisible(bool value) noexcept {
         safeAreaVisible = value;
     }

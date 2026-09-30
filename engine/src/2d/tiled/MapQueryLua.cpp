@@ -20,7 +20,7 @@ const Map& MapQueryLua::checkMap(lua_State* L) {
     return lua::Userdata::check<MapRenderer>(L, 1).getMap();
 }
 
-// Casts a ray over a tile layer with raycastTiles(layer, x1, y1, x2, y2[, solid]), where solid(gid) can tell which tiles block it.
+// Casts a ray over a tile layer with `raycastTiles(layer, x1, y1, x2, y2[, solid])`, where `solid(gid)` can tell which tiles block it.
 int MapQueryLua::raycastTiles(lua_State* L) {
     const Map& map = checkMap(L);
     const std::string layer = lua::Stack::read<std::string>(L, 2);
@@ -55,7 +55,7 @@ int MapQueryLua::raycastTiles(lua_State* L) {
     return 1;
 }
 
-// Casts a ray against objects with raycastObjects(layer, x1, y1, x2, y2), where a nil layer means every object layer.
+// Casts a ray against objects with `raycastObjects(layer, x1, y1, x2, y2)`, where a `nil` layer means every object layer.
 int MapQueryLua::raycastObjects(lua_State* L) {
     const Map& map = checkMap(L);
     const std::string layer = lua_isnoneornil(L, 2) ? std::string{} : lua::Stack::read<std::string>(L, 2);
@@ -75,7 +75,7 @@ int MapQueryLua::raycastObjects(lua_State* L) {
     return 1;
 }
 
-// Lists the closed world outlines of the objects with objectOutlines([layer]), ready to become navigation mesh obstacles.
+// Lists the closed world outlines of the objects with `objectOutlines([layer])`, ready to become navigation mesh obstacles.
 int MapQueryLua::objectOutlines(lua_State* L) {
     const Map& map = checkMap(L);
     std::vector<std::vector<math::Vec2>> outlines;

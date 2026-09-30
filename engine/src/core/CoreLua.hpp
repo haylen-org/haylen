@@ -10,7 +10,7 @@ struct lua_State;
 
 namespace haylen::core {
 
-// Installs the haylen module with the engine version, platform and configuration, the clock, the pause, the app state, the lifecycle options, autoloads and classes, and haylen.log and haylen.viewport.
+// Installs the `haylen` module with the engine version, platform and configuration, the clock, the pause, the app state, the lifecycle options, autoloads and classes, and `haylen.log` and `haylen.viewport`.
 class CoreLua final {
   public:
     static void install(lua_State* L);

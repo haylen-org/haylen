@@ -1,4 +1,4 @@
--- The user folder with haylen.storage: every call runs at once and returns its result, writes replace files atomically and create missing folders, and paths stay inside the folder of the app.
+-- The user folder with `haylen.storage`: every call runs at once and returns its result, writes replace files atomically and create missing folders, and paths stay inside the folder of the app.
 local haylen = require('haylen')
 local storage = require('haylen.storage')
 local ui = require('haylen.ui')
@@ -63,7 +63,7 @@ function Storage:enter()
     self:refresh()
 end
 
--- Lists every file of the user folder with its size, which storage learns by reading the file.
+-- Lists every file of the user folder with its size, which `storage` learns by reading the file.
 function Storage:refresh()
     local items = {}
     for index, path in ipairs(storage.list()) do
@@ -76,7 +76,7 @@ function Storage:write()
     local text = string.format('Notes of %s\n', os.date('%Y-%m-%d'))
     storage.writeText(kNote, text)
     self.lines = 0
-    self.activity:add(string.format("storage.writeText('%s', text)", kNote), sample.bytes(#text) .. ', the folder notes was created on the way')
+    self.activity:add(string.format("storage.writeText('%s', text)", kNote), sample.bytes(#text) .. ', the folder "notes" was created on the way')
 end
 
 -- The storage API writes whole files, so appending reads the file and writes it back longer, still atomically.
@@ -89,7 +89,7 @@ end
 
 function Storage:read()
     if not storage.exists(kNote) then
-        self.activity:add(string.format("storage.exists('%s') is false", kNote), 'write the note first')
+        self.activity:add(string.format("storage.exists('%s') is false", kNote), 'Write the note first')
         return
     end
     local text = storage.readText(kNote)
@@ -104,7 +104,7 @@ end
 
 function Storage:readJson()
     if not storage.exists(kProfile) then
-        self.activity:add(string.format("storage.exists('%s') is false", kProfile), 'write the JSON first')
+        self.activity:add(string.format("storage.exists('%s') is false", kProfile), 'Write the JSON first')
         return
     end
     local profile = storage.readJson(kProfile)
@@ -113,7 +113,7 @@ end
 
 function Storage:exists()
     self.activity:add(string.format("storage.exists('%s') is %s", kNote, tostring(storage.exists(kNote))))
-    self.activity:add("storage.exists('notes') is " .. tostring(storage.exists('notes')), 'folders are not files')
+    self.activity:add("storage.exists('notes') is " .. tostring(storage.exists('notes')), 'Folders are not files')
 end
 
 function Storage:missing()
@@ -139,7 +139,7 @@ function Storage:clear()
         end
     end
     storage.flush()
-    self.activity:add(string.format('Removed %d files of notes and profile', count), 'then storage.flush()')
+    self.activity:add(string.format('Removed %d files of "notes" and "profile"', count), 'then storage.flush()')
 end
 
 return Storage

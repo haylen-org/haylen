@@ -95,10 +95,10 @@ std::vector<Dialog::Answer> Dialog::readButtons(PropertyReader& reader, const co
         if (!entry.is_object() || !entry.contains("id") || !entry.at("id").is_string()) {
             reader.fail("buttons", "must hold objects with an id");
         }
-        core::JsonValidator::requireKnownKeys(entry, {"id", "text", "variant"}, "dialog.buttons");
+        core::JsonValidator::requireKnownKeys(entry, {"id", "text", "variant"}, "\"dialog.buttons\"");
         Answer button{.id = entry.at("id").get<std::string>()};
         if (!ids.insert(button.id).second) {
-            reader.fail("buttons", "uses the id '" + button.id + "' more than once");
+            reader.fail("buttons", "uses the id \"" + button.id + "\" more than once");
         }
         if (const auto text = entry.find("text"); text != entry.end()) {
             button.text = TextValue::fromJson(*text, "dialog.buttons.text");
@@ -106,7 +106,7 @@ std::vector<Dialog::Answer> Dialog::readButtons(PropertyReader& reader, const co
         if (const auto variant = entry.find("variant"); variant != entry.end()) {
             const auto found = std::ranges::find_if(Widgets::kButtonVariants, [&](const auto& choice) { return variant->is_string() && variant->get_ref<const std::string&>() == choice.first; });
             if (found == Widgets::kButtonVariants.end()) {
-                reader.fail("buttons", "has a variant other than default, primary, destructive, toolbar, icon or link");
+                reader.fail("buttons", "has a variant other than \"default\", \"primary\", \"destructive\", \"toolbar\", \"icon\" or \"link\"");
             }
             button.variant = found->second;
         }

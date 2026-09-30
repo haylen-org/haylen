@@ -6,7 +6,7 @@ local art = {}
 
 local root = 'tiny_swords/'
 
--- Clip names are shared by every unit, so gameplay code plays 'run' or 'attack' without knowing the unit.
+-- Clip names are shared by every unit, so gameplay code plays `run` or `attack` without knowing the unit.
 local units = {
     warrior = {frame = 192, pivotY = 0.71, clips = {
         idle = {file = 'warrior/warrior_idle', fps = 10},

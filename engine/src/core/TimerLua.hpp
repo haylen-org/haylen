@@ -7,7 +7,7 @@ struct lua_State;
 
 namespace haylen::core {
 
-// Installs haylen.timer, whose timers call Lua functions after a delay or at an interval, on scaled or unscaled time and with a process mode.
+// Installs `haylen.timer`, whose timers call Lua functions after a delay or at an interval, on scaled or unscaled time and with a process mode.
 class TimerLua final {
   public:
     static void install(lua_State* L);

@@ -63,12 +63,12 @@ TEST_F(DialogsTest, RefusesRequestsThePlatformCannotShow) {
     refuses(message({"Yes", "No", "Later", "Never"}), "A message dialog has one to three buttons, not 4.");
     refuses(message({"Yes", ""}), "Every button of a message dialog needs a label.");
     refuses({.dialog = DialogRequest::OpenFiles{.filters = {{.extensions = {"png"}}}}}, "Every filter of a file dialog needs a name.");
-    refuses({.dialog = DialogRequest::OpenFiles{.filters = {{.name = "Images"}}}}, "The filter 'Images' needs at least one extension.");
+    refuses({.dialog = DialogRequest::OpenFiles{.filters = {{.name = "Images"}}}}, "The filter \"Images\" needs at least one extension.");
     for (const std::string extension : {".png", "*.png", "images/png", "png;jpg", ""}) {
-        refuses({.dialog = DialogRequest::OpenFiles{.filters = {{.name = "Images", .extensions = {"jpg", extension}}}}}, "The extension '" + extension + "' of the filter 'Images' is invalid. Extensions come without their dot, such as png or tar.gz.");
+        refuses({.dialog = DialogRequest::OpenFiles{.filters = {{.name = "Images", .extensions = {"jpg", extension}}}}}, "The extension \"" + extension + "\" of the filter \"Images\" is invalid. Extensions come without their dot, such as \"png\" or \"tar.gz\".");
     }
     refuses({.dialog = DialogRequest::SaveFile{.data = {1}}}, "A save dialog needs the name it suggests for the file.");
-    refuses({.dialog = DialogRequest::SaveFile{.name = "saves/slot.json"}}, "The name 'saves/slot.json' that a save dialog suggests is a file name, without folders.");
+    refuses({.dialog = DialogRequest::SaveFile{.name = "saves/slot.json"}}, "The name \"saves/slot.json\" that a save dialog suggests is a file name, without folders.");
     EXPECT_THROW(dialogs.show(message({"OK"}), {}, std::chrono::seconds(0)), std::invalid_argument);
     EXPECT_TRUE(host.getDialogRequests().empty());
     EXPECT_EQ(dialogs.getPendingCount(), 0U);
@@ -247,7 +247,7 @@ TEST(DialogsLuaTest, FailsWithTypedErrorsCancelsAndTimesOut) {
     EXPECT_EQ(fixture.lua("return summary"), "unsupported|Native dialogs are not implemented here.|Native dialogs are not implemented here.|cancelled|The dialog was cancelled.|timeout|The dialog timed out.|true");
     EXPECT_EQ(fixture.host().getCancelledDialogs(), (std::vector<std::uint64_t>{std::stoull(fixture.lua("return given.id")), std::stoull(fixture.lua("return slow.id"))}));
 
-    // The promise of a call joins the combinators of async, which see only the message of a failure.
+    // The promise of a call joins the combinators of `async`, which see only the message of a failure.
     fixture.runLua("both = dialogs.openFolder() async.spawn(function() local _, err = async.all({both.promise}):await() joined = tostring(err) end)");
     fixture.engine().getDialogs().resolve(std::stoull(fixture.lua("return both.id")), {.failure = DialogResult::Failure{.code = DialogResult::Code::Failed, .message = "The picker broke."}});
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return joined ~= nil") == "true"; }));
@@ -263,21 +263,21 @@ TEST(DialogsLuaTest, RaisesClearErrorsForInvalidOptions) {
         EXPECT_NE(error.find(expected), std::string::npos) << source << " -> " << error;
     };
     // clang-format on
-    fails("dialogs.message({txt = 'Hi', buttons = {'OK'}})", "Unknown option 'txt'.");
-    fails("dialogs.message({text = 'Hi', buttons = {'OK'}, kind = 'fatal'})", "The option 'kind' of 'message' is invalid: unknown value 'fatal'.");
-    fails("dialogs.message({text = 'Hi', buttons = 'OK'})", "The option 'buttons' of 'message' is invalid");
+    fails("dialogs.message({txt = 'Hi', buttons = {'OK'}})", "Unknown option \"txt\".");
+    fails("dialogs.message({text = 'Hi', buttons = {'OK'}, kind = 'fatal'})", "The option \"kind\" of \"message\" is invalid: unknown value 'fatal'.");
+    fails("dialogs.message({text = 'Hi', buttons = 'OK'})", "The option \"buttons\" of \"message\" is invalid");
     fails("dialogs.message({buttons = {'OK'}})", "A message dialog needs a text.");
     fails("dialogs.message({text = 'Hi'})", "A message dialog has one to three buttons, not 0.");
     fails("dialogs.message()", "table expected");
     fails("dialogs.openFiles({filters = 'png'})", "The filters of a file dialog are a list of tables with a name and a list of extensions.");
     fails("dialogs.openFiles({filters = {'png'}})", "The filters of a file dialog are a list of tables with a name and a list of extensions.");
-    fails("dialogs.openFiles({filters = {{name = 'Images', extension = {'png'}}}})", "Unknown option 'extension'.");
-    fails("dialogs.openFiles({filters = {{name = 'Images', extensions = {'.png'}}}})", "The extension '.png' of the filter 'Images' is invalid.");
-    fails("dialogs.openFiles({multiple = 'yes'})", "The option 'multiple' of 'openFiles' is invalid");
+    fails("dialogs.openFiles({filters = {{name = 'Images', extension = {'png'}}}})", "Unknown option \"extension\".");
+    fails("dialogs.openFiles({filters = {{name = 'Images', extensions = {'.png'}}}})", "The extension \".png\" of the filter \"Images\" is invalid.");
+    fails("dialogs.openFiles({multiple = 'yes'})", "The option \"multiple\" of \"openFiles\" is invalid");
     fails("dialogs.saveFile({name = 'slot.json'})", "A save dialog needs the data it writes, as a string.");
     fails("dialogs.saveFile({data = ''})", "A save dialog needs the name it suggests for the file.");
     fails("dialogs.openFolder({title = 'Export', timeout = 0})", "The timeout of a dialog is a positive number of seconds.");
-    fails("dialogs.openFolder({title = 'Export', timeout = 'soon'})", "The option 'timeout' of 'openFolder' is invalid");
+    fails("dialogs.openFolder({title = 'Export', timeout = 'soon'})", "The option \"timeout\" of \"openFolder\" is invalid");
     EXPECT_TRUE(fixture.host().getDialogRequests().empty());
 }
 

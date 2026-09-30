@@ -13,7 +13,7 @@
 
 namespace haylen::lua {
 
-// Builds the metatable of a bound type with methods, read-write properties and metamethods. Unknown keys raise errors. Number, Vec2 and Color fields and accessors are also recorded as native properties, which tweens animate without running Lua.
+// Builds the metatable of a bound type with methods, read-write properties and metamethods. Unknown keys raise errors. Number, `Vec2` and `Color` fields and accessors are also recorded as native properties, which tweens animate without running Lua.
 template <Bound T> class ClassBuilder final {
   public:
     explicit ClassBuilder(lua_State* L) : state(L) {
@@ -184,7 +184,7 @@ template <Bound T> class ClassBuilder final {
         return true;
     }
 
-    // Setters receive the object, the key and the value, the way __newindex calls them, so the value sits at index 3.
+    // Setters receive the object, the key and the value, the way `__newindex` calls them, so the value sits at index 3.
     template <auto Setter> static int setThrough(lua_State* L) {
         using Value = std::remove_cvref_t<std::tuple_element_t<0, typename FunctionTraits<decltype(Setter)>::Arguments>>;
         // clang-format off
@@ -222,7 +222,7 @@ template <Bound T> class ClassBuilder final {
             lua_pop(L, 1);
             return getter(L);
         }
-        return luaL_error(L, "The type %s has no member '%s'.", Type<T>::name, luaL_tolstring(L, 2, nullptr));
+        return luaL_error(L, "The type \"%s\" has no member \"%s\".", Type<T>::name, luaL_tolstring(L, 2, nullptr));
     }
 
     static int indexWithIntegers(lua_State* L) {
@@ -246,7 +246,7 @@ template <Bound T> class ClassBuilder final {
             lua_pop(L, 1);
             return setter(L);
         }
-        return luaL_error(L, "The type %s has no writable property '%s'.", Type<T>::name, luaL_tolstring(L, 2, nullptr));
+        return luaL_error(L, "The type \"%s\" has no writable property \"%s\".", Type<T>::name, luaL_tolstring(L, 2, nullptr));
     }
 
     lua_State* state;

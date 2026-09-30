@@ -221,9 +221,9 @@ TEST_F(AudioEffectTest, MovedEffectsForgetTheirEarlierInput) {
     const auto echo = std::make_shared<Delay>(Delay::Settings{.time = 0.5F, .feedback = 0.0F, .wet = 1.0F, .dry = 0.0F});
     mixer.addBusEffect("sfx", echo);
     mixer.play(makeImpulse(64, 0.8F));
-    EXPECT_EQ(peak(toFrames(0.05F)), 0.0F) << "the repeat is still ahead";
+    EXPECT_EQ(peak(toFrames(0.05F)), 0.0F) << "The repeat is still ahead.";
 
-    // The impulse went into the delay on sfx, and on ambience, where nothing plays, its repeat never comes out.
+    // The impulse went into the delay on `sfx`, and on `ambience`, where nothing plays, its repeat never comes out.
     mixer.removeBusEffect("sfx", *echo);
     mixer.addBusEffect("ambience", echo);
     EXPECT_EQ(peak(toFrames(0.8F)), 0.0F);

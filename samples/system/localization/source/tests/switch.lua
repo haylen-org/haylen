@@ -1,4 +1,4 @@
--- Switching languages: every text of the title screen is a translation such as {key = 'menu.play'}, which the UI resolves every time it draws, so localization.setLanguage changes the whole screen at once without rebuilding it.
+-- Switching languages: every text of the title screen is a translation such as `{key = 'menu.play'}`, which the UI resolves every time it draws, so `localization.setLanguage` changes the whole screen at once without rebuilding it.
 local haylen = require('haylen')
 local localization = require('haylen.localization')
 local timer = require('haylen.timer')
@@ -27,7 +27,7 @@ function Switch:content()
         },
         ui.panel{width = 600, align = 'stretch', gap = 16,
             ui.sectionTitle{text = 'The languages'},
-            ui.label{text = 'localization.languages() returns ' .. table.concat(localization.languages(), ', ') .. ', the files of content/locale.'},
+            ui.label{text = 'The function "localization.languages()" returns "' .. table.concat(localization.languages(), '", "') .. '", the files of "content/locale".'},
             ui.label{id = 'state', text = '', font = 'monospace'},
             ui.row{gap = 16,
                 ui.label{text = 'Cycle every two seconds', grow = 1},

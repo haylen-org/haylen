@@ -10,7 +10,7 @@
 
 namespace haylen::ai {
 
-// Installs the BehaviorTree class of haylen.ai and the functions that describe its nodes. Descriptions are plain tables, and leaves are Lua functions of the blackboard table.
+// Installs the `BehaviorTree` class of `haylen.ai` and the functions that describe its nodes. Descriptions are plain tables, and leaves are Lua functions of the blackboard table.
 class BehaviorTreeLua final {
   public:
     // A tree created from Lua. Its leaves run on the Lua thread that ticks it, with the tree at stack index 1.
@@ -22,14 +22,14 @@ class BehaviorTreeLua final {
 
     static void install(lua_State* L);
 
-    // Sets the node functions and newBehaviorTree on the module table at the top of the stack.
+    // Sets the node functions and `newBehaviorTree` on the module table at the top of the stack.
     static void addFunctions(lua_State* L);
 
   private:
-    // The kind names of descriptions, in the order of BehaviorTree::Kind.
+    // The kind names of descriptions, in the order of `BehaviorTree::Kind`.
     static constexpr std::array<std::string_view, 13> kKinds{"sequence", "selector", "parallel", "inverter", "succeeder", "failer", "repeater", "retry", "cooldown", "timeout", "wait", "condition", "action"};
 
-    // Reads the description at index, keeping its leaf functions in the leaves list at leavesIndex and the descriptions being read in the set at pathIndex, which rejects a description that contains itself.
+    // Reads the description at `index`, keeping its leaf functions in the leaves list at `leavesIndex` and the descriptions being read in the set at `pathIndex`, which rejects a description that contains itself.
     [[nodiscard]] static BehaviorTree::Node readNode(lua_State* L, int index, int leavesIndex, int pathIndex, Scripted& self);
     [[nodiscard]] static BehaviorTree::Status callLeaf(Scripted& self, lua_Integer leaf, const float* deltaSeconds);
     // Pushes a description of the kind, reading its children list, single child, count and seconds from the given argument positions, where 0 leaves a part out.

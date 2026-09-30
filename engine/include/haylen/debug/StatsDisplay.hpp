@@ -28,7 +28,7 @@ class StatsDisplay final {
         std::size_t instances = 0;
     };
 
-    // Resolves the names "off", "compact" and "full".
+    // Resolves the names `off`, `compact` and `full`.
     [[nodiscard]] static std::optional<Mode> modeFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view modeName(Mode value) noexcept;
 

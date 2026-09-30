@@ -27,11 +27,11 @@ class MapParser final {
   public:
     [[nodiscard]] static Map parse(const core::Json& document, std::string_view file, const Map::JsonReader& reader);
 
-    // Resolves a path relative to the file in directory, keeping an empty path empty.
+    // Resolves a path relative to the file in `directory`, keeping an empty path empty.
     [[nodiscard]] static std::string resolve(std::string_view directory, std::string_view relative);
 
   private:
-    // Cells are indexed with int and their data takes four bytes each, so a layer holds as many cells as both allow.
+    // Cells are indexed with `int` and their data takes four bytes each, so a layer holds as many cells as both allow.
     static constexpr std::size_t kMaxCells = std::min<std::size_t>(std::numeric_limits<int>::max(), std::numeric_limits<std::size_t>::max() / 4);
 
     MapParser(const Map::JsonReader& reader, Map& target) noexcept : read(reader), map(target) {}

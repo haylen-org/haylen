@@ -1,6 +1,6 @@
 # haylen.timer
 
-`haylen.timer` runs functions after a delay or at a fixed interval. Timers advance once per frame, after the fixed steps and before tweens and the scene update. By default they count scaled time, so `haylen.setTimeScale(0)` freezes them together with the rest of the app, and they stop while the game is paused. Use timers for cooldowns, delayed effects and periodic checks. For animated values use [haylen.tween](tween.md), and for code that reads best as a sequence of waits use Varn's `async.sleep` inside `async.spawn`.
+The module `haylen.timer` runs functions after a delay or at a fixed interval. Timers advance once per frame, after the fixed steps and before tweens and the scene update. By default they count scaled time, so `haylen.setTimeScale(0)` freezes them together with the rest of the app, and they stop while the game is paused. Use timers for cooldowns, delayed effects and periodic checks. For animated values use [`haylen.tween`](tween.md), and for code that reads best as a sequence of waits use Varn's `async.sleep` inside `async.spawn`.
 
 ```lua
 local timer = require('haylen.timer')
@@ -10,20 +10,20 @@ Timer callbacks receive no arguments. An error raised inside a callback stops th
 
 ## Options
 
-`timer.after` and `timer.every` take an optional options table, and unknown keys raise `Unknown option '<key>'.`
+The functions `timer.after` and `timer.every` take an optional options table, and unknown keys raise `Unknown option "<key>".`
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `owner` | table or userdata | `nil` | Cancels the timer when the owner ends, as the [owners of haylen.events](events.md#owners) describe. The owner keeps the callback, so the callback may refer to the owner without keeping it alive. |
-| `processMode` | string | `'inherit'` | `'inherit'`, `'pausable'`, `'whenPaused'`, `'always'` or `'disabled'`. A timer that inherits follows the mode of its owner every frame, so it changes along with the owner, and without an owner it counts as `'pausable'`. The [lifecycle guide](../lifecycle.md#pause-and-process-modes) explains the modes. |
+| `owner` | table or userdata | `nil` | Cancels the timer when the owner ends, as the [owners of `haylen.events`](events.md#owners) describe. The owner keeps the callback, so the callback may refer to the owner without keeping it alive. |
+| `processMode` | string | `'inherit'` | One of `'inherit'`, `'pausable'`, `'whenPaused'`, `'always'` or `'disabled'`. A timer that inherits follows the mode of its owner every frame, so it changes along with the owner, and without an owner it counts as `'pausable'`. The [lifecycle guide](../lifecycle.md#pause-and-process-modes) explains the modes. |
 | `unscaled` | boolean | `false` | Counts real time, ignoring the time scale. |
-| `count` | integer | `-1` | `timer.every` only. Stops after that many calls, or repeats until the timer is cancelled when it is negative. |
+| `count` | integer | `-1` | For `timer.every` only. Stops after that many calls, or repeats until the timer is cancelled when it is negative. |
 
 ## Functions
 
 ### timer.after(seconds, callback, options)
 
-Calls `callback` once, on the first frame where at least `seconds` have passed. A negative delay counts as zero, so the callback runs on the next frame. Returns the timer id, an integer that the other functions take. `callback` must be a function, otherwise the call raises `bad argument #2 to 'after' (function expected, got string)` or the equivalent for the given type.
+Calls `callback` once, on the first frame where at least `seconds` have passed. A negative delay counts as zero, so the callback runs on the next frame. Returns the timer id, an integer that the other functions take. The argument `callback` must be a function, otherwise the call raises `bad argument #2 to 'after' (function expected, got string)` or the equivalent for the given type.
 
 ```lua
 local timer = require('haylen.timer')
@@ -73,7 +73,7 @@ timer.cancel(warning)
 
 ### timer.pause(id, paused)
 
-Pauses or resumes one timer. `paused` defaults to `true`, and `false` resumes the timer. A paused timer keeps its remaining time and does not count down.
+Pauses or resumes one timer. The argument `paused` defaults to `true`, and `false` resumes the timer. A paused timer keeps its remaining time and does not count down.
 
 ```lua
 local timer = require('haylen.timer')

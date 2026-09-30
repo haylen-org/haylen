@@ -1,6 +1,6 @@
 # haylen.graphics2d
 
-`haylen.graphics2d` draws everything a 2D app shows: sprites, sprite batches, shapes, meshes, text, rich text, nine-slice frames, metaballs, lights, occluders and parallax layers, into world, screen and offscreen canvases, shades them with custom shader materials, and captures whole frames into render targets. Use it inside the `render` and `renderUi` callbacks of a scene, and use its cameras, sprites, batches and materials anywhere. Textures, render targets, fonts and shaders come from [haylen.graphics](graphics.md), and lights and occluders from [haylen.lighting2d](lighting2d.md).
+The module `haylen.graphics2d` draws everything a 2D app shows: sprites, sprite batches, shapes, meshes, text, rich text, nine-slice frames, metaballs, lights, occluders and parallax layers, into world, screen and offscreen canvases, shades them with custom shader materials, and captures whole frames into render targets. Use it inside the `render` and `renderUi` callbacks of a scene, and use its cameras, sprites, batches and materials anywhere. Textures, render targets, fonts and shaders come from [`haylen.graphics`](graphics.md), and lights and occluders from [`haylen.lighting2d`](lighting2d.md).
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -10,13 +10,13 @@ local graphics2d = require('haylen.graphics2d')
 
 ### Canvases
 
-Every draw goes into the active canvas. A scene starts a canvas with `graphics2d.beginWorld`, `graphics2d.beginScreen` or `graphics2d.beginTarget`, and each new canvas closes the previous one. Drawing without an active canvas raises `No canvas is active. Call beginWorld, beginScreen or beginTarget before drawing.` Canvases only exist while the engine renders a frame, so draw calls belong in `render` or `renderUi` and never in `update`.
+Every draw goes into the active canvas. A scene starts a canvas with `graphics2d.beginWorld`, `graphics2d.beginScreen` or `graphics2d.beginTarget`, and each new canvas closes the previous one. Drawing without an active canvas raises `No canvas is active. Call "beginWorld", "beginScreen" or "beginTarget" before drawing.` Canvases only exist while the engine renders a frame, so draw calls belong in `render` or `renderUi` and never in `update`.
 
 World canvases look through a camera, into the camera viewport or across the whole visible area. Screen canvases use design coordinates, the space configured by `design` in `app.json` and reported by `viewport.visibleRect()`. Render target canvases draw into an offscreen texture. World and render target canvases can be lit and post-processed. The engine submits the whole frame at the end: offscreen work runs first in the order the frame recorded it, render target canvases, the offscreen passes of lit and post-processed canvases and [captures](#captures), then world and screen canvases are composited on the screen by their `order` and, for equal orders, in the order they were begun.
 
 ### Captures
 
-`graphics2d.beginCapture(target)` sends the world and screen canvases that begin until `graphics2d.endCapture()` into a render target instead of the screen, lit and post-processed canvases included. The visible area covers the whole target, so a target with the pixel size of the viewport holds the frame exactly as the screen would show it, ready to be drawn as a texture, blended or kept. Scene transitions use captures to render the scenes before and after a change into their own images, as the [scene reference](scene.md#both-scenes-stay-alive) explains. A capture renders once the canvases before its end have their offscreen passes, and before any later canvas, so a canvas that draws the captured texture shows the frame it holds.
+The function `graphics2d.beginCapture(target)` sends the world and screen canvases that begin until `graphics2d.endCapture()` into a render target instead of the screen, lit and post-processed canvases included. The visible area covers the whole target, so a target with the pixel size of the viewport holds the frame exactly as the screen would show it, ready to be drawn as a texture, blended or kept. Scene transitions use captures to render the scenes before and after a change into their own images, as the [scene reference](scene.md#both-scenes-stay-alive) explains. A capture renders once the canvases before its end have their offscreen passes, and before any later canvas, so a canvas that draws the captured texture shows the frame it holds.
 
 ### Coordinates and angles
 
@@ -28,11 +28,11 @@ Functions accept these forms wherever the reference names the type:
 
 | Type | Accepted values |
 | --- | --- |
-| Color | A `Color` from [haylen.math](math.md), a `'#RRGGBB'` or `'#AARRGGBB'` string, or a table `{r, g, b, a}` or `{r = 1, g = 1, b = 1, a = 1}` with components from 0 to 1 and `a` defaulting to 1. |
-| Vec2 | A `Vec2` from [haylen.math](math.md), or a table `{x, y}` or `{x = 0, y = 0}`. |
-| Rect | A `Rect` from [haylen.math](math.md), or a table `{x, y, width, height}` or `{x = 0, y = 0, width = 0, height = 0}`. |
+| Color | A `Color` from [`haylen.math`](math.md), a `'#RRGGBB'` or `'#AARRGGBB'` string, or a table `{r, g, b, a}` or `{r = 1, g = 1, b = 1, a = 1}` with components from 0 to 1 and `a` defaulting to 1. |
+| Vec2 | A `Vec2` from [`haylen.math`](math.md), or a table `{x, y}` or `{x = 0, y = 0}`. |
+| Rect | A `Rect` from [`haylen.math`](math.md), or a table `{x, y, width, height}` or `{x = 0, y = 0, width = 0, height = 0}`. |
 
-A malformed color string raises `invalid color text, expected #RRGGBB or #AARRGGBB`. Option tables reject keys they do not know with `Unknown option 'name'.` and reject non-string keys with `Option tables only accept string keys.` An enum option given an unknown name raises an argument error that contains `unknown value 'name'`.
+A malformed color string raises `invalid color text, expected #RRGGBB or #AARRGGBB`. Option tables reject keys they do not know with `Unknown option "name".` and reject non-string keys with `Option tables only accept string keys.` An enum option given an unknown name raises an argument error that contains `unknown value 'name'`.
 
 ### Draw order
 
@@ -53,9 +53,9 @@ Every draw that takes an `order` table, and every option table that lists `layer
 | `lightMask` | integer | `1` | In lit canvases, bits that the item masks of lights test, from 0 to 255. |
 | `unshaded` | boolean | `false` | In lit canvases, keeps the colors of the draw whatever the light. |
 
-Unlit canvases ignore the lighting keys, and [haylen.lighting2d](lighting2d.md#how-2d-lighting-works) explains how lit canvases use them. A draw copies the values of its material when it is made, so a material changed between two draws shades each draw with its own values.
+Unlit canvases ignore the lighting keys, and [`haylen.lighting2d`](lighting2d.md#how-2d-lighting-works) explains how lit canvases use them. A draw copies the values of its material when it is made, so a material changed between two draws shades each draw with its own values.
 
-The `sort` option of a canvas chooses how draws of one layer are ordered. `'layer'` keeps the order in which the app made them, `'depth'` sorts them by `depth`, and `'y'` sorts them by the y they stand on plus their `sortOffset`, so lower draws cover higher ones without setting any depth. Sprites stand on their pivot, and every sprite of a batch sorts on its own. Text stands on its position, rich text on the bottom of its block, and rectangles, lines, shapes, meshes, nine-slices, static batches, image blends and metaballs stand on their lowest point. Draws that sort the same keep the order in which the app made them. `graphics2d.pushLayerOffset` shifts the layer of every following draw of the canvas, so a group of draws, such as a character and its shadow, can move between layers together.
+The `sort` option of a canvas chooses how draws of one layer are ordered. The value `'layer'` keeps the order in which the app made them, `'depth'` sorts them by `depth`, and `'y'` sorts them by the y they stand on plus their `sortOffset`, so lower draws cover higher ones without setting any depth. Sprites stand on their pivot, and every sprite of a batch sorts on its own. Text stands on its position, rich text on the bottom of its block, and rectangles, lines, shapes, meshes, nine-slices, static batches, image blends and metaballs stand on their lowest point. Draws that sort the same keep the order in which the app made them. The function `graphics2d.pushLayerOffset` shifts the layer of every following draw of the canvas, so a group of draws, such as a character and its shadow, can move between layers together.
 
 Visibility bits hide draws from some canvases: draw the world once for the main camera and again for a minimap canvas whose `visibilityMask` leaves out details. The blend modes are:
 
@@ -87,13 +87,13 @@ scene.push({
 
 ### graphics2d.beginWorld(camera, options)
 
-Starts a world canvas that draws in world coordinates through `camera`. The camera's view covers its `viewport`, or the current visible design area without one, divided by its zoom, and the canvas reaches only that part of the screen, which is how split screens and minimaps draw several cameras in one frame. `options` is an optional canvas options table. A viewport without a positive width and height raises `A camera viewport needs a positive width and height.` A world canvas with `ambientLight` or `postProcess` renders offscreen over its `clear` color and is composited as an image that covers what earlier canvases drew. Other world canvases draw directly on the screen, so a `clear` color without `ambientLight` or `postProcess` raises `World canvases only support a clear color with lighting or post-processing.`
+Starts a world canvas that draws in world coordinates through `camera`. The camera's view covers its `viewport`, or the current visible design area without one, divided by its zoom, and the canvas reaches only that part of the screen, which is how split screens and minimaps draw several cameras in one frame. The argument `options` is an optional canvas options table. A viewport without a positive width and height raises `A camera viewport needs a positive width and height.` A world canvas with `ambientLight` or `postProcess` renders offscreen over its `clear` color and is composited as an image that covers what earlier canvases drew. Other world canvases draw directly on the screen, so a `clear` color without `ambientLight` or `postProcess` raises `World canvases only support a clear color with lighting or post-processing.`
 
 Canvas options:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `sort` | string | `'layer'` | `'layer'` sorts draws by layer only. `'depth'` also sorts by depth inside each layer, and `'y'` sorts by the y each draw stands on, as [Draw order](#draw-order) describes. |
+| `sort` | string | `'layer'` | The value `'layer'` sorts draws by layer only. The value `'depth'` also sorts by depth inside each layer, and `'y'` sorts by the y each draw stands on, as [Draw order](#draw-order) describes. |
 | `order` | integer | `0` | Canvases reach their destination by order, lowest first, and canvases with the same order in the order they began. |
 | `visibilityMask` | integer | all bits | Draws whose `visibility` shares no bit with the mask are skipped. |
 | `ambientLight` | Color | none | Turns on lighting. The canvas is multiplied by a light map that starts at this color and receives every `graphics2d.drawLight`, and occluders cast the shadows of its lights. |
@@ -135,7 +135,7 @@ scene.push({
 
 ### graphics2d.beginScreen(options)
 
-Starts a screen canvas that draws in design coordinates, the space of `viewport.visibleRect()`. Use it for HUDs, menus and anything that does not move with the camera. `options` accepts `sort`, `order` and `visibilityMask` from the canvas options. Passing `ambientLight` or `postProcess` raises `Screen canvases do not support lighting or post-processing.`, and passing `clear` raises `Screen canvases do not support a clear color.` because a screen canvas draws on top of what earlier canvases drew.
+Starts a screen canvas that draws in design coordinates, the space of `viewport.visibleRect()`. Use it for HUDs, menus and anything that does not move with the camera. The argument `options` accepts `sort`, `order` and `visibilityMask` from the canvas options. Passing `ambientLight` or `postProcess` raises `Screen canvases do not support lighting or post-processing.`, and passing `clear` raises `Screen canvases do not support a clear color.` because a screen canvas draws on top of what earlier canvases drew.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -151,7 +151,7 @@ scene.push({
 
 ### graphics2d.beginTarget(target, camera, options)
 
-Starts a canvas that draws into the render target `target` through `camera`. The camera's view covers the target size, so a camera at `target.width / 2, target.height / 2` shows the region from 0, 0 to the target size, and a camera `viewport` is a rectangle of the target in pixels. `options` takes the canvas options of `beginWorld`, and `clear` defaults to transparent. With `ambientLight` or `postProcess` the canvas renders lit and post-processed offscreen and then composites into the target, so a minimap, a portrait or a mirror can show a lit scene. Draw the result with `target.texture`. The target holds colors premultiplied by their alpha, so draw its texture with `blend = 'premultiplied'` wherever it is not fully opaque, or its soft edges come out darker. A canvas that draws straight into the target cannot sample its texture in the same canvas, and such a draw raises `A draw cannot sample the render target that its canvas draws into.`
+Starts a canvas that draws into the render target `target` through `camera`. The camera's view covers the target size, so a camera at `target.width / 2, target.height / 2` shows the region from 0, 0 to the target size, and a camera `viewport` is a rectangle of the target in pixels. The argument `options` takes the canvas options of `beginWorld`, and `clear` defaults to transparent. With `ambientLight` or `postProcess` the canvas renders lit and post-processed offscreen and then composites into the target, so a minimap, a portrait or a mirror can show a lit scene. Draw the result with `target.texture`. The target holds colors premultiplied by their alpha, so draw its texture with `blend = 'premultiplied'` wherever it is not fully opaque, or its soft edges come out darker. A canvas that draws straight into the target cannot sample its texture in the same canvas, and such a draw raises `A draw cannot sample the render target that its canvas draws into.`
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -176,7 +176,7 @@ scene.push({
 
 ### graphics2d.draw(texture, x, y, options)
 
-Draws `texture` once with its pivot at `x`, `y`. `options` is optional:
+Draws `texture` once with its pivot at `x`, `y`. The argument `options` is optional:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -209,7 +209,7 @@ scene.push({
 
 ### graphics2d.drawBatch(texture, sprites, order)
 
-Draws a list of sprite tables that share `texture` as one batch, without keeping them in a `SpriteBatch`. Each sprite table uses the keys described in [SpriteBatch](#spritebatch). `order` is an optional draw order table. An empty list draws nothing. Use a `SpriteBatch` instead when most sprites stay the same from frame to frame.
+Draws a list of sprite tables that share `texture` as one batch, without keeping them in a `SpriteBatch`. Each sprite table uses the keys described in [`SpriteBatch`](#spritebatch). The argument `order` is an optional draw order table. An empty list draws nothing. Use a `SpriteBatch` instead when most sprites stay the same from frame to frame.
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -234,7 +234,7 @@ scene.push({
 
 ### graphics2d.drawBatch(texture, buffer, layout, order)
 
-Draws the sprites a float buffer of [haylen.collections](collections.md#float-buffers) holds, without a table for each sprite and without a list of sprites in between. `layout` is a sprite table, with the keys of [SpriteBatch](#spritebatch), that every sprite starts from, plus `fields`, the [sprite fields](#sprite-fields) each sprite takes from the buffer in order. The buffer holds as many sprites as it has whole groups of fields. A layout without `fields` raises `A drawBatch call with a float buffer needs the fields each sprite takes, such as fields = {'x', 'y'}.`. The [performance section of the Lua guide](../lua.md#performance) compares it with sprite tables.
+Draws the sprites a float buffer of [`haylen.collections`](collections.md#float-buffers) holds, without a table for each sprite and without a list of sprites in between. The argument `layout` is a sprite table, with the keys of [`SpriteBatch`](#spritebatch), that every sprite starts from, plus `fields`, the [sprite fields](#sprite-fields) each sprite takes from the buffer in order. The buffer holds as many sprites as it has whole groups of fields. A layout without `fields` raises `A "drawBatch" call with a float buffer needs the fields each sprite takes, such as "fields = {'x', 'y'}".`. The [performance section of the Lua guide](../lua.md#performance) compares it with sprite tables.
 
 ```lua
 local collections = require('haylen.collections')
@@ -264,7 +264,7 @@ scene.push({
 
 ### graphics2d.drawRect(rect, color, order)
 
-Fills `rect` with `color`. The rectangle's `x` and `y` are its top-left corner. `order` is an optional draw order table.
+Fills `rect` with `color`. The rectangle's `x` and `y` are its top-left corner. The argument `order` is an optional draw order table.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -313,7 +313,7 @@ scene.push({
 
 ### graphics2d.drawCircle(x, y, radius, color, order, segments)
 
-Fills a circle centered on `x`, `y`. `segments` sets how many edges approximate it. When it is omitted or 0, the count follows the radius, between 16 and 96.
+Fills a circle centered on `x`, `y`. The argument `segments` sets how many edges approximate it. When it is omitted or 0, the count follows the radius, between 16 and 96.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -330,7 +330,7 @@ scene.push({
 
 ### graphics2d.drawRing(x, y, radius, thickness, color, order, segments)
 
-Draws a circle outline `thickness` units wide whose middle line lies at `radius` from the center. `segments` works like in `graphics2d.drawCircle`, with an automatic count between 8 and 96.
+Draws a circle outline `thickness` units wide whose middle line lies at `radius` from the center. The argument `segments` works like in `graphics2d.drawCircle`, with an automatic count between 8 and 96.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -346,7 +346,7 @@ scene.push({
 
 ### graphics2d.drawArc(x, y, radius, thickness, startAngle, endAngle, color, order, segments)
 
-Draws the part of a ring that goes from `startAngle` to `endAngle`, in radians. Angle 0 points right and angles grow clockwise. `segments` works like in `graphics2d.drawRing`.
+Draws the part of a ring that goes from `startAngle` to `endAngle`, in radians. Angle 0 points right and angles grow clockwise. The argument `segments` works like in `graphics2d.drawRing`.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -382,7 +382,7 @@ scene.push({
 
 ### graphics2d.drawPolyline(points, thickness, color, closed, order)
 
-Draws line segments through `points`. When `closed` is true, a last segment joins the final point to the first one.
+Draws line segments through `points`. When `closed` is `true`, a last segment joins the final point to the first one.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -398,7 +398,7 @@ scene.push({
 
 ### graphics2d.drawMesh(texture, vertices, indices, order)
 
-Draws textured triangles. `texture` can be `nil` for solid colors. Each vertex is a table with `x`, `y`, `u`, `v` and `color`, where `u` and `v` are texture coordinates from 0 to 1 and every field is optional (`color` defaults to white and the others to 0). `indices` lists vertex numbers in groups of three, counting from 1. An index below 1 raises `mesh indices start at 1`, and an index past the last vertex raises `Mesh index refers to a vertex that does not exist.`
+Draws textured triangles. The argument `texture` can be `nil` for solid colors. Each vertex is a table with `x`, `y`, `u`, `v` and `color`, where `u` and `v` are texture coordinates from 0 to 1 and every field is optional (`color` defaults to white and the others to 0). The argument `indices` lists vertex numbers in groups of three, counting from 1. An index below 1 raises `mesh indices start at 1`, and an index past the last vertex raises `Mesh index refers to a vertex that does not exist.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -424,7 +424,7 @@ scene.push({
 
 ### graphics2d.drawText(font, text, x, y, style)
 
-Draws UTF-8 `text` with `font`, a `Font` or a `FontFamily`, or with the engine's default font when `font` is `nil`. A family draws every character its regular face lacks with the first fallback that has it, which is how one string mixes Latin, Arabic, Devanagari or CJK text. A TrueType font is shaped by HarfBuzz and rendered from a signed distance field, so it stays sharp at any size, with the ligatures, joining forms, conjuncts and marks of every script, and a bitmap font draws its own images, pixel for pixel at its native size. Every line is ordered for display by the Unicode bidirectional algorithm, so right-to-left text reads from the right and keeps numbers and Latin words in their own order. `\n` starts a new line, and so do `\r`, `\r\n`, which counts as one, and the other paragraph separators of Unicode, such as U+2029. Tabs and other control characters draw nothing and take no room. Lines wrap where the Unicode line breaking rules allow, which includes between Chinese and Japanese characters and between Thai phrases. The [text guide](../text.md#scripts-and-directions) explains shaping, directions and line breaking. The anchor point of the text block sits at `x`, `y`, and rotation turns the block around that point. `style` is optional, and a `size`, `maxWidth` or `lineSpacing` that is not a finite number raises `Text needs a finite size, maximum width and line spacing.`:
+Draws UTF-8 `text` with `font`, a `Font` or a `FontFamily`, or with the engine's default font when `font` is `nil`. A family draws every character its regular face lacks with the first fallback that has it, which is how one string mixes Latin, Arabic, Devanagari or CJK text. A TrueType font is shaped by HarfBuzz and rendered from a signed distance field, so it stays sharp at any size, with the ligatures, joining forms, conjuncts and marks of every script, and a bitmap font draws its own images, pixel for pixel at its native size. Every line is ordered for display by the Unicode bidirectional algorithm, so right-to-left text reads from the right and keeps numbers and Latin words in their own order. The character `\n` starts a new line, and so do `\r`, `\r\n`, which counts as one, and the other paragraph separators of Unicode, such as U+2029. Tabs and other control characters draw nothing and take no room. Lines wrap where the Unicode line breaking rules allow, which includes between Chinese and Japanese characters and between Thai phrases. The [text guide](../text.md#scripts-and-directions) explains shaping, directions and line breaking. The anchor point of the text block sits at `x`, `y`, and rotation turns the block around that point. The argument `style` is optional, and a `size`, `maxWidth` or `lineSpacing` that is not a finite number raises `Text needs a finite size, maximum width and line spacing.`:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -441,9 +441,9 @@ Draws UTF-8 `text` with `font`, a `Font` or a `FontFamily`, or with the engine's
 | `direction` | string | `'auto'` | Direction of every paragraph: `'auto'` takes the direction of its first strong letter, `'leftToRight'` and `'rightToLeft'` force it, which decides the order of mixed runs and the side of `'start'`. |
 | `language` | string | `''` | BCP 47 language tag of the text, such as `'ar'`, `'fa'`, `'ur'` or `'sr'`, which the shaper uses to pick the forms a language prefers. |
 | `bold`, `italic` | boolean | `false` | With a `FontFamily`, pick its bold and italic faces or synthesize them. A `Font` synthesizes them. |
-| `anchor` | Vec2 | `{0, 0}` | Point of the block placed at `x`, `y`, as a fraction of its size. `{0.5, 0.5}` centers the text. |
+| `anchor` | Vec2 | `{0, 0}` | Point of the block placed at `x`, `y`, as a fraction of its size. The value `{0.5, 0.5}` centers the text. |
 | `rotation` | number | `0` | Rotation in radians. |
-| `scale` | Vec2 | `{1, 1}` | Stretches the drawn block from its anchor point on each axis, without laying the text out again. `graphics2d.measureText` returns the stretched size for the same style. |
+| `scale` | Vec2 | `{1, 1}` | Stretches the drawn block from its anchor point on each axis, without laying the text out again. The function `graphics2d.measureText` returns the stretched size for the same style. |
 | `layer`, `depth`, `blend` | | | Draw order. |
 
 ```lua
@@ -492,7 +492,7 @@ scene.push({
 
 ### graphics2d.measureText(font, text, style)
 
-Returns the width and height of the text block that `graphics2d.drawText` would draw with the same arguments. `font` can be a `Font`, a `FontFamily` or `nil` for the default font. Only the layout keys of `style` and its `scale` change the result.
+Returns the width and height of the text block that `graphics2d.drawText` would draw with the same arguments. The argument `font` can be a `Font`, a `FontFamily` or `nil` for the default font. Only the layout keys of `style` and its `scale` change the result.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -510,7 +510,7 @@ scene.push({
 
 ### graphics2d.newRichText(markup, options)
 
-Creates a [`RichText`](#richtext) from BBCode markup, laid out once and drawn every frame with `text:draw(x, y, options)`. The [text guide](../text.md#markup) lists every tag. `options` is optional:
+Creates a [`RichText`](#richtext) from BBCode markup, laid out once and drawn every frame with `text:draw(x, y, options)`. The [text guide](../text.md#markup) lists every tag. The argument `options` is optional:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -520,16 +520,16 @@ Creates a [`RichText`](#richtext) from BBCode markup, laid out once and drawn ev
 | `italic` | boolean | `false` | Styles all the text italic, as if inside `[i]`. |
 | `color` | Color | `'#FFFFFFFF'` | Color of text without a `[color]` tag. |
 | `maxWidth` | number | `0` | Width the paragraphs wrap at. 0 never wraps, and the block is as wide as its widest line. |
-| `align` | string | `'start'` | Alignment of paragraphs without their own: `'start'`, `'end'`, `'left'`, `'center'`, `'right'` or `'fill'`, where start and end follow the direction of each paragraph. |
+| `align` | string | `'start'` | Alignment of paragraphs without their own: `'start'`, `'end'`, `'left'`, `'center'`, `'right'` or `'fill'`, where `'start'` and `'end'` follow the direction of each paragraph. |
 | `lineSpacing` | number | `1.2` | Distance between lines as a multiple of their height. |
 | `direction` | string | `'auto'` | Direction of paragraphs without a `[p dir]` of their own: `'auto'` takes the direction of the first strong letter of each paragraph, and `'leftToRight'` and `'rightToLeft'` force it. |
 | `language` | string | `''` | BCP 47 language tag the text is shaped for, such as `'ar'` or `'hi'`. |
 | `scale` | number | `1` | Multiplies every size of the markup and the options. |
 | `revealSpeed` | number | `0` | Characters per second the typewriter reveal shows as `text:update` advances. 0 shows everything at once. |
 | `underlineLinks` | boolean | `true` | Whether `[url]` text is underlined. |
-| `fonts` | table | none | The families or fonts that `[font=name]` tags name, as `{name = family}`. A key that is not a string raises `The fonts option maps font names to families, so its keys must be strings.`. |
+| `fonts` | table | none | The families or fonts that `[font=name]` tags name, as `{name = family}`. A key that is not a string raises `The "fonts" option maps font names to families, so its keys must be strings.`. |
 
-Markup errors raise `Rich text markup at line L, column C: ...` with the place and the problem, such as `[b] is never closed.` or `[wiggle] is neither a tag nor a registered text effect.`. Unknown option keys raise `Unknown option 'name'.`, a `maxWidth` that is not a finite number raises `Rich text needs a finite maximum width.`, and a size, scale or line spacing that is not a positive number raises `Rich text needs a positive size, scale and line spacing.`.
+Markup errors raise `Rich text markup at line L, column C: ...` with the place and the problem, such as `The tag "[b]" is never closed.` or `The markup "[wiggle]" is neither a tag nor a registered text effect.`. Unknown option keys raise `Unknown option "name".`, a `maxWidth` that is not a finite number raises `Rich text needs a finite maximum width.`, and a size, scale or line spacing that is not a positive number raises `Rich text needs a positive size, scale and line spacing.`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -555,7 +555,7 @@ scene.push({
 
 ### graphics2d.drawRichText(markup, x, y, options)
 
-Draws markup once with its top-left corner at `x`, `y`, laying it out on every call. `options` takes the keys of `graphics2d.newRichText`, `tint`, a Color that multiplies every color of the text and defaults to white, and the [draw order](#draw-order) keys, and effects follow the time the app has run. The images of `[img]` tags load once and stay loaded while frames keep drawing them, and they go back to the assets after a frame that no longer draws them. Text that stays on screen draws faster as a `RichText`.
+Draws markup once with its top-left corner at `x`, `y`, laying it out on every call. The argument `options` takes the keys of `graphics2d.newRichText`, `tint`, a `Color` that multiplies every color of the text and defaults to white, and the [draw order](#draw-order) keys, and effects follow the time the app has run. The images of `[img]` tags load once and stay loaded while frames keep drawing them, and they go back to the assets after a frame that no longer draws them. Text that stays on screen draws faster as a `RichText`.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -582,7 +582,7 @@ print(width, height)
 
 ### graphics2d.registerTextEffect(name, effect)
 
-Registers a text effect that runs as `[name]...[/name]` in rich text, in `haylen.graphics2d` and in `ui.richText`. Every frame, `effect(glyph, attributes)` runs once for each glyph inside the tag. `glyph` holds `index` (counted from 1 over every character inside the tag, spaces and images included), `character` (counted from 1 in the whole text), `char`, `codePoint`, `x` and `y` (its pen position on the baseline) and `time` (seconds the text has run), and the effect changes `offsetX`, `offsetY`, `color` and `visible`. `attributes` holds the attributes of the tag, with numbers as numbers and `[name=value]` as `attributes.value`. Registering a name again replaces the effect. A tag name, a built-in effect name (`wave`, `shake`, `tornado`, `fade`, `rainbow`, `pulse`) or a name with spaces raises an error, and an error inside the effect stops the app like any script error. An effect runs while its text builds the picture of the moment, so changing or measuring that text from inside the effect raises `A text effect cannot change or lay out the rich text it runs on.`.
+Registers a text effect that runs as `[name]...[/name]` in rich text, in `haylen.graphics2d` and in `ui.richText`. Every frame, `effect(glyph, attributes)` runs once for each glyph inside the tag. The table `glyph` holds `index` (counted from 1 over every character inside the tag, spaces and images included), `character` (counted from 1 in the whole text), `char`, `codePoint`, `x` and `y` (its pen position on the baseline) and `time` (seconds the text has run), and the effect changes `offsetX`, `offsetY`, `color` and `visible`. The table `attributes` holds the attributes of the tag, with numbers as numbers and `[name=value]` as `attributes.value`. Registering a name again replaces the effect. A tag name, a built-in effect name (`wave`, `shake`, `tornado`, `fade`, `rainbow`, `pulse`) or a name with spaces raises an error, and an error inside the effect stops the app like any script error. An effect runs while its text builds the picture of the moment, so changing or measuring that text from inside the effect raises `A text effect cannot change or lay out the rich text it runs on.`.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -597,7 +597,7 @@ local title = graphics2d.newRichText('[bounce height=12]Jump![/bounce]', {size =
 
 ### graphics2d.registerTextIcon(name, texture, options)
 
-Registers an image that `[icon=name]` shows inline, such as an input prompt. `options` takes `source` (a Rect of the texture, the whole texture by default) and `width` and `height`. An icon without a size is as tall as its text and keeps the shape of its region, and the tag may set its own `width`, `height`, `color` and `valign`.
+Registers an image that `[icon=name]` shows inline, such as an input prompt. The argument `options` takes `source` (a `Rect` of the texture, the whole texture by default) and `width` and `height`. An icon without a size is as tall as its text and keeps the shape of its region, and the tag may set its own `width`, `height`, `color` and `valign`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -620,7 +620,7 @@ print(table.concat(graphics2d.textEffectNames(), ', '))
 
 ### graphics2d.drawNineSlice(slice, rect, color, order, borderScale)
 
-Draws the nine-slice `slice` so it fills `rect`. Corners keep their size, edges stretch or tile along one axis and the center fills the rest. `color` defaults to white. `borderScale` multiplies the border sizes and defaults to 1, and one that is not positive raises `A nine-slice border scale must be positive.` When `rect` is smaller than the borders, they shrink to fit.
+Draws the nine-slice `slice` so it fills `rect`. Corners keep their size, edges stretch or tile along one axis and the center fills the rest. The argument `color` defaults to white. The argument `borderScale` multiplies the border sizes and defaults to 1, and one that is not positive raises `A nine-slice border scale must be positive.` When `rect` is smaller than the borders, they shrink to fit.
 
 ```lua
 local assets = require('haylen.assets')
@@ -639,7 +639,7 @@ scene.push({
 
 ### graphics2d.drawLight(light)
 
-Draws a light into the light map of the active lit canvas, a world or render target canvas with `ambientLight`, over the lights drawn before it. `light` is a [Light](lighting2d.md#light) from `lighting2d.newLight`, which a scene creates once, or a table with the same keys, such as `type`, `x`, `y`, `radius`, `color`, `intensity`, `rotation`, `innerAngle`, `outerAngle`, `height`, `blend`, `itemMask`, `layerMin`, `layerMax` and the shadow settings. Drawing a light in any other canvas raises `Lights can only be drawn in a lit canvas, a world or render target canvas with ambient light.`, and a value out of its range raises an error such as `A light intensity must be zero or positive.` Disabled lights draw nothing. [haylen.lighting2d](lighting2d.md#how-2d-lighting-works) explains the light types, blend modes, masks and shadows.
+Draws a light into the light map of the active lit canvas, a world or render target canvas with `ambientLight`, over the lights drawn before it. The argument `light` is a [`Light`](lighting2d.md#light) from `lighting2d.newLight`, which a scene creates once, or a table with the same keys, such as `type`, `x`, `y`, `radius`, `color`, `intensity`, `rotation`, `innerAngle`, `outerAngle`, `height`, `blend`, `itemMask`, `layerMin`, `layerMax` and the shadow settings. Drawing a light in any other canvas raises `Lights can only be drawn in a lit canvas, a world or render target canvas with ambient light.`, and a value out of its range raises an error such as `A light intensity must be zero or positive.` Disabled lights draw nothing. The module [`haylen.lighting2d`](lighting2d.md#how-2d-lighting-works) explains the light types, blend modes, masks and shadows.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -662,7 +662,7 @@ scene.push({
 
 ### graphics2d.drawOccluder(occluder)
 
-Draws an outline that blocks the lights with shadows of the active lit canvas. `occluder` is an [Occluder](lighting2d.md#occluder) from `lighting2d.newOccluder` or a table with its keys `points`, `closed`, `cull`, `mask`, `x`, `y`, `rotation`, `scaleX` and `scaleY`. Drawing an occluder outside a lit canvas raises `Occluders can only be drawn in a lit canvas, a world or render target canvas with ambient light.`, and too few points raise `An occluder needs at least 2 points, and 3 when it is closed.`
+Draws an outline that blocks the lights with shadows of the active lit canvas. The argument `occluder` is an [`Occluder`](lighting2d.md#occluder) from `lighting2d.newOccluder` or a table with its keys `points`, `closed`, `cull`, `mask`, `x`, `y`, `rotation`, `scaleX` and `scaleY`. Drawing an occluder outside a lit canvas raises `Occluders can only be drawn in a lit canvas, a world or render target canvas with ambient light.`, and too few points raise `An occluder needs at least 2 points, and 3 when it is closed.`
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -684,7 +684,7 @@ scene.push({
 
 ### graphics2d.drawMetaballs(points, radius, options)
 
-Adds up a soft circle of `radius` around every point into a field and draws the surface where the field reaches the threshold, which merges nearby circles into one smooth shape, such as a liquid made of particles. `points` is a flat list of positions, `{x1, y1, x2, y2, ...}`, so thousands of points need no table each, and the `positions` of a [physics2d](physics2d.md) fluid fill it directly. A lone circle shows exactly its radius at the default threshold, and two circles join when they come closer than about two and a half radii. The field of each call is a render target at half the resolution of the canvas, drawn with one instanced pass. `options` is optional and also takes the [draw order](#draw-order) keys, apart from `material`:
+Adds up a soft circle of `radius` around every point into a field and draws the surface where the field reaches the threshold, which merges nearby circles into one smooth shape, such as a liquid made of particles. The argument `points` is a flat list of positions, `{x1, y1, x2, y2, ...}`, so thousands of points need no table each, and the `positions` of a [`physics2d`](physics2d.md) fluid fill it directly. A lone circle shows exactly its radius at the default threshold, and two circles join when they come closer than about two and a half radii. The field of each call is a render target at half the resolution of the canvas, drawn with one instanced pass. The argument `options` is optional and also takes the [draw order](#draw-order) keys, apart from `material`:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -718,7 +718,7 @@ scene.push({
 
 ### graphics2d.drawStatic(batch, x, y, order)
 
-Draws a static batch made by `batch:bake()`. `x` and `y` shift the whole batch without rebaking it and default to 0, which lets parallax layers reuse one batch. `order` is the fourth argument, so pass the offsets before it. A draw order in place of `x` raises a `number expected` error.
+Draws a static batch made by `batch:bake()`. The arguments `x` and `y` shift the whole batch without rebaking it and default to 0, which lets parallax layers reuse one batch. The table `order` is the fourth argument, so pass the offsets before it. A draw order in place of `x` raises a `number expected` error.
 
 ```lua
 local assets = require('haylen.assets')
@@ -760,7 +760,7 @@ scene.push({
 
 ### graphics2d.popClip()
 
-Removes the clip added by the last `graphics2d.pushClip`. Calling it without a matching push raises `The popClip call has no matching pushClip.`
+Removes the clip added by the last `graphics2d.pushClip`. Calling it without a matching push raises `The "popClip" call has no matching "pushClip".`
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -779,7 +779,7 @@ scene.push({
 
 ### graphics2d.pushLayerOffset(offset)
 
-Adds `offset` to the layer of every following draw of the active canvas until `graphics2d.popLayerOffset`. Nested offsets add up, and a new canvas starts without offsets. It lets a group of draws that sets its own layers, such as a character with its shadow and its name, move to another layer as a whole. Calling it without an active canvas raises `No canvas is active. Call beginWorld, beginScreen or beginTarget before drawing.`
+Adds `offset` to the layer of every following draw of the active canvas until `graphics2d.popLayerOffset`. Nested offsets add up, and a new canvas starts without offsets. It lets a group of draws that sets its own layers, such as a character with its shadow and its name, move to another layer as a whole. Calling it without an active canvas raises `No canvas is active. Call "beginWorld", "beginScreen" or "beginTarget" before drawing.`
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -804,7 +804,7 @@ scene.push({
 
 ### graphics2d.popLayerOffset()
 
-Removes the offset added by the last `graphics2d.pushLayerOffset`. Calling it without a matching push raises `The popLayerOffset call has no matching pushLayerOffset.`
+Removes the offset added by the last `graphics2d.pushLayerOffset`. Calling it without a matching push raises `The "popLayerOffset" call has no matching "pushLayerOffset".`
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -855,7 +855,7 @@ scene.push({
 
 ### graphics2d.endCapture()
 
-Ends the capture begun by `graphics2d.beginCapture`, so the following canvases reach the screen again. Calling it without an open capture raises `The endCapture call has no matching beginCapture.`
+Ends the capture begun by `graphics2d.beginCapture`, so the following canvases reach the screen again. Calling it without an open capture raises `The "endCapture" call has no matching "beginCapture".`
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -904,7 +904,7 @@ Draws the textures `from` and `to` over `rect`, mixed through a pattern that `pr
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `pattern` | string | `'dissolve'` | `'dissolve'` switches cells in random order with a soft edge, `'pixelate'` breaks `from` into growing blocks and brings `to` back out of them, `'radial'` sweeps a hand clockwise from twelve o'clock, `'iris'` closes a circle on `from` to the color and opens it on `to`, and `'pageTurn'` curls `from` away like a page. |
+| `pattern` | string | `'dissolve'` | The pattern `'dissolve'` switches cells in random order with a soft edge, `'pixelate'` breaks `from` into growing blocks and brings `to` back out of them, `'radial'` sweeps a hand clockwise from twelve o'clock, `'iris'` closes a circle on `from` to the color and opens it on `to`, and `'pageTurn'` curls `from` away like a page. |
 | `progress` | number | `0` | From 0 to 1. |
 | `center` | Vec2 | `{0.5, 0.5}` | Center of `'radial'` and `'iris'`, from `{0, 0}` at the top-left of the rectangle to `{1, 1}` at its bottom-right. |
 | `cellSize` | number | `1` | Size of the dissolve cells in pixels of `from`. |
@@ -946,7 +946,7 @@ scene.push({
 
 ### graphics2d.newSprite(texture, properties)
 
-Creates a `Sprite`, a reusable description of one textured quad. `properties` is an optional table of `Sprite` properties, each assigned through the property setter, so a misspelled key raises `The type haylen.Sprite has no writable property 'name'.`
+Creates a `Sprite`, a reusable description of one textured quad. The argument `properties` is an optional table of `Sprite` properties, each assigned through the property setter, so a misspelled key raises `The type "haylen.Sprite" has no writable property "name".`
 
 ```lua
 local assets = require('haylen.assets')
@@ -1001,8 +1001,8 @@ Creates a `NineSlice`. Give either `borders`, which cut `source` into nine regio
 | --- | --- | --- | --- |
 | `source` | Rect | whole texture | Region of the texture that holds the frame. Used with `borders`. |
 | `borders` | table | required without `pieces` | Border sizes in pixels, as `{left, top, right, bottom}`. |
-| `pieces` | table | none | Nine Rects, row by row from the top-left corner to the bottom-right corner. |
-| `fill` | string | `'stretch'` | `'stretch'` stretches the edges and the center. `'tile'` repeats them at their pixel size times the `borderScale` of the draw. |
+| `pieces` | table | none | Nine `Rect` values, row by row from the top-left corner to the bottom-right corner. |
+| `fill` | string | `'stretch'` | The value `'stretch'` stretches the edges and the center. The value `'tile'` repeats them at their pixel size times the `borderScale` of the draw. |
 
 Errors: `a nine-slice needs exactly nine pieces`, `borders need left, top, right and bottom`, and a `fill` other than `'stretch'` or `'tile'` raises an error that contains `unknown value 'name'`.
 
@@ -1045,7 +1045,7 @@ scene.push({
 
 ### graphics2d.newParallax(texture, properties)
 
-Creates a [Parallax](#parallax) layer that draws `texture`. `properties` is an optional table of `Parallax` properties, each assigned through the property setter, so a misspelled key raises `The type haylen.Parallax has no writable property 'name'.`
+Creates a [`Parallax`](#parallax) layer that draws `texture`. The argument `properties` is an optional table of `Parallax` properties, each assigned through the property setter, so a misspelled key raises `The type "haylen.Parallax" has no writable property "name".`
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -1121,7 +1121,7 @@ scene.push({
 
 ### graphics2d.canvasUnitSize()
 
-Returns the length in the coordinates of the active canvas of one unit of its destination, a design unit for world canvases and a pixel for render target canvases, which is `1 / zoom` for a camera without rotation. Outlines and markers multiplied by it keep the same thickness at any zoom. Calling it without an active canvas raises `No canvas is active. Call beginWorld, beginScreen or beginTarget before drawing.`
+Returns the length in the coordinates of the active canvas of one unit of its destination, a design unit for world canvases and a pixel for render target canvases, which is `1 / zoom` for a camera without rotation. Outlines and markers multiplied by it keep the same thickness at any zoom. Calling it without an active canvas raises `No canvas is active. Call "beginWorld", "beginScreen" or "beginTarget" before drawing.`
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -1192,7 +1192,7 @@ scene.push({
 
 ### graphics2d.hdrLighting()
 
-Tells whether light maps hold light in floating point, which lets lights brighter than 1 brighten the scene beyond its unlit colors. It is true where the backend renders and blends floating-point targets, and otherwise light saturates at 1.
+Tells whether light maps hold light in floating point, which lets lights brighter than 1 brighten the scene beyond its unlit colors. It is `true` where the backend renders and blends floating-point targets, and otherwise light saturates at 1.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -1203,7 +1203,7 @@ print('the sun shines with intensity ' .. glare)
 
 ### graphics2d.newMaterial(shader, uniforms)
 
-Creates a [Material](#material) that shades draws with `shader`, a `Shader` that [haylen.assets](assets.md) loads from a `.shader` file compiled by `make.py shaders`, as the [shader guide](../shaders.md) explains. `uniforms` is an optional table of initial values by name, which `material:set` takes one by one. A shader without the programs of the shader library raises `The shader name has no sprite program.`
+Creates a [`Material`](#material) that shades draws with `shader`, a `Shader` that [`haylen.assets`](assets.md) loads from a `.shader` file compiled by `make.py shaders`, as the [shader guide](../shaders.md) explains. The argument `uniforms` is an optional table of initial values by name, which `material:set` takes one by one. A shader without the programs of the shader library raises `The shader "name" has no "sprite" program.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -1238,7 +1238,7 @@ print(font:lineHeight(24))
 
 ## Sprite
 
-A `Sprite` is a value that describes one quad and draws it with `sprite:draw()`. `graphics2d.newSprite` creates it. Vector and color properties return copies, so assign a new value instead of changing a field of the returned value.
+A `Sprite` is a value that describes one quad and draws it with `sprite:draw()`. The function `graphics2d.newSprite` creates it. Vector and color properties return copies, so assign a new value instead of changing a field of the returned value.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1258,7 +1258,7 @@ A `Sprite` is a value that describes one quad and draws it with `sprite:draw()`.
 | `material` | Material or nil | nil | Custom shader of the sprite. |
 | `normalMap`, `specular`, `shininess`, `emission`, `lightMask`, `unshaded` | | nil, `0`, `32`, `0`, `1`, `false` | Lighting in lit canvases, as the [draw order](#draw-order) describes. |
 
-Reading or writing any other key raises `The type haylen.Sprite has no member 'name'.` or `The type haylen.Sprite has no writable property 'name'.`
+Reading or writing any other key raises `The type "haylen.Sprite" has no member "name".` or `The type "haylen.Sprite" has no writable property "name".`
 
 ### sprite:draw()
 
@@ -1462,7 +1462,7 @@ print(buffer[1], buffer[2]) -- 10.0 20.0
 
 ### batch:draw(order)
 
-Draws every sprite in the active canvas as one batch. `order` is an optional draw order table. Large batches convert their sprites on worker threads.
+Draws every sprite in the active canvas as one batch. The argument `order` is an optional draw order table. Large batches convert their sprites on worker threads.
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -1541,21 +1541,21 @@ scene.push({
 
 ## Camera
 
-A `Camera` shows a part of the world for `graphics2d.beginWorld` and `graphics2d.beginTarget`. `graphics2d.newCamera` creates it. Its `position` is the point of the world it shows, and `camera:follow` moves that position toward a target through the dead zone, the drag margins, the look-ahead, the smoothing and the limits, while `camera:update` advances the shake and the rotation smoothing. Vector and rectangle properties return copies, so assign a new value instead of changing a field of the returned one.
+A `Camera` shows a part of the world for `graphics2d.beginWorld` and `graphics2d.beginTarget`. The function `graphics2d.newCamera` creates it. Its `position` is the point of the world it shows, and `camera:follow` moves that position toward a target through the dead zone, the drag margins, the look-ahead, the smoothing and the limits, while `camera:update` advances the shake and the rotation smoothing. Vector and rectangle properties return copies, so assign a new value instead of changing a field of the returned one.
 
-The methods measure the view with the screen, the visible design area of `viewport.visibleRect()`, and a `viewport` is a rectangle of that screen in design coordinates. Screen points, such as the pointer positions of [haylen.input](input.md), are in the same design coordinates.
+The methods measure the view with the screen, the visible design area of `viewport.visibleRect()`, and a `viewport` is a rectangle of that screen in design coordinates. Screen points, such as the pointer positions of [`haylen.input`](input.md), are in the same design coordinates.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `position` | Vec2 | `{0, 0}` | The point of the world the view shows at its anchor. |
 | `x`, `y` | number | `0` | The position components. |
 | `offset` | Vec2 | `{0, 0}` | Moves the view in world units after the limits, so it can show past them, for a look around or a cutscene nudge. |
-| `anchor` | string | `'center'` | `'center'` puts the position at the center of the view, which zooms and rotates around it. `'topLeft'` puts it at the top-left corner, and following then ignores the dead zone and the drag margins. |
+| `anchor` | string | `'center'` | The value `'center'` puts the position at the center of the view, which zooms and rotates around it. The value `'topLeft'` puts it at the top-left corner, and following then ignores the dead zone and the drag margins. |
 | `zoom` | Vec2 | `{1, 1}` | View scale on each axis. 2 shows half the area at twice the size. It stays between `minZoom` and `maxZoom`, and an axis that is not a number raises `The camera zoom must be a number.` |
 | `minZoom`, `maxZoom` | number | `0.05`, `20` | Zoom limits of every zoom change. The smallest zoom must be above 0 and not above the largest, otherwise the assignment raises `The smallest zoom must be above 0 and not above the largest zoom.` or `The largest zoom must not be below the smallest zoom.` |
 | `rotation` | number | `0` | View rotation in radians. |
 | `ignoreRotation` | boolean | `false` | Keeps the view upright, ignoring `rotation` and the rotation of the shake. |
-| `viewport` | Rect or nil | `nil` | The part of the screen the camera draws into, in design coordinates, for split screens and minimaps. `nil` covers the whole visible area. |
+| `viewport` | Rect or nil | `nil` | The part of the screen the camera draws into, in design coordinates, for split screens and minimaps. The value `nil` covers the whole visible area. |
 | `limits` | Rect or nil | `nil` | World area the view stays inside while following or clamping. A limit smaller than the view centers the view on it. |
 | `limitSmoothing` | boolean | `false` | With position smoothing, eases the view into the limits instead of stopping it at them. |
 | `positionSmoothing` | boolean | `false` | Eases the position toward the target at `positionSmoothingSpeed`, and the zoom of `camera:frame` too. |
@@ -1738,11 +1738,11 @@ scene.push({
 
 ### camera:shakeOffset()
 
-Returns the shake offset of this frame as a Vec2, computed by `camera:update`. It is zero without trauma.
+Returns the shake offset of this frame as a `Vec2`, computed by `camera:update`. It is zero without trauma.
 
 ### camera:renderPosition()
 
-Returns the position the view is drawn from as a Vec2: the position plus the offset and the shake, rounded to whole view pixels when `pixelSnap` is true.
+Returns the position the view is drawn from as a `Vec2`: the position plus the offset and the shake, rounded to whole view pixels when `pixelSnap` is `true`.
 
 ### camera:renderRotation()
 
@@ -1772,7 +1772,7 @@ scene.push({
 
 ### camera:viewTransform()
 
-Returns the `Transform2D` from [haylen.math](math.md) that maps world coordinates to view coordinates, where 0, 0 is the top-left corner of the view, including zoom, rotation, offset and shake. Its inverse maps view coordinates back to the world.
+Returns the `Transform2D` from [`haylen.math`](math.md) that maps world coordinates to view coordinates, where 0, 0 is the top-left corner of the view, including zoom, rotation, offset and shake. Its inverse maps view coordinates back to the world.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -1829,7 +1829,7 @@ scene.push({
 
 ### camera:drawDebug(order)
 
-Draws the view as the screen shows it, the limits and the box where the target moves without moving the view, with a cross on the last target, in world coordinates, so it belongs in a world canvas, usually one of a zoomed-out camera or of the camera itself. `order` is an optional [Draw order](#draw-order).
+Draws the view as the screen shows it, the limits and the box where the target moves without moving the view, with a cross on the last target, in world coordinates, so it belongs in a world canvas, usually one of a zoomed-out camera or of the camera itself. The argument `order` is an optional [Draw order](#draw-order).
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -1905,7 +1905,7 @@ scene.push({
 
 ## Parallax
 
-A `Parallax` is a layer that scrolls at its own rate as the camera moves, which suggests depth, for any texture and outside Tiled maps too. `graphics2d.newParallax` creates it. It draws its texture at its position moved by its offset, and repeats it on the axes that repeat until it covers the part of the world the camera shows. Vector and rectangle properties return copies.
+A `Parallax` is a layer that scrolls at its own rate as the camera moves, which suggests depth, for any texture and outside Tiled maps too. The function `graphics2d.newParallax` creates it. It draws its texture at its position moved by its offset, and repeats it on the axes that repeat until it covers the part of the world the camera shows. Vector and rectangle properties return copies.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1926,7 +1926,7 @@ Advances the autoscroll by `dt` seconds.
 
 ### parallax:scrolled()
 
-Returns the distance the autoscroll moved the layer so far as a Vec2.
+Returns the distance the autoscroll moved the layer so far as a `Vec2`.
 
 ### parallax:offset(camera)
 
@@ -1934,7 +1934,7 @@ Returns how far the layer is moved from where the world would put it, as `x, y` 
 
 ### parallax:draw(camera, order)
 
-Draws the layer in the active canvas, moved by how `camera` sees it, with the repeated axes covering the whole area the canvas shows, a render target canvas included. `order` is an optional [Draw order](#draw-order). A layer without a texture raises `A parallax layer needs a texture to draw.`, and a repeated copy without a size raises `A parallax layer needs a positive size to repeat.`
+Draws the layer in the active canvas, moved by how `camera` sees it, with the repeated axes covering the whole area the canvas shows, a render target canvas included. The argument `order` is an optional [Draw order](#draw-order). A layer without a texture raises `A parallax layer needs a texture to draw.`, and a repeated copy without a size raises `A parallax layer needs a positive size to repeat.`
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -1975,15 +1975,15 @@ scene.push({
 
 ## NineSlice
 
-A `NineSlice` is a scalable frame made of nine texture regions. `graphics2d.newNineSlice` and `atlas:slice(name)` from [haylen.animation2d](animation2d.md) create it, and `graphics2d.drawNineSlice` draws it. Vector and rectangle properties return copies, so assign a new value instead of changing a returned one.
+A `NineSlice` is a scalable frame made of nine texture regions. The functions `graphics2d.newNineSlice` and `atlas:slice(name)` from [`haylen.animation2d`](animation2d.md) create it, and `graphics2d.drawNineSlice` draws it. Vector and rectangle properties return copies, so assign a new value instead of changing a returned one.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
 | `texture` | Texture | read and write | Texture the regions come from. |
-| `pieces` | table | read and write | The nine source Rects, row by row from the top-left corner. Writing needs exactly nine, otherwise it raises `a nine-slice needs exactly nine pieces`. |
+| `pieces` | table | read and write | The nine source `Rect` values, row by row from the top-left corner. Writing needs exactly nine, otherwise it raises `a nine-slice needs exactly nine pieces`. |
 | `fill` | string | read and write | `'stretch'` or `'tile'`. |
 | `borders` | table | read | Border sizes as `{left, top, right, bottom}`, taken from the corner pieces, in the form `graphics2d.newNineSlice` accepts. |
-| `valid` | boolean | read | True when the nine-slice has a texture. |
+| `valid` | boolean | read | The value is `true` when the nine-slice has a texture. |
 
 ```lua
 local assets = require('haylen.assets')
@@ -1998,7 +1998,7 @@ print(wide.valid)
 
 ## Material
 
-A `Material` shades draws with a custom shader and holds values for the uniforms and textures of the shader, which it sets by the names the shader declares them with. `graphics2d.newMaterial` creates it, and the `material` key of a [draw order](#draw-order), of a sprite and of the `materials` of a post-process applies it. A draw copies the values when it is made. The [shader guide](../shaders.md) explains how to write and compile shaders.
+A `Material` shades draws with a custom shader and holds values for the uniforms and textures of the shader, which it sets by the names the shader declares them with. The function `graphics2d.newMaterial` creates it, and the `material` key of a [draw order](#draw-order), of a sprite and of the `materials` of a post-process applies it. A draw copies the values when it is made. The [shader guide](../shaders.md) explains how to write and compile shaders.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -2013,14 +2013,14 @@ Sets a uniform or a texture of the shader by name. The value fits the type of th
 | Uniform | Value |
 | --- | --- |
 | `float`, `int` | A number. Integers round to the nearest one. |
-| `vec2`, `ivec2` | A Vec2, a table `{x, y}` or `{x = 0, y = 0}`. |
-| `vec3` | A Color, whose red, green and blue fill it, or a list of 3 numbers. |
-| `vec4` | A Color, a color string or a list of 4 numbers. |
-| `mat4` | A Transform2D, which moves x and y like the transform, or a list of 16 numbers in column order. |
+| `vec2`, `ivec2` | A `Vec2`, a table `{x, y}` or `{x = 0, y = 0}`. |
+| `vec3` | A `Color`, whose red, green and blue fill it, or a list of 3 numbers. |
+| `vec4` | A `Color`, a color string or a list of 4 numbers. |
+| `mat4` | A `Transform2D`, which moves x and y like the transform, or a list of 16 numbers in column order. |
 | arrays | A list of every number of every element, such as 12 numbers for `vec4 palette[3]`. |
-| texture | A Texture, or `nil` for a white texture. |
+| texture | A `Texture`, or `nil` for a white texture. |
 
-An unknown name raises `The shader name has no uniform named key.`, and a value that does not fit raises an error that names the type and the count of numbers the uniform takes, such as `The uniform tint is a vec4, which takes 4 numbers, not 1.`
+An unknown name raises `The shader "name" has no uniform named "key".`, and a value that does not fit raises an error that names the type and the count of numbers the uniform takes, such as `The uniform "tint" is a "vec4", which takes 4 numbers, not 1.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -2036,7 +2036,7 @@ shine:set('warp', m.rotation(0.2))
 
 ### material:get(name)
 
-Returns the value of a uniform or a texture: a number for `float` and `int` uniforms, a Vec2 for `vec2` and `ivec2`, a Color for `vec4`, a list of numbers for every other uniform and array, and the Texture, or `nil`, of a texture. Uniforms that were never set read as zeros.
+Returns the value of a uniform or a texture: a number for `float` and `int` uniforms, a `Vec2` for `vec2` and `ivec2`, a `Color` for `vec4`, a list of numbers for every other uniform and array, and the `Texture`, or `nil`, of a texture. Uniforms that were never set read as zeros.
 
 ```lua
 local assets = require('haylen.assets')
@@ -2108,7 +2108,7 @@ scene.push({
 
 ### text:draw(x, y, options)
 
-Draws the text with the top-left corner of its block at `x`, `y`. `options` is optional and takes `scale`, a Vec2 that stretches the block from that corner without laying it out again, which suits pulses and pops, `tint`, a Color that multiplies every color of the text, and the [draw order](#draw-order) keys. A y-sorted canvas sorts it by the bottom of its block.
+Draws the text with the top-left corner of its block at `x`, `y`. The argument `options` is optional and takes `scale`, a `Vec2` that stretches the block from that corner without laying it out again, which suits pulses and pops, `tint`, a `Color` that multiplies every color of the text, and the [draw order](#draw-order) keys. A y-sorted canvas sorts it by the bottom of its block.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -2176,7 +2176,7 @@ print(page.revealing)
 
 ### text:frame()
 
-Returns the text as it draws at this moment, with its effects applied and the characters the reveal has not reached hidden, as a table with `size` (Vec2), `lineCount` and these lists:
+Returns the text as it draws at this moment, with its effects applied and the characters the reveal has not reached hidden, as a table with `size` (`Vec2`), `lineCount` and these lists:
 
 | Field | Entries |
 | --- | --- |

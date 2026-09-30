@@ -475,7 +475,7 @@ void FrameSubmitter::renderLights(const Canvas& canvas, const LitTargets& target
     endPass();
 }
 
-// The composite writes into the first post target, and every material but the last draws the image before it into the other one, which leaves the input of the last material in postImage.
+// The composite writes into the first post target, and every material but the last draws the image before it into the other one, which leaves the input of the last material in `postImage`.
 void FrameSubmitter::renderPostChain(Canvas& canvas, const LitTargets& targets) {
     if (!canvas.hasPostMaterials()) {
         return;

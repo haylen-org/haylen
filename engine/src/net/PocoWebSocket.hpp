@@ -61,7 +61,7 @@ class PocoWebSocket final : public WebSocketTransport {
         Poco::Net::PollSet poller;
     };
 
-    // Owns what every connection thread shares: OpenSSL, the TLS context of wss:// and the count of threads that use Poco or OpenSSL. When the process exits it stops every connection and waits for those threads, because the static state of both libraries goes away right after. A thread still resolving its host by then never touches either library again, since resolving has no timeout.
+    // Owns what every connection thread shares: OpenSSL, the TLS context of `wss://` and the count of threads that use Poco or OpenSSL. When the process exits it stops every connection and waits for those threads, because the static state of both libraries goes away right after. A thread still resolving its host by then never touches either library again, since resolving has no timeout.
     class Workers final {
       public:
         Workers();
@@ -76,7 +76,7 @@ class PocoWebSocket final : public WebSocketTransport {
         [[nodiscard]] bool enter();
         void leave();
 
-        // Returns the TLS context every wss:// connection shares, which checks certificates strictly.
+        // Returns the TLS context every `wss://` connection shares, which checks certificates strictly.
         [[nodiscard]] Poco::Net::Context::Ptr getClientContext();
 
       private:
@@ -117,7 +117,7 @@ class PocoWebSocket final : public WebSocketTransport {
     // Waits until the socket is ready for the mode, the app wakes the thread or the deadline passes, and returns whether the socket is ready.
     static bool waitFor(Connection& target, const Poco::Net::Socket& socket, int mode, std::chrono::steady_clock::time_point deadline);
 
-    // Connects, completes the TLS handshake of wss:// and upgrades to a WebSocket, or returns nothing once the app abandoned the connection.
+    // Connects, completes the TLS handshake of `wss://` and upgrades to a WebSocket, or returns nothing once the app abandoned the connection.
     [[nodiscard]] static std::unique_ptr<Poco::Net::WebSocket> open(Connection& target, Workers& workers, const Poco::Net::SocketAddress& address, std::string& protocol);
     [[nodiscard]] static bool connectSocket(Connection& target, Poco::Net::StreamSocket& socket, const Poco::Net::SocketAddress& address, std::chrono::steady_clock::time_point deadline);
     [[nodiscard]] static bool completeHandshake(Connection& target, Poco::Net::SecureStreamSocket& socket, std::chrono::steady_clock::time_point deadline);

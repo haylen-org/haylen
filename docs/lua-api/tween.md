@@ -1,6 +1,6 @@
 # haylen.tween
 
-`haylen.tween` animates values over time. A tween moves fields of tables and properties of engine objects toward target values with an easing curve, and it can repeat, yoyo, run backwards, seek and be awaited. Ready-made tweens move, scale, rotate, fade, tint, jump, follow paths and Bézier curves, blink, shake and punch. Timelines play tweens, pauses and calls at their places in time and nest into each other, and staggers start the same tween on many targets one after another. Use tweens for UI motion, camera moves, fades, juice such as hits and pickups, and scripted cutscenes.
+The module `haylen.tween` animates values over time. A tween moves fields of tables and properties of engine objects toward target values with an easing curve, and it can repeat, yoyo, run backwards, seek and be awaited. Ready-made tweens move, scale, rotate, fade, tint, jump, follow paths and Bézier curves, blink, shake and punch. Timelines play tweens, pauses and calls at their places in time and nest into each other, and staggers start the same tween on many targets one after another. Use tweens for UI motion, camera moves, fades, juice such as hits and pickups, and scripted cutscenes.
 
 ```lua
 local tween = require('haylen.tween')
@@ -14,7 +14,7 @@ A tween reads its start values when it first renders, after its delay, so a dela
 
 ## Native properties
 
-Number, `Vec2` and `Color` properties of engine objects are native: a tween reads and writes them in C++ without calling Lua, so thousands of them cost no script time. Sprites, cameras, lights, particle emitters and the transforms of UI nodes are the usual targets. The transform that `document:transform(id)` of [haylen.ui](ui.md#documenttransformid) returns moves, scales, fades and tints a node of a UI document, and the document keeps it alive while the node exists, so a tween may target it directly.
+Number, `Vec2` and `Color` properties of engine objects are native: a tween reads and writes them in C++ without calling Lua, so thousands of them cost no script time. Sprites, cameras, lights, particle emitters and the transforms of UI nodes are the usual targets. The transform that `document:transform(id)` of [`haylen.ui`](ui.md#documenttransformid) returns moves, scales, fades and tints a node of a UI document, and the document keeps it alive while the node exists, so a tween may target it directly.
 
 ```lua
 local math2d = require('haylen.math')
@@ -29,7 +29,7 @@ tween.to(combo, 0.3, {scale = math2d.vec2(1, 1), opacity = 0.8, tint = '#FFFFD04
 
 ## Values
 
-A tween animates numbers, `Vec2` values, `Color` values and texts, and the end value is read as the kind of the current value. A `Vec2` field accepts a `Vec2`, `{x = 10, y = 20}` or `{10, 20}`, and a `Color` field accepts a `Color`, a `'#AARRGGBB'` string or a color table of [haylen.math](math.md). A text reveals the end text over the start text one character at a time, like a typewriter. A field name may be a path into nested tables or into the components of a value, such as `'position.x'` or `'color.a'`, and one tween animates as many fields as its value table names.
+A tween animates numbers, `Vec2` values, `Color` values and texts, and the end value is read as the kind of the current value. A `Vec2` field accepts a `Vec2`, `{x = 10, y = 20}` or `{10, 20}`, and a `Color` field accepts a `Color`, a `'#AARRGGBB'` string or a color table of [`haylen.math`](math.md). A text reveals the end text over the start text one character at a time, like a typewriter. A field name may be a path into nested tables or into the components of a value, such as `'position.x'` or `'color.a'`, and one tween animates as many fields as its value table names.
 
 These tween options change how values travel.
 
@@ -37,7 +37,7 @@ These tween options change how values travel.
 | --- | --- | --- |
 | `angles` | list of field names | Numbers in radians that take the shorter way around the circle, so 350 degrees tween to 10 degrees through 360. |
 | `integers` | list of field names | Numbers that stay whole, such as score counters. |
-| `colorSpace` | string | `'rgb'`, the default, or `'hsv'`, which blends colors through hue, saturation and value. |
+| `colorSpace` | string | Either `'rgb'`, the default, or `'hsv'`, which blends colors through hue, saturation and value. |
 
 ```lua
 local tween = require('haylen.tween')
@@ -58,17 +58,17 @@ end)
 
 ## Options
 
-Every tween and timeline takes an optional options table, and unknown keys raise `Unknown option '<key>'.`
+Every tween and timeline takes an optional options table, and unknown keys raise `Unknown option "<key>".`
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `delay` | number | `0` | Seconds to wait before the tween starts. Times such as `time` and `duration` exclude it. |
 | `repeatCount` | integer | `0` | Extra loops after the first one. A negative count repeats forever. |
-| `loopMode` | string | `'restart'` | `'restart'` plays every loop from the start, `'yoyo'` plays every other loop backwards and `'incremental'` continues every loop from where the previous one ended. |
+| `loopMode` | string | `'restart'` | The mode `'restart'` plays every loop from the start, `'yoyo'` plays every other loop backwards and `'incremental'` continues every loop from where the previous one ended. |
 | `repeatDelay` | number | `0` | Seconds to wait between loops. |
 | `timeScale` | number | `1` | Speed of this tween, multiplied with the time scale of its tag. |
 | `tag` | string | `''` | Group name for the tag functions, such as `tween.killTag` and `tween.setTimeScale`. |
-| `owner` | table or userdata | `nil` | Kills the tween when the owner ends, as the [owners of haylen.events](events.md#owners) describe. A tween that inherits its process mode follows the mode of its owner every frame, so it changes along with the owner. |
+| `owner` | table or userdata | `nil` | Kills the tween when the owner ends, as the [owners of `haylen.events`](events.md#owners) describe. A tween that inherits its process mode follows the mode of its owner every frame, so it changes along with the owner. |
 | `processMode` | string | `'inherit'` | `'inherit'`, `'pausable'`, `'whenPaused'`, `'always'` or `'disabled'`. |
 | `unscaled` | boolean | `false` | Counts real time, ignoring the time scale. |
 | `fixedStep` | boolean | `false` | Advances with the fixed steps of physics instead of once per frame. |
@@ -92,7 +92,7 @@ Tweens that animate values also take these options, and timelines take `onStep`.
 
 ## Easing
 
-The `ease` option takes a curve in one of these forms, the same ones `m.ease` of [haylen.math](math.md) accepts.
+The `ease` option takes a curve in one of these forms, the same ones `m.ease` of [`haylen.math`](math.md) accepts.
 
 | Form | Example | Curve |
 | --- | --- | --- |
@@ -118,7 +118,7 @@ tween.to(card, 0.6, {scale = 2}, {ease = function(t) return math.sin(t * math.pi
 
 ### tween.to(target, seconds, values, options)
 
-Animates fields of `target` from their current values to `values` over `seconds` and returns a [Tween](#tween). `target` is a table, an object or an engine userdata, `values` maps field names to end values and `options` is the optional table of [Options](#options). The call raises `A tween target must be a table or a userdata, not <type>.` for another target, `A tween needs a positive duration.` for a duration that is not positive, `Cannot tween the field '<name>' because it is not a number, a Vec2, a Color or a text.` for a field of another type or a missing field, and `bad argument #3 to 'to' (tween fields are named by strings)` for keys that are not strings.
+Animates fields of `target` from their current values to `values` over `seconds` and returns a [`Tween`](#tween). The argument `target` is a table, an object or an engine userdata, `values` maps field names to end values and `options` is the optional table of [Options](#options). The call raises `A tween target must be a table or a userdata, not <type>.` for another target, `A tween needs a positive duration.` for a duration that is not positive, `Cannot tween the field "<name>" because it is not a number, a "Vec2", a "Color" or a text.` for a field of another type or a missing field, and `bad argument #3 to 'to' (tween fields are named by strings)` for keys that are not strings.
 
 ```lua
 local tween = require('haylen.tween')
@@ -159,7 +159,7 @@ require('haylen.timer').after(2.1, function() print(conveyor.x) end) -- 256.0
 
 ### tween.fromTo(target, seconds, from, to, options)
 
-Animates fields of `target` from the values of `from` to the values of `to`, whatever the fields hold before. Every field of `from` needs an end value, otherwise the call raises `A tween.fromTo call needs an end value for the field '<name>'.`
+Animates fields of `target` from the values of `from` to the values of `to`, whatever the fields hold before. Every field of `from` needs an end value, otherwise the call raises `A "tween.fromTo" call needs an end value for the field "<name>".`
 
 ```lua
 local tween = require('haylen.tween')
@@ -170,7 +170,7 @@ tween.fromTo(meter, 1, {fill = 0}, {fill = 1}, {ease = 'quadOut'})
 
 ## Ready-made tweens
 
-Ready-made tweens take the target, the seconds, one value of their own and the options. Each one animates default fields, such as `x` and `y` for positions, and the `field` option names others: one field name, such as `'position'` for a `Vec2` field, or a list of two number fields, such as `{'left', 'top'}`. They accept every option of [Options](#options) and return a [Tween](#tween).
+Ready-made tweens take the target, the seconds, one value of their own and the options. Each one animates default fields, such as `x` and `y` for positions, and the `field` option names others: one field name, such as `'position'` for a `Vec2` field, or a list of two number fields, such as `{'left', 'top'}`. They accept every option of [Options](#options) and return a [`Tween`](#tween).
 
 | Function | Default fields | Value |
 | --- | --- | --- |
@@ -202,7 +202,7 @@ The motions of jumps, paths, Bézier curves, blinks, shakes and punches take the
 | `shake` | `seed` | Random | Makes the pattern repeatable. |
 | `punch` | `elasticity` | `1` | From 0 to 1, how far it swings past the start on the way back. |
 
-Paths travel at constant speed and end on the last point. Blinks, shakes and punches come back to the start value. A path, a Bézier curve or a jump needs a `Vec2` field or a pair of number fields, and raises `A path tween needs a Vec2 field or a pair of number fields.` or the same message for the other kinds otherwise.
+Paths travel at constant speed and end on the last point. Blinks, shakes and punches come back to the start value. A path, a Bézier curve or a jump needs a `Vec2` field or a pair of number fields, and raises `A path tween needs a "Vec2" field or a pair of number fields.` or the same message for the other kinds otherwise.
 
 ```lua
 local tween = require('haylen.tween')
@@ -235,7 +235,7 @@ tween.punch(button, 0.5, -16, {field = 'offsetY', vibrato = 6, elasticity = 0.5}
 
 ### tween.timeline(options)
 
-Creates an empty [Timeline](#timeline) and returns it. A timeline is a tween that plays other tweens, pauses and calls at their places in time. It takes every option of [Options](#options) except those that animate values, plus `onStep`, and it repeats, yoyos, seeks and reverses like any tween, moving everything inside it. Tweens join a timeline right after they are created, before they play, and leave the engine to play inside it. A tween that has already started raises `Only a tween that has not started and is in no other timeline can join a timeline.`
+Creates an empty [`Timeline`](#timeline) and returns it. A timeline is a tween that plays other tweens, pauses and calls at their places in time. It takes every option of [Options](#options) except those that animate values, plus `onStep`, and it repeats, yoyos, seeks and reverses like any tween, moving everything inside it. Tweens join a timeline right after they are created, before they play, and leave the engine to play inside it. A tween that has already started raises `Only a tween that has not started and is in no other timeline can join a timeline.`
 
 ```lua
 local tween = require('haylen.tween')
@@ -285,7 +285,7 @@ print(tween.size()) -- 0
 
 ### tween.completeTag(tag, withCallbacks)
 
-Jumps every tween with the tag to its end. `withCallbacks`, `true` by default, runs the callbacks on the way, such as `onComplete`. Tweens that repeat forever do not complete.
+Jumps every tween with the tag to its end. The argument `withCallbacks`, `true` by default, runs the callbacks on the way, such as `onComplete`. Tweens that repeat forever do not complete.
 
 ```lua
 local tween = require('haylen.tween')
@@ -495,7 +495,7 @@ print(bar.width) -- 100.0
 
 ### handle:complete(withCallbacks)
 
-Jumps to the end in the direction the tween plays. `withCallbacks`, `true` by default, runs the callbacks on the way. A tween that repeats forever does not complete.
+Jumps to the end in the direction the tween plays. The argument `withCallbacks`, `true` by default, runs the callbacks on the way. A tween that repeats forever does not complete.
 
 ```lua
 local tween = require('haylen.tween')
@@ -541,11 +541,11 @@ end)
 
 | Property | Access | Meaning |
 | --- | --- | --- |
-| `alive` | read | `true` until the tween is killed or leaves the engine after completing. |
-| `playing` | read | `true` while the tween is active, not paused and not completed. |
-| `paused` | read | `true` while the tween is paused. |
-| `reversed` | read | `true` while the tween plays backwards. |
-| `completed` | read | `true` once the tween reached its end in the direction it plays. |
+| `alive` | read | The value is `true` until the tween is killed or leaves the engine after completing. |
+| `playing` | read | The value is `true` while the tween is active, not paused and not completed. |
+| `paused` | read | The value is `true` while the tween is paused. |
+| `reversed` | read | The value is `true` while the tween plays backwards. |
+| `completed` | read | The value is `true` once the tween reached its end in the direction it plays. |
 | `progress` | read and write | How far the tween is through all its loops, from 0 to 1, or through the current loop when it repeats forever. Writing it seeks. |
 | `time` | read and write | The current time in seconds, without the delay. Writing it seeks. |
 | `timeScale` | read and write | The speed of the tween. |
@@ -568,7 +568,7 @@ print(growing.time, ring.radius) -- 0.5 25.0
 
 ## Timeline
 
-A timeline is a [Tween](#tween) with every method and property above, plus the methods that place items in it. Each method returns the timeline, so calls chain. Items are tween or timeline handles, numbers of seconds to wait and functions to call.
+A timeline is a [`Tween`](#tween) with every method and property above, plus the methods that place items in it. Each method returns the timeline, so calls chain. Items are tween or timeline handles, numbers of seconds to wait and functions to call.
 
 ### timeline:append(item)
 
@@ -602,7 +602,7 @@ tween.timeline()
 
 ### timeline:insert(position, item)
 
-Places the item at a time in seconds or at a label, without starting a new step. An unknown label raises `The timeline has no label named '<name>'.`
+Places the item at a time in seconds or at a label, without starting a new step. An unknown label raises `The timeline has no label named "<name>".`
 
 ```lua
 local tween = require('haylen.tween')

@@ -25,7 +25,7 @@ struct DistanceField {
     // Builds the field of a glyph at a scale in pixels per font unit, reaching the spread in pixels past the box of the glyph, or nothing for a glyph without an outline, such as a space.
     [[nodiscard]] static std::optional<DistanceField> build(const stbtt_fontinfo& font, int glyph, float scale, int spread);
 
-    // Returns the size and offset of the field build makes, without its pixels, or nothing for a glyph without an outline box. It reads only the box of the glyph, so it tells at once whether a field can fit somewhere.
+    // Returns the size and offset of the field `build` makes, without its pixels, or nothing for a glyph without an outline box. It reads only the box of the glyph, so it tells at once whether a field can fit somewhere.
     [[nodiscard]] static std::optional<DistanceField> measure(const stbtt_fontinfo& font, int glyph, float scale, int spread);
 
   private:

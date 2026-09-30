@@ -120,7 +120,7 @@ TEST(TweenLuaTest, AwaitsCompletionAndKills) {
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return tween.size() .. ' ' .. tostring(stopped)"), "0 false");
 
-    // A kept tween that already completed waits for its next completion, and a kill settles the wait with false.
+    // A kept tween that already completed waits for its next completion, and a kill settles the wait with `false`.
     fixture.runLua("kept = tween.to(box, 0.1, {x = 1}, {autoKill = false})");
     fixture.frames(1, 0.25);
     fixture.runLua("late = nil async.spawn(function() late = kept:wait():await() end) kept:kill()");
@@ -167,7 +167,7 @@ TEST(TweenLuaTest, BuildsTimelinesAndStaggers) {
     fixture.runLua("marked:seek('half')");
     EXPECT_EQ(fixture.lua("return box.x"), "2.0");
     EXPECT_NE(fixture.lua("tween.timeline():append(tween.to(box, 1, {x = 1}, {speedBased = true}))").find("speed-based"), std::string::npos);
-    EXPECT_NE(fixture.lua("marked:insert('missing', function() end)").find("no label named 'missing'"), std::string::npos);
+    EXPECT_NE(fixture.lua("marked:insert('missing', function() end)").find("no label named \"missing\""), std::string::npos);
     EXPECT_NE(fixture.lua("tween.stagger({{v = 1}}, 1, function() return 5 end)").find("haylen.Tween expected"), std::string::npos);
 }
 
@@ -216,10 +216,10 @@ TEST(TweenLuaTest, PlaysReadyMadeTweens) {
     fixture.frames(2, 0.25);
     EXPECT_EQ(fixture.lua("return shaken.x .. ',' .. shaken.y .. ' ' .. string.format('%.3f', punched.offset)"), "10.0,10.0 0.000");
 
-    EXPECT_NE(fixture.lua("tween.path({v = 1}, 1, {{1, 1}}, {field = 'v'})").find("needs a Vec2 field"), std::string::npos);
+    EXPECT_NE(fixture.lua("tween.path({v = 1}, 1, {{1, 1}}, {field = 'v'})").find("needs a \"Vec2\" field"), std::string::npos);
     EXPECT_NE(fixture.lua("tween.bezier({x = 0, y = 0}, 1, {{1, 1}})").find("one or two control points"), std::string::npos);
     EXPECT_NE(fixture.lua("tween.move({x = 0, y = 0}, 1, {1, 1}, {field = {'x'}})").find("two number field names"), std::string::npos);
-    EXPECT_NE(fixture.lua("tween.blink({p = m.vec2(1, 1)}, 1, 2, {field = 'p'})").find("hidden option"), std::string::npos);
+    EXPECT_NE(fixture.lua("tween.blink({p = m.vec2(1, 1)}, 1, 2, {field = 'p'})").find("\"hidden\" option"), std::string::npos);
 }
 
 TEST(TweenLuaTest, AnimatesNativePropertiesWithoutLua) {
@@ -329,8 +329,8 @@ TEST(TweenLuaTest, EasesWithEveryKindOfCurve) {
     EXPECT_EQ(fixture.lua("return tostring(m.ease({curve = 'elasticOut', amplitude = 2, period = 0.5}, 0.2) ~= m.ease('elasticOut', 0.2))"), "true");
     EXPECT_NE(fixture.lua("m.ease({curve = 'quadIn', overshoot = 2}, 0.5)").find("overshoot only applies"), std::string::npos);
     EXPECT_NE(fixture.lua("m.ease({cubicBezier = {2, 0, 0, 1}}, 0.5)").find("between 0 and 1"), std::string::npos);
-    EXPECT_NE(fixture.lua("m.ease({speed = 1}, 0.5)").find("Unknown option 'speed'"), std::string::npos);
-    EXPECT_NE(fixture.lua("m.ease({steps = 4294967297}, 0.5)").find("The option 'steps'"), std::string::npos);
+    EXPECT_NE(fixture.lua("m.ease({speed = 1}, 0.5)").find("Unknown option \"speed\""), std::string::npos);
+    EXPECT_NE(fixture.lua("m.ease({steps = 4294967297}, 0.5)").find("The option \"steps\""), std::string::npos);
     EXPECT_NE(fixture.lua("m.ease(function() return 'x' end, 0.5)").find("must return a number"), std::string::npos);
 
     fixture.runLua("box = {x = 0} tween.to(box, 1, {x = 10}, {ease = {steps = 2}})");
@@ -343,15 +343,15 @@ TEST(TweenLuaTest, EasesWithEveryKindOfCurve) {
 TEST(TweenLuaTest, ReportsMistakes) {
     test::EngineFixture fixture;
     fixture.runLua("tween = require('haylen.tween') box = {x = 0, name = {}}");
-    EXPECT_NE(fixture.lua("tween.to(box, 1, {x = 1}, {speed = 2})").find("Unknown option 'speed'"), std::string::npos);
-    EXPECT_NE(fixture.lua("tween.to(box, 1, {name = 'x'})").find("not a number, a Vec2, a Color or a text"), std::string::npos);
+    EXPECT_NE(fixture.lua("tween.to(box, 1, {x = 1}, {speed = 2})").find("Unknown option \"speed\""), std::string::npos);
+    EXPECT_NE(fixture.lua("tween.to(box, 1, {name = 'x'})").find("not a number, a \"Vec2\", a \"Color\" or a text"), std::string::npos);
     EXPECT_NE(fixture.lua("tween.to(box, 1, {x = 'far'})").find("must be a number"), std::string::npos);
     EXPECT_NE(fixture.lua("tween.to(box, 1, {[1] = 2})").find("tween fields are named by strings"), std::string::npos);
     EXPECT_NE(fixture.lua("tween.to(box, 0, {x = 1})").find("positive duration"), std::string::npos);
     EXPECT_NE(fixture.lua("tween.to(box, 1, {x = 1}, {onUpdate = 3})").find("must be a function"), std::string::npos);
     EXPECT_NE(fixture.lua("tween.to(box, 1, {['a..b'] = 1})").find("empty part"), std::string::npos);
     EXPECT_NE(fixture.lua("tween.to(box, 1, {['x.y'] = 1})").find("part of its path is number"), std::string::npos);
-    EXPECT_NE(fixture.lua("tween.fromTo(box, 1, {x = 1}, {})").find("needs an end value for the field 'x'"), std::string::npos);
+    EXPECT_NE(fixture.lua("tween.fromTo(box, 1, {x = 1}, {})").find("needs an end value for the field \"x\""), std::string::npos);
     EXPECT_NE(fixture.lua("tween.to(5, 1, {})").find("must be a table or a userdata"), std::string::npos);
 
     // clang-format off

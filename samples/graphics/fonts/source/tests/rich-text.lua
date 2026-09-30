@@ -1,4 +1,4 @@
--- Rich text tags: every tag of the BBCode markup, inline ones on the left and blocks on the right, drawn by graphics2d.newRichText with the Crimson Text family, two more families for [font] and registered icons for [icon].
+-- Rich text tags: every tag of the BBCode markup, inline ones on the left and blocks on the right, drawn by `graphics2d.newRichText` with the Crimson Text family, two more families for `[font]` and registered icons for `[icon]`.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -9,9 +9,9 @@ local sample = require('sample')
 
 local RichText = haylen.class('RichText', sample.Test)
 
-RichText.hints = 'Move the pointer over a link or the hint: text:linkAt and text:hintAt report what lies under it in the status line. In a UI document the same links take the focus and the hint shows as a tooltip.'
+RichText.hints = 'Move the pointer over a link or the hint: "text:linkAt" and "text:hintAt" report what lies under it in the status line. In a UI document the same links take the focus and the hint shows as a tooltip.'
 
--- The gamepad prompts that [icon=name] shows, cut from one image.
+-- The gamepad prompts that `[icon=name]` shows, cut from one image.
 local prompts = assets.texture('images/prompts.png', {filter = 'linear'})
 for index, name in ipairs({'south', 'east', 'west', 'north'}) do
     graphics2d.registerTextIcon(name, prompts, {source = {(index - 1) * 32, 0, 32, 32}})
@@ -62,7 +62,7 @@ function RichText:update(dt)
         local x, y = input.mousePosition()
         local link = self.inline:linkAt(x - stage.x, y - stage.y)
         local hint = self.inline:hintAt(x - stage.x, y - stage.y)
-        self:setStatus(link and ('link ' .. link) or hint and ('hint ' .. hint) or 'the pointer is over no link or hint')
+        self:setStatus(link and ('link ' .. link) or hint and ('hint ' .. hint) or 'The pointer is over no link or hint')
     end
 end
 

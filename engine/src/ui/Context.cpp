@@ -38,7 +38,7 @@ std::shared_ptr<text::FontFamily> Context::getFontFamily(Theme::Font role) const
 std::shared_ptr<text::FontFamily> Context::getFontFamily(std::string_view name) const {
     std::shared_ptr<text::FontFamily> family = fonts(name);
     if (!family) {
-        throw std::invalid_argument("The UI has no font named " + std::string(name) + ".");
+        throw std::invalid_argument("The UI has no font named \"" + std::string(name) + "\".");
     }
     return family;
 }
@@ -80,7 +80,7 @@ void Context::blockPointer(const math::Rect& area) {
     backend.blockPointer(area);
 }
 
-// A node scales around its center, which maps a point p to p * s + center * (1 - s), and the nodes around it apply their own mapping after it.
+// A node scales around its center, which maps a point `p` to `p * s + center * (1 - s)`, and the nodes around it apply their own mapping after it.
 void Context::pushReshape(const Transform& shape, math::Vec2 center) {
     const Reshape outer = getReshape();
     const math::Color color = shape.tint.withAlpha(shape.tint.a * shape.opacity);

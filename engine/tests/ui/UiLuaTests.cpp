@@ -131,7 +131,7 @@ TEST_F(UiLuaTest, PublishesMountsAndEndsWhatDocumentsOwn) {
     EXPECT_EQ(fixture.lua("return ticks"), ticks);
     EXPECT_NE(ticks, "0");
 
-    // Documents mounted from C++ reach C++ listeners with their pointer and Lua listeners with nil.
+    // Documents mounted from C++ reach C++ listeners with their pointer and Lua listeners with `nil`.
     plugins::UiPlugin& plugin = getEngine().getPlugin<plugins::UiPlugin>();
     std::shared_ptr<Document> received;
     const core::ScopedConnection listener = getEngine().getEvents().on(core::LifecycleEvent::kUiDocumentMounted, [&](core::EventBus::Event& event) { received = *event.get<std::shared_ptr<Document>>(); });
@@ -167,9 +167,9 @@ TEST_F(UiLuaTest, ChangesHandlersOnlyAfterTheDocumentAcceptsTheChange) {
     )");
     // clang-format on
     fixture.frames(1);
-    EXPECT_NE(fixture.lua("hud:set('play', {colour = 'red', onClick = function() clicks[#clicks + 1] = 'set' end})").find("The property 'colour' of a button does not exist."), std::string::npos);
+    EXPECT_NE(fixture.lua("hud:set('play', {colour = 'red', onClick = function() clicks[#clicks + 1] = 'set' end})").find("The property \"colour\" of a \"button\" does not exist."), std::string::npos);
     EXPECT_NE(fixture.lua("hud:replaceChildren('list', {ui.button{id = 'play', onClick = function() clicks[#clicks + 1] = 'replaced' end}, ui.label{id = 'list'}})").find("used more than once"), std::string::npos);
-    EXPECT_NE(fixture.lua("hud:set('missing', {onClick = function() end})").find("no node with the id missing"), std::string::npos);
+    EXPECT_NE(fixture.lua("hud:set('missing', {onClick = function() end})").find("no node with the id \"missing\""), std::string::npos);
     click("hud", "play");
     EXPECT_EQ(fixture.lua("return table.concat(clicks, ',')"), "old");
 
@@ -184,7 +184,7 @@ TEST_F(UiLuaTest, ChangesHandlersOnlyAfterTheDocumentAcceptsTheChange) {
     EXPECT_EQ(fixture.lua("return tostring(hud:removeHandler('play', 'click')) .. ' ' .. tostring(hud:removeHandler('play', 'click'))"), "true false");
     click("hud", "play");
     EXPECT_EQ(fixture.lua("return table.concat(clicks, ',')"), "old,new");
-    EXPECT_NE(fixture.lua("hud:removeHandler('missing', 'click')").find("no node with the id missing"), std::string::npos);
+    EXPECT_NE(fixture.lua("hud:removeHandler('missing', 'click')").find("no node with the id \"missing\""), std::string::npos);
 }
 
 TEST_F(UiLuaTest, HandsEventValuesAndListenersToLua) {
@@ -240,7 +240,7 @@ TEST_F(UiLuaTest, EndsEventListenersWithTheirOwner) {
     fixture.frames(2);
     click("menu", "play");
     EXPECT_EQ(fixture.lua("return table.concat(heard, ',')"), "play");
-    EXPECT_NE(fixture.lua("ui.onEvent(function() end, {depth = 1})").find("Unknown option 'depth'"), std::string::npos);
+    EXPECT_NE(fixture.lua("ui.onEvent(function() end, {depth = 1})").find("Unknown option \"depth\""), std::string::npos);
     EXPECT_NE(fixture.lua("ui.onEvent(function() end, {owner = 3})").find("An owner must be a table or a userdata"), std::string::npos);
 }
 
@@ -266,12 +266,12 @@ TEST_F(UiLuaTest, ReplacesChildrenAndUnmounts) {
 
 TEST_F(UiLuaTest, ReportsMistakes) {
     fixture.runLua("ui = require('haylen.ui')");
-    EXPECT_NE(fixture.lua("ui.node('spaceship')").find("no UI component kind named spaceship"), std::string::npos);
-    EXPECT_NE(fixture.lua("return ui.spaceship").find("haylen.ui has no member 'spaceship'"), std::string::npos);
+    EXPECT_NE(fixture.lua("ui.node('spaceship')").find("no UI component kind named \"spaceship\""), std::string::npos);
+    EXPECT_NE(fixture.lua("return ui.spaceship").find("\"haylen.ui\" has no member \"spaceship\""), std::string::npos);
     EXPECT_NE(fixture.lua("ui.mount(ui.label{id = '#1'})").find("reserved"), std::string::npos);
     EXPECT_NE(fixture.lua("ui.mount(ui.column{ui.label{}, children = {}})").find("not both"), std::string::npos);
-    EXPECT_NE(fixture.lua("ui.mount(ui.label{}, {placement = 'floor'})").find("safe or screen"), std::string::npos);
-    EXPECT_NE(fixture.lua("ui.mount(ui.label{}, {depth = 1})").find("Unknown option 'depth'"), std::string::npos);
+    EXPECT_NE(fixture.lua("ui.mount(ui.label{}, {placement = 'floor'})").find("\"safe\" or \"screen\""), std::string::npos);
+    EXPECT_NE(fixture.lua("ui.mount(ui.label{}, {depth = 1})").find("Unknown option \"depth\""), std::string::npos);
     EXPECT_NE(fixture.lua("ui.mount(ui.label{text = function() end})").find("error: "), std::string::npos);
     EXPECT_NE(fixture.lua("ui.mount({kind = 'label', [true] = 1})").find("keys must be strings"), std::string::npos);
 
@@ -308,8 +308,8 @@ TEST_F(UiLuaTest, PassesTheKeyboardOptionsOfTextComponents) {
     fixture.runLua("form:set('mail', {keyboard = 'url'})");
     fixture.frames(1);
     EXPECT_EQ(fixture.host().getTextInput().getVisibleFields()[0].options.keyboard, TextInput::Keyboard::Url);
-    EXPECT_NE(fixture.lua("ui.mount(ui.textField{keyboard = 'multiline'})").find("The property 'keyboard' of a textField must be text, number, decimal, phone, email, url or search."), std::string::npos) << "text areas and secret fields own those keyboards";
-    EXPECT_NE(fixture.lua("ui.mount(ui.secretField{autocapitalize = 'shout'})").find("The property 'autocapitalize' of a secretField must be none, sentences, words or characters."), std::string::npos);
+    EXPECT_NE(fixture.lua("ui.mount(ui.textField{keyboard = 'multiline'})").find("The property \"keyboard\" of a \"textField\" must be \"text\", \"number\", \"decimal\", \"phone\", \"email\", \"url\" or \"search\"."), std::string::npos) << "Text areas and secret fields own those keyboards.";
+    EXPECT_NE(fixture.lua("ui.mount(ui.secretField{autocapitalize = 'shout'})").find("The property \"autocapitalize\" of a \"secretField\" must be \"none\", \"sentences\", \"words\" or \"characters\"."), std::string::npos);
 }
 
 // The UI takes a direction for all of it, and a node takes one for itself and its children.
@@ -332,7 +332,7 @@ TEST_F(UiLuaTest, SetsTheDirectionOfTheUiAndOfNodes) {
     fixture.runLua("doc:set('a', {direction = 'inherit'}) doc:unmount() doc = ui.mount(ui.row{gap = 10, ui.button{id = 'a', text = 'A'}, ui.button{id = 'b', text = 'B'}})");
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return tostring(doc:bounds('a').x > doc:bounds('b').x)"), "true");
-    EXPECT_NE(fixture.lua("ui.mount(ui.label{text = 'x', direction = 'up'})").find("The property 'direction' of a label must be inherit, leftToRight or rightToLeft."), std::string::npos);
+    EXPECT_NE(fixture.lua("ui.mount(ui.label{text = 'x', direction = 'up'})").find("The property \"direction\" of a \"label\" must be \"inherit\", \"leftToRight\" or \"rightToLeft\"."), std::string::npos);
     EXPECT_NE(fixture.lua("ui.setDirection('up')").find("up"), std::string::npos);
 }
 
@@ -340,7 +340,7 @@ TEST_F(UiLuaTest, SwitchesThemesAndReadsInputCapture) {
     fixture.runLua("ui = require('haylen.ui')");
     EXPECT_EQ(fixture.lua("return ui.theme() .. ' ' .. table.concat(ui.themes(), ',')"), "dark dark,light");
     EXPECT_EQ(fixture.lua("ui.setTheme('light') return ui.theme()"), "light");
-    EXPECT_NE(fixture.lua("ui.setTheme('marble')").find("no theme named marble"), std::string::npos);
+    EXPECT_NE(fixture.lua("ui.setTheme('marble')").find("no theme named \"marble\""), std::string::npos);
     EXPECT_EQ(fixture.lua("return tostring(ui.usingPointer()) .. tostring(ui.usingKeyboard())"), "falsefalse");
     EXPECT_EQ(fixture.lua("local kinds = ui.kinds() return #kinds .. ' ' .. kinds[1]"), "62 accordion");
     EXPECT_NE(fixture.lua("ui.loadTheme('themes/none.json')").find("error: "), std::string::npos);
@@ -370,12 +370,12 @@ TEST(UiLuaThemeTest, ReadsAndAddsThemes) {
     EXPECT_EQ(fixture.lua("local s = ui.themeSurface('panel') return tostring(s.slice):match('^haylen.NineSlice') .. ' ' .. s.scale .. ' ' .. table.concat(s.padding, ',') .. ' ' .. s.tint:toHex() .. ' ' .. tostring(s.colorize)"), "haylen.NineSlice 1.0 1.0,2.0,3.0,4.0 #FF808080 true");
     EXPECT_EQ(fixture.lua("return table.concat(ui.themes(), ',')"), "dark,light,mint");
 
-    EXPECT_NE(fixture.lua("ui.themeColor('purple')").find("The theme has no color role named 'purple'."), std::string::npos);
-    EXPECT_NE(fixture.lua("ui.themeMetric('height')").find("The theme has no metric named 'height'."), std::string::npos);
-    EXPECT_NE(fixture.lua("ui.themeFont('huge')").find("The theme has no font role named 'huge'."), std::string::npos);
-    EXPECT_NE(fixture.lua("ui.themeSurface('floor')").find("The theme has no surface named 'floor'."), std::string::npos);
+    EXPECT_NE(fixture.lua("ui.themeColor('purple')").find("The theme has no color role named \"purple\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("ui.themeMetric('height')").find("The theme has no metric named \"height\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("ui.themeFont('huge')").find("The theme has no font role named \"huge\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("ui.themeSurface('floor')").find("The theme has no surface named \"floor\"."), std::string::npos);
     EXPECT_NE(fixture.lua("ui.addTheme({colors = {}})").find("A theme needs a name."), std::string::npos);
-    EXPECT_NE(fixture.lua("ui.addTheme({name = 'x'}, 'marble')").find("no theme named marble to start from"), std::string::npos);
+    EXPECT_NE(fixture.lua("ui.addTheme({name = 'x'}, 'marble')").find("no theme named \"marble\" to start from"), std::string::npos);
 }
 
 // Labels and every other text component draw with the faces of the family of their role, bold where the role asks for it, and take the characters the face lacks from the fallbacks, while rich text of a role lines up with them.
@@ -409,7 +409,7 @@ TEST_F(UiLuaFontTest, DrawsTextComponentsWithTheFacesAndFallbacksOfAFamily) {
     fixture.runLua("ui.setTheme(ui.addTheme({name = 'plain', fonts = {heading = {font = 'story'}}}))");
     fixture.frames(2);
     EXPECT_NE(fixture.lua("return screen:bounds('heading').width"), bold);
-    EXPECT_NE(fixture.lua("ui.addTheme({name = 'odd', fonts = {body = {bold = 'yes'}}})").find("The theme font 'body' must set bold to true or false."), std::string::npos);
+    EXPECT_NE(fixture.lua("ui.addTheme({name = 'odd', fonts = {body = {bold = 'yes'}}})").find("The theme font \"body\" must set \"bold\" to \"true\" or \"false\"."), std::string::npos);
 }
 
 TEST_F(UiLuaTest, DrawsImmediateWindowsInsideScenes) {
@@ -504,7 +504,7 @@ TEST_F(UiLuaTest, TurnsImGuiMisuseIntoScriptErrors) {
     // clang-format on
     fixture.frames(2);
     ASSERT_NE(getEngine().getError(), nullptr);
-    EXPECT_NE(std::string_view(getEngine().getError()->what()).find("The Dear ImGui check '"), std::string::npos);
+    EXPECT_NE(std::string_view(getEngine().getError()->what()).find("The Dear ImGui check \""), std::string::npos);
 }
 
 // Dear ImGui trusts that a row goes into an open table and a tree pop closes an open node, so these checks happen before it runs.
@@ -525,8 +525,8 @@ TEST_F(UiLuaTest, RaisesMisuseDearImGuiDoesNotCheck) {
     // clang-format on
     fixture.frames(2);
     ASSERT_EQ(getEngine().getError(), nullptr) << getEngine().getError()->what();
-    EXPECT_EQ(fixture.lua("return results.row"), "There is no open table for imgui.tableNextRow to add a row to.");
-    EXPECT_EQ(fixture.lua("return results.pop"), "There is no open tree node for imgui.treePop to close.");
+    EXPECT_EQ(fixture.lua("return results.row"), "There is no open table for \"imgui.tableNextRow\" to add a row to.");
+    EXPECT_EQ(fixture.lua("return results.pop"), "There is no open tree node for \"imgui.treePop\" to close.");
 }
 
 TEST_F(UiLuaTest, ShowsTheToolWindowsOfDearImGui) {
@@ -669,7 +669,7 @@ TEST_F(UiLuaTest, SimulatesTheSafeAreaAndKeepsTheBackButton) {
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return viewport.safeRect().y .. ' ' .. table.concat(viewport.safeAreaSimulation(), ',')"), "12.0 12.0,0.0,12.0,0.0");
     EXPECT_EQ(fixture.lua("viewport.setSafeAreaSimulation(nil) return tostring(viewport.safeAreaSimulation()) .. ' ' .. viewport.safeRect().y"), "nil 0.0");
-    EXPECT_NE(fixture.lua("viewport.setSafeAreaSimulation('watch')").find("There is no simulated device named watch."), std::string::npos);
+    EXPECT_NE(fixture.lua("viewport.setSafeAreaSimulation('watch')").find("There is no simulated device named \"watch\"."), std::string::npos);
 }
 
 TEST_F(UiLuaTest, ChangesTheScalingAndTheDesignSizeWhileRunning) {
@@ -743,8 +743,8 @@ TEST_F(UiLuaTest, BuildsTheComponentsForGamesAndApps) {
     key(input::Key::Enter);
     fixture.frames(2);
     EXPECT_EQ(fixture.lua("return table.concat(heard, ', ')"), "players change 2.0, view change a, view change b, menu select copy");
-    EXPECT_NE(fixture.lua("screen:set('players', {step = 0})").find("The property 'step' of a stepper must be greater than zero."), std::string::npos);
-    EXPECT_NE(fixture.lua("screen:command('bag', 'open')").find("The component kind 'slotGrid' does not answer the command 'open'."), std::string::npos);
+    EXPECT_NE(fixture.lua("screen:set('players', {step = 0})").find("The property \"step\" of a \"stepper\" must be greater than zero."), std::string::npos);
+    EXPECT_NE(fixture.lua("screen:command('bag', 'open')").find("The component kind \"slotGrid\" does not answer the command \"open\"."), std::string::npos);
 }
 
 } // namespace haylen::ui

@@ -20,7 +20,7 @@ std::unordered_map<const NativeCallback*, std::shared_ptr<NativeCallback>>& Nati
 struct NativeCallback::Closure {};
 
 std::shared_ptr<NativeCallback> NativeCallback::create(NativeSignature, Thread, Link) {
-    throw std::runtime_error("Native callbacks are not available in the browser. Call JavaScript through haylen.platform instead.");
+    throw std::runtime_error("Native callbacks are not available in the browser. Call JavaScript through \"haylen.platform\" instead.");
 }
 
 NativeCallback::~NativeCallback() = default;
@@ -148,7 +148,7 @@ std::vector<NativeCallback::Value> NativeCallback::read(void** arguments, std::s
         case Kind::Bytes: {
             const std::int64_t count = parameter.lengthParameter ? readInteger(arguments[*parameter.lengthParameter], parameters[*parameter.lengthParameter]) : static_cast<std::int64_t>(parameter.count);
             if (count < 0) {
-                failure = "The native callback received the negative length " + std::to_string(count) + " for " + parameter.name + ".";
+                failure = "The native callback received the negative length " + std::to_string(count) + " for \"" + parameter.name + "\".";
                 return {};
             }
             if (const auto* bytes = *static_cast<const char* const*>(argument)) {

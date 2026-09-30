@@ -1,4 +1,4 @@
--- Objects that physics2d.fracture breaks into Voronoi pieces around the point they are hit, by a tap or a click or by a fast wrecking ball.
+-- Objects that `physics2d.fracture` breaks into Voronoi pieces around the point they are hit, by a tap or a click or by a fast wrecking ball.
 local haylen = require('haylen')
 local graphics2d = require('haylen.graphics2d')
 local input = require('haylen.input')

@@ -7,18 +7,18 @@ struct lua_State;
 
 namespace haylen::ai {
 
-// Installs the InfluenceMap class of haylen.ai.
+// Installs the `InfluenceMap` class of `haylen.ai`.
 class InfluenceMapLua final {
   public:
     static void install(lua_State* L);
 
-    // Sets newInfluenceMap on the module table at the top of the stack.
+    // Sets `newInfluenceMap` on the module table at the top of the stack.
     static void addFunctions(lua_State* L);
 
   private:
     static constexpr std::array<std::string_view, 5> kMapFields{"columns", "rows", "cellSize", "x", "y"};
 
-    // Pushes x, y and value of a spot, or nil when there is none.
+    // Pushes `x`, `y` and `value` of a spot, or `nil` when there is none.
     static int pushSpot(lua_State* L, bool highest);
 
     static int newMap(lua_State* L);

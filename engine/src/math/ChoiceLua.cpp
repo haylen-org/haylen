@@ -40,7 +40,7 @@ void ChoiceLua::pushItem(lua_State* L, std::size_t item) {
     lua_remove(L, -2);
 }
 
-// Creates a bag with shuffleBag(items, {counts = {...}, seed = n}), where item i goes into the bag counts[i] times.
+// Creates a bag with `shuffleBag(items, {counts = {...}, seed = n})`, where item `i` goes into the bag `counts[i]` times.
 int ChoiceLua::newShuffleBag(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     const auto size = static_cast<std::size_t>(luaL_len(L, 1));
@@ -92,7 +92,7 @@ int ChoiceLua::bagSize(lua_State* L) {
     return 1;
 }
 
-// Creates a choice with weightedChoice(items, weights, seed), where the seed is optional.
+// Creates a choice with `weightedChoice(items, weights, seed)`, where the seed is optional.
 int ChoiceLua::newWeightedChoice(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     const auto weights = lua::Stack::read<std::vector<float>>(L, 2);

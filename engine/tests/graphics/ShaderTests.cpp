@@ -95,7 +95,7 @@ void main() {
         return {};
     }
 
-    // Compiles the material with make.py shaders, the way apps compile theirs, once for every test that needs it.
+    // Compiles the material with `make.py shaders`, the way apps compile theirs, once for every test that needs it.
     [[nodiscard]] static const std::vector<std::uint8_t>& tintShader() {
         // clang-format off
         static const std::vector<std::uint8_t> compiled = [] {
@@ -104,7 +104,7 @@ void main() {
             app.write("content/shaders/tint.glsl", kTintSource);
             const std::string command = std::string("\"") + HAYLEN_PYTHON + "\" \"" + HAYLEN_MAKE_SCRIPT + "\" shaders \"" + app.getPath().string() + "\"";
             if (std::system(command.c_str()) != 0) {
-                throw std::runtime_error("make.py shaders failed.");
+                throw std::runtime_error("The command \"make.py shaders\" failed.");
             }
             std::ifstream file(app.getPath() / "content" / "shaders" / "tint.shader", std::ios::binary);
             return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
@@ -201,21 +201,21 @@ TEST_F(ShaderTest, RejectsProgramsAndReflectionThatBreakTheGpuLimits) {
     EXPECT_NE(parseError({{program + "/fragment", nullptr}}), "");
 
     // Names outside the ones sokol-shdc writes fail instead of taking a default.
-    EXPECT_EQ(parseError({{program + "/uniform_blocks/0/stage", "compute"}}), malformed + "Shaders do not support the compute stage.");
-    EXPECT_EQ(parseError({{program + "/views/0/image_type", "1d"}}), malformed + "Shaders do not support 1d textures.");
-    EXPECT_EQ(parseError({{program + "/views/0/sample_type", "half"}}), malformed + "Shaders do not support textures that sample half.");
-    EXPECT_EQ(parseError({{program + "/samplers/0/sampler_type", "anisotropic"}}), malformed + "Shaders do not support anisotropic samplers.");
-    EXPECT_EQ(parseError({{program + "/attrs/0/base_type", "double"}}), malformed + "Shaders do not support vertex attributes of type double.");
-    EXPECT_EQ(parseError({{program + "/uniform_blocks/0/glsl_uniforms/0/type", "mat3"}}), malformed + "Shaders do not support uniforms of type mat3.");
+    EXPECT_EQ(parseError({{program + "/uniform_blocks/0/stage", "compute"}}), malformed + "Shaders do not support the \"compute\" stage.");
+    EXPECT_EQ(parseError({{program + "/views/0/image_type", "1d"}}), malformed + "Shaders do not support \"1d\" textures.");
+    EXPECT_EQ(parseError({{program + "/views/0/sample_type", "half"}}), malformed + "Shaders do not support textures that sample \"half\".");
+    EXPECT_EQ(parseError({{program + "/samplers/0/sampler_type", "anisotropic"}}), malformed + "Shaders do not support \"anisotropic\" samplers.");
+    EXPECT_EQ(parseError({{program + "/attrs/0/base_type", "double"}}), malformed + "Shaders do not support vertex attributes of type \"double\".");
+    EXPECT_EQ(parseError({{program + "/uniform_blocks/0/glsl_uniforms/0/type", "mat3"}}), malformed + "Shaders do not support uniforms of type \"mat3\".");
 
     // The GLSL members fill their block, and every program reads the blocks of the reflection with their own size.
     EXPECT_EQ(parseError({{program + "/uniform_blocks/0/glsl_uniforms/0/array_count", 2}}), malformed + "The members of the uniform block at slot 1 do not fill its 16 bytes.");
-    EXPECT_EQ(parseError({{program + "/uniform_blocks/0/size", 32}, {program + "/uniform_blocks/0/glsl_uniforms", core::Json::array()}}), malformed + "The sprite program for glsl430 reads 32 bytes from the block params, which holds 16.");
+    EXPECT_EQ(parseError({{program + "/uniform_blocks/0/size", 32}, {program + "/uniform_blocks/0/glsl_uniforms", core::Json::array()}}), malformed + "The \"sprite\" program for \"glsl430\" reads 32 bytes from the block \"params\", which holds 16.");
 
     // Materials write every uniform inside its block, and the reflection keeps its slots inside the limits.
-    EXPECT_EQ(parseError({{"/blocks/0/uniforms/0/offset", 4}}), malformed + "The uniform tint does not fit in the block params.");
-    EXPECT_EQ(parseError({{"/blocks/0/uniforms/0/count", 2}}), malformed + "The uniform tint does not fit in the block params.");
-    EXPECT_EQ(parseError({{"/blocks/0/uniforms/0/count", 0}}), malformed + "The uniform tint has no elements.");
+    EXPECT_EQ(parseError({{"/blocks/0/uniforms/0/offset", 4}}), malformed + "The uniform \"tint\" does not fit in the block \"params\".");
+    EXPECT_EQ(parseError({{"/blocks/0/uniforms/0/count", 2}}), malformed + "The uniform \"tint\" does not fit in the block \"params\".");
+    EXPECT_EQ(parseError({{"/blocks/0/uniforms/0/count", 0}}), malformed + "The uniform \"tint\" has no elements.");
     EXPECT_EQ(parseError({{"/blocks/0/slot", 8}}), malformed + "The uniform block slot 8 is out of range.");
     EXPECT_EQ(parseError({{"/textures/0/slot", 32}}), malformed + "The texture slot 32 is out of range.");
 }
@@ -391,9 +391,9 @@ TEST_F(MaterialLuaTest, LoadsShadersAndDrawsWithMaterials) {
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return tostring(spriteMaterial == tint) .. ' ' .. graphics2d.stats().canvases"), "true 1");
 
-    EXPECT_NE(fixture.lua("graphics2d.newMaterial(shader, {missing = 1})").find("has no uniform named missing"), std::string::npos);
+    EXPECT_NE(fixture.lua("graphics2d.newMaterial(shader, {missing = 1})").find("has no uniform named \"missing\""), std::string::npos);
     EXPECT_NE(fixture.lua("tint:set('tint', 1)").find("takes 4 numbers, not 1"), std::string::npos);
-    EXPECT_NE(fixture.lua("tint:get('nothing')").find("has no uniform named nothing"), std::string::npos);
+    EXPECT_NE(fixture.lua("tint:get('nothing')").find("has no uniform named \"nothing\""), std::string::npos);
     EXPECT_NE(fixture.lua("graphics2d.newMaterial(shader, {[1] = 2})").find("uniform names must be strings"), std::string::npos);
     EXPECT_NE(fixture.lua("assets.shader('shaders/missing.shader')").find("error: "), std::string::npos);
 }

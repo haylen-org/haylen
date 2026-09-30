@@ -15,7 +15,7 @@
 
 namespace haylen::audio {
 
-// Plays through a backend that refuses the audio until a test lets it through, the way a browser without AudioWorklet or an iOS audio session that another app holds refuses it. The device it opens never asks for samples.
+// Plays through a backend that refuses the audio until a test lets it through, the way a browser without `AudioWorklet` or an iOS audio session that another app holds refuses it. The device it opens never asks for samples.
 class AudioOutputTest : public MixerFixture {
   protected:
     static constexpr float kFrameSeconds = 1.0F / 60.0F;

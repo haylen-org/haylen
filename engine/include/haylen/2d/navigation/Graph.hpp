@@ -40,10 +40,10 @@ class Graph final {
     // Tells whether a path may step from the first point into the second.
     [[nodiscard]] bool isConnected(std::int64_t from, std::int64_t to) const;
 
-    // Fills ids with the points reachable in one step from the point, in the order they were connected.
+    // Fills `ids` with the points reachable in one step from the point, in the order they were connected.
     void getNeighbors(std::int64_t id, std::vector<std::int64_t>& ids) const;
 
-    // Fills ids with the id of every point in ascending order.
+    // Fills `ids` with the id of every point in ascending order.
     void getPoints(std::vector<std::int64_t>& ids) const;
 
     // Returns the point closest to the position, where ties go to the smaller id, or nothing in an empty graph.

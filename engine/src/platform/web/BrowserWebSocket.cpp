@@ -68,7 +68,7 @@ void BrowserWebSocket::deliver(int socket, Event event) {
 
 } // namespace haylen::net
 
-// Entry points for the browser socket events, called through Module.haylen in platform/web/haylen-runtime.js.
+// Entry points for the browser socket events, called through `Module.haylen` in `platform/web/haylen-runtime.js`.
 extern "C" {
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_socket_opened(int id, const char* protocol) {

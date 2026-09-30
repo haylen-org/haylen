@@ -1,4 +1,4 @@
--- Text: sizes, a color, an outline and a blurred shadow, a paragraph aligned and wrapped in a box, anchors around one point, rotation, a box from measureText and a line of rich text markup.
+-- Text: sizes, a color, an outline and a blurred shadow, a paragraph aligned and wrapped in a box, anchors around one point, rotation, a box from `measureText` and a line of rich text markup.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -13,7 +13,7 @@ local kParagraph = 'Text wraps whole words at the width of its box, and every li
 local kCode = [[
 graphics2d.drawText(nil, 'Victory', x, y, {size = 72, color = '#FFFFE070', outlineWidth = 4, shadowOffset = {6, 6}, shadowColor = '#A0000000', shadowBlur = 6})
 graphics2d.drawText(nil, paragraph, x, y, {size = 26, maxWidth = 420, align = 'fill', lineSpacing = 1.3})
-local width, height = graphics2d.measureText(nil, 'Measured', {size = 48})  -- the box drawText fills]]
+local width, height = graphics2d.measureText(nil, 'Measured', {size = 48})  -- The box `drawText` fills.]]
 
 function Text:enter()
     self.align, self.width, self.time = 'left', 420, 0

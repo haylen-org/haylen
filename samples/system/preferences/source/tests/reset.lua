@@ -1,4 +1,4 @@
--- Reset to defaults: every setting the sample keeps next to its default, with the changed ones marked, and the two ways back: one group with preferences.remove and the engine defaults, or everything with preferences.clear.
+-- Reset to defaults: every setting the sample keeps next to its default, with the changed ones marked, and the two ways back: one group with `preferences.remove` and the engine defaults, or everything with `preferences.clear`.
 local assets = require('haylen.assets')
 local audio = require('haylen.audio')
 local haylen = require('haylen')
@@ -58,7 +58,7 @@ function Reset:content()
         ui.dialog{id = 'confirm', title = 'Reset everything?', message = 'Every preference goes back to its default and is saved at once.', buttons = {{id = 'cancel', text = 'Cancel'}, {id = 'reset', text = 'Reset', variant = 'destructive'}}, onAnswer = function(event)
             if event.button == 'reset' then
                 settings.reset()
-                self:refresh('settings.reset() cleared the preferences, applied the defaults and saved them.')
+                self:refresh('The function "settings.reset()" cleared the preferences, applied the defaults and saved them.')
             end
         end},
     }
@@ -123,7 +123,7 @@ function Reset:resetAudio()
     end
     preferences.capture()
     preferences.save()
-    self:refresh("preferences.remove('audio') dropped the group, and capturing the default mix stored it again.")
+    self:refresh("The call \"preferences.remove('audio')\" dropped the group, and capturing the default mix stored it again.")
 end
 
 return Reset

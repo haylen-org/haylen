@@ -41,7 +41,7 @@ void Runtime::runChunk(lua_State* L, std::string_view source, const std::string&
     protectedCall(L, 0, 0);
 }
 
-// Mirrors the stand-alone interpreter: strings and numbers are the message, values with __tostring describe themselves and other values name their type.
+// Mirrors the stand-alone interpreter: strings and numbers are the message, values with `__tostring` describe themselves and other values name their type.
 std::string Runtime::describeValue(lua_State* L, int index) {
     if (lua_isstring(L, index) != 0) {
         return lua_tostring(L, index);
@@ -121,7 +121,7 @@ Error Runtime::captureError(lua_State* L, const std::string& text, int level) {
             break;
         }
 
-        // Only the task wrapper and the coroutine entry of Varn lie below the task chunk, and the native frame right above it is the xpcall that runs the task.
+        // Only the task wrapper and the coroutine entry of Varn lie below the task chunk, and the native frame right above it is the `xpcall` that runs the task.
         if (std::string_view(info.source) == kTaskChunk) {
             if (!frames.empty() && frames.back().kind == Error::Frame::Kind::C) {
                 frames.pop_back();

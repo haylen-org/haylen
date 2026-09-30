@@ -1,4 +1,4 @@
--- A file browser of the user folder: fs.readdir lists a folder, fs.stat tells folders from files with their sizes and dates, and fs.open reads the start of a file for the preview, all awaited in tasks of the scene.
+-- A file browser of the user folder: `fs.readdir` lists a folder, `fs.stat` tells folders from files with their sizes and dates, and `fs.open` reads the start of a file for the preview, all awaited in tasks of the scene.
 local fs = require('fs')
 local haylen = require('haylen')
 local storage = require('haylen.storage')
@@ -54,7 +54,7 @@ function Browser:content()
                 end},
                 ui.button{id = 'delete', text = 'Delete', variant = 'destructive', onClick = function(event)
                     if self.selected then
-                        event.document:set('confirm', {open = true, message = self:relative(self.selected) .. ' will be removed.'})
+                        event.document:set('confirm', {open = true, message = 'The file "' .. self:relative(self.selected) .. '" will be removed.'})
                     end
                 end},
                 ui.button{id = 'examples', text = 'Add examples', onClick = function()
@@ -83,7 +83,7 @@ function Browser:enter()
     self:open('')
 end
 
--- Returns the path of an entry inside the user folder, such as notes/today.txt.
+-- Returns the path of an entry inside the user folder, such as `notes/today.txt`.
 function Browser:relative(name)
     return self.folder == '' and name or self.folder .. '/' .. name
 end

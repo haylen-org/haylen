@@ -10,7 +10,7 @@
 
 namespace haylen::platform {
 
-// The C declaration of a native callback, such as void (int code, const char* text, const uint8_t data[size], size_t size). Callbacks return nothing, and each parameter is a number, a boolean, a pointer, a text or a range of bytes that an array declarator bounds by a fixed count or by another parameter.
+// The C declaration of a native callback, such as `void (int code, const char* text, const uint8_t data[size], size_t size)`. Callbacks return nothing, and each parameter is a number, a boolean, a pointer, a text or a range of bytes that an array declarator bounds by a fixed count or by another parameter.
 class NativeSignature final {
   public:
     struct Parameter {
@@ -33,7 +33,7 @@ class NativeSignature final {
         std::optional<std::size_t> lengthParameter;
     };
 
-    // Throws std::invalid_argument that points at what the declaration gets wrong.
+    // Throws `std::invalid_argument` that points at what the declaration gets wrong.
     [[nodiscard]] static NativeSignature parse(std::string_view declaration);
 
     [[nodiscard]] const std::vector<Parameter>& getParameters() const noexcept {

@@ -6,7 +6,7 @@ return {
     {id = 'zoom', title = 'Zoom', description = 'Zoom around the pointer with the wheel, a pinch, keys or triggers, within limits.', module = 'tests.zoom'},
     {id = 'framing', title = 'Framing several targets', description = 'A camera that keeps three players in view, zooming out as they spread.', module = 'tests.framing'},
     {id = 'shake', title = 'Shake', description = 'Trauma shake in every direction and directional recoil.', module = 'tests.shake'},
-    {id = 'rotation', title = 'Rotation', description = 'A turning view with rotation smoothing, and ignoreRotation keeping it upright.', module = 'tests.rotation'},
+    {id = 'rotation', title = 'Rotation', description = 'A turning view with rotation smoothing, and "ignoreRotation" keeping it upright.', module = 'tests.rotation'},
     {id = 'split-screen', title = 'Split screen', description = 'Two players, each with a camera in its own half of the screen.', module = 'tests.split-screen'},
     {id = 'minimap', title = 'Minimap', description = 'A second camera in a corner viewport that leaves details out with visibility bits.', module = 'tests.minimap'},
     {id = 'blend', title = 'Blending cameras', description = 'Smooth cuts between a player camera and a landmark camera.', module = 'tests.blend'},

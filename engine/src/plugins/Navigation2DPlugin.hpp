@@ -4,7 +4,7 @@
 
 namespace haylen::plugins {
 
-// Installs haylen.navigation2d with grid path finding and steering.
+// Installs `haylen.navigation2d` with grid path finding and steering.
 class Navigation2DPlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {

@@ -38,7 +38,7 @@ float Effect::Parameters::getNumber(std::string_view key, float byDefault) const
     if (found == values.end()) {
         return byDefault;
     }
-    throw std::invalid_argument("The " + std::string(key) + " of [" + effect + "] must be a number, not " + found->second + ".");
+    throw std::invalid_argument("The \"" + std::string(key) + "\" of \"[" + effect + "]\" must be a number, not \"" + found->second + "\".");
 }
 
 math::Color Effect::Parameters::getColor(std::string_view key, math::Color byDefault) const {
@@ -49,7 +49,7 @@ math::Color Effect::Parameters::getColor(std::string_view key, math::Color byDef
     if (found == values.end()) {
         return byDefault;
     }
-    throw std::invalid_argument("The " + std::string(key) + " of [" + effect + "] must be a color such as red or #RRGGBB, not " + found->second + ".");
+    throw std::invalid_argument("The \"" + std::string(key) + "\" of \"[" + effect + "]\" must be a color such as \"red\" or \"#RRGGBB\", not \"" + found->second + "\".");
 }
 
 // The easing curve of the effects, where a curve above 1 eases in, between 0 and 1 eases out and below 0 eases in and out.
@@ -87,7 +87,7 @@ void Effect::wave(Glyph& glyph, const Parameters& parameters) {
     glyph.offset.y += std::sin(frequency * glyph.time + glyph.position.x / kPhaseSpan) * amplitude / 10.0F;
 }
 
-// Each character jumps to a new random offset rate times a second, easing there over the first half of the step.
+// Each character jumps to a new random offset `rate` times a second, easing there over the first half of the step.
 void Effect::shake(Glyph& glyph, const Parameters& parameters) {
     const float rate = std::max(parameters.getNumber("rate", 20.0F), 0.001F);
     const float level = parameters.getNumber("level", 5.0F);

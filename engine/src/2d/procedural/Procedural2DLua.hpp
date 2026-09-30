@@ -32,18 +32,18 @@ template <> struct Type<procedural2d::Region> {
 
 namespace haylen::procedural2d {
 
-// Installs haylen.procedural2d with regions, scattering, the Delaunay class and Voronoi diagrams, and the map generators of MapGeneratorsLua. Functions that take options read the generator from a random field or seed a new one from a seed field.
+// Installs `haylen.procedural2d` with regions, scattering, the `Delaunay` class and Voronoi diagrams, and the map generators of `MapGeneratorsLua`. Functions that take options read the generator from a `random` field or seed a new one from a `seed` field.
 class Procedural2DLua final {
   public:
     static void install(lua_State* L);
 
-    // Returns the generator of the options at index: the Random userdata of its random field, which stays on the stack, or local seeded with its seed field.
+    // Returns the generator of the options at index: the `Random` userdata of its `random` field, which stays on the stack, or `local` seeded with its `seed` field.
     [[nodiscard]] static math::Random& readGenerator(lua_State* L, int index, math::Random& local);
 
-    // Reads a Region, a Rect or rectangle table, {center, radius, innerRadius}, {polygon = shape} or a Tiled object table.
+    // Reads a `Region`, a `Rect` or rectangle table, `{center, radius, innerRadius}`, `{polygon = shape}` or a Tiled object table.
     [[nodiscard]] static Region readRegion(lua_State* L, int index);
 
-    // Runs work on the task pool and returns a promise that settles on the frame thread, pushing the result with push.
+    // Runs work on the task pool and returns a promise that settles on the frame thread, pushing the result with `push`.
     template <typename Work, typename Push> static int spawn(lua_State* L, Work&& work, Push push) {
         core::Engine& engine = lua::Runtime::getEngine(L);
         const lua::Promise promise(engine);
@@ -78,7 +78,7 @@ class Procedural2DLua final {
         }
     }
 
-    // Pushes the value kept under name in the user value of the object at index 1, which push builds and pushes the first time.
+    // Pushes the value kept under `name` in the user value of the object at index 1, which `push` builds and pushes the first time.
     template <typename Push> static void pushCached(lua_State* L, const char* name, Push&& push) {
         lua::Userdata::pushField(L, 1, name);
         if (!lua_isnil(L, -1)) {
@@ -90,7 +90,7 @@ class Procedural2DLua final {
     }
 
     [[nodiscard]] static Region readTiledObject(lua_State* L, int table);
-    // Reads a noise table {seed, frequency, octaves, gain} into a function of fractal noise, mapped from [-1, 1] to [0, 1] when normalized.
+    // Reads a noise table `{seed, frequency, octaves, gain}` into a function of fractal noise, mapped from [-1, 1] to [0, 1] when normalized.
     [[nodiscard]] static std::function<float(math::Vec2)> readNoise(lua_State* L, int index, bool normalized);
     // Reads a function field of the options, calling it from Lua, or nothing when absent. Only synchronous calls may use it.
     [[nodiscard]] static std::function<float(math::Vec2)> readCallback(lua_State* L, int index);

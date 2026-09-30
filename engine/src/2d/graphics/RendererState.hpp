@@ -149,7 +149,7 @@ struct RendererState {
     // Adds a shade that copies the values a material has now, for the post-processing passes of the frame.
     std::uint32_t addMaterialShade(const Material& material);
 
-    // Tells whether a blend mode expects colors premultiplied by their alpha from the shader, which the programs then write through haylen_output.
+    // Tells whether a blend mode expects colors premultiplied by their alpha from the shader, which the programs then write through `haylen_output`.
     [[nodiscard]] static bool expectsPremultiplied(graphics::BlendMode::Type mode) noexcept;
 
     // Returns the pipeline of a program, blend mode and pass target, creating it on first use. The light program takes the blend of the light instead.

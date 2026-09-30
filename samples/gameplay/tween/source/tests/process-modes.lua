@@ -1,4 +1,4 @@
--- Process modes: tweens in every process mode next to a tween on real time, with the game pause and the time scale on the panel. The test itself runs in the always mode, so it keeps answering while the game is paused.
+-- Process modes: tweens in every process mode next to a tween on real time, with the game pause and the time scale on the panel. The test itself runs in the `always` mode, so it keeps answering while the game is paused.
 local haylen = require('haylen')
 local tween = require('haylen.tween')
 local ui = require('haylen.ui')
@@ -17,9 +17,9 @@ local kLanes = {
     {label = 'unscaled', options = {processMode = 'always', unscaled = true}},
 }
 local kCode = [[
-tween.to(box, 1.5, {x = 1000}, {processMode = 'whenPaused'})  -- 'pausable', 'whenPaused', 'always', 'disabled' or 'inherit'
-tween.to(box, 1.5, {x = 1000}, {owner = scene})  -- inherit takes the mode of the owner, this scene runs 'always'
-tween.to(box, 1.5, {x = 1000}, {unscaled = true})  -- real time, whatever haylen.setTimeScale says]]
+tween.to(box, 1.5, {x = 1000}, {processMode = 'whenPaused'})  -- One of `'pausable'`, `'whenPaused'`, `'always'`, `'disabled'` or `'inherit'`.
+tween.to(box, 1.5, {x = 1000}, {owner = scene})  -- The mode `inherit` takes the mode of the owner, this scene runs `'always'`.
+tween.to(box, 1.5, {x = 1000}, {unscaled = true})  -- Real time, whatever `haylen.setTimeScale` says.]]
 
 function ProcessModes:enter()
     self.boxes = {}
@@ -32,7 +32,7 @@ function ProcessModes:enter()
         tween.to(self.boxes[index], 1.5, {x = 1000}, options)
     end
     self:frame({
-        hint = 'Pause the game and change the time scale. Disabled never runs, and the inherit lane follows this scene.',
+        hint = 'Pause the game and change the time scale. The "disabled" mode never runs, and the "inherit" lane follows this scene.',
         code = kCode,
         controls = {
             ui.toggle{id = 'pause', text = 'Pause the game', onChange = function(event) haylen.setPaused(event.checked) end},

@@ -67,7 +67,7 @@ A table with the configuration read from `app.json`, with defaults filled in for
 | `design.height` | number | `1080` | Design resolution height in units. |
 | `design.scaling` | string | `'expand'` | Scaling policy, see `haylen.viewport`. |
 | `orientation` | string | `'landscape'` | `'landscape'`, `'portrait'` or `'any'`. |
-| `fixedRate` | number | `60` | Fixed updates per second. `haylen.fixedStep()` returns the matching step length in seconds. |
+| `fixedRate` | number | `60` | Fixed updates per second. The function `haylen.fixedStep()` returns the matching step length in seconds. |
 | `maxFrameTime` | number | `0.25` | Longest frame duration in seconds that the clock accepts. |
 | `clearColor` | string | `'#FF000000'`, or `'#00000000'` for a transparent window | Background color as `#AARRGGBB`. |
 | `splash.logo` | string | `''` | Image of the launch screen relative to `content/`, empty for the Haylen logo. |
@@ -82,8 +82,8 @@ A table with the configuration read from `app.json`, with defaults filled in for
 | `debug.safeArea` | string or table | absent | The safe area simulated instead of the one of the device, present only when `app.json` sets it, see [`viewport.setSafeAreaSimulation`](viewport.md#viewportsetsafeareasimulationvalue). |
 | `debug.showSafeArea` | boolean | `false` | Whether the debug view of the safe area shows from the start, see [`ui.setSafeAreaVisible`](ui.md#uisetsafeareavisiblevisible). |
 | `autoload` | list of strings | `{}` | Modules that load as autoloads before `source/main.lua`, see `haylen.autoload`. |
-| `native` | table | `{}` | The native libraries the app ships by name, as `app.json` lists them for make.py, see the [native code guide](../native.md#packaging-libraries-with-an-app). |
-| `plugins` | table | `{}` | The plugins of the app by id with the parameter values that `app.json` gives them, see the [plugin guide](../plugins.md). [`platform.plugin(id).config`](platform.md#plugin-handles) adds the defaults of their parameters. |
+| `native` | table | `{}` | The native libraries the app ships by name, as `app.json` lists them for `make.py`, see the [native code guide](../native.md#packaging-libraries-with-an-app). |
+| `plugins` | table | `{}` | The plugins of the app by id with the parameter values that `app.json` gives them, see the [plugin guide](../plugins.md). The field [`platform.plugin(id).config`](platform.md#plugin-handles) adds the defaults of their parameters. |
 
 ```lua
 local haylen = require('haylen')
@@ -199,7 +199,7 @@ require('haylen.scene').push({
 
 ### haylen.timeScale()
 
-Returns the current time scale. `1` is normal speed.
+Returns the current time scale. The value `1` is normal speed.
 
 ```lua
 local haylen = require('haylen')
@@ -210,7 +210,7 @@ print('frozen:', frozen)
 
 ### haylen.setTimeScale(scale)
 
-Sets the speed of app time. `0.5` plays at half speed, `0` freezes app time and values above `1` speed the app up. Negative values count as `0`. A frozen app still calls updates, with a delta of zero, and `haylen.setPaused` is the way to stop what the pause should stop. The scale applies to `haylen.delta()`, `haylen.elapsed()`, the `dt` of scene updates, and timers and tweens that are not `unscaled`. Fixed updates keep their step length but run less or more often, so a physics world stepped from `fixedUpdate` slows down with the rest of the app. `haylen.unscaledDelta()` is not affected.
+Sets the speed of app time. The scale `0.5` plays at half speed, `0` freezes app time and values above `1` speed the app up. Negative values count as `0`. A frozen app still calls updates, with a delta of zero, and `haylen.setPaused` is the way to stop what the pause should stop. The scale applies to `haylen.delta()`, `haylen.elapsed()`, the `dt` of scene updates, and timers and tweens that are not `unscaled`. Fixed updates keep their step length but run less or more often, so a physics world stepped from `fixedUpdate` slows down with the rest of the app. The function `haylen.unscaledDelta()` is not affected.
 
 ```lua
 local haylen = require('haylen')
@@ -281,7 +281,7 @@ print('paused:', haylen.paused()) -- paused: false
 
 ### haylen.setPaused(paused)
 
-Pauses or unpauses the game. Scenes, autoloads, timers and tweens in the `'pausable'` process mode stop, those in `'whenPaused'` start, and fixed steps stop accumulating. The scenes that the change stops or starts get `paused` or `unpaused`, and the change publishes the `paused` or `unpaused` event of [haylen.events](events.md). The [lifecycle guide](../lifecycle.md#pause-and-process-modes) explains the process modes.
+Pauses or unpauses the game. Scenes, autoloads, timers and tweens in the `'pausable'` process mode stop, those in `'whenPaused'` start, and fixed steps stop accumulating. The scenes that the change stops or starts get `paused` or `unpaused`, and the change publishes the `paused` or `unpaused` event of [`haylen.events`](events.md). The [lifecycle guide](../lifecycle.md#pause-and-process-modes) explains the process modes.
 
 ```lua
 local haylen = require('haylen')
@@ -328,7 +328,7 @@ end)
 
 ### haylen.networkState()
 
-Returns whether the device reaches the network, as the platform last reported it: `'online'`, `'offline'`, or `'unknown'` until a report arrives. Browsers, Android and Apple platforms, macOS included, report the network from the start, usually by the first frame, and then publish every change as the `networkOnline` and `networkOffline` events of [haylen.events](events.md#engine-events). Windows, Linux and the headless host never report it, so it stays `'unknown'` there.
+Returns whether the device reaches the network, as the platform last reported it: `'online'`, `'offline'`, or `'unknown'` until a report arrives. Browsers, Android and Apple platforms, macOS included, report the network from the start, usually by the first frame, and then publish every change as the `networkOnline` and `networkOffline` events of [`haylen.events`](events.md#engine-events). Windows, Linux and the headless host never report it, so it stays `'unknown'` there.
 
 ```lua
 local haylen = require('haylen')
@@ -366,7 +366,7 @@ print(options.pauseOnBackground, options.pauseOnFocusLoss, options.muteOnFocusLo
 
 ### haylen.setLifecycle(options)
 
-Changes the lifecycle options that `options` names and keeps the others. Unknown keys raise `Unknown option '<key>'.`
+Changes the lifecycle options that `options` names and keeps the others. Unknown keys raise `Unknown option "<key>".`
 
 | Key | Type | Meaning |
 | --- | --- | --- |
@@ -385,10 +385,10 @@ haylen.setLifecycle({pauseOnFocusLoss = false, muteOnFocusLoss = false})
 
 Loads `module` as an autoload, calls its `start` and returns its table. An autoload lives for the whole app, gets the callbacks the [lifecycle guide](../lifecycle.md#autoloads) lists and is kept in `haylen.autoloads` under `name`. With one argument, the name is the last part of the module in camel case, so `haylen.autoload('state.player-data')` names it `playerData`. Autoloads listed in the `autoload` field of `app.json` load before `source/main.lua` runs.
 
-The module must return a table, a name can only be taken once and a table can only be one autoload, otherwise the call raises `The autoload module '<module>' must return a table.`, `An autoload named '<name>' already exists.` or `The module '<module>' is already the autoload '<name>'.`
+The module must return a table, a name can only be taken once and a table can only be one autoload, otherwise the call raises `The autoload module "<module>" must return a table.`, `An autoload named "<name>" already exists.` or `The module "<module>" is already the autoload "<name>".`
 
 ```lua
--- source/systems/music.lua
+-- The file `source/systems/music.lua`.
 local music = {processMode = 'always', track = 'day'}
 
 function music:start()

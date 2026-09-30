@@ -1,6 +1,6 @@
 # haylen.collections
 
-`haylen.collections` provides object pools that recycle Lua values, such as sprites, bullets and particles, so hot paths stop creating garbage, ring buffers that keep the newest values of a history, such as recent positions for a trail or frame times for a graph, and float buffers that Lua and C++ share, so thousands of sprites or bodies change without a table for each one.
+The module `haylen.collections` provides object pools that recycle Lua values, such as sprites, bullets and particles, so hot paths stop creating garbage, ring buffers that keep the newest values of a history, such as recent positions for a trail or frame times for a graph, and float buffers that Lua and C++ share, so thousands of sprites or bodies change without a table for each one.
 
 ```lua
 local collections = require('haylen.collections')
@@ -10,7 +10,7 @@ local collections = require('haylen.collections')
 
 ### collections.newPool(options)
 
-Creates a `Pool`. Objects come from the `create` function the first time and are recycled after that. Unknown keys raise `Unknown option '<key>'.`, a missing `create` raises `create must be a function`, and a `create` that returns `nil` raises `The create function of the pool returned nil.`
+Creates a `Pool`. Objects come from the `create` function the first time and are recycled after that. Unknown keys raise `Unknown option "<key>".`, a missing `create` raises `create must be a function`, and a `create` that returns `nil` raises `The "create" function of the pool returned "nil".`
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -75,7 +75,7 @@ print(pool:release(item), pool:release(item)) -- true false
 
 ### pool:releaseAll(), pool:each(fn), pool:prewarm(count)
 
-`releaseAll` releases every active object. `each` calls `fn(object)` for every active object, from a list taken before the first call, so `fn` may release objects. `prewarm` creates idle objects until the pool holds `count` objects or reaches its capacity.
+The method `releaseAll` releases every active object. The method `each` calls `fn(object)` for every active object, from a list taken before the first call, so `fn` may release objects. The method `prewarm` creates idle objects until the pool holds `count` objects or reaches its capacity.
 
 ```lua
 local collections = require('haylen.collections')
@@ -118,7 +118,7 @@ print(trail.capacity, trail.size) -- 16 0
 
 ### buffer:push(value), buffer:pop()
 
-`push` appends a value as the newest one and returns `true` when the oldest value had to go to make room. `pop` removes and returns the oldest value, or `nil` when the buffer is empty.
+The method `push` appends a value as the newest one and returns `true` when the oldest value had to go to make room. The method `pop` removes and returns the oldest value, or `nil` when the buffer is empty.
 
 ```lua
 local collections = require('haylen.collections')
@@ -132,7 +132,7 @@ print(inputs:pop(), inputs.size) -- left 2
 
 ### buffer:front(), buffer:back(), buffer:get(position), buffer:values()
 
-`front` returns the oldest value and `back` the newest one, or `nil` when the buffer is empty. `get` returns the value at a position from 1 for the oldest, or `nil` past the newest. `values` returns a list from the oldest to the newest value.
+The method `front` returns the oldest value and `back` the newest one, or `nil` when the buffer is empty. The method `get` returns the value at a position from 1 for the oldest, or `nil` past the newest. The method `values` returns a list from the oldest to the newest value.
 
 ```lua
 local collections = require('haylen.collections')
@@ -155,7 +155,7 @@ require('haylen.scene').push({
 
 ### buffer:clear(), buffer.size, buffer.capacity, buffer.full
 
-`clear` removes every value. `size` is the number of values, `capacity` the most values the buffer holds and `full` whether it holds that many.
+The method `clear` removes every value. The property `size` is the number of values, `capacity` the most values the buffer holds and `full` whether it holds that many.
 
 ```lua
 local collections = require('haylen.collections')
@@ -170,7 +170,7 @@ print(frames.size) -- 0
 
 ## Float buffers
 
-A float buffer holds a fixed number of floats in memory that C++ reads and writes in place. Lua fills it one value at a time with `buffer[index]` or many values at once with `set`, and the bulk APIs of the engine take it instead of a table per item: `graphics2d.drawBatch` and `SpriteBatch:writeFields` of [haylen.graphics2d](graphics2d.md) read sprites from it, `world:readTransforms` of [haylen.physics2d](physics2d.md) writes the transforms of many bodies into it, and `emitter:readPositions` of [haylen.particles2d](particles2d.md) writes particle positions into it. Values count from one like a Lua array, and every access checks the bounds, raising `Float buffer positions <first> to <last> fall outside its size of <size>.` outside them. Values are stored as 32-bit floats, like the GPU uses them. The [performance section of the Lua guide](../lua.md#performance) shows when a buffer pays off.
+A float buffer holds a fixed number of floats in memory that C++ reads and writes in place. Lua fills it one value at a time with `buffer[index]` or many values at once with `set`, and the bulk APIs of the engine take it instead of a table per item: `graphics2d.drawBatch` and `SpriteBatch:writeFields` of [`haylen.graphics2d`](graphics2d.md) read sprites from it, `world:readTransforms` of [`haylen.physics2d`](physics2d.md) writes the transforms of many bodies into it, and `emitter:readPositions` of [`haylen.particles2d`](particles2d.md) writes particle positions into it. Values count from one like a Lua array, and every access checks the bounds, raising `Float buffer positions <first> to <last> fall outside its size of <size>.` outside them. Values are stored as 32-bit floats, like the GPU uses them. The [performance section of the Lua guide](../lua.md#performance) shows when a buffer pays off.
 
 ### collections.newFloatBuffer(size, value)
 

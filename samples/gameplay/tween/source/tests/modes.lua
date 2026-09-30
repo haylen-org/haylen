@@ -1,4 +1,4 @@
--- To, from, by and fromTo: four boxes that take their start and end values in the four ways, replayed together.
+-- The functions `to`, `from`, `by` and `fromTo`: four boxes that take their start and end values in the four ways, replayed together.
 local haylen = require('haylen')
 local input = require('haylen.input')
 local tween = require('haylen.tween')
@@ -10,15 +10,15 @@ local Modes = haylen.class('Modes', sample.Test)
 
 local kLabels = {'to', 'from', 'by', 'fromTo'}
 local kCode = [[
-tween.to(a, 1.2, {x = 900})  -- from where it is to 900
-tween.from(b, 1.2, {x = 900})  -- from 900 back to where it is
-tween.by(c, 1.2, {x = 250})  -- 250 further than where it is
-tween.fromTo(d, 1.2, {x = 100}, {x = 700})  -- from 100 to 700, wherever it is]]
+tween.to(a, 1.2, {x = 900})  -- From where it is to 900.
+tween.from(b, 1.2, {x = 900})  -- From 900 back to where it is.
+tween.by(c, 1.2, {x = 250})  -- 250 further than where it is.
+tween.fromTo(d, 1.2, {x = 100}, {x = 700})  -- From 100 to 700, wherever it is.]]
 
 function Modes:enter()
     self.boxes = {{x = 100}, {x = 100}, {x = 100}, {x = 500}}
     self:frame({
-        hint = 'Replay with the button, R or the west button. The by box moves on from where it stopped.',
+        hint = 'Replay with the button, R or the west button. The "by" box moves on from where it stopped.',
         code = kCode,
         controls = {ui.button{id = 'replay', text = 'Replay', variant = 'primary', onClick = function() self:play() end}},
         focus = 'replay',

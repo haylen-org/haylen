@@ -19,7 +19,7 @@ namespace haylen::physics2d {
 
 class World;
 
-// Installs the PhysicsWorld class of haylen.physics2d. The user value of a world object is its state table, which holds the event callbacks and the data of its bodies.
+// Installs the `PhysicsWorld` class of `haylen.physics2d`. The user value of a world object is its state table, which holds the event callbacks and the data of its bodies.
 class WorldLua final {
   public:
     static void install(lua_State* L);

@@ -16,7 +16,7 @@ Material::Material(graphics::Shader shader) {
     }
     for (const std::string_view program : kPrograms) {
         if (!shader.hasProgram(program)) {
-            throw std::invalid_argument(std::format("The shader {} has no {} program. Compile it with make.py shaders from a source that includes haylen/material.glsl.", shader.getName(), program));
+            throw std::invalid_argument(std::format("The shader \"{}\" has no \"{}\" program. Compile it with \"make.py shaders\" from a source that includes \"haylen/material.glsl\".", shader.getName(), program));
         }
     }
     resource = std::make_shared<MaterialResource>();
@@ -38,7 +38,7 @@ const graphics::Shader::Uniform& Material::findUniform(std::string_view name) co
     const graphics::Shader& shader = getChecked().shader;
     const graphics::Shader::Uniform* uniform = shader.findUniform(name);
     if (uniform == nullptr) {
-        throw std::invalid_argument(std::format("The shader {} has no uniform named {}.", shader.getName(), name));
+        throw std::invalid_argument(std::format("The shader \"{}\" has no uniform named \"{}\".", shader.getName(), name));
     }
     return *uniform;
 }
@@ -65,7 +65,7 @@ void Material::set(std::string_view name, math::Color value) {
     set(name, values);
 }
 
-// The transform moves x to a x + c y + tx and y to b x + d y + ty, and the matrix keeps z and w in place.
+// The transform moves x to `a x + c y + tx` and y to `b x + d y + ty`, and the matrix keeps z and w in place.
 void Material::set(std::string_view name, const math::Transform2D& value) {
     const std::array<float, 16> values{value.a, value.b, 0.0F, 0.0F, value.c, value.d, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, value.tx, value.ty, 0.0F, 1.0F};
     set(name, values);
@@ -75,7 +75,7 @@ void Material::set(std::string_view name, std::span<const float> values) {
     const graphics::Shader::Uniform& uniform = findUniform(name);
     const auto expected = static_cast<std::size_t>(uniform.count * graphics::Shader::getComponentCount(uniform.type));
     if (values.size() != expected) {
-        throw std::invalid_argument(std::format("The uniform {} is {} {}, which takes {} numbers, not {}.", name, uniform.count > 1 ? std::format("an array of {}", uniform.count) : std::string("a"), graphics::Shader::uniformTypeName(uniform.type), expected, values.size()));
+        throw std::invalid_argument(std::format("The uniform \"{}\" is {} \"{}\", which takes {} numbers, not {}.", name, uniform.count > 1 ? std::format("an array of {}", uniform.count) : std::string("a"), graphics::Shader::uniformTypeName(uniform.type), expected, values.size()));
     }
 
     MaterialResource& state = getChecked();
@@ -86,7 +86,7 @@ void Material::set(std::string_view name, std::span<const float> values) {
 void Material::setTexture(std::string_view name, graphics::Texture texture) {
     const graphics::Shader& shader = getChecked().shader;
     if (shader.findTexture(name) == nullptr) {
-        throw std::invalid_argument(std::format("The shader {} has no texture named {}.", shader.getName(), name));
+        throw std::invalid_argument(std::format("The shader \"{}\" has no texture named \"{}\".", shader.getName(), name));
     }
 
     MaterialResource& state = getChecked();
@@ -105,7 +105,7 @@ std::vector<float> Material::get(std::string_view name) const {
 graphics::Texture Material::getTexture(std::string_view name) const {
     const MaterialResource& state = getChecked();
     if (state.shader.findTexture(name) == nullptr) {
-        throw std::invalid_argument(std::format("The shader {} has no texture named {}.", state.shader.getName(), name));
+        throw std::invalid_argument(std::format("The shader \"{}\" has no texture named \"{}\".", state.shader.getName(), name));
     }
     const auto found = state.textures.find(name);
     return found == state.textures.end() ? graphics::Texture{} : found->second;

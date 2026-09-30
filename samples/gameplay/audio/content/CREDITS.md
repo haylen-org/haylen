@@ -13,4 +13,4 @@ The recordings in `audio/` come from the sounds of the Tiny Island sample and ar
 | `audio/music/old_tower_inn.mp3` | [Medieval: The Old Tower Inn](https://opengameart.org/content/medieval-the-old-tower-inn) | RandomMind |
 | `audio/music/market_day.mp3` | [Medieval: Market Day](https://opengameart.org/content/medieval-market-day) | RandomMind |
 
-`audio/generated/hum_loop.wav` and `audio/generated/pluck_loop.wav` were synthesized for this sample and are released under CC0 1.0 as well.
+The files `audio/generated/hum_loop.wav` and `audio/generated/pluck_loop.wav` were synthesized for this sample and are released under CC0 1.0 as well.

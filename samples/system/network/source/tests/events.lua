@@ -1,4 +1,4 @@
--- Connection events: a socket reports open, message, error, disconnect, reconnecting and close to its own listeners, and the event bus hears webSocketConnected, webSocketDisconnected and webSocketReconnecting from every socket, together with networkOnline and networkOffline where the platform reports the network. net.openSocketCount counts the sockets the engine keeps alive.
+-- Connection events: a socket reports `open`, `message`, `error`, `disconnect`, `reconnecting` and `close` to its own listeners, and the event bus hears `webSocketConnected`, `webSocketDisconnected` and `webSocketReconnecting` from every socket, together with `networkOnline` and `networkOffline` where the platform reports the network. The function `net.openSocketCount` counts the sockets the engine keeps alive.
 local haylen = require('haylen')
 local net = require('haylen.net')
 local ui = require('haylen.ui')

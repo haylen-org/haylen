@@ -69,7 +69,7 @@ function island:treeSpots()
     return spots
 end
 
--- Returns the waypoints from one point to another as world positions, or nil when the goal cannot be reached.
+-- Returns the waypoints from one point to another as world positions, or `nil` when the goal cannot be reached.
 function island:path(fromX, fromY, toX, toY)
     local startColumn, startRow = self.map:worldToCell(fromX, fromY)
     local goalColumn, goalRow = self.map:worldToCell(toX, toY)

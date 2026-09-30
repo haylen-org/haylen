@@ -59,7 +59,7 @@ TEST(UserStorageTest, FailedWriteKeepsThePreviousFile) {
     } catch (const std::runtime_error& failure) {
         error = failure.what();
     }
-    EXPECT_EQ(error, "The storage file 'save.json' could not be written.");
+    EXPECT_EQ(error, "The storage file \"save.json\" could not be written.");
     EXPECT_EQ(storage.readText("save.json"), "good");
 }
 
@@ -181,7 +181,7 @@ TEST(StorageLuaTest, ReadsAndWritesUserFiles) {
     const int before = fixture.host().getPersistCount();
     fixture.runLua("storage.flush()");
     EXPECT_EQ(fixture.host().getPersistCount(), before + 1);
-    EXPECT_NE(fixture.lua("return storage.readText('missing.txt')").find("The storage file 'missing.txt' was not found."), std::string::npos);
+    EXPECT_NE(fixture.lua("return storage.readText('missing.txt')").find("The storage file \"missing.txt\" was not found."), std::string::npos);
     EXPECT_NE(fixture.lua("storage.writeText('../escape.txt', 'x')").find("error: "), std::string::npos);
     EXPECT_NE(fixture.lua("storage.writeJson('bad.json', {callback = print})").find("cannot be converted to JSON"), std::string::npos);
 }
@@ -257,12 +257,12 @@ TEST(StorageLuaTest, SavesSlotsPreferencesAndEngineState) {
     EXPECT_EQ(fixture.lua("return preferences.get('audio.volume.music') .. ' ' .. tostring(preferences.get('audio.muted.sfx')) .. ' ' .. tostring(preferences.get('window.fullscreen'))"), "0.6 true true");
     const std::string saved = fixture.engine().getStorage().readText("preferences.json");
     EXPECT_NE(saved.find("\"music\": 0.6"), std::string::npos);
-    EXPECT_EQ(saved.find("0.60000"), std::string::npos) << "captured floats keep their shortest decimal form";
+    EXPECT_EQ(saved.find("0.60000"), std::string::npos) << "Captured floats keep their shortest decimal form.";
     EXPECT_EQ(fixture.lua("preferences.apply() return string.format('%.6f', audio.busVolume('music')) .. ' ' .. tostring(audio.busMuted('sfx')) .. ' ' .. tostring(window.fullscreen()) .. ' ' .. table.concat(input.actionNames(), ',')"), "0.600000 true true jump");
-    EXPECT_NE(fixture.lua("preferences.set('window.fullscreen', 'yes') preferences.apply()").find("The preference 'window.fullscreen' has a value of the wrong type."), std::string::npos);
+    EXPECT_NE(fixture.lua("preferences.set('window.fullscreen', 'yes') preferences.apply()").find("The preference \"window.fullscreen\" has a value of the wrong type."), std::string::npos);
 
     fixture.engine().getStorage().writeText("preferences.json", "{");
-    EXPECT_NE(fixture.lua("preferences.load()").find("The preferences file 'preferences.json' is damaged."), std::string::npos);
+    EXPECT_NE(fixture.lua("preferences.load()").find("The preferences file \"preferences.json\" is damaged."), std::string::npos);
 }
 
 TEST(StorageLuaTest, RunsAsynchronousOperationsInOrderOnTheIoPool) {
@@ -295,10 +295,10 @@ TEST(StorageLuaTest, RunsAsynchronousOperationsInOrderOnTheIoPool) {
     // clang-format on
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(done)") == "true"; }));
     // clang-format off
-    EXPECT_EQ(fixture.lua("return table.concat(results, ' | ')"), "second | true | 42 | cache/world.json,notes.txt | true | The storage file 'notes.txt' was not found. | The path '../outside.txt' must stay inside its root folder. | "
-        "true | 3 | 3 | nil nil | 1 | The save slot name 'bad name' must use 1 to 64 letters, digits, dashes or underscores. | true false");
+    EXPECT_EQ(fixture.lua("return table.concat(results, ' | ')"), "second | true | 42 | cache/world.json,notes.txt | true | The storage file \"notes.txt\" was not found. | The path \"../outside.txt\" must stay inside its root folder. | "
+        "true | 3 | 3 | nil nil | 1 | The save slot name \"bad name\" must use 1 to 64 letters, digits, dashes or underscores. | true false");
     // clang-format on
-    EXPECT_EQ(fixture.host().getPersistCount(), persisted + 3) << "the slot write and both removals flush before they settle";
+    EXPECT_EQ(fixture.host().getPersistCount(), persisted + 3) << "The slot write and both removals flush before they settle.";
 
     // Values become JSON on the frame thread, so a value that cannot raises at once.
     EXPECT_NE(fixture.lua("storage.writeJsonAsync('bad.json', {callback = print})").find("A function cannot be converted to JSON."), std::string::npos);

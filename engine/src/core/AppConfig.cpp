@@ -18,20 +18,20 @@ template <typename T> void AppConfig::readValue(const Json& object, const char* 
     try {
         target = object.at(key).get<T>();
     } catch (const Json::exception&) {
-        throw std::invalid_argument(std::string("The value of '") + key + "' in app.json has the wrong type.");
+        throw std::invalid_argument(std::string("The value of \"") + key + "\" in \"app.json\" has the wrong type.");
     }
 }
 
 void AppConfig::requirePositive(double value, const char* key) {
     if (value <= 0.0) {
-        throw std::invalid_argument(std::string("The value of '") + key + "' in app.json must be positive.");
+        throw std::invalid_argument(std::string("The value of \"") + key + "\" in \"app.json\" must be positive.");
     }
 }
 
 platform::Orientation AppConfig::orientationFromName(const std::string& text) {
     const std::optional<platform::Orientation> orientation = platform::Window::orientationFromName(text);
     if (!orientation) {
-        throw std::invalid_argument("The orientation " + text + " in app.json is unknown. It is landscape, portrait or any.");
+        throw std::invalid_argument("The orientation \"" + text + "\" in \"app.json\" is unknown. It is \"landscape\", \"portrait\" or \"any\".");
     }
     return *orientation;
 }
@@ -46,7 +46,7 @@ audio::Session::Category AppConfig::sessionCategoryFromName(const std::string& t
     if (text == "playback") {
         return audio::Session::Category::Playback;
     }
-    throw std::invalid_argument("The audio.iosSession " + text + " in app.json is unknown. It is ambient, soloAmbient or playback.");
+    throw std::invalid_argument("The \"audio.iosSession\" value \"" + text + "\" in \"app.json\" is unknown. It is \"ambient\", \"soloAmbient\" or \"playback\".");
 }
 
 std::string_view AppConfig::sessionCategoryName(audio::Session::Category value) {
@@ -61,7 +61,7 @@ std::string_view AppConfig::sessionCategoryName(audio::Session::Category value) 
     return "ambient";
 }
 
-// Plugin ids are dash-case, like the folders of the plugins: lowercase words of letters and digits joined by single dashes, starting with a letter.
+// Plugin ids are `dash-case`, like the folders of the plugins: lowercase words of letters and digits joined by single dashes, starting with a letter.
 bool AppConfig::isPluginId(std::string_view text) noexcept {
     if (text.empty() || text.front() < 'a' || text.front() > 'z' || text.back() == '-') {
         return false;
@@ -79,14 +79,14 @@ bool AppConfig::isPluginId(std::string_view text) noexcept {
 
 void AppConfig::readPlugins(const Json& section, AppConfig& config) {
     if (!section.is_object()) {
-        throw std::invalid_argument("The plugins section of app.json must be an object of plugins by id.");
+        throw std::invalid_argument("The \"plugins\" section of \"app.json\" must be an object of plugins by id.");
     }
     for (const auto& [id, values] : section.items()) {
         if (!isPluginId(id)) {
-            throw std::invalid_argument("The plugin id '" + id + "' in app.json is not in dash-case, such as firebase-analytics.");
+            throw std::invalid_argument("The plugin id \"" + id + "\" in \"app.json\" is not in \"dash-case\", such as \"firebase-analytics\".");
         }
         if (!values.is_object()) {
-            throw std::invalid_argument("The plugin " + id + " in app.json must have an object of parameter values.");
+            throw std::invalid_argument("The plugin \"" + id + "\" in \"app.json\" must have an object of parameter values.");
         }
     }
     config.plugins = section;
@@ -97,14 +97,14 @@ AppConfig AppConfig::fromPackage(const io::Package& package) {
     for (const auto& [id, values] : config.plugins.items()) {
         const std::string manifest = io::Path::plugin(id, io::Path::kPluginManifestFile);
         if (!package.exists(manifest)) {
-            throw std::invalid_argument("The plugin " + id + " in app.json has no " + manifest + " in the package.");
+            throw std::invalid_argument("The plugin \"" + id + "\" in \"app.json\" has no \"" + manifest + "\" in the package.");
         }
     }
     return config;
 }
 
 AppConfig AppConfig::fromJson(const Json& document) {
-    JsonValidator::requireKnownKeys(document, {"name", "identifier", "version", "window", "design", "orientation", "fixedRate", "maxFrameTime", "clearColor", "splash", "lifecycle", "audio", "debug", "autoload", "native", "plugins"}, "app.json");
+    JsonValidator::requireKnownKeys(document, {"name", "identifier", "version", "window", "design", "orientation", "fixedRate", "maxFrameTime", "clearColor", "splash", "lifecycle", "audio", "debug", "autoload", "native", "plugins"}, "\"app.json\"");
 
     AppConfig config;
     readValue(document, "name", config.name);
@@ -114,7 +114,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
 
     if (document.contains("window")) {
         const Json& windowJson = document.at("window");
-        JsonValidator::requireKnownKeys(windowJson, {"title", "width", "height", "fullscreen", "highDpi", "resizable", "vsync", "sampleCount", "decorated", "transparent", "alwaysOnTop", "showInTaskbar", "focusable", "mousePassthrough", "position"}, "app.json window");
+        JsonValidator::requireKnownKeys(windowJson, {"title", "width", "height", "fullscreen", "highDpi", "resizable", "vsync", "sampleCount", "decorated", "transparent", "alwaysOnTop", "showInTaskbar", "focusable", "mousePassthrough", "position"}, "the \"window\" section of \"app.json\"");
         readValue(windowJson, "title", config.window.title);
         readValue(windowJson, "width", config.window.width);
         readValue(windowJson, "height", config.window.height);
@@ -136,14 +136,14 @@ AppConfig AppConfig::fromJson(const Json& document) {
             try {
                 config.window.position = platform::WindowPlacement::fromJson(windowJson.at("position"));
             } catch (const std::invalid_argument& error) {
-                throw std::invalid_argument(std::string("The window.position in app.json is invalid. ") + error.what());
+                throw std::invalid_argument(std::string("The \"window.position\" in \"app.json\" is invalid. ") + error.what());
             }
         }
     }
 
     if (document.contains("design")) {
         const Json& designJson = document.at("design");
-        JsonValidator::requireKnownKeys(designJson, {"width", "height", "scaling"}, "app.json design");
+        JsonValidator::requireKnownKeys(designJson, {"width", "height", "scaling"}, "the \"design\" section of \"app.json\"");
         readValue(designJson, "width", config.designSize.x);
         readValue(designJson, "height", config.designSize.y);
         requirePositive(config.designSize.x, "design.width");
@@ -154,7 +154,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
         if (!scalingText.empty()) {
             const auto policy = graphics::Viewport::scalingPolicyFromName(scalingText);
             if (!policy) {
-                throw std::invalid_argument("The design.scaling " + scalingText + " in app.json is unknown. It is fit, fill, stretch, expand or pixelPerfect.");
+                throw std::invalid_argument("The \"design.scaling\" value \"" + scalingText + "\" in \"app.json\" is unknown. It is \"fit\", \"fill\", \"stretch\", \"expand\" or \"pixelPerfect\".");
             }
             config.scaling = *policy;
         }
@@ -179,7 +179,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
     if (!clearColorText.empty()) {
         const auto color = math::Color::parse(clearColorText);
         if (!color) {
-            throw std::invalid_argument("The clearColor " + clearColorText + " in app.json is not a color such as #RRGGBB or #AARRGGBB.");
+            throw std::invalid_argument("The \"clearColor\" value \"" + clearColorText + "\" in \"app.json\" is not a color such as \"#RRGGBB\" or \"#AARRGGBB\".");
         }
         config.clearColor = *color;
     }
@@ -187,7 +187,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
     config.splash.background = config.clearColor;
     if (document.contains("splash")) {
         const Json& splashJson = document.at("splash");
-        JsonValidator::requireKnownKeys(splashJson, {"logo", "background"}, "app.json splash");
+        JsonValidator::requireKnownKeys(splashJson, {"logo", "background"}, "the \"splash\" section of \"app.json\"");
         readValue(splashJson, "logo", config.splash.logo);
 
         std::string background;
@@ -195,7 +195,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
         if (!background.empty()) {
             const auto color = math::Color::parse(background);
             if (!color) {
-                throw std::invalid_argument("The splash.background " + background + " in app.json is not a color such as #RRGGBB or #AARRGGBB.");
+                throw std::invalid_argument("The \"splash.background\" value \"" + background + "\" in \"app.json\" is not a color such as \"#RRGGBB\" or \"#AARRGGBB\".");
             }
             config.splash.background = *color;
         }
@@ -203,7 +203,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
 
     if (document.contains("lifecycle")) {
         const Json& lifecycleJson = document.at("lifecycle");
-        JsonValidator::requireKnownKeys(lifecycleJson, {"pauseOnBackground", "pauseOnFocusLoss", "muteOnFocusLoss"}, "app.json lifecycle");
+        JsonValidator::requireKnownKeys(lifecycleJson, {"pauseOnBackground", "pauseOnFocusLoss", "muteOnFocusLoss"}, "the \"lifecycle\" section of \"app.json\"");
         readValue(lifecycleJson, "pauseOnBackground", config.lifecycle.pauseOnBackground);
         readValue(lifecycleJson, "pauseOnFocusLoss", config.lifecycle.pauseOnFocusLoss);
         readValue(lifecycleJson, "muteOnFocusLoss", config.lifecycle.muteOnFocusLoss);
@@ -211,7 +211,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
 
     if (document.contains("audio")) {
         const Json& audioJson = document.at("audio");
-        JsonValidator::requireKnownKeys(audioJson, {"iosSession", "mixWithOthers"}, "app.json audio");
+        JsonValidator::requireKnownKeys(audioJson, {"iosSession", "mixWithOthers"}, "the \"audio\" section of \"app.json\"");
         std::string category;
         readValue(audioJson, "iosSession", category);
         if (!category.empty()) {
@@ -219,19 +219,19 @@ AppConfig AppConfig::fromJson(const Json& document) {
         }
         readValue(audioJson, "mixWithOthers", config.audioSession.mixWithOthers);
         if (config.audioSession.mixWithOthers && config.audioSession.category != audio::Session::Category::Playback) {
-            throw std::invalid_argument("The audio.mixWithOthers option in app.json needs the playback iosSession.");
+            throw std::invalid_argument("The \"audio.mixWithOthers\" option in \"app.json\" needs the \"iosSession\" value \"playback\".");
         }
     }
 
     if (document.contains("debug")) {
         const Json& debugJson = document.at("debug");
-        JsonValidator::requireKnownKeys(debugJson, {"stats", "objectEvents", "safeArea", "showSafeArea"}, "app.json debug");
+        JsonValidator::requireKnownKeys(debugJson, {"stats", "objectEvents", "safeArea", "showSafeArea"}, "the \"debug\" section of \"app.json\"");
         std::string stats;
         readValue(debugJson, "stats", stats);
         if (!stats.empty()) {
             const auto mode = debug::StatsDisplay::modeFromName(stats);
             if (!mode) {
-                throw std::invalid_argument("The debug.stats " + stats + " in app.json is unknown. It is off, compact or full.");
+                throw std::invalid_argument("The \"debug.stats\" value \"" + stats + "\" in \"app.json\" is unknown. It is \"off\", \"compact\" or \"full\".");
             }
             config.debug.stats = *mode;
         }
@@ -240,7 +240,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
             try {
                 config.debug.safeArea = platform::SafeAreaSimulation::fromJson(debugJson.at("safeArea"));
             } catch (const std::invalid_argument& error) {
-                throw std::invalid_argument(std::string("The debug.safeArea in app.json is invalid. ") + error.what());
+                throw std::invalid_argument(std::string("The \"debug.safeArea\" in \"app.json\" is invalid. ") + error.what());
             }
         }
         readValue(debugJson, "showSafeArea", config.debug.showSafeArea);
@@ -249,13 +249,13 @@ AppConfig AppConfig::fromJson(const Json& document) {
     readValue(document, "autoload", config.autoloads);
     for (const std::string& module : config.autoloads) {
         if (module.empty()) {
-            throw std::invalid_argument("The autoload list in app.json has an empty module name.");
+            throw std::invalid_argument("The \"autoload\" list in \"app.json\" has an empty module name.");
         }
     }
 
     if (document.contains("native")) {
         if (!document.at("native").is_object()) {
-            throw std::invalid_argument("The native section of app.json must be an object of libraries.");
+            throw std::invalid_argument("The \"native\" section of \"app.json\" must be an object of libraries.");
         }
         config.native = document.at("native");
     }

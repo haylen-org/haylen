@@ -12,7 +12,7 @@
 
 namespace haylen::test {
 
-// Scene that writes every hook it receives to a shared log as name:hook. Its load finishes when the hook returns, waits for a deferral that the test completes, or fails, and it can preload asset groups.
+// Scene that writes every hook it receives to a shared log as `name:hook`. Its load finishes when the hook returns, waits for a deferral that the test completes, or fails, and it can preload asset groups.
 class RecordingScene final : public core::Scene {
   public:
     enum class Load {

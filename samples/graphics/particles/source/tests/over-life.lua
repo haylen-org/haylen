@@ -1,4 +1,4 @@
--- Color, size and frames over the lifetime: colors spread evenly over the life and blend between, the size moves from startSize to endSize, and frames play from birth to death.
+-- Color, size and frames over the lifetime: colors spread evenly over the life and blend between, the size moves from `startSize` to `endSize`, and frames play from birth to death.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local particles2d = require('haylen.particles2d')

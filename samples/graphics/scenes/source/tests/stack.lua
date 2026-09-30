@@ -1,4 +1,4 @@
--- Stack and hooks: the operations of haylen.scene on a stack whose bottom is this test, with the stack and the last hooks each scene received listed next to the buttons.
+-- Stack and hooks: the operations of `haylen.scene` on a stack whose bottom is this test, with the stack and the last hooks each scene received listed next to the buttons.
 local haylen = require('haylen')
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
@@ -52,12 +52,12 @@ end
 
 function Stack:card()
     self.cards = self.cards + 1
-    return Card({title = 'Card ' .. self.cards, caption = 'the params of its change say where it came from', color = Stack.colors[self.cards % #Stack.colors + 1], leave = self.transition.leave, listener = function(card, hook, detail)
+    return Card({title = 'Card ' .. self.cards, caption = 'The "params" of its change say where it came from', color = Stack.colors[self.cards % #Stack.colors + 1], leave = self.transition.leave, listener = function(card, hook, detail)
         self:record(card.title, hook, detail)
     end})
 end
 
--- The options of a change that brings a card: the chosen transition and params that reach its load and enter hooks.
+-- The options of a change that brings a card: the chosen transition and `params` that reach its `load` and `enter` hooks.
 function Stack:arrival()
     local options = {params = 'from depth ' .. scene.size()}
     for key, value in pairs(self.transition.arrive or {}) do
@@ -66,7 +66,7 @@ function Stack:arrival()
     return options
 end
 
--- Adds a hook to the log, newest first, with the params it received, and shows the stack as it is now.
+-- Adds a hook to the log, newest first, with the `params` it received, and shows the stack as it is now.
 function Stack:record(name, hook, detail)
     table.insert(self.lines, 1, string.format('%.2f  %s: %s%s', haylen.elapsed(), name, hook, detail and ' (' .. tostring(detail) .. ')' or ''))
     self.lines[13] = nil

@@ -86,16 +86,16 @@ TEST_F(MixerLuaTest, CreatesAndWiresEffects) {
     fixture->runLua("audio.removeEffect(voice, shelf) audio.addEffect(voice, lowpass)");
     EXPECT_EQ(fixture->lua("local list = audio.effects(voice) return #list .. ' ' .. tostring(list[2] == lowpass)"), "2 true");
 
-    EXPECT_NE(fixture->lua("audio.newEffect('chorus')").find("The audio effect must be lowpass, highpass, bandpass, notch, peak, lowShelf, highShelf, delay or reverb, not 'chorus'."), std::string::npos);
-    EXPECT_NE(fixture->lua("audio.newEffect('lowpass', {gain = 3})").find("Unknown option 'gain'"), std::string::npos);
+    EXPECT_NE(fixture->lua("audio.newEffect('chorus')").find("The audio effect must be \"lowpass\", \"highpass\", \"bandpass\", \"notch\", \"peak\", \"lowShelf\", \"highShelf\", \"delay\" or \"reverb\", not \"chorus\"."), std::string::npos);
+    EXPECT_NE(fixture->lua("audio.newEffect('lowpass', {gain = 3})").find("Unknown option \"gain\""), std::string::npos);
     EXPECT_NE(fixture->lua("audio.newEffect('delay', {time = 5})").find("A delay time must be between 0"), std::string::npos);
     EXPECT_NE(fixture->lua("lowpass.gain = 2").find("Only peak and shelf filters have a gain."), std::string::npos);
     EXPECT_NE(fixture->lua("hall.width = 2").find("A reverb width must be between 0 and 1."), std::string::npos);
     EXPECT_NE(fixture->lua("audio.addBusEffect('sfx', hall)").find("already processes another bus or voice"), std::string::npos);
     EXPECT_NE(fixture->lua("audio.addBusEffect('sfx', hit)").find("audio effect expected"), std::string::npos);
-    EXPECT_NE(fixture->lua("audio.play(hit, {effects = {hit}})").find("The option 'effects' must be a list of audio effects."), std::string::npos);
-    EXPECT_NE(fixture->lua("audio.play(hit, {effects = 3})").find("The option 'effects' must be a list of audio effects."), std::string::npos);
-    EXPECT_NE(fixture->lua("return echo.cutoff").find("haylen.Delay has no member 'cutoff'"), std::string::npos);
+    EXPECT_NE(fixture->lua("audio.play(hit, {effects = {hit}})").find("The option \"effects\" must be a list of audio effects."), std::string::npos);
+    EXPECT_NE(fixture->lua("audio.play(hit, {effects = 3})").find("The option \"effects\" must be a list of audio effects."), std::string::npos);
+    EXPECT_NE(fixture->lua("return echo.cutoff").find("haylen.Delay\" has no member \"cutoff\""), std::string::npos);
 }
 
 TEST_F(MixerLuaTest, TweensAnimateEffectParameters) {
@@ -118,7 +118,7 @@ TEST_F(MixerLuaTest, SpatializesAndFollowsCameras) {
     // clang-format on
     EXPECT_NE(fixture->lua("audio.setSpatialization({model = 'cubic'})").find("model"), std::string::npos);
     EXPECT_NE(fixture->lua("audio.setSpatialization({minDistance = 0})").find("need a minimum distance above 0"), std::string::npos);
-    EXPECT_NE(fixture->lua("audio.setSpatialization({range = 3})").find("Unknown option 'range'"), std::string::npos);
+    EXPECT_NE(fixture->lua("audio.setSpatialization({range = 3})").find("Unknown option \"range\""), std::string::npos);
 
     fixture->runLua("camera = require('haylen.graphics2d').newCamera() camera.x = 120 camera.y = 80 audio.followCamera(camera)");
     EXPECT_EQ(fixture->lua("local x, y = audio.listener() return x .. ',' .. y"), "120.0,80.0");

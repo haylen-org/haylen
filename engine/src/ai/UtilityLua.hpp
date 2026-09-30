@@ -10,7 +10,7 @@
 
 namespace haylen::ai {
 
-// Installs the UtilitySelector class of haylen.ai, whose considerations read Lua functions of a context value.
+// Installs the `UtilitySelector` class of `haylen.ai`, whose considerations read Lua functions of a context value.
 class UtilityLua final {
   public:
     // A selector created from Lua. Its inputs run on the Lua thread that asks for a choice, with the selector at stack index 1 and the context at index 2.
@@ -21,7 +21,7 @@ class UtilityLua final {
 
     static void install(lua_State* L);
 
-    // Sets newUtilitySelector on the module table at the top of the stack.
+    // Sets `newUtilitySelector` on the module table at the top of the stack.
     static void addFunctions(lua_State* L);
 
   private:

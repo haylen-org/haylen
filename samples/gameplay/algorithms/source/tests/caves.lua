@@ -1,4 +1,4 @@
--- Caves generated on a worker thread, grown by a cellular automaton or dug by drunkard walkers, with every separate cave colored by spatial2d.components.
+-- Caves generated on a worker thread, grown by a cellular automaton or dug by drunkard walkers, with every separate cave colored by `spatial2d.components`.
 local haylen = require('haylen')
 local async = require('async')
 local input = require('haylen.input')

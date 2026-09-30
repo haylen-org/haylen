@@ -45,7 +45,7 @@ class Device final {
     // Replaces the pixels and size of an existing texture. Every handle to it sees the new contents from the next draw, and a dynamic texture stays dynamic.
     void replaceTexture(const Texture& texture, const Image& image);
 
-    // Creates a texture whose pixels change in place with updateTexture, such as a glyph atlas. Its pixels reach the GPU with the next upload.
+    // Creates a texture whose pixels change in place with `updateTexture`, such as a glyph atlas. Its pixels reach the GPU with the next upload.
     [[nodiscard]] Texture createDynamicTexture(const Image& image, Texture::Options options = {});
     [[nodiscard]] Texture createDynamicTexture(int width, int height, math::Color fill, Texture::Options options = {});
     [[nodiscard]] Texture createDynamicAlphaTexture(int width, int height, std::span<const std::uint8_t> alpha, Texture::Options options = {});
@@ -58,7 +58,7 @@ class Device final {
 
     [[nodiscard]] std::string_view getBackendName() const noexcept;
 
-    // The name of the GPU the device runs on, as its backend reports it: the name of the Metal device, the description of the DXGI adapter behind Direct3D 11, the GL_RENDERER string of OpenGL and WebGL 2, and the adapter info of WebGPU. It is empty where the backend reports none, such as the dummy backend of tests.
+    // The name of the GPU the device runs on, as its backend reports it: the name of the Metal device, the description of the DXGI adapter behind Direct3D 11, the `GL_RENDERER` string of OpenGL and WebGL 2, and the adapter info of WebGPU. It is empty where the backend reports none, such as the dummy backend of tests.
     [[nodiscard]] std::string getAdapterName() const;
     [[nodiscard]] int getMaxTextureSize() const noexcept;
 

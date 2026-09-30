@@ -27,10 +27,10 @@ Map MapParser::parse(const core::Json& document, std::string_view file, const Ma
     result.height = document.at("height").get<int>();
     result.tileSize = {document.at("tilewidth").get<float>(), document.at("tileheight").get<float>()};
     if (result.width < 0 || result.height < 0) {
-        throw std::invalid_argument("The Tiled map " + result.path + " has a negative size.");
+        throw std::invalid_argument("The Tiled map \"" + result.path + "\" has a negative size.");
     }
     if (!(result.tileSize.x > 0.0F && result.tileSize.y > 0.0F && std::isfinite(result.tileSize.x) && std::isfinite(result.tileSize.y))) {
-        throw std::invalid_argument("The Tiled map " + result.path + " needs a positive tile size.");
+        throw std::invalid_argument("The Tiled map \"" + result.path + "\" needs a positive tile size.");
     }
     result.infinite = document.value("infinite", false);
     result.hexSideLength = document.value("hexsidelength", 0);
@@ -38,7 +38,7 @@ Map MapParser::parse(const core::Json& document, std::string_view file, const Ma
     result.staggerEven = document.value("staggerindex", std::string("odd")) == "even";
     result.skew = {document.value("skewx", 0.0F), document.value("skewy", 0.0F)};
     if (result.orientation == Map::Orientation::Oblique && result.skew.x * result.skew.y == result.tileSize.x * result.tileSize.y) {
-        throw std::invalid_argument("The skew of the oblique map " + result.path + " folds its grid onto a line.");
+        throw std::invalid_argument("The skew of the oblique map \"" + result.path + "\" folds its grid onto a line.");
     }
     result.parallaxOrigin = {document.value("parallaxoriginx", 0.0F), document.value("parallaxoriginy", 0.0F)};
     result.backgroundColor = readOptionalColor(document, "backgroundcolor");
@@ -115,12 +115,12 @@ std::vector<std::uint8_t> MapParser::inflate(const std::vector<std::uint8_t>& co
 
 std::size_t MapParser::countCells(int width, int height, std::string_view layer) {
     if (width < 0 || height < 0) {
-        throw std::invalid_argument("The Tiled tile layer '" + std::string(layer) + "' has a negative size.");
+        throw std::invalid_argument("The Tiled tile layer \"" + std::string(layer) + "\" has a negative size.");
     }
     const auto columns = static_cast<std::size_t>(width);
     const auto rows = static_cast<std::size_t>(height);
     if (columns != 0 && rows > kMaxCells / columns) {
-        throw std::invalid_argument("The Tiled tile layer '" + std::string(layer) + "' has more cells than a layer can hold.");
+        throw std::invalid_argument("The Tiled tile layer \"" + std::string(layer) + "\" has more cells than a layer can hold.");
     }
     return columns * rows;
 }
@@ -146,7 +146,7 @@ std::vector<std::uint32_t> MapParser::readTileData(const core::Json& layer, cons
         }
         bytes = std::move(output);
     } else if (!compression.empty()) {
-        throw std::invalid_argument("The compression of a tile layer must be zlib, gzip or zstd, not '" + compression + "'.");
+        throw std::invalid_argument("The compression of a tile layer must be \"zlib\", \"gzip\" or \"zstd\", not \"" + compression + "\".");
     }
 
     if (bytes.size() != cells * 4) {
@@ -167,7 +167,7 @@ std::optional<math::Color> MapParser::readOptionalColor(const core::Json& object
     const std::string text = object.at(key).get<std::string>();
     const std::optional<math::Color> color = math::Color::parse(text);
     if (!color) {
-        throw std::invalid_argument("The Tiled color '" + text + "' is not a #RRGGBB or #AARRGGBB color.");
+        throw std::invalid_argument("The Tiled color \"" + text + "\" is not a \"#RRGGBB\" or \"#AARRGGBB\" color.");
     }
     return color;
 }
@@ -186,7 +186,7 @@ graphics::BlendMode::Type MapParser::readBlendMode(const std::string& mode, std:
     if (mode == "screen") {
         return graphics::BlendMode::Type::Screen;
     }
-    throw std::invalid_argument("The Tiled layer '" + std::string(layer) + "' uses the blend mode '" + mode + "', which Haylen cannot draw. Layers can use normal, add, multiply or screen.");
+    throw std::invalid_argument("The Tiled layer \"" + std::string(layer) + "\" uses the blend mode \"" + mode + "\", which Haylen cannot draw. Layers can use \"normal\", \"add\", \"multiply\" or \"screen\".");
 }
 
 // Resolves file values against the content folder, including the file items of lists and of lists nested in them.
@@ -228,7 +228,7 @@ Map::Orientation MapParser::readOrientation(const std::string& name) {
     if (name == "oblique") {
         return Map::Orientation::Oblique;
     }
-    throw std::invalid_argument("The orientation of a Tiled map must be orthogonal, isometric, staggered, hexagonal or oblique, not '" + name + "'.");
+    throw std::invalid_argument("The orientation of a Tiled map must be \"orthogonal\", \"isometric\", \"staggered\", \"hexagonal\" or \"oblique\", not \"" + name + "\".");
 }
 
 Map::RenderOrder MapParser::readRenderOrder(const std::string& name) {
@@ -244,7 +244,7 @@ Map::RenderOrder MapParser::readRenderOrder(const std::string& name) {
     if (name == "left-up") {
         return Map::RenderOrder::LeftUp;
     }
-    throw std::invalid_argument("The render order of a Tiled map must be right-down, right-up, left-down or left-up, not '" + name + "'.");
+    throw std::invalid_argument("The render order of a Tiled map must be \"right-down\", \"right-up\", \"left-down\" or \"left-up\", not \"" + name + "\".");
 }
 
 std::vector<math::Vec2> MapParser::readPoints(const core::Json& points) {
@@ -332,7 +332,7 @@ std::uint32_t MapParser::readTemplateGid(const core::Json& document, std::uint32
             return (gid & Map::kFlagMask) | (candidate.firstGid + local);
         }
     }
-    throw std::invalid_argument("A tile template uses the tileset '" + source + "', which the map does not list.");
+    throw std::invalid_argument("A tile template uses the tileset \"" + source + "\", which the map does not list.");
 }
 
 std::shared_ptr<Tileset> MapParser::readTileset(const core::Json& document, std::string_view directory, std::string path) const {
@@ -398,7 +398,7 @@ Layer MapParser::readLayer(const core::Json& entry, std::string_view directory) 
     const std::string mode = entry.value("mode", std::string("normal"));
     // Tiled draws the layers of a group with their own blend modes and never blends a group as a whole, so a group mode would change nothing on screen.
     if (kind == "group" && mode != "normal") {
-        throw std::invalid_argument("The Tiled group layer '" + name + "' uses the blend mode '" + mode + "', which Tiled does not apply to the layers inside it. Set the blend mode on those layers.");
+        throw std::invalid_argument("The Tiled group layer \"" + name + "\" uses the blend mode \"" + mode + "\", which Tiled does not apply to the layers inside it. Set the blend mode on those layers.");
     }
 
     Layer layer{
@@ -446,7 +446,7 @@ Layer MapParser::readLayer(const core::Json& entry, std::string_view directory) 
             layer.layers.push_back(readLayer(child, directory));
         }
     } else {
-        throw std::invalid_argument("The type of a Tiled layer must be tilelayer, objectgroup, imagelayer or group, not '" + kind + "'.");
+        throw std::invalid_argument("The type of a Tiled layer must be \"tilelayer\", \"objectgroup\", \"imagelayer\" or \"group\", not \"" + kind + "\".");
     }
     return layer;
 }

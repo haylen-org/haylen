@@ -23,7 +23,7 @@
 
 namespace haylen::plugins {
 
-// Shows the debug statistics and exposes them to Lua as haylen.debug. Compact mode draws the main numbers in a corner with the renderer, and full mode shows the overlay window with frame times, profiler scopes, rendering, memory, GPU pools, counters, object counts, signals and event listeners, monitors and recent log lines. A key cycles through off, compact and full, F3 unless the app picks another, and app.json picks the mode the app starts with.
+// Shows the debug statistics and exposes them to Lua as `haylen.debug`. Compact mode draws the main numbers in a corner with the renderer, and full mode shows the overlay window with frame times, profiler scopes, rendering, memory, GPU pools, counters, object counts, signals and event listeners, monitors and recent log lines. A key cycles through `off`, `compact` and `full`, F3 unless the app picks another, and `app.json` picks the mode the app starts with.
 class DebugPlugin final : public Plugin {
   public:
     static constexpr std::size_t kLogLines = 200;
@@ -52,7 +52,7 @@ class DebugPlugin final : public Plugin {
         return toggleKey;
     }
 
-    // Publishes objectCreated and objectDestroyed on the event bus, queued for the end of the frame, for every object the statistics count. It costs time with many objects, so it starts off.
+    // Publishes `objectCreated` and `objectDestroyed` on the event bus, queued for the end of the frame, for every object the statistics count. It costs time with many objects, so it starts off.
     void setObjectEvents(bool value);
     [[nodiscard]] bool hasObjectEvents() const noexcept {
         return objectEvents;

@@ -8,7 +8,7 @@
 
 namespace haylen::audio {
 
-// A second-order filter from the Audio EQ Cookbook of Robert Bristow-Johnson. The cutoff is the corner frequency of the pass and shelf kinds and the center frequency of the others, q sets the resonance or the width of the band, and the gain in decibels lifts or cuts the peak and shelf kinds. A cutoff at or above half the sample rate acts just below it.
+// A second-order filter from the Audio EQ Cookbook of Robert Bristow-Johnson. The cutoff is the corner frequency of the pass and shelf kinds and the center frequency of the others, `q` sets the resonance or the width of the band, and the gain in decibels lifts or cuts the peak and shelf kinds. A cutoff at or above half the sample rate acts just below it.
 class Filter final : public Effect {
   public:
     enum class Kind : std::uint8_t {

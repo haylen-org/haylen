@@ -1,6 +1,6 @@
 # haylen.tiled
 
-`haylen.tiled` turns maps made with the [Tiled](https://www.mapeditor.org) editor into playable levels. A loaded map draws its tile, object and image layers with culling, parallax, tints and blend modes, animates its tiles, answers questions about cells, layers, objects and tiles, spawns app entities from objects through factories, builds physics collision from tile and object shapes, casts rays against tiles and objects without a physics world and lists object outlines for navigation meshes. Use it whenever a level is designed in Tiled.
+The module `haylen.tiled` turns maps made with the [Tiled](https://www.mapeditor.org) editor into playable levels. A loaded map draws its tile, object and image layers with culling, parallax, tints and blend modes, animates its tiles, answers questions about cells, layers, objects and tiles, spawns app entities from objects through factories, builds physics collision from tile and object shapes, casts rays against tiles and objects without a physics world and lists object outlines for navigation meshes. Use it whenever a level is designed in Tiled.
 
 ```lua
 local tiled = require('haylen.tiled')
@@ -8,7 +8,7 @@ local tiled = require('haylen.tiled')
 
 ## Loading maps and worlds
 
-Maps and worlds are assets of [haylen.assets](assets.md), with the asset types `tiled` for `.tmj` files and `tiledWorld` for `.world` files, so `assets.load` finds the type from the extension. Save maps in the Tiled JSON format with the `.tmj` extension, and keep external tilesets and templates in JSON too (`.tsj` and `.tj`). The XML formats (`.tmx`, `.tsx` and `.tx`) are not read. Every path inside a map is resolved relative to the file that contains it, so the map, its tilesets, templates and images can live in any folder of the package `content/` directory.
+Maps and worlds are assets of [`haylen.assets`](assets.md), with the asset types `tiled` for `.tmj` files and `tiledWorld` for `.world` files, so `assets.load` finds the type from the extension. Save maps in the Tiled JSON format with the `.tmj` extension, and keep external tilesets and templates in JSON too (`.tsj` and `.tj`). The XML formats (`.tmx`, `.tsx` and `.tx`) are not read. Every path inside a map is resolved relative to the file that contains it, so the map, its tilesets, templates and images can live in any folder of the package `content/` directory.
 
 ```lua
 local assets = require('haylen.assets')
@@ -18,7 +18,7 @@ local data = assets.load('maps/island.tmj')
 local map = tiled.newMapRenderer(data)
 ```
 
-`assets.load(path, nil, options)` and `assets.loadAsync(path, nil, options)` accept the texture options `filter` (`'nearest'` or `'linear'`, default `'nearest'`) and `wrap` (`'clamp'`, `'repeat'` or `'mirror'`, default `'clamp'`) for every image of the map. Map images share the texture cache with `assets.texture`, except images with a transparent color, which get a private color-keyed texture. Loading with `loadAsync` parses the map and decodes its images on worker threads:
+The functions `assets.load(path, nil, options)` and `assets.loadAsync(path, nil, options)` accept the texture options `filter` (`'nearest'` or `'linear'`, default `'nearest'`) and `wrap` (`'clamp'`, `'repeat'` or `'mirror'`, default `'clamp'`) for every image of the map. Map images share the texture cache with `assets.texture`, except images with a transparent color, which get a private color-keyed texture. Loading with `loadAsync` parses the map and decodes its images on worker threads:
 
 ```lua
 local assets = require('haylen.assets')
@@ -38,9 +38,9 @@ async.spawn(function()
 end)
 ```
 
-The loaded asset is a `TiledMap` value that holds the parsed data. Its only member is the read-only `path` property, the map path inside the content folder. `tiled.newMapRenderer` makes a playable `MapRenderer` from it.
+The loaded asset is a `TiledMap` value that holds the parsed data. Its only member is the read-only `path` property, the map path inside the content folder. The function `tiled.newMapRenderer` makes a playable `MapRenderer` from it.
 
-A Tiled world file with the `.world` extension loads as a plain list with one table per map, each with `path` (the map path inside the content folder), `x`, `y`, `width` and `height` (the map area in world pixels). Maps listed in `maps` keep their order, followed by the maps that `patterns` match. A pattern's `regexp` is matched against the files in the world's folder, its first two capture groups are multiplied by `multiplierX` and `multiplierY` and moved by `offsetX` and `offsetY`, and `mapWidth` and `mapHeight` give the size. World loading accepts no options, and any key raises `Unknown key 'name' in Tiled world options.`
+A Tiled world file with the `.world` extension loads as a plain list with one table per map, each with `path` (the map path inside the content folder), `x`, `y`, `width` and `height` (the map area in world pixels). Maps listed in `maps` keep their order, followed by the maps that `patterns` match. A pattern's `regexp` is matched against the files in the world's folder, its first two capture groups are multiplied by `multiplierX` and `multiplierY` and moved by `offsetX` and `offsetY`, and `mapWidth` and `mapHeight` give the size. World loading accepts no options, and any key raises `Unknown key "name" in Tiled world options.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -55,25 +55,25 @@ end
 
 The runtime targets the current Tiled JSON format as written by Tiled 1.12.
 
-- Orientations: orthogonal, isometric, staggered and hexagonal (with `staggeraxis`, `staggerindex` and `hexsidelength`), and oblique maps with `skewx` and `skewy`. A skew that folds the grid onto a line raises `The skew of the oblique map path folds its grid onto a line.`
+- Orientations: Orthogonal, isometric, staggered and hexagonal (with `staggeraxis`, `staggerindex` and `hexsidelength`), and oblique maps with `skewx` and `skewy`. A skew that folds the grid onto a line raises `The skew of the oblique map "path" folds its grid onto a line.`
 - Render orders: `right-down`, `right-up`, `left-down` and `left-up`.
 - Tile layer data as JSON arrays or base64, uncompressed or compressed with zlib, gzip or zstd.
 - Infinite maps, whose tile layers are stored as chunks. Cells may have negative coordinates.
-- Layer types: tile layers, object layers, image layers and group layers, with visibility, opacity, offsets, tint colors, parallax factors, the map parallax origin, classes and custom properties. Groups pass their offset, parallax, tint, opacity and visibility on to their children.
-- Layer blend modes: `normal`, `add`, `multiply` and `screen`. Every other Tiled mode, such as `overlay`, `darken` or `lighten`, is rejected when the map loads with `The Tiled layer 'name' uses the blend mode 'mode', which Haylen cannot draw. Layers can use normal, add, multiply or screen.` Tiled draws every layer of a group with that layer's own mode and never blends a group as a whole, so a group layer with a mode other than `normal` is rejected with `The Tiled group layer 'name' uses the blend mode 'mode', which Tiled does not apply to the layers inside it. Set the blend mode on those layers.`
+- Layer types: Tile layers, object layers, image layers and group layers, with visibility, opacity, offsets, tint colors, parallax factors, the map parallax origin, classes and custom properties. Groups pass their offset, parallax, tint, opacity and visibility on to their children.
+- Layer blend modes: `normal`, `add`, `multiply` and `screen`. Every other Tiled mode, such as `overlay`, `darken` or `lighten`, is rejected when the map loads with `The Tiled layer "name" uses the blend mode "mode", which Haylen cannot draw. Layers can use "normal", "add", "multiply" or "screen".` Tiled draws every layer of a group with that layer's own mode and never blends a group as a whole, so a group layer with a mode other than `normal` is rejected with `The Tiled group layer "name" uses the blend mode "mode", which Tiled does not apply to the layers inside it. Set the blend mode on those layers.`
 - Tilesets embedded in the map or stored in external files, image tilesets with margin, spacing and tile offsets, image collection tilesets whose tiles can use a sub-rectangle of their image and keep the ids of removed tiles unused, transparent colors, object alignment, tile render size `grid` with the fill mode `preserve-aspect-fit`, tile classes, properties, animations, collision shapes and Wang sets.
-- Tile flip flags: horizontal, vertical and diagonal, plus the 120-degree rotation flag of hexagonal maps.
-- Objects: rectangles, ellipses, capsules, points, polygons, polylines, text and tile objects, with rotation, visibility, opacity, classes and custom properties.
-- Object templates, whose fields and properties are defaults that each instance overrides one by one. Tile templates map their tile to the map's own copy of the template's tileset, and a template whose tileset the map does not list raises `A tile template uses the tileset 'path', which the map does not list.`
+- Tile flip flags: Horizontal, vertical and diagonal, plus the 120-degree rotation flag of hexagonal maps.
+- Objects: Rectangles, ellipses, capsules, points, polygons, polylines, text and tile objects, with rotation, visibility, opacity, classes and custom properties.
+- Object templates, whose fields and properties are defaults that each instance overrides one by one. Tile templates map their tile to the map's own copy of the template's tileset, and a template whose tileset the map does not list raises `A tile template uses the tileset "path", which the map does not list.`
 - Custom property types `string`, `int`, `float`, `bool`, `color`, `file`, `object`, `class` and `list` (Tiled 1.12), including lists nested in lists.
 - Worlds with listed maps and patterns.
 - Object factories through `map:spawn`.
 
-Every layer needs the `id` that Tiled writes. Other load errors: `The orientation of a Tiled map must be orthogonal, isometric, staggered, hexagonal or oblique, not 'name'.`, `The render order of a Tiled map must be right-down, right-up, left-down or left-up, not 'name'.`, `The type of a Tiled layer must be tilelayer, objectgroup, imagelayer or group, not 'name'.`, `The Tiled map path has a negative size.`, `The Tiled map path needs a positive tile size.`, `The Tiled tile layer 'name' has a negative size.`, `The Tiled tile layer 'name' has more cells than a layer can hold.`, `The compression of a tile layer must be zlib, gzip or zstd, not 'name'.`, `Tile layer data is not valid base64.`, `Tile layer data could not be decompressed.`, `Tile layer data does not match the layer size.` and `The Tiled color 'text' is not a #RRGGBB or #AARRGGBB color.`
+Every layer needs the `id` that Tiled writes. Other load errors: `The orientation of a Tiled map must be "orthogonal", "isometric", "staggered", "hexagonal" or "oblique", not "name".`, `The render order of a Tiled map must be "right-down", "right-up", "left-down" or "left-up", not "name".`, `The type of a Tiled layer must be "tilelayer", "objectgroup", "imagelayer" or "group", not "name".`, `The Tiled map "path" has a negative size.`, `The Tiled map "path" needs a positive tile size.`, `The Tiled tile layer "name" has a negative size.`, `The Tiled tile layer "name" has more cells than a layer can hold.`, `The compression of a tile layer must be "zlib", "gzip" or "zstd", not "name".`, `Tile layer data is not valid base64.`, `Tile layer data could not be decompressed.`, `Tile layer data does not match the layer size.` and `The Tiled color "text" is not a "#RRGGBB" or "#AARRGGBB" color.`
 
 ## Drawing rules
 
-- Tile layers are baked into static batches in regions of 32 by 32 cells the first time they draw. When a camera is given, only the regions inside the area the active canvas shows are drawn, which is the visible area around the camera on a world canvas and the target size around it on a render target canvas. `map:setTile` bakes only the region of its cell again, on the next draw. Animated tiles are drawn every frame with the frame that matches the map time.
+- Tile layers are baked into static batches in regions of 32 by 32 cells the first time they draw. When a camera is given, only the regions inside the area the active canvas shows are drawn, which is the visible area around the camera on a world canvas and the target size around it on a render target canvas. The method `map:setTile` bakes only the region of its cell again, on the next draw. Animated tiles are drawn every frame with the frame that matches the map time.
 - Object layers draw their visible tile objects and text objects. Other shapes are data for the app and for collision. Objects sort by their y position unless the layer draw order is `index`. Tile objects are placed by the tileset object alignment, which defaults to bottom-left, or bottom-center on isometric maps. Text objects use the engine's default font with their size, color, wrapping, alignment, rotation and opacity. Their font family, bold and italic settings are not applied.
 - Image layers draw their image at the layer offset. Layers that repeat on an axis cover the camera's visible area and need a camera, otherwise drawing raises `Repeated image layers need the visible area of the view.`
 - A layer with a parallax factor other than 1 shifts by the distance between the camera position and the map parallax origin, times one minus the factor. On a map drawn with an offset, the parallax origin moves with the map.
@@ -120,11 +120,11 @@ scene.push({
 | `orientation` | string | read | `'orthogonal'`, `'isometric'`, `'staggered'`, `'hexagonal'` or `'oblique'`. |
 | `skewX`, `skewY` | number | read | Skew of oblique maps in pixels. |
 | `backgroundColor` | Color or nil | read | Map background color, or `nil` when the map has none. |
-| `infinite` | boolean | read | True for infinite maps, whose tile layers are stored in chunks. |
+| `infinite` | boolean | read | The value is `true` for infinite maps, whose tile layers are stored in chunks. |
 | `renderOrder` | string | read | `'right-down'`, `'right-up'`, `'left-down'` or `'left-up'`. |
 | `hexSideLength` | integer | read | Length of the flat side of hexagonal tiles, 0 on other maps. |
-| `staggerX` | boolean | read | True when staggered and hexagonal maps shift every other column, false when they shift every other row. |
-| `staggerEven` | boolean | read | True when the even columns or rows are shifted, false when the odd ones are. |
+| `staggerX` | boolean | read | The value is `true` when staggered and hexagonal maps shift every other column, `false` when they shift every other row. |
+| `staggerEven` | boolean | read | The value is `true` when the even columns or rows are shifted, `false` when the odd ones are. |
 | `parallaxOrigin` | Vec2 | read | Point of the map that parallax layers are measured from. |
 | `type` | string | read | Map class. |
 | `properties` | table | read | Custom properties of the map. |
@@ -153,11 +153,11 @@ end
 
 ### map:draw(camera, options)
 
-Draws every visible layer in map order into the active canvas. `camera` is optional. When it is given, parallax layers follow its position, and culling and repeated images use the area the active canvas shows. Without it nothing is culled and parallax layers shift as if the camera stood at the world origin. `options` is optional and takes the [draw order](graphics2d.md#draw-order) keys `layer`, `depth`, `sortOffset`, `visibility` and `blend` from haylen.graphics2d, where `blend` is replaced by each layer's blend mode, `x` and `y`, the world position of the map origin, which default to 0, and `ysort`, which draws tile and object layers sorted by the y they stand on, as [Drawing rules](#drawing-rules) describes. Other keys raise `Unknown option 'name'.`
+Draws every visible layer in map order into the active canvas. The argument `camera` is optional. When it is given, parallax layers follow its position, and culling and repeated images use the area the active canvas shows. Without it nothing is culled and parallax layers shift as if the camera stood at the world origin. The argument `options` is optional and takes the [draw order](graphics2d.md#draw-order) keys `layer`, `depth`, `sortOffset`, `visibility` and `blend` from `haylen.graphics2d`, where `blend` is replaced by each layer's blend mode, `x` and `y`, the world position of the map origin, which default to 0, and `ysort`, which draws tile and object layers sorted by the y they stand on, as [Drawing rules](#drawing-rules) describes. Other keys raise `Unknown option "name".`
 
 ### map:drawLayer(name, camera, options)
 
-Draws one layer, including the children of a group layer, with the offset, parallax, tint and visibility it inherits from the groups above it. `camera` and `options` work as in `map:draw`. Drawing layers one by one lets the app place its own sprites between them. An unknown name raises `The map has no layer named 'name'.`
+Draws one layer, including the children of a group layer, with the offset, parallax, tint and visibility it inherits from the groups above it. The arguments `camera` and `options` work as in `map:draw`. Drawing layers one by one lets the app place its own sprites between them. An unknown name raises `The map has no layer named "name".`
 
 ```lua
 local assets = require('haylen.assets')
@@ -210,11 +210,11 @@ Advances the time of animated tiles by `dt` seconds.
 
 ### map:tile(layer, column, row)
 
-Returns the global tile id at a cell of the tile layer `layer`, with its flip flags, or 0 for an empty cell or a cell outside the layer. Columns and rows count from 0. A name that is not a tile layer raises `The map has no tile layer named 'name'.`
+Returns the global tile id at a cell of the tile layer `layer`, with its flip flags, or 0 for an empty cell or a cell outside the layer. Columns and rows count from 0. A name that is not a tile layer raises `The map has no tile layer named "name".`
 
 ### map:setTile(layer, column, row, gid)
 
-Replaces the tile at a cell. `gid` is a global tile id, optionally with flip flags added, and 0 empties the cell. A gid that no tileset holds raises an error such as `The tile '5000' belongs to no tileset of the map.`, and a cell outside the layer raises `The cell is outside the tile layer.` or, on infinite maps, `The cell is outside every chunk of the infinite tile layer.`
+Replaces the tile at a cell. The argument `gid` is a global tile id, optionally with flip flags added, and 0 empties the cell. A gid that no tileset holds raises an error such as `The tile "5000" belongs to no tileset of the map.`, and a cell outside the layer raises `The cell is outside the tile layer.` or, on infinite maps, `The cell is outside every chunk of the infinite tile layer.`
 
 The flip flags are the module constants described in [Flip flags](#flip-flags). Combine them with `|`.
 
@@ -233,7 +233,7 @@ map:setTile('ground', 13, 10, 0)
 
 ### map:setLayerVisible(name, visible)
 
-Shows or hides a layer, which also hides the children of a group. An unknown name raises `The map has no layer named 'name'.`
+Shows or hides a layer, which also hides the children of a group. An unknown name raises `The map has no layer named "name".`
 
 ```lua
 local assets = require('haylen.assets')
@@ -285,7 +285,7 @@ scene.push({
 
 ### map:layer(name)
 
-Returns a table that describes the layer `name`, searching group layers depth first. The table is a snapshot, so changing it does not change the map. An unknown name raises `The map has no layer named 'name'.`
+Returns a table that describes the layer `name`, searching group layers depth first. The table is a snapshot, so changing it does not change the map. An unknown name raises `The map has no layer named "name".`
 
 ### map:layers()
 
@@ -309,7 +309,7 @@ Every layer table has these fields:
 | `width`, `height` | integer | Tile layers only. Layer size in cells. |
 | `chunks` | table | Tile layers only. The chunks of an infinite map, each with `x` and `y` (its first cell), `width`, `height` and `gids`, the global tile ids row by row with their flip flags. Empty on other maps. |
 | `objects` | table | Object layers only. List of object tables. |
-| `indexDrawOrder` | boolean | Object layers only. True when objects draw in list order, false when they sort by their y position. |
+| `indexDrawOrder` | boolean | Object layers only. The value is `true` when objects draw in list order, `false` when they sort by their y position. |
 | `image`, `repeatX`, `repeatY` | string, boolean, boolean | Image layers only. Image path inside the content folder and repetition. |
 | `imageSize` | Vec2 | Image layers only. Image size written in the map. |
 | `transparentColor` | Color or nil | Image layers only. Color drawn as transparent, or absent. |
@@ -332,7 +332,7 @@ end
 
 ### map:objects(layer)
 
-Returns the objects of the object layer `layer`, or of every object layer in map order when `layer` is omitted. Coordinates are the raw values of the map file, without layer offsets. A name that is not an object layer raises `The map has no object layer named 'name'.`
+Returns the objects of the object layer `layer`, or of every object layer in map order when `layer` is omitted. Coordinates are the raw values of the map file, without layer offsets. A name that is not an object layer raises `The map has no object layer named "name".`
 
 Every object table has these fields:
 
@@ -351,7 +351,7 @@ Every object table has these fields:
 | `template` | string | Template path inside the content folder, or an empty string. |
 | `points` | table | Polygon and polyline points as `{x, y}` tables relative to the object position. Empty for other shapes. |
 | `properties`, `propertyTypes` | table | Custom properties, merged with the template's, and their type names. |
-| `text` | table | Text objects only. Fields `text`, `fontFamily`, `pixelSize`, `wrap`, `color` (a Color), `bold`, `italic`, `horizontalAlign` and `verticalAlign`. |
+| `text` | table | Text objects only. Fields `text`, `fontFamily`, `pixelSize`, `wrap`, `color` (a `Color`), `bold`, `italic`, `horizontalAlign` and `verticalAlign`. |
 
 ```lua
 local assets = require('haylen.assets')
@@ -372,7 +372,7 @@ end
 
 ### map:spawn(factories, layer)
 
-Creates app entities from objects. `factories` is a table from object class to function. For every object whose class has a factory, in the object layer `layer` or in every object layer when `layer` is omitted, the factory is called with the object table, which also carries `worldX` and `worldY`: the object origin in world coordinates, including the offsets of its layer and groups. Objects without a factory are skipped, which leaves markers and collision shapes for other code. `spawn` returns the list of non-nil values the factories returned, in map order. Hidden objects and hidden layers are spawned too. The factories run after the map has listed the objects, so a factory may change the map. A factory that is not a function raises `The factory for the Tiled class 'name' is not a function.` and a name that is not an object layer raises `The map has no object layer named 'name'.`
+Creates app entities from objects. The argument `factories` is a table from object class to function. For every object whose class has a factory, in the object layer `layer` or in every object layer when `layer` is omitted, the factory is called with the object table, which also carries `worldX` and `worldY`: the object origin in world coordinates, including the offsets of its layer and groups. Objects without a factory are skipped, which leaves markers and collision shapes for other code. The method `spawn` returns the list of non-`nil` values the factories returned, in map order. Hidden objects and hidden layers are spawned too. The factories run after the map has listed the objects, so a factory may change the map. A factory that is not a function raises `The factory for the Tiled class "name" is not a function.` and a name that is not an object layer raises `The map has no object layer named "name".`
 
 ```lua
 local assets = require('haylen.assets')
@@ -437,8 +437,8 @@ Returns the tilesets of the map in first gid order. Every tileset table has thes
 | `margin`, `spacing` | integer | Pixels around the tiles and between them in the image. |
 | `tileOffset` | Vec2 | Offset applied when the tiles are drawn. |
 | `objectAlignment` | string | Anchor of tile objects, such as `'unspecified'`, `'bottomleft'`, `'bottom'` or `'center'`. |
-| `renderGridSize` | boolean | True when tiles are drawn at the map grid size instead of their image size. |
-| `preserveAspect` | boolean | True when grid sized tiles keep their aspect ratio. |
+| `renderGridSize` | boolean | The value is `true` when tiles are drawn at the map grid size instead of their image size. |
+| `preserveAspect` | boolean | The value is `true` when grid sized tiles keep their aspect ratio. |
 | `image` | string | Image path inside the content folder, or an empty string for image collections. |
 | `imageSize` | Vec2 | Image size written in the tileset. |
 | `transparentColor` | Color or nil | Color drawn as transparent, or absent. |
@@ -465,12 +465,12 @@ end
 
 ### map:buildCollision(world)
 
-Creates static bodies in the [haylen.physics2d](physics2d.md) world `world` for the collision shapes of the map and returns them. Each layer that has shapes becomes one body, and layer visibility does not matter.
+Creates static bodies in the [`haylen.physics2d`](physics2d.md) world `world` for the collision shapes of the map and returns them. Each layer that has shapes becomes one body, and layer visibility does not matter.
 
-- Tile layers add the collision shapes of their tiles, placed and flipped with each tile, unless the layer has a `collision` property set to false. On orthogonal maps, tiles whose collision is one rectangle covering the whole cell merge into one box per horizontal run of cells.
+- Tile layers add the collision shapes of their tiles, placed and flipped with each tile, unless the layer has a `collision` property set to `false`. On orthogonal maps, tiles whose collision is one rectangle covering the whole cell merge into one box per horizontal run of cells.
 - Object layers whose class is `collision` add every object, and other object layers add the objects whose class is `collision`. Points and text objects add nothing, polylines become segments, ellipses and capsules become polygons, and tile objects cover their image where it draws, placed by the object alignment of their tileset.
-- Objects and tile shapes with a `sensor` property set to true become sensors.
-- The layer properties `category` and `mask` set the collision filter of the layer's shapes as integers of at least 0. The category defaults to 1 and the mask to every bit. Other values raise `The collision property 'name' of the Tiled layer 'layer' needs an integer of at least 0.`
+- Objects and tile shapes with a `sensor` property set to `true` become sensors.
+- The layer properties `category` and `mask` set the collision filter of the layer's shapes as integers of at least 0. The category defaults to 1 and the mask to every bit. Other values raise `The collision property "name" of the Tiled layer "layer" needs an integer of at least 0.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -492,7 +492,7 @@ scene.push({
 
 ### map:raycastTiles(layer, x1, y1, x2, y2, solid)
 
-Casts a ray from `x1, y1` to `x2, y2` in map world coordinates over the cells of the tile layer named `layer`, without a physics world, and returns the hit on the first solid cell or `nil`. The hit is a table like those of [haylen.math](math.md#ray-casts) with the extra fields `column`, `row` and `gid`, and its normal points out of the side of the cell the ray entered. Every tile is solid unless the optional function `solid` receives the gid of each tile along the ray and returns false for the ones the ray passes through. The ray only travels over the cells the layer holds, so a far end costs no more than a walk across the layer, and `solid` runs once the ray has gathered the tiles it crosses, so it may change the map. Positions include the offsets of the layer and its groups. Orthogonal, isometric and oblique maps take tile casts, and other orientations raise `Tile ray casts need an orthogonal, isometric or oblique map.` An unknown layer raises `The map has no tile layer named 'name'.`
+Casts a ray from `x1, y1` to `x2, y2` in map world coordinates over the cells of the tile layer named `layer`, without a physics world, and returns the hit on the first solid cell or `nil`. The hit is a table like those of [`haylen.math`](math.md#ray-casts) with the extra fields `column`, `row` and `gid`, and its normal points out of the side of the cell the ray entered. Every tile is solid unless the optional function `solid` receives the gid of each tile along the ray and returns `false` for the ones the ray passes through. The ray only travels over the cells the layer holds, so a far end costs no more than a walk across the layer, and `solid` runs once the ray has gathered the tiles it crosses, so it may change the map. Positions include the offsets of the layer and its groups. Orthogonal, isometric and oblique maps take tile casts, and other orientations raise `Tile ray casts need an orthogonal, isometric or oblique map.` An unknown layer raises `The map has no tile layer named "name".`
 
 ```lua
 local assets = require('haylen.assets')
@@ -510,7 +510,7 @@ end
 
 ### map:raycastObjects(layer, x1, y1, x2, y2)
 
-Casts a ray from `x1, y1` to `x2, y2` against the objects of the object layer named `layer`, or of every object layer when `layer` is `nil`, and returns the closest hit or `nil`. The hit is a table like those of [haylen.math](math.md#ray-casts) with the extra fields `id`, `name` and `type` of the object. Rectangles, ellipses, capsules, polygons and tile objects, where their image draws, are solid, polylines are hit from both sides, and points and text are never hit. An unknown layer raises `The map has no object layer named 'name'.`
+Casts a ray from `x1, y1` to `x2, y2` against the objects of the object layer named `layer`, or of every object layer when `layer` is `nil`, and returns the closest hit or `nil`. The hit is a table like those of [`haylen.math`](math.md#ray-casts) with the extra fields `id`, `name` and `type` of the object. Rectangles, ellipses, capsules, polygons and tile objects, where their image draws, are solid, polylines are hit from both sides, and points and text are never hit. An unknown layer raises `The map has no object layer named "name".`
 
 ```lua
 local assets = require('haylen.assets')
@@ -525,7 +525,7 @@ end
 
 ### map:objectOutlines(layer)
 
-Returns the closed world outlines of the objects of the object layer named `layer`, or of every object layer when `layer` is omitted, in map order, as a list of lists of `Vec2`. Rectangles give their corners, tile objects the corners of their image where it draws, polygons their points, and ellipses and capsules many-sided outlines, while points, text and polylines give nothing. The outlines are ready to become obstacles of a navigation mesh of [haylen.navigation2d](navigation2d.md). A name that is not an object layer raises `The map has no object layer named 'name'.`, and a tile object whose tile no tileset holds raises `A tile object uses the tile 'id', which no tileset of the map holds.`, here and in `map:draw`, `map:buildCollision` and `map:raycastObjects`.
+Returns the closed world outlines of the objects of the object layer named `layer`, or of every object layer when `layer` is omitted, in map order, as a list of lists of `Vec2`. Rectangles give their corners, tile objects the corners of their image where it draws, polygons their points, and ellipses and capsules many-sided outlines, while points, text and polylines give nothing. The outlines are ready to become obstacles of a navigation mesh of [`haylen.navigation2d`](navigation2d.md). A name that is not an object layer raises `The map has no object layer named "name".`, and a tile object whose tile no tileset holds raises `A tile object uses the tile "id", which no tileset of the map holds.`, here and in `map:draw`, `map:buildCollision` and `map:raycastObjects`.
 
 ```lua
 local assets = require('haylen.assets')

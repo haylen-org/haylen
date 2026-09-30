@@ -15,9 +15,9 @@ local kHelp = [==[
 [b]How the focus moves[/b]
 [ul]
 A direction goes to the nearest control that way, preferring controls in line with the focused one.
-[color=gold]focusLeft[/color], [color=gold]focusRight[/color], [color=gold]focusUp[/color] and [color=gold]focusDown[/color] name the neighbour instead.
+The properties [color=gold]focusLeft[/color], [color=gold]focusRight[/color], [color=gold]focusUp[/color] and [color=gold]focusDown[/color] name the neighbour instead.
 A node with [color=gold]focusScope[/color] keeps the focus until the player leaves it, and hears cancel.
-[color=gold]focusWrap[/color] wraps a move off one end of a row or a column to its other end.
+The property [color=gold]focusWrap[/color] wraps a move off one end of a row or a column to its other end.
 Cancel reaches the innermost scope, and then the root of the document, which goes back to the menu.
 The ring shows once the player navigates, and always on a TV, where there is no pointer.
 [/ul]]==]

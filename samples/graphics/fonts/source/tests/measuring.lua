@@ -1,4 +1,4 @@
--- Measuring text: measureText sizes a block, font:layout returns the quad of every glyph, ascent and lineHeight place baselines, font:glyph gives the metrics of single characters, font:shape the advances kerning shortens, and rich text measures and lays out its own blocks.
+-- Measuring text: `measureText` sizes a block, `font:layout` returns the quad of every glyph, `ascent` and `lineHeight` place baselines, `font:glyph` gives the metrics of single characters, `font:shape` the advances kerning shortens, and rich text measures and lays out its own blocks.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -8,7 +8,7 @@ local sample = require('sample')
 
 local Measuring = haylen.class('Measuring', sample.Test)
 
-Measuring.hints = 'Move the pointer over the measured line to pick a glyph from the quads of font:layout. Blue boxes are measured sizes, red lines are baselines, green boxes are glyph quads and orange marks the advance.'
+Measuring.hints = 'Move the pointer over the measured line to pick a glyph from the quads of "font:layout". Blue boxes are measured sizes, red lines are baselines, green boxes are glyph quads and orange marks the advance.'
 
 local kSize = 96
 local kText = 'Voyage to Tiny Island'
@@ -41,7 +41,7 @@ function Measuring:update(dt)
         end
     end
     if self.picked == nil then
-        self:setStatus('the pointer is over no glyph')
+        self:setStatus('The pointer is over no glyph')
     end
 end
 
@@ -70,7 +70,7 @@ function Measuring:glyphMetrics(font, character, x, baseline)
     graphics2d.drawLine(x - 30, baseline, x + glyph.advance * scale + 30, baseline, 2, '#FFFF6A6A')
     graphics2d.drawCircle(x, baseline, 6, '#FFFFFFFF')
     graphics2d.drawLine(x, baseline + 24, x + glyph.advance * scale, baseline + 24, 4, '#FFF2B23A')
-    sample.caption(string.format("'%s' at size %d: offset %.1f, %.1f", character, font.nativeSize, glyph.offset.x, glyph.offset.y), x - 30, baseline + 104)
+    sample.caption(string.format('"%s" at size %d: offset %.1f, %.1f', character, font.nativeSize, glyph.offset.x, glyph.offset.y), x - 30, baseline + 104)
     sample.caption(string.format("size %.0f x %.0f, advance %.1f", glyph.source.width, glyph.source.height, glyph.advance), x - 30, baseline + 132)
 end
 
@@ -91,7 +91,7 @@ function Measuring:render()
     local kerned = function(pair)
         return font:shape(pair)[1].advance - font:glyph(pair:sub(1, 1)).advance
     end
-    sample.caption(string.format("font:shape kerns 'AV' by %.2f and 'To' by %.2f at size %d", kerned('AV'), kerned('To'), font.nativeSize), x, stage.y + 170)
+    sample.caption(string.format('The method "font:shape" kerns "AV" by %.2f and "To" by %.2f at size %d', kerned('AV'), kerned('To'), font.nativeSize), x, stage.y + 170)
     graphics2d.drawText(font, 'AV To', x, stage.y + 200, {size = 110})
 
     local richX, richY = x, stage.y + 420

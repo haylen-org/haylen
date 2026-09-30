@@ -1,4 +1,4 @@
--- UI tweens: document:transform returns the transform of a node, whose offset, scale, opacity and tint haylen.tween animates natively without running Lua every frame.
+-- UI tweens: `document:transform` returns the transform of a node, whose offset, scale, opacity and tint `haylen.tween` animates natively without running Lua every frame.
 local haylen = require('haylen')
 local m = require('haylen.math')
 local tween = require('haylen.tween')
@@ -59,18 +59,18 @@ function Tweens:entrance()
     tween.stagger(cards, 0.08, function(card)
         return tween.fromTo(card, 0.4, {offset = m.vec2(0, 60), opacity = 0, scale = m.vec2(0.8, 0.8)}, {offset = m.vec2(0, 0), opacity = 1, scale = m.vec2(1, 1)}, {ease = 'quadOut'})
     end, {owner = self, delay = 0.2})
-    self:setStatus('entrance with a stagger of five cards')
+    self:setStatus('Entrance with a stagger of five cards')
 end
 
 function Tweens:shake()
     tween.shake(self.document:transform('panel'), 0.5, 14, {field = 'offset', vibrato = 16, owner = self})
-    self:setStatus('shake on the offset')
+    self:setStatus('Shake on the offset')
 end
 
 function Tweens:fade()
     self.shown = not self.shown
     tween.to(self.document:transform('panel'), 0.4, {opacity = self.shown and 1 or 0.2}, {ease = 'sineInOut', owner = self, overwrite = true})
-    self:setStatus(self.shown and 'panel faded in' or 'panel faded out')
+    self:setStatus(self.shown and 'Panel faded in' or 'Panel faded out')
 end
 
 function Tweens:cycleTint()

@@ -1,4 +1,4 @@
--- Device simulations: viewport.setSafeAreaSimulation replaces the safe area of the device while the app runs, with the insets of a known device in the orientation of the window or with custom insets in window points.
+-- Device simulations: `viewport.setSafeAreaSimulation` replaces the safe area of the device while the app runs, with the insets of a known device in the orientation of the window or with custom insets in window points.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')

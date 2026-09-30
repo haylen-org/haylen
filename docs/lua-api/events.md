@@ -1,6 +1,6 @@
 # haylen.events
 
-`haylen.events` is the event bus of the app. Any part of the app publishes an event by name and any other part listens to it, without either side knowing the other. The engine publishes its own lifecycle events on the same bus, such as `appBackground`, `sceneEntered` or `gamepadConnected`, so app events and engine events are heard the same way. Use events for announcements that the whole app may care about, and use [haylen.signal](signal.md) when one object owns the announcement. The [lifecycle guide](../lifecycle.md) explains when the engine events happen.
+The module `haylen.events` is the event bus of the app. Any part of the app publishes an event by name and any other part listens to it, without either side knowing the other. The engine publishes its own lifecycle events on the same bus, such as `appBackground`, `sceneEntered` or `gamepadConnected`, so app events and engine events are heard the same way. Use events for announcements that the whole app may care about, and use [`haylen.signal`](signal.md) when one object owns the announcement. The [lifecycle guide](../lifecycle.md) explains when the engine events happen.
 
 ```lua
 local events = require('haylen.events')
@@ -10,7 +10,7 @@ local events = require('haylen.events')
 
 An event carries any number of Lua values, and every listener receives them as its arguments. Listeners run by descending priority and, with equal priorities, in the order they subscribed. A listener that returns `true` consumes the event, so the listeners after it skip the event and `events.emit` returns `true`.
 
-`events.emit` delivers an event at once, inside the call. `events.post` queues it until the end of the frame, after every scene has rendered, and keeps its values until then. A listener may subscribe and unsubscribe listeners while an event is delivered. A listener that subscribes during a delivery hears the next event, and a listener that an earlier one unsubscribed is skipped.
+The function `events.emit` delivers an event at once, inside the call. The function `events.post` queues it until the end of the frame, after every scene has rendered, and keeps its values until then. A listener may subscribe and unsubscribe listeners while an event is delivered. A listener that subscribes during a delivery hears the next event, and a listener that an earlier one unsubscribed is skipped.
 
 An error raised by a listener of `events.emit` reaches the code that called `emit` and skips the remaining listeners. An error raised by a listener of a queued event or of an engine event stops the app and shows the error screen with the message and its stack trace.
 
@@ -20,7 +20,7 @@ C++ code publishes and listens on the same bus through `Engine::getEvents()`, wh
 
 ### events.on(name, fn, options)
 
-Subscribes `fn` to the events named `name` and returns a [Connection](signal.md#connection). `options` is an optional table with the keys below, and unknown keys raise `Unknown option '<key>'.`
+Subscribes `fn` to the events named `name` and returns a [`Connection`](signal.md#connection). The argument `options` is an optional table with the keys below, and unknown keys raise `Unknown option "<key>".`
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -103,7 +103,7 @@ events.on('levelSaved', function(slot)
 end)
 
 events.post('levelSaved', 'slot1')
-print('queued') -- printed before 'saved slot1'
+print('queued') -- Printed before `saved slot1`.
 ```
 
 ### events.postTo(channel, name, ...)
@@ -136,9 +136,9 @@ end
 
 ## Owners
 
-An owner ties listeners to the life of a table or a userdata, such as a scene, an autoload, a UI document or a game object. Pass it as the `owner` option and every listener it holds unsubscribes when the owner ends. A scene ends when it unloads, a UI document when it is unmounted, and any other owner when the garbage collector frees it, in which case its listeners end at the end of that frame. Timers of [haylen.timer](timer.md), tweens of [haylen.tween](tween.md), signal connections of [haylen.signal](signal.md), monitors of [haylen.debug](debug.md#debugaddmonitorname-fn-options) and documents of [haylen.ui](ui.md#uimounttree-options) take the same `owner` option, and the tasks of [scene.spawn](scene.md#scenespawnowner-fn) stop with their owner too.
+An owner ties listeners to the life of a table or a userdata, such as a scene, an autoload, a UI document or a game object. Pass it as the `owner` option and every listener it holds unsubscribes when the owner ends. A scene ends when it unloads, a UI document when it is unmounted, and any other owner when the garbage collector frees it, in which case its listeners end at the end of that frame. Timers of [`haylen.timer`](timer.md), tweens of [`haylen.tween`](tween.md), signal connections of [`haylen.signal`](signal.md), monitors of [`haylen.debug`](debug.md#debugaddmonitorname-fn-options) and documents of [`haylen.ui`](ui.md#uimounttree-options) take the same `owner` option, and the tasks of [`scene.spawn`](scene.md#scenespawnowner-fn) stop with their owner too.
 
-The owner keeps the functions of its listeners, and the bus does not keep the owner. A listener may therefore refer to its owner freely without keeping it alive. `scene.listen(owner, name, fn, options)` of [haylen.scene](scene.md) is a shorthand for `events.on(name, fn, {owner = owner})`, and scenes built on `scene.Scene` call it as `self:listen(name, fn)`.
+The owner keeps the functions of its listeners, and the bus does not keep the owner. A listener may therefore refer to its owner freely without keeping it alive. The function `scene.listen(owner, name, fn, options)` of [`haylen.scene`](scene.md) is a shorthand for `events.on(name, fn, {owner = owner})`, and scenes built on `scene.Scene` call it as `self:listen(name, fn)`.
 
 ```lua
 local events = require('haylen.events')
@@ -174,42 +174,42 @@ The engine publishes these events on the bus. Events with data pass it to listen
 | `appLowMemory` | The platform is short of memory, after the engine dropped released assets. | None. |
 | `appQuitRequested` | The player asked to close the window. | None. |
 | `appStopping` | The app is about to stop, before the scenes leave and the autoloads stop. | None. |
-| `paused`, `unpaused` | `haylen.setPaused` changed the pause of the game. | None. |
+| `paused`, `unpaused` | The function `haylen.setPaused` changed the pause of the game. | None. |
 | `sceneLoading`, `sceneLoaded` | A scene started loading, or its load finished. | The scene. |
-| `sceneLoadFailed` | The load of a scene failed, right before the scene unloads. | `{scene, error}`, with the message of the error. |
+| `sceneLoadFailed` | The load of a scene failed, right before the scene unloads. | The table `{scene, error}`, with the message of the error. |
 | `sceneEntered`, `sceneExited` | A scene entered or left the stack. | The scene. |
 | `sceneUnloaded` | A scene unloaded, after it exited, after its load failed or when its preload was cancelled. | The scene. |
 | `scenePaused`, `sceneResumed` | A scene was covered by a pushed scene, or is on top again. | The scene. |
 | `sceneExitTransitionStarted` | A change started to take the top scene off the screen. | The scene. |
 | `sceneEnterTransitionFinished` | A change ended and its transition finished, on the top scene after it. | The scene. |
-| `sceneCoverStarted`, `sceneCoverFinished` | The cover of an effect that covers the screen started, or reached full cover. | `{from, to}`, the top scenes before and after the change. |
+| `sceneCoverStarted`, `sceneCoverFinished` | The cover of an effect that covers the screen started, or reached full cover. | The table `{from, to}`, the top scenes before and after the change. |
 | `sceneHoldStarted`, `sceneHoldFinished` | The covered screen started to wait for the next scene, or stopped waiting. | `{from, to}` |
-| `sceneRevealStarted`, `sceneRevealFinished` | The effect started or finished showing the scenes after the change, which is the whole effect for effects that show both scenes. | `{from, to}`, where `to` is the scene the change put or left on top. |
+| `sceneRevealStarted`, `sceneRevealFinished` | The effect started or finished showing the scenes after the change, which is the whole effect for effects that show both scenes. | The table `{from, to}`, where `to` is the scene the change put or left on top. |
 | `pluginStarted`, `pluginStopped` | A plugin started or stopped. Built-in plugins start before any script runs. | `{name}` |
 | `autoloadStarted`, `autoloadStopped` | An autoload started or stopped. | `{name}` |
-| `windowResized` | The framebuffer changed size. | `{width, height}` in pixels. |
+| `windowResized` | The framebuffer changed size. | The table `{width, height}` in pixels. |
 | `windowFocusGained`, `windowFocusLost` | The window gained or lost the keyboard focus. | None. |
 | `windowFullscreenChanged` | The window entered or left fullscreen. | `{fullscreen}` |
-| `windowOrientationChanged` | The screen turned between landscape and portrait, as `window.orientation()` of [haylen.window](window.md) reports it. Desktop windows always count as landscape. | `{orientation}`, `'landscape'` or `'portrait'`. |
-| `windowSafeAreaChanged` | The safe area moved, for example after a rotation or when a native view of a plugin reserved or released an edge of the screen. | `{x, y, width, height}`, the same rectangle as `viewport.safeRect()`. |
-| `windowMoved` | The desktop window moved, dragged by the player, placed by the app or moved by the system. A move publishes each new position once. | `{x, y}`, the top left corner of `window.frame()` of [haylen.window](window.md#desktop-windows) in desktop points. |
-| `windowMonitorsChanged` | A monitor connected, disconnected or changed, or its work area changed, such as when the taskbar moved. `window.monitors()` returns the new list. | None. |
-| `uiDocumentMounted`, `uiDocumentUnmounted` | A UI document of [haylen.ui](ui.md) was mounted or unmounted. | The document. |
-| `gamepadConnected`, `gamepadDisconnected` | A gamepad was plugged in or removed. Gamepads that are connected when the app starts are announced on its first frame. | `{gamepad, name}`, where `gamepad` counts from 1 like [haylen.input](input.md). |
-| `audioInterrupted`, `audioResumed` | The system took the audio, such as for a phone call, and every voice paused, or gave it back while the app is active and the voices resumed, as [haylen.audio](audio.md#events) explains. | None. |
+| `windowOrientationChanged` | The screen turned between landscape and portrait, as `window.orientation()` of [`haylen.window`](window.md) reports it. Desktop windows always count as landscape. | The table `{orientation}`, `'landscape'` or `'portrait'`. |
+| `windowSafeAreaChanged` | The safe area moved, for example after a rotation or when a native view of a plugin reserved or released an edge of the screen. | The table `{x, y, width, height}`, the same rectangle as `viewport.safeRect()`. |
+| `windowMoved` | The desktop window moved, dragged by the player, placed by the app or moved by the system. A move publishes each new position once. | The table `{x, y}`, the top left corner of `window.frame()` of [`haylen.window`](window.md#desktop-windows) in desktop points. |
+| `windowMonitorsChanged` | A monitor connected, disconnected or changed, or its work area changed, such as when the taskbar moved. The function `window.monitors()` returns the new list. | None. |
+| `uiDocumentMounted`, `uiDocumentUnmounted` | A UI document of [`haylen.ui`](ui.md) was mounted or unmounted. | The document. |
+| `gamepadConnected`, `gamepadDisconnected` | A gamepad was plugged in or removed. Gamepads that are connected when the app starts are announced on its first frame. | The table `{gamepad, name}`, where `gamepad` counts from 1 like [`haylen.input`](input.md). |
+| `audioInterrupted`, `audioResumed` | The system took the audio, such as for a phone call, and every voice paused, or gave it back while the app is active and the voices resumed, as [`haylen.audio`](audio.md#events) explains. | None. |
 | `audioRouteChanged` | The audio output moved to another device, such as headphones that were unplugged. | None. |
-| `keyboardShown` | The on-screen keyboard appeared or changed its frame, such as when a suggestion bar shows. | `{x, y, width, height}`, the area it covers in design units, like `viewport.safeRect()`. |
+| `keyboardShown` | The on-screen keyboard appeared or changed its frame, such as when a suggestion bar shows. | The table `{x, y, width, height}`, the area it covers in design units, like `viewport.safeRect()`. |
 | `keyboardHidden` | The on-screen keyboard went away. | None. |
-| `networkOnline`, `networkOffline` | The device gained or lost its network, where the platform reports it: browsers, Android and Apple platforms, macOS included. The first report publishes the state the app starts in, usually on its first frame, and [haylen.networkState()](haylen.md#haylennetworkstate) returns the last state at any time. | None. |
-| `systemThemeChanged` | The system switched between light and dark colors, as `system.theme()` of [haylen.system](system.md#systemtheme) reports them. | `{theme}`, `'light'` or `'dark'`. |
-| `batteryChanged` | The level, the charging or the state of the battery changed, as `system.battery()` of [haylen.system](system.md#systembattery) reports it. | `{level, charging, state}` |
-| `webSocketConnected` | A WebSocket of [haylen.net](net.md) opened, the first time or after reconnecting. | `{url, protocol}` |
+| `networkOnline`, `networkOffline` | The device gained or lost its network, where the platform reports it: browsers, Android and Apple platforms, macOS included. The first report publishes the state the app starts in, usually on its first frame, and [`haylen.networkState()`](haylen.md#haylennetworkstate) returns the last state at any time. | None. |
+| `systemThemeChanged` | The system switched between light and dark colors, as `system.theme()` of [`haylen.system`](system.md#systemtheme) reports them. | The table `{theme}`, `'light'` or `'dark'`. |
+| `batteryChanged` | The level, the charging or the state of the battery changed, as `system.battery()` of [`haylen.system`](system.md#systembattery) reports it. | `{level, charging, state}` |
+| `webSocketConnected` | A WebSocket of [`haylen.net`](net.md) opened, the first time or after reconnecting. | `{url, protocol}` |
 | `webSocketDisconnected` | An open WebSocket lost its connection or closed, before it reconnects or ends. | `{url, code, reason}` |
-| `webSocketReconnecting` | A WebSocket with reconnection scheduled its next attempt after the connection dropped or an attempt failed. | `{url, attempt, delay}`, where `attempt` counts from 1 and `delay` is the wait in seconds. |
-| `assetLoaded` | An asset of [haylen.assets](assets.md) entered the cache, queued for the end of the frame. | `{type, path}` |
+| `webSocketReconnecting` | A WebSocket with reconnection scheduled its next attempt after the connection dropped or an attempt failed. | The table `{url, attempt, delay}`, where `attempt` counts from 1 and `delay` is the wait in seconds. |
+| `assetLoaded` | An asset of [`haylen.assets`](assets.md) entered the cache, queued for the end of the frame. | `{type, path}` |
 | `assetUnloaded` | The last holder of a cached asset let it go, such as the last preload group that held it, queued for the end of the frame. | `{type, path}` |
 | `assetReloaded` | A changed file updated a live asset in place during hot reload, queued for the end of the frame. | `{type, path}` |
-| `objectCreated`, `objectDestroyed` | While object events are on, a counted object was created or destroyed, queued for the end of the frame, as [haylen.debug](debug.md#object-counts-and-events) describes. | `{type, count}`, where `type` is a counter name such as `'haylen.Sprite'` or `'Texture'`. |
+| `objectCreated`, `objectDestroyed` | While object events are on, a counted object was created or destroyed, queued for the end of the frame, as [`haylen.debug`](debug.md#object-counts-and-events) describes. | The table `{type, count}`, where `type` is a counter name such as `'haylen.Sprite'` or `'Texture'`. |
 
 ```lua
 local events = require('haylen.events')

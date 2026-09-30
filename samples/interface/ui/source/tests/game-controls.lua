@@ -34,7 +34,7 @@ function GameControls:report(name)
         if event.low then
             self:setStatus(string.format('%s from %g to %g', name, event.low, event.high))
         else
-            self:setStatus(name .. ' changed to ' .. (type(event.value) == 'number' and string.format('%g', event.value) or event.value))
+            self:setStatus('The ' .. name .. ' changed to ' .. (type(event.value) == 'number' and string.format('%g', event.value) or '"' .. event.value .. '"'))
         end
     end
 end
@@ -46,9 +46,9 @@ function GameControls:captureRows()
             ui.keyCapture{id = 'bind-' .. binding.id, value = binding.value, prompt = 'Press a ' .. binding.sources[1], sources = binding.sources, width = 360,
                 onChange = function(event)
                     input.defineAction({name = binding.action, type = 'button', bindings = {event.value}})
-                    self:setStatus(binding.label .. ' is now ' .. event.value)
+                    self:setStatus(binding.label .. ' is now "' .. event.value .. '"')
                 end,
-                onCancel = function() self:setStatus('the capture of ' .. binding.label .. ' was cancelled') end,
+                onCancel = function() self:setStatus('The capture of ' .. binding.label .. ' was cancelled') end,
             },
         }
     end

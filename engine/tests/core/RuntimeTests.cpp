@@ -168,7 +168,7 @@ TEST(JobSystemTest, ParallelForNeverWaitsBehindBusyWorkers) {
     open = true;
     caller.join();
     ASSERT_TRUE(varn.pumpUntil([&] { return left.load() == jobs.getWorkerCount(); }));
-    EXPECT_TRUE(finishedWhileBusy) << "the caller ran every chunk while the workers were busy";
+    EXPECT_TRUE(finishedWhileBusy) << "The caller ran every chunk while the workers were busy.";
     EXPECT_EQ(std::accumulate(values.begin(), values.end(), 0), 1000);
 }
 

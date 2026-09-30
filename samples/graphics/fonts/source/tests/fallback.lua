@@ -8,7 +8,7 @@ local sample = require('sample')
 
 local Fallback = haylen.class('Fallback', sample.Test)
 
-Fallback.hints = 'M PLUS 1p comes first among the fallbacks, so it draws the symbols it has and Noto Sans Symbols 2 draws the rest. A fallback font synthesizes the bold and italic its run asks for, as family:resolve reports on the right.'
+Fallback.hints = 'M PLUS 1p comes first among the fallbacks, so it draws the symbols it has and Noto Sans Symbols 2 draws the rest. A fallback font synthesizes the bold and italic its run asks for, as "family:resolve" reports on the right.'
 
 local kLines = {
     {'Japanese', '日本語のテキスト、ひらがなとカタカナと漢字。'},

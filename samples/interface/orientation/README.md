@@ -4,8 +4,8 @@ Haylen Orientation is a Lua sample of the screen orientation and the design reso
 
 | Test | What it shows |
 | --- | --- |
-| Orientation and its event | `window.orientation()` with the window size, the density and the visible design area, the `windowOrientationChanged`, `windowResized` and `windowSafeAreaChanged` events, and a phone that turns with the screen. |
-| Locking the orientation | `window.lockOrientation` with portrait, landscape and any, fullscreen for browsers, and what Android, iPhone and iPad, browsers, desktops and TVs do with a lock. |
+| Orientation and its event | The function `window.orientation()` with the window size, the density and the visible design area, the `windowOrientationChanged`, `windowResized` and `windowSafeAreaChanged` events, and a phone that turns with the screen. |
+| Locking the orientation | The function `window.lockOrientation` with `portrait`, `landscape` and `any`, fullscreen for browsers, and what Android, iPhone and iPad, browsers, desktops and TVs do with a lock. |
 | Adaptive layout | A character screen that stacks its parts when the visible area is taller than wide and places them side by side otherwise, rebuilt with `document:replace`. |
 | Design resolution and scaling | The live design size, policy, visible rectangle, pixel rectangle and pixels per unit of this app, and a preview of `fit`, `fill`, `stretch`, `expand` and `pixelPerfect` on a phone in both orientations, a tablet, an ultrawide monitor, a Full HD monitor and a small window, computed like the engine does. |
 

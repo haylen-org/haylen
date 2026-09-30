@@ -7,7 +7,7 @@ struct lua_State;
 
 namespace haylen::platform {
 
-// Installs haylen.window, which controls the window or the canvas of the app: its size, fullscreen, title, cursor, on-screen keyboard, orientation, clipboard and back button, and on desktops its decorations, level, taskbar presence, focus, frame, monitors, dragging and mouse passthrough.
+// Installs `haylen.window`, which controls the window or the canvas of the app: its size, fullscreen, title, cursor, on-screen keyboard, orientation, clipboard and back button, and on desktops its decorations, level, taskbar presence, focus, frame, monitors, dragging and mouse passthrough.
 class WindowLua final {
   public:
     static void install(lua_State* L);

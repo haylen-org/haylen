@@ -1,5 +1,5 @@
-// Loads a Haylen app into the page: checks what the browser supports, picks WebGPU or WebGL2, downloads the prebuilt runtime and app.zip with a real progress bar, imports the web modules of the plugins, and hands everything to the runtime.
-// make.py writes config.json next to this file with the name, the transparency, the splash logo and background of app.json, the size of every download and the plugins with a web part, whose modules it copies to plugins/<id>/.
+// Loads a Haylen app into the page: checks what the browser supports, picks WebGPU or WebGL2, downloads the prebuilt runtime and `app.zip` with a real progress bar, imports the web modules of the plugins, and hands everything to the runtime.
+// The script `make.py` writes `config.json` next to this file with the name, the transparency, the splash logo and background of `app.json`, the size of every download and the plugins with a web part, whose modules it copies to `plugins/<id>/`.
 
 var Module = {
     canvas: document.getElementById("canvas"),
@@ -25,7 +25,7 @@ var Module = {
         }
     };
 
-    // Returns the WebGPU or WebGL2 build this browser can run, or the one ?backend= forces when the browser supports it.
+    // Returns the WebGPU or WebGL2 build this browser can run, or the one `?backend=` forces when the browser supports it.
     const pickBackend = async () => {
         const adapter = navigator.gpu ? await navigator.gpu.requestAdapter().catch(() => null) : null;
         const supported = { webgpu: adapter !== null, webgl2: document.createElement("canvas").getContext("webgl2") !== null };
@@ -42,7 +42,7 @@ var Module = {
         throw new Error("This browser supports neither WebGPU nor WebGL2. Update it or turn on hardware acceleration to run this app.");
     };
 
-    // Downloads every file into memory while one bar shows the progress of all of them. Compressed responses report their compressed length, so the sizes of config.json give the total whenever the length of the actual bytes is unknown.
+    // Downloads every file into memory while one bar shows the progress of all of them. Compressed responses report their compressed length, so the sizes of `config.json` give the total whenever the length of the actual bytes is unknown.
     const download = async (files) => {
         const received = new Array(files.length).fill(0);
         const totals = files.map((file) => file.size || 0);
@@ -57,7 +57,7 @@ var Module = {
             files.map(async (file, index) => {
                 const response = await fetch(file.url);
                 if (!response.ok) {
-                    throw new Error(file.url + " could not be downloaded: " + response.status + " " + response.statusText);
+                    throw new Error("The file \"" + file.url + "\" could not be downloaded: " + response.status + " " + response.statusText + ".");
                 }
                 const length = Number(response.headers.get("Content-Length"));
                 if (!response.headers.get("Content-Encoding") && length > 0) {
@@ -90,7 +90,7 @@ var Module = {
             const script = document.createElement("script");
             script.src = url;
             script.onload = resolve;
-            script.onerror = () => reject(new Error(url + " could not be loaded."));
+            script.onerror = () => reject(new Error("The script \"" + url + "\" could not be loaded."));
             document.body.appendChild(script);
         });
 
@@ -102,16 +102,16 @@ var Module = {
                 try {
                     module = await import(new URL(plugin.module, document.baseURI).href);
                 } catch (error) {
-                    throw new Error("The plugin " + plugin.id + " could not be imported from " + plugin.module + ": " + (error.message || error));
+                    throw new Error("The plugin \"" + plugin.id + "\" could not be imported from \"" + plugin.module + "\": " + (error.message || error));
                 }
                 if (typeof module.default !== "function") {
-                    throw new Error("The plugin " + plugin.id + " does not export load(context) as the default export of " + plugin.module + ".");
+                    throw new Error("The plugin \"" + plugin.id + "\" does not export \"load(context)\" as the default export of \"" + plugin.module + "\".");
                 }
                 return { plugin, load: module.default };
             })
         );
 
-    // Loads the plugins in the order of config.json, which puts every plugin after the plugins it requires, once the runtime exists and before the app starts. Each load gets the context the runtime makes for the plugin and may return a promise, and a plugin that fails keeps the app from starting.
+    // Loads the plugins in the order of `config.json`, which puts every plugin after the plugins it requires, once the runtime exists and before the app starts. Each load gets the context the runtime makes for the plugin and may return a promise, and a plugin that fails keeps the app from starting.
     const loadPlugins = (plugins) => {
         Module.preRun.push(() => {
             Module.addRunDependency("haylen-plugins");
@@ -120,7 +120,7 @@ var Module = {
                     try {
                         await load(Module.haylen.createPluginContext(plugin.id, plugin.config));
                     } catch (error) {
-                        fail("The plugin " + plugin.id + " could not be loaded.", String(error.message || error));
+                        fail("The plugin \"" + plugin.id + "\" could not be loaded.", String(error.message || error));
                         return;
                     }
                 }
@@ -137,7 +137,7 @@ var Module = {
         return;
     }
     document.title = config.name;
-    // A transparent app lets the page behind its canvas show through, so only the splash keeps the background of app.json.
+    // A transparent app lets the page behind its canvas show through, so only the splash keeps the background of `app.json`.
     if (config.transparent) {
         document.documentElement.style.background = "transparent";
         document.body.style.background = "transparent";

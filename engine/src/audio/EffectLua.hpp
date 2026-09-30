@@ -56,12 +56,12 @@ template <> struct EnumNames<audio::Filter::Kind> {
 
 namespace haylen::audio {
 
-// Installs the Filter, Delay and Reverb classes of haylen.audio. Their parameters are properties that tweens animate natively.
+// Installs the `Filter`, `Delay` and `Reverb` classes of `haylen.audio`. Their parameters are properties that tweens animate natively.
 class EffectLua final {
   public:
     static void install(lua_State* L);
 
-    // Creates an effect with newEffect(kind, options), where the kind names a filter, 'delay' or 'reverb'.
+    // Creates an effect with `newEffect(kind, options)`, where the kind names a filter, `'delay'` or `'reverb'`.
     static int newEffect(lua_State* L);
 
     // Returns the effect of any effect class at the index, or null for another value.

@@ -28,7 +28,7 @@ void ContextMenu::command(Context& context, std::string_view name, const core::J
         return;
     }
     if (!arguments.is_null() && !(arguments.is_object() && arguments.empty())) {
-        throw std::invalid_argument("The open command takes no arguments.");
+        throw std::invalid_argument("The \"open\" command takes no arguments.");
     }
     openRequested = true;
 }
@@ -48,7 +48,7 @@ void ContextMenu::render(Context& context, const math::Rect& bounds) {
     }
 }
 
-// Returns where the menu opens this frame: at the pointer for a right click or a long press, below the focused control for uiMenu, and below the child for the open command. The menu hangs from that point toward the end of the UI.
+// Returns where the menu opens this frame: at the pointer for a right click or a long press, below the focused control for `uiMenu`, and below the child for the `open` command. The menu hangs from that point toward the end of the UI.
 std::optional<math::Vec2> ContextMenu::findOpening(Context& context, const math::Rect& bounds) {
     const ImGuiIO& io = ImGui::GetIO();
     const math::Vec2 pointer{io.MousePos.x, io.MousePos.y};

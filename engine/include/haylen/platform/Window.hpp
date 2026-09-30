@@ -44,7 +44,7 @@ class Window {
 
     virtual ~Window() = default;
 
-    // Resolves the orientation names "landscape", "portrait" and "any" that app.json and Lua share.
+    // Resolves the orientation names `landscape`, `portrait` and `any` that `app.json` and Lua share.
     [[nodiscard]] static std::optional<Orientation> orientationFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view orientationName(Orientation value) noexcept;
 
@@ -63,7 +63,7 @@ class Window {
     [[nodiscard]] virtual std::string getClipboard() const = 0;
     virtual void requestQuit() = 0;
 
-    // Returns Landscape or Portrait. Desktop windows always count as landscape.
+    // Returns `Landscape` or `Portrait`. Desktop windows always count as landscape.
     [[nodiscard]] virtual Orientation getOrientation() const = 0;
 
     // Keeps the screen in the given orientations where the platform lets an app choose, and does nothing elsewhere.
@@ -74,7 +74,7 @@ class Window {
     // Whether the player can point at the screen with a mouse or a touch screen, which a TV remote cannot.
     [[nodiscard]] virtual bool hasPointerDevice() const noexcept = 0;
 
-    // Whether the desktop shows through the transparent pixels of the window. Only a window that opened able to be transparent, which window.transparent in app.json decides, can turn transparent again after it turned opaque, and turning such a window transparent otherwise throws std::logic_error. An opaque window shows alpha 1 everywhere, whatever the app draws.
+    // Whether the desktop shows through the transparent pixels of the window. Only a window that opened able to be transparent, which `window.transparent` in `app.json` decides, can turn transparent again after it turned opaque, and turning such a window transparent otherwise throws `std::logic_error`. An opaque window shows alpha 1 everywhere, whatever the app draws.
     [[nodiscard]] virtual bool canBeTransparent() const noexcept = 0;
     [[nodiscard]] virtual bool isTransparent() const noexcept = 0;
     virtual void setTransparent(bool value) = 0;

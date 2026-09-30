@@ -14,7 +14,7 @@
 
 namespace haylen::procedural2d {
 
-// Adds the map generators of haylen.procedural2d, their asynchronous versions, the Maze and WaveFunctionCollapseRules classes and autotiling. Maps cross into Lua as CellGrid objects of haylen.spatial2d, and tile numbers keep their values.
+// Adds the map generators of `haylen.procedural2d`, their asynchronous versions, the `Maze` and `WaveFunctionCollapseRules` classes and autotiling. Maps cross into Lua as `CellGrid` objects of `haylen.spatial2d`, and tile numbers keep their values.
 class MapGeneratorsLua final {
   public:
     static void install(lua_State* L);

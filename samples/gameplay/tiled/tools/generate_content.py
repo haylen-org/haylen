@@ -65,7 +65,7 @@ def main() -> None:
     write_art()
     write_tilesets()
     write_maps()
-    print(f"Wrote the content of the Tiled sample to {CONTENT}")
+    print(f'Wrote the content of the Tiled sample to "{CONTENT}".')
 
 
 if __name__ == "__main__":

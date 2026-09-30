@@ -10,7 +10,7 @@
 
 namespace haylen::core {
 
-// A value that a tween animates: a number, a Vec2, a Color or a text, with the arithmetic that tweens need to travel between two values of the same kind.
+// A value that a tween animates: a number, a `Vec2`, a `Color` or a text, with the arithmetic that tweens need to travel between two values of the same kind.
 class TweenValue final {
   public:
     enum class Kind : std::uint8_t {
@@ -20,7 +20,7 @@ class TweenValue final {
         Text,
     };
 
-    // How a value travels from its start to its end. Angle takes the shorter way around the circle in radians, Integer rounds numbers such as score counters, and Hsv blends colors through hue, saturation and value.
+    // How a value travels from its start to its end. The interpolation `Angle` takes the shorter way around the circle in radians, `Integer` rounds numbers such as score counters, and `Hsv` blends colors through hue, saturation and value.
     enum class Interpolation : std::uint8_t {
         Linear,
         Angle,
@@ -53,10 +53,10 @@ class TweenValue final {
     // Both values must have the same kind. A text reveals the end text over the start text one character at a time, like a typewriter.
     [[nodiscard]] static TweenValue mix(const TweenValue& from, const TweenValue& to, float t, Interpolation interpolation);
 
-    // Returns value plus times the offset, which is how relative tweens and incremental loops move their range. Texts cannot be offset.
+    // Returns `value` plus `times` the offset, which is how relative tweens and incremental loops move their range. Texts cannot be offset.
     [[nodiscard]] static TweenValue add(const TweenValue& value, const TweenValue& offset, float times = 1.0F);
 
-    // Returns the offset from start to end, the inverse of add.
+    // Returns the offset from start to end, the inverse of `add`.
     [[nodiscard]] static TweenValue difference(const TweenValue& end, const TweenValue& start);
 
     // Measures how far apart the values are, which is how speed-based tweens find their duration: units for numbers and vectors, the largest channel change for colors and characters for texts.

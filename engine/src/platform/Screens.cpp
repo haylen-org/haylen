@@ -32,11 +32,11 @@ std::uint64_t Screens::open(std::string plugin, std::string screen, Bridge::Payl
     // A screen that cannot open fails at the next pump, like every other answer.
     const std::uint64_t id = nextId.fetch_add(1);
     if (ScreenRelay::getShowing()) {
-        failed.emplace_back(std::move(callback), Bridge::Result{.error = {.message = std::format("The screen {} of {} cannot open while another screen shows.", screen, plugin), .code = "busy"}});
+        failed.emplace_back(std::move(callback), Bridge::Result{.error = {.message = std::format("The screen \"{}\" of \"{}\" cannot open while another screen shows.", screen, plugin), .code = "busy"}});
         return id;
     }
     if (!canOpen()) {
-        failed.emplace_back(std::move(callback), Bridge::Result{.error = {.message = std::format("The screen {} of {} opens only while the app is active.", screen, plugin), .code = "notActive"}});
+        failed.emplace_back(std::move(callback), Bridge::Result{.error = {.message = std::format("The screen \"{}\" of \"{}\" opens only while the app is active.", screen, plugin), .code = "notActive"}});
         return id;
     }
 
@@ -71,7 +71,7 @@ bool Screens::cancel(std::uint64_t id) {
     pending.erase(found);
 
     giveUp(id, entry);
-    failed.emplace_back(std::move(entry.callback), Bridge::Result{.error = {.message = std::format("The screen {} of {} was cancelled.", entry.screen, entry.plugin), .code = "cancelled"}});
+    failed.emplace_back(std::move(entry.callback), Bridge::Result{.error = {.message = std::format("The screen \"{}\" of \"{}\" was cancelled.", entry.screen, entry.plugin), .code = "cancelled"}});
     return true;
 }
 
@@ -149,7 +149,7 @@ void Screens::expire() {
         pending.erase(found);
         giveUp(id, entry);
         if (entry.callback) {
-            entry.callback({.error = {.message = std::format("The screen {} of {} timed out.", entry.screen, entry.plugin), .code = "timeout"}});
+            entry.callback({.error = {.message = std::format("The screen \"{}\" of \"{}\" timed out.", entry.screen, entry.plugin), .code = "timeout"}});
         }
     }
 }

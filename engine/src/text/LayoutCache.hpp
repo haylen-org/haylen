@@ -18,7 +18,7 @@ class LayoutCache final {
   public:
     using Builder = std::function<Layout()>;
 
-    // Returns the cached layout of the text in the style, or builds and caches it. A size, maximum width or line spacing that is not finite throws std::invalid_argument.
+    // Returns the cached layout of the text in the style, or builds and caches it. A size, maximum width or line spacing that is not finite throws `std::invalid_argument`.
     [[nodiscard]] std::shared_ptr<const Layout> get(std::string_view text, const Style& style, const Builder& build);
 
   private:

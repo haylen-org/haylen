@@ -10,7 +10,7 @@
 
 namespace haylen::lua {
 
-// Scene implemented by a Lua table whose optional methods mirror the Scene hooks. A table is one scene for as long as the engine holds it, however often it is pushed, preloaded or looked up, and it can come back as a new scene once it unloaded. Its processMode and transparent fields are read every frame, its load hook runs as a task the scene owns, and everything the table owns ends when the scene unloads.
+// Scene implemented by a Lua table whose optional methods mirror the `Scene` hooks. A table is one scene for as long as the engine holds it, however often it is pushed, preloaded or looked up, and it can come back as a new scene once it unloaded. Its `processMode` and `transparent` fields are read every frame, its load hook runs as a task the scene owns, and everything the table owns ends when the scene unloads.
 class ScriptedScene final : public core::Scene {
   public:
     ScriptedScene(lua_State* L, int index);
@@ -24,7 +24,7 @@ class ScriptedScene final : public core::Scene {
     // Returns whether the table at index was ever a scene.
     [[nodiscard]] static bool wasScene(lua_State* L, int index);
 
-    // Pushes the Lua value that params carry, or nil when they are empty.
+    // Pushes the Lua value that `params` carry, or `nil` when they are empty.
     static void pushParams(lua_State* L, const std::any& params);
 
     void load(core::Engine& engine, core::SceneLoad& context) override;
@@ -47,10 +47,10 @@ class ScriptedScene final : public core::Scene {
 
     void pushTable(lua_State* L) const;
 
-    // Returns a function that resolves the mode of the owner at index on every call, so a timer or tween follows its owner when the mode changes. It returns Inherit once the owner is gone, and it must be destroyed while the Lua state is open.
+    // Returns a function that resolves the mode of the owner at index on every call, so a timer or tween follows its owner when the mode changes. It returns `Inherit` once the owner is gone, and it must be destroyed while the Lua state is open.
     [[nodiscard]] static std::function<core::ProcessMode()> followOwnerMode(lua_State* L, int owner);
 
-    // Reads a processMode field of the table at index, or Inherit when it has none.
+    // Reads a `processMode` field of the table at index, or `Inherit` when it has none.
     [[nodiscard]] static core::ProcessMode readProcessMode(lua_State* L, int index);
 
   private:
@@ -61,10 +61,10 @@ class ScriptedScene final : public core::Scene {
     static void pushScenes(lua_State* L);
     static int collectHandle(lua_State* L);
 
-    // Returns the mode that something owned by the value at index inherits: the resolved mode of the scene on the stack whose table it is, the processMode field of any other table, such as an autoload, or Inherit.
+    // Returns the mode that something owned by the value at index inherits: the resolved mode of the scene on the stack whose table it is, the `processMode` field of any other table, such as an autoload, or `Inherit`.
     [[nodiscard]] static core::ProcessMode resolveOwnerMode(lua_State* L, int owner);
 
-    // Calls the method named name, when the table has one, with the table as self and the arguments that pushArguments pushes. The lookup is protected like the call, because a metatable may raise errors for fields it lacks.
+    // Calls the method named `name`, when the table has one, with the table as `self` and the arguments that `pushArguments` pushes. The lookup is protected like the call, because a metatable may raise errors for fields it lacks.
     void call(const char* name, int arguments = 0, const std::function<void(lua_State*)>& pushArguments = {}) const;
 
     Reference table;

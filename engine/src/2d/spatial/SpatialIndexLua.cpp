@@ -122,7 +122,7 @@ int SpatialIndexLua::newHashGrid(lua_State* L) {
     return 1;
 }
 
-// Creates a quadtree with newQuadTree(rect[, {maxEntries = 8, maxDepth = 8}]).
+// Creates a quadtree with `newQuadTree(rect[, {maxEntries = 8, maxDepth = 8}])`.
 int SpatialIndexLua::newQuadTree(lua_State* L) {
     QuadTree::Settings settings;
     if (!lua_isnoneornil(L, 2)) {
@@ -150,7 +150,7 @@ int SpatialIndexLua::newKdTree(lua_State* L) {
     return 1;
 }
 
-// Stores a value with set(value, rect), or moves it when it is already stored.
+// Stores a value with `set(value, rect)`, or moves it when it is already stored.
 template <typename Structure> int SpatialIndexLua::set(lua_State* L) {
     ScriptedIndex<Structure>& self = lua::Userdata::check<ScriptedIndex<Structure>>(L, 1);
     const math::Rect rect = lua::Stack::read<math::Rect>(L, 3);
@@ -158,7 +158,7 @@ template <typename Structure> int SpatialIndexLua::set(lua_State* L) {
     return 0;
 }
 
-// Stores a value at a point with set(value, x, y[, radius]), or moves it when it is already stored.
+// Stores a value at a point with `set(value, x, y[, radius])`, or moves it when it is already stored.
 int SpatialIndexLua::setPoint(lua_State* L) {
     ScriptedIndex<KdTree>& self = lua::Userdata::check<ScriptedIndex<KdTree>>(L, 1);
     const math::Vec2 point{lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4)};
@@ -239,7 +239,7 @@ template <typename Structure> int SpatialIndexLua::queryPoint(lua_State* L) {
     return 1;
 }
 
-// Casts a ray with raycast(x1, y1, x2, y2[, limit]) and returns the hits from the start on, each with the value it hit.
+// Casts a ray with `raycast(x1, y1, x2, y2[, limit])` and returns the hits from the start on, each with the value it hit.
 template <typename Structure> int SpatialIndexLua::raycast(lua_State* L) {
     const Structure& structure = lua::Userdata::check<ScriptedIndex<Structure>>(L, 1).index;
     const math::Ray ray = math::Ray::between({lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}, {lua::Stack::read<float>(L, 4), lua::Stack::read<float>(L, 5)});
@@ -250,7 +250,7 @@ template <typename Structure> int SpatialIndexLua::raycast(lua_State* L) {
     return 1;
 }
 
-// Finds the closest value with nearest(x, y, maxDistance[, accept]), where accept(value) can reject candidates.
+// Finds the closest value with `nearest(x, y, maxDistance[, accept])`, where `accept(value)` can reject candidates.
 template <typename Structure> int SpatialIndexLua::nearest(lua_State* L) {
     const Structure& structure = lua::Userdata::check<ScriptedIndex<Structure>>(L, 1).index;
     const math::Vec2 point{lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)};
@@ -260,7 +260,7 @@ template <typename Structure> int SpatialIndexLua::nearest(lua_State* L) {
         luaL_checktype(L, 5, LUA_TFUNCTION);
     }
 
-    // Accept runs on every candidate from the closest one on, and it may remove values or clear the structure, which replaces the values table, so each candidate is looked up in the current table and a value that is gone is skipped.
+    // The callback `accept` runs on every candidate from the closest one on, and it may remove values or clear the structure, which replaces the `values` table, so each candidate is looked up in the current table and a value that is gone is skipped.
     std::vector<Neighbor> candidates;
     structure.nearest(point, filtered ? structure.size() : 1, maxDistance, candidates);
     for (const Neighbor& candidate : candidates) {
@@ -288,7 +288,7 @@ template <typename Structure> int SpatialIndexLua::nearest(lua_State* L) {
     return 1;
 }
 
-// Lists the closest values with kNearest(x, y, count[, maxDistance]), closest first.
+// Lists the closest values with `kNearest(x, y, count[, maxDistance])`, closest first.
 template <typename Structure> int SpatialIndexLua::nearestList(lua_State* L) {
     const Structure& structure = lua::Userdata::check<ScriptedIndex<Structure>>(L, 1).index;
     const math::Vec2 point{lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)};
@@ -306,7 +306,7 @@ template <typename Structure> int SpatialIndexLua::nearestList(lua_State* L) {
     return 1;
 }
 
-// Lists the values under a screen point with pick(camera, x, y), where the point is in design coordinates like pointer positions.
+// Lists the values under a screen point with `pick(camera, x, y)`, where the point is in design coordinates like pointer positions.
 template <typename Structure> int SpatialIndexLua::pick(lua_State* L) {
     const Structure& structure = lua::Userdata::check<ScriptedIndex<Structure>>(L, 1).index;
     const ScreenPicker picker(lua::Userdata::check<graphics2d::Camera>(L, 2), lua::Runtime::getEngine(L).getViewport().getVisibleRect());

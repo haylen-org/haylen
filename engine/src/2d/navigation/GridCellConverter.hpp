@@ -8,7 +8,7 @@
 
 namespace haylen::lua {
 
-// Cells cross into Lua as {x = column, y = row} tables and come back from those or from {column, row}.
+// Cells cross into Lua as `{x = column, y = row}` tables and come back from those or from `{column, row}`.
 template <> struct Converter<navigation2d::Grid::Cell> {
     static void push(lua_State* L, navigation2d::Grid::Cell cell) {
         lua_createtable(L, 0, 2);

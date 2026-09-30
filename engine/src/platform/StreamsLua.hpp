@@ -27,12 +27,12 @@ template <> struct Type<platform::AudioStream> {
 
 namespace haylen::platform {
 
-// Installs the VideoStream and AudioStream classes that the handles of plugins return for the streams their native parts open. A video stream keeps its texture current and announces every frame, and an audio stream plays as a voice of haylen.audio and hands out its newest samples.
+// Installs the `VideoStream` and `AudioStream` classes that the handles of plugins return for the streams their native parts open. A video stream keeps its texture current and announces every frame, and an audio stream plays as a voice of `haylen.audio` and hands out its newest samples.
 class StreamsLua final {
   public:
     static void install(lua_State* L);
 
-    // Pushes the stream name of the plugin, or nil while its native part has not opened it. The engine keeps the texture of a video stream current from then on, until the app stops.
+    // Pushes the stream `name` of the plugin, or `nil` while its native part has not opened it. The engine keeps the texture of a video stream current from then on, until the app stops.
     static void pushVideoStream(lua_State* L, const std::string& plugin, const std::string& name);
     static void pushAudioStream(lua_State* L, const std::string& plugin, const std::string& name);
 

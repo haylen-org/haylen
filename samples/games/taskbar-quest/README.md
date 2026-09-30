@@ -21,7 +21,7 @@ The game shows the desktop windows of the engine. The strip has no title bar, le
 | Linux app | `python3 make.py run games/taskbar-quest --platform linux` |
 | Browser | `python3 make.py run games/taskbar-quest --platform web` |
 
-`python3 make.py package games/taskbar-quest -o taskbar-quest.zip` zips the package, which is `app.json`, `source/` and `content/` of this folder, and the desktop player runs the zip as well: `haylen taskbar-quest.zip`.
+The command `python3 make.py package games/taskbar-quest -o taskbar-quest.zip` zips the package, which is `app.json`, `source/` and `content/` of this folder, and the desktop player runs the zip as well: `haylen taskbar-quest.zip`.
 
 ## Platforms
 

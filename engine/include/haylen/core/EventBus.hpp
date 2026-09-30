@@ -20,7 +20,7 @@
 
 namespace haylen::core {
 
-// Publishes events to listeners that subscribe by name or, from C++, by type. Listeners run by descending priority, can listen to one channel or to all of them, can filter events and can consume an event so later listeners skip it. Events are delivered at once on the frame thread, or queued from any thread and delivered at the end of the frame. The engine publishes its lifecycle events here, with the names that LifecycleEvent lists.
+// Publishes events to listeners that subscribe by name or, from C++, by type. Listeners run by descending priority, can listen to one channel or to all of them, can filter events and can consume an event so later listeners skip it. Events are delivered at once on the frame thread, or queued from any thread and delivered at the end of the frame. The engine publishes its lifecycle events here, with the names that `LifecycleEvent` lists.
 class EventBus final {
   public:
     class Event final {
@@ -40,7 +40,7 @@ class EventBus final {
             return type == std::type_index(typeid(T)) ? static_cast<const T*>(value) : nullptr;
         }
 
-        // Returns the type of the native value, which is void for events that carry only data.
+        // Returns the type of the native value, which is `void` for events that carry only data.
         [[nodiscard]] std::type_index getType() const noexcept {
             return type;
         }
@@ -76,7 +76,7 @@ class EventBus final {
         // Unsubscribes once the owner is destroyed.
         std::weak_ptr<const void> owner;
 
-        // Skips the events for which the filter returns false. A once listener stays until an event passes.
+        // Skips the events for which the filter returns `false`. A once listener stays until an event passes.
         std::function<bool(const Event&)> filter;
     };
 
@@ -106,7 +106,7 @@ class EventBus final {
     // Delivers the event right away and returns whether a listener consumed it.
     bool emit(std::string_view name, const Json& data = {}, std::string_view channel = {});
 
-    // Delivers a named event that also carries a native value, which listeners read with Event::get.
+    // Delivers a named event that also carries a native value, which listeners read with `Event::get`.
     template <typename T> bool emitWith(std::string_view name, const T& value, const Json& data = {}, std::string_view channel = {}) {
         return state->deliver(state->findNamed(name), Event(name, channel, data, &value, std::type_index(typeid(T))));
     }

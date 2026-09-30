@@ -9,7 +9,7 @@ class Image;
 
 namespace haylen::plugins {
 
-// Registers the tiled asset type for .tmj maps and the tiledWorld type for .world files, and installs the haylen.tiled module.
+// Registers the `tiled` asset type for `.tmj` maps and the `tiledWorld` type for `.world` files, and installs the `haylen.tiled` module.
 class TiledPlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {

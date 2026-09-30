@@ -17,7 +17,7 @@ class Procedural2DLuaTest : public ::testing::Test {
         return fixture.lua(source);
     }
 
-    // Runs an asynchronous call in a task and waits until it stores its result in the global done.
+    // Runs an asynchronous call in a task and waits until it stores its result in the global `done`.
     void await(const std::string& call) {
         fixture.runLua("done = nil require('async').spawn(function() done = {" + call + ":await()} end)");
         ASSERT_TRUE(fixture.frameUntil([this] { return lua("return done ~= nil") == "true"; }, std::chrono::seconds(10)));
@@ -36,7 +36,7 @@ TEST_F(Procedural2DLuaTest, RegionsDescribeAreas) {
     EXPECT_EQ(lua("local r = procedural.region({shape = 'ellipse', x = 0, y = 0, width = 20, height = 20}) return r.kind"), "circle");
     EXPECT_EQ(lua("local r = procedural.region({0, 0, 10, 10}) local p = r:randomPoint(m.random(3)) return tostring(r:contains(p))"), "true");
     EXPECT_NE(lua("procedural.region({shape = 'point', x = 0, y = 0})").find("Only rectangle, ellipse and polygon"), std::string::npos);
-    EXPECT_NE(lua("procedural.region({center = {0, 0}, radius = 1, color = 'red'})").find("Unknown option 'color'"), std::string::npos);
+    EXPECT_NE(lua("procedural.region({center = {0, 0}, radius = 1, color = 'red'})").find("Unknown option \"color\""), std::string::npos);
 }
 
 TEST_F(Procedural2DLuaTest, ScattersPointsWithTypesAndMaps) {
@@ -76,9 +76,9 @@ TEST_F(Procedural2DLuaTest, ScattersPointsWithTypesAndMaps) {
     EXPECT_EQ(lua("return tostring(#biomes > 0) .. ' ' .. right"), "true 0");
     EXPECT_EQ(lua("local a = procedural.scatter({region = {0, 0, 100, 100}, density = 0.01, seed = 5}) local b = procedural.scatter({region = {0, 0, 100, 100}, density = 0.01, seed = 5}) return a[3].x == b[3].x"), "true");
     EXPECT_NE(lua("procedural.scatter({region = {0, 0, 10, 10}, method = 'hex'})").find("unknown value 'hex'"), std::string::npos);
-    EXPECT_NE(lua("procedural.scatter({region = {0, 0, 10, 10}, amount = 3})").find("Unknown option 'amount'"), std::string::npos);
-    EXPECT_NE(lua("procedural.scatter({region = {0, 0, 10, 10}, densityMap = 0.5})").find("The densityMap option takes a function or a noise table."), std::string::npos);
-    EXPECT_NE(lua("procedural.scatterAsync({region = {0, 0, 10, 10}, biome = 'forest'})").find("The biome option takes a function or a noise table."), std::string::npos);
+    EXPECT_NE(lua("procedural.scatter({region = {0, 0, 10, 10}, amount = 3})").find("Unknown option \"amount\""), std::string::npos);
+    EXPECT_NE(lua("procedural.scatter({region = {0, 0, 10, 10}, densityMap = 0.5})").find("The \"densityMap\" option takes a function or a noise table."), std::string::npos);
+    EXPECT_NE(lua("procedural.scatterAsync({region = {0, 0, 10, 10}, biome = 'forest'})").find("The \"biome\" option takes a function or a noise table."), std::string::npos);
     EXPECT_NE(lua("procedural.scatter({region = {0, 0, 100, 100}, method = 'poisson', spacing = 10, densityMap = {seed = 1}})").find("maximumSpacing"), std::string::npos);
     EXPECT_NE(lua("procedural.scatter({region = {0, 0, 100, 100}, method = 'grid', spacing = 0 / 0})").find("finite positive spacing"), std::string::npos);
 
@@ -106,7 +106,7 @@ TEST_F(Procedural2DLuaTest, GeneratesMapsAsCellGrids) {
     EXPECT_EQ(lua("local closed = procedural.maze({width = 1, height = 1}) return closed:openings(0, 0)"), "0");
     EXPECT_NE(lua("procedural.maze({width = 2, height = 2, algorithm = 'eller'})").find("unknown value 'eller'"), std::string::npos);
     EXPECT_NE(lua("procedural.maze({width = 40000, height = 40000})").find("fits in 32-bit cell indices"), std::string::npos);
-    EXPECT_NE(lua("procedural.cellularAutomaton({size = 3})").find("Unknown option 'size'"), std::string::npos);
+    EXPECT_NE(lua("procedural.cellularAutomaton({size = 3})").find("Unknown option \"size\""), std::string::npos);
 
     // Mazes built by hand start closed and open wall by wall, on both sides of each wall.
     fixture.runLua("room = procedural.newMaze(3, 2) room:open(0, 0, procedural.east) room:open(1, 0, procedural.south)");
@@ -119,7 +119,7 @@ TEST_F(Procedural2DLuaTest, GeneratesMapsAsCellGrids) {
     fixture.runLua("painted = spatial.newCellGrid(5, 5, 0) painted:set(2, 2, 1)");
     EXPECT_EQ(lua("local smooth = procedural.cellularAutomatonStep(painted, {solidBorder = false}) return smooth:get(2, 2) .. smooth:get(0, 0) .. ' ' .. smooth.width"), "00 5");
     EXPECT_EQ(lua("local walled = procedural.cellularAutomatonStep(painted) return walled:get(0, 0) .. walled:get(2, 2)"), "10");
-    EXPECT_NE(lua("procedural.cellularAutomatonStep(painted, {width = 3})").find("Unknown option 'width'"), std::string::npos);
+    EXPECT_NE(lua("procedural.cellularAutomatonStep(painted, {width = 3})").find("Unknown option \"width\""), std::string::npos);
 
     await("procedural.cellularAutomatonAsync({width = 20, height = 20, seed = 3})");
     EXPECT_EQ(lua("return done[1].width"), "20");
@@ -170,7 +170,7 @@ TEST_F(Procedural2DLuaTest, CollapsesWavesFromRulesAndSamples) {
     EXPECT_EQ(lua("return coastRules.tileCount .. ' ' .. tostring(coastRules:allowed(1, 0, 'left')) .. ' ' .. tostring(coastRules:allowed(0, 2, 'up')) .. ' ' .. coastRules:weight(1)"), "3 true false 2.0");
     EXPECT_EQ(lua("return tostring(coastRules:valid(tiles)) .. ' ' .. tostring(learned:valid(stripes, true)) .. ' ' .. tostring(learned:valid(tiles))"), "true true false");
     EXPECT_EQ(lua("return learned.tileCount .. ' ' .. learned:weight(0) .. ' ' .. tostring(learned:allowed(1, 0, 'right'))"), "2 2.0 true");
-    EXPECT_NE(lua("procedural.waveFunctionCollapseRules({tiles = 2, width = 4})").find("Unknown option 'width'"), std::string::npos);
+    EXPECT_NE(lua("procedural.waveFunctionCollapseRules({tiles = 2, width = 4})").find("Unknown option \"width\""), std::string::npos);
 
     await("procedural.waveFunctionCollapseAsync({sample = sample, periodicSample = true, width = 6, height = 2, periodic = true, seed = 2})");
     EXPECT_EQ(lua("return done[1].width"), "6");
@@ -223,7 +223,7 @@ TEST_F(Procedural2DLuaTest, AutotilesByNeighborsAndWangSets) {
     EXPECT_EQ(lua("local blobs = procedural.autotile8(ground, 1) return blobs:get(1, 1) == procedural.blobIndex(85)"), "true");
     EXPECT_EQ(lua("local tiles = procedural.autotileWang(colors, set) return tiles.width .. ' ' .. tiles:get(0, 0) .. ' ' .. tiles:get(1, 1)"), "2 4 9");
     EXPECT_NE(lua("procedural.mask4(ground, 5, 5)").find("outside the grid"), std::string::npos);
-    EXPECT_NE(lua("procedural.autotileWang(colors, {kind = 'diagonal', tiles = {}})").find("corner, edge or mixed"), std::string::npos);
+    EXPECT_NE(lua("procedural.autotileWang(colors, {kind = 'diagonal', tiles = {}})").find("\"corner\", \"edge\" or \"mixed\""), std::string::npos);
 }
 
 } // namespace haylen

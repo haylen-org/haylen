@@ -140,7 +140,7 @@ bool Grid::hasLatticeLineOfSight(Cell from, Cell to) const noexcept {
     const int stepY = to.y > from.y ? 1 : -1;
     Cell point = from;
 
-    // Walks the crossed cells in order by comparing where the segment meets the next vertical and horizontal cell borders, (1 + 2 * x) / 2dx against (1 + 2 * y) / 2dy.
+    // Walks the crossed cells in order by comparing where the segment meets the next vertical and horizontal cell borders, `(1 + 2 * x) / 2dx` against `(1 + 2 * y) / 2dy`.
     for (int x = 0, y = 0; x < dx || y < dy;) {
         const int decision = (1 + 2 * x) * dy - (1 + 2 * y) * dx;
         if (decision == 0) {

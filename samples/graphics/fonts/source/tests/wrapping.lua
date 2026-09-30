@@ -68,7 +68,7 @@ function Wrapping:render()
     guide(right + self.width, stage.y + 30, stage.y + 520)
 
     local y = stage.y + 540
-    sample.caption('a word wider than the line breaks inside itself', left, y)
+    sample.caption('A word wider than the line breaks inside itself', left, y)
     graphics2d.drawText(fonts.get('crimson'), kLong, left, y + 34, {size = 34, maxWidth = math.min(self.width, 300), lineSpacing = self.spacing})
     guide(left + math.min(self.width, 300), y + 30, stage:bottom())
 end

@@ -38,7 +38,7 @@ class Explosion final {
         math::Vec2 impulse{};
     };
 
-    // Returns the bodies it pushed with the impulses they took. Throws std::invalid_argument when the radius is not positive.
+    // Returns the bodies it pushed with the impulses they took. Throws `std::invalid_argument` when the radius is not positive.
     static std::vector<Hit> apply(World& world, const Options& options);
 
     [[nodiscard]] static std::optional<Falloff> falloffFromName(std::string_view name) noexcept;

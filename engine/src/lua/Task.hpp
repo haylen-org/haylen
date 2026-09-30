@@ -10,7 +10,7 @@
 
 namespace haylen::lua {
 
-// A Lua function that runs in a coroutine of its own, waits on promises with :await() like a task of async.spawn and can be cancelled. A function that returns a promise finishes once the promise settles. Cancelling closes the coroutine, which runs its pending to-be-closed variables, and its code never runs again, even when a promise it waits for settles later.
+// A Lua function that runs in a coroutine of its own, waits on promises with `:await()` like a task of `async.spawn` and can be cancelled. A function that returns a promise finishes once the promise settles. Cancelling closes the coroutine, which runs its pending to-be-closed variables, and its code never runs again, even when a promise it waits for settles later.
 class Task final : public std::enable_shared_from_this<Task> {
   public:
     // Receives the error of a task that failed, or nothing once it finished.

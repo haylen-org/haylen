@@ -124,7 +124,7 @@ bool UiFixture::isFocused(const ui::Document& document, std::string_view id) {
 const ui::Event& UiFixture::findLastEvent(std::string_view name) const {
     const auto found = std::ranges::find(events.rbegin(), events.rend(), name, &ui::Event::name);
     if (found == events.rend()) {
-        throw std::logic_error("No " + std::string(name) + " event was reported.");
+        throw std::logic_error("No \"" + std::string(name) + "\" event was reported.");
     }
     return *found;
 }

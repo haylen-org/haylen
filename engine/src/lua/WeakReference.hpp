@@ -13,7 +13,7 @@ class WeakReference final {
     WeakReference(const WeakReference&) = delete;
     WeakReference& operator=(const WeakReference&) = delete;
 
-    // Pushes the value and returns true, or pushes nothing and returns false once it was collected.
+    // Pushes the value and returns `true`, or pushes nothing and returns `false` once it was collected.
     [[nodiscard]] bool push(lua_State* L) const;
     [[nodiscard]] bool isAlive() const;
 

@@ -222,7 +222,7 @@ core::Json WebPage::getFrameStatistics(core::Engine& engine) {
 
 } // namespace haylen::platform
 
-// Entry points for the page, called through Module.haylen in platform/web/haylen-runtime.js.
+// Entry points for the page, called through `Module.haylen` in `platform/web/haylen-runtime.js`.
 extern "C" {
 
 EMSCRIPTEN_KEEPALIVE const char* haylen_web_last_error() {

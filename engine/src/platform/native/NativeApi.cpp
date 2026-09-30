@@ -136,7 +136,7 @@ template <typename Body> auto NativeApi::guard(const char* entry, Body&& body) n
     try {
         return body();
     } catch (const std::exception& error) {
-        core::Log::error("The native library call {} failed: {}", entry, error.what());
+        core::Log::error("The native library call \"{}\" failed: {}", entry, error.what());
     }
     if constexpr (!std::is_void_v<decltype(body())>) {
         return {};
@@ -170,7 +170,7 @@ HaylenNativeVideoStream* NativeApi::openVideoStream(const char* plugin, const ch
     // clang-format off
     return guard("openVideoStream", [&] {
         if (format != HAYLEN_NATIVE_PIXELS_RGBA8 && format != HAYLEN_NATIVE_PIXELS_BGRA8) {
-            throw std::invalid_argument("A video stream takes the pixel format HAYLEN_NATIVE_PIXELS_RGBA8 or HAYLEN_NATIVE_PIXELS_BGRA8.");
+            throw std::invalid_argument("A video stream takes the pixel format \"HAYLEN_NATIVE_PIXELS_RGBA8\" or \"HAYLEN_NATIVE_PIXELS_BGRA8\".");
         }
         const VideoStream::Format pixels = format == HAYLEN_NATIVE_PIXELS_RGBA8 ? VideoStream::Format::Rgba8 : VideoStream::Format::Bgra8;
         return reinterpret_cast<HaylenNativeVideoStream*>(PluginStreams::openVideo(plugin != nullptr ? plugin : "", name != nullptr ? name : "", pixels, width, height).get());
@@ -193,7 +193,7 @@ HaylenNativeAudioStream* NativeApi::openAudioStream(const char* plugin, const ch
     // clang-format off
     return guard("openAudioStream", [&] {
         if (format != HAYLEN_NATIVE_SAMPLES_FLOAT32 && format != HAYLEN_NATIVE_SAMPLES_INT16) {
-            throw std::invalid_argument("An audio stream takes the sample format HAYLEN_NATIVE_SAMPLES_FLOAT32 or HAYLEN_NATIVE_SAMPLES_INT16.");
+            throw std::invalid_argument("An audio stream takes the sample format \"HAYLEN_NATIVE_SAMPLES_FLOAT32\" or \"HAYLEN_NATIVE_SAMPLES_INT16\".");
         }
         if (sampleRate <= 0 || channels <= 0 || capacityFrames <= 0) {
             throw std::invalid_argument("An audio stream needs a sample rate, channels and room for at least one frame.");

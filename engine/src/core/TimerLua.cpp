@@ -19,7 +19,7 @@
 
 namespace haylen::core {
 
-// Shared by after and every: timer.after(seconds, fn, options) and timer.every(seconds, fn, options). A timer with an owner holds its function through the owner and ends with it, and one that inherits its process mode follows the mode of its owner.
+// Shared by `after` and `every`: `timer.after(seconds, fn, options)` and `timer.every(seconds, fn, options)`. A timer with an owner holds its function through the owner and ends with it, and one that inherits its process mode follows the mode of its owner.
 int TimerLua::start(lua_State* L, bool repeating) {
     const auto seconds = lua::Stack::read<float>(L, 1);
     luaL_checktype(L, 2, LUA_TFUNCTION);

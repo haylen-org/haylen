@@ -20,12 +20,12 @@
 
 namespace haylen::text {
 
-// Text written in BBCode markup, laid out with a font family and animated by effects and a typewriter reveal. Layouts are cached by width and scale, and each frame applies the effects and the reveal to a copy of the layout. Effects run while that copy is built, so a method that changes or lays out the text throws std::logic_error when an effect of the same text calls it.
+// Text written in BBCode markup, laid out with a font family and animated by effects and a typewriter reveal. Layouts are cached by width and scale, and each frame applies the effects and the reveal to a copy of the layout. Effects run while that copy is built, so a method that changes or lays out the text throws `std::logic_error` when an effect of the same text calls it.
 class RichText final {
   public:
     RichText(std::string markup, RichTextOptions textOptions, std::shared_ptr<RichTextRegistry> textRegistry);
 
-    // Reads markup into its paragraphs, runs and objects. Malformed markup throws std::invalid_argument naming the line and column of the problem.
+    // Reads markup into its paragraphs, runs and objects. Malformed markup throws `std::invalid_argument` naming the line and column of the problem.
     [[nodiscard]] static RichTextDocument parse(std::string_view markup);
 
     // Replaces the markup, which starts the effects and the reveal again. Effects must be registered by then.

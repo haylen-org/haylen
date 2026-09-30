@@ -1,4 +1,4 @@
--- Effects and typewriter: the built-in effects animate their glyphs from the time alone, with the attributes of their tags, and a typewriter reveals a dialogue with [pause] and [speed] tags.
+-- Effects and typewriter: the built-in effects animate their glyphs from the time alone, with the attributes of their tags, and a typewriter reveals a dialogue with `[pause]` and `[speed]` tags.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -8,7 +8,7 @@ local sample = require('sample')
 
 local Typewriter = haylen.class('Typewriter', sample.Test)
 
-Typewriter.hints = 'Next line reveals the next line of the dialogue, Skip shows the rest at once and Replay starts the line over. The speed slider sets the characters per second, and [speed] tags change it inside a line.'
+Typewriter.hints = 'Next line reveals the next line of the dialogue, Skip shows the rest at once and Replay starts the line over. The speed slider sets the characters per second, and "[speed]" tags change it inside a line.'
 Typewriter.focus = 'next'
 
 local kEffects = {

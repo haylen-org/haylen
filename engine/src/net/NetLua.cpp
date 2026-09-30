@@ -19,7 +19,7 @@
 
 namespace haylen::net {
 
-// Reads reconnect = true for the default backoff or a table that changes some of its settings.
+// Reads `reconnect = true` for the default backoff or a table that changes some of its settings.
 WebSocket::Reconnect NetLua::readReconnect(lua_State* L, int index) {
     WebSocket::Reconnect reconnect;
     if (lua_isboolean(L, index)) {
@@ -37,7 +37,7 @@ WebSocket::Reconnect NetLua::readReconnect(lua_State* L, int index) {
     return reconnect;
 }
 
-// Opens a WebSocket with connectWebSocket(url, {protocols = {...}, maxMessageSize = bytes, reconnect = true or {...}}). The socket keeps delivering events until it closes, even when the app no longer holds it.
+// Opens a WebSocket with `connectWebSocket(url, {protocols = {...}, maxMessageSize = bytes, reconnect = true or {...}})`. The socket keeps delivering events until it closes, even when the app no longer holds it.
 int NetLua::connectWebSocket(lua_State* L) {
     std::string url = lua::Stack::read<std::string>(L, 1);
     WebSocket::Options options;
@@ -82,7 +82,7 @@ int NetLua::close(lua_State* L) {
     return 0;
 }
 
-// Listens with on(event, function) to open, message (data, binary), pong (payload), disconnect (code, reason), reconnecting (attempt, delay), close (code, reason) or error (message), and returns a connection.
+// Listens with `on(event, function)` to `open`, `message` (`data`, `binary`), `pong` (`payload`), `disconnect` (`code`, `reason`), `reconnecting` (`attempt`, `delay`), `close` (`code`, `reason`) or `error` (`message`), and returns a connection.
 // A listener with an owner ends with it, like the listeners of events and signals.
 int NetLua::on(lua_State* L) {
     WebSocket& target = check(L);
@@ -172,7 +172,7 @@ int NetLua::on(lua_State* L) {
         }, {.owner = lifetime});
         // clang-format on
     } else {
-        return luaL_error(L, "Unknown WebSocket event '%s'. Sockets report open, message, pong, disconnect, reconnecting, close and error.", std::string(event).c_str());
+        return luaL_error(L, "Unknown WebSocket event \"%s\". Sockets report \"open\", \"message\", \"pong\", \"disconnect\", \"reconnecting\", \"close\" and \"error\".", std::string(event).c_str());
     }
     if (owner != 0) {
         lua::Owners::add(L, owner, connection);

@@ -27,10 +27,10 @@ struct TextPlugin::DecodedFont {
     std::vector<graphics::Image> images;
 };
 
-// Grid options travel as {"characters": "ABC", "cellWidth": 8, "cellHeight": 8, "spacing": [1, 1], "margin": [0, 0], "advance": 0, "lineHeight": 0, "baseline": 0} with the texture options of the image.
+// Grid options travel as `{"characters": "ABC", "cellWidth": 8, "cellHeight": 8, "spacing": [1, 1], "margin": [0, 0], "advance": 0, "lineHeight": 0, "baseline": 0}` with the texture options of the image.
 text::BitmapFont::Grid TextPlugin::readGrid(const core::Json& options) {
     if (!options.contains("characters") || !options.at("characters").is_string() || !options.contains("cellWidth") || !options.at("cellWidth").is_number() || !options.contains("cellHeight") || !options.at("cellHeight").is_number()) {
-        throw std::invalid_argument("A grid font needs its characters as a string and a cellWidth and cellHeight.");
+        throw std::invalid_argument("A grid font needs its characters as a string and a \"cellWidth\" and \"cellHeight\".");
     }
 
     // clang-format off
@@ -39,7 +39,7 @@ text::BitmapFont::Grid TextPlugin::readGrid(const core::Json& options) {
             return 0.0F;
         }
         if (!options.at(key).is_number()) {
-            throw std::invalid_argument(std::string("The grid font option ") + key + " must be a number.");
+            throw std::invalid_argument(std::string("The grid font option \"") + key + "\" must be a number.");
         }
         return options.at(key).get<float>();
     };
@@ -49,7 +49,7 @@ text::BitmapFont::Grid TextPlugin::readGrid(const core::Json& options) {
         }
         const core::Json& value = options.at(key);
         if (!value.is_array() || value.size() != 2 || !value[0].is_number() || !value[1].is_number()) {
-            throw std::invalid_argument(std::string("The grid font option ") + key + " must be a pair of numbers.");
+            throw std::invalid_argument(std::string("The grid font option \"") + key + "\" must be a pair of numbers.");
         }
         return math::Vec2{value[0].get<float>(), value[1].get<float>()};
     };

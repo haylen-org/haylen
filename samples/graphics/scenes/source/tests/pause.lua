@@ -1,4 +1,4 @@
--- Pause and process modes: haylen.setPaused stops the pausable world, its timers and its tweens, while the pause menu runs in whenPaused and one timer runs always.
+-- Pause and process modes: `haylen.setPaused` stops the pausable world, its timers and its tweens, while the pause menu runs in `whenPaused` and one timer runs `always`.
 local haylen = require('haylen')
 local graphics2d = require('haylen.graphics2d')
 local input = require('haylen.input')
@@ -11,7 +11,7 @@ local sample = require('sample')
 
 local Pause = haylen.class('Pause', sample.Test)
 
-Pause.hints = 'Pause with the button, P or the Y button. The world, its spawner timer and its tween stop, the always timer keeps counting and the menu animates.'
+Pause.hints = 'Pause with the button, P or the Y button. The world, its spawner timer and its tween stop, the "always" timer keeps counting and the menu animates.'
 
 -- The pause menu: transparent over the world, running only while the game is paused.
 local PauseMenu = haylen.class('PauseMenu', scene.Scene)

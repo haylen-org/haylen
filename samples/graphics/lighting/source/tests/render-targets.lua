@@ -35,7 +35,7 @@ function RenderTargets:init(entry)
     self.time = 0
 end
 
--- Returns the cursor inside a screen in the pixels of its target, or nil when it points elsewhere.
+-- Returns the cursor inside a screen in the pixels of its target, or `nil` when it points elsewhere.
 function RenderTargets:pointInside(screen)
     local x, y = self.cursor.x - screen.x, self.cursor.y - screen.y
     if x >= 0 and y >= 0 and x <= RenderTargets.width and y <= RenderTargets.height then

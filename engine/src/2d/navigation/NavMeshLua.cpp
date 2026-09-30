@@ -39,7 +39,7 @@ std::vector<std::vector<math::Vec2>> NavMeshLua::readPolygons(lua_State* L, int 
     return lua::Stack::read<std::vector<std::vector<math::Vec2>>>(L, index);
 }
 
-// Creates a mesh with newNavMesh([boundary]), whose boundary may also come later from setBoundary.
+// Creates a mesh with `newNavMesh([boundary])`, whose boundary may also come later from `setBoundary`.
 int NavMeshLua::newNavMesh(lua_State* L) {
     NavMesh mesh;
     if (!lua_isnoneornil(L, 1)) {
@@ -49,7 +49,7 @@ int NavMeshLua::newNavMesh(lua_State* L) {
     return 1;
 }
 
-// Returns a promise for a mesh built in the background with buildNavMeshAsync(boundary[, obstacles]).
+// Returns a promise for a mesh built in the background with `buildNavMeshAsync(boundary[, obstacles])`.
 int NavMeshLua::buildAsync(lua_State* L) {
     NavMesh mesh;
     mesh.setBoundary(lua::Stack::read<std::vector<math::Vec2>>(L, 1));
@@ -111,7 +111,7 @@ int NavMeshLua::build(lua_State* L) {
     return 0;
 }
 
-// Finds a path with findPath(x1, y1, x2, y2[, agentRadius]) and returns its points and length, or nil when there is none.
+// Finds a path with `findPath(x1, y1, x2, y2[, agentRadius])` and returns its points and length, or `nil` when there is none.
 int NavMeshLua::findPath(lua_State* L) {
     NavMesh& mesh = check(L);
     const float radius = lua_isnoneornil(L, 6) ? 0.0F : lua::Stack::read<float>(L, 6);
@@ -125,7 +125,7 @@ int NavMeshLua::findPath(lua_State* L) {
     return 2;
 }
 
-// Returns the 1-based index of the triangle under x, y with findTriangle(x, y), or nil outside the mesh.
+// Returns the 1-based index of the triangle under `x`, `y` with `findTriangle(x, y)`, or `nil` outside the mesh.
 int NavMeshLua::findTriangle(lua_State* L) {
     const std::optional<std::size_t> triangle = check(L).findTriangle({lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)});
     if (!triangle) {
@@ -152,7 +152,7 @@ int NavMeshLua::closestPoint(lua_State* L) {
     return 2;
 }
 
-// Lists the triangles as lists of three Vec2 corners, for drawing the mesh.
+// Lists the triangles as lists of three `Vec2` corners, for drawing the mesh.
 int NavMeshLua::triangles(lua_State* L) {
     NavMesh& mesh = check(L);
     const std::vector<NavMesh::Triangle>& all = mesh.getTriangles();

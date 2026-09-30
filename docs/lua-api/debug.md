@@ -1,6 +1,6 @@
 # haylen.debug
 
-`haylen.debug` shows the debug statistics and reads them, counts objects, samples monitors, and reads the frame profiler and the recent log. Use it to measure where frame time goes, to profile app code with named scopes and to show performance numbers in debug tools.
+The module `haylen.debug` shows the debug statistics and reads them, counts objects, samples monitors, and reads the frame profiler and the recent log. Use it to measure where frame time goes, to profile app code with named scopes and to show performance numbers in debug tools.
 
 ```lua
 local debug = require('haylen.debug')
@@ -18,13 +18,13 @@ The engine shows its statistics in one of three modes.
 | `'compact'` | Three lines in the bottom left corner of the safe area: frames per second and the last frame time, draw calls and vertices, and GPU instances. The 2D renderer draws them above everything else, including scene transitions and the error screen, so they work in every app, with or without UI. |
 | `'full'` | The debug overlay, a window drawn over the app with the frame rate, the fastest, slowest and one percent low frame times, the fixed steps of the frame, a graph of recent frame times, the profiler scopes of the last frame, the rendering statistics, the memory of Lua, textures, render targets and sounds, the counters of scenes, tweens, timers, voices by bus, sockets, assets, bodies, contacts and particles, the usage of the GPU pools, the object counts, the signals and event listeners with their emissions, warnings about listeners whose owner is gone, the monitors with their graphs and the recent log. Its close button turns the statistics off. |
 
-F3 cycles through off, compact and full, `debug.setToggleKey` picks another key, and `debug.setStatsMode` picks a mode from Lua. `"debug": {"stats": "compact"}` in `app.json` starts the app in a mode, as the [Lua guide](../lua.md#appjson) lists. The statistics describe the frame before, because the renderer only knows its numbers once it has submitted a frame.
+F3 cycles through `off`, `compact` and `full`, `debug.setToggleKey` picks another key, and `debug.setStatsMode` picks a mode from Lua. The setting `"debug": {"stats": "compact"}` in `app.json` starts the app in a mode, as the [Lua guide](../lua.md#appjson) lists. The statistics describe the frame before, because the renderer only knows its numbers once it has submitted a frame.
 
 ## Object counts and events
 
 The statistics count the objects of every type that were created, are alive and were destroyed. Every userdata type exported to Lua counts under its type name, such as `haylen.Sprite` or `haylen.Tween`, from the moment Lua creates the value until the garbage collector frees it. Engine resources count under their own names: `Texture` and `RenderTarget` with the bytes of their pixels, `Font`, `FontFamily`, `RichText`, `Sound` with the bytes of its samples or its encoded file, `PhysicsBody`, `PhysicsContact`, `ParticleEmitter`, `Particle`, `UiDocument` and `Tween`. A C++ project counts its own types with `haylen::debug::ObjectCounter` and `TrackedObject`.
 
-`debug.setObjectEvents(true)` also publishes `objectCreated` and `objectDestroyed` on [haylen.events](events.md) for every counted object, with `{type, count}`, queued for the end of the frame because objects come and go on any thread, even inside the garbage collector. The events cost time in an app that creates many objects every frame, so they start off, and `"debug": {"objectEvents": true}` in `app.json` turns them on from the start.
+The call `debug.setObjectEvents(true)` also publishes `objectCreated` and `objectDestroyed` on [`haylen.events`](events.md) for every counted object, with `{type, count}`, queued for the end of the frame because objects come and go on any thread, even inside the garbage collector. The events cost time in an app that creates many objects every frame, so they start off, and `"debug": {"objectEvents": true}` in `app.json` turns them on from the start.
 
 ## Monitors
 
@@ -66,7 +66,7 @@ scene.push({
 
 ### debug.setToggleKey(key)
 
-Picks the key that cycles the statistics through off, compact and full, by the key names of [haylen.input](input.md) such as `'f3'`, `'f5'` or `'graveAccent'`. `nil` turns the shortcut off, which suits release builds. The default key is `'f3'`. An unknown name raises an error that ends with `(unknown value '<name>')`.
+Picks the key that cycles the statistics through `off`, `compact` and `full`, by the key names of [`haylen.input`](input.md) such as `'f3'`, `'f5'` or `'graveAccent'`. The value `nil` turns the shortcut off, which suits release builds. The default key is `'f3'`. An unknown name raises an error that ends with `(unknown value '<name>')`.
 
 ```lua
 local debug = require('haylen.debug')
@@ -147,9 +147,9 @@ end
 
 ### debug.addMonitor(name, fn, options)
 
-Adds a [monitor](#monitors) named `name` that calls `fn` once per frame and shows the number it returns in the full overlay, and returns its [Connection](signal.md#connection). A monitor with the same name is replaced, which ends the connection of the old one. `connection:disconnect()` removes the monitor, and while `connection.blocked` is `true` the monitor keeps its value and history without calling `fn`.
+Adds a [monitor](#monitors) named `name` that calls `fn` once per frame and shows the number it returns in the full overlay, and returns its [`Connection`](signal.md#connection). A monitor with the same name is replaced, which ends the connection of the old one. The method `connection:disconnect()` removes the monitor, and while `connection.blocked` is `true` the monitor keeps its value and history without calling `fn`.
 
-`options` is an optional table. Its `owner`, a table or a userdata such as a scene, removes the monitor when the owner ends, as the [owners of haylen.events](events.md#owners) describe. The owner keeps `fn`, so `fn` may refer to the owner without keeping it alive. An owner of another type raises `An owner must be a table or a userdata, not <type>.`, and an unknown option raises `Unknown option '<name>'`.
+The argument `options` is an optional table. Its `owner`, a table or a userdata such as a scene, removes the monitor when the owner ends, as the [owners of `haylen.events`](events.md#owners) describe. The owner keeps `fn`, so `fn` may refer to the owner without keeping it alive. An owner of another type raises `An owner must be a table or a userdata, not <type>.`, and an unknown option raises `Unknown option "<name>"`.
 
 ```lua
 local debug = require('haylen.debug')

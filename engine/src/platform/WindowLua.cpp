@@ -19,7 +19,7 @@
 
 namespace haylen::platform {
 
-// A region is a rectangle when it is a Rect, has an x field or holds numbers, and a polygon when it holds points.
+// A region is a rectangle when it is a `Rect`, has an `x` field or holds numbers, and a polygon when it holds points.
 bool WindowLua::isRect(lua_State* L, int index) {
     if (lua::Userdata::test<math::Rect>(L, index) != nullptr) {
         return true;
@@ -228,7 +228,7 @@ int WindowLua::setFrame(lua_State* L) {
     return 0;
 }
 
-// Moves the window with place(position), where the position reads like the one of app.json and keeps the size of the window unless it fills the area.
+// Moves the window with `place(position)`, where the position reads like the one of `app.json` and keeps the size of the window unless it fills the area.
 int WindowLua::place(lua_State* L) {
     Window& window = lua::Runtime::getEngine(L).getWindow();
     const WindowPlacement placement = WindowPlacement::fromJson(lua::JsonConverter::read(L, 1));
@@ -242,7 +242,7 @@ int WindowLua::mousePassthrough(lua_State* L) {
     return 1;
 }
 
-// Takes false, true for the whole window, or a list of regions that keep the mouse, in design units that follow the viewport of the moment or in framebuffer pixels when the second argument is 'pixels'.
+// Takes `false`, `true` for the whole window, or a list of regions that keep the mouse, in design units that follow the viewport of the moment or in framebuffer pixels when the second argument is `pixels`.
 int WindowLua::setMousePassthrough(lua_State* L) {
     core::Engine& engine = lua::Runtime::getEngine(L);
     if (lua_isboolean(L, 1)) {

@@ -60,14 +60,14 @@ int LocalizationLua::has(lua_State* L) {
     return 1;
 }
 
-// Translates with text(key[, arguments]), where arguments fill {name} placeholders and count picks the plural form.
+// Translates with `text(key[, arguments])`, where `arguments` fill `{name}` placeholders and `count` picks the plural form.
 int LocalizationLua::text(lua_State* L) {
     const core::Json arguments = lua_isnoneornil(L, 2) ? core::Json::object() : lua::JsonConverter::read(L, 2);
     lua::Stack::push(L, getCatalog(L).getText(lua::Stack::read<std::string_view>(L, 1), arguments));
     return 1;
 }
 
-// Returns with direction([language]) the direction the current or the named language declares, leftToRight or rightToLeft.
+// Returns with `direction([language])` the direction the current or the named language declares, `leftToRight` or `rightToLeft`.
 int LocalizationLua::direction(lua_State* L) {
     const Catalog& catalog = getCatalog(L);
     const std::string language = lua_isnoneornil(L, 1) ? catalog.getLanguage() : lua::Stack::read<std::string>(L, 1);

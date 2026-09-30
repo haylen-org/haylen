@@ -73,7 +73,7 @@ void Light::validate() const {
         throw std::invalid_argument("A light height must be zero or positive.");
     }
     if (layerMin > layerMax) {
-        throw std::invalid_argument("A light layer range needs layerMin at most layerMax.");
+        throw std::invalid_argument("A light layer range needs \"layerMin\" at most \"layerMax\".");
     }
     if (!(shadowSmoothness >= 0.0F)) {
         throw std::invalid_argument("A light shadow smoothness must be zero or positive.");

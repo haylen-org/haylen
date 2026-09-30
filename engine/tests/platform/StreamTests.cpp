@@ -21,7 +21,7 @@ namespace haylen::platform {
 
 class VideoStreamTest : public ::testing::Test {
   protected:
-    // A frame of width by height pixels whose bytes are the seed, the seed plus 1 and plus 2 and an opaque alpha, with four bytes of padding after every row.
+    // A frame of `width` by `height` pixels whose bytes are the seed, the seed plus 1 and plus 2 and an opaque alpha, with four bytes of padding after every row.
     [[nodiscard]] static std::vector<std::byte> makeFrame(int width, int height, std::uint8_t seed) {
         std::vector<std::byte> frame(getStride(width) * static_cast<std::size_t>(height), std::byte{0xEE});
         for (std::size_t row = 0; row < static_cast<std::size_t>(height); ++row) {
@@ -48,7 +48,7 @@ TEST_F(VideoStreamTest, UploadsOnlyTheNewestFrameAndResizesInPlace) {
     const graphics::Texture texture = stream.getTexture(device);
     EXPECT_EQ(texture.getSize(), math::Vec2(2.0F, 1.0F));
     EXPECT_EQ(stream.getWidth(), 2);
-    EXPECT_FALSE(stream.update(device)) << "no frame arrived yet";
+    EXPECT_FALSE(stream.update(device)) << "No frame arrived yet.";
 
     // Three frames arrive from another thread before the engine looks, and only the newest one reaches the texture, turned from BGRA into RGBA without its padding.
     // clang-format off
@@ -95,7 +95,7 @@ TEST_F(VideoStreamTest, ReachesTheTextureAtTheStartOfTheNextFrame) {
     const std::shared_ptr<VideoStream> stream = PluginStreams::openVideo("stream-tests", "camera", VideoStream::Format::Rgba8, 0, 0);
     fixture.engine().getPlugin<plugins::PlatformPlugin>().watch(stream);
     const graphics::Texture texture = stream->getTexture(fixture.engine().getGraphics());
-    EXPECT_EQ(texture.getSize(), math::Vec2(1.0F, 1.0F)) << "a stream without a size shows one transparent pixel";
+    EXPECT_EQ(texture.getSize(), math::Vec2(1.0F, 1.0F)) << "A stream without a size shows one transparent pixel.";
     fixture.frames(1);
 
     // clang-format off
@@ -169,7 +169,7 @@ TEST(StreamsLuaTest, HandsPluginModulesTheStreamsOfTheirNativeParts) {
     EXPECT_EQ(fixture.lua("buffer = collections.newFloatBuffer(6) return table.concat({mic:read(buffer), buffer[1], buffer[4], buffer[5], mic.sampleRate, mic.channels, mic.underruns}, ' ')"), "4 0.25 -0.5 0.0 16000 2 0");
     EXPECT_EQ(fixture.lua("voice = mic:play({bus = 'music', volume = 0.5, fadeIn = 0.1}) return tostring(audio.active(voice))"), "true");
     EXPECT_NE(fixture.lua("mic:play({loop = true})").find("loop"), std::string::npos);
-    EXPECT_NE(fixture.lua("preview:on('ended', print)").find("Unknown video stream event 'ended'. Video streams report frame."), std::string::npos);
+    EXPECT_NE(fixture.lua("preview:on('ended', print)").find("Unknown video stream event \"ended\". Video streams report \"frame\"."), std::string::npos);
 
     // An app that stops lets go of the texture and the listeners of the streams it drew.
     fixture.restart();

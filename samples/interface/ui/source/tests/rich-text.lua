@@ -1,4 +1,4 @@
--- Rich text: ui.richText with styles, colors, outlines, shadows and glows, links and hints, inline images and icons, lists and tables, animated effects and a dialogue with a typewriter reveal.
+-- Rich text: `ui.richText` with styles, colors, outlines, shadows and glows, links and hints, inline images and icons, lists and tables, animated effects and a dialogue with a typewriter reveal.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -11,7 +11,7 @@ local RichText = haylen.class('RichText', sample.Test)
 RichText.hints = 'Click, tap or focus a link and press Enter to follow it, and rest the pointer on FAQ for its hint. Next line reveals the next line of the dialogue, and Skip shows the rest at once.'
 RichText.focus = 'next'
 
--- The icons that [icon=name] shows, registered once for the whole app.
+-- The icons that `[icon=name]` shows, registered once for the whole app.
 graphics2d.registerTextIcon('coin', assets.texture('icons/coin.png'))
 graphics2d.registerTextIcon('confirm', assets.texture('icons/star.png'))
 
@@ -55,7 +55,7 @@ function RichText:content()
                 ui.richText{id = 'styles', text = kStyles, onLink = function(event)
                     self:setStatus('link ' .. event.link)
                 end, onLinkHover = function(event)
-                    self:setStatus(event.link .. (event.hovered and ' hovered' or ' left'))
+                    self:setStatus((event.hovered and 'Hovered the link "' or 'Left the link "') .. event.link .. '"')
                 end},
             }),
             sample.section('effects', {ui.richText{text = kEffects, font = 'heading'}}),

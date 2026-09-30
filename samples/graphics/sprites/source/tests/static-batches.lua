@@ -11,10 +11,10 @@ local StaticBatches = haylen.class('StaticBatches', sample.Test)
 local kTile = 48
 local kColumns, kRows = 70, 30
 local kCode = [[
-local ground = graphics2d.newSpriteBatch(tiles)  -- one add per tile of the map
-local baked = ground:bake()  -- copies the sprites to the GPU once
-graphics2d.drawStatic(baked)  -- draws every frame without uploading
-graphics2d.drawStatic(trees, -camera.x * 0.4, 0, {layer = 1})  -- an offset moves the whole batch without rebaking]]
+local ground = graphics2d.newSpriteBatch(tiles)  -- One add per tile of the map.
+local baked = ground:bake()  -- Copies the sprites to the GPU once.
+graphics2d.drawStatic(baked)  -- Draws every frame without uploading.
+graphics2d.drawStatic(trees, -camera.x * 0.4, 0, {layer = 1})  -- An offset moves the whole batch without rebaking.]]
 
 -- Picks the tile of a map cell from noise: water, sand, grass with flowers and tufts, and stone paths.
 local function tileAt(noise, column, row)

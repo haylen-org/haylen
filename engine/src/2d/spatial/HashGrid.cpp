@@ -258,7 +258,7 @@ void HashGrid::nearest(math::Vec2 point, std::size_t count, float maxDistance, s
         return;
     }
 
-    // Rings of cells grow around the cell of the point. An entry first met in ring r misses the inner rings, so it lies at least r - 1 cells away.
+    // Rings of cells grow around the cell of the point. An entry first met in ring `r` misses the inner rings, so it lies at least `r - 1` cells away.
     const double pointX = cellOf(point.x);
     const double pointY = cellOf(point.y);
     const double gap = std::max({0.0, occupied.left - pointX, pointX - occupied.right, occupied.top - pointY, pointY - occupied.bottom});

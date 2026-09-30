@@ -45,7 +45,7 @@ std::uint8_t MixerState::toHold(Mixer::PauseReason reason) noexcept {
 MixerState::Bus& MixerState::getBus(std::string_view name) const {
     const auto found = buses.find(name);
     if (found == buses.end()) {
-        throw std::invalid_argument("The audio bus '" + std::string(name) + "' does not exist.");
+        throw std::invalid_argument("The audio bus \"" + std::string(name) + "\" does not exist.");
     }
     return *found->second;
 }
@@ -60,7 +60,7 @@ void MixerState::addBus(const std::string& name, Bus* parent) {
     created->name = name;
     created->parent = parent;
     if (ma_sound_group_init(&engine, 0, parent != nullptr ? &parent->group : nullptr, &created->group) != MA_SUCCESS) {
-        throw std::runtime_error("The audio bus " + name + " could not be created.");
+        throw std::runtime_error("The audio bus \"" + name + "\" could not be created.");
     }
     created->effects = std::make_unique<EffectChain>(engine, &created->group, parent != nullptr ? &parent->group : ma_engine_get_endpoint(&engine));
     buses.emplace(name, std::move(created));

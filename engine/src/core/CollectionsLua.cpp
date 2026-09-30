@@ -41,7 +41,7 @@ void CollectionsLua::create(lua_State* L) {
     lua::Userdata::pushField(L, 1, "create");
     lua_call(L, 0, 1);
     if (lua_isnil(L, -1)) {
-        luaL_error(L, "The create function of the pool returned nil.");
+        luaL_error(L, "The \"create\" function of the pool returned \"nil\".");
     }
 }
 
@@ -65,7 +65,7 @@ void CollectionsLua::pushActive(lua_State* L, const Pool& pool) {
     lua_remove(L, -2);
 }
 
-// Active objects fill slots 1 to active of a list, and a released object leaves its slot to the last active object.
+// Active objects fill slots 1 to `active` of a list, and a released object leaves its slot to the last active object.
 bool CollectionsLua::releaseObject(lua_State* L, Pool& pool, int object) {
     lua::Userdata::pushField(L, 1, "slots");
     const int slots = lua_gettop(L);
@@ -99,7 +99,7 @@ bool CollectionsLua::releaseObject(lua_State* L, Pool& pool, int object) {
     return true;
 }
 
-// Creates a pool with newPool({create = function() end, reset = function(object, ...) end, release = function(object) end, capacity = 0, prewarm = 0}).
+// Creates a pool with `newPool({create = function() end, reset = function(object, ...) end, release = function(object) end, capacity = 0, prewarm = 0})`.
 int CollectionsLua::newPool(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     lua::Table::checkFields(L, 1, {kPoolFields});
@@ -133,7 +133,7 @@ int CollectionsLua::newPool(lua_State* L) {
     return 1;
 }
 
-// Takes an idle object, or creates one, and returns it after reset(object, ...). Returns nil when the pool is at capacity.
+// Takes an idle object, or creates one, and returns it after `reset(object, ...)`. Returns `nil` when the pool is at capacity.
 int CollectionsLua::poolAcquire(lua_State* L) {
     Pool& pool = lua::Userdata::check<Pool>(L, 1);
     const int arguments = lua_gettop(L) - 1;
@@ -229,7 +229,7 @@ int CollectionsLua::newRingBuffer(lua_State* L) {
     return 1;
 }
 
-// Appends a value and returns true when the oldest value made room for it.
+// Appends a value and returns `true` when the oldest value made room for it.
 int CollectionsLua::bufferPush(lua_State* L) {
     ValueBuffer& buffer = lua::Userdata::check<ValueBuffer>(L, 1);
     luaL_checkany(L, 2);
@@ -267,7 +267,7 @@ int CollectionsLua::bufferBack(lua_State* L) {
     return 1;
 }
 
-// Returns the value at a position from 1 for the oldest, or nil past the newest.
+// Returns the value at a position from 1 for the oldest, or `nil` past the newest.
 int CollectionsLua::bufferGet(lua_State* L) {
     const ValueBuffer& buffer = lua::Userdata::check<ValueBuffer>(L, 1);
     const lua_Integer position = luaL_checkinteger(L, 2);

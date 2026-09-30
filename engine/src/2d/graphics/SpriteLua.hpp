@@ -4,7 +4,7 @@ struct lua_State;
 
 namespace haylen::graphics2d {
 
-// Installs the Sprite class of haylen.graphics2d, whose properties write straight into the sprite that draw submits.
+// Installs the `Sprite` class of `haylen.graphics2d`, whose properties write straight into the sprite that `draw` submits.
 class SpriteLua final {
   public:
     static void install(lua_State* L);

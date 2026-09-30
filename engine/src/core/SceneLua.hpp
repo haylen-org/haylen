@@ -9,7 +9,7 @@ struct lua_State;
 
 namespace haylen::core {
 
-// Installs haylen.scene: the scene stack with transitions, loading views, preloads and completion promises, the load context that load hooks receive, the listen and spawn helpers that tie listeners and tasks to an owner, and the Scene base class for scenes written with haylen.class.
+// Installs `haylen.scene`: the scene stack with transitions, loading views, preloads and completion promises, the load context that load hooks receive, the `listen` and `spawn` helpers that tie listeners and tasks to an owner, and the `Scene` base class for scenes written with `haylen.class`.
 class SceneLua final {
   public:
     static void install(lua_State* L);
@@ -24,7 +24,7 @@ class SceneLua final {
     [[nodiscard]] static SceneManager::Transition readTransition(lua_State* L, int index);
     [[nodiscard]] static SceneManager::Options readOptions(lua_State* L, int index);
 
-    // Returns the completion of a change or a preload, which calls the onComplete of the options at index, when there are some, and settles the promise it pushes onto the stack.
+    // Returns the completion of a change or a preload, which calls the `onComplete` of the options at index, when there are some, and settles the promise it pushes onto the stack.
     [[nodiscard]] static SceneManager::Completion pushCompletion(lua_State* L, int options);
     static void pushScene(lua_State* L, const Scene& scene);
     static void pushTransfer(lua_State* L, const SceneManager::Transfer& transfer);

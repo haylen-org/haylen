@@ -185,7 +185,7 @@ int InputLua::findTouch(lua_State* L) {
     return 1;
 }
 
-// Returns the gestures of this frame as {type, x, y, dx, dy, scale} tables, in design coordinates.
+// Returns the gestures of this frame as `{type, x, y, dx, dy, scale}` tables, in design coordinates.
 int InputLua::gestures(lua_State* L) {
     const std::span<const Gesture> recognized = lua::Runtime::getEngine(L).getGestures().getGestures();
     lua_createtable(L, static_cast<int>(recognized.size()), 0);
@@ -209,7 +209,7 @@ int InputLua::gestures(lua_State* L) {
     return 1;
 }
 
-// Tunes recognition with setGestureSettings({tapMaxDuration, tapMaxMovement, doubleTapInterval, doubleTapDistance, longPressDuration, swipeMinDistance, swipeMaxDuration, mouse}).
+// Tunes recognition with `setGestureSettings({tapMaxDuration, tapMaxMovement, doubleTapInterval, doubleTapDistance, longPressDuration, swipeMinDistance, swipeMaxDuration, mouse})`.
 int InputLua::setGestureSettings(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     lua::Table::checkFields(L, 1, {kGestureFields});
@@ -227,7 +227,7 @@ int InputLua::setGestureSettings(lua_State* L) {
     return 0;
 }
 
-// Returns the thresholds of gesture recognition in the table format setGestureSettings accepts.
+// Returns the thresholds of gesture recognition in the table format `setGestureSettings` accepts.
 int InputLua::gestureSettings(lua_State* L) {
     const GestureRecognizer::Settings& settings = lua::Runtime::getEngine(L).getGestures().getSettings();
     lua_createtable(L, 0, static_cast<int>(kGestureFields.size()));

@@ -13,9 +13,9 @@ local Bunnymark = haylen.class('Bunnymark', sample.Test)
 local kGravity = 900
 local kModes = {{id = 'bulk', text = 'Float buffer'}, {id = 'tables', text = 'Tables'}}
 local kCode = [[
-buffer:set(1, positions)  -- one copy of a plain Lua array of x, y pairs
+buffer:set(1, positions)  -- One copy of a plain Lua array of x, y pairs.
 graphics2d.drawBatch(bunny, buffer, {fields = {'x', 'y'}, width = 32, height = 40})
-graphics2d.drawBatch(bunny, sprites)  -- the tables mode: one {x, y, width, height} table per bunny]]
+graphics2d.drawBatch(bunny, sprites)  -- The tables mode: one `{x, y, width, height}` table per bunny.]]
 
 function Bunnymark:enter()
     self.texture = sample.texture('images/bunny.png')

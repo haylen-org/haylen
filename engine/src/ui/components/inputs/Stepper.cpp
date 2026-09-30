@@ -26,7 +26,7 @@ void Stepper::readProperties(PropertyReader& reader) {
     ChoiceItem::readList(reader, "items", items);
     reader.read("selected", selected);
     if (lowest > highest) {
-        reader.fail("min", "must not be greater than max");
+        reader.fail("min", "must not be greater than \"max\"");
     }
     if (!(increment > 0.0)) {
         reader.fail("step", "must be greater than zero");

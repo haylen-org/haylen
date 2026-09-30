@@ -1,4 +1,4 @@
--- Timelines: a small cutscene built with append, join, a pause, callbacks, a label and inserts at a label and at a time, with a log of its steps and a bar of its time.
+-- Timelines: a small cutscene built with `append`, `join`, a pause, callbacks, a label and inserts at a label and at a time, with a log of its steps and a bar of its time.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -14,13 +14,13 @@ local kLogLines = 9
 local kCode = [[
 tween.timeline({onStep = logStep, onComplete = logDone})
     :append(tween.to(door, 0.6, {open = 1})):append(tween.to(hero, 1.2, {x = 700})):join(tween.to(hero, 0.4, {alpha = 1}))
-    :append(0.3):append(function() log('the hero waves') end):addLabel('fight'):append(tween.to(hero, 0.25, {hop = 1}, {loopMode = 'yoyo', repeatCount = 3}))
-    :insert('fight', tween.to(sky, 1, {light = 0.3})):insert(1, function() log('the door creaks') end)]]
+    :append(0.3):append(function() log('The hero waves') end):addLabel('fight'):append(tween.to(hero, 0.25, {hop = 1}, {loopMode = 'yoyo', repeatCount = 3}))
+    :insert('fight', tween.to(sky, 1, {light = 0.3})):insert(1, function() log('The door creaks') end)]]
 
 function Timelines:enter()
     self.lines = {}
     self:frame({
-        hint = 'Restart, pause, reverse or jump to the fight label. Seeking never runs callbacks.',
+        hint = 'Restart, pause, reverse or jump to the "fight" label. Seeking never runs callbacks.',
         code = kCode,
         controls = {
             ui.button{id = 'restart', text = 'Restart', variant = 'primary', onClick = function() self:play() end},
@@ -53,16 +53,16 @@ function Timelines:play()
         self.line:kill()
     end
     self.door, self.hero, self.sky = {open = 0}, {x = 60, alpha = 0, hop = 0}, {light = 1}
-    self.line = tween.timeline({owner = self, autoKill = false, onStep = function(step) self:log('step ' .. step .. ' ended') end, onComplete = function() self:log('complete') end})
+    self.line = tween.timeline({owner = self, autoKill = false, onStep = function(step) self:log('Step ' .. step .. ' ended') end, onComplete = function() self:log('Complete') end})
     self.line:append(tween.to(self.door, 0.6, {open = 1}, {ease = 'quadOut'}))
         :append(tween.to(self.hero, 1.2, {x = 700}, {ease = 'sineInOut'}))
         :join(tween.to(self.hero, 0.4, {alpha = 1}))
         :append(0.3)
-        :append(function() self:log('the hero waves') end)
+        :append(function() self:log('The hero waves') end)
         :addLabel('fight')
         :append(tween.to(self.hero, 0.25, {hop = 1}, {ease = 'quadOut', loopMode = 'yoyo', repeatCount = 3}))
         :insert('fight', tween.to(self.sky, 1, {light = 0.3}))
-        :insert(1, function() self:log('the door creaks') end)
+        :insert(1, function() self:log('The door creaks') end)
 end
 
 function Timelines:update(dt)
@@ -88,7 +88,7 @@ function Timelines:draw(area)
     local color = m.color(sample.warm):withAlpha(hero.alpha)
     graphics2d.drawCircle(hero.x, ground - 40 - hero.hop * 80, 40, color, {layer = 2})
 
-    -- The time bar under the scene, with a mark on the fight label.
+    -- The time bar under the scene, with a mark on the `fight` label.
     local bar = {40, area.height - 60, area.width - 80, 16}
     local line = self.line
     graphics2d.drawRect(bar, sample.line)

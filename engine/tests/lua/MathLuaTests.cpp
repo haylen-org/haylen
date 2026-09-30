@@ -58,7 +58,7 @@ TEST_F(MathLuaTest, WorksWithRectangles) {
     EXPECT_EQ(lua("return tostring(r:inset(5)) .. ' ' .. tostring(r:inset({left = 10, top = 0, right = 20, bottom = 5}))"), "Rect(15.0, 25.0, 90.0, 40.0) Rect(20.0, 20.0, 70.0, 45.0)");
     EXPECT_EQ(lua("return tostring(r:inset({60, 30, 60, 30}))"), "Rect(70.0, 50.0, 0.0, 0.0)");
     EXPECT_EQ(lua("return tostring(r:translated({-10, 5})) .. ' ' .. tostring(r:clamp({500, -3}))"), "Rect(0.0, 25.0, 100.0, 50.0) Vec2(110.0, 20.0)");
-    EXPECT_NE(lua("return r:inset({1, 2, 3})").find("Expected a number in field 'bottom'."), std::string::npos);
+    EXPECT_NE(lua("return r:inset({1, 2, 3})").find("Expected a number in field \"bottom\"."), std::string::npos);
     EXPECT_NE(lua("return r:inset('wide')").find("bad argument #1 to 'inset' (number or table with left, top, right and bottom expected, got string)"), std::string::npos);
 }
 
@@ -129,9 +129,9 @@ TEST_F(MathLuaTest, ConstructorsAcceptEveryValueForm) {
     EXPECT_EQ(lua("return tostring(m.rect({1, 2, 3, 4})) .. ' ' .. tostring(m.rect({x = 5, y = 6, width = 7, height = 8}))"), "Rect(1.0, 2.0, 3.0, 4.0) Rect(5.0, 6.0, 7.0, 8.0)");
     EXPECT_EQ(lua("local a = m.rect(1, 2, 3, 4) local b = m.rect(a) b.width = 0 return a.width .. ' ' .. b.width"), "3.0 0.0");
     EXPECT_EQ(lua("return m.color({1, 0.5, 0}):toHex() .. ' ' .. m.color({r = 0, g = 0, b = 1, a = 0.5}):toHex() .. ' ' .. m.color(m.black()):toHex()"), "#FFFF8000 #800000FF #FF000000");
-    EXPECT_NE(lua("return m.vec2({1})").find("Expected a number in field 'y'."), std::string::npos);
+    EXPECT_NE(lua("return m.vec2({1})").find("Expected a number in field \"y\"."), std::string::npos);
     EXPECT_NE(lua("return m.rect(true)").find("Rect or table with x, y, width and height expected, got boolean"), std::string::npos);
-    EXPECT_NE(lua("return m.color({1, 0})").find("Expected a number in field 'b'."), std::string::npos);
+    EXPECT_NE(lua("return m.color({1, 0})").find("Expected a number in field \"b\"."), std::string::npos);
 }
 
 TEST_F(MathLuaTest, MeasuresCirclesAndSegments) {
@@ -140,7 +140,7 @@ TEST_F(MathLuaTest, MeasuresCirclesAndSegments) {
     EXPECT_EQ(lua("return tostring(m.intersection({{0, 0}, {10, 10}}, {start = {0, 10}, ['end'] = {10, 0}})) .. ' ' .. tostring(m.intersection({{0, 0}, {1, 0}}, {{0, 1}, {1, 1}}))"), "Vec2(5.0, 5.0) nil");
     EXPECT_EQ(lua("return tostring(m.closestPoint({{0, 0}, {10, 0}}, {4, 3})) .. ' ' .. m.distanceToSegment({{0, 0}, {10, 0}}, {13, 4})"), "Vec2(4.0, 0.0) 5.0");
     EXPECT_EQ(lua("return tostring(m.bounds({{3, 1}, {-2, 4}, {5, -1}})) .. ' ' .. tostring(m.bounds({}))"), "Rect(-2.0, -1.0, 7.0, 5.0) Rect(0.0, 0.0, 0.0, 0.0)");
-    EXPECT_NE(lua("return m.intersects({radius = 5}, {{0, 0}, 1})").find("Expected a point in field 'center'."), std::string::npos);
+    EXPECT_NE(lua("return m.intersects({radius = 5}, {{0, 0}, 1})").find("Expected a point in field \"center\"."), std::string::npos);
     EXPECT_NE(lua("return m.closestPoint(5, {0, 0})").find("table with start and end expected"), std::string::npos);
 }
 

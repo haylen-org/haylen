@@ -62,13 +62,13 @@ int MaterialLua::newMaterial(lua_State* L) {
     return 1;
 }
 
-// Sets a uniform or texture with material:set(name, value).
+// Sets a uniform or texture with `material:set(name, value)`.
 int MaterialLua::set(lua_State* L) {
     setValue(L, lua::Userdata::check<Material>(L, 1), 2, 3);
     return 0;
 }
 
-// Returns a texture, or a number, Vec2 or Color for single float, int, vec2 and vec4 uniforms, and a list of numbers for the others.
+// Returns a texture, or a number, `Vec2` or `Color` for single `float`, `int`, `vec2` and `vec4` uniforms, and a list of numbers for the others.
 int MaterialLua::get(lua_State* L) {
     using Type = graphics::Shader::UniformType;
     const Material& material = lua::Userdata::check<Material>(L, 1);

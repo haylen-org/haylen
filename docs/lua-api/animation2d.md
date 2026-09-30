@@ -1,6 +1,6 @@
 # haylen.animation2d
 
-`haylen.animation2d` plays frame animations on sprites. It cuts animations from sprite sheet grids or from lists of rectangles, reads TexturePacker and Aseprite atlases with their tags and nine-slices, and drives named animations with an animator that reports frame changes and finished animations. Use it for characters, effects and animated UI.
+The module `haylen.animation2d` plays frame animations on sprites. It cuts animations from sprite sheet grids or from lists of rectangles, reads TexturePacker and Aseprite atlases with their tags and nine-slices, and drives named animations with an animator that reports frame changes and finished animations. Use it for characters, effects and animated UI.
 
 ```lua
 local animation2d = require('haylen.animation2d')
@@ -8,7 +8,7 @@ local animation2d = require('haylen.animation2d')
 
 ## Loading sprite atlases
 
-A sprite atlas is a JSON file exported by TexturePacker or Aseprite together with the image it describes. Load it with the `atlas` asset type of [haylen.assets](assets.md), which has no file extension of its own, so the type is always given:
+A sprite atlas is a JSON file exported by TexturePacker or Aseprite together with the image it describes. Load it with the `atlas` asset type of [`haylen.assets`](assets.md), which has no file extension of its own, so the type is always given:
 
 ```lua
 local assets = require('haylen.assets')
@@ -17,7 +17,7 @@ local atlas = assets.load('ui/hero.json', 'atlas')
 local smooth = assets.load('ui/hero.json', 'atlas', {filter = 'linear'})
 ```
 
-The optional options table accepts the texture options `filter` (`'nearest'` or `'linear'`, default `'nearest'`) and `wrap` (`'clamp'`, `'repeat'` or `'mirror'`, default `'clamp'`). Any other key raises `Unknown key 'name' in texture options.` The atlas image shares the texture cache, so `atlas.texture` is the same texture that `assets.texture` returns for that image with the same options. `assets.loadAsync('ui/hero.json', 'atlas'):await()` loads it without blocking inside a coroutine.
+The optional options table accepts the texture options `filter` (`'nearest'` or `'linear'`, default `'nearest'`) and `wrap` (`'clamp'`, `'repeat'` or `'mirror'`, default `'clamp'`). Any other key raises `Unknown key "name" in texture options.` The atlas image shares the texture cache, so `atlas.texture` is the same texture that `assets.texture` returns for that image with the same options. The call `assets.loadAsync('ui/hero.json', 'atlas'):await()` loads it without blocking inside a coroutine.
 
 The JSON file supports these fields:
 
@@ -32,7 +32,7 @@ The JSON file supports these fields:
 | `meta.frameTags` | Aseprite tags, each with `name`, `from` and `to` (frame positions counted from 0), `direction` and `repeat`. Every tag becomes an animation with the durations of its frames. |
 | `meta.slices` | Aseprite slices. Slices whose first key has a `center` become nine-slices. Their `bounds` are relative to the frame at the position given by the key's `frame`, which defaults to 0. |
 
-Tag directions `forward` and `reverse` loop, and `pingpong` and `pingpong_reverse` play back and forth. A `repeat` of `"1"` plays the tag once. An absent `repeat` or `"0"` loops forever, and larger counts raise `The Aseprite tag 'name' repeats more than once, which atlases do not support. Leave its repeat count empty to loop forever or set it to 1 to play once.` Other errors are `The direction of an Aseprite tag must be forward, reverse, pingpong or pingpong_reverse, not 'name'.` and `An Aseprite tag refers to frames that do not exist.` Both layouts keep their frames in file order, so a tag counts the same positions Aseprite does, even when frames named `hero 0` to `hero 11` would sort differently by name.
+Tag directions `forward` and `reverse` loop, and `pingpong` and `pingpong_reverse` play back and forth. A `repeat` of `"1"` plays the tag once. An absent `repeat` or `"0"` loops forever, and larger counts raise `The Aseprite tag "name" repeats more than once, which atlases do not support. Leave its repeat count empty to loop forever or set it to 1 to play once.` Other errors are `The direction of an Aseprite tag must be "forward", "reverse", "pingpong" or "pingpong_reverse", not "name".` and `An Aseprite tag refers to frames that do not exist.` Both layouts keep their frames in file order, so a tag counts the same positions Aseprite does, even when frames named `hero 0` to `hero 11` would sort differently by name.
 
 ## Loop modes
 
@@ -73,7 +73,7 @@ print(idle.frameCount, slash.duration)
 
 ### animation2d.fromFrames(texture, frames, options)
 
-Builds an `Animation` from a list of source rectangles in `texture`. `options` is optional and accepts `framesPerSecond` (default 10) and `loop` (default `'loop'`). An empty list raises `expected at least one frame`.
+Builds an `Animation` from a list of source rectangles in `texture`. The argument `options` is optional and accepts `framesPerSecond` (default 10) and `loop` (default `'loop'`). An empty list raises `expected at least one frame`.
 
 ```lua
 local animation2d = require('haylen.animation2d')
@@ -117,7 +117,7 @@ scene.push({
 
 ## Animation
 
-An `Animation` is a value that holds a texture, a list of frames with their durations and a loop mode. `animator:add` stores a copy, so changing an animation afterwards does not change the animator.
+An `Animation` is a value that holds a texture, a list of frames with their durations and a loop mode. The method `animator:add` stores a copy, so changing an animation afterwards does not change the animator.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -156,8 +156,8 @@ An `Animator` plays named animations and applies the current frame to sprites. I
 | `current` | string or nil | read | Name of the current animation, or `nil` before the first `play`. |
 | `frame` | integer | read | Current frame number, counting from 1. |
 | `time` | number | read | Seconds the current animation has played, scaled by `speed`. |
-| `playing` | boolean | read | False after `stop` and after a one-shot animation finishes. |
-| `finished` | boolean | read | True when the current animation plays once and has reached its end. |
+| `playing` | boolean | read | The value is `false` after `stop` and after a one-shot animation finishes. |
+| `finished` | boolean | read | The value is `true` when the current animation plays once and has reached its end. |
 | `queuedCount` | integer | read | Number of animations waiting in the queue. |
 | `speed` | number | read and write | Playback speed multiplier. Defaults to 1. |
 | `pivotX`, `pivotY` | number | read and write | Pivot that `apply` gives sprites, as a fraction of the untrimmed frame. Default to 0.5. |
@@ -170,11 +170,11 @@ Stores a copy of `anim` under `name`, replacing an animation with the same name.
 
 ### animator:has(name)
 
-Returns true when an animation is stored under `name`.
+Returns `true` when an animation is stored under `name`.
 
 ### animator:animation(name)
 
-Returns a copy of the `Animation` stored under `name`. An unknown name raises `The animation 'name' does not exist in this animator.`
+Returns a copy of the `Animation` stored under `name`. An unknown name raises `The animation "name" does not exist in this animator.`
 
 ```lua
 local animation2d = require('haylen.animation2d')
@@ -189,11 +189,11 @@ print(idle.frameCount, idle.duration)
 
 ### animator:play(name, restart)
 
-Switches to the animation `name` and clears the queue. Playing the current animation again keeps its time and resumes it after `stop`, unless `restart` is true. An unknown name raises `The animation 'name' does not exist in this animator.`
+Switches to the animation `name` and clears the queue. Playing the current animation again keeps its time and resumes it after `stop`, unless `restart` is `true`. An unknown name raises `The animation "name" does not exist in this animator.`
 
 ### animator:stop()
 
-Pauses the current animation. `play` with the same name resumes it.
+Pauses the current animation. Calling `play` with the same name resumes it.
 
 ```lua
 local animation2d = require('haylen.animation2d')
@@ -224,7 +224,7 @@ scene.push({
 
 ### animator:queue(name)
 
-Adds `name` to the queue. The next queued animation starts from its first frame on the update that ends the current pass: when a one-shot animation finishes, or when a looping animation reaches the end of the cycle it is in, measured with `cycleDuration`. A looping animation that has already played for a while still finishes its current cycle before the queued one starts. With no current animation, or when the current one-shot animation has already finished, `queue` plays `name` at once from its first frame, which replays a one-shot animation that just finished when `name` is that animation. An unknown name raises `The animation 'name' does not exist in this animator.`
+Adds `name` to the queue. The next queued animation starts from its first frame on the update that ends the current pass: when a one-shot animation finishes, or when a looping animation reaches the end of the cycle it is in, measured with `cycleDuration`. A looping animation that has already played for a while still finishes its current cycle before the queued one starts. With no current animation, or when the current one-shot animation has already finished, `queue` plays `name` at once from its first frame, which replays a one-shot animation that just finished when `name` is that animation. An unknown name raises `The animation "name" does not exist in this animator.`
 
 ### animator:clearQueue()
 
@@ -346,15 +346,15 @@ log.info('Slices: ' .. table.concat(atlas:sliceNames(), ', '))
 
 ### atlas:hasFrame(name)
 
-Returns true when the atlas has a frame named `name`.
+Returns `true` when the atlas has a frame named `name`.
 
 ### atlas:hasAnimation(name)
 
-Returns true when the atlas has an animation made from the tag `name`.
+Returns `true` when the atlas has an animation made from the tag `name`.
 
 ### atlas:hasSlice(name)
 
-Returns true when the atlas has a nine-slice made from the slice `name`.
+Returns `true` when the atlas has a nine-slice made from the slice `name`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -365,7 +365,7 @@ print(atlas:hasFrame('hero 0'), atlas:hasAnimation('walk'), atlas:hasSlice('pane
 
 ### atlas:frame(name)
 
-Describes the frame `name` with a table of these fields. An unknown name raises `The frame 'name' does not exist in this atlas.`
+Describes the frame `name` with a table of these fields. An unknown name raises `The frame "name" does not exist in this atlas.`
 
 | Field | Type | Meaning |
 | --- | --- | --- |
@@ -384,7 +384,7 @@ print(frame.source.width, frame.offset.x, frame.originalSize.x, frame.duration)
 
 ### atlas:animation(name)
 
-Returns a copy of the `Animation` made from the tag `name`. An unknown name raises `The animation 'name' does not exist in this atlas.`
+Returns a copy of the `Animation` made from the tag `name`. An unknown name raises `The animation "name" does not exist in this atlas.`
 
 ```lua
 local animation2d = require('haylen.animation2d')
@@ -398,7 +398,7 @@ animator:play('walk')
 
 ### atlas:slice(name)
 
-Returns the `NineSlice` made from the slice `name`, ready for `graphics2d.drawNineSlice`. An unknown name raises `The slice 'name' does not exist in this atlas.`
+Returns the `NineSlice` made from the slice `name`, ready for `graphics2d.drawNineSlice`. An unknown name raises `The slice "name" does not exist in this atlas.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -418,7 +418,7 @@ scene.push({
 
 ### atlas:source(name)
 
-Returns the source `Rect` of the frame `name` in the atlas image. An unknown name raises `The frame 'name' does not exist in this atlas.`
+Returns the source `Rect` of the frame `name` in the atlas image. An unknown name raises `The frame "name" does not exist in this atlas.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -430,7 +430,7 @@ local icon = graphics2d.newSprite(atlas.texture, {source = atlas:source('hero 1'
 
 ### atlas:apply(sprite, name)
 
-Shows the frame `name` on `sprite`, setting its texture, source, width, height and pivot. The pivot stays at the center of the untrimmed frame. An unknown name raises `The frame 'name' does not exist in this atlas.`
+Shows the frame `name` on `sprite`, setting its texture, source, width, height and pivot. The pivot stays at the center of the untrimmed frame. An unknown name raises `The frame "name" does not exist in this atlas.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -443,7 +443,7 @@ atlas:apply(sprite, 'hero 0')
 
 ### atlas:animationFromFrames(names, options)
 
-Builds an `Animation` that shows the named frames in order at a fixed rate. `options` is optional and accepts `framesPerSecond` (default 10) and `loop` (default `'loop'`). An empty list raises `An atlas animation needs frames and a positive frame rate.` and an unknown frame raises `The frame 'name' does not exist in this atlas.`
+Builds an `Animation` that shows the named frames in order at a fixed rate. The argument `options` is optional and accepts `framesPerSecond` (default 10) and `loop` (default `'loop'`). An empty list raises `An atlas animation needs frames and a positive frame rate.` and an unknown frame raises `The frame "name" does not exist in this atlas.`
 
 ```lua
 local assets = require('haylen.assets')

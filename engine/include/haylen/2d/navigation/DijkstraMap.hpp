@@ -20,7 +20,7 @@ class DijkstraMap final {
     // Stores for every cell the cost of the cheapest walk to a source plus the value of that source, so sources with lower values attract more. Blocked and unreachable cells get infinity, and so do sources on blocked cells.
     void compute(const Grid& grid, std::span<const Source> sources, bool diagonal = true);
 
-    // Throws std::invalid_argument when a source value is not finite, which lets background computations reject bad sources before they start.
+    // Throws `std::invalid_argument` when a source value is not finite, which lets background computations reject bad sources before they start.
     static void requireValid(std::span<const Source> sources);
 
     // Turns the map into a flee map. Every value is multiplied by the coefficient, which must be negative, and the walk runs again, so the cells farthest from the sources become the lowest while dead ends stay higher. Around -1.2 makes walkers prefer open escape routes to corners.

@@ -7,12 +7,12 @@ struct lua_State;
 
 namespace haylen::physics2d {
 
-// Installs the Fluid class of haylen.physics2d, whose positions and velocities come out in bulk for metaball rendering.
+// Installs the `Fluid` class of `haylen.physics2d`, whose positions and velocities come out in bulk for metaball rendering.
 class FluidLua final {
   public:
     static void install(lua_State* L);
 
-    // Sets newFluid on the module table at the top of the stack.
+    // Sets `newFluid` on the module table at the top of the stack.
     static void addFunctions(lua_State* L);
 
   private:

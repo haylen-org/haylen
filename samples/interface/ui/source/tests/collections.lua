@@ -31,7 +31,7 @@ function Collections:reorder(event)
     end
     table.insert(self.quests, to, table.remove(self.quests, from))
     event.document:set('quests', {items = self:questItems()})
-    self:setStatus('moved "' .. self.quests[to] .. '" to place ' .. to)
+    self:setStatus('Moved "' .. self.quests[to] .. '" to place ' .. to)
 end
 
 function Collections:content()
@@ -48,16 +48,16 @@ function Collections:content()
     }
     return sample.columns{
         sample.section('list', {grow = 1,
-            ui.list{id = 'saves', items = saves, selected = 'slot1', onSelect = function(event) self:setStatus('list selected ' .. event.item) end},
+            ui.list{id = 'saves', items = saves, selected = 'slot1', onSelect = function(event) self:setStatus('The list selected "' .. event.item .. '"') end},
             ui.divider{},
             ui.label{text = 'Draggable', color = 'textMuted'},
             ui.list{id = 'quests', draggable = true, items = self:questItems(), onDrop = function(event) self:reorder(event) end},
         }),
         sample.section('tree', {grow = 1,
             ui.tree{items = tree, expanded = {'tools', 'food'}, onSelect = function(event)
-                self:setStatus('tree selected ' .. event.item)
+                self:setStatus('The tree selected "' .. event.item .. '"')
             end, onToggle = function(event)
-                self:setStatus(event.item .. (event.expanded and ' opened' or ' closed'))
+                self:setStatus('The node "' .. event.item .. (event.expanded and '" opened' or '" closed'))
             end},
         }),
         sample.section('table', {grow = 1,
@@ -70,7 +70,7 @@ function Collections:content()
                     {id = 'kai', cells = {'Kai', 8, 2210}},
                 },
                 selected = 'ana',
-                onSelect = function(event) self:setStatus('table selected ' .. event.item) end,
+                onSelect = function(event) self:setStatus('The table selected "' .. event.item .. '"') end,
             },
         }),
     }

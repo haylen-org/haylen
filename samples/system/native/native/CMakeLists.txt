@@ -1,4 +1,4 @@
-# The native library of the sample, built from the source that the engine tests call. make.py builds each target for every platform the native section of app.json lists, as a shared or a static library by BUILD_SHARED_LIBS, and passes HAYLEN_INCLUDE_DIR with haylen/platform/native/HaylenNative.h.
+# The native library of the sample, built from the source that the engine tests call. The script `make.py` builds each target for every platform the `native` section of `app.json` lists, as a shared or a static library by `BUILD_SHARED_LIBS`, and passes `HAYLEN_INCLUDE_DIR` with `haylen/platform/native/HaylenNative.h`.
 cmake_minimum_required(VERSION 3.28...4.4)
 project(native_sample LANGUAGES C)
 

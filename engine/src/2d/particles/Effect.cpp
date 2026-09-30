@@ -22,7 +22,7 @@ math::Vec2 Effect::readVec2(const core::Json& value) {
 
 std::size_t Effect::readCount(const core::Json& value, std::string_view name) {
     if (!value.is_number_integer() || value < 0) {
-        throw std::invalid_argument("The particle effect value '" + std::string(name) + "' needs an integer of at least 0.");
+        throw std::invalid_argument("The particle effect value \"" + std::string(name) + "\" needs an integer of at least 0.");
     }
     return value.get<std::size_t>();
 }
@@ -31,7 +31,7 @@ math::Color Effect::readColor(const core::Json& value) {
     const std::string text = value.get<std::string>();
     const std::optional<math::Color> color = math::Color::parse(text);
     if (!color) {
-        throw std::invalid_argument("The particle color '" + text + "' is not a #RRGGBB or #AARRGGBB color.");
+        throw std::invalid_argument("The particle color \"" + text + "\" is not a \"#RRGGBB\" or \"#AARRGGBB\" color.");
     }
     return *color;
 }
@@ -40,7 +40,7 @@ Effect Effect::parse(const core::Json& document, std::string_view path) {
     static const std::set<std::string, std::less<>>& known = *new const std::set<std::string, std::less<>>{"texture", "frames", "rate", "bursts", "duration", "loop", "prewarm", "maxParticles", "lifetime", "speed", "direction", "spread", "gravity", "radialAcceleration", "tangentialAcceleration", "damping", "startSize", "endSize", "spin", "colors", "shape", "shapeSize", "localSpace", "layer", "depth", "blend"};
     for (const auto& [key, value] : document.items()) {
         if (!known.contains(key)) {
-            throw std::invalid_argument("The particle effect '" + std::string(path) + "' has the unknown option '" + key + "'.");
+            throw std::invalid_argument("The particle effect \"" + std::string(path) + "\" has the unknown option \"" + key + "\".");
         }
     }
 
@@ -95,7 +95,7 @@ Effect Effect::parse(const core::Json& document, std::string_view path) {
         const std::string name = document.at("shape").get<std::string>();
         const std::optional<EmitterConfig::Shape> shape = EmitterConfig::shapeFromName(name);
         if (!shape) {
-            throw std::invalid_argument("The emitter shape of a particle effect must be point, circle, ring, rectangle or cone, not '" + name + "'.");
+            throw std::invalid_argument("The emitter shape of a particle effect must be \"point\", \"circle\", \"ring\", \"rectangle\" or \"cone\", not \"" + name + "\".");
         }
         settings.shape = *shape;
     }
@@ -103,7 +103,7 @@ Effect Effect::parse(const core::Json& document, std::string_view path) {
         const std::string name = document.at("blend").get<std::string>();
         const std::optional<graphics::BlendMode::Type> blend = graphics::BlendMode::parse(name);
         if (!blend) {
-            throw std::invalid_argument("The blend mode of a particle effect must be alpha, additive, multiply, screen, premultiplied or opaque, not '" + name + "'.");
+            throw std::invalid_argument("The blend mode of a particle effect must be \"alpha\", \"additive\", \"multiply\", \"screen\", \"premultiplied\" or \"opaque\", not \"" + name + "\".");
         }
         settings.order.blend = *blend;
     }

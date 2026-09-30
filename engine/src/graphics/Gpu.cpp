@@ -36,7 +36,7 @@ sg_shader Gpu::makeShader(const sg_shader_desc& desc) {
     }
     if (sg_query_shader_state(shader) != SG_RESOURCESTATE_VALID) {
         sg_destroy_shader(shader);
-        throw std::runtime_error(std::format("The graphics device could not create the shader {}.", desc.label));
+        throw std::runtime_error(std::format("The graphics device could not create the shader \"{}\".", desc.label));
     }
     return shader;
 }
@@ -48,7 +48,7 @@ sg_pipeline Gpu::makePipeline(const sg_pipeline_desc& desc) {
     }
     if (sg_query_pipeline_state(pipeline) != SG_RESOURCESTATE_VALID) {
         sg_destroy_pipeline(pipeline);
-        throw std::runtime_error(std::format("The graphics device could not create the pipeline {}.", desc.label));
+        throw std::runtime_error(std::format("The graphics device could not create the pipeline \"{}\".", desc.label));
     }
     return pipeline;
 }

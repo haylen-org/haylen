@@ -19,7 +19,7 @@ namespace haylen::lua {
 // Turns C++ functions, member functions and data members into Lua functions and registers modules.
 class Binding final {
   public:
-    // Runs body and turns a C++ exception into a Lua error with the same message. Lua errors raised inside body pass through untouched.
+    // Runs `body` and turns a C++ exception into a Lua error with the same message. Lua errors raised inside `body` pass through untouched.
     template <typename Body> static int guarded(lua_State* L, Body&& body) {
         std::string message;
         try {
@@ -68,7 +68,7 @@ class Binding final {
         return 1;
     }
 
-    // Setters receive the object, the key and the value, the way __newindex calls them.
+    // Setters receive the object, the key and the value, the way `__newindex` calls them.
     template <auto Member> static int setField(lua_State* L) {
         using Traits = FunctionTraits<decltype(Member)>;
         auto& self = Userdata::check<typename Traits::Class>(L, 1);
@@ -89,7 +89,7 @@ class Binding final {
         return 0;
     }
 
-    // Registers a module so require(name) returns the table built by opener.
+    // Registers a module so `require(name)` returns the table built by `opener`.
     static void preload(lua_State* L, const char* name, lua_CFunction opener);
 
     // Creates a module table and fills it with the given functions.

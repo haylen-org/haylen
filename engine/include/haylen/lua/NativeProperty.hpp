@@ -13,7 +13,7 @@
 
 namespace haylen::lua {
 
-// A number, Vec2 or Color field of a bound type that native code reads and writes without running Lua, such as the position of a sprite. ClassBuilder records one for every field of those types, and tweens use them to animate userdata natively. The functions take the userdata block and return false when the object behind it was released.
+// A number, `Vec2` or `Color` field of a bound type that native code reads and writes without running Lua, such as the position of a sprite. The class `ClassBuilder` records one for every field of those types, and tweens use them to animate userdata natively. The functions take the userdata block and return `false` when the object behind it was released.
 struct NativeProperty {
     enum class Kind : std::uint8_t {
         Number,
@@ -65,7 +65,7 @@ struct NativeProperty {
     // Returns the property of the userdata at index, or null when it is not a userdata or its type records no such property.
     [[nodiscard]] static const NativeProperty* find(lua_State* L, int index, std::string_view name);
 
-    // Records the property in the metatable at index, the one ClassBuilder is building. The property must outlive the Lua state.
+    // Records the property in the metatable at index, the one `ClassBuilder` is building. The property must outlive the Lua state.
     static void record(lua_State* L, int metatable, const char* name, NativeProperty& property);
 
   private:

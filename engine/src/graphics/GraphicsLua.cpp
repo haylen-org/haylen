@@ -25,7 +25,7 @@ int GraphicsLua::newRenderTarget(lua_State* L) {
     return 1;
 }
 
-// Creates a texture from raw RGBA bytes or a fill color with newTexture(width, height, {pixels = string or fill = color, dynamic, filter, wrap}), where a dynamic texture changes its pixels with update, or from the bytes of an image file with newTexture(bytes, {dynamic, filter, wrap}).
+// Creates a texture from raw RGBA bytes or a fill color with `newTexture(width, height, {pixels = string or fill = color, dynamic, filter, wrap})`, where a dynamic texture changes its pixels with `update`, or from the bytes of an image file with `newTexture(bytes, {dynamic, filter, wrap})`.
 int GraphicsLua::newTexture(lua_State* L) {
     if (lua_type(L, 1) == LUA_TSTRING) {
         pushImageTexture(L);
@@ -67,7 +67,7 @@ void GraphicsLua::pushImageTexture(lua_State* L) {
     lua::Stack::push(L, dynamic ? device.createDynamicTexture(image, options) : device.createTexture(image, options));
 }
 
-// Replaces every pixel of a dynamic texture with texture:update(pixels), a string of RGBA bytes of the same size.
+// Replaces every pixel of a dynamic texture with `texture:update(pixels)`, a string of RGBA bytes of the same size.
 int GraphicsLua::updateTexture(lua_State* L) {
     const Texture& texture = lua::Userdata::check<Texture>(L, 1);
     const std::string_view pixels = lua::Stack::read<std::string_view>(L, 2);
@@ -130,7 +130,7 @@ int GraphicsLua::shaderName(lua_State* L) {
     return 1;
 }
 
-// Lists the uniforms that materials of the shader fill, each as {name = 'time', type = 'float', count = 1}.
+// Lists the uniforms that materials of the shader fill, each as `{name = 'time', type = 'float', count = 1}`.
 int GraphicsLua::shaderUniforms(lua_State* L) {
     const std::vector<Shader::Uniform>& uniforms = lua::Userdata::check<Shader>(L, 1).getUniforms();
     lua_createtable(L, static_cast<int>(uniforms.size()), 0);

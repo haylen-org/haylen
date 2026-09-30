@@ -15,7 +15,7 @@ import dev.haylen.HaylenBridge;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-// Answers auth.google.signIn with the Google account the player picks through Credential Manager. The web client id of the game's Google Cloud project comes from the app, never from the engine.
+// Answers `auth.google.signIn` with the Google account the player picks through Credential Manager. The web client id of the game's Google Cloud project comes from the app, never from the engine.
 final class GoogleSignInPlugin {
     private GoogleSignInPlugin() {}
 
@@ -25,7 +25,7 @@ final class GoogleSignInPlugin {
 
     private static void signIn(String serverClientId, HaylenBridge.Reply reply) {
         if (serverClientId.isEmpty()) {
-            reply.failure("Google sign-in needs the web client id of the game's Google Cloud project. Set googleServerClientId=<id> in ~/.gradle/gradle.properties or pass -PgoogleServerClientId=<id> to Gradle.");
+            reply.failure("Google sign-in needs the web client id of the game's Google Cloud project. Set \"googleServerClientId=<id>\" in \"~/.gradle/gradle.properties\" or pass \"-PgoogleServerClientId=<id>\" to Gradle.");
             return;
         }
 
@@ -49,7 +49,7 @@ final class GoogleSignInPlugin {
 
             @Override
             public void onError(GetCredentialException error) {
-                reply.failure("Google sign-in failed: " + error.getType() + " " + error.getMessage());
+                reply.failure("Google sign-in failed: \"" + error.getType() + "\" " + error.getMessage());
             }
         });
     }

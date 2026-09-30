@@ -22,7 +22,7 @@ function sample.back()
     end
 end
 
--- Formats a Lua value as indented JSON, the way preferences.json holds it.
+-- Formats a Lua value as indented JSON, the way `preferences.json` holds it.
 function sample.json(value)
     if value == nil then
         return 'nil'
@@ -30,7 +30,7 @@ function sample.json(value)
     return json.encode(value, {pretty = true})
 end
 
--- The base of every test scene. A test sets its hints and the control that takes the focus, and returns the nodes of its page from content.
+-- The base of every test scene. A test sets its hints and the control that takes the focus, and returns the nodes of its page from `content`.
 local Test = haylen.class('Test', scene.Scene)
 sample.Test = Test
 

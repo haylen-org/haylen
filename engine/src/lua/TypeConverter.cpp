@@ -56,7 +56,7 @@ float TypeConverter::numberComponent(lua_State* L, int table, const char* name, 
         return *fallback;
     }
     if (lua_type(L, -1) != LUA_TNUMBER) {
-        luaL_error(L, "Expected a number in field '%s'.", name);
+        luaL_error(L, "Expected a number in field \"%s\".", name);
     }
     const auto value = static_cast<float>(lua_tonumber(L, -1));
     lua_pop(L, 1);
@@ -66,7 +66,7 @@ float TypeConverter::numberComponent(lua_State* L, int table, const char* name, 
 math::Vec2 TypeConverter::pointComponent(lua_State* L, int table, const char* name, lua_Integer position) {
     pushComponent(L, table, name, position);
     if (!Stack::is<math::Vec2>(L, -1)) {
-        luaL_error(L, "Expected a point in field '%s'.", name);
+        luaL_error(L, "Expected a point in field \"%s\".", name);
     }
     const math::Vec2 value = Stack::read<math::Vec2>(L, -1);
     lua_pop(L, 1);
@@ -220,7 +220,7 @@ math::EasingCurve Converter<math::EasingCurve>::read(lua_State* L, int index) {
         const std::vector<float> handles = Stack::read<std::vector<float>>(L, -1);
         lua_pop(L, 1);
         if (handles.size() != 4) {
-            luaL_error(L, "A cubicBezier curve needs the four numbers x1, y1, x2 and y2.");
+            luaL_error(L, "A \"cubicBezier\" curve needs the four numbers \"x1\", \"y1\", \"x2\" and \"y2\".");
         }
         return math::EasingCurve::cubicBezier(handles[0], handles[1], handles[2], handles[3]);
     }

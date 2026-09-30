@@ -7,7 +7,7 @@ struct lua_State;
 
 namespace haylen::lighting2d {
 
-// Installs haylen.lighting2d with the Light and Occluder classes, the helpers that build occluders from physics bodies and Tiled maps, the illuminate query, the falloff curve of lights without a texture and the flicker function that animates light intensities.
+// Installs `haylen.lighting2d` with the `Light` and `Occluder` classes, the helpers that build occluders from physics bodies and Tiled maps, the `illuminate` query, the falloff curve of lights without a texture and the `flicker` function that animates light intensities.
 class Lighting2DLua final {
   public:
     static void install(lua_State* L);

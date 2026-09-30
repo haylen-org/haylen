@@ -42,14 +42,14 @@ template <> struct EnumNames<audio::Mixer::Spatialization::Model> {
 
 namespace haylen::audio {
 
-// Installs haylen.audio, which plays sounds and music through the mixer buses, and the Sound class.
+// Installs `haylen.audio`, which plays sounds and music through the mixer buses, and the `Sound` class.
 class AudioLua final {
   public:
     static constexpr std::array<std::string_view, 12> kPlayFields{"bus", "volume", "pitch", "pitchVariation", "pan", "loop", "fadeIn", "startAt", "x", "y", "processMode", "effects"};
 
     static void install(lua_State* L);
 
-    // Reads the options of audio.play at index, which may only hold the fields given, such as the options that apply to the voices of streams.
+    // Reads the options of `audio.play` at `index`, which may only hold the fields given, such as the options that apply to the voices of streams.
     [[nodiscard]] static Mixer::PlayOptions readPlayOptions(lua_State* L, int index, std::span<const std::string_view> fields);
 
   private:

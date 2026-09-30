@@ -153,7 +153,7 @@ math::Vec2 GridLua::readCellSize(lua_State* L, int index) {
     return lua::Stack::read<math::Vec2>(L, index);
 }
 
-// Casts over the solid cells of a grid with raycastGrid(grid, from, to, cellSize), where the cell size is a number or a {width, height} pair.
+// Casts over the solid cells of a grid with `raycastGrid(grid, from, to, cellSize)`, where the cell size is a number or a `{width, height}` pair.
 int GridLua::raycastGrid(lua_State* L) {
     const CellGrid& grid = lua::Userdata::check<CellGrid>(L, 1);
     const math::Ray ray = math::Ray::between(lua::Stack::read<math::Vec2>(L, 2), lua::Stack::read<math::Vec2>(L, 3));
@@ -171,7 +171,7 @@ int GridLua::raycastGrid(lua_State* L) {
     return 1;
 }
 
-// Lists the cells that the ray from one point to another crosses with traverseGrid(from, to, cellSize), in order, each as {x, y, distance} with the distance where the ray enters it.
+// Lists the cells that the ray from one point to another crosses with `traverseGrid(from, to, cellSize)`, in order, each as `{x, y, distance}` with the distance where the ray enters it.
 int GridLua::traverseGrid(lua_State* L) {
     const math::Ray ray = math::Ray::between(lua::Stack::read<math::Vec2>(L, 1), lua::Stack::read<math::Vec2>(L, 2));
     std::vector<std::pair<Cell, float>> crossed;
@@ -213,7 +213,7 @@ int GridLua::circle(lua_State* L) {
     return 1;
 }
 
-// Lists the cells visible from a cell with fieldOfView(grid, x, y, radius), where solid cells block sight and cells outside the grid count as solid.
+// Lists the cells visible from a cell with `fieldOfView(grid, x, y, radius)`, where solid cells block sight and cells outside the grid count as solid.
 int GridLua::fieldOfView(lua_State* L) {
     const CellGrid& grid = lua::Userdata::check<CellGrid>(L, 1);
     const Cell origin = readCell(L, 2);
@@ -243,14 +243,14 @@ int GridLua::fieldOfView(lua_State* L) {
     return 1;
 }
 
-// Returns the outline of the area visible from a point with visibilityPolygon(origin, walls, bounds), as a list of Vec2.
+// Returns the outline of the area visible from a point with `visibilityPolygon(origin, walls, bounds)`, as a list of `Vec2`.
 int GridLua::visibilityPolygon(lua_State* L) {
     VisibilityPolygon polygon;
     lua::Stack::push(L, polygon.compute(lua::Stack::read<math::Vec2>(L, 1), lua::Stack::read<std::vector<math::Segment>>(L, 2), lua::Stack::read<math::Rect>(L, 3)));
     return 1;
 }
 
-// Lists the cells connected to a cell that share its value with floodFill(grid, x, y[, {diagonal = false, value = n}]), and paints them with the value when one is given.
+// Lists the cells connected to a cell that share its value with `floodFill(grid, x, y[, {diagonal = false, value = n}])`, and paints them with the value when one is given.
 int GridLua::floodFill(lua_State* L) {
     CellGrid& grid = lua::Userdata::check<CellGrid>(L, 1);
     const Cell start = readCell(L, 2);
@@ -274,7 +274,7 @@ int GridLua::floodFill(lua_State* L) {
     return 1;
 }
 
-// Labels the regions of a grid with components(grid[, {diagonal = false, background = n}]) and returns a CellGrid of region numbers and the region count.
+// Labels the regions of a grid with `components(grid[, {diagonal = false, background = n}])` and returns a `CellGrid` of region numbers and the region count.
 int GridLua::components(lua_State* L) {
     const CellGrid& grid = lua::Userdata::check<CellGrid>(L, 1);
     ConnectedComponents::Options options;

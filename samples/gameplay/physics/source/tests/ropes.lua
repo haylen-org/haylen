@@ -1,4 +1,4 @@
--- Ropes built by physics2d.newRope: a lamp on a pinned rope, a loose end, a tightrope pinned at both ends, a chain of planks holding a crate and a bola between two balls.
+-- Ropes built by `physics2d.newRope`: a lamp on a pinned rope, a loose end, a tightrope pinned at both ends, a chain of planks holding a crate and a bola between two balls.
 local haylen = require('haylen')
 local graphics2d = require('haylen.graphics2d')
 local input = require('haylen.input')

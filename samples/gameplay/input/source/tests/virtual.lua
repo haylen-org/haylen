@@ -1,4 +1,4 @@
--- Touch controls: a touch stick and two touch buttons of haylen.ui that write the virtual stick move and the virtual buttons jump and dash, which the action map reads next to every other binding, with their options changed live.
+-- Touch controls: a touch stick and two touch buttons of `haylen.ui` that write the virtual stick `move` and the virtual buttons `jump` and `dash`, which the action map reads next to every other binding, with their options changed live.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -38,7 +38,7 @@ function Virtual:enter()
                 end
             end},
             ui.sectionTitle{text = 'Wiring'},
-            ui.label{font = 'monospace', text = "ui.touchStick{action = 'move'}\nui.touchButton{action = 'jump'}\n-- the action map binds\n-- virtualStick:move\n-- virtual:jump and virtual:dash"},
+            ui.label{font = 'monospace', text = "ui.touchStick{action = 'move'}\nui.touchButton{action = 'jump'}\n-- The action map binds\n-- `virtualStick:move`\n-- `virtual:jump` and `virtual:dash`."},
         },
         overlay = {
             ui.touchStick{id = 'stick', action = 'move', floating = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 420, height = 420},

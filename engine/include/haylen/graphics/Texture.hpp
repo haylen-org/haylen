@@ -37,7 +37,7 @@ class Texture final {
     Texture() = default;
     explicit Texture(std::shared_ptr<TextureResource> value) noexcept : resource(std::move(value)) {}
 
-    // Resolves the filter names "nearest" and "linear" and the wrap names "clamp", "repeat" and "mirror".
+    // Resolves the filter names `nearest` and `linear` and the wrap names `clamp`, `repeat` and `mirror`.
     [[nodiscard]] static std::optional<Filter> filterFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view filterName(Filter value) noexcept;
     [[nodiscard]] static std::optional<Wrap> wrapFromName(std::string_view name) noexcept;

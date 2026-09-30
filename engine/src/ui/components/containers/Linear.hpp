@@ -14,7 +14,7 @@
 
 namespace haylen::ui {
 
-// Lays children out in a line, down a column or across a row, sharing extra space among children that grow and placing the rest by justify.
+// Lays children out in a line, down a column or across a row, sharing extra space among children that grow and placing the rest by `justify`.
 class Linear : public Component {
   public:
     explicit Linear(bool isHorizontal) : horizontal(isHorizontal) {}

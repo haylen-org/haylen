@@ -15,10 +15,10 @@
 
 namespace haylen::text {
 
-// The names rich text markup refers to across an app: the effects that tags such as [wave] run, with the built-in effects registered from the start, and the icons of [icon=name], such as input prompts. It also holds the family of the default font.
+// The names rich text markup refers to across an app: the effects that tags such as `[wave]` run, with the built-in effects registered from the start, and the icons of `[icon=name]`, such as input prompts. It also holds the family of the default font.
 class RichTextRegistry final {
   public:
-    // An image region shown inline by [icon=name]. An icon without a size is as tall as the text and keeps the shape of its region.
+    // An image region shown inline by `[icon=name]`. An icon without a size is as tall as the text and keeps the shape of its region.
     struct Icon {
         graphics::Texture texture;
         math::Rect source{};

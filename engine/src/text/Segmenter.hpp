@@ -36,7 +36,7 @@ class Segmenter final {
     // Tells whether a code point belongs to no script of its own, such as spaces, punctuation and digits, so it may draw with the font of the text around it.
     [[nodiscard]] static bool isCommon(char32_t codePoint) noexcept;
 
-    // Returns the mirrored form of a code point a right-to-left run draws, such as ) for (, or the code point itself.
+    // Returns the mirrored form of a code point a right-to-left run draws, such as `)` for `(`, or the code point itself.
     [[nodiscard]] static char32_t getMirror(char32_t codePoint) noexcept;
 
   private:

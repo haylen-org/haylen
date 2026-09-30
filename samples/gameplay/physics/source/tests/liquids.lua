@@ -1,4 +1,4 @@
--- A particle fluid from physics2d.newFluid poured into a tank with floating crates and drawn as metaballs with graphics2d.drawMetaballs.
+-- A particle fluid from `physics2d.newFluid` poured into a tank with floating crates and drawn as metaballs with `graphics2d.drawMetaballs`.
 local haylen = require('haylen')
 local graphics2d = require('haylen.graphics2d')
 local input = require('haylen.input')

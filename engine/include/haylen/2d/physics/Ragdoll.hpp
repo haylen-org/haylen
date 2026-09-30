@@ -34,7 +34,7 @@ class Ragdoll final {
 
     static constexpr std::size_t kPartCount = 11;
 
-    // The position is the center of the hips and height runs from the top of the head to the feet. Joint friction is the torque that resists bending, which makes the figure less limp.
+    // The position is the center of the hips and `height` runs from the top of the head to the feet. Joint friction is the torque that resists bending, which makes the figure less limp.
     struct Options {
         math::Vec2 position{};
         float height = 128.0F;
@@ -45,7 +45,7 @@ class Ragdoll final {
         math::Vec2 velocity{};
     };
 
-    // Throws std::invalid_argument when the height is not positive, the group is not negative or the material is invalid, and then leaves no bodies behind.
+    // Throws `std::invalid_argument` when the height is not positive, the group is not negative or the material is invalid, and then leaves no bodies behind.
     [[nodiscard]] static Ragdoll create(World& world, const Options& options);
 
     [[nodiscard]] static std::optional<Part> partFromName(std::string_view name) noexcept;

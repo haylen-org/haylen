@@ -64,7 +64,7 @@ function campfire:buildBarrier()
     self.barrier:addChain(points, true, {category = config.category.barrier, mask = config.category.enemy})
 end
 
--- Burns fuel for one frame and returns true when the circle grew, so the game can push enemies that are now inside it.
+-- Burns fuel for one frame and returns `true` when the circle grew, so the game can push enemies that are now inside it.
 function campfire:update(dt, night)
     self.time = self.time + dt
     if self:lit() then
@@ -94,7 +94,7 @@ function campfire:update(dt, night)
     return grew
 end
 
--- Adds up to count pieces of wood and returns how many the fire took.
+-- Adds up to `count` pieces of wood and returns how many the fire took.
 function campfire:feed(count)
     local room = math.ceil((fire.maxFuel - self.fuel) / fire.woodFuel)
     local taken = math.min(count, room)

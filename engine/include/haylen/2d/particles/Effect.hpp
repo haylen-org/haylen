@@ -12,7 +12,7 @@
 
 namespace haylen::particles2d {
 
-// A particle effect file holds the options of particles.newEmitter as JSON, with the texture named by its path relative to the effect file. Colors use #AARRGGBB and ranges take a number or [min, max].
+// A particle effect file holds the options of `particles.newEmitter` as JSON, with the texture named by its path relative to the effect file. Colors use `#AARRGGBB` and ranges take a number or `[min, max]`.
 struct Effect {
     std::string texturePath;
     EmitterConfig config;

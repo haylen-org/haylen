@@ -14,14 +14,14 @@
 
 namespace haylen::text {
 
-// Reads BBCode markup into a rich text document. Tags nest, [lb] and [rb] write brackets, and every paragraph separator, such as a line feed, CRLF or U+2029, ends a paragraph. Malformed markup throws std::invalid_argument naming the line and column of the problem.
+// Reads BBCode markup into a rich text document. Tags nest, `[lb]` and `[rb]` write brackets, and every paragraph separator, such as a line feed, CRLF or U+2029, ends a paragraph. Malformed markup throws `std::invalid_argument` naming the line and column of the problem.
 class MarkupParser final {
   public:
     explicit MarkupParser(std::string_view source);
 
     [[nodiscard]] RichTextDocument parse();
 
-    // Reads a color written in markup: a name such as red, #RRGGBB or #AARRGGBB.
+    // Reads a color written in markup: a name such as `red`, `#RRGGBB` or `#AARRGGBB`.
     [[nodiscard]] static std::optional<math::Color> parseColor(std::string_view text) noexcept;
 
     // Tells whether markup has a tag of this name, so no effect may take it.

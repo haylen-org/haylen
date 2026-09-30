@@ -9,12 +9,12 @@ namespace haylen::navigation2d {
 
 class Graph;
 
-// Installs the NavGraph class of haylen.navigation2d, a waypoint graph whose points Lua names with integer ids.
+// Installs the `NavGraph` class of `haylen.navigation2d`, a waypoint graph whose points Lua names with integer ids.
 class NavGraphLua final {
   public:
     static void install(lua_State* L);
 
-    // Sets newGraph on the module table at the top of the stack.
+    // Sets `newGraph` on the module table at the top of the stack.
     static void addFunctions(lua_State* L);
 
   private:

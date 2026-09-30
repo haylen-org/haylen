@@ -164,7 +164,7 @@ TEST_F(ScreensTest, OpensOneScreenAtATimeAndOnlyWhileTheAppIsActive) {
     // A second screen fails while the first shows, whichever app opened it, and never reaches the platform.
     const std::uint64_t first = screens.open("shop", "paywall", {}, {}, record);
     screens.open("shop", "offer", {}, {}, record);
-    EXPECT_TRUE(codes.empty()) << "a failure arrives at the next pump, like every answer";
+    EXPECT_TRUE(codes.empty()) << "A failure arrives at the next pump, like every answer.";
     fixture.frames(1);
     screens.open("shop", "offer", {}, {}, record);
     fixture.frames(1);
@@ -218,7 +218,7 @@ TEST_F(ScreensTest, KeepsTheAppCoveredUntilACancelledScreenIsGone) {
     ScreenRelay::finish(id, false, R"({"message": "Dismissed.", "code": "cancelled"})");
     fixture.frames(1);
     EXPECT_FALSE(engine.isAppCovered());
-    EXPECT_TRUE(restored.empty()) << "the app gave the screen up, so its end reaches nobody";
+    EXPECT_TRUE(restored.empty()) << "The app gave the screen up, so its end reaches nobody.";
 
     // A screen cancelled before it reached the platform never reaches it.
     const std::uint64_t early = screens.open("shop", "paywall", {}, {}, record);
@@ -237,7 +237,7 @@ TEST_F(ScreensTest, GivesUpAScreenWhoseTimeoutPassed) {
     const std::uint64_t id = screens.open("shop", "paywall", {}, {.timeout = std::chrono::milliseconds(20)}, [&answer](Bridge::Result result) { answer = std::move(result); });
     ASSERT_TRUE(fixture.frameUntil([&answer] { return answer.has_value(); }));
     EXPECT_EQ(answer->error.code, "timeout");
-    EXPECT_EQ(answer->error.message, "The screen paywall of shop timed out.");
+    EXPECT_EQ(answer->error.message, "The screen \"paywall\" of \"shop\" timed out.");
     EXPECT_EQ(fixture.host().getCancelledScreens(), (std::vector<std::uint64_t>{id}));
     EXPECT_TRUE(screens.isShowing());
     ScreenRelay::finish(id, false, R"({"message": "Dismissed.", "code": "cancelled"})");
@@ -296,11 +296,11 @@ TEST_F(ScreensTest, OpensScreensFromLuaWithOptions) {
     // Cancelling fails the call with the code cancelled and dismisses the screen.
     fixture.runLua("second = open() cancelled = second:cancel()");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return failure ~= nil") == "true"; }));
-    EXPECT_EQ(fixture.lua("return table.concat({tostring(cancelled), tostring(second:cancel()), failure.code, failure.message}, ' ')"), "true false cancelled The screen paywall of shop was cancelled.");
-    EXPECT_TRUE(fixture.host().getCancelledScreens().empty()) << "the screen never reached the platform";
+    EXPECT_EQ(fixture.lua("return table.concat({tostring(cancelled), tostring(second:cancel()), failure.code, failure.message}, ' ')"), "true false cancelled The screen \"paywall\" of \"shop\" was cancelled.");
+    EXPECT_TRUE(fixture.host().getCancelledScreens().empty()) << "The screen never reached the platform.";
 
     // Options are checked like the options of every call.
-    EXPECT_NE(fixture.lua("return shop:openScreen('')").find("A screen of the plugin shop needs a name."), std::string::npos);
+    EXPECT_NE(fixture.lua("return shop:openScreen('')").find("A screen of the plugin \"shop\" needs a name."), std::string::npos);
     EXPECT_NE(fixture.lua("return shop:openScreen('paywall', nil, {modal = true})").find("modal"), std::string::npos);
     EXPECT_NE(fixture.lua("return shop:openScreen('paywall', nil, {timeout = 0})").find("The timeout of a screen is a positive number of seconds."), std::string::npos);
     EXPECT_NE(fixture.lua("return shop:openScreen('paywall', nil, {state = {image = platform.bytes('x')}})").find("The state of a screen is JSON without bytes."), std::string::npos);

@@ -12,7 +12,7 @@ namespace haylen::core {
 // One value that a tween animates: how its start and end are found, how it travels between them and, optionally, the motion it follows instead of a straight line. Tracks read and write the value, and the property computes it from the eased progress.
 class TweenProperty final {
   public:
-    // To ends at the given value and From starts at it, By ends at the current value plus the given offset, and FromTo gives both ends. The current value is read when the tween first renders, except for From, whose end is the value the target has when the tween is created.
+    // The mode `To` ends at the given value and `From` starts at it, `By` ends at the current value plus the given offset, and `FromTo` gives both ends. The current value is read when the tween first renders, except for `From`, whose end is the value the target has when the tween is created.
     enum class Mode : std::uint8_t {
         To,
         From,
@@ -42,7 +42,7 @@ class TweenProperty final {
     // Resolves the start and end from the current value of the target, once.
     void begin(const TweenValue& current);
 
-    // Computes the value at the eased progress. Loops is the number of completed loops of an incremental tween, which shifts the range forward so every loop continues from where the previous one ended. Texts start over on every loop.
+    // Computes the value at the eased progress. The parameter `loops` is the number of completed loops of an incremental tween, which shifts the range forward so every loop continues from where the previous one ended. Texts start over on every loop.
     [[nodiscard]] TweenValue evaluate(float progress, int loops) const;
 
     [[nodiscard]] float getDistance() const;

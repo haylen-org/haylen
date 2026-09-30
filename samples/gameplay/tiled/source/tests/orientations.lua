@@ -1,4 +1,4 @@
--- The five map orientations of Tiled drawn by the same map:draw, with the cell under the pointer found by map:worldToCell and outlined from map:cellToWorld.
+-- The five map orientations of Tiled drawn by the same `map:draw`, with the cell under the pointer found by `map:worldToCell` and outlined from `map:cellToWorld`.
 local haylen = require('haylen')
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
@@ -70,7 +70,7 @@ function Orientations:update(dt)
     self:showStats(string.format('orientation %s\nsize %d x %d cells\ntile %d x %d\ncell %d, %d\ncell corner %.0f, %.0f\nstagger %s, %s\nhex side %d\nskew %d, %d', map.orientation, map.width, map.height, map.tileWidth, map.tileHeight, self.column, self.row, x, y, map.staggerX and 'x' or 'y', map.staggerEven and 'even' or 'odd', map.hexSideLength, map.skewX, map.skewY))
 end
 
--- Orthogonal, isometric and oblique cells share their corners with their neighbors, so four calls of cellToWorld outline them. Staggered and hexagonal cells sit in their bounding boxes.
+-- Orthogonal, isometric and oblique cells share their corners with their neighbors, so four calls of `cellToWorld` outline them. Staggered and hexagonal cells sit in their bounding boxes.
 function Orientations:cellOutline()
     local map, column, row = self.map, self.column, self.row
     local width, height = map.tileWidth, map.tileHeight

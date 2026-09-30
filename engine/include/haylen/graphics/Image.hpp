@@ -16,7 +16,7 @@ class Image final {
     Image(int imageWidth, int imageHeight, math::Color fill = math::Color::transparent());
     Image(int imageWidth, int imageHeight, std::vector<std::uint8_t> data);
 
-    // Decodes PNG, JPG, TGA, BMP and GIF data. Throws std::runtime_error when the data is not a supported image.
+    // Decodes PNG, JPG, TGA, BMP and GIF data. Throws `std::runtime_error` when the data is not a supported image.
     [[nodiscard]] static Image decode(std::span<const std::uint8_t> encoded);
 
     [[nodiscard]] int getWidth() const noexcept {

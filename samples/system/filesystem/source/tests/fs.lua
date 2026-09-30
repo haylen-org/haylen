@@ -1,4 +1,4 @@
--- The user folder with Varn fs: every call runs on the I/O pool and returns a promise, which a task of the scene awaits, so the frame never waits for the disk and nothing resumes once the player left.
+-- The user folder with Varn `fs`: every call runs on the I/O pool and returns a promise, which a task of the scene awaits, so the frame never waits for the disk and nothing resumes once the player left.
 local fs = require('fs')
 local haylen = require('haylen')
 local storage = require('haylen.storage')
@@ -15,7 +15,7 @@ Fs.focus = 'mkdir'
 local kChunk = 64 * 1024
 local kChunks = 32
 
--- Waits for a promise and raises its error, so one pcall around an operation catches every failure of its steps.
+-- Waits for a promise and raises its error, so one `pcall` around an operation catches every failure of its steps.
 local function need(promise)
     local value, failure = promise:await()
     if value == nil then
@@ -55,7 +55,7 @@ function Fs:content()
             ui.sectionTitle{text = 'Varn fs'},
             ui.grid{columns = 2, gap = 12, children = buttons},
             ui.progress{id = 'progress', value = 0, text = 'No stream yet'},
-            ui.label{text = 'Paths are built from storage.root(): ' .. self.base, font = 'caption', color = 'textMuted'},
+            ui.label{text = 'Paths are built from "storage.root()": ' .. self.base, font = 'caption', color = 'textMuted'},
         },
         ui.panel{grow = 1, align = 'stretch', gap = 12,
             ui.sectionTitle{text = 'Activity'},

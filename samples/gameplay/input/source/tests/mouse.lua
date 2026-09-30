@@ -64,7 +64,7 @@ function Mouse:resize(area)
     end
 end
 
--- Mouse events arrive with the position of each event, while the functions of haylen.input read the state of the frame.
+-- Mouse events arrive with the position of each event, while the functions of `haylen.input` read the state of the frame.
 function Mouse:event(event)
     if event.type == 'mouseDown' or event.type == 'mouseUp' then
         self.journal:add(string.format('%s %s at %.0f, %.0f', event.type, event.button, event.x, event.y), event.type == 'mouseDown' and sample.warm or sample.red)

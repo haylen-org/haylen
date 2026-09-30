@@ -31,7 +31,7 @@ class Device;
 
 namespace haylen::assets {
 
-// Loads, caches and preloads assets by their path inside the package content folder. Cached assets stay alive while anything, including a preload group, still holds them. The manager publishes assetLoaded when an asset enters the cache, assetReloaded when a changed file updates it in place and assetUnloaded when its last holder lets go, queued on the event bus with the type and path of the asset.
+// Loads, caches and preloads assets by their path inside the package content folder. Cached assets stay alive while anything, including a preload group, still holds them. The manager publishes `assetLoaded` when an asset enters the cache, `assetReloaded` when a changed file updates it in place and `assetUnloaded` when its last holder lets go, queued on the event bus with the type and path of the asset.
 class Manager final {
   public:
     // What a loader receives. Decoders may read companion files, such as the image of an atlas, through the package from their worker thread.
@@ -43,7 +43,7 @@ class Manager final {
         const io::Package* package = nullptr;
     };
 
-    // Loader for one kind of asset. Normalize validates the options and returns their canonical form, so equal options share one cached asset. Decode runs on a worker thread with the file bytes, and finalize runs on the frame thread, where GPU resources may be created.
+    // Loader for one kind of asset. The function `normalize` validates the options and returns their canonical form, so equal options share one cached asset. The function `decode` runs on a worker thread with the file bytes, and `finalize` runs on the frame thread, where GPU resources may be created.
     struct Type {
         std::string name;
         std::vector<std::string> extensions;
@@ -72,7 +72,7 @@ class Manager final {
     Manager(const Manager&) = delete;
     Manager& operator=(const Manager&) = delete;
 
-    // Texture options travel as {"filter": "nearest" or "linear", "wrap": "clamp", "repeat" or "mirror"} in asset requests.
+    // Texture options travel as `{"filter": "nearest" or "linear", "wrap": "clamp", "repeat" or "mirror"}` in asset requests.
     [[nodiscard]] static graphics::Texture::Options textureOptionsFromJson(const core::Json& options);
     [[nodiscard]] static core::Json textureOptionsToJson(graphics::Texture::Options options);
 
@@ -83,7 +83,7 @@ class Manager final {
     [[nodiscard]] core::Json normalizeOptions(std::string_view type, const core::Json& options) const;
     [[nodiscard]] std::shared_ptr<void> load(std::string_view type, std::string_view path, const core::Json& options = core::Json::object());
 
-    // Returns the cached asset for the type, path and options, or caches what make builds. Composite assets use it to share their dependencies with direct loads.
+    // Returns the cached asset for the type, path and options, or caches what `make` builds. Composite assets use it to share their dependencies with direct loads.
     std::shared_ptr<void> share(std::string_view type, std::string_view path, const core::Json& options, const std::function<std::shared_ptr<void>(const Request&)>& make);
     void loadAsync(std::string_view type, std::string_view path, Callback callback, const core::Json& options = core::Json::object());
 
@@ -91,7 +91,7 @@ class Manager final {
     void textureAsync(std::string_view path, std::function<void(graphics::Texture, std::string)> callback, graphics::Texture::Options options = {});
     [[nodiscard]] std::shared_ptr<text::Font> font(std::string_view path, text::TrueTypeFont::Options options = {});
 
-    // Loads a .shader file that make.py shaders compiled, which reloads in place when the file changes.
+    // Loads a `.shader` file that `make.py shaders` compiled, which reloads in place when the file changes.
     [[nodiscard]] graphics::Shader shader(std::string_view path);
     [[nodiscard]] core::Json json(std::string_view path);
     [[nodiscard]] std::string text(std::string_view path) const;

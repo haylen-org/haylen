@@ -85,7 +85,7 @@ class Grid final {
         return costlyCells == 0;
     }
 
-    // Calls visit(cell, length) for every walkable cell a walker can step into from the cell, with the length of the step. Square and staggered grids step through the four sides, and with diagonal steps also through the four corners when both cells beside a corner are walkable, so paths never cut corners. Hexagonal grids step through their six sides whatever diagonal says.
+    // Calls `visit(cell, length)` for every walkable cell a walker can step into from the cell, with the length of the step. Square and staggered grids step through the four sides, and with diagonal steps also through the four corners when both cells beside a corner are walkable, so paths never cut corners. Hexagonal grids step through their six sides whatever `diagonal` says.
     template <typename Visit> void forEachStep(Cell cell, bool diagonal, Visit&& visit) const {
         if (layout.topology == Topology::Hexagonal) {
             const Cell axial = toAxial(cell);
@@ -121,7 +121,7 @@ class Grid final {
     [[nodiscard]] Cell toLattice(Cell cell) const noexcept;
     [[nodiscard]] Cell fromLattice(Cell point) const noexcept;
 
-    // Returns true when the straight line between both cell centers crosses only walkable cells.
+    // Returns `true` when the straight line between both cell centers crosses only walkable cells.
     [[nodiscard]] bool hasLineOfSight(Cell from, Cell to) const noexcept;
 
     // Keeps the start, the goal and every cell where the path must turn, dropping in place the cells a straight walk can skip. Smoothing looks at walkability only, so it may cross costly cells.

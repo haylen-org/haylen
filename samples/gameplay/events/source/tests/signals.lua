@@ -11,8 +11,8 @@ local Signals = haylen.class('Signals', sample.Test)
 local kCode = [[
 local hit = signal.new('demo.hit')
 hit:connect(shield, {priority = 10})  hit:connect(healthBar)  hit:connect(achievement, {once = true})
-hit:connect(save, {deferred = true})  -- runs at the end of the frame
-connection.blocked = true  hit.blocked = true  connection:disconnect()  -- also from inside a listener]]
+hit:connect(save, {deferred = true})  -- Runs at the end of the frame.
+connection.blocked = true  hit.blocked = true  connection:disconnect()  -- Also from inside a listener.]]
 
 function Signals:enter()
     self.journal = Journal()
@@ -35,24 +35,24 @@ end
 function Signals:connect()
     local journal, hit = self.journal, self.hit
     hit:clear()
-    self.healthBar = hit:connect(function(damage) journal:add('health bar shows ' .. damage .. ' damage') end, {owner = self})
-    hit:connect(function(damage) journal:add('shield absorbs part of ' .. damage .. ' (priority 10)', sample.accent) end, {owner = self, priority = 10})
-    hit:connect(function() journal:add('achievement: first hit (once)', sample.warm) end, {owner = self, once = true})
-    hit:connect(function(damage) journal:add('save after the frame with ' .. damage .. ' (deferred)', sample.green) end, {owner = self, deferred = true})
+    self.healthBar = hit:connect(function(damage) journal:add('Health bar shows ' .. damage .. ' damage') end, {owner = self})
+    hit:connect(function(damage) journal:add('Shield absorbs part of ' .. damage .. ' (priority 10)', sample.accent) end, {owner = self, priority = 10})
+    hit:connect(function() journal:add('Achievement: first hit (once)', sample.warm) end, {owner = self, once = true})
+    hit:connect(function(damage) journal:add('Save after the frame with ' .. damage .. ' (deferred)', sample.green) end, {owner = self, deferred = true})
 
     -- The combo listener runs before the sparkles and disconnects them, so the sparkles never run in this emit.
     local sparkles
     hit:connect(function()
         if sparkles.connected then
             sparkles:disconnect()
-            journal:add('combo breaker disconnects the sparkles during the emit', sample.red)
+            journal:add('Combo breaker disconnects the sparkles during the emit', sample.red)
         end
     end, {owner = self, priority = 5})
-    sparkles = hit:connect(function() journal:add('sparkles') end, {owner = self})
+    sparkles = hit:connect(function() journal:add('Sparkles') end, {owner = self})
 
     self:set('blockSignal', {checked = false})
     self:set('blockBar', {checked = false})
-    journal:add('connected ' .. hit.size .. ' listeners', sample.muted)
+    journal:add('Connected ' .. hit.size .. ' listeners', sample.muted)
 end
 
 function Signals:emit()

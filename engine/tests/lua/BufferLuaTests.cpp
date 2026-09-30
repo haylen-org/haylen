@@ -49,7 +49,7 @@ TEST(FloatBufferLuaTest, ReadsAndWritesFromLua) {
     EXPECT_NE(fixture.lua("buffer:get(1, -1)").find("the count cannot be negative"), std::string::npos);
     EXPECT_NE(fixture.lua("buffer:fill(0, 6, 2)").find("fall outside"), std::string::npos);
     EXPECT_NE(fixture.lua("require('haylen.collections').newFloatBuffer(-1)").find("the size cannot be negative"), std::string::npos);
-    EXPECT_NE(fixture.lua("return buffer.missing").find("has no member 'missing'"), std::string::npos);
+    EXPECT_NE(fixture.lua("return buffer.missing").find("has no member \"missing\""), std::string::npos);
 }
 
 } // namespace haylen::core

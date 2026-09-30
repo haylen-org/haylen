@@ -27,7 +27,7 @@ TEST_F(GeometryLuaTest, CombinesAndOffsetsPolygons) {
     EXPECT_EQ(lua("return #m.polygon.offset(square, -6)"), "0");
     EXPECT_EQ(lua("local ring = m.polygon.subtract(square, {{3, 3}, {7, 3}, {7, 7}, {3, 7}}) return #ring .. ' ' .. m.polygon.area(ring)"), "2 84.0");
     EXPECT_NE(lua("return m.polygon.offset(square, 1, {join = 'sharp'})").find("unknown value 'sharp'"), std::string::npos);
-    EXPECT_NE(lua("return m.polygon.offset(square, 1, {limit = 3})").find("Unknown option 'limit'"), std::string::npos);
+    EXPECT_NE(lua("return m.polygon.offset(square, 1, {limit = 3})").find("Unknown option \"limit\""), std::string::npos);
 }
 
 TEST_F(GeometryLuaTest, SimplifiesAndDecomposesPolygons) {
@@ -63,7 +63,7 @@ TEST_F(GeometryLuaTest, TracesFieldsAndBitmaps) {
     EXPECT_EQ(lua("local outlines = m.marchingSquares.trace(field, 5, 5, {threshold = 0.5, spacing = 2, origin = {100, 0}}) return #outlines .. ' ' .. m.polygonSignedArea(outlines[1])"), "1 34.0");
     EXPECT_EQ(lua("local outlines = m.marchingSquares.traceBitmap({1, 0, 1, true, false, 0}, 3, 2) return #outlines"), "2");
     EXPECT_NE(lua("return m.marchingSquares.trace(field, 4, 5)").find("width times height"), std::string::npos);
-    EXPECT_NE(lua("return m.marchingSquares.trace(field, 5, 5, {level = 1})").find("Unknown option 'level'"), std::string::npos);
+    EXPECT_NE(lua("return m.marchingSquares.trace(field, 5, 5, {level = 1})").find("Unknown option \"level\""), std::string::npos);
 }
 
 TEST_F(GeometryLuaTest, SamplesSplines) {

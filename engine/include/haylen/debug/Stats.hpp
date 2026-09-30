@@ -16,7 +16,7 @@ class Engine;
 
 namespace haylen::debug {
 
-// A snapshot of what the engine is doing, which the debug overlay shows and haylen.debug.stats returns.
+// A snapshot of what the engine is doing, which the debug overlay shows and `haylen.debug.stats` returns.
 class Stats final {
   public:
     // Frame times in milliseconds over the recent frames, where the one percent low is the average of the slowest one percent of them.

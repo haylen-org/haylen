@@ -138,7 +138,7 @@ TEST(AiLuaTest, RunsLuaStatesWithArguments) {
     EXPECT_EQ(fixture.lua("return table.concat(log, ', ')"), "exit chase, chase>chase, enter chase goblin 9, exit chase, chase>idle, enter idle tired");
     EXPECT_EQ(fixture.lua("machine:change('rest') machine:update(1.5) return machine.current .. ' ' .. machine.elapsed .. ' ' .. tostring(machine:has('rest')) .. tostring(machine:has('fly'))"), "rest 1.5 truefalse");
 
-    EXPECT_NE(fixture.lua("machine:change('fly')").find("no state named fly"), std::string::npos);
+    EXPECT_NE(fixture.lua("machine:change('fly')").find("no state named \"fly\""), std::string::npos);
     EXPECT_NE(fixture.lua("ai.newStateMachine({idle = 3})").find("each state must be a table"), std::string::npos);
     EXPECT_NE(fixture.lua("ai.newStateMachine({[1] = {}})").find("state names must be strings"), std::string::npos);
     EXPECT_NE(fixture.lua("machine.onChange = 5").find("error: "), std::string::npos);

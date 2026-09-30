@@ -4,7 +4,7 @@ struct lua_State;
 
 namespace haylen::physics2d {
 
-// Installs the Joint class of haylen.physics2d.
+// Installs the `Joint` class of `haylen.physics2d`.
 class JointLua final {
   public:
     static void install(lua_State* L);

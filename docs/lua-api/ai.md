@@ -1,6 +1,6 @@
 # haylen.ai
 
-`haylen.ai` provides finite state machines, behavior trees with a blackboard, utility AI with response curves and influence maps. A machine is in one named state at a time, and each state has optional functions that run when the state is entered, updated and left. Use state machines for enemy behavior, player states such as idle, running and jumping, and flows such as a boss fight with phases. Use behavior trees for layered decisions that react each tick, utility selectors for agents that weigh several needs, and influence maps to read the threat or pull of every spot of a map.
+The module `haylen.ai` provides finite state machines, behavior trees with a blackboard, utility AI with response curves and influence maps. A machine is in one named state at a time, and each state has optional functions that run when the state is entered, updated and left. Use state machines for enemy behavior, player states such as idle, running and jumping, and flows such as a boss fight with phases. Use behavior trees for layered decisions that react each tick, utility selectors for agents that weigh several needs, and influence maps to read the threat or pull of every spot of a map.
 
 ```lua
 local ai = require('haylen.ai')
@@ -10,7 +10,7 @@ local ai = require('haylen.ai')
 
 ### ai.newStateMachine(states)
 
-Creates a state machine and returns it as a `StateMachine` object. `states` maps state names to state tables. The set of state names is fixed when the machine is created. The functions inside a state table are looked up every time they run, so they can be replaced later. The machine starts without a current state until the first `machine:change`.
+Creates a state machine and returns it as a `StateMachine` object. The argument `states` maps state names to state tables. The set of state names is fixed when the machine is created. The functions inside a state table are looked up every time they run, so they can be replaced later. The machine starts without a current state until the first `machine:change`.
 
 Every function is optional.
 
@@ -20,7 +20,7 @@ Every function is optional.
 | `update` | On every `machine:update` while this state is current. | The machine and the delta time given to `machine:update`. |
 | `exit` | When the machine changes from this state to another one or to itself. | The machine. |
 
-`states` must be a table. A key that is not a string raises `bad argument #1 to 'newStateMachine' (state names must be strings)`, and a value that is not a table raises `bad argument #1 to 'newStateMachine' (each state must be a table)`.
+The argument `states` must be a table. A key that is not a string raises `bad argument #1 to 'newStateMachine' (state names must be strings)`, and a value that is not a table raises `bad argument #1 to 'newStateMachine' (each state must be a table)`.
 
 ```lua
 local ai = require('haylen.ai')
@@ -61,9 +61,9 @@ require('haylen.scene').push({
 
 ### machine:change(name, ...)
 
-Changes to the state `name`. The current state's `exit` runs first, then `machine.onChange`, then the new state's `enter` with the extra arguments. `machine.elapsed` restarts at zero. Changing to the current state leaves it and enters it again.
+Changes to the state `name`. The current state's `exit` runs first, then `machine.onChange`, then the new state's `enter` with the extra arguments. The property `machine.elapsed` restarts at zero. Changing to the current state leaves it and enters it again.
 
-A change requested from inside `enter`, `exit` or `onChange` waits until the running change finishes and then runs with its own arguments, in request order. An error raised by a state function reaches the caller of `change`, and changes queued during that transition are dropped. An unknown name raises `The state machine has no state named <name>.`
+A change requested from inside `enter`, `exit` or `onChange` waits until the running change finishes and then runs with its own arguments, in request order. An error raised by a state function reaches the caller of `change`, and changes queued during that transition are dropped. An unknown name raises `The state machine has no state named "<name>".`
 
 ```lua
 local ai = require('haylen.ai')
@@ -200,7 +200,7 @@ print(turret.current) -- firing
 
 ### machine.onChange
 
-Readable and writable function called on every change as `onChange(machine, from, to)`, after the old state's `exit` and before the new state's `enter`. `from` is `nil` on the first change. Assign `nil` to remove it. Assigning a value that is neither a function nor `nil` raises an error.
+Readable and writable function called on every change as `onChange(machine, from, to)`, after the old state's `exit` and before the new state's `enter`. The argument `from` is `nil` on the first change. Assign `nil` to remove it. Assigning a value that is neither a function nor `nil` raises an error.
 
 ```lua
 local ai = require('haylen.ai')
@@ -237,7 +237,7 @@ The node functions return plain description tables that `ai.newBehaviorTree` rea
 | `ai.timeout(child, seconds)` | Fails and resets the child when it keeps running for more than `seconds`. |
 | `ai.wait(seconds)` | Runs for `seconds` and then succeeds. |
 | `ai.condition(fn)` | Calls `fn(blackboard)` and succeeds when it returns a true value. |
-| `ai.action(fn)` | Calls `fn(blackboard, dt)`, which returns `'success'`, `'failure'` or `'running'`, or `true` for success and `false` for failure. Returning nothing counts as success, and another status name raises `A behavior tree action returned the unknown status '<name>'.` |
+| `ai.action(fn)` | Calls `fn(blackboard, dt)`, which returns `'success'`, `'failure'` or `'running'`, or `true` for success and `false` for failure. Returning nothing counts as success, and another status name raises `A behavior tree action returned the unknown status "<name>".` |
 
 ```lua
 local ai = require('haylen.ai')
@@ -257,7 +257,7 @@ print(brain.kind) -- selector
 
 ### ai.newBehaviorTree(root, blackboard)
 
-Creates a `BehaviorTree` from a node description and an optional blackboard table, which defaults to a new table. A malformed description raises an error such as `Unknown behavior tree node '<kind>'.` or `A parallel node needs between one success and as many successes as it has children.` The same description may appear in several places of a tree, but a description that contains itself raises `A behavior tree description contains itself.`
+Creates a `BehaviorTree` from a node description and an optional blackboard table, which defaults to a new table. A malformed description raises an error such as `Unknown behavior tree node "<kind>".` or `A parallel node needs between one success and as many successes as it has children.` The same description may appear in several places of a tree, but a description that contains itself raises `A behavior tree description contains itself.`
 
 ```lua
 local ai = require('haylen.ai')
@@ -282,7 +282,7 @@ require('haylen.scene').push({
 
 ### tree:tick(dt), tree:reset()
 
-`tick` advances the tree time by `dt`, ticks the root and returns its status. A leaf that ticks its own tree raises `The behavior tree is already ticking.` `reset` forgets the running children, counters and timers, keeping the blackboard.
+The method `tick` advances the tree time by `dt`, ticks the root and returns its status. A leaf that ticks its own tree raises `The behavior tree is already ticking.` The method `reset` forgets the running children, counters and timers, keeping the blackboard.
 
 ```lua
 local ai = require('haylen.ai')
@@ -315,7 +315,7 @@ A `UtilitySelector` scores each option by the product of its considerations and 
 
 ### ai.newUtilitySelector(options)
 
-Creates a selector from a list of options. Unknown keys raise `Unknown option '<key>'.`, and a consideration whose range has two equal ends raises `A consideration needs an input and a range with two different ends.`
+Creates a selector from a list of options. Unknown keys raise `Unknown option "<key>".`, and a consideration whose range has two equal ends raises `A consideration needs an input and a range with two different ends.`
 
 | Option key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -330,7 +330,7 @@ Creates a selector from a list of options. Unknown keys raise `Unknown option '<
 | `minimum`, `maximum` | number | `0`, `1` | Range of the input that maps to 0 and 1. |
 | `curve` | table | linear | Response curve `{shape, slope, exponent, shift, offset}`. |
 
-Curves follow the infinite axis utility system, with `x` the mapped input: `'linear'` gives `slope * (x - shift) + offset` and ignores the exponent, `'polynomial'` gives `slope * (x - shift) ^ exponent + offset` with inputs below the shift counted as the shift, `'logistic'` gives `exponent / (1 + e ^ (-slope * (x - shift))) + offset`, `'logit'` gives `slope * ln((x - shift) / (1 - x + shift)) / 5 + 0.5 + offset`, and `'normal'` gives `slope * e ^ (-exponent * (x - shift) ^ 2) + offset`. Results are clamped between 0 and 1, and slope, exponent, shift and offset default to `1`, `1`, `0` and `0`.
+Curves follow the infinite axis utility system, with `x` the mapped input: `'linear'` gives `slope * (x - shift) + offset` and ignores the exponent, `'polynomial'` gives `slope * (x - shift) ^ exponent + offset` with inputs below the shift counted as the shift, `'logistic'` gives `exponent / (1 + e ^ (-slope * (x - shift))) + offset`, `'logit'` gives `slope * ln((x - shift) / (1 - x + shift)) / 5 + 0.5 + offset`, and `'normal'` gives `slope * e ^ (-exponent * (x - shift) ^ 2) + offset`. Results are clamped between 0 and 1, and `slope`, `exponent`, `shift` and `offset` default to `1`, `1`, `0` and `0`.
 
 ```lua
 local ai = require('haylen.ai')
@@ -349,7 +349,7 @@ print(brain:choose({health = 90, distance = 40})) -- attack
 
 ### selector:choose(context, random, tolerance)
 
-Returns the name and score of the best option for the context, or `nil` when every option scores zero. With a `Random`, it picks at random, weighted by score, among the options that score above zero and at least `tolerance` times the best score, which makes agents less predictable. `tolerance` defaults to `0.9` and is clamped between `0` and `1`, so `1` keeps only the best options and `0` keeps every option that scores above zero.
+Returns the name and score of the best option for the context, or `nil` when every option scores zero. With a `Random`, it picks at random, weighted by score, among the options that score above zero and at least `tolerance` times the best score, which makes agents less predictable. The argument `tolerance` defaults to `0.9` and is clamped between `0` and `1`, so `1` keeps only the best options and `0` keeps every option that scores above zero.
 
 ```lua
 local ai = require('haylen.ai')
@@ -365,7 +365,7 @@ print(brain:choose({boredom = 0.8, tired = 0.7}, rng, 0.8))
 
 ### selector:score(option, context), selector.options
 
-`score` returns the score of one option, by name or by position from 1, and an unknown name raises `unknown option`. `options` lists the option names.
+The method `score` returns the score of one option, by name or by position from 1, and an unknown name raises `unknown option`. The property `options` lists the option names.
 
 ```lua
 local ai = require('haylen.ai')
@@ -424,7 +424,7 @@ end
 
 ### map:propagate(decay, momentum), map:scale(factor), map:add(other, weight), map:fill(value)
 
-`propagate` spreads influence across the map: every cell moves toward the strongest influence of its eight neighbors, reduced by `e ^ (-decay * distance in cells)`, and `momentum` is the share of its old value a cell keeps. `scale` multiplies every value, which fades old influence over time. `add` adds another map of the same size times `weight`, which defaults to `1`, and maps of other sizes raise `Only influence maps of the same size add up.` `fill` sets every value.
+The method `propagate` spreads influence across the map: every cell moves toward the strongest influence of its eight neighbors, reduced by `e ^ (-decay * distance in cells)`, and `momentum` is the share of its old value a cell keeps. The method `scale` multiplies every value, which fades old influence over time. The method `add` adds another map of the same size times `weight`, which defaults to `1`, and maps of other sizes raise `Only influence maps of the same size add up.` The method `fill` sets every value.
 
 ```lua
 local ai = require('haylen.ai')
@@ -445,7 +445,7 @@ tension:scale(0.5)
 
 ### map:get(column, row), map:set(column, row, value), map:sample(x, y), map:values()
 
-`get` and `set` read and write one cell and raise `The cell is outside the influence map.` outside it. `sample` returns the value at a world position, interpolated between cell centers, and 0 outside the map or for a NaN position. `values` returns every value row by row.
+The methods `get` and `set` read and write one cell and raise `The cell is outside the influence map.` outside it. The method `sample` returns the value at a world position, interpolated between cell centers, and 0 outside the map or for a NaN position. The method `values` returns every value row by row.
 
 ```lua
 local ai = require('haylen.ai')
@@ -457,7 +457,7 @@ print(heat:get(2, 3), heat:sample(40, 56), #heat:values()) -- 5.0 5.0 100
 
 ### map:findHighest(x, y, radius), map:findLowest(x, y, radius), map:cellCenter(column, row)
 
-`findHighest` and `findLowest` return the center and value of the cell with the highest or lowest value among the cells whose centers lie within `radius` of the point, as three numbers, or `nil` when no cell does. A `radius` of `math.huge` searches the whole map. `cellCenter` returns the center of a cell.
+The methods `findHighest` and `findLowest` return the center and value of the cell with the highest or lowest value among the cells whose centers lie within `radius` of the point, as three numbers, or `nil` when no cell does. A `radius` of `math.huge` searches the whole map. The method `cellCenter` returns the center of a cell.
 
 ```lua
 local ai = require('haylen.ai')

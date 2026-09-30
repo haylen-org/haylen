@@ -118,9 +118,9 @@ TEST(KeyboardTranslatorTest, TypesWhatThePlainKeyboardCommits) {
     const std::string enter = "<" + std::to_string(static_cast<int>(input::Key::Enter)) + ">";
 
     EXPECT_EQ(describe(edit("hi")), "hi");
-    EXPECT_EQ(describe(edit("hi th", 3, 5)), " ") << "text inside an open composition waits";
+    EXPECT_EQ(describe(edit("hi th", 3, 5)), " ") << "Text inside an open composition waits.";
     EXPECT_EQ(describe(edit("hi there")), "there");
-    EXPECT_EQ(describe(edit("hi their")), backspace + backspace + "ir") << "a corrected word is erased and typed again";
+    EXPECT_EQ(describe(edit("hi their")), backspace + backspace + "ir") << "A corrected word is erased and typed again.";
     EXPECT_EQ(describe(edit("hi their\n")), enter);
     EXPECT_EQ(describe(Event{.type = Event::Type::TextAction, .textAction = TextInput::Action::Submit}), enter);
     EXPECT_EQ(describe(Event{.type = Event::Type::TextAction, .textAction = TextInput::Action::Dismissed}), "");
@@ -141,7 +141,7 @@ TEST(BridgeRelayTest, ForwardsNativeRepliesToTheAttachedBridge) {
     BridgeRelay::emit("native.event", "2", {}, {});
     BridgeRelay::emit("native.late", "5", {}, {.retain = true});
     bridge.pump();
-    EXPECT_TRUE(results.empty()) << "nothing reaches a bridge that is not attached";
+    EXPECT_TRUE(results.empty()) << "Nothing reaches a bridge that is not attached.";
 
     BridgeRelay::attach(bridge);
     BridgeRelay::resolve(call, true, R"({"value": 3, "raw": {"$bytes": 0}})", {{std::byte{9}, std::byte{0}}});
@@ -339,7 +339,7 @@ TEST(BridgeTest, RoutesCallsToHandlersAndNativeCode) {
     EXPECT_EQ(results[2].error.message, "cancelled");
     EXPECT_EQ(results[3].error.message, "no session");
     EXPECT_FALSE(results[4].ok);
-    EXPECT_EQ(bridge.getPendingCallCount(), 1U) << "a call without a callback waits for its answer too";
+    EXPECT_EQ(bridge.getPendingCallCount(), 1U) << "A call without a callback waits for its answer too.";
 
     EXPECT_THROW(bridge.call("", {}, {}), std::invalid_argument);
     EXPECT_THROW(bridge.registerHandler("", {}), std::invalid_argument);

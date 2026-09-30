@@ -1,4 +1,4 @@
--- Emitter shapes: where new particles appear. Circles and rings use the x of shapeSize as their radius, rectangles use half their width and height, and cones fill the sector of the direction and spread.
+-- Emitter shapes: where new particles appear. Circles and rings use the x of `shapeSize` as their radius, rectangles use half their width and height, and cones fill the sector of the direction and spread.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local particles2d = require('haylen.particles2d')

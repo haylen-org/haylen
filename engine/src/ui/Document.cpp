@@ -112,13 +112,13 @@ Document::Built Document::build(const core::Json& node, std::size_t depth, std::
         throw std::invalid_argument("The children of " + PropertyReader::describeKind(kind->get<std::string>()) + " must be a list.");
     }
     if (children->size() > component.getChildLimit()) {
-        throw std::invalid_argument("The component kind '" + kind->get<std::string>() + "' takes at most " + std::to_string(component.getChildLimit()) + " children.");
+        throw std::invalid_argument("The component kind \"" + kind->get<std::string>() + "\" takes at most " + std::to_string(component.getChildLimit()) + " children.");
     }
     for (const core::Json& child : *children) {
         Built nested = build(child, depth + 1, count);
         for (auto& [nestedId, target] : nested.ids) {
             if (!built.ids.emplace(nestedId, target).second) {
-                throw std::invalid_argument("The UI id " + nestedId + " is used more than once.");
+                throw std::invalid_argument("The UI id \"" + nestedId + "\" is used more than once.");
             }
         }
         built.properties.merge(nested.properties);
@@ -140,7 +140,7 @@ const core::Json* Document::getProperties(std::string_view id) const {
 Component& Document::require(std::string_view id) const {
     Component* component = find(id);
     if (component == nullptr) {
-        throw std::invalid_argument("The UI document has no node with the id " + std::string(id) + ".");
+        throw std::invalid_argument("The UI document has no node with the id \"" + std::string(id) + "\".");
     }
     return *component;
 }
@@ -148,7 +148,7 @@ Component& Document::require(std::string_view id) const {
 void Document::set(std::string_view id, const core::Json& changes) {
     Component& component = require(id);
     if (!changes.is_object() || changes.contains("kind") || changes.contains("id") || changes.contains("children")) {
-        throw std::invalid_argument("The set method of a document changes properties only, so it takes an object without kind, id or children.");
+        throw std::invalid_argument("The \"set\" method of a document changes properties only, so it takes an object without \"kind\", \"id\" or \"children\".");
     }
 
     // A fresh component of the same kind checks the whole merged state first, so a bad value never leaves the node half updated.
@@ -162,10 +162,10 @@ void Document::set(std::string_view id, const core::Json& changes) {
 void Document::replaceChildren(std::string_view id, const core::Json& trees) {
     Component& component = require(id);
     if (!trees.is_array()) {
-        throw std::invalid_argument("The replaceChildren method of a document takes a list of nodes.");
+        throw std::invalid_argument("The \"replaceChildren\" method of a document takes a list of nodes.");
     }
     if (trees.size() > component.getChildLimit()) {
-        throw std::invalid_argument("The component kind '" + std::string(component.getKind()) + "' takes at most " + std::to_string(component.getChildLimit()) + " children.");
+        throw std::invalid_argument("The component kind \"" + std::string(component.getKind()) + "\" takes at most " + std::to_string(component.getChildLimit()) + " children.");
     }
 
     // The new children count against the limits of the whole document, from the level of the node on and with the nodes they replace left out.
@@ -188,7 +188,7 @@ void Document::replaceChildren(std::string_view id, const core::Json& trees) {
         Built nested = build(child, depth, count);
         for (auto& [childId, target] : nested.ids) {
             if (!remainingIds.emplace(childId, target).second) {
-                throw std::invalid_argument("The UI id " + childId + " is used more than once.");
+                throw std::invalid_argument("The UI id \"" + childId + "\" is used more than once.");
             }
         }
         remainingProperties.merge(nested.properties);

@@ -20,7 +20,7 @@ template <> struct Type<platform::NativeCallback> {
 
 namespace haylen::platform {
 
-// Installs haylen.native, which loads native libraries for Varn's ffi, finds their symbols and creates callbacks that native code may call from any thread.
+// Installs `haylen.native`, which loads native libraries for Varn's `ffi`, finds their symbols and creates callbacks that native code may call from any thread.
 class NativeLua final {
   public:
     static void install(lua_State* L);
@@ -38,7 +38,7 @@ class NativeLua final {
     static int freeCallback(lua_State* L);
     static int open(lua_State* L);
 
-    // Pushes the ffi module of Varn, which turns loaded libraries into callable namespaces.
+    // Pushes the `ffi` module of Varn, which turns loaded libraries into callable namespaces.
     static void pushFfi(lua_State* L);
     [[nodiscard]] static std::shared_ptr<NativeCallback>& getStorage(lua_State* L);
 };

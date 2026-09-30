@@ -7,7 +7,7 @@
 
 namespace haylen::input {
 
-// A recognized gesture in design coordinates. A swipe carries its movement in delta, and a pinch carries its scale since the second finger landed and its center.
+// A recognized gesture in design coordinates. A swipe carries its movement in `delta`, and a pinch carries its scale since the second finger landed and its center.
 struct Gesture {
     enum class Type : std::uint8_t {
         Tap,
@@ -22,7 +22,7 @@ struct Gesture {
     math::Vec2 delta;
     float scale = 1.0F;
 
-    // Returns "tap", "doubleTap", "longPress", "swipe" or "pinch".
+    // Returns `tap`, `doubleTap`, `longPress`, `swipe` or `pinch`.
     [[nodiscard]] static std::string_view typeName(Type value) noexcept;
 };
 

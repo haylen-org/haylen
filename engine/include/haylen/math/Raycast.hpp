@@ -37,14 +37,14 @@ class Raycast final {
     // Returns the closest hit on any of the segments, whose index is the position of the segment in the list.
     [[nodiscard]] static std::optional<RayHit> segments(const Ray& ray, std::span<const Segment> targets) noexcept;
 
-    // Fills hits with every segment the ray crosses, sorted by distance and then by index, keeping at most limit hits. A limit of zero keeps them all.
+    // Fills `hits` with every segment the ray crosses, sorted by distance and then by index, keeping at most `limit` hits. A limit of zero keeps them all.
     static void segmentsAll(const Ray& ray, std::span<const Segment> targets, std::size_t limit, std::vector<RayHit>& hits);
 
     [[nodiscard]] static Vec2 reflect(Vec2 direction, Vec2 normal) noexcept {
         return direction - normal * (2.0F * Vec2::dot(direction, normal));
     }
 
-    // Follows a ray that bounces off every surface it hits, like a laser between mirrors, for at most bounces reflections. Cast takes a Ray and returns an optional hit with point, normal and distance members. Hits receives every bounce point in order, and the returned ray is the last leg of the path, whose end is where the path stops. A hit with a zero normal stops the path.
+    // Follows a ray that bounces off every surface it hits, like a laser between mirrors, for at most `bounces` reflections. The function `cast` takes a `Ray` and returns an optional hit with `point`, `normal` and `distance` members. The list `hits` receives every bounce point in order, and the returned ray is the last leg of the path, whose end is where the path stops. A hit with a zero normal stops the path.
     template <typename Hit, typename Cast> static Ray bounce(Ray ray, int bounces, Cast&& cast, std::vector<Hit>& hits) {
         hits.clear();
         for (int reflection = 0;; ++reflection) {
@@ -63,7 +63,7 @@ class Raycast final {
         }
     }
 
-    // Casts count rays of the given length, spread evenly across an arc of spread radians centered on angle, like a cone of vision. Results receives one optional hit per ray in order of increasing angle, and a single ray points straight along angle.
+    // Casts `count` rays of the given length, spread evenly across an arc of `spread` radians centered on `angle`, like a cone of vision. The list `results` receives one optional hit per ray in order of increasing angle, and a single ray points straight along `angle`.
     template <typename Hit, typename Cast> static void fan(Vec2 origin, float angle, float spread, std::size_t count, float length, Cast&& cast, std::vector<std::optional<Hit>>& results) {
         results.clear();
         const float step = count > 1 ? spread / static_cast<float>(count - 1) : 0.0F;
@@ -77,7 +77,7 @@ class Raycast final {
     // Returns the unit normal of an edge that faces against the ray direction.
     [[nodiscard]] static Vec2 facingNormal(Vec2 edge, Vec2 direction) noexcept;
 
-    // Returns the distance along the ray where it crosses the segment from start to end, including both ends.
+    // Returns the distance along the ray where it crosses the segment from `start` to `end`, including both ends.
     [[nodiscard]] static std::optional<float> crossing(const Ray& ray, Vec2 start, Vec2 end) noexcept;
 };
 

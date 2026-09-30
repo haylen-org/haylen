@@ -18,7 +18,7 @@ void Scroll::readProperties(PropertyReader& reader) {
     reader.read("axis", axis);
     reader.read("snap", snap);
     if (axis != "vertical" && axis != "horizontal") {
-        reader.fail("axis", "must be vertical or horizontal");
+        reader.fail("axis", "must be \"vertical\" or \"horizontal\"");
     }
     horizontal = axis == "horizontal";
 }

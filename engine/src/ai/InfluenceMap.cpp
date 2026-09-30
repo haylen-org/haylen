@@ -85,7 +85,7 @@ InfluenceMap::Range InfluenceMap::rangeAround(math::Vec2 center, float radius) c
     const auto columns = static_cast<float>(width);
     const auto rows = static_cast<float>(height);
 
-    // Clamping while the bounds are still floats keeps huge and infinite ones from overflowing an int, and NaN ones give an empty range.
+    // Clamping while the bounds are still floats keeps huge and infinite ones from overflowing an `int`, and NaN ones give an empty range.
     return {static_cast<int>(std::fmin(std::fmax(std::floor(local.x - reach), 0.0F), columns)), static_cast<int>(std::fmin(std::fmax(std::floor(local.y - reach), 0.0F), rows)), static_cast<int>(std::fmin(std::fmax(std::ceil(local.x + reach), -1.0F), columns - 1.0F)), static_cast<int>(std::fmin(std::fmax(std::ceil(local.y + reach), -1.0F), rows - 1.0F))};
 }
 

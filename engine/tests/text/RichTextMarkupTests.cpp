@@ -41,7 +41,7 @@ TEST_F(RichTextMarkupTest, ReadsTheAlignmentAndDirectionNamesOfTheTextStyle) {
     }
     EXPECT_FALSE(Style::alignmentFromName("justify").has_value());
     EXPECT_FALSE(Style::directionFromName("up").has_value());
-    EXPECT_NE(errorOf("[p dir=up]x[/p]").find("The dir of [p] must be auto, leftToRight or rightToLeft."), std::string::npos);
+    EXPECT_NE(errorOf("[p dir=up]x[/p]").find("The \"dir\" of \"[p]\" must be \"auto\", \"leftToRight\" or \"rightToLeft\"."), std::string::npos);
 }
 
 TEST_F(RichTextMarkupTest, NestsInlineStylesAndMergesRuns) {
@@ -182,24 +182,24 @@ TEST_F(RichTextMarkupTest, RecordsEffectsAndBuildsTablesAndDropCaps) {
 }
 
 TEST_F(RichTextMarkupTest, ReportsMalformedMarkupWithItsPlace) {
-    EXPECT_EQ(errorOf("ok [/b]"), "Rich text markup at line 1, column 4: [/b] closes nothing.");
-    EXPECT_EQ(errorOf("[b]\n [i]x[/b]"), "Rich text markup at line 2, column 6: [/b] closes [i], which is still open.");
-    EXPECT_EQ(errorOf("é[b]never"), "Rich text markup at line 1, column 2: [b] is never closed.");
+    EXPECT_EQ(errorOf("ok [/b]"), "Rich text markup at line 1, column 4: The tag \"[/b]\" closes nothing.");
+    EXPECT_EQ(errorOf("[b]\n [i]x[/b]"), "Rich text markup at line 2, column 6: The tag \"[/b]\" closes \"[i]\", which is still open.");
+    EXPECT_EQ(errorOf("é[b]never"), "Rich text markup at line 1, column 2: The tag \"[b]\" is never closed.");
     EXPECT_EQ(errorOf("a [b"), "Rich text markup at line 1, column 3: A tag has no closing bracket.");
-    EXPECT_EQ(errorOf("[color=blurple]x[/color]"), "Rich text markup at line 1, column 1: blurple is not a color. Use a name such as red or #RRGGBB or #AARRGGBB.");
-    EXPECT_EQ(errorOf("[size=big]x[/size]"), "Rich text markup at line 1, column 1: big is not a number for the size of [size].");
-    EXPECT_EQ(errorOf("[b=1]x[/b]"), "Rich text markup at line 1, column 1: [b] takes no value.");
-    EXPECT_EQ(errorOf("[color]x[/color]"), "Rich text markup at line 1, column 1: [color] needs a value, as in [color=...].");
-    EXPECT_EQ(errorOf("[img=a.png spin=2]"), "Rich text markup at line 1, column 1: [img] has no attribute named spin.");
-    EXPECT_EQ(errorOf("[ol type=x]a[/ol]"), "Rich text markup at line 1, column 1: The type of [ol] must be 1, a, A, i or I.");
-    EXPECT_EQ(errorOf("[table=2]text[/table]"), "Rich text markup at line 1, column 10: Text inside a [table] must be inside a [cell].");
-    EXPECT_EQ(errorOf("[cell]x[/cell]"), "Rich text markup at line 1, column 1: A [cell] goes directly inside a [table].");
+    EXPECT_EQ(errorOf("[color=blurple]x[/color]"), "Rich text markup at line 1, column 1: The value \"blurple\" is not a color. Use a name such as \"red\" or \"#RRGGBB\" or \"#AARRGGBB\".");
+    EXPECT_EQ(errorOf("[size=big]x[/size]"), "Rich text markup at line 1, column 1: The value \"big\" is not a number for the size of \"[size]\".");
+    EXPECT_EQ(errorOf("[b=1]x[/b]"), "Rich text markup at line 1, column 1: The tag \"[b]\" takes no value.");
+    EXPECT_EQ(errorOf("[color]x[/color]"), "Rich text markup at line 1, column 1: The tag \"[color]\" needs a value, as in \"[color=...]\".");
+    EXPECT_EQ(errorOf("[img=a.png spin=2]"), "Rich text markup at line 1, column 1: The tag \"[img]\" has no attribute named \"spin\".");
+    EXPECT_EQ(errorOf("[ol type=x]a[/ol]"), "Rich text markup at line 1, column 1: The type of \"[ol]\" must be \"1\", \"a\", \"A\", \"i\" or \"I\".");
+    EXPECT_EQ(errorOf("[table=2]text[/table]"), "Rich text markup at line 1, column 10: Text inside a \"[table]\" must be inside a \"[cell]\".");
+    EXPECT_EQ(errorOf("[cell]x[/cell]"), "Rich text markup at line 1, column 1: A \"[cell]\" goes directly inside a \"[table]\".");
     EXPECT_EQ(errorOf("[table=1][cell][table=1][/table][/cell][/table]"), "Rich text markup at line 1, column 16: Tables cannot be nested.");
-    EXPECT_EQ(errorOf("x[dropcap]A[/dropcap]"), "Rich text markup at line 1, column 2: A [dropcap] must start its paragraph.");
-    EXPECT_EQ(errorOf("[wave amp]x[/wave]"), "Rich text markup at line 1, column 1: The attribute amp of [wave] needs a value.");
-    EXPECT_EQ(errorOf("[hr width=5]"), "Rich text markup at line 1, column 1: The width of [hr] is a percentage such as 50%.");
-    EXPECT_EQ(errorOf("[pause=-1]"), "Rich text markup at line 1, column 1: A [pause] cannot last a negative time.");
-    EXPECT_EQ(errorOf("[]"), "Rich text markup at line 1, column 1: [] has no tag name.");
+    EXPECT_EQ(errorOf("x[dropcap]A[/dropcap]"), "Rich text markup at line 1, column 2: A \"[dropcap]\" must start its paragraph.");
+    EXPECT_EQ(errorOf("[wave amp]x[/wave]"), "Rich text markup at line 1, column 1: The attribute \"amp\" of \"[wave]\" needs a value.");
+    EXPECT_EQ(errorOf("[hr width=5]"), "Rich text markup at line 1, column 1: The width of \"[hr]\" is a percentage such as \"50%\".");
+    EXPECT_EQ(errorOf("[pause=-1]"), "Rich text markup at line 1, column 1: A \"[pause]\" cannot last a negative time.");
+    EXPECT_EQ(errorOf("[]"), "Rich text markup at line 1, column 1: The markup \"[]\" has no tag name.");
 }
 
 } // namespace haylen::text

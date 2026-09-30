@@ -16,7 +16,7 @@ namespace haylen::procedural2d {
 // Places things such as trees, rocks and enemies over a region, keeps them out of exclusion zones and gives each one a type by weight, optionally with the weights of the biome layer found at its position. The same generator state always gives the same points.
 class Scatter final {
   public:
-    // Random places the area times the density in points, Grid places one point per cell of spacing size moved randomly by up to jitter times half the spacing, and Poisson keeps points at least spacing apart.
+    // The method `Random` places the area times the density in points, `Grid` places one point per cell of `spacing` size moved randomly by up to `jitter` times half the spacing, and `Poisson` keeps points at least `spacing` apart.
     enum class Method : std::uint8_t {
         Random,
         Grid,
@@ -30,7 +30,7 @@ class Scatter final {
         std::vector<float> weights;
     };
 
-    // The density map returns 0 to 1 at a point. Random and Grid keep each point with that probability, and Poisson spaces points from spacing where the map is 1 to maximumSpacing where it is 0, so Poisson with a density map needs a maximumSpacing of at least the spacing. Layers need a biome function, such as fractal noise.
+    // The density map returns 0 to 1 at a point. The methods `Random` and `Grid` keep each point with that probability, and `Poisson` spaces points from `spacing` where the map is 1 to `maximumSpacing` where it is 0, so `Poisson` with a density map needs a `maximumSpacing` of at least the spacing. Layers need a biome function, such as fractal noise.
     struct Options {
         Method method = Method::Random;
         float density = 0.001F;
@@ -50,7 +50,7 @@ class Scatter final {
         std::uint32_t type = 0;
     };
 
-    // Throws std::invalid_argument for a density that is negative or not finite, a spacing that is not positive and finite, a Poisson density map without a maximumSpacing of at least the spacing, a region that would need more than 16777216 points or Poisson grid cells, layers without a biome function, or weights that math::WeightedChoice rejects.
+    // Throws `std::invalid_argument` for a density that is negative or not finite, a spacing that is not positive and finite, a Poisson density map without a `maximumSpacing` of at least the spacing, a region that would need more than 16777216 points or Poisson grid cells, layers without a biome function, or weights that `math::WeightedChoice` rejects.
     [[nodiscard]] static std::vector<Point> generate(const Region& region, const Options& options, math::Random& random);
 
   private:

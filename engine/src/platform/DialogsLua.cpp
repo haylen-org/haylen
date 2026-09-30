@@ -137,7 +137,7 @@ bool DialogsLua::cancelDialog(lua_State* L, std::uint64_t id) {
     return lua::Runtime::getEngine(L).getDialogs().cancel(id);
 }
 
-// Shows a message with message{title, text, kind, buttons, timeout}, whose call gives the button the user pressed, counted from one.
+// Shows a message with `message{title, text, kind, buttons, timeout}`, whose call gives the button the user pressed, counted from one.
 int DialogsLua::message(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     lua::Table::checkFields(L, 1, {kMessageOptions});

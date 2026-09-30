@@ -1,6 +1,6 @@
 # Haylen Input
 
-A Lua sample with one scene per feature of [haylen.input](../../../docs/lua-api/input.md), the [input guide](../../../docs/input.md) and the touch controls and key captures of [haylen.ui](../../../docs/lua-api/ui.md). The menu lists the tests, each test opens as its own scene with a Back button, its live values and the calls it makes, and Escape, the east gamepad button or the Menu button of a TV remote return to the menu. The back press reaches the root of the document as a cancel, so it never leaves a test while a key capture listens or a popup is open.
+A Lua sample with one scene per feature of [`haylen.input`](../../../docs/lua-api/input.md), the [input guide](../../../docs/input.md) and the touch controls and key captures of [`haylen.ui`](../../../docs/lua-api/ui.md). The menu lists the tests, each test opens as its own scene with a Back button, its live values and the calls it makes, and Escape, the east gamepad button or the Menu button of a TV remote return to the menu. The back press reaches the root of the document as a cancel, so it never leaves a test while a key capture listens or a popup is open.
 
 | Test | What it shows |
 | --- | --- |

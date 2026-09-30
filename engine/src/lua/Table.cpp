@@ -16,7 +16,7 @@ void Table::checkFields(lua_State* L, int index, std::span<const FieldNames> all
         const std::string_view key = lua_tostring(L, -1);
         const bool known = std::any_of(allowed.begin(), allowed.end(), [key](FieldNames names) { return std::find(names.begin(), names.end(), key) != names.end(); });
         if (!known) {
-            luaL_error(L, "Unknown option '%s'.", std::string(key).c_str());
+            luaL_error(L, "Unknown option \"%s\".", std::string(key).c_str());
         }
     }
 }
@@ -34,7 +34,7 @@ int Table::raiseFieldError(lua_State* L, const char* field) {
 
     lua_Debug frame{};
     const char* name = lua_getstack(L, 0, &frame) != 0 && lua_getinfo(L, "n", &frame) != 0 && frame.name != nullptr ? frame.name : "?";
-    return luaL_error(L, "The option '%s' of '%s' is invalid: %s", field, name, reason.c_str());
+    return luaL_error(L, "The option \"%s\" of \"%s\" is invalid: %s", field, name, reason.c_str());
 }
 
 } // namespace haylen::lua

@@ -1,10 +1,10 @@
-// The Haylen shader library for 2D draws. A material is a fragment shader that includes this file, declares its program with the haylen_vs vertex stage and writes its color with haylen_output. The engine compiles every material for sprites, text and meshes, and for lit canvases, through the HAYLEN_TEXT, HAYLEN_MESH and HAYLEN_LIT defines.
+// The Haylen shader library for 2D draws. A material is a fragment shader that includes this file, declares its program with the `haylen_vs` vertex stage and writes its color with `haylen_output`. The engine compiles every material for sprites, text and meshes, and for lit canvases, through the `HAYLEN_TEXT`, `HAYLEN_MESH` and `HAYLEN_LIT` defines.
 @include haylen/output.glsl
 
 @vs haylen_vs
 layout(binding=0) uniform haylen_vs_params {
     mat4 view_projection;
-    // 1 when the blend mode of the draw expects colors premultiplied by their alpha, as multiply and screen do.
+    // 1 when the blend mode of the draw expects colors premultiplied by their alpha, as `multiply` and `screen` do.
     float haylen_premultiply;
 };
 

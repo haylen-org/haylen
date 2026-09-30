@@ -8,7 +8,7 @@
 
 namespace haylen::net {
 
-// A WebSocket of the page, which platform/web/haylen-runtime.js keeps by the id this transport gives it.
+// A WebSocket of the page, which `platform/web/haylen-runtime.js` keeps by the id this transport gives it.
 class BrowserWebSocket final : public WebSocketTransport {
   public:
     BrowserWebSocket(const std::string& url, const std::vector<std::string>& protocols, Sink sink);

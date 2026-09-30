@@ -87,7 +87,7 @@ Poco::Net::Context::Ptr PocoWebSocket::Workers::getClientContext() {
 #else
     const std::string& bundle = varn::tls::CaBundle::resolve();
     if (bundle.empty()) {
-        throw std::runtime_error("No trust store was found to check the certificate of a wss:// server: " + varn::tls::CaBundle::describeSearch() + ".");
+        throw std::runtime_error("No trust store was found to check the certificate of a \"wss://\" server: " + varn::tls::CaBundle::describeSearch() + ".");
     }
     clientContext = new Poco::Net::Context(Poco::Net::Context::TLS_CLIENT_USE, "", "", bundle, Poco::Net::Context::VERIFY_STRICT, 9, true, "DEFAULT@SECLEVEL=2");
 #endif
@@ -235,7 +235,7 @@ bool PocoWebSocket::connectSocket(Connection& target, Poco::Net::StreamSocket& s
     socket.connectNB(address);
     while (!target.stopping) {
         if (std::chrono::steady_clock::now() >= deadline) {
-            throw Poco::TimeoutException("The connection to " + target.host + " timed out.");
+            throw Poco::TimeoutException("The connection to \"" + target.host + "\" timed out.");
         }
         if (!waitFor(target, socket, Poco::Net::PollSet::POLL_WRITE, deadline)) {
             continue;
@@ -261,7 +261,7 @@ bool PocoWebSocket::completeHandshake(Connection& target, Poco::Net::SecureStrea
             throw Poco::Net::SSLConnectionUnexpectedlyClosedException();
         }
         if (std::chrono::steady_clock::now() >= deadline) {
-            throw Poco::TimeoutException("The TLS handshake with " + target.host + " timed out.");
+            throw Poco::TimeoutException("The TLS handshake with \"" + target.host + "\" timed out.");
         }
         (void)waitFor(target, socket, result == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ ? Poco::Net::PollSet::POLL_READ : Poco::Net::PollSet::POLL_WRITE, deadline);
     }

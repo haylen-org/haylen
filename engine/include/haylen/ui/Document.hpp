@@ -22,7 +22,7 @@ namespace haylen::ui {
 class ComponentRegistry;
 class Context;
 
-// A mounted tree of components. A node is an object with kind, an optional id, children and its properties, and ids are unique within the document. Events wait in a queue until the owner takes them.
+// A mounted tree of components. A node is an object with `kind`, an optional `id`, `children` and its properties, and ids are unique within the document. Events wait in a queue until the owner takes them.
 class Document final {
   public:
     static constexpr std::size_t kMaxDepth = 64;

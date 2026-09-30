@@ -97,7 +97,7 @@ Connection EventsLua::subscribe(lua_State* L, int name, int function, int option
         settings.filter = [filter, main](const EventBus::Event& event) { return invoke(*filter, main, event); };
     }
 
-    // A listener that returns true consumes the event, so listeners after it skip it.
+    // A listener that returns `true` consumes the event, so listeners after it skip it.
     // clang-format off
     Connection connection = lua::Runtime::getEngine(L).getEvents().on(eventName, [callback, main](EventBus::Event& event) {
         if (invoke(*callback, main, event)) {
@@ -138,7 +138,7 @@ int EventsLua::postOn(lua_State* L, std::string_view channel, int first) {
     return 0;
 }
 
-// Delivers the event right away with events.emit(name, ...) and returns whether a listener consumed it.
+// Delivers the event right away with `events.emit(name, ...)` and returns whether a listener consumed it.
 int EventsLua::emit(lua_State* L) {
     return emitOn(L, {}, 1);
 }
@@ -148,7 +148,7 @@ int EventsLua::emitTo(lua_State* L) {
     return emitOn(L, channel, 2);
 }
 
-// Queues the event with events.post(name, ...) for the end of the frame.
+// Queues the event with `events.post(name, ...)` for the end of the frame.
 int EventsLua::post(lua_State* L) {
     return postOn(L, {}, 1);
 }
@@ -158,7 +158,7 @@ int EventsLua::postTo(lua_State* L) {
     return postOn(L, channel, 2);
 }
 
-// Returns {name, listeners, emissions, stale} for every event that has ever had a listener.
+// Returns `{name, listeners, emissions, stale}` for every event that has ever had a listener.
 int EventsLua::topics(lua_State* L) {
     const std::vector<EventBus::Topic> topics = lua::Runtime::getEngine(L).getEvents().getTopics();
     lua_createtable(L, static_cast<int>(topics.size()), 0);

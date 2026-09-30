@@ -53,22 +53,22 @@ class BehaviorTree final {
     [[nodiscard]] static Node sequence(std::vector<Node> children);
     // Runs the children in order and succeeds as soon as one succeeds.
     [[nodiscard]] static Node selector(std::vector<Node> children);
-    // Ticks every unfinished child on each tick, succeeds once successes children succeeded and fails once too many failed to reach that.
+    // Ticks every unfinished child on each tick, succeeds once `successes` children succeeded and fails once too many failed to reach that.
     [[nodiscard]] static Node parallel(std::vector<Node> children, int successes);
     [[nodiscard]] static Node inverter(Node child);
     // Turns a finished child into a success.
     [[nodiscard]] static Node succeeder(Node child);
     // Turns a finished child into a failure.
     [[nodiscard]] static Node failer(Node child);
-    // Runs the child again after each success, once per tick, and succeeds after count successes or never with 0. A failure of the child fails it.
+    // Runs the child again after each success, once per tick, and succeeds after `count` successes or never with 0. A failure of the child fails it.
     [[nodiscard]] static Node repeater(Node child, int count = 0);
-    // Runs the child again after each failure, once per tick, and fails after count failures or never with 0. A success of the child succeeds it.
+    // Runs the child again after each failure, once per tick, and fails after `count` failures or never with 0. A success of the child succeeds it.
     [[nodiscard]] static Node retry(Node child, int count = 0);
-    // Fails without running the child until seconds of tree time passed since the child last finished.
+    // Fails without running the child until `seconds` of tree time passed since the child last finished.
     [[nodiscard]] static Node cooldown(Node child, float seconds);
-    // Fails and resets the child when it keeps running for more than seconds.
+    // Fails and resets the child when it keeps running for more than `seconds`.
     [[nodiscard]] static Node timeout(Node child, float seconds);
-    // Runs for seconds and then succeeds.
+    // Runs for `seconds` and then succeeds.
     [[nodiscard]] static Node wait(float seconds);
     [[nodiscard]] static Node condition(ConditionFunction predicate);
     [[nodiscard]] static Node action(ActionFunction function);
@@ -76,7 +76,7 @@ class BehaviorTree final {
     [[nodiscard]] static std::optional<Status> statusFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view statusName(Status value) noexcept;
 
-    // Throws std::invalid_argument for decorators without exactly one child, leaves without a function or a parallel node whose success count does not fit its children.
+    // Throws `std::invalid_argument` for decorators without exactly one child, leaves without a function or a parallel node whose success count does not fit its children.
     explicit BehaviorTree(Node root);
 
     // Advances the tree time and ticks the root, which returns to its first child after it finishes.

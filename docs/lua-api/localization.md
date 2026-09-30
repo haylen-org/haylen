@@ -8,7 +8,7 @@ local localization = require('haylen.localization')
 
 ## Language tables
 
-A language table maps keys to texts. Nested tables become dotted keys, so the table below defines `menu.play`, `menu.quit`, `hud.day` and `hud.wood`. A table with only `zero`, `one` and `other` texts, and always `other`, is a plural form instead of a group. Any other value raises `The localization entry <key> must be text, a plural form or a group of entries.`.
+A language table maps keys to texts. Nested tables become dotted keys, so the table below defines `menu.play`, `menu.quit`, `hud.day` and `hud.wood`. A table with only `zero`, `one` and `other` texts, and always `other`, is a plural form instead of a group. Any other value raises `The localization entry "<key>" must be text, a plural form or a group of entries.`.
 
 ```json
 {
@@ -20,7 +20,7 @@ A language table maps keys to texts. Nested tables become dotted keys, so the ta
 }
 ```
 
-A language that reads right to left declares it with `"@direction": "rightToLeft"` at the top of its table, and `"leftToRight"` is the default. The key holds no text, `localization.direction()` returns it, and a UI that follows the language with [ui.setDirection('auto')](ui.md#uisetdirectiondirection) mirrors its layout when the language becomes current. Any other value raises `The @direction of the localization table of '<language>' must be leftToRight or rightToLeft.`.
+A language that reads right to left declares it with `"@direction": "rightToLeft"` at the top of its table, and `"leftToRight"` is the default. The key holds no text, `localization.direction()` returns it, and a UI that follows the language with [`ui.setDirection('auto')`](ui.md#uisetdirectiondirection) mirrors its layout when the language becomes current. Any other value raises `The "@direction" of the localization table of "<language>" must be "leftToRight" or "rightToLeft".`.
 
 ```json
 {
@@ -33,13 +33,13 @@ The usual layout keeps one JSON file per language in a folder of the assets, nam
 
 The first language added becomes both the current language and the fallback language until others are chosen. Keys missing from the current language come from the fallback language, and keys missing from both come back unchanged, so a missing translation shows its key on screen.
 
-UI documents from [haylen.ui](ui.md) translate any text given as `{key = 'menu.play'}` or `{key = 'hud.day', args = {day = 3}}` through this module.
+UI documents from [`haylen.ui`](ui.md) translate any text given as `{key = 'menu.play'}` or `{key = 'hud.day', args = {day = 3}}` through this module.
 
 ## Functions
 
 ### localization.loadFolder(folder)
 
-Adds every `.json` file under a folder of the assets, in subfolders too, as the language its file is named after, and returns the list of languages in file order. Other files are ignored. A file that is not valid JSON raises `The localization file <path> is not valid JSON.`.
+Adds every `.json` file under a folder of the assets, in subfolders too, as the language its file is named after, and returns the list of languages in file order. Other files are ignored. A file that is not valid JSON raises `The localization file "<path>" is not valid JSON.`.
 
 ```lua
 local localization = require('haylen.localization')
@@ -50,7 +50,7 @@ print(table.concat(languages, ', '))
 
 ### localization.add(language, table)
 
-Adds a language table, merging it into the language when it already exists. An empty language raises `A localization table needs a language.`, and a table that is a list raises `The localization table of <language> must be a JSON object.`.
+Adds a language table, merging it into the language when it already exists. An empty language raises `A localization table needs a language.`, and a table that is a list raises `The localization table of "<language>" must be a JSON object.`.
 
 ```lua
 local localization = require('haylen.localization')
@@ -62,7 +62,7 @@ localization.add('en', {menu = {settings = 'Settings'}})
 
 ### localization.setLanguage(language)
 
-Makes a language current. A language that was never added raises `No localization table was added for <language>.`.
+Makes a language current. A language that was never added raises `No localization table was added for "<language>".`.
 
 ```lua
 local localization = require('haylen.localization')
@@ -96,7 +96,7 @@ print(localization.direction(), localization.direction('ar'))
 
 ### localization.setFallback(language)
 
-Makes a language the fallback for keys the current language lacks. A language that was never added raises `No localization table was added for <language>.`.
+Makes a language the fallback for keys the current language lacks. A language that was never added raises `No localization table was added for "<language>".`.
 
 ```lua
 local localization = require('haylen.localization')
@@ -131,7 +131,7 @@ end
 
 ### localization.has(key)
 
-Returns true when the current or the fallback language has a text or plural form for the key. Groups such as `menu` are not keys.
+Returns `true` when the current or the fallback language has a text or plural form for the key. Groups such as `menu` are not keys.
 
 ```lua
 local localization = require('haylen.localization')
@@ -176,7 +176,7 @@ scene.push({
 
 Returns the added language that best matches a BCP 47 language tag, or `nil` when none matches. The match ignores case and treats `_` like `-`. An exact match wins, and otherwise a language with the same base language matches, preferring the plain base language, so `pt-BR` matches `pt` before `pt-PT`.
 
-The device language comes from the `locale` of `system.info()` in [haylen.system](system.md#systeminfo), a tag such as `pt-BR`, and its `languages` list the other languages the player prefers.
+The device language comes from the `locale` of `system.info()` in [`haylen.system`](system.md#systeminfo), a tag such as `pt-BR`, and its `languages` list the other languages the player prefers.
 
 ```lua
 local localization = require('haylen.localization')
@@ -202,10 +202,10 @@ end
 
 | Message | Cause |
 | --- | --- |
-| `A localization table needs a language.` | `localization.add()` received an empty language. |
-| `The localization table of <language> must be a JSON object.` | `localization.add()` received a list instead of a table with string keys. |
-| `The localization entry <key> must be text, a plural form or a group of entries.` | A language table holds a number, a boolean or a list. |
-| `The localization file <path> is not valid JSON.` | `localization.loadFolder()` found a broken file. |
-| `The @direction of the localization table of '<language>' must be leftToRight or rightToLeft.` | A language table declares a direction other than `leftToRight` or `rightToLeft`. |
-| `No localization table was added for <language>.` | `localization.setLanguage()` or `localization.setFallback()` named a language that was never added. |
-| `Localization arguments must be a JSON object.` | `localization.text()` received a list as arguments. |
+| `A localization table needs a language.` | The function `localization.add()` received an empty language. |
+| `The localization table of "<language>" must be a JSON object.` | The function `localization.add()` received a list instead of a table with string keys. |
+| `The localization entry "<key>" must be text, a plural form or a group of entries.` | A language table holds a number, a boolean or a list. |
+| `The localization file "<path>" is not valid JSON.` | The function `localization.loadFolder()` found a broken file. |
+| `The "@direction" of the localization table of "<language>" must be "leftToRight" or "rightToLeft".` | A language table declares a direction other than `leftToRight` or `rightToLeft`. |
+| `No localization table was added for "<language>".` | The function `localization.setLanguage()` or `localization.setFallback()` named a language that was never added. |
+| `Localization arguments must be a JSON object.` | The function `localization.text()` received a list as arguments. |

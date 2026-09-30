@@ -13,7 +13,7 @@ void ObjectFactories::add(std::string type, Factory factory) {
         throw std::invalid_argument("A Tiled object factory needs a class name and a function.");
     }
     if (factories.contains(type)) {
-        throw std::invalid_argument("The Tiled object class " + type + " already has a factory.");
+        throw std::invalid_argument("The Tiled object class \"" + type + "\" already has a factory.");
     }
     factories.emplace(std::move(type), std::move(factory));
 }

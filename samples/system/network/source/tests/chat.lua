@@ -55,7 +55,7 @@ function Chat:enter()
     local socket = self:keep(net.connectWebSocket(services.echo, {reconnect = true}))
     self.socket = socket
     self:on(socket, 'open', function()
-        self:note('Connected to ' .. socket.url)
+        self:note('Connected to "' .. socket.url .. '"')
         self:flush()
     end)
     self:on(socket, 'message', function(data, binary)

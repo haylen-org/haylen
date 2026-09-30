@@ -13,40 +13,40 @@ The suite lives in `engine/tests/` and builds into one executable, `haylen_tests
 | `engine/tests/lua/` | Binding tests of the core, math, input and assets modules, and of the Lua runtime and the binding toolkit. Other modules keep their binding tests next to their C++ tests, such as `Spatial2DLuaTest` in `2d/spatial/Spatial2DTests.cpp`. |
 | `engine/tests/support/` | Shared helpers in `haylen::test`: `EngineFixture` with `DrawingScene` and the test data helpers, `TemporaryDirectory`, `TestApplication` and `VarnRuntime`. |
 | `engine/tests/data/fonts/` | Subsets of open fonts, with their licenses, that keep only the characters the text, shaping and UI tests draw: Latin serif and CFF faces, Arabic, Hebrew, Devanagari, Thai, Japanese and symbols. CMake passes the folder to the tests as `HAYLEN_TEST_FONTS`, so the engine tests read no file of the samples. |
-| `engine/tests/native/` | `NativeTest.c`, the plain C library that the native interop tests load through `haylen.native` and Varn's `ffi`. CMake builds it as `native_test` next to `haylen_tests`, where `native.load` finds it by name, and passes its path to the tests as `HAYLEN_NATIVE_TEST_LIBRARY`. The native sample builds the same source for every platform. |
+| `engine/tests/native/` | The file `NativeTest.c`, the plain C library that the native interop tests load through `haylen.native` and Varn's `ffi`. CMake builds it as `native_test` next to `haylen_tests`, where `native.load` finds it by name, and passes its path to the tests as `HAYLEN_NATIVE_TEST_LIBRARY`. The native sample builds the same source for every platform. |
 | `engine/tests/CMakeLists.txt` | The `HAYLEN_TEST_SOURCES` list, which names every test file, and the `haylen_tests` target. |
 
-`haylen_tests` links `haylen::engine`, `haylen::headless` and GoogleTest's `gtest_main`, and it includes `engine/tests`, so tests include `support/EngineFixture.hpp`. It also adds `engine/src` and the Sokol headers to its own include folders, so a test may include internal headers such as `platform/headless/HeadlessHost.hpp`. Apps never see those folders, because the engine libraries keep them private. `gtest_discover_tests` registers every test with CTest under its `Suite.Name`, with `engine/tests` as the working directory. The suite is built only on desktop platforms, and only when `HAYLEN_BUILD_TESTS` is on, which is the default when the engine or the repository root is the top-level project.
+The target `haylen_tests` links `haylen::engine`, `haylen::headless` and GoogleTest's `gtest_main`, and it includes `engine/tests`, so tests include `support/EngineFixture.hpp`. It also adds `engine/src` and the Sokol headers to its own include folders, so a test may include internal headers such as `platform/headless/HeadlessHost.hpp`. Apps never see those folders, because the engine libraries keep them private. The function `gtest_discover_tests` registers every test with CTest under its `Suite.Name`, with `engine/tests` as the working directory. The suite is built only on desktop platforms, and only when `HAYLEN_BUILD_TESTS` is on, which is the default when the engine or the repository root is the top-level project.
 
 Every test file lives in the namespace of the context it tests, such as `haylen::input`, `haylen::storage` or `haylen::ui`, and the shared helpers live in `haylen::test`, one class per file. A test file has no free functions or namespace-scope variables: its helpers and constants are members of its fixtures, and suites that share them derive from the fixture that holds them. Test suites are named after the subject with a `Test` suffix, such as `SceneManagerTest` or `SpatialLuaTest`, and test names state the behavior they verify, such as `RequiresModulesFromThePackageOnly`.
 
 ## The headless host
 
-`platform::HeadlessHost`, in `engine/src/platform/headless/`, implements the engine's `platform::Host` interface without a window or a GPU, so the real engine loop runs in tests.
+The class `platform::HeadlessHost`, in `engine/src/platform/headless/`, implements the engine's `platform::Host` interface without a window or a GPU, so the real engine loop runs in tests.
 
-- `SokolDummy.c` compiles Sokol gfx with its dummy backend, so the renderer, textures, render targets and the UI run and record statistics without drawing anything. The root `haylen` Lua module reports `'dummy'` as its `backend` and `'headless'` as its `platform`.
+- The file `SokolDummy.c` compiles Sokol gfx with its dummy backend, so the renderer, textures, render targets and the UI run and record statistics without drawing anything. The root `haylen` Lua module reports `'dummy'` as its `backend` and `'headless'` as its `platform`.
 - The audio mixer has no device and mixes only when a test asks it to. Tests of a mixer with a device give it an `audio::OutputBackend` of their own, which refuses the audio or opens a device that never plays, so no test reaches the audio hardware.
 - User data goes to a folder the test chooses, and `getPersistCount()` counts the requests to make it durable.
 - Bridge calls are recorded in `getPlatformCalls()` with their JSON parameters and byte buffers instead of reaching native code, and the calls the bridge gave up through a timeout or a cancel in `getCancelledCalls()`.
-- `resize(size)`, `setSafeAreaInsets(insets)` and `setGamepad(index, state)` change what the engine sees, and `getTitle()`, `getCursor()`, `isCursorVisible()`, `isMouseLocked()`, `isKeyboardVisible()` and `isQuitRequested()` report what the engine asked for.
-- `getNativeViews()` returns the `platform::NativeViews` of the headless screen, whose `reserveInsets(key, insets)`, `releaseInsets(key)`, `coverApp()` and `uncoverApp()` a test calls from any thread, the way the native views of plugins do. The engine takes them at the start of the next frame, and they outlive the engines that a test restarts on the host.
-- `setNativePlugins(ids)` sets the plugins whose native part the headless platform reports, and `getErrorReports()` returns the JSON report of every error that stopped an app, in order.
-- `setSystemInfo(info)` sets what the headless system reports to the apps that start afterwards, which starts as a desktop of the operating system the tests run on with the cores of the machine, and the graphics device names no GPU on the dummy backend. `setTheme(theme)` and `setBattery(battery)` change the theme and the battery from any thread, the way platform services report them, and the engine publishes the change at its next frame.
-- `openUrl` records the urls in `getOpenedUrls()` and answers at once that an app took them, or that none did after `setOpensUrls(false)`, and `getVibrations()` returns the seconds of every vibration.
-- `getDialogRequests()` returns the id, the `DialogRequest` and the folder for copies of every native dialog the engine asked for, and `getCancelledDialogs()` the ids of the dialogs it closed after a cancel, a timeout or the end of its app. A test answers a dialog with `engine.getDialogs().resolve(id, result)`, or from another thread through `DialogRelay::resolve`, the way platform code does.
-- `getScreenRequests()` returns the `ScreenRequest` of every screen of a plugin that the engine handed to the platform, once it covered the app, and `getCancelledScreens()` the ids of the screens it gave up. A test ends a screen from any thread through `ScreenRelay::finish(id, ok, resultJson, buffers)`, and restores the end of a screen of an earlier process through `ScreenRelay::restore`, the way platform code does. The screen that shows belongs to the process, like the covers of native libraries, so a test ends the screens it opened.
+- The methods `resize(size)`, `setSafeAreaInsets(insets)` and `setGamepad(index, state)` change what the engine sees, and `getTitle()`, `getCursor()`, `isCursorVisible()`, `isMouseLocked()`, `isKeyboardVisible()` and `isQuitRequested()` report what the engine asked for.
+- The method `getNativeViews()` returns the `platform::NativeViews` of the headless screen, whose `reserveInsets(key, insets)`, `releaseInsets(key)`, `coverApp()` and `uncoverApp()` a test calls from any thread, the way the native views of plugins do. The engine takes them at the start of the next frame, and they outlive the engines that a test restarts on the host.
+- The method `setNativePlugins(ids)` sets the plugins whose native part the headless platform reports, and `getErrorReports()` returns the JSON report of every error that stopped an app, in order.
+- The method `setSystemInfo(info)` sets what the headless system reports to the apps that start afterwards, which starts as a desktop of the operating system the tests run on with the cores of the machine, and the graphics device names no GPU on the dummy backend. The methods `setTheme(theme)` and `setBattery(battery)` change the theme and the battery from any thread, the way platform services report them, and the engine publishes the change at its next frame.
+- The method `openUrl` records the urls in `getOpenedUrls()` and answers at once that an app took them, or that none did after `setOpensUrls(false)`, and `getVibrations()` returns the seconds of every vibration.
+- The method `getDialogRequests()` returns the id, the `DialogRequest` and the folder for copies of every native dialog the engine asked for, and `getCancelledDialogs()` the ids of the dialogs it closed after a cancel, a timeout or the end of its app. A test answers a dialog with `engine.getDialogs().resolve(id, result)`, or from another thread through `DialogRelay::resolve`, the way platform code does.
+- The method `getScreenRequests()` returns the `ScreenRequest` of every screen of a plugin that the engine handed to the platform, once it covered the app, and `getCancelledScreens()` the ids of the screens it gave up. A test ends a screen from any thread through `ScreenRelay::finish(id, ok, resultJson, buffers)`, and restores the end of a screen of an earlier process through `ScreenRelay::restore`, the way platform code does. The screen that shows belongs to the process, like the covers of native libraries, so a test ends the screens it opened.
 
 Sokol keeps one global device, so only one engine can exist at a time in a process, and a test never creates two fixtures at once. CTest runs every test in a process of its own, so tests still run in parallel.
 
 ## The engine fixture
 
-`haylen::test::EngineFixture` is a running engine on the headless host with an in-memory package.
+The class `haylen::test::EngineFixture` is a running engine on the headless host with an in-memory package.
 
 ```cpp
 explicit EngineFixture(std::map<std::string, std::string> files = {}, std::unique_ptr<core::Application> application = nullptr);
 ```
 
-`files` maps package paths to their contents. The fixture adds an `app.json` with the name `Test App` and the identifier `dev.haylen.tests` and an empty `source/main.lua` unless the map has them, reads the configuration, creates the engine with a `lua::Application`, or with the given application, and starts it. User data goes to a temporary folder that is removed afterwards.
+The argument `files` maps package paths to their contents. The fixture adds an `app.json` with the name `Test App` and the identifier `dev.haylen.tests` and an empty `source/main.lua` unless the map has them, reads the configuration, creates the engine with a `lua::Application`, or with the given application, and starts it. User data goes to a temporary folder that is removed afterwards.
 
 | Member | Purpose |
 | --- | --- |
@@ -71,19 +71,19 @@ The support folder provides the other shared helpers.
 
 Data that only one test file needs is built by its fixture, such as the zip archives of the package tests and the WAV files of the audio tests.
 
-`VarnRuntime` in `support/VarnRuntime.hpp` owns a Varn runtime without an engine, which `getRuntime()` returns, and `pumpUntil(condition, timeout)` advances its event loop the way the engine does once per frame. The `JobSystem` tests use it.
+The class `VarnRuntime` in `support/VarnRuntime.hpp` owns a Varn runtime without an engine, which `getRuntime()` returns, and `pumpUntil(condition, timeout)` advances its event loop the way the engine does once per frame. The `JobSystem` tests use it.
 
 ## Testing Lua bindings
 
 A binding test runs Lua through the fixture and checks what matters to an app: returned values, engine state, error messages and asynchronous results.
 
-- Compare returned values as strings. `fixture.lua("return hash.size")` returns `"3"`, and a float returns `"32.0"`.
+- Compare returned values as strings. The call `fixture.lua("return hash.size")` returns `"3"`, and a float returns `"32.0"`.
 - Check validation with the message an app would see, as in `EXPECT_NE(fixture.lua("spatial2d.newHashGrid(-2)").find("positive cell size"), std::string::npos)`.
 - Check callbacks that fail through `fixture.engine().getError()`, the `lua::Error` that the error screen shows, with its message, position and frames.
 - Advance frames for anything asynchronous. Promises settle and coroutines resume during a frame, so a test waits with `frameUntil`.
 - Assert on engine state through `fixture.engine()` and `fixture.host()` when a binding changes the engine, such as the window title or a platform call.
 
-`Spatial2DLuaTest.StoresLuaValuesByBounds` in `engine/tests/2d/spatial/Spatial2DTests.cpp` is a compact model for a synchronous module. This test covers `jobs.spawn`, whose promise resolves in a later frame.
+The test `Spatial2DLuaTest.StoresLuaValuesByBounds` in `engine/tests/2d/spatial/Spatial2DTests.cpp` is a compact model for a synchronous module. This test covers `jobs.spawn`, whose promise resolves in a later frame.
 
 ```cpp
 #include <gtest/gtest.h>
@@ -145,7 +145,7 @@ python3 make.py test --sanitizers address
 python3 make.py test --sanitizers thread
 ```
 
-`--sanitizers` builds the tests with sanitizers in a tree of its own, `build/<host>-<config>-address` or `build/<host>-<config>-thread`, so switching never rebuilds the plain tree. It sets `HAYLEN_SANITIZERS`, which MSVC builds ignore.
+The option `--sanitizers` builds the tests with sanitizers in a tree of its own, `build/<host>-<config>-address` or `build/<host>-<config>-thread`, so switching never rebuilds the plain tree. It sets `HAYLEN_SANITIZERS`, which MSVC builds ignore.
 
 | Value | Sanitizers | What they instrument |
 | --- | --- | --- |
@@ -176,11 +176,11 @@ python3 make.py format
 python3 make.py format --check
 ```
 
-`format` applies `.clang-format` to every `.h`, `.hpp`, `.c`, `.cpp`, `.m` and `.mm` file under `engine/include`, `engine/src`, `engine/tests`, `samples` and `templates`, and then lists the multi-line lambdas that are not between `// clang-format off` and `// clang-format on`. `--check` changes nothing and fails when a file is not formatted or a lambda is missing its markers. `clang-format` must be on `PATH`, and CI installs version 23.1.1 with `pip install clang-format==23.1.1`.
+The command `format` applies `.clang-format` to every `.h`, `.hpp`, `.c`, `.cpp`, `.m` and `.mm` file under `engine/include`, `engine/src`, `engine/tests`, `samples` and `templates`, and then lists the multi-line lambdas that are not between `// clang-format off` and `// clang-format on`. The option `--check` changes nothing and fails when a file is not formatted or a lambda is missing its markers. The command `clang-format` must be on `PATH`, and CI installs version 23.1.1 with `pip install clang-format==23.1.1`.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs on every push and pull request, and a newer push to the same branch or pull request cancels the run in progress. It sets `CPM_SOURCE_CACHE` to `.cache/cpm` in the workspace, and the build jobs cache that folder, keyed by the hash of `engine/cmake/haylen-dependencies.cmake`.
+The workflow `.github/workflows/ci.yml` runs on every push and pull request, and a newer push to the same branch or pull request cancels the run in progress. It sets `CPM_SOURCE_CACHE` to `.cache/cpm` in the workspace, and the build jobs cache that folder, keyed by the hash of `engine/cmake/haylen-dependencies.cmake`.
 
 | Job | Runner | What it does |
 | --- | --- | --- |

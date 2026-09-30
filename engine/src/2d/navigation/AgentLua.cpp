@@ -36,7 +36,7 @@ SteeringAgent& AgentLua::checkAgent(lua_State* L) {
     return lua::Userdata::check<ScriptedAgent>(L, 1).agent;
 }
 
-// Creates an agent with newAgent({x, y, maxSpeed, maxForce, wanderDistance, wanderRadius, wanderJitter, seed}).
+// Creates an agent with `newAgent({x, y, maxSpeed, maxForce, wanderDistance, wanderRadius, wanderJitter, seed})`.
 int AgentLua::newAgent(lua_State* L) {
     SteeringAgent agent;
     Wanderer::Settings wander;
@@ -87,7 +87,7 @@ int AgentLua::agentCohesion(lua_State* L) {
     return 1;
 }
 
-// Steers around circles with avoid(circles, lookAhead), where each circle is {center, radius}.
+// Steers around circles with `avoid(circles, lookAhead)`, where each circle is `{center, radius}`.
 int AgentLua::agentAvoid(lua_State* L) {
     lua::Stack::push(L, checkAgent(L).avoid(lua::Stack::read<std::vector<math::Circle>>(L, 2), lua::Stack::read<float>(L, 3)));
     return 1;
@@ -125,7 +125,7 @@ std::uint32_t AgentLua::readAgentId(lua_State* L) {
     return lua::Stack::read<std::uint32_t>(L, 2);
 }
 
-// Creates a crowd with newCrowd([{separation = 0, alignment = 0, cohesion = 0}]).
+// Creates a crowd with `newCrowd([{separation = 0, alignment = 0, cohesion = 0}])`.
 int AgentLua::newCrowd(lua_State* L) {
     Crowd::Flocking flocking;
     if (!lua_isnoneornil(L, 1)) {
@@ -139,7 +139,7 @@ int AgentLua::newCrowd(lua_State* L) {
     return 1;
 }
 
-// Adds an agent with addAgent({x, y, vx, vy, radius, maxSpeed, neighborDistance, maxNeighbors, timeHorizon, obstacleTimeHorizon}) and returns its id.
+// Adds an agent with `addAgent({x, y, vx, vy, radius, maxSpeed, neighborDistance, maxNeighbors, timeHorizon, obstacleTimeHorizon})` and returns its id.
 int AgentLua::crowdAddAgent(lua_State* L) {
     Crowd& crowd = checkCrowd(L);
     Crowd::AgentOptions options;
@@ -231,7 +231,7 @@ int AgentLua::crowdTarget(lua_State* L) {
     return 1;
 }
 
-// Moves every agent with step(dt), spreading the work over the engine job system.
+// Moves every agent with `step(dt)`, spreading the work over the engine job system.
 int AgentLua::crowdStep(lua_State* L) {
     checkCrowd(L).step(lua::Stack::read<float>(L, 2), &lua::Runtime::getEngine(L).getJobs());
     return 0;

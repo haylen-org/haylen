@@ -7,7 +7,7 @@ struct lua_State;
 
 namespace haylen::graphics2d {
 
-// Installs the Camera class of haylen.graphics2d. Its methods measure the view with the visible design area as the screen, as world canvases do, and take screen points in design coordinates.
+// Installs the `Camera` class of `haylen.graphics2d`. Its methods measure the view with the visible design area as the screen, as world canvases do, and take screen points in design coordinates.
 class CameraLua final {
   public:
     static void install(lua_State* L);

@@ -1,4 +1,4 @@
--- The frame every test shares: the Back button with the title and the description, the stage the test draws in, a panel of controls on the right, a status line and a line of hints. Every test preloads the sounds in its load hook, and Escape, the east gamepad button and the Menu button of a TV remote reach the root of the document as a cancel, which goes back only when no popup took it.
+-- The frame every test shares: the Back button with the title and the description, the stage the test draws in, a panel of controls on the right, a status line and a line of hints. Every test preloads the sounds in its `load` hook, and Escape, the east gamepad button and the Menu button of a TV remote reach the root of the document as a cancel, which goes back only when no popup took it.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local m = require('haylen.math')
@@ -40,7 +40,7 @@ function Test:load(context)
     context:preload('audio'):await()
 end
 
--- Mounts the frame. `options` holds the `hint`, the `controls` of the panel, the id of the control to `focus` for gamepads and TV remotes and `overlay`, anchored nodes such as touch controls drawn over the stage.
+-- Mounts the frame. The table `options` holds the `hint`, the `controls` of the panel, the id of the control to `focus` for gamepads and TV remotes and `overlay`, anchored nodes such as touch controls drawn over the stage.
 function Test:frame(options)
     window.setBackLeavesApp(false)
     local children = {

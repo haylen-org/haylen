@@ -116,7 +116,7 @@ int MathLua::rectToString(lua_State* L) {
     return 1;
 }
 
-// Accepts either a point or a rectangle, telling tables apart by their width field.
+// Accepts either a point or a rectangle, telling tables apart by their `width` field.
 int MathLua::rectContains(lua_State* L) {
     const Rect& self = lua::Userdata::check<Rect>(L, 1);
     bool rectangle = lua::Userdata::test<Rect>(L, 2) != nullptr;
@@ -373,7 +373,7 @@ int MathLua::triangulatePolygon(lua_State* L) {
     return 1;
 }
 
-// Samples points with poissonDisk({area = rect, minimumDistance = 64, maximumDistance = 128, attempts = 30, random = rng or seed = n, accept = function(point), distance = function(point)}).
+// Samples points with `poissonDisk({area = rect, minimumDistance = 64, maximumDistance = 128, attempts = 30, random = rng or seed = n, accept = function(point), distance = function(point)})`.
 int MathLua::poissonDisk(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     lua::Table::checkFields(L, 1, {kPoissonFields});
@@ -383,7 +383,7 @@ int MathLua::poissonDisk(lua_State* L) {
     lua::Table::readField(L, 1, "maximumDistance", options.maximumDistance);
     lua::Table::readField(L, 1, "attempts", options.attempts);
 
-    // The generator stays on the stack while sampling, so an accept function that drops it from the options cannot free it.
+    // The generator stays on the stack while sampling, so an `accept` function that drops it from the options cannot free it.
     Random local(0);
     Random* random = &local;
     lua_getfield(L, 1, "random");

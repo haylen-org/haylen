@@ -72,7 +72,7 @@ class Renderer final {
         std::optional<math::Color> clear;
     };
 
-    // How drawMetaballs shows the surface where its soft circles meet: the fill color, and an outline in the band of the field just above the threshold. The field adds up to 1 at the center of a lone circle, whose surface reaches the radius at the default threshold.
+    // How `drawMetaballs` shows the surface where its soft circles meet: the fill color, and an outline in the band of the field just above the threshold. The field adds up to 1 at the center of a lone circle, whose surface reaches the radius at the default threshold.
     struct MetaballStyle {
         math::Color color = math::Color::white();
         math::Color outlineColor = math::Color::transparent();
@@ -170,7 +170,7 @@ class Renderer final {
     static const CanvasOptions kDefaultCanvas;
     static const MetaballStyle kDefaultMetaballs;
 
-    // A soft circle whose kernel spans this many radii reaches the threshold of 0.5 at its radius, since (1 - d^2)^2 is 0.5 at d = sqrt(1 - sqrt(0.5)).
+    // A soft circle whose kernel spans this many radii reaches the threshold of 0.5 at its radius, since `(1 - d^2)^2` is 0.5 at `d = sqrt(1 - sqrt(0.5))`.
     static constexpr float kMetaballReach = 1.8477591F;
 
     static void validatePostProcess(const CanvasOptions& options);
@@ -181,7 +181,7 @@ class Renderer final {
 
     void drawTextLayout(const text::Layout& layout, math::Vec2 position, const text::Style& style, const DrawOrder& order, math::Vec2 scale);
 
-    // Adds count sprites of one texture, where spriteAt returns the sprite at an index from any worker thread.
+    // Adds `count` sprites of one texture, where `spriteAt` returns the sprite at an index from any worker thread.
     template <typename SpriteAt> void addBatch(const graphics::Texture& texture, std::size_t count, const DrawOrder& order, const SpriteAt& spriteAt);
 
     std::unique_ptr<RendererState> state;

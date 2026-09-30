@@ -22,7 +22,7 @@ World& WorldLua::check(lua_State* L) {
     return lua::Userdata::check<World>(L, 1);
 }
 
-// Reads {type, x, y, rotation, vx, vy, angularVelocity, linearDamping, angularDamping, gravityScale, fixedRotation, bullet, sleep}.
+// Reads `{type, x, y, rotation, vx, vy, angularVelocity, linearDamping, angularDamping, gravityScale, fixedRotation, bullet, sleep}`.
 Body::Options WorldLua::readBodyOptions(lua_State* L, int index) {
     Body::Options options;
     if (lua_isnoneornil(L, index)) {
@@ -46,7 +46,7 @@ Body::Options WorldLua::readBodyOptions(lua_State* L, int index) {
     return options;
 }
 
-// Reads {ax, ay, bx, by, lower, upper, motorSpeed, maxMotorForce, maxMotorTorque, hertz, ...}.
+// Reads `{ax, ay, bx, by, lower, upper, motorSpeed, maxMotorForce, maxMotorTorque, hertz, ...}`.
 Joint::Options WorldLua::readJointOptions(lua_State* L, int index) {
     Joint::Options options;
     if (lua_isnoneornil(L, index)) {
@@ -148,14 +148,14 @@ void WorldLua::dispatchSensors(lua_State* L, int worldIndex, const char* name, c
     }
 }
 
-// Creates a body with createBody({type, x, y, rotation, vx, vy, angularVelocity, linearDamping, angularDamping, gravityScale, fixedRotation, bullet, sleep}).
+// Creates a body with `createBody({type, x, y, rotation, vx, vy, angularVelocity, linearDamping, angularDamping, gravityScale, fixedRotation, bullet, sleep})`.
 int WorldLua::createBody(lua_State* L) {
     World& world = check(L);
     Physics2DLua::push(L, 1, world.createBody(readBodyOptions(L, 2)));
     return 1;
 }
 
-// Joins two bodies with createJoint(type, a, b, {ax, ay, bx, by, lower, upper, motorSpeed, maxMotorForce, maxMotorTorque, hertz, ...}).
+// Joins two bodies with `createJoint(type, a, b, {ax, ay, bx, by, lower, upper, motorSpeed, maxMotorForce, maxMotorTorque, hertz, ...})`.
 int WorldLua::createJoint(lua_State* L) {
     World& world = check(L);
     const auto type = lua::Stack::read<Joint::Type>(L, 2);
@@ -185,14 +185,14 @@ std::span<float> WorldLua::readTransformValues(lua_State* L, int index) {
     return values.subspan(static_cast<std::size_t>(first - 1));
 }
 
-// Copies x, y and rotation of every body into a float buffer with readTransforms(bodies, buffer[, first]).
+// Copies `x`, `y` and `rotation` of every body into a float buffer with `readTransforms(bodies, buffer[, first])`.
 int WorldLua::readTransforms(lua_State* L) {
     const std::vector<Body> bodies = readBodies(L, 2);
     check(L).readTransforms(bodies, readTransformValues(L, 3));
     return 0;
 }
 
-// Moves every body to the x, y and rotation a float buffer holds with writeTransforms(bodies, buffer[, first]).
+// Moves every body to the `x`, `y` and `rotation` a float buffer holds with `writeTransforms(bodies, buffer[, first])`.
 int WorldLua::writeTransforms(lua_State* L) {
     const std::vector<Body> bodies = readBodies(L, 2);
     check(L).writeTransforms(bodies, readTransformValues(L, 3));
@@ -212,7 +212,7 @@ bool WorldLua::hasCallbacks(lua_State* L, int worldIndex) {
     return found;
 }
 
-// Bodies also die outside body:destroy(), in fractures, assemblies, fluids, terrains and the garbage collection of their owners, so every step drops the data of the bodies that are gone.
+// Bodies also die outside `body:destroy()`, in fractures, assemblies, fluids, terrains and the garbage collection of their owners, so every step drops the data of the bodies that are gone.
 void WorldLua::releaseDestroyedData(lua_State* L, int worldIndex) {
     World& world = lua::Userdata::check<World>(L, worldIndex);
     lua_getiuservalue(L, worldIndex, 1);

@@ -25,7 +25,7 @@ function sample.back()
     end
 end
 
--- The base of every test scene. A test sets its hints and the control that takes the focus, returns the nodes of its page from content and hears languageChanged whenever the language changes, from the picker, the keys or anywhere else.
+-- The base of every test scene. A test sets its hints and the control that takes the focus, returns the nodes of its page from `content` and hears `languageChanged` whenever the language changes, from the picker, the keys or anywhere else.
 local Test = haylen.class('Test', scene.Scene)
 sample.Test = Test
 

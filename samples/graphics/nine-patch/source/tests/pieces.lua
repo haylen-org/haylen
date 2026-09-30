@@ -9,7 +9,7 @@ local Pieces = haylen.class('Pieces', sample.Test)
 
 local kPiece, kGap, kPreview = 40, 10, 2
 local kCode = [[
-local pieces = {}  -- nine rectangles, row by row from the top-left corner
+local pieces = {}  -- Nine rectangles, row by row from the top-left corner.
 for row = 0, 2 do for column = 0, 2 do pieces[#pieces + 1] = {column * 50, row * 50, 40, 40} end end
 local frame = graphics2d.newNineSlice(assets.texture('frames/pieces.png', {filter = 'nearest'}), {pieces = pieces})
 print(#frame.pieces, table.concat(frame.borders, ', '))  -- 9  40, 40, 40, 40]]

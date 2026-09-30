@@ -1,4 +1,4 @@
--- Hot reload: while the desktop player runs a package with --dev, make.py recompiles every shader source that changes and the player reloads the .shader file in place.
+-- Hot reload: while the desktop player runs a package with `--dev`, `make.py` recompiles every shader source that changes and the player reloads the `.shader` file in place.
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -8,15 +8,15 @@ local sample = require('sample')
 
 local HotReload = haylen.class('HotReload', sample.Test)
 
-HotReload.hints = 'Keep this test open in a desktop dev run and edit content/shaders/live.glsl: the stripes change as soon as the file is saved.'
+HotReload.hints = 'Keep this test open in a desktop dev run and edit "content/shaders/live.glsl": the stripes change as soon as the file is saved.'
 
 HotReload.steps = {
-    '1. Run the sample on the desktop with python3 make.py run samples/graphics/shaders.',
-    '2. Open samples/graphics/shaders/content/shaders/live.glsl and change the colors or the stripe count.',
-    '3. Save: make.py compiles live.shader again and the player reloads it without a restart.',
-    '4. The material keeps its values, so the time uniform goes on where it was.',
+    '1. Run the sample on the desktop with "python3 make.py run samples/graphics/shaders".',
+    '2. Open "samples/graphics/shaders/content/shaders/live.glsl" and change the colors or the stripe count.',
+    '3. Save: "make.py" compiles "live.shader" again and the player reloads it without a restart.',
+    '4. The material keeps its values, so the "time" uniform goes on where it was.',
     '5. A source with an error prints the error and leaves the last good shader running.',
-    'Builds for iOS, Android and the web ship the compiled .shader files and never reload them.',
+    'Builds for iOS, Android and the web ship the compiled ".shader" files and never reload them.',
 }
 
 function HotReload:init(entry)

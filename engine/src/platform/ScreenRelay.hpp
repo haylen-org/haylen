@@ -42,7 +42,7 @@ class ScreenRelay final {
     // Forgets a screen that never reached the platform, which therefore never ends it.
     static void forget(std::uint64_t id);
 
-    // Thread-safe entry points for native code. finish ends the screen that shows with the same id, with a result or a failure the way a platform call is answered, and drops any other end. restore ends a screen that the platform kept across the end of the process, with the state it saved as JSON text.
+    // Thread-safe entry points for native code. The function `finish` ends the screen that shows with the same id, with a result or a failure the way a platform call is answered, and drops any other end. The function `restore` ends a screen that the platform kept across the end of the process, with the state it saved as JSON text.
     static void finish(std::uint64_t id, bool ok, std::string_view resultJson, std::vector<std::vector<std::byte>> buffers = {});
     static void restore(std::string plugin, std::string name, std::string_view stateJson, bool ok, std::string_view resultJson, std::vector<std::vector<std::byte>> buffers = {});
 

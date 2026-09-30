@@ -173,7 +173,7 @@ TEST(AppConfigTest, ReadsThePluginsOfTheApp) {
     EXPECT_EQ(core::AppConfig::fromJson(config.toJson()).plugins, config.plugins);
     EXPECT_TRUE(core::AppConfig::fromJson(core::Json::object()).plugins.empty());
 
-    // The section is an object of parameter objects, keyed by ids in dash-case, which also keeps every id inside the plugins folder of the package.
+    // The section is an object of parameter objects, keyed by ids in `dash-case`, which also keeps every id inside the plugins folder of the package.
     for (const char* document : {R"({"plugins": ["admob"]})", R"({"plugins": {"admob": true}})", R"({"plugins": {"AdMob": {}}})", R"({"plugins": {"ad--mob": {}}})", R"({"plugins": {"admob-": {}}})", R"({"plugins": {"2d-kit": {}}})", R"({"plugins": {"../admob": {}}})", R"({"plugins": {"": {}}})"}) {
         EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(document)), std::invalid_argument) << document;
     }
@@ -181,16 +181,16 @@ TEST(AppConfigTest, ReadsThePluginsOfTheApp) {
         (void)core::AppConfig::fromJson(core::Json::parse(R"({"plugins": {"admob": []}})"));
         FAIL() << "A plugin needs an object of parameter values.";
     } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The plugin admob in app.json must have an object of parameter values.");
+        EXPECT_STREQ(error.what(), "The plugin \"admob\" in \"app.json\" must have an object of parameter values.");
     }
 
-    // Every plugin of app.json has its manifest in the package.
+    // Every plugin of `app.json` has its manifest in the package.
     io::MemoryPackage package("app", {{"app.json", test::TestFiles::bytes(R"({"plugins": {"admob": {}}})")}});
     try {
         (void)core::AppConfig::fromPackage(package);
         FAIL() << "The package has no manifest for the plugin.";
     } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The plugin admob in app.json has no plugins/admob/plugin.json in the package.");
+        EXPECT_STREQ(error.what(), "The plugin \"admob\" in \"app.json\" has no \"plugins/admob/plugin.json\" in the package.");
     }
     package.setFile("plugins/admob/plugin.json", test::TestFiles::bytes(R"({"id": "admob"})"));
     EXPECT_EQ(core::AppConfig::fromPackage(package).plugins.size(), 1U);
@@ -281,7 +281,7 @@ TEST(EngineTest, TracksAppStatesFromPlatformEvents) {
     EXPECT_EQ(log, (std::vector<std::string>{"windowFocusLost", "state 1", "appInactive", "windowFocusGained", "state 0", "appActive", "state 2", "appBackground", "windowFocusGained", "state 0", "appActive", "resized", R"(windowResized {"height":1080.0,"width":1920.0})", "quit", "appQuitRequested"}));
     EXPECT_FALSE(engine.getInput().isKeyDown(input::Key::A));
     EXPECT_FALSE(engine.getVirtualInput().isButtonDown("jump"));
-    EXPECT_EQ(fixture.host().getPersistCount(), persisted + 1) << "going to the background makes the files of the app durable";
+    EXPECT_EQ(fixture.host().getPersistCount(), persisted + 1) << "Going to the background makes the files of the app durable.";
     EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Active);
 }
 
@@ -457,7 +457,7 @@ TEST(EngineTest, ReportsLowMemoryToTheApp) {
     fixture.engine().handleEvent(event);
     EXPECT_EQ(warnings, 1);
     EXPECT_EQ(fixture.lua("return warnings"), "1");
-    EXPECT_EQ(assets.releaseUnused(), 0U) << "the warning already pruned the entries of released assets";
+    EXPECT_EQ(assets.releaseUnused(), 0U) << "The warning already pruned the entries of released assets.";
 }
 
 TEST(EngineTest, ReportsErrorsAndKeepsRendering) {
@@ -546,7 +546,7 @@ TEST(EngineTest, ShowsErrorsOfAsyncTasksWithTheirStack) {
     EXPECT_EQ(error.getFile(), "source/scenes/loader.lua");
     EXPECT_EQ(error.getLine(), 3);
 
-    // The task shows its own frames only: neither the xpcall of the engine nor the task wrapper and coroutine entry below it.
+    // The task shows its own frames only: neither the `xpcall` of the engine nor the task wrapper and coroutine entry below it.
     ASSERT_EQ(error.getFrames().size(), 2U);
     EXPECT_EQ(error.getFrames()[0].source, "[C]");
     EXPECT_EQ(error.getFrames()[0].function, "global 'error'");

@@ -1,8 +1,8 @@
 # Native code
 
-An app reaches anything native, from the APIs of the platform to native libraries and SDKs with a C API, in three ways. This guide explains them, how to choose between them, how native libraries are called from Lua and how their callbacks reach it, how an app ships its libraries on every platform, and how to integrate SDKs such as the flat C API of Steam or the C API of Epic Online Services with its NAT P2P. The [haylen.native reference](lua-api/native.md) and the [haylen.platform reference](lua-api/platform.md) list every function, and the [platform bridge guide](platform_bridge.md) describes how bridge calls travel.
+An app reaches anything native, from the APIs of the platform to native libraries and SDKs with a C API, in three ways. This guide explains them, how to choose between them, how native libraries are called from Lua and how their callbacks reach it, how an app ships its libraries on every platform, and how to integrate SDKs such as the flat C API of Steam or the C API of Epic Online Services with its NAT P2P. The [`haylen.native` reference](lua-api/native.md) and the [`haylen.platform` reference](lua-api/platform.md) list every function, and the [platform bridge guide](platform_bridge.md) describes how bridge calls travel.
 
-`samples/system/native` runs every part of this guide against the test library of the engine, `engine/tests/native/NativeTest.c`, on every platform, with a list of checks that pass or fail.
+The sample `samples/system/native` runs every part of this guide against the test library of the engine, `engine/tests/native/NativeTest.c`, on every platform, with a list of checks that pass or fail.
 
 ## The three ways
 
@@ -22,7 +22,7 @@ An app reaches anything native, from the APIs of the platform to native librarie
 
 ## Calling a library
 
-`native.load` finds the file of a library where the app ships it and hands it to Varn's `ffi`, which calls the functions that `ffi.cdef` declares.
+The function `native.load` finds the file of a library where the app ships it and hands it to Varn's `ffi`, which calls the functions that `ffi.cdef` declares.
 
 ```lua
 local ffi = require('ffi')
@@ -54,16 +54,16 @@ print(lib.native_test_checksum(ffi.cast('const uint8_t*', buffer), 8))
 
 The rules of Varn's `ffi` that matter most:
 
-- `ffi.cdef` declares functions, structs, unions, arrays, pointers, function pointer types and typedefs once per Lua state, and declaring a name twice raises an error, so declarations belong in a module that `require` loads once.
+- The function `ffi.cdef` declares functions, structs, unions, arrays, pointers, function pointer types and typedefs once per Lua state, and declaring a name twice raises an error, so declarations belong in a module that `require` loads once.
 - Numbers convert both ways, `const char*` parameters take Lua strings, `ffi.string(pointer[, length])` copies text or bytes out, `ffi.new('T[?]', n)` allocates a buffer that Lua owns, and `ffi.new('T', table)` fills a struct from a table by field name or by position, nested structs included.
 - A struct passes by value as a cdata of its type and by pointer as the same cdata.
 - A pointer to non-constant data does not pass where C expects a pointer to constant data, so `ffi.cast('const uint8_t*', buffer)` passes a buffer to a `const uint8_t*` parameter.
-- `ffi` has no `enum` declarations and no bitfields, so enums are declared as `int` and their values are Lua constants, and a struct with bitfields is declared with integer fields of the same layout. A function takes at most 30 arguments and a struct has at most 30 fields.
+- The module `ffi` has no `enum` declarations and no bitfields, so enums are declared as `int` and their values are Lua constants, and a struct with bitfields is declared with integer fields of the same layout. A function takes at most 30 arguments and a struct has at most 30 fields.
 - A function called through a function pointer, such as one returned by another function or one in a struct, cannot be called from Lua, so the functions Lua calls are declared by name and reached through the namespace that `native.load` returns.
 - Variadic functions are called with Lua numbers, strings and pointers after the fixed arguments.
 - A struct with an array field, such as `char name[33]`, trips an assertion of libffi in Debug builds of the engine, whose libffi checks its inputs, because Varn's `ffi` describes array fields to libffi without their elements. Release builds, which every packaged app uses, declare and fill such structs correctly, and they pass them by pointer.
 
-`native.findSymbol(name)` returns the address of a symbol of the linked libraries, the loaded ones or the app, as a light userdata that goes wherever C takes a pointer.
+The function `native.findSymbol(name)` returns the address of a symbol of the linked libraries, the loaded ones or the app, as a light userdata that goes wherever C takes a pointer.
 
 ## Callbacks
 
@@ -83,13 +83,13 @@ end)
 lib.native_test_report_later(reporter.pointer, 42)
 ```
 
-Varn callbacks fit SDKs that call back only on the thread that pumps them, such as `SteamAPI_RunCallbacks` or `EOS_Platform_Tick` called from Lua, and callbacks that must return a value to native code, such as a comparison function for a sort. They run in the Lua state that created them, so the coroutine that calls `ffi.cast` must outlive them, and an error they raise is held until the next ffi call raises it. An engine callback with `thread = 'frame'` runs inside the native call too, on the main Lua state, with the error reported on the error screen, so it is the better fit for pumped SDKs whose callbacks return nothing.
+Varn callbacks fit SDKs that call back only on the thread that pumps them, such as `SteamAPI_RunCallbacks` or `EOS_Platform_Tick` called from Lua, and callbacks that must return a value to native code, such as a comparison function for a sort. They run in the Lua state that created them, so the coroutine that calls `ffi.cast` must outlive them, and an error they raise is held until the next `ffi` call raises it. An engine callback with `thread = 'frame'` runs inside the native call too, on the main Lua state, with the error reported on the error screen, so it is the better fit for pumped SDKs whose callbacks return nothing.
 
 ## Threads
 
 - Lua, and every callback that reaches it, runs on the frame thread.
 - Engine callbacks, `HaylenNativeApi` entries and bridge replies may come from any thread, and they reach Lua at the start of a frame, before the app updates, in the order they arrived.
-- A native library must not call Lua or ffi callbacks from its own threads, and must not keep pointers to Lua memory, such as a Lua string or an `ffi.new` buffer, longer than Lua keeps the value.
+- A native library must not call Lua or `ffi` callbacks from its own threads, and must not keep pointers to Lua memory, such as a Lua string or an `ffi.new` buffer, longer than Lua keeps the value.
 - Pumped SDKs are pumped from the frame thread, typically from the `update` of a scene or of an autoload, so their callbacks run there.
 - Blocking calls into a library stall the frame, so long work runs on a thread of the library, which reports back through an engine callback or an event.
 
@@ -103,7 +103,7 @@ A library written for Haylen receives the C interface of the engine, `HaylenNati
 static const HaylenNativeApi* engine = 0;
 
 static void download(void* user, uint64_t call, const char* method, const char* paramsJson, const HaylenNativeBuffer* buffers, size_t bufferCount) {
-    /* Start the work on a thread of the library, which calls engine->resolve(call, 1, "{\"file\": {\"$bytes\": 0}}", &file, 1) with the downloaded bytes when it is done. */
+    /* Start the work on a thread of the library, which calls `engine->resolve(call, 1, "{\"file\": {\"$bytes\": 0}}", &file, 1)` with the downloaded bytes when it is done. */
 }
 
 static void stop(void* user, uint64_t call) {
@@ -124,7 +124,7 @@ This is also the way Windows and Linux apps, which have no native handler regist
 
 ## Packaging libraries with an app
 
-The `native` section of `app.json` lists the libraries an app ships, by the name it loads them with. A library is either prebuilt files per platform or a CMake project that make.py builds for each platform it lists.
+The `native` section of `app.json` lists the libraries an app ships, by the name it loads them with. A library is either prebuilt files per platform or a CMake project that `make.py` builds for each platform it lists.
 
 ```json
 {
@@ -153,36 +153,36 @@ The `native` section of `app.json` lists the libraries an app ships, by the name
 | Key | Meaning |
 | --- | --- |
 | `files` | The prebuilt file of each platform, relative to the app folder: a `.dylib`, `.framework` or `.xcframework` on macOS, a `.framework`, `.xcframework` or, when linked statically, a `.a` on iOS and tvOS, a `.dll` on Windows, a `.so` on Linux, and on Android a folder with a subfolder of `.so` files for each ABI, the layout of `jniLibs`. An `.xcframework` gives the slice of each Apple platform. |
-| `cmake` | A folder with a `CMakeLists.txt` that defines a library target with the name of the library, built as a shared or a static library as `BUILD_SHARED_LIBS` says. make.py passes `HAYLEN_INCLUDE_DIR`, the folder of `haylen/platform/native/HaylenNative.h`. |
-| `platforms` | The platforms make.py builds a CMake library for, among `macos`, `ios`, `tvos`, `android`, `windows` and `linux`. |
-| `link` | `dynamic`, the default, or `static`, which only iOS and tvOS apps do. |
-| `symbols` | The symbols of a static library that Lua reaches, which make.py keeps and registers. |
+| `cmake` | A folder with a `CMakeLists.txt` that defines a library target with the name of the library, built as a shared or a static library as `BUILD_SHARED_LIBS` says. The script `make.py` passes `HAYLEN_INCLUDE_DIR`, the folder of `haylen/platform/native/HaylenNative.h`. |
+| `platforms` | The platforms `make.py` builds a CMake library for, among `macos`, `ios`, `tvos`, `android`, `windows` and `linux`. |
+| `link` | Either `dynamic`, the default, or `static`, which only iOS and tvOS apps do. |
+| `symbols` | The symbols of a static library that Lua reaches, which `make.py` keeps and registers. |
 
-make.py places each library where the app loads it:
+The script `make.py` places each library where the app loads it:
 
 | Platform | Place |
 | --- | --- |
-| macOS and Mac Catalyst | `Contents/Frameworks` of the app bundle, copied and signed by the `Embed native libraries` phase of `App.xcodeproj` with the identity of the app. The executable has `@executable_path/../Frameworks` in its runpath. |
+| macOS and Mac Catalyst | The folder `Contents/Frameworks` of the app bundle, copied and signed by the `Embed native libraries` phase of `App.xcodeproj` with the identity of the app. The executable has `@executable_path/../Frameworks` in its runpath. |
 | iOS and tvOS, dynamic | A framework in `Frameworks` of the app bundle, embedded and signed the same way. A CMake library becomes a framework whose bundle identifier is the one of the app followed by `.native.<name>`. |
 | iOS and tvOS, static | Linked into the app through `OTHER_LDFLAGS` in `App.xcconfig`, with `source/HaylenNativeSymbols.mm` generated next to `main.mm`. |
-| Android | `app/src/main/jniLibs/<abi>/` of the Gradle project for arm64-v8a, armeabi-v7a and x86_64, the ABIs of the engine. The linker of Android finds them by name. An AAR dependency in `app/app.gradle` works too, and so does a `jniLibs` folder in the platform overrides of the app. |
+| Android | The folder `app/src/main/jniLibs/<abi>/` of the Gradle project for `arm64-v8a`, `armeabi-v7a` and `x86_64`, the ABIs of the engine. The linker of Android finds them by name. An AAR dependency in `app/app.gradle` works too, and so does a `jniLibs` folder in the platform overrides of the app. |
 | Windows | Next to the executable. |
-| Linux | `lib/` next to the executable, whose `RUNPATH` of `$ORIGIN:$ORIGIN/lib` lets the libraries find each other. |
-| Desktop player | `build/apps/<app>-<hash>/native/development/`, in the build folder of the app, which `make.py run` passes to the player with `--native`. |
+| Linux | The folder `lib/` next to the executable, whose `RUNPATH` of `$ORIGIN:$ORIGIN/lib` lets the libraries find each other. |
+| Desktop player | The folder `build/apps/<app>-<hash>/native/development/`, in the build folder of the app, which `make.py run` passes to the player with `--native`. |
 
-`App.xcodeproj` stays the same for every app: make.py writes the libraries into `native/<target>-<platform>/` of the assembled project, the file lists that the embed phase reads into `native/<target>-<platform>.xcfilelist`, and the link settings into `App.xcconfig`. The embed phase runs without the script sandbox of Xcode, because the sandbox would need every file of a bundle and the temporary files of `codesign` listed one by one. Files that the app keeps in `platform/<platform>/` for Windows and Linux land next to the executable too.
+The project `App.xcodeproj` stays the same for every app: `make.py` writes the libraries into `native/<target>-<platform>/` of the assembled project, the file lists that the embed phase reads into `native/<target>-<platform>.xcfilelist`, and the link settings into `App.xcconfig`. The embed phase runs without the script sandbox of Xcode, because the sandbox would need every file of a bundle and the temporary files of `codesign` listed one by one. Files that the app keeps in `platform/<platform>/` for Windows and Linux land next to the executable too.
 
 ### Static libraries on iOS and tvOS
 
-An iOS app may link a library statically instead of embedding a framework, which some SDKs require. Dead code stripping would then remove every function the app never calls from native code, so make.py writes `source/HaylenNativeSymbols.mm`, whose `+load` registers the listed symbols with `haylen::platform::NativeLibraries::registerLinked`. The references keep the functions in the app, and `native.load('native_test_static')` then returns `ffi.C`, whose declared functions resolve through the app, while `native.findSymbol` finds the listed ones in the table. The symbols list names the functions Lua calls, including an `init` function.
+An iOS app may link a library statically instead of embedding a framework, which some SDKs require. Dead code stripping would then remove every function the app never calls from native code, so `make.py` writes `source/HaylenNativeSymbols.mm`, whose `+load` registers the listed symbols with `haylen::platform::NativeLibraries::registerLinked`. The references keep the functions in the app, and `native.load('native_test_static')` then returns `ffi.C`, whose declared functions resolve through the app, while `native.findSymbol` finds the listed ones in the table. The `symbols` list names the functions Lua calls, including an `init` function.
 
 ### Development
 
-`python3 make.py run <app>` builds or copies the libraries of this desktop into `build/apps/<app>-<hash>/native/development/`, in the [build folder of the app](distribution.md#assembling-an-app), and starts the player with `--native` and that folder, which `native.load` searches first. The player takes `--native <folder>` more than once, so a player started by hand finds libraries anywhere.
+The command `python3 make.py run <app>` builds or copies the libraries of this desktop into `build/apps/<app>-<hash>/native/development/`, in the [build folder of the app](distribution.md#assembling-an-app), and starts the player with `--native` and that folder, which `native.load` searches first. The player takes `--native <folder>` more than once, so a player started by hand finds libraries anywhere.
 
 ## C++ plugins
 
-An app that compiles the engine with `haylen_add_app` extends it with plugins of its own, which have the same lifecycle as the plugins of the engine: `start`, `fixedUpdate`, `update`, `render`, `renderUi`, `stop` and the lifecycle events, all on the frame thread. `installLua` installs a Lua module with the binding toolkit of `haylen/lua/`. A plugin added before the engine starts, or while it runs, gets `start` and `installLua` like a built-in one. The [embedding guide](embedding.md#plugins-of-an-app) shows a complete plugin.
+An app that compiles the engine with `haylen_add_app` extends it with plugins of its own, which have the same lifecycle as the plugins of the engine: `start`, `fixedUpdate`, `update`, `render`, `renderUi`, `stop` and the lifecycle events, all on the frame thread. The method `installLua` installs a Lua module with the binding toolkit of `haylen/lua/`. A plugin added before the engine starts, or while it runs, gets `start` and `installLua` like a built-in one. The [embedding guide](embedding.md#plugins-of-an-app) shows a complete plugin.
 
 ```cpp
 class SteamPlugin final : public haylen::plugins::Plugin {
@@ -215,7 +215,7 @@ SDKs with a C API work through FFI without glue code, and the SDKs themselves ne
 
 ### Steam
 
-The flat API of Steamworks, `steam_api_flat.h`, is plain C. `SteamAPI_InitFlat` starts it, and the manual dispatch functions turn every callback into a message that Lua reads each frame, so no C callback is needed at all. The names of the interface accessors, such as `SteamAPI_SteamFriends_v017`, carry the version of the interface and change with the SDK, so they come from the headers of the SDK version the app ships. The desktop library is `libsteam_api.dylib` on macOS, `steam_api64.dll` on 64-bit Windows and `libsteam_api.so` on Linux.
+The flat API of Steamworks, `steam_api_flat.h`, is plain C. The function `SteamAPI_InitFlat` starts it, and the manual dispatch functions turn every callback into a message that Lua reads each frame, so no C callback is needed at all. The names of the interface accessors, such as `SteamAPI_SteamFriends_v017`, carry the version of the interface and change with the SDK, so they come from the headers of the SDK version the app ships. The desktop library is `libsteam_api.dylib` on macOS, `steam_api64.dll` on 64-bit Windows and `libsteam_api.so` on Linux.
 
 ```lua
 local ffi = require('ffi')
@@ -262,7 +262,7 @@ A parameter struct of a callback is read with `ffi.cast('const SomeCallback_t*',
 
 ### Epic Online Services and NAT P2P
 
-The Epic Online Services SDK is a C API. `EOS_Initialize` and `EOS_Platform_Create` start it, `EOS_Platform_Tick` runs its work and calls its callbacks on the thread that ticks it, and `EOS_Platform_GetP2PInterface` gives the peer-to-peer interface, which traverses NAT with relays when a direct connection fails. Its option structs start with an `ApiVersion` field set to the `*_API_LATEST` constant of the header, and its handles are opaque pointers. The library is `EOSSDK-Win64-Shipping.dll` on Windows, `libEOSSDK-Mac-Shipping.dylib` on macOS, `libEOSSDK-Linux-Shipping.so` on Linux, `libEOSSDK.so` on Android and `EOSSDK.framework` on iOS.
+The Epic Online Services SDK is a C API. The functions `EOS_Initialize` and `EOS_Platform_Create` start it, `EOS_Platform_Tick` runs its work and calls its callbacks on the thread that ticks it, and `EOS_Platform_GetP2PInterface` gives the peer-to-peer interface, which traverses NAT with relays when a direct connection fails. Its option structs start with an `ApiVersion` field set to the `*_API_LATEST` constant of the header, and its handles are opaque pointers. The library is `EOSSDK-Win64-Shipping.dll` on Windows, `libEOSSDK-Mac-Shipping.dylib` on macOS, `libEOSSDK-Linux-Shipping.so` on Linux, `libEOSSDK.so` on Android and `EOSSDK.framework` on iOS.
 
 Callbacks such as `EOS_P2P_OnIncomingConnectionRequestCallback` receive a pointer to an info struct that is valid only during the callback. Ticking the platform from Lua on the frame thread with an engine callback of `thread = 'frame'` runs the Lua function inside the tick, where the pointer is still valid.
 
@@ -285,7 +285,7 @@ ffi.cdef[[
 
 local eos = native.load('EOSSDK-Win64-Shipping')
 
--- The platform handle and the local user come from EOS_Platform_Create and a login, with their option structs declared the same way.
+-- The platform handle and the local user come from `EOS_Platform_Create` and a login, with their option structs declared the same way.
 local function listen(platform, localUser)
     local socket = ffi.new('EOS_P2P_SocketId', {ApiVersion = 1, SocketName = 'game'})
     local options = ffi.new('EOS_P2P_AddNotifyPeerConnectionRequestOptions', {ApiVersion = 1, LocalUserId = localUser, SocketId = socket})

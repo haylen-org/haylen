@@ -1,6 +1,6 @@
 # haylen.scene
 
-`haylen.scene` manages the stack of scenes that make up the app, such as the title screen, a level, a pause menu or a dialog. A scene is a Lua table with optional hooks. Every scene loads before it enters, asynchronously when it needs to, and unloads after it exits, and every change of the stack runs through one pipeline: the transition covers the current scene, the next scene loads, optionally behind a loading view, enters, and the transition reveals it. Only the top scene receives input and updates, when its process mode lets it run, while scenes below a transparent scene keep rendering, which is how overlays such as pause menus work. The [lifecycle guide](../lifecycle.md) explains the whole pipeline with its order of hooks and events, the pause and the process modes.
+The module `haylen.scene` manages the stack of scenes that make up the app, such as the title screen, a level, a pause menu or a dialog. A scene is a Lua table with optional hooks. Every scene loads before it enters, asynchronously when it needs to, and unloads after it exits, and every change of the stack runs through one pipeline: the transition covers the current scene, the next scene loads, optionally behind a loading view, enters, and the transition reveals it. Only the top scene receives input and updates, when its process mode lets it run, while scenes below a transparent scene keep rendering, which is how overlays such as pause menus work. The [lifecycle guide](../lifecycle.md) explains the whole pipeline with its order of hooks and events, the pause and the process modes.
 
 ```lua
 local scene = require('haylen.scene')
@@ -8,7 +8,7 @@ local scene = require('haylen.scene')
 
 ## Scene tables
 
-A scene is any table. The engine looks up its hooks by name every time it calls them, so methods inherited through a metatable or [haylen.class](../lua.md#classes) work, and every hook receives the scene table as `self`. All hooks are optional.
+A scene is any table. The engine looks up its hooks by name every time it calls them, so methods inherited through a metatable or [`haylen.class`](../lua.md#classes) work, and every hook receives the scene table as `self`. All hooks are optional.
 
 | Field | Called | Arguments |
 | --- | --- | --- |
@@ -28,7 +28,7 @@ A scene is any table. The engine looks up its hooks by name every time it calls 
 | `render` | On every visible scene, from bottom to top. | `self` |
 | `renderUi` | On every visible scene, from bottom to top, after every `render` call. | `self` |
 | `transparent` | Read every frame. When it is `true`, the scene below also renders. | Not a function. |
-| `processMode` | Read every frame. `'inherit'`, the default, `'pausable'`, `'whenPaused'`, `'always'` or `'disabled'`. | Not a function. |
+| `processMode` | Read every frame. One of `'inherit'`, the default, `'pausable'`, `'whenPaused'`, `'always'` or `'disabled'`. | Not a function. |
 
 The visible scenes are the top scene and every scene below it down to the first one that is not transparent. An error raised in a hook stops the app and shows the error screen with the message and its stack trace, except in `load`, where it fails the load as [Errors](#errors) describes. Everything the scene owns ends when it unloads: the tasks of `scene.spawn`, the listeners of `scene.listen`, and the timers, tweens, event listeners, signal connections and UI documents created with the scene as `owner`. So no callback or coroutine of a scene runs once it is gone.
 
@@ -83,13 +83,13 @@ Every scene goes through the same states, which `scene.state(scene)` returns.
 
 ## Load context
 
-`load` receives a context, a `haylen.SceneLoad` userdata, which lives until the scene enters or unloads. Using it later raises `This haylen.SceneLoad was already released.`
+The hook `load` receives a context, a `haylen.SceneLoad` userdata, which lives until the scene enters or unloads. Using it later raises `This "haylen.SceneLoad" was already released.`
 
 | Member | Meaning |
 | --- | --- |
 | `context.params` | The `params` of the change that loads the scene, or of its preload. |
 | `context:progress(value, message)` | Reports the progress of the work the scene does itself, from 0 to 1, with an optional message for the loading view. A value outside that range raises `A load progress runs from 0 to 1.` |
-| `context:preload(groups)` | Loads one [preload group of haylen.assets](assets.md#preload-groups), or a list of them, and holds the load until they loaded. It returns a promise that resolves with `true` once all of them loaded. An asset that fails fails the load, and the promise rejects with the error. Calling it once the load is over raises `The scene load is over.` |
+| `context:preload(groups)` | Loads one [preload group of `haylen.assets`](assets.md#preload-groups), or a list of them, and holds the load until they loaded. It returns a promise that resolves with `true` once all of them loaded. An asset that fails fails the load, and the promise rejects with the error. Calling it once the load is over raises `The scene load is over.` |
 
 The progress of the load, which loading views receive and `scene.loadProgress` returns, is the mean of the progress the scene reports and of the progress of each group it preloads. Heavy work stays in the background, since the asset manager decodes on the worker pools and creates the GPU resources of the decoded assets within the [upload budget](assets.md#assetssetuploadbudgetseconds) of each frame.
 
@@ -137,36 +137,36 @@ scene.push({
 
 ## Changes
 
-`push`, `replace`, `pop`, `popTo` and `popToRoot` request a change and return a promise. A change starts at the next scene update, and changes requested while another one runs wait for it and run in request order. The promise resolves with `true` once the change ended, or with `false` when `scene.clear` dropped it, and it rejects with the error when the next scene failed to load, so a coroutine can wait for it with `:await()`, which returns `nil` and the error then.
+The functions `push`, `replace`, `pop`, `popTo` and `popToRoot` request a change and return a promise. A change starts at the next scene update, and changes requested while another one runs wait for it and run in request order. The promise resolves with `true` once the change ended, or with `false` when `scene.clear` dropped it, and it rejects with the error when the next scene failed to load, so a coroutine can wait for it with `:await()`, which returns `nil` and the error then.
 
-Every change takes an optional table of options. Unknown keys raise `Unknown option '<key>'.`, and `pop`, `popTo` and `popToRoot` take only the transition keys and `onComplete`, since nothing loads.
+Every change takes an optional table of options. Unknown keys raise `Unknown option "<key>".`, and `pop`, `popTo` and `popToRoot` take only the transition keys and `onComplete`, since nothing loads.
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `duration` | number | `0` | Length of the whole transition in seconds, without the time it holds for the load. Without a duration the change switches at once and draws nothing. |
-| `ease` | curve | `'linear'` | Easing of the progress, in any form of the [easing curves of haylen.tween](tween.md#easing). |
+| `ease` | curve | `'linear'` | Easing of the progress, in any form of the [easing curves of `haylen.tween`](tween.md#easing). |
 | `effect` | string or table | `'fade'` | The name of a [built-in effect](#built-in-effects), or a table that draws its own, as [Custom effects](#custom-effects) describes. |
 | `direction` | string | `'left'` | Where the motion, wipe, wave or page turn of a built-in effect goes: `'left'`, `'right'`, `'up'`, `'down'`, `'upLeft'`, `'upRight'`, `'downLeft'` or `'downRight'`. |
 | `color` | Color | `'#FF000000'` | The color that fades and irises pass through, which also shows behind effects that uncover the screen, given as a `Color`, a `'#AARRGGBB'` string or a color table of `haylen.math`. |
 | `blockInput` | boolean | `true` | Holds input back from the scenes and the action map until the change ends, from the start of the load to the end of the reveal. Actions whose bindings are still held when the change ends stay up until they are released. |
 | `onComplete` | function | `nil` | Called with `true` once the change ended, or with `false` when it was dropped or failed. |
-| `params` | any | `nil` | Reaches the `load` and `enter` hooks of the next scene. A preloaded scene keeps the params of its preload. |
+| `params` | any | `nil` | Reaches the `load` and `enter` hooks of the next scene. A preloaded scene keeps the `params` of its preload. |
 | `loading` | table | `nil` | A [loading view](#loading-views) to show while the next scene loads. |
 | `loadingDelay` | number | `0` | Seconds the load has to take before the loading view appears, so quick loads never flash it. |
 | `minimumLoadingTime` | number | `0` | Seconds the loading view stays once it appeared, even when the load finishes earlier. |
-| `loadingFadeOut` | number | `0.25` | Seconds a loading view over the covered frame of an effect that covers the screen takes to fade out into it once the load is done and the view stayed its minimum time. `0` takes the view away at once. |
+| `loadingFadeOut` | number | `0.25` | Seconds a loading view over the covered frame of an effect that covers the screen takes to fade out into it once the load is done and the view stayed its minimum time. The value `0` takes the view away at once. |
 | `unloadBeforeLoad` | boolean | `true` | With an effect that covers the screen, the replaced scene exits and unloads at full cover, before the next scene loads, for a lower peak of memory. Turned off, the next scene loads while the effect covers the screen and the replaced scene stays loaded until the next scene loaded. |
 | `onError` | function | `nil` | Receives the message of a failed load instead of the log or the error screen, and may route the app to another scene. |
 
-A negative `loadingDelay`, `minimumLoadingTime` or `loadingFadeOut` raises `The loading delay, the minimum loading time and the loading fade-out cannot be negative.`, a custom effect table with `direction` or `color` raises `A custom transition effect takes no color or direction.`, and an effect of another type raises `The transition effect must be the name of a built-in effect or a table with a render method.` Transitions and loads run on real time, so they go on at full speed while the game is paused or the time scale is zero.
+A negative `loadingDelay`, `minimumLoadingTime` or `loadingFadeOut` raises `The loading delay, the minimum loading time and the loading fade-out cannot be negative.`, a custom effect table with `direction` or `color` raises `A custom transition effect takes no color or direction.`, and an effect of another type raises `The transition effect must be the name of a built-in effect or a table with a "render" method.` Transitions and loads run on real time, so they go on at full speed while the game is paused or the time scale is zero.
 
 ### Effects that cover the screen
 
 The fade and the other effects that show one scene at a time run in three phases.
 
-1. **Cover**: the top scene receives `exitTransitionStarted` and the effect takes it off the screen, while it still updates and renders. The next scene of a `push` starts loading now, and so does the next scene of a `replace` that keeps its scene loaded.
-2. **Hold**: at full cover the stack changes. A replaced scene exits and unloads, and then the next scene starts loading, a pushed-over scene receives `pause`, and popped scenes exit and unload while the scene below them receives `resume`. The effect holds the covered frame, drawing no scene at all, until the next scene loaded, with the loading view over it once the delay passed, which then fades out into the covered frame.
-3. **Reveal**: the next scene receives `enter` and the rest of the effect shows it. Once the effect ends, it receives `enterTransitionFinished`.
+1. **Cover**: The top scene receives `exitTransitionStarted` and the effect takes it off the screen, while it still updates and renders. The next scene of a `push` starts loading now, and so does the next scene of a `replace` that keeps its scene loaded.
+2. **Hold**: At full cover the stack changes. A replaced scene exits and unloads, and then the next scene starts loading, a pushed-over scene receives `pause`, and popped scenes exit and unload while the scene below them receives `resume`. The effect holds the covered frame, drawing no scene at all, until the next scene loaded, with the loading view over it once the delay passed, which then fades out into the covered frame.
+3. **Reveal**: The next scene receives `enter` and the rest of the effect shows it. Once the effect ends, it receives `enterTransitionFinished`.
 
 The transition itself is the loading screen when the change has no loading view: the covered frame, such as the color of a fade, stays until the load is done.
 
@@ -304,7 +304,7 @@ end})
 | `'dissolve'` | The incoming scene appears in random order, a few pixels at a time. | None. | Shows both scenes. |
 | `'pixelate'` | The outgoing scene breaks into growing blocks and the incoming one comes back out of them. | None. | Covers the screen. |
 
-The effects that cover the screen do so halfway. An unknown name raises `The option 'effect' of 'replace' is invalid: unknown value '<name>'.`, and the direction raises the same for an unknown direction. Every effect runs through the eased progress, so `ease` shapes the motion of the effects that move.
+The effects that cover the screen do so halfway. An unknown name raises `The option "effect" of "replace" is invalid: unknown value '<name>'.`, and the direction raises the same for an unknown direction. Every effect runs through the eased progress, so `ease` shapes the motion of the effects that move.
 
 ```lua
 local scene = require('haylen.scene')
@@ -332,9 +332,9 @@ The drawing of the engine plugins, such as mounted UI documents, autoloads and t
 
 ### Custom effects
 
-An effect is a table, which may be an instance of a class, with a `render` method and optional `switchProgress` and `exitProgress` fields. Every frame of the transition, `render(effect, progress, outgoing, incoming)` draws over the whole frame with the eased progress from 0 to 1 and the two images as [textures of haylen.graphics](graphics.md), usually on a screen canvas of [haylen.graphics2d](graphics2d.md) that it begins itself, where the visible area covers each image exactly.
+An effect is a table, which may be an instance of a class, with a `render` method and optional `switchProgress` and `exitProgress` fields. Every frame of the transition, `render(effect, progress, outgoing, incoming)` draws over the whole frame with the eased progress from 0 to 1 and the two images as [textures of `haylen.graphics`](graphics.md), usually on a screen canvas of [`haylen.graphics2d`](graphics2d.md) that it begins itself, where the visible area covers each image exactly.
 
-`switchProgress`, `0.5` by default, is where the effect covers the whole screen: the stack changes there and the effect holds there while the next scene loads, drawing with the last frame of the outgoing scenes. An effect that shows both scenes throughout uses a `switchProgress` of `0`, and its `exitProgress`, `1` by default, is where the leaving scenes exit, after which the outgoing image keeps their last frame. The incoming image stays empty until the next scene enters. The call raises `A transition effect needs a render method.`, `A transition effect needs a switchProgress between 0 and 1.`, `A transition effect that covers the screen at its switchProgress takes no exitProgress.` or `A transition effect needs an exitProgress between 0 and 1.` for effects that break these rules.
+The field `switchProgress`, `0.5` by default, is where the effect covers the whole screen: the stack changes there and the effect holds there while the next scene loads, drawing with the last frame of the outgoing scenes. An effect that shows both scenes throughout uses a `switchProgress` of `0`, and its `exitProgress`, `1` by default, is where the leaving scenes exit, after which the outgoing image keeps their last frame. The incoming image stays empty until the next scene enters. The call raises `A transition effect needs a "render" method.`, `A transition effect needs a "switchProgress" between 0 and 1.`, `A transition effect that covers the screen at its "switchProgress" takes no "exitProgress".` or `A transition effect needs an "exitProgress" between 0 and 1.` for effects that break these rules.
 
 ```lua
 local scene = require('haylen.scene')
@@ -362,7 +362,7 @@ scene.replace({name = 'battle', enter = function() print('the battle begins') en
 
 ### scene.push(scene, options)
 
-Puts `scene` on top of the stack once it loaded and returns a promise. The current top scene receives `pause` and the new scene `enter`. `scene` must be a table, otherwise the call raises `bad argument #1 to 'push' (table expected, got string)` or the equivalent for the given type, and a `processMode` other than the five modes raises an error at once. A scene that is still on the stack when the change starts stops the app with `The scene is already on the stack.`
+Puts `scene` on top of the stack once it loaded and returns a promise. The current top scene receives `pause` and the new scene `enter`. The argument `scene` must be a table, otherwise the call raises `bad argument #1 to 'push' (table expected, got string)` or the equivalent for the given type, and a `processMode` other than the five modes raises an error at once. A scene that is still on the stack when the change starts stops the app with `The scene is already on the stack.`
 
 ```lua
 local scene = require('haylen.scene')
@@ -466,7 +466,7 @@ scene.popToRoot({duration = 0.5})
 
 ### scene.preload(scene, params)
 
-Starts loading `scene` in the background with its `load` hook and `params`, without changing the stack, and returns a promise that resolves with `true` once it loaded, with `false` when the preload was cancelled or cleared, or rejects with the error of a failed load. A later `push` or `replace` of the scene takes it at once, or waits only for the rest of its load, and it keeps the params of its preload: a change that brings it with `params` stops the app with `A preloaded scene keeps the params of its preload.` Preloading a scene that is loaded or on the stack raises `The scene is already loaded or on the stack.`
+Starts loading `scene` in the background with its `load` hook and `params`, without changing the stack, and returns a promise that resolves with `true` once it loaded, with `false` when the preload was cancelled or cleared, or rejects with the error of a failed load. A later `push` or `replace` of the scene takes it at once, or waits only for the rest of its load, and it keeps the `params` of its preload: a change that brings it with `params` stops the app with `A preloaded scene keeps the "params" of its preload.` Preloading a scene that is loaded or on the stack raises `The scene is already loaded or on the stack.`
 
 ```lua
 local scene = require('haylen.scene')
@@ -662,7 +662,7 @@ print(value, message) -- 0.25 reading the map
 
 ### scene.listen(owner, source, fn, options)
 
-Connects `fn` to a signal of [haylen.signal](signal.md), or subscribes it to the events named by a string on [haylen.events](events.md), for as long as `owner` lives, and returns the [Connection](signal.md#connection). `options` takes the options of `sig:connect` or `events.on`. A scene owner ends its listeners when it unloads. `owner` must be a table or a userdata, otherwise the call raises `An owner must be a table or a userdata, not <type>.`
+Connects `fn` to a signal of [`haylen.signal`](signal.md), or subscribes it to the events named by a string on [`haylen.events`](events.md), for as long as `owner` lives, and returns the [`Connection`](signal.md#connection). The argument `options` takes the options of `sig:connect` or `events.on`. A scene owner ends its listeners when it unloads. The argument `owner` must be a table or a userdata, otherwise the call raises `An owner must be a table or a userdata, not <type>.`
 
 ```lua
 local scene = require('haylen.scene')
@@ -686,7 +686,7 @@ end)
 
 ### scene.spawn(owner, fn)
 
-Runs `fn` as a task that `owner` holds, the way `async.spawn` runs a task: it may wait on promises with `:await()`, and an error it raises reaches the error screen with the stack of the task. When the owner is released, such as a scene when it unloads, the task stops for good and its pending to-be-closed variables close, so it never resumes, even when a promise it waits for settles later. A task that releases its own owner stops at its next wait. Tasks started with `async.spawn` belong to nobody and run to their end. `owner` must be a table or a userdata.
+Runs `fn` as a task that `owner` holds, the way `async.spawn` runs a task: it may wait on promises with `:await()`, and an error it raises reaches the error screen with the stack of the task. When the owner is released, such as a scene when it unloads, the task stops for good and its pending to-be-closed variables close, so it never resumes, even when a promise it waits for settles later. A task that releases its own owner stops at its next wait. Tasks started with `async.spawn` belong to nobody and run to their end. The argument `owner` must be a table or a userdata.
 
 ```lua
 local scene = require('haylen.scene')
@@ -708,7 +708,7 @@ scene.push(profile)
 
 ## Scene
 
-`scene.Scene` is a class of [haylen.class](../lua.md#classes) to build scenes on. Its instances have two methods: `self:listen(source, fn, options)`, which calls `scene.listen` with the scene as the owner, and `self:spawn(fn)`, which calls `scene.spawn` with the scene as the owner.
+The table `scene.Scene` is a class of [`haylen.class`](../lua.md#classes) to build scenes on. Its instances have two methods: `self:listen(source, fn, options)`, which calls `scene.listen` with the scene as the owner, and `self:spawn(fn)`, which calls `scene.spawn` with the scene as the owner.
 
 ```lua
 local haylen = require('haylen')
@@ -736,7 +736,7 @@ require('haylen.timer').after(0.1, function() events.emit('checkpoint', 2) end)
 
 ## Events
 
-The `event` hook receives one table per platform event. Its `type` field names the event, and positions are in design units, the same space the app draws in. Lifecycle changes such as the app going to the background, and the lifecycle of scenes and of every change, also reach the listeners of [haylen.events](events.md#engine-events), which is the better place to react to them.
+The `event` hook receives one table per platform event. Its `type` field names the event, and positions are in design units, the same space the app draws in. Lifecycle changes such as the app going to the background, and the lifecycle of scenes and of every change, also reach the listeners of [`haylen.events`](events.md#engine-events), which is the better place to react to them.
 
 | `type` | Extra fields |
 | --- | --- |
@@ -757,7 +757,7 @@ The `event` hook receives one table per platform event. Its `type` field names t
 | `'keyboardChanged'` | `frame`, the rectangle the on-screen keyboard covers in design units, empty while it is hidden. |
 | `'networkChanged'` | `online`, whether the device has a network. |
 | `'interruptionBegan'`, `'interruptionEnded'` | None. The system interrupted the app, such as for a phone call, or gave it back. |
-| `'windowMoved'`, `'monitorsChanged'` | None. The desktop window moved, or the monitors of the desktop changed, as the `windowMoved` and `windowMonitorsChanged` events of [haylen.events](events.md#engine-events) report with their details. |
+| `'windowMoved'`, `'monitorsChanged'` | None. The desktop window moved, or the monitors of the desktop changed, as the `windowMoved` and `windowMonitorsChanged` events of [`haylen.events`](events.md#engine-events) report with their details. |
 
 The full list of key names is in the `haylen.input` reference. Gameplay should read input through the action map of `haylen.input`, and events are best for text entry and pointer tracking.
 

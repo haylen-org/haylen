@@ -125,7 +125,7 @@ TEST_F(NativeLuaTest, RunsFrameCallbacksAtOnceAndOthersAtTheNextFrame) {
     fixture.runLua("later:free() later:free()");
     EXPECT_EQ(fixture.lua("return later.freed and not atOnce.freed"), "true");
     EXPECT_NE(fixture.lua("return later.pointer").find("was already released"), std::string::npos);
-    EXPECT_NE(fixture.lua("native.callback('void (int)', print, {thread = 'main'})").find("is 'any' or 'frame'"), std::string::npos);
+    EXPECT_NE(fixture.lua("native.callback('void (int)', print, {thread = 'main'})").find("is \"any\" or \"frame\""), std::string::npos);
     EXPECT_NE(fixture.lua("native.callback('int (int)', print)").find("returns nothing"), std::string::npos);
     EXPECT_NE(fixture.lua("native.callback('void (int)', print, {threads = 'any'})").find("threads"), std::string::npos);
 }
@@ -157,7 +157,7 @@ TEST_F(NativeLuaTest, ReportsErrorsOfCallbacksOnTheErrorScreen) {
         test::EngineFixture fixture;
         prepare(fixture);
         fixture.runLua("failing = native.callback('void (int32_t index, const char* label)', function() error('callback failed') end, {thread = 'frame'}) visited = lib.native_test_visit(1, failing.pointer)");
-        EXPECT_EQ(fixture.lua("return visited"), "1") << "native code keeps running after the error";
+        EXPECT_EQ(fixture.lua("return visited"), "1") << "Native code keeps running after the error.";
         ASSERT_NE(fixture.engine().getError(), nullptr);
         EXPECT_NE(std::string(fixture.engine().getError()->what()).find("callback failed"), std::string::npos);
     }
@@ -166,7 +166,7 @@ TEST_F(NativeLuaTest, ReportsErrorsOfCallbacksOnTheErrorScreen) {
     prepare(fixture);
     fixture.runLua("negative = native.callback('void (int32_t value, const uint8_t data[value], size_t size)', function() called = true end) lib.native_test_report_later(negative.pointer, -3)");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
-    EXPECT_NE(std::string(fixture.engine().getError()->what()).find("negative length -3 for data"), std::string::npos);
+    EXPECT_NE(std::string(fixture.engine().getError()->what()).find("negative length -3 for \"data\""), std::string::npos);
     EXPECT_EQ(fixture.lua("return called"), "nil");
 }
 
@@ -234,7 +234,7 @@ TEST_F(NativeLuaTest, GivesLibrariesTheInterfaceOfTheEngine) {
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return givenUp ~= nil and #cancelled == 2") == "true"; }));
     EXPECT_EQ(fixture.lua("return echo.echo.word .. ' ' .. tostring(echo.thread)"), "hi true");
 
-    // The init function declared the library the native part of the plugin, which the handle made before sees too.
+    // The `init` function declared the library the native part of the plugin, which the handle made before sees too.
     EXPECT_EQ(fixture.lua("return tostring(nativeBefore) .. ' ' .. tostring(testPlugin.native) .. ' ' .. tostring(platform.plugins()[1].native)"), "false true true");
 
     // The library announced itself with a retained event, which waits for a listener that connects late.
@@ -319,7 +319,7 @@ TEST_F(NativeLuaTest, OpensTheScreensOfLibrariesAndCoversTheApp) {
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return closed ~= nil") == "true"; }));
     EXPECT_EQ(fixture.lua("return tostring(closed.closed) .. ' ' .. tostring(closed.thread) .. ' ' .. tostring(haylen.appCovered())"), "true true false");
 
-    // A screen that the app gives up hears it, closes and ends as cancelled.
+    // A screen that the app gives up hears it, closes and ends as `cancelled`.
     fixture.runLua("again = test:openScreen('panel') async.spawn(function() _, againFailure = again:await() end)");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #opened") == "2"; }));
     fixture.runLua("again:cancel()");
@@ -347,7 +347,7 @@ TEST_F(NativeLuaTest, HandsTheErrorsThatStopAppsToLibraries) {
         fixture.runLua("native.load('native_test', {init = 'native_test_haylen_init'}) native.load('native_test', {init = 'native_test_haylen_init'}) " + declarations);
         fixture.runLua("require('haylen').reportError('the first app failed')");
         ASSERT_NE(fixture.engine().getError(), nullptr);
-        EXPECT_EQ(fixture.lua("return lib.native_test_error_count() - before"), "1") << "a handler that registered twice hears an error once";
+        EXPECT_EQ(fixture.lua("return lib.native_test_error_count() - before"), "1") << "A handler that registered twice hears an error once.";
         EXPECT_EQ(core::Json::parse(fixture.lua("return ffi.string(lib.native_test_last_error())")), fixture.engine().getError()->toJson());
     }
 
@@ -363,9 +363,9 @@ TEST_F(NativeLuaTest, HandsTheErrorsThatStopAppsToLibraries) {
 TEST_F(NativeLuaTest, ExplainsWhyALibraryDidNotLoad) {
     test::EngineFixture fixture;
     prepare(fixture);
-    EXPECT_NE(fixture.lua("native.load('native_nowhere')").find("The native library 'native_nowhere' could not be loaded. These are the places it searched:"), std::string::npos);
-    EXPECT_NE(fixture.lua("native.load('native_test', {init = 'native_test_absent'})").find("The native library 'native_test' has no function 'native_test_absent'."), std::string::npos);
-    EXPECT_NE(fixture.lua("native.load('native_test', {init = 'native_test_failing_init'})").find("The function 'native_test_failing_init' of the native library 'native_test' failed with code 7."), std::string::npos);
+    EXPECT_NE(fixture.lua("native.load('native_nowhere')").find("The native library \"native_nowhere\" could not be loaded. These are the places it searched:"), std::string::npos);
+    EXPECT_NE(fixture.lua("native.load('native_test', {init = 'native_test_absent'})").find("The native library \"native_test\" has no function \"native_test_absent\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("native.load('native_test', {init = 'native_test_failing_init'})").find("The function \"native_test_failing_init\" of the native library \"native_test\" failed with code 7."), std::string::npos);
     EXPECT_NE(fixture.lua("native.load('native_test', {inti = 'x'})").find("inti"), std::string::npos);
     EXPECT_EQ(fixture.lua("return ffi.istype('NativeTestPoint', ffi.new('NativeTestPoint')) and native.load('native_test', {global = true}) ~= nil"), "true");
 }

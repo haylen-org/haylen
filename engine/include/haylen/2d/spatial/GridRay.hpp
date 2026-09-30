@@ -22,7 +22,7 @@ class GridRay final {
         float distance = 0.0F;
     };
 
-    // Calls visit(cell, distance, normal) for every crossed cell in order, with the distance where the ray enters the cell and the normal of the side it enters through, which is zero for the cell of the origin. Visiting stops when visit returns false or the ray ends, so the ray needs a finite length within the 32-bit range of cells and the cells a positive size, or it throws std::invalid_argument.
+    // Calls `visit(cell, distance, normal)` for every crossed cell in order, with the distance where the ray enters the cell and the normal of the side it enters through, which is zero for the cell of the origin. Visiting stops when `visit` returns `false` or the ray ends, so the ray needs a finite length within the 32-bit range of cells and the cells a positive size, or it throws `std::invalid_argument`.
     template <typename Visit> static void traverse(const math::Ray& ray, math::Vec2 cellSize, Visit&& visit) {
         requireCastable(ray, cellSize);
         Cell cell{static_cast<int>(std::floor(ray.origin.x / cellSize.x)), static_cast<int>(std::floor(ray.origin.y / cellSize.y))};
@@ -58,7 +58,7 @@ class GridRay final {
         }
     }
 
-    // Returns the first crossed cell for which blocked(cell) is true. A ray that starts in a blocked cell hits it at distance zero with a zero normal.
+    // Returns the first crossed cell for which `blocked(cell)` is `true`. A ray that starts in a blocked cell hits it at distance zero with a zero normal.
     template <typename Blocked>
         requires std::predicate<Blocked&, Cell>
     [[nodiscard]] static std::optional<Hit> cast(const math::Ray& ray, math::Vec2 cellSize, Blocked&& blocked) {
@@ -75,7 +75,7 @@ class GridRay final {
         return hit;
     }
 
-    // Casts against the solid cells of a grid. The ray only travels while it is over the grid, so its length may be infinite, and it enters a grid from outside through the side of the grid. Throws std::invalid_argument for cells without a positive and finite size, even when the ray misses the grid.
+    // Casts against the solid cells of a grid. The ray only travels while it is over the grid, so its length may be infinite, and it enters a grid from outside through the side of the grid. Throws `std::invalid_argument` for cells without a positive and finite size, even when the ray misses the grid.
     [[nodiscard]] static std::optional<Hit> cast(const math::Ray& ray, math::Vec2 cellSize, const CellGrid& grid);
 
   private:

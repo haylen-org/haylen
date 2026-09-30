@@ -28,7 +28,7 @@ struct Raycaster::Gather {
     std::optional<RaycastHit> best;
     std::vector<RaycastHit> hits;
 
-    // Box2D prefilters by category and mask, unless a group asks for the full rule, which report applies itself.
+    // Box2D prefilters by category and mask, unless a group asks for the full rule, which `report` applies itself.
     [[nodiscard]] b2QueryFilter getQueryFilter() const noexcept {
         return filter.group == 0 ? Box2DConverter::toQueryFilter(filter) : b2QueryFilter{.categoryBits = ~std::uint64_t{0}, .maskBits = ~std::uint64_t{0}};
     }
@@ -63,7 +63,7 @@ template <typename Cast> std::optional<RaycastHit> Raycaster::firstAccepted(cons
         return gather.best;
     }
 
-    // Accept runs after Box2D finished, in order from the start of the cast, so it may even change the world.
+    // The `accept` function runs after Box2D finished, in order from the start of the cast, so it may even change the world.
     std::ranges::sort(gather.hits, [](const RaycastHit& lhs, const RaycastHit& rhs) { return lhs.fraction != rhs.fraction ? lhs.fraction < rhs.fraction : lhs.shape.getId() < rhs.shape.getId(); });
     for (const RaycastHit& hit : gather.hits) {
         if (filter.accept(hit)) {

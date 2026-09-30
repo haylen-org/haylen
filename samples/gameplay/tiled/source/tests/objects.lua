@@ -1,4 +1,4 @@
--- Every object shape of Tiled and objects made from templates, outlined from map:objects and picked under the pointer, while map:draw draws the tile and text objects itself.
+-- Every object shape of Tiled and objects made from templates, outlined from `map:objects` and picked under the pointer, while `map:draw` draws the tile and text objects itself.
 local haylen = require('haylen')
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')

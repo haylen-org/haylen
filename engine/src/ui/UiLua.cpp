@@ -63,7 +63,7 @@ void UiLua::pushRoot(lua_State* L) {
     lua_getfield(L, LUA_REGISTRYINDEX, kHandlersKey);
 }
 
-// A handler is a function stored under a key such as onClick, and it answers the event named click.
+// A handler is a function stored under a key such as `onClick`, and it answers the event named `click`.
 std::optional<std::string> UiLua::handlerEvent(lua_State* L, int key, int value) {
     if (lua_type(L, key) != LUA_TSTRING || !lua_isfunction(L, value)) {
         return std::nullopt;
@@ -77,7 +77,7 @@ std::optional<std::string> UiLua::handlerEvent(lua_State* L, int key, int value)
     return event;
 }
 
-// Stores the function at the value index as handlers[id][event] in the handlers table at the given index.
+// Stores the function at the value index as `handlers[id][event]` in the handlers table at the given index.
 void UiLua::storeHandler(lua_State* L, int handlers, const std::string& id, const std::string& event, int value) {
     if (lua_getfield(L, handlers, id.c_str()) != LUA_TTABLE) {
         lua_pop(L, 1);
@@ -101,7 +101,7 @@ std::string UiLua::nextGeneratedId(lua_State* L) {
     return "#" + std::to_string(next);
 }
 
-// Converts a node table into the JSON the document reads, pulling its handlers into the handlers table. Children come from a children list or from the array part of the node, which lets trees read like ui.column{ui.label{...}}. The limits of a document apply while converting, so a table that holds itself or shares its children many times over raises an error instead of growing without end.
+// Converts a node table into the JSON the document reads, pulling its handlers into the handlers table. Children come from a `children` list or from the array part of the node, which lets trees read like `ui.column{ui.label{...}}`. The limits of a document apply while converting, so a table that holds itself or shares its children many times over raises an error instead of growing without end.
 core::Json UiLua::convertNode(lua_State* L, int index, int handlers, std::size_t depth, std::size_t& count) {
     luaL_checktype(L, index, LUA_TTABLE);
     if (depth >= Document::kMaxDepth || ++count > Document::kMaxNodes) {
@@ -137,7 +137,7 @@ core::Json UiLua::convertNode(lua_State* L, int index, int handlers, std::size_t
     }
 
     if (json.contains("id") && json["id"].is_string() && json["id"].get<std::string>().starts_with('#')) {
-        luaL_error(L, "UI ids starting with # are reserved for nodes the engine names.");
+        luaL_error(L, "UI ids starting with \"#\" are reserved for nodes the engine names.");
     }
     if (hasHandlers) {
         if (!json.contains("id")) {
@@ -158,7 +158,7 @@ core::Json UiLua::convertNode(lua_State* L, int index, int handlers, std::size_t
     const auto arrayLength = static_cast<lua_Integer>(lua_rawlen(L, node));
     const bool listed = lua_getfield(L, node, "children") != LUA_TNIL;
     if (listed && arrayLength > 0) {
-        luaL_error(L, "A UI node takes children either in its children list or in its array part, not both.");
+        luaL_error(L, "A UI node takes children either in its \"children\" list or in its array part, not both.");
     }
     if (listed || arrayLength > 0) {
         const int children = listed ? lua_gettop(L) : node;
@@ -176,7 +176,7 @@ core::Json UiLua::convertNode(lua_State* L, int index, int handlers, std::size_t
     return json;
 }
 
-// Converts a properties table for set, collecting its handlers by event name into the table at the collected index. Every other key must be a property.
+// Converts a properties table for `set`, collecting its handlers by event name into the table at the collected index. Every other key must be a property.
 core::Json UiLua::convertProperties(lua_State* L, int index, int collected) {
     luaL_checktype(L, index, LUA_TTABLE);
     const int table = lua_absindex(L, index);
@@ -208,7 +208,7 @@ void UiLua::collectIds(const core::Json& node, std::vector<std::string>& ids) {
     }
 }
 
-// Pushes the handlers table of a mounted document, or nothing and false when it is not mounted.
+// Pushes the handlers table of a mounted document, or nothing and `false` when it is not mounted.
 bool UiLua::pushHandlers(lua_State* L, const Document& document) {
     pushRoot(L);
     lua_rawgetp(L, -1, &document);
@@ -238,7 +238,7 @@ void UiLua::pruneHandlers(lua_State* L, int handlers, const Document& document) 
     }
 }
 
-// Pushes the table listeners and handlers receive: the event values plus id, name and document, which is nil for documents mounted from C++.
+// Pushes the table listeners and handlers receive: the event values plus `id`, `name` and `document`, which is `nil` for documents mounted from C++.
 void UiLua::pushEventTable(lua_State* L, const Document& document, const Event& event) {
     lua::JsonConverter::push(L, event.value.is_object() ? event.value : core::Json::object());
     lua::Stack::push(L, event.id);
@@ -259,7 +259,7 @@ Document& UiLua::checkDocument(lua_State* L) {
     return lua::Userdata::check<Document>(L, 1);
 }
 
-// Mounts a tree with mount(tree[, {placement = 'safe' or 'screen', layer = 0, owner = scene}]) and returns the document. A document with an owner is unmounted when the owner is released, such as a scene when it unloads.
+// Mounts a tree with `mount(tree[, {placement = 'safe' or 'screen', layer = 0, owner = scene}])` and returns the document. A document with an owner is unmounted when the owner is released, such as a scene when it unloads.
 int UiLua::mount(lua_State* L) {
     Placement placement = Placement::Safe;
     int layer = 0;
@@ -270,7 +270,7 @@ int UiLua::mount(lua_State* L) {
         std::string name = "safe";
         lua::Table::readField(L, 2, "placement", name);
         if (name != "safe" && name != "screen") {
-            return luaL_error(L, "The placement option must be safe or screen.");
+            return luaL_error(L, "The \"placement\" option must be \"safe\" or \"screen\".");
         }
         placement = name == "safe" ? Placement::Safe : Placement::Screen;
         lua::Table::readField(L, 2, "layer", layer);
@@ -305,7 +305,7 @@ int UiLua::mount(lua_State* L) {
     return 1;
 }
 
-// Pushes the userdata of a document for Lua listeners of the document events, or nil for a document mounted from C++.
+// Pushes the userdata of a document for Lua listeners of the document events, or `nil` for a document mounted from C++.
 void UiLua::pushDocument(lua_State* L, const std::shared_ptr<Document>& document) {
     pushRoot(L);
     if (lua_rawgetp(L, -1, document.get()) == LUA_TTABLE) {
@@ -377,7 +377,7 @@ int UiLua::documentReplaceChildren(lua_State* L) {
     return 0;
 }
 
-// Removes the handler of one event with removeHandler(id, event) and returns whether the node had one.
+// Removes the handler of one event with `removeHandler(id, event)` and returns whether the node had one.
 int UiLua::documentRemoveHandler(lua_State* L) {
     Document& self = checkDocument(L);
     const std::string id = lua::Stack::read<std::string>(L, 2);
@@ -386,7 +386,7 @@ int UiLua::documentRemoveHandler(lua_State* L) {
         return luaL_error(L, "The UI document is not mounted.");
     }
     if (self.find(id) == nullptr) {
-        return luaL_error(L, "The UI document has no node with the id %s.", id.c_str());
+        return luaL_error(L, "The UI document has no node with the id \"%s\".", id.c_str());
     }
     if (lua_getfield(L, -1, id.c_str()) != LUA_TTABLE) {
         lua::Stack::push(L, false);
@@ -410,7 +410,7 @@ int UiLua::documentGet(lua_State* L) {
     return 1;
 }
 
-// Returns where a node was last drawn with bounds(id), in the design coordinates of screen canvases, or nil before it was drawn.
+// Returns where a node was last drawn with `bounds(id)`, in the design coordinates of screen canvases, or `nil` before it was drawn.
 int UiLua::documentBounds(lua_State* L) {
     const Component* component = checkDocument(L).find(lua::Stack::read<std::string_view>(L, 2));
     if (component == nullptr || component->getBounds().isEmpty()) {
@@ -458,7 +458,7 @@ int UiLua::documentTransform(lua_State* L) {
     const std::string id = lua::Stack::read<std::string>(L, 2);
     Component* component = checkDocument(L).find(id);
     if (component == nullptr) {
-        return luaL_error(L, "The UI document has no node with the id %s.", id.c_str());
+        return luaL_error(L, "The UI document has no node with the id \"%s\".", id.c_str());
     }
 
     // The document keeps one handle per node, so a tween, which holds its target weakly, runs for as long as the document does.
@@ -478,11 +478,11 @@ int UiLua::documentPlacement(lua_State* L) {
     return 1;
 }
 
-// Builds a node table with node(kind, properties), the long form of ui.<kind>{...}.
+// Builds a node table with `node(kind, properties)`, the long form of `ui.<kind>{...}`.
 int UiLua::node(lua_State* L) {
     const std::string kind = lua::Stack::read<std::string>(L, 1);
     if (!getPlugin(L).getComponents().contains(kind)) {
-        return luaL_error(L, "There is no UI component kind named %s.", kind.c_str());
+        return luaL_error(L, "There is no UI component kind named \"%s\".", kind.c_str());
     }
     if (lua_isnoneornil(L, 2)) {
         lua_newtable(L);
@@ -501,11 +501,11 @@ int UiLua::kindBuilder(lua_State* L) {
     return node(L);
 }
 
-// Makes ui.button{...} and every other registered kind a shortcut for node(kind, ...).
+// Makes `ui.button{...}` and every other registered kind a shortcut for `node(kind, ...)`.
 int UiLua::moduleIndex(lua_State* L) {
     const std::string_view key = lua::Stack::read<std::string_view>(L, 2);
     if (!getPlugin(L).getComponents().contains(key)) {
-        return luaL_error(L, "The module haylen.ui has no member '%s'.", std::string(key).c_str());
+        return luaL_error(L, "The module \"haylen.ui\" has no member \"%s\".", std::string(key).c_str());
     }
     lua_pushvalue(L, 2);
     lua_pushcclosure(L, &lua::Binding::native<&kindBuilder>, 1);
@@ -527,14 +527,14 @@ int UiLua::themes(lua_State* L) {
     return 1;
 }
 
-// Loads a theme file with loadTheme(path[, base]) and returns its name.
+// Loads a theme file with `loadTheme(path[, base])` and returns its name.
 int UiLua::loadTheme(lua_State* L) {
     const std::string base = lua_isnoneornil(L, 2) ? std::string("dark") : lua::Stack::read<std::string>(L, 2);
     lua::Stack::push(L, getPlugin(L).loadTheme(lua::Runtime::getEngine(L), lua::Stack::read<std::string_view>(L, 1), base));
     return 1;
 }
 
-// Registers a theme from a table in the theme file format with addTheme(document[, base]) and returns its name.
+// Registers a theme from a table in the theme file format with `addTheme(document[, base])` and returns its name.
 int UiLua::addTheme(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     const std::string base = lua_isnoneornil(L, 2) ? std::string("dark") : lua::Stack::read<std::string>(L, 2);
@@ -546,7 +546,7 @@ int UiLua::themeColor(lua_State* L) {
     const std::string name = lua::Stack::read<std::string>(L, 1);
     const std::optional<Theme::Color> role = Theme::colorFromName(name);
     if (!role) {
-        return luaL_error(L, "The theme has no color role named '%s'.", name.c_str());
+        return luaL_error(L, "The theme has no color role named \"%s\".", name.c_str());
     }
     lua::Stack::push(L, getPlugin(L).getTheme().getColor(*role));
     return 1;
@@ -556,18 +556,18 @@ int UiLua::themeMetric(lua_State* L) {
     const std::string name = lua::Stack::read<std::string>(L, 1);
     const std::optional<Theme::Metric> role = Theme::metricFromName(name);
     if (!role) {
-        return luaL_error(L, "The theme has no metric named '%s'.", name.c_str());
+        return luaL_error(L, "The theme has no metric named \"%s\".", name.c_str());
     }
     lua::Stack::push(L, getPlugin(L).getTheme().getMetric(*role));
     return 1;
 }
 
-// Returns a font role of the active theme as {font, size, bold, italic}.
+// Returns a font role of the active theme as `{font, size, bold, italic}`.
 int UiLua::themeFont(lua_State* L) {
     const std::string name = lua::Stack::read<std::string>(L, 1);
     const std::optional<Theme::Font> role = Theme::fontFromName(name);
     if (!role) {
-        return luaL_error(L, "The theme has no font role named '%s'.", name.c_str());
+        return luaL_error(L, "The theme has no font role named \"%s\".", name.c_str());
     }
     const Theme::FontStyle& style = getPlugin(L).getTheme().getFont(*role);
     lua_createtable(L, 0, 4);
@@ -582,12 +582,12 @@ int UiLua::themeFont(lua_State* L) {
     return 1;
 }
 
-// Returns the image of a surface of the active theme as {slice, scale, padding = {top, right, bottom, left}, tint, colorize}, or nil for a surface painted with flat colors.
+// Returns the image of a surface of the active theme as `{slice, scale, padding = {top, right, bottom, left}, tint, colorize}`, or `nil` for a surface painted with flat colors.
 int UiLua::themeSurface(lua_State* L) {
     const std::string name = lua::Stack::read<std::string>(L, 1);
     const std::optional<Theme::Surface> role = Theme::surfaceFromName(name);
     if (!role) {
-        return luaL_error(L, "The theme has no surface named '%s'.", name.c_str());
+        return luaL_error(L, "The theme has no surface named \"%s\".", name.c_str());
     }
     const Theme::Image* image = getPlugin(L).getTheme().getSurface(*role);
     if (image == nullptr) {
@@ -608,7 +608,7 @@ int UiLua::themeSurface(lua_State* L) {
     return 1;
 }
 
-// Calls listener(event) for every event of every mounted document with onEvent(listener[, {owner = scene}]) and returns the connection. A listener with an owner ends when the owner is released, such as a scene when it unloads.
+// Calls `listener(event)` for every event of every mounted document with `onEvent(listener[, {owner = scene}])` and returns the connection. A listener with an owner ends when the owner is released, such as a scene when it unloads.
 int UiLua::onEvent(lua_State* L) {
     luaL_checktype(L, 1, LUA_TFUNCTION);
     int owner = 0;
@@ -647,7 +647,7 @@ int UiLua::onEvent(lua_State* L) {
     return 1;
 }
 
-// Registers a font with addFont(name, path) from a TrueType file, or with addFont(name, family) from a FontFamily or a Font.
+// Registers a font with `addFont(name, path)` from a TrueType file, or with `addFont(name, family)` from a `FontFamily` or a `Font`.
 int UiLua::addFont(lua_State* L) {
     if (lua_type(L, 2) == LUA_TSTRING) {
         getPlugin(L).addFont(lua::Runtime::getEngine(L), lua::Stack::read<std::string>(L, 1), lua::Stack::read<std::string_view>(L, 2));
@@ -667,7 +667,7 @@ int UiLua::usingKeyboard(lua_State* L) {
     return 1;
 }
 
-// Returns the document and the node id that hold the focus with focused(), or nil when no mounted document holds it. A focused node without an id returns the document alone.
+// Returns the document and the node id that hold the focus with `focused()`, or `nil` when no mounted document holds it. A focused node without an id returns the document alone.
 int UiLua::focused(lua_State* L) {
     plugins::UiPlugin& plugin = getPlugin(L);
     const std::shared_ptr<Document> document = plugin.findMounted(plugin.getFocus().getFocusedDocument());
@@ -701,7 +701,7 @@ int UiLua::safeAreaVisible(lua_State* L) {
     return 1;
 }
 
-// Sets the direction of the whole UI with setDirection('leftToRight', 'rightToLeft' or 'auto'), where auto follows the direction the current language declares.
+// Sets the direction of the whole UI with `setDirection('leftToRight', 'rightToLeft' or 'auto')`, where `auto` follows the direction the current language declares.
 int UiLua::setDirection(lua_State* L) {
     getPlugin(L).setDirection(lua::Stack::read<text::Direction>(L, 1));
     return 0;

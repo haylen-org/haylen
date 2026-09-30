@@ -1,6 +1,6 @@
 # haylen.signal
 
-`haylen.signal` creates signals. A signal lets one object announce that something happened without knowing who listens, and emitting it calls every connected function with the emitted values. Use a signal when one object owns the announcement, such as a player that announces its health, and use [haylen.events](events.md) for announcements by name that the whole app may care about.
+The module `haylen.signal` creates signals. A signal lets one object announce that something happened without knowing who listens, and emitting it calls every connected function with the emitted values. Use a signal when one object owns the announcement, such as a player that announces its health, and use [`haylen.events`](events.md) for announcements by name that the whole app may care about.
 
 ```lua
 local signal = require('haylen.signal')
@@ -59,14 +59,14 @@ end
 
 ### sig:connect(fn, options)
 
-Connects `fn` to the signal and returns a [Connection](#connection). The same function may be connected more than once, and it is then called once per connection. `options` is an optional table with the keys below, and unknown keys raise `Unknown option '<key>'.`
+Connects `fn` to the signal and returns a [`Connection`](#connection). The same function may be connected more than once, and it is then called once per connection. The argument `options` is an optional table with the keys below, and unknown keys raise `Unknown option "<key>".`
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `priority` | integer | `0` | Listeners with a higher priority run first. |
 | `once` | boolean | `false` | Disconnects the listener right before its first call. |
 | `deferred` | boolean | `false` | Calls the listener at the end of the frame with the values of each emit. It is skipped when it disconnects before then. |
-| `owner` | table or userdata | `nil` | Disconnects when the owner ends, as the [owners of haylen.events](events.md#owners) describe. |
+| `owner` | table or userdata | `nil` | Disconnects when the owner ends, as the [owners of `haylen.events`](events.md#owners) describe. |
 
 The signal keeps `fn` alive until it disconnects, except for a listener with an owner, whose function the owner keeps. Dropping the returned connection does not disconnect it.
 
@@ -142,7 +142,7 @@ print(steps, stepped.emissionCount, stepped.name) -- 1 2 stepped
 
 ## Connection
 
-A `Connection` stands for one registered listener. `sig:connect` returns it, and so do `events.on`, `scene.listen` and the other engine functions that register listeners.
+A `Connection` stands for one registered listener. The method `sig:connect` returns it, and so do `events.on`, `scene.listen` and the other engine functions that register listeners.
 
 ### connection:disconnect()
 

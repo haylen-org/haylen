@@ -35,7 +35,7 @@ struct Occluder {
     float rotation = 0.0F;
     math::Vec2 scale{1.0F, 1.0F};
 
-    // Resolves the names "disabled", "clockwise" and "counterClockwise".
+    // Resolves the names `disabled`, `clockwise` and `counterClockwise`.
     [[nodiscard]] static std::optional<Cull> cullFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view cullName(Cull value) noexcept;
 
@@ -45,7 +45,7 @@ struct Occluder {
     // Builds one occluder per object of the named object layer of a Tiled map, or of every object layer when the name is empty, in world coordinates: closed shapes closed and polylines open. Points and text have no outline and make no occluder.
     [[nodiscard]] static std::vector<Occluder> fromMap(const tiled::MapRenderer& map, std::string_view layer = {});
 
-    // Throws std::invalid_argument when an open occluder has fewer than 2 points or a closed one fewer than 3.
+    // Throws `std::invalid_argument` when an open occluder has fewer than 2 points or a closed one fewer than 3.
     void validate() const;
 
     // Returns the points in world coordinates, through the scale, the rotation and the position.

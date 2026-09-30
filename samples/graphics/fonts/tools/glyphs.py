@@ -107,7 +107,7 @@ LINE_HEIGHT = 10
 
 
 def pixels(character: str) -> list[tuple[int, int]]:
-    """Returns the lit pixels of a glyph as (column, row) pairs."""
+    """Returns the lit pixels of a glyph as `(column, row)` pairs."""
     rows = GLYPHS[character].split()
     return [(column, row) for row, line in enumerate(rows) for column, cell in enumerate(line) if cell == "#"]
 

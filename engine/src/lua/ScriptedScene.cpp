@@ -91,7 +91,7 @@ void ScriptedScene::pushParams(lua_State* L, const std::any& params) {
     }
     const auto* value = std::any_cast<std::shared_ptr<Reference>>(&params);
     if (value == nullptr) {
-        throw std::invalid_argument("A Lua scene takes the params of a change from Lua.");
+        throw std::invalid_argument("A Lua scene takes the \"params\" of a change from Lua.");
     }
     (*value)->push(L);
 }
@@ -222,7 +222,7 @@ core::ProcessMode ScriptedScene::readProcessMode(lua_State* L, int index) {
     }
     const std::optional<core::ProcessMode> mode = lua_type(L, -1) == LUA_TSTRING ? EnumNames<core::ProcessMode>::fromName(lua_tostring(L, -1)) : std::nullopt;
     if (!mode) {
-        luaL_error(L, "The processMode must be 'inherit', 'pausable', 'whenPaused', 'always' or 'disabled'.");
+        luaL_error(L, "The \"processMode\" must be \"inherit\", \"pausable\", \"whenPaused\", \"always\" or \"disabled\".");
     }
     lua_pop(L, 1);
     return *mode;

@@ -39,7 +39,7 @@ std::string JsonConverter::objectKey(lua_State* L, int index) {
         return {text, length};
     }
     if (lua_type(L, index) == LUA_TNUMBER) {
-        // The key is converted from a copy so lua_tolstring never changes the key that lua_next expects.
+        // The key is converted from a copy so `lua_tolstring` never changes the key that `lua_next` expects.
         lua_pushvalue(L, index);
         std::string key = lua_tostring(L, -1);
         lua_pop(L, 1);

@@ -43,14 +43,14 @@ TEST_F(AssetsLuaTest, LoadsAssetsSynchronously) {
     EXPECT_EQ(lua("return table.concat(assets.list('images'), ',')"), "images/hero.png,images/tree.png");
     EXPECT_EQ(lua("return #assets.list()"), "6");
     EXPECT_EQ(lua("return assets.load('images/hero.png').height .. ' ' .. #assets.load('data/level.json', 'json').trees"), "4 3");
-    EXPECT_NE(lua("return assets.load('data/notes.txt')").find("No asset type handles the file 'data/notes.txt'."), std::string::npos);
-    EXPECT_NE(lua("return assets.texture('images/missing.png')").find("The package file 'test/content/images/missing.png' was not found."), std::string::npos);
+    EXPECT_NE(lua("return assets.load('data/notes.txt')").find("No asset type handles the file \"data/notes.txt\"."), std::string::npos);
+    EXPECT_NE(lua("return assets.texture('images/missing.png')").find("The package file \"test/content/images/missing.png\" was not found."), std::string::npos);
     EXPECT_EQ(lua("return type(assets.releaseUnused())"), "number");
 }
 
 TEST_F(AssetsLuaTest, InspectsTypesFilesAndTheCache) {
     EXPECT_EQ(lua("return assets.typeForPath('images/hero.png') .. ' ' .. assets.typeForPath('DATA/LEVEL.JSON')"), "texture json");
-    EXPECT_NE(lua("return assets.typeForPath('data/notes.txt')").find("No asset type handles the file 'data/notes.txt'."), std::string::npos);
+    EXPECT_NE(lua("return assets.typeForPath('data/notes.txt')").find("No asset type handles the file \"data/notes.txt\"."), std::string::npos);
     EXPECT_EQ(lua("return tostring(assets.hasType('texture')) .. ' ' .. tostring(assets.hasType('mesh'))"), "true false");
 
     EXPECT_EQ(lua("local data = assets.bytes('images/hero.png') return #data .. ' ' .. data:sub(2, 4)"), std::to_string(test::TestFiles::pngImage(8, 4, 0xFFFFFFFFU).size()) + " PNG");
@@ -105,8 +105,8 @@ TEST_F(AssetsLuaTest, PreloadsGroupsWithProgress) {
 
     lua("assets.unloadGroup('world')");
     EXPECT_EQ(lua("return assets.groupLoaded('world') or assets.groupProgress('world') ~= 0"), "false");
-    EXPECT_NE(lua("assets.preload('unknown')").find("The asset group 'unknown' is not defined."), std::string::npos);
-    EXPECT_NE(lua("assets.unloadGroup('unknown')").find("The asset group 'unknown' is not defined."), std::string::npos);
+    EXPECT_NE(lua("assets.preload('unknown')").find("The asset group \"unknown\" is not defined."), std::string::npos);
+    EXPECT_NE(lua("assets.unloadGroup('unknown')").find("The asset group \"unknown\" is not defined."), std::string::npos);
 }
 
 TEST_F(AssetsLuaTest, ReportsFailingProgressCallbacks) {

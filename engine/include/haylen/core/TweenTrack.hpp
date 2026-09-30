@@ -6,7 +6,7 @@
 
 namespace haylen::core {
 
-// Reads and writes the values that a tween animates on one target. PropertyTrack writes native C++ properties, and the Lua binding writes the fields of Lua tables and objects.
+// Reads and writes the values that a tween animates on one target. The class `PropertyTrack` writes native C++ properties, and the Lua binding writes the fields of Lua tables and objects.
 class TweenTrack {
   public:
     virtual ~TweenTrack() = default;
@@ -16,7 +16,7 @@ class TweenTrack {
 
     virtual void render(float progress, int loops) = 0;
 
-    // Returns false once the target is gone, which kills the tween before it writes again.
+    // Returns `false` once the target is gone, which kills the tween before it writes again.
     [[nodiscard]] virtual bool isAlive() const = 0;
 
     // Returns the largest distance any value travels, which speed-based tweens divide by their speed.

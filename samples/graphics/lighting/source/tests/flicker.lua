@@ -1,4 +1,4 @@
--- Flicker: lighting2d.flicker turns time into a flame-like multiplier, and a seed per torch keeps them from wavering in step.
+-- Flicker: `lighting2d.flicker` turns time into a flame-like multiplier, and a seed per torch keeps them from wavering in step.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local lighting2d = require('haylen.lighting2d')

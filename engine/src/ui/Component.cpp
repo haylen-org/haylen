@@ -54,7 +54,7 @@ void Component::readCommon(PropertyReader& reader) {
     } else if (!anchor.empty()) {
         common.anchor = Anchor::fromName(anchor);
         if (!common.anchor) {
-            reader.fail("anchor", "must be none or an anchor name such as topLeft, center or stretchHorizontal");
+            reader.fail("anchor", "must be \"none\" or an anchor name such as \"topLeft\", \"center\" or \"stretchHorizontal\"");
         }
     }
     reader.readChoice<Anchor::Area>("anchorTo", common.anchorArea, kAnchorAreas);
@@ -250,10 +250,10 @@ void Component::drawTooltip(Context& context, const math::Rect& bounds) {
 
 void Component::command(Context&, std::string_view name, const core::Json& arguments) {
     if (name != "focus" || !isFocusable()) {
-        throw std::invalid_argument("The component kind '" + std::string(getKind()) + "' does not answer the command '" + std::string(name) + "'.");
+        throw std::invalid_argument("The component kind \"" + std::string(getKind()) + "\" does not answer the command \"" + std::string(name) + "\".");
     }
     if (!arguments.is_null() && !(arguments.is_object() && arguments.empty())) {
-        throw std::invalid_argument("The focus command takes no arguments.");
+        throw std::invalid_argument("The \"focus\" command takes no arguments.");
     }
     focusRequested = true;
 }

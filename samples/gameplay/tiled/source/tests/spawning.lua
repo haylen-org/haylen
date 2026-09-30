@@ -1,4 +1,4 @@
--- Entities made by map:spawn from the objects of a hidden layer, one factory per object class, placed with the offsets of their groups and drawn with the frames of their tiles.
+-- Entities made by `map:spawn` from the objects of a hidden layer, one factory per object class, placed with the offsets of their groups and drawn with the frames of their tiles.
 local haylen = require('haylen')
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')

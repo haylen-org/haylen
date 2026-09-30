@@ -10,18 +10,18 @@ struct lua_State;
 
 namespace haylen::physics2d {
 
-// Installs the Shape class of haylen.physics2d and reads the shape options that bodies and queries take.
+// Installs the `Shape` class of `haylen.physics2d` and reads the shape options that bodies and queries take.
 class ShapeLua final {
   public:
     static void install(lua_State* L);
 
-    // Reads the category, mask and group fields of the table at index over the given filter.
+    // Reads the `category`, `mask` and `group` fields of the table at `index` over the given filter.
     [[nodiscard]] static CollisionFilter readFilter(lua_State* L, int index, CollisionFilter filter);
 
-    // Reads {density, friction, restitution, category, mask, group, sensor, offsetX, offsetY, rotation, tangentSpeed, oneWay}, where nil gives the defaults.
+    // Reads `{density, friction, restitution, category, mask, group, sensor, offsetX, offsetY, rotation, tangentSpeed, oneWay}`, where `nil` gives the defaults.
     [[nodiscard]] static Shape::Options readOptions(lua_State* L, int index);
 
-    // Pushes an outline as {points = {Vec2, ...}, closed = boolean}.
+    // Pushes an outline as `{points = {Vec2, ...}, closed = boolean}`.
     static void pushOutline(lua_State* L, const Shape::Outline& outline);
 
   private:

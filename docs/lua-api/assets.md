@@ -8,24 +8,24 @@ local assets = require('haylen.assets')
 
 ## Paths
 
-Every path is relative to the `content/` folder of the app package and never includes the `content/` prefix, so the file `content/images/hero.png` is loaded as `'images/hero.png'`. Slashes and backslashes both separate folders. Absolute paths raise `The path '<path>' must be relative.`, and `..` segments that leave the folder raise `The path '<path>' must stay inside its root folder.` A missing file raises `The package file '<file>' was not found.`
+Every path is relative to the `content/` folder of the app package and never includes the `content/` prefix, so the file `content/images/hero.png` is loaded as `'images/hero.png'`. Slashes and backslashes both separate folders. Absolute paths raise `The path "<path>" must be relative.`, and `..` segments that leave the folder raise `The path "<path>" must stay inside its root folder.` A missing file raises `The package file "<file>" was not found.`
 
 ## Asset types
 
-The file extension picks the asset type, and the type decides what Lua receives. Extensions are matched without regard to case. Options are tables whose keys each type validates. Unknown keys raise `Unknown key '<key>' in <kind> options.`, where the kind names the options, such as `texture options` or `sound options`.
+The file extension picks the asset type, and the type decides what Lua receives. Extensions are matched without regard to case. Options are tables whose keys each type validates. Unknown keys raise `Unknown key "<key>" in <kind> options.`, where the kind names the options, such as `texture options` or `sound options`.
 
 | Type | Extensions | Lua value | Options |
 | --- | --- | --- | --- |
-| `texture` | `.png`, `.jpg`, `.jpeg`, `.tga`, `.bmp`, `.gif` | Texture from [haylen.graphics](graphics.md). | `filter` is `'nearest'` (default) or `'linear'`. `wrap` is `'clamp'` (default), `'repeat'` or `'mirror'`. |
-| `font` | `.ttf`, `.otf` | Font from [haylen.graphics](graphics.md). | `bakeSize` is the em size the glyphs are baked at in the distance field atlas (default `48`). `spread` is how far the distance field reaches past a glyph, in pixels at the bake size (default `8`). `atlasSize` is the starting side of the glyph atlas in pixels, which grows as new glyphs are used (default `512`). |
-| `bitmapFont` | `.fnt` | Bitmap Font from a BMFont file in its text or binary format, whose page images sit next to it. | `filter` and `wrap` of its page textures. |
-| `gridFont` | None, so load an image with the type `'gridFont'` | Bitmap Font from an image of equal cells. | `characters`, `cellWidth` and `cellHeight`, which it needs, and `spacing`, `margin`, `advance`, `lineHeight` and `baseline`, like `graphics.newGridFont` from [haylen.graphics](graphics.md), plus the `filter` and `wrap` of its texture. |
-| `shader` | `.shader` | Shader from [haylen.graphics](graphics.md), compiled by `make.py shaders` as the [shader guide](../shaders.md) explains. | None. |
+| `texture` | `.png`, `.jpg`, `.jpeg`, `.tga`, `.bmp`, `.gif` | Texture from [`haylen.graphics`](graphics.md). | The option `filter` is `'nearest'` (default) or `'linear'`. The option `wrap` is `'clamp'` (default), `'repeat'` or `'mirror'`. |
+| `font` | `.ttf`, `.otf` | Font from [`haylen.graphics`](graphics.md). | The option `bakeSize` is the em size the glyphs are baked at in the distance field atlas (default `48`). The option `spread` is how far the distance field reaches past a glyph, in pixels at the bake size (default `8`). The option `atlasSize` is the starting side of the glyph atlas in pixels, which grows as new glyphs are used (default `512`). |
+| `bitmapFont` | `.fnt` | Bitmap Font from a BMFont file in its text or binary format, whose page images sit next to it. | The `filter` and `wrap` of its page textures. |
+| `gridFont` | None, so load an image with the type `'gridFont'` | Bitmap Font from an image of equal cells. | The options `characters`, `cellWidth` and `cellHeight`, which it needs, and `spacing`, `margin`, `advance`, `lineHeight` and `baseline`, like `graphics.newGridFont` from [`haylen.graphics`](graphics.md), plus the `filter` and `wrap` of its texture. |
+| `shader` | `.shader` | Shader from [`haylen.graphics`](graphics.md), compiled by `make.py shaders` as the [shader guide](../shaders.md) explains. | None. |
 | `json` | `.json` | Plain Lua table, with objects as string keyed tables and arrays as sequences. | None. |
-| `sound` | `.wav`, `.ogg`, `.mp3`, `.flac` | Sound from [haylen.audio](audio.md). | `stream` keeps the encoded file and decodes it while it plays (default `false`). |
-| `atlas` | None, so load it with the type `'atlas'` | SpriteAtlas from [haylen.animation2d](animation2d.md). | `filter` and `wrap` of its texture. |
-| `particles` | `.particles` | Particle effect for `particles2d.newEmitter()` from [haylen.particles2d](particles2d.md). | `filter` and `wrap` of its texture. |
-| `tiled` | `.tmj` | Tiled map data for `tiled.newMapRenderer()` from [haylen.tiled](tiled.md). | `filter` and `wrap` of its tileset and layer images. |
+| `sound` | `.wav`, `.ogg`, `.mp3`, `.flac` | Sound from [`haylen.audio`](audio.md). | The option `stream` keeps the encoded file and decodes it while it plays (default `false`). |
+| `atlas` | None, so load it with the type `'atlas'` | A `SpriteAtlas` from [`haylen.animation2d`](animation2d.md). | The `filter` and `wrap` of its texture. |
+| `particles` | `.particles` | Particle effect for `particles2d.newEmitter()` from [`haylen.particles2d`](particles2d.md). | The `filter` and `wrap` of its texture. |
+| `tiled` | `.tmj` | Tiled map data for `tiled.newMapRenderer()` from [`haylen.tiled`](tiled.md). | The `filter` and `wrap` of its tileset and layer images. |
 | `tiledWorld` | `.world` | List of the maps of a Tiled world. | None. |
 
 Assets are cached by type, path and options. Loading the same asset again returns the same object while anything still holds it, such as a Lua variable, another asset or a preload group, so two loads of one asset compare equal with `==`, whatever its type. Different options load a separate asset. Atlases, particle effects and Tiled maps share their images with textures loaded directly with the same `filter` and `wrap`, except Tiled images with a transparent color, which stay private to their map.
@@ -34,7 +34,7 @@ Assets are cached by type, path and options. Loading the same asset again return
 
 ### assets.load(path, type, options)
 
-Loads an asset synchronously and returns it. The type is optional and comes from the file extension when it is `nil`. Options are optional. A file whose extension no type handles raises `No asset type handles the file '<path>'. Pass its type or use an extension that an asset type handles.`, and an unknown type raises `The asset type '<type>' does not exist.`
+Loads an asset synchronously and returns it. The type is optional and comes from the file extension when it is `nil`. Options are optional. A file whose extension no type handles raises `No asset type handles the file "<path>". Pass its type or use an extension that an asset type handles.`, and an unknown type raises `The asset type "<type>" does not exist.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -87,7 +87,7 @@ scene.push({
 
 ### assets.shader(path)
 
-Loads a `.shader` file synchronously and returns its Shader, for `graphics2d.newMaterial`. A file that is not a compiled shader raises `The shader file is malformed: ` followed by the problem, or `The shader file is malformed, and the JSON reader reported '<reason>'.` when it is not valid JSON. In development, a changed `.shader` file reloads in place, so every material of the shader draws with the new programs from the next frame.
+Loads a `.shader` file synchronously and returns its Shader, for `graphics2d.newMaterial`. A file that is not a compiled shader raises `The shader file is malformed: ` followed by the problem, or `The shader file is malformed, and the JSON reader reported "<reason>".` when it is not valid JSON. In development, a changed `.shader` file reloads in place, so every material of the shader draws with the new programs from the next frame.
 
 ```lua
 local assets = require('haylen.assets')
@@ -140,7 +140,7 @@ print(#level, width, height)
 
 Starts loading an asset in the background and returns a promise. The type and options work as in `assets.load()`. Reading and decoding run on worker threads, and GPU resources are created on the frame thread within the [upload budget](#assetssetuploadbudgetseconds) of each frame, so the app keeps running smoothly while large files load.
 
-Promises come from Varn's `async` module. Call `:await()` on a promise inside a coroutine started with `async.spawn()`. The coroutine pauses until the asset is ready and resumes during a later frame. `:await()` returns the asset on success and returns `nil` and the error message on failure instead of raising, so check the first value. An unknown type or invalid options still raise at once, when `assets.loadAsync()` is called.
+Promises come from Varn's `async` module. Call `:await()` on a promise inside a coroutine started with `async.spawn()`. The coroutine pauses until the asset is ready and resumes during a later frame. The method `:await()` returns the asset on success and returns `nil` and the error message on failure instead of raising, so check the first value. An unknown type or invalid options still raise at once, when `assets.loadAsync()` is called.
 
 ```lua
 local async = require('async')
@@ -192,7 +192,7 @@ end)
 
 ### assets.exists(path)
 
-Returns true when the file exists in the content folder.
+Returns `true` when the file exists in the content folder.
 
 ```lua
 local assets = require('haylen.assets')
@@ -204,7 +204,7 @@ end
 
 ### assets.list(folder)
 
-Returns a sorted list of every file under a folder of the content folder, including files in subfolders, as paths relative to the content folder. Without a folder it lists every asset. A missing folder gives an empty list, and a folder that leads out of the content folder, such as `'..'`, raises `The path '<folder>' must stay inside its root folder.`
+Returns a sorted list of every file under a folder of the content folder, including files in subfolders, as paths relative to the content folder. Without a folder it lists every asset. A missing folder gives an empty list, and a folder that leads out of the content folder, such as `'..'`, raises `The path "<folder>" must stay inside its root folder.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -218,7 +218,7 @@ end
 
 ### assets.typeForPath(path)
 
-Returns the name of the asset type that handles the file, picked by its extension without regard to case, as `assets.load()` picks it. A file whose extension no type handles raises `No asset type handles the file '<path>'. Pass its type or use an extension that an asset type handles.`
+Returns the name of the asset type that handles the file, picked by its extension without regard to case, as `assets.load()` picks it. A file whose extension no type handles raises `No asset type handles the file "<path>". Pass its type or use an extension that an asset type handles.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -232,7 +232,7 @@ end
 
 ### assets.hasType(name)
 
-Returns true when an asset type with that name is registered, such as `'texture'`, `'sound'` or a type a C++ plugin added.
+Returns `true` when an asset type with that name is registered, such as `'texture'`, `'sound'` or a type a C++ plugin added.
 
 ```lua
 local assets = require('haylen.assets')
@@ -264,7 +264,7 @@ A group manifest is a table or a JSON file with a `groups` object. Every group i
 
 ### assets.defineGroups(manifest)
 
-Defines every group of a manifest, given as a table or as the path of a JSON file in the content folder. A group that already exists gets the new entries. A manifest key other than `groups` raises `Unknown key '<key>' in the asset group manifest.`, and an entry key other than `path`, `type` and `options` raises `Unknown key '<key>' in an asset group entry.`.
+Defines every group of a manifest, given as a table or as the path of a JSON file in the content folder. A group that already exists gets the new entries. A manifest key other than `groups` raises `Unknown key "<key>" in the asset group manifest.`, and an entry key other than `path`, `type` and `options` raises `Unknown key "<key>" in an asset group entry.`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -292,7 +292,7 @@ assets.defineGroup('forest', {
 
 ### assets.preload(name, progress)
 
-Starts loading every asset of a group and returns a promise. The promise resolves once every asset finished, with a list of error messages in the form `'<path>: <error>'` for the assets that failed, so an empty list means everything loaded. It never rejects. The optional `progress` function receives the fraction of finished assets, from above 0 to 1, after each asset. Preloading a group that is already loaded loads nothing again, reports progress 1 and resolves with its earlier errors. An error raised by the progress function shows the engine error screen. An unknown group raises `The asset group '<name>' is not defined.`, and an entry without a type whose extension no type handles raises `No asset type handles the file '<path>'. Pass its type or use an extension that an asset type handles.`
+Starts loading every asset of a group and returns a promise. The promise resolves once every asset finished, with a list of error messages in the form `'<path>: <error>'` for the assets that failed, so an empty list means everything loaded. It never rejects. The optional `progress` function receives the fraction of finished assets, from above 0 to 1, after each asset. Preloading a group that is already loaded loads nothing again, reports progress 1 and resolves with its earlier errors. An error raised by the progress function shows the engine error screen. An unknown group raises `The asset group "<name>" is not defined.`, and an entry without a type whose extension no type handles raises `No asset type handles the file "<path>". Pass its type or use an extension that an asset type handles.`
 
 The group holds its assets until `assets.unloadGroup()`, so they stay cached even when nothing else refers to them, and later `assets.load()` calls return them at once.
 
@@ -328,7 +328,7 @@ scene.push(loading)
 
 ### assets.unloadGroup(name)
 
-Releases the hold of a group on its assets. Assets that nothing else refers to leave memory, and assets still in use stay loaded. The group stays defined and can be preloaded again. An unknown group raises `The asset group '<name>' is not defined.`
+Releases the hold of a group on its assets. Assets that nothing else refers to leave memory, and assets still in use stay loaded. The group stays defined and can be preloaded again. An unknown group raises `The asset group "<name>" is not defined.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -343,7 +343,7 @@ scene.push({
 
 ### assets.groupProgress(name)
 
-Returns the fraction of the group that finished loading, from 0 to 1. A loaded group returns 1. An unknown group raises `The asset group '<name>' is not defined.`
+Returns the fraction of the group that finished loading, from 0 to 1. A loaded group returns 1. An unknown group raises `The asset group "<name>" is not defined.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -363,7 +363,7 @@ scene.push({
 
 ### assets.groupLoaded(name)
 
-Returns true when the group finished loading. An unknown group returns false.
+Returns `true` when the group finished loading. An unknown group returns `false`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -471,7 +471,7 @@ While debug hot reload runs, a changed texture updates in place, so every sprite
 
 ### Sounds
 
-Sound files load as `haylen.Sound` for [haylen.audio](audio.md). Streaming suits music and long ambience, and decoding suits short effects that play often.
+Sound files load as `haylen.Sound` for [`haylen.audio`](audio.md). Streaming suits music and long ambience, and decoding suits short effects that play often.
 
 ```lua
 local assets = require('haylen.assets')
@@ -485,7 +485,7 @@ audio.playMusic(music)
 
 ### Sprite atlases
 
-Sprite atlases are JSON files exported by TexturePacker or Aseprite in the hash or array layout. They have no extension of their own, so pass the type `'atlas'`. The image path stored in the file is relative to the JSON file, and Aseprite frame tags become animations. The atlas is described in [haylen.animation2d](animation2d.md).
+Sprite atlases are JSON files exported by TexturePacker or Aseprite in the hash or array layout. They have no extension of their own, so pass the type `'atlas'`. The image path stored in the file is relative to the JSON file, and Aseprite frame tags become animations. The atlas is described in [`haylen.animation2d`](animation2d.md).
 
 ```lua
 local assets = require('haylen.assets')
@@ -496,7 +496,7 @@ print(hero.texture.width, #hero:animationNames())
 
 ### Bitmap fonts
 
-BMFont files from tools such as BMFont, Hiero or Littera load with `assets.font` or `assets.load`, in their text or binary format, and name their page images relative to the file. Images of equal cells load with the type `'gridFont'`. Both are fonts from [haylen.graphics](graphics.md) that draw text anywhere a TrueType font does.
+BMFont files from tools such as BMFont, Hiero or Littera load with `assets.font` or `assets.load`, in their text or binary format, and name their page images relative to the file. Images of equal cells load with the type `'gridFont'`. Both are fonts from [`haylen.graphics`](graphics.md) that draw text anywhere a TrueType font does.
 
 ```lua
 local assets = require('haylen.assets')
@@ -508,7 +508,7 @@ print(pixel.nativeSize, digits:hasGlyph('7'))
 
 ### Particle effects
 
-`.particles` files describe a particle effect and name its texture relative to the file. The effect is passed to `particles2d.newEmitter()` from [haylen.particles2d](particles2d.md).
+The `.particles` files describe a particle effect and name its texture relative to the file. The effect is passed to `particles2d.newEmitter()` from [`haylen.particles2d`](particles2d.md).
 
 ```lua
 local assets = require('haylen.assets')
@@ -526,7 +526,7 @@ scene.push({
 
 ### Tiled maps
 
-`.tmj` files are Tiled maps in the JSON format. Their tilesets and images load with them. The asset is map data with a `path` property, and `tiled.newMapRenderer()` from [haylen.tiled](tiled.md) turns it into a map to draw and query.
+The `.tmj` files are Tiled maps in the JSON format. Their tilesets and images load with them. The asset is map data with a `path` property, and `tiled.newMapRenderer()` from [`haylen.tiled`](tiled.md) turns it into a map to draw and query.
 
 ```lua
 local assets = require('haylen.assets')
@@ -549,7 +549,7 @@ scene.push({
 
 ### Tiled worlds
 
-`.world` files are Tiled worlds. They load as a list of tables with the fields `path`, `x`, `y`, `width` and `height`, one for each map of the world, with the map path relative to the content folder.
+The `.world` files are Tiled worlds. They load as a list of tables with the fields `path`, `x`, `y`, `width` and `height`, one for each map of the world, with the map path relative to the content folder.
 
 ```lua
 local assets = require('haylen.assets')
@@ -565,17 +565,17 @@ end
 
 | Message | Cause |
 | --- | --- |
-| `The package file '<file>' was not found.` | The file does not exist in the package. |
-| `The path '<path>' must be relative.` | A path starts with a slash or a drive letter. |
-| `The path '<path>' must stay inside its root folder.` | A path uses `..` to leave the content folder. |
+| `The package file "<file>" was not found.` | The file does not exist in the package. |
+| `The path "<path>" must be relative.` | A path starts with a slash or a drive letter. |
+| `The path "<path>" must stay inside its root folder.` | A path uses `..` to leave the content folder. |
 | `An asset path cannot be empty.` | The path is empty. |
-| `No asset type handles the file '<path>'. Pass its type or use an extension that an asset type handles.` | The extension belongs to no asset type and no type was given. |
-| `The asset type '<type>' does not exist.` | The type argument names no asset type. |
-| `Unknown key '<key>' in <kind> options.` | An options table has a key the asset type does not accept. |
-| `The texture filter must be nearest or linear, not '<filter>'.` | The `filter` option is not `nearest` or `linear`. |
-| `The texture wrap must be clamp, repeat or mirror, not '<wrap>'.` | The `wrap` option is not `clamp`, `repeat` or `mirror`. |
-| `The asset group '<name>' is not defined.` | A group function names a group that was never defined. |
-| `Unknown key '<key>' in the asset group manifest.` | A manifest has a key other than `groups`. |
-| `Unknown key '<key>' in an asset group entry.` | A group entry has a key other than `path`, `type` and `options`. |
+| `No asset type handles the file "<path>". Pass its type or use an extension that an asset type handles.` | The extension belongs to no asset type and no type was given. |
+| `The asset type "<type>" does not exist.` | The type argument names no asset type. |
+| `Unknown key "<key>" in <kind> options.` | An options table has a key the asset type does not accept. |
+| `The texture filter must be "nearest" or "linear", not "<filter>".` | The `filter` option is not `nearest` or `linear`. |
+| `The texture wrap must be "clamp", "repeat" or "mirror", not "<wrap>".` | The `wrap` option is not `clamp`, `repeat` or `mirror`. |
+| `The asset group "<name>" is not defined.` | A group function names a group that was never defined. |
+| `Unknown key "<key>" in the asset group manifest.` | A manifest has a key other than `groups`. |
+| `Unknown key "<key>" in an asset group entry.` | A group entry has a key other than `path`, `type` and `options`. |
 
 Decoding errors, such as an image that is not a valid PNG, raise from `assets.load()` and come back as the second value of `:await()` for `assets.loadAsync()`.

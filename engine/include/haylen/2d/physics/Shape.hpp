@@ -16,7 +16,7 @@ namespace haylen::physics2d {
 class Body;
 class World;
 
-// Handle to one collision shape. Handles stay cheap to copy, report false from isValid once the shape or its body is destroyed, and throw std::logic_error when used after that.
+// Handle to one collision shape. Handles stay cheap to copy, report `false` from `isValid` once the shape or its body is destroyed, and throw `std::logic_error` when used after that.
 class Shape final {
   public:
     enum class Kind : std::uint8_t {
@@ -62,7 +62,7 @@ class Shape final {
     // Returns the points that place the shape in the space of its body: the center of a circle, the two centers of a capsule, the two ends of a segment or of a chain segment, or the corners of a polygon in order around it.
     [[nodiscard]] std::vector<math::Vec2> getPoints() const;
 
-    // Returns the points of getPoints in world space, where the body is now.
+    // Returns the points of `getPoints` in world space, where the body is now.
     [[nodiscard]] std::vector<math::Vec2> getWorldPoints() const;
 
     // Returns the radius of a circle or a capsule, and 0 for the other kinds.
@@ -81,7 +81,7 @@ class Shape final {
     [[nodiscard]] float getTangentSpeed() const;
     void setTangentSpeed(float value);
 
-    // A one-way shape only blocks bodies that touch it from the side its direction points to. The direction is in the space of the body and turns with it, so {0, -1} on an unrotated body makes a platform that bodies jump through from below and land on from above. No direction makes the shape solid again.
+    // A one-way shape only blocks bodies that touch it from the side its direction points to. The direction is in the space of the body and turns with it, so `{0, -1}` on an unrotated body makes a platform that bodies jump through from below and land on from above. No direction makes the shape solid again.
     [[nodiscard]] std::optional<math::Vec2> getOneWay() const;
     void setOneWay(std::optional<math::Vec2> value);
 

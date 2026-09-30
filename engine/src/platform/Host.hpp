@@ -48,10 +48,10 @@ class Host : public Window {
     // The ids of the plugins whose native part the platform loaded.
     [[nodiscard]] virtual std::vector<std::string> getNativePlugins() const = 0;
 
-    // Hands the error that stopped the app to native code as the JSON report of lua::Error::toJson, with its message, file, line, traceback and frames.
+    // Hands the error that stopped the app to native code as the JSON report of `lua::Error::toJson`, with its `message`, `file`, `line`, `traceback` and `frames`.
     virtual void reportError(const core::Json& report) = 0;
 
-    // What the device and its operating system are, read once when an app starts. The graphics device names the GPU, so gpuName stays empty here.
+    // What the device and its operating system are, read once when an app starts. The graphics device names the GPU, so `gpuName` stays empty here.
     [[nodiscard]] virtual SystemInfo getSystemInfo() const = 0;
 
     // The theme and the battery as the platform last reported them, which the engine reads once per frame.
@@ -64,16 +64,16 @@ class Host : public Window {
     // Vibrates the device for the given seconds where it can vibrate, and does nothing elsewhere.
     virtual void vibrate(float seconds) = 0;
 
-    // Shows a native dialog, which the platform answers exactly once through DialogRelay::resolve with the same id, from any thread. Picked files that have no path of their own are copied into folder, which the platform creates when it needs it.
+    // Shows a native dialog, which the platform answers exactly once through `DialogRelay::resolve` with the same id, from any thread. Picked files that have no path of their own are copied into `folder`, which the platform creates when it needs it.
     virtual void showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) = 0;
 
     // Closes a dialog that the app gave up, where the platform can. Its answer is dropped either way.
     virtual void cancelDialog(std::uint64_t id) = 0;
 
-    // Opens the screen of a plugin over the app, which the engine covered already. The platform keeps the id, the plugin, the screen and the state where it keeps them across the end of the process, and ends the screen exactly once through ScreenRelay::finish with the same id, from any thread, with its result or a failure, such as cancelled when the user closed it, notActive when the platform cannot present it now or unsupported. A screen that ended after the process did reaches the next app through ScreenRelay::restore with the kept state.
+    // Opens the screen of a plugin over the app, which the engine covered already. The platform keeps the id, the plugin, the screen and the state where it keeps them across the end of the process, and ends the screen exactly once through `ScreenRelay::finish` with the same id, from any thread, with its result or a failure, such as `cancelled` when the user closed it, `notActive` when the platform cannot present it now or `unsupported`. A screen that ended after the process did reaches the next app through `ScreenRelay::restore` with the kept state.
     virtual void openScreen(const ScreenRequest& request) = 0;
 
-    // Dismisses a screen that the app gave up, where the platform can, which still ends it through ScreenRelay::finish once it is gone.
+    // Dismisses a screen that the app gave up, where the platform can, which still ends it through `ScreenRelay::finish` once it is gone.
     virtual void cancelScreen(std::uint64_t id) = 0;
 };
 

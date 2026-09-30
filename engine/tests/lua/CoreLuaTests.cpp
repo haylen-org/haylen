@@ -362,7 +362,7 @@ TEST(JobsLuaTest, RejectsFailuresAndMisuse) {
     EXPECT_NE(outcomes.find("job exploded"), std::string::npos) << outcomes;
     EXPECT_NE(outcomes.find("global 'error'"), std::string::npos) << outcomes;
     EXPECT_EQ(outcomes.find('\t'), std::string::npos) << outcomes;
-    EXPECT_NE(outcomes.find("may only pause at jobs.checkpoint"), std::string::npos) << outcomes;
+    EXPECT_NE(outcomes.find("may only pause at \"jobs.checkpoint\""), std::string::npos) << outcomes;
     EXPECT_EQ(fixture.lua("return jobs.runningCount()"), "0");
 
     EXPECT_NE(fixture.lua("jobs.checkpoint()").find("only runs inside a job"), std::string::npos);

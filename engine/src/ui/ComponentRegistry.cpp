@@ -9,7 +9,7 @@ void ComponentRegistry::add(std::string kind, Factory factory) {
         throw std::invalid_argument("A component kind needs a name and a factory.");
     }
     if (factories.contains(kind)) {
-        throw std::invalid_argument("The component kind " + kind + " is already registered.");
+        throw std::invalid_argument("The component kind \"" + kind + "\" is already registered.");
     }
     factories.emplace(std::move(kind), std::move(factory));
 }
@@ -17,7 +17,7 @@ void ComponentRegistry::add(std::string kind, Factory factory) {
 std::unique_ptr<Component> ComponentRegistry::create(std::string_view kind) const {
     const auto factory = factories.find(kind);
     if (factory == factories.end()) {
-        throw std::invalid_argument("There is no UI component kind named " + std::string(kind) + ".");
+        throw std::invalid_argument("There is no UI component kind named \"" + std::string(kind) + "\".");
     }
     return factory->second();
 }

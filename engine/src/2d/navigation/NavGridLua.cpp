@@ -197,7 +197,7 @@ template <typename T> void NavGridLua::settleOwned(const lua::Promise& promise, 
     // clang-format on
 }
 
-// Creates a grid with newGrid(width, height[, {topology = 'square', staggerX = false, staggerEven = false}]).
+// Creates a grid with `newGrid(width, height[, {topology = 'square', staggerX = false, staggerEven = false}])`.
 int NavGridLua::newGrid(lua_State* L) {
     Grid::Layout layout;
     if (!lua_isnoneornil(L, 3)) {
@@ -275,13 +275,13 @@ int NavGridLua::getCost(lua_State* L) {
     return 1;
 }
 
-// Estimates the walk between two cells with estimate(fromX, fromY, toX, toY, heuristic).
+// Estimates the walk between two cells with `estimate(fromX, fromY, toX, toY, heuristic)`.
 int NavGridLua::estimate(lua_State* L) {
     lua::Stack::push(L, check(L).estimate(readCell(L, 2), readCell(L, 4), lua::Stack::read<Grid::Heuristic>(L, 6)));
     return 1;
 }
 
-// Finds a path with findPath(startX, startY, goalX, goalY[, options]) and returns its cells and cost, or nil when there is none.
+// Finds a path with `findPath(startX, startY, goalX, goalY[, options])` and returns its cells and cost, or `nil` when there is none.
 int NavGridLua::findPath(lua_State* L) {
     ScriptedGrid& self = lua::Userdata::check<ScriptedGrid>(L, 1);
     const std::span<const Grid::Cell> path = self.search.findPath(self.grid, readCell(L, 2), readCell(L, 4), readPathOptions(L, 6));
@@ -293,7 +293,7 @@ int NavGridLua::findPath(lua_State* L) {
     return 2;
 }
 
-// Returns a promise for the path of findPath, searched on the snapshot of the grid in the background.
+// Returns a promise for the path of `findPath`, searched on the snapshot of the grid in the background.
 int NavGridLua::findPathAsync(lua_State* L) {
     const Grid::Cell start = readCell(L, 2);
     const Grid::Cell goal = readCell(L, 4);
@@ -333,7 +333,7 @@ int NavGridLua::smoothPath(lua_State* L) {
     return 1;
 }
 
-// Casts a ray over the blocked cells of a square grid with raycast(from, to, cellSize), where the cell size is a number or a {width, height} pair.
+// Casts a ray over the blocked cells of a square grid with `raycast(from, to, cellSize)`, where the cell size is a number or a `{width, height}` pair.
 int NavGridLua::raycast(lua_State* L) {
     const Grid& grid = check(L);
     if (grid.getLayout().topology != Grid::Topology::Square) {
@@ -354,7 +354,7 @@ int NavGridLua::raycast(lua_State* L) {
     return 1;
 }
 
-// Computes a Dijkstra map with dijkstraMap(sources[, {diagonal = true}]), where sources is a list of {x, y, value} cells.
+// Computes a Dijkstra map with `dijkstraMap(sources[, {diagonal = true}])`, where `sources` is a list of `{x, y, value}` cells.
 int NavGridLua::dijkstraMap(lua_State* L) {
     const Grid& grid = check(L);
     const std::vector<DijkstraMap::Source> sources = readSources(L, 2);
@@ -364,7 +364,7 @@ int NavGridLua::dijkstraMap(lua_State* L) {
     return 1;
 }
 
-// Returns a promise for the map of dijkstraMap, computed on the snapshot of the grid in the background.
+// Returns a promise for the map of `dijkstraMap`, computed on the snapshot of the grid in the background.
 int NavGridLua::dijkstraMapAsync(lua_State* L) {
     std::vector<DijkstraMap::Source> sources = readSources(L, 2);
     const bool diagonal = readDiagonal(L, 3);
@@ -387,7 +387,7 @@ int NavGridLua::dijkstraMapAsync(lua_State* L) {
     return 1;
 }
 
-// Computes a flow field toward the nearest of the goals with flowField(goals[, {diagonal = true}]).
+// Computes a flow field toward the nearest of the goals with `flowField(goals[, {diagonal = true}])`.
 int NavGridLua::flowField(lua_State* L) {
     const Grid& grid = check(L);
     const std::vector<Grid::Cell> goals = lua::Stack::read<std::vector<Grid::Cell>>(L, 2);
@@ -397,7 +397,7 @@ int NavGridLua::flowField(lua_State* L) {
     return 1;
 }
 
-// Returns a promise for the field of flowField, computed on the snapshot of the grid in the background.
+// Returns a promise for the field of `flowField`, computed on the snapshot of the grid in the background.
 int NavGridLua::flowFieldAsync(lua_State* L) {
     std::vector<Grid::Cell> goals = lua::Stack::read<std::vector<Grid::Cell>>(L, 2);
     const bool diagonal = readDiagonal(L, 3);
@@ -419,7 +419,7 @@ int NavGridLua::flowFieldAsync(lua_State* L) {
     return 1;
 }
 
-// Reads {clusterSize = 16, diagonal = true}, where nil gives the defaults.
+// Reads `{clusterSize = 16, diagonal = true}`, where `nil` gives the defaults.
 HierarchicalPathfinder::Options NavGridLua::readHierarchyOptions(lua_State* L, int index) {
     HierarchicalPathfinder::Options options;
     if (lua_isnoneornil(L, index)) {
@@ -432,14 +432,14 @@ HierarchicalPathfinder::Options NavGridLua::readHierarchyOptions(lua_State* L, i
     return options;
 }
 
-// Builds a hierarchical path finder over the grid with hierarchicalPathfinder([options]).
+// Builds a hierarchical path finder over the grid with `hierarchicalPathfinder([options])`.
 int NavGridLua::hierarchicalPathfinder(lua_State* L) {
     const Grid& grid = check(L);
     pushOwned<HierarchicalPathfinder>(L, 1, grid, readHierarchyOptions(L, 2));
     return 1;
 }
 
-// Returns a promise for the path finder of hierarchicalPathfinder, built from the snapshot of the grid in the background.
+// Returns a promise for the path finder of `hierarchicalPathfinder`, built from the snapshot of the grid in the background.
 int NavGridLua::hierarchicalPathfinderAsync(lua_State* L) {
     const HierarchicalPathfinder::Options options = readHierarchyOptions(L, 2);
     HierarchicalPathfinder::requireValid(check(L), options);
@@ -549,7 +549,7 @@ int NavGridLua::hierarchyFindPath(lua_State* L) {
     return 2;
 }
 
-// Rebuilds the clusters of the cells from x1, y1 to x2, y2 with update(x1, y1, x2, y2), or of one cell with update(x, y).
+// Rebuilds the clusters of the cells from `x1`, `y1` to `x2`, `y2` with `update(x1, y1, x2, y2)`, or of one cell with `update(x, y)`.
 int NavGridLua::hierarchyUpdate(lua_State* L) {
     const Grid::Cell first = readCell(L, 2);
     const Grid::Cell last = lua_isnoneornil(L, 4) ? first : readCell(L, 4);

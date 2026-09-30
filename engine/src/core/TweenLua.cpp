@@ -125,7 +125,7 @@ void TweenLua::readCallbacks(lua_State* L, int options, int owner, Tween::Callba
             return nullptr;
         }
         if (!lua_isfunction(L, -1)) {
-            luaL_error(L, "The tween option '%s' must be a function.", name);
+            luaL_error(L, "The tween option \"%s\" must be a function.", name);
         }
         auto function = std::make_shared<lua::Owners::Function>(L, -1, owner);
         lua_pop(L, 1);
@@ -233,7 +233,7 @@ bool TweenLua::isListed(lua_State* L, int options, const char* list, std::string
         return false;
     }
     if (!lua_istable(L, -1)) {
-        luaL_error(L, "The tween option '%s' must be a list of field names.", list);
+        luaL_error(L, "The tween option \"%s\" must be a list of field names.", list);
     }
     bool found = false;
     const auto length = static_cast<lua_Integer>(lua_rawlen(L, -1));
@@ -257,7 +257,7 @@ TweenValue::Interpolation TweenLua::getInterpolation(lua_State* L, int options, 
         std::string space = "rgb";
         lua::Table::readField(L, options, "colorSpace", space);
         if (space != "rgb" && space != "hsv") {
-            luaL_error(L, "The tween option 'colorSpace' must be 'rgb' or 'hsv'.");
+            luaL_error(L, "The tween option \"colorSpace\" must be \"rgb\" or \"hsv\".");
         }
         return space == "hsv" ? TweenValue::Interpolation::Hsv : TweenValue::Interpolation::Linear;
     }
@@ -277,7 +277,7 @@ std::optional<std::vector<TweenLua::NativeField>> TweenLua::findNativeFields(lua
             return std::nullopt;
         }
 
-        // One level of components reaches into a Vec2 or a Color, such as position.x or color.a.
+        // One level of components reaches into a `Vec2` or a `Color`, such as `position.x` or `color.a`.
         NativeField field{.storage = lua_touserdata(L, target), .property = property};
         if (dot != std::string::npos) {
             const std::string_view tail = std::string_view(name).substr(dot + 1);
@@ -374,7 +374,7 @@ TweenValue TweenLua::readLike(lua_State* L, int index, const TweenValue& current
     switch (current.getKind()) {
     case TweenValue::Kind::Number:
         if (lua_type(L, index) != LUA_TNUMBER) {
-            luaL_error(L, "The tween value of '%s' must be a number.", field.c_str());
+            luaL_error(L, "The tween value of \"%s\" must be a number.", field.c_str());
         }
         return lua_tonumber(L, index);
     case TweenValue::Kind::Vector:
@@ -383,7 +383,7 @@ TweenValue TweenLua::readLike(lua_State* L, int index, const TweenValue& current
         return lua::Stack::read<math::Color>(L, index);
     case TweenValue::Kind::Text:
         if (lua_type(L, index) != LUA_TSTRING) {
-            luaL_error(L, "The tween value of '%s' must be a text.", field.c_str());
+            luaL_error(L, "The tween value of \"%s\" must be a text.", field.c_str());
         }
         return lua::Stack::read<std::string>(L, index);
     }
@@ -420,7 +420,7 @@ void TweenLua::finishTracks(Builder& builder) {
     }
 }
 
-// Shared by to, from, by and fromTo: tween.to(target, seconds, values, options) and tween.fromTo(target, seconds, from, to, options).
+// Shared by `to`, `from`, `by` and `fromTo`: `tween.to(target, seconds, values, options)` and `tween.fromTo(target, seconds, from, to, options)`.
 void TweenLua::checkTarget(lua_State* L) {
     const int type = lua_type(L, 1);
     if (type != LUA_TTABLE && type != LUA_TUSERDATA) {
@@ -465,7 +465,7 @@ int TweenLua::startValues(lua_State* L, TweenProperty::Mode mode) {
             property = TweenProperty::by(given);
         } else if (pair) {
             if (lua_getfield(L, ends, name.c_str()) == LUA_TNIL) {
-                luaL_error(L, "A tween.fromTo call needs an end value for the field '%s'.", name.c_str());
+                luaL_error(L, "A \"tween.fromTo\" call needs an end value for the field \"%s\".", name.c_str());
             }
             property = TweenProperty::fromTo(given, readLike(L, -1, current, name));
             lua_pop(L, 1);
@@ -475,7 +475,7 @@ int TweenLua::startValues(lua_State* L, TweenProperty::Mode mode) {
     }
     finishTracks(builder);
 
-    // A from tween shows its start values right away, even while its delay runs.
+    // A `from` tween shows its start values right away, even while its delay runs.
     if (mode == TweenProperty::Mode::From) {
         tween->renderStart();
     }
@@ -523,7 +523,7 @@ std::vector<std::string> TweenLua::readFieldNames(lua_State* L, int options, std
             lua_pop(L, 1);
         }
     } else {
-        luaL_error(L, "The tween option 'field' must be a field name or a list of two number field names.");
+        luaL_error(L, "The tween option \"field\" must be a field name or a list of two number field names.");
     }
     lua_pop(L, 1);
     return names;
@@ -534,7 +534,7 @@ std::vector<math::Vec2> TweenLua::readPoints(lua_State* L, int index) {
     return lua::Stack::read<std::vector<math::Vec2>>(L, index);
 }
 
-// Shared by the ready-made tweens, which take the target, the seconds, one value of their own and the options. The make function turns that value into the property of the fields the tween animates.
+// Shared by the ready-made tweens, which take the target, the seconds, one value of their own and the options. The `make` function turns that value into the property of the fields the tween animates.
 int TweenLua::startReadyMade(lua_State* L, std::initializer_list<lua::Table::FieldNames> extra, std::vector<std::string> defaults, const std::function<TweenProperty(Builder&, const TweenValue&)>& make) {
     checkTarget(L);
     const auto seconds = lua::Stack::read<float>(L, 2);
@@ -579,7 +579,7 @@ int TweenLua::startReadyMade(lua_State* L, std::initializer_list<lua::Table::Fie
 
 void TweenLua::requireVector(lua_State* L, const TweenValue& current, const char* kind) {
     if (current.getKind() != TweenValue::Kind::Vector) {
-        luaL_error(L, "A %s tween needs a Vec2 field or a pair of number fields.", kind);
+        luaL_error(L, "A %s tween needs a \"Vec2\" field or a pair of number fields.", kind);
     }
 }
 
@@ -587,7 +587,7 @@ int TweenLua::move(lua_State* L) {
     return startReadyMade(L, {}, {"x", "y"}, [](Builder& builder, const TweenValue& current) { return TweenProperty::to(readLike(builder.state, 3, current, "position")); });
 }
 
-// A single number scales both axes of a Vec2 or of a pair of fields.
+// A single number scales both axes of a `Vec2` or of a pair of fields.
 int TweenLua::scale(lua_State* L) {
     // clang-format off
     return startReadyMade(L, {}, {"scaleX", "scaleY"}, [](Builder& builder, const TweenValue& current) {
@@ -636,7 +636,7 @@ int TweenLua::jump(lua_State* L) {
     // clang-format on
 }
 
-// The path starts where the target is and ends at the last point. With orient, the rotation field turns along the path.
+// The path starts where the target is and ends at the last point. With `orient`, the `rotation` field turns along the path.
 int TweenLua::path(lua_State* L) {
     // clang-format off
     return startReadyMade(L, {kPathFields}, {"x", "y"}, [](Builder& builder, const TweenValue& current) {
@@ -688,7 +688,7 @@ int TweenLua::bezier(lua_State* L) {
     // clang-format on
 }
 
-// Blinks count times between the current value and a hidden one, 0 for alpha by default, and ends on the current value.
+// Blinks `count` times between the current value and a hidden one, 0 for alpha by default, and ends on the current value.
 int TweenLua::blink(lua_State* L) {
     // clang-format off
     return startReadyMade(L, {kBlinkFields}, {"color.a"}, [](Builder& builder, const TweenValue& current) {
@@ -698,7 +698,7 @@ int TweenLua::blink(lua_State* L) {
         if (builder.options != 0 && lua_getfield(state, builder.options, "hidden") != LUA_TNIL) {
             hidden = readLike(state, -1, current, "hidden");
         } else if (current.getKind() != TweenValue::Kind::Number && current.getKind() != TweenValue::Kind::Color) {
-            luaL_error(state, "A blink of a Vec2 or a text needs the hidden option.");
+            luaL_error(state, "A blink of a \"Vec2\" or a text needs the \"hidden\" option.");
         }
         if (builder.options != 0) {
             lua_pop(state, 1);
@@ -710,7 +710,7 @@ int TweenLua::blink(lua_State* L) {
     // clang-format on
 }
 
-// A strength of one number shakes both axes of a Vec2 by the same amount.
+// A strength of one number shakes both axes of a `Vec2` by the same amount.
 int TweenLua::shake(lua_State* L) {
     // clang-format off
     return startReadyMade(L, {kShakeFields}, {"x", "y"}, [](Builder& builder, const TweenValue& current) {
@@ -762,7 +762,7 @@ int TweenLua::timeline(lua_State* L) {
     return 1;
 }
 
-// Builds one tween per target with make(target, index) and places them in a new timeline, each one starting each seconds after the previous one.
+// Builds one tween per target with `make(target, index)` and places them in a new timeline, each one starting `each` seconds after the previous one.
 int TweenLua::stagger(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     const auto each = lua::Stack::read<float>(L, 2);
@@ -903,7 +903,7 @@ int TweenLua::handleKill(lua_State* L) {
     return 1;
 }
 
-// Returns a promise that resolves with true when the tween next completes and with false when it is killed first.
+// Returns a promise that resolves with `true` when the tween next completes and with `false` when it is killed first.
 int TweenLua::handleWait(lua_State* L) {
     const std::shared_ptr<Tween> tween = check(L, 1);
     Engine& engine = lua::Runtime::getEngine(L);

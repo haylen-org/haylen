@@ -1,4 +1,4 @@
-// A plain C library that the native interop tests and the native sample load on every platform. It exercises values, structs, buffers, text, callbacks from the calling thread and from threads of its own, and the HaylenNativeApi of the engine with byte buffers, batched events, streams, a screen, the window of the app and covers.
+// A plain C library that the native interop tests and the native sample load on every platform. It exercises values, structs, buffers, text, callbacks from the calling thread and from threads of its own, and the `HaylenNativeApi` of the engine with byte buffers, batched events, streams, a screen, the window of the app and covers.
 
 #include <stddef.h>
 #include <stdint.h>
@@ -172,7 +172,7 @@ static void native_test_answer_bytes(NativeTestJob* job) {
     free(reversed);
 }
 
-// Sends count batched events at once, each with one byte that counts them, which reach the app in one list.
+// Sends `count` batched events at once, each with one byte that counts them, which reach the app in one list.
 static void native_test_send_burst(int32_t count) {
     for (int32_t index = 0; index < count; ++index) {
         const uint8_t value = (uint8_t)index;
@@ -198,7 +198,7 @@ static void native_test_keep_bytes(NativeTestJob* job, const HaylenNativeBuffer*
     }
 }
 
-// Answers native_test.echo and native_test.echoBytes from a thread of the library, sends the batched events of native_test.burst, fails native_test.fail with a code and data, and leaves native_test.wait pending until the app gives it up.
+// Answers `native_test.echo` and `native_test.echoBytes` from a thread of the library, sends the batched events of `native_test.burst`, fails `native_test.fail` with a code and data, and leaves `native_test.wait` pending until the app gives it up.
 static void native_test_handle(void* user, uint64_t call, const char* method, const char* paramsJson, const HaylenNativeBuffer* buffers, size_t bufferCount) {
     (void)user;
     if (strcmp(method, "native_test.echo") == 0) {
@@ -231,7 +231,7 @@ static void native_test_cancel(void* user, uint64_t call) {
     nativeTestApi->emit("native_test.cancelled", payload, NULL, 0, 0);
 }
 
-// Pushes a frame of width by height pixels into the video stream pattern of native-test from a thread of the library. The stream is BGRA, every pixel holds blue, green and red from the seed and an opaque alpha, and every row carries four bytes of padding.
+// Pushes a frame of `width` by `height` pixels into the video stream `pattern` of `native-test` from a thread of the library. The stream is BGRA, every pixel holds blue, green and red from the seed and an opaque alpha, and every row carries four bytes of padding.
 static void native_test_push_frame(NativeTestJob* job) {
     HaylenNativeVideoStream* stream = job->api->openVideoStream("native-test", "pattern", HAYLEN_NATIVE_PIXELS_BGRA8, 0, 0);
     const size_t stride = (size_t)job->width * 4 + 4;
@@ -258,7 +258,7 @@ NATIVE_TEST_EXPORT void native_test_push_frame_later(int32_t width, int32_t heig
     native_test_spawn(job);
 }
 
-// Pushes count 16-bit samples of the value into the audio stream tone of native-test, mono at 8000 Hz, from a thread of the library.
+// Pushes `count` 16-bit samples of the value into the audio stream `tone` of `native-test`, mono at 8000 Hz, from a thread of the library.
 static void native_test_push_tone(NativeTestJob* job) {
     HaylenNativeAudioStream* stream = job->api->openAudioStream("native-test", "tone", 8000, 1, HAYLEN_NATIVE_SAMPLES_INT16, 4000);
     int16_t* samples = (int16_t*)malloc(sizeof(int16_t) * (size_t)job->width);
@@ -277,7 +277,7 @@ NATIVE_TEST_EXPORT void native_test_push_tone_later(int32_t count, int32_t value
     native_test_spawn(job);
 }
 
-// Returns 1 when the engine refuses to open the streams of native-test again with another format.
+// Returns 1 when the engine refuses to open the streams of `native-test` again with another format.
 NATIVE_TEST_EXPORT int32_t native_test_reopen_refused(void) {
     const int video = nativeTestApi->openVideoStream("native-test", "pattern", HAYLEN_NATIVE_PIXELS_RGBA8, 0, 0) == NULL;
     const int audio = nativeTestApi->openAudioStream("native-test", "tone", 8000, 2, HAYLEN_NATIVE_SAMPLES_INT16, 4000) == NULL;
@@ -302,7 +302,7 @@ NATIVE_TEST_EXPORT const char* native_test_last_error(void) {
     return nativeTestLastError != NULL ? nativeTestLastError : "";
 }
 
-// Opens the screen panel of native-test, which sends screenOpened with its parameters and their bytes, and stays open until the test ends it or the app gives it up.
+// Opens the screen `panel` of `native-test`, which sends `screenOpened` with its parameters and their bytes, and stays open until the test ends it or the app gives it up.
 static void native_test_open_screen(void* user, uint64_t screen, const char* paramsJson, const HaylenNativeBuffer* buffers, size_t bufferCount) {
     (void)user;
     nativeTestScreen = screen;
@@ -313,7 +313,7 @@ static void native_test_open_screen(void* user, uint64_t screen, const char* par
     free(payload);
 }
 
-// Closes the panel that the app gave up, which ends it as cancelled.
+// Closes the panel that the app gave up, which ends it as `cancelled`.
 static void native_test_cancel_screen(void* user, uint64_t screen) {
     (void)user;
     nativeTestApi->finishScreen(screen, 0, "{\"message\":\"The panel closed.\",\"code\":\"cancelled\"}", NULL, 0);
@@ -345,7 +345,7 @@ NATIVE_TEST_EXPORT void native_test_cover(int32_t covered) {
     }
 }
 
-// Registers the handlers of the library, its screen and its error handler, declares it the native part of the native-test plugin and announces it from a thread of its own with a retained event, which waits for a listener that connects later.
+// Registers the handlers of the library, its screen and its error handler, declares it the native part of the `native-test` plugin and announces it from a thread of its own with a retained event, which waits for a listener that connects later.
 NATIVE_TEST_EXPORT int native_test_haylen_init(const HaylenNativeApi* api) {
     if (api->version != HAYLEN_NATIVE_API_VERSION) {
         return 1;

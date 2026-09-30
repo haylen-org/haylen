@@ -8,7 +8,7 @@
 
 namespace haylen::math {
 
-// Adds the ray casts of math::Raycast to haylen.math. Hits cross into Lua as {x, y, normalX, normalY, distance, fraction} tables, which the ray casts of other modules extend with fields of their own.
+// Adds the ray casts of `math::Raycast` to `haylen.math`. Hits cross into Lua as `{x, y, normalX, normalY, distance, fraction}` tables, which the ray casts of other modules extend with fields of their own.
 class RaycastLua final {
   public:
     // Sets the ray cast functions on the module table at the top of the stack.
@@ -21,7 +21,7 @@ class RaycastLua final {
     static void setIndex(lua_State* L, const RayHit& hit);
 
   private:
-    // Pushes nil when there is no hit, and otherwise the hit with its index when the cast targets a list.
+    // Pushes `nil` when there is no hit, and otherwise the hit with its index when the cast targets a list.
     static void pushResult(lua_State* L, const std::optional<RayHit>& hit, float length, bool indexed);
 
     static int raycastSegment(lua_State* L);

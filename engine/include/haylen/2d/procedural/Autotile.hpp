@@ -15,23 +15,23 @@ namespace haylen::procedural2d {
 // Picks tile variants at run time from the neighbors of each cell: 4-bit masks of the sides, 8-bit masks reduced to the 47 tiles of a blob set, and the terrains of a Tiled Wang set.
 class Autotile final {
   public:
-    // Returns the sides whose neighbor holds the same value as the cell: north 1, east 2, south 4 and west 8. The cell must lie inside the grid, and cells beyond the grid match when edgesMatch is set.
+    // Returns the sides whose neighbor holds the same value as the cell: north 1, east 2, south 4 and west 8. The cell must lie inside the grid, and cells beyond the grid match when `edgesMatch` is set.
     [[nodiscard]] static std::uint8_t getMask4(const spatial2d::CellGrid& terrain, spatial2d::Cell cell, bool edgesMatch = true) noexcept;
 
     // Returns the neighbors that hold the same value as the cell, clockwise from north: north 1, north-east 2, east 4, south-east 8, south 16, south-west 32, west 64 and north-west 128. A corner only counts when both sides next to it match, which leaves the 47 masks of a blob tile set.
     [[nodiscard]] static std::uint8_t getMask8(const spatial2d::CellGrid& terrain, spatial2d::Cell cell, bool edgesMatch = true) noexcept;
 
-    // Numbers the 47 blob masks from 0 in increasing mask order, and returns -1 for masks that getMask8 never returns.
+    // Numbers the 47 blob masks from 0 in increasing mask order, and returns -1 for masks that `getMask8` never returns.
     [[nodiscard]] static int getBlobIndex(std::uint8_t mask) noexcept;
 
-    // Returns the 4-bit mask of every cell that holds value, and -1 for the other cells.
+    // Returns the 4-bit mask of every cell that holds `value`, and -1 for the other cells.
     [[nodiscard]] static spatial2d::CellGrid apply4(const spatial2d::CellGrid& terrain, std::int32_t value, bool edgesMatch = true);
-    // Returns the blob index of every cell that holds value, and -1 for the other cells.
+    // Returns the blob index of every cell that holds `value`, and -1 for the other cells.
     [[nodiscard]] static spatial2d::CellGrid apply8(const spatial2d::CellGrid& terrain, std::int32_t value, bool edgesMatch = true);
 
     // Returns the tileset tile of a Wang set for every cell, or -1 where no tile matches, from colors of at least 2 by 2 cells for corner and mixed sets. Colors are the Wang color numbers of Tiled, from 1, with 0 for no color.
-    // Corner and mixed sets read colors at the corners of the cells from a grid one cell wider and taller than the result, where cell (x, y) has its corners at (x, y), (x + 1, y), (x + 1, y + 1) and (x, y + 1). Mixed sets color an edge when both of its corners agree and accept any color otherwise.
-    // Edge sets read one color per cell and color each side whose neighbor shares that color, which suits paths and fences. Throws std::invalid_argument for an unknown kind of set.
+    // Corner and mixed sets read colors at the corners of the cells from a grid one cell wider and taller than the result, where cell `(x, y)` has its corners at `(x, y)`, `(x + 1, y)`, `(x + 1, y + 1)` and `(x, y + 1)`. Mixed sets color an edge when both of its corners agree and accept any color otherwise.
+    // Edge sets read one color per cell and color each side whose neighbor shares that color, which suits paths and fences. Throws `std::invalid_argument` for an unknown kind of set.
     // When several tiles match, a hash of the cell and the seed picks one.
     [[nodiscard]] static spatial2d::CellGrid applyWang(const spatial2d::CellGrid& colors, const tiled::WangSet& set, std::uint64_t seed = 0);
 

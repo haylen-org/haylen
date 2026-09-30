@@ -1,4 +1,4 @@
--- WebSocket echo with haylen.net: net.connectWebSocket connects in the background and reports open, message, error and close, send and sendBinary send text and raw bytes, and close ends the connection with a code. The socket answers the pings of the server by itself, so the ping here is a message the echo server sends back, which measures the round trip.
+-- WebSocket echo with `haylen.net`: `net.connectWebSocket` connects in the background and reports `open`, `message`, `error` and `close`, `send` and `sendBinary` send text and raw bytes, and `close` ends the connection with a code. The socket answers the pings of the server by itself, so the ping here is a message the echo server sends back, which measures the round trip.
 local haylen = require('haylen')
 local net = require('haylen.net')
 local ui = require('haylen.ui')
@@ -87,14 +87,14 @@ end
 -- Opens a new socket unless one is open or on its way, and listens to all of its events until the test ends.
 function WebSocket:connect()
     if self.socket and self.socket.state ~= 'closed' then
-        self:log('The socket is ' .. self.socket.state .. ' already')
+        self:log('The socket is "' .. self.socket.state .. '" already')
         return
     end
     local socket = self:keep(net.connectWebSocket(services.echo))
     self.socket = socket
-    self:log('net.connectWebSocket(url)', 'connecting to ' .. socket.url)
+    self:log('net.connectWebSocket(url)', 'Connecting to "' .. socket.url .. '"')
     self:on(socket, 'open', function()
-        self:log('open', 'the connection is up')
+        self:log('open', 'The connection is up')
     end)
     self:on(socket, 'message', function(data, binary)
         self:receive(data, binary)
@@ -110,7 +110,7 @@ end
 function WebSocket:close(code, reason)
     if self.socket then
         self.socket:close(code, reason)
-        self:log(string.format('socket:close(%d)', code), 'the state is ' .. self.socket.state)
+        self:log(string.format('socket:close(%d)', code), 'The state is "' .. self.socket.state .. '"')
     end
 end
 
@@ -119,7 +119,7 @@ function WebSocket:ready()
     if self.socket and self.socket.state == 'open' then
         return true
     end
-    self:log('Not sent', 'the socket is not open')
+    self:log('Not sent', 'The socket is not open')
     return false
 end
 

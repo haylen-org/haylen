@@ -19,7 +19,7 @@ namespace haylen::graphics2d {
 
 Canvas& RendererState::getCanvas() {
     if (!canvasOpen) {
-        throw std::logic_error("No canvas is active. Call beginWorld, beginScreen or beginTarget before drawing.");
+        throw std::logic_error("No canvas is active. Call \"beginWorld\", \"beginScreen\" or \"beginTarget\" before drawing.");
     }
     return canvases.back();
 }
@@ -411,7 +411,7 @@ const graphics::ShaderResource::Program& RendererState::getMaterialProgram(Mater
     // The renderer fills the blocks of the shader library itself, so a shader compiled with another version of the library cannot draw.
     const bool lit = target == graphics::PassTarget::LitScene;
     if (made.blockSizes[UB_sprite_haylen_vs_params] != sizeof(sprite_haylen_vs_params_t) || (lit && made.blockSizes[UB_sprite_lit_haylen_lit_params] != sizeof(sprite_lit_haylen_lit_params_t))) {
-        throw std::invalid_argument(std::format("The shader {} was compiled with another version of the shader library. Compile it again with make.py shaders.", shader.name));
+        throw std::invalid_argument(std::format("The shader \"{}\" was compiled with another version of the shader library. Compile it again with \"make.py shaders\".", shader.name));
     }
     return made;
 }

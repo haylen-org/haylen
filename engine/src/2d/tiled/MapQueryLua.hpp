@@ -6,7 +6,7 @@ namespace haylen::tiled {
 
 class Map;
 
-// Binds the ray casts and object outlines of tiled::MapQuery as methods of MapRenderer. Hits cross into Lua like the ray casts of haylen.math, with the cell or the object they hit.
+// Binds the ray casts and object outlines of `tiled::MapQuery` as methods of `MapRenderer`. Hits cross into Lua like the ray casts of `haylen.math`, with the cell or the object they hit.
 class MapQueryLua final {
   public:
     static int raycastTiles(lua_State* L);

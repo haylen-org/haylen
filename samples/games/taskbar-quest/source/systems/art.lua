@@ -1,4 +1,4 @@
--- The textures and frame animations of the quest, cut from the sheets in content/images.
+-- The textures and frame animations of the quest, cut from the sheets in `content/images`.
 local animation2d = require('haylen.animation2d')
 local assets = require('haylen.assets')
 

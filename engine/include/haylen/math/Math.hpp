@@ -12,7 +12,7 @@ class Math final {
     static constexpr float kTau = kPi * 2.0F;
     static constexpr float kHalfPi = kPi * 0.5F;
 
-    // Returns from and to exactly at 0 and 1.
+    // Returns `from` and `to` exactly at 0 and 1.
     [[nodiscard]] static constexpr float lerp(float from, float to, float t) noexcept {
         return from * (1.0F - t) + to * t;
     }

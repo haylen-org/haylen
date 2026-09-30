@@ -238,7 +238,7 @@ TEST(PoissonDiskTest, BoundsHugeDistancesAndRejectsOnesThatAreNotFinite) {
     Random random(5);
     const Rect area{0.0F, 0.0F, 100.0F, 100.0F};
 
-    // The largest distances reach far beyond any int number of cells, and the search stays within the grid.
+    // The largest distances reach far beyond any `int` number of cells, and the search stays within the grid.
     for (const float maximum : {1e30F, std::numeric_limits<float>::max()}) {
         const std::vector<Vec2> points = PoissonDisk::sample(PoissonDisk::Options{.area = area, .minimumDistance = 10.0F, .maximumDistance = maximum, .distance = [](Vec2) { return 10.0F; }}, random);
         ASSERT_GT(points.size(), 10U);

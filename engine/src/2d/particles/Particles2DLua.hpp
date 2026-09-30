@@ -15,7 +15,7 @@ namespace haylen::particles2d {
 
 struct Effect;
 
-// Installs haylen.particles2d with the ParticleEmitter and ParticleEffect classes. Emitter options and effect files share the same fields.
+// Installs `haylen.particles2d` with the `ParticleEmitter` and `ParticleEffect` classes. Emitter options and effect files share the same fields.
 class Particles2DLua final {
   public:
     static void install(lua_State* L);

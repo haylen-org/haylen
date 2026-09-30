@@ -23,7 +23,7 @@ SystemInfo LinuxSystem::getInfo() {
     return info;
 }
 
-// Starts xdg-open without blocking the frame thread, and a helper thread waits for it to tell whether an application took the url.
+// Starts `xdg-open` without blocking the frame thread, and a helper thread waits for it to tell whether an application took the url.
 void LinuxSystem::openUrl(const std::string& url, std::function<void(bool opened)> callback) {
     pid_t child = 0;
     const std::array<char*, 3> arguments{const_cast<char*>("xdg-open"), const_cast<char*>(url.c_str()), nullptr};
@@ -49,7 +49,7 @@ std::string LinuxSystem::getSystemVersion() {
     return info.release;
 }
 
-// Turns LANG into a BCP 47 tag, such as pt-BR for pt_BR.UTF-8. The C and POSIX locales are English.
+// Turns `LANG` into a BCP 47 tag, such as `pt-BR` for `pt_BR.UTF-8`. The C and POSIX locales are English.
 std::string LinuxSystem::getLocale() {
     const char* value = std::getenv("LANG");
     std::string language = value != nullptr ? value : "";

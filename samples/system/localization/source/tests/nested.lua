@@ -1,4 +1,4 @@
--- Nested keys: the groups of a language file become dotted keys, so story.chapters.first.title reads the title inside story, chapters and first. Groups are not keys themselves, and a table of zero, one and other texts is a plural form rather than a group.
+-- Nested keys: the groups of a language file become dotted keys, so `story.chapters.first.title` reads the title inside `story`, `chapters` and `first`. Groups are not keys themselves, and a table of `zero`, `one` and `other` texts is a plural form rather than a group.
 local assets = require('haylen.assets')
 local haylen = require('haylen')
 local localization = require('haylen.localization')
@@ -8,7 +8,7 @@ local sample = require('sample')
 
 local Nested = haylen.class('Nested', sample.Test)
 
-Nested.hints = 'Open the groups of the tree and pick a key or a group to read it with localization.text and localization.has.'
+Nested.hints = 'Open the groups of the tree and pick a key or a group to read it with "localization.text" and "localization.has".'
 Nested.focus = 'tree'
 
 local kPluralParts = {zero = true, one = true, other = true}
@@ -45,7 +45,7 @@ end
 function Nested:content()
     return {
         ui.panel{width = 820, align = 'stretch', gap = 12,
-            ui.sectionTitle{text = 'The groups of locale/en.json'},
+            ui.sectionTitle{text = 'The groups of "locale/en.json"'},
             ui.scroll{grow = 1, ui.tree{id = 'tree', items = items(assets.json('locale/en.json'), ''), expanded = {'story', 'story.chapters', 'story.chapters.first'}, onSelect = function(event)
                 self:pick(event.item)
             end}},
@@ -64,7 +64,7 @@ function Nested:pick(key)
     local has = localization.has(key)
     self:show('call', {text = string.format("localization.text('%s', {count = 3})", key)})
     self:show('result', {text = has and {key = key, args = {count = 3}} or key})
-    self:show('has', {text = string.format("localization.has('%s') is %s%s", key, tostring(has), has and '' or ', since a group is not a key, and text returns the key unchanged')})
+    self:show('has', {text = string.format("localization.has('%s') is %s%s", key, tostring(has), has and '' or ', since a group is not a key, and "text" returns the key unchanged')})
 end
 
 function Nested:languageChanged()

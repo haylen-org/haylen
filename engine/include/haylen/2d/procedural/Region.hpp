@@ -30,11 +30,11 @@ class Region final {
 
     [[nodiscard]] static Region rect(const math::Rect& value);
     [[nodiscard]] static Region circle(math::Vec2 middle, float radius);
-    // Throws std::invalid_argument when the inner radius is negative or larger than the outer one.
+    // Throws `std::invalid_argument` when the inner radius is negative or larger than the outer one.
     [[nodiscard]] static Region ring(math::Vec2 middle, float inner, float outer);
-    // Takes outlines as math::Polygon does, where an outline wound opposite to the one around it is a hole. Throws std::invalid_argument when the outlines enclose no area.
+    // Takes outlines as `math::Polygon` does, where an outline wound opposite to the one around it is a hole. Throws `std::invalid_argument` when the outlines enclose no area.
     [[nodiscard]] static Region polygon(std::span<const std::vector<math::Vec2>> outlines);
-    // Turns a rectangle, ellipse or polygon object of a Tiled map into its area in map pixels, rotation included. Throws std::invalid_argument for other shapes.
+    // Turns a rectangle, ellipse or polygon object of a Tiled map into its area in map pixels, rotation included. Throws `std::invalid_argument` for other shapes.
     [[nodiscard]] static Region fromObject(const tiled::Object& object);
 
     [[nodiscard]] Kind getKind() const noexcept {

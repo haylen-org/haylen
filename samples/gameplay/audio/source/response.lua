@@ -1,9 +1,9 @@
--- The frequency response of the filters of haylen.audio, from the formulas of the Audio EQ Cookbook of Robert Bristow-Johnson that the engine uses, so the effects test can draw the curve a filter applies.
+-- The frequency response of the filters of `haylen.audio`, from the formulas of the Audio EQ Cookbook of Robert Bristow-Johnson that the engine uses, so the effects test can draw the curve a filter applies.
 local response = {}
 
 local kSampleRate = 48000
 
--- Returns the coefficients b0, b1, b2, a0, a1 and a2 of a filter kind at a cutoff, q and gain.
+-- Returns the coefficients `b0`, `b1`, `b2`, `a0`, `a1` and `a2` of a filter kind at a cutoff, `q` and gain.
 local function coefficients(kind, cutoff, q, gain)
     local w0 = 2 * math.pi * math.min(cutoff, kSampleRate * 0.49) / kSampleRate
     local cos, alpha = math.cos(w0), math.sin(w0) / (2 * q)

@@ -93,7 +93,7 @@ bool Bridge::cancel(std::uint64_t id) {
     if (entry.native) {
         canceller(id, entry.method);
     }
-    cancelled.emplace_back(std::move(entry.callback), Result{.error = {.message = std::format("The platform call {} was cancelled.", entry.method), .code = "cancelled"}});
+    cancelled.emplace_back(std::move(entry.callback), Result{.error = {.message = std::format("The platform call \"{}\" was cancelled.", entry.method), .code = "cancelled"}});
     return true;
 }
 
@@ -114,13 +114,13 @@ void Bridge::resolve(std::uint64_t id, bool ok, std::string_view resultJson, std
 void Bridge::emit(std::string_view event, std::string_view payloadJson, std::vector<std::vector<std::byte>> buffers, const EmitOptions& options) {
     core::Json payload = payloadJson.empty() ? core::Json(nullptr) : core::Json::parse(payloadJson, nullptr, false);
     if (payload.is_discarded()) {
-        core::Log::error("The platform event '{}' carried invalid JSON and was dropped.", event);
+        core::Log::error("The platform event \"{}\" carried invalid JSON and was dropped.", event);
         return;
     }
     try {
         core::JsonBytes::validate(payload, buffers.size());
     } catch (const std::invalid_argument& error) {
-        core::Log::error("The platform event '{}' was dropped. {}", event, error.what());
+        core::Log::error("The platform event \"{}\" was dropped. {}", event, error.what());
         return;
     }
 
@@ -258,12 +258,12 @@ void Bridge::expireCalls() {
             canceller(id, entry.method);
         }
         if (entry.callback) {
-            entry.callback({.error = {.message = std::format("The platform call {} timed out.", entry.method), .code = "timeout"}});
+            entry.callback({.error = {.message = std::format("The platform call \"{}\" timed out.", entry.method), .code = "timeout"}});
         }
     }
 }
 
-// A failed call carries a plain message or an object with message, code and data, and any other payload still fails with a message.
+// A failed call carries a plain message or an object with `message`, `code` and `data`, and any other payload still fails with a message.
 Bridge::Error Bridge::readFailure(core::Json payload) {
     if (payload.is_string()) {
         return {.message = payload.get<std::string>()};

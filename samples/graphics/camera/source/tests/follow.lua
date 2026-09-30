@@ -9,7 +9,7 @@ local sample = require('sample')
 
 local Follow = haylen.class('Follow', sample.Test)
 
-Follow.hints = 'Walk with WASD, the left stick or by holding the mouse button or a finger. The box drawn by camera:drawDebug is where the player moves without moving the view.'
+Follow.hints = 'Walk with WASD, the left stick or by holding the mouse button or a finger. The box drawn by "camera:drawDebug" is where the player moves without moving the view.'
 
 function Follow:init(entry)
     Follow.super.init(self, entry)

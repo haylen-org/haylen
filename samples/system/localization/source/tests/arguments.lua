@@ -1,4 +1,4 @@
--- Arguments: {name} placeholders take the values of the arguments table, whole numbers print without decimals, other numbers as JSON numbers, booleans as true or false, {{ and }} write braces, and a placeholder without an argument stays as it is. Without arguments a text shows its template.
+-- Arguments: `{name}` placeholders take the values of the arguments table, whole numbers print without decimals, other numbers as JSON numbers, booleans as `true` or `false`, `{{` and `}}` write braces, and a placeholder without an argument stays as it is. Without arguments a text shows its template.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 

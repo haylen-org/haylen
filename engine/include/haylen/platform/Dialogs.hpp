@@ -19,12 +19,12 @@ namespace haylen::platform {
 
 class Host;
 
-// Shows native dialogs and hands their answers to the frame thread. Each callback runs once, in pump, with the choice of the user or with a failure: cancelled when the app gave the dialog up, timeout when its time ran out, unsupported where the platform has no such dialog and failed where the platform could not show it. Dialog ids are unique in the whole process, so an answer that arrives after the app restarted never answers a dialog of the new app.
+// Shows native dialogs and hands their answers to the frame thread. Each callback runs once, in `pump`, with the choice of the user or with a failure: `cancelled` when the app gave the dialog up, `timeout` when its time ran out, `unsupported` where the platform has no such dialog and `failed` where the platform could not show it. Dialog ids are unique in the whole process, so an answer that arrives after the app restarted never answers a dialog of the new app.
 class Dialogs final {
   public:
     using Callback = std::function<void(DialogResult)>;
 
-    // The platform copies picked files that have no path of their own, such as the documents of mobile pickers, into a folder of each dialog under folder, which every new engine empties.
+    // The platform copies picked files that have no path of their own, such as the documents of mobile pickers, into a folder of each dialog under `folder`, which every new engine empties.
     Dialogs(Host& host, std::filesystem::path folder);
 
     // Closes the dialogs that are still open, whose callbacks never run.
@@ -33,10 +33,10 @@ class Dialogs final {
     Dialogs(const Dialogs&) = delete;
     Dialogs& operator=(const Dialogs&) = delete;
 
-    // Validates the request, hands it to the platform and returns its id. A dialog with a timeout fails with the code timeout when the user takes longer, and the platform closes it. Throws std::invalid_argument for a request the platform cannot show.
+    // Validates the request, hands it to the platform and returns its id. A dialog with a timeout fails with the code `timeout` when the user takes longer, and the platform closes it. Throws `std::invalid_argument` for a request the platform cannot show.
     std::uint64_t show(const DialogRequest& request, Callback callback, std::optional<std::chrono::steady_clock::duration> timeout = std::nullopt);
 
-    // Closes a dialog, which fails with the code cancelled at the next pump, and returns false when it already settled.
+    // Closes a dialog, which fails with the code `cancelled` at the next pump, and returns `false` when it already settled.
     bool cancel(std::uint64_t id);
 
     // Answers a dialog from any thread. An answer to a dialog that settled or that this engine never showed is dropped.

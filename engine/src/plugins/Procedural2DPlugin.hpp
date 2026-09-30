@@ -4,7 +4,7 @@
 
 namespace haylen::plugins {
 
-// Installs haylen.procedural2d, the procedural generation of maps and the scattering of objects over them.
+// Installs `haylen.procedural2d`, the procedural generation of maps and the scattering of objects over them.
 class Procedural2DPlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {

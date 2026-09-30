@@ -79,13 +79,13 @@ int StorageLua::flush(lua_State* L) {
     return 0;
 }
 
-// Returns the absolute path of the storage folder, where Varn's fs module reads and writes asynchronously.
+// Returns the absolute path of the storage folder, where Varn's `fs` module reads and writes asynchronously.
 int StorageLua::root(lua_State* L) {
     lua::Stack::push(L, getUserStorage(L).getRoot().generic_string());
     return 1;
 }
 
-// Saves a slot with writeSlot(slot, data[, summary]), where the summary is a small table shown by load menus, and makes it durable at once.
+// Saves a slot with `writeSlot(slot, data[, summary])`, where the summary is a small table shown by load menus, and makes it durable at once.
 int StorageLua::writeSlot(lua_State* L) {
     const core::Json summary = lua_isnoneornil(L, 3) ? core::Json::object() : lua::JsonConverter::read(L, 3);
     getSaveSlots(L).write(lua::Stack::read<std::string_view>(L, 1), lua::JsonConverter::read(L, 2), summary);

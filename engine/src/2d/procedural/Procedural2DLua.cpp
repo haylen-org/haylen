@@ -86,7 +86,7 @@ Region Procedural2DLua::readTiledObject(lua_State* L, int table) {
             return Region::fromObject(object);
         }
     }
-    throw std::invalid_argument("Unknown Tiled object shape '" + shape + "'.");
+    throw std::invalid_argument("Unknown Tiled object shape \"" + shape + "\".");
 }
 
 Region Procedural2DLua::readRegion(lua_State* L, int index) {
@@ -174,10 +174,10 @@ Scatter::Options Procedural2DLua::readScatter(lua_State* L, int index, bool asyn
     for (const auto& [field, map, normalized] : {std::tuple{"densityMap", &options.densityMap, true}, std::tuple{"biome", &options.biome, false}}) {
         const int type = lua_getfield(L, index, field);
         if (type != LUA_TNIL && type != LUA_TFUNCTION && type != LUA_TTABLE) {
-            throw std::invalid_argument(std::string("The ") + field + " option takes a function or a noise table.");
+            throw std::invalid_argument(std::string("The \"") + field + "\" option takes a function or a noise table.");
         }
         if (type == LUA_TFUNCTION && asynchronous) {
-            throw std::invalid_argument(std::string("Asynchronous scattering takes a noise table for ") + field + " instead of a function.");
+            throw std::invalid_argument(std::string("Asynchronous scattering takes a noise table for \"") + field + "\" instead of a function.");
         }
         if (type == LUA_TFUNCTION) {
             *map = readCallback(L, -1);
@@ -218,7 +218,7 @@ Scatter::Options Procedural2DLua::readScatter(lua_State* L, int index, bool asyn
     return options;
 }
 
-// Points cross into Lua as {x, y, type} tables, with types counted from 1 like the weights.
+// Points cross into Lua as `{x, y, type}` tables, with types counted from 1 like the weights.
 void Procedural2DLua::pushPoints(lua_State* L, const std::vector<Scatter::Point>& points) {
     lua_createtable(L, static_cast<int>(points.size()), 0);
     for (std::size_t index = 0; index < points.size(); ++index) {
@@ -289,7 +289,7 @@ int Procedural2DLua::scatterAsync(lua_State* L) {
     // clang-format on
 }
 
-// Triangulates a list of points with delaunay(points) into a Delaunay object, whose lists count points and edges from 1.
+// Triangulates a list of points with `delaunay(points)` into a `Delaunay` object, whose lists count points and edges from 1.
 int Procedural2DLua::delaunay(lua_State* L) {
     auto points = lua::Stack::read<std::vector<math::Vec2>>(L, 1);
     lua::Userdata::emplace<Delaunay>(L, std::move(points));
@@ -349,7 +349,7 @@ int Procedural2DLua::delaunayCircumcenter(lua_State* L) {
     return 1;
 }
 
-// Finds the point nearest to a position with findNearest(position[, start]), walking from the point start, or returns nil without points.
+// Finds the point nearest to a position with `findNearest(position[, start])`, walking from the point `start`, or returns `nil` without points.
 int Procedural2DLua::delaunayFindNearest(lua_State* L) {
     const Delaunay& triangulation = lua::Userdata::check<Delaunay>(L, 1);
     const auto position = lua::Stack::read<math::Vec2>(L, 2);

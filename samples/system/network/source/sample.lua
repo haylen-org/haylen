@@ -59,7 +59,7 @@ function sample.hex(data)
     end))
 end
 
--- The base of every test scene. A test sets its hints and the control that takes the focus, and returns the nodes of its page from content.
+-- The base of every test scene. A test sets its hints and the control that takes the focus, and returns the nodes of its page from `content`.
 local Test = haylen.class('Test', scene.Scene)
 sample.Test = Test
 

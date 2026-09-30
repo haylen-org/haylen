@@ -1,4 +1,4 @@
--- Blend modes: 'add' brightens the light map, 'subtract' darkens it and 'mix' replaces it by the strength of the light.
+-- Blend modes: `add` brightens the light map, `subtract` darkens it and `mix` replaces it by the strength of the light.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local lighting2d = require('haylen.lighting2d')

@@ -1,4 +1,4 @@
--- A post-processing chain: the built-in vignette runs in the composite, then every material of postProcess.materials runs over the image the step before made.
+-- A post-processing chain: the built-in vignette runs in the composite, then every material of `postProcess.materials` runs over the image the step before made.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')

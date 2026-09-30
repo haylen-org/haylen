@@ -1,4 +1,4 @@
--- Shake: trauma decays over time and the shake grows with its square, so small hits stay subtle, and camera:shake moves the view only along one direction, like a recoil.
+-- Shake: trauma decays over time and the shake grows with its square, so small hits stay subtle, and `camera:shake` moves the view only along one direction, like a recoil.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')

@@ -39,7 +39,7 @@ class Scene {
     // Loads what the scene needs before it enters, while the transition covers the screen or before an effect that shows both scenes starts. The load finishes when the hook returns, or later through the deferrals and preloads of the load. An exception fails the load.
     virtual void load(Engine& engine, SceneLoad& context);
 
-    // Enters the stack with the params of the change.
+    // Enters the stack with the `params` of the change.
     virtual void enter(Engine& engine, const std::any& params);
 
     // The top scene after a change hears when its transition finished and input reaches it again.
@@ -68,7 +68,7 @@ class Scene {
 
     [[nodiscard]] virtual bool isTransparent() const;
 
-    // Inherit, the default, takes the mode of the scene below and resolves to Pausable at the bottom of the stack.
+    // The mode `Inherit`, the default, takes the mode of the scene below and resolves to `Pausable` at the bottom of the stack.
     [[nodiscard]] virtual ProcessMode getProcessMode() const;
 
     [[nodiscard]] State getState() const noexcept {

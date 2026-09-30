@@ -1,4 +1,4 @@
--- Tile animations of the tileset playing on tile layers and on tile objects as map:update advances the map time, with the frames of the tile under the pointer.
+-- Tile animations of the tileset playing on tile layers and on tile objects as `map:update` advances the map time, with the frames of the tile under the pointer.
 local haylen = require('haylen')
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')

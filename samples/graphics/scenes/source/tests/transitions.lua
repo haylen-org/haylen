@@ -1,4 +1,4 @@
--- Transition gallery: every built-in effect of haylen.scene pushes a card with the chosen direction, easing, duration and color, and the card pops itself back with the opposite direction.
+-- Transition gallery: every built-in effect of `haylen.scene` pushes a card with the chosen direction, easing, duration and color, and the card pops itself back with the opposite direction.
 local haylen = require('haylen')
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')

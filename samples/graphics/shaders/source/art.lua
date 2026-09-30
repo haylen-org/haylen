@@ -29,7 +29,7 @@ function art.material(name, uniforms)
     return graphics2d.newMaterial(assets.shader('shaders/' .. name .. '.shader'), uniforms)
 end
 
--- Returns the centers of count cells in rows of columns, spread over the part of the screen below the header and left of the controls.
+-- Returns the centers of `count` cells in rows of `columns`, spread over the part of the screen below the header and left of the controls.
 function art.cells(count, columns)
     local rows = math.ceil(count / columns)
     local width, height = 1340 / columns, 760 / rows

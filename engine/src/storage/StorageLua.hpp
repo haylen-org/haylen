@@ -12,7 +12,7 @@ namespace haylen::storage {
 
 class UserStorage;
 
-// Installs haylen.storage, which reads and writes the private files of the user and the save slots kept among them, on the frame thread or, with the functions whose names end in Async, on the I/O pool.
+// Installs `haylen.storage`, which reads and writes the private files of the user and the save slots kept among them, on the frame thread or, with the functions whose names end in `Async`, on the I/O pool.
 class StorageLua final {
   public:
     static void install(lua_State* L);
@@ -27,7 +27,7 @@ class StorageLua final {
     [[nodiscard]] static Pusher pushJson(core::Json value);
     [[nodiscard]] static Pusher pushInfos(std::vector<SaveSlots::Info> infos);
 
-    // Queues work with the other storage operations on the I/O pool and pushes a promise that settles on the frame thread with what work returns, or rejects with what it threw. A durable operation flushes user storage before it settles.
+    // Queues work with the other storage operations on the I/O pool and pushes a promise that settles on the frame thread with what `work` returns, or rejects with what it threw. A durable operation flushes user storage before it settles.
     static int queue(lua_State* L, bool durable, std::function<Pusher()> work);
 
     static int readText(lua_State* L);

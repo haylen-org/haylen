@@ -15,7 +15,7 @@
 
 namespace haylen::text {
 
-// The parsed font file, sized by its em square at the bake size. stb_truetype reads the outlines and HarfBuzz shapes in font units, with a buffer kept for every run.
+// The parsed font file, sized by its em square at the bake size. The stb_truetype library reads the outlines and HarfBuzz shapes in font units, with a buffer kept for every run.
 struct TrueTypeFont::Face {
     std::vector<std::uint8_t> ttf;
     stbtt_fontinfo info{};

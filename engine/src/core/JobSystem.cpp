@@ -12,7 +12,7 @@
 
 namespace haylen::core {
 
-// The chunks of one parallelFor. A thread touches the body only after it claimed a chunk, and the caller waits for every claimed chunk, so a worker that starts after the range ended finds nothing to claim and returns.
+// The chunks of one `parallelFor`. A thread touches the body only after it claimed a chunk, and the caller waits for every claimed chunk, so a worker that starts after the range ended finds nothing to claim and returns.
 struct JobSystem::ParallelRange {
     const std::function<void(std::size_t, std::size_t)>* body = nullptr;
     std::size_t begin = 0;
@@ -164,7 +164,7 @@ void JobSystem::parallelFor(std::size_t begin, std::size_t end, [[maybe_unused]]
     }
     range->runChunks();
 
-    // Chunks that workers claimed may still run, and they reference body, so the caller waits for them even when a chunk failed.
+    // Chunks that workers claimed may still run, and they reference `body`, so the caller waits for them even when a chunk failed.
     std::unique_lock lock(range->mutex);
     range->finished.wait(lock, [&range] { return range->finishedChunks.load() == range->chunkCount; });
     if (range->error) {

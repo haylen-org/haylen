@@ -1,4 +1,4 @@
--- Custom effects: graphics2d.registerTextEffect adds a tag whose Lua function moves, colors and hides each glyph every frame from its index, its position and the time, and graphics2d.registerTextIcon adds images that [icon] shows inline.
+-- Custom effects: `graphics2d.registerTextEffect` adds a tag whose Lua function moves, colors and hides each glyph every frame from its index, its position and the time, and `graphics2d.registerTextIcon` adds images that `[icon]` shows inline.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -8,7 +8,7 @@ local sample = require('sample')
 
 local CustomEffects = haylen.class('CustomEffects', sample.Test)
 
-CustomEffects.hints = 'Each effect below is a few lines of Lua in source/tests/custom-effects.lua. An effect sees the glyph index inside its tag, the character in the whole text, the pen position and the time, and the same time always gives the same picture.'
+CustomEffects.hints = 'Each effect below is a few lines of Lua in "source/tests/custom-effects.lua". An effect sees the glyph index inside its tag, the character in the whole text, the pen position and the time, and the same time always gives the same picture.'
 
 -- A ghost fades in and out along the word and floats up as it shows.
 graphics2d.registerTextEffect('ghost', function(glyph, attributes)
@@ -17,7 +17,7 @@ graphics2d.registerTextEffect('ghost', function(glyph, attributes)
     glyph.offsetY = glyph.offsetY - alpha * 8
 end)
 
--- Letters hop one after another, as high as the height attribute.
+-- Letters hop one after another, as high as the `height` attribute.
 graphics2d.registerTextEffect('bounce', function(glyph, attributes)
     glyph.offsetY = glyph.offsetY - math.abs(math.sin(glyph.time * 5 + glyph.index * 0.45)) * (attributes.height or 16)
 end)

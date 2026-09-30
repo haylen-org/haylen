@@ -9,7 +9,7 @@
 
 namespace haylen::spatial2d {
 
-// A dense grid of integer cell values, such as terrain kinds or walls, for the grid algorithms of spatial2d. The algorithms treat zero as open ground and any other value as solid, unless they compare values.
+// A dense grid of integer cell values, such as terrain kinds or walls, for the grid algorithms of `spatial2d`. The algorithms treat zero as open ground and any other value as solid, unless they compare values.
 class CellGrid final {
   public:
     CellGrid(int columns, int rows, std::int32_t value = 0);
@@ -24,7 +24,7 @@ class CellGrid final {
         return cell.x >= 0 && cell.y >= 0 && cell.x < width && cell.y < height;
     }
 
-    // Returns the value of a cell inside the grid, which callers check with contains first.
+    // Returns the value of a cell inside the grid, which callers check with `contains` first.
     [[nodiscard]] std::int32_t operator[](Cell cell) const noexcept {
         return values[indexOf(cell)];
     }

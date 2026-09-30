@@ -14,7 +14,7 @@
 
 namespace haylen::platform {
 
-// Host backed by sokol_app, sokol_glue and the services of the platform folder compiled into the runtime.
+// Host backed by `sokol_app`, `sokol_glue` and the services of the platform folder compiled into the runtime.
 class SokolHost final : public Host {
   public:
     [[nodiscard]] math::Vec2 getFramebufferSize() const noexcept override;
@@ -89,7 +89,7 @@ class SokolHost final : public Host {
         focusable = openingFocusable;
     }
 
-    // Turns the edits and actions of the plain keyboard that setKeyboardVisible opens into key and character events.
+    // Turns the edits and actions of the plain keyboard that `setKeyboardVisible` opens into key and character events.
     [[nodiscard]] std::vector<Event> translateKeyboard(const Event& event) {
         return keyboard.translate(event);
     }

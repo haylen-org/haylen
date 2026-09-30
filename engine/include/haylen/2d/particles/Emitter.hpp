@@ -90,7 +90,7 @@ class Emitter final {
     static void validate(const EmitterConfig& settings);
     [[nodiscard]] static EmitterConfig prepared(EmitterConfig settings);
 
-    // Spawns up to count particles, as many as maxParticles leaves room for.
+    // Spawns up to `count` particles, as many as `maxParticles` leaves room for.
     void spawn(std::size_t count);
     void spawnParticle();
     void prewarm();

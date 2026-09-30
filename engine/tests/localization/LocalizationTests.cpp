@@ -121,8 +121,8 @@ TEST(LocalizationLuaTest, LoadsLanguageFoldersFromThePackage) {
     EXPECT_EQ(fixture.lua("return tostring(localization.findBestMatch('de')) .. ' ' .. localization.text('nothing.here')"), "nil nothing.here");
 
     EXPECT_EQ(fixture.lua("localization.add('ar', {['@direction'] = 'rightToLeft', hud = {day = 'اليوم {day}'}}) return localization.direction('ar') .. ' ' .. localization.direction()"), "rightToLeft leftToRight");
-    EXPECT_NE(fixture.lua("localization.loadFolder('broken')").find("broken/en.json is not valid JSON"), std::string::npos);
-    EXPECT_NE(fixture.lua("localization.setLanguage('xx')").find("No localization table was added for xx"), std::string::npos);
+    EXPECT_NE(fixture.lua("localization.loadFolder('broken')").find("broken/en.json\" is not valid JSON"), std::string::npos);
+    EXPECT_NE(fixture.lua("localization.setLanguage('xx')").find("No localization table was added for \"xx\""), std::string::npos);
     EXPECT_NE(fixture.lua("localization.add('de', {menu = {count = 3}})").find("menu.count"), std::string::npos);
 }
 

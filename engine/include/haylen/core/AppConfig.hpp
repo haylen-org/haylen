@@ -21,9 +21,9 @@ class Package;
 
 namespace haylen::core {
 
-// App settings read from app.json before any script runs, because the window exists before source/main.lua.
+// App settings read from `app.json` before any script runs, because the window exists before `source/main.lua`.
 struct AppConfig {
-    // A transparent window opens able to let the desktop show through its transparent pixels, which it keeps for the whole run, and clears to transparent unless clearColor says otherwise. The desktop options change at run time through the window, and position places the window when it opens.
+    // A transparent window opens able to let the desktop show through its transparent pixels, which it keeps for the whole run, and clears to transparent unless `clearColor` says otherwise. The desktop options change at run time through the window, and `position` places the window when it opens.
     struct Window {
         std::string title = "Haylen";
         int width = 1280;
@@ -42,7 +42,7 @@ struct AppConfig {
         std::optional<platform::WindowPlacement> position;
     };
 
-    // The launch screen that every platform shows while the app starts, with a logo relative to the content folder, or the Haylen logo when it is empty, over a background color that defaults to the clear color. make.py turns it into the launch storyboard on Apple platforms, the splash screen on Android and the loading page on the web.
+    // The launch screen that every platform shows while the app starts, with a logo relative to the content folder, or the Haylen logo when it is empty, over a background color that defaults to the clear color. The script `make.py` turns it into the launch storyboard on Apple platforms, the splash screen on Android and the loading page on the web.
     struct Splash {
         std::string logo;
         math::Color background = math::Color::black();
@@ -55,7 +55,7 @@ struct AppConfig {
         bool muteOnFocusLoss = false;
     };
 
-    // The debug statistics the app starts with, whether counted objects publish objectCreated and objectDestroyed, the safe area to simulate instead of the one of the device, and whether the safe area shows over the app.
+    // The debug statistics the app starts with, whether counted objects publish `objectCreated` and `objectDestroyed`, the safe area to simulate instead of the one of the device, and whether the safe area shows over the app.
     struct Debug {
         debug::StatsDisplay::Mode stats = debug::StatsDisplay::Mode::Off;
         bool objectEvents = false;
@@ -76,26 +76,26 @@ struct AppConfig {
     Splash splash{};
     Lifecycle lifecycle{};
 
-    // How the app shares sound with the system and other apps, from the audio object with iosSession and mixWithOthers.
+    // How the app shares sound with the system and other apps, from the `audio` object with `iosSession` and `mixWithOthers`.
     audio::Session audioSession{};
     Debug debug{};
 
     // Lua modules that load before the first scene and live for the whole app.
     std::vector<std::string> autoloads;
 
-    // The native libraries the app ships by name, which make.py builds and places in the package of each platform. The engine keeps the section as app.json wrote it.
+    // The native libraries the app ships by name, which `make.py` builds and places in the package of each platform. The engine keeps the section as `app.json` wrote it.
     Json native = Json::object();
 
-    // The plugins the app uses by id, each with the values of its parameters as app.json wrote them. Every id names the folder plugins/<id> of the package, which holds its plugin.json and its Lua modules.
+    // The plugins the app uses by id, each with the values of its parameters as `app.json` wrote them. Every id names the folder `plugins/<id>` of the package, which holds its `plugin.json` and its Lua modules.
     Json plugins = Json::object();
 
-    // Set by the runtime rather than app.json: a package opened from a folder during development reloads when its files change.
+    // Set by the runtime rather than `app.json`: a package opened from a folder during development reloads when its files change.
     bool hotReload = false;
 
-    // Reads every present field and validates it. Throws std::invalid_argument with the offending field on bad values.
+    // Reads every present field and validates it. Throws `std::invalid_argument` with the offending field on bad values.
     [[nodiscard]] static AppConfig fromJson(const Json& document);
 
-    // Reads app.json of the package like fromJson and also checks that the package holds plugins/<id>/plugin.json for every plugin the app lists.
+    // Reads `app.json` of the package like `fromJson` and also checks that the package holds `plugins/<id>/plugin.json` for every plugin the app lists.
     [[nodiscard]] static AppConfig fromPackage(const io::Package& package);
     [[nodiscard]] Json toJson() const;
 

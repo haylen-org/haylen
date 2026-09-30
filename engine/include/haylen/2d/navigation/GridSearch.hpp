@@ -22,7 +22,7 @@ class GridSearch final {
         // Estimates the distance left, Octile with diagonal steps and Manhattan without them when unset. Hexagonal grids count hex steps and take none.
         std::optional<Grid::Heuristic> heuristic;
 
-        // Values above 1 trade length for speed, finding paths that cost at most weight times the cheapest one.
+        // Values above 1 trade length for speed, finding paths that cost at most `weight` times the cheapest one.
         float weight = 1.0F;
 
         // Jump point search skips over runs of open ground and finds paths as cheap as A* while expanding far fewer cells, on square and staggered grids where every cell costs 1.
@@ -42,7 +42,7 @@ class GridSearch final {
         return expanded;
     }
 
-    // Throws std::invalid_argument when the options do not suit the grid, which lets background searches reject bad arguments before they start.
+    // Throws `std::invalid_argument` when the options do not suit the grid, which lets background searches reject bad arguments before they start.
     static void requireValid(const Grid& grid, const Options& options);
 
   private:
@@ -72,7 +72,7 @@ class GridSearch final {
     void searchAStar(const Grid& grid, Grid::Cell start, Grid::Cell goal, const Options& options, Grid::Heuristic heuristic);
     void searchJumpPoints(const Grid& grid, Grid::Cell start, Grid::Cell goal, const Options& options, Grid::Heuristic heuristic);
 
-    // Fills candidates with the lattice points worth exploring from a point reached from its parent, the neighbors jump point search keeps, and returns how many there are.
+    // Fills `candidates` with the lattice points worth exploring from a point reached from its parent, the neighbors jump point search keeps, and returns how many there are.
     [[nodiscard]] static std::size_t prunedNeighbors(const Grid& grid, Grid::Cell point, std::optional<Grid::Cell> parent, bool diagonal, std::array<Grid::Cell, 8>& candidates);
 
     // Moves from a lattice point along a direction until it finds a jump point, the goal or a wall.

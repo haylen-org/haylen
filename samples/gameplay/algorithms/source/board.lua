@@ -15,7 +15,7 @@ function Board:contains(column, row)
     return column >= 0 and row >= 0 and column < self.columns and row < self.rows
 end
 
--- Returns the cell under a world position, or nil outside the board.
+-- Returns the cell under a world position, or `nil` outside the board.
 function Board:cellAt(x, y)
     local column, row = (x - self.left) // self.cellSize, (y - self.top) // self.cellSize
     if self:contains(column, row) then
@@ -65,7 +65,7 @@ function Board:drawPath(path, thickness, color, order)
     graphics2d.drawPolyline(points, thickness, color, false, order)
 end
 
--- Calls `visit(column, row, first)` for every cell a pointer drag crosses, with no gaps however fast it moves. `first` is true for the cell the press started on.
+-- Calls `visit(column, row, first)` for every cell a pointer drag crosses, with no gaps however fast it moves. The argument `first` is `true` for the cell the press started on.
 function Board:stroke(pointer, visit)
     if not pointer.down then
         self.last = nil

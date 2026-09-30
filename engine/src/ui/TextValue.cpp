@@ -24,15 +24,15 @@ TextValue TextValue::fromJson(const core::Json& value, std::string_view context)
         return {.literal = formatNumber(value)};
     }
     if (value.is_object()) {
-        core::JsonValidator::requireKnownKeys(value, {"key", "args"}, context);
+        core::JsonValidator::requireKnownKeys(value, {"key", "args"}, "\"" + std::string(context) + "\"");
         const auto found = value.find("key");
         const auto values = value.find("args");
         if (found == value.end() || !found->is_string() || found->get<std::string>().empty() || (values != value.end() && !values->is_object())) {
-            throw std::invalid_argument(PropertyReader::describeProperty(context) + " needs a translation key and an optional args object.");
+            throw std::invalid_argument(PropertyReader::describeProperty(context) + " needs a translation key and an optional \"args\" object.");
         }
         return {.literal = {}, .key = found->get<std::string>(), .arguments = values != value.end() ? *values : core::Json::object()};
     }
-    throw std::invalid_argument(PropertyReader::describeProperty(context) + " must be text, a number or a translation such as {key = 'menu.play'}.");
+    throw std::invalid_argument(PropertyReader::describeProperty(context) + " must be text, a number or a translation such as \"{key = 'menu.play'}\".");
 }
 
 } // namespace haylen::ui

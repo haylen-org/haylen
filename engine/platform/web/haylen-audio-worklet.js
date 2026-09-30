@@ -1,4 +1,4 @@
-// AudioWorklet processor of the audio output of the Haylen web runtime, which haylen-runtime.js loads from next to its script.
+// AudioWorklet processor of the audio output of the Haylen web runtime, which `haylen-runtime.js` loads from next to its script.
 // The page mixes on its own thread and posts blocks of interleaved samples, which the processor keeps in a ring buffer and plays one render quantum at a time. It answers with the frames it played since its last answer and the buffers of the blocks it copied, which the page fills again, and it counts the render quanta that found the buffer empty.
 
 class HaylenAudioProcessor extends AudioWorkletProcessor {

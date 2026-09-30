@@ -1,4 +1,4 @@
--- A bridge of planks from physics2d.newBridge between two cliffs, loaded with crates, barrels and a heavy block.
+-- A bridge of planks from `physics2d.newBridge` between two cliffs, loaded with crates, barrels and a heavy block.
 local haylen = require('haylen')
 local graphics2d = require('haylen.graphics2d')
 local input = require('haylen.input')

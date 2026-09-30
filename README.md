@@ -42,14 +42,14 @@ The repository holds the engine, the `haylen` desktop player, the platform templ
 
 ## Quick start
 
-Haylen needs CMake 3.28 or newer, Ninja, Python 3.10 or newer and a C++20 compiler. `make.py` downloads the pinned shader compiler, and the Emscripten SDK and Gradle the first time a web or Android build needs them. Apple platforms need Xcode and Android needs the Android SDK with NDK 30.
+Haylen needs CMake 3.28 or newer, Ninja, Python 3.10 or newer and a C++20 compiler. The script `make.py` downloads the pinned shader compiler, and the Emscripten SDK and Gradle the first time a web or Android build needs them. Apple platforms need Xcode and Android needs the Android SDK with NDK 30.
 
 ```sh
 python3 make.py assets ~/Downloads/"Tiny Swords (Free Pack).zip"
 python3 make.py run games/tiny-island
 ```
 
-The first command imports the [Tiny Swords](https://pixelfrog-assets.itch.io/tiny-swords) pack into the Tiny Island sample, and the second builds the desktop player and runs the game with hot reload. `python3 make.py test` builds and runs the engine tests.
+The first command imports the [Tiny Swords](https://pixelfrog-assets.itch.io/tiny-swords) pack into the Tiny Island sample, and the second builds the desktop player and runs the game with hot reload. The command `python3 make.py test` builds and runs the engine tests.
 
 A new app starts with `make.py new`, which writes a small starter app and a copy of every platform project:
 
@@ -87,7 +87,7 @@ scene.push({
 })
 ```
 
-`python3 make.py package my-app` zips the package, and the [distribution guide](docs/distribution.md) covers every platform. C++ apps add the engine to their CMake project and call `haylen_add_app`, as the [embedding guide](docs/embedding.md) shows.
+The command `python3 make.py package my-app` zips the package, and the [distribution guide](docs/distribution.md) covers every platform. C++ apps add the engine to their CMake project and call `haylen_add_app`, as the [embedding guide](docs/embedding.md) shows.
 
 ## Documentation
 

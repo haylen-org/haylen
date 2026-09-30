@@ -22,7 +22,7 @@ class TextField final : public TextEntry {
     void render(Context& context, const math::Rect& bounds) override;
 
   private:
-    // Multiline and password keyboards belong to textArea and secretField.
+    // Multiline and password keyboards belong to `textArea` and `secretField`.
     static constexpr std::array<std::pair<std::string_view, platform::TextInput::Keyboard>, 7> kKeyboards{{
         {"text", platform::TextInput::Keyboard::Text},
         {"number", platform::TextInput::Keyboard::Number},

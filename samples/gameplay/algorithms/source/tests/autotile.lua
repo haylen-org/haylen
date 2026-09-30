@@ -1,4 +1,4 @@
--- Tiles picked from their neighbors while the player paints: 4-bit masks that join the sides, 47-tile blob masks that also round the corners, and a corner Wang set looked up by procedural2d.autotileWang.
+-- Tiles picked from their neighbors while the player paints: 4-bit masks that join the sides, 47-tile blob masks that also round the corners, and a corner Wang set looked up by `procedural2d.autotileWang`.
 local haylen = require('haylen')
 local graphics2d = require('haylen.graphics2d')
 local input = require('haylen.input')
@@ -16,7 +16,7 @@ local kColumns, kRows, kCell = 38, 21, 38
 local kWater, kShore, kLand = '#FF1E6091', '#FFE9D8A6', '#FF7CB342'
 local kInset = 8
 
--- A corner Wang set of sixteen tiles, one per mix of water (1) and grass (2) on the four corners, in the wangId order of Tiled.
+-- A corner Wang set of sixteen tiles, one per mix of water (1) and grass (2) on the four corners, in the `wangId` order of Tiled.
 local function cornerSet()
     local tiles = {}
     for id = 0, 15 do
@@ -151,7 +151,7 @@ function Autotile:drawBlob(x, y, column, row)
     end
 end
 
--- A Wang tile draws its four corners in the colors its wangId gives them.
+-- A Wang tile draws its four corners in the colors its `wangId` gives them.
 function Autotile:drawWang(x, y, tile)
     local half = kCell / 2
     local quarters = {{tile & 1, x, y}, {tile & 2, x + half, y}, {tile & 4, x + half, y + half}, {tile & 8, x, y + half}}

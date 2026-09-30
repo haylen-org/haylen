@@ -27,7 +27,7 @@ class PluginRegistry final {
         return nullptr;
     }
 
-    // Throws std::logic_error when no plugin of the type is registered.
+    // Throws `std::logic_error` when no plugin of the type is registered.
     template <typename T> [[nodiscard]] T& get() const {
         T* plugin = find<T>();
         if (plugin == nullptr) {

@@ -16,10 +16,10 @@ namespace haylen::physics2d {
 
 class World;
 
-// Destructible ground stored as a grid of samples from 0 (empty) to 255 (solid), which bitmaps and polygons fill and which shapes and explosions carve. The solid areas become chain loops on one static body per chunk, traced with marching squares, and update rebuilds only the chunks that changed. The terrain owns its bodies and must go before its world.
+// Destructible ground stored as a grid of samples from 0 (empty) to 255 (solid), which bitmaps and polygons fill and which shapes and explosions carve. The solid areas become chain loops on one static body per chunk, traced with marching squares, and `update` rebuilds only the chunks that changed. The terrain owns its bodies and must go before its world.
 class Terrain final {
   public:
-    // Sample (column, row) lies at origin + (column, row) * cellSize. Outlines are simplified to within simplifyTolerance world units, and chunks are chunkSize cells wide and tall.
+    // The sample `(column, row)` lies at `origin + (column, row) * cellSize`. Outlines are simplified to within `simplifyTolerance` world units, and chunks are `chunkSize` cells wide and tall.
     struct Options {
         int columns = 257;
         int rows = 129;
@@ -30,7 +30,7 @@ class Terrain final {
         Shape::Options shape{};
     };
 
-    // Starts empty. Throws std::invalid_argument for fewer than 2 samples on a side, a cell size or chunk size that is not positive, a negative tolerance or invalid shape options.
+    // Starts empty. Throws `std::invalid_argument` for fewer than 2 samples on a side, a cell size or chunk size that is not positive, a negative tolerance or invalid shape options.
     Terrain(World& owner, const Options& settings);
     ~Terrain();
 
@@ -48,12 +48,12 @@ class Terrain final {
     }
     [[nodiscard]] math::Rect getBounds() const noexcept;
 
-    // Replaces every sample with values stored row by row, such as the alpha channel of an image. Throws std::invalid_argument when the count does not match.
+    // Replaces every sample with values stored row by row, such as the alpha channel of an image. Throws `std::invalid_argument` when the count does not match.
     void setSamples(std::span<const std::uint8_t> values);
     [[nodiscard]] std::span<const std::uint8_t> getSamples() const noexcept {
         return samples;
     }
-    // Throws std::out_of_range outside the grid.
+    // Throws `std::out_of_range` outside the grid.
     [[nodiscard]] std::uint8_t getSample(int column, int row) const;
 
     // Tells whether the point is inside the solid ground, interpolating between samples.
@@ -97,7 +97,7 @@ class Terrain final {
     // Returns the samples near the area, which a stamp may change.
     [[nodiscard]] Span spanAround(const math::Rect& area) const noexcept;
     void markDirty(const Span& span) noexcept;
-    // Blends a shape into the samples, where signedDistance is negative inside the shape.
+    // Blends a shape into the samples, where `signedDistance` is negative inside the shape.
     template <typename Distance> void stamp(const math::Rect& area, bool adding, Distance&& signedDistance);
     [[nodiscard]] static float distanceToPolygon(std::span<const math::Vec2> polygon, math::Vec2 point) noexcept;
 

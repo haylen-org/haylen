@@ -17,7 +17,7 @@ local kCode = [[
 function Arena:enter(params)
     self:listen(params.wave, onWave)  self:listen('waveStarted', onWave)  self:spawn(function() ... end)
     timer.every(0.5, tick, {owner = self})  tween.to(glow, 1, {value = 1}, {owner = self})  ui.mount(card, {owner = self})
-end  -- no exit or unload needed: everything ends when the arena unloads]]
+end  -- No `exit` or `unload` needed: everything ends when the arena unloads.]]
 
 local Arena = haylen.class('Arena', sample.Overlay)
 
@@ -30,8 +30,8 @@ function Arena:enter(params)
         ui.label{id = 'ticks', text = 'timer ticks 0'},
         ui.button{id = 'wave', text = 'Start a wave', onClick = params.startWave},
     })
-    self:listen(params.wave, function(number) journal:add('arena hears wave ' .. number .. ' on the signal', sample.green) end)
-    self:listen('waveStarted', function(number) journal:add('arena hears wave ' .. number .. ' on the bus', sample.green) end)
+    self:listen(params.wave, function(number) journal:add('Arena hears wave ' .. number .. ' on the signal', sample.green) end)
+    self:listen('waveStarted', function(number) journal:add('Arena hears wave ' .. number .. ' on the bus', sample.green) end)
     timer.every(0.5, function()
         self.ticks = self.ticks + 1
         self.document:set('ticks', {text = 'timer ticks ' .. self.ticks})
@@ -40,21 +40,21 @@ function Arena:enter(params)
     self:spawn(function()
         while true do
             async.sleep(1000):await()
-            journal:add('the arena task wakes up', sample.muted)
+            journal:add('The arena task wakes up', sample.muted)
         end
     end)
-    journal:add('arena entered and registered everything', sample.accent)
+    journal:add('Arena entered and registered everything', sample.accent)
 end
 
 function Arena:unload()
-    self.journal:add('arena unloaded, so everything it owned ended', sample.red)
+    self.journal:add('Arena unloaded, so everything it owned ended', sample.red)
 end
 
 function Scopes:enter()
     self.journal = Journal()
     self.wave = signal.new('demo.wave')
     self.waves = 0
-    self:listen(self.wave, function(number) self.journal:add('the test hears wave ' .. number .. ' on the signal') end)
+    self:listen(self.wave, function(number) self.journal:add('The test hears wave ' .. number .. ' on the signal') end)
     self:frame({
         hint = 'Open the arena, start waves from inside it, close it and start another wave: only the test still hears it.',
         code = kCode,
@@ -72,7 +72,7 @@ end
 
 function Scopes:startWave()
     self.waves = self.waves + 1
-    self.journal:add(string.format('wave %d starts: %d signal listeners, %d bus listeners', self.waves, self.wave.size, self:busListeners()), sample.warm)
+    self.journal:add(string.format('Wave %d starts: %d signal listeners, %d bus listeners', self.waves, self.wave.size, self:busListeners()), sample.warm)
     self.wave:emit(self.waves)
     events.emit('waveStarted', self.waves)
 end

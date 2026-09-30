@@ -24,7 +24,7 @@ function settings.get(key)
     return preferences.get(key, settings.game[key])
 end
 
--- Brings the stored choices back at startup: the engine settings through preferences.apply, over the default action map, and the language of the game. The first launch stores the defaults.
+-- Brings the stored choices back at startup: the engine settings through `preferences.apply`, over the default action map, and the language of the game. The first launch stores the defaults.
 function settings.start()
     input.loadActions(settings.actions)
     if not preferences.has('game') then

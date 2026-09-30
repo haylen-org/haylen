@@ -55,7 +55,7 @@ function TextInput:content()
             ui.spacer{grow = 1},
             ui.formField{label = 'Message', help = 'The send key submits, and the field stays above the keyboard.',
                 ui.textField{id = 'message', placeholder = 'Say hello to the keeper', returnKey = 'send', onSubmit = function(event)
-                    self:record('submitted "' .. event.value .. '"')
+                    self:record('Submitted "' .. event.value .. '"')
                     event.document:set('message', {value = ''})
                 end},
             },
@@ -66,10 +66,10 @@ end
 
 function TextInput:started()
     self:listen('keyboardShown', function(frame)
-        self:record(string.format('keyboard shown, top at %.0f', frame.y))
+        self:record(string.format('Keyboard shown, top at %.0f', frame.y))
     end)
     self:listen('keyboardHidden', function()
-        self:record('keyboard hidden')
+        self:record('Keyboard hidden')
     end)
 end
 

@@ -11,9 +11,9 @@ local Layers = haylen.class('Layers', sample.Test)
 local kHeroes = 6
 local kSorts = {{id = 'y', text = 'Sort by y'}, {id = 'layer', text = 'Layer only'}}
 local kCode = [[
-graphics2d.beginWorld(camera, {sort = 'y'})  -- lower draws cover higher ones within a layer
-drawShadow(hero, {layer = 0})  hero:draw()  -- sprites stand on their pivot, here their feet
-graphics2d.pushLayerOffset(10)  drawHero(selected)  graphics2d.popLayerOffset()  -- above everything, shadow included]]
+graphics2d.beginWorld(camera, {sort = 'y'})  -- Lower draws cover higher ones within a layer.
+drawShadow(hero, {layer = 0})  hero:draw()  -- Sprites stand on their pivot, here their feet.
+graphics2d.pushLayerOffset(10)  drawHero(selected)  graphics2d.popLayerOffset()  -- Above everything, shadow included.]]
 
 -- An ellipse under a hero or a tree, on the ground layer.
 local function drawShadow(x, y, width)

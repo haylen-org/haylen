@@ -14,7 +14,7 @@
 
 namespace haylen::spatial2d {
 
-// Stores rectangles in a tree of quadrants over a fixed area, splitting a quadrant when it holds too many entries and merging quadrants again when they empty. Entries live in the deepest quadrant that contains them whole, and entries outside the area stay at the root. It suits entries of varied sizes spread over a known area. Queries follow the rules of HashGrid.
+// Stores rectangles in a tree of quadrants over a fixed area, splitting a quadrant when it holds too many entries and merging quadrants again when they empty. Entries live in the deepest quadrant that contains them whole, and entries outside the area stay at the root. It suits entries of varied sizes spread over a known area. Queries follow the rules of `HashGrid`.
 class QuadTree final {
   public:
     static constexpr int kMaxDepth = 16;
@@ -24,7 +24,7 @@ class QuadTree final {
         int maxDepth = 8;
     };
 
-    // Throws std::invalid_argument for an empty area, a maxEntries of 0 or a maxDepth outside 0 to kMaxDepth.
+    // Throws `std::invalid_argument` for an empty area, a `maxEntries` of 0 or a `maxDepth` outside 0 to `kMaxDepth`.
     explicit QuadTree(const math::Rect& area, const Settings& settings = kDefaultSettings);
 
     void set(std::uint64_t id, const math::Rect& bounds);

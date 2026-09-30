@@ -1,5 +1,5 @@
-// Page code of Tiny Island, which answers auth.google.signIn with Google Identity Services, loaded only when the player first signs in.
-// Google sign-in needs the web client id of the game's Google Cloud project here, and a server that allows the Google script, such as make.py run --platform web --coep off.
+// Page code of Tiny Island, which answers `auth.google.signIn` with Google Identity Services, loaded only when the player first signs in.
+// Google sign-in needs the web client id of the game's Google Cloud project here, and a server that allows the Google script, such as `make.py run --platform web --coep off`.
 const googleClientId = "";
 
 Module.preRun.push(() => {
@@ -18,7 +18,7 @@ Module.preRun.push(() => {
 
     Module.haylen.register("auth.google.signIn", async () => {
         if (!googleClientId) {
-            throw new Error("Google sign-in needs the web client id of the game's Google Cloud project in platform/web/app.js.");
+            throw new Error("Google sign-in needs the web client id of the game's Google Cloud project in \"platform/web/app.js\".");
         }
         await loadLibrary();
         return new Promise((resolve, reject) => {

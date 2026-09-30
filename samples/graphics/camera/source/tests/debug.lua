@@ -1,4 +1,4 @@
--- Debug drawing: camera:drawDebug draws the view as the screen shows it, the limits, the box where the target moves freely and a cross on the target, here from a zoomed-out overview.
+-- Debug drawing: `camera:drawDebug` draws the view as the screen shows it, the limits, the box where the target moves freely and a cross on the target, here from a zoomed-out overview.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')

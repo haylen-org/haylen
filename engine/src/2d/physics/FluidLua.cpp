@@ -23,7 +23,7 @@ template <> struct Type<physics2d::ScriptedOwner<physics2d::Fluid>> {
 
 namespace haylen::physics2d {
 
-// Creates a fluid with newFluid(world, {radius, smoothingRadius, density, friction, restitution, restDensity, stiffness, nearStiffness, viscosity, maxParticles, category, mask, group}). Its user value is the world object, which its particles belong to.
+// Creates a fluid with `newFluid(world, {radius, smoothingRadius, density, friction, restitution, restDensity, stiffness, nearStiffness, viscosity, maxParticles, category, mask, group})`. Its user value is the world object, which its particles belong to.
 int FluidLua::newFluid(lua_State* L) {
     const std::shared_ptr<World>& world = lua::Userdata::checkShared<World>(L, 1);
     Fluid::Options options;

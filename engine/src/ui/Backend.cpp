@@ -284,7 +284,7 @@ float Backend::getEmRatio(const std::string& name, std::span<const std::uint8_t>
     stbtt_fontinfo info;
     const int offset = data.size() < kFontHeaderSize ? -1 : stbtt_GetFontOffsetForIndex(data.data(), 0);
     if (offset < 0 || stbtt_InitFont(&info, data.data(), offset) == 0) {
-        throw std::runtime_error("The font " + name + " is not a TrueType or OpenType font.");
+        throw std::runtime_error("The font \"" + name + "\" is not a TrueType or OpenType font.");
     }
     return stbtt_ScaleForPixelHeight(&info, 1.0F) / stbtt_ScaleForMappingEmToPixels(&info, 1.0F);
 }
@@ -292,7 +292,7 @@ float Backend::getEmRatio(const std::string& name, std::span<const std::uint8_t>
 ImFont* Backend::addFont(const std::string& name, FontFiles files) {
     makeCurrent();
     if (fonts.contains(name)) {
-        throw std::invalid_argument("The UI already has a font named " + name + ".");
+        throw std::invalid_argument("The UI already has a font named \"" + name + "\".");
     }
 
     // Every file is checked before any reaches ImGui, so a broken one registers nothing.
@@ -340,7 +340,7 @@ ImFont* Backend::addFace(const std::string& name, std::vector<std::uint8_t> byte
 ImFont* Backend::getFont(std::string_view name, bool bold, bool italic) const {
     const auto found = fonts.find(name);
     if (found == fonts.end()) {
-        throw std::invalid_argument("The UI has no font named " + std::string(name) + ".");
+        throw std::invalid_argument("The UI has no font named \"" + std::string(name) + "\".");
     }
     const Typeface& typeface = found->second;
     if (bold && italic && typeface.boldItalic != nullptr) {
@@ -358,7 +358,7 @@ ImFont* Backend::getFont(std::string_view name, bool bold, bool italic) const {
 float Backend::getEmSize(std::string_view name, float size) const {
     const auto found = fonts.find(name);
     if (found == fonts.end()) {
-        throw std::invalid_argument("The UI has no font named " + std::string(name) + ".");
+        throw std::invalid_argument("The UI has no font named \"" + std::string(name) + "\".");
     }
     return size * found->second.emRatio;
 }
@@ -477,7 +477,7 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
     }
 }
 
-// Moving on presses tab, as a physical keyboard would, while the editor of the field applies a submit, cancel or dismiss itself. A return key labelled next moves on too.
+// Moving on presses tab, as a physical keyboard would, while the editor of the field applies a submit, cancel or dismiss itself. A return key labelled `next` moves on too.
 void Backend::handleTextAction(const platform::Event& event) {
     const ImGuiID field = textSession->getActiveField();
     if (field == 0 || event.textEdit.field != field) {
@@ -688,7 +688,7 @@ void Backend::render(graphics2d::Renderer& renderer) {
     ImDrawData& data = *ImGui::GetDrawData();
     updateTextures(data);
 
-    // Text fields of the UI edit through the text session, while other ImGui text inputs, such as those of haylen.imgui, type through the plain keyboard of the window.
+    // Text fields of the UI edit through the text session, while other ImGui text inputs, such as those of `haylen.imgui`, type through the plain keyboard of the window.
     const bool plainInput = imguiContext->PlatformImeData.WantTextInput && !textSession->isActive();
     if (keyboardShown && !plainInput) {
         keyboardShown = false;

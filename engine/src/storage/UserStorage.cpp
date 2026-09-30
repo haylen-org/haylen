@@ -31,7 +31,7 @@ std::vector<std::uint8_t> UserStorage::read(std::string_view path) const {
     const std::filesystem::path file = resolve(path);
     std::error_code error;
     if (!std::filesystem::is_regular_file(file, error)) {
-        throw std::runtime_error("The storage file '" + std::string(path) + "' was not found.");
+        throw std::runtime_error("The storage file \"" + std::string(path) + "\" was not found.");
     }
 
     std::ifstream stream(file, std::ios::binary | std::ios::ate);
@@ -40,7 +40,7 @@ std::vector<std::uint8_t> UserStorage::read(std::string_view path) const {
     stream.seekg(0, std::ios::beg);
     stream.read(reinterpret_cast<char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
     if (!stream) {
-        throw std::runtime_error("The storage file '" + std::string(path) + "' could not be read.");
+        throw std::runtime_error("The storage file \"" + std::string(path) + "\" could not be read.");
     }
     return bytes;
 }
@@ -65,7 +65,7 @@ void UserStorage::write(std::string_view path, std::span<const std::uint8_t> byt
     if (!stream) {
         std::error_code ignored;
         std::filesystem::remove(temporary, ignored);
-        throw std::runtime_error("The storage file '" + std::string(path) + "' could not be written.");
+        throw std::runtime_error("The storage file \"" + std::string(path) + "\" could not be written.");
     }
     std::filesystem::rename(temporary, file);
 }

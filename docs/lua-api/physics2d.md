@@ -14,8 +14,8 @@ Mass comes from the shape density and the shape area in square meters, so `body.
 
 | Quantity | Unit | Example |
 | --- | --- | --- |
-| Force | kilograms times units per second squared | `body:applyForce(0, -body.mass * 600)` accelerates the body upward at 600 units per second squared. |
-| Linear impulse | kilograms times units per second | `body:applyImpulse(body.mass * 100, 0)` changes the horizontal velocity by 100 units per second. |
+| Force | kilograms times units per second squared | The call `body:applyForce(0, -body.mass * 600)` accelerates the body upward at 600 units per second squared. |
+| Linear impulse | kilograms times units per second | The call `body:applyImpulse(body.mass * 100, 0)` changes the horizontal velocity by 100 units per second. |
 | Torque | kilograms times squared units per second squared | A disc of radius `r` has the rotational inertia `body.mass * r * r / 2`, and a torque of that inertia times 3 speeds its spin up by 3 radians per second every second. |
 | Angular impulse | kilograms times squared units per second | An angular impulse of the disc's inertia times 2 changes its spin by 2 radians per second at once. |
 | `maxMotorForce` | same as a force | Limits prismatic motors, mouse joints and motor joints. |
@@ -57,7 +57,7 @@ scene.push({
 
 ### physics2d.newWorld(options)
 
-Creates an empty world and returns it. The options table is optional, and unknown keys raise `Unknown option '<key>'.`.
+Creates an empty world and returns it. The options table is optional, and unknown keys raise `Unknown option "<key>".`.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -76,11 +76,11 @@ local space = physics2d.newWorld({gravity = {0, 0}})
 
 ### physics2d.newRayBatch(count)
 
-Creates a [RayBatch](#raybatch) of `count` rays, 0 by default, each of zero length until `batch:setRay` sets it.
+Creates a [`RayBatch`](#raybatch) of `count` rays, 0 by default, each of zero length until `batch:setRay` sets it.
 
 ### physics2d.drawRay(x1, y1, x2, y2, hit, order)
 
-Draws one ray on the current canvas right away, up to the hit when `hit` is a hit table of any ray cast, of this module or of [haylen.math](math.md#ray-casts), [haylen.spatial2d](spatial2d.md) and [haylen.tiled](tiled.md), with a dot on the hit and a short line along its normal. A `nil` or `false` hit draws the whole ray. The optional `order` table takes the `layer`, `depth` and `blend` fields described in [haylen.graphics2d](graphics2d.md).
+Draws one ray on the current canvas right away, up to the hit when `hit` is a hit table of any ray cast, of this module or of [`haylen.math`](math.md#ray-casts), [`haylen.spatial2d`](spatial2d.md) and [`haylen.tiled`](tiled.md), with a dot on the hit and a short line along its normal. A `nil` or `false` hit draws the whole ray. The optional `order` table takes the `layer`, `depth` and `blend` fields described in [`haylen.graphics2d`](graphics2d.md).
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -102,11 +102,11 @@ scene.push({
 
 ## World
 
-`physics2d.newWorld()` returns a `haylen.PhysicsWorld` userdata. Bodies, shapes and joints keep their world alive, so a world lives as long as any of its handles.
+The function `physics2d.newWorld()` returns a `haylen.PhysicsWorld` userdata. Bodies, shapes and joints keep their world alive, so a world lives as long as any of its handles.
 
 ### world:createBody(options)
 
-Creates a body and returns it. A body has no collision until shapes are added to it. The options table is optional, and unknown keys raise `Unknown option '<key>'.`.
+Creates a body and returns it. A body has no collision until shapes are added to it. The options table is optional, and unknown keys raise `Unknown option "<key>".`.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -138,7 +138,7 @@ local player = world:createBody({x = 0, y = 0, fixedRotation = true, linearDampi
 
 ### world:createJoint(type, a, b, options)
 
-Connects bodies `a` and `b` of this world with a joint and returns it. Anchors and targets are world positions. The options table is optional, and unknown keys raise `Unknown option '<key>'.`. An unknown type raises a bad argument error with `unknown value '<type>'`, and bodies that are destroyed or belong to another world raise `A joint needs two bodies of this world.`.
+Connects bodies `a` and `b` of this world with a joint and returns it. Anchors and targets are world positions. The options table is optional, and unknown keys raise `Unknown option "<key>".`. An unknown type raises a bad argument error with `unknown value '<type>'`, and bodies that are destroyed or belong to another world raise `A joint needs two bodies of this world.`.
 
 | Type | Behavior |
 | --- | --- |
@@ -170,7 +170,7 @@ Connects bodies `a` and `b` of this world with a joint and returns it. Anchors a
 
 Mouse joints use 4 hertz, a damping ratio of 1 and a pull that accelerates `b` at up to `1000 * pixelsPerMeter` units per second squared when `hertz`, `dampingRatio` or `maxMotorForce` are left at 0. Filter joints ignore every option.
 
-Box2D checks limits even while `enableLimit` is false, so the joint is not created when they are out of its range:
+Box2D checks limits even while `enableLimit` is `false`, so the joint is not created when they are out of its range:
 
 - A distance joint shorter than 0.005 meters, which is 0.32 world units at the default 64 pixels per meter, raises `A distance joint needs a length of at least 0.005 meters.`. This happens with the default options, whose anchors are both at `0, 0`, so give a distance joint its anchors or a `length`.
 - Revolute limits must lie within 0.99 pi radians of zero with `lower` not above `upper`, or the call raises `A revolute joint needs a lower limit that is not above the upper one, both within 0.99 pi radians of zero.`.
@@ -229,7 +229,7 @@ scene.push({
 
 ### world:readTransforms(bodies, buffer, first)
 
-Copies `x`, `y` and `rotation` of every body in the list `bodies` into a float buffer of [haylen.collections](collections.md#float-buffers), three values for each body in order, from the position `first`, which defaults to 1. Together with `SpriteBatch:writeFields` of [haylen.graphics2d](graphics2d.md) it keeps thousands of sprites on their bodies with two calls a frame instead of one property read for each body. Every body must be a live body of the world, and the buffer must hold three values for each one, or the call raises `Body transforms need live bodies of this world.` or `Body transforms take three floats for each body.`.
+Copies `x`, `y` and `rotation` of every body in the list `bodies` into a float buffer of [`haylen.collections`](collections.md#float-buffers), three values for each body in order, from the position `first`, which defaults to 1. Together with `SpriteBatch:writeFields` of [`haylen.graphics2d`](graphics2d.md) it keeps thousands of sprites on their bodies with two calls a frame instead of one property read for each body. Every body must be a live body of the world, and the buffer must hold three values for each one, or the call raises `Body transforms need live bodies of this world.` or `Body transforms take three floats for each body.`.
 
 ```lua
 local collections = require('haylen.collections')
@@ -402,7 +402,7 @@ end
 
 ### world:lineOfSight(x1, y1, x2, y2, filter)
 
-Returns true when no shape that passes the filter blocks the segment between both points, such as a guard checking whether it sees the player. Give the characters their own categories and leave them out of the mask, or skip them with `accept`, so they do not block their own sight.
+Returns `true` when no shape that passes the filter blocks the segment between both points, such as a guard checking whether it sees the player. Give the characters their own categories and leave them out of the mask, or skip them with `accept`, so they do not block their own sight.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -417,7 +417,7 @@ print(world:lineOfSight(0, 0, 200, 0, {mask = kWalls}), world:lineOfSight(0, 100
 
 ### world:raycastBatch(batch, filter)
 
-Casts every ray of a [RayBatch](#raybatch) and stores the closest hit of each one in the batch, spread over the workers of the engine job system. Thousands of rays per frame, such as the sensors of many AI agents or the lines of a lidar effect, cost a fraction of separate `world:raycast` calls and reuse the buffers of the batch once it has grown. The filter takes `category`, `mask` and `group`, and an `accept` function raises `Ray batches take no accept function, because their rays run on worker threads.` The batch keeps the world alive for `batch:shape` and `batch:body`.
+Casts every ray of a [`RayBatch`](#raybatch) and stores the closest hit of each one in the batch, spread over the workers of the engine job system. Thousands of rays per frame, such as the sensors of many AI agents or the lines of a lidar effect, cost a fraction of separate `world:raycast` calls and reuse the buffers of the batch once it has grown. The filter takes `category`, `mask` and `group`, and an `accept` function raises `Ray batches take no "accept" function, because their rays run on worker threads.` The batch keeps the world alive for `batch:shape` and `batch:body`.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -441,7 +441,7 @@ print(hit, x, y, batch:body(45).type)
 
 ### world:pick(camera, x, y, filter)
 
-Returns the list of shapes under the screen point `x, y`, seen through `camera`, which is how a click or a tap selects bodies. Screen points are in design coordinates, like the pointer positions of [haylen.input](input.md). The optional filter takes `category` and `mask`.
+Returns the list of shapes under the screen point `x, y`, seen through `camera`, which is how a click or a tap selects bodies. Screen points are in design coordinates, like the pointer positions of [`haylen.input`](input.md). The optional filter takes `category` and `mask`.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -467,7 +467,7 @@ scene.push({
 
 ### world:debugDrawRays(order)
 
-Draws the casts recorded since the last call while `world.debugRays` is true and clears them: each ray up to its hit or its end, a dot on the hit and a short line along its normal. Shape casts draw the path of their center. The world keeps the casts of one frame at most, because the first cast of a new frame drops the casts that no call drew, so recording without drawing never piles up casts. Call it from the `render` callback of a scene after `graphics2d.beginWorld()`. The optional `order` table takes the `layer`, `depth` and `blend` fields described in [haylen.graphics2d](graphics2d.md).
+Draws the casts recorded since the last call while `world.debugRays` is `true` and clears them: each ray up to its hit or its end, a dot on the hit and a short line along its normal. Shape casts draw the path of their center. The world keeps the casts of one frame at most, because the first cast of a new frame drops the casts that no call drew, so recording without drawing never piles up casts. Call it from the `render` callback of a scene after `graphics2d.beginWorld()`. The optional `order` table takes the `layer`, `depth` and `blend` fields described in [`haylen.graphics2d`](graphics2d.md).
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -493,7 +493,7 @@ scene.push({
 
 ### world:queryRect(rect, filter)
 
-Returns a list of the shapes whose bounding boxes overlap `rect`. The rectangle is a Rect or a table `{x, y, width, height}`, and the optional filter is described in [Query filters](#query-filters). Bounding boxes are larger than rotated or round shapes, so check the result further when exact overlap matters. A negative width or height raises `A rectangle query needs a width and height of zero or more.`, so build a rectangle dragged up or to the left with `m.fromMinMax(dragStart:min(dragEnd), dragStart:max(dragEnd))` of [haylen.math](math.md) before the query.
+Returns a list of the shapes whose bounding boxes overlap `rect`. The rectangle is a `Rect` or a table `{x, y, width, height}`, and the optional filter is described in [Query filters](#query-filters). Bounding boxes are larger than rotated or round shapes, so check the result further when exact overlap matters. A negative width or height raises `A rectangle query needs a width and height of zero or more.`, so build a rectangle dragged up or to the left with `m.fromMinMax(dragStart:min(dragEnd), dragStart:max(dragEnd))` of [`haylen.math`](math.md) before the query.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -557,7 +557,7 @@ scene.push({
 
 ### world:debugDraw(order)
 
-Draws the outlines of every shape and joint on the current canvas, which helps while tuning collisions. Call it from the `render` callback of a scene after `graphics2d.beginWorld()`. The optional `order` table takes the `layer`, `depth` and `blend` fields described in [haylen.graphics2d](graphics2d.md).
+Draws the outlines of every shape and joint on the current canvas, which helps while tuning collisions. Call it from the `render` callback of a scene after `graphics2d.beginWorld()`. The optional `order` table takes the `layer`, `depth` and `blend` fields described in [`haylen.graphics2d`](graphics2d.md).
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -583,10 +583,10 @@ scene.push({
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
-| `gravity` | Vec2 | read and write | Gravity in world units per second squared. It accepts a Vec2 or a table `{x, y}`. |
+| `gravity` | Vec2 | read and write | Gravity in world units per second squared. It accepts a `Vec2` or a table `{x, y}`. |
 | `bodyCount` | integer | read | Number of bodies in the world. |
 | `pixelsPerMeter` | number | read | The scale the world was created with. |
-| `debugRays` | boolean | read and write | Records every ray and shape cast of the world for `world:debugDrawRays()` while true. |
+| `debugRays` | boolean | read and write | Records every ray and shape cast of the world for `world:debugDrawRays()` while `true`. |
 | `onContactBegin` | function or nil | read and write | Called when two shapes start touching. |
 | `onContactEnd` | function or nil | read and write | Called when two shapes stop touching. |
 | `onHit` | function or nil | read and write | Called when two shapes hit each other fast. |
@@ -609,7 +609,7 @@ Assign a function to a callback property of the world to receive its events. Eve
 
 ### world.onContactBegin(a, b, contact)
 
-Called when two solid shapes start touching. `a` and `b` are the bodies of `contact.shapeA` and `contact.shapeB`.
+Called when two solid shapes start touching. The arguments `a` and `b` are the bodies of `contact.shapeA` and `contact.shapeB`.
 
 | Field | Type | Meaning |
 | --- | --- | --- |
@@ -671,7 +671,7 @@ end
 
 ### world.onSensorBegin(sensor, visitor, shapes)
 
-Called when a shape starts overlapping a sensor shape. `sensor` is the body of the sensor shape and `visitor` is the body of the other shape. The `shapes` table has the fields `sensorShape` and `visitorShape`.
+Called when a shape starts overlapping a sensor shape. The argument `sensor` is the body of the sensor shape and `visitor` is the body of the other shape. The `shapes` table has the fields `sensorShape` and `visitorShape`.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -705,7 +705,7 @@ end
 
 ## Body
 
-`world:createBody()` returns a `haylen.Body` userdata. Every member except `valid`, `world` and `destroy` raises `The body was destroyed.` once the body is gone.
+The method `world:createBody()` returns a `haylen.Body` userdata. Every member except `valid`, `world` and `destroy` raises `The body was destroyed.` once the body is gone.
 
 ### body:addBox(width, height, options)
 
@@ -758,7 +758,7 @@ floor:addSegment(-400, 200, 400, 200)
 
 ### body:addPolygon(points, options)
 
-Adds a simple polygon and returns a list of its shapes. The points are a list of Vec2 values or `{x, y}` tables in body coordinates. A convex outline with at most eight points becomes one shape, and any other outline is split into convex pieces of at most eight points with `m.polygon.decompose` of [haylen.math](math.md). Fewer than three points raise `A physics polygon needs at least three points.`, and outlines without area raise `A physics polygon needs at least three points that are not on one line.` or `A physics polygon needs a non-degenerate outline.`.
+Adds a simple polygon and returns a list of its shapes. The points are a list of `Vec2` values or `{x, y}` tables in body coordinates. A convex outline with at most eight points becomes one shape, and any other outline is split into convex pieces of at most eight points with `m.polygon.decompose` of [`haylen.math`](math.md). Fewer than three points raise `A physics polygon needs at least three points.`, and outlines without area raise `A physics polygon needs at least three points that are not on one line.` or `A physics polygon needs a non-degenerate outline.`.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -772,7 +772,7 @@ cave:addPolygon({{0, 0}, {120, 0}, {60, -40}, {120, -120}, {0, -120}}, {friction
 
 ### body:addChain(points, loop, options)
 
-Adds a chain of one-sided segments through the points and returns a list of its segment shapes. Chains suit terrain outlines because bodies slide over their joints smoothly. A true `loop` closes the outline. An open chain collides from its second point to its next-to-last point, and its first and last points only smooth the contacts at its ends. Chains use `friction`, `restitution`, the collision filter, `offsetX`, `offsetY` and `rotation` from the options and ignore `density` and `sensor`. Fewer than four points raise `A physics chain needs at least four points.`.
+Adds a chain of one-sided segments through the points and returns a list of its segment shapes. Chains suit terrain outlines because bodies slide over their joints smoothly. A `loop` set to `true` closes the outline. An open chain collides from its second point to its next-to-last point, and its first and last points only smooth the contacts at its ends. Chains use `friction`, `restitution`, the collision filter, `offsetX`, `offsetY` and `rotation` from the options and ignore `density` and `sensor`. Fewer than four points raise `A physics chain needs at least four points.`.
 
 Each segment collides only on its left side as seen on screen, walking from one point to the next, and bodies pass through it from the other side. So an open chain listed from left to right carries bodies on top of it, a loop listed counter-clockwise on screen holds bodies inside it, like the walls of an arena, and a loop listed clockwise on screen is solid from the outside, like an island.
 
@@ -793,7 +793,7 @@ rock:addChain({{-60, -40}, {60, -40}, {60, 40}, {-60, 40}}, true)
 
 ### Shape options
 
-Every `add` method takes the same optional options table. Unknown keys raise `Unknown option '<key>'.`.
+Every `add` method takes the same optional options table. Unknown keys raise `Unknown option "<key>".`.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -829,7 +829,7 @@ end
 
 ### body:outlines()
 
-Returns the outline of every shape of the body in world units, where the body is now, as a list of tables with `points`, a list of Vec2 values, and `closed`, which is true when the last point joins back to the first one. Each outline is what [shape:outline()](#shapeoutline) returns, except that the segments of each chain join into one outline, closed for a loop. An open chain collides only between its second point and its next-to-last point, since Box2D keeps its first and last points to smooth the contacts at its ends, so its outline runs between those two. Use it to draw bodies made by the engine, such as the pieces of `physics2d.fracture` or the bones of `physics2d.newRagdoll`, without knowing their shapes.
+Returns the outline of every shape of the body in world units, where the body is now, as a list of tables with `points`, a list of `Vec2` values, and `closed`, which is `true` when the last point joins back to the first one. Each outline is what [`shape:outline()`](#shapeoutline) returns, except that the segments of each chain join into one outline, closed for a loop. An open chain collides only between its second point and its next-to-last point, since Box2D keeps its first and last points to smooth the contacts at its ends, so its outline runs between those two. Use it to draw bodies made by the engine, such as the pieces of `physics2d.fracture` or the bones of `physics2d.newRagdoll`, without knowing their shapes.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -969,16 +969,16 @@ print(enemy.valid)
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
-| `valid` | boolean | read | False once the body is destroyed. |
+| `valid` | boolean | read | The value is `false` once the body is destroyed. |
 | `world` | PhysicsWorld | read | The world that owns the body. |
 | `type` | string | read and write | `'static'`, `'kinematic'` or `'dynamic'`. |
 | `x`, `y` | number | read and write | Position of the body origin. Writing teleports the body. |
-| `position` | Vec2 | read and write | Position as a Vec2. Writing accepts a Vec2 or `{x, y}`. |
+| `position` | Vec2 | read and write | Position as a `Vec2`. Writing accepts a `Vec2` or `{x, y}`. |
 | `rotation` | number | read and write | Angle in radians. |
-| `velocity` | Vec2 | read and write | Linear velocity in units per second. Writing accepts a Vec2 or `{x, y}`. |
+| `velocity` | Vec2 | read and write | Linear velocity in units per second. Writing accepts a `Vec2` or `{x, y}`. |
 | `angularVelocity` | number | read and write | Spin in radians per second. |
 | `mass` | number | read | Mass in kilograms, computed from the shapes. |
-| `awake` | boolean | read and write | Whether the body is awake. Sleeping bodies are skipped by the solver until something touches them, and writing true wakes them. |
+| `awake` | boolean | read and write | Whether the body is awake. Sleeping bodies are skipped by the solver until something touches them, and writing `true` wakes them. |
 | `enabled` | boolean | read and write | Disabled bodies leave the simulation and stop colliding until enabled again. |
 | `linearDamping` | number | read and write | Slows the linear velocity over time. It must be finite and not negative. |
 | `angularDamping` | number | read and write | Slows the spin over time. It must be finite and not negative. |
@@ -1004,7 +1004,7 @@ print(crate.position.x, crate.velocity.x, crate.mass, crate.awake, crate.world =
 
 ## Shape
 
-`add` methods, `body:shapes()`, queries and events return `haylen.Shape` userdata. Every member except `valid` and `destroy` raises `The shape was destroyed.` once the shape is gone.
+The `add` methods, `body:shapes()`, queries and events return `haylen.Shape` userdata. Every member except `valid` and `destroy` raises `The shape was destroyed.` once the shape is gone.
 
 ### shape:destroy()
 
@@ -1022,7 +1022,7 @@ print(shield.valid)
 
 ### shape:outline()
 
-Returns the outline of the shape in world units, where its body is now, as a table with `points`, a list of Vec2 values, and `closed`, which is true when the last point joins back to the first one. A polygon gives its corners, closed. A circle gives points around it, closed, and a capsule points around its two round ends, closed, which join into its straight sides, one step every two world units of radius and between 16 and 96 steps for a whole turn. A segment or a chain segment gives its two ends, open. `graphics2d.drawPolygon(outline.points, color)` fills a closed outline and `graphics2d.drawPolyline(outline.points, thickness, color, outline.closed)` strokes any of them.
+Returns the outline of the shape in world units, where its body is now, as a table with `points`, a list of `Vec2` values, and `closed`, which is `true` when the last point joins back to the first one. A polygon gives its corners, closed. A circle gives points around it, closed, and a capsule points around its two round ends, closed, which join into its straight sides, one step every two world units of radius and between 16 and 96 steps for a whole turn. A segment or a chain segment gives its two ends, open. The call `graphics2d.drawPolygon(outline.points, color)` fills a closed outline and `graphics2d.drawPolyline(outline.points, thickness, color, outline.closed)` strokes any of them.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -1036,15 +1036,15 @@ print(#outline.points, outline.closed)
 
 ### Shape properties
 
-The geometry properties return new values on every read. `points` are in the space of the body, where the offset and rotation of the shape options already apply, and `worldPoints` are the same points in world units where the body is now.
+The geometry properties return new values on every read. The `points` are in the space of the body, where the offset and rotation of the shape options already apply, and `worldPoints` are the same points in world units where the body is now.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
-| `valid` | boolean | read | False once the shape or its body is destroyed. |
+| `valid` | boolean | read | The value is `false` once the shape or its body is destroyed. |
 | `body` | Body | read | The body the shape belongs to. |
 | `kind` | string | read | `'circle'`, `'capsule'`, `'segment'`, `'polygon'` or `'chainSegment'`, one segment of a chain. |
 | `points` | list of Vec2 | read | The points that place the shape on its body: the center of a circle, the two centers of a capsule, the two ends of a segment or a chain segment, or the corners of a polygon in order around it. |
-| `worldPoints` | list of Vec2 | read | `points` in world units. |
+| `worldPoints` | list of Vec2 | read | The `points` in world units. |
 | `radius` | number | read | The radius of a circle or a capsule, and `0` for the other kinds. |
 | `sensor` | boolean | read | Whether the shape is a sensor. |
 | `bounds` | Rect | read | The bounding box Box2D tracks for the shape, which includes a small collision margin. |
@@ -1071,11 +1071,11 @@ print(shape.kind, #shape.points, shape.worldPoints[1].x, shape.radius)
 
 ## Joint
 
-`world:createJoint()` returns a `haylen.Joint` userdata.
+The method `world:createJoint()` returns a `haylen.Joint` userdata.
 
 ### joint.target
 
-The target of a mouse joint in world units as a Vec2, which writing moves. Writing accepts a Vec2 or `{x, y}`. Other joint types raise `Only mouse joints have a target.`, and a destroyed joint raises `The physics joint was destroyed.`.
+The target of a mouse joint in world units as a `Vec2`, which writing moves. Writing accepts a `Vec2` or `{x, y}`. Other joint types raise `Only mouse joints have a target.`, and a destroyed joint raises `The physics joint was destroyed.`.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -1146,13 +1146,13 @@ print(link.valid)
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
-| `valid` | boolean | read | False once the joint or one of its bodies is destroyed. |
-| `target` | Vec2 | read and write | The target of a mouse joint, described in [joint.target](#jointtarget). |
-| `motorSpeed` | number | read and write | The motor speed of a revolute, prismatic or wheel joint, described in [joint.motorSpeed](#jointmotorspeed). |
+| `valid` | boolean | read | The value is `false` once the joint or one of its bodies is destroyed. |
+| `target` | Vec2 | read and write | The target of a mouse joint, described in [`joint.target`](#jointtarget). |
+| `motorSpeed` | number | read and write | The motor speed of a revolute, prismatic or wheel joint, described in [`joint.motorSpeed`](#jointmotorspeed). |
 
 ## Query filters
 
-The `query` methods and `world:pick()` take an optional filter table with the integer fields `category` (default `1`) and `mask` (default all bits). A shape is found when its category shares a bit with the filter mask and the filter category shares a bit with the shape mask. Other keys raise `Unknown option '<key>'.`.
+The `query` methods and `world:pick()` take an optional filter table with the integer fields `category` (default `1`) and `mask` (default all bits). A shape is found when its category shares a bit with the filter mask and the filter category shares a bit with the shape mask. Other keys raise `Unknown option "<key>".`.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -1172,14 +1172,14 @@ print(blocked.body == wall, #seen)
 
 ## Ray cast filters
 
-The ray and shape casts, `world:lineOfSight()` and `world:raycastBatch()` take an optional filter table with these fields. Other keys raise `Unknown option '<key>'.`.
+The ray and shape casts, `world:lineOfSight()` and `world:raycastBatch()` take an optional filter table with these fields. Other keys raise `Unknown option "<key>".`.
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `category` | integer | `1` | The category of the cast. A shape is seen when its category shares a bit with the mask and its mask shares a bit with this category, like a collision. |
 | `mask` | integer | all bits | The categories the cast sees. |
 | `group` | integer | `0` | A shape that shares a nonzero group is always seen when the group is positive and never seen when it is negative, so a ragdoll can look past its own limbs. |
-| `accept` | function | none | Called with each candidate hit table in order from the start of the cast, after the other fields. A true result takes the hit, and a false one skips it and keeps looking. Errors raised by it propagate out of the cast. |
+| `accept` | function | none | Called with each candidate hit table in order from the start of the cast, after the other fields. A `true` result takes the hit, and a `false` one skips it and keeps looking. Errors raised by it propagate out of the cast. |
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -1314,7 +1314,7 @@ print(box.x > -200) -- true
 
 ### physics2d.newRope(world, options)
 
-Builds a chain of segments from `from` to `to` joined by revolute joints and returns a `Rope`. An end can hang from a body, or be pinned in place by a static anchor that the rope creates and destroys with itself. Unknown keys raise `Unknown option '<key>'.`, and a rope without segments, with ends in the same place or without thickness raises `A rope needs at least one segment, two distinct ends and a positive thickness.`. An invalid material or damping raises the errors of [Shape options](#shape-options) and [world:createBody](#worldcreatebodyoptions), and an end body that is destroyed or belongs to another world raises `A joint needs two bodies of this world.`. A rope that fails leaves none of its bodies in the world.
+Builds a chain of segments from `from` to `to` joined by revolute joints and returns a `Rope`. An end can hang from a body, or be pinned in place by a static anchor that the rope creates and destroys with itself. Unknown keys raise `Unknown option "<key>".`, and a rope without segments, with ends in the same place or without thickness raises `A rope needs at least one segment, two distinct ends and a positive thickness.`. An invalid material or damping raises the errors of [Shape options](#shape-options) and [`world:createBody`](#worldcreatebodyoptions), and an end body that is destroyed or belongs to another world raises `A joint needs two bodies of this world.`. A rope that fails leaves none of its bodies in the world.
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1352,7 +1352,7 @@ print(#bridge:joints()) -- 17
 
 ### rope:bodies(), rope:joints(), rope:segments(), rope:points(), rope:destroy()
 
-`bodies` and `joints` return lists of the segment bodies and of the joints, anchors included. `segments` returns `{x, y, rotation, length}` for each segment, which places a sprite at its center. `points` returns the ends of the segments in order as `Vec2`, which draws the rope as a line. `destroy` removes the segments, their joints and the anchors of the rope.
+The methods `bodies` and `joints` return lists of the segment bodies and of the joints, anchors included. The method `segments` returns `{x, y, rotation, length}` for each segment, which places a sprite at its center. The method `points` returns the ends of the segments in order as `Vec2`, which draws the rope as a line. The method `destroy` removes the segments, their joints and the anchors of the rope.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -1376,7 +1376,7 @@ require('haylen.scene').push({
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
-| `valid` | boolean | read | False once a segment was destroyed. |
+| `valid` | boolean | read | The value is `false` once a segment was destroyed. |
 | `segmentLength` | number | read | Length of each segment. |
 
 ## Ragdolls
@@ -1406,7 +1406,7 @@ doll:body('head'):applyImpulse(-50, 0)
 
 ### ragdoll:body(part), ragdoll:bodies(), ragdoll:joints(), ragdoll:destroy()
 
-`body` returns the body of a part: `head`, `chest`, `hips`, `upperArmLeft`, `lowerArmLeft`, `upperArmRight`, `lowerArmRight`, `upperLegLeft`, `lowerLegLeft`, `upperLegRight` or `lowerLegRight`, and other names raise `unknown ragdoll part`. `bodies` returns a table of every body keyed by part name, `joints` the list of joints and `destroy` removes the figure. `ragdoll.valid` turns false once a part was destroyed.
+The method `body` returns the body of a part: `head`, `chest`, `hips`, `upperArmLeft`, `lowerArmLeft`, `upperArmRight`, `lowerArmRight`, `upperLegLeft`, `lowerLegLeft`, `upperLegRight` or `lowerLegRight`, and other names raise `unknown ragdoll part`. The method `bodies` returns a table of every body keyed by part name, `joints` the list of joints and `destroy` removes the figure. The property `ragdoll.valid` turns `false` once a part was destroyed.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -1461,7 +1461,7 @@ require('haylen.scene').push({
 | `chassis`, `rearWheel`, `frontWheel` | Body | read | The bodies of the car. |
 | `motorSpeed` | number | read and write | Speed of the driven wheels in radians per second. Positive speeds spin them clockwise on screen and drive the car toward positive x, and zero brakes with the full torque. Setting it wakes a parked car. |
 | `drive` | string | read | The driven wheels. |
-| `valid` | boolean | read | False once a part was destroyed. |
+| `valid` | boolean | read | The value is `false` once a part was destroyed. |
 | `vehicle:joints()` | function | | Returns the two wheel joints. |
 | `vehicle:destroy()` | function | | Removes the car. |
 
@@ -1476,7 +1476,7 @@ Pushes the dynamic bodies around a point away from it and returns a list of `{bo
 | `x`, `y` | number | `0` | Center of the blast. |
 | `radius` | number | `100` | Reach of the blast. |
 | `impulse` | number | `500` | Impulse at the center. |
-| `falloff` | string | `'linear'` | `'none'`, `'linear'` or `'quadratic'` fading toward the radius. |
+| `falloff` | string | `'linear'` | Fading toward the radius: `'none'`, `'linear'` or `'quadratic'`. |
 | `occlusion` | boolean | `false` | Spares bodies behind other shapes as seen from the center. Sensors and shapes the filter skips never shield a body. |
 | `category`, `mask` | integer | | Filter of the bodies the blast reaches and of the shapes that shield them. |
 
@@ -1524,7 +1524,7 @@ print(terrain:update(), #terrain:bodies())
 
 ### terrain.samples, terrain:sample(column, row)
 
-Reading `samples` returns a new list of every sample from 0 to 1 stored row by row, which can shade the ground. Writing it replaces every sample with such a list, like the alpha channel of an image, or with the results of a function of the column and row. A list of another length raises `The terrain needs one value per sample.`. `sample` returns one value.
+Reading `samples` returns a new list of every sample from 0 to 1 stored row by row, which can shade the ground. Writing it replaces every sample with such a list, like the alpha channel of an image, or with the results of a function of the column and row. A list of another length raises `The terrain needs one value per sample.`. The method `sample` returns one value.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -1569,7 +1569,7 @@ print(#hits)
 
 ### terrain:update(), terrain:isSolid(point), terrain:outlines(), terrain:bodies()
 
-`update` rebuilds the collision of the chunks changed since the last update and returns how many it rebuilt. `isSolid` tells whether a point lies inside the ground. `outlines` returns the collision outlines of every chunk as lists of `Vec2`, which also draw the ground, and `bodies` the bodies of the chunks that hold ground.
+The method `update` rebuilds the collision of the chunks changed since the last update and returns how many it rebuilt. The method `isSolid` tells whether a point lies inside the ground. The method `outlines` returns the collision outlines of every chunk as lists of `Vec2`, which also draw the ground, and `bodies` the bodies of the chunks that hold ground.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -1596,7 +1596,7 @@ print(terrain:isSolid({256, 256}))
 | --- | --- | --- | --- |
 | `columns`, `rows` | integer | read | Number of samples on each side. |
 | `cellSize` | number | read | Distance between samples. |
-| `samples` | list of numbers | read and write | Every sample, described in [terrain.samples](#terrainsamples-terrainsamplecolumn-row). |
+| `samples` | list of numbers | read and write | Every sample, described in [`terrain.samples`](#terrainsamples-terrainsamplecolumn-row). |
 | `bounds` | Rect | read | Area the terrain covers. |
 | `chunkCount` | integer | read | Number of chunks. |
 | `dirtyChunkCount` | integer | read | Chunks waiting for `update`. |
@@ -1674,7 +1674,7 @@ require('haylen.scene').push({
 
 ### fluid:spawn(x, y, vx, vy), fluid:fill(rect, vx, vy), fluid:remove(particle), fluid:clear()
 
-`spawn` adds a particle and returns false when the fluid is full. `fill` fills a rectangle with particles two radii apart and returns how many it added. `remove` removes the particle at a position from 1, moving the last particle into its place, and `clear` removes every particle.
+The method `spawn` adds a particle and returns `false` when the fluid is full. The method `fill` fills a rectangle with particles two radii apart and returns how many it added. The method `remove` removes the particle at a position from 1, moving the last particle into its place, and `clear` removes every particle.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -1692,7 +1692,7 @@ require('haylen.scene').push({
 
 ### fluid:positions(buffer), fluid:velocities(buffer), fluid:bodies()
 
-`positions` and `velocities` write two numbers per particle, x then y, into `buffer` or a new list, clear the entries after them and return the list. Passing the same buffer every frame feeds a metaball renderer without allocating. `bodies` returns the particle bodies.
+The methods `positions` and `velocities` write two numbers per particle, x then y, into `buffer` or a new list, clear the entries after them and return the list. Passing the same buffer every frame feeds a metaball renderer without allocating. The method `bodies` returns the particle bodies.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -1722,7 +1722,7 @@ require('haylen.scene').push({
 
 ## Tiled collision
 
-`map:buildCollision(world)` from [haylen.tiled](tiled.md) creates static bodies of `world` for the collision shapes of a Tiled map and returns them as a list of `haylen.Body` handles.
+The method `map:buildCollision(world)` from [`haylen.tiled`](tiled.md) creates static bodies of `world` for the collision shapes of a Tiled map and returns them as a list of `haylen.Body` handles.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -1741,9 +1741,9 @@ Invalid input raises Lua errors with these messages.
 
 | Message | Cause |
 | --- | --- |
-| `Unknown option '<key>'.` | An options or filter table has a key the call does not accept. |
-| `A physics world needs positive pixels per meter and at least one sub-step.` | `physics2d.newWorld()` received a bad scale or sub-step count. |
-| `Too many physics worlds exist at once to create another one.` | `physics2d.newWorld()` was called while Box2D holds as many worlds as it can. |
+| `Unknown option "<key>".` | An options or filter table has a key the call does not accept. |
+| `A physics world needs positive pixels per meter and at least one sub-step.` | The function `physics2d.newWorld()` received a bad scale or sub-step count. |
+| `Too many physics worlds exist at once to create another one.` | The function `physics2d.newWorld()` was called while Box2D holds as many worlds as it can. |
 | `unknown value '<name>'` | A body type or joint type is not one of the names listed in this page. It comes inside a bad argument error. |
 | `A joint needs two bodies of this world.` | A joint body is destroyed or belongs to another world. |
 | `A distance joint needs a length of at least 0.005 meters.` | A distance joint has no `length` and anchors in about the same place, or a `length` that is too short. |
@@ -1754,31 +1754,31 @@ Invalid input raises Lua errors with these messages.
 | `The physics joint was destroyed.` | A destroyed joint was used. |
 | `A physics body needs a finite damping of zero or more.` | A body option or property received a negative or infinite damping. |
 | `A physics shape needs a finite density, friction and restitution of zero or more.` | Shape options, or the material options of a rope, ragdoll, vehicle, terrain or fluid, are negative or not finite. |
-| `A physics box needs a positive size.` | `body:addBox()` received a zero or negative size. |
-| `A physics circle needs a positive radius.` | `body:addCircle()` received a zero or negative radius. |
-| `A physics capsule needs a positive radius.` | `body:addCapsule()` received a zero or negative radius. |
-| `A physics segment needs ends more than 0.005 meters apart.` | `body:addSegment()` received ends in about the same place. |
-| `A physics polygon needs at least three points.` | `body:addPolygon()` received fewer than three points. |
-| `A physics chain needs at least four points.` | `body:addChain()` received fewer than four points. |
-| `Chain segments are destroyed together with their body.` | `shape:destroy()` was called on a chain segment. |
-| `A rectangle query needs a width and height of zero or more.` | `world:queryRect()` received a negative width or height. |
-| `Only mouse joints have a target.` | `joint.target` was used on another joint type. |
-| `Only revolute, prismatic and wheel joints have a motor speed.` | `joint.motorSpeed` was used on another joint type. |
-| `A one-way direction cannot be zero.` | `shape.oneWay` or the `oneWay` option received a zero vector. |
-| `A rope needs at least one segment, two distinct ends and a positive thickness.` | `physics2d.newRope()` or `physics2d.newBridge()` received bad options. |
-| `A ragdoll needs a positive height and a negative collision group.` | `physics2d.newRagdoll()` received bad options. |
-| `A vehicle needs a chassis and wheels with a size, a suspension travel of zero or more and a negative collision group.` | `physics2d.newVehicle()` received bad options. |
-| `An explosion needs a positive radius.` | `physics2d.explode()` or `terrain:explode()` received a radius that is not positive. |
-| `A terrain needs at least 2 by 2 samples, a positive cell size and chunk size, and a tolerance of at least zero.` | `physics2d.newTerrain()` received bad options. |
-| `The terrain needs one value per sample.` | `terrain.samples` received a list of another length. |
-| `A fracture needs at least one piece.` | `physics2d.fracture()` or `physics2d.splitPolygon()` received fewer than one piece. |
-| `A fluid needs a positive particle radius and a larger smoothing radius.` | `physics2d.newFluid()` received bad radii. |
-| `A circle cast needs a finite radius of zero or more.` | `world:castCircle()` received a negative radius. |
-| `A box cast needs a positive size.` | `world:castBox()` received a zero or negative size. |
-| `A capsule cast needs a positive radius.` | `world:castCapsule()` received a zero or negative radius. |
-| `A polygon cast needs between three and eight points.` | `world:castPolygon()` received too few or too many points. |
-| `A bouncing physics ray needs a finite length.` | `world:bounceRay()` received an infinite length. |
-| `the length must be finite` | `world:rayFan()` received an infinite length. It comes inside a bad argument error. |
-| `Ray batches take no accept function, because their rays run on worker threads.` | `world:raycastBatch()` received a filter with `accept`. |
-| `The type haylen.Body has no member '<name>'.` | A body, shape, joint or world member does not exist. The type name changes with the userdata. |
-| `The type haylen.Body has no writable property '<name>'.` | A read-only property was assigned. The type name changes with the userdata. |
+| `A physics box needs a positive size.` | The method `body:addBox()` received a zero or negative size. |
+| `A physics circle needs a positive radius.` | The method `body:addCircle()` received a zero or negative radius. |
+| `A physics capsule needs a positive radius.` | The method `body:addCapsule()` received a zero or negative radius. |
+| `A physics segment needs ends more than 0.005 meters apart.` | The method `body:addSegment()` received ends in about the same place. |
+| `A physics polygon needs at least three points.` | The method `body:addPolygon()` received fewer than three points. |
+| `A physics chain needs at least four points.` | The method `body:addChain()` received fewer than four points. |
+| `Chain segments are destroyed together with their body.` | The method `shape:destroy()` was called on a chain segment. |
+| `A rectangle query needs a width and height of zero or more.` | The method `world:queryRect()` received a negative width or height. |
+| `Only mouse joints have a target.` | The property `joint.target` was used on another joint type. |
+| `Only revolute, prismatic and wheel joints have a motor speed.` | The property `joint.motorSpeed` was used on another joint type. |
+| `A one-way direction cannot be zero.` | The property `shape.oneWay` or the `oneWay` option received a zero vector. |
+| `A rope needs at least one segment, two distinct ends and a positive thickness.` | The function `physics2d.newRope()` or `physics2d.newBridge()` received bad options. |
+| `A ragdoll needs a positive height and a negative collision group.` | The function `physics2d.newRagdoll()` received bad options. |
+| `A vehicle needs a chassis and wheels with a size, a suspension travel of zero or more and a negative collision group.` | The function `physics2d.newVehicle()` received bad options. |
+| `An explosion needs a positive radius.` | The function `physics2d.explode()` or `terrain:explode()` received a radius that is not positive. |
+| `A terrain needs at least 2 by 2 samples, a positive cell size and chunk size, and a tolerance of at least zero.` | The function `physics2d.newTerrain()` received bad options. |
+| `The terrain needs one value per sample.` | The property `terrain.samples` received a list of another length. |
+| `A fracture needs at least one piece.` | The function `physics2d.fracture()` or `physics2d.splitPolygon()` received fewer than one piece. |
+| `A fluid needs a positive particle radius and a larger smoothing radius.` | The function `physics2d.newFluid()` received bad radii. |
+| `A circle cast needs a finite radius of zero or more.` | The method `world:castCircle()` received a negative radius. |
+| `A box cast needs a positive size.` | The method `world:castBox()` received a zero or negative size. |
+| `A capsule cast needs a positive radius.` | The method `world:castCapsule()` received a zero or negative radius. |
+| `A polygon cast needs between three and eight points.` | The method `world:castPolygon()` received too few or too many points. |
+| `A bouncing physics ray needs a finite length.` | The method `world:bounceRay()` received an infinite length. |
+| `the length must be finite` | The method `world:rayFan()` received an infinite length. It comes inside a bad argument error. |
+| `Ray batches take no "accept" function, because their rays run on worker threads.` | The method `world:raycastBatch()` received a filter with `accept`. |
+| `The type "haylen.Body" has no member "<name>".` | A body, shape, joint or world member does not exist. The type name changes with the userdata. |
+| `The type "haylen.Body" has no writable property "<name>".` | A read-only property was assigned. The type name changes with the userdata. |

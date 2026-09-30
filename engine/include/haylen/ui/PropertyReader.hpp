@@ -57,12 +57,12 @@ class PropertyReader final {
         std::string names;
         for (std::size_t index = 0; index < choices.size(); ++index) {
             names += index == 0 ? "" : (index + 1 == choices.size() ? " or " : ", ");
-            names += choices[index].first;
+            names += "\"" + std::string(choices[index].first) + "\"";
         }
         fail(key, "must be " + names);
     }
 
-    // A length is a non-negative number or auto, which lets the content decide.
+    // A length is a non-negative number or `auto`, which lets the content decide.
     void readLength(std::string_view key, std::optional<float>& out);
 
     // Throws for the first property no read asked for.
@@ -70,13 +70,13 @@ class PropertyReader final {
 
     [[noreturn]] void fail(std::string_view key, std::string_view problem) const;
 
-    // Names a property as kind.key, such as list.items, which describeProperty turns into the start of a message.
+    // Names a property as `kind.key`, such as `list.items`, which `describeProperty` turns into the start of a message.
     [[nodiscard]] std::string getQualifiedName(std::string_view key) const;
 
-    // Starts a message about the property at a path such as button.style.padding with The property 'style.padding' of a button.
+    // Starts a message about the property at a path such as `button.style.padding` with `The property "style.padding" of a "button"`.
     [[nodiscard]] static std::string describeProperty(std::string_view path);
 
-    // Names a component kind with its article, such as a button or an image.
+    // Names a component kind with its article, such as `a "button"` or `an "image"`.
     [[nodiscard]] static std::string describeKind(std::string_view componentKind);
 
   private:

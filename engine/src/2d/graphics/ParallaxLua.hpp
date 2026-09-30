@@ -4,7 +4,7 @@ struct lua_State;
 
 namespace haylen::graphics2d {
 
-// Installs the Parallax class of haylen.graphics2d. Its drawing measures the view with the visible design area as the screen, as world canvases do.
+// Installs the `Parallax` class of `haylen.graphics2d`. Its drawing measures the view with the visible design area as the screen, as world canvases do.
 class ParallaxLua final {
   public:
     static void install(lua_State* L);

@@ -1,5 +1,5 @@
 if(NOT HAYLEN_SANITIZERS MATCHES "^(OFF|ADDRESS|THREAD)$")
-  message(FATAL_ERROR "HAYLEN_SANITIZERS is OFF, ADDRESS or THREAD, not ${HAYLEN_SANITIZERS}.")
+  message(FATAL_ERROR "The option \"HAYLEN_SANITIZERS\" is \"OFF\", \"ADDRESS\" or \"THREAD\", not \"${HAYLEN_SANITIZERS}\".")
 endif()
 
 # ThreadSanitizer sees only the synchronization of the code it instruments, such as the atomics with which libuv wakes its loop, so it instruments the dependencies too.

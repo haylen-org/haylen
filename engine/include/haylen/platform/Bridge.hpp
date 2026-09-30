@@ -20,7 +20,7 @@
 
 namespace haylen::platform {
 
-// Request and event channel between the app and native code. Parameters, results and events are JSON with byte buffers next to it. Results, events and work that native code posts always reach the frame thread in pump. Call ids are unique in the whole process, so a reply that arrives after the app restarted never answers a call of the new app.
+// Request and event channel between the app and native code. Parameters, results and events are JSON with byte buffers next to it. Results, events and work that native code posts always reach the frame thread in `pump`. Call ids are unique in the whole process, so a reply that arrives after the app restarted never answers a call of the new app.
 class Bridge final {
     struct Inbox;
 
@@ -28,13 +28,13 @@ class Bridge final {
     // How many retained events of one name wait for a listener. A newer one drops the oldest.
     static constexpr std::size_t kRetainedLimit = 32;
 
-    // JSON with the byte buffers it refers to as {"$bytes": N}, so binary data such as images and audio never turns into text.
+    // JSON with the byte buffers it refers to as `{"$bytes": N}`, so binary data such as images and audio never turns into text.
     struct Payload {
         core::Json json;
         std::vector<std::vector<std::byte>> buffers;
     };
 
-    // Why a call failed. The code and the data are whatever native code sent, and null when it sent none. The bridge fails calls itself with the codes timeout and cancelled.
+    // Why a call failed. The code and the data are whatever native code sent, and `null` when it sent none. The bridge fails calls itself with the codes `timeout` and `cancelled`.
     struct Error {
         std::string message;
         core::Json code;
@@ -53,10 +53,10 @@ class Bridge final {
         bool batched = false;
     };
 
-    // Queues work for the frame thread from any thread. The work runs in pump, and it is dropped once the bridge is gone, so it must not own Lua values.
+    // Queues work for the frame thread from any thread. The work runs in `pump`, and it is dropped once the bridge is gone, so it must not own Lua values.
     class Mailbox final {
       public:
-        // Returns false when the bridge is gone and the work was dropped.
+        // Returns `false` when the bridge is gone and the work was dropped.
         bool post(std::function<void()> task) const;
 
       private:
@@ -83,18 +83,18 @@ class Bridge final {
     void registerHandler(std::string method, Handler handler);
     [[nodiscard]] bool hasHandler(std::string_view method) const;
 
-    // A call with a timeout fails with the code timeout when no answer arrived in time, and native code hears that it was given up. Throws std::invalid_argument for an empty method name or parameters that refer to a buffer they lack.
+    // A call with a timeout fails with the code `timeout` when no answer arrived in time, and native code hears that it was given up. Throws `std::invalid_argument` for an empty method name or parameters that refer to a buffer they lack.
     std::uint64_t call(std::string_view method, const Payload& params, Callback callback, std::optional<std::chrono::steady_clock::duration> timeout = std::nullopt);
 
     // Calls a method whose answer nobody needs. Nothing waits for it, it never counts as pending, and its answer is dropped.
     void send(std::string_view method, const Payload& params);
 
-    // Fails a pending call with the code cancelled at the next pump and tells native code, and returns false when the call already settled.
+    // Fails a pending call with the code `cancelled` at the next pump and tells native code, and returns `false` when the call already settled.
     bool cancel(std::uint64_t id);
 
     core::Connection on(const std::string& event, std::function<void(const Payload&)> listener);
 
-    // Thread-safe entry points for native code, which move the buffers into the queue of the bridge without copying them. A failed call carries a message string or an object with message, code and data. JSON that refers to a buffer it lacks fails the call with the code invalidBytes, and drops the event with an error in the log. An event that nothing listens to is dropped, unless it is retained: then it waits until a listener of its name connects, which receives the waiting events in order at the next pump.
+    // Thread-safe entry points for native code, which move the buffers into the queue of the bridge without copying them. A failed call carries a message string or an object with `message`, `code` and `data`. JSON that refers to a buffer it lacks fails the call with the code `invalidBytes`, and drops the event with an error in the log. An event that nothing listens to is dropped, unless it is retained: then it waits until a listener of its name connects, which receives the waiting events in order at the next pump.
     void resolve(std::uint64_t id, bool ok, std::string_view resultJson, std::vector<std::vector<std::byte>> buffers = {});
     void emit(std::string_view event, std::string_view payloadJson, std::vector<std::vector<std::byte>> buffers = {}, const EmitOptions& options = kDefaultEmitOptions);
     [[nodiscard]] Mailbox getMailbox() const;
@@ -102,7 +102,7 @@ class Bridge final {
     void pump();
     [[nodiscard]] std::size_t getPendingCallCount() const;
 
-    // Reads an answer of native code the way resolve does: JSON that is not valid fails with the code invalidJson, JSON that refers to a buffer it lacks fails with the code invalidBytes, and a failure keeps its message, code and data but drops its buffers.
+    // Reads an answer of native code the way `resolve` does: JSON that is not valid fails with the code `invalidJson`, JSON that refers to a buffer it lacks fails with the code `invalidBytes`, and a failure keeps its message, code and data but drops its buffers.
     [[nodiscard]] static Result parseResult(bool ok, std::string_view json, std::vector<std::vector<std::byte>> buffers);
 
   private:

@@ -27,7 +27,7 @@ namespace haylen::core {
 
 class ScriptedTrack;
 
-// Installs haylen.tween: tweens of table fields and object properties, ready-made tweens, timelines and staggers, and the Tween and Timeline handles that control them. Properties of engine objects that their binding records as native tween without running Lua every frame.
+// Installs `haylen.tween`: tweens of table fields and object properties, ready-made tweens, timelines and staggers, and the `Tween` and `Timeline` handles that control them. Properties of engine objects that their binding records as native tween without running Lua every frame.
 class TweenLua final {
   public:
     static void install(lua_State* L);
@@ -54,7 +54,7 @@ class TweenLua final {
         std::vector<std::pair<std::vector<std::string>, TweenProperty>> pending;
     };
 
-    // A native property of a userdata target, or one component of a Vec2 or Color property.
+    // A native property of a userdata target, or one component of a `Vec2` or `Color` property.
     struct NativeField {
         void* storage = nullptr;
         const lua::NativeProperty* property = nullptr;

@@ -54,7 +54,7 @@ std::vector<ErrorScreen::SourceLine> ErrorScreen::readExcerpt() const {
     try {
         source = package.readText(file);
     } catch (const std::exception& exception) {
-        Log::warning("The error screen shows no source excerpt, because {} could not be read: {}", file, exception.what());
+        Log::warning("The error screen shows no source excerpt, because \"{}\" could not be read: {}", file, exception.what());
         return {};
     }
 

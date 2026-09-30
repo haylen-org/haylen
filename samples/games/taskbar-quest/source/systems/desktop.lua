@@ -9,7 +9,7 @@ local config = require('config')
 local desktop = {}
 desktop.__index = desktop
 
--- The strip mode comes from app.json, so the mode the app starts in is whatever the window has. The strip follows the taskbar and the monitors while the owner lives.
+-- The strip mode comes from `app.json`, so the mode the app starts in is whatever the window has. The strip follows the taskbar and the monitors while the owner lives.
 function desktop.new(owner)
     local self = setmetatable({strip = not window.decorated()}, desktop)
     events.on('windowMonitorsChanged', function()

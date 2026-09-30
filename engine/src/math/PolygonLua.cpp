@@ -48,7 +48,7 @@ template <> struct EnumNames<math::Polygon::Join> {
 
 namespace haylen::math {
 
-// A point is a Vec2, a table with an x field or a table whose first value is a number.
+// A point is a `Vec2`, a table with an `x` field or a table whose first value is a number.
 bool PolygonLua::isPoint(lua_State* L, int index) {
     if (lua::Userdata::test<Vec2>(L, index) != nullptr) {
         return true;
@@ -99,7 +99,7 @@ int PolygonLua::exclude(lua_State* L) {
     return 1;
 }
 
-// Grows a shape with offset(shape, distance, {join = 'round', miterLimit = 2}).
+// Grows a shape with `offset(shape, distance, {join = 'round', miterLimit = 2})`.
 int PolygonLua::offset(lua_State* L) {
     const std::vector<std::vector<Vec2>> shape = readShape(L, 1);
     const auto distance = lua::Stack::read<float>(L, 2);
@@ -135,7 +135,7 @@ int PolygonLua::area(lua_State* L) {
     return 1;
 }
 
-// Traces a field with trace(values, width, height, {threshold = 0.5, spacing = 1, origin = {0, 0}}), where values hold width times height numbers row by row.
+// Traces a field with `trace(values, width, height, {threshold = 0.5, spacing = 1, origin = {0, 0}})`, where `values` hold `width` times `height` numbers row by row.
 int PolygonLua::trace(lua_State* L) {
     const auto values = lua::Stack::read<std::vector<float>>(L, 1);
     const auto width = lua::Stack::read<int>(L, 2);
@@ -152,7 +152,7 @@ int PolygonLua::trace(lua_State* L) {
     return 1;
 }
 
-// Traces the pixels that are true or not zero with traceBitmap(pixels, width, height, {spacing = 1, origin = {0, 0}}).
+// Traces the pixels that are `true` or not zero with `traceBitmap(pixels, width, height, {spacing = 1, origin = {0, 0}})`.
 int PolygonLua::traceBitmap(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     const auto width = lua::Stack::read<int>(L, 2);

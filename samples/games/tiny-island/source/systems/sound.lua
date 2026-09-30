@@ -33,7 +33,7 @@ local function load(file)
     return assets.load('audio/' .. file)
 end
 
--- Plays an effect, positioned in the world when x and y are given so the listener hears where it happened.
+-- Plays an effect, positioned in the world when `x` and `y` are given so the listener hears where it happened.
 function sound.play(name, x, y)
     local effect = effects[name]
     local file = effect.files[math.random(#effect.files)]

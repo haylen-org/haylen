@@ -13,7 +13,7 @@ namespace haylen::core {
 
 class PropertyTween;
 
-// Plays root tweens on the frame clock. Each tween runs by its process mode on scaled or unscaled time, frame tweens advance in update and fixed-step tweens in fixedUpdate, and tweens with a tag share the time scale of their group. Updating allocates nothing, so thousands of tweens can run at once.
+// Plays root tweens on the frame clock. Each tween runs by its process mode on scaled or unscaled time, frame tweens advance in `update` and fixed-step tweens in `fixedUpdate`, and tweens with a tag share the time scale of their group. Updating allocates nothing, so thousands of tweens can run at once.
 class TweenManager final {
   public:
     TweenManager() = default;

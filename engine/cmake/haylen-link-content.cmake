@@ -1,4 +1,4 @@
-# Links app.json, source and content of the SOURCE package folder into the DESTINATION folder, so edited files are visible without rebuilding and nothing else in the package folder is deployed.
+# Links `app.json`, `source` and `content` of the `SOURCE` package folder into the `DESTINATION` folder, so edited files are visible without rebuilding and nothing else in the package folder is deployed.
 
 file(MAKE_DIRECTORY "${DESTINATION}")
 
@@ -20,7 +20,7 @@ foreach(entry app.json source content)
     continue()
   endif()
 
-  # Windows creates symbolic links only with extra privileges, so folders become junctions and app.json a hard link.
+  # Windows creates symbolic links only with extra privileges, so folders become junctions and `app.json` a hard link.
   if(CMAKE_HOST_WIN32 AND IS_DIRECTORY "${original}")
     file(TO_NATIVE_PATH "${original}" native_original)
     file(TO_NATIVE_PATH "${link}" native_link)

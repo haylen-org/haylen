@@ -1,4 +1,4 @@
-"""The images of the fonts sample: a grid font of LCD digits, the button prompts that [icon] shows and the small pictures that [img] shows."""
+"""The images of the fonts sample: a grid font of LCD digits, the button prompts that `[icon]` shows and the small pictures that `[img]` shows."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ Color = tuple[int, int, int, int]
 GRID_CHARACTERS = "0123456789:.-"
 GRID_CELL = (12, 20)
 
-# The segments of each digit, named a to g clockwise from the top with g in the middle.
+# The segments of each digit, named `a` to `g` clockwise from the top with `g` in the middle.
 SEGMENTS = {"0": "abcdef", "1": "bc", "2": "abged", "3": "abgcd", "4": "fgbc", "5": "afgcd", "6": "afgedc", "7": "abc", "8": "abcdefg", "9": "abcdfg", "-": "g"}
 
 
@@ -58,7 +58,7 @@ def polygon(image: Image, points: list[tuple[float, float]], color: Color) -> No
 
 
 def lcd_digits() -> Image:
-    """One row of equal cells in the order of GRID_CHARACTERS, lit segments in green over dim unlit ones."""
+    """One row of equal cells in the order of `GRID_CHARACTERS`, lit segments in green over dim unlit ones."""
     width, height = GRID_CELL
     image = Image.blank(width * len(GRID_CHARACTERS), height)
     lit, dim = rgb("#39ff7a"), rgb("#39ff7a", 40)

@@ -4,7 +4,7 @@ struct lua_State;
 
 namespace haylen::platform {
 
-// Installs haylen.system, which tells what the device is, its theme and its battery, and opens urls and vibrates the device.
+// Installs `haylen.system`, which tells what the device is, its theme and its battery, and opens urls and vibrates the device.
 class SystemLua final {
   public:
     static void install(lua_State* L);

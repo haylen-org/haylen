@@ -1,6 +1,6 @@
 # Haylen Events
 
-A Lua sample with one scene per feature of [haylen.signal](../../../docs/lua-api/signal.md), [haylen.events](../../../docs/lua-api/events.md) and the [lifecycle](../../../docs/lifecycle.md) of the engine. The menu lists the tests, each test opens as its own scene with a Back button, a log of what happened with the frame it happened on and the code it runs, and Escape, the east gamepad button or the Menu button of a TV remote return to the menu.
+A Lua sample with one scene per feature of [`haylen.signal`](../../../docs/lua-api/signal.md), [`haylen.events`](../../../docs/lua-api/events.md) and the [lifecycle](../../../docs/lifecycle.md) of the engine. The menu lists the tests, each test opens as its own scene with a Back button, a log of what happened with the frame it happened on and the code it runs, and Escape, the east gamepad button or the Menu button of a TV remote return to the menu.
 
 | Test | What it shows |
 | --- | --- |
@@ -9,9 +9,9 @@ A Lua sample with one scene per feature of [haylen.signal](../../../docs/lua-api
 | Event bus | Damage events on channels, a listener for every channel, a filter, a shield that consumes events with a high priority, and events posted for the end of the frame. |
 | Scene scopes | An arena scene whose signal connection, event listener, timer, tween, task and card all end when it unloads. |
 | Lifecycle log | Every engine event as it happens, with buttons for a scene that loads behind a loading view, a failed load, the pause, a simulated notch, object events, an asset, a document, a socket that retries and fullscreen. |
-| Pause | A pause menu in the `whenPaused` mode, the paused and unpaused hooks of both scenes, and timers in the pausable and always modes. |
+| Pause | A pause menu in the `whenPaused` mode, the `paused` and `unpaused` hooks of both scenes, and timers in the `pausable` and `always` modes. |
 | Autoloads | The player data autoload that `app.json` lists, shared with a shop scene and drawing the coin counter on every screen, and a jukebox added at run time. |
-| Classes | `haylen.class` with inheritance, `super`, a copied `__eq`, walking and flying mixins with their `included` hook and `is` checks. |
+| Classes | The class helper `haylen.class` with inheritance, `super`, a copied `__eq`, walking and flying mixins with their `included` hook and `is` checks. |
 | Diagnostics | Live tables of `events.topics()` and `signal.list()`, the counts around the collection of an owner and the debug overlay. |
 
 ## Running it

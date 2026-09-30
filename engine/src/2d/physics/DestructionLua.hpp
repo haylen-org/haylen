@@ -10,12 +10,12 @@ struct lua_State;
 
 namespace haylen::physics2d {
 
-// Installs the Terrain class of haylen.physics2d with explosions and fractures, which carve and break the bodies of a world.
+// Installs the `Terrain` class of `haylen.physics2d` with explosions and fractures, which carve and break the bodies of a world.
 class DestructionLua final {
   public:
     static void install(lua_State* L);
 
-    // Sets newTerrain, explode, fracture and splitPolygon on the module table at the top of the stack.
+    // Sets `newTerrain`, `explode`, `fracture` and `splitPolygon` on the module table at the top of the stack.
     static void addFunctions(lua_State* L);
 
   private:
@@ -25,7 +25,7 @@ class DestructionLua final {
 
     // Reads the fields of an explosion table over the given options.
     [[nodiscard]] static Explosion::Options readExplosion(lua_State* L, int index, Explosion::Options options);
-    // Pushes {body, x, y, impulseX, impulseY} for each hit, with bodies of the Lua world at worldIndex.
+    // Pushes `{body, x, y, impulseX, impulseY}` for each hit, with bodies of the Lua world at `worldIndex`.
     static void pushHits(lua_State* L, int worldIndex, const std::vector<Explosion::Hit>& hits);
 
     static int newTerrain(lua_State* L);

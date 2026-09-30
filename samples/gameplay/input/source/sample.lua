@@ -34,7 +34,7 @@ function Test:init(info)
     self.camera.anchor = 'topLeft'
 end
 
--- Mounts the frame. `options` holds the `hint`, the `controls` of the panel and its `panelWidth`, the id of the control to `focus` for gamepads and TV remotes, the `back` hint that replaces the default one, `overlay`, anchored nodes such as touch controls drawn over the stage, and `navigation = false` for tests that keep every key to themselves, whose controls then answer the pointer only.
+-- Mounts the frame. The table `options` holds the `hint`, the `controls` of the panel and its `panelWidth`, the id of the control to `focus` for gamepads and TV remotes, the `back` hint that replaces the default one, `overlay`, anchored nodes such as touch controls drawn over the stage, and `navigation = false` for tests that keep every key to themselves, whose controls then answer the pointer only.
 function Test:frame(options)
     window.setBackLeavesApp(false)
     local back = options.back or 'Escape, the east button or Back returns to the menu.'

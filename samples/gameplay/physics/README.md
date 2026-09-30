@@ -1,6 +1,6 @@
 # Haylen Physics
 
-A Lua sample with one scene per feature of [haylen.physics2d](../../../docs/lua-api/physics2d.md). The menu lists the tests, each test opens as its own scene with a Back button, and Escape, the east gamepad button or the Menu button of a TV remote return to the menu.
+A Lua sample with one scene per feature of [`haylen.physics2d`](../../../docs/lua-api/physics2d.md). The menu lists the tests, each test opens as its own scene with a Back button, and Escape, the east gamepad button or the Menu button of a TV remote return to the menu.
 
 | Test | What it shows |
 | --- | --- |

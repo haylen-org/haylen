@@ -17,7 +17,7 @@
 
 namespace haylen::ui {
 
-// Rich text markup in a theme font, drawn by the 2D renderer inside the clip of the UI in the language of the node, lined up with the side of the UI its alignment names. Links are focusable items that report link when activated and linkHover when the pointer enters or leaves them, hints show as tooltips, and images load through the UI.
+// Rich text markup in a theme font, drawn by the 2D renderer inside the clip of the UI in the language of the node, lined up with the side of the UI its alignment names. Links are focusable items that report `link` when activated and `linkHover` when the pointer enters or leaves them, hints show as tooltips, and images load through the UI.
 class RichText final : public Component {
   public:
     [[nodiscard]] std::string_view getKind() const noexcept override {

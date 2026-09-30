@@ -9,7 +9,7 @@ local timer = require('haylen.timer')
 
 local Card = haylen.class('Card', scene.Scene)
 
--- Options: title, caption, color, listener (a function of the card, the hook name and a detail), work (seconds the load takes, in ten steps), fail (a message the load fails with), stay (seconds before the card pops itself) and leave (the transition it pops with).
+-- Options: `title`, `caption`, `color`, `listener` (a function of the card, the hook name and a detail), `work` (seconds the load takes, in ten steps), `fail` (a message the load fails with), `stay` (seconds before the card pops itself) and `leave` (the transition it pops with).
 function Card:init(options)
     self.title = options.title
     self.caption = options.caption or ''

@@ -80,10 +80,10 @@ TEST_F(AudioPauseTest, VoicesOverrideTheModeOfTheirBus) {
     EXPECT_EQ(mixer.getProcessMode(always), core::ProcessMode::Always);
     EXPECT_EQ(mixer.getProcessMode(9999), core::ProcessMode::Inherit);
 
-    // Running: always, steps (pausable through sfx) and menu (always through ui).
+    // Running: always, `steps` (pausable through `sfx`) and `menu` (always through `ui`).
     EXPECT_NEAR(settledPeak(256), 0.3F, 0.01F);
 
-    // Paused: always, when paused and menu.
+    // Paused: always, when paused and `menu`.
     mixer.setProcessPaused(true);
     EXPECT_NEAR(settledPeak(256), 0.3F, 0.01F);
     EXPECT_FALSE(statsOf("steps").processing);

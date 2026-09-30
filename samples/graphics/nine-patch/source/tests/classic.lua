@@ -14,7 +14,7 @@ local kCode = [[
 local texture = assets.texture('frames/panel.png')
 local stretched = graphics2d.newNineSlice(texture, {borders = {28, 28, 28, 28}})
 local tiled = graphics2d.newNineSlice(texture, {borders = {28, 28, 28, 28}, fill = 'tile'})
-graphics2d.drawNineSlice(stretched, {x, y, width, height})  -- corners keep their size]]
+graphics2d.drawNineSlice(stretched, {x, y, width, height})  -- Corners keep their size.]]
 
 function Classic:enter()
     self.texture = sample.texture('frames/panel.png')

@@ -1,4 +1,4 @@
--- Destructible ground from physics2d.newTerrain: bombs carve craters and push crates, the shovel digs and the trowel adds dirt, and only the chunks that changed rebuild their collision.
+-- Destructible ground from `physics2d.newTerrain`: bombs carve craters and push crates, the shovel digs and the trowel adds dirt, and only the chunks that changed rebuild their collision.
 local haylen = require('haylen')
 local graphics2d = require('haylen.graphics2d')
 local input = require('haylen.input')

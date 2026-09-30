@@ -28,7 +28,7 @@ void Profiler::beginFrame() {
 
 void Profiler::endFrame() {
     if (!inFrame) {
-        throw std::logic_error("The endFrame call has no matching beginFrame.");
+        throw std::logic_error("The \"endFrame\" call has no matching \"beginFrame\".");
     }
 
     // Scopes left open by an error close at the end of the frame, so one failure never skews the next frame.

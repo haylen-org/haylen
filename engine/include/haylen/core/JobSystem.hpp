@@ -38,7 +38,7 @@ class JobSystem final {
     void postIo(std::function<void()> work);
     void postToFrame(std::function<void()> work);
 
-    // Runs work on the task pool and calls completion on the frame thread with the value or the error message.
+    // Runs work on the task pool and calls `completion` on the frame thread with the value or the error message.
     template <typename Work, typename Completion> void run(Work&& work, Completion&& completion) {
         using Value = std::invoke_result_t<Work>;
 
@@ -57,7 +57,7 @@ class JobSystem final {
         // clang-format on
     }
 
-    // Splits [begin, end) into chunks of at least grainSize items and runs them in parallel, including on the calling thread. Workers and the caller take chunks one at a time, so the caller runs every chunk no worker started and never waits behind other work queued on the task pool. Only the frame thread may call it.
+    // Splits `[begin, end)` into chunks of at least `grainSize` items and runs them in parallel, including on the calling thread. Workers and the caller take chunks one at a time, so the caller runs every chunk no worker started and never waits behind other work queued on the task pool. Only the frame thread may call it.
     void parallelFor(std::size_t begin, std::size_t end, std::size_t grainSize, const std::function<void(std::size_t, std::size_t)>& body);
 
     // Drops the posted work that no worker started, without running it. The engine calls it once the pools stopped, so what that work holds, such as Lua references, goes while the Lua state is still open.

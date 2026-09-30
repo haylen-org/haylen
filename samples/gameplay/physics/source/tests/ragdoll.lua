@@ -1,4 +1,4 @@
--- Ragdolls from physics2d.newRagdoll: eleven capsules with the joint limits of a body, tumbling down stairs and thrown around.
+-- Ragdolls from `physics2d.newRagdoll`: eleven capsules with the joint limits of a body, tumbling down stairs and thrown around.
 local haylen = require('haylen')
 local graphics2d = require('haylen.graphics2d')
 local input = require('haylen.input')

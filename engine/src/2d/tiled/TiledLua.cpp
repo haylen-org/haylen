@@ -298,7 +298,7 @@ MapRenderer::View TiledLua::readView(lua_State* L, int index) {
     return {.center = lua::Userdata::check<graphics2d::Camera>(L, index).getRenderPosition(), .visible = lua::Runtime::getEngine(L).getRenderer2D().getCanvasBounds()};
 }
 
-// Reads {layer, depth, sortOffset, visibility, blend, x, y, ysort}, where x and y place the map origin in the world.
+// Reads `{layer, depth, sortOffset, visibility, blend, x, y, ysort}`, where `x` and `y` place the map origin in the world.
 MapRenderer::DrawOptions TiledLua::readDrawOptions(lua_State* L, int index) {
     MapRenderer::DrawOptions options{.order = lua::TypeConverter::readDrawOrder(L, index, {kMapDrawFields})};
     if (!lua_isnoneornil(L, index)) {
@@ -317,7 +317,7 @@ const Map& TiledLua::checkMap(lua_State* L) {
     return checkRenderer(L).getMap();
 }
 
-// Creates a playable map from a loaded map asset with newMapRenderer(asset).
+// Creates a playable map from a loaded map asset with `newMapRenderer(asset)`.
 int TiledLua::newMapRenderer(lua_State* L) {
     const Map& data = lua::Userdata::check<Map>(L, 1);
     lua::Userdata::emplace<MapRenderer>(L, std::make_shared<MapRenderer>(data, lua::Runtime::getEngine(L).getDefaultFont()));
@@ -379,7 +379,7 @@ int TiledLua::mapLayer(lua_State* L) {
     const std::string_view name = lua::Stack::read<std::string_view>(L, 2);
     const Layer* layer = checkMap(L).findLayer(name);
     if (layer == nullptr) {
-        return luaL_error(L, "The map has no layer named '%s'.", std::string(name).c_str());
+        return luaL_error(L, "The map has no layer named \"%s\".", std::string(name).c_str());
     }
     pushLayer(L, *layer);
     return 1;
@@ -407,13 +407,13 @@ int TiledLua::mapObjects(lua_State* L) {
     const std::string_view name = lua::Stack::read<std::string_view>(L, 2);
     const Layer* layer = data.findLayer(name);
     if (layer == nullptr || layer->kind != Layer::Kind::Object) {
-        return luaL_error(L, "The map has no object layer named '%s'.", std::string(name).c_str());
+        return luaL_error(L, "The map has no object layer named \"%s\".", std::string(name).c_str());
     }
     pushObjects(L, layer->objects);
     return 1;
 }
 
-// Calls factories[class](object) for each object whose class has a factory, in one object layer with spawn(factories, layer) or in all of them, and returns the values the factories returned in map order. Spawned objects also carry their world position as worldX and worldY.
+// Calls `factories[class](object)` for each object whose class has a factory, in one object layer with `spawn(factories, layer)` or in all of them, and returns the values the factories returned in map order. Spawned objects also carry their world position as `worldX` and `worldY`.
 int TiledLua::mapSpawn(lua_State* L) {
     luaL_checktype(L, 2, LUA_TTABLE);
     const std::string_view layer = lua_isnoneornil(L, 3) ? std::string_view{} : lua::Stack::read<std::string_view>(L, 3);
@@ -431,7 +431,7 @@ int TiledLua::mapSpawn(lua_State* L) {
             continue;
         }
         if (!lua_isfunction(L, -1)) {
-            return luaL_error(L, "The factory for the Tiled class '%s' is not a function.", object->type.c_str());
+            return luaL_error(L, "The factory for the Tiled class \"%s\" is not a function.", object->type.c_str());
         }
         pushObject(L, *object);
         setNumber(L, "worldX", position.x);
@@ -446,7 +446,7 @@ int TiledLua::mapSpawn(lua_State* L) {
     return 1;
 }
 
-// Describes a global tile id with its tileset, class, properties, animation and collision shapes, or returns nil for an empty cell or an id that no tileset holds.
+// Describes a global tile id with its tileset, class, properties, animation and collision shapes, or returns `nil` for an empty cell or an id that no tileset holds.
 int TiledLua::mapTileInfo(lua_State* L) {
     const Map& data = checkMap(L);
     const auto gid = lua::Stack::read<std::uint32_t>(L, 2);

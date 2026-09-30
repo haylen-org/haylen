@@ -11,7 +11,7 @@ void StateMachine::add(std::string name, Callbacks callbacks) {
     }
     const std::string label = name;
     if (!states.emplace(std::move(name), std::move(callbacks)).second) {
-        throw std::invalid_argument("The state machine already has a state named " + label + ".");
+        throw std::invalid_argument("The state machine already has a state named \"" + label + "\".");
     }
 }
 
@@ -21,7 +21,7 @@ bool StateMachine::has(std::string_view name) const {
 
 void StateMachine::change(std::string_view name) {
     if (!has(name)) {
-        throw std::invalid_argument("The state machine has no state named " + std::string(name) + ".");
+        throw std::invalid_argument("The state machine has no state named \"" + std::string(name) + "\".");
     }
     pending.emplace_back(name);
     if (transitioning) {

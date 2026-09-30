@@ -12,9 +12,9 @@ local kSize = 320
 local kColumns = 16
 local kCode = [[
 local target = graphics.newRenderTarget(320, 320, {filter = 'linear'})
-graphics2d.beginTarget(target, targetCamera, {clear = '#FF203040'})  -- draw anything, every frame or once
+graphics2d.beginTarget(target, targetCamera, {clear = '#FF203040'})  -- Draw anything, every frame or once.
 graphics2d.beginWorld(camera)  graphics2d.draw(target.texture, x, y, {rotation = 0.3, color = '#FFFF9060', flipY = true})
-graphics2d.drawMesh(target.texture, vertices, indices)  -- the same texture on a waving strip]]
+graphics2d.drawMesh(target.texture, vertices, indices)  -- The same texture on a waving strip.]]
 
 function RenderTargets:enter()
     self.target = graphics.newRenderTarget(kSize, kSize, {filter = 'linear'})

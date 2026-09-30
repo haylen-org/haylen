@@ -26,7 +26,7 @@ class NavigationLuaTest : public ::testing::Test {
         return fixture.lua(source);
     }
 
-    // Runs an asynchronous call in a task and waits until it stores its result in the global done.
+    // Runs an asynchronous call in a task and waits until it stores its result in the global `done`.
     void await(const std::string& call) {
         fixture.runLua("done = nil require('async').spawn(function() done = {" + call + ":await()} end)");
         ASSERT_TRUE(fixture.frameUntil([this] { return lua("return done ~= nil") == "true"; }, std::chrono::seconds(10)));
@@ -130,7 +130,7 @@ TEST_F(NavigationLuaTest, BuildsDijkstraMapsFlowFieldsAndHierarchies) {
     EXPECT_EQ(lua("big:setWalkable(32, 10, false) background:update(32, 10) return tostring(background:findPath(0, 0, 63, 0))"), "nil");
     EXPECT_EQ(lua("navigation2d.newGrid(8, 8, {topology = 'staggered'}):hierarchicalPathfinderAsync()"), "error: test:1: Hierarchical path finding needs a square grid.");
     EXPECT_EQ(lua("big:hierarchicalPathfinderAsync({clusterSize = 1})"), "error: test:1: Hierarchical path finding needs clusters of at least 2 cells.");
-    EXPECT_NE(lua("big:hierarchicalPathfinderAsync({size = 8})").find("Unknown option 'size'"), std::string::npos);
+    EXPECT_NE(lua("big:hierarchicalPathfinderAsync({size = 8})").find("Unknown option \"size\""), std::string::npos);
 }
 
 TEST_F(NavigationLuaTest, FindsGraphPathsAroundDisabledPoints) {
@@ -241,7 +241,7 @@ TEST_F(NavigationLuaTest, MovesCrowdsWithoutOverlaps) {
     EXPECT_NE(lua("crowd:addObstacle({{0, 0}})").find("at least two points"), std::string::npos);
     EXPECT_NE(lua("crowd:step(0)").find("positive and finite time"), std::string::npos);
     EXPECT_NE(lua("crowd:position(99)").find("Agent 99 is not in the crowd."), std::string::npos);
-    EXPECT_NE(lua("crowd:addAgent({speed = 1})").find("Unknown option 'speed'"), std::string::npos);
+    EXPECT_NE(lua("crowd:addAgent({speed = 1})").find("Unknown option \"speed\""), std::string::npos);
     EXPECT_NE(lua("crowd:addAgent({radius = -1})").find("positive time horizons"), std::string::npos);
 
     // Values that are not finite never reach the step, and targets far across the float range still pull at full speed.

@@ -20,7 +20,7 @@ class Spline final {
         BSpline,
     };
 
-    // Throws std::invalid_argument when the kind needs more points or a different count.
+    // Throws `std::invalid_argument` when the kind needs more points or a different count.
     explicit Spline(std::vector<Vec2> controlPoints, Kind curveKind = Kind::CatmullRom, bool loop = false);
 
     [[nodiscard]] static std::optional<Kind> kindFromName(std::string_view name) noexcept;
@@ -49,9 +49,9 @@ class Spline final {
     [[nodiscard]] Vec2 getTangentAtDistance(float distance) const noexcept;
     [[nodiscard]] float getParameterAtDistance(float distance) const noexcept;
 
-    // Returns count points spread evenly over the parameter, both ends included.
+    // Returns `count` points spread evenly over the parameter, both ends included.
     [[nodiscard]] std::vector<Vec2> sample(std::size_t count) const;
-    // Returns points spacing apart along the curve from its start, plus the end point of open curves.
+    // Returns points `spacing` apart along the curve from its start, plus the end point of open curves.
     [[nodiscard]] std::vector<Vec2> sampleByDistance(float spacing) const;
 
   private:

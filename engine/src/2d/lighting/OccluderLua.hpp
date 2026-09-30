@@ -32,21 +32,21 @@ template <> struct EnumNames<lighting2d::Occluder::Cull> {
 
 namespace haylen::lighting2d {
 
-// Installs the Occluder class of haylen.lighting2d, whose properties write straight into the occluder that graphics2d.drawOccluder draws.
+// Installs the `Occluder` class of `haylen.lighting2d`, whose properties write straight into the occluder that `graphics2d.drawOccluder` draws.
 class OccluderLua final {
   public:
     static void install(lua_State* L);
 
-    // Reads an Occluder, or a table with its properties over the defaults, at index.
+    // Reads an `Occluder`, or a table with its properties over the defaults, at index.
     [[nodiscard]] static Occluder read(lua_State* L, int index);
 
-    // Creates an occluder with newOccluder({points = {...}, closed = true, cull = 'disabled', mask = 1, x, y, rotation, scaleX, scaleY}).
+    // Creates an occluder with `newOccluder({points = {...}, closed = true, cull = 'disabled', mask = 1, x, y, rotation, scaleX, scaleY})`.
     static int newOccluder(lua_State* L);
 
-    // Returns a list of occluders built from the shapes of a physics body with occludersFromBody(world, body).
+    // Returns a list of occluders built from the shapes of a physics body with `occludersFromBody(world, body)`.
     static int fromBody(lua_State* L);
 
-    // Returns a list of occluders built from the objects of a Tiled map with occludersFromMap(map, layer).
+    // Returns a list of occluders built from the objects of a Tiled map with `occludersFromMap(map, layer)`.
     static int fromMap(lua_State* L);
 
   private:

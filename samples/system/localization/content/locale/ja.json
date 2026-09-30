@@ -14,8 +14,8 @@
         "score": "{name}さんは{day}日目に{score}点を取りました。",
         "accuracy": "命中率：{ratio}",
         "sound": "サウンド：{sound}",
-        "braces": "{{name}}と書くとプレースホルダーを表示します。",
-        "missing": "不明なプレースホルダーはそのまま残ります：{treasure}。"
+        "braces": "\"{{name}}\"と書くとプレースホルダーを表示します。",
+        "missing": "不明なプレースホルダーはそのまま残ります：\"{treasure}\"。"
     },
     "items": {
         "apples": {"zero": "りんごはありません", "other": "りんご{count}個"},

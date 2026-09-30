@@ -1,4 +1,4 @@
--- The frame every test shares: the Back button with the title and the description, the stage the test draws in, the code the test runs under the stage, a panel of controls on the right, a status line and a line of hints. Every test preloads the images of the sample in its load hook.
+-- The frame every test shares: the Back button with the title and the description, the stage the test draws in, the code the test runs under the stage, a panel of controls on the right, a status line and a line of hints. Every test preloads the images of the sample in its `load` hook.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -42,7 +42,7 @@ function Test:load(context)
     context:preload('sprites'):await()
 end
 
--- Mounts the frame. `options` holds the `hint`, the `code` shown under the stage, the `controls` of the panel and the id of the control to `focus` for gamepads and TV remotes.
+-- Mounts the frame. The table `options` holds the `hint`, the `code` shown under the stage, the `controls` of the panel and the id of the control to `focus` for gamepads and TV remotes.
 function Test:frame(options)
     window.setBackLeavesApp(false)
     local left = {ui.spacer{id = 'stage', grow = 1}}
@@ -89,7 +89,7 @@ end
 function Test:resize(area)
 end
 
--- Draws the stage background and lets the test draw in stage-local coordinates once the stage has a size. `canvas` holds the options of the world canvas, such as its sort.
+-- Draws the stage background and lets the test draw in stage-local coordinates once the stage has a size. The field `canvas` holds the options of the world canvas, such as its sort.
 function Test:render()
     if self.area then
         graphics2d.beginWorld(self.camera, self.canvas)

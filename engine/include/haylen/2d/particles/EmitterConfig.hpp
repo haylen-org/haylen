@@ -18,7 +18,7 @@
 namespace haylen::particles2d {
 
 // Describes how particles are born, move and fade. Directions and spreads are in radians, sizes are in world units, and colors blend evenly across the lifetime. Frames play across the lifetime too.
-// Cone emitters place particles inside the circular sector of radius shapeSize.x that the direction and spread describe, and send them straight out of it.
+// Cone emitters place particles inside the circular sector of radius `shapeSize.x` that the direction and spread describe, and send them straight out of it.
 // An emitter with a duration emits for that many seconds, firing its bursts at their times, and then stops or starts the cycle again when it loops. Without a duration it emits until the app stops it, and each burst fires once.
 struct EmitterConfig {
     enum class Shape : std::uint8_t {
@@ -59,7 +59,7 @@ struct EmitterConfig {
     bool localSpace = false;
     graphics2d::DrawOrder order{};
 
-    // Resolves the shape names "point", "circle", "ring", "rectangle" and "cone".
+    // Resolves the shape names `point`, `circle`, `ring`, `rectangle` and `cone`.
     [[nodiscard]] static std::optional<Shape> shapeFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view shapeName(Shape value) noexcept;
 

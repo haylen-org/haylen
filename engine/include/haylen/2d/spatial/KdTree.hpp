@@ -14,7 +14,7 @@
 
 namespace haylen::spatial2d {
 
-// Finds points near other points in a balanced k-d tree, the fastest structure for nearest-neighbor queries over entries that rarely change. Entries are points with an optional radius, which queries treat as circles. Changes take effect when build runs, and querying a tree changed since its last build throws std::logic_error. Queries follow the rules of HashGrid, with distances measured to the circles.
+// Finds points near other points in a balanced k-d tree, the fastest structure for nearest-neighbor queries over entries that rarely change. Entries are points with an optional radius, which queries treat as circles. Changes take effect when `build` runs, and querying a tree changed since its last build throws `std::logic_error`. Queries follow the rules of `HashGrid`, with distances measured to the circles.
 class KdTree final {
   public:
     // Adds an entry, or moves an existing one.

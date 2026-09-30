@@ -15,9 +15,9 @@ local kLanes = {
     {label = 'unscaled', tag = '', unscaled = true},
 }
 local kCode = [[
-tween.setTimeScale('enemies', 0.25)  -- every tween tagged enemies, even new ones
-handle.timeScale = 2  -- one tween
-haylen.setTimeScale(0.5)  -- the whole app, except tweens with unscaled = true]]
+tween.setTimeScale('enemies', 0.25)  -- Every tween tagged `enemies`, even new ones.
+handle.timeScale = 2  -- One tween.
+haylen.setTimeScale(0.5)  -- The whole app, except tweens with `unscaled = true`.]]
 
 local function slider(id, label, onChange)
     return ui.formField{label = label, ui.slider{id = id, min = 0, max = 3, value = 1, step = 0.05, showValue = true, onChange = onChange}}

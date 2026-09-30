@@ -14,7 +14,7 @@ class Device;
 
 namespace haylen::platform {
 
-// Video frames that native code, such as a camera or a video decoder, pushes from any thread, and that the app draws as a texture. The stream keeps only the newest frame, and the engine uploads it into the texture at the start of a frame when it is new, so the texture changes once per frame at most. A frame of another size resizes the texture in place, so every handle to it stays current. Everything but push runs on the frame thread.
+// Video frames that native code, such as a camera or a video decoder, pushes from any thread, and that the app draws as a texture. The stream keeps only the newest frame, and the engine uploads it into the texture at the start of a frame when it is new, so the texture changes once per frame at most. A frame of another size resizes the texture in place, so every handle to it stays current. Everything but `push` runs on the frame thread.
 class VideoStream final {
   public:
     enum class Format : std::uint8_t {
@@ -22,17 +22,17 @@ class VideoStream final {
         Bgra8,
     };
 
-    // A stream opened with a size of 0 by 0 takes the size of its first frame. Throws std::invalid_argument for a negative size.
+    // A stream opened with a size of 0 by 0 takes the size of its first frame. Throws `std::invalid_argument` for a negative size.
     VideoStream(Format format, int width, int height);
 
     [[nodiscard]] Format getFormat() const noexcept {
         return format;
     }
 
-    // Copies a frame of width by height pixels in the format of the stream, whose rows start stride bytes apart, as RGBA8, from any thread. A newer frame replaces one that the app has not received yet. Throws std::invalid_argument for a size that is not positive or a stride shorter than a row.
+    // Copies a frame of `width` by `height` pixels in the format of the stream, whose rows start `stride` bytes apart, as RGBA8, from any thread. A newer frame replaces one that the app has not received yet. Throws `std::invalid_argument` for a size that is not positive or a stride shorter than a row.
     void push(const std::byte* pixels, int width, int height, std::size_t stride, double timestamp);
 
-    // Uploads the newest frame into the texture when it is new, emits frameReceived and returns true, and returns false when no frame arrived since the last update.
+    // Uploads the newest frame into the texture when it is new, emits `frameReceived` and returns `true`, and returns `false` when no frame arrived since the last update.
     bool update(graphics::Device& device);
 
     // Returns the texture of the stream, created on the device the first time. Until the first frame it holds transparent pixels of the size the stream opened with, or a single one.
@@ -76,7 +76,7 @@ class VideoStream final {
     const Format format;
     std::mutex mutex;
 
-    // The producer fills the spare frame outside the lock and swaps it with the latest one, and update takes the latest one when it is fresh, so no frame allocates once the sizes settle.
+    // The producer fills the spare frame outside the lock and swaps it with the latest one, and `update` takes the latest one when it is fresh, so no frame allocates once the sizes settle.
     Frame latest;
     Frame spare;
     bool fresh = false;

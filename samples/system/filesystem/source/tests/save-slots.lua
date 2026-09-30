@@ -1,4 +1,4 @@
--- Save slots: storage.writeSlot keeps the data of a game with a summary and the time, storage.slotInfo and storage.listSlots feed a load menu, and storage.readSlot and storage.removeSlot load and delete. The game also saves itself to auto_save when the player leaves.
+-- Save slots: `storage.writeSlot` keeps the data of a game with a summary and the time, `storage.slotInfo` and `storage.listSlots` feed a load menu, and `storage.readSlot` and `storage.removeSlot` load and delete. The game also saves itself to `auto_save` when the player leaves.
 local haylen = require('haylen')
 local storage = require('haylen.storage')
 local ui = require('haylen.ui')
@@ -54,7 +54,7 @@ function SaveSlots:content()
                     self:loadSlot()
                 end},
                 ui.button{id = 'delete', text = 'Delete', variant = 'destructive', onClick = function(event)
-                    event.document:set('confirm', {open = true, message = 'The slot ' .. self.selected .. ' will be gone for good.'})
+                    event.document:set('confirm', {open = true, message = 'The slot "' .. self.selected .. '" will be gone for good.'})
                 end},
                 ui.button{id = 'damage', text = 'Damage the file', onClick = function()
                     storage.writeText('saves/' .. self.selected .. '.json', '{"data": ')
@@ -77,7 +77,7 @@ function SaveSlots:enter()
     self:refresh()
 end
 
--- Leaving the test saves the game to auto_save, which the test reads back the next time it opens.
+-- Leaving the test saves the game to `auto_save`, which the test reads back the next time it opens.
 function SaveSlots:exit()
     storage.writeSlot('auto_save', self.game, self:summary())
     SaveSlots.super.exit(self)
@@ -92,7 +92,7 @@ function SaveSlots:showGame()
     self:show('game', {text = string.format('Day %d at the %s\n%d wood, carrying %s', game.day, kPlaces[game.place], game.wood, table.concat(game.inventory, ', '))})
 end
 
--- Fills the table from storage.slotInfo, which raises for a damaged file, so every slot is read on its own and a broken one shows its error.
+-- Fills the table from `storage.slotInfo`, which raises for a damaged file, so every slot is read on its own and a broken one shows its error.
 function SaveSlots:refresh()
     local rows = {}
     local problem

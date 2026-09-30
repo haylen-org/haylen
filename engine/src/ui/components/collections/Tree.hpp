@@ -14,7 +14,7 @@
 
 namespace haylen::ui {
 
-// Nested items that open and close. The open items start from the expanded property and then follow the player. Every row takes the focus, and right opens and left closes the focused item.
+// Nested items that open and close. The open items start from the `expanded` property and then follow the player. Every row takes the focus, and right opens and left closes the focused item.
 class Tree final : public Component {
   public:
     [[nodiscard]] std::string_view getKind() const noexcept override {

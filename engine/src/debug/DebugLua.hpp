@@ -13,7 +13,7 @@ namespace haylen::debug {
 
 class Stats;
 
-// Installs haylen.debug, which switches the statistics display, reads the statistics, frame times and profiler scopes, profiles Lua code, adds monitors, turns object events on and returns recent log lines.
+// Installs `haylen.debug`, which switches the statistics display, reads the statistics, frame times and profiler scopes, profiles Lua code, adds monitors, turns object events on and returns recent log lines.
 class DebugLua final {
   public:
     static void install(lua_State* L);

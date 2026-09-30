@@ -197,7 +197,7 @@ TEST(ViewportTest, PixelPerfectShrinksByWholeDivisorsOnSmallFramebuffers) {
     EXPECT_EQ(viewport.getPixelRect(), (math::Rect{0.0F, 0.0F, 960.0F, 540.0F}));
 }
 
-// Each enum keeps its names in one place, which Lua, asset options and app.json all read, and every value reads back as the name it came from.
+// Each enum keeps its names in one place, which Lua, asset options and `app.json` all read, and every value reads back as the name it came from.
 TEST(GraphicsNamesTest, ParsesAndNamesBlendFilterWrapAndScalingValues) {
     EXPECT_EQ(graphics::BlendMode::parse("additive"), graphics::BlendMode::Type::Additive);
     EXPECT_EQ(graphics::BlendMode::name(graphics::BlendMode::Type::Screen), "screen");

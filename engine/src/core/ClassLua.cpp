@@ -8,7 +8,7 @@
 
 namespace haylen::core {
 
-// Instances take their class as metatable and classes take a metatable that reaches the parent, so methods inherit through __index. Metamethods are looked up without __index, so a class copies those of its parent when it is created.
+// Instances take their class as metatable and classes take a metatable that reaches the parent, so methods inherit through `__index`. Metamethods are looked up without `__index`, so a class copies those of its parent when it is created.
 const std::string_view ClassLua::kSource = R"lua(
 local classes = setmetatable({}, {__mode = 'k'})
 

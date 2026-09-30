@@ -33,7 +33,7 @@ function Test:init(info)
     self.camera.anchor = 'topLeft'
 end
 
--- Mounts the frame. `options` holds the `hint`, the `code` shown under the stage, the `controls` of the panel and the id of the control to `focus` for gamepads and TV remotes.
+-- Mounts the frame. The table `options` holds the `hint`, the `code` shown under the stage, the `controls` of the panel and the id of the control to `focus` for gamepads and TV remotes.
 function Test:frame(options)
     window.setBackLeavesApp(false)
     local left = {ui.spacer{id = 'stage', grow = 1}}

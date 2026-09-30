@@ -71,12 +71,12 @@ template <> struct EnumNames<physics2d::Joint::Type> {
 
 namespace haylen::physics2d {
 
-// Installs haylen.physics2d with the PhysicsWorld, Body, Shape and Joint classes, and the ropes, ragdolls, vehicles, terrains, explosions, fractures and fluids built on them.
+// Installs `haylen.physics2d` with the `PhysicsWorld`, `Body`, `Shape` and `Joint` classes, and the ropes, ragdolls, vehicles, terrains, explosions, fractures and fluids built on them.
 class Physics2DLua final {
   public:
     static void install(lua_State* L);
 
-    // Pushes a body, shape or joint handle that belongs to the Lua world object at worldIndex.
+    // Pushes a body, shape or joint handle that belongs to the Lua world object at `worldIndex`.
     template <typename Handle> static void push(lua_State* L, int worldIndex, Handle handle) {
         const int owner = lua_absindex(L, worldIndex);
         lua::Userdata::emplace<ScriptedHandle<Handle>>(L, ScriptedHandle<Handle>{lua::Userdata::checkShared<World>(L, owner), handle});

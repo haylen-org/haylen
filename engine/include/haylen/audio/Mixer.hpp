@@ -29,7 +29,7 @@ namespace haylen::audio {
 struct MixerState;
 struct OutputBackend;
 
-// Mixes sounds through named buses. The master bus feeds the output, and music, sfx, ui and ambience exist from the start. Every call runs on the frame thread, and calls with a voice that already finished do nothing. Volumes, pans, positions and spatialization settings must be finite and pitches finite and above 0, or the call throws std::invalid_argument.
+// Mixes sounds through named buses. The `master` bus feeds the output, and `music`, `sfx`, `ui` and `ambience` exist from the start. Every call runs on the frame thread, and calls with a voice that already finished do nothing. Volumes, pans, positions and spatialization settings must be finite and pitches finite and above 0, or the call throws `std::invalid_argument`.
 class Mixer final {
   public:
     using VoiceId = std::uint64_t;
@@ -47,7 +47,7 @@ class Mixer final {
         RouteChanged,
     };
 
-    // A mixer with a device plays in real time through the audio device of the platform, and a mixer without one mixes only when render asks. Hosts give the device a backend of their own where the platform needs one, such as the audio output of the page in browsers.
+    // A mixer with a device plays in real time through the audio device of the platform, and a mixer without one mixes only when `render` asks. Hosts give the device a backend of their own where the platform needs one, such as the audio output of the page in browsers.
     struct Setup {
         bool device = true;
         std::uint32_t sampleRate = 48000;
@@ -57,7 +57,7 @@ class Mixer final {
         const OutputBackend* backend = nullptr;
     };
 
-    // A pitch variation picks the pitch of each play at random within pitch plus or minus the variation, so repeated sounds never sound exactly alike. The process mode decides whether the voice plays while the engine is paused, where Inherit takes the mode of its bus, and the effects process the voice in order before its bus.
+    // A pitch variation picks the pitch of each play at random within pitch plus or minus the variation, so repeated sounds never sound exactly alike. The process mode decides whether the voice plays while the engine is paused, where `Inherit` takes the mode of its bus, and the effects process the voice in order before its bus.
     struct PlayOptions {
         std::string bus = "sfx";
         float volume = 1.0F;
@@ -105,7 +105,7 @@ class Mixer final {
         [[nodiscard]] float getDopplerPitch(math::Vec2 offset, math::Vec2 listenerVelocity, math::Vec2 voiceVelocity) const noexcept;
     };
 
-    // What a bus plays right now, for debug statistics. The counts cover the voices that play through the bus itself, and processing tells whether its process mode runs in the current pause state.
+    // What a bus plays right now, for debug statistics. The counts cover the voices that play through the bus itself, and `processing` tells whether its process mode runs in the current pause state.
     struct BusStats {
         std::string name;
         std::size_t voices = 0;
@@ -114,17 +114,17 @@ class Mixer final {
         bool processing = true;
     };
 
-    // Throws std::invalid_argument for a setup without a sample rate, channels or voices, or that mixes with other apps outside the playback session, and std::runtime_error when the audio engine cannot start. A device that the system refuses leaves the output unavailable, and the log writes one warning with the reason.
+    // Throws `std::invalid_argument` for a setup without a sample rate, channels or voices, or that mixes with other apps outside the playback session, and `std::runtime_error` when the audio engine cannot start. A device that the system refuses leaves the output unavailable, and the log writes one warning with the reason.
     explicit Mixer(const Setup& setup);
     ~Mixer();
 
     Mixer(const Mixer&) = delete;
     Mixer& operator=(const Mixer&) = delete;
 
-    // Starts a voice. When every voice is busy, the oldest voice that is not music stops to make room. Throws std::invalid_argument for an empty sound, an unknown bus, a pitch variation below 0 or not below the pitch, or a fade-in or start time that is not finite, and a call that throws stops no voice.
+    // Starts a voice. When every voice is busy, the oldest voice that is not music stops to make room. Throws `std::invalid_argument` for an empty sound, an unknown bus, a pitch variation below 0 or not below the pitch, or a fade-in or start time that is not finite, and a call that throws stops no voice.
     VoiceId play(const Sound& sound, const PlayOptions& options = kDefaultPlayOptions);
 
-    // Starts a voice that plays the audio stream as its samples arrive, resampled to the mixer, and silent where they have not arrived. It takes the stream over from the voice that played it before and never ends by itself. Throws std::invalid_argument for an empty stream and for options with a loop, a start time, a pitch other than 1 or a pitch variation, which a live stream cannot take.
+    // Starts a voice that plays the audio stream as its samples arrive, resampled to the mixer, and silent where they have not arrived. It takes the stream over from the voice that played it before and never ends by itself. Throws `std::invalid_argument` for an empty stream and for options with a loop, a start time, a pitch other than 1 or a pitch variation, which a live stream cannot take.
     VoiceId play(const std::shared_ptr<platform::AudioStream>& stream, const PlayOptions& options = kDefaultPlayOptions);
     void stop(VoiceId voice, float fadeOutSeconds = 0.0F);
 
@@ -141,7 +141,7 @@ class Mixer final {
     void setPosition(VoiceId voice, math::Vec2 position);
     [[nodiscard]] core::ProcessMode getProcessMode(VoiceId voice) const;
 
-    // Returns true while the voice plays or is paused. A voice that was stopped is over at once, even while it fades out.
+    // Returns `true` while the voice plays or is paused. A voice that was stopped is over at once, even while it fades out.
     [[nodiscard]] bool isActive(VoiceId voice) const;
     [[nodiscard]] float getCursor(VoiceId voice) const;
     void stopAll(float fadeOutSeconds = 0.0F);
@@ -151,7 +151,7 @@ class Mixer final {
     void pauseAll(PauseReason reason = PauseReason::App);
     void resumeAll(PauseReason reason = PauseReason::App);
 
-    // Adds an effect at the end of the chain of a voice or a bus. Throws std::invalid_argument for an effect that already processes another bus or voice, or that another mixer used.
+    // Adds an effect at the end of the chain of a voice or a bus. Throws `std::invalid_argument` for an effect that already processes another bus or voice, or that another mixer used.
     void addEffect(VoiceId voice, std::shared_ptr<Effect> effect);
     void removeEffect(VoiceId voice, const Effect& effect);
     [[nodiscard]] std::vector<std::shared_ptr<Effect>> getEffects(VoiceId voice) const;
@@ -172,7 +172,7 @@ class Mixer final {
     void setBusMuted(std::string_view bus, bool muted);
     [[nodiscard]] bool isBusMuted(std::string_view bus) const;
 
-    // Sets the process mode that the voices of a bus inherit. Inherit takes the mode of the parent bus, and master resolves it to Pausable. Music and ui start as Always, sfx and ambience as Pausable.
+    // Sets the process mode that the voices of a bus inherit. The mode `Inherit` takes the mode of the parent bus, and `master` resolves it to `Pausable`. The buses `music` and `ui` start as `Always`, `sfx` and `ambience` as `Pausable`.
     void setBusProcessMode(std::string_view bus, core::ProcessMode mode);
     [[nodiscard]] core::ProcessMode getBusProcessMode(std::string_view bus) const;
     [[nodiscard]] std::vector<std::string> getBuses() const;
@@ -188,7 +188,7 @@ class Mixer final {
     // Moves the listener to the camera position and offset on every update, without its shake, until null stops it. The camera must outlive the following.
     void followCamera(const graphics2d::Camera* camera) noexcept;
 
-    // Throws std::invalid_argument for distances outside 0 <= minimum < maximum, a minimum of 0 with the inverse or exponential model, a negative rolloff or Doppler factor, or a pan distance or speed of sound that is not positive.
+    // Throws `std::invalid_argument` for distances outside 0 <= minimum < maximum, a minimum of 0 with the inverse or exponential model, a negative rolloff or Doppler factor, or a pan distance or speed of sound that is not positive.
     void setSpatialization(const Spatialization& value);
     [[nodiscard]] const Spatialization& getSpatialization() const noexcept;
 
@@ -196,7 +196,7 @@ class Mixer final {
     void suspend();
     void resume();
 
-    // Queues an event from any thread for the next update, which emits it through deviceEventReceived. The device of the mixer reports its own events, and platform code reports what the device cannot see.
+    // Queues an event from any thread for the next update, which emits it through `deviceEventReceived`. The device of the mixer reports its own events, and platform code reports what the device cannot see.
     void reportDeviceEvent(DeviceEvent event);
 
     // Stops the output and pauses every voice for the interruption. Ending it resumes the voices and opens the device again, which reactivates the iOS audio session and restarts the output unless the app is in the background. When the system refuses the audio, the interruption ends all the same and the output stays unavailable, with one warning in the log. Ending an interruption while the output is unavailable, even without one in progress, tries to open the device again.
@@ -211,7 +211,7 @@ class Mixer final {
     [[nodiscard]] std::uint32_t getChannels() const noexcept;
     [[nodiscard]] bool hasDevice() const noexcept;
 
-    // Tells whether the mix reaches an audio device. It is false for a mixer without a device and while the system refuses the device, when voices, music and fades go on in real time without sound.
+    // Tells whether the mix reaches an audio device. It is `false` for a mixer without a device and while the system refuses the device, when voices, music and fades go on in real time without sound.
     [[nodiscard]] bool isOutputAvailable() const noexcept;
 
     // Mixes the next frames into interleaved samples, or silence while the output is stopped. Only a mixer without a device renders this way, which tests and offline tools use.

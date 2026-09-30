@@ -1,4 +1,4 @@
--- Edge to edge: the app draws its world over the whole screen, under the notch, the rounded corners and the home indicator, while a screen document keeps its controls in the safe area with ui.safeArea.
+-- Edge to edge: the app draws its world over the whole screen, under the notch, the rounded corners and the home indicator, while a screen document keeps its controls in the safe area with `ui.safeArea`.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -24,7 +24,7 @@ function EdgeToEdge:controls()
     }
 end
 
--- The HUD is a screen document: ui.safeArea keeps its column inside the safe area, and the label outside it sits against the screen.
+-- The HUD is a screen document: `ui.safeArea` keeps its column inside the safe area, and the label outside it sits against the screen.
 function EdgeToEdge:started()
     self.hud = sample.mount(self, ui.stack{
         ui.label{text = 'Anchored to the screen, under the notch', anchor = 'topLeft', anchorTo = 'screen', margin = 12, color = 'onAccent', outline = '#FF000000', outlineWidth = 3},

@@ -17,7 +17,7 @@ template <> struct Type<math::Spring> {
 
 namespace haylen::math {
 
-// Creates a spring with spring(value, smoothTime), both optional.
+// Creates a spring with `spring(value, smoothTime)`, both optional.
 int SpringLua::newSpring(lua_State* L) {
     lua::Userdata::emplace<Spring>(L, static_cast<float>(luaL_optnumber(L, 1, 0.0)), static_cast<float>(luaL_optnumber(L, 2, 0.2)));
     return 1;
@@ -29,7 +29,7 @@ int SpringLua::update(lua_State* L) {
     return 1;
 }
 
-// Returns the next value and velocity with smoothDamp(current, target, velocity, smoothTime, dt), for numbers or vectors.
+// Returns the next value and velocity with `smoothDamp(current, target, velocity, smoothTime, dt)`, for numbers or vectors.
 int SpringLua::smoothDamp(lua_State* L) {
     const auto smoothTime = lua::Stack::read<float>(L, 4);
     const auto deltaSeconds = lua::Stack::read<float>(L, 5);

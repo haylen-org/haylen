@@ -19,7 +19,7 @@ Every source lives in `content/shaders/` next to the `.shader` file compiled fro
 python3 make.py shaders samples/graphics/shaders
 ```
 
-`make.py run` compiles the sources that changed on its own, and a desktop dev run reloads a `.shader` file as soon as it is compiled again, as the [shader guide](../../../docs/shaders.md) explains. Browsers, phones and TVs run the compiled files.
+The command `make.py run` compiles the sources that changed on its own, and a desktop dev run reloads a `.shader` file as soon as it is compiled again, as the [shader guide](../../../docs/shaders.md) explains. Browsers, phones and TVs run the compiled files.
 
 | Source | Effect |
 | --- | --- |

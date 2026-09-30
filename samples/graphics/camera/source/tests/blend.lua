@@ -1,4 +1,4 @@
--- Blending cameras: graphics2d.blendCameras returns a view between two cameras, so a tween of the amount makes a smooth cut from the player to a landmark and back.
+-- Blending cameras: `graphics2d.blendCameras` returns a view between two cameras, so a tween of the amount makes a smooth cut from the player to a landmark and back.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local tween = require('haylen.tween')

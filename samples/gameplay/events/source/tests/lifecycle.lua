@@ -33,7 +33,7 @@ local kColors = {app = sample.warm, scene = sample.accent, window = sample.green
 local kCode = [[
 events.on('sceneHoldStarted', function(transfer) print(transfer.from, transfer.to) end, {owner = self})
 scene.push(room, {duration = 0.8, loading = view, loadingDelay = 0.1, minimumLoadingTime = 0.6})
-function room:load(context) context:progress(0.5, 'building the room') async.sleep(100):await() end]]
+function room:load(context) context:progress(0.5, 'Building the room') async.sleep(100):await() end]]
 
 -- Names a scene or a document by its type, or says that C++ pushed the scene.
 local function sceneName(value)
@@ -73,7 +73,7 @@ local Room = haylen.class('Room', sample.Overlay)
 
 function Room:load(context)
     for step = 1, 6 do
-        context:progress(step / 6, 'building the room, part ' .. step .. ' of 6')
+        context:progress(step / 6, 'Building the room, part ' .. step .. ' of 6')
         async.sleep(120):await()
     end
 end
@@ -87,7 +87,7 @@ local Broken = haylen.class('Broken', sample.Overlay)
 
 function Broken:load()
     async.sleep(200):await()
-    error('the server did not answer')
+    error('The server did not answer.')
 end
 
 -- The loading view draws the progress and the message of the load over the covered screen.
@@ -158,7 +158,7 @@ end
 
 function Lifecycle:touchSprite()
     local sprite = graphics2d.newSprite(graphics.whiteTexture())
-    self.journal:add('made ' .. tostring(sprite):match('^[^:]+') .. ', dropping it now', sample.muted)
+    self.journal:add('Made ' .. tostring(sprite):match('^[^:]+') .. ', dropping it now', sample.muted)
     sprite = nil
     collectgarbage()
 end
@@ -183,7 +183,7 @@ function Lifecycle:openSocket()
         self.socket:close()
     end
     self.socket = net.connectWebSocket('ws://127.0.0.1:9/', {reconnect = {initialDelay = 0.5, maxDelay = 1, maxAttempts = 2}})
-    self.socket:on('close', function(code) self.journal:add('the socket gave up with code ' .. code, sample.red) end)
+    self.socket:on('close', function(code) self.journal:add('The socket gave up with code ' .. code, sample.red) end)
 end
 
 function Lifecycle:update(dt)

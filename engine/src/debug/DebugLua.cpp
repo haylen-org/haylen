@@ -43,7 +43,7 @@ plugins::DebugPlugin& DebugLua::getPlugin(lua_State* L) {
     return lua::Runtime::getEngine(L).getPlugin<plugins::DebugPlugin>();
 }
 
-// Picks what the statistics show with setStatsMode('off'), 'compact' or 'full'.
+// Picks what the statistics show with `setStatsMode('off')`, `'compact'` or `'full'`.
 int DebugLua::setStatsMode(lua_State* L) {
     getPlugin(L).setStatsMode(lua::Stack::read<StatsDisplay::Mode>(L, 1));
     return 0;
@@ -54,7 +54,7 @@ int DebugLua::statsMode(lua_State* L) {
     return 1;
 }
 
-// Picks the key that cycles the statistics with setToggleKey(name), or turns the shortcut off with nil.
+// Picks the key that cycles the statistics with `setToggleKey(name)`, or turns the shortcut off with `nil`.
 int DebugLua::setToggleKey(lua_State* L) {
     getPlugin(L).setToggleKey(lua_isnoneornil(L, 1) ? std::nullopt : std::optional<input::Key>(lua::Stack::read<input::Key>(L, 1)));
     return 0;
@@ -212,7 +212,7 @@ int DebugLua::stats(lua_State* L) {
     return 1;
 }
 
-// Adds a monitor with addMonitor(name, fn, {owner}), where fn returns the number to show and runs once per frame, and returns its connection. An owner holds the function and removes the monitor when it ends.
+// Adds a monitor with `addMonitor(name, fn, {owner})`, where `fn` returns the number to show and runs once per frame, and returns its connection. An owner holds the function and removes the monitor when it ends.
 int DebugLua::addMonitor(lua_State* L) {
     std::string name = lua::Stack::read<std::string>(L, 1);
     luaL_checktype(L, 2, LUA_TFUNCTION);
@@ -255,7 +255,7 @@ int DebugLua::removeMonitor(lua_State* L) {
     return 1;
 }
 
-// Returns {name, value, history} for every monitor, with the history oldest first.
+// Returns `{name, value, history}` for every monitor, with the history oldest first.
 int DebugLua::monitors(lua_State* L) {
     const std::vector<std::shared_ptr<Monitor>> all = getPlugin(L).getMonitors();
     lua_createtable(L, static_cast<int>(all.size()), 0);
@@ -272,7 +272,7 @@ int DebugLua::monitors(lua_State* L) {
     return 1;
 }
 
-// Returns the last finished frame as {milliseconds, average, fps, scopes = {{name, milliseconds, calls, depth}}}.
+// Returns the last finished frame as `{milliseconds, average, fps, scopes = {{name, milliseconds, calls, depth}}}`.
 int DebugLua::frame(lua_State* L) {
     const Profiler& profiler = lua::Runtime::getEngine(L).getProfiler();
     const double average = profiler.getAverageFrameMilliseconds();
@@ -318,7 +318,7 @@ int DebugLua::endScope(lua_State* L) {
     return 0;
 }
 
-// Runs fn(...) inside a profiler scope with profile(name, fn, ...) and returns what fn returns.
+// Runs `fn(...)` inside a profiler scope with `profile(name, fn, ...)` and returns what `fn` returns.
 int DebugLua::profile(lua_State* L) {
     const std::string name = lua::Stack::read<std::string>(L, 1);
     luaL_checktype(L, 2, LUA_TFUNCTION);
@@ -327,7 +327,7 @@ int DebugLua::profile(lua_State* L) {
     return lua_gettop(L) - 1;
 }
 
-// Returns up to count recent log lines, oldest first, as {level, text} tables.
+// Returns up to `count` recent log lines, oldest first, as `{level, text}` tables.
 int DebugLua::recentLog(lua_State* L) {
     const std::vector<LogLine> lines = getPlugin(L).getRecentLog();
     const std::size_t count = lua_isnoneornil(L, 1) ? lines.size() : lua::Stack::read<std::size_t>(L, 1);

@@ -2,7 +2,7 @@ if(APPLE)
   enable_language(OBJC OBJCXX)
 endif()
 
-# Mac Catalyst builds through haylen-catalyst.toolchain.cmake compile for the macabi flavor of iOS, so the engine treats them as iOS.
+# Mac Catalyst builds through `haylen-catalyst.toolchain.cmake` compile for the `macabi` flavor of iOS, so the engine treats them as iOS.
 if(CMAKE_CXX_COMPILER_TARGET MATCHES "-macabi$")
   set(HAYLEN_CATALYST ON)
 else()
@@ -24,7 +24,7 @@ elseif(APPLE)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(HAYLEN_PLATFORM "linux")
 else()
-  message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
+  message(FATAL_ERROR "The platform \"${CMAKE_SYSTEM_NAME}\" is not supported.")
 endif()
 
 if(HAYLEN_PLATFORM MATCHES "^(macos|windows|linux)$")
@@ -33,7 +33,7 @@ else()
   set(HAYLEN_DESKTOP OFF)
 endif()
 
-# haylen_add_app runs in the folders of the apps, which do not see the variables of the engine folder.
+# The function `haylen_add_app` runs in the folders of the apps, which do not see the variables of the engine folder.
 set(HAYLEN_PLATFORM "${HAYLEN_PLATFORM}" CACHE INTERNAL "Platform the engine is built for.")
 set(HAYLEN_DESKTOP "${HAYLEN_DESKTOP}" CACHE INTERNAL "Whether the platform is a desktop.")
 
@@ -59,8 +59,8 @@ if(HAYLEN_BACKEND STREQUAL "AUTO")
 endif()
 
 if(NOT HAYLEN_BACKEND MATCHES "^(METAL|D3D11|GLCORE|GLES3|WGPU)$")
-  message(FATAL_ERROR "Unsupported rendering backend: ${HAYLEN_BACKEND}")
+  message(FATAL_ERROR "The rendering backend \"${HAYLEN_BACKEND}\" is not supported.")
 endif()
 
-message(STATUS "Haylen platform: ${HAYLEN_PLATFORM}")
-message(STATUS "Haylen rendering backend: ${HAYLEN_BACKEND}")
+message(STATUS "Haylen platform: \"${HAYLEN_PLATFORM}\"")
+message(STATUS "Haylen rendering backend: \"${HAYLEN_BACKEND}\"")

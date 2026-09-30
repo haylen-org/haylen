@@ -43,7 +43,7 @@ template <> struct EnumNames<particles2d::EmitterConfig::Shape> {
 
 namespace haylen::particles2d {
 
-// Ranges accept a single number or the pair {min, max}.
+// Ranges accept a single number or the pair `{min, max}`.
 void Particles2DLua::readRange(lua_State* L, int table, const char* name, math::FloatRange& range) {
     lua_getfield(L, table, name);
     if (lua_type(L, -1) == LUA_TNUMBER) {
@@ -55,7 +55,7 @@ void Particles2DLua::readRange(lua_State* L, int table, const char* name, math::
     lua_pop(L, 1);
 }
 
-// Bursts are a list of {time = seconds, count = particles}.
+// Bursts are a list of `{time = seconds, count = particles}`.
 void Particles2DLua::readBursts(lua_State* L, int table, std::vector<EmitterConfig::Burst>& bursts) {
     lua_getfield(L, table, "bursts");
     if (lua_isnil(L, -1)) {
@@ -126,7 +126,7 @@ template <typename T> void Particles2DLua::setValue(lua_State* L, const char* na
     lua_setfield(L, -2, name);
 }
 
-// Pushes a configuration as the options table that newEmitter and configure accept, with every range as a {min, max} pair.
+// Pushes a configuration as the options table that `newEmitter` and `configure` accept, with every range as a `{min, max}` pair.
 void Particles2DLua::pushConfig(lua_State* L, const EmitterConfig& config) {
     lua_createtable(L, 0, 26);
     setValue(L, "texture", config.texture);
@@ -168,7 +168,7 @@ void Particles2DLua::pushConfig(lua_State* L, const EmitterConfig& config) {
     setValue(L, "blend", config.order.blend);
 }
 
-// Creates an emitter from an options table with newEmitter({texture, rate, lifetime, speed, ...}), or from a loaded effect with newEmitter(effect, overrides).
+// Creates an emitter from an options table with `newEmitter({texture, rate, lifetime, speed, ...})`, or from a loaded effect with `newEmitter(effect, overrides)`.
 int Particles2DLua::newEmitter(lua_State* L) {
     const int options = lua::Userdata::test<Effect>(L, 1) != nullptr ? 2 : 1;
     EmitterConfig config = options == 2 ? lua::Userdata::check<Effect>(L, 1).config : EmitterConfig{};
@@ -198,7 +198,7 @@ int Particles2DLua::emitterPositions(lua_State* L) {
     return 1;
 }
 
-// Copies x and y of every live particle into a float buffer with readPositions(buffer[, first]) and returns how many particles fit.
+// Copies `x` and `y` of every live particle into a float buffer with `readPositions(buffer[, first])` and returns how many particles fit.
 int Particles2DLua::emitterReadPositions(lua_State* L) {
     const std::span<const math::Vec2> positions = lua::Userdata::check<Emitter>(L, 1).getPositions();
     const std::span<float> values = lua::Userdata::check<core::FloatBuffer>(L, 2).getValues();

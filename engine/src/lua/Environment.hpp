@@ -16,10 +16,10 @@ namespace haylen::lua {
 // Prepares the Lua state of an engine for app scripts.
 class Environment final {
   public:
-    // Binds the Lua state to the engine and makes require load modules from the package instead of the host file system: the modules of the app from its source folder, and the modules of every plugin that app.json lists from plugins/<id>/source. App code loads chunks only as text, has no string.dump, and cannot reach the protected metatables of the engine or the upvalues of native functions through the debug library.
+    // Binds the Lua state to the engine and makes `require` load modules from the package instead of the host file system: the modules of the app from its source folder, and the modules of every plugin that `app.json` lists from `plugins/<id>/source`. App code loads chunks only as text, has no `string.dump`, and cannot reach the protected metatables of the engine or the upvalues of native functions through the debug library.
     static void install(core::Engine& engine, lua_State* L);
 
-    // Throws std::runtime_error, naming both files, when a module of the app has the name of a plugin module, which require would never load.
+    // Throws `std::runtime_error`, naming both files, when a module of the app has the name of a plugin module, which `require` would never load.
     static void checkModules(core::Engine& engine);
 
   private:
@@ -33,7 +33,7 @@ class Environment final {
     static void installTaskErrors(lua_State* L);
     static int searchPackage(lua_State* L);
 
-    // Calls the original load or loadfile, held as the first upvalue, with the mode at the index of the second upvalue forced to text.
+    // Calls the original `load` or `loadfile`, held as the first upvalue, with the mode at the index of the second upvalue forced to text.
     static int loadAsText(lua_State* L);
     static int doFileAsText(lua_State* L);
     static int finishDoFile(lua_State* L, int status, lua_KContext context);
@@ -41,7 +41,7 @@ class Environment final {
     static void restrictLoading(lua_State* L);
 
     static int setUnprotectedMetatable(lua_State* L);
-    // Calls the original getupvalue or setupvalue, held as the upvalue, for Lua functions only.
+    // Calls the original `getupvalue` or `setupvalue`, held as the upvalue, for Lua functions only.
     static int accessScriptUpvalue(lua_State* L);
     static void restrictDebug(lua_State* L);
 };

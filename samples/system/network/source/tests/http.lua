@@ -1,4 +1,4 @@
--- HTTP requests with Varn's http module: http.client.get and http.client.post return promises that a task of the scene awaits, the json option sends a table as JSON, and the response carries the status, the headers with lowercase names and the body. A failure, such as no network, resolves the await with nil and the reason, which the page shows.
+-- HTTP requests with Varn's `http` module: `http.client.get` and `http.client.post` return promises that a task of the scene awaits, the `json` option sends a table as JSON, and the response carries the status, the headers with lowercase names and the body. A failure, such as no network, resolves the `await` with `nil` and the reason, which the page shows.
 local haylen = require('haylen')
 local http = require('http')
 local ui = require('haylen.ui')
@@ -80,7 +80,7 @@ end
 
 -- Sends a request in a task of the scene and shows what came back: the status, the time it took, the headers and the body.
 function Http:request(method, url, send)
-    self:show('status', {text = 'Waiting for ' .. url, tone = 'information'})
+    self:show('status', {text = 'Waiting for "' .. url .. '"', tone = 'information'})
     self:show('request', {text = method .. ' ' .. url})
     self:spawn(function()
         local started = sample.millis()

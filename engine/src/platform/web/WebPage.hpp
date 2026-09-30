@@ -20,10 +20,10 @@ class MemoryPackage;
 
 namespace haylen::platform {
 
-// The page that hosts the web runtime through Module.haylen, which platform/web/haylen-runtime.js defines before the runtime starts. The page learns when apps start and stop and how their frames perform, and it edits an app file by file.
+// The page that hosts the web runtime through `Module.haylen`, which `platform/web/haylen-runtime.js` defines before the runtime starts. The page learns when apps start and stop and how their frames perform, and it edits an app file by file.
 class WebPage final {
   public:
-    // Returns the CSS selector of the canvas the page handed to the runtime as Module.canvas.
+    // Returns the CSS selector of the canvas the page handed to the runtime as `Module.canvas`.
     [[nodiscard]] static std::string getCanvasSelector();
 
     // Tells the page when an app starts and stops, and passes it frame statistics about once per second.
@@ -31,7 +31,7 @@ class WebPage final {
     static void reportStopped() noexcept;
     static void reportFrame(core::Engine& engine);
 
-    // Requests of the page. The ones that answer a number answer -1 when they fail, with the reason kept for getLastError, which haylen-runtime.js throws as a JavaScript error.
+    // Requests of the page. The ones that answer a number answer -1 when they fail, with the reason kept for `getLastError`, which `haylen-runtime.js` throws as a JavaScript error.
     [[nodiscard]] static const char* getLastError() noexcept;
     static void loadZip(const std::uint8_t* bytes, int size);
     static void clearFiles();
@@ -45,7 +45,7 @@ class WebPage final {
     static void hide();
     static void setOnline(bool online);
 
-    // Answers of page handlers and events of the page, with their byte buffers as a table of an address and a size in wasm memory for each, which the page frees once the call returns. The flags of an event are those of HaylenNativeEmitFlags.
+    // Answers of page handlers and events of the page, with their byte buffers as a table of an address and a size in wasm memory for each, which the page frees once the call returns. The flags of an event are those of `HaylenNativeEmitFlags`.
     static void resolve(double call, bool ok, const char* json, const std::uint32_t* buffers, int count);
     static void emit(const char* event, const char* json, const std::uint32_t* buffers, int count, int flags);
 

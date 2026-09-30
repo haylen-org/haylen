@@ -49,7 +49,7 @@ void Filter::requireCutoff(float value) {
 
 void Filter::requireQ(float value) {
     if (!(value > 0.0F) || !std::isfinite(value)) {
-        throw std::invalid_argument("A filter q must be positive.");
+        throw std::invalid_argument("A filter \"q\" must be positive.");
     }
 }
 

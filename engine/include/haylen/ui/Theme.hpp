@@ -167,7 +167,7 @@ class Theme final {
         bool colorize = false;
     };
 
-    // Loads a texture for a theme image from a path relative to the package content folder.
+    // Loads a texture for a theme image from a path relative to the package `content/` folder.
     using TextureLoader = std::function<graphics::Texture(std::string_view path, graphics::Texture::Options options)>;
 
     static constexpr std::size_t kColorCount = static_cast<std::size_t>(Color::InformationText) + 1;
@@ -178,7 +178,7 @@ class Theme final {
     [[nodiscard]] static Theme dark();
     [[nodiscard]] static Theme light();
 
-    // Reads a theme on top of a base theme. The JSON holds name, optional colors, metrics, fonts, fontFiles and surfaces, and fontFiles maps font names to TrueType files the caller registers before drawing.
+    // Reads a theme on top of a base theme. The JSON holds `name`, optional `colors`, `metrics`, `fonts`, `fontFiles` and `surfaces`, and `fontFiles` maps font names to TrueType files the caller registers before drawing.
     [[nodiscard]] static Theme fromJson(const core::Json& document, const Theme& base, const TextureLoader& loadTexture);
 
     [[nodiscard]] static std::optional<Color> colorFromName(std::string_view value) noexcept;

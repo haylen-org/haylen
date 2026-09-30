@@ -11,7 +11,7 @@
 
 namespace haylen::ai {
 
-// A grid of influence over the world, such as the threat of enemies, the presence of allies or the pull of resources, which agents read to choose where to go. Cell (column, row) covers the square from origin + (column, row) * cellSize.
+// A grid of influence over the world, such as the threat of enemies, the presence of allies or the pull of resources, which agents read to choose where to go. Cell (column, row) covers the square from `origin + (column, row) * cellSize`.
 class InfluenceMap final {
   public:
     enum class Falloff : std::uint8_t {
@@ -26,7 +26,7 @@ class InfluenceMap final {
         float value = 0.0F;
     };
 
-    // Throws std::invalid_argument for a side below 1 or a cell size that is not positive.
+    // Throws `std::invalid_argument` for a side below 1 or a cell size that is not positive.
     InfluenceMap(int columns, int rows, float size, math::Vec2 corner = {});
 
     [[nodiscard]] static std::optional<Falloff> falloffFromName(std::string_view name) noexcept;
@@ -48,25 +48,25 @@ class InfluenceMap final {
         return values;
     }
 
-    // Throws std::out_of_range outside the map.
+    // Throws `std::out_of_range` outside the map.
     [[nodiscard]] float get(int column, int row) const;
     void set(int column, int row, float value);
 
     // Returns the value at a world position, interpolated between cell centers, and 0 outside the map.
     [[nodiscard]] float sample(math::Vec2 position) const noexcept;
 
-    // Adds strength to the cells whose centers lie within radius of the center, fading toward the edge.
+    // Adds `strength` to the cells whose centers lie within `radius` of the center, fading toward the edge.
     void stamp(math::Vec2 center, float strength, float radius, Falloff falloff = Falloff::Linear);
 
-    // Spreads influence across the map: every cell moves toward the strongest influence of its eight neighbors, reduced by e ^ (-decay * distance in cells). Momentum is the share of its old value a cell keeps.
+    // Spreads influence across the map: every cell moves toward the strongest influence of its eight neighbors, reduced by `e ^ (-decay * distance in cells)`. The argument `momentum` is the share of its old value a cell keeps.
     void propagate(float decay, float momentum);
 
     void scale(float factor) noexcept;
-    // Adds another map of the same size times weight, such as allies minus enemies. Throws std::invalid_argument for maps of other sizes.
+    // Adds another map of the same size times `weight`, such as allies minus enemies. Throws `std::invalid_argument` for maps of other sizes.
     void add(const InfluenceMap& other, float weight = 1.0F);
     void fill(float value) noexcept;
 
-    // Returns the spot with the highest or lowest value among the cells whose centers lie within radius of the center, or nothing when no cell does.
+    // Returns the spot with the highest or lowest value among the cells whose centers lie within `radius` of the center, or nothing when no cell does.
     [[nodiscard]] std::optional<Spot> findHighest(math::Vec2 center, float radius) const noexcept;
     [[nodiscard]] std::optional<Spot> findLowest(math::Vec2 center, float radius) const noexcept;
 

@@ -91,7 +91,7 @@ std::size_t UtilityLua::readOption(lua_State* L, int index, const UtilitySelecto
     return option - 1;
 }
 
-// Builds a selector with newUtilitySelector({{name, weight, considerations = {{name, input = function(context) end, minimum, maximum, curve}}}}).
+// Builds a selector with `newUtilitySelector({{name, weight, considerations = {{name, input = function(context) end, minimum, maximum, curve}}}})`.
 int UtilityLua::newSelector(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     Scripted& self = lua::Userdata::emplace<Scripted>(L);
@@ -141,7 +141,7 @@ int UtilityLua::newSelector(lua_State* L) {
     return 1;
 }
 
-// Chooses with choose(context), or at random among the options scoring at least tolerance times the best with choose(context, random, tolerance), and returns the name and score of the choice or nil.
+// Chooses with `choose(context)`, or at random among the options scoring at least `tolerance` times the best with `choose(context, random, tolerance)`, and returns the name and score of the choice or `nil`.
 int UtilityLua::choose(lua_State* L) {
     Scripted& self = lua::Userdata::check<Scripted>(L, 1);
     lua_settop(L, 4);
@@ -157,7 +157,7 @@ int UtilityLua::choose(lua_State* L) {
     return 2;
 }
 
-// Scores one option with score(option, context), where the option is its name or number.
+// Scores one option with `score(option, context)`, where the option is its name or number.
 int UtilityLua::score(lua_State* L) {
     Scripted& self = lua::Userdata::check<Scripted>(L, 1);
     const std::size_t option = readOption(L, 2, self.selector);

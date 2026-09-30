@@ -9,7 +9,7 @@ math::Rect Tileset::getSource(std::uint32_t tileId) const {
         return found->source;
     }
     if (columns <= 0) {
-        throw std::out_of_range("The tileset has no tile '" + std::to_string(tileId) + "'.");
+        throw std::out_of_range("The tileset has no tile \"" + std::to_string(tileId) + "\".");
     }
     const auto column = static_cast<float>(tileId % static_cast<std::uint32_t>(columns));
     const auto row = static_cast<float>(tileId / static_cast<std::uint32_t>(columns));

@@ -21,7 +21,7 @@ class Random final {
     [[nodiscard]] float range(float minimum, float maximum) noexcept;
     [[nodiscard]] int range(int minimum, int maximum) noexcept;
     [[nodiscard]] bool chance(float probability) noexcept;
-    // Throws std::invalid_argument when a weight is negative or not finite, or when no weight is positive.
+    // Throws `std::invalid_argument` when a weight is negative or not finite, or when no weight is positive.
     [[nodiscard]] std::size_t weightedIndex(std::span<const float> weights);
 
     template <typename T> void shuffle(std::span<T> values) noexcept {

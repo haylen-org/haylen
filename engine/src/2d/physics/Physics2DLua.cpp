@@ -14,7 +14,7 @@
 
 namespace haylen::physics2d {
 
-// Creates a world with newWorld({gravity = {0, 980}, pixelsPerMeter = 64, subSteps = 4}).
+// Creates a world with `newWorld({gravity = {0, 980}, pixelsPerMeter = 64, subSteps = 4})`.
 int Physics2DLua::newWorld(lua_State* L) {
     World::Settings settings;
     if (!lua_isnoneornil(L, 1)) {

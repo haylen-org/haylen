@@ -16,7 +16,7 @@ struct World {
         math::Rect bounds{};
     };
 
-    // Parses a world stored at file inside the package content folder. Maps listed by pattern are matched against the given package files.
+    // Parses a world stored at `file` inside the package content folder. Maps listed by pattern are matched against the given package files.
     [[nodiscard]] static World parse(const core::Json& document, std::string_view file, const std::vector<std::string>& files);
 
     std::vector<Placement> maps;

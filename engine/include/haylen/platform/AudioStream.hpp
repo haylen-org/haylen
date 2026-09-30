@@ -17,7 +17,7 @@ class AudioStream final {
         Int16,
     };
 
-    // Throws std::invalid_argument for a sample rate, channels or capacity of 0.
+    // Throws `std::invalid_argument` for a sample rate, channels or capacity of 0.
     AudioStream(std::uint32_t sampleRate, std::uint32_t channels, Format format, std::size_t capacityFrames);
 
     AudioStream(const AudioStream&) = delete;
@@ -36,7 +36,7 @@ class AudioStream final {
         return capacity;
     }
 
-    // Writes interleaved samples in the format of the stream and returns how many frames fit, dropping the rest while the ring is full. Throws std::logic_error for samples of the other format and std::invalid_argument for samples that do not fill whole frames.
+    // Writes interleaved samples in the format of the stream and returns how many frames fit, dropping the rest while the ring is full. Throws `std::logic_error` for samples of the other format and `std::invalid_argument` for samples that do not fill whole frames.
     std::size_t push(std::span<const float> samples);
     std::size_t push(std::span<const std::int16_t> samples);
 
@@ -64,7 +64,7 @@ class AudioStream final {
     const Format format;
     const std::size_t capacity;
 
-    // The ring holds capacity frames. The frame counters only grow, the producer advances written and the reader advances consumed, and each reads the other with acquire order.
+    // The ring holds `capacity` frames. The frame counters only grow, the producer advances `written` and the reader advances `consumed`, and each reads the other with acquire order.
     std::vector<float> ring;
     std::atomic<std::size_t> written{0};
     std::atomic<std::size_t> consumed{0};
@@ -72,7 +72,7 @@ class AudioStream final {
     std::atomic<std::uint64_t> reader{0};
     std::atomic<std::uint64_t> underruns{0};
 
-    // The newest capacity frames that native code pushed, which the frame thread copies for analysis.
+    // The newest `capacity` frames that native code pushed, which the frame thread copies for analysis.
     mutable std::mutex historyMutex;
     std::vector<float> history;
     std::size_t historyFrames = 0;

@@ -70,7 +70,7 @@ int RaycastLua::raycastPolygon(lua_State* L) {
     return 1;
 }
 
-// Casts against a polyline with raycastChain(from, to, points[, loop]), where a loop also joins the last point to the first.
+// Casts against a polyline with `raycastChain(from, to, points[, loop])`, where a loop also joins the last point to the first.
 int RaycastLua::raycastChain(lua_State* L) {
     const Ray ray = Ray::between(lua::Stack::read<Vec2>(L, 1), lua::Stack::read<Vec2>(L, 2));
     const bool loop = !lua_isnoneornil(L, 4) && lua::Stack::read<bool>(L, 4);
@@ -84,7 +84,7 @@ int RaycastLua::raycastSegments(lua_State* L) {
     return 1;
 }
 
-// Returns every crossed segment with raycastSegmentsAll(from, to, segments[, limit]), sorted by distance and cut to the limit.
+// Returns every crossed segment with `raycastSegmentsAll(from, to, segments[, limit])`, sorted by distance and cut to the limit.
 int RaycastLua::raycastSegmentsAll(lua_State* L) {
     const Ray ray = Ray::between(lua::Stack::read<Vec2>(L, 1), lua::Stack::read<Vec2>(L, 2));
     const auto limit = lua_isnoneornil(L, 4) ? std::size_t{0} : lua::Stack::read<std::size_t>(L, 4);
@@ -100,7 +100,7 @@ int RaycastLua::raycastSegmentsAll(lua_State* L) {
     return 1;
 }
 
-// Bounces a ray off segments with bounceRay(origin, direction, length, bounces, segments) and returns the bounce hits and the point where the path ends. Hit distances and fractions measure the whole path up to each bounce.
+// Bounces a ray off segments with `bounceRay(origin, direction, length, bounces, segments)` and returns the bounce hits and the point where the path ends. Hit distances and fractions measure the whole path up to each bounce.
 int RaycastLua::bounceRay(lua_State* L) {
     const Vec2 origin = lua::Stack::read<Vec2>(L, 1);
     const Vec2 direction = lua::Stack::read<Vec2>(L, 2).getNormalized();
@@ -129,7 +129,7 @@ int RaycastLua::bounceRay(lua_State* L) {
     return 3;
 }
 
-// Casts a fan of rays against segments with rayFan(origin, angle, spread, count, length, segments). Each entry is the hit of one ray, or false when that ray hit nothing.
+// Casts a fan of rays against segments with `rayFan(origin, angle, spread, count, length, segments)`. Each entry is the hit of one ray, or `false` when that ray hit nothing.
 int RaycastLua::rayFan(lua_State* L) {
     const Vec2 origin = lua::Stack::read<Vec2>(L, 1);
     const auto angle = lua::Stack::read<float>(L, 2);

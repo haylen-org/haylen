@@ -56,7 +56,7 @@ TEST_F(TextLuaTest, InspectsFontsAndBuildsFamilies) {
     EXPECT_EQ(lua("local loaded = assets.load('images/coin.png', 'gridFont', {characters = 'XY', cellWidth = 16, cellHeight = 16}) return tostring(loaded:hasGlyph('Y'))"), "true");
     EXPECT_EQ(lua("local data = assets.text('fonts/pixel.fnt') local made = graphics.newBitmapFont(data, {assets.texture('fonts/pixel.png')}) return made:measure('AB', {size = 8})"), "17.0");
     EXPECT_NE(lua("assets.font('images/coin.png')").find("expected a .ttf, .otf or .fnt file"), std::string::npos);
-    EXPECT_NE(lua("graphics.newBitmapFont('garbage', {})").find("info and common"), std::string::npos);
+    EXPECT_NE(lua("graphics.newBitmapFont('garbage', {})").find("\"info\" and \"common\""), std::string::npos);
 
     lua("family = graphics.newFontFamily({regular = font, bold = pixel, fallbacks = {grid}})");
     EXPECT_EQ(lua("return tostring(family.regular == nil) .. ' ' .. tostring(family.italic == nil) .. ' ' .. #family.fallbacks .. ' ' .. tostring(family.bold.distanceField)"), "false true 1 false");
@@ -65,7 +65,7 @@ TEST_F(TextLuaTest, InspectsFontsAndBuildsFamilies) {
     EXPECT_EQ(lua("local face, bold = family:resolve(0xE000) return tostring(face == nil) .. ' ' .. tostring(bold)"), "false false");
     EXPECT_EQ(lua("local face, bold, italic = family:resolve('H', {italic = true}) return tostring(face.distanceField) .. ' ' .. tostring(italic)"), "true true");
     EXPECT_NE(lua("graphics.newFontFamily({bold = font})").find("A font family needs a regular face."), std::string::npos);
-    EXPECT_NE(lua("graphics.newFontFamily({regular = font, heavy = font})").find("Unknown option 'heavy'"), std::string::npos);
+    EXPECT_NE(lua("graphics.newFontFamily({regular = font, heavy = font})").find("Unknown option \"heavy\""), std::string::npos);
 
     // A glyph index from shaping reads its glyph back, and a bitmap font numbers its glyphs by code point.
     EXPECT_EQ(lua("local shaped = font:shape('A') local glyph = font:glyphByIndex(shaped[1].index) return tostring(glyph.index == shaped[1].index and glyph.advance == font:glyph('A').advance) .. ' ' .. pixel:glyphByIndex(65).advance"), "true 9.0");
@@ -118,7 +118,7 @@ TEST_F(TextLuaTest, MakesDrawsAndMeasuresRichText) {
     lua("text.visibleRatio = 1 text.visibleCharacters = -1");
     EXPECT_EQ(lua("return text.visibleCharacters .. ' ' .. text.visibleRatio"), "3 1.0");
 
-    // The bold and italic options style all the text as [b] and [i] would, here synthesized from the default font.
+    // The bold and italic options style all the text as `[b]` and `[i]` would, here synthesized from the default font.
     EXPECT_EQ(lua("local glyph = graphics2d.newRichText('ab', {bold = true, italic = true}):frame().glyphs[2] return tostring(glyph.syntheticBold) .. ' ' .. tostring(glyph.syntheticItalic)"), "true true");
 
     lua("typed = graphics2d.newRichText('abcd', {revealSpeed = 20})");
@@ -128,14 +128,14 @@ TEST_F(TextLuaTest, MakesDrawsAndMeasuresRichText) {
     EXPECT_EQ(lua("return graphics2d.stats().sprites"), "9");
     EXPECT_EQ(lua("local w, h = graphics2d.measureRichText('[size=40]big[/size]', {family = font}) local small = graphics2d.measureRichText('big') return tostring(w > small) .. ' ' .. tostring(h >= 40)"), "true true");
 
-    EXPECT_NE(lua("graphics2d.newRichText('[b]open')").find("[b] is never closed."), std::string::npos);
-    EXPECT_NE(lua("graphics2d.newRichText('x', {sizes = 3})").find("Unknown option 'sizes'"), std::string::npos);
+    EXPECT_NE(lua("graphics2d.newRichText('[b]open')").find("The tag \"[b]\" is never closed."), std::string::npos);
+    EXPECT_NE(lua("graphics2d.newRichText('x', {sizes = 3})").find("Unknown option \"sizes\""), std::string::npos);
     EXPECT_NE(lua("graphics2d.newRichText('x', {family = 3})").find("expected a FontFamily or a Font"), std::string::npos);
-    EXPECT_NE(lua("graphics2d.newRichText('x', {fonts = {graphics.newFontFamily({regular = font})}})").find("The fonts option maps font names to families, so its keys must be strings."), std::string::npos);
+    EXPECT_NE(lua("graphics2d.newRichText('x', {fonts = {graphics.newFontFamily({regular = font})}})").find("The \"fonts\" option maps font names to families, so its keys must be strings."), std::string::npos);
     EXPECT_NE(render("graphics2d.drawRichText('x', 0, 0)").find("No canvas is active"), std::string::npos);
 }
 
-// Rich text drawn every frame lays out again each time, and the images of its [img] tags load once while frames keep drawing them.
+// Rich text drawn every frame lays out again each time, and the images of its `[img]` tags load once while frames keep drawing them.
 TEST_F(TextLuaTest, KeepsTheImagesOfRichTextThatFramesKeepDrawing) {
     std::vector<std::string> log;
     // clang-format off
@@ -162,9 +162,9 @@ TEST_F(TextLuaTest, KeepsTheImagesOfRichTextThatFramesKeepDrawing) {
 TEST_F(TextLuaTest, TintsAndScalesDrawnRichText) {
     lua("label = graphics2d.newRichText('[b]Gold[/b]', {size = 20})");
     EXPECT_EQ(render("graphics2d.beginScreen() label:draw(0, 0, {scale = {2, 3}, tint = '#80FFFFFF', layer = 1}) graphics2d.drawRichText('Gold', 0, 40, {tint = '#FF0000', layer = 2})"), "nil");
-    EXPECT_NE(render("graphics2d.beginScreen() label:draw(0, 0, {scale = 'big'})").find("The option 'scale' of 'draw'"), std::string::npos);
-    EXPECT_NE(render("graphics2d.beginScreen() label:draw(0, 0, {tints = '#FFFFFF'})").find("Unknown option 'tints'"), std::string::npos);
-    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawRichText('Gold', 0, 0, {tint = 5})").find("The option 'tint' of 'drawRichText'"), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() label:draw(0, 0, {scale = 'big'})").find("The option \"scale\" of \"draw\""), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() label:draw(0, 0, {tints = '#FFFFFF'})").find("Unknown option \"tints\""), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawRichText('Gold', 0, 0, {tint = 5})").find("The option \"tint\" of \"drawRichText\""), std::string::npos);
 }
 
 TEST_F(TextLuaTest, ChangesRichTextOptionsAsProperties) {
@@ -196,7 +196,7 @@ TEST_F(TextLuaTest, ShapesAndOrdersRightToLeftText) {
     EXPECT_EQ(lua("local laid = graphics2d.newRichText('abc\\n[p dir=rightToLeft align=start]abc[/p]', {family = scripts, maxWidth = 200}):frame() return tostring(laid.lines[1].rightToLeft) .. ' ' .. tostring(laid.lines[2].rightToLeft) .. ' ' .. tostring(laid.lines[2].rect.x > 100)"), "false true true");
     EXPECT_EQ(render("graphics2d.beginScreen() graphics2d.drawText(scripts, 'שלום abc', 10, 10, {size = 24, direction = 'auto', language = 'he', bold = true, italic = true, align = 'end', maxWidth = 300})"), "nil");
     EXPECT_NE(lua("graphics2d.measureText(nil, 'x', {direction = 'up'})").find("direction"), std::string::npos);
-    EXPECT_NE(lua("graphics2d.newRichText('[p dir=up]x[/p]')").find("The dir of [p] must be auto, leftToRight or rightToLeft."), std::string::npos);
+    EXPECT_NE(lua("graphics2d.newRichText('[p dir=up]x[/p]')").find("The \"dir\" of \"[p]\" must be \"auto\", \"leftToRight\" or \"rightToLeft\"."), std::string::npos);
 }
 
 TEST_F(TextLuaTest, RegistersEffectsIconsAndFonts) {
@@ -204,8 +204,8 @@ TEST_F(TextLuaTest, RegistersEffectsIconsAndFonts) {
     lua("lifted = graphics2d.newRichText('[lift by=3]axb[/lift]c')");
     EXPECT_EQ(lua("local moved, still = lifted:frame(), graphics2d.newRichText('axbc'):frame() return string.format('%.1f %.1f', still.glyphs[1].rect.y - moved.glyphs[1].rect.y, still.glyphs[3].rect.y - moved.glyphs[3].rect.y) .. ' ' .. tostring(moved.glyphs[2].visible) .. ' ' .. moved.glyphs[1].color:toHex() .. ' ' .. tostring(still.glyphs[4].rect.y == moved.glyphs[4].rect.y)"), "3.0 9.0 false #FFFF0000 true");
     EXPECT_NE(lua("local names = table.concat(graphics2d.textEffectNames(), ',') return names").find("lift"), std::string::npos);
-    EXPECT_NE(lua("graphics2d.registerTextEffect('wave', function() end)").find("The name wave belongs to a built-in text effect, so no other effect can take it."), std::string::npos);
-    EXPECT_NE(lua("graphics2d.newRichText('[unknown]x[/unknown]')").find("[unknown] is neither a tag nor a registered text effect."), std::string::npos);
+    EXPECT_NE(lua("graphics2d.registerTextEffect('wave', function() end)").find("The name \"wave\" belongs to a built-in text effect, so no other effect can take it."), std::string::npos);
+    EXPECT_NE(lua("graphics2d.newRichText('[unknown]x[/unknown]')").find("The markup \"[unknown]\" is neither a tag nor a registered text effect."), std::string::npos);
 
     lua("graphics2d.registerTextEffect('broken', function(glyph) error('effect failed') end)");
     EXPECT_NE(lua("graphics2d.newRichText('[broken]x[/broken]'):frame()").find("effect failed"), std::string::npos);
@@ -230,7 +230,7 @@ TEST_F(TextLuaTest, RegistersEffectsIconsAndFonts) {
 
     lua("family = graphics.newFontFamily({regular = font}) ui.addFont('story', family) ui.addFont('pixel', assets.font('fonts/pixel.fnt'))");
     EXPECT_EQ(lua("local story = graphics2d.newRichText('[font=serif]x[/font]', {fonts = {serif = family}}) return story.characterCount"), "1");
-    EXPECT_NE(lua("ui.addFont('story', family)").find("already has a font named story"), std::string::npos);
+    EXPECT_NE(lua("ui.addFont('story', family)").find("already has a font named \"story\""), std::string::npos);
 }
 
 } // namespace haylen

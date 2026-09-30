@@ -19,7 +19,7 @@ struct Log::Listeners {
 
 std::atomic<Log::Level> Log::currentLevel{applyDefaultLevel()};
 
-// The listeners are never destroyed, because an exit() on another thread runs the destructors of static objects while the frame thread still logs.
+// The listeners are never destroyed, because an `exit()` on another thread runs the destructors of static objects while the frame thread still logs.
 Log::Listeners& Log::getListeners() {
     static Listeners& instance = *new Listeners();
     return instance;
@@ -58,7 +58,7 @@ varn::log::Level Log::toVarnLevel(Level value) noexcept {
     return varn::log::Level::Info;
 }
 
-// Listeners run under the lock, so a listener that was removed on another thread is never in the middle of a line when removeListener returns.
+// Listeners run under the lock, so a listener that was removed on another thread is never in the middle of a line when `removeListener` returns.
 void Log::dispatch(varn::log::Level level, std::string_view line) {
     Listeners& all = getListeners();
     const std::scoped_lock lock(all.mutex);

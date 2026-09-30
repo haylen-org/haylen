@@ -28,7 +28,7 @@ function Settings:change(key)
         else
             self.values[key] = event.value
         end
-        self:setStatus('unsaved change to ' .. key)
+        self:setStatus('Unsaved change to ' .. key)
     end
 end
 
@@ -61,18 +61,18 @@ function Settings:content()
                 ui.settingsActions{
                     ui.button{id = 'defaults', text = 'Defaults', variant = 'link', onClick = function()
                         self:show(Settings.defaults)
-                        self:setStatus('back to the defaults, not saved yet')
+                        self:setStatus('Back to the defaults, not saved yet')
                     end},
                     ui.button{id = 'cancel', text = 'Cancel', onClick = function()
                         self:show(self.saved)
-                        self:setStatus('back to the saved settings')
+                        self:setStatus('Back to the saved settings')
                     end},
                     ui.button{id = 'save', text = 'Save', variant = 'primary', onClick = function(event)
                         for key, value in pairs(self.values) do
                             self.saved[key] = value
                         end
                         event.document:set('saved', {open = true})
-                        self:setStatus(string.format('saved: music %.2f, effects %.2f, %s, %s', self.values.music, self.values.effects, self.values.language, self.values.difficulty))
+                        self:setStatus(string.format('Saved: music %.2f, effects %.2f, %s, %s', self.values.music, self.values.effects, self.values.language, self.values.difficulty))
                     end},
                 },
             },

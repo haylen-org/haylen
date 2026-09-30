@@ -287,7 +287,7 @@ bool NavMesh::findCorridor(std::int32_t start, std::int32_t goal, math::Vec2 fro
         entries.resize(count);
         visits.resize(count, 0);
     }
-    // Each search stamps the triangles it opens with visit and the ones it settles with visit + 1, so no buffer needs clearing.
+    // Each search stamps the triangles it opens with `visit` and the ones it settles with `visit + 1`, so no buffer needs clearing.
     visit += 2;
     if (visit < 2) {
         std::ranges::fill(visits, 0U);

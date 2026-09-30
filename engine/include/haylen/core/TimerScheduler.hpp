@@ -12,13 +12,13 @@
 
 namespace haylen::core {
 
-// Frame-driven timers. Callbacks run inside update() on the frame thread. Each timer runs on scaled or unscaled time and has a process mode, so a timer of a pause menu keeps running while the game is paused.
+// Frame-driven timers. Callbacks run inside `update()` on the frame thread. Each timer runs on scaled or unscaled time and has a process mode, so a timer of a pause menu keeps running while the game is paused.
 class TimerScheduler final {
   public:
     using Id = std::uint64_t;
 
     struct Options {
-        // Inherit follows the parent mode, and counts as Pausable without one.
+        // The mode `Inherit` follows the parent mode, and counts as `Pausable` without one.
         ProcessMode processMode = ProcessMode::Inherit;
 
         // Returns the mode of the parent that an inheriting timer follows, such as the scene that owns it. Every update asks again, so the timer follows the parent when its mode changes.
@@ -38,7 +38,7 @@ class TimerScheduler final {
     void clear() noexcept;
     void update(const FrameClock& clock);
 
-    // Returns a connection that cancels the timer, which ties it to a ConnectionScope. Blocking the connection pauses the timer.
+    // Returns a connection that cancels the timer, which ties it to a `ConnectionScope`. Blocking the connection pauses the timer.
     [[nodiscard]] Connection getConnection(Id id);
 
     [[nodiscard]] bool isActive(Id id) const noexcept;

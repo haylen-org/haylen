@@ -19,7 +19,7 @@ namespace haylen::navigation2d {
 // Builds the constrained Delaunay triangulation of a set of segments: the triangulation of their end points closest to Delaunay in which every segment is a triangle edge. Points closer than a tiny tolerance merge, and segments that cross or touch are split where they meet. Only the areas enclosed by the segments that a test accepts are kept, and they are refined with points on the segments where vertices come close to them, so a disk of any size passes a chain of kept triangles exactly when every edge it crosses is at least as long as its diameter, within a thousandth of the diameter. Coordinates run in double precision, the orientation test is exact, and the in-circle test decides only beyond rounding doubt.
 class ConstrainedTriangulation final {
   public:
-    // Vertices run counterclockwise in a y-up frame, which is clockwise on screen. The neighbor and the constraint flag at index i belong to the edge from vertex i to vertex i + 1.
+    // Vertices run counterclockwise in a y-up frame, which is clockwise on screen. The neighbor and the constraint flag at index `i` belong to the edge from vertex `i` to vertex `i + 1`.
     struct Triangle {
         std::array<std::int32_t, 3> vertices{};
         std::array<std::int32_t, 3> neighbors{-1, -1, -1};
@@ -64,16 +64,16 @@ class ConstrainedTriangulation final {
     // Refinement treats an edge up to this fraction longer than the room it crosses as exact. Walls that run almost parallel would otherwise pull a chain of points along each other to their ends, each point a sliver closer to the opposite wall than the one before.
     static constexpr double kRoomSlack = 1e-3;
 
-    // Returns 1 when a, b and c run counterclockwise, -1 when they run clockwise and 0 when they lie on one line, exactly for any coordinates, so every decision about which side of an edge a point lies on agrees with every other one.
+    // Returns 1 when `a`, `b` and `c` run counterclockwise, -1 when they run clockwise and 0 when they lie on one line, exactly for any coordinates, so every decision about which side of an edge a point lies on agrees with every other one.
     [[nodiscard]] static int orient(const Point& a, const Point& b, const Point& c) noexcept;
     [[nodiscard]] static int exactOrient(const Point& a, const Point& b, const Point& c) noexcept;
 
-    // Tells whether d lies inside the circle through the counterclockwise a, b and c beyond any rounding doubt. Nearly cocircular points count as outside, so a flip never undoes another and legalizing always ends.
+    // Tells whether `d` lies inside the circle through the counterclockwise `a`, `b` and `c` beyond any rounding doubt. Nearly cocircular points count as outside, so a flip never undoes another and legalizing always ends.
     [[nodiscard]] static bool inCircle(const Point& a, const Point& b, const Point& c, const Point& d) noexcept;
 
     [[nodiscard]] static double distance(const Point& a, const Point& b) noexcept;
 
-    // Returns the foot of the point on the segment from a to b when it falls strictly between them.
+    // Returns the foot of the point on the segment from `a` to `b` when it falls strictly between them.
     [[nodiscard]] static std::optional<Point> projectInside(const Point& point, const Point& a, const Point& b) noexcept;
 
     [[nodiscard]] const Point& pointAt(std::int32_t index) const noexcept {
@@ -84,7 +84,7 @@ class ConstrainedTriangulation final {
         return vertex >= firstSuper && vertex < firstSuper + 3;
     }
 
-    // Tells whether the segments from a to b and from c to d cross at a point inside both.
+    // Tells whether the segments from `a` to `b` and from `c` to `d` cross at a point inside both.
     [[nodiscard]] bool crosses(std::int32_t a, std::int32_t b, std::int32_t c, std::int32_t d) const noexcept;
 
     // Welds the segment end points and splits segments where they cross or touch, filling points and constraints.
@@ -105,11 +105,11 @@ class ConstrainedTriangulation final {
     // Finds the triangle that holds the directed edge, or -1 when the edge does not exist.
     [[nodiscard]] std::int32_t findEdge(std::int32_t from, std::int32_t to) const;
 
-    // Replaces the edge shared by a triangle and its neighbor across edge side with the other diagonal of their quad, and returns the two triangles now holding the new edge.
+    // Replaces the edge shared by a triangle and its neighbor across edge `side` with the other diagonal of their quad, and returns the two triangles now holding the new edge.
     std::pair<std::int32_t, std::int32_t> flip(std::int32_t triangle, int side);
     void legalize(std::vector<std::pair<std::int32_t, int>>& pending);
 
-    // Fills crossed with the edges the segment between two vertices crosses, each with the vertex on the right of the segment first. Returns false when a vertex lies exactly on the segment, and stores that vertex in onSegment.
+    // Fills `crossed` with the edges the segment between two vertices crosses, each with the vertex on the right of the segment first. Returns `false` when a vertex lies exactly on the segment, and stores that vertex in `onSegment`.
     bool collectCrossings(std::int32_t from, std::int32_t to, std::deque<Edge>& crossed, std::int32_t& onSegment) const;
     void insertConstraint(std::int32_t from, std::int32_t to);
     void setConstrained(std::int32_t from, std::int32_t to);

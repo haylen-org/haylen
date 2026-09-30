@@ -21,7 +21,7 @@ class GraphSearch final {
         return cost;
     }
 
-    // Measures the cost of the cheapest path from the source to every point, which getDistance reads until the next search.
+    // Measures the cost of the cheapest path from the source to every point, which `getDistance` reads until the next search.
     void computeDistances(const Graph& graph, std::int64_t source);
 
     // Returns the cost from the last source to the point, which is infinite when the point is unreachable or disabled.

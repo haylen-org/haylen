@@ -1,4 +1,4 @@
--- Music: two streamed tracks that crossfade over the chosen time, looping or played once, a volume that playMusic changes on the track already playing, the pause and resume of the music through its voice and a graph of the fades as the calls asked for them.
+-- Music: two streamed tracks that crossfade over the chosen time, looping or played once, a volume that `playMusic` changes on the track already playing, the pause and resume of the music through its voice and a graph of the fades as the calls asked for them.
 local audio = require('haylen.audio')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -32,7 +32,7 @@ function Music:enter()
                 ui.button{id = 'resume', text = 'Resume', onClick = function() self:resume() end},
                 ui.button{id = 'stop', text = 'Stop', variant = 'destructive', onClick = function() self:stop() end},
             },
-            ui.label{text = 'Asking for the track that already plays keeps it going on the same voice and only changes its volume, which the volume slider uses. Pause and Resume hold only the music, through the voice that playMusic returns.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'Asking for the track that already plays keeps it going on the same voice and only changes its volume, which the volume slider uses. Pause and Resume hold only the music, through the voice that "playMusic" returns.', color = 'textMuted', font = 'caption'},
             ui.label{text = kCode, font = 'monospace'},
         },
     })

@@ -1,5 +1,5 @@
 <script>
-    // Runs the WebGPU build when the browser offers a WebGPU adapter and the WebGL2 build otherwise. The backend parameter of the address forces either one.
+    // Runs the WebGPU build when the browser offers a WebGPU adapter and the WebGL2 build otherwise. The `backend` parameter of the address forces either one.
     (async () => {
         const forced = new URLSearchParams(location.search).get("backend");
         let backend = forced === "webgpu" || forced === "webgl2" ? forced : null;

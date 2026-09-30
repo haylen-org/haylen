@@ -71,7 +71,7 @@ void DestructionLua::pushHits(lua_State* L, int worldIndex, const std::vector<Ex
     }
 }
 
-// Creates a terrain with newTerrain(world, {columns, rows, cellSize, x, y, chunkSize, simplifyTolerance, friction, restitution, category, mask, group}). Its user value is the world object, which its bodies belong to.
+// Creates a terrain with `newTerrain(world, {columns, rows, cellSize, x, y, chunkSize, simplifyTolerance, friction, restitution, category, mask, group})`. Its user value is the world object, which its bodies belong to.
 int DestructionLua::newTerrain(lua_State* L) {
     const std::shared_ptr<World>& world = lua::Userdata::checkShared<World>(L, 1);
     Terrain::Options options;
@@ -95,7 +95,7 @@ int DestructionLua::newTerrain(lua_State* L) {
     return 1;
 }
 
-// Sets every sample with terrain.samples = values, from a list of values from 0 to 1 stored row by row or from a function of the column and row that returns them.
+// Sets every sample with `terrain.samples = values`, from a list of values from 0 to 1 stored row by row or from a function of the column and row that returns them.
 int DestructionLua::terrainSetSamples(lua_State* L) {
     Terrain& terrain = lua::Userdata::check<ScriptedOwner<Terrain>>(L, 1).object;
     const auto columns = static_cast<std::size_t>(terrain.getColumns());
@@ -163,7 +163,7 @@ int DestructionLua::terrainCarvePolygon(lua_State* L) {
     return 0;
 }
 
-// Carves a crater with explode(x, y, radius, blast) and returns the hits of the blast, whose options default to the center of the crater and twice its radius.
+// Carves a crater with `explode(x, y, radius, blast)` and returns the hits of the blast, whose options default to the center of the crater and twice its radius.
 int DestructionLua::terrainExplode(lua_State* L) {
     Terrain& terrain = lua::Userdata::check<ScriptedOwner<Terrain>>(L, 1).object;
     const math::Circle crater{{lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}, lua::Stack::read<float>(L, 4)};
@@ -224,14 +224,14 @@ int DestructionLua::terrainDirtyChunkCount(lua_State* L) {
     return 1;
 }
 
-// Pushes bodies away with explode(world, {x, y, radius, impulse, falloff, occlusion, category, mask}) and returns the hits.
+// Pushes bodies away with `explode(world, {x, y, radius, impulse, falloff, occlusion, category, mask})` and returns the hits.
 int DestructionLua::explode(lua_State* L) {
     World& world = lua::Userdata::check<World>(L, 1);
     pushHits(L, 1, Explosion::apply(world, readExplosion(L, 2, {})));
     return 1;
 }
 
-// Breaks a body with fracture(body, {pieces, impact, seed, minimumArea}) and returns its pieces.
+// Breaks a body with `fracture(body, {pieces, impact, seed, minimumArea})` and returns its pieces.
 int DestructionLua::fracture(lua_State* L) {
     const Body body = lua::Userdata::check<ScriptedHandle<Body>>(L, 1).handle;
     Fracture::Options options;

@@ -25,7 +25,7 @@ struct RichTextDocument {
         Bottom,
     };
 
-    // A tag the parser did not know, which names an effect such as [wave amp=20], and where it opened in the markup.
+    // A tag the parser did not know, which names an effect such as `[wave amp=20]`, and where it opened in the markup.
     struct Effect {
         std::string name;
         std::map<std::string, std::string, std::less<>> parameters;

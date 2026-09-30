@@ -1,6 +1,6 @@
 # Haylen Algorithms
 
-A Lua sample with one scene per algorithm of [haylen.navigation2d](../../../docs/lua-api/navigation2d.md), [haylen.spatial2d](../../../docs/lua-api/spatial2d.md), [haylen.procedural2d](../../../docs/lua-api/procedural2d.md), [haylen.math](../../../docs/lua-api/math.md) and [haylen.ai](../../../docs/lua-api/ai.md). The menu lists the tests, each test opens as its own scene with a Back button, and Escape, the east gamepad button or the Menu button of a TV remote return to the menu. Heavy work shows its time from the engine profiler, and generators with an asynchronous version run on the worker threads so the frame never waits for them.
+A Lua sample with one scene per algorithm of [`haylen.navigation2d`](../../../docs/lua-api/navigation2d.md), [`haylen.spatial2d`](../../../docs/lua-api/spatial2d.md), [`haylen.procedural2d`](../../../docs/lua-api/procedural2d.md), [`haylen.math`](../../../docs/lua-api/math.md) and [`haylen.ai`](../../../docs/lua-api/ai.md). The menu lists the tests, each test opens as its own scene with a Back button, and Escape, the east gamepad button or the Menu button of a TV remote return to the menu. Heavy work shows its time from the engine profiler, and generators with an asynchronous version run on the worker threads so the frame never waits for them.
 
 | Test | What it shows |
 | --- | --- |

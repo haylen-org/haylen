@@ -31,7 +31,7 @@ void PluginRegistry::clear() noexcept {
 }
 
 void PluginRegistry::throwMissing(std::string_view type) {
-    throw std::logic_error("The plugin " + std::string(type) + " is not registered.");
+    throw std::logic_error("The plugin \"" + std::string(type) + "\" is not registered.");
 }
 
 } // namespace haylen::plugins

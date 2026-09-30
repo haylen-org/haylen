@@ -12,7 +12,7 @@ void JsonValidator::requireKnownKeys(const Json& object, std::initializer_list<s
     }
     for (const auto& [key, value] : object.items()) {
         if (std::find(allowed.begin(), allowed.end(), key) == allowed.end()) {
-            throw std::invalid_argument("Unknown key '" + key + "' in " + std::string(context) + ".");
+            throw std::invalid_argument("Unknown key \"" + key + "\" in " + std::string(context) + ".");
         }
     }
 }

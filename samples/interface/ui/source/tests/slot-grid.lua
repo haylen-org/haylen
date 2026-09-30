@@ -69,7 +69,7 @@ function SlotGrid:drop(event)
         end
     end
     self:refresh()
-    self:setStatus(string.format('moved the %s from %s to %s', item.icon, event.sourceItem, event.item))
+    self:setStatus(string.format('Moved the %s from "%s" to "%s"', item.icon, event.sourceItem, event.item))
 end
 
 function SlotGrid:refresh()
@@ -83,13 +83,13 @@ function SlotGrid:content()
         self:drop(event)
     end
     local function onSelect(event)
-        self:setStatus('selected ' .. event.item)
+        self:setStatus('Selected "' .. event.item .. '"')
     end
     return sample.columns{
         justify = 'center',
         sample.section('inventory', {
             ui.slotGrid{id = 'bag', columns = 4, slots = slots(self.bag, 'bag', kBagSize), onDrop = onDrop, onSelect = onSelect, onDrag = function(event)
-                self:setStatus('picked up ' .. event.item)
+                self:setStatus('Picked up "' .. event.item .. '"')
             end},
         }),
         sample.section('chest', {width = 460,

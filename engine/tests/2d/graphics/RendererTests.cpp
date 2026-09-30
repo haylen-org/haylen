@@ -260,7 +260,7 @@ TEST(RendererTest, EndsTheFrameWhenAMaterialFailsInsideAPass) {
     });
     // clang-format on
     ASSERT_NE(fixture.engine().getError(), nullptr);
-    EXPECT_NE(std::string(fixture.engine().getError()->what()).find("The shader stale was compiled with another version of the shader library."), std::string::npos);
+    EXPECT_NE(std::string(fixture.engine().getError()->what()).find("The shader \"stale\" was compiled with another version of the shader library."), std::string::npos);
 
     // The error screen draws the next frames with new passes.
     fixture.frames(2);

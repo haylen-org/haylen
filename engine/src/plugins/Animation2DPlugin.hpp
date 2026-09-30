@@ -4,7 +4,7 @@
 
 namespace haylen::plugins {
 
-// Registers the atlas asset type for TexturePacker and Aseprite JSON, whose image shares the texture cache, and installs the haylen.animation2d module.
+// Registers the `atlas` asset type for TexturePacker and Aseprite JSON, whose image shares the texture cache, and installs the `haylen.animation2d` module.
 class Animation2DPlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {

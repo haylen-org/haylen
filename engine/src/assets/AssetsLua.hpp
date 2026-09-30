@@ -11,7 +11,7 @@ namespace haylen::assets {
 
 class Manager;
 
-// Installs haylen.assets, which loads assets synchronously or through promises, manages preload groups and sets the upload budget of a frame.
+// Installs `haylen.assets`, which loads assets synchronously or through promises, manages preload groups and sets the upload budget of a frame.
 class AssetsLua final {
   public:
     static void install(lua_State* L);

@@ -23,7 +23,7 @@ int ConstrainedTriangulation::orient(const Point& a, const Point& b, const Point
 }
 
 int ConstrainedTriangulation::exactOrient(const Point& a, const Point& b, const Point& c) noexcept {
-    // The determinant expands into six products of coordinates, and each product is the sum of its rounded value and the error fma recovers.
+    // The determinant expands into six products of coordinates, and each product is the sum of its rounded value and the error `fma` recovers.
     const std::array<std::pair<double, double>, 6> products{{{b.x, c.y}, {-b.x, a.y}, {-a.x, c.y}, {-b.y, c.x}, {b.y, a.x}, {a.y, c.x}}};
     std::array<double, 12> expansion{};
     std::size_t size = 0;
@@ -295,7 +295,7 @@ void ConstrainedTriangulation::splitEdge(std::int32_t triangle, int side, std::i
     const std::int32_t other = old.neighbors[index];
     const bool fixed = old.constrained[index];
 
-    // The point splits the triangle a, b, c into p, b, c and a, p, c, and the neighbor b, a, d into p, a, d and b, p, d.
+    // The point splits the triangle `a, b, c` into `p, b, c` and `a, p, c`, and the neighbor `b, a, d` into `p, a, d` and `b, p, d`.
     const auto first = static_cast<std::int32_t>(triangles.size());
     const Triangle opposite = triangles[static_cast<std::size_t>(other)];
     const auto otherSide = static_cast<std::size_t>(edgeIndex(other, b, a));
@@ -347,7 +347,7 @@ std::pair<std::int32_t, std::int32_t> ConstrainedTriangulation::flip(std::int32_
     const auto otherSide = static_cast<std::size_t>(edgeIndex(other, b, a));
     const std::int32_t d = opposite.vertices[(otherSide + 2) % 3];
 
-    // The triangles a, b, c and b, a, d become a, d, c and d, b, c, which share the diagonal between c and d.
+    // The triangles `a, b, c` and `b, a, d` become `a, d, c` and `d, b, c`, which share the diagonal between `c` and `d`.
     setTriangle(triangle, {a, d, c}, {opposite.neighbors[(otherSide + 1) % 3], other, old.neighbors[(index + 2) % 3]}, {opposite.constrained[(otherSide + 1) % 3], false, old.constrained[(index + 2) % 3]});
     setTriangle(other, {d, b, c}, {opposite.neighbors[(otherSide + 2) % 3], old.neighbors[(index + 1) % 3], triangle}, {opposite.constrained[(otherSide + 2) % 3], old.constrained[(index + 1) % 3], false});
     replaceNeighbor(opposite.neighbors[(otherSide + 1) % 3], other, triangle);
@@ -375,7 +375,7 @@ void ConstrainedTriangulation::legalize(std::vector<std::pair<std::int32_t, int>
             continue;
         }
 
-        // Both new triangles keep the vertex c, and their sides across from it are the ones that may now break the Delaunay rule.
+        // Both new triangles keep the vertex `c`, and their sides across from it are the ones that may now break the Delaunay rule.
         const auto [first, second] = flip(triangle, side);
         pending.emplace_back(first, 0);
         pending.emplace_back(second, 0);

@@ -110,7 +110,7 @@ TEST_F(TextInputTest, PublishesTheFocusedFieldWithItsKeyboard) {
     EXPECT_EQ(visible[0].options, (TextInput::Options{.keyboard = TextInput::Keyboard::Email, .returnKey = TextInput::ReturnKey::Go, .capitalization = TextInput::Capitalization::Words, .autocorrect = true, .maxLength = 40}));
     EXPECT_EQ(visible[1].options, (TextInput::Options{.keyboard = TextInput::Keyboard::Multiline}));
     EXPECT_EQ(visible[2].options, (TextInput::Options{.keyboard = TextInput::Keyboard::Password, .capitalization = TextInput::Capitalization::None, .autocorrect = false}));
-    EXPECT_EQ(visible[3].options.keyboard, TextInput::Keyboard::Text) << "numeric keypads have no minus sign";
+    EXPECT_EQ(visible[3].options.keyboard, TextInput::Keyboard::Text) << "Numeric keypads have no minus sign.";
     EXPECT_TRUE(getInput().getPublished().empty());
 
     focus(*document, "email");
@@ -118,12 +118,12 @@ TEST_F(TextInputTest, PublishesTheFocusedFieldWithItsKeyboard) {
     const TextInput::Field& field = getPublished();
     EXPECT_EQ(field.id, visible[0].id);
     EXPECT_EQ(field.text, "ana");
-    EXPECT_EQ(field.selectionStart, 0) << "a field focused from the keyboard selects its text";
+    EXPECT_EQ(field.selectionStart, 0) << "A field focused from the keyboard selects its text.";
     EXPECT_EQ(field.selectionEnd, 3);
     EXPECT_EQ(field.bounds, visible[0].bounds);
     EXPECT_FALSE(field.caret.isEmpty());
     EXPECT_TRUE(field.bounds.contains(field.caret.getCenter()));
-    EXPECT_FALSE(fixture.host().isKeyboardVisible()) << "fields of the UI never open the plain keyboard";
+    EXPECT_FALSE(fixture.host().isKeyboardVisible()) << "Fields of the UI never open the plain keyboard.";
 
     getUi().getContext().getBackend().makeCurrent();
     ImGui::ClearActiveID();
@@ -140,9 +140,9 @@ TEST_F(TextInputTest, AppliesEditsOfTheCurrentRevisionOnly) {
 
     edit("Ana é", 5, 5);
     EXPECT_EQ(events, std::vector<std::string>{R"(name:change {"value":"Ana é"})"});
-    EXPECT_EQ(getPublished().revision, revision) << "an edit of the platform is no change of the UI";
+    EXPECT_EQ(getPublished().revision, revision) << "An edit of the platform is no change of the UI.";
     EXPECT_EQ(getPublished().text, "Ana é");
-    EXPECT_EQ(getPublished().selectionStart, 5) << "selections count code points";
+    EXPECT_EQ(getPublished().selectionStart, 5) << "Selections count code points.";
 
     // An edit against an older revision or another field answers a text the field no longer shows.
     send({.type = platform::Event::Type::TextEdited, .textEdit = {.field = id, .revision = revision - 1, .text = "stale"}});
@@ -165,7 +165,7 @@ TEST_F(TextInputTest, WaitsForTheInputMethodToCommit) {
 
     edit("かな", 2, 2, 0, 2);
     EXPECT_EQ(session.getComposition(field), (std::pair{0, 2}));
-    EXPECT_EQ(getInput().getPublished().size(), published) << "nothing reaches the platform while it composes";
+    EXPECT_EQ(getInput().getPublished().size(), published) << "Nothing reaches the platform while it composes.";
 
     edit("仮名", 2, 2);
     EXPECT_FALSE(session.getComposition(field));
@@ -250,7 +250,7 @@ TEST_F(TextInputTest, TurnsActionsIntoSubmitNextCancelAndDismiss) {
     act(TextInput::Action::Next);
     EXPECT_EQ(getPublished().id, fields[1].id);
 
-    // A return key labelled next moves on like tab.
+    // A return key labelled `next` moves on like tab.
     events.clear();
     act(TextInput::Action::Submit);
     EXPECT_EQ(getPublished().id, fields[2].id);
@@ -279,7 +279,7 @@ TEST_F(TextInputTest, LiftsTheFocusedFieldAboveTheKeyboard) {
     const math::Rect lifted = document->find("name")->getBounds();
     EXPECT_LE(lifted.getBottom(), 540.0F);
     EXPECT_GE(lifted.getBottom(), 500.0F);
-    EXPECT_EQ(getPublished().bounds, lifted) << "the platform follows the field";
+    EXPECT_EQ(getPublished().bounds, lifted) << "The platform follows the field.";
 
     send({.type = platform::Event::Type::KeyboardChanged});
     fixture.frames(60);

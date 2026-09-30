@@ -17,15 +17,15 @@
 
 namespace haylen::platform {
 
-// The HaylenNativeApi that native libraries receive, and the handlers they register with it. The handlers belong to the process, like the libraries, so they answer every app the process runs.
+// The `HaylenNativeApi` that native libraries receive, and the handlers they register with it. The handlers belong to the process, like the libraries, so they answer every app the process runs.
 class NativeApi final {
   public:
     [[nodiscard]] static const HaylenNativeApi& get() noexcept;
 
-    // Runs the handler a native library registered for the method with the parameters and their buffers and returns true, or returns false when none did. Runs on the frame thread.
+    // Runs the handler a native library registered for the method with the parameters and their buffers and returns `true`, or returns `false` when none did. Runs on the frame thread.
     static bool dispatch(std::uint64_t call, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers);
 
-    // Tells the handler of the method that the app gave up the call, and returns false when no native library handles the method.
+    // Tells the handler of the method that the app gave up the call, and returns `false` when no native library handles the method.
     static bool cancel(std::uint64_t call, std::string_view method);
 
     // The ids of the plugins whose native part a library declared, in the order of their ids.
@@ -34,16 +34,16 @@ class NativeApi final {
     // Hands the report of an error that stopped the app to the error handlers of the libraries, in the order they registered. Runs on the frame thread.
     static void reportError(const core::Json& report);
 
-    // Opens the screen with the opener that a library registered for its plugin and name and returns true, or returns false when none did. Runs on the frame thread.
+    // Opens the screen with the opener that a library registered for its plugin and name and returns `true`, or returns `false` when none did. Runs on the frame thread.
     static bool openScreen(const ScreenRequest& request);
 
-    // Tells the library of the screen that the app gave it up, and returns false when no library opens that screen.
+    // Tells the library of the screen that the app gave it up, and returns `false` when no library opens that screen.
     static bool cancelScreen(std::string_view plugin, std::string_view name, std::uint64_t screen);
 
     // Whether native UI of a library covers the app.
     [[nodiscard]] static bool isAppCovered();
 
-    // The window of the app that getWindow hands the libraries, which the runtime sets once the window opened.
+    // The window of the app that `getWindow` hands the libraries, which the runtime sets once the window opened.
     static void setWindow(const HaylenNativeWindow& value);
 
   private:

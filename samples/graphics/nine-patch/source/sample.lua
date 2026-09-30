@@ -34,7 +34,7 @@ function Test:init(info)
     self.camera.anchor = 'topLeft'
 end
 
--- Mounts the frame. `options` holds the `hint`, the `code` shown under the stage, the `controls` of the panel and the id of the control to `focus` for gamepads and TV remotes.
+-- Mounts the frame. The table `options` holds the `hint`, the `code` shown under the stage, the `controls` of the panel and the id of the control to `focus` for gamepads and TV remotes.
 function Test:frame(options)
     window.setBackLeavesApp(false)
     local left = {ui.spacer{id = 'stage', grow = 1}}
@@ -81,7 +81,7 @@ end
 function Test:resize(area)
 end
 
--- Draws the stage background and lets the test draw in stage-local coordinates once the stage has a size. `canvas` holds the options of the world canvas, such as its sort.
+-- Draws the stage background and lets the test draw in stage-local coordinates once the stage has a size. The field `canvas` holds the options of the world canvas, such as its sort.
 function Test:render()
     if self.area then
         graphics2d.beginWorld(self.camera, self.canvas)

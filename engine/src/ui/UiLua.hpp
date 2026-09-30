@@ -21,7 +21,7 @@ namespace haylen::ui {
 class Document;
 struct Event;
 
-// Installs haylen.ui, which mounts documents of components built from Lua tables, and the UiDocument class.
+// Installs `haylen.ui`, which mounts documents of components built from Lua tables, and the `UiDocument` class.
 class UiLua final {
   public:
     static void install(lua_State* L);

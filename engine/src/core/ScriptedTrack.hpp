@@ -13,15 +13,15 @@
 
 namespace haylen::core {
 
-// A tween track that writes fields of a Lua table or object by plain assignment: fields named by a path such as position.x, and pairs of number fields that together hold one Vec2, such as x and y. It holds the target weakly and every read and write runs in one protected call per frame.
+// A tween track that writes fields of a Lua table or object by plain assignment: fields named by a path such as `position.x`, and pairs of number fields that together hold one `Vec2`, such as `x` and `y`. It holds the target weakly and every read and write runs in one protected call per frame.
 class ScriptedTrack final : public TweenTrack {
   public:
     ScriptedTrack(lua_State* L, int object);
 
-    // The parts of a field name such as position.x.
+    // The parts of a field name such as `position.x`.
     using Path = std::vector<std::string>;
 
-    // Adds a value read from and written to one field, or to two number fields that hold a Vec2.
+    // Adds a value read from and written to one field, or to two number fields that hold a `Vec2`.
     void add(const std::vector<std::string>& names, TweenProperty property);
 
     // Reads the current value of the fields from the target at index.

@@ -1,4 +1,4 @@
--- Ray casts without a physics world: against segments, rectangles, circles, polygons and chains of math, through the cells of a grid and the boxes of an AABB tree, with piercing, bounces and fans.
+-- Ray casts without a physics world: against segments, rectangles, circles, polygons and chains of `math`, through the cells of a grid and the boxes of an AABB tree, with piercing, bounces and fans.
 local haylen = require('haylen')
 local graphics2d = require('haylen.graphics2d')
 local input = require('haylen.input')

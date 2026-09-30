@@ -24,7 +24,7 @@ template <> struct Type<text::FontFamily> {
 
 namespace haylen::graphics {
 
-// Installs the Font and FontFamily classes of haylen.graphics and the functions that make families and bitmap fonts.
+// Installs the `Font` and `FontFamily` classes of `haylen.graphics` and the functions that make families and bitmap fonts.
 class FontLua final {
   public:
     static void install(lua_State* L);
@@ -33,7 +33,7 @@ class FontLua final {
     static int newBitmapFont(lua_State* L);
     static int newGridFont(lua_State* L);
 
-    // Reads a FontFamily, or a Font, which becomes the regular face of a family of its own.
+    // Reads a `FontFamily`, or a `Font`, which becomes the regular face of a family of its own.
     [[nodiscard]] static std::shared_ptr<text::FontFamily> readFamily(lua_State* L, int index);
 
   private:

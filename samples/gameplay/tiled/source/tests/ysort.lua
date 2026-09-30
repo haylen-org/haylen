@@ -1,4 +1,4 @@
--- Layers drawn with the ysort option in a canvas that sorts by y, so a hero walks behind and in front of trees, lamps and fences by the y its feet stand on.
+-- Layers drawn with the `ysort` option in a canvas that sorts by y, so a hero walks behind and in front of trees, lamps and fences by the y its feet stand on.
 local haylen = require('haylen')
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')

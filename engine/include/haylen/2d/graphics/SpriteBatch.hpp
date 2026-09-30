@@ -29,7 +29,7 @@ class SpriteBatch final {
     // Sets the number of sprites, filling new ones with the sprite.
     void resize(std::size_t count, const SpriteInstance& sprite = {});
 
-    // Copies the fields of the layout from the values into the sprites from the one at first on, for as many sprites as both hold, which moves every sprite of a large batch in one call. Throws std::out_of_range when first is past the end.
+    // Copies the fields of the layout from the values into the sprites from the one at `first` on, for as many sprites as both hold, which moves every sprite of a large batch in one call. Throws `std::out_of_range` when `first` is past the end.
     void writeFields(std::span<const float> values, const SpriteLayout& layout, std::size_t first = 0);
 
     // Copies the fields of the layout from the sprites into the values, the other way around.

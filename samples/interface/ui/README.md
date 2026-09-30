@@ -4,25 +4,25 @@ Haylen UI is a Lua sample of `haylen.ui`, the retained interface of the engine: 
 
 | Test | What it shows |
 | --- | --- |
-| Containers | `row`, `column`, `grid`, `stack`, `scroll`, `card`, `panel`, `spacer`, `divider`, `tabs`, `formField` with validation and `splitter`. `safeArea` is shown in the `interface/safe-area` sample. |
-| Text | `label` in every font role and theme color, alignment, wrapping and ellipsis, outlines, `pageHeader` with a banner, `sectionTitle`, `emptyState` and `alert` in every tone. |
+| Containers | The components `row`, `column`, `grid`, `stack`, `scroll`, `card`, `panel`, `spacer`, `divider`, `tabs`, `formField` with validation and `splitter`. The component `safeArea` is shown in the `interface/safe-area` sample. |
+| Text | The components `label` in every font role and theme color, alignment, wrapping and ellipsis, outlines, `pageHeader` with a banner, `sectionTitle`, `emptyState` and `alert` in every tone. |
 | Buttons | Every `button` variant with icons, checked and disabled states, `imageButton` with hover and pressed pictures, `chip` that toggles or removes itself and `menuButton`. |
-| Choices | `checkbox`, `toggle` and `radioGroup`, vertical and horizontal, with disabled options. |
-| Text fields | `textField` with every keyboard (`text`, `number`, `decimal`, `phone`, `email`, `url`, `search`) and every return key label, length limits and capitalization, `secretField`, `textArea` and `filterField`. |
-| Pickers | `combo` with placeholders and disabled items, `colorField` with and without opacity, `numberField` and `slider`. |
-| Indicators | `badge`, `statusIndicator`, `busyIndicator`, `progress`, `circularProgress` as a ring and as ability cooldowns, `icon`, `image` with every fit and `avatar`. |
-| Collections | `list` with pictures and captions, a draggable `list` the player reorders, `tree` and `table`. |
+| Choices | The components `checkbox`, `toggle` and `radioGroup`, vertical and horizontal, with disabled options. |
+| Text fields | The components `textField` with every keyboard (`text`, `number`, `decimal`, `phone`, `email`, `url`, `search`) and every return key label, length limits and capitalization, `secretField`, `textArea` and `filterField`. |
+| Pickers | The components `combo` with placeholders and disabled items, `colorField` with and without opacity, `numberField` and `slider`. |
+| Indicators | The components `badge`, `statusIndicator`, `busyIndicator`, `progress`, `circularProgress` as a ring and as ability cooldowns, `icon`, `image` with every fit and `avatar`. |
+| Collections | The components `list` with pictures and captions, a draggable `list` the player reorders, `tree` and `table`. |
 | Settings | A settings screen from `settingsForm`, `settingsRow` and `settingsActions` with save, cancel and defaults. |
-| Overlays | `dialog` with children, dismissible or not, `toast` at the top and bottom of the safe area, tooltips, `popover` and `contextMenu`. |
-| Game controls | `stepper` of numbers and options, `segmentedControl`, `rangeSlider` and `keyCapture` fields that rebind actions of the action map. |
+| Overlays | The components `dialog` with children, dismissible or not, `toast` at the top and bottom of the safe area, tooltips, `popover` and `contextMenu`. |
+| Game controls | The components `stepper` of numbers and options, `segmentedControl`, `rangeSlider` and `keyCapture` fields that rebind actions of the action map. |
 | Windows and pages | A draggable `window` holding an `accordion` with several open sections, an `accordion`, a `carousel` and a horizontal `scroll` that snaps to its cards. |
 | Slot grid | An inventory `slotGrid`, a hotbar in a second document and a draggable chest `list` trading items by drag and drop, with the pointer and by carrying items with keys, gamepads and remotes. |
-| Rich text | `richText` with styles, colors, outlines, shadows, glows, links, hints, inline images and icons, lists, rules, tables, effects, fill alignment and a typewriter dialogue. |
+| Rich text | The component `richText` with styles, colors, outlines, shadows, glows, links, hints, inline images and icons, lists, rules, tables, effects, fill alignment and a typewriter dialogue. |
 | Themes | The built-in `dark` and `light` themes and the `parchment` theme of this sample, loaded from `content/themes/parchment.json`, whose surfaces cut one atlas into nine-slices. |
 | Focus navigation | The nearest control in a direction, explicit neighbours, a focus scope, a wrapping row and the way back, with the bindings of keyboards, gamepads and TV remotes and the state of the focus ring. |
-| UI tweens | `document:transform` animated by `haylen.tween`: an entrance with a stagger, a shake, a fade, a tint and a pulse that never ends. |
+| UI tweens | The method `document:transform` animated by `haylen.tween`: an entrance with a stagger, a shake, a fade, a tint and a pulse that never ends. |
 | Text input | The hidden native field of each platform, the events of the on-screen keyboard, the UI moving above it and the plain keyboard of `window.setKeyboardVisible`. |
-| Touch controls | `touchStick` and `touchButton` driving actions that keys and a gamepad drive too. |
+| Touch controls | The components `touchStick` and `touchButton` driving actions that keys and a gamepad drive too. |
 
 ## Controls
 
@@ -57,4 +57,4 @@ ui/
   tools/                 The generator of the art, which is not part of the package.
 ```
 
-`python3 samples/interface/ui/tools/generate_content.py` draws the theme atlas, the icons and the pictures again and writes the theme file.
+The command `python3 samples/interface/ui/tools/generate_content.py` draws the theme atlas, the icons and the pictures again and writes the theme file.

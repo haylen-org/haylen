@@ -26,7 +26,7 @@ namespace haylen::ui {
 Backend& ImGuiLua::requireFrame(lua_State* L) {
     Backend& backend = lua::Runtime::getEngine(L).getPlugin<plugins::UiPlugin>().getBackend();
     if (!backend.isFrameActive()) {
-        luaL_error(L, "The module haylen.imgui can only be used while a frame is running.");
+        luaL_error(L, "The module \"haylen.imgui\" can only be used while a frame is running.");
     }
     backend.makeCurrent();
     return backend;
@@ -46,7 +46,7 @@ int ImGuiLua::returnChanged(lua_State* L, bool changed, int values) {
     return values + 1;
 }
 
-// Opens a window with beginWindow(name[, {x, y, width, height, closable, noTitleBar, noResize, noMove, autoResize}]) and returns whether it is visible and, for closable windows, whether it is still open.
+// Opens a window with `beginWindow(name[, {x, y, width, height, closable, noTitleBar, noResize, noMove, autoResize}])` and returns whether it is visible and, for closable windows, whether it is still open.
 int ImGuiLua::beginWindow(lua_State* L) {
     (void)requireFrame(L);
     ImGuiWindowFlags flags = ImGuiWindowFlags_None;
@@ -132,7 +132,7 @@ int ImGuiLua::checkbox(lua_State* L) {
     return returnChanged(L, changed, 1);
 }
 
-// Dear ImGui hands the format to printf with the number alone, so it may convert that number once and escape other percent signs.
+// Dear ImGui hands the format to `printf` with the number alone, so it may convert that number once and escape other percent signs.
 const char* ImGuiLua::readNumberFormat(lua_State* L, int index) {
     const std::string_view format = luaL_optstring(L, index, "%.3f");
     int conversions = 0;
@@ -209,7 +209,7 @@ int ImGuiLua::colorEdit(lua_State* L) {
     return returnChanged(L, changed, 1);
 }
 
-// Shows a combo with combo(label, current, items), where current is a 1-based index, and returns whether it changed and the new index.
+// Shows a combo with `combo(label, current, items)`, where `current` is a 1-based index, and returns whether it changed and the new index.
 int ImGuiLua::combo(lua_State* L) {
     (void)requireFrame(L);
     auto current = lua::Stack::read<int>(L, 2) - 1;
@@ -241,7 +241,7 @@ int ImGuiLua::treeNode(lua_State* L) {
 int ImGuiLua::treePop(lua_State* L) {
     (void)requireFrame(L);
     if (ImGui::GetCurrentWindow()->DC.TreeDepth <= 0) {
-        return luaL_error(L, "There is no open tree node for imgui.treePop to close.");
+        return luaL_error(L, "There is no open tree node for \"imgui.treePop\" to close.");
     }
     ImGui::TreePop();
     return 0;
@@ -341,7 +341,7 @@ int ImGuiLua::tableHeadersRow(lua_State* L) {
 int ImGuiLua::tableNextRow(lua_State* L) {
     (void)requireFrame(L);
     if (ImGui::GetCurrentTable() == nullptr) {
-        return luaL_error(L, "There is no open table for imgui.tableNextRow to add a row to.");
+        return luaL_error(L, "There is no open table for \"imgui.tableNextRow\" to add a row to.");
     }
     ImGui::TableNextRow();
     return 0;
@@ -359,7 +359,7 @@ int ImGuiLua::progressBar(lua_State* L) {
     return 0;
 }
 
-// Plots numbers with plotLines(label, values[, overlay, minimum, maximum, width, height]).
+// Plots numbers with `plotLines(label, values[, overlay, minimum, maximum, width, height])`.
 int ImGuiLua::plot(lua_State* L, bool histogram) {
     (void)requireFrame(L);
     const std::vector<float> values = lua::Stack::read<std::vector<float>>(L, 2);
@@ -456,7 +456,7 @@ int ImGuiLua::popId(lua_State* L) {
     return 0;
 }
 
-// Uses a font the UI knows for the next widgets with pushFont(name, size).
+// Uses a font the UI knows for the next widgets with `pushFont(name, size)`.
 int ImGuiLua::pushFont(lua_State* L) {
     Backend& backend = requireFrame(L);
     ImGui::PushFont(backend.getFont(lua::Stack::read<std::string_view>(L, 1)), lua::Stack::read<float>(L, 2));

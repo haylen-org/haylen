@@ -18,7 +18,7 @@
 
 namespace haylen::math {
 
-// Installs haylen.math and the Vec2, Rect, Color, Transform2D, Random, Noise2D, Spline, Spring, ShuffleBag and WeightedChoice classes.
+// Installs `haylen.math` and the `Vec2`, `Rect`, `Color`, `Transform2D`, `Random`, `Noise2D`, `Spline`, `Spring`, `ShuffleBag` and `WeightedChoice` classes.
 class MathLua final {
   public:
     static void install(lua_State* L);

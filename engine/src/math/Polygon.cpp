@@ -189,7 +189,7 @@ class Polygon::Merger final {
         return rotated;
     }
 
-    // Joins the piece that owns from->to with the piece that owns to->from when the union stays convex and small enough.
+    // Joins the piece that owns `from->to` with the piece that owns `to->from` when the union stays convex and small enough.
     void tryMerge(std::uint32_t firstIndex, std::uint32_t secondIndex, std::uint32_t from, std::uint32_t to, std::size_t maxVertices) {
         const std::vector<std::uint32_t> first = rotatedTo(pieces[firstIndex], to);
         const std::vector<std::uint32_t> second = rotatedTo(pieces[secondIndex], from);

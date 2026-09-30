@@ -76,7 +76,7 @@ TEST(ReservedInsetsTest, WidensTheSafeAreaAndPublishesEveryChange) {
     // Each edge takes the device inset or the largest reservation, whichever is larger.
     views.reserveInsets("banner", {.bottom = 100.0F});
     views.reserveInsets("toolbar", {.top = 20.0F, .bottom = 150.0F});
-    EXPECT_EQ(engine.getReservedInsets(), math::Insets{}) << "the engine takes the reservations at the start of a frame";
+    EXPECT_EQ(engine.getReservedInsets(), math::Insets{}) << "The engine takes the reservations at the start of a frame.";
     fixture.frames(1);
     EXPECT_EQ(engine.getReservedInsets(), (math::Insets{.top = 20.0F, .bottom = 150.0F}));
     EXPECT_EQ(engine.getViewport().getSafeRect(), (math::Rect{0.0F, 40.0F, 1920.0F, 890.0F}));

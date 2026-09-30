@@ -20,7 +20,7 @@ std::shared_ptr<VideoStream> PluginStreams::openVideo(std::string_view plugin, s
     const std::scoped_lock lock(mutex);
     if (const auto found = videos.find(key); found != videos.end()) {
         if (found->second->getFormat() != format) {
-            throw std::invalid_argument("The video stream " + key + " is open with another format.");
+            throw std::invalid_argument("The video stream \"" + key + "\" is open with another format.");
         }
         return found->second;
     }
@@ -42,7 +42,7 @@ std::shared_ptr<AudioStream> PluginStreams::openAudio(std::string_view plugin, s
     if (const auto found = audios.find(key); found != audios.end()) {
         const AudioStream& open = *found->second;
         if (open.getSampleRate() != sampleRate || open.getChannels() != channels || open.getFormat() != format) {
-            throw std::invalid_argument("The audio stream " + key + " is open with another sample rate, channel count or format.");
+            throw std::invalid_argument("The audio stream \"" + key + "\" is open with another sample rate, channel count or format.");
         }
         return found->second;
     }

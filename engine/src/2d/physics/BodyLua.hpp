@@ -12,7 +12,7 @@ struct lua_State;
 
 namespace haylen::physics2d {
 
-// Installs the Body class of haylen.physics2d. The data of a body lives in the state table of its world, keyed by the body id.
+// Installs the `Body` class of `haylen.physics2d`. The data of a body lives in the state table of its world, keyed by the body id.
 class BodyLua final {
   public:
     static void install(lua_State* L);

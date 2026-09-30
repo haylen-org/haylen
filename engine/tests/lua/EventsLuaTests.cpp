@@ -40,7 +40,7 @@ TEST(SignalLuaTest, ConnectsWithPriorityOnceOwnersAndDeferral) {
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return table.concat(calls, ' ') .. ' ' .. tostring(hit.blocked)"), "first:5 normal:5 false");
     EXPECT_EQ(fixture.lua("local list = signal.list() return #list .. ' ' .. list[1].name .. ' ' .. list[1].listeners .. ' ' .. list[1].emissions .. ' ' .. list[1].stale"), "1 hit 2 4 0");
-    EXPECT_NE(fixture.lua("hit:connect(function() end, {weak = true})").find("Unknown option 'weak'"), std::string::npos);
+    EXPECT_NE(fixture.lua("hit:connect(function() end, {weak = true})").find("Unknown option \"weak\""), std::string::npos);
     EXPECT_NE(fixture.lua("hit:connect(function() end, {owner = 5})").find("An owner must be a table or a userdata"), std::string::npos);
 
     // A deferred once listener runs its one call at the end of the frame.
@@ -71,7 +71,7 @@ TEST(EventsLuaTest, PublishesAndSubscribesByName) {
     EXPECT_EQ(fixture.lua("return table.concat(calls, ', ', 5)"), "any queued 1, shield late, any late 2");
 
     EXPECT_EQ(fixture.lua("local s = events.topics()[1] return s.name .. ' ' .. s.listeners .. ' ' .. s.emissions"), "damage 2 5");
-    EXPECT_NE(fixture.lua("events.on('x', function() end, {channels = 'a'})").find("Unknown option 'channels'"), std::string::npos);
+    EXPECT_NE(fixture.lua("events.on('x', function() end, {channels = 'a'})").find("Unknown option \"channels\""), std::string::npos);
     EXPECT_NE(fixture.lua("events.on('x', function() end, {filter = 3})").find("error: "), std::string::npos);
     EXPECT_NE(fixture.lua("events.on('boom', function() error('listener broke') end) events.emit('boom')").find("listener broke"), std::string::npos);
 }
@@ -219,9 +219,9 @@ TEST(CoreLuaTest, PausesAndConfiguresTheLifecycle) {
     EXPECT_TRUE(fixture.engine().getLifecycle().pauseOnFocusLoss);
     EXPECT_TRUE(fixture.engine().getLifecycle().pauseOnBackground);
     EXPECT_EQ(fixture.lua("return haylen.config.lifecycle.pauseOnBackground"), "true");
-    EXPECT_NE(fixture.lua("haylen.setLifecycle({pauseOnSleep = true})").find("Unknown option 'pauseOnSleep'"), std::string::npos);
+    EXPECT_NE(fixture.lua("haylen.setLifecycle({pauseOnSleep = true})").find("Unknown option \"pauseOnSleep\""), std::string::npos);
     EXPECT_NE(fixture.lua("scene.push({processMode = 'sometimes'})").find("error: "), std::string::npos);
-    EXPECT_NE(fixture.lua("timer.after(1, function() end, {count = 2})").find("Unknown option 'count'"), std::string::npos);
+    EXPECT_NE(fixture.lua("timer.after(1, function() end, {count = 2})").find("Unknown option \"count\""), std::string::npos);
 }
 
 TEST(CoreLuaTest, TimersAndTweensFollowTheModeOfTheirOwner) {
@@ -283,7 +283,7 @@ TEST(AutoloadTest, LoadsModulesBeforeMainAndRunsTheirCallbacks) {
     EXPECT_EQ(fixture.lua("return music.ticks .. ' ' .. tostring(haylen.autoloads.soundtrack == music)"), "2 true");
     EXPECT_EQ(fixture.lua("return require('state.player-data').coins"), "4");
     EXPECT_NE(fixture.lua("haylen.autoload('soundtrack', 'state.player-data')").find("already exists"), std::string::npos);
-    EXPECT_NE(fixture.lua("haylen.autoload('state.menu-music')").find("is already the autoload 'soundtrack'"), std::string::npos);
+    EXPECT_NE(fixture.lua("haylen.autoload('state.menu-music')").find("is already the autoload \"soundtrack\""), std::string::npos);
     EXPECT_NE(fixture.lua("haylen.autoload('missing.module')").find("missing/module"), std::string::npos);
 
     fixture.runLua("stopLog = require('state.player-data').log");

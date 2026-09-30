@@ -17,10 +17,10 @@
 
 namespace haylen::platform {
 
-// The desktop window of Windows. Desktop points are pixels divided by the scale of the primary monitor, which sizes the window of app.json too. Only a layered window lets clicks through, so passthrough follows the mouse every frame and makes the window transparent to clicks outside the regions, while the app keeps hearing the mouse move. The window procedure of sokol_app gets a procedure in front of it that reports moves and monitor changes and starts drags between frames.
+// The desktop window of Windows. Desktop points are pixels divided by the scale of the primary monitor, which sizes the window of `app.json` too. Only a layered window lets clicks through, so passthrough follows the mouse every frame and makes the window transparent to clicks outside the regions, while the app keeps hearing the mouse move. The window procedure of `sokol_app` gets a procedure in front of it that reports moves and monitor changes and starts drags between frames.
 class WindowsDesktop final {
   public:
-    // Makes the process aware of the DPI of each monitor, as sokol_app makes D3D11 apps when their window opens, so the monitors read before the window exists have the same coordinates as the window.
+    // Makes the process aware of the DPI of each monitor, as `sokol_app` makes D3D11 apps when their window opens, so the monitors read before the window exists have the same coordinates as the window.
     static void initialize();
 
     static void setStyle(const WindowStyle& value);

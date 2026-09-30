@@ -12,7 +12,7 @@ namespace haylen::core {
 // A shape that a tween property follows instead of a straight line between its start and end values. The end value of the property is the destination of jumps, paths and Bézier curves, the strength of shakes and punches, and the hidden value of blinks, which all come back to the start.
 class TweenMotion final {
   public:
-    // Makes the given number of jumps on the way to the end, each rising power units toward negative y, which is up on screen.
+    // Makes the given number of jumps on the way to the end, each rising `power` units toward negative y, which is up on screen.
     [[nodiscard]] static std::shared_ptr<TweenMotion> jump(float power, int jumps);
 
     // Travels through the waypoints at constant speed, starting from the start value and ending at the end value, which must be the last waypoint. Curved paths pass through every waypoint as a Catmull-Rom spline, and closed paths return to the start.
@@ -21,10 +21,10 @@ class TweenMotion final {
     // Follows a quadratic or cubic Bézier curve from the start to the end through one or two control points.
     [[nodiscard]] static std::shared_ptr<TweenMotion> bezier(std::vector<math::Vec2> controls);
 
-    // Shakes around the start value vibrato times with a strength that fades out. Randomness in degrees, from 0 to 180, bends the direction of each shake of a vector, and the random seed makes the pattern repeatable.
+    // Shakes around the start value `vibrato` times with a strength that fades out. Randomness in degrees, from 0 to 180, bends the direction of each shake of a vector, and the random seed makes the pattern repeatable.
     [[nodiscard]] static std::shared_ptr<TweenMotion> shake(int vibrato, float randomness, std::uint32_t randomSeed);
 
-    // Springs toward the offset and back vibrato times, fading out. Elasticity, from 0 to 1, is how far it swings past the start on the way back.
+    // Springs toward the offset and back `vibrato` times, fading out. Elasticity, from 0 to 1, is how far it swings past the start on the way back.
     [[nodiscard]] static std::shared_ptr<TweenMotion> punch(int vibrato, float elasticity);
 
     // Switches between the start and the end value the given number of times and ends on the start value.

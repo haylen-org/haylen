@@ -32,7 +32,7 @@ void Services::shutdown() noexcept {
 
 void Services::reportError(const core::Json&) {}
 
-// The platform loads no native plugins of its own, and native libraries declare theirs through HaylenNativeApi.
+// The platform loads no native plugins of its own, and native libraries declare theirs through `HaylenNativeApi`.
 std::vector<std::string> Services::getNativePlugins() {
     return {};
 }
@@ -120,7 +120,7 @@ TextInput& Services::getTextInput() {
 
 // Linux has no handler registry in the language of the platform, so native libraries and C++ plugins answer the methods of apps.
 void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view, std::span<const std::vector<std::byte>>) {
-    BridgeRelay::resolve(id, false, core::Json{{"message", "No native handler is registered for " + std::string(method) + "."}, {"code", "noHandler"}}.dump());
+    BridgeRelay::resolve(id, false, core::Json{{"message", "No native handler is registered for \"" + std::string(method) + "\"."}, {"code", "noHandler"}}.dump());
 }
 
 // Every call fails while it is made, so no call is ever pending here.
@@ -144,7 +144,7 @@ void Services::cancelDialog(std::uint64_t) {}
 
 // Linux has no screen registry in the language of the platform, so native libraries open the screens of plugins, before the platform is asked.
 void Services::openScreen(const ScreenRequest& request) {
-    ScreenRelay::finish(request.id, false, core::Json{{"message", "No native screen is registered for " + request.plugin + "." + request.screen + "."}, {"code", "noHandler"}}.dump());
+    ScreenRelay::finish(request.id, false, core::Json{{"message", "No native screen is registered for \"" + request.plugin + "." + request.screen + "\"."}, {"code", "noHandler"}}.dump());
 }
 
 void Services::cancelScreen(std::uint64_t) {}

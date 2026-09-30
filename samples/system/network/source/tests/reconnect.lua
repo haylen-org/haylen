@@ -1,4 +1,4 @@
--- Reconnection: a socket opened with the reconnect option connects again on its own after a lost connection or a failed attempt. Each wait is the previous one times the multiplier, from initialDelay up to maxDelay, shortened at random by the jitter, and after maxAttempts failures in a row the socket gives up and reports close. The unreachable server refuses every attempt, so the waits show the whole backoff.
+-- Reconnection: a socket opened with the `reconnect` option connects again on its own after a lost connection or a failed attempt. Each wait is the previous one times the multiplier, from `initialDelay` up to `maxDelay`, shortened at random by the jitter, and after `maxAttempts` failures in a row the socket gives up and reports `close`. The unreachable server refuses every attempt, so the waits show the whole backoff.
 local haylen = require('haylen')
 local json = require('json')
 local net = require('haylen.net')
@@ -79,7 +79,7 @@ function Reconnect:start()
     self:show('url', {text = url})
     self:log('Connecting', url)
     self:on(socket, 'open', function()
-        self:log('open', 'connected, so the count of attempts starts over')
+        self:log('open', 'Connected, so the count of attempts starts over')
     end)
     self:on(socket, 'error', function(message)
         self:log('error', message)

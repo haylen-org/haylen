@@ -13,7 +13,7 @@
 
 namespace haylen::input {
 
-// The keys, mouse buttons, gamepad buttons and gamepad axes that input tracks, with the names bindings and Lua use for them, such as "leftShift", "middle", "south" and "leftX".
+// The keys, mouse buttons, gamepad buttons and gamepad axes that input tracks, with the names bindings and Lua use for them, such as `leftShift`, `middle`, `south` and `leftX`.
 class Controls final {
   public:
     static constexpr std::size_t kKeyCount = 349;

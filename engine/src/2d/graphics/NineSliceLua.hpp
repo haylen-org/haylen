@@ -4,7 +4,7 @@ struct lua_State;
 
 namespace haylen::graphics2d {
 
-// Installs the NineSlice class of haylen.graphics2d.
+// Installs the `NineSlice` class of `haylen.graphics2d`.
 class NineSliceLua final {
   public:
     static void install(lua_State* L);

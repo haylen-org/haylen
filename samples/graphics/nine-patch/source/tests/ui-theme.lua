@@ -1,4 +1,4 @@
--- UI theme surfaces: a theme whose panels, banner, buttons, tracks, fills and knobs are nine-slice images. The gray images take the color of each component through colorize, so one fill image paints every tone. The theme applies to the whole screen while the test runs.
+-- UI theme surfaces: a theme whose panels, banner, buttons, tracks, fills and knobs are nine-slice images. The gray images take the color of each component through `colorize`, so one fill image paints every tone. The theme applies to the whole screen while the test runs.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -14,9 +14,9 @@ local kCode = [[
 ui.setTheme(ui.addTheme({name = 'workshop', surfaces = {
     button = {image = 'ui/button.png', slice = 16, padding = {0, 0, 4, 0}, colorize = true},
     track = {image = 'ui/track.png', slice = 11, padding = 5},  trackFill = {image = 'ui/fill.png', slice = 7, colorize = true},
-}}, 'light'))  -- one gray fill image becomes the accent, success, warning and danger bars]]
+}}, 'light'))  -- One gray fill image becomes the accent, success, warning and danger bars.]]
 
--- The theme document, with colorize on or off for the surfaces that take the color of their component.
+-- The theme document, with `colorize` on or off for the surfaces that take the color of their component.
 local function theme(colorize)
     local button = function(image, padding) return {image = image, slice = 16, padding = padding, colorize = colorize} end
     return {
@@ -48,7 +48,7 @@ function UiTheme:enter()
     self.previousTheme = ui.theme()
     ui.setTheme(ui.addTheme(theme(true), 'light'))
     self:frame({
-        hint = 'Turn colorize off to see the gray images as they are.',
+        hint = 'Turn "colorize" off to see the gray images as they are.',
         code = kCode,
         controls = {
             ui.toggle{id = 'colorize', text = 'Colorize', checked = true, onChange = function(event) ui.addTheme(theme(event.checked), 'light') end},
@@ -105,7 +105,7 @@ function UiTheme:render()
     UiTheme.super.render(self)
 end
 
--- Draws the fill image of the theme once per tone, multiplied by the color of the tone as colorize does.
+-- Draws the fill image of the theme once per tone, multiplied by the color of the tone as `colorize` does.
 function UiTheme:draw(area)
     local left = kDemoWidth + 70
     local fill, button = ui.themeSurface('trackFill'), ui.themeSurface('button')

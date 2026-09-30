@@ -1,4 +1,4 @@
--- Diagnostics: live tables of events.topics() and signal.list() while the test adds listeners, emits, and drops the owner of two listeners to compare the counts before and after the collection.
+-- Diagnostics: live tables of `events.topics()` and `signal.list()` while the test adds listeners, emits, and drops the owner of two listeners to compare the counts before and after the collection.
 local debugging = require('haylen.debug')
 local events = require('haylen.events')
 local graphics2d = require('haylen.graphics2d')
@@ -13,7 +13,7 @@ local Diagnostics = haylen.class('Diagnostics', sample.Test)
 local kCode = [[
 for _, topic in ipairs(events.topics()) do print(topic.name, topic.listeners, topic.emissions, topic.stale) end
 for _, entry in ipairs(signal.list()) do print(entry.name, entry.listeners, entry.emissions, entry.stale) end
-debug.setStatsMode('full')  -- the overlay lists the same counts and warns about dead owners]]
+debug.setStatsMode('full')  -- The overlay lists the same counts and warns about dead owners.]]
 
 -- Returns the row named `name`, or an empty row.
 local function find(rows, name)
@@ -70,7 +70,7 @@ function Diagnostics:dropOwner()
     owner = nil
     collectgarbage()
     local freed = find(events.topics(), 'demoPing')
-    self.note = string.format('demoPing: %d listeners with the owner, %d right after the collection, %d of them stale.', held, freed.listeners, freed.stale)
+    self.note = string.format('Event "demoPing": %d listeners with the owner, %d right after the collection, %d of them stale.', held, freed.listeners, freed.stale)
 end
 
 function Diagnostics:update(dt)

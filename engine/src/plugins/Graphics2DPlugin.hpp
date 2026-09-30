@@ -4,7 +4,7 @@
 
 namespace haylen::plugins {
 
-// Installs haylen.graphics with textures, render targets and fonts, haylen.graphics2d with the 2D renderer and camera, and haylen.lighting2d.
+// Installs `haylen.graphics` with textures, render targets and fonts, `haylen.graphics2d` with the 2D renderer and camera, and `haylen.lighting2d`.
 class Graphics2DPlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {

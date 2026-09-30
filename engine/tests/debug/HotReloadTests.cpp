@@ -58,7 +58,7 @@ TEST_F(PackageWatcherTest, ReportsAddedChangedAndRemovedFiles) {
     io::PackageWatcher watcher(directory.getPath());
     EXPECT_TRUE(watcher.scan().empty());
 
-    // Only app.json, source, content and the manifests and Lua modules of plugins belong to the package, so files next to them and the native parts of plugins never count.
+    // Only `app.json`, `source`, `content` and the manifests and Lua modules of plugins belong to the package, so files next to them and the native parts of plugins never count.
     directory.write("content/b.json", "[]");
     directory.write("README.md", "# Notes");
     directory.write("platform/android/build/other.txt", "");
@@ -131,7 +131,7 @@ TEST_F(HotReloadPluginTest, RestartsForScriptsAndReloadsAssets) {
         return condition();
     };
     // clang-format on
-    EXPECT_TRUE(runUntil([&] { return logged("for changes."); })) << "the first scan takes the snapshot that changes count from";
+    EXPECT_TRUE(runUntil([&] { return logged("for changes."); })) << "The first scan takes the snapshot that changes count from.";
     directory.write("hot/content/tile.png", toText(test::TestFiles::pngImage(6, 6, 0xFFFFFFFFU)));
     touch(directory.getPath() / "hot/content/tile.png", 5);
     EXPECT_TRUE(runUntil([&] { return tile.getWidth() == 6; }));
@@ -139,7 +139,7 @@ TEST_F(HotReloadPluginTest, RestartsForScriptsAndReloadsAssets) {
 
     directory.write("hot/content/tile.png", "half written");
     touch(directory.getPath() / "hot/content/tile.png", 10);
-    EXPECT_TRUE(runUntil([&] { return logged("tile.png could not be reloaded yet"); }));
+    EXPECT_TRUE(runUntil([&] { return logged("tile.png\" could not be reloaded yet"); }));
     EXPECT_EQ(engine.getError(), nullptr);
     EXPECT_EQ(tile.getWidth(), 6);
 

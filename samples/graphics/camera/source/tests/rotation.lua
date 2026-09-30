@@ -1,4 +1,4 @@
--- Rotation: the view turns around its center, rotation smoothing eases the drawn angle the short way around, and ignoreRotation keeps the view upright whatever the rotation and the shake.
+-- Rotation: the view turns around its center, rotation smoothing eases the drawn angle the short way around, and `ignoreRotation` keeps the view upright whatever the rotation and the shake.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')

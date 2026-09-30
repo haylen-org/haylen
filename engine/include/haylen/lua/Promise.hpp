@@ -18,7 +18,7 @@ class Engine;
 
 namespace haylen::lua {
 
-// A result that Lua waits for with promise:await() inside a coroutine. Native code creates it, returns it to Lua with push and settles it once. It may be settled from any thread while the engine runs, and the waiting coroutine resumes on the frame thread.
+// A result that Lua waits for with `promise:await()` inside a coroutine. Native code creates it, returns it to Lua with `push` and settles it once. It may be settled from any thread while the engine runs, and the waiting coroutine resumes on the frame thread.
 class Promise final {
   public:
     explicit Promise(core::Engine& engine);

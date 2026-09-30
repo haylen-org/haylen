@@ -14,8 +14,8 @@
         "score": "{name} ने दिन {day} पर {score} अंक बनाए।",
         "accuracy": "सटीकता: {ratio}",
         "sound": "ध्वनि: {sound}",
-        "braces": "प्लेसहोल्डर दिखाने के लिए {{name}} लिखें।",
-        "missing": "अनजान प्लेसहोल्डर वैसे ही रहते हैं: {treasure}।"
+        "braces": "प्लेसहोल्डर दिखाने के लिए \"{{name}}\" लिखें।",
+        "missing": "अनजान प्लेसहोल्डर वैसे ही रहते हैं: \"{treasure}\"।"
     },
     "items": {
         "apples": {"zero": "कोई सेब नहीं", "one": "{count} सेब", "other": "{count} सेब"},

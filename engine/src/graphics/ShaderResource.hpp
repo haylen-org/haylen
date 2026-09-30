@@ -44,10 +44,10 @@ struct ShaderResource {
     ShaderResource& operator=(const ShaderResource&) = delete;
     ~ShaderResource();
 
-    // Returns the GPU program of the active backend, creating it on first use. Throws std::invalid_argument when the shader has no such program and std::runtime_error when the shader pool is full or the backend rejects the program.
+    // Returns the GPU program of the active backend, creating it on first use. Throws `std::invalid_argument` when the shader has no such program and `std::runtime_error` when the shader pool is full or the backend rejects the program.
     [[nodiscard]] const Program& getProgram(std::string_view program);
 
-    // Checks the reflection and the program of every backend against each other and against the binding limits of the GPU, so a malformed file fails when it is read. Throws std::invalid_argument.
+    // Checks the reflection and the program of every backend against each other and against the binding limits of the GPU, so a malformed file fails when it is read. Throws `std::invalid_argument`.
     void validate() const;
 
     // Hands the GPU programs and pipelines to the graveyard, so the next draws create them again.

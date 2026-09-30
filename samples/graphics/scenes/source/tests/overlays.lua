@@ -1,4 +1,4 @@
--- Transparent overlays: a scene with transparent = true lets the scenes below keep rendering, while only the top scene updates and receives input.
+-- Transparent overlays: a scene with `transparent = true` lets the scenes below keep rendering, while only the top scene updates and receives input.
 local haylen = require('haylen')
 local graphics2d = require('haylen.graphics2d')
 local input = require('haylen.input')
@@ -9,7 +9,7 @@ local sample = require('sample')
 
 local Overlays = haylen.class('Overlays', sample.Test)
 
-Overlays.hints = 'Push overlays on the world. The balls move in update and stop under an overlay, while the wheel turns in render and keeps turning. Escape or the B button pops the top overlay.'
+Overlays.hints = 'Push overlays on the world. The balls move in "update" and stop under an overlay, while the wheel turns in "render" and keeps turning. Escape or the B button pops the top overlay.'
 
 -- An overlay that dims what is below and shows a panel, cascaded by its depth.
 local Overlay = haylen.class('Overlay', scene.Scene)

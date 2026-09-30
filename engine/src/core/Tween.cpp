@@ -291,7 +291,7 @@ void Tween::end(bool justCompleted) {
         parent->remove(*this);
     }
 
-    // The finished signal always fires unless it just reported the completion, so a script waiting on it resumes even when the kill callback fails.
+    // The finished signal always fires unless it just reported the completion, so a script waiting on it resumes even when the `kill` callback fails.
     std::exception_ptr failure;
     try {
         if (callbacks.kill) {

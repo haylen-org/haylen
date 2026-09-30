@@ -15,7 +15,7 @@ namespace haylen::physics2d {
 
 class World;
 
-// A liquid made of small circle bodies that collide with the world, held together and spread apart by the double density relaxation of particle fluids. World::readTransforms reads the positions of its bodies in bulk for metaball rendering. The fluid owns its particle bodies and must go before its world, and a particle whose body is destroyed elsewhere, such as in a contact callback, leaves the fluid the next time it is updated, counted or read.
+// A liquid made of small circle bodies that collide with the world, held together and spread apart by the double density relaxation of particle fluids. The method `World::readTransforms` reads the positions of its bodies in bulk for metaball rendering. The fluid owns its particle bodies and must go before its world, and a particle whose body is destroyed elsewhere, such as in a contact callback, leaves the fluid the next time it is updated, counted or read.
 class Fluid final {
   public:
     // Particles interact within the smoothing radius. Pressure pulls them toward the rest density, near pressure keeps them from clumping and viscosity evens out their speeds. Stiffness values are tuned for 60 steps per second and scale with the step.
@@ -33,22 +33,22 @@ class Fluid final {
         CollisionFilter filter{};
     };
 
-    // Throws std::invalid_argument when the radius is not positive, the smoothing radius is not larger than it or the material is invalid.
+    // Throws `std::invalid_argument` when the radius is not positive, the smoothing radius is not larger than it or the material is invalid.
     Fluid(World& owner, const Options& settings);
     ~Fluid();
 
     Fluid(const Fluid&) = delete;
     Fluid& operator=(const Fluid&) = delete;
 
-    // Adds a particle and returns false when the fluid is full.
+    // Adds a particle and returns `false` when the fluid is full.
     bool spawn(math::Vec2 position, math::Vec2 velocity = {});
     // Fills the area with particles two radii apart and returns how many it added.
     std::size_t fill(const math::Rect& area, math::Vec2 velocity = {});
-    // Removes a particle, moving the last particle into its place. Throws std::out_of_range for an unknown index.
+    // Removes a particle, moving the last particle into its place. Throws `std::out_of_range` for an unknown index.
     void remove(std::size_t index);
     void clear();
 
-    // Applies the fluid forces for the next world step, so call it right before World::step with the same time.
+    // Applies the fluid forces for the next world step, so call it right before `World::step` with the same time.
     void update(float deltaSeconds);
 
     [[nodiscard]] std::size_t size();

@@ -1,4 +1,4 @@
--- Ray casts against a map without a physics world: map:raycastTiles walks the cells of the walls layer and map:raycastObjects hits the shapes of the obstacles layer, and the nearer hit stops the ray.
+-- Ray casts against a map without a physics world: `map:raycastTiles` walks the cells of the walls layer and `map:raycastObjects` hits the shapes of the obstacles layer, and the nearer hit stops the ray.
 local haylen = require('haylen')
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')

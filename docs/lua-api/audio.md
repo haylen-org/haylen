@@ -8,7 +8,7 @@ local audio = require('haylen.audio')
 
 ## Sounds and voices
 
-Sounds are assets loaded through [haylen.assets](assets.md) from WAV, Ogg Vorbis, MP3 and FLAC files. A sound is decoded into memory by default, which suits short effects. The `stream` option keeps the encoded file in memory and decodes it while it plays, which suits long music.
+Sounds are assets loaded through [`haylen.assets`](assets.md) from WAV, Ogg Vorbis, MP3 and FLAC files. A sound is decoded into memory by default, which suits short effects. The `stream` option keeps the encoded file in memory and decodes it while it plays, which suits long music.
 
 Every call to `audio.play()` starts a new voice and returns its id, an integer, and `audio.playMusic()` returns the id of the voice of the music track. The same sound can play on many voices at once, and each voice has its own volume, pitch, pan, position and playback cursor. Calls with the id of a voice that already finished do nothing, so an app never has to check a voice before stopping it. At most 128 voices play at once, and a new voice stops the oldest voice that is not music when the limit is reached.
 
@@ -27,9 +27,9 @@ audio.playMusic(theme)
 
 Every voice plays through a bus. Buses form a tree whose root, `master`, feeds the output. The buses `music`, `sfx`, `ui` and `ambience` exist from the start as children of `master`. Voices use `sfx` and music uses `music` unless the options name another bus. The volume of a voice is multiplied by the volume of its bus and of every bus above it.
 
-Every bus has a process mode that decides whether its voices play while the game is paused, as [haylen.setPaused](haylen.md) pauses it. `music` and `ui` start as `'always'`, `sfx` and `ambience` as `'pausable'`, and `master` and custom buses as `'inherit'`, which takes the mode of the parent bus and counts as `'pausable'` at `master`. A voice paused by the game keeps its cursor and resumes where it stopped.
+Every bus has a process mode that decides whether its voices play while the game is paused, as [`haylen.setPaused`](haylen.md) pauses it. The buses `music` and `ui` start as `'always'`, `sfx` and `ambience` as `'pausable'`, and `master` and custom buses as `'inherit'`, which takes the mode of the parent bus and counts as `'pausable'` at `master`. A voice paused by the game keeps its cursor and resumes where it stopped.
 
-Sounds also come from bytes in memory with [`audio.newSound`](#audionewsoundbytes-options), such as the audio a plugin returns from native code, and the audio streams of plugins play as voices, as [haylen.platform](platform.md#audio-streams) describes.
+Sounds also come from bytes in memory with [`audio.newSound`](#audionewsoundbytes-options), such as the audio a plugin returns from native code, and the audio streams of plugins play as voices, as [`haylen.platform`](platform.md#audio-streams) describes.
 
 ## Functions
 
@@ -40,7 +40,7 @@ Creates a `haylen.Sound` from `bytes`, a string with the contents of a WAV, Ogg 
 | Option | Type | Meaning |
 | --- | --- | --- |
 | `stream` | boolean | Keeps a file encoded and decodes it while it plays, like the `stream` option of assets. It is `false` by default, and raw samples, which are decoded already, raise `Raw samples are decoded already, so they cannot stream.`. |
-| `format` | string | `'float32'` for 32-bit floats from -1 to 1, or `'int16'` for 16-bit integers, which become floats. Any other format raises `The format of raw samples is 'float32' or 'int16', not '<format>'.`. |
+| `format` | string | Either `'float32'` for 32-bit floats from -1 to 1, or `'int16'` for 16-bit integers, which become floats. Any other format raises `The format of raw samples is "float32" or "int16", not "<format>".`. |
 | `sampleRate` | integer | The sample rate of raw samples in hertz, which they need. |
 | `channels` | integer | The channels of raw samples, which they need. |
 
@@ -70,7 +70,7 @@ end)
 
 ### audio.play(sound, options)
 
-Starts a voice for the sound and returns its id. The options table is optional, and unknown keys raise `Unknown option '<key>'.`.
+Starts a voice for the sound and returns its id. The options table is optional, and unknown keys raise `Unknown option "<key>".`.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -83,10 +83,10 @@ Starts a voice for the sound and returns its id. The options table is optional, 
 | `fadeIn` | number | `0` | Seconds to fade in from silence. |
 | `startAt` | number | `0` | Seconds into the sound where playback starts. |
 | `x`, `y` | number | none | World position of the voice. Giving either one makes the voice positional, and the missing one defaults to 0. |
-| `processMode` | string | `'inherit'` | `'inherit'`, `'pausable'`, `'whenPaused'`, `'always'` or `'disabled'`. `'inherit'` takes the mode of the bus. |
+| `processMode` | string | `'inherit'` | One of `'inherit'`, `'pausable'`, `'whenPaused'`, `'always'` or `'disabled'`. The mode `'inherit'` takes the mode of the bus. |
 | `effects` | table | none | A list of effects from `audio.newEffect` that process the voice in order before its bus. |
 
-An unknown bus raises `The audio bus '<name>' does not exist.`, a bad variation raises `A pitch variation must be at least 0 and smaller than the pitch.`, and an `effects` value that is not a list of effects raises `The option 'effects' must be a list of audio effects.`. Numbers must be finite, so `0 / 0` or `math.huge` for `volume`, `pan`, `fadeIn`, `startAt`, `x` or `y` raise `Audio needs a finite volume.`, `Audio needs a finite pan.`, `Audio needs a finite fade-in.`, `Audio needs a finite start time.` or `Audio needs a finite position.`, and a `pitch` that is not a finite number above 0 raises `Audio needs a finite pitch above 0.`. A call that raises an error stops no voice, even when every voice is busy.
+An unknown bus raises `The audio bus "<name>" does not exist.`, a bad variation raises `A pitch variation must be at least 0 and smaller than the pitch.`, and an `effects` value that is not a list of effects raises `The option "effects" must be a list of audio effects.`. Numbers must be finite, so `0 / 0` or `math.huge` for `volume`, `pan`, `fadeIn`, `startAt`, `x` or `y` raise `Audio needs a finite volume.`, `Audio needs a finite pan.`, `Audio needs a finite fade-in.`, `Audio needs a finite start time.` or `Audio needs a finite position.`, and a `pitch` that is not a finite number above 0 raises `Audio needs a finite pitch above 0.`. A call that raises an error stops no voice, even when every voice is busy.
 
 ```lua
 local assets = require('haylen.assets')
@@ -141,7 +141,7 @@ audio.resume(rain)
 
 ### audio.paused(voice)
 
-Returns true while the app holds the voice paused with `audio.pause`. The game pause and `audio.pauseAll` do not count, since they hold the voice for reasons of their own. A finished voice returns false.
+Returns `true` while the app holds the voice paused with `audio.pause`. The game pause and `audio.pauseAll` do not count, since they hold the voice for reasons of their own. A finished voice returns `false`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -259,7 +259,7 @@ scene.push({
 
 ### audio.active(voice)
 
-Returns true while the voice plays or is paused, and false once it finished or was stopped, even while `audio.stop` still fades it out.
+Returns `true` while the voice plays or is paused, and `false` once it finished or was stopped, even while `audio.stop` still fades it out.
 
 ```lua
 local assets = require('haylen.assets')
@@ -340,7 +340,7 @@ print(audio.paused(radio), audio.paused(rain))
 
 ### audio.interrupted()
 
-Returns true while the system holds the audio, such as during a phone call, an alarm or Siri, or while another Android app has the audio focus. The engine pauses every voice for the interruption and publishes the [audio events](#events). An interruption that ends while the system still refuses the audio ends all the same, and the app goes on without an output, as `audio.outputAvailable()` reports.
+Returns `true` while the system holds the audio, such as during a phone call, an alarm or Siri, or while another Android app has the audio focus. The engine pauses every voice for the interruption and publishes the [audio events](#events). An interruption that ends while the system still refuses the audio ends all the same, and the app goes on without an output, as `audio.outputAvailable()` reports.
 
 ```lua
 local audio = require('haylen.audio')
@@ -357,11 +357,11 @@ scene.push({
 
 ## Effects
 
-Effects process the sound of a bus or of a voice, in the order they were added. `audio.newEffect` creates them as [Filter](#filter), [Delay](#delay) and [Reverb](#reverb) values whose parameters are properties, which change at any time and which tweens animate. An effect processes one bus or one voice at a time, and a voice lets its effects ring out after it ends before they are free again. An effect that moves to another bus or voice starts there without the echoes or reverb it held before.
+Effects process the sound of a bus or of a voice, in the order they were added. The function `audio.newEffect` creates them as [`Filter`](#filter), [`Delay`](#delay) and [`Reverb`](#reverb) values whose parameters are properties, which change at any time and which tweens animate. An effect processes one bus or one voice at a time, and a voice lets its effects ring out after it ends before they are free again. An effect that moves to another bus or voice starts there without the echoes or reverb it held before.
 
 ### audio.newEffect(kind, options)
 
-Creates an effect. `kind` is one of `'lowpass'`, `'highpass'`, `'bandpass'`, `'notch'`, `'peak'`, `'lowShelf'`, `'highShelf'`, `'delay'` and `'reverb'`, and the options table is optional. An unknown kind raises `The audio effect must be lowpass, highpass, bandpass, notch, peak, lowShelf, highShelf, delay or reverb, not '<kind>'.`, unknown options raise `Unknown option '<key>'.`, and values out of range raise the errors of the property they set.
+Creates an effect. The argument `kind` is one of `'lowpass'`, `'highpass'`, `'bandpass'`, `'notch'`, `'peak'`, `'lowShelf'`, `'highShelf'`, `'delay'` and `'reverb'`, and the options table is optional. An unknown kind raises `The audio effect must be "lowpass", "highpass", "bandpass", "notch", "peak", "lowShelf", "highShelf", "delay" or "reverb", not "<kind>".`, unknown options raise `Unknown option "<key>".`, and values out of range raise the errors of the property they set.
 
 | Kind | Options |
 | --- | --- |
@@ -460,7 +460,7 @@ One music track plays at a time on its own voice. When the voice limit is reache
 
 ### audio.playMusic(sound, options)
 
-Starts a music track, crossfades from the previous one and returns the voice id of the track. The voice works with every voice function, so `audio.pause` and `audio.resume` pause the music alone, and `audio.setVolume`, `audio.addEffect` and `audio.stop` reach the track. When the requested track is already playing or paused, it keeps its voice, which the call returns, and only its volume changes. A paused track that the next track replaces stops without sounding again, and the next track plays. A track that cannot play, such as one for an unknown bus, raises the errors of [audio.play](#audioplaysound-options) and leaves the current track playing. The options table is optional, and unknown keys raise `Unknown option '<key>'.`.
+Starts a music track, crossfades from the previous one and returns the voice id of the track. The voice works with every voice function, so `audio.pause` and `audio.resume` pause the music alone, and `audio.setVolume`, `audio.addEffect` and `audio.stop` reach the track. When the requested track is already playing or paused, it keeps its voice, which the call returns, and only its volume changes. A paused track that the next track replaces stops without sounding again, and the next track plays. A track that cannot play, such as one for an unknown bus, raises the errors of [`audio.play`](#audioplaysound-options) and leaves the current track playing. The options table is optional, and unknown keys raise `Unknown option "<key>".`.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -513,7 +513,7 @@ end
 
 ### audio.createBus(name, parent)
 
-Creates a bus under `parent`, which defaults to `'master'`. A name that is empty or already used raises `An audio bus needs a non-empty name that no other bus uses, not '<name>'.`, and an unknown parent raises `The audio bus '<parent>' does not exist.`
+Creates a bus under `parent`, which defaults to `'master'`. A name that is empty or already used raises `An audio bus needs a non-empty name that no other bus uses, not "<name>".`, and an unknown parent raises `The audio bus "<parent>" does not exist.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -600,7 +600,7 @@ for _, bus in ipairs(audio.buses()) do
 end
 ```
 
-Bus volumes and mute states are saved and restored with `preferences.capture()` and `preferences.apply()` from [haylen.preferences](preferences.md).
+Bus volumes and mute states are saved and restored with `preferences.capture()` and `preferences.apply()` from [`haylen.preferences`](preferences.md).
 
 ### audio.busStats()
 
@@ -657,7 +657,7 @@ print(x, y)
 
 ### audio.followCamera(camera)
 
-Moves the listener to the position of a [Camera](graphics2d.md#camera) plus its offset on every frame, without its shake, and keeps the camera alive while it is followed. `audio.followCamera(nil)` stops following and leaves the listener where it is. A value that is not a camera raises a bad argument error with `haylen.Camera expected`.
+Moves the listener to the position of a [`Camera`](graphics2d.md#camera) plus its offset on every frame, without its shake, and keeps the camera alive while it is followed. The call `audio.followCamera(nil)` stops following and leaves the listener where it is. A value that is not a camera raises a bad argument error with `haylen.Camera expected`.
 
 ```lua
 local audio = require('haylen.audio')
@@ -680,11 +680,11 @@ scene.push({
 
 ### audio.setSpatialization(options)
 
-Changes how positional voices sound. It changes the fields it names and keeps the others, and unknown fields raise `Unknown option '<key>'.`.
+Changes how positional voices sound. It changes the fields it names and keeps the others, and unknown fields raise `Unknown option "<key>".`.
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `model` | string | `'linear'` | `'linear'`, `'inverse'` or `'exponential'`, the fade models of OpenAL. |
+| `model` | string | `'linear'` | One of `'linear'`, `'inverse'` or `'exponential'`, the fade models of OpenAL. |
 | `minDistance` | number | `100` | Within this distance a voice plays at full volume. |
 | `maxDistance` | number | `1500` | The distance where fading stops. A linear fade reaches silence there with a rolloff of 1. |
 | `rolloff` | number | `1` | How fast the volume falls between the two distances. |
@@ -736,7 +736,7 @@ print(audio.channels())
 
 ### audio.hasDevice()
 
-Returns true when the mixer plays in real time for an audio device, which is the case in the player and in every app, even while the device is unavailable. The headless engine of tests and tools mixes without a device and returns false.
+Returns `true` when the mixer plays in real time for an audio device, which is the case in the player and in every app, even while the device is unavailable. The headless engine of tests and tools mixes without a device and returns `false`.
 
 ```lua
 local audio = require('haylen.audio')
@@ -748,7 +748,7 @@ end
 
 ### audio.outputAvailable()
 
-Returns true while the mix reaches an audio device. It returns false while the system refuses the device, such as on a computer without one, while another app holds the iOS audio session, or on a web page served over plain http, where browsers offer no `AudioWorklet`, and in the headless engine. The app runs all the same: voices, music, fades and positional audio go on in real time without sound, the log writes one warning with the reason when the output becomes unavailable, and the engine tries to open it again whenever the app becomes active or an interruption ends.
+Returns `true` while the mix reaches an audio device. It returns `false` while the system refuses the device, such as on a computer without one, while another app holds the iOS audio session, or on a web page served over plain http, where browsers offer no `AudioWorklet`, and in the headless engine. The app runs all the same: voices, music, fades and positional audio go on in real time without sound, the log writes one warning with the reason when the output becomes unavailable, and the engine tries to open it again whenever the app becomes active or an interruption ends.
 
 ```lua
 local audio = require('haylen.audio')
@@ -764,7 +764,7 @@ The engine pauses the output while the app is suspended and resumes it afterward
 
 ### Sound
 
-`assets.load()` and `assets.loadAsync()` return `haylen.Sound` userdata for sound files, and `audio.newSound()` for bytes in memory. Two handles of the same loaded sound compare equal with `==`. Every property is read-only.
+The functions `assets.load()` and `assets.loadAsync()` return `haylen.Sound` userdata for sound files, and `audio.newSound()` for bytes in memory. Two handles of the same loaded sound compare equal with `==`. Every property is read-only.
 
 | Property | Type | Meaning |
 | --- | --- | --- |
@@ -772,7 +772,7 @@ The engine pauses the output while the app is suspended and resumes it afterward
 | `channels` | integer | Channels of the file, 1 for mono and 2 for stereo. |
 | `sampleRate` | integer | Sample rate of the file in hertz. |
 | `frameCount` | integer | Length in sample frames. |
-| `streamed` | boolean | True when the sound was loaded with the `stream` option. |
+| `streamed` | boolean | The value is `true` when the sound was loaded with the `stream` option. |
 
 ```lua
 local assets = require('haylen.assets')
@@ -783,7 +783,7 @@ print(hit.duration, hit.channels, hit.sampleRate, hit.frameCount, hit.streamed)
 
 ### Filter
 
-`haylen.Filter` is a second-order filter from `audio.newEffect` with a filter kind. Its parameters are read-write properties that tweens animate.
+The type `haylen.Filter` is a second-order filter from `audio.newEffect` with a filter kind. Its parameters are read-write properties that tweens animate.
 
 | Property | Type | Meaning |
 | --- | --- | --- |
@@ -805,7 +805,7 @@ tween.to(sweep, 2, {cutoff = 3000}, {repeatCount = -1, loopMode = 'yoyo'})
 
 ### Delay
 
-`haylen.Delay` is an echo from `audio.newEffect('delay')`.
+The type `haylen.Delay` is an echo from `audio.newEffect('delay')`.
 
 | Property | Type | Meaning |
 | --- | --- | --- |
@@ -832,7 +832,7 @@ print(echo.tail)
 
 ### Reverb
 
-`haylen.Reverb` is a Freeverb room from `audio.newEffect('reverb')`. Every parameter lies between 0 and 1, and values outside raise `A reverb <parameter> must be between 0 and 1.`.
+The type `haylen.Reverb` is a Freeverb room from `audio.newEffect('reverb')`. Every parameter lies between 0 and 1, and values outside raise `A reverb <parameter> must be between 0 and 1.`.
 
 | Property | Type | Meaning |
 | --- | --- | --- |
@@ -857,11 +857,11 @@ tween.to(room, 1.5, {roomSize = 0.9, wet = 0.45, damping = 0.2})
 
 ## Events
 
-The engine publishes these events on [haylen.events](events.md) for audio.
+The engine publishes these events on [`haylen.events`](events.md) for audio.
 
 | Event | When |
 | --- | --- |
-| `audioInterrupted` | The system took the audio: a phone call, an alarm, Siri or another Android app with the audio focus. Every voice is paused and `audio.interrupted()` returns true. |
+| `audioInterrupted` | The system took the audio: a phone call, an alarm, Siri or another Android app with the audio focus. Every voice is paused and `audio.interrupted()` returns `true`. |
 | `audioResumed` | The interruption ended while the app is active, or the app became active after it ended. The voices resume, and the audio session is active again unless the system still refuses the audio, which `audio.outputAvailable()` tells. |
 | `audioRouteChanged` | The output moved to another device, such as headphones that were unplugged. |
 
@@ -882,31 +882,31 @@ end)
 
 | Message | Cause |
 | --- | --- |
-| `Unknown option '<key>'.` | An options table has a key the call does not accept. |
-| `Audio data is not a supported WAV, FLAC, MP3 or Ogg Vorbis file.` | `audio.newSound()` received bytes that are no sound file. |
-| `Raw audio needs a sample rate and channels.` | `audio.newSound()` received raw samples without a `sampleRate` or `channels`. |
-| `The audio bus '<name>' does not exist.` | A call names a bus that does not exist. |
-| `An audio bus needs a non-empty name that no other bus uses, not '<name>'.` | `audio.createBus()` received an empty or existing name. |
-| `A pitch variation must be at least 0 and smaller than the pitch.` | `audio.play()` received a bad `pitchVariation`. |
-| `Audio needs a finite volume.` | `audio.play()` or `audio.setVolume()` received a volume that is not finite, such as `0 / 0` or `math.huge`. |
-| `Audio needs a finite pitch above 0.` | `audio.play()` or `audio.setPitch()` received a pitch of 0 or less or one that is not finite. |
-| `Audio needs a finite pan.` | `audio.play()` or `audio.setPan()` received a pan that is not finite. |
-| `Audio needs a finite fade-in.` | `audio.play()` received a `fadeIn` that is not finite. |
-| `Audio needs a finite start time.` | `audio.play()` received a `startAt` that is not finite. |
-| `Audio needs a finite position.` | `audio.play()`, `audio.setPosition()` or `audio.setListener()` received a coordinate that is not finite. |
-| `Audio needs a finite bus volume.` | `audio.setBusVolume()` received a volume that is not finite. |
-| `Audio needs a finite spatialization setting.` | `audio.setSpatialization()` received a field that is not finite. |
-| `Audio attenuation needs 0 <= minimum distance < maximum distance.` | `audio.setSpatialization()` received bad distances. |
-| `The inverse and exponential audio models need a minimum distance above 0.` | `audio.setSpatialization()` chose one of these models with a minimum distance of 0. |
-| `The audio rolloff and Doppler factor cannot be negative.` | `audio.setSpatialization()` received a negative `rolloff` or `doppler`. |
-| `The audio pan distance and speed of sound must be positive.` | `audio.setSpatialization()` received a `panDistance` or `speedOfSound` of 0 or less. |
-| `The audio effect must be lowpass, highpass, bandpass, notch, peak, lowShelf, highShelf, delay or reverb, not '<kind>'.` | `audio.newEffect()` received an unknown kind. |
+| `Unknown option "<key>".` | An options table has a key the call does not accept. |
+| `Audio data is not a supported WAV, FLAC, MP3 or Ogg Vorbis file.` | The function `audio.newSound()` received bytes that are no sound file. |
+| `Raw audio needs a sample rate and channels.` | The function `audio.newSound()` received raw samples without a `sampleRate` or `channels`. |
+| `The audio bus "<name>" does not exist.` | A call names a bus that does not exist. |
+| `An audio bus needs a non-empty name that no other bus uses, not "<name>".` | The function `audio.createBus()` received an empty or existing name. |
+| `A pitch variation must be at least 0 and smaller than the pitch.` | The function `audio.play()` received a bad `pitchVariation`. |
+| `Audio needs a finite volume.` | The function `audio.play()` or `audio.setVolume()` received a volume that is not finite, such as `0 / 0` or `math.huge`. |
+| `Audio needs a finite pitch above 0.` | The function `audio.play()` or `audio.setPitch()` received a pitch of 0 or less or one that is not finite. |
+| `Audio needs a finite pan.` | The function `audio.play()` or `audio.setPan()` received a pan that is not finite. |
+| `Audio needs a finite fade-in.` | The function `audio.play()` received a `fadeIn` that is not finite. |
+| `Audio needs a finite start time.` | The function `audio.play()` received a `startAt` that is not finite. |
+| `Audio needs a finite position.` | The function `audio.play()`, `audio.setPosition()` or `audio.setListener()` received a coordinate that is not finite. |
+| `Audio needs a finite bus volume.` | The function `audio.setBusVolume()` received a volume that is not finite. |
+| `Audio needs a finite spatialization setting.` | The function `audio.setSpatialization()` received a field that is not finite. |
+| `Audio attenuation needs 0 <= minimum distance < maximum distance.` | The function `audio.setSpatialization()` received bad distances. |
+| `The inverse and exponential audio models need a minimum distance above 0.` | The function `audio.setSpatialization()` chose one of these models with a minimum distance of 0. |
+| `The audio rolloff and Doppler factor cannot be negative.` | The function `audio.setSpatialization()` received a negative `rolloff` or `doppler`. |
+| `The audio pan distance and speed of sound must be positive.` | The function `audio.setSpatialization()` received a `panDistance` or `speedOfSound` of 0 or less. |
+| `The audio effect must be "lowpass", "highpass", "bandpass", "notch", "peak", "lowShelf", "highShelf", "delay" or "reverb", not "<kind>".` | The function `audio.newEffect()` received an unknown kind. |
 | `The audio effect already processes another bus or voice.` | An effect was added while it is still on a bus or a voice, or still rings out after its voice ended. |
-| `The option 'effects' must be a list of audio effects.` | `audio.play()` received an `effects` value that is not a list of effects. |
+| `The option "effects" must be a list of audio effects.` | The function `audio.play()` received an `effects` value that is not a list of effects. |
 | `A filter cutoff must be a positive frequency.` | A filter received a cutoff of 0 or less. |
-| `A filter q must be positive.` | A filter received a `q` of 0 or less. |
+| `A filter "q" must be positive.` | A filter received a `q` of 0 or less. |
 | `Only peak and shelf filters have a gain.` | Another filter received a gain. |
 | `A filter gain must be between -96 and 96 decibels.` | A peak or shelf filter received a gain outside that range or one that is not a number. |
 | `audio effect expected` | A function that takes an effect received another value. It comes inside a bad argument error. |
 | `expected a non-negative integer` | A voice id is negative. It comes inside a bad argument error. |
-| `The type haylen.Sound has no member '<name>'.` | A sound property does not exist. |
+| `The type "haylen.Sound" has no member "<name>".` | A sound property does not exist. |

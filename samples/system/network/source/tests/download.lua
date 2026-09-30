@@ -1,4 +1,4 @@
--- Download progress: http.client.stream hands the body over chunk by chunk as it arrives, after onResponse has given the status and the headers, whose content-length tells how much is coming. The finished file goes to the user folder with Varn fs. The browser build of Varn cannot stream, so there the stream fails with its reason and the plain download still works.
+-- Download progress: `http.client.stream` hands the body over chunk by chunk as it arrives, after `onResponse` has given the status and the headers, whose `content-length` tells how much is coming. The finished file goes to the user folder with Varn `fs`. The browser build of Varn cannot stream, so there the stream fails with its reason and the plain download still works.
 local fs = require('fs')
 local haylen = require('haylen')
 local http = require('http')
@@ -86,7 +86,7 @@ function Download:finish(data, failure)
     local folder = storage.root() .. '/downloads'
     fs.mkdir(folder):await()
     local saved, problem = fs.writeFile(folder .. '/' .. self.choice.file, data):await()
-    self:show('result', {text = saved and 'Saved as ' .. folder .. '/' .. self.choice.file or 'Saving failed: ' .. tostring(problem)})
+    self:show('result', {text = saved and 'Saved as "' .. folder .. '/' .. self.choice.file .. '"' or 'Saving failed: ' .. tostring(problem)})
 end
 
 function Download:stream()

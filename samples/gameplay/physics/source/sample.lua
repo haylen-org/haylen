@@ -31,7 +31,7 @@ function Test:init(info)
     self.statsTime = 0
 end
 
--- Mounts the frame. `options` holds the `hint`, the `controls` of the panel, whether the panel shows `stats`, the world `view` the camera fits into the stage and the control to `focus` for gamepads and TV remotes.
+-- Mounts the frame. The table `options` holds the `hint`, the `controls` of the panel, whether the panel shows `stats`, the world `view` the camera fits into the stage and the control to `focus` for gamepads and TV remotes.
 function Test:enter(options)
     self.viewSize = options.view or {1600, 860}
     self.hasPanel = options.controls ~= nil or options.stats == true
