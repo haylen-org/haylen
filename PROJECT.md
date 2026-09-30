@@ -194,6 +194,7 @@ Cada ponto abaixo precisa estar coberto pelo grupo AA da seção 14.2.
 125. Nenhuma frase começa com letra minúscula, em comentários, documentação, mensagens de erro e de log e na saída do `make.py`: quando a frase começaria com um comando, identificador ou caminho em minúsculo, vai uma palavra antes, como "O comando" ou "Rode". E toda expressão reservada (comando, código, identificador, caminho, chave e valor) fica marcada para não se misturar com a frase: crases nos documentos Markdown e nos comentários, e aspas duplas nas mensagens, nos logs e na saída dos comandos, como no exemplo do dono e como o Varn e o Workpane fazem. A regra vale para qualquer texto, inclusive as mensagens de commit, cuja frase depois do prefixo do tipo começa com maiúscula.
 126. A engine não impõe nada aos projetos finais do Android e do Xcode. Cada plugin define o que o projeto precisa (frameworks, dependências, permissões, chaves do Info.plist, entitlements e configurações), e o projeto é do desenvolvedor, que o altera como quiser (por exemplo editando o `project.yml` do XcodeGen e gerando de novo), porque cada empresa tem o seu padrão. A engine não carrega nem compila coisas particulares que o app não usa. Quando um requisito de um plugin falta, o plugin registra no log e ignora a chamada até o desenvolvedor cumprir o requisito, em vez de quebrar. Analisar, pesquisar, planejar e revisar a melhor forma de organizar isso.
 127. Regra: o `CLAUDE.md` só cita uma versão ou um número quando uma regra depende dele, como o C++20 da linguagem ou os 100% de cobertura que os testes buscam. Valores secundários que mudam o tempo todo ficam fora: versões de bibliotecas, de ferramentas, de SDKs e da própria engine, e limites, tamanhos, contagens e durações que o código declara. Para esses, a regra diz o tipo de limite e aponta o arquivo que guarda o valor.
+128. Os templates de app e de plugin trazem o `.gitignore`, o `.editorconfig` e o `.clang-format`, então todo projeto criado pelo `make.py new` e pelo `make.py plugin new` já nasce com eles.
 
 ## 3. Regras
 
@@ -835,7 +836,7 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 | 12 | Jogo Tiny Island em Lua | Concluída |
 | 13 | Testes e cobertura até o máximo possível | Concluída |
 | 14 | Documentação e revisão final (bugs, legado, não utilizado, race conditions e crashes) | Concluída, com testes de regressão para as correções |
-| 15 | Pedidos 51 a 127 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
+| 15 | Pedidos 51 a 128 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
 
 ## 13. Limitações conhecidas
 
@@ -846,9 +847,9 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 - visionOS nativo depende do Sokol, que usa o `UIScreen`, indisponível no SDK do visionOS. O app iOS roda no Apple Vision Pro como app de iPad compatível. watchOS é impossível, porque o SDK do watchOS não tem Metal, MetalKit, GameController nem AudioToolbox.
 - O Sokol só aceita imagens inteiras em texturas que vivem entre frames, então uma textura dinâmica alterada (os atlas das fontes e da UI) sobe todos os pixels, uma vez por frame.
 
-## 14. Pedidos 51 a 127: decisões e checklist
+## 14. Pedidos 51 a 128: decisões e checklist
 
-Esta seção cobre os pedidos 51 a 127 das seções 2.1, 2.2, 2.3, 2.4 e 2.5. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
+Esta seção cobre os pedidos 51 a 128 das seções 2.1, 2.2, 2.3, 2.4 e 2.5. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
 
 ### 14.1 Decisões de organização
 
@@ -1537,4 +1538,5 @@ Checklist:
   - Com as linhas de inclusão: o simulador iOS, o Mac Catalyst, o simulador tvOS, o macOS, o emulador Android e a web.
   - Sem elas: o `check` mostra os trechos, e o app abre e responde `unsupported` em vez de fechar.
   - Com edições do desenvolvedor: chave própria no `Info.plist`, número de build no `App.xcconfig`, framework e alvo mudados no `project.yml`, `targetSdk`, assinatura e sabor no Gradle, e arquivos apagados que não voltam.
+- [ ] Templates de app e de plugin com `.gitignore` (saídas de build, cache do CPM, pastas `haylen/` geradas, arquivos de editor e do sistema e o `local.properties`), `.editorconfig` (o do dono) e `.clang-format` (o do repositório), copiados pelo `make.py new` e pelo `make.py plugin new` e fora do pacote do app.
 - [ ] Decisões 14.1 (templates, montagem e `make.py new`), `docs/distribution.md`, `docs/plugins.md`, `docs/build.md`, `docs/embedding.md`, `docs/lua-api/system.md` e o CLAUDE.md descrevendo a propriedade dos projetos e os requisitos.
