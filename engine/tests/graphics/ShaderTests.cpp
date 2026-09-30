@@ -1,9 +1,10 @@
 #include <gtest/gtest.h>
 
+#include <Poco/Process.h>
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <iterator>
@@ -95,15 +96,14 @@ void main() {
         return {};
     }
 
-    // Compiles the material with `make.py shaders`, the way apps compile theirs, once for every test that needs it.
+    // Compiles the material with `make.py shaders`, the way apps compile theirs, once for every test that needs it. Python starts without a shell, so no shell reinterprets the quotes of the paths.
     [[nodiscard]] static const std::vector<std::uint8_t>& tintShader() {
         // clang-format off
         static const std::vector<std::uint8_t> compiled = [] {
             const test::TemporaryDirectory app;
             app.write("app.json", R"({"name": "Shaders", "identifier": "dev.haylen.shaders", "version": "1.0.0"})");
             app.write("content/shaders/tint.glsl", kTintSource);
-            const std::string command = std::string("\"") + HAYLEN_PYTHON + "\" \"" + HAYLEN_MAKE_SCRIPT + "\" shaders \"" + app.getPath().string() + "\"";
-            if (std::system(command.c_str()) != 0) {
+            if (Poco::Process::launch(HAYLEN_PYTHON, {HAYLEN_MAKE_SCRIPT, "shaders", app.getPath().string()}).wait() != 0) {
                 throw std::runtime_error("The command \"make.py shaders\" failed.");
             }
             std::ifstream file(app.getPath() / "content" / "shaders" / "tint.shader", std::ios::binary);
