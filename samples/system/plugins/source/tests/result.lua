@@ -1,4 +1,4 @@
--- Native result: the plugin opens the file picker of the platform and answers with the name of the picked file, or nil when the person cancels. Android starts the document picker with startActivityForResult and hears it in onActivityResult, Apple platforms present UIDocumentPickerViewController or NSOpenPanel, and the web opens a file input.
+-- Native result: the plugin opens the file picker of the platform and answers with the name of the picked file, or nil when the person cancels. Android launches the document picker through the Activity Result API, Apple platforms present UIDocumentPickerViewController or NSOpenPanel, and the web opens a file input.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 

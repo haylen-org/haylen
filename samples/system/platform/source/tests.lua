@@ -4,4 +4,5 @@ return {
     {id = 'custom-handler', title = 'Custom handler', description = 'sample.echo, answered by Java on Android, Objective-C on Apple platforms and JavaScript on the web.', module = 'tests.custom-handler'},
     {id = 'window', title = 'Window and device', description = 'Platform, backend, safe area, orientation, pointer, fullscreen, the on-screen keyboard and the network.', module = 'tests.window'},
     {id = 'system', title = 'System', description = 'What haylen.system tells about the device, its theme and battery with their changes, a url to open and a vibration.', module = 'tests.system'},
+    {id = 'dialogs', title = 'Dialogs', description = 'A native message with three buttons, the pickers of files to open, of the destination of a save and of a folder, and a message that the app gives up.', module = 'tests.dialogs'},
 }

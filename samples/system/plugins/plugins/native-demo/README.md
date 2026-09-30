@@ -1,6 +1,6 @@
 # Native Demo
 
-A Haylen plugin that exercises every capability of native plugins with the APIs of each platform alone: calls on the main thread and on a background thread, typed failures, timeouts and cancellation, bytes both ways and an image drawn natively, video and audio streams, events, retained events and batched events, parameters with defaults, a native banner over the app that reserves its edge, a native screen that covers the app, a screen of the plugin whose end reaches the next app after a restart, the file picker of the platform, URLs that open the app and the errors that stop it. It is the plugin of the [plugins sample](../../README.md), and [the plugin guide](../../../../../docs/plugins.md#demo-plugin-and-sample) walks through it as the reference for writing a plugin on each platform. Its Lua API is the same on every platform.
+A Haylen plugin that exercises every capability of native plugins with the APIs of each platform alone: calls on the main thread and on a background thread, typed failures, timeouts and cancellation, bytes both ways and an image drawn natively, video and audio streams, events, retained events and batched events, parameters with defaults, a native banner over the app that reserves its edge, a native screen that covers the app, screens of the plugin whose end reaches the next app after a restart, the file picker of the platform, permission prompts, local notifications, URLs that open the app and the errors that stop it. It is the plugin of the [plugins sample](../../README.md), and [the plugin guide](../../../../../docs/plugins.md#demo-plugin-and-sample) walks through it as the reference for writing a plugin on each platform. Its Lua API is the same on every platform.
 
 ## Installation
 
@@ -13,7 +13,7 @@ python3 make.py plugin add samples/system/plugins/plugins/native-demo --app my-g
 ```json
 {
     "plugins": {
-        "native-demo": {"greeting": "Hello from the native demo", "bannerColor": "#264653", "tickInterval": 1, "urlScheme": "haylendemo"}
+        "native-demo": {"greeting": "Hello from the native demo", "bannerColor": "#264653", "tickInterval": 1, "urlScheme": "haylendemo", "cameraUsage": "The Native Demo plugin asks for the camera to show how a plugin requests a permission."}
     }
 }
 ```
@@ -22,10 +22,10 @@ python3 make.py plugin add samples/system/plugins/plugins/native-demo --app my-g
 
 | Platform | Native part | What it uses |
 | --- | --- | --- |
-| iOS, iPadOS, Mac Catalyst | `apple/`, Swift | UIKit views over the app, a presented view controller, `UIDocumentPickerViewController`, `CFBundleURLTypes`, `scene(_:openURLContexts:)` and CoreGraphics with ImageIO for the image. The streams come with a later version of the engine, so `startVideo`, `stopVideo`, `startTone` and `stopTone` fail with the code `unsupported`. |
-| tvOS | `apple/`, Swift | The same, without a file picker, so `pickFile` fails with the code `unsupported`. |
-| macOS app | `apple/`, Swift | AppKit views over the app, a sheet, `NSOpenPanel`, `CFBundleURLTypes`, `application(_:open:)` and CoreGraphics with ImageIO for the image. The streams fail with the code `unsupported`, like on iOS. |
-| Android | `android/`, a Kotlin library module | Views in panels of the overlay, a full screen `Dialog`, `ACTION_OPEN_DOCUMENT` with `startActivityForResult`, an intent filter of the activity for the URL scheme and a `Bitmap` for the image. The streams come with a later version of the engine, so they fail with the code `unsupported`. |
+| iOS, iPadOS, Mac Catalyst | `apple/`, Swift | UIKit views over the app, a presented view controller, `UIDocumentPickerViewController`, a UIKit and a SwiftUI screen, the latter in a window of its own on Mac Catalyst, `CVPixelBuffer`s drawn with CoreGraphics and floats from dispatch queues for the streams, `AVCaptureDevice` and `UNUserNotificationCenter` for the permissions and the notification, `CFBundleURLTypes`, `scene(_:openURLContexts:)` and CoreGraphics with ImageIO for the image. |
+| tvOS | `apple/`, Swift | The same, without a file picker, a camera and notifications that show, so `pickFile`, `requestPermission('camera')` and `notify` fail with the code `unsupported`. |
+| macOS app | `apple/`, Swift | AppKit views over the app, a sheet, `NSOpenPanel`, an AppKit sheet and a SwiftUI window for the screens, the streams, the permissions and the notification as on iOS, `CFBundleURLTypes`, `application(_:open:)` and CoreGraphics with ImageIO for the image. |
+| Android | `android/`, a Kotlin library module | Views of the overlay over the app, a full screen `Dialog`, an `AppCompatActivity` of its own for the confirm screen, `ActivityResultContracts.OpenDocument` and `RequestPermission` through the Activity Result API, an intent filter of `HaylenLinkActivity` of `dev.haylen:haylen-links` for the URL scheme and the taps on notifications, an alarm and `NotificationManagerCompat` for the notification, `HaylenRequirements` for the permissions, a `Bitmap` and a `Canvas` for the image and the video stream, and the streams of the context. |
 | Web | `web/native-demo.js` and `web/screen.html` | DOM elements in the overlay, a modal `<dialog>`, a popup and a redirect to `screen.html` for the confirm screen, an `<input type="file">`, the hash of the page address, a `<canvas>` with `toBlob` for the image and the video stream, and timers of the page for the tone and the bursts. |
 | Desktop player, Windows, Linux | `native/`, a C library | Threads of the system and `HaylenNativeApi`, with a PNG encoder of its own, the video and audio streams of the engine and a window of its own for the confirm screen: a sheet with AppKit on macOS, an owned window with Win32 on Windows and a transient window with Xlib on Linux. The desktops place no views of native libraries over the app, so `showBanner`, `setBannerVisible`, `removeBanner`, `showScreen` and `pickFile` fail with the code `unsupported`, and so does `nativeConfig`, since native libraries receive no plugin parameters. The desktops open no URLs of the scheme either. |
 
@@ -38,7 +38,8 @@ The Lua API loads the C library with `native.load('native_demo', {init = 'native
 | `greeting` | string | `"Hello from the native demo"` | Text of the native banner. |
 | `bannerColor` | string | `"#264653"` | Background of the native banner and the native screen, as `#RRGGBB`. Another text fails `showBanner` and `showScreen` with the code `invalidColor`. |
 | `tickInterval` | number | `1` | Seconds between two `tick` events. |
-| `urlScheme` | string | `"haylendemo"` | URL scheme that opens the app, which the plugin declares in `CFBundleURLTypes` on Apple platforms and in an intent filter on Android through the placeholder `nativeDemoUrlScheme`. |
+| `urlScheme` | string | `"haylendemo"` | URL scheme that opens the app, which the plugin declares in `CFBundleURLTypes` on Apple platforms and in an intent filter of `HaylenLinkActivity` on Android through the placeholder `nativeDemoUrlScheme`. |
+| `cameraUsage` | string | `"The Native Demo plugin asks for the camera to show how a plugin requests a permission."` | The `NSCameraUsageDescription` of iOS, iPadOS, Mac Catalyst and macOS, which the camera prompt shows. |
 
 ## Lua API
 
@@ -215,7 +216,7 @@ demo.burst(100, 30)
 
 ### demo.startVideo(), demo.stopVideo(), demo.videoStream()
 
-`startVideo` opens the video stream `pattern` and draws the pattern into it 30 times per second with its stripes moving, and answers with `{width, height, fps, format, language}`: BGRA frames of 320 by 180 pixels from a thread of the library on the desktops, and a `<canvas>` of 320 by 180 pixels that `context.videoStream` copies on the web. `stopVideo` stops the frames. `videoStream()` returns the [video stream](../../../../../docs/lua-api/platform.md#video-streams), or `nil` until the native part opened it. Apple platforms and Android fail both calls with the code `unsupported`.
+`startVideo` opens the video stream `pattern` and draws the pattern into it 30 times per second with its stripes moving, and answers with `{width, height, fps, format, language}`: BGRA frames of 320 by 180 pixels from a thread of the library on the desktops, BGRA `CVPixelBuffer`s of 320 by 180 pixels drawn with CoreGraphics on a dispatch queue on Apple platforms, RGBA `Bitmap`s of 320 by 180 pixels drawn with a `Canvas` on a `HandlerThread` on Android, and a `<canvas>` of 320 by 180 pixels that `context.videoStream` copies on the web. `stopVideo` stops the frames. `videoStream()` returns the [video stream](../../../../../docs/lua-api/platform.md#video-streams), or `nil` until the native part opened it.
 
 ```lua
 local async = require('async')
@@ -245,7 +246,7 @@ scene.push({
 
 ### demo.startTone(frequency), demo.stopTone(), demo.audioStream()
 
-`startTone` opens the audio stream `tone` and synthesizes a sine wave of `frequency` hertz into it a tenth of a second ahead of the clock, and answers with `{frequency, sampleRate, channels, format, language}`: 16-bit mono samples at 44100 Hz from a thread of the library on the desktops, and `Float32Array` blocks at 44100 Hz from a timer of the page on the web. `stopTone` stops the samples. `audioStream()` returns the [audio stream](../../../../../docs/lua-api/platform.md#audio-streams), or `nil` until the native part opened it. Apple platforms and Android fail both calls with the code `unsupported`.
+`startTone` opens the audio stream `tone` and synthesizes a sine wave of `frequency` hertz into it a tenth of a second ahead of the clock, and answers with `{frequency, sampleRate, channels, format, language}`: 16-bit mono samples at 44100 Hz from a thread of the library on the desktops, mono floats at 44100 Hz from a dispatch queue on Apple platforms and from a `HandlerThread` on Android, and `Float32Array` blocks at 44100 Hz from a timer of the page on the web. `stopTone` stops the samples. `audioStream()` returns the [audio stream](../../../../../docs/lua-api/platform.md#audio-streams), or `nil` until the native part opened it.
 
 ```lua
 local async = require('async')
@@ -322,7 +323,7 @@ end)
 
 ### demo.openScreen(options)
 
-Opens the confirm [screen](../../../../../docs/plugins.md#plugin-screens) of the plugin, which asks a question with Confirm and Decline, and answers with `{confirmed, via, language}` once the person answers. The engine covers the app before the screen shows and draws nothing under it. It is a popup of `web/screen.html` on the web, which the browser blocks unless a click, a tap or a key press asked for it right before, and a window over the window of the app on the desktops: a sheet on macOS, an owned window on Windows and a transient window on Linux, whose Close button and close box end it with the code `cancelled`. Apple platforms and Android fail with the code `unsupported` until their runtimes open screens. `options` takes `state`, `opaque` and `timeout`, like `openScreen` of the plugin handle, and the state comes back with a restored end.
+Opens the confirm [screen](../../../../../docs/plugins.md#plugin-screens) of the plugin, which asks a question with Confirm and Decline, and answers with `{confirmed, via, language}` once the person answers. The engine covers the app before the screen shows and draws nothing under it. It is a UIKit controller presented full screen on iOS, iPadOS, Mac Catalyst and tvOS, whose swipe and Menu button end it with the code `cancelled`, an AppKit sheet in the macOS app, a popup of `web/screen.html` on the web, which the browser blocks unless a click, a tap or a key press asked for it right before, and a window over the window of the app on the desktops: a sheet on macOS, an owned window on Windows and a transient window on Linux, whose Close button and close box end it with the code `cancelled`. On Android it is an `AppCompatActivity` of the plugin that the activity of the app starts through the Activity Result API, whose Back button ends it with the code `cancelled`, and when Android ended the process while it showed, its answer reaches the next app as `screenRestored`. `options` takes `state`, `opaque` and `timeout`, like `openScreen` of the plugin handle, and the state comes back with a restored end.
 
 ```lua
 local async = require('async')
@@ -331,6 +332,20 @@ local demo = require('native-demo')
 async.spawn(function()
     local answer, err = demo.openScreen({state = {level = 3}}):await()
     print(answer and ('confirmed ' .. tostring(answer.confirmed) .. ' through ' .. answer.via) or err.code)
+end)
+```
+
+### demo.openSwiftUIScreen(options)
+
+Opens the same question in SwiftUI, which only Apple platforms have: a `UIHostingController` over the app on iOS, iPadOS and tvOS and in a window of its own on Mac Catalyst, and an `NSHostingController` in a window of its own in the macOS app. It answers like `openScreen` with `via` naming SwiftUI, and its Close button dismisses it through the dismiss action of SwiftUI, which fails the call with the code `cancelled`. The other platforms fail with the code `noHandler`.
+
+```lua
+local async = require('async')
+local demo = require('native-demo')
+
+async.spawn(function()
+    local answer, err = demo.openSwiftUIScreen():await()
+    print(answer and answer.via or err.code)
 end)
 ```
 
@@ -358,7 +373,7 @@ end)
 
 ### demo.pickFile()
 
-Opens the file picker of the platform and answers with `{name}` of the picked file, or `nil` when the person cancels: `ACTION_OPEN_DOCUMENT` through `startActivityForResult` and `onActivityResult` on Android, `UIDocumentPickerViewController` on iOS, iPadOS and Mac Catalyst, `NSOpenPanel` on macOS and an `<input type="file">` on the web. It fails with the code `unsupported` on tvOS and the desktops. The browser opens its chooser only right after a click, a tap or a key press, and fails with the code `noUserGesture` otherwise.
+Opens the file picker of the platform and answers with `{name}` of the picked file, or `nil` when the person cancels: `ActivityResultContracts.OpenDocument` on Android, whose launcher the plugin registers under a stable key when the activity is created, `UIDocumentPickerViewController` on iOS, iPadOS and Mac Catalyst, `NSOpenPanel` on macOS and an `<input type="file">` on the web. It fails with the code `unsupported` on tvOS and the desktops. The browser opens its chooser only right after a click, a tap or a key press, and fails with the code `noUserGesture` otherwise.
 
 ```lua
 local async = require('async')
@@ -367,6 +382,58 @@ local demo = require('native-demo')
 async.spawn(function()
     local picked, err = demo.pickFile():await()
     print(err or (picked and picked.name or 'cancelled'))
+end)
+```
+
+### demo.requestPermission(kind)
+
+Asks the person for the permission `kind`, `'camera'` or `'notifications'`, with the prompt of the system, and answers with `{kind, granted, status, language}` once the person answered, or at once when the person answered before. On Apple platforms the camera prompt shows the text of the `cameraUsage` parameter, `status` is the authorization status of `AVCaptureDevice` or `UNUserNotificationCenter`, such as `'authorized'` or `'denied'`, and tvOS fails the camera with the code `unsupported`. On Android the plugin first checks that the manifest of the app declares `android.permission.CAMERA` or `android.permission.POST_NOTIFICATIONS`, which the manifest of its module does, and fails with the code `unsupported` and `data.missing` otherwise, `status` is `'authorized'` or `'denied'`, notifications ask for nothing before Android 13, where the answer tells whether the person left them on, and a device without a camera fails the camera with the code `unsupported`. Another kind fails with the code `invalidPermission`, and a second request while one shows with the code `busy`.
+
+```lua
+local async = require('async')
+local demo = require('native-demo')
+
+async.spawn(function()
+    local answer, err = demo.requestPermission('notifications'):await()
+    print(answer and answer.status or err.code)
+end)
+```
+
+### demo.notify(seconds), demo.onNotificationOpened(listener)
+
+`notify` schedules a local notification of the plugin after `seconds` and answers with `{identifier, seconds, language}`. The notification shows while the app is in front too, and when the person taps it the native part sends `notificationOpened` retained with `{identifier, title, action, language}`, so a tap that launched the closed app reaches the first listener however late it connects. On Apple platforms it goes through `UNUserNotificationCenter`, whose delegate the runtime owns and hands to the plugin, and tvOS fails `notify` with the code `unsupported`, since TVs show no notifications. On Android an alarm posts the notification through `NotificationManagerCompat` on the channel `native-demo`, also when the app was closed, its tap starts `HaylenLinkActivity`, which hands it to the app, and `notify` fails with the code `permissionDenied` while the notifications of the app are off.
+
+```lua
+local async = require('async')
+local demo = require('native-demo')
+
+demo.onNotificationOpened(function(tap)
+    print('opened from ' .. tap.identifier)
+end)
+
+async.spawn(function()
+    demo.requestPermission('notifications'):await()
+    demo.notify(5):await()
+end)
+```
+
+### demo.requirementCheck()
+
+Calls a method whose native part needs something that the plugin leaves out of the project of the app on purpose, to show how a plugin checks its [requirements](../../../../../docs/plugins.md#requirements). On Android it needs the permission `android.permission.READ_CONTACTS`, which the manifest of its module never declares, so the call fails with the code `unsupported` and `data.missing` lists the permission as `{kind, name, file, snippet}`, while the log tells once what is missing and how to add it. An app whose manifest declares the permission gets `{met, language}` instead.
+
+```lua
+local async = require('async')
+local demo = require('native-demo')
+
+async.spawn(function()
+    local answer, err = demo.requirementCheck():await()
+    if answer then
+        print('met in', answer.language)
+    elseif err.data and err.data.missing then
+        for _, missing in ipairs(err.data.missing) do
+            print(missing.kind, missing.name, missing.file, missing.snippet)
+        end
+    end
 end)
 ```
 
@@ -411,6 +478,7 @@ demo.onLastError(function(failure) print('the last app stopped with', failure.me
 | `native-demo.removeBanner` | `{}` | `null` |
 | `native-demo.showScreen` | `{title}` | `{seconds}` |
 | `native-demo.pickFile` | `{}` | `{name}` or `null` |
+| `native-demo.requirementCheck` | `{}` | `{met, language}`, or fails with `unsupported` and `{missing}` while the project lacks what it needs. |
 | `native-demo.loaded` (event, retained) | `{language, platform}` | |
 | `native-demo.tick` (event) | `{count, thread, language}` | |
 | `native-demo.burst` (event, batched) | `{tick, index, language}` | |
@@ -422,5 +490,5 @@ demo.onLastError(function(failure) print('the last app stopped with', failure.me
 
 | Stream | Kind | Format |
 | --- | --- | --- |
-| `pattern` | Video | BGRA frames of 320 by 180 pixels, 30 per second, from C, and RGBA frames of the canvas on the web. |
-| `tone` | Audio | 16-bit mono samples at 44100 Hz from C, and float mono samples at 44100 Hz on the web. |
+| `pattern` | Video | BGRA frames of 320 by 180 pixels, 30 per second, from C, RGBA bitmaps of the same size from Kotlin, and RGBA frames of the canvas on the web. |
+| `tone` | Audio | 16-bit mono samples at 44100 Hz from C, and float mono samples at 44100 Hz from Kotlin and on the web. |

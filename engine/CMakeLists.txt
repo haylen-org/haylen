@@ -578,21 +578,28 @@ set(HAYLEN_RUNTIME_SOURCES
 )
 if(APPLE)
   set(HAYLEN_APPLE_SOURCES
+    src/platform/apple/AppleBattery.mm
     src/platform/apple/AppleBridge.mm
     src/platform/apple/AppleDesktop.mm
+    src/platform/apple/AppleDialogs.mm
     src/platform/apple/AppleGamepads.mm
     src/platform/apple/AppleNetwork.mm
     src/platform/apple/AppleOrientation.mm
     src/platform/apple/ApplePlugins.mm
+    src/platform/apple/ApplePresenter.mm
     src/platform/apple/AppleRemote.mm
     src/platform/apple/AppleRuntime.mm
+    src/platform/apple/AppleScreens.mm
     src/platform/apple/AppleServices.mm
     src/platform/apple/AppleSystem.mm
     src/platform/apple/AppleTextInput.mm
+    src/platform/apple/AppleTheme.mm
     src/platform/apple/CatalystInput.mm
     src/platform/apple/CatalystWindow.mm
     src/platform/apple/HaylenAppDelegate.mm
+    src/platform/apple/HaylenAudioStream.mm
     src/platform/apple/HaylenBridge.mm
+    src/platform/apple/HaylenDialog.mm
     src/platform/apple/HaylenFieldEditor.mm
     src/platform/apple/HaylenOverlay.mm
     src/platform/apple/HaylenOverlayItem.mm
@@ -601,9 +608,14 @@ if(APPLE)
     src/platform/apple/HaylenPluginContext.mm
     src/platform/apple/HaylenPointer.mm
     src/platform/apple/HaylenSceneDelegate.mm
+    src/platform/apple/HaylenScreen.mm
+    src/platform/apple/HaylenScreenController.mm
+    src/platform/apple/HaylenScreenSceneDelegate.mm
     src/platform/apple/HaylenTextEditor.mm
     src/platform/apple/HaylenTextField.mm
     src/platform/apple/HaylenTextView.mm
+    src/platform/apple/HaylenThemeView.mm
+    src/platform/apple/HaylenVideoStream.mm
   )
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.m ${HAYLEN_APPLE_SOURCES})
   set_source_files_properties(${HAYLEN_APPLE_SOURCES} PROPERTIES COMPILE_OPTIONS "-fobjc-arc")

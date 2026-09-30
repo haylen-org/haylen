@@ -282,7 +282,7 @@ A native view over the app, such as a banner ad, reserves the edge of the screen
 
 ### Covering the app
 
-Native UI that covers the app, such as a full screen ad, a consent form, a sign-in sheet or a purchase dialog, calls `coverApp` of its context when it shows and `uncoverApp` when it goes away. Covers are counted, so they nest. While any cover lasts the app is `inactive`, halted and muted, whatever its lifecycle options say, `haylen.appCovered()` returns `true`, and the app hears the usual `appInactive` and `appActive` events. When the last cover ends the app comes back as it was, as the [lifecycle guide](lifecycle.md#covered-by-native-ui) describes. An `uncoverApp` without a `coverApp` is logged as an error and changes nothing. Native libraries cover the app with `coverApp` and `uncoverApp` of `HaylenNativeApi`, and a [screen](#plugin-screens) of a plugin covers the app on its own.
+Native UI that covers the app, such as a full screen ad, a consent form, a sign-in sheet or a purchase dialog, calls `coverApp` of its context when it shows and `uncoverApp` when it goes away. Covers are counted, so they nest. While any cover lasts the app is `inactive`, halted and muted, whatever its lifecycle options say, `haylen.appCovered()` returns `true`, and the app hears the usual `appInactive` and `appActive` events. The engine draws one frame once the cover begins, which stays on screen under the native UI, and no more until the cover ends, since a halted app would draw the same frame again. When the last cover ends the app comes back as it was, as the [lifecycle guide](lifecycle.md#covered-by-native-ui) describes. An `uncoverApp` without a `coverApp` is logged as an error and changes nothing. Native libraries cover the app with `coverApp` and `uncoverApp` of `HaylenNativeApi`, and a [screen](#plugin-screens) of a plugin covers the app on its own.
 
 ### Errors of the app
 
@@ -321,9 +321,10 @@ A plugin that produces video or audio continuously, such as a camera, a video de
 | Native library, C | `openVideoStream(plugin, name, format, width, height)` and `pushVideoFrame(stream, pixels, width, height, stride, timestamp)` of `HaylenNativeApi`. | `openAudioStream(plugin, name, sampleRate, channels, format, capacityFrames)` and `pushAudioFrames(stream, samples, frames)`. |
 | Web | `context.videoStream(name)`, whose `push(source, timestamp)` takes an `ImageBitmap`, a `VideoFrame`, a `<video>`, an `<img>` or a `<canvas>`, draws it into a canvas of its size and copies its RGBA pixels into wasm memory. The timestamp defaults to the one of a `VideoFrame`, the current time of a video or the time of the push. | `context.audioStream(name, {sampleRate, channels, capacity})`, whose `push(samples)` copies an interleaved `Float32Array` into the ring and returns how many frames fit. The capacity defaults to one second of frames. |
 | C++, inside the engine | `platform::PluginStreams::openVideo(plugin, name, format, width, height)` and `VideoStream::push(pixels, width, height, stride, timestamp)`. | `platform::PluginStreams::openAudio(plugin, name, sampleRate, channels, format, capacityFrames)` and `AudioStream::push(samples)` with a span of floats or 16-bit integers. |
-| Apple and Android | Not yet. The Apple runtime and the Android library of this version have no stream API, so a plugin there fails its stream methods with the code `unsupported`. | Not yet, for the same reason. |
+| Apple, Objective-C and Swift | `openVideoStream:width:height:format:` of the context, `openVideoStream(_:width:height:format:)` in Swift, returns a `HaylenVideoStream`, whose `pushPixels:width:height:stride:timestamp:` takes a pointer and whose `pushPixelBuffer:timestamp:` takes a `CVPixelBuffer` of `kCVPixelFormatType_32BGRA` or `kCVPixelFormatType_32RGBA`, such as a frame of the camera, `push(_:timestamp:)` in Swift. | `openAudioStream:sampleRate:channels:format:capacity:`, `openAudioStream(_:sampleRate:channels:format:capacity:)` in Swift, returns a `HaylenAudioStream`, whose `pushSamples:frames:`, `push(_:frames:)` in Swift, writes interleaved floats or 16-bit integers and returns how many frames fit. |
+| Android | `openVideoStream(name, width, height, format)` of the context returns a `HaylenVideoStream` with the format `HaylenVideoStream.Format.RGBA8` or `BGRA8`, whose `push(pixels, width, height, stride, timestamp)` takes a `ByteBuffer`, a direct one without a copy in Java, and whose `push(bitmap, timestamp)` takes a `Bitmap` of `Bitmap.Config.ARGB_8888`, which Android keeps as RGBA bytes, for a stream of the format `RGBA8`, locking its pixels instead of copying them in Java. | `openAudioStream(name, sampleRate, channels, format, capacity)` of the context returns a `HaylenAudioStream` with the format `HaylenAudioStream.Format.FLOAT32` or `INT16`, whose `push(samples, frames)` writes the first `frames` interleaved frames of a `float[]` or a `short[]` without a copy in Java and returns how many frames fit. |
 
-Opening a stream again returns the same stream, whose handle stays valid for good, and opening it with another format fails. The web page is single-threaded, so its pushes and the mixing of its voices take turns on the thread of the page.
+Opening a stream again returns the same stream, whose handle stays valid for good, and opening it with another format fails. The web page is single-threaded, so its pushes and the mixing of its voices take turns on the thread of the page. On Android a stream opens once the first activity loaded the engine library, so a plugin opens its streams when the app asks for them rather than in `onLoad`, and the methods of the streams throw an `IllegalArgumentException` for arguments they cannot take and an `IllegalStateException` for samples of the other format or a bitmap for a stream of the format `BGRA8`.
 
 ### The native plugin list
 
@@ -403,7 +404,7 @@ A screen is native UI of a plugin that takes over the app until it ends with one
 
 ### The model
 
-- **Cover first.** The engine covers the app at the start of the frame after the request and only then hands the screen to the platform, so the app is `'inactive'`, halted and muted before the screen shows, as [covering the app](#covering-the-app) describes. While an opaque screen shows, which screens are by default, the engine draws nothing and the last frame stays on screen, while it keeps drawing the halted app under a screen that lets it show through. The cover ends when the screen ends, however it ends, so native parts never cover the app for their screens themselves.
+- **Cover first.** The engine covers the app at the start of the frame after the request and only then hands the screen to the platform, so the app is `'inactive'`, halted and muted before the screen shows, as [covering the app](#covering-the-app) describes. While an opaque screen shows, which screens are by default, the engine draws nothing and the last frame stays on screen, while under a screen that lets the app show through it draws the halted app once and keeps that frame. The cover ends when the screen ends, however it ends, so native parts never cover the app for their screens themselves.
 - **One at a time, in the foreground.** A screen opens only while the app is `'active'`, and otherwise its call fails with the code `notActive`. While a screen shows, which the whole process shares, another one fails with the code `busy`.
 - **The result.** The end of the screen settles its call, with the result or with a failure such as `cancelled` when the person closed the screen.
 - **Restored ends.** A screen outlives the app that opened it: the app may restart under it, after a hot reload or `haylen.requestRestart()`, the process may end while the screen shows, as Android ends apps in the background, or a web page may leave for a redirect and load again. The end then reaches the next app as the retained event `<id>.screenRestored`, with `screen`, the name of the screen, `state`, the value that `options.state` gave, and `result`, or `error` with `message`, `code` and `data` for a failure. A restarted app starts covered by the screen that still shows, and `platform.screenShowing()` tells it why.
@@ -452,7 +453,7 @@ Every platform implements the same contract, which `Host::openScreen` and `Host:
 
 1. The engine hands the platform a `platform::ScreenRequest`: the id of the screen, unique in the process, the id of the plugin, the name of the screen, the parameters as JSON with their byte buffers, the state and whether the screen is opaque.
 2. The platform opens the screen that the native part of the plugin registered under that name. A name that nothing registered fails with the code `noHandler`, and a platform that cannot present the screen at that moment fails it with the code `notActive`.
-3. The platform keeps the pending screen, its id, plugin, name and state, where it survives the end of the process: in the saved state of the activity on Android and in an entry of the session storage of the page on the web. The desktops keep it nowhere, since their processes do not end under an app.
+3. The platform keeps the pending screen, its id, plugin, name and state, where it survives the end of the process: in the saved state of the activity on Android and in an entry of the session storage of the page on the web. Apple platforms keep it in the process, since the system brings back no controller of an app that it ended, and the desktops keep it nowhere, since their processes do not end under an app.
 4. The native side ends the screen exactly once, from any thread, through `ScreenRelay::finish(id, ok, resultJson, buffers)`: with its result, or with a failure of `message`, `code` and `data`, such as `cancelled` when the person closed the screen or a code of its own.
 5. When the app gives the screen up, `Host::cancelScreen(id)` asks the platform to dismiss it where it can, and the native side still ends it once it is gone.
 6. When the process ended while the screen showed, the platform reads the pending screen back once the app starts again and hands its end to `ScreenRelay::restore(plugin, name, stateJson, ok, resultJson, buffers)`, which the engine delivers to the first app as `screenRestored`.
@@ -463,8 +464,8 @@ Native libraries come first, as with their handlers: a screen that a library reg
 | --- | --- |
 | Web | Page screens that the web modules of plugins register, which open popups, redirect or show UI of the page, as [web screens](#web-screens) describes. |
 | macOS player, Windows and Linux apps | Screens of native libraries, as [desktop screens](#desktop-screens) describes. Windows and Linux fail every other screen with the code `noHandler`. |
-| iOS, iPadOS, Mac Catalyst, tvOS and the macOS app | Screens of native libraries, where the app loads them. The Apple runtime opens the screens of plugin classes in a later version and fails them with the code `unsupported` until then. |
-| Android | Screens of native libraries. The Android library opens the screens of plugin classes in a later version and fails them with the code `unsupported` until then. |
+| iOS, iPadOS, Mac Catalyst, tvOS and the macOS app | Screens that plugin classes register, as [Apple screens](#apple-screens) describes, and screens of native libraries, where the app loads them. |
+| Android | Screens that plugin classes register, as [Android screens](#android-screens) describes, and screens of native libraries. |
 
 #### Web screens
 
@@ -552,14 +553,81 @@ A native library registers a screen with `registerScreen(plugin, name, open, can
 
 The confirm screen of the [demo plugin](#screens) opens each of these windows.
 
-#### The Apple and Android waves
+#### Apple screens
 
-The runtimes of Apple platforms and Android implement the contract in later versions of the engine, and the contexts of their plugin classes gain screens then.
+`registerScreen:handler:` of the context of a plugin class, `registerScreen(_:handler:)` in Swift, registers the screen `<id>.<name>`. The runtime calls the handler on the main queue once the engine covered the app, with the parameters, where bytes arrive as `NSData` values, and a `HaylenScreen`, through which the handler shows its UI and which it ends. A name that no plugin registered fails with the code `noHandler`, and a screen that finds no window of the app to show over fails with the code `notActive`.
 
-- **Apple.** The context of a plugin class registers screens by name, with a handler that receives the parameters and presents a view controller, SwiftUI through a hosting controller included, from the topmost presented controller once a running transition ended, or a sheet or a child window on macOS. The runtime wraps the controller in a container whose disappearance ends the screen however it is dismissed, by the person, by the SDK or by code, with the result that the handler reports. The pending screen lives in the process, since the system does not bring back the controllers of an app that it ended, and results that come back later through links reach the next app through `ScreenRelay::restore`.
-- **Android.** The host activity becomes an `AppCompatActivity`, so the context of a plugin class registers screens by name, as an Activity Result contract that the activity registers under the stable key `haylen.<id>.<screen>` in `onCreate`, or as the launcher of an SDK that ends the screen through the context. The pending screen goes into the saved state of the activity, so after the end of the process the recreated activity reads it back, receives the result that Android delivers again and hands it to `ScreenRelay::restore`.
+| Member | Meaning |
+| --- | --- |
+| `name`, `opaque` | The name of the screen and whether the app asked for an opaque one. |
+| `presentViewController:`, `present(_:)` in Swift | iOS, iPadOS, Mac Catalyst and tvOS. Presents the controller from the topmost presented controller, once a running transition ended, inside a container that sees every way it goes away. A controller that keeps the automatic presentation style presents full screen for an opaque screen and as a sheet otherwise, and SwiftUI views present through a `UIHostingController`. |
+| `presentWindow:`, `presentWindow(_:)` | The controller in a window of its own: on Mac Catalyst and on iPads that show several windows of an app a scene of the app, which fails the screen with the code `unsupported` on other devices, and on macOS an `NSViewController`, such as an `NSHostingController`, in a child window of the window of the app, which moves with it and keeps its level. Closing the window ends the screen. |
+| `presentSheet:`, `presentSheet(_:)` | macOS. The `NSViewController` in a sheet of the window of the app. |
+| `presenter`, `window` | The topmost presented controller on iOS, iPadOS, Mac Catalyst and tvOS and the window of the app on macOS, for SDKs that present their UI themselves. |
+| `finishWithResult:`, `finish(_:)` | Ends the screen with its result, any value `NSJSONSerialization` accepts, with `NSData` values that cross as bytes. |
+| `failWithMessage:code:data:`, `fail(_:code:data:)` | Ends the screen with a failure, whose code and data the call keeps. |
+| `cancelHandler` | Runs when the app gives the screen up, after the runtime began to dismiss the UI it shows, so the UI of an SDK that presents itself closes too. A screen that shows nothing through the runtime and has no cancel handler ends as `cancelled` at once. |
 
-Until then both platforms fail every screen that no native library opens with the code `unsupported`.
+The first end counts. The runtime then dismisses the UI it shows and hands the end to the engine once the UI is gone, so the cover lasts exactly as long as the UI. UI that goes away before the screen ended ends it with the code `cancelled`, which covers the swipe of the person, which the delegate of the presentation hears, the Menu button of a TV remote, the close button of a window, and a dismissal by the controller itself, by the `dismiss` action of SwiftUI or by an SDK, which the disappearance of the container shows. The methods `finish` and `fail` work from any thread. The pending screen lives in the process, and a plugin whose flow comes back through a link after the process ended sends that answer as an event of its own.
+
+The app draws in one window, so on Mac Catalyst and iPad the windows of screens connect scenes with a delegate of their own, and any other scene of the app that the system connects, such as a second window that the person opens on an iPad, goes away at once instead of drawing the app twice. The `Info.plist` of the Apple template therefore declares support for several scenes.
+
+```swift
+// A paywall of an SDK in a controller that reports the purchase, which ends the screen and dismisses the controller.
+context.registerScreen("offer") { (params: Offer, screen: HaylenScreen) in
+    let controller = PaywallController(offering: params.offering) { purchase in
+        try? screen.finish(encoding: purchase)
+    }
+    screen.present(controller)
+}
+```
+
+#### Android screens
+
+The context of a plugin class registers the screen `<id>.<name>` in `onLoad`, in one of two ways.
+
+- **An Activity Result contract.** `registerScreen(name, contract, input, output)` takes an `ActivityResultContract`, a `HaylenScreen.Input` that turns the parameters of the app into the input of the contract, and a `HaylenScreen.Output` that turns the output of the contract into the result of the screen, any value that `reply.success` takes. Every `HaylenActivity` registers the launcher of the contract under the stable key `haylen.<id>.<name>` in `onCreate`, before it starts, so a result that Android delivers to a new activity, after the activity was recreated or the process ended while the screen showed, finds its launcher. A `null` output, which the contracts of AndroidX give when the person backs out, ends the screen with the code `cancelled`, and a thrown `HaylenBridge.Failure` ends it with its code and data.
+- **An opener.** `registerScreen(name, opener)` takes a `HaylenScreen.Opener`, which the runtime calls on the main thread with the parameters and the `HaylenScreen`, for UI that the plugin shows itself, such as the launcher of an SDK that the plugin created in `onActivityCreated`.
+
+The runtime opens the screen on the main thread once the engine covered the app. A name that no plugin registered fails with the code `noHandler`, and a screen that finds the activity away from the foreground with the code `notActive`. `HaylenScreen` has these members:
+
+| Member | Meaning |
+| --- | --- |
+| `name()`, `isOpaque()` | The name of the screen and whether the app asked for an opaque one. |
+| `finish(result)` | Ends the screen with its result, converted like the value of `reply.success`, with `byte[]` and `ByteBuffer` values as bytes. |
+| `fail(message, code, data)`, `fail(throwable)` | End the screen with a failure, such as the code `cancelled` when the person closed the UI, whose code and data the call keeps. A `HaylenBridge.Failure` keeps its code and data, and any other error fails with the code `exception`. |
+| `onCancel(listener)`, `isCancelled()` | The listener runs on the main thread when the app gives the screen up, so the plugin closes the UI it shows and ends the screen. A screen without listeners, and every contract screen, ends with the code `cancelled` at once, and the answer that its launcher may still receive goes nowhere. |
+| `isRestored()` | Whether the process ended while the screen showed. |
+
+The first end counts, from any thread. The activity keeps the screen that shows, its id, plugin, name, state and opacity, in its saved state, under the key `haylen.screens` of its `SavedStateRegistry`. When the process ended while the screen showed, the activity that Android recreates reads it back, and the end of the screen reaches the next app as the retained event `<id>.screenRestored` with the state that the earlier app gave: the launcher of a contract screen receives the result that Android delivers again, and the plugin of an opener screen, whose answer arrives through its own launcher, ends the screen that `context.restoredScreen()` returns. An activity that only the process outlived, such as one that Android recreated, keeps showing the screen of the running process, whose end reaches the app that runs by then.
+
+```kotlin
+// plugins/confirm-kit/android/src/main/kotlin/com/example/confirmkit/ConfirmKitPlugin.kt
+private var launcher: ActivityResultLauncher<String>? = null
+private var pending: HaylenScreen? = null
+
+override fun onLoad(context: HaylenPluginContext) {
+    // The activity of the plugin answers true or false, and Back gives null, which ends the screen as cancelled.
+    context.registerScreen("confirm", ConfirmContract(), HaylenScreen.Input { params -> params as JSONObject }, HaylenScreen.Output { confirmed -> JSONObject().put("confirmed", confirmed) })
+
+    // A screen of an SDK, which reports its end through a callback of its own.
+    context.registerScreen("offer") { params, screen ->
+        pending = screen
+        launcher?.launch((params as JSONObject).getString("offering"))
+    }
+}
+
+// The launcher of the SDK belongs to the activity. A purchase that ends after the process ended reaches the screen that the process ended under.
+override fun onActivityCreated(activity: HaylenActivity, savedInstanceState: Bundle?) {
+    launcher = activity.activityResultRegistry.register("confirm-kit.offer", activity, OfferContract()) { purchase ->
+        val screen = pending ?: context.restoredScreen()
+        pending = null
+        if (purchase == null) screen?.fail("The person closed the offer.", "cancelled", null) else screen?.finish(JSONObject().put("product", purchase))
+    }
+}
+```
+
+Android stops the frames of the app while another activity covers it or a dialog has the focus, as [the lifecycle guide](lifecycle.md#app-states) describes, so a cancel or a timeout that the app asks for takes effect in the first frame after the screen ended, when the end of the screen is dropped since the app gave the screen up. The screen of an opener that shows its UI over the app, such as a view of the overlay that leaves the focus to the window of the app, hears a cancel at once.
 
 ### C++
 
@@ -732,17 +800,19 @@ The same plugin in Objective-C:
 
 ### The context
 
-`HaylenPluginContext` is the part of the runtime that a plugin sees. Registering, emitting and covering work from any thread, and handlers run on the main queue, while the window, the view controller and the overlay belong to the main thread, which Swift enforces with the main actor.
+`HaylenPluginContext` is the part of the runtime that a plugin sees. Registering, emitting, covering and opening streams work from any thread, and handlers run on the main queue, while the window, the view controller and the overlay belong to the main thread, which Swift enforces with the main actor.
 
 | Member | Meaning |
 | --- | --- |
 | `identifier` | The id of the plugin. |
 | `config` | The parameters of the plugin in `app.json` over the `default` of every parameter of `plugin.json`, the same values as `handle.config` in Lua, as an `NSDictionary`. |
 | `registerHandler:handler:`, `registerCancellableHandler:handler:` | Answer `<id>.<method>`, like the handlers of `HaylenBridge` in the [platform bridge guide](platform_bridge.md#apple-platforms). |
+| `registerScreen:handler:` | Opens the screen `<id>.<name>`, as [Apple screens](#apple-screens) describes. |
+| `openVideoStream:width:height:format:`, `openAudioStream:sampleRate:channels:format:capacity:` | Open the video or audio [stream](#streams) of a name, or return the one that is open, and return `nil` and log why for arguments the stream cannot take. |
 | `emit:payload:`, `emitRetained:payload:`, `emit:payload:retain:batched:` | Send the event `<id>.<event>`, retained for the first listener of its name with `emitRetained:payload:`, and retained, batched or both with `emit:payload:retain:batched:`. A payload is any value `NSJSONSerialization` accepts, with `NSData` values that cross as bytes, or `nil`. |
 | `overlay` | The overlay that places native views of the plugin over the app, as [overlays](#overlays) describes. |
 | `coverApp`, `uncoverApp` | Cover the app while native UI of the plugin covers it, and end the cover, as [covering the app](#covering-the-app) describes. The covers of a plugin end when the window of the app goes away, and an `uncoverApp` without a cover of the plugin is logged as an error. |
-| `viewController`, `windowScene` | The root view controller of the window of the app and its window scene on iOS, tvOS and Mac Catalyst, for SDKs that present UI or need a scene. Both are `nil` until the scene connects. |
+| `viewController`, `windowScene` | The topmost view controller that the window of the app presents, the root view controller while nothing is presented, and the window scene of the app on iOS, tvOS and Mac Catalyst, for SDKs that present UI or need a scene. Both are `nil` until the scene connects. |
 | `window` | The window of the app on macOS, `nil` until the app finished launching. |
 
 Events that native code sends while no app runs, such as while the app launches or restarts, wait in the runtime and reach the next app in order once it starts. A link that opens the app, which the plugin sends retained, therefore reaches the first Lua listener of its name however late it comes.
@@ -829,9 +899,11 @@ A URL scheme of `CFBundleURLTypes` opens the app, whose plugins receive the link
 | --- | --- |
 | `context.register(method) { (params: Params) async throws -> Result in ... }` | Answers `<id>.<method>` with an async function on the main actor. `Params` decodes from the parameters of the call with `JSONDecoder` and `Result` encodes the answer with `JSONEncoder`. A thrown `HaylenFailure(message, code:, data:)` fails the call with its code and data, any other error fails it with the code `exception` and the type of the error in `data.type`, and the task of the call is cancelled when the app cancels the call or its timeout passes. |
 | `try context.emit(event, payload, retain: false, batched: false)` | Sends `<id>.<event>` with an `Encodable` payload, retained when `retain` is `true` and batched when `batched` is `true`. It throws the error of the encoder when the payload does not encode. |
+| `context.registerScreen(name) { (params: Params, screen: HaylenScreen) in ... }` | Opens the screen `<id>.<name>` with a handler on the main actor whose `Params` decode from the parameters of the app with `JSONDecoder`. A thrown `HaylenFailure` fails the screen with its code and data, and any other error fails it with the code `exception`. |
+| `try screen.finish(encoding: result)` | Ends a screen with an `Encodable` result. It throws the error of the encoder when the result does not encode. |
 | `HaylenBridge.register(method) { ... }`, `try HaylenBridge.emit(event, payload, retain: false, batched: false)` | The same for handlers and events outside plugins, without the prefix. |
 
-These helpers carry JSON alone, so bytes cross through the dictionaries of `registerHandler:handler:` and `emit:payload:`.
+These helpers carry JSON alone, so bytes cross through the dictionaries of `registerHandler:handler:`, `emit:payload:` and `finishWithResult:`.
 
 ```swift
 struct Purchase: Encodable {
@@ -980,6 +1052,9 @@ public final class ShareSheetPlugin extends HaylenPlugin {
 | `config()` | The parameters of the plugin in `app.json` over the `default` of every parameter of `plugin.json`, the same values as `handle.config` in Lua, as a `JSONObject`. |
 | `register(method, handler)`, `register(method, handler, threading)` | Answer `<id>.<method>` like `HaylenBridge.register` in the [platform bridge guide](platform_bridge.md#android), on the main thread or, with `HaylenBridge.Threading.BACKGROUND`, on the shared background thread described in [threads](#threads). |
 | `registerSuspend(method) { params -> result }` | Kotlin only, with `dev.haylen:haylen-coroutines`. Answers `<id>.<method>` with a suspending function, like `HaylenCoroutines.register`. |
+| `registerScreen(name, contract, input, output)`, `registerScreen(name, opener)` | Open the screen `<id>.<name>` through an Activity Result contract or an opener, as [Android screens](#android-screens) describes. |
+| `restoredScreen()` | The `HaylenScreen` of the plugin that showed when the process ended, which the plugin ends once its answer arrives, or `null`. |
+| `openVideoStream(name, width, height, format)`, `openAudioStream(name, sampleRate, channels, format, capacity)` | Open the video or audio [stream](#streams) of a name, or return the one that is open, and throw an `IllegalArgumentException` for arguments the stream cannot take. |
 | `emit(event, payload)`, `emitRetained(event, payload)`, `emit(event, payload, retain, batched)` | Send the event `<id>.<event>`, retained for the first listener of its name with `emitRetained`, and retained, batched or both with the last form. The payload is converted like the value of `reply.success`, with `byte[]` and `ByteBuffer` values as bytes. |
 | `overlay()` | The overlay that places native views of the plugin over the app, as [Android overlays](#android-overlays) describes. |
 | `requirements()` | The `HaylenRequirements` of the plugin, which checks what the project of the app holds before the plugin calls a system API that needs it, as [Android requirements](#android-requirements) describes. |
@@ -1019,7 +1094,7 @@ override fun onLoad(context: HaylenPluginContext) {
 
 ### Activity results and permissions
 
-The activity is a `ComponentActivity`, so plugins start activities for a result and ask for permissions with the Activity Result API, and no plugin shares request codes with another. A plugin registers each launcher in `onActivityCreated`, before the activity starts, as the API requires, with `activity.activityResultRegistry.register(key, activity, contract, callback)` and a key of its own, such as `<id>.<name>`, and the launcher ends with its activity. `ActivityResultContracts.RequestPermission` and `RequestMultiplePermissions` ask for permissions the same way. When the activity is gone by the time the other activity returns, after the activity was recreated or the process ended while the other app showed, Android keeps the result and delivers it to the launcher with the same key of the new activity once that one starts. No call of the app waits for it then, and no app of the new process listens yet, so a plugin that reports such a result to the app sends it retained, which waits for the first listener.
+The activity is a `ComponentActivity`, so plugins start activities for a result and ask for permissions with the Activity Result API, and no plugin shares request codes with another. A plugin registers each launcher in `onActivityCreated`, before the activity starts, as the API requires, with `activity.activityResultRegistry.register(key, activity, contract, callback)` and a key of its own, such as `<id>.<name>`, and the launcher ends with its activity. `ActivityResultContracts.RequestPermission` and `RequestMultiplePermissions` ask for permissions the same way. When the activity is gone by the time the other activity returns, after the activity was recreated or the process ended while the other app showed, Android keeps the result and delivers it to the launcher with the same key of the new activity once that one starts. No call of the app waits for it then, and no app of the new process listens yet, so a plugin that reports such a result to the app sends it retained, which waits for the first listener. The activity registers launchers of its own under keys that start with `haylen.`, for the [dialogs](lua-api/dialogs.md) of the engine and the [screens](#android-screens) of plugins, so plugins keep their keys out of that prefix.
 
 ```kotlin
 override fun onActivityCreated(activity: HaylenActivity, savedInstanceState: Bundle?) {
@@ -1034,7 +1109,7 @@ SDKs that take an `ActivityResultCaller`, a `ComponentActivity`, a `FragmentActi
 
 ### Links and notifications
 
-The activity of the template is single top, so it stays the one activity that the native side of GameActivity needs, and when the launcher icon brings the app back, every screen that showed over the app, such as a purchase, a bank check or a sign-in page, shows again as the person left it. Links and notifications go to `dev.haylen.HaylenLinkActivity`, which shows nothing and runs in a task of its own. It hands them to the running `HaylenActivity`, whose plugins receive them in `onNewIntent`, and brings the task of the app to the front as the launcher icon does, or it starts `HaylenActivity` when none runs, whose plugins find them in `activity.getIntent()` in `onActivityCreated`. The activity is exported, since other apps start it, so only the manifest of `dev.haylen:haylen-links` declares it, and a plugin that receives links or posts notifications depends on that library. The plugin declares the intent filters of its links on that activity in its manifest, and the notifications it posts start that activity:
+The activity of the template is single top, so it stays the one activity that the native side of GameActivity needs, and when the launcher icon brings the app back, every screen that showed over the app, such as a purchase, a bank check or a sign-in page, shows again as the person left it. Links and notifications go to `dev.haylen.HaylenLinkActivity`, which shows nothing and runs in a task of its own. It hands them to the running `HaylenActivity`, whose plugins receive them in `onNewIntent`, and brings the task of the app to the front as the launcher icon does. When no activity runs, it keeps them for the `HaylenActivity` that the launch creates, whose plugins find them in `activity.getIntent()` in `onActivityCreated`, or that Android restores after it ended the process in the background, which keeps the intent it started with and hands the link to `onNewIntent` right after `onActivityCreated`. The activity is exported, since other apps start it, so only the manifest of `dev.haylen:haylen-links` declares it, and a plugin that receives links or posts notifications depends on that library. The plugin declares the intent filters of its links on that activity in its manifest, and the notifications it posts start that activity:
 
 ```xml
 <activity android:name="dev.haylen.HaylenLinkActivity" android:exported="true">
@@ -1098,16 +1173,16 @@ The consumer rules of the engine library keep every class that extends `HaylenPl
 
 ## Demo plugin and sample
 
-The plugins sample, [`samples/system/plugins`](../samples/system/plugins), carries its own plugin, [`native-demo`](../samples/system/plugins/plugins/native-demo), which exercises every capability of this guide with the APIs of each platform alone: UIKit and AppKit on Apple platforms, the views, dialogs and intents of Android, the DOM on the web and the threads and the windows of the system in C on the desktops. It is the reference for writing a plugin: each of its parts is a small, complete example of the platform side of one capability, and its [README](../samples/system/plugins/plugins/native-demo/README.md) documents its Lua API the way every plugin documents its own. The [sample README](../samples/system/plugins/README.md) explains its tests and how to run them on each platform.
+The plugins sample, [`samples/system/plugins`](../samples/system/plugins), carries its own plugin, [`native-demo`](../samples/system/plugins/plugins/native-demo), which exercises every capability of this guide with the APIs of each platform alone: UIKit, AppKit and SwiftUI on Apple platforms, the views, dialogs and intents of Android, the DOM on the web and the threads and the windows of the system in C on the desktops. It is the reference for writing a plugin: each of its parts is a small, complete example of the platform side of one capability, and its [README](../samples/system/plugins/plugins/native-demo/README.md) documents its Lua API the way every plugin documents its own. The [sample README](../samples/system/plugins/README.md) explains its tests and how to run them on each platform.
 
 ### The package
 
 | File | What it shows |
 | --- | --- |
-| [`plugin.json`](../samples/system/plugins/plugins/native-demo/plugin.json) | Every platform, four parameters with defaults, `${urlScheme}` in the `CFBundleURLTypes` of `infoPlist` and in the Android placeholder `nativeDemoUrlScheme`, and a `native` library for the desktops. |
+| [`plugin.json`](../samples/system/plugins/plugins/native-demo/plugin.json) | Every platform, five parameters with defaults, `${urlScheme}` in the `CFBundleURLTypes` of `infoPlist` and in the Android placeholder `nativeDemoUrlScheme`, `${cameraUsage}` in the `NSCameraUsageDescription` of the Apple platforms with a camera, and a `native` library for the desktops. |
 | [`source/init.lua`](../samples/system/plugins/plugins/native-demo/source/init.lua) | The Lua API on the plugin handle, the load of the C library where no other native part loaded, and the `start` call that tells the native part of every new app. |
-| [`apple/`](../samples/system/plugins/plugins/native-demo/apple) | `NativeDemoPlugin.swift`, the plugin class, which also draws its image with CoreGraphics, `NativeDemoBanner.swift`, `NativeDemoScreen.swift` and `NativeDemoPicker.swift`, each for UIKit and AppKit. |
-| [`android/`](../samples/system/plugins/plugins/native-demo/android) | The library module with its manifest and `NativeDemoPlugin.kt`, `NativeDemoBanner.kt` and `NativeDemoScreen.kt`. |
+| [`apple/`](../samples/system/plugins/plugins/native-demo/apple) | `NativeDemoPlugin.swift`, the plugin class, which also draws its image with CoreGraphics, asks for permissions and schedules notifications, `NativeDemoBanner.swift`, `NativeDemoScreen.swift`, `NativeDemoPicker.swift` and `NativeDemoConfirm.swift`, each for UIKit and AppKit, `NativeDemoConfirmView.swift`, the SwiftUI screen, and `NativeDemoVideo.swift` and `NativeDemoTone.swift`, which feed the streams from dispatch queues. |
+| [`android/`](../samples/system/plugins/plugins/native-demo/android) | The library module with its manifest, its dependencies on `dev.haylen:haylen-plugins` and `dev.haylen:haylen-links`, and `NativeDemoPlugin.kt`, the plugin class, which also draws its image with a `Bitmap`, asks for permissions and schedules notifications, `NativeDemoBanner.kt`, `NativeDemoScreen.kt`, `NativeDemoConfirm.kt` and `NativeDemoConfirmActivity.kt`, the contract and the AndroidX activity of the confirm screen, `NativeDemoNotifier.kt`, which posts the notifications, and `NativeDemoVideo.kt` and `NativeDemoTone.kt`, which feed the streams from threads of their own. |
 | [`web/`](../samples/system/plugins/plugins/native-demo/web) | `native-demo.js`, the web module, and `screen.html`, the confirm page of its popup and redirect screens. |
 | [`native/`](../samples/system/plugins/plugins/native-demo/native) | `CMakeLists.txt` and `NativeDemo.c`, the library of the desktops, with a PNG encoder of its own and the threads that feed its streams, and `NativeDemoScreen.m` and `NativeDemoScreen.c`, the windows of its confirm screen. |
 
@@ -1123,7 +1198,7 @@ The plugins sample, [`samples/system/plugins`](../samples/system/plugins), carri
 | Work off the main thread, `compute` | `context.register` with `Decodable` parameters and an `Encodable` result, awaiting a global dispatch queue. | `context.register` with `HaylenBridge.Threading.BACKGROUND`. | An async handler that yields to the page between slices. | A thread of the library that calls `resolve`. |
 | A typed failure, `fail` | A thrown `HaylenFailure` with a code and data. | `reply.failure(message, code, data)`, or a thrown `HaylenBridge.Failure`. | A thrown error with `code` and `data`. | `resolve` with `ok` 0 and an object with `message`, `code` and `data`. |
 | Cancellation, `wait` | The task of the call is cancelled, which ends `Task.sleep`. | `reply.onCancel`. | The `abort` event of the `signal` of the call. | The cancel function of `registerHandler`. |
-| An unsupported call | `HaylenFailure` with the code `unsupported`, for `pickFile` on tvOS and the streams. | `reply.failure` with the code `unsupported`, for the streams. | | `resolve` with the code `unsupported`, for the banner, the covering screen, the picker and the parameters. |
+| An unsupported call | `HaylenFailure` with the code `unsupported`, for `pickFile`, the camera and `notify` on tvOS. | A thrown `HaylenBridge.Failure` with the code `unsupported`, for the camera of a device without one. | | `resolve` with the code `unsupported`, for the banner, the covering screen, the picker and the parameters. |
 | Bytes both ways, `echoBytes` | `registerHandler`, whose parameters hold `Data` and whose answer returns it. | A `ByteArray` in the parameters, returned in a `JSONObject`. | A `Uint8Array` in the parameters, returned as it is. | The `HaylenNativeBuffer` of the handler, handed back to `resolve`. |
 | An image as bytes, `generatedImage` | A `CGContext` and `CGImageDestination` of ImageIO, which write a PNG. | A `Bitmap`, a `Canvas` and `Bitmap.compress`, on the background thread. | A `<canvas>` and `toBlob`. | A PNG encoder of the library with stored deflate blocks. |
 
@@ -1133,7 +1208,7 @@ The plugins sample, [`samples/system/plugins`](../samples/system/plugins), carri
 
 ### Streams
 
-`startVideo` opens the video stream `pattern` and draws an animated pattern into it 30 times per second, and `startTone` opens the audio stream `tone` and synthesizes a sine wave into it a tenth of a second ahead of the clock. The C library draws BGRA frames of 320 by 180 pixels and 16-bit mono samples at 44100 Hz on threads of its own, which the engine turns into RGBA and resamples to the mixer, and the web module animates a `<canvas>` that it pushes into `context.videoStream('pattern')` and pushes `Float32Array` blocks into `context.audioStream('tone', {sampleRate = 44100, channels = 1})` from timers of the page. Apple platforms and Android fail both with the code `unsupported`, since their native APIs for streams come later. The Lua API returns the streams with `videoStream()` and `audioStream()`, whose texture the sample draws and whose voice it plays, with a level meter from `read`.
+`startVideo` opens the video stream `pattern` and draws an animated pattern into it 30 times per second, and `startTone` opens the audio stream `tone` and synthesizes a sine wave into it a tenth of a second ahead of the clock. The C library draws BGRA frames of 320 by 180 pixels and 16-bit mono samples at 44100 Hz on threads of its own, which the engine turns into RGBA and resamples to the mixer. The Swift part draws the pattern with CoreGraphics into `CVPixelBuffer`s of a pool and pushes them with `push(_:timestamp:)`, and pushes mono floats at 44100 Hz, each from a dispatch queue of its own. The web module animates a `<canvas>` that it pushes into `context.videoStream('pattern')` and pushes `Float32Array` blocks into `context.audioStream('tone', {sampleRate = 44100, channels = 1})` from timers of the page. The Kotlin part draws the pattern with a `Canvas` into an RGBA `Bitmap` and pushes it with `push(bitmap, timestamp)`, and pushes mono floats at 44100 Hz with `push(samples, frames)`, each from a `HandlerThread` of its own. The Lua API returns the streams with `videoStream()` and `audioStream()`, whose texture the sample draws and whose voice it plays, with a level meter from `read`.
 
 ### Parameters
 
@@ -1141,7 +1216,7 @@ The native parts read their parameters from the context, `context.config` on App
 
 ### Views over the app
 
-The banner is a native view that the overlay of the context places at the top or the bottom of the safe area, 360 by 56 points, dp or page pixels, with `reserve` set or not: `context.overlay.add(view, placement:)` with a `HaylenPlacement` on Apple platforms, `context.overlay().add(view, placement)` on Android, which puts it in a panel window of its own, and `context.overlay.add(element, placement)` on the web. `update`, the visibility and `remove` of the item it returns move, hide and remove the banner, and a native button inside it sends `bannerTapped`. The sample shows that its frame, laid out in the safe area, moves out of the way of a banner that reserves its edge, and that taps outside the banner reach the app.
+The banner is a native view that the overlay of the context places at the top or the bottom of the safe area, 360 by 56 points, dp or page pixels, with `reserve` set or not: `context.overlay.add(view, placement:)` with a `HaylenPlacement` on Apple platforms, `context.overlay().add(view, placement)` on Android, which adds it over the surface of the app, and `context.overlay.add(element, placement)` on the web. `update`, the visibility and `remove` of the item it returns move, hide and remove the banner, and a native button inside it sends `bannerTapped`. The sample shows that its frame, laid out in the safe area, moves out of the way of a banner that reserves its edge, and that taps outside the banner reach the app.
 
 ### Covering the app
 
@@ -1149,15 +1224,23 @@ The native screen is a `UIViewController` presented full screen on iOS, iPadOS, 
 
 ### Screens
 
-`confirm` is the [screen](#plugin-screens) of the plugin, which asks a question with Confirm and Decline and answers with `{confirmed, via, language}`. The web opens `web/screen.html` in a popup with `screen.popup`, whose page posts the answer to the app, and the desktops open a native window over the window of the app from `getWindow`: a sheet on macOS in `NativeDemoScreen.m`, an owned window on Windows and a transient X11 window on a connection of its own on Linux in `NativeDemoScreen.c`, whose Close button and close box end the screen as `cancelled`. The web adds `redirect`, which leaves the page for the same confirm page and comes back with the answer and the token of the screen in the address, which the module reads through `context.restoredScreen` in `load`. Apple platforms and Android fail both with the code `unsupported` until their runtimes open screens. The Native screen test of the sample opens the screen, shows that the app was covered and drew nothing under it, tries a second screen, which fails with `busy`, cancels one, and restarts the app under a screen with `haylen.requestRestart()`, so the next app receives `screenRestored` with the state.
+`confirm` is the [screen](#plugin-screens) of the plugin, which asks a question with Confirm and Decline and answers with `{confirmed, via, language}`. The web opens `web/screen.html` in a popup with `screen.popup`, whose page posts the answer to the app, and the desktops open a native window over the window of the app from `getWindow`: a sheet on macOS in `NativeDemoScreen.m`, an owned window on Windows and a transient X11 window on a connection of its own on Linux in `NativeDemoScreen.c`, whose Close button and close box end the screen as `cancelled`. Apple platforms show a UIKit controller in `NativeDemoConfirm.swift`, presented full screen, whose swipe and Menu button end the screen as `cancelled`, and an AppKit sheet on macOS, and add `swiftUI`, the same question in the SwiftUI view of `NativeDemoConfirmView.swift` through a hosting controller, presented over the app on iOS, iPadOS and tvOS and in a window of its own on Mac Catalyst and macOS, whose Close button dismisses it through SwiftUI. The web adds `redirect`, which leaves the page for the same confirm page and comes back with the answer and the token of the screen in the address, which the module reads through `context.restoredScreen` in `load`. Android registers the screen as the contract of `NativeDemoConfirm.kt`, which starts `NativeDemoConfirmActivity`, an `AppCompatActivity` of its own, whose Back button gives `null` and so ends the screen as `cancelled`, and whose end reaches the next app as `screenRestored` when the process ended while it showed. The Native screen test of the sample opens the screen, shows that the app was covered and drew nothing under it, tries a second screen, which fails with `busy`, cancels one, and restarts the app under a screen with `haylen.requestRestart()`, so the next app receives `screenRestored` with the state.
 
 ### Native results
 
-`pickFile` shows the platform side of a result: `startActivityForResult` with `ACTION_OPEN_DOCUMENT` on Android, where `onActivityResult` of the plugin class answers the call for its own request code, a `UIDocumentPickerViewController` that is its own delegate on iOS, iPadOS and Mac Catalyst, `NSOpenPanel` on macOS and an `<input type="file">` with its `change` and `cancel` events on the web. A cancelled picker answers `nil`.
+`pickFile` shows the platform side of a result: `ActivityResultContracts.OpenDocument` on Android, whose launcher the plugin class registers under the key `native-demo.pickFile` in `onActivityCreated` and which answers the call, or logs a pick that ends after the process ended while the picker showed, a `UIDocumentPickerViewController` that is its own delegate on iOS, iPadOS and Mac Catalyst, `NSOpenPanel` on macOS and an `<input type="file">` with its `change` and `cancel` events on the web. A cancelled picker answers `nil`.
+
+### Permissions and notifications
+
+The call `requestPermission` asks the person for `camera` or `notifications` with the prompt of the system and answers with `{kind, granted, status, language}`. On Apple platforms the camera prompt shows the `NSCameraUsageDescription` that the `infoPlist` of `plugin.json` gives, tvOS has no camera, and the notifications ask through `UNUserNotificationCenter`. The call `notify(seconds)` schedules a local notification of the plugin, which shows while the app is in front too, since the plugin class answers `userNotificationCenter(_:willPresent:withCompletionHandler:)` for its own notifications. Its tap reaches `userNotificationCenter(_:didReceive:withCompletionHandler:)` of the plugin class through the delegate of the notification center that the runtime owns, also when the tap launches the closed app, and the plugin sends it as `notificationOpened`, retained, so it waits for the listener of the Permissions test of the sample. On Android the plugin checks with `context.requirements()` that the manifest of the app declares `android.permission.CAMERA` or `android.permission.POST_NOTIFICATIONS`, which the manifest of its module does, and asks through a launcher of `ActivityResultContracts.RequestPermission` that it registers in `onActivityCreated`, answering with the status `authorized` or `denied`. Before Android 13 notifications need no permission, so the answer tells whether the person left them on. `notify` fails with the code `permissionDenied` while the notifications of the app are off, and otherwise sets an alarm, which starts the process when it was closed, whose receiver, `NativeDemoNotifier`, posts the notification through `NotificationManagerCompat` on a channel of its own. The tap starts `HaylenLinkActivity`, and the plugin sends `notificationOpened` from `onActivityCreated` or `onNewIntent`.
+
+### Requirements
+
+The call `requirementCheck` needs something that the plugin leaves out of the project of the app on purpose, so it shows the [requirements](#requirements) of the projects. On Android its handler calls `context.requirements().require` with the permission `android.permission.READ_CONTACTS`, which the manifest of the module never declares, so the call fails with the code `unsupported` and `data.missing` holds the permission with `app/src/main/AndroidManifest.xml` and its `<uses-permission>` snippet, while the log tells once what is missing. An app whose manifest declares the permission gets `{met, language}` instead. The Requirements test of the sample shows the failure and every missing requirement with its file and snippet.
 
 ### Links and errors of the app
 
-The scheme of `urlScheme` opens the app. On Apple platforms `scene(_:openURLContexts:)` and `application(_:open:)` receive the links, including the one that launched the app, and on Android `onActivityCreated` receives the intent that launched the activity and `onNewIntent` the ones that reach it later. Each part sends `urlOpened` retained, so a link that launched the app waits for the first listener. The web stands in with the hash of the page address. The errors of the app reach `appDidFail(with:)`, `onAppError`, `context.onAppError` and the handler of `registerErrorHandler`, which keep the message until the next app sends `start`.
+The scheme of `urlScheme` opens the app. On Apple platforms `scene(_:openURLContexts:)` and `application(_:open:)` receive the links, including the one that launched the app, and on Android, where the plugin declares the scheme on `HaylenLinkActivity` of `dev.haylen:haylen-links`, `onActivityCreated` receives the intent that launched the activity and `onNewIntent` the ones that reach it later. Each part sends `urlOpened` retained, so a link that launched the app waits for the first listener. The web stands in with the hash of the page address. The errors of the app reach `appDidFail(with:)`, `onAppError`, `context.onAppError` and the handler of `registerErrorHandler`, which keep the message until the next app sends `start`.
 
 ### Testing without the native part
 

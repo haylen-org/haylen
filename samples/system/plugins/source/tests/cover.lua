@@ -1,4 +1,4 @@
--- Covering native UI: the plugin shows a native screen over the whole app and covers the app while it shows. The covered app is inactive, halted and muted, so haylen.appCovered() is true, its updates stop while the engine keeps drawing its last state, appInactive arrives when the screen shows and appActive once Close ends the cover.
+-- Covering native UI: the plugin shows a native screen over the whole app and covers the app while it shows. The covered app is inactive, halted and muted, so haylen.appCovered() is true, its updates stop and the engine draws its covered state once and keeps it on screen, appInactive arrives when the screen shows and appActive once Close ends the cover.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
@@ -74,7 +74,7 @@ function Cover:update(dt)
     end
 end
 
--- A covered app is halted, so its updates stop, while the engine keeps drawing it under the native screen, and the render hook sees the cover.
+-- A covered app is halted, so its updates stop, and the engine draws it once more under the native screen, where the render hook sees the cover, and keeps that frame on screen.
 function Cover:render()
     Cover.super.render(self)
     if not self.cover or not haylen.appCovered() then

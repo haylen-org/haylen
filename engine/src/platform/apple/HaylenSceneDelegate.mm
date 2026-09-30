@@ -2,12 +2,20 @@
 
 #if !TARGET_OS_OSX
 #import "platform/apple/ApplePlugins.hpp"
+#import "platform/apple/AppleScreens.hpp"
+#import "platform/apple/AppleTheme.hpp"
 #import "platform/apple/HaylenOverlayLayer.h"
+#import "platform/apple/HaylenScreenSceneDelegate.h"
 #include "sokol_app.h"
 
 using haylen::platform::ApplePlugins;
+using haylen::platform::AppleScreens;
+using haylen::platform::AppleTheme;
 
-@implementation HaylenSceneDelegate
+@implementation HaylenSceneDelegate {
+    // Whether the scene of this delegate holds the window of the app. UIKit creates a delegate for every scene besides the one of the application.
+    BOOL holdsApp;
+}
 
 // Plugins load before launching ends, so their SDKs set up in time, and the notification center gets its delegate as early, so the notification that launched the app reaches the plugins.
 - (BOOL)application:(UIApplication*)application willFinishLaunchingWithOptions:(NSDictionary<UIApplicationLaunchOptionsKey, id>*)launchOptions {
@@ -29,10 +37,33 @@ using haylen::platform::ApplePlugins;
     return launched;
 }
 
-// sokol_app creates the window here, which the overlay lies over from now on. UIKit hands the links, the user activities and the shortcut item that open the app only to the connection options, so the plugins then receive them as they would while the app runs.
+// The windows of screens connect with a delegate of their own, so they never become the window of the app.
+- (UISceneConfiguration*)application:(UIApplication*)application configurationForConnectingSceneSession:(UISceneSession*)connectingSceneSession options:(UISceneConnectionOptions*)options {
+#if !TARGET_OS_TV
+    for (NSUserActivity* activity in options.userActivities) {
+        if ([activity.activityType isEqualToString:AppleScreens::kWindowActivity]) {
+            UISceneConfiguration* configuration = [[UISceneConfiguration alloc] initWithName:@"HaylenScreen" sessionRole:connectingSceneSession.role];
+            configuration.delegateClass = HaylenScreenSceneDelegate.class;
+            return configuration;
+        }
+    }
+#endif
+    return [super application:application configurationForConnectingSceneSession:connectingSceneSession options:options];
+}
+
+// The library `sokol_app` creates the window here, which the overlay lies over from now on. UIKit hands the links, the user activities and the shortcut item that open the app only to the connection options, so the plugins then receive them as they would while the app runs. The app draws in one window, so a scene that connects while the window of the app has a scene, such as a second window that the person opens on an iPad, goes away at once.
 - (void)scene:(UIScene*)scene willConnectToSession:(UISceneSession*)session options:(UISceneConnectionOptions*)connectionOptions {
+    if (sapp_isvalid() && ((__bridge UIWindow*)sapp_ios_get_window()).windowScene != nil) {
+        if ([session.role isEqualToString:UIWindowSceneSessionRoleApplication]) {
+            [UIApplication.sharedApplication requestSceneSessionDestruction:session options:nil errorHandler:nil];
+        }
+        return;
+    }
+    holdsApp = YES;
     [super scene:scene willConnectToSession:session options:connectionOptions];
-    [HaylenOverlayLayer.shared attachToView:((__bridge UIWindow*)sapp_ios_get_window()).rootViewController.view];
+    UIWindow* window = (__bridge UIWindow*)sapp_ios_get_window();
+    [HaylenOverlayLayer.shared attachToView:window.rootViewController.view];
+    AppleTheme::observe(window);
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin scene:scene willConnectToSession:session options:connectionOptions];
     }
@@ -51,6 +82,9 @@ using haylen::platform::ApplePlugins;
 }
 
 - (void)sceneDidDisconnect:(UIScene*)scene {
+    if (!holdsApp) {
+        return;
+    }
     [HaylenOverlayLayer.shared detach];
     ApplePlugins::closeCovers();
 }
@@ -79,6 +113,9 @@ using haylen::platform::ApplePlugins;
 #endif
 
 - (void)sceneDidBecomeActive:(UIScene*)scene {
+    if (!holdsApp) {
+        return;
+    }
     [super sceneDidBecomeActive:scene];
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin sceneDidBecomeActive:scene];
@@ -86,6 +123,9 @@ using haylen::platform::ApplePlugins;
 }
 
 - (void)sceneWillResignActive:(UIScene*)scene {
+    if (!holdsApp) {
+        return;
+    }
     [super sceneWillResignActive:scene];
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin sceneWillResignActive:scene];
@@ -93,12 +133,18 @@ using haylen::platform::ApplePlugins;
 }
 
 - (void)sceneWillEnterForeground:(UIScene*)scene {
+    if (!holdsApp) {
+        return;
+    }
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin sceneWillEnterForeground:scene];
     }
 }
 
 - (void)sceneDidEnterBackground:(UIScene*)scene {
+    if (!holdsApp) {
+        return;
+    }
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin sceneDidEnterBackground:scene];
     }

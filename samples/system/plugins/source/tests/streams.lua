@@ -1,4 +1,4 @@
--- Streams: the native part draws an animated pattern 30 times per second into a video stream, whose texture the app draws and which stays current by itself, and synthesizes a tone into an audio stream, which the app plays as a voice and reads for a level meter. C pushes both from threads of its library on the desktops and JavaScript from timers of the page on the web.
+-- Streams: the native part draws an animated pattern 30 times per second into a video stream, whose texture the app draws and which stays current by itself, and synthesizes a tone into an audio stream, which the app plays as a voice and reads for a level meter. Swift pushes both from dispatch queues on Apple platforms, Kotlin from threads of its own on Android, C from threads of its library on the desktops and JavaScript from timers of the page on the web.
 local audio = require('haylen.audio')
 local collections = require('haylen.collections')
 local graphics2d = require('haylen.graphics2d')
@@ -24,7 +24,7 @@ function Streams:enter()
         controls = {
             ui.button{id = 'video', text = 'Start the video', variant = 'primary', onClick = function() self:toggleVideo() end},
             ui.button{id = 'tone', text = 'Start the tone', onClick = function() self:toggleTone() end},
-            ui.label{text = 'The native part pushes frames and samples from any thread. The engine keeps only the newest frame and uploads it once per frame at most, and the voice reads the ring of the tone, resampled to the mixer and silent where samples are missing. Swift and Kotlin push streams in a later version of the engine.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'The native part pushes frames and samples from any thread. The engine keeps only the newest frame and uploads it once per frame at most, and the voice reads the ring of the tone, resampled to the mixer and silent where samples are missing.', color = 'textMuted', font = 'caption'},
             ui.label{font = 'monospace', text = "demo.startVideo():await()\nlocal video = demo.videoStream()\ngraphics2d.draw(video.texture, x, y)\n\ndemo.startTone(440):await()\nlocal tone = demo.audioStream()\nlocal voice = tone:play({volume = 0.5})\ntone:read(buffer)"},
         },
     })

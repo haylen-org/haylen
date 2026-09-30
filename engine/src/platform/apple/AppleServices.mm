@@ -11,16 +11,16 @@
 #include <string>
 #include <utility>
 
-#include "haylen/core/Json.hpp"
 #include "haylen/io/Package.hpp"
-#include "platform/DialogRelay.hpp"
-#include "platform/ScreenRelay.hpp"
+#import "platform/apple/AppleBattery.hpp"
 #import "platform/apple/AppleBridge.hpp"
 #import "platform/apple/AppleDesktop.hpp"
+#import "platform/apple/AppleDialogs.hpp"
 #import "platform/apple/AppleGamepads.hpp"
 #import "platform/apple/AppleNetwork.hpp"
 #import "platform/apple/AppleOrientation.hpp"
 #import "platform/apple/ApplePlugins.hpp"
+#import "platform/apple/AppleScreens.hpp"
 #import "platform/apple/AppleSystem.hpp"
 #import "platform/apple/AppleTextInput.hpp"
 #import "platform/apple/CatalystInput.hpp"
@@ -42,6 +42,7 @@ std::string_view Services::getName() noexcept {
 
 void Services::initialize() {
     AppleNetwork::observe();
+    AppleBattery::observe();
 #if !TARGET_OS_OSX
     [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidReceiveMemoryWarningNotification object:nil queue:nil usingBlock:^(NSNotification*) { MemoryWarning::raise(); }];
 #endif
@@ -75,7 +76,7 @@ std::shared_ptr<io::Package> Services::openBundledPackage() {
 
 std::filesystem::path Services::getUserDataDirectory(std::string_view identifier) {
 #if TARGET_OS_TV
-    // tvOS keeps no permanent local files, so caches are the only writable place.
+    // Apps on tvOS keep no permanent local files, so caches are the only writable place.
     const NSSearchPathDirectory directory = NSCachesDirectory;
 #else
     const NSSearchPathDirectory directory = NSApplicationSupportDirectory;
@@ -212,18 +213,22 @@ void Services::vibrate(float) {
     AppleSystem::vibrate();
 }
 
-void Services::showDialog(std::uint64_t id, const DialogRequest&, const std::filesystem::path&) {
-    DialogRelay::resolve(id, {.failure = DialogResult::Failure{.code = DialogResult::Code::Unsupported, .message = "Native dialogs are not implemented on Apple platforms yet."}});
+void Services::showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) {
+    AppleDialogs::show(id, request, folder);
 }
 
-void Services::cancelDialog(std::uint64_t) {}
+void Services::cancelDialog(std::uint64_t id) {
+    AppleDialogs::cancel(id);
+}
 
-// The screens of Apple plugins arrive with a later version of the Apple runtime, while native libraries of the macOS player open theirs before the platform is asked.
+// Native libraries of the macOS player open the screens they registered before the platform is asked for them.
 void Services::openScreen(const ScreenRequest& request) {
-    ScreenRelay::finish(request.id, false, core::Json{{"message", "The screens of plugins are not implemented on Apple platforms yet."}, {"code", "unsupported"}}.dump());
+    AppleScreens::open(request);
 }
 
-void Services::cancelScreen(std::uint64_t) {}
+void Services::cancelScreen(std::uint64_t id) {
+    AppleScreens::cancel(id);
+}
 
 HaylenNativeWindow Services::getNativeWindow() {
 #if TARGET_OS_OSX

@@ -54,6 +54,11 @@ targets:
       - sdk: CoreAudio.framework
       - sdk: Network.framework
       - sdk: UserNotifications.framework
+      - sdk: CoreVideo.framework
+      - sdk: UniformTypeIdentifiers.framework
+      # Mac Catalyst reads the battery of the Mac from the power sources of IOKit.
+      - sdk: IOKit.framework
+        destinationFilters: [macCatalyst]
     settings:
       base:
         PRODUCT_NAME: $(HAYLEN_PRODUCT_NAME)
@@ -119,6 +124,8 @@ targets:
       - sdk: CoreAudio.framework
       - sdk: Network.framework
       - sdk: UserNotifications.framework
+      - sdk: CoreVideo.framework
+      - sdk: UniformTypeIdentifiers.framework
     settings:
       base:
         PRODUCT_NAME: $(HAYLEN_PRODUCT_NAME)
@@ -177,6 +184,9 @@ targets:
       - sdk: CoreAudio.framework
       - sdk: Network.framework
       - sdk: UserNotifications.framework
+      - sdk: CoreVideo.framework
+      - sdk: UniformTypeIdentifiers.framework
+      - sdk: IOKit.framework
     settings:
       base:
         PRODUCT_NAME: $(HAYLEN_PRODUCT_NAME)

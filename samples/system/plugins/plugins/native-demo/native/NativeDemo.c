@@ -267,7 +267,7 @@ static void native_demo_echo(uint64_t call, const char* paramsJson) {
 // Answers with the bytes it received, which stay valid while the handler runs, since resolve copies them.
 static void native_demo_echo_bytes(uint64_t call, const HaylenNativeBuffer* buffers, size_t bufferCount) {
     if (bufferCount == 0) {
-        nativeDemoApi->resolve(call, 0, "{\"message\":\"echoBytes needs bytes.\",\"code\":\"invalidParams\"}", NULL, 0);
+        nativeDemoApi->resolve(call, 0, "{\"message\":\"The method \\\"echoBytes\\\" needs bytes.\",\"code\":\"invalidParams\"}", NULL, 0);
         return;
     }
     char answer[NATIVE_DEMO_TEXT];
@@ -366,7 +366,7 @@ static void native_demo_generated_image(uint64_t call, const char* paramsJson) {
     const int width = native_demo_number(paramsJson, "width", 0);
     const int height = native_demo_number(paramsJson, "height", 0);
     if (width < 1 || height < 1 || width > 2048 || height > 2048) {
-        nativeDemoApi->resolve(call, 0, "{\"message\":\"generatedImage needs a width and a height from 1 to 2048.\",\"code\":\"invalidParams\"}", NULL, 0);
+        nativeDemoApi->resolve(call, 0, "{\"message\":\"The method \\\"generatedImage\\\" needs a width and a height from 1 to 2048.\",\"code\":\"invalidParams\"}", NULL, 0);
         return;
     }
     uint8_t* pixels = (uint8_t*)malloc((size_t)width * (size_t)height * 4);

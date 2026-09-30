@@ -11,7 +11,10 @@
 #import <UIKit/UIKit.h>
 #endif
 
+#import "haylen/platform/apple/HaylenAudioStream.h"
 #import "haylen/platform/apple/HaylenBridge.h"
+#import "haylen/platform/apple/HaylenScreen.h"
+#import "haylen/platform/apple/HaylenVideoStream.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -77,7 +80,7 @@ NS_SWIFT_NAME(HaylenOverlay.Item)
 
 @end
 
-// What the runtime gives the native part of a plugin, once per plugin: its id, its parameters from app.json with the defaults of plugin.json, its overlay and the app's window. Methods and events take the id of the plugin in front of their names, so registerHandler:@"show" answers <id>.show. Registering, emitting and covering work from any thread, while the window and the overlay belong to the main thread.
+// What the runtime gives the native part of a plugin, once per plugin: its id, its parameters from `app.json` with the defaults of `plugin.json`, its overlay and the app's window. Methods, events, screens and streams take the id of the plugin in front of their names, so `registerHandler:@"show"` answers `<id>.show`. Registering, emitting, covering and opening streams work from any thread, while the window, the view controller and the overlay belong to the main thread.
 @interface HaylenPluginContext : NSObject
 
 @property(nonatomic, readonly, copy) NSString* identifier;
@@ -86,6 +89,7 @@ NS_SWIFT_NAME(HaylenOverlay.Item)
 #if TARGET_OS_OSX
 @property(nonatomic, readonly, nullable) NSWindow* window NS_SWIFT_UI_ACTOR;
 #else
+// The topmost view controller that the window of the app presents, which is the root view controller while nothing is presented over the app.
 @property(nonatomic, readonly, nullable) UIViewController* viewController NS_SWIFT_UI_ACTOR;
 @property(nonatomic, readonly, nullable) UIWindowScene* windowScene NS_SWIFT_UI_ACTOR;
 #endif
@@ -95,6 +99,15 @@ NS_SWIFT_NAME(HaylenOverlay.Item)
 
 - (void)registerHandler:(NSString*)method handler:(HaylenHandler)handler;
 - (void)registerCancellableHandler:(NSString*)method handler:(HaylenCancellableHandler)handler;
+
+// Opens the screen `<id>.<name>` that the app asks for with `handle:openScreen(name, params, options)`, as `HaylenScreen` describes.
+- (void)registerScreen:(NSString*)name handler:(HaylenScreenHandler)handler;
+
+// Opens the video stream `name` of the plugin, which the app draws through `handle:videoStream(name)`, with its format and a size, 0 by 0 until the first frame, or returns the stream that is open already. Returns `nil` and logs why for an empty name, a negative size or a stream that is open with another format.
+- (nullable HaylenVideoStream*)openVideoStream:(NSString*)name width:(NSInteger)width height:(NSInteger)height format:(HaylenVideoStreamFormat)format NS_SWIFT_NAME(openVideoStream(_:width:height:format:));
+
+// Opens the audio stream `name` of the plugin, which the app plays through `handle:audioStream(name)`, with its sample rate, its channels, its format and room for `capacity` frames, or returns the stream that is open already. Returns `nil` and logs why for an empty name, a rate, channel count or capacity below 1, or a stream that is open with another rate, channel count or format.
+- (nullable HaylenAudioStream*)openAudioStream:(NSString*)name sampleRate:(NSInteger)sampleRate channels:(NSInteger)channels format:(HaylenAudioStreamFormat)format capacity:(NSInteger)capacity NS_SWIFT_NAME(openAudioStream(_:sampleRate:channels:format:capacity:));
 
 // A retained event waits for the first listener of its name, such as the link that opened the app, which arrives before the app listens. The batched events of a name that arrive in one frame reach the app as one list in order, such as the readings of a sensor. NSData values anywhere inside a payload cross as byte buffers.
 - (void)emit:(NSString*)event payload:(nullable id)payload;

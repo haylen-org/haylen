@@ -174,7 +174,7 @@ class Engine final {
     [[nodiscard]] AppState getAppState() const noexcept;
     [[nodiscard]] NetworkState getNetworkState() const noexcept;
 
-    // Whether native UI of plugins covers the app, such as a full screen ad, a sign-in form or the screen of a plugin. A covered app is inactive, halted and muted whatever the lifecycle options say, and it comes back as it was once the last cover ends. The engine takes the cover of the platform at the start of every frame, and it draws nothing while an opaque screen shows.
+    // Whether native UI of plugins covers the app, such as a full screen ad, a sign-in form or the screen of a plugin. A covered app is inactive, halted and muted whatever the lifecycle options say, and it comes back as it was once the last cover ends. The engine takes the cover of the platform at the start of every frame. A covered app draws one frame once the cover began, which stays on screen, and draws it again only when the window changes size or the app comes back from the background, while it draws nothing at all under an opaque screen.
     [[nodiscard]] bool isAppCovered() const noexcept;
 
     // Returns whether the app is halted, by a cover or by the lifecycle options in the current app state. A halted app still delivers asynchronous results and queued events, and an app in the background never renders.

@@ -149,9 +149,14 @@ function demo.showScreen(title)
     return handle:call('showScreen', {title = title})
 end
 
--- Opens the confirm screen of the plugin, which covers the app while it shows: a popup page on the web and a native window over the window of the app on the desktops, while Apple platforms and Android fail with the code unsupported until their runtimes open screens. Answers with {confirmed, via, language} once the person answers, and fails with the code cancelled when the person closes the screen. options takes the state that comes back with a restored end, opaque and timeout, like handle:openScreen.
+-- Opens the confirm screen of the plugin, which covers the app while it shows: a UIKit controller on iOS, iPadOS, Mac Catalyst and tvOS, a sheet on macOS, an AndroidX activity of its own on Android, a popup page on the web and a native window over the window of the app on the desktops. Answers with `{confirmed, via, language}` once the person answers, and fails with the code `cancelled` when the person closes the screen. The table `options` takes the `state` that comes back with a restored end, `opaque` and `timeout`, like `handle:openScreen`.
 function demo.openScreen(options)
     return handle:openScreen('confirm', {title = 'Native Demo', question = 'Does the app get an answer?'}, options)
+end
+
+-- Opens the same question in SwiftUI, which only Apple platforms have: over the app on iOS, iPadOS and tvOS and in a window of its own on Mac Catalyst and macOS. It answers like `openScreen`, and its Close button dismisses it through SwiftUI, which fails the call with the code `cancelled`.
+function demo.openSwiftUIScreen(options)
+    return handle:openScreen('swiftUI', {title = 'SwiftUI', question = 'Does the SwiftUI screen answer the app?'}, options)
 end
 
 -- Opens the confirm screen of the web by leaving the page for a page of the plugin, which comes back with the answer in its address. The page loads again, so the answer reaches the new app as screenRestored with the state.
@@ -167,6 +172,21 @@ end
 -- Lets the person pick a file with the file picker of the platform and answers with {name}, or nil when the picker was cancelled.
 function demo.pickFile()
     return handle:call('pickFile')
+end
+
+-- Asks the person for the permission `kind`, `camera` or `notifications`, and answers with `{kind, granted, status, language}`. The camera prompt shows the usage description of the `cameraUsage` parameter on Apple platforms.
+function demo.requestPermission(kind)
+    return handle:call('requestPermission', {kind = kind})
+end
+
+-- Schedules a local notification of the plugin after `seconds` and answers with `{identifier, seconds, language}`.
+function demo.notify(seconds)
+    return handle:call('notify', {seconds = seconds, title = 'Native Demo', body = 'Tap to open the plugins sample.'})
+end
+
+-- Calls `listener` with `{identifier, title, action, language}` when the person taps a notification of the plugin. The native part sends `notificationOpened` retained, so the tap that launched the app reaches the first listener.
+function demo.onNotificationOpened(listener)
+    return handle:on('notificationOpened', listener)
 end
 
 -- Calls a method whose native part needs something that the plugin leaves out of the project of the app on purpose, such as the permission `android.permission.READ_CONTACTS` on Android. It fails with the code `unsupported` and lists each missing requirement in `data.missing` as `{kind, name, file, snippet}`, and answers with `{met, language}` in an app whose project adds it.

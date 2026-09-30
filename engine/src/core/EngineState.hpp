@@ -104,6 +104,9 @@ struct EngineState {
 
     // Whether the screen of a plugin that covers the app is opaque, so the app draws nothing under it.
     bool hiddenByScreen = false;
+
+    // Whether the covered app drew the frame that stays on screen under the cover, which a halted app would only draw again the same, until the window changes size or the app comes back from the background.
+    bool coveredFrameDrawn = false;
     bool started = false;
     bool running = true;
     bool restartRequested = false;

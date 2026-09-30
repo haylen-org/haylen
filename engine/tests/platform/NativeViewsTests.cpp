@@ -150,6 +150,36 @@ TEST_F(AppCoverTest, MakesTheAppInactiveHaltedAndMutedWhileCovered) {
     EXPECT_TRUE(engine.getAudio().isBusMuted("master"));
 }
 
+TEST_F(AppCoverTest, DrawsTheCoveredFrameOnce) {
+    test::EngineFixture fixture({{"source/main.lua", "renders = 0 require('haylen.scene').push({render = function() renders = renders + 1 end})"}});
+    core::Engine& engine = fixture.engine();
+    NativeViews& views = fixture.host().getNativeViews();
+    const auto rendered = [&fixture] { return std::stoi(fixture.lua("return renders")); };
+    fixture.frames(2);
+    int before = rendered();
+
+    // The first covered frame shows the app covered and stays on screen, since a halted app would draw it the same again.
+    views.coverApp();
+    fixture.frames(4);
+    EXPECT_EQ(rendered() - before, 1);
+
+    // A window of another size and a surface that the background may have dropped need the frame once more.
+    engine.handleEvent({.type = Event::Type::Resized});
+    fixture.frames(3);
+    EXPECT_EQ(rendered() - before, 2);
+    engine.handleEvent({.type = Event::Type::Suspended});
+    fixture.frames(2);
+    engine.handleEvent({.type = Event::Type::Resumed});
+    fixture.frames(3);
+    EXPECT_EQ(rendered() - before, 3);
+
+    // The app draws every frame again once the cover ends.
+    views.uncoverApp();
+    before = rendered();
+    fixture.frames(3);
+    EXPECT_EQ(rendered() - before, 3);
+}
+
 TEST_F(AppCoverTest, KeepsTheAppCoveredThroughTheBackground) {
     test::EngineFixture fixture;
     core::Engine& engine = fixture.engine();

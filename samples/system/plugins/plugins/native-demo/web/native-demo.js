@@ -45,7 +45,7 @@ const drawPattern = (canvas, frame) => {
 const generatedImage = (width, height) =>
     new Promise((resolve, reject) => {
         if (!(width >= 1 && height >= 1 && width <= 2048 && height <= 2048)) {
-            reject(failure("generatedImage needs a width and a height from 1 to 2048.", "invalidParams"));
+            reject(failure('The method "generatedImage" needs a width and a height from 1 to 2048.', "invalidParams"));
             return;
         }
         const canvas = document.createElement("canvas");
@@ -57,7 +57,7 @@ const generatedImage = (width, height) =>
 
 const bannerColor = (config) => {
     if (!/^#[0-9A-Fa-f]{6}$/.test(config.bannerColor)) {
-        throw failure("The bannerColor parameter must be a color as #RRGGBB, not " + config.bannerColor + ".", "invalidColor");
+        throw failure('The parameter "bannerColor" must be a color as "#RRGGBB", not "' + config.bannerColor + '".', "invalidColor");
     }
     return config.bannerColor;
 };
@@ -179,7 +179,7 @@ export default function load(context) {
     // The bytes of the app arrive as a Uint8Array, which the answer carries back as bytes.
     context.register("echoBytes", (params) => {
         if (!(params.data instanceof Uint8Array)) {
-            throw failure("echoBytes needs bytes.", "invalidParams");
+            throw failure('The method "echoBytes" needs bytes.', "invalidParams");
         }
         return { data: params.data, size: params.data.length, thread: "main", language };
     });
@@ -298,7 +298,7 @@ export default function load(context) {
 
     context.register("showBanner", (params) => {
         if (params.anchor !== "top" && params.anchor !== "bottom") {
-            throw failure("The anchor of the banner is top or bottom, not " + params.anchor + ".", "invalidAnchor");
+            throw failure('The anchor of the banner is "top" or "bottom", not "' + params.anchor + '".', "invalidAnchor");
         }
         const placement = { anchor: params.anchor, reserve: params.reserve, width: 360, height: 56 };
         if (banner) {
@@ -316,7 +316,7 @@ export default function load(context) {
 
     context.register("setBannerVisible", (params) => {
         if (!banner) {
-            throw failure("No banner shows. Call showBanner first.", "noBanner");
+            throw failure('No banner shows. Call "showBanner" first.', "noBanner");
         }
         banner.setVisible(params.visible);
         bannerState = { ...bannerState, visible: params.visible };

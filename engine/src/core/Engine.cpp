@@ -262,9 +262,10 @@ void Engine::frame(double frameSeconds) {
         reportError(exception);
     }
 
-    // An opaque screen of a plugin hides the app, which keeps its last frame on screen under it.
-    if (!hidden && !current.hiddenByScreen) {
+    // A covered app draws one frame once the cover began, which shows it covered and stays on screen, and no more while the cover lasts. An opaque screen of a plugin hides the app, which draws nothing under it.
+    if (!hidden && !current.hiddenByScreen && !(current.covered && current.coveredFrameDrawn)) {
         render(all);
+        current.coveredFrameDrawn = current.covered;
     }
 
     // Deferred signal slots and queued events run last, after everything the frame did.
@@ -393,6 +394,8 @@ void Engine::handleEvent(const platform::Event& event) {
     try {
         switch (event.type) {
         case platform::Event::Type::Resized: {
+            // The frame on screen no longer fits the window, so a covered app draws it once more.
+            current.coveredFrameDrawn = false;
             resized.emit();
             const math::Vec2 size = current.host.getFramebufferSize();
             current.events.emit(LifecycleEvent::kWindowResized, {{"width", JsonNumber::fromFloat(size.x)}, {"height", JsonNumber::fromFloat(size.y)}});
@@ -496,7 +499,7 @@ void Engine::setAppState(AppState value) {
     const bool wasHalted = isHalted();
     current.appState = value;
 
-    // Leaving the foreground releases held input, including on-screen controls, and suspends audio, and coming back skips the time the app was away.
+    // Leaving the foreground releases held input, including on-screen controls, and suspends audio, and coming back skips the time the app was away. The platform may have dropped the surface of an app in the background, so a covered app draws its frame again when it comes back.
     if (value != AppState::Active) {
         current.input.releaseAll();
         current.gestures.cancel();
@@ -508,6 +511,7 @@ void Engine::setAppState(AppState value) {
     if (previous == AppState::Background) {
         current.audio->resume();
         current.clock.skipNextDelta();
+        current.coveredFrameDrawn = false;
     }
     if (wasHalted && !isHalted()) {
         current.clock.skipNextDelta();

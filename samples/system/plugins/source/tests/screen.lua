@@ -1,4 +1,4 @@
--- Native screen: the plugin opens a screen of its own, a popup page on the web and a native window over the window of the app on the desktops, and its answer reaches the call. The engine covers the app before the screen shows, so the app is inactive, halted and muted, and it draws nothing under the opaque screen. A second screen fails with busy while one shows, and a cancel closes the screen. A screen whose app restarts before it ends, and the redirect screen of the web, whose page loads again, reach the next app as screenRestored with the state the app gave. Apple platforms and Android answer unsupported until their runtimes open screens.
+-- Native screen: the plugin opens a screen of its own, a UIKit controller or an AppKit sheet on Apple platforms, an AndroidX activity on Android, a popup page on the web and a native window over the window of the app on the desktops, and its answer reaches the call. Apple platforms add the same question in SwiftUI. The engine covers the app before the screen shows, so the app is inactive, halted and muted, and it draws nothing under the opaque screen. A second screen fails with busy while one shows, and a cancel closes the screen. A screen whose app restarts before it ends, the redirect screen of the web, whose page loads again, and the screen of an Android app whose process ended under it reach the next app as screenRestored with the state the app gave. Android stops the frames of the app while the activity of a screen covers it, so there the app can neither give the screen up nor restart under it, and the end of the process stands in for the restart.
 local async = require('async')
 local haylen = require('haylen')
 local platform = require('haylen.platform')
@@ -19,6 +19,7 @@ local kRows = {
     {key = 'cancel', name = 'a cancel closes the screen', waiting = 'Open and cancel after a second.'},
     {key = 'restored', name = 'screenRestored brings the end and the state to the next app', waiting = 'Open, then restart the app, answer the screen and open this test again.'},
     {key = 'redirect', name = 'the redirect screen comes back as screenRestored', waiting = 'Open by redirect, answer the page and open this test again.'},
+    {key = 'swiftUI', name = 'the SwiftUI screen answers the call', waiting = 'Open the SwiftUI screen and answer or close it.'},
 }
 
 function Screen:enter()
@@ -32,7 +33,8 @@ function Screen:enter()
             ui.button{id = 'cancel', text = 'Open and cancel after a second', onClick = function() self:cancelLater() end},
             ui.button{id = 'restart', text = 'Open, then restart the app', onClick = function() self:openAndRestart() end},
             ui.button{id = 'redirect', text = 'Open by redirect', onClick = function() self:openRedirect() end},
-            ui.label{text = 'A popup page on the web, which a popup blocker stops when the tap is too long ago, and a sheet on macOS, an owned window on Windows and a transient X11 window on Linux. The redirect leaves the page for a page of the plugin, which only the web has.', color = 'textMuted', font = 'caption'},
+            ui.button{id = 'swiftUI', text = 'Open the SwiftUI screen', onClick = function() self:openSwiftUI() end},
+            ui.label{text = 'A UIKit controller on iOS, iPadOS, Mac Catalyst and tvOS, an AndroidX activity on Android, a popup page on the web, which a popup blocker stops when the tap is too long ago, and a sheet on macOS, an owned window on Windows and a transient X11 window on Linux. The redirect leaves the page for a page of the plugin, which only the web has, and the SwiftUI screen shows over the app on iOS, iPadOS and tvOS and in a window of its own on Mac Catalyst and macOS.', color = 'textMuted', font = 'caption'},
             ui.label{font = 'monospace', text = "local answer, err = demo.openScreen({state = {level = 3}}):await()\ndemo.onScreenRestored(function(ending)\n  print(ending.state.level, ending.result)\nend)"},
         },
     })
@@ -71,7 +73,10 @@ function Screen:open()
         end
 
         local answer, err = call:await()
-        if err then
+        if err and err.code == 'cancelled' then
+            self.results:set('result', 'info', name, 'The person closed the screen without an answer, which the call hears as "cancelled": ' .. err.message)
+            return
+        elseif err then
             self.results:failure('result', name, err)
             if err.code == 'unsupported' then
                 self.watch = nil
@@ -86,6 +91,10 @@ end
 function Screen:cancelLater()
     self:act(function()
         local name = kRows[4].name
+        if haylen.platform == 'android' then
+            self.results:set('cancel', 'skip', name, 'Android stops the frames of the app while the activity of the screen covers it, so the timer that gives the screen up runs only after the screen ended.')
+            return
+        end
         self.results:set('cancel', 'waiting', name, 'The screen shows and closes after a second.')
         local call = demo.openScreen()
         async.sleep(1000):await()
@@ -107,6 +116,10 @@ end
 -- The app restarts while the screen shows, which keeps showing and covers the next app, whose screenRestored listener receives the answer.
 function Screen:openAndRestart()
     self:act(function()
+        if haylen.platform == 'android' then
+            self.results:set('restored', 'waiting', kRows[5].name, 'Android stops the app while the screen shows, so end its process instead: open the screen, leave the app with Home, run "adb shell am kill" with the package of the app, come back, answer the screen and open this test again.')
+            return
+        end
         demo.openScreen({state = {test = 'screen', restartedAt = os.date('%H:%M:%S')}})
         self.results:set('restored', 'waiting', kRows[5].name, 'The app restarts under the screen. Answer it and open this test again.')
         sample.waitFor(function() return platform.screenShowing() and haylen.appCovered() end, 2)
@@ -124,6 +137,24 @@ function Screen:openRedirect()
         local _, err = demo.openRedirectScreen({state = {test = 'screen', redirectedAt = os.date('%H:%M:%S')}}):await()
         if err then
             self.results:failure('redirect', kRows[6].name, err)
+        end
+    end)
+end
+
+-- The SwiftUI screen lets the app show through, as a sheet over it on iOS, iPadOS and tvOS, where a swipe closes it too. It answers like the confirm screen, and its Close button dismisses it through SwiftUI, which the call hears as `cancelled`.
+function Screen:openSwiftUI()
+    self:act(function()
+        local name = kRows[7].name
+        self.results:set('swiftUI', 'waiting', name, 'The SwiftUI screen shows. Answer or close it.')
+        local answer, err = demo.openSwiftUIScreen({opaque = false}):await()
+        if err and err.code == 'noHandler' then
+            self.results:set('swiftUI', 'skip', name, 'Only Apple platforms open the SwiftUI screen.')
+        elseif err and err.code == 'cancelled' then
+            self.results:set('swiftUI', 'pass', name, 'The person closed the SwiftUI screen, and the call failed with "cancelled": ' .. err.message)
+        elseif err then
+            self.results:failure('swiftUI', name, err)
+        else
+            self.results:set('swiftUI', 'pass', name, string.format('The person %s through %s in %s.', answer.confirmed and 'confirmed' or 'declined', answer.via, answer.language))
         end
     end)
 end

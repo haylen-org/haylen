@@ -137,11 +137,11 @@ TEST_F(ScreensTest, DrawsNothingUnderAnOpaqueScreen) {
     int before = rendered();
     EXPECT_GT(before, 0);
 
-    // A halted app keeps drawing under a screen that lets it show through, and draws nothing under an opaque one.
+    // A halted app draws its covered frame once under a screen that lets it show through, and nothing under an opaque one.
     const std::uint64_t translucent = screens.open("shop", "offer", {}, {.opaque = false}, [](const Bridge::Result&) {});
     fixture.frames(3);
     EXPECT_TRUE(fixture.engine().isHalted());
-    EXPECT_EQ(rendered() - before, 3);
+    EXPECT_EQ(rendered() - before, 1);
     ScreenRelay::finish(translucent, true, "null");
     fixture.frames(1);
 

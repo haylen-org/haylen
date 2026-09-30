@@ -41,16 +41,12 @@ void AppleBridge::dispatch(std::uint64_t call, std::string_view method, std::str
         }
     }
     if (handler == nil) {
-        fail(call, @{@"message" : [NSString stringWithFormat:@"No native handler is registered for %@.", name], @"code" : @"noHandler"});
+        fail(call, @{@"message" : [NSString stringWithFormat:@"No native handler is registered for \"%@\".", name], @"code" : @"noHandler"});
         return;
     }
 
-    NSMutableArray<NSData*>* datas = [NSMutableArray arrayWithCapacity:buffers.size()];
-    for (const std::vector<std::byte>& buffer : buffers) {
-        [datas addObject:[NSData dataWithBytes:buffer.data() length:buffer.size()]];
-    }
-    id parsed = fromJson(paramsJson);
-    id params = parsed != nil ? restore(parsed, datas) : @{};
+    id parsed = decode(paramsJson, buffers);
+    id params = parsed != nil ? parsed : @{};
     dispatch_async(dispatch_get_main_queue(), ^{
       @synchronized([HaylenBridge class]) {
           if (getCalls()[key] == nil) {
@@ -194,6 +190,18 @@ id AppleBridge::fromJson(std::string_view text) {
     return [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingFragmentsAllowed error:nil];
 }
 
+id AppleBridge::decode(std::string_view json, std::span<const std::vector<std::byte>> buffers) {
+    id parsed = fromJson(json);
+    if (parsed == nil) {
+        return nil;
+    }
+    NSMutableArray<NSData*>* datas = [NSMutableArray arrayWithCapacity:buffers.size()];
+    for (const std::vector<std::byte>& buffer : buffers) {
+        [datas addObject:[NSData dataWithBytes:buffer.data() length:buffer.size()]];
+    }
+    return restore(parsed, datas);
+}
+
 NSString* AppleBridge::toString(std::string_view text) {
     return [[NSString alloc] initWithBytes:text.data() length:text.size() encoding:NSUTF8StringEncoding];
 }
@@ -220,14 +228,14 @@ void AppleBridge::answer(std::uint64_t call, NSString* method, BOOL ok, id resul
         }
         NSMutableDictionary* failure = [result isKindOfClass:NSDictionary.class] ? [result mutableCopy] : [NSMutableDictionary dictionary];
         if (![failure[@"message"] isKindOfClass:NSString.class]) {
-            failure[@"message"] = [NSString stringWithFormat:@"The native handler for %@ failed.", method];
+            failure[@"message"] = [NSString stringWithFormat:@"The native handler for \"%@\" failed.", method];
         }
         fail(call, failure);
         return;
     }
     std::optional<Encoded> encoded = encode(result);
     if (!encoded) {
-        fail(call, @{@"message" : [NSString stringWithFormat:@"The native handler for %@ returned a value that is not JSON.", method]});
+        fail(call, @{@"message" : [NSString stringWithFormat:@"The native handler for \"%@\" returned a value that is not JSON.", method]});
         return;
     }
     BridgeRelay::resolve(call, true, encoded->json, std::move(encoded->buffers));

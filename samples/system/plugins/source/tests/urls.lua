@@ -16,7 +16,7 @@ function Urls:enter()
         hint = 'Open a link with the scheme of the plugin while the app runs, or to launch it.',
         focus = 'back',
         controls = {
-            ui.label{text = string.format('The plugin declares %s:// in CFBundleURLTypes on Apple platforms and in an intent filter of the activity on Android. The web stands in with the hash of the page address.', scheme), color = 'textMuted', font = 'caption'},
+            ui.label{text = string.format('The plugin declares %s:// in CFBundleURLTypes on Apple platforms and in an intent filter of the link activity on Android. The web stands in with the hash of the page address.', scheme), color = 'textMuted', font = 'caption'},
             ui.label{font = 'monospace', text = string.format('xcrun simctl openurl booted %s://hello\nopen %s://hello\nadb shell am start -a android.intent.action.VIEW -d %s://hello\nhttp://localhost:8000/#hello', scheme, scheme, scheme)},
         },
     })

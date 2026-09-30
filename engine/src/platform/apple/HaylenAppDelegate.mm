@@ -2,15 +2,18 @@
 
 #if TARGET_OS_OSX
 #import "platform/apple/ApplePlugins.hpp"
+#import "platform/apple/AppleTheme.hpp"
 #import "platform/apple/HaylenOverlayLayer.h"
 #include "sokol_app.h"
 
 using haylen::platform::ApplePlugins;
+using haylen::platform::AppleTheme;
 
 @implementation HaylenAppDelegate
 
-// Plugins load before launching ends, so their SDKs set up in time, and the notification center gets its delegate as early, so the notification that launched the app reaches the plugins. Apps without plugins, such as the desktop player, leave the notification center alone.
+// Plugins load before launching ends, so their SDKs set up in time, and the notification center gets its delegate as early, so the notification that launched the app reaches the plugins. Apps without plugins, such as the desktop player, leave the notification center alone. The appearance of the app follows the one of the system, whose every change the delegate observes.
 - (void)applicationWillFinishLaunching:(NSNotification*)notification {
+    [NSApp addObserver:self forKeyPath:@"effectiveAppearance" options:NSKeyValueObservingOptionInitial context:nil];
     ApplePlugins::load();
     if (!ApplePlugins::getIds().empty()) {
         UNUserNotificationCenter.currentNotificationCenter.delegate = self;
@@ -20,7 +23,11 @@ using haylen::platform::ApplePlugins;
     }
 }
 
-// sokol_app creates the window here, which the overlay lies over from now on.
+- (void)observeValueForKeyPath:(NSString*)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey, id>*)change context:(void*)context {
+    AppleTheme::report(NSApp.effectiveAppearance);
+}
+
+// The library `sokol_app` creates the window here, which the overlay lies over from now on.
 - (void)applicationDidFinishLaunching:(NSNotification*)notification {
     [super applicationDidFinishLaunching:notification];
     [HaylenOverlayLayer.shared attachToView:((__bridge NSWindow*)sapp_macos_get_window()).contentView];

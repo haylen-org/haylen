@@ -21,6 +21,9 @@ void CatalystInput::observe() {
                         object:nil
                          queue:NSOperationQueue.mainQueue
                     usingBlock:^(NSNotification* notification) {
+                      if (!sapp_isvalid() || notification.object != (__bridge UIWindow*)sapp_ios_get_window()) {
+                          return;
+                      }
                       UIView* view = ((UIWindow*)notification.object).rootViewController.view;
                       for (UIGestureRecognizer* recognizer in view.gestureRecognizers) {
                           if ([recognizer isKindOfClass:UIHoverGestureRecognizer.class]) {

@@ -1768,12 +1768,11 @@ def write_apple_settings(app: App, project: Path, native: list[str]) -> None:
         "GCSupportsControllerUserInteraction": True,
         "ITSAppUsesNonExemptEncryption": False,
     }
-    # The `sokol_app` module creates its window from the scene that UIKit connects, so iOS and tvOS apps declare the scene life cycle with one scene.
-    scenes = {"UIApplicationSceneManifest": {"UIApplicationSupportsMultipleScenes": False}}
+    # The `sokol_app` module creates its window from the scene that UIKit connects, and the runtime keeps the app in that one scene. On iOS, apps declare several scenes, so screens of plugins open windows of their own on Mac Catalyst and iPad, while tvOS apps declare one.
     phone, pad = IOS_ORIENTATIONS[app.orientation]
     plists = {
-        "ios": {**common, **scenes, "LSRequiresIPhoneOS": True, "UILaunchStoryboardName": "LaunchScreen", "UIStatusBarHidden": True, "UIViewControllerBasedStatusBarAppearance": False, "UISupportedInterfaceOrientations": phone, "UISupportedInterfaceOrientations~ipad": pad},
-        "tvos": {**common, **scenes, "UILaunchStoryboardName": "LaunchScreen"},
+        "ios": {**common, "UIApplicationSceneManifest": {"UIApplicationSupportsMultipleScenes": True}, "LSRequiresIPhoneOS": True, "UILaunchStoryboardName": "LaunchScreen", "UIStatusBarHidden": True, "UIViewControllerBasedStatusBarAppearance": False, "UISupportedInterfaceOrientations": phone, "UISupportedInterfaceOrientations~ipad": pad},
+        "tvos": {**common, "UIApplicationSceneManifest": {"UIApplicationSupportsMultipleScenes": False}, "UILaunchStoryboardName": "LaunchScreen"},
         "macos": {**common, "LSMinimumSystemVersion": "$(MACOSX_DEPLOYMENT_TARGET)", "NSHighResolutionCapable": True, "NSPrincipalClass": "NSApplication", **({} if app.show_in_taskbar else {"LSUIElement": True})},
     }
     # The runtime loads the plugin classes that `HaylenPlugins` lists, in order, and skips a class that a destination leaves out, as Mac Catalyst does with iOS-only plugins.

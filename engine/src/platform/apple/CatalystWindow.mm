@@ -1,6 +1,7 @@
 #import "platform/apple/CatalystWindow.hpp"
 
 #if TARGET_OS_MACCATALYST
+#import "platform/apple/HaylenScreenSceneDelegate.h"
 #include "sokol_app.h"
 
 namespace haylen::platform {
@@ -9,9 +10,9 @@ void CatalystWindow::observe() {
     [NSNotificationCenter.defaultCenter addObserverForName:UISceneWillConnectNotification object:nil queue:nil usingBlock:^(NSNotification* notification) { resize((UIWindowScene*)notification.object); }];
 }
 
-// The system connects scenes of its own too, such as the one of the menus, while only the scene of the app holds its window. The system frame and the screen bounds are in the points of the Mac, like the window size of app.json, and macOS decides where the window finally goes.
+// The system connects scenes of its own too, such as the one of the menus, and screens connect the scenes of their windows, while only the scene of the app holds its window. The system frame and the screen bounds are in the points of the Mac, like the window size of `app.json`, and macOS decides where the window finally goes.
 void CatalystWindow::resize(UIWindowScene* scene) {
-    if (![scene.session.role isEqualToString:UIWindowSceneSessionRoleApplication]) {
+    if (![scene.session.role isEqualToString:UIWindowSceneSessionRoleApplication] || scene.session.configuration.delegateClass == HaylenScreenSceneDelegate.class) {
         return;
     }
 

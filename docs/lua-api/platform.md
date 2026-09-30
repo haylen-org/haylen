@@ -14,7 +14,7 @@ local platform = require('haylen.platform')
 2. A handler that a native library registered through the `HaylenNativeApi` of the engine, as [haylen.native](native.md#library-handlers) describes.
 3. The native handler of the running platform: `HaylenBridge` on Android and Apple platforms and `Module.haylen` on the web. Windows and Linux have no handler registry of their own, so handlers of native libraries and C++ handlers answer there.
 
-A method that no handler answers fails with the code `noHandler` and `No native handler is registered for <method>.`, or `No page handler is registered for <method>.` on the web.
+A method that no handler answers fails with the code `noHandler` and `No native handler is registered for "<method>".`, or `No page handler is registered for "<method>".` on the web.
 
 Parameters and results cross the bridge as JSON. Lua tables with only consecutive integer keys starting at 1 become arrays, other tables become objects, and an empty table becomes an empty object. Functions, userdata and other values that JSON cannot hold raise `A <type> cannot be converted to JSON.`. JSON `null` arrives in Lua as `nil`.
 
@@ -320,12 +320,12 @@ A screen is native UI of a plugin that takes over the app until it ends with one
 | Option | Type | Meaning |
 | --- | --- | --- |
 | `state` | any JSON value without bytes | A value that the platform keeps with the screen, where it survives the end of the process, and hands back with a restored end. |
-| `opaque` | boolean | Whether the screen hides the app completely, `true` by default. The engine draws nothing under an opaque screen and keeps the last frame on screen, while it keeps drawing the halted app under a screen that lets the app show through, such as a sheet. |
+| `opaque` | boolean | Whether the screen hides the app completely, `true` by default. The engine draws nothing under an opaque screen and keeps the last frame on screen, while under a screen that lets the app show through, such as a sheet, it draws the halted app once and keeps that frame. On Apple platforms a controller that keeps the automatic presentation style presents full screen for an opaque screen and as a sheet otherwise. |
 | `timeout` | number | Seconds of real time after which the call fails with the code `timeout` and the platform dismisses the screen. Screens have no timeout otherwise. |
 
 - The engine covers the app at the start of the next frame and only then hands the screen to the platform, so the app is `'inactive'`, halted and muted before the screen shows, and `haylen.appCovered()` returns `true` until the screen ends, however it ends.
 - One screen shows at a time in the whole process, and a screen opens only while the app is `'active'`.
-- `call:cancel()` and the timeout fail the call at once and ask the platform to dismiss the screen, and the app stays covered until the screen is gone.
+- `call:cancel()` and the timeout fail the call at once and ask the platform to dismiss the screen, and the app stays covered until the screen is gone. Android stops the frames of the app while the activity of a screen covers it, so there they take effect once the screen ended.
 - A screen outlives the app that opened it. When the app restarts under it or the process ends while it shows, such as a web page that left for a redirect and loaded again, its end reaches the next app as the retained event `screenRestored` of the plugin, which `handle:on('screenRestored', listener)` receives with `screen`, the name of the screen, `state`, the value of `options.state`, and `result`, or `error` with `message`, `code` and `data` when the screen failed. The event waits for the first listener of its name, like every [retained event](#platformonevent-listener).
 
 A screen fails with the codes of [errors](#errors) and these.
@@ -335,8 +335,8 @@ A screen fails with the codes of [errors](#errors) and these.
 | `busy` | Another screen shows, which an earlier app of the process may have opened. |
 | `notActive` | The app is not active, because it lost the focus, it is in the background or native UI covers it, or the platform cannot present the screen at that moment. |
 | `cancelled` | `call:cancel()` gave the screen up, or the person closed the screen. |
-| `noHandler` | No screen of that name is registered: no page screen on the web and no screen of a native library on Windows and Linux. |
-| `unsupported` | The platform opens no screens of plugins yet, which is the case on Apple platforms and Android for screens that no native library opens. |
+| `noHandler` | No screen of that name is registered: no page screen on the web, no screen of a plugin class on Apple platforms and Android and no screen of a native library on Windows and Linux. |
+| `unsupported` | The device cannot show the screen the way the plugin asks, such as a window of its own on an iPhone. |
 | `popupBlocked` | The browser blocked the popup of a web screen, which happens when the tap that asked for it is too long ago. |
 
 An empty name raises `A screen of the plugin <id> needs a name.`, a timeout that is not a positive number raises `The timeout of a screen is a positive number of seconds.`, a state with bytes raises `The state of a screen is JSON without bytes.`, and an unknown option raises an error that names it. The [plugin guide](../plugins.md#plugin-screens) describes how the native parts of plugins open screens on each platform.
@@ -554,7 +554,7 @@ object ProfilePlugin {
 
 ## Apple handlers
 
-`HaylenBridge` in `haylen/platform/apple/HaylenBridge.h` holds the handlers on iOS, tvOS and macOS. `+registerHandler:handler:` adds a handler, `+registerCancellableHandler:handler:` adds one that returns a block to run when the app cancels the call or its timeout passes, `+removeHandler:` removes a handler, `+emit:payload:` sends an event, `+emit:payload:retain:` sends one that waits for the first listener of its name when `retain` is `YES`, and `+emit:payload:retain:batched:` sends one in the list of its frame when `batched` is `YES`. Handlers run on the main queue, and so does the cancel block. `params` is the parsed JSON, an `NSDictionary` for object parameters, where bytes of the app are `NSData` values, and the handler answers with `reply(YES, result)` or `reply(NO, failure)`. `result` is any value `NSJSONSerialization` accepts, with `NSData` values anywhere inside, which cross as bytes, or `nil`, and a success value it rejects fails the call with `The native handler for <method> returned a value that is not JSON.`. A failure passes a message string or a dictionary with a `message` string and optional `code` and `data`, and anything else fails with `The native handler for <method> failed.`. Handlers can be registered at any time, even before the app starts. An event payload that is not JSON is logged as an error and dropped.
+`HaylenBridge` in `haylen/platform/apple/HaylenBridge.h` holds the handlers on iOS, tvOS and macOS. `+registerHandler:handler:` adds a handler, `+registerCancellableHandler:handler:` adds one that returns a block to run when the app cancels the call or its timeout passes, `+removeHandler:` removes a handler, `+emit:payload:` sends an event, `+emit:payload:retain:` sends one that waits for the first listener of its name when `retain` is `YES`, and `+emit:payload:retain:batched:` sends one in the list of its frame when `batched` is `YES`. Handlers run on the main queue, and so does the cancel block. `params` is the parsed JSON, an `NSDictionary` for object parameters, where bytes of the app are `NSData` values, and the handler answers with `reply(YES, result)` or `reply(NO, failure)`. `result` is any value `NSJSONSerialization` accepts, with `NSData` values anywhere inside, which cross as bytes, or `nil`, and a success value it rejects fails the call with `The native handler for "<method>" returned a value that is not JSON.`. A failure passes a message string or a dictionary with a `message` string and optional `code` and `data`, and anything else fails with `The native handler for "<method>" failed.`. Handlers can be registered at any time, even before the app starts. An event payload that is not JSON is logged as an error and dropped.
 
 ```objc
 #import "haylen/platform/apple/HaylenBridge.h"

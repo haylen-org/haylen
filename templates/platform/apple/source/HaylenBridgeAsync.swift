@@ -59,8 +59,31 @@ extension HaylenPluginContext {
         registerCancellableHandler(method, handler: HaylenBridge.cancellable(handler))
     }
 
+    // Registers the screen `<id>.<name>` with a handler on the main actor, whose parameters decode from the JSON of the app with `JSONDecoder`, and which shows its UI through the screen. A thrown `HaylenFailure` fails the screen with its code and data, and any other error fails it with the code `exception`.
+    func registerScreen<Params: Decodable>(_ name: String, handler: @escaping @MainActor (Params, HaylenScreen) throws -> Void) {
+        registerScreen(name) { params, screen in
+            Task { @MainActor in
+                do {
+                    let input = try JSONSerialization.data(withJSONObject: params, options: .fragmentsAllowed)
+                    try handler(JSONDecoder().decode(Params.self, from: input), screen)
+                } catch let failure as HaylenFailure {
+                    screen.fail(failure.message, code: failure.code, data: failure.data.flatMap { try? HaylenBridge.jsonObject($0) })
+                } catch {
+                    screen.fail(String(describing: error), code: "exception", data: ["type": String(reflecting: type(of: error))])
+                }
+            }
+        }
+    }
+
     // Sends the event <id>.<event> with a payload that encodes to JSON, retained for the first listener of its name when retain is true, and batched with the events of its name in the same frame when batched is true. Throws the error of the encoder when the payload does not encode.
     func emit<Payload: Encodable>(_ event: String, _ payload: Payload, retain: Bool = false, batched: Bool = false) throws {
         emit(event, payload: try HaylenBridge.jsonObject(payload), retain: retain, batched: batched)
+    }
+}
+
+extension HaylenScreen {
+    // Ends the screen with a result that encodes to JSON with `JSONEncoder`. Throws the error of the encoder when the result does not encode.
+    func finish<Result: Encodable>(encoding result: Result) throws {
+        finish(try HaylenBridge.jsonObject(result))
     }
 }

@@ -1,5 +1,7 @@
 import Foundation
 import ImageIO
+import SwiftUI
+import UserNotifications
 
 #if os(macOS)
 import AppKit
@@ -7,7 +9,11 @@ import AppKit
 import UIKit
 #endif
 
-// Native part of the Native Demo plugin on iOS, iPadOS, Mac Catalyst, tvOS and macOS, built on Foundation, UIKit and AppKit alone. The runtime creates it by the class name that plugin.json gives and loads it while the app launches.
+#if !os(tvOS)
+import AVFoundation
+#endif
+
+// Native part of the Native Demo plugin on iOS, iPadOS, Mac Catalyst, tvOS and macOS, built on the frameworks of the system alone. The runtime creates it by the class name that plugin.json gives and loads it while the app launches.
 @objc(NativeDemoPlugin)
 final class NativeDemoPlugin: NSObject, HaylenPlugin {
     struct Empty: Codable {}
@@ -80,7 +86,65 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
         let language: String
     }
 
+    struct VideoStarted: Encodable {
+        let width: Int
+        let height: Int
+        let fps: Int
+        let format: String
+        let thread: String
+        let language: String
+    }
+
+    struct Tone: Decodable {
+        let frequency: Double?
+    }
+
+    struct ToneStarted: Encodable {
+        let frequency: Double
+        let sampleRate: Int
+        let channels: Int
+        let format: String
+        let language: String
+    }
+
+    struct Confirm: Decodable {
+        let title: String
+        let question: String
+    }
+
+    struct Confirmed: Encodable {
+        let confirmed: Bool
+        let via: String
+        let language: String
+    }
+
+    struct PermissionRequest: Decodable {
+        let kind: String
+    }
+
+    struct Permission: Encodable {
+        let kind: String
+        let granted: Bool
+        let status: String
+        let language: String
+    }
+
+    struct Notify: Decodable {
+        let seconds: Double
+        let title: String
+        let body: String
+    }
+
+    struct Scheduled: Encodable {
+        let identifier: String
+        let seconds: Double
+        let language: String
+    }
+
     private nonisolated static let language = "Swift"
+
+    // The notifications of the plugin carry this prefix in their identifiers, so the plugin answers for its own notifications alone.
+    private static let notificationPrefix = "native-demo."
 
     private var context: HaylenPluginContext!
     private var ticker: Timer?
@@ -91,6 +155,8 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
     private var bannerState = BannerState(anchor: "bottom", reserve: false, visible: false)
     private var bannerTaps = 0
     private var lastError: [String: Any]?
+    private var video: NativeDemoVideo?
+    private var tone: NativeDemoTone?
 
     func load(with context: HaylenPluginContext) {
         self.context = context
@@ -100,6 +166,7 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
         registerStreams(context)
         registerBanner(context)
         registerScreens(context)
+        registerPermissions(context)
         context.emitRetained("loaded", payload: ["language": Self.language, "platform": Self.platform])
     }
 
@@ -157,7 +224,7 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
     private func registerBytes(_ context: HaylenPluginContext) {
         context.registerHandler("echoBytes") { params, reply in
             guard let data = (params as? [String: Any])?["data"] as? Data else {
-                reply(false, ["message": "echoBytes needs bytes.", "code": "invalidParams"])
+                reply(false, ["message": "The method \"echoBytes\" needs bytes.", "code": "invalidParams"])
                 return
             }
             reply(true, ["data": data, "size": data.count, "thread": Thread.isMainThread ? "main" : "background", "language": Self.language])
@@ -168,19 +235,44 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
             let width = values?["width"] as? Int ?? 0
             let height = values?["height"] as? Int ?? 0
             guard (1...2048).contains(width), (1...2048).contains(height), let png = Self.drawPattern(width: width, height: height) else {
-                reply(false, ["message": "generatedImage needs a width and a height from 1 to 2048.", "code": "invalidParams"])
+                reply(false, ["message": "The method \"generatedImage\" needs a width and a height from 1 to 2048.", "code": "invalidParams"])
                 return
             }
             reply(true, ["png": png, "width": width, "height": height, "drawnWith": "CoreGraphics and ImageIO", "language": Self.language])
         }
     }
 
-    // Video and audio streams from Swift need the stream API of the Apple runtime, which a later version of the engine brings, so the plugin says so instead.
+    // The pattern pushes BGRA pixel buffers into the video stream `pattern` and the tone pushes floats into the audio stream `tone`, each from a dispatch queue of its own, which the app reads through `handle:videoStream` and `handle:audioStream`.
     private func registerStreams(_ context: HaylenPluginContext) {
-        for method in ["startVideo", "stopVideo", "startTone", "stopTone"] {
-            context.register(method) { (_: Empty) async throws -> Empty in
-                throw HaylenFailure("The Apple runtime of this engine has no stream API yet, so Swift cannot push video frames or audio samples to the app.", code: "unsupported")
+        context.register("startVideo") { [unowned self] (_: Empty) async throws -> VideoStarted in
+            guard let stream = context.openVideoStream("pattern", width: NativeDemoVideo.width, height: NativeDemoVideo.height, format: .BGRA8) else {
+                throw HaylenFailure("The video stream \"pattern\" did not open.", code: "streamFailed")
             }
+            self.video?.stop()
+            self.video = NativeDemoVideo(stream: stream)
+            return VideoStarted(width: NativeDemoVideo.width, height: NativeDemoVideo.height, fps: NativeDemoVideo.fps, format: "BGRA", thread: "a dispatch queue", language: Self.language)
+        }
+
+        context.register("stopVideo") { [unowned self] (_: Empty) async throws -> Empty in
+            self.video?.stop()
+            self.video = nil
+            return Empty()
+        }
+
+        context.register("startTone") { [unowned self] (params: Tone) async throws -> ToneStarted in
+            guard let stream = context.openAudioStream("tone", sampleRate: NativeDemoTone.sampleRate, channels: 1, format: .float32, capacity: NativeDemoTone.sampleRate) else {
+                throw HaylenFailure("The audio stream \"tone\" did not open.", code: "streamFailed")
+            }
+            let frequency = params.frequency ?? 440
+            self.tone?.stop()
+            self.tone = NativeDemoTone(frequency: frequency, stream: stream)
+            return ToneStarted(frequency: frequency, sampleRate: NativeDemoTone.sampleRate, channels: 1, format: "float32", language: Self.language)
+        }
+
+        context.register("stopTone") { [unowned self] (_: Empty) async throws -> Empty in
+            self.tone?.stop()
+            self.tone = nil
+            return Empty()
         }
     }
 
@@ -240,7 +332,7 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
     private func registerBanner(_ context: HaylenPluginContext) {
         context.register("showBanner") { [unowned self] (params: Banner) async throws -> BannerState in
             guard let anchor = ["top": HaylenPlacement.Anchor.top, "bottom": .bottom][params.anchor] else {
-                throw HaylenFailure("The anchor of the banner is top or bottom, not \(params.anchor).", code: "invalidAnchor")
+                throw HaylenFailure("The anchor of the banner is \"top\" or \"bottom\", not \"\(params.anchor)\".", code: "invalidAnchor")
             }
             let placement = HaylenPlacement(anchor: anchor)
             placement.reserve = params.reserve
@@ -261,7 +353,7 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
 
         context.register("setBannerVisible") { [unowned self] (params: Visibility) async throws -> BannerState in
             guard let banner = self.banner else {
-                throw HaylenFailure("No banner shows. Call showBanner first.", code: "noBanner")
+                throw HaylenFailure("No banner shows. Call \"showBanner\" first.", code: "noBanner")
             }
             banner.isVisible = params.visible
             self.bannerState = BannerState(anchor: self.bannerState.anchor, reserve: self.bannerState.reserve, visible: params.visible)
@@ -275,7 +367,7 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
         }
     }
 
-    // The native screen and the file picker cover the app while they show, so the app stands still and stays silent until they close.
+    // The native screen and the file picker cover the app themselves while they show, so the app stands still and stays silent until they close, and the engine covers the app for the screens of the plugin. The view controller of the context is the topmost one, so they present over UI that already shows.
     private func registerScreens(_ context: HaylenPluginContext) {
         context.register("showScreen") { (params: Screen) async throws -> Closed in
             let started = Date()
@@ -288,7 +380,7 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
             defer { context.uncoverApp() }
             await NativeDemoScreen.show(title: params.title ?? "Native screen", color: color, over: window)
             #else
-            guard let presenter = Self.topmost(context.viewController) else {
+            guard let presenter = context.viewController else {
                 throw HaylenFailure("The app has no window yet.", code: "noWindow")
             }
             context.coverApp()
@@ -300,7 +392,7 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
 
         context.register("pickFile") { (_: Empty) async throws -> Picked? in
             #if os(tvOS)
-            throw HaylenFailure("tvOS has no file picker.", code: "unsupported")
+            throw HaylenFailure("Apple TV has no file picker.", code: "unsupported")
             #elseif os(macOS)
             guard let window = context.window else {
                 throw HaylenFailure("The app has no window yet.", code: "noWindow")
@@ -309,7 +401,7 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
             defer { context.uncoverApp() }
             return await NativeDemoPicker.pick(over: window).map { Picked(name: $0) }
             #else
-            guard let presenter = Self.topmost(context.viewController) else {
+            guard let presenter = context.viewController else {
                 throw HaylenFailure("The app has no window yet.", code: "noWindow")
             }
             context.coverApp()
@@ -317,7 +409,108 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
             return await NativeDemoPicker.pick(over: presenter).map { Picked(name: $0) }
             #endif
         }
+
+        // The confirm screen of the plugin: a UIKit controller over the app on iOS, iPadOS, Mac Catalyst and tvOS, and an AppKit sheet of the window of the app on macOS. The engine covers the app before the screen shows and until it ends, and the runtime ends the screen with the code `cancelled` when the person closes it without an answer.
+        context.registerScreen("confirm") { (params: Confirm, screen: HaylenScreen) in
+            #if os(macOS)
+            let via = "an AppKit sheet"
+            #else
+            let via = "UIKit"
+            #endif
+            let controller = NativeDemoConfirm(title: params.title, question: params.question) { confirmed in
+                try? screen.finish(encoding: Confirmed(confirmed: confirmed, via: via, language: Self.language))
+            }
+            #if os(macOS)
+            screen.presentSheet(controller)
+            #else
+            screen.present(controller)
+            #endif
+        }
+
+        // The same question in SwiftUI through a hosting controller, presented over the app on iOS, iPadOS and tvOS and in a window of its own on Mac Catalyst and macOS.
+        context.registerScreen("swiftUI") { (params: Confirm, screen: HaylenScreen) in
+            #if os(macOS) || targetEnvironment(macCatalyst)
+            let via = "a SwiftUI window"
+            #else
+            let via = "SwiftUI"
+            #endif
+            let view = NativeDemoConfirmView(title: params.title, question: params.question) { confirmed in
+                try? screen.finish(encoding: Confirmed(confirmed: confirmed, via: via, language: Self.language))
+            }
+            #if os(macOS)
+            let hosting = NSHostingController(rootView: view)
+            hosting.title = params.title
+            screen.presentWindow(hosting)
+            #elseif targetEnvironment(macCatalyst)
+            // The window opens with the title and at the size that the controller prefers.
+            let hosting = UIHostingController(rootView: view)
+            hosting.title = params.title
+            hosting.preferredContentSize = CGSize(width: 560, height: 320)
+            screen.presentWindow(hosting)
+            #else
+            screen.present(UIHostingController(rootView: view))
+            #endif
+        }
     }
+
+    // The camera asks with the usage description that `plugin.json` puts into the `Info.plist`, and the notifications with the prompt of the system alone.
+    private func registerPermissions(_ context: HaylenPluginContext) {
+        context.register("requestPermission") { (params: PermissionRequest) async throws -> Permission in
+            switch params.kind {
+            case "camera":
+                #if os(tvOS)
+                throw HaylenFailure("Apple TV has no camera.", code: "unsupported")
+                #else
+                let granted = await AVCaptureDevice.requestAccess(for: .video)
+                return Permission(kind: params.kind, granted: granted, status: Self.name(of: AVCaptureDevice.authorizationStatus(for: .video)), language: Self.language)
+                #endif
+            case "notifications":
+                let center = UNUserNotificationCenter.current()
+                let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
+                let settings = await center.notificationSettings()
+                return Permission(kind: params.kind, granted: granted, status: Self.name(of: settings.authorizationStatus), language: Self.language)
+            default:
+                throw HaylenFailure("The permission is \"camera\" or \"notifications\", not \"\(params.kind)\".", code: "invalidPermission")
+            }
+        }
+
+        // The notification comes after the seconds pass, whether the app runs, waits in the background or was closed.
+        context.register("notify") { (params: Notify) async throws -> Scheduled in
+            #if os(tvOS)
+            throw HaylenFailure("Apple TV shows no notifications.", code: "unsupported")
+            #else
+            let content = UNMutableNotificationContent()
+            content.title = params.title
+            content.body = params.body
+            content.sound = .default
+            let identifier = Self.notificationPrefix + UUID().uuidString
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(params.seconds, 1), repeats: false)
+            try await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: identifier, content: content, trigger: trigger))
+            return Scheduled(identifier: identifier, seconds: params.seconds, language: Self.language)
+            #endif
+        }
+    }
+
+    // A notification of the plugin shows while the app is in front too, and the notifications of other plugins keep the options those plugins ask for.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        #if os(tvOS)
+        completionHandler([])
+        #else
+        completionHandler(notification.request.identifier.hasPrefix(Self.notificationPrefix) ? [.banner, .list, .sound] : [])
+        #endif
+    }
+
+    #if !os(tvOS)
+    // The tap on a notification of the plugin reaches the app as `notificationOpened`, retained, so the tap that launched the app waits for the first listener.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        let request = response.notification.request
+        if request.identifier.hasPrefix(Self.notificationPrefix) {
+            let action = response.actionIdentifier == UNNotificationDefaultActionIdentifier ? "open" : response.actionIdentifier
+            context.emitRetained("notificationOpened", payload: ["identifier": request.identifier, "title": request.content.title, "action": action, "language": Self.language])
+        }
+        completionHandler()
+    }
+    #endif
 
     // The error screen of the app shows this error. The plugin keeps it and hands it to the next app when that app sends start.
     func appDidFail(with error: [String: Any]) {
@@ -337,15 +530,43 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
             context.emitRetained("urlOpened", payload: ["url": opened.url.absoluteString])
         }
     }
+    #endif
 
-    private static func topmost(_ root: UIViewController?) -> UIViewController? {
-        var top = root
-        while let presented = top?.presentedViewController {
-            top = presented
+    #if !os(tvOS)
+    private static func name(of status: AVAuthorizationStatus) -> String {
+        switch status {
+        case .authorized:
+            return "authorized"
+        case .denied:
+            return "denied"
+        case .restricted:
+            return "restricted"
+        case .notDetermined:
+            return "notDetermined"
+        @unknown default:
+            return "unknown"
         }
-        return top
     }
     #endif
+
+    private static func name(of status: UNAuthorizationStatus) -> String {
+        switch status {
+        case .authorized:
+            return "authorized"
+        case .denied:
+            return "denied"
+        case .provisional:
+            return "provisional"
+        case .notDetermined:
+            return "notDetermined"
+        #if os(iOS)
+        case .ephemeral:
+            return "ephemeral"
+        #endif
+        @unknown default:
+            return "unknown"
+        }
+    }
 
     private static var platform: String {
         #if os(macOS)
@@ -359,11 +580,11 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
         #endif
     }
 
-    // The bannerColor parameter as a color, which is #RRGGBB.
+    // The parameter `bannerColor` as a color, which is `#RRGGBB`.
     private static func color(of context: HaylenPluginContext) throws -> CGColor {
         let text = context.config["bannerColor"] as? String ?? ""
         guard text.count == 7, text.hasPrefix("#"), let value = UInt32(text.dropFirst(), radix: 16) else {
-            throw HaylenFailure("The bannerColor parameter must be a color as #RRGGBB, not \(text).", code: "invalidColor")
+            throw HaylenFailure("The parameter \"bannerColor\" must be a color as \"#RRGGBB\", not \"\(text)\".", code: "invalidColor")
         }
         return CGColor(srgbRed: CGFloat((value >> 16) & 0xFF) / 255, green: CGFloat((value >> 8) & 0xFF) / 255, blue: CGFloat(value & 0xFF) / 255, alpha: 1)
     }
