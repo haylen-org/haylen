@@ -201,7 +201,7 @@ Dependencies are declared with [CPM.cmake](https://github.com/cpm-cmake/CPM.cmak
 | --- | --- | --- |
 | nlohmann/json | 3.12.0 | Added first, so Varn reuses it. |
 | libuv | 1.53.0 | Added before Varn on every platform except the web, so Varn reuses this release. |
-| Varn | v0.0.1 | Lua runtime, event loop, worker pools and the `async`, `http`, `socket`, `json`, `fs`, `zip`, `crypto` and other modules. `VARN_TARGET` is `cli` on desktop and Apple platforms, `android` on Android and `wasm` on the web, and iOS and tvOS use its Apple HTTP client driver. zlib, libzip, Poco, OpenSSL and Lua come in through Varn. Varn builds OpenSSL with its own `make` as one step of the build, which the engine keeps to a single job with `OPENSSL_ENABLE_PARALLEL` off, so a build never runs more jobs than it was given. |
+| Varn | commit `ed5bba7` | Lua runtime, event loop, worker pools and the `async`, `http`, `socket`, `json`, `fs`, `zip`, `crypto` and other modules. `VARN_TARGET` is `cli` on desktop and Apple platforms, `android` on Android and `wasm` on the web, and iOS and tvOS use its Apple HTTP client driver. zlib, libzip, Poco, OpenSSL and Lua come in through Varn. Varn builds OpenSSL with its own `make` as one step of the build, which the engine keeps to a single job with `OPENSSL_ENABLE_PARALLEL` off, so a build never runs more jobs than it was given. |
 | Sokol | commit `2e75443` | Headers only. The runtime compiles the implementation for the chosen backend. |
 | stb | commit `2c980bb` | Headers only. |
 | msdfgen | v1.13 | Only its core, which builds the distance fields of font glyphs from their whole outlines. |
@@ -228,7 +228,7 @@ CPMAddPackage(
 )
 ```
 
-To add or update a package, point `URL` at the latest release archive, compute the hash of that archive (for example with `curl -L <url> | shasum -a 256`), and adopt the new API everywhere the engine uses it. A package that Varn also uses goes before the Varn block, so it is resolved once for the whole build. Header-only sources use `DOWNLOAD_ONLY YES` and an interface library, like `haylen_sokol_headers` and `haylen_stb`.
+To add or update a package, point `URL` at the latest release archive (Varn is pinned by the archive of one commit, whose contents never change), compute the hash of that archive (for example with `curl -L <url> | shasum -a 256`), and adopt the new API everywhere the engine uses it. A package that Varn also uses goes before the Varn block, so it is resolved once for the whole build. Header-only sources use `DOWNLOAD_ONLY YES` and an interface library, like `haylen_sokol_headers` and `haylen_stb`.
 
 ## C++ apps
 

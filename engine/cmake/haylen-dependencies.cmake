@@ -55,8 +55,8 @@ set(HAVE_UNISTD_H OFF)
 
 CPMAddPackage(
   NAME varn
-  URL "https://github.com/varn-org/varn/archive/refs/tags/v0.0.1.tar.gz"
-  URL_HASH SHA256=646dd5ee1001508fca55d0768e99f8fcfe8e0329b2d7d6be3a05810dbfcf5588
+  URL "https://github.com/varn-org/varn/archive/ed5bba73ae94e4ed21c1f6e17ea44c969ae00c84.tar.gz"
+  URL_HASH SHA256=e71d6aed8132d13ca18b15204d050c969f3f9caf5f5fcb1d417c5f68ad3e135b
   OPTIONS ${HAYLEN_VARN_OPTIONS}
   EXCLUDE_FROM_ALL YES
   SYSTEM YES
