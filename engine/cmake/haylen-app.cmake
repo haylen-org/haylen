@@ -4,16 +4,27 @@
 # Web builds preload them at /app in the virtual file system.
 # Android apps take them into the APK assets of their Gradle project, which make.py assembles from the Android template, so the build records the package folder next to the library.
 
+# The system frameworks that the engine needs on each Apple platform. The runtime links them, and the Apple artifacts publish them in haylen-frameworks.json, from which make.py links them into the projects of Lua apps.
+# Mac Catalyst reads the battery of the Mac from the power sources of IOKit.
+set(HAYLEN_APPLE_FRAMEWORKS_MACOS Cocoa CoreGraphics QuartzCore Metal MetalKit GameController AudioToolbox CoreAudio Network CoreVideo IOKit UniformTypeIdentifiers)
+set(HAYLEN_APPLE_FRAMEWORKS_IOS Foundation UIKit CoreGraphics QuartzCore Metal MetalKit GameController AVFoundation AudioToolbox CoreAudio Network CoreVideo UniformTypeIdentifiers)
+set(HAYLEN_APPLE_FRAMEWORKS_MACCATALYST ${HAYLEN_APPLE_FRAMEWORKS_IOS} IOKit)
+set(HAYLEN_APPLE_FRAMEWORKS_TVOS ${HAYLEN_APPLE_FRAMEWORKS_IOS})
+
 # Adds the system libraries and link options every runtime needs, with PUBLIC for the runtime the engine builds and INTERFACE for the one an installed SDK imports.
 function(haylen_link_runtime_platform target scope)
-  if(HAYLEN_PLATFORM STREQUAL "macos")
-    target_link_libraries(${target} ${scope} "-framework Cocoa" "-framework QuartzCore" "-framework Metal" "-framework MetalKit" "-framework GameController" "-framework AudioToolbox" "-framework CoreAudio" "-framework Network" "-framework CoreVideo" "-framework IOKit" "-framework UniformTypeIdentifiers")
-  elseif(HAYLEN_PLATFORM MATCHES "^(ios|tvos)$")
-    target_link_libraries(${target} ${scope} "-framework Foundation" "-framework UIKit" "-framework CoreGraphics" "-framework QuartzCore" "-framework Metal" "-framework MetalKit" "-framework GameController" "-framework AVFoundation" "-framework AudioToolbox" "-framework Network" "-framework CoreVideo" "-framework UniformTypeIdentifiers")
-    # Mac Catalyst reads the battery of the Mac from the power sources of IOKit.
-    if(CMAKE_CXX_COMPILER_TARGET MATCHES "-macabi$")
-      target_link_libraries(${target} ${scope} "-framework IOKit")
+  if(APPLE)
+    if(HAYLEN_PLATFORM STREQUAL "macos")
+      set(frameworks ${HAYLEN_APPLE_FRAMEWORKS_MACOS})
+    elseif(CMAKE_CXX_COMPILER_TARGET MATCHES "-macabi$")
+      set(frameworks ${HAYLEN_APPLE_FRAMEWORKS_MACCATALYST})
+    elseif(HAYLEN_PLATFORM STREQUAL "ios")
+      set(frameworks ${HAYLEN_APPLE_FRAMEWORKS_IOS})
+    else()
+      set(frameworks ${HAYLEN_APPLE_FRAMEWORKS_TVOS})
     endif()
+    list(TRANSFORM frameworks PREPEND "-framework ")
+    target_link_libraries(${target} ${scope} ${frameworks})
   elseif(HAYLEN_PLATFORM STREQUAL "windows")
     target_link_libraries(${target} ${scope} xinput shell32 shcore ole32 imm32 advapi32 uuid)
     if(HAYLEN_BACKEND STREQUAL "D3D11")
@@ -139,10 +150,10 @@ function(haylen_setup_apple_bundle target project_dir display_name identifier ve
     set_target_properties(${target} PROPERTIES XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "3" XCODE_ATTRIBUTE_TVOS_DEPLOYMENT_TARGET "16.3")
   endif()
 
-  if(DEFINED launch_screen)
-    target_sources(${target} PRIVATE "${launch_screen}")
-    set_source_files_properties("${launch_screen}" PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
-  endif()
+  # The privacy manifest declares the APIs with required reasons that the engine calls.
+  set(resources "${project_dir}/PrivacyInfo.xcprivacy" ${launch_screen})
+  target_sources(${target} PRIVATE ${resources})
+  set_source_files_properties(${resources} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 
   # Xcode signs the bundles it builds, while other generators leave only the signature the linker gives the executable, which binds neither the bundle identifier nor the Info.plist. macOS places the window of an unsigned Mac Catalyst app at the top left, whatever frame the app asks for, so the bundle is signed ad hoc.
   if(CMAKE_CXX_COMPILER_TARGET MATCHES "-macabi$" AND NOT CMAKE_GENERATOR STREQUAL "Xcode")

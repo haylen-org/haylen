@@ -1,12 +1,11 @@
-# XcodeGen spec of App.xcodeproj, which is committed next to it. Run the XcodeGen that make.py pins, `.tools/xcodegen/bin/xcodegen generate`, in this folder after changing it.
-# make.py writes the name, identifier, version, native library and entitlements settings into App.xcconfig, the Info.plist of each platform from app.json and the plugins, the splash assets, the package into app/, the native libraries into native/ and a link to Haylen.xcframework.
-# Only plugins change the project per app: make.py writes their sources, Swift packages, system frameworks, resources and build scripts into plugins.json, which this spec includes, and generates the project again. The template ships plugins.json empty, so the committed project is the one of an app without plugins.
-# The app folder and Haylen.xcframework exist only in the projects make.py assembles, so the template lists them as optional.
+# XcodeGen spec of App.xcodeproj, which is committed next to it. After changing it, run "python3 make.py xcodegen <app>", which runs the XcodeGen that make.py pins.
+# The script make.py writes the gitignored folder haylen/ and nothing else: haylen/project.yml defines the target templates HaylenIOS, HaylenTVOS and HaylenMacOS with the engine, its system frameworks, the package, the splash assets, the merged Info.plist, entitlements and privacy manifest, the native libraries and the native parts of the plugins of the app.
+# Each target takes its template in "templates", and a setting or a list of the target itself adds to the template or wins over it. Deleting "templates" leaves the target without the engine, which the target then links itself.
 # Every file in source/ builds into every target, so apps add Objective-C, C++ and Swift files there, and Swift reaches the engine through HaylenBridging.h.
-# The embed phase copies and signs whole library bundles, whose files the script sandbox would need listed one by one together with the temporary files of codesign, so scripts run without it.
+# The Info.plist of each platform stays out of the resources, since the template completes it into haylen/ and the target builds the completed one.
 name: App
 include:
-  - plugins.json
+  - haylen/project.yml
 options:
   deploymentTarget:
     iOS: "16.3"
@@ -16,7 +15,6 @@ settings:
   base:
     CLANG_CXX_LANGUAGE_STANDARD: c++20
     CLANG_ENABLE_OBJC_ARC: YES
-    ENABLE_USER_SCRIPT_SANDBOXING: NO
     GENERATE_INFOPLIST_FILE: NO
     DEAD_CODE_STRIPPING: YES
     PRODUCT_MODULE_NAME: HaylenApp
@@ -27,42 +25,22 @@ fileGroups:
 targets:
   iOS:
     type: application
+    platform: iOS
+    templates: [HaylenIOS]
     configFiles:
       Debug: App.xcconfig
       Release: App.xcconfig
-    platform: iOS
     sources:
       - path: source
         type: syncedFolder
       - path: ios
-      - path: app
-        type: folder
-        buildPhase: resources
-        optional: true
-    dependencies:
-      - framework: Haylen.xcframework
-        embed: false
-      - sdk: Foundation.framework
-      - sdk: UIKit.framework
-      - sdk: CoreGraphics.framework
-      - sdk: QuartzCore.framework
-      - sdk: Metal.framework
-      - sdk: MetalKit.framework
-      - sdk: GameController.framework
-      - sdk: AVFoundation.framework
-      - sdk: AudioToolbox.framework
-      - sdk: CoreAudio.framework
-      - sdk: Network.framework
-      - sdk: CoreVideo.framework
-      - sdk: UniformTypeIdentifiers.framework
-      # Mac Catalyst reads the battery of the Mac from the power sources of IOKit.
-      - sdk: IOKit.framework
-        destinationFilters: [macCatalyst]
+        excludes: [Info.plist]
+      - path: ios/Info.plist
+        buildPhase: none
     settings:
       base:
         PRODUCT_NAME: $(HAYLEN_PRODUCT_NAME)
         PRODUCT_BUNDLE_IDENTIFIER: $(HAYLEN_BUNDLE_IDENTIFIER)
-        INFOPLIST_FILE: ios/Info.plist
         TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MACCATALYST: YES
         DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER: NO
@@ -71,146 +49,46 @@ targets:
         # Mac Catalyst 16.3 would run on macOS 13.2, while the C++ library of the engine needs macOS 13.3, which is Mac Catalyst 16.4.
         IPHONEOS_DEPLOYMENT_TARGET[sdk=macosx*]: "16.4"
         ASSETCATALOG_COMPILER_APPICON_NAME: app_icon
-    postBuildScripts:
-      - name: Embed native libraries
-        inputFileLists:
-          - $(PROJECT_DIR)/native/$(TARGET_NAME)-$(PLATFORM_NAME).xcfilelist
-        outputFileLists:
-          - $(PROJECT_DIR)/native/$(TARGET_NAME)-$(PLATFORM_NAME)-output.xcfilelist
-        script: |
-          # Copies the libraries that make.py listed for this target and platform into the app and signs them like the app.
-          set -e
-          destination="$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH"
-          mkdir -p "$destination"
-          while IFS= read -r library; do
-            if [ -z "$library" ]; then
-              continue
-            fi
-            target="$destination/$(basename "$library")"
-            rm -rf "$target"
-            ditto "$library" "$target"
-            if [ "$CODE_SIGNING_ALLOWED" != "NO" ]; then
-              codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" --timestamp=none --preserve-metadata=identifier,entitlements,flags "$target"
-            fi
-          done < "$SCRIPT_INPUT_FILE_LIST_0"
     scheme: {}
   tvOS:
     type: application
+    platform: tvOS
+    templates: [HaylenTVOS]
     configFiles:
       Debug: App.xcconfig
       Release: App.xcconfig
-    platform: tvOS
     sources:
       - path: source
         type: syncedFolder
       - path: tvos
-      - path: app
-        type: folder
-        buildPhase: resources
-        optional: true
-    dependencies:
-      - framework: Haylen.xcframework
-        embed: false
-      - sdk: Foundation.framework
-      - sdk: UIKit.framework
-      - sdk: CoreGraphics.framework
-      - sdk: QuartzCore.framework
-      - sdk: Metal.framework
-      - sdk: MetalKit.framework
-      - sdk: GameController.framework
-      - sdk: AVFoundation.framework
-      - sdk: AudioToolbox.framework
-      - sdk: CoreAudio.framework
-      - sdk: Network.framework
-      - sdk: CoreVideo.framework
-      - sdk: UniformTypeIdentifiers.framework
+        excludes: [Info.plist]
+      - path: tvos/Info.plist
+        buildPhase: none
     settings:
       base:
         PRODUCT_NAME: $(HAYLEN_PRODUCT_NAME)
         PRODUCT_BUNDLE_IDENTIFIER: $(HAYLEN_BUNDLE_IDENTIFIER)
-        INFOPLIST_FILE: tvos/Info.plist
         TARGETED_DEVICE_FAMILY: "3"
         ASSETCATALOG_COMPILER_APPICON_NAME: app_icon
-    postBuildScripts:
-      - name: Embed native libraries
-        inputFileLists:
-          - $(PROJECT_DIR)/native/$(TARGET_NAME)-$(PLATFORM_NAME).xcfilelist
-        outputFileLists:
-          - $(PROJECT_DIR)/native/$(TARGET_NAME)-$(PLATFORM_NAME)-output.xcfilelist
-        script: |
-          # Copies the libraries that make.py listed for this target and platform into the app and signs them like the app.
-          set -e
-          destination="$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH"
-          mkdir -p "$destination"
-          while IFS= read -r library; do
-            if [ -z "$library" ]; then
-              continue
-            fi
-            target="$destination/$(basename "$library")"
-            rm -rf "$target"
-            ditto "$library" "$target"
-            if [ "$CODE_SIGNING_ALLOWED" != "NO" ]; then
-              codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" --timestamp=none --preserve-metadata=identifier,entitlements,flags "$target"
-            fi
-          done < "$SCRIPT_INPUT_FILE_LIST_0"
     scheme: {}
   macOS:
     type: application
+    platform: macOS
+    templates: [HaylenMacOS]
     configFiles:
       Debug: App.xcconfig
       Release: App.xcconfig
-    platform: macOS
     sources:
       - path: source
         type: syncedFolder
       - path: macos
-      - path: app
-        type: folder
-        buildPhase: resources
-        optional: true
-    dependencies:
-      - framework: Haylen.xcframework
-        embed: false
-      - sdk: Cocoa.framework
-      - sdk: CoreGraphics.framework
-      - sdk: QuartzCore.framework
-      - sdk: Metal.framework
-      - sdk: MetalKit.framework
-      - sdk: GameController.framework
-      - sdk: AVFoundation.framework
-      - sdk: AudioToolbox.framework
-      - sdk: CoreAudio.framework
-      - sdk: Network.framework
-      - sdk: CoreVideo.framework
-      - sdk: UniformTypeIdentifiers.framework
-      - sdk: IOKit.framework
+        excludes: [Info.plist]
+      - path: macos/Info.plist
+        buildPhase: none
     settings:
       base:
         PRODUCT_NAME: $(HAYLEN_PRODUCT_NAME)
         PRODUCT_BUNDLE_IDENTIFIER: $(HAYLEN_BUNDLE_IDENTIFIER)
-        INFOPLIST_FILE: macos/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: app_icon
         ENABLE_HARDENED_RUNTIME: YES
-    postBuildScripts:
-      - name: Embed native libraries
-        inputFileLists:
-          - $(PROJECT_DIR)/native/$(TARGET_NAME)-$(PLATFORM_NAME).xcfilelist
-        outputFileLists:
-          - $(PROJECT_DIR)/native/$(TARGET_NAME)-$(PLATFORM_NAME)-output.xcfilelist
-        script: |
-          # Copies the libraries that make.py listed for this target and platform into the app and signs them like the app.
-          set -e
-          destination="$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH"
-          mkdir -p "$destination"
-          while IFS= read -r library; do
-            if [ -z "$library" ]; then
-              continue
-            fi
-            target="$destination/$(basename "$library")"
-            rm -rf "$target"
-            ditto "$library" "$target"
-            if [ "$CODE_SIGNING_ALLOWED" != "NO" ]; then
-              codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" --timestamp=none --preserve-metadata=identifier,entitlements,flags "$target"
-            fi
-          done < "$SCRIPT_INPUT_FILE_LIST_0"
     scheme: {}

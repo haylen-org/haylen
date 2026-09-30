@@ -110,13 +110,18 @@ function sample.json(value)
     return json.encode(value)
 end
 
--- Calls a platform method and waits for its result inside a task, raising its error when it fails.
-function sample.call(method, params, options)
-    local result, err = platform.call(method, params, options):await()
+-- Waits for a platform call inside a task and returns its result, raising its error when it fails.
+function sample.await(call)
+    local result, err = call:await()
     if err then
         error(err, 0)
     end
     return result
+end
+
+-- Calls a platform method and waits for its result inside a task, raising its error when it fails.
+function sample.call(method, params, options)
+    return sample.await(platform.call(method, params, options))
 end
 
 -- Waits inside a task until `condition` holds, checking every 10 milliseconds for at most `seconds`, and returns whether it held.

@@ -42,5 +42,9 @@
                 "native_test_checksum"
             ]
         }
+    },
+    "plugins": {
+        "native-sample": {},
+        "native-test": {}
     }
 }

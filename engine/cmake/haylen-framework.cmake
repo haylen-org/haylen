@@ -22,4 +22,16 @@ add_custom_command(OUTPUT "${framework_library}"
 )
 add_custom_target(haylen_framework ALL DEPENDS "${framework_library}")
 
+# The system frameworks of every Apple platform, by the names of the SDK, which make.py links into the projects of Lua apps.
+set(frameworks_json "{}")
+foreach(platform IN ITEMS iOS macCatalyst tvOS macOS)
+  string(TOUPPER "${platform}" key)
+  set(names ${HAYLEN_APPLE_FRAMEWORKS_${key}})
+  list(TRANSFORM names REPLACE "^(.+)$" "\"\\1.framework\"")
+  list(JOIN names ", " names)
+  string(JSON frameworks_json SET "${frameworks_json}" "${platform}" "[${names}]")
+endforeach()
+file(CONFIGURE OUTPUT "${CMAKE_BINARY_DIR}/haylen-framework/haylen-frameworks.json" CONTENT "${frameworks_json}\n" @ONLY)
+
 install(FILES "${framework_library}" DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT haylen_framework)
+install(FILES "${CMAKE_BINARY_DIR}/haylen-framework/haylen-frameworks.json" DESTINATION "${CMAKE_INSTALL_DATADIR}/haylen" COMPONENT haylen_framework)

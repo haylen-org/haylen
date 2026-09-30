@@ -14,11 +14,11 @@ The sample `samples/system/native` runs every part of this guide against the tes
 
 ## Choosing a way
 
-- Platform APIs that live in Java, Kotlin, Objective-C, Swift or JavaScript, such as sign-in, purchases, sharing or permissions, go through the bridge. Their handlers are written in the language of the platform, next to the app in `platform/<template>/`.
+- Platform APIs that live in Java, Kotlin, Objective-C, Swift or JavaScript, such as sign-in, purchases, sharing or permissions, go through the bridge. Their handlers are written in the language of the platform, in a [plugin](plugins.md) of the app or in its platform projects in `platform/<template>/`.
 - A library or SDK with a C API that ships as a `.dll`, `.so`, `.dylib`, framework or static library goes through FFI. Lua calls it directly, with no glue code to compile, and the calls cost what a C call costs plus the conversion of the arguments.
 - A library with a C++ API, one that needs many calls per frame from native code, or one whose data never needs to reach Lua, goes into a C++ plugin of an app that compiles the engine, or into a small C library with a flat API that FFI calls.
 - A native library that answers calls or sends events on its own threads registers bridge handlers through the `HaylenNativeApi` of the engine, which works the same on every platform that loads native libraries.
-- The browser has no native libraries, so web builds reach JavaScript through the bridge. An app that calls a library through FFI elsewhere answers the same methods with a page handler on the web, as the native sample does in `platform/web/app.js`.
+- The browser has no native libraries, so web builds reach JavaScript through the bridge. An app that calls a library through FFI elsewhere answers the same methods with a page handler on the web, as the local plugin `native-test` of the native sample does.
 
 ## Calling a library
 
@@ -164,13 +164,13 @@ The script `make.py` places each library where the app loads it:
 | --- | --- |
 | macOS and Mac Catalyst | The folder `Contents/Frameworks` of the app bundle, copied and signed by the `Embed native libraries` phase of `App.xcodeproj` with the identity of the app. The executable has `@executable_path/../Frameworks` in its runpath. |
 | iOS and tvOS, dynamic | A framework in `Frameworks` of the app bundle, embedded and signed the same way. A CMake library becomes a framework whose bundle identifier is the one of the app followed by `.native.<name>`. |
-| iOS and tvOS, static | Linked into the app through `OTHER_LDFLAGS` in `App.xcconfig`, with `source/HaylenNativeSymbols.mm` generated next to `main.mm`. |
-| Android | The folder `app/src/main/jniLibs/<abi>/` of the Gradle project for `arm64-v8a`, `armeabi-v7a` and `x86_64`, the ABIs of the engine. The linker of Android finds them by name. An AAR dependency in `app/app.gradle` works too, and so does a `jniLibs` folder in the platform overrides of the app. |
+| iOS and tvOS, static | Linked into the app through `HAYLEN_NATIVE_LDFLAGS` in `haylen/Haylen.xcconfig` of the Apple project, with `haylen/HaylenNativeSymbols.mm` generated next to it. |
+| Android | The folder `haylen/jniLibs/<abi>/` of the Gradle project for `arm64-v8a`, `armeabi-v7a` and `x86_64`, the ABIs of the engine, which the app module takes as a folder of native libraries. The linker of Android finds them by name. An AAR dependency or a `jniLibs` folder of the Android project of the app works too. |
 | Windows | Next to the executable. |
 | Linux | The folder `lib/` next to the executable, whose `RUNPATH` of `$ORIGIN:$ORIGIN/lib` lets the libraries find each other. |
 | Desktop player | The folder `build/apps/<app>-<hash>/native/development/`, in the build folder of the app, which `make.py run` passes to the player with `--native`. |
 
-The project `App.xcodeproj` stays the same for every app: `make.py` writes the libraries into `native/<target>-<platform>/` of the assembled project, the file lists that the embed phase reads into `native/<target>-<platform>.xcfilelist`, and the link settings into `App.xcconfig`. The embed phase runs without the script sandbox of Xcode, because the sandbox would need every file of a bundle and the temporary files of `codesign` listed one by one. Files that the app keeps in `platform/<platform>/` for Windows and Linux land next to the executable too.
+The file `project.yml` of the app never changes for its libraries: `make.py` writes them into `haylen/native/<platform>-<sdk>/` of the Apple project, the file lists that the embed phase reads into `haylen/native/<platform>-<sdk>.xcfilelist`, the link settings into `haylen/Haylen.xcconfig`, and the embed phase into the target templates of the platforms that have libraries. The embed phase runs without the script sandbox of Xcode, because the sandbox would need every file of a bundle and the temporary files of `codesign` listed one by one. Files that the app keeps in `platform/<platform>/` for Windows and Linux land next to the executable too.
 
 ### Static libraries on iOS and tvOS
 
@@ -178,7 +178,7 @@ An iOS app may link a library statically instead of embedding a framework, which
 
 ### Development
 
-The command `python3 make.py run <app>` builds or copies the libraries of this desktop into `build/apps/<app>-<hash>/native/development/`, in the [build folder of the app](distribution.md#assembling-an-app), and starts the player with `--native` and that folder, which `native.load` searches first. The player takes `--native <folder>` more than once, so a player started by hand finds libraries anywhere.
+The command `python3 make.py run <app>` builds or copies the libraries of this desktop into `build/apps/<app>-<hash>/native/development/`, in the [build folder of the app](distribution.md#platform-projects), and starts the player with `--native` and that folder, which `native.load` searches first. The player takes `--native <folder>` more than once, so a player started by hand finds libraries anywhere.
 
 ## C++ plugins
 
@@ -258,7 +258,7 @@ local function pump()
 end
 ```
 
-A parameter struct of a callback is read with `ffi.cast('const SomeCallback_t*', message.m_pubParam)` before `FreeLastCallback`, after declaring the struct with the packing its header uses. The Steam client reads the app id from `steam_appid.txt` next to the executable during development, which the Windows and Linux overrides of the app keep in `platform/windows/` and `platform/linux/`, and from the macOS app bundle in `Contents/MacOS`.
+A parameter struct of a callback is read with `ffi.cast('const SomeCallback_t*', message.m_pubParam)` before `FreeLastCallback`, after declaring the struct with the packing its header uses. The Steam client reads the app id from `steam_appid.txt` next to the executable during development, which the Windows and Linux folders of the app keep in `platform/windows/` and `platform/linux/`, and from the macOS app bundle in `Contents/MacOS`.
 
 ### Epic Online Services and NAT P2P
 
@@ -309,8 +309,8 @@ Accepting a connection, sending packets with `EOS_P2P_SendPacket` and reading th
 
 - An SDK that calls back from its own threads gets engine callbacks with the default thread, and declares the data it needs as byte ranges or copies it before the callback returns.
 - An SDK with a C++ API gets a small C wrapper library with a flat API, built by the `cmake` entry of the `native` section, or a C++ plugin in an app that compiles the engine.
-- An SDK that needs Java, Kotlin, Objective-C or Swift for part of its work, such as sign-in on a phone, answers those parts through bridge handlers in the platform overrides of the app, while its C API goes through FFI.
+- An SDK that needs Java, Kotlin, Objective-C or Swift for part of its work, such as sign-in on a phone, answers those parts through a [plugin](plugins.md) of the app, while its C API goes through FFI.
 
 ## The web
 
-The browser runs no native code, so `native.available()` is `false` there and the app reaches the page through the bridge instead. JavaScript handlers registered with `Module.haylen.register` in `platform/web/app.js` answer the same methods that native code answers elsewhere, with typed errors, `AbortSignal` cancellation and events, as the [platform reference](lua-api/platform.md#web-handlers) shows.
+The browser runs no native code, so `native.available()` is `false` there and the app reaches the page through the bridge instead. JavaScript handlers, registered with `Module.haylen.register` in `platform/web/app.js` of the app or with `context.register` of the web module of a plugin, answer the same methods that native code answers elsewhere, with typed errors, `AbortSignal` cancellation and events, as the [platform reference](lua-api/platform.md#web-handlers) shows.

@@ -15,5 +15,8 @@
         "height": 1080,
         "scaling": "expand"
     },
-    "clearColor": "#FF101418"
+    "clearColor": "#FF101418",
+    "plugins": {
+        "platform-sample": {}
+    }
 }

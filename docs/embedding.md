@@ -124,17 +124,17 @@ haylen_add_app(<target> PACKAGE <folder> [SOURCES <files>...] [CPP] [APPLE_PROJE
 | `PACKAGE` | The package folder, which holds `app.json`, `source/` and `content/`. Its `app.json` must set `name`, `identifier` and `version`, which become the display name, the bundle identifier and the version of the app, so the app and the runtime always agree. Configuration fails when one is missing. |
 | `SOURCES` | Source files of the app. |
 | `CPP` | The sources define `haylen::core::Application::create()`. Without it the function adds `LuaPlayer.cpp`, whose application runs `source/main.lua`, so a Lua app needs no sources at all. |
-| `APPLE_PROJECT` | Folder with `mac/Info.plist.in`, `ios/Info.plist.in`, `ios/LaunchScreen.storyboard`, `tvos/Info.plist.in` and `tvos/LaunchScreen.storyboard`. The default is `engine/platform/apple`. |
+| `APPLE_PROJECT` | Folder with `mac/Info.plist.in`, `ios/Info.plist.in`, `ios/LaunchScreen.storyboard`, `tvos/Info.plist.in`, `tvos/LaunchScreen.storyboard` and `PrivacyInfo.xcprivacy`. The default is `engine/platform/apple`, whose privacy manifest declares the APIs with required reasons that the engine calls, as the [distribution guide](distribution.md#privacy-manifest) lists them. |
 | `WEB_SHELL` | HTML shell of the browser build. The default is `engine/platform/web/shell.html`. |
 
-The function links `haylen::runtime` and deploys the package into the app of each platform. On Apple platforms it also adds `AppleMain.cpp`, whose `main` enters the runtime through `haylen_main`, because `sokol_app` leaves `main` to the app there. Only `app.json`, `source/` and `content/` are deployed, so platform projects, notes and build files can share the package folder.
+The function links `haylen::runtime`, which brings the system libraries of the platform, and deploys the package into the app of each platform. On Apple platforms those are the system frameworks of `HAYLEN_APPLE_FRAMEWORKS_MACOS`, `_IOS`, `_MACCATALYST` and `_TVOS` in `engine/cmake/haylen-app.cmake`, the lists that the Apple artifacts publish as `haylen-frameworks.json` for the projects of Lua apps, so C++ apps and Lua apps link the same frameworks. On Apple platforms it also adds `AppleMain.cpp`, whose `main` enters the runtime through `haylen_main`, because `sokol_app` leaves `main` to the app there. Only `app.json`, `source/` and `content/` are deployed, so platform projects, notes and build files can share the package folder.
 
 | Platform | Result |
 | --- | --- |
 | Windows and Linux | An executable in `bin/<target>/` of the build tree, and a `SYNC_PACKAGE-<target>` target that creates an `app` folder next to it with links to `app.json`, `source/` and `content/` of the package folder, so edited files show up without a rebuild. Windows builds are GUI apps whose Visual Studio debugger starts in that folder. |
-| macOS, iOS, tvOS and Mac Catalyst | An app bundle in `bin/<target>/`, or in `bin/` with the Xcode generator, with the package files under `Resources/app`. Apps for iOS and tvOS target version 16.3, like the engine. |
+| macOS, iOS, tvOS and Mac Catalyst | An app bundle in `bin/<target>/`, or in `bin/` with the Xcode generator, with the package files under `Resources/app` and the privacy manifest of `APPLE_PROJECT` among its resources. Apps for iOS and tvOS target version 16.3, like the engine. |
 | Web | The page `<target>.html` with the shell, and the package preloaded at `/app` in the virtual file system. |
-| Android | The shared library `bin/<target>/lib<target>.so`, which `HaylenActivity` loads, and `bin/<target>/package.txt` with the absolute path of the package folder, which the Gradle project of the app copies into the APK assets. The command `make.py run-cpp --platform android` assembles that project from the Android template. |
+| Android | The shared library `bin/<target>/lib<target>.so`, which `HaylenActivity` loads, and `bin/<target>/package.txt` with the absolute path of the package folder, which the Gradle project of the app copies into the APK assets. The command `make.py run-cpp --platform android` prepares that project, `platform/android` of the package folder or a copy of the Android template, as the [distribution guide](distribution.md#the-android-project) describes. |
 
 ## An app written in C++
 

@@ -1,10 +1,11 @@
--- Library handlers: the test library receives `HaylenNativeApi` from its init function, registers bridge handlers with it and sends events from a thread of its own, and the calls it answers fail with typed errors, time out and get cancelled. On the web the page answers the same methods.
+-- Library handlers: the test library receives `HaylenNativeApi` from its init function, registers bridge handlers with it and sends events from a thread of its own, and the calls it answers fail with typed errors, time out and get cancelled. On the web the local plugin `native-test` answers the same handlers.
 local haylen = require('haylen')
 local native = require('haylen.native')
 local platform = require('haylen.platform')
 local ui = require('haylen.ui')
 
 local CheckList = require('check-list')
+local nativeTest = require('native-test')
 local sample = require('sample')
 
 local LibraryHandlers = haylen.class('LibraryHandlers', sample.Test)
@@ -14,8 +15,8 @@ local expect = CheckList.expect
 function LibraryHandlers:enter()
     self.cancelled = {}
     self.connections = {
-        platform.on('native_test.ready', function(payload) self.ready = payload end),
-        platform.on('native_test.cancelled', function(payload) self.cancelled[payload.call] = true end),
+        platform.on(nativeTest.name('ready'), function(payload) self.ready = payload end),
+        platform.on(nativeTest.name('cancelled'), function(payload) self.cancelled[payload.call] = true end),
     }
     self:frame({
         hint = 'Run the checks again to see that they hold.',
@@ -43,34 +44,34 @@ function LibraryHandlers:run()
         if native.available() then
             checks:run('Init function', function()
                 native.load('native_test', {init = 'native_test_haylen_init'})
-                return 'native_test_haylen_init registered the handlers of the library'
+                return 'The function "native_test_haylen_init" registered the handlers of the library'
             end)
         else
             checks:run('Init function', function()
-                sample.call('native_test.init')
+                sample.await(nativeTest.call('init'))
                 return 'The page stands in for the library'
             end)
         end
 
         checks:run('Event from a library thread', function()
             if not sample.waitFor(function() return self.ready ~= nil end, 2) then
-                error('The event "native_test.ready" did not arrive within two seconds.', 0)
+                error('The event "' .. nativeTest.name('ready') .. '" did not arrive within two seconds.', 0)
             end
-            return 'native_test.ready ' .. sample.json(self.ready)
+            return 'The event "' .. nativeTest.name('ready') .. '" arrived with ' .. sample.json(self.ready)
         end)
         checks:run('Answer from a library thread', function()
-            local echo = sample.call('native_test.echo', {word = 'hello'})
+            local echo = sample.call(nativeTest.name('echo'), {word = 'hello'})
             expect(echo.thread, true, 'the thread flag')
-            return 'native_test.echo answered ' .. expect(echo.echo.word, 'hello', 'the echo')
+            return 'The method "' .. nativeTest.name('echo') .. '" answered ' .. expect(echo.echo.word, 'hello', 'the echo')
         end)
         checks:run('Typed error', function()
-            local ok, err = pcall(sample.call, 'native_test.fail')
-            expect(ok, false, 'the success of "native_test.fail"')
+            local ok, err = pcall(sample.call, nativeTest.name('fail'))
+            expect(ok, false, 'the success of "' .. nativeTest.name('fail') .. '"')
             expect(err.data.reason, 'requested', 'the reason')
             return string.format('Failed with the code "%s": %s', expect(err.code, 'native_test_failure', 'the code'), err.message)
         end)
         checks:run('Timeout', function()
-            local call = platform.call('native_test.wait', nil, {timeout = 0.2})
+            local call = platform.call(nativeTest.name('wait'), nil, {timeout = 0.2})
             local _, err = call:await()
             expect(err and err.code, 'timeout', 'the code')
             if not sample.waitFor(function() return self.cancelled[call.id] end, 2) then
@@ -79,7 +80,7 @@ function LibraryHandlers:run()
             return 'The call timed out after 0.2 seconds and the library heard of it'
         end)
         checks:run('Cancel', function()
-            local call = platform.call('native_test.wait')
+            local call = platform.call(nativeTest.name('wait'))
             sample.waitFor(function() return false end, 0.2)
             expect(call:cancel(), true, 'the first cancel')
             local _, err = call:await()
@@ -87,7 +88,7 @@ function LibraryHandlers:run()
             if not sample.waitFor(function() return self.cancelled[call.id] end, 2) then
                 error('The library heard nothing about the cancel.', 0)
             end
-            return 'call:cancel() failed the call with ' .. tostring(err) .. ' and the library heard of it'
+            return 'The method "call:cancel()" failed the call with ' .. tostring(err) .. ' and the library heard of it'
         end)
     end)
 end

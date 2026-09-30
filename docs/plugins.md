@@ -1,6 +1,6 @@
 # Plugins
 
-A plugin gives Lua apps a capability that each platform implements natively, such as ads, analytics, sign-in or purchases. It is a folder with a manifest, `plugin.json`, a Lua API under `source/` and a native part for each platform it supports: Swift or Objective-C sources with Swift packages for Apple platforms, a Gradle library module for Android, ES modules for the web and a CMake library for desktops. The Lua API is the same on every platform. An app lists the plugins it uses in its `app.json`, and make.py checks them, puts their Lua code into the package and assembles their native parts into the project of each platform, so an app still never compiles the engine.
+A plugin gives Lua apps a capability that each platform implements natively, such as ads, analytics, sign-in or purchases. It is a folder with a manifest, `plugin.json`, a Lua API under `source/` and a native part for each platform it supports: Swift or Objective-C sources with Swift packages for Apple platforms, a Gradle library module for Android, ES modules for the web and a CMake library for desktops. The Lua API is the same on every platform. An app lists the plugins it uses in its `app.json`, and make.py checks them, puts their Lua code into the package and brings their native parts into the project of each platform through its generated folder `haylen/`, so an app still never compiles the engine.
 
 These plugins are distributable folders, not the engine plugins of `haylen::plugins`, which are the C++ subsystems that make up the engine. Plugins that bring third-party SDKs, such as ads, analytics, crash reporting, sign-in or purchases, live in their own repositories under [haylen-org](https://github.com/haylen-org), and apps add them with `make.py plugin add` and the address of the repository. The engine repository holds no third-party SDK: [the demo plugin of the plugins sample](#demo-plugin-and-sample), built on platform APIs alone, exercises every capability a plugin uses.
 
@@ -19,7 +19,7 @@ python3 make.py plugin new ~/plugins/my-plugin
 
 | Command | Purpose |
 | --- | --- |
-| `plugin add <folder\|repository> [--ref] [--app]` | Copies a plugin folder, or the root of a plugin repository at the branch, tag or commit that `--ref` names (the default branch otherwise), into `plugins/<id>/` of the app, replacing an earlier copy. It lists the plugin in `app.json` with the default of every parameter that has one and an empty text for every required parameter, which the developer fills in, keeps the values the app already gives, and names the plugins it requires that the app does not list yet. |
+| `plugin add <folder\|repository> [--ref] [--app]` | Copies a plugin folder, or the root of a plugin repository at the branch, tag or commit that `--ref` names (the default branch otherwise), into `plugins/<id>/` of the app, replacing an earlier copy, without its git history and build outputs. The copy keeps the `.gitignore`, `.editorconfig` and `.clang-format` of the plugin, which never reach the package. It lists the plugin in `app.json` with the default of every parameter that has one and an empty text for every required parameter, which the developer fills in, keeps the values the app already gives, and names the plugins it requires that the app does not list yet. |
 | `plugin remove <id> [--app]` | Deletes `plugins/<id>/` of the app and its entry in `app.json`. |
 | `plugin list [--app]` | Lists the plugins of the app with their version, their platforms and their status: `ok`, the problems that keep a plugin from building for any of its platforms, or a folder that `app.json` does not list. |
 | `plugin new <folder> [--id]` | Creates a plugin from `templates/plugin/` in a folder named after its id, with an example method and event on every platform. `--id` defaults to the folder name and must match it. |
@@ -40,7 +40,7 @@ python3 make.py plugin new ~/plugins/my-plugin
 
 `plugins` maps the id of every plugin the app uses to the values of its parameters, and each id names the folder `plugins/<id>/` of the app. Values are plain JSON values. A value that differs per platform uses one parameter per platform, such as `iosAppId` and `androidAppId`, so nothing resolves platform objects at runtime. A parameter that the app leaves out takes its default. The README of every plugin lists its parameters.
 
-A `file` parameter is a path relative to the app folder. Files such as `GoogleService-Info.plist` and `google-services.json` belong outside `source/` and `content/`, for example under `platform/`, so they never ship in the package, and make.py copies them into the projects that need them.
+A `file` parameter is a path relative to the app folder. Files such as `GoogleService-Info.plist` and `google-services.json` belong outside `source/` and `content/`, for example under `platform/`, so they never ship in the package, and make.py brings them into the projects that need them.
 
 ### Validation
 
@@ -66,29 +66,28 @@ For every plugin that `app.json` lists, the package carries `plugins/<id>/plugin
 
 ### Apple platforms
 
-When the plugins of an app add sources, Swift packages, system frameworks, resources or build scripts, make.py assembles the Apple project in three steps:
+make.py brings the Apple parts of the plugins into the target templates of `haylen/project.yml`, which the targets of `project.yml` name in `templates`, as the [distribution guide](distribution.md#the-apple-project) describes:
 
-1. It copies the `sources` folder of every plugin to `plugins/<id>/sources/` of the project and its resources to `plugins/<id>/resources/`.
-2. It writes `plugins.json`, the XcodeGen include of `project.yml`, which adds the sources, the Swift packages with the products they link, the system frameworks, the resources and the build scripts of each plugin to the `iOS`, `tvOS` and `macOS` targets of the platforms the plugin lists. The `iOS` target builds iOS and Mac Catalyst, so a plugin that lists only one of `ios` and `catalyst` joins it with `destinationFilters`, which keep its sources, products and frameworks to that destination. A product or a framework that several plugins link joins a target once, and a framework that the target in `project.yml` links already, such as `AVFoundation.framework` of the engine, stays out of the include, since XcodeGen refuses a dependency that a target lists twice.
-3. It generates `App.xcodeproj` again with the pinned XcodeGen in `.tools/xcodegen`, which `make.py tools` and the first such build download. An app whose plugins add nothing to the project keeps the committed project.
+1. It copies the `sources` folder of every plugin to `haylen/plugins/<id>/sources/` and its resources to `haylen/plugins/<id>/resources/`.
+2. It adds the sources, the Swift packages with the products they link, the system frameworks, the resources and the build scripts of each plugin to the templates `HaylenIOS`, `HaylenTVOS` and `HaylenMacOS` of the platforms the plugin lists. `HaylenIOS` builds iOS and Mac Catalyst, so a plugin that lists only one of `ios` and `catalyst` joins it with `destinationFilters`, which keep its sources, products and frameworks to that destination. A product or a framework that several plugins link joins a template once, and a framework of the engine or one that a target of the template links itself stays out, since XcodeGen refuses a dependency that a target lists twice.
+3. It merges the `infoPlist` keys of the plugins into the `Info.plist` of each platform, where `ios/Info.plist` serves iOS and Mac Catalyst, the `entitlements` into the entitlements of iOS, Mac Catalyst, tvOS and macOS, and the `privacy` declarations into the privacy manifest of the app, all in `haylen/`. The values of the developer win and the keys of the plugins fill what is missing: objects merge key by key and arrays gain the items they lack, so two ad plugins share `SKAdNetworkItems`, while a key that two plugins, or a plugin and `app.json`, set to different values fails the build with both named.
+4. `run` generates `App.xcodeproj` again with the pinned XcodeGen in `.tools/xcodegen`, which `make.py tools` and the first such build download, when `haylen/project.yml` changed and the project holds no edits made in Xcode since its last generation, and `python3 make.py xcodegen <app>` generates it whenever the developer asks.
 
-The sources of a plugin compile into the targets like the files of `source/`, so Swift reaches the engine through `HaylenBridging.h`, and [the Apple part](#the-apple-part) describes the plugin class they hold. The resources land at the root of the app bundle. Build scripts run as post-build phases for every destination of their targets, so a script of a plugin that leaves out Mac Catalyst checks `IS_MACCATALYST` itself.
-
-Every Apple build also merges the `infoPlist` keys of the plugins into the `Info.plist` of each platform that make.py writes, where `ios/Info.plist` serves iOS and Mac Catalyst. The runtime reads the plugin classes and their order from the package, as [the plugin class](#the-plugin-class) describes. The `entitlements` of the plugins go to `ios/App.entitlements`, `catalyst/App.entitlements`, `tvos/App.entitlements` and `macos/App.entitlements`, and `App.xcconfig` signs each target and SDK platform with its file through `CODE_SIGN_ENTITLEMENTS`. Objects merge key by key and arrays gain the items they lack, so two ad plugins share `SKAdNetworkItems`, while a key that two plugins, or a plugin and `app.json`, set to different values fails the build with both named.
+The sources of a plugin compile into the targets like the files of `source/`, so Swift reaches the engine through `HaylenBridging.h`, and [the Apple part](#the-apple-part) describes the plugin class they hold. The resources land at the root of the app bundle. Build scripts run as post-build phases for every destination of their targets, so a script of a plugin that leaves out Mac Catalyst checks `IS_MACCATALYST` itself. The runtime reads the plugin classes and their order from the package, as [the plugin class](#the-plugin-class) describes. A target without its template, or with an `INFOPLIST_FILE` of its own, leaves out what the plugins bring, which [`check`](distribution.md#check) reports and the plugins answer with `unsupported` at run time.
 
 ### Android
 
-1. make.py copies the library module of every plugin into `plugins/<id>/` of the Android project.
-2. It writes the plugin keys of `gradle.properties`. `haylen.plugins` lists the modules as `id=folder` entries, which `settings.gradle.kts` includes and `app/build.gradle.kts` depends on. `haylen.gradlePlugins` lists the Gradle plugins as `id=version` entries, and every `haylen.placeholder.<name>` key is a manifest placeholder.
+1. make.py copies the library module of every plugin into `haylen/plugins/<id>/` of the Android project.
+2. It writes the plugin keys of `haylen/haylen.properties`. `plugins` lists the modules as `id=folder` entries, which `settings.gradle.kts` includes and `app/build.gradle.kts` depends on. `gradlePlugins` lists the Gradle plugins as `id=version` entries, and every `placeholder.<name>` key is a manifest placeholder.
 3. The root `build.gradle.kts` puts the plugin marker of every Gradle plugin, `<id>:<id>.gradle.plugin:<version>`, on the build classpath, which serves the app module like a plugin declared with `apply false`, and `app/build.gradle.kts` applies each one by its id. A `plugins {}` block takes only literal ids, so a list that changes per app goes through the build classpath.
 4. `app/build.gradle.kts` adds the placeholders to `manifestPlaceholders`, where the manifests of the plugin modules find them when the manifests merge.
-5. make.py copies the `files` of the plugins into the project, such as `google-services.json` into `app/`.
+5. The `files` of the plugins, such as `google-services.json` for `app/`, belong to the project. make.py copies them into the copy of the template that it keeps for an app without `platform/android`, and in a project of the developer [`check`](distribution.md#check) names each one that the project lacks, with the copy to make.
 
-The manifest of every module merges into the app with its permissions, its `dev.haylen.plugin.<id>` meta-data and its other entries, together with the manifests of the libraries the module depends on. Every plugin module depends on `dev.haylen:haylen-plugins`, whose manifest declares the provider that loads the plugin classes that the meta-data names when the app process starts, as [the Android part](#the-android-part) describes, so an app without plugins has no provider.
+The manifest of every module merges into the app with its permissions, its `dev.haylen.plugin.<id>` meta-data and its other entries, together with the manifests of the libraries the module depends on. Every plugin module depends on `dev.haylen:haylen-plugins`, whose manifest declares the provider that loads the plugin classes that the meta-data names when the app process starts, as [the Android part](#the-android-part) describes, so an app without plugins has no provider. A permission that the app removes from the merged manifest with `tools:node="remove"` stays out, which `check` reports and the plugin answers with `unsupported` at run time.
 
 ### Web
 
-make.py copies the `web/` folder of every plugin with a web part to `plugins/<id>/` of the site and lists `{id, version, module, config}` in `config.json`, where `module` is the path of its module in the site and `config` holds the values of its parameters with the defaults applied. The loader imports every module while the runtime downloads. Once the runtime exists and before the app starts, it calls the default export of each module, `load(context)`, in load order, with the context that `Module.haylen.createPluginContext(id, config)` of the runtime makes, and waits for the promise that `load` may return. A module that fails to import, or a `load` that fails, keeps the app from starting and shows the error on the loading page.
+make.py copies the `web/` folder of every plugin with a web part to `plugins/<id>/` of the site and lists `{id, version, module, config}` in `config.json`, where `module` is the path of its module in the site and `config` holds the values of its parameters with the defaults applied. The loader imports every module while the runtime downloads. Once the runtime exists and before the app starts, it calls the default export of each module, `load(context)`, in load order, with the context that `Module.haylen.createPluginContext(id, config)` of the runtime makes, and waits for the promise that `load` may return. A module that fails to import, or a `load` that fails, keeps the app from starting and shows the error on the loading page. A page served with `Cross-Origin-Opener-Policy: same-origin` cuts the popups of screens off from the app, which `check --coop same-origin` reports for the plugins whose modules register screens.
 
 ### Native libraries
 
@@ -182,6 +181,7 @@ A platform without its part runs the Lua API of the plugin alone, where calls to
 | `frameworks` | System frameworks and libraries, such as `StoreKit.framework` or `libz.tbd`. |
 | `infoPlist` | Keys merged into the `Info.plist` of every platform of the plugin. |
 | `entitlements` | Keys merged into the entitlements of every platform of the plugin. |
+| `privacy` | Declarations merged into the privacy manifest of the app: `NSPrivacyAccessedAPITypes`, each with its `NSPrivacyAccessedAPIType` and `NSPrivacyAccessedAPITypeReasons`, `NSPrivacyCollectedDataTypes`, `NSPrivacyTracking` and `NSPrivacyTrackingDomains`, as the [privacy manifest](distribution.md#privacy-manifest) describes. |
 | `resources` | Files copied to the root of the app bundle: a path inside the plugin, or a reference to a `file` parameter such as `"${googleServicesPlist}"`, which names a file of the app and is left out while the parameter has no value. |
 | `buildScripts` | Post-build phases, each with a `name`, a `script` and optional `inputFiles` and `outputFiles`. |
 
@@ -189,7 +189,7 @@ A platform without its part runs the Lua API of the plugin alone, where calls to
 
 | Key | Value |
 | --- | --- |
-| `module` | The folder of the Android library module, with `build.gradle.kts` and `src/main/AndroidManifest.xml`. The module applies `com.android.library`, which the Android template declares, and depends on the engine with `implementation("dev.haylen:haylen-plugins:${providers.gradleProperty("haylen.engineVersion").get()}")`, and on the [other engine libraries](#engine-libraries) it uses. |
+| `module` | The folder of the Android library module, with `build.gradle.kts` and `src/main/AndroidManifest.xml`. The module applies `com.android.library`, which the Android template declares, and depends on the engine with `implementation("dev.haylen:haylen-plugins:$haylenEngineVersion")`, where `val haylenEngineVersion: String by extra` reads the engine version that the Android project gives every module, and on the [other engine libraries](#engine-libraries) it uses. |
 | `gradlePlugins` | Gradle plugins that the app module applies, each as `{"id": ..., "version": ...}`, such as `{"id": "com.google.gms.google-services", "version": "4.5.0"}`. |
 | `placeholders` | Manifest placeholders by name, whose text values the manifest of the module reads as `${name}`. |
 | `files` | Copies into the Android project, each as `{"from": ..., "to": ...}`. `from` is a path inside the plugin or a reference to a `file` parameter, and `to` is a path inside the project, such as `app/google-services.json`. |
@@ -207,7 +207,7 @@ python3 make.py plugin new ~/plugins/my-plugin
 python3 make.py plugin add ~/plugins/my-plugin --app ~/apps/my-game
 ```
 
-`plugin new` copies `templates/plugin/` with the id in the names of the files, classes and modules: `plugin.json`, a README, `source/init.lua` with the Lua API, `apple/<Name>Plugin.swift`, the Android module with its manifest meta-data and `<Name>Plugin.kt`, and `web/<id>.js`. Each native part answers the method `<id>.echo` and sends the event `<id>.echoed`, and the Lua API wraps both with the plugin handle of `platform.plugin(id)`.
+`plugin new` copies `templates/plugin/` with the id in the names of the files, classes and modules: `plugin.json`, a README, `source/init.lua` with the Lua API, `apple/<Name>Plugin.swift`, the Android module with its manifest meta-data and `<Name>Plugin.kt`, and `web/<id>.js`, together with the files that the repository of a plugin keeps at its root: `.gitignore`, which keeps out the build folders of the Android module and of the CMake project in `native/`, the caches of Gradle and Kotlin and the files of Finder and the editors, `.editorconfig`, which sets the style of text files, and `.clang-format`, the C, C++ and Objective-C style of the engine. Each native part answers the method `<id>.echo` and sends the event `<id>.echoed`, and the Lua API wraps both with the plugin handle of `platform.plugin(id)`.
 
 ## Lua API of plugins
 
@@ -806,7 +806,7 @@ The Apple part of a plugin is Swift or Objective-C in the `sources` folder of it
 The `class` of the `apple` section names a class that conforms to the `HaylenPlugin` protocol. While the app launches, inside `application:willFinishLaunchingWithOptions:` on iOS, tvOS and Mac Catalyst and inside `applicationWillFinishLaunching:` on macOS, the runtime reads the plugins that `app.json` of the bundled package lists and the `plugin.json` of each, in [load order](#load-order), creates the class of every plugin that lists the platform once with `init` and calls `loadWithContext:`, `load(with:)` in Swift, with its context and the parameters of the plugin, so SDKs set up before launching ends. A Swift class names its Objective-C class with `@objc(Name)`, the name that `class` repeats. The runtime reports the ids it loaded, which `handle.native` and `platform.plugins()` show in Lua. The desktop player bundles no package, since it runs the package that its command line names, so it creates no plugin classes and runs the [native libraries](#native-libraries) of the plugins instead.
 
 - A plugin that does not list the destination, such as a plugin for `ios` alone on Mac Catalyst, is skipped without a message, and runs without its native part there.
-- A class that is missing on a platform its plugin lists is logged as an error that names the class, the plugin and what the project lacks, the Apple sources of the plugin that `project.yml` compiles through `include: [plugins.json]`, and a class that does not conform to `HaylenPlugin` is logged as an error too. The plugin then runs without its native part.
+- A class that is missing on a platform its plugin lists is logged as an error that names the class, the plugin and what the project lacks, the Apple sources of the plugin, which a target compiles when it names its template of `haylen/project.yml` in `templates` of `project.yml`, and a class that does not conform to `HaylenPlugin` is logged as an error too. The plugin then runs without its native part.
 
 ```swift
 // plugins/share-sheet/apple/ShareSheetPlugin.swift
@@ -982,7 +982,7 @@ banner.remove()
 
 ### Info.plist keys, entitlements and resources
 
-The `infoPlist` and `entitlements` of the `apple` section merge into the files make.py writes for every platform of the plugin, as [Apple platforms](#apple-platforms) describes, so a plugin declares there the URL schemes it answers, the background modes it needs, the usage descriptions of the permissions it asks for and the capabilities it uses:
+The `infoPlist`, `entitlements` and `privacy` of the `apple` section merge into the files make.py writes in `haylen/` for every platform of the plugin, as [Apple platforms](#apple-platforms) describes, so a plugin declares there the URL schemes it answers, the background modes it needs, the usage descriptions of the permissions it asks for and the capabilities it uses:
 
 ```json
 "apple": {
@@ -1030,8 +1030,11 @@ The Android part of a plugin is the Android library module that `module` of its 
 
 ```kotlin
 // plugins/share-sheet/android/build.gradle.kts
+// The Android project of the app gives every module the engine version it builds with.
+val haylenEngineVersion: String by extra
+
 dependencies {
-    implementation("dev.haylen:haylen-plugins:${providers.gradleProperty("haylen.engineVersion").get()}")
+    implementation("dev.haylen:haylen-plugins:$haylenEngineVersion")
 }
 ```
 
@@ -1172,7 +1175,7 @@ public final class ShareSheetPlugin extends HaylenPlugin {
 
 Events that native code sends while no app runs, such as from `onLoad` before the first activity loads the native library, while the app restarts or between two activities, wait in the engine library, up to 32 per name with the oldest dropped first, and reach the next app in order once it starts. A link that opens the app, which the plugin sends retained, therefore reaches the first Lua listener of its name however late it comes.
 
-A plugin with suspending handlers adds `implementation("dev.haylen:haylen-coroutines:${providers.gradleProperty("haylen.engineVersion").get()}")` to its module:
+A plugin with suspending handlers adds `implementation("dev.haylen:haylen-coroutines:$haylenEngineVersion")` to its module:
 
 ```kotlin
 import dev.haylen.registerSuspend
@@ -1333,7 +1336,7 @@ The native screen is a `UIViewController` presented full screen on iOS, iPadOS, 
 
 ### Screens
 
-`confirm` is the [screen](#plugin-screens) of the plugin, which asks a question with Confirm and Decline and answers with `{confirmed, via, language}`. The web opens `web/screen.html` in a popup with `screen.popup`, whose page posts the answer to the app, and the desktops open a native window over the window of the app from `getWindow`: a sheet on macOS in `NativeDemoScreen.m`, an owned window on Windows and a transient X11 window on a connection of its own on Linux in `NativeDemoScreen.c`, whose Close button and close box end the screen as `cancelled`. Apple platforms show a UIKit controller in `NativeDemoConfirm.swift`, presented full screen, whose swipe and Menu button end the screen as `cancelled`, and an AppKit sheet on macOS, and add `swiftUI`, the same question in the SwiftUI view of `NativeDemoConfirmView.swift` through a hosting controller, presented over the app on iOS, iPadOS and tvOS and in a window of its own on Mac Catalyst and macOS, whose Close button dismisses it through SwiftUI. The web adds `redirect`, which leaves the page for the same confirm page and comes back with the answer and the token of the screen in the address, which the module reads through `context.restoredScreen` in `load`. Android registers the screen as the contract of `NativeDemoConfirm.kt`, which starts `NativeDemoConfirmActivity`, an `AppCompatActivity` of its own, whose Back button gives `null` and so ends the screen as `cancelled`, and whose end reaches the next app as `screenRestored` when the process ended while it showed. The Native screen test of the sample opens the screen, shows that the app was covered and drew nothing under it, tries a second screen, which fails with `busy`, cancels one, and restarts the app under a screen with `haylen.requestRestart()`, so the next app receives `screenRestored` with the state.
+`confirm` is the [screen](#plugin-screens) of the plugin, which asks a question with Confirm and Decline and answers with `{confirmed, via, language}`. The web opens `web/screen.html` in a popup with `screen.popup`, whose page posts the answer to the app, and the desktops open a native window over the window of the app from `getWindow`: a sheet on macOS in `NativeDemoScreen.m`, an owned window on Windows and a transient X11 window on a connection of its own on Linux in `NativeDemoScreen.c`, whose Close button and close box end the screen as `cancelled`. Apple platforms show a UIKit controller in `NativeDemoConfirm.swift`, presented full screen, whose swipe and Menu button end the screen as `cancelled`, and an AppKit sheet on macOS, and add `swiftUI`, the same question in the SwiftUI view of `NativeDemoConfirmView.swift` through a hosting controller, presented over the app on iOS, iPadOS and tvOS and in a window of its own on Mac Catalyst and macOS, whose Close button dismisses it through SwiftUI. The web adds `redirect`, which leaves the page for the same confirm page and comes back with the answer and the token of the screen in the address, which the module reads through `context.restoredScreen` in `load`. Android registers the screen as the contract of `NativeDemoConfirm.kt`, which starts `NativeDemoConfirmActivity`, an `AppCompatActivity` of its own, whose Back button gives `null` and so ends the screen as `cancelled`, which a cancel of the app finishes, and whose end reaches the next app as `screenRestored` when the process ended while it showed. The Native screen test of the sample opens the screen, shows that the app was covered and drew nothing under it, tries a second screen, which fails with `busy`, cancels one from a timer while it shows, restarts the app under a screen with `haylen.requestRestart()`, so the next app receives `screenRestored` with the state, and opens the screen right in the answer of a message of [haylen.dialogs](lua-api/dialogs.md), which waits until the app is active.
 
 ### Native results
 

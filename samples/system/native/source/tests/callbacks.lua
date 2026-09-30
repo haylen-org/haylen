@@ -7,6 +7,7 @@ local ui = require('haylen.ui')
 
 local CheckList = require('check-list')
 local library = require('test-library')
+local nativeTest = require('native-test')
 local sample = require('sample')
 
 local Callbacks = haylen.class('Callbacks', sample.Test)
@@ -50,7 +51,7 @@ function Callbacks:runLibrary()
         end
     end
 
-    checks:run('ffi.cast during the call', function()
+    checks:run('"ffi.cast" during the call', function()
         self.cast = ffi.cast('NativeTestVisitor', visitor('ffi '))
         lib.native_test_visit(2, self.cast)
         return 'Visited ' .. expect(table.concat(visits, ', '), 'ffi 0zero, ffi 1one', 'the visits')
@@ -92,13 +93,13 @@ end
 
 function Callbacks:runPage()
     local checks = self.checks
-    checks:skip('ffi.cast during the call', 'The browser has no native callbacks.')
+    checks:skip('"ffi.cast" during the call', 'The browser has no native callbacks.')
     checks:skip('Frame callback during the call', 'The browser has no native callbacks.')
     checks:skip('Callback at the next frame', 'The browser has no native callbacks.')
     local report
     checks:run('Report from the page', function()
-        local connection = platform.on('native_test.report', function(payload) report = payload end)
-        sample.call('native_test.report_later', {value = 42})
+        local connection = platform.on(nativeTest.name('report'), function(payload) report = payload end)
+        sample.await(nativeTest.call('reportLater', {value = 42}))
         local arrived = sample.waitFor(function() return report ~= nil end, 2)
         connection:disconnect()
         if not arrived then

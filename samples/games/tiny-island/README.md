@@ -49,7 +49,7 @@ Walking next to the fire with wood feeds it. The touch controls appear once the 
 
 ## Package layout
 
-The sample folder is the package. Only `app.json`, `source/` and `content/` ship, and `platform/` and this README stay behind.
+The sample folder is the package. Only `app.json`, `source/`, `content/` and the `plugin.json` and `source/` of its plugin ship, and the native parts of the plugin reach the platform projects while this README stays behind.
 
 ```text
 tiny-island/
@@ -60,7 +60,7 @@ tiny-island/
     data/                Class and enemy tables.
     scenes/              Boot, menu, class selection, gameplay, pause, settings and game over. The boot screen preloads the menu, and the menu and the run load their preload groups in their load hooks.
     systems/             The run (game.lua), the day and night clock (day-night.lua), the island map, the campfire, the menu backdrop, effects, art, sound and preferences.
-    entities/            Player, enemies, trees, wood and arrows.
+    entities/            Player, enemies, trees, wood, arrows and the flame of the campfire, which the menus and the run share.
     ui/                  The HUD, the loading view that shows the chosen survivor at the fire while a run loads, and shared widgets.
   content/
     tiny_swords/         The imported art pack.
@@ -71,14 +71,15 @@ tiny-island/
     effects/             Particle effects.
     audio/, fonts/       CC0 sounds, music and fonts with their credits.
     preload.json         The boot, menu and gameplay preload groups.
-  platform/              Google sign-in on Android and on the web, laid over the platform templates.
+  plugins/
+    google-sign-in/      The local plugin with the Google sign-in: its Lua API, its Android module and its web module.
 ```
 
 The day runs dawn, day, dusk and night in a loop of 15, 150, 15 and 90 seconds. The file `systems/day-night.lua` counts the days, reports every phase to the run and eases the ambient light from night through a warm dawn into full daylight and back through the dusk color.
 
 ## Platform bridge demo
 
-The settings screen shows what `system.info()` of [`haylen.system`](../../../docs/lua-api/system.md) reports about the device and, on Android and the web, calls `auth.google.signIn` and shows the answer. Google sign-in needs the web client id of a Google Cloud project: set `googleServerClientId=<id>` in `~/.gradle/gradle.properties` for Android and the `googleClientId` constant of `platform/web/app.js` for the web. The native side lives in `platform/android/app` and `platform/web/app.js`, which `make.py run` lays over the platform templates, and [the bridge guide](../../../docs/platform_bridge.md) explains how to add methods of your own.
+The settings screen shows what `system.info()` of [`haylen.system`](../../../docs/lua-api/system.md) reports about the device and, on Android and the web, signs in with Google through the local plugin [`google-sign-in`](plugins/google-sign-in) and shows the answer. Google sign-in needs the web client id of a Google Cloud project, which `clientId` under `plugins.google-sign-in` of `app.json` gives both platforms. The plugin holds the native side, a Java plugin class with Credential Manager on Android and a web module with Google Identity Services, which `make.py run` builds into a copy of the template of each platform, and [the plugin guide](../../../docs/plugins.md) explains how to write plugins of your own.
 
 ## Credits
 

@@ -1,0 +1,19 @@
+# Build outputs and the packages of the app.
+/build/
+/dist/
+# The source cache of CPM, where C++ builds keep the dependencies they download.
+/.cache/
+# The folder that make.py writes into each platform project on every build.
+platform/*/haylen/
+# Files of Finder and of the editors.
+.DS_Store
+.idea/
+.vscode/
+# The local settings and caches of Gradle, Kotlin and the Android build of C++ code.
+local.properties
+.gradle/
+.kotlin/
+.cxx/
+# The state of Xcode for each person who opens a project.
+xcuserdata/
+*.xcuserstate

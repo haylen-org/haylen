@@ -1,0 +1,16 @@
+{
+    "id": "google-sign-in",
+    "name": "Google Sign-In",
+    "version": "1.0.0",
+    "description": "Signs the player in with a Google account through Credential Manager on Android and Google Identity Services on the web.",
+    "platforms": ["android", "web"],
+    "parameters": {
+        "clientId": {"type": "string", "default": "", "description": "The web client id of the Google Cloud project of the game, which Android asks Credential Manager for and the web page gives Google Identity Services."}
+    },
+    "android": {
+        "module": "android"
+    },
+    "web": {
+        "module": "web/google-sign-in.js"
+    }
+}

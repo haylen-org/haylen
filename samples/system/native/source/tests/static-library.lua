@@ -42,20 +42,20 @@ function StaticLibrary:run()
         checks:run('Linked library', function()
             lib = native.load('native_test_static')
             expect(lib, ffi.C, 'the namespace of the library')
-            return 'native.load returned ffi.C'
+            return 'The function "native.load" returned "ffi.C"'
         end)
         checks:run('Symbol table', function()
             local address = native.findSymbol('native_test_origin')
             if address == nil then
                 error('The function "native.findSymbol" found no "native_test_origin".', 0)
             end
-            return 'native.findSymbol found native_test_origin at ' .. tostring(address)
+            return 'The function "native.findSymbol" found "native_test_origin" at ' .. tostring(address)
         end)
         checks:run('Text from the linked copy', function()
-            return 'native_test_origin() = ' .. expect(ffi.string(lib.native_test_origin()), 'static', 'the origin')
+            return '"native_test_origin()" = ' .. expect(ffi.string(lib.native_test_origin()), 'static', 'the origin')
         end)
         checks:run('Integers', function()
-            return 'native_test_add(2, 3) = ' .. expect(lib.native_test_add(2, 3), 5, 'the sum')
+            return '"native_test_add(2, 3)" = ' .. expect(lib.native_test_add(2, 3), 5, 'the sum')
         end)
     end)
 end

@@ -51,7 +51,7 @@ python3 make.py run games/tiny-island
 
 The first command imports the [Tiny Swords](https://pixelfrog-assets.itch.io/tiny-swords) pack into the Tiny Island sample, and the second builds the desktop player and runs the game with hot reload. The command `python3 make.py test` builds and runs the engine tests.
 
-A new app starts with `make.py new`, which writes a small starter app and a copy of every platform project:
+A new app starts with `make.py new`, which writes a small starter app and a project of every platform, which belongs to the developer:
 
 ```sh
 python3 make.py new ~/apps/my-app --name "My App" --identifier com.example.myapp
@@ -61,7 +61,7 @@ python3 make.py run ~/apps/my-app --platform android
 python3 make.py run ~/apps/my-app --platform web
 ```
 
-With `--platform`, `run` builds the prebuilt engine for that platform once, puts the app into the platform template and launches it on macOS, iOS and tvOS simulators and devices, Mac Catalyst, Android devices and emulators, or a local web server. The app itself never compiles the engine.
+With `--platform`, `run` builds the prebuilt engine for that platform once, writes the app into the generated folder of the platform project, builds the project and launches it on macOS, iOS and tvOS simulators and devices, Mac Catalyst, Android devices and emulators, or a local web server. The app itself never compiles the engine.
 
 An app is a folder like this one:
 
@@ -72,7 +72,8 @@ my-app/
     main.lua        Entry point.
     scenes/         Any other Lua modules, loaded with require('scenes.title').
   content/          Textures, sounds, fonts, maps and data.
-  platform/         Optional changes to the platform projects, such as native handlers.
+  plugins/          Plugins with native code, such as sign-in or ads.
+  platform/         The Xcode, Android and web projects, which make.py builds where they are.
 ```
 
 ```lua

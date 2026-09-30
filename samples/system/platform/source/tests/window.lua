@@ -24,10 +24,15 @@ local function rectText(rect)
     return string.format('%.0f, %.0f, %.0f x %.0f', rect.x, rect.y, rect.width, rect.height)
 end
 
+-- Writes a value that the engine reports, such as an orientation or a flag, in double quotes.
+local function quoted(value)
+    return '"' .. tostring(value) .. '"'
+end
+
 function Window:enter()
     self.simulation = viewport.safeAreaSimulation()
     self.safeAreaVisible = ui.safeAreaVisible()
-    self.network = 'online until the platform says otherwise'
+    self.network = 'Online until the platform says otherwise'
     self.journal = Journal(22)
     for name, color in pairs(kEvents) do
         self:listen(name, function(value)
@@ -61,12 +66,12 @@ function Window:record(name, value, color)
     local detail = ''
     if type(value) == 'table' then
         if value.width then
-            detail = ' ' .. rectText(value)
+            detail = ', ' .. rectText(value)
         elseif value.fullscreen ~= nil then
-            detail = ' fullscreen ' .. tostring(value.fullscreen)
+            detail = ', fullscreen ' .. tostring(value.fullscreen)
             self:set('fullscreen', {checked = value.fullscreen})
         elseif value.orientation then
-            detail = ' ' .. value.orientation
+            detail = ', ' .. quoted(value.orientation)
         end
     end
     if name == 'keyboardShown' then
@@ -74,9 +79,9 @@ function Window:record(name, value, color)
     elseif name == 'keyboardHidden' then
         self.keyboard = nil
     elseif name == 'networkOnline' or name == 'networkOffline' then
-        self.network = name == 'networkOnline' and 'online' or 'offline'
+        self.network = name == 'networkOnline' and 'Online' or 'Offline'
     end
-    self.journal:add(name .. detail, color)
+    self.journal:add('Event ' .. quoted(name) .. detail, color)
 end
 
 function Window:rows()
@@ -84,26 +89,26 @@ function Window:rows()
     local designWidth, designHeight = viewport.designSize()
     local simulation = viewport.safeAreaSimulation()
     return {
-        {'haylen.platform', haylen.platform},
-        {'haylen.backend', haylen.backend},
-        {'haylen.version', haylen.version},
-        {'app', string.format('%s %s, %s', haylen.config.name, haylen.config.version, haylen.config.identifier)},
-        {'window.framebufferSize()', string.format('%.0f x %.0f pixels, dpi scale %.2f', width, height, window.dpiScale())},
-        {'viewport.designSize()', string.format('%.0f x %.0f, scaling %s', designWidth, designHeight, viewport.scaling())},
-        {'viewport.visibleRect()', rectText(viewport.visibleRect())},
-        {'viewport.safeRect()', rectText(viewport.safeRect()) .. (simulation and ', simulated ' .. tostring(simulation) or '')},
-        {'window.orientation()', window.orientation()},
-        {'window.hasPointerDevice()', tostring(window.hasPointerDevice())},
-        {'window.fullscreen()', tostring(window.fullscreen())},
-        {'haylen.appState()', haylen.appState()},
-        {'keyboard', self.keyboard and 'shown over ' .. rectText(self.keyboard) or 'hidden'},
-        {'network', self.network},
+        {'"haylen.platform"', quoted(haylen.platform)},
+        {'"haylen.backend"', quoted(haylen.backend)},
+        {'"haylen.version"', haylen.version},
+        {'App', string.format('%s %s, %s', haylen.config.name, haylen.config.version, haylen.config.identifier)},
+        {'"window.framebufferSize()"', string.format('%.0f x %.0f pixels, dpi scale %.2f', width, height, window.dpiScale())},
+        {'"viewport.designSize()"', string.format('%.0f x %.0f, scaling "%s"', designWidth, designHeight, viewport.scaling())},
+        {'"viewport.visibleRect()"', rectText(viewport.visibleRect())},
+        {'"viewport.safeRect()"', rectText(viewport.safeRect()) .. (simulation and ', simulated ' .. quoted(simulation) or '')},
+        {'"window.orientation()"', quoted(window.orientation())},
+        {'"window.hasPointerDevice()"', quoted(window.hasPointerDevice())},
+        {'"window.fullscreen()"', quoted(window.fullscreen())},
+        {'"haylen.appState()"', quoted(haylen.appState())},
+        {'Keyboard', self.keyboard and 'Shown over ' .. rectText(self.keyboard) or 'Hidden'},
+        {'Network', self.network},
     }
 end
 
 function Window:update(dt)
     Window.super.update(self, dt)
-    self:status(string.format('%s on %s   ui wants the keyboard %s   back leaves the app %s', haylen.platform, haylen.backend, ui.usingKeyboard(), window.backLeavesApp()))
+    self:status(string.format('Platform "%s" on "%s"   the UI wants the keyboard %s   back leaves the app %s', haylen.platform, haylen.backend, ui.usingKeyboard(), window.backLeavesApp()))
 end
 
 -- Draws the visible area scaled into a box with the safe area and the keyboard inside it.

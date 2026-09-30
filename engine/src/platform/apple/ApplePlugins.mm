@@ -37,7 +37,7 @@ void ApplePlugins::load() {
         const char* name = declaration.className.c_str();
         Class type = NSClassFromString(@(name));
         if (type == nil) {
-            core::Log::error("The class \"{}\" of the plugin \"{}\" is missing from the app, so the plugin runs without its native part. The project lacks the Apple sources of the plugin, which \"project.yml\" compiles into the target through \"include: [plugins.json]\", or a Swift class of them names itself without \"@objc({})\".", name, declaration.identifier, name);
+            core::Log::error("The class \"{}\" of the plugin \"{}\" is missing from the app, so the plugin runs without its native part. The project lacks the Apple sources of the plugin, which a target compiles when it names its template of \"haylen/project.yml\" in \"templates\" of \"project.yml\", or a Swift class of them names itself without \"@objc({})\".", name, declaration.identifier, name);
             continue;
         }
         if (![type conformsToProtocol:@protocol(HaylenPlugin)]) {

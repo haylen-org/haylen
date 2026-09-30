@@ -71,7 +71,7 @@ The engine covers the app before the platform shows the screen and keeps it cove
 - A successful result is any JSON value with its byte buffers, and `null` reaches Lua as `nil`.
 - A failure carries either a JSON string, which becomes the error message, or an object with a `message` string and optional `code` and `data` values, which Lua receives as the fields of the error. Any other failure payload, such as `null`, a number or an object without a string `message`, fails with `The native platform call failed without a message.` and keeps the code and data of an object, and text that is not JSON fails with the code `invalidJson` and `The platform returned invalid JSON.`
 - The engine and the platform sides fail calls with these codes: `timeout` and `cancelled` from the bridge, `noHandler` when nothing answers the method, `invalidJson`, `invalidBytes` for JSON that refers to a buffer it lacks, and `exception` when a Java, Kotlin, Swift or JavaScript handler threw an error without a code of its own instead of answering, with the class of the exception or the type of the error in `data.type`.
-- Method and event names are free-form strings, usually dotted names such as `auth.google.signIn` of the Tiny Island sample. [Plugins](plugins.md) put their id in front of their method and event names, with the names in camelCase, such as `admob.showBanner` and `admob.closed`: the plugin handle of Lua and the plugin contexts of native code and the web add the prefix, so neither side writes it.
+- Method and event names are free-form strings, usually dotted names such as `auth.google.signIn`. [Plugins](plugins.md) put their id in front of their method and event names, with the names in camelCase, such as `admob.showBanner` and `admob.closed`: the plugin handle of Lua and the plugin contexts of native code and the web add the prefix, so neither side writes it.
 
 ## The Lua side
 
@@ -118,7 +118,7 @@ A handler that throws, a checked exception included, fails its call through `rep
 
 `HaylenCoroutines` in `engine/platform/android/haylen-coroutines/src/main/kotlin/dev/haylen/HaylenCoroutines.kt` registers Kotlin handlers written as suspending functions. It launches each call in a coroutine of a scope on `Dispatchers.Main.immediate`, answers with the return value, fails the call with what the function throws, and cancels the coroutine from `onCancel`. It lives in the `dev.haylen:haylen-coroutines` library, which depends on `kotlinx-coroutines-android` as an API, so only apps and plugins that depend on that library get coroutines. The [reference](lua-api/platform.md#android-handlers) has examples in Java and Kotlin.
 
-[Plugins](plugins.md#the-android-part) register their handlers through their context, which puts the id of the plugin in front of the name, and apps register theirs once, in `Application.onCreate`, before the first activity starts. Tiny Island does this in `samples/games/tiny-island/platform/android/app/src/main/java/dev/haylen/tinyisland/TinyIslandApplication.java`, which its `app/app.gradle` names through the `haylenApplication` manifest placeholder of the [Android template](distribution.md#platform-overrides). Its `GoogleSignInPlugin` answers `auth.google.signIn` with Credential Manager: it builds a `GetGoogleIdOption` with the web client id of the game's Google Cloud project, which the build takes from the `googleServerClientId` Gradle property into the `google_server_client_id` string resource, calls `getCredentialAsync` on the activity's main executor and replies with `idToken`, `email`, `name` and `picture`. Without a client id it fails with a message that explains the build property. R8 keeps the classes the engine reaches by name through the module's `consumer-rules.pro`, so handlers need no rules of their own.
+[Plugins](plugins.md#the-android-part) register their handlers through their context, which puts the id of the plugin in front of the name, and apps register theirs once, in `Application.onCreate` of the application class that the `<application>` of the manifest of their [Android project](distribution.md#the-android-project) names, before the first activity starts. The Google sign-in of Tiny Island is a local plugin, `samples/games/tiny-island/plugins/google-sign-in`, whose `GoogleSignInPlugin` answers `google-sign-in.signIn` with Credential Manager: it builds a `GetGoogleIdOption` with the web client id of the game's Google Cloud project from the `clientId` parameter of the plugin, calls `getCredentialAsync` on the activity's main executor and replies with `idToken`, `email`, `name` and `picture`. Without a client id it fails with a message that names the key of `app.json` to set. R8 keeps the classes the engine reaches by name through the module's `consumer-rules.pro`, so handlers need no rules of their own.
 
 ## Apple platforms
 
@@ -149,7 +149,7 @@ typedef HaylenCancel _Nullable (^HaylenCancellableHandler)(id params, HaylenRepl
 
 Swift handlers use `HaylenBridge.register(method) { (params: Params) async throws -> Result in ... }` from `source/HaylenBridgeAsync.swift` of the Apple template, which decodes the parameters with `JSONDecoder`, encodes the result with `JSONEncoder`, fails the call with the code and data of a thrown `HaylenFailure` or with the code `exception` for any other error, and cancels the task of the call when the app gives it up. `try HaylenBridge.emit(event, payload, retain: true)` sends an event with an `Encodable` payload, and plugin contexts have the same helpers, `context.register` and `context.emit`, as the [plugin guide](plugins.md#swift-helpers) describes. The template ships `HaylenBridgeAsync.swift` as a source file, because the engine artifact is a static library of C, C++ and Objective-C whose headers Swift reaches through `source/HaylenBridging.h`, and a Swift module in the artifact would have to match the Swift compiler of each app. The target names its module `HaylenApp`, so Objective-C++ code such as `main.mm` calls Swift classes through `#import "HaylenApp-Swift.h"`.
 
-The handler table exists from the first registration, so native code may register at any time. Apps made from the Apple template register in the `main` function of `source/main.mm`, before it calls `haylen_main`, with their Objective-C, C++ and Swift files next to it in `platform/apple/source/` of the app, whose files all build into every target, as the [distribution guide](distribution.md#platform-overrides) describes. Apps built with `haylen_add_app` add the Objective-C file with its `SOURCES` argument, compile it with `-fobjc-arc` as the engine compiles its Apple sources, and register from `+load` or once the app has launched. The [reference](lua-api/platform.md#apple-handlers) has a complete handler.
+The handler table exists from the first registration, so native code may register at any time. Apps made from the Apple template register in the `main` function of `source/main.mm`, before it calls `haylen_main`, with their Objective-C, C++ and Swift files next to it in `platform/apple/source/` of the app, whose files all build into every target, as the [distribution guide](distribution.md#the-apple-project) describes. Apps built with `haylen_add_app` add the Objective-C file with its `SOURCES` argument, compile it with `-fobjc-arc` as the engine compiles its Apple sources, and register from `+load` or once the app has launched. The [reference](lua-api/platform.md#apple-handlers) has a complete handler.
 
 ## Web
 
@@ -166,7 +166,7 @@ The runtime calls the handler after the frame that made the call, with the parse
 
 The web build is single-threaded, so handlers run on the browser's main thread between frames. An asynchronous handler, such as one that waits for `fetch` or for a sign-in popup, never blocks the app while it waits.
 
-`register` exists once the runtime script has run, so a page registers its handlers in `Module.preRun`. The web template runs the `app.js` of an app for that, and Tiny Island's `samples/games/tiny-island/platform/web/app.js` registers `auth.google.signIn` there. It loads Google Identity Services only when the player first signs in, reads the client id from a constant at the top of the file, and resolves with `idToken`, `email`, `name` and `picture` decoded from the returned credential. The Google script needs `make.py run --platform web --coep off`, as the [distribution guide](distribution.md#serve) explains.
+`register` exists once the runtime script has run, so a page registers its handlers in `Module.preRun`. The web template runs the `app.js` of an app for that, and plugins register theirs with `context.register` of their web module, such as `google-sign-in.signIn` of the local plugin of Tiny Island. It loads Google Identity Services only when the player first signs in, reads the client id from the parameters of the plugin, and resolves with `idToken`, `email`, `name` and `picture` decoded from the returned credential. The Google script needs `make.py run --platform web --coep off`, as the [distribution guide](distribution.md#serve) explains.
 
 ## Desktop
 
@@ -292,14 +292,16 @@ public final class MyAppApplication extends Application {
 }
 ```
 
-`app/app.gradle` names the application class through the `haylenApplication` manifest placeholder of the [Android template](distribution.md#platform-overrides):
+The `<application>` of `app/src/main/AndroidManifest.xml` in the [Android project](distribution.md#the-android-project) of the app names the application class:
 
-```groovy
-android {
-    defaultConfig {
-        manifestPlaceholders.haylenApplication = "com.example.myapp.MyAppApplication"
-    }
-}
+```xml
+<application
+    android:name="com.example.myapp.MyAppApplication"
+    android:banner="@drawable/banner"
+    android:enableOnBackInvokedCallback="true"
+    android:icon="@mipmap/ic_launcher"
+    android:label="${haylenAppName}"
+    android:theme="@style/Theme.Haylen.Splash">
 ```
 
 The handler reads a setting and touches no view, so it runs on the background thread of the bridge. The observer and `Collections.singletonMap` work from API 27, the engine's minimum, and the event reaches the app even when the player changes the setting while the app is in the background.

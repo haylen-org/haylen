@@ -29,11 +29,6 @@ function preferences.save()
     stored.save()
 end
 
--- The sample ships Google sign-in plugins for Android and the web.
-function preferences.googleSignIn()
-    return haylen.platform == 'android' or haylen.platform == 'web'
-end
-
 function preferences.apply()
     audio.setBusVolume('music', preferences.get('music'))
     local effects = preferences.get('effects')

@@ -1,10 +1,10 @@
--- The settings sheet, shown over the menu or the paused run. It also shows what the system reports about the device and tries the platform bridge with Google sign-in.
-local platform = require('haylen.platform')
+-- The settings sheet, shown over the menu or the paused run. It also shows what the system reports about the device and tries the platform bridge with the Google sign-in of the local plugin google-sign-in.
 local scene = require('haylen.scene')
 local system = require('haylen.system')
 local ui = require('haylen.ui')
 local window = require('haylen.window')
 
+local googleSignIn = require('google-sign-in')
 local preferences = require('systems.preferences')
 local sound = require('systems.sound')
 local widgets = require('ui.widgets')
@@ -43,11 +43,11 @@ function settings:enter()
 
     local bridge = {widgets.button('device', 'settings.device', function()
         local info = system.info()
-        self.document:set('bridge', {text = string.format('%s, %s %s, %s', info.deviceModel or info.deviceKind, info.os, info.osVersion or '', info.locale or '')})
+        self.document:set('bridge', {text = string.format('Device "%s", system "%s" %s, locale "%s"', info.deviceModel or info.deviceKind, info.os, info.osVersion or '', info.locale or '')})
     end, {variant = 'default', grow = 1})}
-    if preferences.googleSignIn() then
+    if googleSignIn.available then
         bridge[2] = widgets.button('google', 'settings.google', function()
-            self:ask('auth.google.signIn', {}, function(account)
+            self:ask(googleSignIn.signIn, function(account)
                 return widgets.text('settings.signedIn', {name = account.name or account.email})
             end)
         end, {variant = 'default', grow = 1})
@@ -76,10 +76,10 @@ function settings:enter()
     self.document:command('back', 'focus')
 end
 
--- Calls a platform method and shows what it answered, or why it failed, under the buttons. The task belongs to the sheet, so an answer that comes after the sheet closed goes nowhere.
-function settings:ask(method, params, describe)
+-- Starts a platform call and shows what it answered, or why it failed, under the buttons. The task belongs to the sheet, so an answer that comes after the sheet closed goes nowhere.
+function settings:ask(start, describe)
     scene.spawn(self, function()
-        local result, err = platform.call(method, params):await()
+        local result, err = start():await()
         if not result then
             sound.play('error')
         end

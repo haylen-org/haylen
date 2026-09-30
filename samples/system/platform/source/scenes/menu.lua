@@ -28,7 +28,7 @@ function Menu:enter()
     self.document = ui.mount(ui.column{
         padding = {32, 48},
         gap = 24,
-        ui.pageHeader{title = haylen.config.name, caption = 'The bridge to native code with native events and a handler of this app on every platform, what the window reports, what haylen.system tells about the device and the native dialogs, one test per scene.'},
+        ui.pageHeader{title = haylen.config.name, caption = 'The bridge to native code with native events and a handler of the local plugin of this app on every platform, what the window reports, what "haylen.system" tells about the device and the native dialogs, one test per scene.'},
         ui.scroll{grow = 1, ui.column{gap = 12, padding = {0, 24, 0, 0}, children = rows}},
     }, {owner = self})
     self.document:command(self.selected, 'focus')

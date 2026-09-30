@@ -22,6 +22,8 @@ jobs:
           python-version: "3.13"
       - run: pip install clang-format==23.1.1
       - run: python make.py format --check
+      - name: Test the rules of make.py
+        run: python -m unittest discover -s tools -p "test_*.py"
 
   desktop:
     strategy:

@@ -1,5 +1,3 @@
-// Written by make.py from app.json, so App.xcodeproj never changes per app.
-HAYLEN_PRODUCT_NAME = Haylen App
-HAYLEN_BUNDLE_IDENTIFIER = dev.haylen.app
-MARKETING_VERSION = 1.0.0
-CURRENT_PROJECT_VERSION = 1.0.0
+#include "haylen/Haylen.xcconfig"
+
+// Build settings of the app targets. The include brings the name, identifier, version and build number that make.py writes from app.json, and a setting below it wins, such as a build number from continuous integration: CURRENT_PROJECT_VERSION = 42.

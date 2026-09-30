@@ -18,5 +18,10 @@
     "lifecycle": {
         "pauseOnFocusLoss": true
     },
-    "clearColor": "#FF47ABA9"
+    "clearColor": "#FF47ABA9",
+    "plugins": {
+        "google-sign-in": {
+            "clientId": ""
+        }
+    }
 }
