@@ -130,8 +130,10 @@ haylen_enable_warnings(haylen_native_test)
 add_dependencies(haylen_tests haylen_native_test)
 target_compile_definitions(haylen_tests PRIVATE HAYLEN_NATIVE_TEST_LIBRARY="$<TARGET_FILE:haylen_native_test>")
 
+# Every test runs with a time limit far above the slowest one, so a test that hangs fails alone and the rest of the suite still runs.
 include(GoogleTest)
 gtest_discover_tests(haylen_tests
   WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
   DISCOVERY_TIMEOUT 60
+  PROPERTIES TIMEOUT 120
 )
