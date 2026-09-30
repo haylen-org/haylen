@@ -55,7 +55,7 @@ The runtime reads `app.json` before the window exists, so it configures everythi
 | `fixedRate` | number | `60` | Fixed updates per second. `haylen.fixedStep()` returns the matching step length in seconds. |
 | `maxFrameTime` | number | `0.25` | Longest frame time in seconds that the clock accepts, so a stall never causes a burst of fixed steps. |
 | `clearColor` | string | `"#FF000000"`, or `"#00000000"` for a transparent window | Background color as `"#RRGGBB"` or `"#AARRGGBB"`. |
-| `splash.logo` | string | the Haylen logo | Image of the launch screen, relative to `content/`, such as `"ui/splash.png"`. |
+| `splash.logo` | string | the Haylen symbol | Image of the launch screen, relative to `content/`, such as `"ui/splash.png"`. |
 | `splash.background` | string | The value of `clearColor` | Background color of the launch screen as `"#RRGGBB"` or `"#AARRGGBB"`. |
 | `lifecycle.pauseOnBackground` | boolean | `true` | Halts the app while it is in the background. |
 | `lifecycle.pauseOnFocusLoss` | boolean | `false` | Halts the app while its window has no focus. |

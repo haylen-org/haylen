@@ -216,7 +216,7 @@ make.py finds the platform templates by folder. A new platform is a folder under
 
 ### app
 
-`app.json`, `source/main.lua` and `content/logo.png`: a scene with the logo, the name of the app, a line with the engine version and platform, a button and a label that counts the presses. The button starts with the focus, so gamepads and TV remotes can press it. It runs on every platform.
+`app.json`, `source/main.lua` and `content/logo.png`, the Haylen symbol on a transparent background, which is also the splash logo of the app: a scene with the logo, the name of the app, a line with the engine version and platform, a button and a label that counts the presses. The button starts with the focus, so gamepads and TV remotes can press it. It runs on every platform.
 
 ### apple
 
@@ -236,6 +236,8 @@ templates/platform/apple/
 
 The targets are `iOS` (iPhone and iPad, with `SUPPORTS_MACCATALYST` for the Mac Catalyst destination), `tvOS` and `macOS`, each with a shared scheme of the same name. They link `Haylen.xcframework` and the system frameworks the engine needs, including `Network.framework` for the network events and `UserNotifications.framework` for the notification center delegate that the runtime owns for plugins, and copy the `app` folder to `Resources/app` as a folder reference. `source/` is a folder that Xcode keeps in sync, so every Objective-C, C++ and Swift file in it builds into every target, and the module of the targets is `HaylenApp`, so Objective-C++ reaches Swift classes through `HaylenApp-Swift.h`. The last phase of each target, `Embed native libraries`, copies the libraries that the file list `native/<target>-<platform>.xcfilelist` names into the `Frameworks` folder of the bundle and signs them with the identity of the app. It runs without the script sandbox, which would need every file of a bundle and the temporary files of `codesign` listed one by one. The targets read their product name and bundle identifier from `HAYLEN_PRODUCT_NAME` and `HAYLEN_BUNDLE_IDENTIFIER` of `App.xcconfig`, and their version from `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`, so only plugins change the project per app: when the plugins of an app add sources, Swift packages, system frameworks, resources or build scripts, make.py writes them into `plugins.json` and generates the project again with the XcodeGen it pins, 2.46.0, as the [plugin guide](plugins.md#apple-platforms) describes. The Info.plist of each platform, which make.py writes from `app.json` and the plugins, carries the display name, the orientations of iPhone and iPad, the keys the runtime relies on and the keys and classes of the plugins. Builds for this Mac, native or Mac Catalyst, sign with the ad hoc identity, while device builds use the team of `HAYLEN_APPLE_TEAM`.
 
+The asset catalogs carry the Haylen icons, the gradient symbol on the navy `#07112F` of the brand. The iOS icon is an opaque full square that the system masks. The macOS icons put the symbol on a navy rounded plate with a soft drop shadow, on the grid of macOS icons, with every size drawn on its own. The layered tvOS icons have an opaque navy back layer and the symbol on a transparent front layer, and the top shelf images show the horizontal logo with its white wordmark on navy. An app replaces any of them with a file of the same path under `platform/apple/`.
+
 ### android
 
 ```text
@@ -247,10 +249,12 @@ templates/platform/android/
   app/build.gradle.kts        The app module, which depends on dev.haylen:haylen and the plugin modules, applies the Gradle plugins of the plugins and has no C++.
   app/app.gradle              Settings of the app itself, empty in the template.
   app/src/main/AndroidManifest.xml
-  app/src/main/res/           Adaptive launcher icon and Android TV banner.
+  app/src/main/res/           Adaptive launcher icon with its monochrome layer and Android TV banner.
 ```
 
 The module reads the application id, version name and code, label, screen orientation and native library from `haylen.identifier`, `haylen.versionName`, `haylen.versionCode`, `haylen.name`, `haylen.orientation` and `haylen.library` of `gradle.properties`. The version code comes from the version, with 1.2.3 becoming 1002003. The manifest declares `HaylenActivity` with the `android.app.lib_name` meta-data set to `haylen.library`, which is `haylen`, the Lua player of the haylen library, for Lua apps and the library of the app for C++ apps, whose APK leaves the Lua player out, the `LAUNCHER` and `LEANBACK_LAUNCHER` categories, the TV banner, and a touchscreen, the screen orientations, Android TV and a gamepad as optional features, so the same APK serves phones, tablets and Android TV. make.py copies the package into `app/src/main/assets/app` with `haylen-package-index.json`, the list of its files, because Android cannot list asset folders recursively. The plugin modules of an app come from `haylen.plugins`, their Gradle plugins from `haylen.gradlePlugins` and their manifest placeholders from the `haylen.placeholder.<name>` keys, which the [plugin guide](plugins.md#android) describes, so the files of the template never change per app. make.py escapes every value it writes to `gradle.properties`, which Gradle reads as ISO 8859-1, so any text survives.
+
+The resources are vector drawables of the Haylen brand. The adaptive launcher icon has the gradient symbol inside the safe zone of its foreground, over `ic_launcher_background`, the navy `#07112F` of the brand, and a monochrome layer with the silhouette of the symbol, which launchers tint for themed icons. The Android TV banner shows the horizontal logo with its white wordmark on the same navy. An app replaces any of them with a file of the same path under `platform/android/`.
 
 ### web
 
@@ -260,7 +264,7 @@ templates/platform/web/
   loader.css        Styles of the page and the splash.
   loader.js         Checks the browser, picks the backend, downloads with progress, loads the plugins and starts the runtime.
   app.js            Page code of the app, empty in the template.
-  haylen-logo.svg   The engine logo, shown when the app names no splash logo.
+  haylen-logo.svg   The Haylen symbol, the splash logo and page icon of apps that name no splash logo.
 ```
 
 ## Assembling an app
@@ -331,7 +335,7 @@ The `splash` object of `app.json` sets the launch screen of every platform:
 }
 ```
 
-`logo` is an image relative to `content/`, and without it the platforms show the Haylen logo. `background` is a color as `#RRGGBB` or `#AARRGGBB` and defaults to `clearColor`, so the launch screen blends into the first frame of the app.
+`logo` is an image relative to `content/`, and without it the platforms show the Haylen symbol. `background` is a color as `#RRGGBB` or `#AARRGGBB` and defaults to `clearColor`, so the launch screen blends into the first frame of the app.
 
 | Platform | Launch screen |
 | --- | --- |
@@ -340,7 +344,7 @@ The `splash` object of `app.json` sets the launch screen of every platform:
 | Android | The SplashScreen API of `androidx.core:core-splashscreen`, with the `Theme.Haylen.Splash` theme of the manifest showing `haylen_splash_icon` over `haylen_splash_background`, then `Theme.Haylen`, whose window background has the same color. `sokol_app` draws only while the window of the activity has the focus, which the window gets only once it shows, so `HaylenSplash` keeps the system splash screen until an overlay window with the same background and icon has drawn, and that overlay, which takes neither the focus nor touches, stays until the player reports its first frame through `nativeFramePresented`. No black frame shows in between. The icon insets the logo so it fits the circle that Android masks it with, in every orientation, on phones, tablets and TVs. |
 | Web | The page shows the logo over the background with the progress bar until the app starts. |
 
-make.py writes the logo into the `splash_logo` image set of the iOS and tvOS asset catalogs, as the SVG of the engine logo with its vector data preserved when the app names none, and the background into the `splash_background` color set. On Android it writes the background into `res/values/haylen_splash.xml` and copies the logo to `res/drawable/haylen_splash_logo.<ext>`, which replace the defaults of the library, a vector drawable made from `templates/platform/web/haylen-logo.svg` over `#FF101418`. Android splash logos are PNG, WebP or JPEG images.
+make.py writes the logo into the `splash_logo` image set of the iOS and tvOS asset catalogs, as `templates/platform/web/haylen-logo.svg`, the SVG of the Haylen symbol, with its vector data preserved when the app names none, and the background into the `splash_background` color set. On Android it writes the background into `res/values/haylen_splash.xml` and copies the logo to `res/drawable/haylen_splash_logo.<ext>`, which replace the defaults of the library, the Haylen symbol as a vector drawable over `#FF101418`. Android splash logos are PNG, WebP or JPEG images.
 
 ## Development mode
 
@@ -351,7 +355,7 @@ The runtime turns on development behavior, which today is hot reload of the pack
 `loader.js` runs when the page loads:
 
 1. It creates `Module` with the canvas, so `app.js` can add page handlers to `Module.preRun`.
-2. It reads `config.json`, which make.py writes with the app name, whether `window.transparent` is set, the splash logo and background, the size of `app.zip` and of the two `haylen.wasm` files, and the plugins with a web part. It sets the title, the background and the logo, which is the logo of the app or `haylen-logo.svg`. For a transparent app the page itself has no background, so whatever holds the page, such as the page of an editor that embeds it in a frame, shows through the transparent pixels of the canvas, and only the splash keeps the splash background.
+2. It reads `config.json`, which make.py writes with the app name, whether `window.transparent` is set, the splash logo and background, the size of `app.zip` and of the two `haylen.wasm` files, and the plugins with a web part. It sets the title, the background, and the logo and the page icon, which are the logo of the app or `haylen-logo.svg`. For a transparent app the page itself has no background, so whatever holds the page, such as the page of an editor that embeds it in a frame, shows through the transparent pixels of the canvas, and only the splash keeps the splash background.
 3. It checks for WebAssembly and picks the backend: WebGPU when `navigator.gpu` returns an adapter, and WebGL2 otherwise. `?backend=webgpu` or `?backend=webgl2` forces one when the browser supports it. A browser with neither sees a message instead of a blank page.
 4. It downloads `<backend>/haylen.wasm` and `app.zip` together with one progress bar. Each download counts the bytes it streams against its `Content-Length`, or against the size in `config.json` when the length is missing or describes compressed bytes. Meanwhile it imports the web module of every plugin from `plugins/<id>/`.
 5. It hands the WebAssembly bytes to the runtime as `Module.wasmBinary` and the package as `Module.haylen.packageData`, then loads `<backend>/haylen.js`.
