@@ -1,6 +1,6 @@
 # Haylen — project guide
 
-Haylen is a reusable engine for games, multimedia apps and applications. It is 2D and organized so that 3D can grow next to it without renaming anything. Its core is modern C++ at the language standard `engine/CMakeLists.txt` sets, and its whole API is exported to Lua through [Varn](https://github.com/varn-org/varn). Lua is the primary way to write apps, and every capability stays fully usable from C++. The repository holds the engine, the platform templates, the tools and the sample apps.
+Haylen is a reusable engine for games, multimedia apps and applications. It is 2D and organized so that 3D can grow next to it without renaming anything. Its core is C++20, and its whole API is exported to Lua through [Varn](https://github.com/varn-org/varn). Lua is the primary way to write apps, and every capability stays fully usable from C++. The repository holds the engine, the platform templates, the tools and the sample apps.
 
 This file is binding for every change. It describes the project as it is and the rules every feature and fix follows, so read it before working and follow it exactly instead of re-deriving conventions. When a rule or a design decision changes, update this file in the same change and describe the new state in the present tense. `PROJECT.md` holds the master plan, the owner's requests, the decisions and the feature checklist.
 
@@ -15,7 +15,7 @@ This file is binding for every change. It describes the project as it is and the
 - Code, comments and repository documentation are written in English. `PROJECT.md` is the exception and is written in Portuguese for the project owner.
 - Never mention other engines or their tools anywhere in the repository: not in code, comments, docs, test names, commit messages or the project plan, and not even as a comparison or an inspiration. Describe what Haylen does in its own terms.
 - The repository never records its own history. Code, comments, docs, `README.md`, `PROJECT.md` and this file describe what exists now, without earlier names, earlier designs, what something was renamed from or dated change notes. Git holds the history.
-- This file never cites anything that changes over time. That covers versions of the engine, libraries, tools, SDKs, APIs, file formats or stored data, and the limits, sizes, counts, durations and measurements the code declares. It states rules and designs, names the bound a rule keeps (such as "a bounded queue") and points to the file that holds each changing value, such as `engine/VERSION`, `engine/cmake/haylen-dependencies.cmake`, the templates and the CI workflow. Standard names that contain digits, such as SHA-256, UTF-8, arm64, 2D and WebGL2, are names, not values.
+- This file cites a version or a number only when a rule depends on it, such as the C++ standard of the code or the coverage the tests aim for. Secondary values that change often stay out of it: the versions of libraries, tools, SDKs and of the engine itself, and the limits, sizes, counts and durations the code declares. For those it names the kind of bound a rule keeps, such as "a bounded queue", and points to the file that holds the value, such as `engine/VERSION`, `engine/cmake/haylen-dependencies.cmake`, the templates and the CI workflow.
 
 ## Working rules
 
@@ -243,7 +243,7 @@ These rules apply to every text the project writes, without exception: code comm
 - Test files follow the code rules: they live in the namespace of the context they test, keep helpers in fixtures or support classes, and name suites after their subject with a `Test` suffix and tests after the behavior they verify.
 - Test data lives in `engine/tests/data/`, so engine tests never read files of the samples.
 - Run `python3 make.py test`. Changes to threading, lifetimes or memory handling also pass `python3 make.py test --sanitizers thread` and `--sanitizers address`.
-- Engine coverage is kept as close to complete as the code allows. Run `python3 make.py coverage`.
+- Engine coverage is kept as close to 100 percent as the code allows. Run `python3 make.py coverage`.
 
 ## Documentation
 
