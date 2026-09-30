@@ -45,6 +45,11 @@ class WebPage final {
     static void hide();
     static void setOnline(bool online);
 
+    // The color scheme and the battery that the page reports when the runtime starts and whenever they change, and the answers of native dialogs as the JSON that `WebDialogJson::readAnswer` reads.
+    static void setTheme(bool dark);
+    static void setBattery(double level, bool charging, bool full);
+    static void resolveDialog(double id, const char* json);
+
     // Answers of page handlers and events of the page, with their byte buffers as a table of an address and a size in wasm memory for each, which the page frees once the call returns. The flags of an event are those of `HaylenNativeEmitFlags`.
     static void resolve(double call, bool ok, const char* json, const std::uint32_t* buffers, int count);
     static void emit(const char* event, const char* json, const std::uint32_t* buffers, int count, int flags);

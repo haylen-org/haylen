@@ -16,14 +16,18 @@
 #include "haylen/debug/Profiler.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/io/Package.hpp"
+#include "haylen/platform/Battery.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/PluginStreams.hpp"
+#include "haylen/platform/Theme.hpp"
 #include "haylen/platform/native/HaylenNative.h"
 #include "platform/BridgeRelay.hpp"
+#include "platform/DialogRelay.hpp"
 #include "platform/ScreenRelay.hpp"
 #include "platform/Services.hpp"
 #include "platform/sokol/SokolHost.hpp"
 #include "platform/sokol/SokolRuntime.hpp"
+#include "platform/web/WebDialogJson.hpp"
 #include "platform/web/WebTextInput.hpp"
 
 // clang-format off
@@ -130,6 +134,28 @@ void WebPage::hide() {
 
 void WebPage::setOnline(bool online) {
     SokolRuntime::handleEvent({.type = Event::Type::NetworkChanged, .online = online});
+}
+
+void WebPage::setTheme(bool dark) {
+    SokolHost::getSystemState().setTheme(dark ? Theme::Dark : Theme::Light);
+}
+
+// A full battery on mains power does not charge, as on the other platforms.
+void WebPage::setBattery(double level, bool charging, bool full) {
+    Battery battery{.level = static_cast<float>(level)};
+    if (full) {
+        battery.state = Battery::State::Full;
+    } else if (charging) {
+        battery.charging = true;
+        battery.state = Battery::State::Charging;
+    } else {
+        battery.state = Battery::State::Discharging;
+    }
+    SokolHost::getSystemState().setBattery(battery);
+}
+
+void WebPage::resolveDialog(double id, const char* json) {
+    DialogRelay::resolve(static_cast<std::uint64_t>(id), WebDialogJson::readAnswer(json));
 }
 
 std::vector<std::vector<std::byte>> WebPage::readBuffers(const std::uint32_t* table, int count) {
@@ -327,6 +353,18 @@ EMSCRIPTEN_KEEPALIVE void haylen_web_page_hidden() {
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_network(int online) {
     haylen::platform::WebPage::setOnline(online != 0);
+}
+
+EMSCRIPTEN_KEEPALIVE void haylen_web_theme(int dark) {
+    haylen::platform::WebPage::setTheme(dark != 0);
+}
+
+EMSCRIPTEN_KEEPALIVE void haylen_web_battery(double level, int charging, int full) {
+    haylen::platform::WebPage::setBattery(level, charging != 0, full != 0);
+}
+
+EMSCRIPTEN_KEEPALIVE void haylen_web_resolve_dialog(double id, const char* json) {
+    haylen::platform::WebPage::resolveDialog(id, json);
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_text_edited(double field, double revision, const char* text, int selectionStart, int selectionEnd, int compositionStart, int compositionEnd) {

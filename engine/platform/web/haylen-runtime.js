@@ -7,9 +7,43 @@ Module.haylen = Module.haylen || {};
     const handlers = new Map();
     const levels = ["debug", "info", "warning", "error"];
 
-    // The system services of the engine: the language of the browser, a url opened in a new tab and the vibration of phones whose browser offers it.
-    haylen.locale = function () {
-        return navigator.language;
+    // The system services of the engine: what the browser tells about the device, its color scheme and its battery, a url opened in a new tab and the vibration of phones whose browser offers it. The details of `navigator.userAgentData` and the battery arrive asynchronously, so the page reads them before the runtime starts.
+    const device = { details: {}, battery: null, darkScheme: matchMedia("(prefers-color-scheme: dark)") };
+
+    const readDevice = () => {
+        const agent = navigator.userAgentData;
+        const details = agent && agent.getHighEntropyValues ? agent.getHighEntropyValues(["platformVersion", "model"]) : Promise.resolve({});
+        const battery = navigator.getBattery ? navigator.getBattery() : Promise.resolve(null);
+        return Promise.allSettled([details, battery]).then(([detailsResult, batteryResult]) => {
+            device.details = detailsResult.status === "fulfilled" ? detailsResult.value : {};
+            device.battery = batteryResult.status === "fulfilled" ? batteryResult.value : null;
+        });
+    };
+
+    // The engine reads the device once, as JSON with the keys of `haylen.system.info()` and without the values the browser does not tell.
+    haylen.systemInfo = function () {
+        const details = device.details;
+        const memory = navigator.deviceMemory;
+        return JSON.stringify({
+            osVersion: details.platform && details.platformVersion ? details.platform + " " + details.platformVersion : undefined,
+            deviceModel: details.model || undefined,
+            cpuCores: navigator.hardwareConcurrency || undefined,
+            memoryBytes: memory ? Math.round(memory * 1073741824) : undefined,
+            locale: navigator.language || undefined,
+            languages: [...(navigator.languages || [])],
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || undefined,
+        });
+    };
+
+    const reportTheme = () => {
+        Module._haylen_web_theme(device.darkScheme.matches ? 1 : 0);
+    };
+
+    // A browser that cannot read the battery reports a full one on mains power, which is also how it reports a device without a battery.
+    const reportBattery = () => {
+        const battery = device.battery;
+        const full = battery.level >= 1 && battery.chargingTime === 0;
+        Module._haylen_web_battery(battery.level, battery.charging ? 1 : 0, full ? 1 : 0);
     };
 
     haylen.openUrl = function (url) {
@@ -482,6 +516,226 @@ Module.haylen = Module.haylen || {};
         };
     };
 
+    // Native dialogs of the engine: messages in the overlay layer, the file picker of the browser, and its save picker or a download. Each answers once through `haylen_web_resolve_dialog`, unless the app gave it up, which closes a message, while a picker of the browser stays open and its answer goes nowhere.
+    const dialogs = { open: new Map(), styled: false };
+    const kDialogSteps = { Tab: 1, ArrowRight: 1, ArrowLeft: -1 };
+    const kActivationMessage = "The browser shows its file pickers only right after a click, a tap or a key press of the user, so the app asks for them from an input handler.";
+    const kDialogStyle = [
+        ".haylen-dialog-backdrop{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:rgba(0,0,0,.45);pointer-events:auto;font:15px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;}",
+        ".haylen-dialog{box-sizing:border-box;width:100%;max-width:440px;max-height:100%;overflow:auto;padding:20px 20px 16px;border-radius:12px;border-top:4px solid #0a84ff;background:#fff;color:#1c1c1e;box-shadow:0 16px 48px rgba(0,0,0,.35);}",
+        ".haylen-dialog[data-kind=warning]{border-top-color:#ff9f0a;}",
+        ".haylen-dialog[data-kind=error]{border-top-color:#ff453a;}",
+        ".haylen-dialog h2{margin:0 0 8px;font-size:17px;font-weight:600;}",
+        ".haylen-dialog p{margin:0 0 18px;white-space:pre-wrap;overflow-wrap:anywhere;}",
+        ".haylen-dialog-buttons{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;}",
+        ".haylen-dialog button{font:inherit;min-width:72px;padding:7px 14px;border-radius:8px;border:1px solid #c7c7cc;background:#f2f2f7;color:inherit;cursor:pointer;}",
+        ".haylen-dialog button:first-child{border-color:#0a84ff;background:#0a84ff;color:#fff;}",
+        ".haylen-dialog button:focus-visible{outline:2px solid #0a84ff;outline-offset:2px;}",
+        "@media (prefers-color-scheme:dark){.haylen-dialog{background:#2c2c2e;color:#f2f2f7;}.haylen-dialog button{border-color:#48484a;background:#3a3a3c;}}",
+    ].join("");
+
+    const answerDialog = (id, answer) => {
+        if (dialogs.open.delete(id)) {
+            Module.ccall("haylen_web_resolve_dialog", null, ["number", "string"], [id, JSON.stringify(answer)]);
+        }
+    };
+
+    const dialogFailure = (message) => ({ failure: { code: "failed", message } });
+
+    const hasActivation = () => !navigator.userActivation || navigator.userActivation.isActive;
+
+    // The message covers the canvas and takes the focus, in the colors of the page. Its first button is the default one, and a press on the backdrop keeps the focus inside.
+    const showMessage = (id, dialog, request) => {
+        if (!dialogs.styled) {
+            const style = document.createElement("style");
+            style.textContent = kDialogStyle;
+            document.head.appendChild(style);
+            dialogs.styled = true;
+        }
+        const layer = ensureLayer();
+        layout();
+        const backdrop = document.createElement("div");
+        backdrop.className = "haylen-dialog-backdrop";
+        backdrop.addEventListener("pointerdown", (event) => {
+            if (event.target === backdrop) {
+                event.preventDefault();
+            }
+        });
+        const box = document.createElement("div");
+        box.className = "haylen-dialog";
+        box.dataset.kind = request.messageKind;
+        box.setAttribute("role", "alertdialog");
+        box.setAttribute("aria-modal", "true");
+        if (request.title) {
+            const title = document.createElement("h2");
+            title.id = "haylen-dialog-title-" + id;
+            title.textContent = request.title;
+            box.appendChild(title);
+            box.setAttribute("aria-labelledby", title.id);
+        }
+        const text = document.createElement("p");
+        text.id = "haylen-dialog-text-" + id;
+        text.textContent = request.text;
+        box.appendChild(text);
+        box.setAttribute("aria-describedby", text.id);
+
+        const previous = document.activeElement;
+        dialog.close = () => {
+            backdrop.remove();
+            if (previous instanceof HTMLElement && previous.isConnected) {
+                previous.focus({ preventScroll: true });
+            }
+        };
+        dialog.dismiss = () => {
+            dialog.close();
+            answerDialog(id, {});
+        };
+        const row = document.createElement("div");
+        row.className = "haylen-dialog-buttons";
+        dialog.buttons = request.buttons.map((label, index) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = label;
+            button.addEventListener("click", () => {
+                dialog.close();
+                answerDialog(id, { button: index });
+            });
+            row.appendChild(button);
+            return button;
+        });
+        box.appendChild(row);
+        dialog.box = box;
+        backdrop.appendChild(box);
+        layer.appendChild(backdrop);
+        dialog.buttons[0].focus({ preventScroll: true });
+    };
+
+    // The keys of a message stay in it: Escape dismisses it, and Tab and the arrows move between its buttons, whose own keys press them.
+    const keyOfDialog = (event) => {
+        const box = event.target.closest(".haylen-dialog");
+        const dialog = box && [...dialogs.open.values()].find((entry) => entry.box === box);
+        if (!dialog) {
+            return;
+        }
+        const buttons = dialog.buttons;
+        const step = event.key === "Tab" && event.shiftKey ? -1 : kDialogSteps[event.key] || 0;
+        if (event.key === "Escape") {
+            event.preventDefault();
+            dialog.dismiss();
+        } else if (step !== 0) {
+            event.preventDefault();
+            buttons[(buttons.indexOf(event.target) + step + buttons.length) % buttons.length].focus();
+        }
+    };
+
+    // The picked files are copied into the folder of the dialog, where the app reads them with `fs`.
+    const copyFiles = async (id, files, folder) => {
+        try {
+            const contents = await Promise.all(files.map((file) => file.arrayBuffer()));
+            if (!dialogs.open.has(id)) {
+                return;
+            }
+            FS.mkdirTree(folder);
+            const picked = files.map((file, index) => {
+                const path = folder + "/" + file.name;
+                FS.writeFile(path, new Uint8Array(contents[index]));
+                return { name: file.name, path };
+            });
+            answerDialog(id, { files: picked });
+        } catch (error) {
+            answerDialog(id, dialogFailure("The picked files could not be read, and the browser reported \"" + error.message + "\"."));
+        }
+    };
+
+    // Browsers answer a closed picker with the `cancel` event of the input, which older browsers never send.
+    const openFiles = (id, dialog, request) => {
+        if (!hasActivation()) {
+            answerDialog(id, dialogFailure(kActivationMessage));
+            return;
+        }
+        const input = document.createElement("input");
+        input.type = "file";
+        input.multiple = request.multiple;
+        input.accept = request.accept;
+        input.style.cssText = "position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;";
+        dialog.close = () => input.remove();
+        input.addEventListener("cancel", () => {
+            dialog.close();
+            answerDialog(id, {});
+        });
+        input.addEventListener("change", () => {
+            dialog.close();
+            copyFiles(id, [...input.files], request.folder);
+        });
+        document.body.appendChild(input);
+        input.click();
+    };
+
+    // A download needs no activation, and the browser decides where it goes, so the saved file has no path.
+    const downloadFile = (id, name, data) => {
+        const url = URL.createObjectURL(new Blob([data], { type: "application/octet-stream" }));
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = name;
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        answerDialog(id, { saved: { name } });
+    };
+
+    // The save picker of the File System Access API writes where the user picks, and browsers without it download the data. The file keeps no path, since the page never sees one.
+    const saveFile = async (id, request, data) => {
+        if (!window.showSaveFilePicker) {
+            downloadFile(id, request.name, data);
+            return;
+        }
+        if (!hasActivation()) {
+            answerDialog(id, dialogFailure(kActivationMessage));
+            return;
+        }
+        let handle;
+        try {
+            handle = await window.showSaveFilePicker({ suggestedName: request.name, types: request.types });
+        } catch (error) {
+            answerDialog(id, error.name === "AbortError" ? {} : dialogFailure("The save picker failed, and the browser reported \"" + error.message + "\"."));
+            return;
+        }
+        if (!dialogs.open.has(id)) {
+            return;
+        }
+        try {
+            const writable = await handle.createWritable();
+            await writable.write(data);
+            await writable.close();
+            answerDialog(id, { saved: { name: handle.name } });
+        } catch (error) {
+            answerDialog(id, dialogFailure("The file \"" + handle.name + "\" could not be written, and the browser reported \"" + error.message + "\"."));
+        }
+    };
+
+    // The engine shows a dialog from inside a frame, while the activation of the tap that asked for it still counts. The data of a save arrives as bytes.
+    haylen.showDialog = function (id, request, data) {
+        const dialog = { close: () => {} };
+        dialogs.open.set(id, dialog);
+        if (request.kind === "message") {
+            showMessage(id, dialog, request);
+        } else if (request.kind === "openFiles") {
+            openFiles(id, dialog, request);
+        } else {
+            saveFile(id, request, data);
+        }
+    };
+
+    haylen.cancelDialog = function (id) {
+        const dialog = dialogs.open.get(id);
+        if (dialog) {
+            dialogs.open.delete(id);
+            dialog.close();
+        }
+    };
+
     // The size of what a video stream copies, from the natural size of each kind of source.
     const sourceSize = (source) => {
         if (typeof VideoFrame !== "undefined" && source instanceof VideoFrame) {
@@ -893,6 +1147,9 @@ Module.haylen = Module.haylen || {};
     const onKey = (event) => {
         if (isForeign(event.target)) {
             event.stopImmediatePropagation();
+            if (event.type === "keydown") {
+                keyOfDialog(event);
+            }
             return;
         }
         const field = text.field;
@@ -1225,7 +1482,7 @@ Module.haylen = Module.haylen || {};
         }
     });
 
-    // A hidden page sends the app to the background, a page that goes away makes the user data durable, and the network state reaches the app when it starts and whenever it changes.
+    // A hidden page sends the app to the background, a page that goes away makes the user data durable, and the network state, the color scheme and the battery reach the app when it starts and whenever they change.
     Module.postRun.push(function () {
         Module.canvas.addEventListener("pointerup", focusTapped, true);
         document.addEventListener("selectionchange", () => {
@@ -1245,13 +1502,25 @@ Module.haylen = Module.haylen || {};
         window.addEventListener("online", reportNetwork);
         window.addEventListener("offline", reportNetwork);
         reportNetwork();
+        reportTheme();
+        device.darkScheme.addEventListener("change", reportTheme);
+        if (device.battery) {
+            reportBattery();
+            for (const type of ["levelchange", "chargingchange", "chargingtimechange"]) {
+                device.battery.addEventListener(type, reportBattery);
+            }
+        }
         for (const type of ["pointerdown", "touchend", "keydown"]) {
             window.addEventListener(type, unlockAudio, { capture: true, passive: true });
         }
     });
 
-    // User data lives in IndexedDB under `/persistent`, loaded before the app starts so saves are there on the first frame.
+    // User data lives in IndexedDB under `/persistent`, loaded before the app starts so saves are there on the first frame, and so is what the browser tells about the device.
     Module.preRun = Module.preRun || [];
+    Module.preRun.push(function () {
+        addRunDependency("haylen-device");
+        readDevice().then(() => removeRunDependency("haylen-device"));
+    });
     Module.preRun.push(function () {
         FS.mkdir("/persistent");
         FS.mount(IDBFS, {}, "/persistent");

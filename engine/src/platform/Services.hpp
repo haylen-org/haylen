@@ -73,7 +73,7 @@ class Services final {
     // Starts following the window once `sokol_app` opened it, so its moves and the changes of the monitors reach the running app as events.
     static void watchWindow();
 
-    // Runs before every frame of the app, where platforms follow the mouse over the window for passthrough.
+    // Runs before every frame of the app, where platforms follow the mouse over the window for passthrough and Linux runs the main context of GLib.
     static void updateWindow();
 
     // Returns the insets of the screen area that UI must avoid, in framebuffer pixels.

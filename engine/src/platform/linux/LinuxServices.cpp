@@ -8,11 +8,13 @@
 #include "haylen/core/Json.hpp"
 #include "haylen/io/Package.hpp"
 #include "platform/BridgeRelay.hpp"
-#include "platform/DialogRelay.hpp"
 #include "platform/ScreenRelay.hpp"
 #include "platform/linux/LinuxDesktop.hpp"
+#include "platform/linux/LinuxDialogs.hpp"
 #include "platform/linux/LinuxGamepads.hpp"
+#include "platform/linux/LinuxGlib.hpp"
 #include "platform/linux/LinuxSystem.hpp"
+#include "platform/linux/LinuxTheme.hpp"
 #include "sokol_app.h"
 
 namespace haylen::platform {
@@ -23,6 +25,8 @@ std::string_view Services::getName() noexcept {
 
 void Services::initialize() {
     LinuxGamepads::scan();
+    LinuxSystem::watchBattery();
+    LinuxTheme::observe();
 }
 
 void Services::shutdown() noexcept {
@@ -92,6 +96,7 @@ void Services::watchWindow() {
 
 void Services::updateWindow() {
     LinuxDesktop::update();
+    LinuxGlib::iterate();
 }
 
 math::Insets Services::getSafeAreaInsets() {
@@ -136,11 +141,14 @@ void Services::openUrl(const std::string& url, std::function<void(bool opened)> 
 
 void Services::vibrate(float) {}
 
-void Services::showDialog(std::uint64_t id, const DialogRequest&, const std::filesystem::path&) {
-    DialogRelay::resolve(id, {.failure = DialogResult::Failure{.code = DialogResult::Code::Unsupported, .message = "Native dialogs are not implemented on Linux yet."}});
+// Picked files are files of the computer, which the app reads where they are.
+void Services::showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path&) {
+    LinuxDialogs::show(id, request);
 }
 
-void Services::cancelDialog(std::uint64_t) {}
+void Services::cancelDialog(std::uint64_t id) {
+    LinuxDialogs::cancel(id);
+}
 
 // Linux has no screen registry in the language of the platform, so native libraries open the screens of plugins, before the platform is asked.
 void Services::openScreen(const ScreenRequest& request) {

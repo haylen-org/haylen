@@ -15,9 +15,9 @@
 #include "haylen/core/Json.hpp"
 #include "haylen/io/Package.hpp"
 #include "platform/BridgeRelay.hpp"
-#include "platform/DialogRelay.hpp"
 #include "platform/ScreenRelay.hpp"
 #include "platform/windows/WindowsDesktop.hpp"
+#include "platform/windows/WindowsDialogs.hpp"
 #include "platform/windows/WindowsSystem.hpp"
 #include "platform/windows/WindowsTextInput.hpp"
 #include "sokol_app.h"
@@ -30,6 +30,8 @@ std::string_view Services::getName() noexcept {
 
 void Services::initialize() {
     WindowsDesktop::initialize();
+    WindowsSystem::reportTheme();
+    WindowsSystem::reportBattery();
 }
 
 void Services::shutdown() noexcept {}
@@ -184,11 +186,14 @@ void Services::openUrl(const std::string& url, std::function<void(bool opened)> 
 
 void Services::vibrate(float) {}
 
-void Services::showDialog(std::uint64_t id, const DialogRequest&, const std::filesystem::path&) {
-    DialogRelay::resolve(id, {.failure = DialogResult::Failure{.code = DialogResult::Code::Unsupported, .message = "Native dialogs are not implemented on Windows yet."}});
+// Picked files are files of the computer, which the app reads where they are.
+void Services::showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path&) {
+    WindowsDialogs::show(id, request);
 }
 
-void Services::cancelDialog(std::uint64_t) {}
+void Services::cancelDialog(std::uint64_t id) {
+    WindowsDialogs::cancel(id);
+}
 
 // Windows has no screen registry in the language of the platform, so native libraries open the screens of plugins, before the platform is asked.
 void Services::openScreen(const ScreenRequest& request) {

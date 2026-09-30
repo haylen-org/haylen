@@ -553,12 +553,16 @@ haylen_embed_file(haylen_engine "${budoux_SOURCE_DIR}/budoux/models/th.json" get
 haylen_enable_warnings(haylen_engine)
 haylen_enable_coverage(haylen_engine)
 
-# Portable pieces of the runtime, which the tests link without an app entry point.
+# Portable pieces of the runtime, which the tests link without an app entry point. The readers of the platform folders compile everywhere, so every host tests them.
 add_library(haylen_platform STATIC
   src/platform/GamepadSlots.cpp
   src/platform/KeyboardTranslator.cpp
+  src/platform/linux/LinuxFilePattern.cpp
+  src/platform/linux/LinuxSystemReader.cpp
   src/platform/sokol/MemoryWarning.cpp
   src/platform/sokol/SokolEvents.cpp
+  src/platform/web/WebDialogJson.cpp
+  src/platform/windows/WindowsPowerStatus.cpp
 )
 add_library(haylen::platform ALIAS haylen_platform)
 # Apps see only the public API, so the private headers and Sokol stay private to the engine libraries.
@@ -604,13 +608,13 @@ if(APPLE)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.m ${HAYLEN_APPLE_SOURCES})
   set_source_files_properties(${HAYLEN_APPLE_SOURCES} PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
 elseif(WIN32)
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/windows/WindowsDesktop.cpp src/platform/windows/WindowsServices.cpp src/platform/windows/WindowsSystem.cpp src/platform/windows/WindowsTextInput.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/windows/WindowsDesktop.cpp src/platform/windows/WindowsDialogs.cpp src/platform/windows/WindowsServices.cpp src/platform/windows/WindowsSystem.cpp src/platform/windows/WindowsText.cpp src/platform/windows/WindowsTextInput.cpp)
 elseif(ANDROID)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/android/AndroidActivity.cpp src/platform/android/AndroidAssetPackage.cpp src/platform/android/AndroidGamepads.cpp src/platform/android/AndroidKeys.cpp src/platform/android/AndroidServices.cpp src/platform/android/AndroidTextInput.cpp src/platform/android/JavaBridge.cpp)
 elseif(EMSCRIPTEN)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/web/WebPage.cpp src/platform/web/WebServices.cpp src/platform/web/WebTextInput.cpp)
 else()
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/linux/LinuxDesktop.cpp src/platform/linux/LinuxGamepads.cpp src/platform/linux/LinuxServices.cpp src/platform/linux/LinuxSystem.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/linux/LinuxDesktop.cpp src/platform/linux/LinuxDialogs.cpp src/platform/linux/LinuxGamepads.cpp src/platform/linux/LinuxGlib.cpp src/platform/linux/LinuxServices.cpp src/platform/linux/LinuxSystem.cpp src/platform/linux/LinuxTheme.cpp)
 endif()
 
 add_library(haylen_runtime OBJECT ${HAYLEN_RUNTIME_SOURCES})
@@ -655,6 +659,7 @@ if(HAYLEN_BUILD_PLAYER AND (HAYLEN_DESKTOP OR EMSCRIPTEN))
     target_sources(haylen PRIVATE src/platform/apple/AppleMain.cpp)
   elseif(WIN32)
     set_target_properties(haylen PROPERTIES WIN32_EXECUTABLE ON)
+    target_sources(haylen PRIVATE platform/windows/haylen.manifest)
   elseif(EMSCRIPTEN)
     haylen_setup_web_page(haylen "")
   else()

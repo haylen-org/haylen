@@ -5,22 +5,37 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <algorithm>
 #include <array>
+#include <cstdint>
 #include <cstdlib>
+#include <filesystem>
+#include <system_error>
 #include <thread>
 #include <utility>
+
+#include "platform/SystemState.hpp"
+#include "platform/linux/LinuxSystemReader.hpp"
+#include "platform/sokol/SokolHost.hpp"
 
 namespace haylen::platform {
 
 SystemInfo LinuxSystem::getInfo() {
-    SystemInfo info;
-    info.os = SystemInfo::Os::Linux;
-    info.deviceKind = SystemInfo::DeviceKind::Desktop;
-    info.osVersion = getSystemVersion();
-    info.cpuCores = static_cast<int>(std::thread::hardware_concurrency());
-    info.locale = getLocale();
-    return info;
+    std::error_code error;
+    const long pages = sysconf(_SC_PHYS_PAGES);
+    const long pageSize = sysconf(_SC_PAGESIZE);
+    return {
+        .os = SystemInfo::Os::Linux,
+        .osVersion = getSystemVersion(),
+        .deviceModel = LinuxSystemReader::readValue("/sys/class/dmi/id/product_name"),
+        .manufacturer = LinuxSystemReader::readValue("/sys/class/dmi/id/sys_vendor"),
+        .deviceKind = SystemInfo::DeviceKind::Desktop,
+        .cpuName = LinuxSystemReader::readCpuName(LinuxSystemReader::readText("/proc/cpuinfo")),
+        .cpuCores = static_cast<int>(sysconf(_SC_NPROCESSORS_ONLN)),
+        .memoryBytes = pages > 0 && pageSize > 0 ? static_cast<std::uint64_t>(pages) * static_cast<std::uint64_t>(pageSize) : 0,
+        .locale = LinuxSystemReader::toLanguageTag(getVariable("LANG")),
+        .languages = LinuxSystemReader::readLanguages(getVariable("LANGUAGE"), getVariable("LANG")),
+        .timeZone = LinuxSystemReader::readTimeZone(getVariable("TZ"), std::filesystem::read_symlink("/etc/localtime", error).string()),
+    };
 }
 
 // Starts `xdg-open` without blocking the frame thread, and a helper thread waits for it to tell whether an application took the url.
@@ -40,25 +55,31 @@ void LinuxSystem::openUrl(const std::string& url, std::function<void(bool opened
     // clang-format on
 }
 
-// Reports the kernel release, which is the one version every Linux distribution shares.
-std::string LinuxSystem::getSystemVersion() {
-    utsname info{};
-    if (uname(&info) != 0) {
-        return {};
-    }
-    return info.release;
+void LinuxSystem::watchBattery() {
+    SokolHost::getSystemState().setBattery(LinuxSystemReader::readBattery(kPowerSupplies));
+    // clang-format off
+    std::thread([] {
+        for (;;) {
+            std::this_thread::sleep_for(kBatteryInterval);
+            SokolHost::getSystemState().setBattery(LinuxSystemReader::readBattery(kPowerSupplies));
+        }
+    }).detach();
+    // clang-format on
 }
 
-// Turns `LANG` into a BCP 47 tag, such as `pt-BR` for `pt_BR.UTF-8`. The C and POSIX locales are English.
-std::string LinuxSystem::getLocale() {
-    const char* value = std::getenv("LANG");
-    std::string language = value != nullptr ? value : "";
-    language = language.substr(0, language.find_first_of(".@"));
-    if (language.empty() || language == "C" || language == "POSIX") {
-        return "en-US";
+// The distribution names itself in `os-release`, which `/usr/lib` holds where `/etc` has none, and every distribution shares the release of the kernel.
+std::string LinuxSystem::getSystemVersion() {
+    std::string osRelease = LinuxSystemReader::readText("/etc/os-release");
+    if (osRelease.empty()) {
+        osRelease = LinuxSystemReader::readText("/usr/lib/os-release");
     }
-    std::ranges::replace(language, '_', '-');
-    return language;
+    utsname kernel{};
+    return LinuxSystemReader::readOsVersion(osRelease, uname(&kernel) == 0 ? kernel.release : "");
+}
+
+std::string LinuxSystem::getVariable(const char* name) {
+    const char* value = std::getenv(name);
+    return value != nullptr ? value : "";
 }
 
 } // namespace haylen::platform

@@ -71,6 +71,8 @@ set(HAYLEN_TEST_SOURCES
   math/VectorTests.cpp
   net/WebSocketTests.cpp
   platform/DialogsTests.cpp
+  platform/LinuxFilePatternTests.cpp
+  platform/LinuxSystemReaderTests.cpp
   platform/NativeLuaTests.cpp
   platform/NativeTests.cpp
   platform/NativeViewsTests.cpp
@@ -79,8 +81,10 @@ set(HAYLEN_TEST_SOURCES
   platform/ScreensTests.cpp
   platform/StreamTests.cpp
   platform/SystemTests.cpp
+  platform/WebDialogJsonTests.cpp
   platform/WindowLuaTests.cpp
   platform/WindowTests.cpp
+  platform/WindowsPowerStatusTests.cpp
   storage/StorageTests.cpp
   support/EngineFixture.cpp
   support/TemporaryDirectory.cpp

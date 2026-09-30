@@ -369,7 +369,7 @@ The runtime turns on development behavior, which today is hot reload of the pack
 | Platform | Status | How it runs |
 | --- | --- | --- |
 | macOS | Supported | macOS 13.3 and later. The desktop player, or the `macOS` target of the Apple template with `--platform macos`. |
-| Windows, Linux | Supported | The desktop player, or the player artifact next to the package with `--platform windows` or `--platform linux`. Built and tested on those hosts by CI. |
+| Windows, Linux | Supported | The desktop player, or the player artifact next to the package with `--platform windows` or `--platform linux`. Built and tested on those hosts by CI. Windows apps embed the [application manifest](build.md#c-apps) of the engine, and Linux apps load GIO and GTK 3 at run time for the theme and the dialogs, and run without them as [haylen.system](lua-api/system.md#platforms) and [haylen.dialogs](lua-api/dialogs.md#platforms) describe. |
 | iOS, iPadOS | Supported | iOS and iPadOS 16.3 and later. The `iOS` target on iPhone and iPad, with every orientation of `app.json` and every iPad window size. |
 | Mac Catalyst | Supported | macOS 13.3 and later. The `iOS` target on the Mac, whose window opens at the size of `app.json` in the points of the Mac, where macOS places it. Mac Catalyst passes only touches to `sokol_app`, and the left mouse button arrives as a touch, so the runtime reads the keyboard through `GCKeyboard`, the right and middle buttons and the wheel through `GCMouse`, and the pointer position through a hover gesture on the view of the app. Text entry through the keyboard needs the text input bridge of the runtime. |
 | tvOS | Supported | tvOS 16.3 and later. The `tvOS` target on Apple TV and its simulator, with the Siri Remote and game controllers. |

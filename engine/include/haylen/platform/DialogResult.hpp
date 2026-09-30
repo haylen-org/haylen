@@ -45,6 +45,7 @@ struct DialogResult {
     std::optional<Failure> failure;
 
     [[nodiscard]] static std::string_view codeName(Code value) noexcept;
+    [[nodiscard]] static std::optional<Code> codeFromName(std::string_view name) noexcept;
 
   private:
     static const std::array<std::pair<std::string_view, Code>, 4> kCodeNames;

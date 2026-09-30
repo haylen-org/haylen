@@ -15,6 +15,10 @@
 #include <emscripten/emscripten.h>
 
 #include <cstdlib>
+#elif defined(SOKOL_GLES3) && defined(__EMSCRIPTEN__)
+#include <emscripten/emscripten.h>
+
+#include <cstdlib>
 #elif defined(SOKOL_GLES3)
 #include <GLES3/gl3.h>
 #elif defined(_WIN32)
@@ -38,6 +42,15 @@ EM_JS(char*, haylen_js_webgpu_adapter, (const void* device), {
         return 0;
     }
     return stringToNewUTF8(info.description || [info.vendor, info.architecture].filter(Boolean).join(" "));
+});
+// clang-format on
+#elif defined(SOKOL_GLES3) && defined(__EMSCRIPTEN__)
+// Most browsers name every WebGL renderer alike and tell the GPU only through the debug renderer info, and a browser without it names the GPU in the renderer itself.
+// clang-format off
+EM_JS(char*, haylen_js_webgl_renderer, (), {
+    const info = GLctx.getExtension("WEBGL_debug_renderer_info");
+    const name = GLctx.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : GLctx.RENDERER);
+    return name ? stringToNewUTF8(name) : 0;
 });
 // clang-format on
 #endif
@@ -67,6 +80,14 @@ std::string GpuAdapter::getName() {
         return {};
     }
     char* text = haylen_js_webgpu_adapter(device);
+    if (text == nullptr) {
+        return {};
+    }
+    std::string name(text);
+    std::free(text);
+    return name;
+#elif defined(SOKOL_GLES3) && defined(__EMSCRIPTEN__)
+    char* text = haylen_js_webgl_renderer();
     if (text == nullptr) {
         return {};
     }

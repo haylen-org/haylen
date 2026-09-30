@@ -4,10 +4,13 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string_view>
 
 #include "haylen/math/Geometry.hpp"
 #include "haylen/platform/Event.hpp"
 #include "platform/sokol/SokolRuntime.hpp"
+#include "platform/windows/WindowsSystem.hpp"
+#include "platform/windows/WindowsText.hpp"
 #include "sokol_app.h"
 
 namespace haylen::platform {
@@ -46,13 +49,6 @@ RECT WindowsDesktop::toOuterFrame(HWND window, RECT content) {
     const auto exStyle = static_cast<DWORD>(GetWindowLongPtrW(window, GWL_EXSTYLE));
     AdjustWindowRectExForDpi(&content, style, FALSE, exStyle, GetDpiForWindow(window));
     return content;
-}
-
-std::string WindowsDesktop::toUtf8(const wchar_t* text) {
-    const int size = WideCharToMultiByte(CP_UTF8, 0, text, -1, nullptr, 0, nullptr, nullptr);
-    std::string result(static_cast<std::size_t>(std::max(size, 1)) - 1, '\0');
-    WideCharToMultiByte(CP_UTF8, 0, text, -1, result.data(), size, nullptr, nullptr);
-    return result;
 }
 
 // Borderless windows have no sizing border, so the app resizes them itself.
@@ -113,7 +109,7 @@ BOOL CALLBACK WindowsDesktop::addMonitor(HMONITOR monitor, HDC, LPRECT, LPARAM l
     }
     const float scale = found.desktopScale;
     const auto toPoints = [scale](const RECT& area) { return math::Rect{static_cast<float>(area.left) / scale, static_cast<float>(area.top) / scale, static_cast<float>(area.right - area.left) / scale, static_cast<float>(area.bottom - area.top) / scale}; };
-    found.monitors.push_back({.name = toUtf8(info.szDevice), .bounds = toPoints(info.rcMonitor), .workArea = toPoints(info.rcWork), .scale = getScale(monitor), .primary = (info.dwFlags & MONITORINFOF_PRIMARY) != 0});
+    found.monitors.push_back({.name = WindowsText::toUtf8(info.szDevice), .bounds = toPoints(info.rcMonitor), .workArea = toPoints(info.rcWork), .scale = getScale(monitor), .primary = (info.dwFlags & MONITORINFOF_PRIMARY) != 0});
     return TRUE;
 }
 
@@ -227,6 +223,15 @@ LRESULT CALLBACK WindowsDesktop::windowProcedure(HWND window, UINT message, WPAR
     case WM_SETTINGCHANGE:
         if (wParam == SPI_SETWORKAREA) {
             SokolRuntime::postEvent({.type = Event::Type::MonitorsChanged});
+        }
+        // Windows names the colors of the personalization settings, the app theme among them, as the immersive color set.
+        if (lParam != 0 && std::wstring_view(reinterpret_cast<const wchar_t*>(lParam)) == L"ImmersiveColorSet") {
+            WindowsSystem::reportTheme();
+        }
+        break;
+    case WM_POWERBROADCAST:
+        if (wParam == PBT_APMPOWERSTATUSCHANGE) {
+            WindowsSystem::reportBattery();
         }
         break;
     default:

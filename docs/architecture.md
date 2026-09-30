@@ -9,7 +9,7 @@ This guide explains how Haylen is put together: the libraries it builds, where e
 | Target | Alias | What it is |
 | --- | --- | --- |
 | `haylen_engine` | `haylen::engine` | Static library with the whole C++ API and every Lua binding. It talks to the GPU through Sokol gfx and never calls Sokol app or operating system APIs. |
-| `haylen_platform` | `haylen::platform` | Static library with the portable pieces of the runtime: Sokol event translation, the keyboard translator, the gamepad slots and the memory warning flag. The runtime and the tests link it. |
+| `haylen_platform` | `haylen::platform` | Static library with the portable pieces of the runtime: Sokol event translation, the keyboard translator, the gamepad slots, the memory warning flag and the readers of the platform folders that compile on every platform, so every host tests them. The runtime and the tests link it. |
 | `haylen_runtime` | `haylen::runtime` | Object library that turns the engine into an app. It holds the entry point, `sokol_main` or `haylen_main` on Apple platforms, the Sokol host and the services of one platform folder, chosen at configure time. |
 | `haylen_headless` | `haylen::headless` | Static library with the headless host used by the tests. It is built only for desktop platforms. |
 | `haylen` | | The player executable. It links the runtime with `engine/src/platform/sokol/LuaPlayer.cpp` and runs any app package. |

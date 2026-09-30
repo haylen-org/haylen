@@ -269,6 +269,8 @@ Every runtime app, not only the player, runs the package named by the first comm
 
 To ship a Windows or Linux app, copy `app.json`, `source/` and `content/` into an `app` folder next to the executable, or zip them with `make.py package` and ship the zip as `app.zip`.
 
+Windows apps and the `haylen` player embed `engine/platform/windows/haylen.manifest`, the application manifest of the engine, which `haylen_add_app` adds to the sources of every Windows target. It selects version 6 of the Common Controls, where the task dialogs of [haylen.dialogs](lua-api/dialogs.md) live, and UTF-8 as the code page of the process, since the engine keeps every text and path in UTF-8. The SDK installs it with the other platform files. Linux apps load GIO for the theme and GTK 3 for the dialogs at run time where the system has them, so building needs neither.
+
 ## The desktop player
 
 The `haylen` player is the runtime without a bundled app. It runs any package given on the command line:
@@ -308,7 +310,7 @@ A page defines `Module` before it loads the runtime script. `templates/platform/
 | `Module.wasmBinary` | Optional bytes of `haylen.wasm` that the page already downloaded, which Emscripten instantiates instead of fetching the file. |
 | `Module.preRun` | Functions that run before the app starts. Page handlers of the platform bridge are registered here. |
 
-A page never turns on development mode. A custom shell passed as `WEB_SHELL` keeps the `{{{ SCRIPT }}}` placeholder where Emscripten inserts the runtime script, and where `run-cpp` inserts the backend picker. The runtime mounts IndexedDB at `/persistent` for user data and loads it before the app starts.
+A page never turns on development mode. A custom shell passed as `WEB_SHELL` keeps the `{{{ SCRIPT }}}` placeholder where Emscripten inserts the runtime script, and where `run-cpp` inserts the backend picker. The runtime mounts IndexedDB at `/persistent` for user data and loads it before the app starts, together with what the browser tells about the device through `navigator.userAgentData` and the Battery Status API, which answer asynchronously.
 
 ### Runtime API
 

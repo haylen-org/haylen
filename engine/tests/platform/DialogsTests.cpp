@@ -281,4 +281,11 @@ TEST(DialogsLuaTest, RaisesClearErrorsForInvalidOptions) {
     EXPECT_TRUE(fixture.host().getDialogRequests().empty());
 }
 
+// Platforms that answer in JSON, such as the web, name the code of a failure.
+TEST(DialogResultTest, ReadsTheNamesOfItsCodes) {
+    EXPECT_EQ(DialogResult::codeName(DialogResult::Code::Timeout), "timeout");
+    EXPECT_EQ(DialogResult::codeFromName("unsupported"), DialogResult::Code::Unsupported);
+    EXPECT_FALSE(DialogResult::codeFromName("busy"));
+}
+
 } // namespace haylen::platform

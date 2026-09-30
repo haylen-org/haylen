@@ -6,15 +6,17 @@
 #include <array>
 #include <cstdint>
 #include <cstdlib>
+#include <span>
 #include <string>
-#include <thread>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
 #include "platform/DialogRelay.hpp"
+#include "platform/web/WebDialogJson.hpp"
 #include "platform/web/WebPage.hpp"
 #include "platform/web/WebTextInput.hpp"
 #include "sokol_app.h"
@@ -69,8 +71,8 @@ EM_JS(void, haylen_js_lock_orientation, (int value), {
     Module.haylen.lockOrientation(value);
 });
 
-EM_JS(char*, haylen_js_locale, (), {
-    return stringToNewUTF8(Module.haylen.locale());
+EM_JS(char*, haylen_js_system_info, (), {
+    return stringToNewUTF8(Module.haylen.systemInfo());
 });
 
 EM_JS(int, haylen_js_open_url, (const char* url), {
@@ -79,6 +81,14 @@ EM_JS(int, haylen_js_open_url, (const char* url), {
 
 EM_JS(void, haylen_js_vibrate, (float seconds), {
     Module.haylen.vibrate(seconds);
+});
+
+EM_JS(void, haylen_js_show_dialog, (double id, const char* json, const uint8_t* data, int size), {
+    Module.haylen.showDialog(id, JSON.parse(UTF8ToString(json)), HEAPU8.slice(data, data + size));
+});
+
+EM_JS(void, haylen_js_cancel_dialog, (double id), {
+    Module.haylen.cancelDialog(id);
 });
 // clang-format on
 
@@ -210,15 +220,22 @@ void Services::cancel(std::uint64_t id) {
     haylen_js_cancel(static_cast<double>(id));
 }
 
+// Browsers limit what pages learn about the device on purpose, so most values stay empty, and the page reads the rest before the runtime starts.
 SystemInfo Services::getSystemInfo() {
-    SystemInfo info;
-    info.os = SystemInfo::Os::Web;
-    info.deviceKind = SystemInfo::DeviceKind::Browser;
-    info.cpuCores = static_cast<int>(std::thread::hardware_concurrency());
-    char* locale = haylen_js_locale();
-    info.locale = locale;
-    std::free(locale);
-    return info;
+    char* text = haylen_js_system_info();
+    const core::Json details = core::Json::parse(text);
+    std::free(text);
+    return {
+        .os = SystemInfo::Os::Web,
+        .osVersion = details.value("osVersion", std::string()),
+        .deviceModel = details.value("deviceModel", std::string()),
+        .deviceKind = SystemInfo::DeviceKind::Browser,
+        .cpuCores = details.value("cpuCores", 0),
+        .memoryBytes = details.value("memoryBytes", std::uint64_t{0}),
+        .locale = details.value("locale", std::string()),
+        .languages = details.at("languages").get<std::vector<std::string>>(),
+        .timeZone = details.value("timeZone", std::string()),
+    };
 }
 
 // The page opens the url in a new tab at once, so the answer comes during the call.
@@ -230,11 +247,23 @@ void Services::vibrate(float seconds) {
     haylen_js_vibrate(seconds);
 }
 
-void Services::showDialog(std::uint64_t id, const DialogRequest&, const std::filesystem::path&) {
-    DialogRelay::resolve(id, {.failure = DialogResult::Failure{.code = DialogResult::Code::Unsupported, .message = "Native dialogs are not implemented on the web yet."}});
+// The page shows the dialog in the frame that asked for it, and titles that are not UTF-8 reach it replaced.
+void Services::showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) {
+    const auto show = [id](const core::Json& dialog, std::span<const std::uint8_t> data) { haylen_js_show_dialog(static_cast<double>(id), dialog.dump(-1, ' ', false, core::Json::error_handler_t::replace).c_str(), data.data(), static_cast<int>(data.size())); };
+    if (const auto* message = std::get_if<DialogRequest::Message>(&request.dialog)) {
+        show(WebDialogJson::describeMessage(*message), {});
+    } else if (const auto* files = std::get_if<DialogRequest::OpenFiles>(&request.dialog)) {
+        show(WebDialogJson::describeOpenFiles(*files, folder), {});
+    } else if (const auto* save = std::get_if<DialogRequest::SaveFile>(&request.dialog)) {
+        show(WebDialogJson::describeSaveFile(*save), save->data);
+    } else {
+        DialogRelay::resolve(id, {.failure = DialogResult::Failure{.code = DialogResult::Code::Unsupported, .message = "Browsers give pages no paths of folders, so the web opens no folders."}});
+    }
 }
 
-void Services::cancelDialog(std::uint64_t) {}
+void Services::cancelDialog(std::uint64_t id) {
+    haylen_js_cancel_dialog(static_cast<double>(id));
+}
 
 // The page opens the screen before the call returns, one frame after the request, so a popup opens while the tap that asked for it still counts as an activation of the user.
 void Services::openScreen(const ScreenRequest& request) {
