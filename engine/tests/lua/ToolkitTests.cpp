@@ -284,30 +284,35 @@ TEST(ErrorTest, KeepsTheEndsOfARunawayRecursion) {
 // Failures of tasks reach the engine with the frames of where they were raised, which Varn lists from the innermost call out.
 TEST(ErrorTest, ReadsTheStackOfTasksFromTheirFrames) {
     {
-        // Varn names a function its caller names, and the native entry of Varn that runs the task is left out.
+        // The frames name functions like the frames of the protected calls, and the native entry of Varn that runs the task is left out.
         test::EngineFixture fixture;
         fixture.runLua("local function dive(depth) if depth == 0 then error('too deep') end dive(depth - 1) end require('async').spawn(function() dive(2) end)");
         ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
         const std::vector<Error::Frame>& frames = fixture.engine().getError()->getFrames();
         ASSERT_EQ(frames.size(), 5U);
         EXPECT_EQ(frames[0].getLocation(), "[C]");
-        EXPECT_EQ(frames[0].function, "function 'error'");
+        EXPECT_EQ(frames[0].function, "global 'error'");
         EXPECT_EQ(frames[0].kind, Error::Frame::Kind::C);
         EXPECT_EQ(frames[1].getLocation(), "test:1");
-        EXPECT_EQ(frames[1].function, "function 'dive'");
+        EXPECT_EQ(frames[1].function, "upvalue 'dive'");
         EXPECT_EQ(frames[1].kind, Error::Frame::Kind::Lua);
         EXPECT_EQ(frames.back().getLocation(), "test:1");
-        EXPECT_EQ(frames.back().function, "?");
+        EXPECT_EQ(frames.back().function, "function <test:1>");
     }
     {
-        // A stack deeper than Varn lists keeps its innermost frames.
+        // A stack deeper than Varn lists keeps its innermost and its outermost frames around the line the protected calls show for the levels they skip.
         test::EngineFixture fixture;
         fixture.runLua("local function dive(depth) if depth == 0 then error('too deep') end dive(depth - 1) end require('async').spawn(function() dive(200) end)");
         ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
         const std::vector<Error::Frame>& frames = fixture.engine().getError()->getFrames();
-        EXPECT_LT(frames.size(), 200U);
-        EXPECT_EQ(frames.front().function, "function 'error'");
-        EXPECT_EQ(frames.back().function, "function 'dive'");
+        ASSERT_EQ(frames.size(), 64U);
+        EXPECT_EQ(frames.front().function, "global 'error'");
+        EXPECT_EQ(frames[31].function, "upvalue 'dive'");
+        EXPECT_EQ(frames[32].getLocation(), "...");
+        EXPECT_EQ(frames[32].function, "140 levels skipped");
+        EXPECT_EQ(frames[32].kind, Error::Frame::Kind::C);
+        EXPECT_EQ(frames[33].function, "upvalue 'dive'");
+        EXPECT_EQ(frames.back().function, "function <test:1>");
     }
 
     test::EngineFixture fixture;

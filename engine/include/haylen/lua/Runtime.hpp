@@ -65,13 +65,25 @@ class Runtime final {
     static constexpr int kInnerLevels = 10;
     static constexpr int kOuterLevels = 11;
 
+    // A level of a stack with the fields that `lua_getinfo` fills for the options "Sln", which the protected calls read from the stack and Varn lists in the frames of a failure.
+    struct Level {
+        std::string_view source;
+        int line = 0;
+        std::string_view what;
+        std::string_view nameWhat;
+        std::string_view name;
+        int lineDefined = 0;
+    };
+
     // The message handler of every protected call: it replaces the error value with an `Error` userdata that holds the stack.
     static int handleMessage(lua_State* L);
 
     // Returns the `Error` that `handleMessage` left at index, or an `Error` without frames for any other error value.
     [[nodiscard]] static Error readError(lua_State* L, int index);
     [[nodiscard]] static std::string describeValue(lua_State* L, int index);
-    [[nodiscard]] static std::string describeFunction(const lua_Debug& info);
+    [[nodiscard]] static Error::Frame makeFrame(const Level& level);
+    [[nodiscard]] static Error::Frame makeSkippedFrame(int count);
+    [[nodiscard]] static std::string describeFunction(const Level& level);
     [[nodiscard]] static Error::Frame::Kind getFrameKind(std::string_view what) noexcept;
     [[nodiscard]] static int findLastLevel(lua_State* L);
     static void pushError(lua_State* L, Error error);

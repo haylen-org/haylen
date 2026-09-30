@@ -1,5 +1,6 @@
 #include "haylen/lua/Runtime.hpp"
 
+#include <algorithm>
 #include <new>
 #include <utility>
 #include <vector>
@@ -56,16 +57,25 @@ std::string Runtime::describeValue(lua_State* L, int index) {
     return std::string("(error object is a ") + luaL_typename(L, index) + " value)";
 }
 
+// The protected calls and the failure handler of Varn's tasks build their frames here, so every stack of an error reads the same.
+Error::Frame Runtime::makeFrame(const Level& level) {
+    return {.source = std::string(level.source), .line = std::max(level.line, 0), .function = describeFunction(level), .kind = getFrameKind(level.what)};
+}
+
+Error::Frame Runtime::makeSkippedFrame(int count) {
+    return {.source = "...", .function = std::to_string(count) + " levels skipped", .kind = Error::Frame::Kind::C};
+}
+
 // Names the function the way Lua tracebacks do, from the calling code when it has a name, and from its kind or definition otherwise.
-std::string Runtime::describeFunction(const lua_Debug& info) {
-    if (*info.namewhat != '\0') {
-        return std::string(info.namewhat) + " '" + info.name + "'";
+std::string Runtime::describeFunction(const Level& level) {
+    if (!level.nameWhat.empty()) {
+        return std::string(level.nameWhat) + " '" + std::string(level.name) + "'";
     }
-    if (*info.what == 'm') {
+    if (level.what == "main") {
         return "main chunk";
     }
-    if (*info.what != 'C') {
-        return "function <" + std::string(info.short_src) + ":" + std::to_string(info.linedefined) + ">";
+    if (level.what != "C") {
+        return "function <" + std::string(level.source) + ":" + std::to_string(level.lineDefined) + ">";
     }
     return "?";
 }
@@ -105,7 +115,7 @@ Error Runtime::captureError(lua_State* L, const std::string& text, int level) {
     for (int current = level; lua_getstack(L, current, &info) != 0; ++current) {
         if (elide && current == level + kInnerLevels) {
             const int skipped = last - kOuterLevels + 1 - current;
-            frames.push_back({.source = "...", .function = std::to_string(skipped) + " levels skipped", .kind = Error::Frame::Kind::C});
+            frames.push_back(makeSkippedFrame(skipped));
             current += skipped - 1;
             continue;
         }
@@ -121,7 +131,7 @@ Error Runtime::captureError(lua_State* L, const std::string& text, int level) {
             break;
         }
 
-        frames.push_back({.source = info.short_src, .line = info.currentline > 0 ? info.currentline : 0, .function = describeFunction(info), .kind = getFrameKind(info.what)});
+        frames.push_back(makeFrame({.source = info.short_src, .line = info.currentline, .what = info.what, .nameWhat = info.namewhat, .name = info.name != nullptr ? info.name : "", .lineDefined = info.linedefined}));
     }
     return Error(text, std::move(frames));
 }

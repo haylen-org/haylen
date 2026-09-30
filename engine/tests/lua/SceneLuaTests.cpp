@@ -317,6 +317,28 @@ TEST(SceneLuaTest, SpawnedTasksNeverResumeOnceTheirSceneUnloaded) {
 }
 
 TEST(SceneLuaTest, AFailingCloseOfACancelledTaskShowsTheError) {
+    {
+        test::EngineFixture fixture;
+        // clang-format off
+        fixture.runLua(R"(
+            scene = require('haylen.scene')
+            async = require('async')
+            owner = {}
+            scene.spawn(owner, function()
+                local guard <close> = setmetatable({}, {__close = function() error('the guard broke') end})
+                async.sleep(1000):await()
+            end)
+        )");
+        // clang-format on
+        fixture.frames(1);
+        EXPECT_EQ(fixture.engine().getError(), nullptr);
+        fixture.runLua("owner = nil collectgarbage() collectgarbage()");
+        fixture.frames(1);
+        ASSERT_NE(fixture.engine().getError(), nullptr);
+        EXPECT_NE(std::string(fixture.engine().getError()->what()).find("the guard broke"), std::string::npos);
+    }
+
+    // A table that a closing variable raises reaches the error screen as it was raised.
     test::EngineFixture fixture;
     // clang-format off
     fixture.runLua(R"(
@@ -324,7 +346,9 @@ TEST(SceneLuaTest, AFailingCloseOfACancelledTaskShowsTheError) {
         async = require('async')
         owner = {}
         scene.spawn(owner, function()
-            local guard <close> = setmetatable({}, {__close = function() error('the guard broke') end})
+            local guard <close> = setmetatable({}, {__close = function()
+                error(setmetatable({}, {__tostring = function() return 'The guard broke with a table.' end}))
+            end})
             async.sleep(1000):await()
         end)
     )");
@@ -334,7 +358,7 @@ TEST(SceneLuaTest, AFailingCloseOfACancelledTaskShowsTheError) {
     fixture.runLua("owner = nil collectgarbage() collectgarbage()");
     fixture.frames(1);
     ASSERT_NE(fixture.engine().getError(), nullptr);
-    EXPECT_NE(std::string(fixture.engine().getError()->what()).find("the guard broke"), std::string::npos);
+    EXPECT_STREQ(fixture.engine().getError()->what(), "The guard broke with a table.");
 }
 
 TEST(SceneLuaTest, EverythingASceneOwnsEndsWhenItUnloads) {

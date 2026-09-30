@@ -201,8 +201,9 @@ TEST_F(NativeLuaTest, ReportsFailuresOfFfiCallbacksOutsideAnyCall) {
         const lua::Error& error = *fixture.engine().getError();
         EXPECT_NE(std::string(error.what()).find("failed outside any call"), std::string::npos);
         ASSERT_EQ(error.getFrames().size(), 2U);
-        EXPECT_EQ(error.getFrames()[0].function, "function 'error'");
+        EXPECT_EQ(error.getFrames()[0].function, "global 'error'");
         EXPECT_EQ(error.getFrames()[1].getLocation(), "test:1");
+        EXPECT_EQ(error.getFrames()[1].function, "function <test:1>");
         EXPECT_EQ(error.getFile(), "test");
         EXPECT_EQ(error.getLine(), 1);
     }

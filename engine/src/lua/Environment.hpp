@@ -31,6 +31,9 @@ class Environment final {
     [[nodiscard]] static std::string modulePath(std::string_view name);
     [[nodiscard]] static std::vector<std::string> getCandidates(const core::AppConfig& config, std::string_view name);
     [[nodiscard]] static std::vector<Error::Frame> readFrames(lua_State* L, int index);
+    [[nodiscard]] static Error::Frame readFrame(lua_State* L, int index);
+    [[nodiscard]] static std::string readText(lua_State* L, int index, const char* key);
+    [[nodiscard]] static int readInteger(lua_State* L, int index, const char* key);
     static int reportFailure(lua_State* L);
     static void installFailureHandler(lua_State* L);
     static int searchPackage(lua_State* L);

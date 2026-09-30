@@ -29,12 +29,10 @@ else()
 endif()
 
 # The engine links the static core of Varn, which the `cli` target builds, and Varn picks the HTTP driver of every platform itself: the URL Loading System on iOS, tvOS and Mac Catalyst, the Android stack on Android and the fetch of the browser on the web.
-# Varn hands the error that a to-be-closed variable of a cancelled task raises on as a bare value, which the handler of `async.onFailure` never receives, so the patch wraps it in the table every other failure comes in.
 CPMAddPackage(
   NAME varn
-  URL "https://github.com/varn-org/varn/archive/04b710da801ed284e48f934bc03bab0d64356aa8.tar.gz"
-  URL_HASH SHA256=7532f516adf9063856fbe66f362f1a05742fee4f8f4df47a5a599cb554bf6954
-  PATCHES "${CMAKE_CURRENT_LIST_DIR}/patches/varn-close-failure.patch"
+  URL "https://github.com/varn-org/varn/archive/0248f79a7b257ec2603d31fd259cec8acc90b2a8.tar.gz"
+  URL_HASH SHA256=cadadaba84c4a7b12f1ed62e8eb599ec99d6cc43d7499d5764653a860d21f51e
   OPTIONS "VARN_TARGET ${HAYLEN_VARN_TARGET}" "VARN_BUILD_TESTS OFF"
   EXCLUDE_FROM_ALL YES
   SYSTEM YES
