@@ -38,7 +38,11 @@ void Grid::setCost(Cell cell, float value) {
     }
 
     float& cost = costs[indexOf(cell)];
-    costlyCells += (value != 1.0F ? 1 : 0) - (cost != 1.0F ? 1 : 0);
+    if (value != 1.0F && cost == 1.0F) {
+        ++costlyCells;
+    } else if (value == 1.0F && cost != 1.0F) {
+        --costlyCells;
+    }
     cost = value;
 }
 

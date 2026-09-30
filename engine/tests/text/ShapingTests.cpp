@@ -196,10 +196,10 @@ TEST_F(ShapingTest, FormsDevanagariConjunctsAndPlacesMarks) {
 
 // Every paragraph separator ends a paragraph, and the carriage return of CRLF stays at the end of its paragraph, so the characters of plain text keep counting its code points.
 TEST_F(ShapingTest, EndsPlainParagraphsAtEverySeparator) {
-    const Layout& laid = lay("a\rb\u2029c\u0085d\r\ne");
-    ASSERT_EQ(laid.lines.size(), 5U);
-    EXPECT_EQ(laid.characters.back().begin, 9U);
-    EXPECT_EQ(laid.lines[3].end, 8U);
+    const Layout& paragraphs = lay("a\rb\u2029c\u0085d\r\ne");
+    ASSERT_EQ(paragraphs.lines.size(), 5U);
+    EXPECT_EQ(paragraphs.characters.back().begin, 9U);
+    EXPECT_EQ(paragraphs.lines[3].end, 8U);
     EXPECT_THROW(BidiParagraph(U"a\u2029b", Direction::Auto), std::invalid_argument);
 }
 
@@ -231,8 +231,8 @@ TEST_F(ShapingTest, BreaksLinesByTheRulesOfEachScript) {
         EXPECT_NEAR(line.box.getRight(), 220.0F, 1.0F);
     }
 
-    const Layout& japanese = lay("日本語のテキストを折り返す", {.size = 32.0F, .maxWidth = 100.0F, .language = "ja"});
-    EXPECT_GT(japanese.lines.size(), 2U);
+    const Layout& wrapped = lay("日本語のテキストを折り返す", {.size = 32.0F, .maxWidth = 100.0F, .language = "ja"});
+    EXPECT_GT(wrapped.lines.size(), 2U);
 
     // Thai lines break between words where it can, and a word too long for a line breaks between its clusters, never between a letter and its vowel sign.
     const std::string sentence = "ภาษาไทยไม่มีช่องว่างระหว่างคำเลยสักนิดเดียว";

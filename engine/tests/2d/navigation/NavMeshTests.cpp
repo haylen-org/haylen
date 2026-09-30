@@ -333,7 +333,7 @@ TEST_F(NavMeshTest, BuildsAmongManyOverlappingSquares) {
 
 // Crossing squares cut each other at computed points, and an edge that ends at such a point must never count as crossing a side that ends there too, which needs an exact orientation test. The dense layout of seed 97 walks a constraint into an edge that ends at the far end of the constraint, which a rounded orientation test places off the line of the constraint, so the flips that insert it would never end.
 TEST_F(NavMeshTest, BuildsAmongCrossingRotatedSquares) {
-    for (const auto [seed, count] : std::array<std::pair<int, int>, 3>{{{77, 25}, {220, 25}, {97, 80}}}) {
+    for (const auto& [seed, count] : std::array<std::pair<int, int>, 3>{{{77, 25}, {220, 25}, {97, 80}}}) {
         navigation2d::NavMesh mesh;
         mesh.setBoundary(box(0.0F, 0.0F, 800.0F, 600.0F));
         math::Random random(static_cast<std::uint64_t>(seed));

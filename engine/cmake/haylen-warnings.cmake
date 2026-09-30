@@ -16,6 +16,8 @@ function(haylen_enable_warnings target)
     # Designated initializers that leave fields to their default member values are the intended style.
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
       target_compile_options(${target} PRIVATE -Wno-missing-designated-field-initializers)
+    else()
+      target_compile_options(${target} PRIVATE -Wno-missing-field-initializers)
     endif()
   endif()
 

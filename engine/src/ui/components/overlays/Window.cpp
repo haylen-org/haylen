@@ -104,8 +104,8 @@ void Window::drawTitle(Context& context, const math::Rect& bar) {
     ImDrawList& list = *ImGui::GetWindowDrawList();
     list.AddRectFilled(ImGuiConverter::toImVec2(bar.getMin()), ImGuiConverter::toImVec2(bar.getMax()), ImGuiConverter::toImU32(context.getColor(Theme::Color::Raised)), radius, ImDrawFlags_RoundCornersTop);
     list.AddLine({bar.x, bar.getBottom()}, {bar.getRight(), bar.getBottom()}, ImGuiConverter::toImU32(context.getColor(Theme::Color::Border)), context.getMetric(Theme::Metric::BorderWidth));
-    const float padding = context.getMetric(Theme::Metric::ControlPaddingX);
-    Typography::drawAligned(context, Theme::Font::Button, {grip.x + padding, grip.y, std::max(0.0F, grip.width - padding * 2.0F), grip.height}, context.getColor(Theme::Color::Text), context.getText(title), Alignment::Start);
+    const float inset = context.getMetric(Theme::Metric::ControlPaddingX);
+    Typography::drawAligned(context, Theme::Font::Button, {grip.x + inset, grip.y, std::max(0.0F, grip.width - inset * 2.0F), grip.height}, context.getColor(Theme::Color::Text), context.getText(title), Alignment::Start);
 
     if (closable) {
         const math::Rect cross = context.mirror({bar.getRight() - side, bar.y, side, side}, bar).expanded(-side * 0.15F);

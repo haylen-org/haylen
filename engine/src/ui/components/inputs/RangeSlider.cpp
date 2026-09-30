@@ -60,11 +60,11 @@ void RangeSlider::render(Context& context, const math::Rect& bounds) {
     const math::Rect track{area.x + knob * 0.5F, std::floor(area.getCenter().y - trackHeight * 0.5F), std::max(0.0F, area.width - knob), trackHeight};
 
     bool changed = follow(context, area, track);
-    const ImGuiID id = ImGui::GetItemID();
+    const ImGuiID itemId = ImGui::GetItemID();
     if (takeFocusRequest()) {
         Widgets::focusItem(context);
     }
-    if (GImGui->NavActivatePressedId == id) {
+    if (GImGui->NavActivatePressedId == itemId) {
         highActive = !highActive;
     }
     if (const std::optional<FocusDirection> direction = takeFocusDirection(context)) {
@@ -80,8 +80,8 @@ void RangeSlider::render(Context& context, const math::Rect& bounds) {
     const float from = toPosition(context, low, groove);
     const float to = toPosition(context, high, groove);
     Surfaces::draw(context, Theme::Surface::TrackFill, {std::min(from, to), groove.y, std::fabs(to - from), groove.height}, context.getColor(Theme::Color::Accent), std::nullopt, groove.height * 0.5F);
-    const bool ring = context.getFocus().isRingShown(id);
-    const bool pressed = GImGui->ActiveId == id;
+    const bool ring = context.getFocus().isRingShown(itemId);
+    const bool pressed = GImGui->ActiveId == itemId;
     drawKnob(context, area, toPosition(context, low, track), ring && !highActive, pressed && !highActive);
     drawKnob(context, area, toPosition(context, high, track), ring && highActive, pressed && highActive);
     if (showValue) {
@@ -110,20 +110,20 @@ float RangeSlider::toPosition(const Context& context, double amount, const math:
 bool RangeSlider::follow(Context& context, const math::Rect& bounds, const math::Rect& track) {
     ImGuiContext& state = *GImGui;
     ImGuiWindow* window = ImGui::GetCurrentWindow();
-    const ImGuiID id = ImGui::GetID("##range");
+    const ImGuiID itemId = ImGui::GetID("##range");
     const ImRect box = ImGuiConverter::toImRect(bounds);
-    const bool shown = ImGui::ItemAdd(box, id);
-    context.getFocus().addTarget(id, bounds);
+    const bool shown = ImGui::ItemAdd(box, itemId);
+    context.getFocus().addTarget(itemId, bounds);
     if (!shown) {
         return false;
     }
 
     const float pointer = state.IO.MousePos.x;
-    if (ImGui::ItemHoverable(box, id, state.LastItemData.ItemFlags) && ImGui::IsMouseClicked(0, ImGuiInputFlags_None, id)) {
-        ImGui::SetKeyOwner(ImGuiKey_MouseLeft, id);
-        ImGui::SetActiveID(id, window);
+    if (ImGui::ItemHoverable(box, itemId, state.LastItemData.ItemFlags) && ImGui::IsMouseClicked(0, ImGuiInputFlags_None, itemId)) {
+        ImGui::SetKeyOwner(ImGuiKey_MouseLeft, itemId);
+        ImGui::SetActiveID(itemId, window);
         if (context.getFocus().isFocusable()) {
-            ImGui::SetFocusID(id, window);
+            ImGui::SetFocusID(itemId, window);
         }
         ImGui::FocusWindow(window);
         const float highX = toPosition(context, high, track);
@@ -131,8 +131,8 @@ bool RangeSlider::follow(Context& context, const math::Rect& bounds, const math:
         const float toHigh = std::fabs(pointer - highX);
         highActive = toHigh < toLow || (toHigh == toLow && (context.isRightToLeft() ? pointer < highX : pointer > highX));
     }
-    Widgets::drawFocusRing(context, bounds, id, bounds.height * 0.5F);
-    if (state.ActiveId != id) {
+    Widgets::drawFocusRing(context, bounds, itemId, bounds.height * 0.5F);
+    if (state.ActiveId != itemId) {
         return false;
     }
     if (!state.IO.MouseDown[0]) {

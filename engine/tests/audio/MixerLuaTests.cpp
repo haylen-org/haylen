@@ -51,12 +51,12 @@ TEST_F(MixerLuaTest, PausesEveryVoiceAndReportsInterruptions) {
     EXPECT_EQ(fixture->lua("return tostring(audio.paused(mine)) .. ' ' .. tostring(audio.paused(other))"), "true false");
 
     fixture->runLua("heard = {} for _, name in ipairs({'audioInterrupted', 'audioResumed', 'audioRouteChanged'}) do events.on(name, function() heard[#heard + 1] = name end) end");
-    Mixer& mixer = fixture->engine().getAudio();
-    mixer.reportDeviceEvent(Mixer::DeviceEvent::InterruptionBegan);
+    Mixer& engineMixer = fixture->engine().getAudio();
+    engineMixer.reportDeviceEvent(Mixer::DeviceEvent::InterruptionBegan);
     fixture->frames(1);
     EXPECT_EQ(fixture->lua("return tostring(audio.interrupted()) .. ' ' .. table.concat(heard, ',')"), "true audioInterrupted");
-    mixer.reportDeviceEvent(Mixer::DeviceEvent::InterruptionEnded);
-    mixer.reportDeviceEvent(Mixer::DeviceEvent::RouteChanged);
+    engineMixer.reportDeviceEvent(Mixer::DeviceEvent::InterruptionEnded);
+    engineMixer.reportDeviceEvent(Mixer::DeviceEvent::RouteChanged);
     fixture->frames(1);
     EXPECT_EQ(fixture->lua("return tostring(audio.interrupted()) .. ' ' .. table.concat(heard, ',')"), "false audioInterrupted,audioResumed,audioRouteChanged");
 }

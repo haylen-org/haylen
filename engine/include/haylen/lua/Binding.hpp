@@ -111,7 +111,7 @@ class Binding final {
     }
 
     // Braced initialization keeps the left-to-right order in which Lua arguments are read and validated.
-    template <typename Tuple, std::size_t... Indices> static auto readArguments(lua_State* L, int first, std::index_sequence<Indices...>) {
+    template <typename Tuple, std::size_t... Indices> static auto readArguments([[maybe_unused]] lua_State* L, [[maybe_unused]] int first, std::index_sequence<Indices...>) {
         using Holders = std::tuple<ArgumentHolder<std::tuple_element_t<Indices, Tuple>>...>;
         return Holders{readArgument<std::tuple_element_t<Indices, Tuple>>(L, first + static_cast<int>(Indices))...};
     }

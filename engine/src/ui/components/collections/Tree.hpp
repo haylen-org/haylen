@@ -37,7 +37,7 @@ class Tree final : public Component {
     [[nodiscard]] float measureWidth(Context& context, const std::vector<ChoiceItem>& branch, int depth) const;
 
     // Returns the first item that shows and can take the focus, the one with the id when an id is given.
-    [[nodiscard]] const ChoiceItem* findShown(const std::vector<ChoiceItem>& branch, std::string_view id) const;
+    [[nodiscard]] const ChoiceItem* findShown(const std::vector<ChoiceItem>& branch, std::string_view wanted) const;
     [[nodiscard]] std::size_t countVisible(const std::vector<ChoiceItem>& branch) const;
     void drawItems(Context& context, const math::Rect& bounds, const std::vector<ChoiceItem>& branch, int depth, float& y);
     void toggle(Context& context, const ChoiceItem& item);

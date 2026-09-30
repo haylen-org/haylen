@@ -59,13 +59,13 @@ float Tree::measureWidth(Context& context, const std::vector<ChoiceItem>& branch
     return widest;
 }
 
-const ChoiceItem* Tree::findShown(const std::vector<ChoiceItem>& branch, std::string_view id) const {
+const ChoiceItem* Tree::findShown(const std::vector<ChoiceItem>& branch, std::string_view wanted) const {
     for (const ChoiceItem& item : branch) {
-        if (item.enabled && (id.empty() || item.id == id)) {
+        if (item.enabled && (wanted.empty() || item.id == wanted)) {
             return &item;
         }
         if (expanded.contains(item.id)) {
-            if (const ChoiceItem* found = findShown(item.children, id)) {
+            if (const ChoiceItem* found = findShown(item.children, wanted)) {
                 return found;
             }
         }

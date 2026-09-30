@@ -7,6 +7,7 @@
 #include <array>
 #include <cctype>
 #include <cmath>
+#include <ranges>
 #include <stdexcept>
 #include <utility>
 
@@ -382,9 +383,7 @@ std::shared_ptr<Tileset> MapParser::readTileset(const core::Json& document, std:
         for (const core::Json& tile : entry.value("wangtiles", core::Json::array())) {
             WangSet::Tile wang{.tileId = tile.at("tileid").get<std::uint32_t>()};
             const std::vector<int> ids = tile.at("wangid").get<std::vector<int>>();
-            for (std::size_t index = 0; index < std::min<std::size_t>(ids.size(), 8); ++index) {
-                wang.wangId[index] = static_cast<std::uint8_t>(ids[index]);
-            }
+            std::ranges::transform(ids | std::views::take(wang.wangId.size()), wang.wangId.begin(), [](int id) { return static_cast<std::uint8_t>(id); });
             set.tiles.push_back(wang);
         }
         tileset->wangSets.push_back(std::move(set));

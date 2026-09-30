@@ -92,7 +92,7 @@ math::Vec2 KeyCapture::measureContent(Context& context, float availableWidth) {
 void KeyCapture::render(Context& context, const math::Rect& bounds) {
     const float radius = context.getMetric(Theme::Metric::ControlRadius);
     const Widgets::Interaction state = Widgets::interact(context, bounds, radius, "##capture");
-    const ImGuiID id = ImGui::GetItemID();
+    const ImGuiID itemId = ImGui::GetItemID();
     if (takeFocusRequest()) {
         Widgets::focusItem(context);
     }
@@ -102,10 +102,10 @@ void KeyCapture::render(Context& context, const math::Rect& bounds) {
 
     // While it listens, the field holds every key, button and the pointer, so nothing else in the UI reacts to the input it takes.
     if (capturing) {
-        ImGui::SetActiveID(id, ImGui::GetCurrentWindow());
+        ImGui::SetActiveID(itemId, ImGui::GetCurrentWindow());
         ImGui::SetActiveIdUsingAllKeyboardKeys();
         for (const ImGuiKey key : {ImGuiKey_GamepadFaceDown, ImGuiKey_GamepadFaceRight, ImGuiKey_GamepadDpadLeft, ImGuiKey_GamepadDpadRight, ImGuiKey_GamepadDpadUp, ImGuiKey_GamepadDpadDown, ImGuiKey_MouseLeft}) {
-            ImGui::SetKeyOwner(key, id);
+            ImGui::SetKeyOwner(key, itemId);
         }
         if (context.getFrame() > startedFrame) {
             if (const std::optional<std::string> binding = listen(context.getInput())) {

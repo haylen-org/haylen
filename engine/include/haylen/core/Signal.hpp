@@ -212,7 +212,7 @@ template <typename... Args> class Signal final {
     }
 
     // A once slot disconnects as it is called, so its queued call keeps it alive, while the queued calls of other slots are skipped once they disconnected.
-    static Slot deferTo(FrameQueue& queue, Slot slot, bool once) {
+    static Slot deferTo([[maybe_unused]] FrameQueue& queue, [[maybe_unused]] Slot slot, [[maybe_unused]] bool once) {
         if constexpr (kCopyableArguments) {
             // clang-format off
             return [&queue, shared = std::make_shared<Slot>(std::move(slot)), once](Args... args) {

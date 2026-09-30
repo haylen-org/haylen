@@ -260,10 +260,10 @@ std::function<core::ProcessMode()> ScriptedScene::followOwnerMode(lua_State* L, 
     // clang-format off
     return [reference, main] {
         core::ProcessMode mode = core::ProcessMode::Inherit;
-        Runtime::protectedRun(main, [&](lua_State* state) {
-            if (reference->push(state)) {
-                mode = resolveOwnerMode(state, -1);
-                lua_pop(state, 1);
+        Runtime::protectedRun(main, [&](lua_State* thread) {
+            if (reference->push(thread)) {
+                mode = resolveOwnerMode(thread, -1);
+                lua_pop(thread, 1);
             }
         });
         return mode;

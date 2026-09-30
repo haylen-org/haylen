@@ -43,7 +43,9 @@ NativeSignature NativeSignature::parse(std::string_view declaration) {
         if (tokens[position] != "," && tokens[position] != ")") {
             throw std::invalid_argument("The native callback declaration has \"" + tokens[position] + "\" where a comma or \")\" belongs.");
         }
-        position += tokens[position] == "," ? 1 : 0;
+        if (tokens[position] == ",") {
+            ++position;
+        }
         if (tokens[position - 1] == "," && tokens[position] == ")") {
             throw std::invalid_argument("The native callback declaration has a comma without a parameter after it.");
         }

@@ -292,7 +292,7 @@ std::unique_ptr<Poco::Net::WebSocket> PocoWebSocket::open(Connection& target, Wo
     }
 
     // The upgrade request blocks, bounded by the timeouts of the socket, and the session sends it over the connected socket.
-    const Poco::Timespan timeout(std::chrono::duration_cast<std::chrono::seconds>(kConnectTimeout).count(), 0);
+    const Poco::Timespan timeout(kConnectTimeout);
     socket.setBlocking(true);
     socket.setSendTimeout(timeout);
     socket.setReceiveTimeout(timeout);
