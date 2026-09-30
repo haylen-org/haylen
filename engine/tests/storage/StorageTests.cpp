@@ -322,7 +322,7 @@ TEST(StoragePluginTest, RequiresAStartedEngine) {
     EXPECT_THROW(plugin.queueOperation([] {}), std::logic_error);
 }
 
-TEST(UserStorageTest, WritesOfTheSameFileOnTwoThreadsNeverMix) {
+TEST(UserStorageTest, ReadsAndWritesOfTheSameFileOnTwoThreadsNeverMix) {
     const test::TemporaryDirectory directory;
     UserStorage storage(directory.getPath());
     const std::string first(1U << 20U, 'a');
@@ -336,10 +336,10 @@ TEST(UserStorageTest, WritesOfTheSameFileOnTwoThreadsNeverMix) {
     // clang-format on
     for (int round = 0; round < 20; ++round) {
         storage.writeText("shared.bin", second);
+        const std::string stored = storage.readText("shared.bin");
+        EXPECT_TRUE(stored == first || stored == second);
     }
     writer.join();
-    const std::string stored = storage.readText("shared.bin");
-    EXPECT_TRUE(stored == first || stored == second);
     EXPECT_EQ(storage.list(""), (std::vector<std::string>{"shared.bin"}));
 }
 

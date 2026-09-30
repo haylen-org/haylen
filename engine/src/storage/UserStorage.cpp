@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <mutex>
 #include <stdexcept>
 #include <string>
 #include <system_error>
@@ -34,6 +35,7 @@ std::vector<std::uint8_t> UserStorage::read(std::string_view path) const {
         throw std::runtime_error("The storage file \"" + std::string(path) + "\" was not found.");
     }
 
+    const std::shared_lock lock(mutex);
     std::ifstream stream(file, std::ios::binary | std::ios::ate);
     const std::streamoff size = stream.tellg();
     std::vector<std::uint8_t> bytes(static_cast<std::size_t>(std::max<std::streamoff>(0, size)));
@@ -67,6 +69,9 @@ void UserStorage::write(std::string_view path, std::span<const std::uint8_t> byt
         std::filesystem::remove(temporary, ignored);
         throw std::runtime_error("The storage file \"" + std::string(path) + "\" could not be written.");
     }
+
+    // Windows refuses to replace or remove a file that another thread is replacing or reading, so those steps wait for each other.
+    const std::scoped_lock lock(mutex);
     std::filesystem::rename(temporary, file);
 }
 
@@ -75,8 +80,10 @@ void UserStorage::writeText(std::string_view path, std::string_view text) {
 }
 
 bool UserStorage::remove(std::string_view path) {
+    const std::filesystem::path file = resolve(path);
     std::error_code error;
-    return std::filesystem::remove(resolve(path), error);
+    const std::scoped_lock lock(mutex);
+    return std::filesystem::remove(file, error);
 }
 
 std::vector<std::string> UserStorage::list(std::string_view directory) const {

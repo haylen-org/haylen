@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <functional>
+#include <shared_mutex>
 #include <span>
 #include <string>
 #include <string_view>
@@ -34,6 +35,7 @@ class UserStorage final {
     std::filesystem::path root;
     std::function<void()> persist;
     std::atomic<std::uint64_t> writeCount = 0;
+    mutable std::shared_mutex mutex;
 };
 
 } // namespace haylen::storage
