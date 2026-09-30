@@ -287,13 +287,26 @@ TEST(SceneLuaTest, SpawnedTasksNeverResumeOnceTheirSceneUnloaded) {
     fixture.frames(2);
     EXPECT_EQ(fixture.lua("return table.concat(log, ', ')"), "waiting, quick, closed");
 
-    // A task that ends its own scene stops at its next wait.
-    fixture.runLua("log = {} scene.push({enter = function(self) scene.spawn(self, function() log[#log + 1] = 'clearing' scene.clear() async.sleep(1):await() log[#log + 1] = 'after clear' end) end})");
+    // A task that ends its own scene stops at its next wait, where it closes.
+    // clang-format off
+    fixture.runLua(R"(
+        log = {}
+        scene.push({enter = function(self)
+            scene.spawn(self, function()
+                local guard <close> = setmetatable({}, {__close = function() log[#log + 1] = 'closed' end})
+                log[#log + 1] = 'clearing'
+                scene.clear()
+                async.sleep(1):await()
+                log[#log + 1] = 'after clear'
+            end)
+        end})
+    )");
+    // clang-format on
     for (int step = 0; step < 5; ++step) {
         fixture.frames(1);
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
-    EXPECT_EQ(fixture.lua("return table.concat(log, ', ') .. ' ' .. scene.size()"), "clearing 0");
+    EXPECT_EQ(fixture.lua("return table.concat(log, ', ') .. ' ' .. scene.size()"), "clearing, closed 0");
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 
     // An error in a task reaches the error screen with the stack of the task.
@@ -373,7 +386,10 @@ TEST(SceneLuaTest, PreloadsAndCancelsPreloads) {
             load = function(self, context) self.loadedWith = context.params async.sleep(5):await() end,
             enter = function(self, params) self.enteredWith = params end,
         }
-        spare = {load = function() async.sleep(1000):await() end}
+        spare = {load = function()
+            local guard <close> = setmetatable({}, {__close = function() spareClosed = true end})
+            async.sleep(1000):await()
+        end}
         async.spawn(function() result = scene.preload(level, 'hard'):await() end)
     )");
     // clang-format on
@@ -388,7 +404,7 @@ TEST(SceneLuaTest, PreloadsAndCancelsPreloads) {
     fixture.frames(1);
     fixture.runLua("scene.cancelPreload(spare)");
     fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return tostring(cancelled) .. ' ' .. scene.state(spare) .. ' ' .. tostring(scene.state({}))"), "false unloaded nil");
+    EXPECT_EQ(fixture.lua("return tostring(cancelled) .. ' ' .. scene.state(spare) .. ' ' .. tostring(spareClosed) .. ' ' .. tostring(scene.state({}))"), "false unloaded true nil");
     EXPECT_NE(fixture.lua("scene.cancelPreload(spare)").find("The scene is not preloaded."), std::string::npos);
     EXPECT_NE(fixture.lua("scene.preload(level)").find("already loaded or on the stack"), std::string::npos);
     EXPECT_NE(fixture.lua("scene.push({}, {loading = 3})").find("error: "), std::string::npos);

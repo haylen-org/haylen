@@ -1,13 +1,12 @@
 #include "plugins/JobsPlugin.hpp"
 
-#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
 
 #include "haylen/lua/Runtime.hpp"
 #include "lua/JobsLua.hpp"
-#include "lua/Task.hpp"
+#include "varn/async/Promise.h"
 
 namespace haylen::plugins {
 
@@ -72,18 +71,17 @@ bool JobsPlugin::resume(Job& job) {
     const int status = lua_resume(job.state, main, std::exchange(job.arguments, 0), &results);
     current = nullptr;
 
-    // A job that waits for anything else ends there, so a promise it waits for never resumes its code.
+    // A job that waits for anything else ends there like a cancelled task of Varn, so a promise it waits for never resumes its code.
     if (status == LUA_YIELD) {
         const bool paused = lua::JobsLua::isCheckpoint(job.state, results);
         lua_pop(job.state, results);
         if (paused) {
             return true;
         }
-        const std::optional<lua::Error> failure = lua::Task::closeCoroutine(job.state, main);
+        job.thread.push(main);
+        varn::async::Promise::cancelTask(main, -1);
+        lua_pop(main, 1);
         job.promise.reject("A job may only pause at \"jobs.checkpoint\". Wait for promises inside \"async.spawn\" instead.");
-        if (failure) {
-            lua::Runtime::reportError(main, *failure);
-        }
         return false;
     }
 

@@ -16,17 +16,14 @@ else()
   set(HAYLEN_VARN_TARGET "cli")
 endif()
 
-# The engine links the static core of Varn, which the `cli` target builds. Varn picks the HTTP driver of the URL Loading System by itself only for its `apple` target, a shared framework, so iOS, tvOS and Mac Catalyst name the driver.
-set(HAYLEN_VARN_OPTIONS "VARN_TARGET ${HAYLEN_VARN_TARGET}" "VARN_BUILD_TESTS OFF")
-if(HAYLEN_PLATFORM STREQUAL "ios" OR HAYLEN_PLATFORM STREQUAL "tvos")
-  list(APPEND HAYLEN_VARN_OPTIONS "VARN_HTTP_CLIENT_DRIVER APPLE")
-endif()
-
+# The engine links the static core of Varn, which the `cli` target builds, and Varn picks the HTTP driver of every platform itself: the URL Loading System on iOS, tvOS and Mac Catalyst, the Android stack on Android and the fetch of the browser on the web.
+# Varn hands the error that a to-be-closed variable of a cancelled task raises on as a bare value, which the handler of `async.onFailure` never receives, so the patch wraps it in the table every other failure comes in.
 CPMAddPackage(
   NAME varn
-  URL "https://github.com/varn-org/varn/archive/17956f141d7078db46a5486802193c8084f3f355.tar.gz"
-  URL_HASH SHA256=1fb444d0b931f3a618dc0e0aa6fcb2898eb58266a3dfc12bd13fcd5945ac5405
-  OPTIONS ${HAYLEN_VARN_OPTIONS}
+  URL "https://github.com/varn-org/varn/archive/04b710da801ed284e48f934bc03bab0d64356aa8.tar.gz"
+  URL_HASH SHA256=7532f516adf9063856fbe66f362f1a05742fee4f8f4df47a5a599cb554bf6954
+  PATCHES "${CMAKE_CURRENT_LIST_DIR}/patches/varn-close-failure.patch"
+  OPTIONS "VARN_TARGET ${HAYLEN_VARN_TARGET}" "VARN_BUILD_TESTS OFF"
   EXCLUDE_FROM_ALL YES
   SYSTEM YES
 )

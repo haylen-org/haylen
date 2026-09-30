@@ -4,12 +4,11 @@
 #include <new>
 #include <utility>
 
-#include "haylen/core/Engine.hpp"
-#include "haylen/core/JobSystem.hpp"
 #include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "lua/Owners.hpp"
+#include "varn/async/Promise.h"
 
 namespace haylen::lua {
 
@@ -111,39 +110,10 @@ void Task::cancel() {
         return;
     }
     cancelled = true;
-    if (lua_status(thread) == LUA_YIELD) {
-        close();
-        return;
-    }
-
-    // The coroutine runs right now, so it closes on the event loop, which runs the job once the code waits and before any promise it waits for can resume it.
-    // clang-format off
-    Runtime::getEngine(main).getJobs().postToFrame([weak = weak_from_this()] {
-        if (const std::shared_ptr<Task> task = weak.lock()) {
-            task->close();
-        }
-    });
-    // clang-format on
-}
-
-void Task::close() {
-    if (finished || threadReference == LUA_NOREF || lua_status(thread) != LUA_YIELD) {
-        return;
-    }
-    const std::optional<Error> failure = closeCoroutine(thread, main);
+    lua_rawgeti(main, LUA_REGISTRYINDEX, threadReference);
+    varn::async::Promise::cancelTask(main, -1);
+    lua_pop(main, 1);
     release();
-    if (failure) {
-        Runtime::reportError(main, *failure);
-    }
-}
-
-std::optional<Error> Task::closeCoroutine(lua_State* coroutine, lua_State* from) {
-    if (lua_closethread(coroutine, from) == LUA_OK) {
-        return std::nullopt;
-    }
-    Error failure = Runtime::readError(coroutine, -1);
-    lua_pop(coroutine, 1);
-    return failure;
 }
 
 void Task::release() noexcept {

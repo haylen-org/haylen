@@ -65,11 +65,36 @@ void Environment::checkModules(core::Engine& engine) {
     }
 }
 
-// Receives the value that was raised and the traceback of where it was raised, which a callback called from another thread has none of.
+// Varn gives the name of a function without the way the code reached it, and the outermost frames without a name are the native entries of Varn that ran the task or the callback, which the stack leaves out like the protected calls of the engine.
+std::vector<Error::Frame> Environment::readFrames(lua_State* L, int index) {
+    std::vector<Error::Frame> frames;
+    const lua_Integer count = luaL_len(L, index);
+    for (lua_Integer position = 1; position <= count; ++position) {
+        lua_rawgeti(L, index, position);
+        lua_getfield(L, -1, "source");
+        lua_getfield(L, -2, "line");
+        lua_getfield(L, -3, "name");
+        lua_getfield(L, -4, "kind");
+        const Error::Frame::Kind kind = Runtime::getFrameKind(lua_tostring(L, -1));
+        std::string function = kind == Error::Frame::Kind::Main ? "main chunk" : "?";
+        if (lua_isstring(L, -2) != 0) {
+            function = "function '" + std::string(lua_tostring(L, -2)) + "'";
+        }
+        frames.push_back({.source = lua_tostring(L, -4), .line = static_cast<int>(lua_tointeger(L, -3)), .function = std::move(function), .kind = kind});
+        lua_pop(L, 5);
+    }
+
+    while (!frames.empty() && frames.back().kind == Error::Frame::Kind::C && frames.back().function == "?") {
+        frames.pop_back();
+    }
+    return frames;
+}
+
+// Receives the value that was raised, the traceback as text and the frames of where it was raised, which a callback called from another thread has none of.
 int Environment::reportFailure(lua_State* L) {
     std::vector<Error::Frame> frames;
-    if (lua_type(L, 2) == LUA_TSTRING) {
-        frames = Runtime::readTraceback(lua_tostring(L, 2));
+    if (lua_istable(L, 3)) {
+        frames = readFrames(L, 3);
     }
     Runtime::reportError(L, Error(Runtime::describeValue(L, 1), std::move(frames)));
     return 0;

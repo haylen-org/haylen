@@ -546,14 +546,14 @@ TEST(EngineTest, ShowsErrorsOfAsyncTasksWithTheirStack) {
     EXPECT_EQ(error.getFile(), "source/scenes/loader.lua");
     EXPECT_EQ(error.getLine(), 3);
 
-    // The task shows its own frames only, without the native entry of Varn that runs it, and Lua names the function after the module that returned it.
+    // The task shows its own frames only, without the native entry of Varn that runs it, and the task function has no name because native code calls it.
     ASSERT_EQ(error.getFrames().size(), 2U);
     EXPECT_EQ(error.getFrames()[0].source, "[C]");
-    EXPECT_EQ(error.getFrames()[0].function, "global 'error'");
+    EXPECT_EQ(error.getFrames()[0].function, "function 'error'");
     EXPECT_EQ(error.getFrames()[0].kind, lua::Error::Frame::Kind::C);
     EXPECT_EQ(error.getFrames()[1].source, "source/scenes/loader.lua");
     EXPECT_EQ(error.getFrames()[1].line, 3);
-    EXPECT_EQ(error.getFrames()[1].function, "function 'scenes.loader'");
+    EXPECT_EQ(error.getFrames()[1].function, "?");
     EXPECT_EQ(error.getFrames()[1].kind, lua::Error::Frame::Kind::Lua);
     EXPECT_EQ(fixture.host().getErrorReports().back(), error.toJson());
     EXPECT_NE(fixture.lua("require('async').spawn(3)").find("bad argument #1 to 'spawn' (function expected, got number)"), std::string::npos);

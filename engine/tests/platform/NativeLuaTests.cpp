@@ -198,9 +198,13 @@ TEST_F(NativeLuaTest, ReportsFailuresOfFfiCallbacksOutsideAnyCall) {
         const Visitor visitor = castVisitor(fixture, "function() error('failed outside any call') end");
         visitor(1, "one");
         ASSERT_NE(fixture.engine().getError(), nullptr);
-        EXPECT_NE(std::string(fixture.engine().getError()->what()).find("failed outside any call"), std::string::npos);
-        ASSERT_EQ(fixture.engine().getError()->getFrames().size(), 2U);
-        EXPECT_EQ(fixture.engine().getError()->getFrames()[1].getLocation(), "test:1");
+        const lua::Error& error = *fixture.engine().getError();
+        EXPECT_NE(std::string(error.what()).find("failed outside any call"), std::string::npos);
+        ASSERT_EQ(error.getFrames().size(), 2U);
+        EXPECT_EQ(error.getFrames()[0].function, "function 'error'");
+        EXPECT_EQ(error.getFrames()[1].getLocation(), "test:1");
+        EXPECT_EQ(error.getFile(), "test");
+        EXPECT_EQ(error.getLine(), 1);
     }
 
     // A call from another thread returns without running Lua, and the next frame shows why.

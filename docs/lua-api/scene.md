@@ -30,7 +30,7 @@ A scene is any table. The engine looks up its hooks by name every time it calls 
 | `transparent` | Read every frame. When it is `true`, the scene below also renders. | Not a function. |
 | `processMode` | Read every frame. One of `'inherit'`, the default, `'pausable'`, `'whenPaused'`, `'always'` or `'disabled'`. | Not a function. |
 
-The visible scenes are the top scene and every scene below it down to the first one that is not transparent. An error raised in a hook stops the app and shows the error screen with the message and its stack trace, except in `load`, where it fails the load as [Errors](#errors) describes. Everything the scene owns ends when it unloads: the tasks of `scene.spawn`, the listeners of `scene.listen`, and the timers, tweens, event listeners, signal connections and UI documents created with the scene as `owner`. So no callback or coroutine of a scene runs once it is gone.
+The visible scenes are the top scene and every scene below it down to the first one that is not transparent. An error raised in a hook stops the app and shows the error screen with the message and its stack trace, except in `load`, where it fails the load as [Errors](#errors) describes. Everything the scene owns ends when it unloads: the task of a `load` that has not finished and the tasks of `scene.spawn`, which stop for good and close their to-be-closed variables, the listeners of `scene.listen`, and the timers, tweens, event listeners, signal connections and UI documents created with the scene as `owner`. So no callback or coroutine of a scene runs once it is gone.
 
 A table is one scene for as long as the engine holds it, so the same table cannot be on the stack twice, and a table whose scene unloaded may be pushed again, which loads it again.
 
@@ -686,7 +686,7 @@ end)
 
 ### scene.spawn(owner, fn)
 
-Runs `fn` as a task that `owner` holds, the way `async.spawn` runs a task: it may wait on promises with `:await()`, and an error it raises reaches the error screen with the stack of the task. When the owner is released, such as a scene when it unloads, the task stops for good and its pending to-be-closed variables close, so it never resumes, even when a promise it waits for settles later. A task that releases its own owner stops at its next wait. Tasks started with `async.spawn` belong to nobody and run to their end unless `task.cancel()` of the handle it returns stops them. The argument `owner` must be a table or a userdata.
+Runs `fn` as a task that `owner` holds, the way `async.spawn` runs a task: it may wait on promises with `:await()`, and an error it raises reaches the error screen with the stack of the task. When the owner is released, such as a scene when it unloads, the task stops for good the way `task.cancel()` of `async` stops a task: it never resumes, even when a promise it waits for settles later, and its pending to-be-closed variables close. A task that releases its own owner stops and closes at its next wait. Tasks started with `async.spawn` belong to nobody and run to their end unless `task.cancel()` of the handle it returns stops them. The argument `owner` must be a table or a userdata.
 
 ```lua
 local scene = require('haylen.scene')

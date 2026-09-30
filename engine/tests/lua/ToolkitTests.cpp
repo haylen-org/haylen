@@ -281,33 +281,40 @@ TEST(ErrorTest, KeepsTheEndsOfARunawayRecursion) {
     EXPECT_TRUE(std::ranges::any_of(error.getFrames(), [](const Error::Frame& frame) { return frame.function.ends_with("levels skipped"); }));
 }
 
-// Failures of tasks reach the engine with the traceback of where they were raised, which the engine reads into frames.
-TEST(ErrorTest, ReadsTheStackOfTasksFromTheirTraceback) {
+// Failures of tasks reach the engine with the frames of where they were raised, which Varn lists from the innermost call out.
+TEST(ErrorTest, ReadsTheStackOfTasksFromTheirFrames) {
     {
-        // A stack deeper than a traceback shows keeps its ends.
+        // Varn names a function its caller names, and the native entry of Varn that runs the task is left out.
         test::EngineFixture fixture;
-        fixture.runLua("local function dive(depth) if depth == 0 then error('too deep') end dive(depth - 1) end require('async').spawn(function() dive(40) end)");
+        fixture.runLua("local function dive(depth) if depth == 0 then error('too deep') end dive(depth - 1) end require('async').spawn(function() dive(2) end)");
         ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
         const std::vector<Error::Frame>& frames = fixture.engine().getError()->getFrames();
-        ASSERT_EQ(frames.size(), 21U);
-        EXPECT_EQ(frames[10].source, "...");
-        EXPECT_EQ(frames[10].kind, Error::Frame::Kind::C);
-        EXPECT_TRUE(frames[10].function.ends_with(" levels skipped")) << frames[10].function;
-        EXPECT_EQ(frames.back().function, "function <test:1>");
+        ASSERT_EQ(frames.size(), 5U);
+        EXPECT_EQ(frames[0].getLocation(), "[C]");
+        EXPECT_EQ(frames[0].function, "function 'error'");
+        EXPECT_EQ(frames[0].kind, Error::Frame::Kind::C);
+        EXPECT_EQ(frames[1].getLocation(), "test:1");
+        EXPECT_EQ(frames[1].function, "function 'dive'");
+        EXPECT_EQ(frames[1].kind, Error::Frame::Kind::Lua);
+        EXPECT_EQ(frames.back().getLocation(), "test:1");
+        EXPECT_EQ(frames.back().function, "?");
     }
     {
-        // A function called in a tail call replaces its caller, and the note Lua writes after it is no frame.
+        // A stack deeper than Varn lists keeps its innermost frames.
         test::EngineFixture fixture;
-        fixture.runLua("local function fail() error('tail failure') end require('async').spawn(function() return fail() end)");
+        fixture.runLua("local function dive(depth) if depth == 0 then error('too deep') end dive(depth - 1) end require('async').spawn(function() dive(200) end)");
         ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
-        ASSERT_EQ(fixture.engine().getError()->getFrames().size(), 2U);
-        EXPECT_EQ(fixture.engine().getError()->getFrames()[1].getLocation(), "test:1");
+        const std::vector<Error::Frame>& frames = fixture.engine().getError()->getFrames();
+        EXPECT_LT(frames.size(), 200U);
+        EXPECT_EQ(frames.front().function, "function 'error'");
+        EXPECT_EQ(frames.back().function, "function 'dive'");
     }
 
     test::EngineFixture fixture;
     fixture.runLua("require('async').spawn(load('error(\"chunk failure\")', '=chunk'))");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
     EXPECT_EQ(fixture.engine().getError()->getFrames().back().kind, Error::Frame::Kind::Main);
+    EXPECT_EQ(fixture.engine().getError()->getFrames().back().function, "main chunk");
     EXPECT_EQ(fixture.engine().getError()->getFrames().back().getLocation(), "chunk:1");
 }
 

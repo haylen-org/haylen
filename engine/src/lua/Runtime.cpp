@@ -1,8 +1,6 @@
 #include "haylen/lua/Runtime.hpp"
 
-#include <charconv>
 #include <new>
-#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -72,11 +70,11 @@ std::string Runtime::describeFunction(const lua_Debug& info) {
     return "?";
 }
 
-Error::Frame::Kind Runtime::getFrameKind(const lua_Debug& info) noexcept {
-    if (*info.what == 'C') {
+Error::Frame::Kind Runtime::getFrameKind(std::string_view what) noexcept {
+    if (what == "C") {
         return Error::Frame::Kind::C;
     }
-    return *info.what == 'm' ? Error::Frame::Kind::Main : Error::Frame::Kind::Lua;
+    return what == "main" ? Error::Frame::Kind::Main : Error::Frame::Kind::Lua;
 }
 
 // Finds the outermost level of the stack with a binary search, since reaching a level walks every level above it.
@@ -123,57 +121,9 @@ Error Runtime::captureError(lua_State* L, const std::string& text, int level) {
             break;
         }
 
-        frames.push_back({.source = info.short_src, .line = info.currentline > 0 ? info.currentline : 0, .function = describeFunction(info), .kind = getFrameKind(info)});
+        frames.push_back({.source = info.short_src, .line = info.currentline > 0 ? info.currentline : 0, .function = describeFunction(info), .kind = getFrameKind(info.what)});
     }
     return Error(text, std::move(frames));
-}
-
-// The outermost frames that Lua cannot name are the native entries of Varn that ran the task or the callback, which the stack leaves out like the protected calls of the engine.
-std::vector<Error::Frame> Runtime::readTraceback(std::string_view traceback) {
-    std::vector<Error::Frame> frames;
-    for (std::size_t start = traceback.find('\n'); start != std::string_view::npos;) {
-        const std::size_t end = traceback.find('\n', start + 1);
-        if (std::optional<Error::Frame> frame = readTracebackLine(traceback.substr(start + 1, end == std::string_view::npos ? end : end - start - 1))) {
-            frames.push_back(std::move(*frame));
-        }
-        start = end;
-    }
-
-    while (!frames.empty() && frames.back().kind == Error::Frame::Kind::C && frames.back().function == "?") {
-        frames.pop_back();
-    }
-    return frames;
-}
-
-// Reads a frame, written as `source:line: in function` or as `source: in function` without a current line, or the marker of skipped levels, and nothing from the header or the note after a tail call.
-std::optional<Error::Frame> Runtime::readTracebackLine(std::string_view line) {
-    constexpr std::string_view skipped = "\t...\t(skipping ";
-    if (line.starts_with(skipped)) {
-        const std::string_view count = line.substr(skipped.size(), line.find(' ', skipped.size()) - skipped.size());
-        return Error::Frame{.source = "...", .function = std::string(count) + " levels skipped", .kind = Error::Frame::Kind::C};
-    }
-
-    constexpr std::string_view separator = ": in ";
-    const std::size_t split = line.find(separator);
-    if (!line.starts_with('\t') || split == std::string_view::npos) {
-        return std::nullopt;
-    }
-
-    std::string_view location = line.substr(1, split - 1);
-    const std::string_view function = line.substr(split + separator.size());
-    int number = 0;
-    if (const std::size_t colon = location.rfind(':'); colon != std::string_view::npos) {
-        const std::string_view digits = location.substr(colon + 1);
-        const auto [last, failure] = std::from_chars(digits.data(), digits.data() + digits.size(), number);
-        if (failure == std::errc() && last == digits.data() + digits.size() && number > 0) {
-            location = location.substr(0, colon);
-        } else {
-            number = 0;
-        }
-    }
-
-    const Error::Frame::Kind kind = location == "[C]" ? Error::Frame::Kind::C : (function == "main chunk" ? Error::Frame::Kind::Main : Error::Frame::Kind::Lua);
-    return Error::Frame{.source = std::string(location), .line = number, .function = std::string(function), .kind = kind};
 }
 
 int Runtime::handleMessage(lua_State* L) {

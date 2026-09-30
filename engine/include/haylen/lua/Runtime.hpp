@@ -3,11 +3,9 @@
 #include <lua.hpp>
 
 #include <exception>
-#include <optional>
 #include <string>
 #include <string_view>
 #include <type_traits>
-#include <vector>
 
 #include "haylen/lua/Error.hpp"
 
@@ -74,12 +72,8 @@ class Runtime final {
     [[nodiscard]] static Error readError(lua_State* L, int index);
     [[nodiscard]] static std::string describeValue(lua_State* L, int index);
     [[nodiscard]] static std::string describeFunction(const lua_Debug& info);
-    [[nodiscard]] static Error::Frame::Kind getFrameKind(const lua_Debug& info) noexcept;
+    [[nodiscard]] static Error::Frame::Kind getFrameKind(std::string_view what) noexcept;
     [[nodiscard]] static int findLastLevel(lua_State* L);
-
-    // Reads the frames of a traceback that `luaL_traceback` wrote, innermost first, for failures whose stack is gone by the time the engine hears of them.
-    [[nodiscard]] static std::vector<Error::Frame> readTraceback(std::string_view traceback);
-    [[nodiscard]] static std::optional<Error::Frame> readTracebackLine(std::string_view line);
     static void pushError(lua_State* L, Error error);
     static int collectError(lua_State* L);
     static int errorToString(lua_State* L);

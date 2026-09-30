@@ -6,6 +6,8 @@
 #include <string_view>
 #include <vector>
 
+#include "haylen/lua/Error.hpp"
+
 namespace haylen::core {
 class Engine;
 struct AppConfig;
@@ -28,6 +30,7 @@ class Environment final {
 
     [[nodiscard]] static std::string modulePath(std::string_view name);
     [[nodiscard]] static std::vector<std::string> getCandidates(const core::AppConfig& config, std::string_view name);
+    [[nodiscard]] static std::vector<Error::Frame> readFrames(lua_State* L, int index);
     static int reportFailure(lua_State* L);
     static void installFailureHandler(lua_State* L);
     static int searchPackage(lua_State* L);
