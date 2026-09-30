@@ -2,6 +2,7 @@
 
 #include <array>
 #include <filesystem>
+#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -10,6 +11,7 @@
 #include "haylen/math/Insets.hpp"
 #include "platform/Host.hpp"
 #include "platform/NativeViews.hpp"
+#include "platform/SystemState.hpp"
 #include "platform/headless/HeadlessTextInput.hpp"
 
 namespace haylen::platform {
@@ -21,6 +23,13 @@ class HeadlessHost final : public Host {
         std::uint64_t id = 0;
         std::string method;
         std::string paramsJson;
+    };
+
+    // A native dialog the engine asked for, with the folder where the platform would keep copies of picked files.
+    struct DialogCall {
+        std::uint64_t id = 0;
+        DialogRequest request;
+        std::filesystem::path folder;
     };
 
     explicit HeadlessHost(std::filesystem::path directory, math::Vec2 size = {1920.0F, 1080.0F});
@@ -164,6 +173,25 @@ class HeadlessHost final : public Host {
     void reportError(const core::Json& report) override {
         errorReports.push_back(report);
     }
+    [[nodiscard]] SystemInfo getSystemInfo() const override {
+        return systemInfo;
+    }
+    [[nodiscard]] Theme getTheme() const override {
+        return systemState.getTheme();
+    }
+    [[nodiscard]] Battery getBattery() const override {
+        return systemState.getBattery();
+    }
+    void openUrl(std::string_view url, std::function<void(bool opened)> callback) override;
+    void vibrate(float seconds) override {
+        vibrations.push_back(seconds);
+    }
+    void showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) override {
+        dialogCalls.push_back({.id = id, .request = request, .folder = folder});
+    }
+    void cancelDialog(std::uint64_t id) override {
+        cancelledDialogs.push_back(id);
+    }
 
     void resize(math::Vec2 size) noexcept {
         framebufferSize = size;
@@ -190,6 +218,24 @@ class HeadlessHost final : public Host {
     // The ids of the plugins whose native part the headless platform reports as loaded.
     void setNativePlugins(std::vector<std::string> value) {
         nativePlugins = std::move(value);
+    }
+
+    // What the headless system reports to the apps that start after the change. It starts as a desktop of the operating system the tests run on.
+    void setSystemInfo(SystemInfo value) {
+        systemInfo = std::move(value);
+    }
+
+    // Change the theme and the battery from any thread, the way platform services report them. The engine publishes the change at its next frame.
+    void setTheme(Theme value) {
+        systemState.setTheme(value);
+    }
+    void setBattery(const Battery& value) {
+        systemState.setBattery(value);
+    }
+
+    // Whether the headless system finds an app for the urls the engine opens, which it answers at once.
+    void setOpensUrls(bool value) noexcept {
+        opensUrls = value;
     }
 
     // The native views of the headless screen, which tests reserve edges and cover the app with from any thread, the way native code does. They outlive the engines a test restarts on this host.
@@ -239,6 +285,19 @@ class HeadlessHost final : public Host {
         return errorReports;
     }
 
+    [[nodiscard]] const std::vector<std::string>& getOpenedUrls() const noexcept {
+        return openedUrls;
+    }
+    [[nodiscard]] const std::vector<float>& getVibrations() const noexcept {
+        return vibrations;
+    }
+    [[nodiscard]] const std::vector<DialogCall>& getDialogRequests() const noexcept {
+        return dialogCalls;
+    }
+    [[nodiscard]] const std::vector<std::uint64_t>& getCancelledDialogs() const noexcept {
+        return cancelledDialogs;
+    }
+
   private:
     std::filesystem::path dataDirectory;
     math::Vec2 framebufferSize;
@@ -249,6 +308,13 @@ class HeadlessHost final : public Host {
     NativeViews nativeViews;
     std::vector<std::string> nativePlugins;
     std::vector<core::Json> errorReports;
+    SystemInfo systemInfo;
+    SystemState systemState;
+    std::vector<std::string> openedUrls;
+    std::vector<float> vibrations;
+    std::vector<DialogCall> dialogCalls;
+    std::vector<std::uint64_t> cancelledDialogs;
+    bool opensUrls = true;
 
     // The headless desktop is one 1920 by 1080 monitor whose work area leaves a 40 point taskbar at the bottom, with the window at the top left corner of it.
     std::vector<Monitor> monitors{{.name = "headless", .bounds = {0.0F, 0.0F, 1920.0F, 1080.0F}, .workArea = {0.0F, 0.0F, 1920.0F, 1040.0F}, .scale = 1.0F, .primary = true}};

@@ -19,14 +19,15 @@ class Promise;
 
 namespace haylen::platform {
 
-// Installs haylen.platform, which calls native methods, answers them from Lua, listens to native events and hands plugin modules the handles of their plugins.
+// Installs haylen.platform, which calls native methods, answers them from Lua, listens to native events and hands plugin modules the handles of their plugins, and the class of the calls that it and haylen.dialogs return.
 class PlatformLua final {
   public:
-    // A platform call as Lua holds it: the promise that its awaiters wait on, and the error that it failed with.
+    // A call as Lua holds it: the promise that its awaiters wait on, the error that it failed with and how the service that runs it gives it up, which returns whether it was still pending.
     struct Call {
         std::shared_ptr<varn::async::Promise> promise;
         std::uint64_t id = 0;
         std::optional<Bridge::Error> error;
+        bool (*cancel)(lua_State* L, std::uint64_t id) = nullptr;
     };
 
     static void install(lua_State* L);
@@ -41,6 +42,8 @@ class PlatformLua final {
 
     // Connects the listener at the given stack index to the native event, and pushes the connection.
     static void pushConnection(lua_State* L, const std::string& event, int listenerIndex);
+
+    [[nodiscard]] static bool cancelBridgeCall(lua_State* L, std::uint64_t id);
 
     static int call(lua_State* L);
     static int await(lua_State* L);

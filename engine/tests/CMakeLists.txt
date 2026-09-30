@@ -69,11 +69,13 @@ set(HAYLEN_TEST_SOURCES
   math/UtilityTests.cpp
   math/VectorTests.cpp
   net/WebSocketTests.cpp
+  platform/DialogsTests.cpp
   platform/NativeLuaTests.cpp
   platform/NativeTests.cpp
   platform/NativeViewsTests.cpp
   platform/PlatformLuaTests.cpp
   platform/PlatformTests.cpp
+  platform/SystemTests.cpp
   platform/WindowLuaTests.cpp
   platform/WindowTests.cpp
   storage/StorageTests.cpp

@@ -35,8 +35,10 @@ typedef struct NativeTestRect {
 typedef void (*NativeTestVisitor)(int32_t index, const char* label);
 typedef void (*NativeTestReporter)(int32_t value, const uint8_t* data, size_t size);
 
+// A job on a thread of the library carries the interface of the engine it answers through, because a later init of the library replaces the one the library keeps.
 typedef struct NativeTestJob {
     void (*body)(struct NativeTestJob* job);
+    const HaylenNativeApi* api;
     NativeTestReporter reporter;
     int32_t value;
     uint64_t call;
@@ -146,14 +148,14 @@ static void native_test_answer_echo(NativeTestJob* job) {
     const size_t size = strlen(job->text) + 32;
     char* answer = (char*)malloc(size);
     snprintf(answer, size, "{\"echo\":%s,\"thread\":true}", job->text);
-    nativeTestApi->resolve(job->call, 1, answer);
+    job->api->resolve(job->call, 1, answer);
     free(answer);
 }
 
 static void native_test_announce(NativeTestJob* job) {
     char payload[64];
     snprintf(payload, sizeof(payload), "{\"version\":%d,\"origin\":\"%s\"}", job->value, NATIVE_TEST_ORIGIN);
-    nativeTestApi->emit("native_test.ready", payload, 1);
+    job->api->emit("native_test.ready", payload, 1);
 }
 
 // Answers native_test.echo from a thread of the library, fails native_test.fail with a code and data, and leaves native_test.wait pending until the app gives it up.
@@ -161,6 +163,7 @@ static void native_test_handle(void* user, uint64_t call, const char* method, co
     (void)user;
     if (strcmp(method, "native_test.echo") == 0) {
         NativeTestJob* job = native_test_job(native_test_answer_echo);
+        job->api = nativeTestApi;
         job->call = call;
         const size_t length = strlen(paramsJson) + 1;
         job->text = (char*)malloc(length);
@@ -210,6 +213,7 @@ NATIVE_TEST_EXPORT int native_test_haylen_init(const HaylenNativeApi* api) {
     api->log(HAYLEN_NATIVE_LOG_INFO, "The native test library is ready.");
 
     NativeTestJob* job = native_test_job(native_test_announce);
+    job->api = api;
     job->value = api->version;
     native_test_spawn(job);
     return 0;

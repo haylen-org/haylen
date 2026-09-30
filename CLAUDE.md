@@ -118,7 +118,7 @@ engine/
   cmake/                  Engine CMake modules: CPM bootstrap, dependencies and their patches, haylen_add_app, content deployment, SDK install, warnings, the xcframework slice merge and the Mac Catalyst toolchain.
   include/haylen/         Public C++ API. Dimension-agnostic contexts: core, math, io, assets, graphics, text, input, audio, ui, platform, localization, storage, ai, debug, net, lua and plugins.
   include/haylen/2d/      Public 2D API: graphics, animation, particles, lighting, physics, tiled, navigation, spatial, procedural.
-  src/                    Implementation mirroring include/. src/lua/ holds the binding toolkit, src/plugins/ the built-in plugins and src/platform/ the host boundary, the native interop and one folder per platform (sokol, headless, apple, android, web, windows, linux, desktop). The `haylen` player is src/platform/sokol/LuaPlayer.cpp.
+  src/                    Implementation mirroring include/. src/lua/ holds the binding toolkit, src/plugins/ the built-in plugins and src/platform/ the host boundary, the native interop and one folder per platform (sokol, headless, apple, android, web, windows, linux). The `haylen` player is src/platform/sokol/LuaPlayer.cpp.
   shaders/                sokol-shdc shader sources and the shader library app shaders include.
   platform/android/       Gradle project of the haylen Android library (activity with the splash screen, bridge, gamepad, insets, text input and the player library).
   platform/web/           JavaScript runtime, audio worklet and bridge, and the HTML shell and backend picker of C++ web apps.
@@ -155,7 +155,8 @@ extras/images/            Brand images: the vertical and horizontal logos, the s
 - Apps consume only public engine headers from `engine/include` and the Lua API.
 - The portable engine library never calls Sokol app or OS APIs. It reaches them only through the internal `Host` interface in `engine/src/platform/Host.hpp`. `haylen_runtime` implements the host for real platforms and `haylen_headless` implements it for tests.
 - Rendering targets Sokol through the Haylen graphics API. Apps never include Sokol, Box2D, miniaudio, Dear ImGui backend, Varn internals, JNI, UIKit, AppKit or Emscripten headers.
-- Platform services go through `platform::Bridge` using JSON requests and asynchronous callbacks delivered on the frame thread.
+- Services the engine offers on every platform, such as system information, native dialogs, opening URLs and vibration, go through the `Host` interface and the `Services` of each platform folder, and complete asynchronously on the frame thread. The engine exposes them as its own C++ and Lua APIs (`platform::System`, `platform::Dialogs`, `haylen.system`, `haylen.dialogs`), never as bridge methods.
+- The `platform::Bridge` carries only the methods and events of apps and native plugins, as JSON requests and asynchronous callbacks delivered on the frame thread. It has no built-in methods.
 - All gameplay input goes through the action map, and UI input goes through focus navigation that works with every device.
 - UI positions itself in the engine-provided safe area.
 - Physics goes through the Haylen Box2D wrapper, whose handles detect a destroyed world.

@@ -201,6 +201,8 @@ The engine publishes these events on the bus. Events with data pass it to listen
 | `keyboardShown` | The on-screen keyboard appeared or changed its frame, such as when a suggestion bar shows. | `{x, y, width, height}`, the area it covers in design units, like `viewport.safeRect()`. |
 | `keyboardHidden` | The on-screen keyboard went away. | None. |
 | `networkOnline`, `networkOffline` | The device gained or lost its network, where the platform reports it: browsers, Android and Apple platforms, macOS included. The first report publishes the state the app starts in, usually on its first frame, and [haylen.networkState()](haylen.md#haylennetworkstate) returns the last state at any time. | None. |
+| `systemThemeChanged` | The system switched between light and dark colors, as `system.theme()` of [haylen.system](system.md#systemtheme) reports them. | `{theme}`, `'light'` or `'dark'`. |
+| `batteryChanged` | The level, the charging or the state of the battery changed, as `system.battery()` of [haylen.system](system.md#systembattery) reports it. | `{level, charging, state}` |
 | `webSocketConnected` | A WebSocket of [haylen.net](net.md) opened, the first time or after reconnecting. | `{url, protocol}` |
 | `webSocketDisconnected` | An open WebSocket lost its connection or closed, before it reconnects or ends. | `{url, code, reason}` |
 | `webSocketReconnecting` | A WebSocket with reconnection scheduled its next attempt after the connection dropped or an attempt failed. | `{url, attempt, delay}`, where `attempt` counts from 1 and `delay` is the wait in seconds. |

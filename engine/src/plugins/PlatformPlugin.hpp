@@ -4,7 +4,7 @@
 
 namespace haylen::plugins {
 
-// Answers the engine.info and app.version platform calls, connects the replies and events of native code to the bridge of the app while it runs and installs haylen.platform.
+// Connects the replies and events of native code and the answers of native dialogs to the app while it runs, and installs haylen.platform, haylen.system and haylen.dialogs.
 class PlatformPlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {

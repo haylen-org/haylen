@@ -26,7 +26,7 @@ local kEvents = {
     'sceneHoldStarted', 'sceneHoldFinished', 'sceneRevealStarted', 'sceneRevealFinished', 'autoloadStarted', 'autoloadStopped',
     'windowResized', 'windowFocusGained', 'windowFocusLost', 'windowFullscreenChanged', 'windowOrientationChanged', 'windowSafeAreaChanged',
     'uiDocumentMounted', 'uiDocumentUnmounted', 'gamepadConnected', 'gamepadDisconnected', 'audioInterrupted', 'audioResumed', 'audioRouteChanged',
-    'keyboardShown', 'keyboardHidden', 'networkOnline', 'networkOffline', 'webSocketConnected', 'webSocketDisconnected', 'webSocketReconnecting',
+    'keyboardShown', 'keyboardHidden', 'networkOnline', 'networkOffline', 'systemThemeChanged', 'batteryChanged', 'webSocketConnected', 'webSocketDisconnected', 'webSocketReconnecting',
     'assetLoaded', 'assetUnloaded', 'assetReloaded', 'objectCreated', 'objectDestroyed',
 }
 local kColors = {app = sample.warm, scene = sample.accent, window = sample.green, asset = '#FFC9A0FF', webSocket = sample.red}

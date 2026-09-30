@@ -78,7 +78,7 @@ The day runs dawn, day, dusk and night in a loop of 15, 150, 15 and 90 seconds. 
 
 ## Platform bridge demo
 
-The settings screen calls `device.info` and, on Android and the web, `auth.google.signIn`, and shows the answer. Google sign-in needs the web client id of a Google Cloud project: set `googleServerClientId=<id>` in `~/.gradle/gradle.properties` for Android and the `googleClientId` constant of `platform/web/app.js` for the web. The native side lives in `platform/android/app` and `platform/web/app.js`, which `make.py run` lays over the platform templates, and [the bridge guide](../../../docs/platform_bridge.md) explains how to add methods of your own.
+The settings screen shows what `system.info()` of [haylen.system](../../../docs/lua-api/system.md) reports about the device and, on Android and the web, calls `auth.google.signIn` and shows the answer. Google sign-in needs the web client id of a Google Cloud project: set `googleServerClientId=<id>` in `~/.gradle/gradle.properties` for Android and the `googleClientId` constant of `platform/web/app.js` for the web. The native side lives in `platform/android/app` and `platform/web/app.js`, which `make.py run` lays over the platform templates, and [the bridge guide](../../../docs/platform_bridge.md) explains how to add methods of your own.
 
 ## Credits
 

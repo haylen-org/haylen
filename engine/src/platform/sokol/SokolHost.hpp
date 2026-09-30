@@ -8,6 +8,7 @@
 #include "platform/Host.hpp"
 #include "platform/KeyboardTranslator.hpp"
 #include "platform/NativeViews.hpp"
+#include "platform/SystemState.hpp"
 #include "platform/WindowStyle.hpp"
 #include "sokol_app.h"
 
@@ -66,9 +67,19 @@ class SokolHost final : public Host {
     [[nodiscard]] bool isAppCovered() const override;
     [[nodiscard]] std::vector<std::string> getNativePlugins() const override;
     void reportError(const core::Json& report) override;
+    [[nodiscard]] SystemInfo getSystemInfo() const override;
+    [[nodiscard]] Theme getTheme() const override;
+    [[nodiscard]] Battery getBattery() const override;
+    void openUrl(std::string_view url, std::function<void(bool opened)> callback) override;
+    void vibrate(float seconds) override;
+    void showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) override;
+    void cancelDialog(std::uint64_t id) override;
 
     // The native views of plugins over the app, which the platform services update from any thread. They belong to the process, so a reservation or a cover outlives the apps that restart under it.
     [[nodiscard]] static NativeViews& getNativeViews() noexcept;
+
+    // The theme and the battery that the platform services report from any thread, at initialize and whenever the system changes them. They belong to the process, so every app that starts hears the last report.
+    [[nodiscard]] static SystemState& getSystemState() noexcept;
 
     // Records the options the window opens with, before it exists, so the options the engine applies when the app starts find the window as it already is.
     void prepare(const WindowStyle& openingStyle, bool openingFocusable) noexcept {

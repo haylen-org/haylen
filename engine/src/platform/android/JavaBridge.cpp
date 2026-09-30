@@ -1,5 +1,7 @@
 #include "platform/android/JavaBridge.hpp"
 
+#include <utility>
+
 #include "haylen/core/Json.hpp"
 #include "varn/http/AndroidHttpBridge.h"
 
@@ -20,6 +22,12 @@ jmethodID JavaBridge::finishMethod = nullptr;
 jclass JavaBridge::activityClass = nullptr;
 jmethodID JavaBridge::lockOrientationMethod = nullptr;
 jmethodID JavaBridge::captureBackMethod = nullptr;
+jmethodID JavaBridge::systemInfoMethod = nullptr;
+jmethodID JavaBridge::openUrlMethod = nullptr;
+jmethodID JavaBridge::vibrateMethod = nullptr;
+std::mutex& JavaBridge::urlMutex = *new std::mutex();
+std::unordered_map<std::int64_t, std::function<void(bool)>>& JavaBridge::urlCallbacks = *new std::unordered_map<std::int64_t, std::function<void(bool)>>();
+std::int64_t JavaBridge::nextUrl = 1;
 
 jint JavaBridge::load(JavaVM* vm) {
     JNIEnv* env = nullptr;
@@ -43,6 +51,9 @@ jint JavaBridge::load(JavaVM* vm) {
     finishMethod = env->GetStaticMethodID(editorClass, "finish", "()V");
     lockOrientationMethod = env->GetStaticMethodID(activityClass, "lockOrientation", "(I)V");
     captureBackMethod = env->GetStaticMethodID(activityClass, "captureBack", "(Z)V");
+    systemInfoMethod = env->GetStaticMethodID(activityClass, "systemInfo", "()[B");
+    openUrlMethod = env->GetStaticMethodID(activityClass, "openUrl", "(J[B)V");
+    vibrateMethod = env->GetStaticMethodID(activityClass, "vibrate", "(J)V");
 
     // The plugins load when the process starts, before any activity loads this library, so their list is final here.
     const auto ids = static_cast<jbyteArray>(env->CallStaticObjectMethod(pluginsClass, env->GetStaticMethodID(pluginsClass, "ids", "()[B")));
@@ -103,6 +114,46 @@ void JavaBridge::lockOrientation(int value) {
 
 void JavaBridge::captureBack(bool value) {
     getEnv().CallStaticVoidMethod(activityClass, captureBackMethod, static_cast<jboolean>(value ? JNI_TRUE : JNI_FALSE));
+}
+
+std::string JavaBridge::getSystemInfo() {
+    JNIEnv& env = getEnv();
+    const auto bytes = static_cast<jbyteArray>(env.CallStaticObjectMethod(activityClass, systemInfoMethod));
+    std::string json = toString(env, bytes);
+    env.DeleteLocalRef(bytes);
+    return json;
+}
+
+// The callback waits outside the lock, because Java answers at once, from inside the call, when no activity runs.
+void JavaBridge::openUrl(std::string_view url, std::function<void(bool opened)> callback) {
+    std::int64_t request = 0;
+    {
+        const std::scoped_lock lock(urlMutex);
+        request = nextUrl++;
+        urlCallbacks.emplace(request, std::move(callback));
+    }
+    JNIEnv& env = getEnv();
+    const jbyteArray bytes = toBytes(env, url);
+    env.CallStaticVoidMethod(activityClass, openUrlMethod, static_cast<jlong>(request), bytes);
+    env.DeleteLocalRef(bytes);
+}
+
+void JavaBridge::answerUrl(std::int64_t request, bool opened) {
+    std::function<void(bool)> callback;
+    {
+        const std::scoped_lock lock(urlMutex);
+        const auto found = urlCallbacks.find(request);
+        if (found == urlCallbacks.end()) {
+            return;
+        }
+        callback = std::move(found->second);
+        urlCallbacks.erase(found);
+    }
+    callback(opened);
+}
+
+void JavaBridge::vibrate(std::int64_t milliseconds) {
+    getEnv().CallStaticVoidMethod(activityClass, vibrateMethod, static_cast<jlong>(milliseconds));
 }
 
 std::string JavaBridge::toString(JNIEnv& env, jbyteArray bytes) {

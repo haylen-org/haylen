@@ -7,26 +7,25 @@ Module.haylen = Module.haylen || {};
     const handlers = new Map();
     const levels = ["debug", "info", "warning", "error"];
 
-    // The browser answers the built-in methods, and a page can replace any of them with register.
-    handlers.set("device.info", () => ({ model: "Browser", system: "Web", systemVersion: navigator.userAgent, locale: navigator.language }));
-    handlers.set("system.locale", () => navigator.language);
-    handlers.set("system.openUrl", (params) => {
-        if (!params || !params.url) {
-            throw new Error("The url is missing.");
-        }
-        const opened = window.open(params.url, "_blank");
+    // The system services of the engine: the language of the browser, a url opened in a new tab and the vibration of phones whose browser offers it.
+    haylen.locale = function () {
+        return navigator.language;
+    };
+
+    haylen.openUrl = function (url) {
+        const opened = window.open(url, "_blank");
         if (!opened) {
-            throw new Error("The url could not be opened.");
+            return false;
         }
         opened.opener = null;
         return true;
-    });
-    handlers.set("haptics.vibrate", (params) => {
+    };
+
+    haylen.vibrate = function (seconds) {
         if (navigator.vibrate) {
-            navigator.vibrate(params && params.duration ? params.duration : 40);
+            navigator.vibrate(Math.max(1, Math.round(seconds * 1000)));
         }
-        return null;
-    });
+    };
 
     // Registers an async handler for a platform method. It receives the parsed params and a context with the id of the call and a signal that aborts when the app cancels the call or its timeout passes, and it returns any JSON value. A thrown error fails the call with its message and its code and data, or with the code exception when it has no code.
     haylen.register = function (method, handler) {

@@ -21,16 +21,15 @@ TEST(PlatformLuaTest, CallsNativeAndLuaHandlersWithPromises) {
         platform.registerHandler('math.double', function(params) return {value = params.value * 2} end)
         platform.registerHandler('math.fail', function() error('handler failed') end)
         async.spawn(function()
-            local info = platform.call('engine.info'):await()
             local doubled = platform.call('math.double', {value = 21}):await()
             local _, failure = platform.call('math.fail'):await()
-            local device = platform.call('device.info'):await()
+            local device = platform.call('device.model'):await()
             local _, denied = platform.call('auth.login', {provider = 'google'}):await()
-            summary = info.platform .. ' ' .. doubled.value .. ' ' .. tostring(failure.message:find('handler failed') ~= nil) .. ' ' .. device.model .. ' ' .. denied
+            summary = doubled.value .. ' ' .. tostring(failure.message:find('handler failed') ~= nil) .. ' ' .. device.model .. ' ' .. denied
         end)
     )");
     // clang-format on
-    EXPECT_EQ(fixture.lua("return platform.hasHandler('math.double') and not platform.hasHandler('device.info')"), "true");
+    EXPECT_EQ(fixture.lua("return platform.hasHandler('math.double') and not platform.hasHandler('device.model')"), "true");
 
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.host().getPlatformCalls().size() == 1; }));
     fixture.engine().getPlatform().resolve(fixture.host().getPlatformCalls()[0].id, true, R"({"model": "phone"})");
@@ -39,7 +38,7 @@ TEST(PlatformLuaTest, CallsNativeAndLuaHandlersWithPromises) {
     fixture.engine().getPlatform().resolve(fixture.host().getPlatformCalls()[1].id, false, R"("denied")");
 
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return summary ~= nil") == "true"; }));
-    EXPECT_EQ(fixture.lua("return summary"), "headless 42 true phone denied");
+    EXPECT_EQ(fixture.lua("return summary"), "42 true phone denied");
     EXPECT_NE(fixture.lua("platform.registerHandler('x', 'not a function')").find("error: "), std::string::npos);
 }
 
@@ -100,6 +99,8 @@ TEST(PlatformLuaTest, FailsCallsWithTypedErrorsTimeoutsAndCancellation) {
     fixture.runLua(R"(
         platform = require('haylen.platform')
         async = require('async')
+        platform.registerHandler('app.name', function() return 'Island' end)
+        platform.registerHandler('app.build', function() return 7 end)
         slow = platform.call('store.slow', {item = 1}, {timeout = 0.05})
         typed = platform.call('store.typed')
         given = platform.call('store.given')
@@ -107,8 +108,8 @@ TEST(PlatformLuaTest, FailsCallsWithTypedErrorsTimeoutsAndCancellation) {
             local _, timeout = slow:await()
             local _, typedError = typed:await()
             local _, cancel = given:await()
-            local all = async.all({platform.call('engine.info').promise, platform.call('app.version').promise}):await()
-            summary = table.concat({timeout.code, timeout.message, typedError.code, typedError.message, typedError.data.retry, cancel.code, tostring(given.done), all[1].engine, all[2]}, '|')
+            local all = async.all({platform.call('app.name').promise, platform.call('app.build').promise}):await()
+            summary = table.concat({timeout.code, timeout.message, typedError.code, typedError.message, typedError.data.retry, cancel.code, tostring(given.done), all[1], all[2]}, '|')
         end)
     )");
     // clang-format on
@@ -117,7 +118,7 @@ TEST(PlatformLuaTest, FailsCallsWithTypedErrorsTimeoutsAndCancellation) {
     EXPECT_EQ(fixture.lua("return given:cancel()"), "true");
 
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return summary ~= nil") == "true"; }));
-    EXPECT_EQ(fixture.lua("return summary"), "timeout|The platform call store.slow timed out.|closed|The store is closed.|30|cancelled|true|Haylen|1.0.0");
+    EXPECT_EQ(fixture.lua("return summary"), "timeout|The platform call store.slow timed out.|closed|The store is closed.|30|cancelled|true|Island|7");
     EXPECT_EQ(fixture.host().getCancelledCalls(), (std::vector<std::uint64_t>{std::stoull(fixture.lua("return given.id")), std::stoull(fixture.lua("return slow.id"))}));
     EXPECT_EQ(fixture.lua("return given:cancel()"), "false");
 

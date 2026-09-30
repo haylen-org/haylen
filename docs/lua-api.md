@@ -57,7 +57,9 @@ Apps for Haylen are written in Lua. Every engine capability is a module that `re
 | [haylen.assets](lua-api/assets.md) | Loading package files now or in the background, and preload groups. |
 | [haylen.storage](lua-api/storage.md) | Private files of the player, the folder Varn's `fs` shares with them, and named save slots with summaries, on the frame thread or asynchronously on the I/O pool. |
 | [haylen.preferences](lua-api/preferences.md) | Player preferences that persist between sessions. |
-| [haylen.platform](lua-api/platform.md) | The JSON bridge to native code, such as sign-in and device information, with typed errors, timeouts, cancellation, calls without answers, retained events and the handles of the plugins of the app. |
+| [haylen.system](lua-api/system.md) | What the device and its operating system are, the theme and the battery with their changes, opening urls and vibrating. |
+| [haylen.dialogs](lua-api/dialogs.md) | Native message boxes and pickers of files to open, of a destination to save to and of a folder, which never block the app. |
+| [haylen.platform](lua-api/platform.md) | The JSON bridge to native code, such as sign-in and purchases, with typed errors, timeouts, cancellation, calls without answers, retained events and the handles of the plugins of the app. |
 | [haylen.native](lua-api/native.md) | Native libraries for Varn's `ffi`, found where the app ships them, their symbols, callbacks from any thread and the interface of the engine for libraries. |
 | [haylen.net](lua-api/net.md) | WebSocket connections with reconnection and pings. |
 | [haylen.debug](lua-api/debug.md) | The debug statistics, object counts, monitors, the frame profiler and the recent log. |

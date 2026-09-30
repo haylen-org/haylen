@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <span>
 #include <string>
@@ -13,8 +14,10 @@
 #include "haylen/math/Insets.hpp"
 #include "haylen/math/Polygon.hpp"
 #include "haylen/math/Rect.hpp"
+#include "haylen/platform/DialogRequest.hpp"
 #include "haylen/platform/Monitor.hpp"
 #include "haylen/platform/Orientation.hpp"
+#include "haylen/platform/SystemInfo.hpp"
 #include "haylen/platform/TextInput.hpp"
 #include "haylen/platform/Window.hpp"
 #include "platform/WindowStyle.hpp"
@@ -25,7 +28,7 @@ class Package;
 
 namespace haylen::platform {
 
-// Services every platform folder implements for the Sokol runtime. Exactly one implementation is compiled into a runtime build.
+// Services every platform folder implements for the Sokol runtime. Exactly one implementation is compiled into a runtime build. The platform reports the theme and the battery of the device through SokolHost::getSystemState, from any thread, when it initializes and whenever the system changes them.
 class Services final {
   public:
     [[nodiscard]] static std::string_view getName() noexcept;
@@ -90,6 +93,21 @@ class Services final {
 
     // Tells the native handler of a call that the app gave it up, so it can stop working on it.
     static void cancel(std::uint64_t id);
+
+    // What the device and its operating system are, read once per process. The graphics device names the GPU, so gpuName stays empty.
+    [[nodiscard]] static SystemInfo getSystemInfo();
+
+    // Opens the url with the app the system picks for it. The callback runs exactly once, on any thread, with whether an app took the url.
+    static void openUrl(const std::string& url, std::function<void(bool opened)> callback);
+
+    // Vibrates the device for the given seconds where it can vibrate, and does nothing elsewhere.
+    static void vibrate(float seconds);
+
+    // Shows a native dialog and answers it exactly once through DialogRelay::resolve with the same id, from any thread. Picked files that have no path of their own are copied into folder, which the platform creates when it needs it.
+    static void showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder);
+
+    // Closes a dialog that the app gave up, where the platform can.
+    static void cancelDialog(std::uint64_t id);
 };
 
 } // namespace haylen::platform

@@ -33,7 +33,9 @@
 #include "haylen/math/Insets.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/platform/Bridge.hpp"
+#include "haylen/platform/Dialogs.hpp"
 #include "haylen/platform/Orientation.hpp"
+#include "haylen/platform/System.hpp"
 #include "haylen/plugins/PluginRegistry.hpp"
 #include "haylen/storage/UserStorage.hpp"
 #include "platform/Host.hpp"
@@ -65,6 +67,8 @@ struct EngineState {
     TweenManager tweens;
     debug::Profiler profiler;
     std::unique_ptr<platform::Bridge> platform;
+    std::unique_ptr<platform::System> system;
+    std::unique_ptr<platform::Dialogs> dialogs;
     std::unique_ptr<graphics2d::Renderer> renderer;
     std::unique_ptr<assets::Manager> assets;
     std::unique_ptr<SceneManager> scenes;

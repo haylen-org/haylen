@@ -176,13 +176,12 @@ scene.push({
 
 Returns the added language that best matches a BCP 47 language tag, or `nil` when none matches. The match ignores case and treats `_` like `-`. An exact match wins, and otherwise a language with the same base language matches, preferring the plain base language, so `pt-BR` matches `pt` before `pt-PT`.
 
-The device language comes from the `system.locale` call of [haylen.platform](platform.md), which resolves with a tag such as `pt-BR` on every platform.
+The device language comes from the `locale` of `system.info()` in [haylen.system](system.md#systeminfo), a tag such as `pt-BR`, and its `languages` list the other languages the player prefers.
 
 ```lua
-local async = require('async')
 local localization = require('haylen.localization')
-local platform = require('haylen.platform')
 local preferences = require('haylen.preferences')
+local system = require('haylen.system')
 
 localization.loadFolder('i18n')
 localization.setFallback('en')
@@ -191,13 +190,11 @@ local chosen = preferences.get('game.language')
 if chosen then
     localization.setLanguage(chosen)
 else
-    async.spawn(function()
-        local tag = platform.call('system.locale'):await()
-        local language = tag and localization.findBestMatch(tag)
-        if language then
-            localization.setLanguage(language)
-        end
-    end)
+    local tag = system.info().locale
+    local language = tag and localization.findBestMatch(tag)
+    if language then
+        localization.setLanguage(language)
+    end
 end
 ```
 

@@ -12,7 +12,7 @@ typedef void (^HaylenHandler)(id params, HaylenReply reply);
 typedef void (^HaylenCancel)(void);
 typedef HaylenCancel _Nullable (^HaylenCancellableHandler)(id params, HaylenReply reply);
 
-// Native side of the platform bridge on Apple platforms. Handlers may be registered at any time, even before the app starts, and one registered under the name of a built-in method replaces it. They run on the main queue and may reply later from any thread.
+// Native side of the platform bridge on Apple platforms. Handlers may be registered at any time, even before the app starts. They run on the main queue and may reply later from any thread.
 @interface HaylenBridge : NSObject
 
 + (void)registerHandler:(NSString*)method handler:(HaylenHandler)handler;

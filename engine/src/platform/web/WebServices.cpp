@@ -6,11 +6,13 @@
 #include <array>
 #include <cstdlib>
 #include <string>
+#include <thread>
 #include <utility>
 
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
+#include "platform/DialogRelay.hpp"
 #include "platform/web/WebTextInput.hpp"
 #include "sokol_app.h"
 
@@ -54,6 +56,18 @@ EM_JS(int, haylen_js_orientation, (), {
 
 EM_JS(void, haylen_js_lock_orientation, (int value), {
     Module.haylen.lockOrientation(value);
+});
+
+EM_JS(char*, haylen_js_locale, (), {
+    return stringToNewUTF8(Module.haylen.locale());
+});
+
+EM_JS(int, haylen_js_open_url, (const char* url), {
+    return Module.haylen.openUrl(UTF8ToString(url)) ? 1 : 0;
+});
+
+EM_JS(void, haylen_js_vibrate, (float seconds), {
+    Module.haylen.vibrate(seconds);
 });
 // clang-format on
 
@@ -183,5 +197,31 @@ void Services::dispatch(std::uint64_t id, std::string_view method, std::string_v
 void Services::cancel(std::uint64_t id) {
     haylen_js_cancel(static_cast<double>(id));
 }
+
+SystemInfo Services::getSystemInfo() {
+    SystemInfo info;
+    info.os = SystemInfo::Os::Web;
+    info.deviceKind = SystemInfo::DeviceKind::Browser;
+    info.cpuCores = static_cast<int>(std::thread::hardware_concurrency());
+    char* locale = haylen_js_locale();
+    info.locale = locale;
+    std::free(locale);
+    return info;
+}
+
+// The page opens the url in a new tab at once, so the answer comes during the call.
+void Services::openUrl(const std::string& url, std::function<void(bool opened)> callback) {
+    callback(haylen_js_open_url(url.c_str()) != 0);
+}
+
+void Services::vibrate(float seconds) {
+    haylen_js_vibrate(seconds);
+}
+
+void Services::showDialog(std::uint64_t id, const DialogRequest&, const std::filesystem::path&) {
+    DialogRelay::resolve(id, {.failure = DialogResult::Failure{.code = DialogResult::Code::Unsupported, .message = "Native dialogs are not implemented on the web yet."}});
+}
+
+void Services::cancelDialog(std::uint64_t) {}
 
 } // namespace haylen::platform

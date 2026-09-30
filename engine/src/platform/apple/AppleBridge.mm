@@ -1,13 +1,5 @@
 #import "platform/apple/AppleBridge.hpp"
 
-#include <TargetConditionals.h>
-
-#if TARGET_OS_OSX
-#import <AppKit/AppKit.h>
-#else
-#import <UIKit/UIKit.h>
-#endif
-
 #include "haylen/core/Log.hpp"
 #include "platform/BridgeRelay.hpp"
 
@@ -32,56 +24,6 @@ void AppleBridge::clearHandlers() {
     @synchronized([HaylenBridge class]) {
         [getHandlers() removeAllObjects];
     }
-}
-
-void AppleBridge::registerBuiltIns() {
-    registerBuiltIn(@"device.info", ^(id, HaylenReply reply) {
-#if TARGET_OS_OSX
-      NSOperatingSystemVersion version = NSProcessInfo.processInfo.operatingSystemVersion;
-      NSString* systemVersion = [NSString stringWithFormat:@"%ld.%ld.%ld", static_cast<long>(version.majorVersion), static_cast<long>(version.minorVersion), static_cast<long>(version.patchVersion)];
-      reply(YES, @{@"model" : @"Mac", @"system" : @"macOS", @"systemVersion" : systemVersion, @"locale" : getLanguageTag()});
-#else
-      UIDevice* device = UIDevice.currentDevice;
-      reply(YES, @{@"model" : device.model, @"system" : device.systemName, @"systemVersion" : device.systemVersion, @"locale" : getLanguageTag()});
-#endif
-    });
-    registerBuiltIn(@"system.locale", ^(id, HaylenReply reply) { reply(YES, getLanguageTag()); });
-    registerBuiltIn(@"system.openUrl", ^(id params, HaylenReply reply) {
-      id address = [params isKindOfClass:NSDictionary.class] ? params[@"url"] : nil;
-      if (![address isKindOfClass:NSString.class] || [address length] == 0) {
-          reply(NO, @"The url is missing.");
-          return;
-      }
-      NSURL* url = [NSURL URLWithString:address];
-      if (url == nil) {
-          reply(NO, @"The url could not be opened.");
-          return;
-      }
-#if TARGET_OS_OSX
-      if ([NSWorkspace.sharedWorkspace openURL:url]) {
-          reply(YES, @YES);
-      } else {
-          reply(NO, @"The url could not be opened.");
-      }
-#else
-      [UIApplication.sharedApplication openURL:url
-                                       options:@{}
-                             completionHandler:^(BOOL opened) {
-                               if (opened) {
-                                   reply(YES, @YES);
-                               } else {
-                                   reply(NO, @"The url could not be opened.");
-                               }
-                             }];
-#endif
-    });
-    registerBuiltIn(@"haptics.vibrate", ^(id, HaylenReply reply) {
-#if TARGET_OS_IOS
-      UIImpactFeedbackGenerator* generator = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
-      [generator impactOccurred];
-#endif
-      reply(YES, nil);
-    });
 }
 
 // The call is pending from here on, so a cancel that arrives before the handler runs keeps it from running, and the cancel block the handler returns is kept only while the call still waits.
@@ -172,17 +114,6 @@ NSMutableDictionary<NSNumber*, id>* AppleBridge::getCalls() {
     return calls;
 }
 
-void AppleBridge::registerBuiltIn(NSString* method, HaylenHandler handler) {
-    @synchronized([HaylenBridge class]) {
-        if (getHandlers()[method] == nil) {
-            getHandlers()[method] = ^HaylenCancel(id params, HaylenReply reply) {
-              handler(params, reply);
-              return nil;
-            };
-        }
-    }
-}
-
 // Returns the JSON text of a value, or nothing when JSON cannot hold it, which NSJSONSerialization reports with an exception.
 std::optional<std::string> AppleBridge::toJson(id value) {
     if (value == nil) {
@@ -206,12 +137,6 @@ id AppleBridge::fromJson(std::string_view text) {
 
 NSString* AppleBridge::toString(std::string_view text) {
     return [[NSString alloc] initWithBytes:text.data() length:text.size() encoding:NSUTF8StringEncoding];
-}
-
-// Answers the first preferred language as a BCP 47 tag, the format every platform reports.
-NSString* AppleBridge::getLanguageTag() {
-    NSString* preferred = NSLocale.preferredLanguages.firstObject;
-    return preferred != nil ? preferred : [NSLocale.currentLocale.localeIdentifier stringByReplacingOccurrencesOfString:@"_" withString:@"-"];
 }
 
 // A failure whose code or data JSON cannot hold fails with its message alone.

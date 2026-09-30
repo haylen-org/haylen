@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -13,6 +14,10 @@
 #include "haylen/core/Json.hpp"
 #include "haylen/input/GamepadState.hpp"
 #include "haylen/math/Insets.hpp"
+#include "haylen/platform/Battery.hpp"
+#include "haylen/platform/DialogRequest.hpp"
+#include "haylen/platform/SystemInfo.hpp"
+#include "haylen/platform/Theme.hpp"
 #include "haylen/platform/Window.hpp"
 
 namespace haylen::platform {
@@ -42,6 +47,25 @@ class Host : public Window {
 
     // Hands the error that stopped the app to native code as the JSON report of lua::Error::toJson, with its message, file, line, traceback and frames.
     virtual void reportError(const core::Json& report) = 0;
+
+    // What the device and its operating system are, read once when an app starts. The graphics device names the GPU, so gpuName stays empty here.
+    [[nodiscard]] virtual SystemInfo getSystemInfo() const = 0;
+
+    // The theme and the battery as the platform last reported them, which the engine reads once per frame.
+    [[nodiscard]] virtual Theme getTheme() const = 0;
+    [[nodiscard]] virtual Battery getBattery() const = 0;
+
+    // Opens the url with the app the system picks for it. The callback runs exactly once, on any thread and possibly after the engine that asked is gone, with whether an app took the url.
+    virtual void openUrl(std::string_view url, std::function<void(bool opened)> callback) = 0;
+
+    // Vibrates the device for the given seconds where it can vibrate, and does nothing elsewhere.
+    virtual void vibrate(float seconds) = 0;
+
+    // Shows a native dialog, which the platform answers exactly once through DialogRelay::resolve with the same id, from any thread. Picked files that have no path of their own are copied into folder, which the platform creates when it needs it.
+    virtual void showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) = 0;
+
+    // Closes a dialog that the app gave up, where the platform can. Its answer is dropped either way.
+    virtual void cancelDialog(std::uint64_t id) = 0;
 };
 
 } // namespace haylen::platform

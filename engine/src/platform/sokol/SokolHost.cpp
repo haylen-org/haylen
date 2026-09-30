@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #include "platform/Services.hpp"
 #include "sokol_glue.h"
@@ -257,9 +258,44 @@ void SokolHost::reportError(const core::Json& report) {
     Services::reportError(report);
 }
 
+// The platform reads the system once per process, which is when an app of the process first starts.
+SystemInfo SokolHost::getSystemInfo() const {
+    static const SystemInfo& info = *new SystemInfo(Services::getSystemInfo());
+    return info;
+}
+
+Theme SokolHost::getTheme() const {
+    return getSystemState().getTheme();
+}
+
+Battery SokolHost::getBattery() const {
+    return getSystemState().getBattery();
+}
+
+void SokolHost::openUrl(std::string_view url, std::function<void(bool opened)> callback) {
+    Services::openUrl(std::string(url), std::move(callback));
+}
+
+void SokolHost::vibrate(float seconds) {
+    Services::vibrate(seconds);
+}
+
+void SokolHost::showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) {
+    Services::showDialog(id, request, folder);
+}
+
+void SokolHost::cancelDialog(std::uint64_t id) {
+    Services::cancelDialog(id);
+}
+
 NativeViews& SokolHost::getNativeViews() noexcept {
     static NativeViews& views = *new NativeViews();
     return views;
+}
+
+SystemState& SokolHost::getSystemState() noexcept {
+    static SystemState& state = *new SystemState();
+    return state;
 }
 
 sapp_mouse_cursor SokolHost::toSokolCursor(Cursor cursor) noexcept {

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <memory>
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -56,6 +57,9 @@ class Device final {
     std::size_t uploadTextures();
 
     [[nodiscard]] std::string_view getBackendName() const noexcept;
+
+    // The name of the GPU the device runs on, as its backend reports it: the name of the Metal device, the description of the DXGI adapter behind Direct3D 11, the GL_RENDERER string of OpenGL and WebGL 2, and the adapter info of WebGPU. It is empty where the backend reports none, such as the dummy backend of tests.
+    [[nodiscard]] std::string getAdapterName() const;
     [[nodiscard]] int getMaxTextureSize() const noexcept;
 
     // Lists the pools of images, views, buffers, samplers, shaders and pipelines.

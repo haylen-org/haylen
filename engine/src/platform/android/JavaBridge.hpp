@@ -4,13 +4,16 @@
 #include <pthread.h>
 
 #include <cstdint>
+#include <functional>
+#include <mutex>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace haylen::platform {
 
-// Calls into the Java side of the haylen Android library: the platform bridge of dev.haylen.HaylenBridge, the plugins of dev.haylen.HaylenPlugins, the hidden text field of dev.haylen.HaylenEditText and the orientation lock and back callback of dev.haylen.HaylenActivity. A native thread attaches to the Java VM the first time it calls Java and detaches when it ends.
+// Calls into the Java side of the haylen Android library: the platform bridge of dev.haylen.HaylenBridge, the plugins of dev.haylen.HaylenPlugins, the hidden text field of dev.haylen.HaylenEditText and the orientation lock, the back callback and the system services of dev.haylen.HaylenActivity. A native thread attaches to the Java VM the first time it calls Java and detaches when it ends.
 class JavaBridge final {
   public:
     // Resolves the Java classes the native side calls, including the HTTP transport of Varn, which JNI_OnLoad does because the app class loader is still in reach there, and reads the plugins that the process loaded before. Returns the JNI version, or JNI_ERR when the APK lacks a class.
@@ -41,6 +44,15 @@ class JavaBridge final {
     // Tells the activity whether the app takes the back button, which on Android 13 and later decides whether back reaches the app or leaves it with the back animation of the system.
     static void captureBack(bool value);
 
+    // What Android tells about the device, as JSON with osVersion, deviceModel and locale.
+    [[nodiscard]] static std::string getSystemInfo();
+
+    // Opens the url with the app that handles it on the main thread, and answerUrl hands the callback whether one took it.
+    static void openUrl(std::string_view url, std::function<void(bool opened)> callback);
+    static void answerUrl(std::int64_t request, bool opened);
+
+    static void vibrate(std::int64_t milliseconds);
+
     // Text crosses JNI as UTF-8 bytes, because the JNI string functions use a modified UTF-8 that breaks characters outside the Basic Multilingual Plane, such as emoji.
     [[nodiscard]] static std::string toString(JNIEnv& env, jbyteArray bytes);
 
@@ -67,6 +79,14 @@ class JavaBridge final {
     static jclass activityClass;
     static jmethodID lockOrientationMethod;
     static jmethodID captureBackMethod;
+    static jmethodID systemInfoMethod;
+    static jmethodID openUrlMethod;
+    static jmethodID vibrateMethod;
+
+    // The callbacks of the urls that wait for the answer of Java, by request.
+    static std::mutex& urlMutex;
+    static std::unordered_map<std::int64_t, std::function<void(bool)>>& urlCallbacks;
+    static std::int64_t nextUrl;
 };
 
 } // namespace haylen::platform

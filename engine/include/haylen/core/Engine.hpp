@@ -23,7 +23,9 @@ class Runtime;
 
 namespace haylen::platform {
 class Bridge;
+class Dialogs;
 class Host;
+class System;
 class Window;
 struct Event;
 } // namespace haylen::platform
@@ -131,6 +133,8 @@ class Engine final {
     [[nodiscard]] SceneManager& getScenes() noexcept;
     [[nodiscard]] assets::Manager& getAssets() noexcept;
     [[nodiscard]] platform::Bridge& getPlatform() noexcept;
+    [[nodiscard]] platform::System& getSystem() noexcept;
+    [[nodiscard]] platform::Dialogs& getDialogs() noexcept;
     [[nodiscard]] plugins::PluginRegistry& getPlugins() noexcept;
     [[nodiscard]] const std::shared_ptr<text::Font>& getDefaultFont() noexcept;
     [[nodiscard]] varn::runtime::Runtime& getScriptRuntime() noexcept;

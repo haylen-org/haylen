@@ -10,10 +10,14 @@
 
 #include <stdexcept>
 #include <string>
+#include <utility>
 
+#include "haylen/core/Json.hpp"
 #include "haylen/io/Package.hpp"
+#include "platform/BridgeRelay.hpp"
+#include "platform/DialogRelay.hpp"
 #include "platform/windows/WindowsDesktop.hpp"
-#include "platform/windows/WindowsMethods.hpp"
+#include "platform/windows/WindowsSystem.hpp"
 #include "platform/windows/WindowsTextInput.hpp"
 
 namespace haylen::platform {
@@ -160,11 +164,28 @@ TextInput& Services::getTextInput() {
     return input;
 }
 
-void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson) {
-    WindowsMethods().dispatch(id, method, paramsJson);
+// Windows has no handler registry in the language of the platform, so native libraries and C++ plugins answer the methods of apps.
+void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view) {
+    BridgeRelay::resolve(id, false, core::Json{{"message", "No native handler is registered for " + std::string(method) + "."}, {"code", "noHandler"}}.dump());
 }
 
-// The desktop methods answer during the call, so no call of theirs is ever pending.
+// Every call fails while it is made, so no call is ever pending here.
 void Services::cancel(std::uint64_t) {}
+
+SystemInfo Services::getSystemInfo() {
+    return WindowsSystem::getInfo();
+}
+
+void Services::openUrl(const std::string& url, std::function<void(bool opened)> callback) {
+    WindowsSystem::openUrl(url, std::move(callback));
+}
+
+void Services::vibrate(float) {}
+
+void Services::showDialog(std::uint64_t id, const DialogRequest&, const std::filesystem::path&) {
+    DialogRelay::resolve(id, {.failure = DialogResult::Failure{.code = DialogResult::Code::Unsupported, .message = "Native dialogs are not implemented on Windows yet."}});
+}
+
+void Services::cancelDialog(std::uint64_t) {}
 
 } // namespace haylen::platform

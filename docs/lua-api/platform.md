@@ -1,6 +1,6 @@
 # haylen.platform
 
-`haylen.platform` is the bridge between the app and native code. An app calls named methods with JSON parameters and awaits their JSON result, which may fail with a typed error, time out or be cancelled, and it listens to named events that native code sends. Use it for everything the engine does not wrap, such as sign-in, purchases, sharing, deep links or haptics, with the handlers living in Java or Kotlin on Android, Objective-C or Swift on Apple platforms, JavaScript on the web, C in native libraries, or C++ anywhere. The Lua modules of [plugins](../plugins.md) reach their native parts through the [handle of their plugin](#plugin-handles). The [native code guide](../native.md) compares the bridge with the other ways to reach native code.
+`haylen.platform` is the bridge between the app and native code. An app calls named methods with JSON parameters and awaits their JSON result, which may fail with a typed error, time out or be cancelled, and it listens to named events that native code sends. Use it for everything the engine does not wrap, such as sign-in, purchases, sharing or deep links, with the handlers living in Java or Kotlin on Android, Objective-C or Swift on Apple platforms, JavaScript on the web, C in native libraries, or C++ anywhere. The engine wraps what the device is, opening urls and vibrating in [haylen.system](system.md), and native message boxes and file pickers in [haylen.dialogs](dialogs.md). The Lua modules of [plugins](../plugins.md) reach their native parts through the [handle of their plugin](#plugin-handles). The [native code guide](../native.md) compares the bridge with the other ways to reach native code.
 
 ```lua
 local platform = require('haylen.platform')
@@ -10,9 +10,9 @@ local platform = require('haylen.platform')
 
 `platform.call` looks for a handler in this order:
 
-1. A handler registered in the engine, either from Lua with `platform.registerHandler` or from C++. The engine itself registers `engine.info` and `app.version` this way.
+1. A handler registered in the engine, either from Lua with `platform.registerHandler` or from C++.
 2. A handler that a native library registered through the `HaylenNativeApi` of the engine, as [haylen.native](native.md#library-handlers) describes.
-3. The native handler of the running platform: `HaylenBridge` on Android and Apple platforms, `Module.haylen` on the web, and the desktop handlers on Windows and Linux.
+3. The native handler of the running platform: `HaylenBridge` on Android and Apple platforms and `Module.haylen` on the web. Windows and Linux have no handler registry of their own, so handlers of native libraries and C++ handlers answer there.
 
 A method that no handler answers fails with the code `noHandler` and `No native handler is registered for <method>.`, or `No page handler is registered for <method>.` on the web.
 
@@ -80,7 +80,7 @@ end
 
 ### platform.registerHandler(method, handler)
 
-Answers the method named `method` with the Lua function `handler(params)`, which returns the result. The function runs during the `platform.call` that asks for it and must return at once, and its result must convert to JSON. An error raised inside it fails the call with the error message and its stack trace instead of stopping the app. A registered handler replaces any earlier engine handler of the same method, including `engine.info` and `app.version`, and it takes precedence over native handlers. Lua handlers suit desktop builds and tests that stand in for mobile services.
+Answers the method named `method` with the Lua function `handler(params)`, which returns the result. The function runs during the `platform.call` that asks for it and must return at once, and its result must convert to JSON. An error raised inside it fails the call with the error message and its stack trace instead of stopping the app. A registered handler replaces any earlier engine handler of the same method, and it takes precedence over native handlers. Lua handlers suit desktop builds and tests that stand in for mobile services.
 
 An empty method name raises `A platform handler needs a method name and a function.`, and a `handler` that is not a function raises an argument error.
 
@@ -108,13 +108,14 @@ end)
 
 ### platform.hasHandler(method)
 
-Returns `true` when an engine handler answers `method`, which covers `engine.info`, `app.version`, methods registered with `platform.registerHandler` and methods C++ code registered. It does not see native handlers, so it returns `false` for `device.info` even where the platform answers it.
+Returns `true` when an engine handler answers `method`, which covers methods registered with `platform.registerHandler` and methods C++ code registered. It does not see native handlers, so it returns `false` for a method that only the platform answers.
 
 ```lua
 local platform = require('haylen.platform')
 
-print(platform.hasHandler('engine.info'))
-print(platform.hasHandler('device.info'))
+platform.registerHandler('score.best', function() return 1200 end)
+print(platform.hasHandler('score.best'))
+print(platform.hasHandler('store.buy'))
 ```
 
 ### platform.pendingCallCount()
@@ -215,8 +216,8 @@ local function leaveShop()
 end
 
 async.spawn(function()
-    local both = async.all({platform.call('engine.info').promise, platform.call('app.version').promise}):await()
-    print(both[1].engine .. ' ' .. both[2])
+    local both = async.all({platform.call('profile.load', {id = 'me'}).promise, platform.call('store.products').promise}):await()
+    print(both[1].name .. ' sees ' .. #both[2] .. ' products')
 end)
 ```
 
@@ -292,108 +293,9 @@ async.spawn(function()
 end)
 ```
 
-## Built-in methods
-
-These methods work without app code. `engine.info` and `app.version` are answered by the engine on every platform, and the others by the native side of each platform, where an app can replace them.
-
-### engine.info
-
-Takes no parameters and returns a table about the engine.
-
-| Field | Type | Meaning |
-| --- | --- | --- |
-| `engine` | string | Always `'Haylen'`. |
-| `version` | string | Engine version. |
-| `platform` | string | `'android'`, `'ios'`, `'tvos'`, `'macos'`, `'windows'`, `'linux'` or `'web'`. |
-| `backend` | string | Graphics backend: `'metal'`, `'d3d11'`, `'glcore'`, `'gles3'` or `'webgpu'`. |
-
-```lua
-local async = require('async')
-local platform = require('haylen.platform')
-
-async.spawn(function()
-    local info = platform.call('engine.info'):await()
-    print(info.engine .. ' ' .. info.version .. ' on ' .. info.platform .. ' with ' .. info.backend)
-end)
-```
-
-### app.version
-
-Takes no parameters and returns the `version` string of `app.json`, which defaults to `'1.0.0'`.
-
-```lua
-local async = require('async')
-local platform = require('haylen.platform')
-
-async.spawn(function()
-    print('version ' .. platform.call('app.version'):await())
-end)
-```
-
-### device.info
-
-Takes no parameters and returns a table about the device.
-
-| Field | Type | Meaning |
-| --- | --- | --- |
-| `model` | string | Device model on Android, the `UIDevice` model on iOS and tvOS, `'Mac'` on macOS, `'PC'` on Windows and Linux and `'Browser'` on the web. |
-| `system` | string | `'Android'`, the system name on iOS and tvOS, `'macOS'`, `'Windows'`, `'Linux'` or `'Web'`. |
-| `systemVersion` | string | Version of the operating system: the Android release, the iOS or tvOS version, the macOS version such as `'14.5.0'`, the Windows version such as `'10.0.22631'`, the Linux kernel release and the browser user agent on the web. |
-| `locale` | string | Language of the player, as `system.locale` returns it. |
-
-```lua
-local async = require('async')
-local platform = require('haylen.platform')
-
-async.spawn(function()
-    local device = platform.call('device.info'):await()
-    print(device.model .. ', ' .. device.system .. ' ' .. device.systemVersion .. ', ' .. device.locale)
-end)
-```
-
-### system.locale
-
-Takes no parameters and returns the language of the player as a BCP 47 tag such as `'pt-BR'`. Android reports the default locale, Apple platforms the first preferred language, Windows the user default locale, Linux the `LANG` variable with `'en-US'` for the `C` and `POSIX` locales, and the web `navigator.language`.
-
-```lua
-local async = require('async')
-local platform = require('haylen.platform')
-
-async.spawn(function()
-    local locale = platform.call('system.locale'):await()
-    print('player language ' .. locale)
-end)
-```
-
-### system.openUrl
-
-Opens `params.url` in the browser or the app that handles it and returns `true` once the system took it, on every platform. A missing or empty URL fails the call with `The url is missing.`, and a URL that no application opens, or that the browser blocks, fails it with `The url could not be opened.`. Windows and Linux find out without holding up the app, since Linux waits for `xdg-open` on a helper thread.
-
-```lua
-local async = require('async')
-local platform = require('haylen.platform')
-
-async.spawn(function()
-    local _, err = platform.call('system.openUrl', {url = 'https://example.com/tiny-island'}):await()
-    if err then
-        print('could not open the page: ' .. err)
-    end
-end)
-```
-
-### haptics.vibrate
-
-Vibrates the device and returns `nil`. Android and the web vibrate for `params.duration` milliseconds, which defaults to 40, where the device and the browser support it. iOS plays a medium impact. macOS, tvOS, Windows and Linux do nothing.
-
-```lua
-local platform = require('haylen.platform')
-
-platform.call('haptics.vibrate', {duration = 80})
-```
-
 ## Native handlers
 
-Native handlers receive the parameters as parsed JSON and answer once, with success and a JSON value or with failure and a message, a code and data. They may answer later, from any thread, and the answer reaches the app on the frame thread. A second answer, and an answer that comes after the app cancelled the call or its timeout passed, is dropped. Native code sends events the same way, and `platform.on` receives them. An app handler registered under the name of a built-in method replaces it, whenever it registers.
+Native handlers receive the parameters as parsed JSON and answer once, with success and a JSON value or with failure and a message, a code and data. They may answer later, from any thread, and the answer reaches the app on the frame thread. A second answer, and an answer that comes after the app cancelled the call or its timeout passed, is dropped. Native code sends events the same way, and `platform.on` receives them.
 
 ## Android handlers
 
@@ -408,7 +310,7 @@ Native handlers receive the parameters as parsed JSON and answer once, with succ
 | `isCancelled()` | Whether the app cancelled the call or its timeout passed. |
 | `onCancel(runnable)` | Runs on the main thread when the app cancels the call or its timeout passes, at once when that already happened. |
 
-A handler that throws fails its call through `failure(throwable)` instead of crashing the app, so `throw new HaylenBridge.Failure(message, code, data)` fails a call with a code. `HaylenBridge.activity()` returns the running activity. The built-in methods are registered when the class loads, before any other code can register, so a handler registered under one of their names, for example in `Application.onCreate`, replaces them.
+A handler that throws fails its call through `failure(throwable)` instead of crashing the app, so `throw new HaylenBridge.Failure(message, code, data)` fails a call with a code. `HaylenBridge.activity()` returns the running activity.
 
 ```java
 import dev.haylen.HaylenBridge;
@@ -458,7 +360,7 @@ object ProfilePlugin {
 
 ## Apple handlers
 
-`HaylenBridge` in `haylen/platform/apple/HaylenBridge.h` holds the handlers on iOS, tvOS and macOS. `+registerHandler:handler:` adds a handler, `+registerCancellableHandler:handler:` adds one that returns a block to run when the app cancels the call or its timeout passes, `+removeHandler:` removes a handler, `+emit:payload:` sends an event and `+emit:payload:retain:` sends one that waits for the first listener of its name when `retain` is `YES`. Handlers run on the main queue, and so does the cancel block. `params` is the parsed JSON, an `NSDictionary` for object parameters, and the handler answers with `reply(YES, result)` or `reply(NO, failure)`. `result` is any value `NSJSONSerialization` accepts or `nil`, and a success value it rejects fails the call with `The native handler for <method> returned a value that is not JSON.`. A failure passes a message string or a dictionary with a `message` string and optional `code` and `data`, and anything else fails with `The native handler for <method> failed.`. Handlers can be registered at any time, even before the app starts, and a handler under the name of a built-in method replaces it. An event payload that is not JSON is logged as an error and dropped.
+`HaylenBridge` in `haylen/platform/apple/HaylenBridge.h` holds the handlers on iOS, tvOS and macOS. `+registerHandler:handler:` adds a handler, `+registerCancellableHandler:handler:` adds one that returns a block to run when the app cancels the call or its timeout passes, `+removeHandler:` removes a handler, `+emit:payload:` sends an event and `+emit:payload:retain:` sends one that waits for the first listener of its name when `retain` is `YES`. Handlers run on the main queue, and so does the cancel block. `params` is the parsed JSON, an `NSDictionary` for object parameters, and the handler answers with `reply(YES, result)` or `reply(NO, failure)`. `result` is any value `NSJSONSerialization` accepts or `nil`, and a success value it rejects fails the call with `The native handler for <method> returned a value that is not JSON.`. A failure passes a message string or a dictionary with a `message` string and optional `code` and `data`, and anything else fails with `The native handler for <method> failed.`. Handlers can be registered at any time, even before the app starts. An event payload that is not JSON is logged as an error and dropped.
 
 ```objc
 #import "haylen/platform/apple/HaylenBridge.h"
@@ -516,7 +418,7 @@ import Foundation
 
 ## Web handlers
 
-`Module.haylen` in the page holds the handlers, and the page answers `device.info`, `system.locale`, `system.openUrl` and `haptics.vibrate` itself. `Module.haylen.register(method, handler)` adds or replaces a handler, `Module.haylen.unregister(method)` removes it and `Module.haylen.emit(event, payload, {retain})` sends an event, which waits for the first listener of its name when `retain` is `true`. Events sent before the first app starts reach it once it starts. A handler runs after the frame that made the call and receives the parsed parameters and a context with the `call` id and a `signal`, an `AbortSignal` that aborts when the app cancels the call or its timeout passes, and it returns the result or a promise for it. A call cancelled in the frame that made it never runs its handler. A thrown error or a rejected promise fails the call with the error message and the `code` and `data` properties of the error, or with the code `exception` and the `name` of the error in `data.type` when the error has no code. The page registers its handlers before the runtime starts, for example in `Module.preRun`.
+`Module.haylen` in the page holds the handlers. `Module.haylen.register(method, handler)` adds or replaces a handler, `Module.haylen.unregister(method)` removes it and `Module.haylen.emit(event, payload, {retain})` sends an event, which waits for the first listener of its name when `retain` is `true`. Events sent before the first app starts reach it once it starts. A handler runs after the frame that made the call and receives the parsed parameters and a context with the `call` id and a `signal`, an `AbortSignal` that aborts when the app cancels the call or its timeout passes, and it returns the result or a promise for it. A call cancelled in the frame that made it never runs its handler. A thrown error or a rejected promise fails the call with the error message and the `code` and `data` properties of the error, or with the code `exception` and the `name` of the error in `data.type` when the error has no code. The page registers its handlers before the runtime starts, for example in `Module.preRun`.
 
 ```html
 <script>

@@ -1,19 +1,12 @@
 package dev.haylen;
 
 import android.app.Activity;
-import android.content.ActivityNotFoundException;
-import android.content.Intent;
-import android.net.Uri;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.VibrationEffect;
-import android.os.Vibrator;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -85,40 +78,6 @@ public final class HaylenBridge {
     private static final List<KeptEvent> keptEvents = new ArrayList<>();
     private static boolean appRunning;
     private static volatile Activity activity;
-
-    // The built-in methods are registered when the class loads, before any app code can register, so an app handler of the same name always replaces them.
-    static {
-        register("device.info", (params, reply) -> {
-            JSONObject info = new JSONObject();
-            info.put("model", Build.MODEL);
-            info.put("system", "Android");
-            info.put("systemVersion", Build.VERSION.RELEASE);
-            info.put("locale", Locale.getDefault().toLanguageTag());
-            reply.success(info);
-        });
-        register("system.locale", (params, reply) -> reply.success(Locale.getDefault().toLanguageTag()));
-        register("system.openUrl", (params, reply) -> {
-            String url = params instanceof JSONObject ? ((JSONObject) params).optString("url", "") : "";
-            if (url.isEmpty()) {
-                reply.failure("The url is missing.");
-                return;
-            }
-            try {
-                activity.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
-                reply.success(true);
-            } catch (ActivityNotFoundException error) {
-                reply.failure("The url could not be opened.");
-            }
-        });
-        register("haptics.vibrate", (params, reply) -> {
-            long duration = params instanceof JSONObject ? ((JSONObject) params).optLong("duration", 40) : 40;
-            Vibrator vibrator = activity.getSystemService(Vibrator.class);
-            if (vibrator != null && vibrator.hasVibrator()) {
-                vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE));
-            }
-            reply.success(null);
-        });
-    }
 
     private HaylenBridge() {}
 

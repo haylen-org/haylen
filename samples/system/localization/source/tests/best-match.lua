@@ -1,7 +1,7 @@
--- Best match: the system.locale call of haylen.platform returns the language of the device as a tag such as pt-BR, and localization.findBestMatch finds the language of the app closest to it: the exact tag, or the same base language, ignoring case and treating _ like -.
+-- Best match: system.info of haylen.system reports the language of the device as a tag such as pt-BR, and localization.findBestMatch finds the language of the app closest to it: the exact tag, or the same base language, ignoring case and treating _ like -.
 local haylen = require('haylen')
 local localization = require('haylen.localization')
-local platform = require('haylen.platform')
+local system = require('haylen.system')
 local ui = require('haylen.ui')
 
 local language = require('language')
@@ -38,7 +38,7 @@ function BestMatch:content()
     return {
         ui.panel{width = 640, align = 'stretch', gap = 12,
             ui.sectionTitle{text = 'This device'},
-            ui.label{id = 'locale', text = "Asking platform.call('system.locale')…"},
+            ui.label{id = 'locale', text = ''},
             ui.button{id = 'device', text = 'Use the language of the device', enabled = false, onClick = function()
                 language.use(self.deviceMatch)
             end},
@@ -65,20 +65,18 @@ function BestMatch:content()
     }
 end
 
--- The platform answers on a later frame, in a task of the scene, which stops if the player leaves first.
+-- A platform that does not report the language of the device leaves the locale of system.info nil.
 function BestMatch:enter()
     BestMatch.super.enter(self)
     self:typeTag(self.typed)
-    self:spawn(function()
-        local tag, failure = platform.call('system.locale'):await()
-        if not tag then
-            self:show('locale', {text = 'The platform did not answer: ' .. tostring(failure), color = 'dangerText'})
-            return
-        end
-        self.deviceMatch = localization.findBestMatch(tag)
-        self:show('locale', {text = string.format('The device language is %s, and bestMatch picks %s.', tag, self.deviceMatch or 'nothing')})
-        self:show('device', {enabled = self.deviceMatch ~= nil})
-    end)
+    local tag = system.info().locale
+    if not tag then
+        self:show('locale', {text = 'The platform does not report the language of the device.', color = 'dangerText'})
+        return
+    end
+    self.deviceMatch = localization.findBestMatch(tag)
+    self:show('locale', {text = string.format('The device language is %s, and findBestMatch picks %s.', tag, self.deviceMatch or 'nothing')})
+    self:show('device', {enabled = self.deviceMatch ~= nil})
 end
 
 function BestMatch:typeTag(tag)

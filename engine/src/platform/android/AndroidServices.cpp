@@ -2,10 +2,16 @@
 
 #include <jni.h>
 
+#include <algorithm>
+#include <cmath>
 #include <string>
+#include <thread>
+#include <utility>
 
+#include "haylen/core/Json.hpp"
 #include "haylen/io/Package.hpp"
 #include "platform/BridgeRelay.hpp"
+#include "platform/DialogRelay.hpp"
 #include "platform/android/AndroidActivity.hpp"
 #include "platform/android/AndroidAssetPackage.hpp"
 #include "platform/android/AndroidGamepads.hpp"
@@ -108,6 +114,33 @@ void Services::cancel(std::uint64_t id) {
     JavaBridge::cancel(id);
 }
 
+SystemInfo Services::getSystemInfo() {
+    const core::Json device = core::Json::parse(JavaBridge::getSystemInfo());
+    SystemInfo info;
+    info.os = SystemInfo::Os::Android;
+    info.deviceKind = AndroidActivity::isTelevision() ? SystemInfo::DeviceKind::Tv : SystemInfo::DeviceKind::Phone;
+    info.osVersion = device.value("osVersion", "");
+    info.deviceModel = device.value("deviceModel", "");
+    info.cpuCores = static_cast<int>(std::thread::hardware_concurrency());
+    info.locale = device.value("locale", "");
+    return info;
+}
+
+void Services::openUrl(const std::string& url, std::function<void(bool opened)> callback) {
+    JavaBridge::openUrl(url, std::move(callback));
+}
+
+// A vibration of Android lasts at least a millisecond.
+void Services::vibrate(float seconds) {
+    JavaBridge::vibrate(std::max<std::int64_t>(1, std::lround(seconds * 1000.0F)));
+}
+
+void Services::showDialog(std::uint64_t id, const DialogRequest&, const std::filesystem::path&) {
+    DialogRelay::resolve(id, {.failure = DialogResult::Failure{.code = DialogResult::Code::Unsupported, .message = "Native dialogs are not implemented on Android yet."}});
+}
+
+void Services::cancelDialog(std::uint64_t) {}
+
 } // namespace haylen::platform
 
 extern "C" {
@@ -186,5 +219,9 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeControllerRemoved(JN
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeBack(JNIEnv*, jclass) {
     haylen::platform::AndroidKeys::receiveBack();
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeUrlOpened(JNIEnv*, jclass, jlong request, jboolean opened) {
+    haylen::platform::JavaBridge::answerUrl(request, opened == JNI_TRUE);
 }
 }

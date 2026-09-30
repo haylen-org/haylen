@@ -697,9 +697,9 @@ local profile = {}
 
 function profile:enter()
     scene.spawn(self, function()
-        local device = platform.call('device.info'):await()
+        local account = platform.call('profile.load', {id = 'me'}):await()
         -- This line never runs when the player left the profile before the answer came.
-        self.model = device and device.model
+        self.name = account and account.name
     end)
 end
 

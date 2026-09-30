@@ -13,7 +13,6 @@
 #include "platform/BridgeRelay.hpp"
 #include "platform/GamepadSlots.hpp"
 #include "platform/KeyboardTranslator.hpp"
-#include "platform/desktop/DesktopMethods.hpp"
 #include "platform/sokol/MemoryWarning.hpp"
 #include "platform/sokol/SokolEvents.hpp"
 #include "support/EngineFixture.hpp"
@@ -27,36 +26,6 @@ class SokolEventsTest : public ::testing::Test {
         event.type = type;
         return event;
     }
-};
-
-// Desktop methods with fixed answers that record the urls they open, refuse one of them and, when broken, fail to read the device.
-class FakeDesktopMethods final : public DesktopMethods {
-  public:
-    explicit FakeDesktopMethods(bool deviceBroken = false) : broken(deviceBroken) {}
-
-    [[nodiscard]] const std::vector<std::string>& getOpenedUrls() const noexcept {
-        return openedUrls;
-    }
-
-  private:
-    [[nodiscard]] core::Json getDeviceInfo() const override {
-        if (broken) {
-            throw std::runtime_error("no version");
-        }
-        return {{"model", "PC"}, {"systemVersion", "6.8"}};
-    }
-
-    [[nodiscard]] std::string getLocale() const override {
-        return "pt-BR";
-    }
-
-    void openUrl(const std::string& url, std::function<void(bool opened)> done) override {
-        openedUrls.push_back(url);
-        done(url != "https://refused.example");
-    }
-
-    bool broken;
-    std::vector<std::string> openedUrls;
 };
 
 TEST_F(SokolEventsTest, TranslatesKeysTextAndMouse) {
@@ -228,51 +197,6 @@ TEST(GamepadSlotsTest, KeepsEveryControllerInItsSlotWhileItStaysConnected) {
     }
 }
 
-TEST(DesktopMethodsTest, AnswersTheBuiltInMethods) {
-    std::vector<Bridge::Result> results;
-    Bridge bridge([](std::uint64_t, std::string_view, std::string_view) {}, [](std::uint64_t, std::string_view) {});
-    BridgeRelay::attach(bridge);
-
-    FakeDesktopMethods methods;
-    FakeDesktopMethods broken(true);
-    // clang-format off
-    const auto ask = [&](DesktopMethods& with, std::string_view method, std::string_view params) {
-        const std::uint64_t call = bridge.call("unused", core::Json::object(), [&](Bridge::Result result) { results.push_back(std::move(result)); });
-        with.dispatch(call, method, params);
-    };
-    // clang-format on
-
-    ask(methods, "device.info", "{}");
-    ask(methods, "system.locale", "{}");
-    ask(methods, "system.openUrl", R"({"url": "https://example.com"})");
-    ask(methods, "system.openUrl", R"({"url": "https://refused.example"})");
-    ask(methods, "system.openUrl", R"({"url": ""})");
-    ask(methods, "system.openUrl", "{}");
-    ask(methods, "system.openUrl", R"({"url": 7})");
-    ask(methods, "haptics.vibrate", "{}");
-    ask(methods, "store.buy", "{}");
-    ask(broken, "device.info", "{}");
-    bridge.pump();
-    BridgeRelay::detach(bridge);
-
-    ASSERT_EQ(results.size(), 10U);
-    EXPECT_EQ(results[0].value, (core::Json{{"model", "PC"}, {"systemVersion", "6.8"}}));
-    EXPECT_EQ(results[1].value, "pt-BR");
-    EXPECT_TRUE(results[2].ok);
-    EXPECT_EQ(results[2].value, true);
-    EXPECT_EQ(methods.getOpenedUrls(), (std::vector<std::string>{"https://example.com", "https://refused.example"}));
-    EXPECT_EQ(results[3].error.message, "The url could not be opened.");
-    for (const std::size_t missing : {4U, 5U, 6U}) {
-        EXPECT_FALSE(results[missing].ok);
-        EXPECT_EQ(results[missing].error.message, "The url is missing.");
-        EXPECT_TRUE(results[missing].error.code.is_null());
-    }
-    EXPECT_TRUE(results[7].ok);
-    EXPECT_EQ(results[8].error.message, "No native handler is registered for store.buy.");
-    EXPECT_EQ(results[8].error.code, "noHandler");
-    EXPECT_EQ(results[9].error.message, "no version");
-}
-
 TEST(BridgeTest, KeepsTheMessageCodeAndDataOfEveryFailure) {
     Bridge bridge([](std::uint64_t, std::string_view, std::string_view) {}, [](std::uint64_t, std::string_view) {});
     std::vector<Bridge::Result> results;
@@ -383,20 +307,18 @@ TEST(BridgeTest, RoutesCallsToHandlersAndNativeCode) {
     Bridge& bridge = fixture.engine().getPlatform();
 
     std::vector<Bridge::Result> results;
-    bridge.call("engine.info", core::Json::object(), [&](Bridge::Result result) { results.push_back(result); });
     bridge.registerHandler("echo", [](const core::Json& params, Bridge::Reply reply) { reply({.ok = true, .value = params}); });
     bridge.call("echo", {{"value", 7}}, [&](Bridge::Result result) { results.push_back(result); });
     EXPECT_TRUE(bridge.hasHandler("echo"));
-    EXPECT_FALSE(bridge.hasHandler("device.info"));
-    EXPECT_TRUE(bridge.hasHandler("app.version"));
+    EXPECT_FALSE(bridge.hasHandler("shop.catalog"));
 
-    const std::uint64_t native = bridge.call("device.info", {{"detail", true}}, [&](Bridge::Result result) { results.push_back(result); });
+    const std::uint64_t native = bridge.call("shop.catalog", {{"detail", true}}, [&](Bridge::Result result) { results.push_back(result); });
     const std::uint64_t failing = bridge.call("auth.login", core::Json::object(), [&](Bridge::Result result) { results.push_back(result); });
     const std::uint64_t objectError = bridge.call("auth.logout", core::Json::object(), [&](Bridge::Result result) { results.push_back(result); });
     const std::uint64_t invalid = bridge.call("broken", core::Json::object(), [&](Bridge::Result result) { results.push_back(result); });
     bridge.call("fire.and.forget", core::Json::object(), {});
     ASSERT_EQ(fixture.host().getPlatformCalls().size(), 5U);
-    EXPECT_EQ(fixture.host().getPlatformCalls().front().method, "device.info");
+    EXPECT_EQ(fixture.host().getPlatformCalls().front().method, "shop.catalog");
     EXPECT_EQ(fixture.host().getPlatformCalls().front().paramsJson, R"({"detail":true})");
 
     bridge.resolve(native, true, R"({"model": "test"})");
@@ -404,17 +326,15 @@ TEST(BridgeTest, RoutesCallsToHandlersAndNativeCode) {
     bridge.resolve(objectError, false, R"({"message": "no session"})");
     bridge.resolve(invalid, true, "{broken");
     bridge.resolve(9999, true, "{}");
-    EXPECT_EQ(bridge.getPendingCallCount(), 7U);
+    EXPECT_EQ(bridge.getPendingCallCount(), 6U);
     fixture.frames(1);
 
-    ASSERT_EQ(results.size(), 6U);
-    EXPECT_TRUE(results[0].ok);
-    EXPECT_EQ(results[0].value.at("platform"), "headless");
-    EXPECT_EQ(results[1].value.at("value"), 7);
-    EXPECT_EQ(results[2].value.at("model"), "test");
-    EXPECT_EQ(results[3].error.message, "cancelled");
-    EXPECT_EQ(results[4].error.message, "no session");
-    EXPECT_FALSE(results[5].ok);
+    ASSERT_EQ(results.size(), 5U);
+    EXPECT_EQ(results[0].value.at("value"), 7);
+    EXPECT_EQ(results[1].value.at("model"), "test");
+    EXPECT_EQ(results[2].error.message, "cancelled");
+    EXPECT_EQ(results[3].error.message, "no session");
+    EXPECT_FALSE(results[4].ok);
     EXPECT_EQ(bridge.getPendingCallCount(), 1U) << "a call without a callback waits for its answer too";
 
     EXPECT_THROW(bridge.call("", core::Json::object(), {}), std::invalid_argument);

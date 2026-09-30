@@ -65,6 +65,9 @@ class LifecycleEvent final {
     static constexpr std::string_view kNetworkOnline = "networkOnline";
     static constexpr std::string_view kNetworkOffline = "networkOffline";
 
+    static constexpr std::string_view kSystemThemeChanged = "systemThemeChanged";
+    static constexpr std::string_view kBatteryChanged = "batteryChanged";
+
     static constexpr std::string_view kWebSocketConnected = "webSocketConnected";
     static constexpr std::string_view kWebSocketDisconnected = "webSocketDisconnected";
     static constexpr std::string_view kWebSocketReconnecting = "webSocketReconnecting";

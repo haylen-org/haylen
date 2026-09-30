@@ -303,8 +303,14 @@ set(HAYLEN_ENGINE_SOURCES
   src/net/NetLua.cpp
   src/net/WebSocket.cpp
   src/platform/AppPlugin.cpp
+  src/platform/Battery.cpp
   src/platform/Bridge.cpp
   src/platform/BridgeRelay.cpp
+  src/platform/DialogRelay.cpp
+  src/platform/DialogRequest.cpp
+  src/platform/DialogResult.cpp
+  src/platform/Dialogs.cpp
+  src/platform/DialogsLua.cpp
   src/platform/native/NativeApi.cpp
   src/platform/native/NativeCallback.cpp
   src/platform/native/NativeCallbacks.cpp
@@ -314,6 +320,10 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/NativeViews.cpp
   src/platform/PlatformLua.cpp
   src/platform/SafeAreaSimulation.cpp
+  src/platform/System.cpp
+  src/platform/SystemInfo.cpp
+  src/platform/SystemLua.cpp
+  src/platform/SystemState.cpp
   src/platform/Window.cpp
   src/platform/WindowLua.cpp
   src/platform/WindowPlacement.cpp
@@ -455,6 +465,15 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/Widgets.cpp
 )
 
+# The graphics device names its GPU through Metal on Apple platforms and through the backend the build chose elsewhere.
+if(APPLE)
+  list(APPEND HAYLEN_ENGINE_SOURCES src/graphics/GpuAdapter.mm)
+  set_source_files_properties(src/graphics/GpuAdapter.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+else()
+  list(APPEND HAYLEN_ENGINE_SOURCES src/graphics/GpuAdapter.cpp)
+  set_source_files_properties(src/graphics/GpuAdapter.cpp PROPERTIES COMPILE_DEFINITIONS SOKOL_${HAYLEN_BACKEND})
+endif()
+
 # The browser build talks WebSocket through the page and plays audio through it, while native builds use Poco with the TLS stack Varn already links.
 if(EMSCRIPTEN)
   list(APPEND HAYLEN_ENGINE_SOURCES src/platform/web/BrowserAudioOutput.cpp src/platform/web/BrowserWebSocket.cpp)
@@ -494,6 +513,18 @@ endif()
 # Native libraries load through the dynamic linker, which Linux keeps in its own library.
 target_link_libraries(haylen_engine PRIVATE ${CMAKE_DL_LIBS})
 
+# The name of the GPU comes from Metal through Objective-C on Apple platforms and from the OpenGL library where the build renders with OpenGL.
+if(APPLE)
+  target_link_libraries(haylen_engine PRIVATE "-framework Foundation")
+elseif(HAYLEN_BACKEND STREQUAL "GLES3" AND ANDROID)
+  target_link_libraries(haylen_engine PRIVATE GLESv3)
+elseif(HAYLEN_BACKEND STREQUAL "GLCORE" AND WIN32)
+  target_link_libraries(haylen_engine PRIVATE opengl32)
+elseif(HAYLEN_BACKEND STREQUAL "GLCORE")
+  find_package(OpenGL REQUIRED)
+  target_link_libraries(haylen_engine PRIVATE OpenGL::GL)
+endif()
+
 # Programs that draw into lit canvases also compile with HAYLEN_LIT, which writes the images the light pass reads.
 set(shader_dir "${CMAKE_CURRENT_LIST_DIR}/shaders")
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/sprite.glsl" MODULE sprite)
@@ -518,7 +549,6 @@ haylen_enable_coverage(haylen_engine)
 add_library(haylen_platform STATIC
   src/platform/GamepadSlots.cpp
   src/platform/KeyboardTranslator.cpp
-  src/platform/desktop/DesktopMethods.cpp
   src/platform/sokol/MemoryWarning.cpp
   src/platform/sokol/SokolEvents.cpp
 )
@@ -545,6 +575,7 @@ if(APPLE)
     src/platform/apple/AppleRemote.mm
     src/platform/apple/AppleRuntime.mm
     src/platform/apple/AppleServices.mm
+    src/platform/apple/AppleSystem.mm
     src/platform/apple/AppleTextInput.mm
     src/platform/apple/CatalystInput.mm
     src/platform/apple/CatalystWindow.mm
@@ -565,13 +596,13 @@ if(APPLE)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.m ${HAYLEN_APPLE_SOURCES})
   set_source_files_properties(${HAYLEN_APPLE_SOURCES} PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
 elseif(WIN32)
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/windows/WindowsDesktop.cpp src/platform/windows/WindowsMethods.cpp src/platform/windows/WindowsServices.cpp src/platform/windows/WindowsTextInput.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/windows/WindowsDesktop.cpp src/platform/windows/WindowsServices.cpp src/platform/windows/WindowsSystem.cpp src/platform/windows/WindowsTextInput.cpp)
 elseif(ANDROID)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/android/AndroidActivity.cpp src/platform/android/AndroidAssetPackage.cpp src/platform/android/AndroidGamepads.cpp src/platform/android/AndroidKeys.cpp src/platform/android/AndroidServices.cpp src/platform/android/AndroidTextInput.cpp src/platform/android/JavaBridge.cpp)
 elseif(EMSCRIPTEN)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/web/WebPage.cpp src/platform/web/WebServices.cpp src/platform/web/WebTextInput.cpp)
 else()
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/linux/LinuxDesktop.cpp src/platform/linux/LinuxGamepads.cpp src/platform/linux/LinuxMethods.cpp src/platform/linux/LinuxServices.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/linux/LinuxDesktop.cpp src/platform/linux/LinuxGamepads.cpp src/platform/linux/LinuxServices.cpp src/platform/linux/LinuxSystem.cpp)
 endif()
 
 add_library(haylen_runtime OBJECT ${HAYLEN_RUNTIME_SOURCES})

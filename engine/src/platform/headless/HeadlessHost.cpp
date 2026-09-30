@@ -2,10 +2,21 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <thread>
 
 namespace haylen::platform {
 
-HeadlessHost::HeadlessHost(std::filesystem::path directory, math::Vec2 size) : dataDirectory(std::move(directory)), framebufferSize(size), frame{0.0F, 0.0F, size.x, size.y} {}
+HeadlessHost::HeadlessHost(std::filesystem::path directory, math::Vec2 size) : dataDirectory(std::move(directory)), framebufferSize(size), frame{0.0F, 0.0F, size.x, size.y} {
+#if defined(__APPLE__)
+    systemInfo.os = SystemInfo::Os::MacOs;
+#elif defined(_WIN32)
+    systemInfo.os = SystemInfo::Os::Windows;
+#else
+    systemInfo.os = SystemInfo::Os::Linux;
+#endif
+    systemInfo.deviceKind = SystemInfo::DeviceKind::Desktop;
+    systemInfo.cpuCores = static_cast<int>(std::thread::hardware_concurrency());
+}
 
 graphics::DeviceSetup HeadlessHost::getGraphicsSetup() {
     graphics::DeviceSetup setup;
@@ -43,6 +54,11 @@ void HeadlessHost::pollGamepads(std::span<input::GamepadState> states) {
 
 void HeadlessHost::dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson) {
     platformCalls.push_back({id, std::string(method), std::string(paramsJson)});
+}
+
+void HeadlessHost::openUrl(std::string_view url, std::function<void(bool opened)> callback) {
+    openedUrls.emplace_back(url);
+    callback(opensUrls);
 }
 
 } // namespace haylen::platform

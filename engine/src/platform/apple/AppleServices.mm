@@ -9,14 +9,17 @@
 #endif
 
 #include <string>
+#include <utility>
 
 #include "haylen/io/Package.hpp"
+#include "platform/DialogRelay.hpp"
 #import "platform/apple/AppleBridge.hpp"
 #import "platform/apple/AppleDesktop.hpp"
 #import "platform/apple/AppleGamepads.hpp"
 #import "platform/apple/AppleNetwork.hpp"
 #import "platform/apple/AppleOrientation.hpp"
 #import "platform/apple/ApplePlugins.hpp"
+#import "platform/apple/AppleSystem.hpp"
 #import "platform/apple/AppleTextInput.hpp"
 #import "platform/apple/CatalystInput.hpp"
 #import "platform/apple/CatalystWindow.hpp"
@@ -36,7 +39,6 @@ std::string_view Services::getName() noexcept {
 }
 
 void Services::initialize() {
-    AppleBridge::registerBuiltIns();
     AppleNetwork::observe();
 #if !TARGET_OS_OSX
     [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidReceiveMemoryWarningNotification object:nil queue:nil usingBlock:^(NSNotification*) { MemoryWarning::raise(); }];
@@ -195,5 +197,23 @@ void Services::dispatch(std::uint64_t call, std::string_view method, std::string
 void Services::cancel(std::uint64_t call) {
     AppleBridge::cancel(call);
 }
+
+SystemInfo Services::getSystemInfo() {
+    return AppleSystem::getInfo();
+}
+
+void Services::openUrl(const std::string& url, std::function<void(bool opened)> callback) {
+    AppleSystem::openUrl(url, std::move(callback));
+}
+
+void Services::vibrate(float) {
+    AppleSystem::vibrate();
+}
+
+void Services::showDialog(std::uint64_t id, const DialogRequest&, const std::filesystem::path&) {
+    DialogRelay::resolve(id, {.failure = DialogResult::Failure{.code = DialogResult::Code::Unsupported, .message = "Native dialogs are not implemented on Apple platforms yet."}});
+}
+
+void Services::cancelDialog(std::uint64_t) {}
 
 } // namespace haylen::platform

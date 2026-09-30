@@ -7,6 +7,7 @@
 #include "graphics/DeviceSetup.hpp"
 #include "graphics/DeviceState.hpp"
 #include "graphics/Gpu.hpp"
+#include "graphics/GpuAdapter.hpp"
 #include "graphics/TextureResource.hpp"
 
 namespace haylen::graphics {
@@ -170,6 +171,10 @@ std::string_view Device::getBackendName() const noexcept {
         return "dummy";
     }
     return "unknown";
+}
+
+std::string Device::getAdapterName() const {
+    return GpuAdapter::getName();
 }
 
 int Device::getMaxTextureSize() const noexcept {

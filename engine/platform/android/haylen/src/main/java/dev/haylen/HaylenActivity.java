@@ -3,13 +3,17 @@ package dev.haylen;
 import android.app.Activity;
 import android.app.NativeActivity;
 import android.app.UiModeManager;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.hardware.input.InputManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
@@ -21,6 +25,11 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+import org.json.JSONObject;
 
 // Hosts a Haylen app. The app library is named by the android.app.lib_name meta-data, like any native activity.
 // The manifest gives the activity the Theme.Haylen.Splash theme, whose splash screen stays until the app has drawn its first frame.
@@ -210,6 +219,42 @@ public class HaylenActivity extends NativeActivity implements InputManager.Input
         }
     }
 
+    // Called from the frame thread of the engine when an app first starts, with what Android tells about the device as JSON.
+    static byte[] systemInfo() {
+        Map<String, Object> info = new HashMap<>();
+        info.put("osVersion", Build.VERSION.RELEASE);
+        info.put("deviceModel", Build.MODEL);
+        info.put("locale", Locale.getDefault().toLanguageTag());
+        return new JSONObject(info).toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    // Called from the frame thread of the engine, which hears through nativeUrlOpened with the same request whether an app took the url.
+    static void openUrl(long request, byte[] url) {
+        Activity activity = HaylenBridge.activity();
+        if (activity == null) {
+            nativeUrlOpened(request, false);
+            return;
+        }
+        String address = new String(url, StandardCharsets.UTF_8);
+        activity.runOnUiThread(() -> {
+            try {
+                activity.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(address)));
+                nativeUrlOpened(request, true);
+            } catch (ActivityNotFoundException error) {
+                nativeUrlOpened(request, false);
+            }
+        });
+    }
+
+    // Called from the frame thread of the engine. Devices without a vibrator do nothing.
+    static void vibrate(long milliseconds) {
+        Activity activity = HaylenBridge.activity();
+        Vibrator vibrator = activity != null ? activity.getSystemService(Vibrator.class) : null;
+        if (vibrator != null && vibrator.hasVibrator()) {
+            vibrator.vibrate(VibrationEffect.createOneShot(milliseconds, VibrationEffect.DEFAULT_AMPLITUDE));
+        }
+    }
+
     // Back reaches the app only through a registered callback, and without one Android plays its back animation and leaves the app.
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private void setBackCaptured(boolean captured) {
@@ -259,4 +304,6 @@ public class HaylenActivity extends NativeActivity implements InputManager.Input
     private static native void nativeOrientation(boolean portrait);
 
     private static native void nativeBack();
+
+    private static native void nativeUrlOpened(long request, boolean opened);
 }

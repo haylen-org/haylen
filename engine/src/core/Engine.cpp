@@ -55,6 +55,8 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
             }
         });
     // clang-format on
+    current.system = std::make_unique<platform::System>(host, current.events, current.graphics->getAdapterName());
+    current.dialogs = std::make_unique<platform::Dialogs>(host, current.storage->getRoot() / "tmp" / "dialogs");
     current.renderer = std::make_unique<graphics2d::Renderer>(*current.graphics, *current.jobs);
     current.assets = std::make_unique<assets::Manager>(*current.package, *current.jobs, *current.graphics, current.events);
     current.scenes = std::make_unique<SceneManager>(*this);
@@ -83,6 +85,8 @@ Engine::~Engine() {
     current.assets->cancelAll();
     current.scenes.reset();
     current.platform.reset();
+    current.dialogs.reset();
+    current.system.reset();
     current.runtime->stop();
     current.jobs->discardQueued();
     current.runtime.reset();
@@ -216,6 +220,8 @@ void Engine::frame(double frameSeconds) {
             const debug::ProfileScope scope(profiler, "scripts");
             current.runtime->poll();
             current.platform->pump();
+            current.system->pump();
+            current.dialogs->pump();
         }
 
         if (!hidden) {
@@ -813,6 +819,14 @@ assets::Manager& Engine::getAssets() noexcept {
 
 platform::Bridge& Engine::getPlatform() noexcept {
     return *state->platform;
+}
+
+platform::System& Engine::getSystem() noexcept {
+    return *state->system;
+}
+
+platform::Dialogs& Engine::getDialogs() noexcept {
+    return *state->dialogs;
 }
 
 plugins::PluginRegistry& Engine::getPlugins() noexcept {

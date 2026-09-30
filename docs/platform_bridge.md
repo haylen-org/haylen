@@ -1,6 +1,6 @@
 # Platform bridge
 
-The platform bridge connects an app to native code. An app calls a named method with JSON parameters and receives its JSON result asynchronously, or a typed error with a message, a code and data, and native code sends named events with JSON payloads that the app listens to. Calls time out and cancel, and the native handler hears about it. Every result and every event reaches the app on the frame thread, at the start of a frame. The bridge covers everything the engine does not wrap itself, such as sign-in, purchases, sharing, deep links or system settings, with handlers written in Java or Kotlin on Android, Objective-C or Swift on Apple platforms, JavaScript on the web, C in native libraries, and C++ or Lua anywhere.
+The platform bridge connects an app to native code. An app calls a named method with JSON parameters and receives its JSON result asynchronously, or a typed error with a message, a code and data, and native code sends named events with JSON payloads that the app listens to. Calls time out and cancel, and the native handler hears about it. Every result and every event reaches the app on the frame thread, at the start of a frame. The bridge covers everything the engine does not wrap itself, such as sign-in, purchases, sharing, deep links or system settings, while what the device is, opening urls, vibrating and native dialogs are engine services of [haylen.system](lua-api/system.md) and [haylen.dialogs](lua-api/dialogs.md). Handlers written in Java or Kotlin on Android, Objective-C or Swift on Apple platforms, JavaScript on the web, C in native libraries, and C++ or Lua anywhere.
 
 This guide explains how the bridge works and how each platform implements methods. The Lua functions are documented in the [haylen.platform reference](lua-api/platform.md), the [native code guide](native.md) compares the bridge with native libraries called through FFI and with C++ plugins, and the [architecture guide](architecture.md) places the bridge among the other engine systems.
 
@@ -15,7 +15,7 @@ next frame: Engine::frame ─► Bridge::pump ─► callback or Lua call, on th
 ```
 
 1. `platform.call(method, params, options)` reaches `platform::Bridge::call` (`engine/src/platform/Bridge.cpp`), which gives the call a numeric id, keeps its callback and, with a timeout, its deadline.
-2. A handler registered inside the engine answers first. Those are C++ handlers added with `Bridge::registerHandler`, Lua handlers added with `platform.registerHandler`, and the built-in `engine.info` and `app.version`. The handler runs during the call itself.
+2. A handler registered inside the engine answers first. Those are C++ handlers added with `Bridge::registerHandler` and Lua handlers added with `platform.registerHandler`. The handler runs during the call itself.
 3. Otherwise the bridge serializes the parameters and hands `(id, method, paramsJson)` to the dispatcher of the engine. A handler that a native library registered through `HaylenNativeApi` (`engine/src/platform/native/NativeApi.cpp`) answers next, and the host gets the call otherwise, through `Host::dispatchPlatformCall`. The Sokol runtime forwards it to `platform::Services::dispatch`, which each platform folder under `engine/src/platform` implements.
 4. Native code answers once, from any thread, with success and a JSON value or with failure and a message, a code and data. The answer goes through `platform::BridgeRelay::resolve` in `engine/src/platform/BridgeRelay.cpp` to the bridge of the running engine, which the platform plugin attaches when the app starts, and the bridge parses it and queues it.
 5. At the start of every frame, `Engine::frame` polls the Varn event loop and calls `Bridge::pump`, which runs the queued callbacks, events and the work native callbacks posted, on the frame thread before the fixed update and the update. In Lua, the call returned by `platform.call` settles there.
@@ -28,7 +28,7 @@ Some events come before the app listens: the deep link or the notification that 
 
 ## Timeouts and cancellation
 
-A call with a `timeout` fails with the code `timeout` at the first pump after its deadline, and `call:cancel()` fails a pending call with the code `cancelled` at the next pump. In both cases the bridge tells the native side that the app gave the call up, through `Bridge::Canceller`: a handler of a native library hears it through its `HaylenNativeCancel` function, and a platform handler through `Host::cancelPlatformCall` and `Services::cancel`, which reach `HaylenBridge.cancel` on Android, the cancel block of a cancellable handler on Apple platforms and the `AbortSignal` of the handler on the web. The desktop handlers answer during the call, so no call of theirs is ever pending. An answer that comes after a call timed out or was cancelled is dropped, like a second answer to the same call. A call without a timeout waits for its answer as long as the app runs, so every handler answers exactly once.
+A call with a `timeout` fails with the code `timeout` at the first pump after its deadline, and `call:cancel()` fails a pending call with the code `cancelled` at the next pump. In both cases the bridge tells the native side that the app gave the call up, through `Bridge::Canceller`: a handler of a native library hears it through its `HaylenNativeCancel` function, and a platform handler through `Host::cancelPlatformCall` and `Services::cancel`, which reach `HaylenBridge.cancel` on Android, the cancel block of a cancellable handler on Apple platforms and the `AbortSignal` of the handler on the web. Windows and Linux fail the calls that reach them during the call itself, so no call of theirs is ever pending. An answer that comes after a call timed out or was cancelled is dropped, like a second answer to the same call. A call without a timeout waits for its answer as long as the app runs, so every handler answers exactly once.
 
 ## The JSON contract
 
@@ -36,22 +36,7 @@ A call with a `timeout` fails with the code `timeout` at the first pump after it
 - A successful result is any JSON value, and `null` reaches Lua as `nil`.
 - A failure carries either a JSON string, which becomes the error message, or an object with a `message` string and optional `code` and `data` values, which Lua receives as the fields of the error. Any other failure payload, such as `null`, a number or an object without a string `message`, fails with `The native platform call failed without a message.` and keeps the code and data of an object, and text that is not JSON fails with the code `invalidJson` and `The platform returned invalid JSON.`
 - The engine and the platform sides fail calls with these codes: `timeout` and `cancelled` from the bridge, `noHandler` when nothing answers the method, `invalidJson`, and `exception` when a Java, Kotlin, Swift or JavaScript handler threw an error without a code of its own instead of answering, with the class of the exception or the type of the error in `data.type`.
-- Method and event names are free-form strings. The built-in methods use dotted names such as `device.info` and `system.openUrl`, and the Tiny Island sample uses `auth.google.signIn`. [Plugins](plugins.md) put their id in front of their method and event names, with the names in camelCase, such as `admob.showBanner` and `admob.closed`: the plugin handle of Lua and the plugin contexts of native code and the web add the prefix, so neither side writes it.
-
-## Built-in methods
-
-These methods work without app code. The results are documented in the [reference](lua-api/platform.md#built-in-methods).
-
-| Method | Answered by |
-| --- | --- |
-| `engine.info` | The engine on every platform. |
-| `app.version` | The engine on every platform, with the `version` of `app.json`. |
-| `device.info` | `HaylenBridge` on Android and Apple platforms, the page on the web, and the desktop handlers on Windows and Linux. |
-| `system.locale` | Same as `device.info`. |
-| `system.openUrl` | Same as `device.info`. |
-| `haptics.vibrate` | Same as `device.info`. Android and the web vibrate, iOS plays an impact, and the other platforms answer without doing anything. |
-
-An app can replace any of them. Engine handlers always take precedence over native ones. A native handler registered under the name of a built-in replaces it on every platform, whenever the app registers it: Android registers its built-ins when the `HaylenBridge` class loads, before any app code can register, the built-ins of Apple platforms never replace a handler of the same name, and the web runtime registers its built-ins before the page code runs.
+- Method and event names are free-form strings, usually dotted names such as `auth.google.signIn` of the Tiny Island sample. [Plugins](plugins.md) put their id in front of their method and event names, with the names in camelCase, such as `admob.showBanner` and `admob.closed`: the plugin handle of Lua and the plugin contexts of native code and the web add the prefix, so neither side writes it.
 
 ## The Lua side
 
@@ -126,7 +111,7 @@ typedef HaylenCancel _Nullable (^HaylenCancellableHandler)(id params, HaylenRepl
 
 Swift handlers use `HaylenBridge.register(method) { (params: Params) async throws -> Result in ... }` from `source/HaylenBridgeAsync.swift` of the Apple template, which decodes the parameters with `JSONDecoder`, encodes the result with `JSONEncoder`, fails the call with the code and data of a thrown `HaylenFailure` or with the code `exception` for any other error, and cancels the task of the call when the app gives it up. `try HaylenBridge.emit(event, payload, retain: true)` sends an event with an `Encodable` payload, and plugin contexts have the same helpers, `context.register` and `context.emit`, as the [plugin guide](plugins.md#swift-helpers) describes. The template ships `HaylenBridgeAsync.swift` as a source file, because the engine artifact is a static library of C, C++ and Objective-C whose headers Swift reaches through `source/HaylenBridging.h`, and a Swift module in the artifact would have to match the Swift compiler of each app. The target names its module `HaylenApp`, so Objective-C++ code such as `main.mm` calls Swift classes through `#import "HaylenApp-Swift.h"`.
 
-The handler table exists from the first registration, and the built-in methods that the runtime registers when it starts never replace a handler of the same name, so native code may register at any time. Apps made from the Apple template register in the `main` function of `source/main.mm`, before it calls `haylen_main`, with their Objective-C, C++ and Swift files next to it in `platform/apple/source/` of the app, whose files all build into every target, as the [distribution guide](distribution.md#platform-overrides) describes. Apps built with `haylen_add_app` add the Objective-C file with its `SOURCES` argument, compile it with `-fobjc-arc` as the engine compiles its Apple sources, and register from `+load` or once the app has launched. The [reference](lua-api/platform.md#apple-handlers) has a complete handler.
+The handler table exists from the first registration, so native code may register at any time. Apps made from the Apple template register in the `main` function of `source/main.mm`, before it calls `haylen_main`, with their Objective-C, C++ and Swift files next to it in `platform/apple/source/` of the app, whose files all build into every target, as the [distribution guide](distribution.md#platform-overrides) describes. Apps built with `haylen_add_app` add the Objective-C file with its `SOURCES` argument, compile it with `-fobjc-arc` as the engine compiles its Apple sources, and register from `+load` or once the app has launched. The [reference](lua-api/platform.md#apple-handlers) has a complete handler.
 
 ## Web
 
@@ -139,7 +124,7 @@ The page side of the bridge lives in `engine/platform/web/haylen-runtime.js`, wh
 | `Module.haylen.emit(event, payload, options)` | Sends an event to the app. The payload is converted with `JSON.stringify`, and `options.retain` keeps the event for the first listener of its name. Events sent before the first app starts reach it once it starts. |
 | `Module.haylen.createPluginContext(id, config)` | Makes the context that the web module of a plugin receives, whose `register` and `emit` put the id of the plugin in front of the name, as the [plugin guide](plugins.md#web-modules) describes. |
 
-The runtime calls the handler after the frame that made the call, with the parsed parameters and a context with the `call` id and a `signal`, an `AbortSignal` that aborts when the app cancels the call or its timeout passes. A call cancelled in the frame that made it never runs its handler. The handler returns the result or a promise for it, and a thrown error or a rejected promise fails the call with the error message and the `code` and `data` properties of the error, or with the code `exception` and the `name` of the error in `data.type` when the error has no code. The first answer counts, and an answer after a cancel is dropped. A method without a handler fails with the code `noHandler` and `No page handler is registered for <method>.` The page answers `device.info`, `system.locale`, `system.openUrl` and `haptics.vibrate` with its own handlers, which `register` can replace.
+The runtime calls the handler after the frame that made the call, with the parsed parameters and a context with the `call` id and a `signal`, an `AbortSignal` that aborts when the app cancels the call or its timeout passes. A call cancelled in the frame that made it never runs its handler. The handler returns the result or a promise for it, and a thrown error or a rejected promise fails the call with the error message and the `code` and `data` properties of the error, or with the code `exception` and the `name` of the error in `data.type` when the error has no code. The first answer counts, and an answer after a cancel is dropped. A method without a handler fails with the code `noHandler` and `No page handler is registered for <method>.`
 
 The web build is single-threaded, so handlers run on the browser's main thread between frames. An asynchronous handler, such as one that waits for `fetch` or for a sign-in popup, never blocks the app while it waits.
 
@@ -147,7 +132,7 @@ The web build is single-threaded, so handlers run on the browser's main thread b
 
 ## Desktop
 
-macOS uses the Apple registry above. Windows and Linux have no registry in the language of the platform: `DesktopMethods` in `engine/src/platform/desktop/DesktopMethods.cpp` answers the four built-in methods with the answers of its `WindowsMethods` and `LinuxMethods` subclasses, synchronously on the frame thread, and fails every other method with the code `noHandler`. Their answers still reach the app at the start of the next frame. `system.openUrl` uses `ShellExecuteW` on Windows and runs `xdg-open` on Linux, where a helper thread waits for it to exit so the frame never blocks. Apps add methods on these platforms with handlers of native libraries, which a Lua app loads without compiling the engine, or with C++ or Lua handlers.
+macOS uses the Apple registry above. Windows and Linux have no registry in the language of the platform, so their services fail every call that reaches them with the code `noHandler`, synchronously on the frame thread, and the failure still reaches the app at the start of the next frame. Apps add methods on these platforms with handlers of native libraries, which a Lua app loads without compiling the engine, or with C++ or Lua handlers.
 
 ## Native library handlers
 
@@ -190,49 +175,50 @@ class CloudSavePlugin final : public haylen::plugins::Plugin {
 A C++ application adds it with `engine.addPlugin(std::make_unique<CloudSavePlugin>())`, and Lua then calls `platform.call('save.cloudSync', {slot = 2})`. A handler may keep the reply and answer later from another thread, but it must answer before the engine stops, because the reply belongs to that engine's bridge. C++ code calls methods the same way Lua does:
 
 ```cpp
-engine.getPlatform().call("device.info", haylen::core::Json::object(), [](haylen::platform::Bridge::Result result) {
+engine.getPlatform().call("profile.load", {{"id", "me"}}, [](haylen::platform::Bridge::Result result) {
     if (!result.ok) {
-        haylen::core::Log::warning("device.info failed: {}", result.error.message);
+        haylen::core::Log::warning("profile.load failed: {}", result.error.message);
         return;
     }
-    haylen::core::Log::info("Running on {}", result.value.value("model", std::string("an unknown device")));
+    haylen::core::Log::info("Playing as {}", result.value.value("name", std::string("a guest")));
 });
 ```
 
 ## Complete example
 
-This example adds `system.theme`, which tells the app whether the device uses a dark theme, and a `system.themeChanged` event, implemented natively on Android and on the web. The app matches its UI theme to the answer and uses a Lua stand-in on the other platforms.
+This example adds `accessibility.reducedMotion`, which tells the app whether the player asked the system for less motion, and an `accessibility.reducedMotionChanged` event, implemented natively on Android and on the web. The app turns its camera shake off when the answer says so and uses a Lua stand-in on the other platforms.
 
 ### Android
 
-`app/src/main/java/com/example/myapp/ThemePlugin.java`:
+`app/src/main/java/com/example/myapp/MotionPlugin.java`:
 
 ```java
 package com.example.myapp;
 
-import android.content.res.Configuration;
+import android.content.ContentResolver;
+import android.database.ContentObserver;
+import android.os.Handler;
+import android.os.Looper;
+import android.provider.Settings;
 import dev.haylen.HaylenBridge;
 import java.util.Collections;
 
-// Tells the app whether the device uses a dark theme, and when that changes.
-final class ThemePlugin {
-    private ThemePlugin() {}
+// Tells the app whether the player turned the animations of Android off, and when that changes.
+final class MotionPlugin {
+    private MotionPlugin() {}
 
-    static void register() {
-        HaylenBridge.register("system.theme", (params, reply) -> {
-            boolean dark = isDark(HaylenBridge.activity().getResources().getConfiguration());
-            reply.success(Collections.singletonMap("dark", dark));
+    static void register(ContentResolver resolver) {
+        HaylenBridge.register("accessibility.reducedMotion", (params, reply) -> reply.success(Collections.singletonMap("reduced", isReduced(resolver))), HaylenBridge.Threading.BACKGROUND);
+        resolver.registerContentObserver(Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE), false, new ContentObserver(new Handler(Looper.getMainLooper())) {
+            @Override
+            public void onChange(boolean selfChange) {
+                HaylenBridge.emit("accessibility.reducedMotionChanged", Collections.singletonMap("reduced", isReduced(resolver)));
+            }
         });
     }
 
-    static void onConfigurationChanged(Configuration configuration) {
-        if (HaylenBridge.activity() != null) {
-            HaylenBridge.emit("system.themeChanged", Collections.singletonMap("dark", isDark(configuration)));
-        }
-    }
-
-    private static boolean isDark(Configuration configuration) {
-        return (configuration.uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+    private static boolean isReduced(ContentResolver resolver) {
+        return Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f;
     }
 }
 ```
@@ -243,41 +229,27 @@ final class ThemePlugin {
 package com.example.myapp;
 
 import android.app.Application;
-import android.content.res.Configuration;
 
 public final class MyAppApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        ThemePlugin.register();
-    }
-
-    @Override
-    public void onConfigurationChanged(Configuration configuration) {
-        super.onConfigurationChanged(configuration);
-        ThemePlugin.onConfigurationChanged(configuration);
+        MotionPlugin.register(getContentResolver());
     }
 }
 ```
 
-The manifest names the application class and keeps `uiMode` in the activity's `android:configChanges`, so a theme change reaches the app instead of recreating the activity:
+`app/app.gradle` names the application class through the `haylenApplication` manifest placeholder of the [Android template](distribution.md#platform-overrides):
 
-```xml
-<application android:name=".MyAppApplication" android:label="My App">
-    <activity
-        android:name="dev.haylen.HaylenActivity"
-        android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
-        android:exported="true">
-        <meta-data android:name="android.app.lib_name" android:value="my-app" />
-        <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
-    </activity>
-</application>
+```groovy
+android {
+    defaultConfig {
+        manifestPlaceholders.haylenApplication = "com.example.myapp.MyAppApplication"
+    }
+}
 ```
 
-The handler runs on the main thread only while an activity exists, so `HaylenBridge.activity()` is never `null` inside it. The night mode bits of `uiMode` and `Collections.singletonMap` work from API 27, the engine's minimum, while `Configuration.isNightModeActive` and `Map.of` need API 30.
+The handler reads a setting and touches no view, so it runs on the background thread of the bridge. The observer and `Collections.singletonMap` work from API 27, the engine's minimum, and the event reaches the app even when the player changes the setting while the app is in the background.
 
 ### Web
 
@@ -286,15 +258,15 @@ The app's shell, passed to `haylen_add_app` as `WEB_SHELL`, registers the handle
 ```html
 <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
 <script>
-    function registerTheme() {
-        const query = window.matchMedia("(prefers-color-scheme: dark)");
-        Module.haylen.register("system.theme", () => ({ dark: query.matches }));
-        query.addEventListener("change", () => Module.haylen.emit("system.themeChanged", { dark: query.matches }));
+    function registerMotion() {
+        const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+        Module.haylen.register("accessibility.reducedMotion", () => ({ reduced: query.matches }));
+        query.addEventListener("change", () => Module.haylen.emit("accessibility.reducedMotionChanged", { reduced: query.matches }));
     }
 
     var Module = {
         canvas: document.getElementById("canvas"),
-        preRun: [registerTheme],
+        preRun: [registerMotion],
         haylen: {
             packageUrl: new URLSearchParams(location.search).get("package"),
         },
@@ -311,29 +283,30 @@ The app's shell, passed to `haylen_add_app` as `WEB_SHELL`, registers the handle
 local async = require('async')
 local haylen = require('haylen')
 local platform = require('haylen.platform')
-local ui = require('haylen.ui')
 
--- Only Android and the web answer system.theme natively, so a Lua handler stands in elsewhere.
+local motion = {shake = true}
+
+-- Only Android and the web answer accessibility.reducedMotion natively, so a Lua handler stands in elsewhere.
 if haylen.platform ~= 'android' and haylen.platform ~= 'web' then
-    platform.registerHandler('system.theme', function()
-        return {dark = true}
+    platform.registerHandler('accessibility.reducedMotion', function()
+        return {reduced = false}
     end)
 end
 
-local function applyTheme(theme)
-    ui.setTheme(theme.dark and 'dark' or 'light')
+local function applyMotion(answer)
+    motion.shake = not answer.reduced
 end
 
 async.spawn(function()
-    local theme, err = platform.call('system.theme'):await()
-    if theme then
-        applyTheme(theme)
+    local answer, err = platform.call('accessibility.reducedMotion'):await()
+    if answer then
+        applyMotion(answer)
     else
-        print('system.theme failed: ' .. err)
+        print('accessibility.reducedMotion failed: ' .. err)
     end
 end)
 
-platform.on('system.themeChanged', applyTheme)
+platform.on('accessibility.reducedMotionChanged', applyMotion)
 ```
 
 ## Testing bridge code

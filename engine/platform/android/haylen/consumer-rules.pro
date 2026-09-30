@@ -24,6 +24,9 @@
 -keep class dev.haylen.HaylenActivity {
     static void lockOrientation(int);
     static void captureBack(boolean);
+    static byte[] systemInfo();
+    static void openUrl(long, byte[]);
+    static void vibrate(long);
 }
 
 -keep class com.varn.VarnHttp { *; }

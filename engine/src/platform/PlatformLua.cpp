@@ -41,6 +41,7 @@ void PlatformLua::pushCall(lua_State* L, const std::string& method, int paramsIn
 
     auto pending = std::make_shared<Call>();
     pending->promise = std::make_shared<varn::async::Promise>(owner.getScriptRuntime());
+    pending->cancel = &cancelBridgeCall;
     // clang-format off
     pending->id = owner.getPlatform().call(method, params, [pending](Bridge::Result result) {
         if (!result.ok) {
@@ -103,10 +104,14 @@ int PlatformLua::finishAwait(lua_State* L, int, lua_KContext) {
     return 2;
 }
 
+bool PlatformLua::cancelBridgeCall(lua_State* L, std::uint64_t id) {
+    return lua::Runtime::getEngine(L).getPlatform().cancel(id);
+}
+
 // Gives up the call, which fails with the code cancelled, and returns whether it was still pending.
 int PlatformLua::cancel(lua_State* L) {
     const std::shared_ptr<Call>& pending = lua::Userdata::checkShared<Call>(L, 1);
-    lua_pushboolean(L, lua::Runtime::getEngine(L).getPlatform().cancel(pending->id) ? 1 : 0);
+    lua_pushboolean(L, pending->cancel(L, pending->id) ? 1 : 0);
     return 1;
 }
 
@@ -312,14 +317,6 @@ int PlatformLua::concatError(lua_State* L) {
 }
 
 int PlatformLua::open(lua_State* L) {
-    luaL_newmetatable(L, kErrorType);
-    lua_pushcfunction(L, &errorToString);
-    lua_setfield(L, -2, "__tostring");
-    lua_pushcfunction(L, &concatError);
-    lua_setfield(L, -2, "__concat");
-    lua_pop(L, 1);
-
-    lua::ClassBuilder<Call>(L).function("await", &await).function("cancel", &cancel).property("id", &getId).property("done", &isDone).property("promise", &getPromise).install();
     lua::ClassBuilder<AppPlugin>(L).property("id", &getPluginId).property("version", &getPluginVersion).property("config", &getPluginConfig).property("native", &lua::Binding::native<&isPluginNative>).function("call", &lua::Binding::native<&callPlugin>).function("send", &lua::Binding::native<&sendToPlugin>).function("on", &lua::Binding::native<&onPlugin>).install();
 
     const luaL_Reg functions[] = {
@@ -329,7 +326,15 @@ int PlatformLua::open(lua_State* L) {
     return 1;
 }
 
+// Calls and their errors exist before any module is required, because haylen.dialogs returns calls too.
 void PlatformLua::install(lua_State* L) {
+    luaL_newmetatable(L, kErrorType);
+    lua_pushcfunction(L, &errorToString);
+    lua_setfield(L, -2, "__tostring");
+    lua_pushcfunction(L, &concatError);
+    lua_setfield(L, -2, "__concat");
+    lua_pop(L, 1);
+    lua::ClassBuilder<Call>(L).function("await", &await).function("cancel", &cancel).property("id", &getId).property("done", &isDone).property("promise", &getPromise).install();
     lua::Binding::preload(L, "haylen.platform", &open);
 }
 

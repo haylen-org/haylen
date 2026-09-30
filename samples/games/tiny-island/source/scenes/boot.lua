@@ -1,9 +1,9 @@
 -- The first screen: it picks the language of the player on the first launch and preloads the menu, whose load brings in what the menus need.
 local graphics2d = require('haylen.graphics2d')
 local localization = require('haylen.localization')
-local platform = require('haylen.platform')
 local scene = require('haylen.scene')
 local stored = require('haylen.preferences')
+local system = require('haylen.system')
 
 local preferences = require('systems.preferences')
 
@@ -15,16 +15,16 @@ function boot.new()
 end
 
 function boot:enter()
-    scene.spawn(self, function()
-        if not stored.has('language') then
-            local locale = platform.call('system.locale'):await()
-            local language = locale and localization.findBestMatch(locale)
-            if language then
-                preferences.set('language', language)
-                preferences.save()
-            end
+    if not stored.has('language') then
+        local locale = system.info().locale
+        local language = locale and localization.findBestMatch(locale)
+        if language then
+            preferences.set('language', language)
+            preferences.save()
         end
+    end
 
+    scene.spawn(self, function()
         self.menu = require('scenes.menu').new()
         local loaded, failure = scene.preload(self.menu):await()
         if not loaded then
