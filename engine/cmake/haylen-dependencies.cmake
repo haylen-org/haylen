@@ -79,6 +79,12 @@ if(CMAKE_GENERATOR STREQUAL "Xcode" AND TARGET varn_vendor_libffi)
   set_property(TARGET varn_vendor_libffi PROPERTY SOURCES ${libffi_sources})
 endif()
 
+# The headers of Poco ask MSVC to link every Poco library by its file name, which no longer exists once the SDK merges the libraries into one, while CMake links them by their targets anyway.
+if(MSVC AND TARGET Poco::Foundation)
+  get_target_property(poco_foundation Poco::Foundation ALIASED_TARGET)
+  target_compile_definitions(${poco_foundation} PUBLIC POCO_NO_AUTOMATIC_LIBS)
+endif()
+
 # sokol_app sizes the iOS framebuffer by the screen, which crops apps whose window is smaller than the screen, on Mac Catalyst and in iPad windows, so the first patch sizes it by the view of the app.
 # The dummy backend of the headless host caps textures at 1024 pixels, below every real GPU, so the second patch gives it the limits of desktop GPUs and headless runs load full-size art.
 # Desktop apps open borderless, topmost, unfocusable and taskbar-less windows at a given position, so the third patch creates the window with those options before it first shows, lets the focus behavior change at run time, and makes transparency work on D3D11 through DirectComposition and on X11 through ARGB visuals.
