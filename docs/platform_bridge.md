@@ -90,7 +90,7 @@ Because `hasHandler` cannot see native handlers, an app that provides Lua stand-
 
 ## Android
 
-The engine's Android library module `engine/platform/android/haylen` holds `dev.haylen.HaylenActivity`, the native activity that runs the app, and `dev.haylen.HaylenBridge`, the handler registry:
+The engine's Android library module `engine/platform/android/haylen` holds `dev.haylen.HaylenActivity`, the GameActivity that runs the app, and `dev.haylen.HaylenBridge`, the handler registry:
 
 | Member | Meaning |
 | --- | --- |
@@ -98,7 +98,7 @@ The engine's Android library module `engine/platform/android/haylen` holds `dev.
 | `HaylenBridge.register(String method, MethodHandler handler, HaylenBridge.Threading threading)` | The same, with the thread the handler runs on: `MAIN` or `BACKGROUND`. |
 | `HaylenBridge.unregister(String method)` | Removes a handler. |
 | `HaylenBridge.emit(String event, Object payload)`, `HaylenBridge.emit(String event, Object payload, boolean retain)`, `HaylenBridge.emit(String event, Object payload, boolean retain, boolean batched)` | Sends an event to the app, retained for the first listener of its name when `retain` is `true`, and in the list of its frame when `batched` is `true`. |
-| `HaylenBridge.activity()` | The running activity, or `null` when there is none. |
+| `HaylenBridge.activity()` | The running `HaylenActivity`, an `AppCompatActivity` and so a `ComponentActivity`, or `null` when there is none. |
 | `MethodHandler.handle(Object params, Reply reply) throws Exception` | The handler interface, usable as a lambda. |
 | `Reply.success(Object value)` | Answers the call, with `byte[]` and `ByteBuffer` values as bytes. |
 | `Reply.failure(String message)`, `Reply.failure(String message, String code, Object data)`, `Reply.failure(Throwable error)` | Fail the call, with a code and data, or with a thrown error: a `HaylenBridge.Failure` keeps its code and data, and any other error fails with the code `exception`. |

@@ -1,4 +1,4 @@
-// Android side of the Haylen runtime: the Lua player library, the activity with its splash screen, the platform bridge and the Kotlin transport of the Varn HTTP client.
+// Android side of the Haylen runtime: the Lua player library, the activity with its splash screen, the link activity, the platform bridge and the Kotlin transport of the Varn HTTP client.
 // make.py engine --platform android builds the player with the engine CMake project for every ABI and publishes this library as dev.haylen:haylen to a local Maven repository, so apps made from the Android template depend on it without compiling C++.
 plugins {
     id("com.android.library")
@@ -36,8 +36,16 @@ android {
     }
 }
 
+// HaylenActivity extends GameActivity, whose native side the engine links into libhaylen.so from the AAR of the same version, so no other version of its Java classes may reach an app. GameActivity extends AppCompatActivity, and its POM declares no dependencies, so AppCompat, the activity library and core come from here.
 dependencies {
-    implementation("androidx.core:core:1.19.1")
+    api("androidx.games:games-activity") {
+        version {
+            strictly("4.4.2")
+        }
+    }
+    api("androidx.appcompat:appcompat:1.8.0")
+    api("androidx.activity:activity:1.13.0")
+    api("androidx.core:core:1.19.1")
     implementation("androidx.core:core-splashscreen:1.2.0")
     api("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 }

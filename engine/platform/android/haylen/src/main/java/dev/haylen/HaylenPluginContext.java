@@ -1,6 +1,5 @@
 package dev.haylen;
 
-import android.app.Activity;
 import android.app.Application;
 import android.os.Handler;
 import android.os.Looper;
@@ -35,8 +34,8 @@ public final class HaylenPluginContext {
         return application;
     }
 
-    // The running activity, or null while there is none.
-    public Activity activity() {
+    // The running activity, an AppCompatActivity and so a ComponentActivity, or null while there is none.
+    public HaylenActivity activity() {
         return HaylenBridge.activity();
     }
 

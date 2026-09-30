@@ -622,6 +622,10 @@ target_link_libraries(haylen_runtime PUBLIC haylen_platform PRIVATE haylen_sokol
 if(EMSCRIPTEN)
   target_link_libraries(haylen_runtime PRIVATE haylen_miniaudio)
 endif()
+# The Android host is GameActivity, whose static library holds the native side of the activity.
+if(ANDROID)
+  target_link_libraries(haylen_runtime PRIVATE haylen_game_activity)
+endif()
 haylen_enable_warnings(haylen_runtime)
 haylen_link_runtime_platform(haylen_runtime PUBLIC)
 

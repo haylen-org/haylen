@@ -19,6 +19,8 @@ function(haylen_link_runtime_platform target scope)
     endif()
   elseif(HAYLEN_PLATFORM STREQUAL "android")
     target_link_libraries(${target} ${scope} android log EGL GLESv3)
+    # GameActivity finds its native side through this JNI entry, which nothing in the library references.
+    target_link_options(${target} INTERFACE "LINKER:-u,Java_com_google_androidgamesdk_GameActivity_initializeNativeCode")
   elseif(HAYLEN_PLATFORM STREQUAL "web")
     target_link_options(${target} INTERFACE
       -sALLOW_MEMORY_GROWTH=1

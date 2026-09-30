@@ -82,7 +82,12 @@ foreach(archive IN LISTS engine_archives)
   endif()
 endforeach()
 file(GENERATE OUTPUT "${sdk_libraries}/engine-inputs.txt" CONTENT "${engine_inputs}")
-file(GENERATE OUTPUT "${sdk_libraries}/runtime-inputs.txt" CONTENT "$<TARGET_FILE:haylen_platform>\n$<JOIN:$<TARGET_OBJECTS:haylen_runtime>,\n>\n")
+# The Android runtime carries the static library of GameActivity, which only the build tree of the engine names.
+set(runtime_inputs "$<TARGET_FILE:haylen_platform>\n$<JOIN:$<TARGET_OBJECTS:haylen_runtime>,\n>\n")
+if(ANDROID)
+  string(APPEND runtime_inputs "$<TARGET_FILE:haylen_game_activity>\n")
+endif()
+file(GENERATE OUTPUT "${sdk_libraries}/runtime-inputs.txt" CONTENT "${runtime_inputs}")
 
 if(APPLE)
   find_program(HAYLEN_LIBTOOL libtool HINTS /usr/bin REQUIRED)

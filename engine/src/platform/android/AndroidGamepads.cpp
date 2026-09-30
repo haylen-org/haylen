@@ -3,6 +3,9 @@
 #include <android/input.h>
 
 #include <algorithm>
+#include <initializer_list>
+
+#include "sokol_app.h"
 
 namespace haylen::platform {
 
@@ -10,44 +13,28 @@ std::mutex& AndroidGamepads::mutex = *new std::mutex();
 std::array<std::int32_t, input::Input::kMaxGamepads> AndroidGamepads::devices{-1, -1, -1, -1};
 std::array<input::GamepadState, input::Input::kMaxGamepads>& AndroidGamepads::gamepads = *new std::array<input::GamepadState, input::Input::kMaxGamepads>();
 
+void AndroidGamepads::enableAxes() {
+    for (const std::int32_t axis : {AMOTION_EVENT_AXIS_Z, AMOTION_EVENT_AXIS_RZ, AMOTION_EVENT_AXIS_LTRIGGER, AMOTION_EVENT_AXIS_RTRIGGER, AMOTION_EVENT_AXIS_BRAKE, AMOTION_EVENT_AXIS_GAS, AMOTION_EVENT_AXIS_HAT_X, AMOTION_EVENT_AXIS_HAT_Y}) {
+        GameActivityPointerAxes_enableAxis(axis);
+    }
+}
+
+bool AndroidGamepads::takesKey(const void* keyEvent) {
+    const auto& event = *static_cast<const GameActivityKeyEvent*>(keyEvent);
+    input::GamepadButton button{};
+    return isController(event.source) && toButton(event.keyCode, button);
+}
+
 bool AndroidGamepads::handleEvent(const void* source) {
-    const auto* event = static_cast<const AInputEvent*>(source);
-    const auto origin = static_cast<std::uint32_t>(AInputEvent_getSource(event));
-    if ((origin & AINPUT_SOURCE_GAMEPAD) != AINPUT_SOURCE_GAMEPAD && (origin & AINPUT_SOURCE_JOYSTICK) != AINPUT_SOURCE_JOYSTICK) {
+    const auto& event = *static_cast<const sapp_android_native_event*>(source);
+    if (event.type == SAPP_ANDROID_NATIVE_EVENT_KEY) {
+        return handleKey(*static_cast<const GameActivityKeyEvent*>(event.event));
+    }
+    const auto& motion = *static_cast<const GameActivityMotionEvent*>(event.event);
+    if (!isController(motion.source)) {
         return false;
     }
-
-    const std::scoped_lock lock(mutex);
-    const int slot = findSlot(AInputEvent_getDeviceId(event));
-    if (slot < 0) {
-        return true;
-    }
-    input::GamepadState& state = gamepads[static_cast<std::size_t>(slot)];
-
-    if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_KEY) {
-        input::GamepadButton button{};
-        if (!toButton(AKeyEvent_getKeyCode(event), button)) {
-            return false;
-        }
-        state.buttons[static_cast<std::size_t>(button)] = AKeyEvent_getAction(event) != AKEY_EVENT_ACTION_UP;
-        return true;
-    }
-
-    const auto value = [event](std::int32_t axis) { return AMotionEvent_getAxisValue(event, axis, 0); };
-    state.axes[static_cast<std::size_t>(input::GamepadAxis::LeftX)] = value(AMOTION_EVENT_AXIS_X);
-    state.axes[static_cast<std::size_t>(input::GamepadAxis::LeftY)] = value(AMOTION_EVENT_AXIS_Y);
-    state.axes[static_cast<std::size_t>(input::GamepadAxis::RightX)] = value(AMOTION_EVENT_AXIS_Z);
-    state.axes[static_cast<std::size_t>(input::GamepadAxis::RightY)] = value(AMOTION_EVENT_AXIS_RZ);
-    state.axes[static_cast<std::size_t>(input::GamepadAxis::LeftTrigger)] = std::max(value(AMOTION_EVENT_AXIS_LTRIGGER), value(AMOTION_EVENT_AXIS_BRAKE));
-    state.axes[static_cast<std::size_t>(input::GamepadAxis::RightTrigger)] = std::max(value(AMOTION_EVENT_AXIS_RTRIGGER), value(AMOTION_EVENT_AXIS_GAS));
-
-    // Many controllers report the directional pad as a hat axis instead of keys.
-    const float hatX = value(AMOTION_EVENT_AXIS_HAT_X);
-    const float hatY = value(AMOTION_EVENT_AXIS_HAT_Y);
-    state.buttons[static_cast<std::size_t>(input::GamepadButton::DpadLeft)] = hatX < -0.5F;
-    state.buttons[static_cast<std::size_t>(input::GamepadButton::DpadRight)] = hatX > 0.5F;
-    state.buttons[static_cast<std::size_t>(input::GamepadButton::DpadUp)] = hatY < -0.5F;
-    state.buttons[static_cast<std::size_t>(input::GamepadButton::DpadDown)] = hatY > 0.5F;
+    handleMotion(motion);
     return true;
 }
 
@@ -66,6 +53,51 @@ void AndroidGamepads::remove(std::int32_t device) {
             gamepads[index] = {};
         }
     }
+}
+
+bool AndroidGamepads::isController(std::int32_t source) noexcept {
+    const auto origin = static_cast<std::uint32_t>(source);
+    return (origin & AINPUT_SOURCE_GAMEPAD) == AINPUT_SOURCE_GAMEPAD || (origin & AINPUT_SOURCE_JOYSTICK) == AINPUT_SOURCE_JOYSTICK;
+}
+
+bool AndroidGamepads::handleKey(const GameActivityKeyEvent& event) {
+    input::GamepadButton button{};
+    if (!isController(event.source) || !toButton(event.keyCode, button)) {
+        return false;
+    }
+
+    const std::scoped_lock lock(mutex);
+    const int slot = findSlot(event.deviceId);
+    if (slot >= 0) {
+        gamepads[static_cast<std::size_t>(slot)].buttons[static_cast<std::size_t>(button)] = event.action != AKEY_EVENT_ACTION_UP;
+    }
+    return true;
+}
+
+void AndroidGamepads::handleMotion(const GameActivityMotionEvent& event) {
+    const GameActivityPointerAxes& axes = event.pointers[0];
+    const auto value = [&axes](std::int32_t axis) { return GameActivityPointerAxes_getAxisValue(&axes, axis); };
+    const std::scoped_lock lock(mutex);
+    const int slot = findSlot(event.deviceId);
+    if (slot < 0) {
+        return;
+    }
+
+    input::GamepadState& state = gamepads[static_cast<std::size_t>(slot)];
+    state.axes[static_cast<std::size_t>(input::GamepadAxis::LeftX)] = value(AMOTION_EVENT_AXIS_X);
+    state.axes[static_cast<std::size_t>(input::GamepadAxis::LeftY)] = value(AMOTION_EVENT_AXIS_Y);
+    state.axes[static_cast<std::size_t>(input::GamepadAxis::RightX)] = value(AMOTION_EVENT_AXIS_Z);
+    state.axes[static_cast<std::size_t>(input::GamepadAxis::RightY)] = value(AMOTION_EVENT_AXIS_RZ);
+    state.axes[static_cast<std::size_t>(input::GamepadAxis::LeftTrigger)] = std::max(value(AMOTION_EVENT_AXIS_LTRIGGER), value(AMOTION_EVENT_AXIS_BRAKE));
+    state.axes[static_cast<std::size_t>(input::GamepadAxis::RightTrigger)] = std::max(value(AMOTION_EVENT_AXIS_RTRIGGER), value(AMOTION_EVENT_AXIS_GAS));
+
+    // Many controllers report the directional pad as a hat axis instead of keys.
+    const float hatX = value(AMOTION_EVENT_AXIS_HAT_X);
+    const float hatY = value(AMOTION_EVENT_AXIS_HAT_Y);
+    state.buttons[static_cast<std::size_t>(input::GamepadButton::DpadLeft)] = hatX < -0.5F;
+    state.buttons[static_cast<std::size_t>(input::GamepadButton::DpadRight)] = hatX > 0.5F;
+    state.buttons[static_cast<std::size_t>(input::GamepadButton::DpadUp)] = hatY < -0.5F;
+    state.buttons[static_cast<std::size_t>(input::GamepadButton::DpadDown)] = hatY > 0.5F;
 }
 
 int AndroidGamepads::findSlot(std::int32_t device) {

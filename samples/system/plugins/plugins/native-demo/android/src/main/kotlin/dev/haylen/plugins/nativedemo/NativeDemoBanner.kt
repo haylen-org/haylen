@@ -11,7 +11,7 @@ import android.widget.TextView
 import dev.haylen.HaylenOverlay
 import dev.haylen.HaylenPlacement
 
-// The native banner of the demo: a colored bar with the greeting and a Tap button, which the overlay of the plugin places over the app in a panel window of its own. Touches outside the bar reach the app.
+// The native banner of the demo: a colored bar with the greeting and a Tap button, which the overlay of the plugin places over the app. Touches outside the bar reach the app.
 class NativeDemoBanner(activity: Activity, text: String, color: Int, overlay: HaylenOverlay, placement: HaylenPlacement, tapped: () -> Unit) {
     private val panel: HaylenOverlay.Panel
 

@@ -22,7 +22,6 @@
 #elif defined(__ANDROID__)
 #include "platform/android/AndroidActivity.hpp"
 #include "platform/android/AndroidGamepads.hpp"
-#include "platform/android/AndroidKeys.hpp"
 #include "platform/android/AndroidTextInput.hpp"
 #include "platform/android/JavaBridge.hpp"
 #elif defined(__EMSCRIPTEN__)
@@ -87,7 +86,8 @@ sapp_desc SokolRuntime::describe(int argc, char* argv[]) {
     desc.html5.update_document_title = true;
 #endif
 #if defined(__ANDROID__)
-    desc.android.native_event_cb = &onAndroidInput;
+    desc.android.native_event_cb = &AndroidGamepads::handleEvent;
+    desc.android.key_consumed_cb = &AndroidGamepads::takesKey;
 #endif
     return desc;
 }
@@ -274,10 +274,6 @@ void SokolRuntime::onEvent(const sapp_event* source, void* data) {
 }
 
 #if defined(__ANDROID__)
-bool SokolRuntime::onAndroidInput(const void* source) {
-    return AndroidGamepads::handleEvent(source) || AndroidKeys::handleEvent(source);
-}
-
 void SokolRuntime::reportBackCapture() {
     const bool captured = engine->isBackCaptured() || AndroidTextInput::isEditing();
     if (captured == backReported) {

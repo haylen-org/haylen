@@ -49,8 +49,13 @@ android {
     }
 }
 
+// HaylenActivity is a GameActivity and so an AppCompatActivity, whose libraries the app declares at the versions of the haylen library, which links the native side of GameActivity 4.4.2.
 dependencies {
     implementation("dev.haylen:haylen:${haylen("engineVersion")}")
+    implementation("androidx.games:games-activity:4.4.2")
+    implementation("androidx.appcompat:appcompat:1.8.0")
+    implementation("androidx.activity:activity:1.13.0")
+    implementation("androidx.core:core:1.19.1")
     haylenEntries("plugins").forEach { (id, _) -> implementation(project(":$id")) }
 }
 

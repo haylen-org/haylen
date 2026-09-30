@@ -82,13 +82,25 @@ endif()
 # Desktop apps open borderless, topmost, unfocusable and taskbar-less windows at a given position, so the third patch creates the window with those options before it first shows, lets the focus behavior change at run time, and makes transparency work on D3D11 through DirectComposition and on X11 through ARGB visuals.
 # sokol_app ends a destroyed Android activity with exit(), which aborts the process in the rendering threads of Android, so the fourth patch stops the app through its cleanup callback and lets the activity finish normally, and makes sapp_quit() finish the activity.
 # Native plugins on Apple platforms receive the events of the application and its scenes, which only the application delegate of sokol_app sees, so the fifth patch lets the runtime name a subclass of that delegate.
+# sokol_app hosts Android apps in NativeActivity, which can never be the ComponentActivity that current SDKs and the Activity Result API need and keeps views from drawing over the app, so the last patch hosts them in GameActivity, with input through a queue from the UI thread, a key table, the native saved state and the Choreographer frame loop chosen at run time.
 CPMAddPackage(
   NAME sokol
   URL "https://github.com/floooh/sokol/archive/2e75443dbd4940b5aa8d76a8e479f8e4b270b9a3.tar.gz"
   URL_HASH SHA256=d8560ddd11fb3223f3aaf6513aaa2d9be66ee7896fa1263ad51c5bd60ec52cf3
-  PATCHES "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-ios-view-size.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-dummy-limits.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-desktop-window.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-android-quit.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-apple-delegate.patch"
+  PATCHES "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-ios-view-size.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-dummy-limits.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-desktop-window.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-android-quit.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-apple-delegate.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-android-gameactivity.patch"
   DOWNLOAD_ONLY YES
 )
+
+# GameActivity of the AndroidX games libraries hosts Android apps. make.py builds the player outside Gradle, so the engine links the static library of its native side from the prefab folder of the AAR, whose Java classes the Android library and template use at the same version.
+if(ANDROID)
+  CPMAddPackage(
+    NAME games_activity
+    VERSION 4.4.2
+    URL "https://dl.google.com/android/maven2/androidx/games/games-activity/4.4.2/games-activity-4.4.2.aar"
+    URL_HASH SHA256=16069bb61a34e9cc7a4f6b4cef0ddb9e2f3f61fe781b282787f574f8880ba38e
+    DOWNLOAD_ONLY YES
+  )
+endif()
 
 CPMAddPackage(
   NAME stb
@@ -211,6 +223,13 @@ endif()
 
 add_library(haylen_sokol_headers INTERFACE)
 target_include_directories(haylen_sokol_headers SYSTEM INTERFACE "${sokol_SOURCE_DIR}" "${sokol_SOURCE_DIR}/util")
+
+if(ANDROID)
+  set(game_activity_dir "${games_activity_SOURCE_DIR}/prefab/modules/game-activity_static")
+  add_library(haylen_game_activity STATIC IMPORTED)
+  set_target_properties(haylen_game_activity PROPERTIES IMPORTED_LOCATION "${game_activity_dir}/libs/android.${ANDROID_ABI}/libgame-activity_static.a")
+  target_include_directories(haylen_game_activity SYSTEM INTERFACE "${game_activity_dir}/include")
+endif()
 
 add_library(haylen_stb INTERFACE)
 target_include_directories(haylen_stb SYSTEM INTERFACE "${stb_SOURCE_DIR}")

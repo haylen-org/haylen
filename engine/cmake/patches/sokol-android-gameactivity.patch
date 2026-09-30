@@ -1,0 +1,894 @@
+Hosts Android apps in GameActivity of the AndroidX games libraries instead of NativeActivity. GameActivity is an AppCompatActivity whose SurfaceView lives in an ordinary view hierarchy, so views, fragments, dialogs and the Activity Result API work over the app. GameActivity_onCreate replaces ANativeActivity_onCreate and keeps the render thread, its pipe and its handshakes with the UI thread. Input arrives on the UI thread, which copies it into a locked queue that the render thread drains, hands to native_event_cb and translates: touches, and keys through a key table together with the characters that hardware keyboards type. The UI thread decides at once whether the app takes a key, which it does for translated keys, typed characters and the keys that key_consumed_cb asks for, so back and the system keys go on to the views and the system, and the press of a key decides for its release, so a release whose press went to a view never reaches the app. The visibility of the soft keyboard reaches sapp_keyboard_shown() through the same queue, save_state_cb and sapp_android_get_saved_state() carry the native saved state of the activity across its recreation and the end of its process, and the Choreographer frame loop is chosen at run time, because AChoreographer_postFrameCallback64() exists only from Android 10 on.
+
+--- a/sokol_app.h
++++ b/sokol_app.h
+@@ -82,7 +82,10 @@
+         - with SOKOL_WGPU: a WebGPU implementation library (tested with webgpu_dawn)
+         - with SOKOL_VULKAN: vulkan
+         - with EGL: EGL
+-    - on Android: GLESv3, EGL, log, android
++    - on Android: GLESv3, EGL, log, android, and the static library of
++      GameActivity (androidx.games:games-activity), linked with
++      '-u Java_com_google_androidgamesdk_GameActivity_initializeNativeCode',
++      whose com.google.androidgamesdk.GameActivity class hosts the app
+     - on Windows:
+         - with MSVC or Clang: library dependencies are defined via `#pragma comment`
+         - with SOKOL_WGPU: a WebGPU implementation library (tested with webgpu_dawn)
+@@ -136,7 +139,7 @@
+     webgpu              | YES(4)  | YES(4)| YES(4) | ---   | ---     | YES
+     vulkan              | YES(7)  | ---   | YES(7) | ---   | ---     | ---
+     noapi               | YES     | TODO  | TODO   | ---   | ---     | ---
+-    key+char events     | YES     | YES   | YES    | ---   | ---     | YES
++    key+char events     | YES     | YES   | YES    | ---   | YES     | YES
+     mouse events        | YES     | YES   | YES    | ---   | ---     | YES
+     touch events        | ---     | ---   | ---    | YES   | YES     | TES
+     resized event       | YES     | YES   | YES    | YES   | YES     | YES
+@@ -144,7 +147,7 @@
+     focused/unfocused   | YES     | YES   | YES    | ---   | ---     | YES
+     suspended/resumed   | ---     | ---   | ---    | YES   | YES     | TODO
+     programmatic quit   | YES     | YES   | YES    | ---   | YES     | YES
+-    key repeat flag     | YES     | YES   | YES    | ---   | ---     | YES
++    key repeat flag     | YES     | YES   | YES    | ---   | YES     | YES
+     windowed            | YES     | YES   | YES    | ---   | ---     | YES
+     fullscreen          | YES     | YES   | YES    | YES   | YES     | YES(3)
+     depth format        | YES     | YES   | YES    | YES   | YES     | YES
+@@ -384,9 +387,15 @@
+ 
+         const void* sapp_android_get_native_activity(void);
+         const void* sapp_android_get_native_window(void);
+-            On Android, get the native activity ANativeActivity pointer,
++            On Android, get the GameActivity pointer,
+             or native window ANativeWindow pointer, otherwise a null pointer.
+ 
++        const void* sapp_android_get_saved_state(size_t* out_size);
++            On Android, get the bytes that sapp_android_desc.save_state_cb
++            wrote before the activity was destroyed or the process was killed,
++            or a null pointer when the activity starts fresh. Callable from
++            within sokol_main(), and valid until the activity is destroyed.
++
+     --- Implement the frame-callback function, this function will be called
+         on the same thread as the init callback, but might be on a different
+         thread than the sokol_main() function. Note that the size of
+@@ -1830,7 +1839,6 @@
+     _SAPP_LOGITEM_XMACRO(LINUX_X11_QUERY_SYSTEM_DPI_FAILED, "failed to query system dpi value, assuming default 96.0") \
+     _SAPP_LOGITEM_XMACRO(LINUX_X11_DROPPED_FILE_URI_WRONG_SCHEME, "dropped file URL doesn't start with 'file://'") \
+     _SAPP_LOGITEM_XMACRO(LINUX_X11_FAILED_TO_BECOME_OWNER_OF_CLIPBOARD, "X11: Failed to become owner of clipboard selection") \
+-    _SAPP_LOGITEM_XMACRO(ANDROID_UNSUPPORTED_INPUT_EVENT_INPUT_CB, "unsupported input event encountered in _sapp_android_input_cb()") \
+     _SAPP_LOGITEM_XMACRO(ANDROID_UNSUPPORTED_INPUT_EVENT_MAIN_CB, "unsupported input event encountered in _sapp_android_main_cb()") \
+     _SAPP_LOGITEM_XMACRO(ANDROID_READ_MSG_FAILED, "failed to read message in _sapp_android_main_cb()") \
+     _SAPP_LOGITEM_XMACRO(ANDROID_WRITE_MSG_FAILED, "failed to write message in _sapp_android_msg") \
+@@ -1840,28 +1848,28 @@
+     _SAPP_LOGITEM_XMACRO(ANDROID_MSG_FOCUS, "MSG_FOCUS") \
+     _SAPP_LOGITEM_XMACRO(ANDROID_MSG_NO_FOCUS, "MSG_NO_FOCUS") \
+     _SAPP_LOGITEM_XMACRO(ANDROID_MSG_SET_NATIVE_WINDOW, "MSG_SET_NATIVE_WINDOW") \
+-    _SAPP_LOGITEM_XMACRO(ANDROID_MSG_SET_INPUT_QUEUE, "MSG_SET_INPUT_QUEUE") \
++    _SAPP_LOGITEM_XMACRO(ANDROID_MSG_INPUT, "MSG_INPUT") \
+     _SAPP_LOGITEM_XMACRO(ANDROID_MSG_DESTROY, "MSG_DESTROY") \
+     _SAPP_LOGITEM_XMACRO(ANDROID_UNKNOWN_MSG, "unknown msg type received") \
+     _SAPP_LOGITEM_XMACRO(ANDROID_LOOP_THREAD_STARTED, "loop thread started") \
+     _SAPP_LOGITEM_XMACRO(ANDROID_LOOP_THREAD_DONE, "loop thread done") \
+-    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONSTART, "NativeActivity onStart()") \
+-    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONRESUME, "NativeActivity onResume") \
+-    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONSAVEINSTANCESTATE, "NativeActivity onSaveInstanceState") \
+-    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONWINDOWFOCUSCHANGED, "NativeActivity onWindowFocusChanged") \
+-    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONPAUSE, "NativeActivity onPause") \
+-    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONSTOP, "NativeActivity onStop()") \
+-    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONNATIVEWINDOWCREATED, "NativeActivity onNativeWindowCreated") \
+-    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONNATIVEWINDOWDESTROYED, "NativeActivity onNativeWindowDestroyed") \
+-    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONINPUTQUEUECREATED, "NativeActivity onInputQueueCreated") \
+-    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONINPUTQUEUEDESTROYED, "NativeActivity onInputQueueDestroyed") \
+-    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONCONFIGURATIONCHANGED, "NativeActivity onConfigurationChanged") \
+-    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONLOWMEMORY, "NativeActivity onLowMemory") \
+-    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONDESTROY, "NativeActivity onDestroy") \
+-    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_DONE, "NativeActivity done") \
+-    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONCREATE, "NativeActivity onCreate") \
++    _SAPP_LOGITEM_XMACRO(ANDROID_INPUT_QUEUE_FULL, "input queue full, dropping event") \
++    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONSTART, "GameActivity onStart()") \
++    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONRESUME, "GameActivity onResume") \
++    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONSAVEINSTANCESTATE, "GameActivity onSaveInstanceState") \
++    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONWINDOWFOCUSCHANGED, "GameActivity onWindowFocusChanged") \
++    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONPAUSE, "GameActivity onPause") \
++    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONSTOP, "GameActivity onStop()") \
++    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONNATIVEWINDOWCREATED, "GameActivity onNativeWindowCreated") \
++    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONNATIVEWINDOWDESTROYED, "GameActivity onNativeWindowDestroyed") \
++    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONCONFIGURATIONCHANGED, "GameActivity onConfigurationChanged") \
++    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONTRIMMEMORY, "GameActivity onTrimMemory") \
++    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONKEYBOARDVISIBILITY, "GameActivity onSoftwareKeyboardVisibilityChanged") \
++    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONDESTROY, "GameActivity onDestroy") \
++    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_DONE, "GameActivity done") \
++    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_ONCREATE, "GameActivity onCreate") \
+     _SAPP_LOGITEM_XMACRO(ANDROID_CREATE_THREAD_PIPE_FAILED, "failed to create thread pipe") \
+-    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_CREATE_SUCCESS, "NativeActivity successfully created") \
++    _SAPP_LOGITEM_XMACRO(ANDROID_NATIVE_ACTIVITY_CREATE_SUCCESS, "GameActivity successfully created") \
+     _SAPP_LOGITEM_XMACRO(ANDROID_CHOREOGRAPHER_ENABLED, "Choreographer frame loop enabled") \
+     _SAPP_LOGITEM_XMACRO(ANDROID_CHOREOGRAPHER_UNAVAILABLE, "Choreographer unavailable, using poll loop") \
+     _SAPP_LOGITEM_XMACRO(WGPU_DEVICE_LOST, "wgpu: device lost") \
+@@ -2116,8 +2124,23 @@
+     bool disable_display_sync;      // feeds into CAMetalLayer.displaySyncEnabled
+ } sapp_metal_desc;
+ 
++typedef enum sapp_android_native_event_type {
++    SAPP_ANDROID_NATIVE_EVENT_MOTION,   // event points to a GameActivityMotionEvent
++    SAPP_ANDROID_NATIVE_EVENT_KEY,      // event points to a GameActivityKeyEvent
++} sapp_android_native_event_type;
++
++typedef struct sapp_android_native_event {
++    sapp_android_native_event_type type;
++    const void* event;
++} sapp_android_native_event;
++
+ typedef struct sapp_android_desc {
++    // called on the sokol thread with a const sapp_android_native_event*, return true to skip the sokol translation
+     bool (*native_event_cb)(const void* native_event);
++    // called on the UI thread with a GameActivityKeyEvent that the key table does not translate, such as a gamepad button, return true to take it from the views and the system
++    bool (*key_consumed_cb)(const void* key_event);
++    // called on the UI thread when the activity saves its state, the bytes come back through sapp_android_get_saved_state()
++    void (*save_state_cb)(void (*write)(const char* bytes, int len, void* context), void* context);
+ } sapp_android_desc;
+ 
+ typedef struct sapp_apple_desc {
+@@ -2364,10 +2387,12 @@
+ /* X11: get Display */
+ SOKOL_APP_API_DECL const void* sapp_x11_get_display(void);
+ 
+-/* Android: get native activity handle */
++/* Android: get GameActivity handle */
+ SOKOL_APP_API_DECL const void* sapp_android_get_native_activity(void);
+ /* Android: get native window handle */
+ SOKOL_APP_API_DECL const void* sapp_android_get_native_window(void);
++/* Android: get the state saved by sapp_android_desc.save_state_cb */
++SOKOL_APP_API_DECL const void* sapp_android_get_saved_state(size_t* out_size);
+ 
+ 
+ #ifdef __cplusplus
+@@ -2637,11 +2662,11 @@
+     #include <pthread.h>
+     #include <unistd.h>
+     #include <time.h>
+-    #include <android/native_activity.h>
++    #include <dlfcn.h>
++    #include <game-activity/GameActivity.h>
++    #include <android/keycodes.h>
+     #include <android/looper.h>
+-    #if __ANDROID_API__ >= 29
+-        #include <android/choreographer.h>
+-    #endif
++    #include <android/choreographer.h>
+     #include <EGL/egl.h>
+     #include <GLES3/gl3.h>
+ #elif defined(_SAPP_LINUX)
+@@ -3181,7 +3206,7 @@
+     _SOKOL_ANDROID_MSG_FOCUS,
+     _SOKOL_ANDROID_MSG_NO_FOCUS,
+     _SOKOL_ANDROID_MSG_SET_NATIVE_WINDOW,
+-    _SOKOL_ANDROID_MSG_SET_INPUT_QUEUE,
++    _SOKOL_ANDROID_MSG_INPUT,
+     _SOKOL_ANDROID_MSG_DESTROY,
+ } _sapp_android_msg_t;
+ 
+@@ -3195,14 +3220,44 @@
+ 
+ typedef struct {
+     ANativeWindow* window;
+-    AInputQueue* input;
+ } _sapp_android_resources_t;
++
++/* GameActivity delivers input on the UI thread, which copies it here for the sokol thread */
++#define _SAPP_ANDROID_MAX_QUEUED_INPUTS (64)
++typedef enum {
++    _SAPP_ANDROID_INPUT_MOTION,
++    _SAPP_ANDROID_INPUT_KEY,
++    _SAPP_ANDROID_INPUT_KEYBOARD,
++} _sapp_android_input_type_t;
+ 
+ typedef struct {
+-    ANativeActivity* activity;
++    _sapp_android_input_type_t type;
++    union {
++        GameActivityMotionEvent motion;
++        GameActivityKeyEvent key;
++        bool keyboard_shown;
++    };
++} _sapp_android_input_t;
++
++typedef struct {
++    pthread_mutex_t mutex;
++    _sapp_android_input_t items[_SAPP_ANDROID_MAX_QUEUED_INPUTS];
++    int head;
++    int count;
++} _sapp_android_input_queue_t;
++
++/* AChoreographer_postFrameCallback64() exists from Android 10 (API 29) on, so it is looked up at run time */
++typedef void (*_sapp_android_post_frame_callback_t)(AChoreographer* choreographer, AChoreographer_frameCallback64 callback, void* data);
++
++typedef struct {
++    GameActivity* activity;
+     _sapp_android_pt_t pt;
+     _sapp_android_resources_t pending;
+     _sapp_android_resources_t current;
++    _sapp_android_input_queue_t input;
++    bool keys_taken[SAPP_MAX_KEYCODES];     /* UI thread only: whether the app took the press of a key */
++    void* saved_state;
++    size_t saved_state_size;
+     ALooper* looper;
+     bool is_thread_started;
+     bool is_thread_stopping;
+@@ -3214,10 +3269,9 @@
+     EGLDisplay display;
+     EGLContext context;
+     EGLSurface surface;
+-    #if __ANDROID_API__ >= 29
++    _sapp_android_post_frame_callback_t post_frame_callback;
+     AChoreographer* choreographer;
+     bool frame_callback_in_flight;
+-    #endif
+ } _sapp_android_t;
+ 
+ #endif // _SAPP_ANDROID
+@@ -11122,7 +11176,7 @@
+     SOKOL_ASSERT(window);
+ 
+     /* TODO: set window flags */
+-    /* ANativeActivity_setWindowFlags(activity, AWINDOW_FLAG_KEEP_SCREEN_ON, 0); */
++    /* GameActivity_setWindowFlags(activity, GAMEACTIVITY_FLAG_KEEP_SCREEN_ON, 0); */
+ 
+     /* create egl surface and make it current */
+     bool wants_srgb = _sapp.desc.srgb;
+@@ -11225,7 +11279,7 @@
+     /* try to cleanup while we still have a surface and can call cleanup_cb() */
+     _sapp_android_cleanup();
+     /* request exit */
+-    ANativeActivity_finish(_sapp.android.activity);
++    GameActivity_finish(_sapp.android.activity);
+ }
+ 
+ _SOKOL_PRIVATE void _sapp_android_frame(double external_now) {
+@@ -11248,14 +11302,14 @@
+     }
+ }
+ 
+-_SOKOL_PRIVATE bool _sapp_android_touch_event(const AInputEvent* e) {
+-    if (AInputEvent_getType(e) != AINPUT_EVENT_TYPE_MOTION) {
++_SOKOL_PRIVATE bool _sapp_android_touch_event(const GameActivityMotionEvent* e) {
++    if ((e->source & AINPUT_SOURCE_CLASS_POINTER) == 0) {
+         return false;
+     }
+     if (!_sapp_events_enabled()) {
+         return false;
+     }
+-    int32_t action_idx = AMotionEvent_getAction(e);
++    int32_t action_idx = e->action;
+     int32_t action = action_idx & AMOTION_EVENT_ACTION_MASK;
+     sapp_event_type type = SAPP_EVENTTYPE_INVALID;
+     switch (action) {
+@@ -11281,16 +11335,18 @@
+     }
+     int32_t idx = action_idx >> AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT;
+     _sapp_init_event(type);
+-    _sapp.event.num_touches = (int)AMotionEvent_getPointerCount(e);
++    _sapp.event.num_touches = (int)e->pointerCount;
+     if (_sapp.event.num_touches > SAPP_MAX_TOUCHPOINTS) {
+         _sapp.event.num_touches = SAPP_MAX_TOUCHPOINTS;
+     }
+     for (int32_t i = 0; i < _sapp.event.num_touches; i++) {
+         sapp_touchpoint* dst = &_sapp.event.touches[i];
+-        dst->identifier = (uintptr_t)AMotionEvent_getPointerId(e, (size_t)i);
+-        dst->pos_x = (AMotionEvent_getX(e, (size_t)i) / _sapp.window_width) * _sapp.framebuffer_width;
+-        dst->pos_y = (AMotionEvent_getY(e, (size_t)i) / _sapp.window_height) * _sapp.framebuffer_height;
+-        dst->android_tooltype = (sapp_android_tooltype) AMotionEvent_getToolType(e, (size_t)i);
++        /* the axis getters of GameActivityEvents.h are C99 inline functions without an external definition, so C reads the axes directly */
++        const GameActivityPointerAxes* src = &e->pointers[i];
++        dst->identifier = (uintptr_t)src->id;
++        dst->pos_x = (src->axisValues[AMOTION_EVENT_AXIS_X] / _sapp.window_width) * _sapp.framebuffer_width;
++        dst->pos_y = (src->axisValues[AMOTION_EVENT_AXIS_Y] / _sapp.window_height) * _sapp.framebuffer_height;
++        dst->android_tooltype = (sapp_android_tooltype) src->toolType;
+         if (action == AMOTION_EVENT_ACTION_POINTER_DOWN ||
+             action == AMOTION_EVENT_ACTION_POINTER_UP) {
+             dst->changed = (i == idx);
+@@ -11302,44 +11358,135 @@
+     return true;
+ }
+ 
+-_SOKOL_PRIVATE bool _sapp_android_key_event(const AInputEvent* e) {
+-    if (AInputEvent_getType(e) != AINPUT_EVENT_TYPE_KEY) {
+-        return false;
++_SOKOL_PRIVATE void _sapp_android_init_keytable(void) {
++    for (int i = 0; i < 26; i++) {
++        _sapp.keycodes[AKEYCODE_A + i] = (sapp_keycode)(SAPP_KEYCODE_A + i);
+     }
+-    if (AKeyEvent_getKeyCode(e) == AKEYCODE_BACK) {
+-        /* FIXME: this should be hooked into a "really quit?" mechanism
+-           so the app can ask the user for confirmation, this is currently
+-           generally missing in sokol_app.h
+-        */
+-        _sapp_android_shutdown();
+-        return true;
++    for (int i = 0; i < 10; i++) {
++        _sapp.keycodes[AKEYCODE_0 + i] = (sapp_keycode)(SAPP_KEYCODE_0 + i);
++        _sapp.keycodes[AKEYCODE_NUMPAD_0 + i] = (sapp_keycode)(SAPP_KEYCODE_KP_0 + i);
+     }
+-    return false;
++    for (int i = 0; i < 12; i++) {
++        _sapp.keycodes[AKEYCODE_F1 + i] = (sapp_keycode)(SAPP_KEYCODE_F1 + i);
++    }
++    _sapp.keycodes[AKEYCODE_SPACE] = SAPP_KEYCODE_SPACE;
++    _sapp.keycodes[AKEYCODE_APOSTROPHE] = SAPP_KEYCODE_APOSTROPHE;
++    _sapp.keycodes[AKEYCODE_COMMA] = SAPP_KEYCODE_COMMA;
++    _sapp.keycodes[AKEYCODE_MINUS] = SAPP_KEYCODE_MINUS;
++    _sapp.keycodes[AKEYCODE_PERIOD] = SAPP_KEYCODE_PERIOD;
++    _sapp.keycodes[AKEYCODE_SLASH] = SAPP_KEYCODE_SLASH;
++    _sapp.keycodes[AKEYCODE_SEMICOLON] = SAPP_KEYCODE_SEMICOLON;
++    _sapp.keycodes[AKEYCODE_EQUALS] = SAPP_KEYCODE_EQUAL;
++    _sapp.keycodes[AKEYCODE_LEFT_BRACKET] = SAPP_KEYCODE_LEFT_BRACKET;
++    _sapp.keycodes[AKEYCODE_BACKSLASH] = SAPP_KEYCODE_BACKSLASH;
++    _sapp.keycodes[AKEYCODE_RIGHT_BRACKET] = SAPP_KEYCODE_RIGHT_BRACKET;
++    _sapp.keycodes[AKEYCODE_GRAVE] = SAPP_KEYCODE_GRAVE_ACCENT;
++    _sapp.keycodes[AKEYCODE_ESCAPE] = SAPP_KEYCODE_ESCAPE;
++    _sapp.keycodes[AKEYCODE_ENTER] = SAPP_KEYCODE_ENTER;
++    _sapp.keycodes[AKEYCODE_DPAD_CENTER] = SAPP_KEYCODE_ENTER;
++    _sapp.keycodes[AKEYCODE_TAB] = SAPP_KEYCODE_TAB;
++    _sapp.keycodes[AKEYCODE_DEL] = SAPP_KEYCODE_BACKSPACE;
++    _sapp.keycodes[AKEYCODE_INSERT] = SAPP_KEYCODE_INSERT;
++    _sapp.keycodes[AKEYCODE_FORWARD_DEL] = SAPP_KEYCODE_DELETE;
++    _sapp.keycodes[AKEYCODE_DPAD_RIGHT] = SAPP_KEYCODE_RIGHT;
++    _sapp.keycodes[AKEYCODE_DPAD_LEFT] = SAPP_KEYCODE_LEFT;
++    _sapp.keycodes[AKEYCODE_DPAD_DOWN] = SAPP_KEYCODE_DOWN;
++    _sapp.keycodes[AKEYCODE_DPAD_UP] = SAPP_KEYCODE_UP;
++    _sapp.keycodes[AKEYCODE_PAGE_UP] = SAPP_KEYCODE_PAGE_UP;
++    _sapp.keycodes[AKEYCODE_PAGE_DOWN] = SAPP_KEYCODE_PAGE_DOWN;
++    _sapp.keycodes[AKEYCODE_MOVE_HOME] = SAPP_KEYCODE_HOME;
++    _sapp.keycodes[AKEYCODE_MOVE_END] = SAPP_KEYCODE_END;
++    _sapp.keycodes[AKEYCODE_CAPS_LOCK] = SAPP_KEYCODE_CAPS_LOCK;
++    _sapp.keycodes[AKEYCODE_SCROLL_LOCK] = SAPP_KEYCODE_SCROLL_LOCK;
++    _sapp.keycodes[AKEYCODE_NUM_LOCK] = SAPP_KEYCODE_NUM_LOCK;
++    _sapp.keycodes[AKEYCODE_SYSRQ] = SAPP_KEYCODE_PRINT_SCREEN;
++    _sapp.keycodes[AKEYCODE_BREAK] = SAPP_KEYCODE_PAUSE;
++    _sapp.keycodes[AKEYCODE_MEDIA_PLAY_PAUSE] = SAPP_KEYCODE_PAUSE;
++    _sapp.keycodes[AKEYCODE_NUMPAD_DOT] = SAPP_KEYCODE_KP_DECIMAL;
++    _sapp.keycodes[AKEYCODE_NUMPAD_DIVIDE] = SAPP_KEYCODE_KP_DIVIDE;
++    _sapp.keycodes[AKEYCODE_NUMPAD_MULTIPLY] = SAPP_KEYCODE_KP_MULTIPLY;
++    _sapp.keycodes[AKEYCODE_NUMPAD_SUBTRACT] = SAPP_KEYCODE_KP_SUBTRACT;
++    _sapp.keycodes[AKEYCODE_NUMPAD_ADD] = SAPP_KEYCODE_KP_ADD;
++    _sapp.keycodes[AKEYCODE_NUMPAD_ENTER] = SAPP_KEYCODE_KP_ENTER;
++    _sapp.keycodes[AKEYCODE_NUMPAD_EQUALS] = SAPP_KEYCODE_KP_EQUAL;
++    _sapp.keycodes[AKEYCODE_SHIFT_LEFT] = SAPP_KEYCODE_LEFT_SHIFT;
++    _sapp.keycodes[AKEYCODE_CTRL_LEFT] = SAPP_KEYCODE_LEFT_CONTROL;
++    _sapp.keycodes[AKEYCODE_ALT_LEFT] = SAPP_KEYCODE_LEFT_ALT;
++    _sapp.keycodes[AKEYCODE_META_LEFT] = SAPP_KEYCODE_LEFT_SUPER;
++    _sapp.keycodes[AKEYCODE_SHIFT_RIGHT] = SAPP_KEYCODE_RIGHT_SHIFT;
++    _sapp.keycodes[AKEYCODE_CTRL_RIGHT] = SAPP_KEYCODE_RIGHT_CONTROL;
++    _sapp.keycodes[AKEYCODE_ALT_RIGHT] = SAPP_KEYCODE_RIGHT_ALT;
++    _sapp.keycodes[AKEYCODE_META_RIGHT] = SAPP_KEYCODE_RIGHT_SUPER;
++    _sapp.keycodes[AKEYCODE_MENU] = SAPP_KEYCODE_MENU;
+ }
+ 
+-_SOKOL_PRIVATE int _sapp_android_input_cb(int fd, int events, void* data) {
+-    _SOKOL_UNUSED(fd);
+-    _SOKOL_UNUSED(data);
+-    if ((events & ALOOPER_EVENT_INPUT) == 0) {
+-        _SAPP_ERROR(ANDROID_UNSUPPORTED_INPUT_EVENT_INPUT_CB);
+-        return 1;
++_SOKOL_PRIVATE uint32_t _sapp_android_mods(int32_t meta_state) {
++    uint32_t mods = 0;
++    if (meta_state & AMETA_SHIFT_ON) { mods |= SAPP_MODIFIER_SHIFT; }
++    if (meta_state & AMETA_CTRL_ON) { mods |= SAPP_MODIFIER_CTRL; }
++    if (meta_state & AMETA_ALT_ON) { mods |= SAPP_MODIFIER_ALT; }
++    if (meta_state & AMETA_META_ON) { mods |= SAPP_MODIFIER_SUPER; }
++    return mods;
++}
++
++/* a hardware keyboard types through the characters of its key events */
++_SOKOL_PRIVATE void _sapp_android_key_event(const GameActivityKeyEvent* e) {
++    if (!_sapp_events_enabled()) {
++        return;
+     }
+-    SOKOL_ASSERT(_sapp.android.current.input);
+-    AInputEvent* event = NULL;
+-    while (AInputQueue_getEvent(_sapp.android.current.input, &event) >= 0) {
+-        if (AInputQueue_preDispatchEvent(_sapp.android.current.input, event) != 0) {
++    const bool down = e->action == AKEY_EVENT_ACTION_DOWN;
++    const bool repeat = e->repeatCount > 0;
++    const uint32_t mods = _sapp_android_mods(e->metaState);
++    const sapp_keycode key = _sapp_translate_key(e->keyCode);
++    if (key != SAPP_KEYCODE_INVALID) {
++        _sapp_init_event(down ? SAPP_EVENTTYPE_KEY_DOWN : SAPP_EVENTTYPE_KEY_UP);
++        _sapp.event.key_code = key;
++        _sapp.event.key_repeat = repeat;
++        _sapp.event.modifiers = mods;
++        _sapp_call_event(&_sapp.event);
++    }
++    if (down && (e->unicodeChar >= 32) && (e->unicodeChar != 127)) {
++        _sapp_init_event(SAPP_EVENTTYPE_CHAR);
++        _sapp.event.char_code = (uint32_t)e->unicodeChar;
++        _sapp.event.key_repeat = repeat;
++        _sapp.event.modifiers = mods;
++        _sapp_call_event(&_sapp.event);
++    }
++}
++
++_SOKOL_PRIVATE bool _sapp_android_pop_input(_sapp_android_input_t* dst) {
++    _sapp_android_input_queue_t* queue = &_sapp.android.input;
++    pthread_mutex_lock(&queue->mutex);
++    const bool popped = queue->count > 0;
++    if (popped) {
++        *dst = queue->items[queue->head];
++        queue->head = (queue->head + 1) % _SAPP_ANDROID_MAX_QUEUED_INPUTS;
++        queue->count--;
++    }
++    pthread_mutex_unlock(&queue->mutex);
++    return popped;
++}
++
++_SOKOL_PRIVATE void _sapp_android_dispatch_inputs(void) {
++    _sapp_android_input_t input;
++    while (_sapp_android_pop_input(&input)) {
++        if (input.type == _SAPP_ANDROID_INPUT_KEYBOARD) {
++            _sapp.onscreen_keyboard_shown = input.keyboard_shown;
+             continue;
+         }
+-        int32_t handled = 0;
+-        if (_sapp.desc.android.native_event_cb && _sapp.desc.android.native_event_cb(event)) {
+-            handled = 1;
++        const bool is_key = input.type == _SAPP_ANDROID_INPUT_KEY;
++        sapp_android_native_event native_event;
++        native_event.type = is_key ? SAPP_ANDROID_NATIVE_EVENT_KEY : SAPP_ANDROID_NATIVE_EVENT_MOTION;
++        native_event.event = is_key ? (const void*)&input.key : (const void*)&input.motion;
++        if (_sapp.desc.android.native_event_cb && _sapp.desc.android.native_event_cb(&native_event)) {
++            continue;
+         }
+-        if (!handled && (_sapp_android_touch_event(event) || _sapp_android_key_event(event))) {
+-            handled = 1;
++        if (is_key) {
++            _sapp_android_key_event(&input.key);
++        } else {
++            _sapp_android_touch_event(&input.motion);
+         }
+-        AInputQueue_finishEvent(_sapp.android.current.input, event, handled);
+     }
+-    return 1;
+ }
+ 
+ _SOKOL_PRIVATE int _sapp_android_main_cb(int fd, int events, void* data) {
+@@ -11352,6 +11499,12 @@
+     _sapp_android_msg_t msg;
+     if (read(fd, &msg, sizeof(msg)) != sizeof(msg)) {
+         _SAPP_ERROR(ANDROID_READ_MSG_FAILED);
++        return 1;
++    }
++
++    /* input takes no part in the handshakes with the UI thread, so it runs without their lock */
++    if (msg == _SOKOL_ANDROID_MSG_INPUT) {
++        _sapp_android_dispatch_inputs();
+         return 1;
+     }
+ 
+@@ -11401,23 +11554,6 @@
+             }
+             _sapp.android.current.window = _sapp.android.pending.window;
+             break;
+-        case _SOKOL_ANDROID_MSG_SET_INPUT_QUEUE:
+-            _SAPP_INFO(ANDROID_MSG_SET_INPUT_QUEUE);
+-            if (_sapp.android.current.input != _sapp.android.pending.input) {
+-                if (_sapp.android.current.input != NULL) {
+-                    AInputQueue_detachLooper(_sapp.android.current.input);
+-                }
+-                if (_sapp.android.pending.input != NULL) {
+-                    AInputQueue_attachLooper(
+-                        _sapp.android.pending.input,
+-                        _sapp.android.looper,
+-                        ALOOPER_POLL_CALLBACK,
+-                        _sapp_android_input_cb,
+-                        NULL); /* data */
+-                }
+-            }
+-            _sapp.android.current.input = _sapp.android.pending.input;
+-            break;
+         case _SOKOL_ANDROID_MSG_DESTROY:
+             _SAPP_INFO(ANDROID_MSG_DESTROY);
+             _sapp_android_cleanup();
+@@ -11439,7 +11575,6 @@
+     return is_in_front && has_surface;
+ }
+ 
+-#if __ANDROID_API__ >= 29
+ _SOKOL_PRIVATE void _sapp_android_frame_callback(int64_t frame_time_nanos, void* data) {
+     _SOKOL_UNUSED(data);
+     _sapp.android.frame_callback_in_flight = false;
+@@ -11449,20 +11584,19 @@
+     if (_sapp_android_should_update()) {
+         // Post the next frame callback. We do this here rather than later so the runnable can be
+         // queued early in the looper.
+-        AChoreographer_postFrameCallback64(_sapp.android.choreographer, _sapp_android_frame_callback, NULL);
++        _sapp.android.post_frame_callback(_sapp.android.choreographer, _sapp_android_frame_callback, NULL);
+         _sapp.android.frame_callback_in_flight = true;
+         _sapp_android_frame((double)frame_time_nanos / 1.0e9);
+     }
+ }
+-#endif
+ 
++/* the soft keyboard reports whether it shows through onSoftwareKeyboardVisibilityChanged */
+ _SOKOL_PRIVATE void _sapp_android_show_keyboard(bool shown) {
+     SOKOL_ASSERT(_sapp.valid);
+-    /* This seems to be broken in the NDK, but there is (a very cumbersome) workaround... */
+     if (shown) {
+-        ANativeActivity_showSoftInput(_sapp.android.activity, ANATIVEACTIVITY_SHOW_SOFT_INPUT_FORCED);
++        GameActivity_showSoftInput(_sapp.android.activity, GAMEACTIVITY_SHOW_SOFT_INPUT_FORCED);
+     } else {
+-        ANativeActivity_hideSoftInput(_sapp.android.activity, ANATIVEACTIVITY_HIDE_SOFT_INPUT_NOT_ALWAYS);
++        GameActivity_hideSoftInput(_sapp.android.activity, GAMEACTIVITY_HIDE_SOFT_INPUT_NOT_ALWAYS);
+     }
+ }
+ 
+@@ -11478,16 +11612,16 @@
+         _sapp_android_main_cb,
+         NULL); /* data */
+ 
+-    #if __ANDROID_API__ >= 29
++    /* devices before Android 10 lack AChoreographer_postFrameCallback64() and use the poll loop */
++    _sapp.android.post_frame_callback = (_sapp_android_post_frame_callback_t)dlsym(RTLD_DEFAULT, "AChoreographer_postFrameCallback64");
++    if (_sapp.android.post_frame_callback != NULL) {
+         _sapp.android.choreographer = AChoreographer_getInstance();
+-        if (_sapp.android.choreographer != NULL) {
+-            _SAPP_INFO(ANDROID_CHOREOGRAPHER_ENABLED);
+-        } else {
+-            _SAPP_INFO(ANDROID_CHOREOGRAPHER_UNAVAILABLE);
+-        }
+-    #else
++    }
++    if (_sapp.android.choreographer != NULL) {
++        _SAPP_INFO(ANDROID_CHOREOGRAPHER_ENABLED);
++    } else {
+         _SAPP_INFO(ANDROID_CHOREOGRAPHER_UNAVAILABLE);
+-    #endif
++    }
+ 
+     /* signal start to main thread */
+     pthread_mutex_lock(&_sapp.android.pt.mutex);
+@@ -11497,21 +11631,19 @@
+ 
+     /* main loop */
+     while (!_sapp.android.is_thread_stopping) {
+-        #if __ANDROID_API__ >= 29
+-            if (_sapp.android.choreographer != NULL) {
+-                // Posts _sapp_android_frame_callback with the choreographer to start our frame
+-                // loop (for example, on first run or when resuming). When we have a choreographer,
+-                // we'll get frame callbacks via _sapp_android_frame_callback.
+-                if (!_sapp.android.frame_callback_in_flight && _sapp_android_should_update()) {
+-                    AChoreographer_postFrameCallback64(_sapp.android.choreographer, _sapp_android_frame_callback, NULL);
+-                    _sapp.android.frame_callback_in_flight = true;
+-                }
+-                // Blocks until the next event. We don't need a while loop here because we're
+-                // already being driven by the outer while loop.
+-                ALooper_pollOnce(-1, NULL, NULL, NULL);
+-                continue;
++        if (_sapp.android.choreographer != NULL) {
++            // Posts _sapp_android_frame_callback with the choreographer to start our frame
++            // loop (for example, on first run or when resuming). When we have a choreographer,
++            // we'll get frame callbacks via _sapp_android_frame_callback.
++            if (!_sapp.android.frame_callback_in_flight && _sapp_android_should_update()) {
++                _sapp.android.post_frame_callback(_sapp.android.choreographer, _sapp_android_frame_callback, NULL);
++                _sapp.android.frame_callback_in_flight = true;
+             }
+-        #endif
++            // Blocks until the next event. We don't need a while loop here because we're
++            // already being driven by the outer while loop.
++            ALooper_pollOnce(-1, NULL, NULL, NULL);
++            continue;
++        }
+         // sokol frame -- fallback if not updating frames from choreographer callbacks
+         if (_sapp_android_should_update()) {
+             _sapp_android_frame(0.0);
+@@ -11525,11 +11657,6 @@
+         }
+     }
+ 
+-    /* cleanup thread */
+-    if (_sapp.android.current.input != NULL) {
+-        AInputQueue_detachLooper(_sapp.android.current.input);
+-    }
+-
+     /* the following causes heap corruption on exit, why??
+     ALooper_removeFd(_sapp.android.looper, _sapp.android.pt.read_from_main_fd);
+     ALooper_release(_sapp.android.looper);*/
+@@ -11551,25 +11678,111 @@
+     }
+ }
+ 
+-_SOKOL_PRIVATE void _sapp_android_on_start(ANativeActivity* activity) {
++/* only the first event of an empty queue wakes the sokol thread, which drains the whole queue */
++_SOKOL_PRIVATE void _sapp_android_push_input(const _sapp_android_input_t* src) {
++    _sapp_android_input_queue_t* queue = &_sapp.android.input;
++    pthread_mutex_lock(&queue->mutex);
++    const bool full = queue->count == _SAPP_ANDROID_MAX_QUEUED_INPUTS;
++    const bool was_empty = queue->count == 0;
++    if (!full) {
++        queue->items[(queue->head + queue->count) % _SAPP_ANDROID_MAX_QUEUED_INPUTS] = *src;
++        queue->count++;
++    }
++    pthread_mutex_unlock(&queue->mutex);
++    if (full) {
++        _SAPP_WARN(ANDROID_INPUT_QUEUE_FULL);
++        return;
++    }
++    if (was_empty) {
++        _sapp_android_msg(_SOKOL_ANDROID_MSG_INPUT);
++    }
++}
++
++_SOKOL_PRIVATE bool _sapp_android_on_touch_event(GameActivity* activity, const GameActivityMotionEvent* event) {
+     _SOKOL_UNUSED(activity);
++    _sapp_android_input_t input;
++    input.type = _SAPP_ANDROID_INPUT_MOTION;
++    input.motion = *event;
++    /* the history lives in buffers that GameActivity reuses for the next event */
++    input.motion.historySize = 0;
++    input.motion.historicalEventTimesMillis = NULL;
++    input.motion.historicalEventTimesNanos = NULL;
++    input.motion.historicalAxisValues = NULL;
++    _sapp_android_push_input(&input);
++    return true;
++}
++
++/* the app takes the keys that the key table translates or that type a character,
++   and the ones that sapp_android_desc.key_consumed_cb asks for, while every other key,
++   such as back and the volume keys, goes on to the views and the system */
++_SOKOL_PRIVATE bool _sapp_android_key_taken(const GameActivityKeyEvent* event) {
++    if (_sapp_translate_key(event->keyCode) != SAPP_KEYCODE_INVALID) {
++        return true;
++    }
++    if ((event->unicodeChar >= 32) && (event->unicodeChar != 127)) {
++        return true;
++    }
++    return _sapp.desc.android.key_consumed_cb && _sapp.desc.android.key_consumed_cb(event);
++}
++
++/* the UI thread answers at once whether the app takes a key, and the press decides
++   for its repeats and its release, so a release whose press went to a view, such as
++   a focused text field, never reaches the app */
++_SOKOL_PRIVATE bool _sapp_android_on_key(GameActivity* activity, const GameActivityKeyEvent* event) {
++    _SOKOL_UNUSED(activity);
++    const int32_t code = event->keyCode;
++    if ((code < 0) || (code >= SAPP_MAX_KEYCODES)) {
++        return false;
++    }
++    bool taken = false;
++    if ((event->action == AKEY_EVENT_ACTION_DOWN) && (event->repeatCount == 0)) {
++        taken = _sapp_android_key_taken(event);
++        _sapp.android.keys_taken[code] = taken;
++    } else if (event->action == AKEY_EVENT_ACTION_DOWN) {
++        taken = _sapp.android.keys_taken[code];
++    } else if (event->action == AKEY_EVENT_ACTION_UP) {
++        taken = _sapp.android.keys_taken[code];
++        _sapp.android.keys_taken[code] = false;
++    }
++    if (taken) {
++        _sapp_android_input_t input;
++        input.type = _SAPP_ANDROID_INPUT_KEY;
++        input.key = *event;
++        _sapp_android_push_input(&input);
++    }
++    return taken;
++}
++
++/* the keyboard of any view reports here, and the change reaches sapp_keyboard_shown() in order with the input */
++_SOKOL_PRIVATE void _sapp_android_on_keyboard_visibility_changed(GameActivity* activity, bool visible) {
++    _SOKOL_UNUSED(activity);
++    _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_ONKEYBOARDVISIBILITY);
++    _sapp_android_input_t input;
++    input.type = _SAPP_ANDROID_INPUT_KEYBOARD;
++    input.keyboard_shown = visible;
++    _sapp_android_push_input(&input);
++}
++
++_SOKOL_PRIVATE void _sapp_android_on_start(GameActivity* activity) {
++    _SOKOL_UNUSED(activity);
+     _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_ONSTART);
+ }
+ 
+-_SOKOL_PRIVATE void _sapp_android_on_resume(ANativeActivity* activity) {
++_SOKOL_PRIVATE void _sapp_android_on_resume(GameActivity* activity) {
+     _SOKOL_UNUSED(activity);
+     _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_ONRESUME);
+     _sapp_android_msg(_SOKOL_ANDROID_MSG_RESUME);
+ }
+ 
+-_SOKOL_PRIVATE void* _sapp_android_on_save_instance_state(ANativeActivity* activity, size_t* out_size) {
++_SOKOL_PRIVATE void _sapp_android_on_save_instance_state(GameActivity* activity, SaveInstanceStateRecallback recallback, void* context) {
+     _SOKOL_UNUSED(activity);
+     _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_ONSAVEINSTANCESTATE);
+-    *out_size = 0;
+-    return NULL;
++    if (_sapp.desc.android.save_state_cb) {
++        _sapp.desc.android.save_state_cb(recallback, context);
++    }
+ }
+ 
+-_SOKOL_PRIVATE void _sapp_android_on_window_focus_changed(ANativeActivity* activity, int has_focus) {
++_SOKOL_PRIVATE void _sapp_android_on_window_focus_changed(GameActivity* activity, bool has_focus) {
+     _SOKOL_UNUSED(activity);
+     _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_ONWINDOWFOCUSCHANGED);
+     if (has_focus) {
+@@ -11579,13 +11792,13 @@
+     }
+ }
+ 
+-_SOKOL_PRIVATE void _sapp_android_on_pause(ANativeActivity* activity) {
++_SOKOL_PRIVATE void _sapp_android_on_pause(GameActivity* activity) {
+     _SOKOL_UNUSED(activity);
+     _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_ONPAUSE);
+     _sapp_android_msg(_SOKOL_ANDROID_MSG_PAUSE);
+ }
+ 
+-_SOKOL_PRIVATE void _sapp_android_on_stop(ANativeActivity* activity) {
++_SOKOL_PRIVATE void _sapp_android_on_stop(GameActivity* activity) {
+     _SOKOL_UNUSED(activity);
+     _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_ONSTOP);
+ }
+@@ -11600,62 +11813,34 @@
+     pthread_mutex_unlock(&_sapp.android.pt.mutex);
+ }
+ 
+-_SOKOL_PRIVATE void _sapp_android_on_native_window_created(ANativeActivity* activity, ANativeWindow* window) {
++_SOKOL_PRIVATE void _sapp_android_on_native_window_created(GameActivity* activity, ANativeWindow* window) {
+     _SOKOL_UNUSED(activity);
+     _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_ONNATIVEWINDOWCREATED);
+     _sapp_android_msg_set_native_window(window);
+ }
+ 
+-_SOKOL_PRIVATE void _sapp_android_on_native_window_destroyed(ANativeActivity* activity, ANativeWindow* window) {
++_SOKOL_PRIVATE void _sapp_android_on_native_window_destroyed(GameActivity* activity, ANativeWindow* window) {
+     _SOKOL_UNUSED(activity);
+     _SOKOL_UNUSED(window);
+     _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_ONNATIVEWINDOWDESTROYED);
+     _sapp_android_msg_set_native_window(NULL);
+ }
+ 
+-_SOKOL_PRIVATE void _sapp_android_msg_set_input_queue(AInputQueue* input) {
+-    pthread_mutex_lock(&_sapp.android.pt.mutex);
+-    _sapp.android.pending.input = input;
+-    _sapp_android_msg(_SOKOL_ANDROID_MSG_SET_INPUT_QUEUE);
+-    while (_sapp.android.current.input != input) {
+-        pthread_cond_wait(&_sapp.android.pt.cond, &_sapp.android.pt.mutex);
+-    }
+-    pthread_mutex_unlock(&_sapp.android.pt.mutex);
+-}
+-
+-_SOKOL_PRIVATE void _sapp_android_on_input_queue_created(ANativeActivity* activity, AInputQueue* queue) {
++_SOKOL_PRIVATE void _sapp_android_on_config_changed(GameActivity* activity) {
+     _SOKOL_UNUSED(activity);
+-    _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_ONINPUTQUEUECREATED);
+-    _sapp_android_msg_set_input_queue(queue);
+-}
+-
+-_SOKOL_PRIVATE void _sapp_android_on_input_queue_destroyed(ANativeActivity* activity, AInputQueue* queue) {
+-    _SOKOL_UNUSED(activity);
+-    _SOKOL_UNUSED(queue);
+-    _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_ONINPUTQUEUEDESTROYED);
+-    _sapp_android_msg_set_input_queue(NULL);
+-}
+-
+-_SOKOL_PRIVATE void _sapp_android_on_config_changed(ANativeActivity* activity) {
+-    _SOKOL_UNUSED(activity);
+     _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_ONCONFIGURATIONCHANGED);
+     /* see android:configChanges in manifest */
+ }
+ 
+-_SOKOL_PRIVATE void _sapp_android_on_low_memory(ANativeActivity* activity) {
++_SOKOL_PRIVATE void _sapp_android_on_trim_memory(GameActivity* activity, int level) {
+     _SOKOL_UNUSED(activity);
+-    _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_ONLOWMEMORY);
++    _SOKOL_UNUSED(level);
++    _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_ONTRIMMEMORY);
+ }
+ 
+-_SOKOL_PRIVATE void _sapp_android_on_destroy(ANativeActivity* activity) {
+-    /*
+-     * For some reason even an empty app using nativeactivity.h will crash (WIN DEATH)
+-     * on my device (Moto X 2nd gen) when the app is removed from the task view
+-     * (TaskStackView: onTaskViewDismissed).
+-     *
+-     * However, if ANativeActivity_finish() is explicitly called from for example
+-     * _sapp_android_on_stop(), the crash disappears. Is this a bug in NativeActivity?
+-     */
++/* GameActivity calls this from its onDestroy, or from the onCreate of a newer activity
++   while an older one still runs, after the native window is gone */
++_SOKOL_PRIVATE void _sapp_android_on_destroy(GameActivity* activity) {
+     _SOKOL_UNUSED(activity);
+     _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_ONDESTROY);
+ 
+@@ -11670,6 +11855,10 @@
+     /* clean up main thread */
+     pthread_cond_destroy(&_sapp.android.pt.cond);
+     pthread_mutex_destroy(&_sapp.android.pt.mutex);
++    pthread_mutex_destroy(&_sapp.android.input.mutex);
++    free(_sapp.android.saved_state);
++    _sapp.android.saved_state = NULL;
++    _sapp.android.saved_state_size = 0;
+ 
+     close(_sapp.android.pt.read_from_main_fd);
+     close(_sapp.android.pt.write_from_main_fd);
+@@ -11682,20 +11871,30 @@
+ }
+ 
+ JNIEXPORT
+-void ANativeActivity_onCreate(ANativeActivity* activity, void* saved_state, size_t saved_state_size) {
+-    _SOKOL_UNUSED(saved_state);
+-    _SOKOL_UNUSED(saved_state_size);
++void GameActivity_onCreate(GameActivity* activity, void* saved_state, size_t saved_state_size) {
+     _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_ONCREATE);
+ 
+-    // the NativeActity pointer needs to be available inside sokol_main()
+-    // (see https://github.com/floooh/sokol/issues/708), however _sapp_init_state()
+-    // will clear the global _sapp_t struct, so we need to initialize the native
+-    // activity pointer twice, once before sokol_main() and once after _sapp_init_state()
++    /* GameActivity releases the saved state when this function returns */
++    void* saved_copy = NULL;
++    if (saved_state && (saved_state_size > 0)) {
++        saved_copy = malloc(saved_state_size);
++        memcpy(saved_copy, saved_state, saved_state_size);
++    }
++
++    // the GameActivity pointer and the saved state need to be available inside sokol_main()
++    // (see https://github.com/floooh/sokol/issues/708), however _sapp_init_state() will clear
++    // the global _sapp_t struct, so we need to initialize them twice, once before sokol_main()
++    // and once after _sapp_init_state()
+     _sapp_clear(&_sapp, sizeof(_sapp));
+     _sapp.android.activity = activity;
++    _sapp.android.saved_state = saved_copy;
++    _sapp.android.saved_state_size = saved_copy ? saved_state_size : 0;
+     sapp_desc desc = sokol_main(0, NULL);
+     _sapp_init_state(&desc);
+     _sapp.android.activity = activity;
++    _sapp.android.saved_state = saved_copy;
++    _sapp.android.saved_state_size = saved_copy ? saved_state_size : 0;
++    _sapp_android_init_keytable();
+ 
+     int pipe_fd[2];
+     if (pipe(pipe_fd) != 0) {
+@@ -11707,6 +11906,7 @@
+ 
+     pthread_mutex_init(&_sapp.android.pt.mutex, NULL);
+     pthread_cond_init(&_sapp.android.pt.cond, NULL);
++    pthread_mutex_init(&_sapp.android.input.mutex, NULL);
+ 
+     pthread_attr_t attr;
+     pthread_attr_init(&attr);
+@@ -11741,11 +11941,13 @@
+     /* activity->callbacks->onNativeWindowResized = _sapp_android_on_native_window_resized; */
+     /* activity->callbacks->onNativeWindowRedrawNeeded = _sapp_android_on_native_window_redraw_needed; */
+     activity->callbacks->onNativeWindowDestroyed = _sapp_android_on_native_window_destroyed;
+-    activity->callbacks->onInputQueueCreated = _sapp_android_on_input_queue_created;
+-    activity->callbacks->onInputQueueDestroyed = _sapp_android_on_input_queue_destroyed;
++    activity->callbacks->onTouchEvent = _sapp_android_on_touch_event;
++    activity->callbacks->onKeyDown = _sapp_android_on_key;
++    activity->callbacks->onKeyUp = _sapp_android_on_key;
++    activity->callbacks->onSoftwareKeyboardVisibilityChanged = _sapp_android_on_keyboard_visibility_changed;
+     /* activity->callbacks->onContentRectChanged = _sapp_android_on_content_rect_changed; */
+     /* activity->callbacks->onConfigurationChanged = _sapp_android_on_config_changed; */
+-    activity->callbacks->onLowMemory = _sapp_android_on_low_memory;
++    activity->callbacks->onTrimMemory = _sapp_android_on_trim_memory;
+ 
+     _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_CREATE_SUCCESS);
+ 
+@@ -15524,7 +15726,21 @@
+ SOKOL_API_IMPL const void* sapp_android_get_native_window(void) {
+     #if defined(_SAPP_ANDROID)
+         return (void*)_sapp.android.current.window;
++    #else
++        return 0;
++    #endif
++}
++
++SOKOL_API_IMPL const void* sapp_android_get_saved_state(size_t* out_size) {
++    #if defined(_SAPP_ANDROID)
++        if (out_size) {
++            *out_size = _sapp.android.saved_state_size;
++        }
++        return _sapp.android.saved_state;
+     #else
++        if (out_size) {
++            *out_size = 0;
++        }
+         return 0;
+     #endif
+ }

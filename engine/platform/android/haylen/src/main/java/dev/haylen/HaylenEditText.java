@@ -1,12 +1,12 @@
 package dev.haylen;
 
-import android.app.Activity;
 import android.content.Context;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.text.InputType;
 import android.text.TextWatcher;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.inputmethod.BaseInputConnection;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
@@ -17,7 +17,7 @@ import java.util.function.Consumer;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-// The hidden field that edits the focused text field of the engine. The activity adds it over the app, the engine places it over the field it edits, and the software keyboard and every input method type into it. After each change its text, selection and composing span go back to the engine, while touches, gamepads and the keys it leaves alone still reach the engine.
+// The hidden field that edits the focused text field of the engine. The activity adds it over the surface of the app, the engine places it over the field it edits, and the software keyboard, every input method and hardware keyboards type into it while it has the focus. After each change its text, selection and composing span go back to the engine. Touches pass through it to the app, which places the caret itself, the sticks of controllers reach the app wherever the focus is, and the keys it leaves alone go on to the app.
 final class HaylenEditText extends EditText {
     // The actions, keyboards, return keys and capitalizations follow the order of their enums in haylen/platform/TextInput.hpp.
     private static final int ACTION_SUBMIT = 0;
@@ -77,6 +77,13 @@ final class HaylenEditText extends EditText {
         current = editor;
     }
 
+    // A newer activity may have attached its own editor before an older one goes away.
+    static void detach(HaylenEditText editor) {
+        if (current == editor) {
+            current = null;
+        }
+    }
+
     // Called from the frame thread of the engine with the field as JSON, which the UI thread applies.
     static void edit(byte[] json) {
         try {
@@ -109,13 +116,18 @@ final class HaylenEditText extends EditText {
     }
 
     @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        return false;
+    }
+
+    @Override
     protected void onSelectionChanged(int start, int end) {
         super.onSelectionChanged(start, end);
         scheduleReport();
     }
 
     private static void onUiThread(Consumer<HaylenEditText> action) {
-        Activity activity = HaylenBridge.activity();
+        HaylenActivity activity = HaylenBridge.activity();
         HaylenEditText editor = current;
         if (activity != null && editor != null) {
             activity.runOnUiThread(() -> action.accept(editor));

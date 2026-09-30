@@ -770,7 +770,7 @@ try context.emit("purchaseUpdated", Purchase(product: "coins", token: transactio
 
 ## The Android part
 
-The Android part of a plugin is the Android library module that `module` of its `android` section names, which make.py includes in the Android project of the app as [Android](#android) describes. The module depends on the engine library with `compileOnly`, so the app brings the library once, and its manifest names the plugin class in a meta-data entry of its `<application>`, whose name is `dev.haylen.plugin.` followed by the id of the plugin:
+The Android part of a plugin is the Android library module that `module` of its `android` section names, which make.py includes in the Android project of the app as [Android](#android) describes. The module depends on the engine library with `compileOnly`, so the app brings the library once, together with the AndroidX libraries the library declares, AppCompat, the activity library and core, and its manifest names the plugin class in a meta-data entry of its `<application>`, whose name is `dev.haylen.plugin.` followed by the id of the plugin:
 
 ```xml
 <!-- plugins/share-sheet/android/src/main/AndroidManifest.xml -->
@@ -794,34 +794,35 @@ package com.example.sharesheet
 
 import android.app.Activity
 import android.content.Intent
+import android.os.Bundle
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import dev.haylen.HaylenActivity
 import dev.haylen.HaylenBridge
 import dev.haylen.HaylenPlugin
 import dev.haylen.HaylenPluginContext
 import org.json.JSONObject
 
 class ShareSheetPlugin : HaylenPlugin() {
+    private var chooser: ActivityResultLauncher<Intent>? = null
     private var pending: HaylenBridge.Reply? = null
 
     override fun onLoad(context: HaylenPluginContext) {
-        // Answers share-sheet.share once the person leaves the chooser, which reports its result to the activity.
+        // Answers share-sheet.share once the person leaves the chooser.
         context.register("share") { params, reply ->
+            val launcher = chooser ?: throw HaylenBridge.Failure("The app has no activity yet.", "noWindow", null)
             val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, (params as JSONObject).getString("text"))
             pending = reply
-            context.activity()!!.startActivityForResult(Intent.createChooser(send, null), SHARE_REQUEST)
+            launcher.launch(Intent.createChooser(send, null))
         }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
-        if (requestCode != SHARE_REQUEST) {
-            return false
+    // Every activity takes the launcher before it starts, under a key of the plugin, so a result that Android delivers to a new activity finds it.
+    override fun onActivityCreated(activity: HaylenActivity, savedInstanceState: Bundle?) {
+        chooser = activity.activityResultRegistry.register("share-sheet.share", activity, ActivityResultContracts.StartActivityForResult()) { result ->
+            pending?.success(JSONObject().put("completed", result.resultCode == Activity.RESULT_OK))
+            pending = null
         }
-        pending?.success(JSONObject().put("completed", resultCode == Activity.RESULT_OK))
-        pending = null
-        return true
-    }
-
-    private companion object {
-        const val SHARE_REQUEST = 0x5AE7
     }
 }
 ```
@@ -834,33 +835,40 @@ package com.example.sharesheet;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.os.Bundle;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import dev.haylen.HaylenActivity;
 import dev.haylen.HaylenBridge;
 import dev.haylen.HaylenPlugin;
 import dev.haylen.HaylenPluginContext;
+import java.util.Collections;
 import org.json.JSONObject;
 
 public final class ShareSheetPlugin extends HaylenPlugin {
-    private static final int SHARE_REQUEST = 0x5AE7;
-
+    private ActivityResultLauncher<Intent> chooser;
     private HaylenBridge.Reply pending;
 
     @Override
     public void onLoad(HaylenPluginContext context) {
         context.register("share", (params, reply) -> {
+            if (chooser == null) {
+                throw new HaylenBridge.Failure("The app has no activity yet.", "noWindow", null);
+            }
             Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, ((JSONObject) params).getString("text"));
             pending = reply;
-            context.activity().startActivityForResult(Intent.createChooser(send, null), SHARE_REQUEST);
+            chooser.launch(Intent.createChooser(send, null));
         });
     }
 
     @Override
-    public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode != SHARE_REQUEST) {
-            return false;
-        }
-        pending.success(java.util.Collections.singletonMap("completed", resultCode == Activity.RESULT_OK));
-        pending = null;
-        return true;
+    public void onActivityCreated(HaylenActivity activity, Bundle savedInstanceState) {
+        chooser = activity.getActivityResultRegistry().register("share-sheet.share", activity, new ActivityResultContracts.StartActivityForResult(), result -> {
+            if (pending != null) {
+                pending.success(Collections.singletonMap("completed", result.getResultCode() == Activity.RESULT_OK));
+                pending = null;
+            }
+        });
     }
 }
 ```
@@ -873,7 +881,7 @@ public final class ShareSheetPlugin extends HaylenPlugin {
 | --- | --- |
 | `id()` | The id of the plugin. |
 | `application()` | The `Application` of the app. |
-| `activity()` | The running `HaylenActivity`, or `null` while there is none, as in `onLoad`. |
+| `activity()` | The running `HaylenActivity`, or `null` while there is none, as in `onLoad`. It is a `GameActivity` and so an `AppCompatActivity`, a `FragmentActivity` and a `ComponentActivity`, which SDKs take as it is. |
 | `config()` | The parameters of the plugin in `app.json` over the `default` of every parameter of `plugin.json`, the same values as `handle.config` in Lua, as a `JSONObject`. |
 | `register(method, handler)`, `register(method, handler, threading)` | Answer `<id>.<method>` like `HaylenBridge.register` in the [platform bridge guide](platform_bridge.md#android), on the main thread or, with `HaylenBridge.Threading.BACKGROUND`, on the shared background thread described in [threads](#threads). |
 | `registerSuspend(method) { params -> result }` | Kotlin only. Answers `<id>.<method>` with a suspending function, like `HaylenCoroutines.register`. |
@@ -898,20 +906,53 @@ override fun onLoad(context: HaylenPluginContext) {
 
 ### Events of the activity
 
-`HaylenActivity` hands its events to every plugin in load order, on the main thread. A native activity has no activity result API, so plugins that start activities for a result, ask for permissions or follow the intents of the app receive them here:
+`HaylenActivity` hands its events to every plugin in load order, on the main thread. The activity calls `onActivityCreated` and `onActivityDestroyed` itself, while its AndroidX lifecycle hands over the start, the resume, the pause and the stop through an observer that the activity adds after `onActivityCreated`, so a plugin hears of a start or a resume after the activity handled it, and of a pause or a stop before.
 
 | Method | When |
 | --- | --- |
-| `onActivityCreated(activity, savedInstanceState)` | A new activity created its window and loaded the native library. `activity.getIntent()` is the intent that launched it, such as a link or a notification that opened the app. |
-| `onActivityStarted(activity)`, `onActivityResumed(activity)`, `onActivityPaused(activity)`, `onActivityStopped(activity)` | The activity changes state. |
-| `onActivityDestroyed(activity)` | The activity goes away after its app stopped. The panels of the plugins leave and their covers end right after. |
-| `onNewIntent(intent)` | A launch reaches the running activity, such as a link or a notification, since the activity of the template is `singleTask`. The activity already holds the intent, so `getIntent()` returns it too. |
-| `onActivityResult(requestCode, resultCode, data)` | An activity that a plugin started with `startActivityForResult` returns. The first plugin that returns `true` ends the search, so a plugin answers only the request codes it started. |
-| `onRequestPermissionsResult(requestCode, permissions, grantResults)` | The answer to `activity.requestPermissions`, with the same search. |
+| `onActivityCreated(activity, savedInstanceState)` | A new activity loaded the native library and has not started yet, which is when plugins register their [Activity Result launchers](#activity-results-and-permissions). `activity.getIntent()` is the intent that launched it, such as a link or a notification that opened the app. |
+| `onActivityStarted(activity)`, `onActivityResumed(activity)`, `onActivityPaused(activity)`, `onActivityStopped(activity)` | The lifecycle of the activity changes state. |
+| `onActivityDestroyed(activity)` | The activity goes away after its app stopped. The views of the plugins over the app leave and their covers end right after. |
+| `onNewIntent(intent)` | A [link or a notification](#links-and-notifications) reaches the running app, or a launch reaches the activity while it is on top, as the launcher icon does. The activity already holds the intent, so `getIntent()` returns it too. |
 | `onConfigurationChanged(configuration)` | A change that the activity handles itself, which the manifest of the template lists: orientation, screen size and layout, density, keyboard, navigation and UI mode. Other changes, such as the language, create a new activity. |
-| `onWindowFocusChanged(hasFocus)` | The window of the activity gains or loses the focus. The app draws only while it has it. |
+| `onWindowFocusChanged(hasFocus)` | The window of the activity gains or loses the focus. The app draws only while it has it, and views over the app take the focus inside the window without taking it from the window. |
 | `onTrimMemory(level)` | The system asks for memory. |
 | `onAppError(error)` | An error stopped the app, with the report that [errors of the app](#errors-of-the-app) describes. |
+
+### Activity results and permissions
+
+The activity is a `ComponentActivity`, so plugins start activities for a result and ask for permissions with the Activity Result API, and no plugin shares request codes with another. A plugin registers each launcher in `onActivityCreated`, before the activity starts, as the API requires, with `activity.activityResultRegistry.register(key, activity, contract, callback)` and a key of its own, such as `<id>.<name>`, and the launcher ends with its activity. `ActivityResultContracts.RequestPermission` and `RequestMultiplePermissions` ask for permissions the same way. When the activity is gone by the time the other activity returns, after the activity was recreated or the process ended while the other app showed, Android keeps the result and delivers it to the launcher with the same key of the new activity once that one starts. No call of the app waits for it then, and no app of the new process listens yet, so a plugin that reports such a result to the app sends it retained, which waits for the first listener.
+
+```kotlin
+override fun onActivityCreated(activity: HaylenActivity, savedInstanceState: Bundle?) {
+    camera = activity.activityResultRegistry.register("scanner.camera", activity, ActivityResultContracts.RequestPermission()) { granted ->
+        pending?.success(JSONObject().put("granted", granted))
+        pending = null
+    }
+}
+```
+
+SDKs that take an `ActivityResultCaller`, a `ComponentActivity`, a `FragmentActivity` or a `LifecycleOwner`, such as paywalls, payment sheets, biometric prompts and sign-in flows, take the activity itself, and SDKs that add their views to the content of the activity, such as in-app messages, draw over the app. A plugin may add fragments with `activity.supportFragmentManager` and place a `ComposeView` with the overlay. A plugin whose UI answers back itself, such as a sheet over the app, adds an `OnBackPressedCallback` to `activity.onBackPressedDispatcher` with the activity as its lifecycle owner, which goes before the callback of the app while it is enabled.
+
+### Links and notifications
+
+The activity of the template is single top, so it stays the one activity that the native side of GameActivity needs, and when the launcher icon brings the app back, every screen that showed over the app, such as a purchase, a bank check or a sign-in page, shows again as the person left it. Links and notifications go to `dev.haylen.HaylenLinkActivity` of the engine library, which shows nothing and runs in a task of its own. It hands them to the running `HaylenActivity`, whose plugins receive them in `onNewIntent`, and brings the task of the app to the front as the launcher icon does, or it starts `HaylenActivity` when none runs, whose plugins find them in `activity.getIntent()` in `onActivityCreated`. A plugin declares the intent filters of its links on that activity in its manifest, and the notifications it posts start that activity:
+
+```xml
+<activity android:name="dev.haylen.HaylenLinkActivity" android:exported="true">
+    <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:scheme="${pushUrlScheme}" />
+    </intent-filter>
+</activity>
+```
+
+```kotlin
+val open = Intent(context.application(), HaylenLinkActivity::class.java).setAction("com.example.push.OPEN").putExtra("message", messageId).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+val tap = PendingIntent.getActivity(context.application(), messageId.hashCode(), open, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+```
 
 ### Android overlays
 
@@ -922,7 +963,7 @@ override fun onLoad(context: HaylenPluginContext) {
 | `update(placement)` | Places the view again with another placement. |
 | `setVisible(visible)` | Shows or hides the view, which reserves its edge only while it shows. |
 | `bounds()` | The frame of the view in the pixels of the activity window, or `null` while it does not show. |
-| `remove()` | Takes the view off the app and gives its edge back. The view leaves its panel, so the plugin may place it again, and a removed panel ignores later updates. |
+| `remove()` | Takes the view off the app and gives its edge back, so the plugin may place the view again. A removed panel ignores later updates. |
 
 A `HaylenPlacement` has the fields of the placements of the [web overlay](#web-modules), in dp:
 
@@ -934,7 +975,7 @@ A `HaylenPlacement` has the fields of the placements of the [web overlay](#web-m
 | `reserve` | `false` | Whether the view reserves the edge its anchor names, from the edge of the window to its far side, while it shows. A centered view reserves nothing. |
 | `widthDp`, `heightDp` | `HaylenPlacement.MEASURED` | The size of the view. `MEASURED` keeps the size of the layout parameters the view had when it was added, or its measured size when it had none. |
 
-Views inside a native activity never draw, and the app takes every touch of the activity window, so each view of the overlay lives in a panel window of its own over the activity window. A panel never takes the focus, because the app draws only while its window has it, so touches inside the frame of the view reach the view, every other touch, the keyboard and gamepads reach the app, and several fingers split between them. Panels join the window once it has had the focus, place themselves again when the safe area, the orientation, the density or the size of the window changes, such as in multi-window mode, hide while the activity is stopped and come back when it starts, and leave before the activity is destroyed. A plugin therefore places its views again for a new activity, such as from `onActivityCreated` or when the app asks for them again. A view that needs the keyboard, such as a form in a web view, cannot take it in a panel, so it opens in an activity of its own. The overlay works on the main thread, and `add` throws an `IllegalStateException` on other threads and while no activity exists.
+The overlay adds each view to the layout of the surface of the app, above the surface, so the view draws, takes the touches inside its frame and may take the focus and the keyboard, such as the fields of a form or a web view, while every other touch reaches the app and several fingers split between the views and the app. The overlay places its views again when the safe area, the orientation, the density or the size of the window changes, such as in multi-window mode, and the views leave with the activity, so a plugin places them again for a new activity, such as from `onActivityCreated` or when the app asks for them again. Keys go to the view that has the focus first, and the ones it leaves reach the app, while the directional pad never moves the focus to a view of the overlay and the sticks of controllers reach the app wherever the focus is, so a view that the remote of a TV must drive opens in a dialog or an activity of its own. The overlay works on the main thread, and `add` throws an `IllegalStateException` on other threads and while no activity exists.
 
 ```java
 // Shows a banner at the bottom of the safe area, which the UI of the app anchored to the safe area moves above.

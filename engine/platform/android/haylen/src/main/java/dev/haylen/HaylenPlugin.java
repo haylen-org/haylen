@@ -1,6 +1,5 @@
 package dev.haylen;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
@@ -11,31 +10,22 @@ public abstract class HaylenPlugin {
     // Called once per process, before Application.onCreate finishes. Plugins register their methods here and set up their SDKs. A plugin whose onLoad throws is logged and left out, so the app runs without its native part.
     public void onLoad(HaylenPluginContext context) throws Exception {}
 
-    public void onActivityCreated(Activity activity, Bundle savedInstanceState) {}
+    // Called before the activity starts, which is when it takes the Activity Result launchers of the plugins, registered under stable keys so the results that arrive after a recreation or the end of the process reach them.
+    public void onActivityCreated(HaylenActivity activity, Bundle savedInstanceState) {}
 
-    public void onActivityStarted(Activity activity) {}
+    public void onActivityStarted(HaylenActivity activity) {}
 
-    public void onActivityResumed(Activity activity) {}
+    public void onActivityResumed(HaylenActivity activity) {}
 
-    public void onActivityPaused(Activity activity) {}
+    public void onActivityPaused(HaylenActivity activity) {}
 
-    public void onActivityStopped(Activity activity) {}
+    public void onActivityStopped(HaylenActivity activity) {}
 
     // The activity removes the views that the plugin placed over the app after this returns.
-    public void onActivityDestroyed(Activity activity) {}
+    public void onActivityDestroyed(HaylenActivity activity) {}
 
     // The activity already holds the new intent, so getIntent returns it too.
     public void onNewIntent(Intent intent) {}
-
-    // Returns whether the plugin handled the result, which ends the search, so a plugin answers only the request codes it started.
-    public boolean onActivityResult(int requestCode, int resultCode, Intent data) {
-        return false;
-    }
-
-    // Returns whether the plugin handled the result, which ends the search, so a plugin answers only the request codes it started.
-    public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        return false;
-    }
 
     public void onConfigurationChanged(Configuration configuration) {}
 

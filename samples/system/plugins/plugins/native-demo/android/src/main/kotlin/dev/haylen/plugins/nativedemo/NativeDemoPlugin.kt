@@ -1,6 +1,5 @@
 package dev.haylen.plugins.nativedemo
 
-import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Bitmap
@@ -16,6 +15,10 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.provider.OpenableColumns
+import android.util.Log
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import dev.haylen.HaylenActivity
 import dev.haylen.HaylenBridge
 import dev.haylen.HaylenPlacement
 import dev.haylen.HaylenPlugin
@@ -33,6 +36,7 @@ class NativeDemoPlugin : HaylenPlugin() {
     private var banner: NativeDemoBanner? = null
     private var bannerState = JSONObject()
     private var bannerTaps = 0
+    private var picker: ActivityResultLauncher<Array<String>>? = null
     private var picking: HaylenBridge.Reply? = null
     private var lastError: JSONObject? = null
 
@@ -209,7 +213,7 @@ class NativeDemoPlugin : HaylenPlugin() {
         }
     }
 
-    // The native screen covers the app while it shows, so the app stands still and stays silent until Close ends the cover. The document picker is an activity of its own, which pauses the app the usual way.
+    // The native screen covers the app while it shows, so the app stands still and stays silent until Close ends the cover. The document picker is an activity of its own, which pauses the app the usual way and answers through the Activity Result API.
     private fun registerScreens() {
         context.register("showScreen") { params, reply ->
             val activity = context.activity() ?: throw HaylenBridge.Failure("The app has no activity yet.", "noWindow", null)
@@ -224,10 +228,9 @@ class NativeDemoPlugin : HaylenPlugin() {
         }
 
         context.register("pickFile") { _, reply ->
-            val activity = context.activity() ?: throw HaylenBridge.Failure("The app has no activity yet.", "noWindow", null)
-            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*")
+            val launcher = picker ?: throw HaylenBridge.Failure("The app has no activity yet.", "noWindow", null)
             try {
-                activity.startActivityForResult(intent, PICK_REQUEST)
+                launcher.launch(arrayOf("*/*"))
                 picking = reply
             } catch (missing: ActivityNotFoundException) {
                 reply.failure("No app on this device picks documents.", "unsupported", null)
@@ -235,16 +238,17 @@ class NativeDemoPlugin : HaylenPlugin() {
         }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
-        if (requestCode != PICK_REQUEST) {
-            return false
-        }
-        val reply = picking ?: return true
+    // A pick that ends after the process ended reaches the launcher of the new activity, while no call of the new app waits for it.
+    private fun onPicked(uri: Uri?) {
+        val reply = picking
         picking = null
-        val uri = data?.data
-        if (resultCode != Activity.RESULT_OK || uri == null) {
+        if (reply == null) {
+            Log.i(TAG, "The document picker answered ${uri ?: "nothing"} after the app started again, and no call waits for it.")
+            return
+        }
+        if (uri == null) {
             reply.success(null)
-            return true
+            return
         }
         val name = displayName(uri)
         if (name == null) {
@@ -252,7 +256,6 @@ class NativeDemoPlugin : HaylenPlugin() {
         } else {
             reply.success(JSONObject().put("name", name))
         }
-        return true
     }
 
     private fun displayName(uri: Uri): String? {
@@ -262,8 +265,10 @@ class NativeDemoPlugin : HaylenPlugin() {
         }
     }
 
+    // The activity takes the launcher of the document picker before it starts, under a key that stays the same for every activity, so the result that Android delivers again after the end of the process finds it.
     // A link that launches the app arrives with the intent of the new activity, and one that reaches the running app arrives as a new intent. The retained event waits for the first listener either way.
-    override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
+    override fun onActivityCreated(activity: HaylenActivity, savedInstanceState: Bundle?) {
+        picker = activity.activityResultRegistry.register(PICK_KEY, activity, ActivityResultContracts.OpenDocument(), ::onPicked)
         if (savedInstanceState == null) {
             openUrl(activity.intent)
         }
@@ -280,9 +285,10 @@ class NativeDemoPlugin : HaylenPlugin() {
         }
     }
 
-    // The activity takes the panels of the overlay with it, so a new activity starts without a banner.
-    override fun onActivityDestroyed(activity: Activity) {
+    // The activity takes the views of the overlay and its launchers with it, so a new activity starts without a banner.
+    override fun onActivityDestroyed(activity: HaylenActivity) {
         banner = null
+        picker = null
     }
 
     // The error screen of the app shows this error. The plugin keeps it and hands it to the next app when that app sends start.
@@ -300,7 +306,8 @@ class NativeDemoPlugin : HaylenPlugin() {
 
     private companion object {
         const val LANGUAGE = "Kotlin"
-        const val PICK_REQUEST = 0x4E44
+        const val TAG = "native-demo"
+        const val PICK_KEY = "native-demo.pickFile"
         val COLOR = Regex("#[0-9A-Fa-f]{6}")
 
         fun threadName(): String = if (Looper.myLooper() == Looper.getMainLooper()) "main" else "background"

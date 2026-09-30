@@ -33,6 +33,7 @@ std::string_view Services::getName() noexcept {
 // Every activity of the process starts the runtime anew, and the first one may have ended before.
 void Services::initialize() {
     AndroidActivity::holdSplashScreen();
+    AndroidGamepads::enableAxes();
 }
 
 void Services::shutdown() noexcept {}
@@ -169,11 +170,11 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenBridge_nativeEmit(JNIEnv* env, jcla
     haylen::platform::BridgeRelay::emit(haylen::platform::JavaBridge::toString(*env, event), haylen::platform::JavaBridge::toString(*env, payload), haylen::platform::JavaBridge::toBuffers(*env, buffers), {.retain = retain == JNI_TRUE, .batched = batched == JNI_TRUE});
 }
 
-JNIEXPORT void JNICALL Java_dev_haylen_HaylenPanels_nativeReserveInsets(JNIEnv* env, jclass, jbyteArray key, jint left, jint top, jint right, jint bottom) {
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenOverlayLayer_nativeReserveInsets(JNIEnv* env, jclass, jbyteArray key, jint left, jint top, jint right, jint bottom) {
     haylen::platform::SokolHost::getNativeViews().reserveInsets(haylen::platform::JavaBridge::toString(*env, key), {.left = static_cast<float>(left), .top = static_cast<float>(top), .right = static_cast<float>(right), .bottom = static_cast<float>(bottom)});
 }
 
-JNIEXPORT void JNICALL Java_dev_haylen_HaylenPanels_nativeReleaseInsets(JNIEnv* env, jclass, jbyteArray key) {
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenOverlayLayer_nativeReleaseInsets(JNIEnv* env, jclass, jbyteArray key) {
     haylen::platform::SokolHost::getNativeViews().releaseInsets(haylen::platform::JavaBridge::toString(*env, key));
 }
 

@@ -1,6 +1,5 @@
 package dev.haylen;
 
-import android.app.Activity;
 import android.app.Application;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -9,6 +8,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import androidx.annotation.NonNull;
+import androidx.lifecycle.DefaultLifecycleObserver;
+import androidx.lifecycle.LifecycleOwner;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,7 +27,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-// The native parts of the plugins of the app, in load order. HaylenPluginProvider loads them when the process starts, HaylenActivity forwards its events to them, and the engine reads their ids and hands them its errors.
+// The native parts of the plugins of the app, in load order. HaylenPluginProvider loads them when the process starts, HaylenActivity forwards its creation, its destruction and its other events to them while the AndroidX lifecycle of the activity forwards its start, resume, pause and stop, and the engine reads their ids and hands them its errors.
 final class HaylenPlugins {
     private static final String TAG = "haylen";
     private static final String META_DATA_PREFIX = "dev.haylen.plugin.";
@@ -93,38 +95,16 @@ final class HaylenPlugins {
         });
     }
 
-    static void activityCreated(Activity activity, Bundle savedInstanceState) {
+    // From here on the lifecycle of the activity hands the plugins its start, resume, pause and stop.
+    static void activityCreated(HaylenActivity activity, Bundle savedInstanceState) {
         for (Loaded entry : loaded) {
             entry.plugin.onActivityCreated(activity, savedInstanceState);
         }
-    }
-
-    static void activityStarted(Activity activity) {
-        for (Loaded entry : loaded) {
-            entry.plugin.onActivityStarted(activity);
-        }
-    }
-
-    static void activityResumed(Activity activity) {
-        for (Loaded entry : loaded) {
-            entry.plugin.onActivityResumed(activity);
-        }
-    }
-
-    static void activityPaused(Activity activity) {
-        for (Loaded entry : loaded) {
-            entry.plugin.onActivityPaused(activity);
-        }
-    }
-
-    static void activityStopped(Activity activity) {
-        for (Loaded entry : loaded) {
-            entry.plugin.onActivityStopped(activity);
-        }
+        activity.getLifecycle().addObserver(new ActivityLifecycle(activity));
     }
 
     // The covers that plugins left open end with the activity, so the next app starts uncovered.
-    static void activityDestroyed(Activity activity) {
+    static void activityDestroyed(HaylenActivity activity) {
         for (Loaded entry : loaded) {
             entry.plugin.onActivityDestroyed(activity);
         }
@@ -137,24 +117,6 @@ final class HaylenPlugins {
         for (Loaded entry : loaded) {
             entry.plugin.onNewIntent(intent);
         }
-    }
-
-    static boolean activityResult(int requestCode, int resultCode, Intent data) {
-        for (Loaded entry : loaded) {
-            if (entry.plugin.onActivityResult(requestCode, resultCode, data)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    static boolean requestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        for (Loaded entry : loaded) {
-            if (entry.plugin.onRequestPermissionsResult(requestCode, permissions, grantResults)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     static void configurationChanged(Configuration configuration) {
@@ -275,6 +237,42 @@ final class HaylenPlugins {
             throw new IllegalStateException("The values of the plugin " + id + " cannot be copied.", error);
         }
         return config;
+    }
+
+    private static final class ActivityLifecycle implements DefaultLifecycleObserver {
+        private final HaylenActivity activity;
+
+        ActivityLifecycle(HaylenActivity activity) {
+            this.activity = activity;
+        }
+
+        @Override
+        public void onStart(@NonNull LifecycleOwner owner) {
+            for (Loaded entry : loaded) {
+                entry.plugin.onActivityStarted(activity);
+            }
+        }
+
+        @Override
+        public void onResume(@NonNull LifecycleOwner owner) {
+            for (Loaded entry : loaded) {
+                entry.plugin.onActivityResumed(activity);
+            }
+        }
+
+        @Override
+        public void onPause(@NonNull LifecycleOwner owner) {
+            for (Loaded entry : loaded) {
+                entry.plugin.onActivityPaused(activity);
+            }
+        }
+
+        @Override
+        public void onStop(@NonNull LifecycleOwner owner) {
+            for (Loaded entry : loaded) {
+                entry.plugin.onActivityStopped(activity);
+            }
+        }
     }
 
     private static final class Loaded {

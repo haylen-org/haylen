@@ -4,9 +4,12 @@ import android.content.Context;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
+import androidx.annotation.NonNull;
+import androidx.lifecycle.DefaultLifecycleObserver;
+import androidx.lifecycle.LifecycleOwner;
 
-// Holds the audio focus while the app is in the foreground. When another app takes it, such as a phone call or an alarm, the app is interrupted: the engine makes it inactive until the focus comes back. A loss that lets the app play quieter needs nothing, since the system lowers the volume itself.
-final class HaylenAudioFocus implements AudioManager.OnAudioFocusChangeListener {
+// Holds the audio focus while the activity is resumed, as an observer of its lifecycle. When another app takes it, such as a phone call or an alarm, the app is interrupted: the engine makes it inactive until the focus comes back. A loss that lets the app play quieter needs nothing, since the system lowers the volume itself.
+final class HaylenAudioFocus implements AudioManager.OnAudioFocusChangeListener, DefaultLifecycleObserver {
     private final AudioManager manager;
     private final AudioFocusRequest request;
     private boolean interrupted;
@@ -17,14 +20,16 @@ final class HaylenAudioFocus implements AudioManager.OnAudioFocusChangeListener 
         request = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).setAudioAttributes(attributes).setOnAudioFocusChangeListener(this).build();
     }
 
-    // Called as the app comes to the foreground. A focus that is granted right away also ends an interruption that happened while the app was away.
-    void request() {
+    // A focus that is granted right away also ends an interruption that happened while the app was away.
+    @Override
+    public void onResume(@NonNull LifecycleOwner owner) {
         if (manager.requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
             setInterrupted(false);
         }
     }
 
-    void abandon() {
+    @Override
+    public void onPause(@NonNull LifecycleOwner owner) {
         manager.abandonAudioFocusRequest(request);
     }
 

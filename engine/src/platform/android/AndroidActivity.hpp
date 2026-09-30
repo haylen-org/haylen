@@ -1,6 +1,6 @@
 #pragma once
 
-#include <android/native_activity.h>
+#include <game-activity/GameActivity.h>
 
 #include <atomic>
 #include <mutex>
@@ -10,10 +10,10 @@
 
 namespace haylen::platform {
 
-// The native activity of the app and what its Java side reports: the safe area and the orientation of the screen, set on the UI thread, whether the device is a TV, and whether the app has drawn, which the splash screen reads.
+// The GameActivity of the app and what its Java side reports: the safe area and the orientation of the screen, set on the UI thread, whether the device is a TV, and whether the app has drawn, which the splash screen reads.
 class AndroidActivity final {
   public:
-    [[nodiscard]] static const ANativeActivity& getNative();
+    [[nodiscard]] static const GameActivity& getNative();
 
     static void setSafeAreaInsets(const math::Insets& value);
     [[nodiscard]] static math::Insets getSafeAreaInsets();

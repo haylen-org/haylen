@@ -1,6 +1,5 @@
 package dev.haylen;
 
-import android.app.Activity;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -78,7 +77,7 @@ public final class HaylenBridge {
     });
     private static final List<KeptEvent> keptEvents = new ArrayList<>();
     private static boolean appRunning;
-    private static volatile Activity activity;
+    private static volatile HaylenActivity activity;
 
     private HaylenBridge() {}
 
@@ -137,16 +136,20 @@ public final class HaylenBridge {
         }
     }
 
-    public static Activity activity() {
+    // The running activity, or null while there is none.
+    public static HaylenActivity activity() {
         return activity;
     }
 
-    static void attach(Activity owner) {
+    static void attach(HaylenActivity owner) {
         activity = owner;
     }
 
-    static void detach() {
-        activity = null;
+    // A newer activity may have attached itself before an older one goes away.
+    static void detach(HaylenActivity owner) {
+        if (activity == owner) {
+            activity = null;
+        }
     }
 
     // Called from the frame thread of the engine when an app starts and before it stops. The engine takes events only while an app runs, so the events kept meanwhile reach the app that starts, in order.

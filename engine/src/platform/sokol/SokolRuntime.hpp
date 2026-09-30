@@ -116,9 +116,7 @@ class SokolRuntime final {
     static void onEvent(const sapp_event* source, void* data);
     static void onCleanup(void* data);
 #if defined(__ANDROID__)
-    static bool onAndroidInput(const void* source);
-
-    // From Android 13 on, back reaches the app only through a callback of the activity, which exists only while the app takes back or edits a text field, so the back animation of the system plays only when back leaves the app.
+    // Back reaches the app only through the back callback of the activity, which is enabled only while the app takes back or edits a text field, so the predictive back animation of the system plays only when back leaves the app.
     void reportBackCapture();
 #endif
 
@@ -142,7 +140,7 @@ class SokolRuntime final {
     // Whether the app took the last press of the back button, so its release goes to the same place.
     bool backCaptured = false;
 #if defined(__ANDROID__)
-    // Whether the activity last heard that the app takes the back button. Each activity creates its own runtime and starts without a back callback.
+    // Whether the activity last heard that the app takes the back button. Each activity creates its own runtime and starts with its back callback disabled.
     bool backReported = false;
 #endif
 #if defined(__EMSCRIPTEN__)

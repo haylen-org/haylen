@@ -2002,7 +2002,8 @@ def launch_android(app: App, project: Path, args: argparse.Namespace, device: st
     run([ensure_gradle(), "-p", project, f":app:assemble{variant}", f"--max-workers={args.jobs}"])
     apk = project / "app" / "build" / "outputs" / "apk" / variant.lower() / f"app-{variant.lower()}.apk"
     run([adb(), "-s", device, "install", "-r", apk])
-    run([adb(), "-s", device, "shell", "am", "start", "-W", "-n", f"{app.identifier}/dev.haylen.HaylenActivity"])
+    # The launcher intent starts the task of the app, so the launcher icon brings that task back as it is later.
+    run([adb(), "-s", device, "shell", "am", "start", "-W", "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "-n", f"{app.identifier}/dev.haylen.HaylenActivity"])
     process = capture([adb(), "-s", device, "shell", "pidof", app.identifier]).strip()
     if process:
         run([adb(), "-s", device, "logcat", "--pid", process])

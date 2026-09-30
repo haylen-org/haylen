@@ -10,8 +10,8 @@ std::atomic<bool> AndroidActivity::framePresented = false;
 std::atomic<bool> AndroidActivity::television = false;
 std::atomic<Orientation> AndroidActivity::orientation = Orientation::Landscape;
 
-const ANativeActivity& AndroidActivity::getNative() {
-    return *static_cast<const ANativeActivity*>(sapp_android_get_native_activity());
+const GameActivity& AndroidActivity::getNative() {
+    return *static_cast<const GameActivity*>(sapp_android_get_native_activity());
 }
 
 void AndroidActivity::setSafeAreaInsets(const math::Insets& value) {
