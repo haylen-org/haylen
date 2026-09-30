@@ -268,18 +268,27 @@ bool PocoWebSocket::completeHandshake(Connection& target, Poco::Net::SecureStrea
     return false;
 }
 
+// A secure socket connects without its handshake on every TLS library of Poco, while attaching TLS to a connected socket runs the whole handshake at once on Windows.
+Poco::Net::StreamSocket PocoWebSocket::createSocket(const Connection& target, Workers& workers, const Poco::Net::SocketAddress& address) {
+    if (!target.secure) {
+        return Poco::Net::StreamSocket(address.family());
+    }
+    Poco::Net::SecureStreamSocket socket(workers.getClientContext());
+    socket.setPeerHostName(target.host);
+    return socket;
+}
+
 std::unique_ptr<Poco::Net::WebSocket> PocoWebSocket::open(Connection& target, Workers& workers, const Poco::Net::SocketAddress& address, std::string& protocol) {
     const auto deadline = std::chrono::steady_clock::now() + kConnectTimeout;
-    Poco::Net::StreamSocket socket(address.family());
+    Poco::Net::StreamSocket socket = createSocket(target, workers, address);
     if (!connectSocket(target, socket, address, deadline)) {
         return nullptr;
     }
     if (target.secure) {
-        Poco::Net::SecureStreamSocket secure = Poco::Net::SecureStreamSocket::attach(socket, target.host, workers.getClientContext());
+        Poco::Net::SecureStreamSocket secure(socket);
         if (!completeHandshake(target, secure, deadline)) {
             return nullptr;
         }
-        socket = secure;
     }
 
     // The upgrade request blocks, bounded by the timeouts of the socket, and the session sends it over the connected socket.

@@ -117,6 +117,8 @@ class PocoWebSocket final : public WebSocketTransport {
     // Waits until the socket is ready for the mode, the app wakes the thread or the deadline passes, and returns whether the socket is ready.
     static bool waitFor(Connection& target, const Poco::Net::Socket& socket, int mode, std::chrono::steady_clock::time_point deadline);
 
+    [[nodiscard]] static Poco::Net::StreamSocket createSocket(const Connection& target, Workers& workers, const Poco::Net::SocketAddress& address);
+
     // Connects, completes the TLS handshake of `wss://` and upgrades to a WebSocket, or returns nothing once the app abandoned the connection.
     [[nodiscard]] static std::unique_ptr<Poco::Net::WebSocket> open(Connection& target, Workers& workers, const Poco::Net::SocketAddress& address, std::string& protocol);
     [[nodiscard]] static bool connectSocket(Connection& target, Poco::Net::StreamSocket& socket, const Poco::Net::SocketAddress& address, std::chrono::steady_clock::time_point deadline);
