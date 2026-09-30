@@ -249,16 +249,16 @@ bool PocoWebSocket::connectSocket(Connection& target, Poco::Net::StreamSocket& s
     return false;
 }
 
-// The handshake runs without blocking, so abandoning the connection interrupts it. Verifying the host name of the certificate is the step a handshake that does not block leaves to the caller.
+// The handshake runs without blocking, so abandoning the connection interrupts it. A finished handshake returns 1 with OpenSSL and 0 on Windows, while OpenSSL returns 0 for a connection the server closed, so a result that is not negative counts as finished once the server presented its certificate. Verifying the host name of the certificate is the step a handshake that does not block leaves to the caller.
 bool PocoWebSocket::completeHandshake(Connection& target, Poco::Net::SecureStreamSocket& socket, std::chrono::steady_clock::time_point deadline) {
     while (!target.stopping) {
         const int result = socket.completeHandshake();
-        if (result == 1) {
+        if (result >= 0) {
+            if (!socket.havePeerCertificate()) {
+                throw Poco::Net::SSLConnectionUnexpectedlyClosedException();
+            }
             socket.verifyPeerCertificate();
             return true;
-        }
-        if (result == 0) {
-            throw Poco::Net::SSLConnectionUnexpectedlyClosedException();
         }
         if (std::chrono::steady_clock::now() >= deadline) {
             throw Poco::TimeoutException("The TLS handshake with \"" + target.host + "\" timed out.");
