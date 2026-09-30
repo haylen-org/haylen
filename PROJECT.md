@@ -1333,7 +1333,7 @@ Decisões, a partir da documentação oficial dos SDKs (AdMob, UMP, Firebase, St
 **Desempenho**
 
 - [ ] Benchmark da bridge no emulador Android, no simulador iOS e na web: ida e volta de uma chamada, chamadas por segundo e custo por frame de N chamadas e de N eventos, com os números na documentação.
-- [ ] Lote de eventos frequentes do nativo para o Lua e do Lua para o nativo, entregues uma vez por frame.
+- [x] Lote de eventos frequentes do nativo para o Lua e do Lua para o nativo, entregues uma vez por frame. Pronto com a marcação `batched` dos eventos, como o grupo AB descreve.
 
 **Fora deste repositório**
 
@@ -1349,10 +1349,10 @@ Decisões, a partir da documentação oficial dos SDKs (AdMob, UMP, Firebase, St
 
 #### AD. Marca nova nas imagens da engine
 
-- [ ] Logo da engine (`templates/platform/web/haylen-logo.svg`, splash padrão da Apple, da web e do Android, e ícone das páginas web e do shell dos apps C++) trocada pelo símbolo novo.
-- [ ] Ícones com o símbolo sobre `#07112f`: ícone do app iOS (1024), ícones do macOS (16 a 1024, na grade de ícones do macOS), ícone em camadas e da loja do tvOS, launcher adaptativo do Android com camada monocromática, e o `logo.png` do app inicial.
-- [ ] Imagens largas com a logo horizontal de marca branca sobre `#07112f`: top shelf do tvOS e o banner da Android TV.
-- [ ] Splash do Android (`haylen_splash_logo` e `haylen_splash_icon`) com o símbolo dentro do círculo da máscara, e a documentação das logos e ícones padrão.
+- [x] Logo da engine (`templates/platform/web/haylen-logo.svg`, splash padrão da Apple, da web e do Android, e ícone das páginas web e do shell dos apps C++) trocada pelo símbolo novo.
+- [x] Ícones com o símbolo sobre `#07112f`: ícone do app iOS (1024), ícones do macOS (16 a 1024, na grade de ícones do macOS), ícone em camadas e da loja do tvOS, launcher adaptativo do Android com camada monocromática, e o `logo.png` do app inicial.
+- [x] Imagens largas com a logo horizontal de marca branca sobre `#07112f`: top shelf do tvOS e o banner da Android TV.
+- [x] Splash do Android (`haylen_splash_logo` e `haylen_splash_icon`) com o símbolo dentro do círculo da máscara, e a documentação das logos e ícones padrão.
 
 #### AE. Frases e expressões reservadas
 
@@ -1377,8 +1377,8 @@ Decisões, a partir da pesquisa das bibliotecas de diálogos, notificações e w
 - [x] `system.info()` com os dados fixos, lidos uma vez na abertura: sistema (`macOS`, `Windows`, `Linux`, `iOS`, `iPadOS`, `tvOS`, `Android`, `Web`), versão do sistema, modelo e fabricante do aparelho, tipo do aparelho (`desktop`, `phone`, `tablet`, `tv`, `browser`), nome do processador e núcleos, memória total, nome da GPU que o Sokol criou, idioma, lista de idiomas preferidos e fuso horário. Prontos na web, no Windows e no Linux. Prontos também na Apple (macOS, iOS, iPadOS, Mac Catalyst e tvOS), conferidos nos simuladores e no app macOS. O Android também está pronto, conferido no emulador.
 - [x] `system.theme()` com `'light'` ou `'dark'` e o evento `systemThemeChanged` quando o usuário troca, em todas as plataformas (KVO da aparência no macOS, `traitCollection` no iOS, `uiMode` no Android, `WM_SETTINGCHANGE` no Windows, o portal de configurações do desktop pelo GIO no Linux e `matchMedia` na web). Prontos na web, no Windows e no Linux. Prontos também na Apple (macOS, iOS, iPadOS, Mac Catalyst e tvOS), conferidos nos simuladores e no app macOS. O Android também está pronto, conferido no emulador.
 - [x] `system.battery()` com o nível de 0 a 1, se está carregando e o estado (`unknown`, `charging`, `discharging`, `full`, `none`), e o evento `batteryChanged`, onde a plataforma informa (IOKit no macOS, `UIDevice` no iOS, `BatteryManager` no Android, `GetSystemPowerStatus` no Windows, `/sys/class/power_supply` no Linux e a Battery Status API na web onde existe). Prontos na web, no Windows e no Linux, onde o Linux lê as baterias a cada 30 segundos numa thread própria. Prontos também na Apple (macOS, iOS, iPadOS, Mac Catalyst e tvOS), conferidos nos simuladores e no app macOS. O Android também está pronto, conferido no emulador.
-- [ ] `system.openUrl(url)` e `system.vibrate(seconds)` como APIs da engine, no lugar dos métodos embutidos da bridge.
-- [~] O nome da GPU vem do dispositivo que a engine criou (`graphics::Device`): o `MTLDevice` no Metal, o adaptador DXGI no D3D11, o `GL_RENDERER` no OpenGL e as informações do adaptador no WebGPU. Na web, o WebGL2 lê o `WEBGL_debug_renderer_info` e o WebGPU lê as informações do adaptador.
+- [x] `system.openUrl(url)` e `system.vibrate(seconds)` como APIs da engine, no lugar dos métodos embutidos da bridge. Prontos em todas as plataformas, com as permissões conferidas no Android.
+- [x] O nome da GPU vem do dispositivo que a engine criou (`graphics::Device`): o `MTLDevice` no Metal, o adaptador DXGI no D3D11, o `GL_RENDERER` no OpenGL e as informações do adaptador no WebGPU. Na web, o WebGL2 lê o `WEBGL_debug_renderer_info` e o WebGPU lê as informações do adaptador.
 - [x] Os métodos embutidos da bridge saem do Android, da Apple, da web, do Windows e do Linux, e os samples (plataforma, localização e eventos) e o Tiny Island passam a usar `haylen.system`.
 
 **Diálogos (`haylen.dialogs`)**
