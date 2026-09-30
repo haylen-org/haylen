@@ -53,10 +53,12 @@ endif()
 # The zlib of Varn defines HAVE_UNISTD_H for every target that links it, libzip among them, whenever the platform has unistd.h. libzip checks for the header under the same name and would define the macro again in its config.h with another value, so it takes the definition of zlib and leaves the macro out of its config.h.
 set(HAVE_UNISTD_H OFF)
 
+# The `ffi` module of Varn gives libffi a return buffer of the exact size of the C type, while libffi writes a whole `ffi_arg` for smaller integers, so the patch gives it room for one.
 CPMAddPackage(
   NAME varn
   URL "https://github.com/varn-org/varn/archive/ed5bba73ae94e4ed21c1f6e17ea44c969ae00c84.tar.gz"
   URL_HASH SHA256=e71d6aed8132d13ca18b15204d050c969f3f9caf5f5fcb1d417c5f68ad3e135b
+  PATCHES "${CMAKE_CURRENT_LIST_DIR}/patches/varn-ffi-return-value.patch"
   OPTIONS ${HAYLEN_VARN_OPTIONS}
   EXCLUDE_FROM_ALL YES
   SYSTEM YES
