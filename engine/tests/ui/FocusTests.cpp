@@ -6,6 +6,7 @@
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/input/ActionMap.hpp"
+#include "haylen/input/Input.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/UiFixture.hpp"
@@ -52,6 +53,27 @@ TEST_F(FocusTest, MovesBetweenNeighborsWithArrowsTheDirectionalPadAndTheStick) {
 
     // Nothing lies further right, so the focus stays.
     key(input::Key::Right);
+    EXPECT_TRUE(isFocused(*document, "b"));
+}
+
+TEST_F(FocusTest, StopsNavigatingWithAKeyHeldWhenTheWindowLostTheFocus) {
+    // clang-format off
+    auto document = mount(R"({"kind": "column", "padding": 20, "children": [
+        {"kind": "button", "id": "a", "text": "A", "autofocus": true}, {"kind": "button", "id": "b", "text": "B"},
+        {"kind": "button", "id": "c", "text": "C"}, {"kind": "button", "id": "d", "text": "D"}
+    ]})");
+    // clang-format on
+    key(input::Key::Down);
+    ASSERT_TRUE(isRingVisible());
+
+    // An app that an interruption made inactive already holds a key, whose release goes to the window that takes the focus, so the key must not keep moving the focus.
+    getEngine().handleEvent({.type = platform::Event::Type::InterruptionBegan});
+    getEngine().handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::Down});
+    frames();
+    ASSERT_TRUE(isFocused(*document, "b"));
+    getEngine().handleEvent({.type = platform::Event::Type::FocusLost});
+    frames(120);
+    EXPECT_FALSE(getEngine().getInput().isKeyDown(input::Key::Down));
     EXPECT_TRUE(isFocused(*document, "b"));
 }
 

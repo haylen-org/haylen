@@ -154,10 +154,9 @@ TEST_F(ScreensTest, DrawsNothingUnderAnOpaqueScreen) {
     EXPECT_EQ(rendered() - before, 1);
 }
 
-TEST_F(ScreensTest, OpensOneScreenAtATimeAndOnlyWhileTheAppIsActive) {
+TEST_F(ScreensTest, OpensOneScreenAtATime) {
     test::EngineFixture fixture;
-    core::Engine& engine = fixture.engine();
-    Screens& screens = engine.getScreens();
+    Screens& screens = fixture.engine().getScreens();
     std::vector<std::string> codes;
     const auto record = [&codes](const Bridge::Result& result) { codes.push_back(result.ok ? "ok" : result.error.code.get<std::string>()); };
 
@@ -172,22 +171,8 @@ TEST_F(ScreensTest, OpensOneScreenAtATimeAndOnlyWhileTheAppIsActive) {
     EXPECT_EQ(fixture.host().getScreenRequests().size(), 1U);
     ScreenRelay::finish(first, true, "null");
     fixture.frames(1);
-
-    // An app without the focus, in the background or covered by other native UI opens no screen.
-    engine.handleEvent({.type = Event::Type::FocusLost});
-    screens.open("shop", "paywall", {}, {}, record);
-    engine.handleEvent({.type = Event::Type::FocusGained});
-    engine.handleEvent({.type = Event::Type::Suspended});
-    screens.open("shop", "paywall", {}, {}, record);
-    engine.handleEvent({.type = Event::Type::Resumed});
-    fixture.host().getNativeViews().coverApp();
-    fixture.frames(1);
-    screens.open("shop", "paywall", {}, {}, record);
-    fixture.host().getNativeViews().uncoverApp();
-    fixture.frames(1);
-    EXPECT_EQ(codes, (std::vector<std::string>{"busy", "busy", "ok", "notActive", "notActive", "notActive"}));
+    EXPECT_EQ(codes, (std::vector<std::string>{"busy", "busy", "ok"}));
     EXPECT_FALSE(screens.isShowing());
-    EXPECT_EQ(fixture.host().getScreenRequests().size(), 1U);
 
     // Screens need a plugin, a name, parameters whose bytes came with them and a positive timeout.
     EXPECT_THROW(screens.open("", "paywall", {}, {}, record), std::invalid_argument);
@@ -195,6 +180,114 @@ TEST_F(ScreensTest, OpensOneScreenAtATimeAndOnlyWhileTheAppIsActive) {
     EXPECT_THROW(screens.open("shop", "paywall", {.json = {{"image", {{"$bytes", 0}}}}}, {}, record), std::invalid_argument);
     EXPECT_THROW(screens.open("shop", "paywall", {}, {.timeout = std::chrono::seconds(0)}, record), std::invalid_argument);
     EXPECT_FALSE(screens.isShowing());
+}
+
+TEST_F(ScreensTest, WaitsUntilTheInactiveAppIsActiveAndThenOpens) {
+    test::EngineFixture fixture;
+    core::Engine& engine = fixture.engine();
+    Screens& screens = engine.getScreens();
+    const std::vector<ScreenRequest>& requests = fixture.host().getScreenRequests();
+    std::vector<std::string> codes;
+    const auto record = [&codes](const Bridge::Result& result) { codes.push_back(result.ok ? "ok" : result.error.code.get<std::string>()); };
+
+    // The screen waits while the window has no focus, without covering the app, and a second screen fails with busy meanwhile.
+    engine.handleEvent({.type = Event::Type::FocusLost});
+    const std::uint64_t id = screens.open("shop", "paywall", {.json = {{"offer", "gold"}}}, {.state = {{"level", 3}}}, record);
+    screens.open("shop", "offer", {}, {}, record);
+    fixture.frames(3);
+    EXPECT_EQ(codes, (std::vector<std::string>{"busy"}));
+    EXPECT_FALSE(screens.isShowing());
+    EXPECT_FALSE(engine.isAppCovered());
+    EXPECT_TRUE(requests.empty());
+    EXPECT_EQ(screens.getPendingCount(), 1U);
+
+    // Once the app is active the screen covers it, and the platform receives the screen in the frame after, when the cover holds.
+    engine.handleEvent({.type = Event::Type::FocusGained});
+    fixture.frames(1);
+    EXPECT_TRUE(screens.isShowing());
+    EXPECT_TRUE(requests.empty());
+    fixture.frames(1);
+    EXPECT_TRUE(engine.isAppCovered());
+    ASSERT_EQ(requests.size(), 1U);
+    EXPECT_EQ(requests[0].id, id);
+    EXPECT_EQ(requests[0].params.json.dump(), R"({"offer":"gold"})");
+    EXPECT_EQ(requests[0].state.dump(), R"({"level":3})");
+    ScreenRelay::finish(id, true, "null");
+    fixture.frames(1);
+    EXPECT_EQ(codes, (std::vector<std::string>{"busy", "ok"}));
+
+    // Native UI that covers the app holds a screen back the same way until it ends.
+    fixture.host().getNativeViews().coverApp();
+    fixture.frames(1);
+    const std::uint64_t held = screens.open("shop", "paywall", {}, {}, record);
+    fixture.frames(2);
+    EXPECT_EQ(requests.size(), 1U);
+    fixture.host().getNativeViews().uncoverApp();
+    fixture.frames(2);
+    ASSERT_EQ(requests.size(), 2U);
+    EXPECT_EQ(requests[1].id, held);
+    ScreenRelay::finish(held, true, "null");
+    fixture.frames(1);
+    EXPECT_EQ(codes, (std::vector<std::string>{"busy", "ok", "ok"}));
+    EXPECT_FALSE(engine.isAppCovered());
+}
+
+TEST_F(ScreensTest, GivesUpAScreenThatWaitsBeforeItReachesThePlatform) {
+    test::EngineFixture fixture;
+    core::Engine& engine = fixture.engine();
+    Screens& screens = engine.getScreens();
+    std::vector<std::string> codes;
+    const auto record = [&codes](const Bridge::Result& result) { codes.push_back(result.ok ? "ok" : result.error.code.get<std::string>()); };
+
+    // The timeout counts while the screen waits, and a cancel ends a waiting screen at once.
+    engine.handleEvent({.type = Event::Type::FocusLost});
+    screens.open("shop", "paywall", {}, {.timeout = std::chrono::milliseconds(20)}, record);
+    ASSERT_TRUE(fixture.frameUntil([&codes] { return !codes.empty(); }));
+    const std::uint64_t cancelled = screens.open("shop", "paywall", {}, {}, record);
+    EXPECT_TRUE(screens.cancel(cancelled));
+    EXPECT_FALSE(screens.cancel(cancelled));
+
+    // Neither screen opens once the app is active, and nothing covered the app.
+    engine.handleEvent({.type = Event::Type::FocusGained});
+    fixture.frames(3);
+    EXPECT_EQ(codes, (std::vector<std::string>{"timeout", "cancelled"}));
+    EXPECT_TRUE(fixture.host().getScreenRequests().empty());
+    EXPECT_TRUE(fixture.host().getCancelledScreens().empty());
+    EXPECT_FALSE(screens.isShowing());
+    EXPECT_FALSE(engine.isAppCovered());
+    EXPECT_EQ(screens.getPendingCount(), 0U);
+}
+
+TEST_F(ScreensTest, FailsInTheBackground) {
+    test::EngineFixture fixture;
+    core::Engine& engine = fixture.engine();
+    Screens& screens = engine.getScreens();
+    std::vector<Bridge::Result> answers;
+    const auto record = [&answers](Bridge::Result result) { answers.push_back(std::move(result)); };
+
+    // A screen fails at once in the background, and a screen that waits fails once the app goes there.
+    engine.handleEvent({.type = Event::Type::Suspended});
+    screens.open("shop", "paywall", {}, {}, record);
+    fixture.frames(1);
+    engine.handleEvent({.type = Event::Type::Resumed});
+    engine.handleEvent({.type = Event::Type::FocusLost});
+    screens.open("shop", "offer", {}, {}, record);
+    fixture.frames(1);
+    EXPECT_EQ(answers.size(), 1U);
+    engine.handleEvent({.type = Event::Type::Suspended});
+    fixture.frames(1);
+    engine.handleEvent({.type = Event::Type::Resumed});
+    engine.handleEvent({.type = Event::Type::FocusGained});
+    fixture.frames(2);
+
+    ASSERT_EQ(answers.size(), 2U);
+    EXPECT_EQ(answers[0].error.code, "notActive");
+    EXPECT_EQ(answers[0].error.message, "The screen \"paywall\" of \"shop\" cannot open while the app is in the background.");
+    EXPECT_EQ(answers[1].error.code, "notActive");
+    EXPECT_EQ(answers[1].error.message, "The screen \"offer\" of \"shop\" cannot open while the app is in the background.");
+    EXPECT_TRUE(fixture.host().getScreenRequests().empty());
+    EXPECT_FALSE(screens.isShowing());
+    EXPECT_EQ(screens.getPendingCount(), 0U);
 }
 
 TEST_F(ScreensTest, KeepsTheAppCoveredUntilACancelledScreenIsGone) {
@@ -389,7 +482,7 @@ TEST_F(ScreensTest, DropsTheEndThatArrivedBeforeTheAppGaveTheScreenUp) {
     std::vector<std::string> restored;
     engine.getPlatform().on("shop.screenRestored", [&restored](const Bridge::Payload& payload) { restored.push_back(payload.json.dump()); });
 
-    // The platform ends the screen while the app runs no frames, as Android apps stand still under the activity of a screen, and the timer of the app gives the screen up in the first frame after, before the pump takes the end.
+    // The platform ends the screen between two frames, and a timer of the app gives the screen up in the next frame, before the pump takes the end.
     const std::uint64_t id = screens.open("shop", "paywall", {}, {}, [&codes](const Bridge::Result& result) { codes.push_back(result.ok ? "ok" : result.error.code.get<std::string>()); });
     fixture.frames(1);
     ScreenRelay::finish(id, true, R"({"bought": true})");

@@ -12,7 +12,7 @@ namespace haylen::platform {
 
 std::atomic<std::uint64_t> Screens::nextId{1};
 
-Screens::Screens(Host& owner, Bridge& channel, std::function<bool()> active) : host(owner), bridge(channel), canOpen(std::move(active)) {}
+Screens::Screens(Host& owner, Bridge& channel, std::function<core::Engine::AppState()> state) : host(owner), bridge(channel), appState(std::move(state)) {}
 
 Screens::~Screens() {
     if (requested) {
@@ -31,23 +31,60 @@ std::uint64_t Screens::open(std::string plugin, std::string screen, Bridge::Payl
 
     // A screen that cannot open fails at the next pump, like every other answer.
     const std::uint64_t id = nextId.fetch_add(1);
-    if (ScreenRelay::getShowing()) {
-        failed.emplace_back(std::move(callback), Bridge::Result{.error = {.message = std::format("The screen \"{}\" of \"{}\" cannot open while another screen shows.", screen, plugin), .code = "busy"}});
+    if (ScreenRelay::getShowing() || waiting) {
+        failed.emplace_back(std::move(callback), Bridge::Result{.error = {.message = std::format("The screen \"{}\" of \"{}\" cannot open while another screen shows or waits to show.", screen, plugin), .code = "busy"}});
         return id;
     }
-    if (!canOpen()) {
-        failed.emplace_back(std::move(callback), Bridge::Result{.error = {.message = std::format("The screen \"{}\" of \"{}\" opens only while the app is active.", screen, plugin), .code = "notActive"}});
+    const core::Engine::AppState state = appState();
+    if (state == core::Engine::AppState::Background) {
+        failed.emplace_back(std::move(callback), backgroundFailure(plugin, screen));
         return id;
     }
 
-    ScreenRelay::show({.id = id, .plugin = plugin, .name = screen, .state = options.state, .opaque = options.opaque});
     Pending entry{.callback = std::move(callback), .plugin = plugin, .screen = screen};
     if (options.timeout) {
         entry.deadline = std::chrono::steady_clock::now() + *options.timeout;
     }
     pending.emplace(id, std::move(entry));
-    requested = ScreenRequest{.id = id, .plugin = std::move(plugin), .screen = std::move(screen), .params = std::move(params), .state = std::move(options.state), .opaque = options.opaque};
+    ScreenRequest request{.id = id, .plugin = std::move(plugin), .screen = std::move(screen), .params = std::move(params), .state = std::move(options.state), .opaque = options.opaque};
+
+    // An app that is inactive in the foreground, such as in the answer of a dialog before its window has the focus again, opens the screen once it is active.
+    if (state == core::Engine::AppState::Inactive) {
+        waiting = std::move(request);
+        return id;
+    }
+    show(std::move(request));
     return id;
+}
+
+Bridge::Result Screens::backgroundFailure(const std::string& plugin, const std::string& screen) {
+    return {.error = {.message = std::format("The screen \"{}\" of \"{}\" cannot open while the app is in the background.", screen, plugin), .code = "notActive"}};
+}
+
+void Screens::show(ScreenRequest request) {
+    ScreenRelay::show({.id = request.id, .plugin = request.plugin, .name = request.screen, .state = request.state, .opaque = request.opaque});
+    requested = std::move(request);
+}
+
+// The app becomes active between frames or when native UI stops covering it, and the screen then shows from the next frame on, once the cover took hold.
+void Screens::openWaiting() {
+    if (!waiting) {
+        return;
+    }
+    const core::Engine::AppState state = appState();
+    if (state == core::Engine::AppState::Inactive) {
+        return;
+    }
+    ScreenRequest request = std::move(*waiting);
+    waiting.reset();
+    if (state == core::Engine::AppState::Active) {
+        show(std::move(request));
+        return;
+    }
+
+    const auto found = pending.find(request.id);
+    failed.emplace_back(std::move(found->second.callback), backgroundFailure(request.plugin, request.screen));
+    pending.erase(found);
 }
 
 // Native libraries open the screens they registered, and the platform opens every other screen.
@@ -75,8 +112,12 @@ bool Screens::cancel(std::uint64_t id) {
     return true;
 }
 
-// A screen that the platform never received ends at once, while one that shows keeps the app covered until the platform reports it gone.
+// A screen that waits or that the platform never received ends at once, while one that shows keeps the app covered until the platform reports it gone.
 void Screens::giveUp(std::uint64_t id, const Pending& entry) {
+    if (waiting && waiting->id == id) {
+        waiting.reset();
+        return;
+    }
     if (requested && requested->id == id) {
         requested.reset();
         ScreenRelay::forget(id);
@@ -119,6 +160,7 @@ void Screens::pump() {
         bridge.emit(screen.plugin + ".screenRestored", payload.dump(), std::move(result.value.buffers), {.retain = true});
     }
 
+    openWaiting();
     for (auto& [callback, result] : std::exchange(failed, {})) {
         if (callback) {
             callback(std::move(result));

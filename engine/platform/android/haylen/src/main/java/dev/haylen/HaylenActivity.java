@@ -6,6 +6,7 @@ import android.app.UiModeManager;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
@@ -20,6 +21,7 @@ import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.util.Log;
 import android.view.InputDevice;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
@@ -130,6 +132,21 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         receiveIntent(intent);
     }
 
+    // The launchers of the Activity Result API start their activities through these methods, which hand the request code to the screen of a plugin that opens, so a screen that the app gives up finishes its activity. They stay deprecated for callers, who use the Activity Result API.
+    @Deprecated
+    @Override
+    public void startActivityForResult(Intent intent, int requestCode, Bundle options) {
+        HaylenScreens.activityStarted(requestCode);
+        super.startActivityForResult(intent, requestCode, options);
+    }
+
+    @Deprecated
+    @Override
+    public void startIntentSenderForResult(IntentSender intent, int requestCode, Intent fillInIntent, int flagsMask, int flagsValues, int extraFlags, Bundle options) throws IntentSender.SendIntentException {
+        HaylenScreens.activityStarted(requestCode);
+        super.startIntentSenderForResult(intent, requestCode, fillInIntent, flagsMask, flagsValues, extraFlags, options);
+    }
+
     // The manifest of the template lets the activity handle a change of the UI mode itself, which is how the night mode of the system reaches it.
     @Override
     public void onConfigurationChanged(Configuration configuration) {
@@ -144,6 +161,15 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         HaylenPlugins.windowFocusChanged(hasFocus);
+    }
+
+    // A release goes to the app before the views, which takes it when it took the press, so a key never stays held in the app when a view took the focus between the two, such as the hidden field of a text field that the press started editing. The views get every other release, and back stays with the back callback.
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_UP && event.getKeyCode() != KeyEvent.KEYCODE_BACK && onKeyUp(event.getKeyCode(), event)) {
+            return true;
+        }
+        return super.dispatchKeyEvent(event);
     }
 
     // Controllers send their sticks, triggers and hats to the focused view, which may be a view over the app, so they reach the app wherever the focus is.

@@ -221,6 +221,7 @@ class Engine final {
     void render(const std::vector<plugins::Plugin*>& all);
     void renderScenes(const std::vector<plugins::Plugin*>& all);
     void setAppState(AppState value);
+    void releaseHeldInput();
     void refreshForegroundState();
     [[nodiscard]] AppState getForegroundState() const noexcept;
     void applyCover();

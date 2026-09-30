@@ -1,5 +1,6 @@
--- Native screen: the plugin opens a screen of its own, a UIKit controller or an AppKit sheet on Apple platforms, an AndroidX activity on Android, a popup page on the web and a native window over the window of the app on the desktops, and its answer reaches the call. Apple platforms add the same question in SwiftUI. The engine covers the app before the screen shows, so the app is inactive, halted and muted, and it draws nothing under the opaque screen. A second screen fails with busy while one shows, and a cancel closes the screen. A screen whose app restarts before it ends, the redirect screen of the web, whose page loads again, and the screen of an Android app whose process ended under it reach the next app as screenRestored with the state the app gave. Android stops the frames of the app while the activity of a screen covers it, so there the app can neither give the screen up nor restart under it, and the end of the process stands in for the restart.
+-- Native screen: the plugin opens a screen of its own, a UIKit controller or an AppKit sheet on Apple platforms, an AndroidX activity on Android, a popup page on the web and a native window over the window of the app on the desktops, and its answer reaches the call. Apple platforms add the same question in SwiftUI. The engine covers the app before the screen shows, so the app is inactive, halted and muted, and it draws nothing under the opaque screen. A second screen fails with busy while one shows, and a timer of the app gives a screen up while it shows, which closes it. A screen whose app restarts before it ends, the redirect screen of the web, whose page loads again, and the screen of an Android app whose process ended under it reach the next app as screenRestored with the state the app gave. A screen opened right in the answer of a message waits until the app is active and then opens.
 local async = require('async')
+local dialogs = require('haylen.dialogs')
 local haylen = require('haylen')
 local platform = require('haylen.platform')
 local ui = require('haylen.ui')
@@ -20,6 +21,7 @@ local kRows = {
     {key = 'restored', name = 'screenRestored brings the end and the state to the next app', waiting = 'Open, then restart the app, answer the screen and open this test again.'},
     {key = 'redirect', name = 'the redirect screen comes back as screenRestored', waiting = 'Open by redirect, answer the page and open this test again.'},
     {key = 'swiftUI', name = 'the SwiftUI screen answers the call', waiting = 'Open the SwiftUI screen and answer or close it.'},
+    {key = 'dialog', name = 'a screen opens right in the answer of a message', waiting = 'Open from the answer of a message, then answer the message and the screen.'},
 }
 
 function Screen:enter()
@@ -34,6 +36,7 @@ function Screen:enter()
             ui.button{id = 'restart', text = 'Open, then restart the app', onClick = function() self:openAndRestart() end},
             ui.button{id = 'redirect', text = 'Open by redirect', onClick = function() self:openRedirect() end},
             ui.button{id = 'swiftUI', text = 'Open the SwiftUI screen', onClick = function() self:openSwiftUI() end},
+            ui.button{id = 'dialog', text = 'Open from the answer of a message', onClick = function() self:openFromDialog() end},
             ui.label{text = 'A UIKit controller on iOS, iPadOS, Mac Catalyst and tvOS, an AndroidX activity on Android, a popup page on the web, which a popup blocker stops when the tap is too long ago, and a sheet on macOS, an owned window on Windows and a transient X11 window on Linux. The redirect leaves the page for a page of the plugin, which only the web has, and the SwiftUI screen shows over the app on iOS, iPadOS and tvOS and in a window of its own on Mac Catalyst and macOS.', color = 'textMuted', font = 'caption'},
             ui.label{font = 'monospace', text = "local answer, err = demo.openScreen({state = {level = 3}}):await()\ndemo.onScreenRestored(function(ending)\n  print(ending.state.level, ending.result)\nend)"},
         },
@@ -91,10 +94,6 @@ end
 function Screen:cancelLater()
     self:act(function()
         local name = kRows[4].name
-        if haylen.platform == 'android' then
-            self.results:set('cancel', 'skip', name, 'Android stops the frames of the app while the activity of the screen covers it, so the timer that gives the screen up runs only after the screen ended.')
-            return
-        end
         self.results:set('cancel', 'waiting', name, 'The screen shows and closes after a second.')
         local call = demo.openScreen()
         async.sleep(1000):await()
@@ -113,16 +112,13 @@ function Screen:cancelLater()
     end)
 end
 
--- The app restarts while the screen shows, which keeps showing and covers the next app, whose screenRestored listener receives the answer.
+-- The app restarts a second after the screen showed, from a timer of the halted app, and the screen keeps showing and covers the next app, whose screenRestored listener receives the answer.
 function Screen:openAndRestart()
     self:act(function()
-        if haylen.platform == 'android' then
-            self.results:set('restored', 'waiting', kRows[5].name, 'Android stops the app while the screen shows, so end its process instead: open the screen, leave the app with Home, run "adb shell am kill" with the package of the app, come back, answer the screen and open this test again.')
-            return
-        end
         demo.openScreen({state = {test = 'screen', restartedAt = os.date('%H:%M:%S')}})
         self.results:set('restored', 'waiting', kRows[5].name, 'The app restarts under the screen. Answer it and open this test again.')
         sample.waitFor(function() return platform.screenShowing() and haylen.appCovered() end, 2)
+        async.sleep(1000):await()
         haylen.requestRestart()
     end)
 end
@@ -159,6 +155,31 @@ function Screen:openSwiftUI()
     end)
 end
 
+-- The answer of a message arrives while the app is still inactive on some platforms, a frame or two before its window has the focus again, and the screen that the answer opens waits until the app is active.
+function Screen:openFromDialog()
+    self:act(function()
+        local name = kRows[8].name
+        self.results:set('dialog', 'waiting', name, 'Answer the message, and the screen opens.')
+        local button, failure = dialogs.message({title = 'Native screen', text = 'Open the screen of the plugin from the answer of this message?', buttons = {'Open the screen'}}):await()
+        if failure then
+            self.results:failure('dialog', name, failure)
+            return
+        elseif not button then
+            self.results:set('dialog', 'info', name, 'The message closed without an answer, so no screen opened.')
+            return
+        end
+        local state = haylen.appState()
+        local answer, err = demo.openScreen({state = {test = 'screen'}}):await()
+        if err and err.code == 'cancelled' then
+            self.results:set('dialog', 'pass', name, string.format('The screen opened in the answer of the message, while the app was %s, and the person closed it.', state))
+        elseif err then
+            self.results:failure('dialog', name, err)
+        else
+            self.results:set('dialog', 'pass', name, string.format('The screen opened in the answer of the message, while the app was %s, and the person %s.', state, answer.confirmed and 'confirmed' or 'declined'))
+        end
+    end)
+end
+
 -- The state tells which way the screen came back: a restart under the screen or a redirect.
 function Screen:showRestored()
     if not restored then
@@ -189,16 +210,22 @@ function Screen:uncovered()
     self.results:set('covered', passed and 'pass' or 'fail', kRows[2].name, string.format('appCovered %s, screenShowing %s and halted %s when appInactive arrived, with %d frames drawn and %d updates while the opaque screen showed.', tostring(watch.covered), tostring(watch.showing), tostring(watch.halted), watch.renders, watch.updates))
 end
 
+-- Only the frames under the screen count, since on Android the app runs a few frames without the focus between the end of the screen and appActive.
+function Screen:underScreen()
+    local watch = self.watch
+    return watch ~= nil and watch.started and not watch.ended and haylen.appCovered()
+end
+
 function Screen:update(dt)
     Screen.super.update(self, dt)
-    if self.watch and self.watch.started and not self.watch.ended then
+    if self:underScreen() then
         self.watch.updates = self.watch.updates + 1
     end
 end
 
 function Screen:render()
     Screen.super.render(self)
-    if self.watch and self.watch.started and not self.watch.ended then
+    if self:underScreen() then
         self.watch.renders = self.watch.renders + 1
     end
 end

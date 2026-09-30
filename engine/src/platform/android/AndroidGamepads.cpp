@@ -10,8 +10,7 @@
 namespace haylen::platform {
 
 std::mutex& AndroidGamepads::mutex = *new std::mutex();
-std::array<std::int32_t, input::Input::kMaxGamepads> AndroidGamepads::devices{-1, -1, -1, -1};
-std::array<input::GamepadState, input::Input::kMaxGamepads>& AndroidGamepads::gamepads = *new std::array<input::GamepadState, input::Input::kMaxGamepads>();
+AndroidGamepadStates& AndroidGamepads::controllers = *new AndroidGamepadStates();
 
 void AndroidGamepads::enableAxes() {
     for (const std::int32_t axis : {AMOTION_EVENT_AXIS_Z, AMOTION_EVENT_AXIS_RZ, AMOTION_EVENT_AXIS_LTRIGGER, AMOTION_EVENT_AXIS_RTRIGGER, AMOTION_EVENT_AXIS_BRAKE, AMOTION_EVENT_AXIS_GAS, AMOTION_EVENT_AXIS_HAT_X, AMOTION_EVENT_AXIS_HAT_Y}) {
@@ -40,19 +39,17 @@ bool AndroidGamepads::handleEvent(const void* source) {
 
 void AndroidGamepads::poll(std::span<input::GamepadState> states) {
     const std::scoped_lock lock(mutex);
-    for (std::size_t index = 0; index < states.size() && index < gamepads.size(); ++index) {
-        states[index] = gamepads[index];
-    }
+    controllers.copyTo(states);
 }
 
 void AndroidGamepads::remove(std::int32_t device) {
     const std::scoped_lock lock(mutex);
-    for (std::size_t index = 0; index < devices.size(); ++index) {
-        if (devices[index] == device) {
-            devices[index] = -1;
-            gamepads[index] = {};
-        }
-    }
+    controllers.remove(device);
+}
+
+void AndroidGamepads::releaseAxes() {
+    const std::scoped_lock lock(mutex);
+    controllers.releaseAxes();
 }
 
 bool AndroidGamepads::isController(std::int32_t source) noexcept {
@@ -67,53 +64,25 @@ bool AndroidGamepads::handleKey(const GameActivityKeyEvent& event) {
     }
 
     const std::scoped_lock lock(mutex);
-    const int slot = findSlot(event.deviceId);
-    if (slot >= 0) {
-        gamepads[static_cast<std::size_t>(slot)].buttons[static_cast<std::size_t>(button)] = event.action != AKEY_EVENT_ACTION_UP;
-    }
+    controllers.press(event.deviceId, button, event.action != AKEY_EVENT_ACTION_UP);
     return true;
 }
 
 void AndroidGamepads::handleMotion(const GameActivityMotionEvent& event) {
     const GameActivityPointerAxes& axes = event.pointers[0];
     const auto value = [&axes](std::int32_t axis) { return GameActivityPointerAxes_getAxisValue(&axes, axis); };
+    const AndroidGamepadStates::Motion motion{
+        .leftX = value(AMOTION_EVENT_AXIS_X),
+        .leftY = value(AMOTION_EVENT_AXIS_Y),
+        .rightX = value(AMOTION_EVENT_AXIS_Z),
+        .rightY = value(AMOTION_EVENT_AXIS_RZ),
+        .leftTrigger = std::max(value(AMOTION_EVENT_AXIS_LTRIGGER), value(AMOTION_EVENT_AXIS_BRAKE)),
+        .rightTrigger = std::max(value(AMOTION_EVENT_AXIS_RTRIGGER), value(AMOTION_EVENT_AXIS_GAS)),
+        .hatX = value(AMOTION_EVENT_AXIS_HAT_X),
+        .hatY = value(AMOTION_EVENT_AXIS_HAT_Y),
+    };
     const std::scoped_lock lock(mutex);
-    const int slot = findSlot(event.deviceId);
-    if (slot < 0) {
-        return;
-    }
-
-    input::GamepadState& state = gamepads[static_cast<std::size_t>(slot)];
-    state.axes[static_cast<std::size_t>(input::GamepadAxis::LeftX)] = value(AMOTION_EVENT_AXIS_X);
-    state.axes[static_cast<std::size_t>(input::GamepadAxis::LeftY)] = value(AMOTION_EVENT_AXIS_Y);
-    state.axes[static_cast<std::size_t>(input::GamepadAxis::RightX)] = value(AMOTION_EVENT_AXIS_Z);
-    state.axes[static_cast<std::size_t>(input::GamepadAxis::RightY)] = value(AMOTION_EVENT_AXIS_RZ);
-    state.axes[static_cast<std::size_t>(input::GamepadAxis::LeftTrigger)] = std::max(value(AMOTION_EVENT_AXIS_LTRIGGER), value(AMOTION_EVENT_AXIS_BRAKE));
-    state.axes[static_cast<std::size_t>(input::GamepadAxis::RightTrigger)] = std::max(value(AMOTION_EVENT_AXIS_RTRIGGER), value(AMOTION_EVENT_AXIS_GAS));
-
-    // Many controllers report the directional pad as a hat axis instead of keys.
-    const float hatX = value(AMOTION_EVENT_AXIS_HAT_X);
-    const float hatY = value(AMOTION_EVENT_AXIS_HAT_Y);
-    state.buttons[static_cast<std::size_t>(input::GamepadButton::DpadLeft)] = hatX < -0.5F;
-    state.buttons[static_cast<std::size_t>(input::GamepadButton::DpadRight)] = hatX > 0.5F;
-    state.buttons[static_cast<std::size_t>(input::GamepadButton::DpadUp)] = hatY < -0.5F;
-    state.buttons[static_cast<std::size_t>(input::GamepadButton::DpadDown)] = hatY > 0.5F;
-}
-
-int AndroidGamepads::findSlot(std::int32_t device) {
-    for (std::size_t index = 0; index < devices.size(); ++index) {
-        if (devices[index] == device) {
-            return static_cast<int>(index);
-        }
-    }
-    for (std::size_t index = 0; index < devices.size(); ++index) {
-        if (devices[index] < 0) {
-            devices[index] = device;
-            gamepads[index] = {.connected = true, .name = "Controller"};
-            return static_cast<int>(index);
-        }
-    }
-    return -1;
+    controllers.move(event.deviceId, motion);
 }
 
 bool AndroidGamepads::toButton(std::int32_t code, input::GamepadButton& button) {

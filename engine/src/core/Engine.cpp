@@ -61,7 +61,7 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     // clang-format on
     current.system = std::make_unique<platform::System>(host, current.events, current.graphics->getAdapterName());
     current.dialogs = std::make_unique<platform::Dialogs>(host, current.storage->getRoot() / "tmp" / "dialogs");
-    current.screens = std::make_unique<platform::Screens>(host, *current.platform, [this] { return getAppState() == AppState::Active; });
+    current.screens = std::make_unique<platform::Screens>(host, *current.platform, [this] { return getAppState(); });
     current.renderer = std::make_unique<graphics2d::Renderer>(*current.graphics, *current.jobs);
     current.assets = std::make_unique<assets::Manager>(*current.package, *current.jobs, *current.graphics, current.events);
     current.scenes = std::make_unique<SceneManager>(*this);
@@ -402,7 +402,9 @@ void Engine::handleEvent(const platform::Event& event) {
             break;
         }
         case platform::Event::Type::FocusLost:
+            // The releases of what is held go to the window that takes the focus, so nothing stays pressed, also in an app that something else made inactive before.
             current.focused = false;
+            releaseHeldInput();
             current.events.emit(LifecycleEvent::kWindowFocusLost);
             refreshForegroundState();
             break;
@@ -501,9 +503,7 @@ void Engine::setAppState(AppState value) {
 
     // Leaving the foreground releases held input, including on-screen controls, and suspends audio, and coming back skips the time the app was away. The platform may have dropped the surface of an app in the background, so a covered app draws its frame again when it comes back.
     if (value != AppState::Active) {
-        current.input.releaseAll();
-        current.gestures.cancel();
-        current.virtualInput.clear();
+        releaseHeldInput();
     }
     if (value == AppState::Background) {
         current.audio->suspend();
@@ -533,6 +533,13 @@ void Engine::setAppState(AppState value) {
         current.storage->flush();
         break;
     }
+}
+
+void Engine::releaseHeldInput() {
+    EngineState& current = *state;
+    current.input.releaseAll();
+    current.gestures.cancel();
+    current.virtualInput.clear();
 }
 
 void Engine::refreshForegroundState() {

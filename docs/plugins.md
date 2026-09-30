@@ -406,10 +406,10 @@ A screen is native UI of a plugin that takes over the app until it ends with one
 ### The model
 
 - **Cover first.** The engine covers the app at the start of the frame after the request and only then hands the screen to the platform, so the app is `'inactive'`, halted and muted before the screen shows, as [covering the app](#covering-the-app) describes. While an opaque screen shows, which screens are by default, the engine draws nothing and the last frame stays on screen, while under a screen that lets the app show through it draws the halted app once and keeps that frame. The cover ends when the screen ends, however it ends, so native parts never cover the app for their screens themselves.
-- **One at a time, in the foreground.** A screen opens only while the app is `'active'`, and otherwise its call fails with the code `notActive`. While a screen shows, which the whole process shares, another one fails with the code `busy`.
+- **One at a time, in the foreground.** A screen opens at once while the app is `'active'`. One that the app asks for while it is `'inactive'` in the foreground, such as right in the answer of a dialog before its window has the focus again, waits until the app is `'active'`, within its `timeout`, and then opens, while in the background the call fails with the code `notActive`, also when the app goes there while the screen waits. While a screen shows, which the whole process shares, or waits, another one fails with the code `busy`.
 - **The result.** The end of the screen settles its call, with the result or with a failure such as `cancelled` when the person closed the screen.
 - **Restored ends.** A screen outlives the app that opened it: the app may restart under it, after a hot reload or `haylen.requestRestart()`, the process may end while the screen shows, as Android ends apps in the background, or a web page may leave for a redirect and load again. The end then reaches the next app as the retained event `<id>.screenRestored`, with `screen`, the name of the screen, `state`, the value that `options.state` gave, and `result`, or `error` with `message`, `code` and `data` for a failure. A restarted app starts covered by the screen that still shows, and `platform.screenShowing()` tells it why.
-- **Cancel.** `call:cancel()` and a `timeout` fail the call at once and ask the platform to dismiss the screen. The cover lasts until the platform reports the screen gone, and that end reaches no app.
+- **Cancel.** `call:cancel()` and a `timeout` fail the call at once and ask the platform to dismiss the screen. The cover lasts until the platform reports the screen gone, and that end reaches no app. A screen that waits ends at once and never reaches the platform.
 
 ```lua
 -- plugins/paywall/source/init.lua
@@ -597,7 +597,7 @@ The runtime opens the screen on the main thread once the engine covered the app.
 | `name()`, `isOpaque()` | The name of the screen and whether the app asked for an opaque one. |
 | `finish(result)` | Ends the screen with its result, converted like the value of `reply.success`, with `byte[]` and `ByteBuffer` values as bytes. |
 | `fail(message, code, data)`, `fail(throwable)` | End the screen with a failure, such as the code `cancelled` when the person closed the UI, whose code and data the call keeps. A `HaylenBridge.Failure` keeps its code and data, and any other error fails with the code `exception`. |
-| `onCancel(listener)`, `isCancelled()` | The listener runs on the main thread when the app gives the screen up, so the plugin closes the UI it shows and ends the screen. A screen without listeners, and every contract screen, ends with the code `cancelled` at once, and the answer that its launcher may still receive goes nowhere. |
+| `onCancel(listener)`, `isCancelled()` | The listener runs on the main thread when the app gives the screen up, so the plugin closes the UI it shows and ends the screen. A screen without listeners, and every contract screen, ends with the code `cancelled` at once, and the answer that its launcher may still receive goes nowhere. A contract screen also finishes the activity that its launcher started. |
 | `isRestored()` | Whether the process ended while the screen showed. |
 
 The first end counts, from any thread. The activity keeps the screen that shows, its id, plugin, name, state and opacity, in its saved state, under the key `haylen.screens` of its `SavedStateRegistry`. When the process ended while the screen showed, the activity that Android recreates reads it back, and the end of the screen reaches the next app as the retained event `<id>.screenRestored` with the state that the earlier app gave: the launcher of a contract screen receives the result that Android delivers again, and the plugin of an opener screen, whose answer arrives through its own launcher, ends the screen that `context.restoredScreen()` returns. An activity that only the process outlived, such as one that Android recreated, keeps showing the screen of the running process, whose end reaches the app that runs by then.
@@ -628,7 +628,7 @@ override fun onActivityCreated(activity: HaylenActivity, savedInstanceState: Bun
 }
 ```
 
-Android stops the frames of the app while another activity covers it, as [the lifecycle guide](lifecycle.md#app-states) describes, so for a screen that is an activity a cancel or a timeout that the app asks for takes effect in the first frame after the screen ended, when the end of the screen is dropped since the app gave the screen up. The screen of an opener that shows its UI in the activity of the app, such as a dialog or a view of the overlay, hears a cancel at once, since the frames of the app keep running under it.
+While another activity covers the app, the app keeps ticking in the background without drawing, as [the lifecycle guide](lifecycle.md#app-states) describes, so a cancel or a timeout that the app asks for reaches the screen while it shows, whether the screen is an activity or UI in the activity of the app, such as a dialog or a view of the overlay. `HaylenActivity` hands the request code of every activity that it starts for a result to the contract screen whose launcher starts it, and a cancel finishes that activity with `finishActivity`. The prompt of a contract that asks for permissions is no such activity, so it stays until the person answers it.
 
 ### C++
 
@@ -636,7 +636,7 @@ C++ apps and engine plugins open screens through `platform::Screens`, which `eng
 
 | Member | Meaning |
 | --- | --- |
-| `open(plugin, screen, params, options, callback)` | Asks the plugin to open its screen with a `Bridge::Payload` of parameters and `Screens::Options` with `state`, `opaque` and `timeout`, and returns the id of the screen. The callback receives the `Bridge::Result` of the screen at the start of a frame, `busy` and `notActive` included. |
+| `open(plugin, screen, params, options, callback)` | Asks the plugin to open its screen with a `Bridge::Payload` of parameters and `Screens::Options` with `state`, `opaque` and `timeout`, and returns the id of the screen. A screen that the app asks for while it is inactive in the foreground waits until it is active. The callback receives the `Bridge::Result` of the screen at the start of a frame, `busy` and `notActive` included. |
 | `cancel(id)` | Gives the screen up, which fails with the code `cancelled` at the next pump, and returns whether it was pending. |
 | `isShowing()` | Whether the screen of a plugin shows, whichever app of the process opened it. |
 

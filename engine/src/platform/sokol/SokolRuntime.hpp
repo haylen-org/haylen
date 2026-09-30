@@ -125,14 +125,16 @@ class SokolRuntime final {
     void close() noexcept;
     void replace(App app);
     void deliver(const Event& event);
+    void remember(const Event& event) noexcept;
 
     SokolHost host;
     App pending;
     std::shared_ptr<io::Package> package;
     std::unique_ptr<core::Engine> engine;
 
-    // The last network state the platform reported, which every new app hears when it starts.
+    // The last network state and background state that the platform reported, which every new app hears when it starts, so an app that restarts in the background, such as under the activity of a screen on Android, starts there and draws nothing.
     std::optional<bool> online;
+    bool suspended = false;
     bool development = false;
     bool playing = false;
     bool paused = false;

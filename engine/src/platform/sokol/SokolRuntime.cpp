@@ -254,6 +254,12 @@ bool SokolRuntime::isBackCaptured() {
 
 void SokolRuntime::onEvent(const sapp_event* source, void* data) {
     SokolRuntime& runtime = *static_cast<SokolRuntime*>(data);
+#if defined(__ANDROID__)
+    // Android sends the axes of controllers only to the window with the focus, so a stick released while another window has it would keep its last value.
+    if (source->type == SAPP_EVENTTYPE_UNFOCUSED) {
+        AndroidGamepads::releaseAxes();
+    }
+#endif
     if (runtime.engine == nullptr) {
         return;
     }
@@ -269,7 +275,7 @@ void SokolRuntime::onEvent(const sapp_event* source, void* data) {
         sapp_consume_event();
     }
     if (const std::optional<Event> translated = SokolEvents::translate(*source)) {
-        runtime.engine->handleEvent(*translated);
+        runtime.deliver(*translated);
     }
 }
 
@@ -309,6 +315,9 @@ void SokolRuntime::launch() {
     if (online) {
         engine->handleEvent({.type = Event::Type::NetworkChanged, .online = *online});
     }
+    if (suspended) {
+        engine->handleEvent({.type = Event::Type::Suspended});
+    }
 #if defined(__EMSCRIPTEN__)
     if (playing) {
         WebPage::reportStarted(engine->getConfig());
@@ -340,9 +349,7 @@ void SokolRuntime::close() noexcept {
 
 // The typing of the plain keyboard reaches the app as the key and character events a physical keyboard would send.
 void SokolRuntime::deliver(const Event& event) {
-    if (event.type == Event::Type::NetworkChanged) {
-        online = event.online;
-    }
+    remember(event);
     if (engine == nullptr) {
         return;
     }
@@ -354,6 +361,20 @@ void SokolRuntime::deliver(const Event& event) {
     }
     for (const Event& key : host.translateKeyboard(event)) {
         engine->handleEvent(key);
+    }
+}
+
+void SokolRuntime::remember(const Event& event) noexcept {
+    switch (event.type) {
+    case Event::Type::NetworkChanged:
+        online = event.online;
+        break;
+    case Event::Type::Suspended:
+    case Event::Type::Resumed:
+        suspended = event.type == Event::Type::Suspended;
+        break;
+    default:
+        break;
     }
 }
 

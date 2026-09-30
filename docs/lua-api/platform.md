@@ -143,7 +143,7 @@ scene.push({
 
 ### platform.screenShowing()
 
-Returns `true` while the [screen](#screens) of a plugin shows over the app, whichever app of the process opened it. An app that restarted under a screen starts covered, and this tells it that a screen covers it, whose end arrives as `screenRestored`.
+Returns `true` while the [screen](#screens) of a plugin shows over the app, whichever app of the process opened it, from the moment the app asked for it, while a screen that waits for the app to be `'active'` does not show yet. An app that restarted under a screen starts covered, and this tells it that a screen covers it, whose end arrives as `screenRestored`.
 
 ```lua
 local haylen = require('haylen')
@@ -324,16 +324,16 @@ A screen is native UI of a plugin that takes over the app until it ends with one
 | `timeout` | number | Seconds of real time after which the call fails with the code `timeout` and the platform dismisses the screen. Screens have no timeout otherwise. |
 
 - The engine covers the app at the start of the next frame and only then hands the screen to the platform, so the app is `'inactive'`, halted and muted before the screen shows, and `haylen.appCovered()` returns `true` until the screen ends, however it ends.
-- One screen shows at a time in the whole process, and a screen opens only while the app is `'active'`.
-- `call:cancel()` and the timeout fail the call at once and ask the platform to dismiss the screen, and the app stays covered until the screen is gone. Android stops the frames of the app while a screen that is an activity of its own covers it, so there they take effect once the screen ended, while a screen that shows in the activity of the app, such as a dialog, hears them at once.
+- One screen shows at a time in the whole process. A screen opens at once while the app is `'active'`, while one that the app asks for while it is `'inactive'` in the foreground, such as right in the answer of a dialog before its window has the focus again or while an ad covers the app, waits until the app is `'active'` and then opens, and its `timeout` counts while it waits. In the background a screen fails with the code `notActive` at once, and a screen that waits fails the same way when the app goes there.
+- `call:cancel()` and the timeout fail the call at once and ask the platform to dismiss the screen, and the app stays covered until the screen is gone. A screen that waits ends at once and never reaches the platform. On Android they take effect also while a screen that is an activity of its own covers the app, since the app keeps ticking in the background, as the [lifecycle guide](../lifecycle.md#app-states) describes.
 - A screen outlives the app that opened it. When the app restarts under it or the process ends while it shows, such as a web page that left for a redirect and loaded again, its end reaches the next app as the retained event `screenRestored` of the plugin, which `handle:on('screenRestored', listener)` receives with `screen`, the name of the screen, `state`, the value of `options.state`, and `result`, or `error` with `message`, `code` and `data` when the screen failed. The event waits for the first listener of its name, like every [retained event](#platformonevent-listener).
 
 A screen fails with the codes of [errors](#errors) and these.
 
 | Code | When |
 | --- | --- |
-| `busy` | Another screen shows, which an earlier app of the process may have opened. |
-| `notActive` | The app is not active, because it lost the focus, it is in the background or native UI covers it, or the platform cannot present the screen at that moment. |
+| `busy` | Another screen shows, which an earlier app of the process may have opened, or waits to show. |
+| `notActive` | The app is in the background, or went there while the screen waited, or the platform cannot present the screen at that moment. |
 | `cancelled` | `call:cancel()` gave the screen up, or the person closed the screen. |
 | `noHandler` | No screen of that name is registered: no page screen on the web, no screen of a plugin class on Apple platforms and Android and no screen of a native library on Windows and Linux. |
 | `unsupported` | The device cannot show the screen the way the plugin asks, such as a window of its own on an iPhone. |
@@ -362,6 +362,24 @@ async.spawn(function()
         print('the player closed the paywall')
     else
         print('the paywall failed: ' .. err)
+    end
+end)
+```
+
+A screen may open right in the answer of a dialog, which arrives while the app is still `'inactive'` on some platforms, and the screen then waits until the app is `'active'`.
+
+```lua
+local async = require('async')
+local dialogs = require('haylen.dialogs')
+local platform = require('haylen.platform')
+
+local paywall = platform.plugin('paywall')
+
+async.spawn(function()
+    local button = dialogs.message({text = 'Unlock every level?', buttons = {'See the offer', 'Later'}}):await()
+    if button == 1 then
+        local purchase, err = paywall:openScreen('offer', {offering = 'levels'}, {timeout = 300}):await()
+        print(purchase and purchase.product or err.code)
     end
 end)
 ```

@@ -39,9 +39,16 @@ final class HaylenScreens {
             launcher = activity.getActivityResultRegistry().register(key, activity, contract, result -> deliver(key, result));
         }
 
+        // The launcher starts the activity of the screen at once, through the activity of the app, which hands the request code to the screen that opens.
         @Override
         void open(Object params, HaylenScreen screen) throws Exception {
-            launcher.launch(input.create(params));
+            I value = input.create(params);
+            opening = screen;
+            try {
+                launcher.launch(value);
+            } finally {
+                opening = null;
+            }
         }
 
         private void deliver(String key, O result) {
@@ -84,6 +91,8 @@ final class HaylenScreens {
     // The screen that this process opened, and the one that showed when the earlier process ended, until each ends.
     private static HaylenScreen showing;
     private static HaylenScreen restored;
+    // The contract screen whose launcher starts its activity right now. Only the main thread reaches it.
+    private static HaylenScreen opening;
 
     private HaylenScreens() {}
 
@@ -145,7 +154,7 @@ final class HaylenScreens {
         });
     }
 
-    // Called from the frame thread of the engine when the app gives a screen up. The plugin closes the UI that it shows itself when its cancel listeners run, and a screen without listeners ends with the code `cancelled` at once, which drops the answer that its launcher may still receive.
+    // Called from the frame thread of the engine when the app gives a screen up. The plugin closes the UI that it shows itself when its cancel listeners run, and a screen without listeners ends with the code `cancelled` at once, which drops the answer that its launcher may still receive. A contract screen finishes the activity that its launcher started.
     static void cancel(long id) {
         mainThread.post(() -> {
             HaylenScreen screen;
@@ -157,10 +166,22 @@ final class HaylenScreens {
             }
             boolean listens = screen.hasCancelListeners();
             screen.cancel();
-            if (!listens) {
-                screen.fail("The app gave the screen \"" + screen.name() + "\" up.", "cancelled", null);
+            if (listens) {
+                return;
             }
+            HaylenActivity activity = HaylenBridge.activity();
+            if (activity != null && screen.requestCode() >= 0) {
+                activity.finishActivity(screen.requestCode());
+            }
+            screen.fail("The app gave the screen \"" + screen.name() + "\" up.", "cancelled", null);
         });
+    }
+
+    // Called by the activity on the main thread whenever it starts an activity for a result, which is how the launcher of a contract screen starts the activity of the screen.
+    static void activityStarted(int requestCode) {
+        if (opening != null) {
+            opening.startedActivity(requestCode);
+        }
     }
 
     static synchronized void ended(HaylenScreen screen) {

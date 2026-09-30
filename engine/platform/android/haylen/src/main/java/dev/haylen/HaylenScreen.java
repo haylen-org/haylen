@@ -34,6 +34,8 @@ public final class HaylenScreen {
     private final List<Runnable> cancelListeners = new ArrayList<>();
     private boolean ended;
     private boolean cancelled;
+    // The request code of the activity that the launcher of a contract screen started, which a cancel finishes, or -1. Only the main thread reaches it.
+    private int requestCode = -1;
 
     HaylenScreen(long id, String plugin, String name, String state, boolean opaque, boolean restored) {
         this.id = id;
@@ -111,6 +113,14 @@ public final class HaylenScreen {
     // The key of the plugin and the screen, under which the activity registers the launcher of the screen.
     String key() {
         return HaylenScreens.key(plugin, name);
+    }
+
+    int requestCode() {
+        return requestCode;
+    }
+
+    void startedActivity(int value) {
+        requestCode = value;
     }
 
     synchronized boolean hasCancelListeners() {
