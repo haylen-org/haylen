@@ -222,6 +222,7 @@ class Engine final {
     void renderScenes(const std::vector<plugins::Plugin*>& all);
     void setAppState(AppState value);
     void refreshForegroundState();
+    [[nodiscard]] AppState getForegroundState() const noexcept;
     void applyCover();
     void applyStateMute();
     void remapViewport();

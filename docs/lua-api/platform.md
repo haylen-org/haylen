@@ -325,7 +325,7 @@ A screen is native UI of a plugin that takes over the app until it ends with one
 
 - The engine covers the app at the start of the next frame and only then hands the screen to the platform, so the app is `'inactive'`, halted and muted before the screen shows, and `haylen.appCovered()` returns `true` until the screen ends, however it ends.
 - One screen shows at a time in the whole process, and a screen opens only while the app is `'active'`.
-- `call:cancel()` and the timeout fail the call at once and ask the platform to dismiss the screen, and the app stays covered until the screen is gone. Android stops the frames of the app while the activity of a screen covers it, so there they take effect once the screen ended.
+- `call:cancel()` and the timeout fail the call at once and ask the platform to dismiss the screen, and the app stays covered until the screen is gone. Android stops the frames of the app while a screen that is an activity of its own covers it, so there they take effect once the screen ended, while a screen that shows in the activity of the app, such as a dialog, hears them at once.
 - A screen outlives the app that opened it. When the app restarts under it or the process ends while it shows, such as a web page that left for a redirect and loaded again, its end reaches the next app as the retained event `screenRestored` of the plugin, which `handle:on('screenRestored', listener)` receives with `screen`, the name of the screen, `state`, the value of `options.state`, and `result`, or `error` with `message`, `code` and `data` when the screen failed. The event waits for the first listener of its name, like every [retained event](#platformonevent-listener).
 
 A screen fails with the codes of [errors](#errors) and these.

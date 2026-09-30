@@ -309,6 +309,19 @@ TEST(EngineTest, TreatsInterruptionsAsInactiveTime) {
     EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Active);
 }
 
+TEST(EngineTest, ComesBackInactiveWhileTheWindowLacksTheFocus) {
+    test::EngineFixture fixture;
+    core::Engine& engine = fixture.engine();
+
+    // A dialog took the focus of the window before the app went to the background and still has it when the app comes back.
+    for (const platform::Event::Type type : {platform::Event::Type::FocusLost, platform::Event::Type::Suspended, platform::Event::Type::Resumed}) {
+        engine.handleEvent({.type = type});
+    }
+    EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Inactive);
+    engine.handleEvent({.type = platform::Event::Type::FocusGained});
+    EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Active);
+}
+
 TEST(EngineTest, PublishesTheKeyboardAndTheNetwork) {
     test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "design": {"width": 960, "height": 540, "scaling": "fit"}})"}});
     core::Engine& engine = fixture.engine();

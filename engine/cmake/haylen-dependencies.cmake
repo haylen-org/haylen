@@ -40,6 +40,7 @@ endif()
 # The `sokol_app` module ends a destroyed Android activity with `exit()`, which aborts the process in the rendering threads of Android, so the fourth patch stops the app through its cleanup callback and lets the activity finish normally, and makes `sapp_quit()` finish the activity.
 # Native plugins on Apple platforms receive the events of the application and its scenes, which only the application delegate of `sokol_app` sees, so the fifth patch lets the runtime name a subclass of that delegate.
 # The `sokol_app` module hosts Android apps in `NativeActivity`, which can never be the `ComponentActivity` that current SDKs and the Activity Result API need and keeps views from drawing over the app, so the last patch hosts them in `GameActivity`, with input through a queue from the UI thread, a key table, the native saved state and the `Choreographer` frame loop chosen at run time.
+# The `sokol_app` module also runs Android frames only while the window of the activity has the focus, which stops timers, cancels and timeouts under every dialog and leaves the surface black when the app comes back under one, so the last patch runs them while the activity is resumed and has a surface, reports the focus as focus events and swaps only the frames that drew, so a covered app keeps its last picture.
 CPMAddPackage(
   NAME sokol
   URL "https://github.com/floooh/sokol/archive/2e75443dbd4940b5aa8d76a8e479f8e4b270b9a3.tar.gz"

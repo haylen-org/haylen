@@ -100,7 +100,9 @@ TEST(EventsLuaTest, ReceivesEngineLifecycleEvents) {
     EXPECT_EQ(fixture.lua("return table.concat(log, ', ')"), "sceneEntered menu, sceneEnterTransitionFinished menu, paused, unpaused, sceneExited menu, appInactive, appBackground, windowResized 1920.0");
     EXPECT_EQ(fixture.lua("return haylen.appState() .. ' ' .. tostring(haylen.halted()) .. ' ' .. tostring(haylen.paused())"), "background true false");
     fixture.engine().handleEvent({.type = platform::Event::Type::Resumed});
-    EXPECT_EQ(fixture.lua("return haylen.appState() .. ' ' .. tostring(haylen.halted())"), "active false");
+    EXPECT_EQ(fixture.lua("return haylen.appState() .. ' ' .. tostring(haylen.halted())"), "inactive false");
+    fixture.engine().handleEvent({.type = platform::Event::Type::FocusGained});
+    EXPECT_EQ(fixture.lua("return haylen.appState()"), "active");
 }
 
 TEST(EventsLuaTest, ScenesListenForAsLongAsTheyLive) {

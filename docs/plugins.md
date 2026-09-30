@@ -627,7 +627,7 @@ override fun onActivityCreated(activity: HaylenActivity, savedInstanceState: Bun
 }
 ```
 
-Android stops the frames of the app while another activity covers it or a dialog has the focus, as [the lifecycle guide](lifecycle.md#app-states) describes, so a cancel or a timeout that the app asks for takes effect in the first frame after the screen ended, when the end of the screen is dropped since the app gave the screen up. The screen of an opener that shows its UI over the app, such as a view of the overlay that leaves the focus to the window of the app, hears a cancel at once.
+Android stops the frames of the app while another activity covers it, as [the lifecycle guide](lifecycle.md#app-states) describes, so for a screen that is an activity a cancel or a timeout that the app asks for takes effect in the first frame after the screen ended, when the end of the screen is dropped since the app gave the screen up. The screen of an opener that shows its UI in the activity of the app, such as a dialog or a view of the overlay, hears a cancel at once, since the frames of the app keep running under it.
 
 ### C++
 

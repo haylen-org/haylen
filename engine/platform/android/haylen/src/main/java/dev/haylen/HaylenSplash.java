@@ -10,7 +10,7 @@ import android.widget.ImageView;
 import androidx.core.splashscreen.SplashScreen;
 
 // Keeps the splash screen of `Theme.Haylen.Splash` on screen until the app has drawn its first frame, so nothing black shows in between.
-// The system splash screen ends with the first frame of the activity window, while the app draws only once that window shows and has the focus, so a view with the same background and icon covers the surface of the app from the first frame of the window until the app has drawn.
+// The system splash screen ends with the first frame of the activity window, while the app draws only once the activity resumed and its surface exists, so a view with the same background and icon covers the surface of the app from the first frame of the window until the app has drawn.
 final class HaylenSplash {
     private final Activity activity;
     private View cover;

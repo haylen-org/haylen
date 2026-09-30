@@ -1,4 +1,4 @@
-Hosts Android apps in GameActivity of the AndroidX games libraries instead of NativeActivity. GameActivity is an AppCompatActivity whose SurfaceView lives in an ordinary view hierarchy, so views, fragments, dialogs and the Activity Result API work over the app. GameActivity_onCreate replaces ANativeActivity_onCreate and keeps the render thread, its pipe and its handshakes with the UI thread. Input arrives on the UI thread, which copies it into a locked queue that the render thread drains, hands to native_event_cb and translates: touches, and keys through a key table together with the characters that hardware keyboards type. The UI thread decides at once whether the app takes a key, which it does for translated keys, typed characters and the keys that key_consumed_cb asks for, so back and the system keys go on to the views and the system, and the press of a key decides for its release, so a release whose press went to a view never reaches the app. The visibility of the soft keyboard reaches sapp_keyboard_shown() through the same queue, save_state_cb and sapp_android_get_saved_state() carry the native saved state of the activity across its recreation and the end of its process, and the Choreographer frame loop is chosen at run time, because AChoreographer_postFrameCallback64() exists only from Android 10 on.
+Hosts Android apps in GameActivity of the AndroidX games libraries instead of NativeActivity. GameActivity is an AppCompatActivity whose SurfaceView lives in an ordinary view hierarchy, so views, fragments, dialogs and the Activity Result API work over the app. GameActivity_onCreate replaces ANativeActivity_onCreate and keeps the render thread, its pipe and its handshakes with the UI thread. Input arrives on the UI thread, which copies it into a locked queue that the render thread drains, hands to native_event_cb and translates: touches, and keys through a key table together with the characters that hardware keyboards type. The UI thread decides at once whether the app takes a key, which it does for translated keys, typed characters and the keys that key_consumed_cb asks for, so back and the system keys go on to the views and the system, and the press of a key decides for its release, so a release whose press went to a view never reaches the app. The visibility of the soft keyboard reaches sapp_keyboard_shown() through the same queue, save_state_cb and sapp_android_get_saved_state() carry the native saved state of the activity across its recreation and the end of its process, and the Choreographer frame loop is chosen at run time, because AChoreographer_postFrameCallback64() exists only from Android 10 on. Frames run while the activity is resumed and has a surface, also while a dialog or the notification shade has the focus of its window, whose changes reach the app as focused and unfocused events, and a frame swaps its buffers only when it acquired the swapchain, so the surface keeps the last picture while the app draws nothing.
 
 --- a/sokol_app.h
 +++ b/sokol_app.h
@@ -14,7 +14,7 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
      - on Windows:
          - with MSVC or Clang: library dependencies are defined via `#pragma comment`
          - with SOKOL_WGPU: a WebGPU implementation library (tested with webgpu_dawn)
-@@ -136,7 +139,7 @@
+@@ -136,15 +139,15 @@
      webgpu              | YES(4)  | YES(4)| YES(4) | ---   | ---     | YES
      vulkan              | YES(7)  | ---   | YES(7) | ---   | ---     | ---
      noapi               | YES     | TODO  | TODO   | ---   | ---     | ---
@@ -23,8 +23,9 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
      mouse events        | YES     | YES   | YES    | ---   | ---     | YES
      touch events        | ---     | ---   | ---    | YES   | YES     | TES
      resized event       | YES     | YES   | YES    | YES   | YES     | YES
-@@ -144,7 +147,7 @@
-     focused/unfocused   | YES     | YES   | YES    | ---   | ---     | YES
+     iconifed/restored   | YES     | YES   | YES    | ---   | ---     | ---
+-    focused/unfocused   | YES     | YES   | YES    | ---   | ---     | YES
++    focused/unfocused   | YES     | YES   | YES    | ---   | YES     | YES
      suspended/resumed   | ---     | ---   | ---    | YES   | YES     | TODO
      programmatic quit   | YES     | YES   | YES    | ---   | YES     | YES
 -    key repeat flag     | YES     | YES   | YES    | ---   | ---     | YES
@@ -166,13 +167,13 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
      _SOKOL_ANDROID_MSG_DESTROY,
  } _sapp_android_msg_t;
  
-@@ -3195,14 +3220,44 @@
+@@ -3195,29 +3220,61 @@
  
  typedef struct {
      ANativeWindow* window;
 -    AInputQueue* input;
  } _sapp_android_resources_t;
-+
+ 
 +/* GameActivity delivers input on the UI thread, which copies it here for the sokol thread */
 +#define _SAPP_ANDROID_MAX_QUEUED_INPUTS (64)
 +typedef enum {
@@ -180,7 +181,7 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
 +    _SAPP_ANDROID_INPUT_KEY,
 +    _SAPP_ANDROID_INPUT_KEYBOARD,
 +} _sapp_android_input_type_t;
- 
++
  typedef struct {
 -    ANativeActivity* activity;
 +    _sapp_android_input_type_t type;
@@ -201,6 +202,9 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
 +/* AChoreographer_postFrameCallback64() exists from Android 10 (API 29) on, so it is looked up at run time */
 +typedef void (*_sapp_android_post_frame_callback_t)(AChoreographer* choreographer, AChoreographer_frameCallback64 callback, void* data);
 +
++/* Without the Choreographer the swap paces the frames, so a frame that presents nothing waits about as long as a display refresh. */
++#define _SAPP_ANDROID_UNPRESENTED_FRAME_WAIT_MS (16)
++
 +typedef struct {
 +    GameActivity* activity;
      _sapp_android_pt_t pt;
@@ -213,7 +217,12 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
      ALooper* looper;
      bool is_thread_started;
      bool is_thread_stopping;
-@@ -3214,10 +3269,9 @@
+     bool is_thread_stopped;
+     bool has_created;
+     bool has_resumed;
+-    bool has_focus;
++    bool swapchain_acquired;
+     EGLConfig config;
      EGLDisplay display;
      EGLContext context;
      EGLSurface surface;
@@ -225,7 +234,7 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
  } _sapp_android_t;
  
  #endif // _SAPP_ANDROID
-@@ -11122,7 +11176,7 @@
+@@ -11122,7 +11179,7 @@
      SOKOL_ASSERT(window);
  
      /* TODO: set window flags */
@@ -234,7 +243,7 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
  
      /* create egl surface and make it current */
      bool wants_srgb = _sapp.desc.srgb;
-@@ -11225,7 +11279,7 @@
+@@ -11225,17 +11282,22 @@
      /* try to cleanup while we still have a surface and can call cleanup_cb() */
      _sapp_android_cleanup();
      /* request exit */
@@ -242,9 +251,29 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
 +    GameActivity_finish(_sapp.android.activity);
  }
  
- _SOKOL_PRIVATE void _sapp_android_frame(double external_now) {
-@@ -11248,14 +11302,14 @@
+-_SOKOL_PRIVATE void _sapp_android_frame(double external_now) {
++/* A frame presents only when it acquired the swapchain, since a frame that draws nothing would show a buffer of undefined content, and the surface keeps the last picture instead. Returns whether the frame presented. */
++_SOKOL_PRIVATE bool _sapp_android_frame(double external_now) {
+     SOKOL_ASSERT(_sapp.android.display != EGL_NO_DISPLAY);
+     SOKOL_ASSERT(_sapp.android.context != EGL_NO_CONTEXT);
+     SOKOL_ASSERT(_sapp.android.surface != EGL_NO_SURFACE);
+     _sapp_timing_update(&_sapp.timing, external_now);
+     _sapp_android_update_dimensions(_sapp.android.current.window, false);
++    _sapp.android.swapchain_acquired = false;
+     _sapp_frame();
+-    eglSwapBuffers(_sapp.android.display, _sapp.android.surface);
++    const bool presented = _sapp.android.swapchain_acquired;
++    if (presented) {
++        eglSwapBuffers(_sapp.android.display, _sapp.android.surface);
++    }
+     /* programmatic quit, the application may cancel a requested quit in the event handler */
+     if (_sapp.quit_requested && !_sapp.quit_ordered) {
+         _sapp_android_app_event(SAPP_EVENTTYPE_QUIT_REQUESTED);
+@@ -11246,16 +11308,17 @@
+     if (_sapp.quit_ordered) {
+         _sapp_android_shutdown();
      }
++    return presented;
  }
  
 -_SOKOL_PRIVATE bool _sapp_android_touch_event(const AInputEvent* e) {
@@ -261,7 +290,7 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
      int32_t action = action_idx & AMOTION_EVENT_ACTION_MASK;
      sapp_event_type type = SAPP_EVENTTYPE_INVALID;
      switch (action) {
-@@ -11281,16 +11335,18 @@
+@@ -11281,16 +11344,18 @@
      }
      int32_t idx = action_idx >> AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT;
      _sapp_init_event(type);
@@ -285,7 +314,7 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
          if (action == AMOTION_EVENT_ACTION_POINTER_DOWN ||
              action == AMOTION_EVENT_ACTION_POINTER_UP) {
              dst->changed = (i == idx);
-@@ -11302,44 +11358,135 @@
+@@ -11302,44 +11367,135 @@
      return true;
  }
  
@@ -449,20 +478,34 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
  }
  
  _SOKOL_PRIVATE int _sapp_android_main_cb(int fd, int events, void* data) {
-@@ -11352,6 +11499,12 @@
-     _sapp_android_msg_t msg;
-     if (read(fd, &msg, sizeof(msg)) != sizeof(msg)) {
-         _SAPP_ERROR(ANDROID_READ_MSG_FAILED);
-+        return 1;
-+    }
-+
-+    /* input takes no part in the handshakes with the UI thread, so it runs without their lock */
-+    if (msg == _SOKOL_ANDROID_MSG_INPUT) {
-+        _sapp_android_dispatch_inputs();
+@@ -11355,6 +11511,12 @@
          return 1;
      }
  
-@@ -11401,23 +11554,6 @@
++    /* input takes no part in the handshakes with the UI thread, so it runs without their lock */
++    if (msg == _SOKOL_ANDROID_MSG_INPUT) {
++        _sapp_android_dispatch_inputs();
++        return 1;
++    }
++
+     pthread_mutex_lock(&_sapp.android.pt.mutex);
+     switch (msg) {
+         case _SOKOL_ANDROID_MSG_CREATE:
+@@ -11379,11 +11541,11 @@
+             break;
+         case _SOKOL_ANDROID_MSG_FOCUS:
+             _SAPP_INFO(ANDROID_MSG_FOCUS);
+-            _sapp.android.has_focus = true;
++            _sapp_android_app_event(SAPP_EVENTTYPE_FOCUSED);
+             break;
+         case _SOKOL_ANDROID_MSG_NO_FOCUS:
+             _SAPP_INFO(ANDROID_MSG_NO_FOCUS);
+-            _sapp.android.has_focus = false;
++            _sapp_android_app_event(SAPP_EVENTTYPE_UNFOCUSED);
+             break;
+         case _SOKOL_ANDROID_MSG_SET_NATIVE_WINDOW:
+             _SAPP_INFO(ANDROID_MSG_SET_NATIVE_WINDOW);
+@@ -11401,23 +11563,6 @@
              }
              _sapp.android.current.window = _sapp.android.pending.window;
              break;
@@ -486,15 +529,23 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
          case _SOKOL_ANDROID_MSG_DESTROY:
              _SAPP_INFO(ANDROID_MSG_DESTROY);
              _sapp_android_cleanup();
-@@ -11439,7 +11575,6 @@
-     return is_in_front && has_surface;
+@@ -11433,13 +11578,12 @@
+     return 1;
+ }
+ 
++/* Frames run while the activity is resumed and has a surface, also while a dialog or the notification shade has the focus of its window. */
+ _SOKOL_PRIVATE bool _sapp_android_should_update(void) {
+-    bool is_in_front = _sapp.android.has_resumed && _sapp.android.has_focus;
+     bool has_surface = _sapp.android.surface != EGL_NO_SURFACE;
+-    return is_in_front && has_surface;
++    return _sapp.android.has_resumed && has_surface;
  }
  
 -#if __ANDROID_API__ >= 29
  _SOKOL_PRIVATE void _sapp_android_frame_callback(int64_t frame_time_nanos, void* data) {
      _SOKOL_UNUSED(data);
      _sapp.android.frame_callback_in_flight = false;
-@@ -11449,20 +11584,19 @@
+@@ -11449,20 +11593,19 @@
      if (_sapp_android_should_update()) {
          // Post the next frame callback. We do this here rather than later so the runnable can be
          // queued early in the looper.
@@ -519,7 +570,7 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
      }
  }
  
-@@ -11478,16 +11612,16 @@
+@@ -11478,16 +11621,16 @@
          _sapp_android_main_cb,
          NULL); /* data */
  
@@ -544,7 +595,7 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
  
      /* signal start to main thread */
      pthread_mutex_lock(&_sapp.android.pt.mutex);
-@@ -11497,21 +11631,19 @@
+@@ -11497,39 +11640,35 @@
  
      /* main loop */
      while (!_sapp.android.is_thread_stopping) {
@@ -576,9 +627,20 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
 +            continue;
 +        }
          // sokol frame -- fallback if not updating frames from choreographer callbacks
++        bool presented = false;
          if (_sapp_android_should_update()) {
-             _sapp_android_frame(0.0);
-@@ -11525,11 +11657,6 @@
+-            _sapp_android_frame(0.0);
++            presented = _sapp_android_frame(0.0);
+         }
+ 
+         /* process all events (or stop early if app is requested to quit) */
++        int wait_ms = presented ? 0 : _SAPP_ANDROID_UNPRESENTED_FRAME_WAIT_MS;
+         bool process_events = true;
+         while (process_events && !_sapp.android.is_thread_stopping) {
+             bool block_until_event = !_sapp.android.is_thread_stopping && !_sapp_android_should_update();
+-            process_events = ALooper_pollOnce(block_until_event ? -1 : 0, NULL, NULL, NULL) == ALOOPER_POLL_CALLBACK;
++            process_events = ALooper_pollOnce(block_until_event ? -1 : wait_ms, NULL, NULL, NULL) == ALOOPER_POLL_CALLBACK;
++            wait_ms = 0;
          }
      }
  
@@ -590,7 +652,7 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
      /* the following causes heap corruption on exit, why??
      ALooper_removeFd(_sapp.android.looper, _sapp.android.pt.read_from_main_fd);
      ALooper_release(_sapp.android.looper);*/
-@@ -11551,25 +11678,111 @@
+@@ -11551,25 +11690,111 @@
      }
  }
  
@@ -616,7 +678,7 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
 +}
 +
 +_SOKOL_PRIVATE bool _sapp_android_on_touch_event(GameActivity* activity, const GameActivityMotionEvent* event) {
-     _SOKOL_UNUSED(activity);
++    _SOKOL_UNUSED(activity);
 +    _sapp_android_input_t input;
 +    input.type = _SAPP_ANDROID_INPUT_MOTION;
 +    input.motion = *event;
@@ -672,7 +734,7 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
 +
 +/* the keyboard of any view reports here, and the change reaches sapp_keyboard_shown() in order with the input */
 +_SOKOL_PRIVATE void _sapp_android_on_keyboard_visibility_changed(GameActivity* activity, bool visible) {
-+    _SOKOL_UNUSED(activity);
+     _SOKOL_UNUSED(activity);
 +    _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_ONKEYBOARDVISIBILITY);
 +    _sapp_android_input_t input;
 +    input.type = _SAPP_ANDROID_INPUT_KEYBOARD;
@@ -708,7 +770,7 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
      _SOKOL_UNUSED(activity);
      _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_ONWINDOWFOCUSCHANGED);
      if (has_focus) {
-@@ -11579,13 +11792,13 @@
+@@ -11579,13 +11804,13 @@
      }
  }
  
@@ -724,7 +786,7 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
      _SOKOL_UNUSED(activity);
      _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_ONSTOP);
  }
-@@ -11600,62 +11813,34 @@
+@@ -11600,62 +11825,34 @@
      pthread_mutex_unlock(&_sapp.android.pt.mutex);
  }
  
@@ -754,8 +816,7 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
 -}
 -
 -_SOKOL_PRIVATE void _sapp_android_on_input_queue_created(ANativeActivity* activity, AInputQueue* queue) {
-+_SOKOL_PRIVATE void _sapp_android_on_config_changed(GameActivity* activity) {
-     _SOKOL_UNUSED(activity);
+-    _SOKOL_UNUSED(activity);
 -    _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_ONINPUTQUEUECREATED);
 -    _sapp_android_msg_set_input_queue(queue);
 -}
@@ -768,7 +829,8 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
 -}
 -
 -_SOKOL_PRIVATE void _sapp_android_on_config_changed(ANativeActivity* activity) {
--    _SOKOL_UNUSED(activity);
++_SOKOL_PRIVATE void _sapp_android_on_config_changed(GameActivity* activity) {
+     _SOKOL_UNUSED(activity);
      _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_ONCONFIGURATIONCHANGED);
      /* see android:configChanges in manifest */
  }
@@ -796,7 +858,7 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
      _SOKOL_UNUSED(activity);
      _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_ONDESTROY);
  
-@@ -11670,6 +11855,10 @@
+@@ -11670,6 +11867,10 @@
      /* clean up main thread */
      pthread_cond_destroy(&_sapp.android.pt.cond);
      pthread_mutex_destroy(&_sapp.android.pt.mutex);
@@ -807,7 +869,7 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
  
      close(_sapp.android.pt.read_from_main_fd);
      close(_sapp.android.pt.write_from_main_fd);
-@@ -11682,20 +11871,30 @@
+@@ -11682,20 +11883,30 @@
  }
  
  JNIEXPORT
@@ -845,7 +907,7 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
  
      int pipe_fd[2];
      if (pipe(pipe_fd) != 0) {
-@@ -11707,6 +11906,7 @@
+@@ -11707,6 +11918,7 @@
  
      pthread_mutex_init(&_sapp.android.pt.mutex, NULL);
      pthread_cond_init(&_sapp.android.pt.cond, NULL);
@@ -853,7 +915,7 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
  
      pthread_attr_t attr;
      pthread_attr_init(&attr);
-@@ -11741,11 +11941,13 @@
+@@ -11741,11 +11953,13 @@
      /* activity->callbacks->onNativeWindowResized = _sapp_android_on_native_window_resized; */
      /* activity->callbacks->onNativeWindowRedrawNeeded = _sapp_android_on_native_window_redraw_needed; */
      activity->callbacks->onNativeWindowDestroyed = _sapp_android_on_native_window_destroyed;
@@ -870,25 +932,34 @@ Hosts Android apps in GameActivity of the AndroidX games libraries instead of Na
  
      _SAPP_INFO(ANDROID_NATIVE_ACTIVITY_CREATE_SUCCESS);
  
-@@ -15524,7 +15726,21 @@
- SOKOL_API_IMPL const void* sapp_android_get_native_window(void) {
-     #if defined(_SAPP_ANDROID)
-         return (void*)_sapp.android.current.window;
-+    #else
-+        return 0;
+@@ -15423,6 +15637,9 @@
+     #if defined(_SAPP_ANY_GL)
+         res.gl.framebuffer = _sapp.gl.framebuffer;
+     #endif
++    #if defined(_SAPP_ANDROID)
++        _sapp.android.swapchain_acquired = true;
 +    #endif
-+}
-+
+     res.width = sapp_width();
+     res.height = sapp_height();
+     res.color_format = sapp_color_format();
+@@ -15529,6 +15746,20 @@
+     #endif
+ }
+ 
 +SOKOL_API_IMPL const void* sapp_android_get_saved_state(size_t* out_size) {
 +    #if defined(_SAPP_ANDROID)
 +        if (out_size) {
 +            *out_size = _sapp.android.saved_state_size;
 +        }
 +        return _sapp.android.saved_state;
-     #else
++    #else
 +        if (out_size) {
 +            *out_size = 0;
 +        }
-         return 0;
-     #endif
++        return 0;
++    #endif
++}
++
+ SOKOL_API_IMPL void sapp_html5_ask_leave_site(bool ask) {
+     _sapp.html5_ask_leave_site = ask;
  }

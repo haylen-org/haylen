@@ -415,7 +415,7 @@ void Engine::handleEvent(const platform::Event& event) {
             setAppState(AppState::Background);
             break;
         case platform::Event::Type::Resumed:
-            setAppState(current.interrupted || current.covered ? AppState::Inactive : AppState::Active);
+            setAppState(getForegroundState());
             break;
         case platform::Event::Type::InterruptionBegan:
             // An interruption of the system, such as a phone call or another app taking the audio focus, makes a foreground app inactive until it ends.
@@ -535,13 +535,17 @@ void Engine::setAppState(AppState value) {
     }
 }
 
-// An app in the foreground is active only while its window has the focus, no interruption of the system holds it and no native UI of a plugin covers it.
 void Engine::refreshForegroundState() {
-    const EngineState& current = *state;
-    if (current.appState == AppState::Background) {
+    if (state->appState == AppState::Background) {
         return;
     }
-    setAppState(current.focused && !current.interrupted && !current.covered ? AppState::Active : AppState::Inactive);
+    setAppState(getForegroundState());
+}
+
+// An app in the foreground is active only while its window has the focus, no interruption of the system holds it and no native UI of a plugin covers it, also when it comes back from the background.
+Engine::AppState Engine::getForegroundState() const noexcept {
+    const EngineState& current = *state;
+    return current.focused && !current.interrupted && !current.covered ? AppState::Active : AppState::Inactive;
 }
 
 // Covered content must never play under native UI, so a cover halts and mutes the app whatever the lifecycle options say. The covers of the platform, of native libraries and the screen of a plugin all count. The app state changes last, because its listeners may fail.
