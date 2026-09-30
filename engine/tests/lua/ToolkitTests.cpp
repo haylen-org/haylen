@@ -6,7 +6,9 @@
 #include <string>
 #include <string_view>
 #include <thread>
+#include <vector>
 
+#include "haylen/lua/Binding.hpp"
 #include "haylen/lua/Error.hpp"
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Promise.hpp"
@@ -279,6 +281,36 @@ TEST(ErrorTest, KeepsTheEndsOfARunawayRecursion) {
     EXPECT_TRUE(std::ranges::any_of(error.getFrames(), [](const Error::Frame& frame) { return frame.function.ends_with("levels skipped"); }));
 }
 
+// Failures of tasks reach the engine with the traceback of where they were raised, which the engine reads into frames.
+TEST(ErrorTest, ReadsTheStackOfTasksFromTheirTraceback) {
+    {
+        // A stack deeper than a traceback shows keeps its ends.
+        test::EngineFixture fixture;
+        fixture.runLua("local function dive(depth) if depth == 0 then error('too deep') end dive(depth - 1) end require('async').spawn(function() dive(40) end)");
+        ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
+        const std::vector<Error::Frame>& frames = fixture.engine().getError()->getFrames();
+        ASSERT_EQ(frames.size(), 21U);
+        EXPECT_EQ(frames[10].source, "...");
+        EXPECT_EQ(frames[10].kind, Error::Frame::Kind::C);
+        EXPECT_TRUE(frames[10].function.ends_with(" levels skipped")) << frames[10].function;
+        EXPECT_EQ(frames.back().function, "function <test:1>");
+    }
+    {
+        // A function called in a tail call replaces its caller, and the note Lua writes after it is no frame.
+        test::EngineFixture fixture;
+        fixture.runLua("local function fail() error('tail failure') end require('async').spawn(function() return fail() end)");
+        ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
+        ASSERT_EQ(fixture.engine().getError()->getFrames().size(), 2U);
+        EXPECT_EQ(fixture.engine().getError()->getFrames()[1].getLocation(), "test:1");
+    }
+
+    test::EngineFixture fixture;
+    fixture.runLua("require('async').spawn(load('error(\"chunk failure\")', '=chunk'))");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
+    EXPECT_EQ(fixture.engine().getError()->getFrames().back().kind, Error::Frame::Kind::Main);
+    EXPECT_EQ(fixture.engine().getError()->getFrames().back().getLocation(), "chunk:1");
+}
+
 TEST(ErrorTest, FindsTheScriptPositionOfErrors) {
     const Error nested("The scene could not start: source/main.lua:12: missing sprite");
     EXPECT_EQ(nested.getMessage(), "The scene could not start: source/main.lua:12: missing sprite");
@@ -419,6 +451,29 @@ TEST(BindingTest, ChecksBoundTypesAndMembers) {
     EXPECT_NE(fixture.lua("point.x = 'text'").find("error: "), std::string::npos);
     EXPECT_NE(fixture.lua("return point.length(42)").find("error: "), std::string::npos);
     EXPECT_EQ(fixture.lua("return point:length() > 0"), "true");
+}
+
+TEST(BindingTest, RefusesAModuleNameThatIsTaken) {
+    test::EngineFixture fixture;
+    lua_State* L = fixture.lua();
+    // clang-format off
+    constexpr lua_CFunction open = [](lua_State* state) -> int {
+        lua_pushliteral(state, "fresh");
+        return 1;
+    };
+    // clang-format on
+
+    Binding::preload(L, "app.fresh", open);
+    EXPECT_EQ(fixture.lua("return require('app.fresh')"), "fresh");
+    for (const char* taken : {"app.fresh", "haylen.graphics", "json"}) {
+        try {
+            Binding::preload(L, taken, open);
+            ADD_FAILURE() << "The module \"" << taken << "\" should be refused.";
+        } catch (const std::runtime_error& error) {
+            EXPECT_EQ(std::string(error.what()), "The Lua module \"" + std::string(taken) + "\" cannot be added, because a module of Varn or of another plugin already has its name. Give the module another name.");
+        }
+    }
+    EXPECT_EQ(fixture.lua("return type(require('json').encode)"), "function");
 }
 
 } // namespace haylen::lua

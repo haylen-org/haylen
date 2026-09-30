@@ -7,6 +7,8 @@
 #include <system_error>
 #include <utility>
 
+#include "varn/runtime/Runtime.h"
+
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -98,14 +100,15 @@ NativeLibraries::Library NativeLibraries::open(std::string_view name) {
 
     std::string searched;
     for (const std::filesystem::path& candidate : candidates) {
-        const std::string path = candidate.string();
+        const std::u8string text = candidate.u8string();
+        const std::string path(text.begin(), text.end());
         if (const auto found = std::ranges::find(state.loaded, path, &Library::path); found != state.loaded.end()) {
             return *found;
         }
 
         std::string failure;
         if (void* handle = load(candidate, failure)) {
-            Library library{.name = std::string(name), .path = getLoadPath(candidate), .handle = handle};
+            Library library{.name = std::string(name), .path = path, .handle = handle};
             state.loaded.push_back(library);
             return library;
         }
@@ -151,6 +154,18 @@ void* NativeLibraries::findSymbol(std::string_view name) {
         }
     }
     return lookupProcess(text);
+}
+
+void NativeLibraries::addLinkedSymbols(varn::runtime::Runtime& runtime) {
+    State& state = getState();
+    const std::scoped_lock lock(state.mutex);
+    for (const auto& [library, table] : state.linked) {
+        for (const auto& [symbol, address] : table) {
+            if (!runtime.addSymbol(symbol, address)) {
+                throw std::runtime_error("The symbol \"" + symbol + "\" of the linked library \"" + library + "\" has another address in another linked library. Register each symbol with one address.");
+            }
+        }
+    }
 }
 
 // The engine loads the libraries of an app from inside its bundle or next to its executable, where `make.py` places them, so the system search paths never decide which file loads.
@@ -213,11 +228,6 @@ void* NativeLibraries::lookup(void* handle, const std::string& name) {
 void* NativeLibraries::lookupProcess(const std::string& name) {
     return reinterpret_cast<void*>(GetProcAddress(GetModuleHandleW(nullptr), name.c_str()));
 }
-
-// Varn opens libraries with an ANSI path, so it gets the file name, which Windows resolves to the module this class already loaded from any path.
-std::string NativeLibraries::getLoadPath(const std::filesystem::path& file) {
-    return file.filename().string();
-}
 #elif defined(__EMSCRIPTEN__)
 std::filesystem::path NativeLibraries::getExecutableFolder() {
     return {};
@@ -234,10 +244,6 @@ void* NativeLibraries::lookup(void*, const std::string&) {
 
 void* NativeLibraries::lookupProcess(const std::string&) {
     return nullptr;
-}
-
-std::string NativeLibraries::getLoadPath(const std::filesystem::path& file) {
-    return file.string();
 }
 #else
 #if defined(__APPLE__)
@@ -278,10 +284,6 @@ void* NativeLibraries::lookup(void* handle, const std::string& name) {
 
 void* NativeLibraries::lookupProcess(const std::string& name) {
     return dlsym(RTLD_DEFAULT, name.c_str());
-}
-
-std::string NativeLibraries::getLoadPath(const std::filesystem::path& file) {
-    return file.string();
 }
 #endif
 

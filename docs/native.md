@@ -49,21 +49,21 @@ print(rect.origin.x, rect.width)
 local buffer = ffi.new('uint8_t[?]', 8)
 lib.native_test_fill(buffer, 8, 250)
 print(ffi.string(buffer, 8):byte(1, -1))
-print(lib.native_test_checksum(ffi.cast('const uint8_t*', buffer), 8))
+print(lib.native_test_checksum(buffer, 8))
 ```
 
 The rules of Varn's `ffi` that matter most:
 
-- The function `ffi.cdef` declares functions, structs, unions, arrays, pointers, function pointer types and typedefs once per Lua state, and declaring a name twice raises an error, so declarations belong in a module that `require` loads once.
+- The function `ffi.cdef` declares functions, structs, unions, enums, bitfields, arrays, pointers, function pointer types and typedefs once per Lua state, and declaring a name twice raises an error, so declarations belong in a module that `require` loads once.
 - Numbers convert both ways, `const char*` parameters take Lua strings, `ffi.string(pointer[, length])` copies text or bytes out, `ffi.new('T[?]', n)` allocates a buffer that Lua owns, and `ffi.new('T', table)` fills a struct from a table by field name or by position, nested structs included.
-- A struct passes by value as a cdata of its type and by pointer as the same cdata.
-- A pointer to non-constant data does not pass where C expects a pointer to constant data, so `ffi.cast('const uint8_t*', buffer)` passes a buffer to a `const uint8_t*` parameter.
-- The module `ffi` has no `enum` declarations and no bitfields, so enums are declared as `int` and their values are Lua constants, and a struct with bitfields is declared with integer fields of the same layout. A function takes at most 30 arguments and a struct has at most 30 fields.
-- A function called through a function pointer, such as one returned by another function or one in a struct, cannot be called from Lua, so the functions Lua calls are declared by name and reached through the namespace that `native.load` returns.
+- A struct passes by value as a cdata of its type and by pointer as the same cdata. An array field, such as `char name[33]`, reads and writes its elements in place and travels with its struct when the struct passes by value.
+- A `T*` and a `T[n]` pass where C expects a `const T*`, so a buffer from `ffi.new` goes to a `const uint8_t*` parameter as it is. A `const T*` does not pass where C expects a `T*` unless `ffi.cast` drops the `const`, and a `void*` takes and gives any pointer.
+- The constants of an `enum` are fields of `ffi.C`, such as `ffi.C.EOS_Success`, and an enum has the size of an `int`. A bitfield has the layout the C compiler of the platform gives it, and `intptr_t` and `uintptr_t` are integers as wide as a pointer. A function takes at most 30 arguments and a struct has at most 30 fields.
+- A function pointer is called like a function, whether a function returned it, a struct holds it or `ffi.cast` made it from an address, such as the light userdata of `native.findSymbol`, and calling a null one raises an error.
 - Variadic functions are called with Lua numbers, strings and pointers after the fixed arguments.
-- A struct with an array field, such as `char name[33]`, trips an assertion of libffi in Debug builds of the engine, whose libffi checks its inputs, because Varn's `ffi` describes array fields to libffi without their elements. Release builds, which every packaged app uses, declare and fill such structs correctly, and they pass them by pointer.
+- A value that does not fit a parameter or a field raises an error that names both types, such as `The C type "const int *" does not convert to "int *".`.
 
-The function `native.findSymbol(name)` returns the address of a symbol of the linked libraries, the loaded ones or the app, as a light userdata that goes wherever C takes a pointer.
+The function `native.findSymbol(name)` returns the address of a symbol of the linked libraries, the loaded ones or the app, as a light userdata that goes wherever C takes a pointer and that `ffi.cast` turns into any typed pointer, a function pointer included.
 
 ## Callbacks
 
@@ -72,7 +72,7 @@ Native code calls back into Lua through a function pointer. There are two kinds:
 | Kind | Created with | Runs | Returns a value | Safe from other threads |
 | --- | --- | --- | --- | --- |
 | Engine callback | `native.callback(declaration, fn, {thread = 'any' or 'frame'})` | On the frame thread: at the start of the next frame, or inside the native call when `thread = 'frame'` and the call comes from the frame thread. | No, its declaration returns `void`. | Yes. The arguments are copied and the call returns at once. |
-| Varn callback | `ffi.cast('void (*)(int)', fn)` | Inside the native call, on the thread that makes it. | Yes. | No. Only calls made on the frame thread may run Lua. |
+| Varn callback | `ffi.cast('void (*)(int)', fn)` | At once, on the main Lua state, when native code calls it on the frame thread. | Yes. | No. A call from another thread returns zero without running `fn`, and the app stops with the error screen. |
 
 Engine callbacks are the safe default. A library that calls from a thread of its own, such as a network SDK, a media decoder or a file watcher, gets an engine callback: the call copies numbers, booleans, pointers, text and byte ranges that the declaration bounds, queues them and returns at once, and the Lua function receives them at the start of the next frame, next to the answers of the bridge. When the app stops, its callbacks stop reaching Lua, so a call that arrives later, even after a restart, does nothing and never touches a Lua state that is gone. A callback lives until `callback:free()`, because native code may keep its pointer.
 
@@ -83,13 +83,13 @@ end)
 lib.native_test_report_later(reporter.pointer, 42)
 ```
 
-Varn callbacks fit SDKs that call back only on the thread that pumps them, such as `SteamAPI_RunCallbacks` or `EOS_Platform_Tick` called from Lua, and callbacks that must return a value to native code, such as a comparison function for a sort. They run in the Lua state that created them, so the coroutine that calls `ffi.cast` must outlive them, and an error they raise is held until the next `ffi` call raises it. An engine callback with `thread = 'frame'` runs inside the native call too, on the main Lua state, with the error reported on the error screen, so it is the better fit for pumped SDKs whose callbacks return nothing.
+Varn callbacks fit SDKs that call back only on the thread that pumps them, such as `SteamAPI_RunCallbacks` or `EOS_Platform_Tick` called from Lua, and callbacks that must return a value to native code, such as a comparison function for a sort. They run on the main Lua state, never on the coroutine that called `ffi.cast`, so they keep working after it ended. An error raised during an `ffi` call, such as the sort that calls the comparison, is raised by that call once it returns, with the traceback of the callback after its message, and an error raised outside any `ffi` call stops the app with the error screen, like the error of an `async` task. A callback that fails returns zero to native code. An engine callback with `thread = 'frame'` runs inside the native call too, and it is the better fit for pumped SDKs whose callbacks return nothing, because it also takes calls from other threads.
 
 ## Threads
 
 - Lua, and every callback that reaches it, runs on the frame thread.
 - Engine callbacks, `HaylenNativeApi` entries and bridge replies may come from any thread, and they reach Lua at the start of a frame, before the app updates, in the order they arrived.
-- A native library must not call Lua or `ffi` callbacks from its own threads, and must not keep pointers to Lua memory, such as a Lua string or an `ffi.new` buffer, longer than Lua keeps the value.
+- A native library calls `ffi` callbacks only on the frame thread, since a call from its own threads returns zero without running Lua and stops the app, and it does not keep pointers to Lua memory, such as a Lua string or an `ffi.new` buffer, longer than Lua keeps the value.
 - Pumped SDKs are pumped from the frame thread, typically from the `update` of a scene or of an autoload, so their callbacks run there.
 - Blocking calls into a library stall the frame, so long work runs on a thread of the library, which reports back through an engine callback or an event.
 
@@ -174,7 +174,7 @@ The project `App.xcodeproj` stays the same for every app: `make.py` writes the l
 
 ### Static libraries on iOS and tvOS
 
-An iOS app may link a library statically instead of embedding a framework, which some SDKs require. Dead code stripping would then remove every function the app never calls from native code, so `make.py` writes `source/HaylenNativeSymbols.mm`, whose `+load` registers the listed symbols with `haylen::platform::NativeLibraries::registerLinked`. The references keep the functions in the app, and `native.load('native_test_static')` then returns `ffi.C`, whose declared functions resolve through the app, while `native.findSymbol` finds the listed ones in the table. The `symbols` list names the functions Lua calls, including an `init` function.
+An iOS app may link a library statically instead of embedding a framework, which some SDKs require. Dead code stripping would then remove every function the app never calls from native code, so `make.py` writes `source/HaylenNativeSymbols.mm`, whose `+load` registers the listed symbols with `haylen::platform::NativeLibraries::registerLinked`. The references keep the functions in the app, and every Lua state the engine creates gets the table through `varn::runtime::Runtime::addSymbol`, so `native.load('native_test_static')` returns `ffi.C`, which finds the listed functions by name without the app exporting them, and `native.findSymbol` finds them too. The `symbols` list names the functions Lua calls, including an `init` function.
 
 ### Development
 
@@ -208,7 +208,7 @@ class SteamPlugin final : public haylen::plugins::Plugin {
 
 SDKs with a C API work through FFI without glue code, and the SDKs themselves never enter the Haylen repository: each app ships the files its license allows with its `native` section. The steps are the same for every SDK:
 
-1. Declare the functions, structs and constants the app uses with `ffi.cdef`, copied from the headers of the SDK version the app ships. Enums become `int` and their values Lua constants, and handles become `void*` or pointers to opaque structs.
+1. Declare the functions, structs, enums and constants the app uses with `ffi.cdef`, copied from the headers of the SDK version the app ships. The constants of enums are fields of `ffi.C`, and handles become `void*` or pointers to opaque structs.
 2. List the files of each platform in the `native` section, and load them with `native.load` and the file name of each platform.
 3. Pump the SDK once per frame from the frame thread, in the `update` of an autoload or of the scene that owns the connection.
 4. Receive its callbacks on the frame thread: engine callbacks with `thread = 'frame'` for SDKs that call back while they are pumped, engine callbacks with the default thread for SDKs that call back from their own threads, or polling for SDKs that queue their events.

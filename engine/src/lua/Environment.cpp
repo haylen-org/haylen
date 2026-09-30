@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <utility>
 
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
@@ -11,25 +12,6 @@
 #include "haylen/lua/Runtime.hpp"
 
 namespace haylen::lua {
-
-// Varn only logs an error that escapes a task of `async.spawn` or `async.run`, so the engine runs every task in a protected call with its own message handler and shows the error on the error screen with the stack of the task.
-const std::string_view Environment::kTaskErrors = R"lua(
-local async, report, handleMessage = ...
-for _, name in ipairs({'spawn', 'run'}) do
-    local start = async[name]
-    async[name] = function(task)
-        if type(task) ~= 'function' then
-            error("bad argument #1 to '" .. name .. "' (function expected, got " .. type(task) .. ')', 2)
-        end
-        start(function()
-            local ok, failure = xpcall(task, handleMessage)
-            if not ok then
-                report(failure)
-            end
-        end)
-    end
-end
-)lua";
 
 std::string Environment::modulePath(std::string_view name) {
     std::string path(name);
@@ -83,21 +65,25 @@ void Environment::checkModules(core::Engine& engine) {
     }
 }
 
-int Environment::reportTaskError(lua_State* L) {
-    Runtime::reportError(L, Runtime::readError(L, 1));
+// Receives the value that was raised and the traceback of where it was raised, which a callback called from another thread has none of.
+int Environment::reportFailure(lua_State* L) {
+    std::vector<Error::Frame> frames;
+    if (lua_type(L, 2) == LUA_TSTRING) {
+        frames = Runtime::readTraceback(lua_tostring(L, 2));
+    }
+    Runtime::reportError(L, Error(Runtime::describeValue(L, 1), std::move(frames)));
     return 0;
 }
 
-void Environment::installTaskErrors(lua_State* L) {
-    if (luaL_loadbufferx(L, kTaskErrors.data(), kTaskErrors.size(), Runtime::kTaskChunk, "t") != LUA_OK) {
-        throw std::runtime_error(lua_tostring(L, -1));
-    }
+// Varn hands the failures that no caller receives, those of the tasks of `async.spawn` and `async.run` and of `ffi` callbacks that fail outside any `ffi` call, to the one handler of `async.onFailure`, which shows them on the error screen.
+void Environment::installFailureHandler(lua_State* L) {
     lua_getglobal(L, "require");
     lua_pushliteral(L, "async");
     Runtime::protectedCall(L, 1, 1);
-    lua_pushcfunction(L, &Binding::native<&reportTaskError>);
-    lua_pushcfunction(L, &Runtime::handleMessage);
-    Runtime::protectedCall(L, 3, 0);
+    lua_getfield(L, -1, "onFailure");
+    lua_pushcfunction(L, &Binding::native<&reportFailure>);
+    Runtime::protectedCall(L, 1, 0);
+    lua_pop(L, 1);
 }
 
 // Searches the package for `name.lua` and then `name/init.lua`, the same order Lua uses on disk.
@@ -244,7 +230,7 @@ void Environment::install(core::Engine& engine, lua_State* L) {
     lua_setfield(L, -2, "cpath");
     lua_pop(L, 1);
 
-    installTaskErrors(L);
+    installFailureHandler(L);
     restrictLoading(L);
     restrictDebug(L);
 }

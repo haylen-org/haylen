@@ -1,4 +1,4 @@
-# Varn uses these packages too, so they are resolved here first and Varn reuses them.
+# Varn uses nlohmann/json too, so it is resolved here first and Varn reuses it.
 CPMAddPackage(
   NAME nlohmann_json
   VERSION 3.12.0
@@ -8,26 +8,6 @@ CPMAddPackage(
   SYSTEM YES
 )
 
-# Varn pins libuv 1.49.2, which misses `<limits.h>` with NDK r30. Varn waits on libuv everywhere except the web and reuses this release.
-if(NOT HAYLEN_PLATFORM STREQUAL "web")
-  CPMAddPackage(
-    NAME libuv
-    VERSION 1.53.0
-    URL "https://github.com/libuv/libuv/archive/refs/tags/v1.53.0.tar.gz"
-    URL_HASH SHA256=279f3f67a24bb9921fe999ca6cd5e332fade8d515873ef9ba054b70e70a31d9e
-    OPTIONS "LIBUV_BUILD_TESTS OFF" "LIBUV_BUILD_BENCH OFF" "LIBUV_BUILD_SHARED OFF"
-    SYSTEM YES
-  )
-  # The tvOS branch of `uv_spawn` calls a `QUEUE_INIT` macro that libuv does not define, and `uv__queue_init` is the function it means.
-  if(HAYLEN_PLATFORM STREQUAL "tvos")
-    target_compile_options(uv_a PRIVATE "-DQUEUE_INIT(queue)=uv__queue_init(queue)")
-  endif()
-  # The libuv library compiles its `posix_spawn` path on every Unix, while Android declares `posix_spawn` only from API 28 on. The libuv library never takes that path on Android and forks instead, so weak references let it build for older releases.
-  if(ANDROID)
-    target_compile_definitions(uv_a PRIVATE __ANDROID_UNAVAILABLE_SYMBOLS_ARE_WEAK__)
-  endif()
-endif()
-
 if(HAYLEN_PLATFORM STREQUAL "android")
   set(HAYLEN_VARN_TARGET "android")
 elseif(HAYLEN_PLATFORM STREQUAL "web")
@@ -36,48 +16,20 @@ else()
   set(HAYLEN_VARN_TARGET "cli")
 endif()
 
-# Varn picks the HTTP driver of a mobile target only once its own cache holds the target, which is not the case on the first configure, so the driver is named here.
-# The OpenSSL build that Varn adds runs `make` as one step of the build, with a job per processor unless parallel builds are off, so it takes one job and the build keeps to its job limit.
-set(HAYLEN_VARN_OPTIONS "VARN_TARGET ${HAYLEN_VARN_TARGET}" "VARN_BUILD_TESTS OFF" "OPENSSL_ENABLE_PARALLEL OFF")
+# The engine links the static core of Varn, which the `cli` target builds. Varn picks the HTTP driver of the URL Loading System by itself only for its `apple` target, a shared framework, so iOS, tvOS and Mac Catalyst name the driver.
+set(HAYLEN_VARN_OPTIONS "VARN_TARGET ${HAYLEN_VARN_TARGET}" "VARN_BUILD_TESTS OFF")
 if(HAYLEN_PLATFORM STREQUAL "ios" OR HAYLEN_PLATFORM STREQUAL "tvos")
   list(APPEND HAYLEN_VARN_OPTIONS "VARN_HTTP_CLIENT_DRIVER APPLE")
-elseif(HAYLEN_PLATFORM STREQUAL "android")
-  list(APPEND HAYLEN_VARN_OPTIONS "VARN_HTTP_CLIENT_DRIVER ANDROID")
 endif()
 
-# Varn builds OpenSSL with its own `Configure` script, which takes the compiler flags of Mac Catalyst from the environment, next to the optimization level it would pick itself.
-if(HAYLEN_CATALYST)
-  set(ENV{CFLAGS} "-O3 --target=${CMAKE_C_COMPILER_TARGET} ${CMAKE_C_FLAGS}")
-endif()
-
-# The zlib of Varn defines `HAVE_UNISTD_H` for every target that links it, libzip among them, whenever the platform has `unistd.h`. The libzip library checks for the header under the same name and would define the macro again in its `config.h` with another value, so it takes the definition of zlib and leaves the macro out of its `config.h`.
-set(HAVE_UNISTD_H OFF)
-
-# The `ffi` module of Varn gives libffi a return buffer of the exact size of the C type, while libffi writes a whole `ffi_arg` for smaller integers, so the patch gives it room for one.
 CPMAddPackage(
   NAME varn
-  URL "https://github.com/varn-org/varn/archive/ed5bba73ae94e4ed21c1f6e17ea44c969ae00c84.tar.gz"
-  URL_HASH SHA256=e71d6aed8132d13ca18b15204d050c969f3f9caf5f5fcb1d417c5f68ad3e135b
-  PATCHES "${CMAKE_CURRENT_LIST_DIR}/patches/varn-ffi-return-value.patch"
+  URL "https://github.com/varn-org/varn/archive/17956f141d7078db46a5486802193c8084f3f355.tar.gz"
+  URL_HASH SHA256=1fb444d0b931f3a618dc0e0aa6fcb2898eb58266a3dfc12bd13fcd5945ac5405
   OPTIONS ${HAYLEN_VARN_OPTIONS}
   EXCLUDE_FROM_ALL YES
   SYSTEM YES
 )
-
-unset(HAVE_UNISTD_H)
-
-# Varn configures Lua for macOS when a Mac Catalyst build names `Darwin` as its system, while Mac Catalyst has no `system` function, like iOS.
-if(HAYLEN_CATALYST)
-  unset(ENV{CFLAGS})
-  target_compile_definitions(varn_vendor_lua PRIVATE LUA_USE_IOS)
-endif()
-
-# Varn compiles the debug source of libffi only in Debug builds, which the Xcode generator cannot express, so Xcode projects compile it in every configuration.
-if(CMAKE_GENERATOR STREQUAL "Xcode" AND TARGET varn_vendor_libffi)
-  get_target_property(libffi_sources varn_vendor_libffi SOURCES)
-  list(TRANSFORM libffi_sources REPLACE "^\\$<\\$<CONFIG:Debug>:(.+)>$" "\\1")
-  set_property(TARGET varn_vendor_libffi PROPERTY SOURCES ${libffi_sources})
-endif()
 
 # The headers of Poco ask MSVC to link every Poco library by its file name, which no longer exists once the SDK merges the libraries into one, while CMake links them by their targets anyway.
 if(MSVC AND TARGET Poco::Foundation)

@@ -16,6 +16,7 @@
 #include "haylen/lua/Application.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/platform/NativeLibraries.hpp"
 #include "haylen/plugins/Plugin.hpp"
 #include "platform/native/NativeApi.hpp"
 #include "support/EngineFixture.hpp"
@@ -25,6 +26,11 @@ namespace haylen::platform {
 class NativeLuaTest : public ::testing::Test {
   protected:
     using Reporter = void (*)(std::int32_t value, const std::uint8_t* data, std::size_t size);
+    using Visitor = void (*)(std::int32_t index, const char* label);
+
+    static std::int32_t triple(std::int32_t value) {
+        return value * 3;
+    }
 
     // The C declarations of the test library, and a Lua function that tells whether it runs on the thread of the test, which drives the frames.
     static void prepare(test::EngineFixture& fixture) {
@@ -70,6 +76,15 @@ class NativeLuaTest : public ::testing::Test {
         lua_pop(L, 2);
         return pointer;
     }
+
+    // Makes a Varn `ffi.cast` callback of a Lua function, which Lua writes into a variable of the test through the light userdata of its address.
+    [[nodiscard]] static Visitor castVisitor(test::EngineFixture& fixture, const std::string& function) {
+        Visitor visitor = nullptr;
+        lua_pushlightuserdata(fixture.lua(), &visitor);
+        lua_setglobal(fixture.lua(), "slot");
+        fixture.runLua("visitor = ffi.cast('NativeTestVisitor', " + function + ") ffi.cast('NativeTestVisitor*', slot)[0] = visitor");
+        return visitor;
+    }
 };
 
 TEST_F(NativeLuaTest, CallsValuesStructsTextAndBuffersOfALoadedLibrary) {
@@ -84,16 +99,17 @@ TEST_F(NativeLuaTest, CallsValuesStructsTextAndBuffersOfALoadedLibrary) {
         local buffer = ffi.new('uint8_t[?]', 8)
         lib.native_test_fill(buffer, 8, 250)
         bytes = ffi.string(buffer, 8)
-        checksum = lib.native_test_checksum(ffi.cast('const uint8_t*', buffer), 8)
+        checksum = lib.native_test_checksum(buffer, 8)
+        local add = ffi.cast('int32_t (*)(int32_t, int32_t)', native.findSymbol('native_test_add'))
         summary = table.concat({
             byPath.native_test_add(20, 22), lib.native_test_scale(1.5, 4), ffi.string(lib.native_test_origin()),
             sum.x, sum.y, rect.origin.x, rect.origin.y, rect.width, rect.height,
-            tostring(native.available()), tostring(native.findSymbol('native_test_add') ~= nil), tostring(native.findSymbol('native_test_nowhere')),
+            tostring(native.available()), add(2, 3), tostring(native.findSymbol('native_test_nowhere')),
         }, ' ')
     )");
     // clang-format on
 
-    EXPECT_EQ(fixture.lua("return summary"), "42 6.0 dynamic 11 22 3 3 14.0 8.0 true true nil");
+    EXPECT_EQ(fixture.lua("return summary"), "42 6.0 dynamic 11 22 3 3 14.0 8.0 true 5 nil");
     EXPECT_EQ(fixture.lua("return bytes == '\\250\\251\\252\\253\\254\\255\\0\\1'"), "true");
     std::uint32_t expected = 2166136261U;
     for (const std::uint8_t value : std::array<std::uint8_t, 8>{250, 251, 252, 253, 254, 255, 0, 1}) {
@@ -168,6 +184,44 @@ TEST_F(NativeLuaTest, ReportsErrorsOfCallbacksOnTheErrorScreen) {
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
     EXPECT_NE(std::string(fixture.engine().getError()->what()).find("negative length -3 for \"data\""), std::string::npos);
     EXPECT_EQ(fixture.lua("return called"), "nil");
+}
+
+TEST_F(NativeLuaTest, ReportsFailuresOfFfiCallbacksOutsideAnyCall) {
+    {
+        // A failure during an `ffi` call is raised by that call, so the code that made the call receives it.
+        test::EngineFixture fixture;
+        prepare(fixture);
+        EXPECT_NE(fixture.lua("lib.native_test_visit(1, ffi.cast('NativeTestVisitor', function() error('failed inside the call') end))").find("failed inside the call"), std::string::npos);
+        EXPECT_EQ(fixture.engine().getError(), nullptr);
+
+        // Native code that calls back on the frame thread outside any `ffi` call stops the app with the stack of the callback.
+        const Visitor visitor = castVisitor(fixture, "function() error('failed outside any call') end");
+        visitor(1, "one");
+        ASSERT_NE(fixture.engine().getError(), nullptr);
+        EXPECT_NE(std::string(fixture.engine().getError()->what()).find("failed outside any call"), std::string::npos);
+        ASSERT_EQ(fixture.engine().getError()->getFrames().size(), 2U);
+        EXPECT_EQ(fixture.engine().getError()->getFrames()[1].getLocation(), "test:1");
+    }
+
+    // A call from another thread returns without running Lua, and the next frame shows why.
+    test::EngineFixture fixture;
+    prepare(fixture);
+    const Visitor visitor = castVisitor(fixture, "function() called = true end");
+    std::thread([visitor] { visitor(2, "two"); }).join();
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
+    EXPECT_NE(std::string(fixture.engine().getError()->what()).find("was called from another thread"), std::string::npos);
+    EXPECT_TRUE(fixture.engine().getError()->getFrames().empty());
+    EXPECT_EQ(fixture.lua("return called"), "nil");
+}
+
+TEST_F(NativeLuaTest, ReachesTheSymbolsOfLinkedLibrariesThroughFfiC) {
+    NativeLibraries::registerLinked("native_statics", {{"native_statics_triple", reinterpret_cast<void*>(&triple)}});
+    test::EngineFixture fixture;
+    prepare(fixture);
+
+    // The function has no exported name, so only the symbols the engine gives the runtime reach it.
+    fixture.runLua("ffi.cdef[[ int32_t native_statics_triple(int32_t value); ]] statics = native.load('native_statics')");
+    EXPECT_EQ(fixture.lua("return tostring(statics == ffi.C) .. ' ' .. statics.native_statics_triple(14)"), "true 42");
 }
 
 TEST_F(NativeLuaTest, DropsCallsThatArriveAfterTheAppStopped) {
@@ -298,7 +352,7 @@ TEST_F(NativeLuaTest, OpensTheScreensOfLibrariesAndCoversTheApp) {
     fixture.runLua(R"(
         ffi.cdef[[
             void native_test_close_screen_later(void);
-            int32_t native_test_window(void);
+            intptr_t native_test_window(void);
             void native_test_cover(int32_t covered);
         ]]
         haylen = require('haylen')

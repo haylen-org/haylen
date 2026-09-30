@@ -59,7 +59,7 @@ function Calls:runLibrary()
         local buffer = ffi.new('uint8_t[?]', 8)
         lib.native_test_fill(buffer, 8, 250)
         local bytes = ffi.string(buffer, 8)
-        local checksum = lib.native_test_checksum(ffi.cast('const uint8_t*', buffer), 8)
+        local checksum = lib.native_test_checksum(buffer, 8)
         return string.format('Filled %s with checksum %08x', bytes:gsub('.', function(byte) return string.format('%02x ', byte:byte()) end), expect(checksum, library.checksum(bytes), 'the checksum'))
     end)
     checks:run('Symbol', function()
@@ -67,7 +67,8 @@ function Calls:runLibrary()
         if address == nil then
             error('The function "native.findSymbol" found no "native_test_add".', 0)
         end
-        return 'native.findSymbol found native_test_add at ' .. tostring(address)
+        local add = ffi.cast('int32_t (*)(int32_t, int32_t)', address)
+        return 'native.findSymbol found native_test_add at ' .. tostring(address) .. ', and a call through it gives ' .. expect(add(2, 3), 5, 'the sum')
     end)
 end
 

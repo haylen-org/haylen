@@ -3,9 +3,11 @@
 #include <lua.hpp>
 
 #include <exception>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <vector>
 
 #include "haylen/lua/Error.hpp"
 
@@ -61,9 +63,6 @@ class Runtime final {
     static constexpr const char* kEngineKey = "haylen.engine";
     static constexpr const char* kErrorType = "haylen.Error";
 
-    // The chunk that runs the tasks of `async.spawn` and `async.run` in a protected call. Its frames and the protected call above them belong to the engine, not to the app.
-    static constexpr const char* kTaskChunk = "=haylen.tasks";
-
     // A deeper stack keeps only its innermost and outermost levels, like a Lua traceback, so a runaway recursion reports quickly.
     static constexpr int kInnerLevels = 10;
     static constexpr int kOuterLevels = 11;
@@ -77,6 +76,10 @@ class Runtime final {
     [[nodiscard]] static std::string describeFunction(const lua_Debug& info);
     [[nodiscard]] static Error::Frame::Kind getFrameKind(const lua_Debug& info) noexcept;
     [[nodiscard]] static int findLastLevel(lua_State* L);
+
+    // Reads the frames of a traceback that `luaL_traceback` wrote, innermost first, for failures whose stack is gone by the time the engine hears of them.
+    [[nodiscard]] static std::vector<Error::Frame> readTraceback(std::string_view traceback);
+    [[nodiscard]] static std::optional<Error::Frame> readTracebackLine(std::string_view line);
     static void pushError(lua_State* L, Error error);
     static int collectError(lua_State* L);
     static int errorToString(lua_State* L);

@@ -93,10 +93,6 @@ int Task::collectHolder(lua_State* L) {
     return 0;
 }
 
-int Task::endClosed(lua_State*) {
-    return 0;
-}
-
 void Task::finish(const std::optional<Error>& error) {
     finished = true;
     release();
@@ -141,14 +137,12 @@ void Task::close() {
     }
 }
 
-// A promise that still waits on the coroutine resumes it later, so the closed coroutine is reset around a function that ends at once, and the resume runs none of the code it held.
 std::optional<Error> Task::closeCoroutine(lua_State* coroutine, lua_State* from) {
-    std::optional<Error> failure;
-    if (lua_closethread(coroutine, from) != LUA_OK) {
-        failure = Runtime::readError(coroutine, -1);
+    if (lua_closethread(coroutine, from) == LUA_OK) {
+        return std::nullopt;
     }
-    lua_settop(coroutine, 0);
-    lua_pushcfunction(coroutine, &endClosed);
+    Error failure = Runtime::readError(coroutine, -1);
+    lua_pop(coroutine, 1);
     return failure;
 }
 

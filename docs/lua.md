@@ -309,7 +309,7 @@ async.spawn(function()
 end)
 ```
 
-The method `:await()` only works inside a coroutine, so code at the top level of `source/main.lua` or in a scene callback starts one with `async.spawn`, or with `scene.spawn(owner, fn)` of [`haylen.scene`](lua-api/scene.md#scenespawnowner-fn) for a task that stops for good when its owner, such as its scene, goes away. The `load` hook of a scene already runs in such a task. An error that escapes the function given to `async.spawn` or `async.run` stops the app and shows the error screen with the stack of that coroutine, like an error in a scene callback, and a web page receives it through `onError`. Code that expects a failure catches it with `pcall` inside the coroutine, and a promise that rejects makes `:await()` return `nil` and the error instead of raising.
+The method `:await()` only works inside a coroutine, so code at the top level of `source/main.lua` or in a scene callback starts one with `async.spawn`, or with `scene.spawn(owner, fn)` of [`haylen.scene`](lua-api/scene.md#scenespawnowner-fn) for a task that stops for good when its owner, such as its scene, goes away. The `load` hook of a scene already runs in such a task. The functions `async.spawn` and `async.run` return the handle of the task, whose `task.cancel()` stops it for good at its next `:await()`. An error that escapes the function given to `async.spawn` or `async.run` stops the app and shows the error screen with the stack of that coroutine, like an error in a scene callback, and a web page receives it through `onError`. The engine receives these errors through the handler it sets with `async.onFailure`, together with the errors of `ffi` callbacks that fail outside any `ffi` call, so an app that sets a handler of its own takes them over and they no longer stop the app. Code that expects a failure catches it with `pcall` inside the coroutine, and a promise that rejects makes `:await()` return `nil` and the error instead of raising.
 
 Long computations written in Lua, such as generating a map, run as jobs of [`haylen.jobs`](lua-api/jobs.md). The Lua state belongs to the frame thread, so a job is a coroutine that works within a time budget each frame and pauses at `jobs.checkpoint()` when the budget is spent. The function `jobs.spawn` returns a promise with the result of the job.
 
@@ -332,16 +332,16 @@ end)
 
 Engine work written in C++, such as decoding images and sounds, already runs on worker threads and needs no jobs.
 
-The `timeoutSeconds` option of Varn's `http` requests is not a deadline for the whole request. It must be an integer, since Varn ignores a value such as `2.5` or even `2.0` and keeps its default of 60 seconds. On desktop builds, where Varn talks HTTP through Poco, it bounds each network step on its own: connecting, sending and every read of the answer each get the full time, looking up the host name is not bounded, and a server that keeps sending a little at a time never trips it. After a read of an `https://` answer times out, closing the connection waits up to the same time again for the server to confirm the close, which a server still busy with the request never does, so `http.client.get('https://httpbin.org/delay/5', {timeoutSeconds = 2})` fails after about 4.7 seconds instead of 2. For a hard deadline, wrap the request in `async.timeout`, which rejects once the time is up, while the request itself goes on in the background until its own timeouts end it.
+The `timeoutSeconds` option of Varn's `http` requests is one deadline for the whole request, from connecting to the last byte of the answer and across every redirect, so a server that keeps sending a little at a time still ends it on time. It takes any positive number of seconds, a fraction such as `2.5` included, and a request with any other value fails with a message that names the option. A request past its deadline rejects with a message that says it did not finish within its timeout, and a secure request never waits for the server to confirm the close of its connection once the answer is whole. The function `async.timeout` gives up waiting on any promise instead, while the request it waits for goes on until its own deadline.
 
 ```lua
 local async = require('async')
 local http = require('http')
 
 async.spawn(function()
-    local response, failure = async.timeout(http.client.get('https://httpbin.org/delay/5', {timeoutSeconds = 5}), 2000):await()
+    local response, failure = http.client.get('https://httpbin.org/delay/5', {timeoutSeconds = 2.5}):await()
     if not response then
-        print('no answer within 2 seconds: ' .. failure)
+        print('no answer within 2.5 seconds: ' .. failure)
         return
     end
     print(response.status)
@@ -459,7 +459,7 @@ A C++ project can add its own Lua modules, backed by its own plugin, while the a
 | `Converter.hpp` | The `Converter<T>` trait with the conversions of scalars, strings, optionals, vectors and bound types. |
 | `EnumNames.hpp` | The `EnumNames<T>` trait for enums passed as strings. |
 | `Table.hpp` | `Table::checkFields` and `Table::readField` for option tables whose unknown keys are errors. |
-| `Binding.hpp` | `Binding::preload`, `Binding::newModule` and the `Binding::native`, `Binding::function` and `Binding::method` wrappers. |
+| `Binding.hpp` | `Binding::preload`, which adds a module to the Varn runtime of the engine, `Binding::newModule` and the `Binding::native`, `Binding::function` and `Binding::method` wrappers. |
 | `ClassBuilder.hpp` | `ClassBuilder` for metatables with methods and properties. |
 | `Runtime.hpp` | `Runtime::getEngine(L)` to reach the engine from a binding, `Runtime::getMainThread` for callbacks that outlive their coroutine, `Runtime::protectedCall`, `Runtime::protectedRun`, `Runtime::runChunk`, `Runtime::runReporting`, `Runtime::reportError` and `Runtime::captureError`. |
 | `Reference.hpp` | `Reference`, which keeps a Lua value alive from C++. |
@@ -469,7 +469,7 @@ A C++ project can add its own Lua modules, backed by its own plugin, while the a
 | `Error.hpp` | `Error`, the exception a failed protected call throws, with the message, the script position and the frames of the stack. |
 | `Application.hpp` | `Application`, the application that runs `source/main.lua`. |
 
-A plugin registers its modules in `installLua` with `Binding::preload`, so `require` builds the module table the first time a script asks for it. This complete source file adds an `app.score` module to a Lua app. Like the built-in modules, the plugin keeps its Lua entry points as private static methods.
+A plugin registers its modules in `installLua` with `Binding::preload`, so `require` builds the module table the first time a script asks for it. The function adds the module to the Varn runtime of the engine with `varn::runtime::Runtime::addModule`, and a name that a module of Varn, such as `json`, or of another plugin already has raises `std::runtime_error` with `The Lua module "<name>" cannot be added, because a module of Varn or of another plugin already has its name. Give the module another name.`, which the error screen shows. This complete source file adds an `app.score` module to a Lua app. Like the built-in modules, the plugin keeps its Lua entry points as private static methods.
 
 ```cpp
 #include <algorithm>

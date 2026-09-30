@@ -331,10 +331,10 @@ NATIVE_TEST_EXPORT void native_test_close_screen_later(void) {
     native_test_spawn(job);
 }
 
-// Returns the handle of the window of the app as a number, which the tests keep small, or -1 while the engine has none.
-NATIVE_TEST_EXPORT int32_t native_test_window(void) {
+// Returns the handle of the window of the app as a pointer-wide integer, or -1 while the engine has none.
+NATIVE_TEST_EXPORT intptr_t native_test_window(void) {
     HaylenNativeWindow window;
-    return nativeTestApi->getWindow(&window) ? (int32_t)(uintptr_t)window.handle : -1;
+    return nativeTestApi->getWindow(&window) ? (intptr_t)window.handle : -1;
 }
 
 NATIVE_TEST_EXPORT void native_test_cover(int32_t covered) {

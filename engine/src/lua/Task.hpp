@@ -31,7 +31,7 @@ class Task final : public std::enable_shared_from_this<Task> {
         return !finished && !cancelled;
     }
 
-    // Closes a suspended coroutine, which runs its pending to-be-closed variables, so a promise that resumes it later runs none of its code. Returns the error of a to-be-closed variable that failed.
+    // Closes a suspended coroutine, which runs its pending to-be-closed variables. A promise resumes only a coroutine that still waits in its `:await()`, so none runs the code of a closed one. Returns the error of a to-be-closed variable that failed.
     [[nodiscard]] static std::optional<Error> closeCoroutine(lua_State* coroutine, lua_State* from);
 
   private:
@@ -44,7 +44,6 @@ class Task final : public std::enable_shared_from_this<Task> {
     static int body(lua_State* L);
     static int continueBody(lua_State* L, int status, lua_KContext context);
     static int collectHolder(lua_State* L);
-    static int endClosed(lua_State* L);
 
     void run(lua_State* L, int function, int arguments);
     void finish(const std::optional<Error>& error);

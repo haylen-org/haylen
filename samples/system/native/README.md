@@ -4,7 +4,7 @@ A Lua sample that calls the test library of the engine, `engine/tests/native/Nat
 
 | Test | What it checks |
 | --- | --- |
-| Calls | The function `native.load` by name, integers, doubles, text, a struct by value, a struct by pointer, a buffer with its checksum and `native.findSymbol`. |
+| Calls | The function `native.load` by name, integers, doubles, text, a struct by value, a struct by pointer, a buffer with its checksum, and `native.findSymbol` with a call through the address it returns. |
 | Callbacks | A Varn `ffi.cast` callback and a `native.callback` with `thread = 'frame'` during the call, a callback at the next frame, and a callback from a thread of the library with a byte range bounded by a length parameter. |
 | Library handlers | The init function of the library with `HaylenNativeApi`: an event and an answer from threads of the library, a typed error, a timeout and a cancel that the library hears about. |
 | Static library | On iOS and tvOS, `native_test_static` linked into the app, `native.load` returning `ffi.C`, the symbol table and calls to the linked copy. |

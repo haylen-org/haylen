@@ -89,7 +89,7 @@ class Binding final {
         return 0;
     }
 
-    // Registers a module so `require(name)` returns the table built by `opener`.
+    // Registers a module of the engine that owns the state, so `require(name)` returns the table built by `opener`. Throws `std::runtime_error` when a module of Varn or an earlier registration already has the name.
     static void preload(lua_State* L, const char* name, lua_CFunction opener);
 
     // Creates a module table and fills it with the given functions.

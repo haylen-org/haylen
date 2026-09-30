@@ -8,6 +8,10 @@
 #include <unordered_map>
 #include <vector>
 
+namespace varn::runtime {
+class Runtime;
+}
+
 namespace haylen::platform {
 
 // Finds and loads the native libraries of an app and keeps them loaded for the rest of the process, because native code may still run from them after the app stops. A library that the app links statically, as iOS apps do with static libraries, registers its symbols here instead of being loaded.
@@ -18,7 +22,7 @@ class NativeLibraries final {
         void* address = nullptr;
     };
 
-    // A library the process can call. The path is what Varn's `ffi.load` opens to reach the same loaded library, and a linked library has neither a path nor a handle, because its symbols are part of the app.
+    // A library the process can call. The path, in UTF-8, is what Varn's `ffi.load` opens to reach the same loaded library, and a linked library has neither a path nor a handle, because its symbols are part of the app.
     struct Library {
         std::string name;
         std::string path;
@@ -44,6 +48,9 @@ class NativeLibraries final {
     // Returns the address of a symbol of the linked libraries, of the libraries loaded so far or of the app itself, or null.
     [[nodiscard]] static void* findSymbol(std::string_view name);
 
+    // Adds the symbols of the linked libraries to a new runtime, so `ffi.C` finds them by name without the app exporting them. Throws `std::runtime_error` when two linked libraries register one name with different addresses.
+    static void addLinkedSymbols(varn::runtime::Runtime& runtime);
+
     // Returns the file names a library of this name has on the platform, such as `libname.dylib` and `name.framework/name` on Apple platforms. A name with an extension is already a file name.
     [[nodiscard]] static std::vector<std::string> getFileNames(std::string_view name);
 
@@ -65,9 +72,6 @@ class NativeLibraries final {
     [[nodiscard]] static void* load(const std::filesystem::path& file, std::string& failure);
     [[nodiscard]] static void* lookup(void* handle, const std::string& name);
     [[nodiscard]] static void* lookupProcess(const std::string& name);
-
-    // Returns what Varn's `ffi.load` needs to reach a library this class loaded from the file.
-    [[nodiscard]] static std::string getLoadPath(const std::filesystem::path& file);
 };
 
 } // namespace haylen::platform

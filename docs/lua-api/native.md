@@ -35,7 +35,7 @@ A name is looked up in this order, and the first file that loads wins:
 
 1. The folders that the `--native` option of the player adds, which `make.py run` passes during development.
 2. The folders of the platform: `Contents/Frameworks` of the app bundle and then the folder of the executable on macOS and Mac Catalyst, `Frameworks` of the app bundle on iOS and tvOS, the folder of the executable on Windows, the folder of the executable and its `lib` folder on Linux, and the libraries of the APK, which the dynamic linker finds by name, on Android.
-3. The libraries linked into the app, which register their symbols, as iOS and tvOS apps do with static libraries. The function `native.load` returns `ffi.C` for them, because their symbols are part of the app.
+3. The libraries linked into the app, which register their symbols, as iOS and tvOS apps do with static libraries. The function `native.load` returns `ffi.C` for them, because their symbols are part of the app, and `ffi.C` finds the registered symbols by name without the app exporting them.
 
 Windows loads a library with its wide path and looks for the libraries it depends on in its own folder and the system folders. A library stays loaded for the rest of the process, even after the app restarts, because native code may still run from it. A library that does not load raises an error that lists every place the lookup tried and why each one failed, such as `not found` or the message of the dynamic linker.
 
@@ -68,12 +68,12 @@ print(sum.x, sum.y)
 
 local buffer = ffi.new('uint8_t[?]', 8)
 lib.native_test_fill(buffer, 8, 1)
-print(lib.native_test_checksum(ffi.cast('const uint8_t*', buffer), 8))
+print(lib.native_test_checksum(buffer, 8))
 ```
 
 ### native.findSymbol(name)
 
-Returns the address of the symbol `name` as a light userdata, or `nil`. The lookup covers the symbols of the libraries linked into the app, the libraries loaded so far in load order, and the app itself. The address goes where C takes a pointer, such as a parameter declared `void*` or a function pointer, and `ffi.cast` turns it into a typed pointer. Varn's `ffi` calls only the functions of a namespace, so a function is called through `native.load` rather than through its address.
+Returns the address of the symbol `name` as a light userdata, or `nil`. The lookup covers the symbols of the libraries linked into the app, the libraries loaded so far in load order, and the app itself. The address goes where C takes a pointer, such as a parameter declared `void*` or a function pointer, and `ffi.cast` turns it into any typed pointer. A function pointer made this way is called like a function.
 
 ```lua
 local ffi = require('ffi')
@@ -81,7 +81,8 @@ local native = require('haylen.native')
 
 native.load('native_test')
 local address = native.findSymbol('native_test_add')
-print(address ~= nil, ffi.cast('void*', address))
+local add = ffi.cast('int32_t (*)(int32_t, int32_t)', address)
+print(address ~= nil, add(20, 22))
 ```
 
 ### native.callback(declaration, fn, options)
@@ -106,7 +107,7 @@ Each parameter arrives in Lua as follows:
 
 A copied pointer outlives the native call, while the memory it points to may not, so a call that waits for the next frame reads memory that native code keeps alive, or declares the bytes it needs as a range. A callback with `thread = 'frame'` that runs inside the native call may read what the pointers point to during `fn`. An error raised in `fn` stops the app with the error screen, and native code continues as if `fn` had returned. A declaration that is not a C function type returning `void`, or that has a parameter of an unknown type, a structure passed by value or a range without a count, raises an error that names the problem.
 
-A callback lives until `callback:free()`, even when Lua no longer holds it, because native code may keep its pointer. When the app stops, every callback of the app stops calling Lua: a call that arrives afterwards, even after the app restarted, does nothing. Callbacks that must return a value to native code at once are Varn `ffi.cast` callbacks, which run during the call on the thread that makes it, as the [native code guide](../native.md#callbacks) explains.
+A callback lives until `callback:free()`, even when Lua no longer holds it, because native code may keep its pointer. When the app stops, every callback of the app stops calling Lua: a call that arrives afterwards, even after the app restarted, does nothing. Callbacks that must return a value to native code at once are Varn `ffi.cast` callbacks, which run at once on the main Lua state when native code calls them on the frame thread, as the [native code guide](../native.md#callbacks) explains.
 
 ```lua
 local ffi = require('ffi')

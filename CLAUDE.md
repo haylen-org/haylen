@@ -29,7 +29,7 @@ This file is binding for every change. It describes the project as it is and the
 ## What the engine is
 
 - **Library first.** `engine/` is a standalone CMake project that other projects consume with `add_subdirectory`, CPM or `find_package(haylen)`. It exports the `haylen::engine` library, the `haylen::runtime` host library and the `haylen_add_app` CMake function.
-- **Lua through Varn.** The engine links Varn's C++ core (`varn_core`). One `varn::runtime::Runtime` owns the Lua state, the event loop and the worker pools. Engine modules are installed into that Lua state through `package.preload`, next to Varn's own modules (`async`, `http`, `socket`, `json`, `fs`, `zip`, `crypto`, `log`, `platform`, `process`, `datetime`, `xml`, `ffi`).
+- **Lua through Varn.** The engine links Varn's C++ core (`varn_core`). One `varn::runtime::Runtime` owns the Lua state, the event loop and the worker pools. Engine modules are installed into that Lua state through `Runtime::addModule`, which puts them in `package.preload` next to Varn's own modules (`async`, `http`, `socket`, `json`, `fs`, `zip`, `crypto`, `log`, `platform`, `process`, `datetime`, `xml`, `ffi`).
 - **Everything in C++ is exported to Lua.** Every public C++ capability has a Lua binding in the same change, with Lua tests and a reference page under `docs/lua-api/`. This is a rule, not a goal.
 - **App packages.** The runtime runs an app package, which is either a folder or a `.zip` file containing `app.json`, the Lua modules under `source/` and the assets under `content/`. Nothing else in the folder belongs to the package, so platform projects, notes and build files can sit next to it. `app.json` configures the identity, window, design resolution, orientation, splash screen, lifecycle, audio session, debug options, autoloads and native libraries before any Lua runs, and unknown keys and invalid values are errors with clear messages. `source/main.lua` is the entry point.
 - **Asset paths.** Every asset path passed to the engine is relative to the package `content/` folder and never includes the `content/` prefix. `require("scenes.menu")` resolves Lua modules from the `source/` folder, so it loads `source/scenes/menu.lua`.
@@ -166,7 +166,7 @@ extras/images/            Brand images: the vertical and horizontal logos, the s
 ## Dependencies
 
 - Dependencies are declared with CPM in `engine/cmake/haylen-dependencies.cmake`, pinned with a SHA-256 hash to their latest release or, when a project has no releases, to its latest default-branch commit.
-- Packages the engine shares with Varn (nlohmann/json, libuv) are declared before Varn, so Varn reuses them and the whole build resolves a single copy of each shared library.
+- The package the engine shares with Varn, nlohmann/json, is declared before Varn, so Varn reuses it and the whole build resolves a single copy of it.
 - A change to a dependency's source is a patch in `engine/cmake/patches/` that CPM applies, documented in `docs/distribution.md` or `docs/build.md` with the reason. The patch fixes the real problem and stays as small as possible.
 - When a dependency is updated, adopt its current API everywhere and drop patches it no longer needs. Do not keep code paths for the previous version.
 

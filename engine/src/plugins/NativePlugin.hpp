@@ -10,7 +10,7 @@ class NativeCallbacks;
 
 namespace haylen::plugins {
 
-// Installs `haylen.native` and keeps the Lua functions of the native callbacks of the app, which it drops when the app stops so late native calls never reach Lua.
+// Installs `haylen.native`, gives `ffi.C` the symbols of the libraries linked into the app and keeps the Lua functions of the native callbacks of the app, which it drops when the app stops so late native calls never reach Lua.
 class NativePlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {

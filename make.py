@@ -944,7 +944,7 @@ def prepare_apple_native(app: App, project: Path, run_platform: str, jobs: int) 
     if not linked:
         return []
 
-    # Dead code stripping keeps what the table refers to, and the table lets `haylen.native` find the symbols without the app exporting them.
+    # Dead code stripping keeps what the table refers to, and the table lets `haylen.native` and `ffi.C` find the symbols without the app exporting them.
     target_name, platform_name = key.split("-")
     condition = "TARGET_OS_IOS && !TARGET_OS_MACCATALYST" if platform == "ios" else "TARGET_OS_TV"
     declarations = [f'extern "C" void {symbol}(void);' for library, _ in linked for symbol in library.symbols]
@@ -953,7 +953,7 @@ def prepare_apple_native(app: App, project: Path, run_platform: str, jobs: int) 
         entries = ", ".join(f'{{"{symbol}", reinterpret_cast<void*>(&{symbol})}}' for symbol in library.symbols)
         registrations.append(f'    haylen::platform::NativeLibraries::registerLinked("{library.name}", {{{entries}}});')
     table = [
-        "// Written by `make.py` from the `native` section of `app.json`. It links the symbols of the static native libraries into the app and registers them for `haylen.native`.",
+        "// Written by `make.py` from the `native` section of `app.json`. It links the symbols of the static native libraries into the app and registers them for `haylen.native` and `ffi.C`.",
         "#import <Foundation/Foundation.h>",
         "#include <TargetConditionals.h>",
         "",
@@ -2596,6 +2596,8 @@ def main() -> None:
     commands.add_parser("clean", help="Remove all build trees.").set_defaults(handler=command_clean)
 
     args = parser.parse_args()
+    # The OpenSSL build that Varn adds is one step of the build, which runs as many jobs as `CMAKE_BUILD_PARALLEL_LEVEL` named when the tree was configured, so the commands never see the variable and every build keeps to its `--jobs`.
+    os.environ.pop("CMAKE_BUILD_PARALLEL_LEVEL", None)
     try:
         args.handler(args)
     except (BuildError, subprocess.CalledProcessError, OSError) as error:

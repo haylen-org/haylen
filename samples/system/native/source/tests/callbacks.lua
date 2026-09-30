@@ -20,7 +20,7 @@ function Callbacks:enter()
         focus = 'run',
         controls = {
             ui.button{id = 'run', text = 'Run the checks again', variant = 'primary', onClick = function() self:run() end},
-            ui.label{text = "A \"native.callback\" copies its arguments and runs the Lua function on the frame thread: during the call with \"thread = 'frame'\", or at the next frame, which is always the case for a call from another thread. Varn \"ffi.cast\" callbacks run during the call on the thread that makes it.", color = 'textMuted', font = 'caption'},
+            ui.label{text = "A \"native.callback\" copies its arguments and runs the Lua function on the frame thread: during the call with \"thread = 'frame'\", or at the next frame, which is always the case for a call from another thread. Varn \"ffi.cast\" callbacks run at once, and only native code on the frame thread may call them.", color = 'textMuted', font = 'caption'},
             ui.label{font = 'monospace', text = "local report = native.callback(\n  'void (int32_t value, const uint8_t data[size], size_t size)',\n  function(value, data, size) print(value, #data) end)\nlib.native_test_report_later(report.pointer, 42)"},
         },
     })
