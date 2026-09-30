@@ -138,7 +138,7 @@ TEST_F(NativeLibrariesTest, ListsEveryPlaceItSearched) {
     } catch (const std::runtime_error& error) {
         const std::string message = error.what();
         EXPECT_NE(message.find("The native library \"native_nowhere\" could not be loaded. These are the places it searched:"), std::string::npos);
-        EXPECT_NE(message.find(std::filesystem::path(HAYLEN_NATIVE_TEST_LIBRARY).parent_path().string()), std::string::npos);
+        EXPECT_NE(message.find(std::filesystem::path(HAYLEN_NATIVE_TEST_LIBRARY).make_preferred().parent_path().string()), std::string::npos);
         EXPECT_NE(message.find("not found"), std::string::npos);
         EXPECT_NE(message.find("the libraries linked into the app: not registered"), std::string::npos);
     }
