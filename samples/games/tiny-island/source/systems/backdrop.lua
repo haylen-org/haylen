@@ -33,7 +33,7 @@ function backdrop.new()
         local x = self.fire.x + math.cos(angle) * restRadius * 1.3
         local y = self.fire.y + math.sin(angle) * restRadius + 40
         local animator, unit = art.newAnimator(class.unit, 'blue')
-        local sprite = graphics2d.newSprite(unit.clips.idle.texture, {x = x, y = y, flipX = x > self.fire.x, layer = config.layer.entities, depth = y})
+        local sprite = graphics2d.newSprite(unit.clips.idle.texture, {x = x, y = y, flipHorizontal = x > self.fire.x, layer = config.layer.entities, depth = y})
         self.units[class.id] = {x = x, y = y, animator = animator, sprite = sprite}
     end
 

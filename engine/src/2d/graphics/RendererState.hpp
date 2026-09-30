@@ -152,6 +152,9 @@ struct RendererState {
     // Tells whether a blend mode expects colors premultiplied by their alpha from the shader, which the programs then write through `haylen_output`.
     [[nodiscard]] static bool expectsPremultiplied(graphics::BlendMode::Type mode) noexcept;
 
+    // Returns the pipeline blend of a blend mode, which mixes what the shader wrote with the target, so every mode but `premultiplied` blends the straight colors of a draw.
+    [[nodiscard]] static sg_blend_state blendState(graphics::BlendMode::Type mode) noexcept;
+
     // Returns the pipeline of a program, blend mode and pass target, creating it on first use. The light program takes the blend of the light instead.
     [[nodiscard]] sg_pipeline getPipeline(Program program, std::uint8_t blend, graphics::PassTarget target);
 
@@ -164,7 +167,6 @@ struct RendererState {
 
   private:
     [[nodiscard]] static std::uint32_t pipelineKey(Program program, std::uint8_t blend, graphics::PassTarget target) noexcept;
-    [[nodiscard]] static sg_blend_state blendState(graphics::BlendMode::Type mode) noexcept;
     [[nodiscard]] static sg_blend_state lightBlend(std::uint8_t blend) noexcept;
     [[nodiscard]] static const char* materialProgramName(Program program, graphics::PassTarget target);
 

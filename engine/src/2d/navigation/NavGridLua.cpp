@@ -49,50 +49,19 @@ template <> struct Type<navigation2d::HierarchicalPathfinder> {
 
 template <> struct EnumNames<navigation2d::Grid::Topology> {
     static std::optional<navigation2d::Grid::Topology> fromName(std::string_view name) {
-        if (name == "square") {
-            return navigation2d::Grid::Topology::Square;
-        }
-        if (name == "hexagonal") {
-            return navigation2d::Grid::Topology::Hexagonal;
-        }
-        if (name == "staggered") {
-            return navigation2d::Grid::Topology::Staggered;
-        }
-        return std::nullopt;
+        return navigation2d::Grid::topologyFromName(name);
     }
     static std::string_view name(navigation2d::Grid::Topology value) {
-        return value == navigation2d::Grid::Topology::Hexagonal ? "hexagonal" : (value == navigation2d::Grid::Topology::Staggered ? "staggered" : "square");
+        return navigation2d::Grid::topologyName(value);
     }
 };
 
 template <> struct EnumNames<navigation2d::Grid::Heuristic> {
     static std::optional<navigation2d::Grid::Heuristic> fromName(std::string_view name) {
-        if (name == "manhattan") {
-            return navigation2d::Grid::Heuristic::Manhattan;
-        }
-        if (name == "octile") {
-            return navigation2d::Grid::Heuristic::Octile;
-        }
-        if (name == "euclidean") {
-            return navigation2d::Grid::Heuristic::Euclidean;
-        }
-        if (name == "chebyshev") {
-            return navigation2d::Grid::Heuristic::Chebyshev;
-        }
-        return std::nullopt;
+        return navigation2d::Grid::heuristicFromName(name);
     }
     static std::string_view name(navigation2d::Grid::Heuristic value) {
-        switch (value) {
-        case navigation2d::Grid::Heuristic::Manhattan:
-            return "manhattan";
-        case navigation2d::Grid::Heuristic::Octile:
-            return "octile";
-        case navigation2d::Grid::Heuristic::Euclidean:
-            return "euclidean";
-        case navigation2d::Grid::Heuristic::Chebyshev:
-            break;
-        }
-        return "chebyshev";
+        return navigation2d::Grid::heuristicName(value);
     }
 };
 

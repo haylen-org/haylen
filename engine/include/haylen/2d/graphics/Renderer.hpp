@@ -118,9 +118,9 @@ class Renderer final {
     // Draws a baked batch shifted by an offset in world units, which lets parallax layers reuse one batch.
     void drawStatic(const StaticSpriteBatch& batch, const DrawOrder& order = {}, math::Vec2 offset = {});
     void drawNineSlice(const NineSlice& slice, const math::Rect& area, math::Color color = math::Color::white(), const DrawOrder& order = {}, float borderScale = 1.0F);
-    // Draws plain text with a font alone or with a family and its fallbacks, scaled from the position, where the anchor of the style lands.
-    void drawText(text::Font& font, std::string_view content, math::Vec2 position, const text::Style& style = {}, const DrawOrder& order = {}, math::Vec2 scale = {1.0F, 1.0F});
-    void drawText(text::FontFamily& family, std::string_view content, math::Vec2 position, const text::Style& style = {}, const DrawOrder& order = {}, math::Vec2 scale = {1.0F, 1.0F});
+    // Draws plain text with a font alone or with a family and its fallbacks, turned and stretched by the style around the position, where its anchor lands.
+    void drawText(text::Font& font, std::string_view content, math::Vec2 position, const text::Style& style = {}, const DrawOrder& order = {});
+    void drawText(text::FontFamily& family, std::string_view content, math::Vec2 position, const text::Style& style = {}, const DrawOrder& order = {});
     // Draws rich text with the top-left of its block at the position, scaled from that corner and with its colors multiplied by the tint. A y-sorted canvas sorts it by the bottom of the block.
     void drawRichText(text::RichText& richText, math::Vec2 position, const DrawOrder& order = {}, math::Vec2 scale = {1.0F, 1.0F}, math::Color tint = math::Color::white());
     void drawMesh(const graphics::Texture& texture, std::span<const MeshVertex> vertices, std::span<const std::uint32_t> indices, const DrawOrder& order = {});
@@ -179,7 +179,7 @@ class Renderer final {
     [[nodiscard]] static std::vector<std::uint8_t> metaballKernel(int size);
     [[nodiscard]] static float lowestPoint(std::span<const math::Vec2> points) noexcept;
 
-    void drawTextLayout(const text::Layout& layout, math::Vec2 position, const text::Style& style, const DrawOrder& order, math::Vec2 scale);
+    void drawTextLayout(const text::Layout& layout, math::Vec2 position, const text::Style& style, const DrawOrder& order);
 
     // Adds `count` sprites of one texture, where `spriteAt` returns the sprite at an index from any worker thread.
     template <typename SpriteAt> void addBatch(const graphics::Texture& texture, std::size_t count, const DrawOrder& order, const SpriteAt& spriteAt);

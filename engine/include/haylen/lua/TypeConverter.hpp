@@ -67,9 +67,9 @@ namespace haylen::lua {
 class TypeConverter final {
   public:
     static constexpr std::array<std::string_view, 12> kDrawOrderFields{"layer", "depth", "sortOffset", "visibility", "blend", "material", "normalMap", "specular", "shininess", "emission", "lightMask", "unshaded"};
-    static constexpr std::array<std::string_view, 16> kTextStyleFields{"size", "color", "outlineWidth", "outlineColor", "shadowOffset", "shadowColor", "shadowBlur", "align", "maxWidth", "lineSpacing", "anchor", "rotation", "bold", "italic", "direction", "language"};
+    static constexpr std::array<std::string_view, 17> kTextStyleFields{"size", "color", "outlineWidth", "outlineColor", "shadowOffset", "shadowColor", "shadowBlur", "align", "maxWidth", "lineSpacing", "anchor", "rotation", "scale", "bold", "italic", "direction", "language"};
     static constexpr std::array<std::string_view, 2> kTextureOptionFields{"filter", "wrap"};
-    static constexpr std::array<std::string_view, 13> kSpriteInstanceFields{"x", "y", "width", "height", "source", "pivotX", "pivotY", "rotation", "color", "flash", "flipX", "flipY", "flipDiagonal"};
+    static constexpr std::array<std::string_view, 13> kSpriteInstanceFields{"x", "y", "width", "height", "source", "pivotX", "pivotY", "rotation", "color", "flash", "flipHorizontal", "flipVertical", "flipDiagonal"};
 
     // Option readers accept `nil` for the defaults and reject keys outside their own fields and the extra fields the caller reads from the same table.
     [[nodiscard]] static graphics2d::DrawOrder readDrawOrder(lua_State* L, int index, std::initializer_list<Table::FieldNames> extraFields = {});
@@ -332,16 +332,10 @@ template <> struct EnumNames<graphics2d::Renderer::SortMode> {
 
 template <> struct EnumNames<graphics2d::Camera::Anchor> {
     static std::optional<graphics2d::Camera::Anchor> fromName(std::string_view name) {
-        if (name == "center") {
-            return graphics2d::Camera::Anchor::Center;
-        }
-        if (name == "topLeft") {
-            return graphics2d::Camera::Anchor::TopLeft;
-        }
-        return std::nullopt;
+        return graphics2d::Camera::anchorFromName(name);
     }
     static std::string_view name(graphics2d::Camera::Anchor value) {
-        return value == graphics2d::Camera::Anchor::TopLeft ? "topLeft" : "center";
+        return graphics2d::Camera::anchorName(value);
     }
 };
 

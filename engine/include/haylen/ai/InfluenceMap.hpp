@@ -1,10 +1,12 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <span>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/math/Vec2.hpp"
@@ -73,6 +75,8 @@ class InfluenceMap final {
     [[nodiscard]] math::Vec2 getCellCenter(int column, int row) const noexcept;
 
   private:
+    static const std::array<std::pair<std::string_view, Falloff>, 3> kFalloffNames;
+
     struct Range {
         int firstColumn = 0;
         int firstRow = 0;

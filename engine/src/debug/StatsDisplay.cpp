@@ -14,29 +14,15 @@
 
 namespace haylen::debug {
 
+const std::array<std::pair<std::string_view, StatsDisplay::Mode>, 3> StatsDisplay::kModeNames{{{"off", Mode::Off}, {"compact", Mode::Compact}, {"full", Mode::Full}}};
+
 std::optional<StatsDisplay::Mode> StatsDisplay::modeFromName(std::string_view name) noexcept {
-    if (name == "off") {
-        return Mode::Off;
-    }
-    if (name == "compact") {
-        return Mode::Compact;
-    }
-    if (name == "full") {
-        return Mode::Full;
-    }
-    return std::nullopt;
+    const auto found = std::ranges::find(kModeNames, name, &std::pair<std::string_view, Mode>::first);
+    return found != kModeNames.end() ? std::optional(found->second) : std::nullopt;
 }
 
 std::string_view StatsDisplay::modeName(Mode value) noexcept {
-    switch (value) {
-    case Mode::Compact:
-        return "compact";
-    case Mode::Full:
-        return "full";
-    case Mode::Off:
-        break;
-    }
-    return "off";
+    return std::ranges::find(kModeNames, value, &std::pair<std::string_view, Mode>::second)->first;
 }
 
 void StatsDisplay::drawCompact(core::Engine& engine, const Numbers& numbers) {

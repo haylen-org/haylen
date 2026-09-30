@@ -13,6 +13,17 @@
 
 namespace haylen::graphics2d {
 
+const std::array<std::pair<std::string_view, Camera::Anchor>, 2> Camera::kAnchorNames{{{"center", Anchor::Center}, {"topLeft", Anchor::TopLeft}}};
+
+std::optional<Camera::Anchor> Camera::anchorFromName(std::string_view name) noexcept {
+    const auto found = std::ranges::find(kAnchorNames, name, &std::pair<std::string_view, Anchor>::first);
+    return found != kAnchorNames.end() ? std::optional(found->second) : std::nullopt;
+}
+
+std::string_view Camera::anchorName(Anchor value) noexcept {
+    return std::ranges::find(kAnchorNames, value, &std::pair<std::string_view, Anchor>::second)->first;
+}
+
 const math::Noise2D& Camera::getShakeNoise() {
     static const math::Noise2D noise(0x5A4B3C2D);
     return noise;

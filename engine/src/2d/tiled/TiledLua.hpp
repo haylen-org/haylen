@@ -24,7 +24,7 @@
 namespace haylen::lua {
 
 template <> struct Type<tiled::Map> {
-    static constexpr const char* name = "haylen.TiledMap";
+    static constexpr const char* name = "haylen.Map";
     using Storage = std::shared_ptr<tiled::Map>;
 };
 
@@ -39,7 +39,7 @@ namespace haylen::tiled {
 
 struct World;
 
-// Installs `haylen.tiled` with the `TiledMap` asset class and the playable `MapRenderer` class. Map data crosses into Lua as plain tables.
+// Installs `haylen.tiled` with the `Map` asset class and the playable `MapRenderer` class. Map data crosses into Lua as plain tables.
 class TiledLua final {
   public:
     static void install(lua_State* L);

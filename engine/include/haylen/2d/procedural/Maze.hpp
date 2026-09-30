@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <optional>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/2d/spatial/CellGrid.hpp"
@@ -34,6 +35,7 @@ class Maze final {
 
     [[nodiscard]] static Maze generate(int columns, int rows, Algorithm algorithm, math::Random& random);
     [[nodiscard]] static std::optional<Algorithm> algorithmFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view algorithmName(Algorithm value) noexcept;
 
     [[nodiscard]] int getWidth() const noexcept {
         return width;
@@ -52,6 +54,8 @@ class Maze final {
     [[nodiscard]] spatial2d::CellGrid toGrid() const;
 
   private:
+    static const std::array<std::pair<std::string_view, Algorithm>, 3> kAlgorithmNames;
+
     struct Wall {
         int x = 0;
         int y = 0;

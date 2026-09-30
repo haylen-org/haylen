@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <optional>
 #include <string_view>
+#include <utility>
 
 #include "haylen/2d/physics/Body.hpp"
 #include "haylen/2d/physics/Joint.hpp"
@@ -72,6 +73,8 @@ class Vehicle final {
     void destroy();
 
   private:
+    static const std::array<std::pair<std::string_view, Drive>, 3> kDriveNames;
+
     void build(World& world, const Options& options);
 
     Body chassis;

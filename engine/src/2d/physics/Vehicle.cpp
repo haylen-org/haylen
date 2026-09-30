@@ -1,34 +1,22 @@
 #include "haylen/2d/physics/Vehicle.hpp"
 
+#include <algorithm>
+#include <array>
 #include <stdexcept>
 
 #include "haylen/2d/physics/World.hpp"
 
 namespace haylen::physics2d {
 
+const std::array<std::pair<std::string_view, Vehicle::Drive>, 3> Vehicle::kDriveNames{{{"rear", Drive::Rear}, {"front", Drive::Front}, {"all", Drive::All}}};
+
 std::optional<Vehicle::Drive> Vehicle::driveFromName(std::string_view name) noexcept {
-    if (name == "rear") {
-        return Drive::Rear;
-    }
-    if (name == "front") {
-        return Drive::Front;
-    }
-    if (name == "all") {
-        return Drive::All;
-    }
-    return std::nullopt;
+    const auto found = std::ranges::find(kDriveNames, name, &std::pair<std::string_view, Drive>::first);
+    return found != kDriveNames.end() ? std::optional(found->second) : std::nullopt;
 }
 
 std::string_view Vehicle::driveName(Drive value) noexcept {
-    switch (value) {
-    case Drive::Front:
-        return "front";
-    case Drive::All:
-        return "all";
-    case Drive::Rear:
-        break;
-    }
-    return "rear";
+    return std::ranges::find(kDriveNames, value, &std::pair<std::string_view, Drive>::second)->first;
 }
 
 Vehicle Vehicle::create(World& world, const Options& options) {

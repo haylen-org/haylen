@@ -55,6 +55,7 @@ class Font {
 
     // Lays UTF-8 text out with this font alone, with the top-left of the block at the origin and the anchor left to the drawing. Layouts are cached by text and style, so text drawn every frame shapes once.
     [[nodiscard]] std::shared_ptr<const Layout> layout(std::string_view text, const Style& style);
+    // Returns the size of the block that drawing the text covers, stretched by the scale of the style.
     [[nodiscard]] math::Vec2 measure(std::string_view text, const Style& style);
 
     // Tells whether the pages hold signed distance fields, which the text shader draws with outlines, weights and soft edges, rather than plain images.

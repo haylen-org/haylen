@@ -1,8 +1,12 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <span>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/math/Vec2.hpp"
@@ -38,7 +42,12 @@ class Polygon final {
     // Returns the filled area of a shape, where holes subtract.
     [[nodiscard]] static float getArea(std::span<const Outline> shape);
 
+    [[nodiscard]] static std::optional<Join> joinFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view joinName(Join value) noexcept;
+
   private:
+    static const std::array<std::pair<std::string_view, Join>, 4> kJoinNames;
+
     class Clipper;
     class Merger;
 

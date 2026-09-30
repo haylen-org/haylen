@@ -1,8 +1,11 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <span>
+#include <string_view>
+#include <utility>
 
 #include "haylen/2d/graphics/DrawOrder.hpp"
 #include "haylen/math/Insets.hpp"
@@ -136,7 +139,11 @@ class Camera final {
     // Draws the view, the limits and the area where the target moves without moving the view, in world coordinates with lines two units of the destination thick, so a world canvas of any camera shows them.
     void drawDebug(Renderer& renderer, const math::Rect& screen, const DrawOrder& order = {}) const;
 
+    [[nodiscard]] static std::optional<Anchor> anchorFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view anchorName(Anchor value) noexcept;
+
   private:
+    static const std::array<std::pair<std::string_view, Anchor>, 2> kAnchorNames;
     static constexpr float kDebugThickness = 2.0F;
 
     [[nodiscard]] static const math::Noise2D& getShakeNoise();

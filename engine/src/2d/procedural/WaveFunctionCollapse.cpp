@@ -1,6 +1,7 @@
 #include "haylen/2d/procedural/WaveFunctionCollapse.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <numeric>
 #include <span>
@@ -11,6 +12,17 @@
 #include "haylen/math/Random.hpp"
 
 namespace haylen::procedural2d {
+
+const std::array<std::pair<std::string_view, WaveFunctionCollapse::Direction>, 4> WaveFunctionCollapse::kDirectionNames{{{"right", Direction::Right}, {"down", Direction::Down}, {"left", Direction::Left}, {"up", Direction::Up}}};
+
+std::optional<WaveFunctionCollapse::Direction> WaveFunctionCollapse::directionFromName(std::string_view name) noexcept {
+    const auto found = std::ranges::find(kDirectionNames, name, &std::pair<std::string_view, Direction>::first);
+    return found != kDirectionNames.end() ? std::optional(found->second) : std::nullopt;
+}
+
+std::string_view WaveFunctionCollapse::directionName(Direction value) noexcept {
+    return std::ranges::find(kDirectionNames, value, &std::pair<std::string_view, Direction>::second)->first;
+}
 
 WaveFunctionCollapse::Rules::Rules(std::size_t tiles) : tileCount(tiles), weights(tiles, 1.0F) {
     if (tiles == 0) {

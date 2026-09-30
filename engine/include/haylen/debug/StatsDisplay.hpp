@@ -1,9 +1,11 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string_view>
+#include <utility>
 
 namespace haylen::core {
 class Engine;
@@ -28,7 +30,6 @@ class StatsDisplay final {
         std::size_t instances = 0;
     };
 
-    // Resolves the names `off`, `compact` and `full`.
     [[nodiscard]] static std::optional<Mode> modeFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view modeName(Mode value) noexcept;
 
@@ -36,6 +37,7 @@ class StatsDisplay final {
     static void drawCompact(core::Engine& engine, const Numbers& numbers);
 
   private:
+    static const std::array<std::pair<std::string_view, Mode>, 3> kModeNames;
     static constexpr float kTextSize = 13.0F;
     static constexpr float kPadding = 6.0F;
     static constexpr float kMargin = 8.0F;

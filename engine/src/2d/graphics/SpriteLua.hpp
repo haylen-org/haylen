@@ -10,12 +10,6 @@ class SpriteLua final {
     static void install(lua_State* L);
 
   private:
-    static int getFlipX(lua_State* L);
-    static int setFlipX(lua_State* L);
-    static int getFlipY(lua_State* L);
-    static int setFlipY(lua_State* L);
-    static int getFlipDiagonal(lua_State* L);
-    static int setFlipDiagonal(lua_State* L);
     static int getMaterial(lua_State* L);
     static int setMaterial(lua_State* L);
     static int getNormalMap(lua_State* L);

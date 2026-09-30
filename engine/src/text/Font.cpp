@@ -32,7 +32,7 @@ std::shared_ptr<const Layout> Font::layout(std::string_view text, const Style& s
 }
 
 math::Vec2 Font::measure(std::string_view text, const Style& style) {
-    return layout(text, style)->size;
+    return layout(text, style)->size * style.scale;
 }
 
 } // namespace haylen::text

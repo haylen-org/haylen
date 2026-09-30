@@ -1,39 +1,26 @@
 #include "haylen/math/Spline.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <stdexcept>
 #include <utility>
 
 namespace haylen::math {
 
+const std::array<std::pair<std::string_view, Spline::Kind>, 3> Spline::kKindNames{{{"catmullRom", Kind::CatmullRom}, {"bezier", Kind::Bezier}, {"bSpline", Kind::BSpline}}};
+
 Spline::Spline(std::vector<Vec2> controlPoints, Kind curveKind, bool loop) : points(std::move(controlPoints)), kind(curveKind), closed(loop), segmentCount(countSegments(points.size(), curveKind, loop)) {
     measure();
 }
 
 std::optional<Spline::Kind> Spline::kindFromName(std::string_view name) noexcept {
-    if (name == "catmullRom") {
-        return Kind::CatmullRom;
-    }
-    if (name == "bezier") {
-        return Kind::Bezier;
-    }
-    if (name == "bSpline") {
-        return Kind::BSpline;
-    }
-    return std::nullopt;
+    const auto found = std::ranges::find(kKindNames, name, &std::pair<std::string_view, Kind>::first);
+    return found != kKindNames.end() ? std::optional(found->second) : std::nullopt;
 }
 
 std::string_view Spline::kindName(Kind value) noexcept {
-    switch (value) {
-    case Kind::Bezier:
-        return "bezier";
-    case Kind::BSpline:
-        return "bSpline";
-    case Kind::CatmullRom:
-        break;
-    }
-    return "catmullRom";
+    return std::ranges::find(kKindNames, value, &std::pair<std::string_view, Kind>::second)->first;
 }
 
 std::size_t Spline::countSegments(std::size_t pointCount, Kind curveKind, bool loop) {

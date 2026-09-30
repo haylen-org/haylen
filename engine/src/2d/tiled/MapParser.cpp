@@ -214,38 +214,19 @@ Properties MapParser::readProperties(const core::Json& owner, std::string_view d
 }
 
 Map::Orientation MapParser::readOrientation(const std::string& name) {
-    if (name == "orthogonal") {
-        return Map::Orientation::Orthogonal;
+    const std::optional<Map::Orientation> orientation = Map::orientationFromName(name);
+    if (!orientation) {
+        throw std::invalid_argument("The orientation of a Tiled map must be \"orthogonal\", \"isometric\", \"staggered\", \"hexagonal\" or \"oblique\", not \"" + name + "\".");
     }
-    if (name == "isometric") {
-        return Map::Orientation::Isometric;
-    }
-    if (name == "staggered") {
-        return Map::Orientation::Staggered;
-    }
-    if (name == "hexagonal") {
-        return Map::Orientation::Hexagonal;
-    }
-    if (name == "oblique") {
-        return Map::Orientation::Oblique;
-    }
-    throw std::invalid_argument("The orientation of a Tiled map must be \"orthogonal\", \"isometric\", \"staggered\", \"hexagonal\" or \"oblique\", not \"" + name + "\".");
+    return *orientation;
 }
 
 Map::RenderOrder MapParser::readRenderOrder(const std::string& name) {
-    if (name == "right-down") {
-        return Map::RenderOrder::RightDown;
+    const std::optional<Map::RenderOrder> order = Map::renderOrderFromName(name);
+    if (!order) {
+        throw std::invalid_argument("The render order of a Tiled map must be \"right-down\", \"right-up\", \"left-down\" or \"left-up\", not \"" + name + "\".");
     }
-    if (name == "right-up") {
-        return Map::RenderOrder::RightUp;
-    }
-    if (name == "left-down") {
-        return Map::RenderOrder::LeftDown;
-    }
-    if (name == "left-up") {
-        return Map::RenderOrder::LeftUp;
-    }
-    throw std::invalid_argument("The render order of a Tiled map must be \"right-down\", \"right-up\", \"left-down\" or \"left-up\", not \"" + name + "\".");
+    return *order;
 }
 
 std::vector<math::Vec2> MapParser::readPoints(const core::Json& points) {

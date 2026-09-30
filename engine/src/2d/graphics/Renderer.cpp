@@ -360,25 +360,25 @@ void Renderer::drawNineSlice(const NineSlice& slice, const math::Rect& area, mat
     state->addInstances(Program::Sprite, order, slice.texture, quads, area.getBottom());
 }
 
-void Renderer::drawText(text::Font& font, std::string_view content, math::Vec2 position, const text::Style& style, const DrawOrder& order, math::Vec2 scale) {
+void Renderer::drawText(text::Font& font, std::string_view content, math::Vec2 position, const text::Style& style, const DrawOrder& order) {
     if (state->accepts(order)) {
-        drawTextLayout(*font.layout(content, style), position, style, order, scale);
+        drawTextLayout(*font.layout(content, style), position, style, order);
     }
 }
 
-void Renderer::drawText(text::FontFamily& family, std::string_view content, math::Vec2 position, const text::Style& style, const DrawOrder& order, math::Vec2 scale) {
+void Renderer::drawText(text::FontFamily& family, std::string_view content, math::Vec2 position, const text::Style& style, const DrawOrder& order) {
     if (state->accepts(order)) {
-        drawTextLayout(*family.layout(content, style), position, style, order, scale);
+        drawTextLayout(*family.layout(content, style), position, style, order);
     }
 }
 
 // The fonts of the layout upload the glyphs it added before its instances draw.
-void Renderer::drawTextLayout(const text::Layout& layout, math::Vec2 position, const text::Style& style, const DrawOrder& order, math::Vec2 scale) {
+void Renderer::drawTextLayout(const text::Layout& layout, math::Vec2 position, const text::Style& style, const DrawOrder& order) {
     for (const text::Layout::Look& look : layout.looks) {
         look.font->sync();
     }
     TextPainter painter(state->white);
-    painter.paintText(layout, position, style, scale);
+    painter.paintText(layout, position, style);
     for (const TextPainter::Batch& batch : painter.getBatches()) {
         state->addInstances(batch.program, order, batch.texture, batch.instances, position.y);
     }

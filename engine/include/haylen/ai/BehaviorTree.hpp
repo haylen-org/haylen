@@ -1,10 +1,12 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <optional>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/ai/Blackboard.hpp"
@@ -98,6 +100,8 @@ class BehaviorTree final {
     }
 
   private:
+    static const std::array<std::pair<std::string_view, Status>, 3> kStatusNames;
+
     struct State {
         Kind kind = Kind::Sequence;
         std::vector<std::uint32_t> children;

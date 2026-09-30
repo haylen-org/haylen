@@ -67,7 +67,7 @@ function unit.draw(self)
     self.sprite.x = self.body.x
     self.sprite.y = self.body.y
     self.sprite.depth = self.body.y
-    self.sprite.flipX = self.facing < 0
+    self.sprite.flipHorizontal = self.facing < 0
     self.sprite.flash = string.format('#%02X%s', math.floor(self.flash * 255), self.flashColor or 'FFFFFF')
     self.sprite:draw()
 end

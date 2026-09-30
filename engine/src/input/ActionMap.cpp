@@ -1,6 +1,7 @@
 #include "haylen/input/ActionMap.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <stdexcept>
 #include <tuple>
@@ -12,6 +13,8 @@
 #include "haylen/input/VirtualInput.hpp"
 
 namespace haylen::input {
+
+const std::array<std::pair<std::string_view, ActionMap::Action::Type>, 3> ActionMap::Action::kTypeNames{{{"button", Type::Button}, {"axis", Type::Axis}, {"vector", Type::Vector}}};
 
 std::optional<ActionMap::Binding> ActionMap::Binding::parse(std::string_view text) {
     const std::size_t separator = text.find(':');
@@ -106,28 +109,12 @@ std::string ActionMap::Binding::toString() const {
 }
 
 std::optional<ActionMap::Action::Type> ActionMap::Action::typeFromName(std::string_view text) noexcept {
-    if (text == "button") {
-        return Type::Button;
-    }
-    if (text == "axis") {
-        return Type::Axis;
-    }
-    if (text == "vector") {
-        return Type::Vector;
-    }
-    return std::nullopt;
+    const auto found = std::ranges::find(kTypeNames, text, &std::pair<std::string_view, Type>::first);
+    return found != kTypeNames.end() ? std::optional(found->second) : std::nullopt;
 }
 
 std::string_view ActionMap::Action::typeName(Type value) noexcept {
-    switch (value) {
-    case Type::Button:
-        return "button";
-    case Type::Axis:
-        return "axis";
-    case Type::Vector:
-        return "vector";
-    }
-    return "button";
+    return std::ranges::find(kTypeNames, value, &std::pair<std::string_view, Type>::second)->first;
 }
 
 ActionMap::Action ActionMap::Action::fromJson(const core::Json& json) {

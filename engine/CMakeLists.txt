@@ -184,6 +184,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/audio/Mixer.cpp
   src/audio/MixerState.cpp
   src/audio/Reverb.cpp
+  src/audio/Session.cpp
   src/audio/Sound.cpp
   src/audio/StreamSource.cpp
   src/core/AppConfig.cpp

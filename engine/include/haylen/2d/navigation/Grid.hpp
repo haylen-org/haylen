@@ -4,6 +4,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <numbers>
+#include <optional>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 namespace haylen::navigation2d {
@@ -127,7 +130,14 @@ class Grid final {
     // Keeps the start, the goal and every cell where the path must turn, dropping in place the cells a straight walk can skip. Smoothing looks at walkability only, so it may cross costly cells.
     void smoothPath(std::vector<Cell>& path) const;
 
+    [[nodiscard]] static std::optional<Topology> topologyFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view topologyName(Topology value) noexcept;
+    [[nodiscard]] static std::optional<Heuristic> heuristicFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view heuristicName(Heuristic value) noexcept;
+
   private:
+    static const std::array<std::pair<std::string_view, Topology>, 3> kTopologyNames;
+    static const std::array<std::pair<std::string_view, Heuristic>, 4> kHeuristicNames;
     static const Layout kDefaultLayout;
     static constexpr std::array<Cell, 8> kLatticeDirections{{{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}}};
     static constexpr std::array<Cell, 6> kHexDirections{{{1, 0}, {1, -1}, {0, -1}, {-1, 0}, {-1, 1}, {0, 1}}};

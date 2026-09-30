@@ -1,6 +1,7 @@
 #include "haylen/2d/procedural/Scatter.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <optional>
 #include <stdexcept>
@@ -11,6 +12,17 @@
 #include "haylen/math/WeightedChoice.hpp"
 
 namespace haylen::procedural2d {
+
+const std::array<std::pair<std::string_view, Scatter::Method>, 3> Scatter::kMethodNames{{{"random", Method::Random}, {"grid", Method::Grid}, {"poisson", Method::Poisson}}};
+
+std::optional<Scatter::Method> Scatter::methodFromName(std::string_view name) noexcept {
+    const auto found = std::ranges::find(kMethodNames, name, &std::pair<std::string_view, Method>::first);
+    return found != kMethodNames.end() ? std::optional(found->second) : std::nullopt;
+}
+
+std::string_view Scatter::methodName(Method value) noexcept {
+    return std::ranges::find(kMethodNames, value, &std::pair<std::string_view, Method>::second)->first;
+}
 
 bool Scatter::isExcluded(const Options& options, math::Vec2 point) noexcept {
     return std::any_of(options.exclusions.begin(), options.exclusions.end(), [point](const Region& zone) { return zone.contains(point); });

@@ -13,14 +13,14 @@ local kTints = {{id = 'none', text = 'None', color = '#FFFFFFFF'}, {id = 'red', 
 local kVariants = {
     {label = 'pivot 0, 0 turned', properties = {pivotX = 0, pivotY = 0, rotation = 0.4}},
     {label = 'scale 1.5, 0.75', properties = {scaleX = 1.5, scaleY = 0.75}},
-    {label = 'flipX', properties = {flipX = true}},
-    {label = 'flipY', properties = {flipY = true}},
+    {label = 'flipHorizontal', properties = {flipHorizontal = true}},
+    {label = 'flipVertical', properties = {flipVertical = true}},
     {label = 'color', properties = {color = '#FF70C0FF'}},
     {label = 'flash', properties = {flash = '#B0FFFFFF'}},
 }
 local kCode = [[
 local hero = graphics2d.newSprite(assets.texture('images/hero.png'), {x = 300, y = 300, pivotX = 0.5, pivotY = 1})
-hero.rotation, hero.scaleX, hero.flipX, hero.color = 0.3, 2, true, '#FFFF7070'
+hero.rotation, hero.scaleX, hero.flipHorizontal, hero.color = 0.3, 2, true, '#FFFF7070'
 tween.fromTo(hero, 0.4, {flash = '#FFFFFFFF'}, {flash = '#00FFFFFF'})  -- A hit flash.
 hero:draw()]]
 
@@ -62,8 +62,8 @@ function Basics:enter()
                 self.hero.scaleX, self.hero.scaleY = event.value, event.value
             end}},
             ui.row{gap = 12,
-                ui.checkbox{id = 'flipX', text = 'flipX', onChange = function(event) self.hero.flipX = event.checked end},
-                ui.checkbox{id = 'flipY', text = 'flipY', onChange = function(event) self.hero.flipY = event.checked end},
+                ui.checkbox{id = 'flipHorizontal', text = 'flipHorizontal', onChange = function(event) self.hero.flipHorizontal = event.checked end},
+                ui.checkbox{id = 'flipVertical', text = 'flipVertical', onChange = function(event) self.hero.flipVertical = event.checked end},
             },
             ui.formField{label = 'Tint', ui.segmentedControl{id = 'tint', items = items(kTints), selected = 'none', onChange = function(event)
                 self.hero.color = find(kTints, event.value).color
@@ -92,7 +92,7 @@ function Basics:update(dt)
         self.hero.rotation = self.hero.rotation + dt
     end
     local hero = self.hero
-    self:status(string.format('pivot %.1f, %.1f   rotation %.2f   scale %.1f   flip %s %s   color %s', hero.pivotX, hero.pivotY, hero.rotation % (math.pi * 2), hero.scaleX, hero.flipX, hero.flipY, hero.color:toHex()))
+    self:status(string.format('pivot %.1f, %.1f   rotation %.2f   scale %.1f   flip %s %s   color %s', hero.pivotX, hero.pivotY, hero.rotation % (math.pi * 2), hero.scaleX, hero.flipHorizontal, hero.flipVertical, hero.color:toHex()))
 end
 
 function Basics:draw(area)

@@ -1,9 +1,13 @@
 #include "haylen/ai/BehaviorTree.hpp"
 
+#include <algorithm>
+#include <array>
 #include <stdexcept>
 #include <utility>
 
 namespace haylen::ai {
+
+const std::array<std::pair<std::string_view, BehaviorTree::Status>, 3> BehaviorTree::kStatusNames{{{"success", Status::Success}, {"failure", Status::Failure}, {"running", Status::Running}}};
 
 BehaviorTree::Node BehaviorTree::sequence(std::vector<Node> children) {
     return {.kind = Kind::Sequence, .children = std::move(children)};
@@ -64,28 +68,12 @@ BehaviorTree::Node BehaviorTree::action(ActionFunction function) {
 }
 
 std::optional<BehaviorTree::Status> BehaviorTree::statusFromName(std::string_view name) noexcept {
-    if (name == "success") {
-        return Status::Success;
-    }
-    if (name == "failure") {
-        return Status::Failure;
-    }
-    if (name == "running") {
-        return Status::Running;
-    }
-    return std::nullopt;
+    const auto found = std::ranges::find(kStatusNames, name, &std::pair<std::string_view, Status>::first);
+    return found != kStatusNames.end() ? std::optional(found->second) : std::nullopt;
 }
 
 std::string_view BehaviorTree::statusName(Status value) noexcept {
-    switch (value) {
-    case Status::Failure:
-        return "failure";
-    case Status::Running:
-        return "running";
-    case Status::Success:
-        break;
-    }
-    return "success";
+    return std::ranges::find(kStatusNames, value, &std::pair<std::string_view, Status>::second)->first;
 }
 
 BehaviorTree::BehaviorTree(Node root) {

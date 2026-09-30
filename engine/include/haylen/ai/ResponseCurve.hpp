@@ -1,8 +1,10 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string_view>
+#include <utility>
 
 namespace haylen::ai {
 
@@ -27,6 +29,9 @@ struct ResponseCurve {
 
     [[nodiscard]] static std::optional<Shape> shapeFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view shapeName(Shape value) noexcept;
+
+  private:
+    static const std::array<std::pair<std::string_view, Shape>, 5> kShapeNames;
 };
 
 } // namespace haylen::ai

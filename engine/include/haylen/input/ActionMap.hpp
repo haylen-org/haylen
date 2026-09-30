@@ -7,6 +7,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/core/Json.hpp"
@@ -72,10 +73,12 @@ class ActionMap final {
         [[nodiscard]] static Action fromJson(const core::Json& json);
         [[nodiscard]] core::Json toJson() const;
 
-        // Resolves the type names `button`, `axis` and `vector`.
         [[nodiscard]] static std::optional<Type> typeFromName(std::string_view text) noexcept;
         [[nodiscard]] static std::string_view typeName(Type value) noexcept;
         [[nodiscard]] bool operator==(const Action&) const = default;
+
+      private:
+        static const std::array<std::pair<std::string_view, Type>, 3> kTypeNames;
     };
 
     // The keys and gamepad buttons the UI answers itself in the next frame: every key while a text field edits, and the bindings of the navigation actions it handles, such as `cancel` while a popup is open.

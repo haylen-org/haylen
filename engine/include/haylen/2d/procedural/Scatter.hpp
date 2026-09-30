@@ -1,7 +1,11 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <functional>
+#include <optional>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/2d/procedural/Region.hpp"
@@ -53,7 +57,11 @@ class Scatter final {
     // Throws `std::invalid_argument` for a density that is negative or not finite, a spacing that is not positive and finite, a Poisson density map without a `maximumSpacing` of at least the spacing, a region that would need more than 16777216 points or Poisson grid cells, layers without a biome function, or weights that `math::WeightedChoice` rejects.
     [[nodiscard]] static std::vector<Point> generate(const Region& region, const Options& options, math::Random& random);
 
+    [[nodiscard]] static std::optional<Method> methodFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view methodName(Method value) noexcept;
+
   private:
+    static const std::array<std::pair<std::string_view, Method>, 3> kMethodNames;
     static constexpr double kMaxPoints = 16777216.0;
 
     [[nodiscard]] static std::vector<math::Vec2> place(const Region& region, const Options& options, math::Random& random);

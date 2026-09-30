@@ -1,9 +1,11 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/math/Vec2.hpp"
@@ -55,6 +57,7 @@ class Spline final {
     [[nodiscard]] std::vector<Vec2> sampleByDistance(float spacing) const;
 
   private:
+    static const std::array<std::pair<std::string_view, Kind>, 3> kKindNames;
     static constexpr std::size_t kStepsPerSegment = 32;
     static constexpr float kAlpha = 0.5F;
 

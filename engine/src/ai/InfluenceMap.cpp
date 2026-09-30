@@ -1,6 +1,7 @@
 #include "haylen/ai/InfluenceMap.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <numbers>
 #include <stdexcept>
@@ -8,6 +9,8 @@
 #include "haylen/math/Math.hpp"
 
 namespace haylen::ai {
+
+const std::array<std::pair<std::string_view, InfluenceMap::Falloff>, 3> InfluenceMap::kFalloffNames{{{"constant", Falloff::Constant}, {"linear", Falloff::Linear}, {"quadratic", Falloff::Quadratic}}};
 
 InfluenceMap::InfluenceMap(int columns, int rows, float size, math::Vec2 corner) : width(columns), height(rows), cellSize(size), origin(corner) {
     if (columns < 1 || rows < 1 || size <= 0.0F) {
@@ -17,28 +20,12 @@ InfluenceMap::InfluenceMap(int columns, int rows, float size, math::Vec2 corner)
 }
 
 std::optional<InfluenceMap::Falloff> InfluenceMap::falloffFromName(std::string_view name) noexcept {
-    if (name == "constant") {
-        return Falloff::Constant;
-    }
-    if (name == "linear") {
-        return Falloff::Linear;
-    }
-    if (name == "quadratic") {
-        return Falloff::Quadratic;
-    }
-    return std::nullopt;
+    const auto found = std::ranges::find(kFalloffNames, name, &std::pair<std::string_view, Falloff>::first);
+    return found != kFalloffNames.end() ? std::optional(found->second) : std::nullopt;
 }
 
 std::string_view InfluenceMap::falloffName(Falloff value) noexcept {
-    switch (value) {
-    case Falloff::Constant:
-        return "constant";
-    case Falloff::Quadratic:
-        return "quadratic";
-    case Falloff::Linear:
-        break;
-    }
-    return "linear";
+    return std::ranges::find(kFalloffNames, value, &std::pair<std::string_view, Falloff>::second)->first;
 }
 
 float InfluenceMap::get(int column, int row) const {

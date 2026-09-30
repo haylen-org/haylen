@@ -13,7 +13,7 @@ local kColumns = 16
 local kCode = [[
 local target = graphics.newRenderTarget(320, 320, {filter = 'linear'})
 graphics2d.beginTarget(target, targetCamera, {clear = '#FF203040'})  -- Draw anything, every frame or once.
-graphics2d.beginWorld(camera)  graphics2d.draw(target.texture, x, y, {rotation = 0.3, color = '#FFFF9060', flipY = true})
+graphics2d.beginWorld(camera)  graphics2d.draw(target.texture, x, y, {rotation = 0.3, color = '#FFFF9060', flipVertical = true})
 graphics2d.drawMesh(target.texture, vertices, indices)  -- The same texture on a waving strip.]]
 
 function RenderTargets:enter()
@@ -73,7 +73,7 @@ function RenderTargets:draw(area)
     end
     graphics2d.draw(texture, area.width * 0.125, y, {width = size, height = size})
     graphics2d.draw(texture, area.width * 0.375, y, {width = size, height = size, rotation = math.sin(self.time) * 0.5, scaleX = 0.8 + math.sin(self.time * 1.3) * 0.2, scaleY = 0.8 + math.sin(self.time * 1.3) * 0.2})
-    graphics2d.draw(texture, area.width * 0.625, y, {width = size, height = size, color = '#FFFF9060', flipY = true})
+    graphics2d.draw(texture, area.width * 0.625, y, {width = size, height = size, color = '#FFFF9060', flipVertical = true})
 
     local left, top = area.width * 0.875 - size / 2, y - size / 2
     for column = 0, kColumns do

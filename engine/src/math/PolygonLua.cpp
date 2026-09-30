@@ -15,32 +15,10 @@ namespace haylen::lua {
 
 template <> struct EnumNames<math::Polygon::Join> {
     static std::optional<math::Polygon::Join> fromName(std::string_view name) {
-        if (name == "miter") {
-            return math::Polygon::Join::Miter;
-        }
-        if (name == "round") {
-            return math::Polygon::Join::Round;
-        }
-        if (name == "square") {
-            return math::Polygon::Join::Square;
-        }
-        if (name == "bevel") {
-            return math::Polygon::Join::Bevel;
-        }
-        return std::nullopt;
+        return math::Polygon::joinFromName(name);
     }
     static std::string_view name(math::Polygon::Join value) {
-        switch (value) {
-        case math::Polygon::Join::Miter:
-            return "miter";
-        case math::Polygon::Join::Square:
-            return "square";
-        case math::Polygon::Join::Bevel:
-            return "bevel";
-        case math::Polygon::Join::Round:
-            break;
-        }
-        return "round";
+        return math::Polygon::joinName(value);
     }
 };
 

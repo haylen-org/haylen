@@ -1,8 +1,8 @@
 #include "haylen/2d/physics/Explosion.hpp"
 
-#include <box2d/box2d.h>
-
 #include <algorithm>
+#include <array>
+#include <box2d/box2d.h>
 #include <stdexcept>
 
 #include "2d/physics/Box2DConverter.hpp"
@@ -12,29 +12,15 @@
 
 namespace haylen::physics2d {
 
+const std::array<std::pair<std::string_view, Explosion::Falloff>, 3> Explosion::kFalloffNames{{{"none", Falloff::None}, {"linear", Falloff::Linear}, {"quadratic", Falloff::Quadratic}}};
+
 std::optional<Explosion::Falloff> Explosion::falloffFromName(std::string_view name) noexcept {
-    if (name == "none") {
-        return Falloff::None;
-    }
-    if (name == "linear") {
-        return Falloff::Linear;
-    }
-    if (name == "quadratic") {
-        return Falloff::Quadratic;
-    }
-    return std::nullopt;
+    const auto found = std::ranges::find(kFalloffNames, name, &std::pair<std::string_view, Falloff>::first);
+    return found != kFalloffNames.end() ? std::optional(found->second) : std::nullopt;
 }
 
 std::string_view Explosion::falloffName(Falloff value) noexcept {
-    switch (value) {
-    case Falloff::None:
-        return "none";
-    case Falloff::Quadratic:
-        return "quadratic";
-    case Falloff::Linear:
-        break;
-    }
-    return "linear";
+    return std::ranges::find(kFalloffNames, value, &std::pair<std::string_view, Falloff>::second)->first;
 }
 
 float Explosion::scaleAt(const Options& options, float distance) noexcept {

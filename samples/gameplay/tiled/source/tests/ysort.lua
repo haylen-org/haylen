@@ -62,7 +62,7 @@ function YSort:update(dt)
     self.position[1] = math.max(16, math.min(bounds.width - 16, self.position[1] + x * kSpeed * dt))
     self.position[2] = math.max(48, math.min(bounds.height, self.position[2] + y * kSpeed * dt))
     if x ~= 0 then
-        self.hero.flipX = x < 0
+        self.hero.flipHorizontal = x < 0
     end
     self.hero.x, self.hero.y = self.position[1], self.position[2]
     self:showStats(string.format('hero feet at %.0f, %.0f\nsorting %s\ndraws %d', self.position[1], self.position[2], self.sorting and 'by y' or 'by layer only', graphics2d.stats().sprites))

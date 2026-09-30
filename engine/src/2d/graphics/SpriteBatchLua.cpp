@@ -58,9 +58,9 @@ void SpriteBatchLua::pushSpriteInstance(lua_State* L, const SpriteInstance& spri
     lua::Stack::push(L, sprite.flash);
     lua_setfield(L, -2, "flash");
     lua::Stack::push(L, sprite.flip.horizontal);
-    lua_setfield(L, -2, "flipX");
+    lua_setfield(L, -2, "flipHorizontal");
     lua::Stack::push(L, sprite.flip.vertical);
-    lua_setfield(L, -2, "flipY");
+    lua_setfield(L, -2, "flipVertical");
     lua::Stack::push(L, sprite.flip.diagonal);
     lua_setfield(L, -2, "flipDiagonal");
 }

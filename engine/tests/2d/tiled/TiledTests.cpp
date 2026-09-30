@@ -881,7 +881,7 @@ TEST_F(TiledLuaTest, UsesMapsFromLua) {
     EXPECT_EQ(fixture.lua("local o = map:objects('things')[6] return o.shape .. ' ' .. o.text.text .. ' ' .. o.text.horizontalAlign .. ' ' .. o.text.color:toHex()"), "text Hi center #FF00FF00");
     EXPECT_EQ(fixture.lua("local o = map:objects()[4] return o.shape .. ' ' .. #o.points .. ' ' .. o.points[2].x .. ' ' .. o.opacity .. ' ' .. map:layer('ground').blend"), "polygon 3 10.0 1.0 alpha");
     EXPECT_EQ(fixture.lua("local t = map:tileInfo(2) return t.id .. ' ' .. t.tileset .. ' ' .. t.type .. ' ' .. tostring(t.properties.deep) .. ' ' .. #t.collision .. ' ' .. t.source.x"), "1 terrain water true 1 16.0");
-    EXPECT_EQ(fixture.lua("local t = map:tileInfo(3 | 0x80000000) return tostring(t.flippedX) .. tostring(t.flippedY) .. tostring(t.flippedDiagonally) .. ' ' .. #t.animation"), "truefalsefalse 2");
+    EXPECT_EQ(fixture.lua("local t = map:tileInfo(3 | 0x80000000) return tostring(t.flipHorizontal) .. tostring(t.flipVertical) .. tostring(t.flipDiagonal) .. ' ' .. #t.animation"), "truefalsefalse 2");
     EXPECT_EQ(fixture.lua("return tostring(map:tileInfo(0))"), "nil");
     EXPECT_EQ(fixture.lua("local sets = map:tilesets() return #sets .. ' ' .. sets[1].name .. ' ' .. sets[2].firstGid .. ' ' .. sets[1].wangSets[1].name .. ' ' .. sets[1].wangSets[1].colors[1].name .. ' ' .. sets[1].wangSets[1].tiles[1].wangId[2]"), "2 terrain 100 coast sand 1");
     // clang-format off
@@ -910,7 +910,7 @@ TEST_F(TiledLuaTest, UsesMapsFromLua) {
     EXPECT_NE(fixture.lua("tiled.newMapRenderer('map')").find("error: "), std::string::npos);
 
     // The Lua types carry the names of the C++ classes they wrap.
-    EXPECT_NE(fixture.lua("local draw = map.draw draw(assets.load('maps/island.tmj'))").find("haylen.MapRenderer expected, got haylen.TiledMap"), std::string::npos);
+    EXPECT_NE(fixture.lua("local draw = map.draw draw(assets.load('maps/island.tmj'))").find("haylen.MapRenderer expected, got haylen.Map"), std::string::npos);
 }
 
 TEST_F(TiledLuaTest, CullsWithTheActiveCanvasAndPlacesWorldMaps) {

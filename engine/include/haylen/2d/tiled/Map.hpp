@@ -7,6 +7,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/2d/tiled/Layer.hpp"
@@ -63,7 +64,10 @@ class Map final {
         return gid & ~kFlagMask;
     }
 
+    // The orientation and render order names are the ones of the Tiled JSON format.
+    [[nodiscard]] static std::optional<Orientation> orientationFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view orientationName(Orientation value) noexcept;
+    [[nodiscard]] static std::optional<RenderOrder> renderOrderFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view renderOrderName(RenderOrder value) noexcept;
 
     // Parses a map stored at `file` inside the package content folder. The reader loads external tilesets and templates by their resolved path.
@@ -109,6 +113,9 @@ class Map final {
     std::vector<Layer> layers;
 
   private:
+    static const std::array<std::pair<std::string_view, Orientation>, 5> kOrientationNames;
+    static const std::array<std::pair<std::string_view, RenderOrder>, 4> kRenderOrderNames;
+
     [[nodiscard]] static int positiveModulo(int value, int divisor) noexcept;
     static void collectImages(const Layer& layer, std::vector<Image>& images);
     static void attachLayer(Layer& layer, const TextureLoader& load);

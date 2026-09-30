@@ -38,7 +38,7 @@ async.spawn(function()
 end)
 ```
 
-The loaded asset is a `TiledMap` value that holds the parsed data. Its only member is the read-only `path` property, the map path inside the content folder. The function `tiled.newMapRenderer` makes a playable `MapRenderer` from it.
+The loaded asset is a `Map` value that holds the parsed data. Its only member is the read-only `path` property, the map path inside the content folder. The function `tiled.newMapRenderer` makes a playable `MapRenderer` from it.
 
 A Tiled world file with the `.world` extension loads as a plain list with one table per map, each with `path` (the map path inside the content folder), `x`, `y`, `width` and `height` (the map area in world pixels). Maps listed in `maps` keep their order, followed by the maps that `patterns` match. A pattern's `regexp` is matched against the files in the world's folder, its first two capture groups are multiplied by `multiplierX` and `multiplierY` and moved by `offsetX` and `offsetY`, and `mapWidth` and `mapHeight` give the size. World loading accepts no options, and any key raises `Unknown key "name" in Tiled world options.`
 
@@ -85,7 +85,7 @@ Every layer needs the `id` that Tiled writes. Other load errors: `The orientatio
 
 ### tiled.newMapRenderer(asset)
 
-Creates a `MapRenderer` from a loaded `TiledMap`. The playable map owns its own copy of the data, so changes such as `map:setTile` never touch the cached asset, and several maps made from one asset are independent.
+Creates a `MapRenderer` from a loaded `Map`. The playable map owns its own copy of the data, so changes such as `map:setTile` never touch the cached asset, and several maps made from one asset are independent.
 
 ```lua
 local assets = require('haylen.assets')
@@ -402,7 +402,7 @@ Describes a global tile id, or returns `nil` for 0 and for ids no tileset holds.
 | --- | --- | --- |
 | `id` | integer | Tile id inside its tileset. |
 | `tileset` | string | Tileset name. |
-| `flippedX`, `flippedY`, `flippedDiagonally` | boolean | Flip flags of the gid. |
+| `flipHorizontal`, `flipVertical`, `flipDiagonal` | boolean | Flip flags of the gid, named like the flips of a sprite. |
 | `source` | Rect | Tile rectangle inside its image. |
 | `type` | string | Tile class, or an empty string. |
 | `image` | string | Image path of a tile from an image collection, or an empty string. |
@@ -596,7 +596,7 @@ local tiled = require('haylen.tiled')
 
 local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 local gid = map:tile('ground', 2, 2)
-local flippedX = (gid & tiled.flipHorizontal) ~= 0
-print(tiled.tileId(gid), flippedX, gid & tiled.flagMask)
+local flipHorizontal = (gid & tiled.flipHorizontal) ~= 0
+print(tiled.tileId(gid), flipHorizontal, gid & tiled.flagMask)
 map:setTile('ground', 2, 2, tiled.tileId(gid) | tiled.flipVertical)
 ```

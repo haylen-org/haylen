@@ -885,7 +885,7 @@ TEST_F(ComponentTest, DrawsChoiceLabelsWholeAtTheirMeasuredSize) {
     };
     // clang-format on
     for (const std::string kind : {"toggle", "checkbox"}) {
-        for (const std::string text : {"Spin", "flipX", "Fullscreen", "Music"}) {
+        for (const std::string text : {"Spin", "flipHorizontal", "Fullscreen", "Music"}) {
             const std::string node = R"({"kind": ")" + kind + R"(", "text": ")" + text + R"(")";
             EXPECT_EQ(count(node + R"(, "align": "start"})"), count(node + R"(, "align": "stretch"})")) << kind << " " << text;
         }

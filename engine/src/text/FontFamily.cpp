@@ -88,7 +88,7 @@ std::shared_ptr<const Layout> FontFamily::layout(std::string_view text, const St
 }
 
 math::Vec2 FontFamily::measure(std::string_view text, const Style& style) {
-    return layout(text, style)->size;
+    return layout(text, style)->size * style.scale;
 }
 
 } // namespace haylen::text

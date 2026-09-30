@@ -189,7 +189,7 @@ int Graphics2DLua::endCapture(lua_State* L) {
     return 0;
 }
 
-// Draws a texture immediately with `draw(texture, x, y, {source, width, height, scaleX, scaleY, pivotX, pivotY, rotation, color, flash, flipX, flipY, flipDiagonal, layer, depth, blend})`.
+// Draws a texture immediately with `draw(texture, x, y, {source, width, height, scaleX, scaleY, pivotX, pivotY, rotation, color, flash, flipHorizontal, flipVertical, flipDiagonal, layer, depth, blend})`.
 int Graphics2DLua::draw(lua_State* L) {
     Sprite sprite;
     sprite.texture = lua::Stack::read<graphics::Texture>(L, 1);
@@ -310,25 +310,16 @@ int Graphics2DLua::drawMesh(lua_State* L) {
     return 0;
 }
 
-math::Vec2 Graphics2DLua::readTextScale(lua_State* L, int index) {
-    math::Vec2 scale{1.0F, 1.0F};
-    if (!lua_isnoneornil(L, index)) {
-        lua::Table::readField(L, index, "scale", scale);
-    }
-    return scale;
-}
-
-// Draws text with `drawText(font, text, x, y, style)`, where the font is a `Font`, a `FontFamily` or `nil` for the default font, and the style also takes the scale and the layer, depth and blend of the draw. A family draws what its faces lack from its fallbacks.
+// Draws text with `drawText(font, text, x, y, style)`, where the font is a `Font`, a `FontFamily` or `nil` for the default font, and the style also takes the layer, depth and blend of the draw. A family draws what its faces lack from its fallbacks.
 int Graphics2DLua::drawText(lua_State* L) {
     const std::string_view content = lua::Stack::read<std::string_view>(L, 2);
     const math::Vec2 position{lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4)};
-    const text::Style style = lua::TypeConverter::readTextStyle(L, 5, {lua::TypeConverter::kDrawOrderFields, kTextDrawFields});
-    const DrawOrder order = lua::TypeConverter::readDrawOrder(L, 5, {lua::TypeConverter::kTextStyleFields, kTextDrawFields});
-    const math::Vec2 scale = readTextScale(L, 5);
+    const text::Style style = lua::TypeConverter::readTextStyle(L, 5, {lua::TypeConverter::kDrawOrderFields});
+    const DrawOrder order = lua::TypeConverter::readDrawOrder(L, 5, {lua::TypeConverter::kTextStyleFields});
     if (text::FontFamily* family = lua::Userdata::test<text::FontFamily>(L, 1)) {
-        getRenderer(L).drawText(*family, content, position, style, order, scale);
+        getRenderer(L).drawText(*family, content, position, style, order);
     } else {
-        getRenderer(L).drawText(fontArgument(L, 1), content, position, style, order, scale);
+        getRenderer(L).drawText(fontArgument(L, 1), content, position, style, order);
     }
     return 0;
 }
@@ -336,9 +327,9 @@ int Graphics2DLua::drawText(lua_State* L) {
 // Measures text with the same font or family and style table `drawText` takes, whose draw order keys change nothing, so the size is the block `drawText` covers.
 int Graphics2DLua::measureText(lua_State* L) {
     const std::string_view content = lua::Stack::read<std::string_view>(L, 2);
-    const text::Style style = lua::TypeConverter::readTextStyle(L, 3, {lua::TypeConverter::kDrawOrderFields, kTextDrawFields});
+    const text::Style style = lua::TypeConverter::readTextStyle(L, 3, {lua::TypeConverter::kDrawOrderFields});
     text::FontFamily* family = lua::Userdata::test<text::FontFamily>(L, 1);
-    const math::Vec2 size = (family != nullptr ? family->measure(content, style) : fontArgument(L, 1).measure(content, style)) * readTextScale(L, 3);
+    const math::Vec2 size = family != nullptr ? family->measure(content, style) : fontArgument(L, 1).measure(content, style);
     lua::Stack::push(L, size.x);
     lua::Stack::push(L, size.y);
     return 2;

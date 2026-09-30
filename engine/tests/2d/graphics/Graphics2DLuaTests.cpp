@@ -47,17 +47,18 @@ TEST_F(Graphics2DLuaTest, MeasuresTextWithFonts) {
 
     // A scaled draw covers the block measured with the same scale.
     EXPECT_EQ(lua("local w, h = graphics2d.measureText(nil, 'Hello', {size = 32}) local sw, sh = graphics2d.measureText(nil, 'Hello', {size = 32, scale = {2, 3}}) return tostring(sw == 2 * w and sh == 3 * h)"), "true");
+    EXPECT_EQ(lua("local font = graphics2d.defaultFont() local w, h = font:measure('Hello', {size = 32}) local sw, sh = font:measure('Hello', {size = 32, scale = {2, 3}}) return tostring(sw == 2 * w and sh == 3 * h)"), "true");
     EXPECT_EQ(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'Hello', 0, 0, {size = 32, scale = {2, 0.5}, layer = 1})"), "nil");
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'Hello', 0, 0, {scale = 'wide'})").find("The option \"scale\" of \"drawText\""), std::string::npos);
     EXPECT_NE(lua("graphics2d.defaultFont():measure('Hello', {layer = 2})").find("Unknown option \"layer\""), std::string::npos);
 }
 
 TEST_F(Graphics2DLuaTest, CreatesAndEditsSprites) {
-    lua("sprite = graphics2d.newSprite(hero, {x = 10, y = 20, layer = 2, flipX = true, color = '#80FF0000', blend = 'additive'})");
-    EXPECT_EQ(lua("return sprite.x .. ',' .. sprite.y .. ' ' .. sprite.layer .. ' ' .. tostring(sprite.flipX) .. ' ' .. tostring(sprite.flipY)"), "10.0,20.0 2 true false");
+    lua("sprite = graphics2d.newSprite(hero, {x = 10, y = 20, layer = 2, flipHorizontal = true, color = '#80FF0000', blend = 'additive'})");
+    EXPECT_EQ(lua("return sprite.x .. ',' .. sprite.y .. ' ' .. sprite.layer .. ' ' .. tostring(sprite.flipHorizontal) .. ' ' .. tostring(sprite.flipVertical)"), "10.0,20.0 2 true false");
     EXPECT_EQ(lua("return sprite.blend .. ' ' .. sprite.color:toHex()"), "additive #80FF0000");
     EXPECT_EQ(lua("sprite.position = {5, 6} sprite.width = 32 sprite.scaleX = 2 sprite.pivotY = 1 sprite.rotation = 0.5 return sprite.position.x .. ' ' .. sprite.width .. ' ' .. sprite.scaleX .. ' ' .. sprite.pivotY"), "5.0 32.0 2.0 1.0");
-    EXPECT_EQ(lua("sprite.source = {0, 0, 8, 8} sprite.flash = '#80FFFFFF' sprite.depth = 3 sprite.flipY = true sprite.flipX = false return sprite.source.width .. ' ' .. sprite.flash:toHex() .. ' ' .. sprite.depth .. ' ' .. tostring(sprite.flipX) .. tostring(sprite.flipY)"), "8.0 #80FFFFFF 3.0 falsetrue");
+    EXPECT_EQ(lua("sprite.source = {0, 0, 8, 8} sprite.flash = '#80FFFFFF' sprite.depth = 3 sprite.flipVertical = true sprite.flipHorizontal = false return sprite.source.width .. ' ' .. sprite.flash:toHex() .. ' ' .. sprite.depth .. ' ' .. tostring(sprite.flipHorizontal) .. tostring(sprite.flipVertical)"), "8.0 #80FFFFFF 3.0 falsetrue");
     EXPECT_EQ(lua("sprite.texture = graphics.whiteTexture() return sprite.texture == graphics.whiteTexture()"), "true");
     EXPECT_EQ(lua("local before = sprite.flipDiagonal sprite.flipDiagonal = true return tostring(before) .. ' ' .. tostring(sprite.flipDiagonal) .. ' ' .. tostring(graphics2d.newSprite(hero, {flipDiagonal = true}).flipDiagonal)"), "false true true");
     EXPECT_NE(lua("return graphics2d.newSprite(hero, {speed = 3})").find("Sprite\" has no writable property \"speed\""), std::string::npos);
@@ -74,8 +75,8 @@ TEST_F(Graphics2DLuaTest, DrawsBatchesAndStaticBatches) {
     EXPECT_EQ(lua("return batch:add({x = 1, y = 2}) .. batch:add({x = 3, y = 4, color = '#FFFFFF'}) .. batch:size()"), "122");
 
     // A sprite without a size draws at the size of the texture, or of its source, like `graphics2d.draw`.
-    EXPECT_EQ(lua("local s = batch:get(1) return s.x .. ' ' .. s.y .. ' ' .. s.width .. 'x' .. s.height .. ' ' .. s.pivotX .. ' ' .. s.color:toHex() .. ' ' .. tostring(s.flipX) .. ' ' .. tostring(s.source.width)"), "1.0 2.0 16.0x8.0 0.5 #FFFFFFFF false 0.0");
-    EXPECT_EQ(lua("local index = batch:add({source = {0, 0, 4, 2}, flipY = true, rotation = 1, flash = '#80FFFFFF'}) local s = batch:get(index) batch:remove(index) return s.width .. 'x' .. s.height .. ' ' .. tostring(s.flipY) .. ' ' .. s.rotation .. ' ' .. s.flash:toHex()"), "4.0x2.0 true 1.0 #80FFFFFF");
+    EXPECT_EQ(lua("local s = batch:get(1) return s.x .. ' ' .. s.y .. ' ' .. s.width .. 'x' .. s.height .. ' ' .. s.pivotX .. ' ' .. s.color:toHex() .. ' ' .. tostring(s.flipHorizontal) .. ' ' .. tostring(s.source.width)"), "1.0 2.0 16.0x8.0 0.5 #FFFFFFFF false 0.0");
+    EXPECT_EQ(lua("local index = batch:add({source = {0, 0, 4, 2}, flipVertical = true, rotation = 1, flash = '#80FFFFFF'}) local s = batch:get(index) batch:remove(index) return s.width .. 'x' .. s.height .. ' ' .. tostring(s.flipVertical) .. ' ' .. s.rotation .. ' ' .. s.flash:toHex()"), "4.0x2.0 true 1.0 #80FFFFFF");
     EXPECT_EQ(lua("local index = batch:add({flipDiagonal = true}) local diagonal = batch:get(index).flipDiagonal batch:remove(index) return tostring(diagonal) .. ' ' .. tostring(batch:get(1).flipDiagonal)"), "true false");
     EXPECT_NE(lua("batch:get(9)").find("sprite index out of range"), std::string::npos);
     EXPECT_NE(lua("batch:reserve(-1)").find("expected a non-negative integer"), std::string::npos);
@@ -210,7 +211,7 @@ TEST_F(Graphics2DLuaTest, DrawsShapesTextMeshesAndLights) {
     const std::string body = R"(
         local camera = graphics2d.newCamera()
         graphics2d.beginWorld(camera, {ambientLight = '#202040', sort = 'depth', postProcess = {vignetteStrength = 0.4, saturation = 0.8}})
-        graphics2d.draw(hero, 10, 10, {width = 32, height = 16, scaleX = 2, rotation = 0.3, flipY = true, layer = 3, depth = 4, blend = 'screen', source = {0, 0, 8, 8}})
+        graphics2d.draw(hero, 10, 10, {width = 32, height = 16, scaleX = 2, rotation = 0.3, flipVertical = true, layer = 3, depth = 4, blend = 'screen', source = {0, 0, 8, 8}})
         graphics2d.drawRect({0, 0, 10, 10}, '#FF0000')
         graphics2d.drawRectOutline({0, 0, 10, 10}, 2, {1, 1, 1, 1})
         graphics2d.drawLine(0, 0, 10, 10, 2, '#00FF00', {layer = 1})
@@ -249,7 +250,7 @@ TEST_F(Graphics2DLuaTest, DrawsShapesTextMeshesAndLights) {
     EXPECT_NE(render("graphics2d.beginScreen({ambient = '#000000'})").find("Unknown option \"ambient\""), std::string::npos);
     EXPECT_NE(render("graphics2d.beginWorld(graphics2d.newCamera(), {ambientLight = '#000000', postProcess = {vignete = 1}})").find("Unknown option \"vignete\""), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.draw(hero, 0, 0, {scale = 2})").find("Unknown option \"scale\""), std::string::npos);
-    EXPECT_EQ(render("graphics2d.beginScreen() graphics2d.draw(hero, 0, 0, {flipDiagonal = true, flipX = true})"), "nil");
+    EXPECT_EQ(render("graphics2d.beginScreen() graphics2d.draw(hero, 0, 0, {flipDiagonal = true, flipHorizontal = true})"), "nil");
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawRect({0, 0, 1, 1}, '#FFFFFF', {layr = 1})").find("Unknown option \"layr\""), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'x', 0, 0, {colour = '#FFFFFF'})").find("Unknown option \"colour\""), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'x', 0, 0, {[1] = 'x'})").find("Option tables only accept string keys"), std::string::npos);

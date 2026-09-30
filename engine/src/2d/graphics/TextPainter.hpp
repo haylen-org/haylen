@@ -24,8 +24,8 @@ class TextPainter final {
 
     explicit TextPainter(graphics::Texture whiteTexture);
 
-    // Paints a layout of plain text in the color, outline and shadow of the style, scaled and turned as one piece around the position, where the anchor of the style lands.
-    void paintText(const text::Layout& layout, math::Vec2 position, const text::Style& style, math::Vec2 scale = {1.0F, 1.0F});
+    // Paints a layout of plain text in the color, outline and shadow of the style, stretched and turned by the style as one piece around the position, where its anchor lands.
+    void paintText(const text::Layout& layout, math::Vec2 position, const text::Style& style);
 
     // Paints rich text with the top-left of its block at the position, scaled from that corner and with every color multiplied by the tint.
     void paintRichText(const text::Layout& layout, math::Vec2 position, math::Vec2 scale = {1.0F, 1.0F}, math::Color tint = math::Color::white());

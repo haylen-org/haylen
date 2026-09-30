@@ -1,9 +1,9 @@
 #include "haylen/math/Polygon.hpp"
 
+#include <algorithm>
+#include <array>
 #include <clipper2/clipper.h>
 #include <clipper2/clipper.triangulation.h>
-
-#include <algorithm>
 #include <cmath>
 #include <map>
 #include <stdexcept>
@@ -13,6 +13,17 @@
 #include "haylen/math/Geometry.hpp"
 
 namespace haylen::math {
+
+const std::array<std::pair<std::string_view, Polygon::Join>, 4> Polygon::kJoinNames{{{"miter", Join::Miter}, {"round", Join::Round}, {"square", Join::Square}, {"bevel", Join::Bevel}}};
+
+std::optional<Polygon::Join> Polygon::joinFromName(std::string_view name) noexcept {
+    const auto found = std::ranges::find(kJoinNames, name, &std::pair<std::string_view, Join>::first);
+    return found != kJoinNames.end() ? std::optional(found->second) : std::nullopt;
+}
+
+std::string_view Polygon::joinName(Join value) noexcept {
+    return std::ranges::find(kJoinNames, value, &std::pair<std::string_view, Join>::second)->first;
+}
 
 // Converts shapes to the paths of Clipper2 and back.
 class Polygon::Clipper final {

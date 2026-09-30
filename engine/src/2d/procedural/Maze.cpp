@@ -1,5 +1,6 @@
 #include "haylen/2d/procedural/Maze.hpp"
 
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <cstdint>
@@ -13,6 +14,8 @@
 
 namespace haylen::procedural2d {
 
+const std::array<std::pair<std::string_view, Maze::Algorithm>, 3> Maze::kAlgorithmNames{{{"backtracker", Algorithm::Backtracker}, {"prim", Algorithm::Prim}, {"kruskal", Algorithm::Kruskal}}};
+
 Maze::Maze(int columns, int rows) : width(columns), height(rows) {
     if (columns < 1 || rows < 1 || (2 * std::int64_t{columns} + 1) * (2 * std::int64_t{rows} + 1) > std::numeric_limits<std::int32_t>::max()) {
         throw std::invalid_argument("A maze needs at least one cell on each side and a tile grid that fits in 32-bit cell indices.");
@@ -21,16 +24,12 @@ Maze::Maze(int columns, int rows) : width(columns), height(rows) {
 }
 
 std::optional<Maze::Algorithm> Maze::algorithmFromName(std::string_view name) noexcept {
-    if (name == "backtracker") {
-        return Algorithm::Backtracker;
-    }
-    if (name == "prim") {
-        return Algorithm::Prim;
-    }
-    if (name == "kruskal") {
-        return Algorithm::Kruskal;
-    }
-    return std::nullopt;
+    const auto found = std::ranges::find(kAlgorithmNames, name, &std::pair<std::string_view, Algorithm>::first);
+    return found != kAlgorithmNames.end() ? std::optional(found->second) : std::nullopt;
+}
+
+std::string_view Maze::algorithmName(Algorithm value) noexcept {
+    return std::ranges::find(kAlgorithmNames, value, &std::pair<std::string_view, Algorithm>::second)->first;
 }
 
 int Maze::stepX(std::uint8_t side) noexcept {

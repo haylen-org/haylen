@@ -1,6 +1,7 @@
 #include "haylen/2d/navigation/Grid.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdlib>
 #include <limits>
@@ -9,7 +10,27 @@
 
 namespace haylen::navigation2d {
 
+const std::array<std::pair<std::string_view, Grid::Topology>, 3> Grid::kTopologyNames{{{"square", Topology::Square}, {"hexagonal", Topology::Hexagonal}, {"staggered", Topology::Staggered}}};
+const std::array<std::pair<std::string_view, Grid::Heuristic>, 4> Grid::kHeuristicNames{{{"manhattan", Heuristic::Manhattan}, {"octile", Heuristic::Octile}, {"euclidean", Heuristic::Euclidean}, {"chebyshev", Heuristic::Chebyshev}}};
 const Grid::Layout Grid::kDefaultLayout{};
+
+std::optional<Grid::Topology> Grid::topologyFromName(std::string_view name) noexcept {
+    const auto found = std::ranges::find(kTopologyNames, name, &std::pair<std::string_view, Topology>::first);
+    return found != kTopologyNames.end() ? std::optional(found->second) : std::nullopt;
+}
+
+std::string_view Grid::topologyName(Topology value) noexcept {
+    return std::ranges::find(kTopologyNames, value, &std::pair<std::string_view, Topology>::second)->first;
+}
+
+std::optional<Grid::Heuristic> Grid::heuristicFromName(std::string_view name) noexcept {
+    const auto found = std::ranges::find(kHeuristicNames, name, &std::pair<std::string_view, Heuristic>::first);
+    return found != kHeuristicNames.end() ? std::optional(found->second) : std::nullopt;
+}
+
+std::string_view Grid::heuristicName(Heuristic value) noexcept {
+    return std::ranges::find(kHeuristicNames, value, &std::pair<std::string_view, Heuristic>::second)->first;
+}
 
 Grid::Grid(int columns, int rows, const Layout& value) : width(columns), height(rows), layout(value) {
     if (columns <= 0 || rows <= 0 || static_cast<std::int64_t>(columns) * rows > std::numeric_limits<std::int32_t>::max()) {

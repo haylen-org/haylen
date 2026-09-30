@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/2d/spatial/CellGrid.hpp"
@@ -67,7 +69,12 @@ class WaveFunctionCollapse final {
     // Tells whether every pair of neighbors in the grid follows the rules. Cells that hold no tile of the rules break them.
     [[nodiscard]] static bool isValid(const spatial2d::CellGrid& tiles, const Rules& rules, bool periodic = false) noexcept;
 
+    [[nodiscard]] static std::optional<Direction> directionFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view directionName(Direction value) noexcept;
+
   private:
+    static const std::array<std::pair<std::string_view, Direction>, 4> kDirectionNames;
+
     class Solver;
 
     [[nodiscard]] static Direction opposite(Direction direction) noexcept;

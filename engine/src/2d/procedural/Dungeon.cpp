@@ -1,12 +1,24 @@
 #include "haylen/2d/procedural/Dungeon.hpp"
 
 #include <algorithm>
+#include <array>
 #include <limits>
 #include <stdexcept>
 
 #include "haylen/math/Random.hpp"
 
 namespace haylen::procedural2d {
+
+const std::array<std::pair<std::string_view, Dungeon::Method>, 2> Dungeon::kMethodNames{{{"bsp", Method::Bsp}, {"placement", Method::Placement}}};
+
+std::optional<Dungeon::Method> Dungeon::methodFromName(std::string_view name) noexcept {
+    const auto found = std::ranges::find(kMethodNames, name, &std::pair<std::string_view, Method>::first);
+    return found != kMethodNames.end() ? std::optional(found->second) : std::nullopt;
+}
+
+std::string_view Dungeon::methodName(Method value) noexcept {
+    return std::ranges::find(kMethodNames, value, &std::pair<std::string_view, Method>::second)->first;
+}
 
 void Dungeon::carveRoom(const Room& room, spatial2d::CellGrid& grid) {
     for (int y = room.y; y < room.y + room.height; ++y) {

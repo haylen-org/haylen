@@ -106,7 +106,6 @@ struct AppConfig {
     [[nodiscard]] static bool isPluginId(std::string_view text) noexcept;
     [[nodiscard]] static platform::Orientation orientationFromName(const std::string& text);
     [[nodiscard]] static audio::Session::Category sessionCategoryFromName(const std::string& text);
-    [[nodiscard]] static std::string_view sessionCategoryName(audio::Session::Category value);
 };
 
 } // namespace haylen::core

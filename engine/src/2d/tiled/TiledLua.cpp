@@ -461,9 +461,9 @@ int TiledLua::mapTileInfo(lua_State* L) {
     lua_createtable(L, 0, 13);
     setInteger(L, "id", localId);
     setString(L, "tileset", reference->tileset->name);
-    setBoolean(L, "flippedX", (gid & Map::kFlipHorizontal) != 0);
-    setBoolean(L, "flippedY", (gid & Map::kFlipVertical) != 0);
-    setBoolean(L, "flippedDiagonally", (gid & Map::kFlipDiagonal) != 0);
+    setBoolean(L, "flipHorizontal", (gid & Map::kFlipHorizontal) != 0);
+    setBoolean(L, "flipVertical", (gid & Map::kFlipVertical) != 0);
+    setBoolean(L, "flipDiagonal", (gid & Map::kFlipDiagonal) != 0);
     lua::Stack::push(L, reference->tileset->getSource(localId));
     lua_setfield(L, -2, "source");
     setString(L, "type", tile != nullptr ? tile->type : std::string{});

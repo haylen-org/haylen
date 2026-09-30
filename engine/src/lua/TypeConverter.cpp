@@ -309,6 +309,7 @@ text::Style TypeConverter::readTextStyle(lua_State* L, int index, std::initializ
     Table::readField(L, table, "lineSpacing", style.lineSpacing);
     Table::readField(L, table, "anchor", style.anchor);
     Table::readField(L, table, "rotation", style.rotation);
+    Table::readField(L, table, "scale", style.scale);
     Table::readField(L, table, "bold", style.bold);
     Table::readField(L, table, "italic", style.italic);
     Table::readField(L, table, "direction", style.direction);
@@ -344,8 +345,8 @@ graphics2d::SpriteInstance TypeConverter::readSpriteInstance(lua_State* L, int i
     Table::readField(L, table, "color", base.color);
     Table::readField(L, table, "flash", base.flash);
 
-    Table::readField(L, table, "flipX", base.flip.horizontal);
-    Table::readField(L, table, "flipY", base.flip.vertical);
+    Table::readField(L, table, "flipHorizontal", base.flip.horizontal);
+    Table::readField(L, table, "flipVertical", base.flip.vertical);
     Table::readField(L, table, "flipDiagonal", base.flip.diagonal);
 
     if (base.size.isZero()) {

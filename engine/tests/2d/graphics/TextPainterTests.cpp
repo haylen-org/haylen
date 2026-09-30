@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -142,6 +143,28 @@ TEST_F(TextPainterTest, DrawsBitmapGlyphsAsSprites) {
     EXPECT_EQ(smooth.getBatches()[0].program, Program::Text);
     EXPECT_GT(smooth.getBatches()[0].instances[0].parameters[3], 0U);
     EXPECT_EQ(smooth.getBatches()[0].instances[2].parameters[3], 0U);
+}
+
+TEST_F(TextPainterTest, StretchesPlainTextByTheScaleOfItsStyle) {
+    const graphics::Texture page = fixture.engine().getGraphics().createTexture(graphics::Image(16, 8, math::Color::white()));
+    const std::shared_ptr<text::Font> grid = std::make_shared<text::BitmapFont>(text::BitmapFont::describeGrid({.characters = "AB", .cellWidth = 8.0F, .cellHeight = 8.0F}, page.getSize()), std::vector<graphics::Texture>{page});
+    const text::Style style{.size = 8.0F};
+    const text::Style stretched{.size = 8.0F, .scale = {2.0F, 3.0F}};
+    TextPainter plain(fixture.engine().getGraphics().getWhiteTexture());
+    plain.paintText(*grid->layout("AB", style), {10.0F, 20.0F}, style);
+    TextPainter wide(fixture.engine().getGraphics().getWhiteTexture());
+    wide.paintText(*grid->layout("AB", stretched), {10.0F, 20.0F}, stretched);
+
+    // Every glyph grows by the scale and moves away from the position, where the anchor stays.
+    const std::vector<GpuInstance>& before = plain.getBatches()[0].instances;
+    const std::vector<GpuInstance>& after = wide.getBatches()[0].instances;
+    ASSERT_EQ(after.size(), before.size());
+    for (std::size_t index = 0; index < before.size(); ++index) {
+        EXPECT_FLOAT_EQ(after[index].size[0], before[index].size[0] * 2.0F);
+        EXPECT_FLOAT_EQ(after[index].size[1], before[index].size[1] * 3.0F);
+        EXPECT_FLOAT_EQ(after[index].position[0] - 10.0F, (before[index].position[0] - 10.0F) * 2.0F);
+        EXPECT_FLOAT_EQ(after[index].position[1] - 20.0F, (before[index].position[1] - 20.0F) * 3.0F);
+    }
 }
 
 } // namespace haylen::graphics2d

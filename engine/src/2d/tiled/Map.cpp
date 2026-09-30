@@ -9,34 +9,25 @@
 
 namespace haylen::tiled {
 
+const std::array<std::pair<std::string_view, Map::Orientation>, 5> Map::kOrientationNames{{{"orthogonal", Orientation::Orthogonal}, {"isometric", Orientation::Isometric}, {"staggered", Orientation::Staggered}, {"hexagonal", Orientation::Hexagonal}, {"oblique", Orientation::Oblique}}};
+const std::array<std::pair<std::string_view, Map::RenderOrder>, 4> Map::kRenderOrderNames{{{"right-down", RenderOrder::RightDown}, {"right-up", RenderOrder::RightUp}, {"left-down", RenderOrder::LeftDown}, {"left-up", RenderOrder::LeftUp}}};
+
+std::optional<Map::Orientation> Map::orientationFromName(std::string_view name) noexcept {
+    const auto found = std::ranges::find(kOrientationNames, name, &std::pair<std::string_view, Orientation>::first);
+    return found != kOrientationNames.end() ? std::optional(found->second) : std::nullopt;
+}
+
 std::string_view Map::orientationName(Orientation value) noexcept {
-    switch (value) {
-    case Orientation::Orthogonal:
-        return "orthogonal";
-    case Orientation::Isometric:
-        return "isometric";
-    case Orientation::Staggered:
-        return "staggered";
-    case Orientation::Hexagonal:
-        return "hexagonal";
-    case Orientation::Oblique:
-        return "oblique";
-    }
-    return "orthogonal";
+    return std::ranges::find(kOrientationNames, value, &std::pair<std::string_view, Orientation>::second)->first;
+}
+
+std::optional<Map::RenderOrder> Map::renderOrderFromName(std::string_view name) noexcept {
+    const auto found = std::ranges::find(kRenderOrderNames, name, &std::pair<std::string_view, RenderOrder>::first);
+    return found != kRenderOrderNames.end() ? std::optional(found->second) : std::nullopt;
 }
 
 std::string_view Map::renderOrderName(RenderOrder value) noexcept {
-    switch (value) {
-    case RenderOrder::RightDown:
-        return "right-down";
-    case RenderOrder::RightUp:
-        return "right-up";
-    case RenderOrder::LeftDown:
-        return "left-down";
-    case RenderOrder::LeftUp:
-        return "left-up";
-    }
-    return "right-down";
+    return std::ranges::find(kRenderOrderNames, value, &std::pair<std::string_view, RenderOrder>::second)->first;
 }
 
 Map Map::parse(const core::Json& document, std::string_view file, const JsonReader& read) {

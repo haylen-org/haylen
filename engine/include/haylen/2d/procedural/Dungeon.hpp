@@ -1,7 +1,10 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -61,7 +64,12 @@ class Dungeon final {
     // Throws `std::invalid_argument` when the room sizes are not positive and ordered or the map cannot hold one room.
     [[nodiscard]] static Result generate(const Options& options, math::Random& random);
 
+    [[nodiscard]] static std::optional<Method> methodFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view methodName(Method value) noexcept;
+
   private:
+    static const std::array<std::pair<std::string_view, Method>, 2> kMethodNames;
+
     struct Leaf {
         int x = 0;
         int y = 0;

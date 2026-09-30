@@ -37,7 +37,7 @@ local tiled = require('haylen.tiled')
 local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 ```
 
-The loaded asset is a `TiledMap` value that holds the parsed data and is cached by path like any asset. The function `tiled.newMapRenderer` makes a playable `MapRenderer` from it. Each playable map owns its own copy of the data, so `map:setTile` never changes the cached asset, and two maps made from the same asset are independent.
+The loaded asset is a `Map` value that holds the parsed data and is cached by path like any asset. The function `tiled.newMapRenderer` makes a playable `MapRenderer` from it. Each playable map owns its own copy of the data, so `map:setTile` never changes the cached asset, and two maps made from the same asset are independent.
 
 The functions `assets.load(path, nil, options)` and `assets.loadAsync(path, nil, options)` accept the texture options `filter` (`'nearest'` by default, or `'linear'`) and `wrap` for every image of the map. The function `loadAsync` parses the map and decodes its images on worker threads and returns a `Promise` that a coroutine can `:await()`. Maps can also be part of a preload group, which is how Tiny Island loads its island while the boot screen shows progress:
 

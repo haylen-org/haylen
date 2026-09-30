@@ -90,10 +90,11 @@ std::vector<Table::Column> Table::readColumns(PropertyReader& reader, const core
             column.width = width->get<float>();
         }
         if (const auto align = entry.find("align"); align != entry.end()) {
-            if (!align->is_string() || (*align != "start" && *align != "center" && *align != "end")) {
+            const auto found = align->is_string() ? std::ranges::find(Typography::kAlignments, align->get<std::string>(), &std::pair<std::string_view, Alignment>::first) : Typography::kAlignments.end();
+            if (found == Typography::kAlignments.end()) {
                 reader.fail("columns", "has an \"align\" other than \"start\", \"center\" or \"end\"");
             }
-            column.align = *align == "center" ? Alignment::Center : (*align == "end" ? Alignment::End : Alignment::Start);
+            column.align = found->second;
         }
         parsed.push_back(std::move(column));
     }

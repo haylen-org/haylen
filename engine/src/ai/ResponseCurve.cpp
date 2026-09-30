@@ -1,9 +1,12 @@
 #include "haylen/ai/ResponseCurve.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 
 namespace haylen::ai {
+
+const std::array<std::pair<std::string_view, ResponseCurve::Shape>, 5> ResponseCurve::kShapeNames{{{"linear", Shape::Linear}, {"polynomial", Shape::Polynomial}, {"logistic", Shape::Logistic}, {"logit", Shape::Logit}, {"normal", Shape::Normal}}};
 
 float ResponseCurve::evaluate(float input) const noexcept {
     const float x = std::clamp(input, 0.0F, 1.0F) - shift;
@@ -32,38 +35,12 @@ float ResponseCurve::evaluate(float input) const noexcept {
 }
 
 std::optional<ResponseCurve::Shape> ResponseCurve::shapeFromName(std::string_view name) noexcept {
-    if (name == "linear") {
-        return Shape::Linear;
-    }
-    if (name == "polynomial") {
-        return Shape::Polynomial;
-    }
-    if (name == "logistic") {
-        return Shape::Logistic;
-    }
-    if (name == "logit") {
-        return Shape::Logit;
-    }
-    if (name == "normal") {
-        return Shape::Normal;
-    }
-    return std::nullopt;
+    const auto found = std::ranges::find(kShapeNames, name, &std::pair<std::string_view, Shape>::first);
+    return found != kShapeNames.end() ? std::optional(found->second) : std::nullopt;
 }
 
 std::string_view ResponseCurve::shapeName(Shape value) noexcept {
-    switch (value) {
-    case Shape::Polynomial:
-        return "polynomial";
-    case Shape::Logistic:
-        return "logistic";
-    case Shape::Logit:
-        return "logit";
-    case Shape::Normal:
-        return "normal";
-    case Shape::Linear:
-        break;
-    }
-    return "linear";
+    return std::ranges::find(kShapeNames, value, &std::pair<std::string_view, Shape>::second)->first;
 }
 
 } // namespace haylen::ai

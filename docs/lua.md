@@ -457,7 +457,7 @@ A C++ project can add its own Lua modules, backed by its own plugin, while the a
 | `Userdata.hpp` | `Userdata::check`, `Userdata::checkShared`, `Userdata::test` and `Userdata::emplace` for bound objects, `Userdata::equal` for an `__eq` that compares the bound objects, and `Userdata::pushField`, `Userdata::setField` and `Userdata::pushFunction` for storing Lua callbacks on userdata. |
 | `Type.hpp` | The `Type<T>` trait that binds a C++ type as userdata. |
 | `Converter.hpp` | The `Converter<T>` trait with the conversions of scalars, strings, optionals, vectors and bound types. |
-| `EnumNames.hpp` | The `EnumNames<T>` trait for enums passed as strings. |
+| `EnumNames.hpp` | The `EnumNames<T>` trait for enums passed as strings. Every engine enum has one table of its names, which its specialization and the file parsers share, usually owned by its class, such as `Texture::filterFromName` and `Texture::filterName`. |
 | `Table.hpp` | `Table::checkFields` and `Table::readField` for option tables whose unknown keys are errors. |
 | `Binding.hpp` | `Binding::preload`, which adds a module to the Varn runtime of the engine, `Binding::newModule` and the `Binding::native`, `Binding::function` and `Binding::method` wrappers. |
 | `ClassBuilder.hpp` | `ClassBuilder` for metatables with methods and properties. |

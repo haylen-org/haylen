@@ -1,8 +1,10 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/2d/physics/Body.hpp"
@@ -45,6 +47,8 @@ class Explosion final {
     [[nodiscard]] static std::string_view falloffName(Falloff value) noexcept;
 
   private:
+    static const std::array<std::pair<std::string_view, Falloff>, 3> kFalloffNames;
+
     [[nodiscard]] static float scaleAt(const Options& options, float distance) noexcept;
 };
 

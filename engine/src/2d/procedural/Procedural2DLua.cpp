@@ -27,27 +27,10 @@ template <> struct Type<procedural2d::Delaunay> {
 
 template <> struct EnumNames<procedural2d::Scatter::Method> {
     static std::optional<procedural2d::Scatter::Method> fromName(std::string_view name) {
-        if (name == "random") {
-            return procedural2d::Scatter::Method::Random;
-        }
-        if (name == "grid") {
-            return procedural2d::Scatter::Method::Grid;
-        }
-        if (name == "poisson") {
-            return procedural2d::Scatter::Method::Poisson;
-        }
-        return std::nullopt;
+        return procedural2d::Scatter::methodFromName(name);
     }
     static std::string_view name(procedural2d::Scatter::Method value) {
-        switch (value) {
-        case procedural2d::Scatter::Method::Grid:
-            return "grid";
-        case procedural2d::Scatter::Method::Poisson:
-            return "poisson";
-        case procedural2d::Scatter::Method::Random:
-            break;
-        }
-        return "random";
+        return procedural2d::Scatter::methodName(value);
     }
 };
 

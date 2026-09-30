@@ -225,7 +225,7 @@ print(pixel.nativeSize, pixel.distanceField, pixel.pageCount)
 
 ### font:measure(text, style)
 
-Returns the width and height of `text` shaped and laid out with `style`. The style takes the text keys of `graphics2d.drawText` without its draw order keys, which raise `Unknown option "name".` because a font draws nothing itself. A `size`, `maxWidth` or `lineSpacing` that is not a finite number raises `Text needs a finite size, maximum width and line spacing.`.
+Returns the width and height of `text` shaped and laid out with `style`, stretched by its `scale`, which is the block `graphics2d.drawText` covers. The style takes the text keys of `graphics2d.drawText` without its draw order keys, which raise `Unknown option "name".` because a font draws nothing itself. A `size`, `maxWidth` or `lineSpacing` that is not a finite number raises `Text needs a finite size, maximum width and line spacing.`.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -236,7 +236,7 @@ print(width, height)
 
 ### font:layout(text, style)
 
-Lays `text` out with the layout keys of `style`, like `graphics2d.drawText` does, where `style` takes the same keys as `font:measure`, and returns a table with these fields. Positions are relative to the anchor point of the text block, before rotation.
+Lays `text` out with the layout keys of `style`, like `graphics2d.drawText` does, where `style` takes the same keys as `font:measure`, and returns a table with these fields. Positions are relative to the anchor point of the text block, before rotation and scale.
 
 | Field | Type | Meaning |
 | --- | --- | --- |

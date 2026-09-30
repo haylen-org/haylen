@@ -112,7 +112,7 @@ function hero:draw()
     local sprite = self.sprite
     sprite.x = self.x
     sprite.y = self.y + self.lift
-    sprite.flipX = self.facing < 0
+    sprite.flipHorizontal = self.facing < 0
     sprite.color = self.resting and '#99FFFFFF' or '#FFFFFFFF'
     sprite:draw()
 end

@@ -31,16 +31,10 @@ template <> struct Type<procedural2d::WaveFunctionCollapse::Rules> {
 
 template <> struct EnumNames<procedural2d::Dungeon::Method> {
     static std::optional<procedural2d::Dungeon::Method> fromName(std::string_view name) {
-        if (name == "bsp") {
-            return procedural2d::Dungeon::Method::Bsp;
-        }
-        if (name == "placement") {
-            return procedural2d::Dungeon::Method::Placement;
-        }
-        return std::nullopt;
+        return procedural2d::Dungeon::methodFromName(name);
     }
     static std::string_view name(procedural2d::Dungeon::Method value) {
-        return value == procedural2d::Dungeon::Method::Bsp ? "bsp" : "placement";
+        return procedural2d::Dungeon::methodName(value);
     }
 };
 
@@ -49,38 +43,16 @@ template <> struct EnumNames<procedural2d::Maze::Algorithm> {
         return procedural2d::Maze::algorithmFromName(name);
     }
     static std::string_view name(procedural2d::Maze::Algorithm value) {
-        switch (value) {
-        case procedural2d::Maze::Algorithm::Prim:
-            return "prim";
-        case procedural2d::Maze::Algorithm::Kruskal:
-            return "kruskal";
-        case procedural2d::Maze::Algorithm::Backtracker:
-            break;
-        }
-        return "backtracker";
+        return procedural2d::Maze::algorithmName(value);
     }
 };
 
 template <> struct EnumNames<procedural2d::WaveFunctionCollapse::Direction> {
     static std::optional<procedural2d::WaveFunctionCollapse::Direction> fromName(std::string_view name) {
-        using Direction = procedural2d::WaveFunctionCollapse::Direction;
-        if (name == "right") {
-            return Direction::Right;
-        }
-        if (name == "down") {
-            return Direction::Down;
-        }
-        if (name == "left") {
-            return Direction::Left;
-        }
-        if (name == "up") {
-            return Direction::Up;
-        }
-        return std::nullopt;
+        return procedural2d::WaveFunctionCollapse::directionFromName(name);
     }
     static std::string_view name(procedural2d::WaveFunctionCollapse::Direction value) {
-        using Direction = procedural2d::WaveFunctionCollapse::Direction;
-        return value == Direction::Right ? "right" : (value == Direction::Down ? "down" : (value == Direction::Left ? "left" : "up"));
+        return procedural2d::WaveFunctionCollapse::directionName(value);
     }
 };
 

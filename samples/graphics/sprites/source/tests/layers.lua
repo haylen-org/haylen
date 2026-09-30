@@ -75,7 +75,7 @@ function Layers:update(dt)
             hero.targetX, hero.targetY = random:range(60, self.area.width - 60), random:range(120, self.area.height - 20)
         else
             sprite.x, sprite.y = sprite.x + dx / distance * 90 * dt, sprite.y + dy / distance * 90 * dt
-            sprite.flipX = dx < 0
+            sprite.flipHorizontal = dx < 0
         end
     end
 

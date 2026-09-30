@@ -57,7 +57,7 @@ function enemy:draw()
         pivotY = 1,
         scaleX = scale,
         scaleY = scale,
-        flipX = self.facing < 0,
+        flipHorizontal = self.facing < 0,
         flash = {1, 1, 1, self.flash * 0.8},
         layer = config.layer.enemies,
     })

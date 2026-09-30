@@ -187,8 +187,8 @@ Draws `texture` once with its pivot at `x`, `y`. The argument `options` is optio
 | `rotation` | number | `0` | Rotation in radians. |
 | `color` | Color | `'#FFFFFFFF'` | Multiplies the texture color. |
 | `flash` | Color | `'#00000000'` | Mixes the result toward this color by its alpha, for hit flashes. |
-| `flipX`, `flipY` | boolean | `false` | Mirror the image horizontally or vertically. |
-| `flipDiagonal` | boolean | `false` | Mirror the image across its diagonal from the top-left corner, which with `flipX` and `flipY` turns it by quarter turns, the way Tiled rotates tiles. |
+| `flipHorizontal`, `flipVertical` | boolean | `false` | Mirror the image horizontally or vertically. |
+| `flipDiagonal` | boolean | `false` | Mirror the image across its diagonal from the top-left corner, which with `flipHorizontal` and `flipVertical` turns it by quarter turns, the way Tiled rotates tiles. |
 | `x`, `y` | number | the arguments | Replace the position arguments. |
 | `layer`, `depth`, `sortOffset`, `visibility`, `blend`, `material`, `normalMap`, `specular`, `shininess`, `emission`, `lightMask`, `unshaded` | | | [Draw order](#draw-order). |
 
@@ -202,7 +202,7 @@ local sheet = assets.texture('tiny_swords/units/blue/warrior/warrior_idle.png')
 scene.push({
     render = function(self)
         graphics2d.beginScreen()
-        graphics2d.draw(sheet, 400, 300, {source = {0, 0, 192, 192}, scaleX = 2, scaleY = 2, flipX = true, flash = '#80FFFFFF'})
+        graphics2d.draw(sheet, 400, 300, {source = {0, 0, 192, 192}, scaleX = 2, scaleY = 2, flipHorizontal = true, flash = '#80FFFFFF'})
     end,
 })
 ```
@@ -872,7 +872,7 @@ scene.push({
         graphics2d.endCapture()
 
         graphics2d.beginScreen()
-        graphics2d.draw(mirror.texture, 0, 0, {pivotX = 0, pivotY = 0, flipX = true})
+        graphics2d.draw(mirror.texture, 0, 0, {pivotX = 0, pivotY = 0, flipHorizontal = true})
     end,
 })
 ```
@@ -1252,7 +1252,7 @@ A `Sprite` is a value that describes one quad and draws it with `sprite:draw()`.
 | `color` | Color | `'#FFFFFFFF'` | Multiplies the texture color. |
 | `flash` | Color | `'#00000000'` | Mixes the result toward this color by its alpha. |
 | `source` | Rect | empty | Region of the texture in pixels. An empty rectangle covers the whole texture. |
-| `flipX`, `flipY` | boolean | `false` | Mirror the image. |
+| `flipHorizontal`, `flipVertical` | boolean | `false` | Mirror the image. |
 | `flipDiagonal` | boolean | `false` | Mirror the image across its diagonal from the top-left corner. |
 | `layer`, `depth`, `sortOffset`, `visibility`, `blend` | | `0`, `0`, `0`, `1`, `'alpha'` | [Draw order](#draw-order). |
 | `material` | Material or nil | nil | Custom shader of the sprite. |
@@ -1271,7 +1271,7 @@ local scene = require('haylen.scene')
 
 local sprite = graphics2d.newSprite(assets.texture('tiny_swords/units/blue/warrior/warrior_idle.png'), {source = {0, 0, 192, 192}})
 sprite.position = {500, 300}
-sprite.flipX = true
+sprite.flipHorizontal = true
 sprite.color = '#FFFFC0C0'
 
 scene.push({
@@ -1295,7 +1295,7 @@ A `SpriteBatch` holds many sprites that share one texture. Indices count from 1.
 | `rotation` | number | `0` | Rotation in radians. |
 | `color` | Color | `'#FFFFFFFF'` | Multiplies the texture color. |
 | `flash` | Color | `'#00000000'` | Mixes the result toward this color by its alpha. |
-| `flipX`, `flipY` | boolean | `false` | Mirror the image. |
+| `flipHorizontal`, `flipVertical` | boolean | `false` | Mirror the image. |
 | `flipDiagonal` | boolean | `false` | Mirror the image across its diagonal from the top-left corner. |
 
 ### Sprite fields
@@ -1336,9 +1336,9 @@ local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 
 local batch = graphics2d.newSpriteBatch(graphics.whiteTexture())
-local index = batch:add({x = 10, y = 20, width = 8, height = 8, flipX = true})
+local index = batch:add({x = 10, y = 20, width = 8, height = 8, flipHorizontal = true})
 local sprite = batch:get(index)
-print(sprite.x, sprite.width, sprite.flipX, sprite.color:toHex())
+print(sprite.x, sprite.width, sprite.flipHorizontal, sprite.color:toHex())
 ```
 
 ### batch:reserve(count)

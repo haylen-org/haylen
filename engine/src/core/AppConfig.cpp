@@ -37,28 +37,11 @@ platform::Orientation AppConfig::orientationFromName(const std::string& text) {
 }
 
 audio::Session::Category AppConfig::sessionCategoryFromName(const std::string& text) {
-    if (text == "ambient") {
-        return audio::Session::Category::Ambient;
+    const std::optional<audio::Session::Category> category = audio::Session::categoryFromName(text);
+    if (!category) {
+        throw std::invalid_argument("The \"audio.iosSession\" value \"" + text + "\" in \"app.json\" is unknown. It is \"ambient\", \"soloAmbient\" or \"playback\".");
     }
-    if (text == "soloAmbient") {
-        return audio::Session::Category::SoloAmbient;
-    }
-    if (text == "playback") {
-        return audio::Session::Category::Playback;
-    }
-    throw std::invalid_argument("The \"audio.iosSession\" value \"" + text + "\" in \"app.json\" is unknown. It is \"ambient\", \"soloAmbient\" or \"playback\".");
-}
-
-std::string_view AppConfig::sessionCategoryName(audio::Session::Category value) {
-    switch (value) {
-    case audio::Session::Category::Ambient:
-        return "ambient";
-    case audio::Session::Category::SoloAmbient:
-        return "soloAmbient";
-    case audio::Session::Category::Playback:
-        return "playback";
-    }
-    return "ambient";
+    return *category;
 }
 
 // Plugin ids are `dash-case`, like the folders of the plugins: lowercase words of letters and digits joined by single dashes, starting with a letter.
@@ -276,7 +259,7 @@ Json AppConfig::toJson() const {
         windowJson["position"] = window.position->toJson();
     }
     return {
-        {"name", name}, {"identifier", identifier}, {"version", version}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", {{"logo", splash.logo}, {"background", splash.background.toHex()}}}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", sessionCategoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}}}, {"debug", debugJson}, {"autoload", autoloads}, {"native", native}, {"plugins", plugins},
+        {"name", name}, {"identifier", identifier}, {"version", version}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", {{"logo", splash.logo}, {"background", splash.background.toHex()}}}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", audio::Session::categoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}}}, {"debug", debugJson}, {"autoload", autoloads}, {"native", native}, {"plugins", plugins},
     };
 }
 

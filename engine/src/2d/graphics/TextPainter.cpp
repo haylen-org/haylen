@@ -18,10 +18,10 @@ void TextPainter::add(Program program, const graphics::Texture& texture, const G
 }
 
 // Plain text turns as one piece around the position, so every glyph turns around its baseline at a turned place. Shadows are the same glyphs drawn first, moved by the offset on the screen, in the shadow color with the blur as softness, and a bitmap shadow is the silhouette of its glyph.
-void TextPainter::paintText(const text::Layout& layout, math::Vec2 position, const text::Style& style, math::Vec2 scale) {
+void TextPainter::paintText(const text::Layout& layout, math::Vec2 position, const text::Style& style) {
     blockPosition = position;
     blockOrigin = layout.size * style.anchor;
-    blockScale = scale;
+    blockScale = style.scale;
     blockRotation = style.rotation;
     blockTint = math::Color::white();
     if (style.shadowColor.a > 0.0F) {
