@@ -195,6 +195,10 @@ Cada ponto abaixo precisa estar coberto pelo grupo AA da seção 14.2.
 126. A engine não impõe nada aos projetos finais do Android e do Xcode. Cada plugin define o que o projeto precisa (frameworks, dependências, permissões, chaves do Info.plist, entitlements e configurações), e o projeto é do desenvolvedor, que o altera como quiser (por exemplo editando o `project.yml` do XcodeGen e gerando de novo), porque cada empresa tem o seu padrão. A engine não carrega nem compila coisas particulares que o app não usa. Quando um requisito de um plugin falta, o plugin registra no log e ignora a chamada até o desenvolvedor cumprir o requisito, em vez de quebrar. Analisar, pesquisar, planejar e revisar a melhor forma de organizar isso.
 127. Regra: o `CLAUDE.md` só cita uma versão ou um número quando uma regra depende dele, como o C++20 da linguagem ou os 100% de cobertura que os testes buscam. Valores secundários que mudam o tempo todo ficam fora: versões de bibliotecas, de ferramentas, de SDKs e da própria engine, e limites, tamanhos, contagens e durações que o código declara. Para esses, a regra diz o tipo de limite e aponta o arquivo que guarda o valor.
 128. Os templates de app e de plugin trazem o `.gitignore`, o `.editorconfig` e o `.clang-format`, então todo projeto criado pelo `make.py new` e pelo `make.py plugin new` já nasce com eles.
+129. O Tiny Island no Apple TV fica lento e pisca de um jeito estranho: há um problema de renderização a achar e corrigir.
+130. O switch desligado (e pressionado) aparece como uma barra azul estranha, enquanto o ligado está certo: o desenho de todos os estados do switch tem que ficar coerente.
+131. No Tiny Island, a fogueira do menu é de partículas e a do jogo é outra coisa: as duas têm que ser a mesma, com o mesmo efeito.
+132. Revisar o render para funcionar bem em tudo, com muita performance, melhor do que as engines atuais, em todas as plataformas.
 
 ## 3. Regras
 
@@ -836,7 +840,7 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 | 12 | Jogo Tiny Island em Lua | Concluída |
 | 13 | Testes e cobertura até o máximo possível | Concluída |
 | 14 | Documentação e revisão final (bugs, legado, não utilizado, race conditions e crashes) | Concluída, com testes de regressão para as correções |
-| 15 | Pedidos 51 a 128 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
+| 15 | Pedidos 51 a 132 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
 
 ## 13. Limitações conhecidas
 
@@ -847,9 +851,9 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 - visionOS nativo depende do Sokol, que usa o `UIScreen`, indisponível no SDK do visionOS. O app iOS roda no Apple Vision Pro como app de iPad compatível. watchOS é impossível, porque o SDK do watchOS não tem Metal, MetalKit, GameController nem AudioToolbox.
 - O Sokol só aceita imagens inteiras em texturas que vivem entre frames, então uma textura dinâmica alterada (os atlas das fontes e da UI) sobe todos os pixels, uma vez por frame.
 
-## 14. Pedidos 51 a 128: decisões e checklist
+## 14. Pedidos 51 a 132: decisões e checklist
 
-Esta seção cobre os pedidos 51 a 128 das seções 2.1, 2.2, 2.3, 2.4 e 2.5. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
+Esta seção cobre os pedidos 51 a 132 das seções 2.1, 2.2, 2.3, 2.4 e 2.5. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
 
 ### 14.1 Decisões de organização
 
@@ -1458,6 +1462,14 @@ Decisões, a partir da pesquisa dos SDKs que abrem telas próprias (RevenueCat, 
 - [x] `docs/lifecycle.md` corrigido: as respostas da bridge, os timers e os callbacks de rede esperam enquanto a plataforma não roda frames (Android pausado ou sem foco, iOS e tvOS inativos, aba escondida no navegador).
 - [x] O plugin de demonstração abre uma tela nativa de verdade em cada plataforma (uma activity AndroidX com resultado, um view controller e uma tela em SwiftUI, um popup na web e uma janela no desktop) e recebe o resultado, inclusive depois de o processo morrer no Android. Prontos: a Apple (uma tela em UIKit, uma em SwiftUI e uma sheet no macOS), a web e o desktop. No Android, uma activity do AndroidX, com o resultado chegando depois de o processo morrer, conferido no emulador.
 - [x] Guia `docs/plugins.md` com as telas de plugins e as regras no CLAUDE.md.
+
+#### AG. Render, desempenho e o Tiny Island
+
+- [ ] Tiny Island no Apple TV: achar por que fica lento e pisca (simulador e, se possível, aparelho), corrigir a causa no render ou no host da Apple e conferir que ele roda liso na taxa da tela do tvOS, sem piscar, também no iOS, no Mac Catalyst e no macOS.
+- [ ] Switch: o estado desligado, o ligado, o pressionado e o de foco desenhados com a mesma arte e coerentes entre si, no tema do Tiny Island e no tema padrão da UI, conferidos em todas as plataformas.
+- [ ] Fogueira do Tiny Island: o mesmo efeito de partículas no menu e no jogo, vindo de um lugar só no código do jogo.
+- [ ] Revisão de desempenho do render: lotes e chamadas de desenho por frame, trocas de estado e de textura, uploads por frame, alocações no caminho quente, passes de luz e de pós-processamento, sincronização com a GPU e o ritmo dos frames em cada plataforma, com números antes e depois nos benchmarks da engine (`engine/bench`) e no Tiny Island.
+- [ ] Frames lisos em todas as plataformas: sem piscar, sem frames repetidos ou perdidos a mais, no ritmo da tela (Choreographer, CADisplayLink, `requestAnimationFrame` e vsync nos desktops), conferido com medições em cada plataforma.
 
 #### AF. Projetos de plataforma do desenvolvedor e requisitos dos plugins
 

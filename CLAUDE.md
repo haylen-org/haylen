@@ -221,6 +221,7 @@ extras/images/            Brand images: the vertical and horizontal logos, the s
 These rules apply to every text the project writes, without exception: code comments, documentation, `README.md`, `PROJECT.md`, error, log and console messages, the output of `make.py` and the other tools, the texts apps and samples show, and commit messages.
 
 - Every sentence starts with a capital letter. When a sentence would begin with a command, identifier, path, key or value written in lowercase, keep its exact spelling and put a capitalized word in front of it, such as "The command", "Run", "The function" or "The file".
+- The same holds for every text that is not a full sentence: titles, button and menu texts, captions, hints, labels and each line of an on-screen readout start with a capital letter, such as `Name %s, %d coins`. Only code shown as code keeps its own form.
 - Reserved expressions are always marked, so they never read as part of the prose: commands, code, identifiers, file names and paths, keys, option names and values. Markdown documents and code comments wrap them in backticks. Plain-text messages, logs and command output wrap them in double quotes, for example `Name the device with "--device". Use the command "xcrun devicectl list devices" to list them.`
 
 ## Comment standard
