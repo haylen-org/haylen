@@ -131,7 +131,9 @@ set(HAYLEN_SDK_ENGINE_FILE "${CMAKE_STATIC_LIBRARY_PREFIX}haylen${CMAKE_STATIC_L
 set(HAYLEN_SDK_RUNTIME_FILE "${CMAKE_STATIC_LIBRARY_PREFIX}haylen_runtime${CMAKE_STATIC_LIBRARY_SUFFIX}")
 set(HAYLEN_SDK_CONFIG_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/haylen")
 set(HAYLEN_SDK_SHARE_DIR "${CMAKE_INSTALL_DATADIR}/haylen")
-file(RELATIVE_PATH HAYLEN_SDK_PREFIX_FROM_CONFIG "/${HAYLEN_SDK_CONFIG_DIR}" "/")
+# The path from the config folder up to the prefix is computed from the names alone, since a root without a drive is no full path on Windows.
+set(HAYLEN_SDK_PREFIX_FROM_CONFIG "/")
+cmake_path(RELATIVE_PATH HAYLEN_SDK_PREFIX_FROM_CONFIG BASE_DIRECTORY "/${HAYLEN_SDK_CONFIG_DIR}")
 configure_file("${HAYLEN_CMAKE_DIR}/haylen-config.cmake.in" "${sdk}/haylen-config.cmake" @ONLY)
 write_basic_package_version_file("${sdk}/haylen-config-version.cmake" VERSION "${PROJECT_VERSION}" COMPATIBILITY SameMinorVersion)
 
