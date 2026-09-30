@@ -24,6 +24,7 @@ This file is binding for every change. It describes the project as it is and the
 - A commit message is one short sentence after a type prefix, `feature: ...`, `fix: ...`, `refactor: ...`, `perf: ...`, `test: ...`, `docs: ...`, `build: ...` or `chore: ...`, and the sentence starts with a capital letter, as the writing standard requires of every text, for example `feature: Add scene loading lifecycle`. It has no body, no co-author and no other trailer, and never names Claude or anyone else.
 - Before every commit, review what is staged (`git status` and `git diff --cached --stat`) and make sure nothing private or temporary goes in: build outputs, caches, generated projects under `build/`, local tool folders, logs, screenshots, secrets, API keys, tokens, signing keys and keystores, `local.properties`, `.env` files, machine-specific paths or settings, and personal data. Anything like that belongs in `.gitignore`, never in the repository.
 - Screenshots used to check a change capture only the app window or the page, never the whole screen.
+- Automated checks run emulators and simulators without a window, shut them down afterwards and never send input to a device or window that a person may be using.
 - Features that touch rendering, input, audio, text input, windows or platform code are run on the platforms they affect (desktop player, iOS and tvOS simulators, Mac Catalyst, Android emulator, browser), and a sample shows each of them working.
 
 ## What the engine is
