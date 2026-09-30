@@ -215,13 +215,32 @@ public final class HaylenBridge {
         }
     }
 
-    // Failures carry JSON alone.
-    private static void fail(long call, String json) {
-        nativeResolve(call, false, utf8(json), HaylenPayload.NO_BUFFERS);
+    // A failure as the JSON that the engine reads, `{message, code, data}`, whose code and data are optional. Failures carry JSON alone.
+    static byte[] encodeFailure(String message, String code, Object data) {
+        String text = message == null ? "The native call failed." : message;
+        try {
+            JSONObject failure = new JSONObject().put("message", text).putOpt("code", code);
+            if (data != null) {
+                failure.put("data", JSONObject.wrap(data));
+            }
+            return utf8(failure.toString());
+        } catch (JSONException error) {
+            return utf8(JSONObject.quote(text));
+        }
+    }
+
+    // A `Failure` keeps its code and data, and any other error fails with the code `exception` and the class of the error in `data.type`.
+    static byte[] encodeFailure(Throwable error) {
+        if (error instanceof Failure) {
+            Failure failure = (Failure) error;
+            return encodeFailure(failure.getMessage(), failure.code(), failure.data());
+        }
+        String message = error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
+        return encodeFailure(message, "exception", Collections.singletonMap("type", error.getClass().getName()));
     }
 
     // Text crosses JNI as UTF-8 bytes, because the JNI string functions use a modified UTF-8 that breaks characters outside the Basic Multilingual Plane, such as emoji.
-    private static byte[] utf8(String text) {
+    static byte[] utf8(String text) {
         return text.getBytes(StandardCharsets.UTF_8);
     }
 
@@ -275,7 +294,7 @@ public final class HaylenBridge {
                 HaylenPayload payload = HaylenPayload.encode(value);
                 nativeResolve(call, true, payload.json, payload.buffers);
             } catch (JSONException error) {
-                fail(call, JSONObject.quote("The native handler returned a value that is not JSON: " + error.getMessage()));
+                nativeResolve(call, false, encodeFailure("The native handler returned a value that is not JSON: " + error.getMessage(), null, null), HaylenPayload.NO_BUFFERS);
             }
         }
 
@@ -286,31 +305,16 @@ public final class HaylenBridge {
 
         @Override
         public void failure(String message, String code, Object data) {
-            if (!settle()) {
-                return;
-            }
-            try {
-                JSONObject failure = new JSONObject();
-                failure.put("message", message == null ? "The native call failed." : message);
-                failure.putOpt("code", code);
-                if (data != null) {
-                    failure.put("data", JSONObject.wrap(data));
-                }
-                fail(call, failure.toString());
-            } catch (JSONException error) {
-                fail(call, JSONObject.quote(message == null ? "The native call failed." : message));
+            if (settle()) {
+                nativeResolve(call, false, encodeFailure(message, code, data), HaylenPayload.NO_BUFFERS);
             }
         }
 
         @Override
         public void failure(Throwable error) {
-            if (error instanceof Failure) {
-                Failure failure = (Failure) error;
-                failure(failure.getMessage(), failure.code(), failure.data());
-                return;
+            if (settle()) {
+                nativeResolve(call, false, encodeFailure(error), HaylenPayload.NO_BUFFERS);
             }
-            String message = error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
-            failure(message, "exception", Collections.singletonMap("type", error.getClass().getName()));
         }
 
         @Override

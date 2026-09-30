@@ -1,10 +1,13 @@
 package dev.haylen;
 
 import android.Manifest;
+import android.app.ActivityManager;
 import android.app.UiModeManager;
 import android.content.ActivityNotFoundException;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
@@ -12,6 +15,7 @@ import android.hardware.input.InputManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.LocaleList;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.util.Log;
@@ -22,7 +26,6 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import androidx.activity.OnBackPressedCallback;
-import androidx.core.content.IntentCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -33,16 +36,19 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TimeZone;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 // Hosts a Haylen app. The class `GameActivity`, an `AppCompatActivity`, loads the native library that the `android.app.lib_name` meta-data names and draws the app in a `SurfaceView` of an ordinary view hierarchy, so plugins place views over the app, register Activity Result launchers and use fragments, dialogs and Compose.
 // The manifest gives the activity the `Theme.Haylen.Splash` theme, whose splash screen hands over to a view with the same look that stays until the app has drawn its first frame.
 // The template declares the activity single top, and `HaylenLinkActivity` hands it the links and notifications that open the app, so a screen of a plugin that shows over the app outlives the launcher icon and the links.
 public class HaylenActivity extends GameActivity implements InputManager.InputDeviceListener {
-    // The link that `HaylenLinkActivity` started the activity with, next to the launcher intent that the task of the app keeps.
-    static final String EXTRA_LINK = "dev.haylen.link";
+    // The link that `HaylenLinkActivity` received while no activity ran, which the next activity of the process takes. A launch that brings an existing task to the front keeps the intent that the task started with, even when Android restores its activity after the end of the process, so the link waits here instead of in the intent. Only the main thread reaches it.
+    private static Intent pendingLink;
 
     private final HaylenSplash splash = new HaylenSplash(this);
+    private final HaylenBattery battery = new HaylenBattery(this);
     private HaylenRequirements requirements;
     private HaylenOverlayLayer overlays;
     private HaylenEditText editor;
@@ -56,12 +62,16 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         HaylenBridge.attach(this);
         // The class `GameActivity` loads the native library here and starts the app on its render thread.
         super.onCreate(savedInstanceState);
-        Intent link = IntentCompat.getParcelableExtra(getIntent(), EXTRA_LINK, Intent.class);
-        if (link != null) {
+        // A new activity starts with the link as its intent, while a restored one hands it to the plugins as a new intent once they heard of the activity.
+        Intent link = pendingLink;
+        pendingLink = null;
+        if (link != null && savedInstanceState == null) {
             setIntent(link);
         }
-        nativeTelevision(getSystemService(UiModeManager.class).getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION);
+        nativeTelevision(isTelevision(this));
         nativeOrientation(getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);
+        nativeTheme(isDark(getResources().getConfiguration()));
+        battery.register();
 
         // The views over the app share the layout of its surface, above it.
         FrameLayout content = findViewById(contentViewId);
@@ -83,9 +93,14 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         followNetwork();
         HaylenPlugins.checkLoaded(getApplication());
 
-        // The audio focus follows the lifecycle before the plugins do, so it is requested before they hear of a resume and abandoned after they hear of a pause.
+        // The audio focus follows the lifecycle before the plugins do, so it is requested before they hear of a resume and abandoned after they hear of a pause. The launchers of the dialogs and of the screens of plugins are registered before the activity starts, like the launchers of the plugins.
         getLifecycle().addObserver(new HaylenAudioFocus(this));
+        HaylenDialogs.activityCreated(this);
+        HaylenScreens.activityCreated(this);
         HaylenPlugins.activityCreated(this, savedInstanceState);
+        if (link != null && savedInstanceState != null) {
+            receiveIntent(link);
+        }
     }
 
     // The class `GameActivity` sets up the window before it creates the activity. The app draws edge to edge, under the cutout, with the system bars hidden until a swipe shows them, and the software keyboard lies over the app without resizing it, while the engine lifts the focused field above it.
@@ -115,10 +130,12 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         receiveIntent(intent);
     }
 
+    // The manifest of the template lets the activity handle a change of the UI mode itself, which is how the night mode of the system reaches it.
     @Override
     public void onConfigurationChanged(Configuration configuration) {
         super.onConfigurationChanged(configuration);
         nativeOrientation(configuration.orientation == Configuration.ORIENTATION_PORTRAIT);
+        nativeTheme(isDark(configuration));
         overlays.refresh();
         HaylenPlugins.configurationChanged(configuration);
     }
@@ -138,13 +155,15 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         return super.dispatchGenericMotionEvent(event);
     }
 
-    // The app stops inside `GameActivity`, which runs its cleanup and lets the activity finish, while the bridge, the editor and the listeners it may still use are attached. The plugins hear of it next, and the views they left over the app go with the activity.
+    // The app stops inside `GameActivity`, which runs its cleanup and lets the activity finish, while the bridge, the editor and the listeners it may still use are attached. The plugins hear of it next, and the views they left over the app and the messages that still show go with the activity.
     @Override
     protected void onDestroy() {
         super.onDestroy();
         HaylenPlugins.activityDestroyed(this);
         overlays.removeAll();
+        HaylenDialogs.activityDestroyed();
         splash.dismiss();
+        battery.unregister();
         getSystemService(InputManager.class).unregisterInputDeviceListener(this);
         if (network != null) {
             network.unregister();
@@ -192,12 +211,36 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         }
     }
 
-    // Called from the frame thread of the engine when an app first starts, with what Android tells about the device as JSON.
+    // Called from the frame thread of the engine when the first app of the process starts, with what Android tells about the device as the JSON that `AndroidDeviceInfo` reads. A tablet is a device whose smallest screen side has the 600 dp that the tablet layouts of Android start at, the processor has a name from Android 12 on, and a value that the device reports as `Build.UNKNOWN` stays unknown.
     static byte[] systemInfo() {
+        HaylenActivity activity = HaylenBridge.activity();
+        if (activity == null) {
+            return "{}".getBytes(StandardCharsets.UTF_8);
+        }
+        ActivityManager.MemoryInfo memory = new ActivityManager.MemoryInfo();
+        activity.getSystemService(ActivityManager.class).getMemoryInfo(memory);
+        LocaleList locales = LocaleList.getDefault();
+        JSONArray languages = new JSONArray();
+        for (int index = 0; index < locales.size(); ++index) {
+            languages.put(locales.get(index).toLanguageTag());
+        }
+
         Map<String, Object> info = new HashMap<>();
         info.put("osVersion", Build.VERSION.RELEASE);
         info.put("deviceModel", Build.MODEL);
+        if (!Build.MANUFACTURER.equals(Build.UNKNOWN)) {
+            info.put("manufacturer", Build.MANUFACTURER);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !Build.SOC_MODEL.equals(Build.UNKNOWN)) {
+            info.put("cpuName", Build.SOC_MODEL);
+        }
+        info.put("cpuCores", Runtime.getRuntime().availableProcessors());
+        info.put("memoryBytes", memory.totalMem);
+        info.put("television", isTelevision(activity));
+        info.put("tablet", activity.getResources().getConfiguration().smallestScreenWidthDp >= 600);
         info.put("locale", Locale.getDefault().toLanguageTag());
+        info.put("languages", languages);
+        info.put("timeZone", TimeZone.getDefault().getID());
         return new JSONObject(info).toString().getBytes(StandardCharsets.UTF_8);
     }
 
@@ -245,6 +288,11 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         return ("The app lacks " + internet.description() + ", which network access needs on Android. " + internet.instructions()).getBytes(StandardCharsets.UTF_8);
     }
 
+    // Called by `HaylenLinkActivity` on the main thread while no activity runs.
+    static void keepLink(Intent link) {
+        pendingLink = link;
+    }
+
     // A link or a notification that reaches the running app, which becomes the intent of the activity before the plugins hear of it.
     void receiveIntent(Intent intent) {
         setIntent(intent);
@@ -283,6 +331,15 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         if (!editor.dismiss()) {
             nativeBack();
         }
+    }
+
+    // A TV runs in the television UI mode, and some TV devices tell it only through the leanback feature.
+    private static boolean isTelevision(Context context) {
+        return context.getSystemService(UiModeManager.class).getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION || context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
+    }
+
+    private static boolean isDark(Configuration configuration) {
+        return (configuration.uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
     }
 
     // Android 11 lets a window cover every cutout, Android 9 and 10 only those on the short edges, and earlier versions have no cutouts.
@@ -327,4 +384,6 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     private static native void nativeBack();
 
     private static native void nativeUrlOpened(long request, boolean opened);
+
+    private static native void nativeTheme(boolean dark);
 }

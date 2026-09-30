@@ -24,6 +24,12 @@ void ScreenRelay::abandon(std::uint64_t id) {
     const std::scoped_lock lock(mutex);
     if (showing && showing->id == id) {
         showing->abandoned = true;
+        return;
+    }
+    for (Ending& ending : endings) {
+        if (ending.screen.id == id) {
+            ending.screen.abandoned = true;
+        }
     }
 }
 

@@ -36,7 +36,7 @@ class ScreenRelay final {
     static void show(Screen screen);
     [[nodiscard]] static std::optional<Screen> getShowing();
 
-    // Marks the screen given up, so its end reaches no app.
+    // Marks the screen given up, so its end reaches no app, even an end that arrived already and waits for the next pump.
     static void abandon(std::uint64_t id);
 
     // Forgets a screen that never reached the platform, which therefore never ends it.

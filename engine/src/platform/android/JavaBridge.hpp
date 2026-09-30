@@ -13,9 +13,11 @@
 #include <unordered_map>
 #include <vector>
 
+#include "haylen/platform/ScreenRequest.hpp"
+
 namespace haylen::platform {
 
-// Calls into the Java side of the `haylen` Android library: the platform bridge of `dev.haylen.HaylenBridge`, the plugins of `dev.haylen.HaylenPlugins`, the hidden text field of `dev.haylen.HaylenEditText` and the orientation lock, the back callback and the system services of `dev.haylen.HaylenActivity`. A native thread attaches to the Java VM the first time it calls Java and detaches when it ends. An exception that a Java method throws never stays pending: it is logged with its stack and cleared, and a call that expects an answer gets a failed one.
+// Calls into the Java side of the `haylen` Android library: the platform bridge of `dev.haylen.HaylenBridge`, the plugins of `dev.haylen.HaylenPlugins`, the hidden text field of `dev.haylen.HaylenEditText`, the orientation lock, the back callback and the system services of `dev.haylen.HaylenActivity`, the native dialogs of `dev.haylen.HaylenDialogs` and the screens of plugins of `dev.haylen.HaylenScreens`. A native thread attaches to the Java VM the first time it calls Java and detaches when it ends. An exception that a Java method throws never stays pending: it is logged with its stack and cleared, and a call that expects an answer gets a failed one.
 class JavaBridge final {
   public:
     // Resolves the Java classes the native side calls, including the HTTP transport of Varn, which `JNI_OnLoad` does because the app class loader is still in reach there, and reads the plugins that the process loaded before. Returns the JNI version, or `JNI_ERR` when the APK lacks a class.
@@ -46,7 +48,7 @@ class JavaBridge final {
     // Tells the activity whether the app takes the back button, which on Android 13 and later decides whether back reaches the app or leaves it with the back animation of the system.
     static void captureBack(bool value);
 
-    // What Android tells about the device, as JSON with `osVersion`, `deviceModel` and `locale`.
+    // What Android tells about the device, as the JSON that `AndroidDeviceInfo` reads.
     [[nodiscard]] static std::string getSystemInfo();
 
     // The sentence that engine-owned network errors end with while the app does not declare the permission `INTERNET`, or an empty text.
@@ -58,8 +60,19 @@ class JavaBridge final {
 
     static void vibrate(std::int64_t milliseconds);
 
+    // Shows the dialog that the JSON of `AndroidDialogJson` describes, with the data of a save as bytes, and the Java side answers through the dialog relay. A dialog that Java never took fails at once.
+    static void showDialog(std::uint64_t id, std::string_view requestJson, std::span<const std::uint8_t> data);
+    static void cancelDialog(std::uint64_t id);
+
+    // Opens the screen of a plugin, and the Java side ends it through the screen relay. A screen that Java never took fails at once.
+    static void openScreen(const ScreenRequest& request);
+    static void cancelScreen(std::uint64_t id);
+
     // Text crosses JNI as UTF-8 bytes, because the JNI string functions use a modified UTF-8 that breaks characters outside the Basic Multilingual Plane, such as emoji.
     [[nodiscard]] static std::string toString(JNIEnv& env, jbyteArray bytes);
+
+    // Reads an array of texts that Java hands over as UTF-8 byte arrays.
+    [[nodiscard]] static std::vector<std::string> toStrings(JNIEnv& env, jobjectArray texts);
 
     // Copies the buffers that Java hands over, each a byte array or a direct `ByteBuffer`, once.
     [[nodiscard]] static std::vector<std::vector<std::byte>> toBuffers(JNIEnv& env, jobjectArray buffers);
@@ -69,6 +82,7 @@ class JavaBridge final {
     static void detachThread(void* env);
 
     [[nodiscard]] static jbyteArray toBytes(JNIEnv& env, std::string_view text);
+    [[nodiscard]] static jobjectArray toByteArrays(JNIEnv& env, std::span<const std::vector<std::byte>> buffers);
 
     [[nodiscard]] static jclass findClass(JNIEnv& env, const char* name);
 
@@ -94,6 +108,12 @@ class JavaBridge final {
     static jmethodID openUrlMethod;
     static jmethodID vibrateMethod;
     static jmethodID networkRequirementMethod;
+    static jclass dialogsClass;
+    static jmethodID showDialogMethod;
+    static jmethodID cancelDialogMethod;
+    static jclass screensClass;
+    static jmethodID openScreenMethod;
+    static jmethodID cancelScreenMethod;
 
     // The callbacks of the urls that wait for the answer of Java, by request.
     static std::mutex& urlMutex;

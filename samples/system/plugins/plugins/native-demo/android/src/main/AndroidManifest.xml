@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The permissions that `requestPermission` asks the person for and that `notify` needs from Android 13 on, which the plugin checks before it asks. Devices without a camera, such as TVs, still install the app. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
     <application>
         <!-- The provider of the `haylen-plugins` library creates and loads the plugin class that this entry names when the app process starts. -->
         <meta-data
             android:name="dev.haylen.plugin.native-demo"
             android:value="dev.haylen.plugins.nativedemo.NativeDemoPlugin" />
 
-        <!-- Joins the link activity of the `haylen-links` library, so links with the `urlScheme` parameter of the plugin, such as `haylendemo://hello`, open the app or reach it while it runs. -->
+        <!-- Joins the link activity of the `haylen-links` library, so links with the `urlScheme` parameter of the plugin, such as `haylendemo://hello`, open the app or reach it while it runs, and the taps on the notifications of the plugin reach the app the same way. -->
         <activity
             android:name="dev.haylen.HaylenLinkActivity"
             android:exported="true">
@@ -17,5 +22,16 @@
                 <data android:scheme="${nativeDemoUrlScheme}" />
             </intent-filter>
         </activity>
+
+        <!-- The confirm screen, which only the app starts. -->
+        <activity
+            android:name="dev.haylen.plugins.nativedemo.NativeDemoConfirmActivity"
+            android:exported="false"
+            android:theme="@style/Theme.AppCompat.DayNight.NoActionBar" />
+
+        <!-- Posts the notification of `notify` when its alarm goes off. -->
+        <receiver
+            android:name="dev.haylen.plugins.nativedemo.NativeDemoNotifier"
+            android:exported="false" />
     </application>
 </manifest>

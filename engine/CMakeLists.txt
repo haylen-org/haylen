@@ -557,6 +557,9 @@ haylen_enable_coverage(haylen_engine)
 add_library(haylen_platform STATIC
   src/platform/GamepadSlots.cpp
   src/platform/KeyboardTranslator.cpp
+  src/platform/android/AndroidBatteryStatus.cpp
+  src/platform/android/AndroidDeviceInfo.cpp
+  src/platform/android/AndroidDialogJson.cpp
   src/platform/linux/LinuxFilePattern.cpp
   src/platform/linux/LinuxSystemReader.cpp
   src/platform/sokol/MemoryWarning.cpp
@@ -622,7 +625,7 @@ if(APPLE)
 elseif(WIN32)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/windows/WindowsDesktop.cpp src/platform/windows/WindowsDialogs.cpp src/platform/windows/WindowsServices.cpp src/platform/windows/WindowsSystem.cpp src/platform/windows/WindowsText.cpp src/platform/windows/WindowsTextInput.cpp)
 elseif(ANDROID)
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/android/AndroidActivity.cpp src/platform/android/AndroidAssetPackage.cpp src/platform/android/AndroidGamepads.cpp src/platform/android/AndroidKeys.cpp src/platform/android/AndroidServices.cpp src/platform/android/AndroidTextInput.cpp src/platform/android/JavaBridge.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/android/AndroidActivity.cpp src/platform/android/AndroidAssetPackage.cpp src/platform/android/AndroidGamepads.cpp src/platform/android/AndroidKeys.cpp src/platform/android/AndroidServices.cpp src/platform/android/AndroidStreams.cpp src/platform/android/AndroidTextInput.cpp src/platform/android/JavaBridge.cpp)
 elseif(EMSCRIPTEN)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sokol/SokolImpl.c src/platform/web/WebPage.cpp src/platform/web/WebServices.cpp src/platform/web/WebTextInput.cpp)
 else()

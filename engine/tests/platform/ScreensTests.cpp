@@ -381,4 +381,23 @@ TEST_F(ScreensTest, TakesTheEndsOfScreensFromOtherThreads) {
     EXPECT_FALSE(fixture.engine().isAppCovered());
 }
 
+TEST_F(ScreensTest, DropsTheEndThatArrivedBeforeTheAppGaveTheScreenUp) {
+    test::EngineFixture fixture;
+    core::Engine& engine = fixture.engine();
+    Screens& screens = engine.getScreens();
+    std::vector<std::string> codes;
+    std::vector<std::string> restored;
+    engine.getPlatform().on("shop.screenRestored", [&restored](const Bridge::Payload& payload) { restored.push_back(payload.json.dump()); });
+
+    // The platform ends the screen while the app runs no frames, as Android apps stand still under the activity of a screen, and the timer of the app gives the screen up in the first frame after, before the pump takes the end.
+    const std::uint64_t id = screens.open("shop", "paywall", {}, {}, [&codes](const Bridge::Result& result) { codes.push_back(result.ok ? "ok" : result.error.code.get<std::string>()); });
+    fixture.frames(1);
+    ScreenRelay::finish(id, true, R"({"bought": true})");
+    EXPECT_TRUE(screens.cancel(id));
+    fixture.frames(2);
+    EXPECT_EQ(codes, (std::vector<std::string>{"cancelled"}));
+    EXPECT_TRUE(restored.empty()) << "The app gave the screen up, so its end reaches nobody.";
+    EXPECT_FALSE(engine.isAppCovered());
+}
+
 } // namespace haylen::platform

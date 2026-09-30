@@ -4,9 +4,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <span>
 #include <string>
-#include <thread>
 #include <utility>
+#include <variant>
 
 #include "haylen/core/Json.hpp"
 #include "haylen/io/Package.hpp"
@@ -15,6 +16,9 @@
 #include "platform/ScreenRelay.hpp"
 #include "platform/android/AndroidActivity.hpp"
 #include "platform/android/AndroidAssetPackage.hpp"
+#include "platform/android/AndroidBatteryStatus.hpp"
+#include "platform/android/AndroidDeviceInfo.hpp"
+#include "platform/android/AndroidDialogJson.hpp"
 #include "platform/android/AndroidGamepads.hpp"
 #include "platform/android/AndroidKeys.hpp"
 #include "platform/android/AndroidTextInput.hpp"
@@ -117,15 +121,7 @@ void Services::cancel(std::uint64_t id) {
 }
 
 SystemInfo Services::getSystemInfo() {
-    const core::Json device = core::Json::parse(JavaBridge::getSystemInfo());
-    SystemInfo info;
-    info.os = SystemInfo::Os::Android;
-    info.deviceKind = AndroidActivity::isTelevision() ? SystemInfo::DeviceKind::Tv : SystemInfo::DeviceKind::Phone;
-    info.osVersion = device.value("osVersion", "");
-    info.deviceModel = device.value("deviceModel", "");
-    info.cpuCores = static_cast<int>(std::thread::hardware_concurrency());
-    info.locale = device.value("locale", "");
-    return info;
+    return AndroidDeviceInfo::toSystemInfo(JavaBridge::getSystemInfo());
 }
 
 void Services::openUrl(const std::string& url, std::function<void(bool opened)> callback) {
@@ -137,18 +133,31 @@ void Services::vibrate(float seconds) {
     JavaBridge::vibrate(std::max<std::int64_t>(1, std::lround(seconds * 1000.0F)));
 }
 
-void Services::showDialog(std::uint64_t id, const DialogRequest&, const std::filesystem::path&) {
-    DialogRelay::resolve(id, {.failure = DialogResult::Failure{.code = DialogResult::Code::Unsupported, .message = "Native dialogs are not implemented on Android yet."}});
+// Script texts may hold bytes that are not UTF-8, which reach the dialog replaced instead of failing it.
+void Services::showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) {
+    const auto show = [id](const core::Json& dialog, std::span<const std::uint8_t> data) { JavaBridge::showDialog(id, dialog.dump(-1, ' ', false, core::Json::error_handler_t::replace), data); };
+    if (const auto* message = std::get_if<DialogRequest::Message>(&request.dialog)) {
+        show(AndroidDialogJson::describe(*message), {});
+    } else if (const auto* files = std::get_if<DialogRequest::OpenFiles>(&request.dialog)) {
+        show(AndroidDialogJson::describe(*files, folder), {});
+    } else if (const auto* save = std::get_if<DialogRequest::SaveFile>(&request.dialog)) {
+        show(AndroidDialogJson::describe(*save), save->data);
+    } else {
+        DialogRelay::resolve(id, {.failure = DialogResult::Failure{.code = DialogResult::Code::Unsupported, .message = "Android folders have no paths, so Android opens no folders."}});
+    }
 }
 
-void Services::cancelDialog(std::uint64_t) {}
+void Services::cancelDialog(std::uint64_t id) {
+    JavaBridge::cancelDialog(id);
+}
 
-// The screens of Android plugins arrive with a later version of the Android library.
 void Services::openScreen(const ScreenRequest& request) {
-    ScreenRelay::finish(request.id, false, core::Json{{"message", "The screens of plugins are not implemented on Android yet."}, {"code", "unsupported"}}.dump());
+    JavaBridge::openScreen(request);
 }
 
-void Services::cancelScreen(std::uint64_t) {}
+void Services::cancelScreen(std::uint64_t id) {
+    JavaBridge::cancelScreen(id);
+}
 
 HaylenNativeWindow Services::getNativeWindow() {
     return {};
@@ -236,5 +245,41 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeBack(JNIEnv*, jclass
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeUrlOpened(JNIEnv*, jclass, jlong request, jboolean opened) {
     haylen::platform::JavaBridge::answerUrl(request, opened == JNI_TRUE);
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeTheme(JNIEnv*, jclass, jboolean dark) {
+    haylen::platform::SokolHost::getSystemState().setTheme(dark == JNI_TRUE ? haylen::platform::Theme::Dark : haylen::platform::Theme::Light);
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenBattery_nativeBattery(JNIEnv*, jclass, jboolean present, jint level, jint scale, jint status) {
+    haylen::platform::SokolHost::getSystemState().setBattery(haylen::platform::AndroidBatteryStatus::toBattery(present == JNI_TRUE, level, scale, status));
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenDialogs_nativeButton(JNIEnv*, jclass, jlong id, jint button) {
+    haylen::platform::DialogRelay::resolve(static_cast<std::uint64_t>(id), {.button = static_cast<std::size_t>(button)});
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenDialogs_nativeFiles(JNIEnv* env, jclass, jlong id, jbyteArray json) {
+    haylen::platform::DialogRelay::resolve(static_cast<std::uint64_t>(id), {.files = haylen::platform::AndroidDialogJson::readFiles(haylen::platform::JavaBridge::toString(*env, json))});
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenDialogs_nativeSaved(JNIEnv* env, jclass, jlong id, jbyteArray name) {
+    haylen::platform::DialogRelay::resolve(static_cast<std::uint64_t>(id), {.saved = haylen::platform::DialogResult::File{.name = haylen::platform::JavaBridge::toString(*env, name)}});
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenDialogs_nativeDismissed(JNIEnv*, jclass, jlong id) {
+    haylen::platform::DialogRelay::resolve(static_cast<std::uint64_t>(id), {});
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenDialogs_nativeFailed(JNIEnv* env, jclass, jlong id, jbyteArray code, jbyteArray message) {
+    haylen::platform::DialogRelay::resolve(static_cast<std::uint64_t>(id), {.failure = haylen::platform::DialogResult::Failure{.code = haylen::platform::DialogResult::codeFromName(haylen::platform::JavaBridge::toString(*env, code)).value(), .message = haylen::platform::JavaBridge::toString(*env, message)}});
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenScreen_nativeFinish(JNIEnv* env, jclass, jlong id, jboolean ok, jbyteArray json, jobjectArray buffers) {
+    haylen::platform::ScreenRelay::finish(static_cast<std::uint64_t>(id), ok == JNI_TRUE, haylen::platform::JavaBridge::toString(*env, json), haylen::platform::JavaBridge::toBuffers(*env, buffers));
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenScreen_nativeRestore(JNIEnv* env, jclass, jbyteArray plugin, jbyteArray name, jbyteArray state, jboolean ok, jbyteArray json, jobjectArray buffers) {
+    haylen::platform::ScreenRelay::restore(haylen::platform::JavaBridge::toString(*env, plugin), haylen::platform::JavaBridge::toString(*env, name), haylen::platform::JavaBridge::toString(*env, state), ok == JNI_TRUE, haylen::platform::JavaBridge::toString(*env, json), haylen::platform::JavaBridge::toBuffers(*env, buffers));
 }
 }

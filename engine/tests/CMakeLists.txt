@@ -70,6 +70,9 @@ set(HAYLEN_TEST_SOURCES
   math/UtilityTests.cpp
   math/VectorTests.cpp
   net/WebSocketTests.cpp
+  platform/AndroidBatteryStatusTests.cpp
+  platform/AndroidDeviceInfoTests.cpp
+  platform/AndroidDialogJsonTests.cpp
   platform/DialogsTests.cpp
   platform/LinuxFilePatternTests.cpp
   platform/LinuxSystemReaderTests.cpp

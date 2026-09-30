@@ -4,6 +4,7 @@ import android.app.Application;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import androidx.activity.result.contract.ActivityResultContract;
 import java.util.ArrayList;
 import java.util.List;
 import org.json.JSONObject;
@@ -57,6 +58,31 @@ public final class HaylenPluginContext {
         synchronized (methods) {
             methods.add(name);
         }
+    }
+
+    // Opens the screen `<id>.<name>` through an Activity Result contract, whose launcher every activity registers under the key `haylen.<id>.<name>` before it starts, so a result that arrives after the end of the process reaches the next app as `screenRestored`. The input turns the parameters of the app into the input of the contract, and the output turns the output of the contract into the result of the screen, while a `null` output, as the contracts of AndroidX give when the person backs out, ends the screen with the code `cancelled`.
+    public <I, O> void registerScreen(String name, ActivityResultContract<I, O> contract, HaylenScreen.Input<I> input, HaylenScreen.Output<O> output) {
+        HaylenScreens.register(id, name, new HaylenScreens.ContractScreen<>(contract, input, output));
+    }
+
+    // Opens the screen `<id>.<name>` with the opener, which shows the screen itself, such as through the launcher of an SDK, and ends it through the `HaylenScreen` it receives.
+    public void registerScreen(String name, HaylenScreen.Opener opener) {
+        HaylenScreens.register(id, name, new HaylenScreens.OpenerScreen(opener));
+    }
+
+    // The screen of the plugin that showed when the process ended, which the plugin ends once its answer arrives, such as through the launcher of an SDK that the plugin registered itself, so the end reaches the next app as `screenRestored`. It is `null` without one, and the screens of contracts end on their own.
+    public HaylenScreen restoredScreen() {
+        return HaylenScreens.restoredScreen(id);
+    }
+
+    // Opens the video stream `name` of the plugin, which the app draws through `handle:videoStream(name)`, with a size, 0 by 0 until the first frame, and a format, or returns the stream that is open already. Throws an `IllegalArgumentException` for an empty name, a negative size or a stream that is open with another format.
+    public HaylenVideoStream openVideoStream(String name, int width, int height, HaylenVideoStream.Format format) {
+        return HaylenVideoStream.open(id, name, width, height, format);
+    }
+
+    // Opens the audio stream `name` of the plugin, which the app plays through `handle:audioStream(name)`, with its sample rate, its channels, its format and room for `capacity` frames, or returns the stream that is open already. Throws an `IllegalArgumentException` for an empty name, a rate, channel count or capacity below 1, or a stream that is open with another rate, channel count or format.
+    public HaylenAudioStream openAudioStream(String name, int sampleRate, int channels, HaylenAudioStream.Format format, int capacity) {
+        return HaylenAudioStream.open(id, name, sampleRate, channels, format, capacity);
     }
 
     // Sends `<id>.<event>` to the app.
@@ -118,8 +144,9 @@ public final class HaylenPluginContext {
         }
     }
 
-    // A plugin that failed to load answers nothing, so the methods it registered before failing go away with it.
+    // A plugin that failed to load answers nothing, so the methods and the screens it registered before failing go away with it.
     void unregisterAll() {
+        HaylenScreens.unregister(id);
         synchronized (methods) {
             for (String name : methods) {
                 HaylenBridge.unregister(name);

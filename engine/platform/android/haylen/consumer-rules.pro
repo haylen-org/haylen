@@ -30,6 +30,16 @@
     static byte[] networkRequirement();
 }
 
+-keep class dev.haylen.HaylenDialogs {
+    static void show(long, byte[], byte[]);
+    static void cancel(long);
+}
+
+-keep class dev.haylen.HaylenScreens {
+    static void open(long, byte[], byte[], byte[], byte[][], byte[], boolean);
+    static void cancel(long);
+}
+
 -keep class com.varn.VarnHttp { *; }
 -keep class com.varn.VarnHttp$Response { *; }
 -keep class com.varn.VarnHttp$ChunkSink { *; }

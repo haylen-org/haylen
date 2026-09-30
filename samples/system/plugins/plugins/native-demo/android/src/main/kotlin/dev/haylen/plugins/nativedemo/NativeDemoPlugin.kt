@@ -3,6 +3,7 @@ package dev.haylen.plugins.nativedemo
 import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -11,6 +12,7 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Shader
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -19,13 +21,18 @@ import android.provider.OpenableColumns
 import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.NotificationManagerCompat
 import dev.haylen.HaylenActivity
+import dev.haylen.HaylenAudioStream
 import dev.haylen.HaylenBridge
 import dev.haylen.HaylenPlacement
 import dev.haylen.HaylenPlugin
 import dev.haylen.HaylenPluginContext
 import dev.haylen.HaylenRequirements
+import dev.haylen.HaylenScreen
+import dev.haylen.HaylenVideoStream
 import java.io.ByteArrayOutputStream
+import java.util.UUID
 import org.json.JSONObject
 
 // Native part of the Native Demo plugin on Android, built on the views, dialogs and intents of the platform alone. The `haylen` library creates it from the meta-data of its manifest and loads it when the app process starts.
@@ -40,6 +47,10 @@ class NativeDemoPlugin : HaylenPlugin() {
     private var bannerTaps = 0
     private var picker: ActivityResultLauncher<Array<String>>? = null
     private var picking: HaylenBridge.Reply? = null
+    private var permissions: ActivityResultLauncher<String>? = null
+    private var asking: Pair<String, HaylenBridge.Reply>? = null
+    private var video: NativeDemoVideo? = null
+    private var tone: NativeDemoTone? = null
     private var lastError: JSONObject? = null
 
     override fun onLoad(context: HaylenPluginContext) {
@@ -50,6 +61,7 @@ class NativeDemoPlugin : HaylenPlugin() {
         registerStreams()
         registerBanner()
         registerScreens()
+        registerPermissions()
         registerRequirements()
         context.emitRetained("loaded", JSONObject().put("language", LANGUAGE).put("platform", "android"))
     }
@@ -81,6 +93,10 @@ class NativeDemoPlugin : HaylenPlugin() {
         context.register("start") { _, reply ->
             stopTicking()
             stopBursts()
+            video?.stop()
+            video = null
+            tone?.stop()
+            tone = null
             banner?.remove()
             banner = null
             lastError?.let { context.emitRetained("lastError", it) }
@@ -167,12 +183,33 @@ class NativeDemoPlugin : HaylenPlugin() {
         bursts = null
     }
 
-    // Video and audio streams from Kotlin need the stream API of the Android library, which a later version of the engine brings, so the plugin says so instead.
+    // The pattern pushes RGBA bitmaps into the video stream `pattern` and the tone pushes floats into the audio stream `tone`, each from a thread of its own, which the app reads through `handle:videoStream` and `handle:audioStream`.
     private fun registerStreams() {
-        for (method in listOf("startVideo", "stopVideo", "startTone", "stopTone")) {
-            context.register(method) { _, reply ->
-                reply.failure("The Android library of this engine has no stream API yet, so Kotlin cannot push video frames or audio samples to the app.", "unsupported", null)
-            }
+        context.register("startVideo") { _, reply ->
+            val stream = context.openVideoStream("pattern", NativeDemoVideo.WIDTH, NativeDemoVideo.HEIGHT, HaylenVideoStream.Format.RGBA8)
+            video?.stop()
+            video = NativeDemoVideo(stream)
+            reply.success(JSONObject().put("width", NativeDemoVideo.WIDTH).put("height", NativeDemoVideo.HEIGHT).put("fps", NativeDemoVideo.FPS).put("format", "RGBA").put("thread", "a HandlerThread").put("language", LANGUAGE))
+        }
+
+        context.register("stopVideo") { _, reply ->
+            video?.stop()
+            video = null
+            reply.success(null)
+        }
+
+        context.register("startTone") { params, reply ->
+            val stream = context.openAudioStream("tone", NativeDemoTone.SAMPLE_RATE, 1, HaylenAudioStream.Format.FLOAT32, NativeDemoTone.SAMPLE_RATE)
+            val frequency = (params as? JSONObject)?.optDouble("frequency", 440.0) ?: 440.0
+            tone?.stop()
+            tone = NativeDemoTone(frequency, stream)
+            reply.success(JSONObject().put("frequency", frequency).put("sampleRate", NativeDemoTone.SAMPLE_RATE).put("channels", 1).put("format", "float32").put("language", LANGUAGE))
+        }
+
+        context.register("stopTone") { _, reply ->
+            tone?.stop()
+            tone = null
+            reply.success(null)
         }
     }
 
@@ -230,6 +267,9 @@ class NativeDemoPlugin : HaylenPlugin() {
             }.show()
         }
 
+        // The confirm screen of the plugin, an AndroidX activity of its own that the activity of the app starts through the Activity Result API under the key `haylen.native-demo.confirm`. The engine covers the app before the screen shows and until it ends, the Back button ends it with the code `cancelled`, and a screen that the process ended under reaches the next app as `screenRestored`.
+        context.registerScreen("confirm", NativeDemoConfirm(), HaylenScreen.Input { params -> (params as JSONObject).put("color", bannerColor()) }, HaylenScreen.Output { confirmed -> JSONObject().put("confirmed", confirmed).put("via", "an AndroidX activity").put("language", LANGUAGE) })
+
         context.register("pickFile") { _, reply ->
             val launcher = picker ?: throw HaylenBridge.Failure("The app has no activity yet.", "noWindow", null)
             try {
@@ -240,6 +280,58 @@ class NativeDemoPlugin : HaylenPlugin() {
             }
         }
     }
+
+    // The permissions go through the Activity Result API after the plugin checked that the manifest of the app declares them, and the notification comes after its seconds through an alarm, whether the app runs, waits in the background or was closed.
+    private fun registerPermissions() {
+        context.register("requestPermission") { params, reply ->
+            val kind = (params as JSONObject).getString("kind")
+            val permission = when (kind) {
+                "camera" -> Manifest.permission.CAMERA
+                "notifications" -> Manifest.permission.POST_NOTIFICATIONS
+                else -> throw HaylenBridge.Failure("The permission is \"camera\" or \"notifications\", not \"$kind\".", "invalidPermission", null)
+            }
+            if (kind == "camera" && !context.application().packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
+                throw HaylenBridge.Failure("This device has no camera.", "unsupported", null)
+            }
+            // Android 12 and earlier ask for no permission to post notifications, which the person turns off in the settings instead.
+            if (kind == "notifications" && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                reply.success(permissionAnswer(kind, NotificationManagerCompat.from(context.application()).areNotificationsEnabled()))
+                return@register
+            }
+            context.requirements().require(HaylenRequirements.Requirement.permission(permission))
+            val launcher = permissions ?: throw HaylenBridge.Failure("The app has no activity yet.", "noWindow", null)
+            if (asking != null) {
+                throw HaylenBridge.Failure("Another permission request shows.", "busy", null)
+            }
+            asking = kind to reply
+            launcher.launch(permission)
+        }
+
+        context.register("notify") { params, reply ->
+            val json = params as JSONObject
+            context.requirements().require(HaylenRequirements.Requirement.permission(Manifest.permission.POST_NOTIFICATIONS))
+            if (!NotificationManagerCompat.from(context.application()).areNotificationsEnabled()) {
+                throw HaylenBridge.Failure("The person has not allowed the notifications of the app. Ask with \"requestPermission('notifications')\" first.", "permissionDenied", null)
+            }
+            val identifier = NOTIFICATION_PREFIX + UUID.randomUUID()
+            val seconds = json.getDouble("seconds")
+            NativeDemoNotifier.schedule(context.application(), identifier, json.getString("title"), json.getString("body"), seconds)
+            reply.success(JSONObject().put("identifier", identifier).put("seconds", seconds).put("language", LANGUAGE))
+        }
+    }
+
+    // A request that ends after the process ended reaches the launcher of the new activity, while no call of the new app waits for it.
+    private fun onPermission(granted: Boolean) {
+        val (kind, reply) = asking ?: run {
+            Log.i(TAG, "The permission request answered ${if (granted) "granted" else "not granted"} after the app started again, and no call waits for it.")
+            return
+        }
+        asking = null
+        reply.success(permissionAnswer(kind, granted))
+    }
+
+    private fun permissionAnswer(kind: String, granted: Boolean): JSONObject =
+        JSONObject().put("kind", kind).put("granted", granted).put("status", if (granted) "authorized" else "denied").put("language", LANGUAGE)
 
     // The plugin needs the permission to read the contacts, which its manifest leaves out on purpose, so the call shows how a requirement that the project of the app lacks fails with the code `unsupported` and lists what is missing in `data.missing`. An app that declares the permission gets the answer.
     private fun registerRequirements() {
@@ -280,13 +372,23 @@ class NativeDemoPlugin : HaylenPlugin() {
     // A link that launches the app arrives with the intent of the new activity, and one that reaches the running app arrives as a new intent. The retained event waits for the first listener either way.
     override fun onActivityCreated(activity: HaylenActivity, savedInstanceState: Bundle?) {
         picker = activity.activityResultRegistry.register(PICK_KEY, activity, ActivityResultContracts.OpenDocument(), ::onPicked)
+        permissions = activity.activityResultRegistry.register(PERMISSION_KEY, activity, ActivityResultContracts.RequestPermission(), ::onPermission)
         if (savedInstanceState == null) {
             openUrl(activity.intent)
+            openNotification(activity.intent)
         }
     }
 
     override fun onNewIntent(intent: Intent) {
         openUrl(intent)
+        openNotification(intent)
+    }
+
+    // The tap on a notification of the plugin reaches the app as `notificationOpened`, retained, so the tap that launched the app waits for the first listener.
+    private fun openNotification(intent: Intent?) {
+        if (intent?.action == NativeDemoNotifier.ACTION_OPENED) {
+            context.emitRetained("notificationOpened", JSONObject().put("identifier", intent.getStringExtra(NativeDemoNotifier.IDENTIFIER)).put("title", intent.getStringExtra(NativeDemoNotifier.TITLE)).put("action", "open").put("language", LANGUAGE))
+        }
     }
 
     private fun openUrl(intent: Intent?) {
@@ -300,6 +402,7 @@ class NativeDemoPlugin : HaylenPlugin() {
     override fun onActivityDestroyed(activity: HaylenActivity) {
         banner = null
         picker = null
+        permissions = null
     }
 
     // The error screen of the app shows this error. The plugin keeps it and hands it to the next app when that app sends `start`.
@@ -319,6 +422,10 @@ class NativeDemoPlugin : HaylenPlugin() {
         const val LANGUAGE = "Kotlin"
         const val TAG = "native-demo"
         const val PICK_KEY = "native-demo.pickFile"
+        const val PERMISSION_KEY = "native-demo.requestPermission"
+
+        // The notifications of the plugin carry this prefix in their identifiers, as on Apple platforms.
+        const val NOTIFICATION_PREFIX = "native-demo."
         val COLOR = Regex("#[0-9A-Fa-f]{6}")
 
         fun threadName(): String = if (Looper.myLooper() == Looper.getMainLooper()) "main" else "background"
