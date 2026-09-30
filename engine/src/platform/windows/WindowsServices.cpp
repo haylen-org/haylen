@@ -16,9 +16,11 @@
 #include "haylen/io/Package.hpp"
 #include "platform/BridgeRelay.hpp"
 #include "platform/DialogRelay.hpp"
+#include "platform/ScreenRelay.hpp"
 #include "platform/windows/WindowsDesktop.hpp"
 #include "platform/windows/WindowsSystem.hpp"
 #include "platform/windows/WindowsTextInput.hpp"
+#include "sokol_app.h"
 
 namespace haylen::platform {
 
@@ -187,5 +189,16 @@ void Services::showDialog(std::uint64_t id, const DialogRequest&, const std::fil
 }
 
 void Services::cancelDialog(std::uint64_t) {}
+
+// Windows has no screen registry in the language of the platform, so native libraries open the screens of plugins, before the platform is asked.
+void Services::openScreen(const ScreenRequest& request) {
+    ScreenRelay::finish(request.id, false, core::Json{{"message", "No native screen is registered for " + request.plugin + "." + request.screen + "."}, {"code", "noHandler"}}.dump());
+}
+
+void Services::cancelScreen(std::uint64_t) {}
+
+HaylenNativeWindow Services::getNativeWindow() {
+    return {.handle = const_cast<void*>(sapp_win32_get_hwnd()), .display = nullptr};
+}
 
 } // namespace haylen::platform

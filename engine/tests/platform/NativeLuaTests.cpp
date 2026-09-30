@@ -17,6 +17,7 @@
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/plugins/Plugin.hpp"
+#include "platform/native/NativeApi.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::platform {
@@ -239,7 +240,7 @@ TEST_F(NativeLuaTest, GivesLibrariesTheInterfaceOfTheEngine) {
     // The library announced itself with a retained event, which waits for a listener that connects late.
     fixture.runLua("platform.on('native_test.ready', function(payload) ready = payload end)");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return ready ~= nil") == "true"; }));
-    EXPECT_EQ(fixture.lua("return ready.version .. ' ' .. ready.origin"), "4 dynamic");
+    EXPECT_EQ(fixture.lua("return ready.version .. ' ' .. ready.origin"), "5 dynamic");
     EXPECT_EQ(fixture.lua("return failed.message .. ' ' .. failed.code .. ' ' .. failed.data.reason"), "The native test failed on purpose. native_test_failure requested");
     EXPECT_EQ(fixture.lua("return tostring(failed) .. ' | ' .. ('error: ' .. failed) .. ' | ' .. (failed .. '!')"), "The native test failed on purpose. | error: The native test failed on purpose. | The native test failed on purpose.!");
 
@@ -287,6 +288,54 @@ TEST_F(NativeLuaTest, ExchangesBytesBatchesAndStreamsWithLibraries) {
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return audio:read(buffer)") == "800"; }));
     EXPECT_EQ(fixture.lua("return table.concat({audio.sampleRate, audio.channels, buffer[1], buffer[800], buffer[801]}, ' ')"), "8000 1 0.5 0.5 0.0");
     EXPECT_EQ(fixture.lua("return lib.native_test_reopen_refused()"), "1");
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+TEST_F(NativeLuaTest, OpensTheScreensOfLibrariesAndCoversTheApp) {
+    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "plugins": {"native-test": {}}})"}, {"plugins/native-test/plugin.json", R"({"id": "native-test", "version": "1.0.0"})"}});
+    prepare(fixture);
+    // clang-format off
+    fixture.runLua(R"(
+        ffi.cdef[[
+            void native_test_close_screen_later(void);
+            int32_t native_test_window(void);
+            void native_test_cover(int32_t covered);
+        ]]
+        haylen = require('haylen')
+        native.load('native_test', {init = 'native_test_haylen_init'})
+        test = platform.plugin('native-test')
+        opened = {}
+        platform.on('native_test.screenOpened', function(payload) opened[#opened + 1] = payload end)
+        panel = test:openScreen('panel', {title = 'Hello', image = platform.bytes('\1')})
+        async.spawn(function() closed = panel:await() end)
+    )");
+    // clang-format on
+
+    // The library opens its screen after the engine covered the app, and ends it from a thread of its own.
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #opened") == "1"; }));
+    EXPECT_EQ(fixture.lua("return table.concat({tostring(haylen.appCovered()), opened[1].params.title, opened[1].buffers, tostring(opened[1].params.image == '\\1')}, ' ')"), "true Hello 1 true");
+    EXPECT_TRUE(fixture.host().getScreenRequests().empty());
+    fixture.runLua("lib.native_test_close_screen_later()");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return closed ~= nil") == "true"; }));
+    EXPECT_EQ(fixture.lua("return tostring(closed.closed) .. ' ' .. tostring(closed.thread) .. ' ' .. tostring(haylen.appCovered())"), "true true false");
+
+    // A screen that the app gives up hears it, closes and ends as cancelled.
+    fixture.runLua("again = test:openScreen('panel') async.spawn(function() _, againFailure = again:await() end)");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #opened") == "2"; }));
+    fixture.runLua("again:cancel()");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return againFailure ~= nil and not haylen.appCovered()") == "true"; }));
+    EXPECT_EQ(fixture.lua("return againFailure.code"), "cancelled");
+
+    // The window of the app exists once the runtime set it, and covers of the library nest like every cover.
+    EXPECT_EQ(fixture.lua("return lib.native_test_window()"), "-1");
+    NativeApi::setWindow({.handle = reinterpret_cast<void*>(std::uintptr_t{42}), .display = nullptr});
+    EXPECT_EQ(fixture.lua("return lib.native_test_window()"), "42");
+    fixture.runLua("lib.native_test_cover(1) lib.native_test_cover(1) lib.native_test_cover(0)");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return haylen.appCovered()"), "true");
+    fixture.runLua("lib.native_test_cover(0) lib.native_test_cover(0)");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return haylen.appCovered()"), "false");
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 

@@ -18,9 +18,11 @@
 #include "haylen/platform/DialogRequest.hpp"
 #include "haylen/platform/Monitor.hpp"
 #include "haylen/platform/Orientation.hpp"
+#include "haylen/platform/ScreenRequest.hpp"
 #include "haylen/platform/SystemInfo.hpp"
 #include "haylen/platform/TextInput.hpp"
 #include "haylen/platform/Window.hpp"
+#include "haylen/platform/native/HaylenNative.h"
 #include "platform/WindowStyle.hpp"
 
 namespace haylen::io {
@@ -109,6 +111,13 @@ class Services final {
 
     // Closes a dialog that the app gave up, where the platform can.
     static void cancelDialog(std::uint64_t id);
+
+    // Opens the screen of a plugin and ends it exactly once through ScreenRelay::finish, from any thread, as Host::openScreen describes, and dismisses a screen that the app gave up where the platform can.
+    static void openScreen(const ScreenRequest& request);
+    static void cancelScreen(std::uint64_t id);
+
+    // The window of the app on the desktops for native libraries, as HaylenNativeWindow describes, and null handles where apps have no desktop window. It exists once sokol_app opened the window.
+    [[nodiscard]] static HaylenNativeWindow getNativeWindow();
 };
 
 } // namespace haylen::platform

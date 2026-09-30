@@ -9,14 +9,18 @@
 #include "haylen/core/Log.hpp"
 #include "haylen/platform/PluginStreams.hpp"
 #include "platform/BridgeRelay.hpp"
+#include "platform/ScreenRelay.hpp"
 
 namespace haylen::platform {
 
-const HaylenNativeApi NativeApi::api{.version = HAYLEN_NATIVE_API_VERSION, .emit = &emit, .resolve = &resolve, .registerHandler = &registerHandler, .log = &log, .registerPlugin = &registerPlugin, .registerErrorHandler = &registerErrorHandler, .openVideoStream = &openVideoStream, .pushVideoFrame = &pushVideoFrame, .openAudioStream = &openAudioStream, .pushAudioFrames = &pushAudioFrames};
+const HaylenNativeApi NativeApi::api{.version = HAYLEN_NATIVE_API_VERSION, .emit = &emit, .resolve = &resolve, .registerHandler = &registerHandler, .log = &log, .registerPlugin = &registerPlugin, .registerErrorHandler = &registerErrorHandler, .openVideoStream = &openVideoStream, .pushVideoFrame = &pushVideoFrame, .openAudioStream = &openAudioStream, .pushAudioFrames = &pushAudioFrames, .registerScreen = &registerScreen, .finishScreen = &finishScreen, .getWindow = &getWindow, .coverApp = &coverApp, .uncoverApp = &uncoverApp};
 std::mutex& NativeApi::mutex = *new std::mutex();
 std::unordered_map<std::string, NativeApi::Handler>& NativeApi::handlers = *new std::unordered_map<std::string, Handler>();
+std::unordered_map<std::string, NativeApi::ScreenHandler>& NativeApi::screens = *new std::unordered_map<std::string, ScreenHandler>();
 std::set<std::string, std::less<>>& NativeApi::plugins = *new std::set<std::string, std::less<>>();
 std::vector<NativeApi::ErrorHandler>& NativeApi::errorHandlers = *new std::vector<ErrorHandler>();
+std::optional<HaylenNativeWindow>& NativeApi::window = *new std::optional<HaylenNativeWindow>();
+int NativeApi::covers = 0;
 
 const HaylenNativeApi& NativeApi::get() noexcept {
     return api;
@@ -55,6 +59,55 @@ std::optional<NativeApi::Handler> NativeApi::find(std::string_view method) {
         return std::nullopt;
     }
     return found->second;
+}
+
+// The opener runs outside the lock, so it may register screens or end the screen at once.
+bool NativeApi::openScreen(const ScreenRequest& request) {
+    const std::optional<ScreenHandler> found = findScreen(request.plugin, request.screen);
+    if (!found) {
+        return false;
+    }
+    std::vector<HaylenNativeBuffer> views;
+    views.reserve(request.params.buffers.size());
+    for (const std::vector<std::byte>& buffer : request.params.buffers) {
+        views.push_back({.data = buffer.data(), .size = buffer.size()});
+    }
+    found->open(found->user, request.id, request.params.json.dump().c_str(), views.data(), views.size());
+    return true;
+}
+
+bool NativeApi::cancelScreen(std::string_view plugin, std::string_view name, std::uint64_t screen) {
+    const std::optional<ScreenHandler> found = findScreen(plugin, name);
+    if (!found) {
+        return false;
+    }
+    if (found->cancel != nullptr) {
+        found->cancel(found->user, screen);
+    }
+    return true;
+}
+
+std::optional<NativeApi::ScreenHandler> NativeApi::findScreen(std::string_view plugin, std::string_view name) {
+    const std::scoped_lock lock(mutex);
+    const auto found = screens.find(getScreenKey(plugin, name));
+    if (found == screens.end()) {
+        return std::nullopt;
+    }
+    return found->second;
+}
+
+std::string NativeApi::getScreenKey(std::string_view plugin, std::string_view name) {
+    return std::string(plugin) + "." + std::string(name);
+}
+
+bool NativeApi::isAppCovered() {
+    const std::scoped_lock lock(mutex);
+    return covers > 0;
+}
+
+void NativeApi::setWindow(const HaylenNativeWindow& value) {
+    const std::scoped_lock lock(mutex);
+    window = value;
 }
 
 std::vector<std::string> NativeApi::getPlugins() {
@@ -174,6 +227,48 @@ void NativeApi::registerHandler(const char* method, HaylenNativeHandler handler,
         return;
     }
     handlers.insert_or_assign(method, Handler{.handler = handler, .cancel = cancel, .user = user});
+}
+
+void NativeApi::registerScreen(const char* plugin, const char* name, HaylenNativeScreenOpener open, HaylenNativeScreenCancel cancel, void* user) {
+    if (plugin == nullptr || *plugin == '\0' || name == nullptr || *name == '\0') {
+        core::Log::error("A native library registered a screen without its plugin or its name.");
+        return;
+    }
+    const std::scoped_lock lock(mutex);
+    if (open == nullptr) {
+        screens.erase(getScreenKey(plugin, name));
+        return;
+    }
+    screens.insert_or_assign(getScreenKey(plugin, name), ScreenHandler{.open = open, .cancel = cancel, .user = user});
+}
+
+void NativeApi::finishScreen(std::uint64_t screen, int ok, const char* resultJson, const HaylenNativeBuffer* buffers, std::size_t bufferCount) {
+    guard("finishScreen", [&] { ScreenRelay::finish(screen, ok != 0, resultJson != nullptr ? resultJson : "null", copyBuffers(buffers, bufferCount)); });
+}
+
+int NativeApi::getWindow(HaylenNativeWindow* target) {
+    const std::scoped_lock lock(mutex);
+    if (target == nullptr || !window) {
+        return 0;
+    }
+    *target = *window;
+    return 1;
+}
+
+void NativeApi::coverApp() {
+    const std::scoped_lock lock(mutex);
+    ++covers;
+}
+
+void NativeApi::uncoverApp() {
+    {
+        const std::scoped_lock lock(mutex);
+        if (covers > 0) {
+            --covers;
+            return;
+        }
+    }
+    core::Log::error("A native library uncovered the app without covering it first.");
 }
 
 void NativeApi::registerPlugin(const char* id) {

@@ -9,9 +9,11 @@
 #include "haylen/io/Package.hpp"
 #include "platform/BridgeRelay.hpp"
 #include "platform/DialogRelay.hpp"
+#include "platform/ScreenRelay.hpp"
 #include "platform/linux/LinuxDesktop.hpp"
 #include "platform/linux/LinuxGamepads.hpp"
 #include "platform/linux/LinuxSystem.hpp"
+#include "sokol_app.h"
 
 namespace haylen::platform {
 
@@ -139,5 +141,16 @@ void Services::showDialog(std::uint64_t id, const DialogRequest&, const std::fil
 }
 
 void Services::cancelDialog(std::uint64_t) {}
+
+// Linux has no screen registry in the language of the platform, so native libraries open the screens of plugins, before the platform is asked.
+void Services::openScreen(const ScreenRequest& request) {
+    ScreenRelay::finish(request.id, false, core::Json{{"message", "No native screen is registered for " + request.plugin + "." + request.screen + "."}, {"code", "noHandler"}}.dump());
+}
+
+void Services::cancelScreen(std::uint64_t) {}
+
+HaylenNativeWindow Services::getNativeWindow() {
+    return {.handle = const_cast<void*>(sapp_x11_get_window()), .display = const_cast<void*>(sapp_x11_get_display())};
+}
 
 } // namespace haylen::platform

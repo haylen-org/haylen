@@ -12,6 +12,7 @@
 #include "haylen/lua/Type.hpp"
 #include "haylen/platform/AppPlugin.hpp"
 #include "haylen/platform/Bridge.hpp"
+#include "haylen/platform/Screens.hpp"
 
 namespace varn::async {
 class Promise;
@@ -36,6 +37,7 @@ class PlatformLua final {
     static constexpr const char* kErrorType = "haylen.PlatformError";
     static constexpr std::array<std::string_view, 1> kCallOptions{"timeout"};
     static constexpr std::array<std::string_view, 2> kEmitOptions{"retain", "batched"};
+    static constexpr std::array<std::string_view, 3> kScreenOptions{"state", "opaque", "timeout"};
 
     // Reads the Lua value at index as the JSON of a payload, with the byte buffers of the strings that platform.bytes marked.
     [[nodiscard]] static Bridge::Payload readPayload(lua_State* L, int index);
@@ -50,6 +52,13 @@ class PlatformLua final {
     static void pushConnection(lua_State* L, const std::string& event, int listenerIndex);
 
     [[nodiscard]] static bool cancelBridgeCall(lua_State* L, std::uint64_t id);
+    [[nodiscard]] static bool cancelScreen(lua_State* L, std::uint64_t id);
+
+    // Reads the options of openScreen at the given stack index: the state as JSON without bytes, whether the screen is opaque and its timeout in seconds.
+    [[nodiscard]] static Screens::Options readScreenOptions(lua_State* L, int index);
+
+    // Returns the callback that settles the promise of a call with its result, keeping the error of a failure for await.
+    [[nodiscard]] static Bridge::Callback settle(std::shared_ptr<Call> pending);
 
     static int call(lua_State* L);
     static int await(lua_State* L);
@@ -79,6 +88,8 @@ class PlatformLua final {
     static int onPlugin(lua_State* L);
     static int videoStreamOfPlugin(lua_State* L);
     static int audioStreamOfPlugin(lua_State* L);
+    static int openScreenOfPlugin(lua_State* L);
+    static int screenShowing(lua_State* L);
     static int open(lua_State* L);
 
     // Pushes a table with message, code and data that reads as its message in tostring and concatenation.

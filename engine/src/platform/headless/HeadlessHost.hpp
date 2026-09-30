@@ -194,6 +194,12 @@ class HeadlessHost final : public Host {
     void cancelDialog(std::uint64_t id) override {
         cancelledDialogs.push_back(id);
     }
+    void openScreen(const ScreenRequest& request) override {
+        screenRequests.push_back(request);
+    }
+    void cancelScreen(std::uint64_t id) override {
+        cancelledScreens.push_back(id);
+    }
 
     void resize(math::Vec2 size) noexcept {
         framebufferSize = size;
@@ -300,6 +306,14 @@ class HeadlessHost final : public Host {
         return cancelledDialogs;
     }
 
+    // The screens the engine opened on the headless platform and the ids of those it gave up, which tests end through ScreenRelay::finish the way native code does.
+    [[nodiscard]] const std::vector<ScreenRequest>& getScreenRequests() const noexcept {
+        return screenRequests;
+    }
+    [[nodiscard]] const std::vector<std::uint64_t>& getCancelledScreens() const noexcept {
+        return cancelledScreens;
+    }
+
   private:
     std::filesystem::path dataDirectory;
     math::Vec2 framebufferSize;
@@ -316,6 +330,8 @@ class HeadlessHost final : public Host {
     std::vector<float> vibrations;
     std::vector<DialogCall> dialogCalls;
     std::vector<std::uint64_t> cancelledDialogs;
+    std::vector<ScreenRequest> screenRequests;
+    std::vector<std::uint64_t> cancelledScreens;
     bool opensUrls = true;
 
     // The headless desktop is one 1920 by 1080 monitor whose work area leaves a 40 point taskbar at the bottom, with the window at the top left corner of it.

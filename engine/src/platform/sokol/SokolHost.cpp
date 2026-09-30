@@ -288,6 +288,14 @@ void SokolHost::cancelDialog(std::uint64_t id) {
     Services::cancelDialog(id);
 }
 
+void SokolHost::openScreen(const ScreenRequest& request) {
+    Services::openScreen(request);
+}
+
+void SokolHost::cancelScreen(std::uint64_t id) {
+    Services::cancelScreen(id);
+}
+
 NativeViews& SokolHost::getNativeViews() noexcept {
     static NativeViews& views = *new NativeViews();
     return views;

@@ -20,6 +20,7 @@
 #include "haylen/platform/PluginStreams.hpp"
 #include "haylen/platform/native/HaylenNative.h"
 #include "platform/BridgeRelay.hpp"
+#include "platform/ScreenRelay.hpp"
 #include "platform/Services.hpp"
 #include "platform/sokol/SokolHost.hpp"
 #include "platform/sokol/SokolRuntime.hpp"
@@ -149,6 +150,24 @@ void WebPage::emit(const char* event, const char* json, const std::uint32_t* buf
     BridgeRelay::emit(event, json, readBuffers(buffers, count), {.retain = (flags & HAYLEN_NATIVE_EMIT_RETAIN) != 0, .batched = (flags & HAYLEN_NATIVE_EMIT_BATCHED) != 0});
 }
 
+void WebPage::finishScreen(double id, bool ok, const char* json, const std::uint32_t* buffers, int count) {
+    ScreenRelay::finish(static_cast<std::uint64_t>(id), ok, json, readBuffers(buffers, count));
+}
+
+void WebPage::restoreScreen(const char* plugin, const char* screen, const char* state, bool ok, const char* json, const std::uint32_t* buffers, int count) {
+    ScreenRelay::restore(plugin, screen, state, ok, json, readBuffers(buffers, count));
+}
+
+std::vector<std::uint32_t> WebPage::describeBuffers(std::span<const std::vector<std::byte>> buffers) {
+    std::vector<std::uint32_t> table;
+    table.reserve(buffers.size() * 2);
+    for (const std::vector<std::byte>& buffer : buffers) {
+        table.push_back(static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(buffer.data())));
+        table.push_back(static_cast<std::uint32_t>(buffer.size()));
+    }
+    return table;
+}
+
 void* WebPage::openVideoStream(const char* plugin, const char* name) {
     try {
         return PluginStreams::openVideo(plugin, name, VideoStream::Format::Rgba8, 0, 0).get();
@@ -216,6 +235,14 @@ EMSCRIPTEN_KEEPALIVE void haylen_web_resolve(double call, int ok, const char* js
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_emit(const char* event, const char* json, const std::uint32_t* buffers, int count, int flags) {
     haylen::platform::WebPage::emit(event, json, buffers, count, flags);
+}
+
+EMSCRIPTEN_KEEPALIVE void haylen_web_finish_screen(double id, int ok, const char* json, const std::uint32_t* buffers, int count) {
+    haylen::platform::WebPage::finishScreen(id, ok != 0, json, buffers, count);
+}
+
+EMSCRIPTEN_KEEPALIVE void haylen_web_restore_screen(const char* plugin, const char* screen, const char* state, int ok, const char* json, const std::uint32_t* buffers, int count) {
+    haylen::platform::WebPage::restoreScreen(plugin, screen, state, ok != 0, json, buffers, count);
 }
 
 EMSCRIPTEN_KEEPALIVE void* haylen_web_open_video_stream(const char* plugin, const char* name) {

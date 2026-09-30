@@ -230,6 +230,7 @@ A module of the app whose first name part is the id of a plugin could never load
 | `handle:send(method, params)` | Calls `<id>.<method>` when nothing needs its answer, without a call object. |
 | `handle:on(event, listener)` | Listens to the event `<id>.<event>` and returns a connection. |
 | `handle:videoStream(name)`, `handle:audioStream(name)` | The video or audio [stream](#streams) `name` that the native part opened, or `nil` until it opens it. |
+| `handle:openScreen(name, params, options)` | Opens the [screen](#plugin-screens) `name` of the plugin, which covers the app until it ends, and returns a platform call that its result settles. |
 
 `platform.plugins()` lists the plugins of the app with their `id`, `version` and `native`. Methods and events of plugins use camelCase names, and the native parts register and send them under the same names, which their contexts prefix with the id. A platform without the native part of a plugin answers its calls with the code `noHandler`, and a native part that cannot offer a method on its platform fails the call with the code `unsupported` and a message that says why, so the Lua API stays the same everywhere. `handle.native` tells the Lua API whether the native part exists at all.
 
@@ -281,7 +282,7 @@ A native view over the app, such as a banner ad, reserves the edge of the screen
 
 ### Covering the app
 
-Native UI that covers the app, such as a full screen ad, a consent form, a sign-in sheet or a purchase dialog, calls `coverApp` of its context when it shows and `uncoverApp` when it goes away. Covers are counted, so they nest. While any cover lasts the app is `inactive`, halted and muted, whatever its lifecycle options say, `haylen.appCovered()` returns `true`, and the app hears the usual `appInactive` and `appActive` events. When the last cover ends the app comes back as it was, as the [lifecycle guide](lifecycle.md#covered-by-native-ui) describes. An `uncoverApp` without a `coverApp` is logged as an error and changes nothing.
+Native UI that covers the app, such as a full screen ad, a consent form, a sign-in sheet or a purchase dialog, calls `coverApp` of its context when it shows and `uncoverApp` when it goes away. Covers are counted, so they nest. While any cover lasts the app is `inactive`, halted and muted, whatever its lifecycle options say, `haylen.appCovered()` returns `true`, and the app hears the usual `appInactive` and `appActive` events. When the last cover ends the app comes back as it was, as the [lifecycle guide](lifecycle.md#covered-by-native-ui) describes. An `uncoverApp` without a `coverApp` is logged as an error and changes nothing. Native libraries cover the app with `coverApp` and `uncoverApp` of `HaylenNativeApi`, and a [screen](#plugin-screens) of a plugin covers the app on its own.
 
 ### Errors of the app
 
@@ -337,6 +338,8 @@ The web module of a plugin exports `default function load(context)`, which the l
 | `context.id` | The id of the plugin. |
 | `context.config` | The parameter values of `app.json` with the defaults of `plugin.json` applied. |
 | `context.register(method, handler)` | Answers `<id>.<method>`, like `Module.haylen.register` described in the [platform bridge guide](platform_bridge.md#web). |
+| `context.registerScreen(name, open)` | Opens the screen `<id>.<name>` with `open(params, screen)`, in a popup, with a redirect or with UI of the page, as [web screens](#web-screens) describes. |
+| `context.restoredScreen` | The screen of the plugin that a redirect left before the page loaded again, with `id`, `name`, `token`, `resolve(value)` and `reject(error)`, or `null`, as [web screens](#web-screens) describes. |
 | `context.emit(event, payload, options)` | Sends `<id>.<event>`, retained when `options.retain` is `true` and batched when `options.batched` is `true`, with `ArrayBuffer` and `Uint8Array` values as bytes. |
 | `context.videoStream(name)` | Opens the [video stream](#streams) `name` of the plugin once the runtime is ready, and returns `{push(source, timestamp)}`, whose `push` returns `false` while it drops a frame, before the runtime is ready or while a video has no frame yet. |
 | `context.audioStream(name, options)` | Opens the [audio stream](#streams) `name` of the plugin with `options.sampleRate`, `options.channels` and `options.capacity` in frames once the runtime is ready, and returns `{push(samples)}`. |
@@ -392,6 +395,186 @@ export default function load(context) {
 
     context.onAppError((error) => console.warn("The app failed: " + error.message));
 }
+```
+
+## Plugin screens
+
+A screen is native UI of a plugin that takes over the app until it ends with one result, such as a paywall, a sign-in flow, a payment page, the activity of an SDK, a popup page on the web or a window on the desktops. The Lua API of the plugin opens it with [`handle:openScreen(name, params, options)`](lua-api/platform.md#screens), and the engine takes care of what every such flow needs, so the native part only shows its UI and reports how it ended.
+
+### The model
+
+- **Cover first.** The engine covers the app at the start of the frame after the request and only then hands the screen to the platform, so the app is `'inactive'`, halted and muted before the screen shows, as [covering the app](#covering-the-app) describes. While an opaque screen shows, which screens are by default, the engine draws nothing and the last frame stays on screen, while it keeps drawing the halted app under a screen that lets it show through. The cover ends when the screen ends, however it ends, so native parts never cover the app for their screens themselves.
+- **One at a time, in the foreground.** A screen opens only while the app is `'active'`, and otherwise its call fails with the code `notActive`. While a screen shows, which the whole process shares, another one fails with the code `busy`.
+- **The result.** The end of the screen settles its call, with the result or with a failure such as `cancelled` when the person closed the screen.
+- **Restored ends.** A screen outlives the app that opened it: the app may restart under it, after a hot reload or `haylen.requestRestart()`, the process may end while the screen shows, as Android ends apps in the background, or a web page may leave for a redirect and load again. The end then reaches the next app as the retained event `<id>.screenRestored`, with `screen`, the name of the screen, `state`, the value that `options.state` gave, and `result`, or `error` with `message`, `code` and `data` for a failure. A restarted app starts covered by the screen that still shows, and `platform.screenShowing()` tells it why.
+- **Cancel.** `call:cancel()` and a `timeout` fail the call at once and ask the platform to dismiss the screen. The cover lasts until the platform reports the screen gone, and that end reaches no app.
+
+```lua
+-- plugins/paywall/source/init.lua
+local platform = require('haylen.platform')
+
+local handle = platform.plugin('paywall')
+local paywall = {}
+
+-- Shows the paywall of the offering, whose call answers with the purchase. The state comes back with a restored end.
+function paywall.show(offering, state)
+    return handle:openScreen('offer', {offering = offering}, {state = state})
+end
+
+-- An end that arrived after the app started again, with the state that the earlier app gave to show.
+function paywall.onRestored(listener)
+    return handle:on('screenRestored', listener)
+end
+
+return paywall
+```
+
+```lua
+-- source/main.lua
+local async = require('async')
+local paywall = require('paywall')
+
+paywall.onRestored(function(ending)
+    if ending.result then
+        print('bought ' .. ending.result.product .. ' on level ' .. ending.state.level)
+    end
+end)
+
+async.spawn(function()
+    local purchase, err = paywall.show('gold', {level = 12}):await()
+    print(purchase and purchase.product or err.code)
+end)
+```
+
+### The native contract
+
+Every platform implements the same contract, which `Host::openScreen` and `Host::cancelScreen` of `engine/src/platform/Host.hpp` state for the engine.
+
+1. The engine hands the platform a `platform::ScreenRequest`: the id of the screen, unique in the process, the id of the plugin, the name of the screen, the parameters as JSON with their byte buffers, the state and whether the screen is opaque.
+2. The platform opens the screen that the native part of the plugin registered under that name. A name that nothing registered fails with the code `noHandler`, and a platform that cannot present the screen at that moment fails it with the code `notActive`.
+3. The platform keeps the pending screen, its id, plugin, name and state, where it survives the end of the process: in the saved state of the activity on Android and in an entry of the session storage of the page on the web. The desktops keep it nowhere, since their processes do not end under an app.
+4. The native side ends the screen exactly once, from any thread, through `ScreenRelay::finish(id, ok, resultJson, buffers)`: with its result, or with a failure of `message`, `code` and `data`, such as `cancelled` when the person closed the screen or a code of its own.
+5. When the app gives the screen up, `Host::cancelScreen(id)` asks the platform to dismiss it where it can, and the native side still ends it once it is gone.
+6. When the process ended while the screen showed, the platform reads the pending screen back once the app starts again and hands its end to `ScreenRelay::restore(plugin, name, stateJson, ok, resultJson, buffers)`, which the engine delivers to the first app as `screenRestored`.
+
+Native libraries come first, as with their handlers: a screen that a library registered opens there, on every platform that loads native libraries, and the platform gets every other screen.
+
+| Platform | Screens |
+| --- | --- |
+| Web | Page screens that the web modules of plugins register, which open popups, redirect or show UI of the page, as [web screens](#web-screens) describes. |
+| macOS player, Windows and Linux apps | Screens of native libraries, as [desktop screens](#desktop-screens) describes. Windows and Linux fail every other screen with the code `noHandler`. |
+| iOS, iPadOS, Mac Catalyst, tvOS and the macOS app | Screens of native libraries, where the app loads them. The Apple runtime opens the screens of plugin classes in a later version and fails them with the code `unsupported` until then. |
+| Android | Screens of native libraries. The Android library opens the screens of plugin classes in a later version and fails them with the code `unsupported` until then. |
+
+#### Web screens
+
+`context.registerScreen(name, open)` of the web module of a plugin registers the screen `<id>.<name>`. The runtime calls `open(params, screen)` while it opens the screen, in the frame after the app asked for it, with the parameters, where bytes of the app arrive as `Uint8Array` values, and the screen.
+
+| Member | Meaning |
+| --- | --- |
+| `screen.id`, `screen.name` | The id of the screen and its name. |
+| `screen.token` | A random text that names the screen for the pages of its popup or redirect, which bring it back with their answer, such as the `state` of an OAuth request. |
+| `screen.signal` | An `AbortSignal` that aborts when the app gives the screen up. |
+| `screen.resolve(value)`, `screen.reject(error)` | End the screen with its result, whose `ArrayBuffer` and `Uint8Array` values cross as bytes, or with an error whose `code` and `data` the call keeps, like a failure of a handler. The first end counts. |
+| `screen.popup(url, options)` | Opens a popup at once and returns a promise of its answer. `options.width` and `options.height` size it, 480 by 640 by default, and `options.origin` names another origin whose pages may answer besides the origin of the app. The promise fails with the code `popupBlocked` when the browser blocks the popup and with the code `cancelled` when the popup closes without an answer. |
+| `screen.redirect(url)` | Keeps the pending screen in the session storage of the page and leaves the page for the address, or ends the screen with the code `storageUnavailable` when the session storage cannot keep it. |
+
+`open` may be an async function, and an error it throws, or a promise it returns that fails, ends the screen with that error. A screen whose name no module registered fails with the code `noHandler`. When the app gives the screen up, the runtime aborts `screen.signal`, closes the popup of the screen and ends the screen as `cancelled`.
+
+**Popups.** The page in the popup answers with a message `{haylenScreen: token, result}` or `{haylenScreen: token, error: {message, code, data}}`. It posts the message to `window.opener` with the origin of the app, and when it has no opener, such as after a page with `Cross-Origin-Opener-Policy: same-origin` cut the link, on the `BroadcastChannel` named `haylen-screens`, which only pages of the same origin reach. The runtime takes a message only when its token names the screen that shows and it comes from the popup of the screen with the origin of the app or `options.origin`, or from the channel, and then closes the popup. A sign-in or payment provider therefore returns to a callback page on the site of the app, which posts the answer.
+
+```js
+// plugins/checkout/web/checkout.js
+export default function load(context) {
+    context.registerScreen("pay", async (params, screen) => {
+        // The popup opens at once, inside the activation of the tap, and the provider returns to callback.html of this site with the answer.
+        const callback = new URL("callback.html", import.meta.url);
+        callback.hash = screen.token;
+        const answer = await screen.popup("https://pay.example.com/checkout?cart=" + params.cart + "&return=" + encodeURIComponent(callback.href), { width: 480, height: 700 });
+        screen.resolve({ paid: answer.paid, receipt: answer.receipt });
+    });
+}
+```
+
+```html
+<!-- plugins/checkout/web/callback.html -->
+<script>
+    const query = new URLSearchParams(location.search);
+    const message = { haylenScreen: location.hash.slice(1), result: { paid: query.get("status") === "paid", receipt: query.get("receipt") } };
+    if (window.opener) {
+        window.opener.postMessage(message, location.origin);
+    } else {
+        new BroadcastChannel("haylen-screens").postMessage(message);
+    }
+    window.close();
+</script>
+```
+
+**Redirects.** Providers that only redirect, and phones that open popups as tabs, suit `screen.redirect(url)`. The runtime keeps `{id, plugin, screen, token, state}` in the session storage of the page and leaves for the address, which stops the app. The provider returns to the page of the app with the answer in the address, the page loads again, and the runtime hands the kept screen to the context of its plugin as `context.restoredScreen`, with `id`, `name`, `token`, `resolve(value)` and `reject(error)`, or `null` without one. The module reads the answer from the address in `load`, ends the screen and cleans the address with `history.replaceState`, and the runtime delivers the end to the app that starts as `screenRestored`, with the state that the earlier app gave. A module that finds no answer in the address rejects the screen with the code `cancelled`, so the app learns that the flow ended. A page that the browser brings back from its cache after the redirect, with the app still in it, ends the pending screen as `cancelled` too.
+
+```js
+export default function load(context) {
+    context.registerScreen("signIn", (params, screen) => {
+        screen.redirect("https://accounts.example.com/authorize?client_id=" + context.config.clientId + "&state=" + screen.token + "&redirect_uri=" + encodeURIComponent(location.href));
+    });
+
+    // The provider came back to this page with the code and the state that names the screen.
+    const returned = context.restoredScreen;
+    if (returned) {
+        const address = new URL(location.href);
+        const code = address.searchParams.get("code");
+        if (code && address.searchParams.get("state") === returned.token) {
+            returned.resolve({ code });
+        } else {
+            returned.reject(Object.assign(new Error("The sign-in came back without a code."), { code: "cancelled" }));
+        }
+        address.search = "";
+        history.replaceState(history.state, "", address.href);
+    }
+}
+```
+
+The rules of browsers apply to every page screen.
+
+- **Activation.** Browsers open a popup only right after a click, a tap or a key press of the person, which `screen.popup` reports with the code `popupBlocked` otherwise. The runtime opens the screen in the frame after the app asked for it, so an app that opens the screen in reaction to a tap, such as from a button of `haylen.ui`, stays within the few seconds that browsers allow. An app that first awaits a network request may take too long, so it opens the screen first and lets the page of the popup load what it needs, or asks the person to tap again. Safari is stricter than other browsers with popups that do not open while the handler of the event runs.
+- **Cross-origin opener policy.** `Cross-Origin-Opener-Policy: same-origin` on the page of the app puts every popup of another origin into a browsing context group of its own, which cuts the link between the popup and the app, so the popup cannot answer through `postMessage` and the app cannot tell when it closes. The web runtime is single-threaded and needs no cross-origin isolation, so pages leave the header out, as `make.py serve` does unless `--coop` asks for it, which the [distribution guide](distribution.md#serve) describes. A site that needs isolation for other reasons sends `same-origin-allow-popups`, or lets its callback pages answer on the `haylen-screens` channel.
+- **Mobile browsers** open popups as tabs, which hides the tab of the app and sends the app to the background while the popup shows.
+
+#### Desktop screens
+
+A native library registers a screen with `registerScreen(plugin, name, open, cancel, user)` of [`HaylenNativeApi`](lua-api/native.md#library-handlers). The engine calls `open(user, screen, paramsJson, buffers, bufferCount)` on the frame thread once it covered the app, and the library opens a window of its own over the window of the app, which `getWindow` hands it, and ends the screen with `finishScreen(screen, ok, resultJson, buffers, bufferCount)` from any thread when the window closes. `cancel(user, screen)` asks it to close the window of a screen that the app gave up, and the library still calls `finishScreen` then. `coverApp` and `uncoverApp` cover the app for other native UI of a library, such as the overlay of an SDK.
+
+| Desktop | Window of the app | Window of a screen |
+| --- | --- | --- |
+| macOS | `handle` is the `NSWindow*`, which Objective-C reads back with `(__bridge NSWindow*)handle`. The frame thread is the main thread of AppKit. | A sheet with `beginSheet:completionHandler:`, which keeps the events of the window of the app away while it shows, or a child window with `addChildWindow:ordered:`, which suits borderless and transparent windows. |
+| Windows | `handle` is the `HWND`. The frame thread runs the message loop of the app, which dispatches the messages of every window that the thread creates. | A window that the window of the app owns, created with it as `hWndParent`, which stays above it and hides with it, after `EnableWindow(app, FALSE)`, which the library undoes before it destroys its window. |
+| Linux | `handle` is the X11 `Window`, read back with `(Window)(uintptr_t)handle`, and `display` is the `Display*` of the engine, which belongs to the frame thread. | A window on a connection of its own from `XOpenDisplay`, whose events a thread of the library reads, marked with `XSetTransientForHint` for the window of the app and with `_NET_WM_WINDOW_TYPE_DIALOG` and `_NET_WM_STATE_MODAL`. |
+
+The confirm screen of the [demo plugin](#screens) opens each of these windows.
+
+#### The Apple and Android waves
+
+The runtimes of Apple platforms and Android implement the contract in later versions of the engine, and the contexts of their plugin classes gain screens then.
+
+- **Apple.** The context of a plugin class registers screens by name, with a handler that receives the parameters and presents a view controller, SwiftUI through a hosting controller included, from the topmost presented controller once a running transition ended, or a sheet or a child window on macOS. The runtime wraps the controller in a container whose disappearance ends the screen however it is dismissed, by the person, by the SDK or by code, with the result that the handler reports. The pending screen lives in the process, since the system does not bring back the controllers of an app that it ended, and results that come back later through links reach the next app through `ScreenRelay::restore`.
+- **Android.** The host activity becomes an `AppCompatActivity`, so the context of a plugin class registers screens by name, as an Activity Result contract that the activity registers under the stable key `haylen.<id>.<screen>` in `onCreate`, or as the launcher of an SDK that ends the screen through the context. The pending screen goes into the saved state of the activity, so after the end of the process the recreated activity reads it back, receives the result that Android delivers again and hands it to `ScreenRelay::restore`.
+
+Until then both platforms fail every screen that no native library opens with the code `unsupported`.
+
+### C++
+
+C++ apps and engine plugins open screens through `platform::Screens`, which `engine.getScreens()` returns.
+
+| Member | Meaning |
+| --- | --- |
+| `open(plugin, screen, params, options, callback)` | Asks the plugin to open its screen with a `Bridge::Payload` of parameters and `Screens::Options` with `state`, `opaque` and `timeout`, and returns the id of the screen. The callback receives the `Bridge::Result` of the screen at the start of a frame, `busy` and `notActive` included. |
+| `cancel(id)` | Gives the screen up, which fails with the code `cancelled` at the next pump, and returns whether it was pending. |
+| `isShowing()` | Whether the screen of a plugin shows, whichever app of the process opened it. |
+
+```cpp
+engine.getScreens().open("paywall", "offer", {.json = {{"offering", "gold"}}}, {.state = {{"level", 12}}}, [](haylen::platform::Bridge::Result result) {
+    haylen::core::Log::info("The paywall ended with {}", result.ok ? result.value.json.dump() : result.error.message);
+});
 ```
 
 ## The Apple part
@@ -776,7 +959,7 @@ The consumer rules of the engine library keep every class that extends `HaylenPl
 
 ## Demo plugin and sample
 
-The plugins sample, [`samples/system/plugins`](../samples/system/plugins), carries its own plugin, [`native-demo`](../samples/system/plugins/plugins/native-demo), which exercises every capability of this guide with the APIs of each platform alone: UIKit and AppKit on Apple platforms, the views, dialogs and intents of Android, the DOM on the web and the threads of the system in C on the desktops. It is the reference for writing a plugin: each of its parts is a small, complete example of the platform side of one capability, and its [README](../samples/system/plugins/plugins/native-demo/README.md) documents its Lua API the way every plugin documents its own. The [sample README](../samples/system/plugins/README.md) explains its tests and how to run them on each platform.
+The plugins sample, [`samples/system/plugins`](../samples/system/plugins), carries its own plugin, [`native-demo`](../samples/system/plugins/plugins/native-demo), which exercises every capability of this guide with the APIs of each platform alone: UIKit and AppKit on Apple platforms, the views, dialogs and intents of Android, the DOM on the web and the threads and the windows of the system in C on the desktops. It is the reference for writing a plugin: each of its parts is a small, complete example of the platform side of one capability, and its [README](../samples/system/plugins/plugins/native-demo/README.md) documents its Lua API the way every plugin documents its own. The [sample README](../samples/system/plugins/README.md) explains its tests and how to run them on each platform.
 
 ### The package
 
@@ -786,8 +969,8 @@ The plugins sample, [`samples/system/plugins`](../samples/system/plugins), carri
 | [`source/init.lua`](../samples/system/plugins/plugins/native-demo/source/init.lua) | The Lua API on the plugin handle, the load of the C library where no other native part loaded, and the `start` call that tells the native part of every new app. |
 | [`apple/`](../samples/system/plugins/plugins/native-demo/apple) | `NativeDemoPlugin.swift`, the plugin class, which also draws its image with CoreGraphics, `NativeDemoBanner.swift`, `NativeDemoScreen.swift` and `NativeDemoPicker.swift`, each for UIKit and AppKit. |
 | [`android/`](../samples/system/plugins/plugins/native-demo/android) | The library module with its manifest and `NativeDemoPlugin.kt`, `NativeDemoBanner.kt` and `NativeDemoScreen.kt`. |
-| [`web/native-demo.js`](../samples/system/plugins/plugins/native-demo/web/native-demo.js) | The web module. |
-| [`native/`](../samples/system/plugins/plugins/native-demo/native) | `CMakeLists.txt` and `NativeDemo.c`, the library of the desktops, with a PNG encoder of its own and the threads that feed its streams. |
+| [`web/`](../samples/system/plugins/plugins/native-demo/web) | `native-demo.js`, the web module, and `screen.html`, the confirm page of its popup and redirect screens. |
+| [`native/`](../samples/system/plugins/plugins/native-demo/native) | `CMakeLists.txt` and `NativeDemo.c`, the library of the desktops, with a PNG encoder of its own and the threads that feed its streams, and `NativeDemoScreen.m` and `NativeDemoScreen.c`, the windows of its confirm screen. |
 
 ### The Lua API
 
@@ -801,7 +984,7 @@ The plugins sample, [`samples/system/plugins`](../samples/system/plugins), carri
 | Work off the main thread, `compute` | `context.register` with `Decodable` parameters and an `Encodable` result, awaiting a global dispatch queue. | `context.register` with `HaylenBridge.Threading.BACKGROUND`. | An async handler that yields to the page between slices. | A thread of the library that calls `resolve`. |
 | A typed failure, `fail` | A thrown `HaylenFailure` with a code and data. | `reply.failure(message, code, data)`, or a thrown `HaylenBridge.Failure`. | A thrown error with `code` and `data`. | `resolve` with `ok` 0 and an object with `message`, `code` and `data`. |
 | Cancellation, `wait` | The task of the call is cancelled, which ends `Task.sleep`. | `reply.onCancel`. | The `abort` event of the `signal` of the call. | The cancel function of `registerHandler`. |
-| An unsupported call | `HaylenFailure` with the code `unsupported`, for `pickFile` on tvOS and the streams. | `reply.failure` with the code `unsupported`, for the streams. | | `resolve` with the code `unsupported`, for the banner, the screen, the picker and the parameters. |
+| An unsupported call | `HaylenFailure` with the code `unsupported`, for `pickFile` on tvOS and the streams. | `reply.failure` with the code `unsupported`, for the streams. | | `resolve` with the code `unsupported`, for the banner, the covering screen, the picker and the parameters. |
 | Bytes both ways, `echoBytes` | `registerHandler`, whose parameters hold `Data` and whose answer returns it. | A `ByteArray` in the parameters, returned in a `JSONObject`. | A `Uint8Array` in the parameters, returned as it is. | The `HaylenNativeBuffer` of the handler, handed back to `resolve`. |
 | An image as bytes, `generatedImage` | A `CGContext` and `CGImageDestination` of ImageIO, which write a PNG. | A `Bitmap`, a `Canvas` and `Bitmap.compress`, on the background thread. | A `<canvas>` and `toBlob`. | A PNG encoder of the library with stored deflate blocks. |
 
@@ -824,6 +1007,10 @@ The banner is a native view that the overlay of the context places at the top or
 ### Covering the app
 
 The native screen is a `UIViewController` presented full screen on iOS, iPadOS, Mac Catalyst and tvOS, a sheet of the window on macOS, a full screen `Dialog` on Android and a modal `<dialog>` element on the web. Each part calls `coverApp` right before it shows and `uncoverApp` once it closed, with `defer` in Swift and `finally` in JavaScript, and answers the call after the cover ended. The file picker of Apple platforms covers the app the same way, while the document picker of Android is an activity of its own, which pauses the app through its lifecycle.
+
+### Screens
+
+`confirm` is the [screen](#plugin-screens) of the plugin, which asks a question with Confirm and Decline and answers with `{confirmed, via, language}`. The web opens `web/screen.html` in a popup with `screen.popup`, whose page posts the answer to the app, and the desktops open a native window over the window of the app from `getWindow`: a sheet on macOS in `NativeDemoScreen.m`, an owned window on Windows and a transient X11 window on a connection of its own on Linux in `NativeDemoScreen.c`, whose Close button and close box end the screen as `cancelled`. The web adds `redirect`, which leaves the page for the same confirm page and comes back with the answer and the token of the screen in the address, which the module reads through `context.restoredScreen` in `load`. Apple platforms and Android fail both with the code `unsupported` until their runtimes open screens. The Native screen test of the sample opens the screen, shows that the app was covered and drew nothing under it, tries a second screen, which fails with `busy`, cancels one, and restarts the app under a screen with `haylen.requestRestart()`, so the next app receives `screenRestored` with the state.
 
 ### Native results
 

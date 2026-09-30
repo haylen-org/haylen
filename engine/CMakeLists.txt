@@ -324,6 +324,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/PlatformLua.cpp
   src/platform/PluginStreams.cpp
   src/platform/SafeAreaSimulation.cpp
+  src/platform/ScreenRelay.cpp
+  src/platform/Screens.cpp
   src/platform/StreamsLua.cpp
   src/platform/System.cpp
   src/platform/SystemInfo.cpp

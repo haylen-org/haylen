@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "haylen/core/Json.hpp"
+#include "haylen/platform/ScreenRequest.hpp"
 #include "haylen/platform/native/HaylenNative.h"
 
 namespace haylen::platform {
@@ -33,10 +34,28 @@ class NativeApi final {
     // Hands the report of an error that stopped the app to the error handlers of the libraries, in the order they registered. Runs on the frame thread.
     static void reportError(const core::Json& report);
 
+    // Opens the screen with the opener that a library registered for its plugin and name and returns true, or returns false when none did. Runs on the frame thread.
+    static bool openScreen(const ScreenRequest& request);
+
+    // Tells the library of the screen that the app gave it up, and returns false when no library opens that screen.
+    static bool cancelScreen(std::string_view plugin, std::string_view name, std::uint64_t screen);
+
+    // Whether native UI of a library covers the app.
+    [[nodiscard]] static bool isAppCovered();
+
+    // The window of the app that getWindow hands the libraries, which the runtime sets once the window opened.
+    static void setWindow(const HaylenNativeWindow& value);
+
   private:
     struct Handler {
         HaylenNativeHandler handler = nullptr;
         HaylenNativeCancel cancel = nullptr;
+        void* user = nullptr;
+    };
+
+    struct ScreenHandler {
+        HaylenNativeScreenOpener open = nullptr;
+        HaylenNativeScreenCancel cancel = nullptr;
         void* user = nullptr;
     };
 
@@ -57,6 +76,11 @@ class NativeApi final {
     static void pushVideoFrame(HaylenNativeVideoStream* stream, const void* pixels, int width, int height, int stride, double timestamp);
     static HaylenNativeAudioStream* openAudioStream(const char* plugin, const char* name, int sampleRate, int channels, int format, int capacityFrames);
     static std::size_t pushAudioFrames(HaylenNativeAudioStream* stream, const void* samples, std::size_t frames);
+    static void registerScreen(const char* plugin, const char* name, HaylenNativeScreenOpener open, HaylenNativeScreenCancel cancel, void* user);
+    static void finishScreen(std::uint64_t screen, int ok, const char* resultJson, const HaylenNativeBuffer* buffers, std::size_t bufferCount);
+    static int getWindow(HaylenNativeWindow* target);
+    static void coverApp();
+    static void uncoverApp();
 
     // Copies the buffers that a library hands over, which may be null when there are none.
     [[nodiscard]] static std::vector<std::vector<std::byte>> copyBuffers(const HaylenNativeBuffer* buffers, std::size_t count);
@@ -65,12 +89,19 @@ class NativeApi final {
     template <typename Body> static auto guard(const char* entry, Body&& body) noexcept -> decltype(body());
 
     [[nodiscard]] static std::optional<Handler> find(std::string_view method);
+    [[nodiscard]] static std::optional<ScreenHandler> findScreen(std::string_view plugin, std::string_view name);
+
+    // Screens are registered under their plugin and their name, which a dot joins like the methods of plugins.
+    [[nodiscard]] static std::string getScreenKey(std::string_view plugin, std::string_view name);
 
     static const HaylenNativeApi api;
     static std::mutex& mutex;
     static std::unordered_map<std::string, Handler>& handlers;
+    static std::unordered_map<std::string, ScreenHandler>& screens;
     static std::set<std::string, std::less<>>& plugins;
     static std::vector<ErrorHandler>& errorHandlers;
+    static std::optional<HaylenNativeWindow>& window;
+    static int covers;
 };
 
 } // namespace haylen::platform

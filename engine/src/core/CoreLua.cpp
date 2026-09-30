@@ -90,6 +90,12 @@ int CoreLua::rootQuit(lua_State* L) {
     return 0;
 }
 
+// Starts the app again from its package once the frame ends, the way a hot reload does.
+int CoreLua::rootRequestRestart(lua_State* L) {
+    lua::Runtime::getEngine(L).requestRestart();
+    return 0;
+}
+
 int CoreLua::rootElapsed(lua_State* L) {
     lua::Stack::push(L, lua::Runtime::getEngine(L).getClock().getElapsed());
     return 1;
@@ -224,7 +230,7 @@ int CoreLua::rootAutoload(lua_State* L) {
 int CoreLua::openRoot(lua_State* L) {
     Engine& owner = lua::Runtime::getEngine(L);
     const luaL_Reg functions[] = {
-        {"quit", &rootQuit}, {"elapsed", &rootElapsed}, {"delta", &rootDelta}, {"unscaledDelta", &rootUnscaledDelta}, {"frameIndex", &rootFrameIndex}, {"timeScale", &rootTimeScale}, {"setTimeScale", &rootSetTimeScale}, {"fixedStep", &rootFixedStep}, {"interpolation", &rootInterpolation}, {"reportError", &lua::Binding::native<&rootReportError>}, {"paused", &rootPaused}, {"setPaused", &lua::Binding::native<&rootSetPaused>}, {"appState", &rootAppState}, {"appCovered", &rootAppCovered}, {"networkState", &rootNetworkState}, {"halted", &rootHalted}, {"lifecycle", &rootLifecycle}, {"setLifecycle", &lua::Binding::native<&rootSetLifecycle>}, {"autoload", &lua::Binding::native<&rootAutoload>}, {nullptr, nullptr},
+        {"quit", &rootQuit}, {"requestRestart", &rootRequestRestart}, {"elapsed", &rootElapsed}, {"delta", &rootDelta}, {"unscaledDelta", &rootUnscaledDelta}, {"frameIndex", &rootFrameIndex}, {"timeScale", &rootTimeScale}, {"setTimeScale", &rootSetTimeScale}, {"fixedStep", &rootFixedStep}, {"interpolation", &rootInterpolation}, {"reportError", &lua::Binding::native<&rootReportError>}, {"paused", &rootPaused}, {"setPaused", &lua::Binding::native<&rootSetPaused>}, {"appState", &rootAppState}, {"appCovered", &rootAppCovered}, {"networkState", &rootNetworkState}, {"halted", &rootHalted}, {"lifecycle", &rootLifecycle}, {"setLifecycle", &lua::Binding::native<&rootSetLifecycle>}, {"autoload", &lua::Binding::native<&rootAutoload>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     ClassLua::push(L);

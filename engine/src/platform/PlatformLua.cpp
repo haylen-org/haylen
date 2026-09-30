@@ -56,18 +56,21 @@ void PlatformLua::pushCall(lua_State* L, const std::string& method, int paramsIn
     auto pending = std::make_shared<Call>();
     pending->promise = std::make_shared<varn::async::Promise>(owner.getScriptRuntime());
     pending->cancel = &cancelBridgeCall;
+    pending->id = owner.getPlatform().call(method, params, settle(pending), timeout);
+    lua::Userdata::emplace<Call>(L, std::move(pending));
+}
+
+Bridge::Callback PlatformLua::settle(std::shared_ptr<Call> pending) {
     // clang-format off
-    pending->id = owner.getPlatform().call(method, params, [pending](Bridge::Result result) {
+    return [pending = std::move(pending)](Bridge::Result result) {
         if (!result.ok) {
             pending->error = std::move(result.error);
             pending->promise->reject(pending->error->message);
             return;
         }
         pending->promise->resolveCustom([value = std::move(result.value)](lua_State* state) { pushPayload(state, value); });
-    }, timeout);
+    };
     // clang-format on
-
-    lua::Userdata::emplace<Call>(L, std::move(pending));
 }
 
 void PlatformLua::pushConnection(lua_State* L, const std::string& event, int listenerIndex) {
@@ -120,6 +123,10 @@ int PlatformLua::finishAwait(lua_State* L, int, lua_KContext) {
 
 bool PlatformLua::cancelBridgeCall(lua_State* L, std::uint64_t id) {
     return lua::Runtime::getEngine(L).getPlatform().cancel(id);
+}
+
+bool PlatformLua::cancelScreen(lua_State* L, std::uint64_t id) {
+    return lua::Runtime::getEngine(L).getScreens().cancel(id);
 }
 
 // Gives up the call, which fails with the code cancelled, and returns whether it was still pending.
@@ -357,11 +364,64 @@ int PlatformLua::audioStreamOfPlugin(lua_State* L) {
     return 1;
 }
 
+// Opens a screen of the plugin with handle:openScreen(name, params, {state = value, opaque = true, timeout = seconds}) and returns its call, which Lua awaits and may cancel.
+int PlatformLua::openScreenOfPlugin(lua_State* L) {
+    core::Engine& owner = lua::Runtime::getEngine(L);
+    const std::string& id = lua::Userdata::check<AppPlugin>(L, 1).id;
+    std::string screen = lua::Stack::read<std::string>(L, 2);
+    if (screen.empty()) {
+        throw std::invalid_argument("A screen of the plugin " + id + " needs a name.");
+    }
+    Bridge::Payload params = readPayload(L, 3);
+    Screens::Options options = readScreenOptions(L, 4);
+
+    auto pending = std::make_shared<Call>();
+    pending->promise = std::make_shared<varn::async::Promise>(owner.getScriptRuntime());
+    pending->cancel = &cancelScreen;
+    pending->id = owner.getScreens().open(id, std::move(screen), std::move(params), std::move(options), settle(pending));
+    lua::Userdata::emplace<Call>(L, std::move(pending));
+    return 1;
+}
+
+// The state goes where the platform keeps it across the end of the process, such as the session storage of a page, which holds text, so it takes no bytes.
+Screens::Options PlatformLua::readScreenOptions(lua_State* L, int index) {
+    Screens::Options options;
+    if (lua_isnoneornil(L, index)) {
+        return options;
+    }
+    luaL_checktype(L, index, LUA_TTABLE);
+    lua::Table::checkFields(L, index, {kScreenOptions});
+    lua::Table::readField(L, index, "opaque", options.opaque);
+
+    std::optional<double> seconds;
+    lua::Table::readField(L, index, "timeout", seconds);
+    if (seconds) {
+        if (!std::isfinite(*seconds) || *seconds <= 0.0) {
+            throw std::invalid_argument("The timeout of a screen is a positive number of seconds.");
+        }
+        options.timeout = std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(*seconds));
+    }
+
+    lua_getfield(L, index, "state");
+    std::vector<std::vector<std::byte>> buffers;
+    options.state = lua_isnil(L, -1) ? core::Json(nullptr) : lua::JsonConverter::read(L, -1, buffers);
+    lua_pop(L, 1);
+    if (!buffers.empty()) {
+        throw std::invalid_argument("The state of a screen is JSON without bytes.");
+    }
+    return options;
+}
+
+int PlatformLua::screenShowing(lua_State* L) {
+    lua::Stack::push(L, lua::Runtime::getEngine(L).getScreens().isShowing());
+    return 1;
+}
+
 int PlatformLua::open(lua_State* L) {
-    lua::ClassBuilder<AppPlugin>(L).property("id", &getPluginId).property("version", &getPluginVersion).property("config", &getPluginConfig).property("native", &lua::Binding::native<&isPluginNative>).function("call", &lua::Binding::native<&callPlugin>).function("send", &lua::Binding::native<&sendToPlugin>).function("on", &lua::Binding::native<&onPlugin>).function("videoStream", &lua::Binding::native<&videoStreamOfPlugin>).function("audioStream", &lua::Binding::native<&audioStreamOfPlugin>).install();
+    lua::ClassBuilder<AppPlugin>(L).property("id", &getPluginId).property("version", &getPluginVersion).property("config", &getPluginConfig).property("native", &lua::Binding::native<&isPluginNative>).function("call", &lua::Binding::native<&callPlugin>).function("send", &lua::Binding::native<&sendToPlugin>).function("on", &lua::Binding::native<&onPlugin>).function("videoStream", &lua::Binding::native<&videoStreamOfPlugin>).function("audioStream", &lua::Binding::native<&audioStreamOfPlugin>).function("openScreen", &lua::Binding::native<&openScreenOfPlugin>).install();
 
     const luaL_Reg functions[] = {
-        {"call", &lua::Binding::native<&call>}, {"on", &lua::Binding::native<&on>}, {"send", &lua::Binding::native<&send>}, {"registerHandler", &lua::Binding::native<&registerHandler>}, {"hasHandler", &hasHandler}, {"resolve", &lua::Binding::native<&resolve>}, {"emit", &lua::Binding::native<&emit>}, {"bytes", &lua::Binding::native<&bytes>}, {"pendingCallCount", &pendingCallCount}, {"plugins", &lua::Binding::native<&plugins>}, {"plugin", &lua::Binding::native<&plugin>}, {nullptr, nullptr},
+        {"call", &lua::Binding::native<&call>}, {"on", &lua::Binding::native<&on>}, {"send", &lua::Binding::native<&send>}, {"registerHandler", &lua::Binding::native<&registerHandler>}, {"hasHandler", &hasHandler}, {"resolve", &lua::Binding::native<&resolve>}, {"emit", &lua::Binding::native<&emit>}, {"bytes", &lua::Binding::native<&bytes>}, {"pendingCallCount", &pendingCallCount}, {"screenShowing", &screenShowing}, {"plugins", &lua::Binding::native<&plugins>}, {"plugin", &lua::Binding::native<&plugin>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

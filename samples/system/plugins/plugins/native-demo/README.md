@@ -1,6 +1,6 @@
 # Native Demo
 
-A Haylen plugin that exercises every capability of native plugins with the APIs of each platform alone: calls on the main thread and on a background thread, typed failures, timeouts and cancellation, bytes both ways and an image drawn natively, video and audio streams, events, retained events and batched events, parameters with defaults, a native banner over the app that reserves its edge, a native screen that covers the app, the file picker of the platform, URLs that open the app and the errors that stop it. It is the plugin of the [plugins sample](../../README.md), and [the plugin guide](../../../../../docs/plugins.md#demo-plugin-and-sample) walks through it as the reference for writing a plugin on each platform. Its Lua API is the same on every platform.
+A Haylen plugin that exercises every capability of native plugins with the APIs of each platform alone: calls on the main thread and on a background thread, typed failures, timeouts and cancellation, bytes both ways and an image drawn natively, video and audio streams, events, retained events and batched events, parameters with defaults, a native banner over the app that reserves its edge, a native screen that covers the app, a screen of the plugin whose end reaches the next app after a restart, the file picker of the platform, URLs that open the app and the errors that stop it. It is the plugin of the [plugins sample](../../README.md), and [the plugin guide](../../../../../docs/plugins.md#demo-plugin-and-sample) walks through it as the reference for writing a plugin on each platform. Its Lua API is the same on every platform.
 
 ## Installation
 
@@ -26,8 +26,8 @@ python3 make.py plugin add samples/system/plugins/plugins/native-demo --app my-g
 | tvOS | `apple/`, Swift | The same, without a file picker, so `pickFile` fails with the code `unsupported`. |
 | macOS app | `apple/`, Swift | AppKit views over the app, a sheet, `NSOpenPanel`, `CFBundleURLTypes`, `application(_:open:)` and CoreGraphics with ImageIO for the image. The streams fail with the code `unsupported`, like on iOS. |
 | Android | `android/`, a Kotlin library module | Views in panels of the overlay, a full screen `Dialog`, `ACTION_OPEN_DOCUMENT` with `startActivityForResult`, an intent filter of the activity for the URL scheme and a `Bitmap` for the image. The streams come with a later version of the engine, so they fail with the code `unsupported`. |
-| Web | `web/native-demo.js` | DOM elements in the overlay, a modal `<dialog>`, an `<input type="file">`, the hash of the page address, a `<canvas>` with `toBlob` for the image and the video stream, and timers of the page for the tone and the bursts. |
-| Desktop player, Windows, Linux | `native/`, a C library | Threads of the system and `HaylenNativeApi`, with a PNG encoder of its own and the video and audio streams of the engine. The desktops give native libraries no view API, so `showBanner`, `setBannerVisible`, `removeBanner`, `showScreen` and `pickFile` fail with the code `unsupported`, and so does `nativeConfig`, since native libraries receive no plugin parameters. The desktops open no URLs of the scheme either. |
+| Web | `web/native-demo.js` and `web/screen.html` | DOM elements in the overlay, a modal `<dialog>`, a popup and a redirect to `screen.html` for the confirm screen, an `<input type="file">`, the hash of the page address, a `<canvas>` with `toBlob` for the image and the video stream, and timers of the page for the tone and the bursts. |
+| Desktop player, Windows, Linux | `native/`, a C library | Threads of the system and `HaylenNativeApi`, with a PNG encoder of its own, the video and audio streams of the engine and a window of its own for the confirm screen: a sheet with AppKit on macOS, an owned window with Win32 on Windows and a transient window with Xlib on Linux. The desktops place no views of native libraries over the app, so `showBanner`, `setBannerVisible`, `removeBanner`, `showScreen` and `pickFile` fail with the code `unsupported`, and so does `nativeConfig`, since native libraries receive no plugin parameters. The desktops open no URLs of the scheme either. |
 
 The Lua API loads the C library with `native.load('native_demo', {init = 'native_demo_haylen_init'})` when it runs on macOS, Windows or Linux and no other native part loaded, which is the case of the desktop player and of Windows and Linux apps. The macOS app built from the Apple template runs the Swift part, which loads before any Lua runs.
 
@@ -317,6 +317,42 @@ events.on('appInactive', function() print('covered', haylen.appCovered()) end)
 async.spawn(function()
     local closed = demo.showScreen('Native screen'):await()
     print('the screen showed for', closed.seconds)
+end)
+```
+
+### demo.openScreen(options)
+
+Opens the confirm [screen](../../../../../docs/plugins.md#plugin-screens) of the plugin, which asks a question with Confirm and Decline, and answers with `{confirmed, via, language}` once the person answers. The engine covers the app before the screen shows and draws nothing under it. It is a popup of `web/screen.html` on the web, which the browser blocks unless a click, a tap or a key press asked for it right before, and a window over the window of the app on the desktops: a sheet on macOS, an owned window on Windows and a transient window on Linux, whose Close button and close box end it with the code `cancelled`. Apple platforms and Android fail with the code `unsupported` until their runtimes open screens. `options` takes `state`, `opaque` and `timeout`, like `openScreen` of the plugin handle, and the state comes back with a restored end.
+
+```lua
+local async = require('async')
+local demo = require('native-demo')
+
+async.spawn(function()
+    local answer, err = demo.openScreen({state = {level = 3}}):await()
+    print(answer and ('confirmed ' .. tostring(answer.confirmed) .. ' through ' .. answer.via) or err.code)
+end)
+```
+
+### demo.openRedirectScreen(options)
+
+Opens the confirm screen of the web by leaving the page for `web/screen.html`, which comes back with the answer in the address. The page loads again, so the answer reaches the new app as `screenRestored` with the state. The other platforms fail with the code `unsupported` or `noHandler`.
+
+```lua
+local demo = require('native-demo')
+
+demo.openRedirectScreen({state = {level = 3}})
+```
+
+### demo.onScreenRestored(listener)
+
+Calls `listener({screen, state, result})`, or `{screen, state, error}` for a failure, for a screen whose app restarted, or whose page loaded again, before it ended. The event is retained, so the first listener receives it however late it connects.
+
+```lua
+local demo = require('native-demo')
+
+demo.onScreenRestored(function(ending)
+    print(ending.screen, ending.state.level, ending.result and ending.result.confirmed)
 end)
 ```
 

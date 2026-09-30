@@ -102,6 +102,9 @@ class Bridge final {
     void pump();
     [[nodiscard]] std::size_t getPendingCallCount() const;
 
+    // Reads an answer of native code the way resolve does: JSON that is not valid fails with the code invalidJson, JSON that refers to a buffer it lacks fails with the code invalidBytes, and a failure keeps its message, code and data but drops its buffers.
+    [[nodiscard]] static Result parseResult(bool ok, std::string_view json, std::vector<std::vector<std::byte>> buffers);
+
   private:
     struct Completion {
         std::uint64_t id = 0;
@@ -135,7 +138,6 @@ class Bridge final {
     static std::atomic<std::uint64_t> nextCallId;
 
     [[nodiscard]] static Error readFailure(core::Json payload);
-    [[nodiscard]] static Result parseResult(bool ok, std::string_view json, std::vector<std::vector<std::byte>> buffers);
 
     // Gathers the batched events of each name into one event at the place of the first of them, whose JSON lists theirs in order.
     [[nodiscard]] static std::vector<NativeEvent> gather(std::vector<NativeEvent> events);

@@ -313,7 +313,7 @@ end
 
 ### haylen.appCovered()
 
-Returns `true` while native UI of a plugin covers the app, such as a full screen ad, a consent form, a sign-in sheet or a purchase dialog. A covered app is `'inactive'`, halted and muted, whatever the lifecycle options say, and it comes back as it was once the last cover ends, as the [lifecycle guide](../lifecycle.md#covered-by-native-ui) explains.
+Returns `true` while native UI of a plugin covers the app, such as a full screen ad, a consent form, a sign-in sheet, a purchase dialog or a [screen](platform.md#screens) of a plugin. A covered app is `'inactive'`, halted and muted, whatever the lifecycle options say, and it comes back as it was once the last cover ends, as the [lifecycle guide](../lifecycle.md#covered-by-native-ui) explains.
 
 ```lua
 local events = require('haylen.events')
@@ -419,6 +419,26 @@ require('haylen.scene').push({
     update = function(self, dt)
         if input.pressed('quit') then
             haylen.quit()
+        end
+    end,
+})
+```
+
+### haylen.requestRestart()
+
+Starts the app again from its package once the current frame ends, the way a hot reload of an edited script does: the scenes, the autoloads and the plugins stop, and a new Lua state runs `source/main.lua`. What belongs to the platform outlives the restart, such as the covers of native UI, the edges that native views reserve, the streams of plugins and a [screen](platform.md#screens) that shows, whose end reaches the restarted app as `screenRestored`.
+
+```lua
+local haylen = require('haylen')
+local input = require('haylen.input')
+
+input.loadActions({actions = {{name = 'restart', type = 'button', bindings = {'key:f5'}}}})
+
+-- F5 starts the app again, which runs every script of the package anew.
+require('haylen.scene').push({
+    update = function(self, dt)
+        if input.pressed('restart') then
+            haylen.requestRestart()
         end
     end,
 })

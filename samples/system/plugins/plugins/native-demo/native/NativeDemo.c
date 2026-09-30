@@ -1,5 +1,5 @@
-// Desktop part of the Native Demo plugin, a C library for macOS, Windows and Linux built on the C library and the threads of each system. native.load hands its init function the HaylenNativeApi of the engine, through which the library answers the methods of the plugin, sends its events, pushes its video and audio streams and hears the errors that stop the app. Its handlers, their cancel functions and its error handler run on the frame thread, and its threads only emit events, answer calls and push frames and samples.
-// The desktops give native libraries no view API, so the banner and the native screen fail with the code unsupported, and so do the file picker, which the desktop systems offer through no shared C API, and config, since native libraries receive no plugin parameters.
+// Desktop part of the Native Demo plugin, a C library for macOS, Windows and Linux built on the C library and the threads of each system. native.load hands its init function the HaylenNativeApi of the engine, through which the library answers the methods of the plugin, sends its events, pushes its video and audio streams, opens its confirm screen over the window of the app and hears the errors that stop the app. Its handlers, their cancel functions, its screen and its error handler run on the frame thread, and its threads only emit events, answer calls, end screens and push frames and samples.
+// The desktops place no views of native libraries over the app, so the banner and the covering native screen fail with the code unsupported, and so do the file picker, which the desktop systems offer through no shared C API, and config, since native libraries receive no plugin parameters. The confirm screen is a window of its own, which NativeDemoScreen.m and NativeDemoScreen.c open with the window of the app from getWindow.
 
 #include <math.h>
 #include <stdint.h>
@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "NativeDemoScreen.h"
 #include "haylen/platform/native/HaylenNative.h"
 
 #if defined(_WIN32)
@@ -201,6 +202,27 @@ static int native_demo_field(const char* json, const char* key, char* value, siz
         cursor = native_demo_space(cursor + 1);
     }
     return 0;
+}
+
+// Copies the text of a string value of the top-level object of json into value without its quotes and with its simple escapes undone, or the fallback when the key is missing.
+static void native_demo_text(const char* json, const char* key, char* value, size_t size, const char* fallback) {
+    char* quoted = (char*)malloc(size + 2);
+    if (!native_demo_field(json, key, quoted, size + 2) || quoted[0] != '"') {
+        snprintf(value, size, "%s", fallback);
+        free(quoted);
+        return;
+    }
+    size_t length = 0;
+    for (const char* cursor = quoted + 1; *cursor != '\0' && *cursor != '"' && length + 1 < size; ++cursor) {
+        if (*cursor == '\\' && cursor[1] != '\0') {
+            ++cursor;
+            value[length++] = *cursor == 'n' ? ' ' : *cursor;
+            continue;
+        }
+        value[length++] = *cursor;
+    }
+    value[length] = '\0';
+    free(quoted);
 }
 
 static void native_demo_unsupported(uint64_t call, const char* message) {
@@ -600,6 +622,23 @@ static void native_demo_handle(void* user, uint64_t call, const char* method, co
     }
 }
 
+// Opens the confirm screen, a native window over the window of the app, with the title and the question of the parameters.
+static void native_demo_open_screen(void* user, uint64_t screen, const char* paramsJson, const HaylenNativeBuffer* buffers, size_t bufferCount) {
+    (void)user;
+    (void)buffers;
+    (void)bufferCount;
+    char title[NATIVE_DEMO_TEXT];
+    char question[NATIVE_DEMO_TEXT];
+    native_demo_text(paramsJson, "title", title, sizeof(title), "Native Demo");
+    native_demo_text(paramsJson, "question", question, sizeof(question), "");
+    native_demo_screen_open(nativeDemoApi, screen, title, question);
+}
+
+static void native_demo_cancel_screen(void* user, uint64_t screen) {
+    (void)user;
+    native_demo_screen_cancel(screen);
+}
+
 // Keeps the message, the file and the line of the error that stopped the app, which the next app receives when it sends start.
 static void native_demo_app_failed(void* user, const char* reportJson) {
     (void)user;
@@ -625,7 +664,7 @@ static void native_demo_app_failed(void* user, const char* reportJson) {
     free(message);
 }
 
-// Registers the methods of the plugin and the error handler, declares the library the native part of native-demo and sends loaded retained, so the first listener of the app receives it however late it connects.
+// Registers the methods of the plugin, its confirm screen and the error handler, declares the library the native part of native-demo and sends loaded retained, so the first listener of the app receives it however late it connects.
 NATIVE_DEMO_EXPORT int native_demo_haylen_init(const HaylenNativeApi* api) {
     static const char* const methods[] = {"echo", "echoBytes", "generatedImage", "compute", "fail", "ticks", "startVideo", "stopVideo", "startTone", "stopTone", "burst", "config", "start", "showBanner", "setBannerVisible", "removeBanner", "showScreen", "pickFile"};
     if (api->version != HAYLEN_NATIVE_API_VERSION) {
@@ -638,6 +677,7 @@ NATIVE_DEMO_EXPORT int native_demo_haylen_init(const HaylenNativeApi* api) {
         api->registerHandler(name, native_demo_handle, NULL, NULL);
     }
     api->registerHandler("native-demo.wait", native_demo_handle, native_demo_cancel, NULL);
+    api->registerScreen("native-demo", "confirm", native_demo_open_screen, native_demo_cancel_screen, NULL);
     api->registerErrorHandler(native_demo_app_failed, NULL);
     api->registerPlugin("native-demo");
 

@@ -15,6 +15,7 @@
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
 #include "platform/DialogRelay.hpp"
+#include "platform/web/WebPage.hpp"
 #include "platform/web/WebTextInput.hpp"
 #include "sokol_app.h"
 
@@ -27,6 +28,14 @@ EM_JS(void, haylen_js_dispatch, (double call, const char* method, const char* pa
 
 EM_JS(void, haylen_js_cancel, (double call), {
     Module.haylen.cancel(call);
+});
+
+EM_JS(void, haylen_js_open_screen, (double id, const char* plugin, const char* screen, const char* params, const uint32_t* buffers, int count, const char* state), {
+    Module.haylen.openScreen(id, UTF8ToString(plugin), UTF8ToString(screen), UTF8ToString(params), Module.haylen.readBuffers(buffers, count), UTF8ToString(state));
+});
+
+EM_JS(void, haylen_js_cancel_screen, (double id), {
+    Module.haylen.cancelScreen(id);
 });
 
 EM_JS(void, haylen_js_error, (const char* json), {
@@ -192,14 +201,8 @@ TextInput& Services::getTextInput() {
     return input;
 }
 
-// The page copies the buffers during the call, from a table of an address and a size in wasm memory for each.
 void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) {
-    std::vector<std::uint32_t> table;
-    table.reserve(buffers.size() * 2);
-    for (const std::vector<std::byte>& buffer : buffers) {
-        table.push_back(static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(buffer.data())));
-        table.push_back(static_cast<std::uint32_t>(buffer.size()));
-    }
+    const std::vector<std::uint32_t> table = WebPage::describeBuffers(buffers);
     haylen_js_dispatch(static_cast<double>(id), std::string(method).c_str(), std::string(paramsJson).c_str(), table.data(), static_cast<int>(buffers.size()));
 }
 
@@ -232,5 +235,19 @@ void Services::showDialog(std::uint64_t id, const DialogRequest&, const std::fil
 }
 
 void Services::cancelDialog(std::uint64_t) {}
+
+// The page opens the screen before the call returns, one frame after the request, so a popup opens while the tap that asked for it still counts as an activation of the user.
+void Services::openScreen(const ScreenRequest& request) {
+    const std::vector<std::uint32_t> table = WebPage::describeBuffers(request.params.buffers);
+    haylen_js_open_screen(static_cast<double>(request.id), request.plugin.c_str(), request.screen.c_str(), request.params.json.dump().c_str(), table.data(), static_cast<int>(request.params.buffers.size()), request.state.dump().c_str());
+}
+
+void Services::cancelScreen(std::uint64_t id) {
+    haylen_js_cancel_screen(static_cast<double>(id));
+}
+
+HaylenNativeWindow Services::getNativeWindow() {
+    return {};
+}
 
 } // namespace haylen::platform

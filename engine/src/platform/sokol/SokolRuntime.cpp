@@ -11,6 +11,7 @@
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/NativeLibraries.hpp"
 #include "platform/Services.hpp"
+#include "platform/native/NativeApi.hpp"
 #include "platform/sokol/MemoryWarning.hpp"
 #include "platform/sokol/SokolEvents.hpp"
 #include "sokol_log.h"
@@ -208,8 +209,10 @@ SokolRuntime::App SokolRuntime::load(const std::function<std::shared_ptr<io::Pac
     return app;
 }
 
+// Native libraries open windows of their own over the window of the app, which exists from here on.
 void SokolRuntime::onInitialize(void* data) {
     Services::watchWindow();
+    NativeApi::setWindow(Services::getNativeWindow());
     static_cast<SokolRuntime*>(data)->launch();
 }
 

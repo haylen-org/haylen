@@ -25,6 +25,7 @@ namespace haylen::platform {
 class Bridge;
 class Dialogs;
 class Host;
+class Screens;
 class System;
 class Window;
 struct Event;
@@ -135,6 +136,7 @@ class Engine final {
     [[nodiscard]] platform::Bridge& getPlatform() noexcept;
     [[nodiscard]] platform::System& getSystem() noexcept;
     [[nodiscard]] platform::Dialogs& getDialogs() noexcept;
+    [[nodiscard]] platform::Screens& getScreens() noexcept;
     [[nodiscard]] plugins::PluginRegistry& getPlugins() noexcept;
     [[nodiscard]] const std::shared_ptr<text::Font>& getDefaultFont() noexcept;
     [[nodiscard]] varn::runtime::Runtime& getScriptRuntime() noexcept;
@@ -172,7 +174,7 @@ class Engine final {
     [[nodiscard]] AppState getAppState() const noexcept;
     [[nodiscard]] NetworkState getNetworkState() const noexcept;
 
-    // Whether native UI of plugins covers the app, such as a full screen ad or a sign-in form. A covered app is inactive, halted and muted whatever the lifecycle options say, and it comes back as it was once the last cover ends. The engine takes the cover of the platform at the start of every frame.
+    // Whether native UI of plugins covers the app, such as a full screen ad, a sign-in form or the screen of a plugin. A covered app is inactive, halted and muted whatever the lifecycle options say, and it comes back as it was once the last cover ends. The engine takes the cover of the platform at the start of every frame, and it draws nothing while an opaque screen shows.
     [[nodiscard]] bool isAppCovered() const noexcept;
 
     // Returns whether the app is halted, by a cover or by the lifecycle options in the current app state. A halted app still delivers asynchronous results and queued events, and an app in the background never renders.

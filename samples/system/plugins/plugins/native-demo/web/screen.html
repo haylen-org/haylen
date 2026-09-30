@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Native Demo</title>
+        <style>
+            html,
+            body {
+                height: 100%;
+                margin: 0;
+            }
+            body {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #1d3557;
+                color: #fff;
+                font: 18px system-ui, sans-serif;
+            }
+            main {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 20px;
+                padding: 32px;
+                text-align: center;
+            }
+            h1 {
+                margin: 0;
+                font: 700 32px system-ui, sans-serif;
+            }
+            p {
+                margin: 0;
+            }
+            div {
+                display: flex;
+                gap: 16px;
+            }
+            button {
+                font: 600 18px system-ui, sans-serif;
+                padding: 12px 28px;
+                border: 0;
+                border-radius: 10px;
+                background: #fff;
+                color: #1d3557;
+                cursor: pointer;
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <h1 id="title">Native Demo</h1>
+            <p id="question"></p>
+            <div>
+                <button id="confirm">Confirm</button>
+                <button id="decline">Decline</button>
+            </div>
+        </main>
+        <script>
+            // The confirm screen of the Native Demo plugin. In a popup it posts the answer to the page of the app, which it names with the token of the screen, and after a redirect it goes back to the page of the app with the answer and the token in the address.
+            const query = new URLSearchParams(location.search);
+            document.getElementById("title").textContent = query.get("title") || "Native Demo";
+            document.getElementById("question").textContent = query.get("question") || "";
+
+            const answer = (confirmed) => {
+                const token = query.get("token");
+                if (query.get("mode") === "redirect") {
+                    // Only a page of this site takes the answer, so the address cannot send it anywhere else.
+                    const back = new URL(query.get("back"), location.href);
+                    if (back.origin !== location.origin) {
+                        return;
+                    }
+                    back.searchParams.set("nativeDemoScreen", token);
+                    back.searchParams.set("nativeDemoAnswer", confirmed ? "confirmed" : "declined");
+                    location.assign(back.href);
+                    return;
+                }
+
+                // The opener hears the answer from this origin, and the channel of the runtime carries it when the popup lost its opener.
+                const message = { haylenScreen: token, result: { confirmed } };
+                if (window.opener) {
+                    window.opener.postMessage(message, location.origin);
+                } else {
+                    new BroadcastChannel("haylen-screens").postMessage(message);
+                }
+                window.close();
+            };
+
+            document.getElementById("confirm").addEventListener("click", () => answer(true));
+            document.getElementById("decline").addEventListener("click", () => answer(false));
+        </script>
+    </body>
+</html>

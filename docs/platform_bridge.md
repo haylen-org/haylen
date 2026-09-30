@@ -1,6 +1,6 @@
 # Platform bridge
 
-The platform bridge connects an app to native code. An app calls a named method with JSON parameters and receives its JSON result asynchronously, or a typed error with a message, a code and data, and native code sends named events with JSON payloads that the app listens to. Parameters, results and events carry byte buffers next to their JSON, such as images and audio, which never turn into text, and events can arrive retained for a later listener or batched into one list per frame. Calls time out and cancel, and the native handler hears about it. Every result and every event reaches the app on the frame thread, at the start of a frame. The bridge covers everything the engine does not wrap itself, such as sign-in, purchases, sharing, deep links or system settings, while what the device is, opening urls, vibrating and native dialogs are engine services of [haylen.system](lua-api/system.md) and [haylen.dialogs](lua-api/dialogs.md). Handlers written in Java or Kotlin on Android, Objective-C or Swift on Apple platforms, JavaScript on the web, C in native libraries, and C++ or Lua anywhere.
+The platform bridge connects an app to native code. An app calls a named method with JSON parameters and receives its JSON result asynchronously, or a typed error with a message, a code and data, and native code sends named events with JSON payloads that the app listens to. Parameters, results and events carry byte buffers next to their JSON, such as images and audio, which never turn into text, and events can arrive retained for a later listener or batched into one list per frame. Calls time out and cancel, and the native handler hears about it. Every result and every event reaches the app on the frame thread, at the start of a frame. Plugins open screens through it as well, native UI that covers the app until it ends with one result. The bridge covers everything the engine does not wrap itself, such as sign-in, purchases, sharing, deep links or system settings, while what the device is, opening urls, vibrating and native dialogs are engine services of [haylen.system](lua-api/system.md) and [haylen.dialogs](lua-api/dialogs.md). Handlers written in Java or Kotlin on Android, Objective-C or Swift on Apple platforms, JavaScript on the web, C in native libraries, and C++ or Lua anywhere.
 
 This guide explains how the bridge works and how each platform implements methods. The Lua functions are documented in the [haylen.platform reference](lua-api/platform.md), the [native code guide](native.md) compares the bridge with native libraries called through FFI and with C++ plugins, and the [architecture guide](architecture.md) places the bridge among the other engine systems.
 
@@ -51,6 +51,20 @@ JSON that refers to a buffer it lacks fails a call with the code `invalidBytes` 
 
 A call with a `timeout` fails with the code `timeout` at the first pump after its deadline, and `call:cancel()` fails a pending call with the code `cancelled` at the next pump. In both cases the bridge tells the native side that the app gave the call up, through `Bridge::Canceller`: a handler of a native library hears it through its `HaylenNativeCancel` function, and a platform handler through `Host::cancelPlatformCall` and `Services::cancel`, which reach `HaylenBridge.cancel` on Android, the cancel block of a cancellable handler on Apple platforms and the `AbortSignal` of the handler on the web. Windows and Linux fail the calls that reach them during the call itself, so no call of theirs is ever pending. An answer that comes after a call timed out or was cancelled is dropped, like a second answer to the same call. A call without a timeout waits for its answer as long as the app runs, so every handler answers exactly once.
 
+## Screens
+
+Plugins also open screens: native UI that takes over the app until it ends with one result, such as a paywall, a sign-in flow or a payment page. A screen travels like a call, with a cover around it.
+
+```text
+Lua handle:openScreen ─► Screens::open ─► ScreenRelay::show, or busy and notActive at the next pump
+next frame: Engine::frame ─► cover ─► Screens::present ─► NativeApi, a screen of a native library
+                                                        └► Host::openScreen ─► Services::openScreen ─► platform screen
+native end (any thread) ─► ScreenRelay::finish ─► queue
+next pump: Screens::pump ─► the call, or <plugin>.screenRestored for the next app
+```
+
+The engine covers the app before the platform shows the screen and keeps it covered until the screen ends, however it ends, and it draws nothing while an opaque screen shows. The screen that shows belongs to the process, so an app that restarts under it starts covered and receives its end as the retained event `<plugin>.screenRestored`, with the state that the earlier app gave. The platform keeps the pending screen where it survives the end of the process, such as the session storage of a page that leaves for a redirect, and hands its end to `ScreenRelay::restore` when the app starts again. A cancel or a timeout fails the call at once and asks the platform through `Host::cancelScreen` to dismiss the screen, whose end then reaches no app. The [plugin guide](plugins.md#plugin-screens) describes the model, the Lua API and the native contract on each platform, and the [haylen.platform reference](lua-api/platform.md#screens) the options and the codes.
+
 ## The JSON contract
 
 - Parameters are a JSON value with its byte buffers, an empty object when Lua passes none. Lua tables become JSON as the [reference](lua-api/platform.md#how-calls-travel) describes.
@@ -67,7 +81,8 @@ A call with a `timeout` fails with the code `timeout` at the first pump after it
 | `platform.send(method, params)` | Calls a method whose answer nobody needs. It creates no call and drops the answer. |
 | `platform.on(event, listener)` | Calls `listener(payload)` for every native event of that name, or once per frame with the list of the batched ones, and returns a connection with `disconnect()`. The first listener of a name also receives the retained events that wait for it. |
 | `platform.bytes(data)` | Marks a string that crosses the bridge as bytes. |
-| `platform.plugin(id)` | Returns the handle of a plugin of the app, whose `call`, `send` and `on` put the id of the plugin in front of the name. |
+| `platform.plugin(id)` | Returns the handle of a plugin of the app, whose `call`, `send` and `on` put the id of the plugin in front of the name, and whose `openScreen` opens a [screen](#screens) of the plugin. |
+| `platform.screenShowing()` | Returns whether the screen of a plugin shows, whichever app of the process opened it. |
 | `platform.registerHandler(method, handler)` | Answers a method with a Lua function inside the engine, which takes precedence over native handlers. |
 | `platform.hasHandler(method)` | Returns whether an engine handler answers the method. Native handlers are invisible to it. |
 
@@ -159,7 +174,7 @@ macOS uses the Apple registry above. Windows and Linux have no registry in the l
 
 ## Native library handlers
 
-A native library answers methods in C on every platform that loads native libraries. `native.load(name, {init = 'symbol'})` hands its init function the `HaylenNativeApi` of `haylen/platform/native/HaylenNative.h`, whose `registerHandler` adds a handler with an optional cancel function, which receives the parameters with their byte buffers, `resolve` answers a call from any thread with buffers, `emit` sends an event with buffers from any thread, retained or batched, `log` writes to the engine log, `registerPlugin` declares the library the native part of a plugin, `registerErrorHandler` hands it the errors that stop the app, and `openVideoStream`, `pushVideoFrame`, `openAudioStream` and `pushAudioFrames` feed the [streams](plugins.md#streams) of a plugin. The handlers belong to the process and answer after the engine handlers and before the platform handlers. The [native code guide](native.md#libraries-that-talk-to-the-app) shows a library, and the [reference](lua-api/native.md#library-handlers) lists the entries.
+A native library answers methods in C on every platform that loads native libraries. `native.load(name, {init = 'symbol'})` hands its init function the `HaylenNativeApi` of `haylen/platform/native/HaylenNative.h`, whose `registerHandler` adds a handler with an optional cancel function, which receives the parameters with their byte buffers, `resolve` answers a call from any thread with buffers, `emit` sends an event with buffers from any thread, retained or batched, `log` writes to the engine log, `registerPlugin` declares the library the native part of a plugin, `registerErrorHandler` hands it the errors that stop the app, `openVideoStream`, `pushVideoFrame`, `openAudioStream` and `pushAudioFrames` feed the [streams](plugins.md#streams) of a plugin, `registerScreen` and `finishScreen` open and end the [screens](plugins.md#desktop-screens) of a plugin, `getWindow` hands the library the window of the app, and `coverApp` and `uncoverApp` cover the app. The handlers belong to the process and answer after the engine handlers and before the platform handlers. The [native code guide](native.md#libraries-that-talk-to-the-app) shows a library, and the [reference](lua-api/native.md#library-handlers) lists the entries.
 
 ## C++ handlers and calls
 

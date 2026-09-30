@@ -11,8 +11,10 @@
 #include <string>
 #include <utility>
 
+#include "haylen/core/Json.hpp"
 #include "haylen/io/Package.hpp"
 #include "platform/DialogRelay.hpp"
+#include "platform/ScreenRelay.hpp"
 #import "platform/apple/AppleBridge.hpp"
 #import "platform/apple/AppleDesktop.hpp"
 #import "platform/apple/AppleGamepads.hpp"
@@ -215,5 +217,20 @@ void Services::showDialog(std::uint64_t id, const DialogRequest&, const std::fil
 }
 
 void Services::cancelDialog(std::uint64_t) {}
+
+// The screens of Apple plugins arrive with a later version of the Apple runtime, while native libraries of the macOS player open theirs before the platform is asked.
+void Services::openScreen(const ScreenRequest& request) {
+    ScreenRelay::finish(request.id, false, core::Json{{"message", "The screens of plugins are not implemented on Apple platforms yet."}, {"code", "unsupported"}}.dump());
+}
+
+void Services::cancelScreen(std::uint64_t) {}
+
+HaylenNativeWindow Services::getNativeWindow() {
+#if TARGET_OS_OSX
+    return {.handle = const_cast<void*>(sapp_macos_get_window()), .display = nullptr};
+#else
+    return {};
+#endif
+}
 
 } // namespace haylen::platform

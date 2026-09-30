@@ -35,6 +35,7 @@
 #include "haylen/platform/Bridge.hpp"
 #include "haylen/platform/Dialogs.hpp"
 #include "haylen/platform/Orientation.hpp"
+#include "haylen/platform/Screens.hpp"
 #include "haylen/platform/System.hpp"
 #include "haylen/plugins/PluginRegistry.hpp"
 #include "haylen/storage/UserStorage.hpp"
@@ -69,6 +70,7 @@ struct EngineState {
     std::unique_ptr<platform::Bridge> platform;
     std::unique_ptr<platform::System> system;
     std::unique_ptr<platform::Dialogs> dialogs;
+    std::unique_ptr<platform::Screens> screens;
     std::unique_ptr<graphics2d::Renderer> renderer;
     std::unique_ptr<assets::Manager> assets;
     std::unique_ptr<SceneManager> scenes;
@@ -99,6 +101,9 @@ struct EngineState {
     bool focused = true;
     bool interrupted = false;
     bool covered = false;
+
+    // Whether the screen of a plugin that covers the app is opaque, so the app draws nothing under it.
+    bool hiddenByScreen = false;
     bool started = false;
     bool running = true;
     bool restartRequested = false;

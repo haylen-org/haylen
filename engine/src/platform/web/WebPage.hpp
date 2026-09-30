@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -47,6 +48,13 @@ class WebPage final {
     // Answers of page handlers and events of the page, with their byte buffers as a table of an address and a size in wasm memory for each, which the page frees once the call returns. The flags of an event are those of HaylenNativeEmitFlags.
     static void resolve(double call, bool ok, const char* json, const std::uint32_t* buffers, int count);
     static void emit(const char* event, const char* json, const std::uint32_t* buffers, int count, int flags);
+
+    // Ends of the screens of plugins: a screen that the page opened, and a screen that a redirect left before the page loaded again, with the state that the page kept for it.
+    static void finishScreen(double id, bool ok, const char* json, const std::uint32_t* buffers, int count);
+    static void restoreScreen(const char* plugin, const char* screen, const char* state, bool ok, const char* json, const std::uint32_t* buffers, int count);
+
+    // The table of an address and a size in wasm memory for each buffer, which the page reads while a call into it runs.
+    [[nodiscard]] static std::vector<std::uint32_t> describeBuffers(std::span<const std::vector<std::byte>> buffers);
 
     // Streams of the web parts of plugins. Opening answers the address of the stream, which stays valid for good, or 0 when it fails. A video stream takes RGBA8 frames without padding and an audio stream interleaved float frames.
     [[nodiscard]] static void* openVideoStream(const char* plugin, const char* name);

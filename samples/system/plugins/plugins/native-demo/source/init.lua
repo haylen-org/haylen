@@ -149,6 +149,21 @@ function demo.showScreen(title)
     return handle:call('showScreen', {title = title})
 end
 
+-- Opens the confirm screen of the plugin, which covers the app while it shows: a popup page on the web and a native window over the window of the app on the desktops, while Apple platforms and Android fail with the code unsupported until their runtimes open screens. Answers with {confirmed, via, language} once the person answers, and fails with the code cancelled when the person closes the screen. options takes the state that comes back with a restored end, opaque and timeout, like handle:openScreen.
+function demo.openScreen(options)
+    return handle:openScreen('confirm', {title = 'Native Demo', question = 'Does the app get an answer?'}, options)
+end
+
+-- Opens the confirm screen of the web by leaving the page for a page of the plugin, which comes back with the answer in its address. The page loads again, so the answer reaches the new app as screenRestored with the state.
+function demo.openRedirectScreen(options)
+    return handle:openScreen('redirect', {title = 'Native Demo', question = 'Does the app get an answer after the page loads again?'}, options)
+end
+
+-- Calls listener with {screen, state, result} or {screen, state, error} of a screen whose app restarted, or whose page loaded again, before it ended. The event is retained, so the first listener receives it however late it connects.
+function demo.onScreenRestored(listener)
+    return handle:on('screenRestored', listener)
+end
+
 -- Lets the person pick a file with the file picker of the platform and answers with {name}, or nil when the picker was cancelled.
 function demo.pickFile()
     return handle:call('pickFile')

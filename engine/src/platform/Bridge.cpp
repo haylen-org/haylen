@@ -285,7 +285,6 @@ Bridge::Error Bridge::readFailure(core::Json payload) {
     return error;
 }
 
-// Failures carry JSON alone, so the buffers of a failure are dropped.
 Bridge::Result Bridge::parseResult(bool ok, std::string_view json, std::vector<std::vector<std::byte>> buffers) {
     core::Json parsed = json.empty() ? core::Json(nullptr) : core::Json::parse(json, nullptr, false);
     if (parsed.is_discarded()) {

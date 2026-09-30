@@ -1,6 +1,6 @@
 # haylen.platform
 
-`haylen.platform` is the bridge between the app and native code. An app calls named methods with JSON parameters and awaits their JSON result, which may fail with a typed error, time out or be cancelled, and it listens to named events that native code sends. Parameters, results and events carry bytes next to their JSON, such as images and audio, and the native parts of plugins feed the app video and audio streams. Use it for everything the engine does not wrap, such as sign-in, purchases, sharing or deep links, with the handlers living in Java or Kotlin on Android, Objective-C or Swift on Apple platforms, JavaScript on the web, C in native libraries, or C++ anywhere. The engine wraps what the device is, opening urls and vibrating in [haylen.system](system.md), and native message boxes and file pickers in [haylen.dialogs](dialogs.md). The Lua modules of [plugins](../plugins.md) reach their native parts through the [handle of their plugin](#plugin-handles). The [native code guide](../native.md) compares the bridge with the other ways to reach native code.
+`haylen.platform` is the bridge between the app and native code. An app calls named methods with JSON parameters and awaits their JSON result, which may fail with a typed error, time out or be cancelled, and it listens to named events that native code sends. Parameters, results and events carry bytes next to their JSON, such as images and audio, and the native parts of plugins feed the app video and audio streams. Use it for everything the engine does not wrap, such as sign-in, purchases, sharing or deep links, with the handlers living in Java or Kotlin on Android, Objective-C or Swift on Apple platforms, JavaScript on the web, C in native libraries, or C++ anywhere. The engine wraps what the device is, opening urls and vibrating in [haylen.system](system.md), and native message boxes and file pickers in [haylen.dialogs](dialogs.md). The Lua modules of [plugins](../plugins.md) reach their native parts through the [handle of their plugin](#plugin-handles), which also opens the [screens](#screens) of the plugin, native UI that takes over the app until it ends with one result. The [native code guide](../native.md) compares the bridge with the other ways to reach native code.
 
 ```lua
 local platform = require('haylen.platform')
@@ -141,6 +141,19 @@ scene.push({
 })
 ```
 
+### platform.screenShowing()
+
+Returns `true` while the [screen](#screens) of a plugin shows over the app, whichever app of the process opened it. An app that restarted under a screen starts covered, and this tells it that a screen covers it, whose end arrives as `screenRestored`.
+
+```lua
+local haylen = require('haylen')
+local platform = require('haylen.platform')
+
+if platform.screenShowing() then
+    print('a screen of a plugin still shows, covered ' .. tostring(haylen.appCovered()))
+end
+```
+
 ### platform.resolve(id, ok, result)
 
 Answers the pending call `id` the way native code does. With `ok` true the call resolves with `result`, and with `ok` false it fails with `result`, a message string or a table with `message`, `code` and `data`. The answer reaches Lua at the start of the next frame, and an id that no pending call has is dropped then. It suits tests that stand in for native code. A negative id raises a bad argument error with `expected a non-negative integer`, and a result that JSON cannot hold raises `A <type> cannot be converted to JSON.`.
@@ -274,6 +287,7 @@ end)
 | `handle:on(event, listener)` | The same as `platform.on(id .. '.' .. event, listener)`. |
 | `handle:videoStream(name)` | The [video stream](#video-streams) `name` that the native part of the plugin opened, or `nil` until it opens it. The engine keeps its texture current from then on, until the app stops. |
 | `handle:audioStream(name)` | The [audio stream](#audio-streams) `name` that the native part of the plugin opened, or `nil` until it opens it. |
+| `handle:openScreen(name, params, options)` | Opens the [screen](#screens) `name` of the plugin, which covers the app until it ends, and returns a call that the result of the screen settles. |
 
 The members are read-only, and an empty method or event name raises `A method or event of the plugin <id> needs a name.`. A platform without the native part of the plugin answers its calls with the code `noHandler`, so a plugin checks `handle.native` when it can do without it. The [plugin guide](../plugins.md#lua-api-of-plugins) shows the Lua API of a whole plugin.
 
@@ -297,6 +311,59 @@ function admob.onClosed(listener)
 end
 
 return admob
+```
+
+## Screens
+
+A screen is native UI of a plugin that takes over the app until it ends with one result, such as a paywall, a sign-in flow, a payment page, the activity of an SDK, a popup page on the web or a window over the window of the app on the desktops. `handle:openScreen(name, params, options)` of the [plugin handle](#plugin-handles) opens the screen `name` of the plugin with `params`, which default to an empty object and cross like the parameters of a call, bytes included, and returns a [call](#calls) at once, whose `await` returns the result of the screen or `nil` and an [error](#errors).
+
+| Option | Type | Meaning |
+| --- | --- | --- |
+| `state` | any JSON value without bytes | A value that the platform keeps with the screen, where it survives the end of the process, and hands back with a restored end. |
+| `opaque` | boolean | Whether the screen hides the app completely, `true` by default. The engine draws nothing under an opaque screen and keeps the last frame on screen, while it keeps drawing the halted app under a screen that lets the app show through, such as a sheet. |
+| `timeout` | number | Seconds of real time after which the call fails with the code `timeout` and the platform dismisses the screen. Screens have no timeout otherwise. |
+
+- The engine covers the app at the start of the next frame and only then hands the screen to the platform, so the app is `'inactive'`, halted and muted before the screen shows, and `haylen.appCovered()` returns `true` until the screen ends, however it ends.
+- One screen shows at a time in the whole process, and a screen opens only while the app is `'active'`.
+- `call:cancel()` and the timeout fail the call at once and ask the platform to dismiss the screen, and the app stays covered until the screen is gone.
+- A screen outlives the app that opened it. When the app restarts under it or the process ends while it shows, such as a web page that left for a redirect and loaded again, its end reaches the next app as the retained event `screenRestored` of the plugin, which `handle:on('screenRestored', listener)` receives with `screen`, the name of the screen, `state`, the value of `options.state`, and `result`, or `error` with `message`, `code` and `data` when the screen failed. The event waits for the first listener of its name, like every [retained event](#platformonevent-listener).
+
+A screen fails with the codes of [errors](#errors) and these.
+
+| Code | When |
+| --- | --- |
+| `busy` | Another screen shows, which an earlier app of the process may have opened. |
+| `notActive` | The app is not active, because it lost the focus, it is in the background or native UI covers it, or the platform cannot present the screen at that moment. |
+| `cancelled` | `call:cancel()` gave the screen up, or the person closed the screen. |
+| `noHandler` | No screen of that name is registered: no page screen on the web and no screen of a native library on Windows and Linux. |
+| `unsupported` | The platform opens no screens of plugins yet, which is the case on Apple platforms and Android for screens that no native library opens. |
+| `popupBlocked` | The browser blocked the popup of a web screen, which happens when the tap that asked for it is too long ago. |
+
+An empty name raises `A screen of the plugin <id> needs a name.`, a timeout that is not a positive number raises `The timeout of a screen is a positive number of seconds.`, a state with bytes raises `The state of a screen is JSON without bytes.`, and an unknown option raises an error that names it. The [plugin guide](../plugins.md#plugin-screens) describes how the native parts of plugins open screens on each platform.
+
+```lua
+local async = require('async')
+local platform = require('haylen.platform')
+
+local paywall = platform.plugin('paywall')
+
+-- The app restarted while the paywall showed, or the page loaded again after a redirect, so the end arrives with the state the earlier app gave.
+paywall:on('screenRestored', function(ending)
+    if ending.result then
+        print('bought ' .. ending.result.product .. ' on level ' .. ending.state.level)
+    end
+end)
+
+async.spawn(function()
+    local purchase, err = paywall:openScreen('offer', {offering = 'gold'}, {state = {level = 12}, timeout = 300}):await()
+    if purchase then
+        print('bought ' .. purchase.product)
+    elseif err.code == 'cancelled' then
+        print('the player closed the paywall')
+    else
+        print('the paywall failed: ' .. err)
+    end
+end)
 ```
 
 ## Video streams
@@ -570,7 +637,7 @@ A native library registers handlers written in C through the `HaylenNativeApi` t
 
 ## C++ handlers
 
-C++ code registers handlers that run inside the engine with `engine.getPlatform().registerHandler(method, handler)`, where the handler receives the parameters as a `haylen::platform::Bridge::Payload`, JSON with its byte buffers, and a reply function that takes a `haylen::platform::Bridge::Result` with `ok`, a `value` payload and an `error` of `message`, `code` and `data`. `engine.getPlatform().emit(event, payloadJson, buffers, {.retain = true, .batched = true})` sends an event from any thread, `engine.getPlatform().send(method, params)` calls a method whose answer nobody needs, and `engine.getAppPlugins()` returns the plugins of `app.json` as `haylen::platform::AppPlugin` records with `id`, `version`, `config` and `native`.
+C++ code registers handlers that run inside the engine with `engine.getPlatform().registerHandler(method, handler)`, where the handler receives the parameters as a `haylen::platform::Bridge::Payload`, JSON with its byte buffers, and a reply function that takes a `haylen::platform::Bridge::Result` with `ok`, a `value` payload and an `error` of `message`, `code` and `data`. `engine.getPlatform().emit(event, payloadJson, buffers, {.retain = true, .batched = true})` sends an event from any thread, `engine.getPlatform().send(method, params)` calls a method whose answer nobody needs, and `engine.getAppPlugins()` returns the plugins of `app.json` as `haylen::platform::AppPlugin` records with `id`, `version`, `config` and `native`. `engine.getScreens()` returns the `haylen::platform::Screens` that open the screens of plugins, as the [plugin guide](../plugins.md#c) describes.
 
 ```cpp
 engine.getPlatform().registerHandler("save.cloudSync", [](const haylen::platform::Bridge::Payload& params, haylen::platform::Bridge::Reply reply) {

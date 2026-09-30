@@ -74,6 +74,8 @@ class SokolHost final : public Host {
     void vibrate(float seconds) override;
     void showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) override;
     void cancelDialog(std::uint64_t id) override;
+    void openScreen(const ScreenRequest& request) override;
+    void cancelScreen(std::uint64_t id) override;
 
     // The native views of plugins over the app, which the platform services update from any thread. They belong to the process, so a reservation or a cover outlives the apps that restart under it.
     [[nodiscard]] static NativeViews& getNativeViews() noexcept;

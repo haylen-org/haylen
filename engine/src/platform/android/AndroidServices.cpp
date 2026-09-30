@@ -12,6 +12,7 @@
 #include "haylen/io/Package.hpp"
 #include "platform/BridgeRelay.hpp"
 #include "platform/DialogRelay.hpp"
+#include "platform/ScreenRelay.hpp"
 #include "platform/android/AndroidActivity.hpp"
 #include "platform/android/AndroidAssetPackage.hpp"
 #include "platform/android/AndroidGamepads.hpp"
@@ -140,6 +141,17 @@ void Services::showDialog(std::uint64_t id, const DialogRequest&, const std::fil
 }
 
 void Services::cancelDialog(std::uint64_t) {}
+
+// The screens of Android plugins arrive with a later version of the Android library.
+void Services::openScreen(const ScreenRequest& request) {
+    ScreenRelay::finish(request.id, false, core::Json{{"message", "The screens of plugins are not implemented on Android yet."}, {"code", "unsupported"}}.dump());
+}
+
+void Services::cancelScreen(std::uint64_t) {}
+
+HaylenNativeWindow Services::getNativeWindow() {
+    return {};
+}
 
 } // namespace haylen::platform
 

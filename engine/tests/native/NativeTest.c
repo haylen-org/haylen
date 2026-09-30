@@ -1,4 +1,4 @@
-// A plain C library that the native interop tests and the native sample load on every platform. It exercises values, structs, buffers, text, callbacks from the calling thread and from threads of its own, and the HaylenNativeApi of the engine with byte buffers, batched events and streams.
+// A plain C library that the native interop tests and the native sample load on every platform. It exercises values, structs, buffers, text, callbacks from the calling thread and from threads of its own, and the HaylenNativeApi of the engine with byte buffers, batched events, streams, a screen, the window of the app and covers.
 
 #include <stddef.h>
 #include <stdint.h>
@@ -52,6 +52,7 @@ typedef struct NativeTestJob {
 static const HaylenNativeApi* nativeTestApi = NULL;
 static int32_t nativeTestErrors = 0;
 static char* nativeTestLastError = NULL;
+static uint64_t nativeTestScreen = 0;
 
 #if defined(_WIN32)
 static DWORD WINAPI native_test_thread(LPVOID context) {
@@ -301,7 +302,50 @@ NATIVE_TEST_EXPORT const char* native_test_last_error(void) {
     return nativeTestLastError != NULL ? nativeTestLastError : "";
 }
 
-// Registers the handlers of the library and its error handler, declares it the native part of the native-test plugin and announces it from a thread of its own with a retained event, which waits for a listener that connects later.
+// Opens the screen panel of native-test, which sends screenOpened with its parameters and their bytes, and stays open until the test ends it or the app gives it up.
+static void native_test_open_screen(void* user, uint64_t screen, const char* paramsJson, const HaylenNativeBuffer* buffers, size_t bufferCount) {
+    (void)user;
+    nativeTestScreen = screen;
+    const size_t size = strlen(paramsJson) + 64;
+    char* payload = (char*)malloc(size);
+    snprintf(payload, size, "{\"params\":%s,\"buffers\":%zu}", paramsJson, bufferCount);
+    nativeTestApi->emit("native_test.screenOpened", payload, buffers, bufferCount, 0);
+    free(payload);
+}
+
+// Closes the panel that the app gave up, which ends it as cancelled.
+static void native_test_cancel_screen(void* user, uint64_t screen) {
+    (void)user;
+    nativeTestApi->finishScreen(screen, 0, "{\"message\":\"The panel closed.\",\"code\":\"cancelled\"}", NULL, 0);
+}
+
+static void native_test_close_screen(NativeTestJob* job) {
+    job->api->finishScreen(job->call, 1, "{\"closed\":true,\"thread\":true}", NULL, 0);
+}
+
+// Ends the open panel with a result from a thread of the library, the way a native window ends when its user closes it.
+NATIVE_TEST_EXPORT void native_test_close_screen_later(void) {
+    NativeTestJob* job = native_test_job(native_test_close_screen);
+    job->api = nativeTestApi;
+    job->call = nativeTestScreen;
+    native_test_spawn(job);
+}
+
+// Returns the handle of the window of the app as a number, which the tests keep small, or -1 while the engine has none.
+NATIVE_TEST_EXPORT int32_t native_test_window(void) {
+    HaylenNativeWindow window;
+    return nativeTestApi->getWindow(&window) ? (int32_t)(uintptr_t)window.handle : -1;
+}
+
+NATIVE_TEST_EXPORT void native_test_cover(int32_t covered) {
+    if (covered) {
+        nativeTestApi->coverApp();
+    } else {
+        nativeTestApi->uncoverApp();
+    }
+}
+
+// Registers the handlers of the library, its screen and its error handler, declares it the native part of the native-test plugin and announces it from a thread of its own with a retained event, which waits for a listener that connects later.
 NATIVE_TEST_EXPORT int native_test_haylen_init(const HaylenNativeApi* api) {
     if (api->version != HAYLEN_NATIVE_API_VERSION) {
         return 1;
@@ -312,6 +356,7 @@ NATIVE_TEST_EXPORT int native_test_haylen_init(const HaylenNativeApi* api) {
     api->registerHandler("native_test.burst", native_test_handle, NULL, NULL);
     api->registerHandler("native_test.fail", native_test_handle, NULL, NULL);
     api->registerHandler("native_test.wait", native_test_handle, native_test_cancel, NULL);
+    api->registerScreen("native-test", "panel", native_test_open_screen, native_test_cancel_screen, NULL);
     api->registerErrorHandler(native_test_app_failed, NULL);
     api->registerPlugin("native-test");
     api->log(HAYLEN_NATIVE_LOG_INFO, "The native test library is ready.");

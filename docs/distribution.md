@@ -26,7 +26,7 @@ python3 make.py run ~/apps/my-game --platform web
 | `run-cpp <project> [--platform] [--target] [--device] [--config] [--engine-config]` | Builds a C++ project that compiles the engine through CMake and runs it on this machine, in the browser, on Mac Catalyst, iOS, tvOS, their simulators or Android. |
 | `package <app> [-o app.zip]` | Zips `app.json`, `source/` and `content/` of an app. |
 | `shaders <app> [--force]` | Compiles the shaders under `content/shaders/` of an app into `.shader` files. |
-| `serve <folder> [--host] [--port] [--coep] [--open]` | Serves a folder with the headers WebAssembly pages need. |
+| `serve <folder> [--host] [--port] [--coep] [--coop] [--open]` | Serves a folder with the headers WebAssembly pages need. |
 | `plugin add <folder\|repository> [--ref] [--app]` | Copies a plugin folder, or a plugin repository at a branch, tag or commit, into `plugins/` of an app and lists it in its `app.json`. |
 | `plugin remove <id> [--app]` | Deletes a plugin from an app and from its `app.json`. |
 | `plugin list [--app]` | Lists the plugins of an app with their status. |
@@ -72,7 +72,7 @@ Before anything else, `run` compiles the shaders of the app whose sources change
 | `ios-simulator`, `tvos-simulator` | `xcodebuild` of the `iOS` or `tvOS` scheme for the simulator. | `xcrun simctl boot`, `install` and `launch --console-pty`, on the simulator named by `--device` (a name or an id), on a booted one, or on the first iPhone or Apple TV available, and streams the log of the app with `log stream` inside the simulator. |
 | `ios`, `tvos` | `xcodebuild` for the device, signed with the team in the `HAYLEN_APPLE_TEAM` environment variable. | `xcrun devicectl device install app` and `device process launch --console` on the device id given with `--device`. |
 | `android` | Gradle `:app:assembleDebug`, or `assembleRelease` with `--config Release`. | `adb install -r`, `adb shell am start` and the log of the app process, on the device or emulator serial given with `--device`, which may be left out when only one is connected. |
-| `web` | Copies the prebuilt runtime and writes `app.zip` and `config.json`. | Serves the site on `--port` (8000 by default) with the `--coep` policy, and opens it with `--open`. |
+| `web` | Copies the prebuilt runtime and writes `app.zip` and `config.json`. | Serves the site on `--port` (8000 by default) with the `--coep` and `--coop` policies, and opens it with `--open`. |
 | `windows`, `linux` | Copies the desktop player artifact next to the package, the `platform/windows` or `platform/linux` folder of the app over it, and the native libraries of the app next to the player on Windows and into `lib/` on Linux. | Runs the player, named after the app, which plays the `app` folder next to it. |
 
 `--config` is the configuration of the platform project (`Debug` by default), and `--engine-config` the configuration of the engine artifacts it links (`Release` by default). `xcodebuild` and Gradle build with the jobs of `--jobs`. `run` streams the output of the app until it exits or Ctrl+C stops it. The engine logs to the standard output on desktops, to the log of the process on Android, which `adb logcat --pid` streams, and to the unified log on iOS, tvOS and Mac Catalyst, under the `dev.varn.engine` subsystem. On Mac Catalyst and the simulators `run` streams those lines next to the standard output and error of the process, with warnings and errors on stderr, and keeps streaming for a second after the app ends so its last lines arrive. The log of an app on a device shows in Console.app, while `run` shows the standard output and error of its process.
@@ -127,13 +127,13 @@ Serves a folder at `http://127.0.0.1:<port>/` with a threading Python server. `-
 
 | Header | Value |
 | --- | --- |
-| `Cross-Origin-Opener-Policy` | `same-origin` |
+| `Cross-Origin-Opener-Policy` | None by default, `same-origin-allow-popups` with `--coop same-origin-allow-popups`, and `same-origin` with `--coop same-origin` |
 | `Cross-Origin-Embedder-Policy` | `require-corp` by default, `credentialless` with `--coep credentialless`, and none with `--coep off` |
 | `Cross-Origin-Resource-Policy` | `cross-origin` |
 | `Access-Control-Allow-Origin` | `*` |
 | `Cache-Control` | `no-cache` |
 
-The first two make the page cross-origin isolated, so `SharedArrayBuffer` and WebAssembly threads work under the default policy. Pages that load third-party scripts, such as the Google sign-in library of Tiny Island, need `--coep credentialless` or `--coep off`, because those scripts do not send the resource policy that `require-corp` asks for. The server names the MIME type of `.wasm` (`application/wasm`), `.js` and `.mjs` (`text/javascript`), `.json`, `.zip`, `.html`, `.css`, `.svg` and `.png` explicitly. A request for a file that also exists as `<file>.br` or `<file>.gz` receives the compressed copy with its `Content-Encoding` when the browser accepts that encoding.
+The web runtime is single-threaded, so its pages need no cross-origin isolation, and the server sends no opener policy by default: `same-origin` would put the sign-in and payment popups of plugins into a browsing context group of their own, which cuts them off from the page, as the [plugin guide](plugins.md#web-screens) explains. `--coop same-origin` together with a `--coep` policy makes a page cross-origin isolated, for pages that use `SharedArrayBuffer` or threads of their own, and `--coop same-origin-allow-popups` keeps the popups of the page linked to it. Pages that load third-party scripts, such as the Google sign-in library of Tiny Island, need `--coep credentialless` or `--coep off`, because those scripts do not send the resource policy that `require-corp` asks for. The server names the MIME type of `.wasm` (`application/wasm`), `.js` and `.mjs` (`text/javascript`), `.json`, `.zip`, `.html`, `.css`, `.svg` and `.png` explicitly. A request for a file that also exists as `<file>.br` or `<file>.gz` receives the compressed copy with its `Content-Encoding` when the browser accepts that encoding.
 
 ### plugin
 

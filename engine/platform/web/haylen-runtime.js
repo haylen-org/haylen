@@ -169,6 +169,155 @@ Module.haylen = Module.haylen || {};
         }
     };
 
+    // Screens of plugins: the openers by <plugin>.<name>, the screen that shows, and the session storage entry where a redirect keeps its screen for the page that comes back. Every screen has a random token, which the pages of a popup or a redirect carry back to name the screen they answer.
+    const screens = { openers: new Map(), current: null };
+    const kScreenKey = "haylen.screen";
+
+    const screenFailure = (message, code) => Object.assign(new Error(message), { code });
+
+    // Ends the screen that shows once, which uncovers the app. A result carries ArrayBuffer and Uint8Array values as bytes, and a failure carries JSON alone.
+    const endScreen = (screen, ok, value) => {
+        if (screens.current !== screen) {
+            return;
+        }
+        screens.current = null;
+        clearInterval(screen.watch);
+        if (screen.popup && !screen.popup.closed) {
+            screen.popup.close();
+        }
+        const encoded = ok ? encodePayload(value) : { json: JSON.stringify(value), buffers: [] };
+        withBuffers(encoded.buffers, (table, count) => Module.ccall("haylen_web_finish_screen", null, ["number", "number", "string", "number", "number"], [screen.id, ok ? 1 : 0, encoded.json, table, count]));
+    };
+
+    // A popup answers with {haylenScreen: token, result} or {haylenScreen: token, error: {message, code, data}}, which its page posts to the opener, from an origin the screen trusts, or on the BroadcastChannel haylen-screens, which only pages of this origin reach and which works even when the popup lost its opener.
+    const receiveScreenAnswer = (data, trusted) => {
+        const screen = screens.current;
+        if (!screen || !screen.answer || data === null || typeof data !== "object" || data.haylenScreen !== screen.token || !trusted(screen)) {
+            return;
+        }
+        if ("error" in data) {
+            screen.answer.reject(Object.assign(new Error(String(data.error && data.error.message ? data.error.message : data.error)), { code: data.error && data.error.code, data: data.error && data.error.data }));
+        } else {
+            screen.answer.resolve(data.result === undefined ? null : data.result);
+        }
+    };
+
+    window.addEventListener("message", (event) => receiveScreenAnswer(event.data, (screen) => screen.origins.includes(event.origin) && event.source === screen.popup));
+    if (typeof BroadcastChannel !== "undefined") {
+        new BroadcastChannel("haylen-screens").onmessage = (event) => receiveScreenAnswer(event.data, () => true);
+    }
+
+    // A page that the browser brings back from its cache after a redirect never got the result of the screen, whose app still waits for it.
+    window.addEventListener("pageshow", (event) => {
+        const screen = screens.current;
+        if (event.persisted && screen && screen.redirected) {
+            try {
+                sessionStorage.removeItem(kScreenKey);
+            } catch (error) {
+                console.warn("The session storage could not forget the screen: " + error.message);
+            }
+            endScreen(screen, false, { message: "The page came back without the result of the screen.", code: "cancelled" });
+        }
+    });
+
+    // Opens a popup inside the activation of the tap that asked for the screen and returns a promise of its answer, which fails with the code popupBlocked when the browser blocks the popup and with the code cancelled when the popup closes without an answer.
+    const openPopup = (screen, url, options) => {
+        const settings = { width: 480, height: 640, origin: location.origin, ...options };
+        const left = Math.max(0, (window.screenX || 0) + ((window.outerWidth || settings.width) - settings.width) / 2);
+        const top = Math.max(0, (window.screenY || 0) + ((window.outerHeight || settings.height) - settings.height) / 2);
+        const popup = window.open(url, "haylen-screen-" + screen.token, "popup,width=" + settings.width + ",height=" + settings.height + ",left=" + Math.round(left) + ",top=" + Math.round(top));
+        if (!popup) {
+            return Promise.reject(screenFailure("The browser blocked the popup of the screen. Browsers open popups only right after a click, a tap or a key press of the person.", "popupBlocked"));
+        }
+        screen.popup = popup;
+        screen.origins = [location.origin, new URL(settings.origin, location.href).origin];
+        return new Promise((resolve, reject) => {
+            screen.answer = { resolve, reject };
+            screen.watch = setInterval(() => {
+                if (popup.closed) {
+                    clearInterval(screen.watch);
+                    reject(screenFailure("The popup closed before it answered.", "cancelled"));
+                }
+            }, 250);
+        });
+    };
+
+    // Keeps the screen where the page that comes back finds it, and leaves the page for the address.
+    const redirect = (screen, url) => {
+        try {
+            sessionStorage.setItem(kScreenKey, JSON.stringify({ id: screen.id, plugin: screen.plugin, screen: screen.name, token: screen.token, state: JSON.parse(screen.state) }));
+        } catch (error) {
+            endScreen(screen, false, { message: "The session storage could not keep the screen for the redirect: " + error.message, code: "storageUnavailable" });
+            return;
+        }
+        screen.redirected = true;
+        location.assign(url);
+    };
+
+    // Opens the screen of a plugin in the frame that follows the tap that asked for it, while the tap still counts as an activation, so the opener may open a popup at once. A screen without an opener fails with the code noHandler.
+    haylen.openScreen = function (id, plugin, name, params, buffers, state) {
+        const token = crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + String(Date.now());
+        const screen = { id, plugin, name, state, token, controller: new AbortController(), popup: null, origins: [], watch: null, answer: null, redirected: false };
+        screens.current = screen;
+        const open = screens.openers.get(plugin + "." + name);
+        if (!open) {
+            endScreen(screen, false, { message: "No page screen is registered for " + plugin + "." + name + ".", code: "noHandler" });
+            return;
+        }
+        const handle = {
+            id,
+            name,
+            token,
+            signal: screen.controller.signal,
+            resolve: (value) => endScreen(screen, true, value),
+            reject: (error) => endScreen(screen, false, describeFailure(error)),
+            popup: (url, options) => openPopup(screen, url, options),
+            redirect: (url) => redirect(screen, url),
+        };
+        try {
+            const returned = open(decodePayload(params, buffers), handle);
+            if (returned && typeof returned.then === "function") {
+                returned.then(undefined, handle.reject);
+            }
+        } catch (error) {
+            handle.reject(error);
+        }
+    };
+
+    // The app gave the screen up: its opener hears it through the signal, a popup of the screen closes, and the screen ends as cancelled.
+    haylen.cancelScreen = function (id) {
+        const screen = screens.current;
+        if (screen && screen.id === id) {
+            screen.controller.abort();
+            endScreen(screen, false, { message: "The app gave the screen up.", code: "cancelled" });
+        }
+    };
+
+    // The screen that a redirect of the plugin left before this page loaded, which the plugin ends once it read the result from the address of the page. Its end reaches the app as the retained event <plugin>.screenRestored with the state that the app gave.
+    const takeRestoredScreen = (plugin) => {
+        let record = null;
+        try {
+            record = JSON.parse(sessionStorage.getItem(kScreenKey));
+        } catch (error) {
+            return null;
+        }
+        if (!record || record.plugin !== plugin) {
+            return null;
+        }
+        sessionStorage.removeItem(kScreenKey);
+        let settled = false;
+        const restore = (ok, value) => {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            const encoded = ok ? encodePayload(value) : { json: JSON.stringify(value), buffers: [] };
+            const buffers = encoded.buffers.map((buffer) => buffer.slice());
+            whenRuntimeReady(() => withBuffers(buffers, (table, count) => Module.ccall("haylen_web_restore_screen", null, ["string", "string", "string", "number", "string", "number", "number"], [record.plugin, record.screen, JSON.stringify(record.state), ok ? 1 : 0, encoded.json, table, count])));
+        };
+        return { id: record.id, name: record.screen, token: record.token, resolve: (value) => restore(true, value), reject: (error) => restore(false, describeFailure(error)) };
+    };
+
     // The web parts of plugins by id, each with the listeners of its context that hear app errors. Their ids are the plugins whose native part runs on the web.
     const plugins = new Map();
 
@@ -431,6 +580,10 @@ Module.haylen = Module.haylen || {};
             register(method, handler) {
                 haylen.register(id + "." + method, handler);
             },
+            registerScreen(name, open) {
+                screens.openers.set(id + "." + name, open);
+            },
+            restoredScreen: takeRestoredScreen(id),
             emit(event, payload, options) {
                 haylen.emit(id + "." + event, payload, options);
             },

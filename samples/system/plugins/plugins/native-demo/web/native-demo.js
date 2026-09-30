@@ -107,6 +107,27 @@ const showScreen = (title, color) =>
         close.focus();
     });
 
+// The confirm screen of the plugin, a page next to this module that shows in a popup or replaces the page of the app for a redirect.
+const screenPage = (mode, params, screen, extra) => {
+    const page = new URL("screen.html", import.meta.url);
+    page.search = new URLSearchParams({ mode, token: screen.token, title: params.title || "Native Demo", question: params.question || "", ...extra }).toString();
+    return page.href;
+};
+
+// A page that comes back from the redirect screen carries the answer and the token of the screen in its address, which end the screen that the redirect left. The address loses both, so a reload shows the app alone.
+const finishRedirect = (screen) => {
+    const address = new URL(location.href);
+    const answer = address.searchParams.get("nativeDemoAnswer");
+    if (answer !== null && address.searchParams.get("nativeDemoScreen") === screen.token) {
+        screen.resolve({ confirmed: answer === "confirmed", via: "redirect", language });
+    } else {
+        screen.reject(failure("The page came back without the answer of the screen.", "cancelled"));
+    }
+    address.searchParams.delete("nativeDemoAnswer");
+    address.searchParams.delete("nativeDemoScreen");
+    history.replaceState(history.state, "", address.href);
+};
+
 // Lets the person pick a file with a file input. The browser opens the chooser only while a click, a tap or a key press of the person is recent.
 const pickFile = () =>
     new Promise((resolve, reject) => {
@@ -324,6 +345,21 @@ export default function load(context) {
     });
 
     context.register("pickFile", pickFile);
+
+    // The confirm screen opens in a popup inside the activation of the tap that asked for it, and answers with what the person picked there, which the popup posts back to this page.
+    context.registerScreen("confirm", async (params, screen) => {
+        const answer = await screen.popup(screenPage("popup", params, screen), { width: 440, height: 420 });
+        screen.resolve({ confirmed: answer.confirmed, via: "popup", language });
+    });
+
+    // The redirect screen leaves this page for the confirm page, which comes back with the answer in the address, so the page loads again and the answer reaches the new app as screenRestored.
+    context.registerScreen("redirect", (params, screen) => {
+        screen.redirect(screenPage("redirect", params, screen, { back: location.href }));
+    });
+
+    if (context.restoredScreen) {
+        finishRedirect(context.restoredScreen);
+    }
 
     // The page stands in for links that open the app: the hash of its address when it loads and every later change of the hash.
     const openUrl = () => {

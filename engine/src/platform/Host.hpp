@@ -17,6 +17,7 @@
 #include "haylen/math/Insets.hpp"
 #include "haylen/platform/Battery.hpp"
 #include "haylen/platform/DialogRequest.hpp"
+#include "haylen/platform/ScreenRequest.hpp"
 #include "haylen/platform/SystemInfo.hpp"
 #include "haylen/platform/Theme.hpp"
 #include "haylen/platform/Window.hpp"
@@ -68,6 +69,12 @@ class Host : public Window {
 
     // Closes a dialog that the app gave up, where the platform can. Its answer is dropped either way.
     virtual void cancelDialog(std::uint64_t id) = 0;
+
+    // Opens the screen of a plugin over the app, which the engine covered already. The platform keeps the id, the plugin, the screen and the state where it keeps them across the end of the process, and ends the screen exactly once through ScreenRelay::finish with the same id, from any thread, with its result or a failure, such as cancelled when the user closed it, notActive when the platform cannot present it now or unsupported. A screen that ended after the process did reaches the next app through ScreenRelay::restore with the kept state.
+    virtual void openScreen(const ScreenRequest& request) = 0;
+
+    // Dismisses a screen that the app gave up, where the platform can, which still ends it through ScreenRelay::finish once it is gone.
+    virtual void cancelScreen(std::uint64_t id) = 0;
 };
 
 } // namespace haylen::platform

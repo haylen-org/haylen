@@ -20,6 +20,7 @@
 #include "haylen/platform/Window.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
 #include "lua/Environment.hpp"
+#include "platform/ScreenRelay.hpp"
 #include "platform/native/NativeApi.hpp"
 #include "plugins/BuiltInPlugins.hpp"
 
@@ -60,6 +61,7 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     // clang-format on
     current.system = std::make_unique<platform::System>(host, current.events, current.graphics->getAdapterName());
     current.dialogs = std::make_unique<platform::Dialogs>(host, current.storage->getRoot() / "tmp" / "dialogs");
+    current.screens = std::make_unique<platform::Screens>(host, *current.platform, [this] { return getAppState() == AppState::Active; });
     current.renderer = std::make_unique<graphics2d::Renderer>(*current.graphics, *current.jobs);
     current.assets = std::make_unique<assets::Manager>(*current.package, *current.jobs, *current.graphics, current.events);
     current.scenes = std::make_unique<SceneManager>(*this);
@@ -87,6 +89,7 @@ Engine::~Engine() {
     current.events.clear();
     current.assets->cancelAll();
     current.scenes.reset();
+    current.screens.reset();
     current.platform.reset();
     current.dialogs.reset();
     current.system.reset();
@@ -186,9 +189,10 @@ void Engine::frame(double frameSeconds) {
         return;
     }
 
-    // Native UI that covered or uncovered the app since the last frame changes its state before the frame decides whether it is halted.
+    // Native UI that covered or uncovered the app since the last frame changes its state before the frame decides whether it is halted, and the screen that the app asked for reaches the platform once the cover holds.
     try {
         applyCover();
+        current.screens->present();
     } catch (const std::exception& exception) {
         reportError(exception);
     }
@@ -225,6 +229,7 @@ void Engine::frame(double frameSeconds) {
             current.platform->pump();
             current.system->pump();
             current.dialogs->pump();
+            current.screens->pump();
         }
 
         if (!hidden) {
@@ -257,7 +262,8 @@ void Engine::frame(double frameSeconds) {
         reportError(exception);
     }
 
-    if (!hidden) {
+    // An opaque screen of a plugin hides the app, which keeps its last frame on screen under it.
+    if (!hidden && !current.hiddenByScreen) {
         render(all);
     }
 
@@ -534,10 +540,12 @@ void Engine::refreshForegroundState() {
     setAppState(current.focused && !current.interrupted && !current.covered ? AppState::Active : AppState::Inactive);
 }
 
-// Covered content must never play under native UI, so a cover halts and mutes the app whatever the lifecycle options say. The app state changes last, because its listeners may fail.
+// Covered content must never play under native UI, so a cover halts and mutes the app whatever the lifecycle options say. The covers of the platform, of native libraries and the screen of a plugin all count. The app state changes last, because its listeners may fail.
 void Engine::applyCover() {
     EngineState& current = *state;
-    const bool covered = current.host.isAppCovered();
+    const std::optional<platform::ScreenRelay::Screen> screen = platform::ScreenRelay::getShowing();
+    current.hiddenByScreen = screen && screen->opaque;
+    const bool covered = current.host.isAppCovered() || platform::NativeApi::isAppCovered() || screen.has_value();
     if (covered == current.covered) {
         return;
     }
@@ -830,6 +838,10 @@ platform::System& Engine::getSystem() noexcept {
 
 platform::Dialogs& Engine::getDialogs() noexcept {
     return *state->dialogs;
+}
+
+platform::Screens& Engine::getScreens() noexcept {
+    return *state->screens;
 }
 
 plugins::PluginRegistry& Engine::getPlugins() noexcept {
