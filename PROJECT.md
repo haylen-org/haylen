@@ -157,7 +157,7 @@ Cada ponto abaixo precisa estar coberto pelos grupos A, B, J, N, O, P, Q, R, S, 
 103. Comunicação fácil com qualquer plataforma (iOS, Android, desktop, web e as outras): enviar e receber a resposta da plataforma de forma assíncrona, para usar qualquer coisa nativa da plataforma.
 104. Chamar bibliotecas e SDKs nativos, como a biblioteca da Steam, bibliotecas nativas em geral e SDKs como o P2P da Epic Online Services (NAT P2P). O `ffi` do Varn pode ser parte da solução. Não é preciso usar esses SDKs, eles são só exemplos, mas a capacidade precisa ser testada nas plataformas.
 105. Organizar tudo isso na engine, revisado e testado, não importa o tamanho da refatoração, para a engine cobrir todos os casos do desenvolvimento de jogos. E revisar o projeto inteiro de novo atrás de bugs, código legado, código não usado, erros, race conditions e falhas que derrubam o app, com as regras gerais de sempre.
-106. A cada bloco de trabalho terminado, fazer commit e push na `main`. A mensagem do commit tem o prefixo do tipo (feature, fix e os outros) e uma frase curta em minúsculas, sem coautor e sem citar Claude ou qualquer outra pessoa. A regra fica no CLAUDE.md, não na documentação.
+106. A cada bloco de trabalho terminado, fazer commit e push na `main`. A mensagem do commit tem o prefixo do tipo (feature, fix e os outros) e uma frase curta que começa com maiúscula, sem coautor e sem citar Claude ou qualquer outra pessoa. A regra fica no CLAUDE.md, não na documentação.
 107. Antes de cada commit, conferir que não entra nada de build, arquivo temporário, chave de ambiente, segredo ou qualquer coisa privada ou temporária que não deveria ser commitada. A regra fica no CLAUDE.md.
 108. Nunca citar outras engines, nem em docs, nem em comentários, nem em código, nem mesmo em comparações. A regra fica no CLAUDE.md.
 109. Tudo o que o dono pedir entra nesta lista de coisas a fazer, para nada se perder.
@@ -191,6 +191,9 @@ Cada ponto abaixo precisa estar coberto pelo grupo AA da seção 14.2.
 122. Os plugins precisam ter a capacidade de enviar e receber de forma assíncrona tudo o que os recursos básicos de cada sistema pedem: áudio, câmera, foto, localização, notificação local e os dados de uma notificação push recebida, na web, no Android, no iOS, nos desktops e nas outras plataformas. A engine entrega a capacidade, e o plugin de demonstração testa cada mecanismo sem SDK de terceiros.
 123. Plugins que abrem outra tela (uma activity no Android, um view controller na Apple, como o paywall do RevenueCat, telas de login, de compra, de câmera e de anúncios) precisam de uma arquitetura que suporte isso em todas as plataformas, pesquisada e pensada para não criar incompatibilidades no futuro: abrir a tela, pausar e cobrir o app enquanto ela aparece, receber o resultado e voltar ao jogo sem perder estado.
 124. As imagens da engine usam a marca nova de `extras/images/` (símbolo, `logo-h` e `logo-v`) no lugar da logo antiga: nos ícones e nos espaços pequenos só o símbolo, sobre o fundo azul escuro da fonte (`#07112f`), e a logo onde há espaço.
+125. Nenhuma frase começa com letra minúscula, em comentários, documentação, mensagens de erro e de log e na saída do `make.py`: quando a frase começaria com um comando, identificador ou caminho em minúsculo, vai uma palavra antes, como "O comando" ou "Rode". E toda expressão reservada (comando, código, identificador, caminho, chave e valor) fica marcada para não se misturar com a frase: crases nos documentos Markdown e nos comentários, e aspas duplas nas mensagens, nos logs e na saída dos comandos, como no exemplo do dono e como o Varn e o Workpane fazem. A regra vale para qualquer texto, inclusive as mensagens de commit, cuja frase depois do prefixo do tipo começa com maiúscula.
+126. A engine não impõe nada aos projetos finais do Android e do Xcode. Cada plugin define o que o projeto precisa (frameworks, dependências, permissões, chaves do Info.plist, entitlements e configurações), e o projeto é do desenvolvedor, que o altera como quiser (por exemplo editando o `project.yml` do XcodeGen e gerando de novo), porque cada empresa tem o seu padrão. A engine não carrega nem compila coisas particulares que o app não usa. Quando um requisito de um plugin falta, o plugin registra no log e ignora a chamada até o desenvolvedor cumprir o requisito, em vez de quebrar. Analisar, pesquisar, planejar e revisar a melhor forma de organizar isso.
+127. Regra: o `CLAUDE.md` não cita nada que muda com o tempo. Isso vale para versões da engine, de bibliotecas, de ferramentas, de SDKs, de APIs e de bancos de dados, e para limites, tamanhos, contagens e durações que o código declara. Ele descreve regras e decisões, diz o tipo de limite sem o número e aponta o arquivo que guarda cada valor.
 
 ## 3. Regras
 
@@ -332,7 +335,7 @@ Um app parado pelas opções de ciclo de vida pula os passos 6 e 7 com tempo zer
 - Cada capacidade é um módulo `haylen.<modulo>` instalado em `package.preload`, no mesmo estado Lua dos módulos do Varn (`async`, `http`, `socket`, `json`, `fs`, `zip`, `crypto`, `log`, `platform`, `process`, `datetime`, `xml` e `ffi`).
 - Os módulos dos subsistemas 2D terminam com `2d` (`haylen.graphics2d`, `haylen.animation2d`, `haylen.particles2d`, `haylen.lighting2d`, `haylen.physics2d`, `haylen.navigation2d`, `haylen.spatial2d` e `haylen.procedural2d`). Os módulos sem dimensão mantêm o nome (`haylen.graphics`, `haylen.input`, `haylen.audio`, `haylen.ui` e os outros), e `haylen.tiled` também, porque mapas do Tiled são 2D por natureza.
 - Objetos C++ são userdata com métodos e propriedades: um par `getX` e `setX` é a propriedade `x` (`sprite.x`), e um getter só de leitura é propriedade ou método sem o prefixo (`world:bodyCount()`).
-- Opções vão em tabelas, e uma chave desconhecida dá `Unknown option '<key>'.`. Enums vão pelo nome em string.
+- Opções vão em tabelas, e uma chave desconhecida dá `Unknown option "<key>".`. Enums vão pelo nome em string.
 - Cenas e autoloads são tabelas Lua com ganchos, `haylen.class` monta classes com herança e mixins, e tudo o que uma cena ou outro dono cria termina com ele.
 - A referência completa está em `docs/lua-api.md` e `docs/lua-api/`, e o modelo de programação em `docs/lua.md`.
 
@@ -832,7 +835,7 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 | 12 | Jogo Tiny Island em Lua | Concluída |
 | 13 | Testes e cobertura até o máximo possível | Concluída |
 | 14 | Documentação e revisão final (bugs, legado, não utilizado, race conditions e crashes) | Concluída, com testes de regressão para as correções |
-| 15 | Pedidos 51 a 124 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
+| 15 | Pedidos 51 a 127 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
 
 ## 13. Limitações conhecidas
 
@@ -853,9 +856,9 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 - visionOS nativo depende do Sokol, que usa o `UIScreen`, indisponível no SDK do visionOS. O app iOS roda no Apple Vision Pro como app de iPad compatível. watchOS é impossível, porque o SDK do watchOS não tem Metal, MetalKit, GameController nem AudioToolbox.
 - O Sokol só aceita imagens inteiras em texturas que vivem entre frames, então uma textura dinâmica alterada (os atlas das fontes e da UI) sobe todos os pixels, uma vez por frame.
 
-## 14. Pedidos 51 a 124: decisões e checklist
+## 14. Pedidos 51 a 127: decisões e checklist
 
-Esta seção cobre os pedidos 51 a 124 das seções 2.1, 2.2, 2.3, 2.4 e 2.5. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
+Esta seção cobre os pedidos 51 a 127 das seções 2.1, 2.2, 2.3, 2.4 e 2.5. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
 
 ### 14.1 Decisões de organização
 
@@ -1120,7 +1123,7 @@ Todo sample de recursos tem um menu simples para escolher o teste, cada teste é
 - [x] No Mac Catalyst, as teclas não chegam ao mapa de ações nem à navegação por foco enquanto um campo nativo edita texto.
 - [x] O teclado virtual do Android não reabre depois do Back, validado no emulador com o AAR.
 - [x] Host headless com limite de textura igual ao das GPUs reais (patch `sokol-dummy-limits.patch` do backend dummy do Sokol com os limites de desktop, 16384), para o teste de fumaça sem janela chegar ao gameplay do Tiny Island.
-- [x] Regras de commit e push na `main` por bloco, com prefixo e frase curta em minúsculas e sem coautor, a conferência de arquivos privados e temporários antes de cada commit e a proibição de citar outras engines, no CLAUDE.md. Os commits são publicados em `github.com/haylen-org/haylen`.
+- [x] Regras de commit e push na `main` por bloco, com prefixo e frase curta começando com maiúscula e sem coautor, a conferência de arquivos privados e temporários antes de cada commit e a proibição de citar outras engines, no CLAUDE.md. Os commits são publicados em `github.com/haylen-org/haylen`.
 - [x] Nenhuma menção a outras engines no repositório (código, comentários, testes, docs, README, CLAUDE.md e este documento).
 - [x] Seções 1 a 13 deste documento com os nomes atuais (app, `source/`, `content/`, namespaces, módulos `2d`, `storage` e `preferences`), sem ponto e vírgula, sem histórico e com o status real de cada item.
 - [x] CLAUDE.md descreve o projeto como ele é, sem histórico e sem versões de bibliotecas, e contém os padrões de código, a arquitetura, a organização e as regras de que cada execução de um agente precisa para novos recursos e correções.
@@ -1263,7 +1266,7 @@ A referência são jogos como o Taskbar Hero, que rodam numa faixa transparente 
 - [x] Mensagens de erro no padrão do CLAUDE.md nas 13 mensagens do `AppConfig.cpp` e nas mensagens que começavam com minúscula (UI, ImGui, tween, jobs, libffi, drawBatch, captura, clip, metatables protegidas, opções inválidas e tipos sem membro).
 - [x] Teclas de dígito com o nome do valor do enum: `Key::Digit0` a `Key::Digit9` em C++ e `'digit0'` a `'digit9'` em Lua (`key:digit1`), com o rótulo de captura mostrando só o número.
 - [x] Direção do texto com o nome do valor do enum: `'leftToRight'` e `'rightToLeft'` no Lua, na UI, no rich text (`[p dir=…]`) e nos catálogos de idioma (`@direction`), com uma tabela de nomes só.
-- [x] As mensagens com um valor anexado viraram frases completas que citam o valor e dizem o que se espera (como `The texture filter must be nearest or linear, not 'x'.`), e as mensagens de propriedades da UI começam com maiúscula e dizem o esperado (`The property 'style.padding' of a button must be a number.`), por `PropertyReader::describeProperty` e `describeKind`.
+- [x] As mensagens com um valor anexado viraram frases completas que citam o valor e dizem o que se espera (como `The texture filter must be "nearest" or "linear", not "x".`), e as mensagens de propriedades da UI começam com maiúscula e dizem o esperado (`The property "style.padding" of a "button" must be a number.`), por `PropertyReader::describeProperty` e `describeKind`.
 
 #### Z. Plugins nativos
 
@@ -1358,6 +1361,14 @@ Decisões, a partir da documentação oficial dos SDKs (AdMob, UMP, Firebase, St
 - [ ] Imagens largas com a logo horizontal de marca branca sobre `#07112f`: top shelf do tvOS e o banner da Android TV.
 - [ ] Splash do Android (`haylen_splash_logo` e `haylen_splash_icon`) com o símbolo dentro do círculo da máscara, e a documentação das logos e ícones padrão.
 
+#### AE. Frases e expressões reservadas
+
+- [~] Varredura das mensagens: erros e logs da engine (C++, Objective-C, Java, Kotlin, Swift, JavaScript e C), mensagens e saída do `make.py` e das ferramentas, e textos dos samples, sem frase começando em minúscula e com comandos, identificadores, caminhos, chaves e valores entre aspas duplas (inclusive os valores que hoje usam aspas simples), com os testes e os documentos que citam as mensagens atualizados.
+- [~] Varredura dos documentos (`docs/`, READMEs dos samples e do plugin de demonstração, `README.md` e `PROJECT.md`): nenhuma frase começa com uma expressão em crase, e toda expressão reservada fica entre crases.
+- [~] Varredura dos comentários de código (C++, Objective-C, Java, Kotlin, Swift, JavaScript, Lua, CMake e Python): toda expressão reservada entre crases e nenhuma frase começando em minúscula.
+- A primeira passada cobriu a engine portátil, os desktops, a web, as ferramentas, os samples, os templates e 73 documentos, e trocou as aspas simples das mensagens por aspas duplas, com os testes. Faltam o `make.py`, o código do Android e da Apple, o `PROJECT.md` e os documentos que as ondas da Apple e do Android estavam editando.
+- [x] O `CLAUDE.md` não cita nada que muda com o tempo, e a regra está nos princípios dele. Não há versões nem limites, tamanhos, contagens ou durações declarados no código: a regra diz o tipo de limite, sem o número. O padrão da linguagem C++ é apontado pelo `engine/CMakeLists.txt`, e sobram só nomes padronizados com dígitos, como SHA-256 e WebGL2.
+
 #### AA. Informações do sistema e diálogos nativos
 
 Decisões, a partir da pesquisa das bibliotecas de diálogos, notificações e webview e das APIs de cada plataforma:
@@ -1425,10 +1436,10 @@ Decisões, a partir da pesquisa dos SDKs que abrem telas próprias (RevenueCat, 
 **Android**
 
 - [x] Spike da migração, num projeto de teste no emulador: o GameActivity 4.4.2 liga com a engine em `c++_static` pela biblioteca estática pronta do AAR (sem depender de `libc++_shared.so`), o Sokol desenha com o patch (606 linhas mudadas, com a thread de render mantida e a entrada vinda da thread principal numa fila), toque com vários dedos, mouse, caneta, teclas e controle chegam, o teclado de software funciona pelo GameTextInput, um botão comum por cima do `SurfaceView` recebe o próprio toque e o jogo recebe o resto, o resultado de outra activity chega com o contexto EGL e os recursos intactos, rotação, Home e volta funcionam, e depois de o processo morrer coberto o estado nativo, o estado do AndroidX e o resultado pendente voltam. O gesto de voltar deslizando falta conferir num aparelho.
-- [ ] Migração do `HaylenActivity` para o GameActivity: patch do backend Android do Sokol (callbacks do GameActivity, fila de entrada da thread principal para a thread de render), entrada da engine, o host Java (splash, insets, back preditivo, foco de áudio, controles e rede), o overlay com views comuns sobre o `SurfaceView` no lugar das janelas de painel, o teclado de software sem o `EditText` escondido quando o GameTextInput servir, o tema AppCompat, o build e a documentação. Pontos que o spike mostrou: o GameActivity devolve o foco ao `SurfaceView` quando a janela recupera o foco (a subclasse do `SurfaceView` recusa o foco enquanto um campo por cima edita), os eixos do controle só chegam com o foco no `SurfaceView` (o `HaylenActivity` passa os eventos de joystick ao GameActivity primeiro), a soltura de uma tecla cuja pressão um campo consumiu é descartada, o voltar vai todo pelo `OnBackPressedCallback`, a visibilidade do teclado passa pela fila, e os resultados que chegam antes do Lua ficam guardados.
-- [ ] O caminho do Choreographer do Sokol fica fora do build com o mínimo 27 (guarda `__ANDROID_API__ >= 29`), então a engine sempre usa o laço de espera: conferir em tempo de execução se o Choreographer existe.
+- [x] Migração do `HaylenActivity` para o GameActivity: patch do backend Android do Sokol (callbacks do GameActivity, fila de entrada da thread principal para a thread de render), entrada da engine, o host Java (splash, insets, back preditivo, foco de áudio, controles e rede), o overlay com views comuns sobre o `SurfaceView` no lugar das janelas de painel, o teclado de software sem o `EditText` escondido quando o GameTextInput servir, o tema AppCompat, o build e a documentação. Pontos que o spike mostrou: o GameActivity devolve o foco ao `SurfaceView` quando a janela recupera o foco (a subclasse do `SurfaceView` recusa o foco enquanto um campo por cima edita), os eixos do controle só chegam com o foco no `SurfaceView` (o `HaylenActivity` passa os eventos de joystick ao GameActivity primeiro), a soltura de uma tecla cuja pressão um campo consumiu é descartada, o voltar vai todo pelo `OnBackPressedCallback`, a visibilidade do teclado passa pela fila, e os resultados que chegam antes do Lua ficam guardados.
+- [x] O ritmo dos frames pelo Choreographer é escolhido em tempo de execução, nos aparelhos com API 29 em diante, e não fica fora do build pelo mínimo 27.
 - [ ] Coberto por outra activity, o app pode ser congelado pelo Android (cached app freezer), e timers do Lua e HTTP param: documentar e, se fizer sentido, avisar os plugins de telas.
-- [ ] Modo de abertura `singleTop` no lugar do `singleTask`, com uma activity pequena que recebe links e notificações e entrega ao jogo, para o ícone do launcher não destruir as telas de compra, paywall, verificação bancária e login abertas por cima do jogo.
+- [x] Modo de abertura `singleTop` no lugar do `singleTask`, com uma activity pequena que recebe links e notificações e entrega ao jogo, para o ícone do launcher não destruir as telas de compra, paywall, verificação bancária e login abertas por cima do jogo.
 - [ ] Telas de plugins no Android sobre o `ActivityResultRegistry` com chaves de texto, sem o repasse manual do `onActivityResult` e sem colisão de request codes, e o resultado guardado quando o processo morre.
 
 **Apple**
@@ -1448,3 +1459,85 @@ Decisões, a partir da pesquisa dos SDKs que abrem telas próprias (RevenueCat, 
 - [x] `docs/lifecycle.md` corrigido: as respostas da bridge, os timers e os callbacks de rede esperam enquanto a plataforma não roda frames (Android pausado ou sem foco, iOS e tvOS inativos, aba escondida no navegador).
 - [ ] O plugin de demonstração abre uma tela nativa de verdade em cada plataforma (uma activity AndroidX com resultado, um view controller e uma tela em SwiftUI, um popup na web e uma janela no desktop) e recebe o resultado, inclusive depois de o processo morrer no Android.
 - [ ] Guia `docs/plugins.md` com as telas de plugins e as regras no CLAUDE.md.
+
+#### AF. Projetos de plataforma do desenvolvedor e requisitos dos plugins
+
+A auditoria do que a engine e o `make.py` impõem hoje mostrou três problemas:
+
+- **O que todo app recebe à força:**
+  - cinco frameworks particulares da Apple (UserNotifications, Network, IOKit, UniformTypeIdentifiers e CoreVideo), porque a biblioteca estática não liga nada sozinha;
+  - três permissões no AAR (`INTERNET`, `ACCESS_NETWORK_STATE` e `VIBRATE`);
+  - o `HaylenPluginProvider` e o `HaylenLinkActivity` exportado sem filtro, que repassa qualquer intent explícito aos plugins;
+  - o `enableOnBackInvokedCallback` do app inteiro;
+  - o `kotlinx-coroutines`;
+  - declarações que são da empresa, como `ITSAppUsesNonExemptEncryption`.
+- **O `make.py` apaga o que o desenvolvedor faz:**
+  - reescreve o `Info.plist`, o `App.xcconfig`, os entitlements e o splash a cada execução;
+  - gera o `App.xcodeproj` de novo;
+  - copia arquivos de plugins por cima do projeto;
+  - aplica a pasta do app por cima do template novo, então arquivo apagado volta e arquivos de versões diferentes se misturam.
+- **Requisito que falta quebra o app:** na Apple é erro de link. No Android, o app provavelmente fecha na abertura sem `ACCESS_NETWORK_STATE`, e fica uma exceção Java pendente na thread do frame sem `VIBRATE`, porque o JNI não confere exceções.
+
+Decisões:
+
+- **O projeto é do desenvolvedor:**
+  - `platform/<template>/` do app é o projeto inteiro, compilado no lugar, sem cópia por cima de template. Um app sem essa pasta usa uma cópia do template que o `make.py` guarda em `build/apps/`.
+  - O `make.py new` e o `make.py platform add` criam os projetos, e o `make.py platform diff` mostra, sem mudar nada, o que o template atual tem de diferente, para o desenvolvedor adotar o que quiser.
+- **Só a pasta gerada é escrita:**
+  - O `make.py` escreve só na pasta `haylen/` dentro do projeto, que o `.gitignore` do projeto ignora. Ele nunca edita `project.yml`, `project.pbxproj`, scripts do Gradle, manifestos nem `Info.plist` do desenvolvedor.
+  - Os arquivos do desenvolvedor incluem o que é gerado por poucas linhas visíveis, que ele pode tirar:
+    - na Apple, `include: [haylen/project.yml]` e `templates: [HaylenIOS]` em cada alvo do `project.yml` (conferido com o XcodeGen fixado: listas do template somam com as do alvo, e o ajuste do alvo vence o do template), e `#include "haylen/Haylen.xcconfig"` no `App.xcconfig`;
+    - no Android, o `haylen/haylen.properties` lido pelos scripts do Gradle e as pastas `haylen/assets`, `haylen/res` e `haylen/jniLibs` como fontes extras.
+- **Gerar o projeto de novo:**
+  - O desenvolvedor edita o `project.yml` e gera de novo com `make.py xcodegen <app>` ou com o XcodeGen fixado.
+  - O `make.py run` só gera sozinho quando o `project.yml` inclui a pasta gerada, as entradas mudaram e o `project.pbxproj` não foi editado à mão desde a última geração. Se foi editado, ele para com uma mensagem que explica o que fazer, sem sobrescrever nada.
+- **O `Info.plist` e os entitlements são do desenvolvedor:**
+  - O `make.py` grava em `haylen/` uma cópia completada: o valor do desenvolvedor vence, chaves dos plugins e do `app.json` só preenchem o que falta, listas ganham os itens que faltam, e dois plugins que discordam param o build com os dois nomes.
+  - O desenvolvedor pode apontar o alvo direto para o arquivo dele e deixar de receber o que é gerado.
+  - A lista `HaylenPlugins` sai do `Info.plist`: o runtime lê os plugins do pacote e avisa no log quando a classe de um plugin listado não está no app.
+- **Requisitos dos plugins em três camadas:**
+  - Primeiro, a inclusão aditiva pela pasta gerada: frameworks, pacotes Swift, fontes, recursos e scripts na Apple, e módulos com o manifesto mesclado pelo Gradle no Android.
+  - Depois, o `make.py check`, que confere o app compilado e mostra, para cada requisito que falta, quem precisa dele, por quê e o trecho exato com o arquivo onde colocar. Na Apple ele lê o `Info.plist`, os frameworks ligados e os entitlements. No Android, o manifesto final do APK. O `run` roda a mesma conferência como aviso.
+  - Por último, a checagem em tempo de execução.
+- **Em tempo de execução, loga e ignora:**
+  - Cada recurso confere o requisito antes de chamar a API do sistema, o que na Apple evita o encerramento pelo sistema quando falta a descrição de uso.
+  - Quando o requisito falta, o recurso registra no log uma vez o que falta e como resolver, e a chamada falha com `unsupported` e `data.missing`. Recursos sem resposta, como vibrar, só não fazem nada.
+  - Os plugins têm os mesmos helpers: `HaylenRequirements` na Apple e no Android e `context.require` na web.
+- **Núcleo mínimo:**
+  - A engine só leva o que todo app precisa para rodar.
+  - Na Apple, a lista de frameworks do núcleo sai do `project.yml` do desenvolvedor e vem da engine pela pasta gerada. O UserNotifications deixa de ser ligado: o runtime acha o centro de notificações em tempo de execução, e os métodos de notificação vão para um `HaylenNotificationPlugin.h` que só os plugins de notificação importam.
+  - No Android, as três permissões saem do AAR e ficam como padrão visível no manifesto do template, que o desenvolvedor tira quando não quer. Vibrar, o estado da rede e a rede passam a conferir a permissão. O provider dos plugins vai para o artefato `dev.haylen:haylen-plugins`, de que todo módulo de plugin depende. O `HaylenLinkActivity` vai para o `dev.haylen:haylen-links`, só dos plugins de links e notificações. O `kotlinx-coroutines` vai para o `dev.haylen:haylen-coroutines`. O `enableOnBackInvokedCallback` vai para o manifesto do template.
+  - Os valores que são escolhas da empresa, como criptografia, controles, barra de status, TV, SDKs e assinatura, ficam só como padrão do template, nunca forçados pelo `make.py`.
+- **A engine não se divide em módulos C++ opcionais para o player Lua:**
+  - os módulos 2D opcionais são cerca de 9% do código;
+  - o player web precisa rodar qualquer app;
+  - o Android pronto não tem passo de link por app.
+
+  Opções de CMake por módulo para apps C++ ficam para quando alguém pedir.
+
+Checklist:
+
+- [ ] O JNI confere exceções depois de cada chamada ao Java, descreve, limpa e registra no log, com teste no emulador de que nenhuma exceção fica pendente na thread do frame.
+- [ ] Sem `ACCESS_NETWORK_STATE`, o estado da rede não é registrado e não há `networkChanged`. Sem `VIBRATE`, vibrar só registra no log. Os dois são conferidos no emulador com as permissões tiradas, sem o app fechar.
+- [ ] Helpers de requisitos para os plugins:
+  - Apple: `HaylenRequirements` com chave do `Info.plist`, descrição de uso, modo de segundo plano, esquema de URL, classe e entitlement no macOS, mais o `context.require` em Swift.
+  - Android: `HaylenRequirements` com permissão declarada e concedida, classe, meta-data, activity, service, provider e esquema.
+  - Web: `context.require` com contexto seguro, API e política de permissões.
+  - Nas três, `unsupported` com `data.missing` e log uma vez só, documentados no guia de plugins.
+- [ ] UserNotifications fora do núcleo: centro de notificações achado em tempo de execução, `HaylenNotificationPlugin.h`, o framework tirado do template e do `haylen-app.cmake`, e o plugin de demonstração declarando os frameworks que usa. Conferir no simulador que o toque numa notificação continua chegando ao Lua, a frio e com o app rodando.
+- [ ] O runtime da Apple lê os plugins do pacote, sem a chave `HaylenPlugins`, e avisa quando a classe de um plugin listado falta.
+- [ ] AAR mínimo: sem permissões, sem provider, sem activity de links e sem coroutines. Os artefatos `haylen-plugins`, `haylen-links` e `haylen-coroutines` são publicados pelo `make.py engine`, e o template de plugin e o plugin de demonstração dependem deles. O template do Android não repete as versões do AndroidX e declara as permissões de rede e de vibração no próprio manifesto. Conferir com `aapt2` que o AAR não traz permissões nem componentes, e que um app sem plugins não tem componentes exportados além do launcher.
+- [ ] Projeto no lugar e pasta `haylen/` gerada:
+  - Apple: `haylen/project.yml` com os modelos de alvo, `Haylen.xcconfig`, `Info.plist` e entitlements completados, `Splash.xcassets`, pacote, bibliotecas nativas e plugins, com os produtos do build fora da pasta do projeto.
+  - Android: `haylen.properties`, `assets`, `res`, `jniLibs` e plugins.
+  - Web: os arquivos do desenvolvedor copiados como estão para a saída, com os gerados ao lado.
+  - Os templates são reescritos para esse modelo, com `.gitignore`, e o `App.xcodeproj` do template é gerado de novo.
+- [ ] Comandos `make.py prepare`, `xcodegen`, `check`, `platform add` e `platform diff`, com a proteção do `project.pbxproj` editado à mão.
+- [ ] O `Info.plist` com `UIApplicationSupportsMultipleScenes` verdadeiro no iOS, como o template e a documentação dizem, conferido com as janelas de plugins no iPad e no Mac Catalyst.
+- [ ] Manifesto de privacidade: auditoria das APIs de motivo obrigatório que a engine e as dependências usam, o arquivo da engine publicado com os artefatos, a seção `apple.privacy` do `plugin.json`, e o `PrivacyInfo.xcprivacy` gerado com a engine, os plugins e o arquivo do desenvolvedor.
+- [ ] O código nativo dos samples (plataforma, nativo e o login do Tiny Island) vira plugins locais em `plugins/` de cada sample, e nenhum sample guarda projeto de plataforma, então todos usam a cópia do template.
+- [ ] Conferência de ponta a ponta:
+  - Com as linhas de inclusão: o simulador iOS, o Mac Catalyst, o simulador tvOS, o macOS, o emulador Android e a web.
+  - Sem elas: o `check` mostra os trechos, e o app abre e responde `unsupported` em vez de fechar.
+  - Com edições do desenvolvedor: chave própria no `Info.plist`, número de build no `App.xcconfig`, framework e alvo mudados no `project.yml`, `targetSdk`, assinatura e sabor no Gradle, e arquivos apagados que não voltam.
+- [ ] Decisões 14.1 (templates, montagem e `make.py new`), `docs/distribution.md`, `docs/plugins.md`, `docs/build.md`, `docs/embedding.md`, `docs/lua-api/system.md` e o CLAUDE.md descrevendo a propriedade dos projetos e os requisitos.

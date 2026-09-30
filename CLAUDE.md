@@ -1,6 +1,6 @@
 # Haylen — project guide
 
-Haylen is a reusable engine for games, multimedia apps and applications. It is 2D and organized so that 3D can grow next to it without renaming anything. Its core is C++20, and its whole API is exported to Lua through [Varn](https://github.com/varn-org/varn). Lua is the primary way to write apps, and every capability stays fully usable from C++. The repository holds the engine, the platform templates, the tools and the sample apps.
+Haylen is a reusable engine for games, multimedia apps and applications. It is 2D and organized so that 3D can grow next to it without renaming anything. Its core is modern C++ at the language standard `engine/CMakeLists.txt` sets, and its whole API is exported to Lua through [Varn](https://github.com/varn-org/varn). Lua is the primary way to write apps, and every capability stays fully usable from C++. The repository holds the engine, the platform templates, the tools and the sample apps.
 
 This file is binding for every change. It describes the project as it is and the rules every feature and fix follows, so read it before working and follow it exactly instead of re-deriving conventions. When a rule or a design decision changes, update this file in the same change and describe the new state in the present tense. `PROJECT.md` holds the master plan, the owner's requests, the decisions and the feature checklist.
 
@@ -15,13 +15,13 @@ This file is binding for every change. It describes the project as it is and the
 - Code, comments and repository documentation are written in English. `PROJECT.md` is the exception and is written in Portuguese for the project owner.
 - Never mention other engines or their tools anywhere in the repository: not in code, comments, docs, test names, commit messages or the project plan, and not even as a comparison or an inspiration. Describe what Haylen does in its own terms.
 - The repository never records its own history. Code, comments, docs, `README.md`, `PROJECT.md` and this file describe what exists now, without earlier names, earlier designs, what something was renamed from or dated change notes. Git holds the history.
-- This file never cites versions of libraries or tools. The pinned versions live in `engine/cmake/haylen-dependencies.cmake`, the templates and the CI workflow.
+- This file never cites anything that changes over time. That covers versions of the engine, libraries, tools, SDKs, APIs, file formats or stored data, and the limits, sizes, counts, durations and measurements the code declares. It states rules and designs, names the bound a rule keeps (such as "a bounded queue") and points to the file that holds each changing value, such as `engine/VERSION`, `engine/cmake/haylen-dependencies.cmake`, the templates and the CI workflow. Standard names that contain digits, such as SHA-256, UTF-8, arm64, 2D and WebGL2, are names, not values.
 
 ## Working rules
 
 - Every request of the owner goes into the checklist of `PROJECT.md` before the work starts, so nothing is lost, and an item is checked only when it is implemented, tested where possible and documented.
 - Commit and push to `main` after each finished block of work, once the build, the tests and the format check pass. A block that is committed builds and passes its tests on its own, so separate unrelated changes into separate commits and verify a commit from a clean checkout when the working tree holds other work.
-- A commit message is one short lowercase sentence with a type prefix: `feature: ...`, `fix: ...`, `refactor: ...`, `perf: ...`, `test: ...`, `docs: ...`, `build: ...` or `chore: ...`, for example `feature: add scene loading lifecycle`. It has no body, no co-author and no other trailer, and never names Claude or anyone else.
+- A commit message is one short sentence after a type prefix, `feature: ...`, `fix: ...`, `refactor: ...`, `perf: ...`, `test: ...`, `docs: ...`, `build: ...` or `chore: ...`, and the sentence starts with a capital letter, as the writing standard requires of every text, for example `feature: Add scene loading lifecycle`. It has no body, no co-author and no other trailer, and never names Claude or anyone else.
 - Before every commit, review what is staged (`git status` and `git diff --cached --stat`) and make sure nothing private or temporary goes in: build outputs, caches, generated projects under `build/`, local tool folders, logs, screenshots, secrets, API keys, tokens, signing keys and keystores, `local.properties`, `.env` files, machine-specific paths or settings, and personal data. Anything like that belongs in `.gitignore`, never in the repository.
 - Screenshots used to check a change capture only the app window or the page, never the whole screen.
 - Features that touch rendering, input, audio, text input, windows or platform code are run on the platforms they affect (desktop player, iOS and tvOS simulators, Mac Catalyst, Android emulator, browser), and a sample shows each of them working.
@@ -48,6 +48,7 @@ This file is binding for every change. It describes the project as it is and the
 - Every feature works on every platform, or the docs say exactly where it does not and why. Input covers mouse, touch, keyboard, gamepads and TV remotes, and text input uses the native text field of each platform so input methods, composition and on-screen keyboards work everywhere.
 - Mobile apps follow the platform lifecycle: app states (`active`, `inactive`, `background`), audio sessions and interruptions, low-memory warnings and orientation. UI positions itself in the safe area the engine reports.
 - The Apple template is an XcodeGen `project.yml` with the generated `App.xcodeproj` always committed next to it. After editing `project.yml`, run `xcodegen generate` in its folder and commit both.
+- Android apps run in `dev.haylen.HaylenActivity`, a GameActivity of AndroidX (an `AppCompatActivity`, so also a `FragmentActivity` and a `ComponentActivity`) that draws the game into a `SurfaceView`, through the engine's sokol patch for GameActivity. Plugins therefore use the Activity Result API with stable keys, fragments and Compose, and native views are normal views above the game. The activity launches as `singleTop`, and links and notification taps enter through a small trampoline activity, so the launcher icon never destroys a screen opened above the game.
 - The Android template is a Gradle app without C++ that depends on the haylen AAR. The web template is a loading page with the app or engine logo, a progress bar, the backend choice and the error screen.
 - Splash screens follow `app.json` and work in landscape and portrait on every device.
 
@@ -92,7 +93,7 @@ This file is binding for every change. It describes the project as it is and the
 - Every context has its own namespace, matching its folder: `haylen::core`, `haylen::math`, `haylen::io`, `haylen::assets`, `haylen::graphics`, `haylen::text`, `haylen::input`, `haylen::audio`, `haylen::ui`, `haylen::platform`, `haylen::localization`, `haylen::storage`, `haylen::ai`, `haylen::debug`, `haylen::net`, `haylen::lua` and `haylen::plugins`. Folders under `2d/` map to namespaces with the `2d` suffix, the same names as their Lua modules: `haylen::graphics2d`, `haylen::animation2d`, `haylen::particles2d`, `haylen::lighting2d`, `haylen::physics2d`, `haylen::navigation2d`, `haylen::spatial2d`, `haylen::procedural2d`, plus `haylen::tiled`. Nothing lives directly in the `haylen` namespace.
 - A type name does not repeat its namespace when a precise name exists: `haylen::physics2d::World`, `haylen::physics2d::Body`, `haylen::tiled::Map`, `haylen::graphics2d::Camera`, `haylen::text::Layout`, `haylen::lua::Promise`. Types in the shared `haylen::plugins` namespace name their dimension (`Physics2DPlugin`).
 - One class per file. A header and its source file hold one class and are named after it. Types owned by a single class (its options, events, results and enums) are nested in that class. A type shared by several classes gets its own file.
-- There are no free functions. Every function is a method of a class: utilities are static methods (`math::Easing::apply`, `math::Geometry::intersects`), helpers of a source file are private methods of its class, operators are hidden friends defined inside the class, and each Lua binding is a class whose Lua entry points are static methods. The only exceptions are entry points whose names the platform dictates (`main`, `sokol_main`, `ANativeActivity_onCreate`, `JNI_OnLoad` and `Java_*` JNI functions, Emscripten exports and C callbacks with fixed signatures), and each one only forwards to a class.
+- There are no free functions. Every function is a method of a class: utilities are static methods (`math::Easing::apply`, `math::Geometry::intersects`), helpers of a source file are private methods of its class, operators are hidden friends defined inside the class, and each Lua binding is a class whose Lua entry points are static methods. The only exceptions are entry points whose names the platform dictates (`main`, `sokol_main`, `JNI_OnLoad` and `Java_*` JNI functions, Emscripten exports and C callbacks with fixed signatures), and each one only forwards to a class.
 - There are no namespace-scope variables or constants in source files. They are static members of the file's class.
 - Every enum has exactly one table of its string names, and every Lua binding and file parser uses that table.
 - Plugins live in `engine/include/haylen/plugins/` and `engine/src/plugins/`, in the `haylen::plugins` namespace, together with the `Plugin` interface. A plugin wires its subsystem into the engine and installs its Lua module, and the subsystem itself stays in its context folder. Plugins that apps construct or reference have public headers, and the others keep their headers in `engine/src/plugins/`. `plugins::BuiltInPlugins` registers the built-in plugins in dependency order.
@@ -101,8 +102,8 @@ This file is binding for every change. It describes the project as it is and the
 ## Lua bindings
 
 - Each context keeps its Lua binding class next to it, such as `engine/src/2d/physics/Physics2DLua.cpp`, built with the public toolkit in `engine/include/haylen/lua/` (`Binding`, `ClassBuilder`, `Userdata`, `Stack`, `Converter`, `EnumNames`, `Table`, `Promise`, `Reference`, `TypeConverter` and `Runtime`). Projects that extend the engine use the same toolkit.
-- Options are passed as tables whose unknown keys raise `Unknown option '<key>'.`, and enums are passed as their string names.
-- Error messages are complete sentences that start with a capital letter and end with a period, and they say what was wrong and what is expected, such as `No canvas is active. Call beginWorld, beginScreen or beginTarget before drawing.`. The only exceptions are the short reasons of `luaL_argerror` and `luaL_typeerror`, which Lua wraps into its own `bad argument` sentence.
+- Options are passed as tables whose unknown keys raise `Unknown option "<key>".`, and enums are passed as their string names.
+- Error messages are complete sentences that start with a capital letter and end with a period, and they say what was wrong and what is expected, such as `No canvas is active. Call "beginWorld", "beginScreen" or "beginTarget" before drawing.`. The only exceptions are the short reasons of `luaL_argerror` and `luaL_typeerror`, which Lua wraps into its own `bad argument` sentence.
 - Userdata keep their Lua callbacks in their user value, so a callback that refers back to its owner never keeps it alive. C++ code that keeps a Lua value alive uses `lua::Reference` and releases it in `stop`.
 - Hot paths offer fast Lua access: number fields next to vector properties, native properties that tweens animate in C++, float buffers shared with C++ and bulk APIs that move many objects in one call.
 - Lua chunks are always loaded as text (`"t"` mode), never as bytecode.
@@ -209,9 +210,16 @@ extras/images/            Brand images: the vertical and horizontal logos, the s
 - clang-format does not format project lambdas acceptably. Wrap non-trivial lambdas in `// clang-format off` and `// clang-format on` markers, and format the lambda manually. Multi-line Lua sources in tests get the same markers.
 - Run `python3 make.py format` before finishing a change. It applies `.clang-format` to every C, C++, Objective-C and Objective-C++ file of the engine, the samples and the templates, and lists multi-line lambdas that are missing their `clang-format off` and `on` markers. `python3 make.py format --check` fails on either problem and runs in CI.
 
+## Writing standard
+
+These rules apply to every text the project writes, without exception: code comments, documentation, `README.md`, `PROJECT.md`, error, log and console messages, the output of `make.py` and the other tools, the texts apps and samples show, and commit messages.
+
+- Every sentence starts with a capital letter. When a sentence would begin with a command, identifier, path, key or value written in lowercase, keep its exact spelling and put a capitalized word in front of it, such as "The command", "Run", "The function" or "The file".
+- Reserved expressions are always marked, so they never read as part of the prose: commands, code, identifiers, file names and paths, keys, option names and values. Markdown documents and code comments wrap them in backticks. Plain-text messages, logs and command output wrap them in double quotes, for example `Name the device with "--device". Use the command "xcrun devicectl list devices" to list them.`
+
 ## Comment standard
 
-- Every comment is a complete sentence that starts with a capital letter and ends with a period.
+- Every comment is a complete sentence that starts with a capital letter and ends with a period, following the writing standard above.
 - If a sentence needs to begin with a lowercase identifier, keep its exact spelling and rewrite the sentence so the identifier does not start it.
 - A comment above a function, method, class, or module explains what callers need to know, not its internal implementation.
 - Comments are rare and appear only where the code cannot say something by itself.
@@ -232,7 +240,7 @@ extras/images/            Brand images: the vertical and horizontal logos, the s
 - Test files follow the code rules: they live in the namespace of the context they test, keep helpers in fixtures or support classes, and name suites after their subject with a `Test` suffix and tests after the behavior they verify.
 - Test data lives in `engine/tests/data/`, so engine tests never read files of the samples.
 - Run `python3 make.py test`. Changes to threading, lifetimes or memory handling also pass `python3 make.py test --sanitizers thread` and `--sanitizers address`.
-- Engine coverage is kept as close to 100 percent as the code allows. Run `python3 make.py coverage`.
+- Engine coverage is kept as close to complete as the code allows. Run `python3 make.py coverage`.
 
 ## Documentation
 
