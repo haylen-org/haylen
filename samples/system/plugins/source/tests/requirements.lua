@@ -13,7 +13,7 @@ function Requirements:enter()
         focus = 'check',
         controls = {
             ui.button{id = 'check', text = 'Check the requirement', variant = 'primary', onClick = function() self:check() end},
-            ui.label{text = 'On Android the plugin needs the permission "android.permission.READ_CONTACTS", which its manifest leaves out. The call fails with the code "unsupported" instead of crashing the app, and the log tells once what is missing.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'The plugin needs what it leaves out of the project on purpose: the permission "android.permission.READ_CONTACTS" on Android, the usage description "NSContactsUsageDescription" on Apple platforms, and the Contact Picker API "navigator.contacts" on the web, which only browsers of phones offer. The call fails with the code "unsupported" instead of crashing the app, and the log tells once what is missing.', color = 'textMuted', font = 'caption'},
             ui.label{font = 'monospace', text = "local _, err = demo.requirementCheck():await()\nfor _, missing in ipairs(err.data.missing) do\n  print(missing.file, missing.snippet)\nend"},
         },
     })
@@ -37,8 +37,15 @@ function Requirements:check()
         end
 
         self.results:set('call', 'pass', name, 'The call failed with the code "unsupported": ' .. err.message)
+        -- A requirement of the web page has no file of a project, and only a feature of the permissions policy has a snippet that allows it.
         for index, missing in ipairs(err.data.missing) do
-            self.results:set('missing' .. index, 'info', string.format('missing %s "%s"', missing.kind, missing.name), string.format('Add "%s" to "%s".', missing.snippet, missing.file))
+            local detail = 'The page lacks it, as the log explains.'
+            if missing.file ~= '' then
+                detail = string.format('Add "%s" to "%s".', missing.snippet, missing.file)
+            elseif missing.snippet ~= '' then
+                detail = string.format('Allow it with "%s".', missing.snippet)
+            end
+            self.results:set('missing' .. index, 'info', string.format('missing %s "%s"', missing.kind, missing.name), detail)
         end
     end)
 end

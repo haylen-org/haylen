@@ -58,7 +58,7 @@ A parameter applies to the platforms it lists, or to every platform of the plugi
 
 ### Load order
 
-Plugins load in the order of `app.json`, except that every plugin loads after the plugins it requires, and two plugins that require each other fail the build. The same order lists the plugin classes on Apple platforms, the plugin modules on Android and the modules that the web loader imports.
+Plugins load in the order of `app.json`, except that every plugin loads after the plugins it requires, and two plugins that require each other fail the build. The same order loads the plugin classes on Apple platforms and the plugin modules on Android, which their runtimes read from the package, and the modules that the web loader imports.
 
 ### The package
 
@@ -69,12 +69,12 @@ For every plugin that `app.json` lists, the package carries `plugins/<id>/plugin
 When the plugins of an app add sources, Swift packages, system frameworks, resources or build scripts, make.py assembles the Apple project in three steps:
 
 1. It copies the `sources` folder of every plugin to `plugins/<id>/sources/` of the project and its resources to `plugins/<id>/resources/`.
-2. It writes `plugins.json`, the XcodeGen include of `project.yml`, which adds the sources, the Swift packages with the products they link, the system frameworks, the resources and the build scripts of each plugin to the `iOS`, `tvOS` and `macOS` targets of the platforms the plugin lists. The `iOS` target builds iOS and Mac Catalyst, so a plugin that lists only one of `ios` and `catalyst` joins it with `destinationFilters`, which keep its sources, products and frameworks to that destination. A product or a framework that several plugins link joins a target once.
+2. It writes `plugins.json`, the XcodeGen include of `project.yml`, which adds the sources, the Swift packages with the products they link, the system frameworks, the resources and the build scripts of each plugin to the `iOS`, `tvOS` and `macOS` targets of the platforms the plugin lists. The `iOS` target builds iOS and Mac Catalyst, so a plugin that lists only one of `ios` and `catalyst` joins it with `destinationFilters`, which keep its sources, products and frameworks to that destination. A product or a framework that several plugins link joins a target once, and a framework that the target in `project.yml` links already, such as `AVFoundation.framework` of the engine, stays out of the include, since XcodeGen refuses a dependency that a target lists twice.
 3. It generates `App.xcodeproj` again with the pinned XcodeGen in `.tools/xcodegen`, which `make.py tools` and the first such build download. An app whose plugins add nothing to the project keeps the committed project.
 
 The sources of a plugin compile into the targets like the files of `source/`, so Swift reaches the engine through `HaylenBridging.h`, and [the Apple part](#the-apple-part) describes the plugin class they hold. The resources land at the root of the app bundle. Build scripts run as post-build phases for every destination of their targets, so a script of a plugin that leaves out Mac Catalyst checks `IS_MACCATALYST` itself.
 
-Every Apple build also merges the `infoPlist` keys of the plugins into the `Info.plist` of each platform that make.py writes, with `HaylenPlugins`, the array of the plugin classes of that platform in load order. `ios/Info.plist` serves iOS and Mac Catalyst, and the runtime skips a class that a destination leaves out, which is how Mac Catalyst leaves out plugins that list only `ios`. The `entitlements` of the plugins go to `ios/App.entitlements`, `catalyst/App.entitlements`, `tvos/App.entitlements` and `macos/App.entitlements`, and `App.xcconfig` signs each target and SDK platform with its file through `CODE_SIGN_ENTITLEMENTS`. Objects merge key by key and arrays gain the items they lack, so two ad plugins share `SKAdNetworkItems`, while a key that two plugins, or a plugin and `app.json`, set to different values fails the build with both named.
+Every Apple build also merges the `infoPlist` keys of the plugins into the `Info.plist` of each platform that make.py writes, where `ios/Info.plist` serves iOS and Mac Catalyst. The runtime reads the plugin classes and their order from the package, as [the plugin class](#the-plugin-class) describes. The `entitlements` of the plugins go to `ios/App.entitlements`, `catalyst/App.entitlements`, `tvos/App.entitlements` and `macos/App.entitlements`, and `App.xcconfig` signs each target and SDK platform with its file through `CODE_SIGN_ENTITLEMENTS`. Objects merge key by key and arrays gain the items they lack, so two ad plugins share `SKAdNetworkItems`, while a key that two plugins, or a plugin and `app.json`, set to different values fails the build with both named.
 
 ### Android
 
@@ -176,7 +176,7 @@ A platform without its part runs the Lua API of the plugin alone, where calls to
 
 | Key | Value |
 | --- | --- |
-| `class` | The Objective-C runtime name of the plugin class, which Swift classes declare with `@objc(Name)`. It joins `HaylenPlugins` of every platform of the plugin. |
+| `class` | The Objective-C runtime name of the plugin class, which Swift classes declare with `@objc(Name)`. The runtime creates it on every Apple platform of the plugin, as [the plugin class](#the-plugin-class) describes. |
 | `sources` | The folder whose Swift, Objective-C, C and C++ files compile into the targets of the platforms of the plugin. |
 | `packages` | Swift packages by name, each with its repository `url` (https or ssh), one `exactVersion` and the `products` that the targets link. Two plugins that name one package must agree on both. |
 | `frameworks` | System frameworks and libraries, such as `StoreKit.framework` or `libz.tbd`. |
@@ -347,6 +347,7 @@ The web module of a plugin exports `default function load(context)`, which the l
 | `context.overlay.add(element, placement)` | Places an HTML element over the canvas and returns `{update(placement), setVisible(visible), remove()}`. |
 | `context.coverApp()`, `context.uncoverApp()` | Cover the app while native UI shows, and end the cover. |
 | `context.onAppError(listener)` | Calls `listener(error)` with the report of every error that stops the app. |
+| `context.require(needs)` | Throws an error with the code `unsupported` and `data.missing` when the page lacks a secure context, an API or a feature of the permissions policy that `needs` names, as [web requirements](#web-requirements) describes. |
 
 A module may register, emit, cover and place elements from `load` already: the runtime keeps the events until the first app starts and the covers and reservations until the WebAssembly runtime is ready.
 
@@ -653,8 +654,8 @@ The Android and Xcode projects of an app belong to its developer, so the engine 
 | --- | --- |
 | `kind` | What is missing, such as `permission` or `class`. |
 | `name` | The name of what is missing, such as `android.permission.READ_CONTACTS`. |
-| `file` | The file of the platform project that declares it, relative to the project, such as `app/src/main/AndroidManifest.xml`. |
-| `snippet` | The text that adds it to that file. |
+| `file` | The file of the platform project that declares it, relative to the project, such as `app/src/main/AndroidManifest.xml` or `ios/Info.plist`, and empty on the web, where no file of a project adds a requirement. |
+| `snippet` | The text that adds it to that file. On the web it is the text that allows a feature of the permissions policy, and empty for the other requirements. |
 
 ```lua
 local async = require('async')
@@ -664,7 +665,11 @@ async.spawn(function()
     local _, err = contacts.pick():await()
     if err and err.code == 'unsupported' and err.data and err.data.missing then
         for _, missing in ipairs(err.data.missing) do
-            print(string.format('Add "%s" to "%s".', missing.snippet, missing.file))
+            if missing.file ~= '' then
+                print(string.format('Add "%s" to "%s".', missing.snippet, missing.file))
+            else
+                print(string.format('The page lacks the %s "%s".', missing.kind, missing.name))
+            end
         end
     end
 end)
@@ -720,16 +725,88 @@ The engine checks its own features the same way. The manifest of the Android tem
 | `ACCESS_NETWORK_STATE` | The network state of [`haylen.networkState()`](lua-api/haylen.md#haylennetworkstate) and the events `networkOnline` and `networkOffline`. | The engine never follows the network, so the state stays `'unknown'` and the events never fire, which the log tells once at the info level. |
 | `VIBRATE` | [`system.vibrate`](lua-api/system.md#systemvibrateseconds). | It does nothing, which the log tells once as a warning. |
 
+### Apple requirements
+
+`context.requirements` of an Apple plugin is its `HaylenRequirements`, declared in `haylen/platform/apple/HaylenRequirements.h`, which reads the `Info.plist`, the linked classes and, on macOS and Mac Catalyst, the entitlements of the app from any thread. A usage description matters most, since the system ends an app that asks for a permission without the usage description of that permission, so a plugin checks it before the call that asks.
+
+| Member | Meaning |
+| --- | --- |
+| `hasInfoPlistKey:` | Whether the `Info.plist` has the key. |
+| `hasUsageDescription:` | Whether the `Info.plist` gives the usage description a text, such as `NSCameraUsageDescription`. |
+| `hasBackgroundMode:` | Whether `UIBackgroundModes` lists the mode. |
+| `hasURLScheme:` | Whether a scheme of `CFBundleURLTypes` matches the scheme, ignoring case. |
+| `hasClass:` | Whether the app links the class, which its framework or SDK brings. |
+| `hasEntitlement:` | macOS and Mac Catalyst. Whether the app signs with the entitlement and its value is not `false`, through `SecTaskCopyValueForEntitlement` of the Security framework, which the runtime loads the first time a plugin asks, so apps need not link it. iOS and tvOS do not tell an app its entitlements, so a plugin there learns of a missing one from the error of the API that needs it, such as `application:didFailToRegisterForRemoteNotificationsWithError:` without `aps-environment`. |
+| `missing:` | The requirements of a list that the project lacks, in their order, without a log. |
+| `require:error:` | Returns `NO` with an error when the project lacks any of the requirements, after it logged each missing one once as a warning. The user info of the error holds the failure of the call, `message`, the code `unsupported` and `data` with `missing`, so an Objective-C handler replies with `reply(NO, error.userInfo)`. |
+
+`HaylenRequirement` makes the requirements, each with the file and the snippet that add it:
+
+| Factory | `kind` | `file` and `snippet` |
+| --- | --- | --- |
+| `infoPlistKey:value:`, `.infoPlistKey(_:value:)` in Swift | `infoPlistKey` | The `Info.plist` of the platform with `<key>` and `<string>` of the key and its text. |
+| `usageDescription:`, `.usageDescription(_:)` | `usageDescription` | The `Info.plist` with the key and a text that tells the person why the app asks, which the developer replaces. |
+| `backgroundMode:`, `.backgroundMode(_:)` | `backgroundMode` | The `Info.plist` with `UIBackgroundModes` and the mode. |
+| `urlScheme:`, `.urlScheme(_:)` | `urlScheme` | The `Info.plist` with `CFBundleURLTypes` and the scheme. |
+| `className:framework:`, `.className(_:framework:)` | `class` | `project.yml` with `- sdk: <framework>` for the dependencies of the target, such as `- sdk: UserNotifications.framework`. |
+| `entitlement:`, `.entitlement(_:)` | `entitlement` | The entitlements file of the platform with the key and `<true/>`. It counts as missing only on macOS and Mac Catalyst. |
+
+The `Info.plist` of the platform is `ios/Info.plist` on iOS and Mac Catalyst, `tvos/Info.plist` on tvOS and `macos/Info.plist` on macOS, and its entitlements file is `ios/App.entitlements`, `catalyst/App.entitlements`, `tvos/App.entitlements` or `macos/App.entitlements`, all relative to the Apple project. Swift plugins check with the `context.require` helper of the template, which throws the failure as a `HaylenFailure`:
+
+```swift
+context.register("pick") { (_: Empty) async throws -> Contact in
+    try context.require(.usageDescription("NSContactsUsageDescription"))
+    return try await picker.pick()
+}
+```
+
+```objc
+[context registerHandler:@"pick" handler:^(id params, HaylenReply reply) {
+    NSError* error = nil;
+    if (![context.requirements require:@[ [HaylenRequirement usageDescription:@"NSContactsUsageDescription"] ] error:&error]) {
+        reply(NO, error.userInfo);
+        return;
+    }
+    [picker pickWithReply:reply];
+}];
+```
+
+```text
+The plugin "contacts" needs the usage description "NSContactsUsageDescription", which the app lacks, so the calls that need it fail with the code "unsupported". Add "<key>NSContactsUsageDescription</key><string>Tell the person why the app asks for this.</string>" to "ios/Info.plist".
+```
+
+### Web requirements
+
+`context.require(needs)` of the web module of a plugin checks what the page offers and throws an error with the code `unsupported` and `data.missing` when the page lacks any of it, after it logged each missing requirement once, as a warning on the console and through the `onLog` callback of the page, so a handler that lets it through fails its call with it. A key of `needs` other than the three of the table throws a `TypeError`.
+
+| Key of `needs` | Value | Missing when | `kind` and `name` |
+| --- | --- | --- | --- |
+| `secureContext` | `true` | The page is not a secure context, as a page served over http from an address other than `localhost`, where browsers hold back the camera, the microphone, the Contact Picker and other powerful features. | `secureContext` and `https`. |
+| `api` | A path or a list of paths | The browser lacks the API, a path of properties from the global object such as `navigator.contacts`. | `api` and the path. |
+| `permissionsPolicy` | A feature or a list of features | The permissions policy of the page does not allow the feature, such as `camera`, which a page in a frame, as in a web editor, gets from the `allow` attribute of its frame, and a page on its own from the `Permissions-Policy` header it comes with. Browsers that do not tell the policy, such as Firefox and Safari, count every feature as allowed, and the error of the API tells instead. | `permissionsPolicy` and the feature, with the snippet `allow="camera"` for a page in a frame and `Permissions-Policy: camera=(self)` for a page on its own. |
+
+```js
+context.register("pick", async () => {
+    context.require({ secureContext: true, api: "navigator.contacts" });
+    const [contact] = await navigator.contacts.select(["name"]);
+    return { name: contact ? contact.name[0] : null };
+});
+```
+
+```text
+The plugin "contacts" needs the API "navigator.contacts", which the page lacks, so the calls that need it fail with the code "unsupported". Run the app in a browser that offers it.
+```
+
 ## The Apple part
 
-The Apple part of a plugin is Swift or Objective-C in the `sources` folder of its `apple` section, which compiles into the targets of the Apple template for the platforms the plugin lists, next to the files of the app. The template's `source/HaylenBridging.h` imports `haylen/platform/apple/HaylenBridge.h` and `haylen/platform/apple/HaylenPlugin.h`, so Swift sources reach the whole plugin API without imports of their own, and Objective-C sources import `HaylenPlugin.h`.
+The Apple part of a plugin is Swift or Objective-C in the `sources` folder of its `apple` section, which compiles into the targets of the Apple template for the platforms the plugin lists, next to the files of the app. The template's `source/HaylenBridging.h` imports `haylen/platform/apple/HaylenBridge.h`, `haylen/platform/apple/HaylenPlugin.h` and `haylen/platform/apple/HaylenNotificationPlugin.h`, so Swift sources reach the whole plugin API without imports of their own, and Objective-C sources import `HaylenPlugin.h`, or `HaylenNotificationPlugin.h` for a [notification plugin](#notifications). The headers of UserNotifications that `HaylenNotificationPlugin.h` brings link nothing, so an app links UserNotifications only when its code uses the framework.
 
 ### The plugin class
 
-The `class` of the `apple` section names a class that conforms to the `HaylenPlugin` protocol. make.py lists the classes of the plugins of each platform, in load order, in the `HaylenPlugins` array of its `Info.plist`, and while the app launches, inside `application:willFinishLaunchingWithOptions:` on iOS, tvOS and Mac Catalyst and inside `applicationWillFinishLaunching:` on macOS, the runtime creates each class once with `init` and calls `loadWithContext:`, `load(with:)` in Swift, with its context, so SDKs set up before launching ends. A Swift class names its Objective-C class with `@objc(Name)`, the name that `class` repeats. The runtime finds the id and the parameters of each class in the `plugin.json` files of the bundled package and reports the ids it loaded, which `handle.native` and `platform.plugins()` show in Lua.
+The `class` of the `apple` section names a class that conforms to the `HaylenPlugin` protocol. While the app launches, inside `application:willFinishLaunchingWithOptions:` on iOS, tvOS and Mac Catalyst and inside `applicationWillFinishLaunching:` on macOS, the runtime reads the plugins that `app.json` of the bundled package lists and the `plugin.json` of each, in [load order](#load-order), creates the class of every plugin that lists the platform once with `init` and calls `loadWithContext:`, `load(with:)` in Swift, with its context and the parameters of the plugin, so SDKs set up before launching ends. A Swift class names its Objective-C class with `@objc(Name)`, the name that `class` repeats. The runtime reports the ids it loaded, which `handle.native` and `platform.plugins()` show in Lua. The desktop player bundles no package, since it runs the package that its command line names, so it creates no plugin classes and runs the [native libraries](#native-libraries) of the plugins instead.
 
-- A class that a destination leaves out, such as the class of a plugin for `ios` alone on Mac Catalyst, is skipped without a message, and its plugin runs without its native part there.
-- A class that is missing on a platform its plugin lists, and a class that does not conform to `HaylenPlugin`, are logged as errors that name the class and the plugin, and the plugin runs without its native part.
+- A plugin that does not list the destination, such as a plugin for `ios` alone on Mac Catalyst, is skipped without a message, and runs without its native part there.
+- A class that is missing on a platform its plugin lists is logged as an error that names the class, the plugin and what the project lacks, the Apple sources of the plugin that `project.yml` compiles through `include: [plugins.json]`, and a class that does not conform to `HaylenPlugin` is logged as an error too. The plugin then runs without its native part.
 
 ```swift
 // plugins/share-sheet/apple/ShareSheetPlugin.swift
@@ -800,7 +877,7 @@ The same plugin in Objective-C:
 
 ### The context
 
-`HaylenPluginContext` is the part of the runtime that a plugin sees. Registering, emitting, covering and opening streams work from any thread, and handlers run on the main queue, while the window, the view controller and the overlay belong to the main thread, which Swift enforces with the main actor.
+`HaylenPluginContext` is the part of the runtime that a plugin sees. Registering, emitting, covering, checking requirements and opening streams work from any thread, and handlers run on the main queue, while the window, the view controller and the overlay belong to the main thread, which Swift enforces with the main actor.
 
 | Member | Meaning |
 | --- | --- |
@@ -811,6 +888,7 @@ The same plugin in Objective-C:
 | `openVideoStream:width:height:format:`, `openAudioStream:sampleRate:channels:format:capacity:` | Open the video or audio [stream](#streams) of a name, or return the one that is open, and return `nil` and log why for arguments the stream cannot take. |
 | `emit:payload:`, `emitRetained:payload:`, `emit:payload:retain:batched:` | Send the event `<id>.<event>`, retained for the first listener of its name with `emitRetained:payload:`, and retained, batched or both with `emit:payload:retain:batched:`. A payload is any value `NSJSONSerialization` accepts, with `NSData` values that cross as bytes, or `nil`. |
 | `overlay` | The overlay that places native views of the plugin over the app, as [overlays](#overlays) describes. |
+| `requirements` | The `HaylenRequirements` of the plugin, which checks what the project of the app holds before the plugin calls a system API that needs it, as [Apple requirements](#apple-requirements) describes. |
 | `coverApp`, `uncoverApp` | Cover the app while native UI of the plugin covers it, and end the cover, as [covering the app](#covering-the-app) describes. The covers of a plugin end when the window of the app goes away, and an `uncoverApp` without a cover of the plugin is logged as an error. |
 | `viewController`, `windowScene` | The topmost view controller that the window of the app presents, the root view controller while nothing is presented, and the window scene of the app on iOS, tvOS and Mac Catalyst, for SDKs that present UI or need a scene. Both are `nil` until the scene connects. |
 | `window` | The window of the app on macOS, `nil` until the app finished launching. |
@@ -828,13 +906,43 @@ The runtime's application delegate hands every event below to the plugins that i
 | iOS, tvOS, Mac Catalyst | `sceneDidBecomeActive:`, `sceneWillResignActive:`, `sceneWillEnterForeground:`, `sceneDidEnterBackground:` |
 | iOS, tvOS, Mac Catalyst | `application:didRegisterForRemoteNotificationsWithDeviceToken:`, `application:didFailToRegisterForRemoteNotificationsWithError:`, `application:didReceiveRemoteNotification:fetchCompletionHandler:`, `application:handleEventsForBackgroundURLSession:completionHandler:` |
 | macOS | `applicationWillFinishLaunching:`, `applicationDidFinishLaunching:`, `application:openURLs:`, `application:didRegisterForRemoteNotificationsWithDeviceToken:`, `application:didFailToRegisterForRemoteNotificationsWithError:`, `application:didReceiveRemoteNotification:` |
-| Every Apple platform | `userNotificationCenter:willPresentNotification:withCompletionHandler:`, `userNotificationCenter:didReceiveNotificationResponse:withCompletionHandler:` (not tvOS) |
+| Every Apple platform, for plugins that adopt `HaylenNotificationPlugin` | `userNotificationCenter:willPresentNotification:withCompletionHandler:`, `userNotificationCenter:didReceiveNotificationResponse:withCompletionHandler:` (not tvOS), as [notifications](#notifications) describes |
 | Every Apple platform | `appDidFailWithError:`, `appDidFail(with:)` in Swift, with the report of every error that stops the app, `{message, file, line, traceback, frames}`, as [errors of the app](#errors-of-the-app) describes |
 
 - **Links that open the app.** UIKit hands the links, the user activities and the shortcut item that launch an app only to the connection options of its scene. Right after `scene:willConnectToSession:options:`, the runtime hands them to `scene:openURLContexts:`, `scene:continueUserActivity:` and `windowScene:performActionForShortcutItem:completionHandler:`, so one method serves a link whether it opened the app or arrived while the app ran. The window of the app exists by then.
 - **Completion handlers.** Each plugin that implements a method with a completion handler receives a handler of its own, which it calls once, and the runtime calls the handler of the system once after every plugin called its own, or at once when no plugin implements the method. A background fetch counts as new data when any plugin received new data, and otherwise as failed when any plugin failed. A shortcut action counts as handled when any plugin handled it, and a notification that arrives while the app is in front shows with the union of the options the plugins ask for, or not at all when none asks.
-- **The notification center.** When the app has plugins, the runtime makes its application delegate the delegate of `UNUserNotificationCenter` in `willFinishLaunching`, which is what the system needs to deliver the response to a notification that launched the app, through `userNotificationCenter:didReceiveNotificationResponse:withCompletionHandler:`. Plugins implement the methods of the notification center delegate on their class and never replace the delegate. SDKs that swizzle the application delegate to find these events, such as Firebase with `FirebaseAppDelegateProxyEnabled`, can have that turned off in the `infoPlist` of their plugin, because the runtime already hands the events over.
 - **The window going away.** When the scene of the app disconnects, the runtime ends the covers that plugins left open and takes the overlay off the window, and the overlay comes back when a scene connects again.
+
+### Notifications
+
+The runtime refers to UserNotifications only through the Objective-C runtime, so the engine links no framework for notifications, and an app links UserNotifications only when its code uses it, as a plugin that posts or receives notifications does. Such a plugin declares `UserNotifications.framework` in the `frameworks` of its `apple` section and adopts `HaylenNotificationPlugin`, declared in `haylen/platform/apple/HaylenNotificationPlugin.h`, which adds the two methods of the delegate of the notification center to `HaylenPlugin`.
+
+While the app launches, in `willFinishLaunching`, the runtime looks for `UNUserNotificationCenter` by its name. When the app links the framework and has plugins, the runtime makes its application delegate the delegate of the center, which is what the system needs to deliver the response to a notification that launched the app through `userNotificationCenter:didReceiveNotificationResponse:withCompletionHandler:`, and hands the events of the center to the plugins that implement their methods, as [events of the app](#events-of-the-app) describes. Plugins never replace the delegate. SDKs that swizzle the application delegate to find these events, such as Firebase with `FirebaseAppDelegateProxyEnabled`, can have that turned off in the `infoPlist` of their plugin, because the runtime already hands the events over.
+
+```swift
+// plugins/reminders/apple/RemindersPlugin.swift
+import UserNotifications
+
+@objc(RemindersPlugin)
+final class RemindersPlugin: NSObject, HaylenNotificationPlugin {
+    private var context: HaylenPluginContext!
+
+    func load(with context: HaylenPluginContext) {
+        self.context = context
+    }
+
+    // The reminders show while the app is in front too.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler(notification.request.identifier.hasPrefix("reminders.") ? [.banner, .sound] : [])
+    }
+
+    // A tap that launched the app waits for the first listener of reminderOpened.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        context.emitRetained("reminderOpened", payload: ["identifier": response.notification.request.identifier])
+        completionHandler()
+    }
+}
+```
 
 ### Overlays
 
@@ -901,6 +1009,7 @@ A URL scheme of `CFBundleURLTypes` opens the app, whose plugins receive the link
 | `try context.emit(event, payload, retain: false, batched: false)` | Sends `<id>.<event>` with an `Encodable` payload, retained when `retain` is `true` and batched when `batched` is `true`. It throws the error of the encoder when the payload does not encode. |
 | `context.registerScreen(name) { (params: Params, screen: HaylenScreen) in ... }` | Opens the screen `<id>.<name>` with a handler on the main actor whose `Params` decode from the parameters of the app with `JSONDecoder`. A thrown `HaylenFailure` fails the screen with its code and data, and any other error fails it with the code `exception`. |
 | `try screen.finish(encoding: result)` | Ends a screen with an `Encodable` result. It throws the error of the encoder when the result does not encode. |
+| `try context.require(.usageDescription("NSCameraUsageDescription"), ...)` | Throws a `HaylenFailure` with the code `unsupported` and `data.missing` when the project lacks any of the [requirements](#apple-requirements), after it logged each missing one once, so a handler that lets it through fails its call with it. |
 | `HaylenBridge.register(method) { ... }`, `try HaylenBridge.emit(event, payload, retain: false, batched: false)` | The same for handlers and events outside plugins, without the prefix. |
 
 These helpers carry JSON alone, so bytes cross through the dictionaries of `registerHandler:handler:`, `emit:payload:` and `finishWithResult:`.
@@ -1179,9 +1288,9 @@ The plugins sample, [`samples/system/plugins`](../samples/system/plugins), carri
 
 | File | What it shows |
 | --- | --- |
-| [`plugin.json`](../samples/system/plugins/plugins/native-demo/plugin.json) | Every platform, five parameters with defaults, `${urlScheme}` in the `CFBundleURLTypes` of `infoPlist` and in the Android placeholder `nativeDemoUrlScheme`, `${cameraUsage}` in the `NSCameraUsageDescription` of the Apple platforms with a camera, and a `native` library for the desktops. |
+| [`plugin.json`](../samples/system/plugins/plugins/native-demo/plugin.json) | Every platform, five parameters with defaults, the frameworks `UserNotifications.framework` and `AVFoundation.framework` of the Apple part, `${urlScheme}` in the `CFBundleURLTypes` of `infoPlist` and in the Android placeholder `nativeDemoUrlScheme`, `${cameraUsage}` in the `NSCameraUsageDescription` of the Apple platforms with a camera, and a `native` library for the desktops. |
 | [`source/init.lua`](../samples/system/plugins/plugins/native-demo/source/init.lua) | The Lua API on the plugin handle, the load of the C library where no other native part loaded, and the `start` call that tells the native part of every new app. |
-| [`apple/`](../samples/system/plugins/plugins/native-demo/apple) | `NativeDemoPlugin.swift`, the plugin class, which also draws its image with CoreGraphics, asks for permissions and schedules notifications, `NativeDemoBanner.swift`, `NativeDemoScreen.swift`, `NativeDemoPicker.swift` and `NativeDemoConfirm.swift`, each for UIKit and AppKit, `NativeDemoConfirmView.swift`, the SwiftUI screen, and `NativeDemoVideo.swift` and `NativeDemoTone.swift`, which feed the streams from dispatch queues. |
+| [`apple/`](../samples/system/plugins/plugins/native-demo/apple) | `NativeDemoPlugin.swift`, the plugin class, a `HaylenNotificationPlugin`, which also draws its image with CoreGraphics, asks for permissions, schedules notifications and checks its requirements, `NativeDemoBanner.swift`, `NativeDemoScreen.swift`, `NativeDemoPicker.swift` and `NativeDemoConfirm.swift`, each for UIKit and AppKit, `NativeDemoConfirmView.swift`, the SwiftUI screen, and `NativeDemoVideo.swift` and `NativeDemoTone.swift`, which feed the streams from dispatch queues. |
 | [`android/`](../samples/system/plugins/plugins/native-demo/android) | The library module with its manifest, its dependencies on `dev.haylen:haylen-plugins` and `dev.haylen:haylen-links`, and `NativeDemoPlugin.kt`, the plugin class, which also draws its image with a `Bitmap`, asks for permissions and schedules notifications, `NativeDemoBanner.kt`, `NativeDemoScreen.kt`, `NativeDemoConfirm.kt` and `NativeDemoConfirmActivity.kt`, the contract and the AndroidX activity of the confirm screen, `NativeDemoNotifier.kt`, which posts the notifications, and `NativeDemoVideo.kt` and `NativeDemoTone.kt`, which feed the streams from threads of their own. |
 | [`web/`](../samples/system/plugins/plugins/native-demo/web) | `native-demo.js`, the web module, and `screen.html`, the confirm page of its popup and redirect screens. |
 | [`native/`](../samples/system/plugins/plugins/native-demo/native) | `CMakeLists.txt` and `NativeDemo.c`, the library of the desktops, with a PNG encoder of its own and the threads that feed its streams, and `NativeDemoScreen.m` and `NativeDemoScreen.c`, the windows of its confirm screen. |
@@ -1232,11 +1341,11 @@ The native screen is a `UIViewController` presented full screen on iOS, iPadOS, 
 
 ### Permissions and notifications
 
-The call `requestPermission` asks the person for `camera` or `notifications` with the prompt of the system and answers with `{kind, granted, status, language}`. On Apple platforms the camera prompt shows the `NSCameraUsageDescription` that the `infoPlist` of `plugin.json` gives, tvOS has no camera, and the notifications ask through `UNUserNotificationCenter`. The call `notify(seconds)` schedules a local notification of the plugin, which shows while the app is in front too, since the plugin class answers `userNotificationCenter(_:willPresent:withCompletionHandler:)` for its own notifications. Its tap reaches `userNotificationCenter(_:didReceive:withCompletionHandler:)` of the plugin class through the delegate of the notification center that the runtime owns, also when the tap launches the closed app, and the plugin sends it as `notificationOpened`, retained, so it waits for the listener of the Permissions test of the sample. On Android the plugin checks with `context.requirements()` that the manifest of the app declares `android.permission.CAMERA` or `android.permission.POST_NOTIFICATIONS`, which the manifest of its module does, and asks through a launcher of `ActivityResultContracts.RequestPermission` that it registers in `onActivityCreated`, answering with the status `authorized` or `denied`. Before Android 13 notifications need no permission, so the answer tells whether the person left them on. `notify` fails with the code `permissionDenied` while the notifications of the app are off, and otherwise sets an alarm, which starts the process when it was closed, whose receiver, `NativeDemoNotifier`, posts the notification through `NotificationManagerCompat` on a channel of its own. The tap starts `HaylenLinkActivity`, and the plugin sends `notificationOpened` from `onActivityCreated` or `onNewIntent`.
+The call `requestPermission` asks the person for `camera` or `notifications` with the prompt of the system and answers with `{kind, granted, status, language}`. On Apple platforms the camera prompt shows the `NSCameraUsageDescription` that the `infoPlist` of `plugin.json` gives, tvOS has no camera, and the notifications ask through `UNUserNotificationCenter`. The call `notify(seconds)` schedules a local notification of the plugin, which shows while the app is in front too, since the plugin class answers `userNotificationCenter(_:willPresent:withCompletionHandler:)` for its own notifications. Its tap reaches `userNotificationCenter(_:didReceive:withCompletionHandler:)` of the plugin class, which adopts `HaylenNotificationPlugin`, through the delegate of the notification center that the runtime sets because the plugin links UserNotifications, also when the tap launches the closed app, and the plugin sends it as `notificationOpened`, retained, so it waits for the listener of the Permissions test of the sample. On Android the plugin checks with `context.requirements()` that the manifest of the app declares `android.permission.CAMERA` or `android.permission.POST_NOTIFICATIONS`, which the manifest of its module does, and asks through a launcher of `ActivityResultContracts.RequestPermission` that it registers in `onActivityCreated`, answering with the status `authorized` or `denied`. Before Android 13 notifications need no permission, so the answer tells whether the person left them on. `notify` fails with the code `permissionDenied` while the notifications of the app are off, and otherwise sets an alarm, which starts the process when it was closed, whose receiver, `NativeDemoNotifier`, posts the notification through `NotificationManagerCompat` on a channel of its own. The tap starts `HaylenLinkActivity`, and the plugin sends `notificationOpened` from `onActivityCreated` or `onNewIntent`.
 
 ### Requirements
 
-The call `requirementCheck` needs something that the plugin leaves out of the project of the app on purpose, so it shows the [requirements](#requirements) of the projects. On Android its handler calls `context.requirements().require` with the permission `android.permission.READ_CONTACTS`, which the manifest of the module never declares, so the call fails with the code `unsupported` and `data.missing` holds the permission with `app/src/main/AndroidManifest.xml` and its `<uses-permission>` snippet, while the log tells once what is missing. An app whose manifest declares the permission gets `{met, language}` instead. The Requirements test of the sample shows the failure and every missing requirement with its file and snippet.
+The call `requirementCheck` needs something that the plugin leaves out of the project of the app on purpose, so it shows the [requirements](#requirements) of the projects. On Android its handler calls `context.requirements().require` with the permission `android.permission.READ_CONTACTS`, which the manifest of the module never declares, so the call fails with the code `unsupported` and `data.missing` holds the permission with `app/src/main/AndroidManifest.xml` and its `<uses-permission>` snippet. On Apple platforms the Swift handler calls `try context.require(.usageDescription("NSContactsUsageDescription"))`, which the `infoPlist` of `plugin.json` never gives, so `data.missing` holds the usage description with the `Info.plist` of the platform and its snippet. On the web the module calls `context.require({secureContext: true, api: 'navigator.contacts'})`, and the Contact Picker API exists only in browsers of phones, so desktop browsers fail with the API in `data.missing`. The log tells once what is missing on every platform. An app whose project has the requirement, and a phone browser with the API, get `{met, language}` instead. The Requirements test of the sample shows the failure and every missing requirement with its file and snippet.
 
 ### Links and errors of the app
 

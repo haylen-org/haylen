@@ -82,6 +82,7 @@ set(HAYLEN_TEST_SOURCES
   platform/NativeViewsTests.cpp
   platform/PlatformLuaTests.cpp
   platform/PlatformTests.cpp
+  platform/PluginLoadOrderTests.cpp
   platform/ScreensTests.cpp
   platform/StreamTests.cpp
   platform/SystemTests.cpp

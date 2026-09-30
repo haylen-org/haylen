@@ -346,6 +346,12 @@ export default function load(context) {
 
     context.register("pickFile", pickFile);
 
+    // The plugin needs the Contact Picker API, which only browsers on phones offer, so the call shows how a requirement that the page lacks fails with the code `unsupported` and lists what is missing in `data.missing`. A browser that offers the API in a secure context gets the answer.
+    context.register("requirementCheck", () => {
+        context.require({ secureContext: true, api: "navigator.contacts" });
+        return { met: true, language };
+    });
+
     // The confirm screen opens in a popup inside the activation of the tap that asked for it, and answers with what the person picked there, which the popup posts back to this page.
     context.registerScreen("confirm", async (params, screen) => {
         const answer = await screen.popup(screenPage("popup", params, screen), { width: 440, height: 420 });

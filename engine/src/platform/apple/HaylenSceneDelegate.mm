@@ -1,6 +1,7 @@
 #import "platform/apple/HaylenSceneDelegate.h"
 
 #if !TARGET_OS_OSX
+#import "platform/apple/AppleNotifications.hpp"
 #import "platform/apple/ApplePlugins.hpp"
 #import "platform/apple/AppleScreens.hpp"
 #import "platform/apple/AppleTheme.hpp"
@@ -8,6 +9,7 @@
 #import "platform/apple/HaylenScreenSceneDelegate.h"
 #include "sokol_app.h"
 
+using haylen::platform::AppleNotifications;
 using haylen::platform::ApplePlugins;
 using haylen::platform::AppleScreens;
 using haylen::platform::AppleTheme;
@@ -17,12 +19,10 @@ using haylen::platform::AppleTheme;
     BOOL holdsApp;
 }
 
-// Plugins load before launching ends, so their SDKs set up in time, and the notification center gets its delegate as early, so the notification that launched the app reaches the plugins.
+// Plugins load before launching ends, so their SDKs set up in time, and the notification center of an app that links UserNotifications gets its delegate as early, so the notification that launched the app reaches the plugins.
 - (BOOL)application:(UIApplication*)application willFinishLaunchingWithOptions:(NSDictionary<UIApplicationLaunchOptionsKey, id>*)launchOptions {
     ApplePlugins::load();
-    if (!ApplePlugins::getIds().empty()) {
-        UNUserNotificationCenter.currentNotificationCenter.delegate = self;
-    }
+    AppleNotifications::observe(self);
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin application:application willFinishLaunchingWithOptions:launchOptions];
     }
@@ -188,13 +188,13 @@ using haylen::platform::AppleTheme;
     // clang-format on
 }
 
-- (void)userNotificationCenter:(UNUserNotificationCenter*)center willPresentNotification:(UNNotification*)notification withCompletionHandler:(void (^)(UNNotificationPresentationOptions))completionHandler {
-    ApplePlugins::presentNotification(center, notification, completionHandler);
+- (void)userNotificationCenter:(id)center willPresentNotification:(id)notification withCompletionHandler:(void (^)(NSUInteger))completionHandler {
+    AppleNotifications::present(center, notification, completionHandler);
 }
 
 #if !TARGET_OS_TV
-- (void)userNotificationCenter:(UNUserNotificationCenter*)center didReceiveNotificationResponse:(UNNotificationResponse*)response withCompletionHandler:(void (^)(void))completionHandler {
-    ApplePlugins::receiveNotificationResponse(center, response, completionHandler);
+- (void)userNotificationCenter:(id)center didReceiveNotificationResponse:(id)response withCompletionHandler:(void (^)(void))completionHandler {
+    AppleNotifications::receiveResponse(center, response, completionHandler);
 }
 #endif
 

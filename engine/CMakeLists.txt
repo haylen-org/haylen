@@ -558,6 +558,7 @@ haylen_enable_coverage(haylen_engine)
 add_library(haylen_platform STATIC
   src/platform/GamepadSlots.cpp
   src/platform/KeyboardTranslator.cpp
+  src/platform/PluginLoadOrder.cpp
   src/platform/android/AndroidBatteryStatus.cpp
   src/platform/android/AndroidDeviceInfo.cpp
   src/platform/android/AndroidDialogJson.cpp
@@ -588,6 +589,7 @@ if(APPLE)
     src/platform/apple/AppleDialogs.mm
     src/platform/apple/AppleGamepads.mm
     src/platform/apple/AppleNetwork.mm
+    src/platform/apple/AppleNotifications.mm
     src/platform/apple/AppleOrientation.mm
     src/platform/apple/ApplePlugins.mm
     src/platform/apple/ApplePresenter.mm
@@ -611,6 +613,8 @@ if(APPLE)
     src/platform/apple/HaylenPlacement.mm
     src/platform/apple/HaylenPluginContext.mm
     src/platform/apple/HaylenPointer.mm
+    src/platform/apple/HaylenRequirement.mm
+    src/platform/apple/HaylenRequirements.mm
     src/platform/apple/HaylenSceneDelegate.mm
     src/platform/apple/HaylenScreen.mm
     src/platform/apple/HaylenScreenController.mm

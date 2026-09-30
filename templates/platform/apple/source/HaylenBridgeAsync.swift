@@ -79,6 +79,16 @@ extension HaylenPluginContext {
     func emit<Payload: Encodable>(_ event: String, _ payload: Payload, retain: Bool = false, batched: Bool = false) throws {
         emit(event, payload: try HaylenBridge.jsonObject(payload), retain: retain, batched: batched)
     }
+
+    // Checks that the project of the app holds what the plugin needs, such as `.usageDescription("NSCameraUsageDescription")`, before the plugin calls the system API that needs it. Throws a `HaylenFailure` with the code `unsupported`, whose data lists each missing requirement in `missing` as `{kind, name, file, snippet}`, after it logged each missing one once.
+    func require(_ requirements: HaylenRequirement...) throws {
+        do {
+            try self.requirements.require(requirements)
+        } catch {
+            let failure = (error as NSError).userInfo
+            throw HaylenFailure(failure["message"] as? String ?? error.localizedDescription, code: "unsupported", data: failure["data"] as? [String: [[String: String]]])
+        }
+    }
 }
 
 extension HaylenScreen {

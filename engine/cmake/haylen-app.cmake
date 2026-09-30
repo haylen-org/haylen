@@ -7,9 +7,9 @@
 # Adds the system libraries and link options every runtime needs, with PUBLIC for the runtime the engine builds and INTERFACE for the one an installed SDK imports.
 function(haylen_link_runtime_platform target scope)
   if(HAYLEN_PLATFORM STREQUAL "macos")
-    target_link_libraries(${target} ${scope} "-framework Cocoa" "-framework QuartzCore" "-framework Metal" "-framework MetalKit" "-framework GameController" "-framework AudioToolbox" "-framework CoreAudio" "-framework Network" "-framework UserNotifications" "-framework CoreVideo" "-framework IOKit" "-framework UniformTypeIdentifiers")
+    target_link_libraries(${target} ${scope} "-framework Cocoa" "-framework QuartzCore" "-framework Metal" "-framework MetalKit" "-framework GameController" "-framework AudioToolbox" "-framework CoreAudio" "-framework Network" "-framework CoreVideo" "-framework IOKit" "-framework UniformTypeIdentifiers")
   elseif(HAYLEN_PLATFORM MATCHES "^(ios|tvos)$")
-    target_link_libraries(${target} ${scope} "-framework Foundation" "-framework UIKit" "-framework CoreGraphics" "-framework QuartzCore" "-framework Metal" "-framework MetalKit" "-framework GameController" "-framework AVFoundation" "-framework AudioToolbox" "-framework Network" "-framework UserNotifications" "-framework CoreVideo" "-framework UniformTypeIdentifiers")
+    target_link_libraries(${target} ${scope} "-framework Foundation" "-framework UIKit" "-framework CoreGraphics" "-framework QuartzCore" "-framework Metal" "-framework MetalKit" "-framework GameController" "-framework AVFoundation" "-framework AudioToolbox" "-framework Network" "-framework CoreVideo" "-framework UniformTypeIdentifiers")
     # Mac Catalyst reads the battery of the Mac from the power sources of IOKit.
     if(CMAKE_CXX_COMPILER_TARGET MATCHES "-macabi$")
       target_link_libraries(${target} ${scope} "-framework IOKit")

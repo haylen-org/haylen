@@ -469,7 +469,7 @@ A failed call returns a table with three fields, which reads as its message in `
 | `invalidJson` | Native code answered with text that is not JSON, with the message `The platform returned invalid JSON.`. |
 | `invalidBytes` | Native code answered with JSON that refers to a byte buffer it lacks, with a message such as `The JSON refers to byte buffer 2, but only 1 came with it.`. |
 | `exception` | A Java, Kotlin, Swift or JavaScript handler threw an error without a code of its own instead of answering. `data.type` names the class of the exception or the type of the error. |
-| `unsupported` | The platform cannot serve the call, or the project of the app lacks what the call needs, such as a permission that the Android manifest does not declare. In the second case `data.missing` lists each missing requirement as `{kind, name, file, snippet}`, as the [plugin guide](../plugins.md#requirements) describes. |
+| `unsupported` | The platform cannot serve the call, or the project of the app lacks what the call needs, such as a permission that the Android manifest does not declare, a usage description that the `Info.plist` lacks or an API that the browser lacks. In the second case `data.missing` lists each missing requirement as `{kind, name, file, snippet}`, as the [plugin guide](../plugins.md#requirements) describes. |
 
 A native failure that is a string becomes the message. A failure object gives its `message`, `code` and `data`, and one without a string `message`, like any other failure payload such as `null` or a number, fails with `The native platform call failed without a message.`. A Lua handler registered with `platform.registerHandler` fails with the error it raised and its stack trace as the message.
 

@@ -15,6 +15,7 @@
     "apple": {
         "class": "NativeDemoPlugin",
         "sources": "apple",
+        "frameworks": ["UserNotifications.framework", "AVFoundation.framework"],
         "infoPlist": {
             "CFBundleURLTypes": [{"CFBundleURLName": "dev.haylen.plugins.native-demo", "CFBundleURLSchemes": ["${urlScheme}"]}],
             "NSCameraUsageDescription": "${cameraUsage}"

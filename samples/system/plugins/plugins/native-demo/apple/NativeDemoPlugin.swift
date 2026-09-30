@@ -13,9 +13,9 @@ import UIKit
 import AVFoundation
 #endif
 
-// Native part of the Native Demo plugin on iOS, iPadOS, Mac Catalyst, tvOS and macOS, built on the frameworks of the system alone. The runtime creates it by the class name that plugin.json gives and loads it while the app launches.
+// Native part of the Native Demo plugin on iOS, iPadOS, Mac Catalyst, tvOS and macOS, built on the frameworks of the system alone. The runtime creates it by the class name that plugin.json gives and loads it while the app launches, and hands it the events of the notification center, since it adopts the notification plugin protocol.
 @objc(NativeDemoPlugin)
-final class NativeDemoPlugin: NSObject, HaylenPlugin {
+final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
     struct Empty: Codable {}
 
     struct Compute: Decodable {
@@ -141,6 +141,11 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
         let language: String
     }
 
+    struct Met: Encodable {
+        let met: Bool
+        let language: String
+    }
+
     private nonisolated static let language = "Swift"
 
     // The notifications of the plugin carry this prefix in their identifiers, so the plugin answers for its own notifications alone.
@@ -167,6 +172,7 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
         registerBanner(context)
         registerScreens(context)
         registerPermissions(context)
+        registerRequirements(context)
         context.emitRetained("loaded", payload: ["language": Self.language, "platform": Self.platform])
     }
 
@@ -488,6 +494,14 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
             try await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: identifier, content: content, trigger: trigger))
             return Scheduled(identifier: identifier, seconds: params.seconds, language: Self.language)
             #endif
+        }
+    }
+
+    // The plugin needs the usage description of the contacts, which its plugin.json leaves out of the Info.plist on purpose, so the call shows how a requirement that the project of the app lacks fails with the code `unsupported` and lists what is missing in `data.missing`. An app whose Info.plist has the description gets the answer.
+    private func registerRequirements(_ context: HaylenPluginContext) {
+        context.register("requirementCheck") { (_: Empty) async throws -> Met in
+            try context.require(.usageDescription("NSContactsUsageDescription"))
+            return Met(met: true, language: Self.language)
         }
     }
 

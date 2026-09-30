@@ -1684,6 +1684,12 @@ def apple_targets(plugin: Plugin) -> dict[str, dict]:
     return targets
 
 
+def apple_project_frameworks(project: Path) -> dict[str, set[str]]:
+    """Returns the system frameworks and libraries that each target of the `project.yml` of an Apple project links, as XcodeGen resolves the spec."""
+    spec = json.loads(capture([ensure_xcodegen(), "dump", "--type", "json", "--spec", project / "project.yml"]))
+    return {name: {dependency["sdk"] for dependency in target.get("dependencies", []) if "sdk" in dependency} for name, target in spec.get("targets", {}).items()}
+
+
 def write_apple_plugins(app: App, project: Path) -> bool:
     """Copies the Apple sources and resources of the plugins of an app into `plugins/` of the Apple project and writes `plugins.json`, the XcodeGen include of `project.yml` that adds them with their Swift packages, system frameworks and build scripts to the targets of their platforms. Returns whether the include adds anything, because the project then needs generating again."""
     packages: dict[str, dict] = {}
@@ -1729,8 +1735,12 @@ def write_apple_plugins(app: App, project: Path) -> bool:
                     destinations = None
                 linked[target][dependency] = destinations
 
+    # XcodeGen refuses a dependency that a target lists twice, so a framework that the target in `project.yml` links already, such as a framework of the engine, stays out.
+    own = apple_project_frameworks(project) if any(dependency[0] == "sdk" for dependencies in linked.values() for dependency in dependencies) else {}
     for target, dependencies in linked.items():
         for dependency, destinations in dependencies.items():
+            if dependency[0] == "sdk" and dependency[1] in own.get(target, set()):
+                continue
             entry = {"package": dependency[1], "product": dependency[2]} if dependency[0] == "package" else {"sdk": dependency[1]}
             targets[target]["dependencies"].append({**entry, **({"destinationFilters": destinations} if destinations else {})})
 
@@ -1742,7 +1752,7 @@ def write_apple_plugins(app: App, project: Path) -> bool:
 
 
 def write_apple_settings(app: App, project: Path, native: list[str]) -> None:
-    """Writes `App.xcconfig` with the settings that link the static native libraries and sign with the entitlements of the plugins, the `Info.plist` of every platform with the keys and the classes of the plugins, and the splash assets of an app into the Apple project."""
+    """Writes `App.xcconfig` with the settings that link the static native libraries and sign with the entitlements of the plugins, the `Info.plist` of every platform with the keys of the plugins, and the splash assets of an app into the Apple project."""
     xcconfig = "\n".join([
         "// Written by `make.py` from `app.json` and the plugins of the app.",
         f"HAYLEN_PRODUCT_NAME = {app.name}",
@@ -1775,12 +1785,9 @@ def write_apple_settings(app: App, project: Path, native: list[str]) -> None:
         "tvos": {**common, "UIApplicationSceneManifest": {"UIApplicationSupportsMultipleScenes": False}, "UILaunchStoryboardName": "LaunchScreen"},
         "macos": {**common, "LSMinimumSystemVersion": "$(MACOSX_DEPLOYMENT_TARGET)", "NSHighResolutionCapable": True, "NSPrincipalClass": "NSApplication", **({} if app.show_in_taskbar else {"LSUIElement": True})},
     }
-    # The runtime loads the plugin classes that `HaylenPlugins` lists, in order, and skips a class that a destination leaves out, as Mac Catalyst does with iOS-only plugins.
+    # The runtime reads the classes of the plugins and their order from the package, so the `Info.plist` of each platform takes only the `infoPlist` keys of its plugins.
     for target, platforms in APPLE_PLUGIN_TARGETS.items():
         values = apple_plugin_keys(app, platforms, "infoPlist", plists[target.lower()], '"Info.plist"')
-        classes = [plugin.manifest["apple"]["class"] for plugin in app.plugins if plugin.supports(*platforms) and "class" in plugin.manifest.get("apple", {})]
-        if classes:
-            values["HaylenPlugins"] = classes
         write_if_changed(project / target.lower() / "Info.plist", plistlib.dumps(values, sort_keys=True).decode())
 
     # The launch screens of iOS and tvOS show the splash logo, or the vector engine logo, over the splash background.

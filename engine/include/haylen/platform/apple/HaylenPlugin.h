@@ -3,7 +3,6 @@
 #include <TargetConditionals.h>
 
 #import <Foundation/Foundation.h>
-#import <UserNotifications/UserNotifications.h>
 
 #if TARGET_OS_OSX
 #import <AppKit/AppKit.h>
@@ -13,6 +12,7 @@
 
 #import "haylen/platform/apple/HaylenAudioStream.h"
 #import "haylen/platform/apple/HaylenBridge.h"
+#import "haylen/platform/apple/HaylenRequirements.h"
 #import "haylen/platform/apple/HaylenScreen.h"
 #import "haylen/platform/apple/HaylenVideoStream.h"
 
@@ -80,12 +80,13 @@ NS_SWIFT_NAME(HaylenOverlay.Item)
 
 @end
 
-// What the runtime gives the native part of a plugin, once per plugin: its id, its parameters from `app.json` with the defaults of `plugin.json`, its overlay and the app's window. Methods, events, screens and streams take the id of the plugin in front of their names, so `registerHandler:@"show"` answers `<id>.show`. Registering, emitting, covering and opening streams work from any thread, while the window, the view controller and the overlay belong to the main thread.
+// What the runtime gives the native part of a plugin, once per plugin: its id, its parameters from `app.json` with the defaults of `plugin.json`, its overlay, the requirements it checks in the project of the app and the app's window. Methods, events, screens and streams take the id of the plugin in front of their names, so `registerHandler:@"show"` answers `<id>.show`. Registering, emitting, covering, checking requirements and opening streams work from any thread, while the window, the view controller and the overlay belong to the main thread.
 @interface HaylenPluginContext : NSObject
 
 @property(nonatomic, readonly, copy) NSString* identifier;
 @property(nonatomic, readonly, copy) NSDictionary<NSString*, id>* config;
 @property(nonatomic, readonly) HaylenOverlay* overlay;
+@property(nonatomic, readonly) HaylenRequirements* requirements;
 #if TARGET_OS_OSX
 @property(nonatomic, readonly, nullable) NSWindow* window NS_SWIFT_UI_ACTOR;
 #else
@@ -120,7 +121,7 @@ NS_SWIFT_NAME(HaylenOverlay.Item)
 
 @end
 
-// The native part of a plugin on Apple platforms. The runtime creates one instance of every class that the HaylenPlugins array of the Info.plist names with init and loads it while the app launches, before launching ends, so SDKs can set up there. It then hands each plugin the events of the app, its scene and its notifications on the main thread. The runtime owns the delegate of the notification center, so plugins implement its methods here instead of replacing it. Every method that takes a completion handler must call it once.
+// The native part of a plugin on Apple platforms. The runtime creates one instance of the class of every plugin that the bundled package lists for this platform with init, in load order, and loads it while the app launches, before launching ends, so SDKs can set up there. It then hands each plugin the events of the app and its scene on the main thread, and a plugin that also adopts `HaylenNotificationPlugin` the events of the notification center. Every method that takes a completion handler must call it once.
 NS_SWIFT_UI_ACTOR
 @protocol HaylenPlugin <NSObject>
 
@@ -154,9 +155,6 @@ NS_SWIFT_UI_ACTOR
 - (void)application:(UIApplication*)application didReceiveRemoteNotification:(NSDictionary*)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult result))completionHandler;
 - (void)application:(UIApplication*)application handleEventsForBackgroundURLSession:(NSString*)identifier completionHandler:(void (^)(void))completionHandler;
 #endif
-
-- (void)userNotificationCenter:(UNUserNotificationCenter*)center willPresentNotification:(UNNotification*)notification withCompletionHandler:(void (^)(UNNotificationPresentationOptions options))completionHandler;
-- (void)userNotificationCenter:(UNUserNotificationCenter*)center didReceiveNotificationResponse:(UNNotificationResponse*)response withCompletionHandler:(void (^)(void))completionHandler API_UNAVAILABLE(tvos);
 
 // Receives every error that stops the app, the one its error screen shows, as {message, file, line, traceback, frames} with frames of {source, line, function, kind}.
 - (void)appDidFailWithError:(NSDictionary<NSString*, id>*)error NS_SWIFT_NAME(appDidFail(with:));

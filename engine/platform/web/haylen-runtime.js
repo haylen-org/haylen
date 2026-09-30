@@ -821,6 +821,67 @@ Module.haylen = Module.haylen || {};
         };
     };
 
+    // What a plugin needs from the page: a secure context, an API of the browser, which is a path of properties from the global object such as `navigator.contacts`, and a feature that the permissions policy of the page allows. Each missing requirement logs once per plugin, and none of them has a file of a project that adds it, so `file` stays empty, while `snippet` holds the text that allows a feature of the permissions policy.
+    const requirements = { kinds: ["secureContext", "api", "permissionsPolicy"], reported: new Set() };
+
+    const hasApi = (path) => path.split(".").reduce((value, part) => (value === undefined || value === null ? undefined : value[part]), globalThis) != null;
+
+    // Browsers that do not tell the policy of the page, such as Firefox and Safari, leave the error of the API to tell instead.
+    const allowsFeature = (feature) => {
+        const policy = document.permissionsPolicy || document.featurePolicy;
+        return !policy || policy.allowsFeature(feature);
+    };
+
+    // A page inside a frame gets a feature from the `allow` attribute of its frame, and a page on its own from the `Permissions-Policy` header it comes with.
+    const describeRequirement = (kind, name) => {
+        if (kind === "secureContext") {
+            return { entry: { kind, name, file: "", snippet: "" }, summary: "a secure context", instructions: "Serve the page over \"https\" or from \"localhost\"." };
+        }
+        if (kind === "api") {
+            return { entry: { kind, name, file: "", snippet: "" }, summary: "the API \"" + name + "\"", instructions: "Run the app in a browser that offers it." };
+        }
+        const framed = window.self !== window.top;
+        const snippet = framed ? "allow=\"" + name + "\"" : "Permissions-Policy: " + name + "=(self)";
+        const instructions = framed ? "Add \"" + snippet + "\" to the \"<iframe>\" that embeds the page." : "Send \"" + snippet + "\" with the page.";
+        return { entry: { kind, name, file: "", snippet }, summary: "the permissions policy feature \"" + name + "\"", instructions };
+    };
+
+    // Throws a failure with the code `unsupported`, whose data lists each missing requirement in `missing` as `{kind, name, file, snippet}`, after it logged each missing one once.
+    const requirePage = (id, needs) => {
+        for (const key of Object.keys(needs)) {
+            if (!requirements.kinds.includes(key)) {
+                throw new TypeError("A plugin requires \"secureContext\", \"api\" or \"permissionsPolicy\", not \"" + key + "\".");
+            }
+        }
+        const missing = [];
+        if (needs.secureContext && !window.isSecureContext) {
+            missing.push(describeRequirement("secureContext", "https"));
+        }
+        for (const api of [].concat(needs.api || []).filter((path) => !hasApi(path))) {
+            missing.push(describeRequirement("api", api));
+        }
+        for (const feature of [].concat(needs.permissionsPolicy || []).filter((name) => !allowsFeature(name))) {
+            missing.push(describeRequirement("permissionsPolicy", feature));
+        }
+        if (missing.length === 0) {
+            return;
+        }
+
+        const owner = "The plugin \"" + id + "\"";
+        for (const requirement of missing) {
+            const key = id + "\n" + requirement.entry.kind + "\n" + requirement.entry.name;
+            if (!requirements.reported.has(key)) {
+                requirements.reported.add(key);
+                const message = owner + " needs " + requirement.summary + ", which the page lacks, so the calls that need it fail with the code \"unsupported\". " + requirement.instructions;
+                console.warn(message);
+                notify("onLog", "warning", message);
+            }
+        }
+        const summaries = missing.map((requirement) => requirement.summary);
+        const list = summaries.length === 1 ? summaries[0] : summaries.slice(0, -1).join(", ") + " and " + summaries[summaries.length - 1];
+        throw Object.assign(new Error(owner + " needs " + list + ", which the page lacks."), { code: "unsupported", data: { missing: missing.map((requirement) => requirement.entry) } });
+    };
+
     // Makes the context that the web module of a plugin receives in `load(context)`. Methods and events take the id of the plugin in front of their names, as the Lua handle of the plugin expects. The loader calls it for every plugin before the runtime starts.
     haylen.createPluginContext = function (id, config) {
         if (plugins.has(id)) {
@@ -854,6 +915,9 @@ Module.haylen = Module.haylen || {};
             uncoverApp,
             onAppError(listener) {
                 plugin.errorListeners.push(listener);
+            },
+            require(needs) {
+                requirePage(id, needs);
             },
         };
     };

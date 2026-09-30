@@ -12,6 +12,7 @@
 #import "platform/apple/AppleScreens.hpp"
 #import "platform/apple/HaylenAudioStream+Runtime.h"
 #import "platform/apple/HaylenOverlay+Runtime.h"
+#import "platform/apple/HaylenRequirements+Runtime.h"
 #import "platform/apple/HaylenVideoStream+Runtime.h"
 #include "platform/sokol/SokolHost.hpp"
 #include "sokol_app.h"
@@ -33,6 +34,7 @@ using haylen::platform::VideoStream;
 @property(nonatomic, readwrite, copy) NSString* identifier;
 @property(nonatomic, readwrite, copy) NSDictionary<NSString*, id>* config;
 @property(nonatomic, readwrite) HaylenOverlay* overlay;
+@property(nonatomic, readwrite) HaylenRequirements* requirements;
 
 @end
 
@@ -45,6 +47,7 @@ using haylen::platform::VideoStream;
     self.identifier = plugin;
     self.config = values;
     self.overlay = [[HaylenOverlay alloc] initWithIdentifier:plugin];
+    self.requirements = [[HaylenRequirements alloc] initWithOwner:[NSString stringWithFormat:@"The plugin \"%@\"", plugin]];
     return self;
 }
 

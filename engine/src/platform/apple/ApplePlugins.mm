@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <exception>
+#include <filesystem>
 #include <memory>
 
 #include "haylen/core/AppConfig.hpp"
@@ -9,6 +10,7 @@
 #include "haylen/io/Package.hpp"
 #include "haylen/io/Path.hpp"
 #include "haylen/platform/AppPlugin.hpp"
+#include "platform/PluginLoadOrder.hpp"
 #include "platform/Services.hpp"
 #import "platform/apple/AppleBridge.hpp"
 #import "platform/apple/HaylenPluginContext+Runtime.h"
@@ -19,11 +21,7 @@ NSMutableArray<id<HaylenPlugin>>* ApplePlugins::plugins = [NSMutableArray array]
 NSMutableArray<HaylenPluginContext*>* ApplePlugins::contexts = [NSMutableArray array];
 
 void ApplePlugins::load() {
-    NSArray<NSString*>* classes = NSBundle.mainBundle.infoDictionary[@"HaylenPlugins"];
-    if (classes.count == 0) {
-        return;
-    }
-    std::map<std::string, Declaration, std::less<>> declarations;
+    std::vector<Declaration> declarations;
     try {
         declarations = readDeclarations();
     } catch (const std::exception& error) {
@@ -31,23 +29,19 @@ void ApplePlugins::load() {
         return;
     }
 
-    for (NSString* name in classes) {
-        const auto found = declarations.find(name.UTF8String);
-        if (found == declarations.end()) {
-            core::Log::error("The Info.plist names the plugin class {}, which no plugin that app.json lists declares in the apple section of its plugin.json.", name.UTF8String);
+    for (const Declaration& declaration : declarations) {
+        // A destination leaves out the classes of the plugins that do not list it on purpose, so only a plugin that lists it misses its class by mistake.
+        if (!declaration.supported) {
             continue;
         }
-        const Declaration& declaration = found->second;
-        // A destination leaves out the classes of the plugins that do not list it on purpose, so only a plugin that lists it misses its class by mistake.
-        Class type = NSClassFromString(name);
+        const char* name = declaration.className.c_str();
+        Class type = NSClassFromString(@(name));
         if (type == nil) {
-            if (declaration.supported) {
-                core::Log::error("The class {} of the plugin {} is missing from the app, so its native part does not run. A Swift class names its Objective-C class with @objc({}).", name.UTF8String, declaration.identifier, name.UTF8String);
-            }
+            core::Log::error("The class \"{}\" of the plugin \"{}\" is missing from the app, so the plugin runs without its native part. The project lacks the Apple sources of the plugin, which \"project.yml\" compiles into the target through \"include: [plugins.json]\", or a Swift class of them names itself without \"@objc({})\".", name, declaration.identifier, name);
             continue;
         }
         if (![type conformsToProtocol:@protocol(HaylenPlugin)]) {
-            core::Log::error("The class {} of the plugin {} does not conform to the HaylenPlugin protocol, so its native part does not run.", name.UTF8String, declaration.identifier);
+            core::Log::error("The class \"{}\" of the plugin \"{}\" does not conform to the \"HaylenPlugin\" protocol, so the plugin runs without its native part.", name, declaration.identifier);
             continue;
         }
 
@@ -107,24 +101,6 @@ void ApplePlugins::join(SEL selector, Done done, Ask ask) {
     }
 }
 
-void ApplePlugins::presentNotification(UNUserNotificationCenter* center, UNNotification* notification, void (^completionHandler)(UNNotificationPresentationOptions)) {
-    // clang-format off
-    join(@selector(userNotificationCenter:willPresentNotification:withCompletionHandler:), ^(NSUInteger options) { completionHandler(options); }, ^(id<HaylenPlugin> plugin, Answer answer) {
-        [plugin userNotificationCenter:center willPresentNotification:notification withCompletionHandler:^(UNNotificationPresentationOptions options) { answer(options); }];
-    });
-    // clang-format on
-}
-
-#if !TARGET_OS_TV
-void ApplePlugins::receiveNotificationResponse(UNUserNotificationCenter* center, UNNotificationResponse* response, void (^completionHandler)(void)) {
-    // clang-format off
-    join(@selector(userNotificationCenter:didReceiveNotificationResponse:withCompletionHandler:), ^(NSUInteger) { completionHandler(); }, ^(id<HaylenPlugin> plugin, Answer answer) {
-        [plugin userNotificationCenter:center didReceiveNotificationResponse:response withCompletionHandler:^{ answer(0); }];
-    });
-    // clang-format on
-}
-#endif
-
 // Script errors may quote bytes that are not UTF-8, which reach the plugins replaced instead of failing the report.
 void ApplePlugins::reportError(const core::Json& report) {
     NSDictionary<NSString*, id>* error = AppleBridge::fromJson(report.dump(-1, ' ', false, core::Json::error_handler_t::replace));
@@ -141,11 +117,15 @@ void ApplePlugins::closeCovers() {
     }
 }
 
-std::map<std::string, ApplePlugins::Declaration, std::less<>> ApplePlugins::readDeclarations() {
+std::vector<ApplePlugins::Declaration> ApplePlugins::readDeclarations() {
+    const std::filesystem::path resources = NSBundle.mainBundle.resourcePath.UTF8String;
+    if (!std::filesystem::exists(resources / "app") && !std::filesystem::exists(resources / "app.zip")) {
+        return {};
+    }
     const std::shared_ptr<io::Package> package = Services::openBundledPackage();
     const core::AppConfig config = core::AppConfig::fromPackage(*package);
-    std::map<std::string, Declaration, std::less<>> declarations;
-    for (const auto& [identifier, values] : config.plugins.items()) {
+    std::vector<Declaration> declarations;
+    for (const std::string& identifier : PluginLoadOrder::read(*package)) {
         const core::Json manifest = core::Json::parse(package->readText(io::Path::plugin(identifier, io::Path::kPluginManifestFile)));
         const core::Json apple = manifest.value("apple", core::Json::object());
         if (!apple.contains("class")) {
@@ -153,7 +133,7 @@ std::map<std::string, ApplePlugins::Declaration, std::less<>> ApplePlugins::read
         }
         const core::Json platforms = manifest.value("platforms", core::Json::array());
         const bool supported = std::ranges::find(platforms, core::Json(getDestination())) != platforms.end();
-        declarations[apple.at("class").get<std::string>()] = {.identifier = identifier, .config = AppPlugin::read(*package, identifier, values).config, .supported = supported};
+        declarations.push_back({.identifier = identifier, .className = apple.at("class").get<std::string>(), .config = AppPlugin::read(*package, identifier, config.plugins.at(identifier)).config, .supported = supported});
     }
     return declarations;
 }

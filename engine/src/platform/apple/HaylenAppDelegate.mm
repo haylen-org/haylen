@@ -1,23 +1,23 @@
 #import "platform/apple/HaylenAppDelegate.h"
 
 #if TARGET_OS_OSX
+#import "platform/apple/AppleNotifications.hpp"
 #import "platform/apple/ApplePlugins.hpp"
 #import "platform/apple/AppleTheme.hpp"
 #import "platform/apple/HaylenOverlayLayer.h"
 #include "sokol_app.h"
 
+using haylen::platform::AppleNotifications;
 using haylen::platform::ApplePlugins;
 using haylen::platform::AppleTheme;
 
 @implementation HaylenAppDelegate
 
-// Plugins load before launching ends, so their SDKs set up in time, and the notification center gets its delegate as early, so the notification that launched the app reaches the plugins. Apps without plugins, such as the desktop player, leave the notification center alone. The appearance of the app follows the one of the system, whose every change the delegate observes.
+// Plugins load before launching ends, so their SDKs set up in time, and the notification center gets its delegate as early, so the notification that launched the app reaches the plugins. Apps without plugins, such as the desktop player, and apps that do not link UserNotifications leave the notification center alone. The appearance of the app follows the one of the system, whose every change the delegate observes.
 - (void)applicationWillFinishLaunching:(NSNotification*)notification {
     [NSApp addObserver:self forKeyPath:@"effectiveAppearance" options:NSKeyValueObservingOptionInitial context:nil];
     ApplePlugins::load();
-    if (!ApplePlugins::getIds().empty()) {
-        UNUserNotificationCenter.currentNotificationCenter.delegate = self;
-    }
+    AppleNotifications::observe(self);
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin applicationWillFinishLaunching:notification];
     }
@@ -60,12 +60,12 @@ using haylen::platform::AppleTheme;
     }
 }
 
-- (void)userNotificationCenter:(UNUserNotificationCenter*)center willPresentNotification:(UNNotification*)notification withCompletionHandler:(void (^)(UNNotificationPresentationOptions))completionHandler {
-    ApplePlugins::presentNotification(center, notification, completionHandler);
+- (void)userNotificationCenter:(id)center willPresentNotification:(id)notification withCompletionHandler:(void (^)(NSUInteger))completionHandler {
+    AppleNotifications::present(center, notification, completionHandler);
 }
 
-- (void)userNotificationCenter:(UNUserNotificationCenter*)center didReceiveNotificationResponse:(UNNotificationResponse*)response withCompletionHandler:(void (^)(void))completionHandler {
-    ApplePlugins::receiveNotificationResponse(center, response, completionHandler);
+- (void)userNotificationCenter:(id)center didReceiveNotificationResponse:(id)response withCompletionHandler:(void (^)(void))completionHandler {
+    AppleNotifications::receiveResponse(center, response, completionHandler);
 }
 
 @end

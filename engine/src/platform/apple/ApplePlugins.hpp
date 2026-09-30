@@ -2,7 +2,6 @@
 
 #import "haylen/platform/apple/HaylenPlugin.h"
 
-#include <map>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -11,7 +10,7 @@
 
 namespace haylen::platform {
 
-// The native parts of the plugins of the app, which the runtime creates while the app launches from the classes that the HaylenPlugins array of the Info.plist names, in order, and hands the events of the app on the main thread.
+// The native parts of the plugins of the app, which the runtime creates while the app launches from the classes that the `plugin.json` files of the bundled package name, in load order, and hands the events of the app on the main thread.
 class ApplePlugins final {
   public:
     // A plugin answers an event that takes a completion handler with bits that join the answers of the other plugins.
@@ -19,7 +18,7 @@ class ApplePlugins final {
     using Ask = void (^)(id<HaylenPlugin> plugin, Answer answer);
     using Done = void (^)(NSUInteger answers);
 
-    // Creates every plugin class that this destination has, with the parameters of its plugin in the bundled package, and loads it with its context. A destination leaves out the classes of the plugins that do not list it, such as Mac Catalyst the ones for iOS alone, and those plugins run without their native part there.
+    // Creates the class of every plugin that the bundled package lists for this destination, with the parameters of the plugin, and loads it with its context. A destination leaves out the classes of the plugins that do not list it, such as Mac Catalyst the ones for iOS alone, and those plugins run without their native part there, while a class that a listed destination lacks is logged with what the project lacks.
     static void load();
 
     // The ids of the loaded plugins, which run their native part.
@@ -31,12 +30,6 @@ class ApplePlugins final {
     // Asks every plugin that implements the method, passing each an answer of its own, and calls done once with the union of the answers after the last plugin answered, or at once with none when no plugin implements it. A second answer of a plugin is ignored.
     static void join(SEL selector, Done done, Ask ask);
 
-    // The methods of the notification center delegate, which the application delegate of each platform owns. A notification that arrives while the app is in front shows with the union of the options the plugins ask for.
-    static void presentNotification(UNUserNotificationCenter* center, UNNotification* notification, void (^completionHandler)(UNNotificationPresentationOptions));
-#if !TARGET_OS_TV
-    static void receiveNotificationResponse(UNUserNotificationCenter* center, UNNotificationResponse* response, void (^completionHandler)(void));
-#endif
-
     // Hands the report of an error that stopped the app to every plugin that takes app errors, on the main queue.
     static void reportError(const core::Json& report);
 
@@ -44,15 +37,16 @@ class ApplePlugins final {
     static void closeCovers();
 
   private:
-    // What plugin.json and app.json say about the plugin of a class.
+    // What `plugin.json` and `app.json` say about a plugin with a class.
     struct Declaration {
         std::string identifier;
+        std::string className;
         core::Json config;
         bool supported = false;
     };
 
-    // The plugins of app.json by the class of their apple section. Throws when the bundled package or a plugin.json cannot be read.
-    [[nodiscard]] static std::map<std::string, Declaration, std::less<>> readDeclarations();
+    // The plugins of `app.json` whose `plugin.json` names a class in its `apple` section, in load order, or none when the bundle holds no package, as the desktop player, which runs the package that its command line names. Throws when the bundled package, its `app.json` or a `plugin.json` cannot be read.
+    [[nodiscard]] static std::vector<Declaration> readDeclarations();
 
     // The destination this build runs on, as plugin.json names platforms.
     [[nodiscard]] static std::string_view getDestination() noexcept;

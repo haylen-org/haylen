@@ -13,7 +13,7 @@ function Info:enter()
         hint = 'Every other test needs the native part that this one reports.',
         focus = 'back',
         controls = {
-            ui.label{text = 'The platform reports the plugins whose native part it loaded: the Apple runtime the classes of HaylenPlugins, the Android library the classes of the manifest, the web page the modules of config.json, and the desktops the libraries that declared themselves with registerPlugin.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'The platform reports the plugins whose native part it loaded: the Apple runtime the classes that the plugin.json files of the bundled package name, the Android library the classes of the manifest, the web page the modules of config.json, and the desktops the libraries that declared themselves with registerPlugin.', color = 'textMuted', font = 'caption'},
             ui.label{font = 'monospace', text = "for _, plugin in ipairs(platform.plugins()) do\n  print(plugin.id, plugin.version, plugin.native)\nend"},
         },
     })

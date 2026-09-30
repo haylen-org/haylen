@@ -1516,13 +1516,13 @@ Checklist:
 
 - [x] O JNI confere exceções depois de cada chamada ao Java, descreve no logcat, limpa e registra um erro da engine com o nome do método, conferido no emulador com o CheckJNI: a `SecurityException` aparece, é limpa e o app segue.
 - [x] Sem `ACCESS_NETWORK_STATE`, o estado da rede não é registrado e não há `networkChanged`. Sem `VIBRATE`, vibrar só registra no log. Sem `INTERNET`, os erros de rede da engine terminam dizendo a permissão que falta e como declarar. Conferido no emulador com as três permissões tiradas, com um log só por falta e sem o app fechar.
-- [~] Helpers de requisitos para os plugins:
-  - Apple: `HaylenRequirements` com chave do `Info.plist`, descrição de uso, modo de segundo plano, esquema de URL, classe e entitlement no macOS, mais o `context.require` em Swift.
+- [x] Helpers de requisitos para os plugins:
+  - Apple, pronto: `HaylenRequirements` com chave do `Info.plist`, descrição de uso, modo de segundo plano, esquema de URL, classe e entitlement no macOS e no Mac Catalyst, mais o `context.require` em Swift, conferidos no simulador iOS, no Mac Catalyst, no simulador tvOS e no app macOS.
   - Android, pronto: `HaylenRequirements` com permissão declarada e concedida, classe, meta-data, activity, service, provider e esquema, pelo `context.requirements()`, testado pelo teste "Requirements" do sample de plugins no emulador.
-  - Web: `context.require` com contexto seguro, API e política de permissões.
+  - Web, pronto: `context.require` com contexto seguro, API e política de permissões, conferido no Chrome sem janela com WebGPU e WebGL2.
   - Nas três, `unsupported` com `data.missing` e log uma vez só, documentados no guia de plugins.
-- [ ] UserNotifications fora do núcleo: centro de notificações achado em tempo de execução, `HaylenNotificationPlugin.h`, o framework tirado do template e do `haylen-app.cmake`, e o plugin de demonstração declarando os frameworks que usa. Conferir no simulador que o toque numa notificação continua chegando ao Lua, a frio e com o app rodando.
-- [ ] O runtime da Apple lê os plugins do pacote, sem a chave `HaylenPlugins`, e avisa quando a classe de um plugin listado falta.
+- [x] UserNotifications fora do núcleo: o centro de notificações é achado em tempo de execução, sem `class_addProtocol`, os métodos de notificação ficam no `HaylenNotificationPlugin.h`, o framework saiu do template e do `haylen-app.cmake`, e o plugin de demonstração declara os frameworks que usa. O `otool -L` de um app sem plugins não mostra o UserNotifications, e o toque numa notificação chega ao Lua com o app rodando e a frio no simulador.
+- [x] O runtime da Apple lê os plugins do pacote pela ordem de carga do `PluginLoadOrder`, sem a chave `HaylenPlugins`, e avisa quando a classe de um plugin listado falta. O `make.py` não repete no `plugins.json` um framework que o alvo do `project.yml` já liga, porque o XcodeGen recusa dependência duplicada.
 - [x] AAR mínimo: sem permissões, sem provider, sem activity de links e sem coroutines. Os artefatos `haylen-plugins`, `haylen-links` e `haylen-coroutines` são publicados pelo `make.py engine`, e o template de plugin e o plugin de demonstração dependem deles. O template do Android não repete as versões do AndroidX e declara as permissões de rede e de vibração no próprio manifesto. Conferido com `aapt2`: o AAR não traz permissões nem componentes, e um app sem plugins só exporta o launcher e o `ProfileInstallReceiver` do AndroidX, protegido pela permissão `DUMP`. O build Release com R8 carrega os plugins.
 - [ ] Projeto no lugar e pasta `haylen/` gerada:
   - Apple: `haylen/project.yml` com os modelos de alvo, `Haylen.xcconfig`, `Info.plist` e entitlements completados, `Splash.xcassets`, pacote, bibliotecas nativas e plugins, com os produtos do build fora da pasta do projeto.
@@ -1530,7 +1530,7 @@ Checklist:
   - Web: os arquivos do desenvolvedor copiados como estão para a saída, com os gerados ao lado.
   - Os templates são reescritos para esse modelo, com `.gitignore`, e o `App.xcodeproj` do template é gerado de novo.
 - [ ] Comandos `make.py prepare`, `xcodegen`, `check`, `platform add` e `platform diff`, com a proteção do `project.pbxproj` editado à mão.
-- [ ] O `Info.plist` com `UIApplicationSupportsMultipleScenes` verdadeiro no iOS, como o template e a documentação dizem, conferido com as janelas de plugins no iPad e no Mac Catalyst.
+- [~] O `Info.plist` com `UIApplicationSupportsMultipleScenes` verdadeiro no iOS, conferido no iPad e no Mac Catalyst, onde a tela SwiftUI de um plugin abre numa janela própria. No Mac Catalyst essa janela continua visível depois de um cancelamento ou de um timeout da tela, o que falta corrigir.
 - [ ] Manifesto de privacidade: auditoria das APIs de motivo obrigatório que a engine e as dependências usam, o arquivo da engine publicado com os artefatos, a seção `apple.privacy` do `plugin.json`, e o `PrivacyInfo.xcprivacy` gerado com a engine, os plugins e o arquivo do desenvolvedor.
 - [ ] O código nativo dos samples (plataforma, nativo e o login do Tiny Island) vira plugins locais em `plugins/` de cada sample, e nenhum sample guarda projeto de plataforma, então todos usam a cópia do template.
 - [ ] Conferência de ponta a ponta:
