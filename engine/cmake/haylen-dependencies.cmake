@@ -1,3 +1,15 @@
+# The source cache keeps a patched package under a key made of the hash of its archive and the contents of its patches, so an edited patch reaches every checkout that already holds the package, and checkouts in other folders share it.
+function(haylen_patched_package_key variable archive_hash)
+  set(contents "${archive_hash}")
+  foreach(patch IN LISTS ARGN)
+    file(SHA256 "${patch}" patch_hash)
+    string(APPEND contents ";${patch_hash}")
+  endforeach()
+  string(SHA256 key "${contents}")
+  string(SUBSTRING "${key}" 0 16 key)
+  set(${variable} "${key}" PARENT_SCOPE)
+endfunction()
+
 # Varn uses nlohmann/json too, so it is resolved here first and Varn reuses it.
 CPMAddPackage(
   NAME nlohmann_json
@@ -41,11 +53,15 @@ endif()
 # Native plugins on Apple platforms receive the events of the application and its scenes, which only the application delegate of `sokol_app` sees, so the fifth patch lets the runtime name a subclass of that delegate.
 # The `sokol_app` module hosts Android apps in `NativeActivity`, which can never be the `ComponentActivity` that current SDKs and the Activity Result API need and keeps views from drawing over the app, so the last patch hosts them in `GameActivity`, with input through a queue from the UI thread, a key table, the native saved state and the `Choreographer` frame loop chosen at run time.
 # The `sokol_app` module also runs Android frames only while the window of the activity has the focus, which stops timers, cancels and timeouts under every dialog and leaves the surface black when the app comes back under one, so the last patch runs them while the activity is resumed and has a surface, reports the focus as focus events and swaps only the frames that drew, so a covered app keeps its last picture.
+set(sokol_patches "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-ios-view-size.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-dummy-limits.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-desktop-window.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-android-quit.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-apple-delegate.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-android-gameactivity.patch")
+set(sokol_hash d8560ddd11fb3223f3aaf6513aaa2d9be66ee7896fa1263ad51c5bd60ec52cf3)
+haylen_patched_package_key(sokol_cache_key ${sokol_hash} ${sokol_patches})
 CPMAddPackage(
   NAME sokol
   URL "https://github.com/floooh/sokol/archive/2e75443dbd4940b5aa8d76a8e479f8e4b270b9a3.tar.gz"
-  URL_HASH SHA256=d8560ddd11fb3223f3aaf6513aaa2d9be66ee7896fa1263ad51c5bd60ec52cf3
-  PATCHES "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-ios-view-size.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-dummy-limits.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-desktop-window.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-android-quit.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-apple-delegate.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-android-gameactivity.patch"
+  URL_HASH SHA256=${sokol_hash}
+  PATCHES ${sokol_patches}
+  CUSTOM_CACHE_KEY ${sokol_cache_key}
   DOWNLOAD_ONLY YES
 )
 

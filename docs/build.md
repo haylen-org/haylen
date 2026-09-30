@@ -195,7 +195,7 @@ The workspace `CMakeLists.txt` at the repository root adds `engine/` and turns t
 
 ## Dependencies
 
-Dependencies are declared with [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) in `engine/cmake/haylen-dependencies.cmake`. `engine/cmake/cpm.cmake` downloads CPM 0.43.2 and checks its SHA-256 hash. Sources are cached in `.cache/cpm` under the top-level source folder unless `CPM_SOURCE_CACHE` is set as a CMake variable or an environment variable, so several build trees share one download.
+Dependencies are declared with [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) in `engine/cmake/haylen-dependencies.cmake`. `engine/cmake/cpm.cmake` downloads CPM 0.43.2 and checks its SHA-256 hash. Sources are cached in `.cache/cpm` under the top-level source folder unless `CPM_SOURCE_CACHE` is set as a CMake variable or an environment variable, so several build trees share one download. A patched package, such as Sokol, keys its place in the cache with `haylen_patched_package_key`, a hash of its archive and of the contents of its patches, so an edited patch downloads and patches the package again in every checkout, and checkouts in other folders share the same package.
 
 | Package | Version | Notes |
 | --- | --- | --- |

@@ -170,7 +170,7 @@ extras/images/            Brand images: the vertical and horizontal logos, the s
 
 - Dependencies are declared with CPM in `engine/cmake/haylen-dependencies.cmake`, pinned with a SHA-256 hash to their latest release or, when a project has no releases, to its latest default-branch commit.
 - The package the engine shares with Varn, nlohmann/json, is declared before Varn, so Varn reuses it and the whole build resolves a single copy of it.
-- A change to a dependency's source is a patch in `engine/cmake/patches/` that CPM applies, documented in `docs/distribution.md` or `docs/build.md` with the reason. The patch fixes the real problem and stays as small as possible.
+- A change to a dependency's source is a patch in `engine/cmake/patches/` that CPM applies, documented in `docs/distribution.md` or `docs/build.md` with the reason. The patch fixes the real problem and stays as small as possible. A patched package keys its source cache with `haylen_patched_package_key`, from the hash of its archive and the contents of its patches, so an edited patch reaches every checkout.
 - When a dependency is updated, adopt its current API everywhere and drop patches it no longer needs. Do not keep code paths for the previous version.
 
 ## Samples
