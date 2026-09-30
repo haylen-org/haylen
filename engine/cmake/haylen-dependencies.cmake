@@ -8,7 +8,7 @@ CPMAddPackage(
   SYSTEM YES
 )
 
-# Varn pins libuv 1.49.2, which misses <limits.h> with NDK r30. Varn waits on libuv everywhere except the web and reuses this release.
+# Varn pins libuv 1.49.2, which misses `<limits.h>` with NDK r30. Varn waits on libuv everywhere except the web and reuses this release.
 if(NOT HAYLEN_PLATFORM STREQUAL "web")
   CPMAddPackage(
     NAME libuv
@@ -18,11 +18,11 @@ if(NOT HAYLEN_PLATFORM STREQUAL "web")
     OPTIONS "LIBUV_BUILD_TESTS OFF" "LIBUV_BUILD_BENCH OFF" "LIBUV_BUILD_SHARED OFF"
     SYSTEM YES
   )
-  # The tvOS branch of uv_spawn calls a QUEUE_INIT macro that libuv does not define, and uv__queue_init is the function it means.
+  # The tvOS branch of `uv_spawn` calls a `QUEUE_INIT` macro that libuv does not define, and `uv__queue_init` is the function it means.
   if(HAYLEN_PLATFORM STREQUAL "tvos")
     target_compile_options(uv_a PRIVATE "-DQUEUE_INIT(queue)=uv__queue_init(queue)")
   endif()
-  # libuv compiles its posix_spawn path on every Unix, while Android declares posix_spawn only from API 28 on. libuv never takes that path on Android and forks instead, so weak references let it build for older releases.
+  # The libuv library compiles its `posix_spawn` path on every Unix, while Android declares `posix_spawn` only from API 28 on. The libuv library never takes that path on Android and forks instead, so weak references let it build for older releases.
   if(ANDROID)
     target_compile_definitions(uv_a PRIVATE __ANDROID_UNAVAILABLE_SYMBOLS_ARE_WEAK__)
   endif()
@@ -37,7 +37,7 @@ else()
 endif()
 
 # Varn picks the HTTP driver of a mobile target only once its own cache holds the target, which is not the case on the first configure, so the driver is named here.
-# The OpenSSL build that Varn adds runs make as one step of the build, with a job per processor unless parallel builds are off, so it takes one job and the build keeps to its job limit.
+# The OpenSSL build that Varn adds runs `make` as one step of the build, with a job per processor unless parallel builds are off, so it takes one job and the build keeps to its job limit.
 set(HAYLEN_VARN_OPTIONS "VARN_TARGET ${HAYLEN_VARN_TARGET}" "VARN_BUILD_TESTS OFF" "OPENSSL_ENABLE_PARALLEL OFF")
 if(HAYLEN_PLATFORM STREQUAL "ios" OR HAYLEN_PLATFORM STREQUAL "tvos")
   list(APPEND HAYLEN_VARN_OPTIONS "VARN_HTTP_CLIENT_DRIVER APPLE")
@@ -45,12 +45,12 @@ elseif(HAYLEN_PLATFORM STREQUAL "android")
   list(APPEND HAYLEN_VARN_OPTIONS "VARN_HTTP_CLIENT_DRIVER ANDROID")
 endif()
 
-# Varn builds OpenSSL with its own Configure script, which takes the compiler flags of Mac Catalyst from the environment, next to the optimization level it would pick itself.
+# Varn builds OpenSSL with its own `Configure` script, which takes the compiler flags of Mac Catalyst from the environment, next to the optimization level it would pick itself.
 if(HAYLEN_CATALYST)
   set(ENV{CFLAGS} "-O3 --target=${CMAKE_C_COMPILER_TARGET} ${CMAKE_C_FLAGS}")
 endif()
 
-# The zlib of Varn defines HAVE_UNISTD_H for every target that links it, libzip among them, whenever the platform has unistd.h. libzip checks for the header under the same name and would define the macro again in its config.h with another value, so it takes the definition of zlib and leaves the macro out of its config.h.
+# The zlib of Varn defines `HAVE_UNISTD_H` for every target that links it, libzip among them, whenever the platform has `unistd.h`. The libzip library checks for the header under the same name and would define the macro again in its `config.h` with another value, so it takes the definition of zlib and leaves the macro out of its `config.h`.
 set(HAVE_UNISTD_H OFF)
 
 # The `ffi` module of Varn gives libffi a return buffer of the exact size of the C type, while libffi writes a whole `ffi_arg` for smaller integers, so the patch gives it room for one.
@@ -66,7 +66,7 @@ CPMAddPackage(
 
 unset(HAVE_UNISTD_H)
 
-# Varn configures Lua for macOS when a Mac Catalyst build names Darwin as its system, while Mac Catalyst has no system function, like iOS.
+# Varn configures Lua for macOS when a Mac Catalyst build names `Darwin` as its system, while Mac Catalyst has no `system` function, like iOS.
 if(HAYLEN_CATALYST)
   unset(ENV{CFLAGS})
   target_compile_definitions(varn_vendor_lua PRIVATE LUA_USE_IOS)
@@ -85,12 +85,12 @@ if(MSVC AND TARGET Poco::Foundation)
   target_compile_definitions(${poco_foundation} PUBLIC POCO_NO_AUTOMATIC_LIBS)
 endif()
 
-# sokol_app sizes the iOS framebuffer by the screen, which crops apps whose window is smaller than the screen, on Mac Catalyst and in iPad windows, so the first patch sizes it by the view of the app.
+# The `sokol_app` module sizes the iOS framebuffer by the screen, which crops apps whose window is smaller than the screen, on Mac Catalyst and in iPad windows, so the first patch sizes it by the view of the app.
 # The dummy backend of the headless host caps textures at 1024 pixels, below every real GPU, so the second patch gives it the limits of desktop GPUs and headless runs load full-size art.
 # Desktop apps open borderless, topmost, unfocusable and taskbar-less windows at a given position, so the third patch creates the window with those options before it first shows, lets the focus behavior change at run time, and makes transparency work on D3D11 through DirectComposition and on X11 through ARGB visuals.
-# sokol_app ends a destroyed Android activity with exit(), which aborts the process in the rendering threads of Android, so the fourth patch stops the app through its cleanup callback and lets the activity finish normally, and makes sapp_quit() finish the activity.
-# Native plugins on Apple platforms receive the events of the application and its scenes, which only the application delegate of sokol_app sees, so the fifth patch lets the runtime name a subclass of that delegate.
-# sokol_app hosts Android apps in NativeActivity, which can never be the ComponentActivity that current SDKs and the Activity Result API need and keeps views from drawing over the app, so the last patch hosts them in GameActivity, with input through a queue from the UI thread, a key table, the native saved state and the Choreographer frame loop chosen at run time.
+# The `sokol_app` module ends a destroyed Android activity with `exit()`, which aborts the process in the rendering threads of Android, so the fourth patch stops the app through its cleanup callback and lets the activity finish normally, and makes `sapp_quit()` finish the activity.
+# Native plugins on Apple platforms receive the events of the application and its scenes, which only the application delegate of `sokol_app` sees, so the fifth patch lets the runtime name a subclass of that delegate.
+# The `sokol_app` module hosts Android apps in `NativeActivity`, which can never be the `ComponentActivity` that current SDKs and the Activity Result API need and keeps views from drawing over the app, so the last patch hosts them in `GameActivity`, with input through a queue from the UI thread, a key table, the native saved state and the `Choreographer` frame loop chosen at run time.
 CPMAddPackage(
   NAME sokol
   URL "https://github.com/floooh/sokol/archive/2e75443dbd4940b5aa8d76a8e479f8e4b270b9a3.tar.gz"
@@ -99,7 +99,7 @@ CPMAddPackage(
   DOWNLOAD_ONLY YES
 )
 
-# GameActivity of the AndroidX games libraries hosts Android apps. make.py builds the player outside Gradle, so the engine links the static library of its native side from the prefab folder of the AAR, whose Java classes the Android library and template use at the same version.
+# GameActivity of the AndroidX games libraries hosts Android apps. The script `make.py` builds the player outside Gradle, so the engine links the static library of its native side from the prefab folder of the AAR, whose Java classes the Android library and template use at the same version.
 if(ANDROID)
   CPMAddPackage(
     NAME games_activity
@@ -142,7 +142,7 @@ CPMAddPackage(
   DOWNLOAD_ONLY YES
 )
 
-# libunibreak finds the line break opportunities and the grapheme clusters of Unicode text.
+# The libunibreak library finds the line break opportunities and the grapheme clusters of Unicode text.
 CPMAddPackage(
   NAME libunibreak
   URL "https://github.com/adah1972/libunibreak/releases/download/libunibreak_8_0/libunibreak-8.0.tar.gz"
@@ -158,7 +158,7 @@ CPMAddPackage(
   DOWNLOAD_ONLY YES
 )
 
-# Parses floating point numbers the way std::from_chars does, which the C++ library of Apple platforms offers only from iOS and tvOS 26 and macOS 26.
+# Parses floating point numbers the way `std::from_chars` does, which the C++ library of Apple platforms offers only from iOS and tvOS 26 and macOS 26.
 CPMAddPackage(
   NAME fast_float
   URL "https://github.com/fastfloat/fast_float/archive/refs/tags/v8.3.0.tar.gz"
@@ -188,7 +188,7 @@ CPMAddPackage(
   SYSTEM YES
 )
 
-# Clipper2 computes the polygon booleans, offsets and constrained triangulations of math::Polygon.
+# Clipper2 computes the polygon booleans, offsets and constrained triangulations of `math::Polygon`.
 CPMAddPackage(
   NAME clipper2
   URL "https://github.com/AngusJohnson/Clipper2/archive/refs/tags/Clipper2_2.0.1.tar.gz"
@@ -280,12 +280,12 @@ if(ANDROID)
 elseif(APPLE)
   target_link_libraries(haylen_miniaudio PUBLIC "-framework CoreFoundation" "-framework CoreAudio" "-framework AudioToolbox")
   if(HAYLEN_PLATFORM STREQUAL "ios" OR HAYLEN_PLATFORM STREQUAL "tvos")
-    # miniaudio manages the AVAudioSession on iOS and tvOS, so its implementation compiles as Objective-C there.
+    # The miniaudio library manages the `AVAudioSession` on iOS and tvOS, so its implementation compiles as Objective-C there.
     set_source_files_properties("${CMAKE_CURRENT_LIST_DIR}/../src/audio/MiniaudioImpl.c" PROPERTIES LANGUAGE OBJC)
     target_link_libraries(haylen_miniaudio PUBLIC "-framework AVFoundation")
   endif()
 elseif(HAYLEN_PLATFORM STREQUAL "web")
-  # Browsers play through the AudioWorklet output of the engine, src/platform/web/BrowserAudioOutput, so miniaudio keeps only its custom backend there.
+  # Browsers play through the AudioWorklet output of the engine, `src/platform/web/BrowserAudioOutput`, so miniaudio keeps only its custom backend there.
   target_compile_definitions(haylen_miniaudio PUBLIC MA_ENABLE_ONLY_SPECIFIC_BACKENDS MA_ENABLE_CUSTOM)
 elseif(HAYLEN_PLATFORM STREQUAL "linux")
   target_link_libraries(haylen_miniaudio PUBLIC ${CMAKE_DL_LIBS} m pthread)

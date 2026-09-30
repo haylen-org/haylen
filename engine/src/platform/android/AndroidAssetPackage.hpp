@@ -10,7 +10,7 @@
 
 namespace haylen::platform {
 
-// App package stored in the APK assets under a root folder. Android cannot list asset folders recursively, so the build writes the file list into haylen-package-index.json at the package root.
+// App package stored in the APK assets under a root folder. Android cannot list asset folders recursively, so the build writes the file list into `haylen-package-index.json` at the package root.
 class AndroidAssetPackage final : public io::Package {
   public:
     AndroidAssetPackage(AAssetManager* manager, std::string folder);

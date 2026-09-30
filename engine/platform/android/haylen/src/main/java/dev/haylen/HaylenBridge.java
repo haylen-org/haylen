@@ -14,16 +14,16 @@ import java.util.concurrent.Executors;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-// Native side of the platform bridge on Android. Handlers run on the main thread or on the shared background thread and may reply later from any thread. A handler that throws fails its call instead of crashing the app. Parameters, results and events carry bytes as byte[] and ByteBuffer values, which cross as byte buffers instead of text.
+// Native side of the platform bridge on Android. Handlers run on the main thread or on the shared background thread and may reply later from any thread. A handler that throws fails its call instead of crashing the app. Parameters, results and events carry bytes as `byte[]` and `ByteBuffer` values, which cross as byte buffers instead of text.
 public final class HaylenBridge {
-    // The thread a handler runs on. MAIN handlers may touch the activity and views. BACKGROUND handlers share one background thread, so work that does not touch the UI, such as disk or database access, never holds up the main thread.
+    // The thread a handler runs on. The `MAIN` handlers may touch the activity and views. The `BACKGROUND` handlers share one background thread, so work that does not touch the UI, such as disk or database access, never holds up the main thread.
     public enum Threading {
         MAIN,
         BACKGROUND
     }
 
     public interface Reply {
-        // Answers with null, a string, a number, a boolean, a JSONObject, a JSONArray, a map, a collection or an array, with byte[] and ByteBuffer values anywhere inside.
+        // Answers with `null`, a string, a number, a boolean, a `JSONObject`, a `JSONArray`, a map, a collection or an array, with `byte[]` and `ByteBuffer` values anywhere inside.
         void success(Object value);
 
         void failure(String message);
@@ -31,7 +31,7 @@ public final class HaylenBridge {
         // Fails the call with a code that tells failures apart and data for the app, both optional.
         void failure(String message, String code, Object data);
 
-        // Fails the call with a thrown error: a Failure keeps its code and data, and any other error fails with the code exception.
+        // Fails the call with a thrown error: a `Failure` keeps its code and data, and any other error fails with the code `exception`.
         void failure(Throwable error);
 
         boolean isCancelled();
@@ -93,7 +93,7 @@ public final class HaylenBridge {
         handlers.remove(method);
     }
 
-    // Sends an event to the app, which receives it through haylen.platform.on.
+    // Sends an event to the app, which receives it through `haylen.platform.on`.
     public static void emit(String event, Object payload) {
         emit(event, payload, false, false);
     }
@@ -108,7 +108,7 @@ public final class HaylenBridge {
         try {
             encoded = HaylenPayload.encode(payload);
         } catch (JSONException error) {
-            Log.e("haylen", "The event " + event + " carried a payload that is not JSON and was dropped: " + error.getMessage());
+            Log.e("haylen", "The event \"" + event + "\" carried a payload that is not JSON and was dropped: " + error.getMessage());
             return;
         }
         KeptEvent kept = new KeptEvent(event, utf8(event), encoded, retain, batched);
@@ -136,7 +136,7 @@ public final class HaylenBridge {
         }
     }
 
-    // The running activity, or null while there is none.
+    // The running activity, or `null` while there is none.
     public static HaylenActivity activity() {
         return activity;
     }
@@ -172,7 +172,7 @@ public final class HaylenBridge {
         PendingReply reply = new PendingReply(call);
         Registration registration = handlers.get(method);
         if (registration == null) {
-            reply.failure("No native handler is registered for " + method + ".", "noHandler", null);
+            reply.failure("No native handler is registered for \"" + method + "\".", "noHandler", null);
             return;
         }
         pending.put(call, reply);
@@ -197,7 +197,7 @@ public final class HaylenBridge {
             return;
         }
         if (registration.threading == Threading.MAIN && activity == null) {
-            reply.failure("The activity was destroyed before " + method + " ran.");
+            reply.failure("The activity was destroyed before \"" + method + "\" ran.");
             return;
         }
 

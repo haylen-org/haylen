@@ -172,7 +172,7 @@ std::string JavaBridge::toString(JNIEnv& env, jbyteArray bytes) {
     return result;
 }
 
-// A direct ByteBuffer that Java sliced to its remaining bytes starts at its address and ends at its capacity, and anything else is a byte array.
+// A direct `ByteBuffer` that Java sliced to its remaining bytes starts at its address and ends at its capacity, and anything else is a byte array.
 std::vector<std::vector<std::byte>> JavaBridge::toBuffers(JNIEnv& env, jobjectArray buffers) {
     const jsize count = env.GetArrayLength(buffers);
     std::vector<std::vector<std::byte>> copies(static_cast<std::size_t>(count));

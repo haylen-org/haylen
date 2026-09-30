@@ -6,7 +6,7 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.net.Uri;
 
-// Loads the plugins of the app when its process starts. Android creates content providers before Application.onCreate, so plugins set up their SDKs before any app code runs. The provider shares nothing, and its queries answer nothing.
+// Loads the plugins of the app when its process starts. Android creates content providers before `Application.onCreate`, so plugins set up their SDKs before any app code runs. The provider shares nothing, and its queries answer nothing.
 public final class HaylenPluginProvider extends ContentProvider {
     @Override
     public boolean onCreate() {

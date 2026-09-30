@@ -13,7 +13,7 @@
         android:icon="@mipmap/ic_launcher"
         android:label="${haylenAppName}"
         android:theme="@style/Theme.Haylen.Splash">
-        <!-- Single top keeps one activity, which GameActivity needs, without destroying the screens of plugins that show over the app, such as a purchase, when the launcher icon brings the app back. Links and notifications go through dev.haylen.HaylenLinkActivity of the haylen library. -->
+        <!-- Single top keeps one activity, which GameActivity needs, without destroying the screens of plugins that show over the app, such as a purchase, when the launcher icon brings the app back. Links and notifications go through `dev.haylen.HaylenLinkActivity` of the `haylen` library. -->
         <activity
             android:name="dev.haylen.HaylenActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"

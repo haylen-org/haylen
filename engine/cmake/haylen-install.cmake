@@ -1,6 +1,6 @@
-# Builds the engine as an SDK that other projects find with find_package(haylen).
-# Every static library the engine needs is merged into one haylen library, and the runtime into haylen_runtime, so the package config imports two libraries for the platform the SDK was built for.
-# The SDK installs with cmake --install <build> --component haylen_sdk, which leaves out the install rules of the dependencies.
+# Builds the engine as an SDK that other projects find with `find_package(haylen)`.
+# Every static library the engine needs is merged into one `haylen` library, and the runtime into `haylen_runtime`, so the package config imports two libraries for the platform the SDK was built for.
+# The SDK installs with `cmake --install <build> --component haylen_sdk`, which leaves out the install rules of the dependencies.
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
@@ -33,7 +33,7 @@ function(haylen_static_closure target out_archives out_externals)
       list(APPEND archives "${item}")
     endif()
 
-    # Targets built here keep their private dependencies in LINK_LIBRARIES, and every target keeps its public ones in INTERFACE_LINK_LIBRARIES.
+    # Targets built here keep their private dependencies in `LINK_LIBRARIES`, and every target keeps its public ones in `INTERFACE_LINK_LIBRARIES`.
     set(properties INTERFACE_LINK_LIBRARIES)
     if(NOT imported AND NOT type STREQUAL "INTERFACE_LIBRARY")
       list(APPEND properties LINK_LIBRARIES)
@@ -44,7 +44,7 @@ function(haylen_static_closure target out_archives out_externals)
         continue()
       endif()
       foreach(link IN LISTS links)
-        # Wrappers nest, as in $<LINK_ONLY:$<BUILD_LOCAL_INTERFACE:ZLIB::ZLIB>>, so they come off one layer at a time.
+        # Wrappers nest, as in `$<LINK_ONLY:$<BUILD_LOCAL_INTERFACE:ZLIB::ZLIB>>`, so they come off one layer at a time.
         set(unwrapped "")
         while(NOT unwrapped STREQUAL link)
           set(unwrapped "${link}")
@@ -54,7 +54,7 @@ function(haylen_static_closure target out_archives out_externals)
           continue()
         endif()
         if(link MATCHES "\\$<")
-          message(FATAL_ERROR "The SDK cannot follow the link item ${link} of ${item}.")
+          message(FATAL_ERROR "The SDK cannot follow the link item \"${link}\" of \"${item}\".")
         endif()
         list(APPEND pending "${link}")
       endforeach()
@@ -105,7 +105,7 @@ foreach(part engine runtime)
   add_custom_command(OUTPUT "${${part}_library}"
     COMMAND "${CMAKE_COMMAND}" -DKIND=${merge_kind} "-DTOOL=${merge_tool}" "-DOUTPUT=${${part}_library}" "-DINPUTS=${sdk_libraries}/${part}-inputs.txt" -P "${HAYLEN_CMAKE_DIR}/haylen-merge-archives.cmake"
     DEPENDS "${sdk_libraries}/${part}-inputs.txt" ${built_archives} haylen_platform haylen_runtime
-    COMMENT "Merging the Haylen ${part} library"
+    COMMENT "Merging the Haylen ${part} library."
     VERBATIM
   )
 endforeach()

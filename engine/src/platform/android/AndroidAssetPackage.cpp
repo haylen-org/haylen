@@ -10,7 +10,7 @@ namespace haylen::platform {
 AndroidAssetPackage::AndroidAssetPackage(AAssetManager* manager, std::string folder) : assets(manager), root(std::move(folder)) {
     const AssetHandle index = openAsset(root + "/haylen-package-index.json");
     if (index == nullptr) {
-        throw std::runtime_error("The APK has no app package at " + root + ", or its haylen-package-index.json is missing.");
+        throw std::runtime_error("The APK has no app package at \"" + root + "\", or its \"haylen-package-index.json\" is missing.");
     }
     const std::vector<std::uint8_t> bytes = readAll(*index);
     files = core::Json::parse(bytes.begin(), bytes.end()).get<std::vector<std::string>>();
@@ -24,7 +24,7 @@ std::vector<std::uint8_t> AndroidAssetPackage::read(std::string_view path) const
     const std::string entry = io::Path::normalize(path);
     const AssetHandle asset = openAsset(root + "/" + entry);
     if (asset == nullptr) {
-        throw std::runtime_error("The package file '" + root + "/" + entry + "' was not found.");
+        throw std::runtime_error("The package file \"" + root + "/" + entry + "\" was not found.");
     }
     return readAll(*asset);
 }

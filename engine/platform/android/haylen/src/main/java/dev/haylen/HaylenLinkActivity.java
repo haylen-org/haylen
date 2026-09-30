@@ -5,7 +5,7 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.os.Bundle;
 
-// Receives the links and the notification taps that open the app, whose intent filters plugins declare on this activity. It hands them to the running HaylenActivity and brings the task of the app to the front as the launcher icon does, with whatever screen shows over the app, or starts HaylenActivity with them when none runs. It shows nothing and finishes at once, in a task of its own.
+// Receives the links and the notification taps that open the app, whose intent filters plugins declare on this activity. It hands them to the running `HaylenActivity` and brings the task of the app to the front as the launcher icon does, with whatever screen shows over the app, or starts `HaylenActivity` with them when none runs. It shows nothing and finishes at once, in a task of its own.
 public final class HaylenLinkActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {

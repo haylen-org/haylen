@@ -33,11 +33,11 @@ import java.util.Locale;
 import java.util.Map;
 import org.json.JSONObject;
 
-// Hosts a Haylen app. GameActivity, an AppCompatActivity, loads the native library that the android.app.lib_name meta-data names and draws the app in a SurfaceView of an ordinary view hierarchy, so plugins place views over the app, register Activity Result launchers and use fragments, dialogs and Compose.
-// The manifest gives the activity the Theme.Haylen.Splash theme, whose splash screen hands over to a view with the same look that stays until the app has drawn its first frame.
-// The template declares the activity single top, and HaylenLinkActivity hands it the links and notifications that open the app, so a screen of a plugin that shows over the app outlives the launcher icon and the links.
+// Hosts a Haylen app. The class `GameActivity`, an `AppCompatActivity`, loads the native library that the `android.app.lib_name` meta-data names and draws the app in a `SurfaceView` of an ordinary view hierarchy, so plugins place views over the app, register Activity Result launchers and use fragments, dialogs and Compose.
+// The manifest gives the activity the `Theme.Haylen.Splash` theme, whose splash screen hands over to a view with the same look that stays until the app has drawn its first frame.
+// The template declares the activity single top, and `HaylenLinkActivity` hands it the links and notifications that open the app, so a screen of a plugin that shows over the app outlives the launcher icon and the links.
 public class HaylenActivity extends GameActivity implements InputManager.InputDeviceListener {
-    // The link that HaylenLinkActivity started the activity with, next to the launcher intent that the task of the app keeps.
+    // The link that `HaylenLinkActivity` started the activity with, next to the launcher intent that the task of the app keeps.
     static final String EXTRA_LINK = "dev.haylen.link";
 
     private final HaylenSplash splash = new HaylenSplash(this);
@@ -50,7 +50,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     protected void onCreate(Bundle savedInstanceState) {
         splash.install();
         HaylenBridge.attach(this);
-        // GameActivity loads the native library here and starts the app on its render thread.
+        // The class `GameActivity` loads the native library here and starts the app on its render thread.
         super.onCreate(savedInstanceState);
         Intent link = IntentCompat.getParcelableExtra(getIntent(), EXTRA_LINK, Intent.class);
         if (link != null) {
@@ -84,7 +84,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         HaylenPlugins.activityCreated(this, savedInstanceState);
     }
 
-    // GameActivity sets up the window before it creates the activity. The app draws edge to edge, under the cutout, with the system bars hidden until a swipe shows them, and the software keyboard lies over the app without resizing it, while the engine lifts the focused field above it.
+    // The class `GameActivity` sets up the window before it creates the activity. The app draws edge to edge, under the cutout, with the system bars hidden until a swipe shows them, and the software keyboard lies over the app without resizing it, while the engine lifts the focused field above it.
     @Override
     protected void onSetUpWindow() {
         Window window = getWindow();
@@ -134,7 +134,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         return super.dispatchGenericMotionEvent(event);
     }
 
-    // The app stops inside GameActivity, which runs its cleanup and lets the activity finish, while the bridge, the editor and the listeners it may still use are attached. The plugins hear of it next, and the views they left over the app go with the activity.
+    // The app stops inside `GameActivity`, which runs its cleanup and lets the activity finish, while the bridge, the editor and the listeners it may still use are attached. The plugins hear of it next, and the views they left over the app go with the activity.
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -168,7 +168,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     @Override
     public void onInputDeviceChanged(int deviceId) {}
 
-    // Called from the frame thread of the engine with 0 for landscape, 1 for portrait and 2 for any orientation, the values app.json gives the manifest.
+    // Called from the frame thread of the engine with 0 for landscape, 1 for portrait and 2 for any orientation, the values `app.json` gives the manifest.
     static void lockOrientation(int value) {
         HaylenActivity activity = HaylenBridge.activity();
         if (activity == null) {
@@ -195,7 +195,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         return new JSONObject(info).toString().getBytes(StandardCharsets.UTF_8);
     }
 
-    // Called from the frame thread of the engine, which hears through nativeUrlOpened with the same request whether an app took the url.
+    // Called from the frame thread of the engine, which hears through `nativeUrlOpened` with the same request whether an app took the url.
     static void openUrl(long request, byte[] url) {
         HaylenActivity activity = HaylenBridge.activity();
         if (activity == null) {
@@ -261,7 +261,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         }
     }
 
-    // The surface the app draws on. GameActivity focuses it whenever its window gains the focus, which would take the focus and the keyboard from a text field over the app, such as the hidden field that edits a field of the UI or a form of a plugin, so it declines the focus while such a field has it.
+    // The surface the app draws on. The class `GameActivity` focuses it whenever its window gains the focus, which would take the focus and the keyboard from a text field over the app, such as the hidden field that edits a field of the UI or a form of a plugin, so it declines the focus while such a field has it.
     // Android marks the focused view with a highlight over it once keys drive the window, as on a TV, which would veil the whole app, while the app shows its own focus.
     private final class AppSurface extends InputEnabledSurfaceView {
         AppSurface() {

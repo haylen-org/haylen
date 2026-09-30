@@ -27,7 +27,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-// The native parts of the plugins of the app, in load order. HaylenPluginProvider loads them when the process starts, HaylenActivity forwards its creation, its destruction and its other events to them while the AndroidX lifecycle of the activity forwards its start, resume, pause and stop, and the engine reads their ids and hands them its errors.
+// The native parts of the plugins of the app, in load order. The class `HaylenPluginProvider` loads them when the process starts, `HaylenActivity` forwards its creation, its destruction and its other events to them while the AndroidX lifecycle of the activity forwards its start, resume, pause and stop, and the engine reads their ids and hands them its errors.
 final class HaylenPlugins {
     private static final String TAG = "haylen";
     private static final String META_DATA_PREFIX = "dev.haylen.plugin.";
@@ -39,7 +39,7 @@ final class HaylenPlugins {
 
     private HaylenPlugins() {}
 
-    // Creates every plugin class that the manifest names and calls onLoad in the order of the plugins in app.json, where every plugin follows the plugins it requires. A class that cannot be created, or an onLoad that fails, is logged and leaves its plugin out, so the app runs without its native part.
+    // Creates every plugin class that the manifest names and calls `onLoad` in the order of the plugins in `app.json`, where every plugin follows the plugins it requires. A class that cannot be created, or an `onLoad` that fails, is logged and leaves its plugin out, so the app runs without its native part.
     static void load(Application application) {
         Map<String, String> classes = readClasses(application);
         JSONObject values = readPackageJson(application, "app.json").optJSONObject("plugins");
@@ -59,17 +59,17 @@ final class HaylenPlugins {
             try {
                 plugin.onLoad(context);
             } catch (Exception error) {
-                Log.e(TAG, "The plugin " + id + " failed to load, so the app runs without its native part.", error);
+                Log.e(TAG, "The plugin \"" + id + "\" failed to load, so the app runs without its native part.", error);
                 context.unregisterAll();
                 continue;
             }
-            Log.i(TAG, "Loaded the plugin " + id + " " + manifest.optString("version", "without a plugin.json") + ".");
+            Log.i(TAG, "Loaded the plugin \"" + id + "\" " + manifest.optString("version", "without a \"plugin.json\"") + ".");
             all.add(new Loaded(plugin, context));
         }
         loaded = Collections.unmodifiableList(all);
     }
 
-    // Called from JNI_OnLoad of the native library, which reports the plugins to the engine.
+    // Called from `JNI_OnLoad` of the native library, which reports the plugins to the engine.
     static byte[] ids() {
         JSONArray ids = new JSONArray();
         for (Loaded entry : loaded) {
@@ -137,7 +137,7 @@ final class HaylenPlugins {
         }
     }
 
-    // The manifest merges the dev.haylen.plugin.<id> entries of every plugin module, each naming the class of its plugin.
+    // The manifest merges the `dev.haylen.plugin.<id>` entries of every plugin module, each naming the class of its plugin.
     private static Map<String, String> readClasses(Application application) {
         Bundle metaData;
         try {
@@ -167,12 +167,12 @@ final class HaylenPlugins {
             }
             return new JSONObject(new String(text.toByteArray(), StandardCharsets.UTF_8));
         } catch (IOException | JSONException error) {
-            Log.w(TAG, "The package has no readable " + path + ": " + error.getMessage());
+            Log.w(TAG, "The package has no readable \"" + path + "\": " + error.getMessage());
             return new JSONObject();
         }
     }
 
-    // The plugins keep the order of app.json, every plugin after the plugins it requires, as make.py orders them, and plugins that app.json does not list follow by id.
+    // The plugins keep the order of `app.json`, every plugin after the plugins it requires, as `make.py` orders them, and plugins that `app.json` does not list follow by id.
     private static List<String> order(Set<String> ids, JSONObject values, Map<String, JSONObject> manifests) {
         Set<String> ordered = new LinkedHashSet<>();
         if (values != null) {
@@ -201,17 +201,17 @@ final class HaylenPlugins {
         try {
             Class<?> type = Class.forName(className, true, application.getClassLoader());
             if (!HaylenPlugin.class.isAssignableFrom(type)) {
-                Log.e(TAG, "The plugin " + id + " names the class " + className + ", which does not extend dev.haylen.HaylenPlugin, so the app runs without its native part.");
+                Log.e(TAG, "The plugin \"" + id + "\" names the class \"" + className + "\", which does not extend \"dev.haylen.HaylenPlugin\", so the app runs without its native part.");
                 return null;
             }
             return type.asSubclass(HaylenPlugin.class).getDeclaredConstructor().newInstance();
         } catch (ReflectiveOperationException | LinkageError error) {
-            Log.e(TAG, "The plugin " + id + " names the class " + className + ", which cannot be found or created with a public constructor without parameters, so the app runs without its native part.", error);
+            Log.e(TAG, "The plugin \"" + id + "\" names the class \"" + className + "\", which cannot be found or created with a public constructor without parameters, so the app runs without its native part.", error);
             return null;
         }
     }
 
-    // The values that app.json gives the plugin, with the default of every parameter of its plugin.json that the app leaves out.
+    // The values that `app.json` gives the plugin, with the default of every parameter of its `plugin.json` that the app leaves out.
     private static JSONObject config(JSONObject values, String id, JSONObject manifest) {
         JSONObject given = values != null ? values.optJSONObject(id) : null;
         JSONObject config = new JSONObject();
@@ -234,7 +234,7 @@ final class HaylenPlugins {
                 }
             }
         } catch (JSONException error) {
-            throw new IllegalStateException("The values of the plugin " + id + " cannot be copied.", error);
+            throw new IllegalStateException("The values of the plugin \"" + id + "\" cannot be copied.", error);
         }
         return config;
     }

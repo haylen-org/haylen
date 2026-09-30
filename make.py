@@ -35,7 +35,7 @@ SAMPLES_DIR = ROOT / "samples"
 TEMPLATES_DIR = ROOT / "templates"
 APP_TEMPLATE = TEMPLATES_DIR / "app"
 PLUGIN_TEMPLATE = TEMPLATES_DIR / "plugin"
-# Every folder here is the project template of one platform, which make.py new copies into platform/<name> of an app.
+# Every folder here is the project template of one platform, which `make.py new` copies into `platform/<name>` of an app.
 PLATFORM_TEMPLATES_DIR = TEMPLATES_DIR / "platform"
 ARTIFACTS_DIR = BUILD_ROOT / "artifacts"
 ENGINE_BUILDS_DIR = BUILD_ROOT / "engine"
@@ -43,12 +43,12 @@ APPS_DIR = BUILD_ROOT / "apps"
 CPP_BUILDS_DIR = BUILD_ROOT / "cpp"
 ANDROID_LIBRARY_PROJECT = ENGINE_DIR / "platform" / "android"
 ENGINE_LOGO = PLATFORM_TEMPLATES_DIR / "web" / "haylen-logo.svg"
-# The web runtime loads the AudioWorklet processor of its audio output from next to its script, so every web build ships it beside the .js and .wasm files.
+# The web runtime loads the AudioWorklet processor of its audio output from next to its script, so every web build ships it beside the `.js` and `.wasm` files.
 WEB_AUDIO_WORKLET = "haylen-audio-worklet.js"
 DEFAULT_APP = "games/tiny-island"
 
 SHDC_COMMIT = "11d0cf678105d614d675e6d9bd2aaf3eeff12f8c"
-# App shaders include the shader library as haylen/material.glsl, which sokol-shdc finds from its working directory.
+# App shaders include the shader library as `haylen/material.glsl`, which sokol-shdc finds from its working directory.
 SHADER_LIBRARY_DIR = ENGINE_DIR / "shaders" / "include"
 SHADER_SLANGS = "glsl430:glsl300es:hlsl5:metal_macos:metal_ios:metal_sim:wgsl"
 # Every material compiles once per kind of draw and once more for lit canvases, and the engine picks the program of a draw by these names.
@@ -58,17 +58,17 @@ SHADER_ENGINE_BLOCKS = {"haylen_vs_params", "haylen_lit_params"}
 SHADER_ENGINE_TEXTURES = {"sprite_texture"}
 SHADER_WATCH_SECONDS = 0.5
 GRADLE_VERSION = "9.8.0"
-# XcodeGen generates the Apple project again for apps whose plugins add to it. The hash is the one of the xcodegen.zip asset of the release.
+# XcodeGen generates the Apple project again for apps whose plugins add to it. The hash is the one of the `xcodegen.zip` asset of the release.
 XCODEGEN_VERSION = "2.46.0"
 XCODEGEN_SHA256 = "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
 ANDROID_NDK_VERSION = "30.0.16248370"
 EMSDK_VERSION = "6.0.10"
-# miniaudio plays through AAudio from Android 8.1 on, and the engine builds it without OpenSL ES, like the minSdk of the Android library and template.
+# The miniaudio library plays through AAudio from Android 8.1 on, and the engine builds it without OpenSL ES, like the `minSdk` of the Android library and template.
 ANDROID_MIN_SDK = 27
-# The ABIs of the haylen Android library, which the native libraries of an app match: 32-bit ARM keeps the Android TV devices that still run it, and x86_64 serves emulators.
+# The ABIs of the `haylen` Android library, which the native libraries of an app match: 32-bit ARM keeps the Android TV devices that still run it, and `x86_64` serves emulators.
 ANDROID_ABIS = ("arm64-v8a", "armeabi-v7a", "x86_64")
-# The oldest Apple systems the engine runs on: std::format with floating point, which the engine formats text and logs with, reaches their C++ library in iOS and tvOS 16.3 and macOS 13.3.
-# Mac Catalyst takes its minimum, the iOS version, from engine/cmake/haylen-catalyst.toolchain.cmake.
+# The oldest Apple systems the engine runs on: `std::format` with floating point, which the engine formats text and logs with, reaches their C++ library in iOS and tvOS 16.3 and macOS 13.3.
+# Mac Catalyst takes its minimum, the iOS version, from `engine/cmake/haylen-catalyst.toolchain.cmake`.
 APPLE_MINIMUM_VERSIONS = {"iOS": "16.3", "tvOS": "16.3", "macOS": "13.3"}
 
 PLATFORMS = ["macos", "linux", "windows", "ios", "tvos", "android", "web", "web-webgl2"]
@@ -80,16 +80,16 @@ FORMAT_EXTENSIONS = {".h", ".hpp", ".c", ".cpp", ".m", ".mm"}
 FORMAT_ROOTS = ["engine/include", "engine/src", "engine/tests", "samples", "templates"]
 # Build outputs inside those roots, such as the native tree Gradle keeps in each Android project, hold generated and third-party code.
 FORMAT_SKIPPED_FOLDERS = {".cxx", ".gradle", "build", "_deps"}
-# A package is app.json with the Lua modules under source and the assets under content, and nothing else in its folder ships.
+# A package is `app.json` with the Lua modules under `source` and the assets under `content`, and nothing else in its folder ships.
 PACKAGE_FOLDERS = ("source", "content")
 # Build outputs and Finder files that never travel with a copied platform folder or plugin.
 COPY_IGNORED = shutil.ignore_patterns(".DS_Store", ".git", "build", ".gradle", ".cxx", ".kotlin")
 # Engine files that never reach an artifact, so editing them keeps the artifacts fresh.
 ENGINE_HASH_SKIPPED = {"tests", "bench", "build", ".cxx", ".gradle", ".kotlin", ".DS_Store"}
-# The benchmarks of make.py bench that are plain executables on the CPU, by suite.
+# The benchmarks of `make.py bench` that are plain executables on the CPU, by suite.
 CPU_BENCHMARKS = {"algorithms": "haylen-algorithm-benchmark", "procedural": "haylen-procedural-benchmark"}
 
-# The slices of Haylen.xcframework and the architectures each one joins with lipo.
+# The slices of `Haylen.xcframework` and the architectures each one joins with lipo.
 APPLE_SLICES = {
     "macos": ["arm64", "x86_64"],
     "ios": ["arm64"],
@@ -144,7 +144,7 @@ def host_name() -> str:
     system = host_platform.system().lower()
     names = {"darwin": "macos", "linux": "linux", "windows": "windows"}
     if system not in names:
-        raise BuildError(f"Unsupported host system: {system}")
+        raise BuildError(f'Unsupported host system "{system}".')
     return names[system]
 
 
@@ -154,7 +154,7 @@ def host_arch() -> str:
         return "arm64"
     if machine in {"x86_64", "amd64"}:
         return "x64"
-    raise BuildError(f"Unsupported host architecture: {machine}")
+    raise BuildError(f'Unsupported host architecture "{machine}".')
 
 
 def executable_name(name: str) -> str:
@@ -168,11 +168,11 @@ def engine_version() -> str:
 def download(url: str, target: Path, sha256: str | None = None) -> None:
     """Downloads a file and, when a hash is pinned, deletes the download and fails unless its SHA-256 matches."""
     target.parent.mkdir(parents=True, exist_ok=True)
-    print(f"Downloading {url}", flush=True)
+    print(f'Downloading "{url}".', flush=True)
     urllib.request.urlretrieve(url, target)
     if sha256 and hashlib.sha256(target.read_bytes()).hexdigest() != sha256:
         target.unlink()
-        raise BuildError(f"{url} does not match its pinned SHA-256 {sha256}, so make.py deleted the download.")
+        raise BuildError(f'The file "{url}" does not match its pinned SHA-256 "{sha256}", so "make.py" deleted the download.')
 
 
 def ensure_shdc() -> Path:
@@ -184,7 +184,7 @@ def ensure_shdc() -> Path:
     folders = {("macos", "arm64"): "osx_arm64", ("macos", "x64"): "osx", ("linux", "arm64"): "linux_arm64", ("linux", "x64"): "linux", ("windows", "x64"): "win32"}
     folder = folders.get((host_name(), host_arch()))
     if folder is None:
-        raise BuildError("sokol-shdc has no prebuilt binary for this host.")
+        raise BuildError("The sokol-shdc tool has no prebuilt binary for this host.")
 
     download(f"https://raw.githubusercontent.com/floooh/sokol-tools-bin/{SHDC_COMMIT}/bin/{folder}/{executable}", target)
     target.chmod(0o755)
@@ -207,7 +207,7 @@ def ensure_gradle() -> Path:
 
 
 def ensure_xcodegen() -> Path:
-    """Returns the pinned XcodeGen, whose release zip unpacks into .tools/xcodegen with the setting presets next to its binary."""
+    """Returns the pinned XcodeGen, whose release zip unpacks into `.tools/xcodegen` with the setting presets next to its binary."""
     target = TOOLS_DIR / "xcodegen" / "bin" / "xcodegen"
     if target.exists():
         return target
@@ -245,7 +245,7 @@ def android_sdk() -> Path:
         value = os.environ.get(variable)
         if value and Path(value).exists():
             return Path(value)
-    raise BuildError("The Android SDK was not found. Set ANDROID_HOME to its folder.")
+    raise BuildError('The Android SDK was not found. Set "ANDROID_HOME" to its folder.')
 
 
 def android_ndk() -> Path:
@@ -253,7 +253,7 @@ def android_ndk() -> Path:
     candidate = android_sdk() / "ndk" / ANDROID_NDK_VERSION
     if candidate.exists():
         return candidate
-    raise BuildError(f"Android NDK {ANDROID_NDK_VERSION} was not found in {android_sdk() / 'ndk'}. Install it with: sdkmanager \"ndk;{ANDROID_NDK_VERSION}\"")
+    raise BuildError(f"The Android NDK {ANDROID_NDK_VERSION} was not found in \"{android_sdk() / 'ndk'}\". Install it with \"sdkmanager 'ndk;{ANDROID_NDK_VERSION}'\".")
 
 
 def adb() -> Path:
@@ -270,7 +270,7 @@ def require_host(platform_name: str) -> None:
     apple = {"macos", "ios", "tvos", "apple", "ios-simulator", "tvos-simulator", "catalyst"}
     required = "macos" if platform_name in apple else {"linux": "linux", "windows": "windows"}.get(platform_name)
     if required is not None and host_name() != required:
-        raise BuildError(f"{platform_name} builds require a {required} host.")
+        raise BuildError(f'Builds for "{platform_name}" require a "{required}" host.')
 
 
 def build_dir(platform_name: str, config: str, sanitizers: str | None = None) -> Path:
@@ -284,14 +284,14 @@ def build_folder_name(folder: Path) -> str:
 
 
 def requested_backend(args: argparse.Namespace) -> str:
-    """Returns the HAYLEN_RENDER_BACKEND a build asks for. Each web platform always uses its own backend."""
+    """Returns the `HAYLEN_RENDER_BACKEND` a build asks for. Each web platform always uses its own backend."""
     if args.platform in WEB_PLATFORMS:
         return "WGPU" if args.platform == "web" else "GLES3"
     return args.backend or "AUTO"
 
 
 def requested_sanitizers(args: argparse.Namespace) -> str:
-    """Returns the HAYLEN_SANITIZERS a build asks for: OFF, ADDRESS or THREAD."""
+    """Returns the `HAYLEN_SANITIZERS` a build asks for: `OFF`, `ADDRESS` or `THREAD`."""
     return (args.sanitizers or "off").upper()
 
 
@@ -346,7 +346,7 @@ def cmake_cache_value(directory: Path, name: str) -> str:
     for line in (directory / "CMakeCache.txt").read_text().splitlines():
         if line.startswith(prefix):
             return line.split("=", 1)[1]
-    raise BuildError(f"{name} is missing from the CMake cache in {directory}.")
+    raise BuildError(f'The variable "{name}" is missing from the CMake cache in "{directory}".')
 
 
 def ensure_configured(args: argparse.Namespace) -> Path:
@@ -377,7 +377,7 @@ def llvm_tool(name: str) -> str:
         return capture(["xcrun", "--find", name]).strip()
     tool = shutil.which(name)
     if tool is None:
-        raise BuildError(f"{name} was not found. Install LLVM to produce coverage reports.")
+        raise BuildError(f'The tool "{name}" was not found. Install LLVM to produce coverage reports.')
     return tool
 
 
@@ -425,7 +425,7 @@ LAMBDA_START = re.compile(r"\]\s*(\([^)]*\))?\s*(mutable\s*)?(noexcept\s*)?(->\s
 
 
 def unguarded_lambdas(files: list[Path]) -> list[str]:
-    """Lists multi-line lambdas outside clang-format off regions, since clang-format cannot lay them out acceptably."""
+    """Lists multi-line lambdas outside `clang-format off` regions, since clang-format cannot lay them out acceptably."""
     findings: list[str] = []
     for path in files:
         guarded = False
@@ -436,14 +436,14 @@ def unguarded_lambdas(files: list[Path]) -> list[str]:
             elif stripped == "// clang-format on":
                 guarded = False
             elif not guarded and LAMBDA_START.search(stripped) and not stripped.startswith(("//", "[[", "#")):
-                findings.append(f"{path.relative_to(ROOT)}:{number}: multi-line lambda outside clang-format off")
+                findings.append(f'{path.relative_to(ROOT)}:{number}: Multi-line lambda outside "clang-format off".')
     return findings
 
 
 def command_format(args: argparse.Namespace) -> None:
     clang_format = shutil.which("clang-format")
     if clang_format is None:
-        raise BuildError("clang-format was not found on PATH.")
+        raise BuildError('The clang-format tool was not found on "PATH".')
 
     files = format_sources()
     command = [clang_format, "--style=file"] + (["--dry-run", "--Werror"] if args.check else ["-i"])
@@ -454,7 +454,7 @@ def command_format(args: argparse.Namespace) -> None:
     for finding in findings:
         print(finding)
     if findings and args.check:
-        raise BuildError(f"{len(findings)} multi-line lambdas need clang-format off and on markers.")
+        raise BuildError(f'{len(findings)} multi-line lambdas need "clang-format off" and "on" markers.')
 
 
 def command_assets(args: argparse.Namespace) -> None:
@@ -489,7 +489,7 @@ def sdk_dir(platform_name: str, config: str) -> Path:
 
 
 def command_sdk(args: argparse.Namespace) -> None:
-    """Builds the engine SDK for a platform and installs it where find_package(haylen) finds it."""
+    """Builds the engine SDK for a platform and installs it where `find_package(haylen)` finds it."""
     options = build_options(args.platform, args.config, jobs=args.jobs)
     directory = BUILD_ROOT / f"sdk-build-{args.platform}-{args.config.lower()}"
     command, env = configure_command(options)
@@ -526,7 +526,7 @@ def cmake_app_executable(directory: Path, target: str) -> Path:
 
 
 def engine_sources_hash() -> str:
-    """Hashes every engine file that reaches an artifact, so make.py knows when the artifacts are stale."""
+    """Hashes every engine file that reaches an artifact, so `make.py` knows when the artifacts are stale."""
     digest = hashlib.sha256()
     for folder, subfolders, files in os.walk(ENGINE_DIR):
         subfolders[:] = sorted(name for name in subfolders if name not in ENGINE_HASH_SKIPPED)
@@ -565,7 +565,7 @@ def apple_slice_options(slice_name: str, arch: str) -> list[str]:
 
 
 def build_apple_artifacts(config: str, jobs: int) -> None:
-    """Builds one static library per architecture, joins the architectures of every slice with lipo and creates Haylen.xcframework."""
+    """Builds one static library per architecture, joins the architectures of every slice with lipo and creates `Haylen.xcframework`."""
     require_host("apple")
     libraries: list[Path] = []
     headers: Path | None = None
@@ -598,7 +598,7 @@ def build_apple_artifacts(config: str, jobs: int) -> None:
 
 
 def build_android_players(config: str, jobs: int) -> Path:
-    """Builds libhaylen.so, the Lua player, for one ABI after the other with every job, so the configures never write into the shared CPM sources together and the compilers stay within the jobs, and gathers the libraries in the jniLibs layout."""
+    """Builds `libhaylen.so`, the Lua player, for one ABI after the other with every job, so the configures never write into the shared CPM sources together and the compilers stay within the jobs, and gathers the libraries in the `jniLibs` layout."""
     libraries = ENGINE_BUILDS_DIR / f"android-{config.lower()}" / "jniLibs"
     shutil.rmtree(libraries, ignore_errors=True)
     for abi in ANDROID_ABIS:
@@ -611,7 +611,7 @@ def build_android_players(config: str, jobs: int) -> Path:
 
 
 def build_android_artifacts(config: str, jobs: int) -> None:
-    """Packages the players of every ABI with the Java side into the haylen Android library, together with the Kotlin transport of Varn from where CPM placed it for the native build, and publishes it to the local Maven repository of the artifacts."""
+    """Packages the players of every ABI with the Java side into the `haylen` Android library, together with the Kotlin transport of Varn from where CPM placed it for the native build, and publishes it to the local Maven repository of the artifacts."""
     libraries = build_android_players(config, jobs)
     varn = cmake_cache_value(ENGINE_BUILDS_DIR / f"android-{ANDROID_ABIS[0]}-{config.lower()}", "varn_SOURCE_DIR")
     maven = ARTIFACTS_DIR / "android" / "maven"
@@ -651,7 +651,7 @@ def build_artifacts(platform_name: str, config: str, jobs: int) -> None:
     sources = engine_sources_hash()
     ARTIFACT_BUILDERS[platform_name](config, jobs)
     write_manifest(platform_name, config, sources)
-    print(f"The {platform_name} artifacts of Haylen {engine_version()} are in {ARTIFACTS_DIR}")
+    print(f'The "{platform_name}" artifacts of Haylen {engine_version()} are in "{ARTIFACTS_DIR}".')
 
 
 def ensure_artifacts(platform_name: str, config: str, jobs: int) -> None:
@@ -659,7 +659,7 @@ def ensure_artifacts(platform_name: str, config: str, jobs: int) -> None:
     entry = read_manifest()["platforms"].get(platform_name)
     if entry == {"config": config, "sources": engine_sources_hash()}:
         return
-    print(f"The {platform_name} artifacts are missing or stale, so make.py builds them first.", flush=True)
+    print(f'The "{platform_name}" artifacts are missing or stale, so "make.py" builds them first.', flush=True)
     build_artifacts(platform_name, config, jobs)
 
 
@@ -668,7 +668,7 @@ def command_engine(args: argparse.Namespace) -> None:
         build_artifacts(platform_name, args.config, args.jobs)
 
 
-# Apps: a package folder assembled with a platform template into a project under build/apps, then built and launched.
+# Apps: a package folder assembled with a platform template into a project under `build/apps`, then built and launched.
 
 
 def resolve_app(value: str) -> Path:
@@ -678,15 +678,15 @@ def resolve_app(value: str) -> Path:
         candidate = SAMPLES_DIR / value
     folder = candidate.resolve()
     if not (folder / "app.json").is_file():
-        raise BuildError(f"{value} is neither an app folder with an app.json nor a sample path from samples/, such as games/tiny-island. List them with: python3 make.py samples")
+        raise BuildError(f'The path "{value}" is neither an app folder with an "app.json" nor a sample path from "samples/", such as "games/tiny-island". List them with "python3 make.py samples".')
     return folder
 
 
 def parse_color(text: str) -> tuple[int, int, int, int]:
-    """Reads #RRGGBB or #AARRGGBB like the engine and returns red, green, blue and alpha."""
+    """Reads `#RRGGBB` or `#AARRGGBB` like the engine and returns red, green, blue and alpha."""
     digits = text.removeprefix("#")
     if len(digits) not in (6, 8) or not re.fullmatch(r"[0-9A-Fa-f]+", digits):
-        raise BuildError(f"{text} is not a color. Colors are #RRGGBB or #AARRGGBB.")
+        raise BuildError(f'The value "{text}" is not a color. Colors are "#RRGGBB" or "#AARRGGBB".')
     value = int(digits, 16)
     if len(digits) == 6:
         return (value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF, 0xFF
@@ -694,22 +694,22 @@ def parse_color(text: str) -> tuple[int, int, int, int]:
 
 
 class App:
-    """What the platform projects need from an app folder, with the defaults the engine applies to app.json, and its plugins with their values for the platform it is built for."""
+    """What the platform projects need from an app folder, with the defaults the engine applies to `app.json`, and its plugins with their values for the platform it is built for."""
 
     def __init__(self, folder: Path, platform: str) -> None:
         self.folder = folder
         document = json.loads((folder / "app.json").read_text())
         for key in ("name", "identifier", "version"):
             if not isinstance(document.get(key), str) or not document[key]:
-                raise BuildError(f"The app.json of {folder} needs a {key} to build an app.")
+                raise BuildError(f'The "app.json" of "{folder}" needs a "{key}" to build an app.')
         self.name: str = document["name"]
         self.identifier: str = document["identifier"]
         self.version: str = document["version"]
         self.orientation: str = document.get("orientation", "landscape")
         if self.orientation not in ANDROID_ORIENTATIONS:
-            raise BuildError(f"The orientation of {folder}/app.json must be landscape, portrait or any.")
+            raise BuildError(f'The orientation of "{folder}/app.json" must be "landscape", "portrait" or "any".')
         if not re.fullmatch(r"\d+(\.\d+){0,2}", self.version):
-            raise BuildError(f"The version of {folder}/app.json must be one to three numbers separated by dots, such as 1.2.0.")
+            raise BuildError(f'The version of "{folder}/app.json" must be one to three numbers separated by dots, such as "1.2.0".')
 
         # A transparent window clears to transparent, and an app without a taskbar button also leaves out its Dock icon on macOS.
         window = document.get("window", {})
@@ -721,20 +721,20 @@ class App:
         if splash.get("logo"):
             self.splash_logo = folder / "content" / splash["logo"]
             if not self.splash_logo.is_file():
-                raise BuildError(f"The splash logo {self.splash_logo} of {folder}/app.json does not exist.")
+                raise BuildError(f'The splash logo "{self.splash_logo}" of "{folder}/app.json" does not exist.')
 
         native = document.get("native", {})
         if not isinstance(native, dict):
-            raise BuildError(f"The native section of {folder}/app.json maps library names to their files or CMake projects.")
+            raise BuildError(f'The "native" section of "{folder}/app.json" maps library names to their files or CMake projects.')
         self.native = [NativeLibrary.parse(folder, name, entry, folder / "app.json") for name, entry in native.items()]
 
-        # The native library of a plugin joins the ones of app.json, so every platform builds and places it the same way.
+        # The native library of a plugin joins the ones of `app.json`, so every platform builds and places it the same way.
         self.plugins, self.plugin_values = load_app_plugins(folder, document.get("plugins", {}), platform)
         for plugin in self.plugins:
             if plugin.native is None:
                 continue
             if any(library.name == plugin.native.name for library in self.native):
-                raise BuildError(f"The plugin {plugin.id} adds the native library {plugin.native.name}, which {folder}/app.json or another plugin already names.")
+                raise BuildError(f'The plugin "{plugin.id}" adds the native library "{plugin.native.name}", which "{folder}/app.json" or another plugin already names.')
             self.native.append(plugin.native)
 
     @property
@@ -743,28 +743,28 @@ class App:
 
     @property
     def build_folder(self) -> Path:
-        """The folder under build/apps that holds everything make.py builds for the app, which no other app shares."""
+        """The folder under `build/apps` that holds everything `make.py` builds for the app, which no other app shares."""
         return APPS_DIR / build_folder_name(self.folder)
 
     @property
     def version_code(self) -> int:
-        """Android needs an integer that grows with every version, so 1.2.3 becomes 1002003."""
+        """Android needs an integer that grows with every version, so `1.2.3` becomes `1002003`."""
         parts = [int(part) for part in self.version.split(".")] + [0, 0]
         return parts[0] * 1_000_000 + parts[1] * 1_000 + parts[2]
 
 
 def package_files(folder: Path) -> list[Path]:
-    """Lists the files of the package of an app folder: app.json, source, content and, for every plugin that app.json lists, its plugin.json and its source folder."""
+    """Lists the files of the package of an app folder: `app.json`, `source`, `content` and, for every plugin that `app.json` lists, its `plugin.json` and its `source` folder."""
     plugins = json.loads((folder / "app.json").read_text()).get("plugins", {})
     if not isinstance(plugins, dict):
-        raise BuildError(f"The plugins section of {folder}/app.json maps plugin ids to objects of parameter values.")
+        raise BuildError(f'The "plugins" section of "{folder}/app.json" maps plugin ids to objects of parameter values.')
 
     roots = [folder / name for name in PACKAGE_FOLDERS]
     manifests = []
     for identifier in plugins:
         manifest = folder / "plugins" / identifier / "plugin.json"
         if not manifest.is_file():
-            raise BuildError(f"{folder}/app.json lists the plugin {identifier}, whose plugins/{identifier}/plugin.json does not exist. Add it with: python3 make.py plugin add {identifier} --app {folder}")
+            raise BuildError(f'The file "{folder}/app.json" lists the plugin "{identifier}", whose "plugins/{identifier}/plugin.json" does not exist. Add it with "python3 make.py plugin add {identifier} --app {folder}".')
         manifests.append(manifest)
         roots.append(manifest.parent / "source")
     return [folder / "app.json", *sorted([*manifests, *(path for root in roots for path in root.rglob("*") if path.is_file() and path.name != ".DS_Store")])]
@@ -784,19 +784,19 @@ def copy_package(app: App, destination: Path) -> list[str]:
 
 def package_folder(folder: Path, output: Path) -> None:
     if not (folder / "app.json").is_file():
-        raise BuildError(f"{folder} is not an app package because it has no app.json.")
+        raise BuildError(f'The folder "{folder}" is not an app package because it has no "app.json".')
     files = package_files(folder)
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
         for path in files:
             archive.write(path, path.relative_to(folder).as_posix())
-    print(f"Packaged {folder} into {output}")
+    print(f'Packaged "{folder}" into "{output}".')
 
 
-# Native libraries: what the native section of app.json lists, prebuilt or built from a CMake project, placed where each platform package loads it.
+# Native libraries: what the `native` section of `app.json` lists, prebuilt or built from a CMake project, placed where each platform package loads it.
 
 NATIVE_PLATFORMS = ("macos", "ios", "tvos", "android", "windows", "linux")
-# The slice of APPLE_SLICES that each Apple run platform builds, and the target and platform whose embed phase ships its libraries in App.xcodeproj.
+# The slice of `APPLE_SLICES` that each Apple run platform builds, and the target and platform whose embed phase ships its libraries in `App.xcodeproj`.
 APPLE_NATIVE_SLICES = {"macos": "macos", "catalyst": "ios-maccatalyst", "ios": "ios", "ios-simulator": "ios-simulator", "tvos": "tvos", "tvos-simulator": "tvos-simulator"}
 APPLE_NATIVE_KEYS = {"macos": "macOS-macosx", "ios-maccatalyst": "iOS-macosx", "ios": "iOS-iphoneos", "ios-simulator": "iOS-iphonesimulator", "tvos": "tvOS-appletvos", "tvos-simulator": "tvOS-appletvsimulator"}
 XCFRAMEWORK_SLICES = {"macos": ("macos", None), "ios-maccatalyst": ("ios", "maccatalyst"), "ios": ("ios", None), "ios-simulator": ("ios", "simulator"), "tvos": ("tvos", None), "tvos-simulator": ("tvos", "simulator")}
@@ -805,7 +805,7 @@ FRAMEWORK_PLATFORMS = {"ios": "iPhoneOS", "ios-simulator": "iPhoneSimulator", "t
 
 @dataclasses.dataclass(frozen=True)
 class NativeLibrary:
-    """A native library of an app: prebuilt files per platform, or a target of a CMake project that make.py builds for each listed platform. iOS and tvOS may link it statically, and then the symbols that Lua reaches are listed."""
+    """A native library of an app: prebuilt files per platform, or a target of a CMake project that `make.py` builds for each listed platform. On iOS and tvOS, apps may link it statically, and then the symbols that Lua reaches are listed."""
 
     name: str
     files: dict[str, Path]
@@ -816,34 +816,34 @@ class NativeLibrary:
 
     @staticmethod
     def parse(folder: Path, name: str, entry: object, source: Path) -> "NativeLibrary":
-        """Reads an entry of the native section of app.json, or the native section of a plugin, whose paths are relative to the folder of the file."""
-        where = f"The native library {name} in {source}"
+        """Reads an entry of the `native` section of `app.json`, or the `native` section of a plugin, whose paths are relative to the folder of the file."""
+        where = f'The native library "{name}" in "{source}"'
         if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) or not isinstance(entry, dict):
             raise BuildError(f"{where} needs a name of letters, digits and underscores and an object with its files or its CMake project.")
         unknown = set(entry) - {"files", "cmake", "platforms", "link", "symbols"}
         if unknown:
-            raise BuildError(f"{where} has unknown keys: {', '.join(sorted(unknown))}.")
+            raise BuildError(f"{where} has unknown keys: {', '.join(f'"{key}"' for key in sorted(unknown))}.")
         if ("files" in entry) == ("cmake" in entry) or ("cmake" in entry) != ("platforms" in entry):
             raise BuildError(f"{where} lists either its prebuilt files by platform or a CMake project with the platforms it builds for.")
 
         files = {platform: folder / path for platform, path in entry.get("files", {}).items()}
         platforms = tuple(entry.get("platforms", files.keys()))
         if "android" in files and not files["android"].is_dir():
-            raise BuildError(f"{where} gives Android a folder with a subfolder of libraries for each ABI, like jniLibs.")
+            raise BuildError(f'{where} gives Android a folder with a subfolder of libraries for each ABI, like "jniLibs".')
         for platform in platforms:
             if platform not in NATIVE_PLATFORMS:
-                raise BuildError(f"{where} names the unknown platform {platform}. Native libraries ship to {', '.join(NATIVE_PLATFORMS)}.")
+                raise BuildError(f"{where} names the unknown platform \"{platform}\". Native libraries ship to {', '.join(f'"{name}"' for name in NATIVE_PLATFORMS)}.")
         for path in files.values():
             if not path.exists():
-                raise BuildError(f"{where} lists {path}, which does not exist.")
+                raise BuildError(f'{where} lists "{path}", which does not exist.')
         cmake = folder / entry["cmake"] if "cmake" in entry else None
         if cmake is not None and not (cmake / "CMakeLists.txt").is_file():
-            raise BuildError(f"{where} names the CMake project {cmake}, which has no CMakeLists.txt.")
+            raise BuildError(f'{where} names the CMake project "{cmake}", which has no "CMakeLists.txt".')
 
         link = entry.get("link", "dynamic")
         symbols = tuple(entry.get("symbols", ()))
         if link not in ("dynamic", "static"):
-            raise BuildError(f"{where} links dynamic or static, not {link}.")
+            raise BuildError(f'{where} links "dynamic" or "static", not "{link}".')
         if link == "static" and (not set(platforms) <= {"ios", "tvos"} or not symbols):
             raise BuildError(f"{where} links statically, which iOS and tvOS apps do, and lists the symbols that Lua calls.")
         return NativeLibrary(name, files, cmake, platforms, link == "static", symbols)
@@ -853,7 +853,7 @@ class NativeLibrary:
 
 
 def build_native_target(library: NativeLibrary, directory: Path, options: list[str], jobs: int) -> Path:
-    """Configures and builds the CMake target of a library, which shares the name of the library, and returns the folder with its output. BUILD_SHARED_LIBS picks the kind of library, and HAYLEN_INCLUDE_DIR leads to haylen/platform/native/HaylenNative.h."""
+    """Configures and builds the CMake target of a library, which shares the name of the library, and returns the folder with its output. The variable `BUILD_SHARED_LIBS` picks the kind of library, and `HAYLEN_INCLUDE_DIR` leads to `haylen/platform/native/HaylenNative.h`."""
     output = directory / "out"
     command = ["cmake", "-S", library.cmake, "-B", directory / "build", "-DCMAKE_BUILD_TYPE=Release", f"-DBUILD_SHARED_LIBS={'OFF' if library.static else 'ON'}", f"-DHAYLEN_INCLUDE_DIR={ENGINE_DIR / 'include'}"]
     command += [f"-DCMAKE_{kind}_OUTPUT_DIRECTORY{suffix}={output}" for kind in ("LIBRARY", "ARCHIVE", "RUNTIME") for suffix in ("", "_RELEASE")]
@@ -904,7 +904,7 @@ def prebuilt_apple_native(path: Path, slice_name: str) -> Path:
     for entry in plistlib.loads((path / "Info.plist").read_bytes())["AvailableLibraries"]:
         if entry["SupportedPlatform"] == platform and entry.get("SupportedPlatformVariant") == variant:
             return path / entry["LibraryIdentifier"] / entry["LibraryPath"]
-    raise BuildError(f"{path} has no slice for {slice_name}.")
+    raise BuildError(f'The xcframework "{path}" has no slice for "{slice_name}".')
 
 
 def copy_into(source: Path, folder: Path) -> Path:
@@ -919,7 +919,7 @@ def copy_into(source: Path, folder: Path) -> Path:
 
 
 def prepare_apple_native(app: App, project: Path, run_platform: str, jobs: int) -> list[str]:
-    """Places the libraries of an Apple run in native/ with the file lists of the embed phase of every target and platform, writes the table of linked symbols into source/ and returns the settings that link static libraries."""
+    """Places the libraries of an Apple run in `native/` with the file lists of the embed phase of every target and platform, writes the table of linked symbols into `source/` and returns the settings that link static libraries."""
     slice_name = APPLE_NATIVE_SLICES[run_platform]
     key = APPLE_NATIVE_KEYS[slice_name]
     platform = "macos" if slice_name == "macos" else slice_name.split("-")[0]
@@ -929,7 +929,7 @@ def prepare_apple_native(app: App, project: Path, run_platform: str, jobs: int) 
         if not library.ships_to(platform):
             continue
         if library.static and slice_name == "ios-maccatalyst":
-            raise BuildError(f"Mac Catalyst loads dynamic libraries only, so the static library {library.name} does not ship there.")
+            raise BuildError(f'Mac Catalyst loads dynamic libraries only, so the static library "{library.name}" does not ship there.')
         source = build_apple_native(app, library, slice_name, jobs) if library.cmake else prebuilt_apple_native(library.files[platform], slice_name)
         placed = copy_into(source, project / "native" / key)
         if library.static:
@@ -944,7 +944,7 @@ def prepare_apple_native(app: App, project: Path, run_platform: str, jobs: int) 
     if not linked:
         return []
 
-    # Dead code stripping keeps what the table refers to, and the table lets haylen.native find the symbols without the app exporting them.
+    # Dead code stripping keeps what the table refers to, and the table lets `haylen.native` find the symbols without the app exporting them.
     target_name, platform_name = key.split("-")
     condition = "TARGET_OS_IOS && !TARGET_OS_MACCATALYST" if platform == "ios" else "TARGET_OS_TV"
     declarations = [f'extern "C" void {symbol}(void);' for library, _ in linked for symbol in library.symbols]
@@ -953,7 +953,7 @@ def prepare_apple_native(app: App, project: Path, run_platform: str, jobs: int) 
         entries = ", ".join(f'{{"{symbol}", reinterpret_cast<void*>(&{symbol})}}' for symbol in library.symbols)
         registrations.append(f'    haylen::platform::NativeLibraries::registerLinked("{library.name}", {{{entries}}});')
     table = [
-        "// Written by make.py from the native section of app.json. It links the symbols of the static native libraries into the app and registers them for haylen.native.",
+        "// Written by `make.py` from the `native` section of `app.json`. It links the symbols of the static native libraries into the app and registers them for `haylen.native`.",
         "#import <Foundation/Foundation.h>",
         "#include <TargetConditionals.h>",
         "",
@@ -983,7 +983,7 @@ def prepare_apple_native(app: App, project: Path, run_platform: str, jobs: int) 
 
 
 def prepare_android_native(app: App, project: Path, jobs: int) -> None:
-    """Places the libraries of an app in the jniLibs folders of the Android project, building each ABI one after the other."""
+    """Places the libraries of an app in the `jniLibs` folders of the Android project, building each ABI one after the other."""
     libraries = project / "app" / "src" / "main" / "jniLibs"
     for library in app.native:
         if not library.ships_to("android"):
@@ -1010,25 +1010,25 @@ def prepare_host_native(app: App, folder: Path, jobs: int) -> list[Path]:
         output = build_native_target(library, app.build_folder / "native" / library.name / platform, options, jobs)
         built = sorted(output.glob({"macos": f"lib{library.name}.dylib", "windows": f"*{library.name}.dll", "linux": f"lib{library.name}.so"}[platform]))
         if not built:
-            raise BuildError(f"The CMake target {library.name} of {library.cmake} built no shared library into {output}.")
+            raise BuildError(f'The CMake target "{library.name}" of "{library.cmake}" built no shared library into "{output}".')
         placed.append(copy_into(built[0], folder))
     return placed
 
 
-# Plugins: folders under plugins/ of an app that give Lua a capability implemented natively on each platform, which make.py validates, packages and assembles into the platform projects.
+# Plugins: folders under `plugins/` of an app that give Lua a capability implemented natively on each platform, which `make.py` validates, packages and assembles into the platform projects.
 
 PLUGIN_PLATFORMS = ("ios", "catalyst", "tvos", "macos", "android", "web", "windows", "linux")
 PLUGIN_KEYS = {"id", "name", "version", "description", "platforms", "requires", "parameters", "apple", "android", "web", "native"}
 PLUGIN_ID = re.compile(r"[a-z][a-z0-9]*(-[a-z0-9]+)*")
 PARAMETER_NAME = re.compile(r"[a-z][A-Za-z0-9]*")
-# A ${name} in the apple and android sections names a parameter, while shell expansions such as ${BUILD_DIR%/Build/*} are no references and stay as they are.
+# A `${name}` in the `apple` and `android` sections names a parameter, while shell expansions such as `${BUILD_DIR%/Build/*}` are no references and stay as they are.
 PARAMETER_REFERENCE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 # Each parameter type with the words that describe its values and the check of a value.
 PARAMETER_TYPES: dict[str, tuple[str, Callable[[object], bool]]] = {
     "string": ("a text", lambda value: isinstance(value, str)),
     "number": ("a number", lambda value: isinstance(value, (int, float)) and not isinstance(value, bool)),
     "integer": ("an integer", lambda value: isinstance(value, int) and not isinstance(value, bool)),
-    "boolean": ("true or false", lambda value: isinstance(value, bool)),
+    "boolean": ('"true" or "false"', lambda value: isinstance(value, bool)),
     "array": ("an array", lambda value: isinstance(value, list)),
     "object": ("an object", lambda value: isinstance(value, dict)),
     "file": ("the path of a file relative to the app folder", lambda value: isinstance(value, str) and value != ""),
@@ -1040,15 +1040,15 @@ OBJC_CLASS = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 GRADLE_PLUGIN_ID = re.compile(r"[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z][A-Za-z0-9_-]*)+")
 GRADLE_PLUGIN_VERSION = re.compile(r"[0-9A-Za-z._+-]+")
 PLACEHOLDER_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
-# The targets of the Apple project and the plugin platforms each one builds for, since the iOS target also builds the Mac Catalyst app. The folder of the Info.plist of a target is its name in lowercase.
+# The targets of the Apple project and the plugin platforms each one builds for, since the iOS target also builds the Mac Catalyst app. The folder of the `Info.plist` of a target is its name in lowercase.
 APPLE_PLUGIN_TARGETS = {"iOS": ("ios", "catalyst"), "tvOS": ("tvos",), "macOS": ("macos",)}
-# The entitlements file of each Apple plugin platform, <platform>/App.entitlements, signs these targets and SDK platforms.
+# The entitlements file of each Apple plugin platform, `<platform>/App.entitlements`, signs these targets and SDK platforms.
 APPLE_ENTITLEMENTS = {"ios": ("iOS_iphoneos", "iOS_iphonesimulator"), "catalyst": ("iOS_macosx",), "tvos": ("tvOS_appletvos", "tvOS_appletvsimulator"), "macos": ("macOS_macosx",)}
 
 
 @dataclasses.dataclass(frozen=True, eq=False)
 class Plugin:
-    """A plugin folder with its manifest, which make.py validated, and the native library it adds to the app."""
+    """A plugin folder with its manifest, which `make.py` validated, and the native library it adds to the app."""
 
     folder: Path
     manifest: dict
@@ -1075,14 +1075,14 @@ class Plugin:
 
     @staticmethod
     def load(folder: Path) -> "Plugin":
-        """Reads the plugin.json of a plugin folder and fails with every problem it finds, each with the path and the key."""
+        """Reads the `plugin.json` of a plugin folder and fails with every problem it finds, each with the path and the key."""
         path = folder / "plugin.json"
         if not path.is_file():
-            raise BuildError(f"{folder} is no plugin, because it has no plugin.json.")
+            raise BuildError(f'The folder "{folder}" is no plugin, because it has no "plugin.json".')
         try:
             manifest = json.loads(path.read_text())
         except json.JSONDecodeError as error:
-            raise BuildError(f"{path} is not valid JSON: {error}.") from error
+            raise BuildError(f'The file "{path}" is not valid JSON: {error}.') from error
         problems = PluginManifestCheck.problems_of(folder, manifest)
         if problems:
             raise BuildError("\n".join(f"{path}: {problem}" for problem in problems))
@@ -1091,7 +1091,7 @@ class Plugin:
 
 
 class PluginManifestCheck:
-    """Checks a plugin.json against the plugin format and collects every problem as its key and a sentence."""
+    """Checks a `plugin.json` against the plugin format and collects every problem as its key and a sentence."""
 
     def __init__(self, folder: Path, manifest: dict) -> None:
         self.folder = folder
@@ -1104,7 +1104,7 @@ class PluginManifestCheck:
     @staticmethod
     def problems_of(folder: Path, manifest: object) -> list[str]:
         if not isinstance(manifest, dict):
-            return ["plugin.json must hold an object."]
+            return ['The file "plugin.json" must hold an object.']
         check = PluginManifestCheck(folder, manifest)
         check.check_identity()
         check.check_parameters()
@@ -1115,11 +1115,11 @@ class PluginManifestCheck:
         return check.problems
 
     def report(self, key: str, message: str) -> None:
-        self.problems.append(f"{key}: {message}")
+        self.problems.append(f'The key "{key}" {message}')
 
     def check_keys(self, key: str, section: dict, allowed: set[str], required: set[str]) -> None:
         for name in sorted(set(section) - allowed):
-            self.report(f"{key}.{name}" if key else name, "is not a key of plugin.json.")
+            self.report(f"{key}.{name}" if key else name, 'is not a key of "plugin.json".')
         for name in sorted(required - set(section)):
             self.report(f"{key}.{name}" if key else name, "is missing.")
 
@@ -1139,23 +1139,23 @@ class PluginManifestCheck:
             return False
         target = self.folder / value
         if not target.exists() or (kind == "file" and not target.is_file()) or (kind == "folder" and not target.is_dir()):
-            self.report(key, f"names {value}, which is no {kind} of the plugin.")
+            self.report(key, f'names "{value}", which is no {kind} of the plugin.')
             return False
         return True
 
     def check_source(self, key: str, value: object) -> None:
-        """Checks a file that make.py copies into a project, which is a path inside the plugin or a reference to a file parameter, and so a file of the app."""
+        """Checks a file that `make.py` copies into a project, which is a path inside the plugin or a reference to a file parameter, and so a file of the app."""
         reference = PARAMETER_REFERENCE.fullmatch(value) if isinstance(value, str) else None
         if reference is None:
             self.check_path(key, value, "file or folder")
         elif self.parameters.get(reference[1], {}).get("type") not in (None, "file"):
-            self.report(key, f"references ${{{reference[1]}}}, which is no file parameter.")
+            self.report(key, f'references "${{{reference[1]}}}", which is no file parameter.')
 
     def check_references(self, key: str, value: object) -> None:
         if isinstance(value, str):
             for name in PARAMETER_REFERENCE.findall(value):
                 if name not in self.manifest.get("parameters", {}):
-                    self.report(key, f"references ${{{name}}}, which is no parameter of the plugin.")
+                    self.report(key, f'references "${{{name}}}", which is no parameter of the plugin.')
         elif isinstance(value, list):
             for index, item in enumerate(value):
                 self.check_references(f"{key}[{index}]", item)
@@ -1166,20 +1166,20 @@ class PluginManifestCheck:
     def check_identity(self) -> None:
         self.check_keys("", self.manifest, PLUGIN_KEYS, {"id", "name", "version", "description", "platforms"})
         if "id" in self.manifest and (not isinstance(self.identifier, str) or not PLUGIN_ID.fullmatch(self.identifier)):
-            self.report("id", "must be in dash-case, such as firebase-analytics.")
+            self.report("id", 'must be in "dash-case", such as "firebase-analytics".')
         elif "id" in self.manifest and self.identifier != self.folder.name:
-            self.report("id", f"must match the name of the plugin folder, {self.folder.name}.")
+            self.report("id", f'must match the name of the plugin folder, "{self.folder.name}".')
         for key in ("name", "description"):
             if key in self.manifest and (not isinstance(self.manifest[key], str) or not self.manifest[key]):
                 self.report(key, "must be a text.")
         version = self.manifest.get("version")
         if "version" in self.manifest and not (isinstance(version, str) and re.fullmatch(r"\d+(\.\d+){0,2}", version)):
-            self.report("version", "must be one to three numbers separated by dots, such as 1.2.0.")
+            self.report("version", 'must be one to three numbers separated by dots, such as "1.2.0".')
 
         platforms = self.manifest.get("platforms", [])
         self.platforms = [platform for platform in platforms if platform in PLUGIN_PLATFORMS] if isinstance(platforms, list) else []
         if not platforms or self.platforms != platforms or len(set(self.platforms)) != len(self.platforms):
-            self.report("platforms", f"must list each platform of the plugin once, among {', '.join(PLUGIN_PLATFORMS)}.")
+            self.report("platforms", f"must list each platform of the plugin once, among {', '.join(f'"{name}"' for name in PLUGIN_PLATFORMS)}.")
         requires = self.manifest.get("requires", [])
         if not isinstance(requires, list) or not all(isinstance(required, str) and PLUGIN_ID.fullmatch(required) and required != self.identifier for required in requires):
             self.report("requires", "must list the ids of other plugins that the app needs as well.")
@@ -1192,22 +1192,22 @@ class PluginManifestCheck:
         for name, parameter in declared.items():
             key = f"parameters.{name}"
             if not PARAMETER_NAME.fullmatch(name):
-                self.report(key, "must be named in camelCase, such as iosAppId.")
+                self.report(key, 'must be named in "camelCase", such as "iosAppId".')
             if not self.is_object(key, parameter, "must be an object with the type and the description of the parameter."):
                 continue
             self.check_keys(key, parameter, {"type", "platforms", "required", "default", "description"}, {"type", "description"})
             kind = parameter.get("type")
             if "type" in parameter and kind not in PARAMETER_TYPES:
-                self.report(f"{key}.type", f"must be one of {', '.join(PARAMETER_TYPES)}.")
+                self.report(f"{key}.type", f"must be one of {', '.join(f'"{name}"' for name in PARAMETER_TYPES)}.")
             scope = parameter.get("platforms")
             if "platforms" in parameter and (not isinstance(scope, list) or not scope or not all(platform in self.platforms for platform in scope)):
                 self.report(f"{key}.platforms", "must list platforms of the plugin.")
             if "required" in parameter and not isinstance(parameter["required"], bool):
-                self.report(f"{key}.required", "must be true or false.")
+                self.report(f"{key}.required", 'must be "true" or "false".')
             if "description" in parameter and (not isinstance(parameter["description"], str) or not parameter["description"]):
                 self.report(f"{key}.description", "must be a text.")
             if "default" in parameter and parameter.get("required") is True:
-                self.report(f"{key}.default", "belongs to optional parameters only, because app.json always gives a required parameter its value.")
+                self.report(f"{key}.default", 'belongs to optional parameters only, because "app.json" always gives a required parameter its value.')
             elif "default" in parameter and kind in PARAMETER_TYPES and not PARAMETER_TYPES[kind][1](parameter["default"]):
                 self.report(f"{key}.default", f"must be {PARAMETER_TYPES[kind][0]}.")
 
@@ -1216,31 +1216,31 @@ class PluginManifestCheck:
         if "apple" not in self.manifest or not self.is_object("apple", apple, "must be an object with the Apple part of the plugin."):
             return
         if not any(platform in self.platforms for platform in ("ios", "catalyst", "tvos", "macos")):
-            self.report("apple", "needs ios, catalyst, tvos or macos in platforms.")
+            self.report("apple", 'needs "ios", "catalyst", "tvos" or "macos" in "platforms".')
         self.check_keys("apple", apple, {"class", "sources", "packages", "frameworks", "infoPlist", "entitlements", "resources", "buildScripts"}, set())
         if "class" in apple and not (isinstance(apple["class"], str) and OBJC_CLASS.fullmatch(apple["class"])):
-            self.report("apple.class", "must be the Objective-C name of the plugin class, such as HaylenAdMobPlugin.")
+            self.report("apple.class", 'must be the Objective-C name of the plugin class, such as "HaylenAdMobPlugin".')
         if "sources" in apple:
             self.check_path("apple.sources", apple["sources"], "folder")
 
         packages = apple.get("packages", {})
-        if self.is_object("apple.packages", packages, "must map Swift package names to their url, exactVersion and products."):
+        if self.is_object("apple.packages", packages, 'must map Swift package names to their "url", "exactVersion" and "products".'):
             for name, package in packages.items():
                 key = f"apple.packages.{name}"
-                if not self.is_object(key, package, "must be an object with the url, exactVersion and products of the package."):
+                if not self.is_object(key, package, 'must be an object with the "url", "exactVersion" and "products" of the package.'):
                     continue
                 self.check_keys(key, package, {"url", "exactVersion", "products"}, {"url", "exactVersion", "products"})
                 if "url" in package and not (isinstance(package["url"], str) and PACKAGE_URL.fullmatch(package["url"])):
                     self.report(f"{key}.url", "must be the https or ssh URL of the package repository.")
                 if "exactVersion" in package and not (isinstance(package["exactVersion"], str) and EXACT_VERSION.fullmatch(package["exactVersion"])):
-                    self.report(f"{key}.exactVersion", "must be one exact version, such as 13.10.0.")
+                    self.report(f"{key}.exactVersion", 'must be one exact version, such as "13.10.0".')
                 if "products" in package and not package["products"]:
                     self.report(f"{key}.products", "must list the products of the package that the app links.")
                 elif "products" in package:
                     self.check_texts(f"{key}.products", package["products"], None, "must list the products of the package that the app links.")
 
         if "frameworks" in apple:
-            self.check_texts("apple.frameworks", apple["frameworks"], SYSTEM_FRAMEWORK, "must list system frameworks and libraries, such as StoreKit.framework or libz.tbd.")
+            self.check_texts("apple.frameworks", apple["frameworks"], SYSTEM_FRAMEWORK, 'must list system frameworks and libraries, such as "StoreKit.framework" or "libz.tbd".')
         for key in ("infoPlist", "entitlements"):
             if key in apple:
                 self.is_object(f"apple.{key}", apple[key], "must be an object of keys and values.")
@@ -1273,12 +1273,12 @@ class PluginManifestCheck:
         if "android" not in self.manifest or not self.is_object("android", android, "must be an object with the Android part of the plugin."):
             return
         if "android" not in self.platforms:
-            self.report("android", "needs android in platforms.")
+            self.report("android", 'needs "android" in "platforms".')
         self.check_keys("android", android, {"module", "gradlePlugins", "placeholders", "files"}, {"module"})
         if "module" in android and self.check_path("android.module", android["module"], "folder"):
             module = self.folder / android["module"]
             if not any((module / name).is_file() for name in ("build.gradle.kts", "build.gradle")) or not (module / "src" / "main" / "AndroidManifest.xml").is_file():
-                self.report("android.module", "must be an Android library module with a build.gradle.kts and src/main/AndroidManifest.xml.")
+                self.report("android.module", 'must be an Android library module with a "build.gradle.kts" and "src/main/AndroidManifest.xml".')
 
         gradle_plugins = android.get("gradlePlugins", [])
         if not isinstance(gradle_plugins, list) or not all(isinstance(entry, dict) and set(entry) == {"id", "version"} and isinstance(entry["id"], str) and GRADLE_PLUGIN_ID.fullmatch(entry["id"]) and isinstance(entry["version"], str) and GRADLE_PLUGIN_VERSION.fullmatch(entry["version"]) for entry in gradle_plugins):
@@ -1294,13 +1294,13 @@ class PluginManifestCheck:
             self.report("android.files", "must list the files that the plugin places in the Android project.")
         for index, entry in enumerate(files if isinstance(files, list) else []):
             key = f"android.files[{index}]"
-            if not self.is_object(key, entry, "must be an object with from and to."):
+            if not self.is_object(key, entry, 'must be an object with "from" and "to".'):
                 continue
             self.check_keys(key, entry, {"from", "to"}, {"from", "to"})
             if "from" in entry:
                 self.check_source(f"{key}.from", entry["from"])
             if "to" in entry and (not isinstance(entry["to"], str) or not entry["to"] or Path(entry["to"]).is_absolute() or ".." in Path(entry["to"]).parts):
-                self.report(f"{key}.to", "must be a path inside the Android project, such as app/google-services.json.")
+                self.report(f"{key}.to", 'must be a path inside the Android project, such as "app/google-services.json".')
         self.check_references("android", android)
 
     def check_web(self) -> None:
@@ -1308,11 +1308,11 @@ class PluginManifestCheck:
         if "web" not in self.manifest or not self.is_object("web", web, "must be an object with the module of the plugin."):
             return
         if "web" not in self.platforms:
-            self.report("web", "needs web in platforms.")
+            self.report("web", 'needs "web" in "platforms".')
         self.check_keys("web", web, {"module"}, {"module"})
         module = web.get("module")
         if "module" in web and (not isinstance(module, str) or not module.startswith("web/") or Path(module).suffix not in (".js", ".mjs")):
-            self.report("web.module", "must be an ES module in the web folder of the plugin, such as web/admob.js.")
+            self.report("web.module", 'must be an ES module in the "web" folder of the plugin, such as "web/admob.js".')
         elif "module" in web:
             self.check_path("web.module", module, "file")
 
@@ -1322,40 +1322,40 @@ class PluginManifestCheck:
         try:
             library = NativeLibrary.parse(self.folder, self.identifier.replace("-", "_"), self.manifest["native"], self.folder / "plugin.json")
         except BuildError as error:
-            self.report("native", str(error))
+            self.problems.append(str(error))
             return
         if not all(platform in self.platforms for platform in library.platforms):
             self.report("native.platforms", "must list platforms of the plugin.")
 
 
 def parameter_values(folder: Path, plugin: Plugin, given: object, platform: str) -> tuple[dict, list[str]]:
-    """Checks the values that app.json gives a plugin to build for a platform and returns them with the defaults applied, together with every problem and its key. A parameter applies to the platforms it lists, or else to every platform of the plugin."""
+    """Checks the values that `app.json` gives a plugin to build for a platform and returns them with the defaults applied, together with every problem and its key. A parameter applies to the platforms it lists, or else to every platform of the plugin."""
     key = f"plugins.{plugin.id}"
     if not isinstance(given, dict):
-        return {}, [f"{key}: must be an object of parameter values."]
+        return {}, [f'The key "{key}" must be an object of parameter values.']
 
-    problems = [f"{key}.{name}: is no parameter of the plugin {plugin.id}." for name in given if name not in plugin.parameters]
+    problems = [f'The key "{key}.{name}" is no parameter of the plugin "{plugin.id}".' for name in given if name not in plugin.parameters]
     values = {}
     for name, parameter in plugin.parameters.items():
         description, valid = PARAMETER_TYPES[parameter["type"]]
         applies = platform in parameter.get("platforms", plugin.manifest["platforms"])
         value = given.get(name, parameter.get("default"))
-        # make.py plugin add writes an empty text for every required parameter, which is the value the developer still has to fill in.
+        # The command `make.py plugin add` writes an empty text for every required parameter, which is the value the developer still has to fill in.
         if value is None or (value == "" and parameter.get("required")):
             if applies and parameter.get("required"):
-                problems.append(f"{key}.{name}: needs a value to build for {platform}. {parameter['description']}")
+                problems.append(f"The key \"{key}.{name}\" needs a value to build for \"{platform}\". {parameter['description']}")
             continue
         if not valid(value):
-            problems.append(f"{key}.{name}: must be {description}.")
+            problems.append(f'The key "{key}.{name}" must be {description}.')
         elif parameter["type"] == "file" and applies and not (folder / value).is_file():
-            problems.append(f"{key}.{name}: names {value}, which is no file of the app folder.")
+            problems.append(f'The key "{key}.{name}" names "{value}", which is no file of the app folder.')
         else:
             values[name] = value
     return values, problems
 
 
 def plugin_order(plugins: dict[str, Plugin]) -> list[Plugin]:
-    """Orders plugins so that every plugin follows the plugins it requires, and otherwise keeps the order of app.json."""
+    """Orders plugins so that every plugin follows the plugins it requires, and otherwise keeps the order of `app.json`."""
     ordered: list[Plugin] = []
     visiting: list[str] = []
 
@@ -1363,7 +1363,7 @@ def plugin_order(plugins: dict[str, Plugin]) -> list[Plugin]:
         if plugin in ordered:
             return
         if plugin.id in visiting:
-            raise BuildError(f"The plugins {', '.join(visiting[visiting.index(plugin.id) :])} require each other in a cycle.")
+            raise BuildError(f"The plugins {', '.join(f'"{name}"' for name in visiting[visiting.index(plugin.id) :])} require each other in a cycle.")
         visiting.append(plugin.id)
         for required in plugin.requires:
             visit(plugins[required])
@@ -1376,16 +1376,16 @@ def plugin_order(plugins: dict[str, Plugin]) -> list[Plugin]:
 
 
 def load_app_plugins(folder: Path, section: object, platform: str) -> tuple[list[Plugin], dict[str, dict]]:
-    """Loads the plugins that app.json lists from plugins/ of the app and checks the values it gives them to build for a platform. Returns the plugins in load order and their values with the defaults applied, or fails with every problem."""
+    """Loads the plugins that `app.json` lists from `plugins/` of the app and checks the values it gives them to build for a platform. Returns the plugins in load order and their values with the defaults applied, or fails with every problem."""
     where = folder / "app.json"
     if not isinstance(section, dict):
-        raise BuildError(f"{where}: plugins must map plugin ids to objects of parameter values.")
+        raise BuildError(f'{where}: The key "plugins" must map plugin ids to objects of parameter values.')
 
     problems: list[str] = []
     plugins: dict[str, Plugin] = {}
     for identifier in section:
         if not (folder / "plugins" / identifier / "plugin.json").is_file():
-            problems.append(f"{where}: plugins.{identifier}: names no plugin of the app, because plugins/{identifier}/plugin.json does not exist. Add it with: python3 make.py plugin add {identifier} --app {folder}")
+            problems.append(f'{where}: The key "plugins.{identifier}" names no plugin of the app, because "plugins/{identifier}/plugin.json" does not exist. Add it with "python3 make.py plugin add {identifier} --app {folder}".')
             continue
         try:
             plugins[identifier] = Plugin.load(folder / "plugins" / identifier)
@@ -1394,7 +1394,7 @@ def load_app_plugins(folder: Path, section: object, platform: str) -> tuple[list
 
     values: dict[str, dict] = {}
     for plugin in plugins.values():
-        problems += [f"{where}: plugins.{plugin.id}: requires the plugin {required}, which app.json does not list." for required in plugin.requires if required not in section]
+        problems += [f'{where}: The plugin "{plugin.id}" requires the plugin "{required}", which "app.json" does not list.' for required in plugin.requires if required not in section]
         values[plugin.id], found = parameter_values(folder, plugin, section[plugin.id], platform)
         problems += [f"{where}: {problem}" for problem in found]
     if problems:
@@ -1407,7 +1407,7 @@ def parameter_text(value: object) -> str:
 
 
 def substitute_parameters(value: object, values: dict) -> object:
-    """Replaces every ${name} in the strings of a section of plugin.json with the value of the parameter. A string that is only a reference takes the value with its type, and a string whose references lack a value gives None, which leaves its key or item out."""
+    """Replaces every `${name}` in the strings of a section of `plugin.json` with the value of the parameter. A string that is only a reference takes the value with its type, and a string whose references lack a value gives `None`, which leaves its key or item out."""
     if isinstance(value, str):
         if not all(name in values for name in PARAMETER_REFERENCE.findall(value)):
             return None
@@ -1421,7 +1421,7 @@ def substitute_parameters(value: object, values: dict) -> object:
 
 
 def plugin_section(app: App, plugin: Plugin, name: str) -> dict | None:
-    """Returns the apple or android section of a plugin with the values that app.json gives its parameters, or None when the plugin has none."""
+    """Returns the `apple` or `android` section of a plugin with the values that `app.json` gives its parameters, or `None` when the plugin has none."""
     return substitute_parameters(plugin.manifest[name], app.plugin_values[plugin.id]) if name in plugin.manifest else None
 
 
@@ -1434,12 +1434,12 @@ def plugin_file(app: App, plugin: Plugin, value: str) -> Path | None:
     if given is None:
         return None
     if not (app.folder / given).exists():
-        raise BuildError(f"The parameter {reference[1]} of the plugin {plugin.id} names {given}, which is no file of {app.folder}.")
+        raise BuildError(f'The parameter "{reference[1]}" of the plugin "{plugin.id}" names "{given}", which is no file of "{app.folder}".')
     return app.folder / given
 
 
 def merge_plugin_keys(merged: dict, values: dict, owners: dict[str, str], owner: str, label: str, top: str | None = None) -> None:
-    """Merges the Info.plist or entitlements keys of a plugin into the keys that make.py and earlier plugins set: objects merge key by key, arrays gain the items they lack, and any other value that differs fails the build."""
+    """Merges the `Info.plist` or entitlements keys of a plugin into the keys that `make.py` and earlier plugins set: objects merge key by key, arrays gain the items they lack, and any other value that differs fails the build."""
     for key, value in values.items():
         first = top or key
         if key not in merged:
@@ -1450,14 +1450,14 @@ def merge_plugin_keys(merged: dict, values: dict, owners: dict[str, str], owner:
         elif isinstance(merged[key], list) and isinstance(value, list):
             merged[key] += [item for item in value if item not in merged[key]]
         elif merged[key] != value:
-            raise BuildError(f"The {label} key {key} is {json.dumps(merged[key])} for {owners[first]} and {json.dumps(value)} for {owner}.")
+            raise BuildError(f'The {label} key "{key}" is {json.dumps(merged[key])} for {owners[first]} and {json.dumps(value)} for {owner}.')
 
 
-# Shaders: annotated GLSL under content/shaders compiled ahead of time into one .shader file per source, because no platform, the web editor included, compiles shaders at runtime.
+# Shaders: annotated GLSL under `content/shaders` compiled ahead of time into one `.shader` file per source, because no platform, the web editor included, compiles shaders at runtime.
 
 
 def parse_shdc_yaml(text: str) -> dict:
-    """Reads the reflection YAML that sokol-shdc writes with --format bare_yaml, whose maps and lists nest by two spaces and whose lists put every item under a lone dash."""
+    """Reads the reflection YAML that sokol-shdc writes with `--format bare_yaml`, whose maps and lists nest by two spaces and whose lists put every item under a lone dash."""
     lines = [(len(line) - len(line.lstrip(" ")), line.strip()) for line in text.splitlines() if line.strip()]
 
     def scalar(value: str):
@@ -1536,17 +1536,17 @@ def describe_shader_program(program: dict, sources: list[str], known: dict[str, 
 
 
 def compile_shader(source: Path, output: Path) -> None:
-    """Compiles one annotated GLSL source into a .shader file with every program the engine draws with, for every shader language it supports, and the reflection of the uniforms and textures of the source."""
+    """Compiles one annotated GLSL source into a `.shader` file with every program the engine draws with, for every shader language it supports, and the reflection of the uniforms and textures of the source."""
     text = source.read_text()
     declared = re.findall(r"^\s*@program\s+(\w+)\s+(\w+)\s+(\w+)", text, re.MULTILINE)
     if len(declared) != 1 or declared[0][1] != "haylen_vs":
-        raise BuildError(f"{source} must declare exactly one @program whose vertex shader is haylen_vs from haylen/material.glsl.")
+        raise BuildError(f'The shader "{source}" must declare exactly one "@program" whose vertex shader is "haylen_vs" from "haylen/material.glsl".')
     name = declared[0][0]
 
     def shdc(arguments: list, program: str) -> None:
         compiled = subprocess.run([str(part) for part in [ensure_shdc(), "--input", source.resolve(), *arguments]], cwd=SHADER_LIBRARY_DIR, capture_output=True, text=True)
         if compiled.returncode != 0:
-            raise BuildError(f"sokol-shdc could not compile the {program} program of {source}:\n{compiled.stdout}{compiled.stderr}".rstrip())
+            raise BuildError(f'The sokol-shdc tool could not compile the "{program}" program of "{source}":\n{compiled.stdout}{compiled.stderr}'.rstrip())
 
     sources: list[str] = []
     known: dict[str, int] = {}
@@ -1567,11 +1567,11 @@ def compile_shader(source: Path, output: Path) -> None:
     textures = [{"name": view["texture"]["name"], "slot": view["texture"]["slot"]} for view in reflection.get("views", []) if view["texture"]["name"] not in SHADER_ENGINE_TEXTURES]
     document = {"format": "haylen-shader", "version": 1, "name": name, "blocks": blocks, "textures": textures, "sources": sources, "programs": programs}
     output.write_text(json.dumps(document, separators=(",", ":")))
-    print(f"Compiled {source} into {output}", flush=True)
+    print(f'Compiled "{source}" into "{output}".', flush=True)
 
 
 def shader_sources(folder: Path) -> list[Path]:
-    """Lists the sources of an app that declare a program, which are the ones make.py compiles, while the others are files they include."""
+    """Lists the sources of an app that declare a program, which are the ones `make.py` compiles, while the others are files they include."""
     shaders = folder / "content" / "shaders"
     return sorted(path for path in shaders.rglob("*.glsl") if re.search(r"^\s*@program\b", path.read_text(), re.MULTILINE)) if shaders.is_dir() else []
 
@@ -1582,7 +1582,7 @@ def newest_shader_source(folder: Path) -> float:
 
 
 def compile_app_shaders(folder: Path) -> None:
-    """Compiles the shaders of an app whose .shader file is older than its source, the other sources of the app that it may include or the shader library."""
+    """Compiles the shaders of an app whose `.shader` file is older than its source, the other sources of the app that it may include or the shader library."""
     if not (folder / "content" / "shaders").is_dir():
         return
     newest = newest_shader_source(folder)
@@ -1604,13 +1604,13 @@ def watch_app_shaders(folder: Path, stop: threading.Event) -> None:
         try:
             compile_app_shaders(folder)
         except BuildError as error:
-            print(f"error: {error}", file=sys.stderr, flush=True)
+            print(f"Error: {error}", file=sys.stderr, flush=True)
 
 
 def command_shaders(args: argparse.Namespace) -> None:
     folder = resolve_app(args.app)
     if not shader_sources(folder):
-        print(f"{folder} has no shaders under content/shaders.")
+        print(f'The app "{folder}" has no shaders under "content/shaders".')
         return
     if args.force:
         for source in shader_sources(folder):
@@ -1624,7 +1624,7 @@ def platform_templates() -> list[str]:
 
 
 def assemble(app: App, template: str | None, run_platform: str) -> Path:
-    """Recreates the <platform> folder of the build folder of an app from the platform template and lays the platform/<template> folder of the app over it. Platforms without a template start empty and take the platform/<platform> folder of the app, such as the libraries a Windows app keeps next to its executable."""
+    """Recreates the `<platform>` folder of the build folder of an app from the platform template and lays the `platform/<template>` folder of the app over it. Platforms without a template start empty and take the `platform/<platform>` folder of the app, such as the libraries a Windows app keeps next to its executable."""
     folder = app.build_folder / run_platform
     shutil.rmtree(folder, ignore_errors=True)
     if template is None:
@@ -1650,17 +1650,17 @@ def apple_colorset(color: tuple[int, int, int, int]) -> dict:
 
 
 def apple_plugin_keys(app: App, platforms: tuple[str, ...], section: str, keys: dict, label: str) -> dict:
-    """Merges the infoPlist or entitlements keys of the plugins that build for any of the platforms into the keys that make.py writes from app.json."""
+    """Merges the `infoPlist` or `entitlements` keys of the plugins that build for any of the platforms into the keys that `make.py` writes from `app.json`."""
     merged = copy.deepcopy(keys)
-    owners = {key: "app.json" for key in merged}
+    owners = {key: '"app.json"' for key in merged}
     for plugin in app.plugins:
         if plugin.supports(*platforms) and "apple" in plugin.manifest:
-            merge_plugin_keys(merged, plugin_section(app, plugin, "apple").get(section, {}), owners, f"the plugin {plugin.id}", label)
+            merge_plugin_keys(merged, plugin_section(app, plugin, "apple").get(section, {}), owners, f'the plugin "{plugin.id}"', label)
     return merged
 
 
 def write_apple_entitlements(app: App, project: Path) -> list[str]:
-    """Writes the entitlements that the plugins of an app ask for into <platform>/App.entitlements of the Apple project and returns the App.xcconfig settings that sign each target and SDK platform with its file, since the iOS target signs Mac Catalyst apps too."""
+    """Writes the entitlements that the plugins of an app ask for into `<platform>/App.entitlements` of the Apple project and returns the `App.xcconfig` settings that sign each target and SDK platform with its file, since the iOS target signs Mac Catalyst apps too."""
     settings = []
     for platform, signed in APPLE_ENTITLEMENTS.items():
         entitlements = apple_plugin_keys(app, (platform,), "entitlements", {}, "entitlements")
@@ -1683,7 +1683,7 @@ def apple_targets(plugin: Plugin) -> dict[str, dict]:
 
 
 def write_apple_plugins(app: App, project: Path) -> bool:
-    """Copies the Apple sources and resources of the plugins of an app into plugins/ of the Apple project and writes plugins.json, the XcodeGen include of project.yml that adds them with their Swift packages, system frameworks and build scripts to the targets of their platforms. Returns whether the include adds anything, because the project then needs generating again."""
+    """Copies the Apple sources and resources of the plugins of an app into `plugins/` of the Apple project and writes `plugins.json`, the XcodeGen include of `project.yml` that adds them with their Swift packages, system frameworks and build scripts to the targets of their platforms. Returns whether the include adds anything, because the project then needs generating again."""
     packages: dict[str, dict] = {}
     package_owners: dict[str, str] = {}
     bundled: dict[str, str] = {}
@@ -1704,7 +1704,7 @@ def write_apple_plugins(app: App, project: Path) -> bool:
             if source is None:
                 continue
             if source.name in bundled:
-                raise BuildError(f"The plugins {bundled[source.name]} and {plugin.id} both place {source.name} at the root of the app bundle.")
+                raise BuildError(f'The plugins "{bundled[source.name]}" and "{plugin.id}" both place "{source.name}" at the root of the app bundle.')
             bundled[source.name] = plugin.id
             copy_into(source, folder / "resources")
         if (folder / "resources").is_dir():
@@ -1713,7 +1713,7 @@ def write_apple_plugins(app: App, project: Path) -> bool:
         for name, package in apple.get("packages", {}).items():
             declared = {"url": package["url"], "exactVersion": package["exactVersion"]}
             if packages.setdefault(name, declared) != declared:
-                raise BuildError(f"The plugins {package_owners[name]} and {plugin.id} ask for the Swift package {name} from different URLs or versions.")
+                raise BuildError(f'The plugins "{package_owners[name]}" and "{plugin.id}" ask for the Swift package "{name}" from different URLs or versions.')
             package_owners.setdefault(name, plugin.id)
 
         # A product or framework that two plugins link joins the target once, for every destination either plugin builds for.
@@ -1740,9 +1740,9 @@ def write_apple_plugins(app: App, project: Path) -> bool:
 
 
 def write_apple_settings(app: App, project: Path, native: list[str]) -> None:
-    """Writes App.xcconfig with the settings that link the static native libraries and sign with the entitlements of the plugins, the Info.plist of every platform with the keys and the classes of the plugins, and the splash assets of an app into the Apple project."""
+    """Writes `App.xcconfig` with the settings that link the static native libraries and sign with the entitlements of the plugins, the `Info.plist` of every platform with the keys and the classes of the plugins, and the splash assets of an app into the Apple project."""
     xcconfig = "\n".join([
-        "// Written by make.py from app.json and the plugins of the app.",
+        "// Written by `make.py` from `app.json` and the plugins of the app.",
         f"HAYLEN_PRODUCT_NAME = {app.name}",
         f"HAYLEN_BUNDLE_IDENTIFIER = {app.identifier}",
         f"MARKETING_VERSION = {app.version}",
@@ -1766,7 +1766,7 @@ def write_apple_settings(app: App, project: Path, native: list[str]) -> None:
         "GCSupportsControllerUserInteraction": True,
         "ITSAppUsesNonExemptEncryption": False,
     }
-    # sokol_app creates its window from the scene that UIKit connects, so iOS and tvOS apps declare the scene life cycle with one scene.
+    # The `sokol_app` module creates its window from the scene that UIKit connects, so iOS and tvOS apps declare the scene life cycle with one scene.
     scenes = {"UIApplicationSceneManifest": {"UIApplicationSupportsMultipleScenes": False}}
     phone, pad = IOS_ORIENTATIONS[app.orientation]
     plists = {
@@ -1774,9 +1774,9 @@ def write_apple_settings(app: App, project: Path, native: list[str]) -> None:
         "tvos": {**common, **scenes, "UILaunchStoryboardName": "LaunchScreen"},
         "macos": {**common, "LSMinimumSystemVersion": "$(MACOSX_DEPLOYMENT_TARGET)", "NSHighResolutionCapable": True, "NSPrincipalClass": "NSApplication", **({} if app.show_in_taskbar else {"LSUIElement": True})},
     }
-    # The runtime loads the plugin classes that HaylenPlugins lists, in order, and skips a class that a destination leaves out, as Mac Catalyst does with iOS-only plugins.
+    # The runtime loads the plugin classes that `HaylenPlugins` lists, in order, and skips a class that a destination leaves out, as Mac Catalyst does with iOS-only plugins.
     for target, platforms in APPLE_PLUGIN_TARGETS.items():
-        values = apple_plugin_keys(app, platforms, "infoPlist", plists[target.lower()], "Info.plist")
+        values = apple_plugin_keys(app, platforms, "infoPlist", plists[target.lower()], '"Info.plist"')
         classes = [plugin.manifest["apple"]["class"] for plugin in app.plugins if plugin.supports(*platforms) and "class" in plugin.manifest.get("apple", {})]
         if classes:
             values["HaylenPlugins"] = classes
@@ -1805,10 +1805,10 @@ def apple_simulator(family: str, requested: str | None) -> dict:
     if requested:
         matches = [device for device in candidates if requested in (device["udid"], device["name"])]
         if not matches:
-            raise BuildError(f"No available {family} simulator is named {requested}.")
+            raise BuildError(f'No available {family} simulator is named "{requested}".')
         return matches[0]
     if not candidates:
-        raise BuildError(f"No {family} simulator is installed. Install the runtime with xcodebuild -downloadPlatform {family}.")
+        raise BuildError(f'No {family} simulator is installed. Install the runtime with "xcodebuild -downloadPlatform {family}".')
     booted = [device for device in candidates if device["state"] == "Booted"]
     preferred = [device for device in candidates if device["name"].startswith("iPhone")] if family == "iOS" else candidates
     return (booted or preferred or candidates)[0]
@@ -1817,12 +1817,12 @@ def apple_simulator(family: str, requested: str | None) -> dict:
 def apple_team() -> str:
     team = os.environ.get("HAYLEN_APPLE_TEAM")
     if not team:
-        raise BuildError("Apps for Apple devices are signed with a development team. Set HAYLEN_APPLE_TEAM to its id.")
+        raise BuildError('Apps for Apple devices are signed with a development team. Set "HAYLEN_APPLE_TEAM" to its id.')
     return team
 
 
 def relay_unified_log(stream: subprocess.Popen) -> None:
-    """Prints the message of every event of a log stream in the ndjson style, with warnings and errors on stderr like the engine on a desktop."""
+    """Prints the message of every event of a log stream in the `ndjson` style, with warnings and errors on `stderr` like the engine on a desktop."""
     for line in stream.stdout:
         try:
             event = json.loads(line)
@@ -1835,7 +1835,7 @@ def relay_unified_log(stream: subprocess.Popen) -> None:
 
 @contextlib.contextmanager
 def unified_log(executable: str, prefix: list):
-    """Relays what the engine of an app process writes to the unified log, where it logs on iOS, tvOS and Mac Catalyst, while the block runs. The prefix runs log inside a simulator."""
+    """Relays what the engine of an app process writes to the unified log, where it logs on iOS, tvOS and Mac Catalyst, while the block runs. The prefix runs `log` inside a simulator."""
     predicate = f'process == "{executable}" AND subsystem == "{APPLE_LOG_SUBSYSTEM}"'
     stream = subprocess.Popen([str(part) for part in [*prefix, "log", "stream", "--style", "ndjson", "--level", "debug", "--predicate", predicate]], stdout=subprocess.PIPE, text=True)
     # The stream names its filter on the first line and delivers events from then on, so the app starts after that line.
@@ -1870,7 +1870,7 @@ def launch_apple(bundle: Path, args: argparse.Namespace, simulator: dict | None)
             run(["xcrun", "simctl", "launch", "--console-pty", "--terminate-running-process", udid, identifier])
     else:
         if not args.device:
-            raise BuildError("Name the device with --device. xcrun devicectl list devices lists them.")
+            raise BuildError('Name the device with "--device". Use the command "xcrun devicectl list devices" to list them.')
         run(["xcrun", "devicectl", "device", "install", "app", "--device", args.device, bundle])
         run(["xcrun", "devicectl", "device", "process", "launch", "--console", "--device", args.device, identifier])
 
@@ -1880,7 +1880,7 @@ def run_apple(app: App, project: Path, args: argparse.Namespace) -> None:
     (project / "Haylen.xcframework").symlink_to(ARTIFACTS_DIR / "apple" / "Haylen.xcframework")
     copy_package(app, project / "app")
     write_apple_settings(app, project, prepare_apple_native(app, project, args.platform, args.jobs))
-    # The committed App.xcodeproj matches the template, whose plugins.json adds nothing, so only an app whose plugins add to the project generates it again.
+    # The committed `App.xcodeproj` matches the template, whose `plugins.json` adds nothing, so only an app whose plugins add to the project generates it again.
     if write_apple_plugins(app, project):
         run([ensure_xcodegen(), "generate", "--spec", project / "project.yml"], cwd=project)
 
@@ -1898,14 +1898,14 @@ def run_apple(app: App, project: Path, args: argparse.Namespace) -> None:
 
 
 def gradle_property(value: str) -> str:
-    """Escapes a value of gradle.properties, which Gradle reads as ISO 8859-1 text with backslash escapes, so any text survives."""
+    """Escapes a value of `gradle.properties`, which Gradle reads as ISO 8859-1 text with backslash escapes, so any text survives."""
     units = value.replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r").encode("utf-16-be")
     codes = (int.from_bytes(units[index : index + 2], "big") for index in range(0, len(units), 2))
     return "".join(chr(code) if code < 0x80 else f"\\u{code:04x}" for code in codes)
 
 
 def prepare_android_plugins(app: App, project: Path) -> dict[str, str]:
-    """Copies the library module of every plugin into plugins/<id> of the Android project together with the files the plugin places in the project, and returns the gradle.properties keys that include the modules, apply their Gradle plugins and set their manifest placeholders."""
+    """Copies the library module of every plugin into `plugins/<id>` of the Android project together with the files the plugin places in the project, and returns the `gradle.properties` keys that include the modules, apply their Gradle plugins and set their manifest placeholders."""
     modules: list[str] = []
     gradle_plugins: dict[str, str] = {}
     placeholders: dict[str, str] = {}
@@ -1919,11 +1919,11 @@ def prepare_android_plugins(app: App, project: Path) -> dict[str, str]:
 
         for entry in android.get("gradlePlugins", []):
             if gradle_plugins.setdefault(entry["id"], entry["version"]) != entry["version"]:
-                raise BuildError(f"The plugins {owners['gradle'][entry['id']]} and {plugin.id} apply the Gradle plugin {entry['id']} in different versions.")
+                raise BuildError(f"The plugins \"{owners['gradle'][entry['id']]}\" and \"{plugin.id}\" apply the Gradle plugin \"{entry['id']}\" in different versions.")
             owners["gradle"].setdefault(entry["id"], plugin.id)
         for name, value in android.get("placeholders", {}).items():
             if placeholders.setdefault(name, parameter_text(value)) != parameter_text(value):
-                raise BuildError(f"The plugins {owners['placeholder'][name]} and {plugin.id} give the manifest placeholder {name} different values.")
+                raise BuildError(f"The plugins \"{owners['placeholder'][name]}\" and \"{plugin.id}\" give the manifest placeholder \"{name}\" different values.")
             owners["placeholder"].setdefault(name, plugin.id)
 
         for entry in plugin.manifest["android"].get("files", []):
@@ -1932,7 +1932,7 @@ def prepare_android_plugins(app: App, project: Path) -> dict[str, str]:
             if source is None or destination is None:
                 continue
             if destination in owners["file"]:
-                raise BuildError(f"The plugins {owners['file'][destination]} and {plugin.id} both place {destination} in the Android project.")
+                raise BuildError(f"The plugins \"{owners['file'][destination]}\" and \"{plugin.id}\" both place \"{destination}\" in the Android project.")
             owners["file"][destination] = plugin.id
             (project / destination).parent.mkdir(parents=True, exist_ok=True)
             if source.is_dir():
@@ -1965,14 +1965,14 @@ def write_android_settings(app: App, project: Path, library: str, plugins: dict[
     lines += [f"{key}={gradle_property(value)}" for key, value in values.items()]
     properties.write_text("\n".join(lines) + "\n")
 
-    # The splash resources of the app replace the defaults of the haylen library, which show the engine logo.
+    # The splash resources of the app replace the defaults of the `haylen` library, which show the engine logo.
     resources = project / "app" / "src" / "main" / "res"
     red, green, blue, alpha = app.background
-    colors = f'<?xml version="1.0" encoding="utf-8"?>\n<!-- Written by make.py from the splash of app.json. -->\n<resources>\n    <color name="haylen_splash_background">#{alpha:02X}{red:02X}{green:02X}{blue:02X}</color>\n</resources>\n'
+    colors = f'<?xml version="1.0" encoding="utf-8"?>\n<!-- Written by `make.py` from the splash of `app.json`. -->\n<resources>\n    <color name="haylen_splash_background">#{alpha:02X}{red:02X}{green:02X}{blue:02X}</color>\n</resources>\n'
     write_if_changed(resources / "values" / "haylen_splash.xml", colors)
     if app.splash_logo:
         if app.splash_logo.suffix.lower() not in {".png", ".webp", ".jpg", ".jpeg"}:
-            raise BuildError(f"Android splash logos are PNG, WebP or JPEG images, not {app.splash_logo.name}.")
+            raise BuildError(f'Android splash logos are PNG, WebP or JPEG images, not "{app.splash_logo.name}".')
         shutil.copy2(app.splash_logo, resources / "drawable" / f"haylen_splash_logo{app.splash_logo.suffix.lower()}")
 
 
@@ -1980,10 +1980,10 @@ def android_device(requested: str | None) -> str:
     devices = [line.split()[0] for line in capture([adb(), "devices"]).splitlines()[1:] if line.strip().endswith("device")]
     if requested:
         if requested not in devices:
-            raise BuildError(f"{requested} is not a connected Android device. adb devices lists them.")
+            raise BuildError(f'The device "{requested}" is not a connected Android device. Use the command "adb devices" to list them.')
         return requested
     if len(devices) != 1:
-        raise BuildError("Name the Android device with --device, because " + ("none is connected." if not devices else f"{len(devices)} are connected: {', '.join(devices)}."))
+        raise BuildError('Name the Android device with "--device", because ' + ("none is connected." if not devices else f"{len(devices)} are connected: {', '.join(f'"{device}"' for device in devices)}."))
     return devices[0]
 
 
@@ -2015,7 +2015,7 @@ def run_android(app: App, project: Path, args: argparse.Namespace) -> None:
 
 
 def write_web_plugins(app: App, site: Path) -> list[dict]:
-    """Copies the web folder of every plugin with a web part to plugins/<id>/ of the site and returns their entries of config.json, whose modules the loader imports and loads before the runtime starts, with the values of their parameters."""
+    """Copies the `web` folder of every plugin with a web part to `plugins/<id>/` of the site and returns their entries of `config.json`, whose modules the loader imports and loads before the runtime starts, with the values of their parameters."""
     entries = []
     for plugin in app.plugins:
         if "web" not in plugin.manifest:
@@ -2027,7 +2027,7 @@ def write_web_plugins(app: App, site: Path) -> list[dict]:
 
 
 def write_web_settings(app: App, site: Path) -> None:
-    """Writes app.zip, the splash logo, the web modules of the plugins and config.json, whose sizes let the loader show progress when the server sends no length."""
+    """Writes `app.zip`, the splash logo, the web modules of the plugins and `config.json`, whose sizes let the loader show progress when the server sends no length."""
     package_folder(app.folder, site / "app.zip")
     logo = app.splash_logo or ENGINE_LOGO
     logo_name = f"splash{logo.suffix.lower()}" if app.splash_logo else ENGINE_LOGO.name
@@ -2047,7 +2047,7 @@ def run_web(app: App, site: Path, args: argparse.Namespace) -> None:
 
 
 def run_desktop_app(app: App, folder: Path, args: argparse.Namespace) -> None:
-    """Runs the shipped layout of a Windows or Linux app: the player named after the app with the package in an app folder next to it, and the native libraries next to it on Windows and in lib on Linux, which the RUNPATH of the player covers."""
+    """Runs the shipped layout of a Windows or Linux app: the player named after the app with the package in an app folder next to it, and the native libraries next to it on Windows and in `lib` on Linux, which the `RUNPATH` of the player covers."""
     require_host(args.platform)
     executable = folder / executable_name(app.slug)
     shutil.copy2(desktop_artifact(), executable)
@@ -2058,7 +2058,7 @@ def run_desktop_app(app: App, folder: Path, args: argparse.Namespace) -> None:
 
 @dataclasses.dataclass(frozen=True)
 class RunTarget:
-    """A platform that make.py run builds for: the platform template it assembles, if any, the engine artifacts it needs, the plugin platform whose parameters it checks and the function that builds and launches it."""
+    """A platform that `make.py run` builds for: the platform template it assembles, if any, the engine artifacts it needs, the plugin platform whose parameters it checks and the function that builds and launches it."""
 
     template: str | None
     artifacts: str
@@ -2066,7 +2066,7 @@ class RunTarget:
     run: Callable[[App, Path, argparse.Namespace], None]
 
 
-# A new platform is a folder under templates/platform and an entry here.
+# A new platform is a folder under `templates/platform` and an entry here.
 RUN_TARGETS = {
     "macos": RunTarget("apple", "apple", "macos", run_apple),
     "catalyst": RunTarget("apple", "apple", "catalyst", run_apple),
@@ -2111,15 +2111,15 @@ def command_new(args: argparse.Namespace) -> None:
     """Creates an app from the starter app and a copy of every platform template, which the developer owns from then on."""
     folder = Path(args.folder).expanduser().resolve()
     if folder.exists() and any(folder.iterdir()):
-        raise BuildError(f"{folder} already exists and is not empty.")
+        raise BuildError(f'The folder "{folder}" already exists and is not empty.')
 
     slug = re.sub(r"[^a-z0-9]+", "-", folder.name.lower()).strip("-")
     if not slug:
-        raise BuildError(f"{folder.name} gives no app name. Use a folder name with letters or digits.")
+        raise BuildError(f'The folder name "{folder.name}" gives no app name. Use a folder name with letters or digits.')
     name = args.name or " ".join(word.capitalize() for word in slug.split("-"))
     identifier = args.identifier or f"com.example.{slug.replace('-', '')}"
     if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+", identifier):
-        raise BuildError(f"{identifier} is not a reverse domain identifier such as com.example.game.")
+        raise BuildError(f'The identifier "{identifier}" is not a reverse domain identifier such as "com.example.game".')
 
     shutil.copytree(APP_TEMPLATE, folder, dirs_exist_ok=True)
     document = json.loads((folder / "app.json").read_text())
@@ -2132,7 +2132,7 @@ def command_new(args: argparse.Namespace) -> None:
     (folder / "app.json").write_text(json.dumps(document, indent=4) + "\n")
     for template in platform_templates():
         shutil.copytree(PLATFORM_TEMPLATES_DIR / template, folder / "platform" / template, ignore=shutil.ignore_patterns(".DS_Store"))
-    print(f"Created {name} ({identifier}) in {folder}. Run it with: python3 make.py run {folder}")
+    print(f'Created "{name}" ("{identifier}") in "{folder}". Run it with "python3 make.py run {folder}".')
 
 
 def write_app_json(folder: Path, document: dict) -> None:
@@ -2140,12 +2140,12 @@ def write_app_json(folder: Path, document: dict) -> None:
 
 
 def is_git_repository(value: str) -> bool:
-    """Tells a git repository address, such as https://github.com/haylen-org/<plugin>.git or git@github.com:haylen-org/<plugin>.git, from a folder path."""
+    """Tells a git repository address, such as `https://github.com/haylen-org/<plugin>.git` or `git@github.com:haylen-org/<plugin>.git`, from a folder path."""
     return "://" in value or value.startswith("git@") or value.endswith(".git")
 
 
 def command_plugin_add(args: argparse.Namespace) -> None:
-    """Copies a plugin folder, or the root of a git repository at a branch, tag or commit, into plugins/ of an app, replacing an earlier copy, and lists it in app.json with the defaults of its parameters and an empty text for every required one."""
+    """Copies a plugin folder, or the root of a git repository at a branch, tag or commit, into `plugins/` of an app, replacing an earlier copy, and lists it in `app.json` with the defaults of its parameters and an empty text for every required one."""
     app = resolve_app(args.app)
     with tempfile.TemporaryDirectory() as scratch:
         if is_git_repository(args.plugin):
@@ -2155,15 +2155,15 @@ def command_plugin_add(args: argparse.Namespace) -> None:
             run(["git", "-C", checkout, "fetch", "--quiet", "--depth", "1", args.plugin, args.ref or "HEAD"])
             run(["git", "-C", checkout, "checkout", "--quiet", "FETCH_HEAD"])
             if not (checkout / "plugin.json").is_file():
-                raise BuildError(f"{args.plugin} is no plugin repository, because it has no plugin.json at its root.")
+                raise BuildError(f'The address "{args.plugin}" is no plugin repository, because it has no "plugin.json" at its root.')
             identifier = json.loads((checkout / "plugin.json").read_text()).get("id")
             source = checkout.rename(Path(scratch) / identifier) if isinstance(identifier, str) and PLUGIN_ID.fullmatch(identifier) else checkout
         elif args.ref:
-            raise BuildError("--ref picks a branch, tag or commit of a git repository, and a plugin folder has none.")
+            raise BuildError('The option "--ref" picks a branch, tag or commit of a git repository, and a plugin folder has none.')
         else:
             source = Path(args.plugin).expanduser().resolve()
         if not (source / "plugin.json").is_file():
-            raise BuildError(f"{args.plugin} is no plugin, because it has no plugin.json at its root.")
+            raise BuildError(f'The folder "{args.plugin}" is no plugin, because it has no "plugin.json" at its root.')
         plugin = Plugin.load(source)
         target = app / "plugins" / plugin.id
         if source != target:
@@ -2178,23 +2178,23 @@ def command_plugin_add(args: argparse.Namespace) -> None:
             values[name] = parameter.get("default", "")
     write_app_json(app, document)
 
-    print(f"Added {plugin.id} {plugin.version} to {app}.")
+    print(f'Added "{plugin.id}" {plugin.version} to "{app}".')
     missing = [name for name, value in values.items() if value == "" and plugin.parameters.get(name, {}).get("required")]
     if missing:
-        print(f"Fill in {', '.join(missing)} under plugins.{plugin.id} of {app / 'app.json'}.")
+        print(f"Fill in {', '.join(f'"{name}"' for name in missing)} under \"plugins.{plugin.id}\" of \"{app / 'app.json'}\".")
     for required in plugin.requires:
         if required not in listed:
-            print(f"{plugin.id} requires {required}, which the app does not list yet. Add it with python3 make.py plugin add and its folder or repository.")
+            print(f'The plugin "{plugin.id}" requires "{required}", which the app does not list yet. Add it with "python3 make.py plugin add" and its folder or repository.')
 
 
 def command_plugin_remove(args: argparse.Namespace) -> None:
-    """Deletes a plugin from plugins/ of an app and from its app.json."""
+    """Deletes a plugin from `plugins/` of an app and from its `app.json`."""
     app = resolve_app(args.app)
     folder = app / "plugins" / args.id
     document = json.loads((app / "app.json").read_text())
     listed = document.get("plugins", {})
     if args.id not in listed and not folder.exists():
-        raise BuildError(f"{app} has no plugin {args.id}.")
+        raise BuildError(f'The app "{app}" has no plugin "{args.id}".')
 
     shutil.rmtree(folder, ignore_errors=True)
     if folder.parent.is_dir() and not any(folder.parent.iterdir()):
@@ -2204,23 +2204,23 @@ def command_plugin_remove(args: argparse.Namespace) -> None:
         if not listed:
             del document["plugins"]
         write_app_json(app, document)
-    print(f"Removed {args.id} from {app}.")
+    print(f'Removed "{args.id}" from "{app}".')
 
 
 def plugin_status(app: Path, identifier: str, listed: dict) -> list[str]:
     """Describes a plugin of an app in one line, followed by the problems that keep it from building for any of its platforms."""
     folder = app / "plugins" / identifier
     if not (folder / "plugin.json").is_file():
-        return [f"{identifier:<24} missing, because app.json lists it and plugins/{identifier}/plugin.json does not exist"]
+        return [f'{identifier:<24} Missing, because "app.json" lists it and "plugins/{identifier}/plugin.json" does not exist.']
     try:
         plugin = Plugin.load(folder)
     except BuildError as error:
         return [f"{identifier:<24} invalid", *(f"    {line}" for line in str(error).splitlines())]
 
     problems: list[str] = []
-    status = "not in app.json, so no build carries it"
+    status = 'Not in "app.json", so no build carries it.'
     if identifier in listed:
-        problems += [f"plugins.{identifier}: requires the plugin {required}, which app.json does not list." for required in plugin.requires if required not in listed]
+        problems += [f'The plugin "{identifier}" requires the plugin "{required}", which "app.json" does not list.' for required in plugin.requires if required not in listed]
         for platform in plugin.manifest["platforms"]:
             problems += [problem for problem in parameter_values(app, plugin, listed[identifier], platform)[1] if problem not in problems]
         status = f"{len(problems)} problems" if problems else "ok"
@@ -2235,21 +2235,21 @@ def command_plugin_list(args: argparse.Namespace) -> None:
     folders = sorted(path.name for path in (app / "plugins").iterdir() if path.is_dir()) if (app / "plugins").is_dir() else []
     identifiers = [*listed, *(name for name in folders if name not in listed)]
     if not identifiers:
-        print(f"{app} has no plugins.")
+        print(f'The app "{app}" has no plugins.')
     for identifier in identifiers:
         print("\n".join(plugin_status(app, identifier, listed)))
 
 
 def command_plugin_new(args: argparse.Namespace) -> None:
-    """Creates a plugin from templates/plugin, with its id in the names of its files, classes and modules."""
+    """Creates a plugin from `templates/plugin`, with its id in the names of its files, classes and modules."""
     folder = Path(args.folder).expanduser().resolve()
     identifier = args.id or folder.name
     if not PLUGIN_ID.fullmatch(identifier):
-        raise BuildError(f"{identifier} is no plugin id. Plugin ids are dash-case, such as firebase-analytics.")
+        raise BuildError(f'The name "{identifier}" is no plugin id. Plugin ids are "dash-case", such as "firebase-analytics".')
     if identifier != folder.name:
-        raise BuildError(f"A plugin folder is named after the id of the plugin, so the folder of {identifier} is named {identifier}, not {folder.name}.")
+        raise BuildError(f'A plugin folder is named after the id of the plugin, so the folder of "{identifier}" is named "{identifier}", not "{folder.name}".')
     if folder.exists() and any(folder.iterdir()):
-        raise BuildError(f"{folder} already exists and is not empty.")
+        raise BuildError(f'The folder "{folder}" already exists and is not empty.')
 
     words = identifier.split("-")
     tokens = {"{{ID}}": identifier, "{{NAME}}": "".join(word.capitalize() for word in words), "{{TITLE}}": " ".join(word.capitalize() for word in words), "{{PACKAGE}}": "".join(words)}
@@ -2263,7 +2263,7 @@ def command_plugin_new(args: argparse.Namespace) -> None:
         target = folder / substitute(source.relative_to(PLUGIN_TEMPLATE).as_posix())
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(substitute(source.read_text()))
-    print(f"Created the plugin {identifier} in {folder}. Add it to an app with: python3 make.py plugin add {folder} --app <app>")
+    print(f'Created the plugin "{identifier}" in "{folder}". Add it to an app with "python3 make.py plugin add {folder} --app <app>".')
 
 
 # The platforms a C++ app project runs on: this machine, the browser, Mac Catalyst, iOS, tvOS, their simulators and Android.
@@ -2279,7 +2279,7 @@ def command_run_cpp(args: argparse.Namespace) -> None:
     candidate = Path(args.project).expanduser()
     project = (candidate if candidate.exists() else SAMPLES_DIR / args.project).resolve()
     if not (project / "CMakeLists.txt").is_file():
-        raise BuildError(f"{args.project} is neither a CMake project folder nor the name of a C++ sample.")
+        raise BuildError(f'The path "{args.project}" is neither a CMake project folder nor the name of a C++ sample.')
     target = cpp_target(project, args.target)
     folder = CPP_BUILDS_DIR / build_folder_name(project)
 
@@ -2301,7 +2301,7 @@ def command_run_cpp(args: argparse.Namespace) -> None:
 
 
 def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Namespace) -> None:
-    """Builds a C++ app for iOS, tvOS or their simulators with the Xcode generator, which compiles the launch screen and signs the bundle, or for Mac Catalyst with Ninja and the Mac Catalyst toolchain, for the architecture of this Mac, then launches it like make.py run."""
+    """Builds a C++ app for iOS, tvOS or their simulators with the Xcode generator, which compiles the launch screen and signs the bundle, or for Mac Catalyst with Ninja and the Mac Catalyst toolchain, for the architecture of this Mac, then launches it like `make.py run`."""
     require_host("apple")
     device = args.platform in {"ios", "tvos"}
     arch = "arm64" if device or host_arch() == "arm64" else "x86_64"
@@ -2313,23 +2313,23 @@ def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Names
     run(command)
     run(["cmake", "--build", directory, "--config", args.config, "--target", target, "--parallel", str(args.jobs), *(["--", "-allowProvisioningUpdates"] if device else [])])
 
-    # Ninja places the bundle in bin/<target>, while the Xcode generator places it in bin.
+    # Ninja places the bundle in `bin/<target>`, while the Xcode generator places it in `bin`.
     settings = APPLE_RUNS[args.platform]
     simulator = apple_simulator(settings["simulator"], args.device) if "simulator" in settings else None
     launch_apple(next((directory / "bin").glob(f"**/{target}.app")), args, simulator)
 
 
 def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Namespace) -> None:
-    """Builds the library of a C++ app for the ABI of the Android device and packages it with the package of the app into the Android template, whose activity loads it instead of the Lua player, then installs and launches it like make.py run."""
+    """Builds the library of a C++ app for the ABI of the Android device and packages it with the package of the app into the Android template, whose activity loads it instead of the Lua player, then installs and launches it like `make.py run`."""
     device = android_device(args.device)
     abi = capture([adb(), "-s", device, "shell", "getprop", "ro.product.cpu.abi"]).strip()
     if abi not in ANDROID_ABIS:
-        raise BuildError(f"{device} runs {abi}, while the engine builds for {', '.join(ANDROID_ABIS)}.")
+        raise BuildError(f"The device \"{device}\" runs \"{abi}\", while the engine builds for {', '.join(f'"{name}"' for name in ANDROID_ABIS)}.")
     directory = folder / f"android-{abi}-{args.config.lower()}"
     run(["cmake", "-S", project, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={args.config}", *android_options(abi)])
     run(["cmake", "--build", directory, "--target", target, "--parallel", str(args.jobs)])
 
-    # The activity, the bridge and the other Java classes come from the haylen library of the artifacts, while the app brings the engine in its own library.
+    # The activity, the bridge and the other Java classes come from the `haylen` library of the artifacts, while the app brings the engine in its own library.
     built = directory / "bin" / target
     app = App(Path((built / "package.txt").read_text().strip()), "android")
     ensure_artifacts("android", args.engine_config, args.jobs)
@@ -2361,14 +2361,14 @@ def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int) 
     shell = (built / f"{target}.shell.html").read_text()
     picker = (ENGINE_DIR / "platform" / "web" / "backend-picker.html").read_text().replace("{{TARGET}}", target)
     if "{{{ SCRIPT }}}" not in shell:
-        raise BuildError(f"The web shell of {target} has no {{{{{{ SCRIPT }}}}}} placeholder.")
+        raise BuildError(f'The web shell of "{target}" has no "{{{{{{ SCRIPT }}}}}}" placeholder.')
     (output / "index.html").write_text(shell.replace("{{{ SCRIPT }}}", picker.strip()))
     shutil.copy2(built / ENGINE_LOGO.name, output)
-    print(f"Bundled {target} for WebGPU and WebGL2 into {output}")
+    print(f'Bundled "{target}" for WebGPU and WebGL2 into "{output}".')
 
 
 def list_samples() -> list[tuple[str, str]]:
-    """Returns the path from samples/ and the kind of every sample: a C++ project has a CMakeLists.txt, a Lua app only an app.json."""
+    """Returns the path from `samples/` and the kind of every sample: a C++ project has a `CMakeLists.txt`, a Lua app only an `app.json`."""
     found = []
     for folder in sorted(path for path in SAMPLES_DIR.glob("*/*") if path.is_dir()):
         if (folder / "CMakeLists.txt").is_file():
@@ -2397,7 +2397,7 @@ def command_package(args: argparse.Namespace) -> None:
 
 
 class WebHandler(http.server.SimpleHTTPRequestHandler):
-    """Serves a folder with the headers WebAssembly pages need: explicit MIME types, no caching and precompressed files. The web runtime is single-threaded, so the page stays in one browsing context group with the popups it opens, such as sign-in and payment pages, unless a page asks for cross-origin isolation with the opener policy same-origin."""
+    """Serves a folder with the headers WebAssembly pages need: explicit MIME types, no caching and precompressed files. The web runtime is single-threaded, so the page stays in one browsing context group with the popups it opens, such as sign-in and payment pages, unless a page asks for cross-origin isolation with the opener policy `same-origin`."""
 
     coep = "require-corp"
     coop = "off"
@@ -2416,7 +2416,7 @@ class WebHandler(http.server.SimpleHTTPRequestHandler):
         return MIME_TYPES.get(Path(path).suffix.lower()) or super().guess_type(path)
 
     def send_head(self):
-        # A request for a file that also exists as .br or .gz is answered with the compressed copy the browser accepts.
+        # A request for a file that also exists as `.br` or `.gz` is answered with the compressed copy the browser accepts.
         path = Path(self.translate_path(self.path))
         accepted = self.headers.get("Accept-Encoding", "")
         for suffix, encoding in ((".br", "br"), (".gz", "gzip")):
@@ -2437,7 +2437,7 @@ def serve(directory: Path, host: str, port: int, coep: str = "require-corp", coo
     handler = functools.partial(type("Handler", (WebHandler,), {"coep": coep, "coop": coop}), directory=str(directory))
     with http.server.ThreadingHTTPServer((host, port), handler) as server:
         url = f"http://{host}:{port}/"
-        print(f"Serving {directory} at {url}", flush=True)
+        print(f'Serving "{directory}" at "{url}".', flush=True)
         if open_page:
             webbrowser.open(url)
         try:
@@ -2452,7 +2452,7 @@ def command_serve(args: argparse.Namespace) -> None:
 
 def command_clean(_: argparse.Namespace) -> None:
     shutil.rmtree(BUILD_ROOT, ignore_errors=True)
-    print(f"Removed {BUILD_ROOT}")
+    print(f'Removed "{BUILD_ROOT}".')
 
 
 def add_build_options(parser: argparse.ArgumentParser) -> None:
@@ -2470,10 +2470,10 @@ def add_sanitizer_option(parser: argparse.ArgumentParser) -> None:
 
 
 def add_web_server_options(parser: argparse.ArgumentParser, port: int) -> None:
-    parser.add_argument("--host", default="127.0.0.1", help="Address the local web server listens on. The LAN address of this machine lets phones and other computers open the page, which then runs without sound, because browsers offer AudioWorklet only to pages served over https or from localhost.")
+    parser.add_argument("--host", default="127.0.0.1", help='Address the local web server listens on. The LAN address of this machine lets phones and other computers open the page, which then runs without sound, because browsers offer AudioWorklet only to pages served over https or from "localhost".')
     parser.add_argument("--port", type=int, default=port, help="Port of the local web server.")
-    parser.add_argument("--coep", default="require-corp", choices=["require-corp", "credentialless", "off"], help="Cross-Origin-Embedder-Policy. Pages that load third-party scripts, such as Google sign-in, need credentialless or off.")
-    parser.add_argument("--coop", default="off", choices=["off", "same-origin-allow-popups", "same-origin"], help="Cross-Origin-Opener-Policy, none by default, since the single-threaded runtime needs no cross-origin isolation and same-origin cuts the page off from the sign-in and payment popups of plugins. same-origin with a --coep policy isolates the page for SharedArrayBuffer and threads.")
+    parser.add_argument("--coep", default="require-corp", choices=["require-corp", "credentialless", "off"], help='The "Cross-Origin-Embedder-Policy" header. Pages that load third-party scripts, such as Google sign-in, need "credentialless" or "off".')
+    parser.add_argument("--coop", default="off", choices=["off", "same-origin-allow-popups", "same-origin"], help='The "Cross-Origin-Opener-Policy" header, none by default, since the single-threaded runtime needs no cross-origin isolation and "same-origin" cuts the page off from the sign-in and payment popups of plugins. The value "same-origin" with a "--coep" policy isolates the page for "SharedArrayBuffer" and threads.')
     parser.add_argument("--open", action="store_true", help="Open the page in the default browser.")
 
 
@@ -2482,8 +2482,8 @@ def main() -> None:
     commands = parser.add_subparsers(dest="command", required=True, metavar="command")
 
     tools = commands.add_parser("tools", help="Download the pinned build tools.")
-    tools.add_argument("--emsdk", action="store_true", help=f"Install Emscripten {EMSDK_VERSION} into .tools.")
-    tools.add_argument("--gradle", action="store_true", help=f"Install Gradle {GRADLE_VERSION} into .tools.")
+    tools.add_argument("--emsdk", action="store_true", help=f'Install Emscripten {EMSDK_VERSION} into ".tools".')
+    tools.add_argument("--gradle", action="store_true", help=f'Install Gradle {GRADLE_VERSION} into ".tools".')
     tools.set_defaults(handler=command_tools)
 
     for name, handler, help_text in (("configure", command_configure, "Generate a build tree of the engine."), ("build", command_build, "Configure the engine when needed and build it."), ("test", command_test, "Build and run the engine tests on this machine.")):
@@ -2491,7 +2491,7 @@ def main() -> None:
         add_build_options(sub)
         sub.set_defaults(handler=handler)
 
-    engine = commands.add_parser("engine", help="Build the prebuilt engine artifacts that apps use, into build/artifacts.")
+    engine = commands.add_parser("engine", help='Build the prebuilt engine artifacts that apps use, into "build/artifacts".')
     engine.add_argument("--platform", default="all", choices=[*ARTIFACT_PLATFORMS, "all"])
     engine.add_argument("--config", default="Release", choices=CONFIGS)
     engine.add_argument("--jobs", type=int, default=default_jobs())
@@ -2500,33 +2500,33 @@ def main() -> None:
     new = commands.add_parser("new", help="Create an app with the starter code and a copy of every platform template.")
     new.add_argument("folder", help="Folder of the new app, which must not exist or be empty.")
     new.add_argument("--name", help="Display name, from the folder name by default.")
-    new.add_argument("--identifier", help="Reverse domain identifier, com.example.<folder> by default.")
+    new.add_argument("--identifier", help='Reverse domain identifier, "com.example.<folder>" by default.')
     new.add_argument("--orientation", default="landscape", choices=["landscape", "portrait", "any"])
     new.set_defaults(handler=command_new)
 
     plugin = commands.add_parser("plugin", help="Add plugins to an app, remove them, list them or create a plugin.")
     actions = plugin.add_subparsers(dest="action", required=True, metavar="action")
-    add_plugin = actions.add_parser("add", help="Copy a plugin folder or a plugin repository into plugins/ of an app and list it in app.json.")
-    add_plugin.add_argument("plugin", help="A plugin folder, or the git repository of a plugin, such as https://github.com/haylen-org/<plugin>.git.")
+    add_plugin = actions.add_parser("add", help='Copy a plugin folder or a plugin repository into "plugins/" of an app and list it in "app.json".')
+    add_plugin.add_argument("plugin", help='A plugin folder, or the git repository of a plugin, such as "https://github.com/haylen-org/<plugin>.git".')
     add_plugin.add_argument("--ref", help="Branch, tag or commit of the repository, its default branch otherwise.")
-    add_plugin.add_argument("--app", default=".", help="App folder or sample path from samples/, the current folder by default.")
+    add_plugin.add_argument("--app", default=".", help='App folder or sample path from "samples/", the current folder by default.')
     add_plugin.set_defaults(handler=command_plugin_add)
-    remove_plugin = actions.add_parser("remove", help="Delete a plugin from plugins/ of an app and from its app.json.")
+    remove_plugin = actions.add_parser("remove", help='Delete a plugin from "plugins/" of an app and from its "app.json".')
     remove_plugin.add_argument("id", help="Id of the plugin.")
-    remove_plugin.add_argument("--app", default=".", help="App folder or sample path from samples/, the current folder by default.")
+    remove_plugin.add_argument("--app", default=".", help='App folder or sample path from "samples/", the current folder by default.')
     remove_plugin.set_defaults(handler=command_plugin_remove)
     list_plugins = actions.add_parser("list", help="List the plugins of an app with their status.")
-    list_plugins.add_argument("--app", default=".", help="App folder or sample path from samples/, the current folder by default.")
+    list_plugins.add_argument("--app", default=".", help='App folder or sample path from "samples/", the current folder by default.')
     list_plugins.set_defaults(handler=command_plugin_list)
-    new_plugin = actions.add_parser("new", help="Create a plugin from templates/plugin.")
+    new_plugin = actions.add_parser("new", help='Create a plugin from "templates/plugin".')
     new_plugin.add_argument("folder", help="Folder of the new plugin, named after its id, which must not exist or be empty.")
-    new_plugin.add_argument("--id", help="Id of the plugin in dash-case, the folder name by default.")
+    new_plugin.add_argument("--id", help='Id of the plugin in "dash-case", the folder name by default.')
     new_plugin.set_defaults(handler=command_plugin_new)
 
     commands.add_parser("samples", help="List the samples by category, with the command that runs each one.").set_defaults(handler=command_samples)
 
     run_app = commands.add_parser("run", help="Run an app: in the player of this machine with hot reload, or built from the templates for a platform.")
-    run_app.add_argument("app", nargs="?", default=DEFAULT_APP, help=f"App folder or sample path from samples/, {DEFAULT_APP} by default.")
+    run_app.add_argument("app", nargs="?", default=DEFAULT_APP, help=f'App folder or sample path from "samples/", "{DEFAULT_APP}" by default.')
     run_app.add_argument("--platform", choices=list(RUN_TARGETS), help="Build the app for a platform from its template. Without it the desktop player runs the app folder in development mode.")
     run_app.add_argument("--device", help="Simulator name or id, Apple device id or Android serial.")
     run_app.add_argument("--config", default="Debug", choices=["Debug", "Release"], help="Configuration of the player or of the platform project.")
@@ -2536,23 +2536,23 @@ def main() -> None:
     run_app.set_defaults(handler=command_run)
 
     run_cpp = commands.add_parser("run-cpp", help="Build and run a C++ app project, which compiles the engine through CMake.")
-    run_cpp.add_argument("project", help="CMake project folder or C++ sample path from samples/, such as cpp/embedding.")
+    run_cpp.add_argument("project", help='CMake project folder or C++ sample path from "samples/", such as "cpp/embedding".')
     run_cpp.add_argument("--platform", default=host_name(), choices=CPP_RUN_PLATFORMS)
-    run_cpp.add_argument("--target", help="The haylen_add_app target, named like the project folder by default.")
+    run_cpp.add_argument("--target", help='The "haylen_add_app" target, named like the project folder by default.')
     run_cpp.add_argument("--device", help="Simulator name or id, Apple device id or Android serial.")
     run_cpp.add_argument("--config", default="Debug", choices=CONFIGS)
-    run_cpp.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the haylen Android library whose Java classes Android apps use.")
+    run_cpp.add_argument("--engine-config", default="Release", choices=CONFIGS, help='Configuration of the "haylen" Android library whose Java classes Android apps use.')
     run_cpp.add_argument("--jobs", type=int, default=default_jobs())
     add_web_server_options(run_cpp, 8000)
     run_cpp.set_defaults(handler=command_run_cpp)
 
-    package = commands.add_parser("package", help="Zip the app.json, source and content of an app.")
-    package.add_argument("app", help="App folder or sample path from samples/.")
-    package.add_argument("-o", "--output", default="app.zip", help="Zip file to write, app.zip by default.")
+    package = commands.add_parser("package", help='Zip the "app.json", "source" and "content" of an app.')
+    package.add_argument("app", help='App folder or sample path from "samples/".')
+    package.add_argument("-o", "--output", default="app.zip", help='Zip file to write, "app.zip" by default.')
     package.set_defaults(handler=command_package)
 
-    shaders = commands.add_parser("shaders", help="Compile the shaders under content/shaders of an app into .shader files for every backend.")
-    shaders.add_argument("app", help="App folder or sample path from samples/.")
+    shaders = commands.add_parser("shaders", help='Compile the shaders under "content/shaders" of an app into ".shader" files for every backend.')
+    shaders.add_argument("app", help='App folder or sample path from "samples/".')
     shaders.add_argument("--force", action="store_true", help="Compile every shader, including the ones that are up to date.")
     shaders.set_defaults(handler=command_shaders)
 
@@ -2575,21 +2575,21 @@ def main() -> None:
     bench.add_argument("--jobs", type=int, default=default_jobs())
     bench.set_defaults(handler=command_bench)
 
-    sdk = commands.add_parser("sdk", help="Build the engine SDK and install it for find_package(haylen).")
+    sdk = commands.add_parser("sdk", help='Build the engine SDK and install it for "find_package(haylen)".')
     sdk.add_argument("--platform", default=host_name(), choices=sorted(DESKTOP_PLATFORMS | WEB_PLATFORMS))
     sdk.add_argument("--config", default="Release", choices=CONFIGS)
-    sdk.add_argument("--output", help="Install prefix, build/sdk/haylen-<platform>-<config> by default.")
+    sdk.add_argument("--output", help='Install prefix, "build/sdk/haylen-<platform>-<config>" by default.')
     sdk.add_argument("--jobs", type=int, default=default_jobs())
     sdk.set_defaults(handler=command_sdk)
 
-    embedding = commands.add_parser("embedding", help="Build the C++ embedding sample through add_subdirectory, CPM or an installed SDK.")
+    embedding = commands.add_parser("embedding", help='Build the C++ embedding sample through "add_subdirectory", CPM or an installed SDK.')
     embedding.add_argument("--mode", default="subdirectory", choices=["subdirectory", "cpm", "package"])
     embedding.add_argument("--config", default="Debug", choices=CONFIGS)
     embedding.add_argument("--jobs", type=int, default=default_jobs())
     embedding.set_defaults(handler=command_embedding)
 
     assets = commands.add_parser("assets", help="Import the Tiny Swords pack into the Tiny Island sample.")
-    assets.add_argument("archive", help="Path to 'Tiny Swords (Free Pack).zip'.")
+    assets.add_argument("archive", help='Path to "Tiny Swords (Free Pack).zip".')
     assets.set_defaults(handler=command_assets)
 
     commands.add_parser("map", help="Generate the Tiny Island Tiled map.").set_defaults(handler=command_map)
@@ -2599,7 +2599,7 @@ def main() -> None:
     try:
         args.handler(args)
     except (BuildError, subprocess.CalledProcessError, OSError) as error:
-        print(f"error: {error}", file=sys.stderr)
+        print(f"Error: {error}", file=sys.stderr)
         raise SystemExit(1) from error
 
 

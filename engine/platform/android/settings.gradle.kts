@@ -1,4 +1,4 @@
-// Builds the haylen Android library, which make.py engine --platform android publishes to the Maven repository of the engine artifacts.
+// Builds the `haylen` Android library, which `make.py engine --platform android` publishes to the Maven repository of the engine artifacts.
 pluginManagement {
     repositories {
         google()

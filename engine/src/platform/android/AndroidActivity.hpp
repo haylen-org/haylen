@@ -10,7 +10,7 @@
 
 namespace haylen::platform {
 
-// The GameActivity of the app and what its Java side reports: the safe area and the orientation of the screen, set on the UI thread, whether the device is a TV, and whether the app has drawn, which the splash screen reads.
+// The `GameActivity` of the app and what its Java side reports: the safe area and the orientation of the screen, set on the UI thread, whether the device is a TV, and whether the app has drawn, which the splash screen reads.
 class AndroidActivity final {
   public:
     [[nodiscard]] static const GameActivity& getNative();

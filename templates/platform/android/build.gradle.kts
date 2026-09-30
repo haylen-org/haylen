@@ -1,4 +1,4 @@
-// The Gradle plugins that the plugins of the app apply to the app module, which make.py lists in haylen.gradlePlugins as id=version entries. Their plugin markers put them on the build classpath, like plugins declared with apply false.
+// The Gradle plugins that the plugins of the app apply to the app module, which `make.py` lists in `haylen.gradlePlugins` as `id=version` entries. Their plugin markers put them on the build classpath, like plugins declared with `apply false`.
 buildscript {
     repositories {
         google()

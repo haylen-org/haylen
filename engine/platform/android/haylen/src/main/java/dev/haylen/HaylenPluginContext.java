@@ -34,17 +34,17 @@ public final class HaylenPluginContext {
         return application;
     }
 
-    // The running activity, an AppCompatActivity and so a ComponentActivity, or null while there is none.
+    // The running activity, an `AppCompatActivity` and so a `ComponentActivity`, or `null` while there is none.
     public HaylenActivity activity() {
         return HaylenBridge.activity();
     }
 
-    // The parameter values of the plugin in the app.json of the package, over the defaults of its plugin.json.
+    // The parameter values of the plugin in the `app.json` of the package, over the defaults of its `plugin.json`.
     public JSONObject config() {
         return config;
     }
 
-    // Answers <id>.<method> on the main thread.
+    // Answers `<id>.<method>` on the main thread.
     public void register(String method, HaylenBridge.MethodHandler handler) {
         register(method, handler, HaylenBridge.Threading.MAIN);
     }
@@ -57,17 +57,17 @@ public final class HaylenPluginContext {
         }
     }
 
-    // Sends <id>.<event> to the app.
+    // Sends `<id>.<event>` to the app.
     public void emit(String event, Object payload) {
         HaylenBridge.emit(id + "." + event, payload, false);
     }
 
-    // Sends <id>.<event> retained, so it waits for the first listener of its name, such as the deep link that opened the app.
+    // Sends `<id>.<event>` retained, so it waits for the first listener of its name, such as the deep link that opened the app.
     public void emitRetained(String event, Object payload) {
         HaylenBridge.emit(id + "." + event, payload, true);
     }
 
-    // Sends <id>.<event>, retained or not, and batched, so the events of the name that arrive in one frame reach the app as one list in order, such as the readings of a sensor.
+    // Sends `<id>.<event>`, retained or not, and batched, so the events of the name that arrive in one frame reach the app as one list in order, such as the readings of a sensor.
     public void emit(String event, Object payload, boolean retain, boolean batched) {
         HaylenBridge.emit(id + "." + event, payload, retain, batched);
     }
@@ -77,10 +77,10 @@ public final class HaylenPluginContext {
         return overlay;
     }
 
-    // Tells the app that native UI of the plugin covers it, such as a full screen ad, which halts and mutes the app until the matching uncoverApp. Covers nest, and the ones still open when the activity is destroyed end with it.
+    // Tells the app that native UI of the plugin covers it, such as a full screen ad, which halts and mutes the app until the matching `uncoverApp`. Covers nest, and the ones still open when the activity is destroyed end with it.
     public synchronized void coverApp() {
         if (HaylenBridge.activity() == null) {
-            Log.w("haylen", "The plugin " + id + " covered the app while no activity exists, which covers nothing.");
+            Log.w("haylen", "The plugin \"" + id + "\" covered the app while no activity exists, which covers nothing.");
             return;
         }
         ++covers;
@@ -89,7 +89,7 @@ public final class HaylenPluginContext {
 
     public synchronized void uncoverApp() {
         if (covers == 0) {
-            Log.e("haylen", "The plugin " + id + " uncovered the app without covering it first.");
+            Log.e("haylen", "The plugin \"" + id + "\" uncovered the app without covering it first.");
             return;
         }
         --covers;

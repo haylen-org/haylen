@@ -23,7 +23,7 @@ public final class HaylenOverlay {
         requireMainThread();
         HaylenActivity activity = HaylenBridge.activity();
         if (activity == null) {
-            throw new IllegalStateException("The plugin " + id + " can only place a view over the app while an activity exists.");
+            throw new IllegalStateException("The plugin \"" + id + "\" can only place a view over the app while an activity exists.");
         }
         HaylenOverlayLayer layer = activity.overlays();
         Panel panel = new Panel(layer, id + "#" + ++serial, view, placement.copy());
@@ -92,7 +92,7 @@ public final class HaylenOverlay {
             owner.forget(this);
         }
 
-        // The frame of the view in the pixels of the activity window, or null while it does not show.
+        // The frame of the view in the pixels of the activity window, or `null` while it does not show.
         public Rect bounds() {
             requireMainThread();
             if (removed || view.getVisibility() != View.VISIBLE || !view.isLaidOut()) {

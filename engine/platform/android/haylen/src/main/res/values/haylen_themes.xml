@@ -6,7 +6,7 @@
         <item name="android:windowFullscreen">true</item>
     </style>
 
-    <!-- The theme of HaylenActivity in the manifest. The activity installs the splash screen, which switches to Theme.Haylen before the activity creates its window. -->
+    <!-- The theme of `HaylenActivity` in the manifest. The activity installs the splash screen, which switches to `Theme.Haylen` before the activity creates its window. -->
     <style name="Theme.Haylen.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/haylen_splash_background</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/haylen_splash_icon</item>

@@ -11,7 +11,7 @@
     static void reportError(byte[]);
 }
 
-# The haylen library creates plugins by the class names of the manifest meta-data, so their classes and constructors keep their names.
+# The `haylen` library creates plugins by the class names of the manifest meta-data, so their classes and constructors keep their names.
 -keep class * extends dev.haylen.HaylenPlugin {
     public <init>();
 }

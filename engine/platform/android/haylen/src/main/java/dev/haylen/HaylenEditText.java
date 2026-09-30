@@ -19,7 +19,7 @@ import org.json.JSONObject;
 
 // The hidden field that edits the focused text field of the engine. The activity adds it over the surface of the app, the engine places it over the field it edits, and the software keyboard, every input method and hardware keyboards type into it while it has the focus. After each change its text, selection and composing span go back to the engine. Touches pass through it to the app, which places the caret itself, the sticks of controllers reach the app wherever the focus is, and the keys it leaves alone go on to the app.
 final class HaylenEditText extends EditText {
-    // The actions, keyboards, return keys and capitalizations follow the order of their enums in haylen/platform/TextInput.hpp.
+    // The actions, keyboards, return keys and capitalizations follow the order of their enums in `haylen/platform/TextInput.hpp`.
     private static final int ACTION_SUBMIT = 0;
     private static final int ACTION_NEXT = 1;
     private static final int ACTION_CANCEL = 2;

@@ -26,7 +26,7 @@ import dev.haylen.HaylenPluginContext
 import java.io.ByteArrayOutputStream
 import org.json.JSONObject
 
-// Native part of the Native Demo plugin on Android, built on the views, dialogs and intents of the platform alone. The haylen library creates it from the meta-data of its manifest and loads it when the app process starts.
+// Native part of the Native Demo plugin on Android, built on the views, dialogs and intents of the platform alone. The `haylen` library creates it from the meta-data of its manifest and loads it when the app process starts.
 class NativeDemoPlugin : HaylenPlugin() {
     private lateinit var context: HaylenPluginContext
     private val mainThread = Handler(Looper.getMainLooper())
@@ -56,10 +56,10 @@ class NativeDemoPlugin : HaylenPlugin() {
             reply.success(JSONObject().put("echo", (params as JSONObject).opt("value")).put("thread", threadName()).put("language", LANGUAGE))
         }
 
-        // Handlers registered with the BACKGROUND threading share one background thread of the haylen library.
+        // Handlers registered with the `BACKGROUND` threading share one background thread of the `haylen` library.
         context.register("compute", { params, reply ->
             val primes = countPrimes((params as JSONObject).getInt("limit"))
-            reply.success(JSONObject().put("primes", primes).put("thread", threadName()).put("detail", "the thread " + Thread.currentThread().name).put("language", LANGUAGE))
+            reply.success(JSONObject().put("primes", primes).put("thread", threadName()).put("detail", "the thread \"" + Thread.currentThread().name + "\"").put("language", LANGUAGE))
         }, HaylenBridge.Threading.BACKGROUND)
 
         context.register("fail") { _, reply ->
@@ -74,7 +74,7 @@ class NativeDemoPlugin : HaylenPlugin() {
 
         context.register("config") { _, reply -> reply.success(context.config()) }
 
-        // Every app that loads the Lua API sends start. The plugin ends what an earlier app of the process left running and hands the new app the error that stopped the earlier one.
+        // Every app that loads the Lua API sends `start`. The plugin ends what an earlier app of the process left running and hands the new app the error that stopped the earlier one.
         context.register("start") { _, reply ->
             stopTicking()
             stopBursts()
@@ -86,10 +86,10 @@ class NativeDemoPlugin : HaylenPlugin() {
         }
     }
 
-    // The bytes of the app arrive as a ByteArray in the parameters, and a ByteArray in the answer crosses back as bytes.
+    // The bytes of the app arrive as a `ByteArray` in the parameters, and a `ByteArray` in the answer crosses back as bytes.
     private fun registerBytes() {
         context.register("echoBytes") { params, reply ->
-            val data = (params as JSONObject).opt("data") as? ByteArray ?: throw HaylenBridge.Failure("echoBytes needs bytes.", "invalidParams", null)
+            val data = (params as JSONObject).opt("data") as? ByteArray ?: throw HaylenBridge.Failure("The method \"echoBytes\" needs bytes.", "invalidParams", null)
             reply.success(JSONObject().put("data", data).put("size", data.size).put("thread", threadName()).put("language", LANGUAGE))
         }
 
@@ -97,7 +97,7 @@ class NativeDemoPlugin : HaylenPlugin() {
             val width = (params as JSONObject).optInt("width")
             val height = params.optInt("height")
             if (width !in 1..2048 || height !in 1..2048) {
-                throw HaylenBridge.Failure("generatedImage needs a width and a height from 1 to 2048.", "invalidParams", null)
+                throw HaylenBridge.Failure("The method \"generatedImage\" needs a width and a height from 1 to 2048.", "invalidParams", null)
             }
             reply.success(JSONObject().put("png", drawPattern(width, height)).put("width", width).put("height", height).put("drawnWith", "an Android Bitmap and Canvas").put("language", LANGUAGE))
         }, HaylenBridge.Threading.BACKGROUND)
@@ -137,7 +137,7 @@ class NativeDemoPlugin : HaylenPlugin() {
         ticker = null
     }
 
-    // Sends count batched events 30 times per second for ticks ticks, which reach the app as one list per frame, and then burstDone.
+    // Sends `count` batched events 30 times per second for `ticks` ticks, which reach the app as one list per frame, and then `burstDone`.
     private fun startBursts(count: Int, ticks: Int) {
         stopBursts()
         var tick = 0
@@ -179,7 +179,7 @@ class NativeDemoPlugin : HaylenPlugin() {
             val anchor = when (json.getString("anchor")) {
                 "top" -> HaylenPlacement.Anchor.TOP
                 "bottom" -> HaylenPlacement.Anchor.BOTTOM
-                else -> throw HaylenBridge.Failure("The anchor of the banner is top or bottom, not ${json.getString("anchor")}.", "invalidAnchor", null)
+                else -> throw HaylenBridge.Failure("The anchor of the banner is \"top\" or \"bottom\", not \"${json.getString("anchor")}\".", "invalidAnchor", null)
             }
             val placement = HaylenPlacement(anchor)
             placement.reserve = json.getBoolean("reserve")
@@ -200,7 +200,7 @@ class NativeDemoPlugin : HaylenPlugin() {
         }
 
         context.register("setBannerVisible") { params, reply ->
-            val current = banner ?: throw HaylenBridge.Failure("No banner shows. Call showBanner first.", "noBanner", null)
+            val current = banner ?: throw HaylenBridge.Failure("No banner shows. Call \"showBanner\" first.", "noBanner", null)
             current.isVisible = (params as JSONObject).getBoolean("visible")
             bannerState.put("visible", current.isVisible)
             reply.success(bannerState)
@@ -243,7 +243,7 @@ class NativeDemoPlugin : HaylenPlugin() {
         val reply = picking
         picking = null
         if (reply == null) {
-            Log.i(TAG, "The document picker answered ${uri ?: "nothing"} after the app started again, and no call waits for it.")
+            Log.i(TAG, "The document picker answered ${if (uri == null) "nothing" else "\"$uri\""} after the app started again, and no call waits for it.")
             return
         }
         if (uri == null) {
@@ -291,7 +291,7 @@ class NativeDemoPlugin : HaylenPlugin() {
         picker = null
     }
 
-    // The error screen of the app shows this error. The plugin keeps it and hands it to the next app when that app sends start.
+    // The error screen of the app shows this error. The plugin keeps it and hands it to the next app when that app sends `start`.
     override fun onAppError(error: JSONObject) {
         lastError = JSONObject().put("message", error.optString("message")).put("file", error.optString("file")).put("line", error.optInt("line")).put("language", LANGUAGE)
     }
@@ -299,7 +299,7 @@ class NativeDemoPlugin : HaylenPlugin() {
     private fun bannerColor(): Int {
         val text = context.config().getString("bannerColor")
         if (!COLOR.matches(text)) {
-            throw HaylenBridge.Failure("The bannerColor parameter must be a color as #RRGGBB, not $text.", "invalidColor", null)
+            throw HaylenBridge.Failure("The parameter \"bannerColor\" must be a color as \"#RRGGBB\", not \"$text\".", "invalidColor", null)
         }
         return Color.parseColor(text)
     }
@@ -312,7 +312,7 @@ class NativeDemoPlugin : HaylenPlugin() {
 
         fun threadName(): String = if (Looper.myLooper() == Looper.getMainLooper()) "main" else "background"
 
-        // Draws the pattern of the demo, a gradient from red to green with blue stripes, into a Bitmap and compresses it as a PNG file.
+        // Draws the pattern of the demo, a gradient from red to green with blue stripes, into a `Bitmap` and compresses it as a PNG file.
         fun drawPattern(width: Int, height: Int): ByteArray {
             val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)

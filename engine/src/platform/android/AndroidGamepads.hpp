@@ -19,10 +19,10 @@ class AndroidGamepads final {
     // GameActivity copies only the position axes of motion events unless others are enabled, while controllers report sticks, triggers and hats on theirs.
     static void enableAxes();
 
-    // Answers on the UI thread whether a key is a button of a controller, which the app takes from the views and the system, as the key callback of sokol_app.
+    // Answers on the UI thread whether a key is a button of a controller, which the app takes from the views and the system, as the key callback of `sokol_app`.
     static bool takesKey(const void* keyEvent);
 
-    // Takes an input event before sokol_app translates it, as its native event callback, and returns whether it was a controller event. It runs on the frame thread.
+    // Takes an input event before `sokol_app` translates it, as its native event callback, and returns whether it was a controller event. It runs on the frame thread.
     static bool handleEvent(const void* source);
 
     static void poll(std::span<input::GamepadState> states);

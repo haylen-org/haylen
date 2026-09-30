@@ -1,5 +1,5 @@
 // Android side of the Haylen runtime: the Lua player library, the activity with its splash screen, the link activity, the platform bridge and the Kotlin transport of the Varn HTTP client.
-// make.py engine --platform android builds the player with the engine CMake project for every ABI and publishes this library as dev.haylen:haylen to a local Maven repository, so apps made from the Android template depend on it without compiling C++.
+// The command `make.py engine --platform android` builds the player with the engine CMake project for every ABI and publishes this library as `dev.haylen:haylen` to a local Maven repository, so apps made from the Android template depend on it without compiling C++.
 plugins {
     id("com.android.library")
     `maven-publish`
@@ -8,19 +8,19 @@ plugins {
 val engineDir = projectDir.resolve("../../..").canonicalFile
 val engineVersion = engineDir.resolve("VERSION").readText().trim()
 val nativeLibraries = providers.gradleProperty("haylenNativeLibraries").orNull
-    ?: error("Pass -PhaylenNativeLibraries with the folder that holds libhaylen.so in a subfolder for each ABI. make.py builds it with the engine CMake project.")
+    ?: error("Pass \"-PhaylenNativeLibraries\" with the folder that holds \"libhaylen.so\" in a subfolder for each ABI. The script \"make.py\" builds it with the engine CMake project.")
 val varnSourceDir = providers.gradleProperty("haylenVarnSourceDir").orNull
-    ?: error("Pass -PhaylenVarnSourceDir with the Varn source folder. make.py resolves it from the native build.")
+    ?: error("Pass \"-PhaylenVarnSourceDir\" with the Varn source folder. The script \"make.py\" resolves it from the native build.")
 val mavenDir = providers.gradleProperty("haylenMavenDir").orNull
-    ?: error("Pass -PhaylenMavenDir with the Maven repository that receives the library. make.py uses build/artifacts/android/maven.")
+    ?: error("Pass \"-PhaylenMavenDir\" with the Maven repository that receives the library. The script \"make.py\" uses \"build/artifacts/android/maven\".")
 
 android {
     namespace = "dev.haylen"
     compileSdk = 37
-    // Gradle strips the players with the tools of the NDK that make.py builds them with.
+    // Gradle strips the players with the tools of the NDK that `make.py` builds them with.
     ndkVersion = "30.0.16248370"
 
-    // miniaudio plays through AAudio from Android 8.1 on, because AAudio of Android 8.0 has known faults, and the engine builds it without OpenSL ES.
+    // The miniaudio library plays through AAudio from Android 8.1 on, because AAudio of Android 8.0 has known faults, and the engine builds it without OpenSL ES.
     defaultConfig {
         minSdk = 27
         consumerProguardFiles("consumer-rules.pro")
@@ -36,7 +36,7 @@ android {
     }
 }
 
-// HaylenActivity extends GameActivity, whose native side the engine links into libhaylen.so from the AAR of the same version, so no other version of its Java classes may reach an app. GameActivity extends AppCompatActivity, and its POM declares no dependencies, so AppCompat, the activity library and core come from here.
+// The class `HaylenActivity` extends `GameActivity`, whose native side the engine links into `libhaylen.so` from the AAR of the same version, so no other version of its Java classes may reach an app. The class `GameActivity` extends `AppCompatActivity`, and its POM declares no dependencies, so AppCompat, the activity library and core come from here.
 dependencies {
     api("androidx.games:games-activity") {
         version {

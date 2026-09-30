@@ -5,16 +5,16 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-feature android:glEsVersion="0x00030000" android:required="true" />
 
-    <!-- Back reaches HaylenActivity through its OnBackPressedCallback, which Android 13 and later call through the back callbacks of the window, so the system plays its predictive back animation when back leaves the app. -->
+    <!-- Back reaches `HaylenActivity` through its `OnBackPressedCallback`, which Android 13 and later call through the back callbacks of the window, so the system plays its predictive back animation when back leaves the app. -->
     <application android:enableOnBackInvokedCallback="true">
-        <!-- Loads the plugins before Application.onCreate. Providers with a higher initOrder start first, so the providers that SDKs start with at 100, such as the one of Firebase, have run and the ones that keep the default of 0 have not. -->
+        <!-- Loads the plugins before `Application.onCreate`. Providers with a higher `initOrder` start first, so the providers that SDKs start with at 100, such as the one of Firebase, have run and the ones that keep the default of 0 have not. -->
         <provider
             android:name="dev.haylen.HaylenPluginProvider"
             android:authorities="${applicationId}.haylen-plugins"
             android:exported="false"
             android:initOrder="50" />
 
-        <!-- Receives the links and notification taps of the app, whose intent filters plugins and apps add to it, and hands them to HaylenActivity. It shows nothing and runs in a task of its own that leaves no trace in the recent apps. -->
+        <!-- Receives the links and notification taps of the app, whose intent filters plugins and apps add to it, and hands them to `HaylenActivity`. It shows nothing and runs in a task of its own that leaves no trace in the recent apps. -->
         <activity
             android:name="dev.haylen.HaylenLinkActivity"
             android:excludeFromRecents="true"

@@ -1,6 +1,6 @@
 package dev.haylen;
 
-// Where HaylenOverlay places a view over the app. The fields match the placements of the web overlay, in dp instead of page pixels.
+// Where `HaylenOverlay` places a view over the app. The fields match the placements of the web overlay, in dp instead of page pixels.
 public final class HaylenPlacement {
     // The edges or the corner the view sits at, or the center. The view is centered along every axis that its anchor leaves free.
     public enum Anchor {
