@@ -8,10 +8,12 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/Binding.hpp"
+#include "haylen/lua/Bytes.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Reference.hpp"
@@ -20,13 +22,25 @@
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
+#include "platform/StreamsLua.hpp"
 #include "varn/async/Promise.h"
 
 namespace haylen::platform {
 
+// Parameters that Lua leaves out are an empty object, and strings marked with platform.bytes become byte buffers.
+Bridge::Payload PlatformLua::readPayload(lua_State* L, int index) {
+    Bridge::Payload payload;
+    payload.json = lua_isnoneornil(L, index) ? core::Json::object() : lua::JsonConverter::read(L, index, payload.buffers);
+    return payload;
+}
+
+void PlatformLua::pushPayload(lua_State* L, const Bridge::Payload& payload) {
+    lua::JsonConverter::push(L, payload.json, payload.buffers);
+}
+
 void PlatformLua::pushCall(lua_State* L, const std::string& method, int paramsIndex, int optionsIndex) {
     core::Engine& owner = lua::Runtime::getEngine(L);
-    const core::Json params = lua_isnoneornil(L, paramsIndex) ? core::Json::object() : lua::JsonConverter::read(L, paramsIndex);
+    const Bridge::Payload params = readPayload(L, paramsIndex);
     std::optional<std::chrono::steady_clock::duration> timeout;
     if (!lua_isnoneornil(L, optionsIndex)) {
         luaL_checktype(L, optionsIndex, LUA_TTABLE);
@@ -49,7 +63,7 @@ void PlatformLua::pushCall(lua_State* L, const std::string& method, int paramsIn
             pending->promise->reject(pending->error->message);
             return;
         }
-        pending->promise->resolveCustom([value = std::move(result.value)](lua_State* state) { lua::JsonConverter::push(state, value); });
+        pending->promise->resolveCustom([value = std::move(result.value)](lua_State* state) { pushPayload(state, value); });
     }, timeout);
     // clang-format on
 
@@ -62,11 +76,11 @@ void PlatformLua::pushConnection(lua_State* L, const std::string& event, int lis
     auto function = std::make_shared<lua::Reference>(L, listenerIndex);
 
     // clang-format off
-    core::Connection connection = owner.getPlatform().on(event, [function](const core::Json& payload) {
+    core::Connection connection = owner.getPlatform().on(event, [function](const Bridge::Payload& payload) {
         lua_State* main = function->getState();
         lua::Runtime::runReporting(main, [&] {
             function->push(main);
-            lua::JsonConverter::push(main, payload);
+            pushPayload(main, payload);
             lua::Runtime::protectedCall(main, 1, 0);
         });
     });
@@ -135,22 +149,39 @@ int PlatformLua::getPromise(lua_State* L) {
 int PlatformLua::resolve(lua_State* L) {
     const auto id = lua::Stack::read<std::uint64_t>(L, 1);
     const bool ok = lua::Stack::read<bool>(L, 2);
-    lua::Runtime::getEngine(L).getPlatform().resolve(id, ok, lua::JsonConverter::read(L, 3).dump());
+    std::vector<std::vector<std::byte>> buffers;
+    const std::string result = lua::JsonConverter::read(L, 3, buffers).dump();
+    lua::Runtime::getEngine(L).getPlatform().resolve(id, ok, result, std::move(buffers));
     return 0;
 }
 
-// Sends an event with emit(event, payload, {retain = true}) the way native code does, so platform.on listeners receive it at the start of the next frame.
+// Sends an event with emit(event, payload, {retain = true, batched = true}) the way native code does, so platform.on listeners receive it at the start of the next frame.
 int PlatformLua::emit(lua_State* L) {
     const std::string event = lua::Stack::read<std::string>(L, 1);
-    const std::string payload = lua::JsonConverter::read(L, 2).dump();
-    bool retain = false;
+    std::vector<std::vector<std::byte>> buffers;
+    const std::string payload = lua::JsonConverter::read(L, 2, buffers).dump();
+    Bridge::EmitOptions options;
     if (!lua_isnoneornil(L, 3)) {
         luaL_checktype(L, 3, LUA_TTABLE);
         lua::Table::checkFields(L, 3, {kEmitOptions});
-        lua::Table::readField(L, 3, "retain", retain);
+        lua::Table::readField(L, 3, "retain", options.retain);
+        lua::Table::readField(L, 3, "batched", options.batched);
     }
-    lua::Runtime::getEngine(L).getPlatform().emit(event, payload, retain);
+    lua::Runtime::getEngine(L).getPlatform().emit(event, payload, std::move(buffers), options);
     return 0;
+}
+
+// Marks a string with bytes(data) to cross the bridge as a byte buffer, since plain strings cross as text.
+int PlatformLua::bytes(lua_State* L) {
+    const std::string_view data = lua::Stack::read<std::string_view>(L, 1);
+    const auto* first = reinterpret_cast<const std::byte*>(data.data());
+    lua::Userdata::emplace<lua::Bytes>(L, lua::Bytes{.data = {first, first + data.size()}});
+    return 1;
+}
+
+int PlatformLua::getBytesSize(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<lua::Bytes>(L, 1).data.size());
+    return 1;
 }
 
 int PlatformLua::pendingCallCount(lua_State* L) {
@@ -167,8 +198,7 @@ int PlatformLua::on(lua_State* L) {
 // Calls a method with send(method, params) when nothing needs its answer, which creates no call and drops the answer.
 int PlatformLua::send(lua_State* L) {
     const std::string method = lua::Stack::read<std::string>(L, 1);
-    const core::Json params = lua_isnoneornil(L, 2) ? core::Json::object() : lua::JsonConverter::read(L, 2);
-    lua::Runtime::getEngine(L).getPlatform().send(method, params);
+    lua::Runtime::getEngine(L).getPlatform().send(method, readPayload(L, 2));
     return 0;
 }
 
@@ -180,15 +210,16 @@ int PlatformLua::registerHandler(lua_State* L) {
     auto function = std::make_shared<lua::Reference>(L, 2);
 
     // clang-format off
-    owner.getPlatform().registerHandler(method, [function](const core::Json& params, Bridge::Reply reply) {
+    owner.getPlatform().registerHandler(method, [function](const Bridge::Payload& params, Bridge::Reply reply) {
         lua_State* state = function->getState();
         const int top = lua_gettop(state);
         Bridge::Result result;
         try {
             function->push(state);
-            lua::JsonConverter::push(state, params);
+            pushPayload(state, params);
             lua::Runtime::protectedCall(state, 1, 1);
-            result = {.ok = true, .value = lua::JsonConverter::read(state, -1)};
+            result = {.ok = true};
+            result.value.json = lua::JsonConverter::read(state, -1, result.value.buffers);
         } catch (const std::exception& exception) {
             result = {.error = {.message = exception.what()}};
         }
@@ -272,8 +303,7 @@ int PlatformLua::callPlugin(lua_State* L) {
 
 int PlatformLua::sendToPlugin(lua_State* L) {
     const std::string method = getPluginName(L);
-    const core::Json params = lua_isnoneornil(L, 3) ? core::Json::object() : lua::JsonConverter::read(L, 3);
-    lua::Runtime::getEngine(L).getPlatform().send(method, params);
+    lua::Runtime::getEngine(L).getPlatform().send(method, readPayload(L, 3));
     return 0;
 }
 
@@ -316,11 +346,22 @@ int PlatformLua::concatError(lua_State* L) {
     return 1;
 }
 
+// Returns the video stream name of the plugin with handle:videoStream(name), or nil while its native part has not opened it.
+int PlatformLua::videoStreamOfPlugin(lua_State* L) {
+    StreamsLua::pushVideoStream(L, lua::Userdata::check<AppPlugin>(L, 1).id, lua::Stack::read<std::string>(L, 2));
+    return 1;
+}
+
+int PlatformLua::audioStreamOfPlugin(lua_State* L) {
+    StreamsLua::pushAudioStream(L, lua::Userdata::check<AppPlugin>(L, 1).id, lua::Stack::read<std::string>(L, 2));
+    return 1;
+}
+
 int PlatformLua::open(lua_State* L) {
-    lua::ClassBuilder<AppPlugin>(L).property("id", &getPluginId).property("version", &getPluginVersion).property("config", &getPluginConfig).property("native", &lua::Binding::native<&isPluginNative>).function("call", &lua::Binding::native<&callPlugin>).function("send", &lua::Binding::native<&sendToPlugin>).function("on", &lua::Binding::native<&onPlugin>).install();
+    lua::ClassBuilder<AppPlugin>(L).property("id", &getPluginId).property("version", &getPluginVersion).property("config", &getPluginConfig).property("native", &lua::Binding::native<&isPluginNative>).function("call", &lua::Binding::native<&callPlugin>).function("send", &lua::Binding::native<&sendToPlugin>).function("on", &lua::Binding::native<&onPlugin>).function("videoStream", &lua::Binding::native<&videoStreamOfPlugin>).function("audioStream", &lua::Binding::native<&audioStreamOfPlugin>).install();
 
     const luaL_Reg functions[] = {
-        {"call", &lua::Binding::native<&call>}, {"on", &lua::Binding::native<&on>}, {"send", &lua::Binding::native<&send>}, {"registerHandler", &lua::Binding::native<&registerHandler>}, {"hasHandler", &hasHandler}, {"resolve", &lua::Binding::native<&resolve>}, {"emit", &lua::Binding::native<&emit>}, {"pendingCallCount", &pendingCallCount}, {"plugins", &lua::Binding::native<&plugins>}, {"plugin", &lua::Binding::native<&plugin>}, {nullptr, nullptr},
+        {"call", &lua::Binding::native<&call>}, {"on", &lua::Binding::native<&on>}, {"send", &lua::Binding::native<&send>}, {"registerHandler", &lua::Binding::native<&registerHandler>}, {"hasHandler", &hasHandler}, {"resolve", &lua::Binding::native<&resolve>}, {"emit", &lua::Binding::native<&emit>}, {"bytes", &lua::Binding::native<&bytes>}, {"pendingCallCount", &pendingCallCount}, {"plugins", &lua::Binding::native<&plugins>}, {"plugin", &lua::Binding::native<&plugin>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;
@@ -335,6 +376,8 @@ void PlatformLua::install(lua_State* L) {
     lua_setfield(L, -2, "__concat");
     lua_pop(L, 1);
     lua::ClassBuilder<Call>(L).function("await", &await).function("cancel", &cancel).property("id", &getId).property("done", &isDone).property("promise", &getPromise).install();
+    lua::ClassBuilder<lua::Bytes>(L).property("size", &getBytesSize).install();
+    StreamsLua::install(L);
     lua::Binding::preload(L, "haylen.platform", &open);
 }
 

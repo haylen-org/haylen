@@ -27,6 +27,7 @@ set(HAYLEN_TEST_SOURCES
   ai/DecisionTests.cpp
   ai/StateMachineTests.cpp
   assets/AssetTests.cpp
+  audio/AudioStreamTests.cpp
   audio/AudioTests.cpp
   audio/EffectTests.cpp
   audio/MixerLuaTests.cpp
@@ -75,6 +76,7 @@ set(HAYLEN_TEST_SOURCES
   platform/NativeViewsTests.cpp
   platform/PlatformLuaTests.cpp
   platform/PlatformTests.cpp
+  platform/StreamTests.cpp
   platform/SystemTests.cpp
   platform/WindowLuaTests.cpp
   platform/WindowTests.cpp

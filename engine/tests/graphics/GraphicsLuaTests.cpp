@@ -1,6 +1,10 @@
 #include <gtest/gtest.h>
 
+#include <lua.hpp>
+
+#include <cstdint>
 #include <string>
+#include <vector>
 
 #include "sokol_gfx.h"
 #include "support/EngineFixture.hpp"
@@ -29,6 +33,20 @@ TEST(GraphicsLuaTest, CreatesTexturesAndRenderTargets) {
     EXPECT_NE(fixture.lua("return graphics.newRenderTarget(0, 32)").find("error: "), std::string::npos);
     EXPECT_NE(fixture.lua("return graphics.newRenderTarget(4, 4, {filter = 'blurry'})").find("error: "), std::string::npos);
     EXPECT_EQ(fixture.lua("return graphics.backendName()"), "dummy");
+}
+
+// The bytes of an image file, such as a PNG that a plugin returns, become a texture.
+TEST(GraphicsLuaTest, CreatesTexturesFromTheBytesOfImageFiles) {
+    const std::vector<std::uint8_t> image = test::TestFiles::pngImage(5, 3, 0x336699FFU);
+    test::EngineFixture fixture;
+    lua_pushlstring(fixture.lua(), reinterpret_cast<const char*>(image.data()), image.size());
+    lua_setglobal(fixture.lua(), "png");
+    fixture.runLua("graphics = require('haylen.graphics')");
+
+    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(png) return t.width .. 'x' .. t.height .. ' ' .. t.filter"), "5x3 nearest");
+    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(png, {dynamic = true, filter = 'linear', wrap = 'repeat'}) t:update(string.rep('\\0', 60)) return t.filter .. ' ' .. t.wrap"), "linear repeat");
+    EXPECT_NE(fixture.lua("graphics.newTexture('not an image')").find("The image could not be decoded"), std::string::npos);
+    EXPECT_NE(fixture.lua("graphics.newTexture(png, {fill = '#FF0000'})").find("fill"), std::string::npos);
 }
 
 // A dynamic texture takes new pixels from Lua, and the frame sends only the last pixels it received.

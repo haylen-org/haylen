@@ -161,13 +161,19 @@ print(done.freed)
 
 | Entry | Meaning |
 | --- | --- |
-| `version` | `HAYLEN_NATIVE_API_VERSION` of the engine, 3 for the interface this page describes. A library checks that it is at least the version of the header it was built with. |
-| `emit(event, payloadJson, retain)` | Sends an event that `platform.on` receives. With `retain` other than 0, an event that nothing listens to yet waits for the first listener of its name, as the [platform reference](platform.md#platformonevent-listener) describes. |
-| `resolve(call, ok, resultJson)` | Answers a call once, with a JSON result or a failure that is a message string or an object with `message`, `code` and `data`. |
-| `registerHandler(method, handler, cancel, user)` | Answers `platform.call(method)` with the C function `handler(user, call, method, paramsJson)`, which runs on the frame thread and answers through `resolve`, at once or later. `cancel(user, call)` runs on the frame thread when the app cancels a call or its timeout passes, and may be null. A null `handler` removes the method. Handlers belong to the process, like the library, so they keep answering after the app restarts. |
+| `version` | `HAYLEN_NATIVE_API_VERSION` of the engine, 4 for the interface this page describes. A new version may change any entry, so a library checks that the version equals the version of the header it was built with. |
+| `emit(event, payloadJson, buffers, bufferCount, flags)` | Sends an event that `platform.on` receives, with an array of `bufferCount` byte buffers that the JSON refers to as `{"$bytes": N}`, or null and 0 without bytes. `flags` combines `HAYLEN_NATIVE_EMIT_RETAIN`, which keeps an event that nothing listens to yet for the first listener of its name, and `HAYLEN_NATIVE_EMIT_BATCHED`, which hands the events of a name that arrive in one frame to the listeners as one list, as the [platform reference](platform.md#platformonevent-listener) describes. |
+| `resolve(call, ok, resultJson, buffers, bufferCount)` | Answers a call once, with a JSON result and the byte buffers it refers to, or a failure that is a message string or an object with `message`, `code` and `data`. |
+| `registerHandler(method, handler, cancel, user)` | Answers `platform.call(method)` with the C function `handler(user, call, method, paramsJson, buffers, bufferCount)`, which runs on the frame thread with the byte buffers of the parameters, valid until it returns, and answers through `resolve`, at once or later. `cancel(user, call)` runs on the frame thread when the app cancels a call or its timeout passes, and may be null. A null `handler` removes the method. Handlers belong to the process, like the library, so they keep answering after the app restarts. |
 | `log(level, text)` | Writes a line to the engine log at a `HaylenNativeLogLevel`. |
 | `registerPlugin(id)` | Declares the library the native part of the plugin `id`, so `platform.plugin(id).native` and the `native` field of `platform.plugins()` are `true` from then on, for every app the process runs. A null or empty id is logged as an error. |
 | `registerErrorHandler(handler, user)` | Calls `handler(user, reportJson)` on the frame thread with the report of every error that stops an app of the process from then on, the one its error screen shows, as JSON text of `{message, file, line, traceback, frames}`, like the native parts of [plugins](../plugins.md#errors-of-the-app) receive it. Registering the same handler with the same `user` again changes nothing, so an init function that runs again after a restart registers it once, and a null `handler` is logged as an error. |
+| `openVideoStream(plugin, name, format, width, height)` | Returns the [video stream](platform.md#video-streams) `name` of the plugin `plugin`, which `platform.plugin(plugin):videoStream(name)` returns in Lua, opening it the first time with a `HaylenNativePixelFormat`, `HAYLEN_NATIVE_PIXELS_RGBA8` or `HAYLEN_NATIVE_PIXELS_BGRA8`, and a size, 0 by 0 until the first frame. Opening it again returns the same stream. It returns null and logs why for an empty id or name, an unknown format, a negative size or a stream that is open with another format. |
+| `pushVideoFrame(stream, pixels, width, height, stride, timestamp)` | Copies a frame of `width` by `height` pixels whose rows start `stride` bytes apart, with its timestamp in seconds. The stream keeps only the newest frame, which the app shows from its next frame, and a frame of another size resizes the stream. |
+| `openAudioStream(plugin, name, sampleRate, channels, format, capacityFrames)` | Returns the [audio stream](platform.md#audio-streams) `name` of the plugin `plugin`, which `platform.plugin(plugin):audioStream(name)` returns in Lua, opening it the first time with its sample rate, channels, a `HaylenNativeSampleFormat`, `HAYLEN_NATIVE_SAMPLES_FLOAT32` or `HAYLEN_NATIVE_SAMPLES_INT16`, and a ring of `capacityFrames` frames. It returns null and logs why for an empty id or name, a format, rate, channel count or capacity it cannot take, or a stream that is open with another rate, channel count or format. |
+| `pushAudioFrames(stream, samples, frames)` | Writes `frames` interleaved frames in the format of the stream and returns how many fit into the ring, dropping the rest while it is full. One thread at a time pushes into a stream. |
+
+Streams belong to the process, so their handles stay valid for good, and a library keeps them across the apps that the process runs. Every entry copies what it takes before it returns, so a library frees its buffers, pixels and samples as soon as the call is over.
 
 Library handlers answer after the handlers registered in the engine and before the handlers of the platform. The init function runs every time the app loads the library with `init`, so it registers its handlers again after a restart.
 
@@ -176,8 +182,9 @@ Library handlers answer after the handlers registered in the engine and before t
 
 static const HaylenNativeApi* engine = 0;
 
-static void answer(void* user, uint64_t call, const char* method, const char* paramsJson) {
-    engine->resolve(call, 1, paramsJson);
+/* Answers with the parameters it received and the bytes they refer to, which resolve copies. */
+static void answer(void* user, uint64_t call, const char* method, const char* paramsJson, const HaylenNativeBuffer* buffers, size_t bufferCount) {
+    engine->resolve(call, 1, paramsJson, buffers, bufferCount);
 }
 
 static void appFailed(void* user, const char* reportJson) {
@@ -185,10 +192,13 @@ static void appFailed(void* user, const char* reportJson) {
 }
 
 int my_library_haylen_init(const HaylenNativeApi* api) {
+    if (api->version != HAYLEN_NATIVE_API_VERSION) {
+        return 1;
+    }
     engine = api;
     api->registerHandler("my_library.echo", answer, 0, 0);
     api->registerErrorHandler(appFailed, 0);
-    api->emit("my_library.ready", "{\"version\": 1}", 1);
+    api->emit("my_library.ready", "{\"version\": 1}", 0, 0, HAYLEN_NATIVE_EMIT_RETAIN);
     return 0;
 }
 ```
@@ -206,6 +216,38 @@ platform.on('my_library.ready', function(payload)
 end)
 
 async.spawn(function()
-    print(platform.call('my_library.echo', {word = 'hello'}):await().word)
+    local echoed = platform.call('my_library.echo', {word = 'hello', data = platform.bytes('\0\1\2')}):await()
+    print(echoed.word, #echoed.data)
 end)
+```
+
+A library that feeds a stream opens it once and pushes from any thread, such as the thread of a capture device:
+
+```c
+#include "haylen/platform/native/HaylenNative.h"
+
+static const HaylenNativeApi* engine = 0;
+static HaylenNativeVideoStream* preview = 0;
+static HaylenNativeAudioStream* microphone = 0;
+
+/* Called by the capture device of the library for every frame, on its own thread. */
+static void frameCaptured(const uint8_t* bgra, int width, int height, int stride, double seconds) {
+    engine->pushVideoFrame(preview, bgra, width, height, stride, seconds);
+}
+
+/* Called by the audio device of the library for every block of 16-bit mono samples, on its own thread. */
+static void samplesCaptured(const int16_t* samples, size_t frames) {
+    engine->pushAudioFrames(microphone, samples, frames);
+}
+
+int capture_haylen_init(const HaylenNativeApi* api) {
+    if (api->version != HAYLEN_NATIVE_API_VERSION) {
+        return 1;
+    }
+    engine = api;
+    preview = api->openVideoStream("capture", "preview", HAYLEN_NATIVE_PIXELS_BGRA8, 1280, 720);
+    microphone = api->openAudioStream("capture", "microphone", 48000, 1, HAYLEN_NATIVE_SAMPLES_INT16, 24000);
+    api->registerPlugin("capture");
+    return preview != 0 && microphone != 0 ? 0 : 2;
+}
 ```

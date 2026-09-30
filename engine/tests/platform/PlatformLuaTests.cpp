@@ -1,10 +1,13 @@
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/JsonBytes.hpp"
 #include "haylen/platform/Bridge.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/EngineFixture.hpp"
@@ -157,6 +160,82 @@ TEST(PlatformLuaTest, SendsCallsAndRetainsEventsFromLua) {
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
+TEST(PlatformLuaTest, SendsAndReceivesBytesNextToJson) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        platform = require('haylen.platform')
+        async = require('async')
+        png = '\137PNG\r\n\26\n' .. string.char(0, 255)
+        marked = platform.bytes(png)
+        platform.registerHandler('image.echo', function(params)
+            return {image = platform.bytes(params.image), same = params.image == png, caption = params.caption}
+        end)
+        frames = {}
+        platform.on('camera.frame', function(payload) frames[#frames + 1] = payload.jpeg end)
+        stored = platform.call('store.photo', {photo = marked, name = 'shot.png', tags = {platform.bytes('a'), 'b'}})
+        async.spawn(function()
+            local echoed = platform.call('image.echo', {image = marked, caption = png}):await()
+            local sizes = stored:await()
+            summary = table.concat({tostring(echoed.same), tostring(echoed.image == png), tostring(echoed.caption == png), sizes.small, sizes.big}, ' ')
+        end)
+    )");
+    // clang-format on
+    EXPECT_EQ(fixture.lua("return marked.size .. ' ' .. getmetatable(marked)"), "10 haylen.Bytes");
+
+    // The marked strings cross as buffers, while a plain string with the same bytes stays text.
+    const auto bytesOf = [](std::string_view text) { return std::vector<std::byte>(reinterpret_cast<const std::byte*>(text.data()), reinterpret_cast<const std::byte*>(text.data()) + text.size()); };
+    ASSERT_EQ(fixture.host().getPlatformCalls().size(), 1U);
+    const HeadlessHost::PlatformCall& stored = fixture.host().getPlatformCalls()[0];
+    const core::Json params = core::Json::parse(stored.paramsJson);
+    ASSERT_EQ(stored.buffers.size(), 2U);
+    EXPECT_EQ(stored.buffers[core::JsonBytes::findReference(params.at("photo")).value()], bytesOf(std::string("\x89PNG\r\n\x1A\n\0\xFF", 10)));
+    EXPECT_EQ(stored.buffers[core::JsonBytes::findReference(params.at("tags").at(0)).value()], bytesOf("a"));
+    EXPECT_EQ(params.at("name"), "shot.png");
+
+    fixture.engine().getPlatform().resolve(stored.id, true, R"({"small": {"$bytes": 1}, "big": {"$bytes": 0}})", {bytesOf("big"), bytesOf("small")});
+    fixture.engine().getPlatform().emit("camera.frame", R"({"jpeg": {"$bytes": 0}})", {bytesOf("frame one")});
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return summary ~= nil") == "true"; }));
+    EXPECT_EQ(fixture.lua("return summary .. ' ' .. frames[1]"), "true true true small big frame one");
+
+    // Lua sends bytes in events the way native code does.
+    fixture.runLua("platform.emit('camera.frame', {jpeg = platform.bytes('frame two')})");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return frames[2]"), "frame two");
+    EXPECT_NE(fixture.lua("platform.bytes({})").find("string expected"), std::string::npos);
+    EXPECT_NE(fixture.lua("require('haylen.storage').writeJson('bytes.json', {platform.bytes('a')})").find("cannot be converted to JSON"), std::string::npos);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+TEST(PlatformLuaTest, ReceivesTheBatchedEventsOfAFrameAsOneList) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        platform = require('haylen.platform')
+        lists = {}
+        platform.on('gps.fix', function(fixes) lists[#lists + 1] = fixes end)
+        for index = 1, 3 do
+            platform.emit('gps.fix', {n = index}, {batched = true})
+        end
+    )");
+    // clang-format on
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return #lists .. ' ' .. #lists[1] .. ' ' .. lists[1][2].n"), "1 3 2");
+
+    for (int index = 1; index <= 100; ++index) {
+        fixture.engine().getPlatform().emit("gps.fix", core::Json{{"n", index}}.dump(), {}, {.batched = true});
+    }
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return #lists .. ' ' .. #lists[2] .. ' ' .. lists[2][1].n .. ' ' .. lists[2][100].n"), "2 100 1 100");
+
+    // A retained batch waits for the first listener as the list of its frame.
+    fixture.runLua("platform.emit('late.fix', {n = 1}, {batched = true, retain = true}) platform.emit('late.fix', {n = 2}, {batched = true, retain = true})");
+    fixture.frames(1);
+    fixture.runLua("late = {} platform.on('late.fix', function(fixes) late[#late + 1] = #fixes end)");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return table.concat(late, ',')"), "2");
+}
+
 TEST(PlatformLuaTest, HandsPluginModulesTheHandlesOfTheirPlugins) {
     // clang-format off
     test::EngineFixture fixture({
@@ -222,7 +301,7 @@ TEST(PlatformLuaTest, CppCallsToLuaHandlersReturnErrorsInsteadOfCrashing) {
     fixture.runLua("require('haylen.platform').registerHandler('bad.result', function() return {callback = print} end)");
 
     Bridge::Result received;
-    fixture.engine().getPlatform().call("bad.result", core::Json::object(), [&](Bridge::Result result) { received = std::move(result); });
+    fixture.engine().getPlatform().call("bad.result", {}, [&](Bridge::Result result) { received = std::move(result); });
     fixture.frames(1);
     EXPECT_FALSE(received.ok);
     EXPECT_NE(received.error.message.find("cannot be converted to JSON"), std::string::npos);

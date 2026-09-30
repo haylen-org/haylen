@@ -14,9 +14,13 @@ class GraphicsLua final {
 
   private:
     static constexpr std::array<std::string_view, 3> kTextureContentFields{"fill", "pixels", "dynamic"};
+    static constexpr std::array<std::string_view, 1> kImageTextureFields{"dynamic"};
 
     static int newRenderTarget(lua_State* L);
     static int newTexture(lua_State* L);
+
+    // Pushes the texture of the image file whose bytes lie at index 1, with the options at index 2.
+    static void pushImageTexture(lua_State* L);
     static int updateTexture(lua_State* L);
     static int maxTextureSize(lua_State* L);
     static int whiteTexture(lua_State* L);

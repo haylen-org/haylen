@@ -20,11 +20,15 @@
 }
 
 + (void)emit:(NSString*)event payload:(nullable id)payload {
-    haylen::platform::AppleBridge::emit(event, payload, false);
+    haylen::platform::AppleBridge::emit(event, payload, {});
 }
 
 + (void)emit:(NSString*)event payload:(nullable id)payload retain:(BOOL)retain {
-    haylen::platform::AppleBridge::emit(event, payload, retain);
+    haylen::platform::AppleBridge::emit(event, payload, {.retain = retain == YES});
+}
+
++ (void)emit:(NSString*)event payload:(nullable id)payload retain:(BOOL)retain batched:(BOOL)batched {
+    haylen::platform::AppleBridge::emit(event, payload, {.retain = retain == YES, .batched = batched == YES});
 }
 
 @end

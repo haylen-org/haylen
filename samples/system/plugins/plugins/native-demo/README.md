@@ -1,6 +1,6 @@
 # Native Demo
 
-A Haylen plugin that exercises every capability of native plugins with the APIs of each platform alone: calls on the main thread and on a background thread, typed failures, timeouts and cancellation, events and retained events, parameters with defaults, a native banner over the app that reserves its edge, a native screen that covers the app, the file picker of the platform, URLs that open the app and the errors that stop it. It is the plugin of the [plugins sample](../../README.md), and [the plugin guide](../../../../../docs/plugins.md#demo-plugin-and-sample) walks through it as the reference for writing a plugin on each platform. Its Lua API is the same on every platform.
+A Haylen plugin that exercises every capability of native plugins with the APIs of each platform alone: calls on the main thread and on a background thread, typed failures, timeouts and cancellation, bytes both ways and an image drawn natively, video and audio streams, events, retained events and batched events, parameters with defaults, a native banner over the app that reserves its edge, a native screen that covers the app, the file picker of the platform, URLs that open the app and the errors that stop it. It is the plugin of the [plugins sample](../../README.md), and [the plugin guide](../../../../../docs/plugins.md#demo-plugin-and-sample) walks through it as the reference for writing a plugin on each platform. Its Lua API is the same on every platform.
 
 ## Installation
 
@@ -22,12 +22,12 @@ python3 make.py plugin add samples/system/plugins/plugins/native-demo --app my-g
 
 | Platform | Native part | What it uses |
 | --- | --- | --- |
-| iOS, iPadOS, Mac Catalyst | `apple/`, Swift | UIKit views over the app, a presented view controller, `UIDocumentPickerViewController`, `CFBundleURLTypes` and `scene(_:openURLContexts:)`. |
+| iOS, iPadOS, Mac Catalyst | `apple/`, Swift | UIKit views over the app, a presented view controller, `UIDocumentPickerViewController`, `CFBundleURLTypes`, `scene(_:openURLContexts:)` and CoreGraphics with ImageIO for the image. The streams come with a later version of the engine, so `startVideo`, `stopVideo`, `startTone` and `stopTone` fail with the code `unsupported`. |
 | tvOS | `apple/`, Swift | The same, without a file picker, so `pickFile` fails with the code `unsupported`. |
-| macOS app | `apple/`, Swift | AppKit views over the app, a sheet, `NSOpenPanel`, `CFBundleURLTypes` and `application(_:open:)`. |
-| Android | `android/`, a Kotlin library module | Views in panels of the overlay, a full screen `Dialog`, `ACTION_OPEN_DOCUMENT` with `startActivityForResult`, and an intent filter of the activity for the URL scheme. |
-| Web | `web/native-demo.js` | DOM elements in the overlay, a modal `<dialog>`, an `<input type="file">` and the hash of the page address. |
-| Desktop player, Windows, Linux | `native/`, a C library | Threads of the system and `HaylenNativeApi`. The desktops give native libraries no view API, so `showBanner`, `setBannerVisible`, `removeBanner`, `showScreen` and `pickFile` fail with the code `unsupported`, and so does `nativeConfig`, since native libraries receive no plugin parameters. The desktops open no URLs of the scheme either. |
+| macOS app | `apple/`, Swift | AppKit views over the app, a sheet, `NSOpenPanel`, `CFBundleURLTypes`, `application(_:open:)` and CoreGraphics with ImageIO for the image. The streams fail with the code `unsupported`, like on iOS. |
+| Android | `android/`, a Kotlin library module | Views in panels of the overlay, a full screen `Dialog`, `ACTION_OPEN_DOCUMENT` with `startActivityForResult`, an intent filter of the activity for the URL scheme and a `Bitmap` for the image. The streams come with a later version of the engine, so they fail with the code `unsupported`. |
+| Web | `web/native-demo.js` | DOM elements in the overlay, a modal `<dialog>`, an `<input type="file">`, the hash of the page address, a `<canvas>` with `toBlob` for the image and the video stream, and timers of the page for the tone and the bursts. |
+| Desktop player, Windows, Linux | `native/`, a C library | Threads of the system and `HaylenNativeApi`, with a PNG encoder of its own and the video and audio streams of the engine. The desktops give native libraries no view API, so `showBanner`, `setBannerVisible`, `removeBanner`, `showScreen` and `pickFile` fail with the code `unsupported`, and so does `nativeConfig`, since native libraries receive no plugin parameters. The desktops open no URLs of the scheme either. |
 
 The Lua API loads the C library with `native.load('native_demo', {init = 'native_demo_haylen_init'})` when it runs on macOS, Windows or Linux and no other native part loaded, which is the case of the desktop player and of Windows and Linux apps. The macOS app built from the Apple template runs the Swift part, which loads before any Lua runs.
 
@@ -112,6 +112,37 @@ async.spawn(function()
 end)
 ```
 
+### demo.echoBytes(data)
+
+Sends the bytes of the string `data` to the native part as a byte buffer, marked with `platform.bytes`, and the native part answers with `{data, size, thread, language}`, where `data` holds the same bytes as a Lua string. Swift reads and answers `Data`, Kotlin a `ByteArray`, JavaScript a `Uint8Array` and C the `HaylenNativeBuffer` of its handler. Without bytes it fails with the code `invalidParams`.
+
+```lua
+local async = require('async')
+local demo = require('native-demo')
+
+async.spawn(function()
+    local data = string.char(0, 1, 2, 250, 255)
+    local echoed = demo.echoBytes(data):await()
+    print(echoed.language, echoed.size, echoed.data == data)
+end)
+```
+
+### demo.generatedImage(width, height)
+
+Draws the pattern of the plugin, a gradient from red to green with blue stripes, in an image of `width` by `height` pixels, from 1 to 2048, and answers with `{png, width, height, drawnWith, language}`, where `png` holds the bytes of a PNG file: drawn with CoreGraphics and written with ImageIO on Apple platforms, drawn in a `Bitmap` and compressed on the background thread on Android, drawn on a `<canvas>` and encoded with `toBlob` on the web, and drawn in memory and encoded by a PNG encoder of the library on the desktops. Another size fails with the code `invalidParams`.
+
+```lua
+local async = require('async')
+local demo = require('native-demo')
+local graphics = require('haylen.graphics')
+
+async.spawn(function()
+    local image = demo.generatedImage(384, 216):await()
+    local texture = graphics.newTexture(image.png, {filter = 'linear'})
+    print(image.drawnWith, #image.png, texture.width, texture.height)
+end)
+```
+
 ### demo.fail()
 
 Always fails with the message `The native demo failed on purpose.`, the code `demoFailure` and the data `{reason = 'requested', language}`.
@@ -160,6 +191,75 @@ local demo = require('native-demo')
 
 demo.onTick(function(tick) print('tick', tick.count, 'on the', tick.thread, 'thread') end)
 demo.setTicking(true)
+```
+
+### demo.burst(count, ticks)
+
+Sends `count` events of the name `burst` 30 times per second for `ticks` ticks, each marked batched, and then `burstDone` with `{events, ticks, language}`, and answers at once with `{count, ticks, language}`. Swift sends from a `Timer`, Kotlin from the main `Handler`, JavaScript from `setInterval` and C from a thread of the library.
+
+### demo.onBurst(listener), demo.onBurstDone(listener)
+
+`onBurst` calls `listener(list)` once per frame with the list of the `{tick, index, language}` of the events that arrived in that frame, in order, and `onBurstDone` calls `listener({events, ticks, language})` once the last event arrived.
+
+```lua
+local demo = require('native-demo')
+
+local lists, events = 0, 0
+demo.onBurst(function(list)
+    lists = lists + 1
+    events = events + #list
+end)
+demo.onBurstDone(function(done) print(events .. ' of ' .. done.events .. ' events arrived in ' .. lists .. ' lists') end)
+demo.burst(100, 30)
+```
+
+### demo.startVideo(), demo.stopVideo(), demo.videoStream()
+
+`startVideo` opens the video stream `pattern` and draws the pattern into it 30 times per second with its stripes moving, and answers with `{width, height, fps, format, language}`: BGRA frames of 320 by 180 pixels from a thread of the library on the desktops, and a `<canvas>` of 320 by 180 pixels that `context.videoStream` copies on the web. `stopVideo` stops the frames. `videoStream()` returns the [video stream](../../../../../docs/lua-api/platform.md#video-streams), or `nil` until the native part opened it. Apple platforms and Android fail both calls with the code `unsupported`.
+
+```lua
+local async = require('async')
+local demo = require('native-demo')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+scene.push({
+    enter = function(self)
+        scene.spawn(self, function()
+            if demo.startVideo():await() then
+                self.video = demo.videoStream()
+            end
+        end)
+    end,
+    render = function(self)
+        if self.video then
+            graphics2d.beginScreen()
+            graphics2d.draw(self.video.texture, 40, 40, {pivotX = 0, pivotY = 0})
+        end
+    end,
+    exit = function(self)
+        demo.stopVideo()
+    end,
+})
+```
+
+### demo.startTone(frequency), demo.stopTone(), demo.audioStream()
+
+`startTone` opens the audio stream `tone` and synthesizes a sine wave of `frequency` hertz into it a tenth of a second ahead of the clock, and answers with `{frequency, sampleRate, channels, format, language}`: 16-bit mono samples at 44100 Hz from a thread of the library on the desktops, and `Float32Array` blocks at 44100 Hz from a timer of the page on the web. `stopTone` stops the samples. `audioStream()` returns the [audio stream](../../../../../docs/lua-api/platform.md#audio-streams), or `nil` until the native part opened it. Apple platforms and Android fail both calls with the code `unsupported`.
+
+```lua
+local async = require('async')
+local collections = require('haylen.collections')
+local demo = require('native-demo')
+
+async.spawn(function()
+    if demo.startTone(440):await() then
+        local tone = demo.audioStream()
+        tone:play({volume = 0.5})
+        local samples = collections.newFloatBuffer(512)
+        print(tone.sampleRate, tone:read(samples))
+    end
+end)
 ```
 
 ### demo.onLoaded(listener)
@@ -258,8 +358,13 @@ demo.onLastError(function(failure) print('the last app stopped with', failure.me
 
 | Method or event | Params or payload | Answer |
 | --- | --- | --- |
-| `native-demo.start` | `{}`, sent by the Lua API when it loads | `null`. Stops the ticks and removes the banner that an earlier app of the process left, and sends `lastError`. |
+| `native-demo.start` | `{}`, sent by the Lua API when it loads | `null`. Stops the ticks, the streams and the bursts and removes the banner that an earlier app of the process left, and sends `lastError`. |
 | `native-demo.echo` | `{value}` | `{echo, thread, language}` |
+| `native-demo.echoBytes` | `{data}` with the bytes of `data` | `{data, size, thread, language}` with the same bytes |
+| `native-demo.generatedImage` | `{width, height}` | `{png, width, height, drawnWith, language}` with the bytes of `png` |
+| `native-demo.startVideo`, `native-demo.stopVideo` | `{}` | `{width, height, fps, format, thread, language}`, and `null` |
+| `native-demo.startTone`, `native-demo.stopTone` | `{frequency}`, and `{}` | `{frequency, sampleRate, channels, format, language}`, and `null` |
+| `native-demo.burst` | `{count, ticks}` | `{count, ticks, language}` |
 | `native-demo.compute` | `{limit}` | `{primes, thread, detail, language}` |
 | `native-demo.fail` | `{}` | Fails with `demoFailure` and `{reason, language}`. |
 | `native-demo.wait` | `{token}` | Never answers. |
@@ -272,7 +377,14 @@ demo.onLastError(function(failure) print('the last app stopped with', failure.me
 | `native-demo.pickFile` | `{}` | `{name}` or `null` |
 | `native-demo.loaded` (event, retained) | `{language, platform}` | |
 | `native-demo.tick` (event) | `{count, thread, language}` | |
+| `native-demo.burst` (event, batched) | `{tick, index, language}` | |
+| `native-demo.burstDone` (event) | `{events, ticks, language}` | |
 | `native-demo.waitCancelled` (event) | `{token, language}` | |
 | `native-demo.bannerTapped` (event) | `{count, language}` | |
 | `native-demo.urlOpened` (event, retained) | `{url}` | |
 | `native-demo.lastError` (event, retained) | `{message, file, line, language}` | |
+
+| Stream | Kind | Format |
+| --- | --- | --- |
+| `pattern` | Video | BGRA frames of 320 by 180 pixels, 30 per second, from C, and RGBA frames of the canvas on the web. |
+| `tone` | Audio | 16-bit mono samples at 44100 Hz from C, and float mono samples at 44100 Hz on the web. |

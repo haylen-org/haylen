@@ -234,8 +234,8 @@ void SokolHost::pollGamepads(std::span<input::GamepadState> gamepads) {
     Services::pollGamepads(gamepads);
 }
 
-void SokolHost::dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson) {
-    Services::dispatch(id, method, paramsJson);
+void SokolHost::dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) {
+    Services::dispatch(id, method, paramsJson, buffers);
 }
 
 void SokolHost::cancelPlatformCall(std::uint64_t id) {

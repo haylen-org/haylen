@@ -8,7 +8,7 @@ An app reaches anything native, from the APIs of the platform to native librarie
 
 | Way | What it is | Where it runs |
 | --- | --- | --- |
-| The platform bridge, `haylen.platform` | JSON calls and events answered by Java or Kotlin on Android, Objective-C or Swift on Apple platforms, JavaScript on the web, C in native libraries, or C++ and Lua anywhere. Answers are asynchronous, typed errors carry a code and data, and calls time out and cancel. | Every platform. |
+| The platform bridge, `haylen.platform` | JSON calls and events with byte buffers next to them, answered by Java or Kotlin on Android, Objective-C or Swift on Apple platforms, JavaScript on the web, C in native libraries, or C++ and Lua anywhere. Answers are asynchronous, typed errors carry a code and data, calls time out and cancel, and the native parts of plugins feed video and audio streams. | Every platform. |
 | Native libraries through FFI, `haylen.native` and Varn's `ffi` | Lua declares the C functions and types of a library and calls them directly, with numbers, text, structs, pointers, buffers and callbacks. | macOS, Windows, Linux, iOS, tvOS, Mac Catalyst and Android. Not the browser. |
 | C++ plugins | A `haylen::plugins::Plugin` of an app that compiles the engine, with the lifecycle of the engine and a Lua module of its own. | Apps built with `haylen_add_app`, on every platform. |
 
@@ -95,15 +95,15 @@ Varn callbacks fit SDKs that call back only on the thread that pumps them, such 
 
 ## Libraries that talk to the app
 
-A library written for Haylen receives the C interface of the engine, `HaylenNativeApi` from `haylen/platform/native/HaylenNative.h`, when the app loads it with `native.load(name, {init = 'my_library_haylen_init'})`. With it the library registers bridge handlers in C, answers them from any thread, sends events, writes to the engine log and hears the errors that stop the app, the same way on every platform. The [reference](lua-api/native.md#library-handlers) lists the entries.
+A library written for Haylen receives the C interface of the engine, `HaylenNativeApi` from `haylen/platform/native/HaylenNative.h`, when the app loads it with `native.load(name, {init = 'my_library_haylen_init'})`. With it the library registers bridge handlers in C, answers them from any thread with JSON and byte buffers, sends events, retained or batched, feeds the video and audio streams of a plugin, writes to the engine log and hears the errors that stop the app, the same way on every platform. The [reference](lua-api/native.md#library-handlers) lists the entries.
 
 ```c
 #include "haylen/platform/native/HaylenNative.h"
 
 static const HaylenNativeApi* engine = 0;
 
-static void download(void* user, uint64_t call, const char* method, const char* paramsJson) {
-    /* Start the work on a thread of the library, which calls engine->resolve(call, 1, resultJson) when it is done. */
+static void download(void* user, uint64_t call, const char* method, const char* paramsJson, const HaylenNativeBuffer* buffers, size_t bufferCount) {
+    /* Start the work on a thread of the library, which calls engine->resolve(call, 1, "{\"file\": {\"$bytes\": 0}}", &file, 1) with the downloaded bytes when it is done. */
 }
 
 static void stop(void* user, uint64_t call) {
@@ -111,7 +111,7 @@ static void stop(void* user, uint64_t call) {
 }
 
 int my_library_haylen_init(const HaylenNativeApi* api) {
-    if (api->version < HAYLEN_NATIVE_API_VERSION) {
+    if (api->version != HAYLEN_NATIVE_API_VERSION) {
         return 1;
     }
     engine = api;

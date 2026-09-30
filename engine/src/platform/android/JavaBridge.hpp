@@ -3,9 +3,11 @@
 #include <jni.h>
 #include <pthread.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <mutex>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -19,8 +21,8 @@ class JavaBridge final {
     // Resolves the Java classes the native side calls, including the HTTP transport of Varn, which JNI_OnLoad does because the app class loader is still in reach there, and reads the plugins that the process loaded before. Returns the JNI version, or JNI_ERR when the APK lacks a class.
     static jint load(JavaVM* vm);
 
-    // Hands a call to the Java handler registry, which answers through the bridge relay.
-    static void dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson);
+    // Hands a call to the Java handler registry with the byte buffers of its parameters as byte arrays, and the registry answers through the bridge relay.
+    static void dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers);
 
     // Tells the Java handler of a call that the app gave it up.
     static void cancel(std::uint64_t id);
@@ -56,6 +58,9 @@ class JavaBridge final {
     // Text crosses JNI as UTF-8 bytes, because the JNI string functions use a modified UTF-8 that breaks characters outside the Basic Multilingual Plane, such as emoji.
     [[nodiscard]] static std::string toString(JNIEnv& env, jbyteArray bytes);
 
+    // Copies the buffers that Java hands over, each a byte array or a direct ByteBuffer, once.
+    [[nodiscard]] static std::vector<std::vector<std::byte>> toBuffers(JNIEnv& env, jobjectArray buffers);
+
   private:
     [[nodiscard]] static JNIEnv& getEnv();
     static void detachThread(void* env);
@@ -67,6 +72,7 @@ class JavaBridge final {
     static JavaVM* javaVm;
     static pthread_key_t attachedThreads;
     static std::vector<std::string>& plugins;
+    static jclass byteArrayClass;
     static jclass bridgeClass;
     static jmethodID dispatchMethod;
     static jmethodID cancelMethod;

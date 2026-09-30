@@ -47,14 +47,77 @@ Module.haylen = Module.haylen || {};
         waiting.runtime.push(work);
     };
 
-    // Sends an event to the app, which receives it through haylen.platform.on. An event that nothing listens to is dropped, unless options.retain is true: then it waits for the first listener of its name. Events sent before the first app started reach it once it starts.
+    // Parameters, results and events cross as JSON with the bytes of every ArrayBuffer and ArrayBuffer view, such as a Uint8Array, in buffers of their own that the JSON refers to as {"$bytes": N}, so binary data never turns into text.
+    const encodePayload = (value) => {
+        const buffers = [];
+        const prepare = (item) => {
+            if (item instanceof ArrayBuffer || ArrayBuffer.isView(item)) {
+                buffers.push(item instanceof ArrayBuffer ? new Uint8Array(item) : new Uint8Array(item.buffer, item.byteOffset, item.byteLength));
+                return { $bytes: buffers.length - 1 };
+            }
+            if (Array.isArray(item)) {
+                return item.map(prepare);
+            }
+            if (item !== null && typeof item === "object" && typeof item.toJSON !== "function") {
+                return Object.fromEntries(Object.entries(item).map(([key, element]) => [key, prepare(element)]));
+            }
+            return item;
+        };
+        const json = JSON.stringify(prepare(value === undefined ? null : value));
+        return { json: json === undefined ? "null" : json, buffers };
+    };
+
+    // Every {"$bytes": N} of the JSON becomes buffer N, a Uint8Array.
+    const decodePayload = (json, buffers) => {
+        return JSON.parse(json, (key, value) => {
+            const index = value !== null && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length === 1 ? value.$bytes : undefined;
+            return Number.isInteger(index) && index >= 0 && index < buffers.length ? buffers[index] : value;
+        });
+    };
+
+    // Copies the buffers into wasm memory with a table of an address and a size for each, for the duration of a call that copies them into the engine.
+    const withBuffers = (buffers, body) => {
+        const addresses = buffers.map((buffer) => {
+            const address = Module._malloc(Math.max(1, buffer.length));
+            Module.HEAPU8.set(buffer, address);
+            return address;
+        });
+        const table = Module._malloc(Math.max(1, buffers.length) * 8);
+        addresses.forEach((address, index) => {
+            Module.HEAPU32[(table >> 2) + index * 2] = address;
+            Module.HEAPU32[(table >> 2) + index * 2 + 1] = buffers[index].length;
+        });
+        try {
+            return body(table, buffers.length);
+        } finally {
+            addresses.forEach((address) => Module._free(address));
+            Module._free(table);
+        }
+    };
+
+    // Copies the buffers of a call out of the table in wasm memory that the engine hands over.
+    haylen.readBuffers = function (table, count) {
+        const buffers = [];
+        for (let index = 0; index < count; ++index) {
+            const address = Module.HEAPU32[(table >> 2) + index * 2];
+            buffers.push(Module.HEAPU8.slice(address, address + Module.HEAPU32[(table >> 2) + index * 2 + 1]));
+        }
+        return buffers;
+    };
+
+    const sendEvent = (event, json, buffers, flags) => {
+        withBuffers(buffers, (table, count) => Module.ccall("haylen_web_emit", null, ["string", "string", "number", "number", "number"], [event, json, table, count, flags]));
+    };
+
+    // Sends an event to the app, which receives it through haylen.platform.on, with ArrayBuffer and Uint8Array values as bytes. An event that nothing listens to is dropped, unless options.retain is true: then it waits for the first listener of its name. The events of a name with options.batched that arrive in one frame reach the app as one list in order. Events sent before the first app started reach it once it starts.
     haylen.emit = function (event, payload, options) {
-        const values = [event, JSON.stringify(payload === undefined ? null : payload), options && options.retain ? 1 : 0];
+        const encoded = encodePayload(payload);
+        const flags = (options && options.retain ? 1 : 0) | (options && options.batched ? 2 : 0);
         if (!waiting.appStarted) {
-            waiting.events.push(values);
+            waiting.events.push({ event, json: encoded.json, buffers: encoded.buffers.map((buffer) => buffer.slice()), flags });
             return;
         }
-        Module.ccall("haylen_web_emit", null, ["string", "string", "number"], values);
+        sendEvent(event, encoded.json, encoded.buffers, flags);
     };
 
     // The abort controllers of the calls that wait for their handler, so a cancel reaches the handler and its late answer is dropped.
@@ -69,11 +132,14 @@ Module.haylen = Module.haylen || {};
         return { message, code: "exception", data: { type: error && error.name ? error.name : typeof error } };
     };
 
-    haylen.dispatch = function (call, method, params) {
+    // The handler receives the bytes of the app as Uint8Array values in its parameters, and its result carries ArrayBuffer and Uint8Array values as bytes. Failures carry JSON alone.
+    haylen.dispatch = function (call, method, params, buffers) {
         const reply = (ok, value) => {
-            if (pending.delete(call)) {
-                Module.ccall("haylen_web_resolve", null, ["number", "number", "string"], [call, ok ? 1 : 0, JSON.stringify(value === undefined ? null : value)]);
+            if (!pending.delete(call)) {
+                return;
             }
+            const encoded = ok ? encodePayload(value) : { json: JSON.stringify(value), buffers: [] };
+            withBuffers(encoded.buffers, (table, count) => Module.ccall("haylen_web_resolve", null, ["number", "number", "string", "number", "number"], [call, ok ? 1 : 0, encoded.json, table, count]));
         };
         const handler = handlers.get(method);
         const controller = new AbortController();
@@ -88,7 +154,7 @@ Module.haylen = Module.haylen || {};
                 return;
             }
             try {
-                reply(true, await handler(JSON.parse(params), { call, signal: controller.signal }));
+                reply(true, await handler(decodePayload(params, buffers), { call, signal: controller.signal }));
             } catch (error) {
                 reply(false, describeFailure(error));
             }
@@ -267,6 +333,91 @@ Module.haylen = Module.haylen || {};
         };
     };
 
+    // The size of what a video stream copies, from the natural size of each kind of source.
+    const sourceSize = (source) => {
+        if (typeof VideoFrame !== "undefined" && source instanceof VideoFrame) {
+            return [source.displayWidth, source.displayHeight];
+        }
+        if (source instanceof HTMLVideoElement) {
+            return [source.videoWidth, source.videoHeight];
+        }
+        if (source instanceof HTMLImageElement) {
+            return [source.naturalWidth, source.naturalHeight];
+        }
+        return [source.width, source.height];
+    };
+
+    // The timestamp in seconds of a VideoFrame, of the current frame of a video, or of the moment of the push.
+    const sourceTime = (source) => {
+        if (typeof VideoFrame !== "undefined" && source instanceof VideoFrame && source.timestamp !== null) {
+            return source.timestamp / 1e6;
+        }
+        return source instanceof HTMLVideoElement ? source.currentTime : performance.now() / 1000;
+    };
+
+    // Opens a stream of the engine once the runtime is ready, and logs why when the engine refuses it.
+    const openStream = (stream, open) => {
+        whenRuntimeReady(() => {
+            stream.handle = open();
+            if (!stream.handle) {
+                console.error(Module.UTF8ToString(Module._haylen_web_last_error()));
+            }
+        });
+    };
+
+    // Keeps a block of wasm memory of at least size bytes for the pushes of a stream.
+    const reserveMemory = (stream, size) => {
+        if (stream.size < size) {
+            Module._free(stream.memory);
+            stream.memory = Module._malloc(size);
+            stream.size = size;
+        }
+        return stream.memory;
+    };
+
+    // A video stream draws each source into a canvas of its size and copies the RGBA pixels into wasm memory, where the engine keeps the newest frame for its texture. Pushes before the runtime is ready, and of a video without its first frame yet, are dropped and return false.
+    const openVideoStream = (id, name) => {
+        const stream = { handle: 0, canvas: null, context: null, memory: 0, size: 0 };
+        openStream(stream, () => Module.ccall("haylen_web_open_video_stream", "number", ["string", "string"], [id, name]));
+        return {
+            push(source, timestamp) {
+                const [width, height] = sourceSize(source);
+                if (!stream.handle || !(width > 0 && height > 0)) {
+                    return false;
+                }
+                if (!stream.canvas || stream.canvas.width !== width || stream.canvas.height !== height) {
+                    stream.canvas = new OffscreenCanvas(width, height);
+                    stream.context = stream.canvas.getContext("2d", { willReadFrequently: true });
+                }
+                stream.context.clearRect(0, 0, width, height);
+                stream.context.drawImage(source, 0, 0, width, height);
+                const pixels = stream.context.getImageData(0, 0, width, height).data;
+                Module.HEAPU8.set(pixels, reserveMemory(stream, pixels.length));
+                return checked(Module._haylen_web_push_video_frame(stream.handle, stream.memory, width, height, timestamp === undefined ? sourceTime(source) : timestamp)) === 1;
+            },
+        };
+    };
+
+    // An audio stream copies interleaved Float32Array samples into its ring in wasm memory, and push returns how many frames fit. The capacity defaults to one second of frames.
+    const openAudioStream = (id, name, options) => {
+        const { sampleRate, channels, capacity } = { capacity: options.sampleRate, ...options };
+        const stream = { handle: 0, memory: 0, size: 0 };
+        openStream(stream, () => Module.ccall("haylen_web_open_audio_stream", "number", ["string", "string", "number", "number", "number"], [id, name, sampleRate, channels, capacity]));
+        return {
+            push(samples) {
+                if (samples.length % channels !== 0) {
+                    throw new Error("Audio samples come in whole frames, one sample for every channel.");
+                }
+                if (!stream.handle) {
+                    return 0;
+                }
+                const memory = reserveMemory(stream, samples.length * Float32Array.BYTES_PER_ELEMENT);
+                Module.HEAPF32.set(samples, memory / Float32Array.BYTES_PER_ELEMENT);
+                return checked(Module._haylen_web_push_audio_frames(stream.handle, memory, samples.length / channels));
+            },
+        };
+    };
+
     // Makes the context that the web module of a plugin receives in load(context). Methods and events take the id of the plugin in front of their names, as the Lua handle of the plugin expects. The loader calls it for every plugin before the runtime starts.
     haylen.createPluginContext = function (id, config) {
         if (plugins.has(id)) {
@@ -282,6 +433,12 @@ Module.haylen = Module.haylen || {};
             },
             emit(event, payload, options) {
                 haylen.emit(id + "." + event, payload, options);
+            },
+            videoStream(name) {
+                return openVideoStream(id, name);
+            },
+            audioStream(name, options) {
+                return openAudioStream(id, name, options);
             },
             overlay: {
                 add: (element, placement) => addToOverlay(id, element, placement),
@@ -321,8 +478,8 @@ Module.haylen = Module.haylen || {};
         if (!waiting.appStarted) {
             waiting.appStarted = true;
             queueMicrotask(() => {
-                for (const values of waiting.events.splice(0)) {
-                    Module.ccall("haylen_web_emit", null, ["string", "string", "number"], values);
+                for (const entry of waiting.events.splice(0)) {
+                    sendEvent(entry.event, entry.json, entry.buffers, entry.flags);
                 }
             });
         }

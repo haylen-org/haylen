@@ -1,6 +1,6 @@
 # haylen.platform
 
-`haylen.platform` is the bridge between the app and native code. An app calls named methods with JSON parameters and awaits their JSON result, which may fail with a typed error, time out or be cancelled, and it listens to named events that native code sends. Use it for everything the engine does not wrap, such as sign-in, purchases, sharing or deep links, with the handlers living in Java or Kotlin on Android, Objective-C or Swift on Apple platforms, JavaScript on the web, C in native libraries, or C++ anywhere. The engine wraps what the device is, opening urls and vibrating in [haylen.system](system.md), and native message boxes and file pickers in [haylen.dialogs](dialogs.md). The Lua modules of [plugins](../plugins.md) reach their native parts through the [handle of their plugin](#plugin-handles). The [native code guide](../native.md) compares the bridge with the other ways to reach native code.
+`haylen.platform` is the bridge between the app and native code. An app calls named methods with JSON parameters and awaits their JSON result, which may fail with a typed error, time out or be cancelled, and it listens to named events that native code sends. Parameters, results and events carry bytes next to their JSON, such as images and audio, and the native parts of plugins feed the app video and audio streams. Use it for everything the engine does not wrap, such as sign-in, purchases, sharing or deep links, with the handlers living in Java or Kotlin on Android, Objective-C or Swift on Apple platforms, JavaScript on the web, C in native libraries, or C++ anywhere. The engine wraps what the device is, opening urls and vibrating in [haylen.system](system.md), and native message boxes and file pickers in [haylen.dialogs](dialogs.md). The Lua modules of [plugins](../plugins.md) reach their native parts through the [handle of their plugin](#plugin-handles). The [native code guide](../native.md) compares the bridge with the other ways to reach native code.
 
 ```lua
 local platform = require('haylen.platform')
@@ -17,6 +17,8 @@ local platform = require('haylen.platform')
 A method that no handler answers fails with the code `noHandler` and `No native handler is registered for <method>.`, or `No page handler is registered for <method>.` on the web.
 
 Parameters and results cross the bridge as JSON. Lua tables with only consecutive integer keys starting at 1 become arrays, other tables become objects, and an empty table becomes an empty object. Functions, userdata and other values that JSON cannot hold raise `A <type> cannot be converted to JSON.`. JSON `null` arrives in Lua as `nil`.
+
+Strings cross as text, so a string must hold UTF-8 to reach native code. Bytes, such as an image, a recording or any binary data, cross as byte buffers next to the JSON instead: a string that [`platform.bytes`](#platformbytesdata) marks becomes a buffer in the place of the string, and every buffer that native code sends arrives as a Lua string in its place, in results and in events alike. The [platform bridge guide](../platform_bridge.md#byte-buffers) shows how each language sends and receives them.
 
 Results and events always reach Lua on the frame thread, at the start of a frame, before the app updates. A result never arrives during the `platform.call` that asked for it, even when a Lua handler answers at once. Every call gets an id that is unique in the whole process, so a native answer that arrives after the app restarted, for example after a hot reload, never answers a call of the restarted app and is dropped.
 
@@ -60,9 +62,9 @@ platform.send('analytics.logEvent', {name = 'levelStart', level = 3})
 
 ### platform.on(event, listener)
 
-Calls `listener(payload)` every time native code sends the event named `event`, with the payload converted from JSON. Returns a `haylen.Connection`. Its `disconnect()` method stops the listener, and its `connected` property is `true` until then. A listener stays connected when the connection object is garbage collected. An error raised inside a listener stops the app and shows the error screen with the message and its stack trace. Events that no listener waits for are dropped, except retained ones.
+Calls `listener(payload)` every time native code sends the event named `event`, with the payload converted from JSON and its bytes as strings. Native code that marks its events batched, such as the readings of a sensor, calls the listener once per frame with the list of the payloads of that frame, in order. Returns a `haylen.Connection`. Its `disconnect()` method stops the listener, and its `connected` property is `true` until then. A listener stays connected when the connection object is garbage collected. An error raised inside a listener stops the app and shows the error screen with the message and its stack trace. Events that no listener waits for are dropped, except retained ones.
 
-Native code retains an event that may come before the app listens, such as the deep link or the notification that opened the app, or purchases that finished while it was closed. A retained event that nothing listens to waits, up to 32 per name with the oldest dropped first, and the first listener of its name receives the waiting events in order at the start of the next frame, before any newer event of that name. Events wait in the running app, so a restarted app starts with none.
+Native code retains an event that may come before the app listens, such as the deep link or the notification that opened the app, or purchases that finished while it was closed. A retained event that nothing listens to waits, up to 32 per name with the oldest dropped first, and the first listener of its name receives the waiting events in order at the start of the next frame, before any newer event of that name. A retained batch waits as the list of its frame. Events wait in the running app, so a restarted app starts with none.
 
 The engine sends no events of its own, so event names are a contract between the app and its native code. Plugins name their events after their id, such as `admob.closed`.
 
@@ -76,11 +78,17 @@ end)
 local function leaveMenu()
     links:disconnect()
 end
+
+-- A sensor sends its readings batched, so the listener runs once per frame with every reading of the frame.
+platform.on('motion.reading', function(readings)
+    local last = readings[#readings]
+    print(#readings .. ' readings, the last at ' .. last.x .. ', ' .. last.y)
+end)
 ```
 
 ### platform.registerHandler(method, handler)
 
-Answers the method named `method` with the Lua function `handler(params)`, which returns the result. The function runs during the `platform.call` that asks for it and must return at once, and its result must convert to JSON. An error raised inside it fails the call with the error message and its stack trace instead of stopping the app. A registered handler replaces any earlier engine handler of the same method, and it takes precedence over native handlers. Lua handlers suit desktop builds and tests that stand in for mobile services.
+Answers the method named `method` with the Lua function `handler(params)`, which returns the result. The function runs during the `platform.call` that asks for it and must return at once, and its result must convert to JSON. Bytes of the parameters arrive as strings, and strings of the result that `platform.bytes` marks cross as bytes. An error raised inside it fails the call with the error message and its stack trace instead of stopping the app. A registered handler replaces any earlier engine handler of the same method, and it takes precedence over native handlers. Lua handlers suit desktop builds and tests that stand in for mobile services.
 
 An empty method name raises `A platform handler needs a method name and a function.`, and a `handler` that is not a function raises an argument error.
 
@@ -152,7 +160,7 @@ end)
 
 ### platform.emit(event, payload, options)
 
-Sends the event `event` with `payload` the way native code does, so `platform.on` listeners receive it at the start of the next frame. With `options.retain` set to `true`, the event waits for the first listener of its name like a [retained event](#platformonevent-listener) of native code. It suits tests and desktop builds that stand in for native events. A payload that JSON cannot hold raises `A <type> cannot be converted to JSON.`, and an unknown option raises an error that names it.
+Sends the event `event` with `payload` the way native code does, so `platform.on` listeners receive it at the start of the next frame. With `options.retain` set to `true`, the event waits for the first listener of its name like a [retained event](#platformonevent-listener) of native code, and with `options.batched` set to `true` it reaches the listeners in the list of its frame like a batched event of native code. It suits tests and desktop builds that stand in for native events. A payload that JSON cannot hold raises `A <type> cannot be converted to JSON.`, and an unknown option raises an error that names it.
 
 ```lua
 local platform = require('haylen.platform')
@@ -162,6 +170,36 @@ platform.emit('app.link', {url = 'island://beach'}, {retain = true})
 -- The link was retained, so this listener receives it at the start of the next frame.
 platform.on('app.link', function(payload)
     print('opened from ' .. payload.url)
+end)
+
+-- The three readings reach the listener as one list at the start of the next frame.
+platform.on('motion.reading', function(readings) print(#readings) end)
+for index = 1, 3 do
+    platform.emit('motion.reading', {x = index, y = 0}, {batched = true})
+end
+```
+
+### platform.bytes(data)
+
+Returns a `haylen.Bytes` that marks the string `data` to cross the bridge as a byte buffer, in the parameters of a call or of a send, in the result of a Lua handler and in an event. Plain strings cross as text, which must be UTF-8, so marking keeps binary data such as images or recordings exact and never turns it into text. The mark holds a copy of the bytes, and its read-only `size` property tells how many. Only the bridge takes it, so any other conversion to JSON raises `A userdata cannot be converted to JSON.`. A value that is not a string raises a bad argument error.
+
+```lua
+local assets = require('haylen.assets')
+local async = require('async')
+local platform = require('haylen.platform')
+
+local photo = assets.bytes('photos/beach.png')
+local marked = platform.bytes(photo)
+print(marked.size == #photo)
+
+async.spawn(function()
+    -- The photo crosses as bytes, while the name stays text, and the thumbnail comes back as a Lua string of bytes.
+    local saved, err = platform.call('gallery.save', {image = marked, name = 'beach.png'}):await()
+    if saved then
+        print('the thumbnail takes ' .. #saved.thumbnail .. ' bytes')
+    else
+        print('gallery.save failed: ' .. err)
+    end
 end)
 ```
 
@@ -234,6 +272,8 @@ end)
 | `handle:call(method, params, options)` | The same as `platform.call(id .. '.' .. method, params, options)`. |
 | `handle:send(method, params)` | The same as `platform.send(id .. '.' .. method, params)`. |
 | `handle:on(event, listener)` | The same as `platform.on(id .. '.' .. event, listener)`. |
+| `handle:videoStream(name)` | The [video stream](#video-streams) `name` that the native part of the plugin opened, or `nil` until it opens it. The engine keeps its texture current from then on, until the app stops. |
+| `handle:audioStream(name)` | The [audio stream](#audio-streams) `name` that the native part of the plugin opened, or `nil` until it opens it. |
 
 The members are read-only, and an empty method or event name raises `A method or event of the plugin <id> needs a name.`. A platform without the native part of the plugin answers its calls with the code `noHandler`, so a plugin checks `handle.native` when it can do without it. The [plugin guide](../plugins.md#lua-api-of-plugins) shows the Lua API of a whole plugin.
 
@@ -259,6 +299,91 @@ end
 return admob
 ```
 
+## Video streams
+
+The native part of a plugin, such as a camera or a video decoder, pushes frames into a video stream from any thread, and `handle:videoStream(name)` returns it as a `haylen.VideoStream`. The engine keeps only the newest frame and uploads it into the texture of the stream at the start of a frame when it is new, so the texture changes once per frame at most, however fast the frames come. A frame of another size resizes the texture in place, so a sprite or a material that holds the texture keeps showing the current frame. The texture samples linearly. Two values of the same stream compare equal with `==`.
+
+| Member | Meaning |
+| --- | --- |
+| `stream.texture` | The `Texture` of the stream, which holds transparent pixels of the size the native part opened the stream with, or a single one, until the first frame arrives. |
+| `stream.width`, `stream.height` | The size of the frame the texture shows, or the size the stream opened with before the first frame. |
+| `stream.frameCount` | How many frames the texture received, which leaves out the frames that newer ones replaced before a frame of the app. |
+| `stream.timestamp` | The timestamp of the frame the texture shows, in the seconds of the native part. |
+| `stream:on('frame', listener, options)` | Calls `listener(timestamp)` whenever the texture receives a frame, and returns a connection. `options.owner` ties the listener to an owner, like the listeners of [haylen.events](events.md#owners). Another event name raises `Unknown video stream event '<name>'. Video streams report frame.`. |
+
+Streams belong to the process, like the native code that pushes into them, so a stream outlives an app that restarts, and the next app receives the newest frame again. The [plugin guide](../plugins.md#streams) describes how native code pushes frames on each platform.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local platform = require('haylen.platform')
+local scene = require('haylen.scene')
+
+local camera = platform.plugin('camera-kit')
+
+scene.push({
+    enter = function(self)
+        scene.spawn(self, function()
+            camera:call('start', {facing = 'back'}):await()
+            self.preview = camera:videoStream('preview')
+            self.preview:on('frame', function(timestamp) self.lastFrame = timestamp end, {owner = self})
+        end)
+    end,
+    render = function(self)
+        if self.preview then
+            graphics2d.beginScreen()
+            graphics2d.draw(self.preview.texture, 40, 40, {width = 640, height = 640 * self.preview.height / math.max(self.preview.width, 1), pivotX = 0, pivotY = 0})
+        end
+    end,
+})
+```
+
+## Audio streams
+
+The native part of a plugin, such as a microphone, a synthesized voice or decoded network audio, pushes samples into the ring of an audio stream from any thread, and `handle:audioStream(name)` returns it as a `haylen.AudioStream`, which plays as a voice of [haylen.audio](audio.md). The voice resamples the stream to the rate of the mixer, plays silence where samples have not arrived and counts each read that found the ring short as an underrun, and it never ends by itself, so `audio.stop` ends it. Two values of the same stream compare equal with `==`.
+
+| Member | Meaning |
+| --- | --- |
+| `stream:play(options)` | Starts a voice that plays the stream and returns its id, which every voice function of `haylen.audio` takes. `options` takes the options of [`audio.play`](audio.md#audioplaysound-options) that apply to a live stream, `bus`, `volume`, `pan`, `fadeIn`, `x`, `y`, `processMode` and `effects`, and any other key raises `Unknown option '<key>'.`. A new voice takes the stream over from the voice that played it before, which plays silence from then on. |
+| `stream:read(buffer)` | Copies the newest samples that native code pushed into a float buffer of [haylen.collections](collections.md#float-buffers), interleaved by channel, in whole frames and oldest first from the first value, and returns how many values it wrote, fewer while less has arrived. It suits level meters and waveforms, whether a voice plays the stream or not. |
+| `stream.sampleRate` | The sample rate of the stream in hertz. |
+| `stream.channels` | The channels of the stream. |
+| `stream.underruns` | How many reads of its voices found fewer samples than they needed, since samples started to arrive. |
+
+```lua
+local audio = require('haylen.audio')
+local collections = require('haylen.collections')
+local platform = require('haylen.platform')
+local scene = require('haylen.scene')
+
+local microphone = platform.plugin('mic-kit')
+local samples = collections.newFloatBuffer(1024)
+
+scene.push({
+    enter = function(self)
+        scene.spawn(self, function()
+            microphone:call('start'):await()
+            self.stream = microphone:audioStream('input')
+            self.voice = self.stream:play({bus = 'sfx', volume = 0.8})
+        end)
+    end,
+    update = function(self, dt)
+        if self.stream then
+            local count = self.stream:read(samples)
+            local peak = 0
+            for index = 1, count do
+                peak = math.max(peak, math.abs(samples[index]))
+            end
+            self.level = peak
+        end
+    end,
+    exit = function(self)
+        if self.voice then
+            audio.stop(self.voice)
+        end
+    end,
+})
+```
+
 ## Errors
 
 A failed call returns a table with three fields, which reads as its message in `tostring` and in string concatenation, so `'failed: ' .. err` prints the message.
@@ -275,6 +400,7 @@ A failed call returns a table with three fields, which reads as its message in `
 | `cancelled` | `call:cancel()` gave up the call. |
 | `noHandler` | No handler answers the method. |
 | `invalidJson` | Native code answered with text that is not JSON, with the message `The platform returned invalid JSON.`. |
+| `invalidBytes` | Native code answered with JSON that refers to a byte buffer it lacks, with a message such as `The JSON refers to byte buffer 2, but only 1 came with it.`. |
 | `exception` | A Java, Kotlin, Swift or JavaScript handler threw an error without a code of its own instead of answering. `data.type` names the class of the exception or the type of the error. |
 
 A native failure that is a string becomes the message. A failure object gives its `message`, `code` and `data`, and one without a string `message`, like any other failure payload such as `null` or a number, fails with `The native platform call failed without a message.`. A Lua handler registered with `platform.registerHandler` fails with the error it raised and its stack trace as the message.
@@ -295,15 +421,15 @@ end)
 
 ## Native handlers
 
-Native handlers receive the parameters as parsed JSON and answer once, with success and a JSON value or with failure and a message, a code and data. They may answer later, from any thread, and the answer reaches the app on the frame thread. A second answer, and an answer that comes after the app cancelled the call or its timeout passed, is dropped. Native code sends events the same way, and `platform.on` receives them.
+Native handlers receive the parameters as parsed JSON, with the bytes of the app in the types of their language, and answer once, with success and a JSON value with bytes or with failure and a message, a code and data. They may answer later, from any thread, and the answer reaches the app on the frame thread. A second answer, and an answer that comes after the app cancelled the call or its timeout passed, is dropped. Native code sends events the same way, and `platform.on` receives them.
 
 ## Android handlers
 
-`dev.haylen.HaylenBridge` in the engine Android library holds the handlers. `HaylenBridge.register(method, handler)` adds a handler, `HaylenBridge.unregister(method)` removes it and `HaylenBridge.emit(event, payload)` sends an event, which `HaylenBridge.emit(event, payload, true)` sends retained. Handlers run on the main thread, and `HaylenBridge.register(method, handler, HaylenBridge.Threading.BACKGROUND)` runs one on the background thread that such handlers share, for work that does not touch the UI. `params` is what `org.json.JSONTokener` reads from the parameters on the thread of the handler, usually a `JSONObject`. Plugins register through their context, as the [plugin guide](../plugins.md#the-android-part) describes. The reply of a call has these members:
+`dev.haylen.HaylenBridge` in the engine Android library holds the handlers. `HaylenBridge.register(method, handler)` adds a handler, `HaylenBridge.unregister(method)` removes it and `HaylenBridge.emit(event, payload)` sends an event, which `HaylenBridge.emit(event, payload, true)` sends retained and `HaylenBridge.emit(event, payload, retain, true)` batched. Handlers run on the main thread, and `HaylenBridge.register(method, handler, HaylenBridge.Threading.BACKGROUND)` runs one on the background thread that such handlers share, for work that does not touch the UI. `params` is what `org.json.JSONTokener` reads from the parameters on the thread of the handler, usually a `JSONObject`, where bytes of the app are `byte[]` values. Plugins register through their context, as the [plugin guide](../plugins.md#the-android-part) describes. The reply of a call has these members:
 
 | Member | Meaning |
 | --- | --- |
-| `success(value)` | Answers with `null`, a string, a number, a boolean, a `JSONObject`, a `JSONArray`, a map or a collection. |
+| `success(value)` | Answers with `null`, a string, a number, a boolean, a `JSONObject`, a `JSONArray`, a map, a collection or an array, with `byte[]` and `ByteBuffer` values anywhere inside, which cross as bytes. |
 | `failure(message)` | Fails the call with a message. |
 | `failure(message, code, data)` | Fails the call with a code and data, both optional. |
 | `failure(throwable)` | Fails the call with a thrown error: a `HaylenBridge.Failure` keeps its code and data, and any other error fails with the code `exception`. |
@@ -360,7 +486,7 @@ object ProfilePlugin {
 
 ## Apple handlers
 
-`HaylenBridge` in `haylen/platform/apple/HaylenBridge.h` holds the handlers on iOS, tvOS and macOS. `+registerHandler:handler:` adds a handler, `+registerCancellableHandler:handler:` adds one that returns a block to run when the app cancels the call or its timeout passes, `+removeHandler:` removes a handler, `+emit:payload:` sends an event and `+emit:payload:retain:` sends one that waits for the first listener of its name when `retain` is `YES`. Handlers run on the main queue, and so does the cancel block. `params` is the parsed JSON, an `NSDictionary` for object parameters, and the handler answers with `reply(YES, result)` or `reply(NO, failure)`. `result` is any value `NSJSONSerialization` accepts or `nil`, and a success value it rejects fails the call with `The native handler for <method> returned a value that is not JSON.`. A failure passes a message string or a dictionary with a `message` string and optional `code` and `data`, and anything else fails with `The native handler for <method> failed.`. Handlers can be registered at any time, even before the app starts. An event payload that is not JSON is logged as an error and dropped.
+`HaylenBridge` in `haylen/platform/apple/HaylenBridge.h` holds the handlers on iOS, tvOS and macOS. `+registerHandler:handler:` adds a handler, `+registerCancellableHandler:handler:` adds one that returns a block to run when the app cancels the call or its timeout passes, `+removeHandler:` removes a handler, `+emit:payload:` sends an event, `+emit:payload:retain:` sends one that waits for the first listener of its name when `retain` is `YES`, and `+emit:payload:retain:batched:` sends one in the list of its frame when `batched` is `YES`. Handlers run on the main queue, and so does the cancel block. `params` is the parsed JSON, an `NSDictionary` for object parameters, where bytes of the app are `NSData` values, and the handler answers with `reply(YES, result)` or `reply(NO, failure)`. `result` is any value `NSJSONSerialization` accepts, with `NSData` values anywhere inside, which cross as bytes, or `nil`, and a success value it rejects fails the call with `The native handler for <method> returned a value that is not JSON.`. A failure passes a message string or a dictionary with a `message` string and optional `code` and `data`, and anything else fails with `The native handler for <method> failed.`. Handlers can be registered at any time, even before the app starts. An event payload that is not JSON is logged as an error and dropped.
 
 ```objc
 #import "haylen/platform/apple/HaylenBridge.h"
@@ -418,7 +544,7 @@ import Foundation
 
 ## Web handlers
 
-`Module.haylen` in the page holds the handlers. `Module.haylen.register(method, handler)` adds or replaces a handler, `Module.haylen.unregister(method)` removes it and `Module.haylen.emit(event, payload, {retain})` sends an event, which waits for the first listener of its name when `retain` is `true`. Events sent before the first app starts reach it once it starts. A handler runs after the frame that made the call and receives the parsed parameters and a context with the `call` id and a `signal`, an `AbortSignal` that aborts when the app cancels the call or its timeout passes, and it returns the result or a promise for it. A call cancelled in the frame that made it never runs its handler. A thrown error or a rejected promise fails the call with the error message and the `code` and `data` properties of the error, or with the code `exception` and the `name` of the error in `data.type` when the error has no code. The page registers its handlers before the runtime starts, for example in `Module.preRun`.
+`Module.haylen` in the page holds the handlers. `Module.haylen.register(method, handler)` adds or replaces a handler, `Module.haylen.unregister(method)` removes it and `Module.haylen.emit(event, payload, {retain, batched})` sends an event, which waits for the first listener of its name when `retain` is `true` and arrives in the list of its frame when `batched` is `true`. Events sent before the first app starts reach it once it starts. A handler runs after the frame that made the call and receives the parsed parameters, where bytes of the app are `Uint8Array` values, and a context with the `call` id and a `signal`, an `AbortSignal` that aborts when the app cancels the call or its timeout passes, and it returns the result or a promise for it, whose `ArrayBuffer` and `Uint8Array` values cross as bytes. A call cancelled in the frame that made it never runs its handler. A thrown error or a rejected promise fails the call with the error message and the `code` and `data` properties of the error, or with the code `exception` and the `name` of the error in `data.type` when the error has no code. The page registers its handlers before the runtime starts, for example in `Module.preRun`.
 
 ```html
 <script>
@@ -440,19 +566,20 @@ import Foundation
 
 ## Native library handlers
 
-A native library registers handlers written in C through the `HaylenNativeApi` that `native.load` hands to its init function, on every platform that loads native libraries, sends events that may be retained, and declares itself the native part of a plugin. The [haylen.native reference](native.md#library-handlers) describes them.
+A native library registers handlers written in C through the `HaylenNativeApi` that `native.load` hands to its init function, on every platform that loads native libraries, answers them and sends events with byte buffers, retained or batched, pushes the video and audio streams of a plugin, and declares itself the native part of a plugin. The [haylen.native reference](native.md#library-handlers) describes them.
 
 ## C++ handlers
 
-C++ code registers handlers that run inside the engine with `engine.getPlatform().registerHandler(method, handler)`, where the handler receives the parameters as `haylen::core::Json` and a reply function that takes a `haylen::platform::Bridge::Result` with `ok`, `value` and an `error` of `message`, `code` and `data`. `engine.getPlatform().emit(event, payloadJson, retain)` sends an event from any thread, retained when `retain` is `true`, `engine.getPlatform().send(method, params)` calls a method whose answer nobody needs, and `engine.getAppPlugins()` returns the plugins of `app.json` as `haylen::platform::AppPlugin` records with `id`, `version`, `config` and `native`.
+C++ code registers handlers that run inside the engine with `engine.getPlatform().registerHandler(method, handler)`, where the handler receives the parameters as a `haylen::platform::Bridge::Payload`, JSON with its byte buffers, and a reply function that takes a `haylen::platform::Bridge::Result` with `ok`, a `value` payload and an `error` of `message`, `code` and `data`. `engine.getPlatform().emit(event, payloadJson, buffers, {.retain = true, .batched = true})` sends an event from any thread, `engine.getPlatform().send(method, params)` calls a method whose answer nobody needs, and `engine.getAppPlugins()` returns the plugins of `app.json` as `haylen::platform::AppPlugin` records with `id`, `version`, `config` and `native`.
 
 ```cpp
-engine.getPlatform().registerHandler("save.cloudSync", [](const haylen::core::Json& params, haylen::platform::Bridge::Reply reply) {
-    if (!params.contains("slot")) {
+engine.getPlatform().registerHandler("save.cloudSync", [](const haylen::platform::Bridge::Payload& params, haylen::platform::Bridge::Reply reply) {
+    if (!params.json.contains("slot")) {
         reply({.error = {.message = "save.cloudSync needs a slot.", .code = "missingSlot"}});
         return;
     }
-    reply({.ok = true, .value = {{"synced", params.at("slot")}}});
+    reply({.ok = true, .value = {.json = {{"synced", params.json.at("slot")}}}});
 });
 engine.getPlatform().emit("app.link", R"({"url": "island://beach"})");
+engine.getPlatform().emit("motion.reading", R"({"x": 1, "y": 2})", {}, {.batched = true});
 ```

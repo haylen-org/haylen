@@ -60,7 +60,7 @@ DeviceState::ImageViews DeviceState::createImage(int width, int height, sg_pixel
     return result;
 }
 
-Texture DeviceState::createDynamicTexture(int width, int height, sg_pixel_format format, std::span<const std::uint8_t> pixels, Texture::Options options) {
+DeviceState::ImageViews DeviceState::createDynamicImage(int width, int height, sg_pixel_format format) {
     sg_image_desc imageDesc{};
     imageDesc.usage.immutable = false;
     imageDesc.usage.dynamic_update = true;
@@ -69,12 +69,20 @@ Texture DeviceState::createDynamicTexture(int width, int height, sg_pixel_format
     imageDesc.pixel_format = format;
     imageDesc.label = "haylen-dynamic-texture";
 
-    auto resource = std::make_shared<TextureResource>();
-    resource->image = Gpu::makeImage(imageDesc);
+    ImageViews result;
+    result.image = Gpu::makeImage(imageDesc);
     sg_view_desc viewDesc{};
-    viewDesc.texture.image = resource->image;
+    viewDesc.texture.image = result.image;
     viewDesc.label = imageDesc.label;
-    resource->view = sg_make_view(&viewDesc);
+    result.view = sg_make_view(&viewDesc);
+    return result;
+}
+
+Texture DeviceState::createDynamicTexture(int width, int height, sg_pixel_format format, std::span<const std::uint8_t> pixels, Texture::Options options) {
+    const ImageViews created = createDynamicImage(width, height, format);
+    auto resource = std::make_shared<TextureResource>();
+    resource->image = created.image;
+    resource->view = created.view;
     resource->tracked.setBytes(getImageBytes(width, height, format));
     resource->sampler = getSampler(options);
     resource->width = width;

@@ -93,19 +93,19 @@ RenderTarget Device::createRenderTarget(int width, int height, Texture::Options 
 
 void Device::replaceTexture(const Texture& texture, const Image& image) {
     validateSize(image.getWidth(), image.getHeight(), getMaxTextureSize());
-    TextureResource& resource = *texture.getResource();
-    if (resource.dynamic) {
-        throw std::logic_error("A dynamic texture changes its pixels with updateTexture.");
-    }
+    const std::shared_ptr<TextureResource>& resource = texture.getResource();
 
-    // The old image is released only once the new one exists, so a failed creation leaves the texture intact.
-    const DeviceState::ImageViews created = DeviceState::createImage(image.getWidth(), image.getHeight(), SG_PIXELFORMAT_RGBA8, image.getPixels(), "haylen-texture");
-    state->graveyard->bury(resource.image, resource.view);
-    resource.image = created.image;
-    resource.view = created.view;
-    resource.width = image.getWidth();
-    resource.height = image.getHeight();
-    resource.tracked.setBytes(DeviceState::getImageBytes(image.getWidth(), image.getHeight(), SG_PIXELFORMAT_RGBA8));
+    // The old image is released only once the new one exists, so a failed creation leaves the texture intact. A dynamic texture stays dynamic, and its new pixels reach the GPU with the next upload.
+    const DeviceState::ImageViews created = resource->dynamic ? DeviceState::createDynamicImage(image.getWidth(), image.getHeight(), SG_PIXELFORMAT_RGBA8) : DeviceState::createImage(image.getWidth(), image.getHeight(), SG_PIXELFORMAT_RGBA8, image.getPixels(), "haylen-texture");
+    state->graveyard->bury(resource->image, resource->view);
+    resource->image = created.image;
+    resource->view = created.view;
+    resource->width = image.getWidth();
+    resource->height = image.getHeight();
+    resource->tracked.setBytes(DeviceState::getImageBytes(image.getWidth(), image.getHeight(), SG_PIXELFORMAT_RGBA8));
+    if (resource->dynamic) {
+        state->stagePixels(resource, image.getPixels());
+    }
 }
 
 Texture Device::createDynamicTexture(const Image& image, Texture::Options options) {

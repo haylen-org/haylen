@@ -1,9 +1,11 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <mutex>
 #include <optional>
 #include <set>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -19,8 +21,8 @@ class NativeApi final {
   public:
     [[nodiscard]] static const HaylenNativeApi& get() noexcept;
 
-    // Runs the handler a native library registered for the method and returns true, or returns false when none did. Runs on the frame thread.
-    static bool dispatch(std::uint64_t call, std::string_view method, std::string_view paramsJson);
+    // Runs the handler a native library registered for the method with the parameters and their buffers and returns true, or returns false when none did. Runs on the frame thread.
+    static bool dispatch(std::uint64_t call, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers);
 
     // Tells the handler of the method that the app gave up the call, and returns false when no native library handles the method.
     static bool cancel(std::uint64_t call, std::string_view method);
@@ -45,12 +47,22 @@ class NativeApi final {
         friend bool operator==(const ErrorHandler&, const ErrorHandler&) = default;
     };
 
-    static void emit(const char* event, const char* payloadJson, int retain);
-    static void resolve(std::uint64_t call, int ok, const char* resultJson);
+    static void emit(const char* event, const char* payloadJson, const HaylenNativeBuffer* buffers, std::size_t bufferCount, int flags);
+    static void resolve(std::uint64_t call, int ok, const char* resultJson, const HaylenNativeBuffer* buffers, std::size_t bufferCount);
     static void registerHandler(const char* method, HaylenNativeHandler handler, HaylenNativeCancel cancel, void* user);
     static void log(int level, const char* text);
     static void registerPlugin(const char* id);
     static void registerErrorHandler(HaylenNativeErrorHandler handler, void* user);
+    static HaylenNativeVideoStream* openVideoStream(const char* plugin, const char* name, int format, int width, int height);
+    static void pushVideoFrame(HaylenNativeVideoStream* stream, const void* pixels, int width, int height, int stride, double timestamp);
+    static HaylenNativeAudioStream* openAudioStream(const char* plugin, const char* name, int sampleRate, int channels, int format, int capacityFrames);
+    static std::size_t pushAudioFrames(HaylenNativeAudioStream* stream, const void* samples, std::size_t frames);
+
+    // Copies the buffers that a library hands over, which may be null when there are none.
+    [[nodiscard]] static std::vector<std::vector<std::byte>> copyBuffers(const HaylenNativeBuffer* buffers, std::size_t count);
+
+    // The entries of a library may be called from any thread, so an entry that fails logs why instead of throwing into C.
+    template <typename Body> static auto guard(const char* entry, Body&& body) noexcept -> decltype(body());
 
     [[nodiscard]] static std::optional<Handler> find(std::string_view method);
 

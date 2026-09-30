@@ -1,11 +1,14 @@
 #include "haylen/core/Engine.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <exception>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "core/EmbeddedFiles.hpp"
 #include "core/EngineState.hpp"
@@ -44,9 +47,9 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     // Handlers that native libraries register through the C interface answer before the handlers of the platform.
     // clang-format off
     current.platform = std::make_unique<platform::Bridge>(
-        [&host](std::uint64_t id, std::string_view method, std::string_view params) {
-            if (!platform::NativeApi::dispatch(id, method, params)) {
-                host.dispatchPlatformCall(id, method, params);
+        [&host](std::uint64_t id, std::string_view method, std::string_view params, std::span<const std::vector<std::byte>> buffers) {
+            if (!platform::NativeApi::dispatch(id, method, params, buffers)) {
+                host.dispatchPlatformCall(id, method, params, buffers);
             }
         },
         [&host](std::uint64_t id, std::string_view method) {

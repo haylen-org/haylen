@@ -38,6 +38,9 @@ struct DeviceState {
     // Creates an image and the view that samples it.
     [[nodiscard]] static ImageViews createImage(int width, int height, sg_pixel_format format, std::span<const std::uint8_t> pixels, const char* label);
 
+    // Creates an image whose pixels change in place and the view that samples it. Its pixels arrive with the next upload.
+    [[nodiscard]] static ImageViews createDynamicImage(int width, int height, sg_pixel_format format);
+
     // Estimates the GPU memory an image of the size and pixel format takes, for the debug statistics.
     [[nodiscard]] static std::size_t getImageBytes(int width, int height, sg_pixel_format format);
 

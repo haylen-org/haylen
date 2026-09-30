@@ -10,6 +10,7 @@ namespace haylen::platform {
 JavaVM* JavaBridge::javaVm = nullptr;
 pthread_key_t JavaBridge::attachedThreads{};
 std::vector<std::string>& JavaBridge::plugins = *new std::vector<std::string>();
+jclass JavaBridge::byteArrayClass = nullptr;
 jclass JavaBridge::bridgeClass = nullptr;
 jmethodID JavaBridge::dispatchMethod = nullptr;
 jmethodID JavaBridge::cancelMethod = nullptr;
@@ -36,6 +37,7 @@ jint JavaBridge::load(JavaVM* vm) {
     pthread_key_create(&attachedThreads, &JavaBridge::detachThread);
 
     // A missing class leaves an exception pending, so the lookup stops at the first one.
+    byteArrayClass = findClass(*env, "[B");
     bridgeClass = findClass(*env, "dev/haylen/HaylenBridge");
     pluginsClass = bridgeClass != nullptr ? findClass(*env, "dev/haylen/HaylenPlugins") : nullptr;
     editorClass = pluginsClass != nullptr ? findClass(*env, "dev/haylen/HaylenEditText") : nullptr;
@@ -43,7 +45,7 @@ jint JavaBridge::load(JavaVM* vm) {
     if (activityClass == nullptr) {
         return JNI_ERR;
     }
-    dispatchMethod = env->GetStaticMethodID(bridgeClass, "dispatch", "(J[B[B)V");
+    dispatchMethod = env->GetStaticMethodID(bridgeClass, "dispatch", "(J[B[B[[B)V");
     cancelMethod = env->GetStaticMethodID(bridgeClass, "cancel", "(J)V");
     setAppRunningMethod = env->GetStaticMethodID(bridgeClass, "setAppRunning", "(Z)V");
     reportErrorMethod = env->GetStaticMethodID(pluginsClass, "reportError", "([B)V");
@@ -69,13 +71,21 @@ jclass JavaBridge::findClass(JNIEnv& env, const char* name) {
     return found != nullptr ? static_cast<jclass>(env.NewGlobalRef(found)) : nullptr;
 }
 
-void JavaBridge::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson) {
+void JavaBridge::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) {
     JNIEnv& env = getEnv();
     const jbyteArray methodBytes = toBytes(env, method);
     const jbyteArray paramsBytes = toBytes(env, paramsJson);
-    env.CallStaticVoidMethod(bridgeClass, dispatchMethod, static_cast<jlong>(id), methodBytes, paramsBytes);
+    const jobjectArray arrays = env.NewObjectArray(static_cast<jsize>(buffers.size()), byteArrayClass, nullptr);
+    for (std::size_t index = 0; index < buffers.size(); ++index) {
+        const jbyteArray array = env.NewByteArray(static_cast<jsize>(buffers[index].size()));
+        env.SetByteArrayRegion(array, 0, static_cast<jsize>(buffers[index].size()), reinterpret_cast<const jbyte*>(buffers[index].data()));
+        env.SetObjectArrayElement(arrays, static_cast<jsize>(index), array);
+        env.DeleteLocalRef(array);
+    }
+    env.CallStaticVoidMethod(bridgeClass, dispatchMethod, static_cast<jlong>(id), methodBytes, paramsBytes, arrays);
     env.DeleteLocalRef(methodBytes);
     env.DeleteLocalRef(paramsBytes);
+    env.DeleteLocalRef(arrays);
 }
 
 void JavaBridge::cancel(std::uint64_t id) {
@@ -160,6 +170,26 @@ std::string JavaBridge::toString(JNIEnv& env, jbyteArray bytes) {
     std::string result(static_cast<std::size_t>(env.GetArrayLength(bytes)), '\0');
     env.GetByteArrayRegion(bytes, 0, static_cast<jsize>(result.size()), reinterpret_cast<jbyte*>(result.data()));
     return result;
+}
+
+// A direct ByteBuffer that Java sliced to its remaining bytes starts at its address and ends at its capacity, and anything else is a byte array.
+std::vector<std::vector<std::byte>> JavaBridge::toBuffers(JNIEnv& env, jobjectArray buffers) {
+    const jsize count = env.GetArrayLength(buffers);
+    std::vector<std::vector<std::byte>> copies(static_cast<std::size_t>(count));
+    for (jsize index = 0; index < count; ++index) {
+        const jobject buffer = env.GetObjectArrayElement(buffers, index);
+        std::vector<std::byte>& copy = copies[static_cast<std::size_t>(index)];
+        if (const void* address = env.GetDirectBufferAddress(buffer)) {
+            const auto* bytes = static_cast<const std::byte*>(address);
+            copy.assign(bytes, bytes + env.GetDirectBufferCapacity(buffer));
+        } else {
+            const auto array = static_cast<jbyteArray>(buffer);
+            copy.resize(static_cast<std::size_t>(env.GetArrayLength(array)));
+            env.GetByteArrayRegion(array, 0, static_cast<jsize>(copy.size()), reinterpret_cast<jbyte*>(copy.data()));
+        }
+        env.DeleteLocalRef(buffer);
+    }
+    return copies;
 }
 
 jbyteArray JavaBridge::toBytes(JNIEnv& env, std::string_view text) {

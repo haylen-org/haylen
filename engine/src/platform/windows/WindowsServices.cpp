@@ -165,7 +165,7 @@ TextInput& Services::getTextInput() {
 }
 
 // Windows has no handler registry in the language of the platform, so native libraries and C++ plugins answer the methods of apps.
-void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view) {
+void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view, std::span<const std::vector<std::byte>>) {
     BridgeRelay::resolve(id, false, core::Json{{"message", "No native handler is registered for " + std::string(method) + "."}, {"code", "noHandler"}}.dump());
 }
 

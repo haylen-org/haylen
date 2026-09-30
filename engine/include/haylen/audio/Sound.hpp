@@ -20,6 +20,10 @@ class Sound final {
     [[nodiscard]] static Sound decode(std::span<const std::uint8_t> encoded);
     [[nodiscard]] static Sound stream(std::vector<std::uint8_t> encoded);
 
+    // Makes a decoded sound from raw samples, interleaved by channel, where 16-bit samples become floats. Throws std::invalid_argument for a sample rate or channels of 0 and for samples that do not fill whole frames, and std::runtime_error for no samples at all.
+    [[nodiscard]] static Sound fromSamples(std::span<const float> samples, std::uint32_t channels, std::uint32_t sampleRate);
+    [[nodiscard]] static Sound fromSamples(std::span<const std::int16_t> samples, std::uint32_t channels, std::uint32_t sampleRate);
+
     [[nodiscard]] bool isValid() const noexcept {
         return data != nullptr;
     }

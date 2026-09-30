@@ -229,6 +229,7 @@ A module of the app whose first name part is the id of a plugin could never load
 | `handle:call(method, params, options)` | Calls `<id>.<method>` and returns a platform call, which a coroutine awaits. |
 | `handle:send(method, params)` | Calls `<id>.<method>` when nothing needs its answer, without a call object. |
 | `handle:on(event, listener)` | Listens to the event `<id>.<event>` and returns a connection. |
+| `handle:videoStream(name)`, `handle:audioStream(name)` | The video or audio [stream](#streams) `name` that the native part opened, or `nil` until it opens it. |
 
 `platform.plugins()` lists the plugins of the app with their `id`, `version` and `native`. Methods and events of plugins use camelCase names, and the native parts register and send them under the same names, which their contexts prefix with the id. A platform without the native part of a plugin answers its calls with the code `noHandler`, and a native part that cannot offer a method on its platform fails the call with the code `unsupported` and a message that says why, so the Lua API stays the same everywhere. `handle.native` tells the Lua API whether the native part exists at all.
 
@@ -288,7 +289,40 @@ Every error that stops the app, the one its error screen shows, reaches the nati
 
 ### Retained events
 
-Events that native code sends before the app listens, such as the deep link or the notification that opened the app or a purchase that finished while it was closed, are sent retained. A retained event waits, up to 32 per name, for the first listener of its name, which receives the waiting events in order, as the [platform bridge guide](platform_bridge.md#retained-events) describes. The web context sends one with `context.emit(event, payload, {retain: true})`, the context of an Apple plugin with `emitRetained:payload:`, the context of an Android plugin with `emitRetained(event, payload)`, and a native library with `emit(event, payload, 1)` of `HaylenNativeApi`.
+Events that native code sends before the app listens, such as the deep link or the notification that opened the app or a purchase that finished while it was closed, are sent retained. A retained event waits, up to 32 per name, for the first listener of its name, which receives the waiting events in order, as the [platform bridge guide](platform_bridge.md#retained-events) describes. The web context sends one with `context.emit(event, payload, {retain: true})`, the context of an Apple plugin with `emitRetained:payload:`, the context of an Android plugin with `emitRetained(event, payload)`, and a native library with `emit(event, payload, 0, 0, HAYLEN_NATIVE_EMIT_RETAIN)` of `HaylenNativeApi`.
+
+### Batched events
+
+A plugin that reports something many times per frame, such as a sensor, the location or the progress of a download, sends its events batched. The batched events of a name that arrive in one frame reach the Lua listener once, as one list of their payloads in order, so the app runs its listener once per frame instead of once per event, as the [platform bridge guide](platform_bridge.md#batched-events) describes. The flag goes next to the retain flag: `context.emit(event, payload, {batched: true})` on the web, `emit:payload:retain:batched:` of the context of an Apple plugin, `try context.emit(event, payload, batched: true)` in Swift, `emit(event, payload, retain, batched)` of the context of an Android plugin, and `HAYLEN_NATIVE_EMIT_BATCHED` in the flags of `emit` of `HaylenNativeApi`.
+
+### Bytes
+
+Calls, answers and events carry bytes next to their JSON, such as a photo, a recording or a file, which never turn into text. The Lua API of a plugin marks a string that goes to the native part with [`platform.bytes(data)`](lua-api/platform.md#platformbytesdata), and every buffer that the native part sends arrives as a Lua string in its place. Each native part uses the byte type of its language, in its parameters and anywhere inside the values it answers and sends:
+
+| Native part | Bytes it receives | Bytes it sends |
+| --- | --- | --- |
+| Apple, Objective-C and Swift | `NSData`, `Data` in Swift, in the parameters of `registerHandler:handler:`. | `NSData` and `Data` in the value of a reply and of `emit:payload:`. |
+| Android, Java and Kotlin | `byte[]`, `ByteArray` in Kotlin, in the `JSONObject` of the parameters. | `byte[]` and `ByteBuffer` in the value of `reply.success` and of `emit`, where a direct `ByteBuffer` crosses JNI without a copy in Java. |
+| Web | `Uint8Array` in the parameters of a handler. | `ArrayBuffer`, `Uint8Array` and every other `ArrayBuffer` view in the result of a handler and in `context.emit`. |
+| Native library, C | An array of `HaylenNativeBuffer` next to the parameters of a handler. | `HaylenNativeBuffer` arrays of `resolve` and `emit`, which the JSON refers to as `{"$bytes": N}`. |
+
+The helpers of the Swift template for `Codable` values carry JSON alone, so a Swift handler that takes or returns bytes registers with `registerHandler:handler:` and answers a dictionary. The [platform bridge guide](platform_bridge.md#byte-buffers) describes the format, and [`graphics.newTexture(bytes)`](lua-api/graphics.md#graphicsnewtexturebytes-options) and [`audio.newSound(bytes)`](lua-api/audio.md#audionewsoundbytes-options) turn the bytes of images and sounds into engine resources.
+
+### Streams
+
+A plugin that produces video or audio continuously, such as a camera, a video decoder, a microphone or a synthesized voice, feeds a stream instead of sending events. Streams belong to the process and have a name within their plugin, and the Lua API of the plugin reaches them with [`handle:videoStream(name)` and `handle:audioStream(name)`](lua-api/platform.md#video-streams), which return `nil` until the native part opens them.
+
+- **Video.** Native code opens a `platform::VideoStream` with its pixel format, RGBA8 or BGRA8, and a size, and pushes frames from any thread with a pointer, a stride, a size and a timestamp. The stream copies each frame on the thread that pushes it, turning BGRA into RGBA and dropping the padding of the rows, and keeps only the newest one. At the start of every frame the engine uploads the newest frame, if it is new, into the dynamic texture of the stream through `graphics::Device`, so the texture changes once per frame at most, and a frame of another size resizes the texture in place.
+- **Audio.** Native code opens a `platform::AudioStream` with its sample rate, channels, format, 32-bit float or 16-bit integer, and the frames its ring holds, and pushes interleaved samples from any thread, one thread at a time. The ring is lock-free with one writer and one reader, the voice that plays the stream, which resamples it to the mixer, plays silence where samples are missing and counts each short read as an underrun. Samples that do not fit while the ring is full are dropped, and push returns how many frames fit.
+
+| Native part | Video | Audio |
+| --- | --- | --- |
+| Native library, C | `openVideoStream(plugin, name, format, width, height)` and `pushVideoFrame(stream, pixels, width, height, stride, timestamp)` of `HaylenNativeApi`. | `openAudioStream(plugin, name, sampleRate, channels, format, capacityFrames)` and `pushAudioFrames(stream, samples, frames)`. |
+| Web | `context.videoStream(name)`, whose `push(source, timestamp)` takes an `ImageBitmap`, a `VideoFrame`, a `<video>`, an `<img>` or a `<canvas>`, draws it into a canvas of its size and copies its RGBA pixels into wasm memory. The timestamp defaults to the one of a `VideoFrame`, the current time of a video or the time of the push. | `context.audioStream(name, {sampleRate, channels, capacity})`, whose `push(samples)` copies an interleaved `Float32Array` into the ring and returns how many frames fit. The capacity defaults to one second of frames. |
+| C++, inside the engine | `platform::PluginStreams::openVideo(plugin, name, format, width, height)` and `VideoStream::push(pixels, width, height, stride, timestamp)`. | `platform::PluginStreams::openAudio(plugin, name, sampleRate, channels, format, capacityFrames)` and `AudioStream::push(samples)` with a span of floats or 16-bit integers. |
+| Apple and Android | Not yet. The Apple runtime and the Android library of this version have no stream API, so a plugin there fails its stream methods with the code `unsupported`. | Not yet, for the same reason. |
+
+Opening a stream again returns the same stream, whose handle stays valid for good, and opening it with another format fails. The web page is single-threaded, so its pushes and the mixing of its voices take turns on the thread of the page.
 
 ### The native plugin list
 
@@ -303,7 +337,9 @@ The web module of a plugin exports `default function load(context)`, which the l
 | `context.id` | The id of the plugin. |
 | `context.config` | The parameter values of `app.json` with the defaults of `plugin.json` applied. |
 | `context.register(method, handler)` | Answers `<id>.<method>`, like `Module.haylen.register` described in the [platform bridge guide](platform_bridge.md#web). |
-| `context.emit(event, payload, options)` | Sends `<id>.<event>`, retained when `options.retain` is `true`. |
+| `context.emit(event, payload, options)` | Sends `<id>.<event>`, retained when `options.retain` is `true` and batched when `options.batched` is `true`, with `ArrayBuffer` and `Uint8Array` values as bytes. |
+| `context.videoStream(name)` | Opens the [video stream](#streams) `name` of the plugin once the runtime is ready, and returns `{push(source, timestamp)}`, whose `push` returns `false` while it drops a frame, before the runtime is ready or while a video has no frame yet. |
+| `context.audioStream(name, options)` | Opens the [audio stream](#streams) `name` of the plugin with `options.sampleRate`, `options.channels` and `options.capacity` in frames once the runtime is ready, and returns `{push(samples)}`. |
 | `context.overlay.add(element, placement)` | Places an HTML element over the canvas and returns `{update(placement), setVisible(visible), remove()}`. |
 | `context.coverApp()`, `context.uncoverApp()` | Cover the app while native UI shows, and end the cover. |
 | `context.onAppError(listener)` | Calls `listener(error)` with the report of every error that stops the app. |
@@ -445,7 +481,7 @@ The same plugin in Objective-C:
 | `identifier` | The id of the plugin. |
 | `config` | The parameters of the plugin in `app.json` over the `default` of every parameter of `plugin.json`, the same values as `handle.config` in Lua, as an `NSDictionary`. |
 | `registerHandler:handler:`, `registerCancellableHandler:handler:` | Answer `<id>.<method>`, like the handlers of `HaylenBridge` in the [platform bridge guide](platform_bridge.md#apple-platforms). |
-| `emit:payload:`, `emitRetained:payload:` | Send the event `<id>.<event>`, retained for the first listener of its name with `emitRetained:payload:`. A payload is any value `NSJSONSerialization` accepts, or `nil`. |
+| `emit:payload:`, `emitRetained:payload:`, `emit:payload:retain:batched:` | Send the event `<id>.<event>`, retained for the first listener of its name with `emitRetained:payload:`, and retained, batched or both with `emit:payload:retain:batched:`. A payload is any value `NSJSONSerialization` accepts, with `NSData` values that cross as bytes, or `nil`. |
 | `overlay` | The overlay that places native views of the plugin over the app, as [overlays](#overlays) describes. |
 | `coverApp`, `uncoverApp` | Cover the app while native UI of the plugin covers it, and end the cover, as [covering the app](#covering-the-app) describes. The covers of a plugin end when the window of the app goes away, and an `uncoverApp` without a cover of the plugin is logged as an error. |
 | `viewController`, `windowScene` | The root view controller of the window of the app and its window scene on iOS, tvOS and Mac Catalyst, for SDKs that present UI or need a scene. Both are `nil` until the scene connects. |
@@ -534,8 +570,10 @@ A URL scheme of `CFBundleURLTypes` opens the app, whose plugins receive the link
 | Helper | Meaning |
 | --- | --- |
 | `context.register(method) { (params: Params) async throws -> Result in ... }` | Answers `<id>.<method>` with an async function on the main actor. `Params` decodes from the parameters of the call with `JSONDecoder` and `Result` encodes the answer with `JSONEncoder`. A thrown `HaylenFailure(message, code:, data:)` fails the call with its code and data, any other error fails it with the code `exception` and the type of the error in `data.type`, and the task of the call is cancelled when the app cancels the call or its timeout passes. |
-| `try context.emit(event, payload, retain: false)` | Sends `<id>.<event>` with an `Encodable` payload, retained when `retain` is `true`. It throws the error of the encoder when the payload does not encode. |
-| `HaylenBridge.register(method) { ... }`, `try HaylenBridge.emit(event, payload, retain: false)` | The same for handlers and events outside plugins, without the prefix. |
+| `try context.emit(event, payload, retain: false, batched: false)` | Sends `<id>.<event>` with an `Encodable` payload, retained when `retain` is `true` and batched when `batched` is `true`. It throws the error of the encoder when the payload does not encode. |
+| `HaylenBridge.register(method) { ... }`, `try HaylenBridge.emit(event, payload, retain: false, batched: false)` | The same for handlers and events outside plugins, without the prefix. |
+
+These helpers carry JSON alone, so bytes cross through the dictionaries of `registerHandler:handler:` and `emit:payload:`.
 
 ```swift
 struct Purchase: Encodable {
@@ -656,7 +694,7 @@ public final class ShareSheetPlugin extends HaylenPlugin {
 | `config()` | The parameters of the plugin in `app.json` over the `default` of every parameter of `plugin.json`, the same values as `handle.config` in Lua, as a `JSONObject`. |
 | `register(method, handler)`, `register(method, handler, threading)` | Answer `<id>.<method>` like `HaylenBridge.register` in the [platform bridge guide](platform_bridge.md#android), on the main thread or, with `HaylenBridge.Threading.BACKGROUND`, on the shared background thread described in [threads](#threads). |
 | `registerSuspend(method) { params -> result }` | Kotlin only. Answers `<id>.<method>` with a suspending function, like `HaylenCoroutines.register`. |
-| `emit(event, payload)`, `emitRetained(event, payload)` | Send the event `<id>.<event>`, retained for the first listener of its name with `emitRetained`. The payload is converted like the value of `reply.success`. |
+| `emit(event, payload)`, `emitRetained(event, payload)`, `emit(event, payload, retain, batched)` | Send the event `<id>.<event>`, retained for the first listener of its name with `emitRetained`, and retained, batched or both with the last form. The payload is converted like the value of `reply.success`, with `byte[]` and `ByteBuffer` values as bytes. |
 | `overlay()` | The overlay that places native views of the plugin over the app, as [Android overlays](#android-overlays) describes. |
 | `coverApp()`, `uncoverApp()` | Cover the app while native UI of the plugin covers it, and end the cover, as [covering the app](#covering-the-app) describes. The covers of a plugin end with the activity, an `uncoverApp` without a cover of the plugin is logged as an error, and a `coverApp` while no activity exists is logged as a warning and covers nothing. |
 | `runOnMainThread(task)` | Runs the task at once on the main thread, and posts it there from any other thread, for callbacks of SDKs that arrive on threads of their own. |
@@ -746,10 +784,10 @@ The plugins sample, [`samples/system/plugins`](../samples/system/plugins), carri
 | --- | --- |
 | [`plugin.json`](../samples/system/plugins/plugins/native-demo/plugin.json) | Every platform, four parameters with defaults, `${urlScheme}` in the `CFBundleURLTypes` of `infoPlist` and in the Android placeholder `nativeDemoUrlScheme`, and a `native` library for the desktops. |
 | [`source/init.lua`](../samples/system/plugins/plugins/native-demo/source/init.lua) | The Lua API on the plugin handle, the load of the C library where no other native part loaded, and the `start` call that tells the native part of every new app. |
-| [`apple/`](../samples/system/plugins/plugins/native-demo/apple) | `NativeDemoPlugin.swift`, the plugin class, `NativeDemoBanner.swift`, `NativeDemoScreen.swift` and `NativeDemoPicker.swift`, each for UIKit and AppKit. |
+| [`apple/`](../samples/system/plugins/plugins/native-demo/apple) | `NativeDemoPlugin.swift`, the plugin class, which also draws its image with CoreGraphics, `NativeDemoBanner.swift`, `NativeDemoScreen.swift` and `NativeDemoPicker.swift`, each for UIKit and AppKit. |
 | [`android/`](../samples/system/plugins/plugins/native-demo/android) | The library module with its manifest and `NativeDemoPlugin.kt`, `NativeDemoBanner.kt` and `NativeDemoScreen.kt`. |
 | [`web/native-demo.js`](../samples/system/plugins/plugins/native-demo/web/native-demo.js) | The web module. |
-| [`native/`](../samples/system/plugins/plugins/native-demo/native) | `CMakeLists.txt` and `NativeDemo.c`, the library of the desktops. |
+| [`native/`](../samples/system/plugins/plugins/native-demo/native) | `CMakeLists.txt` and `NativeDemo.c`, the library of the desktops, with a PNG encoder of its own and the threads that feed its streams. |
 
 ### The Lua API
 
@@ -763,11 +801,17 @@ The plugins sample, [`samples/system/plugins`](../samples/system/plugins), carri
 | Work off the main thread, `compute` | `context.register` with `Decodable` parameters and an `Encodable` result, awaiting a global dispatch queue. | `context.register` with `HaylenBridge.Threading.BACKGROUND`. | An async handler that yields to the page between slices. | A thread of the library that calls `resolve`. |
 | A typed failure, `fail` | A thrown `HaylenFailure` with a code and data. | `reply.failure(message, code, data)`, or a thrown `HaylenBridge.Failure`. | A thrown error with `code` and `data`. | `resolve` with `ok` 0 and an object with `message`, `code` and `data`. |
 | Cancellation, `wait` | The task of the call is cancelled, which ends `Task.sleep`. | `reply.onCancel`. | The `abort` event of the `signal` of the call. | The cancel function of `registerHandler`. |
-| An unsupported call | `HaylenFailure` with the code `unsupported`, for `pickFile` on tvOS. | | | `resolve` with the code `unsupported`, for the banner, the screen, the picker and the parameters. |
+| An unsupported call | `HaylenFailure` with the code `unsupported`, for `pickFile` on tvOS and the streams. | `reply.failure` with the code `unsupported`, for the streams. | | `resolve` with the code `unsupported`, for the banner, the screen, the picker and the parameters. |
+| Bytes both ways, `echoBytes` | `registerHandler`, whose parameters hold `Data` and whose answer returns it. | A `ByteArray` in the parameters, returned in a `JSONObject`. | A `Uint8Array` in the parameters, returned as it is. | The `HaylenNativeBuffer` of the handler, handed back to `resolve`. |
+| An image as bytes, `generatedImage` | A `CGContext` and `CGImageDestination` of ImageIO, which write a PNG. | A `Bitmap`, a `Canvas` and `Bitmap.compress`, on the background thread. | A `<canvas>` and `toBlob`. | A PNG encoder of the library with stored deflate blocks. |
 
 ### Events
 
-`tick` comes from a `Timer` on the main run loop on Apple platforms, a `Runnable` posted to the main `Handler` on Android, `setInterval` on the web and a thread of the library on the desktops, which each send with `context.emit`, `HaylenNativeApi.emit` or their equivalent from their thread. `loaded` goes out retained from `load(with:)`, `onLoad`, `load(context)` and the init function, before any app listens, and waits for the first listener of the process, which the sample connects only when its Events test opens.
+`burst` shows [batched events](#batched-events): `burst(count, ticks)` sends `count` events 30 times per second for `ticks` ticks, each marked batched, from a `Timer` on Apple platforms, the main `Handler` on Android, `setInterval` on the web and a thread of the library on the desktops, and then `burstDone`, so the Lua listener receives one list of the events of each frame. `tick` comes from a `Timer` on the main run loop on Apple platforms, a `Runnable` posted to the main `Handler` on Android, `setInterval` on the web and a thread of the library on the desktops, which each send with `context.emit`, `HaylenNativeApi.emit` or their equivalent from their thread. `loaded` goes out retained from `load(with:)`, `onLoad`, `load(context)` and the init function, before any app listens, and waits for the first listener of the process, which the sample connects only when its Events test opens.
+
+### Streams
+
+`startVideo` opens the video stream `pattern` and draws an animated pattern into it 30 times per second, and `startTone` opens the audio stream `tone` and synthesizes a sine wave into it a tenth of a second ahead of the clock. The C library draws BGRA frames of 320 by 180 pixels and 16-bit mono samples at 44100 Hz on threads of its own, which the engine turns into RGBA and resamples to the mixer, and the web module animates a `<canvas>` that it pushes into `context.videoStream('pattern')` and pushes `Float32Array` blocks into `context.audioStream('tone', {sampleRate = 44100, channels = 1})` from timers of the page. Apple platforms and Android fail both with the code `unsupported`, since their native APIs for streams come later. The Lua API returns the streams with `videoStream()` and `audioStream()`, whose texture the sample draws and whose voice it plays, with a level meter from `read`.
 
 ### Parameters
 

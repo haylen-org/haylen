@@ -4,10 +4,12 @@
 #include <emscripten/html5.h>
 
 #include <array>
+#include <cstdint>
 #include <cstdlib>
 #include <string>
 #include <thread>
 #include <utility>
+#include <vector>
 
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Log.hpp"
@@ -19,8 +21,8 @@
 // The page side lives in platform/web/haylen-runtime.js, which defines Module.haylen before the runtime starts.
 
 // clang-format off
-EM_JS(void, haylen_js_dispatch, (double call, const char* method, const char* params), {
-    Module.haylen.dispatch(call, UTF8ToString(method), UTF8ToString(params));
+EM_JS(void, haylen_js_dispatch, (double call, const char* method, const char* params, const uint32_t* buffers, int count), {
+    Module.haylen.dispatch(call, UTF8ToString(method), UTF8ToString(params), Module.haylen.readBuffers(buffers, count));
 });
 
 EM_JS(void, haylen_js_cancel, (double call), {
@@ -190,8 +192,15 @@ TextInput& Services::getTextInput() {
     return input;
 }
 
-void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson) {
-    haylen_js_dispatch(static_cast<double>(id), std::string(method).c_str(), std::string(paramsJson).c_str());
+// The page copies the buffers during the call, from a table of an address and a size in wasm memory for each.
+void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) {
+    std::vector<std::uint32_t> table;
+    table.reserve(buffers.size() * 2);
+    for (const std::vector<std::byte>& buffer : buffers) {
+        table.push_back(static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(buffer.data())));
+        table.push_back(static_cast<std::uint32_t>(buffer.size()));
+    }
+    haylen_js_dispatch(static_cast<double>(id), std::string(method).c_str(), std::string(paramsJson).c_str(), table.data(), static_cast<int>(buffers.size()));
 }
 
 void Services::cancel(std::uint64_t id) {

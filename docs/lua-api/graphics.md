@@ -44,6 +44,36 @@ local checker = graphics.newTexture(2, 2, {
 print(red.width, checker.height)
 ```
 
+### graphics.newTexture(bytes, options)
+
+Creates a `Texture` from `bytes`, a string with the contents of a PNG, JPEG, TGA, BMP or GIF file, such as the image a plugin returns from native code or a file the app downloaded. The texture has the size of the image, and `options` takes `dynamic`, `filter` and `wrap` of the form above, while `fill` and `pixels` raise an unknown option error, since the image gives the pixels. Bytes that are no image raise `The image could not be decoded, and the decoder reported '<reason>'.`. Raw RGBA pixels take the form with the width and the height and the `pixels` option, and images of the package load with [assets.texture](assets.md), which caches them.
+
+```lua
+local async = require('async')
+local graphics = require('haylen.graphics')
+local graphics2d = require('haylen.graphics2d')
+local platform = require('haylen.platform')
+local scene = require('haylen.scene')
+
+scene.push({
+    enter = function(self)
+        async.spawn(function()
+            -- The native part answers with the PNG of a photo as bytes.
+            local photo = platform.call('camera.takePhoto', {width = 640, height = 480}):await()
+            if photo then
+                self.texture = graphics.newTexture(photo.png, {filter = 'linear'})
+            end
+        end)
+    end,
+    render = function(self)
+        if self.texture then
+            graphics2d.beginScreen()
+            graphics2d.draw(self.texture, 20, 20, {pivotX = 0, pivotY = 0})
+        end
+    end,
+})
+```
+
 ### graphics.newFontFamily(faces)
 
 Creates a `FontFamily` from its faces: `regular`, which it needs, and the optional `bold`, `italic`, `boldItalic` and `mono` faces, plus `fallbacks`, a list of fonts for the characters a face lacks, such as a CJK, Arabic, Devanagari or symbol font. A family picks the font of every character with its marks as one unit, so a letter and its marks always come from one font, and each run of one font is shaped on its own. `graphics2d.drawText` and `graphics2d.measureText` take a family in place of a font to draw plain text in every script its fonts cover. Rich text draws `[b]` and `[i]` with the real faces the family has and synthesizes the others: a TrueType face grows its strokes and leans its glyphs through its distance field, and a bitmap face draws a bold glyph twice a native pixel apart and leans italic ones. `[code]` uses the mono face, or the regular faces when the family has none. A family without `regular` raises `A font family needs a regular face.`.

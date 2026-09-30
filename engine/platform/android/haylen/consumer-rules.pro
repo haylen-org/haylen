@@ -1,7 +1,7 @@
 # The engine reaches these classes from C++ by name, so R8 must keep them in minified app builds.
 
 -keep class dev.haylen.HaylenBridge {
-    static void dispatch(long, byte[], byte[]);
+    static void dispatch(long, byte[], byte[], byte[][]);
     static void cancel(long);
     static void setAppRunning(boolean);
 }

@@ -2,8 +2,13 @@
 
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <utility>
+
+#include "haylen/core/JsonBytes.hpp"
+#include "haylen/lua/Bytes.hpp"
+#include "haylen/lua/Userdata.hpp"
 
 namespace haylen::lua {
 
@@ -43,7 +48,7 @@ std::string JsonConverter::objectKey(lua_State* L, int index) {
     throw std::invalid_argument(std::string("A ") + luaL_typename(L, index) + " key cannot be converted to JSON.");
 }
 
-core::Json JsonConverter::convert(lua_State* L, int index, int depth) {
+core::Json JsonConverter::convert(lua_State* L, int index, int depth, std::vector<std::vector<std::byte>>* buffers) {
     if (depth > kMaxDepth) {
         throw std::invalid_argument("Value is nested too deeply to convert to JSON.");
     }
@@ -66,6 +71,12 @@ core::Json JsonConverter::convert(lua_State* L, int index, int depth) {
     }
     case LUA_TTABLE:
         break;
+    case LUA_TUSERDATA:
+        if (const Bytes* bytes = buffers != nullptr ? Userdata::test<Bytes>(L, index) : nullptr) {
+            buffers->push_back(bytes->data);
+            return core::JsonBytes::makeReference(buffers->size() - 1);
+        }
+        [[fallthrough]];
     default:
         throw std::invalid_argument(std::string("A ") + luaL_typename(L, index) + " cannot be converted to JSON.");
     }
@@ -80,7 +91,7 @@ core::Json JsonConverter::convert(lua_State* L, int index, int depth) {
         const auto length = static_cast<lua_Integer>(lua_rawlen(L, table));
         for (lua_Integer element = 1; element <= length; ++element) {
             lua_rawgeti(L, table, element);
-            array.push_back(convert(L, -1, depth + 1));
+            array.push_back(convert(L, -1, depth + 1, buffers));
             lua_pop(L, 1);
         }
         return array;
@@ -90,13 +101,13 @@ core::Json JsonConverter::convert(lua_State* L, int index, int depth) {
     lua_pushnil(L);
     while (lua_next(L, table) != 0) {
         std::string key = objectKey(L, -2);
-        object[std::move(key)] = convert(L, -1, depth + 1);
+        object[std::move(key)] = convert(L, -1, depth + 1, buffers);
         lua_pop(L, 1);
     }
     return object;
 }
 
-void JsonConverter::pushConverted(lua_State* L, const core::Json& value, int depth) {
+void JsonConverter::pushConverted(lua_State* L, const core::Json& value, int depth, const std::vector<std::vector<std::byte>>* buffers) {
     if (depth > kMaxDepth || lua_checkstack(L, 3) == 0) {
         throw std::invalid_argument(kTooDeep);
     }
@@ -135,15 +146,21 @@ void JsonConverter::pushConverted(lua_State* L, const core::Json& value, int dep
     case core::Json::value_t::array:
         lua_createtable(L, static_cast<int>(value.size()), 0);
         for (std::size_t element = 0; element < value.size(); ++element) {
-            pushConverted(L, value[element], depth + 1);
+            pushConverted(L, value[element], depth + 1, buffers);
             lua_rawseti(L, -2, static_cast<lua_Integer>(element + 1));
         }
         return;
     case core::Json::value_t::object:
+        if (const std::optional<std::size_t> reference = buffers != nullptr ? core::JsonBytes::findReference(value) : std::nullopt) {
+            core::JsonBytes::validate(value, buffers->size());
+            const std::vector<std::byte>& bytes = (*buffers)[*reference];
+            lua_pushlstring(L, reinterpret_cast<const char*>(bytes.data()), bytes.size());
+            return;
+        }
         lua_createtable(L, 0, static_cast<int>(value.size()));
         for (const auto& [key, member] : value.items()) {
             lua_pushlstring(L, key.data(), key.size());
-            pushConverted(L, member, depth + 1);
+            pushConverted(L, member, depth + 1, buffers);
             lua_rawset(L, -3);
         }
         return;
@@ -165,7 +182,11 @@ void JsonConverter::validateNested(const core::Json& value, int depth) {
 }
 
 void JsonConverter::push(lua_State* L, const core::Json& value) {
-    pushConverted(L, value, 0);
+    pushConverted(L, value, 0, nullptr);
+}
+
+void JsonConverter::push(lua_State* L, const core::Json& value, const std::vector<std::vector<std::byte>>& buffers) {
+    pushConverted(L, value, 0, &buffers);
 }
 
 void JsonConverter::validate(const core::Json& value) {
@@ -173,7 +194,11 @@ void JsonConverter::validate(const core::Json& value) {
 }
 
 core::Json JsonConverter::read(lua_State* L, int index) {
-    return convert(L, index, 0);
+    return convert(L, index, 0, nullptr);
+}
+
+core::Json JsonConverter::read(lua_State* L, int index, std::vector<std::vector<std::byte>>& buffers) {
+    return convert(L, index, 0, &buffers);
 }
 
 } // namespace haylen::lua

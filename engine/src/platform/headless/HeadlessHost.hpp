@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <filesystem>
 #include <functional>
 #include <string>
@@ -23,6 +24,7 @@ class HeadlessHost final : public Host {
         std::uint64_t id = 0;
         std::string method;
         std::string paramsJson;
+        std::vector<std::vector<std::byte>> buffers;
     };
 
     // A native dialog the engine asked for, with the folder where the platform would keep copies of picked files.
@@ -157,7 +159,7 @@ class HeadlessHost final : public Host {
         return safeAreaInsets;
     }
     void pollGamepads(std::span<input::GamepadState> states) override;
-    void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson) override;
+    void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) override;
     void cancelPlatformCall(std::uint64_t id) override {
         cancelledCalls.push_back(id);
     }

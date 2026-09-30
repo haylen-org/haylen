@@ -25,8 +25,12 @@ int GraphicsLua::newRenderTarget(lua_State* L) {
     return 1;
 }
 
-// Creates a texture from raw RGBA bytes or a fill color with newTexture(width, height, {pixels = string or fill = color, dynamic, filter, wrap}), where a dynamic texture changes its pixels with update.
+// Creates a texture from raw RGBA bytes or a fill color with newTexture(width, height, {pixels = string or fill = color, dynamic, filter, wrap}), where a dynamic texture changes its pixels with update, or from the bytes of an image file with newTexture(bytes, {dynamic, filter, wrap}).
 int GraphicsLua::newTexture(lua_State* L) {
+    if (lua_type(L, 1) == LUA_TSTRING) {
+        pushImageTexture(L);
+        return 1;
+    }
     const int width = lua::Stack::read<int>(L, 1);
     const int height = lua::Stack::read<int>(L, 2);
     math::Color fill = math::Color::white();
@@ -48,6 +52,19 @@ int GraphicsLua::newTexture(lua_State* L) {
     const Image image(width, height, std::vector<std::uint8_t>(pixels.begin(), pixels.end()));
     lua::Stack::push(L, dynamic ? device.createDynamicTexture(image, options) : device.createTexture(image, options));
     return 1;
+}
+
+void GraphicsLua::pushImageTexture(lua_State* L) {
+    const std::string_view bytes = lua::Stack::read<std::string_view>(L, 1);
+    bool dynamic = false;
+    if (!lua_isnoneornil(L, 2)) {
+        luaL_checktype(L, 2, LUA_TTABLE);
+        lua::Table::readField(L, 2, "dynamic", dynamic);
+    }
+    const Texture::Options options = lua::TypeConverter::readTextureOptions(L, 2, {kImageTextureFields});
+    const Image image = Image::decode({reinterpret_cast<const std::uint8_t*>(bytes.data()), bytes.size()});
+    Device& device = lua::Runtime::getEngine(L).getGraphics();
+    lua::Stack::push(L, dynamic ? device.createDynamicTexture(image, options) : device.createTexture(image, options));
 }
 
 // Replaces every pixel of a dynamic texture with texture:update(pixels), a string of RGBA bytes of the same size.

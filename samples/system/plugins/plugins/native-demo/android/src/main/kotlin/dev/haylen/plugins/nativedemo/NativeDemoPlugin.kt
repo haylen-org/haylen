@@ -3,7 +3,13 @@ package dev.haylen.plugins.nativedemo
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.Shader
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -14,6 +20,7 @@ import dev.haylen.HaylenBridge
 import dev.haylen.HaylenPlacement
 import dev.haylen.HaylenPlugin
 import dev.haylen.HaylenPluginContext
+import java.io.ByteArrayOutputStream
 import org.json.JSONObject
 
 // Native part of the Native Demo plugin on Android, built on the views, dialogs and intents of the platform alone. The haylen library creates it from the meta-data of its manifest and loads it when the app process starts.
@@ -22,6 +29,7 @@ class NativeDemoPlugin : HaylenPlugin() {
     private val mainThread = Handler(Looper.getMainLooper())
     private var ticker: Runnable? = null
     private var ticks = 0
+    private var bursts: Runnable? = null
     private var banner: NativeDemoBanner? = null
     private var bannerState = JSONObject()
     private var bannerTaps = 0
@@ -31,7 +39,9 @@ class NativeDemoPlugin : HaylenPlugin() {
     override fun onLoad(context: HaylenPluginContext) {
         this.context = context
         registerCalls()
+        registerBytes()
         registerEvents()
+        registerStreams()
         registerBanner()
         registerScreens()
         context.emitRetained("loaded", JSONObject().put("language", LANGUAGE).put("platform", "android"))
@@ -63,6 +73,7 @@ class NativeDemoPlugin : HaylenPlugin() {
         // Every app that loads the Lua API sends start. The plugin ends what an earlier app of the process left running and hands the new app the error that stopped the earlier one.
         context.register("start") { _, reply ->
             stopTicking()
+            stopBursts()
             banner?.remove()
             banner = null
             lastError?.let { context.emitRetained("lastError", it) }
@@ -71,7 +82,31 @@ class NativeDemoPlugin : HaylenPlugin() {
         }
     }
 
+    // The bytes of the app arrive as a ByteArray in the parameters, and a ByteArray in the answer crosses back as bytes.
+    private fun registerBytes() {
+        context.register("echoBytes") { params, reply ->
+            val data = (params as JSONObject).opt("data") as? ByteArray ?: throw HaylenBridge.Failure("echoBytes needs bytes.", "invalidParams", null)
+            reply.success(JSONObject().put("data", data).put("size", data.size).put("thread", threadName()).put("language", LANGUAGE))
+        }
+
+        context.register("generatedImage", { params, reply ->
+            val width = (params as JSONObject).optInt("width")
+            val height = params.optInt("height")
+            if (width !in 1..2048 || height !in 1..2048) {
+                throw HaylenBridge.Failure("generatedImage needs a width and a height from 1 to 2048.", "invalidParams", null)
+            }
+            reply.success(JSONObject().put("png", drawPattern(width, height)).put("width", width).put("height", height).put("drawnWith", "an Android Bitmap and Canvas").put("language", LANGUAGE))
+        }, HaylenBridge.Threading.BACKGROUND)
+    }
+
     private fun registerEvents() {
+        context.register("burst") { params, reply ->
+            val count = (params as JSONObject).getInt("count")
+            val ticks = params.getInt("ticks")
+            startBursts(count, ticks)
+            reply.success(JSONObject().put("count", count).put("ticks", ticks).put("language", LANGUAGE))
+        }
+
         context.register("ticks") { params, reply ->
             val enabled = (params as JSONObject).getBoolean("enabled")
             val interval = params.getDouble("interval")
@@ -96,6 +131,42 @@ class NativeDemoPlugin : HaylenPlugin() {
     private fun stopTicking() {
         ticker?.let { mainThread.removeCallbacks(it) }
         ticker = null
+    }
+
+    // Sends count batched events 30 times per second for ticks ticks, which reach the app as one list per frame, and then burstDone.
+    private fun startBursts(count: Int, ticks: Int) {
+        stopBursts()
+        var tick = 0
+        val burst = object : Runnable {
+            override fun run() {
+                for (index in 0 until count) {
+                    context.emit("burst", JSONObject().put("tick", tick).put("index", index).put("language", LANGUAGE), false, true)
+                }
+                tick += 1
+                if (tick < ticks) {
+                    mainThread.postDelayed(this, 1000L / 30)
+                } else {
+                    bursts = null
+                    context.emit("burstDone", JSONObject().put("events", count * ticks).put("ticks", ticks).put("language", LANGUAGE))
+                }
+            }
+        }
+        bursts = burst
+        mainThread.post(burst)
+    }
+
+    private fun stopBursts() {
+        bursts?.let { mainThread.removeCallbacks(it) }
+        bursts = null
+    }
+
+    // Video and audio streams from Kotlin need the stream API of the Android library, which a later version of the engine brings, so the plugin says so instead.
+    private fun registerStreams() {
+        for (method in listOf("startVideo", "stopVideo", "startTone", "stopTone")) {
+            context.register(method) { _, reply ->
+                reply.failure("The Android library of this engine has no stream API yet, so Kotlin cannot push video frames or audio samples to the app.", "unsupported", null)
+            }
+        }
     }
 
     private fun registerBanner() {
@@ -233,6 +304,29 @@ class NativeDemoPlugin : HaylenPlugin() {
         val COLOR = Regex("#[0-9A-Fa-f]{6}")
 
         fun threadName(): String = if (Looper.myLooper() == Looper.getMainLooper()) "main" else "background"
+
+        // Draws the pattern of the demo, a gradient from red to green with blue stripes, into a Bitmap and compresses it as a PNG file.
+        fun drawPattern(width: Int, height: Int): ByteArray {
+            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            canvas.drawPaint(Paint().apply { shader = LinearGradient(0f, 0f, width.toFloat(), height.toFloat(), Color.RED, Color.GREEN, Shader.TileMode.CLAMP) })
+            val stripe = Paint().apply { color = Color.argb(153, 0, 0, 230) }
+            var offset = -height.toFloat()
+            while (offset < width) {
+                canvas.drawPath(Path().apply {
+                    moveTo(offset, 0f)
+                    lineTo(offset + 16f, 0f)
+                    lineTo(offset + 16f + height, height.toFloat())
+                    lineTo(offset + height, height.toFloat())
+                    close()
+                }, stripe)
+                offset += 32f
+            }
+            val png = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, png)
+            bitmap.recycle()
+            return png.toByteArray()
+        }
 
         fun countPrimes(limit: Int): Int {
             if (limit <= 2) {

@@ -10,6 +10,7 @@
 
 #include "audio/MixerState.hpp"
 #include "audio/SoundData.hpp"
+#include "audio/StreamSource.hpp"
 #include "haylen/2d/graphics/Camera.hpp"
 #include "haylen/core/FrameClock.hpp"
 #include "haylen/math/Math.hpp"
@@ -122,18 +123,8 @@ Mixer::VoiceId Mixer::play(const Sound& sound, const PlayOptions& options) {
         throw std::invalid_argument("Cannot play an empty sound.");
     }
     requirePlayOptions(options);
-    MixerState::Bus& bus = state->getBus(options.bus);
-
-    auto voice = std::make_unique<MixerState::Voice>();
-    voice->id = state->nextVoice++;
+    std::unique_ptr<MixerState::Voice> voice = state->createVoice(options);
     voice->sound = sound;
-    voice->bus = &bus;
-    voice->processMode = options.processMode;
-    voice->volume = options.volume;
-    voice->pan = options.pan;
-    voice->pitch = options.pitchVariation > 0.0F ? state->random.range(options.pitch - options.pitchVariation, options.pitch + options.pitchVariation) : options.pitch;
-    voice->position = options.position;
-    voice->lastPosition = options.position.value_or(math::Vec2{});
 
     const SoundData& data = *sound.getData();
     ma_data_source* source = nullptr;
@@ -153,31 +144,23 @@ Mixer::VoiceId Mixer::play(const Sound& sound, const PlayOptions& options) {
         source = &voice->buffer;
     }
     voice->sourceReady = true;
+    return state->start(std::move(voice), source, options);
+}
 
-    if (ma_sound_init_from_data_source(&state->engine, source, MA_SOUND_FLAG_NO_SPATIALIZATION, &bus.group, &voice->handle) != MA_SUCCESS) {
-        throw std::runtime_error("A voice could not be created.");
+// The voice takes the stream over from the voice that played it before, which reads silence from then on.
+Mixer::VoiceId Mixer::play(const std::shared_ptr<platform::AudioStream>& stream, const PlayOptions& options) {
+    if (!stream) {
+        throw std::invalid_argument("Cannot play an empty audio stream.");
     }
-    voice->handleReady = true;
-
-    ma_sound_set_looping(&voice->handle, options.loop ? MA_TRUE : MA_FALSE);
-    if (options.startAt > 0.0F) {
-        ma_sound_seek_to_second(&voice->handle, options.startAt);
+    if (options.loop || options.startAt != 0.0F || options.pitch != 1.0F || options.pitchVariation != 0.0F) {
+        throw std::invalid_argument("A stream plays as its samples arrive, so its voice takes no loop, start time, pitch or pitch variation.");
     }
-    if (options.fadeIn > 0.0F) {
-        ma_sound_set_fade_in_milliseconds(&voice->handle, 0.0F, 1.0F, MixerState::toMilliseconds(options.fadeIn));
-    }
-    for (const std::shared_ptr<Effect>& effect : options.effects) {
-        state->getEffects(*voice).add(effect);
-    }
-
-    // Everything that can fail ran already, so a play that throws never stops another voice.
-    state->makeRoom();
-    state->apply(*voice);
-    state->refresh(*voice);
-
-    const VoiceId id = voice->id;
-    state->voices.push_back(std::move(voice));
-    return id;
+    requirePlayOptions(options);
+    std::unique_ptr<MixerState::Voice> voice = state->createVoice(options);
+    voice->stream = stream;
+    voice->streamSource = std::make_unique<StreamSource>(*stream);
+    ma_data_source* source = voice->streamSource->get();
+    return state->start(std::move(voice), source, options);
 }
 
 void Mixer::stop(VoiceId id, float fadeOutSeconds) {

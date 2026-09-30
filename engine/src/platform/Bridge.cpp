@@ -1,13 +1,17 @@
 #include "haylen/platform/Bridge.hpp"
 
+#include <algorithm>
 #include <format>
+#include <iterator>
 #include <stdexcept>
 #include <utility>
 
+#include "haylen/core/JsonBytes.hpp"
 #include "haylen/core/Log.hpp"
 
 namespace haylen::platform {
 
+const Bridge::EmitOptions Bridge::kDefaultEmitOptions{};
 std::atomic<std::uint64_t> Bridge::nextCallId{1};
 
 bool Bridge::Mailbox::post(std::function<void()> task) const {
@@ -37,10 +41,11 @@ bool Bridge::hasHandler(std::string_view method) const {
     return handlers.contains(std::string(method));
 }
 
-std::uint64_t Bridge::call(std::string_view method, const core::Json& params, Callback callback, std::optional<std::chrono::steady_clock::duration> timeout) {
+std::uint64_t Bridge::call(std::string_view method, const Payload& params, Callback callback, std::optional<std::chrono::steady_clock::duration> timeout) {
     if (method.empty()) {
         throw std::invalid_argument("A platform call needs a method name.");
     }
+    core::JsonBytes::validate(params.json, params.buffers.size());
     const std::uint64_t id = nextCallId.fetch_add(1);
     Pending entry{.callback = std::move(callback), .method = std::string(method), .native = !hasHandler(method)};
     if (timeout) {
@@ -59,17 +64,18 @@ std::uint64_t Bridge::call(std::string_view method, const core::Json& params, Ca
     return id;
 }
 
-void Bridge::send(std::string_view method, const core::Json& params) {
+void Bridge::send(std::string_view method, const Payload& params) {
     if (method.empty()) {
         throw std::invalid_argument("A platform call needs a method name.");
     }
+    core::JsonBytes::validate(params.json, params.buffers.size());
     start(nextCallId.fetch_add(1), method, params, [](const Result&) {});
 }
 
-void Bridge::start(std::uint64_t id, std::string_view method, const core::Json& params, Reply reply) {
+void Bridge::start(std::uint64_t id, std::string_view method, const Payload& params, Reply reply) {
     const auto found = handlers.find(std::string(method));
     if (found == handlers.end()) {
-        dispatcher(id, method, params.dump());
+        dispatcher(id, method, params.json.dump(), params.buffers);
         return;
     }
     const Handler handler = found->second;
@@ -91,29 +97,35 @@ bool Bridge::cancel(std::uint64_t id) {
     return true;
 }
 
-core::Connection Bridge::on(const std::string& event, std::function<void(const core::Json&)> listener) {
+core::Connection Bridge::on(const std::string& event, std::function<void(const Payload&)> listener) {
     auto& signal = signals[event];
     if (!signal) {
-        signal = std::make_unique<core::Signal<const core::Json&>>();
+        signal = std::make_unique<core::Signal<const Payload&>>();
     }
     return signal->connect(std::move(listener));
 }
 
-void Bridge::resolve(std::uint64_t id, bool ok, std::string_view resultJson) {
-    Result result = parseResult(ok, resultJson);
+void Bridge::resolve(std::uint64_t id, bool ok, std::string_view resultJson, std::vector<std::vector<std::byte>> buffers) {
+    Result result = parseResult(ok, resultJson, std::move(buffers));
     const std::scoped_lock lock(inbox->mutex);
     inbox->completions.push_back({id, std::move(result)});
 }
 
-void Bridge::emit(std::string_view event, std::string_view payloadJson, bool retain) {
+void Bridge::emit(std::string_view event, std::string_view payloadJson, std::vector<std::vector<std::byte>> buffers, const EmitOptions& options) {
     core::Json payload = payloadJson.empty() ? core::Json(nullptr) : core::Json::parse(payloadJson, nullptr, false);
     if (payload.is_discarded()) {
         core::Log::error("The platform event '{}' carried invalid JSON and was dropped.", event);
         return;
     }
+    try {
+        core::JsonBytes::validate(payload, buffers.size());
+    } catch (const std::invalid_argument& error) {
+        core::Log::error("The platform event '{}' was dropped. {}", event, error.what());
+        return;
+    }
 
     const std::scoped_lock lock(inbox->mutex);
-    inbox->events.push_back({std::string(event), std::move(payload), retain});
+    inbox->events.push_back({.name = std::string(event), .payload = {.json = std::move(payload), .buffers = std::move(buffers)}, .options = options});
 }
 
 Bridge::Mailbox Bridge::getMailbox() const {
@@ -153,16 +165,16 @@ void Bridge::pump() {
     for (const std::string& name : waiting) {
         deliverRetained(name);
     }
-    for (NativeEvent& event : events) {
+    for (NativeEvent& event : gather(std::move(events))) {
         const auto found = signals.find(event.name);
         if (found != signals.end() && !found->second->empty()) {
-            core::Signal<const core::Json&>& signal = *found->second;
+            core::Signal<const Payload&>& signal = *found->second;
             deliverRetained(event.name);
             signal.emit(event.payload);
             continue;
         }
-        if (event.retain) {
-            std::deque<core::Json>& payloads = retained[event.name];
+        if (event.options.retain) {
+            std::deque<Payload>& payloads = retained[event.name];
             if (payloads.size() == kRetainedLimit) {
                 payloads.pop_front();
             }
@@ -182,6 +194,30 @@ void Bridge::pump() {
     expireCalls();
 }
 
+// A batch keeps its buffers in the order of its events, so each event moves its references behind the buffers of the events before it. A batch is retained when any of its events is.
+std::vector<Bridge::NativeEvent> Bridge::gather(std::vector<NativeEvent> events) {
+    std::vector<NativeEvent> gathered;
+    gathered.reserve(events.size());
+    std::unordered_map<std::string, std::size_t> batches;
+    for (NativeEvent& event : events) {
+        if (!event.options.batched) {
+            gathered.push_back(std::move(event));
+            continue;
+        }
+        const auto [found, created] = batches.try_emplace(event.name, gathered.size());
+        if (created) {
+            gathered.push_back({.name = event.name, .payload = {.json = core::Json::array()}, .options = event.options});
+        }
+
+        NativeEvent& batch = gathered[found->second];
+        core::JsonBytes::shift(event.payload.json, batch.payload.buffers.size());
+        batch.payload.json.push_back(std::move(event.payload.json));
+        std::ranges::move(event.payload.buffers, std::back_inserter(batch.payload.buffers));
+        batch.options.retain = batch.options.retain || event.options.retain;
+    }
+    return gathered;
+}
+
 void Bridge::deliverRetained(const std::string& name) {
     const auto queued = retained.find(name);
     const auto found = signals.find(name);
@@ -190,10 +226,10 @@ void Bridge::deliverRetained(const std::string& name) {
     }
 
     // Listeners may connect to other events while they run, which moves the entries of the signal table but never the signals.
-    core::Signal<const core::Json&>& signal = *found->second;
-    const std::deque<core::Json> payloads = std::move(queued->second);
+    core::Signal<const Payload&>& signal = *found->second;
+    const std::deque<Payload> payloads = std::move(queued->second);
     retained.erase(queued);
-    for (const core::Json& payload : payloads) {
+    for (const Payload& payload : payloads) {
         signal.emit(payload);
     }
 }
@@ -249,15 +285,21 @@ Bridge::Error Bridge::readFailure(core::Json payload) {
     return error;
 }
 
-Bridge::Result Bridge::parseResult(bool ok, std::string_view json) {
+// Failures carry JSON alone, so the buffers of a failure are dropped.
+Bridge::Result Bridge::parseResult(bool ok, std::string_view json, std::vector<std::vector<std::byte>> buffers) {
     core::Json parsed = json.empty() ? core::Json(nullptr) : core::Json::parse(json, nullptr, false);
     if (parsed.is_discarded()) {
         return {.error = {.message = "The platform returned invalid JSON.", .code = "invalidJson"}};
     }
-    if (ok) {
-        return {.ok = true, .value = std::move(parsed)};
+    if (!ok) {
+        return {.error = readFailure(std::move(parsed))};
     }
-    return {.error = readFailure(std::move(parsed))};
+    try {
+        core::JsonBytes::validate(parsed, buffers.size());
+    } catch (const std::invalid_argument& error) {
+        return {.error = {.message = error.what(), .code = "invalidBytes"}};
+    }
+    return {.ok = true, .value = {.json = std::move(parsed), .buffers = std::move(buffers)}};
 }
 
 } // namespace haylen::platform

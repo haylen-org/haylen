@@ -96,9 +96,10 @@ NS_SWIFT_NAME(HaylenOverlay.Item)
 - (void)registerHandler:(NSString*)method handler:(HaylenHandler)handler;
 - (void)registerCancellableHandler:(NSString*)method handler:(HaylenCancellableHandler)handler;
 
-// A retained event waits for the first listener of its name, such as the link that opened the app, which arrives before the app listens.
+// A retained event waits for the first listener of its name, such as the link that opened the app, which arrives before the app listens. The batched events of a name that arrive in one frame reach the app as one list in order, such as the readings of a sensor. NSData values anywhere inside a payload cross as byte buffers.
 - (void)emit:(NSString*)event payload:(nullable id)payload;
 - (void)emitRetained:(NSString*)event payload:(nullable id)payload;
+- (void)emit:(NSString*)event payload:(nullable id)payload retain:(BOOL)retain batched:(BOOL)batched;
 
 // Native UI that covers the app, such as a full screen ad or a sign-in sheet, covers it while it shows, which halts and mutes the app. Covers are counted, and the covers of a plugin end when the window of the app goes away.
 - (void)coverApp;

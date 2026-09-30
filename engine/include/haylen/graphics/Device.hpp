@@ -42,7 +42,7 @@ class Device final {
     // Returns the shared 1 by 1 white texture that untextured draws use.
     [[nodiscard]] const Texture& getWhiteTexture() const noexcept;
 
-    // Replaces the pixels and size of an existing texture, which is not dynamic. Every handle to it sees the new contents from the next draw.
+    // Replaces the pixels and size of an existing texture. Every handle to it sees the new contents from the next draw, and a dynamic texture stays dynamic.
     void replaceTexture(const Texture& texture, const Image& image);
 
     // Creates a texture whose pixels change in place with updateTexture, such as a glyph atlas. Its pixels reach the GPU with the next upload.

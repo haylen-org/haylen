@@ -22,6 +22,39 @@ const countPrimes = async (limit) => {
 
 const failure = (message, code, data) => Object.assign(new Error(message), { code, data });
 
+// The pattern of the demo on a canvas: a gradient from red to green with blue stripes that move with the frame.
+const drawPattern = (canvas, frame) => {
+    const context = canvas.getContext("2d");
+    const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, "#ff0000");
+    gradient.addColorStop(1, "#00ff00");
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = "rgba(0, 0, 230, 0.6)";
+    for (let offset = -canvas.height - 32 + ((frame * 4) % 32); offset < canvas.width; offset += 32) {
+        context.beginPath();
+        context.moveTo(offset, 0);
+        context.lineTo(offset + 16, 0);
+        context.lineTo(offset + 16 + canvas.height, canvas.height);
+        context.lineTo(offset + canvas.height, canvas.height);
+        context.fill();
+    }
+};
+
+// Draws the pattern on a canvas and encodes it as a PNG file with toBlob.
+const generatedImage = (width, height) =>
+    new Promise((resolve, reject) => {
+        if (!(width >= 1 && height >= 1 && width <= 2048 && height <= 2048)) {
+            reject(failure("generatedImage needs a width and a height from 1 to 2048.", "invalidParams"));
+            return;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        drawPattern(canvas, 0);
+        canvas.toBlob(async (blob) => resolve({ png: new Uint8Array(await blob.arrayBuffer()), width, height, drawnWith: "a canvas and toBlob", language }), "image/png");
+    });
+
 const bannerColor = (config) => {
     if (!/^#[0-9A-Fa-f]{6}$/.test(config.bannerColor)) {
         throw failure("The bannerColor parameter must be a color as #RRGGBB, not " + config.bannerColor + ".", "invalidColor");
@@ -89,6 +122,9 @@ const pickFile = () =>
     });
 
 export default function load(context) {
+    const video = { stream: context.videoStream("pattern"), canvas: null, timer: null, frame: 0 };
+    const tone = { stream: context.audioStream("tone", { sampleRate: 44100, channels: 1 }), timer: null };
+    let bursts = null;
     let ticker = null;
     let ticks = 0;
     let banner = null;
@@ -102,7 +138,92 @@ export default function load(context) {
         ticker = null;
     };
 
+    const stopVideo = () => {
+        clearInterval(video.timer);
+        video.timer = null;
+    };
+
+    const stopTone = () => {
+        clearInterval(tone.timer);
+        tone.timer = null;
+    };
+
+    const stopBursts = () => {
+        clearInterval(bursts);
+        bursts = null;
+    };
+
     context.register("echo", (params) => ({ echo: params.value === undefined ? null : params.value, thread: "main", language }));
+
+    // The bytes of the app arrive as a Uint8Array, which the answer carries back as bytes.
+    context.register("echoBytes", (params) => {
+        if (!(params.data instanceof Uint8Array)) {
+            throw failure("echoBytes needs bytes.", "invalidParams");
+        }
+        return { data: params.data, size: params.data.length, thread: "main", language };
+    });
+
+    context.register("generatedImage", (params) => generatedImage(params.width, params.height));
+
+    // A canvas animates the pattern 30 times per second, and the video stream copies each frame into the texture of the app.
+    context.register("startVideo", () => {
+        stopVideo();
+        video.canvas = video.canvas || Object.assign(document.createElement("canvas"), { width: 320, height: 180 });
+        video.timer = setInterval(() => {
+            drawPattern(video.canvas, video.frame++);
+            video.stream.push(video.canvas);
+        }, 1000 / 30);
+        return { width: video.canvas.width, height: video.canvas.height, fps: 30, format: "RGBA", thread: "main", language };
+    });
+
+    context.register("stopVideo", () => {
+        stopVideo();
+        return null;
+    });
+
+    // Synthesizes a sine wave a tenth of a second ahead of the clock of the page, which the audio stream copies into its ring.
+    context.register("startTone", (params) => {
+        stopTone();
+        const frequency = params.frequency || 440;
+        const started = performance.now();
+        let phase = 0;
+        let written = 0;
+        tone.timer = setInterval(() => {
+            const target = ((performance.now() - started) / 1000 + 0.1) * 44100;
+            while (written < target) {
+                const samples = new Float32Array(441);
+                for (let index = 0; index < samples.length; ++index) {
+                    samples[index] = Math.sin(phase) * 0.3;
+                    phase = (phase + (2 * Math.PI * frequency) / 44100) % (2 * Math.PI);
+                }
+                tone.stream.push(samples);
+                written += samples.length;
+            }
+        }, 10);
+        return { frequency, sampleRate: 44100, channels: 1, format: "float32", language };
+    });
+
+    context.register("stopTone", () => {
+        stopTone();
+        return null;
+    });
+
+    // Sends count batched events 30 times per second for ticks ticks, which reach the app as one list per frame, and then burstDone.
+    context.register("burst", (params) => {
+        stopBursts();
+        let tick = 0;
+        bursts = setInterval(() => {
+            for (let index = 0; index < params.count; ++index) {
+                context.emit("burst", { tick, index, language }, { batched: true });
+            }
+            tick += 1;
+            if (tick === params.ticks) {
+                stopBursts();
+                context.emit("burstDone", { events: params.count * params.ticks, ticks: params.ticks, language });
+            }
+        }, 1000 / 30);
+        return { count: params.count, ticks: params.ticks, language };
+    });
 
     context.register("compute", async (params) => ({ primes: await countPrimes(params.limit), thread: "main", detail: "slices on the main thread that yield to the page between them", language }));
 
@@ -127,6 +248,9 @@ export default function load(context) {
     // Every app that loads the Lua API sends start. The plugin ends what an earlier app of the page left running and hands the new app the error that stopped the earlier one.
     context.register("start", () => {
         stopTicking();
+        stopVideo();
+        stopTone();
+        stopBursts();
         if (banner) {
             banner.remove();
             banner = null;

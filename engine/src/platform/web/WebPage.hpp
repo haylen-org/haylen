@@ -1,8 +1,10 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "haylen/core/Json.hpp"
 
@@ -42,8 +44,20 @@ class WebPage final {
     static void hide();
     static void setOnline(bool online);
 
+    // Answers of page handlers and events of the page, with their byte buffers as a table of an address and a size in wasm memory for each, which the page frees once the call returns. The flags of an event are those of HaylenNativeEmitFlags.
+    static void resolve(double call, bool ok, const char* json, const std::uint32_t* buffers, int count);
+    static void emit(const char* event, const char* json, const std::uint32_t* buffers, int count, int flags);
+
+    // Streams of the web parts of plugins. Opening answers the address of the stream, which stays valid for good, or 0 when it fails. A video stream takes RGBA8 frames without padding and an audio stream interleaved float frames.
+    [[nodiscard]] static void* openVideoStream(const char* plugin, const char* name);
+    static int pushVideoFrame(void* stream, const std::uint8_t* pixels, int width, int height, double timestamp);
+    [[nodiscard]] static void* openAudioStream(const char* plugin, const char* name, int sampleRate, int channels, int capacityFrames);
+    static int pushAudioFrames(void* stream, const float* samples, int frames);
+
   private:
     static constexpr double kStatsInterval = 1000.0;
+
+    [[nodiscard]] static std::vector<std::vector<std::byte>> readBuffers(const std::uint32_t* table, int count);
 
     // Files the page sends one by one while it edits an app, restarted as a package on demand.
     static std::shared_ptr<io::MemoryPackage>& editorPackage;

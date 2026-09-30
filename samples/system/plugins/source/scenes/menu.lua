@@ -33,7 +33,7 @@ function Menu:enter()
     self.document = ui.mount(ui.column{
         padding = {kPadding, 48},
         gap = kGap,
-        ui.pageHeader{id = 'header', title = haylen.config.name, caption = 'The native-demo plugin of this app, written with the APIs of each platform alone, tests every capability of native plugins: calls, events, parameters, native views over the app, native UI that covers it, native results, opened URLs and app errors.'},
+        ui.pageHeader{id = 'header', title = haylen.config.name, caption = 'The native-demo plugin of this app, written with the APIs of each platform alone, tests every capability of native plugins: calls, events, bytes, streams, batched events, parameters, native views over the app, native UI that covers it, native results, opened URLs and app errors.'},
         ui.scroll{id = 'list', height = self:listHeight(), ui.column{gap = 12, padding = {0, 24, 0, 0}, children = rows}},
     }, {owner = self})
     self.document:command(self.selected, 'focus')

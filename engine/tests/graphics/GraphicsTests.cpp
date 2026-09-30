@@ -114,6 +114,15 @@ TEST(DeviceTest, UploadsEachChangedDynamicTextureOncePerFrame) {
     fixture.frames(1);
     EXPECT_EQ(sg_query_stats().prev_frame.num_update_image, 0U);
 
+    // A dynamic texture that takes a new size keeps its handle and stays dynamic, and its new pixels wait for the next frame.
+    device.replaceTexture(image, graphics::Image(3, 1, math::Color::white()));
+    EXPECT_EQ(image.getSize(), math::Vec2(3.0F, 1.0F));
+    EXPECT_EQ(image.getResource()->staged.size(), 12U);
+    device.updateTexture(image, std::vector<std::uint8_t>(12, 7));
+    fixture.frames(1);
+    EXPECT_EQ(sg_query_stats().prev_frame.num_update_image, 1U);
+    EXPECT_EQ(sg_query_stats().prev_frame.size_update_image, 12U);
+
     // A texture released before the upload is skipped.
     graphics::Texture temporary = device.createDynamicTexture(graphics::Image(1, 1, math::Color::white()));
     temporary = {};
@@ -121,7 +130,6 @@ TEST(DeviceTest, UploadsEachChangedDynamicTextureOncePerFrame) {
 
     EXPECT_THROW(device.updateTexture(atlas, std::vector<std::uint8_t>(3)), std::invalid_argument);
     EXPECT_THROW(device.updateTexture(device.createTexture(2, 2, math::Color::white()), std::vector<std::uint8_t>(16)), std::logic_error);
-    EXPECT_THROW(device.replaceTexture(atlas, graphics::Image(8, 8)), std::logic_error);
     EXPECT_THROW((void)device.createDynamicAlphaTexture(2, 2, std::vector<std::uint8_t>(3)), std::invalid_argument);
     EXPECT_THROW((void)device.createDynamicTexture(1 << 20, 1 << 20, math::Color::white()), std::invalid_argument);
 }

@@ -3,6 +3,7 @@ package dev.haylen;
 import android.app.Activity;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -13,9 +14,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.json.JSONTokener;
 
-// Native side of the platform bridge on Android. Handlers run on the main thread or on the shared background thread and may reply later from any thread. A handler that throws fails its call instead of crashing the app.
+// Native side of the platform bridge on Android. Handlers run on the main thread or on the shared background thread and may reply later from any thread. A handler that throws fails its call instead of crashing the app. Parameters, results and events carry bytes as byte[] and ByteBuffer values, which cross as byte buffers instead of text.
 public final class HaylenBridge {
     // The thread a handler runs on. MAIN handlers may touch the activity and views. BACKGROUND handlers share one background thread, so work that does not touch the UI, such as disk or database access, never holds up the main thread.
     public enum Threading {
@@ -24,6 +24,7 @@ public final class HaylenBridge {
     }
 
     public interface Reply {
+        // Answers with null, a string, a number, a boolean, a JSONObject, a JSONArray, a map, a collection or an array, with byte[] and ByteBuffer values anywhere inside.
         void success(Object value);
 
         void failure(String message);
@@ -95,15 +96,26 @@ public final class HaylenBridge {
 
     // Sends an event to the app, which receives it through haylen.platform.on.
     public static void emit(String event, Object payload) {
-        emit(event, payload, false);
+        emit(event, payload, false, false);
     }
 
-    // Sends an event to the app. A retained event that arrives while nothing listens waits for the first listener. An event sent while no app runs, such as before the first activity loads the native library, waits here until an app starts.
     public static void emit(String event, Object payload, boolean retain) {
-        KeptEvent kept = new KeptEvent(event, utf8(event), utf8(toJson(payload)), retain);
+        emit(event, payload, retain, false);
+    }
+
+    // Sends an event to the app. A retained event that arrives while nothing listens waits for the first listener. The batched events of a name that arrive in one frame reach the app once, as one list in order, which suits sensors and progress. An event sent while no app runs, such as before the first activity loads the native library, waits here until an app starts. A payload that is not JSON is logged and dropped.
+    public static void emit(String event, Object payload, boolean retain, boolean batched) {
+        HaylenPayload encoded;
+        try {
+            encoded = HaylenPayload.encode(payload);
+        } catch (JSONException error) {
+            Log.e("haylen", "The event " + event + " carried a payload that is not JSON and was dropped: " + error.getMessage());
+            return;
+        }
+        KeptEvent kept = new KeptEvent(event, utf8(event), encoded, retain, batched);
         synchronized (keptEvents) {
             if (appRunning) {
-                nativeEmit(kept.name, kept.json, kept.retain);
+                kept.send();
                 return;
             }
             // The oldest event of the name gives way once the name has its limit.
@@ -145,14 +157,14 @@ public final class HaylenBridge {
                 return;
             }
             for (KeptEvent kept : keptEvents) {
-                nativeEmit(kept.name, kept.json, kept.retain);
+                kept.send();
             }
             keptEvents.clear();
         }
     }
 
-    // Called from the native frame thread for every call that no C++ handler answers. The parameters are parsed on the thread of the handler, so the frame thread only hands the call over.
-    static void dispatch(long call, byte[] methodBytes, byte[] paramsBytes) {
+    // Called from the native frame thread for every call that no C++ handler answers, with the byte buffers of its parameters. The parameters are parsed on the thread of the handler, so the frame thread only hands the call over.
+    static void dispatch(long call, byte[] methodBytes, byte[] paramsBytes, byte[][] buffers) {
         String method = new String(methodBytes, StandardCharsets.UTF_8);
         PendingReply reply = new PendingReply(call);
         Registration registration = handlers.get(method);
@@ -161,7 +173,7 @@ public final class HaylenBridge {
             return;
         }
         pending.put(call, reply);
-        Runnable run = () -> handle(method, registration, paramsBytes, reply);
+        Runnable run = () -> handle(method, registration, paramsBytes, buffers, reply);
         if (registration.threading == Threading.BACKGROUND) {
             background.execute(run);
         } else {
@@ -177,7 +189,7 @@ public final class HaylenBridge {
         }
     }
 
-    private static void handle(String method, Registration registration, byte[] paramsBytes, PendingReply reply) {
+    private static void handle(String method, Registration registration, byte[] paramsBytes, byte[][] buffers, PendingReply reply) {
         if (reply.isCancelled()) {
             return;
         }
@@ -188,7 +200,7 @@ public final class HaylenBridge {
 
         Object params;
         try {
-            params = new JSONTokener(new String(paramsBytes, StandardCharsets.UTF_8)).nextValue();
+            params = HaylenPayload.decode(paramsBytes, buffers);
         } catch (JSONException error) {
             reply.failure(error.getMessage());
             return;
@@ -200,24 +212,14 @@ public final class HaylenBridge {
         }
     }
 
-    private static void resolve(long call, boolean ok, String json) {
-        nativeResolve(call, ok, utf8(json));
+    // Failures carry JSON alone.
+    private static void fail(long call, String json) {
+        nativeResolve(call, false, utf8(json), HaylenPayload.NO_BUFFERS);
     }
 
     // Text crosses JNI as UTF-8 bytes, because the JNI string functions use a modified UTF-8 that breaks characters outside the Basic Multilingual Plane, such as emoji.
     private static byte[] utf8(String text) {
         return text.getBytes(StandardCharsets.UTF_8);
-    }
-
-    private static String toJson(Object value) {
-        if (value == null) {
-            return "null";
-        }
-        if (value instanceof String) {
-            return JSONObject.quote((String) value);
-        }
-        Object wrapped = JSONObject.wrap(value);
-        return wrapped == null ? "null" : wrapped.toString();
     }
 
     private static final class Registration {
@@ -233,14 +235,20 @@ public final class HaylenBridge {
     private static final class KeptEvent {
         final String event;
         final byte[] name;
-        final byte[] json;
+        final HaylenPayload payload;
         final boolean retain;
+        final boolean batched;
 
-        KeptEvent(String event, byte[] name, byte[] json, boolean retain) {
+        KeptEvent(String event, byte[] name, HaylenPayload payload, boolean retain, boolean batched) {
             this.event = event;
             this.name = name;
-            this.json = json;
+            this.payload = payload;
             this.retain = retain;
+            this.batched = batched;
+        }
+
+        void send() {
+            nativeEmit(name, payload.json, payload.buffers, retain, batched);
         }
     }
 
@@ -257,8 +265,14 @@ public final class HaylenBridge {
 
         @Override
         public void success(Object value) {
-            if (settle()) {
-                resolve(call, true, toJson(value));
+            if (!settle()) {
+                return;
+            }
+            try {
+                HaylenPayload payload = HaylenPayload.encode(value);
+                nativeResolve(call, true, payload.json, payload.buffers);
+            } catch (JSONException error) {
+                fail(call, JSONObject.quote("The native handler returned a value that is not JSON: " + error.getMessage()));
             }
         }
 
@@ -279,9 +293,9 @@ public final class HaylenBridge {
                 if (data != null) {
                     failure.put("data", JSONObject.wrap(data));
                 }
-                resolve(call, false, failure.toString());
+                fail(call, failure.toString());
             } catch (JSONException error) {
-                resolve(call, false, JSONObject.quote(message == null ? "The native call failed." : message));
+                fail(call, JSONObject.quote(message == null ? "The native call failed." : message));
             }
         }
 
@@ -338,7 +352,7 @@ public final class HaylenBridge {
         }
     }
 
-    private static native void nativeResolve(long call, boolean ok, byte[] json);
+    private static native void nativeResolve(long call, boolean ok, byte[] json, Object[] buffers);
 
-    private static native void nativeEmit(byte[] event, byte[] json, boolean retain);
+    private static native void nativeEmit(byte[] event, byte[] json, Object[] buffers, boolean retain, boolean batched);
 }

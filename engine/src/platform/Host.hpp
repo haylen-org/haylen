@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <functional>
@@ -33,7 +34,8 @@ class Host : public Window {
     virtual void persistUserData() = 0;
     [[nodiscard]] virtual math::Insets getSafeAreaInsets() const = 0;
     virtual void pollGamepads(std::span<input::GamepadState> gamepads) = 0;
-    virtual void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson) = 0;
+    // Hands a platform call to the handlers of the platform, with the byte buffers that its parameters refer to, which stay valid until it returns.
+    virtual void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) = 0;
     virtual void cancelPlatformCall(std::uint64_t id) = 0;
 
     // The screen edges that native views of plugins reserve, the largest reservation on each edge in framebuffer pixels, which the engine adds to the safe area.

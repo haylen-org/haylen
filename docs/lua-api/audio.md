@@ -29,7 +29,44 @@ Every voice plays through a bus. Buses form a tree whose root, `master`, feeds t
 
 Every bus has a process mode that decides whether its voices play while the game is paused, as [haylen.setPaused](haylen.md) pauses it. `music` and `ui` start as `'always'`, `sfx` and `ambience` as `'pausable'`, and `master` and custom buses as `'inherit'`, which takes the mode of the parent bus and counts as `'pausable'` at `master`. A voice paused by the game keeps its cursor and resumes where it stopped.
 
+Sounds also come from bytes in memory with [`audio.newSound`](#audionewsoundbytes-options), such as the audio a plugin returns from native code, and the audio streams of plugins play as voices, as [haylen.platform](platform.md#audio-streams) describes.
+
 ## Functions
+
+### audio.newSound(bytes, options)
+
+Creates a `haylen.Sound` from `bytes`, a string with the contents of a WAV, Ogg Vorbis, MP3 or FLAC file, decoded into memory unless `options.stream` is `true`, which keeps the file and decodes it while a voice plays it. With `options.format` the string holds raw samples instead, interleaved by channel in the byte order of the device, which is little-endian on every platform the engine runs on:
+
+| Option | Type | Meaning |
+| --- | --- | --- |
+| `stream` | boolean | Keeps a file encoded and decodes it while it plays, like the `stream` option of assets. It is `false` by default, and raw samples, which are decoded already, raise `Raw samples are decoded already, so they cannot stream.`. |
+| `format` | string | `'float32'` for 32-bit floats from -1 to 1, or `'int16'` for 16-bit integers, which become floats. Any other format raises `The format of raw samples is 'float32' or 'int16', not '<format>'.`. |
+| `sampleRate` | integer | The sample rate of raw samples in hertz, which they need. |
+| `channels` | integer | The channels of raw samples, which they need. |
+
+Bytes that are no sound file raise `Audio data is not a supported WAV, FLAC, MP3 or Ogg Vorbis file.`, raw samples without a sample rate or channels raise `Raw audio needs a sample rate and channels.`, bytes that do not fill whole samples raise `Samples of this format take <n> bytes each, which <m> bytes do not fill.`, samples that do not fill whole frames raise `Raw audio samples come in whole frames, one sample for every channel.`, and a sample rate or channels given for a file raise `Only raw samples take a sample rate and channels, together with their format.`.
+
+```lua
+local async = require('async')
+local audio = require('haylen.audio')
+local platform = require('haylen.platform')
+
+-- A tone of a quarter second made in Lua, as 16-bit samples at 22050 Hz.
+local samples = {}
+for index = 1, 5512 do
+    samples[index] = string.pack('<h', math.floor(math.sin(index * 2 * math.pi * 440 / 22050) * 8000))
+end
+local beep = audio.newSound(table.concat(samples), {format = 'int16', sampleRate = 22050, channels = 1})
+audio.play(beep)
+
+async.spawn(function()
+    -- The native part answers with a recording as the bytes of a WAV file.
+    local recording = platform.call('recorder.lastRecording'):await()
+    if recording then
+        audio.play(audio.newSound(recording.wav))
+    end
+end)
+```
 
 ### audio.play(sound, options)
 
@@ -727,7 +764,7 @@ The engine pauses the output while the app is suspended and resumes it afterward
 
 ### Sound
 
-`assets.load()` and `assets.loadAsync()` return `haylen.Sound` userdata for sound files. Two handles of the same loaded sound compare equal with `==`. Every property is read-only.
+`assets.load()` and `assets.loadAsync()` return `haylen.Sound` userdata for sound files, and `audio.newSound()` for bytes in memory. Two handles of the same loaded sound compare equal with `==`. Every property is read-only.
 
 | Property | Type | Meaning |
 | --- | --- | --- |
@@ -846,6 +883,8 @@ end)
 | Message | Cause |
 | --- | --- |
 | `Unknown option '<key>'.` | An options table has a key the call does not accept. |
+| `Audio data is not a supported WAV, FLAC, MP3 or Ogg Vorbis file.` | `audio.newSound()` received bytes that are no sound file. |
+| `Raw audio needs a sample rate and channels.` | `audio.newSound()` received raw samples without a `sampleRate` or `channels`. |
 | `The audio bus '<name>' does not exist.` | A call names a bus that does not exist. |
 | `An audio bus needs a non-empty name that no other bus uses, not '<name>'.` | `audio.createBus()` received an empty or existing name. |
 | `A pitch variation must be at least 0 and smaller than the pitch.` | `audio.play()` received a bad `pitchVariation`. |

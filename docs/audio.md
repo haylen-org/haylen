@@ -29,6 +29,12 @@ A decoded sound is decoded when its asset loads, on worker threads when it loads
 
 A loaded sound is a `haylen.Sound` value with the read-only properties `duration`, `channels`, `sampleRate`, `frameCount` and `streamed`. Two handles of the same cached sound compare equal with `==`.
 
+Sounds also come from bytes in memory, such as a recording that a plugin returns or audio the app downloaded or made itself: [`audio.newSound(bytes, options)`](lua-api/audio.md#audionewsoundbytes-options) decodes the bytes of a WAV, Ogg Vorbis, MP3 or FLAC file, or streams them with `stream = true`, and takes raw samples, 32-bit floats or 16-bit integers with their sample rate and channels.
+
+## Audio streams
+
+The native part of a plugin, such as a microphone, a synthesized voice or decoded network audio, feeds an audio stream that the app plays as a voice. Native code pushes samples from any thread into a lock-free ring of the stream, in its own sample rate, channels and format, and the voice reads the ring on the thread that mixes, converts the samples to floats, resamples them to the rate of the mixer and spreads them over its channels. A voice that finds fewer samples than it needs plays silence for the rest and counts an underrun, and it never ends by itself. Its options are those of `audio.play` that apply to a live stream, so it plays through a bus, follows the pause by its process mode, takes effects and can be positional, while a loop, a start time and a pitch have no meaning for it. A new voice of a stream takes it over from the voice that played it before, since the ring has one reader. The app also reads the newest samples that arrived into a float buffer for analysis, such as a level meter. The [haylen.platform reference](lua-api/platform.md#audio-streams) describes the Lua API and the [plugin guide](plugins.md#streams) how native code pushes samples.
+
 ## Voices
 
 `audio.play(sound, options)` starts a voice and returns its id, an integer. The same sound can play on many voices at once, and each voice has its own volume, pitch, pan, position and playback cursor.
@@ -407,7 +413,7 @@ The rest of the game completes the picture.
 
 ## From C++
 
-`haylen::audio::Mixer` (`haylen/audio/Mixer.hpp`), reached with `engine.getAudio()`, offers the same voices, buses, music, process modes, effects and positional audio with its `Mixer::PlayOptions`, `Mixer::MusicOptions` and `Mixer::Spatialization` structures, and `haylen::audio::Sound` (`haylen/audio/Sound.hpp`) holds decoded or streamed sound data. The effects are `audio::Filter`, `audio::Delay` and `audio::Reverb`, created with `std::make_shared` and their settings structures, and `audio::Session` is the session of `app.json`. The engine applies its pause through `Mixer::setProcessPaused`, and `Mixer::deviceEventReceived` delivers device events on the frame thread, which the audio plugin turns into the interruption behavior and the events above. `Mixer::isOutputAvailable` tells whether the mix reaches an audio device. A mixer created without a device mixes on demand through `render`, which tests and offline tools use.
+`haylen::audio::Mixer` (`haylen/audio/Mixer.hpp`), reached with `engine.getAudio()`, offers the same voices, buses, music, process modes, effects and positional audio with its `Mixer::PlayOptions`, `Mixer::MusicOptions` and `Mixer::Spatialization` structures, and `Mixer::play` also takes a `std::shared_ptr<platform::AudioStream>` to play an audio stream. `haylen::audio::Sound` (`haylen/audio/Sound.hpp`) holds decoded or streamed sound data, which `Sound::decode` and `Sound::stream` make from encoded bytes and `Sound::fromSamples` from spans of float or 16-bit samples. The effects are `audio::Filter`, `audio::Delay` and `audio::Reverb`, created with `std::make_shared` and their settings structures, and `audio::Session` is the session of `app.json`. The engine applies its pause through `Mixer::setProcessPaused`, and `Mixer::deviceEventReceived` delivers device events on the frame thread, which the audio plugin turns into the interruption behavior and the events above. `Mixer::isOutputAvailable` tells whether the mix reaches an audio device. A mixer created without a device mixes on demand through `render`, which tests and offline tools use.
 
 ```cpp
 #include "haylen/audio/Filter.hpp"

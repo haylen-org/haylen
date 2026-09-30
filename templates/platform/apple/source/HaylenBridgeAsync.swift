@@ -19,9 +19,9 @@ extension HaylenBridge {
         registerCancellableHandler(method, handler: cancellable(handler))
     }
 
-    // Sends an event whose payload encodes to JSON, retained for the first listener of its name when retain is true. Throws the error of the encoder when the payload does not encode.
-    static func emit<Payload: Encodable>(_ event: String, _ payload: Payload, retain: Bool = false) throws {
-        emit(event, payload: try jsonObject(payload), retain: retain)
+    // Sends an event whose payload encodes to JSON, retained for the first listener of its name when retain is true, and batched with the events of its name in the same frame when batched is true. Throws the error of the encoder when the payload does not encode.
+    static func emit<Payload: Encodable>(_ event: String, _ payload: Payload, retain: Bool = false, batched: Bool = false) throws {
+        emit(event, payload: try jsonObject(payload), retain: retain, batched: batched)
     }
 
     fileprivate static func cancellable<Params: Decodable, Result: Encodable>(_ handler: @escaping @MainActor (Params) async throws -> Result) -> HaylenCancellableHandler {
@@ -59,13 +59,8 @@ extension HaylenPluginContext {
         registerCancellableHandler(method, handler: HaylenBridge.cancellable(handler))
     }
 
-    // Sends the event <id>.<event> with a payload that encodes to JSON, retained for the first listener of its name when retain is true. Throws the error of the encoder when the payload does not encode.
-    func emit<Payload: Encodable>(_ event: String, _ payload: Payload, retain: Bool = false) throws {
-        let object = try HaylenBridge.jsonObject(payload)
-        if retain {
-            emitRetained(event, payload: object)
-        } else {
-            emit(event, payload: object)
-        }
+    // Sends the event <id>.<event> with a payload that encodes to JSON, retained for the first listener of its name when retain is true, and batched with the events of its name in the same frame when batched is true. Throws the error of the encoder when the payload does not encode.
+    func emit<Payload: Encodable>(_ event: String, _ payload: Payload, retain: Bool = false, batched: Bool = false) throws {
+        emit(event, payload: try HaylenBridge.jsonObject(payload), retain: retain, batched: batched)
     }
 }

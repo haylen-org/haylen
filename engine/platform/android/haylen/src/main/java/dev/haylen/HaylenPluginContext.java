@@ -68,6 +68,11 @@ public final class HaylenPluginContext {
         HaylenBridge.emit(id + "." + event, payload, true);
     }
 
+    // Sends <id>.<event>, retained or not, and batched, so the events of the name that arrive in one frame reach the app as one list in order, such as the readings of a sensor.
+    public void emit(String event, Object payload, boolean retain, boolean batched) {
+        HaylenBridge.emit(id + "." + event, payload, retain, batched);
+    }
+
     // Places native views over the app. It works on the main thread while an activity exists.
     public HaylenOverlay overlay() {
         return overlay;

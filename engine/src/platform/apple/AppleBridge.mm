@@ -1,5 +1,8 @@
 #import "platform/apple/AppleBridge.hpp"
 
+#include <utility>
+
+#include "haylen/core/JsonBytes.hpp"
 #include "haylen/core/Log.hpp"
 #include "platform/BridgeRelay.hpp"
 
@@ -27,7 +30,7 @@ void AppleBridge::clearHandlers() {
 }
 
 // The call is pending from here on, so a cancel that arrives before the handler runs keeps it from running, and the cancel block the handler returns is kept only while the call still waits.
-void AppleBridge::dispatch(std::uint64_t call, std::string_view method, std::string_view paramsJson) {
+void AppleBridge::dispatch(std::uint64_t call, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) {
     NSString* name = toString(method);
     NSNumber* key = @(call);
     HaylenCancellableHandler handler = nil;
@@ -42,8 +45,12 @@ void AppleBridge::dispatch(std::uint64_t call, std::string_view method, std::str
         return;
     }
 
+    NSMutableArray<NSData*>* datas = [NSMutableArray arrayWithCapacity:buffers.size()];
+    for (const std::vector<std::byte>& buffer : buffers) {
+        [datas addObject:[NSData dataWithBytes:buffer.data() length:buffer.size()]];
+    }
     id parsed = fromJson(paramsJson);
-    id params = parsed != nil ? parsed : @{};
+    id params = parsed != nil ? restore(parsed, datas) : @{};
     dispatch_async(dispatch_get_main_queue(), ^{
       @synchronized([HaylenBridge class]) {
           if (getCalls()[key] == nil) {
@@ -74,19 +81,19 @@ void AppleBridge::cancel(std::uint64_t call) {
     }
 }
 
-void AppleBridge::emit(NSString* event, id payload, bool retain) {
-    const std::optional<std::string> json = toJson(payload);
-    if (!json) {
+void AppleBridge::emit(NSString* event, id payload, const Bridge::EmitOptions& options) {
+    std::optional<Encoded> encoded = encode(payload);
+    if (!encoded) {
         core::Log::error("The native event '{}' carried a payload that is not JSON and was dropped.", event.UTF8String);
         return;
     }
     @synchronized([HaylenBridge class]) {
         if (!running) {
-            waiting.push_back({.event = event.UTF8String, .payload = *json, .retain = retain});
+            waiting.push_back({.event = event.UTF8String, .payload = std::move(*encoded), .options = options});
             return;
         }
     }
-    BridgeRelay::emit(event.UTF8String, *json, retain);
+    BridgeRelay::emit(event.UTF8String, encoded->json, std::move(encoded->buffers), options);
 }
 
 // The events reach the bridge under the lock, so an event that another thread sends meanwhile never overtakes them.
@@ -96,8 +103,8 @@ void AppleBridge::setAppRunning(bool value) {
         if (!running) {
             return;
         }
-        for (const WaitingEvent& entry : waiting) {
-            BridgeRelay::emit(entry.event, entry.payload, entry.retain);
+        for (WaitingEvent& entry : waiting) {
+            BridgeRelay::emit(entry.event, entry.payload.json, std::move(entry.payload.buffers), entry.options);
         }
         waiting.clear();
     }
@@ -114,20 +121,72 @@ NSMutableDictionary<NSNumber*, id>* AppleBridge::getCalls() {
     return calls;
 }
 
-// Returns the JSON text of a value, or nothing when JSON cannot hold it, which NSJSONSerialization reports with an exception.
-std::optional<std::string> AppleBridge::toJson(id value) {
+std::optional<AppleBridge::Encoded> AppleBridge::encode(id value) {
     if (value == nil) {
-        return "null";
+        return Encoded{.json = "null"};
     }
+    Encoded encoded;
+    id prepared = prepare(value, encoded.buffers);
     @try {
-        NSData* data = [NSJSONSerialization dataWithJSONObject:value options:NSJSONWritingFragmentsAllowed error:nil];
+        NSData* data = [NSJSONSerialization dataWithJSONObject:prepared options:NSJSONWritingFragmentsAllowed error:nil];
         if (data == nil) {
             return std::nullopt;
         }
-        return std::string(static_cast<const char*>(data.bytes), data.length);
+        encoded.json.assign(static_cast<const char*>(data.bytes), data.length);
+        return encoded;
     } @catch (NSException*) {
         return std::nullopt;
     }
+}
+
+id AppleBridge::prepare(id value, std::vector<std::vector<std::byte>>& buffers) {
+    if ([value isKindOfClass:NSData.class]) {
+        NSData* data = value;
+        const auto* bytes = static_cast<const std::byte*>(data.bytes);
+        buffers.emplace_back(bytes, bytes + data.length);
+        return @{@(core::JsonBytes::kKey) : @(buffers.size() - 1)};
+    }
+    if ([value isKindOfClass:NSDictionary.class]) {
+        NSDictionary* source = value;
+        NSMutableDictionary* object = [NSMutableDictionary dictionaryWithCapacity:source.count];
+        for (id key in source) {
+            object[key] = prepare(source[key], buffers);
+        }
+        return object;
+    }
+    if ([value isKindOfClass:NSArray.class]) {
+        NSArray* source = value;
+        NSMutableArray* array = [NSMutableArray arrayWithCapacity:source.count];
+        for (id element in source) {
+            [array addObject:prepare(element, buffers)];
+        }
+        return array;
+    }
+    return value;
+}
+
+// A reference is an object whose only key is $bytes with an integer, never a boolean or a fraction.
+id AppleBridge::restore(id value, NSArray<NSData*>* buffers) {
+    if ([value isKindOfClass:NSArray.class]) {
+        NSMutableArray* array = [NSMutableArray arrayWithCapacity:[value count]];
+        for (id element in value) {
+            [array addObject:restore(element, buffers)];
+        }
+        return array;
+    }
+    if (![value isKindOfClass:NSDictionary.class]) {
+        return value;
+    }
+    NSDictionary* source = value;
+    id index = source.count == 1 ? source[@(core::JsonBytes::kKey)] : nil;
+    if (index != nil && CFGetTypeID((__bridge CFTypeRef)index) == CFNumberGetTypeID() && !CFNumberIsFloatType((__bridge CFNumberRef)index) && [index longLongValue] >= 0 && [index unsignedLongLongValue] < buffers.count) {
+        return buffers[[index unsignedIntegerValue]];
+    }
+    NSMutableDictionary* object = [NSMutableDictionary dictionaryWithCapacity:source.count];
+    for (id key in source) {
+        object[key] = restore(source[key], buffers);
+    }
+    return object;
 }
 
 id AppleBridge::fromJson(std::string_view text) {
@@ -141,8 +200,8 @@ NSString* AppleBridge::toString(std::string_view text) {
 
 // A failure whose code or data JSON cannot hold fails with its message alone.
 void AppleBridge::fail(std::uint64_t call, NSDictionary* failure) {
-    const std::optional<std::string> json = toJson(failure);
-    BridgeRelay::resolve(call, false, json ? *json : *toJson(@{@"message" : failure[@"message"]}));
+    const std::optional<Encoded> encoded = encode(failure);
+    BridgeRelay::resolve(call, false, encoded ? encoded->json : encode(@{@"message" : failure[@"message"]})->json);
 }
 
 // A call answers once, and not after it was cancelled. Failures reach the bridge as an object with a message and the code and data of the handler, and a success value that JSON cannot hold fails the call instead of answering with garbage.
@@ -166,12 +225,12 @@ void AppleBridge::answer(std::uint64_t call, NSString* method, BOOL ok, id resul
         fail(call, failure);
         return;
     }
-    const std::optional<std::string> json = toJson(result);
-    if (!json) {
+    std::optional<Encoded> encoded = encode(result);
+    if (!encoded) {
         fail(call, @{@"message" : [NSString stringWithFormat:@"The native handler for %@ returned a value that is not JSON.", method]});
         return;
     }
-    BridgeRelay::resolve(call, true, *json);
+    BridgeRelay::resolve(call, true, encoded->json, std::move(encoded->buffers));
 }
 
 } // namespace haylen::platform

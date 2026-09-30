@@ -36,6 +36,16 @@ function demo.echo(value)
     return handle:call('echo', {value = value})
 end
 
+-- Sends the bytes of a string to the native part as a byte buffer, and the native part answers with {data, size, thread, language}, where data holds the same bytes.
+function demo.echoBytes(data)
+    return handle:call('echoBytes', {data = platform.bytes(data)})
+end
+
+-- Draws an image of width by height pixels natively and answers with {png, width, height, drawnWith, language}, where png holds the bytes of a PNG file.
+function demo.generatedImage(width, height)
+    return handle:call('generatedImage', {width = width, height = height})
+end
+
 -- Counts the primes below limit on a background thread and answers with {primes, thread, detail, language}.
 function demo.compute(limit)
     return handle:call('compute', {limit = limit})
@@ -63,6 +73,47 @@ end
 -- Calls listener with {count, thread, language} for every tick of the native timer.
 function demo.onTick(listener)
     return handle:on('tick', listener)
+end
+
+-- Sends count batched events of the name burst 30 times per second for ticks ticks, and then burstDone with {events, ticks, language}. The events of one frame reach the listener of onBurst as one list of {tick, index, language}.
+function demo.burst(count, ticks)
+    return handle:call('burst', {count = count, ticks = ticks})
+end
+
+function demo.onBurst(listener)
+    return handle:on('burst', listener)
+end
+
+function demo.onBurstDone(listener)
+    return handle:on('burstDone', listener)
+end
+
+-- Starts the animated pattern that the native part draws 30 times per second into the video stream pattern, and answers with {width, height, fps, format, language}.
+function demo.startVideo()
+    return handle:call('startVideo')
+end
+
+function demo.stopVideo()
+    return handle:call('stopVideo')
+end
+
+-- The video stream of the pattern, or nil until the native part opened it.
+function demo.videoStream()
+    return handle:videoStream('pattern')
+end
+
+-- Starts a sine wave of the frequency in hertz that the native part synthesizes into the audio stream tone, and answers with {frequency, sampleRate, channels, format, language}.
+function demo.startTone(frequency)
+    return handle:call('startTone', {frequency = frequency})
+end
+
+function demo.stopTone()
+    return handle:call('stopTone')
+end
+
+-- The audio stream of the tone, or nil until the native part opened it.
+function demo.audioStream()
+    return handle:audioStream('tone')
 end
 
 -- The native part sends loaded retained once it loads, so the first listener receives {language, platform} however late it connects.

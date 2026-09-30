@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
 
+#include <lua.hpp>
+
 #include <algorithm>
+#include <cstdint>
 #include <limits>
 #include <memory>
 #include <stdexcept>
@@ -8,6 +11,7 @@
 #include <vector>
 
 #include "audio/MixerFixture.hpp"
+#include "audio/SoundData.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/audio/Filter.hpp"
 #include "haylen/audio/Mixer.hpp"
@@ -49,6 +53,23 @@ TEST_F(SoundTest, DecodesAndStreamsAudioFiles) {
     EXPECT_THROW((void)Sound::decode(test::TestFiles::bytes("not audio")), std::runtime_error);
     EXPECT_THROW((void)Sound::stream({}), std::runtime_error);
     EXPECT_THROW((void)Sound::decode(makeWav(kRate, 1, {})), std::runtime_error);
+}
+
+TEST_F(SoundTest, MakesSoundsFromRawSamples) {
+    const Sound floats = Sound::fromSamples(std::vector<float>{0.5F, -0.5F, 0.25F, -0.25F}, 2, 24000);
+    EXPECT_FALSE(floats.isStreamed());
+    EXPECT_EQ(floats.getChannels(), 2U);
+    EXPECT_EQ(floats.getSampleRate(), 24000U);
+    EXPECT_EQ(floats.getFrameCount(), 2U);
+    EXPECT_EQ(floats.getData()->samples, (std::vector<float>{0.5F, -0.5F, 0.25F, -0.25F}));
+
+    const Sound shorts = Sound::fromSamples(std::vector<std::int16_t>{16384, -32768, 0}, 1, 8000);
+    EXPECT_EQ(shorts.getData()->samples, (std::vector<float>{0.5F, -1.0F, 0.0F}));
+    EXPECT_NEAR(shorts.getDuration(), 3.0F / 8000.0F, 1e-7F);
+
+    EXPECT_THROW((void)Sound::fromSamples(std::vector<float>{0.5F, 0.5F, 0.5F}, 2, 8000), std::invalid_argument);
+    EXPECT_THROW((void)Sound::fromSamples(std::vector<float>{0.5F}, 1, 0), std::invalid_argument);
+    EXPECT_THROW((void)Sound::fromSamples(std::vector<float>{}, 1, 8000), std::runtime_error);
 }
 
 TEST_F(MixerTest, MixesVoicesThroughBuses) {
@@ -411,6 +432,28 @@ TEST_F(AudioLuaTest, PlaysSoundsFromLua) {
     EXPECT_NE(fixture.lua("audio.play(hit, {pitch = 0})").find("Audio needs a finite pitch above 0."), std::string::npos);
     EXPECT_NE(fixture.lua("audio.setVolume(1, 0 / 0)").find("Audio needs a finite volume."), std::string::npos);
     EXPECT_NE(fixture.lua("return hit.loudness").find("Sound has no member 'loudness'"), std::string::npos);
+}
+
+// The bytes of a sound file or of raw samples, such as the audio a plugin returns, become a sound.
+TEST_F(AudioLuaTest, MakesSoundsFromBytes) {
+    test::EngineFixture fixture;
+    const std::vector<std::uint8_t> wav = makeWav(22050, 2, makeSignal(2205, 2, 0.25F));
+    lua_pushlstring(fixture.lua(), reinterpret_cast<const char*>(wav.data()), wav.size());
+    lua_setglobal(fixture.lua(), "wav");
+    fixture.runLua("audio = require('haylen.audio')");
+
+    EXPECT_EQ(fixture.lua("local s = audio.newSound(wav) return s.channels .. ' ' .. s.sampleRate .. ' ' .. s.frameCount .. ' ' .. tostring(s.streamed)"), "2 22050 2205 false");
+    EXPECT_EQ(fixture.lua("return tostring(audio.newSound(wav, {stream = true}).streamed)"), "true");
+    EXPECT_EQ(fixture.lua("local s = audio.newSound(string.pack('<ffff', 0.5, -0.5, 0.25, 0), {format = 'float32', sampleRate = 16000, channels = 2}) return s.frameCount .. ' ' .. s.sampleRate"), "2 16000");
+    EXPECT_EQ(fixture.lua("local s = audio.newSound(string.pack('<hhh', 1, 2, 3), {format = 'int16', sampleRate = 8000, channels = 1}) return s.frameCount .. ' ' .. tostring(audio.active(audio.play(s)))"), "3 true");
+
+    EXPECT_NE(fixture.lua("audio.newSound('not audio')").find("Audio data is not a supported"), std::string::npos);
+    EXPECT_NE(fixture.lua("audio.newSound('abc', {format = 'int16', sampleRate = 8000, channels = 1})").find("Samples of this format take 2 bytes each, which 3 bytes do not fill."), std::string::npos);
+    EXPECT_NE(fixture.lua("audio.newSound('abcd', {format = 'int8', sampleRate = 8000, channels = 1})").find("The format of raw samples is 'float32' or 'int16', not 'int8'."), std::string::npos);
+    EXPECT_NE(fixture.lua("audio.newSound('abcd', {format = 'int16'})").find("Raw audio needs a sample rate and channels."), std::string::npos);
+    EXPECT_NE(fixture.lua("audio.newSound(wav, {sampleRate = 8000})").find("Only raw samples take a sample rate and channels"), std::string::npos);
+    EXPECT_NE(fixture.lua("audio.newSound('abcd', {format = 'int16', sampleRate = 8000, channels = 1, stream = true})").find("cannot stream"), std::string::npos);
+    EXPECT_NE(fixture.lua("audio.newSound(wav, {loop = true})").find("Unknown option 'loop'"), std::string::npos);
 }
 
 } // namespace haylen::audio

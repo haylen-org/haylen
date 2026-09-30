@@ -3,6 +3,9 @@
 #include <emscripten/emscripten.h>
 
 #include <cstdlib>
+#include <exception>
+#include <span>
+#include <stdexcept>
 #include <vector>
 
 #include "haylen/2d/graphics/Renderer.hpp"
@@ -14,6 +17,8 @@
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/platform/Event.hpp"
+#include "haylen/platform/PluginStreams.hpp"
+#include "haylen/platform/native/HaylenNative.h"
 #include "platform/BridgeRelay.hpp"
 #include "platform/Services.hpp"
 #include "platform/sokol/SokolHost.hpp"
@@ -126,6 +131,63 @@ void WebPage::setOnline(bool online) {
     SokolRuntime::handleEvent({.type = Event::Type::NetworkChanged, .online = online});
 }
 
+std::vector<std::vector<std::byte>> WebPage::readBuffers(const std::uint32_t* table, int count) {
+    std::vector<std::vector<std::byte>> buffers;
+    buffers.reserve(static_cast<std::size_t>(count));
+    for (int index = 0; index < count; ++index) {
+        const auto* bytes = reinterpret_cast<const std::byte*>(static_cast<std::uintptr_t>(table[index * 2]));
+        buffers.emplace_back(bytes, bytes + table[index * 2 + 1]);
+    }
+    return buffers;
+}
+
+void WebPage::resolve(double call, bool ok, const char* json, const std::uint32_t* buffers, int count) {
+    BridgeRelay::resolve(static_cast<std::uint64_t>(call), ok, json, readBuffers(buffers, count));
+}
+
+void WebPage::emit(const char* event, const char* json, const std::uint32_t* buffers, int count, int flags) {
+    BridgeRelay::emit(event, json, readBuffers(buffers, count), {.retain = (flags & HAYLEN_NATIVE_EMIT_RETAIN) != 0, .batched = (flags & HAYLEN_NATIVE_EMIT_BATCHED) != 0});
+}
+
+void* WebPage::openVideoStream(const char* plugin, const char* name) {
+    try {
+        return PluginStreams::openVideo(plugin, name, VideoStream::Format::Rgba8, 0, 0).get();
+    } catch (const std::exception& error) {
+        lastError = error.what();
+        return nullptr;
+    }
+}
+
+int WebPage::pushVideoFrame(void* stream, const std::uint8_t* pixels, int width, int height, double timestamp) {
+    // clang-format off
+    return answer([&] {
+        static_cast<VideoStream*>(stream)->push(reinterpret_cast<const std::byte*>(pixels), width, height, static_cast<std::size_t>(width) * 4, timestamp);
+        return 1;
+    });
+    // clang-format on
+}
+
+void* WebPage::openAudioStream(const char* plugin, const char* name, int sampleRate, int channels, int capacityFrames) {
+    try {
+        if (sampleRate <= 0 || channels <= 0 || capacityFrames <= 0) {
+            throw std::invalid_argument("An audio stream needs a sample rate, channels and room for at least one frame.");
+        }
+        return PluginStreams::openAudio(plugin, name, static_cast<std::uint32_t>(sampleRate), static_cast<std::uint32_t>(channels), AudioStream::Format::Float32, static_cast<std::size_t>(capacityFrames)).get();
+    } catch (const std::exception& error) {
+        lastError = error.what();
+        return nullptr;
+    }
+}
+
+int WebPage::pushAudioFrames(void* stream, const float* samples, int frames) {
+    // clang-format off
+    return answer([&] {
+        AudioStream& target = *static_cast<AudioStream*>(stream);
+        return static_cast<int>(target.push(std::span(samples, static_cast<std::size_t>(frames) * target.getChannels())));
+    });
+    // clang-format on
+}
+
 core::Json WebPage::getFrameStatistics(core::Engine& engine) {
     const debug::Profiler& profiler = engine.getProfiler();
     const graphics2d::Renderer::Stats& render = engine.getRenderer2D().getStats();
@@ -148,12 +210,28 @@ EMSCRIPTEN_KEEPALIVE const char* haylen_web_last_error() {
     return haylen::platform::WebPage::getLastError();
 }
 
-EMSCRIPTEN_KEEPALIVE void haylen_web_resolve(double call, int ok, const char* json) {
-    haylen::platform::BridgeRelay::resolve(static_cast<std::uint64_t>(call), ok != 0, json);
+EMSCRIPTEN_KEEPALIVE void haylen_web_resolve(double call, int ok, const char* json, const std::uint32_t* buffers, int count) {
+    haylen::platform::WebPage::resolve(call, ok != 0, json, buffers, count);
 }
 
-EMSCRIPTEN_KEEPALIVE void haylen_web_emit(const char* event, const char* json, int retain) {
-    haylen::platform::BridgeRelay::emit(event, json, retain != 0);
+EMSCRIPTEN_KEEPALIVE void haylen_web_emit(const char* event, const char* json, const std::uint32_t* buffers, int count, int flags) {
+    haylen::platform::WebPage::emit(event, json, buffers, count, flags);
+}
+
+EMSCRIPTEN_KEEPALIVE void* haylen_web_open_video_stream(const char* plugin, const char* name) {
+    return haylen::platform::WebPage::openVideoStream(plugin, name);
+}
+
+EMSCRIPTEN_KEEPALIVE int haylen_web_push_video_frame(void* stream, const std::uint8_t* pixels, int width, int height, double timestamp) {
+    return haylen::platform::WebPage::pushVideoFrame(stream, pixels, width, height, timestamp);
+}
+
+EMSCRIPTEN_KEEPALIVE void* haylen_web_open_audio_stream(const char* plugin, const char* name, int sampleRate, int channels, int capacityFrames) {
+    return haylen::platform::WebPage::openAudioStream(plugin, name, sampleRate, channels, capacityFrames);
+}
+
+EMSCRIPTEN_KEEPALIVE int haylen_web_push_audio_frames(void* stream, const float* samples, int frames) {
+    return haylen::platform::WebPage::pushAudioFrames(stream, samples, frames);
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_reserve_insets(const char* key, float left, float top, float right, float bottom) {

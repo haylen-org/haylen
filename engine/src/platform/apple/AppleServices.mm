@@ -190,8 +190,8 @@ TextInput& Services::getTextInput() {
     return input;
 }
 
-void Services::dispatch(std::uint64_t call, std::string_view method, std::string_view paramsJson) {
-    AppleBridge::dispatch(call, method, paramsJson);
+void Services::dispatch(std::uint64_t call, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) {
+    AppleBridge::dispatch(call, method, paramsJson, buffers);
 }
 
 void Services::cancel(std::uint64_t call) {

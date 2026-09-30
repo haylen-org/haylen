@@ -239,13 +239,54 @@ TEST_F(NativeLuaTest, GivesLibrariesTheInterfaceOfTheEngine) {
     // The library announced itself with a retained event, which waits for a listener that connects late.
     fixture.runLua("platform.on('native_test.ready', function(payload) ready = payload end)");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return ready ~= nil") == "true"; }));
-    EXPECT_EQ(fixture.lua("return ready.version .. ' ' .. ready.origin"), "3 dynamic");
+    EXPECT_EQ(fixture.lua("return ready.version .. ' ' .. ready.origin"), "4 dynamic");
     EXPECT_EQ(fixture.lua("return failed.message .. ' ' .. failed.code .. ' ' .. failed.data.reason"), "The native test failed on purpose. native_test_failure requested");
     EXPECT_EQ(fixture.lua("return tostring(failed) .. ' | ' .. ('error: ' .. failed) .. ' | ' .. (failed .. '!')"), "The native test failed on purpose. | error: The native test failed on purpose. | The native test failed on purpose.!");
 
     // The cancel notices reached the handler of the library, which answered them with events.
     EXPECT_EQ(fixture.lua("return givenUp"), "timeout cancelled true false true");
     EXPECT_EQ(fixture.lua("return cancelled[1] == timedId and cancelled[2] == givenId"), "true");
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+TEST_F(NativeLuaTest, ExchangesBytesBatchesAndStreamsWithLibraries) {
+    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests", "plugins": {"native-test": {}}})"}, {"plugins/native-test/plugin.json", R"({"id": "native-test", "version": "1.0.0"})"}});
+    prepare(fixture);
+    // clang-format off
+    fixture.runLua(R"(
+        ffi.cdef[[
+            void native_test_push_frame_later(int32_t width, int32_t height, int32_t seed);
+            void native_test_push_tone_later(int32_t count, int32_t value);
+            int32_t native_test_reopen_refused(void);
+        ]]
+        collections = require('haylen.collections')
+        native.load('native_test', {init = 'native_test_haylen_init'})
+        test = platform.plugin('native-test')
+        missing = test:videoStream('pattern') == nil and test:audioStream('tone') == nil
+        bursts = {}
+        platform.on('native_test.burst', function(list) bursts[#bursts + 1] = list end)
+        async.spawn(function()
+            bytes = platform.call('native_test.echoBytes', {data = platform.bytes('\0\1\2\255')}):await()
+            platform.call('native_test.burst', {count = 100}):await()
+        end)
+        lib.native_test_push_frame_later(4, 2, 10)
+        lib.native_test_push_tone_later(800, 16384)
+    )");
+    // clang-format on
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return bytes ~= nil and #bursts > 0 and test:videoStream('pattern') ~= nil and test:audioStream('tone') ~= nil") == "true"; }));
+    EXPECT_EQ(fixture.lua("return missing"), "true");
+
+    // The bytes crossed to the library and back as buffers, and the batched events of one frame arrived as one list.
+    EXPECT_EQ(fixture.lua(R"(return table.concat({bytes.size, tostring(bytes.same == '\0\1\2\255'), tostring(bytes.reversed == '\255\2\1\0')}, ' '))"), "4 true true");
+    EXPECT_EQ(fixture.lua("return table.concat({#bursts, #bursts[1], bursts[1][1].index, bursts[1][100].index, string.byte(bursts[1][100].byte)}, ' ')"), "1 100 0 99 99");
+
+    // The frame of the library thread reaches the texture at the start of a frame, and the samples reach the ring of the audio stream.
+    fixture.runLua("video = test:videoStream('pattern') texture = video.texture audio = test:audioStream('tone') buffer = collections.newFloatBuffer(1000)");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return video.frameCount") == "1"; }));
+    EXPECT_EQ(fixture.lua("return table.concat({video.width, video.height, texture.width, texture.height, video.timestamp, tostring(video.texture == texture)}, ' ')"), "4 2 4 2 1.0 true");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return audio:read(buffer)") == "800"; }));
+    EXPECT_EQ(fixture.lua("return table.concat({audio.sampleRate, audio.channels, buffer[1], buffer[800], buffer[801]}, ' ')"), "8000 1 0.5 0.5 0.0");
+    EXPECT_EQ(fixture.lua("return lib.native_test_reopen_refused()"), "1");
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 

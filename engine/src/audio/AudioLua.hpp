@@ -3,6 +3,7 @@
 #include <array>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -44,20 +45,29 @@ namespace haylen::audio {
 // Installs haylen.audio, which plays sounds and music through the mixer buses, and the Sound class.
 class AudioLua final {
   public:
+    static constexpr std::array<std::string_view, 12> kPlayFields{"bus", "volume", "pitch", "pitchVariation", "pan", "loop", "fadeIn", "startAt", "x", "y", "processMode", "effects"};
+
     static void install(lua_State* L);
 
+    // Reads the options of audio.play at index, which may only hold the fields given, such as the options that apply to the voices of streams.
+    [[nodiscard]] static Mixer::PlayOptions readPlayOptions(lua_State* L, int index, std::span<const std::string_view> fields);
+
   private:
-    static constexpr std::array<std::string_view, 12> kPlayFields{"bus", "volume", "pitch", "pitchVariation", "pan", "loop", "fadeIn", "startAt", "x", "y", "processMode", "effects"};
     static constexpr std::array<std::string_view, 4> kMusicFields{"bus", "volume", "fade", "loop"};
+    static constexpr std::array<std::string_view, 4> kSoundFields{"stream", "format", "sampleRate", "channels"};
     static constexpr std::array<std::string_view, 7> kSpatializationFields{"model", "minDistance", "maxDistance", "rolloff", "panDistance", "doppler", "speedOfSound"};
 
     // The registry key of the camera the listener follows, which keeps the camera alive while it is followed.
     static constexpr const char* kCameraKey = "haylen.audio.camera";
 
     [[nodiscard]] static Mixer& getMixer(lua_State* L);
-    [[nodiscard]] static Mixer::PlayOptions readPlayOptions(lua_State* L, int index);
     [[nodiscard]] static std::vector<std::shared_ptr<Effect>> readEffects(lua_State* L, int index);
     static void pushEffects(lua_State* L, const std::vector<std::shared_ptr<Effect>>& effects);
+
+    static int newSound(lua_State* L);
+
+    // Reads samples of a type from the bytes of a Lua string, which may lie anywhere in memory.
+    template <typename Sample> [[nodiscard]] static std::vector<Sample> readSamples(std::string_view bytes);
 
     static int play(lua_State* L);
     static int stop(lua_State* L);

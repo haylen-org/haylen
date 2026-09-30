@@ -2,6 +2,7 @@
 
 #include <miniaudio.h>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <stdexcept>
@@ -37,6 +38,31 @@ Sound Sound::decode(std::span<const std::uint8_t> encoded) {
     }
     decoded->tracked.setBytes(decoded->samples.size() * sizeof(float));
     return Sound(std::move(decoded));
+}
+
+Sound Sound::fromSamples(std::span<const float> samples, std::uint32_t channels, std::uint32_t sampleRate) {
+    if (channels == 0 || sampleRate == 0) {
+        throw std::invalid_argument("Raw audio needs a sample rate and channels.");
+    }
+    if (samples.size() % channels != 0) {
+        throw std::invalid_argument("Raw audio samples come in whole frames, one sample for every channel.");
+    }
+    if (samples.empty()) {
+        throw std::runtime_error("Audio data contains no samples.");
+    }
+    auto decoded = std::make_shared<SoundData>();
+    decoded->samples.assign(samples.begin(), samples.end());
+    decoded->channels = channels;
+    decoded->sampleRate = sampleRate;
+    decoded->frames = samples.size() / channels;
+    decoded->tracked.setBytes(decoded->samples.size() * sizeof(float));
+    return Sound(std::move(decoded));
+}
+
+Sound Sound::fromSamples(std::span<const std::int16_t> samples, std::uint32_t channels, std::uint32_t sampleRate) {
+    std::vector<float> converted(samples.size());
+    std::ranges::transform(samples, converted.begin(), [](std::int16_t sample) { return static_cast<float>(sample) / 32768.0F; });
+    return fromSamples(converted, channels, sampleRate);
 }
 
 Sound Sound::stream(std::vector<std::uint8_t> encoded) {

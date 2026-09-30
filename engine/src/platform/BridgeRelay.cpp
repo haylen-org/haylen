@@ -1,6 +1,6 @@
 #include "platform/BridgeRelay.hpp"
 
-#include "haylen/platform/Bridge.hpp"
+#include <utility>
 
 namespace haylen::platform {
 
@@ -19,17 +19,17 @@ void BridgeRelay::detach(const Bridge& value) noexcept {
     }
 }
 
-void BridgeRelay::resolve(std::uint64_t id, bool ok, std::string_view resultJson) {
+void BridgeRelay::resolve(std::uint64_t id, bool ok, std::string_view resultJson, std::vector<std::vector<std::byte>> buffers) {
     const std::scoped_lock lock(mutex);
     if (bridge != nullptr) {
-        bridge->resolve(id, ok, resultJson);
+        bridge->resolve(id, ok, resultJson, std::move(buffers));
     }
 }
 
-void BridgeRelay::emit(std::string_view event, std::string_view payloadJson, bool retain) {
+void BridgeRelay::emit(std::string_view event, std::string_view payloadJson, std::vector<std::vector<std::byte>> buffers, const Bridge::EmitOptions& options) {
     const std::scoped_lock lock(mutex);
     if (bridge != nullptr) {
-        bridge->emit(event, payloadJson, retain);
+        bridge->emit(event, payloadJson, std::move(buffers), options);
     }
 }
 

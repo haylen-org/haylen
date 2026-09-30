@@ -185,6 +185,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/audio/MixerState.cpp
   src/audio/Reverb.cpp
   src/audio/Sound.cpp
+  src/audio/StreamSource.cpp
   src/core/AppConfig.cpp
   src/core/Application.cpp
   src/core/ClassLua.cpp
@@ -200,6 +201,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/core/FrameClock.cpp
   src/core/FrameQueue.cpp
   src/core/JobSystem.cpp
+  src/core/JsonBytes.cpp
   src/core/JsonNumber.cpp
   src/core/JsonValidator.cpp
   src/core/LoadingView.cpp
@@ -303,6 +305,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/net/NetLua.cpp
   src/net/WebSocket.cpp
   src/platform/AppPlugin.cpp
+  src/platform/AudioStream.cpp
   src/platform/Battery.cpp
   src/platform/Bridge.cpp
   src/platform/BridgeRelay.cpp
@@ -319,11 +322,14 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/native/NativeSignature.cpp
   src/platform/NativeViews.cpp
   src/platform/PlatformLua.cpp
+  src/platform/PluginStreams.cpp
   src/platform/SafeAreaSimulation.cpp
+  src/platform/StreamsLua.cpp
   src/platform/System.cpp
   src/platform/SystemInfo.cpp
   src/platform/SystemLua.cpp
   src/platform/SystemState.cpp
+  src/platform/VideoStream.cpp
   src/platform/Window.cpp
   src/platform/WindowLua.cpp
   src/platform/WindowPlacement.cpp

@@ -35,7 +35,13 @@ class PlatformLua final {
   private:
     static constexpr const char* kErrorType = "haylen.PlatformError";
     static constexpr std::array<std::string_view, 1> kCallOptions{"timeout"};
-    static constexpr std::array<std::string_view, 1> kEmitOptions{"retain"};
+    static constexpr std::array<std::string_view, 2> kEmitOptions{"retain", "batched"};
+
+    // Reads the Lua value at index as the JSON of a payload, with the byte buffers of the strings that platform.bytes marked.
+    [[nodiscard]] static Bridge::Payload readPayload(lua_State* L, int index);
+
+    // Pushes the JSON of a payload, with a Lua string in the place of every buffer it refers to.
+    static void pushPayload(lua_State* L, const Bridge::Payload& payload);
 
     // Starts a call of the method with the parameters and options at the given stack indexes, and pushes the call.
     static void pushCall(lua_State* L, const std::string& method, int paramsIndex, int optionsIndex);
@@ -54,6 +60,8 @@ class PlatformLua final {
     static int getPromise(lua_State* L);
     static int resolve(lua_State* L);
     static int emit(lua_State* L);
+    static int bytes(lua_State* L);
+    static int getBytesSize(lua_State* L);
     static int pendingCallCount(lua_State* L);
     static int on(lua_State* L);
     static int send(lua_State* L);
@@ -69,6 +77,8 @@ class PlatformLua final {
     static int callPlugin(lua_State* L);
     static int sendToPlugin(lua_State* L);
     static int onPlugin(lua_State* L);
+    static int videoStreamOfPlugin(lua_State* L);
+    static int audioStreamOfPlugin(lua_State* L);
     static int open(lua_State* L);
 
     // Pushes a table with message, code and data that reads as its message in tostring and concatenation.

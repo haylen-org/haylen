@@ -3,7 +3,12 @@
 #include <lua.hpp>
 
 #include <cstdint>
+#include <cstring>
+#include <format>
+#include <span>
+#include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "audio/EffectLua.hpp"
 #include "haylen/2d/graphics/Camera.hpp"
@@ -22,13 +27,13 @@ Mixer& AudioLua::getMixer(lua_State* L) {
     return lua::Runtime::getEngine(L).getAudio();
 }
 
-Mixer::PlayOptions AudioLua::readPlayOptions(lua_State* L, int index) {
+Mixer::PlayOptions AudioLua::readPlayOptions(lua_State* L, int index, std::span<const std::string_view> fields) {
     Mixer::PlayOptions options;
     if (lua_isnoneornil(L, index)) {
         return options;
     }
     luaL_checktype(L, index, LUA_TTABLE);
-    lua::Table::checkFields(L, index, {kPlayFields});
+    lua::Table::checkFields(L, index, {fields});
     lua::Table::readField(L, index, "bus", options.bus);
     lua::Table::readField(L, index, "volume", options.volume);
     lua::Table::readField(L, index, "pitch", options.pitch);
@@ -83,9 +88,56 @@ void AudioLua::pushEffects(lua_State* L, const std::vector<std::shared_ptr<Effec
     }
 }
 
+template <typename Sample> std::vector<Sample> AudioLua::readSamples(std::string_view bytes) {
+    if (bytes.size() % sizeof(Sample) != 0) {
+        throw std::invalid_argument(std::format("Samples of this format take {} bytes each, which {} bytes do not fill.", sizeof(Sample), bytes.size()));
+    }
+    std::vector<Sample> samples(bytes.size() / sizeof(Sample));
+    std::memcpy(samples.data(), bytes.data(), bytes.size());
+    return samples;
+}
+
+// Makes a sound from bytes with newSound(bytes, options): a WAV, Ogg Vorbis, MP3 or FLAC file, decoded unless {stream = true}, or raw samples with {format = 'float32' or 'int16', sampleRate, channels}.
+int AudioLua::newSound(lua_State* L) {
+    const std::string_view bytes = lua::Stack::read<std::string_view>(L, 1);
+    bool stream = false;
+    std::string format;
+    std::uint32_t sampleRate = 0;
+    std::uint32_t channels = 0;
+    if (!lua_isnoneornil(L, 2)) {
+        luaL_checktype(L, 2, LUA_TTABLE);
+        lua::Table::checkFields(L, 2, {kSoundFields});
+        lua::Table::readField(L, 2, "stream", stream);
+        lua::Table::readField(L, 2, "format", format);
+        lua::Table::readField(L, 2, "sampleRate", sampleRate);
+        lua::Table::readField(L, 2, "channels", channels);
+    }
+
+    const std::span<const std::uint8_t> encoded(reinterpret_cast<const std::uint8_t*>(bytes.data()), bytes.size());
+    if (format.empty()) {
+        if (sampleRate != 0 || channels != 0) {
+            throw std::invalid_argument("Only raw samples take a sample rate and channels, together with their format.");
+        }
+        lua::Stack::push(L, stream ? Sound::stream({encoded.begin(), encoded.end()}) : Sound::decode(encoded));
+        return 1;
+    }
+    if (stream) {
+        throw std::invalid_argument("Raw samples are decoded already, so they cannot stream.");
+    }
+    if (format == "float32") {
+        lua::Stack::push(L, Sound::fromSamples(std::span<const float>(readSamples<float>(bytes)), channels, sampleRate));
+        return 1;
+    }
+    if (format == "int16") {
+        lua::Stack::push(L, Sound::fromSamples(std::span<const std::int16_t>(readSamples<std::int16_t>(bytes)), channels, sampleRate));
+        return 1;
+    }
+    throw std::invalid_argument("The format of raw samples is 'float32' or 'int16', not '" + format + "'.");
+}
+
 // Plays a sound with play(sound, {bus, volume, pitch, pan, loop, fadeIn, startAt, x, y, processMode, effects}) and returns the voice id.
 int AudioLua::play(lua_State* L) {
-    lua::Stack::push(L, getMixer(L).play(lua::Stack::read<Sound>(L, 1), readPlayOptions(L, 2)));
+    lua::Stack::push(L, getMixer(L).play(lua::Stack::read<Sound>(L, 1), readPlayOptions(L, 2, kPlayFields)));
     return 1;
 }
 
@@ -406,7 +458,7 @@ int AudioLua::soundDuration(lua_State* L) {
 
 int AudioLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"play", &lua::Binding::native<&play>}, {"stop", &lua::Binding::native<&stop>}, {"pause", &lua::Binding::native<&pause>}, {"resume", &lua::Binding::native<&resume>}, {"paused", &lua::Binding::native<&paused>}, {"setVolume", &lua::Binding::native<&setVolume>}, {"setPitch", &lua::Binding::native<&setPitch>}, {"pitch", &lua::Binding::native<&pitch>}, {"seedVariation", &lua::Binding::native<&seedVariation>}, {"setPan", &lua::Binding::native<&setPan>}, {"setPosition", &lua::Binding::native<&setPosition>}, {"processMode", &lua::Binding::native<&processMode>}, {"active", &lua::Binding::native<&active>}, {"cursor", &lua::Binding::native<&cursor>}, {"stopAll", &lua::Binding::native<&stopAll>}, {"voiceCount", &voiceCount}, {"pauseAll", &pauseAll}, {"resumeAll", &resumeAll}, {"interrupted", &interrupted}, {"newEffect", &lua::Binding::native<&EffectLua::newEffect>}, {"addEffect", &lua::Binding::native<&addEffect>}, {"removeEffect", &lua::Binding::native<&removeEffect>}, {"effects", &lua::Binding::native<&effects>}, {"playMusic", &lua::Binding::native<&playMusic>}, {"stopMusic", &lua::Binding::native<&stopMusic>}, {"music", &music}, {"createBus", &lua::Binding::native<&createBus>}, {"setBusVolume", &lua::Binding::native<&setBusVolume>}, {"busVolume", &lua::Binding::native<&busVolume>}, {"setBusMuted", &lua::Binding::native<&setBusMuted>}, {"busMuted", &lua::Binding::native<&busMuted>}, {"setBusProcessMode", &lua::Binding::native<&setBusProcessMode>}, {"busProcessMode", &lua::Binding::native<&busProcessMode>}, {"addBusEffect", &lua::Binding::native<&addBusEffect>}, {"removeBusEffect", &lua::Binding::native<&removeBusEffect>}, {"busEffects", &lua::Binding::native<&busEffects>}, {"buses", &buses}, {"busStats", &lua::Binding::native<&busStats>}, {"setListener", &lua::Binding::native<&setListener>}, {"listener", &listener}, {"followCamera", &lua::Binding::native<&followCamera>}, {"setSpatialization", &lua::Binding::native<&setSpatialization>}, {"spatialization", &spatialization}, {"sampleRate", &sampleRate}, {"channels", &channels}, {"hasDevice", &hasDevice}, {"outputAvailable", &outputAvailable}, {nullptr, nullptr},
+        {"newSound", &lua::Binding::native<&newSound>}, {"play", &lua::Binding::native<&play>}, {"stop", &lua::Binding::native<&stop>}, {"pause", &lua::Binding::native<&pause>}, {"resume", &lua::Binding::native<&resume>}, {"paused", &lua::Binding::native<&paused>}, {"setVolume", &lua::Binding::native<&setVolume>}, {"setPitch", &lua::Binding::native<&setPitch>}, {"pitch", &lua::Binding::native<&pitch>}, {"seedVariation", &lua::Binding::native<&seedVariation>}, {"setPan", &lua::Binding::native<&setPan>}, {"setPosition", &lua::Binding::native<&setPosition>}, {"processMode", &lua::Binding::native<&processMode>}, {"active", &lua::Binding::native<&active>}, {"cursor", &lua::Binding::native<&cursor>}, {"stopAll", &lua::Binding::native<&stopAll>}, {"voiceCount", &voiceCount}, {"pauseAll", &pauseAll}, {"resumeAll", &resumeAll}, {"interrupted", &interrupted}, {"newEffect", &lua::Binding::native<&EffectLua::newEffect>}, {"addEffect", &lua::Binding::native<&addEffect>}, {"removeEffect", &lua::Binding::native<&removeEffect>}, {"effects", &lua::Binding::native<&effects>}, {"playMusic", &lua::Binding::native<&playMusic>}, {"stopMusic", &lua::Binding::native<&stopMusic>}, {"music", &music}, {"createBus", &lua::Binding::native<&createBus>}, {"setBusVolume", &lua::Binding::native<&setBusVolume>}, {"busVolume", &lua::Binding::native<&busVolume>}, {"setBusMuted", &lua::Binding::native<&setBusMuted>}, {"busMuted", &lua::Binding::native<&busMuted>}, {"setBusProcessMode", &lua::Binding::native<&setBusProcessMode>}, {"busProcessMode", &lua::Binding::native<&busProcessMode>}, {"addBusEffect", &lua::Binding::native<&addBusEffect>}, {"removeBusEffect", &lua::Binding::native<&removeBusEffect>}, {"busEffects", &lua::Binding::native<&busEffects>}, {"buses", &buses}, {"busStats", &lua::Binding::native<&busStats>}, {"setListener", &lua::Binding::native<&setListener>}, {"listener", &listener}, {"followCamera", &lua::Binding::native<&followCamera>}, {"setSpatialization", &lua::Binding::native<&setSpatialization>}, {"spatialization", &spatialization}, {"sampleRate", &sampleRate}, {"channels", &channels}, {"hasDevice", &hasDevice}, {"outputAvailable", &outputAvailable}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

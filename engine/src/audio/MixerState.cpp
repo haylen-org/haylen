@@ -67,6 +67,46 @@ void MixerState::addBus(const std::string& name, Bus* parent) {
     busOrder.push_back(name);
 }
 
+std::unique_ptr<MixerState::Voice> MixerState::createVoice(const Mixer::PlayOptions& options) {
+    Bus& bus = getBus(options.bus);
+    auto voice = std::make_unique<Voice>();
+    voice->id = nextVoice++;
+    voice->bus = &bus;
+    voice->processMode = options.processMode;
+    voice->volume = options.volume;
+    voice->pan = options.pan;
+    voice->pitch = options.pitchVariation > 0.0F ? random.range(options.pitch - options.pitchVariation, options.pitch + options.pitchVariation) : options.pitch;
+    voice->position = options.position;
+    voice->lastPosition = options.position.value_or(math::Vec2{});
+    return voice;
+}
+
+Mixer::VoiceId MixerState::start(std::unique_ptr<Voice> voice, ma_data_source* source, const Mixer::PlayOptions& options) {
+    if (ma_sound_init_from_data_source(&engine, source, MA_SOUND_FLAG_NO_SPATIALIZATION, &voice->bus->group, &voice->handle) != MA_SUCCESS) {
+        throw std::runtime_error("A voice could not be created.");
+    }
+    voice->handleReady = true;
+
+    ma_sound_set_looping(&voice->handle, options.loop ? MA_TRUE : MA_FALSE);
+    if (options.startAt > 0.0F) {
+        ma_sound_seek_to_second(&voice->handle, options.startAt);
+    }
+    if (options.fadeIn > 0.0F) {
+        ma_sound_set_fade_in_milliseconds(&voice->handle, 0.0F, 1.0F, toMilliseconds(options.fadeIn));
+    }
+    for (const std::shared_ptr<Effect>& effect : options.effects) {
+        getEffects(*voice).add(effect);
+    }
+
+    makeRoom();
+    apply(*voice);
+    refresh(*voice);
+
+    const Mixer::VoiceId id = voice->id;
+    voices.push_back(std::move(voice));
+    return id;
+}
+
 core::ProcessMode MixerState::resolveMode(const Voice& voice) const noexcept {
     return voice.processMode != core::ProcessMode::Inherit ? voice.processMode : resolveMode(*voice.bus);
 }

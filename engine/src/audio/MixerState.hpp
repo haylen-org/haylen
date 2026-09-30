@@ -14,6 +14,7 @@
 
 #include "audio/Device.hpp"
 #include "audio/EffectChain.hpp"
+#include "audio/StreamSource.hpp"
 #include "haylen/audio/Mixer.hpp"
 #include "haylen/audio/Sound.hpp"
 #include "haylen/core/ProcessMode.hpp"
@@ -22,6 +23,10 @@
 
 namespace haylen::graphics2d {
 class Camera;
+}
+
+namespace haylen::platform {
+class AudioStream;
 }
 
 namespace haylen::audio {
@@ -38,7 +43,7 @@ struct MixerState {
         bool muted = false;
     };
 
-    // One playing sound with its own data source, so every voice keeps an independent cursor over shared sound data. A voice plays only while nothing holds it: its own pause, a pause of every voice for a reason, or its process mode during the engine pause.
+    // One playing sound or audio stream with its own data source, so every voice keeps an independent cursor over shared sound data. A voice plays only while nothing holds it: its own pause, a pause of every voice for a reason, or its process mode during the engine pause.
     struct Voice {
         static constexpr std::uint8_t kVoiceHold = 1U << 0U;
         static constexpr std::uint8_t kAppHold = 1U << 1U;
@@ -46,9 +51,11 @@ struct MixerState {
 
         Mixer::VoiceId id = 0;
         Sound sound;
+        std::shared_ptr<platform::AudioStream> stream;
         Bus* bus = nullptr;
         ma_audio_buffer buffer{};
         ma_decoder decoder{};
+        std::unique_ptr<StreamSource> streamSource;
         ma_sound handle{};
         bool decoderSource = false;
         bool sourceReady = false;
@@ -101,6 +108,12 @@ struct MixerState {
     [[nodiscard]] Bus& getBus(std::string_view name) const;
     [[nodiscard]] Voice* findVoice(Mixer::VoiceId id) const noexcept;
     void addBus(const std::string& name, Bus* parent);
+
+    // Creates a voice on the bus of the options with their volume, pan, pitch, position and process mode, which start gives a source.
+    [[nodiscard]] std::unique_ptr<Voice> createVoice(const Mixer::PlayOptions& options);
+
+    // Starts the voice with the source and the rest of the options and returns its id. Everything that can fail runs before the voice limit makes room, so a voice that fails to start never stops another one.
+    Mixer::VoiceId start(std::unique_ptr<Voice> voice, ma_data_source* source, const Mixer::PlayOptions& options);
 
     // Resolves the process mode of a voice through its bus and the buses above it, where Inherit at master means Pausable.
     [[nodiscard]] core::ProcessMode resolveMode(const Voice& voice) const noexcept;

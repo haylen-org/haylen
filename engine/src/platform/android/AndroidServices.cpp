@@ -106,8 +106,8 @@ TextInput& Services::getTextInput() {
     return input;
 }
 
-void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson) {
-    JavaBridge::dispatch(id, method, paramsJson);
+void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) {
+    JavaBridge::dispatch(id, method, paramsJson, buffers);
 }
 
 void Services::cancel(std::uint64_t id) {
@@ -149,12 +149,12 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*) {
     return haylen::platform::JavaBridge::load(vm);
 }
 
-JNIEXPORT void JNICALL Java_dev_haylen_HaylenBridge_nativeResolve(JNIEnv* env, jclass, jlong call, jboolean ok, jbyteArray result) {
-    haylen::platform::BridgeRelay::resolve(static_cast<std::uint64_t>(call), ok == JNI_TRUE, haylen::platform::JavaBridge::toString(*env, result));
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenBridge_nativeResolve(JNIEnv* env, jclass, jlong call, jboolean ok, jbyteArray result, jobjectArray buffers) {
+    haylen::platform::BridgeRelay::resolve(static_cast<std::uint64_t>(call), ok == JNI_TRUE, haylen::platform::JavaBridge::toString(*env, result), haylen::platform::JavaBridge::toBuffers(*env, buffers));
 }
 
-JNIEXPORT void JNICALL Java_dev_haylen_HaylenBridge_nativeEmit(JNIEnv* env, jclass, jbyteArray event, jbyteArray payload, jboolean retain) {
-    haylen::platform::BridgeRelay::emit(haylen::platform::JavaBridge::toString(*env, event), haylen::platform::JavaBridge::toString(*env, payload), retain == JNI_TRUE);
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenBridge_nativeEmit(JNIEnv* env, jclass, jbyteArray event, jbyteArray payload, jobjectArray buffers, jboolean retain, jboolean batched) {
+    haylen::platform::BridgeRelay::emit(haylen::platform::JavaBridge::toString(*env, event), haylen::platform::JavaBridge::toString(*env, payload), haylen::platform::JavaBridge::toBuffers(*env, buffers), {.retain = retain == JNI_TRUE, .batched = batched == JNI_TRUE});
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenPanels_nativeReserveInsets(JNIEnv* env, jclass, jbyteArray key, jint left, jint top, jint right, jint bottom) {

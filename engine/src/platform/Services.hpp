@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <functional>
@@ -88,8 +89,8 @@ class Services final {
     // Returns the text input of the platform, which lives as long as the process.
     [[nodiscard]] static TextInput& getTextInput();
 
-    // Hands a call to the native handler registry, which answers through the bridge relay. Methods without a handler fail with an error result.
-    static void dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson);
+    // Hands a call to the native handler registry with the byte buffers that its parameters refer to, which the registry copies before it returns, and it answers through the bridge relay. Methods without a handler fail with an error result.
+    static void dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers);
 
     // Tells the native handler of a call that the app gave it up, so it can stop working on it.
     static void cancel(std::uint64_t id);

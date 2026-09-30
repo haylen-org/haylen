@@ -20,7 +20,7 @@ Apps for Haylen are written in Lua. Every engine capability is a module that `re
 
 | Module | Purpose |
 | --- | --- |
-| [haylen.graphics](lua-api/graphics.md) | Textures, render targets, TrueType and bitmap fonts, font families, custom shaders and the GPU backend. |
+| [haylen.graphics](lua-api/graphics.md) | Textures from pixels, colors or the bytes of image files, render targets, TrueType and bitmap fonts, font families, custom shaders and the GPU backend. |
 | [haylen.graphics2d](lua-api/graphics2d.md) | Canvases, captures, draw order with y sorting and visibility, cameras with viewports, smoothing, drag margins and shake, parallax layers, sprites, sprite batches, shapes, meshes, text shaped in every script and ordered in both directions, rich text with effects and a typewriter reveal, nine-slices, image blends, metaballs, materials with custom shaders, lit canvases with normal maps, lights and occluders. |
 | [haylen.animation2d](lua-api/animation2d.md) | Frame animations from grids and atlases, and animators that play them on sprites. |
 | [haylen.particles2d](lua-api/particles2d.md) | Particle emitters and `.particles` effect files. |
@@ -47,7 +47,7 @@ Apps for Haylen are written in Lua. Every engine capability is a module that `re
 | [haylen.input](lua-api/input.md) | Keyboard, mouse, touch, gestures, gamepads and the action map. |
 | [haylen.ui](lua-api/ui.md) | Themed menus, HUDs, dialogs and touch controls, mirrored for right-to-left languages. |
 | [haylen.imgui](lua-api/imgui.md) | Dear ImGui windows for debug panels and tools. |
-| [haylen.audio](lua-api/audio.md) | Sounds, music, buses, effects, pause modes, interruptions and positional audio. |
+| [haylen.audio](lua-api/audio.md) | Sounds from files, bytes or raw samples, music, buses, effects, pause modes, interruptions and positional audio. |
 | [haylen.localization](lua-api/localization.md) | Translated text with placeholders, plural forms and the direction of each language. |
 
 ## Data and services
@@ -59,7 +59,7 @@ Apps for Haylen are written in Lua. Every engine capability is a module that `re
 | [haylen.preferences](lua-api/preferences.md) | Player preferences that persist between sessions. |
 | [haylen.system](lua-api/system.md) | What the device and its operating system are, the theme and the battery with their changes, opening urls and vibrating. |
 | [haylen.dialogs](lua-api/dialogs.md) | Native message boxes and pickers of files to open, of a destination to save to and of a folder, which never block the app. |
-| [haylen.platform](lua-api/platform.md) | The JSON bridge to native code, such as sign-in and purchases, with typed errors, timeouts, cancellation, calls without answers, retained events and the handles of the plugins of the app. |
+| [haylen.platform](lua-api/platform.md) | The JSON bridge to native code, such as sign-in and purchases, with bytes next to the JSON, typed errors, timeouts, cancellation, calls without answers, retained and batched events, the handles of the plugins of the app and the video and audio streams of their native parts. |
 | [haylen.native](lua-api/native.md) | Native libraries for Varn's `ffi`, found where the app ships them, their symbols, callbacks from any thread and the interface of the engine for libraries. |
 | [haylen.net](lua-api/net.md) | WebSocket connections with reconnection and pings. |
 | [haylen.debug](lua-api/debug.md) | The debug statistics, object counts, monitors, the frame profiler and the recent log. |

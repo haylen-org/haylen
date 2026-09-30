@@ -1,4 +1,5 @@
 import Foundation
+import ImageIO
 
 #if os(macOS)
 import AppKit
@@ -68,11 +69,24 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
         let name: String
     }
 
+    struct Burst: Decodable {
+        let count: Int
+        let ticks: Int
+    }
+
+    struct Bursting: Encodable {
+        let count: Int
+        let ticks: Int
+        let language: String
+    }
+
     private nonisolated static let language = "Swift"
 
     private var context: HaylenPluginContext!
     private var ticker: Timer?
     private var ticks = 0
+    private var bursts: Timer?
+    private var burst = (count: 0, ticks: 0, tick: 0)
     private var banner: NativeDemoBanner?
     private var bannerState = BannerState(anchor: "bottom", reserve: false, visible: false)
     private var bannerTaps = 0
@@ -81,7 +95,9 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
     func load(with context: HaylenPluginContext) {
         self.context = context
         registerCalls(context)
+        registerBytes(context)
         registerEvents(context)
+        registerStreams(context)
         registerBanner(context)
         registerScreens(context)
         context.emitRetained("loaded", payload: ["language": Self.language, "platform": Self.platform])
@@ -126,6 +142,7 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
         // Every app that loads the Lua API sends start. The plugin ends what an earlier app of the process left running and hands the new app the error that stopped the earlier one.
         context.register("start") { [unowned self] (_: Empty) async throws -> Empty in
             self.stopTicking()
+            self.stopBursts()
             self.banner?.remove()
             self.banner = nil
             if let failure = self.lastError {
@@ -136,7 +153,43 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
         }
     }
 
+    // Bytes cross as Data in the dictionaries of the Objective-C API of the context, since the helpers for Codable values carry JSON alone.
+    private func registerBytes(_ context: HaylenPluginContext) {
+        context.registerHandler("echoBytes") { params, reply in
+            guard let data = (params as? [String: Any])?["data"] as? Data else {
+                reply(false, ["message": "echoBytes needs bytes.", "code": "invalidParams"])
+                return
+            }
+            reply(true, ["data": data, "size": data.count, "thread": Thread.isMainThread ? "main" : "background", "language": Self.language])
+        }
+
+        context.registerHandler("generatedImage") { params, reply in
+            let values = params as? [String: Any]
+            let width = values?["width"] as? Int ?? 0
+            let height = values?["height"] as? Int ?? 0
+            guard (1...2048).contains(width), (1...2048).contains(height), let png = Self.drawPattern(width: width, height: height) else {
+                reply(false, ["message": "generatedImage needs a width and a height from 1 to 2048.", "code": "invalidParams"])
+                return
+            }
+            reply(true, ["png": png, "width": width, "height": height, "drawnWith": "CoreGraphics and ImageIO", "language": Self.language])
+        }
+    }
+
+    // Video and audio streams from Swift need the stream API of the Apple runtime, which a later version of the engine brings, so the plugin says so instead.
+    private func registerStreams(_ context: HaylenPluginContext) {
+        for method in ["startVideo", "stopVideo", "startTone", "stopTone"] {
+            context.register(method) { (_: Empty) async throws -> Empty in
+                throw HaylenFailure("The Apple runtime of this engine has no stream API yet, so Swift cannot push video frames or audio samples to the app.", code: "unsupported")
+            }
+        }
+    }
+
     private func registerEvents(_ context: HaylenPluginContext) {
+        context.register("burst") { [unowned self] (params: Burst) async throws -> Bursting in
+            self.startBursts(count: params.count, ticks: params.ticks)
+            return Bursting(count: params.count, ticks: params.ticks, language: Self.language)
+        }
+
         context.register("ticks") { [unowned self] (params: Ticks) async throws -> Ticking in
             self.stopTicking()
             if params.enabled {
@@ -157,6 +210,31 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
     private func stopTicking() {
         ticker?.invalidate()
         ticker = nil
+    }
+
+    // Sends count batched events 30 times per second for ticks ticks, which reach the app as one list per frame, and then burstDone.
+    private func startBursts(count: Int, ticks: Int) {
+        stopBursts()
+        burst = (count: count, ticks: ticks, tick: 0)
+        let timer = Timer(timeInterval: 1.0 / 30.0, target: self, selector: #selector(sendBurst), userInfo: nil, repeats: true)
+        RunLoop.main.add(timer, forMode: .common)
+        bursts = timer
+    }
+
+    @objc private func sendBurst() {
+        for index in 0..<burst.count {
+            context.emit("burst", payload: ["tick": burst.tick, "index": index, "language": Self.language], retain: false, batched: true)
+        }
+        burst.tick += 1
+        if burst.tick == burst.ticks {
+            stopBursts()
+            context.emit("burstDone", payload: ["events": burst.count * burst.ticks, "ticks": burst.ticks, "language": Self.language])
+        }
+    }
+
+    private func stopBursts() {
+        bursts?.invalidate()
+        bursts = nil
     }
 
     private func registerBanner(_ context: HaylenPluginContext) {
@@ -288,6 +366,37 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin {
             throw HaylenFailure("The bannerColor parameter must be a color as #RRGGBB, not \(text).", code: "invalidColor")
         }
         return CGColor(srgbRed: CGFloat((value >> 16) & 0xFF) / 255, green: CGFloat((value >> 8) & 0xFF) / 255, blue: CGFloat(value & 0xFF) / 255, alpha: 1)
+    }
+
+    // Draws the pattern of the demo, a gradient from red to green with blue stripes, with CoreGraphics and encodes it as a PNG file with ImageIO.
+    private static func drawPattern(width: Int, height: Int) -> Data? {
+        let space = CGColorSpace(name: CGColorSpace.sRGB)!
+        guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
+            return nil
+        }
+        let colors = [CGColor(srgbRed: 1, green: 0, blue: 0, alpha: 1), CGColor(srgbRed: 0, green: 1, blue: 0, alpha: 1)] as CFArray
+        let gradient = CGGradient(colorsSpace: space, colors: colors, locations: [0, 1])!
+        context.drawLinearGradient(gradient, start: CGPoint(x: 0, y: height), end: CGPoint(x: width, y: 0), options: [])
+        context.setFillColor(CGColor(srgbRed: 0, green: 0, blue: 0.9, alpha: 0.6))
+        var offset = -CGFloat(height)
+        while offset < CGFloat(width) {
+            context.move(to: CGPoint(x: offset, y: CGFloat(height)))
+            context.addLine(to: CGPoint(x: offset + 16, y: CGFloat(height)))
+            context.addLine(to: CGPoint(x: offset + 16 + CGFloat(height), y: 0))
+            context.addLine(to: CGPoint(x: offset + CGFloat(height), y: 0))
+            context.closePath()
+            offset += 32
+        }
+        context.fillPath()
+        guard let image = context.makeImage() else {
+            return nil
+        }
+        let png = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(png as CFMutableData, "public.png" as CFString, 1, nil) else {
+            return nil
+        }
+        CGImageDestinationAddImage(destination, image, nil)
+        return CGImageDestinationFinalize(destination) ? png as Data : nil
     }
 
     private nonisolated static func countPrimes(below limit: Int) -> Int {

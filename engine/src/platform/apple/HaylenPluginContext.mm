@@ -52,11 +52,15 @@ using haylen::platform::SokolHost;
 }
 
 - (void)emit:(NSString*)event payload:(id)payload {
-    AppleBridge::emit([self qualify:event], payload, false);
+    AppleBridge::emit([self qualify : event], payload, {});
 }
 
 - (void)emitRetained:(NSString*)event payload:(id)payload {
-    AppleBridge::emit([self qualify:event], payload, true);
+    AppleBridge::emit([self qualify : event], payload, { .retain = true });
+}
+
+- (void)emit:(NSString*)event payload:(id)payload retain:(BOOL)retain batched:(BOOL)batched {
+    AppleBridge::emit([self qualify : event], payload, { .retain = retain == YES, .batched = batched == YES });
 }
 
 - (void)coverApp {
