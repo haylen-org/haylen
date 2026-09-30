@@ -72,6 +72,7 @@ class SokolHost final : public Host {
     [[nodiscard]] Battery getBattery() const override;
     void openUrl(std::string_view url, std::function<void(bool opened)> callback) override;
     void vibrate(float seconds) override;
+    [[nodiscard]] std::string getNetworkRequirement() const override;
     void showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) override;
     void cancelDialog(std::uint64_t id) override;
     void openScreen(const ScreenRequest& request) override;

@@ -67,6 +67,8 @@ EMSDK_VERSION = "6.0.10"
 ANDROID_MIN_SDK = 27
 # The ABIs of the `haylen` Android library, which the native libraries of an app match: 32-bit ARM keeps the Android TV devices that still run it, and `x86_64` serves emulators.
 ANDROID_ABIS = ("arm64-v8a", "armeabi-v7a", "x86_64")
+# The Android libraries that `make.py engine` publishes as `dev.haylen:<module>`, each a module of the Gradle project of the engine.
+ANDROID_LIBRARIES = ("haylen", "haylen-plugins", "haylen-links", "haylen-coroutines")
 # The oldest Apple systems the engine runs on: `std::format` with floating point, which the engine formats text and logs with, reaches their C++ library in iOS and tvOS 16.3 and macOS 13.3.
 # Mac Catalyst takes its minimum, the iOS version, from `engine/cmake/haylen-catalyst.toolchain.cmake`.
 APPLE_MINIMUM_VERSIONS = {"iOS": "16.3", "tvOS": "16.3", "macOS": "13.3"}
@@ -611,13 +613,13 @@ def build_android_players(config: str, jobs: int) -> Path:
 
 
 def build_android_artifacts(config: str, jobs: int) -> None:
-    """Packages the players of every ABI with the Java side into the `haylen` Android library, together with the Kotlin transport of Varn from where CPM placed it for the native build, and publishes it to the local Maven repository of the artifacts."""
+    """Packages the players of every ABI with the Java side into the `haylen` Android library, together with the Kotlin transport of Varn from where CPM placed it for the native build, and publishes it with the libraries that only some apps add, `haylen-plugins`, `haylen-links` and `haylen-coroutines`, to the local Maven repository of the artifacts."""
     libraries = build_android_players(config, jobs)
     varn = cmake_cache_value(ENGINE_BUILDS_DIR / f"android-{ANDROID_ABIS[0]}-{config.lower()}", "varn_SOURCE_DIR")
     maven = ARTIFACTS_DIR / "android" / "maven"
     shutil.rmtree(maven, ignore_errors=True)
-    task = ":haylen:publishReleasePublicationToArtifactsRepository"
-    run([ensure_gradle(), "-p", ANDROID_LIBRARY_PROJECT, task, f"--max-workers={jobs}", f"-PhaylenNativeLibraries={libraries}", f"-PhaylenVarnSourceDir={varn}", f"-PhaylenMavenDir={maven}"])
+    tasks = [f":{module}:publishReleasePublicationToArtifactsRepository" for module in ANDROID_LIBRARIES]
+    run([ensure_gradle(), "-p", ANDROID_LIBRARY_PROJECT, *tasks, f"--max-workers={jobs}", f"-PhaylenNativeLibraries={libraries}", f"-PhaylenVarnSourceDir={varn}", f"-PhaylenMavenDir={maven}"])
 
 
 def build_web_artifacts(config: str, jobs: int) -> None:

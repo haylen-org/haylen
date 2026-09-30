@@ -11,11 +11,14 @@
 
 namespace haylen::plugins {
 
+NetPlugin::NetPlugin(std::string networkRequirement) : requirement(std::move(networkRequirement)) {}
+
 void NetPlugin::start(core::Engine& engine) {
     events = &engine.getEvents();
 }
 
 std::shared_ptr<net::WebSocket> NetPlugin::connectWebSocket(std::string url, net::WebSocket::Options options) {
+    options.failureHint = requirement;
     auto socket = std::make_shared<net::WebSocket>(std::move(url), std::move(options));
     if (events != nullptr) {
         publishEvents(*socket);

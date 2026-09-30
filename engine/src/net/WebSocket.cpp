@@ -44,7 +44,7 @@ double WebSocket::getSteadySeconds() {
     return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
-WebSocket::WebSocket(std::string address, Options options) : url(std::move(address)), protocols(std::move(options.protocols)), maxMessageSize(options.maxMessageSize), reconnect(options.reconnect), clock(options.clock ? std::move(options.clock) : Clock(&getSteadySeconds)), random(options.seed != 0 ? options.seed : std::random_device{}()), inbox(std::make_shared<Inbox>()) {
+WebSocket::WebSocket(std::string address, Options options) : url(std::move(address)), protocols(std::move(options.protocols)), maxMessageSize(options.maxMessageSize), reconnect(options.reconnect), failureHint(std::move(options.failureHint)), clock(options.clock ? std::move(options.clock) : Clock(&getSteadySeconds)), random(options.seed != 0 ? options.seed : std::random_device{}()), inbox(std::make_shared<Inbox>()) {
     if (!url.starts_with("ws://") && !url.starts_with("wss://")) {
         throw std::invalid_argument("The WebSocket address \"" + url + "\" must start with \"ws://\" or \"wss://\".");
     }
@@ -153,7 +153,7 @@ void WebSocket::pump() {
             ponged.emit(event.text);
             break;
         case WebSocketTransport::Event::Kind::Failed:
-            failed.emit(event.text);
+            failed.emit(describeFailure(event.text));
             break;
         case WebSocketTransport::Event::Kind::Closed:
             // A transport reports nothing after closing, so the next attempt opens a fresh one, and the disconnect listeners already see the state that follows.
@@ -176,6 +176,14 @@ void WebSocket::pump() {
             return;
         }
     }
+}
+
+// The messages of the transport, such as the ones of Poco, may end without a period, and the hint follows as a sentence of its own.
+std::string WebSocket::describeFailure(const std::string& message) const {
+    if (failureHint.empty()) {
+        return message;
+    }
+    return message + (message.ends_with('.') ? " " : ". ") + failureHint;
 }
 
 void WebSocket::dropListeners() noexcept {

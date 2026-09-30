@@ -188,6 +188,9 @@ class HeadlessHost final : public Host {
     void vibrate(float seconds) override {
         vibrations.push_back(seconds);
     }
+    [[nodiscard]] std::string getNetworkRequirement() const override {
+        return networkRequirement;
+    }
     void showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) override {
         dialogCalls.push_back({.id = id, .request = request, .folder = folder});
     }
@@ -244,6 +247,11 @@ class HeadlessHost final : public Host {
     // Whether the headless system finds an app for the urls the engine opens, which it answers at once.
     void setOpensUrls(bool value) noexcept {
         opensUrls = value;
+    }
+
+    // What the network errors of the apps that start after the change end with, the way a platform reports what the project of the app lacks for network access.
+    void setNetworkRequirement(std::string value) {
+        networkRequirement = std::move(value);
     }
 
     // The native views of the headless screen, which tests reserve edges and cover the app with from any thread, the way native code does. They outlive the engines a test restarts on this host.
@@ -328,6 +336,7 @@ class HeadlessHost final : public Host {
     SystemState systemState;
     std::vector<std::string> openedUrls;
     std::vector<float> vibrations;
+    std::string networkRequirement;
     std::vector<DialogCall> dialogCalls;
     std::vector<std::uint64_t> cancelledDialogs;
     std::vector<ScreenRequest> screenRequests;

@@ -469,6 +469,7 @@ A failed call returns a table with three fields, which reads as its message in `
 | `invalidJson` | Native code answered with text that is not JSON, with the message `The platform returned invalid JSON.`. |
 | `invalidBytes` | Native code answered with JSON that refers to a byte buffer it lacks, with a message such as `The JSON refers to byte buffer 2, but only 1 came with it.`. |
 | `exception` | A Java, Kotlin, Swift or JavaScript handler threw an error without a code of its own instead of answering. `data.type` names the class of the exception or the type of the error. |
+| `unsupported` | The platform cannot serve the call, or the project of the app lacks what the call needs, such as a permission that the Android manifest does not declare. In the second case `data.missing` lists each missing requirement as `{kind, name, file, snippet}`, as the [plugin guide](../plugins.md#requirements) describes. |
 
 A native failure that is a string becomes the message. A failure object gives its `message`, `code` and `data`, and one without a string `message`, like any other failure payload such as `null` or a number, fails with `The native platform call failed without a message.`. A Lua handler registered with `platform.registerHandler` fails with the error it raised and its stack trace as the message.
 
@@ -529,7 +530,7 @@ public final class StorePlugin {
 }
 ```
 
-Kotlin handlers written as suspending functions register with `HaylenCoroutines.register(method) { params -> result }`. Each call runs in a coroutine on the main thread, its result answers the call, a thrown exception fails it like `failure(throwable)`, and the coroutine is cancelled when the app cancels the call or its timeout passes. The library brings `kotlinx-coroutines-android` with it.
+Kotlin handlers written as suspending functions register with `HaylenCoroutines.register(method) { params -> result }`. Each call runs in a coroutine on the main thread, its result answers the call, a thrown exception fails it like `failure(throwable)`, and the coroutine is cancelled when the app cancels the call or its timeout passes. `HaylenCoroutines` comes with the `dev.haylen:haylen-coroutines` library, which brings `kotlinx-coroutines-android` with it, so an app with such handlers depends on it in `platform/android/app/app.gradle`, as the [native sample](../../samples/system/native) does.
 
 ```kotlin
 import dev.haylen.HaylenBridge

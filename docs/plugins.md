@@ -84,7 +84,7 @@ Every Apple build also merges the `infoPlist` keys of the plugins into the `Info
 4. `app/build.gradle.kts` adds the placeholders to `manifestPlaceholders`, where the manifests of the plugin modules find them when the manifests merge.
 5. make.py copies the `files` of the plugins into the project, such as `google-services.json` into `app/`.
 
-The manifest of every module merges into the app with its permissions, its `dev.haylen.plugin.<id>` meta-data and its other entries, and the engine library loads the plugin classes that the meta-data names when the app process starts, as [the Android part](#the-android-part) describes.
+The manifest of every module merges into the app with its permissions, its `dev.haylen.plugin.<id>` meta-data and its other entries, together with the manifests of the libraries the module depends on. Every plugin module depends on `dev.haylen:haylen-plugins`, whose manifest declares the provider that loads the plugin classes that the meta-data names when the app process starts, as [the Android part](#the-android-part) describes, so an app without plugins has no provider.
 
 ### Web
 
@@ -189,7 +189,7 @@ A platform without its part runs the Lua API of the plugin alone, where calls to
 
 | Key | Value |
 | --- | --- |
-| `module` | The folder of the Android library module, with `build.gradle.kts` and `src/main/AndroidManifest.xml`. The module applies `com.android.library`, which the Android template declares, and depends on the engine with `compileOnly("dev.haylen:haylen:${providers.gradleProperty("haylen.engineVersion").get()}")`. |
+| `module` | The folder of the Android library module, with `build.gradle.kts` and `src/main/AndroidManifest.xml`. The module applies `com.android.library`, which the Android template declares, and depends on the engine with `implementation("dev.haylen:haylen-plugins:${providers.gradleProperty("haylen.engineVersion").get()}")`, and on the [other engine libraries](#engine-libraries) it uses. |
 | `gradlePlugins` | Gradle plugins that the app module applies, each as `{"id": ..., "version": ...}`, such as `{"id": "com.google.gms.google-services", "version": "4.5.0"}`. |
 | `placeholders` | Manifest placeholders by name, whose text values the manifest of the module reads as `${name}`. |
 | `files` | Copies into the Android project, each as `{"from": ..., "to": ...}`. `from` is a path inside the plugin or a reference to a `file` parameter, and `to` is a path inside the project, such as `app/google-services.json`. |
@@ -577,6 +577,81 @@ engine.getScreens().open("paywall", "offer", {.json = {{"offering", "gold"}}}, {
 });
 ```
 
+## Requirements
+
+The Android and Xcode projects of an app belong to its developer, so the engine forces no permission, framework, component or declaration into them. Each plugin declares what it needs, the developer keeps it or takes it out, and the plugin checks the requirement at run time, before it calls the system API that needs it. When a requirement is missing, the plugin logs once what is missing and how to add it and fails the call with the code `unsupported`, whose `data.missing` lists every missing requirement, instead of crashing the app. The features of the engine follow the same rule, and the ones that answer nothing, such as `system.vibrate`, just do nothing after the log.
+
+| Field of each entry of `data.missing` | Meaning |
+| --- | --- |
+| `kind` | What is missing, such as `permission` or `class`. |
+| `name` | The name of what is missing, such as `android.permission.READ_CONTACTS`. |
+| `file` | The file of the platform project that declares it, relative to the project, such as `app/src/main/AndroidManifest.xml`. |
+| `snippet` | The text that adds it to that file. |
+
+```lua
+local async = require('async')
+local contacts = require('contacts')
+
+async.spawn(function()
+    local _, err = contacts.pick():await()
+    if err and err.code == 'unsupported' and err.data and err.data.missing then
+        for _, missing in ipairs(err.data.missing) do
+            print(string.format('Add "%s" to "%s".', missing.snippet, missing.file))
+        end
+    end
+end)
+```
+
+### Android requirements
+
+`context.requirements()` of an Android plugin returns its `dev.haylen.HaylenRequirements`, which reads the merged manifest and the build of the app from any thread. The manifest stays the same while the process lives, so it reads the package once.
+
+| Member | Meaning |
+| --- | --- |
+| `hasPermission(name)` | Whether the merged manifest declares the permission, from the `requestedPermissions` of the package. |
+| `isGranted(name)` | Whether the app holds the permission now. A normal permission, such as `VIBRATE`, is granted exactly when it is declared, while a dangerous one, such as `CAMERA`, needs the person to grant it, which the plugin asks for with the [Activity Result API](#activity-results-and-permissions). |
+| `hasClass(name)` | Whether the build has the class, which a dependency brings and R8 may have removed. |
+| `hasMetaData(name)` | Whether the `<application>` of the merged manifest has the meta-data entry. |
+| `hasActivity(className)`, `hasService(className)` | Whether the merged manifest declares the component. |
+| `hasProvider(authority)` | Whether the merged manifest declares a provider with the authority. |
+| `handlesScheme(scheme)` | Whether an activity of the app opens the links with the scheme. |
+| `require(requirements...)` | Throws a `HaylenBridge.Failure` with the code `unsupported` and the data `{missing}` when the project lacks any of the requirements, after it logged each missing one once with the tag `haylen`. A handler that lets it through fails its call with it. |
+
+`HaylenRequirements.Requirement` makes the requirements that `require` takes, each with the file and the snippet that add it:
+
+| Factory | `kind` | `file` and `snippet` |
+| --- | --- | --- |
+| `permission(name)` | `permission` | `app/src/main/AndroidManifest.xml` with `<uses-permission android:name="<name>" />`. |
+| `className(name, dependency)` | `class` | `app/build.gradle.kts` with `implementation("<dependency>")`. |
+| `metaData(name, value)` | `metaData` | The manifest with `<meta-data android:name="<name>" android:value="<value>" />`. |
+| `activity(className)`, `service(className)` | `activity`, `service` | The manifest with the component, not exported. |
+| `provider(authority, className)` | `provider` | The manifest with the provider of the authority, not exported. |
+| `urlScheme(scheme)` | `urlScheme` | The manifest with `HaylenLinkActivity` and an intent filter of the scheme. |
+
+A permission requirement checks what the project declares, so a dangerous permission passes once the manifest declares it, and the plugin then asks the person for it.
+
+```kotlin
+context.register("pick") { _, reply ->
+    context.requirements().require(HaylenRequirements.Requirement.permission(Manifest.permission.READ_CONTACTS))
+    pending = reply
+    picker?.launch(null)
+}
+```
+
+The log line names the owner, what it needs, what happens without it and how to add it:
+
+```text
+The plugin "contacts" needs the permission "android.permission.READ_CONTACTS", which the app lacks, so the calls that need it fail with the code "unsupported". Add "<uses-permission android:name="android.permission.READ_CONTACTS" />" to "app/src/main/AndroidManifest.xml".
+```
+
+The engine checks its own features the same way. The manifest of the Android template declares their three permissions, which an app that does not use a feature deletes:
+
+| Permission | Feature | Without it |
+| --- | --- | --- |
+| `INTERNET` | Network access: HTTP, sockets and `haylen.net`. | Connections fail. The errors of `haylen.net` end with a sentence that names the missing permission and how to add it, while the `http` and `socket` modules of Varn report what the system tells them. |
+| `ACCESS_NETWORK_STATE` | The network state of [`haylen.networkState()`](lua-api/haylen.md#haylennetworkstate) and the events `networkOnline` and `networkOffline`. | The engine never follows the network, so the state stays `'unknown'` and the events never fire, which the log tells once at the info level. |
+| `VIBRATE` | [`system.vibrate`](lua-api/system.md#systemvibrateseconds). | It does nothing, which the log tells once as a warning. |
+
 ## The Apple part
 
 The Apple part of a plugin is Swift or Objective-C in the `sources` folder of its `apple` section, which compiles into the targets of the Apple template for the platforms the plugin lists, next to the files of the app. The template's `source/HaylenBridging.h` imports `haylen/platform/apple/HaylenBridge.h` and `haylen/platform/apple/HaylenPlugin.h`, so Swift sources reach the whole plugin API without imports of their own, and Objective-C sources import `HaylenPlugin.h`.
@@ -770,7 +845,14 @@ try context.emit("purchaseUpdated", Purchase(product: "coins", token: transactio
 
 ## The Android part
 
-The Android part of a plugin is the Android library module that `module` of its `android` section names, which make.py includes in the Android project of the app as [Android](#android) describes. The module depends on the engine library with `compileOnly`, so the app brings the library once, together with the AndroidX libraries the library declares, AppCompat, the activity library and core, and its manifest names the plugin class in a meta-data entry of its `<application>`, whose name is `dev.haylen.plugin.` followed by the id of the plugin:
+The Android part of a plugin is the Android library module that `module` of its `android` section names, which make.py includes in the Android project of the app as [Android](#android) describes. The module depends on `dev.haylen:haylen-plugins`, which brings the engine library with the AndroidX libraries it declares, AppCompat, the activity library and core, and the provider that loads plugins, and its manifest names the plugin class in a meta-data entry of its `<application>`, whose name is `dev.haylen.plugin.` followed by the id of the plugin:
+
+```kotlin
+// plugins/share-sheet/android/build.gradle.kts
+dependencies {
+    implementation("dev.haylen:haylen-plugins:${providers.gradleProperty("haylen.engineVersion").get()}")
+}
+```
 
 ```xml
 <!-- plugins/share-sheet/android/src/main/AndroidManifest.xml -->
@@ -781,9 +863,22 @@ The Android part of a plugin is the Android library module that `module` of its 
 </manifest>
 ```
 
+### Engine libraries
+
+The engine library declares only what every app needs, so the parts that only some apps want are libraries of their own, which `make.py engine --platform android` publishes next to it at the engine version. Each one depends on `dev.haylen:haylen` as an API, and a plugin module depends on the ones it uses.
+
+| Library | What it brings | Who depends on it |
+| --- | --- | --- |
+| `dev.haylen:haylen` | The player, `HaylenActivity`, the platform bridge, the plugin API and `HaylenRequirements`, with GameActivity, AppCompat, the activity library and core as APIs. Its manifest declares OpenGL ES 3 alone, with no permission and no component. | The app module. |
+| `dev.haylen:haylen-plugins` | The provider that loads the plugins when the app process starts, `HaylenPluginProvider`. | Every plugin module. |
+| `dev.haylen:haylen-links` | The activity that receives links and notification taps, `HaylenLinkActivity`, exported so plugins add their intent filters to it, as [links and notifications](#links-and-notifications) describes. | Plugins that receive links or post notifications. |
+| `dev.haylen:haylen-coroutines` | Handlers written as suspending functions, `HaylenCoroutines.register` and `registerSuspend`, with `kotlinx-coroutines-android` as an API. | Kotlin plugins and apps with suspending handlers. |
+
+An app whose plugins bring no provider and no link activity has no exported component besides its launcher activity. `HaylenActivity` logs an error with the tag `haylen` when the manifest names plugins in `dev.haylen.plugin.<id>` meta-data while the provider never ran, which happens when no plugin module depends on `dev.haylen:haylen-plugins`.
+
 ### The plugin class
 
-A plugin class extends `dev.haylen.HaylenPlugin` and has a public constructor without parameters. `HaylenPluginProvider`, a content provider of the engine library, starts with the app process, before `Application.onCreate`. It reads every `dev.haylen.plugin.<id>` entry of the merged manifest, creates each class once and calls `onLoad` with the context of the plugin, in the [load order](#load-order) of the `app.json` of the package, so SDKs set up before any app code runs. Its `initOrder` is 50, so the providers that SDKs start with at 100, such as the one of Firebase, have run by then. The engine receives the ids of the plugins that loaded, which `handle.native` and `platform.plugins()` show in Lua.
+A plugin class extends `dev.haylen.HaylenPlugin` and has a public constructor without parameters. `HaylenPluginProvider`, a content provider that the manifest of `dev.haylen:haylen-plugins` declares, starts with the app process, before `Application.onCreate`. It reads every `dev.haylen.plugin.<id>` entry of the merged manifest, creates each class once and calls `onLoad` with the context of the plugin, in the [load order](#load-order) of the `app.json` of the package, so SDKs set up before any app code runs. Its `initOrder` is 50, so the providers that SDKs start with at 100, such as the one of Firebase, have run by then. The engine receives the ids of the plugins that loaded, which `handle.native` and `platform.plugins()` show in Lua.
 
 - A class that cannot be found or created, such as a class the module lacks or one without a public constructor without parameters, and a class that does not extend `HaylenPlugin`, are logged as errors with the tag `haylen` that name the class and the plugin, and the plugin runs without its native part.
 - An `onLoad` that throws is logged the same way, the methods it registered go away, and the plugin runs without its native part.
@@ -884,13 +979,16 @@ public final class ShareSheetPlugin extends HaylenPlugin {
 | `activity()` | The running `HaylenActivity`, or `null` while there is none, as in `onLoad`. It is a `GameActivity` and so an `AppCompatActivity`, a `FragmentActivity` and a `ComponentActivity`, which SDKs take as it is. |
 | `config()` | The parameters of the plugin in `app.json` over the `default` of every parameter of `plugin.json`, the same values as `handle.config` in Lua, as a `JSONObject`. |
 | `register(method, handler)`, `register(method, handler, threading)` | Answer `<id>.<method>` like `HaylenBridge.register` in the [platform bridge guide](platform_bridge.md#android), on the main thread or, with `HaylenBridge.Threading.BACKGROUND`, on the shared background thread described in [threads](#threads). |
-| `registerSuspend(method) { params -> result }` | Kotlin only. Answers `<id>.<method>` with a suspending function, like `HaylenCoroutines.register`. |
+| `registerSuspend(method) { params -> result }` | Kotlin only, with `dev.haylen:haylen-coroutines`. Answers `<id>.<method>` with a suspending function, like `HaylenCoroutines.register`. |
 | `emit(event, payload)`, `emitRetained(event, payload)`, `emit(event, payload, retain, batched)` | Send the event `<id>.<event>`, retained for the first listener of its name with `emitRetained`, and retained, batched or both with the last form. The payload is converted like the value of `reply.success`, with `byte[]` and `ByteBuffer` values as bytes. |
 | `overlay()` | The overlay that places native views of the plugin over the app, as [Android overlays](#android-overlays) describes. |
+| `requirements()` | The `HaylenRequirements` of the plugin, which checks what the project of the app holds before the plugin calls a system API that needs it, as [Android requirements](#android-requirements) describes. |
 | `coverApp()`, `uncoverApp()` | Cover the app while native UI of the plugin covers it, and end the cover, as [covering the app](#covering-the-app) describes. The covers of a plugin end with the activity, an `uncoverApp` without a cover of the plugin is logged as an error, and a `coverApp` while no activity exists is logged as a warning and covers nothing. |
 | `runOnMainThread(task)` | Runs the task at once on the main thread, and posts it there from any other thread, for callbacks of SDKs that arrive on threads of their own. |
 
 Events that native code sends while no app runs, such as from `onLoad` before the first activity loads the native library, while the app restarts or between two activities, wait in the engine library, up to 32 per name with the oldest dropped first, and reach the next app in order once it starts. A link that opens the app, which the plugin sends retained, therefore reaches the first Lua listener of its name however late it comes.
+
+A plugin with suspending handlers adds `implementation("dev.haylen:haylen-coroutines:${providers.gradleProperty("haylen.engineVersion").get()}")` to its module:
 
 ```kotlin
 import dev.haylen.registerSuspend
@@ -936,7 +1034,7 @@ SDKs that take an `ActivityResultCaller`, a `ComponentActivity`, a `FragmentActi
 
 ### Links and notifications
 
-The activity of the template is single top, so it stays the one activity that the native side of GameActivity needs, and when the launcher icon brings the app back, every screen that showed over the app, such as a purchase, a bank check or a sign-in page, shows again as the person left it. Links and notifications go to `dev.haylen.HaylenLinkActivity` of the engine library, which shows nothing and runs in a task of its own. It hands them to the running `HaylenActivity`, whose plugins receive them in `onNewIntent`, and brings the task of the app to the front as the launcher icon does, or it starts `HaylenActivity` when none runs, whose plugins find them in `activity.getIntent()` in `onActivityCreated`. A plugin declares the intent filters of its links on that activity in its manifest, and the notifications it posts start that activity:
+The activity of the template is single top, so it stays the one activity that the native side of GameActivity needs, and when the launcher icon brings the app back, every screen that showed over the app, such as a purchase, a bank check or a sign-in page, shows again as the person left it. Links and notifications go to `dev.haylen.HaylenLinkActivity`, which shows nothing and runs in a task of its own. It hands them to the running `HaylenActivity`, whose plugins receive them in `onNewIntent`, and brings the task of the app to the front as the launcher icon does, or it starts `HaylenActivity` when none runs, whose plugins find them in `activity.getIntent()` in `onActivityCreated`. The activity is exported, since other apps start it, so only the manifest of `dev.haylen:haylen-links` declares it, and a plugin that receives links or posts notifications depends on that library. The plugin declares the intent filters of its links on that activity in its manifest, and the notifications it posts start that activity:
 
 ```xml
 <activity android:name="dev.haylen.HaylenLinkActivity" android:exported="true">

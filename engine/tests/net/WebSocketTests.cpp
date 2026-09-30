@@ -364,6 +364,19 @@ TEST_F(NetLuaTest, ReportsFailedConnectionsWithTheirAddress) {
     EXPECT_EQ(fixture.lua("return failure"), url + " true");
 }
 
+TEST_F(NetLuaTest, FailuresEndWithWhatTheProjectLacksForTheNetwork) {
+    const std::string url = refusedUrl();
+    const std::string requirement = "The app does not declare the permission \"android.permission.INTERNET\".";
+    test::EngineFixture fixture;
+    fixture.host().setNetworkRequirement(requirement);
+    fixture.restart();
+    fixture.runLua("require('haylen.net').connectWebSocket('" + url + "'):on('error', function(message) failure = message end)");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(failure)") != "nil"; }));
+    const std::string failure = fixture.lua("return failure");
+    EXPECT_TRUE(failure.ends_with(". " + requirement)) << failure;
+    EXPECT_GT(failure.size(), requirement.size() + 2);
+}
+
 TEST_F(NetLuaTest, EndsListenersWithTheirOwner) {
     const std::string url = refusedUrl();
     test::EngineFixture fixture;

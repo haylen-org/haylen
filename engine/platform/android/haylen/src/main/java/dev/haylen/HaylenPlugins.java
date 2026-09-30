@@ -27,7 +27,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-// The native parts of the plugins of the app, in load order. The class `HaylenPluginProvider` loads them when the process starts, `HaylenActivity` forwards its creation, its destruction and its other events to them while the AndroidX lifecycle of the activity forwards its start, resume, pause and stop, and the engine reads their ids and hands them its errors.
+// The native parts of the plugins of the app, in load order. The class `HaylenPluginProvider`, which the manifest of the `dev.haylen:haylen-plugins` library declares, loads them when the process starts, `HaylenActivity` forwards its creation, its destruction and its other events to them while the AndroidX lifecycle of the activity forwards its start, resume, pause and stop, and the engine reads their ids and hands them its errors.
 final class HaylenPlugins {
     private static final String TAG = "haylen";
     private static final String META_DATA_PREFIX = "dev.haylen.plugin.";
@@ -36,6 +36,8 @@ final class HaylenPlugins {
 
     private static final Handler mainThread = new Handler(Looper.getMainLooper());
     private static List<Loaded> loaded = Collections.emptyList();
+    private static boolean started;
+    private static boolean checked;
 
     private HaylenPlugins() {}
 
@@ -67,6 +69,19 @@ final class HaylenPlugins {
             all.add(new Loaded(plugin, context));
         }
         loaded = Collections.unmodifiableList(all);
+        started = true;
+    }
+
+    // Called on the main thread when an activity is created. A plugin module that lacks the dependency on `dev.haylen:haylen-plugins` leaves the app without the provider, so the plugins that the manifest names never load, which the log tells once.
+    static void checkLoaded(Application application) {
+        if (started || checked) {
+            return;
+        }
+        checked = true;
+        Set<String> ids = readClasses(application).keySet();
+        if (!ids.isEmpty()) {
+            Log.e(TAG, "The manifest names the plugins \"" + String.join("\", \"", ids) + "\" in \"dev.haylen.plugin.<id>\" meta-data, but \"dev.haylen.HaylenPluginProvider\" never ran, so the app runs without their native parts. Make every plugin module depend on \"dev.haylen:haylen-plugins\", whose manifest declares the provider.");
+        }
     }
 
     // Called from `JNI_OnLoad` of the native library, which reports the plugins to the engine.

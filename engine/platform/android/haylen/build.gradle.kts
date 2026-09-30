@@ -1,18 +1,13 @@
-// Android side of the Haylen runtime: the Lua player library, the activity with its splash screen, the link activity, the platform bridge and the Kotlin transport of the Varn HTTP client.
+// Android side of the Haylen runtime: the Lua player library, the activity with its splash screen, the platform bridge, the plugin API and the Kotlin transport of the Varn HTTP client. Its manifest declares only what every app needs, so permissions and the components of plugins and links come from the app and from the libraries that need them.
 // The command `make.py engine --platform android` builds the player with the engine CMake project for every ABI and publishes this library as `dev.haylen:haylen` to a local Maven repository, so apps made from the Android template depend on it without compiling C++.
 plugins {
     id("com.android.library")
-    `maven-publish`
 }
 
-val engineDir = projectDir.resolve("../../..").canonicalFile
-val engineVersion = engineDir.resolve("VERSION").readText().trim()
 val nativeLibraries = providers.gradleProperty("haylenNativeLibraries").orNull
     ?: error("Pass \"-PhaylenNativeLibraries\" with the folder that holds \"libhaylen.so\" in a subfolder for each ABI. The script \"make.py\" builds it with the engine CMake project.")
 val varnSourceDir = providers.gradleProperty("haylenVarnSourceDir").orNull
     ?: error("Pass \"-PhaylenVarnSourceDir\" with the Varn source folder. The script \"make.py\" resolves it from the native build.")
-val mavenDir = providers.gradleProperty("haylenMavenDir").orNull
-    ?: error("Pass \"-PhaylenMavenDir\" with the Maven repository that receives the library. The script \"make.py\" uses \"build/artifacts/android/maven\".")
 
 android {
     namespace = "dev.haylen"
@@ -47,7 +42,6 @@ dependencies {
     api("androidx.activity:activity:1.13.0")
     api("androidx.core:core:1.19.1")
     implementation("androidx.core:core-splashscreen:1.2.0")
-    api("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 }
 
 // Only the HTTP transport of the Varn Android library runs inside a Haylen app, because the engine links Varn into the player library itself.
@@ -74,24 +68,5 @@ androidComponents {
     onVariants { variant ->
         variant.sources.kotlin?.addGeneratedSourceDirectory(varnTransport, VarnTransportTask::outputDir)
         variant.sources.jniLibs?.addStaticSourceDirectory(nativeLibraries)
-    }
-}
-
-publishing {
-    publications {
-        register<MavenPublication>("release") {
-            groupId = "dev.haylen"
-            artifactId = "haylen"
-            version = engineVersion
-            afterEvaluate {
-                from(components["release"])
-            }
-        }
-    }
-    repositories {
-        maven {
-            name = "artifacts"
-            url = uri(mavenDir)
-        }
     }
 }

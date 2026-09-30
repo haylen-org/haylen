@@ -16,6 +16,7 @@ public final class HaylenPluginContext {
     private final Application application;
     private final JSONObject config;
     private final HaylenOverlay overlay;
+    private final HaylenRequirements requirements;
     private final List<String> methods = new ArrayList<>();
     private int covers;
 
@@ -24,6 +25,7 @@ public final class HaylenPluginContext {
         this.application = application;
         this.config = config;
         overlay = new HaylenOverlay(id);
+        requirements = new HaylenRequirements(application, "The plugin \"" + id + "\"");
     }
 
     public String id() {
@@ -75,6 +77,11 @@ public final class HaylenPluginContext {
     // Places native views over the app. It works on the main thread while an activity exists.
     public HaylenOverlay overlay() {
         return overlay;
+    }
+
+    // What the project of the app holds, which the plugin checks before it calls a system API that needs it, from any thread.
+    public HaylenRequirements requirements() {
+        return requirements;
     }
 
     // Tells the app that native UI of the plugin covers it, such as a full screen ad, which halts and mutes the app until the matching `uncoverApp`. Covers nest, and the ones still open when the activity is destroyed end with it.

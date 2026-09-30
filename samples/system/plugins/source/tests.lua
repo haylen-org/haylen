@@ -13,4 +13,5 @@ return {
     {id = 'urls', title = 'Opened URLs', description = 'Links with the scheme of the plugin that open the app, before or after it started.', module = 'tests.urls'},
     {id = 'errors', title = 'App errors', description = 'An error of the app that the native part keeps and sends back to the next app.', module = 'tests.errors'},
     {id = 'info', title = 'Plugin info', description = 'The plugins of the app and whether their native part runs on this platform.', module = 'tests.info'},
+    {id = 'requirements', title = 'Requirements', description = 'A call whose native part needs what the project of the app lacks, which fails with the code unsupported and lists what is missing and how to add it.', module = 'tests.requirements'},
 }

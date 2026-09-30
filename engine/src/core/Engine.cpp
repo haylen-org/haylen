@@ -75,7 +75,7 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     current.windowPosition = host.getFrame().getPosition();
     current.orientation = host.getOrientation();
     current.safeRect = current.viewport.getSafeRect();
-    plugins::BuiltInPlugins::registerAll(current.plugins);
+    plugins::BuiltInPlugins::registerAll(current.plugins, host);
 }
 
 Engine::~Engine() {

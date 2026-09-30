@@ -42,11 +42,12 @@ class WebSocket final {
     // Returns the current time in seconds, which tests replace to drive the delays. Without one, the socket reads the steady clock.
     using Clock = std::function<double()>;
 
-    // Native builds refuse a message of the server larger than the maximum size in bytes, at most 2147483647, and close the connection with status 1009.
+    // Native builds refuse a message of the server larger than the maximum size in bytes, at most 2147483647, and close the connection with status 1009. The failure hint is a sentence that the message of every failure ends with, such as what the project of the app lacks for network access.
     struct Options {
         std::vector<std::string> protocols;
         std::size_t maxMessageSize = 16U * 1024U * 1024U;
         Reconnect reconnect;
+        std::string failureHint;
         Clock clock;
         std::uint64_t seed = 0;
     };
@@ -118,11 +119,13 @@ class WebSocket final {
     void connect();
     [[nodiscard]] bool canReconnect() const noexcept;
     void scheduleReconnect();
+    [[nodiscard]] std::string describeFailure(const std::string& message) const;
 
     std::string url;
     std::vector<std::string> protocols;
     std::size_t maxMessageSize = 0;
     Reconnect reconnect;
+    std::string failureHint;
     Clock clock;
     math::Random random;
     std::string protocol;

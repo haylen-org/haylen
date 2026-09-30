@@ -91,7 +91,7 @@ end)
 
 ### system.vibrate(seconds)
 
-Vibrates the device for `seconds` where it can vibrate and does nothing elsewhere. Android phones and the browsers of phones with the Vibration API vibrate for the time given, iPhones play a medium impact on their haptic engine whatever the time, and the other devices do nothing. A number that is not positive raises `A vibration lasts a positive number of seconds.`.
+Vibrates the device for `seconds` where it can vibrate and does nothing elsewhere. Android phones and the browsers of phones with the Vibration API vibrate for the time given, iPhones play a medium impact on their haptic engine whatever the time, and the other devices do nothing. On Android the app needs the permission `android.permission.VIBRATE`, which the manifest of the Android template declares, and without it `vibrate` logs once what is missing and how to add it and does nothing, as [Android permissions](#android-permissions) describes. A number that is not positive raises `A vibration lasts a positive number of seconds.`.
 
 ```lua
 local system = require('haylen.system')

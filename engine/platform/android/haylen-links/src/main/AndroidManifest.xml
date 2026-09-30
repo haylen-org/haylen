@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Receives the links and notification taps of the app, whose intent filters plugins and apps add to it, and hands them to `HaylenActivity`. It shows nothing and runs in a task of its own that leaves no trace in the recent apps. -->
+        <activity
+            android:name="dev.haylen.HaylenLinkActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay" />
+    </application>
+</manifest>

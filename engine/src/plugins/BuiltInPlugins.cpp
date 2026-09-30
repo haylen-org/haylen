@@ -11,6 +11,7 @@
 #include "haylen/plugins/StoragePlugin.hpp"
 #include "haylen/plugins/TextPlugin.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
+#include "platform/Host.hpp"
 #include "plugins/Animation2DPlugin.hpp"
 #include "plugins/AudioPlugin.hpp"
 #include "plugins/CorePlugin.hpp"
@@ -28,7 +29,7 @@
 
 namespace haylen::plugins {
 
-void BuiltInPlugins::registerAll(PluginRegistry& registry) {
+void BuiltInPlugins::registerAll(PluginRegistry& registry, const platform::Host& host) {
     registry.add(std::make_unique<CorePlugin>());
     registry.add(std::make_unique<JobsPlugin>());
     registry.add(std::make_unique<InputPlugin>());
@@ -48,7 +49,7 @@ void BuiltInPlugins::registerAll(PluginRegistry& registry) {
     registry.add(std::make_unique<DebugPlugin>());
     registry.add(std::make_unique<HotReloadPlugin>());
     registry.add(std::make_unique<UiPlugin>());
-    registry.add(std::make_unique<NetPlugin>());
+    registry.add(std::make_unique<NetPlugin>(host.getNetworkRequirement()));
     registry.add(std::make_unique<PlatformPlugin>());
     registry.add(std::make_unique<NativePlugin>());
 }

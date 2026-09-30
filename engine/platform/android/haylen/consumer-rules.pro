@@ -27,6 +27,7 @@
     static byte[] systemInfo();
     static void openUrl(long, byte[]);
     static void vibrate(long);
+    static byte[] networkRequirement();
 }
 
 -keep class com.varn.VarnHttp { *; }

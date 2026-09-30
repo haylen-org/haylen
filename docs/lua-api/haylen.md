@@ -328,7 +328,7 @@ end)
 
 ### haylen.networkState()
 
-Returns whether the device reaches the network, as the platform last reported it: `'online'`, `'offline'`, or `'unknown'` until a report arrives. Browsers, Android and Apple platforms, macOS included, report the network from the start, usually by the first frame, and then publish every change as the `networkOnline` and `networkOffline` events of [`haylen.events`](events.md#engine-events). Windows, Linux and the headless host never report it, so it stays `'unknown'` there.
+Returns whether the device reaches the network, as the platform last reported it: `'online'`, `'offline'`, or `'unknown'` until a report arrives. Browsers, Android and Apple platforms, macOS included, report the network from the start, usually by the first frame, and then publish every change as the `networkOnline` and `networkOffline` events of [`haylen.events`](events.md#engine-events). Windows, Linux and the headless host never report it, so it stays `'unknown'` there, and so does an Android app without the permission `android.permission.ACCESS_NETWORK_STATE`, as [Android permissions](system.md#android-permissions) describes.
 
 ```lua
 local haylen = require('haylen')

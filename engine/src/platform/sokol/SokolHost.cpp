@@ -12,6 +12,8 @@
 #include <emscripten/emscripten.h>
 
 #include "platform/web/BrowserAudioOutput.hpp"
+#elif defined(__ANDROID__)
+#include "platform/android/JavaBridge.hpp"
 #endif
 
 namespace haylen::platform {
@@ -278,6 +280,15 @@ void SokolHost::openUrl(std::string_view url, std::function<void(bool opened)> c
 
 void SokolHost::vibrate(float seconds) {
     Services::vibrate(seconds);
+}
+
+// Android is the only platform where the project of an app declares network access, through the permission `INTERNET` of its manifest.
+std::string SokolHost::getNetworkRequirement() const {
+#if defined(__ANDROID__)
+    return JavaBridge::getNetworkRequirement();
+#else
+    return {};
+#endif
 }
 
 void SokolHost::showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) {

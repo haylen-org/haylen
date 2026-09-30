@@ -169,6 +169,11 @@ function demo.pickFile()
     return handle:call('pickFile')
 end
 
+-- Calls a method whose native part needs something that the plugin leaves out of the project of the app on purpose, such as the permission `android.permission.READ_CONTACTS` on Android. It fails with the code `unsupported` and lists each missing requirement in `data.missing` as `{kind, name, file, snippet}`, and answers with `{met, language}` in an app whose project adds it.
+function demo.requirementCheck()
+    return handle:call('requirementCheck')
+end
+
 -- Calls listener with {url} for every URL that opens the app. The native part sends urlOpened retained, so the URL that launched the app reaches the first listener.
 function demo.onUrlOpened(listener)
     return handle:on('urlOpened', listener)

@@ -1,5 +1,6 @@
 package dev.haylen;
 
+import android.Manifest;
 import android.app.UiModeManager;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
@@ -13,6 +14,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.util.Log;
 import android.view.InputDevice;
 import android.view.MotionEvent;
 import android.view.View;
@@ -41,6 +43,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     static final String EXTRA_LINK = "dev.haylen.link";
 
     private final HaylenSplash splash = new HaylenSplash(this);
+    private HaylenRequirements requirements;
     private HaylenOverlayLayer overlays;
     private HaylenEditText editor;
     private HaylenNetwork network;
@@ -49,6 +52,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         splash.install();
+        requirements = new HaylenRequirements(this, "The engine");
         HaylenBridge.attach(this);
         // The class `GameActivity` loads the native library here and starts the app on its render thread.
         super.onCreate(savedInstanceState);
@@ -76,8 +80,8 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         };
         getOnBackPressedDispatcher().addCallback(this, backCallback);
         getSystemService(InputManager.class).registerInputDeviceListener(this, null);
-        network = new HaylenNetwork(this);
-        network.register();
+        followNetwork();
+        HaylenPlugins.checkLoaded(getApplication());
 
         // The audio focus follows the lifecycle before the plugins do, so it is requested before they hear of a resume and abandoned after they hear of a pause.
         getLifecycle().addObserver(new HaylenAudioFocus(this));
@@ -142,7 +146,9 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         overlays.removeAll();
         splash.dismiss();
         getSystemService(InputManager.class).unregisterInputDeviceListener(this);
-        network.unregister();
+        if (network != null) {
+            network.unregister();
+        }
         HaylenEditText.detach(editor);
         HaylenBridge.detach(this);
     }
@@ -213,13 +219,30 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         });
     }
 
-    // Called from the frame thread of the engine. Devices without a vibrator do nothing.
+    // Called from the frame thread of the engine. Devices without a vibrator do nothing, and so does an app without the permission `VIBRATE`, which the log tells once.
     static void vibrate(long milliseconds) {
         HaylenActivity activity = HaylenBridge.activity();
-        Vibrator vibrator = activity != null ? activity.getSystemService(Vibrator.class) : null;
+        if (activity == null) {
+            return;
+        }
+        if (!activity.requirements.isGranted(Manifest.permission.VIBRATE)) {
+            activity.requirements.report(HaylenRequirements.Requirement.permission(Manifest.permission.VIBRATE), Log.WARN, "\"system.vibrate\" does nothing");
+            return;
+        }
+        Vibrator vibrator = activity.getSystemService(Vibrator.class);
         if (vibrator != null && vibrator.hasVibrator()) {
             vibrator.vibrate(VibrationEffect.createOneShot(milliseconds, VibrationEffect.DEFAULT_AMPLITUDE));
         }
+    }
+
+    // Called from the frame thread of the engine when an app starts, with the sentence that the network errors of the engine end with while the app lacks the permission `INTERNET`, or nothing.
+    static byte[] networkRequirement() {
+        HaylenActivity activity = HaylenBridge.activity();
+        if (activity == null || activity.requirements.isGranted(Manifest.permission.INTERNET)) {
+            return new byte[0];
+        }
+        HaylenRequirements.Requirement internet = HaylenRequirements.Requirement.permission(Manifest.permission.INTERNET);
+        return ("The app lacks " + internet.description() + ", which network access needs on Android. " + internet.instructions()).getBytes(StandardCharsets.UTF_8);
     }
 
     // A link or a notification that reaches the running app, which becomes the intent of the activity before the plugins hear of it.
@@ -230,6 +253,16 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
 
     HaylenOverlayLayer overlays() {
         return overlays;
+    }
+
+    // Following the network needs the permission `ACCESS_NETWORK_STATE`, without which the engine never hears of the network, which the log tells once.
+    private void followNetwork() {
+        if (!requirements.isGranted(Manifest.permission.ACCESS_NETWORK_STATE)) {
+            requirements.report(HaylenRequirements.Requirement.permission(Manifest.permission.ACCESS_NETWORK_STATE), Log.INFO, "the network state stays \"unknown\" and the events \"networkOnline\" and \"networkOffline\" never fire");
+            return;
+        }
+        network = new HaylenNetwork(this);
+        network.register();
     }
 
     // Hidden bars only appear transiently over the app, so the safe area covers the cutout and any bars that stay visible, as in multi-window mode.

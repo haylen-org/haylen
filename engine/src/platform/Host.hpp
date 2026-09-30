@@ -64,6 +64,9 @@ class Host : public Window {
     // Vibrates the device for the given seconds where it can vibrate, and does nothing elsewhere.
     virtual void vibrate(float seconds) = 0;
 
+    // The sentence that engine-owned network errors end with while the project of the app lacks what network access needs on this platform, such as the permission `INTERNET` that an Android app does not declare, or an empty text. The engine reads it when an app starts.
+    [[nodiscard]] virtual std::string getNetworkRequirement() const = 0;
+
     // Shows a native dialog, which the platform answers exactly once through `DialogRelay::resolve` with the same id, from any thread. Picked files that have no path of their own are copied into `folder`, which the platform creates when it needs it.
     virtual void showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) = 0;
 

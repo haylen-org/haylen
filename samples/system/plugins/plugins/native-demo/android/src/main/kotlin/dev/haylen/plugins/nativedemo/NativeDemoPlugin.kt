@@ -1,5 +1,6 @@
 package dev.haylen.plugins.nativedemo
 
+import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Bitmap
@@ -23,6 +24,7 @@ import dev.haylen.HaylenBridge
 import dev.haylen.HaylenPlacement
 import dev.haylen.HaylenPlugin
 import dev.haylen.HaylenPluginContext
+import dev.haylen.HaylenRequirements
 import java.io.ByteArrayOutputStream
 import org.json.JSONObject
 
@@ -48,6 +50,7 @@ class NativeDemoPlugin : HaylenPlugin() {
         registerStreams()
         registerBanner()
         registerScreens()
+        registerRequirements()
         context.emitRetained("loaded", JSONObject().put("language", LANGUAGE).put("platform", "android"))
     }
 
@@ -235,6 +238,14 @@ class NativeDemoPlugin : HaylenPlugin() {
             } catch (missing: ActivityNotFoundException) {
                 reply.failure("No app on this device picks documents.", "unsupported", null)
             }
+        }
+    }
+
+    // The plugin needs the permission to read the contacts, which its manifest leaves out on purpose, so the call shows how a requirement that the project of the app lacks fails with the code `unsupported` and lists what is missing in `data.missing`. An app that declares the permission gets the answer.
+    private fun registerRequirements() {
+        context.register("requirementCheck") { _, reply ->
+            context.requirements().require(HaylenRequirements.Requirement.permission(Manifest.permission.READ_CONTACTS))
+            reply.success(JSONObject().put("met", true).put("language", LANGUAGE))
         }
     }
 

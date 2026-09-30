@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Loads the plugins before `Application.onCreate`. Providers with a higher `initOrder` start first, so the providers that SDKs start with at 100, such as the one of Firebase, have run and the ones that keep the default of 0 have not. -->
+        <provider
+            android:name="dev.haylen.HaylenPluginProvider"
+            android:authorities="${applicationId}.haylen-plugins"
+            android:exported="false"
+            android:initOrder="50" />
+    </application>
+</manifest>

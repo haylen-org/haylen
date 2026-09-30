@@ -3,6 +3,8 @@
 #include <utility>
 
 #include "haylen/core/Json.hpp"
+#include "haylen/core/Log.hpp"
+#include "platform/BridgeRelay.hpp"
 #include "varn/http/AndroidHttpBridge.h"
 
 namespace haylen::platform {
@@ -26,6 +28,7 @@ jmethodID JavaBridge::captureBackMethod = nullptr;
 jmethodID JavaBridge::systemInfoMethod = nullptr;
 jmethodID JavaBridge::openUrlMethod = nullptr;
 jmethodID JavaBridge::vibrateMethod = nullptr;
+jmethodID JavaBridge::networkRequirementMethod = nullptr;
 std::mutex& JavaBridge::urlMutex = *new std::mutex();
 std::unordered_map<std::int64_t, std::function<void(bool)>>& JavaBridge::urlCallbacks = *new std::unordered_map<std::int64_t, std::function<void(bool)>>();
 std::int64_t JavaBridge::nextUrl = 1;
@@ -56,11 +59,14 @@ jint JavaBridge::load(JavaVM* vm) {
     systemInfoMethod = env->GetStaticMethodID(activityClass, "systemInfo", "()[B");
     openUrlMethod = env->GetStaticMethodID(activityClass, "openUrl", "(J[B)V");
     vibrateMethod = env->GetStaticMethodID(activityClass, "vibrate", "(J)V");
+    networkRequirementMethod = env->GetStaticMethodID(activityClass, "networkRequirement", "()[B");
 
     // The plugins load when the process starts, before any activity loads this library, so their list is final here.
     const auto ids = static_cast<jbyteArray>(env->CallStaticObjectMethod(pluginsClass, env->GetStaticMethodID(pluginsClass, "ids", "()[B")));
-    plugins = core::Json::parse(toString(*env, ids)).get<std::vector<std::string>>();
-    env->DeleteLocalRef(ids);
+    if (!clearException(*env, "dev.haylen.HaylenPlugins.ids")) {
+        plugins = core::Json::parse(toString(*env, ids)).get<std::vector<std::string>>();
+        env->DeleteLocalRef(ids);
+    }
 
     varn::http::client::AndroidHttpBridge::publish(vm);
     return JNI_VERSION_1_6;
@@ -86,14 +92,24 @@ void JavaBridge::dispatch(std::uint64_t id, std::string_view method, std::string
     env.DeleteLocalRef(methodBytes);
     env.DeleteLocalRef(paramsBytes);
     env.DeleteLocalRef(arrays);
+
+    // A call that the Java registry never took would wait forever, so it fails at once.
+    if (clearException(env, "dev.haylen.HaylenBridge.dispatch")) {
+        const std::string message = "The call \"" + std::string(method) + "\" failed, because the Java method \"dev.haylen.HaylenBridge.dispatch\" threw an exception.";
+        BridgeRelay::resolve(id, false, core::Json{{"message", message}, {"code", "exception"}}.dump());
+    }
 }
 
 void JavaBridge::cancel(std::uint64_t id) {
-    getEnv().CallStaticVoidMethod(bridgeClass, cancelMethod, static_cast<jlong>(id));
+    JNIEnv& env = getEnv();
+    env.CallStaticVoidMethod(bridgeClass, cancelMethod, static_cast<jlong>(id));
+    clearException(env, "dev.haylen.HaylenBridge.cancel");
 }
 
 void JavaBridge::setAppRunning(bool value) {
-    getEnv().CallStaticVoidMethod(bridgeClass, setAppRunningMethod, static_cast<jboolean>(value ? JNI_TRUE : JNI_FALSE));
+    JNIEnv& env = getEnv();
+    env.CallStaticVoidMethod(bridgeClass, setAppRunningMethod, static_cast<jboolean>(value ? JNI_TRUE : JNI_FALSE));
+    clearException(env, "dev.haylen.HaylenBridge.setAppRunning");
 }
 
 void JavaBridge::reportError(std::string_view reportJson) {
@@ -101,6 +117,7 @@ void JavaBridge::reportError(std::string_view reportJson) {
     const jbyteArray bytes = toBytes(env, reportJson);
     env.CallStaticVoidMethod(pluginsClass, reportErrorMethod, bytes);
     env.DeleteLocalRef(bytes);
+    clearException(env, "dev.haylen.HaylenPlugins.reportError");
 }
 
 const std::vector<std::string>& JavaBridge::getPlugins() noexcept {
@@ -112,26 +129,48 @@ void JavaBridge::editText(std::string_view fieldJson) {
     const jbyteArray bytes = toBytes(env, fieldJson);
     env.CallStaticVoidMethod(editorClass, editMethod, bytes);
     env.DeleteLocalRef(bytes);
+    clearException(env, "dev.haylen.HaylenEditText.edit");
 }
 
 void JavaBridge::finishText() {
-    getEnv().CallStaticVoidMethod(editorClass, finishMethod);
+    JNIEnv& env = getEnv();
+    env.CallStaticVoidMethod(editorClass, finishMethod);
+    clearException(env, "dev.haylen.HaylenEditText.finish");
 }
 
 void JavaBridge::lockOrientation(int value) {
-    getEnv().CallStaticVoidMethod(activityClass, lockOrientationMethod, static_cast<jint>(value));
+    JNIEnv& env = getEnv();
+    env.CallStaticVoidMethod(activityClass, lockOrientationMethod, static_cast<jint>(value));
+    clearException(env, "dev.haylen.HaylenActivity.lockOrientation");
 }
 
 void JavaBridge::captureBack(bool value) {
-    getEnv().CallStaticVoidMethod(activityClass, captureBackMethod, static_cast<jboolean>(value ? JNI_TRUE : JNI_FALSE));
+    JNIEnv& env = getEnv();
+    env.CallStaticVoidMethod(activityClass, captureBackMethod, static_cast<jboolean>(value ? JNI_TRUE : JNI_FALSE));
+    clearException(env, "dev.haylen.HaylenActivity.captureBack");
 }
 
+// The device reports nothing when Java fails, so every value of the info stays unknown.
 std::string JavaBridge::getSystemInfo() {
     JNIEnv& env = getEnv();
     const auto bytes = static_cast<jbyteArray>(env.CallStaticObjectMethod(activityClass, systemInfoMethod));
+    if (clearException(env, "dev.haylen.HaylenActivity.systemInfo")) {
+        return "{}";
+    }
     std::string json = toString(env, bytes);
     env.DeleteLocalRef(bytes);
     return json;
+}
+
+std::string JavaBridge::getNetworkRequirement() {
+    JNIEnv& env = getEnv();
+    const auto bytes = static_cast<jbyteArray>(env.CallStaticObjectMethod(activityClass, networkRequirementMethod));
+    if (clearException(env, "dev.haylen.HaylenActivity.networkRequirement")) {
+        return {};
+    }
+    std::string sentence = toString(env, bytes);
+    env.DeleteLocalRef(bytes);
+    return sentence;
 }
 
 // The callback waits outside the lock, because Java answers at once, from inside the call, when no activity runs.
@@ -146,6 +185,9 @@ void JavaBridge::openUrl(std::string_view url, std::function<void(bool opened)> 
     const jbyteArray bytes = toBytes(env, url);
     env.CallStaticVoidMethod(activityClass, openUrlMethod, static_cast<jlong>(request), bytes);
     env.DeleteLocalRef(bytes);
+    if (clearException(env, "dev.haylen.HaylenActivity.openUrl")) {
+        answerUrl(request, false);
+    }
 }
 
 void JavaBridge::answerUrl(std::int64_t request, bool opened) {
@@ -163,7 +205,20 @@ void JavaBridge::answerUrl(std::int64_t request, bool opened) {
 }
 
 void JavaBridge::vibrate(std::int64_t milliseconds) {
-    getEnv().CallStaticVoidMethod(activityClass, vibrateMethod, static_cast<jlong>(milliseconds));
+    JNIEnv& env = getEnv();
+    env.CallStaticVoidMethod(activityClass, vibrateMethod, static_cast<jlong>(milliseconds));
+    clearException(env, "dev.haylen.HaylenActivity.vibrate");
+}
+
+// A pending exception would abort the next JNI call of the thread, so it goes to logcat with its stack and leaves an engine error that names the method. Returns whether the method left one.
+bool JavaBridge::clearException(JNIEnv& env, std::string_view method) {
+    if (env.ExceptionCheck() == JNI_FALSE) {
+        return false;
+    }
+    env.ExceptionDescribe();
+    env.ExceptionClear();
+    core::Log::error("The Java method \"{}\" threw an exception, whose stack logcat shows under the tag \"System.err\".", method);
+    return true;
 }
 
 std::string JavaBridge::toString(JNIEnv& env, jbyteArray bytes) {

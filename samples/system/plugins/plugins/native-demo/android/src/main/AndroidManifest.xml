@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
-        <!-- The `haylen` library creates and loads the plugin class that this entry names when the app process starts. -->
+        <!-- The provider of the `haylen-plugins` library creates and loads the plugin class that this entry names when the app process starts. -->
         <meta-data
             android:name="dev.haylen.plugin.native-demo"
             android:value="dev.haylen.plugins.nativedemo.NativeDemoPlugin" />
 
-        <!-- Joins the link activity of the `haylen` library, so links with the `urlScheme` parameter of the plugin, such as `haylendemo://hello`, open the app or reach it while it runs. -->
+        <!-- Joins the link activity of the `haylen-links` library, so links with the `urlScheme` parameter of the plugin, such as `haylendemo://hello`, open the app or reach it while it runs. -->
         <activity
             android:name="dev.haylen.HaylenLinkActivity"
             android:exported="true">
