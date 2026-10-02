@@ -22,31 +22,31 @@ Inputs.fields = {
 
 function Inputs:report(name)
     return function(event)
-        self:setStatus(string.format('%s %s: %s', name, event.name, event.value))
+        self:setStatus(string.format('Field "%s", event "%s": %s', name, event.name, event.value))
     end
 end
 
 function Inputs:content()
     local cells = {}
     for index, field in ipairs(Inputs.fields) do
-        cells[index] = ui.formField{label = field.keyboard .. ' keyboard', help = 'return key ' .. field.returnKey,
+        cells[index] = ui.formField{label = 'Keyboard "' .. field.keyboard .. '"', help = 'Return key "' .. field.returnKey .. '"',
             ui.textField{id = 'field-' .. field.keyboard, keyboard = field.keyboard, returnKey = field.returnKey, placeholder = field.placeholder, autocapitalize = field.autocapitalize, onChange = self:report(field.keyboard), onSubmit = self:report(field.keyboard)},
         }
     end
-    cells[#cells + 1] = ui.formField{label = 'default return key, 12 characters at most', help = 'no autocorrection',
+    cells[#cells + 1] = ui.formField{label = 'Default return key, 12 characters at most', help = 'No autocorrection',
         ui.textField{placeholder = 'Short code', maxLength = 12, autocorrect = false, autocapitalize = 'characters', onChange = self:report('code'), onSubmit = self:report('code')},
     }
-    cells[#cells + 1] = ui.formField{label = 'secretField', help = 'the password keyboard',
+    cells[#cells + 1] = ui.formField{label = 'Component "secretField"', help = 'The password keyboard',
         ui.secretField{placeholder = 'Password', returnKey = 'go', onSubmit = function(event)
             self:setStatus('Password submitted with ' .. utf8.len(event.value) .. ' characters')
         end},
     }
-    cells[#cells + 1] = ui.formField{label = 'filterField', help = 'the search keyboard and a clear button',
+    cells[#cells + 1] = ui.formField{label = 'Component "filterField"', help = 'The search keyboard and a clear button',
         ui.filterField{placeholder = 'Filter recipes', onChange = self:report('filter')},
     }
     return sample.columns{
         ui.grid{columns = 3, gap = 20, grow = 3, children = cells},
-        sample.section('textArea', {grow = 1,
+        sample.section('Component "textArea"', {grow = 1,
             ui.textArea{rows = 6, value = 'Dear diary,\nthe raft is ready.', onChange = function(event)
                 self:setStatus('The diary has ' .. utf8.len(event.value) .. ' characters')
             end},

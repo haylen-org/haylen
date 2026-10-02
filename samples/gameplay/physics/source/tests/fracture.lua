@@ -103,7 +103,7 @@ function Fracture:update(dt)
     for _, body in ipairs(self.whole) do
         intact = intact + (body.valid and 1 or 0)
     end
-    self:showStats(string.format('whole objects %d\npieces %d\nbodies %d\nstep %.2f ms', intact, self.fragments, self.world.bodyCount, sample.milliseconds('physics step')))
+    self:showStats(string.format('Whole objects %d\nPieces %d\nBodies %d\nStep %.2f ms', intact, self.fragments, self.world.bodyCount, sample.milliseconds('physics step')))
 end
 
 function Fracture:fixedUpdate(step)

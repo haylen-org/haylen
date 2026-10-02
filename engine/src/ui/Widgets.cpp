@@ -273,14 +273,21 @@ bool Widgets::toggle(Context& context, const math::Rect& bounds, bool& value, st
     const float width = context.getMetric(Theme::Metric::ToggleWidth);
     const float height = context.getMetric(Theme::Metric::ToggleHeight);
     const math::Rect track = context.mirror({bounds.x, std::floor(bounds.getCenter().y - height * 0.5F), width, height}, bounds);
-    const math::Color off = context.getColor(Theme::Color::BorderStrong);
-    const math::Color on = context.getColor(Theme::Color::Accent);
-    const math::Color trackColor{off.r + (on.r - off.r) * position, off.g + (on.g - off.g) * position, off.b + (on.b - off.b) * position, off.a + (on.a - off.a) * position};
-    Surfaces::draw(context, value ? Theme::Surface::TrackFill : Theme::Surface::Track, track, state.hovered ? mix(trackColor, context.getColor(Theme::Color::Hover)) : trackColor, std::nullopt, height * 0.5F);
+    const math::Color hover = context.getColor(Theme::Color::Hover);
+    const math::Color frame = context.getColor(Theme::Color::BorderStrong);
+    Surfaces::draw(context, Theme::Surface::Track, track, state.hovered ? mix(frame, hover) : frame, std::nullopt, height * 0.5F);
+
+    // The track keeps its frame in every state, and the fill grows inside its padding from the start as the knob slides on, like the fill of a slider.
+    if (position > 0.0F) {
+        const math::Rect groove = track.inset(Surfaces::getPadding(context, Theme::Surface::Track));
+        const math::Color fill = context.getColor(Theme::Color::Accent);
+        Surfaces::draw(context, Theme::Surface::TrackFill, context.mirror({groove.x, groove.y, groove.width * position, groove.height}, groove), state.hovered ? mix(fill, hover) : fill, std::nullopt, groove.height * 0.5F);
+    }
 
     const float knob = height - 6.0F;
     const math::Rect knobRect = context.mirror({track.x + 3.0F + (width - knob - 6.0F) * position, track.y + 3.0F, knob, knob}, track);
-    Surfaces::draw(context, Theme::Surface::Knob, knobRect, context.getColor(Theme::Color::OnAccent), std::nullopt, knob * 0.5F);
+    const math::Color knobColor = context.getColor(Theme::Color::OnAccent);
+    Surfaces::draw(context, Theme::Surface::Knob, knobRect, state.held ? mix(knobColor, context.getColor(Theme::Color::Pressed)) : knobColor, std::nullopt, knob * 0.5F);
     if (!label.empty()) {
         Typography::drawAligned(context, Theme::Font::Body, context.mirror({bounds.x + width + kContentSpacing, bounds.y, bounds.width - width - kContentSpacing, bounds.height}, bounds), context.getColor(Theme::Color::Text), label, Alignment::Start);
     }

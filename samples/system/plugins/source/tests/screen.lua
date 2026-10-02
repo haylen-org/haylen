@@ -14,14 +14,14 @@ local Screen = haylen.class('Screen', sample.Test)
 local restored = nil
 
 local kRows = {
-    {key = 'result', name = 'the screen answers the call', waiting = 'Open the screen and confirm or decline it.'},
-    {key = 'covered', name = 'the app is covered while the screen shows', waiting = 'Open the screen to see the cover.'},
-    {key = 'busy', name = 'a second screen fails with busy', waiting = 'Open the screen to try a second one.'},
-    {key = 'cancel', name = 'a cancel closes the screen', waiting = 'Open and cancel after a second.'},
-    {key = 'restored', name = 'screenRestored brings the end and the state to the next app', waiting = 'Open, then restart the app, answer the screen and open this test again.'},
-    {key = 'redirect', name = 'the redirect screen comes back as screenRestored', waiting = 'Open by redirect, answer the page and open this test again.'},
-    {key = 'swiftUI', name = 'the SwiftUI screen answers the call', waiting = 'Open the SwiftUI screen and answer or close it.'},
-    {key = 'dialog', name = 'a screen opens right in the answer of a message', waiting = 'Open from the answer of a message, then answer the message and the screen.'},
+    {key = 'result', name = 'The screen answers the call', waiting = 'Open the screen and confirm or decline it.'},
+    {key = 'covered', name = 'The app is covered while the screen shows', waiting = 'Open the screen to see the cover.'},
+    {key = 'busy', name = 'A second screen fails with "busy"', waiting = 'Open the screen to try a second one.'},
+    {key = 'cancel', name = 'A cancel closes the screen', waiting = 'Open and cancel after a second.'},
+    {key = 'restored', name = 'The event "screenRestored" brings the end and the state to the next app', waiting = 'Open, then restart the app, answer the screen and open this test again.'},
+    {key = 'redirect', name = 'The redirect screen comes back as "screenRestored"', waiting = 'Open by redirect, answer the page and open this test again.'},
+    {key = 'swiftUI', name = 'The SwiftUI screen answers the call', waiting = 'Open the SwiftUI screen and answer or close it.'},
+    {key = 'dialog', name = 'A screen opens right in the answer of a message', waiting = 'Open from the answer of a message, then answer the message and the screen.'},
 }
 
 function Screen:enter()
@@ -72,7 +72,7 @@ function Screen:open()
         if busy and busy.code == 'busy' then
             self.results:set('busy', 'pass', kRows[3].name, busy.message)
         else
-            self.results:set('busy', 'fail', kRows[3].name, 'The second screen did not fail with busy: ' .. tostring(busy and busy.code))
+            self.results:set('busy', 'fail', kRows[3].name, 'The second screen did not fail with "busy": ' .. tostring(busy and busy.code))
         end
 
         local answer, err = call:await()
@@ -108,7 +108,7 @@ function Screen:cancelLater()
             return
         end
         sample.waitFor(function() return not haylen.appCovered() end, 5)
-        self.results:set('cancel', err.code == 'cancelled' and not haylen.appCovered() and 'pass' or 'fail', name, string.format('The call failed with %s, and the cover ended once the screen was gone.', tostring(err.code)))
+        self.results:set('cancel', err.code == 'cancelled' and not haylen.appCovered() and 'pass' or 'fail', name, string.format('The call failed with "%s", and the cover ended once the screen was gone.', tostring(err.code)))
     end)
 end
 
@@ -186,8 +186,8 @@ function Screen:showRestored()
         return
     end
     local row = restored.state and restored.state.redirectedAt and kRows[6] or kRows[5]
-    local ending = restored.result and string.format('%s through %s', restored.result.confirmed and 'confirmed' or 'declined', restored.result.via) or string.format('failed with %s', tostring(restored.error.code))
-    self.results:set(row.key, restored.state and restored.state.test == 'screen' and 'pass' or 'fail', row.name, string.format('The screen %s ended after the app started again: %s, with the state %s.', restored.screen, ending, sample.json(restored.state)))
+    local ending = restored.result and string.format('%s through %s', restored.result.confirmed and 'confirmed' or 'declined', restored.result.via) or string.format('failed with "%s"', tostring(restored.error.code))
+    self.results:set(row.key, restored.state and restored.state.test == 'screen' and 'pass' or 'fail', row.name, string.format('The screen "%s" ended after the app started again: %s, with the state %s.', restored.screen, ending, sample.json(restored.state)))
 end
 
 -- The engine covers the app before the screen shows, and the listener sees the cover already.
@@ -207,7 +207,7 @@ function Screen:uncovered()
     end
     watch.ended = true
     local passed = watch.covered and watch.showing and watch.halted and watch.renders == 0 and watch.updates == 0
-    self.results:set('covered', passed and 'pass' or 'fail', kRows[2].name, string.format('appCovered %s, screenShowing %s and halted %s when appInactive arrived, with %d frames drawn and %d updates while the opaque screen showed.', tostring(watch.covered), tostring(watch.showing), tostring(watch.halted), watch.renders, watch.updates))
+    self.results:set('covered', passed and 'pass' or 'fail', kRows[2].name, string.format('The values of "appCovered" %s, "screenShowing" %s and "halted" %s when "appInactive" arrived, with %d frames drawn and %d updates while the opaque screen showed.', tostring(watch.covered), tostring(watch.showing), tostring(watch.halted), watch.renders, watch.updates))
 end
 
 -- Only the frames under the screen count, since on Android the app runs a few frames without the focus between the end of the screen and appActive.

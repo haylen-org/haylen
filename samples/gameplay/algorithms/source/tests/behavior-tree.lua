@@ -43,7 +43,7 @@ local function tree()
         ai.sequence({
             ai.condition(sees),
             ai.action(function(board, dt)
-                board.state = 'chasing'
+                board.state = 'Chasing'
                 board.energy = math.max(0, board.energy - dt * 0.12)
                 moveToward(board, {board.player.x, board.player.y}, dt, kSpeed * 1.5)
             end),
@@ -56,24 +56,24 @@ local function tree()
             end),
             ai.action(function(board, dt)
                 if moveToward(board, board.bed, dt, kSpeed) then
-                    board.state = 'resting'
+                    board.state = 'Resting'
                     board.energy = math.min(1, board.energy + dt * 0.35)
                     board.resting = board.energy < 1
                 else
-                    board.state = 'going to rest'
+                    board.state = 'Going to rest'
                 end
             end),
         }),
         ai.sequence({
             ai.condition(function(board) return board.pause > 0 end),
             ai.action(function(board, dt)
-                board.state = 'looking around'
+                board.state = 'Looking around'
                 board.pause = board.pause - dt
                 board.heading = board.heading + dt * 2
             end),
         }),
         ai.action(function(board, dt)
-            board.state = 'patrolling'
+            board.state = 'Patrolling'
             board.energy = math.max(0, board.energy - dt * 0.05)
             if moveToward(board, board.posts[board.post], dt, kSpeed) then
                 board.post = board.post % #board.posts + 1
@@ -133,14 +133,14 @@ function BehaviorTree:update(dt)
         guard.blackboard.player = player
         guard:tick(dt)
         local board = guard.blackboard
-        lines[index] = string.format('guard %d: %s, energy %d%%, shouts %d', index, board.state, math.floor(board.energy * 100), board.shouts)
+        lines[index] = string.format('Guard %d: %s, energy %d%%, shouts %d', index, board.state, math.floor(board.energy * 100), board.shouts)
     end
     local states = table.concat(lines, '\n')
     if states ~= self.states then
         self.states = states
         self:set('states', {text = states})
     end
-    self:showStats(string.format('trees %d\nnodes per tree %d', #self.guards, self.guards[1].nodeCount))
+    self:showStats(string.format('Trees %d\nNodes per tree %d', #self.guards, self.guards[1].nodeCount))
 end
 
 function BehaviorTree:render()
@@ -154,9 +154,9 @@ function BehaviorTree:render()
     for _, guard in ipairs(self.guards) do
         local board = guard.blackboard
         local x, y = board.position.x, board.position.y
-        local chasing = board.state == 'chasing'
+        local chasing = board.state == 'Chasing'
         graphics2d.drawArc(x, y, kSight / 2, kSight, board.heading - 0.6, board.heading + 0.6, chasing and '#22EF5350' or '#16FFFFFF')
-        graphics2d.drawCircle(x, y, 18, chasing and '#FFEF5350' or (board.state == 'resting' and '#FF7E57C2' or '#FF42A5F5'), {layer = 1})
+        graphics2d.drawCircle(x, y, 18, chasing and '#FFEF5350' or (board.state == 'Resting' and '#FF7E57C2' or '#FF42A5F5'), {layer = 1})
         graphics2d.drawRect({x - 20, y - 34, 40 * board.energy, 6}, '#FF66BB6A', {layer = 1})
         graphics2d.drawText(nil, board.state, x, y + 24, {size = 20, anchor = {0.5, 0}, layer = 2})
     end

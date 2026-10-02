@@ -7,9 +7,9 @@
     "requires": [],
     "parameters": {
         "greeting": {"type": "string", "default": "Hello from the native demo", "description": "Text of the native banner."},
-        "bannerColor": {"type": "string", "default": "#264653", "description": "Background of the native banner and the native screen, as #RRGGBB."},
-        "tickInterval": {"type": "number", "default": 1, "description": "Seconds between two tick events."},
-        "urlScheme": {"type": "string", "default": "haylendemo", "description": "URL scheme that opens the app, such as haylendemo://hello."},
+        "bannerColor": {"type": "string", "default": "#264653", "description": "Background of the native banner and the native screen, as \"#RRGGBB\"."},
+        "tickInterval": {"type": "number", "default": 1, "description": "Seconds between two \"tick\" events."},
+        "urlScheme": {"type": "string", "default": "haylendemo", "description": "URL scheme that opens the app, such as \"haylendemo://hello\"."},
         "cameraUsage": {"type": "string", "platforms": ["ios", "catalyst", "macos"], "default": "The Native Demo plugin asks for the camera to show how a plugin requests a permission.", "description": "Text of the camera permission prompt on Apple platforms."}
     },
     "apple": {

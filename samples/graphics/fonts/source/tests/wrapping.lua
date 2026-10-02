@@ -43,7 +43,7 @@ function Wrapping:update(dt)
     local style = {size = 34, maxWidth = self.width, lineSpacing = self.spacing}
     local english = fonts.get('crimson'):layout(kEnglish, style).lineCount
     local japanese = fonts.get('cjk'):layout(kJapanese, style).lineCount
-    self:setStatus(string.format('width %.0f, line spacing %.1f, %d lines of English and %d of Japanese', self.width, self.spacing, english, japanese))
+    self:setStatus(string.format('Width %.0f, line spacing %.1f, %d lines of English and %d of Japanese', self.width, self.spacing, english, japanese))
 end
 
 local function guide(x, top, bottom)

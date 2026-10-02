@@ -23,6 +23,8 @@ Text entry reads `input.text()`, the UTF-8 text typed in this frame, which follo
 
 On Android, hardware keyboards report their keys with modifiers and repeats and type characters, TV remotes report the directional pad as the arrow keys, select as `enter` and play and pause as `pause`, and the keys the app does not know, such as the volume keys, go on to the system. The Back button reaches the app as `escape` only while the app captures back or a text field edits, as [`window.setBackLeavesApp`](lua-api/window.md#windowsetbackleavesappenabled) describes. A view over the app that has the focus, such as a field of a plugin, takes the keys it wants first, and a key whose press went to such a view never reports its release to the app. The other way around, a key whose press the app took always reports its release to the app, also when a view took the focus in between, such as the hidden field of a text field that the press started editing, so no key stays held.
 
+The other platforms keep the same rule. On macOS the hidden field passes the release on to the view of the app, UIKit ends every press in the view it began in on iOS, iPadOS and tvOS, Mac Catalyst reads the keyboard through `GCKeyboard`, which reports every key whatever view has the focus, and the web page hands a release to `sokol_app` whenever its press reached it.
+
 ### Mouse
 
 Mouse buttons are `'left'`, `'right'` and `'middle'`. `input.mousePosition()` returns the position in design coordinates, `input.mouseDelta()` the movement of this frame (which keeps working while the mouse is locked with [haylen.window](lua-api/window.md)), `input.mouseScroll()` the wheel movement and `input.mouseInside()` whether the mouse is over the window.

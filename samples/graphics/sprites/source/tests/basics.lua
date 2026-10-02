@@ -11,12 +11,12 @@ local Basics = haylen.class('Basics', sample.Test)
 local kPivots = {{id = 'center', text = 'Center', x = 0.5, y = 0.5}, {id = 'feet', text = 'Feet', x = 0.5, y = 1}, {id = 'corner', text = 'Corner', x = 0, y = 0}}
 local kTints = {{id = 'none', text = 'None', color = '#FFFFFFFF'}, {id = 'red', text = 'Red', color = '#FFFF7070'}, {id = 'gold', text = 'Gold', color = '#FFFFD166'}, {id = 'ghost', text = 'Ghost', color = '#70FFFFFF'}}
 local kVariants = {
-    {label = 'pivot 0, 0 turned', properties = {pivotX = 0, pivotY = 0, rotation = 0.4}},
-    {label = 'scale 1.5, 0.75', properties = {scaleX = 1.5, scaleY = 0.75}},
-    {label = 'flipHorizontal', properties = {flipHorizontal = true}},
-    {label = 'flipVertical', properties = {flipVertical = true}},
-    {label = 'color', properties = {color = '#FF70C0FF'}},
-    {label = 'flash', properties = {flash = '#B0FFFFFF'}},
+    {label = 'Pivot 0, 0 turned', properties = {pivotX = 0, pivotY = 0, rotation = 0.4}},
+    {label = 'Scale 1.5, 0.75', properties = {scaleX = 1.5, scaleY = 0.75}},
+    {label = 'Property\n"flipHorizontal"', properties = {flipHorizontal = true}},
+    {label = 'Property\n"flipVertical"', properties = {flipVertical = true}},
+    {label = 'Color', properties = {color = '#FF70C0FF'}},
+    {label = 'Flash', properties = {flash = '#B0FFFFFF'}},
 }
 local kCode = [[
 local hero = graphics2d.newSprite(assets.texture('images/hero.png'), {x = 300, y = 300, pivotX = 0.5, pivotY = 1})
@@ -62,8 +62,8 @@ function Basics:enter()
                 self.hero.scaleX, self.hero.scaleY = event.value, event.value
             end}},
             ui.row{gap = 12,
-                ui.checkbox{id = 'flipHorizontal', text = 'flipHorizontal', onChange = function(event) self.hero.flipHorizontal = event.checked end},
-                ui.checkbox{id = 'flipVertical', text = 'flipVertical', onChange = function(event) self.hero.flipVertical = event.checked end},
+                ui.checkbox{id = 'flipHorizontal', text = 'Property "flipHorizontal"', onChange = function(event) self.hero.flipHorizontal = event.checked end},
+                ui.checkbox{id = 'flipVertical', text = 'Property "flipVertical"', onChange = function(event) self.hero.flipVertical = event.checked end},
             },
             ui.formField{label = 'Tint', ui.segmentedControl{id = 'tint', items = items(kTints), selected = 'none', onChange = function(event)
                 self.hero.color = find(kTints, event.value).color
@@ -92,7 +92,7 @@ function Basics:update(dt)
         self.hero.rotation = self.hero.rotation + dt
     end
     local hero = self.hero
-    self:status(string.format('pivot %.1f, %.1f   rotation %.2f   scale %.1f   flip %s %s   color %s', hero.pivotX, hero.pivotY, hero.rotation % (math.pi * 2), hero.scaleX, hero.flipHorizontal, hero.flipVertical, hero.color:toHex()))
+    self:status(string.format('Pivot %.1f, %.1f   rotation %.2f   scale %.1f   flip %s %s   color %s', hero.pivotX, hero.pivotY, hero.rotation % (math.pi * 2), hero.scaleX, hero.flipHorizontal, hero.flipVertical, hero.color:toHex()))
 end
 
 function Basics:draw(area)

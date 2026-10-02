@@ -89,8 +89,8 @@ function Materials:buildDensity()
     self.bodies[#self.bodies + 1] = plank
     self.bodies[#self.bodies + 1] = heavy
     self.bodies[#self.bodies + 1] = light
-    self.labels[#self.labels + 1] = {body = heavy, text = 'density 12'}
-    self.labels[#self.labels + 1] = {body = light, text = 'density 0.5'}
+    self.labels[#self.labels + 1] = {body = heavy, text = 'Density 12'}
+    self.labels[#self.labels + 1] = {body = light, text = 'Density 0.5'}
     self.titles[#self.titles + 1] = {text = 'Density', x = 540, y = -300}
 end
 
@@ -105,7 +105,7 @@ function Materials:update(dt)
         self:build()
     end
     self.grab:update(self.pointer, self.camera)
-    self:showStats(string.format('bodies %d\nstep %.2f ms', self.world.bodyCount, sample.milliseconds('physics step')))
+    self:showStats(string.format('Bodies %d\nStep %.2f ms', self.world.bodyCount, sample.milliseconds('physics step')))
 end
 
 function Materials:fixedUpdate(step)

@@ -8,11 +8,11 @@ local sample = require('sample')
 local TimeScale = haylen.class('TimeScale', sample.Test)
 
 local kLanes = {
-    {label = 'enemy 1', tag = 'enemies'},
-    {label = 'enemy 2', tag = 'enemies'},
-    {label = 'hud', tag = 'hud'},
-    {label = 'own scale', tag = ''},
-    {label = 'unscaled', tag = '', unscaled = true},
+    {label = 'Enemy 1', tag = 'enemies'},
+    {label = 'Enemy 2', tag = 'enemies'},
+    {label = 'HUD', tag = 'hud'},
+    {label = 'Own scale', tag = ''},
+    {label = 'Unscaled', tag = '', unscaled = true},
 }
 local kCode = [[
 tween.setTimeScale('enemies', 0.25)  -- Every tween tagged `enemies`, even new ones.
@@ -48,7 +48,7 @@ end
 
 function TimeScale:update(dt)
     TimeScale.super.update(self, dt)
-    self:status(string.format('enemies %.2f   hud %.2f   fourth %.2f   app %.2f', tween.timeScale('enemies'), tween.timeScale('hud'), self.handles[4].timeScale, haylen.timeScale()))
+    self:status(string.format('Enemies %.2f   HUD %.2f   fourth %.2f   app %.2f', tween.timeScale('enemies'), tween.timeScale('hud'), self.handles[4].timeScale, haylen.timeScale()))
 end
 
 function TimeScale:draw(area)

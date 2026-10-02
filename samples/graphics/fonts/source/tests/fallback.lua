@@ -59,7 +59,7 @@ function Fallback:render()
     graphics2d.drawLine(stage.x, y, stage.x + 1100, y, 2, sample.guide)
     self.alone:draw(stage.x + 180, y + 16)
     self.missing:draw(stage.x + 180, y + 92)
-    sample.caption('the first font that has it, and family:resolve for bold', stage.x + 1260, stage.y, {size = 26, color = '#FF8FB0FF'})
+    sample.caption('The first font that has it, and "family:resolve" for bold', stage.x + 1260, stage.y, {size = 26, color = '#FF8FB0FF'})
     graphics2d.drawRichText(self.notes, stage.x + 1260, stage.y + 44, {family = fonts.family('crimson'), size = 26})
 end
 

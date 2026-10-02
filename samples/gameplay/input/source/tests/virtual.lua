@@ -43,8 +43,8 @@ function Virtual:enter()
         overlay = {
             ui.touchStick{id = 'stick', action = 'move', floating = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 420, height = 420},
             ui.row{anchor = 'bottomRight', margin = {0, 540, 110, 0}, gap = 32,
-                ui.touchButton{id = 'dash', action = 'dash', text = 'Dash', size = 130, onPress = logged('dash press', sample.warm), onRelease = logged('dash release', sample.red)},
-                ui.touchButton{id = 'jump', action = 'jump', text = 'Jump', size = 130, onPress = logged('jump press', sample.warm), onRelease = logged('jump release', sample.red)},
+                ui.touchButton{id = 'dash', action = 'dash', text = 'Dash', size = 130, onPress = logged('Dash press', sample.warm), onRelease = logged('Dash release', sample.red)},
+                ui.touchButton{id = 'jump', action = 'jump', text = 'Jump', size = 130, onPress = logged('Jump press', sample.warm), onRelease = logged('Jump release', sample.red)},
             },
         },
     })
@@ -83,7 +83,7 @@ function Virtual:update(dt)
             table.remove(self.shots, index)
         end
     end
-    self:status(string.format('move %+.2f, %+.2f   jump %s   dash %s   shots %d   last device %s', mx, my, input.down('jump'), input.down('dash'), #self.shots, input.lastDevice()))
+    self:status(string.format('Move %+.2f, %+.2f   jump %s   dash %s   shots %d   last device %s', mx, my, input.down('jump'), input.down('dash'), #self.shots, input.lastDevice()))
 end
 
 function Virtual:draw(area)

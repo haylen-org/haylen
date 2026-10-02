@@ -22,7 +22,7 @@ function Events:enter()
         focus = 'ticks',
         controls = {
             ui.button{id = 'ticks', text = 'Start the native ticks', variant = 'primary', onClick = function() self:toggleTicks() end},
-            ui.label{text = 'Swift runs a Timer on the main run loop, Kotlin posts to the main Handler, JavaScript uses setInterval and C a thread of the library. The native part sent loaded retained when it loaded, before any Lua ran, and the bridge kept it for the first listener.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'Swift runs a "Timer" on the main run loop, Kotlin posts to the main "Handler", JavaScript uses "setInterval" and C a thread of the library. The native part sent "loaded" retained when it loaded, before any Lua ran, and the bridge kept it for the first listener.', color = 'textMuted', font = 'caption'},
             ui.label{font = 'monospace', text = "demo.onLoaded(function(payload)\n  print(payload.language)\nend)\ndemo.onTick(function(tick) print(tick.count) end)\ndemo.setTicking(true)"},
         },
     })
@@ -42,13 +42,13 @@ function Events:listenLoaded()
     if not self.native then
         return
     end
-    local name = 'loaded reaches a late listener'
+    local name = 'The event "loaded" reaches a late listener'
     if loaded.payload then
         self:showLoaded(name)
         return
     end
 
-    self.results:set('loaded', 'waiting', name, string.format('connected %.1f seconds after the app started', haylen.elapsed()))
+    self.results:set('loaded', 'waiting', name, string.format('Connected %.1f seconds after the app started', haylen.elapsed()))
     local connectedAt = haylen.elapsed()
     self.connections[#self.connections + 1] = demo.onLoaded(function(payload)
         loaded.payload = payload
@@ -57,14 +57,14 @@ function Events:listenLoaded()
     end)
     self:spawn(function()
         if not sample.waitFor(function() return loaded.payload ~= nil end, kLoadedWait) then
-            self.results:set('loaded', 'skip', name, 'loaded has not arrived. The native part sends it once, when it loads with the process, so an app that restarted in the same process, such as from the error screen, does not receive it again.')
+            self.results:set('loaded', 'skip', name, 'The event "loaded" has not arrived. The native part sends it once, when it loads with the process, so an app that restarted in the same process, such as from the error screen, does not receive it again.')
         end
     end)
 end
 
 function Events:showLoaded(name)
     local payload = loaded.payload
-    self.results:set('loaded', 'pass', name, string.format('%s sent loaded on %s when it loaded, and this listener, which connected %.1f seconds after the app started, received it because the event was retained.', payload.language, payload.platform, loaded.connectedAt))
+    self.results:set('loaded', 'pass', name, string.format('%s sent "loaded" on %s when it loaded, and this listener, which connected %.1f seconds after the app started, received it because the event was retained.', payload.language, payload.platform, loaded.connectedAt))
 end
 
 function Events:toggleTicks()
@@ -72,7 +72,7 @@ function Events:toggleTicks()
         local enabled = not self.ticking
         local answer, err = demo.setTicking(enabled):await()
         if err then
-            self.results:failure('ticks', 'tick events arrive every tickInterval seconds', err)
+            self.results:failure('ticks', 'The events "tick" arrive every "tickInterval" seconds', err)
             return
         end
         self.ticking = answer.enabled
@@ -80,8 +80,8 @@ function Events:toggleTicks()
         self:set('ticks', {text = self.ticking and 'Stop the native ticks' or 'Start the native ticks'})
         if self.ticking then
             self.ticks = {}
-            self.results:set('ticks', 'waiting', 'tick events arrive every tickInterval seconds', string.format('the native timer ticks every %s seconds', tostring(answer.interval)))
-            self.results:set('stopped', 'info', 'stopped ticks stay quiet', 'stop the ticks to check it')
+            self.results:set('ticks', 'waiting', 'The events "tick" arrive every "tickInterval" seconds', string.format('The native timer ticks every %s seconds', tostring(answer.interval)))
+            self.results:set('stopped', 'info', 'Stopped ticks stay quiet', 'Stop the ticks to check it')
         else
             self:checkQuiet()
         end
@@ -97,16 +97,16 @@ function Events:tick(payload)
     local first, last = self.ticks[1], self.ticks[#self.ticks]
     local average = #self.ticks > 1 and (last.at - first.at) / (#self.ticks - 1) or 0
     local state = self.ticking and #self.ticks >= kTicksToPass and 'pass' or 'waiting'
-    self.results:set('ticks', state, 'tick events arrive every tickInterval seconds', string.format('%d ticks from %s on the %s thread, the last with the count %d, %.2f seconds apart on average for an interval of %s seconds.', #self.ticks, payload.language, payload.thread, payload.count, average, tostring(self.interval)))
+    self.results:set('ticks', state, 'The events "tick" arrive every "tickInterval" seconds', string.format('%d ticks from %s on the %s thread, the last with the count %d, %.2f seconds apart on average for an interval of %s seconds.', #self.ticks, payload.language, payload.thread, payload.count, average, tostring(self.interval)))
 end
 
 -- Ticks already on their way may still arrive right after the stop, so the quiet time starts at the stop.
 function Events:checkQuiet()
     local stoppedAt = haylen.elapsed()
-    self.results:set('stopped', 'waiting', 'stopped ticks stay quiet', string.format('watching for %.1f seconds', kQuietSeconds))
+    self.results:set('stopped', 'waiting', 'Stopped ticks stay quiet', string.format('Watching for %.1f seconds', kQuietSeconds))
     sample.waitFor(function() return haylen.elapsed() - stoppedAt >= kQuietSeconds end, kQuietSeconds + 1)
     local late = self.lastTick and self.lastTick > stoppedAt + 0.1
-    self.results:set('stopped', late and 'fail' or 'pass', 'stopped ticks stay quiet', late and 'A tick arrived after the timer stopped.' or string.format('No tick arrived in the %.1f seconds after the timer stopped.', kQuietSeconds))
+    self.results:set('stopped', late and 'fail' or 'pass', 'Stopped ticks stay quiet', late and 'A tick arrived after the timer stopped.' or string.format('No tick arrived in the %.1f seconds after the timer stopped.', kQuietSeconds))
 end
 
 return Events

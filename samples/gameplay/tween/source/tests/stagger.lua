@@ -50,7 +50,7 @@ end
 
 function Stagger:update(dt)
     Stagger.super.update(self, dt)
-    self:status(string.format('origin %s   %d staggers playing', self.origin, tween.size()))
+    self:status(string.format('Origin %s   %d staggers playing', self.origin, tween.size()))
 end
 
 function Stagger:draw(area)

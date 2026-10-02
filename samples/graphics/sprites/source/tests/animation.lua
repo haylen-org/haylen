@@ -32,10 +32,10 @@ function Animation:enter()
     self.hero.animator:play('idle')
     self.hero.animator.onFrame = function(name, frame)
         if name == 'attack' and frame == 3 then
-            self:log('onFrame attack 3: the blow lands')
+            self:log('Callback "onFrame" at frame 3 of "attack": the blow lands')
         end
     end
-    self.hero.animator.onFinish = function(name) self:log('onFinish ' .. name) end
+    self.hero.animator.onFinish = function(name) self:log('Callback "onFinish" for "' .. name .. '"') end
 
     self.loops = {}
     for index, mode in ipairs(kLoops) do
@@ -76,14 +76,14 @@ end
 
 function Animation:play(name)
     self.hero.animator:play(name, true)
-    self:log('play ' .. name)
+    self:log('Play "' .. name .. '"')
 end
 
 function Animation:combo()
     self:play('attack')
     self.hero.animator:queue('run')
     self.hero.animator:queue('idle')
-    self:log('queued run and idle, ' .. self.hero.animator.queuedCount .. ' waiting')
+    self:log('Queued "run" and "idle", ' .. self.hero.animator.queuedCount .. ' waiting')
 end
 
 function Animation:update(dt)
@@ -97,7 +97,7 @@ function Animation:update(dt)
         entry.animator:apply(entry.sprite)
     end
     local animator = self.hero.animator
-    self:status(string.format('%s frame %d   time %.2f   playing %s   finished %s   queued %d   speed %.2f', animator.current, animator.frame, animator.time, animator.playing, animator.finished, animator.queuedCount, animator.speed))
+    self:status(string.format('Clip %s   frame %d   time %.2f   playing %s   finished %s   queued %d   speed %.2f', animator.current, animator.frame, animator.time, animator.playing, animator.finished, animator.queuedCount, animator.speed))
 end
 
 function Animation:draw(area)
@@ -111,7 +111,7 @@ function Animation:draw(area)
         local x = area.width * (0.45 + index * 0.13)
         entry.sprite.x, entry.sprite.y = x, area.height * 0.8
         entry.sprite:draw()
-        graphics2d.drawText(nil, kLoops[index], x, area.height * 0.8 + 80, {size = 24, color = sample.ink, anchor = {0.5, 0.5}})
+        graphics2d.drawText(nil, 'Loop "' .. kLoops[index] .. '"', x, area.height * 0.8 + 80, {size = 24, color = sample.ink, anchor = {0.5, 0.5}})
     end
 end
 

@@ -52,7 +52,7 @@ function Fs:content()
     end
     return {
         ui.panel{width = 560, align = 'stretch', gap = 12,
-            ui.sectionTitle{text = 'Varn fs'},
+            ui.sectionTitle{text = 'Varn module "fs"'},
             ui.grid{columns = 2, gap = 12, children = buttons},
             ui.progress{id = 'progress', value = 0, text = 'No stream yet'},
             ui.label{text = 'Paths are built from "storage.root()": ' .. self.base, font = 'caption', color = 'textMuted'},
@@ -81,28 +81,28 @@ end
 
 function Fs:mkdir()
     need(fs.mkdir(self.base .. '/logs/archive'))
-    return 'fs.mkdir(root .. \'/fs-demo/logs/archive\') created every missing folder'
+    return 'The call "fs.mkdir(root .. \'/fs-demo/logs/archive\')" created every missing folder'
 end
 
 function Fs:writeFile()
     need(fs.mkdir(self.base .. '/logs'))
     need(fs.writeFile(self.log, string.format('Run started %s\n', os.date('%H:%M:%S'))))
-    return 'fs.writeFile(root .. \'/fs-demo/logs/run.txt\', text)'
+    return 'Called "fs.writeFile(root .. \'/fs-demo/logs/run.txt\', text)"'
 end
 
 function Fs:append()
     need(fs.append(self.log, string.format('%s all is well\n', os.date('%H:%M:%S'))))
-    return 'fs.append(root .. \'/fs-demo/logs/run.txt\', line)'
+    return 'Called "fs.append(root .. \'/fs-demo/logs/run.txt\', line)"'
 end
 
 function Fs:readFile()
     local text = need(fs.readFile(self.log))
-    return string.format('fs.readFile read %s: %s', sample.bytes(#text), text:gsub('\n', ' | '):sub(1, 90))
+    return string.format('The call "fs.readFile" read %s: %s', sample.bytes(#text), text:gsub('\n', ' | '):sub(1, 90))
 end
 
 function Fs:stat()
     local info = need(fs.stat(self.log))
-    return string.format('fs.stat: %s, file %s, changed %s', sample.bytes(info.size), tostring(info.isFile), sample.time(info.mtime))
+    return string.format('The call "fs.stat" gave %s, file %s, changed %s', sample.bytes(info.size), tostring(info.isFile), sample.time(info.mtime))
 end
 
 function Fs:readdir()
@@ -110,14 +110,14 @@ function Fs:readdir()
     table.sort(names)
     local logs = fs.exists(self.base .. '/logs') and need(fs.readdir(self.base .. '/logs')) or {}
     table.sort(logs)
-    return string.format('fs.readdir: fs-demo holds %s, logs holds %s', table.concat(names, ', '), #logs > 0 and table.concat(logs, ', ') or 'nothing')
+    return string.format('The call "fs.readdir" says "fs-demo" holds %s, "logs" holds %s', table.concat(names, ', '), #logs > 0 and table.concat(logs, ', ') or 'nothing')
 end
 
 function Fs:copy()
     local copy = self.base .. '/logs/run-copy.txt'
     need(fs.copy(self.log, copy))
     need(fs.rename(copy, self.base .. '/logs/archive/run-' .. os.date('%H%M%S') .. '.txt'))
-    return 'fs.copy to run-copy.txt, then fs.rename into logs/archive'
+    return 'Called "fs.copy" to "run-copy.txt", then "fs.rename" into "logs/archive"'
 end
 
 -- Writes a large file through an open handle one chunk at a time and reads it back the same way, with the bar showing how far each pass got.
@@ -145,13 +145,13 @@ end
 
 function Fs:missing()
     local _, message = fs.readFile(self.base .. '/missing.txt'):await()
-    return 'fs.readFile of a missing file resolved with nil and: ' .. tostring(message)
+    return 'The call "fs.readFile" of a missing file resolved with "nil" and: ' .. tostring(message)
 end
 
 function Fs:remove()
     need(fs.removeRecursive(self.base))
     self:show('progress', {value = 0, text = 'No stream yet'})
-    return string.format('fs.removeRecursive removed fs-demo, fs.exists is now %s', tostring(fs.exists(self.base)))
+    return string.format('The call "fs.removeRecursive" removed "fs-demo", "fs.exists" is now %s', tostring(fs.exists(self.base)))
 end
 
 return Fs

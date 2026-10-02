@@ -18,7 +18,7 @@ local kStructures = {
     {id = 'hash', text = 'Spatial hash'},
     {id = 'quad', text = 'Quadtree'},
     {id = 'aabb', text = 'Dynamic AABB tree'},
-    {id = 'kd', text = 'k-d tree'},
+    {id = 'kd', text = 'K-d tree'},
 }
 local kQueries = {
     {id = 'rect', text = 'Rectangle'},
@@ -113,13 +113,13 @@ end
 function Spatial:detail()
     local structure = self.structure
     if self.kind == 'hash' then
-        return string.format('cell size %d', structure.cellSize)
+        return string.format('Cell size %d', structure.cellSize)
     elseif self.kind == 'quad' then
-        return string.format('quadrants %d', structure.nodeCount)
+        return string.format('Quadrants %d', structure.nodeCount)
     elseif self.kind == 'aabb' then
-        return string.format('tree height %d', structure.height)
+        return string.format('Tree height %d', structure.height)
     end
-    return string.format('built %s', tostring(structure.built))
+    return string.format('Built %s', tostring(structure.built))
 end
 
 function Spatial:exit()
@@ -151,7 +151,7 @@ function Spatial:update(dt)
     profiler.endScope()
 
     local structure = self.structure
-    self:showStats(string.format('stored %d\n%s\nfound %d\nupdate %.3f ms\nquery %.3f ms', structure.size, self:detail(), #self.found, self:timing('spatial update'), self:timing('spatial query')))
+    self:showStats(string.format('Stored %d\n%s\nFound %d\nUpdate %.3f ms\nQuery %.3f ms', structure.size, self:detail(), #self.found, self:timing('spatial update'), self:timing('spatial query')))
 end
 
 function Spatial:render()

@@ -116,9 +116,9 @@ function Utility:update(dt)
     local villager = self.selected
     local lines = {}
     for _, option in ipairs(self.brain.options) do
-        lines[#lines + 1] = string.format('%-6s %.2f', option, self.brain:score(option, villager))
+        lines[#lines + 1] = string.format('Option %-6s %.2f', option, self.brain:score(option, villager))
     end
-    self:showStats(string.format('selected villager\nhunger %.2f\ntiredness %.2f\nboredom %.2f\ntask %s\n%s', villager.hunger, villager.tiredness, villager.boredom, villager.task or '-', table.concat(lines, '\n')))
+    self:showStats(string.format('Selected villager\nHunger %.2f\nTiredness %.2f\nBoredom %.2f\nTask %s\n%s', villager.hunger, villager.tiredness, villager.boredom, villager.task or '-', table.concat(lines, '\n')))
 end
 
 function Utility:render()

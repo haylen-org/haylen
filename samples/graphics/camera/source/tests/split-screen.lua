@@ -53,7 +53,7 @@ function SplitScreen:update(dt)
         self.cameras[index]:update(dt)
     end
     local distance = math.sqrt((self.players[1].x - self.players[2].x) ^ 2 + (self.players[1].y - self.players[2].y) ^ 2)
-    self:setStatus(string.format('players %.0f apart, %d canvases', distance, graphics2d.stats().canvases))
+    self:setStatus(string.format('Players %.0f apart, %d canvases', distance, graphics2d.stats().canvases))
 end
 
 function SplitScreen:render()

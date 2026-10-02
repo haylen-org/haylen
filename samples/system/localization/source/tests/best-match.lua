@@ -55,7 +55,7 @@ function BestMatch:content()
         },
         ui.panel{grow = 1, align = 'stretch', gap = 12,
             ui.label{text = 'The app has "' .. table.concat(localization.languages(), '", "') .. '".', color = 'textMuted'},
-            ui.table{id = 'tags', columns = {{text = 'Tag', width = 260}, {text = 'localization.findBestMatch', width = 360}, {text = 'Why'}}, rows = rows, onSelect = function(event)
+            ui.table{id = 'tags', columns = {{text = 'Tag', width = 260}, {text = 'Result of "findBestMatch"', width = 360}, {text = 'Why'}}, rows = rows, onSelect = function(event)
                 local match = localization.findBestMatch(event.item)
                 if match then
                     language.use(match)
@@ -82,7 +82,7 @@ end
 function BestMatch:typeTag(tag)
     self.typed = tag
     local match = tag ~= '' and localization.findBestMatch(tag) or nil
-    self:show('typed', {text = string.format("localization.findBestMatch('%s')\nreturns %s\n%s", tag, match and "'" .. match .. "'" or 'nil', reason(tag, match))})
+    self:show('typed', {text = string.format('The call "localization.findBestMatch(\'%s\')"\nReturns %s\n%s', tag, match and '"' .. match .. '"' or '"nil"', reason(tag, match))})
 end
 
 return BestMatch

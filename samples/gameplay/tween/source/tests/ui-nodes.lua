@@ -65,7 +65,7 @@ end
 function UiNodes:update(dt)
     UiNodes.super.update(self, dt)
     local card = self.card:transform('card')
-    self:status(string.format('card offset %.0f, %.0f   opacity %.2f   claim scale %.2f', card.offset.x, card.offset.y, card.opacity, self.card:transform('claim').scale.x))
+    self:status(string.format('Card offset %.0f, %.0f   opacity %.2f   claim scale %.2f', card.offset.x, card.offset.y, card.opacity, self.card:transform('claim').scale.x))
 end
 
 return UiNodes

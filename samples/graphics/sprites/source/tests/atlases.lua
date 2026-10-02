@@ -66,7 +66,7 @@ function Atlases:update(dt)
         entry.animator:apply(entry.sprite)
     end
     local frame = self.gems:frame('coin_' .. (self.players.coin.animator.frame - 1) .. '.png')
-    self:status(string.format('coin frame %d: %.0f x %.0f of %.0f x %.0f at offset %.0f, %.0f   walker cell %d', self.players.coin.animator.frame, frame.source.width, frame.source.height, frame.originalSize.x, frame.originalSize.y, frame.offset.x, frame.offset.y, kRunFrames[self.players.walker.animator.frame]))
+    self:status(string.format('Coin frame %d: %.0f x %.0f of %.0f x %.0f at offset %.0f, %.0f   walker cell %d', self.players.coin.animator.frame, frame.source.width, frame.source.height, frame.originalSize.x, frame.originalSize.y, frame.offset.x, frame.offset.y, kRunFrames[self.players.walker.animator.frame]))
 end
 
 -- Draws a texture at a scale with an outline around every source rectangle of `sources`.
@@ -112,7 +112,7 @@ function Atlases:draw(area)
     for index, tag in ipairs(kTags) do
         local x = column + column * (index - 0.5) / 3
         place(self.players[tag], x, area.height * 0.72)
-        graphics2d.drawText(nil, tag, x, area.height * 0.72 + 80, {size = 22, color = sample.muted, anchor = {0.5, 0.5}})
+        graphics2d.drawText(nil, 'Tag "' .. tag .. '"', x, area.height * 0.72 + 80, {size = 22, color = sample.muted, anchor = {0.5, 0.5}})
     end
     local bubble = {column + column / 2 - 110, area.height * 0.47, 220, 90}
     graphics2d.drawNineSlice(self.bubble, bubble, '#FFFFFFFF', nil, 2)

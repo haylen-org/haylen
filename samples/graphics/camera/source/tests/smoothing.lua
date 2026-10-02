@@ -42,7 +42,7 @@ function Smoothing:update(dt)
     self.camera:follow(self.player.x, self.player.y, dt)
     self.camera:update(dt)
     local camera = self.camera
-    self:setStatus(string.format('lead %.0f, %.0f, smoothing %s at %.1f', camera.x - self.player.x, camera.y - self.player.y, tostring(camera.positionSmoothing), camera.positionSmoothingSpeed))
+    self:setStatus(string.format('Lead %.0f, %.0f, smoothing %s at %.1f', camera.x - self.player.x, camera.y - self.player.y, tostring(camera.positionSmoothing), camera.positionSmoothingSpeed))
 end
 
 function Smoothing:render()

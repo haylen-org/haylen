@@ -63,7 +63,7 @@ local kLines = {
     {'heartbeat bpm=90', '[heartbeat bpm=90]Low health[/heartbeat] [icon=heart]'},
     {'drop cycle=4', '[drop cycle=4]Treasure found[/drop] [icon=coin] [icon=coin]'},
     {'blink rate=2', 'Press any key[blink rate=2]_[/blink]'},
-    {'nested with built-ins', '[wave amp=6][ghost]A haunted tide[/ghost][/wave]'},
+    {'wave amp=6][ghost', '[wave amp=6][ghost]A haunted tide[/ghost][/wave]'},
 }
 
 function CustomEffects:init(entry)
@@ -79,7 +79,7 @@ function CustomEffects:update(dt)
     for _, line in ipairs(self.lines) do
         line.text:update(dt)
     end
-    self:setStatus('registered effects: ' .. self.effects)
+    self:setStatus('Registered effects: ' .. self.effects)
 end
 
 function CustomEffects:render()

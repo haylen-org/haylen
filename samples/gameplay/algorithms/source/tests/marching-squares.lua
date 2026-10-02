@@ -118,7 +118,7 @@ function MarchingSquares:update(dt)
     if self.pointer.down then
         self:paint(dt)
     end
-    self:showStats(string.format('samples %d\noutlines %d\npoints %d\ntrace %.3f ms', kColumns * kRows, #self.outlines, self.points, self:timing('marching squares')))
+    self:showStats(string.format('Samples %d\nOutlines %d\nPoints %d\nTrace %.3f ms', kColumns * kRows, #self.outlines, self.points, self:timing('marching squares')))
 end
 
 function MarchingSquares:render()

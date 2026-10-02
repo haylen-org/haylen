@@ -99,7 +99,7 @@ function Pause:update(dt)
             ball.vy = -ball.vy
         end
     end
-    self:status(string.format('paused %s   pausable ticks %d   always ticks %d', haylen.paused(), self.ticks.pausable, self.ticks.always))
+    self:status(string.format('Paused %s   "pausable" ticks %d   "always" ticks %d', haylen.paused(), self.ticks.pausable, self.ticks.always))
 end
 
 function Pause:draw(area)
@@ -107,7 +107,7 @@ function Pause:draw(area)
     for _, ball in ipairs(self.balls) do
         graphics2d.drawCircle(ball.x, ball.y, 26, haylen.paused() and sample.muted or sample.accent)
     end
-    graphics2d.drawText(nil, 'pausable ' .. self.ticks.pausable .. '   always ' .. self.ticks.always, area.width - 30, 20, {size = 30, color = sample.warm, anchor = {1, 0}})
+    graphics2d.drawText(nil, 'Timer "pausable" ' .. self.ticks.pausable .. '   timer "always" ' .. self.ticks.always, area.width - 30, 20, {size = 30, color = sample.warm, anchor = {1, 0}})
     self.journal:draw(24, area.height / 2 + 16, area.height / 2 - 32, 26)
 end
 

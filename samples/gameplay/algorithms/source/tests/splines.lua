@@ -73,7 +73,7 @@ function Splines:update(dt)
         self:rebuild()
     end
     self.traveled = (self.traveled + kSpeed * dt) % self.spline.length
-    self:showStats(string.format('kind %s\nsegments %d\nlength %.0f\nsamples %d', self.spline.kind, self.spline.segmentCount, self.spline.length, #self.samples))
+    self:showStats(string.format('Kind %s\nSegments %d\nLength %.0f\nSamples %d', self.spline.kind, self.spline.segmentCount, self.spline.length, #self.samples))
 end
 
 function Splines:render()

@@ -40,7 +40,7 @@ function Follow:update(dt)
     self.player:update(dt, self.camera)
     self.camera:follow(self.player.x, self.player.y, dt)
     self.camera:update(dt)
-    self:setStatus(string.format('player %.0f, %.0f, camera %.0f, %.0f', self.player.x, self.player.y, self.camera.x, self.camera.y))
+    self:setStatus(string.format('Player %.0f, %.0f, camera %.0f, %.0f', self.player.x, self.player.y, self.camera.x, self.camera.y))
 end
 
 function Follow:render()

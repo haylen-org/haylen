@@ -42,7 +42,7 @@ function Blend:update(dt)
     self.follow:follow(self.player.x, self.player.y, dt)
     self.follow:update(dt)
     self.view = graphics2d.blendCameras(self.follow, self.landmark, self.cut.amount)
-    self:setStatus(string.format('amount %.2f, zoom %.2f, rotation %.2f', self.cut.amount, self.view.zoom.x, self.view.rotation))
+    self:setStatus(string.format('Amount %.2f, zoom %.2f, rotation %.2f', self.cut.amount, self.view.zoom.x, self.view.rotation))
 end
 
 function Blend:render()

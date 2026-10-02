@@ -98,7 +98,7 @@ function Terrain:update(dt)
     if self.terrain.dirtyChunkCount > 0 then
         self.lastRebuilt = self:rebuild()
     end
-    self:showStats(string.format('chunks %d\nlast rebuild %d chunks\ntotal rebuilt %d\nstep %.2f ms', self.terrain.chunkCount, self.lastRebuilt or 0, self.rebuilt, sample.milliseconds('physics step')))
+    self:showStats(string.format('Chunks %d\nLast rebuild %d chunks\nTotal rebuilt %d\nStep %.2f ms', self.terrain.chunkCount, self.lastRebuilt or 0, self.rebuilt, sample.milliseconds('physics step')))
 end
 
 function Terrain:fixedUpdate(step)

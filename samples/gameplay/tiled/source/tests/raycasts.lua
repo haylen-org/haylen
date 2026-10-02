@@ -77,13 +77,13 @@ function Raycasts:update(dt)
     profiler.endScope()
 
     local first = self.rays[1]
-    local summary = 'no hit'
+    local summary = 'No hit'
     if first.source == 'tile' then
-        summary = string.format('tile %d at cell %d, %d\nclass %s', tiled.tileId(first.hit.gid), first.hit.column, first.hit.row, self.map:tileInfo(first.hit.gid).type)
+        summary = string.format('Tile %d at cell %d, %d\nClass %s', tiled.tileId(first.hit.gid), first.hit.column, first.hit.row, self.map:tileInfo(first.hit.gid).type)
     elseif first.source == 'object' then
-        summary = string.format('object %s of class %s', first.hit.name, first.hit.type)
+        summary = string.format('Object "%s" of class "%s"', first.hit.name, first.hit.type)
     end
-    self:showStats(string.format('%s\ndistance %.0f\n%d rays in %.3f ms', summary, first.hit and first.hit.distance or 0, count, self:timing('tiled casts')))
+    self:showStats(string.format('%s\nDistance %.0f\n%d rays in %.3f ms', summary, first.hit and first.hit.distance or 0, count, self:timing('tiled casts')))
 end
 
 function Raycasts:render()

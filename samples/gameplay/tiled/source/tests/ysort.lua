@@ -65,7 +65,7 @@ function YSort:update(dt)
         self.hero.flipHorizontal = x < 0
     end
     self.hero.x, self.hero.y = self.position[1], self.position[2]
-    self:showStats(string.format('hero feet at %.0f, %.0f\nsorting %s\ndraws %d', self.position[1], self.position[2], self.sorting and 'by y' or 'by layer only', graphics2d.stats().sprites))
+    self:showStats(string.format('Hero feet at %.0f, %.0f\nSorting %s\nDraws %d', self.position[1], self.position[2], self.sorting and 'by y' or 'by layer only', graphics2d.stats().sprites))
 end
 
 function YSort:render()

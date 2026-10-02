@@ -12,11 +12,11 @@ local Keyboard = haylen.class('Keyboard', sample.Test)
 
 -- Each row lists key names with an optional label and width in key units.
 local kRows = {
-    {{'escape', 'esc'}, {'digit1', '1'}, {'digit2', '2'}, {'digit3', '3'}, {'digit4', '4'}, {'digit5', '5'}, {'digit6', '6'}, {'digit7', '7'}, {'digit8', '8'}, {'digit9', '9'}, {'digit0', '0'}, {'minus', '-'}, {'equal', '='}, {'backspace', 'back', 1.6}},
-    {{'tab', 'tab', 1.4}, {'q'}, {'w'}, {'e'}, {'r'}, {'t'}, {'y'}, {'u'}, {'i'}, {'o'}, {'p'}, {'leftBracket', '['}, {'rightBracket', ']'}, {'backslash', '\\', 1.2}},
-    {{'capsLock', 'caps', 1.7}, {'a'}, {'s'}, {'d'}, {'f'}, {'g'}, {'h'}, {'j'}, {'k'}, {'l'}, {'semicolon', ';'}, {'apostrophe', "'"}, {'enter', 'enter', 1.9}},
-    {{'leftShift', 'shift', 2.2}, {'z'}, {'x'}, {'c'}, {'v'}, {'b'}, {'n'}, {'m'}, {'comma', ','}, {'period', '.'}, {'slash', '/'}, {'rightShift', 'shift', 2.4}},
-    {{'leftControl', 'ctrl', 1.4}, {'leftSuper', 'super', 1.4}, {'leftAlt', 'alt', 1.4}, {'space', 'space', 5.2}, {'rightAlt', 'alt', 1.4}, {'left', '<'}, {'up', '^'}, {'down', 'v'}, {'right', '>'}},
+    {{'escape', 'Esc'}, {'digit1', '1'}, {'digit2', '2'}, {'digit3', '3'}, {'digit4', '4'}, {'digit5', '5'}, {'digit6', '6'}, {'digit7', '7'}, {'digit8', '8'}, {'digit9', '9'}, {'digit0', '0'}, {'minus', '-'}, {'equal', '='}, {'backspace', 'Back', 1.6}},
+    {{'tab', 'Tab', 1.4}, {'q'}, {'w'}, {'e'}, {'r'}, {'t'}, {'y'}, {'u'}, {'i'}, {'o'}, {'p'}, {'leftBracket', '['}, {'rightBracket', ']'}, {'backslash', '\\', 1.2}},
+    {{'capsLock', 'Caps', 1.7}, {'a'}, {'s'}, {'d'}, {'f'}, {'g'}, {'h'}, {'j'}, {'k'}, {'l'}, {'semicolon', ';'}, {'apostrophe', "'"}, {'enter', 'Enter', 1.9}},
+    {{'leftShift', 'Shift', 2.2}, {'z'}, {'x'}, {'c'}, {'v'}, {'b'}, {'n'}, {'m'}, {'comma', ','}, {'period', '.'}, {'slash', '/'}, {'rightShift', 'Shift', 2.4}},
+    {{'leftControl', 'Ctrl', 1.4}, {'leftSuper', 'Super', 1.4}, {'leftAlt', 'Alt', 1.4}, {'space', 'Space', 5.2}, {'rightAlt', 'Alt', 1.4}, {'left', '<'}, {'up', '^'}, {'down', 'v'}, {'right', '>'}},
 }
 local kUnits = 15.6
 local kFlash = 0.35
@@ -28,7 +28,7 @@ function Keyboard:enter()
         local offset = 0
         for _, key in ipairs(keys) do
             local width = key[3] or 1
-            self.keys[#self.keys + 1] = {name = key[1], label = key[2] or key[1], row = row, offset = offset, width = width, pressed = 0, released = 0}
+            self.keys[#self.keys + 1] = {name = key[1], label = key[2] or key[1]:upper(), row = row, offset = offset, width = width, pressed = 0, released = 0}
             offset = offset + width
         end
     end
@@ -64,9 +64,9 @@ end
 function Keyboard:event(event)
     if event.type == 'keyDown' or event.type == 'keyUp' then
         local repeated = event['repeat'] and ' (repeat)' or ''
-        self.journal:add(event.type .. ' ' .. event.key .. repeated, event.type == 'keyDown' and sample.warm or sample.red)
+        self.journal:add('Event "' .. event.type .. '" for "' .. event.key .. '"' .. repeated, event.type == 'keyDown' and sample.warm or sample.red)
     elseif event.type == 'character' then
-        self.journal:add('character ' .. event.character, sample.green)
+        self.journal:add('Character "' .. event.character .. '"', sample.green)
     end
 end
 
@@ -93,7 +93,7 @@ function Keyboard:update(dt)
             held[#held + 1] = name
         end
     end
-    self:status(string.format('presses %d   modifiers %s   text %d characters', self.presses, #held > 0 and table.concat(held, '+') or 'none', utf8.len(self.text) or 0))
+    self:status(string.format('Presses %d   modifiers %s   text %d characters', self.presses, #held > 0 and table.concat(held, '+') or 'none', utf8.len(self.text) or 0))
 end
 
 function Keyboard:drawKeys(left, top)
@@ -116,7 +116,7 @@ function Keyboard:drawModifiers(left, top)
     for index, name in ipairs(kModifiers) do
         local x = left + (index - 1) * 150
         graphics2d.drawRect({x, top, 136, 44}, modifiers[name] and sample.green or sample.surface)
-        sample.caption(name, x + 68, top + 22, {color = modifiers[name] and '#FF101418' or sample.muted, anchor = {0.5, 0.5}})
+        sample.caption(name:sub(1, 1):upper() .. name:sub(2), x + 68, top + 22, {color = modifiers[name] and '#FF101418' or sample.muted, anchor = {0.5, 0.5}})
     end
 end
 
@@ -128,7 +128,7 @@ function Keyboard:draw(area)
 
     local box = {left, below + 64, kUnits * self.unit, area.height - below - 88}
     graphics2d.drawRect(box, sample.surface)
-    sample.caption('input.text()', box[1] + 12, box[2] + 10)
+    sample.caption('Text from "input.text()"', box[1] + 12, box[2] + 10)
     local caret = math.floor(haylen.elapsed() * 2) % 2 == 0 and '|' or ''
     graphics2d.drawText(nil, self.text .. caret, box[1] + 12, box[2] + 44, {size = 30, color = sample.ink, maxWidth = box[3] - 24, layer = 2})
 

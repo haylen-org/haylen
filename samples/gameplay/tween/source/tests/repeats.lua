@@ -52,13 +52,13 @@ function Repeats:update(dt)
     if input.pressed('replay') then
         self:play()
     end
-    self:set('loops', {text = string.format('Loops begun\nrestart %d\nyoyo %d\nincremental %d', self.loops[1], self.loops[2], self.loops[3])})
-    self:status(string.format('restart %.0f   yoyo %.0f   incremental %.0f', self.boxes[1].x, self.boxes[2].x, self.boxes[3].x))
+    self:set('loops', {text = string.format('Loops begun\nMode "restart" %d\nMode "yoyo" %d\nMode "incremental" %d', self.loops[1], self.loops[2], self.loops[3])})
+    self:status(string.format('Mode "restart" %.0f   "yoyo" %.0f   "incremental" %.0f', self.boxes[1].x, self.boxes[2].x, self.boxes[3].x))
 end
 
 function Repeats:draw(area)
     for index, lane in ipairs(sample.lanes(area, 3)) do
-        sample.drawLane(lane, kModes[index], self.boxes[index].x, index == 3 and sample.green or sample.accent)
+        sample.drawLane(lane, 'Mode\n"' .. kModes[index] .. '"', self.boxes[index].x, index == 3 and sample.green or sample.accent)
     end
 end
 

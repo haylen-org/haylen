@@ -75,7 +75,7 @@ function CustomEffect:push(name)
     end
     local transition = {effect = CustomEffect[name], duration = 1.1, ease = 'cubicInOut'}
     self.pushed = self.pushed + 1
-    scene.push(Card({title = name, caption = 'a Lua transition effect', color = self.pushed % 2 == 0 and '#FF3E6E8A' or '#FF8A4E3E', stay = 1.2, leave = transition}), transition)
+    scene.push(Card({title = 'Effect "' .. name .. '"', caption = 'A Lua transition effect', color = self.pushed % 2 == 0 and '#FF3E6E8A' or '#FF8A4E3E', stay = 1.2, leave = transition}), transition)
     self:setStatus(string.format('%d cards pushed with custom effects', self.pushed))
 end
 

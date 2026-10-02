@@ -64,7 +64,7 @@ function Worlds:update(dt)
         end
     end
     local hovered = self.hovered
-    self:showStats(string.format('maps %d\nworld %.0f x %.0f\n%s', #self.placed, self.area.width, self.area.height, hovered and string.format('%s\n%s\nat %.0f, %.0f', hovered.title, hovered.path, hovered.bounds.x, hovered.bounds.y) or 'point at a map'))
+    self:showStats(string.format('Maps %d\nWorld %.0f x %.0f\n%s', #self.placed, self.area.width, self.area.height, hovered and string.format('%s\nFile "%s"\nAt %.0f, %.0f', hovered.title, hovered.path, hovered.bounds.x, hovered.bounds.y) or 'Point at a map'))
 end
 
 function Worlds:render()

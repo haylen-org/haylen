@@ -67,7 +67,7 @@ function Orientations:update(dt)
     local map = self.map
     self.column, self.row = map:worldToCell(self.pointer.worldX, self.pointer.worldY)
     local x, y = map:cellToWorld(self.column, self.row)
-    self:showStats(string.format('orientation %s\nsize %d x %d cells\ntile %d x %d\ncell %d, %d\ncell corner %.0f, %.0f\nstagger %s, %s\nhex side %d\nskew %d, %d', map.orientation, map.width, map.height, map.tileWidth, map.tileHeight, self.column, self.row, x, y, map.staggerX and 'x' or 'y', map.staggerEven and 'even' or 'odd', map.hexSideLength, map.skewX, map.skewY))
+    self:showStats(string.format('Orientation %s\nSize %d x %d cells\nTile %d x %d\nCell %d, %d\nCell corner %.0f, %.0f\nStagger %s, %s\nHex side %d\nSkew %d, %d', map.orientation, map.width, map.height, map.tileWidth, map.tileHeight, self.column, self.row, x, y, map.staggerX and 'x' or 'y', map.staggerEven and 'even' or 'odd', map.hexSideLength, map.skewX, map.skewY))
 end
 
 -- Orthogonal, isometric and oblique cells share their corners with their neighbors, so four calls of `cellToWorld` outline them. Staggered and hexagonal cells sit in their bounding boxes.

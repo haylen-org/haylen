@@ -16,7 +16,7 @@ function Urls:enter()
         hint = 'Open a link with the scheme of the plugin while the app runs, or to launch it.',
         focus = 'back',
         controls = {
-            ui.label{text = string.format('The plugin declares %s:// in CFBundleURLTypes on Apple platforms and in an intent filter of the link activity on Android. The web stands in with the hash of the page address.', scheme), color = 'textMuted', font = 'caption'},
+            ui.label{text = string.format('The plugin declares "%s://" in "CFBundleURLTypes" on Apple platforms and in an intent filter of the link activity on Android. The web stands in with the hash of the page address.', scheme), color = 'textMuted', font = 'caption'},
             ui.label{font = 'monospace', text = string.format('xcrun simctl openurl booted %s://hello\nopen %s://hello\nadb shell am start -a android.intent.action.VIEW -d %s://hello\nhttp://localhost:8000/#hello', scheme, scheme, scheme)},
         },
     })
@@ -39,13 +39,13 @@ end
 
 function Urls:show()
     if #received == 0 then
-        self.results:set('opened', 'waiting', 'a link opens the app', 'No link has opened the app yet.')
+        self.results:set('opened', 'waiting', 'A link opens the app', 'No link has opened the app yet.')
         return
     end
     local opened = #received == 1 and 'A link opened the app' or string.format('%d links opened the app', #received)
-    self.results:set('opened', 'pass', 'a link opens the app', opened .. ', which the native part sent as urlOpened.')
+    self.results:set('opened', 'pass', 'A link opens the app', opened .. ', which the native part sent as "urlOpened".')
     for index, entry in ipairs(received) do
-        self.results:set(index, 'info', 'urlOpened ' .. index, string.format('%s arrived at frame %d.', entry.url, entry.frame))
+        self.results:set(index, 'info', 'Event "urlOpened" ' .. index, string.format('The link "%s" arrived at frame %d.', entry.url, entry.frame))
     end
 end
 

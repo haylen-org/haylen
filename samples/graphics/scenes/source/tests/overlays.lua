@@ -38,7 +38,7 @@ function Overlay:renderUi()
     local panel = {area.x + 380 + offset, area.y + 360 + offset, 700, self.kind == 'hud' and 120 or 300}
     graphics2d.drawRect(panel, self.kind == 'hud' and '#C0203048' or '#F0283048', {layer = 1})
     graphics2d.drawRectOutline(panel, 4, '#FF8FB0FF', {layer = 2})
-    local text = string.format('%s overlay %d\nupdates while on top: %d', self.kind, self.depth, self.updates)
+    local text = string.format('A "%s" overlay at depth %d\nUpdates while on top: %d', self.kind, self.depth, self.updates)
     graphics2d.drawText(nil, text, panel[1] + 30, panel[2] + 24, {size = 30, layer = 3})
 end
 

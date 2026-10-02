@@ -8,7 +8,7 @@ local sample = require('sample')
 
 local Modes = haylen.class('Modes', sample.Test)
 
-local kLabels = {'to', 'from', 'by', 'fromTo'}
+local kLabels = {'Function\n"tween.to"', 'Function\n"tween.from"', 'Function\n"tween.by"', 'Function\n"tween.fromTo"'}
 local kCode = [[
 tween.to(a, 1.2, {x = 900})  -- From where it is to 900.
 tween.from(b, 1.2, {x = 900})  -- From 900 back to where it is.
@@ -49,7 +49,7 @@ function Modes:update(dt)
         self:play()
     end
     local a, b, c, d = table.unpack(self.boxes)
-    self:status(string.format('a.x %6.1f   b.x %6.1f   c.x %6.1f   d.x %6.1f', a.x, b.x, c.x, d.x))
+    self:status(string.format('Fields "a.x" %6.1f   "b.x" %6.1f   "c.x" %6.1f   "d.x" %6.1f', a.x, b.x, c.x, d.x))
 end
 
 function Modes:draw(stage)

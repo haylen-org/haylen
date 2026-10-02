@@ -19,27 +19,27 @@ end
 function Arguments:content()
     local lines = {}
     for _, key in ipairs(kKeys) do
-        lines[#lines + 1] = ui.label{text = key, font = 'caption', color = 'accentText'}
+        lines[#lines + 1] = ui.label{text = 'Key "' .. key .. '"', font = 'caption', color = 'accentText'}
         lines[#lines + 1] = ui.label{text = {key = key}, font = 'monospace', color = 'textMuted'}
         lines[#lines + 1] = ui.label{id = key, text = ''}
     end
     local values = self.values
     return {
         ui.panel{width = 620, align = 'stretch', gap = 12,
-            ui.formField{label = 'name', ui.textField{id = 'name', value = values.name, maxLength = 20, autocapitalize = 'words', returnKey = 'done', onChange = function(event)
+            ui.formField{label = 'Argument "name"', ui.textField{id = 'name', value = values.name, maxLength = 20, autocapitalize = 'words', returnKey = 'done', onChange = function(event)
                 self:change('name', event.value)
             end}},
-            ui.formField{label = 'day', ui.stepper{id = 'day', value = values.day, min = 1, max = 30, onChange = function(event)
+            ui.formField{label = 'Argument "day"', ui.stepper{id = 'day', value = values.day, min = 1, max = 30, onChange = function(event)
                 self:change('day', event.value)
             end}},
-            ui.formField{label = 'score', ui.numberField{id = 'score', value = values.score, min = 0, max = 99999, step = 250, onChange = function(event)
+            ui.formField{label = 'Argument "score"', ui.numberField{id = 'score', value = values.score, min = 0, max = 99999, step = 250, onChange = function(event)
                 self:change('score', event.value)
             end}},
-            ui.formField{label = 'ratio', ui.slider{id = 'ratio', value = values.ratio, showValue = true, onChange = function(event)
+            ui.formField{label = 'Argument "ratio"', ui.slider{id = 'ratio', value = values.ratio, showValue = true, onChange = function(event)
                 self:change('ratio', math.floor(event.value * 100 + 0.5) / 100)
             end}},
             ui.row{gap = 16,
-                ui.label{text = 'sound', grow = 1},
+                ui.label{text = 'Argument "sound"', grow = 1},
                 ui.toggle{id = 'sound', checked = values.sound, onChange = function(event)
                     self:change('sound', event.checked)
                 end},

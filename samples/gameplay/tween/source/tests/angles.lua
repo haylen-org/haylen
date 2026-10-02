@@ -47,7 +47,7 @@ function Angles:update(dt)
     if input.pressed('replay') then
         self:turn()
     end
-    self:status(string.format('short %.0f degrees   plain %.0f degrees', m.degrees(self.short.heading) % 360, m.degrees(self.plain.heading) % 360))
+    self:status(string.format('Short %.0f degrees   plain %.0f degrees', m.degrees(self.short.heading) % 360, m.degrees(self.plain.heading) % 360))
 end
 
 function Angles:drawDial(x, y, radius, heading, label, color)
@@ -65,8 +65,8 @@ end
 
 function Angles:draw(area)
     local radius = math.min(area.width / 5, area.height / 2 - 90)
-    self:drawDial(area.width * 0.28, area.height / 2 - 30, radius, self.short.heading, 'angles = {\'heading\'}', sample.green)
-    self:drawDial(area.width * 0.72, area.height / 2 - 30, radius, self.plain.heading, 'a plain number', sample.red)
+    self:drawDial(area.width * 0.28, area.height / 2 - 30, radius, self.short.heading, 'With "angles = {\'heading\'}"', sample.green)
+    self:drawDial(area.width * 0.72, area.height / 2 - 30, radius, self.plain.heading, 'A plain number', sample.red)
 end
 
 return Angles

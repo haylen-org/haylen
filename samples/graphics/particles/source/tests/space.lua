@@ -21,7 +21,7 @@ function Space:init(entry)
     self.worldSpace = particles2d.newEmitter(options)
     options.localSpace, options.seed = true, 51
     self.localSpace = particles2d.newEmitter(options)
-    self.orbits = {{emitter = self.worldSpace, x = -480, label = 'localSpace = false'}, {emitter = self.localSpace, x = 480, label = 'localSpace = true'}}
+    self.orbits = {{emitter = self.worldSpace, x = -480, label = 'With "localSpace = false"'}, {emitter = self.localSpace, x = 480, label = 'With "localSpace = true"'}}
 end
 
 function Space:controls()

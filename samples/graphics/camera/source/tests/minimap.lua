@@ -41,7 +41,7 @@ function Minimap:update(dt)
     self.player:update(dt, self.camera)
     self.camera:follow(self.player.x, self.player.y, dt)
     self.camera:update(dt)
-    self:setStatus(string.format('minimap zoom %.2f, visibilityMask %d', self.minimap.zoom.x, self.details and World.terrain | World.details or World.terrain))
+    self:setStatus(string.format('Minimap zoom %.2f, "visibilityMask" %d', self.minimap.zoom.x, self.details and World.terrain | World.details or World.terrain))
 end
 
 function Minimap:render()

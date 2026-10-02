@@ -14,7 +14,7 @@ function Result:enter()
         focus = 'pick',
         controls = {
             ui.button{id = 'pick', text = 'Pick a file', variant = 'primary', onClick = function() self:pick() end},
-            ui.label{text = 'tvOS has no file picker and the desktops share no C API for one, so pickFile fails there with the code unsupported. A browser opens its file chooser only right after a click, a tap or a key press.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'The tvOS platform has no file picker and the desktops share no C API for one, so "pickFile" fails there with the code "unsupported". A browser opens its file chooser only right after a click, a tap or a key press.', color = 'textMuted', font = 'caption'},
             ui.label{font = 'monospace', text = "local picked, err = demo.pickFile():await()\nprint(picked and picked.name or 'cancelled')"},
         },
     })
@@ -24,7 +24,7 @@ function Result:pick()
     self:act(function()
         self.picks = self.picks + 1
         local key = 'pick' .. self.picks
-        local name = 'pickFile, attempt ' .. self.picks
+        local name = 'The call "pickFile", attempt ' .. self.picks
         self.results:set(key, 'waiting', name, 'The file picker shows.')
         local picked, err = demo.pickFile():await()
         if err and err.code == 'noUserGesture' then
@@ -32,9 +32,9 @@ function Result:pick()
         elseif err then
             self.results:failure(key, name, err)
         elseif picked then
-            self.results:set(key, 'pass', name, 'The person picked ' .. picked.name .. '.')
+            self.results:set(key, 'pass', name, 'The person picked "' .. picked.name .. '".')
         else
-            self.results:set(key, 'pass', name, 'The person cancelled, and pickFile answered nil.')
+            self.results:set(key, 'pass', name, 'The person cancelled, and "pickFile" answered "nil".')
         end
     end)
 end

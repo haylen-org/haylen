@@ -104,8 +104,8 @@ function Poisson:update(dt)
         self.dirty, self.wait = false, kResampleDelay
         self:sample()
     end
-    local timing = self.latency and string.format('worker thread %.0f ms', self.latency) or string.format('poissonDisk %.1f ms', self:timing('poisson disk'))
-    self:showStats(string.format('points %d\nspacing %d to %d\n%s', #self.points, kNearest, kFarthest, timing))
+    local timing = self.latency and string.format('Worker thread %.0f ms', self.latency) or string.format('Function "poissonDisk" %.1f ms', self:timing('poisson disk'))
+    self:showStats(string.format('Points %d\nSpacing %d to %d\n%s', #self.points, kNearest, kFarthest, timing))
 end
 
 function Poisson:render()

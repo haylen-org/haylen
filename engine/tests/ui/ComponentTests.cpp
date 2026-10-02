@@ -1028,10 +1028,11 @@ class ComponentAssetTest : public ComponentTest {
         : ComponentTest({
               {"content/ui/icon.png", toText(test::TestFiles::pngImage(16, 16, 0xFF0000FFU))},
               {"content/ui/panel.png", toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))},
+              {"content/ui/fill.png", toText(test::TestFiles::pngImage(8, 8, 0xFFFFFFFFU))},
               {"content/fonts/ui.ttf", toText(core::EmbeddedFiles::getDefaultFont())},
               {"content/themes/wood.json", R"({"name": "wood", "fontFiles": {"ui": "fonts/ui.ttf"}, "fonts": {"title": {"font": "ui", "size": 64}},
-                  "surfaces": {"panel": {"image": "ui/panel.png", "slice": 8}, "button": {"image": "ui/panel.png", "slice": 8, "padding": 4}, "track": {"image": "ui/panel.png", "slice": 4},
-                      "trackFill": {"image": "ui/panel.png", "slice": 4, "colorize": true}, "stickBase": {"image": "ui/panel.png", "slice": 8, "colorize": true}, "tooltip": {"image": "ui/panel.png", "slice": 8, "padding": 6}}})"},
+                  "surfaces": {"panel": {"image": "ui/panel.png", "slice": 8}, "button": {"image": "ui/panel.png", "slice": 8, "padding": 4}, "track": {"image": "ui/panel.png", "slice": 4, "padding": 4},
+                      "trackFill": {"image": "ui/fill.png", "slice": 2, "colorize": true}, "stickBase": {"image": "ui/panel.png", "slice": 8, "colorize": true}, "tooltip": {"image": "ui/panel.png", "slice": 8, "padding": 6}}})"},
               {"content/themes/broken.json", R"({"name": "broken", "fonts": {"body": {"font": "missing"}}})"},
               {"content/i18n/en.json", R"({"menu": {"play": "Play {n}"}})"},
           }) {}
@@ -1088,6 +1089,31 @@ TEST_F(ComponentAssetTest, DrawsCarouselArrowsAbovePagesThatFillIt) {
     // clang-format on
     ASSERT_TRUE(fixture.frameUntil([&] { return last(false) >= 0; }));
     EXPECT_GT(last(true), last(false));
+}
+
+TEST_F(ComponentAssetTest, DrawsTogglesInTheirTrackInEveryState) {
+    getUi().setTheme(getUi().loadTheme(getEngine(), "themes/wood.json"));
+    auto document = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "toggle", "id": "sound", "checked": true}]})");
+    const ImTextureID track = getUi().getContext().getTextureReference(getEngine().getAssets().texture("ui/panel.png")).GetTexID();
+    const ImTextureID fill = getUi().getContext().getTextureReference(getEngine().getAssets().texture("ui/fill.png")).GetTexID();
+    // clang-format off
+    const auto drawn = [this](ImTextureID texture) {
+        getUi().getBackend().makeCurrent();
+        const ImVector<ImDrawCmd>& commands = ImGui::FindWindowByName("##haylen-documents")->DrawList->CmdBuffer;
+        return std::any_of(commands.begin(), commands.end(), [texture](const ImDrawCmd& command) { return command.ElemCount > 0 && command.TexRef._TexID == texture; });
+    };
+    // clang-format on
+
+    // A switch that is on fills the groove of its track, whose frame stays around the fill.
+    ASSERT_TRUE(fixture.frameUntil([&] { return drawn(fill); }));
+    EXPECT_TRUE(drawn(track));
+
+    // A switch that is off keeps the same track, with an empty groove.
+    click(*document, "sound");
+    frames(30);
+    EXPECT_EQ(getEventNames(), (std::vector<std::string>{"sound:change"}));
+    EXPECT_TRUE(drawn(track));
+    EXPECT_FALSE(drawn(fill));
 }
 
 TEST_F(ComponentAssetTest, PaintsTooltipsWithTheThemeSurface) {

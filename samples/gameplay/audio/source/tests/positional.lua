@@ -155,7 +155,7 @@ function Positional:update(dt)
 
     local lx, ly = audio.listener()
     hum.heard = self:dopplerPitch(hum, lx, ly, dt)
-    self:status(string.format('listener %.0f, %.0f   camera %.0f, %.0f   hum pitch set %.2f, heard x%.2f   voices %d', lx, ly, self.world.x, self.world.y, audio.pitch(hum.voice), hum.heard, audio.voiceCount()))
+    self:status(string.format('Listener %.0f, %.0f   camera %.0f, %.0f   hum pitch set %.2f, heard x%.2f   voices %d', lx, ly, self.world.x, self.world.y, audio.pitch(hum.voice), hum.heard, audio.voiceCount()))
 end
 
 function Positional:drawWorld()
@@ -178,7 +178,7 @@ function Positional:drawWorld()
         graphics2d.drawCircle(emitter.x, emitter.y, radius, emitter.color, {layer = 2})
         graphics2d.drawCircle(emitter.x, emitter.y, radius + 60 * volume, '#30FFFFFF', {layer = 1})
         local pitch = emitter.heard and string.format('\nDoppler pitch x%.2f', emitter.heard) or ''
-        sample.caption(string.format('%s\nvolume %.2f  pan %+.2f%s', emitter.name, volume, pan, pitch), emitter.x, emitter.y + 80, {anchor = {0.5, 0}, color = sample.ink, size = 40, layer = 3})
+        sample.caption(string.format('%s\nVolume %.2f  pan %+.2f%s', emitter.name, volume, pan, pitch), emitter.x, emitter.y + 80, {anchor = {0.5, 0}, color = sample.ink, size = 40, layer = 3})
     end
 
     graphics2d.drawCircle(self.x, self.y, 40, sample.accent, {layer = 4})
@@ -191,7 +191,7 @@ function Positional:draw(area)
 
     graphics2d.beginWorld(self.camera)
     local settings = audio.spatialization()
-    sample.caption(string.format('%s fade, full volume within %.0f (green), silent or steady past %.0f (red), full pan at %.0f (blue), Doppler %.1f', settings.model, settings.minDistance, settings.maxDistance, settings.panDistance, settings.doppler), 20, 16, {size = 20, color = sample.ink, maxWidth = area.width - 40})
+    sample.caption(string.format('The "%s" fade, full volume within %.0f (green), silent or steady past %.0f (red), full pan at %.0f (blue), Doppler %.1f', settings.model, settings.minDistance, settings.maxDistance, settings.panDistance, settings.doppler), 20, 16, {size = 20, color = sample.ink, maxWidth = area.width - 40})
     sample.caption(self.following and 'The white triangle is the listener, on the camera.' or 'The listener stays where the camera left it.', 20, area.height - 40, {size = 20})
 end
 

@@ -204,7 +204,7 @@ void UiPlugin::drawSafeArea() {
     list.AddRectFilled({safe.getRight(), safe.y}, {display.getRight(), safe.getBottom()}, shade);
     list.AddRect({safe.x, safe.y}, {safe.getRight(), safe.getBottom()}, line, 0.0F, 3.0F);
 
-    const std::string label = std::format("safe area {:.0f} {:.0f} {:.0f} {:.0f}", safe.y - display.y, display.getRight() - safe.getRight(), display.getBottom() - safe.getBottom(), safe.x - display.x);
+    const std::string label = std::format("Safe area {:.0f} {:.0f} {:.0f} {:.0f}", safe.y - display.y, display.getRight() - safe.getRight(), display.getBottom() - safe.getBottom(), safe.x - display.x);
     list.AddText({safe.x + 12.0F, safe.y + 8.0F}, line, label.c_str());
 }
 

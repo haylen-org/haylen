@@ -46,7 +46,7 @@ function Ambient:choose(id)
 end
 
 function Ambient:update(dt)
-    self:setStatus('ambientLight = ' .. self.ambient:toHex())
+    self:setStatus('Option "ambientLight" = ' .. self.ambient:toHex())
 end
 
 function Ambient:render()

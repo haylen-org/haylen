@@ -57,7 +57,7 @@ function Colors:update(dt)
     Colors.super.update(self, dt)
     self.trails.rgb:push(m.color(self.rgb.color))
     self.trails.hsv:push(m.color(self.hsv.color))
-    self:status('rgb ' .. self.rgb.color:toHex() .. '   hsv ' .. self.hsv.color:toHex())
+    self:status('RGB ' .. self.rgb.color:toHex() .. '   HSV ' .. self.hsv.color:toHex())
 end
 
 function Colors:drawRow(label, color, trail, y, area)

@@ -20,7 +20,7 @@ function Picking:init(entry)
     local random = m.random(8)
     self.objects = {}
     for index = 1, 40 do
-        self.objects[index] = {name = 'object ' .. index, x = random:range(-900, 900), y = random:range(-500, 500), radius = random:range(26, 60), color = m.fromHsv(random:nextFloat(), 0.6, 0.9)}
+        self.objects[index] = {name = 'Object ' .. index, x = random:range(-900, 900), y = random:range(-500, 500), radius = random:range(26, 60), color = m.fromHsv(random:nextFloat(), 0.6, 0.9)}
     end
 end
 
@@ -46,7 +46,7 @@ function Picking:update(dt)
     if sample.pressed() then
         self.selected = self.hovered
     end
-    self:setStatus(string.format('screen %.0f, %.0f is world %.1f, %.1f, under it: %s', self.cursor.x, self.cursor.y, self.worldX, self.worldY, self.hovered and self.hovered.name or 'nothing'))
+    self:setStatus(string.format('Screen %.0f, %.0f is world %.1f, %.1f, under it: %s', self.cursor.x, self.cursor.y, self.worldX, self.worldY, self.hovered and self.hovered.name or 'nothing'))
 end
 
 function Picking:render()

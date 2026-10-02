@@ -48,8 +48,8 @@ void OverlayWindow::drawProfiler(const Profiler& profiler) {
         return;
     }
     ImGui::TableSetupColumn("Scope", ImGuiTableColumnFlags_WidthStretch, 3.0F);
-    ImGui::TableSetupColumn("ms", ImGuiTableColumnFlags_WidthStretch, 1.0F);
-    ImGui::TableSetupColumn("calls", ImGuiTableColumnFlags_WidthStretch, 1.0F);
+    ImGui::TableSetupColumn("Time in ms", ImGuiTableColumnFlags_WidthStretch, 1.0F);
+    ImGui::TableSetupColumn("Calls", ImGuiTableColumnFlags_WidthStretch, 1.0F);
     ImGui::TableHeadersRow();
     for (const ProfileSample& sample : profiler.getLastFrame()) {
         ImGui::TableNextRow();
@@ -87,7 +87,7 @@ void OverlayWindow::drawResources(const Stats& stats) {
     // A pool that fills up makes the next GPU object fail, so the bar turns red past nine tenths.
     for (const graphics::Device::Pool& pool : stats.pools) {
         const float fraction = pool.size > 0 ? static_cast<float>(pool.used) / static_cast<float>(pool.size) : 0.0F;
-        const std::string label = std::format("{} {} / {}", pool.name, pool.used, pool.size);
+        const std::string label = std::format("Pool \"{}\" {} / {}", pool.name, pool.used, pool.size);
         ImGui::PushStyleColor(ImGuiCol_PlotHistogram, fraction > 0.9F ? ImVec4(0.9F, 0.35F, 0.3F, 1.0F) : ImVec4(0.35F, 0.6F, 0.9F, 1.0F));
         ImGui::ProgressBar(fraction, {-1.0F, 0.0F}, label.c_str());
         ImGui::PopStyleColor();
@@ -99,10 +99,10 @@ void OverlayWindow::drawObjects(const std::vector<ObjectCounter::Snapshot>& obje
         return;
     }
     ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthStretch, 3.0F);
-    ImGui::TableSetupColumn("alive", ImGuiTableColumnFlags_WidthStretch, 1.0F);
-    ImGui::TableSetupColumn("created", ImGuiTableColumnFlags_WidthStretch, 1.0F);
-    ImGui::TableSetupColumn("destroyed", ImGuiTableColumnFlags_WidthStretch, 1.0F);
-    ImGui::TableSetupColumn("memory", ImGuiTableColumnFlags_WidthStretch, 1.2F);
+    ImGui::TableSetupColumn("Alive", ImGuiTableColumnFlags_WidthStretch, 1.0F);
+    ImGui::TableSetupColumn("Created", ImGuiTableColumnFlags_WidthStretch, 1.0F);
+    ImGui::TableSetupColumn("Destroyed", ImGuiTableColumnFlags_WidthStretch, 1.0F);
+    ImGui::TableSetupColumn("Memory", ImGuiTableColumnFlags_WidthStretch, 1.2F);
     ImGui::TableHeadersRow();
     for (const ObjectCounter::Snapshot& object : objects) {
         if (object.created == 0) {
@@ -134,9 +134,9 @@ void OverlayWindow::drawTopics(const char* id, const std::vector<core::EventBus:
         return;
     }
     ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch, 3.0F);
-    ImGui::TableSetupColumn("listeners", ImGuiTableColumnFlags_WidthStretch, 1.0F);
-    ImGui::TableSetupColumn("emits", ImGuiTableColumnFlags_WidthStretch, 1.0F);
-    ImGui::TableSetupColumn("owner gone", ImGuiTableColumnFlags_WidthStretch, 1.0F);
+    ImGui::TableSetupColumn("Listeners", ImGuiTableColumnFlags_WidthStretch, 1.0F);
+    ImGui::TableSetupColumn("Emits", ImGuiTableColumnFlags_WidthStretch, 1.0F);
+    ImGui::TableSetupColumn("Owner gone", ImGuiTableColumnFlags_WidthStretch, 1.0F);
     ImGui::TableHeadersRow();
     for (const core::EventBus::Topic& topic : topics) {
         ImGui::TableNextRow();
@@ -144,7 +144,7 @@ void OverlayWindow::drawTopics(const char* id, const std::vector<core::EventBus:
             ImGui::PushStyleColor(ImGuiCol_Text, getLevelColor(core::Log::Level::Warning));
         }
         ImGui::TableNextColumn();
-        ImGui::TextUnformatted(topic.name.empty() ? "(unnamed)" : topic.name.c_str());
+        ImGui::TextUnformatted(topic.name.empty() ? "(Unnamed)" : topic.name.c_str());
         ImGui::TableNextColumn();
         ImGui::Text("%zu", topic.listeners);
         ImGui::TableNextColumn();

@@ -32,7 +32,7 @@ function Rotation:controls()
         ui.toggle{text = 'Rotation smoothing', checked = true, onChange = function(event)
             camera.rotationSmoothing = event.checked
         end},
-        ui.toggle{text = 'ignoreRotation', onChange = function(event)
+        ui.toggle{text = 'Property "ignoreRotation"', onChange = function(event)
             camera.ignoreRotation = event.checked
         end},
     }
@@ -44,7 +44,7 @@ function Rotation:update(dt)
     self.player:update(dt, camera)
     camera:follow(self.player.x, self.player.y, dt)
     camera:update(dt)
-    self:setStatus(string.format('rotation %.2f, drawn with %.2f, ignoreRotation %s', camera.rotation, camera:renderRotation(), tostring(camera.ignoreRotation)))
+    self:setStatus(string.format('Rotation %.2f, drawn with %.2f, "ignoreRotation" %s', camera.rotation, camera:renderRotation(), tostring(camera.ignoreRotation)))
 end
 
 function Rotation:render()

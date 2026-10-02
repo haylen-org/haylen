@@ -40,7 +40,7 @@ end
 function TextureUniforms:update(dt)
     local time = haylen.elapsed()
     self.material:set('scroll', {time * 0.1, time * 0.05})
-    self:setStatus('textures of the shader: ' .. table.concat(self.material.shader.textures, ', ') .. ', gradient ' .. self.ramp)
+    self:setStatus('Textures of the shader: ' .. table.concat(self.material.shader.textures, ', ') .. ', gradient ' .. self.ramp)
 end
 
 -- Redraws the live gradient: four bands of color that slide along it.

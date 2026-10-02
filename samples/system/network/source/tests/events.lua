@@ -102,7 +102,7 @@ function Events:update(dt)
     local open = net.openSocketCount()
     if open ~= self.openCount then
         self.openCount = open
-        self:show('open', {text = string.format('net.openSocketCount() is %d', open)})
+        self:show('open', {text = string.format('The call "net.openSocketCount()" returns %d', open)})
     end
 end
 
@@ -116,7 +116,7 @@ function Events:record(source, name, values)
     end
     self:show('counters', {rows = self.counters})
     self.logged = self.logged + 1
-    table.insert(self.lines, 1, {id = 'line-' .. self.logged, text = (source == 'bus' and 'events: ' or 'socket: ') .. name, caption = sample.clock() .. '  ' .. describe(values)})
+    table.insert(self.lines, 1, {id = 'line-' .. self.logged, text = (source == 'bus' and 'Bus event "' or 'Socket event "') .. name .. '"', caption = sample.clock() .. '  ' .. describe(values)})
     self.lines[100] = nil
     self:show('timeline', {items = self.lines})
 end

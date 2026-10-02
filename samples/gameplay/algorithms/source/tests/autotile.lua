@@ -123,7 +123,7 @@ function Autotile:update(dt)
             end
         end
     end
-    self:showStats(string.format('mode %s\ndifferent tiles in use %d', self.mode, count))
+    self:showStats(string.format('Mode %s\nDifferent tiles in use %d', self.mode, count))
 end
 
 -- A land cell of the side masks draws its middle and an arm toward every side whose neighbor is land too.

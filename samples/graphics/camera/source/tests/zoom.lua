@@ -63,7 +63,7 @@ function Zoom:update(dt)
     end
     camera.x = camera.x + moveX * 700 * dt / camera.zoom.x - dragX / camera.zoom.x
     camera.y = camera.y + moveY * 700 * dt / camera.zoom.y - dragY / camera.zoom.y
-    self:setStatus(string.format('zoom %.2f between %.2f and %.2f, center %.0f, %.0f', camera.zoom.x, camera.minZoom, camera.maxZoom, camera.x, camera.y))
+    self:setStatus(string.format('Zoom %.2f between %.2f and %.2f, center %.0f, %.0f', camera.zoom.x, camera.minZoom, camera.maxZoom, camera.x, camera.y))
 end
 
 function Zoom:render()

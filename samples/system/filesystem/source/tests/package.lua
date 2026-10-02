@@ -61,7 +61,7 @@ function Package:content()
     end
     return {
         ui.panel{width = 560, align = 'stretch', gap = 12,
-            ui.sectionTitle{text = 'content/data'},
+            ui.sectionTitle{text = 'The folder "content/data"'},
             ui.label{text = string.format('The call "assets.list(\'data\')" found %d files.', #self.paths - 1), color = 'textMuted'},
             ui.list{id = 'files', items = items, selected = self.paths[1], onSelect = function(event)
                 self:open(event.item)

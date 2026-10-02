@@ -2546,7 +2546,7 @@ A surface paints a part of a component with a nine-slice image instead of flat c
 | `buttonDestructive`, `buttonDestructiveHover`, `buttonDestructivePressed` | Destructive buttons. |
 | `field`, `fieldFocused` | Text fields, secret fields, text areas, filter fields, number fields, combos, color fields, steppers and key captures. |
 | `check`, `checkChecked` | Check boxes. |
-| `track`, `trackFill`, `knob` | Toggles, sliders, range sliders and progress bars. The fill of sliders and progress bars stays inside the `padding` of the `track` surface, so a framed bar keeps its frame. |
+| `track`, `trackFill`, `knob` | Toggles, sliders, range sliders and progress bars. The fill of toggles, sliders and progress bars stays inside the `padding` of the `track` surface, so a framed bar keeps its frame, and a toggle fills its groove as its knob slides on. |
 | `stickBase`, `stickKnob` | The ring and the knob of touch sticks. |
 | `touchButton`, `touchButtonPressed` | Touch buttons. |
 | `tab`, `tabSelected` | Tabs. |

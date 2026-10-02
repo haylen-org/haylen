@@ -44,7 +44,7 @@ function Shapes:update(dt)
     for _, emitter in ipairs(self.emitters) do
         emitter:update(dt)
     end
-    self:setStatus(string.format('speed %.0f to %.0f', self.speed, self.speed * 1.5))
+    self:setStatus(string.format('Speed %.0f to %.0f', self.speed, self.speed * 1.5))
 end
 
 -- Outlines the spawn area of an emitter so the particles can be compared with it.
@@ -77,7 +77,7 @@ end
 function Shapes:renderUi()
     graphics2d.beginScreen()
     for index, emitter in ipairs(self.emitters) do
-        art.label(self.camera, Shapes.list[index].name, emitter.x, emitter.y + 170)
+        art.label(self.camera, 'Shape "' .. Shapes.list[index].name .. '"', emitter.x, emitter.y + 170)
     end
 end
 

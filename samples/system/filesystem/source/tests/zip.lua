@@ -53,7 +53,7 @@ function Zip:content()
     end
     return {
         ui.panel{width = 460, align = 'stretch', gap = 12,
-            ui.sectionTitle{text = 'Varn zip'},
+            ui.sectionTitle{text = 'Varn module "zip"'},
             ui.column{gap = 12, children = buttons},
             ui.label{text = 'Folder: ' .. self.base, font = 'caption', color = 'textMuted'},
         },
@@ -103,13 +103,13 @@ function Zip:create()
     end
     need(zip.create(self.archive, entries))
     local info = need(fs.stat(self.archive))
-    return string.format('zip.create packed %d entries into bundle.zip, %s', #entries, sample.bytes(info.size))
+    return string.format('The call "zip.create" packed %d entries into "bundle.zip", %s', #entries, sample.bytes(info.size))
 end
 
 function Zip:list()
     local names = need(zip.list(self.archive))
-    self:showEntries('zip.list(bundle.zip)', names)
-    return string.format('zip.list found %d entries', #names)
+    self:showEntries('Entries from "zip.list(bundle.zip)"', names)
+    return string.format('The call "zip.list" found %d entries', #names)
 end
 
 function Zip:extract()
@@ -117,7 +117,7 @@ function Zip:extract()
     local files = storage.list('zip-demo/extracted')
     self:showEntries('Extracted files', files)
     self:show('preview', {text = storage.readText('zip-demo/extracted/data/map.txt')})
-    return string.format('zip.extract unpacked %d files into zip-demo/extracted', #files)
+    return string.format('The call "zip.extract" unpacked %d files into "zip-demo/extracted"', #files)
 end
 
 function Zip:postcards()
@@ -126,7 +126,7 @@ function Zip:postcards()
     need(fs.writeFile(archive, assets.bytes('archives/postcards.zip')))
     local names = need(zip.list(archive))
     need(zip.extract(archive, self.base .. '/postcards'))
-    self:showEntries('zip.list(postcards.zip)', names)
+    self:showEntries('Entries from "zip.list(postcards.zip)"', names)
     self:show('preview', {text = storage.readText('zip-demo/postcards/postcards/palm-cove.txt')})
     return string.format('Copied "archives/postcards.zip" from the package and extracted its %d entries', #names)
 end
@@ -135,7 +135,7 @@ function Zip:remove()
     need(fs.removeRecursive(self.base))
     self:showEntries('Entries', {})
     self:show('preview', {text = ''})
-    return 'fs.removeRecursive removed zip-demo'
+    return 'The call "fs.removeRecursive" removed "zip-demo"'
 end
 
 return Zip

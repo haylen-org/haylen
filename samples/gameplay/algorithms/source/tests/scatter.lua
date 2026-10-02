@@ -95,7 +95,7 @@ function Scatter:update(dt)
     for _, point in ipairs(self.points) do
         counts[point.type] = counts[point.type] + 1
     end
-    self:showStats(string.format('points %d\ntrees %d, bushes %d\nrocks %d, flowers %d\nready in %.0f ms', #self.points, counts[1], counts[2], counts[3], counts[4], self.latency or 0))
+    self:showStats(string.format('Points %d\nTrees %d, bushes %d\nRocks %d, flowers %d\nReady in %.0f ms', #self.points, counts[1], counts[2], counts[3], counts[4], self.latency or 0))
 end
 
 function Scatter:render()

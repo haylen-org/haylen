@@ -37,7 +37,7 @@ end
 
 function Autoloads:enter()
     self.journal = Journal()
-    self:listen('autoloadStarted', function(info) self.journal:add('autoloadStarted ' .. info.name, sample.accent) end)
+    self:listen('autoloadStarted', function(info) self.journal:add('Event "autoloadStarted" for "' .. info.name .. '"', sample.accent) end)
     self:frame({
         hint = 'Earn coins here and spend them in the shop. The counter in the corner is drawn by the autoload on every screen.',
         code = kCode,
@@ -65,19 +65,19 @@ function Autoloads:update(dt)
         names[#names + 1] = name
     end
     table.sort(names)
-    self:status('haylen.autoloads: ' .. table.concat(names, ', '))
+    self:status('Autoloads in "haylen.autoloads": ' .. table.concat(names, ', '))
 end
 
 function Autoloads:draw(area)
     local data, jukebox = haylen.autoloads.playerData, haylen.autoloads.jukebox
     local lines = {
-        {'coins', tostring(data.coins)},
-        {'bought', #data.hats > 0 and table.concat(data.hats, ', ') or 'nothing yet'},
-        {'play time', string.format('%.1f seconds', data.playTime)},
-        {'inputs seen by its event callback', tostring(data.inputs)},
-        {'started on frame', tostring(data.startFrame)},
-        {'require returns the same table', tostring(require('state.player-data') == data)},
-        {'jukebox', jukebox and (jukebox.track .. ', beat ' .. jukebox.beats) or 'not added'},
+        {'Coins', tostring(data.coins)},
+        {'Bought', #data.hats > 0 and table.concat(data.hats, ', ') or 'nothing yet'},
+        {'Play time', string.format('%.1f seconds', data.playTime)},
+        {'Inputs seen by its event callback', tostring(data.inputs)},
+        {'Started on frame', tostring(data.startFrame)},
+        {'The call "require" returns the same table', tostring(require('state.player-data') == data)},
+        {'Jukebox', jukebox and (jukebox.track .. ', beat ' .. jukebox.beats) or 'not added'},
     }
     for index, line in ipairs(lines) do
         local y = 20 + (index - 1) * 44

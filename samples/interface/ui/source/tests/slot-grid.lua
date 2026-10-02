@@ -32,7 +32,7 @@ end
 function SlotGrid:chestItems()
     local items = {}
     for index, item in ipairs(self.chest) do
-        items[index] = {id = 'chest-' .. index, text = item.icon, caption = item.count and ('x' .. item.count) or 'one', image = 'icons/' .. item.icon .. '.png'}
+        items[index] = {id = 'chest-' .. index, text = item.icon:sub(1, 1):upper() .. item.icon:sub(2), caption = item.count and ('Count ' .. item.count) or 'One', image = 'icons/' .. item.icon .. '.png'}
     end
     return items
 end
@@ -87,12 +87,12 @@ function SlotGrid:content()
     end
     return sample.columns{
         justify = 'center',
-        sample.section('inventory', {
+        sample.section('Inventory', {
             ui.slotGrid{id = 'bag', columns = 4, slots = slots(self.bag, 'bag', kBagSize), onDrop = onDrop, onSelect = onSelect, onDrag = function(event)
                 self:setStatus('Picked up "' .. event.item .. '"')
             end},
         }),
-        sample.section('chest', {width = 460,
+        sample.section('Chest', {width = 460,
             ui.list{id = 'chest', draggable = true, items = self:chestItems(), onDrop = onDrop},
         }),
     }

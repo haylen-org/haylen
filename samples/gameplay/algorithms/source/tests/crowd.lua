@@ -80,7 +80,7 @@ function Crowd:update(dt)
     profiler.beginScope('crowd')
     self.crowd:step(dt)
     profiler.endScope()
-    self:showStats(string.format('agents %d\nstep %.3f ms', self.crowd.agentCount, self:timing('crowd')))
+    self:showStats(string.format('Agents %d\nStep %.3f ms', self.crowd.agentCount, self:timing('crowd')))
 end
 
 function Crowd:render()

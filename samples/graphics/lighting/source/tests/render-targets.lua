@@ -60,7 +60,7 @@ function RenderTargets:update(dt)
         firefly.light.x = self.focus.x + math.cos(angle) * (60 + firefly.phase * 12)
         firefly.light.y = self.focus.y + math.sin(angle * 1.3) * (40 + firefly.phase * 6)
     end
-    self:setStatus(string.format('two %dx%d lit render targets, %d canvases this frame', RenderTargets.width, RenderTargets.height, graphics2d.stats().canvases))
+    self:setStatus(string.format('Two %dx%d lit render targets, %d canvases this frame', RenderTargets.width, RenderTargets.height, graphics2d.stats().canvases))
 end
 
 function RenderTargets:renderCellar()

@@ -42,7 +42,7 @@ function Directional:update(dt)
             self.sun.rotation = math.atan(y, x)
         end
     end
-    self:setStatus(string.format('rotation %.2f radians, %.0f degrees', self.sun.rotation, math.deg(self.sun.rotation)))
+    self:setStatus(string.format('Rotation %.2f radians, %.0f degrees', self.sun.rotation, math.deg(self.sun.rotation)))
 end
 
 function Directional:render()

@@ -18,13 +18,13 @@ end
 function Overlays:content()
     local toneButtons = {}
     for index, tone in ipairs({'information', 'success', 'warning', 'danger'}) do
-        toneButtons[index] = ui.button{text = tone, onClick = function(event)
-            event.document:set('notice', {open = true, tone = tone, text = 'A toast in the ' .. tone .. ' tone'})
+        toneButtons[index] = ui.button{text = tone:sub(1, 1):upper() .. tone:sub(2), onClick = function(event)
+            event.document:set('notice', {open = true, tone = tone, text = 'A toast in the "' .. tone .. '" tone'})
         end}
     end
     return sample.columns{
         ui.column{grow = 1, gap = 24,
-            sample.section('dialog', {
+            sample.section('Component "dialog"', {
                 ui.button{id = 'delete', text = 'Delete the save', variant = 'destructive', onClick = function(event)
                     event.document:set('confirm', {open = true})
                 end},
@@ -32,7 +32,7 @@ function Overlays:content()
                     event.document:set('terms', {open = true})
                 end},
             }),
-            sample.section('toast', {
+            sample.section('Component "toast"', {
                 ui.row{gap = 12, children = toneButtons},
                 ui.row{gap = 12,
                     ui.button{text = 'At the bottom', onClick = self:toast('bottom', 'Saved at the bottom of the safe area')},
@@ -42,7 +42,7 @@ function Overlays:content()
             }),
         },
         ui.column{grow = 1, gap = 24,
-            sample.section('tooltip', {
+            sample.section('Component "tooltip"', {
                 ui.row{gap = 16,
                     ui.button{text = 'Hover me', tooltip = 'Tooltips show after the pointer rests for half a second.'},
                     ui.button{icon = 'icons/gear.png', variant = 'icon', tooltip = 'Settings'},
@@ -50,16 +50,16 @@ function Overlays:content()
                     ui.badge{text = 'New', tone = 'accent', tooltip = 'Any node takes a tooltip, badges too.'},
                 },
             }),
-            sample.section('popover', {
+            sample.section('Component "popover"', {
                 ui.popover{text = 'Wind', icon = 'icons/fish.png', contentWidth = 560,
                     ui.column{gap = 12,
                         ui.label{text = 'A popover holds any child, such as these controls.'},
-                        ui.slider{value = 0.4, showValue = true, onChange = function(event) self:setStatus(string.format('wind %.2f', event.value)) end},
-                        ui.toggle{text = 'Gusts', onChange = function(event) self:setStatus('gusts ' .. tostring(event.checked)) end},
+                        ui.slider{value = 0.4, showValue = true, onChange = function(event) self:setStatus(string.format('Wind %.2f', event.value)) end},
+                        ui.toggle{text = 'Gusts', onChange = function(event) self:setStatus('Gusts ' .. tostring(event.checked)) end},
                     },
                 },
             }),
-            sample.section('contextMenu', {
+            sample.section('Component "contextMenu"', {
                 ui.contextMenu{id = 'slot-menu', items = {{id = 'rename', text = 'Rename', image = 'icons/key.png'}, {id = 'copy', text = 'Duplicate', image = 'icons/star.png'}, {id = 'erase', text = 'Erase', image = 'icons/heart.png'}, {id = 'upload', text = 'Upload', enabled = false}},
                     onSelect = function(event) self:setStatus('The context menu picked "' .. event.item .. '"') end,
                     ui.button{id = 'slot', text = 'Save slot 1', icon = 'icons/potion.png', align = 'stretch'},

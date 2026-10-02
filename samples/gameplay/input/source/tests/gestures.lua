@@ -56,11 +56,11 @@ end
 
 function Gestures:describe(gesture)
     if gesture.type == 'swipe' then
-        return string.format('swipe %+.0f, %+.0f', gesture.dx, gesture.dy)
+        return string.format('Swipe %+.0f, %+.0f', gesture.dx, gesture.dy)
     elseif gesture.type == 'pinch' then
-        return string.format('pinch scale %.2f', gesture.scale)
+        return string.format('Pinch scale %.2f', gesture.scale)
     end
-    return string.format('%s at %.0f, %.0f', gesture.type, gesture.x, gesture.y)
+    return string.format('Gesture "%s" at %.0f, %.0f', gesture.type, gesture.x, gesture.y)
 end
 
 function Gestures:update(dt)
@@ -98,9 +98,9 @@ function Gestures:update(dt)
 
     local counts = {}
     for _, name in ipairs(kTypes) do
-        counts[#counts + 1] = name .. ' ' .. self.counts[name]
+        counts[#counts + 1] = '"' .. name .. '" ' .. self.counts[name]
     end
-    self:status(table.concat(counts, '   ') .. string.format('   card scale %.2f', self.scale))
+    self:status('Gestures ' .. table.concat(counts, '   ') .. string.format('   card scale %.2f', self.scale))
 end
 
 function Gestures:drawMarker(marker)
@@ -118,7 +118,7 @@ function Gestures:drawMarker(marker)
             graphics2d.drawRing(marker.x, marker.y, 10 + 40 * t, 4, color, {layer = 3})
         end
     end
-    sample.caption(marker.type, marker.x, marker.y + 40, {anchor = {0.5, 0}, color = color})
+    sample.caption('Gesture "' .. marker.type .. '"', marker.x, marker.y + 40, {anchor = {0.5, 0}, color = color})
 end
 
 function Gestures:draw(area)

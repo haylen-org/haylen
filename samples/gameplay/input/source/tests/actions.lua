@@ -72,13 +72,13 @@ function Actions:update(dt)
         row.released = input.released(row.name) and kFlash or math.max(0, row.released - dt)
     end
     local x, y = input.vector('move')
-    self:status(string.format('last device %s   move %+.2f, %+.2f   jump %s   dash %s   throttle %+.2f', input.lastDevice(), x, y, input.down('jump'), input.down('dash'), input.value('throttle')))
+    self:status(string.format('Last device %s   move %+.2f, %+.2f   jump %s   dash %s   throttle %+.2f', input.lastDevice(), x, y, input.down('jump'), input.down('dash'), input.value('throttle')))
 end
 
 function Actions:drawRow(row, top, width)
     graphics2d.drawRect({12, top, width - 24, 120}, sample.surface)
-    sample.caption(row.name, 32, top + 14, {size = 30, color = sample.ink})
-    sample.caption(row.type, 32, top + 56, {color = sample.accent})
+    sample.caption(row.name:sub(1, 1):upper() .. row.name:sub(2), 32, top + 14, {size = 30, color = sample.ink})
+    sample.caption(row.type:sub(1, 1):upper() .. row.type:sub(2), 32, top + 56, {color = sample.accent})
     graphics2d.drawText(nil, row.bindings, 200, top + 12, {size = 15, color = sample.muted, maxWidth = width * 0.5, layer = 2})
 
     local stateX = width * 0.66
@@ -89,7 +89,7 @@ function Actions:drawRow(row, top, width)
     elseif row.released > 0 then
         graphics2d.drawRing(stateX, top + 50, 32, 4, sample.red, {layer = 2})
     end
-    sample.caption(down and 'down' or 'up', stateX, top + 86, {anchor = {0.5, 0}, size = 18})
+    sample.caption(down and 'Down' or 'Up', stateX, top + 86, {anchor = {0.5, 0}, size = 18})
 
     -- Axes run from -1 to 1 around the middle of the bar, and the other types from 0 to 1.
     local value = input.value(row.name)
@@ -98,7 +98,7 @@ function Actions:drawRow(row, top, width)
     local scale = row.type == 'axis' and barWidth / 2 or barWidth
     graphics2d.drawRect({barX, top + 40, barWidth, 22}, '#FF2E3548', {layer = 1})
     graphics2d.drawRect({math.min(zero, zero + value * scale), top + 40, math.abs(value * scale), 22}, sample.accent, {layer = 2})
-    sample.caption(string.format('value %+.2f', value), barX, top + 72, {size = 18})
+    sample.caption(string.format('Value %+.2f', value), barX, top + 72, {size = 18})
 
     if row.type == 'vector' then
         local cx, cy, radius = width * 0.92, top + 60, 48

@@ -57,13 +57,13 @@ end
 
 function Signals:emit()
     local damage = math.random(5, 30)
-    self.journal:add('emit(' .. damage .. ')' .. (self.hit.blocked and ' while the signal is blocked' or ''), sample.ink)
+    self.journal:add('Call "emit(' .. damage .. ')"' .. (self.hit.blocked and ' while the signal is blocked' or ''), sample.ink)
     self.hit:emit(damage)
 end
 
 function Signals:update(dt)
     Signals.super.update(self, dt)
-    self:status(string.format('listeners %d   emissions %d   signal blocked %s   health bar blocked %s', self.hit.size, self.hit.emissionCount, self.hit.blocked, self.healthBar.blocked))
+    self:status(string.format('Listeners %d   emissions %d   signal blocked %s   health bar blocked %s', self.hit.size, self.hit.emissionCount, self.hit.blocked, self.healthBar.blocked))
 end
 
 function Signals:draw(area)

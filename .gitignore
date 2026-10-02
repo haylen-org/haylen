@@ -16,3 +16,5 @@ __pycache__/
 /engine/platform/android/*/build/
 local.properties
 *.profraw
+MISSING.md
+PLAN.md

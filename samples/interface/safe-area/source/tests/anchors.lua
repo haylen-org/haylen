@@ -25,7 +25,7 @@ function Anchors:init(entry)
 end
 
 function Anchors:node(anchor, area)
-    local node = ui.alert{anchor = anchor, anchorTo = area, margin = self.margin, tone = area == 'safe' and 'information' or 'warning', title = anchor, message = area == 'safe' and 'safe area' or 'screen'}
+    local node = ui.alert{anchor = anchor, anchorTo = area, margin = self.margin, tone = area == 'safe' and 'information' or 'warning', title = 'Anchor "' .. anchor .. '"', message = area == 'safe' and 'Safe area' or 'Screen'}
     for key, value in pairs(kSizes[anchor] or {}) do
         node[key] = value
     end
@@ -46,16 +46,16 @@ end
 
 function Anchors:refresh()
     self.demo:replaceChildren('demo', self:nodes())
-    self:setStatus(string.format('%s, %s, margin %d', self.anchor == 'points' and 'the nine points' or self.anchor, self.area == 'both' and 'safe area and screen' or self.area, self.margin))
+    self:setStatus(string.format('%s, %s, margin %d', self.anchor == 'points' and 'The nine points' or 'Anchor "' .. self.anchor .. '"', self.area == 'both' and 'safe area and screen' or self.area, self.margin))
 end
 
 function Anchors:controls()
     local presets = {{id = 'points', text = 'The nine points'}}
     for _, name in ipairs(kPoints) do
-        presets[#presets + 1] = {id = name, text = name}
+        presets[#presets + 1] = {id = name, text = 'Anchor "' .. name .. '"'}
     end
     for _, name in ipairs(kStretches) do
-        presets[#presets + 1] = {id = name, text = name}
+        presets[#presets + 1] = {id = name, text = 'Anchor "' .. name .. '"'}
     end
     return {
         ui.settingsRow{label = 'Preset', caption = '9 points and 7 stretches', ui.stepper{id = 'anchor', width = 440, items = presets, selected = self.anchor, wrap = true, onChange = function(event)

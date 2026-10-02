@@ -37,7 +37,7 @@ function Measuring:update(dt)
         local left, top = x + quad.position.x, y + quad.position.y
         if mouseX >= left and mouseX < left + quad.size.x and mouseY >= top and mouseY < top + quad.size.y then
             self.picked = index
-            self:setStatus(string.format('glyph %d: quad at %.1f, %.1f, %.1f x %.1f on page %d', index, quad.position.x, quad.position.y, quad.size.x, quad.size.y, quad.page))
+            self:setStatus(string.format('Glyph %d: quad at %.1f, %.1f, %.1f x %.1f on page %d', index, quad.position.x, quad.position.y, quad.size.x, quad.size.y, quad.page))
         end
     end
     if self.picked == nil then
@@ -57,7 +57,7 @@ function Measuring:measuredLine(font, x, y)
         local picked = index == self.picked
         graphics2d.drawRectOutline({x + quad.position.x, y + quad.position.y, quad.size.x, quad.size.y}, picked and 4 or 1, picked and '#FFFFE070' or '#A03DBE7A')
     end
-    sample.caption(string.format('measureText %.0f x %.0f, %d quads, %d line, ascent %.1f, line height %.1f', width, height, #layout.quads, layout.lineCount, font:ascent(kSize), font:lineHeight(kSize)), x, y + height + 12)
+    sample.caption(string.format('Size from "measureText" %.0f x %.0f, %d quads, %d line, ascent %.1f, line height %.1f', width, height, #layout.quads, layout.lineCount, font:ascent(kSize), font:lineHeight(kSize)), x, y + height + 12)
 end
 
 -- Draws one character large with its source quad, its offset from the pen on the baseline and its advance.
@@ -70,8 +70,8 @@ function Measuring:glyphMetrics(font, character, x, baseline)
     graphics2d.drawLine(x - 30, baseline, x + glyph.advance * scale + 30, baseline, 2, '#FFFF6A6A')
     graphics2d.drawCircle(x, baseline, 6, '#FFFFFFFF')
     graphics2d.drawLine(x, baseline + 24, x + glyph.advance * scale, baseline + 24, 4, '#FFF2B23A')
-    sample.caption(string.format('"%s" at size %d: offset %.1f, %.1f', character, font.nativeSize, glyph.offset.x, glyph.offset.y), x - 30, baseline + 104)
-    sample.caption(string.format("size %.0f x %.0f, advance %.1f", glyph.source.width, glyph.source.height, glyph.advance), x - 30, baseline + 132)
+    sample.caption(string.format('Glyph "%s" at size %d: offset %.1f, %.1f', character, font.nativeSize, glyph.offset.x, glyph.offset.y), x - 30, baseline + 104)
+    sample.caption(string.format("Size %.0f x %.0f, advance %.1f", glyph.source.width, glyph.source.height, glyph.advance), x - 30, baseline + 132)
 end
 
 function Measuring:render()
@@ -105,7 +105,7 @@ function Measuring:render()
     for _, image in ipairs(laid.images) do
         graphics2d.drawRectOutline({richX + image.rect.x, richY + image.rect.y, image.rect.width, image.rect.height}, 2, '#FF3DBE7A')
     end
-    sample.caption(string.format('measureRichText %.0f x %.0f, %d glyphs, %d lines, %d link, %d image', width, height, #laid.glyphs, laid.lineCount, #laid.links, #laid.images), richX, richY + height + 12)
+    sample.caption(string.format('Size from "measureRichText" %.0f x %.0f, %d glyphs, %d lines, %d link, %d image', width, height, #laid.glyphs, laid.lineCount, #laid.links, #laid.images), richX, richY + height + 12)
 end
 
 return Measuring

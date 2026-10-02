@@ -23,10 +23,10 @@ function Parallax:init(entry)
     self.walker = {x = 0}
     self.traveling = true
     self.layers = {
-        {name = 'clouds 0.05 and autoscroll', layer = graphics2d.newParallax(Parallax.texture('clouds'), {position = {0, -540}, size = {1024, 320}, scrollScale = {0.05, 1}, repeatX = true, autoscroll = {-60, 0}, color = '#D0FFFFFF'}), order = -4},
-        {name = 'mountains 0.15', layer = graphics2d.newParallax(Parallax.texture('mountains'), {position = {0, -420}, size = {1024, 512}, scrollScale = {0.15, 1}, repeatX = true}), order = -3},
-        {name = 'hills 0.45', layer = graphics2d.newParallax(Parallax.texture('hills'), {position = {0, -120}, size = {1024, 384}, scrollScale = {0.45, 1}, repeatX = true}), order = -2},
-        {name = 'grass 1.35', layer = graphics2d.newParallax(Parallax.texture('grass'), {position = {0, Parallax.ground + 120}, size = {512, 128}, scrollScale = {1.35, 1}, repeatX = true}), order = 5},
+        {name = 'Clouds 0.05 and autoscroll', layer = graphics2d.newParallax(Parallax.texture('clouds'), {position = {0, -540}, size = {1024, 320}, scrollScale = {0.05, 1}, repeatX = true, autoscroll = {-60, 0}, color = '#D0FFFFFF'}), order = -4},
+        {name = 'Mountains 0.15', layer = graphics2d.newParallax(Parallax.texture('mountains'), {position = {0, -420}, size = {1024, 512}, scrollScale = {0.15, 1}, repeatX = true}), order = -3},
+        {name = 'Hills 0.45', layer = graphics2d.newParallax(Parallax.texture('hills'), {position = {0, -120}, size = {1024, 384}, scrollScale = {0.45, 1}, repeatX = true}), order = -2},
+        {name = 'Grass 1.35', layer = graphics2d.newParallax(Parallax.texture('grass'), {position = {0, Parallax.ground + 120}, size = {512, 128}, scrollScale = {1.35, 1}, repeatX = true}), order = 5},
     }
 end
 
@@ -51,7 +51,7 @@ function Parallax:update(dt)
     for _, entry in ipairs(self.layers) do
         entry.layer:update(dt)
     end
-    self:setStatus(string.format('camera x %.0f, clouds scrolled %.0f', self.camera.x, self.layers[1].layer:scrolled().x))
+    self:setStatus(string.format('Camera x %.0f, clouds scrolled %.0f', self.camera.x, self.layers[1].layer:scrolled().x))
 end
 
 function Parallax:render()

@@ -62,7 +62,7 @@ function Touch:update(dt)
         trail.lifted = touch.phase == 'ended' or touch.phase == 'cancelled'
     end
     self.most = math.max(self.most, #touches)
-    self:status(string.format('fingers %d   most at once %d   touch events %d', #touches, self.most, self.events))
+    self:status(string.format('Fingers %d   most at once %d   touch events %d', #touches, self.most, self.events))
 end
 
 function Touch:draw(area)
@@ -78,7 +78,7 @@ function Touch:draw(area)
         graphics2d.drawRing(trail.startX, trail.startY, 20, 3, color, {layer = 1})
         graphics2d.drawLine(trail.startX, trail.startY, trail.x, trail.y, 2, '#40FFFFFF', {layer = 1})
         graphics2d.drawCircle(trail.x, trail.y, 56 * (0.4 + 0.6 * alpha), trail.lifted and '#40FFFFFF' or color, {layer = 2})
-        sample.caption(string.format('id %d  %s  %.1fs', id, trail.phase, trail.duration), trail.x, trail.y - 70, {anchor = {0.5, 1}, color = sample.ink})
+        sample.caption(string.format('Touch %d  %s  %.1fs', id, trail.phase, trail.duration), trail.x, trail.y - 70, {anchor = {0.5, 1}, color = sample.ink})
     end
     if count == 0 then
         sample.caption('Touch the stage with up to ten fingers', area.width / 2, area.height / 2, {anchor = {0.5, 0.5}, size = 34})

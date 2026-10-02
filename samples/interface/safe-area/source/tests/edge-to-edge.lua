@@ -45,7 +45,7 @@ end
 
 function EdgeToEdge:update(dt)
     local top, right, bottom, left = sample.insets()
-    self:setStatus(string.format('insets top %.0f, right %.0f, bottom %.0f, left %.0f', top, right, bottom, left))
+    self:setStatus(string.format('Insets top %.0f, right %.0f, bottom %.0f, left %.0f', top, right, bottom, left))
 end
 
 -- A sea at sunset with sailing boats, drawn over the visible screen or only over the safe area.

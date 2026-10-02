@@ -22,24 +22,24 @@ function Choices:change(key)
             self.values[key] = event.value
         end
         local values = self.values
-        self:setStatus(string.format('hints %s, inverted camera %s, music %s, vibration %s, difficulty %s, hand %s', values.hints, values.camera, values.music, values.vibration, values.difficulty, values.hand))
+        self:setStatus(string.format('Hints %s, inverted camera %s, music %s, vibration %s, difficulty %s, hand %s', values.hints, values.camera, values.music, values.vibration, values.difficulty, values.hand))
     end
 end
 
 function Choices:content()
     local difficulties = {{id = 'easy', text = 'Easy'}, {id = 'normal', text = 'Normal'}, {id = 'hard', text = 'Hard'}, {id = 'nightmare', text = 'Nightmare', enabled = false}}
     return sample.columns{
-        sample.section('checkbox', {grow = 1,
+        sample.section('Component "checkbox"', {grow = 1,
             ui.checkbox{id = 'hints', text = 'Show hints', checked = true, onChange = self:change('hints')},
             ui.checkbox{text = 'Invert the camera', onChange = self:change('camera')},
             ui.checkbox{text = 'Disabled', checked = true, enabled = false},
         }),
-        sample.section('toggle', {grow = 1,
+        sample.section('Component "toggle"', {grow = 1,
             ui.toggle{text = 'Music', checked = true, onChange = self:change('music')},
             ui.toggle{text = 'Vibration', onChange = self:change('vibration')},
             ui.toggle{text = 'Disabled', enabled = false},
         }),
-        sample.section('radioGroup', {grow = 1,
+        sample.section('Component "radioGroup"', {grow = 1,
             ui.radioGroup{items = difficulties, selected = 'normal', onChange = self:change('difficulty')},
             ui.divider{},
             ui.label{text = 'Horizontal', color = 'textMuted'},

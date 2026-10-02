@@ -30,8 +30,8 @@ function Gamepads:enter()
             self.journal:add('Already connected ' .. index .. ': ' .. input.gamepadName(index), sample.muted)
         end
     end
-    self:listen('gamepadConnected', function(pad) self.journal:add('gamepadConnected ' .. pad.gamepad .. ': ' .. pad.name, sample.green) end)
-    self:listen('gamepadDisconnected', function(pad) self.journal:add('gamepadDisconnected ' .. pad.gamepad .. ': ' .. pad.name, sample.red) end)
+    self:listen('gamepadConnected', function(pad) self.journal:add('Event "gamepadConnected" for gamepad ' .. pad.gamepad .. ': ' .. pad.name, sample.green) end)
+    self:listen('gamepadDisconnected', function(pad) self.journal:add('Event "gamepadDisconnected" for gamepad ' .. pad.gamepad .. ': ' .. pad.name, sample.red) end)
     self:frame({
         hint = 'Plug in up to four gamepads. A browser shows a gamepad once one of its buttons is pressed.',
         navigation = not window.hasPointerDevice(),
@@ -86,7 +86,7 @@ function Gamepads:update(dt)
         self.hold = 0
         sample.back()
     end
-    self:status(string.format('connected %d   dead zone %.2f   last device %s', connected, input.gamepadDeadzone(), input.lastDevice()))
+    self:status(string.format('Connected %d   dead zone %.2f   last device %s', connected, input.gamepadDeadzone(), input.lastDevice()))
 end
 
 function Gamepads:drawStick(index, side, x, y, radius)
@@ -97,7 +97,7 @@ function Gamepads:drawStick(index, side, x, y, radius)
     graphics2d.drawRing(x, y, radius, 3, clicked and sample.warm or sample.line, {layer = 2})
     graphics2d.drawLine(x, y, x + sx * radius, y + sy * radius, 3, sample.accent, {layer = 3})
     graphics2d.drawCircle(x + sx * radius, y + sy * radius, radius * 0.28, clicked and sample.warm or sample.accent, {layer = 3})
-    sample.caption(string.format('%s %+.2f %+.2f', side, sx, sy), x, y + radius + 8, {anchor = {0.5, 0}, size = 16})
+    sample.caption(string.format('Stick %s %+.2f %+.2f', side, sx, sy), x, y + radius + 8, {anchor = {0.5, 0}, size = 16})
 end
 
 function Gamepads:drawButton(index, button, x, y, radius)

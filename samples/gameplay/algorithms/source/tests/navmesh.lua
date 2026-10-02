@@ -111,14 +111,14 @@ function NavMesh:update(dt)
         self:build()
     end
     if self.mesh == nil then
-        self:showStats('building on a worker thread')
+        self:showStats('Building on a worker thread')
         return
     end
     if self.pointer.pressed then
         self:apply(self.pointer.worldX, self.pointer.worldY)
     end
     self:walk(dt)
-    self:showStats(string.format('triangles %d\nobstacles %d\nfirst build %.0f ms\nquery %.3f ms\npath %s', self.mesh.triangleCount, self.mesh.obstacleCount, self.buildLatency or 0, self:timing('navmesh'), self.path and string.format('%d corners, %.0f long', #self.path, self.length) or 'none'))
+    self:showStats(string.format('Triangles %d\nObstacles %d\nFirst build %.0f ms\nQuery %.3f ms\nPath %s', self.mesh.triangleCount, self.mesh.obstacleCount, self.buildLatency or 0, self:timing('navmesh'), self.path and string.format('%d corners, %.0f long', #self.path, self.length) or 'none'))
 end
 
 function NavMesh:walk(dt)

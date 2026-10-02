@@ -89,7 +89,7 @@ function Conveyors:update(dt)
     end
     self.grab:update(self.pointer, self.camera)
     self.travel = self.travel + dt
-    self:showStats(string.format('crates %d\nspeed x%.1f\nstep %.2f ms', #self.crates, self.speed * self.direction, sample.milliseconds('physics step')))
+    self:showStats(string.format('Crates %d\nSpeed x%.1f\nStep %.2f ms', #self.crates, self.speed * self.direction, sample.milliseconds('physics step')))
 end
 
 function Conveyors:fixedUpdate(step)

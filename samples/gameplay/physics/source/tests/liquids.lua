@@ -79,7 +79,7 @@ function Liquids:update(dt)
             self.water:spawn(pointer.worldX + self.random:range(-12, 12), pointer.worldY + self.random:range(-12, 12), self.random:range(-40, 40), 120)
         end
     end
-    self:showStats(string.format('particles %d / %d\nstep %.2f ms', self.water.size, kMaxParticles, sample.milliseconds('physics step')))
+    self:showStats(string.format('Particles %d / %d\nStep %.2f ms', self.water.size, kMaxParticles, sample.milliseconds('physics step')))
 end
 
 function Liquids:fixedUpdate(step)

@@ -75,13 +75,13 @@ end
 
 function Lifetime:update(dt)
     Lifetime.super.update(self, dt)
-    self:status(string.format('tweens %d   table target %s   sprite target %s', tween.size(), self.watch.table and 'alive' or 'collected', self.watch.sprite and 'alive' or 'collected'))
+    self:status(string.format('Tweens %d   table target %s   sprite target %s', tween.size(), self.watch.table and 'alive' or 'collected', self.watch.sprite and 'alive' or 'collected'))
 end
 
 function Lifetime:draw(area)
     local top = area.height / 2 - 80
-    graphics2d.drawText(nil, 'table target', 120, top - 70, {size = 26, color = sample.muted})
-    graphics2d.drawText(nil, 'sprite target', 120, top + 90, {size = 26, color = sample.muted})
+    graphics2d.drawText(nil, 'Table target', 120, top - 70, {size = 26, color = sample.muted})
+    graphics2d.drawText(nil, 'Sprite target', 120, top + 90, {size = 26, color = sample.muted})
     local plain, sprite = self.watch.table, self.watch.sprite
     if plain then
         graphics2d.drawRect({plain.x - 30, top - 30, 60, 60}, sample.accent)

@@ -34,7 +34,7 @@ function Alignment:render()
     for index, align in ipairs(kAligns) do
         local x = stage.x + (index - 1) * (kWidth + 50)
         local _, height = graphics2d.measureText(font, kText, {size = 30, maxWidth = kWidth, align = align})
-        sample.caption("align = '" .. align .. "'", x, stage.y)
+        sample.caption('Align "' .. align .. '"', x, stage.y)
         graphics2d.drawRect({x, stage.y + 34, kWidth, height}, '#FF1F2638')
         graphics2d.drawText(font, kText, x, stage.y + 34, {size = 30, maxWidth = kWidth, align = align})
     end
@@ -42,16 +42,16 @@ function Alignment:render()
     local y = stage.y + 330
     for index, anchor in ipairs(kAnchors) do
         local x = stage.x + 120 + (index - 1) * 360
-        sample.caption('anchor ' .. anchor[2], x - 100, y - 60)
+        sample.caption('Anchor ' .. anchor[2], x - 100, y - 60)
         graphics2d.drawText(font, 'Anchored', x, y + 60, {size = 44, anchor = anchor[1], color = '#FFFFE070'})
         cross(x, y + 60)
     end
     local x = stage.x + 1150
-    sample.caption('anchor 0.5, 0.5, rotation 0.3', x - 110, y - 60)
+    sample.caption('Anchor 0.5, 0.5, rotation 0.3', x - 110, y - 60)
     graphics2d.drawText(font, 'Turned', x, y + 60, {size = 44, anchor = {0.5, 0.5}, rotation = 0.3, color = '#FF7FCBF2'})
     cross(x, y + 60)
 
-    sample.caption('rich text paragraphs', stage.x + 1340, y - 60)
+    sample.caption('Rich text paragraphs', stage.x + 1340, y - 60)
     self.rich:draw(stage.x + 1340, y - 20)
 end
 

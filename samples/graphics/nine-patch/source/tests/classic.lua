@@ -39,7 +39,7 @@ end
 function Classic:update(dt)
     Classic.super.update(self, dt)
     if self.frameSize then
-        self:status(string.format('frames %.0f x %.0f   borders %s   fills %s and %s', self.frameSize[1], self.frameSize[2], table.concat(self.stretched.borders, ', '), self.stretched.fill, self.tiled.fill))
+        self:status(string.format('Frames %.0f x %.0f   borders %s   fills %s and %s', self.frameSize[1], self.frameSize[2], table.concat(self.stretched.borders, ', '), self.stretched.fill, self.tiled.fill))
     end
 end
 
@@ -52,7 +52,7 @@ function Classic:drawSource(x, y)
         graphics2d.drawLine(x + offset, y - 10, x + offset, y + size + 10, 2, sample.red, {layer = 1})
         graphics2d.drawLine(x - 10, y + offset, x + size + 10, y + offset, 2, sample.red, {layer = 1})
     end
-    graphics2d.drawText(nil, 'source, borders 28', x + size / 2, y + size + 36, {size = 22, color = sample.muted, anchor = {0.5, 0.5}})
+    graphics2d.drawText(nil, 'Source, borders 28', x + size / 2, y + size + 36, {size = 22, color = sample.muted, anchor = {0.5, 0.5}})
 end
 
 function Classic:draw(area)
@@ -64,8 +64,8 @@ function Classic:draw(area)
     self.frameSize = {width, height}
     graphics2d.drawNineSlice(self.stretched, {left, 40, width, height})
     graphics2d.drawNineSlice(self.tiled, {left + room + 40, 40, width, height})
-    graphics2d.drawText(nil, "fill = 'stretch'", left, area.height - 50, {size = 26, color = sample.ink})
-    graphics2d.drawText(nil, "fill = 'tile'", left + room + 40, area.height - 50, {size = 26, color = sample.ink})
+    graphics2d.drawText(nil, 'Fill "stretch"', left, area.height - 50, {size = 26, color = sample.ink})
+    graphics2d.drawText(nil, 'Fill "tile"', left + room + 40, area.height - 50, {size = 26, color = sample.ink})
 end
 
 return Classic

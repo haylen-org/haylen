@@ -357,7 +357,7 @@ The app stopped with an error
 Tiny Island 1.0.0 · macos · Haylen 0.0.1
 
 attempt to index a nil value (local 'enemy')
-source/scenes/level.lua, line 12
+File "source/scenes/level.lua", line 12
 
   10  function level:update(dt)
   11      local enemy = self.enemies[1]

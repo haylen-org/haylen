@@ -492,7 +492,7 @@ static void native_demo_count_primes(NativeDemoJob* job) {
 static void native_demo_compute(uint64_t call, const char* paramsJson) {
     char limit[32];
     if (!native_demo_field(paramsJson, "limit", limit, sizeof(limit))) {
-        nativeDemoApi->resolve(call, 0, "{\"message\":\"compute needs a limit.\",\"code\":\"invalidParams\"}", NULL, 0);
+        nativeDemoApi->resolve(call, 0, "{\"message\":\"The method \\\"compute\\\" needs a limit.\",\"code\":\"invalidParams\"}", NULL, 0);
         return;
     }
     NativeDemoJob* job = native_demo_job(native_demo_count_primes);
@@ -544,7 +544,7 @@ static void native_demo_ticks(uint64_t call, const char* paramsJson) {
     char enabled[16];
     char interval[32];
     if (!native_demo_field(paramsJson, "enabled", enabled, sizeof(enabled)) || !native_demo_field(paramsJson, "interval", interval, sizeof(interval))) {
-        nativeDemoApi->resolve(call, 0, "{\"message\":\"ticks needs enabled and interval.\",\"code\":\"invalidParams\"}", NULL, 0);
+        nativeDemoApi->resolve(call, 0, "{\"message\":\"The method \\\"ticks\\\" needs \\\"enabled\\\" and \\\"interval\\\".\",\"code\":\"invalidParams\"}", NULL, 0);
         return;
     }
 

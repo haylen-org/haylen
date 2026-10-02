@@ -80,7 +80,7 @@ function Bodies:update(dt)
         self:build()
     end
     self.grab:update(self.pointer, self.camera)
-    self:showStats(string.format('bodies %d\nstep %.2f ms', self.world.bodyCount, sample.milliseconds('physics step')))
+    self:showStats(string.format('Bodies %d\nStep %.2f ms', self.world.bodyCount, sample.milliseconds('physics step')))
 end
 
 function Bodies:fixedUpdate(step)

@@ -48,7 +48,7 @@ function Shake:update(dt)
     self.camera:follow(self.player.x, self.player.y, dt)
     self.camera:update(dt)
     local offset = self.camera:shakeOffset()
-    self:setStatus(string.format('trauma %.2f, offset %.1f, %.1f, angle %.3f', self.camera.trauma, offset.x, offset.y, self.camera:renderRotation()))
+    self:setStatus(string.format('Trauma %.2f, offset %.1f, %.1f, angle %.3f', self.camera.trauma, offset.x, offset.y, self.camera:renderRotation()))
 end
 
 function Shake:render()

@@ -57,7 +57,7 @@ function PixelSnap:update(dt)
     self.time = self.time + dt
     self:place()
     local position, drawn = self.cameras[1].position, self.cameras[2]:renderPosition()
-    self:setStatus(string.format('position %.3f, %.3f, snapped to %.3f, %.3f', position.x, position.y, drawn.x, drawn.y))
+    self:setStatus(string.format('Position %.3f, %.3f, snapped to %.3f, %.3f', position.x, position.y, drawn.x, drawn.y))
 end
 
 function PixelSnap:render()
@@ -74,7 +74,7 @@ function PixelSnap:renderUi()
     graphics2d.beginScreen()
     for index, camera in ipairs(self.cameras) do
         local view = camera.viewport
-        graphics2d.drawText(nil, index == 1 and 'pixelSnap = false' or 'pixelSnap = true', view.x + view.width / 2, view:bottom() - 170, {size = 40, anchor = {0.5, 0}, outlineWidth = 4})
+        graphics2d.drawText(nil, index == 1 and 'With "pixelSnap = false"' or 'With "pixelSnap = true"', view.x + view.width / 2, view:bottom() - 170, {size = 40, anchor = {0.5, 0}, outlineWidth = 4})
     end
     local split = self.cameras[2].viewport
     graphics2d.drawRect({split.x - 4, split.y, 8, split.height}, '#FF101418')

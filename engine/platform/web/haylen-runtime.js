@@ -1207,8 +1207,14 @@ Module.haylen = Module.haylen || {};
     // Other elements of the page own the keys they receive, such as the buttons of a plugin dialog or the fields of an editor next to the canvas, while the app owns the keys of the canvas, the body and the page.
     const isForeign = (target) => target instanceof Element && target !== Module.canvas && target !== document.body && target !== document.documentElement && !isElement(target);
 
+    // The keys whose press reached `sokol_app`, whose release reaches it too wherever the focus went in between, such as to the field that the press started editing, so no key stays held.
+    const held = new Set();
+
     // The library `sokol_app` listens for keys on the window in the capture phase, before the element sees them. A field of the UI owns every key, so `sokol_app` never applies them twice, and its return, tab and escape become actions. The plain keyboard of `haylen.window.setKeyboardVisible` leaves keys to `sokol_app` and only takes their text.
     const onKey = (event) => {
+        if (event.type === "keyup" && held.delete(event.code)) {
+            return;
+        }
         if (isForeign(event.target)) {
             event.stopImmediatePropagation();
             if (event.type === "keydown") {
@@ -1217,17 +1223,14 @@ Module.haylen = Module.haylen || {};
             return;
         }
         const field = text.field;
-        if (!field || !isElement(event.target)) {
-            return;
-        }
-        if (field.id === 0) {
-            if (event.type === "keypress") {
-                event.stopImmediatePropagation();
+        if (!field || !isElement(event.target) || (field.id === 0 && event.type !== "keypress")) {
+            if (event.type === "keydown") {
+                held.add(event.code);
             }
             return;
         }
         event.stopImmediatePropagation();
-        if (event.type !== "keydown" || event.isComposing || event.keyCode === 229) {
+        if (field.id === 0 || event.type !== "keydown" || event.isComposing || event.keyCode === 229) {
             return;
         }
         const action = event.key === "Enter" && !field.multiline ? 0 : event.key === "Tab" ? 1 : event.key === "Escape" ? 2 : -1;
@@ -1237,9 +1240,12 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-    // The focus moving to or from an element, such as a field, the canvas or the button of a plugin dialog, is no focus change of the page, which `sokol_app` would report as the app losing its focus, so only the focus of the window reaches it. A blur of a field while the page keeps the focus means the user closed the keyboard or left the field, unless the engine ended the editing.
+    // The focus moving to or from an element, such as a field, the canvas or the button of a plugin dialog, is no focus change of the page, which `sokol_app` would report as the app losing its focus, so only the focus of the window reaches it. The engine releases every held key when the window loses the focus, so the page forgets them then too. A blur of a field while the page keeps the focus means the user closed the keyboard or left the field, unless the engine ended the editing.
     const onFocus = (event) => {
         if (event.target === window) {
+            if (event.type === "blur") {
+                held.clear();
+            }
             return;
         }
         event.stopImmediatePropagation();

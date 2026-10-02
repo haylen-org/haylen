@@ -82,7 +82,7 @@ TEST_F(ErrorScreenTest, ReportsTheWholeErrorAsPlainText) {
     const core::ErrorScreen screen(fixture.engine(), *fixture.engine().getError());
     const std::string& report = screen.getReport();
     EXPECT_TRUE(report.starts_with("The app stopped with an error\nTest App 1.0.0 · headless · Haylen " + std::string(core::Version::kString) + "\n\nattempt to index")) << report;
-    EXPECT_NE(report.find("\nsource/scenes/battle.lua, line 2\n"), std::string::npos) << report;
+    EXPECT_NE(report.find("\nFile \"source/scenes/battle.lua\", line 2\n"), std::string::npos) << report;
     EXPECT_NE(report.find("\n> 2      return enemy.health\n"), std::string::npos) << report;
     EXPECT_NE(report.find("\n  5  return function()\n"), std::string::npos) << report;
     EXPECT_TRUE(report.ends_with("\n\nStack\nsource/scenes/battle.lua:2  upvalue 'strike'\nsource/scenes/battle.lua:6  function <source/scenes/battle.lua:5>")) << report;

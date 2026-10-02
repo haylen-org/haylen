@@ -95,13 +95,13 @@ function casts.closest(test)
             best = hit
         end
     end
-    return {rays = {{from, to, best}}, summary = best and string.format('hit at %.0f', best.distance) or 'no hit'}
+    return {rays = {{from, to, best}}, summary = best and string.format('Hit at %.0f', best.distance) or 'No hit'}
 end
 
 function casts.pierce(test)
     local from, to = test:ends()
     local hits = m.raycastSegmentsAll(from, to, test.segments, 4)
-    return {rays = {{from, to}}, points = hits, summary = string.format('pierced %d segments', #hits)}
+    return {rays = {{from, to}}, points = hits, summary = string.format('Pierced %d segments', #hits)}
 end
 
 function casts.bounce(test)
@@ -136,7 +136,7 @@ function casts.grid(test)
     local hit = spatial2d.raycastGrid(test.cells, from, to, kGrid.cell)
     local start, finish = {from[1] + kGrid.x, from[2] + kGrid.y}, {to[1] + kGrid.x, to[2] + kGrid.y}
     local drawn = hit and {x = hit.x + kGrid.x, y = hit.y + kGrid.y, normalX = hit.normalX, normalY = hit.normalY}
-    return {rays = {{start, finish, drawn}}, summary = hit and string.format('cell %d, %d', hit.column, hit.row) or 'left the grid'}
+    return {rays = {{start, finish, drawn}}, summary = hit and string.format('Cell %d, %d', hit.column, hit.row) or 'Left the grid'}
 end
 
 function casts.tree(test)
@@ -165,7 +165,7 @@ function Raycasts:update(dt)
     profiler.beginScope('math casts')
     self.cast = casts[self.mode](self)
     profiler.endScope()
-    self:showStats(string.format('%s\ncast %.3f ms', self.cast.summary, self:timing('math casts')))
+    self:showStats(string.format('%s\nCast %.3f ms', self.cast.summary, self:timing('math casts')))
 end
 
 function Raycasts:render()

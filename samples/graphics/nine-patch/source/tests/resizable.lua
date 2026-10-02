@@ -91,7 +91,7 @@ function Resizable:update(dt)
     local minimum = self:minimum()
     self.panel.width = math.max(minimum, self.panel.width + growX * 400 * dt)
     self.panel.height = math.max(minimum, self.panel.height + growY * 400 * dt)
-    self:status(string.format('panel %.0f, %.0f   %.0f x %.0f   %s', self.panel.x, self.panel.y, self.panel.width, self.panel.height, self.dragging and 'dragging' or 'released'))
+    self:status(string.format('Panel %.0f, %.0f   %.0f x %.0f   %s', self.panel.x, self.panel.y, self.panel.width, self.panel.height, self.dragging and 'dragging' or 'released'))
 end
 
 function Resizable:draw(area)

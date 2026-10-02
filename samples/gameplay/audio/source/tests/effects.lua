@@ -159,7 +159,7 @@ function Effects:update(dt)
     Effects.super.update(self, dt)
     local chain = self.target == 'bus' and audio.busEffects('music') or audio.effects(self.voice)
     local where = self.target == 'bus' and 'the music bus' or 'voice ' .. self.voice
-    self:status(string.format('%s on %s   attached %s   tail %.2fs   chain of %d, ours first %s', self.kind.id, where, self.effect.attached, self.effect.tail, #chain, chain[1] == self.effect))
+    self:status(string.format('Effect %s on %s   attached %s   tail %.2fs   chain of %d, ours first %s', self.kind.id, where, self.effect.attached, self.effect.tail, #chain, chain[1] == self.effect))
 end
 
 function Effects:drawFilter(left, top, width, height)
@@ -236,9 +236,9 @@ function Effects:draw(area)
 
     local lines = {}
     for _, param in ipairs(self.kind.params) do
-        lines[#lines + 1] = string.format('%s %.2f', param, self.effect[param])
+        lines[#lines + 1] = string.format('"%s" %.2f', param, self.effect[param])
     end
-    sample.caption(table.concat(lines, '   '), left, top + height + 50, {size = 22, color = sample.ink})
+    sample.caption('Parameters ' .. table.concat(lines, '   '), left, top + height + 50, {size = 22, color = sample.ink})
 end
 
 return Effects

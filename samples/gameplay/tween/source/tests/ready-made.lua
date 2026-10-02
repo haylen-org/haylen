@@ -109,7 +109,7 @@ function ReadyMade:draw(area)
     for index, kind in ipairs(kKinds) do
         local x, y, width, height = self:cell(index)
         graphics2d.drawRectOutline({x - width / 2 + 6, y - height / 2 - 8, width - 12, height - 12}, 1, sample.line)
-        graphics2d.drawText(nil, kind, x, y - height / 2 + 14, {size = 24, color = sample.ink, anchor = {0.5, 0.5}})
+        graphics2d.drawText(nil, kind:sub(1, 1):upper() .. kind:sub(2), x, y - height / 2 + 14, {size = 24, color = sample.ink, anchor = {0.5, 0.5}})
         self.sprites[index]:draw()
     end
 end

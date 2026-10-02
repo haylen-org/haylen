@@ -102,7 +102,7 @@ function Waypoints:update(dt)
     for _ in pairs(self.distances) do
         reachable = reachable + 1
     end
-    self:showStats(string.format('points %d\nreachable %d\nroute %s', self.graph.size, reachable, self.route and string.format('%d points, cost %.0f', #self.route, self.cost) or 'blocked'))
+    self:showStats(string.format('Points %d\nReachable %d\nRoute %s', self.graph.size, reachable, self.route and string.format('%d points, cost %.0f', #self.route, self.cost) or 'blocked'))
 end
 
 function Waypoints:render()

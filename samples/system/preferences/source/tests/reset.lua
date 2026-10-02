@@ -90,7 +90,7 @@ function Reset:refresh(result)
     for index, entry in ipairs(self:entries()) do
         local differs = format(entry.stored) ~= format(entry.default)
         changed = changed + (differs and 1 or 0)
-        rows[index] = {id = entry.key, cells = {entry.key, format(entry.stored), format(entry.default), differs and 'changed' or ''}}
+        rows[index] = {id = entry.key, cells = {entry.key, format(entry.stored), format(entry.default), differs and 'Changed' or ''}}
     end
     self:show('values', {rows = rows})
     self:show('summary', {text = string.format('%d of %d settings differ from their defaults.', changed, #rows)})

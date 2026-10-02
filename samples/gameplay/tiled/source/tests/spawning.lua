@@ -110,7 +110,7 @@ function Spawning:update(dt)
     for _, entity in ipairs(self.entities) do
         counts[entity.kind] = (counts[entity.kind] or 0) + 1
     end
-    self:showStats(string.format('entities %d\ncoins %d, slimes %d\nchests %d, signs %d\nobjects without a factory %d\ncollected %d', #self.entities, counts.coin or 0, counts.slime or 0, counts.chest or 0, counts.sign or 0, self.skipped, self.collected))
+    self:showStats(string.format('Entities %d\nCoins %d, slimes %d\nChests %d, signs %d\nObjects without a factory %d\nCollected %d', #self.entities, counts.coin or 0, counts.slime or 0, counts.chest or 0, counts.sign or 0, self.skipped, self.collected))
 end
 
 function Spawning:render()
@@ -123,7 +123,7 @@ function Spawning:render()
             graphics2d.drawText(nil, entity.text, entity.x + entity.width / 2, entity.y - 6, {size = 20, anchor = {0.5, 1}, outlineWidth = 2, layer = 6})
         elseif entity.kind == 'start' then
             graphics2d.drawRing(entity.x, entity.y, 20, 4, '#FF66BB6A', order)
-            graphics2d.drawText(nil, 'start', entity.x, entity.y - 26, {size = 20, anchor = {0.5, 1}, outlineWidth = 2, layer = 6})
+            graphics2d.drawText(nil, 'Start', entity.x, entity.y - 26, {size = 20, anchor = {0.5, 1}, outlineWidth = 2, layer = 6})
         else
             local bob = entity.kind == 'coin' and math.sin(self.time * 4 + entity.phase) * 4 or 0
             local height = entity.squashed and 12 or 32

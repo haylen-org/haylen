@@ -47,7 +47,7 @@ function Debug:update(dt)
     self.camera:follow(self.player.x, self.player.y, dt)
     self.camera:update(dt)
     local view = self.camera:visibleBounds()
-    self:setStatus(string.format('view %.0f by %.0f at %.0f, %.0f', view.width, view.height, self.camera.x, self.camera.y))
+    self:setStatus(string.format('View %.0f by %.0f at %.0f, %.0f', view.width, view.height, self.camera.x, self.camera.y))
 end
 
 function Debug:render()

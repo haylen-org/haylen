@@ -47,7 +47,7 @@ function Shadows:update(dt)
     self.cursor:update(dt)
     self.held.x, self.held.y = self.cursor:world(self.camera)
     self.door.rotation = self.door.rotation + dt * 0.8
-    self:setStatus(string.format('shadowFilter %s, shadowSmoothness %.1f, shadow maps %d', self.held.shadowFilter, self.held.shadowSmoothness, graphics2d.stats().shadows))
+    self:setStatus(string.format('Light with "shadowFilter" %s, "shadowSmoothness" %.1f, shadow maps %d', self.held.shadowFilter, self.held.shadowSmoothness, graphics2d.stats().shadows))
 end
 
 function Shadows:render()

@@ -150,10 +150,10 @@ function Hpa:update(dt)
             self:search()
         end
     end
-    local lines = {string.format('entrances %d', self.router.nodeCount), string.format('build %.2f ms', self:timing('hpa build')), string.format('update %.2f ms', self:timing('hpa update'))}
+    local lines = {string.format('Entrances %d', self.router.nodeCount), string.format('Build %.2f ms', self:timing('hpa build')), string.format('Update %.2f ms', self:timing('hpa update'))}
     for _, search in ipairs(kSearches) do
         lines[#lines + 1] = string.format('%s %.2f ms', search.name, self:timing(search.scope))
-        lines[#lines + 1] = search.path and string.format('  %d cells, cost %.0f', #search.path, search.cost) or '  no path'
+        lines[#lines + 1] = search.path and string.format('  %d cells, cost %.0f', #search.path, search.cost) or '  No path'
     end
     self:showStats(table.concat(lines, '\n'))
 end

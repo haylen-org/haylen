@@ -13,8 +13,8 @@ local Streams = haylen.class('Streams', sample.Test)
 local kFramesToPass = 60
 local kToneSeconds = 2
 local kLevelToPass = 0.1
-local kVideoName = 'the video stream reaches the texture'
-local kToneName = 'the audio stream plays as a voice'
+local kVideoName = 'The video stream reaches the texture'
+local kToneName = 'The audio stream plays as a voice'
 
 function Streams:enter()
     self.samples = collections.newFloatBuffer(1024)
@@ -52,7 +52,7 @@ function Streams:toggleVideo()
         self.videoStarted = haylen.elapsed()
         self.frames = self.video:on('frame', function() self:videoFrame() end)
         self:set('video', {text = 'Stop the video'})
-        self.results:set('video', 'waiting', kVideoName, string.format('%s pushes %d by %d %s frames %d times per second from %s.', started.language, started.width, started.height, started.format, started.fps, started.thread))
+        self.results:set('video', 'waiting', kVideoName, string.format('%s pushes %d by %d "%s" frames %d times per second from %s.', started.language, started.width, started.height, started.format, started.fps, started.thread))
     end)
 end
 
@@ -89,7 +89,7 @@ function Streams:toggleTone()
         self.voice = self.tone:play({volume = 0.5})
         self.toneStarted = haylen.elapsed()
         self:set('tone', {text = 'Stop the tone'})
-        self.results:set('tone', 'waiting', kToneName, string.format('%s synthesizes %s Hz as %s samples at %d Hz.', started.language, tostring(started.frequency), started.format, started.sampleRate))
+        self.results:set('tone', 'waiting', kToneName, string.format('%s synthesizes %s Hz as "%s" samples at %d Hz.', started.language, tostring(started.frequency), started.format, started.sampleRate))
     end)
 end
 

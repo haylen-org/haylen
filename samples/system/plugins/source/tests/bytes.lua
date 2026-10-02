@@ -28,7 +28,7 @@ function Bytes:enter()
         focus = 'run',
         controls = {
             ui.button{id = 'run', text = 'Run the checks again', variant = 'primary', onClick = function() self:run() end},
-            ui.label{text = 'platform.bytes marks a string that crosses as bytes, and every byte buffer of an answer arrives as a Lua string in its place. Swift reads and answers Data, Kotlin ByteArray, JavaScript Uint8Array and C arrays of HaylenNativeBuffer.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'The function "platform.bytes" marks a string that crosses as bytes, and every byte buffer of an answer arrives as a Lua string in its place. Swift reads and answers "Data", Kotlin "ByteArray", JavaScript "Uint8Array" and C arrays of "HaylenNativeBuffer".', color = 'textMuted', font = 'caption'},
             ui.label{font = 'monospace', text = "local echoed = demo.echoBytes(data):await()\nprint(echoed.data == data)\nlocal image = demo.generatedImage(384, 216):await()\nlocal texture = graphics.newTexture(image.png)"},
         },
     })
@@ -44,9 +44,9 @@ function Bytes:run()
 end
 
 function Bytes:echo()
-    local name = 'echoBytes returns the bytes it received'
+    local name = 'The call "echoBytes" returns the bytes it received'
     local data = everyByte()
-    self.results:set('echo', 'waiting', name, string.format('sending %d bytes', #data))
+    self.results:set('echo', 'waiting', name, string.format('Sending %d bytes', #data))
     local echoed, err = demo.echoBytes(data):await()
     if err then
         self.results:failure('echo', name, err)
@@ -57,8 +57,8 @@ function Bytes:echo()
 end
 
 function Bytes:image()
-    local name = 'generatedImage returns a PNG drawn natively'
-    self.results:set('image', 'waiting', name, 'drawing the image')
+    local name = 'The call "generatedImage" returns a PNG drawn natively'
+    self.results:set('image', 'waiting', name, 'Drawing the image')
     local image, err = demo.generatedImage(kImageWidth, kImageHeight):await()
     if err then
         self.results:failure('image', name, err)
@@ -71,7 +71,7 @@ function Bytes:image()
     end
     self.texture = texture
     local valid = image.png:sub(1, 8) == kPngSignature and texture.width == kImageWidth and texture.height == kImageHeight
-    self.results:set('image', valid and 'pass' or 'fail', name, string.format('%s drew the image with %s and returned %d bytes of PNG, which graphics.newTexture decoded into the texture of %d by %d pixels below.', image.language, image.drawnWith, #image.png, texture.width, texture.height))
+    self.results:set('image', valid and 'pass' or 'fail', name, string.format('%s drew the image with %s and returned %d bytes of PNG, which "graphics.newTexture" decoded into the texture of %d by %d pixels below.', image.language, image.drawnWith, #image.png, texture.width, texture.height))
 end
 
 function Bytes:draw(area)

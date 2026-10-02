@@ -50,7 +50,7 @@ function Overwrite:update(dt)
             table.remove(self.targets, index)
         end
     end
-    self:status(string.format('overwrite %s   %d tweens move the ball', self.overwrite and 'on' or 'off', #self.targets))
+    self:status(string.format('Overwrite %s   %d tweens move the ball', self.overwrite and 'on' or 'off', #self.targets))
 end
 
 function Overwrite:draw(area)

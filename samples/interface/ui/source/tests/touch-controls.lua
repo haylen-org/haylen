@@ -73,7 +73,7 @@ function TouchControls:update(dt)
     end
     ball.height = math.max(0, ball.height + ball.lift * dt)
     ball.lift = ball.height > 0 and ball.lift - 2600 * dt or 0
-    self:setStatus(string.format('move %.2f, %.2f from %s, %s', x, y, input.lastDevice(), self.last))
+    self:setStatus(string.format('Move %.2f, %.2f from %s, %s', x, y, input.lastDevice(), self.last))
 end
 
 function TouchControls:render()

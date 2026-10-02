@@ -31,7 +31,7 @@ end
 function Text:update(dt)
     Text.super.update(self, dt)
     self.time = self.time + dt
-    self:status(string.format('align %s   box width %.0f', self.align, self.width))
+    self:status(string.format('Align %s   box width %.0f', self.align, self.width))
 end
 
 function Text:draw(area)
@@ -54,7 +54,7 @@ function Text:draw(area)
     local pointX, pointY = area.width * 0.72, 250
     graphics2d.drawCircle(pointX, pointY, 6, sample.red, {layer = 1})
     for _, anchor in ipairs(kAnchors) do
-        graphics2d.drawText(nil, string.format('anchor {%g, %g}', anchor[1], anchor[2]), pointX, pointY, {size = 24, color = sample.muted, anchor = anchor})
+        graphics2d.drawText(nil, string.format('Anchor {%g, %g}', anchor[1], anchor[2]), pointX, pointY, {size = 24, color = sample.muted, anchor = anchor})
     end
 
     local spinX, spinY = area.width * 0.72, area.height * 0.55

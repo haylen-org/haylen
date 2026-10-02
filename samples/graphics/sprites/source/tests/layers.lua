@@ -87,7 +87,7 @@ function Layers:update(dt)
             end
         end
     end
-    self:status(string.format('sort %s   hero %d selected%s', self.canvas.sort, self.selected, self.raised and ' and raised by 10 layers' or ''))
+    self:status(string.format('Sort %s   hero %d selected%s', self.canvas.sort, self.selected, self.raised and ' and raised by 10 layers' or ''))
 end
 
 function Layers:drawHero(hero, selected)

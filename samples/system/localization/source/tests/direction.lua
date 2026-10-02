@@ -59,7 +59,7 @@ end
 function Direction:update(dt)
     Direction.super.update(self, dt)
     local set, drawn = ui.direction()
-    local text = string.format("localization.direction() is '%s'\nui.direction() is '%s', drawing '%s'", localization.direction(), set, drawn)
+    local text = string.format('The call "localization.direction()" returns "%s"\nThe call "ui.direction()" returns "%s", drawing "%s"', localization.direction(), set, drawn)
     if text ~= self.state then
         self.state = text
         self:show('state', {text = text})

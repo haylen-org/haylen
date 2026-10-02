@@ -111,7 +111,7 @@ function Lifecycle:enter()
             if name:match('^object') and value.type ~= 'haylen.Sprite' then
                 return
             end
-            journal:add(name .. '  ' .. describe(value), color)
+            journal:add('Event "' .. name .. '"  ' .. describe(value), color)
         end, {owner = self})
     end
 
@@ -152,7 +152,7 @@ end
 
 function Lifecycle:pushBroken()
     if not scene.transitioning() then
-        scene.push(Broken(), {duration = 0.6, onError = function(message) self.journal:add('onError: ' .. message, sample.red) end})
+        scene.push(Broken(), {duration = 0.6, onError = function(message) self.journal:add('The handler "onError" received: ' .. message, sample.red) end})
     end
 end
 
@@ -188,7 +188,7 @@ end
 
 function Lifecycle:update(dt)
     Lifecycle.super.update(self, dt)
-    self:status(string.format('app %s   paused %s   halted %s   scenes %d   sockets %d', haylen.appState(), haylen.paused(), haylen.halted(), scene.size(), net.openSocketCount()))
+    self:status(string.format('App %s   paused %s   halted %s   scenes %d   sockets %d', haylen.appState(), haylen.paused(), haylen.halted(), scene.size(), net.openSocketCount()))
 end
 
 function Lifecycle:draw(area)

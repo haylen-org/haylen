@@ -92,25 +92,25 @@ function WebSocket:connect()
     end
     local socket = self:keep(net.connectWebSocket(services.echo))
     self.socket = socket
-    self:log('net.connectWebSocket(url)', 'Connecting to "' .. socket.url .. '"')
+    self:log('Called "net.connectWebSocket(url)"', 'Connecting to "' .. socket.url .. '"')
     self:on(socket, 'open', function()
-        self:log('open', 'The connection is up')
+        self:log('Event "open"', 'The connection is up')
     end)
     self:on(socket, 'message', function(data, binary)
         self:receive(data, binary)
     end)
     self:on(socket, 'error', function(message)
-        self:log('error', message)
+        self:log('Event "error"', message)
     end)
     self:on(socket, 'close', function(code, reason)
-        self:log('close', string.format('code %d%s', code, reason ~= '' and ', ' .. reason or ''))
+        self:log('Event "close"', string.format('code %d%s', code, reason ~= '' and ', ' .. reason or ''))
     end)
 end
 
 function WebSocket:close(code, reason)
     if self.socket then
         self.socket:close(code, reason)
-        self:log(string.format('socket:close(%d)', code), 'The state is "' .. self.socket.state .. '"')
+        self:log(string.format('Called "socket:close(%d)"', code), 'The state is "' .. self.socket.state .. '"')
     end
 end
 
@@ -126,7 +126,7 @@ end
 function WebSocket:sendText(text)
     if self:ready() then
         self.socket:send(text)
-        self:log('send', text)
+        self:log('Called "socket:send"', text)
     end
 end
 
@@ -136,25 +136,25 @@ function WebSocket:sendBinary()
         self.sent = self.sent + 1
         local bytes = string.pack('<I4f', self.sent, haylen.elapsed())
         self.socket:sendBinary(bytes)
-        self:log('sendBinary', #bytes .. ' bytes: ' .. sample.hex(bytes))
+        self:log('Called "socket:sendBinary"', #bytes .. ' bytes: ' .. sample.hex(bytes))
     end
 end
 
 function WebSocket:receive(data, binary)
     if binary and #data == 8 then
         local count, time = string.unpack('<I4f', data)
-        self:log('message, binary', string.format('%d bytes: %s = counter %d, time %.2f', #data, sample.hex(data), count, time))
+        self:log('Event "message", binary', string.format('%d bytes: %s = counter %d, time %.2f', #data, sample.hex(data), count, time))
         return
     end
     if binary then
-        self:log('message, binary', #data .. ' bytes: ' .. sample.hex(data))
+        self:log('Event "message", binary', #data .. ' bytes: ' .. sample.hex(data))
         return
     end
     local sentAt = data:match('^' .. kPing .. '(%d+)$')
     if sentAt then
         self:show('roundTrip', {text = string.format('Round trip %d ms', sample.millis() - tonumber(sentAt))})
     end
-    self:log('message, text', data)
+    self:log('Event "message", text', data)
 end
 
 return WebSocket

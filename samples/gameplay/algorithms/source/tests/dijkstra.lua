@@ -129,7 +129,7 @@ function Dijkstra:update(dt)
         self.player = {column, row}
         self:plan()
     end
-    self:showStats(string.format('maps %.3f ms\nplayer %d, %d\nchase value here %.1f', self:timing('dijkstra maps'), self.player[1], self.player[2], self.chase:value(self.player[1], self.player[2])))
+    self:showStats(string.format('Maps %.3f ms\nPlayer %d, %d\nChase value here %.1f', self:timing('dijkstra maps'), self.player[1], self.player[2], self.chase:value(self.player[1], self.player[2])))
 end
 
 function Dijkstra:render()

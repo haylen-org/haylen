@@ -116,7 +116,7 @@ function OneWay:update(dt)
     if self.dropping == 0 and self.heroShape.mask == kSolid then
         self.heroShape.mask = -1
     end
-    self:showStats(string.format('grounded %s\nvelocity %4.0f, %4.0f', tostring(grounded), velocity.x, velocity.y))
+    self:showStats(string.format('Grounded %s\nVelocity %4.0f, %4.0f', tostring(grounded), velocity.x, velocity.y))
 end
 
 function OneWay:fixedUpdate(step)

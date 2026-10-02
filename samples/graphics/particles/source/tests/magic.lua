@@ -52,7 +52,7 @@ function Magic:update(dt)
         emitter.position = {self.orb.x, self.orb.y}
         emitter:update(dt)
     end
-    self:setStatus(string.format('tangentialAcceleration %.0f, radialAcceleration %.0f, %d particles', self.swirl, -self.pull, self.vortex.count + self.stars.count))
+    self:setStatus(string.format('Emitter with "tangentialAcceleration" %.0f, "radialAcceleration" %.0f, %d particles', self.swirl, -self.pull, self.vortex.count + self.stars.count))
 end
 
 function Magic:render()

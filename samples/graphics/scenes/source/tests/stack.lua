@@ -72,7 +72,7 @@ function Stack:record(name, hook, detail)
     self.lines[13] = nil
     local names = {}
     for index, entry in ipairs(scene.list()) do
-        names[#names + 1] = index .. '. ' .. (entry and (entry.title or entry.name) or 'a scene from C++')
+        names[#names + 1] = index .. '. ' .. (entry and (entry.title or entry.name) or 'A scene from C++')
     end
     self.header:set('stack', {text = 'Stack, bottom to top:\n' .. table.concat(names, '\n')})
     self.header:set('log', {text = table.concat(self.lines, '\n')})

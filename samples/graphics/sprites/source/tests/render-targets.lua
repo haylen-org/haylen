@@ -43,7 +43,7 @@ end
 function RenderTargets:update(dt)
     RenderTargets.super.update(self, dt)
     self.time = self.time + dt
-    self:status(string.format('target %d x %d   %s', self.target.width, self.target.height, self.redraw and 'drawn this frame' or 'kept from before'))
+    self:status(string.format('Target %d x %d   %s', self.target.width, self.target.height, self.redraw and 'drawn this frame' or 'kept from before'))
 end
 
 function RenderTargets:drawTarget()
@@ -67,7 +67,7 @@ function RenderTargets:draw(area)
     end
     local texture, size = self.target.texture, math.min(area.width / 4.6, area.height * 0.55)
     local y = area.height * 0.42
-    local labels = {'as it is', 'turned and scaled', 'tinted and flipped', 'on a waving mesh'}
+    local labels = {'As it is', 'Turned and scaled', 'Tinted and flipped', 'On a waving mesh'}
     for index, label in ipairs(labels) do
         graphics2d.drawText(nil, label, area.width * (index - 0.5) / 4, y + size / 2 + 50, {size = 24, color = sample.muted, anchor = {0.5, 0.5}})
     end

@@ -171,7 +171,7 @@ function Joints:filter(x, y)
     parts.box(plainLower, 60, 60)
     local plainUpper = self:dynamic(x + 70, y + 120)
     parts.box(plainUpper, 60, 60)
-    self:label('filtered      plain', x, y + 350)
+    self:label('Filtered      Plain', x, y + 350)
 end
 
 function Joints:reverse()
@@ -198,7 +198,7 @@ function Joints:update(dt)
         self:build()
     end
     self.grab:update(self.pointer, self.camera)
-    self:showStats(string.format('bodies %d\nstep %.2f ms', self.world.bodyCount, sample.milliseconds('physics step')))
+    self:showStats(string.format('Bodies %d\nStep %.2f ms', self.world.bodyCount, sample.milliseconds('physics step')))
 end
 
 -- The lift turns around at the ends of its rail, and the leader of the motor joint keeps circling.

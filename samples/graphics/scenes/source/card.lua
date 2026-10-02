@@ -37,7 +37,7 @@ function Card:load(context)
         if self.fail and step == 5 then
             error(self.fail, 0)
         end
-        context:progress(step / 10, string.format('building %s, step %d of 10', self.title, step))
+        context:progress(step / 10, string.format('Building %s, step %d of 10', self.title, step))
     end
 end
 

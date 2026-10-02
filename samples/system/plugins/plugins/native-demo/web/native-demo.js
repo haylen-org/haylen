@@ -52,7 +52,7 @@ const generatedImage = (width, height) =>
         canvas.width = width;
         canvas.height = height;
         drawPattern(canvas, 0);
-        canvas.toBlob(async (blob) => resolve({ png: new Uint8Array(await blob.arrayBuffer()), width, height, drawnWith: "a canvas and toBlob", language }), "image/png");
+        canvas.toBlob(async (blob) => resolve({ png: new Uint8Array(await blob.arrayBuffer()), width, height, drawnWith: 'a canvas and "toBlob"', language }), "image/png");
     });
 
 const bannerColor = (config) => {

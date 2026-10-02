@@ -18,12 +18,17 @@ Transitions.eases = {'linear', 'sineInOut', 'quadOut', 'cubicInOut', 'expoInOut'
 Transitions.colors = {'#FF2E5E8A', '#FF8A3E5E', '#FF3E8A5E', '#FF8A6E2E', '#FF5E3E8A'}
 
 -- Turns a list of names into the items of a picker.
-function Transitions.items(names)
+function Transitions.items(names, noun)
     local items = {}
     for index, name in ipairs(names) do
-        items[index] = {id = name, text = name}
+        items[index] = {id = name, text = noun .. ' "' .. name .. '"'}
     end
     return items
+end
+
+-- Turns an effect name such as `crossFade` into the words of its button.
+function Transitions.label(name)
+    return (name:gsub('%u', function(letter) return ' ' .. letter:lower() end):gsub('^%l', string.upper))
 end
 
 function Transitions:init(entry)
@@ -35,10 +40,10 @@ end
 function Transitions:controls()
     local options = self.options
     return {
-        ui.formField{label = 'Direction', ui.combo{items = Transitions.items(Transitions.directions), selected = options.direction, onChange = function(event)
+        ui.formField{label = 'Direction', ui.combo{items = Transitions.items(Transitions.directions, 'Direction'), selected = options.direction, onChange = function(event)
             options.direction = event.value
         end}},
-        ui.formField{label = 'Easing', ui.combo{items = Transitions.items(Transitions.eases), selected = options.ease, onChange = function(event)
+        ui.formField{label = 'Easing', ui.combo{items = Transitions.items(Transitions.eases, 'Easing'), selected = options.ease, onChange = function(event)
             options.ease = event.value
         end}},
         ui.formField{label = 'Duration in seconds', ui.slider{min = 0.2, max = 2.5, value = options.duration, showValue = true, onChange = function(event)
@@ -54,7 +59,7 @@ function Transitions:enter()
     Transitions.super.enter(self)
     local buttons = {}
     for index, effect in ipairs(Transitions.effects) do
-        buttons[index] = ui.button{id = effect, text = effect, onClick = function()
+        buttons[index] = ui.button{id = effect, text = Transitions.label(effect), onClick = function()
             self:play(effect)
         end}
     end
@@ -81,8 +86,8 @@ function Transitions:play(effect)
     local leave = {effect = effect, direction = Transitions.opposite[options.direction], ease = options.ease, duration = options.duration, color = options.color}
     self.played = self.played + 1
     local color = Transitions.colors[self.played % #Transitions.colors + 1]
-    scene.push(Card({title = effect, caption = options.direction .. ', ' .. options.ease .. string.format(', %.1f s', options.duration), color = color, stay = 1.2, leave = leave}), arrive)
-    self:setStatus(string.format('pushed with %s, %d played', effect, self.played))
+    scene.push(Card({title = 'Effect "' .. effect .. '"', caption = string.format('Direction "%s", easing "%s", %.1f s', options.direction, options.ease, options.duration), color = color, stay = 1.2, leave = leave}), arrive)
+    self:setStatus(string.format('Pushed with %s, %d played', effect, self.played))
 end
 
 function Transitions:render()

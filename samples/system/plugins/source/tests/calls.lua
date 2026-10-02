@@ -43,8 +43,8 @@ function Calls:run()
 end
 
 function Calls:echo()
-    local name = 'echo answers on the main thread'
-    self.results:set('echo', 'waiting', name, 'waiting for the answer')
+    local name = 'The call "echo" answers on the main thread'
+    self.results:set('echo', 'waiting', name, 'Waiting for the answer')
     local echoed, err = demo.echo({text = 'hello', number = 42, list = {1, 2, 3}}):await()
     if err then
         self.results:failure('echo', name, err)
@@ -57,8 +57,8 @@ function Calls:echo()
 end
 
 function Calls:compute()
-    local name = 'compute runs in the background'
-    self.results:set('compute', 'waiting', name, 'counting the primes below ' .. kLimit)
+    local name = 'The call "compute" runs in the background'
+    self.results:set('compute', 'waiting', name, 'Counting the primes below ' .. kLimit)
     local started = haylen.frameIndex()
     local computed, err = demo.compute(kLimit):await()
     if err then
@@ -72,53 +72,53 @@ function Calls:compute()
 end
 
 function Calls:fail()
-    local name = 'fail answers with a typed failure'
-    self.results:set('fail', 'waiting', name, 'waiting for the failure')
+    local name = 'The call "fail" answers with a typed failure'
+    self.results:set('fail', 'waiting', name, 'Waiting for the failure')
     local answer, failure = demo.fail():await()
     if answer ~= nil or failure == nil then
-        self.results:set('fail', 'fail', name, 'fail answered ' .. sample.json(answer) .. ' instead of failing.')
+        self.results:set('fail', 'fail', name, 'The call "fail" answered ' .. sample.json(answer) .. ' instead of failing.')
         return
     end
     local typed = failure.code == 'demoFailure' and failure.data and failure.data.reason == 'requested'
-    self.results:set('fail', typed and 'pass' or 'fail', name, string.format('Failed with the code %s and the data %s: %s', tostring(failure.code), sample.json(failure.data), failure.message))
+    self.results:set('fail', typed and 'pass' or 'fail', name, string.format('Failed with the code "%s" and the data %s: %s', tostring(failure.code), sample.json(failure.data), failure.message))
 end
 
 function Calls:waitWithTimeout()
-    local name = 'wait ends with its timeout'
+    local name = 'The call "wait" ends with its timeout'
     self.token = self.token + 1
     local token = self.token
-    self.results:set('timeout', 'waiting', name, string.format('waiting %.1f seconds', kTimeout))
+    self.results:set('timeout', 'waiting', name, string.format('Waiting %.1f seconds', kTimeout))
     local _, failure = demo.wait(token, {timeout = kTimeout}):await()
     if not failure or failure.code ~= 'timeout' then
-        self.results:set('timeout', 'fail', name, 'wait ended with ' .. tostring(failure and failure.code) .. ' instead of timeout.')
+        self.results:set('timeout', 'fail', name, 'The call "wait" ended with "' .. tostring(failure and failure.code) .. '" instead of "timeout".')
         return
     end
-    self:reportHeard('timeout', name, token, string.format('The call failed with the code timeout after %.1f seconds', kTimeout))
+    self:reportHeard('timeout', name, token, string.format('The call failed with the code "timeout" after %.1f seconds', kTimeout))
 end
 
 function Calls:waitAndCancel()
-    local name = 'wait ends with a cancel'
+    local name = 'The call "wait" ends with a cancel'
     self.token = self.token + 1
     local token = self.token
-    self.results:set('cancel', 'waiting', name, 'cancelling the call in 0.3 seconds')
+    self.results:set('cancel', 'waiting', name, 'Cancelling the call in 0.3 seconds')
     local call = demo.wait(token)
     sample.waitFor(function() return false end, 0.3)
     call:cancel()
     local _, failure = call:await()
     if not failure or failure.code ~= 'cancelled' then
-        self.results:set('cancel', 'fail', name, 'wait ended with ' .. tostring(failure and failure.code) .. ' instead of cancelled.')
+        self.results:set('cancel', 'fail', name, 'The call "wait" ended with "' .. tostring(failure and failure.code) .. '" instead of "cancelled".')
         return
     end
-    self:reportHeard('cancel', name, token, 'call:cancel() failed the call with the code cancelled')
+    self:reportHeard('cancel', name, token, 'The method "call:cancel()" failed the call with the code "cancelled"')
 end
 
 -- The native part hears that the app gave the call up and sends waitCancelled with the token of the call.
 function Calls:reportHeard(key, name, token, what)
     if not sample.waitFor(function() return self.cancelled[token] ~= nil end, 2) then
-        self.results:set(key, 'fail', name, what .. ', but the native part sent no waitCancelled within two seconds.')
+        self.results:set(key, 'fail', name, what .. ', but the native part sent no "waitCancelled" within two seconds.')
         return
     end
-    self.results:set(key, 'pass', name, string.format('%s, and %s sent waitCancelled for the token %d.', what, self.cancelled[token], token))
+    self.results:set(key, 'pass', name, string.format('%s, and %s sent "waitCancelled" for the token %d.', what, self.cancelled[token], token))
 end
 
 return Calls

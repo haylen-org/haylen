@@ -81,7 +81,7 @@ std::string ErrorScreen::getDetails() const {
 }
 
 std::string ErrorScreen::getLocation() const {
-    return error.getFile() + ", line " + std::to_string(error.getLine());
+    return "File \"" + error.getFile() + "\", line " + std::to_string(error.getLine());
 }
 
 std::string ErrorScreen::buildReport() const {

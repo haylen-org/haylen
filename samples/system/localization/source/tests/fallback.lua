@@ -63,7 +63,7 @@ function Fallback:languageChanged()
         rows[index] = {id = key, cells = {key, {key = key}, source}}
     end
     self:show('table', {rows = rows})
-    self:show('state', {text = string.format("localization.language() is '%s'\nlocalization.fallback() is '%s'", current, fallback)})
+    self:show('state', {text = string.format('The call "localization.language()" returns "%s"\nThe call "localization.fallback()" returns "%s"', current, fallback)})
 end
 
 return Fallback

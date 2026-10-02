@@ -11,10 +11,10 @@ local CustomEase = haylen.class('CustomEase', sample.Test)
 
 local kSamples = 60
 local kCurves = {
-    {name = 'wobble', ease = function(t) return t + math.sin(t * math.pi * 6) * (1 - t) * 0.2 end},
-    {name = 'spring', ease = function(t) return 1 - math.cos(t * 4.5 * math.pi) * math.exp(-t * 6) end},
-    {name = 'heartbeat', ease = function(t) return t + math.sin(t * math.pi * 4) ^ 8 * 0.25 end},
-    {name = 'smootherstep', ease = function(t) return t * t * t * (t * (t * 6 - 15) + 10) end},
+    {name = 'Wobble', ease = function(t) return t + math.sin(t * math.pi * 6) * (1 - t) * 0.2 end},
+    {name = 'Spring', ease = function(t) return 1 - math.cos(t * 4.5 * math.pi) * math.exp(-t * 6) end},
+    {name = 'Heartbeat', ease = function(t) return t + math.sin(t * math.pi * 4) ^ 8 * 0.25 end},
+    {name = 'Smootherstep', ease = function(t) return t * t * t * (t * (t * 6 - 15) + 10) end},
 }
 local kCode = [[
 local spring = function(t) return 1 - math.cos(t * 4.5 * math.pi) * math.exp(-t * 6) end
@@ -46,7 +46,7 @@ function CustomEase:update(dt)
     if input.pressed('replay') then
         self:play()
     end
-    self:status(string.format('wobble %.0f   spring %.0f   heartbeat %.0f   smootherstep %.0f', kCurves[1].ball.x, kCurves[2].ball.x, kCurves[3].ball.x, kCurves[4].ball.x))
+    self:status(string.format('Wobble %.0f   spring %.0f   heartbeat %.0f   smootherstep %.0f', kCurves[1].ball.x, kCurves[2].ball.x, kCurves[3].ball.x, kCurves[4].ball.x))
 end
 
 function CustomEase:draw(area)

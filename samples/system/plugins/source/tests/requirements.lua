@@ -22,7 +22,7 @@ end
 function Requirements:check()
     self:act(function()
         self.results:clear()
-        local name = 'requirementCheck'
+        local name = 'The call "requirementCheck"'
         self.results:set('call', 'waiting', name, 'The native part checks what the project of the app holds.')
         local answer, err = demo.requirementCheck():await()
         if not err then
@@ -45,7 +45,7 @@ function Requirements:check()
             elseif missing.snippet ~= '' then
                 detail = string.format('Allow it with "%s".', missing.snippet)
             end
-            self.results:set('missing' .. index, 'info', string.format('missing %s "%s"', missing.kind, missing.name), detail)
+            self.results:set('missing' .. index, 'info', string.format('Missing %s "%s"', missing.kind, missing.name), detail)
         end
     end)
 end

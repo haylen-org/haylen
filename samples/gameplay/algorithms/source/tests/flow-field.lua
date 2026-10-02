@@ -101,7 +101,7 @@ function FlowField:update(dt)
     end
     self:request()
     self:move(dt)
-    self:showStats(string.format('units %d\ncells %d\nlast field %s\ngoal %s', #self.units, kColumns * kRows, self.latency and string.format('%.0f ms', self.latency) or 'pending', self.goal and string.format('%d, %d', self.goal[1], self.goal[2]) or '-'))
+    self:showStats(string.format('Units %d\nCells %d\nLast field %s\nGoal %s', #self.units, kColumns * kRows, self.latency and string.format('%.0f ms', self.latency) or 'pending', self.goal and string.format('%d, %d', self.goal[1], self.goal[2]) or '-'))
 end
 
 -- Every unit reads the direction of its cell and slides a little away from walls it touches.

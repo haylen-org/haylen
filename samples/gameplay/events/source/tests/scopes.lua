@@ -26,15 +26,15 @@ function Arena:enter(params)
     self.journal, self.ticks, self.glow = journal, 0, {value = 0}
     self:card('The arena', {
         ui.label{text = 'This scene owns a signal connection, an event listener, a timer, a tween, a task and this card.', color = 'textMuted'},
-        ui.progress{id = 'glow', value = 0, text = 'tween'},
-        ui.label{id = 'ticks', text = 'timer ticks 0'},
+        ui.progress{id = 'glow', value = 0, text = 'Tween'},
+        ui.label{id = 'ticks', text = 'Timer ticks 0'},
         ui.button{id = 'wave', text = 'Start a wave', onClick = params.startWave},
     })
     self:listen(params.wave, function(number) journal:add('Arena hears wave ' .. number .. ' on the signal', sample.green) end)
     self:listen('waveStarted', function(number) journal:add('Arena hears wave ' .. number .. ' on the bus', sample.green) end)
     timer.every(0.5, function()
         self.ticks = self.ticks + 1
-        self.document:set('ticks', {text = 'timer ticks ' .. self.ticks})
+        self.document:set('ticks', {text = 'Timer ticks ' .. self.ticks})
     end, {owner = self})
     tween.to(self.glow, 1, {value = 1}, {owner = self, loopMode = 'yoyo', repeatCount = -1, onUpdate = function() self.document:set('glow', {value = self.glow.value}) end})
     self:spawn(function()
@@ -89,7 +89,7 @@ end
 function Scopes:update(dt)
     Scopes.super.update(self, dt)
     local counts = debugging.stats().counts
-    self:status(string.format('signal listeners %d   bus listeners %d   timers %d   tweens %d', self.wave.size, self:busListeners(), counts.timers, counts.tweens))
+    self:status(string.format('Signal listeners %d   bus listeners %d   timers %d   tweens %d', self.wave.size, self:busListeners(), counts.timers, counts.tweens))
 end
 
 function Scopes:draw(area)

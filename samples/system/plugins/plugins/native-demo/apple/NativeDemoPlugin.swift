@@ -188,7 +188,7 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
                 DispatchQueue.global(qos: .userInitiated).async {
                     let primes = Self.countPrimes(below: params.limit)
                     let queue = String(cString: __dispatch_queue_get_label(nil))
-                    continuation.resume(returning: Computed(primes: primes, thread: Thread.isMainThread ? "main" : "background", detail: "the dispatch queue " + queue, language: Self.language))
+                    continuation.resume(returning: Computed(primes: primes, thread: Thread.isMainThread ? "main" : "background", detail: "the dispatch queue \"" + queue + "\"", language: Self.language))
                 }
             }
         }

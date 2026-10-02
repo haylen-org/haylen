@@ -32,7 +32,7 @@ function HotReload:update(dt)
     for _, uniform in ipairs(self.material.shader.uniforms) do
         uniforms[#uniforms + 1] = uniform.name .. ' (' .. uniform.type .. ')'
     end
-    self:setStatus(string.format('shader %s with %s, running on %s', self.material.shader.name, table.concat(uniforms, ', '), haylen.platform))
+    self:setStatus(string.format('Shader %s with %s, running on %s', self.material.shader.name, table.concat(uniforms, ', '), haylen.platform))
 end
 
 function HotReload:render()

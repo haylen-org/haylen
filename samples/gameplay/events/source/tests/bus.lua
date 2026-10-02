@@ -62,7 +62,7 @@ function Bus:update(dt)
     Bus.super.update(self, dt)
     for _, topic in ipairs(events.topics()) do
         if topic.name == 'damage' then
-            self:status(string.format('damage: %d listeners, %d emissions   shield %s', topic.listeners, topic.emissions, self.shield and 'up' or 'down'))
+            self:status(string.format('Event "damage": %d listeners, %d emissions   shield %s', topic.listeners, topic.emissions, self.shield and 'up' or 'down'))
         end
     end
 end

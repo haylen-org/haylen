@@ -37,7 +37,7 @@ function Simulations:controls()
     devices[#devices + 1] = {id = 'custom', text = 'Custom insets'}
     local steppers = {}
     for index, side in ipairs(kSides) do
-        steppers[index] = ui.column{gap = 4, grow = 1, ui.label{text = side, font = 'caption', color = 'textMuted'}, ui.stepper{id = 'inset-' .. side, value = self.custom[side], min = 0, max = 200, step = 20, onChange = function(event)
+        steppers[index] = ui.column{gap = 4, grow = 1, ui.label{text = side:sub(1, 1):upper() .. side:sub(2), font = 'caption', color = 'textMuted'}, ui.stepper{id = 'inset-' .. side, value = self.custom[side], min = 0, max = 200, step = 20, onChange = function(event)
             self.custom[side] = event.value
             if self.device == 'custom' then
                 self:apply()
@@ -66,12 +66,12 @@ end
 
 local function describe(simulation)
     if simulation == nil then
-        return 'the safe area of this device'
+        return 'The safe area of this device'
     end
     if type(simulation) == 'string' then
-        return simulation
+        return 'Device "' .. simulation .. '"'
     end
-    return string.format('insets %g, %g, %g, %g', simulation[1], simulation[2], simulation[3], simulation[4])
+    return string.format('Insets %g, %g, %g, %g', simulation[1], simulation[2], simulation[3], simulation[4])
 end
 
 function Simulations:update(dt)

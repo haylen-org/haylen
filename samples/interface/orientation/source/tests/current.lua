@@ -23,11 +23,11 @@ end
 function Current:content()
     return ui.row{gap = 24,
         ui.column{width = 820, gap = 24, align = 'start',
-            sample.section('now', {
-                ui.label{id = 'orientation', text = window.orientation(), font = 'title', color = 'accentText'},
+            sample.section('Now', {
+                ui.label{id = 'orientation', text = 'Orientation "' .. window.orientation() .. '"', font = 'title', color = 'accentText'},
                 ui.label{id = 'values', text = '', font = 'monospace'},
             }),
-            sample.section('events', {ui.label{id = 'log', text = 'Turn the screen or resize the window.', font = 'monospace', color = 'textMuted'}}),
+            sample.section('Events', {ui.label{id = 'log', text = 'Turn the screen or resize the window.', font = 'monospace', color = 'textMuted'}}),
         },
         ui.spacer{id = 'stage', grow = 1, align = 'stretch'},
     }
@@ -41,23 +41,23 @@ end
 
 function Current:started()
     self:listen('windowOrientationChanged', function(event)
-        self:record('windowOrientationChanged ' .. event.orientation)
-        self.document:set('orientation', {text = event.orientation})
+        self:record('Event "windowOrientationChanged" ' .. event.orientation)
+        self.document:set('orientation', {text = 'Orientation "' .. event.orientation .. '"'})
         tween.to(self.phone, 0.5, {angle = event.orientation == 'portrait' and 0 or -math.pi / 2}, {ease = 'backOut', owner = self, overwrite = true})
     end)
     self:listen('windowResized', function(event)
-        self:record(string.format('windowResized %.0f x %.0f', event.width, event.height))
+        self:record(string.format('Event "windowResized" %.0f x %.0f', event.width, event.height))
     end)
     self:listen('windowSafeAreaChanged', function(safe)
-        self:record(string.format('windowSafeAreaChanged %.0f x %.0f', safe.width, safe.height))
+        self:record(string.format('Event "windowSafeAreaChanged" %.0f x %.0f', safe.width, safe.height))
     end)
 end
 
 function Current:update(dt)
     local width, height = window.framebufferSize()
     local visible = viewport.visibleRect()
-    self:show('values', string.format('window  %.0f x %.0f pixels, dpi scale %g\nvisible %.0f x %.0f design units\nshape   %s', width, height, window.dpiScale(), visible.width, visible.height, sample.tall() and 'taller than wide' or 'wider than tall'))
-    self:setStatus('window.orientation() = ' .. window.orientation())
+    self:show('values', string.format('Window  %.0f x %.0f pixels, DPI scale %g\nVisible %.0f x %.0f design units\nShape   %s', width, height, window.dpiScale(), visible.width, visible.height, sample.tall() and 'taller than wide' or 'wider than tall'))
+    self:setStatus('The call "window.orientation()" returns ' .. window.orientation())
 end
 
 -- A phone that turns with the screen, drawn in the free part of the page.

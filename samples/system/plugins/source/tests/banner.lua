@@ -20,7 +20,7 @@ function Banner:enter()
     self.gameTaps = 0
     self.insetsTime = 0
     self.connection = demo.onBannerTapped(function(payload)
-        self.results:set('taps', 'pass', 'the native button reaches Lua', string.format('%s sent bannerTapped %d times.', payload.language, payload.count))
+        self.results:set('taps', 'pass', 'The native button reaches Lua', string.format('%s sent "bannerTapped" %d times.', payload.language, payload.count))
     end)
     self:frame({
         hint = 'Show the banner, tap its button and tap the stage around it.',
@@ -36,9 +36,9 @@ function Banner:enter()
         },
     })
     if self.native then
-        self.results:set('banner', 'info', 'the banner', 'Show the banner to place it.')
-        self.results:set('taps', 'waiting', 'the native button reaches Lua', 'Tap the button of the banner.')
-        self.results:set('game', 'waiting', 'other taps reach the app', 'Tap or click the stage.')
+        self.results:set('banner', 'info', 'The banner', 'Show the banner to place it.')
+        self.results:set('taps', 'waiting', 'The native button reaches Lua', 'Tap the button of the banner.')
+        self.results:set('game', 'waiting', 'Other taps reach the app', 'Tap or click the stage.')
     end
 end
 
@@ -53,9 +53,9 @@ function Banner:place(anchor, reserve)
     self:act(function()
         local state, err = demo.showBanner(anchor, reserve):await()
         if err then
-            self.results:failure('banner', 'the banner', err)
+            self.results:failure('banner', 'The banner', err)
             if err.code == 'unsupported' then
-                self.results:set('taps', 'skip', 'the native button reaches Lua', 'The platform shows no banner.')
+                self.results:set('taps', 'skip', 'The native button reaches Lua', 'The platform shows no banner.')
             end
             return
         end
@@ -68,7 +68,7 @@ function Banner:toggleVisible()
     self:act(function()
         local state, err = demo.setBannerVisible(not self.visible):await()
         if err then
-            self.results:failure('banner', 'the banner', err)
+            self.results:failure('banner', 'The banner', err)
             return
         end
         self.visible = state.visible
@@ -80,7 +80,7 @@ function Banner:remove()
     self:act(function()
         local _, err = demo.removeBanner():await()
         if err then
-            self.results:failure('banner', 'the banner', err)
+            self.results:failure('banner', 'The banner', err)
             return
         end
         self.shown = false
@@ -93,7 +93,7 @@ function Banner:showState()
     if self.shown then
         text = string.format('The banner is %s at the %s and %s its edge.', self.visible and 'visible' or 'hidden', self.anchor, self.reserve and 'reserves' or 'does not reserve')
     end
-    self.results:set('banner', 'info', 'the banner', text)
+    self.results:set('banner', 'info', 'The banner', text)
     self:set('anchor', {text = self.anchor == 'bottom' and 'Move it to the top' or 'Move it to the bottom'})
     self:set('reserve', {text = self.reserve and 'Stop reserving its edge' or 'Reserve its edge'})
     self:set('visible', {text = self.visible and 'Hide it' or 'Show it again'})
@@ -108,7 +108,7 @@ function Banner:update(dt)
         self.insetsTime = 0
         local reserved = viewport.reservedInsets()
         local safe = viewport.safeRect()
-        self.results:set('insets', 'info', 'the safe area', string.format('viewport.reservedInsets() top %.0f bottom %.0f, and the safe area runs from y %.0f to %.0f, where the UI lays out.', reserved.top, reserved.bottom, safe.y, safe.y + safe.height))
+        self.results:set('insets', 'info', 'The safe area', string.format('The call "viewport.reservedInsets()" gives top %.0f bottom %.0f, and the safe area runs from y %.0f to %.0f, where the UI lays out.', reserved.top, reserved.bottom, safe.y, safe.y + safe.height))
     end
 end
 
@@ -131,7 +131,7 @@ function Banner:countGameTaps()
         if x >= 0 and y >= 0 and x <= self.stage.width and y <= self.stage.height then
             self.gameTaps = self.gameTaps + 1
             self.lastTap = {x, y}
-            self.results:set('game', 'pass', 'other taps reach the app', string.format('The app received %d taps on the stage.', self.gameTaps))
+            self.results:set('game', 'pass', 'Other taps reach the app', string.format('The app received %d taps on the stage.', self.gameTaps))
         end
     end
 end

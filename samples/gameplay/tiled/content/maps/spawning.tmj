@@ -840,7 +840,7 @@
         {
          "name": "loot",
          "type": "string",
-         "value": "a key"
+         "value": "A key"
         }
        ]
       },
@@ -859,7 +859,7 @@
         {
          "name": "loot",
          "type": "string",
-         "value": "a map"
+         "value": "A map"
         }
        ]
       },
@@ -878,7 +878,7 @@
         {
          "name": "loot",
          "type": "string",
-         "value": "gold"
+         "value": "Gold"
         }
        ]
       },

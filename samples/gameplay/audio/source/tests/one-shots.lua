@@ -96,7 +96,7 @@ function OneShots:update(dt)
         end
     end
     local last = self.voices[#self.voices]
-    self:status(string.format('voices of the sample %d   engine voices %d   last pitch %.3f', #self.voices, audio.voiceCount(), last and audio.pitch(last.id) or 0))
+    self:status(string.format('Voices of the sample %d   engine voices %d   last pitch %.3f', #self.voices, audio.voiceCount(), last and audio.pitch(last.id) or 0))
 end
 
 function OneShots:draw(area)
@@ -115,8 +115,8 @@ function OneShots:draw(area)
         graphics2d.drawLine(panLeft, y + 12, panRight, y + 12, 2, sample.line, {layer = 1})
         graphics2d.drawCircle(panLeft + (panRight - panLeft) * (voice.pan + 1) / 2, y + 12, 9, sample.green, {layer = 2})
     end
-    sample.caption('left', panLeft, area.height - 40, {size = 18})
-    sample.caption('right', panRight, area.height - 40, {size = 18, anchor = {1, 0}})
+    sample.caption('Left', panLeft, area.height - 40, {size = 18})
+    sample.caption('Right', panRight, area.height - 40, {size = 18, anchor = {1, 0}})
     sample.caption('Red voices were stopped by the limit', left, area.height - 40, {size = 18, color = sample.red})
 end
 

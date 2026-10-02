@@ -126,7 +126,7 @@ function FloodFill:update(dt)
             self:apply(column, row)
         end
     end
-    self:showStats(string.format('islands %d\nsets after bridges %d\nlast fill %d cells\nfill %.3f ms\nregions %.3f ms', self.count, self.sets.setCount, self.filled or 0, self:timing('flood fill'), self:timing('regions')))
+    self:showStats(string.format('Islands %d\nSets after bridges %d\nLast fill %d cells\nFill %.3f ms\nRegions %.3f ms', self.count, self.sets.setCount, self.filled or 0, self:timing('flood fill'), self:timing('regions')))
 end
 
 function FloodFill:render()

@@ -96,7 +96,7 @@ Configures a CMake project that calls `haylen_add_app`, such as `samples/cpp/emb
 
 | Platform | Build | Launch |
 | --- | --- | --- |
-| This machine | Ninja, or the default generator on Windows without Ninja. | Runs the executable. |
+| This machine | Ninja, or the default generator on Windows without Ninja, with the macOS minimum of the engine as `CMAKE_OSX_DEPLOYMENT_TARGET` on a Mac. | Runs the executable. |
 | `web` | Emscripten for WebGPU and for WebGL2 into `build/cpp/<project>-<hash>/web`, with an `index.html` that picks the backend the browser supports. | Serves that folder like `serve`. |
 | `ios-simulator`, `tvos-simulator` | The Xcode generator with the iOS or tvOS simulator SDK for the architecture of this Mac, which compiles the launch screen and signs the bundle. | Like `run`, on the simulator named by `--device`, a booted one or the first one available. |
 | `ios`, `tvos` | The Xcode generator with the device SDK, signed with the team in `HAYLEN_APPLE_TEAM`. | Like `run`, on the device named by `--device`. |
@@ -210,7 +210,7 @@ The framework holds one static library per slice, `libhaylen.a`, with the engine
 | `tvos` | arm64 | `CMAKE_SYSTEM_NAME=tvOS` and the `appletvos` SDK. |
 | `tvos-simulator` | arm64, x86_64 | `CMAKE_SYSTEM_NAME=tvOS` and the `appletvsimulator` SDK. |
 
-The slices target the oldest systems the engine code allows: iOS and tvOS 16.3, macOS 13.3 and Mac Catalyst 16.4, which is macOS 13.3 on the Mac, the releases whose C++ library formats floating point numbers with `std::format`, which the engine uses for text and logs. The Apple template sets `IPHONEOS_DEPLOYMENT_TARGET[sdk=macosx*]` to 16.4 for Mac Catalyst, because Xcode would otherwise map iOS 16.3 to macOS 13.2. The toolchain itself reaches back to iOS and tvOS 15 and macOS 12, and a build for iOS 15 fails only on `std::format` with floating point. The engine parses floating point numbers with fast_float, because `std::from_chars` for floating point needs iOS, tvOS and macOS 26. `make.py` passes the versions as `CMAKE_OSX_DEPLOYMENT_TARGET`, the Apple template sets them in `project.yml`, and C++ apps built with `haylen_add_app` use the same ones.
+The slices target the oldest systems the engine code allows: iOS and tvOS 16.3 and Mac Catalyst 16.4, which is macOS 13.3 on the Mac, the releases whose C++ library formats floating point numbers with `std::format`, which the engine uses for text and logs, and macOS 14.0, because `sokol_app` drives the frames of macOS apps with `-[NSView displayLinkWithTarget:selector:]`, which macOS 14.0 introduced, without checking the version of the system, so an app built for an earlier macOS stops as it opens there. Mac Catalyst draws through the UIKit path of `sokol_app`, which never calls it. The Apple template sets `IPHONEOS_DEPLOYMENT_TARGET[sdk=macosx*]` to 16.4 for Mac Catalyst, because Xcode would otherwise map iOS 16.3 to macOS 13.2. The toolchain itself reaches back to iOS and tvOS 15 and macOS 12, and a build for iOS 15 fails only on `std::format` with floating point. The engine parses floating point numbers with fast_float, because `std::from_chars` for floating point needs iOS, tvOS and macOS 26. `make.py` passes the versions as `CMAKE_OSX_DEPLOYMENT_TARGET`, to the C++ apps it builds for macOS too, the Apple template sets them in `project.yml`, and C++ apps built with `haylen_add_app` use the same ones.
 
 On Apple platforms `sokol_app` is compiled with `SOKOL_NO_ENTRY`, so the runtime never defines `main`. The app calls `haylen_main` instead, declared in `haylen/platform/apple/HaylenMain.h`:
 
@@ -465,7 +465,7 @@ The runtime turns on development behavior, which today is hot reload of the pack
 
 | Platform | Status | How it runs |
 | --- | --- | --- |
-| macOS | Supported | macOS 13.3 and later. The desktop player, or the `macOS` target of the Apple template with `--platform macos`. |
+| macOS | Supported | macOS 14.0 and later, because `sokol_app` drives the frames with `-[NSView displayLinkWithTarget:selector:]`, which macOS 14.0 introduced. The desktop player, or the `macOS` target of the Apple template with `--platform macos`. |
 | Windows, Linux | Supported | The desktop player, or the player artifact next to the package with `--platform windows` or `--platform linux`. Built and tested on those hosts by CI. Windows apps embed the [application manifest](build.md#c-apps) of the engine, and Linux apps load GIO and GTK 3 at run time for the theme and the dialogs, and run without them as [haylen.system](lua-api/system.md#platforms) and [haylen.dialogs](lua-api/dialogs.md#platforms) describe. |
 | iOS, iPadOS | Supported | iOS and iPadOS 16.3 and later. The `iOS` target on iPhone and iPad, with every orientation of `app.json` and every iPad window size. |
 | Mac Catalyst | Supported | macOS 13.3 and later. The `iOS` target on the Mac, whose window opens at the size of `app.json` in the points of the Mac, where macOS places it. Mac Catalyst passes only touches to `sokol_app`, and the left mouse button arrives as a touch, so the runtime reads the keyboard through `GCKeyboard`, the right and middle buttons and the wheel through `GCMouse`, and the pointer position through a hover gesture on the view of the app. Text entry through the keyboard needs the text input bridge of the runtime. |

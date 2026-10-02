@@ -33,7 +33,7 @@ end
 function Primitives:update(dt)
     Primitives.super.update(self, dt)
     self.time = self.time + dt
-    self:status(string.format('time %.1f', self.time))
+    self:status(string.format('Time %.1f', self.time))
 end
 
 -- Draws one cell of the grid: its title and the shapes of one function around the center of the cell.
@@ -99,7 +99,7 @@ function Primitives:draw(area)
         local column, row = (index - 1) % columns, (index - 1) // columns
         local x, y = column * width + width / 2, row * height + height / 2 + 16
         graphics2d.drawRectOutline({column * width + 6, row * height + 6, width - 12, height - 12}, 1, sample.line)
-        graphics2d.drawText(nil, kNames[index], x, row * height + 28, {size = 24, color = sample.ink, anchor = {0.5, 0.5}})
+        graphics2d.drawText(nil, 'Function "' .. kNames[index] .. '"', x, row * height + 28, {size = 24, color = sample.ink, anchor = {0.5, 0.5}})
         self:cell(index, x, y, math.min(width, height))
     end
 end

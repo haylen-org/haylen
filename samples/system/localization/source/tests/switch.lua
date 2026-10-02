@@ -43,7 +43,7 @@ end
 function Switch:languageChanged()
     local tag = localization.language()
     self:show('current', {text = {key = 'menu.current', args = {name = localization.text('language.' .. tag)}}})
-    self:show('state', {text = string.format("localization.language() is '%s'\nlocalization.fallback() is '%s'", tag, localization.fallback())})
+    self:show('state', {text = string.format('The call "localization.language()" returns "%s"\nThe call "localization.fallback()" returns "%s"', tag, localization.fallback())})
 end
 
 -- The timer belongs to the scene, so it also stops when the player leaves.

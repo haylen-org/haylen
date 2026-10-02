@@ -125,7 +125,7 @@ function HexIso:update(dt)
             self:search()
         end
     end
-    self:showStats(string.format('topology %s\nstagger %s\npath %s', self.grid.topology, self.grid.staggerX and 'columns' or 'rows', self.path and string.format('%d cells, cost %.1f', #self.path, self.cost) or 'none'))
+    self:showStats(string.format('Topology %s\nStagger %s\nPath %s', self.grid.topology, self.grid.staggerX and 'columns' or 'rows', self.path and string.format('%d cells, cost %.1f', #self.path, self.cost) or 'none'))
 end
 
 function HexIso:drawCell(column, row, color, order)

@@ -52,7 +52,7 @@ function Loading:card(title, color, options)
     self.count = self.count + 1
     options = options or {}
     options.title, options.color, options.stay = title, color, 1.5
-    options.caption = options.caption or 'loaded, entered and shown'
+    options.caption = options.caption or 'Loaded, entered and shown'
     options.work = options.work or 2
     options.leave = {effect = 'fade', duration = 0.4}
     return Card(options)
@@ -69,7 +69,7 @@ end
 -- The loading view appears when the load takes longer than the delay and stays at least its minimum time.
 function Loading:view()
     if not scene.transitioning() then
-        scene.push(self:card('With a view', '#FF3E8A5E'), {effect = 'iris', duration = 0.8, loading = LoadingView(), loadingDelay = 0.2, minimumLoadingTime = 0.6, params = 'a custom loading view'})
+        scene.push(self:card('With a view', '#FF3E8A5E'), {effect = 'iris', duration = 0.8, loading = LoadingView(), loadingDelay = 0.2, minimumLoadingTime = 0.6, params = 'A custom loading view'})
         self:setStatus('The loading view shows the progress the card reports')
     end
 end
@@ -129,7 +129,7 @@ function Loading:render()
         local progress, message = scene.loadProgress(self.preloading)
         graphics2d.drawRect({area.x + 200, area.y + 520, 900, 24}, '#FF3A4058')
         graphics2d.drawRect({area.x + 200, area.y + 520, 900 * progress, 24}, '#FFF2C14E', {layer = 1})
-        graphics2d.drawText(nil, string.format('preload %d%%, %s', math.floor(progress * 100), message or ''), area.x + 200, area.y + 470, {size = 32, layer = 1})
+        graphics2d.drawText(nil, string.format('Preload %d%%: %s', math.floor(progress * 100), message or ''), area.x + 200, area.y + 470, {size = 32, layer = 1})
     end
 end
 

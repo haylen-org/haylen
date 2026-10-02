@@ -60,7 +60,7 @@ function UiTheme:enter()
 
     local bars = {}
     for index, tone in ipairs(kTones) do
-        bars[index] = ui.progress{id = tone, value = 0.6, tone = tone, text = tone}
+        bars[index] = ui.progress{id = tone, value = 0.6, tone = tone, text = 'Tone "' .. tone .. '"'}
     end
     self.demo = ui.mount(ui.column{id = 'demo', anchor = 'topLeft', width = kDemoWidth, gap = 16, onCancel = sample.back,
         ui.pageHeader{title = 'Workshop', caption = 'Every surface is a nine-slice', banner = true, textAlign = 'center'},
@@ -95,7 +95,7 @@ end
 function UiTheme:update(dt)
     UiTheme.super.update(self, dt)
     local fill = ui.themeSurface('trackFill')
-    self:status(string.format('theme %s   trackFill borders %s   colorize %s', ui.theme(), table.concat(fill.slice.borders, ', '), fill.colorize))
+    self:status(string.format('Theme %s   "trackFill" borders %s   "colorize" %s', ui.theme(), table.concat(fill.slice.borders, ', '), fill.colorize))
 end
 
 -- The theme writes dark text, so the page behind the frame is light while the test runs.
@@ -109,11 +109,11 @@ end
 function UiTheme:draw(area)
     local left = kDemoWidth + 70
     local fill, button = ui.themeSurface('trackFill'), ui.themeSurface('button')
-    graphics2d.drawText(nil, 'ui/fill.png times each tone', left, 30, {size = 24, color = sample.ink})
+    graphics2d.drawText(nil, 'The image "ui/fill.png" times each tone', left, 30, {size = 24, color = sample.ink})
     for index, tone in ipairs(kTones) do
         graphics2d.drawNineSlice(fill.slice, {left, 50 + index * 46, area.width - left - 40, 30}, ui.themeColor(tone))
     end
-    graphics2d.drawText(nil, 'ui/button.png times raised, accent and danger', left, 300, {size = 24, color = sample.ink})
+    graphics2d.drawText(nil, 'The image "ui/button.png" times "raised", "accent" and "danger"', left, 300, {size = 24, color = sample.ink})
     for index, role in ipairs({'raised', 'accent', 'danger'}) do
         local width = (area.width - left - 60) / 3
         graphics2d.drawNineSlice(button.slice, {left + (index - 1) * (width + 10), 340, width, 64}, ui.themeColor(role))

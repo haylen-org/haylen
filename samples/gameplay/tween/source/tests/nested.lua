@@ -62,7 +62,7 @@ function Nested:update(dt)
     if input.pressed('replay') then
         self:play()
     end
-    self:status(string.format('parent %.2f   square %.2f   glow %.2f   spin %.2f', self.parent.progress, self.square.progress, self.glow.progress, self.spin.progress))
+    self:status(string.format('Parent %.2f   square %.2f   glow %.2f   spin %.2f', self.parent.progress, self.square.progress, self.glow.progress, self.spin.progress))
 end
 
 -- Draws a square of `size` centered on `x`, `y` and turned by `angle`.
@@ -81,7 +81,7 @@ function Nested:draw(area)
     graphics2d.drawRect({originX + self.a.x, originY + self.a.y, 60, 60}, self.c.color, {layer = 1})
     drawTurned(area.width * 0.62, originY + 180, 120 * self.b.scale, self.b.angle, sample.accent)
 
-    local bars = {{'parent', self.parent}, {'square', self.square}, {'glow', self.glow}, {'spin', self.spin}}
+    local bars = {{'Parent', self.parent}, {'Square', self.square}, {'Glow', self.glow}, {'Spin', self.spin}}
     for index, bar in ipairs(bars) do
         local y = area.height - 190 + index * 36
         graphics2d.drawText(nil, bar[1], 80, y, {size = 24, color = sample.ink, anchor = {0, 0.5}})

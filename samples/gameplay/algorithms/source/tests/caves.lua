@@ -94,7 +94,7 @@ function Caves:update(dt)
         self.dirty, self.wait = false, kRegenerateDelay
         self:generate()
     end
-    self:showStats(string.format('caves %d\nopen cells %d of %d\nready in %.0f ms', self.count or 0, self.open or 0, kColumns * kRows, self.latency or 0))
+    self:showStats(string.format('Caves %d\nOpen cells %d of %d\nReady in %.0f ms', self.count or 0, self.open or 0, kColumns * kRows, self.latency or 0))
 end
 
 function Caves:render()

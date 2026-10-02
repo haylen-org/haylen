@@ -27,7 +27,7 @@ function Families:init(entry)
         notes[#notes + 1] = family.mono and 'mono real' or 'mono uses the regular face'
         self.rows[#self.rows + 1] = {
             title = spec[2],
-            notes = table.concat(notes, ', '),
+            notes = 'Faces: ' .. table.concat(notes, ', '),
             line = graphics2d.newRichText(kMarkup, {family = family, size = spec[3]}),
             paragraph = graphics2d.newRichText(kParagraph, {family = family, size = spec[4], maxWidth = 1500}),
         }

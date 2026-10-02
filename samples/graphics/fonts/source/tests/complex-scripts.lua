@@ -73,7 +73,7 @@ function ComplexScripts:render()
     -- The mixed line reads in the direction the panel picks, and `auto` takes it from its first Arabic letter.
     local mixed = {size = 30, maxWidth = 560, lineSpacing = 1, direction = self.direction}
     local _, mixedHeight = graphics2d.measureText(family, kMixed, mixed)
-    sample.caption('Mixed, ' .. self.direction, stage.x, y + 8)
+    sample.caption('Mixed, "' .. self.direction .. '"', stage.x, y + 8)
     graphics2d.drawRectOutline({stage.x + 130, y, 560, mixedHeight}, 2, sample.guide)
     graphics2d.drawText(family, kMixed, stage.x + 130, y, mixed)
 

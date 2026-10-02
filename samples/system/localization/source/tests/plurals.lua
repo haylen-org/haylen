@@ -48,7 +48,7 @@ function Plurals:content()
     end
     return {
         ui.panel{width = 720, align = 'stretch', gap = 16,
-            ui.formField{label = 'count', ui.stepper{id = 'count', value = self.count, min = 0, max = 25, onChange = function(event)
+            ui.formField{label = 'Argument "count"', ui.stepper{id = 'count', value = self.count, min = 0, max = 25, onChange = function(event)
                 self.count = event.value
                 self:languageChanged()
             end}},
@@ -57,7 +57,7 @@ function Plurals:content()
         },
         ui.panel{grow = 1, align = 'stretch', gap = 12,
             ui.sectionTitle{text = 'Every form at a glance'},
-            ui.table{id = 'table', columns = {{text = 'count', width = 120, align = 'end'}, {text = 'items.apples'}, {text = 'items.messages'}, {text = 'items.lives'}}, rows = rows},
+            ui.table{id = 'table', columns = {{text = 'Count', width = 120, align = 'end'}, {text = 'Key "items.apples"'}, {text = 'Key "items.messages"'}, {text = 'Key "items.lives"'}}, rows = rows},
         },
     }
 end
@@ -67,7 +67,7 @@ function Plurals:languageChanged()
     local file = assets.json('locale/' .. localization.language() .. '.json')
     for _, key in ipairs(kKeys) do
         self:show(key, {text = {key = 'items.' .. key, args = {count = self.count}}})
-        self:show(key .. '-form', {text = form(file.items[key], self.count)})
+        self:show(key .. '-form', {text = 'Form "' .. form(file.items[key], self.count) .. '"'})
     end
     local forms = {}
     for _, key in ipairs(kKeys) do
@@ -77,7 +77,7 @@ function Plurals:languageChanged()
                 names[#names + 1] = name
             end
         end
-        forms[#forms + 1] = string.format('items.%s has %s', key, table.concat(names, ', '))
+        forms[#forms + 1] = string.format('The key "items.%s" has %s', key, table.concat(names, ', '))
     end
     self:show('rules', {text = 'The forms of ' .. localization.language() .. ':\n' .. table.concat(forms, '\n')})
 end

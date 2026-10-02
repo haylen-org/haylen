@@ -41,7 +41,7 @@ function Limits:update(dt)
     self.camera:follow(self.player.x, self.player.y, dt)
     self.camera:update(dt)
     local view = self.camera:visibleBounds()
-    self:setStatus(string.format('view from %.0f, %.0f to %.0f, %.0f', view.x, view.y, view:right(), view:bottom()))
+    self:setStatus(string.format('View from %.0f, %.0f to %.0f, %.0f', view.x, view.y, view:right(), view:bottom()))
 end
 
 function Limits:render()

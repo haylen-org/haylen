@@ -41,7 +41,7 @@ function Emission:update(dt)
     self.cursor:update(dt)
     self.time = self.time + dt
     self.lamp.x, self.lamp.y = self.cursor:world(self.camera)
-    self:setStatus(string.format('emission %.2f, unshaded %s', self.emission, tostring(self.unshaded)))
+    self:setStatus(string.format('Emission %.2f, unshaded %s', self.emission, tostring(self.unshaded)))
 end
 
 function Emission:drawHouse(house)

@@ -43,7 +43,7 @@ end
 function Groups:describe(layers, depth, lines)
     for _, layer in ipairs(layers) do
         local tint = layer.tint:toHex()
-        lines[#lines + 1] = string.format('%s%s: offset %d, %d, parallax %.1f, opacity %.2f%s', string.rep('  ', depth), layer.name, layer.offsetX, layer.offsetY, layer.parallaxX, layer.opacity, tint ~= '#FFFFFFFF' and ', tint ' .. tint or '')
+        lines[#lines + 1] = string.format('%sLayer "%s": offset %d, %d, parallax %.1f, opacity %.2f%s', string.rep('  ', depth), layer.name, layer.offsetX, layer.offsetY, layer.parallaxX, layer.opacity, tint ~= '#FFFFFFFF' and ', tint ' .. tint or '')
         if layer.kind == 'group' then
             self:describe(layer.layers, depth + 1, lines)
         end

@@ -16,7 +16,7 @@ function Errors:enter()
         focus = 'raise',
         controls = {
             ui.button{id = 'raise', text = 'Raise a Lua error', variant = 'primary', onClick = function() self:raise() end},
-            ui.label{text = 'appDidFail(with:) receives the error on Apple platforms, onAppError on Android, context.onAppError on the web and the error handler of HaylenNativeApi on the desktops. The native part keeps the message and sends it when the next app starts.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'The method "appDidFail(with:)" receives the error on Apple platforms, "onAppError" on Android, "context.onAppError" on the web and the error handler of "HaylenNativeApi" on the desktops. The native part keeps the message and sends it when the next app starts.', color = 'textMuted', font = 'caption'},
             ui.label{font = 'monospace', text = "demo.onLastError(function(failure)\n  print(failure.message, failure.line)\nend)"},
         },
     })
@@ -44,13 +44,13 @@ function Errors:raise()
 end
 
 function Errors:show()
-    local name = 'the native part sends the last error back'
+    local name = 'The native part sends the last error back'
     if not received then
         self.results:set('last', 'waiting', name, 'No earlier app of this process stopped with an error. Raise one and restart with R.')
         return
     end
     local expected = received.message:find('raised this error on purpose', 1, true) ~= nil
-    self.results:set('last', expected and 'pass' or 'fail', name, string.format('%s kept "%s" from %s, line %s, and sent it back as lastError after the restart.', received.language, received.message, received.file, tostring(received.line)))
+    self.results:set('last', expected and 'pass' or 'fail', name, string.format('%s kept "%s" from "%s", line %s, and sent it back as "lastError" after the restart.', received.language, received.message, received.file, tostring(received.line)))
 end
 
 return Errors

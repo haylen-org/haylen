@@ -49,8 +49,8 @@ function Pieces:draw(area)
     local height = 130 + (area.height - 130 - 130) * self.grow.amount
     graphics2d.drawNineSlice(self.stretched, {left, 40, width, height})
     graphics2d.drawNineSlice(self.tiled, {left + room + 40, 40, width, height})
-    graphics2d.drawText(nil, "fill = 'stretch'", left, area.height - 50, {size = 26, color = sample.ink})
-    graphics2d.drawText(nil, "fill = 'tile'", left + room + 40, area.height - 50, {size = 26, color = sample.ink})
+    graphics2d.drawText(nil, 'Fill "stretch"', left, area.height - 50, {size = 26, color = sample.ink})
+    graphics2d.drawText(nil, 'Fill "tile"', left + room + 40, area.height - 50, {size = 26, color = sample.ink})
 end
 
 return Pieces

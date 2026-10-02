@@ -46,15 +46,15 @@ function Objects:update(dt)
     end
     local object = self.hovered
     if object == nil then
-        self:showStats(string.format('objects %d\npoint at one to read it', #self.objects))
+        self:showStats(string.format('Objects %d\nPoint at one to read it', #self.objects))
         return
     end
-    local lines = {string.format('%s (%s)', object.name, object.shape), string.format('class %s', object.type ~= '' and object.type or '-'), string.format('at %.0f, %.0f size %.0f x %.0f', object.x, object.y, object.width, object.height), string.format('rotation %.0f degrees', math.deg(object.rotation))}
+    local lines = {string.format('Object "%s" (%s)', object.name, object.shape), string.format('Class %s', object.type ~= '' and object.type or '-'), string.format('At %.0f, %.0f size %.0f x %.0f', object.x, object.y, object.width, object.height), string.format('Rotation %.0f degrees', math.deg(object.rotation))}
     if object.template ~= '' then
-        lines[#lines + 1] = 'template ' .. object.template
+        lines[#lines + 1] = 'Template "' .. object.template .. '"'
     end
     if object.shape == 'text' then
-        lines[#lines + 1] = string.format('text "%s", %s', object.text.text, object.text.horizontalAlign)
+        lines[#lines + 1] = string.format('Text "%s", %s', object.text.text, object.text.horizontalAlign)
     end
     for name, value in pairs(object.properties) do
         lines[#lines + 1] = string.format('%s = %s', name, tostring(value))

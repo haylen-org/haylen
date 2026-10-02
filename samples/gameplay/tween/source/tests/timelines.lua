@@ -71,7 +71,7 @@ function Timelines:update(dt)
         self:play()
     end
     local line = self.line
-    self:status(string.format('time %.2f of %.2f   progress %.2f   %s%s', line.time, line.duration, line.progress, line.paused and 'paused' or line.completed and 'completed' or 'playing', line.reversed and ', reversed' or ''))
+    self:status(string.format('Time %.2f of %.2f   progress %.2f   %s%s', line.time, line.duration, line.progress, line.paused and 'paused' or line.completed and 'completed' or 'playing', line.reversed and ', reversed' or ''))
 end
 
 function Timelines:draw(area)
@@ -95,7 +95,7 @@ function Timelines:draw(area)
     graphics2d.drawRect({bar[1], bar[2], bar[3] * line.time / line.duration, bar[4]}, sample.accent, {layer = 1})
     local fight = bar[1] + bar[3] * 2.1 / line.duration
     graphics2d.drawRect({fight - 2, bar[2] - 12, 4, 40}, sample.warm, {layer = 2})
-    graphics2d.drawText(nil, 'fight', fight + 8, bar[2] - 20, {size = 22, color = sample.warm})
+    graphics2d.drawText(nil, 'Label "fight"', fight + 8, bar[2] - 20, {size = 22, color = sample.warm})
 end
 
 return Timelines

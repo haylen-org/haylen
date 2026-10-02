@@ -64,7 +64,7 @@ function Nested:pick(key)
     local has = localization.has(key)
     self:show('call', {text = string.format("localization.text('%s', {count = 3})", key)})
     self:show('result', {text = has and {key = key, args = {count = 3}} or key})
-    self:show('has', {text = string.format("localization.has('%s') is %s%s", key, tostring(has), has and '' or ', since a group is not a key, and "text" returns the key unchanged')})
+    self:show('has', {text = string.format('The call "localization.has(\'%s\')" returns %s%s', key, tostring(has), has and '' or ', since a group is not a key, and "text" returns the key unchanged')})
 end
 
 function Nested:languageChanged()

@@ -53,7 +53,7 @@ function Flicker:update(dt)
     self.fire.wave = self:wave(self.fire)
     self.fire.light.intensity = 1.5 * self.fire.wave
     self.fire.light.radius = 520 * (0.9 + 0.1 * self.fire.wave)
-    self:setStatus(string.format('flicker of the campfire %.3f', self.fire.wave))
+    self:setStatus(string.format('Flicker of the campfire %.3f', self.fire.wave))
 end
 
 function Flicker:drawFlame(flame, size)

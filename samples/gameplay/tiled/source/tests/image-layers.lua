@@ -55,10 +55,10 @@ function ImageLayers:update(dt)
         end
     end
     self.camera.y = bounds.height / 2
-    local lines = {string.format('camera x %.0f', self.camera.x)}
+    local lines = {string.format('Camera x %.0f', self.camera.x)}
     for _, layer in ipairs(self.map:layers()) do
         local repeats = layer.kind == 'image' and string.format(', repeat %s%s', layer.repeatX and 'x' or '', layer.repeatY and 'y' or '') or ''
-        lines[#lines + 1] = string.format('%s: parallax %.2f%s', layer.name, layer.parallaxX, repeats)
+        lines[#lines + 1] = string.format('Layer "%s": parallax %.2f%s', layer.name, layer.parallaxX, repeats)
     end
     self:showStats(table.concat(lines, '\n'))
 end

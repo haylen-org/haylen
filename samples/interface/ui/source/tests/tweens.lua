@@ -76,7 +76,7 @@ end
 function Tweens:cycleTint()
     self.tint = self.tint % #kTints + 1
     tween.to(self.document:transform('panel'), 0.4, {tint = kTints[self.tint]}, {owner = self})
-    self:setStatus('tint ' .. kTints[self.tint])
+    self:setStatus('Tint ' .. kTints[self.tint])
 end
 
 function Tweens:started()

@@ -104,7 +104,7 @@ function Vehicle:update(dt)
     self.car.motorSpeed = input.value('throttle') * kTopSpeed
     local chassis = self.car.chassis
     self.camera:follow(chassis.x + chassis.velocity.x * 0.3, chassis.y - 60, dt)
-    self:showStats(string.format('speed %4.0f units/s\nmotor %5.1f rad/s\ndrive %s\nstep %.2f ms', chassis.velocity:length(), self.car.motorSpeed, self.car.drive, sample.milliseconds('physics step')))
+    self:showStats(string.format('Speed %4.0f units/s\nMotor %5.1f rad/s\nDrive %s\nStep %.2f ms', chassis.velocity:length(), self.car.motorSpeed, self.car.drive, sample.milliseconds('physics step')))
 end
 
 function Vehicle:fixedUpdate(step)

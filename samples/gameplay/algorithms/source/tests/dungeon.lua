@@ -70,7 +70,7 @@ function Dungeon:update(dt)
         self:change('seed', self.options.seed + 1)
     end
     local dungeon = self.dungeon
-    self:showStats(self.failure or string.format('rooms %d\nconnections %d\nready in %.0f ms', dungeon and #dungeon.rooms or 0, dungeon and #dungeon.connections or 0, self.latency or 0))
+    self:showStats(self.failure or string.format('Rooms %d\nConnections %d\nReady in %.0f ms', dungeon and #dungeon.rooms or 0, dungeon and #dungeon.connections or 0, self.latency or 0))
 end
 
 function Dungeon:roomCenter(room)

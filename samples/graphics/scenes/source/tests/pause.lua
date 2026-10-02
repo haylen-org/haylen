@@ -100,7 +100,7 @@ function Pause:spawn()
 end
 
 function Pause:describe()
-    self:setStatus(string.format('paused %s, %d dots, world spins %d, always timer %.1f s', tostring(haylen.paused()), #self.dots, self.spins, self.always))
+    self:setStatus(string.format('Paused %s, %d dots, world spins %d, "always" timer %.1f s', tostring(haylen.paused()), #self.dots, self.spins, self.always))
 end
 
 function Pause:update(dt)
@@ -124,7 +124,7 @@ function Pause:render()
     for _, dot in ipairs(self.dots) do
         graphics2d.drawCircle(dot.x, dot.y, 18, '#FF60C0FF')
     end
-    graphics2d.drawText(nil, string.format('always %.1f', self.always), 1300, 520, {size = 48, color = '#FFE0E0E0'})
+    graphics2d.drawText(nil, string.format('Timer "always" %.1f', self.always), 1300, 520, {size = 48, color = '#FFE0E0E0'})
 end
 
 return Pause

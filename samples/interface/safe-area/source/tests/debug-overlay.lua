@@ -44,12 +44,12 @@ end
 function DebugOverlay:update(dt)
     local visible, safe = viewport.visibleRect(), viewport.safeRect()
     local top, right, bottom, left = sample.insets()
-    local rects = string.format('visible %.0f, %.0f, %.0f x %.0f\nsafe    %.0f, %.0f, %.0f x %.0f\ninsets  %.0f, %.0f, %.0f, %.0f', visible.x, visible.y, visible.width, visible.height, safe.x, safe.y, safe.width, safe.height, top, right, bottom, left)
+    local rects = string.format('Visible %.0f, %.0f, %.0f x %.0f\nSafe    %.0f, %.0f, %.0f x %.0f\nInsets  %.0f, %.0f, %.0f, %.0f', visible.x, visible.y, visible.width, visible.height, safe.x, safe.y, safe.width, safe.height, top, right, bottom, left)
     if rects ~= self.rects then
         self.rects = rects
         self.frame:set('rects', {text = rects})
     end
-    self:setStatus(string.format('overlay %s, %d safe area changes, %s', ui.safeAreaVisible() and 'shown' or 'hidden', self.changes, self.last))
+    self:setStatus(string.format('Overlay %s, %d safe area changes, %s', ui.safeAreaVisible() and 'shown' or 'hidden', self.changes, self.last))
 end
 
 return DebugOverlay

@@ -110,7 +110,7 @@ function Wfc:update(dt)
             self:generate()
         end
     end
-    self:showStats(string.format('tiles %d, rules %d\npins %d\n%s\nready in %.0f ms', #kTiles, #self.allow, self.pins, self.failed and 'every attempt contradicted' or 'collapsed', self.latency or 0))
+    self:showStats(string.format('Tiles %d, rules %d\nPins %d\n%s\nReady in %.0f ms', #kTiles, #self.allow, self.pins, self.failed and 'Every attempt contradicted' or 'Collapsed', self.latency or 0))
 end
 
 function Wfc:render()

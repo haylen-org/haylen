@@ -71,8 +71,8 @@ function Controls:update(dt)
         self:set('seek', {value = handle.progress})
     end
     local calls = self.calls
-    self:set('calls', {text = string.format('onStart %d   onUpdate %d\nonComplete %d   onKill %d', calls.start, calls.update, calls.complete, calls.kill)})
-    self:status(string.format('alive %s  playing %s  paused %s  reversed %s  completed %s  progress %.2f  time %.2f', handle.alive, handle.playing, handle.paused, handle.reversed, handle.completed, handle.progress, handle.time))
+    self:set('calls', {text = string.format('Calls of "onStart" %d   "onUpdate" %d\nCalls of "onComplete" %d   "onKill" %d', calls.start, calls.update, calls.complete, calls.kill)})
+    self:status(string.format('Alive %s  playing %s  paused %s  reversed %s  completed %s  progress %.2f  time %.2f', handle.alive, handle.playing, handle.paused, handle.reversed, handle.completed, handle.progress, handle.time))
 end
 
 function Controls:draw(area)
@@ -85,7 +85,7 @@ function Controls:draw(area)
         points[corner + 1] = {x + math.cos(turn) * 70, y + math.sin(turn) * 70}
     end
     graphics2d.drawPolygon(points, self.box.color, {layer = 1})
-    graphics2d.drawText(nil, self.handle.alive and '' or 'killed', area.width / 2, y + 140, {size = 40, color = sample.red, anchor = {0.5, 0.5}})
+    graphics2d.drawText(nil, self.handle.alive and '' or 'Killed', area.width / 2, y + 140, {size = 40, color = sample.red, anchor = {0.5, 0.5}})
 end
 
 return Controls

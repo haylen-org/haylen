@@ -43,12 +43,12 @@ function Storage:content()
     end
     return {
         ui.panel{width = 560, align = 'stretch', gap = 12,
-            ui.sectionTitle{text = 'haylen.storage'},
+            ui.sectionTitle{text = 'The module "haylen.storage"'},
             ui.grid{columns = 2, gap = 12, children = buttons},
             ui.label{text = 'Folder of the app: ' .. storage.root(), font = 'caption', color = 'textMuted'},
         },
         ui.panel{width = 520, align = 'stretch', gap = 12,
-            ui.sectionTitle{text = 'storage.list()'},
+            ui.sectionTitle{text = 'Files from "storage.list()"'},
             ui.scroll{grow = 1, focusable = false, ui.list{id = 'files', items = {}}},
         },
         ui.panel{grow = 1, align = 'stretch', gap = 12,
@@ -76,7 +76,7 @@ function Storage:write()
     local text = string.format('Notes of %s\n', os.date('%Y-%m-%d'))
     storage.writeText(kNote, text)
     self.lines = 0
-    self.activity:add(string.format("storage.writeText('%s', text)", kNote), sample.bytes(#text) .. ', the folder "notes" was created on the way')
+    self.activity:add(string.format('Called "storage.writeText(\'%s\', text)"', kNote), sample.bytes(#text) .. ', the folder "notes" was created on the way')
 end
 
 -- The storage API writes whole files, so appending reads the file and writes it back longer, still atomically.
@@ -84,51 +84,51 @@ function Storage:append()
     self.lines = self.lines + 1
     local old = storage.exists(kNote) and storage.readText(kNote) or ''
     storage.writeText(kNote, old .. string.format('%s line %d\n', os.date('%H:%M:%S'), self.lines))
-    self.activity:add(string.format("storage.writeText('%s', old .. line)", kNote), 'now ' .. sample.bytes(#storage.readText(kNote)))
+    self.activity:add(string.format('Called "storage.writeText(\'%s\', old .. line)"', kNote), 'now ' .. sample.bytes(#storage.readText(kNote)))
 end
 
 function Storage:read()
     if not storage.exists(kNote) then
-        self.activity:add(string.format("storage.exists('%s') is false", kNote), 'Write the note first')
+        self.activity:add(string.format('The value of "storage.exists(\'%s\')" is "false"', kNote), 'Write the note first')
         return
     end
     local text = storage.readText(kNote)
-    self.activity:add(string.format("storage.readText('%s')", kNote), sample.bytes(#text) .. ': ' .. text:gsub('\n', ' | '))
+    self.activity:add(string.format('Called "storage.readText(\'%s\')"', kNote), sample.bytes(#text) .. ': ' .. text:gsub('\n', ' | '))
 end
 
 function Storage:writeJson()
     local profile = {name = 'Ana', coins = math.random(10, 999), visits = (storage.exists(kProfile) and storage.readJson(kProfile).visits or 0) + 1}
     storage.writeJson(kProfile, profile)
-    self.activity:add(string.format("storage.writeJson('%s', profile)", kProfile), string.format('%d coins, visit %d', profile.coins, profile.visits))
+    self.activity:add(string.format('Called "storage.writeJson(\'%s\', profile)"', kProfile), string.format('%d coins, visit %d', profile.coins, profile.visits))
 end
 
 function Storage:readJson()
     if not storage.exists(kProfile) then
-        self.activity:add(string.format("storage.exists('%s') is false", kProfile), 'Write the JSON first')
+        self.activity:add(string.format('The value of "storage.exists(\'%s\')" is "false"', kProfile), 'Write the JSON first')
         return
     end
     local profile = storage.readJson(kProfile)
-    self.activity:add(string.format("storage.readJson('%s')", kProfile), string.format('name %s, %d coins, %d visits', profile.name, profile.coins, profile.visits))
+    self.activity:add(string.format('Called "storage.readJson(\'%s\')"', kProfile), string.format('Name %s, %d coins, %d visits', profile.name, profile.coins, profile.visits))
 end
 
 function Storage:exists()
-    self.activity:add(string.format("storage.exists('%s') is %s", kNote, tostring(storage.exists(kNote))))
-    self.activity:add("storage.exists('notes') is " .. tostring(storage.exists('notes')), 'Folders are not files')
+    self.activity:add(string.format('The value of "storage.exists(\'%s\')" is %s', kNote, tostring(storage.exists(kNote))))
+    self.activity:add('The value of "storage.exists(\'notes\')" is ' .. tostring(storage.exists('notes')), 'Folders are not files')
 end
 
 function Storage:missing()
     local ok, failure = pcall(storage.read, 'notes/missing.txt')
-    self.activity:add("storage.readText('notes/missing.txt') raised", ok and 'nothing' or failure)
+    self.activity:add('The call "storage.readText(\'notes/missing.txt\')" raised', ok and 'nothing' or failure)
 end
 
 -- Paths cannot leave the folder of the app, so another app's files stay out of reach.
 function Storage:outside()
     local ok, failure = pcall(storage.write, '../other-app/secret.txt', 'hello')
-    self.activity:add("storage.writeText('../other-app/secret.txt') raised", ok and 'nothing' or failure)
+    self.activity:add('The call "storage.writeText(\'../other-app/secret.txt\')" raised', ok and 'nothing' or failure)
 end
 
 function Storage:remove()
-    self.activity:add(string.format("storage.remove('%s') returned %s", kNote, tostring(storage.remove(kNote))))
+    self.activity:add(string.format('The call "storage.remove(\'%s\')" returned %s', kNote, tostring(storage.remove(kNote))))
 end
 
 function Storage:clear()
@@ -139,7 +139,7 @@ function Storage:clear()
         end
     end
     storage.flush()
-    self.activity:add(string.format('Removed %d files of "notes" and "profile"', count), 'then storage.flush()')
+    self.activity:add(string.format('Removed %d files of "notes" and "profile"', count), 'then "storage.flush()"')
 end
 
 return Storage

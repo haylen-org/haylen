@@ -61,7 +61,7 @@ function Stress:update(dt)
     end
     self.history:push(audio.voiceCount())
     self.stats = audio.busStats()
-    self:status(string.format('voices %d of %d   started %d   music %s   frame %.1f ms', audio.voiceCount(), kLimit, self.started, audio.music() and 'playing' or 'stopped', haylen.unscaledDelta() * 1000))
+    self:status(string.format('Voices %d of %d   started %d   music %s   frame %.1f ms', audio.voiceCount(), kLimit, self.started, audio.music() and 'playing' or 'stopped', haylen.unscaledDelta() * 1000))
 end
 
 function Stress:draw(area)
@@ -69,7 +69,7 @@ function Stress:draw(area)
     graphics2d.drawRect({left, top, width, height}, sample.surface)
     local limitY = top + height * (1 - kLimit / 160)
     graphics2d.drawLine(left, limitY, left + width, limitY, 2, sample.red, {layer = 1})
-    sample.caption('limit 128', left + width - 8, limitY - 6, {anchor = {1, 1}, color = sample.red, size = 18})
+    sample.caption('Limit 128', left + width - 8, limitY - 6, {anchor = {1, 1}, color = sample.red, size = 18})
     sample.caption('Voices over the last six seconds', left, top - 40)
 
     local values = self.history:values()
@@ -82,7 +82,7 @@ function Stress:draw(area)
     end
 
     local y = top + height + 60
-    sample.caption('audio.busStats()', left, y - 36)
+    sample.caption('Bus statistics from "audio.busStats()"', left, y - 36)
     for index, bus in ipairs(self.stats or {}) do
         local rowY = y + (index - 1) * 40
         sample.caption(bus.name, left, rowY, {color = sample.ink, size = 20})

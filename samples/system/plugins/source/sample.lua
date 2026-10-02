@@ -51,7 +51,7 @@ function Results:set(key, state, name, detail)
     local settled = state ~= 'waiting' and row.state ~= state
     row.state, row.name, row.detail = state, name, tostring(detail or '')
     if settled then
-        print(string.format('[plugins] %s %s %s: %s', self.test, kMarks[state], name, row.detail))
+        print(string.format('%s in the plugins test "%s": %s. %s', kMarks[state], self.test, name, row.detail))
     end
 end
 
@@ -63,9 +63,9 @@ end
 -- Sets the row from a failed call: an unsupported call does not apply to the platform, and any other failure fails the row.
 function Results:failure(key, name, err)
     if err.code == 'unsupported' then
-        self:set(key, 'skip', name, 'unsupported on this platform: ' .. err.message)
+        self:set(key, 'skip', name, 'Unsupported on this platform: ' .. err.message)
     else
-        self:set(key, 'fail', name, string.format('%s (code %s)', err.message, tostring(err.code)))
+        self:set(key, 'fail', name, string.format('%s (code "%s")', err.message, tostring(err.code)))
     end
 end
 

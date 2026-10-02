@@ -73,7 +73,7 @@ function Materials:update(dt)
     materials.hologram:set('time', time)
     local blocks = 8 + (math.sin(time) + 1) * 28
     materials.pixelate:set('blocks', {blocks, blocks})
-    self:setStatus(string.format('dissolve amount %.2f, pixelate blocks %.0f, palette %d', materials.dissolve:get('amount'), blocks, self.palette))
+    self:setStatus(string.format('Dissolve amount %.2f, pixelate blocks %.0f, palette %d', materials.dissolve:get('amount'), blocks, self.palette))
 end
 
 function Materials:render()

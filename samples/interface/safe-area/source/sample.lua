@@ -14,11 +14,11 @@ sample.transition = {effect = 'fade', duration = 0.3, color = '#FF101418'}
 -- The simulated devices of `haylen.viewport`, and the device itself.
 sample.devices = {
     {id = 'device', text = 'This device'},
-    {id = 'iphoneNotch', text = 'iPhone with a notch'},
-    {id = 'iphoneDynamicIsland', text = 'iPhone with a dynamic island'},
-    {id = 'ipad', text = 'iPad'},
-    {id = 'androidGestureBar', text = 'Android with a gesture bar'},
-    {id = 'television', text = 'TV'},
+    {id = 'iphoneNotch', text = 'An iPhone with a notch'},
+    {id = 'iphoneDynamicIsland', text = 'An iPhone with a dynamic island'},
+    {id = 'ipad', text = 'An iPad'},
+    {id = 'androidGestureBar', text = 'An Android phone with a gesture bar'},
+    {id = 'television', text = 'A TV'},
 }
 
 -- A desktop window and a browser have no notch, so there the sample starts with a simulated iPhone, while phones, tablets and TVs keep their own safe area.

@@ -81,7 +81,7 @@ end
 -- Draws the rows of one table in columns, with the demo rows of this test highlighted.
 local function drawTable(title, rows, x, y, height)
     graphics2d.drawText(nil, title, x, y, {size = 28, color = sample.warm})
-    local headers = {'name', 'listeners', 'emissions', 'stale'}
+    local headers = {'Name', 'Listeners', 'Emissions', 'Stale'}
     local columns = {0, 360, 480, 600}
     for index, header in ipairs(headers) do
         graphics2d.drawText(nil, header, x + columns[index], y + 40, {size = 22, color = sample.muted})
@@ -100,8 +100,8 @@ local function drawTable(title, rows, x, y, height)
 end
 
 function Diagnostics:draw(area)
-    drawTable('events.topics()', events.topics(), 30, 20, area.height - 80)
-    drawTable('signal.list()', signal.list(), area.width / 2 + 30, 20, area.height - 80)
+    drawTable('Topics from "events.topics()"', events.topics(), 30, 20, area.height - 80)
+    drawTable('Signals from "signal.list()"', signal.list(), area.width / 2 + 30, 20, area.height - 80)
     graphics2d.drawText(nil, self.note, 30, area.height - 50, {size = 24, color = sample.red})
 end
 

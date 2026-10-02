@@ -29,11 +29,11 @@ function WindowsPages:content()
     local sections = {{id = 'controls', text = 'Controls'}, {id = 'goals', text = 'Goals'}, {id = 'secrets', text = 'Secrets', enabled = false}}
     return sample.columns{
         ui.column{grow = 1, gap = 24,
-            sample.section('window', {
+            sample.section('Component "window"', {
                 ui.label{text = 'The window floats over the page and takes no room in it.', color = 'textMuted'},
                 ui.button{id = 'open-window', text = 'Open the window', onClick = function(event) event.document:set('bag', {open = true}) end},
             }),
-            sample.section('accordion', {
+            sample.section('Component "accordion"', {
                 ui.accordion{items = sections, expanded = {'controls'}, onToggle = function(event)
                     self:setStatus('The section "' .. event.item .. (event.expanded and '" opened' or '" closed'))
                 end,
@@ -44,14 +44,14 @@ function WindowsPages:content()
             }),
         },
         ui.column{grow = 2, gap = 24,
-            sample.section('carousel', {
-                ui.carousel{height = 230, loop = true, interval = 5, onChange = function(event) self:setStatus('carousel page ' .. event.page) end,
+            sample.section('Component "carousel"', {
+                ui.carousel{height = 230, loop = true, interval = 5, onChange = function(event) self:setStatus('Carousel page ' .. event.page) end,
                     page('images/landscape_day.png', 'Day'),
                     page('images/landscape_dusk.png', 'Dusk'),
                     page('images/landscape_night.png', 'Night'),
                 },
             }),
-            sample.section('scroll with snapping', {
+            sample.section('Component "scroll" with snapping', {
                 ui.scroll{axis = 'horizontal', snap = true, height = 150, ui.row{gap = 24, children = levels()}},
             }),
         },

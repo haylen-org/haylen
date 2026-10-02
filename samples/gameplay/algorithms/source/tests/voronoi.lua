@@ -103,7 +103,7 @@ function Voronoi:update(dt)
         self.points[#self.points + 1] = {self.pointer.worldX, self.pointer.worldY}
         self:rebuild()
     end
-    self:showStats(string.format('points %d\ntriangles %d\nrelaxations %d\ndelaunay %.3f ms', #self.points, #self.mesh.triangles // 3, self.relaxations, self:timing('delaunay')))
+    self:showStats(string.format('Points %d\nTriangles %d\nRelaxations %d\nDelaunay %.3f ms', #self.points, #self.mesh.triangles // 3, self.relaxations, self:timing('delaunay')))
 end
 
 function Voronoi:render()

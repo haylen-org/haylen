@@ -34,7 +34,7 @@ end
 function Files:controls()
     local items = {}
     for index, path in ipairs(self.paths) do
-        items[index] = {id = path, text = path:match('([^/]+)%.particles$')}
+        items[index] = {id = path, text = 'File "' .. path:match('[^/]+$') .. '"'}
     end
     return {
         ui.formField{label = 'Effect file', ui.radioGroup{items = items, selected = self.path, onChange = function(event)
@@ -51,7 +51,7 @@ function Files:update(dt)
     self.emitter.position = {self.cursor:world(self.camera)}
     self.emitter:update(dt)
     local config = self.effect.config
-    self:setStatus(string.format('%s with %s, rate %g, lifetime %g to %g s, %d particles', self.path, self.effect.texturePath, config.rate, config.lifetime[1], config.lifetime[2], self.emitter.count))
+    self:setStatus(string.format('Effect "%s" with "%s", rate %g, lifetime %g to %g s, %d particles', self.path, self.effect.texturePath, config.rate, config.lifetime[1], config.lifetime[2], self.emitter.count))
 end
 
 function Files:render()

@@ -71,7 +71,7 @@ function Typewriter:update(dt)
     local dialogue = self.dialogue
     dialogue:update(dt)
     self.document:set('revealed', {value = dialogue.visibleRatio})
-    self:setStatus(string.format('line %d, %d of %d characters, %s', self.line, dialogue.revealing and dialogue.visibleCharacters or dialogue.characterCount, dialogue.characterCount, dialogue.revealing and 'revealing' or 'done'))
+    self:setStatus(string.format('Line %d, %d of %d characters, %s', self.line, dialogue.revealing and dialogue.visibleCharacters or dialogue.characterCount, dialogue.characterCount, dialogue.revealing and 'revealing' or 'done'))
 end
 
 function Typewriter:render()

@@ -82,7 +82,7 @@ function Polygons:update(dt)
         self.center = {self.pointer.worldX, self.pointer.worldY}
         self:combine()
     end
-    self:showStats(string.format('outlines %d\narea %.0f\nconvex pieces %d\nclipper %.3f ms', #self.result, m.polygon.area(self.result), #self.pieces, self:timing('clipper')))
+    self:showStats(string.format('Outlines %d\nArea %.0f\nConvex pieces %d\nClipper %.3f ms', #self.result, m.polygon.area(self.result), #self.pieces, self:timing('clipper')))
 end
 
 function Polygons:render()

@@ -87,7 +87,7 @@ function Mazes:update(dt)
         self.seed = self.seed + 1
         self:generate()
     end
-    self:showStats(string.format('cells %d x %d\npassages %d\ndead ends %d\nsolution %d tiles\nready in %.0f ms', kWidth, kHeight, self.passages or 0, self.deadEnds or 0, self.path and #self.path or 0, self.latency or 0))
+    self:showStats(string.format('Cells %d x %d\nPassages %d\nDead ends %d\nSolution %d tiles\nReady in %.0f ms', kWidth, kHeight, self.passages or 0, self.deadEnds or 0, self.path and #self.path or 0, self.latency or 0))
 end
 
 function Mazes:render()

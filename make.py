@@ -74,9 +74,9 @@ ANDROID_MIN_SDK = 27
 ANDROID_ABIS = ("arm64-v8a", "armeabi-v7a", "x86_64")
 # The Android libraries that `make.py engine` publishes as `dev.haylen:<module>`, each a module of the Gradle project of the engine.
 ANDROID_LIBRARIES = ("haylen", "haylen-plugins", "haylen-links", "haylen-coroutines")
-# The oldest Apple systems the engine runs on: `std::format` with floating point, which the engine formats text and logs with, reaches their C++ library in iOS and tvOS 16.3 and macOS 13.3.
+# The oldest Apple systems the engine runs on: `std::format` with floating point, which the engine formats text and logs with, reaches their C++ library in iOS and tvOS 16.3, and `sokol_app` draws macOS frames through `-[NSView displayLinkWithTarget:selector:]`, which macOS 14.0 introduced.
 # Mac Catalyst takes its minimum, the iOS version, from `engine/cmake/haylen-catalyst.toolchain.cmake`.
-APPLE_MINIMUM_VERSIONS = {"iOS": "16.3", "tvOS": "16.3", "macOS": "13.3"}
+APPLE_MINIMUM_VERSIONS = {"iOS": "16.3", "tvOS": "16.3", "macOS": "14.0"}
 
 PLATFORMS = ["macos", "linux", "windows", "ios", "tvos", "android", "web", "web-webgl2"]
 DESKTOP_PLATFORMS = {"macos", "linux", "windows"}
@@ -515,6 +515,8 @@ def command_embedding(args: argparse.Namespace) -> None:
     command = ["cmake", "-S", SAMPLES_DIR / "cpp" / "embedding", "-B", directory, f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={args.config}", f"-DCPP_EMBEDDING_MODE={args.mode}"]
     if host_name() != "windows" or shutil.which("ninja"):
         command += ["-G", "Ninja"]
+    if host_name() == "macos":
+        command.append(f"-DCMAKE_OSX_DEPLOYMENT_TARGET={APPLE_MINIMUM_VERSIONS['macOS']}")
     if args.mode == "package":
         command_sdk(argparse.Namespace(platform=host_name(), config=args.config, jobs=args.jobs, output=None))
         command.append(f"-DCMAKE_PREFIX_PATH={sdk_dir(host_name(), args.config)}")
@@ -2979,6 +2981,8 @@ def command_run_cpp(args: argparse.Namespace) -> None:
         command = ["cmake", "-S", project, "-B", directory, f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={args.config}"]
         if host_name() != "windows" or shutil.which("ninja"):
             command += ["-G", "Ninja"]
+        if host_name() == "macos":
+            command.append(f"-DCMAKE_OSX_DEPLOYMENT_TARGET={APPLE_MINIMUM_VERSIONS['macOS']}")
         run(command)
         run(["cmake", "--build", directory, "--config", args.config, "--target", target, "--parallel", str(args.jobs)])
         run([cmake_app_executable(directory, target)])

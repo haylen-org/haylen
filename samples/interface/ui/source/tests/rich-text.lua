@@ -35,7 +35,7 @@ Wait for the ship
 [hr width=80%]
 [table=2][cell bg=#40000000 padding=6]Wood[/cell][cell padding=6]12[/cell][cell bg=#40000000 padding=6]Stone[/cell][cell padding=6]4[/cell][/table]]==]
 
-local kEffects = '[wave]wave[/wave]  [shake]shake[/shake]  [tornado radius=4]tornado[/tornado]  [rainbow]rainbow[/rainbow]  [pulse]pulse[/pulse]  [fade length=6]fading out[/fade]'
+local kEffects = '[wave]Wave[/wave]  [shake]Shake[/shake]  [tornado radius=4]Tornado[/tornado]  [rainbow]Rainbow[/rainbow]  [pulse]Pulse[/pulse]  [fade length=6]Fading out[/fade]'
 
 RichText.dialogue = {
     '[b]Keeper:[/b] You made it through the storm.[pause=0.5] Few do.',
@@ -51,27 +51,27 @@ end
 function RichText:content()
     return sample.columns{
         ui.column{grow = 3, gap = 24,
-            sample.section('styles, links, hints, images and icons', {
+            sample.section('Styles, links, hints, images and icons', {
                 ui.richText{id = 'styles', text = kStyles, onLink = function(event)
-                    self:setStatus('link ' .. event.link)
+                    self:setStatus('Link "' .. event.link .. '"')
                 end, onLinkHover = function(event)
                     self:setStatus((event.hovered and 'Hovered the link "' or 'Left the link "') .. event.link .. '"')
                 end},
             }),
-            sample.section('effects', {ui.richText{text = kEffects, font = 'heading'}}),
-            sample.section('fill alignment', {
+            sample.section('Effects', {ui.richText{text = kEffects, font = 'heading'}}),
+            sample.section('Fill alignment', {
                 ui.richText{text = 'Fill stretches the spaces of every wrapped line to both edges, except the last line of the paragraph, which stays at the start like the text of a book.', textAlign = 'fill'},
             }),
         },
         ui.column{grow = 2, gap = 24,
-            sample.section('lists, rules and tables', {ui.richText{text = kBlocks}}),
-            sample.section('typewriter reveal', {
+            sample.section('Lists, rules and tables', {ui.richText{text = kBlocks}}),
+            sample.section('Typewriter reveal', {
                 ui.richText{id = 'dialogue', text = RichText.dialogue[1], revealSpeed = 30, font = 'heading'},
                 ui.row{gap = 12,
                     ui.button{id = 'next', text = 'Next line', variant = 'primary', onClick = function(event)
                         self.line = self.line % #RichText.dialogue + 1
                         event.document:set('dialogue', {text = RichText.dialogue[self.line]})
-                        self:setStatus('dialogue line ' .. self.line)
+                        self:setStatus('Dialogue line ' .. self.line)
                     end},
                     ui.button{text = 'Skip', onClick = function(event)
                         event.document:set('dialogue', {visibleCharacters = -1})

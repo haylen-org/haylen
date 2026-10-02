@@ -24,7 +24,7 @@ local kByName = {}
 for _, bus in ipairs(kBuses) do
     kByName[bus.name] = bus
 end
-local kModes = {{id = 'inherit', text = 'inherit'}, {id = 'pausable', text = 'pausable'}, {id = 'whenPaused', text = 'whenPaused'}, {id = 'always', text = 'always'}, {id = 'disabled', text = 'disabled'}}
+local kModes = {{id = 'inherit', text = 'Mode "inherit"'}, {id = 'pausable', text = 'Mode "pausable"'}, {id = 'whenPaused', text = 'Mode "whenPaused"'}, {id = 'always', text = 'Mode "always"'}, {id = 'disabled', text = 'Mode "disabled"'}}
 local kPulses = {
     {bus = 'sfx', paths = {'audio/effects/chop.ogg'}, every = 1.3},
     {bus = 'footsteps', paths = {'audio/effects/footstep_1.ogg', 'audio/effects/footstep_2.ogg', 'audio/effects/footstep_3.ogg', 'audio/effects/footstep_4.ogg'}, every = 0.4},
@@ -60,7 +60,7 @@ function Buses:enter()
         ui.label{text = 'The pause stops the buses whose mode does not run while paused. Their voices keep their place and go on when the pause ends.', color = 'textMuted', font = 'caption'},
     }
     for _, bus in ipairs(kBuses) do
-        controls[#controls + 1] = ui.sectionTitle{text = bus.name .. (bus.parent and ' under ' .. bus.parent or '')}
+        controls[#controls + 1] = ui.sectionTitle{text = 'Bus "' .. bus.name .. '"' .. (bus.parent and ' under "' .. bus.parent .. '"' or '')}
         controls[#controls + 1] = ui.row{gap = 12,
             ui.slider{id = bus.name .. 'Volume', grow = 1, min = 0, max = 1, step = 0.05, value = audio.busVolume(bus.name), showValue = true, onChange = function(event) audio.setBusVolume(bus.name, event.value, 0.1) end},
             ui.checkbox{id = bus.name .. 'Muted', text = 'Mute', onChange = function(event) audio.setBusMuted(bus.name, event.checked) end},
@@ -90,7 +90,7 @@ end
 function Buses:update(dt)
     Buses.super.update(self, dt)
     self:readStats()
-    self:status(string.format('paused %s   voices %d   buses %s', haylen.paused(), audio.voiceCount(), table.concat(audio.buses(), ', ')))
+    self:status(string.format('Paused %s   voices %d   buses %s', haylen.paused(), audio.voiceCount(), table.concat(audio.buses(), ', ')))
 end
 
 function Buses:node(bus, area)
@@ -115,10 +115,10 @@ function Buses:draw(area)
         local muted = audio.busMuted(bus.name)
         graphics2d.drawRect({x, y, width, height}, sample.surface, {layer = 1})
         graphics2d.drawRectOutline({x, y, width, height}, 3, stats.processing and sample.green or sample.red, {layer = 2})
-        sample.caption(bus.name, x + 14, y + 10, {size = 22, color = sample.ink, layer = 3})
+        sample.caption('Bus "' .. bus.name .. '"', x + 14, y + 10, {size = 22, color = sample.ink, layer = 3})
         sample.bar(x + 14, y + 52, width - 28, 12, audio.busVolume(bus.name), muted and sample.muted or sample.accent)
-        sample.caption(string.format('%s%s', audio.busProcessMode(bus.name), muted and ', muted' or ''), x + 14, y + 74, {size = 16, layer = 3})
-        sample.caption(stats.processing and 'processing' or 'held by the pause', x + 14, y + 102, {size = 16, color = stats.processing and sample.green or sample.red, layer = 3})
+        sample.caption(string.format('Mode "%s"%s', audio.busProcessMode(bus.name), muted and ', muted' or ''), x + 14, y + 74, {size = 16, layer = 3})
+        sample.caption(stats.processing and 'Processing' or 'Held by the pause', x + 14, y + 102, {size = 16, color = stats.processing and sample.green or sample.red, layer = 3})
         sample.caption(string.format('%d voices, %d playing, %d paused', stats.voices, stats.playing, stats.paused), x + 14, y + 132, {size = 15, layer = 3})
     end
 end

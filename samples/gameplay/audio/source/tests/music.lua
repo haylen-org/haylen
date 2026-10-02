@@ -120,7 +120,7 @@ function Music:update(dt)
             name = track.text
         end
     end
-    self:status(string.format('music() %s   paused %s   voices %d   music bus %.2f', name, self.voice ~= nil and audio.paused(self.voice), audio.voiceCount(), audio.busVolume('music')))
+    self:status(string.format('Call "audio.music()" %s   paused %s   voices %d   music bus %.2f', name, self.voice ~= nil and audio.paused(self.voice), audio.voiceCount(), audio.busVolume('music')))
 end
 
 -- The volume the calls asked for at a time: the fade in, the level set last and the fade out.

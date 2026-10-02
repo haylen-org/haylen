@@ -18,7 +18,7 @@ end
 function Buttons:content()
     return sample.columns{
         ui.column{grow = 1, gap = 24,
-            sample.section('button variants', {
+            sample.section('Button variants', {
                 ui.row{gap = 16,
                     ui.button{id = 'default', text = 'Default', onClick = self:pressed('"default"')},
                     ui.button{text = 'Primary', variant = 'primary', onClick = self:pressed('"primary"')},
@@ -40,25 +40,25 @@ function Buttons:content()
                     ui.button{icon = 'icons/heart.png', variant = 'icon', tooltip = 'Like', onClick = self:pressed('the heart icon button')},
                 },
             }),
-            sample.section('menuButton', {
+            sample.section('Component "menuButton"', {
                 ui.menuButton{id = 'file', text = 'File', icon = 'icons/key.png', items = {{id = 'save', text = 'Save'}, {id = 'load', text = 'Load'}, {id = 'cloud', text = 'Cloud sync', enabled = false}}, onSelect = function(event)
                     self:setStatus('The menu picked "' .. event.item .. '"')
                 end},
             }),
         },
         ui.column{grow = 1, gap = 24,
-            sample.section('imageButton', {
+            sample.section('Component "imageButton"', {
                 ui.row{gap = 24,
                     ui.imageButton{image = 'images/sign.png', hoverImage = 'images/sign_hover.png', pressedImage = 'images/sign_pressed.png', text = 'Start', onClick = self:pressed('the sign')},
                     ui.imageButton{image = 'images/sign.png', scale = 1.5, text = 'Big', onClick = self:pressed('the big sign')},
                     ui.imageButton{image = 'icons/potion.png', scale = 3, tint = '#FFB0FFB0', tooltip = 'Tinted, without hover or pressed pictures', onClick = self:pressed('the potion')},
                 },
             }),
-            sample.section('chip', {
+            sample.section('Component "chip"', {
                 ui.row{gap = 12,
-                    ui.chip{text = 'Wood', selected = true, onChange = function(event) self:setStatus('wood ' .. tostring(event.selected)) end},
-                    ui.chip{text = 'Stone', onChange = function(event) self:setStatus('stone ' .. tostring(event.selected)) end},
-                    ui.chip{text = 'Fish', onChange = function(event) self:setStatus('fish ' .. tostring(event.selected)) end},
+                    ui.chip{text = 'Wood', selected = true, onChange = function(event) self:setStatus('Wood ' .. tostring(event.selected)) end},
+                    ui.chip{text = 'Stone', onChange = function(event) self:setStatus('Stone ' .. tostring(event.selected)) end},
+                    ui.chip{text = 'Fish', onChange = function(event) self:setStatus('Fish ' .. tostring(event.selected)) end},
                 },
                 ui.row{gap = 12,
                     ui.chip{id = 'tag-north', text = 'North', removable = true, onRemove = function(event) event.document:set('tag-north', {visible = false}) end},

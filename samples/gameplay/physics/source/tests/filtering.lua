@@ -123,7 +123,7 @@ function Filtering:update(dt)
         self:clear()
     end
     self.grab:update(self.pointer, self.camera)
-    self:showStats(string.format('balls %d\nstep %.2f ms', #self.balls, sample.milliseconds('physics step')))
+    self:showStats(string.format('Balls %d\nStep %.2f ms', #self.balls, sample.milliseconds('physics step')))
 end
 
 function Filtering:fixedUpdate(step)
@@ -135,8 +135,8 @@ function Filtering:render()
     parts.drawAll(self.statics)
     parts.drawAll(self.balls, {layer = 1})
     parts.drawAll(self.groups, {layer = 1})
-    graphics2d.drawText(nil, 'group -1\nnever collide', 540, 170, {size = 20, anchor = {0.5, 0}, align = 'center'})
-    graphics2d.drawText(nil, 'group 1\nalways collide', 680, 170, {size = 20, anchor = {0.5, 0}, align = 'center'})
+    graphics2d.drawText(nil, 'Group -1\nNever collide', 540, 170, {size = 20, anchor = {0.5, 0}, align = 'center'})
+    graphics2d.drawText(nil, 'Group 1\nAlways collide', 680, 170, {size = 20, anchor = {0.5, 0}, align = 'center'})
     self.grab:draw()
 end
 

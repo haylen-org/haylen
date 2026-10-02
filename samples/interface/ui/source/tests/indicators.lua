@@ -41,29 +41,29 @@ end
 function Indicators:fit(fit, tint)
     return ui.column{gap = 4, align = 'center',
         ui.stack{width = 150, height = 110, ui.panel{align = 'stretch'}, ui.image{image = 'images/landscape_day.png', fit = fit, tint = tint, align = 'stretch'}},
-        ui.label{text = tint and fit .. ' with a tint' or fit, font = 'caption'},
+        ui.label{text = tint and 'Fit "' .. fit .. '"\nwith a tint' or 'Fit "' .. fit .. '"', font = 'caption'},
     }
 end
 
 function Indicators:content()
     return sample.columns{
         ui.column{grow = 1, gap = 24,
-            sample.section('badge', {
-                toneRow(function(tone) return ui.badge{text = tone, tone = tone} end),
-                toneRow(function(tone) return ui.badge{text = tone, tone = tone, solid = true} end),
+            sample.section('Component "badge"', {
+                toneRow(function(tone) return ui.badge{text = tone:sub(1, 1):upper() .. tone:sub(2), tone = tone} end),
+                toneRow(function(tone) return ui.badge{text = tone:sub(1, 1):upper() .. tone:sub(2), tone = tone, solid = true} end),
             }),
-            sample.section('statusIndicator and busyIndicator', {
+            sample.section('Components "statusIndicator" and "busyIndicator"', {
                 ui.row{gap = 24, ui.statusIndicator{text = 'Online'}, ui.statusIndicator{text = 'Away', tone = 'warning'}, ui.statusIndicator{text = 'Offline', tone = 'danger'}},
                 ui.row{gap = 32, ui.busyIndicator{}, ui.busyIndicator{size = 64, color = 'success'}, ui.busyIndicator{size = 32, color = 'warning'}},
             }),
-            sample.section('progress', {
+            sample.section('Component "progress"', {
                 ui.progress{id = 'loading', text = 'Loading'},
                 ui.progress{id = 'health', tone = 'success'},
                 ui.progress{value = 0.35, tone = 'warning', text = 'Fuel 35%'},
             }),
         },
         ui.column{grow = 1, gap = 24,
-            sample.section('circularProgress', {
+            sample.section('Component "circularProgress"', {
                 ui.row{gap = 24,
                     ui.circularProgress{id = 'ring', text = '0%'},
                     ui.circularProgress{id = 'ring-big', size = 120, thickness = 16, tone = 'success'},
@@ -71,16 +71,16 @@ function Indicators:content()
                     ui.circularProgress{id = 'plain', style = 'cooldown', size = 96, tone = 'warning'},
                 },
             }),
-            sample.section('cooldowns', {ui.row{gap = 32, self:ability('sword'), self:ability('potion'), self:ability('gem')}}),
+            sample.section('Cooldowns', {ui.row{gap = 32, self:ability('sword'), self:ability('potion'), self:ability('gem')}}),
         },
         ui.column{grow = 1, gap = 24,
-            sample.section('icon', {
+            sample.section('Component "icon"', {
                 ui.row{gap = 16, ui.icon{image = 'icons/coin.png'}, ui.icon{image = 'icons/heart.png', size = 56}, ui.icon{image = 'icons/star.png', size = 56, color = 'accent'}, ui.icon{image = 'icons/gear.png', size = 72, color = 'textMuted'}},
             }),
-            sample.section('image fits', {
+            sample.section('Image fits', {
                 ui.row{gap = 12, self:fit('contain'), self:fit('cover'), self:fit('fill', '#FFFFC080')},
             }),
-            sample.section('avatar', {
+            sample.section('Component "avatar"', {
                 ui.row{gap = 16, ui.avatar{name = 'Ana Souza'}, ui.avatar{image = 'images/avatar_ana.png'}, ui.avatar{image = 'images/avatar_leo.png', size = 96}, ui.avatar{name = 'Leo', size = 48}},
             }),
         },

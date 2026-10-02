@@ -67,11 +67,11 @@ end
 -- Mouse events arrive with the position of each event, while the functions of `haylen.input` read the state of the frame.
 function Mouse:event(event)
     if event.type == 'mouseDown' or event.type == 'mouseUp' then
-        self.journal:add(string.format('%s %s at %.0f, %.0f', event.type, event.button, event.x, event.y), event.type == 'mouseDown' and sample.warm or sample.red)
+        self.journal:add(string.format('Event "%s" of button "%s" at %.0f, %.0f', event.type, event.button, event.x, event.y), event.type == 'mouseDown' and sample.warm or sample.red)
     elseif event.type == 'mouseScroll' then
-        self.journal:add(string.format('mouseScroll %.1f, %.1f', event.scrollX, event.scrollY), sample.green)
+        self.journal:add(string.format('Event "mouseScroll" %.1f, %.1f', event.scrollX, event.scrollY), sample.green)
     elseif event.type == 'mouseEnter' or event.type == 'mouseLeave' then
-        self.journal:add(event.type, sample.accent)
+        self.journal:add('Event "' .. event.type .. '"', sample.accent)
     end
 end
 
@@ -119,7 +119,7 @@ function Mouse:update(dt)
     end
 
     local fx, fy = input.mouseFramebufferPosition()
-    self:status(string.format('design %.0f, %.0f   pixels %.0f, %.0f   delta %.1f, %.1f   inside %s   captured by the UI %s   cursor %s', mouseX, mouseY, fx, fy, self.deltaX, self.deltaY, input.mouseInside(), input.pointerCaptured(), self.cursor))
+    self:status(string.format('Design %.0f, %.0f   pixels %.0f, %.0f   delta %.1f, %.1f   inside %s   captured by the UI %s   cursor %s', mouseX, mouseY, fx, fy, self.deltaX, self.deltaY, input.mouseInside(), input.pointerCaptured(), self.cursor))
 end
 
 function Mouse:drawMouse(left, top)
@@ -135,20 +135,20 @@ function Mouse:drawMouse(left, top)
         elseif flash.released > 0 then
             graphics2d.drawRectOutline(rect, 4, sample.red, {layer = 2})
         end
-        sample.caption(button, rect[1] + rect[3] / 2, rect[2] + rect[4] + 14, {anchor = {0.5, 0}, size = 18})
+        sample.caption(button:sub(1, 1):upper() .. button:sub(2), rect[1] + rect[3] / 2, rect[2] + rect[4] + 14, {anchor = {0.5, 0}, size = 18})
     end
 
     -- The wheel turns with the vertical total and its notch slides with the horizontal total.
     local wheelX, wheelY = left + width / 2, top + 75
     local notch = (self.scrollY * 8) % 60 - 30
     graphics2d.drawLine(wheelX - 8 + math.max(-8, math.min(8, self.scrollX)), wheelY + notch, wheelX + 8 + math.max(-8, math.min(8, self.scrollX)), wheelY + notch, 4, sample.warm, {layer = 3})
-    sample.caption(string.format('wheel total %.1f, %.1f', self.scrollX, self.scrollY), left, top + height + 20)
+    sample.caption(string.format('Wheel total %.1f, %.1f', self.scrollX, self.scrollY), left, top + height + 20)
 
     -- The movement of this frame, drawn ten times longer from the middle of the body.
     local cx, cy = left + width / 2, top + 270
     graphics2d.drawCircle(cx, cy, 6, sample.muted, {layer = 1})
     graphics2d.drawLine(cx, cy, cx + self.deltaX * 10, cy + self.deltaY * 10, 4, sample.green, {layer = 2})
-    sample.caption('delta x10', cx, cy + 40, {anchor = {0.5, 0}, size = 18})
+    sample.caption('Delta x10', cx, cy + 40, {anchor = {0.5, 0}, size = 18})
 end
 
 function Mouse:draw(area)
@@ -158,7 +158,7 @@ function Mouse:draw(area)
     for _, zone in ipairs(self.zones) do
         local hovered = zone.name == self.cursor and zone.name ~= 'default'
         graphics2d.drawRect(zone.rect, hovered and '#FF34405E' or sample.surface)
-        sample.caption(zone.name, zone.rect[1] + 12, zone.rect[2] + zone.rect[4] / 2, {anchor = {0, 0.5}, size = 18, color = hovered and sample.ink or sample.muted})
+        sample.caption('Cursor\n"' .. zone.name .. '"', zone.rect[1] + 12, zone.rect[2] + zone.rect[4] / 2, {anchor = {0, 0.5}, size = 18, color = hovered and sample.ink or sample.muted})
     end
 
     local logLeft = self.zones[3].rect[1] + self.zones[3].rect[3] + 32

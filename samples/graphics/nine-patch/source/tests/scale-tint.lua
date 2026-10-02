@@ -44,7 +44,7 @@ end
 
 function ScaleTint:update(dt)
     ScaleTint.super.update(self, dt)
-    self:status(string.format('border scale %.2f   tint %s', self.scale, self.tint))
+    self:status(string.format('Border scale %.2f   tint %s', self.scale, self.tint))
 end
 
 function ScaleTint:draw(area)
@@ -52,7 +52,7 @@ function ScaleTint:draw(area)
     for index, scale in ipairs(kScales) do
         local x = 30 + (index - 1) * (width + 20)
         graphics2d.drawNineSlice(self.frameSlice, {x, 30, width, 150}, kTints[index].color, nil, scale)
-        graphics2d.drawText(nil, 'scale ' .. scale .. ', ' .. kTints[index].text:lower(), x + width / 2, 206, {size = 22, color = sample.muted, anchor = {0.5, 0.5}})
+        graphics2d.drawText(nil, 'Scale ' .. scale .. ', ' .. kTints[index].text:lower(), x + width / 2, 206, {size = 22, color = sample.muted, anchor = {0.5, 0.5}})
     end
     graphics2d.drawNineSlice(self.frameSlice, {30, 250, area.width - 60, area.height - 280}, self.tint, nil, self.scale)
 end

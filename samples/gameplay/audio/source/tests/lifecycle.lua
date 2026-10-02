@@ -35,7 +35,7 @@ function Lifecycle:enter()
         self.counts[name] = 0
         self:listen(name, function()
             self.counts[name] = self.counts[name] + 1
-            self.journal:add(string.format('%s at %.1fs, interrupted %s, state %s', name, self.clock, audio.interrupted(), haylen.appState()), kEvents[name])
+            self.journal:add(string.format('Event "%s" at %.1fs, interrupted %s, state %s', name, self.clock, audio.interrupted(), haylen.appState()), kEvents[name])
         end)
     end
     audio.playMusic(sounds.track(sounds.tracks[1].path), {fade = 1, volume = 0.7})
@@ -60,21 +60,21 @@ end
 -- The platform reports interruptions as events of the scene too, before the engine turns them into audio events.
 function Lifecycle:event(event)
     if event.type == 'interruptionBegan' or event.type == 'interruptionEnded' or event.type == 'suspended' or event.type == 'resumed' then
-        self.journal:add('platform event ' .. event.type, sample.muted)
+        self.journal:add('Platform event "' .. event.type .. '"', sample.muted)
     end
 end
 
 function Lifecycle:update(dt)
     Lifecycle.super.update(self, dt)
     self.clock = self.clock + haylen.unscaledDelta()
-    self:status(string.format('app %s   halted %s   interrupted %s   device %s   output %s   %d Hz, %d channels   voices %d', haylen.appState(), haylen.halted(), audio.interrupted(), audio.hasDevice(), audio.outputAvailable() and 'available' or 'unavailable, no sound', audio.sampleRate(), audio.channels(), audio.voiceCount()))
+    self:status(string.format('App %s   halted %s   interrupted %s   device %s   output %s   %d Hz, %d channels   voices %d', haylen.appState(), haylen.halted(), audio.interrupted(), audio.hasDevice(), audio.outputAvailable() and 'available' or 'unavailable, no sound', audio.sampleRate(), audio.channels(), audio.voiceCount()))
 end
 
 function Lifecycle:draw(area)
     local interrupted = audio.interrupted()
     graphics2d.drawRect({24, 24, 360, 120}, interrupted and '#FF4A2630' or '#FF1F3A2E')
     sample.caption(interrupted and 'Interrupted' or 'Audio running', 44, 44, {size = 34, color = interrupted and sample.red or sample.green})
-    sample.caption('audio.interrupted() ' .. tostring(interrupted), 44, 96, {size = 20})
+    sample.caption('The call "audio.interrupted()" returns ' .. tostring(interrupted), 44, 96, {size = 20})
 
     local left = 420
     for index, name in ipairs(kOrder) do

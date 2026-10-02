@@ -32,7 +32,7 @@ end
 function GameControls:report(name)
     return function(event)
         if event.low then
-            self:setStatus(string.format('%s from %g to %g', name, event.low, event.high))
+            self:setStatus(string.format('The %s spans %g to %g', name, event.low, event.high))
         else
             self:setStatus('The ' .. name .. ' changed to ' .. (type(event.value) == 'number' and string.format('%g', event.value) or '"' .. event.value .. '"'))
         end
@@ -42,7 +42,7 @@ end
 function GameControls:captureRows()
     local rows = {}
     for index, binding in ipairs(GameControls.bindings) do
-        rows[index] = ui.settingsRow{label = binding.label, caption = 'takes ' .. table.concat(binding.sources, ', '),
+        rows[index] = ui.settingsRow{label = binding.label, caption = 'Takes "' .. table.concat(binding.sources, '", "') .. '"',
             ui.keyCapture{id = 'bind-' .. binding.id, value = binding.value, prompt = 'Press a ' .. binding.sources[1], sources = binding.sources, width = 360,
                 onChange = function(event)
                     input.defineAction({name = binding.action, type = 'button', bindings = {event.value}})
@@ -61,24 +61,24 @@ function GameControls:content()
     captures[#captures + 1] = ui.label{id = 'fired', text = 'Press a binding to fire its action.', color = 'textMuted'}
     return sample.columns{
         ui.column{grow = 1, gap = 24,
-            sample.section('stepper', {
+            sample.section('Component "stepper"', {
                 ui.settingsRow{label = 'Players', ui.stepper{id = 'players', value = 2, min = 1, max = 4, width = 360, onChange = self:report('players')}},
-                ui.settingsRow{label = 'Difficulty', caption = 'wraps around', ui.stepper{items = difficulties, selected = 'normal', wrap = true, width = 360, onChange = self:report('difficulty')}},
+                ui.settingsRow{label = 'Difficulty', caption = 'Wraps around', ui.stepper{items = difficulties, selected = 'normal', wrap = true, width = 360, onChange = self:report('difficulty')}},
                 ui.settingsRow{label = 'Gamma', ui.stepper{value = 1, min = 0.5, max = 2, step = 0.1, decimals = 1, width = 360, onChange = self:report('gamma')}},
             }),
-            sample.section('segmentedControl', {
+            sample.section('Component "segmentedControl"', {
                 ui.segmentedControl{items = {{id = 'daily', text = 'Daily'}, {id = 'weekly', text = 'Weekly'}, {id = 'all', text = 'All time'}}, selected = 'daily', onChange = self:report('leaderboard')},
                 ui.segmentedControl{items = {{id = 'map', text = 'Map'}, {id = 'quests', text = 'Quests'}, {id = 'crafting', text = 'Crafting', enabled = false}, {id = 'bag', text = 'Bag'}}, selected = 'bag', onChange = self:report('view')},
             }),
         },
         ui.column{grow = 1, gap = 24,
-            sample.section('rangeSlider', {
+            sample.section('Component "rangeSlider"', {
                 ui.label{text = 'Price filter in steps of 10'},
                 ui.rangeSlider{min = 0, max = 500, low = 50, high = 300, step = 10, showValue = true, decimals = 0, onChange = self:report('price')},
                 ui.label{text = 'Free range with two decimals'},
                 ui.rangeSlider{low = 0.2, high = 0.6, showValue = true, onChange = self:report('range')},
             }),
-            sample.section('keyCapture', captures),
+            sample.section('Component "keyCapture"', captures),
         },
     }
 end

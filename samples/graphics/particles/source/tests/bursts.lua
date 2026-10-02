@@ -45,7 +45,7 @@ function Bursts:update(dt)
     for _, emitter in ipairs(self.emitters) do
         emitter:update(dt)
     end
-    self:setStatus(string.format('burst cycle %.2f s, one shot emitting %s and alive %s', self.scheduled.cycleTime, tostring(self.once.emitting), tostring(self.once.alive)))
+    self:setStatus(string.format('Burst cycle %.2f s, one shot emitting %s and alive %s', self.scheduled.cycleTime, tostring(self.once.emitting), tostring(self.once.alive)))
 end
 
 function Bursts:render()
@@ -58,10 +58,10 @@ end
 
 function Bursts:renderUi()
     graphics2d.beginScreen()
-    art.label(self.camera, 'bursts at 0, 0.5, 0.8 and 1.2 s', -640, 280)
-    art.label(self.camera, 'prewarm 4 s', -120, 330)
-    art.label(self.camera, 'no prewarm', 120, 330)
-    art.label(self.camera, 'one shot of 1.2 s', 640, 280)
+    art.label(self.camera, 'Bursts at 0, 0.5, 0.8 and 1.2 s', -640, 280)
+    art.label(self.camera, 'Prewarm 4 s', -120, 330)
+    art.label(self.camera, 'No prewarm', 120, 330)
+    art.label(self.camera, 'One shot of 1.2 s', 640, 280)
 end
 
 return Bursts

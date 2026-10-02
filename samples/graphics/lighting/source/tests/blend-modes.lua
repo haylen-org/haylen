@@ -17,9 +17,9 @@ function BlendModes:init(entry)
     self.stage = Stage()
     self.cursor = sample.Cursor()
     self.fixed = {
-        {label = 'add', light = lighting2d.newLight({x = -560, y = 0, radius = 360, color = '#FFFFB060', blend = 'add'})},
-        {label = 'subtract', light = lighting2d.newLight({x = 0, y = 0, radius = 360, color = '#FFFFFFFF', intensity = 0.8, blend = 'subtract'})},
-        {label = 'mix', light = lighting2d.newLight({x = 560, y = 0, radius = 360, color = '#FF3070FF', blend = 'mix'})},
+        {label = 'Add', light = lighting2d.newLight({x = -560, y = 0, radius = 360, color = '#FFFFB060', blend = 'add'})},
+        {label = 'Subtract', light = lighting2d.newLight({x = 0, y = 0, radius = 360, color = '#FFFFFFFF', intensity = 0.8, blend = 'subtract'})},
+        {label = 'Mix', light = lighting2d.newLight({x = 560, y = 0, radius = 360, color = '#FF3070FF', blend = 'mix'})},
     }
     self.held = lighting2d.newLight({radius = 260, color = '#FF60FF90', blend = 'add'})
 end
@@ -34,7 +34,7 @@ end
 function BlendModes:update(dt)
     self.cursor:update(dt)
     self.held.x, self.held.y = self.cursor:world(self.camera)
-    self:setStatus('cursor light blend = ' .. self.held.blend)
+    self:setStatus('Cursor light blend = ' .. self.held.blend)
 end
 
 function BlendModes:render()

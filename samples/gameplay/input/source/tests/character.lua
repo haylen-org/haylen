@@ -156,7 +156,7 @@ function Character:update(dt)
             spot.taken = false
         end
     end
-    self:status(string.format('last device %s   speed %+.0f, %+.0f   grounded %s   dash ready %s   coins %d', input.lastDevice(), hero.vx, hero.vy, hero.grounded, hero.cooldown <= 0, self.coins))
+    self:status(string.format('Last device %s   speed %+.0f, %+.0f   grounded %s   dash ready %s   coins %d', input.lastDevice(), hero.vx, hero.vy, hero.grounded, hero.cooldown <= 0, self.coins))
 end
 
 function Character:draw(area)

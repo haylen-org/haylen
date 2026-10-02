@@ -112,7 +112,7 @@ end
 function NormalMaps:update(dt)
     self.cursor:update(dt)
     self.lamp.x, self.lamp.y = self.cursor:world(self.camera)
-    self:setStatus(string.format('height %.0f, specular %.2f, shininess %.0f', self.lamp.height, self.specular, self.shininess))
+    self:setStatus(string.format('Height %.0f, specular %.2f, shininess %.0f', self.lamp.height, self.specular, self.shininess))
 end
 
 -- Tiles a texture over a rectangle, with its normal map when they are on.

@@ -40,7 +40,7 @@ function Animations:describe(x, y)
     for _, layer in ipairs({'walls', 'ground'}) do
         local gid = map:tile(layer, column, row)
         if gid ~= 0 then
-            return layer .. ' layer', map:tileInfo(gid)
+            return 'Layer "' .. layer .. '"', map:tileInfo(gid)
         end
     end
 end
@@ -64,10 +64,10 @@ function Animations:update(dt)
     local where, info = self:describe(self.pointer.worldX, self.pointer.worldY)
     local frames = {}
     for _, frame in ipairs(info and info.animation or {}) do
-        frames[#frames + 1] = string.format('  tile %d for %.0f ms', frame.tileId, frame.duration * 1000)
+        frames[#frames + 1] = string.format('  Tile %d for %.0f ms', frame.tileId, frame.duration * 1000)
     end
-    local summary = info and string.format('%s\nclass %s\n%s', where, info.type ~= '' and info.type or '-', #frames > 0 and 'frames\n' .. table.concat(frames, '\n') or 'still tile') or 'nothing under the pointer'
-    self:showStats(string.format('map time %.1f s\n%s', self.time, summary))
+    local summary = info and string.format('%s\nClass %s\n%s', where, info.type ~= '' and info.type or '-', #frames > 0 and 'Frames\n' .. table.concat(frames, '\n') or 'Still tile') or 'Nothing under the pointer'
+    self:showStats(string.format('Map time %.1f s\n%s', self.time, summary))
 end
 
 function Animations:render()

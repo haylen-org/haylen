@@ -133,7 +133,7 @@ function Sensors:update(dt)
             table.remove(self.sparks, index)
         end
     end
-    self:showStats(string.format('in the zone %d\ncontacts begun %d\ncontacts ended %d\nhits %d', self:visitors(), self.counts.begin, self.counts.finish, self.counts.hits))
+    self:showStats(string.format('In the zone %d\nContacts begun %d\nContacts ended %d\nHits %d', self:visitors(), self.counts.begin, self.counts.finish, self.counts.hits))
     if self.logChanged then
         self.logChanged = false
         self:set('log', {text = table.concat(self.events, '\n')})

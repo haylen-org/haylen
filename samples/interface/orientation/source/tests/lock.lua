@@ -20,7 +20,7 @@ end
 
 function Lock:content()
     return ui.row{gap = 24,
-        sample.section('lock', {width = 760, align = 'start',
+        sample.section('Lock', {width = 760, align = 'start',
             ui.segmentedControl{id = 'lock', items = {{id = 'portrait', text = 'Portrait'}, {id = 'landscape', text = 'Landscape'}, {id = 'any', text = 'Any'}}, selected = self.lock, onChange = function(event)
                 self.lock = event.value
                 window.lockOrientation(event.value)
@@ -29,7 +29,7 @@ function Lock:content()
                 window.setFullscreen(event.checked)
             end},
         }),
-        sample.section('platforms', {grow = 1, align = 'start', ui.richText{text = kPlatforms}}),
+        sample.section('Platforms', {grow = 1, align = 'start', ui.richText{text = kPlatforms}}),
     }
 end
 

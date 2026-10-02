@@ -1,9 +1,11 @@
 # The source cache keeps a patched package under a key made of the hash of its archive and the contents of its patches, so an edited patch reaches every checkout that already holds the package, and checkouts in other folders share it.
+# The patches are configure dependencies, so a build tree reconfigures and fetches the package under its new key when a patch changes.
 function(haylen_patched_package_key variable archive_hash)
   set(contents "${archive_hash}")
   foreach(patch IN LISTS ARGN)
     file(SHA256 "${patch}" patch_hash)
     string(APPEND contents ";${patch_hash}")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${patch}")
   endforeach()
   string(SHA256 key "${contents}")
   string(SUBSTRING "${key}" 0 16 key)

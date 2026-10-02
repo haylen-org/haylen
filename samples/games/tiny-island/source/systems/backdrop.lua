@@ -1,12 +1,10 @@
 -- The island behind the menus at dusk: the five survivors rest around the fire while the camera drifts, or frames the one being chosen.
-local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
-local lighting2d = require('haylen.lighting2d')
-local particles2d = require('haylen.particles2d')
 
 local art = require('systems.art')
 local classes = require('data.classes')
 local config = require('config')
+local flame = require('entities.flame')
 local island = require('systems.island')
 local tree = require('entities.tree')
 
@@ -18,11 +16,7 @@ local restRadius = 190
 function backdrop.new()
     local self = setmetatable({time = 0, units = {}, trees = {}}, backdrop)
     self.island = island.new()
-    self.fire = self.island.fire
-    self.logs = art.texture('terrain/resources/wood/wood_resource/wood_resource.png')
-    self.flames = particles2d.newEmitter(assets.load('effects/flames.particles'))
-    self.flames.x = self.fire.x
-    self.flames.y = self.fire.y - 10
+    self.fire = flame.new(self.island.fire.x, self.island.fire.y)
     for _, spot in ipairs(self.island:treeSpots()) do
         self.trees[#self.trees + 1] = tree.new(self.island.world, spot.x, spot.y, spot.variant)
     end
@@ -64,7 +58,7 @@ end
 function backdrop:update(dt)
     self.time = self.time + dt
     self.island:update(dt)
-    self.flames:update(dt)
+    self.fire:update(dt, true)
     for _, standing in ipairs(self.trees) do
         standing:update(dt)
     end
@@ -90,10 +84,7 @@ end
 function backdrop:draw()
     graphics2d.beginWorld(self.camera, {sort = 'depth', ambientLight = '#FF6F6A9E', postProcess = {vignetteStrength = 0.35}})
     self.island:drawGround(self.camera)
-    for index = -1, 1 do
-        graphics2d.draw(self.logs, self.fire.x + index * 18, self.fire.y + 10 - math.abs(index) * 4, {pivotX = 0.5, pivotY = 0.5, scaleX = 0.8, scaleY = 0.8, rotation = index * 0.5, layer = config.layer.entities, depth = self.fire.y - 1})
-    end
-    self.flames:draw()
+    self.fire:draw()
     for _, standing in ipairs(self.trees) do
         standing:draw()
     end
@@ -102,9 +93,7 @@ function backdrop:draw()
         unit.sprite:draw()
     end
     self.island:drawClouds(self.camera)
-
-    local intensity = lighting2d.flicker(self.time, {speed = 7, amount = 0.12})
-    graphics2d.drawLight({x = self.fire.x, y = self.fire.y - 20, radius = 620, color = '#FFFFB870', intensity = intensity})
+    self.fire:light(620, flame.glow)
 end
 
 return backdrop

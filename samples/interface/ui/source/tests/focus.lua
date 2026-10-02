@@ -35,9 +35,9 @@ end
 function Focus:neighbours()
     local press = function(event) self:pressed(event) end
     local function cell(id, width, align)
-        return ui.button{id = id, text = id, width = width, align = align, onClick = press}
+        return ui.button{id = id, text = id:upper(), width = width, align = align, onClick = press}
     end
-    return sample.section('nearest control', {grow = 1,
+    return sample.section('Nearest control', {grow = 1,
         ui.row{gap = 16, cell('n1', 110), cell('n2', 200), cell('n3', 110, 'end')},
         ui.row{gap = 16, cell('n4', 170), cell('n5', 110), cell('n6', 140)},
         ui.row{gap = 16, cell('n7', 110), ui.spacer{width = 150}, cell('n8', 160)},
@@ -46,7 +46,7 @@ end
 
 function Focus:explicit()
     local press = function(event) self:pressed(event) end
-    return sample.section('explicit neighbours', {grow = 1,
+    return sample.section('Explicit neighbours', {grow = 1,
         ui.label{text = 'Right from A skips to C, and down from any of them goes to the scope entry.', color = 'textMuted'},
         ui.row{gap = 16,
             ui.button{id = 'a', text = 'A', width = 120, focusRight = 'c', focusDown = 'enter-scope', onClick = press},
@@ -59,7 +59,7 @@ end
 -- A panel that keeps the focus. Cancel inside it returns the focus to the button that entered it.
 function Focus:scope()
     local press = function(event) self:pressed(event) end
-    return sample.section('focus scope', {grow = 1,
+    return sample.section('Focus scope', {grow = 1,
         ui.button{id = 'enter-scope', text = 'Enter the scope', onClick = function(event)
             event.document:command('scoped-1', 'focus')
         end},
@@ -81,7 +81,7 @@ function Focus:wrap()
     for index = 1, 5 do
         cards[index] = ui.button{id = 'w' .. index, text = index, width = 80, onClick = function(event) self:pressed(event) end}
     end
-    return sample.section('wrapping row', {grow = 1,
+    return sample.section('Wrapping row', {grow = 1,
         ui.label{text = 'Right from 5 wraps to 1, and left from 1 to 5.', color = 'textMuted'},
         ui.row{gap = 12, focusWrap = 'horizontal', children = cards},
     })

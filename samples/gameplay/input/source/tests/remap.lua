@@ -93,7 +93,7 @@ function Remap:update(dt)
     self.x = math.max(40, math.min(self.area.width - 40, self.x + mx * speed * dt))
     self.y = math.max(40, math.min(self.area.height - 40, self.y + my * speed * dt))
     self.hop = input.pressed('jump') and 0.4 or math.max(0, self.hop - dt)
-    self:status(string.format('move %+.2f, %+.2f   jump %s   dash %s   stored %s', mx, my, input.down('jump'), input.down('dash'), preferences.has('input.actions')))
+    self:status(string.format('Move %+.2f, %+.2f   jump %s   dash %s   stored %s', mx, my, input.down('jump'), input.down('dash'), preferences.has('input.actions')))
 end
 
 function Remap:draw(area)

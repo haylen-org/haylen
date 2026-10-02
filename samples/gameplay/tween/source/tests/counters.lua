@@ -51,13 +51,13 @@ function Counters:update(dt)
     if input.pressed('replay') then
         self:addPoints()
     end
-    self:status(string.format('score %d   plain %.3f   %d characters shown', self.hud.score, self.hud.plain, utf8.len(self.dialog.text)))
+    self:status(string.format('Score %d   plain %.3f   %d characters shown', self.hud.score, self.hud.plain, utf8.len(self.dialog.text)))
 end
 
 function Counters:draw(area)
-    graphics2d.drawText(nil, 'integers', 80, 40, {size = 26, color = sample.muted})
+    graphics2d.drawText(nil, 'Option "integers"', 80, 40, {size = 26, color = sample.muted})
     graphics2d.drawText(nil, string.format('%d', self.hud.score), 80, 80, {size = 110, color = sample.warm})
-    graphics2d.drawText(nil, 'a plain number', area.width / 2, 40, {size = 26, color = sample.muted})
+    graphics2d.drawText(nil, 'A plain number', area.width / 2, 40, {size = 26, color = sample.muted})
     graphics2d.drawText(nil, string.format('%.3f', self.hud.plain), area.width / 2, 80, {size = 110, color = sample.ink})
 
     local box = {60, area.height - 250, area.width - 120, 190}

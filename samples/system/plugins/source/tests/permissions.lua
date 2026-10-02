@@ -42,7 +42,7 @@ end
 
 function Permissions:ask(kind)
     self:act(function()
-        local name = 'the ' .. kind .. ' permission reaches the app'
+        local name = 'The ' .. kind .. ' permission reaches the app'
         self.results:set(kind, 'waiting', name, 'The prompt of the system shows, unless the person answered it before.')
         local answer, err = demo.requestPermission(kind):await()
         if err and err.code == 'noHandler' then
@@ -58,7 +58,7 @@ end
 
 function Permissions:notify()
     self:act(function()
-        local name = 'a local notification is scheduled'
+        local name = 'A local notification is scheduled'
         local scheduled, err = demo.notify(kNotifySeconds):await()
         if err and err.code == 'noHandler' then
             self.results:set('notify', 'skip', name, 'The native part schedules notifications on Apple platforms and Android alone so far.')
@@ -72,7 +72,7 @@ function Permissions:notify()
 end
 
 function Permissions:showOpened()
-    local name = 'the tap on the notification reaches the app'
+    local name = 'The tap on the notification reaches the app'
     if #opened == 0 then
         self.results:set('opened', 'waiting', name, 'No notification of the plugin was tapped yet.')
         return

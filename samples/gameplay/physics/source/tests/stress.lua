@@ -102,7 +102,7 @@ function Stress:update(dt)
     end
     self:spawnPending()
     local frame = profiler.frame()
-    self:showStats(string.format('bodies %d\nwaiting %d\nstep %.2f ms\nframe %.2f ms\nfps %.0f', self.world.bodyCount, #self.pending, sample.milliseconds('physics step'), frame.milliseconds, frame.fps))
+    self:showStats(string.format('Bodies %d\nWaiting %d\nStep %.2f ms\nFrame %.2f ms\nFPS %.0f', self.world.bodyCount, #self.pending, sample.milliseconds('physics step'), frame.milliseconds, frame.fps))
 end
 
 function Stress:fixedUpdate(step)

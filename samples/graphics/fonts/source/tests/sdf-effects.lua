@@ -40,7 +40,7 @@ function SdfEffects:refresh()
     self.glowText = graphics2d.newRichText(string.format('[glow=%d color=#FFFF8A00]Glow[/glow]', self.glow), {family = family, size = kSize, color = '#FFFFF3B0'})
     self.allText = graphics2d.newRichText(string.format('[outline=%d color=#FF3B1A00][shadow=8,10 color=#C0000000 blur=%d][glow=%d color=#FF40C4FF]Island[/glow][/shadow][/outline]', math.min(self.outline, 10), self.blur, self.glow), {family = family, size = kSize})
     local font = fonts.get('lilita')
-    self:setStatus(string.format('outline %.3f, blur %.3f, glow %.3f in distance units at size %d', font:toDistance(self.outline, kSize), font:toDistance(self.blur, kSize), font:toDistance(self.glow, kSize), kSize))
+    self:setStatus(string.format('Outline %.3f, blur %.3f, glow %.3f in distance units at size %d', font:toDistance(self.outline, kSize), font:toDistance(self.blur, kSize), font:toDistance(self.glow, kSize), kSize))
 end
 
 function SdfEffects:started()
@@ -66,15 +66,15 @@ function SdfEffects:render()
         graphics2d.drawLine(stage.x + index * 120, stage:bottom(), stage.x + index * 120 + 300, stage.y, 30, '#FF222A3E')
     end
 
-    sample.caption(string.format('outlineWidth %g', self.outline), left, top)
+    sample.caption(string.format('Option "outlineWidth" at %g', self.outline), left, top)
     graphics2d.drawText(font, 'Outline', left, top + 30, {size = kSize, color = '#FFFFD166', outlineWidth = self.outline, outlineColor = '#FF8A1E1E'})
-    sample.caption(string.format('shadowOffset 10, 12 and shadowBlur %g', self.blur), right, top)
+    sample.caption(string.format('Options "shadowOffset" at 10, 12 and "shadowBlur" at %g', self.blur), right, top)
     graphics2d.drawText(font, 'Shadow', right, top + 30, {size = kSize, color = '#FFE8EAF2', shadowOffset = {10, 12}, shadowColor = '#E0000000', shadowBlur = self.blur})
 
     local middle = top + 30 + kSize * 1.5
-    sample.caption(string.format('[glow=%g] in rich text', self.glow), left, middle)
+    sample.caption(string.format('The tag "[glow=%g]" in rich text', self.glow), left, middle)
     self.glowText:draw(left, middle + 30)
-    sample.caption('all three, with the outline under 10', right, middle)
+    sample.caption('All three, with the outline under 10', right, middle)
     self.allText:draw(right, middle + 30)
 
     local bottom = middle + 30 + kSize * 1.5

@@ -47,7 +47,7 @@ function SpotLights:update(dt)
     self.lamp.innerAngle = self.cone * self.softness
     self.searchlights[1].rotation = math.pi * 0.25 + math.sin(self.time * 0.7) * 0.35
     self.searchlights[2].rotation = math.pi * 0.75 + math.sin(self.time * 0.9 + 1) * 0.35
-    self:setStatus(string.format('rotation %.2f, innerAngle %.2f, outerAngle %.2f', self.lamp.rotation, self.lamp.innerAngle, self.lamp.outerAngle))
+    self:setStatus(string.format('Rotation %.2f, "innerAngle" %.2f, "outerAngle" %.2f', self.lamp.rotation, self.lamp.innerAngle, self.lamp.outerAngle))
 end
 
 function SpotLights:render()

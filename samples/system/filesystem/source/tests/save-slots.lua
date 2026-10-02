@@ -115,12 +115,12 @@ function SaveSlots:refresh()
     for index, info in ipairs(ok and slots or {}) do
         names[index] = info.slot
     end
-    self:show('newest', {text = ok and string.format('storage.listSlots() returns %d slots, newest first: %s', #slots, table.concat(names, ', ')) or 'storage.listSlots() raised: ' .. slots})
+    self:show('newest', {text = ok and string.format('The call "storage.listSlots()" returns %d slots, newest first: %s', #slots, table.concat(names, ', ')) or 'The call "storage.listSlots()" raised: ' .. slots})
 end
 
 function SaveSlots:save()
     storage.writeSlot(self.selected, self.game, self:summary())
-    self:show('status', {text = string.format("storage.writeSlot('%s', game, summary)", self.selected)})
+    self:show('status', {text = string.format('Called "storage.writeSlot(\'%s\', game, summary)"', self.selected)})
     self:refresh()
 end
 
@@ -130,11 +130,11 @@ function SaveSlots:loadSlot()
         self.game = game
         self:showGame()
     end
-    self:show('status', {text = not ok and 'storage.readSlot raised: ' .. game or (game and "storage.readSlot('" .. self.selected .. "') loaded the game" or 'storage.readSlot returned nil, the slot is empty')})
+    self:show('status', {text = not ok and 'The call "storage.readSlot" raised: ' .. game or (game and 'The call "storage.readSlot(\'' .. self.selected .. '\')" loaded the game' or 'The call "storage.readSlot" returned "nil", the slot is empty')})
 end
 
 function SaveSlots:delete()
-    self:show('status', {text = string.format("storage.removeSlot('%s') returned %s", self.selected, tostring(storage.removeSlot(self.selected)))})
+    self:show('status', {text = string.format('The call "storage.removeSlot(\'%s\')" returned %s', self.selected, tostring(storage.removeSlot(self.selected)))})
     self:refresh()
 end
 

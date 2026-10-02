@@ -85,7 +85,7 @@ function Raycasts:update(dt)
     profiler.beginScope('casts')
     self.drawn = casts[self.mode](self)
     profiler.endScope()
-    self:showStats(string.format('%s\ncasts %.3f ms', self.drawn.summary, sample.milliseconds('casts')))
+    self:showStats(string.format('%s\nCasts %.3f ms', self.drawn.summary, sample.milliseconds('casts')))
 end
 
 function Raycasts:cycle(step)
@@ -112,7 +112,7 @@ end
 function casts.closest(test)
     local x1, y1, x2, y2 = test:ends()
     local hit = test.world:raycast(x1, y1, x2, y2)
-    return {rays = {{x1, y1, x2, y2, hit}}, summary = hit and string.format('hit at %.0f units', hit.distance) or 'no hit'}
+    return {rays = {{x1, y1, x2, y2, hit}}, summary = hit and string.format('Hit at %.0f units', hit.distance) or 'No hit'}
 end
 
 function casts.all(test)
@@ -125,14 +125,14 @@ function casts.filter(test)
     local x1, y1, x2, y2 = test:ends()
     local blocked = test.world:raycast(x1, y1, x2, y2)
     local seeing = test.world:raycast(x1, y1 + 30, x2, y2 + 30, {mask = kWalls | kCrates, accept = function(hit) return hit.body.type ~= 'dynamic' or hit.distance > 200 end})
-    return {rays = {{x1, y1, x2, y2, blocked}, {x1, y1 + 30, x2, y2 + 30, seeing}}, summary = 'upper ray: every category\nlower ray: walls and crates'}
+    return {rays = {{x1, y1, x2, y2, blocked}, {x1, y1 + 30, x2, y2 + 30, seeing}}, summary = 'Upper ray: every category\nLower ray: walls and crates'}
 end
 
 function casts.pierce(test)
     local x1, y1, x2, y2 = test:ends()
     local hits = test.world:raycastAll(x1, y1, x2, y2, {limit = 3})
     local last = hits[#hits]
-    return {rays = {{x1, y1, last and last.x or x2, last and last.y or y2}}, points = hits, summary = string.format('pierced %d of 3', #hits)}
+    return {rays = {{x1, y1, last and last.x or x2, last and last.y or y2}}, points = hits, summary = string.format('Pierced %d of 3', #hits)}
 end
 
 function casts.bounce(test)
@@ -171,10 +171,10 @@ function casts.shapes(test)
         summary[#summary + 1] = string.format('%s %s', name, hit and string.format('%.0f', hit.distance) or 'clear')
     end
     local world, x = test.world, kOrigin[1]
-    sweep('circle', -150, function(y, tx, ty) return world:castCircle(x, y, 24, tx, ty) end, {radius = 24})
-    sweep('box', -50, function(y, tx, ty) return world:castBox(x, y, 48, 32, 0.3, tx, ty) end, {{-24, -16}, {24, -16}, {24, 16}, {-24, 16}, rotation = 0.3})
-    sweep('capsule', 50, function(y, tx, ty) return world:castCapsule(x - 20, y, x + 20, y, 16, tx, ty) end, {{-20, 0}, {20, 0}, capsule = 16})
-    sweep('polygon', 150, function(y, tx, ty) return world:castPolygon({{x, y - 26}, {x + 26, y + 20}, {x - 26, y + 20}}, tx, ty) end, {{0, -26}, {26, 20}, {-26, 20}})
+    sweep('Circle', -150, function(y, tx, ty) return world:castCircle(x, y, 24, tx, ty) end, {radius = 24})
+    sweep('Box', -50, function(y, tx, ty) return world:castBox(x, y, 48, 32, 0.3, tx, ty) end, {{-24, -16}, {24, -16}, {24, 16}, {-24, 16}, rotation = 0.3})
+    sweep('Capsule', 50, function(y, tx, ty) return world:castCapsule(x - 20, y, x + 20, y, 16, tx, ty) end, {{-20, 0}, {20, 0}, capsule = 16})
+    sweep('Polygon', 150, function(y, tx, ty) return world:castPolygon({{x, y - 26}, {x + 26, y + 20}, {x - 26, y + 20}}, tx, ty) end, {{0, -26}, {26, 20}, {-26, 20}})
     return {shapes = shapes, summary = table.concat(summary, '\n')}
 end
 
@@ -205,7 +205,7 @@ function casts.pick(test)
     for _, shape in ipairs(picked) do
         names[#names + 1] = shape.body.type
     end
-    return {picked = picked, sight = visible, summary = string.format('under the pointer: %s\nline of sight: %s', #names > 0 and table.concat(names, ', ') or 'nothing', visible and 'clear' or 'blocked')}
+    return {picked = picked, sight = visible, summary = string.format('Under the pointer: %s\nLine of sight: %s', #names > 0 and table.concat(names, ', ') or 'nothing', visible and 'clear' or 'blocked')}
 end
 
 function Raycasts:fixedUpdate(step)

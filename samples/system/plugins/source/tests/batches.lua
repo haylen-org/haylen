@@ -9,7 +9,7 @@ local Batches = haylen.class('Batches', sample.Test)
 
 local kCount = 100
 local kTicks = 30
-local kName = 'batched events arrive as one list per frame'
+local kName = 'Batched events arrive as one list per frame'
 
 function Batches:enter()
     self.connections = {
@@ -21,7 +21,7 @@ function Batches:enter()
         focus = 'send',
         controls = {
             ui.button{id = 'send', text = 'Send the bursts', variant = 'primary', onClick = function() self:send() end},
-            ui.label{text = 'Each native part marks the events batched: context.emit with {batched = true} on the web, with batched set to true in Swift and Kotlin, and HAYLEN_NATIVE_EMIT_BATCHED in C. The listener runs once per frame with a list instead of once per event.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'Each native part marks the events batched: "context.emit" with "{batched = true}" on the web, with "batched" set to "true" in Swift and Kotlin, and "HAYLEN_NATIVE_EMIT_BATCHED" in C. The listener runs once per frame with a list instead of once per event.', color = 'textMuted', font = 'caption'},
             ui.label{font = 'monospace', text = "demo.onBurst(function(list)\n  print(#list, list[1].index)\nend)\ndemo.burst(100, 30)"},
         },
     })

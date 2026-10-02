@@ -96,7 +96,7 @@ function FieldOfView:update(dt)
         self.line = spatial2d.line(self.viewer[1], self.viewer[2], self.guard[1], self.guard[2])
         self.ring = spatial2d.circle(self.viewer[1], self.viewer[2], self.radius)
         local spotted = self.visibleSet[self.guard[2] * kColumns + self.guard[1]]
-        self:showStats(string.format('visible cells %d\nshadowcasting %.3f ms\nthe guard %s', #self.visible, self:timing('field of view'), spotted and 'sees you' or 'does not see you'))
+        self:showStats(string.format('Visible cells %d\nShadowcasting %.3f ms\nThe guard %s', #self.visible, self:timing('field of view'), spotted and 'sees you' or 'does not see you'))
     else
         local x, y = self.pointer.worldX, self.pointer.worldY
         local bounds = m.rect(kBounds)
@@ -105,7 +105,7 @@ function FieldOfView:update(dt)
             self.polygon = spatial2d.visibilityPolygon({x, y}, self.segments, kBounds)
             profiler.endScope()
         end
-        self:showStats(string.format('walls %d\npolygon corners %d\nvisibility %.3f ms', #self.segments, self.polygon and #self.polygon or 0, self:timing('visibility polygon')))
+        self:showStats(string.format('Walls %d\nPolygon corners %d\nVisibility %.3f ms', #self.segments, self.polygon and #self.polygon or 0, self:timing('visibility polygon')))
     end
 end
 

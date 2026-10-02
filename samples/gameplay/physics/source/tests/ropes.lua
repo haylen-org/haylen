@@ -83,7 +83,7 @@ function Ropes:update(dt)
         self:build()
     end
     self.grab:update(self.pointer, self.camera)
-    self:showStats(string.format('ropes %d\nbodies %d\nstep %.2f ms', #self.ropes, self.world.bodyCount, sample.milliseconds('physics step')))
+    self:showStats(string.format('Ropes %d\nBodies %d\nStep %.2f ms', #self.ropes, self.world.bodyCount, sample.milliseconds('physics step')))
 end
 
 function Ropes:fixedUpdate(step)

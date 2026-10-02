@@ -58,7 +58,7 @@ end
 function Values:content()
     local examples = {}
     for index, example in ipairs(kExamples) do
-        examples[index] = {id = example.id, text = example.key, caption = example.value ~= '' and example.kind .. ' ' .. example.value or 'a group'}
+        examples[index] = {id = example.id, text = example.key, caption = example.value ~= '' and example.kind:sub(1, 1):upper() .. example.kind:sub(2) .. ' ' .. example.value or 'A group'}
     end
     local actions = {
         {id = 'set', text = 'Set', run = self.set},
@@ -94,11 +94,11 @@ function Values:content()
             end}},
         },
         ui.panel{grow = 1, align = 'stretch', gap = 12,
-            ui.row{gap = 12, ui.sectionTitle{text = 'preferences.values()'}, ui.badge{id = 'dirty', text = 'Saved', tone = 'success'}},
+            ui.row{gap = 12, ui.sectionTitle{text = 'Memory from "preferences.values()"'}, ui.badge{id = 'dirty', text = 'Saved', tone = 'success'}},
             ui.scroll{grow = 1, ui.label{id = 'memory', text = '', font = 'monospace'}},
         },
         ui.panel{grow = 1, align = 'stretch', gap = 12,
-            ui.sectionTitle{text = 'preferences.json'},
+            ui.sectionTitle{text = 'The file "preferences.json"'},
             ui.scroll{grow = 1, ui.label{id = 'disk', text = '', font = 'monospace'}},
         },
     }
@@ -137,41 +137,41 @@ function Values:set()
         self:show('result', {text = problem, color = 'dangerText'})
         return
     end
-    self:report(string.format("preferences.set('%s', value)", self.key), function()
+    self:report(string.format('The call "preferences.set(\'%s\', value)"', self.key), function()
         preferences.set(self.key, value)
         return 'stored it in memory'
     end)
 end
 
 function Values:get()
-    self:report(string.format("preferences.get('%s') returned", self.key), function()
+    self:report(string.format('The call "preferences.get(\'%s\')" returned', self.key), function()
         return sample.json(preferences.get(self.key))
     end)
 end
 
 function Values:has()
-    self:report(string.format("preferences.has('%s') returned", self.key), function()
+    self:report(string.format('The call "preferences.has(\'%s\')" returned', self.key), function()
         return tostring(preferences.has(self.key))
     end)
 end
 
 function Values:remove()
-    self:report(string.format("preferences.remove('%s') returned", self.key), function()
+    self:report(string.format('The call "preferences.remove(\'%s\')" returned', self.key), function()
         return tostring(preferences.remove(self.key))
     end)
 end
 
 function Values:save()
-    self:report('preferences.save()', function()
+    self:report('The call "preferences.save()"', function()
         preferences.save()
-        return 'wrote preferences.json'
+        return 'wrote "preferences.json"'
     end)
 end
 
 function Values:reload()
-    self:report('preferences.load()', function()
+    self:report('The call "preferences.load()"', function()
         preferences.load()
-        return 'read preferences.json and dropped the unsaved changes'
+        return 'read "preferences.json" and dropped the unsaved changes'
     end)
 end
 

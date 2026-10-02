@@ -16,13 +16,13 @@ Themes.backgrounds = {dark = '#FF101418', light = '#FFDDE2EC', parchment = '#FFC
 function Themes:describe()
     local body = ui.themeFont('body')
     local surface = ui.themeSurface('button')
-    self:setStatus(string.format('%s: controlHeight %d, body font %s at %d, buttons drawn %s', ui.theme(), ui.themeMetric('controlHeight'), body.font, body.size, surface and 'with a nine-slice' or 'with flat colors'))
+    self:setStatus(string.format('Theme %s: "controlHeight" %d, body font %s at %d, buttons drawn %s', ui.theme(), ui.themeMetric('controlHeight'), body.font, body.size, surface and 'with a nine-slice' or 'with flat colors'))
 end
 
 function Themes:content()
     local themes = {}
     for index, name in ipairs(ui.themes()) do
-        themes[index] = {id = name, text = name}
+        themes[index] = {id = name, text = name:sub(1, 1):upper() .. name:sub(2)}
     end
     local slots = {{id = 'a', image = 'icons/sword.png'}, {id = 'b', image = 'icons/apple.png', count = 3}, {id = 'c'}, {id = 'd', image = 'icons/gem.png'}}
     return ui.column{

@@ -12,7 +12,7 @@ local Scaling = haylen.class('Scaling', sample.Test)
 Scaling.hints = 'Left and right change the focused stepper. The policy is "design.scaling" in "app.json", and this app uses "expand". The preview draws the design area of 1920 by 1080 on a simulated screen: black bars are letterboxing, the striped band is the extra visible area of "expand", and whatever leaves the screen is cropped.'
 Scaling.focus = 'policy'
 
-Scaling.policies = {{id = 'fit', text = 'fit'}, {id = 'fill', text = 'fill'}, {id = 'stretch', text = 'stretch'}, {id = 'expand', text = 'expand'}, {id = 'pixelPerfect', text = 'pixel perfect'}}
+Scaling.policies = {{id = 'fit', text = 'Fit'}, {id = 'fill', text = 'Fill'}, {id = 'stretch', text = 'Stretch'}, {id = 'expand', text = 'Expand'}, {id = 'pixelPerfect', text = 'Pixel perfect'}}
 Scaling.screens = {
     {id = 'phone-portrait', text = 'Phone in portrait', width = 1170, height = 2532},
     {id = 'phone-landscape', text = 'Phone in landscape', width = 2532, height = 1170},
@@ -35,7 +35,7 @@ function Scaling:content()
     end
     return ui.row{gap = 24,
         ui.column{width = 760, gap = 24, align = 'start',
-            sample.section('preview', {
+            sample.section('Preview', {
                 ui.stepper{id = 'policy', items = Scaling.policies, selected = self.policy, wrap = true, onChange = function(event) self.policy = event.value end},
                 ui.stepper{id = 'screen', items = screens, selected = self.screen.id, wrap = true, onChange = function(event)
                     for _, screen in ipairs(Scaling.screens) do
@@ -46,7 +46,7 @@ function Scaling:content()
                 end},
                 ui.label{id = 'mapping', text = '', font = 'monospace'},
             }),
-            sample.section('this app now', {ui.label{id = 'live', text = '', font = 'monospace'}}),
+            sample.section('This app now', {ui.label{id = 'live', text = '', font = 'monospace'}}),
         },
         ui.spacer{id = 'preview', grow = 1, align = 'stretch'},
     }
@@ -77,12 +77,12 @@ function Scaling:update(dt)
     local screen = self.screen
     local scaleX, scaleY, offsetX, offsetY, visibleWidth, visibleHeight = self:map(screen.width, screen.height)
     local designWidth, designHeight = viewport.designSize()
-    self:show('mapping', string.format('scale    %.3f x %.3f\ndesign   %.0f x %.0f pixels at %.0f, %.0f\nvisible  %.0f x %.0f design units', scaleX, scaleY, designWidth * scaleX, designHeight * scaleY, offsetX, offsetY, visibleWidth, visibleHeight))
+    self:show('mapping', string.format('Scale    %.3f x %.3f\nDesign   %.0f x %.0f pixels at %.0f, %.0f\nVisible  %.0f x %.0f design units', scaleX, scaleY, designWidth * scaleX, designHeight * scaleY, offsetX, offsetY, visibleWidth, visibleHeight))
     local visible, pixels = viewport.visibleRect(), viewport.pixelRect()
     local unitX, unitY = viewport.pixelsPerUnit()
     local width, height = window.framebufferSize()
-    self:show('live', string.format('design   %.0f x %.0f, %s\nwindow   %.0f x %.0f pixels\nvisible  %.0f, %.0f, %.0f x %.0f units\npixels   %.0f, %.0f, %.0f x %.0f\nper unit %.3f x %.3f pixels', designWidth, designHeight, viewport.scaling(), width, height, visible.x, visible.y, visible.width, visible.height, pixels.x, pixels.y, pixels.width, pixels.height, unitX, unitY))
-    self:setStatus(string.format('%s on the %s', self.policy, self.screen.text:lower()))
+    self:show('live', string.format('Design   %.0f x %.0f, %s\nWindow   %.0f x %.0f pixels\nVisible  %.0f, %.0f, %.0f x %.0f units\nPixels   %.0f, %.0f, %.0f x %.0f\nPer unit %.3f x %.3f pixels', designWidth, designHeight, viewport.scaling(), width, height, visible.x, visible.y, visible.width, visible.height, pixels.x, pixels.y, pixels.width, pixels.height, unitX, unitY))
+    self:setStatus(string.format('Policy "%s" on the %s', self.policy, self.screen.text:lower()))
 end
 
 -- Draws a small picture of the design area through `place`, which maps design units to the preview.

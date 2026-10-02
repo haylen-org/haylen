@@ -47,20 +47,20 @@ function Collections:content()
         {id = 'treasure', text = 'Treasure', children = {{id = 'coins', text = 'Coins', children = {{id = 'gold', text = 'Gold coin'}, {id = 'silver', text = 'Silver coin'}}}}},
     }
     return sample.columns{
-        sample.section('list', {grow = 1,
+        sample.section('Component "list"', {grow = 1,
             ui.list{id = 'saves', items = saves, selected = 'slot1', onSelect = function(event) self:setStatus('The list selected "' .. event.item .. '"') end},
             ui.divider{},
             ui.label{text = 'Draggable', color = 'textMuted'},
             ui.list{id = 'quests', draggable = true, items = self:questItems(), onDrop = function(event) self:reorder(event) end},
         }),
-        sample.section('tree', {grow = 1,
+        sample.section('Component "tree"', {grow = 1,
             ui.tree{items = tree, expanded = {'tools', 'food'}, onSelect = function(event)
                 self:setStatus('The tree selected "' .. event.item .. '"')
             end, onToggle = function(event)
                 self:setStatus('The node "' .. event.item .. (event.expanded and '" opened' or '" closed'))
             end},
         }),
-        sample.section('table', {grow = 1,
+        sample.section('Component "table"', {grow = 1,
             ui.table{
                 columns = {{text = 'Captain'}, {text = 'Days', width = 120, align = 'center'}, {text = 'Score', width = 160, align = 'end'}},
                 rows = {

@@ -43,14 +43,14 @@ function Fields:update(dt)
     if input.pressed('replay') then
         self:play()
     end
-    self:status(string.format('a.position.x %.0f  a.size.height %.0f  a.style.color.a %.2f   b %.0f, %.0f  %.0f x %.0f', self.a.position.x, self.a.size.height, self.a.style.color.a, self.b.x, self.b.y, self.b.width, self.b.height))
+    self:status(string.format('Fields "a.position.x" %.0f  "a.size.height" %.0f  "a.style.color.a" %.2f   "b" %.0f, %.0f  %.0f x %.0f', self.a.position.x, self.a.size.height, self.a.style.color.a, self.b.x, self.b.y, self.b.width, self.b.height))
 end
 
 function Fields:draw(area)
     local a, b = self.a, self.b
-    graphics2d.drawText(nil, 'nested paths', 80, 30, {size = 26, color = sample.muted})
+    graphics2d.drawText(nil, 'Nested paths', 80, 30, {size = 26, color = sample.muted})
     graphics2d.drawRect({a.position.x, a.position.y, a.size.width, a.size.height}, a.style.color)
-    graphics2d.drawText(nil, 'five fields in one tween', 80, 330, {size = 26, color = sample.muted})
+    graphics2d.drawText(nil, 'Five fields in one tween', 80, 330, {size = 26, color = sample.muted})
     graphics2d.drawRect({b.x, b.y, b.width, b.height}, b.color)
 end
 

@@ -41,7 +41,7 @@ function TextInput:content()
     return sample.columns{
         ui.column{grow = 1, gap = 24,
             ui.card{ui.richText{text = kPlatforms}},
-            sample.section('plain keyboard', {
+            sample.section('Plain keyboard', {
                 ui.label{id = 'typed', text = 'Nothing typed yet', font = 'monospace'},
                 ui.button{id = 'plain', text = 'Show the plain keyboard', onClick = function(event)
                     self.plain = not self.plain
@@ -51,7 +51,7 @@ function TextInput:content()
             }),
         },
         ui.column{grow = 1, gap = 24, align = 'stretch',
-            sample.section('events', {ui.label{id = 'log', text = 'Keyboard and text events show here.', font = 'monospace', color = 'textMuted'}}),
+            sample.section('Events', {ui.label{id = 'log', text = 'Keyboard and text events show here.', font = 'monospace', color = 'textMuted'}}),
             ui.spacer{grow = 1},
             ui.formField{label = 'Message', help = 'The send key submits, and the field stays above the keyboard.',
                 ui.textField{id = 'message', placeholder = 'Say hello to the keeper', returnKey = 'send', onSubmit = function(event)
@@ -82,9 +82,9 @@ end
 -- The platform events behind the fields, and the typing of the plain keyboard, which arrives as characters and editing keys.
 function TextInput:event(event)
     if event.type == 'textAction' then
-        self:record('text action ' .. event.action)
+        self:record('Text action "' .. event.action .. '"')
     elseif event.type == 'keyboardChanged' then
-        self:record(string.format('keyboard frame %.0f x %.0f', event.frame.width, event.frame.height))
+        self:record(string.format('Keyboard frame %.0f x %.0f', event.frame.width, event.frame.height))
     elseif self.plain and not ui.usingKeyboard() then
         if event.type == 'character' then
             self.typed = self.typed .. event.character
@@ -96,7 +96,7 @@ function TextInput:event(event)
 end
 
 function TextInput:update(dt)
-    self:setStatus(string.format('platform %s, the UI %s the keyboard, last device %s', haylen.platform, ui.usingKeyboard() and 'uses' or 'does not use', input.lastDevice()))
+    self:setStatus(string.format('Platform %s, the UI %s the keyboard, last device %s', haylen.platform, ui.usingKeyboard() and 'uses' or 'does not use', input.lastDevice()))
 end
 
 return TextInput

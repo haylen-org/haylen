@@ -72,7 +72,7 @@ function Bridge:update(dt)
         self:build()
     end
     self.grab:update(self.pointer, self.camera)
-    self:showStats(string.format('planks %d\njoints %d\nloads %d\nstep %.2f ms', #self.bridge:bodies(), #self.bridge:joints(), #self.loads, sample.milliseconds('physics step')))
+    self:showStats(string.format('Planks %d\nJoints %d\nLoads %d\nStep %.2f ms', #self.bridge:bodies(), #self.bridge:joints(), #self.loads, sample.milliseconds('physics step')))
 end
 
 function Bridge:fixedUpdate(step)

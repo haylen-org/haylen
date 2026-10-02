@@ -57,7 +57,7 @@ function TweenedUniforms:update(dt)
     materials.pixelate:set('blocks', {values.blocks, values.blocks})
     materials.timeline:set('amount', values.reveal)
     materials.flash:set('amount', values.flash)
-    self:setStatus(string.format('dissolve %.2f, outline %s, amplitude %.3f, blocks %d, timeline %.2f', values.dissolve, values.glow:toHex(), values.amplitude, values.blocks, self.timeline.progress))
+    self:setStatus(string.format('Dissolve %.2f, outline %s, amplitude %.3f, blocks %d, timeline %.2f', values.dissolve, values.glow:toHex(), values.amplitude, values.blocks, self.timeline.progress))
 end
 
 function TweenedUniforms:render()

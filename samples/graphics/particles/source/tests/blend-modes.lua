@@ -30,7 +30,7 @@ function BlendModes:update(dt)
     for _, emitter in ipairs(self.emitters) do
         emitter:update(dt)
     end
-    self:setStatus('blend modes: ' .. table.concat(BlendModes.modes, ', '))
+    self:setStatus('Blend modes: ' .. table.concat(BlendModes.modes, ', '))
 end
 
 function BlendModes:render()
@@ -47,7 +47,7 @@ end
 function BlendModes:renderUi()
     graphics2d.beginScreen()
     for index, emitter in ipairs(self.emitters) do
-        art.label(self.camera, BlendModes.modes[index], emitter.x, 300)
+        art.label(self.camera, 'Blend "' .. BlendModes.modes[index] .. '"', emitter.x, 300)
     end
 end
 

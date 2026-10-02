@@ -9,12 +9,12 @@ local ProcessModes = haylen.class('ProcessModes', sample.Test)
 ProcessModes.processMode = 'always'
 
 local kLanes = {
-    {label = 'pausable', options = {processMode = 'pausable'}},
-    {label = 'whenPaused', options = {processMode = 'whenPaused'}},
-    {label = 'always', options = {processMode = 'always'}},
-    {label = 'disabled', options = {processMode = 'disabled'}},
-    {label = 'inherit', options = {}},
-    {label = 'unscaled', options = {processMode = 'always', unscaled = true}},
+    {label = 'Mode\n"pausable"', options = {processMode = 'pausable'}},
+    {label = 'Mode\n"whenPaused"', options = {processMode = 'whenPaused'}},
+    {label = 'Mode\n"always"', options = {processMode = 'always'}},
+    {label = 'Mode\n"disabled"', options = {processMode = 'disabled'}},
+    {label = 'Mode\n"inherit"', options = {}},
+    {label = 'Option\n"unscaled"', options = {processMode = 'always', unscaled = true}},
 }
 local kCode = [[
 tween.to(box, 1.5, {x = 1000}, {processMode = 'whenPaused'})  -- One of `'pausable'`, `'whenPaused'`, `'always'`, `'disabled'` or `'inherit'`.
@@ -49,7 +49,7 @@ end
 
 function ProcessModes:update(dt)
     ProcessModes.super.update(self, dt)
-    self:status(string.format('paused %s   time scale %.2f', haylen.paused(), haylen.timeScale()))
+    self:status(string.format('Paused %s   time scale %.2f', haylen.paused(), haylen.timeScale()))
 end
 
 function ProcessModes:draw(area)

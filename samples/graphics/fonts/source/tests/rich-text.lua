@@ -62,7 +62,7 @@ function RichText:update(dt)
         local x, y = input.mousePosition()
         local link = self.inline:linkAt(x - stage.x, y - stage.y)
         local hint = self.inline:hintAt(x - stage.x, y - stage.y)
-        self:setStatus(link and ('link ' .. link) or hint and ('hint ' .. hint) or 'The pointer is over no link or hint')
+        self:setStatus(link and ('Link "' .. link .. '"') or hint and ('Hint: ' .. hint) or 'The pointer is over no link or hint')
     end
 end
 

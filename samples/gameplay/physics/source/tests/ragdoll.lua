@@ -100,7 +100,7 @@ function Ragdoll:update(dt)
         self:build()
     end
     self.grab:update(self.pointer, self.camera)
-    self:showStats(string.format('ragdolls %d\nbodies %d\nstep %.2f ms', #self.dolls, self.world.bodyCount, sample.milliseconds('physics step')))
+    self:showStats(string.format('Ragdolls %d\nBodies %d\nStep %.2f ms', #self.dolls, self.world.bodyCount, sample.milliseconds('physics step')))
 end
 
 function Ragdoll:fixedUpdate(step)

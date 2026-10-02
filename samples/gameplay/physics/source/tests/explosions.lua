@@ -85,7 +85,7 @@ function Explosions:update(dt)
             table.remove(self.blasts, index)
         end
     end
-    self:showStats(string.format('bodies hit %d\nfalloff %s\nstep %.2f ms', self.lastHits or 0, self.falloff, sample.milliseconds('physics step')))
+    self:showStats(string.format('Bodies hit %d\nFalloff %s\nStep %.2f ms', self.lastHits or 0, self.falloff, sample.milliseconds('physics step')))
 end
 
 function Explosions:fixedUpdate(step)

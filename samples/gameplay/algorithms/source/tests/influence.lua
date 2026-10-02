@@ -117,7 +117,7 @@ function Influence:update(dt)
             end
         end
     end
-    self:showStats(string.format('units %d\ncells %d\nstamp and spread %.3f ms', #self.units, kColumns * kRows, self:timing('influence')))
+    self:showStats(string.format('Units %d\nCells %d\nStamp and spread %.3f ms', #self.units, kColumns * kRows, self:timing('influence')))
 end
 
 function Influence:render()

@@ -132,7 +132,7 @@ function Browser:open(folder)
             items[#items + 1] = {id = entry.name, text = entry.info.isDir and entry.name .. '/' or entry.name, caption = entry.info.isDir and 'Folder' or sample.bytes(entry.info.size) .. ', ' .. sample.time(entry.info.mtime)}
         end
         self.selected = nil
-        self:show('path', {text = 'user folder/' .. folder})
+        self:show('path', {text = 'User folder/' .. folder})
         self:show('entries', {items = items})
         self:show('name', {text = #entries == 0 and 'An empty folder' or 'Nothing selected'})
         self:show('details', {text = #entries == 0 and 'Add examples, a folder or a file with the buttons below the list.' or 'Pick a file to see its size, its date and its first bytes.', color = 'textMuted'})
@@ -160,8 +160,8 @@ function Browser:preview(name, info)
         local handle = need(fs.open(self:absolute(name), 'r'))
         local data = need(handle:read(kPreviewBytes))
         need(handle:close())
-        self:show('name', {text = name})
-        self:show('details', {text = string.format('%s, changed %s\n%s', sample.bytes(info.size), sample.time(info.mtime), self:absolute(name)), color = 'textMuted'})
+        self:show('name', {text = 'File "' .. name .. '"'})
+        self:show('details', {text = string.format('%s, changed %s\nPath "%s"', sample.bytes(info.size), sample.time(info.mtime), self:absolute(name)), color = 'textMuted'})
         self:show('preview', {text = sample.preview(data, kPreviewBytes)})
     end)
 end

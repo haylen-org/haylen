@@ -157,7 +157,7 @@ function AStar:render()
         graphics2d.drawCircle(sx, sy, kCell * 0.6, '#FF66BB6A', {layer = 4})
         graphics2d.drawCircle(gx, gy, kCell * 0.6, '#FFEF5350', {layer = 4})
         graphics2d.drawText(nil, panel.name, panel.x, board.top - 16, {size = 30, anchor = {0.5, 1}})
-        local summary = panel.note or (panel.path and string.format('%d cells, cost %.1f\n%.3f ms', #panel.path, panel.cost, panel.milliseconds) or 'no path')
+        local summary = panel.note or (panel.path and string.format('%d cells, cost %.1f\n%.3f ms', #panel.path, panel.cost, panel.milliseconds) or 'No path')
         graphics2d.drawText(nil, summary, panel.x, board.top + board.height + 12, {size = 22, anchor = {0.5, 0}, align = 'center', maxWidth = board.width})
     end
 end

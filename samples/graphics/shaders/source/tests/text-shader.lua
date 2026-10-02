@@ -25,7 +25,7 @@ function TextShader:update(dt)
     self.rainbow:set('time', haylen.elapsed())
     self.dissolve:set('amount', 0.5 + 0.5 * math.sin(haylen.elapsed() * 0.8))
     self.flash:set('amount', self.hit)
-    self:setStatus(string.format('dissolve amount %.2f, flash %.2f', self.dissolve:get('amount'), self.hit))
+    self:setStatus(string.format('Dissolve amount %.2f, flash %.2f', self.dissolve:get('amount'), self.hit))
 end
 
 function TextShader:render()

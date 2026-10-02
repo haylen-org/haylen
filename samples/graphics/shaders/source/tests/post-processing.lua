@@ -67,7 +67,7 @@ end
 
 function PostProcessing:update(dt)
     local _, names = self:chain()
-    local vignette = self.enabled.vignette and 'vignette' or 'no vignette'
+    local vignette = self.enabled.vignette and 'Vignette' or 'No vignette'
     self:setStatus(vignette .. (#names > 0 and ', then ' .. table.concat(names, ', ') or ', no materials'))
 end
 

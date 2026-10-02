@@ -62,7 +62,7 @@ end
 function Masks:update(dt)
     self.cursor:update(dt)
     self.lamp.x, self.lamp.y = self.cursor:world(self.camera)
-    self:setStatus(string.format('itemMask %d, layerMin %d, layerMax %d', self.lamp.itemMask, self.lamp.layerMin, self.lamp.layerMax))
+    self:setStatus(string.format('Light with "itemMask" %d, "layerMin" %d, "layerMax" %d', self.lamp.itemMask, self.lamp.layerMin, self.lamp.layerMax))
 end
 
 function Masks:render()
@@ -82,11 +82,11 @@ function Masks:renderUi()
     graphics2d.beginScreen()
     for column = 1, 3 do
         local x, y = self.camera:worldToScreen((column - 2) * 300, -215)
-        graphics2d.drawText(nil, 'mask ' .. (1 << (column - 1)), x, y, {size = 32, anchor = {0.5, 0.5}, outlineWidth = 3})
+        graphics2d.drawText(nil, 'Mask ' .. (1 << (column - 1)), x, y, {size = 32, anchor = {0.5, 0.5}, outlineWidth = 3})
     end
     for row = 1, 3 do
         local x, y = self.camera:worldToScreen(-560, (row - 2) * 230 + 140)
-        graphics2d.drawText(nil, 'layer ' .. row, x, y, {size = 32, anchor = {1, 0.5}, outlineWidth = 3})
+        graphics2d.drawText(nil, 'Layer ' .. row, x, y, {size = 32, anchor = {1, 0.5}, outlineWidth = 3})
     end
     self.cursor:draw()
 end

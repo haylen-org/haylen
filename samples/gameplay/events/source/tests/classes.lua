@@ -105,10 +105,10 @@ end
 function Classes:check()
     local classes, journal = self.classes, self.journal
     local ana = classes.Hero('Ana', 0)
-    journal:add('Hero(Ana):is(Unit) ' .. tostring(ana:is(classes.Unit)) .. ', is(Walker) ' .. tostring(ana:is(classes.Walker)) .. ', is(Flyer) ' .. tostring(ana:is(classes.Flyer)), sample.warm)
-    journal:add('Dragon:is(Flyer) ' .. tostring(classes.Dragon:is(classes.Flyer)) .. ', Bat:is(Walker) ' .. tostring(classes.Bat:is(classes.Walker)), sample.warm)
-    journal:add('Hero(Ana) == Hero(Ana) ' .. tostring(ana == classes.Hero('Ana', 50)) .. ' through the "__eq" that Hero copied from Unit', sample.warm)
-    journal:add(tostring(classes.Hero) .. ', Hero.super == Unit ' .. tostring(classes.Hero.super == classes.Unit) .. ', Hero.name ' .. classes.Hero.name, sample.warm)
+    journal:add('Check "Hero(Ana):is(Unit)" ' .. tostring(ana:is(classes.Unit)) .. ', "is(Walker)" ' .. tostring(ana:is(classes.Walker)) .. ', "is(Flyer)" ' .. tostring(ana:is(classes.Flyer)), sample.warm)
+    journal:add('Check "Dragon:is(Flyer)" ' .. tostring(classes.Dragon:is(classes.Flyer)) .. ', "Bat:is(Walker)" ' .. tostring(classes.Bat:is(classes.Walker)), sample.warm)
+    journal:add('Check "Hero(Ana) == Hero(Ana)" ' .. tostring(ana == classes.Hero('Ana', 50)) .. ' through the "__eq" that "Hero" copied from "Unit"', sample.warm)
+    journal:add('Check "tostring(Hero)" ' .. tostring(classes.Hero) .. ', "Hero.super == Unit" ' .. tostring(classes.Hero.super == classes.Unit) .. ', "Hero.name" ' .. classes.Hero.name, sample.warm)
 end
 
 function Classes:update(dt)

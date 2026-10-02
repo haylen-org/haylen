@@ -22,7 +22,7 @@ local kCases = {
     {id = 'timeout', text = 'Request timeout', call = "http.client.get('https://httpbin.org/delay/5', {timeoutSeconds = 2})", run = function()
         return http.client.get('https://httpbin.org/delay/5', {timeoutSeconds = 2}):await()
     end},
-    {id = 'giveUp', text = 'async.timeout', call = "async.timeout(http.client.get('https://httpbin.org/delay/5'), 1500)", run = function()
+    {id = 'giveUp', text = 'Timeout with "async.timeout"', call = "async.timeout(http.client.get('https://httpbin.org/delay/5'), 1500)", run = function()
         return async.timeout(http.client.get('https://httpbin.org/delay/5', {timeoutSeconds = 10}), 1500):await()
     end},
     {id = 'missing', text = 'Status 404', call = "http.client.get('https://httpbin.org/status/404')", run = function()
@@ -77,7 +77,7 @@ function Errors:try(case)
     self:spawn(function()
         local started = sample.millis()
         local response, failure = case.run()
-        result.outcome = string.format('%d ms: %s', sample.millis() - started, response and describe(case, response) or 'nil and ' .. tostring(failure))
+        result.outcome = string.format('%d ms: %s', sample.millis() - started, response and describe(case, response) or '"nil" and ' .. tostring(failure))
         result.color = response and 'warningText' or 'dangerText'
         self:showResults()
     end)

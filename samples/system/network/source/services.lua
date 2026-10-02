@@ -1,8 +1,8 @@
 -- The public services the tests talk to. They echo what they receive, so the sample needs no server of its own.
 return {
     http = {
-        {id = 'httpbin', text = 'httpbin.org', get = 'https://httpbin.org/get', post = 'https://httpbin.org/post'},
-        {id = 'postman', text = 'postman-echo.com', get = 'https://postman-echo.com/get', post = 'https://postman-echo.com/post'},
+        {id = 'httpbin', text = 'Host "httpbin.org"', get = 'https://httpbin.org/get', post = 'https://httpbin.org/post'},
+        {id = 'postman', text = 'Host "postman-echo.com"', get = 'https://postman-echo.com/get', post = 'https://postman-echo.com/post'},
     },
     downloads = {
         {id = 'file', text = 'Test file', caption = '10 MB from the Cloudflare speed test, with its length', url = 'https://speed.cloudflare.com/__down?bytes=10000000', file = 'test-file.bin'},

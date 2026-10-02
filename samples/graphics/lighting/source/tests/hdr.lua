@@ -33,7 +33,7 @@ function Hdr:update(dt)
     self.cursor:update(dt)
     self.held.x, self.held.y = self.cursor:world(self.camera)
     local mode = graphics2d.hdrLighting() and 'floating point, light goes past 1' or 'saturates at 1 on this backend'
-    self:setStatus(string.format('intensity %.2f, light map %s', self.held.intensity, mode))
+    self:setStatus(string.format('Intensity %.2f, light map %s', self.held.intensity, mode))
 end
 
 function Hdr:render()
@@ -49,7 +49,7 @@ function Hdr:renderUi()
     graphics2d.beginScreen()
     for _, light in ipairs(self.fixed) do
         local x, y = self.camera:worldToScreen(light.x, light.y + 300)
-        graphics2d.drawText(nil, string.format('intensity %g', light.intensity), x, y, {size = 36, anchor = {0.5, 0.5}, outlineWidth = 3})
+        graphics2d.drawText(nil, string.format('Intensity %g', light.intensity), x, y, {size = 36, anchor = {0.5, 0.5}, outlineWidth = 3})
     end
     self.cursor:draw()
 end

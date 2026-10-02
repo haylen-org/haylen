@@ -8,9 +8,9 @@ local sample = require('sample')
 local Cover = haylen.class('Cover', sample.Test)
 
 local kRows = {
-    {key = 'covered', name = 'haylen.appCovered() is true while it shows', waiting = 'waiting for the cover'},
-    {key = 'halted', name = 'no update runs while covered', waiting = 'waiting for the cover to end'},
-    {key = 'events', name = 'appInactive and appActive arrive', waiting = 'waiting for the app state to change'},
+    {key = 'covered', name = 'The call "haylen.appCovered()" returns "true" while it shows', waiting = 'Waiting for the cover'},
+    {key = 'halted', name = 'No update runs while covered', waiting = 'Waiting for the cover to end'},
+    {key = 'events', name = 'The events "appInactive" and "appActive" arrive', waiting = 'Waiting for the app state to change'},
 }
 
 function Cover:enter()
@@ -30,7 +30,7 @@ end
 
 function Cover:show()
     self:act(function()
-        local name = 'the native screen closes'
+        local name = 'The native screen closes'
         self.states = {}
         self.cover = {}
         self.results:set('screen', 'waiting', name, 'The native screen shows. Close it with its Close button.')
@@ -56,7 +56,7 @@ function Cover:changed(name)
     end
     self.states[#self.states + 1] = name
     if #self.states >= 2 and self.states[1] == 'appInactive' and self.states[#self.states] == 'appActive' then
-        self.results:set('events', 'pass', kRows[3].name, table.concat(self.states, ', ') .. ' arrived around the cover.')
+        self.results:set('events', 'pass', kRows[3].name, 'The events "' .. table.concat(self.states, '", "') .. '" arrived around the cover.')
     end
 end
 
@@ -83,7 +83,7 @@ function Cover:render()
     if not self.cover.frames then
         self.cover.frames = 0
         self.cover.updates = self.updates
-        self.results:set('covered', 'pass', kRows[1].name, string.format('The cover started after update %d with the app state %s.', self.updates, haylen.appState()))
+        self.results:set('covered', 'pass', kRows[1].name, string.format('The cover started after update %d with the app state "%s".', self.updates, haylen.appState()))
     end
     self.cover.frames = self.cover.frames + 1
 end
