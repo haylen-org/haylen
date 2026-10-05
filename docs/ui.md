@@ -532,7 +532,7 @@ scene.push({
 })
 ```
 
-ImGui windows use the colors, metrics and body font of the active theme, and pad the thumb of their scroll bars by the [gap](#scroll-bars) on every side, so their content keeps it too, and `ui.usingPointer()` returns `true` while the pointer is over one. Calls outside a running frame, such as at the top level of `source/main.lua`, raise an error. The engine's own debug overlay, the full mode of the statistics that F3 cycles through and [`haylen.debug`](lua-api/debug.md) controls, is built with it.
+ImGui windows use the colors, metrics and body font of the active theme, and pad the thumb of their scroll bars by the [gap](#scroll-bars) on every side, so their content keeps it too, and `ui.usingPointer()` returns `true` while the pointer is over one. ImGui tessellates the curves it draws itself, such as the rounded corners of its windows and frames and the circles of its widgets, by the pixels they span on the screen, and fades every edge it draws over one pixel of the screen, whatever the scale of the UI and the density of the screen. Calls outside a running frame, such as at the top level of `source/main.lua`, raise an error. The engine's own debug overlay, the full mode of the statistics that F3 cycles through and [`haylen.debug`](lua-api/debug.md) controls, is built with it.
 
 ## A GUI of your own in Lua
 

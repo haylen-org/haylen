@@ -1,9 +1,11 @@
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <cstdint>
 #include <fstream>
 #include <functional>
 #include <iterator>
+#include <numbers>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -104,6 +106,44 @@ TEST_F(BackendTest, DrawsMeshesAndReportsClicks) {
     frame(build);
     frame(build);
     EXPECT_FALSE(backend.isUsingPointer());
+}
+
+// The curves ImGui draws itself, such as the corners and widgets of the windows of "haylen.imgui", stay within a fifth of a pixel of the true curve and fade over one pixel of the screen at every scale of the UI.
+TEST_F(BackendTest, FadesCurvesOverOnePixelAtEveryScale) {
+    constexpr math::Vec2 kCenter{200.0F, 150.0F};
+    constexpr float kRadius = 16.0F;
+    for (const float scale : {0.5F, 1.0F, 2.0F, 3.0F}) {
+        backend.setScale(scale);
+        const ImDrawList* list = nullptr;
+        int first = 0;
+        float pixels = 0.0F;
+        // clang-format off
+        frame([&] {
+            beginWindow("curves", {0.0F, 0.0F});
+            list = ImGui::GetWindowDrawList();
+            first = list->VtxBuffer.Size;
+            ImGui::GetWindowDrawList()->AddCircleFilled({kCenter.x, kCenter.y}, kRadius, IM_COL32_WHITE);
+            pixels = ImGui::GetIO().DisplayFramebufferScale.x;
+            ImGui::End();
+        });
+        // clang-format on
+
+        // Every point of the outline has a vertex half a pixel inside it with the full color and one half a pixel outside it that is clear.
+        ASSERT_NE(list, nullptr);
+        const int count = (list->VtxBuffer.Size - first) / 2;
+        ASSERT_GT(count, 8) << scale;
+        for (int point = 0; point < count; ++point) {
+            const ImDrawVert& inner = list->VtxBuffer[first + point * 2];
+            const ImDrawVert& outer = list->VtxBuffer[first + point * 2 + 1];
+            const float innerDistance = std::hypot(inner.pos.x - kCenter.x, inner.pos.y - kCenter.y);
+            const float outerDistance = std::hypot(outer.pos.x - kCenter.x, outer.pos.y - kCenter.y);
+            EXPECT_NEAR((outerDistance - innerDistance) * pixels, 1.0F, 0.05F) << scale;
+            EXPECT_EQ(outer.col >> IM_COL32_A_SHIFT, 0U);
+            EXPECT_EQ(inner.col >> IM_COL32_A_SHIFT, 255U);
+        }
+        const float stray = kRadius * (1.0F - std::cos(std::numbers::pi_v<float> / static_cast<float>(count)));
+        EXPECT_LE(stray * pixels, 0.2F) << scale;
+    }
 }
 
 TEST_F(BackendTest, TypesTextThroughKeyboardEvents) {

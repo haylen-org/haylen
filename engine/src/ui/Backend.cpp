@@ -589,6 +589,12 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
 
     io.DisplaySize = {visible.width / scale, visible.height / scale};
     io.DisplayFramebufferScale = {density.x, density.y};
+
+    // ImGui measures the tolerance of curves and the fringe that fades its edges in UI units, so both follow the pixels a UI unit covers, and every curve it draws stays within a fraction of a pixel of the true curve and fades over one pixel.
+    const float pixels = std::min(density.x, density.y);
+    if (pixels > 0.0F) {
+        ImGui::GetStyle().CircleTessellationMaxError = kCurveTolerance / pixels;
+    }
     io.DeltaTime = std::max(deltaSeconds, 1.0F / 1000.0F);
     textSession->beginFrame(viewport, scale, deltaSeconds);
     closeAbandonedPopups();
@@ -602,6 +608,9 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     renderCalls.clear();
     renderedLists.clear();
     ImGui::NewFrame();
+    if (pixels > 0.0F) {
+        GImGui->DrawListSharedData.InitialFringeScale = 1.0F / pixels;
+    }
     ImGui::ErrorRecoveryStoreState(&recovery->state);
     frameActive = true;
 }

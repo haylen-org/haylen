@@ -187,6 +187,9 @@ class Backend final {
     static constexpr float kBaseFontSize = 28.0F;
     static constexpr std::size_t kFontHeaderSize = 12;
 
+    // The farthest in pixels of the screen that ImGui lets the segments of a curve stray from the true curve.
+    static constexpr float kCurveTolerance = 0.2F;
+
     [[nodiscard]] static ImGuiKey toImGuiKey(input::Key key) noexcept;
     [[nodiscard]] static bool isEditKey(ImGuiKey key) noexcept;
     [[nodiscard]] static platform::Window::Cursor toCursor(ImGuiMouseCursor value) noexcept;
