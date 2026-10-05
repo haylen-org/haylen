@@ -184,7 +184,7 @@ void PocoWebSocket::fail(Connection& target, const std::string& reason) {
     report(target, {.kind = Event::Kind::Closed, .code = kAbnormalClosure});
 }
 
-// The timeouts of the connection already say what timed out, and the other errors become sentences with the cause, while an error the libraries know no sentence for keeps their own text.
+// The timeouts of the connection already say what timed out, and the other errors become sentences with the cause, while an error the libraries know no sentence for keeps their own text, such as a frame that a server broke off after it accepted the WebSocket.
 std::string PocoWebSocket::describe(const Connection& target, const Poco::Exception& error) {
     if (dynamic_cast<const Poco::TimeoutException*>(&error) != nullptr) {
         return error.message();
@@ -204,7 +204,7 @@ std::string PocoWebSocket::describe(const Connection& target, const Poco::Except
     if (dynamic_cast<const Poco::Net::SSLException*>(&error) != nullptr) {
         return "The TLS handshake failed with \"" + error.displayText() + "\".";
     }
-    if (dynamic_cast<const Poco::Net::WebSocketException*>(&error) != nullptr) {
+    if (dynamic_cast<const Poco::Net::WebSocketException*>(&error) != nullptr && error.code() != Poco::Net::WebSocket::WS_ERR_INCOMPLETE_FRAME) {
         return "The server did not accept the WebSocket and answered \"" + error.displayText() + "\".";
     }
     return "The network libraries reported \"" + error.displayText() + "\".";
@@ -255,7 +255,7 @@ void PocoWebSocket::connectAndServe(Connection& target, Workers& workers, const 
     target.poller.clear();
 }
 
-// The poll set watches the one socket of the connection, which keeps its descriptor while Poco wraps it in TLS and a WebSocket, so any result means the socket is ready.
+// The poll set watches the one socket of the connection, which keeps its descriptor while Poco wraps it in TLS and a WebSocket. The poll set answers with the socket object it watched first, which no wrapper equals, so any result is the result of the socket.
 int PocoWebSocket::waitFor(Connection& target, const Poco::Net::Socket& socket, int mode, std::chrono::steady_clock::time_point deadline) {
     if (target.poller.has(socket)) {
         target.poller.update(socket, mode);
@@ -264,8 +264,7 @@ int PocoWebSocket::waitFor(Connection& target, const Poco::Net::Socket& socket, 
     }
     const auto left = std::max(std::chrono::duration_cast<std::chrono::microseconds>(deadline - std::chrono::steady_clock::now()), std::chrono::microseconds(0));
     const Poco::Net::PollSet::SocketModeMap ready = target.poller.poll(Poco::Timespan(left.count()));
-    const auto found = ready.find(socket);
-    return found != ready.end() ? found->second : 0;
+    return ready.empty() ? 0 : ready.begin()->second;
 }
 
 bool PocoWebSocket::connectSocket(Connection& target, Poco::Net::StreamSocket& socket, const Poco::Net::SocketAddress& address, std::chrono::steady_clock::time_point deadline) {
@@ -419,10 +418,10 @@ void PocoWebSocket::serve(Connection& target, Poco::Net::WebSocket& socket) {
             return;
         }
 
-        // Poco reads frame headers ahead into a buffer of its own, which a poll of the socket cannot see, and a wake-up from the app sends the loop back to its queue.
+        // Poco reads frame headers ahead into a buffer of its own, which a poll of the socket cannot see, and a wake-up from the app sends the loop back to its queue. A server that hung up can show only as a hang-up of the poll, and the read that follows ends the connection.
         const auto deadline = closing ? closeDeadline : std::chrono::steady_clock::now() + kIdleWait;
         const int mode = Poco::Net::PollSet::POLL_READ | (written ? 0 : Poco::Net::PollSet::POLL_WRITE);
-        if (socket.available() == 0 && (waitFor(target, socket, mode, deadline) & Poco::Net::PollSet::POLL_READ) == 0) {
+        if (socket.available() == 0 && (waitFor(target, socket, mode, deadline) & (Poco::Net::PollSet::POLL_READ | Poco::Net::PollSet::POLL_ERROR)) == 0) {
             continue;
         }
         int flags = 0;

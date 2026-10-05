@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
 
+#include <Poco/Base64Encoder.h>
 #include <Poco/Buffer.h>
+#include <Poco/DigestEngine.h>
+#include <Poco/Exception.h>
 #include <Poco/Net/HTTPRequestHandler.h>
 #include <Poco/Net/HTTPRequestHandlerFactory.h>
 #include <Poco/Net/HTTPServer.h>
@@ -10,23 +13,29 @@
 #include <Poco/Net/ServerSocket.h>
 #include <Poco/Net/StreamSocket.h>
 #include <Poco/Net/WebSocket.h>
+#include <Poco/SHA1Engine.h>
 
 #include <algorithm>
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <limits>
 #include <memory>
+#include <mutex>
+#include <sstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/net/WebSocket.hpp"
 #include "haylen/plugins/NetPlugin.hpp"
+#include "net/WebSocketTransport.hpp"
 #include "platform/DevelopmentSession.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
@@ -36,10 +45,16 @@ namespace haylen::net {
 
 namespace {
 
-// Echoes every message, answers pings with pongs and understands a few commands: `fragments` answers in two frames, `ping-me` pings the client and reports its pong, and `bye` closes from the server side.
+// Echoes every message, answers pings with pongs and understands a few commands: `fragments` answers in two frames, `ping-me` pings the client and reports its pong, `bye` closes from the server side and `drop` hangs up without a close frame. The path `/refuse` answers the upgrade request with 403 instead.
 class EchoHandler final : public Poco::Net::HTTPRequestHandler {
   public:
     void handleRequest(Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) override {
+        if (request.getURI() == "/refuse") {
+            response.setStatusAndReason(Poco::Net::HTTPResponse::HTTP_FORBIDDEN);
+            response.setContentLength(0);
+            response.send();
+            return;
+        }
         if (request.get("Sec-WebSocket-Protocol", "").find("chat") != std::string::npos) {
             response.set("Sec-WebSocket-Protocol", "chat");
         }
@@ -67,6 +82,8 @@ class EchoHandler final : public Poco::Net::HTTPRequestHandler {
             } else if (text == "bye") {
                 socket.shutdown(4001, "server bye");
                 socket.receiveFrame(frame, flags);
+                return;
+            } else if (text == "drop") {
                 return;
             } else {
                 socket.sendFrame(frame.begin(), length, opcode == Poco::Net::WebSocket::FRAME_OP_BINARY ? Poco::Net::WebSocket::FRAME_BINARY : Poco::Net::WebSocket::FRAME_TEXT);
@@ -99,8 +116,8 @@ class EchoServer final {
     EchoServer(const EchoServer&) = delete;
     EchoServer& operator=(const EchoServer&) = delete;
 
-    [[nodiscard]] std::string getUrl() const {
-        return "ws://127.0.0.1:" + std::to_string(listener.address().port()) + "/echo";
+    [[nodiscard]] std::string getUrl(const std::string& path = "/echo") const {
+        return "ws://127.0.0.1:" + std::to_string(listener.address().port()) + path;
     }
 
   private:
@@ -157,6 +174,113 @@ class SilentServer final {
     std::atomic<bool> done = false;
     std::atomic<bool> received = false;
     std::atomic<bool> hungUp = false;
+    std::thread thread;
+};
+
+// Answers connections the way a broken server does: with the status line of an HTTP error, as a server that speaks no TLS, with a reset once the client sent its request, as a server that crashes, or with an upgrade and then half a frame before it hangs up, as a server that crashes while it writes.
+class RawServer final {
+  public:
+    enum class Behavior : std::uint8_t {
+        PlainText,
+        Reset,
+        BrokenFrame,
+    };
+
+    explicit RawServer(Behavior answer) : listener(Poco::Net::SocketAddress("127.0.0.1", 0)), behavior(answer), thread([this] { serve(); }) {}
+    ~RawServer() {
+        done = true;
+        thread.join();
+    }
+
+    RawServer(const RawServer&) = delete;
+    RawServer& operator=(const RawServer&) = delete;
+
+    [[nodiscard]] std::string getUrl(const std::string& scheme) const {
+        return scheme + "://127.0.0.1:" + std::to_string(listener.address().port()) + "/";
+    }
+
+  private:
+    static constexpr int kTickMicroseconds = 10000;
+    static constexpr std::string_view kKeyField = "Sec-WebSocket-Key: ";
+    static constexpr std::string_view kAcceptSuffix = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+
+    // The reset waits for the request, so it reaches the client while the client waits for the answer, and closing without lingering resets the connection. Half a frame announces five bytes and carries two.
+    void serve() {
+        while (!done) {
+            if (!listener.poll(Poco::Timespan(0, kTickMicroseconds), Poco::Net::Socket::SELECT_READ)) {
+                continue;
+            }
+            Poco::Net::StreamSocket peer = listener.acceptConnection();
+            switch (behavior) {
+            case Behavior::PlainText:
+                send(peer, "HTTP/1.1 400 Bad Request\r\n\r\n");
+                drain(peer);
+                break;
+            case Behavior::Reset:
+                (void)readRequest(peer);
+                peer.setLinger(true, 0);
+                peer.close();
+                break;
+            case Behavior::BrokenFrame:
+                send(peer, "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + accept(readRequest(peer)) + "\r\n\r\n\x81\x05he");
+                break;
+            }
+        }
+    }
+
+    [[nodiscard]] static bool isReadable(const Poco::Net::StreamSocket& peer) {
+        return peer.poll(Poco::Timespan(0, kTickMicroseconds), Poco::Net::Socket::SELECT_READ);
+    }
+
+    static void send(Poco::Net::StreamSocket& peer, const std::string& bytes) {
+        peer.sendBytes(bytes.data(), static_cast<int>(bytes.size()));
+    }
+
+    // A client that hangs up with bytes it never read resets the connection, which ends the reading as well.
+    void drain(Poco::Net::StreamSocket& peer) const {
+        std::array<char, 1024> buffer{};
+        try {
+            while (!done) {
+                if (isReadable(peer) && peer.receiveBytes(buffer.data(), static_cast<int>(buffer.size())) <= 0) {
+                    return;
+                }
+            }
+        } catch (const Poco::Exception&) {}
+    }
+
+    // Reads the request of the client up to the blank line that ends its header.
+    [[nodiscard]] std::string readRequest(Poco::Net::StreamSocket& peer) const {
+        std::string request;
+        std::array<char, 1024> buffer{};
+        while (!done && request.find("\r\n\r\n") == std::string::npos) {
+            if (!isReadable(peer)) {
+                continue;
+            }
+            const int received = peer.receiveBytes(buffer.data(), static_cast<int>(buffer.size()));
+            if (received <= 0) {
+                break;
+            }
+            request.append(buffer.data(), static_cast<std::size_t>(received));
+        }
+        return request;
+    }
+
+    // Answers the key of an upgrade request the way the WebSocket protocol asks, by hand, since no WebSocket of Poco sends half a frame.
+    [[nodiscard]] static std::string accept(const std::string& request) {
+        const std::size_t start = request.find(kKeyField) + kKeyField.size();
+        Poco::SHA1Engine engine;
+        engine.update(request.substr(start, request.find("\r\n", start) - start) + std::string(kAcceptSuffix));
+        const Poco::DigestEngine::Digest& digest = engine.digest();
+        std::ostringstream text;
+        Poco::Base64Encoder encoder(text);
+        encoder.write(reinterpret_cast<const char*>(digest.data()), static_cast<std::streamsize>(digest.size()));
+        encoder.close();
+        return text.str();
+    }
+
+    Poco::Net::ServerSocket listener;
+    Behavior behavior;
+    std::atomic<bool> done = false;
     std::thread thread;
 };
 
@@ -357,6 +481,103 @@ TEST_F(WebSocketTest, ExplainsWhyAConnectionFailed) {
     unknown.failed.connect([&failure](std::string_view message) { failure = message; });
     ASSERT_TRUE(pumpUntil(unknown, [&] { return unknown.getState() == WebSocket::State::Closed; }));
     EXPECT_EQ(failure, "The WebSocket connection to \"ws://no-such-host.invalid/lobby\" failed. The host \"no-such-host.invalid\" was not found.");
+
+    // An address that the network libraries cannot read fails in their own words.
+    WebSocket unreadable("ws://127.0.0.1:99999/lobby");
+    unreadable.failed.connect([&failure](std::string_view message) { failure = message; });
+    ASSERT_TRUE(pumpUntil(unreadable, [&] { return unreadable.getState() == WebSocket::State::Closed; }));
+    EXPECT_EQ(failure, "The WebSocket connection to \"ws://127.0.0.1:99999/lobby\" failed. The network libraries reported \"Bad URI syntax: bad or invalid port number: 99999\".");
+
+    const EchoServer server;
+    const std::string refusing = server.getUrl("/refuse");
+    WebSocket forbidden(refusing);
+    forbidden.failed.connect([&failure](std::string_view message) { failure = message; });
+    ASSERT_TRUE(pumpUntil(forbidden, [&] { return forbidden.getState() == WebSocket::State::Closed; }));
+    EXPECT_EQ(failure, "The WebSocket connection to \"" + refusing + "\" failed. The server did not accept the WebSocket and answered \"WebSocket Exception: Cannot upgrade to WebSocket connection: Forbidden\".");
+
+    const RawServer crashing(RawServer::Behavior::Reset);
+    WebSocket abandoned(crashing.getUrl("ws"));
+    abandoned.failed.connect([&failure](std::string_view message) { failure = message; });
+    ASSERT_TRUE(pumpUntil(abandoned, [&] { return abandoned.getState() == WebSocket::State::Closed; }));
+    EXPECT_EQ(failure, "The WebSocket connection to \"" + crashing.getUrl("ws") + "\" failed. The server reset the connection.");
+}
+
+// Every attempt of a socket that reconnects fails its TLS handshake with a server that speaks no TLS, and the second attempt shares the TLS context of the first.
+TEST_F(WebSocketTest, ExplainsFailedTlsHandshakes) {
+    const RawServer server(RawServer::Behavior::PlainText);
+    const std::string url = server.getUrl("wss");
+    WebSocket socket(url, {.reconnect = {.enabled = true, .initialDelay = 0.0F, .maxAttempts = 1}});
+    std::vector<std::string> failures;
+    int closedCode = 0;
+    socket.failed.connect([&failures](std::string_view message) { failures.emplace_back(message); });
+    socket.closed.connect([&closedCode](int code, std::string_view) { closedCode = code; });
+    ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Closed; }));
+
+    ASSERT_EQ(failures.size(), 2U);
+    for (const std::string& failure : failures) {
+        EXPECT_TRUE(failure.starts_with("The WebSocket connection to \"" + url + "\" failed. The TLS handshake failed with \"")) << failure;
+        EXPECT_TRUE(failure.ends_with("\".")) << failure;
+    }
+    EXPECT_EQ(closedCode, 1006);
+}
+
+TEST_F(WebSocketTest, ReportsAnAbnormalCloseWhenTheServerHangsUp) {
+    const EchoServer server;
+    WebSocket socket(server.getUrl());
+    int closedCode = 0;
+    std::string closedReason = "unset";
+    // clang-format off
+    socket.closed.connect([&](int code, std::string_view reason) {
+        closedCode = code;
+        closedReason = reason;
+    });
+    // clang-format on
+    ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Open; }));
+    socket.send("drop");
+    ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Closed; }));
+    EXPECT_EQ(closedCode, 1006);
+    EXPECT_EQ(closedReason, "");
+}
+
+// A server that accepted the WebSocket and then broke off a frame did accept it, so the failure keeps the words of the network libraries.
+TEST_F(WebSocketTest, ExplainsFramesThatEndEarly) {
+    const RawServer server(RawServer::Behavior::BrokenFrame);
+    const std::string url = server.getUrl("ws");
+    WebSocket socket(url);
+    bool opened = false;
+    std::string failure;
+    int closedCode = 0;
+    socket.opened.connect([&opened] { opened = true; });
+    socket.failed.connect([&failure](std::string_view message) { failure = message; });
+    socket.closed.connect([&closedCode](int code, std::string_view) { closedCode = code; });
+    ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Closed; }));
+    EXPECT_TRUE(opened);
+    EXPECT_EQ(failure, "The WebSocket connection to \"" + url + "\" failed. The network libraries reported \"WebSocket Exception: Incomplete frame received\".");
+    EXPECT_EQ(closedCode, 1006);
+}
+
+// The thread of a connection gives up a TLS handshake that never finishes at its own deadline, even when nothing pumps the socket.
+TEST_F(WebSocketTest, TransportsEndTlsHandshakesAtTheirDeadline) {
+    const SilentServer server;
+    std::mutex mutex;
+    std::vector<WebSocketTransport::Event> events;
+    // clang-format off
+    const std::unique_ptr<WebSocketTransport> transport = WebSocketTransport::open(server.getUrl("wss"), {}, 1024, 0.3F, [&](WebSocketTransport::Event event) {
+        const std::scoped_lock lock(mutex);
+        events.push_back(std::move(event));
+    });
+    const auto reported = [&] {
+        const std::scoped_lock lock(mutex);
+        return events.size() == 2;
+    };
+    // clang-format on
+    ASSERT_TRUE(waitUntil(reported, std::chrono::seconds(3)));
+
+    const std::scoped_lock lock(mutex);
+    EXPECT_EQ(events[0].kind, WebSocketTransport::Event::Kind::Failed);
+    EXPECT_EQ(events[0].text, "The WebSocket connection to \"" + server.getUrl("wss") + "\" failed. The TLS handshake with \"127.0.0.1\" timed out.");
+    EXPECT_EQ(events[1].kind, WebSocketTransport::Event::Kind::Closed);
+    EXPECT_EQ(events[1].code, 1006);
 }
 
 TEST_F(WebSocketTest, TimesOutAttemptsThatNeverOpen) {
@@ -590,14 +811,15 @@ TEST_F(NetLuaTest, ClosesSocketsWithTheirOwnerAndReadsTheirOptions) {
         net = require('haylen.net')
         local holder = {}
         owned = net.connectWebSocket(')" + server.getUrl() + R"(', {owner = holder, connectTimeout = 5})
+        alsoOwned = net.connectWebSocket(')" + server.getUrl() + R"(', {owner = holder})
         kept = net.connectWebSocket(')" + server.getUrl() + R"(')
         release = function() holder = nil collectgarbage() collectgarbage() end
     )");
     // clang-format on
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return owned.state .. kept.state") == "openopen"; }));
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return owned.state .. alsoOwned.state .. kept.state") == "openopenopen"; }));
     EXPECT_EQ(fixture.lua("return owned.bufferedAmount"), "0");
     fixture.runLua("release()");
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return owned.state") == "closed"; }));
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return owned.state .. alsoOwned.state") == "closedclosed"; }));
     EXPECT_EQ(fixture.lua("return kept.state"), "open");
     EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {connectTimeout = 0})").find("A WebSocket needs a connect timeout above 0 and at most 3600 seconds."), std::string::npos);
     EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {owner = 5})").find("An owner must be a table or a userdata, not number."), std::string::npos);
