@@ -98,21 +98,23 @@ void main() {
         }
     }
 
-    // The outline takes the most covered of twelve points around each pixel at its width, and the glow the average of two rings of them.
+    // The outline takes the most covered of twelve points around each pixel at its width, and the glow a weighted average of three staggered rings of them, nearer rings counting more, so wide glows stay smooth.
     float around = 0.0;
     float glow = 0.0;
     for (int index = 0; index < 12; ++index) {
         float angle = float(index) * 0.5235988;
-        vec2 direction = vec2(cos(angle), sin(angle)) * texel;
         if (widths.x > 0.0) {
-            around = max(around, effect_sample(uv + direction * widths.x).a);
+            around = max(around, effect_sample(uv + vec2(cos(angle), sin(angle)) * texel * widths.x).a);
         }
         if (widths.y > 0.0) {
-            glow += effect_sample(uv + direction * widths.y).a + effect_sample(uv + direction * widths.y * 0.5).a;
+            vec2 reach = texel * widths.y;
+            glow += effect_sample(uv + vec2(cos(angle), sin(angle)) * reach * 0.34).a;
+            glow += effect_sample(uv + vec2(cos(angle + 0.1745329), sin(angle + 0.1745329)) * reach * 0.67).a * 0.75;
+            glow += effect_sample(uv + vec2(cos(angle + 0.3490659), sin(angle + 0.3490659)) * reach).a * 0.5;
         }
     }
     float fading = 1.0 - dissolve;
-    vec4 under = vec4(glow_color.rgb, glow_color.a * min(glow / 12.0, 1.0) * fading);
+    vec4 under = vec4(glow_color.rgb, glow_color.a * min(glow / 13.5, 1.0) * fading);
     float lining = outline_color.a * around * fading;
     under = vec4(mix(under.rgb, outline_color.rgb, lining / max(lining + under.a * (1.0 - lining), 0.0001)), lining + under.a * (1.0 - lining));
 
