@@ -1088,28 +1088,28 @@ Os samples ficam em categorias, e os comandos recebem a pasta do sample como a d
 
 - [x] Samples em categorias, `haylen.py run` e `run-cpp` recebendo a pasta do sample como a de qualquer app, e README, docs, AGENTS.md e os READMEs dos samples no mesmo formato.
 
-Todo sample de recursos tem um menu simples para escolher o teste, cada teste é uma cena com um botão para voltar ao menu, e roda em todas as plataformas pelos templates.
+Os testes de recursos ficam no projeto de testes `samples/tests/`, com um menu de categorias, um código por teste e um botão para voltar à lista, e rodam em todas as plataformas pelos templates.
 
-- [x] `samples/interface/ui` (19 testes): todos os componentes, temas, foco, teclado virtual, rich text e entrada de texto.
-- [x] `samples/gameplay/physics` (17 testes): corpos, formas, juntas, cordas, líquidos, terreno destrutível, ragdoll, veículos, pontes, explosões, plataformas de mão única, sensores e consultas.
-- [x] `samples/system/network` (7 testes, validados com e sem rede e na web): HTTP, HTTPS e WebSocket.
-- [x] `samples/system/filesystem` (6 testes): leitura, escrita, listagem e remoção no disco do usuário e leitura do pacote.
-- [x] `samples/system/preferences` (4 testes, com persistência entre execuções): preferências e save slots.
-- [x] `samples/graphics/lighting` (15 testes): luz ambiente, pontual, spot, direcional, sombras, normal maps e máscaras.
-- [x] `samples/graphics/shaders` (6 testes com 13 shaders próprios): shaders próprios em sprites, canvases e pós-processamento.
-- [x] `samples/graphics/particles` (18 testes, 20 mil partículas vivas a 60 fps): fogo, fumaça, explosão, chuva, neve, faíscas, rastros, magia, confete, fogos de artifício e efeitos por arquivo.
-- [x] `samples/system/localization` (9 testes em inglês, português, espanhol, japonês, árabe e hindi): idiomas, argumentos, plurais, direção do texto, fontes por idioma e troca em tempo real.
-- [x] `samples/gameplay/input` (9 testes, com o remapeamento salvo nas preferências e toques reais no emulador Android): teclado, mouse, toque, gestos, controles, mapa de ações e remapeamento.
-- [x] `samples/graphics/sprites` (11 testes): pools, spritesheets, animação, batches, tiros, milhares de sprites e poucos sprites.
-- [x] `samples/system/platform` (4 testes, com o handler próprio respondendo em JavaScript na web e em Java no Android, e o Objective-C compilado para as plataformas Apple): bridge com os métodos embutidos e um handler próprio em cada plataforma.
-- [x] `samples/interface/orientation` (4 testes): orientação do aparelho.
-- [x] `samples/interface/safe-area` (4 testes): âncoras na safe area e na tela inteira.
-- [x] `samples/gameplay/audio` (7 testes): música, efeitos, barramentos, efeitos de áudio e áudio 2D posicional.
-- [x] `samples/graphics/nine-patch` (5 testes): nine-slice esticado e repetido, em peças e em UI.
-- [x] `samples/graphics/fonts` (12 testes, com fontes OFL e fontes bitmap geradas): TrueType, OpenType, bitmap, tamanhos, contorno, sombra, famílias, fallback, scripts complexos, rich text, efeitos e medição.
-- [x] `samples/graphics/camera` (14 testes): todos os recursos da câmera.
-- [x] `samples/graphics/scenes` (6 testes): todas as transições (os 24 efeitos com direção, easing, duração e cor), efeitos próprios, o ciclo de carregamento (a transição como loading, view de loading, pré-carregamento e erro com `onError`), a pilha, sobreposições e a pausa.
-- [x] `samples/gameplay/tiled` (12 testes, com o conteúdo gerado por `samples/gameplay/tiled/tools/generate_content.py`): mapas de todas as orientações do Tiled.
+- [x] A categoria Interface do projeto de testes (`GUI-001` a `GUI-019`): todos os componentes, temas, foco, teclado virtual, rich text e entrada de texto.
+- [x] A categoria Physics do projeto de testes (`PHY-001` a `PHY-017`): corpos, formas, juntas, cordas, líquidos, terreno destrutível, ragdoll, veículos, pontes, explosões, plataformas de mão única, sensores e consultas.
+- [x] A categoria Network do projeto de testes (`NET-001` a `NET-007`, validados com e sem rede e na web): HTTP, HTTPS e WebSocket.
+- [x] A categoria Files and storage do projeto de testes (`FIL-001` a `FIL-006`): leitura, escrita, listagem e remoção no disco do usuário e leitura do pacote.
+- [x] A categoria Preferences do projeto de testes (`PRF-001` a `PRF-004`, com persistência entre execuções): preferências e save slots.
+- [x] A categoria Lighting do projeto de testes (`LIT-001` a `LIT-015`): luz ambiente, pontual, spot, direcional, sombras, normal maps e máscaras.
+- [x] A categoria Shaders do projeto de testes (`SHD-001` a `SHD-006`, com 13 shaders próprios): shaders próprios em sprites, canvases e pós-processamento.
+- [x] A categoria Particles do projeto de testes (`PRT-001` a `PRT-018`, 20 mil partículas vivas a 60 fps): fogo, fumaça, explosão, chuva, neve, faíscas, rastros, magia, confete, fogos de artifício e efeitos por arquivo.
+- [x] A categoria Localization do projeto de testes (`LOC-001` a `LOC-009`, em inglês, português, espanhol, japonês, árabe e hindi): idiomas, argumentos, plurais, direção do texto, fontes por idioma e troca em tempo real.
+- [x] A categoria Input do projeto de testes (`INP-001` a `INP-009`, com o remapeamento salvo nas preferências e toques reais no emulador Android): teclado, mouse, toque, gestos, controles, mapa de ações e remapeamento.
+- [x] A categoria Sprites do projeto de testes (`SPR-001` a `SPR-011`): pools, spritesheets, animação, batches, tiros, milhares de sprites e poucos sprites.
+- [x] A categoria Platform do projeto de testes (`PLT-001` a `PLT-005`, com o handler próprio respondendo em JavaScript na web e em Java no Android, e o Objective-C compilado para as plataformas Apple): bridge com os métodos embutidos e um handler próprio em cada plataforma.
+- [x] A categoria Orientation do projeto de testes (`ORI-001` a `ORI-004`): orientação do aparelho.
+- [x] A categoria Safe area do projeto de testes (`SAF-001` a `SAF-004`): âncoras na safe area e na tela inteira.
+- [x] A categoria Audio do projeto de testes (`AUD-001` a `AUD-007`): música, efeitos, barramentos, efeitos de áudio e áudio 2D posicional.
+- [x] A categoria Nine-slice do projeto de testes (`NSL-001` a `NSL-006`): nine-slice esticado e repetido, em peças e em UI.
+- [x] A categoria Text and fonts do projeto de testes (`TXT-001` a `TXT-012`, com fontes OFL e fontes bitmap geradas): TrueType, OpenType, bitmap, tamanhos, contorno, sombra, famílias, fallback, scripts complexos, rich text, efeitos e medição.
+- [x] A categoria Camera do projeto de testes (`CAM-001` a `CAM-014`): todos os recursos da câmera.
+- [x] A categoria Scenes and transitions do projeto de testes (`SCN-001` a `SCN-006`): todas as transições (os 24 efeitos com direção, easing, duração e cor), efeitos próprios, o ciclo de carregamento (a transição como loading, view de loading, pré-carregamento e erro com `onError`), a pilha, sobreposições e a pausa.
+- [x] A categoria Tiled do projeto de testes (`TLD-001` a `TLD-012`, com o conteúdo gerado por `samples/tests/tools/tiled/generate_content.py`): mapas de todas as orientações do Tiled.
 - [x] `samples/games/tiny-island`: o jogo, com `app.json`, `source/` e `content/`.
 - [x] `samples/cpp/embedding`: o sample C++, rodado por `haylen.py run-cpp cpp/embedding`.
 
@@ -1260,7 +1260,7 @@ O sistema de tween (`core::TweenManager` e `haylen.tween`) cobre tudo o que um s
 - [x] **Conflitos e vida útil**: modo de sobrescrita (um tween novo no mesmo alvo e campo mata o anterior), tweens ligados à cena (morrem quando a cena sai) e ao alvo (morrem quando o alvo é coletado ou destruído), sem nunca escrever num alvo morto.
 - [x] **Tempo**: modos de processamento da pausa (grupo E), tempo com ou sem escala, e atualização no passo fixo quando pedido.
 - [x] **Desempenho**: milhares de tweens sem alocação por frame, tweens nativos em propriedades C++ (posição, escala, rotação e cor de sprites, câmera e nós de UI por `doc:transform(id)`) sem chamar Lua por frame, e contagem de tweens nas estatísticas de debug.
-- [x] **Testes, página `docs/lua-api/tween.md` completa e o sample `samples/gameplay/tween` (19 testes)**, com cada recurso numa cena, menu e botão de voltar.
+- [x] **Testes, página `docs/lua-api/tween.md` completa e a categoria Tween do projeto de testes (`TWN-001` a `TWN-019`)**, com cada recurso numa cena, menu e botão de voltar.
 
 #### T. Eventos, ciclo de vida e conexões
 
@@ -1279,7 +1279,7 @@ Sinais (`core::Signal` com `core::Connection` e `haylen.signal`), o barramento d
 - [x] **Conexão e desconexão de dispositivos e serviços**: controles conectados e desconectados (com o slot e o nome), troca de rota de áudio (`audio_route_changed`), WebSocket com reconexão automática opcional por backoff exponencial, rede online e offline quando a plataforma informa, e teclado virtual aberto e fechado.
 - [x] **Escopos de assinatura**: uma cena, um autoload ou um objeto assina eventos num escopo que cancela tudo sozinho quando ele sai (`scene.listen(owner, fonte, fn)` e `events.on(nome, fn, {owner = ...})`), sem vazamento de listeners.
 - [x] **Diagnóstico**: sinais e listeners ativos com contagem de emissões no overlay de debug, e aviso de listener pendurado num dono morto.
-- [x] **Testes e documentação**: `docs/lua-api/signal.md`, `docs/lua-api/events.md`, o guia `docs/lifecycle.md` e o sample `samples/gameplay/events` com 9 testes, cada recurso numa cena.
+- [x] **Testes e documentação**: `docs/lua-api/signal.md`, `docs/lua-api/events.md`, o guia `docs/lifecycle.md` e a categoria Events do projeto de testes (`EVT-001` a `EVT-009`), cada recurso num teste.
 
 #### U. Raycast
 
@@ -1292,7 +1292,7 @@ O raycast é um recurso completo, com e sem física, sempre em C++ e com binding
 - [x] **Seleção pela tela**: converter um ponto da tela em raio ou ponto do mundo pela câmera e achar os objetos sob o cursor ou o toque.
 - [x] **Desempenho**: muitos raios numa chamada só (em lote e em paralelo pelo `JobSystem`), sem alocação por raio, com resultado em buffers reaproveitados em Lua.
 - [x] **Debug**: desenho dos raios, acertos e normais no overlay.
-- [x] **Testes e documentação**: `docs/lua-api/physics2d.md`, as seções de raycast de `math` e `spatial2d`, e os testes de raycast no `samples/gameplay/physics` e no `samples/gameplay/algorithms`.
+- [x] **Testes e documentação**: `docs/lua-api/physics2d.md`, as seções de raycast de `math` e `spatial2d`, e os testes de raycast nas categorias Physics e Algorithms do projeto de testes.
 
 #### V. Ciclo de vida de cena com carregamento
 
@@ -1309,7 +1309,7 @@ A troca de cena é um pipeline com fases, no modelo "cobrir, carregar, revelar",
 - [x] **Escopo de vida**: tudo o que a cena cria (timers, tweens, assinaturas de eventos, tarefas assíncronas iniciadas com `scene.spawn(owner, fn)` e documentos de UI) pertence à cena e é cancelado no `unload`, sem nenhuma corrotina retomando numa cena que já saiu.
 - [x] **Eventos do ciclo**: `scene_loading`, `scene_loaded`, `scene_load_failed`, `scene_entered`, `scene_exited`, `scene_unloaded` e os começos e fins de cada fase da transição, pelo barramento de eventos.
 - [x] **Tiny Island** usa o ciclo: o menu e a partida carregam os grupos de preload no `load`, e a partida carrega atrás da view de loading.
-- [x] **Testes e documentação**: 36 testes das combinações, `docs/lifecycle.md` com os diagramas de sequência, `docs/lua-api/scene.md` e o `samples/graphics/scenes` mostrando o ciclo de carregamento.
+- [x] **Testes e documentação**: 36 testes das combinações, `docs/lifecycle.md` com os diagramas de sequência, `docs/lua-api/scene.md` e a categoria Scenes and transitions do projeto de testes mostrando o ciclo de carregamento.
 
 #### W. Janelas sem moldura e transparentes
 
@@ -1424,7 +1424,7 @@ Decisões, a partir da documentação oficial dos SDKs (AdMob, UMP, Firebase, St
 
 **Sample, documentação, testes e regras**
 
-- [x] Sample `samples/system/plugins` com o plugin de demonstração `plugins/native-demo/` (Swift com UIKit e AppKit, Kotlin, JavaScript e C), um teste por capacidade (chamadas na thread principal e em segundo plano, falha tipada, timeout e cancelamento, evento retido na carga, eventos do nativo, configuração com padrão, banner nativo no topo e na base com espaço reservado, toque no banner, tela nativa que cobre o app, seletor de arquivo, URL com o app rodando e a frio, erro do app entregue ao nativo e devolvido ao próximo app, e informações do plugin), validado no simulador iOS, no Mac Catalyst, no simulador tvOS, no app macOS, no emulador Android, na web (WebGPU e WebGL2) e no player de desktop, e no harness sem janela com a parte nativa ausente. O que a plataforma não tem responde `unsupported` (seletor de arquivo no tvOS, banner, cobertura e arquivo no player de desktop).
+- [x] Categoria Plugins do projeto de testes (`PLG-001` a `PLG-015`) com o plugin de demonstração `samples/tests/plugins/native-demo/` (Swift com UIKit e AppKit, Kotlin, JavaScript e C), um teste por capacidade (chamadas na thread principal e em segundo plano, falha tipada, timeout e cancelamento, evento retido na carga, eventos do nativo, configuração com padrão, banner nativo no topo e na base com espaço reservado, toque no banner, tela nativa que cobre o app, seletor de arquivo, URL com o app rodando e a frio, erro do app entregue ao nativo e devolvido ao próximo app, e informações do plugin), validado no simulador iOS, no Mac Catalyst, no simulador tvOS, no app macOS, no emulador Android, na web (WebGPU e WebGL2) e no player de desktop, e no harness sem janela com a parte nativa ausente. O que a plataforma não tem responde `unsupported` (seletor de arquivo no tvOS, banner, cobertura e arquivo no player de desktop).
 - [~] Guia `docs/plugins.md` (usar e escrever plugins: formato, Lua, Swift e Objective-C, Kotlin e Java, JavaScript, overlays, espaço reservado, cobertura, ciclo de vida, configuração, arquivos por app e testes), com `docs/platform_bridge.md`, `docs/distribution.md` e `docs/lua-api/platform.md` atualizados. Falta a parte do plugin de demonstração e do sample.
 - [x] Testes GoogleTest da parte da engine: resolução do Lua dos plugins e colisão de nomes, configuração com padrões, handles e `send`, espaço reservado com a UI ancorada, app coberto, erros para o host, eventos retidos, `HaylenNativeApi.registerPlugin` e política de thread, com 950 testes passando, também sob ThreadSanitizer.
 - [~] Regras dos plugins no AGENTS.md (pacote, `plugin.json`, configuração, montagem e nomes). Falta completar com as APIs nativas quando o Android e a Apple ficarem prontos.
@@ -1481,7 +1481,7 @@ Decisões, a partir da pesquisa das bibliotecas de diálogos, notificações e w
 **Testes, samples e documentação**
 
 - [x] Testes GoogleTest no host sem janela: pedidos de diálogo gravados e respondidos pelo teste, validação das opções, resultados, cancelamento e timeout, `unsupported`, informações do sistema, tema e bateria com os eventos, e os bindings Lua.
-- [x] Sample `samples/system/system-info` (ou um teste no sample de plataforma) com as informações, o tema e a bateria ao vivo, e um sample ou testes de diálogos com mensagem, abrir arquivos, salvar e pasta, validados no macOS, no simulador iOS, no Mac Catalyst, no simulador tvOS, no emulador Android e na web. Windows e Linux compilados e testados no CI. Os testes "System" e "Dialogs" do sample de plataforma foram conferidos no macOS, nos simuladores, no Mac Catalyst, no emulador Android e na web.
+- [x] Testes da categoria Platform do projeto de testes com as informações, o tema e a bateria ao vivo, e um sample ou testes de diálogos com mensagem, abrir arquivos, salvar e pasta, validados no macOS, no simulador iOS, no Mac Catalyst, no simulador tvOS, no emulador Android e na web. Windows e Linux compilados e testados no CI. Os testes "System" e "Dialogs" do sample de plataforma foram conferidos no macOS, nos simuladores, no Mac Catalyst, no emulador Android e na web.
 - [x] Páginas `docs/lua-api/system.md` e `docs/lua-api/dialogs.md` completas com exemplos, `docs/platform_bridge.md` sem os métodos embutidos e as regras no AGENTS.md.
 
 **Para os plugins futuros, fora desta etapa**
@@ -1651,14 +1651,14 @@ Checklist:
 
 #### AI. Projeto único de testes da engine
 
-- [ ] Um projeto de testes em `samples/tests/` (nome final pelo padrão dos samples) com todos os samples de recursos da engine (gráficos, gameplay, interface e sistema), num menu de categorias e depois os testes da categoria, cada teste numa pasta da sua categoria.
-- [ ] Cada teste tem um código estável e curto (como `GFX-012`) mostrado no menu, no cabeçalho do teste e nos logs, para reportar erros, com a lista de códigos documentada.
-- [ ] Navegação completa com mouse, toque, teclado, controle e controle remoto da TV, com voltar para a categoria e para o menu, busca ou filtro por código, e o último teste lembrado.
-- [ ] Um teste que a plataforma não suporta mostra o motivo exato na tela em vez de quebrar, e um erro de um teste mostra a tela de erro sem derrubar o projeto, que volta ao menu.
-- [ ] O jogo e a UI dividem o input: as setas, WASD e o controle chegam ao jogo enquanto a área de jogo tem o foco, e a UI só navega quando tem o foco (com uma forma clara de levar o foco à UI e de devolver ao jogo), com testes do roteamento.
-- [ ] Revisão de cada teste existente, um por um, rodando e conferindo o resultado, e corrigindo o que der erro ou funcionar mal (como a piscada da outra cena na transição).
-- [ ] Testes e exemplos do Varn (async, promises, timers, http, socket, websocket, json, fs, zip, crypto, log, datetime, xml, process e ffi), para aprender a usá-lo pela Haylen.
-- [ ] Os samples antigos de recursos saem do repositório depois da migração, os comandos e docs que os citam passam a citar o projeto de testes, e o harness sem janela roda o projeto inteiro.
+- [x] Um projeto de testes em `samples/tests/` (nome final pelo padrão dos samples) com todos os samples de recursos da engine (gráficos, gameplay, interface e sistema), num menu de categorias e depois os testes da categoria, cada teste numa pasta da sua categoria. O "Haylen Tests" tem 281 testes em 26 categorias de quatro seções, cada categoria em `source/categories/<categoria>/` com o `manifest.lua`, e os assets em `content/<categoria>/`.
+- [x] Cada teste tem um código estável e curto (como `GFX-012`) mostrado no menu, no cabeçalho do teste e nos logs, para reportar erros, com a lista de códigos documentada. Os códigos são o prefixo da categoria e três dígitos, nunca reaproveitados, listados no `samples/tests/README.md`.
+- [~] Navegação completa com mouse, toque, teclado, controle e controle remoto da TV, com voltar para a categoria e para o menu, busca ou filtro por código, e o último teste lembrado. Busca por código ou título, "Continue with" com o último teste (preferência `tests.last`) e "Run all", conferidos no player headless e no Chrome sem janela com WebGL2. Faltam o iOS, o tvOS, o Android e controles reais.
+- [x] Um teste que a plataforma não suporta mostra o motivo exato na tela em vez de quebrar, e um erro de um teste mostra a tela de erro sem derrubar o projeto, que volta ao menu. O manifesto dá o motivo por plataforma, e a tela de erro ganhou "Back to the app" com `haylen.setRecoverable`, `haylen.recover` e os eventos `appError` e `appRecovered`, testados em `ErrorScreenTests`.
+- [x] O jogo e a UI dividem o input: as setas, WASD e o controle chegam ao jogo enquanto a área de jogo tem o foco, e a UI só navega quando tem o foco (com uma forma clara de levar o foco à UI e de devolver ao jogo), com testes do roteamento. O `ui.playArea` representa o jogo no documento, o `uiFocus` (botão View, tecla de pausa e Play/Pause da TV) troca o foco, o Tab percorre os dois, o clique ou toque dá o foco, e um aperto fica com o lado que o pegou até soltar, com `ui.focusOwner()` e `input.gamepadAxisCaptured()`, testados em `PlayAreaTests` com teclado, controle, mouse, toque, controle remoto sem ponteiro e remapeamento.
+- [x] Revisão de cada teste existente, um por um, rodando e conferindo o resultado, e corrigindo o que der erro ou funcionar mal (como a piscada da outra cena na transição). Cada teste rodou no player headless e no Chrome com WebGL2, com os textos no padrão de escrita, colisões de nomes com o harness, sobreposições, a escada do ragdoll, as paredes e o torque do carro, estado que vazava entre testes e o foco perdido depois que uma cena de cima sai (SCN-001 a SCN-006) corrigidos. Sons, fontes e créditos de terceiros saíram.
+- [x] Testes e exemplos do Varn (async, promises, timers, http, socket, websocket, json, fs, zip, crypto, log, datetime, xml, process e ffi), para aprender a usá-lo pela Haylen. VRN-001 a VRN-016, cada um com o Lua que roda no painel e um botão para rodar de novo.
+- [x] Os samples antigos de recursos saem do repositório depois da migração, os comandos e docs que os citam passam a citar o projeto de testes, e o harness sem janela roda o projeto inteiro. O `haylen-headless samples/tests` roda cada teste por 2 segundos e falha em qualquer erro, e o job `tests-project` do CI roda o projeto inteiro.
 
 #### AJ. API estável entre C++ e Lua
 
@@ -1683,6 +1683,7 @@ Checklist:
 - [ ] Escala responsiva: modos de resolução de design (encaixar, expandir, preencher a largura, sem escala) e UI que acompanha a largura, revisados a fundo, com o redimensionamento da janela e do navegador.
 - [ ] Joystick virtual: modos fixo, flutuante (aparece onde se toca dentro de uma zona) e que segue o dedo, zona morta, vários joysticks e botões ao mesmo tempo, ligados a ações do action map, com imagens ou primitivas, e com testes.
 - [ ] Configuração para o mouse funcionar como toque (e o toque como mouse) no `app.json` e em tempo de execução.
+- [ ] Um rótulo com quebras de linha e `wrap = false` desenha a partir de uma caixa de uma linha, e o texto sai da caixa: manter as quebras, encurtar cada linha e centralizar o bloco, com teste.
 
 #### AL. Render, texto, shaders e web
 
@@ -1690,7 +1691,7 @@ Checklist:
 - [ ] Texto com contorno: corrigir o contorno que fica embolado e revisar todo o texto (fontes, SDF, contorno, sombra, rich text, alinhamento, quebra, idiomas) para tudo funcionar com perfeição.
 - [ ] Shaders: medir os cerca de 2 segundos até a cena com shader aparecer e corrigir a causa (compilação, carga, criação do pipeline), com o tempo documentado.
 - [ ] SVG de alto desempenho: conferir o suporte atual (rasterização, cache, escala) e completar o que faltar, com testes e um teste no projeto de testes.
-- [ ] Transição entre cenas sem piscar a outra cena.
+- [x] Transição entre cenas sem piscar a outra cena. Os documentos de UI com `owner = scene` pertencem à cena, desenham só enquanto ela aparece (`core::SceneView` e `Plugin::renderUi` por vista), e os de uma cena que sai vão para a imagem da transição dela, testado em `SceneDocumentTests`.
 - [x] Web: cada arquivo baixado uma vez só (`haylen.wasm`, `splash.png`), escolha automática entre WebGPU e WebGL2 com escolha manual, tudo funcionando nos dois, e as limitações reais escritas nos testes. O loader entrega o `haylen.wasm` por `Module.instantiateWasm` e baixa o logo uma vez para o splash e o ícone, e cada arquivo aparece uma vez no log de rede do Chrome, com WebGPU e WebGL2. A escolha automática e o `?backend=` foram conferidos, e os 184 testes dos samples de gráficos e de plataforma rodaram nos dois sem limitação real.
 - [ ] Recolorir sprites por máscara: um sprite base branco e uma máscara de cores (amarelo, vermelho, verde e azul) em que cada canal recebe uma cor escolhida, como recurso da engine (material ou shader pronto) e como teste.
 - [ ] Debug ligável em tempo de execução: corpos e juntas de física, FPS e tempos, contorno de sprites e de nós da cena com nomes, e a árvore da cena, por atalho e por API.
@@ -1728,6 +1729,7 @@ Checklist:
 
 - [ ] Sockets TCP e UDP, WebSocket e HTTP perfeitos em todas as plataformas (incluindo a web, onde vale o que o navegador permite), com testes e um teste de cada no projeto de testes.
 - [ ] Revisão do Varn para desempenho e capacidade, com as mudanças necessárias pedidas à sessão do Workpane.
+- [ ] Problemas do Varn achados pelos testes VRN: o `ctx:write` não faz streaming, um servidor não fecha, dois servidores pegam a mesma porta em silêncio e não há porta 0, um accept pendente falha com "Invalid socket" em vez da mensagem documentada, um zip recusado deixa entradas extraídas pela metade, e o servidor WebSocket só manda frames de texto. Pedir à sessão do Workpane e adotar na Haylen.
 - [ ] Hot reload na web funcionando.
 - [ ] Hot reload por módulo: o script alterado é recarregado no lugar (funções trocadas, estado mantido, cenas e objetos com gancho de recarga), e o app só reinicia quando não dá para recarregar no lugar, pesquisado e testado.
 - [ ] Revisão do tratamento de erros (tela de erro, recarga depois do erro, erros em corrotinas, callbacks nativos e carregamento de assets).
