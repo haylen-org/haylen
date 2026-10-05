@@ -223,6 +223,9 @@ void ContentTool::runInspect(Arguments& arguments) {
 void ContentTool::printDomain(const ReleaseInspector::Domain& domain, bool chunks) {
     const Manifest::Envelope& envelope = domain.envelope;
     output << std::format("The {} domain has the manifest \"{}\", generation {} of the profile \"{}\" for app builds {} to {}, with {} shards.\n", getDomainName(envelope.domain), domain.manifest.toHex(), envelope.generation, envelope.profile, envelope.minimumAppBuild, envelope.maximumAppBuild, envelope.shards.size());
+    if (!envelope.luaAbi.empty()) {
+        output << "  Its Lua bytecode has the ABI \"" << envelope.luaAbi << "\".\n";
+    }
     for (std::size_t index = 0; index < envelope.shards.size(); ++index) {
         output << std::format("  Shard {} is \"{}\" of {} bytes.\n", index, envelope.shards[index].getFileName(), envelope.shards[index].fileSize);
     }
@@ -239,7 +242,7 @@ void ContentTool::printDomain(const ReleaseInspector::Domain& domain, bool chunk
         for (const std::uint32_t shard : shards) {
             places += (places.empty() ? "" : ", ") + std::to_string(shard);
         }
-        output << std::format("  File \"{}\" holds {} bytes, {}, in {} chunks stored in {} bytes{}.\n", file.path, file.size, getDeliveryName(file.delivery), file.chunks.size(), stored, places.empty() ? "" : " in shard " + places);
+        output << std::format("  File \"{}\" holds {} bytes of {}, {}, in {} chunks stored in {} bytes{}.\n", file.path, file.size, getKindName(file.kind), getDeliveryName(file.delivery), file.chunks.size(), stored, places.empty() ? "" : " in shard " + places);
         for (const ReleaseInspector::Chunk& chunk : chunks ? file.chunks : std::vector<ReleaseInspector::Chunk>{}) {
             output << std::format("    Chunk at {} holds {} bytes with the content ID \"{}\", stored in {} bytes with the stored ID \"{}\" in shard {}.\n", chunk.offset, chunk.plainSize, chunk.contentId.toHex(), chunk.encodedSize, chunk.storedId.toHex(), chunk.shard);
         }
@@ -315,6 +318,10 @@ std::string_view ContentTool::getDeliveryName(Delivery delivery) noexcept {
         return "onDemand";
     }
     return "required";
+}
+
+std::string_view ContentTool::getKindName(Catalog::Kind kind) noexcept {
+    return kind == Catalog::Kind::LuaBytecode ? "Lua bytecode" : "data";
 }
 
 std::string_view ContentTool::getDomainName(Manifest::Domain domain) noexcept {

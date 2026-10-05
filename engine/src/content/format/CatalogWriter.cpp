@@ -12,7 +12,7 @@ void CatalogWriter::addChunk(const Catalog::Chunk& chunk) {
     chunks.try_emplace(chunk.storedId, chunk);
 }
 
-void CatalogWriter::addFile(std::string path, Delivery delivery, std::span<const Digest> parts) {
+void CatalogWriter::addFile(std::string path, Delivery delivery, std::span<const Digest> parts, Catalog::Kind kind) {
     if (!Catalog::isValidPath(path)) {
         throw std::invalid_argument("The path \"" + path + "\" cannot name a file of a catalog.");
     }
@@ -21,7 +21,7 @@ void CatalogWriter::addFile(std::string path, Delivery delivery, std::span<const
             throw std::invalid_argument("The file \"" + path + "\" uses the chunk \"" + part.toHex() + "\", which the catalog does not list.");
         }
     }
-    if (!files.try_emplace(path, File{.delivery = delivery, .parts = {parts.begin(), parts.end()}}).second) {
+    if (!files.try_emplace(path, File{.kind = kind, .delivery = delivery, .parts = {parts.begin(), parts.end()}}).second) {
         throw std::invalid_argument("The catalog lists the file \"" + path + "\" twice.");
     }
 }
@@ -50,7 +50,7 @@ std::vector<std::uint8_t> CatalogWriter::write() const {
         for (const Digest& part : file.parts) {
             size += chunks.at(part).plainSize;
         }
-        writer.write(pathOffset).write(static_cast<std::uint32_t>(path.size())).write(static_cast<std::uint8_t>(Catalog::Kind::File)).write(static_cast<std::uint8_t>(file.delivery)).writeZeros(sizeof(std::uint16_t));
+        writer.write(pathOffset).write(static_cast<std::uint32_t>(path.size())).write(static_cast<std::uint8_t>(file.kind)).write(static_cast<std::uint8_t>(file.delivery)).writeZeros(sizeof(std::uint16_t));
         writer.write(size).write(firstPart).write(std::uint64_t{file.parts.size()});
         pathOffset += path.size();
         firstPart += file.parts.size();

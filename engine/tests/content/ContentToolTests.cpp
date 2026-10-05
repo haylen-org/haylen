@@ -78,7 +78,10 @@ TEST_F(ContentToolTest, BuildsInspectsAndPublishesReleases) {
     ASSERT_EQ(run({"verify", getPath("second"), "--keys", getPath("keys")}), 0) << errors.str();
     EXPECT_NE(output.str().find("3 files"), std::string::npos) << output.str();
     ASSERT_EQ(run({"inspect", getPath("second"), "--keys", getPath("keys"), "--chunks"}), 0) << errors.str();
-    EXPECT_NE(output.str().find("File \"content/data/config.json\" holds 12 bytes, required"), std::string::npos) << output.str();
+    EXPECT_NE(output.str().find("File \"content/data/config.json\" holds 12 bytes of data, required"), std::string::npos) << output.str();
+    EXPECT_NE(output.str().find("File \"source/main.lua\" holds"), std::string::npos) << output.str();
+    EXPECT_NE(output.str().find("bytes of Lua bytecode, required"), std::string::npos) << output.str();
+    EXPECT_NE(output.str().find("Its Lua bytecode has the ABI \"lua-"), std::string::npos) << output.str();
     EXPECT_NE(output.str().find("Chunk at 0"), std::string::npos) << output.str();
     ASSERT_EQ(run({"diff", getPath("first"), getPath("second"), "--keys", getPath("keys")}), 0) << errors.str();
     EXPECT_NE(output.str().find("Changed \"content/data/config.json\""), std::string::npos) << output.str();

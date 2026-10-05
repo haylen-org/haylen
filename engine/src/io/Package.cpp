@@ -73,6 +73,10 @@ std::unique_ptr<Package> Package::open(const std::filesystem::path& path) {
     return openZip(path);
 }
 
+bool Package::isLuaBytecode(std::string_view) const {
+    return false;
+}
+
 std::vector<std::uint8_t> Package::read(std::string_view path) const {
     const std::unique_ptr<PackageReader> reader = openReader(path);
     const std::uint64_t size = reader->getSize();

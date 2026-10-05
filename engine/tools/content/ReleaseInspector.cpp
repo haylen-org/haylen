@@ -44,7 +44,7 @@ ReleaseInspector::Domain ReleaseInspector::inspectDomain(const std::filesystem::
 
     for (std::uint64_t index = 0; index < catalog.getFileCount(); ++index) {
         const Catalog::File entry = catalog.getFile(index);
-        File file{.path = std::string(entry.path), .delivery = entry.delivery, .size = entry.size};
+        File file{.path = std::string(entry.path), .kind = entry.kind, .delivery = entry.delivery, .size = entry.size};
         for (std::uint64_t part = entry.firstPart; part < entry.firstPart + entry.partCount; ++part) {
             const Catalog::Part piece = catalog.getPart(part);
             Chunk chunk = result.chunks.at(catalog.getChunk(piece.chunk).storedId);

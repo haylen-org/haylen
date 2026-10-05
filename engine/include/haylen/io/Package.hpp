@@ -39,6 +39,9 @@ class Package {
         return std::nullopt;
     }
 
+    // Tells whether a file holds the bytecode of a Lua module that the authenticated catalog of a protected release vouches for, which only the module loader of the engine loads. Every other file of every package loads only as text.
+    [[nodiscard]] virtual bool isLuaBytecode(std::string_view path) const;
+
     [[nodiscard]] std::vector<std::uint8_t> read(std::string_view path) const;
 
     // Reads at most `size` bytes at an offset, fewer when the file ends first.

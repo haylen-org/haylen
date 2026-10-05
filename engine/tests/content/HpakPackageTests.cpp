@@ -98,10 +98,18 @@ TEST_F(HpakPackageTest, ServesTheFilesOfTheApp) {
     build(files);
     const std::shared_ptr<io::Package> package = open();
 
+    // The Lua modules of the app and its plugins ship as bytecode, and every other file as it is.
     std::vector<std::string> paths;
     for (const auto& [path, bytes] : files) {
         paths.push_back(path);
         EXPECT_TRUE(package->exists(path));
+        const bool module = path.ends_with(".lua");
+        EXPECT_EQ(package->isLuaBytecode(path), module) << path;
+        if (module) {
+            const std::vector<std::uint8_t> chunk = package->read(path);
+            EXPECT_EQ(std::string(chunk.begin(), chunk.begin() + 4), LUA_SIGNATURE) << path;
+            continue;
+        }
         EXPECT_EQ(package->getFileSize(path), bytes.size());
         EXPECT_EQ(package->read(path), bytes) << path;
     }

@@ -113,7 +113,7 @@ This file is binding for every change. It describes the project as it is and the
 - Error messages are complete sentences that start with a capital letter and end with a period, and they say what was wrong and what is expected, such as `No canvas is active. Call "beginWorld", "beginScreen" or "beginTarget" before drawing.`. The only exceptions are the short reasons of `luaL_argerror` and `luaL_typeerror`, which Lua wraps into its own `bad argument` sentence.
 - Userdata keep their Lua callbacks in their user value, so a callback that refers back to its owner never keeps it alive. C++ code that keeps a Lua value alive uses `lua::Reference` and releases it in `stop`.
 - Hot paths offer fast Lua access: number fields next to vector properties, native properties that tweens animate in C++, float buffers shared with C++ and bulk APIs that move many objects in one call.
-- Lua chunks are always loaded as text (`"t"` mode), never as bytecode.
+- App code loads Lua chunks only as text (`"t"` mode): `load` and `loadfile` refuse bytecode, `dofile` runs only text and `string.dump` does not exist. The one exception is the module loader of the engine, which loads a module as bytecode only when the authenticated catalog of a protected release holds it as `LuaBytecode`, compiled by the content tool with the Lua of the engine for the ABI that the app manifest records.
 
 ## Repository layout
 

@@ -15,7 +15,7 @@ This guide describes the formats, the cryptography, how content is built and upd
 | Manifest | A signed `.hmanifest` file: a public envelope that names the app, the domain, the generation, the compatibility range, the keys and the shards, followed by the encrypted catalog. |
 | Channel descriptor | A signed pointer from an update channel to its current content manifest, with the generation of that manifest. |
 
-A release has two domains, each with its own manifest. The app domain, `app.hmanifest`, holds `app.json`, the Lua modules under `source` and the manifest and Lua modules of every plugin under `plugins`, which belong to one build of the app. The content domain, `content.hmanifest`, holds the assets under `content`, which updates may replace. Reading a catalog checks that every file belongs to the domain of its manifest, so a content manifest can never carry code, and that every file of the app domain is required.
+A release has two domains, each with its own manifest. The app domain, `app.hmanifest`, holds `app.json`, the Lua modules under `source` and the manifest and Lua modules of every plugin under `plugins`, which belong to one build of the app, with every Lua module compiled into bytecode. The content domain, `content.hmanifest`, holds the assets under `content`, which updates may replace. Reading a catalog checks that every file belongs to the domain of its manifest, so a content manifest can never carry code, and that every file of the app domain is required.
 
 ## Reading a release
 
@@ -70,6 +70,16 @@ The same files and keys always build the same bytes. Chunk boundaries depend onl
 ### Build cache
 
 `content::RecordCache` keeps the sealed records of earlier builds in a folder, by the ID of the content key that sealed them, the encoder, which names the version of Zstandard and the compression profile, and the content ID of their chunk. A build that finds the record of a chunk there copies it into the new shard instead of compressing and encrypting the chunk again, which is most of the work of a build. Records hold only ciphertext, so the cache holds no plain content, and sealing is deterministic, so a cached record is the record a fresh build writes: a build with a warm cache, a cold one or none writes the same bytes. An entry serves only when it authenticates under the key and decodes to the chunk it names, so a damaged or foreign entry only costs the time to seal its chunk again, and deleting the cache never changes a build. `haylen.py` keeps the cache of each app in `build/apps/<app>-<hash>/content-cache/`.
+
+## Lua bytecode
+
+A release ships no Lua text. `content::LuaCompiler` compiles every Lua module of the app domain, the files ending in `.lua` under `source` and under `source` of every plugin, with the Lua that the engine itself runs, and the catalog marks each one as `LuaBytecode` under the path of its module, so `require('scenes.menu')`, the autoloads and `source/main.lua` resolve exactly as they do in development. A module that does not compile stops the build with the message of Lua, which names the file and the line. Compiling is deterministic, so an unchanged module keeps its chunk and its record from build to build, and a release loads its modules without parsing them.
+
+The bytecode keeps all of its debug information: the chunk name is the package path of the module, such as `source/scenes/menu.lua`, and the lines and the names of local variables stay, so an error in a release reads exactly as in development, with its module, its line and messages such as `attempt to index a nil value (local 'value')`. No folder of the machine that built the release enters a chunk, and the bytecode is encrypted in its shard like every other file. The error screen of a release shows the message and the stack without the excerpt of source lines, since a release keeps no source text.
+
+Bytecode of the wrong format can crash the virtual machine, so its format is part of the release. `LuaCompiler::getAbi` names it from the header that Lua writes into every chunk, such as `lua-5.5-f0-i4-x4-l8-n8-le`: the version of Lua, its format, the sizes of an `int`, an instruction, a Lua integer and a Lua number, and the byte order. The app manifest records it, and a build whose Lua differs refuses the release with `LuaBytecodeIncompatible` before it reads a module. Every target of the engine, the 32-bit ARM of Android TV and the web included, runs a little-endian Lua with those sizes, so the bytecode the content tool compiles on the build machine loads everywhere.
+
+Bytecode never checks the values it builds, so app code still loads chunks only as text: `load`, `loadfile` and `dofile` refuse bytecode and `string.dump` does not exist. The module loader of the engine is the one place that loads bytecode, and only a file that `io::Package::isLuaBytecode` reports, which only the package of a protected release does, for the files its signed and encrypted catalog marks. A bytecode file in a folder, a zip archive or a package in memory loads as text and fails, so bytecode that does not come from a release built with the keys of the app never runs. The loader wipes the bytes of a module once Lua read them.
 
 ## Chunking
 
@@ -223,7 +233,7 @@ The plain catalog is a header of 64 bytes followed by four tables, in this order
 | --- | --- | --- |
 | 0 | 8 | Offset of the path in the string table. |
 | 8 | 4 | Length of the path, at most 1024 bytes. |
-| 12 | 1 | Kind, 0 for a file. |
+| 12 | 1 | Kind: 0 for a file, 1 for Lua bytecode. |
 | 13 | 1 | Delivery: 0 required, 1 prefetch, 2 on demand. |
 | 14 | 2 | Reserved. |
 | 16 | 8 | Size. |
@@ -248,7 +258,7 @@ The plain catalog is a header of 64 bytes followed by four tables, in this order
 
 The string table holds the paths of the files one after another. A path is a normalized package path, such as `content/maps/island.tmj`, in valid UTF-8 without control characters or backslashes. The parts of a file follow each other without gaps and end exactly at its size, and an empty file has none. A chunk that several files or one file several times use is listed once, so a file of 300 GiB made of one repeated chunk takes 16 bytes per part.
 
-The delivery of a file says when its encrypted bytes must be on the device: before the app starts, in the background after it starts, or only when the app asks for the file. It never says when a file is decoded into memory, and every file of the app domain is required.
+The delivery of a file says when its encrypted bytes must be on the device: before the app starts, in the background after it starts, or only when the app asks for the file. It never says when a file is decoded into memory, and every file of the app domain is required. Only the app domain holds Lua bytecode, and only as Lua modules of the app or of a plugin, files ending in `.lua` under `source` or `plugins/<id>/source`, in a manifest that names the ABI of the bytecode.
 
 ### Manifest
 
@@ -272,6 +282,7 @@ The delivery of a file says when its encrypted bytes must be on the device: befo
 | 168 | 8 | Maximum app build. |
 | 176 | String | Profile, the platform and store the content was made for, of at most 64 lowercase letters, digits, dashes and dots, and never empty. |
 | | String | Channel, with the characters of a profile, empty for none. |
+| | String | Lua ABI, the format of the Lua bytecode of the catalog, with the characters of a profile, empty for a catalog without bytecode. |
 | | 8 | Number of shards. |
 | | 72 each | Shards: shard ID, file size and file digest. |
 | | 8 | Size of the encrypted catalog. |
@@ -299,7 +310,7 @@ The envelope before the catalog fields, its context, is the additional data of t
 
 ## Compatibility and generations
 
-A `content::Compatibility` holds what the running build accepts: the digest of its app, its build number and its profile. A manifest of another app, made for another profile, or whose range of app builds leaves the build out raises `ManifestIncompatible` with the reason. The versions of the shard and catalog formats are checked when a manifest is read, and unknown versions raise `UnsupportedVersion`.
+A `content::Compatibility` holds what the running build accepts: the digest of its app, its build number, its profile and the ABI of its Lua. A manifest of another app, made for another profile, or whose range of app builds leaves the build out raises `ManifestIncompatible` with the reason, and a manifest whose Lua bytecode has another ABI raises `LuaBytecodeIncompatible`. The versions of the shard and catalog formats are checked when a manifest is read, and unknown versions raise `UnsupportedVersion`.
 
 The publisher of a channel raises the generation with every release. `ChannelDescriptor::offersUpdate` tells whether a descriptor offers content newer than the generation and manifest the app accepted last, and raises `ManifestRollbackRejected` for an older generation, or for the same generation with another manifest, so a server that replays an old descriptor cannot roll an app back. A rollback is published as a new generation that names the earlier content. `ChannelDescriptor::describes` tells whether a manifest is the content manifest that a descriptor names for its app, channel and generation.
 
@@ -393,6 +404,7 @@ Failures of protected content raise `content::Error`, a `std::runtime_error` who
 | `UnknownKeyId` | The app has no content key with the ID a shard or a manifest names. |
 | `MissingChunk` | A shard does not hold a chunk its catalog places in it. |
 | `MissingShard` | The file of a shard that a manifest names is missing. |
+| `LuaBytecodeIncompatible` | The app manifest holds Lua bytecode of another ABI than the Lua of the running build loads. |
 
 ## Security
 

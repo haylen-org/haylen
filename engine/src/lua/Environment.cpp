@@ -1,5 +1,7 @@
 #include "lua/Environment.hpp"
 
+#include <monocypher.h>
+
 #include <algorithm>
 #include <stdexcept>
 #include <utility>
@@ -129,6 +131,26 @@ void Environment::installFailureHandler(lua_State* L) {
     lua_pop(L, 1);
 }
 
+int Environment::loadModule(lua_State* L, const io::Package& package, const std::string& path) {
+    std::vector<std::uint8_t> bytes = package.read(path);
+    const bool bytecode = package.isLuaBytecode(path);
+    const std::string chunkName = "@" + path;
+    const int status = luaL_loadbufferx(L, reinterpret_cast<const char*>(bytes.data()), bytes.size(), chunkName.c_str(), bytecode ? "b" : "t");
+    if (bytecode) {
+        crypto_wipe(bytes.data(), bytes.size());
+    }
+    return status;
+}
+
+void Environment::runModule(lua_State* L, const io::Package& package, const std::string& path) {
+    if (loadModule(L, package, path) != LUA_OK) {
+        Error error = Runtime::readError(L, -1);
+        lua_pop(L, 1);
+        throw error;
+    }
+    Runtime::protectedCall(L, 0, 0);
+}
+
 // Searches the package for `name.lua` and then `name/init.lua`, the same order Lua uses on disk.
 int Environment::searchPackage(lua_State* L) {
     // clang-format off
@@ -142,10 +164,7 @@ int Environment::searchPackage(lua_State* L) {
             if (!package.exists(candidate)) {
                 continue;
             }
-
-            const std::string source = package.readText(candidate);
-            const std::string chunkName = "@" + candidate;
-            if (luaL_loadbufferx(L, source.data(), source.size(), chunkName.c_str(), "t") != LUA_OK) {
+            if (loadModule(L, package, candidate) != LUA_OK) {
                 return lua_error(L);
             }
             lua_pushstring(L, candidate.c_str());

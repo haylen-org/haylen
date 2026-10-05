@@ -28,6 +28,7 @@ class ContentBuilder final {
 
     struct Input {
         std::string path;
+        Catalog::Kind kind = Catalog::Kind::File;
         Delivery delivery = Delivery::Required;
     };
 

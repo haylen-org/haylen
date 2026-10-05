@@ -17,11 +17,12 @@
 #include "content/format/Manifest.hpp"
 #include "content/format/ShardReference.hpp"
 #include "haylen/core/AppConfig.hpp"
+#include "haylen/io/MemoryPackage.hpp"
 #include "haylen/io/Package.hpp"
 
 namespace haylen::content {
 
-// Builds the protected release of an app package into a folder of its own: the app domain from `app.json`, the Lua modules under `source` and the manifest and Lua modules of every plugin the app lists, and the content domain from the assets under `content`, each into its own shards and signed manifest. Nothing else of the package folder takes part, so the platform projects, notes and build files next to it never reach a release, and a file can never move from one domain to the other. A build that follows an earlier release of the app reuses its shards the way `ContentBuilder` does, and links or copies the shards it keeps into the new folder, so unchanged content keeps its shard files byte for byte.
+// Builds the protected release of an app package into a folder of its own: the app domain from `app.json`, the Lua modules under `source`, compiled into bytecode, and the manifest and Lua modules of every plugin the app lists, and the content domain from the assets under `content`, each into its own shards and signed manifest. Nothing else of the package folder takes part, so the platform projects, notes and build files next to it never reach a release, and a file can never move from one domain to the other. A build that follows an earlier release of the app reuses its shards the way `ContentBuilder` does, and links or copies the shards it keeps into the new folder, so unchanged content keeps its shard files byte for byte.
 class ReleaseBuilder final {
   public:
     struct Options {
@@ -68,6 +69,9 @@ class ReleaseBuilder final {
     static constexpr std::string_view kFolderFile = ".DS_Store";
 
     [[nodiscard]] Domain buildRelease(const io::Package& app, const core::AppConfig& config, Manifest::Domain domain, const std::filesystem::path& output, const std::optional<std::filesystem::path>& earlier, const Options& options) const;
+
+    // Turns the Lua modules of the app domain into bytecode and marks them so, and keeps every other file as it is.
+    [[nodiscard]] static std::unique_ptr<io::MemoryPackage> compileModules(const io::Package& app, std::vector<ContentBuilder::Input>& inputs);
     static void keepShard(const std::filesystem::path& earlierFolder, const std::filesystem::path& output, const ShardReference& shard);
 
     std::shared_ptr<const KeyRing> keys;

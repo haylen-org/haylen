@@ -55,7 +55,7 @@ ContentBuilder::Result ContentBuilder::build(const io::Package& source, std::vec
         for (const Digest& part : file.parts) {
             catalog.addChunk(*chunksByStored.at(part));
         }
-        catalog.addFile(file.input.path, file.input.delivery, file.parts);
+        catalog.addFile(file.input.path, file.input.delivery, file.parts, file.input.kind);
     }
     return {.catalog = catalog.write(), .shards = shards, .keptShards = keptShards, .statistics = statistics};
 }

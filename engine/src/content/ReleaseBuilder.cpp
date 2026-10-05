@@ -2,10 +2,12 @@
 
 #include <fstream>
 #include <iterator>
+#include <map>
 #include <stdexcept>
 #include <system_error>
 #include <utility>
 
+#include "content/LuaCompiler.hpp"
 #include "content/ReleasePackage.hpp"
 #include "haylen/io/Path.hpp"
 
@@ -31,7 +33,13 @@ ReleaseBuilder::Domain ReleaseBuilder::buildRelease(const io::Package& app, cons
 
     // A release that ships with one build of the app serves that build alone, so it names no previous manifest and no channel.
     Manifest::Envelope envelope{.domain = domain, .application = Manifest::identifyApplication(config.identifier), .profile = options.profile, .generation = options.generation, .minimumAppBuild = options.appBuild, .maximumAppBuild = options.appBuild};
-    DomainBuild built = buildDomain(app, listFiles(app, config, domain), std::move(envelope), previous ? &*previous : nullptr, output, options.shardTarget);
+    std::vector<ContentBuilder::Input> inputs = listFiles(app, config, domain);
+    std::unique_ptr<io::MemoryPackage> compiled;
+    if (domain == Manifest::Domain::App) {
+        compiled = compileModules(app, inputs);
+        envelope.luaAbi = LuaCompiler::getAbi();
+    }
+    DomainBuild built = buildDomain(compiled ? *compiled : app, std::move(inputs), std::move(envelope), previous ? &*previous : nullptr, output, options.shardTarget);
     for (std::size_t shard = 0; shard < built.result.keptShards; ++shard) {
         keepShard(*earlier, output, built.result.shards[shard]);
     }
@@ -71,6 +79,19 @@ Manifest ReleaseBuilder::readManifest(const std::filesystem::path& file) const {
     }
     const VerifyingKey trusted = signingKey->getVerifyingKey();
     return Manifest::read({std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()}, std::span(&trusted, 1));
+}
+
+std::unique_ptr<io::MemoryPackage> ReleaseBuilder::compileModules(const io::Package& app, std::vector<ContentBuilder::Input>& inputs) {
+    std::map<std::string, std::vector<std::uint8_t>> files;
+    for (ContentBuilder::Input& input : inputs) {
+        std::vector<std::uint8_t> bytes = app.read(input.path);
+        if (Manifest::isLuaModule(input.path)) {
+            bytes = LuaCompiler::compile({reinterpret_cast<const char*>(bytes.data()), bytes.size()}, input.path);
+            input.kind = Catalog::Kind::LuaBytecode;
+        }
+        files.emplace(input.path, std::move(bytes));
+    }
+    return std::make_unique<io::MemoryPackage>("app", std::move(files));
 }
 
 std::vector<ContentBuilder::Input> ReleaseBuilder::listFiles(const io::Package& app, const core::AppConfig& config, Manifest::Domain domain) {

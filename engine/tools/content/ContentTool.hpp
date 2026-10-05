@@ -65,6 +65,7 @@ class ContentTool final {
 
     [[nodiscard]] static ReleaseInspector makeInspector(const KeyStore& store);
     [[nodiscard]] static std::string_view getDeliveryName(Delivery delivery) noexcept;
+    [[nodiscard]] static std::string_view getKindName(Catalog::Kind kind) noexcept;
     [[nodiscard]] static std::string_view getDomainName(Manifest::Domain domain) noexcept;
 
     std::ostream& output;

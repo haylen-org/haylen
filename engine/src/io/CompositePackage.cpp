@@ -32,6 +32,10 @@ std::unique_ptr<PackageReader> CompositePackage::openReader(std::string_view pat
     return find(path).openReader(path);
 }
 
+bool CompositePackage::isLuaBytecode(std::string_view path) const {
+    return find(path).isLuaBytecode(path);
+}
+
 std::vector<std::string> CompositePackage::list(std::string_view directory) const {
     std::vector<std::string> files;
     for (const std::shared_ptr<const Package>& layer : layers) {

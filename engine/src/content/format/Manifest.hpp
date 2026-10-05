@@ -39,6 +39,9 @@ class Manifest final {
         Digest application;
         std::string profile;
         std::string channel;
+
+        // The ABI of the Lua bytecode that the catalog holds, empty when it holds none.
+        std::string luaAbi;
         std::uint64_t generation = 0;
         Digest previousManifest;
         std::uint64_t minimumAppBuild = 0;
@@ -50,6 +53,9 @@ class Manifest final {
 
     // The digest that names an app in manifests, from its identifier.
     [[nodiscard]] static Digest identifyApplication(std::string_view identifier) noexcept;
+
+    // Tells whether a package path names a Lua module of the app or of a plugin, the only files that may be Lua bytecode.
+    [[nodiscard]] static bool isLuaModule(std::string_view path) noexcept;
 
     // Encrypts a plain catalog under the content key, signs the envelope with the signing key, and returns the bytes of the manifest. The key IDs of the envelope come from the keys.
     [[nodiscard]] static std::vector<std::uint8_t> write(Envelope fields, std::span<const std::uint8_t> catalog, const ContentKey& contentKey, const SigningKey& signingKey);
@@ -66,7 +72,7 @@ class Manifest final {
         return id;
     }
 
-    // Checks the catalog against the digest the envelope signs, decrypts it with the content key the envelope names, and checks that every file belongs to the domain of the manifest. Throws `UnknownKeyId`, `CatalogAuthenticationFailed` or `CorruptCatalog`.
+    // Checks the catalog against the digest the envelope signs, decrypts it with the content key the envelope names, and checks that every file belongs to the domain of the manifest and that only Lua modules of the app domain are Lua bytecode, of the ABI the envelope names. Throws `UnknownKeyId`, `CatalogAuthenticationFailed` or `CorruptCatalog`.
     [[nodiscard]] Catalog decryptCatalog(const KeyRing& keys) const;
 
   private:
@@ -82,6 +88,7 @@ class Manifest final {
     // The envelope without its catalog fields, which is the additional data of the catalog encryption.
     [[nodiscard]] static std::vector<std::uint8_t> writeContext(const Envelope& fields, std::uint32_t envelopeSize);
     [[nodiscard]] static bool belongsToDomain(std::string_view path, Domain domain) noexcept;
+    void checkFiles(const Catalog& catalog) const;
     [[nodiscard]] static bool isValidName(std::string_view name) noexcept;
     void parseEnvelope(std::span<const std::uint8_t> signedBytes);
 

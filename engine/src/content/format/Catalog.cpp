@@ -115,7 +115,7 @@ void Catalog::validate(std::uint64_t shardCount) const {
         if (pathOffset > stringSize || pathLength > stringSize - pathOffset) {
             fail("places a path outside its string table");
         }
-        if (load<std::uint8_t>(row + FileLayout::kKind) != static_cast<std::uint8_t>(Kind::File) || load<std::uint8_t>(row + FileLayout::kDelivery) > static_cast<std::uint8_t>(Delivery::OnDemand) || load<std::uint16_t>(row + FileLayout::kReserved) != 0) {
+        if (load<std::uint8_t>(row + FileLayout::kKind) > static_cast<std::uint8_t>(Kind::LuaBytecode) || load<std::uint8_t>(row + FileLayout::kDelivery) > static_cast<std::uint8_t>(Delivery::OnDemand) || load<std::uint16_t>(row + FileLayout::kReserved) != 0) {
             fail("declares a file of a kind or delivery this app does not know");
         }
 

@@ -20,6 +20,7 @@ class CompositePackage final : public Package {
     [[nodiscard]] std::uint64_t getFileSize(std::string_view path) const override;
     [[nodiscard]] std::unique_ptr<PackageReader> openReader(std::string_view path) const override;
     [[nodiscard]] std::vector<std::string> list(std::string_view directory) const override;
+    [[nodiscard]] bool isLuaBytecode(std::string_view path) const override;
 
   private:
     [[nodiscard]] const Package& find(std::string_view path) const;

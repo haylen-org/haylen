@@ -31,6 +31,7 @@ class ReleaseInspector final {
 
     struct File {
         std::string path;
+        Catalog::Kind kind = Catalog::Kind::File;
         Delivery delivery = Delivery::Required;
         std::uint64_t size = 0;
         std::vector<Chunk> chunks;

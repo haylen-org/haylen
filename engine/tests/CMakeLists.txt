@@ -48,10 +48,12 @@ set(HAYLEN_TEST_SOURCES
   content/HostileInputTests.cpp
   content/HpakPackageTests.cpp
   content/KeyStoreTests.cpp
+  content/LuaCompilerTests.cpp
   content/ManifestTests.cpp
   content/RecordCacheTests.cpp
   content/ReleaseBuilderTests.cpp
   content/ReleaseInspectorTests.cpp
+  content/ReleaseLuaTests.cpp
   content/ShardTests.cpp
   core/ContainerTests.cpp
   core/CoreTests.cpp

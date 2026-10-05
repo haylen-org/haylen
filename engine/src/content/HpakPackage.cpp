@@ -31,6 +31,10 @@ std::unique_ptr<io::PackageReader> HpakPackage::openReader(std::string_view path
     return std::make_unique<HpakFileReader>(catalog, shards, find(path));
 }
 
+bool HpakPackage::isLuaBytecode(std::string_view path) const {
+    return find(path).kind == Catalog::Kind::LuaBytecode;
+}
+
 std::vector<std::string> HpakPackage::list(std::string_view directory) const {
     const auto [first, last] = catalog->findFolder(io::Path::normalize(directory));
     std::vector<std::string> files;

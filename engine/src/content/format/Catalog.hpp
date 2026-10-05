@@ -26,8 +26,10 @@ class Catalog final {
     static constexpr std::size_t kMaximumPathLength = 1024;
     static constexpr std::array<std::uint8_t, 4> kMagic = {'H', 'C', 'A', 'T'};
 
+    // What a file holds: plain data, or the bytecode of a Lua module, which only the app domain holds and only the module loader of the engine loads.
     enum class Kind : std::uint8_t {
         File = 0,
+        LuaBytecode = 1,
     };
 
     struct File {

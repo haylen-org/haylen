@@ -21,6 +21,7 @@ class HpakPackage final : public io::Package {
     [[nodiscard]] std::uint64_t getFileSize(std::string_view path) const override;
     [[nodiscard]] std::unique_ptr<io::PackageReader> openReader(std::string_view path) const override;
     [[nodiscard]] std::vector<std::string> list(std::string_view directory) const override;
+    [[nodiscard]] bool isLuaBytecode(std::string_view path) const override;
 
   private:
     [[nodiscard]] Catalog::File find(std::string_view path) const;

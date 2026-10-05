@@ -18,6 +18,9 @@ void Compatibility::check(const Manifest& manifest) const {
     if (appBuild < envelope.minimumAppBuild || appBuild > envelope.maximumAppBuild) {
         throw Error(Error::Code::ManifestIncompatible, std::format("The manifest \"{}\" needs an app build from {} to {}, and this app is build {}.", name, envelope.minimumAppBuild, envelope.maximumAppBuild, appBuild));
     }
+    if (!envelope.luaAbi.empty() && envelope.luaAbi != luaAbi) {
+        throw Error(Error::Code::LuaBytecodeIncompatible, "The manifest \"" + name + "\" holds Lua bytecode of the ABI \"" + envelope.luaAbi + "\", and this build of the app loads \"" + luaAbi + "\". Build the release again with the content tool of this engine.");
+    }
 }
 
 } // namespace haylen::content

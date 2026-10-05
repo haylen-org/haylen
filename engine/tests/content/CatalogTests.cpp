@@ -78,6 +78,23 @@ TEST_F(ContentCatalogTest, ReadsBackWhatItWrote) {
     EXPECT_EQ(catalog.getFile(*catalog.findFile("content/empty.txt")).size, 0U);
 }
 
+TEST_F(ContentCatalogTest, KeepsTheKindOfEveryFile) {
+    CatalogWriter writer;
+    const Catalog::Chunk chunk = makeChunk(1, 10);
+    writer.addChunk(chunk);
+    writer.addFile("source/main.lua", Delivery::Required, std::vector{chunk.storedId}, Catalog::Kind::LuaBytecode);
+    writer.addFile("source/notes.txt", Delivery::Required, std::vector{chunk.storedId});
+    std::vector<std::uint8_t> bytes = writer.write();
+
+    const Catalog catalog = Catalog::parse(bytes, 1);
+    EXPECT_EQ(catalog.getFile(0).kind, Catalog::Kind::LuaBytecode);
+    EXPECT_EQ(catalog.getFile(1).kind, Catalog::Kind::File);
+
+    // The kind of the first file lies at byte 12 of its row, right after the header.
+    bytes[Catalog::kHeaderSize + 12] = 2;
+    expectCorrupt(bytes, 1);
+}
+
 TEST_F(ContentCatalogTest, FindsFilesAndFolders) {
     const Catalog catalog = Catalog::parse(makeBytes(), 2);
     EXPECT_FALSE(catalog.findFile("content/maps").has_value());

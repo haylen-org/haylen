@@ -8,6 +8,7 @@
 
 #include "content/Compatibility.hpp"
 #include "content/Error.hpp"
+#include "content/LuaCompiler.hpp"
 #include "content/crypto/KeyRing.hpp"
 #include "content/crypto/SigningKey.hpp"
 #include "content/format/CatalogWriter.hpp"
@@ -24,11 +25,11 @@ class ManifestTest : public ::testing::Test {
         keyId = keys.add(test::ReleaseFixture::makeKey(1));
     }
 
-    [[nodiscard]] static std::vector<std::uint8_t> makeCatalog(const std::string& path, Delivery delivery = Delivery::Required) {
+    [[nodiscard]] static std::vector<std::uint8_t> makeCatalog(const std::string& path, Delivery delivery = Delivery::Required, Catalog::Kind kind = Catalog::Kind::File) {
         const Catalog::Chunk chunk{.storedId = Digest::of(test::TestFiles::bytes("stored")), .contentId = Digest::of(test::TestFiles::bytes("plain")), .plainSize = 10, .encodedSize = 10};
         CatalogWriter writer;
         writer.addChunk(chunk);
-        writer.addFile(path, delivery, std::vector{chunk.storedId});
+        writer.addFile(path, delivery, std::vector{chunk.storedId}, kind);
         return writer.write();
     }
 
@@ -146,6 +147,25 @@ TEST_F(ManifestTest, KeepsEachDomainToItsOwnFiles) {
     expectCode(Error::Code::CorruptCatalog, [&] { (void)decrypt(Manifest::Domain::Content, "app.json", Delivery::Required); });
 }
 
+TEST_F(ManifestTest, KeepsLuaBytecodeToTheModulesOfTheAppDomain) {
+    Manifest::Envelope app = makeEnvelope(Manifest::Domain::App);
+    app.luaAbi = LuaCompiler::getAbi();
+    const auto decrypt = [this](const Manifest::Envelope& envelope, const std::string& path) { return Manifest::read(write(envelope, makeCatalog(path, Delivery::Required, Catalog::Kind::LuaBytecode)), trusted).decryptCatalog(keys).getFileCount(); };
+    EXPECT_EQ(decrypt(app, "source/main.lua"), 1U);
+    EXPECT_EQ(decrypt(app, "source/scenes/menu.lua"), 1U);
+    EXPECT_EQ(decrypt(app, "plugins/ads/source/init.lua"), 1U);
+    EXPECT_EQ(Manifest::read(write(app, makeCatalog("source/main.lua")), trusted).getEnvelope().luaAbi, LuaCompiler::getAbi());
+    for (const std::string& path : {"app.json", "source/notes.txt", "plugins/ads/plugin.json", "plugins/ads/main.lua", "plugins/source/init.lua"}) {
+        expectCode(Error::Code::CorruptCatalog, [&] { (void)decrypt(app, path); });
+    }
+
+    Manifest::Envelope content = makeEnvelope(Manifest::Domain::Content);
+    content.luaAbi = LuaCompiler::getAbi();
+    expectCode(Error::Code::CorruptCatalog, [&] { (void)decrypt(content, "content/script.lua"); });
+    app.luaAbi.clear();
+    expectCode(Error::Code::CorruptCatalog, [&] { (void)decrypt(app, "source/main.lua"); });
+}
+
 TEST_F(ManifestTest, ChecksTheCompatibilityOfTheApp) {
     const Manifest manifest = Manifest::read(write(), trusted);
     const Compatibility compatibility{.application = Manifest::identifyApplication("dev.haylen.tests"), .appBuild = 5, .profile = "desktop"};
@@ -165,6 +185,14 @@ TEST_F(ManifestTest, ChecksTheCompatibilityOfTheApp) {
     for (const Compatibility& other : {otherApp, otherProfile, older, newer}) {
         expectCode(Error::Code::ManifestIncompatible, [&] { other.check(manifest); });
     }
+
+    // Bytecode loads only into a build whose Lua writes the same binary chunks.
+    Manifest::Envelope app = makeEnvelope(Manifest::Domain::App);
+    app.luaAbi = "lua-5.4-f0-i4-x4-l8-n8-le";
+    const Manifest older54 = Manifest::read(write(app, makeCatalog("source/main.lua", Delivery::Required, Catalog::Kind::LuaBytecode)), trusted);
+    expectCode(Error::Code::LuaBytecodeIncompatible, [&] { compatibility.check(older54); });
+    app.luaAbi = LuaCompiler::getAbi();
+    compatibility.check(Manifest::read(write(app, makeCatalog("source/main.lua", Delivery::Required, Catalog::Kind::LuaBytecode)), trusted));
 }
 
 TEST_F(ManifestTest, RejectsInvalidEnvelopes) {
@@ -176,6 +204,9 @@ TEST_F(ManifestTest, RejectsInvalidEnvelopes) {
     EXPECT_THROW((void)write(envelope, makeCatalog("content/a.png")), std::invalid_argument);
     envelope = makeEnvelope();
     envelope.minimumAppBuild = 10;
+    EXPECT_THROW((void)write(envelope, makeCatalog("content/a.png")), std::invalid_argument);
+    envelope = makeEnvelope();
+    envelope.luaAbi = "Lua 5.5";
     EXPECT_THROW((void)write(envelope, makeCatalog("content/a.png")), std::invalid_argument);
 }
 

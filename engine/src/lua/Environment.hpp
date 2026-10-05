@@ -13,6 +13,10 @@ class Engine;
 struct AppConfig;
 } // namespace haylen::core
 
+namespace haylen::io {
+class Package;
+} // namespace haylen::io
+
 namespace haylen::lua {
 
 // Prepares the Lua state of an engine for app scripts.
@@ -23,6 +27,9 @@ class Environment final {
 
     // Throws `std::runtime_error`, naming both files, when a module of the app has the name of a plugin module, which `require` would never load.
     static void checkModules(core::Engine& engine);
+
+    // Loads a module of the package and runs it, which is how the app starts with `source/main.lua`. Throws `Error` with the message and the stack when loading or running fails.
+    static void runModule(lua_State* L, const io::Package& package, const std::string& path);
 
   private:
     static constexpr int kLoadMode = 3;
@@ -35,6 +42,9 @@ class Environment final {
     [[nodiscard]] static std::string readText(lua_State* L, int index, const char* key);
     [[nodiscard]] static int readInteger(lua_State* L, int index, const char* key);
     static int reportFailure(lua_State* L);
+
+    // Loads a module of the package, named after its package path, and leaves its function on the stack, or the message of Lua when it fails, and returns the status of Lua. A module that the authenticated catalog of a protected release holds as Lua bytecode loads as bytecode, whose bytes are wiped once Lua read them, and every other module loads as text, so no other file ever reaches Lua as bytecode.
+    static int loadModule(lua_State* L, const io::Package& package, const std::string& path);
     static void installFailureHandler(lua_State* L);
     static int searchPackage(lua_State* L);
 

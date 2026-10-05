@@ -26,6 +26,7 @@ class Error final : public std::runtime_error {
         UnknownKeyId,
         MissingChunk,
         MissingShard,
+        LuaBytecodeIncompatible,
     };
 
     Error(Code errorCode, const std::string& message);

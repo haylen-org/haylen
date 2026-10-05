@@ -215,6 +215,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/content/format/ShardReference.cpp
   src/content/HpakFileReader.cpp
   src/content/HpakPackage.cpp
+  src/content/LuaCompiler.cpp
   src/content/RecordCache.cpp
   src/content/ReleaseBuilder.cpp
   src/content/ReleasePackage.cpp

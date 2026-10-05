@@ -21,6 +21,23 @@ bool Manifest::isValidName(std::string_view name) noexcept {
     return name.size() <= kMaximumNameLength && std::ranges::all_of(name, [](char character) { return (character >= 'a' && character <= 'z') || (character >= '0' && character <= '9') || character == '-' || character == '.'; });
 }
 
+bool Manifest::isLuaModule(std::string_view path) noexcept {
+    if (io::Path::extension(path) != ".lua") {
+        return false;
+    }
+    if (io::Path::isInside(path, io::Path::kSourceDirectory)) {
+        return true;
+    }
+
+    // The modules of a plugin live under `plugins/<id>/source`.
+    if (!io::Path::isInside(path, io::Path::kPluginsDirectory)) {
+        return false;
+    }
+    const std::string_view plugin = path.substr(io::Path::kPluginsDirectory.size() + 1);
+    const std::size_t slash = plugin.find('/');
+    return slash != std::string_view::npos && io::Path::isInside(plugin.substr(slash + 1), io::Path::kSourceDirectory);
+}
+
 bool Manifest::belongsToDomain(std::string_view path, Domain domain) noexcept {
     if (domain == Domain::Content) {
         return io::Path::isInside(path, io::Path::kContentDirectory);
@@ -34,7 +51,7 @@ std::vector<std::uint8_t> Manifest::writeContext(const Envelope& fields, std::ui
     writer.write(static_cast<std::uint8_t>(fields.domain)).writeZeros(1).write(ShardHeader::kVersion).write(Catalog::kVersion).writeZeros(sizeof(std::uint16_t));
     writer.writeDigest(fields.application).writeDigest(fields.signingKeyId).writeDigest(fields.contentKeyId);
     writer.write(fields.generation).writeDigest(fields.previousManifest).write(fields.minimumAppBuild).write(fields.maximumAppBuild);
-    writer.writeString(fields.profile).writeString(fields.channel).write(std::uint64_t{fields.shards.size()});
+    writer.writeString(fields.profile).writeString(fields.channel).writeString(fields.luaAbi).write(std::uint64_t{fields.shards.size()});
     for (const ShardReference& shard : fields.shards) {
         writer.writeDigest(shard.shardId).write(shard.fileSize).writeDigest(shard.fileDigest);
     }
@@ -42,8 +59,8 @@ std::vector<std::uint8_t> Manifest::writeContext(const Envelope& fields, std::ui
 }
 
 std::vector<std::uint8_t> Manifest::write(Envelope fields, std::span<const std::uint8_t> catalog, const ContentKey& contentKey, const SigningKey& signingKey) {
-    if (fields.profile.empty() || !isValidName(fields.profile) || !isValidName(fields.channel)) {
-        throw std::invalid_argument("A manifest needs a profile, and its profile and channel use at most 64 lowercase letters, digits, dashes and dots.");
+    if (fields.profile.empty() || !isValidName(fields.profile) || !isValidName(fields.channel) || !isValidName(fields.luaAbi)) {
+        throw std::invalid_argument("A manifest needs a profile, and its profile, channel and Lua ABI use at most 64 lowercase letters, digits, dashes and dots.");
     }
     if (fields.minimumAppBuild > fields.maximumAppBuild || fields.shards.size() > kMaximumShards || catalog.size() > kMaximumCatalogSize) {
         throw std::invalid_argument("A manifest needs a build range from low to high, and it holds at most its limits of shards and catalog bytes.");
@@ -130,8 +147,9 @@ void Manifest::parseEnvelope(std::span<const std::uint8_t> signedBytes) {
     envelope.maximumAppBuild = reader.read<std::uint64_t>();
     envelope.profile = reader.readString(kMaximumNameLength);
     envelope.channel = reader.readString(kMaximumNameLength);
-    if (envelope.profile.empty() || !isValidName(envelope.profile) || !isValidName(envelope.channel) || envelope.minimumAppBuild > envelope.maximumAppBuild) {
-        reader.fail("holds a profile, a channel or a build range that is not valid");
+    envelope.luaAbi = reader.readString(kMaximumNameLength);
+    if (envelope.profile.empty() || !isValidName(envelope.profile) || !isValidName(envelope.channel) || !isValidName(envelope.luaAbi) || envelope.minimumAppBuild > envelope.maximumAppBuild) {
+        reader.fail("holds a profile, a channel, a Lua ABI or a build range that is not valid");
     }
 
     const auto shardCount = reader.read<std::uint64_t>();
@@ -168,13 +186,22 @@ Catalog Manifest::decryptCatalog(const KeyRing& keys) const {
     }
 
     Catalog catalog = Catalog::parse(std::move(plain), envelope.shards.size());
+    checkFiles(catalog);
+    return catalog;
+}
+
+void Manifest::checkFiles(const Catalog& catalog) const {
     for (std::uint64_t index = 0; index < catalog.getFileCount(); ++index) {
         const Catalog::File file = catalog.getFile(index);
         if (!belongsToDomain(file.path, envelope.domain) || (envelope.domain == Domain::App && file.delivery != Delivery::Required)) {
             throw Error(Error::Code::CorruptCatalog, "The catalog of the manifest \"" + id.toHex() + "\" holds a file that its domain does not allow.");
         }
+
+        // Only the app domain holds bytecode, only of Lua modules, and only in the ABI its envelope signs.
+        if (file.kind == Catalog::Kind::LuaBytecode && (envelope.domain != Domain::App || !isLuaModule(file.path) || envelope.luaAbi.empty())) {
+            throw Error(Error::Code::CorruptCatalog, "The catalog of the manifest \"" + id.toHex() + "\" holds Lua bytecode where only Lua modules of the app domain with the ABI of its manifest may.");
+        }
     }
-    return catalog;
 }
 
 } // namespace haylen::content

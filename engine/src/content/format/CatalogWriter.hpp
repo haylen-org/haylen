@@ -19,12 +19,13 @@ class CatalogWriter final {
     void addChunk(const Catalog::Chunk& chunk);
 
     // Adds a file made of chunks that were added, in order. Throws `std::invalid_argument` for an invalid or repeated path and for chunks that were not added.
-    void addFile(std::string path, Delivery delivery, std::span<const Digest> parts);
+    void addFile(std::string path, Delivery delivery, std::span<const Digest> parts, Catalog::Kind kind = Catalog::Kind::File);
 
     [[nodiscard]] std::vector<std::uint8_t> write() const;
 
   private:
     struct File {
+        Catalog::Kind kind = Catalog::Kind::File;
         Delivery delivery = Delivery::Required;
         std::vector<Digest> parts;
     };

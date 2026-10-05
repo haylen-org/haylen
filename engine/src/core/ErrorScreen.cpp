@@ -45,7 +45,8 @@ std::string ErrorScreen::expandTabs(std::string_view text) {
 std::vector<ErrorScreen::SourceLine> ErrorScreen::readExcerpt() const {
     const std::string& file = error.getFile();
     io::Package& package = engine.getPackage();
-    if (file.empty() || error.getLine() <= 0 || !package.exists(file)) {
+    // A protected release holds its modules as bytecode, whose source text no package keeps.
+    if (file.empty() || error.getLine() <= 0 || !package.exists(file) || package.isLuaBytecode(file)) {
         return {};
     }
 
