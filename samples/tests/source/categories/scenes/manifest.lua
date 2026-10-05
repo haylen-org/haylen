@@ -10,5 +10,6 @@ return {
         {code = 'SCN-004', title = 'Stack and hooks', description = 'Push, pop, replace and "popTo" with the stack and every scene hook, from "load" to "unload", shown on screen.', module = 'stack'},
         {code = 'SCN-005', title = 'Transparent overlays', description = 'Overlay scenes that let the scenes below keep rendering while only the top one updates.', module = 'overlays'},
         {code = 'SCN-006', title = 'Pause and process modes', description = 'A paused world under a working pause menu, with "pausable", "whenPaused" and "always" timers and tweens.', module = 'pause'},
+        {code = 'SCN-007', title = 'Loading screen that fades out', description = 'A full-screen loading screen over a map that raises its terrain while it loads, fading out over the finished map, with the events of the change as they come.', module = 'loading-screen'},
     },
 }

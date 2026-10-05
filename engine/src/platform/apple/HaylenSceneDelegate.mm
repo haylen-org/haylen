@@ -136,6 +136,7 @@ using haylen::platform::AppleTheme;
     if (!holdsApp) {
         return;
     }
+    [super sceneWillEnterForeground:scene];
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin sceneWillEnterForeground:scene];
     }
@@ -145,6 +146,7 @@ using haylen::platform::AppleTheme;
     if (!holdsApp) {
         return;
     }
+    [super sceneDidEnterBackground:scene];
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin sceneDidEnterBackground:scene];
     }

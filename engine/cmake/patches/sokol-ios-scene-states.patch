@@ -1,0 +1,26 @@
+--- a/sokol_app.h
++++ b/sokol_app.h
+@@ -7292,6 +7292,14 @@
+ }
+ 
+ - (void)sceneWillResignActive:(UIScene*)scene {
++    _sapp_ios_app_event(SAPP_EVENTTYPE_UNFOCUSED);
++}
++
++- (void)sceneDidBecomeActive:(UIScene*)scene {
++    _sapp_ios_app_event(SAPP_EVENTTYPE_FOCUSED);
++}
++
++- (void)sceneDidEnterBackground:(UIScene*)scene {
+     if (!_sapp.ios.suspended) {
+         _sapp.ios.suspended = true;
+         #if defined(SOKOL_METAL)
+@@ -7303,7 +7311,7 @@
+     }
+ }
+ 
+-- (void)sceneDidBecomeActive:(UIScene*)scene {
++- (void)sceneWillEnterForeground:(UIScene*)scene {
+     if (_sapp.ios.suspended) {
+         _sapp.ios.suspended = false;
+         #if defined(SOKOL_METAL)

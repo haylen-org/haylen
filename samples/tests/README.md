@@ -214,6 +214,7 @@ The scene stack with every transition effect, custom effects, loading with progr
 | `SCN-004` | Stack and hooks | Push, pop, replace and "popTo" with the stack and every scene hook, from "load" to "unload", shown on screen. |  |
 | `SCN-005` | Transparent overlays | Overlay scenes that let the scenes below keep rendering while only the top one updates. |  |
 | `SCN-006` | Pause and process modes | A paused world under a working pause menu, with "pausable", "whenPaused" and "always" timers and tweens. |  |
+| `SCN-007` | Loading screen that fades out | A full-screen loading screen over a map that raises its terrain while it loads, fading out over the finished map, with the events of the change as they come. |  |
 
 #### Shaders (SHD)
 
@@ -565,7 +566,7 @@ HTTP requests with Varn "http" and WebSockets with "haylen.net" against public e
 
 #### Platform (PLT)
 
-The bridge to the native code of the plugin "platform-sample", what the window and the device report, "haylen.system" and the native dialogs. The tests are in `source/categories/platform/`.
+The bridge to the native code of the plugin "platform-sample", what the window and the device report, "haylen.system", the native dialogs and every event of the platform. The tests are in `source/categories/platform/`.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -574,6 +575,7 @@ The bridge to the native code of the plugin "platform-sample", what the window a
 | `PLT-003` | Window and device | Platform, backend, safe area, orientation, pointer, fullscreen, the on-screen keyboard and the network. |  |
 | `PLT-004` | System | What "haylen.system" tells about the device, its theme and battery with their changes, an address to open and a vibration. |  |
 | `PLT-005` | Dialogs | A native message with three buttons, the pickers of files to open, of the destination of a save and of a folder, and a message that the app gives up. |  |
+| `PLT-006` | Event checklist | Every event that comes from the platform, marked live as it fires, and the events this platform never sends with the reason. |  |
 
 #### Plugins (PLG)
 

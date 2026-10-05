@@ -52,7 +52,7 @@ The platform moves the app between three states, which `haylen.appState()` retur
 | `'inactive'` | Still visible, but the window lost the focus, the system interrupted the app, such as with a phone call, or native UI of a plugin covers it. | `appInactive` |
 | `'background'` | Hidden, such as a minimized window, another app on a phone or a hidden browser tab. | `appBackground` |
 
-On the web the page tells the engine: the window of the page losing the focus makes the app `'inactive'`, while the focus moving between the canvas and other elements of the page, such as the buttons of a plugin dialog, changes nothing, a hidden tab (`visibilitychange`) sends the app to `'background'` and a visible one brings it back, and a page that goes away (`pagehide`) makes the files of [haylen.storage](lua-api/storage.md) durable once more. On Android the window of the activity losing the focus to a dialog, a message or the notification shade makes the app `'inactive'`, also when the app comes back from the background while such UI still has the focus. An Android app also holds the audio focus while it is in the foreground, and another app that takes it, for a phone call or an alarm, interrupts the app, which stays `'inactive'` until the focus comes back, even when its window has the focus.
+On iOS, iPadOS, tvOS and Mac Catalyst the scene of the app tells the engine: a scene that resigns active, such as under the app switcher, Control Center, the Notification Center, a phone call or Siri, or behind another app in front of a Mac Catalyst window, makes the app `'inactive'`, a scene in the background makes it `'background'`, and the scene becoming active again makes it `'active'`. On the web the page tells the engine: the window of the page losing the focus makes the app `'inactive'`, while the focus moving between the canvas and other elements of the page, such as the buttons of a plugin dialog, changes nothing, a hidden tab (`visibilitychange`) sends the app to `'background'` and a visible one brings it back, and a page that goes away (`pagehide`) makes the files of [haylen.storage](lua-api/storage.md) durable once more. On Android the window of the activity losing the focus to a dialog, a message or the notification shade makes the app `'inactive'`, also when the app comes back from the background while such UI still has the focus. An Android app also holds the audio focus while it is in the foreground, and another app that takes it, for a phone call or an alarm, interrupts the app, which stays `'inactive'` until the focus comes back, even when its window has the focus.
 
 The engine takes care of what every app needs when the state changes.
 
@@ -63,7 +63,7 @@ The engine takes care of what every app needs when the state changes.
 
 Whether the app keeps running while it is not active depends on the lifecycle options, which `app.json` sets in its `lifecycle` object and `haylen.setLifecycle` changes at run time. A halted app lets no time pass: scenes, autoloads, timers, tweens and fixed steps stand still and input is held back, while Varn's event loop still delivers network replies and `async` results. `haylen.halted()` tells whether the app is halted right now.
 
-The event loop and the bridge run inside the frames of the app, so nothing arrives while the platform runs no frames at all. On Android a dialog, a message or the notification shade only takes the focus of the window, and the frames keep running under it. The activity pauses in the background and under every activity over the app, such as a document picker, a permission prompt or a screen that is an activity of its own, and the app is then in the background and draws nothing, but it keeps ticking ten times a second, for as long as the process lives. Each tick is a frame of the app in the background, so Varn's event loop runs, Varn timers fire, `call:cancel()` and timeouts take effect, and network callbacks, `async` results and the replies and events of the platform bridge arrive while the other activity shows, and an app whose `pauseOnBackground` is `false` also updates at that rate. On iOS, iPadOS and tvOS the frames stop while the scene is not active, and browsers stop the frames of a hidden tab. There the replies and events of the platform bridge, the answers of native dialogs and screens, Varn timers, network callbacks and `async` results wait, and they arrive in the first frame after the app comes back.
+The event loop and the bridge run inside the frames of the app, so nothing arrives while the platform runs no frames at all. On Android a dialog, a message or the notification shade only takes the focus of the window, and the frames keep running under it. The activity pauses in the background and under every activity over the app, such as a document picker, a permission prompt or a screen that is an activity of its own, and the app is then in the background and draws nothing, but it keeps ticking ten times a second, for as long as the process lives. Each tick is a frame of the app in the background, so Varn's event loop runs, Varn timers fire, `call:cancel()` and timeouts take effect, and network callbacks, `async` results and the replies and events of the platform bridge arrive while the other activity shows, and an app whose `pauseOnBackground` is `false` also updates at that rate. On iOS, iPadOS, tvOS and Mac Catalyst the frames go on while the scene is inactive, such as under the app switcher or Control Center, and stop while it is in the background, and browsers stop the frames of a hidden tab. There the replies and events of the platform bridge, the answers of native dialogs and screens, Varn timers, network callbacks and `async` results wait, and they arrive in the first frame after the app comes back.
 
 Android also freezes the processes of cached apps, which stops every thread of the app, its ticks, the transfers of the network and the threads of native plugins included, until the app comes back, so a connection may time out meanwhile. An app that the person left, such as with Home, stays the previous app for about a minute, then becomes cached, and Android freezes it some seconds later. The [screens](lua-api/platform.md#screens) of plugins follow the same rules. A screen that is an activity of the app itself, such as the confirm screen of the demo plugin of the test project, keeps the process in the foreground, which Android never freezes, while a screen of another app that the app started, such as the document picker, a browser page or a purchase flow, makes the app the previous app, which freezes about a minute later. Until then the app keeps ticking under the screen, and the answers of its threads and of the network reach it as they come. The answer of the screen itself always arrives, since Android wakes the process to deliver it.
 
@@ -140,6 +140,31 @@ events.on('appActive', function()
 end)
 ```
 
+## Events by platform
+
+Every event of the engine reaches the app on every platform where its source exists, and the tables below say where each event of the platform comes from and where it never fires and why. The other events come from the engine itself and fire the same way everywhere: `appStarted`, `appStopping`, `appError`, `appRecovered`, `paused`, `unpaused`, every scene event, `pluginStarted`, `pluginStopped`, `autoloadStarted`, `autoloadStopped`, `guiMounted`, `guiUnmounted`, the asset events, `moduleReloaded`, `objectCreated`, `objectDestroyed` and the WebSocket events. Native UI of plugins makes the app `'inactive'` on every platform while it [covers the app](#covered-by-native-ui). The test `PLT-006` of the test project lists these events for the platform it runs on and marks each one as it fires.
+
+### macOS
+
+| Event | Source |
+| --- | --- |
+| `appActive`, `appInactive` | The window becoming and stopping being the key window, such as when another app or window comes to the front or the app hides with Command+H. |
+| `appBackground` | The window minimized into the Dock, and the app comes back when it is restored. |
+| `appLowMemory` | The memory pressure of the system, which a dispatch source follows, at the warning and at the critical level. |
+| `appQuitRequested` | The close button of the window, Quit in the menu, Command+Q, the Dock and logging out, as the [desktop guide](desktop.md#menus-and-quitting) describes. |
+| `windowResized`, `windowFocusGained`, `windowFocusLost`, `windowFullscreenChanged` | The window, resized by the player or the app, its key state and its full screen mode. |
+| `windowOrientationChanged`, `windowFoldChanged` | Never, because a window of a desktop counts as landscape and no Mac folds. |
+| `windowSafeAreaChanged` | The camera housing of a notched Mac for a full screen or borderless window that reaches it, the native views of plugins and the simulation. |
+| `windowMoved`, `windowMonitorsChanged` | The moves of the window and the changes of the displays and their work areas, through AppKit. |
+| `keyboardShown`, `keyboardHidden` | Never, because a Mac types with its keyboard and has no keyboard on the screen. |
+| `networkOnline`, `networkOffline` | The path monitor of the Network framework. |
+| `audioInterrupted`, `audioResumed` | Never, because macOS does not interrupt the audio of apps. |
+| `audioRouteChanged` | A change of the default output device of Core Audio, such as headphones plugged in. |
+| `systemThemeChanged`, `batteryChanged` | The appearance of the app and the power sources of the Mac, as [haylen.system](lua-api/system.md#platforms) describes. |
+| `gamepadConnected`, `gamepadDisconnected` | GameController. |
+
+### Windows
+
 | Event | Source |
 | --- | --- |
 | `appActive`, `appInactive` | The window gaining and losing the keyboard focus. |
@@ -156,6 +181,27 @@ end)
 | `audioRouteChanged` | A change of the default output device of WASAPI. |
 | `systemThemeChanged`, `batteryChanged` | The app theme of the personalization settings and the power status of the system, as [haylen.system](lua-api/system.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | XInput. |
+
+### Linux
+
+| Event | Source |
+| --- | --- |
+| `appActive`, `appInactive` | The window gaining and losing the keyboard focus. |
+| `appBackground` | The window minimized, which X11 reports as hidden, and the app comes back when it is restored. |
+| `appLowMemory` | Never, because the engine follows no memory pressure of Linux. |
+| `appQuitRequested` | The close button of the window and the close shortcut of the window manager, usually Alt+F4. |
+| `windowResized`, `windowFocusGained`, `windowFocusLost`, `windowFullscreenChanged` | The window, resized by the player or the app, its focus and its full screen mode. |
+| `windowOrientationChanged`, `windowFoldChanged` | Never, because a window of a desktop counts as landscape and Linux desktops report no folds to windows. |
+| `windowSafeAreaChanged` | Only the native views of plugins and the simulation, because nothing of the system covers a window. |
+| `windowMoved`, `windowMonitorsChanged` | The moves of the window and the changes of the monitors and the work area, through X11. |
+| `keyboardShown`, `keyboardHidden` | Never, because the engine follows no keyboard on the screen on Linux. |
+| `networkOnline`, `networkOffline` | Never, because the engine follows no network state on Linux, and `haylen.networkState()` stays `'unknown'`. |
+| `audioInterrupted`, `audioResumed` | Never, because Linux does not interrupt the audio of apps. |
+| `audioRouteChanged` | A stream that PulseAudio, or PipeWire through it, moves to another output. |
+| `systemThemeChanged`, `batteryChanged` | The color scheme of the settings portal and the power supplies of the system, as [haylen.system](lua-api/system.md#platforms) describes. |
+| `gamepadConnected`, `gamepadDisconnected` | The joystick devices under `/dev/input`. |
+
+### iOS and iPadOS
 
 | Event | Source |
 | --- | --- |
@@ -177,6 +223,8 @@ end)
 | `systemThemeChanged`, `batteryChanged` | The trait collection of the app and the battery of the device, as [haylen.system](lua-api/system.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | GameController. |
 
+### tvOS
+
 | Event | Source |
 | --- | --- |
 | `appActive`, `appInactive` | The scene of the app becoming and resigning active, such as under the Control Center of the TV, and the interruptions of the audio session. |
@@ -195,6 +243,8 @@ end)
 | `systemThemeChanged`, `batteryChanged` | The trait collection of the app, and never `batteryChanged`, since a TV runs on mains power. |
 | `gamepadConnected`, `gamepadDisconnected` | GameController, the Siri Remote included. |
 
+### Mac Catalyst
+
 | Event | Source |
 | --- | --- |
 | `appActive`, `appInactive` | The scene of the app becoming and resigning active, such as when another app comes to the front. |
@@ -212,6 +262,8 @@ end)
 | `audioRouteChanged` | The route changes of the audio session. |
 | `systemThemeChanged`, `batteryChanged` | The trait collection of the app and the power sources of the Mac, as [haylen.system](lua-api/system.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | GameController. |
+
+### Android
 
 | Event | Source |
 | --- | --- |
@@ -232,6 +284,28 @@ end)
 | `audioRouteChanged` | The AAudio stream that the system moves to another output. |
 | `systemThemeChanged`, `batteryChanged` | The night mode of the configuration and the battery broadcast, as [haylen.system](lua-api/system.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | The input devices of GameActivity, the remote of an Android TV included. |
+
+### Web
+
+| Event | Source |
+| --- | --- |
+| `appActive`, `appInactive` | The window of the page gaining and losing the focus. |
+| `appBackground` | A hidden tab, through `visibilitychange`, and `Module.haylen.pause()` of the page. |
+| `appLowMemory` | Never, because browsers tell pages nothing about memory pressure. |
+| `appQuitRequested` | Never, because a page that closes cannot wait for the app. |
+| `windowResized` | The size of the canvas, which a `ResizeObserver` follows. |
+| `windowFocusGained`, `windowFocusLost` | The window of the page gaining and losing the focus. |
+| `windowFullscreenChanged` | The Fullscreen API. |
+| `windowOrientationChanged` | The Screen Orientation API, or the `orientation` media query. |
+| `windowFoldChanged` | The Viewport Segments and Device Posture APIs where the browser offers them, as [folds and dual screens](lua-api/window.md#folds-and-dual-screens) describes. |
+| `windowSafeAreaChanged` | The part of the CSS `env(safe-area-inset-*)` insets that covers the canvas, and the native views of plugins. |
+| `windowMoved`, `windowMonitorsChanged` | Never, because a page has no place on a desktop. |
+| `keyboardShown`, `keyboardHidden` | The `visualViewport` of the page while a text field edits on a phone or a tablet. |
+| `networkOnline`, `networkOffline` | The `online` and `offline` events of the browser. |
+| `audioInterrupted`, `audioResumed` | Never, because browsers suspend the audio of the page without telling it why, and the runtime resumes it at the next tap, click or key, as the [audio guide](audio.md#sessions-and-interruptions) describes. |
+| `audioRouteChanged` | Never, because the audio output of the page follows the output of the browser without telling the page. |
+| `systemThemeChanged`, `batteryChanged` | The `prefers-color-scheme` media query and the Battery Status API, as [haylen.system](lua-api/system.md#platforms) describes. |
+| `gamepadConnected`, `gamepadDisconnected` | The Gamepad API, once a button of the gamepad is pressed. |
 
 ## Assets, connections and objects
 
