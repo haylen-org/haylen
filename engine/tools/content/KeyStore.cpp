@@ -91,6 +91,18 @@ void KeyStore::rotate() {
     writeIndex();
 }
 
+std::vector<EmbeddedKeyProvider::SealedKey> KeyStore::sealContentKeys() const {
+    std::vector<EmbeddedKeyProvider::SealedKey> sealed;
+    for (const Digest& id : contentKeyIds) {
+        Secret master = readSecret(folder / getContentKeyFile(id));
+        EmbeddedKeyProvider::KeyId keyId{};
+        std::ranges::copy(id.getBytes(), keyId.begin());
+        sealed.push_back(EmbeddedKeyProvider::seal(keyId, master));
+        crypto_wipe(master.data(), master.size());
+    }
+    return sealed;
+}
+
 KeyStore::Secret KeyStore::readSecret(const std::filesystem::path& file) {
     std::ifstream stream(file, std::ios::binary);
     std::vector<std::uint8_t> bytes{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};

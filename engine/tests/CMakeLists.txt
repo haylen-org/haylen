@@ -38,6 +38,8 @@ set(HAYLEN_TEST_SOURCES
   audio/OutputTests.cpp
   audio/PauseTests.cpp
   audio/SpatializationTests.cpp
+  content/BootstrapTests.cpp
+  content/BootstrapWriterTests.cpp
   content/CatalogTests.cpp
   content/ChannelPublisherTests.cpp
   content/ChunkerTests.cpp

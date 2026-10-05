@@ -132,6 +132,14 @@ The content of an app is encrypted under its content key, 32 random bytes of its
 
 Manifests and shard headers name keys by their IDs, never by their bytes. A `content::KeyRing` holds every key an app can decrypt with and finds them by ID, so content under a new key and installed content under the previous one coexist while keys rotate: each shard is opened with the key its header names, and each catalog with the key its manifest names. A key the ring lacks raises `UnknownKeyId` with the ID. The private signing key exists only where content is published, and an app carries only the verifying keys it trusts, each named by its ID, the BLAKE2b-256 digest of the label `haylen/hpak/v1/signing-key-id` followed by the public key.
 
+### Keys in the app
+
+An app opens the release it ships with the bootstrap that its release build compiles in, `content::Bootstrap` in `haylen/content/Bootstrap.hpp`: the identifier of the app, its build number and its content profile, which a release must match, the public keys that sign its manifests, and the `content::KeyProvider` of its content keys. The content tool writes the bootstrap of each app from its key folder as C++ source, `HaylenBootstrap.cpp`, which `haylen.py` compiles into the release build of every platform, and a static member of that source installs it with `Bootstrap::install` before `main`. So every app carries keys of its own, and no key sits in a resource, a manifest, `app.json`, `Info.plist`, the Android manifest, `BuildConfig` or a script.
+
+The bootstrap holds the content keys in an `content::EmbeddedKeyProvider`: each key as two binary constants, a mask, BLAKE2b-256 keyed with the key over the label `haylen/bootstrap/v1/mask`, and the key combined byte by byte with the BLAKE2b-256 digest of the label `haylen/bootstrap/v1/pad`, the mask and the key ID. The binary therefore never holds a key, nor its hexadecimal or Base64 text, and the same keys always write the same bootstrap, so an unchanged app builds the same binary. This hides the keys from tools that search binaries for them, and it is no cryptographic protection: the app must hold its keys to run offline, and someone who studies its code can recover them, which the [security](#security) section accepts. The real protection of content is the authenticated encryption of its chunks and the signatures of its manifests.
+
+The runtime opens the package that ships with an app through `ReleasePackage::openBundled`, which opens a folder that holds `app.hmanifest` as a protected release with the bootstrap of the app, and any other package as it is, which is what development builds ship. It asks the provider for every key it lists, derives the subkeys of each one into the `KeyRing` and wipes the key, and a key that the provider cannot give, or that does not match its ID, raises `KeyUnavailable`, which names the key ID and asks to install the app again. A release in a build without a bootstrap raises `KeyUnavailable` too, and never opens in any other way. A C++ app may install a bootstrap of its own with a provider of its own, such as one that fetches keys from the service of an online game, and the format never depends on how the keys arrived. No key reaches Lua.
+
 ### Nonces
 
 Each nonce derives from everything that identifies the message it encrypts, so the same message always encrypts to the same bytes, which keeps unchanged records identical across builds, while two different messages never share a nonce, since that would take a collision of BLAKE2b. Every nonce is BLAKE2b-192 keyed with the nonce subkey, over the label of the purpose of its message followed by the identity of the message.
@@ -328,6 +336,8 @@ The publisher of a channel raises the generation with every release. `ChannelDes
 | `content compact <app> <tree> [--keep 2]` | Deletes the manifests and packs of a publication tree that no channel reaches within its last generations. |
 | `content keys <app> [--rotate]` | Shows the key folder of the app with the IDs of its keys and its public key, and with `--rotate` adds a content key. |
 
+The tool also writes the bootstrap of an app with `haylen-content bootstrap --keys <folder> --profile <profile> --build <number> --output <file>`, which the release builds of `haylen.py` run on their own, into a file that only its owner reads and that keeps its bytes when nothing changed.
+
 ```sh
 python3 haylen.py content build ~/apps/my-game --platform android
 python3 haylen.py content inspect ~/apps/my-game --platform android
@@ -402,6 +412,7 @@ Failures of protected content raise `content::Error`, a `std::runtime_error` who
 | `ManifestIncompatible` | A manifest is for another app, profile or range of builds. |
 | `ManifestRollbackRejected` | A descriptor offers an older generation, or the same generation with another manifest. |
 | `UnknownKeyId` | The app has no content key with the ID a shard or a manifest names. |
+| `KeyUnavailable` | The provider of the app cannot give a key it lists, or the app ships a release and its build holds no bootstrap. |
 | `MissingChunk` | A shard does not hold a chunk its catalog places in it. |
 | `MissingShard` | The file of a shard that a manifest names is missing. |
 | `LuaBytecodeIncompatible` | The app manifest holds Lua bytecode of another ABI than the Lua of the running build loads. |

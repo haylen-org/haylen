@@ -89,6 +89,12 @@ TEST_F(ContentToolTest, BuildsInspectsAndPublishesReleases) {
     ASSERT_EQ(run({"publish", app.getPath().generic_string(), "--keys", getPath("keys"), "--profile", "desktop", "--build", "7", "--channel", "stable", "--output", getPath("tree")}), 0) << errors.str();
     EXPECT_NE(output.str().find("Published generation 1 of the channel \"stable\""), std::string::npos) << output.str();
     ASSERT_EQ(run({"compact", getPath("tree"), "--keys", getPath("keys"), "--keep", "1"}), 0) << errors.str();
+    ASSERT_EQ(run({"bootstrap", "--keys", getPath("keys"), "--profile", "desktop", "--build", "7", "--output", getPath("bootstrap/HaylenBootstrap.cpp")}), 0) << errors.str();
+    std::ifstream bootstrap(work.getPath() / "bootstrap" / "HaylenBootstrap.cpp");
+    EXPECT_NE(std::string(std::istreambuf_iterator<char>(bootstrap), std::istreambuf_iterator<char>()).find("haylen::content::Bootstrap::install"), std::string::npos);
+#if !defined(_WIN32)
+    EXPECT_EQ(std::filesystem::status(work.getPath() / "bootstrap" / "HaylenBootstrap.cpp").permissions() & std::filesystem::perms::all, std::filesystem::perms::owner_read | std::filesystem::perms::owner_write);
+#endif
     ASSERT_EQ(run({"keys", "rotate", getPath("keys")}), 0) << errors.str();
     ASSERT_EQ(run({"keys", "show", getPath("keys")}), 0) << errors.str();
     EXPECT_NE(output.str().find("which encrypts new content"), std::string::npos) << output.str();

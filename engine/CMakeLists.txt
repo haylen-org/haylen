@@ -191,6 +191,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/audio/Session.cpp
   src/audio/Sound.cpp
   src/audio/StreamSource.cpp
+  src/content/Bootstrap.cpp
   src/content/Compatibility.cpp
   src/content/ContentBuilder.cpp
   src/content/crypto/Aead.cpp
@@ -200,6 +201,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/content/crypto/KeyRing.cpp
   src/content/crypto/SigningKey.cpp
   src/content/crypto/VerifyingKey.cpp
+  src/content/EmbeddedKeyProvider.cpp
   src/content/Error.cpp
   src/content/format/BinaryReader.cpp
   src/content/format/BinaryWriter.cpp

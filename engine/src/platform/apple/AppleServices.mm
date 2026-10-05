@@ -12,6 +12,8 @@
 #include <string>
 #include <utility>
 
+#include "content/ReleasePackage.hpp"
+#include "haylen/content/Bootstrap.hpp"
 #include "haylen/io/Package.hpp"
 #import "platform/apple/AppleBattery.hpp"
 #import "platform/apple/AppleBridge.hpp"
@@ -70,7 +72,7 @@ std::shared_ptr<io::Package> Services::openBundledPackage() {
     NSString* resources = NSBundle.mainBundle.resourcePath;
     const std::filesystem::path folder = std::filesystem::path(resources.UTF8String) / "app";
     if (std::filesystem::is_directory(folder)) {
-        return io::Package::open(folder);
+        return content::ReleasePackage::openBundled(io::Package::openDirectory(folder), content::Bootstrap::find());
     }
     return io::Package::open(folder.string() + ".zip");
 }

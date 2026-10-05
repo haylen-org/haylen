@@ -9,6 +9,8 @@
 #include <utility>
 #include <variant>
 
+#include "content/ReleasePackage.hpp"
+#include "haylen/content/Bootstrap.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/io/Package.hpp"
 #include "platform/BridgeRelay.hpp"
@@ -16,6 +18,7 @@
 #include "platform/ScreenRelay.hpp"
 #include "platform/android/AndroidActivity.hpp"
 #include "platform/android/AndroidAssetPackage.hpp"
+#include "platform/android/AndroidAssetReader.hpp"
 #include "platform/android/AndroidBatteryStatus.hpp"
 #include "platform/android/AndroidDeviceInfo.hpp"
 #include "platform/android/AndroidDialogJson.hpp"
@@ -51,8 +54,14 @@ std::vector<std::string> Services::getNativePlugins() {
     return JavaBridge::getPlugins();
 }
 
+// A protected release is a flat folder of manifests and shards, while a development build ships the package with its index.
 std::shared_ptr<io::Package> Services::openBundledPackage() {
-    return std::make_shared<AndroidAssetPackage>(AndroidActivity::getNative().assetManager, "app");
+    AAssetManager* manager = AndroidActivity::getNative().assetManager;
+    const AndroidAssetReader::Handle manifest(AAssetManager_open(manager, ("app/" + std::string(content::ReleasePackage::kAppManifestFile)).c_str(), AASSET_MODE_UNKNOWN), &AAsset_close);
+    if (manifest != nullptr) {
+        return content::ReleasePackage::openBundled(AndroidAssetPackage::openFlat(manager, "app"), content::Bootstrap::find());
+    }
+    return AndroidAssetPackage::openIndexed(manager, "app");
 }
 
 std::filesystem::path Services::getUserDataDirectory(std::string_view identifier) {

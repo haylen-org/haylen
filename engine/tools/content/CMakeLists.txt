@@ -1,5 +1,6 @@
 # The content tool `haylen-content` builds, verifies, inspects, compares and publishes the protected releases of apps on the machine that builds them, with the format library of the engine, and the tests link its library to check it.
 add_library(haylen_content_tool STATIC
+  BootstrapWriter.cpp
   ChannelPublisher.cpp
   ContentTool.cpp
   KeyStore.cpp

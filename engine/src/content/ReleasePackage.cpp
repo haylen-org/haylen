@@ -1,5 +1,7 @@
 #include "content/ReleasePackage.hpp"
 
+#include <monocypher.h>
+
 #include <string>
 #include <utility>
 #include <vector>
@@ -16,6 +18,36 @@ std::unique_ptr<io::Package> ReleasePackage::open(std::shared_ptr<const io::Pack
     layers.push_back(mount(files, Manifest::Domain::App, keys, trustedKeys, compatibility));
     layers.push_back(mount(files, Manifest::Domain::Content, keys, trustedKeys, compatibility));
     return std::make_unique<io::CompositePackage>(std::string(files->getName()), std::move(layers));
+}
+
+std::unique_ptr<io::Package> ReleasePackage::open(std::shared_ptr<const io::Package> files, const Bootstrap& bootstrap) {
+    auto keys = std::make_shared<KeyRing>();
+    for (const KeyProvider::KeyId& id : bootstrap.keys->getKeyIds()) {
+        KeyProvider::Key key{};
+        const bool provided = bootstrap.keys->getKey(id, key);
+        const Digest added = provided ? keys->add(key) : Digest();
+        crypto_wipe(key.data(), key.size());
+        if (added != Digest(id)) {
+            throw Error(Error::Code::KeyUnavailable, "The content key \"" + Digest(id).toHex() + "\" of the app is not available, so the build of the app is damaged. Install the app again.");
+        }
+    }
+
+    std::vector<VerifyingKey> trusted;
+    for (const Bootstrap::PublicKey& key : bootstrap.trustedKeys) {
+        trusted.emplace_back(key);
+    }
+    const Compatibility compatibility{.application = Manifest::identifyApplication(bootstrap.identifier), .appBuild = bootstrap.appBuild, .profile = bootstrap.profile};
+    return open(std::move(files), std::move(keys), trusted, compatibility);
+}
+
+std::shared_ptr<io::Package> ReleasePackage::openBundled(std::shared_ptr<io::Package> files, const Bootstrap* bootstrap) {
+    if (!files->exists(kAppManifestFile)) {
+        return files;
+    }
+    if (bootstrap == nullptr) {
+        throw Error(Error::Code::KeyUnavailable, "The app ships a protected release, and this build holds no keys to open it. Build the app in the Release configuration with \"haylen.py\", which compiles the keys of the app into it.");
+    }
+    return open(std::move(files), *bootstrap);
 }
 
 std::string_view ReleasePackage::getManifestFile(Manifest::Domain domain) noexcept {

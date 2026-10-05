@@ -24,6 +24,7 @@ class Error final : public std::runtime_error {
         ManifestIncompatible,
         ManifestRollbackRejected,
         UnknownKeyId,
+        KeyUnavailable,
         MissingChunk,
         MissingShard,
         LuaBytecodeIncompatible,

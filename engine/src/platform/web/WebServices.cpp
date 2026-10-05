@@ -12,6 +12,8 @@
 #include <variant>
 #include <vector>
 
+#include "content/ReleasePackage.hpp"
+#include "haylen/content/Bootstrap.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
@@ -122,7 +124,7 @@ std::vector<std::string> Services::getNativePlugins() {
 }
 
 std::shared_ptr<io::Package> Services::openBundledPackage() {
-    return io::Package::openDirectory("/app");
+    return content::ReleasePackage::openBundled(io::Package::openDirectory("/app"), content::Bootstrap::find());
 }
 
 std::filesystem::path Services::getUserDataDirectory(std::string_view identifier) {

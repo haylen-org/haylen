@@ -1,5 +1,7 @@
 #include "platform/android/AndroidAssetPackage.hpp"
 
+#include <algorithm>
+#include <memory>
 #include <stdexcept>
 #include <utility>
 
@@ -8,15 +10,27 @@
 
 namespace haylen::platform {
 
-AndroidAssetPackage::AndroidAssetPackage(AAssetManager* manager, std::string folder) : assets(manager), root(std::move(folder)) {
-    AndroidAssetReader::Handle index = openAsset(root + "/haylen-package-index.json");
+AndroidAssetPackage::AndroidAssetPackage(AAssetManager* manager, std::string folder, std::vector<std::string> folderFiles) : assets(manager), root(std::move(folder)), files(std::move(folderFiles)) {}
+
+std::shared_ptr<AndroidAssetPackage> AndroidAssetPackage::openIndexed(AAssetManager* manager, std::string folder) {
+    AndroidAssetReader::Handle index(AAssetManager_open(manager, (folder + "/haylen-package-index.json").c_str(), AASSET_MODE_BUFFER), &AAsset_close);
     if (index == nullptr) {
-        throw std::runtime_error("The APK has no app package at \"" + root + "\", or its \"haylen-package-index.json\" is missing.");
+        throw std::runtime_error("The APK has no app package at \"" + folder + "\", or its \"haylen-package-index.json\" is missing.");
     }
     AndroidAssetReader reader(std::move(index));
     std::vector<std::uint8_t> bytes(static_cast<std::size_t>(reader.getSize()));
     reader.readExactly(0, bytes);
-    files = core::Json::parse(bytes.begin(), bytes.end()).get<std::vector<std::string>>();
+    return std::make_shared<AndroidAssetPackage>(manager, std::move(folder), core::Json::parse(bytes.begin(), bytes.end()).get<std::vector<std::string>>());
+}
+
+std::shared_ptr<AndroidAssetPackage> AndroidAssetPackage::openFlat(AAssetManager* manager, std::string folder) {
+    const std::unique_ptr<AAssetDir, decltype(&AAssetDir_close)> directory(AAssetManager_openDir(manager, folder.c_str()), &AAssetDir_close);
+    std::vector<std::string> names;
+    for (const char* name = AAssetDir_getNextFileName(directory.get()); name != nullptr; name = AAssetDir_getNextFileName(directory.get())) {
+        names.emplace_back(name);
+    }
+    std::ranges::sort(names);
+    return std::make_shared<AndroidAssetPackage>(manager, std::move(folder), std::move(names));
 }
 
 bool AndroidAssetPackage::exists(std::string_view path) const {

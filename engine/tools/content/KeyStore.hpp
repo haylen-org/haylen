@@ -13,6 +13,7 @@
 #include "content/crypto/Digest.hpp"
 #include "content/crypto/KeyRing.hpp"
 #include "content/crypto/SigningKey.hpp"
+#include "haylen/content/EmbeddedKeyProvider.hpp"
 
 namespace haylen::content {
 
@@ -46,6 +47,9 @@ class KeyStore final {
     [[nodiscard]] const std::shared_ptr<const SigningKey>& getSigningKey() const noexcept {
         return signingKey;
     }
+
+    // Reads every content key and seals it for the bootstrap of the app, wiping the key once it is sealed.
+    [[nodiscard]] std::vector<EmbeddedKeyProvider::SealedKey> sealContentKeys() const;
 
   private:
     using Secret = std::array<std::uint8_t, ContentKey::kSize>;

@@ -3,11 +3,14 @@
 #include <charconv>
 #include <filesystem>
 #include <format>
+#include <fstream>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <stdexcept>
 #include <utility>
 
+#include "content/BootstrapWriter.hpp"
 #include "content/ChannelPublisher.hpp"
 #include "content/RecordCache.hpp"
 #include "content/ReleaseBuilder.hpp"
@@ -109,7 +112,7 @@ ContentTool::ContentTool(std::ostream& standardOutput, std::ostream& errorOutput
 int ContentTool::run(std::span<const std::string> arguments) {
     try {
         if (arguments.empty()) {
-            throw std::invalid_argument("Name a command: \"keys\", \"build\", \"verify\", \"inspect\", \"diff\", \"publish\" or \"compact\".");
+            throw std::invalid_argument("Name a command: \"keys\", \"build\", \"verify\", \"inspect\", \"diff\", \"publish\", \"compact\" or \"bootstrap\".");
         }
         const std::string& command = arguments.front();
         Arguments rest(arguments.subspan(1));
@@ -127,8 +130,10 @@ int ContentTool::run(std::span<const std::string> arguments) {
             runPublish(rest);
         } else if (command == "compact") {
             runCompact(rest);
+        } else if (command == "bootstrap") {
+            runBootstrap(rest);
         } else {
-            throw std::invalid_argument("The command \"" + command + "\" is unknown. The commands are \"keys\", \"build\", \"verify\", \"inspect\", \"diff\", \"publish\" and \"compact\".");
+            throw std::invalid_argument("The command \"" + command + "\" is unknown. The commands are \"keys\", \"build\", \"verify\", \"inspect\", \"diff\", \"publish\", \"compact\" and \"bootstrap\".");
         }
         return 0;
     } catch (const std::exception& error) {
@@ -306,6 +311,33 @@ void ContentTool::runCompact(Arguments& arguments) {
     const ChannelPublisher publisher(store.getContentKeys(), store.getActiveKeyId(), store.getSigningKey());
     const ChannelPublisher::Compaction compaction = publisher.compact(tree, keep);
     output << std::format("Removed {} manifests and {} packs of {} bytes that no channel reaches within its last {} generations.\n", compaction.manifests, compaction.packs, compaction.bytes, keep);
+}
+
+void ContentTool::runBootstrap(Arguments& arguments) {
+    const KeyStore store = KeyStore::open(arguments.takeOption("keys"));
+    const std::string profile = arguments.takeOption("profile");
+    const std::uint64_t build = arguments.takeNumber("build");
+    const std::filesystem::path file = arguments.takeOption("output");
+    arguments.finish();
+
+    // An unchanged bootstrap keeps its file as it is, so builds of the app do not compile it again.
+    const std::string source = BootstrapWriter::write(store, profile, build);
+    std::ifstream existing(file, std::ios::binary);
+    if (std::string(std::istreambuf_iterator<char>(existing), std::istreambuf_iterator<char>()) != source) {
+        existing.close();
+        if (file.has_parent_path()) {
+            std::filesystem::create_directories(file.parent_path());
+        }
+        std::ofstream(file, std::ios::binary | std::ios::trunc).close();
+        std::filesystem::permissions(file, std::filesystem::perms::owner_read | std::filesystem::perms::owner_write, std::filesystem::perm_options::replace);
+        std::ofstream stream(file, std::ios::binary | std::ios::trunc);
+        stream << source;
+        stream.close();
+        if (!stream) {
+            throw std::runtime_error("The bootstrap \"" + file.generic_string() + "\" could not be written.");
+        }
+    }
+    output << "Wrote the bootstrap of \"" << store.getIdentifier() << "\" for the profile \"" << profile << "\" into \"" << file.generic_string() << "\".\n";
 }
 
 std::string_view ContentTool::getDeliveryName(Delivery delivery) noexcept {

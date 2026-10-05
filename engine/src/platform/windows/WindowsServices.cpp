@@ -12,6 +12,8 @@
 #include <string>
 #include <utility>
 
+#include "content/ReleasePackage.hpp"
+#include "haylen/content/Bootstrap.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/io/Package.hpp"
 #include "platform/BridgeRelay.hpp"
@@ -56,7 +58,7 @@ std::shared_ptr<io::Package> Services::openBundledPackage() {
 
     const std::filesystem::path directory = std::filesystem::path(executable).parent_path();
     if (std::filesystem::is_directory(directory / "app")) {
-        return io::Package::open(directory / "app");
+        return content::ReleasePackage::openBundled(io::Package::openDirectory(directory / "app"), content::Bootstrap::find());
     }
     return io::Package::open(directory / "app.zip");
 }

@@ -58,6 +58,7 @@ class ContentTool final {
     void runDiff(Arguments& arguments);
     void runPublish(Arguments& arguments);
     void runCompact(Arguments& arguments);
+    void runBootstrap(Arguments& arguments);
 
     void printKeys(const KeyStore& store);
     void printDomain(const ReleaseInspector::Domain& domain, bool chunks);
