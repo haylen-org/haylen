@@ -6,7 +6,7 @@ Haylen Tests is the test project of the engine: one app with a test of every eng
 
 - Desktop: `python3 haylen.py run samples/tests` runs the project in the player with hot reload.
 - A platform: `python3 haylen.py run samples/tests --platform ios-simulator`, and the same with `tvos-simulator`, `android`, `web`, `macos`, `windows` or `linux`.
-- Automatic: the headless player runs every test that the headless platform supports, one after the other for 2 seconds each, and exits with an error status when any test raised an error, which the CI job `tests-project` does on every push:
+- Automatic: the headless player runs every test that the headless platform supports, one after the other for 2 seconds each, lists the tests that raised an error or whose scene failed to load, and exits with the status 1 when any test failed, which the CI job `tests-project` does on every push:
 
 ```sh
 python3 haylen.py build --target haylen-headless

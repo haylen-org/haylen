@@ -1,4 +1,4 @@
--- Runs every test that this platform supports, one after the other for a few seconds each, and lists the tests that raised an error with their codes. The menu starts it with "Run all", and the headless platform starts it by itself and quits once every test ran.
+-- Runs every test that this platform supports, one after the other for a few seconds each, and lists the tests that raised an error or whose scene failed to load with their codes. The menu starts it with "Run all", and the headless platform starts it by itself and quits once every test ran.
 local events = require('haylen.events')
 local haylen = require('haylen')
 local log = require('haylen.log')
@@ -82,6 +82,16 @@ function runner.start()
         runner.next()
         return true
     end, {priority = 10})
+    -- A test whose scene fails to load fails, and the progress screen stays until the test's time ends.
+    runner.connections[3] = events.on('sceneLoadFailed', function(event)
+        if event.scene ~= runner.current then
+            return
+        end
+        local test = runner.queue[runner.index]
+        runner.failures[#runner.failures + 1] = {test = test, message = event.error}
+        log.error(string.format('[%s] Failed to load: %s', test.code, event.error))
+        runner.show()
+    end, {priority = 10})
 
     log.info(string.format('Running %d tests on "%s".', #runner.queue, haylen.platform))
     runner.reset()
@@ -101,17 +111,21 @@ function runner.next()
     end
 
     log.info(string.format('[%s] Running "%s".', test.code, test.title))
-    scene.push(require(test.module)(test))
+    runner.current = require(test.module)(test)
+    scene.push(runner.current)
     -- The run counts real frames whatever a test does to the time scale or the game pause.
     runner.timer = timer.after(runner.seconds, function()
         runner.timer = nil
-        log.info(string.format('[%s] Passed.', test.code))
+        local failure = runner.failures[#runner.failures]
+        if not failure or failure.test ~= test then
+            log.info(string.format('[%s] Passed.', test.code))
+        end
         scene.popTo(1)
         runner.next()
     end, {processMode = 'always', unscaled = true})
 end
 
--- The headless platform quits once every test ran, and the headless player exits with an error status when any test failed.
+-- The headless platform quits once every test ran, with the status 1 when any test failed, which the headless player exits with.
 function runner.finish()
     local codes = {}
     for index, failure in ipairs(runner.failures) do
@@ -124,7 +138,7 @@ function runner.finish()
         log.error(string.format('Ran %d tests, and %d failed: %s.', #runner.queue, #codes, table.concat(codes, ', ')))
     end
     if haylen.platform == 'headless' then
-        haylen.quit()
+        haylen.quit({status = #codes == 0 and 0 or 1})
     end
 end
 
