@@ -99,14 +99,15 @@ int ChoiceLua::newWeightedChoice(lua_State* L) {
     if (weights.size() != static_cast<std::size_t>(luaL_len(L, 1))) {
         return luaL_argerror(L, 2, "expected one weight per item");
     }
+    const std::optional<lua_Integer> seed = lua_isnoneornil(L, 3) ? std::nullopt : std::optional(luaL_checkinteger(L, 3));
 
     lua::Userdata::emplace<WeightedChoice>(L, weights);
     const int choice = lua_gettop(L);
     lua::Userdata::setField(L, choice, "items", 1);
-    if (lua_isnoneornil(L, 3)) {
-        lua::Userdata::emplace<Random>(L);
+    if (seed) {
+        lua::Userdata::emplace<Random>(L, static_cast<std::uint64_t>(*seed));
     } else {
-        lua::Userdata::emplace<Random>(L, static_cast<std::uint64_t>(luaL_checkinteger(L, 3)));
+        lua::Userdata::emplace<Random>(L);
     }
     lua::Userdata::setField(L, choice, "random", -1);
     lua_settop(L, choice);

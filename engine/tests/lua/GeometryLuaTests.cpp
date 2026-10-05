@@ -117,6 +117,7 @@ TEST_F(GeometryLuaTest, DealsFromBagsAndWeightedChoices) {
     // clang-format on
     EXPECT_EQ(lua("return tostring(counts.common > counts.rare * 5) .. ' ' .. counts.never .. ' ' .. loot.size .. ' ' .. string.format('%.3f', loot:probability(2))"), "true 0 3 0.100");
     EXPECT_EQ(lua("return loot:pick(m.random(5)) ~= nil"), "true");
+    EXPECT_EQ(lua("return m.weightedChoice({'never', 'always'}, {0, 1}):pick()"), "always");
     EXPECT_NE(lua("return m.weightedChoice({'a'}, {1, 2})").find("one weight per item"), std::string::npos);
     EXPECT_NE(lua("return m.weightedChoice({'a'}, {-1})").find("not negative"), std::string::npos);
 }
