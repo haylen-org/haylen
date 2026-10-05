@@ -3,9 +3,12 @@
 #include <cmath>
 #include <filesystem>
 #include <optional>
+#include <string>
 #include <system_error>
+#include <utility>
 
 #include "haylen/assets/Manager.hpp"
+#include "haylen/content/Bootstrap.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/io/MemoryPackage.hpp"
@@ -62,7 +65,19 @@ sapp_desc SokolRuntime::describe(int argc, char* argv[]) {
     Process& process = getProcess();
     process.current = std::make_unique<SokolRuntime>();
     SokolRuntime& runtime = *process.current;
-    const LaunchOptions options = parseLaunchOptions(argc, argv);
+    LaunchOptions options = parseLaunchOptions(argc, argv);
+#if defined(__ANDROID__)
+    // Android starts apps without a command line, and a debuggable app takes the development server from the intent that launched it.
+    if (std::string server = JavaBridge::getDevelopmentServer(); !server.empty()) {
+        options.development = true;
+        options.developmentServer = std::move(server);
+    }
+#endif
+    // A release build carries the bootstrap of its app and plays its protected release, which never runs in development.
+    if (options.development && content::Bootstrap::find() != nullptr) {
+        core::Log::warning("The release build of the app ignores \"--dev\" and \"--dev-server\", since a release never runs in development.");
+        options.development = false;
+    }
     for (const std::string& folder : options.nativeFolders) {
         NativeLibraries::addSearchFolder(folder);
     }

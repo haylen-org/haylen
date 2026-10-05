@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.ActivityInfo;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.PixelFormat;
@@ -47,6 +48,9 @@ import org.json.JSONObject;
 // The manifest gives the activity the `Theme.Haylen.Splash` theme, whose splash screen hands over to a view with the same look that stays until the app has drawn its first frame.
 // The template declares the activity single top, and `HaylenLinkActivity` hands it the links and notifications that open the app, so a screen of a plugin that shows over the app outlives the launcher icon and the links.
 public class HaylenActivity extends GameActivity implements InputManager.InputDeviceListener {
+    // The extra of the launch intent that names the development server of a debuggable app.
+    private static final String DEVELOPMENT_SERVER_EXTRA = "dev.haylen.developmentServer";
+
     // The link that `HaylenLinkActivity` received while no activity ran, which the next activity of the process takes. A launch that brings an existing task to the front keeps the intent that the task started with, even when Android restores its activity after the end of the process, so the link waits here instead of in the intent. Only the main thread reaches it.
     private static Intent pendingLink;
 
@@ -315,6 +319,16 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         }
         HaylenRequirements.Requirement internet = HaylenRequirements.Requirement.permission(Manifest.permission.INTERNET);
         return ("The app lacks " + internet.description() + ", which network access needs on Android. " + internet.instructions()).getBytes(StandardCharsets.UTF_8);
+    }
+
+    // Called from the frame thread of the engine when an app starts, with the WebSocket address of the development server that `haylen.py run` launches the app with, or nothing. Only a debuggable app reads it, so an app that ships never runs in development.
+    static byte[] developmentServer() {
+        HaylenActivity activity = HaylenBridge.activity();
+        if (activity == null || (activity.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) == 0) {
+            return new byte[0];
+        }
+        String address = activity.getIntent().getStringExtra(DEVELOPMENT_SERVER_EXTRA);
+        return address == null ? new byte[0] : address.getBytes(StandardCharsets.UTF_8);
     }
 
     // Called by `HaylenLinkActivity` on the main thread while no activity runs.

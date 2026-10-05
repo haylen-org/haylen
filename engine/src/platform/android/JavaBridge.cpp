@@ -31,6 +31,7 @@ jmethodID JavaBridge::systemInfoMethod = nullptr;
 jmethodID JavaBridge::openUrlMethod = nullptr;
 jmethodID JavaBridge::vibrateMethod = nullptr;
 jmethodID JavaBridge::networkRequirementMethod = nullptr;
+jmethodID JavaBridge::developmentServerMethod = nullptr;
 jclass JavaBridge::dialogsClass = nullptr;
 jmethodID JavaBridge::showDialogMethod = nullptr;
 jmethodID JavaBridge::cancelDialogMethod = nullptr;
@@ -70,6 +71,7 @@ jint JavaBridge::load(JavaVM* vm) {
     openUrlMethod = env->GetStaticMethodID(activityClass, "openUrl", "(J[B)V");
     vibrateMethod = env->GetStaticMethodID(activityClass, "vibrate", "(J)V");
     networkRequirementMethod = env->GetStaticMethodID(activityClass, "networkRequirement", "()[B");
+    developmentServerMethod = env->GetStaticMethodID(activityClass, "developmentServer", "()[B");
     showDialogMethod = env->GetStaticMethodID(dialogsClass, "show", "(J[B[B)V");
     cancelDialogMethod = env->GetStaticMethodID(dialogsClass, "cancel", "(J)V");
     openScreenMethod = env->GetStaticMethodID(screensClass, "open", "(J[B[B[B[[B[BZ)V");
@@ -179,6 +181,17 @@ std::string JavaBridge::getNetworkRequirement() {
     std::string sentence = toString(env, bytes);
     env.DeleteLocalRef(bytes);
     return sentence;
+}
+
+std::string JavaBridge::getDevelopmentServer() {
+    JNIEnv& env = getEnv();
+    const auto bytes = static_cast<jbyteArray>(env.CallStaticObjectMethod(activityClass, developmentServerMethod));
+    if (clearException(env, "dev.haylen.HaylenActivity.developmentServer")) {
+        return {};
+    }
+    std::string address = toString(env, bytes);
+    env.DeleteLocalRef(bytes);
+    return address;
 }
 
 // The callback waits outside the lock, because Java answers at once, from inside the call, when no activity runs.

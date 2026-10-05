@@ -28,6 +28,7 @@
     static void openUrl(long, byte[]);
     static void vibrate(long);
     static byte[] networkRequirement();
+    static byte[] developmentServer();
 }
 
 -keep class dev.haylen.HaylenDialogs {

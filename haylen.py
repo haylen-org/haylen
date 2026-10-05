@@ -19,6 +19,7 @@ import plistlib
 import re
 import shlex
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -32,7 +33,7 @@ import xml.etree.ElementTree
 import zipfile
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Callable, TextIO
+from typing import Callable, Iterator, TextIO
 
 ROOT = Path(__file__).resolve().parent
 BUILD_ROOT = ROOT / "build"
@@ -2412,16 +2413,16 @@ def unified_log(executable: str, prefix: list):
         stream.wait()
 
 
-def launch_apple(bundle: Path, args: argparse.Namespace, simulator: dict | None) -> None:
-    """Launches an app bundle on this Mac, a simulator or a device and streams its output until it exits. The engine writes to the standard output on macOS and to the unified log elsewhere, which simulators and Mac Catalyst stream next to the output of the process."""
+def launch_apple(bundle: Path, args: argparse.Namespace, simulator: dict | None, arguments: list[str]) -> None:
+    """Launches an app bundle on this Mac, a simulator or a device with the arguments of its command line and streams its output until it exits. The engine writes to the standard output on macOS and to the unified log elsewhere, which simulators and Mac Catalyst stream next to the output of the process."""
     desktop = args.platform in {"macos", "catalyst"}
     info = plistlib.loads((bundle / "Contents" / "Info.plist" if desktop else bundle / "Info.plist").read_bytes())
     executable, identifier = info["CFBundleExecutable"], info["CFBundleIdentifier"]
     if args.platform == "macos":
-        run([bundle / "Contents" / "MacOS" / executable])
+        run([bundle / "Contents" / "MacOS" / executable, *arguments])
     elif args.platform == "catalyst":
         with unified_log(executable, []):
-            run([bundle / "Contents" / "MacOS" / executable])
+            run([bundle / "Contents" / "MacOS" / executable, *arguments])
     elif simulator:
         udid = simulator["udid"]
         terminal.step(f'Launching "{identifier}" on the simulator "{simulator["name"]}"')
@@ -2430,13 +2431,13 @@ def launch_apple(bundle: Path, args: argparse.Namespace, simulator: dict | None)
         run(["xcrun", "simctl", "bootstatus", udid, "-b"])
         run(["xcrun", "simctl", "install", udid, bundle])
         with unified_log(executable, ["xcrun", "simctl", "spawn", udid]):
-            run(["xcrun", "simctl", "launch", "--console-pty", "--terminate-running-process", udid, identifier])
+            run(["xcrun", "simctl", "launch", "--console-pty", "--terminate-running-process", udid, identifier, *arguments])
     else:
         if not args.device:
             raise BuildError('Name the device with "--device". Use the command "xcrun devicectl list devices" to list them.')
         terminal.step(f'Launching "{identifier}" on the device "{args.device}"')
         run(["xcrun", "devicectl", "device", "install", "app", "--device", args.device, bundle])
-        run(["xcrun", "devicectl", "device", "process", "launch", "--console", "--device", args.device, identifier])
+        run(["xcrun", "devicectl", "device", "process", "launch", "--console", "--device", args.device, identifier, *arguments])
 
 
 def apple_product(app: App, platform: str, config: str) -> Path:
@@ -2567,7 +2568,8 @@ def run_apple(app: App, root: Path, args: argparse.Namespace) -> None:
     requirements = check_apple(app, root, args)
     stop_on_release_problems(requirements)
     report_requirements(requirements)
-    launch_apple(bundle, args, simulator)
+    with device_development(app, root / GENERATED_FOLDER / "app", args) as arguments:
+        launch_apple(bundle, args, simulator, arguments)
 
 
 # Android projects: the Gradle scripts read `haylen/haylen.properties` and take `haylen/assets`, `haylen/res` and `haylen/jniLibs` as source folders of the app module and `haylen/plugins/<id>` as the modules of the plugins.
@@ -2717,13 +2719,14 @@ def build_android(app: App, root: Path, args: argparse.Namespace) -> Path:
     return android_product(app, args.config)
 
 
-def launch_android(apk: Path, args: argparse.Namespace, device: str) -> None:
-    """Installs an APK on a device, starts it and streams the log of its process until it ends."""
+def launch_android(apk: Path, args: argparse.Namespace, device: str, arguments: list[str]) -> None:
+    """Installs an APK on a device, starts it and streams the log of its process until it ends. Android starts apps without a command line, so the address of the development server travels as an extra of the intent, which only a debuggable app reads."""
     package = capture([aapt2(), "dump", "packagename", apk]).strip()
     terminal.step(f'Launching "{package}" on the Android device "{device}"')
     run([adb(), "-s", device, "install", "-r", apk])
-    # The launcher intent starts the task of the app, so the launcher icon brings that task back as it is later.
-    run([adb(), "-s", device, "shell", "am", "start", "-W", "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "-n", f"{package}/dev.haylen.HaylenActivity"])
+    # The launcher intent starts the task of the app, so the launcher icon brings that task back as it is later. The shell of the device reads the command line, so the extra is quoted for it.
+    extras = ["--es", ANDROID_DEVELOPMENT_EXTRA, shlex.quote(arguments[arguments.index("--dev-server") + 1])] if "--dev-server" in arguments else []
+    run([adb(), "-s", device, "shell", "am", "start", "-W", "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "-n", f"{package}/dev.haylen.HaylenActivity", *extras])
     process = capture([adb(), "-s", device, "shell", "pidof", package]).strip()
     if process:
         run([adb(), "-s", device, "logcat", "--pid", process])
@@ -2876,7 +2879,8 @@ def run_android(app: App, root: Path, args: argparse.Namespace) -> None:
     requirements = check_android(app, root, args)
     stop_on_release_problems(requirements)
     report_requirements(requirements)
-    launch_android(apk, args, device)
+    with device_development(app, root / GENERATED_FOLDER / "assets" / "app", args, device) as arguments:
+        launch_android(apk, args, device, arguments)
 
 
 # Web sites: the files of `platform/web` of an app, or of the template, go as they are into the site in the build folder of the app, and the generated files join them there.
@@ -2948,6 +2952,72 @@ def start_web_development(app: App, site: Path) -> DevelopmentServer:
     config["development"] = {"path": DEVELOPMENT_PATH, "token": development.token}
     (site / "config.json").write_text(json.dumps(config, indent=4) + "\n")
     return development
+
+
+# Apps that a launch starts on a device, a simulator, an emulator or this Mac in the Debug configuration connect to a development server of their own with "--dev-server", so every file saved in the app reloads in them as it does in the player and in the pages of the web.
+REMOTE_PLATFORMS = {"ios", "tvos"}
+ANDROID_DEVELOPMENT_EXTRA = "dev.haylen.developmentServer"
+
+
+def lan_address() -> str:
+    """Returns the address of this machine on the network that reaches other networks, which devices on the same network connect to. Connecting a UDP socket sends nothing."""
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+        probe.connect(("192.0.2.1", 9))
+        return probe.getsockname()[0]
+
+
+def development_address(platform_name: str, host: str, port: int, token: str) -> tuple[str, str]:
+    """Returns the address the development server of a launch listens on and the WebSocket address the app connects to. The emulator and devices of Android reach this machine through "adb reverse", and simulators and this Mac share its loopback address, while an Apple device reaches it over the network, on every address of this machine unless "--host" names one."""
+    remote = platform_name in REMOTE_PLATFORMS
+    listen = "0.0.0.0" if remote and host == "127.0.0.1" else host
+    reached = listen if listen != "0.0.0.0" else lan_address() if remote else "127.0.0.1"
+    return listen, f"ws://{reached}:{port}{DEVELOPMENT_PATH}?token={token}"
+
+
+class DevelopmentHandler(http.server.BaseHTTPRequestHandler):
+    """Serves the development path alone, for apps that run outside a browser."""
+
+    development: DevelopmentServer
+
+    def do_GET(self) -> None:
+        if urllib.parse.urlsplit(self.path).path != DEVELOPMENT_PATH:
+            self.send_error(404, "The development server only serves its development path.")
+            return
+        self.development.accept(self)
+
+    def log_message(self, format: str, *arguments) -> None:
+        pass
+
+
+@contextlib.contextmanager
+def device_development(app: App, package: Path, args: argparse.Namespace, device: str | None = None) -> Iterator[list[str]]:
+    """Runs the development server of an app that a launch starts in the Debug configuration, and yields the arguments of the command line that connect the app to it, which are none in the Release configuration. The manifest of the server holds the files of the package as the build ships them, so the app catches up on what changed since."""
+    if args.config == "Release":
+        yield []
+        return
+    manifest = DevelopmentServer.hash_files(package, [path.relative_to(package).as_posix() for path in sorted(package.rglob("*")) if path.is_file()])
+    development = DevelopmentServer(app.folder, manifest)
+    listen, address = development_address(args.platform, args.host, args.port, development.token)
+    handler = type("Handler", (DevelopmentHandler,), {"development": development})
+    try:
+        server = http.server.ThreadingHTTPServer((listen, args.port), handler)
+    except OSError as error:
+        raise BuildError(f'The development server cannot listen on port {args.port} of "{listen}": {error.strerror}. Stop what uses the port, or pick another one with "--port".') from error
+    server.daemon_threads = True
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    stop = threading.Event()
+    threading.Thread(target=development.watch, args=(stop,), daemon=True).start()
+    if device is not None:
+        run([adb(), "-s", device, "reverse", f"tcp:{args.port}", f"tcp:{args.port}"])
+    terminal.info("The app runs in development, and every file saved in the app reloads in it.")
+    try:
+        yield ["--dev-server", address]
+    finally:
+        stop.set()
+        server.shutdown()
+        server.server_close()
+        if device is not None:
+            subprocess.run([str(adb()), "-s", device, "reverse", "--remove", f"tcp:{args.port}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
 
 
 def run_web(app: App, site: Path, args: argparse.Namespace) -> None:
@@ -4054,8 +4124,8 @@ def add_sanitizer_option(parser: argparse.ArgumentParser) -> None:
 
 
 def add_web_server_options(parser: argparse.ArgumentParser, port: int) -> None:
-    parser.add_argument("--host", default="127.0.0.1", help='Address the local web server listens on. The LAN address of this machine lets phones and other computers open the page, which then runs without sound, because browsers offer "AudioWorklet" only to pages served over https or from "localhost".')
-    parser.add_argument("--port", type=int, default=port, help="Port of the local web server.")
+    parser.add_argument("--host", default="127.0.0.1", help='Address the local web server listens on, and the development server of a Debug run on a device, a simulator or this Mac. The LAN address of this machine lets phones and other computers open the page, which then runs without sound, because browsers offer "AudioWorklet" only to pages served over https or from "localhost". Apple devices reach the development server on every address of this machine unless it names one.')
+    parser.add_argument("--port", type=int, default=port, help="Port of the local web server, and of the development server of a Debug run on a device, a simulator or this Mac.")
     parser.add_argument("--coep", default="require-corp", choices=["require-corp", "credentialless", "off"], help='The "Cross-Origin-Embedder-Policy" header. Pages that load third-party scripts, such as sign-in libraries, need "credentialless" or "off".')
     parser.add_argument("--coop", default="off", choices=["off", "same-origin-allow-popups", "same-origin"], help='The "Cross-Origin-Opener-Policy" header, none by default, since the single-threaded runtime needs no cross-origin isolation and "same-origin" cuts the page off from the sign-in and payment popups of plugins. The value "same-origin" with a "--coep" policy isolates the page for "SharedArrayBuffer" and threads.')
     parser.add_argument("--open", action="store_true", help="Open the page in the default browser.")

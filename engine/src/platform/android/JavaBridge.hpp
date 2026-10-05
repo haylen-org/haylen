@@ -54,6 +54,9 @@ class JavaBridge final {
     // The sentence that engine-owned network errors end with while the app does not declare the permission `INTERNET`, or an empty text.
     [[nodiscard]] static std::string getNetworkRequirement();
 
+    // The WebSocket address of the development server that the intent of a debuggable app names, which `haylen.py run` launches it with, or an empty text.
+    [[nodiscard]] static std::string getDevelopmentServer();
+
     // Opens the url with the app that handles it on the main thread, and `answerUrl` hands the callback whether one took it.
     static void openUrl(std::string_view url, std::function<void(bool opened)> callback);
     static void answerUrl(std::int64_t request, bool opened);
@@ -108,6 +111,7 @@ class JavaBridge final {
     static jmethodID openUrlMethod;
     static jmethodID vibrateMethod;
     static jmethodID networkRequirementMethod;
+    static jmethodID developmentServerMethod;
     static jclass dialogsClass;
     static jmethodID showDialogMethod;
     static jmethodID cancelDialogMethod;

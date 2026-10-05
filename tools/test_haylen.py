@@ -15,6 +15,7 @@ import tempfile
 import threading
 import time
 import unittest
+import urllib.parse
 from pathlib import Path
 from unittest import mock
 
@@ -491,6 +492,46 @@ class DevelopmentServerTest(unittest.TestCase):
         self.assertEqual(config["development"], {"path": haylen.DEVELOPMENT_PATH, "token": development.token})
         self.assertGreaterEqual(len(base64.urlsafe_b64decode(development.token)), 16)
         self.assertEqual(development.manifest, self.manifest)
+
+    def test_device_runs_reach_the_server_by_their_platform(self):
+        with mock.patch.object(haylen, "lan_address", return_value="192.168.1.20"):
+            self.assertEqual(haylen.development_address("android", "127.0.0.1", 8000, "token"), ("127.0.0.1", f"ws://127.0.0.1:8000{haylen.DEVELOPMENT_PATH}?token=token"))
+            self.assertEqual(haylen.development_address("ios-simulator", "127.0.0.1", 8000, "token")[1], f"ws://127.0.0.1:8000{haylen.DEVELOPMENT_PATH}?token=token")
+            self.assertEqual(haylen.development_address("ios", "127.0.0.1", 9000, "token"), ("0.0.0.0", f"ws://192.168.1.20:9000{haylen.DEVELOPMENT_PATH}?token=token"))
+            self.assertEqual(haylen.development_address("tvos", "10.0.0.5", 9000, "token"), ("10.0.0.5", f"ws://10.0.0.5:9000{haylen.DEVELOPMENT_PATH}?token=token"))
+            self.assertEqual(haylen.development_address("macos", "0.0.0.0", 9000, "token")[1], f"ws://127.0.0.1:9000{haylen.DEVELOPMENT_PATH}?token=token")
+
+    def test_only_debug_launches_connect_to_a_server_that_knows_the_shipped_package(self):
+        shipped = Path(self.scratch.name) / "shipped"
+        shutil.copytree(self.folder, shipped)
+        self.write("source/level.lua", "return {edited = true}")
+        app = mock.Mock(folder=self.folder)
+        with haylen.device_development(app, shipped, mock.Mock(config="Release", platform="ios-simulator")) as arguments:
+            self.assertEqual(arguments, [])
+
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+        options = mock.Mock(config="Debug", platform="ios-simulator", host="127.0.0.1", port=port)
+        with haylen.device_development(app, shipped, options) as arguments:
+            self.assertEqual(arguments[0], "--dev-server")
+            token = urllib.parse.parse_qs(urllib.parse.urlsplit(arguments[1]).query)["token"][0]
+            with socket.create_connection(("127.0.0.1", port), timeout=5) as sock:
+                sock.sendall(b"GET /app.json HTTP/1.1\r\nHost: localhost\r\n\r\n")
+                self.assertIn(b"404", sock.recv(64))
+            with socket.create_connection(("127.0.0.1", port), timeout=5) as sock:
+                sock.sendall(f"GET {haylen.DEVELOPMENT_PATH}?token={token} HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n".encode())
+                stream = sock.makefile("rb")
+                self.assertIn(b"101", stream.readline())
+                while stream.readline() not in (b"\r\n", b""):
+                    pass
+                hello = json.dumps({"type": "hello", "session": "", "revision": 0}).encode()
+                mask = bytes([9, 8, 7, 6])
+                sock.sendall(bytes([0x81, 0x80 | len(hello)]) + mask + bytes(byte ^ mask[index % 4] for index, byte in enumerate(hello)))
+                _, _, message = haylen.read_websocket_frame(stream)
+                self.assertEqual([file["path"] for file in json.loads(message)["files"]], ["source/level.lua"])
+                stream.close()
+
 
 if __name__ == "__main__":
     unittest.main()
