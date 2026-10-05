@@ -264,7 +264,7 @@ TEST_F(Graphics2DLuaTest, BuildsNineSlices) {
     lua("slice = graphics2d.newNineSlice(hero, {borders = {1, 2, 3, 1}})");
     EXPECT_EQ(lua("local b = slice.borders return table.concat(b, ',') .. ' ' .. slice.fill .. ' ' .. tostring(slice.texture == hero) .. ' ' .. #slice.pieces .. ' ' .. slice.pieces[5].width .. ' ' .. tostring(slice.valid)"), "1.0,2.0,3.0,1.0 stretch true 9 12.0 true");
     lua("slice.fill = 'tile' slice.texture = graphics.whiteTexture() local pieces = slice.pieces pieces[1] = {0, 0, 5, 5} slice.pieces = pieces");
-    EXPECT_EQ(lua("return slice.fill .. ' ' .. tostring(slice.texture == graphics.whiteTexture()) .. ' ' .. slice.borders[1] .. ' ' .. slice.pieces[1].width"), "tile true 1.0 5.0");
+    EXPECT_EQ(lua("return slice.fill .. ' ' .. tostring(slice.texture == graphics.whiteTexture()) .. ' ' .. slice.borders[1] .. ' ' .. slice.pieces[1].width"), "tile true 5.0 5.0");
     EXPECT_NE(lua("slice.pieces = {{0, 0, 1, 1}}").find("a nine-slice needs exactly nine pieces"), std::string::npos);
     EXPECT_NE(lua("slice.fill = 'mirror'").find("unknown value 'mirror'"), std::string::npos);
     EXPECT_NE(lua("slice.borders = {}").find("no writable property \"borders\""), std::string::npos);
@@ -274,6 +274,12 @@ TEST_F(Graphics2DLuaTest, BuildsNineSlices) {
     EXPECT_NE(lua("return graphics2d.newNineSlice(hero, {pieces = {{0, 0, 1, 1}}})").find("a nine-slice needs exactly nine pieces"), std::string::npos);
     EXPECT_NE(lua("return graphics2d.newNineSlice(hero, {borders = {1, 2}})").find("borders need left, top, right and bottom"), std::string::npos);
     EXPECT_NE(lua("return graphics2d.newNineSlice(hero, {borders = {1, 1, 1, 1}, fill = 'mirror'})").find("unknown value 'mirror'"), std::string::npos);
+    EXPECT_NE(lua("return graphics2d.newNineSlice(hero, {source = {0, 0, 8, 8}, borders = {5, 1, 5, 1}})").find("The borders of a nine-slice must fit inside its source rectangle"), std::string::npos);
+
+    lua("frame = graphics2d.newNineSlice(hero, {source = {0, 0, 12, 12}, borders = {4, 4, 4, 4}})");
+    EXPECT_EQ(lua("local patches = frame:layout({10, 20, 40, 30}, 2) local center = patches[5] return #patches .. ' ' .. center.area.x .. ' ' .. center.area.width .. ' ' .. center.source.x .. ' ' .. center.source.width"), "9 18.0 24.0 4.0 4.0");
+    EXPECT_EQ(lua("return #frame:layout({0, 0, 0, 30})"), "0");
+    EXPECT_NE(lua("return frame:layout({0, 0, 10, 10}, -1)").find("A nine-slice border scale must be positive."), std::string::npos);
 }
 
 TEST_F(Graphics2DLuaTest, LightsShadowsNormalMapsAndMetaballs) {

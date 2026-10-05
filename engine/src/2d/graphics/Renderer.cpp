@@ -20,7 +20,6 @@
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/math/Geometry.hpp"
-#include "haylen/math/Insets.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/text/Font.hpp"
 #include "haylen/text/FontFamily.hpp"
@@ -312,50 +311,22 @@ void Renderer::drawNineSlice(const NineSlice& slice, const math::Rect& area, mat
     if (!slice.isValid()) {
         throw std::invalid_argument("Cannot draw a nine-slice without a texture.");
     }
-    if (!(borderScale > 0.0F && std::isfinite(borderScale))) {
-        throw std::invalid_argument("A nine-slice border scale must be positive.");
-    }
     if (!state->accepts(order)) {
         return;
     }
 
-    // Borders shrink proportionally when the area is smaller than the frame itself.
-    math::Insets borders = slice.getBorders();
-    const float fitX = borders.getHorizontal() * borderScale > area.width ? area.width / (borders.getHorizontal() * borderScale) : 1.0F;
-    const float fitY = borders.getVertical() * borderScale > area.height ? area.height / (borders.getVertical() * borderScale) : 1.0F;
-    const float scaleX = borderScale * fitX;
-    const float scaleY = borderScale * fitY;
+    std::vector<NineSlice::Patch>& patches = state->patches;
+    patches.clear();
+    slice.layout(area, borderScale, patches);
+    if (patches.empty()) {
+        return;
+    }
 
-    const std::array<float, 4> columns{area.getLeft(), area.getLeft() + borders.left * scaleX, area.getRight() - borders.right * scaleX, area.getRight()};
-    const std::array<float, 4> rows{area.getTop(), area.getTop() + borders.top * scaleY, area.getBottom() - borders.bottom * scaleY, area.getBottom()};
     const graphics::TextureResource& resource = *slice.texture.getResource();
-
-    std::vector<GpuInstance> quads;
-    quads.reserve(9);
-    for (std::size_t row = 0; row < 3; ++row) {
-        for (std::size_t column = 0; column < 3; ++column) {
-            const math::Rect& source = slice.pieces[row * 3 + column];
-            const math::Rect target = math::Rect::fromMinMax(math::Vec2{columns[column], rows[row]}, math::Vec2{columns[column + 1], rows[row + 1]});
-            if (source.isEmpty() || target.isEmpty()) {
-                continue;
-            }
-
-            const bool stretch = slice.fill == NineSlice::Fill::Stretch || (row != 1 && column != 1);
-            if (stretch) {
-                quads.push_back(GpuInstance::make(resource, {.position = target.getMin(), .size = target.getSize(), .source = source, .pivot = {}, .color = color}));
-                continue;
-            }
-
-            // Tiled regions repeat the source at its scaled size and crop the last tile of each row and column.
-            const math::Vec2 tile{source.width * scaleX, source.height * scaleY};
-            for (float y = target.getTop(); y < target.getBottom(); y += tile.y) {
-                for (float x = target.getLeft(); x < target.getRight(); x += tile.x) {
-                    const math::Vec2 size{std::min(tile.x, target.getRight() - x), std::min(tile.y, target.getBottom() - y)};
-                    const math::Rect cropped{source.x, source.y, size.x / scaleX, size.y / scaleY};
-                    quads.push_back(GpuInstance::make(resource, {.position = {x, y}, .size = size, .source = cropped, .pivot = {}, .color = color}));
-                }
-            }
-        }
+    std::vector<GpuInstance>& quads = state->scratchInstances;
+    quads.clear();
+    for (const NineSlice::Patch& patch : patches) {
+        quads.push_back(GpuInstance::make(resource, {.position = patch.area.getMin(), .size = patch.area.getSize(), .source = patch.source, .pivot = {}, .color = color}));
     }
     state->addInstances(Program::Sprite, order, slice.texture, quads, area.getBottom());
 }

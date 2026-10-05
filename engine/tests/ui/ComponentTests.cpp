@@ -1118,7 +1118,7 @@ TEST_F(ComponentAssetTest, DrawsTogglesInTheirTrackInEveryState) {
     const auto drawn = [this](ImTextureID texture) {
         getUi().getBackend().makeCurrent();
         const ImVector<ImDrawCmd>& commands = ImGui::FindWindowByName("##haylen-documents")->DrawList->CmdBuffer;
-        return std::any_of(commands.begin(), commands.end(), [texture](const ImDrawCmd& command) { return command.ElemCount > 0 && command.TexRef._TexID == texture; });
+        return std::any_of(commands.begin(), commands.end(), [texture](const ImDrawCmd& command) { return (command.ElemCount > 0 || command.UserCallback != nullptr) && command.TexRef._TexID == texture; });
     };
     // clang-format on
 

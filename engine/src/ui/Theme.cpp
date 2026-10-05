@@ -104,6 +104,9 @@ Theme::Image Theme::readImage(const core::Json& value, const std::string& contex
     }
     if (value.contains("scale")) {
         image.scale = readNumber(value.at("scale"), "The scale of " + context);
+        if (image.scale <= 0.0F) {
+            throw std::invalid_argument("The scale of " + context + " must be positive.");
+        }
     }
     if (value.contains("padding")) {
         image.padding = readInsets(value.at("padding"), "The padding of " + context);

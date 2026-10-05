@@ -281,6 +281,26 @@ TEST_F(SpriteAtlasTest, ReadsAsepriteFramesTagsAndSlices) {
     EXPECT_THROW((void)animation2d::SpriteAtlas::parse(document, graphics::Texture{}), std::invalid_argument);
 }
 
+// Slice bounds are relative to the untrimmed canvas of their frame, so a trimmed frame moves its slice by the pixels it dropped.
+TEST_F(SpriteAtlasTest, PlacesTheSlicesOfTrimmedFramesInTheSheet) {
+    test::EngineFixture fixture;
+    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 32));
+    // clang-format off
+    const auto trimmed = [](const char* bounds) {
+        return nlohmann::ordered_json::parse(std::string(R"({
+            "frames": [{"filename": "panel", "frame": {"x": 40, "y": 10, "w": 20, "h": 12}, "trimmed": true, "spriteSourceSize": {"x": 2, "y": 3, "w": 20, "h": 12}, "sourceSize": {"w": 24, "h": 18}}],
+            "meta": {"image": "ui.png", "slices": [{"name": "panel", "keys": [{"frame": 0, "bounds": )") + bounds + R"(, "center": {"x": 4, "y": 4, "w": 10, "h": 4}}]}]}
+        })");
+    };
+    // clang-format on
+
+    const animation2d::SpriteAtlas atlas = animation2d::SpriteAtlas::parse(trimmed(R"({"x": 4, "y": 3, "w": 18, "h": 12})"), texture);
+    const graphics2d::NineSlice& slice = atlas.getSlice("panel");
+    EXPECT_EQ(slice.pieces[0], (math::Rect{42.0F, 10.0F, 4.0F, 4.0F}));
+    EXPECT_EQ(slice.pieces[8], (math::Rect{56.0F, 18.0F, 4.0F, 4.0F}));
+    EXPECT_THROW((void)animation2d::SpriteAtlas::parse(trimmed(R"({"x": 0, "y": 0, "w": 24, "h": 18})"), texture), std::invalid_argument);
+}
+
 TEST_F(SpriteAtlasTest, ReadsTexturePackerHashesAndRejectsUnsupportedData) {
     test::EngineFixture fixture;
     const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(32, 32));

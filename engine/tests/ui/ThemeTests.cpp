@@ -158,6 +158,8 @@ TEST(ThemeTest, RejectsBrokenThemes) {
     }
     EXPECT_THROW(read(R"({"name": "x", "surfaces": {"panel": {"image": "a.png", "pieces": [[0,0,4,4],[4,0,0.5,4],[8,0,4,4],[0,4,4,4],[4,4,4,4],[8,4,4,4],[0,8,4,4],[4,8,4,4],[8,8,4,4]], "fill": "tile"}}})"), std::invalid_argument);
     EXPECT_NO_THROW(read(R"({"name": "x", "surfaces": {"panel": {"image": "a.png", "slice": [0, 4], "fill": "tile", "scale": 0.5}}})"));
+    EXPECT_THROW(read(R"({"name": "x", "surfaces": {"panel": {"image": "a.png", "scale": 0}}})"), std::invalid_argument);
+    EXPECT_THROW(read(R"({"name": "x", "surfaces": {"panel": {"image": "a.png", "slice": 9}}})"), std::invalid_argument);
 
     Theme theme = Theme::dark();
     EXPECT_THROW(theme.setMetric(Theme::Metric::ItemSpacing, -2.0F), std::invalid_argument);

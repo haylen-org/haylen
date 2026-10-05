@@ -620,7 +620,7 @@ print(table.concat(graphics2d.textEffectNames(), ', '))
 
 ### graphics2d.drawNineSlice(slice, rect, color, order, borderScale)
 
-Draws the nine-slice `slice` so it fills `rect`. Corners keep their size, edges stretch or tile along one axis and the center fills the rest. The argument `color` defaults to white. The argument `borderScale` multiplies the border sizes and defaults to 1, and one that is not positive raises `A nine-slice border scale must be positive.` When `rect` is smaller than the borders, they shrink to fit.
+Draws the nine-slice `slice` so it fills `rect`. Corners keep their size, edges stretch or tile along their length and the center fills the rest, and every piece samples only its own texels, so linear filtering never bleeds the gaps of an atlas into a frame. The argument `color` defaults to white. The argument `borderScale` multiplies the border sizes and defaults to 1, and one that is not positive raises `A nine-slice border scale must be positive.` When `rect` is narrower or shorter than the borders of an axis, they shrink in proportion until they meet, and a `rect` without a positive width and height draws nothing. The [rendering guide](../rendering.md#nine-slices) gives every rule, and [`slice:layout`](#slicelayoutrect-borderscale) returns the quads a draw makes.
 
 ```lua
 local assets = require('haylen.assets')
@@ -1004,7 +1004,7 @@ Creates a `NineSlice`. Give either `borders`, which cut `source` into nine regio
 | `pieces` | table | none | Nine `Rect` values, row by row from the top-left corner to the bottom-right corner. |
 | `fill` | string | `'stretch'` | The value `'stretch'` stretches the edges and the center. The value `'tile'` repeats them at their pixel size times the `borderScale` of the draw. |
 
-Errors: `a nine-slice needs exactly nine pieces`, `borders need left, top, right and bottom`, and a `fill` other than `'stretch'` or `'tile'` raises an error that contains `unknown value 'name'`.
+Errors: `a nine-slice needs exactly nine pieces`, `borders need left, top, right and bottom`, `The borders of a nine-slice cannot be negative.`, `The borders of a nine-slice must fit inside its source rectangle, with the left and right borders at most its width and the top and bottom borders at most its height.`, and a `fill` other than `'stretch'` or `'tile'` raises an error that contains `unknown value 'name'`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -1982,7 +1982,7 @@ A `NineSlice` is a scalable frame made of nine texture regions. The functions `g
 | `texture` | Texture | read and write | Texture the regions come from. |
 | `pieces` | table | read and write | The nine source `Rect` values, row by row from the top-left corner. Writing needs exactly nine, otherwise it raises `a nine-slice needs exactly nine pieces`. |
 | `fill` | string | read and write | `'stretch'` or `'tile'`. |
-| `borders` | table | read | Border sizes as `{left, top, right, bottom}`, taken from the corner pieces, in the form `graphics2d.newNineSlice` accepts. |
+| `borders` | table | read | Border sizes as `{left, top, right, bottom}`, in the form `graphics2d.newNineSlice` accepts: the width of the widest piece of each side column and the height of the tallest piece of each side row. |
 | `valid` | boolean | read | The value is `true` when the nine-slice has a texture. |
 
 ```lua
@@ -1994,6 +1994,20 @@ print(table.concat(panel.borders, ', '), panel.fill, #panel.pieces, panel.pieces
 panel.fill = 'tile'
 local wide = graphics2d.newNineSlice(panel.texture, {borders = panel.borders, fill = panel.fill})
 print(wide.valid)
+```
+
+### slice:layout(rect, borderScale)
+
+Returns the quads that `graphics2d.drawNineSlice` draws for `rect` and `borderScale`, which defaults to 1, as a list of `{area = Rect, source = Rect}`, where `area` is the part of `rect` a quad covers and `source` the region of the texture it shows in pixels. An app that draws frames its own way, such as a custom GUI library or a frame of meshes, takes the same layout. A `rect` without a positive width and height returns an empty list, and a scale that is not positive raises `A nine-slice border scale must be positive.`
+
+```lua
+local assets = require('haylen.assets')
+local graphics2d = require('haylen.graphics2d')
+
+local panel = graphics2d.newNineSlice(assets.texture('ui/panel.png', {filter = 'linear'}), {borders = {16, 16, 16, 16}, fill = 'tile'})
+for _, patch in ipairs(panel:layout({0, 0, 300, 120}, 0.5)) do
+    print(patch.area.x, patch.area.width, patch.source.x, patch.source.width)
+end
 ```
 
 ## Material

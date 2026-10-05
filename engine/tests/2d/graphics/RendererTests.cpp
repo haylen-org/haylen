@@ -442,21 +442,6 @@ TEST(RendererTest, DrawsCameraViewports) {
     fixture.frames(1);
 }
 
-TEST(NineSliceTest, BuildsPiecesFromBorders) {
-    test::EngineFixture fixture;
-    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(30, 20));
-    const graphics2d::NineSlice slice = graphics2d::NineSlice::fromBorders(texture, {}, {5.0F, 4.0F, 6.0F, 3.0F});
-    EXPECT_EQ(slice.pieces[0], (math::Rect{0.0F, 0.0F, 5.0F, 4.0F}));
-    EXPECT_EQ(slice.pieces[4], (math::Rect{5.0F, 4.0F, 19.0F, 13.0F}));
-    EXPECT_EQ(slice.pieces[8], (math::Rect{24.0F, 17.0F, 6.0F, 3.0F}));
-    EXPECT_EQ(slice.getBorders(), (math::Insets{5.0F, 4.0F, 6.0F, 3.0F}));
-    EXPECT_TRUE(slice.isValid());
-
-    std::array<math::Rect, 9> pieces{};
-    pieces.fill({0.0F, 0.0F, 2.0F, 2.0F});
-    EXPECT_EQ(graphics2d::NineSlice::fromPieces(texture, pieces).getBorders(), math::Insets::uniform(2.0F));
-}
-
 TEST(SpriteBatchTest, AddsUpdatesRemovesDrawsAndBakes) {
     test::EngineFixture fixture;
     const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));

@@ -1,8 +1,12 @@
 #include "ui/Surfaces.hpp"
 
-#include <algorithm>
-#include <array>
+#include <utility>
+#include <vector>
 
+#include "haylen/2d/graphics/NineSlice.hpp"
+#include "haylen/2d/graphics/Renderer.hpp"
+#include "haylen/2d/graphics/SpriteInstance.hpp"
+#include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Context.hpp"
 #include "ui/ImGuiConverter.hpp"
 
@@ -17,51 +21,35 @@ void Surfaces::drawPiece(ImDrawList& list, ImTextureRef texture, const math::Rec
     list.AddImage(texture, ImGuiConverter::toImVec2(destination.getMin()), ImGuiConverter::toImVec2(destination.getMax()), uvMin, uvMax, color);
 }
 
-void Surfaces::drawTiledPiece(ImDrawList& list, ImTextureRef texture, const math::Rect& destination, const math::Rect& source, math::Vec2 textureSize, float scale, ImU32 color) {
-    const math::Vec2 tile{source.width * scale, source.height * scale};
-    if (tile.x <= 0.0F || tile.y <= 0.0F) {
-        return;
-    }
-    for (float y = destination.y; y < destination.getBottom(); y += tile.y) {
-        const float height = std::min(tile.y, destination.getBottom() - y);
-        for (float x = destination.x; x < destination.getRight(); x += tile.x) {
-            const float width = std::min(tile.x, destination.getRight() - x);
-            const math::Rect cut{source.x, source.y, source.width * width / tile.x, source.height * height / tile.y};
-            drawPiece(list, texture, {x, y, width, height}, cut, textureSize, color);
-        }
-    }
-}
-
+// The frame draws through the 2D renderer at its place among the ImGui draws of the window, so its pieces lay out and sample like every other nine-slice, and the transform of the node moves them like the vertices around them.
 void Surfaces::drawNineSlice(Context& context, const Theme::Image& image, const math::Rect& bounds, math::Color fill) {
-    const graphics::Texture& texture = image.slice.texture;
-    if (!texture.isValid() || bounds.width <= 0.0F || bounds.height <= 0.0F) {
+    if (!image.slice.isValid() || bounds.isEmpty()) {
         return;
     }
 
-    // Borders keep their scaled size unless the bounds are too small for both sides, and then they shrink together.
-    const std::array<math::Rect, 9>& pieces = image.slice.pieces;
-    math::Insets borders{pieces[3].width * image.scale, pieces[1].height * image.scale, pieces[5].width * image.scale, pieces[7].height * image.scale};
-    const float shrinkX = borders.getHorizontal() > bounds.width ? bounds.width / borders.getHorizontal() : 1.0F;
-    const float shrinkY = borders.getVertical() > bounds.height ? bounds.height / borders.getVertical() : 1.0F;
-    borders = {borders.left * shrinkX, borders.top * shrinkY, borders.right * shrinkX, borders.bottom * shrinkY};
-
-    const std::array<float, 4> xs{bounds.x, bounds.x + borders.left, bounds.getRight() - borders.right, bounds.getRight()};
-    const std::array<float, 4> ys{bounds.y, bounds.y + borders.top, bounds.getBottom() - borders.bottom, bounds.getBottom()};
-    const ImTextureRef reference = context.getTextureReference(texture);
-    const ImU32 color = ImGuiConverter::toImU32(image.colorize ? image.tint * fill : image.tint);
-    ImDrawList& list = *ImGui::GetWindowDrawList();
-    for (std::size_t row = 0; row < 3; ++row) {
-        for (std::size_t column = 0; column < 3; ++column) {
-            const math::Rect destination = math::Rect::fromMinMax({xs[column], ys[row]}, {xs[column + 1], ys[row + 1]});
-            const math::Rect& source = pieces[row * 3 + column];
-            const bool stretchedEdge = row == 1 || column == 1;
-            if (image.slice.fill == graphics2d::NineSlice::Fill::Tile && stretchedEdge) {
-                drawTiledPiece(list, reference, destination, source, texture.getSize(), image.scale, color);
-            } else {
-                drawPiece(list, reference, destination, source, texture.getSize(), color);
-            }
-        }
+    std::vector<graphics2d::NineSlice::Patch> patches;
+    image.slice.layout(bounds, image.scale, patches);
+    const Context::Reshape shape = context.getReshape();
+    const math::Color tinted = (image.colorize ? image.tint * fill : image.tint) * shape.color;
+    const math::Color color = tinted.withAlpha(tinted.a * ImGui::GetStyle().Alpha);
+    std::vector<graphics2d::SpriteInstance> sprites;
+    sprites.reserve(patches.size());
+    for (const graphics2d::NineSlice::Patch& patch : patches) {
+        sprites.push_back({.position = patch.area.getMin() * shape.scale + shape.offset, .size = patch.area.getSize() * shape.scale, .source = patch.source, .pivot = {}, .color = color});
     }
+
+    // The command of the callback carries the texture of the frame, so the draw list of the window tells which image it shows where, like its other commands.
+    ImDrawList& list = *ImGui::GetWindowDrawList();
+    list.PushTexture(context.getTextureReference(image.slice.texture));
+    // clang-format off
+    context.getBackend().addRenderCallback([texture = image.slice.texture, sprites = std::move(sprites)](graphics2d::Renderer& renderer, math::Vec2 offset) mutable {
+        for (graphics2d::SpriteInstance& sprite : sprites) {
+            sprite.position += offset;
+        }
+        renderer.drawBatch(texture, sprites);
+    });
+    // clang-format on
+    list.PopTexture();
 }
 
 void Surfaces::draw(Context& context, Theme::Surface role, const math::Rect& bounds, math::Color fill, std::optional<math::Color> border, float radius) {

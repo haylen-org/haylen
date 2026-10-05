@@ -94,13 +94,17 @@ SpriteAtlas SpriteAtlas::parse(const Document& document, graphics::Texture image
             continue;
         }
 
-        // The bounds of a slice key are relative to the frame the key names, which sits somewhere in the packed texture.
-        const math::Rect frame = atlas.frames.at(atlas.frameOrder.at(key.value("frame", std::size_t{0}))).source;
+        // The bounds of a slice key are relative to the untrimmed canvas of the frame the key names, whose trimmed pixels sit somewhere in the packed texture.
+        const std::string name = slice.at("name").get<std::string>();
+        const SpriteFrame& frame = atlas.frames.at(atlas.frameOrder.at(key.value("frame", std::size_t{0})));
         const math::Rect bounds = readRect(key.at("bounds"));
         const math::Rect center = readRect(key.at("center"));
-        const math::Rect source{frame.x + bounds.x, frame.y + bounds.y, bounds.width, bounds.height};
+        if (!math::Rect{frame.offset.x, frame.offset.y, frame.source.width, frame.source.height}.contains(bounds)) {
+            throw std::invalid_argument("The slice \"" + name + "\" reaches past the pixels its frame keeps in the atlas. Keep the slice inside the opaque pixels of the frame or export the atlas without trimming.");
+        }
+        const math::Rect source{frame.source.x - frame.offset.x + bounds.x, frame.source.y - frame.offset.y + bounds.y, bounds.width, bounds.height};
         const math::Insets borders{.left = center.x, .top = center.y, .right = bounds.width - center.getRight(), .bottom = bounds.height - center.getBottom()};
-        atlas.slices.insert_or_assign(slice.at("name").get<std::string>(), graphics2d::NineSlice::fromBorders(atlas.texture, source, borders));
+        atlas.slices.insert_or_assign(name, graphics2d::NineSlice::fromBorders(atlas.texture, source, borders));
     }
     return atlas;
 }

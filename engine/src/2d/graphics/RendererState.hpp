@@ -105,6 +105,10 @@ struct RendererState {
     std::vector<std::shared_ptr<MaterialResource>> retainedMaterials;
     std::unordered_set<const void*> retainedSet;
 
+    // Reused by the draws that build their instances or nine-slice patches before recording them, so drawing allocates nothing once they have grown.
+    std::vector<GpuInstance> scratchInstances;
+    std::vector<NineSlice::Patch> patches;
+
     sg_buffer instanceBuffer{};
     std::size_t instanceCapacity = 0;
     sg_buffer vertexBuffer{};

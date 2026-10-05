@@ -38,8 +38,25 @@ int NineSliceLua::isValid(lua_State* L) {
     return 1;
 }
 
+// Returns the quads `drawNineSlice` draws for an area with `slice:layout(rect, borderScale)`, each as `{area = rect, source = rect}`.
+int NineSliceLua::layout(lua_State* L) {
+    const NineSlice& slice = lua::Userdata::check<NineSlice>(L, 1);
+    std::vector<NineSlice::Patch> patches;
+    slice.layout(lua::Stack::read<math::Rect>(L, 2), static_cast<float>(luaL_optnumber(L, 3, 1.0)), patches);
+    lua_createtable(L, static_cast<int>(patches.size()), 0);
+    for (std::size_t index = 0; index < patches.size(); ++index) {
+        lua_createtable(L, 0, 2);
+        lua::Stack::push(L, patches[index].area);
+        lua_setfield(L, -2, "area");
+        lua::Stack::push(L, patches[index].source);
+        lua_setfield(L, -2, "source");
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
+    return 1;
+}
+
 void NineSliceLua::install(lua_State* L) {
-    lua::ClassBuilder<NineSlice>(L).field<&NineSlice::texture>("texture").property("pieces", &getPieces, &lua::Binding::native<&setPieces>).field<&NineSlice::fill>("fill").property("borders", &getBorders).property("valid", &isValid).install();
+    lua::ClassBuilder<NineSlice>(L).field<&NineSlice::texture>("texture").property("pieces", &getPieces, &lua::Binding::native<&setPieces>).field<&NineSlice::fill>("fill").property("borders", &getBorders).property("valid", &isValid).function("layout", &lua::Binding::native<&layout>).install();
 }
 
 } // namespace haylen::graphics2d

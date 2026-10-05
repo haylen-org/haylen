@@ -29,6 +29,7 @@ out vec4 color;
 out vec4 haylen_flash;
 out vec3 haylen_text_style;
 out vec2 haylen_transform;
+out vec4 haylen_source;
 out float haylen_output_premultiply;
 
 // Decodes a two's complement byte of the instance parameters.
@@ -46,6 +47,7 @@ void main() {
     haylen_flash = vec4(0.0);
     haylen_text_style = vec3(0.0);
     haylen_transform = vec2(0.0);
+    haylen_source = vec4(0.0);
 #else
     // The skew leans the quad around its pivot, which glyphs place on their baseline, before the rotation turns it.
     float angle = instance_rotation;
@@ -76,6 +78,7 @@ void main() {
     }
 
     uv = mix(instance_uv.xy, instance_uv.zw, texel);
+    haylen_source = vec4(min(instance_uv.xy, instance_uv.zw), max(instance_uv.xy, instance_uv.zw));
     color = instance_color;
     haylen_flash = instance_flash;
     haylen_transform = vec2(angle, flags);
@@ -92,6 +95,7 @@ in vec4 color;
 in vec4 haylen_flash;
 in vec3 haylen_text_style;
 in vec2 haylen_transform;
+in vec4 haylen_source;
 
 @include_block haylen_output
 
@@ -99,16 +103,27 @@ vec4 haylen_texture(vec2 point) {
     return texture(sampler2D(sprite_texture, sprite_sampler), point);
 }
 
-// The texture color multiplied by the draw color and mixed toward the flash color by its alpha.
+// Moves a point inside the texels of the source rectangle of the draw, so filtering never reads the texels around it, such as the neighbours of a region of an atlas or the borders of a stretched nine-slice center. Meshes keep their texture coordinates.
+vec2 haylen_inside(vec2 point) {
+#ifdef HAYLEN_MESH
+    return point;
+#else
+    vec2 margin = 0.5 / vec2(textureSize(sampler2D(sprite_texture, sprite_sampler), 0));
+    vec2 middle = (haylen_source.xy + haylen_source.zw) * 0.5;
+    return clamp(point, min(haylen_source.xy + margin, middle), max(haylen_source.zw - margin, middle));
+#endif
+}
+
+// The texture color inside the source of the draw multiplied by the draw color and mixed toward the flash color by its alpha.
 vec4 haylen_sprite(vec2 point) {
-    vec4 shaded = haylen_texture(point) * color;
+    vec4 shaded = haylen_texture(haylen_inside(point)) * color;
     shaded.rgb = mix(shaded.rgb, haylen_flash.rgb, haylen_flash.a);
     return shaded;
 }
 
 // A glyph of a text atlas, which stores a signed distance field whose edge is 0.5, filled with the draw color and outlined with the flash color. The weight moves the edge outward, which makes the glyph bolder, and the softness widens the edge into a blur for soft shadows and glows. The fill covers the outline in premultiplied colors, so each coverage counts once, and the result returns to straight colors.
 vec4 haylen_text(vec2 point) {
-    float distance = haylen_texture(point).r;
+    float distance = haylen_texture(haylen_inside(point)).r;
     float edge = 0.5 - haylen_text_style.y;
     float smoothing = max(fwidth(distance) * 0.7, 0.0001) + haylen_text_style.z;
     float fill = smoothstep(edge - smoothing, edge + smoothing, distance);

@@ -1687,7 +1687,7 @@ Checklist:
 
 #### AL. Render, texto, shaders e web
 
-- [ ] Nine-patch: achar por que pega pedaços errados em alguns casos (bordas, escala, atlas, filtragem) e corrigir, com testes.
+- [x] Nine-patch: achar por que pega pedaços errados em alguns casos (bordas, escala, atlas, filtragem) e corrigir, com testes. Cada quad amostra só os texels da sua região, meio texel para dentro, então a filtragem linear não lê os vizinhos do atlas nem as bordas de um centro esticado. Os slices do Aseprite seguem o recorte do frame, as bordas maiores que a área encolhem até se encontrar, os tiles terminam sem lascas e a UI desenha com o mesmo layout, que o Lua lê com `slice:layout`. O teste do projeto de testes vem depois.
 - [ ] Texto com contorno: corrigir o contorno que fica embolado e revisar todo o texto (fontes, SDF, contorno, sombra, rich text, alinhamento, quebra, idiomas) para tudo funcionar com perfeição.
 - [ ] Shaders: medir os cerca de 2 segundos até a cena com shader aparecer e corrigir a causa (compilação, carga, criação do pipeline), com o tempo documentado.
 - [ ] SVG de alto desempenho: conferir o suporte atual (rasterização, cache, escala) e completar o que faltar, com testes e um teste no projeto de testes.

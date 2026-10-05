@@ -83,7 +83,8 @@ The file `haylen/material.glsl` holds what every material shares. It defines the
 | `color` | `in vec4` | Color of the draw, or of the mesh vertex. |
 | `sprite_texture`, `sprite_sampler` | texture and sampler at binding 0 | The texture of the draw, the image before the pass in post-processing, and the atlas of text. |
 | `haylen_texture(vec2 point)` | `vec4` | The texture of the draw at a point. |
-| `haylen_sprite(vec2 point)` | `vec4` | The texture color times the draw color, mixed toward the flash color of the sprite, which is how sprites and meshes draw. |
+| `haylen_inside(vec2 point)` | `vec2` | The point moved inside the texels of the source rectangle of the draw, half a texel in from its sides, so filtering never reads the texels around the region of a sprite, such as its neighbours in an atlas. Meshes keep their point. |
+| `haylen_sprite(vec2 point)` | `vec4` | The texture color inside the source of the draw times the draw color, mixed toward the flash color of the sprite, which is how sprites and meshes draw. |
 | `haylen_text(vec2 point)` | `vec4` | The glyph at a point with its fill and outline, which is how text draws. |
 | `haylen_base(vec2 point)` | `vec4` | The function `haylen_text` in the text programs and `haylen_sprite` in the others, the color the draw has without the material. |
 | `haylen_world_normal(vec3 tangent)` | `vec2` | Turns a tangent-space normal with y pointing up the image into the world through the flips and rotation of the sprite. |

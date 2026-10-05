@@ -25,9 +25,6 @@ class Surfaces final {
 
   private:
     static void drawPiece(ImDrawList& list, ImTextureRef texture, const math::Rect& destination, const math::Rect& source, math::Vec2 textureSize, ImU32 color);
-
-    // Repeats a piece at its scaled size across the destination, cutting the last copies so they end at the edge.
-    static void drawTiledPiece(ImDrawList& list, ImTextureRef texture, const math::Rect& destination, const math::Rect& source, math::Vec2 textureSize, float scale, ImU32 color);
 };
 
 } // namespace haylen::ui

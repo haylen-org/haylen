@@ -14,6 +14,7 @@ class NineSliceLua final {
     static int setPieces(lua_State* L);
     static int getBorders(lua_State* L);
     static int isValid(lua_State* L);
+    static int layout(lua_State* L);
 };
 
 } // namespace haylen::graphics2d
