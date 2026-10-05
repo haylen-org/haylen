@@ -668,6 +668,7 @@ O ciclo de dia e noite é mecânica de jogo e fica no Tiny Island. O grupo I da 
 - [x] **Nine-slice e imagens** em qualquer superfície via tema, com bordas esticadas ou repetidas, escala, padding e tinta. Com `colorize`, a imagem é multiplicada pela cor do componente (por exemplo o tom de uma barra), e o preenchimento de barras e sliders fica dentro do padding da superfície `track`. Controles de toque têm superfícies próprias (`stickBase`, `stickKnob`, `touchButton` e `touchButtonPressed`).
 - [~] **Texto na web** funcionando (validado no Chrome desktop), com pedido de teclado virtual ao host. Falta validar em navegadores mobile.
 - [x] **Ordem de desenho do scroll**: o conteúdo de um scroll e o corpo de um diálogo desenham no lugar do nó na árvore, pelo `Backend::beginChild`, então os nós que vêm depois, como uma folha ancorada, e as GUIs de camadas acima cobrem o que rola.
+- [x] **Filho do scroll**: o filho estica pelo outro eixo dentro dos limites de tamanho dele, como `maxWidth` e `maxHeight`, ou fica no `align` que ele pede, então um formulário com largura máxima mantém essa largura numa tela larga.
 
 ### 8.14 Plataforma
 

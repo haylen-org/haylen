@@ -30,6 +30,8 @@ class Scroll final : public Component {
     static constexpr float kSnapDelay = 0.12F;
     static constexpr float kSnapSpeed = 14.0F;
 
+    [[nodiscard]] math::Rect place(Context& context, Component& child, math::Vec2 size, const math::Rect& view) const;
+
     // A finger that drags the content takes over from the control it pressed, so a list of buttons still scrolls on a touch screen.
     void followFinger();
     void settle(Context& context, float position, float limit);

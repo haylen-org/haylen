@@ -95,6 +95,24 @@ TEST_F(LayoutTest, GrowsANodeWhoseFixedSizeIsZero) {
     EXPECT_FALSE(getBounds(*gui, "inside").isEmpty());
 }
 
+// A scroll stretches its child across the other axis within the size bounds of the child, such as a form that keeps its maximum width on a wide screen, or places it at the alignment the child sets.
+TEST_F(LayoutTest, BoundsAndAlignsTheChildOfAScroll) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "column", "gap": 0, "children": [
+        {"kind": "scroll", "id": "page", "width": 1000, "height": 200, "children": [{"kind": "column", "id": "form", "maxWidth": 600, "children": [{"kind": "spacer", "height": 50}]}]},
+        {"kind": "scroll", "id": "centered", "width": 1000, "height": 200, "children": [{"kind": "column", "id": "card", "width": 400, "align": "center", "children": [{"kind": "spacer", "height": 50}]}]},
+        {"kind": "scroll", "id": "shelf", "axis": "horizontal", "scrollbar": false, "width": 300, "height": 200, "children": [{"kind": "row", "id": "covers", "maxHeight": 120, "children": [{"kind": "spacer", "width": 800, "height": 100}]}]},
+        {"kind": "scroll", "id": "strip", "axis": "horizontal", "scrollbar": false, "width": 300, "height": 200, "children": [{"kind": "row", "id": "tall", "children": [{"kind": "spacer", "width": 800, "height": 100}]}]}
+    ]})");
+    // clang-format on
+    frames(2);
+    EXPECT_EQ(getBounds(*gui, "form"), (math::Rect{getBounds(*gui, "page").x, getBounds(*gui, "page").y, 600.0F, 50.0F}));
+    EXPECT_EQ(getBounds(*gui, "card").x, getBounds(*gui, "centered").x + 300.0F);
+    EXPECT_EQ(getBounds(*gui, "card").width, 400.0F);
+    EXPECT_EQ(getBounds(*gui, "covers").height, 120.0F);
+    EXPECT_EQ(getBounds(*gui, "tall").height, 200.0F);
+}
+
 TEST_F(LayoutTest, KeepsMarginsAroundChildrenAndPaddingInsideContainers) {
     // clang-format off
     auto gui = mount(R"({"kind": "column", "padding": [5, 6, 7, 8], "gap": 4, "children": [

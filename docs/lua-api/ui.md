@@ -1320,7 +1320,7 @@ Shows one child in an area that scrolls up and down or sideways. The mouse wheel
 | `axis` | string | `'vertical'` | Either `'vertical'` or `'horizontal'`, which lays the child out at its full width and scrolls it sideways, also with the mouse wheel. |
 | `snap` | boolean | `false` | Settles, once the player lets go, on the start of the item of the child nearest to the scrolled position, such as a card of a row. |
 
-A horizontal scroll lays its child out at the width of its content. Kinds that otherwise fill the width they get, `list`, `tree`, `table`, `accordion`, `carousel` and `splitter`, take the width of their content there, and grids and splitters give each of their children its own. An axis other than `'vertical'` or `'horizontal'` raises `The property "axis" of a "scroll" must be "vertical" or "horizontal".`.
+Across the other axis the child stretches over the scroll within its size bounds, so a column with a `maxWidth` keeps that width on a wide screen, or sits at the `align` it sets, such as `'center'`. A horizontal scroll lays its child out at the width of its content. Kinds that otherwise fill the width they get, `list`, `tree`, `table`, `accordion`, `carousel` and `splitter`, take the width of their content there, and grids and splitters give each of their children its own. An axis other than `'vertical'` or `'horizontal'` raises `The property "axis" of a "scroll" must be "vertical" or "horizontal".`.
 
 ```lua
 local ui = require('haylen.ui')

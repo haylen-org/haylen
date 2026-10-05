@@ -75,12 +75,13 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
         if (child != nullptr) {
             const ImVec2 start = ImGui::GetCursorScreenPos();
             const math::Vec2 origin = math::Vec2{start.x, start.y} + (box.getMin() - bounds.getMin());
-            const math::Rect area = horizontal ? math::Rect{origin.x, origin.y, size.x, box.height} : math::Rect{origin.x, origin.y, box.width, size.y};
+            const math::Rect view{origin.x, origin.y, box.width, box.height};
+            const math::Rect area = place(context, *child, size, view);
             ImGui::PushClipRect(ImGuiConverter::toImVec2(box.getMin()), ImGuiConverter::toImVec2(box.getMax()), true);
             child->draw(context, area);
             ImGui::PopClipRect();
             ImGui::SetCursorScreenPos(start);
-            ImGui::Dummy({area.getRight() - start.x, area.getBottom() - start.y});
+            ImGui::Dummy(horizontal ? ImVec2{area.getRight() - start.x, view.getBottom() - start.y} : ImVec2{view.getRight() - start.x, area.getBottom() - start.y});
 
             // The items of the child are the places snapping settles on, measured from the start of the content.
             for (const auto& item : child->getChildren()) {
@@ -106,6 +107,17 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
         }
     }
     ImGui::EndChild();
+}
+
+// The child spans the scrolling axis at its measured length and stretches across the other axis within its size bounds, or sits there at the alignment it sets.
+math::Rect Scroll::place(Context& context, Component& child, math::Vec2 size, const math::Rect& view) const {
+    const Alignment alignment = child.getCommon().align.value_or(Alignment::Stretch);
+    if (horizontal) {
+        const float height = alignment == Alignment::Stretch ? std::min(child.clampHeight(view.height), view.height) : std::min(size.y, view.height);
+        return {view.x, std::floor(align(alignment, view.y, view.height, height)), size.x, height};
+    }
+    const float width = alignment == Alignment::Stretch ? std::min(child.clampWidth(view.width), view.width) : std::min(size.x, view.width);
+    return {std::floor(context.alignHorizontally(alignment, view.x, view.width, width)), view.y, width, size.y};
 }
 
 void Scroll::followFinger() {
