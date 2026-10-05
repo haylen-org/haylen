@@ -563,6 +563,7 @@ add_library(haylen_platform STATIC
   src/platform/android/AndroidDeviceInfo.cpp
   src/platform/android/AndroidDialogJson.cpp
   src/platform/android/AndroidGamepadStates.cpp
+  src/platform/android/AndroidGlesVersion.cpp
   src/platform/linux/LinuxFilePattern.cpp
   src/platform/linux/LinuxSystemReader.cpp
   src/platform/sokol/MemoryWarning.cpp

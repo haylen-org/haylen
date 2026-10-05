@@ -116,6 +116,10 @@ A game that the player keeps next to their work should not take the keyboard whe
 
 The option `showInTaskbar = false` makes the window a tool window without a taskbar button on Windows and Linux, and an accessory app without a Dock icon or a menu bar on macOS. A macOS app packaged by `haylen.py` or `haylen_add_app` with `showInTaskbar` set to `false` in `app.json` also declares `LSUIElement`, so its Dock icon never appears, not even while it starts. A window out of the taskbar needs a way to quit, such as a button of the UI.
 
+## Menus and quitting
+
+On macOS the player, the apps of the Apple template and C++ apps are regular apps with a Dock icon that come to the front when they start, with the standard main menu: the app menu with About, Hide (Command+H), Hide Others (Option+Command+H), Show All and Quit (Command+Q), and the Window menu with Minimize (Command+M), Zoom and Enter Full Screen, which the system enables only while the window allows each. Quit in the menu, Command+Q, Quit in the Dock and logging out close the window as its close button does, so the app hears `appQuitRequested` and stops through the [lifecycle](lifecycle.md) of the engine. On Windows, Alt+F4 closes the window the same way, and on Linux the shortcut of the window manager does, usually Alt+F4. An app without a taskbar button has neither a Dock icon nor a menu bar on macOS, and a window that refuses the focus never receives these shortcuts, so such apps quit through their own UI, such as a button that calls `haylen.quit()`.
+
 ## The taskbar strip
 
 A strip above the taskbar puts these together:

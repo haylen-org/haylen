@@ -22,6 +22,7 @@
 #elif defined(__ANDROID__)
 #include "platform/android/AndroidActivity.hpp"
 #include "platform/android/AndroidGamepads.hpp"
+#include "platform/android/AndroidGlesVersion.hpp"
 #include "platform/android/AndroidTextInput.hpp"
 #include "platform/android/JavaBridge.hpp"
 #elif defined(__EMSCRIPTEN__)
@@ -75,10 +76,10 @@ sapp_desc SokolRuntime::describe(int argc, char* argv[]) {
     desc.clipboard_size = 64 * 1024;
     desc.logger.func = slog_func;
     runtime.describeDesktop(desc, config.window);
-#if defined(SOKOL_GLES3)
-    // The shaders of the engine are GLSL ES 3.00, so OpenGL ES 3.0 is enough, while sokol_app asks Android for 3.1, which emulators and some devices lack.
-    desc.gl.major_version = 3;
-    desc.gl.minor_version = 0;
+#if defined(__ANDROID__)
+    const AndroidGlesVersion gles = AndroidGlesVersion::read();
+    desc.gl.major_version = gles.major;
+    desc.gl.minor_version = gles.minor;
 #endif
 #if defined(__EMSCRIPTEN__)
     runtime.canvas = WebPage::getCanvasSelector();

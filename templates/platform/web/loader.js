@@ -145,9 +145,15 @@ var Module = {
     } else {
         document.body.style.background = config.splash.background;
     }
-    logo.src = config.splash.logo;
+    // The splash and the icon of the page show the logo from a single download.
     logo.alt = config.name;
-    document.querySelector("link[rel=icon]").href = config.splash.logo;
+    fetch(config.splash.logo)
+        .then((response) => response.blob())
+        .then((blob) => {
+            const source = URL.createObjectURL(blob);
+            logo.src = source;
+            document.querySelector("link[rel=icon]").href = source;
+        });
 
     if (typeof WebAssembly !== "object") {
         fail("This browser does not support WebAssembly, which this app needs.");
@@ -178,7 +184,13 @@ var Module = {
             ]),
         ]);
         status.textContent = "Starting " + config.name;
-        Module.wasmBinary = wasm;
+        // The runtime compiles the bytes downloaded here, so the browser fetches the WebAssembly module only once.
+        Module.instantiateWasm = (imports, receive) => {
+            WebAssembly.instantiate(wasm, imports).then(
+                (result) => receive(result.instance),
+                (error) => fail("The app could not be loaded.", String(error.message || error))
+            );
+        };
         Module.haylen.packageData = archive;
         loadPlugins(plugins);
         await loadScript(backend + "/haylen.js");

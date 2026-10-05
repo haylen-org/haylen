@@ -8,6 +8,7 @@
 #import <UIKit/UIKit.h>
 #endif
 
+#include <algorithm>
 #include <string>
 #include <utility>
 
@@ -148,13 +149,15 @@ void Services::updateWindow() {
 math::Insets Services::getSafeAreaInsets() {
     const float scale = sapp_dpi_scale();
 #if TARGET_OS_OSX
-    // Only fullscreen windows reach the camera housing of notched displays.
+    // The camera housing of a notched display covers the top of its screen, which only a fullscreen window or a borderless window placed there reaches, and a fullscreen window that the system keeps below the housing does not.
     NSWindow* window = (__bridge NSWindow*)sapp_macos_get_window();
-    if (window == nil || (window.styleMask & NSWindowStyleMaskFullScreen) == 0) {
+    NSScreen* screen = window.screen;
+    if (screen == nil || screen.safeAreaInsets.top <= 0.0) {
         return {};
     }
-    const NSEdgeInsets insets = window.screen.safeAreaInsets;
-    return {.left = static_cast<float>(insets.left) * scale, .top = static_cast<float>(insets.top) * scale, .right = static_cast<float>(insets.right) * scale, .bottom = static_cast<float>(insets.bottom) * scale};
+    const NSRect content = [window contentRectForFrameRect:window.frame];
+    const CGFloat covered = NSMaxY(content) - (NSMaxY(screen.frame) - screen.safeAreaInsets.top);
+    return {.top = static_cast<float>(std::clamp<CGFloat>(covered, 0.0, NSHeight(content))) * scale};
 #else
     UIWindow* window = (__bridge UIWindow*)sapp_ios_get_window();
     if (window == nil) {

@@ -162,6 +162,19 @@ using haylen::platform::AppleTheme;
     }
 }
 
+// UIKit warns about a delegate that receives the fetches of remote notifications in an app without the background mode for them, so the delegate takes those fetches only when the `Info.plist` of the app declares `remote-notification` in `UIBackgroundModes`.
+- (BOOL)respondsToSelector:(SEL)selector {
+    if (selector == @selector(application:didReceiveRemoteNotification:fetchCompletionHandler:)) {
+        return HaylenSceneDelegate.fetchesRemoteNotifications;
+    }
+    return [super respondsToSelector:selector];
+}
+
++ (BOOL)fetchesRemoteNotifications {
+    static const BOOL declared = [[NSBundle.mainBundle objectForInfoDictionaryKey:@"UIBackgroundModes"] containsObject:@"remote-notification"];
+    return declared;
+}
+
 // Each plugin answers with its result as a bit, and new data outweighs a failure, which outweighs no data.
 - (void)application:(UIApplication*)application didReceiveRemoteNotification:(NSDictionary*)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
     // clang-format off

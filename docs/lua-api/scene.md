@@ -750,7 +750,7 @@ The `event` hook receives one table per platform event. Its `type` field names t
 | `'resized'` | None. |
 | `'suspended'`, `'resumed'` | None. The app went to the background or came back. |
 | `'focusGained'`, `'focusLost'` | None. |
-| `'quitRequested'` | None. The player asked to close the window. |
+| `'quitRequested'` | None. The player asked to close the window, or to quit the app through its menu, Command+Q or the Dock on macOS. |
 | `'lowMemory'` | None. The platform is short of memory. |
 | `'textEdited'` | `field`, the id of the text field of the UI, and `text`, what its native field holds now. The UI applies these edits itself. |
 | `'textAction'` | `field` and `action`: `'submit'`, `'next'`, `'cancel'` or `'dismissed'`, which the UI applies to its text field itself. |

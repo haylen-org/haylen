@@ -75,6 +75,7 @@ set(HAYLEN_TEST_SOURCES
   platform/AndroidDeviceInfoTests.cpp
   platform/AndroidDialogJsonTests.cpp
   platform/AndroidGamepadStatesTests.cpp
+  platform/AndroidGlesVersionTests.cpp
   platform/DialogsTests.cpp
   platform/LinuxFilePatternTests.cpp
   platform/LinuxSystemReaderTests.cpp

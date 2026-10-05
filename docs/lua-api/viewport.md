@@ -51,7 +51,7 @@ require('haylen.scene').push({
 
 ### viewport.safeRect()
 
-Returns the visible design region that is not covered by notches, rounded corners, system bars or the native views of plugins that reserve an edge, such as a banner ad, as a `Rect`. Each edge of the safe area of the device grows to the largest reservation on it, which [`viewport.reservedInsets`](#viewportreservedinsets) reports. Place buttons and important HUD text inside it, and UI anchored to the safe area follows it on its own. The `windowSafeAreaChanged` event of [`haylen.events`](events.md#engine-events) announces every change with the new rectangle.
+Returns the visible design region that is not covered by notches, rounded corners, system bars or the native views of plugins that reserve an edge, such as a banner ad, as a `Rect`. Each edge of the safe area of the device grows to the largest reservation on it, which [`viewport.reservedInsets`](#viewportreservedinsets) reports. Where nothing covers the window, the safe area is the whole visible region: each platform reports only what lies over the app, which is the camera housing of a notched Mac for a fullscreen or borderless window that reaches it, the window insets of iOS, iPadOS and Mac Catalyst, the cutout and the system bars that stay visible on Android, the part of the CSS `env(safe-area-inset-*)` insets that reaches into the canvas on the web, and nothing on Windows and Linux. Place buttons and important HUD text inside it, and UI anchored to the safe area follows it on its own. The `windowSafeAreaChanged` event of [`haylen.events`](events.md#engine-events) announces every change with the new rectangle.
 
 ```lua
 local viewport = require('haylen.viewport')

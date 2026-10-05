@@ -974,7 +974,7 @@ Module.haylen = Module.haylen || {};
         return "#" + CSS.escape(Module.canvas.id);
     };
 
-    // Reads `env(safe-area-inset-*)` through a hidden probe and returns the insets in framebuffer pixels.
+    // Reads `env(safe-area-inset-*)` of the viewport through a hidden probe and returns the part of each inset that covers the canvas, in framebuffer pixels, so a canvas away from the edges that a cutout or the bars of the system cover has none.
     haylen.safeAreaInsets = function () {
         let probe = document.getElementById("haylen-safe-area");
         if (!probe) {
@@ -984,8 +984,15 @@ Module.haylen = Module.haylen || {};
             document.body.appendChild(probe);
         }
         const style = getComputedStyle(probe);
-        const ratio = window.devicePixelRatio || 1;
-        return [style.paddingLeft, style.paddingTop, style.paddingRight, style.paddingBottom].map((value) => (parseFloat(value) || 0) * ratio);
+        const box = Module.canvas.getBoundingClientRect();
+        const scale = box.width > 0 ? Module.canvas.width / box.width : 0;
+        const covered = [
+            parseFloat(style.paddingLeft) - box.left,
+            parseFloat(style.paddingTop) - box.top,
+            parseFloat(style.paddingRight) - (window.innerWidth - box.right),
+            parseFloat(style.paddingBottom) - (window.innerHeight - box.bottom),
+        ];
+        return covered.map((inset) => Math.max(0, inset || 0) * scale);
     };
 
     haylen.persist = function () {

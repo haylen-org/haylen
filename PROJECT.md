@@ -1473,7 +1473,7 @@ Decisões, a partir da pesquisa das bibliotecas de diálogos, notificações e w
 
 **Correções de plataforma achadas na revisão**
 
-- [ ] macOS mínimo 14.0: o Sokol chama `-[NSView displayLinkWithTarget:selector:]` sem conferir a versão, uma API do macOS 14, então o app não abre no macOS 13. Subir o mínimo do macOS no `haylen.py`, no template e no CMake, e registrar na documentação. O Mac Catalyst usa o caminho do UIKit e fica como está.
+- [x] macOS mínimo 14.0: o Sokol chama `-[NSView displayLinkWithTarget:selector:]` sem conferir a versão, uma API do macOS 14, então o app não abre no macOS 13. Subir o mínimo do macOS no `haylen.py`, no template e no CMake, e registrar na documentação. O Mac Catalyst usa o caminho do UIKit e fica como está. Conferido com `vtool` no player, no app macOS do template e no app C++ (minos 14.0), com o Mac Catalyst no mínimo dele.
 - [x] Manifesto de aplicativo no Windows (Common Controls 6, que o `TaskDialogIndirect` pede) no player e nos apps do `haylen_add_app`. O arquivo `engine/platform/windows/haylen.manifest` escolhe os Common Controls 6 e o UTF-8 como página de código, e entra no player, nos apps do `haylen_add_app` e no SDK.
 
 **Testes, samples e documentação**
@@ -1620,7 +1620,7 @@ Checklist:
   - Web: os arquivos do desenvolvedor copiados como estão para a saída, com os gerados ao lado.
   - Os templates são reescritos para esse modelo, com `.gitignore`, e o `App.xcodeproj` do template é gerado de novo.
 - [x] Comandos `haylen.py prepare`, `xcodegen`, `check`, `platform add` e `platform diff`, com a proteção do `project.pbxproj` editado à mão: o `run` mantém um projeto editado quando nada de onde ele é gerado mudou, e para com a explicação quando mudou. A regra de decisão é testada em `tools/test_haylen.py`, que o CI roda.
-- [~] O `Info.plist` com `UIApplicationSupportsMultipleScenes` verdadeiro no iOS, conferido no iPad e no Mac Catalyst, onde a tela SwiftUI de um plugin abre numa janela própria. No Mac Catalyst essa janela continua visível depois de um cancelamento ou de um timeout da tela, o que falta corrigir.
+- [x] O `Info.plist` com `UIApplicationSupportsMultipleScenes` verdadeiro no iOS, conferido no iPad e no Mac Catalyst, onde a tela SwiftUI de um plugin abre numa janela própria. No Mac Catalyst essa janela continua visível depois de um cancelamento ou de um timeout da tela, o que falta corrigir. Toda saída da tela (resposta, falha, cancelamento ou timeout) destrói a cena da janela com `requestSceneSessionDestruction`, conferido por dentro do app no Mac Catalyst: a janela que parecia continuar visível era a lista do window server com a sessão do Mac bloqueada. Faltam o botão Close e o iPad.
 - [x] Manifesto de privacidade: a auditoria em `docs/distribution.md` achou timestamps de arquivos (`C617.1`), tempo desde o boot (`35F9.1`) e espaço em disco (`E174.1`) na engine e nas dependências, o `PrivacyInfo.xcprivacy` da engine vai com os artefatos e com os apps C++, o `plugin.json` ganhou `apple.privacy`, e o `haylen/PrivacyInfo.xcprivacy` junta a engine, os plugins e o arquivo do desenvolvedor.
 - [x] O código nativo dos samples vira plugins locais (`platform-sample`, `native-sample`, `native-test` e `google-sign-in`, este com o parâmetro `clientId`), e nenhum sample guarda projeto de plataforma.
 - [~] Conferência de ponta a ponta: conferida no simulador iOS, no Mac Catalyst, no simulador tvOS, no app macOS, no emulador Android e na web, com as edições do desenvolvedor preservadas. Sem a linha `templates:` o alvo não compila, porque os modelos de alvo trazem a própria engine, o que a documentação explica. Faltam o harness de samples sem janela e o `run-cpp` do sample de C++ em Debug no emulador Android, que para numa asserção do OpenGL do Sokol.
@@ -1689,7 +1689,7 @@ Checklist:
 - [ ] Shaders: medir os cerca de 2 segundos até a cena com shader aparecer e corrigir a causa (compilação, carga, criação do pipeline), com o tempo documentado.
 - [ ] SVG de alto desempenho: conferir o suporte atual (rasterização, cache, escala) e completar o que faltar, com testes e um teste no projeto de testes.
 - [ ] Transição entre cenas sem piscar a outra cena.
-- [ ] Web: cada arquivo baixado uma vez só (`haylen.wasm`, `splash.png`), escolha automática entre WebGPU e WebGL2 com escolha manual, tudo funcionando nos dois, e as limitações reais escritas nos testes.
+- [x] Web: cada arquivo baixado uma vez só (`haylen.wasm`, `splash.png`), escolha automática entre WebGPU e WebGL2 com escolha manual, tudo funcionando nos dois, e as limitações reais escritas nos testes. O loader entrega o `haylen.wasm` por `Module.instantiateWasm` e baixa o logo uma vez para o splash e o ícone, e cada arquivo aparece uma vez no log de rede do Chrome, com WebGPU e WebGL2. A escolha automática e o `?backend=` foram conferidos, e os 184 testes dos samples de gráficos e de plataforma rodaram nos dois sem limitação real.
 - [ ] Recolorir sprites por máscara: um sprite base branco e uma máscara de cores (amarelo, vermelho, verde e azul) em que cada canal recebe uma cor escolhida, como recurso da engine (material ou shader pronto) e como teste.
 - [ ] Debug ligável em tempo de execução: corpos e juntas de física, FPS e tempos, contorno de sprites e de nós da cena com nomes, e a árvore da cena, por atalho e por API.
 
@@ -1710,10 +1710,13 @@ Checklist:
 
 #### AO. Plataformas, ciclo de vida e integração nativa
 
-- [ ] macOS: o player e os apps aparecem como app (ícone no Dock, ativação, janela na frente), com o menu padrão do app (Sobre, Esconder, Sair com Command+Q, menu Janela) no player, nos apps do template e nos apps C++, e o equivalente nos outros desktops.
-- [ ] iOS: sem o aviso de `remote-notification`: o runtime só responde ao fetch de notificações remotas quando o app declara o modo em segundo plano.
+- [~] macOS: o player e os apps aparecem como app (ícone no Dock, ativação, janela na frente), com o menu padrão do app (Sobre, Esconder, Sair com Command+Q, menu Janela) no player, nos apps do template e nos apps C++, e o equivalente nos outros desktops. Menu padrão (app, Janela, tela cheia) e a saída pelo caminho da engine no player, no app do template e no app C++, conferidos com a acessibilidade e o log. Faltam a ativação e a janela na frente com a sessão desbloqueada, e os atalhos do Windows e do Linux só foram lidos no código.
+- [x] No Android, o contexto pede a versão do OpenGL ES que o aparelho declara (`AndroidGlesVersion`), e a asserção `_sg_gl_init_limits` do modo Debug não acontece mais no emulador, que declara 3.1.
+- [x] Editar um patch reconfigura as árvores de build, conferido numa cópia.
+- [~] A soltura de uma tecla chega ao app quando um campo de texto ganha o foco: conferido na web antes e depois da correção e no macOS por um teste do AppKit. O Mac Catalyst lê o teclado pelo `GCKeyboard`. Faltam o iOS e o tvOS com teclado físico.
+- [x] iOS: sem o aviso de `remote-notification`: o runtime só responde ao fetch de notificações remotas quando o app declara o modo em segundo plano. Conferido no simulador com um app de teste: sem o modo declarado não há aviso, e com ele o repasse aos plugins continua.
 - [ ] Aparelhos de duas telas e dobráveis: dobra e postura (Jetpack WindowManager no Android), área de cada tela, eventos de mudança, e o equivalente onde a plataforma informa, com testes.
-- [ ] Safe area igual à janela quando o aparelho não tem recorte, em todas as plataformas, com testes.
+- [x] Safe area igual à janela quando o aparelho não tem recorte, em todas as plataformas, com testes. A web passou a contar só a parte do recorte que cobre o canvas, o macOS só a sobreposição real com o notch, e os apps C++ do iOS escondem a barra de status, com o teste `SafeAreaTest.KeepsTheWholeWindowSafeWhereNothingCoversIt`. O Android já estava certo. Falta conferir o iPad.
 - [ ] Todos os ciclos de vida e eventos funcionando em todas as plataformas, conferidos um por um (app, janela, foco, teclado, rede, memória, orientação, áudio, tela, controles, cena e objetos), com uma tabela por plataforma na documentação.
 - [ ] Splash de iOS e Android trocável por `app.json` e pelo projeto (cores, logo, ícones e tempo), conferida em retrato e paisagem.
 - [ ] Templates com a bridge pronta nos dois sentidos para qualquer SDK, e o plugin de demonstração simulando câmera com imagem e áudio, localização, mapa, abrir outro app, compartilhar, compras e anúncios falsos, login falso e o que mais der, em cada plataforma.

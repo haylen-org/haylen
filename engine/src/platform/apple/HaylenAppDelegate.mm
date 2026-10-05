@@ -13,8 +13,9 @@ using haylen::platform::AppleTheme;
 
 @implementation HaylenAppDelegate
 
-// Plugins load before launching ends, so their SDKs set up in time, and the notification center gets its delegate as early, so the notification that launched the app reaches the plugins. Apps without plugins, such as the desktop player, and apps that do not link UserNotifications leave the notification center alone. The appearance of the app follows the one of the system, whose every change the delegate observes.
+// The main menu comes first, as an app that loads it from a nib has it. Plugins load before launching ends, so their SDKs set up in time, and the notification center gets its delegate as early, so the notification that launched the app reaches the plugins. Apps without plugins, such as the desktop player, and apps that do not link UserNotifications leave the notification center alone. The appearance of the app follows the one of the system, whose every change the delegate observes.
 - (void)applicationWillFinishLaunching:(NSNotification*)notification {
+    [self installMainMenu];
     [NSApp addObserver:self forKeyPath:@"effectiveAppearance" options:NSKeyValueObservingOptionInitial context:nil];
     ApplePlugins::load();
     AppleNotifications::observe(self);
@@ -34,6 +35,44 @@ using haylen::platform::AppleTheme;
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin applicationDidFinishLaunching:notification];
     }
+}
+
+// The standard menus of a Mac app: the app menu with About, Hide, Hide Others, Show All and Quit, and the Window menu with Minimize, Zoom and Enter Full Screen, which AppKit enables only while the window allows each. An app without a Dock icon has no menu bar, so it quits through its own UI.
+- (void)installMainMenu {
+    NSString* name = NSRunningApplication.currentApplication.localizedName;
+    NSMenu* appMenu = [[NSMenu alloc] initWithTitle:name];
+    [appMenu addItemWithTitle:[@"About " stringByAppendingString:name] action:@selector(orderFrontStandardAboutPanel:) keyEquivalent:@""];
+    [appMenu addItem:NSMenuItem.separatorItem];
+    [appMenu addItemWithTitle:[@"Hide " stringByAppendingString:name] action:@selector(hide:) keyEquivalent:@"h"];
+    [appMenu addItemWithTitle:@"Hide Others" action:@selector(hideOtherApplications:) keyEquivalent:@"h"].keyEquivalentModifierMask = NSEventModifierFlagOption | NSEventModifierFlagCommand;
+    [appMenu addItemWithTitle:@"Show All" action:@selector(unhideAllApplications:) keyEquivalent:@""];
+    [appMenu addItem:NSMenuItem.separatorItem];
+    [appMenu addItemWithTitle:[@"Quit " stringByAppendingString:name] action:@selector(terminate:) keyEquivalent:@"q"];
+
+    NSMenu* windowMenu = [[NSMenu alloc] initWithTitle:@"Window"];
+    [windowMenu addItemWithTitle:@"Minimize" action:@selector(performMiniaturize:) keyEquivalent:@"m"];
+    [windowMenu addItemWithTitle:@"Zoom" action:@selector(performZoom:) keyEquivalent:@""];
+    [windowMenu addItem:NSMenuItem.separatorItem];
+    [windowMenu addItemWithTitle:@"Enter Full Screen" action:@selector(toggleFullScreen:) keyEquivalent:@"f"].keyEquivalentModifierMask = NSEventModifierFlagControl | NSEventModifierFlagCommand;
+
+    NSMenu* mainMenu = [NSMenu new];
+    for (NSMenu* menu in @[ appMenu, windowMenu ]) {
+        [mainMenu addItemWithTitle:menu.title action:nil keyEquivalent:@""].submenu = menu;
+    }
+    NSApp.mainMenu = mainMenu;
+    NSApp.windowsMenu = windowMenu;
+
+    // The app draws in one window, which never gathers others into tabs.
+    NSWindow.allowsAutomaticWindowTabbing = NO;
+}
+
+// Quit in the menu, Command+Q, the Dock and the system close the window as its close button does, so the app hears `appQuitRequested` and then shuts down like an app that quits itself, whether its frames run or not.
+- (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication*)sender {
+    NSWindow* window = (__bridge NSWindow*)sapp_macos_get_window();
+    if ([window.delegate windowShouldClose:window]) {
+        [window close];
+    }
+    return NSTerminateNow;
 }
 
 - (void)application:(NSApplication*)application openURLs:(NSArray<NSURL*>*)urls {

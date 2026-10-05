@@ -14,6 +14,7 @@
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/math/Insets.hpp"
 #include "haylen/math/Rect.hpp"
+#include "haylen/math/Vec2.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/SafeAreaSimulation.hpp"
 #include "platform/NativeViews.hpp"
@@ -28,6 +29,20 @@ class AppCoverTest : public ::testing::Test {
         for (const std::string_view name : {core::LifecycleEvent::kAppActive, core::LifecycleEvent::kAppInactive, core::LifecycleEvent::kAppBackground}) {
             engine.getEvents().on(name, [&log, name](core::EventBus::Event&) { log.emplace_back(name); });
         }
+    }
+};
+
+class SafeAreaTest : public ::testing::Test {
+  protected:
+    static std::string app(std::string_view scaling) {
+        return R"({"name": "Test App", "identifier": "dev.haylen.tests", "design": {"width": 960, "height": 540, "scaling": ")" + std::string(scaling) + R"("}})";
+    }
+
+    static void expectSameRect(const math::Rect& actual, const math::Rect& expected) {
+        EXPECT_NEAR(actual.x, expected.x, 0.01F);
+        EXPECT_NEAR(actual.y, expected.y, 0.01F);
+        EXPECT_NEAR(actual.width, expected.width, 0.01F);
+        EXPECT_NEAR(actual.height, expected.height, 0.01F);
     }
 };
 
@@ -104,6 +119,31 @@ TEST(ReservedInsetsTest, ReadsTheReservationsFromLuaInDesignUnits) {
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("local insets = require('haylen.viewport').reservedInsets() return table.concat({insets.left, insets.top, insets.right, insets.bottom}, ',')"), "10.0,0.0,0.0,50.0");
     EXPECT_EQ(fixture.lua("local safe = require('haylen.viewport').safeRect() return table.concat({safe.x, safe.y, safe.width, safe.height}, ',')"), "10.0,0.0,950.0,490.0");
+}
+
+TEST_F(SafeAreaTest, KeepsTheWholeWindowSafeWhereNothingCoversIt) {
+    // A window without a cutout, rounded corners or bars of the system over it has no device insets, so every scaling keeps its whole visible area safe, letterboxed or not.
+    for (const std::string_view scaling : {"fit", "fill", "stretch", "expand", "pixelPerfect"}) {
+        test::EngineFixture fixture({{"app.json", app(scaling)}});
+        for (const math::Vec2 size : {math::Vec2{1920.0F, 1080.0F}, math::Vec2{2400.0F, 1080.0F}, math::Vec2{1080.0F, 1920.0F}}) {
+            fixture.host().resize(size);
+            fixture.frames(1);
+            expectSameRect(fixture.engine().getViewport().getSafeRect(), fixture.engine().getViewport().getVisibleRect());
+        }
+    }
+
+    // Insets of the device that fall in the bars of a letterboxed design leave the design whole, and a reservation takes only its own edge.
+    test::EngineFixture fixture({{"app.json", app("fit")}});
+    fixture.host().resize({2400.0F, 1080.0F});
+    fixture.host().setSafeAreaInsets({.left = 120.0F, .right = 200.0F});
+    fixture.host().getNativeViews().reserveInsets("banner", {.bottom = 108.0F});
+    fixture.frames(1);
+    expectSameRect(fixture.engine().getViewport().getSafeRect(), {0.0F, 0.0F, 960.0F, 486.0F});
+
+    // An inset that reaches past the bars covers the design from there.
+    fixture.host().setSafeAreaInsets({.left = 300.0F});
+    fixture.frames(1);
+    expectSameRect(fixture.engine().getViewport().getSafeRect(), {30.0F, 0.0F, 930.0F, 486.0F});
 }
 
 TEST_F(AppCoverTest, MakesTheAppInactiveHaltedAndMutedWhileCovered) {

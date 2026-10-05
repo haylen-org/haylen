@@ -315,7 +315,7 @@ A page defines `Module` before it loads the runtime script. `templates/platform/
 | `Module.canvas` | The canvas the app draws into. It must be a canvas element with an `id`. The runtime follows its size with a `ResizeObserver`, so the page layout decides the size. |
 | `Module.haylen.packageData` | Optional bytes of a zipped package, as an `ArrayBuffer` or a `Uint8Array`, which the runtime plays instead of the bundled package. The web loader downloads `app.zip` with a progress bar and hands it over this way. |
 | `Module.haylen.packageUrl` | Optional URL of a zipped package, used when `packageData` is not set. The runtime downloads it before the app starts and runs it instead of the bundled package, and a failed download reaches `onError`. |
-| `Module.wasmBinary` | Optional bytes of `haylen.wasm` that the page already downloaded, which Emscripten instantiates instead of fetching the file. |
+| `Module.instantiateWasm` | Optional function that receives the imports of the module and a callback, instantiates `haylen.wasm` itself and passes the instance to the callback, so a page that already downloaded the bytes, such as the web loader, keeps Emscripten from fetching the file again. |
 | `Module.preRun` | Functions that run before the app starts. Page handlers of the platform bridge are registered here. |
 
 A page never turns on development mode. A custom shell passed as `WEB_SHELL` keeps the `{{{ SCRIPT }}}` placeholder where Emscripten inserts the runtime script, and where `run-cpp` inserts the backend picker. The runtime mounts IndexedDB at `/persistent` for user data and loads it before the app starts, together with what the browser tells about the device through `navigator.userAgentData` and the Battery Status API, which answer asynchronously.
