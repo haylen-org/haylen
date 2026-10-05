@@ -1,17 +1,17 @@
 {
     "texture": "../textures/soft_dot.png",
     "filter": "linear",
-    "rate": 14,
-    "maxParticles": 48,
-    "lifetime": [1.0, 1.6],
-    "speed": [40, 80],
+    "rate": 36,
+    "maxParticles": 96,
+    "lifetime": [0.9, 1.4],
+    "speed": [50, 90],
     "direction": -1.5708,
-    "spread": 0.3,
-    "turbulence": {"strength": 40, "frequency": 0.02, "speed": 1},
-    "startSize": [40, 60],
-    "endSize": [90, 120],
-    "colors": ["#00FFFFFF", "#80FFFFFF", "#00FFFFFF"],
+    "spread": 0.35,
+    "turbulence": {"strength": 60, "frequency": 0.03, "speed": 1.5},
+    "startSize": [16, 24],
+    "endSize": [36, 52],
+    "colors": ["#00FFFFFF", "#C0FFFFFF", "#00FFFFFF"],
     "shape": "circle",
-    "shapeSize": [20, 0],
-    "distortion": 0.5
+    "shapeSize": [24, 0],
+    "distortion": 1
 }
