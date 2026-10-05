@@ -4,7 +4,6 @@
 
 #include "haylen/plugins/AssetsPlugin.hpp"
 #include "haylen/plugins/DebugPlugin.hpp"
-#include "haylen/plugins/HotReloadPlugin.hpp"
 #include "haylen/plugins/LocalizationPlugin.hpp"
 #include "haylen/plugins/NetPlugin.hpp"
 #include "haylen/plugins/PluginRegistry.hpp"
@@ -16,6 +15,7 @@
 #include "plugins/AudioPlugin.hpp"
 #include "plugins/CorePlugin.hpp"
 #include "plugins/Graphics2DPlugin.hpp"
+#include "plugins/HotReloadPlugin.hpp"
 #include "plugins/InputPlugin.hpp"
 #include "plugins/JobsPlugin.hpp"
 #include "plugins/NativePlugin.hpp"
@@ -47,7 +47,7 @@ void BuiltInPlugins::registerAll(PluginRegistry& registry, const platform::Host&
     registry.add(std::make_unique<LocalizationPlugin>());
     registry.add(std::make_unique<StoragePlugin>());
     registry.add(std::make_unique<DebugPlugin>());
-    registry.add(std::make_unique<HotReloadPlugin>());
+    registry.add(std::make_unique<HotReloadPlugin>(host.getDevelopmentSession()));
     registry.add(std::make_unique<UiPlugin>());
     registry.add(std::make_unique<NetPlugin>(host.getNetworkRequirement()));
     registry.add(std::make_unique<PlatformPlugin>());

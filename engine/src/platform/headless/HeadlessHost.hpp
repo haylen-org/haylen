@@ -4,12 +4,15 @@
 #include <cstddef>
 #include <filesystem>
 #include <functional>
+#include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "haylen/input/Input.hpp"
 #include "haylen/math/Insets.hpp"
+#include "platform/DevelopmentSession.hpp"
 #include "platform/Host.hpp"
 #include "platform/NativeViews.hpp"
 #include "platform/SystemState.hpp"
@@ -208,6 +211,14 @@ class HeadlessHost final : public Host {
     void cancelScreen(std::uint64_t id) override {
         cancelledScreens.push_back(id);
     }
+    [[nodiscard]] DevelopmentSession* getDevelopmentSession() const noexcept override {
+        return developmentSession.get();
+    }
+
+    // Plays the apps of this host in development from now on, with a session that scans the package folder when one is given, the way the player does with "--dev".
+    void enableDevelopment(std::optional<std::filesystem::path> folder = std::nullopt) {
+        developmentSession = std::make_unique<DevelopmentSession>(std::move(folder));
+    }
 
     void resize(math::Vec2 size) noexcept {
         framebufferSize = size;
@@ -347,6 +358,7 @@ class HeadlessHost final : public Host {
     std::vector<std::uint64_t> cancelledDialogs;
     std::vector<ScreenRequest> screenRequests;
     std::vector<std::uint64_t> cancelledScreens;
+    std::unique_ptr<DevelopmentSession> developmentSession;
     bool opensUrls = true;
 
     // The headless desktop is one 1920 by 1080 monitor whose work area leaves a 40 point taskbar at the bottom, with the window at the top left corner of it.

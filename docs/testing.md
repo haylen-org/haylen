@@ -34,6 +34,7 @@ The class `platform::HeadlessHost`, in `engine/src/platform/headless/`, implemen
 - The method `setNativePlugins(ids)` sets the plugins whose native part the headless platform reports, and `getErrorReports()` returns the JSON report of every error that stopped an app, in order.
 - The method `setSystemInfo(info)` sets what the headless system reports to the apps that start afterwards, which starts as a desktop of the operating system the tests run on with the cores of the machine, and the graphics device names no GPU on the dummy backend. The methods `setTheme(theme)` and `setBattery(battery)` change the theme and the battery from any thread, the way platform services report them, and the engine publishes the change at its next frame.
 - The method `openUrl` records the urls in `getOpenedUrls()` and answers at once that an app took them, or that none did after `setOpensUrls(false)`, and `getVibrations()` returns the seconds of every vibration.
+- The method `enableDevelopment(folder)` gives the host a `platform::DevelopmentSession`, so the engines created afterwards run in development, and with a folder the session scans it for changes the way the player does. It outlives the engines a test restarts on the host, like the session of the runtime.
 - The method `setNetworkRequirement(sentence)` sets what the network errors of the apps that start afterwards end with, the way Android reports an app without the permission `INTERNET`.
 - The method `getDialogRequests()` returns the id, the `DialogRequest` and the folder for copies of every native dialog the engine asked for, and `getCancelledDialogs()` the ids of the dialogs it closed after a cancel, a timeout or the end of its app. A test answers a dialog with `engine.getDialogs().resolve(id, result)`, or from another thread through `DialogRelay::resolve`, the way platform code does.
 - The method `getScreenRequests()` returns the `ScreenRequest` of every screen of a plugin that the engine handed to the platform, once it covered the app, and `getCancelledScreens()` the ids of the screens it gave up. A test ends a screen from any thread through `ScreenRelay::finish(id, ok, resultJson, buffers)`, and restores the end of a screen of an earlier process through `ScreenRelay::restore`, the way platform code does. The screen that shows belongs to the process, like the covers of native libraries, so a test ends the screens it opened.
@@ -46,9 +47,10 @@ The class `haylen::test::EngineFixture` is a running engine on the headless host
 
 ```cpp
 explicit EngineFixture(std::map<std::string, std::string> files = {}, std::unique_ptr<core::Application> application = nullptr);
+EngineFixture(std::map<std::string, std::string> files, std::unique_ptr<core::Application> application, Options options);
 ```
 
-The argument `files` maps package paths to their contents. The fixture adds an `app.json` with the name `Test App` and the identifier `dev.haylen.tests` and an empty `source/main.lua` unless the map has them, reads the configuration, creates the engine with a `lua::Application`, or with the given application, and starts it. User data goes to a temporary folder that is removed afterwards.
+The argument `files` maps package paths to their contents. The fixture adds an `app.json` with the name `Test App` and the identifier `dev.haylen.tests` and an empty `source/main.lua` unless the map has them, reads the configuration, creates the engine with a `lua::Application`, or with the given application, and starts it. User data goes to a temporary folder that is removed afterwards. The option `development` of `EngineFixture::Options` turns on development on the host before the engine starts, the way the player does with `--dev`, so a test queues changed paths with `fixture.host().getDevelopmentSession()->addChanges(paths)` after it changed them with `fixture.package().setFile`, and the next frame applies them.
 
 | Member | Purpose |
 | --- | --- |

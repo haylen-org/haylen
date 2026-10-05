@@ -1,10 +1,14 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
+#include <memory>
+#include <optional>
 #include <vector>
 
 #include "haylen/math/Insets.hpp"
 #include "haylen/platform/Event.hpp"
+#include "platform/DevelopmentSession.hpp"
 #include "platform/Host.hpp"
 #include "platform/KeyboardTranslator.hpp"
 #include "platform/NativeViews.hpp"
@@ -77,6 +81,14 @@ class SokolHost final : public Host {
     void cancelDialog(std::uint64_t id) override;
     void openScreen(const ScreenRequest& request) override;
     void cancelScreen(std::uint64_t id) override;
+    [[nodiscard]] DevelopmentSession* getDevelopmentSession() const noexcept override {
+        return developmentSession.get();
+    }
+
+    // Plays the apps of this runtime in development, with a session that scans the package folder when the app plays from one.
+    void enableDevelopment(std::optional<std::filesystem::path> folder) {
+        developmentSession = std::make_unique<DevelopmentSession>(std::move(folder));
+    }
 
     // The native views of plugins over the app, which the platform services update from any thread. They belong to the process, so a reservation or a cover outlives the apps that restart under it.
     [[nodiscard]] static NativeViews& getNativeViews() noexcept;
@@ -102,6 +114,7 @@ class SokolHost final : public Host {
     void applyStyle();
 
     KeyboardTranslator keyboard;
+    std::unique_ptr<DevelopmentSession> developmentSession;
     std::uint64_t keyboardRevision = 0;
     WindowStyle style;
     Passthrough passthrough = Passthrough::Off;

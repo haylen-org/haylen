@@ -24,6 +24,8 @@
 
 namespace haylen::platform {
 
+class DevelopmentSession;
+
 // Boundary between the portable engine and a platform. The Sokol runtime implements it for real devices and the headless host implements it for tests.
 class Host : public Window {
   public:
@@ -78,6 +80,9 @@ class Host : public Window {
 
     // Dismisses a screen that the app gave up, where the platform can, which still ends it through `ScreenRelay::finish` once it is gone.
     virtual void cancelScreen(std::uint64_t id) = 0;
+
+    // The development session of a process that plays an app while it is being made, or null for every app that ships. It outlives the apps that restart on the host.
+    [[nodiscard]] virtual DevelopmentSession* getDevelopmentSession() const noexcept = 0;
 };
 
 } // namespace haylen::platform

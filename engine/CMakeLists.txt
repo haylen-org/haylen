@@ -368,6 +368,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/Battery.cpp
   src/platform/Bridge.cpp
   src/platform/BridgeRelay.cpp
+  src/platform/DevelopmentSession.cpp
   src/platform/DialogRelay.cpp
   src/platform/DialogRequest.cpp
   src/platform/DialogResult.cpp

@@ -46,16 +46,18 @@ sapp_desc SokolRuntime::describe(int argc, char* argv[]) {
     process.current = std::make_unique<SokolRuntime>();
     SokolRuntime& runtime = *process.current;
     const LaunchOptions options = parseLaunchOptions(argc, argv);
-    runtime.development = options.development;
     for (const std::string& folder : options.nativeFolders) {
         NativeLibraries::addSearchFolder(folder);
     }
     // clang-format off
     runtime.pending = load([&options] {
         return options.package.empty() ? Services::openBundledPackage() : std::shared_ptr<io::Package>(io::Package::open(options.package));
-    }, runtime.development);
+    });
     // clang-format on
     runtime.package = runtime.pending.package;
+    if (options.development) {
+        runtime.host.enableDevelopment(runtime.package->getDirectory());
+    }
 
     const core::AppConfig& config = runtime.pending.config;
     sapp_desc desc{};
@@ -119,8 +121,7 @@ void SokolRuntime::restart(std::shared_ptr<io::Package> source) {
 }
 
 void SokolRuntime::restart(const std::function<std::shared_ptr<io::Package>()>& open) {
-    SokolRuntime& runtime = getCurrent();
-    runtime.replace(load(open, runtime.development));
+    getCurrent().replace(load(open));
 }
 
 void SokolRuntime::restart() {
@@ -190,13 +191,12 @@ SokolRuntime::LaunchOptions SokolRuntime::parseLaunchOptions(int argc, char* arg
     return options;
 }
 
-// Reads the package configuration and creates the application, turning any failure into an app that shows the error. A package that opened stays with the failed app, so a restart tries it again. Apps in development reload when their files change.
-SokolRuntime::App SokolRuntime::load(const std::function<std::shared_ptr<io::Package>()>& open, bool hotReload) {
+// Reads the package configuration and creates the application, turning any failure into an app that shows the error. A package that opened stays with the failed app, so a restart tries it again, and an app in development restarts as soon as its files change.
+SokolRuntime::App SokolRuntime::load(const std::function<std::shared_ptr<io::Package>()>& open) {
     App app;
     try {
         app.package = open();
         app.config = core::AppConfig::fromPackage(*app.package);
-        app.config.hotReload = hotReload;
         app.application = core::Application::create();
         app.application->configure(app.config);
     } catch (const std::exception& error) {

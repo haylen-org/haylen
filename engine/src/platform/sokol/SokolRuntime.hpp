@@ -90,8 +90,7 @@ class SokolRuntime final {
         bool playing = true;
     };
 
-    // The command line names the package to play, or none for the bundled one, and --dev turns on development behavior such as hot reload. Shipped apps never pass it.
-    // The package to play, whether it plays in development, and the folders where native.load looks first, such as the one haylen.py builds the libraries of an app into.
+    // The package to play, or none for the bundled one, whether it plays in development, which only --dev turns on and shipped apps never pass, and the folders where native.load looks first, such as the one haylen.py builds the libraries of an app into.
     struct LaunchOptions {
         std::string package;
         bool development = false;
@@ -108,7 +107,7 @@ class SokolRuntime final {
     [[nodiscard]] static Process& getProcess() noexcept;
     [[nodiscard]] static SokolRuntime& getCurrent() noexcept;
     [[nodiscard]] static LaunchOptions parseLaunchOptions(int argc, char* argv[]);
-    [[nodiscard]] static App load(const std::function<std::shared_ptr<io::Package>()>& open, bool hotReload);
+    [[nodiscard]] static App load(const std::function<std::shared_ptr<io::Package>()>& open);
     [[nodiscard]] static std::vector<Event> takePostedEvents();
 
     static void onInitialize(void* data);
@@ -135,7 +134,6 @@ class SokolRuntime final {
     // The last network state and background state that the platform reported, which every new app hears when it starts, so an app that restarts in the background, such as under the activity of a screen on Android, starts there and draws nothing.
     std::optional<bool> online;
     bool suspended = false;
-    bool development = false;
     bool playing = false;
     bool paused = false;
 

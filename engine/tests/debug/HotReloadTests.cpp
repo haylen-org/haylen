@@ -8,6 +8,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -18,8 +19,9 @@
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/io/PackageWatcher.hpp"
-#include "haylen/plugins/HotReloadPlugin.hpp"
+#include "platform/DevelopmentSession.hpp"
 #include "platform/headless/HeadlessHost.hpp"
+#include "plugins/HotReloadPlugin.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestApplication.hpp"
@@ -73,6 +75,61 @@ TEST_F(PackageWatcherTest, ReportsAddedChangedAndRemovedFiles) {
     EXPECT_TRUE(watcher.scan().empty());
 }
 
+TEST_F(PackageWatcherTest, IgnoresHiddenBackupAndNonLuaSourceFiles) {
+    const test::TemporaryDirectory directory;
+    directory.write("app.json", "{}");
+    directory.write("source/main.lua", "");
+    directory.write("plugins/ads/plugin.json", "{}");
+    io::PackageWatcher watcher(directory.getPath());
+
+    // Editors write swap, backup and lock files next to the file they save, which must never restart the app.
+    directory.write("source/.level.lua.swp", "swap");
+    directory.write("source/level.lua~", "backup");
+    directory.write("source/#level.lua#", "autosave");
+    directory.write("source/level.lua.orig", "merge");
+    directory.write("source/notes.txt", "notes");
+    directory.write("source/.cache/level.lua", "cache");
+    directory.write("content/.cache", "cache");
+    directory.write("content/hero.png.tmp", "half");
+    directory.write("plugins/ads/source/notes.md", "notes");
+    directory.write("source/level.lua", "return {}");
+    directory.write("content/hero.png", "png");
+    directory.write("plugins/ads/source/banner.lua", "return {}");
+    EXPECT_EQ(watcher.scan(), (std::vector<std::string>{"content/hero.png", "plugins/ads/source/banner.lua", "source/level.lua"}));
+
+    EXPECT_TRUE(io::PackageWatcher::isWatched("app.json"));
+    EXPECT_TRUE(io::PackageWatcher::isWatched("plugins/ads/plugin.json"));
+    EXPECT_FALSE(io::PackageWatcher::isWatched("plugins/ads/android/build.gradle.kts"));
+    EXPECT_FALSE(io::PackageWatcher::isWatched("platform/web/index.html"));
+    EXPECT_FALSE(io::PackageWatcher::isWatched("source/.level.lua.swp"));
+}
+
+TEST_F(PackageWatcherTest, WaitsForFilesToSettle) {
+    const test::TemporaryDirectory directory;
+    directory.write("content/level.json", "{}");
+    io::PackageWatcher watcher(directory.getPath());
+
+    // A file that grows while the scan looks at it is still being written, so the scan leaves it for later.
+    std::atomic<bool> writing = true;
+    // clang-format off
+    std::thread writer([&directory, &writing] {
+        std::string content = "{";
+        while (writing) {
+            content.push_back(' ');
+            directory.write("content/level.json", content + "}");
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    });
+    // clang-format on
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    const std::vector<std::string> busy = watcher.scan();
+    writing = false;
+    writer.join();
+    EXPECT_TRUE(busy.empty());
+    EXPECT_EQ(watcher.scan(), (std::vector<std::string>{"content/level.json"}));
+    EXPECT_TRUE(watcher.scan().empty());
+}
+
 TEST_F(AssetReloadTest, UpdatesTexturesInPlaceAndDropsOtherAssets) {
     test::EngineFixture fixture({{"content/hero.png", toText(test::TestFiles::pngImage(4, 4, 0xFF0000FFU))}, {"content/data.json", R"({"level": 1})"}});
     assets::Manager& assets = fixture.engine().getAssets();
@@ -93,13 +150,40 @@ TEST_F(AssetReloadTest, UpdatesTexturesInPlaceAndDropsOtherAssets) {
     EXPECT_THROW((void)assets.reload("hero.png"), std::runtime_error);
 }
 
+// Scans run on the I/O pool, so a watched engine runs frames until what a scan found reached it.
+class WatchedEngine final {
+  public:
+    explicit WatchedEngine(const std::filesystem::path& folder) : host(folder.parent_path() / "data") {
+        host.enableDevelopment(folder);
+        const std::shared_ptr<io::Package> package = io::Package::openDirectory(folder);
+        engine = std::make_unique<core::Engine>(host, package, core::AppConfig::fromPackage(*package), std::make_unique<test::TestApplication>(nullptr));
+        engine->start();
+    }
+
+    [[nodiscard]] core::Engine& get() noexcept {
+        return *engine;
+    }
+
+    bool runUntil(const std::function<bool()>& condition) {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+        while (!condition() && std::chrono::steady_clock::now() < deadline) {
+            engine->frame(0.1);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        return condition();
+    }
+
+  private:
+    platform::HeadlessHost host;
+    std::unique_ptr<core::Engine> engine;
+};
+
 TEST_F(HotReloadPluginTest, RestartsForScriptsAndReloadsAssets) {
     const test::TemporaryDirectory directory;
     directory.write("hot/app.json", R"({"name": "Hot"})");
     directory.write("hot/source/main.lua", "");
     directory.write("hot/content/tile.png", toText(test::TestFiles::pngImage(2, 2, 0xFFFFFFFFU)));
 
-    // The scans run on the I/O pool, so the frames go on until what a scan found reached the engine.
     std::vector<std::string> log;
     std::mutex logMutex;
     // clang-format off
@@ -107,39 +191,24 @@ TEST_F(HotReloadPluginTest, RestartsForScriptsAndReloadsAssets) {
         const std::scoped_lock lock(logMutex);
         log.emplace_back(line);
     });
-    // clang-format on
-
-    platform::HeadlessHost host(directory.getPath() / "data");
-    core::AppConfig config;
-    config.hotReload = true;
-    core::Engine engine(host, io::Package::openDirectory(directory.getPath() / "hot"), config, std::make_unique<test::TestApplication>(nullptr));
-    engine.start();
-    EXPECT_TRUE(engine.getPlugin<plugins::HotReloadPlugin>().isWatching());
-    const graphics::Texture tile = engine.getAssets().texture("tile.png");
-
-    // clang-format off
     const auto logged = [&](std::string_view text) {
         const std::scoped_lock lock(logMutex);
         return std::ranges::any_of(log, [text](const std::string& line) { return line.find(text) != std::string::npos; });
     };
-    const auto runUntil = [&engine](const std::function<bool()>& condition) {
-        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
-        while (!condition() && std::chrono::steady_clock::now() < deadline) {
-            engine.frame(0.1);
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-        return condition();
-    };
     // clang-format on
-    EXPECT_TRUE(runUntil([&] { return logged("for changes."); })) << "The first scan takes the snapshot that changes count from.";
+
+    WatchedEngine watched(directory.getPath() / "hot");
+    core::Engine& engine = watched.get();
+    EXPECT_TRUE(engine.getPlugin<plugins::HotReloadPlugin>().isActive());
+    const graphics::Texture tile = engine.getAssets().texture("tile.png");
     directory.write("hot/content/tile.png", toText(test::TestFiles::pngImage(6, 6, 0xFFFFFFFFU)));
     touch(directory.getPath() / "hot/content/tile.png", 5);
-    EXPECT_TRUE(runUntil([&] { return tile.getWidth() == 6; }));
+    EXPECT_TRUE(watched.runUntil([&] { return tile.getWidth() == 6; }));
     EXPECT_FALSE(engine.isRestartRequested());
 
     directory.write("hot/content/tile.png", "half written");
     touch(directory.getPath() / "hot/content/tile.png", 10);
-    EXPECT_TRUE(runUntil([&] { return logged("tile.png\" could not be reloaded yet"); }));
+    EXPECT_TRUE(watched.runUntil([&] { return logged("tile.png\" could not be reloaded yet"); }));
     EXPECT_EQ(engine.getError(), nullptr);
     EXPECT_EQ(tile.getWidth(), 6);
 
@@ -147,12 +216,12 @@ TEST_F(HotReloadPluginTest, RestartsForScriptsAndReloadsAssets) {
     directory.write("hot/README.md", "Not part of the package.");
     directory.write("hot/content/tile.png", toText(test::TestFiles::pngImage(3, 3, 0xFFFFFFFFU)));
     touch(directory.getPath() / "hot/content/tile.png", 15);
-    EXPECT_TRUE(runUntil([&] { return tile.getWidth() == 3; }));
+    EXPECT_TRUE(watched.runUntil([&] { return tile.getWidth() == 3; }));
     EXPECT_FALSE(engine.isRestartRequested());
 
     directory.write("hot/source/main.lua", "-- edited");
     touch(directory.getPath() / "hot/source/main.lua", 5);
-    EXPECT_TRUE(runUntil([&] { return engine.isRestartRequested(); }));
+    EXPECT_TRUE(watched.runUntil([&] { return engine.isRestartRequested(); }));
     core::Log::removeListener(listener);
 }
 
@@ -162,49 +231,82 @@ TEST_F(HotReloadPluginTest, RestartsWhenTheLuaOfAPluginChanges) {
     directory.write("hot/source/main.lua", "");
     directory.write("hot/plugins/ads/plugin.json", R"({"id": "ads", "version": "1.0.0"})");
     directory.write("hot/plugins/ads/source/init.lua", "return {}");
-
-    std::atomic<int> scans = 0;
-    // clang-format off
-    const std::uint64_t listener = core::Log::addListener([&scans](core::Log::Level, std::string_view line) {
-        if (line.find("for changes.") != std::string_view::npos) {
-            ++scans;
-        }
-    });
-    // clang-format on
-
-    platform::HeadlessHost host(directory.getPath() / "data");
-    const std::shared_ptr<io::Package> package = io::Package::openDirectory(directory.getPath() / "hot");
-    core::AppConfig config = core::AppConfig::fromPackage(*package);
-    config.hotReload = true;
-    core::Engine engine(host, package, config, std::make_unique<test::TestApplication>(nullptr));
-    engine.start();
-
-    // clang-format off
-    const auto runUntil = [&engine](const std::function<bool()>& condition) {
-        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
-        while (!condition() && std::chrono::steady_clock::now() < deadline) {
-            engine.frame(0.1);
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-        return condition();
-    };
-    // clang-format on
-    EXPECT_TRUE(runUntil([&scans] { return scans > 0; }));
+    WatchedEngine watched(directory.getPath() / "hot");
 
     // The native part of a plugin is no Lua, so only the edited module of the plugin restarts the app.
     directory.write("hot/plugins/ads/android/build.gradle.kts", "plugins {}");
     directory.write("hot/plugins/ads/source/init.lua", "return {edited = true}");
     touch(directory.getPath() / "hot/plugins/ads/source/init.lua", 5);
-    EXPECT_TRUE(runUntil([&engine] { return engine.isRestartRequested(); }));
-    core::Log::removeListener(listener);
+    EXPECT_TRUE(watched.runUntil([&watched] { return watched.get().isRestartRequested(); }));
+}
+
+TEST_F(HotReloadPluginTest, IgnoresTheFilesOfEditors) {
+    const test::TemporaryDirectory directory;
+    directory.write("hot/app.json", R"({"name": "Hot"})");
+    directory.write("hot/source/main.lua", "");
+    directory.write("hot/content/tile.png", toText(test::TestFiles::pngImage(2, 2, 0xFFFFFFFFU)));
+    WatchedEngine watched(directory.getPath() / "hot");
+    const graphics::Texture tile = watched.get().getAssets().texture("tile.png");
+
+    // The tile that reloads shows that a scan saw the files the editor wrote before it.
+    directory.write("hot/source/.main.lua.swp", "swap");
+    directory.write("hot/source/main.lua~", "backup");
+    directory.write("hot/source/notes.txt", "notes");
+    directory.write("hot/content/tile.png", toText(test::TestFiles::pngImage(5, 5, 0xFFFFFFFFU)));
+    touch(directory.getPath() / "hot/content/tile.png", 5);
+    EXPECT_TRUE(watched.runUntil([&tile] { return tile.getWidth() == 5; }));
+    EXPECT_FALSE(watched.get().isRestartRequested());
 }
 
 TEST_F(HotReloadPluginTest, StaysIdleForShippedApps) {
     test::EngineFixture fixture;
-    EXPECT_FALSE(fixture.engine().getPlugin<plugins::HotReloadPlugin>().isWatching());
+    EXPECT_FALSE(fixture.engine().getPlugin<plugins::HotReloadPlugin>().isActive());
+    EXPECT_EQ(fixture.host().getDevelopmentSession(), nullptr);
     EXPECT_FALSE(fixture.engine().isRestartRequested());
     fixture.engine().requestRestart();
     EXPECT_TRUE(fixture.engine().isRestartRequested());
+}
+
+TEST_F(HotReloadPluginTest, KeepsChangesThatArriveDuringARestart) {
+    test::EngineFixture fixture({}, nullptr, {.development = true});
+    platform::DevelopmentSession& session = *fixture.host().getDevelopmentSession();
+
+    // The session belongs to the host, so a change queued while the engine is replaced reaches the next engine.
+    fixture.engine().requestRestart();
+    const std::vector<std::string> changed{"app.json"};
+    session.addChanges(changed);
+    fixture.restart();
+    EXPECT_FALSE(fixture.engine().isRestartRequested());
+    fixture.frames(1);
+    EXPECT_TRUE(fixture.engine().isRestartRequested());
+    EXPECT_TRUE(session.takeChanges().empty());
+}
+
+TEST_F(HotReloadPluginTest, RestartsFromAFailedAppWhenAppJsonChanges) {
+    const test::TemporaryDirectory directory;
+    directory.write("broken/app.json", R"({"name": "Broken", "window": {"widht": 100}})");
+    directory.write("broken/source/main.lua", "");
+
+    // The runtime plays an app whose configuration fails with defaults and an application that shows the reason, and the app still restarts once the file is fixed.
+    platform::HeadlessHost host(directory.getPath() / "data");
+    host.enableDevelopment(directory.getPath() / "broken");
+    // clang-format off
+    core::Engine engine(host, io::Package::openDirectory(directory.getPath() / "broken"), core::AppConfig{}, std::make_unique<test::TestApplication>([](core::Engine&) {
+        throw std::runtime_error("The app could not be loaded. Unknown key \"widht\".");
+    }));
+    // clang-format on
+    engine.start();
+    ASSERT_NE(engine.getError(), nullptr);
+    EXPECT_TRUE(engine.getPlugin<plugins::HotReloadPlugin>().isActive());
+
+    directory.write("broken/app.json", R"({"name": "Broken", "window": {"width": 100}})");
+    touch(directory.getPath() / "broken/app.json", 5);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while (!engine.isRestartRequested() && std::chrono::steady_clock::now() < deadline) {
+        engine.frame(0.1);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    EXPECT_TRUE(engine.isRestartRequested());
 }
 
 } // namespace haylen::debug

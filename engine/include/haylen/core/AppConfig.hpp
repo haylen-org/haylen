@@ -101,9 +101,6 @@ struct AppConfig {
     // The plugins the app uses by id, each with the values of its parameters as `app.json` wrote them. Every id names the folder `plugins/<id>` of the package, which holds its `plugin.json` and its Lua modules.
     Json plugins = Json::object();
 
-    // Set by the runtime rather than `app.json`: a package opened from a folder during development reloads when its files change.
-    bool hotReload = false;
-
     // Reads every present field and validates it. Throws `std::invalid_argument` with the offending field on bad values.
     [[nodiscard]] static AppConfig fromJson(const Json& document);
 

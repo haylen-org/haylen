@@ -10,7 +10,12 @@
 
 namespace haylen::test {
 
-EngineFixture::EngineFixture(std::map<std::string, std::string> files, std::unique_ptr<core::Application> application) : headlessHost(directory.getPath() / "data") {
+EngineFixture::EngineFixture(std::map<std::string, std::string> files, std::unique_ptr<core::Application> application) : EngineFixture(std::move(files), std::move(application), Options{}) {}
+
+EngineFixture::EngineFixture(std::map<std::string, std::string> files, std::unique_ptr<core::Application> application, Options options) : headlessHost(directory.getPath() / "data") {
+    if (options.development) {
+        headlessHost.enableDevelopment();
+    }
     files.try_emplace("app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests"})");
     files.try_emplace("source/main.lua", "");
 

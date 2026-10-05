@@ -21,8 +21,8 @@
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/plugins/DebugPlugin.hpp"
-#include "haylen/plugins/HotReloadPlugin.hpp"
 #include "lua/Owners.hpp"
+#include "plugins/HotReloadPlugin.hpp"
 
 namespace haylen::lua {
 
@@ -138,7 +138,7 @@ int DebugLua::objectEvents(lua_State* L) {
 }
 
 int DebugLua::hotReloadWatching(lua_State* L) {
-    lua::Stack::push(L, lua::Runtime::getEngine(L).getPlugin<plugins::HotReloadPlugin>().isWatching());
+    lua::Stack::push(L, lua::Runtime::getEngine(L).getPlugin<plugins::HotReloadPlugin>().isActive());
     return 1;
 }
 

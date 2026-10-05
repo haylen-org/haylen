@@ -13,8 +13,8 @@
 #include "haylen/io/Package.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/Window.hpp"
-#include "haylen/plugins/HotReloadPlugin.hpp"
 #include "haylen/text/Font.hpp"
+#include "plugins/HotReloadPlugin.hpp"
 
 namespace haylen::core {
 
@@ -121,7 +121,7 @@ bool ErrorScreen::isGamepadDriven() const {
 
 bool ErrorScreen::isReloadWatching() const {
     const auto* hotReload = engine.getPlugins().find<plugins::HotReloadPlugin>();
-    return hotReload != nullptr && hotReload->isWatching();
+    return hotReload != nullptr && hotReload->isActive();
 }
 
 float ErrorScreen::getUnit() const {
