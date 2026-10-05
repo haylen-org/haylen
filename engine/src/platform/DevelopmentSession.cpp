@@ -5,13 +5,31 @@
 #include <utility>
 
 #include "haylen/core/Log.hpp"
+#include "io/OverlayPackage.hpp"
+#include "platform/DevelopmentConnection.hpp"
 
 namespace haylen::platform {
 
-DevelopmentSession::DevelopmentSession(std::optional<std::filesystem::path> folder) {
+DevelopmentSession::DevelopmentSession(std::optional<std::filesystem::path> folder, std::string server) {
     if (folder) {
         watcher = std::make_unique<io::PackageWatcher>(*folder);
         core::Log::info("Watching \"{}\" for changes.", folder->generic_string());
+    }
+    if (!server.empty()) {
+        connection = std::make_unique<DevelopmentConnection>(std::move(server), *this);
+        addReporter([target = connection.get()](const core::Json& value) { target->report(value); });
+    }
+}
+
+DevelopmentSession::~DevelopmentSession() = default;
+
+void DevelopmentSession::setOverlay(std::shared_ptr<io::OverlayPackage> value) {
+    overlay = std::move(value);
+}
+
+void DevelopmentSession::pump() {
+    if (connection) {
+        connection->pump();
     }
 }
 

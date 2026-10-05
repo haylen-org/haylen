@@ -18,12 +18,13 @@
 
 namespace haylen::platform {
 
-// Runs an app package without a window, GPU or audio device on the headless host, at 60 frames per second of real time, so asynchronous work finishes the way it does on a device. The app runs until it quits, until an error stops an app that is not recoverable, or for the number of frames that `--frames` allows. The exit status is 0 when the app quit and no error was reported, and 1 otherwise, which suits automatic runs such as continuous integration.
+// Runs an app package without a window, GPU or audio device on the headless host, at 60 frames per second of real time, so asynchronous work finishes the way it does on a device. The app runs until it quits, until an error stops an app that is not recoverable, or for the number of frames that `--frames` allows, and `--dev` runs it in development with hot reload of its folder, like the player. The exit status is 0 when the app quit and no error was reported, and 1 otherwise, which suits automatic runs such as continuous integration.
 class HeadlessPlayer final {
   public:
     struct Options {
         std::filesystem::path package;
         std::optional<long long> frames;
+        bool development = false;
     };
 
     static constexpr std::chrono::nanoseconds kFrameTime{16'666'667};
@@ -32,7 +33,9 @@ class HeadlessPlayer final {
         Options options;
         for (int index = 1; index < argc; ++index) {
             const std::string_view argument = argv[index];
-            if (argument == "--frames" && index + 1 < argc) {
+            if (argument == "--dev") {
+                options.development = true;
+            } else if (argument == "--frames" && index + 1 < argc) {
                 const std::string_view count = argv[++index];
                 long long value = 0;
                 if (std::from_chars(count.data(), count.data() + count.size(), value).ptr != count.data() + count.size() || value <= 0) {
@@ -65,6 +68,9 @@ class HeadlessPlayer final {
     static int play(const Options& options) {
         const std::shared_ptr<io::Package> package = io::Package::open(options.package);
         HeadlessHost host(std::filesystem::temp_directory_path() / "haylen-headless" / core::AppConfig::fromPackage(*package).identifier);
+        if (options.development) {
+            host.enableDevelopment(package->getDirectory());
+        }
         std::unique_ptr<core::Engine> engine = launch(host, package);
 
         long long frame = 0;
@@ -109,7 +115,7 @@ class HeadlessPlayer final {
 int main(int argc, char** argv) {
     const std::optional<haylen::platform::HeadlessPlayer::Options> options = haylen::platform::HeadlessPlayer::parse(argc, argv);
     if (!options) {
-        std::fprintf(stderr, "Usage: \"haylen-headless <app folder or zip> [--frames <count>]\".\n");
+        std::fprintf(stderr, "Usage: \"haylen-headless <app folder or zip> [--frames <count>] [--dev]\".\n");
         return 2;
     }
     return haylen::platform::HeadlessPlayer::run(*options);

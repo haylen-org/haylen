@@ -311,6 +311,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/io/FileReader.cpp
   src/io/MemoryPackage.cpp
   src/io/MemoryReader.cpp
+  src/io/OverlayPackage.cpp
   src/io/Package.cpp
   src/io/PackageReader.cpp
   src/io/PackageWatcher.cpp
@@ -374,6 +375,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/Battery.cpp
   src/platform/Bridge.cpp
   src/platform/BridgeRelay.cpp
+  src/platform/DevelopmentConnection.cpp
   src/platform/DevelopmentSession.cpp
   src/platform/DialogRelay.cpp
   src/platform/DialogRequest.cpp

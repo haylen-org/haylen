@@ -25,6 +25,7 @@ import tempfile
 import textwrap
 import threading
 import time
+import urllib.parse
 import urllib.request
 import webbrowser
 import xml.etree.ElementTree
@@ -2938,9 +2939,31 @@ def check_web(app: App, site: Path, args: argparse.Namespace) -> list[Requiremen
     return missing
 
 
+def start_web_development(app: App, site: Path) -> DevelopmentServer:
+    """Starts the development server of a site that `prepare_web` made and writes its entry into `config.json`, so the page runs the app in development and connects to it. The manifest of the server holds the files of `app.zip`, so a page that loads late gets only what changed since."""
+    with zipfile.ZipFile(site / "app.zip") as archive:
+        manifest = {name: hashlib.sha256(archive.read(name)).hexdigest() for name in archive.namelist()}
+    development = DevelopmentServer(app.folder, manifest)
+    config = json.loads((site / "config.json").read_text())
+    config["development"] = {"path": DEVELOPMENT_PATH, "token": development.token}
+    (site / "config.json").write_text(json.dumps(config, indent=4) + "\n")
+    return development
+
+
 def run_web(app: App, site: Path, args: argparse.Namespace) -> None:
+    """Serves the site, in development with the Debug configuration, where the development server pushes every saved file of the app to the open pages, and as it ships with the Release configuration."""
     report_requirements(check_web(app, site, args))
-    serve(site, args.host, args.port, args.coep, args.coop, args.open)
+    if args.config == "Release":
+        serve(site, args.host, args.port, args.coep, args.coop, args.open)
+        return
+    development = start_web_development(app, site)
+    stop = threading.Event()
+    threading.Thread(target=development.watch, args=(stop,), daemon=True).start()
+    terminal.info("The page runs in development, and every file saved in the app reloads in the open pages.")
+    try:
+        serve(site, args.host, args.port, args.coep, args.coop, args.open, development)
+    finally:
+        stop.set()
 
 
 # Windows and Linux: the player named after the app next to its package, its native libraries and the files of `platform/windows` or `platform/linux` of the app.
@@ -3695,6 +3718,13 @@ class WebHandler(http.server.SimpleHTTPRequestHandler):
 
     coep = "require-corp"
     coop = "off"
+    development: DevelopmentServer | None = None
+
+    def do_GET(self) -> None:
+        if self.development is not None and urllib.parse.urlsplit(self.path).path == DEVELOPMENT_PATH:
+            self.development.accept(self)
+            return
+        super().do_GET()
 
     def end_headers(self) -> None:
         if self.coop != "off":
@@ -3727,8 +3757,8 @@ class WebHandler(http.server.SimpleHTTPRequestHandler):
         return super().send_head()
 
 
-def serve(directory: Path, host: str, port: int, coep: str = "require-corp", coop: str = "off", open_page: bool = False) -> None:
-    handler = functools.partial(type("Handler", (WebHandler,), {"coep": coep, "coop": coop}), directory=str(directory))
+def serve(directory: Path, host: str, port: int, coep: str = "require-corp", coop: str = "off", open_page: bool = False, development: DevelopmentServer | None = None) -> None:
+    handler = functools.partial(type("Handler", (WebHandler,), {"coep": coep, "coop": coop, "development": development}), directory=str(directory))
     try:
         server = http.server.ThreadingHTTPServer((host, port), handler)
     except OSError as error:
@@ -3743,6 +3773,254 @@ def serve(directory: Path, host: str, port: int, coep: str = "require-corp", coo
             server.serve_forever()
         except KeyboardInterrupt:
             pass
+
+
+# The development server: the page of `run --platform web` connects to it over a WebSocket on the same port as the site, and it pushes every file of the package that the developer saves, so the app reloads it in place.
+
+DEVELOPMENT_PATH = "/haylen/development"
+WEBSOCKET_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+# The largest file the server pushes, which is the largest message the WebSocket of the engine accepts by default.
+DEVELOPMENT_MAX_FILE = 16 * 1024 * 1024
+DEVELOPMENT_SETTLE_SECONDS = 0.05
+BACKUP_SUFFIXES = (".swp", ".swo", ".swx", ".tmp", ".bak", ".orig")
+WEBSOCKET_TEXT, WEBSOCKET_BINARY, WEBSOCKET_CLOSE, WEBSOCKET_PING, WEBSOCKET_PONG = 0x1, 0x2, 0x8, 0x9, 0xA
+
+
+def websocket_accept(key: str) -> str:
+    """Answers the key of a WebSocket handshake the way RFC 6455 asks."""
+    return base64.b64encode(hashlib.sha1((key + WEBSOCKET_GUID).encode()).digest()).decode()
+
+
+def websocket_frame(opcode: int, payload: bytes) -> bytes:
+    """Encodes one whole frame from the server, which is never masked."""
+    size = len(payload)
+    if size < 126:
+        header = bytes([0x80 | opcode, size])
+    elif size < 1 << 16:
+        header = bytes([0x80 | opcode, 126]) + size.to_bytes(2, "big")
+    else:
+        header = bytes([0x80 | opcode, 127]) + size.to_bytes(8, "big")
+    return header + payload
+
+
+def read_websocket_frame(stream) -> tuple[bool, int, bytes] | None:
+    """Reads one frame from a client, which masks every frame, and returns whether it ends its message, its opcode and its payload, or nothing once the connection ended."""
+    head = stream.read(2)
+    if len(head) < 2:
+        return None
+    size = head[1] & 0x7F
+    if size == 126:
+        size = int.from_bytes(stream.read(2), "big")
+    elif size == 127:
+        size = int.from_bytes(stream.read(8), "big")
+    mask = stream.read(4) if head[1] & 0x80 else b"\0\0\0\0"
+    payload = stream.read(size)
+    if len(payload) < size:
+        return None
+    return bool(head[0] & 0x80), head[0] & 0x0F, bytes(byte ^ mask[index % 4] for index, byte in enumerate(payload))
+
+
+def development_watched(path: str) -> bool:
+    """Tells whether a package path is one that hot reload applies, by the same rule as the engine: `app.json`, a file under `content`, a Lua module under `source`, and the manifest and the Lua modules of a plugin, none of them hidden or a backup."""
+    parts = path.split("/")
+    if any(part.startswith((".", "#")) or part.endswith("~") for part in parts) or path.endswith(BACKUP_SUFFIXES):
+        return False
+    if path == "app.json" or parts[0] == "content" and len(parts) > 1:
+        return True
+    if parts[0] == "source":
+        return path.endswith(".lua")
+    return len(parts) >= 3 and parts[0] == "plugins" and (parts[2:] == ["plugin.json"] or parts[2] == "source" and path.endswith(".lua"))
+
+
+class DevelopmentClient:
+    """One app connected to the development server, whose frames the watcher and its own handler thread send in turn."""
+
+    def __init__(self, stream) -> None:
+        self.stream = stream
+        self.lock = threading.Lock()
+
+    def send(self, opcode: int, payload: bytes) -> bool:
+        try:
+            with self.lock:
+                self.stream.write(websocket_frame(opcode, payload))
+                self.stream.flush()
+            return True
+        except OSError:
+            return False
+
+    def send_batch(self, message: dict, contents: list[bytes]) -> bool:
+        """Sends the JSON message of a batch and then the bytes of each of its files, in one turn, so no other batch comes between them."""
+        frames = [websocket_frame(WEBSOCKET_TEXT, json.dumps(message).encode())] + [websocket_frame(WEBSOCKET_BINARY, content) for content in contents]
+        try:
+            with self.lock:
+                for frame in frames:
+                    self.stream.write(frame)
+                self.stream.flush()
+            return True
+        except OSError:
+            return False
+
+
+class DevelopmentServer:
+    """Watches the package of an app in development and pushes every file the developer saves to every connected app, such as browser tabs, as a JSON message of the batch followed by the bytes of each file. A connection needs the token of the run, the shaders compile again as their sources change, and an app that connects late catches up: a fresh page gets the files that changed since the package it loaded was made, an app of an earlier run of the server gets every file, and an app that only lost its connection gets what changed since the package was made again."""
+
+    def __init__(self, folder: Path, manifest: dict[str, str]) -> None:
+        self.folder = folder
+        self.manifest = manifest
+        self.session = os.urandom(8).hex()
+        self.token = base64.urlsafe_b64encode(os.urandom(18)).decode()
+        self.revision = 0
+        self.clients: list[DevelopmentClient] = []
+        self.lock = threading.Lock()
+        self.files = self.snapshot()
+
+    @staticmethod
+    def hash_files(folder: Path, paths) -> dict[str, str]:
+        return {path: hashlib.sha256((folder / path).read_bytes()).hexdigest() for path in paths}
+
+    def snapshot(self) -> dict[str, tuple[int, int]]:
+        """Records the time and size of every watched file of the package."""
+        found: dict[str, tuple[int, int]] = {}
+        roots = [self.folder / "app.json", self.folder / "source", self.folder / "content"]
+        plugins = self.folder / "plugins"
+        if plugins.is_dir():
+            for plugin in plugins.iterdir():
+                roots += [plugin / "plugin.json", plugin / "source"]
+        for root in roots:
+            for path in [root] if root.is_file() else root.rglob("*") if root.is_dir() else []:
+                relative = path.relative_to(self.folder).as_posix()
+                if path.is_file() and development_watched(relative):
+                    stat = path.stat()
+                    found[relative] = (stat.st_mtime_ns, stat.st_size)
+        return found
+
+    def scan(self) -> tuple[list[str], list[str]]:
+        """Returns the files that changed and the files that went away since the last scan, leaving the files that are still being written for the next scan."""
+        current = self.snapshot()
+        changed = sorted(path for path, stamp in current.items() if self.files.get(path) != stamp)
+        removed = sorted(path for path in self.files if path not in current)
+        if changed:
+            time.sleep(DEVELOPMENT_SETTLE_SECONDS)
+            settled = self.snapshot()
+            for path in [path for path in changed if settled.get(path) != current[path]]:
+                changed.remove(path)
+                if path in self.files:
+                    current[path] = self.files[path]
+                else:
+                    del current[path]
+        self.files = current
+        return changed, removed
+
+    def batch(self, changed: list[str], removed: list[str]) -> tuple[dict, list[bytes]]:
+        """Reads the files of a batch, leaving out the files that are larger than the engine accepts, which the developer then ships with the build."""
+        files, contents = [], []
+        for path in changed:
+            content = (self.folder / path).read_bytes()
+            if len(content) > DEVELOPMENT_MAX_FILE:
+                terminal.error(f"The file `{shown_path(self.folder / path)}` is larger than the {DEVELOPMENT_MAX_FILE} bytes that the development server pushes, so the running app keeps its old version until the app runs again.")
+                continue
+            files.append({"path": path, "size": len(content)})
+            contents.append(content)
+        return {"type": "files", "session": self.session, "revision": self.revision, "files": files, "removed": removed}, contents
+
+    def catch_up(self, hello: dict) -> tuple[dict, list[bytes]] | None:
+        """Returns the batch that brings an app that just connected up to date, or nothing when it is up to date."""
+        if hello.get("session") == self.session and hello.get("revision") == self.revision:
+            return None
+        current = self.hash_files(self.folder, self.files)
+        if hello.get("session") not in ("", self.session):
+            return self.batch(sorted(current), [])
+        changed = sorted(path for path, digest in current.items() if self.manifest.get(path) != digest)
+        removed = sorted(path for path in self.manifest if path not in current and development_watched(path))
+        return self.batch(changed, removed)
+
+    def broadcast(self, changed: list[str], removed: list[str]) -> None:
+        with self.lock:
+            self.revision += 1
+            message, contents = self.batch(changed, removed)
+            clients = list(self.clients)
+        for client in clients:
+            if not client.send_batch(message, contents):
+                self.drop(client)
+        names = ", ".join(f'"{path}"' for path in [*changed, *removed])
+        terminal.info(f"Sent {names} to {len(clients)} connected {'app' if len(clients) == 1 else 'apps'}.")
+
+    def drop(self, client: DevelopmentClient) -> None:
+        with self.lock:
+            if client in self.clients:
+                self.clients.remove(client)
+
+    def watch(self, stop: threading.Event) -> None:
+        """Scans the package twice a second, compiles the shaders whose sources changed, which the scan then pushes as compiled files, and reports their errors to the apps too."""
+        shaders = self.folder / "content" / "shaders"
+        seen = newest_shader_source(self.folder) if shaders.is_dir() else 0.0
+        while not stop.wait(SHADER_WATCH_SECONDS):
+            stamp = newest_shader_source(self.folder) if shaders.is_dir() else 0.0
+            if stamp != seen:
+                seen = stamp
+                try:
+                    compile_app_shaders(self.folder)
+                except BuildError as error:
+                    terminal.error(str(error), error.details)
+                    for client in list(self.clients):
+                        client.send(WEBSOCKET_TEXT, json.dumps({"type": "shaderError", "path": "content/shaders", "message": f"{error} {error.details}".strip()}).encode())
+            changed, removed = self.scan()
+            if changed or removed:
+                self.broadcast(changed, removed)
+
+    def report(self, message: dict) -> None:
+        """Prints what a batch did in an app."""
+        if message.get("restarted"):
+            terminal.info(f"The app restarts: {message.get('reason', '')}")
+        elif message.get("modules"):
+            names = ", ".join(f'"{path}"' for path in message["modules"])
+            resumed = " and resumed" if message.get("resumed") else ""
+            terminal.success(f"The app reloaded {names}{resumed} in {round(message.get('milliseconds', 0))} ms.")
+        elif message.get("assets"):
+            names = ", ".join(f'"{path}"' for path in message["assets"])
+            terminal.success(f"The app reloaded the assets {names}.")
+
+    def accept(self, handler: http.server.BaseHTTPRequestHandler) -> None:
+        """Turns a request of the development path into a WebSocket and serves it until the app leaves. A request without the token of the run is refused."""
+        query = urllib.parse.parse_qs(urllib.parse.urlsplit(handler.path).query)
+        key = handler.headers.get("Sec-WebSocket-Key")
+        if query.get("token") != [self.token] or key is None or handler.headers.get("Upgrade", "").lower() != "websocket":
+            handler.send_error(403, "The development server needs the token of this run.")
+            return
+        # Browsers accept the upgrade only in an HTTP/1.1 status line, whatever version the server answers other requests with.
+        handler.wfile.write(f"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {websocket_accept(key)}\r\n\r\n".encode())
+        handler.wfile.flush()
+        handler.close_connection = True
+        client = DevelopmentClient(handler.wfile)
+        message = b""
+        while (frame := read_websocket_frame(handler.rfile)) is not None:
+            final, opcode, payload = frame
+            if opcode == WEBSOCKET_CLOSE:
+                client.send(WEBSOCKET_CLOSE, payload[:2])
+                break
+            if opcode == WEBSOCKET_PING:
+                client.send(WEBSOCKET_PONG, payload)
+                continue
+            message += payload
+            if not final:
+                continue
+            text, message = message, b""
+            with contextlib.suppress(ValueError):
+                self.receive(client, json.loads(text))
+        self.drop(client)
+
+    def receive(self, client: DevelopmentClient, message: dict) -> None:
+        if message.get("type") == "report":
+            self.report(message)
+            return
+        if message.get("type") != "hello":
+            return
+        with self.lock:
+            update = self.catch_up(message)
+            self.clients.append(client)
+        terminal.info("An app connected to the development server.")
+        if update is not None and (update[0]["files"] or update[0]["removed"]):
+            client.send_batch(*update)
 
 
 def command_serve(args: argparse.Namespace) -> None:

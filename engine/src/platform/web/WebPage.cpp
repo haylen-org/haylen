@@ -16,12 +16,15 @@
 #include "haylen/debug/Profiler.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/io/Package.hpp"
+#include "haylen/io/Path.hpp"
 #include "haylen/platform/Battery.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/PluginStreams.hpp"
 #include "haylen/platform/Theme.hpp"
 #include "haylen/platform/native/HaylenNative.h"
+#include "io/OverlayPackage.hpp"
 #include "platform/BridgeRelay.hpp"
+#include "platform/DevelopmentSession.hpp"
 #include "platform/DialogRelay.hpp"
 #include "platform/ScreenRelay.hpp"
 #include "platform/Services.hpp"
@@ -43,6 +46,10 @@ EM_JS(void, haylen_js_stats, (const char* json), {
     Module.haylen.reportStats(JSON.parse(UTF8ToString(json)));
 });
 
+EM_JS(void, haylen_js_reloaded, (const char* json), {
+    Module.haylen.reportReloaded(JSON.parse(UTF8ToString(json)));
+});
+
 EM_JS(char*, haylen_js_canvas_selector, (), {
     return stringToNewUTF8(Module.haylen.canvasSelector());
 });
@@ -50,7 +57,7 @@ EM_JS(char*, haylen_js_canvas_selector, (), {
 
 namespace haylen::platform {
 
-std::shared_ptr<io::MemoryPackage>& WebPage::editorPackage = *new std::shared_ptr<io::MemoryPackage>(std::make_shared<io::MemoryPackage>("editor"));
+std::vector<std::string>& WebPage::touched = *new std::vector<std::string>();
 std::string& WebPage::lastError = *new std::string();
 double WebPage::lastStats = 0.0;
 
@@ -97,29 +104,51 @@ void WebPage::loadZip(const std::uint8_t* bytes, int size) {
     SokolRuntime::restart([&archive] { return io::Package::openZip(std::move(archive), "app.zip"); });
 }
 
+// The app stops, and the empty package waits for the files of the page until `run` starts it.
 void WebPage::clearFiles() {
-    editorPackage = std::make_shared<io::MemoryPackage>("editor");
+    touched.clear();
+    SokolRuntime::stage(std::make_shared<io::OverlayPackage>(std::make_shared<io::MemoryPackage>("editor")));
 }
 
 int WebPage::setFile(const char* path, const std::uint8_t* bytes, int size) {
     // clang-format off
     return answer([&] {
-        editorPackage->setFile(path, std::vector<std::uint8_t>(bytes, bytes + size));
+        std::string entry = io::Path::normalize(path);
+        SokolRuntime::getOverlay()->setFile(entry, std::vector<std::uint8_t>(bytes, bytes + size));
+        touched.push_back(std::move(entry));
         return 1;
     });
     // clang-format on
 }
 
 int WebPage::removeFile(const char* path) {
-    return answer([&] { return editorPackage->removeFile(path) ? 1 : 0; });
+    // clang-format off
+    return answer([&] {
+        std::string entry = io::Path::normalize(path);
+        const bool removed = SokolRuntime::getOverlay()->removeFile(entry);
+        touched.push_back(std::move(entry));
+        return removed ? 1 : 0;
+    });
+    // clang-format on
 }
 
 void WebPage::runFiles() {
-    SokolRuntime::restart(editorPackage);
+    touched.clear();
+    SokolRuntime::restart();
 }
 
-int WebPage::reloadAsset(const char* path) {
-    return answer([&] { return SokolRuntime::reloadAsset(path) ? 1 : 0; });
+// Without development there is no module graph to reload modules in place, so the app restarts with the edited files.
+void WebPage::applyChanges() {
+    const std::vector<std::string> changed = std::exchange(touched, {});
+    if (DevelopmentSession* session = SokolRuntime::getDevelopmentSession()) {
+        session->addChanges(changed);
+        return;
+    }
+    SokolRuntime::restart();
+}
+
+void WebPage::reportReloaded(const core::Json& report) {
+    haylen_js_reloaded(report.dump().c_str());
 }
 
 void WebPage::setVisible(bool visible) {
@@ -339,8 +368,8 @@ EMSCRIPTEN_KEEPALIVE int haylen_web_paused() {
     return haylen::platform::SokolRuntime::isPaused() ? 1 : 0;
 }
 
-EMSCRIPTEN_KEEPALIVE int haylen_web_reload_asset(const char* path) {
-    return haylen::platform::WebPage::reloadAsset(path);
+EMSCRIPTEN_KEEPALIVE void haylen_web_apply_changes() {
+    haylen::platform::WebPage::applyChanges();
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_visibility(int visible) {

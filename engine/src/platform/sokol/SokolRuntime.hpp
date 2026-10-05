@@ -21,10 +21,13 @@ class Engine;
 }
 
 namespace haylen::io {
+class OverlayPackage;
 class Package;
-}
+} // namespace haylen::io
 
 namespace haylen::platform {
+
+class DevelopmentSession;
 
 // Plays apps with sokol_app. It opens the window for the package that the command line names, or the bundled one, and replaces the running app whenever a package restarts it.
 class SokolRuntime final {
@@ -44,15 +47,21 @@ class SokolRuntime final {
     // Starts the last playing app again from its package, which reloads every script.
     static void restart();
 
+    // Stops the running app and makes the package the one that `restart` starts, such as an empty package that a page fills file by file.
+    static void stage(std::shared_ptr<io::Package> source);
+
+    // The overlay of the package that `restart` starts, whose files a page or the development server replace, or null for a package that plays without one.
+    [[nodiscard]] static io::OverlayPackage* getOverlay() noexcept;
+
+    // The development session of the process, or null when it plays the app the way it ships.
+    [[nodiscard]] static DevelopmentSession* getDevelopmentSession() noexcept;
+
     // Ends the running app and leaves an empty screen until the next restart.
     static void stop();
 
     // Pauses or resumes the running app. A paused app keeps its last frame on screen, and the engine sees it as suspended until it resumes.
     static void setPaused(bool value);
     [[nodiscard]] static bool isPaused() noexcept;
-
-    // Reloads the cached assets read from a changed file, a path relative to the content folder, and returns whether any were loaded.
-    static bool reloadAsset(std::string_view path);
 
     // Hands the running app an event that reaches the platform outside sokol_app, such as the keyboard and mouse of Mac Catalyst. It runs on the frame thread.
     static void handleEvent(const Event& event);
@@ -90,10 +99,11 @@ class SokolRuntime final {
         bool playing = true;
     };
 
-    // The package to play, or none for the bundled one, whether it plays in development, which only --dev turns on and shipped apps never pass, and the folders where native.load looks first, such as the one haylen.py builds the libraries of an app into.
+    // The package to play, or none for the bundled one, whether it plays in development, which only --dev turns on and shipped apps never pass, the address of the development server that --dev-server gives, and the folders where native.load looks first, such as the one haylen.py builds the libraries of an app into.
     struct LaunchOptions {
         std::string package;
         bool development = false;
+        std::string developmentServer;
         std::vector<std::string> nativeFolders;
     };
 
@@ -107,7 +117,7 @@ class SokolRuntime final {
     [[nodiscard]] static Process& getProcess() noexcept;
     [[nodiscard]] static SokolRuntime& getCurrent() noexcept;
     [[nodiscard]] static LaunchOptions parseLaunchOptions(int argc, char* argv[]);
-    [[nodiscard]] static App load(const std::function<std::shared_ptr<io::Package>()>& open);
+    [[nodiscard]] App load(const std::function<std::shared_ptr<io::Package>()>& open);
     [[nodiscard]] static std::vector<Event> takePostedEvents();
 
     static void onInitialize(void* data);
@@ -119,6 +129,7 @@ class SokolRuntime final {
     void reportBackCapture();
 #endif
 
+    [[nodiscard]] std::shared_ptr<io::Package> withOverlay(std::shared_ptr<io::Package> source) const;
     void describeDesktop(sapp_desc& desc, const core::AppConfig::Window& window);
     void launch();
     void close() noexcept;

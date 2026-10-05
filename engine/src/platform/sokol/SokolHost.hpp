@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include "haylen/math/Insets.hpp"
@@ -85,9 +86,9 @@ class SokolHost final : public Host {
         return developmentSession.get();
     }
 
-    // Plays the apps of this runtime in development, with a session that scans the package folder when the app plays from one.
-    void enableDevelopment(std::optional<std::filesystem::path> folder) {
-        developmentSession = std::make_unique<DevelopmentSession>(std::move(folder));
+    // Plays the apps of this runtime in development, with a session that scans the package folder when the app plays from one and connects to the development server whose address the launch gave.
+    void enableDevelopment(std::optional<std::filesystem::path> folder, std::string server) {
+        developmentSession = std::make_unique<DevelopmentSession>(std::move(folder), std::move(server));
     }
 
     // The native views of plugins over the app, which the platform services update from any thread. They belong to the process, so a reservation or a cover outlives the apps that restart under it.

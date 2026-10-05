@@ -321,10 +321,12 @@ A page defines `Module` before it loads the runtime script. `templates/platform/
 | `Module.canvas` | The canvas the app draws into. It must be a canvas element with an `id`. The runtime follows its size with a `ResizeObserver`, so the page layout decides the size. |
 | `Module.haylen.packageData` | Optional bytes of a zipped package, as an `ArrayBuffer` or a `Uint8Array`, which the runtime plays instead of the bundled package. The web loader downloads `app.zip` with a progress bar and hands it over this way. |
 | `Module.haylen.packageUrl` | Optional URL of a zipped package, used when `packageData` is not set. The runtime downloads it before the app starts and runs it instead of the bundled package, and a failed download reaches `onError`. |
+| `Module.haylen.development` | Optional `true` that runs the app in development, the way the player does with `--dev`: Lua modules and assets that the page changes with `applyChanges()` reload in place, as [hot reload](lua.md#hot-reload) describes. |
+| `Module.haylen.developmentServer` | Optional WebSocket address of the development server that `haylen.py run --platform web` starts, such as `ws://127.0.0.1:8000/haylen/development?token=<token>`, which pushes every file saved in the app to the page. |
 | `Module.instantiateWasm` | Optional function that receives the imports of the module and a callback, instantiates `haylen.wasm` itself and passes the instance to the callback, so a page that already downloaded the bytes, such as the web loader, keeps Emscripten from fetching the file again. |
 | `Module.preRun` | Functions that run before the app starts. Page handlers of the platform bridge are registered here. |
 
-A page never turns on development mode. A custom shell passed as `WEB_SHELL` keeps the `{{{ SCRIPT }}}` placeholder where Emscripten inserts the runtime script, and where `run-cpp` inserts the backend picker. The runtime mounts IndexedDB at `/persistent` for user data and loads it before the app starts, together with what the browser tells about the device through `navigator.userAgentData` and the Battery Status API, which answer asynchronously.
+Only a page that sets `Module.haylen.development` runs in development, which the template loader does only for the `development` entry of `config.json` that `haylen.py run --platform web` writes. A custom shell passed as `WEB_SHELL` keeps the `{{{ SCRIPT }}}` placeholder where Emscripten inserts the runtime script, and where `run-cpp` inserts the backend picker. The runtime mounts IndexedDB at `/persistent` for user data and loads it before the app starts, together with what the browser tells about the device through `navigator.userAgentData` and the Battery Status API, which answer asynchronously.
 
 ### Runtime API
 
@@ -333,15 +335,15 @@ A page never turns on development mode. A custom shell passed as `WEB_SHELL` kee
 | Function | Meaning |
 | --- | --- |
 | `loadZip(bytes)` | Replaces the running app with a zipped package given as a `Uint8Array` or an `ArrayBuffer`. A file that is not a valid zip shows the error screen and reaches `onError`, like any package that fails to load. |
-| `clearFiles()` | Empties the in-memory editor package. |
-| `setFile(path, content)` | Adds or replaces a file of the editor package. `path` is relative to the package root, such as `source/main.lua` or `content/ui/logo.png`, and `content` is a string or bytes. An absolute path or one that leaves the package throws an `Error` with the reason. |
-| `removeFile(path)` | Removes a file of the editor package and returns whether it existed. An invalid path throws an `Error`. |
-| `run()` | Starts the editor package from `source/main.lua`, replacing the running app. |
+| `clearFiles()` | Stops the app and empties its package, for an app that the page builds file by file before `run()`. |
+| `setFile(path, content)` | Adds or replaces a file of the package that plays. `path` is relative to the package root, such as `source/main.lua` or `content/ui/logo.png`, and `content` is a string or bytes. The app reads the new file the next time it loads it, and `applyChanges()` applies it at once. An absolute path or one that leaves the package throws an `Error` with the reason. |
+| `removeFile(path)` | Removes a file of the package that plays and returns whether it existed. An invalid path throws an `Error`. |
+| `applyChanges()` | Applies every file that `setFile` and `removeFile` changed since its last call, as one batch at the start of the next frame. A page in development reloads them the way [hot reload](lua.md#hot-reload) applies saved files: assets and Lua modules in place, and `app.json` or `source/main.lua` with a restart. Any other page restarts the app with them. |
+| `run()` | Starts the package from `source/main.lua`, replacing the running app. |
 | `restart()` | Starts the last playing app again from its package, which reloads every script. |
 | `stop()` | Ends the app and leaves an empty canvas until the next start. |
 | `setPaused(paused)`, `pause()`, `resume()` | Pauses or resumes the app. A paused app keeps its last frame and sees the pause as a suspend. |
 | `paused()` | Returns whether the app is paused. |
-| `reloadAsset(path)` | Reloads the cached assets read from a changed file, given relative to `content/`, and returns whether any were loaded. A file that no longer decodes throws an `Error` with the reason, and the app keeps the assets it had. |
 | `register(method, handler)`, `unregister(method)`, `emit(event, payload, options)` | Platform bridge handlers and events, retained for the first listener with `options.retain`, described in the [platform bridge guide](platform_bridge.md#web). |
 | `createPluginContext(id, config)` | The context of the web module of a plugin, described in the [plugin guide](plugins.md#web-modules). |
 
@@ -353,6 +355,7 @@ The runtime reports back through callbacks the page assigns to `Module.haylen`:
 | `onError(error)` | `{message, file, line, traceback, frames}` of the error that stopped the app, with an empty `file` when no script position is known. `traceback` is the stack as text, one frame per line, and `frames` lists the same frames as `{source, line, function, kind}` objects, innermost first, with the kind `lua`, `c` or `main`. |
 | `onStarted(app)` | `{name, identifier, version}` from `app.json`. |
 | `onStopped()` | The app ended. |
+| `onReloaded(report)` | In development, after every batch of changes that hot reload applied: `{restarted: false, mode, modules, assets, resumed, milliseconds}`, with the files of the modules and the assets that reloaded in place and whether the app left the error screen, or `{restarted: true, reason}` right before a restart. |
 | `onStats(stats)` | About once per second: `fps`, `frameMilliseconds`, `averageMilliseconds`, `drawCalls`, `sprites`, `vertices`, `textureSwitches`, `uploadedBytes`, `assets`, `voices`, `scopes`, a list of `{name, milliseconds, calls, depth}` profiler scopes, and `audio`, the output of the app as `{available, state, sampleRate, bufferedMilliseconds, blocks, underruns}`, or only `{available}` while the app runs without an audio output. `available` tells whether the app plays sound, `state` is the state of its `AudioContext`, `bufferedMilliseconds` the mixed audio waiting ahead of the output, `blocks` the blocks mixed so far and `underruns` the render quanta the processor played without samples. |
 
 Callbacks run in a microtask right after the frame that raised them, so they may call back into the runtime, even to restart the app.

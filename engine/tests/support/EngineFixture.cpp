@@ -6,6 +6,8 @@
 #include <thread>
 
 #include "haylen/io/MemoryPackage.hpp"
+#include "io/OverlayPackage.hpp"
+#include "platform/DevelopmentSession.hpp"
 #include "support/TestFiles.hpp"
 
 namespace haylen::test {
@@ -13,8 +15,8 @@ namespace haylen::test {
 EngineFixture::EngineFixture(std::map<std::string, std::string> files, std::unique_ptr<core::Application> application) : EngineFixture(std::move(files), std::move(application), Options{}) {}
 
 EngineFixture::EngineFixture(std::map<std::string, std::string> files, std::unique_ptr<core::Application> application, Options options) : headlessHost(directory.getPath() / "data") {
-    if (options.development) {
-        headlessHost.enableDevelopment();
+    if (options.development || !options.developmentServer.empty()) {
+        headlessHost.enableDevelopment(std::nullopt, options.developmentServer);
     }
     files.try_emplace("app.json", R"({"name": "Test App", "identifier": "dev.haylen.tests"})");
     files.try_emplace("source/main.lua", "");
@@ -24,19 +26,25 @@ EngineFixture::EngineFixture(std::map<std::string, std::string> files, std::uniq
         contents.emplace(path, TestFiles::bytes(text));
     }
     memoryPackage = std::make_shared<io::MemoryPackage>("test", std::move(contents));
+    playedPackage = memoryPackage;
+    if (platform::DevelopmentSession* session = headlessHost.getDevelopmentSession(); session != nullptr && session->isConnected()) {
+        auto overlay = std::make_shared<io::OverlayPackage>(memoryPackage);
+        session->setOverlay(overlay);
+        playedPackage = overlay;
+    }
     launch(std::move(application));
 }
 
 EngineFixture::~EngineFixture() = default;
 
 void EngineFixture::launch(std::unique_ptr<core::Application> application) {
-    core::AppConfig config = core::AppConfig::fromPackage(*memoryPackage);
+    core::AppConfig config = core::AppConfig::fromPackage(*playedPackage);
     if (!application) {
         application = std::make_unique<lua::Application>();
     }
     application->configure(config);
     headlessHost.setTransparencySupported(config.window.transparent);
-    runningEngine = std::make_unique<core::Engine>(headlessHost, memoryPackage, std::move(config), std::move(application));
+    runningEngine = std::make_unique<core::Engine>(headlessHost, playedPackage, std::move(config), std::move(application));
     runningEngine->start();
 }
 

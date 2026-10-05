@@ -14,10 +14,6 @@ class Engine;
 struct AppConfig;
 } // namespace haylen::core
 
-namespace haylen::io {
-class MemoryPackage;
-}
-
 namespace haylen::platform {
 
 // The page that hosts the web runtime through `Module.haylen`, which `platform/web/haylen-runtime.js` defines before the runtime starts. The page learns when apps start and stop and how their frames perform, and it edits an app file by file.
@@ -31,14 +27,17 @@ class WebPage final {
     static void reportStopped() noexcept;
     static void reportFrame(core::Engine& engine);
 
-    // Requests of the page. The ones that answer a number answer -1 when they fail, with the reason kept for `getLastError`, which `haylen-runtime.js` throws as a JavaScript error.
+    // Requests of the page. The ones that answer a number answer -1 when they fail, with the reason kept for `getLastError`, which `haylen-runtime.js` throws as a JavaScript error. The page edits the files of the package that plays, under its overlay, and `applyChanges` hands the paths it touched to hot reload in development, or restarts the app otherwise.
     [[nodiscard]] static const char* getLastError() noexcept;
     static void loadZip(const std::uint8_t* bytes, int size);
     static void clearFiles();
     static int setFile(const char* path, const std::uint8_t* bytes, int size);
     static int removeFile(const char* path);
     static void runFiles();
-    static int reloadAsset(const char* path);
+    static void applyChanges();
+
+    // Passes the report of every batch of changes that hot reload applied to the page.
+    static void reportReloaded(const core::Json& report);
 
     // A hidden page sends the app to the background and a visible one brings it back. A page that goes away also makes the user data of the app durable.
     static void setVisible(bool visible);
@@ -72,8 +71,8 @@ class WebPage final {
 
     [[nodiscard]] static std::vector<std::vector<std::byte>> readBuffers(const std::uint32_t* table, int count);
 
-    // Files the page sends one by one while it edits an app, restarted as a package on demand.
-    static std::shared_ptr<io::MemoryPackage>& editorPackage;
+    // The paths the page changed since its last `applyChanges`.
+    static std::vector<std::string>& touched;
     static std::string& lastError;
     static double lastStats;
 

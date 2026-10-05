@@ -1,13 +1,19 @@
 """Tests of the rules of haylen.py that need no build: how it merges Info.plist keys, entitlements and privacy manifests, what it checks in a built app, when it generates App.xcodeproj again, how it prints to the terminal and how its commands read their arguments."""
 
+import base64
 import contextlib
+import functools
+import http.server
 import io
 import json
 import os
 import plistlib
 import shutil
+import socket
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -373,6 +379,118 @@ class AndroidPluginsTest(unittest.TestCase):
         written = json.loads((assets / haylen.ANDROID_PLUGINS_FILE).read_text())
         self.assertEqual(written, {"plugins": [{"id": "accounts", "version": "2.0.0", "config": {"server": "accounts.example.com"}}, {"id": "store", "version": "1.1.0", "config": {"sandbox": True}}]})
 
+
+
+class DevelopmentServerTest(unittest.TestCase):
+    def setUp(self):
+        self.scratch = tempfile.TemporaryDirectory()
+        self.folder = Path(self.scratch.name) / "app"
+        for path, text in {"app.json": "{}", "source/main.lua": "print(1)", "source/level.lua": "return {}", "content/data.json": "{}"}.items():
+            (self.folder / path).parent.mkdir(parents=True, exist_ok=True)
+            (self.folder / path).write_text(text)
+        self.manifest = haylen.DevelopmentServer.hash_files(self.folder, ["app.json", "source/main.lua", "source/level.lua", "content/data.json"])
+        quiet = mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {}))
+        quiet.start()
+        self.addCleanup(quiet.stop)
+
+    def tearDown(self):
+        self.scratch.cleanup()
+
+    def write(self, path, text):
+        file = self.folder / path
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_text(text)
+        os.utime(file, ns=(file.stat().st_atime_ns, file.stat().st_mtime_ns + 5_000_000_000))
+
+    def test_the_accept_key_follows_rfc_6455(self):
+        self.assertEqual(haylen.websocket_accept("dGhlIHNhbXBsZSBub25jZQ=="), "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=")
+
+    def test_frames_encode_and_masked_frames_decode_at_every_length(self):
+        for size in (5, 300, 70_000):
+            payload = bytes(index % 251 for index in range(size))
+            self.assertEqual(haylen.read_websocket_frame(io.BytesIO(haylen.websocket_frame(haylen.WEBSOCKET_BINARY, payload))), (True, haylen.WEBSOCKET_BINARY, payload))
+            mask = bytes([1, 2, 3, 4])
+            length = bytes([0x80 | size]) if size < 126 else bytes([0x80 | 126]) + size.to_bytes(2, "big") if size < 1 << 16 else bytes([0x80 | 127]) + size.to_bytes(8, "big")
+            masked = bytes([0x80 | haylen.WEBSOCKET_TEXT]) + length + mask + bytes(byte ^ mask[index % 4] for index, byte in enumerate(payload))
+            self.assertEqual(haylen.read_websocket_frame(io.BytesIO(masked)), (True, haylen.WEBSOCKET_TEXT, payload))
+        self.assertIsNone(haylen.read_websocket_frame(io.BytesIO(b"\x81")))
+
+    def test_only_files_of_the_package_count(self):
+        for path in ("app.json", "source/scenes/level.lua", "content/hero.png", "plugins/ads/plugin.json", "plugins/ads/source/init.lua"):
+            self.assertTrue(haylen.development_watched(path), path)
+        for path in ("source/.level.lua.swp", "source/level.lua~", "source/#level.lua#", "source/notes.txt", "content/hero.png.tmp", "content/.cache", "plugins/ads/android/build.gradle", "platform/web/index.html", "README.md"):
+            self.assertFalse(haylen.development_watched(path), path)
+
+    def test_the_watcher_sends_saved_files_and_leaves_editor_files(self):
+        server = haylen.DevelopmentServer(self.folder, self.manifest)
+        self.write("source/level.lua", "return {edited = true}")
+        self.write("source/.level.lua.swp", "swap")
+        self.write("content/new.json", "[]")
+        (self.folder / "content" / "data.json").unlink()
+        self.assertEqual(server.scan(), (["content/new.json", "source/level.lua"], ["content/data.json"]))
+        self.assertEqual(server.scan(), ([], []))
+
+    def test_late_apps_catch_up(self):
+        server = haylen.DevelopmentServer(self.folder, self.manifest)
+        self.write("source/level.lua", "return {edited = true}")
+        (self.folder / "content" / "data.json").unlink()
+        server.scan()
+        fresh, contents = server.catch_up({"type": "hello", "session": "", "revision": 0})
+        self.assertEqual([file["path"] for file in fresh["files"]], ["source/level.lua"])
+        self.assertEqual(fresh["removed"], ["content/data.json"])
+        self.assertEqual(contents, [b"return {edited = true}"])
+        foreign, _ = server.catch_up({"type": "hello", "session": "earlier", "revision": 3})
+        self.assertEqual([file["path"] for file in foreign["files"]], ["app.json", "source/level.lua", "source/main.lua"])
+        self.assertIsNone(server.catch_up({"type": "hello", "session": server.session, "revision": server.revision}))
+
+    def test_connections_need_the_token_and_receive_every_batch(self):
+        server = haylen.DevelopmentServer(self.folder, self.manifest)
+        handler = functools.partial(type("Handler", (haylen.WebHandler,), {"development": server, "log_message": lambda *arguments: None}), directory=self.scratch.name)
+        web = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+        threading.Thread(target=web.serve_forever, daemon=True).start()
+        self.addCleanup(web.shutdown)
+        port = web.server_address[1]
+
+        def connect(token):
+            sock = socket.create_connection(("127.0.0.1", port), timeout=5)
+            sock.sendall(f"GET {haylen.DEVELOPMENT_PATH}?token={token} HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n".encode())
+            stream = sock.makefile("rb")
+            self.addCleanup(sock.close)
+            self.addCleanup(stream.close)
+            return sock, stream, stream.readline().decode()
+
+        _, _, status = connect("wrong")
+        self.assertIn("403", status)
+
+        sock, stream, status = connect(server.token)
+        self.assertIn("101", status)
+        while stream.readline() not in (b"\r\n", b""):
+            pass
+        hello = json.dumps({"type": "hello", "session": server.session, "revision": server.revision}).encode()
+        mask = bytes([9, 8, 7, 6])
+        sock.sendall(bytes([0x81, 0x80 | len(hello)]) + mask + bytes(byte ^ mask[index % 4] for index, byte in enumerate(hello)))
+        for _ in range(100):
+            if server.clients:
+                break
+            time.sleep(0.01)
+        self.write("source/level.lua", "return {pushed = true}")
+        server.broadcast(*server.scan())
+        final, opcode, message = haylen.read_websocket_frame(stream)
+        self.assertEqual((final, opcode), (True, haylen.WEBSOCKET_TEXT))
+        self.assertEqual(json.loads(message)["files"], [{"path": "source/level.lua", "size": 22}])
+        self.assertEqual(haylen.read_websocket_frame(stream), (True, haylen.WEBSOCKET_BINARY, b"return {pushed = true}"))
+
+    def test_only_development_runs_tell_the_page_to_connect(self):
+        site = Path(self.scratch.name) / "site"
+        site.mkdir()
+        haylen.package_folder(self.folder, site / "app.zip")
+        (site / "config.json").write_text(json.dumps({"name": "App"}))
+        app = mock.Mock(folder=self.folder)
+        development = haylen.start_web_development(app, site)
+        config = json.loads((site / "config.json").read_text())
+        self.assertEqual(config["development"], {"path": haylen.DEVELOPMENT_PATH, "token": development.token})
+        self.assertGreaterEqual(len(base64.urlsafe_b64decode(development.token)), 16)
+        self.assertEqual(development.manifest, self.manifest)
 
 if __name__ == "__main__":
     unittest.main()

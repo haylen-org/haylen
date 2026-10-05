@@ -9,7 +9,7 @@ catalog.sections = {
     {title = 'Graphics', folders = {'sprites', 'camera', 'text', 'lighting', 'nine-slice', 'particles', 'scenes', 'shaders'}},
     {title = 'Gameplay', folders = {'algorithms', 'audio', 'events', 'input', 'physics', 'tiled', 'tween'}},
     {title = 'Interface', folders = {'interface', 'orientation', 'safe-area'}},
-    {title = 'System', folders = {'files', 'localization', 'native', 'network', 'platform', 'plugins', 'preferences', 'varn'}},
+    {title = 'System', folders = {'development', 'files', 'localization', 'native', 'network', 'platform', 'plugins', 'preferences', 'varn'}},
 }
 
 catalog.categories = {}

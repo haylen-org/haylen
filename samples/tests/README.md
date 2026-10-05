@@ -457,6 +457,19 @@ The anchors of the interface against the safe area and the whole screen, drawing
 
 ### System
 
+#### Development (DEV)
+
+Hot reload while the project runs in development, with "python3 haylen.py run samples/tests" or with "--platform web": each test names a file to edit and shows what a saved change does while the test runs. Without development the tests say that hot reload is off. The tests are in `source/categories/development/`, and the files to edit in `source/categories/development/edit/` and `content/development/`.
+
+| Code | Test | What it shows | Unsupported on |
+| --- | --- | --- | --- |
+| `DEV-001` | Module reload | A greeting from a module that reloads in place while a counter keeps counting. |  |
+| `DEV-002` | Classes | Walkers of a class that take its new methods in place, with their positions kept. |  |
+| `DEV-003` | Callbacks | Timers with a module function, a closure made at run time and a call through a table, after a reload. |  |
+| `DEV-004` | Hooks and kept values | The reloaded hook, a kept signal whose listener never doubles and the reloads the event bus reports. |  |
+| `DEV-005` | Resume after a fix | An error in an update that saving the fix resumes from, with the state of the test kept. |  |
+| `DEV-006` | Assets | JSON and the texts of a language that reload in place, with the asset events of each save. |  |
+
 #### Files and storage (FIL)
 
 The files of the package, the user folder through "haylen.storage" and Varn "fs", save slots, zip archives and a browser of the user folder. The tests are in `source/categories/files/`.

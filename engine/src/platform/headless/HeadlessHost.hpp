@@ -215,9 +215,9 @@ class HeadlessHost final : public Host {
         return developmentSession.get();
     }
 
-    // Plays the apps of this host in development from now on, with a session that scans the package folder when one is given, the way the player does with "--dev".
-    void enableDevelopment(std::optional<std::filesystem::path> folder = std::nullopt) {
-        developmentSession = std::make_unique<DevelopmentSession>(std::move(folder));
+    // Plays the apps of this host in development from now on, with a session that scans the package folder when one is given, the way the player does with "--dev", and that connects to a development server when its address is given.
+    void enableDevelopment(std::optional<std::filesystem::path> folder = std::nullopt, std::string server = {}) {
+        developmentSession = std::make_unique<DevelopmentSession>(std::move(folder), std::move(server));
     }
 
     void resize(math::Vec2 size) noexcept {

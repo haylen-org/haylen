@@ -1,5 +1,5 @@
 // Page side of the Haylen web runtime, included before the generated module code.
-// Pages talk to the running app through `Module.haylen`: native bridge handlers, the contexts of plugin modules with their overlay over the canvas, the editor API that swaps the app package without reloading the page, and the `onLog`, `onError`, `onStarted`, `onStopped` and `onStats` callbacks.
+// Pages talk to the running app through `Module.haylen`: native bridge handlers, the contexts of plugin modules with their overlay over the canvas, the editor API that edits the package of the app and swaps it without reloading the page, development with hot reload, and the `onLog`, `onError`, `onStarted`, `onStopped`, `onStats` and `onReloaded` callbacks.
 
 Module.haylen = Module.haylen || {};
 
@@ -961,6 +961,11 @@ Module.haylen = Module.haylen || {};
         notify("onStopped");
     };
 
+    // Reports of hot reload arrive after every batch of changes that applied, as `{restarted: false, mode, modules, assets, resumed, milliseconds}`, or as `{restarted: true, reason}` before a restart.
+    haylen.reportReloaded = function (report) {
+        notify("onReloaded", report);
+    };
+
     // Statistics arrive about once per second while the app runs: fps, frame times, renderer counters, cached assets, audio voices, profiler scopes and the audio output.
     haylen.reportStats = function (stats) {
         stats.audio = audio.stats();
@@ -1015,7 +1020,7 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-    // Editor API: build a package file by file, then run it. The running app reads edited files the next time it loads them, and `run` starts it again from `source/main.lua`.
+    // Editor API: `setFile` and `removeFile` edit the package that plays, `applyChanges` applies the files edited since its last call the way hot reload does in development and restarts the app otherwise, `run` starts the package again from `source/main.lua`, and `clearFiles` stops the app and empties the package for an app built file by file.
     haylen.clearFiles = function () {
         Module._haylen_web_clear_files();
     };
@@ -1073,9 +1078,8 @@ Module.haylen = Module.haylen || {};
         return Module._haylen_web_paused() === 1;
     };
 
-    // Reloads assets read from a file changed with `setFile`, such as a texture the editor just painted, without restarting the app.
-    haylen.reloadAsset = function (path) {
-        return checked(Module.ccall("haylen_web_reload_asset", "number", ["string"], [path])) === 1;
+    haylen.applyChanges = function () {
+        Module._haylen_web_apply_changes();
     };
 
     // WebSockets the app opened through `haylen.net`, by the id the runtime gave them. Their events reach the app on its next frame.
@@ -1610,16 +1614,26 @@ Module.haylen = Module.haylen || {};
         });
     });
 
-    // A page that already holds the zipped package, such as a loader that downloaded it with a progress bar, hands its bytes over as `Module.haylen.packageData`. The runtime plays it instead of the bundled package, and a page never turns on development mode.
+    // A page that already holds the zipped package, such as a loader that downloaded it with a progress bar, hands its bytes over as `Module.haylen.packageData`, and a page can instead name a zipped package with `Module.haylen.packageUrl`, which is downloaded before the app starts. The runtime plays it instead of the bundled package. Only a page that sets `Module.haylen.development` runs the app in development, connected to the development server that `Module.haylen.developmentServer` names, if any.
+    const launch = [];
+    if (haylen.packageData || haylen.packageUrl) {
+        launch.push("/package.zip");
+    }
+    if (haylen.development) {
+        launch.push("--dev");
+    }
+    if (haylen.developmentServer) {
+        launch.push("--dev-server", haylen.developmentServer);
+    }
+    if (launch.length > 0) {
+        Module.arguments = launch;
+    }
     if (haylen.packageData) {
-        Module.arguments = ["/package.zip"];
         Module.preRun.push(function () {
             FS.writeFile("/package.zip", new Uint8Array(haylen.packageData));
             haylen.packageData = null;
         });
     } else if (haylen.packageUrl) {
-        // A page can instead name a zipped package with `Module.haylen.packageUrl`, which is downloaded before the app starts.
-        Module.arguments = ["/package.zip"];
         Module.preRun.push(function () {
             addRunDependency("haylen-package");
             fetch(haylen.packageUrl)

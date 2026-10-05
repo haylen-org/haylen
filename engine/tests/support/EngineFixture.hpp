@@ -24,9 +24,10 @@ namespace haylen::test {
 // A running engine on the headless host with an in-memory package.
 class EngineFixture final {
   public:
-    // A fixture in development plays its apps the way the player does with "--dev", so changes queued in the development session of the host reach them.
+    // A fixture in development plays its apps the way the player does with "--dev", so changes queued in the development session of the host reach them. With the address of a development server, the session connects to it and the package plays under an overlay that takes the files the server sends.
     struct Options {
         bool development = false;
+        std::string developmentServer;
     };
 
     explicit EngineFixture(std::map<std::string, std::string> files = {}, std::unique_ptr<core::Application> application = nullptr);
@@ -62,6 +63,7 @@ class EngineFixture final {
     TemporaryDirectory directory;
     platform::HeadlessHost headlessHost;
     std::shared_ptr<io::MemoryPackage> memoryPackage;
+    std::shared_ptr<io::Package> playedPackage;
     std::unique_ptr<core::Engine> runningEngine;
 };
 

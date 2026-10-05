@@ -1,6 +1,9 @@
 #include "platform/sokol/SokolRuntime.hpp"
 
 #include <cmath>
+#include <filesystem>
+#include <optional>
+#include <system_error>
 
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
@@ -10,6 +13,8 @@
 #include "haylen/lua/Error.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/NativeLibraries.hpp"
+#include "io/OverlayPackage.hpp"
+#include "platform/DevelopmentSession.hpp"
 #include "platform/Services.hpp"
 #include "platform/native/NativeApi.hpp"
 #include "platform/sokol/MemoryWarning.hpp"
@@ -49,15 +54,20 @@ sapp_desc SokolRuntime::describe(int argc, char* argv[]) {
     for (const std::string& folder : options.nativeFolders) {
         NativeLibraries::addSearchFolder(folder);
     }
+    if (options.development) {
+        std::error_code error;
+        const bool folder = !options.package.empty() && std::filesystem::is_directory(options.package, error);
+        runtime.host.enableDevelopment(folder ? std::optional<std::filesystem::path>(options.package) : std::nullopt, options.developmentServer);
+#if defined(__EMSCRIPTEN__)
+        runtime.host.getDevelopmentSession()->addReporter(&WebPage::reportReloaded);
+#endif
+    }
     // clang-format off
-    runtime.pending = load([&options] {
+    runtime.pending = runtime.load([&options] {
         return options.package.empty() ? Services::openBundledPackage() : std::shared_ptr<io::Package>(io::Package::open(options.package));
     });
     // clang-format on
     runtime.package = runtime.pending.package;
-    if (options.development) {
-        runtime.host.enableDevelopment(runtime.package->getDirectory());
-    }
 
     const core::AppConfig& config = runtime.pending.config;
     sapp_desc desc{};
@@ -121,11 +131,25 @@ void SokolRuntime::restart(std::shared_ptr<io::Package> source) {
 }
 
 void SokolRuntime::restart(const std::function<std::shared_ptr<io::Package>()>& open) {
-    getCurrent().replace(load(open));
+    SokolRuntime& runtime = getCurrent();
+    runtime.replace(runtime.load(open));
 }
 
 void SokolRuntime::restart() {
     restart(getCurrent().package);
+}
+
+void SokolRuntime::stage(std::shared_ptr<io::Package> source) {
+    stop();
+    getCurrent().package = std::move(source);
+}
+
+DevelopmentSession* SokolRuntime::getDevelopmentSession() noexcept {
+    return getCurrent().host.getDevelopmentSession();
+}
+
+io::OverlayPackage* SokolRuntime::getOverlay() noexcept {
+    return dynamic_cast<io::OverlayPackage*>(getCurrent().package.get());
 }
 
 void SokolRuntime::stop() {
@@ -143,11 +167,6 @@ void SokolRuntime::setPaused(bool value) {
 
 bool SokolRuntime::isPaused() noexcept {
     return getCurrent().paused;
-}
-
-bool SokolRuntime::reloadAsset(std::string_view path) {
-    const SokolRuntime& runtime = getCurrent();
-    return runtime.engine != nullptr && runtime.engine->getAssets().reload(path) > 0;
 }
 
 void SokolRuntime::handleEvent(const Event& event) {
@@ -175,13 +194,16 @@ SokolRuntime& SokolRuntime::getCurrent() noexcept {
     return *getProcess().current;
 }
 
-// Options other than --dev and --native come from the system, such as the ones Xcode passes to the macOS apps it launches, and are left to it.
+// Options other than --dev, --dev-server and --native come from the system, such as the ones Xcode passes to the macOS apps it launches, and are left to it.
 SokolRuntime::LaunchOptions SokolRuntime::parseLaunchOptions(int argc, char* argv[]) {
     LaunchOptions options;
     for (int index = 1; index < argc; ++index) {
         const std::string_view argument = argv[index];
         if (argument == "--dev") {
             options.development = true;
+        } else if (argument == "--dev-server" && index + 1 < argc) {
+            options.development = true;
+            options.developmentServer = argv[++index];
         } else if (argument == "--native" && index + 1 < argc) {
             options.nativeFolders.emplace_back(argv[++index]);
         } else if (!argument.starts_with('-') && options.package.empty()) {
@@ -195,7 +217,7 @@ SokolRuntime::LaunchOptions SokolRuntime::parseLaunchOptions(int argc, char* arg
 SokolRuntime::App SokolRuntime::load(const std::function<std::shared_ptr<io::Package>()>& open) {
     App app;
     try {
-        app.package = open();
+        app.package = withOverlay(open());
         app.config = core::AppConfig::fromPackage(*app.package);
         app.application = core::Application::create();
         app.application->configure(app.config);
@@ -208,6 +230,20 @@ SokolRuntime::App SokolRuntime::load(const std::function<std::shared_ptr<io::Pac
         app.application = std::make_unique<FailedApplication>(std::string("The app could not be loaded. ") + error.what());
     }
     return app;
+}
+
+// The web plays every package under an overlay, which the page edits file by file, and so does an app that a development server sends files to.
+std::shared_ptr<io::Package> SokolRuntime::withOverlay(std::shared_ptr<io::Package> source) const {
+#if defined(__EMSCRIPTEN__)
+    const bool overlaid = true;
+#else
+    const DevelopmentSession* session = host.getDevelopmentSession();
+    const bool overlaid = session != nullptr && session->isConnected();
+#endif
+    if (!overlaid || std::dynamic_pointer_cast<io::OverlayPackage>(source)) {
+        return source;
+    }
+    return std::make_shared<io::OverlayPackage>(std::move(source));
 }
 
 // Native libraries open windows of their own over the window of the app, which exists from here on.
@@ -301,6 +337,9 @@ void SokolRuntime::launch() {
     App app = std::exchange(pending, {});
     playing = app.playing;
     paused = false;
+    if (DevelopmentSession* session = host.getDevelopmentSession()) {
+        session->setOverlay(std::dynamic_pointer_cast<io::OverlayPackage>(app.package));
+    }
     try {
         engine = std::make_unique<core::Engine>(host, std::move(app.package), std::move(app.config), std::move(app.application));
     } catch (const std::exception& error) {

@@ -192,6 +192,11 @@ var Module = {
             );
         };
         Module.haylen.packageData = archive;
+        // A run of `haylen.py run --platform web` serves the page in development, connected to the server that pushes every saved file, while a site that `haylen.py prepare` makes has no such entry.
+        if (config.development) {
+            Module.haylen.development = true;
+            Module.haylen.developmentServer = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + config.development.path + "?token=" + encodeURIComponent(config.development.token);
+        }
         loadPlugins(plugins);
         await loadScript(backend + "/haylen.js");
     } catch (error) {

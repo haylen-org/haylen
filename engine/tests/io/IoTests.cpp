@@ -13,6 +13,7 @@
 #include "haylen/io/Package.hpp"
 #include "haylen/io/Path.hpp"
 #include "io/CompositePackage.hpp"
+#include "io/OverlayPackage.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
@@ -237,6 +238,31 @@ TEST(MemoryPackageTest, ReplacesAndRemovesFiles) {
     EXPECT_TRUE(package.removeFile("main.lua"));
     EXPECT_FALSE(package.removeFile("main.lua"));
     EXPECT_FALSE(package.exists("main.lua"));
+}
+
+TEST(OverlayPackageTest, ReadsReplacedFilesOverTheBaseAndHidesRemovedOnes) {
+    const auto base = std::make_shared<MemoryPackage>("base", std::map<std::string, std::vector<std::uint8_t>>{{"source/a.lua", test::TestFiles::bytes("a")}, {"source/b.lua", test::TestFiles::bytes("b")}, {"content/c.json", test::TestFiles::bytes("{}")}});
+    OverlayPackage overlay(base);
+    overlay.setFile("source/a.lua", test::TestFiles::bytes("edited"));
+    EXPECT_TRUE(overlay.removeFile("source/b.lua"));
+    EXPECT_FALSE(overlay.removeFile("source/missing.lua"));
+    overlay.setFile("./source//d.lua", test::TestFiles::bytes("added"));
+
+    EXPECT_EQ(overlay.readText("source/a.lua"), "edited");
+    EXPECT_EQ(overlay.getFileSize("source/a.lua"), 6U);
+    EXPECT_FALSE(overlay.exists("source/b.lua"));
+    EXPECT_THROW((void)overlay.read("source/b.lua"), std::runtime_error);
+    EXPECT_EQ(overlay.readText("source/d.lua"), "added");
+    EXPECT_EQ(overlay.readAssetText("c.json"), "{}");
+    EXPECT_EQ(overlay.list("source"), (std::vector<std::string>{"source/a.lua", "source/d.lua"}));
+    EXPECT_EQ(overlay.getName(), "base");
+    EXPECT_FALSE(overlay.isLuaBytecode("source/a.lua"));
+    EXPECT_EQ(base->readText("source/a.lua"), "a");
+
+    overlay.setFile("source/b.lua", test::TestFiles::bytes("back"));
+    EXPECT_EQ(overlay.readText("source/b.lua"), "back");
+    EXPECT_THROW(overlay.setFile("../secret.lua", {}), std::invalid_argument);
+    EXPECT_THROW((void)overlay.exists("/etc/passwd"), std::invalid_argument);
 }
 
 } // namespace haylen::io

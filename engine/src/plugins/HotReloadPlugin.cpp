@@ -52,6 +52,7 @@ void HotReloadPlugin::beginFrame(core::Engine& engine, float) {
     if (session == nullptr) {
         return;
     }
+    session->pump();
     elapsed += static_cast<float>(engine.getClock().getUnscaledDelta());
     if (elapsed >= kScanSeconds) {
         if (const std::shared_ptr<platform::DevelopmentSession::Scan> scan = session->beginScan()) {
@@ -93,6 +94,8 @@ HotReloadPlugin::Batch HotReloadPlugin::classify(core::Engine& engine, const std
         }
         if (loaded) {
             batch.modules.push_back(path);
+        } else {
+            core::Log::info("The file \"{}\" changed, and no module of the app loaded it yet, so the next \"require\" reads it.", path);
         }
     }
 
