@@ -209,7 +209,7 @@ A `.shader` file is JSON that `haylen.py shaders` writes and nothing else edits:
 | `blocks` | The uniform blocks of the shader's own, each with its name, binding slot, size and members, whose names, types, element counts and byte offsets come from the reflection of sokol-shdc. |
 | `textures` | The textures of the shader's own, each with its name and binding slot. |
 | `sources` | The source of every stage of every program for every language, each text once. |
-| `programs` | For each of the six programs and each language, the entry points, the source of each stage and the bindings of its attributes, uniform blocks, textures and samplers, as the shader description of Sokol names them. |
+| `programs` | For each of the eight programs and each language, the entry points, the source of each stage and the bindings of its attributes, uniform blocks, textures and samplers, as the shader description of Sokol names them. |
 
 The engine reads the file on a worker thread, and on the frame thread creates the GPU program of the active backend the first time a draw uses it, and the pipelines for each blend mode and kind of target. On Metal, reading the file also starts compiling the sources of the active backend of every program on the I/O pool, as [load time](#load-time) explains.
 
