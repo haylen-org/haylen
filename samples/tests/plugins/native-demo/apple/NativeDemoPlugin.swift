@@ -13,7 +13,7 @@ import UIKit
 import AVFoundation
 #endif
 
-// Native part of the Native Demo plugin on iOS, iPadOS, Mac Catalyst, tvOS and macOS, built on the frameworks of the system alone. The runtime creates it by the class name that `plugin.json` gives and loads it while the app launches, and hands it the events of the notification center, since it adopts the notification plugin protocol.
+// Native part of the Native Demo plugin on iOS, iPadOS, Mac Catalyst, tvOS and macOS, built on the frameworks of the system alone, with the simulations of SDKs in `NativeDemoDevice` and `NativeDemoStore`. The runtime creates it by the class name that `plugin.json` gives and loads it while the app launches, and hands it the events of the notification center, since it adopts the notification plugin protocol.
 @objc(NativeDemoPlugin)
 final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
     struct Empty: Codable {}
@@ -162,9 +162,15 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
     private var lastError: [String: Any]?
     private var video: NativeDemoVideo?
     private var tone: NativeDemoTone?
+    private var device: NativeDemoDevice?
+    private let store = NativeDemoStore()
 
     func load(with context: HaylenPluginContext) {
         self.context = context
+        let device = NativeDemoDevice(context: context)
+        device.register()
+        self.device = device
+        store.register(context)
         registerCalls(context)
         registerBytes(context)
         registerEvents(context)
@@ -218,6 +224,7 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
             self.stopBursts()
             self.banner?.remove()
             self.banner = nil
+            self.device?.stop()
             if let failure = self.lastError {
                 context.emitRetained("lastError", payload: failure)
                 self.lastError = nil

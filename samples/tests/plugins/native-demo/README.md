@@ -1,6 +1,6 @@
 # Native Demo
 
-A Haylen plugin that exercises every capability of native plugins with the APIs of each platform alone: calls on the main thread and on a background thread, typed failures, timeouts and cancellation, bytes both ways and an image drawn natively, video and audio streams, events, retained events and batched events, parameters with defaults, a native banner over the app that reserves its edge, a native screen that covers the app, screens of the plugin whose end reaches the next app after a restart, the file picker of the platform, permission prompts, local notifications, URLs that open the app and the errors that stop it. It is a plugin of the [test project](../../README.md), whose Plugins category, the tests from `PLG-001` to `PLG-015`, exercises every capability, and [the plugin guide](../../../../docs/plugins.md#demo-plugin-and-sample) walks through it as the reference for writing a plugin on each platform. Its Lua API is the same on every platform.
+A Haylen plugin that exercises every capability of native plugins with the APIs of each platform alone: calls on the main thread and on a background thread, typed failures, timeouts and cancellation, bytes both ways and an image drawn natively, video and audio streams, events, retained events and batched events, parameters with defaults, a native banner over the app that reserves its edge, a native screen that covers the app, screens of the plugin whose end reaches the next app after a restart, the file picker of the platform, permission prompts, local notifications, URLs that open the app and the errors that stop it. It also simulates the SDKs that real plugins bring, with the same APIs alone: a camera with photos and a microphone, the location and a map, the share sheet and other apps, and a fake store, fake ads and a fake sign-in, whose sheets are screens of the plugin. It is a plugin of the [test project](../../README.md), whose Plugins category, the tests from `PLG-001` to `PLG-021`, exercises every capability, and [the plugin guide](../../../../docs/plugins.md#demo-plugin) walks through it as the reference for writing a plugin on each platform. Its Lua API is the same on every platform.
 
 ## Installation
 
@@ -22,12 +22,12 @@ python3 haylen.py plugin add samples/tests/plugins/native-demo --app my-app
 
 | Platform | Native part | What it uses |
 | --- | --- | --- |
-| iOS, iPadOS, Mac Catalyst | `apple/`, Swift | UIKit views over the app, a presented view controller, `UIDocumentPickerViewController`, a UIKit and a SwiftUI screen, the latter in a window of its own on Mac Catalyst, `CVPixelBuffer`s drawn with CoreGraphics and floats from dispatch queues for the streams, `AVCaptureDevice` and `UNUserNotificationCenter` for the permissions and the notification, with `AVFoundation.framework` and `UserNotifications.framework` in the `frameworks` of `plugin.json` and the plugin class a `HaylenNotificationPlugin`, `CFBundleURLTypes`, `scene(_:openURLContexts:)`, `context.require` for the requirements and CoreGraphics with ImageIO for the image. |
-| tvOS | `apple/`, Swift | The same, without a file picker, a camera and notifications that show, so `pickFile`, `requestPermission('camera')` and `notify` fail with the code `unsupported`. |
-| macOS app | `apple/`, Swift | AppKit views over the app, a sheet, `NSOpenPanel`, an AppKit sheet and a SwiftUI window for the screens, the streams, the permissions and the notification as on iOS, `CFBundleURLTypes`, `application(_:open:)` and CoreGraphics with ImageIO for the image. |
-| Android | `android/`, a Kotlin library module | Views of the overlay over the app, a full screen `Dialog`, an `AppCompatActivity` of its own for the confirm screen, `ActivityResultContracts.OpenDocument` and `RequestPermission` through the Activity Result API, an intent filter of `HaylenLinkActivity` of `dev.haylen:haylen-links` for the URL scheme and the taps on notifications, an alarm and `NotificationManagerCompat` for the notification, `HaylenRequirements` for the permissions, a `Bitmap` and a `Canvas` for the image and the video stream, and the streams of the context. |
-| Web | `web/native-demo.js` and `web/screen.html` | DOM elements in the overlay, a modal `<dialog>`, a popup and a redirect to `screen.html` for the confirm screen, an `<input type="file">`, the hash of the page address, a `<canvas>` with `toBlob` for the image and the video stream, timers of the page for the tone and the bursts, and `context.require` for the requirements. |
-| Desktop player, Windows, Linux | `native/`, a C library | Threads of the system and `HaylenNativeApi`, with a PNG encoder of its own, the video and audio streams of the engine and a window of its own for the confirm screen: a sheet with AppKit on macOS, an owned window with Win32 on Windows and a transient window with Xlib on Linux. The desktops place no views of native libraries over the app, so `showBanner`, `setBannerVisible`, `removeBanner`, `showScreen` and `pickFile` fail with the code `unsupported`, and so does `nativeConfig`, since native libraries receive no plugin parameters. The desktops open no URLs of the scheme either. |
+| iOS, iPadOS, Mac Catalyst | `apple/`, Swift | `NativeDemoDevice.swift` with AVFoundation for the camera and the microphone, Core Location, a MapKit view over the app, `UIActivityViewController` and the links of other apps, `NativeDemoStore.swift` with the fake store, ads and sign-in as screens of the plugin in alerts of `NativeDemoSheet.swift`, UIKit views over the app, a presented view controller, `UIDocumentPickerViewController`, a UIKit and a SwiftUI screen, the latter in a window of its own on Mac Catalyst, `CVPixelBuffer`s drawn with CoreGraphics and floats from dispatch queues for the streams, `AVCaptureDevice` and `UNUserNotificationCenter` for the permissions and the notification, with `AVFoundation.framework` and `UserNotifications.framework` in the `frameworks` of `plugin.json` and the plugin class a `HaylenNotificationPlugin`, `CFBundleURLTypes`, `scene(_:openURLContexts:)`, `context.require` for the requirements and CoreGraphics with ImageIO for the image. |
+| tvOS | `apple/`, Swift | The same, without a file picker, a camera, a microphone for apps, a share sheet and notifications that show, so `pickFile`, `requestPermission('camera')`, `startCamera`, `takePhoto`, `startMicrophone`, `share` and `notify` fail with the code `unsupported`. |
+| macOS app | `apple/`, Swift | The simulations of iOS with `NSSharingServicePicker`, `NSWorkspace` and `NSAlert` sheets, with the entitlements of the hardened runtime that the camera, the microphone and the location need, AppKit views over the app, a sheet, `NSOpenPanel`, an AppKit sheet and a SwiftUI window for the screens, the streams, the permissions and the notification as on iOS, `CFBundleURLTypes`, `application(_:open:)` and CoreGraphics with ImageIO for the image. |
+| Android | `android/`, a Kotlin library module | `NativeDemoDevice.kt` with Camera2, `AudioRecord` and `LocationManager`, a drawn map in `NativeDemoMap.kt`, the share sheet and other apps through intents, `NativeDemoStore.kt` with the fake store, ads and sign-in as screens of the plugin in dialogs, the permissions `RECORD_AUDIO`, `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION` next to the others, views of the overlay over the app, a full screen `Dialog`, an `AppCompatActivity` of its own for the confirm screen, `ActivityResultContracts.OpenDocument` and `RequestPermission` through the Activity Result API, an intent filter of `HaylenLinkActivity` of `dev.haylen:haylen-links` for the URL scheme and the taps on notifications, an alarm and `NotificationManagerCompat` for the notification, `HaylenRequirements` for the permissions, a `Bitmap` and a `Canvas` for the image and the video stream, and the streams of the context. |
+| Web | `web/native-demo.js`, `web/simulations.js` and `web/screen.html` | `getUserMedia` with an audio worklet for the camera and the microphone, the Geolocation API, a drawn map in the overlay, the Web Share API, links of other apps, and `<dialog>` elements for the fake store, ads and sign-in as screens of the plugin, all through `context.require` for a secure context and the API, DOM elements in the overlay, a modal `<dialog>`, a popup and a redirect to `screen.html` for the confirm screen, an `<input type="file">`, the hash of the page address, a `<canvas>` with `toBlob` for the image and the video stream, timers of the page for the tone and the bursts, and `context.require` for the requirements. |
+| Desktop player, Windows, Linux | `native/`, a C library | Threads of the system and `HaylenNativeApi`, with a PNG encoder of its own, the video and audio streams of the engine and a window of its own for the confirm screen: a sheet with AppKit on macOS, an owned window with Win32 on Windows and a transient window with Xlib on Linux. The same windows show the fake store, ads and sign-in, and the shell of the system opens other apps. The desktops place no views of native libraries over the app, so `showBanner`, `setBannerVisible`, `removeBanner`, `showScreen`, `showMap` and `pickFile` fail with the code `unsupported`, and so do the camera, the microphone, the location and `share`, whose desktop APIs differ on each system, and `nativeConfig`, since native libraries receive no plugin parameters. The desktops open no URLs of the scheme either. |
 
 The Lua API loads the C library with `native.load('native_demo', {init = 'native_demo_haylen_init'})` when it runs on macOS, Windows or Linux and no other native part loaded, which is the case of the desktop player and of Windows and Linux apps. The macOS app built from the Apple template runs the Swift part, which loads before any Lua runs.
 
@@ -39,7 +39,10 @@ The Lua API loads the C library with `native.load('native_demo', {init = 'native
 | `bannerColor` | string | `"#264653"` | Background of the native banner and the native screen, as `#RRGGBB`. Another text fails `showBanner` and `showScreen` with the code `invalidColor`. |
 | `tickInterval` | number | `1` | Seconds between two `tick` events. |
 | `urlScheme` | string | `"haylendemo"` | URL scheme that opens the app, which the plugin declares in `CFBundleURLTypes` on Apple platforms and in an intent filter of `HaylenLinkActivity` on Android through the placeholder `nativeDemoUrlScheme`. |
-| `cameraUsage` | string | `"The Native Demo plugin asks for the camera to show how a plugin requests a permission."` | The `NSCameraUsageDescription` of iOS, iPadOS, Mac Catalyst and macOS, which the camera prompt shows. |
+| `cameraUsage` | string | `"The Native Demo plugin asks for the camera to show how a plugin requests a permission and to simulate the camera of an SDK."` | The `NSCameraUsageDescription` of iOS, iPadOS, Mac Catalyst and macOS, which the camera prompt shows. |
+| `microphoneUsage` | string | `"The Native Demo plugin records the microphone to simulate the audio capture of an SDK."` | The `NSMicrophoneUsageDescription` of iOS, iPadOS, Mac Catalyst and macOS. |
+| `locationUsage` | string | `"The Native Demo plugin reads the location to simulate the location and the map of an SDK."` | The `NSLocationWhenInUseUsageDescription` and `NSLocationUsageDescription` of the Apple platforms. |
+| `macDevices` | boolean | `true` | Whether the macOS app signs with the entitlements `com.apple.security.device.camera`, `com.apple.security.device.audio-input` and `com.apple.security.personal-information.location`, which the hardened runtime needs for the camera, the microphone and the location. The parameter has a value on macOS alone, so the other platforms leave the entitlements out. |
 
 ## Lua API
 
@@ -457,6 +460,112 @@ local demo = require('native-demo')
 demo.onLastError(function(failure) print('The last app stopped with', failure.message, failure.file, failure.line) end)
 ```
 
+## Simulations of SDKs
+
+The functions below stand in for the SDKs that real plugins bring. Each answers with what the platform gives and fails with the code `unsupported` and the reason where the platform cannot run it. A purchase, an ad and a sign-in take over the app until they end, so they are [screens](../../../../docs/plugins.md#plugin-screens) of the plugin, which the engine covers the app for, and their `options` take the `state`, `opaque` and `timeout` of `handle:openScreen`. The test project shows them in the tests `PLG-016` to `PLG-021`.
+
+### demo.startCamera(facing), demo.stopCamera(), demo.cameraStream(), demo.takePhoto()
+
+Starts the camera, `'back'` by default or `'front'`, after the permission of the person, and answers with `{width, height, facing, language}` once frames flow. The native part pushes its frames into the video stream `camera`, which `demo.cameraStream()` returns, and `takePhoto` answers with `{jpeg, width, height, language}`, the newest frame as the bytes of a JPEG file. A device without a camera, Apple TV and the desktops of the C library fail with `unsupported`, a refused permission with `permissionDenied`, and `takePhoto` without a camera with `cameraOff`.
+
+```lua
+local async = require('async')
+local graphics = require('haylen.graphics')
+local demo = require('native-demo')
+
+async.spawn(function()
+    local started, err = demo.startCamera('back'):await()
+    if err then
+        print('No camera', err.code, err.message)
+        return
+    end
+    local photo = demo.takePhoto():await()
+    local texture = graphics.newTexture(photo.jpeg)
+    print(started.width, started.height, texture.width, demo.cameraStream().texture.width)
+end)
+```
+
+### demo.startMicrophone(), demo.stopMicrophone(), demo.microphoneStream(), demo.onMicrophoneLevel(listener)
+
+Starts the microphone after the permission of the person and answers with `{sampleRate, channels, language}`. The native part pushes mono floats into the audio stream `microphone`, which `demo.microphoneStream()` returns and the app plays or reads, and sends `microphoneLevel` with `{level, language}`, the level of the newest samples from 0 to 1, about ten times per second. On iOS the plugin switches the audio session to record while the microphone runs and restores it afterwards.
+
+```lua
+local async = require('async')
+local demo = require('native-demo')
+
+demo.onMicrophoneLevel(function(update) print('Level', update.level) end)
+async.spawn(function()
+    local started = demo.startMicrophone():await()
+    print(started and started.sampleRate)
+end)
+```
+
+### demo.location(), demo.showMap(anchor, latitude, longitude), demo.removeMap()
+
+The call `location` asks for the permission of the person while the app is in use and answers with `{latitude, longitude, accuracy, language}`, the accuracy in meters, or fails with `permissionDenied` or `locationUnknown`. The call `showMap` places a native map of 360 by 220 points at the `'top'` or `'bottom'` of the app, centered on the place, and answers with `{anchor, latitude, longitude, drawnWith, language}`: MapKit on Apple platforms, and a view that draws the map on Android and the web, as the view of a map SDK would.
+
+```lua
+local async = require('async')
+local demo = require('native-demo')
+
+async.spawn(function()
+    local place = demo.location():await() or {latitude = -22.9519, longitude = -43.2105}
+    demo.showMap('bottom', place.latitude, place.longitude):await()
+end)
+```
+
+### demo.share(text, url), demo.openApp(kind)
+
+The call `share` opens the share sheet of the platform with the text and the url, which may be `nil`, and answers with `{shared, language}`, where `shared` tells whether the person shared, or is `nil` on Android, whose share sheet tells nothing. The call `openApp` opens the settings of the app for `'settings'`, a map app at a place for `'maps'` and a new message of the mail app for `'mail'`, and answers with `{opened, language}`. A web page cannot open the settings, and the C library opens no map app on Windows and Linux, which fail with `unsupported`.
+
+```lua
+local demo = require('native-demo')
+
+demo.share('A text', 'https://example.com')
+demo.openApp('mail')
+```
+
+### demo.products(), demo.purchase(productId, options), demo.restorePurchases(), demo.onPurchaseUpdated(listener)
+
+The fake store lists three products, `coins.small` and `coins.large`, which the person buys again and again, and `ads.remove`, which the device keeps, each `{id, title, description, price, currency, kind}`. The screen `purchase` shows a sheet with the product and answers with `{productId, transactionId, receipt, language}` once the person buys it, or fails with `cancelled`, and `restorePurchases` answers with the kept purchases, each `{productId, transactionId}`. Every purchase and every restored one sends `purchaseUpdated` with `{productId, transactionId, state, language}`, where `state` is `'purchased'` or `'restored'`. Nothing is charged. The device keeps the purchases in `UserDefaults`, `SharedPreferences` and the local storage of the page, and the C library for the life of the process.
+
+```lua
+local async = require('async')
+local demo = require('native-demo')
+
+demo.onPurchaseUpdated(function(update) print(update.productId, update.state) end)
+async.spawn(function()
+    local purchase, err = demo.purchase('ads.remove'):await()
+    print(purchase and purchase.transactionId or err.code)
+end)
+```
+
+### demo.showInterstitial(options), demo.showRewarded(options), demo.onAdRewarded(listener)
+
+The screen `interstitial` shows a fake full-screen ad until the person continues to the app and answers with `{closed, language}`, and the screen `rewarded` asks whether the person watches a fake ad to the end and answers with `{rewarded, amount, currency, language}`, sending `adRewarded` with `{amount, currency, language}` when it grants the reward. The engine covers the app while each shows.
+
+```lua
+local demo = require('native-demo')
+
+demo.onAdRewarded(function(reward) print('Earned', reward.amount, reward.currency) end)
+demo.showRewarded()
+```
+
+### demo.signIn(options), demo.currentUser(), demo.signOut(), demo.onUserChanged(listener)
+
+The screen `signIn` lets the person pick a fake account and answers with `{userId, name, email, token, language}`, or fails with `cancelled`. The device keeps the account, which `currentUser` answers with, or `nil`, until `signOut` forgets it. Every sign-in sends `userChanged` with the account, and every sign-out with `nil`. No password and no network take part.
+
+```lua
+local async = require('async')
+local demo = require('native-demo')
+
+demo.onUserChanged(function(account) print(account and account.name or 'Signed out') end)
+async.spawn(function()
+    local account = demo.signIn():await()
+    print(account and account.email)
+end)
+```
+
 ## Native API
 
 | Method or event | Params or payload | Answer |
@@ -487,8 +596,28 @@ demo.onLastError(function(failure) print('The last app stopped with', failure.me
 | `native-demo.bannerTapped` (event) | `{count, language}` | |
 | `native-demo.urlOpened` (event, retained) | `{url}` | |
 | `native-demo.lastError` (event, retained) | `{message, file, line, language}` | |
+| `native-demo.startCamera`, `native-demo.stopCamera` | `{facing}`, and `{}` | `{width, height, facing, language}`, and `null` |
+| `native-demo.takePhoto` | `{}` | `{jpeg, width, height, language}` with the bytes of `jpeg` |
+| `native-demo.startMicrophone`, `native-demo.stopMicrophone` | `{}` | `{sampleRate, channels, language}`, and `null` |
+| `native-demo.location` | `{}` | `{latitude, longitude, accuracy, language}` |
+| `native-demo.showMap`, `native-demo.removeMap` | `{anchor, latitude, longitude}`, and `{}` | `{anchor, latitude, longitude, drawnWith, language}`, and `null` |
+| `native-demo.share` | `{text, url}` | `{shared, language}` |
+| `native-demo.openApp` | `{kind}` | `{opened, language}` |
+| `native-demo.products` | `{}` | A list of `{id, title, description, price, currency, kind}` |
+| `native-demo.restorePurchases` | `{}` | A list of `{productId, transactionId}` |
+| `native-demo.currentUser`, `native-demo.signOut` | `{}` | The account or `null`, and `null` |
+| `native-demo.purchase` (screen) | `{productId}` | `{productId, transactionId, receipt, language}` |
+| `native-demo.interstitial` (screen) | `{placement}` | `{closed, language}` |
+| `native-demo.rewarded` (screen) | `{placement}` | `{rewarded, amount, currency, language}` |
+| `native-demo.signIn` (screen) | `{scopes}` | `{userId, name, email, token, language}` |
+| `native-demo.microphoneLevel` (event) | `{level, language}` | |
+| `native-demo.purchaseUpdated` (event) | `{productId, transactionId, state, language}` | |
+| `native-demo.adRewarded` (event) | `{amount, currency, language}` | |
+| `native-demo.userChanged` (event) | The account, or `null` | |
 
 | Stream | Kind | Format |
 | --- | --- | --- |
 | `pattern` | Video | BGRA frames of 320 by 180 pixels, 30 per second, from C, RGBA bitmaps of the same size from Kotlin, and RGBA frames of the canvas on the web. |
 | `tone` | Audio | 16-bit mono samples at 44100 Hz from C, and float mono samples at 44100 Hz from Kotlin and on the web. |
+| `camera` | Video | BGRA pixel buffers of 640 by 480 pixels from Swift, RGBA frames of 640 by 480 pixels from Kotlin, and RGBA frames of the video of the camera on the web. |
+| `microphone` | Audio | Float mono samples at the rate of the input of the device from Swift and on the web, and at 44100 Hz from Kotlin. |

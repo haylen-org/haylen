@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- The permissions that `requestPermission` asks the person for and that `notify` needs from Android 13 on, which the plugin checks before it asks. Devices without a camera, such as TVs, still install the app. -->
+    <!-- The permissions that `requestPermission`, the camera, the microphone and the location ask the person for and that `notify` needs from Android 13 on, which the plugin checks before it asks. Devices without a camera, a microphone or a location, such as TVs, still install the app. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <uses-feature android:name="android.hardware.location" android:required="false" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
     <application>
         <!-- The provider of the `haylen-plugins` library creates and loads the plugin class that this entry names when the app process starts. -->

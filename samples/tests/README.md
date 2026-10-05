@@ -579,7 +579,7 @@ The bridge to the native code of the plugin "platform-sample", what the window a
 
 #### Plugins (PLG)
 
-Every capability of native plugins through the plugin "native-demo", written with the APIs of each platform alone. The tests are in `source/categories/plugins/`.
+Every capability of native plugins through the plugin "native-demo", written with the APIs of each platform alone, and its simulations of the SDKs of cameras, maps, stores, ads and sign-in. The tests are in `source/categories/plugins/`.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -598,6 +598,12 @@ Every capability of native plugins through the plugin "native-demo", written wit
 | `PLG-013` | Opened URLs | Links with the scheme of the plugin that open the app, before or after it started. | windows, linux, headless |
 | `PLG-014` | App errors | An error of the app that the native part keeps and sends back to the next app. | headless |
 | `PLG-015` | Plugin info | The plugins of the app and whether their native part runs on this platform. |  |
+| `PLG-016` | Camera and microphone | The camera of the device in a video stream with photos as JPEG bytes, and the microphone in an audio stream with its level, as a camera SDK delivers them. | tvos, windows, linux, headless |
+| `PLG-017` | Location and map | Where the device is, after the permission of the person, and a native map over the app at that place, as a map SDK shows it. | windows, linux, headless |
+| `PLG-018` | Sharing and other apps | The share sheet of the platform, and the settings, a map app and the mail app opened through their links. | headless |
+| `PLG-019` | Fake store | The products of a fake store, purchases that the person confirms in a native sheet with a receipt, a kept product and restored purchases. | headless |
+| `PLG-020` | Fake ads | A full-screen ad and a rewarded ad that cover the app while they show, and the reward of an ad watched to the end. | headless |
+| `PLG-021` | Fake sign-in | An account that the person picks in a native sheet, the current user that the device keeps and signing out. | headless |
 
 #### Preferences (PRF)
 

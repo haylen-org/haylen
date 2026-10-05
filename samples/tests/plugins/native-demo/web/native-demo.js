@@ -1,4 +1,6 @@
-// Web part of the Native Demo plugin, built on the DOM alone. The page imports this module before the runtime starts and calls its `load` function with the context of the plugin.
+// Web part of the Native Demo plugin, built on the DOM alone, with the simulations of SDKs in `simulations.js`. The page imports this module before the runtime starts and calls its `load` function with the context of the plugin.
+import simulate from "./simulations.js";
+
 const language = "JavaScript";
 
 // Counts the primes below the limit in slices, yielding to the page between them, since the web runtime has one thread.
@@ -153,6 +155,7 @@ export default function load(context) {
     let bannerState = null;
     let bannerTaps = 0;
     let lastError = null;
+    const stopSimulations = simulate(context);
 
     const stopTicking = () => {
         clearInterval(ticker);
@@ -272,6 +275,7 @@ export default function load(context) {
         stopVideo();
         stopTone();
         stopBursts();
+        stopSimulations();
         if (banner) {
             banner.remove();
             banner = null;

@@ -35,7 +35,7 @@ import java.io.ByteArrayOutputStream
 import java.util.UUID
 import org.json.JSONObject
 
-// Native part of the Native Demo plugin on Android, built on the views, dialogs and intents of the platform alone. The `haylen` library creates it from the meta-data of its manifest and loads it when the app process starts.
+// Native part of the Native Demo plugin on Android, built on the views, dialogs and intents of the platform alone, with the simulations of SDKs in `NativeDemoDevice` and `NativeDemoStore`. The `haylen` library creates it from the meta-data of its manifest and loads it when the app process starts.
 class NativeDemoPlugin : HaylenPlugin() {
     private lateinit var context: HaylenPluginContext
     private val mainThread = Handler(Looper.getMainLooper())
@@ -48,13 +48,17 @@ class NativeDemoPlugin : HaylenPlugin() {
     private var picker: ActivityResultLauncher<Array<String>>? = null
     private var picking: HaylenBridge.Reply? = null
     private var permissions: ActivityResultLauncher<String>? = null
-    private var asking: Pair<String, HaylenBridge.Reply>? = null
+    private var asking: ((Boolean) -> Unit)? = null
+    private lateinit var device: NativeDemoDevice
     private var video: NativeDemoVideo? = null
     private var tone: NativeDemoTone? = null
     private var lastError: JSONObject? = null
 
     override fun onLoad(context: HaylenPluginContext) {
         this.context = context
+        device = NativeDemoDevice(context, ::ask)
+        device.register()
+        NativeDemoStore(context).register()
         registerCalls()
         registerBytes()
         registerEvents()
@@ -99,6 +103,7 @@ class NativeDemoPlugin : HaylenPlugin() {
             tone = null
             banner?.remove()
             banner = null
+            device.stop()
             lastError?.let { context.emitRetained("lastError", it) }
             lastError = null
             reply.success(null)
@@ -299,12 +304,7 @@ class NativeDemoPlugin : HaylenPlugin() {
                 return@register
             }
             context.requirements().require(HaylenRequirements.Requirement.permission(permission))
-            val launcher = permissions ?: throw HaylenBridge.Failure("The app has no activity yet.", "noWindow", null)
-            if (asking != null) {
-                throw HaylenBridge.Failure("Another permission request shows.", "busy", null)
-            }
-            asking = kind to reply
-            launcher.launch(permission)
+            ask(permission) { granted -> reply.success(permissionAnswer(kind, granted)) }
         }
 
         context.register("notify") { params, reply ->
@@ -320,14 +320,24 @@ class NativeDemoPlugin : HaylenPlugin() {
         }
     }
 
+    // Asks the person for a permission through the launcher of the activity and calls `answered` with whether the person granted it. One request shows at a time.
+    private fun ask(permission: String, answered: (Boolean) -> Unit) {
+        val launcher = permissions ?: throw HaylenBridge.Failure("The app has no activity yet.", "noWindow", null)
+        if (asking != null) {
+            throw HaylenBridge.Failure("Another permission request shows.", "busy", null)
+        }
+        asking = answered
+        launcher.launch(permission)
+    }
+
     // A request that ends after the process ended reaches the launcher of the new activity, while no call of the new app waits for it.
     private fun onPermission(granted: Boolean) {
-        val (kind, reply) = asking ?: run {
+        val answered = asking ?: run {
             Log.i(TAG, "The permission request answered ${if (granted) "granted" else "not granted"} after the app started again, and no call waits for it.")
             return
         }
         asking = null
-        reply.success(permissionAnswer(kind, granted))
+        answered(granted)
     }
 
     private fun permissionAnswer(kind: String, granted: Boolean): JSONObject =
@@ -401,6 +411,7 @@ class NativeDemoPlugin : HaylenPlugin() {
     // The activity takes the views of the overlay and its launchers with it, so a new activity starts without a banner.
     override fun onActivityDestroyed(activity: HaylenActivity) {
         banner = null
+        device.activityDestroyed()
         picker = null
         permissions = null
     }

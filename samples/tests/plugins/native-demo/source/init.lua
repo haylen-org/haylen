@@ -204,4 +204,121 @@ function demo.onLastError(listener)
     return handle:on('lastError', listener)
 end
 
+-- The simulations below stand in for the SDKs that real plugins bring, such as cameras, maps, stores, ads and sign-in, with the APIs of each platform alone. Each one answers with what the platform gives, and fails with the code `unsupported` and the reason where the platform cannot run it. A purchase, an ad and a sign-in take over the app until they end, so they are screens of the plugin, which the engine covers the app for, and the table `options` of each takes the `state`, `opaque` and `timeout` of `handle:openScreen`.
+
+-- Starts the camera, whose frames the native part pushes into the video stream `camera`, and answers with `{width, height, facing, language}`. The argument `facing` is `'back'`, the default, or `'front'`.
+function demo.startCamera(facing)
+    return handle:call('startCamera', {facing = facing or 'back'})
+end
+
+function demo.stopCamera()
+    return handle:call('stopCamera')
+end
+
+-- The video stream of the camera, or `nil` until the native part opened it.
+function demo.cameraStream()
+    return handle:videoStream('camera')
+end
+
+-- Takes a photo from the camera that runs and answers with `{jpeg, width, height, language}`, where `jpeg` holds the bytes of a JPEG file.
+function demo.takePhoto()
+    return handle:call('takePhoto')
+end
+
+-- Starts the microphone, whose samples the native part pushes into the audio stream `microphone`, and answers with `{sampleRate, channels, language}`. The native part sends `microphoneLevel` with `{level, language}`, the level from 0 to 1, about ten times per second.
+function demo.startMicrophone()
+    return handle:call('startMicrophone')
+end
+
+function demo.stopMicrophone()
+    return handle:call('stopMicrophone')
+end
+
+-- The audio stream of the microphone, or `nil` until the native part opened it.
+function demo.microphoneStream()
+    return handle:audioStream('microphone')
+end
+
+function demo.onMicrophoneLevel(listener)
+    return handle:on('microphoneLevel', listener)
+end
+
+-- Asks the platform where the device is, after the permission of the person, and answers with `{latitude, longitude, accuracy, language}`, the accuracy in meters.
+function demo.location()
+    return handle:call('location')
+end
+
+-- Shows a native map at the anchor `'top'` or `'bottom'` over the app, centered on the latitude and the longitude, and answers with `{anchor, latitude, longitude, drawnWith, language}`. Apple platforms show MapKit, and the other platforms draw a map of their own, as the view of a map SDK would.
+function demo.showMap(anchor, latitude, longitude)
+    return handle:call('showMap', {anchor = anchor, latitude = latitude, longitude = longitude})
+end
+
+function demo.removeMap()
+    return handle:call('removeMap')
+end
+
+-- Opens the share sheet of the platform with the text and the url, which may be `nil`, and answers with `{shared, language}`, where `shared` tells whether the person shared, or is `nil` where the platform does not tell.
+function demo.share(text, url)
+    return handle:call('share', {text = text, url = url})
+end
+
+-- Opens another app: `'settings'` the settings of this app, `'maps'` a map app at a place and `'mail'` a new message. Answers with `{opened, language}`.
+function demo.openApp(kind)
+    return handle:call('openApp', {kind = kind})
+end
+
+-- Answers with the list of the products of the fake store, each `{id, title, description, price, currency, kind}`, where `kind` is `'consumable'` or `'nonConsumable'`.
+function demo.products()
+    return handle:call('products')
+end
+
+-- Opens the purchase sheet of a product and answers with `{productId, transactionId, receipt, language}` once the person buys it, and fails with the code `cancelled` when the person declines. Nothing is charged.
+function demo.purchase(productId, options)
+    return handle:openScreen('purchase', {productId = productId}, options)
+end
+
+-- Answers with the products that the device bought and keeps, each `{productId, transactionId}`, and sends `purchaseUpdated` for each one as restored.
+function demo.restorePurchases()
+    return handle:call('restorePurchases')
+end
+
+-- Calls `listener` with `{productId, transactionId, state, language}` whenever a purchase is made or restored, where `state` is `'purchased'` or `'restored'`.
+function demo.onPurchaseUpdated(listener)
+    return handle:on('purchaseUpdated', listener)
+end
+
+-- Shows a fake full-screen ad until the person continues to the app, and answers with `{closed, language}`.
+function demo.showInterstitial(options)
+    return handle:openScreen('interstitial', {placement = 'demo'}, options)
+end
+
+-- Shows a fake rewarded ad and answers with `{rewarded, amount, currency, language}`, where `rewarded` tells whether the person watched it to the end, which also sends `adRewarded`.
+function demo.showRewarded(options)
+    return handle:openScreen('rewarded', {placement = 'demo'}, options)
+end
+
+-- Calls `listener` with `{amount, currency, language}` when a rewarded ad grants its reward.
+function demo.onAdRewarded(listener)
+    return handle:on('adRewarded', listener)
+end
+
+-- Opens the fake sign-in, where the person picks an account, and answers with `{userId, name, email, token, language}`, or fails with the code `cancelled`.
+function demo.signIn(options)
+    return handle:openScreen('signIn', {scopes = {'profile', 'email'}}, options)
+end
+
+function demo.signOut()
+    return handle:call('signOut')
+end
+
+-- Answers with the account that signed in, or `nil`.
+function demo.currentUser()
+    return handle:call('currentUser')
+end
+
+-- Calls `listener` with the account whenever a person signs in, and with `nil` when the person signs out.
+function demo.onUserChanged(listener)
+    return handle:on('userChanged', listener)
+end
+
 return demo

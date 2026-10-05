@@ -1,5 +1,5 @@
-// Desktop part of the Native Demo plugin, a C library for macOS, Windows and Linux built on the C library and the threads of each system. The function `native.load` hands its init function the `HaylenNativeApi` of the engine, through which the library answers the methods of the plugin, sends its events, pushes its video and audio streams, opens its confirm screen over the window of the app and hears the errors that stop the app. Its handlers, their cancel functions, its screen and its error handler run on the frame thread, and its threads only emit events, answer calls, end screens and push frames and samples.
-// The desktops place no views of native libraries over the app, so the banner and the covering native screen fail with the code `unsupported`, and so do the file picker, which the desktop systems offer through no shared C API, and `config`, since native libraries receive no plugin parameters. The confirm screen is a window of its own, which `NativeDemoScreen.m` and `NativeDemoScreen.c` open with the window of the app from `getWindow`.
+// Desktop part of the Native Demo plugin, a C library for macOS, Windows and Linux built on the C library and the threads of each system. The function `native.load` hands its init function the `HaylenNativeApi` of the engine, through which the library answers the methods of the plugin, sends its events, pushes its video and audio streams, opens its screens over the window of the app and hears the errors that stop the app. Its handlers, their cancel functions, its screens and its error handler run on the frame thread, and its threads only emit events, answer calls, end screens and push frames and samples.
+// The desktops place no views of native libraries over the app, so the banner, the covering native screen and the map fail with the code `unsupported`, and so do the file picker and the share sheet, which the desktop systems offer through no shared C API, the camera, the microphone and the location, whose desktop APIs differ on each system, and `config`, since native libraries receive no plugin parameters. The confirm screen, the fake store, the fake ads and the fake sign-in are windows of their own, which `NativeDemoScreen.m` and `NativeDemoScreen.c` open with the window of the app from `getWindow`, and the other apps open through the shell of each system.
 
 #include <math.h>
 #include <stdint.h>
@@ -12,11 +12,21 @@
 
 #if defined(_WIN32)
 #include <windows.h>
+
+#include <shellapi.h>
 #define NATIVE_DEMO_EXPORT __declspec(dllexport)
 #else
 #include <pthread.h>
+#include <spawn.h>
+#include <sys/wait.h>
 #include <time.h>
 #define NATIVE_DEMO_EXPORT __attribute__((visibility("default")))
+#endif
+
+#if defined(__APPLE__)
+#include <crt_externs.h>
+#elif !defined(_WIN32)
+extern char** environ;
 #endif
 
 #if defined(_WIN32)
@@ -50,12 +60,39 @@ typedef struct NativeDemoJob {
     double frequency;
     HaylenNativeVideoStream* video;
     HaylenNativeAudioStream* audio;
+    char url[128];
 } NativeDemoJob;
+
+// A product of the fake store, which every native part of the plugin lists the same way.
+typedef struct NativeDemoProduct {
+    const char* id;
+    const char* title;
+    const char* description;
+    const char* price;
+    int keeps;
+} NativeDemoProduct;
+
+enum { NATIVE_DEMO_PRODUCTS = 3, NATIVE_DEMO_TRANSACTION = 48 };
+
+static const NativeDemoProduct nativeDemoProducts[NATIVE_DEMO_PRODUCTS] = {
+    {"coins.small", "A pouch of coins", "100 coins for the shop of the app.", "0.99", 0},
+    {"coins.large", "A chest of coins", "1200 coins for the shop of the app.", "9.99", 0},
+    {"ads.remove", "No more ads", "Removes the ads of the demo for good.", "2.99", 1},
+};
+static const char* const nativeDemoAccount = "{\"userId\":\"demo-ana\",\"name\":\"Ana Souza\",\"email\":\"ana@example.com\",\"token\":\"%s\",\"language\":\"C\"}";
 
 static const HaylenNativeApi* nativeDemoApi = NULL;
 static NativeDemoWait nativeDemoWaits[NATIVE_DEMO_WAITS];
 static char* nativeDemoLastError = NULL;
 static unsigned nativeDemoGenerations[NATIVE_DEMO_WORKS];
+
+// What the store and the account keep for the process, the transaction of each product that stays bought and the token of the account that signed in, and what the screen that shows confirms, under the lock of the library.
+static char nativeDemoKept[NATIVE_DEMO_PRODUCTS][NATIVE_DEMO_TRANSACTION];
+static char nativeDemoToken[NATIVE_DEMO_TRANSACTION];
+static int nativeDemoPending = -1;
+static char nativeDemoPendingTransaction[NATIVE_DEMO_TRANSACTION];
+static char nativeDemoPendingToken[NATIVE_DEMO_TRANSACTION];
+static unsigned nativeDemoSerial = 0;
 
 #if defined(_WIN32)
 static SRWLOCK nativeDemoLock = SRWLOCK_INIT;
@@ -581,6 +618,150 @@ static void native_demo_stop(uint64_t call, enum NativeDemoWork work) {
     nativeDemoApi->resolve(call, 1, "null", NULL, 0);
 }
 
+// Writes a new transaction id, which tells the purchases and the sign-ins of the process apart.
+static void native_demo_transaction(char* value, size_t size) {
+    native_demo_lock();
+    const unsigned serial = ++nativeDemoSerial;
+    native_demo_unlock();
+    snprintf(value, size, "C-%.0f-%u", native_demo_now() * 1000.0, serial);
+}
+
+static int native_demo_product(const char* id) {
+    for (int index = 0; index < NATIVE_DEMO_PRODUCTS; ++index) {
+        if (strcmp(nativeDemoProducts[index].id, id) == 0) {
+            return index;
+        }
+    }
+    return -1;
+}
+
+static void native_demo_products(uint64_t call) {
+    char answer[NATIVE_DEMO_TEXT * 2];
+    size_t length = (size_t)snprintf(answer, sizeof(answer), "[");
+    for (int index = 0; index < NATIVE_DEMO_PRODUCTS; ++index) {
+        const NativeDemoProduct* product = &nativeDemoProducts[index];
+        length += (size_t)snprintf(answer + length, sizeof(answer) - length, "%s{\"id\":\"%s\",\"title\":\"%s\",\"description\":\"%s\",\"price\":\"%s\",\"currency\":\"USD\",\"kind\":\"%s\"}", index > 0 ? "," : "", product->id, product->title, product->description, product->price, product->keeps ? "nonConsumable" : "consumable");
+    }
+    snprintf(answer + length, sizeof(answer) - length, "]");
+    nativeDemoApi->resolve(call, 1, answer, NULL, 0);
+}
+
+// Answers the products that stay bought and tells the app of each one as restored.
+static void native_demo_restore(uint64_t call) {
+    char answer[NATIVE_DEMO_TEXT];
+    size_t length = (size_t)snprintf(answer, sizeof(answer), "[");
+    int listed = 0;
+    native_demo_lock();
+    for (int index = 0; index < NATIVE_DEMO_PRODUCTS; ++index) {
+        if (nativeDemoKept[index][0] == '\0') {
+            continue;
+        }
+        char event[256];
+        snprintf(event, sizeof(event), "{\"productId\":\"%s\",\"transactionId\":\"%s\",\"state\":\"restored\",\"language\":\"C\"}", nativeDemoProducts[index].id, nativeDemoKept[index]);
+        nativeDemoApi->emit("native-demo.purchaseUpdated", event, NULL, 0, 0);
+        length += (size_t)snprintf(answer + length, sizeof(answer) - length, "%s{\"productId\":\"%s\",\"transactionId\":\"%s\"}", listed++ > 0 ? "," : "", nativeDemoProducts[index].id, nativeDemoKept[index]);
+    }
+    native_demo_unlock();
+    snprintf(answer + length, sizeof(answer) - length, "]");
+    nativeDemoApi->resolve(call, 1, answer, NULL, 0);
+}
+
+// Runs when the person confirms a purchase in its window: a product that stays bought is kept, and the app hears of the purchase.
+static void native_demo_purchased(void) {
+    char event[256];
+    native_demo_lock();
+    const int product = nativeDemoPending;
+    if (nativeDemoProducts[product].keeps) {
+        snprintf(nativeDemoKept[product], NATIVE_DEMO_TRANSACTION, "%s", nativeDemoPendingTransaction);
+    }
+    snprintf(event, sizeof(event), "{\"productId\":\"%s\",\"transactionId\":\"%s\",\"state\":\"purchased\",\"language\":\"C\"}", nativeDemoProducts[product].id, nativeDemoPendingTransaction);
+    native_demo_unlock();
+    nativeDemoApi->emit("native-demo.purchaseUpdated", event, NULL, 0, 0);
+}
+
+static void native_demo_signed_in(void) {
+    char account[256];
+    native_demo_lock();
+    snprintf(nativeDemoToken, sizeof(nativeDemoToken), "%s", nativeDemoPendingToken);
+    snprintf(account, sizeof(account), nativeDemoAccount, nativeDemoToken);
+    native_demo_unlock();
+    nativeDemoApi->emit("native-demo.userChanged", account, NULL, 0, 0);
+}
+
+static void native_demo_rewarded(void) {
+    nativeDemoApi->emit("native-demo.adRewarded", "{\"amount\":50,\"currency\":\"coins\",\"language\":\"C\"}", NULL, 0, 0);
+}
+
+static void native_demo_current_user(uint64_t call) {
+    char account[256];
+    native_demo_lock();
+    if (nativeDemoToken[0] == '\0') {
+        snprintf(account, sizeof(account), "null");
+    } else {
+        snprintf(account, sizeof(account), nativeDemoAccount, nativeDemoToken);
+    }
+    native_demo_unlock();
+    nativeDemoApi->resolve(call, 1, account, NULL, 0);
+}
+
+static void native_demo_sign_out(uint64_t call) {
+    native_demo_lock();
+    nativeDemoToken[0] = '\0';
+    native_demo_unlock();
+    nativeDemoApi->emit("native-demo.userChanged", "null", NULL, 0, 0);
+    nativeDemoApi->resolve(call, 1, "null", NULL, 0);
+}
+
+#if !defined(_WIN32)
+// Runs the opener of the system with the url on a thread of the library, which waits for it to hand the url over, and answers whether it did.
+static void native_demo_run_opener(NativeDemoJob* job) {
+#if defined(__APPLE__)
+    char* const arguments[] = {"open", job->url, NULL};
+    char** environment = *_NSGetEnviron();
+#else
+    char* const arguments[] = {"xdg-open", job->url, NULL};
+    char** environment = environ;
+#endif
+    pid_t child = 0;
+    int status = 1;
+    const int opened = posix_spawnp(&child, arguments[0], NULL, NULL, arguments, environment) == 0 && waitpid(child, &status, 0) == child && WIFEXITED(status) && WEXITSTATUS(status) == 0;
+    nativeDemoApi->resolve(job->call, 1, opened ? "{\"opened\":true,\"language\":\"C\"}" : "{\"opened\":false,\"language\":\"C\"}", NULL, 0);
+}
+#endif
+
+// Opens another app through the shell of the system: the settings where the system has a link to them, and a new message of the mail app. The desktops have no map app that every system knows, besides the one of macOS.
+static void native_demo_open_app(uint64_t call, const char* paramsJson) {
+    char kind[32];
+    native_demo_text(paramsJson, "kind", kind, sizeof(kind), "");
+    const char* url = strcmp(kind, "mail") == 0 ? "mailto:demo@example.com?subject=Native%20Demo" : NULL;
+#if defined(_WIN32)
+    if (strcmp(kind, "settings") == 0) {
+        url = "ms-settings:";
+    }
+#elif defined(__APPLE__)
+    if (strcmp(kind, "settings") == 0) {
+        url = "x-apple.systempreferences:";
+    } else if (strcmp(kind, "maps") == 0) {
+        url = "maps://?ll=-22.9519,-43.2105";
+    }
+#endif
+    if (url == NULL) {
+        char message[NATIVE_DEMO_TEXT];
+        snprintf(message, sizeof(message), "This desktop has no app that every system opens for \\\"%s\\\".", kind);
+        native_demo_unsupported(call, message);
+        return;
+    }
+#if defined(_WIN32)
+    const int opened = (INT_PTR)ShellExecuteA(NULL, "open", url, NULL, NULL, SW_SHOWNORMAL) > 32;
+    nativeDemoApi->resolve(call, 1, opened ? "{\"opened\":true,\"language\":\"C\"}" : "{\"opened\":false,\"language\":\"C\"}", NULL, 0);
+#else
+    NativeDemoJob* job = native_demo_job(native_demo_run_opener);
+    job->call = call;
+    snprintf(job->url, sizeof(job->url), "%s", url);
+    native_demo_spawn(job);
+#endif
+}
+
 static void native_demo_handle(void* user, uint64_t call, const char* method, const char* paramsJson, const HaylenNativeBuffer* buffers, size_t bufferCount) {
     (void)user;
     const char* name = method + strlen("native-demo.");
@@ -616,6 +797,26 @@ static void native_demo_handle(void* user, uint64_t call, const char* method, co
         native_demo_unsupported(call, "The desktops give native libraries no view API, so the plugin cannot show a native screen over the app.");
     } else if (strcmp(name, "pickFile") == 0) {
         native_demo_unsupported(call, "The desktop systems share no C API for a file picker, so the desktop part of the plugin has none.");
+    } else if (strcmp(name, "products") == 0) {
+        native_demo_products(call);
+    } else if (strcmp(name, "restorePurchases") == 0) {
+        native_demo_restore(call);
+    } else if (strcmp(name, "currentUser") == 0) {
+        native_demo_current_user(call);
+    } else if (strcmp(name, "signOut") == 0) {
+        native_demo_sign_out(call);
+    } else if (strcmp(name, "openApp") == 0) {
+        native_demo_open_app(call, paramsJson);
+    } else if (strcmp(name, "startCamera") == 0 || strcmp(name, "stopCamera") == 0 || strcmp(name, "takePhoto") == 0) {
+        native_demo_unsupported(call, "The desktop systems capture the camera through APIs of their own, AVFoundation, Media Foundation and V4L2, which the C library of the plugin leaves to the native parts of real plugins.");
+    } else if (strcmp(name, "startMicrophone") == 0 || strcmp(name, "stopMicrophone") == 0) {
+        native_demo_unsupported(call, "The desktop systems record the microphone through APIs of their own, which the C library of the plugin leaves to the native parts of real plugins.");
+    } else if (strcmp(name, "location") == 0) {
+        native_demo_unsupported(call, "The desktop systems tell the location through services of their own, which the C library of the plugin leaves to the native parts of real plugins.");
+    } else if (strcmp(name, "share") == 0) {
+        native_demo_unsupported(call, "The desktop systems share no C API for a share sheet, so the desktop part of the plugin has none.");
+    } else if (strcmp(name, "showMap") == 0 || strcmp(name, "removeMap") == 0) {
+        native_demo_unsupported(call, "The desktops give native libraries no view API, so the plugin cannot place a map over the app.");
     } else {
         // The methods left are `showBanner`, `setBannerVisible` and `removeBanner`.
         native_demo_unsupported(call, "The desktops give native libraries no view API, so the plugin cannot place a banner over the app.");
@@ -631,7 +832,113 @@ static void native_demo_open_screen(void* user, uint64_t screen, const char* par
     char question[NATIVE_DEMO_TEXT];
     native_demo_text(paramsJson, "title", title, sizeof(title), "Native Demo");
     native_demo_text(paramsJson, "question", question, sizeof(question), "");
-    native_demo_screen_open(nativeDemoApi, screen, title, question);
+    const NativeDemoScreenContent content = {
+        .title = title,
+        .question = question,
+        .confirmLabel = "Confirm",
+        .declineLabel = "Decline",
+        .confirmed = "{\"confirmed\":true,\"via\":\"a window over the window of the app\",\"language\":\"C\"}",
+        .declined = "{\"confirmed\":false,\"via\":\"a window over the window of the app\",\"language\":\"C\"}",
+        .closed = "{\"message\":\"The person closed the confirm screen.\",\"code\":\"cancelled\"}",
+    };
+    native_demo_screen_open(nativeDemoApi, screen, &content);
+}
+
+// The purchase screen of the fake store, which asks the person to buy the product and charges nothing.
+static void native_demo_open_purchase(void* user, uint64_t screen, const char* paramsJson, const HaylenNativeBuffer* buffers, size_t bufferCount) {
+    (void)user;
+    (void)buffers;
+    (void)bufferCount;
+    char id[64];
+    native_demo_text(paramsJson, "productId", id, sizeof(id), "");
+    const int product = native_demo_product(id);
+    if (product < 0) {
+        char failure[NATIVE_DEMO_TEXT];
+        snprintf(failure, sizeof(failure), "{\"message\":\"The store has no product \\\"%s\\\".\",\"code\":\"unknownProduct\"}", id);
+        nativeDemoApi->finishScreen(screen, 0, failure, NULL, 0);
+        return;
+    }
+    char transaction[NATIVE_DEMO_TRANSACTION];
+    native_demo_transaction(transaction, sizeof(transaction));
+    native_demo_lock();
+    nativeDemoPending = product;
+    snprintf(nativeDemoPendingTransaction, sizeof(nativeDemoPendingTransaction), "%s", transaction);
+    native_demo_unlock();
+
+    char question[NATIVE_DEMO_TEXT];
+    char confirmLabel[64];
+    char confirmed[NATIVE_DEMO_TEXT];
+    snprintf(question, sizeof(question), "%s This purchase is a simulation, and nothing is charged.", nativeDemoProducts[product].description);
+    snprintf(confirmLabel, sizeof(confirmLabel), "Buy for %s USD", nativeDemoProducts[product].price);
+    snprintf(confirmed, sizeof(confirmed), "{\"productId\":\"%s\",\"transactionId\":\"%s\",\"receipt\":\"receipt-%s\",\"language\":\"C\"}", nativeDemoProducts[product].id, transaction, transaction);
+    const NativeDemoScreenContent content = {
+        .title = nativeDemoProducts[product].title,
+        .question = question,
+        .confirmLabel = confirmLabel,
+        .declineLabel = "Cancel",
+        .confirmed = confirmed,
+        .closed = "{\"message\":\"The person cancelled the purchase.\",\"code\":\"cancelled\"}",
+        .onConfirm = native_demo_purchased,
+    };
+    native_demo_screen_open(nativeDemoApi, screen, &content);
+}
+
+static void native_demo_open_interstitial(void* user, uint64_t screen, const char* paramsJson, const HaylenNativeBuffer* buffers, size_t bufferCount) {
+    (void)user;
+    (void)paramsJson;
+    (void)buffers;
+    (void)bufferCount;
+    const NativeDemoScreenContent content = {
+        .title = "Demo ad",
+        .question = "A fake full-screen ad of the demo plugin, which covers the app until it closes.",
+        .confirmLabel = "Continue to the app",
+        .confirmed = "{\"closed\":true,\"language\":\"C\"}",
+        .closed = "{\"message\":\"The person closed the ad.\",\"code\":\"cancelled\"}",
+    };
+    native_demo_screen_open(nativeDemoApi, screen, &content);
+}
+
+static void native_demo_open_rewarded(void* user, uint64_t screen, const char* paramsJson, const HaylenNativeBuffer* buffers, size_t bufferCount) {
+    (void)user;
+    (void)paramsJson;
+    (void)buffers;
+    (void)bufferCount;
+    const NativeDemoScreenContent content = {
+        .title = "Demo rewarded ad",
+        .question = "Watch this fake ad to the end to earn 50 coins.",
+        .confirmLabel = "Watch to the end",
+        .declineLabel = "Skip",
+        .confirmed = "{\"rewarded\":true,\"amount\":50,\"currency\":\"coins\",\"language\":\"C\"}",
+        .declined = "{\"rewarded\":false,\"amount\":0,\"currency\":\"coins\",\"language\":\"C\"}",
+        .closed = "{\"message\":\"The person closed the ad.\",\"code\":\"cancelled\"}",
+        .onConfirm = native_demo_rewarded,
+    };
+    native_demo_screen_open(nativeDemoApi, screen, &content);
+}
+
+// The sign-in screen of the fake account, which signs in one account without a password or the network.
+static void native_demo_open_sign_in(void* user, uint64_t screen, const char* paramsJson, const HaylenNativeBuffer* buffers, size_t bufferCount) {
+    (void)user;
+    (void)paramsJson;
+    (void)buffers;
+    (void)bufferCount;
+    char token[NATIVE_DEMO_TRANSACTION];
+    char confirmed[NATIVE_DEMO_TEXT];
+    native_demo_transaction(token, sizeof(token));
+    native_demo_lock();
+    snprintf(nativeDemoPendingToken, sizeof(nativeDemoPendingToken), "%s", token);
+    native_demo_unlock();
+    snprintf(confirmed, sizeof(confirmed), nativeDemoAccount, token);
+    const NativeDemoScreenContent content = {
+        .title = "Sign in to the demo",
+        .question = "Sign in with a fake account. No password and no network take part.",
+        .confirmLabel = "Sign in as Ana Souza",
+        .declineLabel = "Cancel",
+        .confirmed = confirmed,
+        .closed = "{\"message\":\"The person cancelled the sign-in.\",\"code\":\"cancelled\"}",
+        .onConfirm = native_demo_signed_in,
+    };
+    native_demo_screen_open(nativeDemoApi, screen, &content);
 }
 
 static void native_demo_cancel_screen(void* user, uint64_t screen) {
@@ -664,9 +971,9 @@ static void native_demo_app_failed(void* user, const char* reportJson) {
     free(message);
 }
 
-// Registers the methods of the plugin, its confirm screen and the error handler, declares the library the native part of `native-demo` and sends `loaded` retained, so the first listener of the app receives it however late it connects.
+// Registers the methods of the plugin, its screens and the error handler, declares the library the native part of `native-demo` and sends `loaded` retained, so the first listener of the app receives it however late it connects.
 NATIVE_DEMO_EXPORT int native_demo_haylen_init(const HaylenNativeApi* api) {
-    static const char* const methods[] = {"echo", "echoBytes", "generatedImage", "compute", "fail", "ticks", "startVideo", "stopVideo", "startTone", "stopTone", "burst", "config", "start", "showBanner", "setBannerVisible", "removeBanner", "showScreen", "pickFile"};
+    static const char* const methods[] = {"echo", "echoBytes", "generatedImage", "compute", "fail", "ticks", "startVideo", "stopVideo", "startTone", "stopTone", "burst", "config", "start", "showBanner", "setBannerVisible", "removeBanner", "showScreen", "pickFile", "products", "restorePurchases", "currentUser", "signOut", "openApp", "startCamera", "stopCamera", "takePhoto", "startMicrophone", "stopMicrophone", "location", "share", "showMap", "removeMap"};
     if (api->version != HAYLEN_NATIVE_API_VERSION) {
         return 1;
     }
@@ -678,6 +985,10 @@ NATIVE_DEMO_EXPORT int native_demo_haylen_init(const HaylenNativeApi* api) {
     }
     api->registerHandler("native-demo.wait", native_demo_handle, native_demo_cancel, NULL);
     api->registerScreen("native-demo", "confirm", native_demo_open_screen, native_demo_cancel_screen, NULL);
+    api->registerScreen("native-demo", "purchase", native_demo_open_purchase, native_demo_cancel_screen, NULL);
+    api->registerScreen("native-demo", "interstitial", native_demo_open_interstitial, native_demo_cancel_screen, NULL);
+    api->registerScreen("native-demo", "rewarded", native_demo_open_rewarded, native_demo_cancel_screen, NULL);
+    api->registerScreen("native-demo", "signIn", native_demo_open_sign_in, native_demo_cancel_screen, NULL);
     api->registerErrorHandler(native_demo_app_failed, NULL);
     api->registerPlugin("native-demo");
 

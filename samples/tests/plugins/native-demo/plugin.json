@@ -2,7 +2,7 @@
     "id": "native-demo",
     "name": "Native Demo",
     "version": "1.0.0",
-    "description": "Exercises every capability of native plugins with the APIs of each platform alone.",
+    "description": "Exercises every capability of native plugins and simulates the SDKs of cameras, maps, stores, ads and sign-in with the APIs of each platform alone.",
     "platforms": ["ios", "catalyst", "tvos", "macos", "android", "web", "windows", "linux"],
     "requires": [],
     "parameters": {
@@ -10,15 +10,26 @@
         "bannerColor": {"type": "string", "default": "#264653", "description": "Background of the native banner and the native screen, as \"#RRGGBB\"."},
         "tickInterval": {"type": "number", "default": 1, "description": "Seconds between two \"tick\" events."},
         "urlScheme": {"type": "string", "default": "haylendemo", "description": "URL scheme that opens the app, such as \"haylendemo://hello\"."},
-        "cameraUsage": {"type": "string", "platforms": ["ios", "catalyst", "macos"], "default": "The Native Demo plugin asks for the camera to show how a plugin requests a permission.", "description": "Text of the camera permission prompt on Apple platforms."}
+        "cameraUsage": {"type": "string", "platforms": ["ios", "catalyst", "macos"], "default": "The Native Demo plugin asks for the camera to show how a plugin requests a permission and to simulate the camera of an SDK.", "description": "Text of the camera permission prompt on Apple platforms."},
+        "microphoneUsage": {"type": "string", "platforms": ["ios", "catalyst", "macos"], "default": "The Native Demo plugin records the microphone to simulate the audio capture of an SDK.", "description": "Text of the microphone permission prompt on Apple platforms."},
+        "locationUsage": {"type": "string", "platforms": ["ios", "catalyst", "tvos", "macos"], "default": "The Native Demo plugin reads the location to simulate the location and the map of an SDK.", "description": "Text of the location permission prompt on Apple platforms."},
+        "macDevices": {"type": "boolean", "platforms": ["macos"], "default": true, "description": "Whether the macOS app signs with the entitlements of the hardened runtime that the camera, the microphone and the location need."}
     },
     "apple": {
         "class": "NativeDemoPlugin",
         "sources": "apple",
-        "frameworks": ["UserNotifications.framework", "AVFoundation.framework"],
+        "frameworks": ["UserNotifications.framework", "AVFoundation.framework", "CoreLocation.framework", "MapKit.framework"],
         "infoPlist": {
             "CFBundleURLTypes": [{"CFBundleURLName": "dev.haylen.plugins.native-demo", "CFBundleURLSchemes": ["${urlScheme}"]}],
-            "NSCameraUsageDescription": "${cameraUsage}"
+            "NSCameraUsageDescription": "${cameraUsage}",
+            "NSMicrophoneUsageDescription": "${microphoneUsage}",
+            "NSLocationWhenInUseUsageDescription": "${locationUsage}",
+            "NSLocationUsageDescription": "${locationUsage}"
+        },
+        "entitlements": {
+            "com.apple.security.device.camera": "${macDevices}",
+            "com.apple.security.device.audio-input": "${macDevices}",
+            "com.apple.security.personal-information.location": "${macDevices}"
         }
     },
     "android": {

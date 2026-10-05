@@ -4,7 +4,7 @@ local headless = 'The headless host loads no native parts of plugins.'
 return {
     prefix = 'PLG',
     title = 'Plugins',
-    description = 'Every capability of native plugins through the plugin "native-demo", written with the APIs of each platform alone.',
+    description = 'Every capability of native plugins through the plugin "native-demo", written with the APIs of each platform alone, and its simulations of the SDKs of cameras, maps, stores, ads and sign-in.',
     tests = {
         {code = 'PLG-001', title = 'Calls', description = 'The call "echo" on the main thread, "compute" on a background thread, a typed failure, and a call that only a timeout or a cancel ends.', module = 'calls',
             platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'web'}, unsupported = {headless = headless}},
@@ -61,5 +61,26 @@ return {
         {code = 'PLG-014', title = 'App errors', description = 'An error of the app that the native part keeps and sends back to the next app.', module = 'errors',
             platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'web'}, unsupported = {headless = headless}},
         {code = 'PLG-015', title = 'Plugin info', description = 'The plugins of the app and whether their native part runs on this platform.', module = 'info'},
+        {code = 'PLG-016', title = 'Camera and microphone', description = 'The camera of the device in a video stream with photos as JPEG bytes, and the microphone in an audio stream with its level, as a camera SDK delivers them.', module = 'camera',
+            platforms = {'macos', 'ios', 'android', 'web'}, unsupported = {
+                tvos = 'Apple TV has no camera and gives apps no microphone.',
+                windows = 'The C library of the plugin captures no camera or microphone on Windows.',
+                linux = 'The C library of the plugin captures no camera or microphone on Linux.',
+                headless = headless,
+            }},
+        {code = 'PLG-017', title = 'Location and map', description = 'Where the device is, after the permission of the person, and a native map over the app at that place, as a map SDK shows it.', module = 'location',
+            platforms = {'macos', 'ios', 'tvos', 'android', 'web'}, unsupported = {
+                windows = 'The C library of the plugin reads no location and places no map on Windows.',
+                linux = 'The C library of the plugin reads no location and places no map on Linux.',
+                headless = headless,
+            }},
+        {code = 'PLG-018', title = 'Sharing and other apps', description = 'The share sheet of the platform, and the settings, a map app and the mail app opened through their links.', module = 'sharing',
+            platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'web'}, unsupported = {headless = headless}},
+        {code = 'PLG-019', title = 'Fake store', description = 'The products of a fake store, purchases that the person confirms in a native sheet with a receipt, a kept product and restored purchases.', module = 'store',
+            platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'web'}, unsupported = {headless = headless}},
+        {code = 'PLG-020', title = 'Fake ads', description = 'A full-screen ad and a rewarded ad that cover the app while they show, and the reward of an ad watched to the end.', module = 'ads',
+            platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'web'}, unsupported = {headless = headless}},
+        {code = 'PLG-021', title = 'Fake sign-in', description = 'An account that the person picks in a native sheet, the current user that the device keeps and signing out.', module = 'sign-in',
+            platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'web'}, unsupported = {headless = headless}},
     },
 }
