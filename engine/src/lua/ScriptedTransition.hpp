@@ -22,7 +22,7 @@ class ScriptedTransition final : public core::TransitionEffect {
   private:
     Reference table;
     float switchProgress = 0.5F;
-    float exitProgress = 0.5F;
+    float exitProgress = 1.0F;
 };
 
 } // namespace haylen::lua
