@@ -34,7 +34,7 @@ class DebugPlugin final : public Plugin {
     void start(core::Engine& engine) override;
     void stop(core::Engine& engine) override;
     void event(core::Engine& engine, const platform::Event& event) override;
-    void renderUi(core::Engine& engine) override;
+    void renderUi(core::Engine& engine, const core::SceneView& view) override;
     void renderOverlay(core::Engine& engine) override;
     void endFrame(core::Engine& engine) override;
     void installLua(core::Engine& engine, lua_State* L) override;

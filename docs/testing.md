@@ -14,7 +14,7 @@ The suite lives in `engine/tests/` and builds into one executable, `haylen_tests
 | `engine/tests/support/` | Shared helpers in `haylen::test`: `EngineFixture` with `DrawingScene` and the test data helpers, `TemporaryDirectory`, `TestApplication`, `VarnRuntime`, and the helpers of the content tests, `ReleaseFixture`, `CountingPackage`, `AllocationTracker` and `ContentParsers`. |
 | `engine/tests/fuzz/` | The entry point of the fuzzer of the content formats, which the option `HAYLEN_BUILD_FUZZERS` builds. |
 | `engine/tests/data/fonts/` | Subsets of open fonts, with their licenses, that keep only the characters the text, shaping and UI tests draw: Latin serif and CFF faces, Arabic, Hebrew, Devanagari, Thai, Japanese and symbols. CMake passes the folder to the tests as `HAYLEN_TEST_FONTS`, so the engine tests read no file of the samples. |
-| `engine/tests/native/` | The file `NativeTest.c`, the plain C library that the native interop tests load through `haylen.native` and Varn's `ffi`. CMake builds it as `native_test` next to `haylen_tests`, where `native.load` finds it by name, and passes its path to the tests as `HAYLEN_NATIVE_TEST_LIBRARY`. The native sample builds the same source for every platform. |
+| `engine/tests/native/` | The file `NativeTest.c`, the plain C library that the native interop tests load through `haylen.native` and Varn's `ffi`. CMake builds it as `native_test` next to `haylen_tests`, where `native.load` finds it by name, and passes its path to the tests as `HAYLEN_NATIVE_TEST_LIBRARY`. The Native libraries tests of the test project build the same source for every platform. |
 | `engine/tests/CMakeLists.txt` | The `HAYLEN_TEST_SOURCES` list, which names every test file, and the `haylen_tests` target. |
 
 The target `haylen_tests` links `haylen::engine`, `haylen::headless` and GoogleTest's `gtest_main`, and it includes `engine/tests`, so tests include `support/EngineFixture.hpp`. It also adds `engine/src` and the Sokol headers to its own include folders, so a test may include internal headers such as `platform/headless/HeadlessHost.hpp`. Apps never see those folders, because the engine libraries keep them private. The function `gtest_discover_tests` registers every test with CTest under its `Suite.Name`, with `engine/tests` as the working directory and a timeout of 120 seconds, far above the few seconds the slowest test takes, so a test that hangs fails on its own and the rest of the suite still runs. The suite is built only on desktop platforms, and only when `HAYLEN_BUILD_TESTS` is on, which is the default when the engine or the repository root is the top-level project.
@@ -144,6 +144,19 @@ python3 haylen.py test
 
 The command configures `build/<host>-<config>` when needed, builds `haylen_tests` and runs CTest with `--output-on-failure` in parallel. It accepts `--config` (`Debug` by default), `--jobs` and `--sanitizers`.
 
+## The test project
+
+The app `samples/tests`, Haylen Tests, holds a test of every feature of the engine, from sprites to plugins, in categories with a code per test, as [its README](../samples/tests/README.md) lists. A person runs it on every platform, with `python3 haylen.py run samples/tests` on the desktop, and its menu runs one test at a time or every test one after the other.
+
+The headless player runs it without a window, the same way every platform runs it, so a broken test shows up without a device:
+
+```sh
+python3 haylen.py build --target haylen-headless
+build/macos-debug/bin/haylen-headless samples/tests --frames 60000
+```
+
+The executable `haylen-headless`, built with the player on desktop platforms, runs any app package on the headless host at 60 frames per second of real time, so asynchronous work such as decoding and file reads finishes the way it does on a device, and prints the log. It stops when the app quits, when an error stops an app that is not recoverable, or after the frames of `--frames`, and it exits with 1 when an error stopped the app, even one the app went back from, or when the app did not quit in time, and with 0 otherwise. On the headless platform the test project runs every test that supports the platform for 2 seconds, writes `[CODE] Running`, `[CODE] Passed` or `[CODE] Failed: <message>` for each, goes back from every error with `haylen.recover()` and ends with a summary. A test that needs a person, a device or a native part that the headless host does not load lists `headless` among its unsupported platforms in its manifest.
+
 ## Sanitizers
 
 ```sh
@@ -214,5 +227,6 @@ The workflow `.github/workflows/ci.yml` runs on every push to a branch and every
 | `web` | Ubuntu | Caches the Emscripten SDK in `.tools/emsdk` and runs `python haylen.py engine --platform web`, which builds the prebuilt WebGPU and WebGL2 player. |
 | `android` | Ubuntu | Installs Java 17, NDK 30.0.16248370, CMake 4.1.2 and the Android 37 platform, and runs `python haylen.py engine --platform android`, which builds the Android libraries into the local Maven repository. |
 | `apple` | macOS | Installs Ninja and runs `python haylen.py engine --platform apple`, which builds `Haylen.xcframework`. |
+| `tests-project` | Ubuntu | Installs Ninja with the X11 and OpenGL development packages, builds `haylen-headless` and runs every test of [the test project](#the-test-project) on it, which fails when a test raises an error. |
 
 The engine tests run only in the `desktop` job, and the web, Android and Apple jobs check that the engine artifacts of those platforms build. The [build guide](build.md) explains the platform builds, and the [embedding guide](embedding.md) explains the SDK.

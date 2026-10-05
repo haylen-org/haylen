@@ -1,0 +1,17 @@
+{
+    "id": "native-sample",
+    "name": "Native Sample",
+    "version": "1.0.0",
+    "description": "The platform handlers of the test project: suspending Kotlin and a throwing Java handler on Android, async Swift on Apple platforms and JavaScript on the web.",
+    "platforms": ["ios", "catalyst", "tvos", "macos", "android", "web"],
+    "apple": {
+        "class": "NativeSamplePlugin",
+        "sources": "apple"
+    },
+    "android": {
+        "module": "android"
+    },
+    "web": {
+        "module": "web/native-sample.js"
+    }
+}

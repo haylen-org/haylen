@@ -174,6 +174,8 @@ The engine publishes these events on the bus. Events with data pass it to listen
 | `appLowMemory` | The platform is short of memory, after the engine dropped released assets. | None. |
 | `appQuitRequested` | The player asked to close the window, or to quit the app through its menu, Command+Q or the Dock on macOS. | None. |
 | `appStopping` | The app is about to stop, before the scenes leave and the autoloads stop. | None. |
+| `appError` | An error stopped the app and the error screen shows, delivered at the end of the frame like a queued event. | The table `{message, file, line, traceback, frames}` of the error, the report the web page receives in `onError`. |
+| `appRecovered` | The app goes back from the error screen, through the `Back to the app` button of a [recoverable](haylen.md#haylensetrecoverablerecoverable) app or `haylen.recover()`, at the start of the next frame, before it updates again. | The table of the error, like `appError`. |
 | `paused`, `unpaused` | The function `haylen.setPaused` changed the pause of the game. | None. |
 | `sceneLoading`, `sceneLoaded` | A scene started loading, or its load finished. | The scene. |
 | `sceneLoadFailed` | The load of a scene failed, right before the scene unloads. | The table `{scene, error}`, with the message of the error. |

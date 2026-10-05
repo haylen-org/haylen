@@ -16,11 +16,12 @@ NavigationInput::NavigationInput() {
                         {{"name", "uiUp"}, {"type", "button"}, {"bindings", {"key:up", "button:dpadUp", "axis:leftY-"}}},
                         {{"name", "uiDown"}, {"type", "button"}, {"bindings", {"key:down", "button:dpadDown", "axis:leftY+"}}},
                         {{"name", "uiMenu"}, {"type", "button"}, {"bindings", {"key:menu", "button:north"}}},
+                        {{"name", "uiFocus"}, {"type", "button"}, {"bindings", {"button:back"}}},
                     }}});
     resolved = defaults;
 }
 
-void NavigationInput::update(const input::ActionMap& actions, const input::Input& devices, const input::VirtualInput& virtualInput, bool blocked) {
+void NavigationInput::update(const input::ActionMap& actions, const input::Input& devices, const input::VirtualInput& virtualInput, bool blocked, bool playing) {
     wasDown = down;
     for (const std::string_view name : kNames) {
         const input::ActionMap::Action* remapped = actions.findAction(name);
@@ -31,7 +32,11 @@ void NavigationInput::update(const input::ActionMap& actions, const input::Input
     }
     resolved.update(devices, virtualInput, blocked);
     for (std::size_t index = 0; index < kActionCount; ++index) {
-        down[index] = resolved.isDown(kNames[index]);
+        const bool pressed = resolved.isDown(kNames[index]);
+        const auto action = static_cast<Action>(index);
+        const bool game = action != Action::Cancel && action != Action::Focus;
+        held[index] = pressed && (held[index] || (playing && game && !wasDown[index]));
+        down[index] = pressed && !held[index];
     }
 }
 

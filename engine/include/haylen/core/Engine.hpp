@@ -160,6 +160,13 @@ class Engine final {
     // Returns the error that stopped the app, or null while it runs.
     [[nodiscard]] const lua::Error* getError() const noexcept;
 
+    // Lets the error screen offer to go back to the app instead of only restarting it, for apps that can return to a safe screen, such as a menu.
+    void setRecoverable(bool value) noexcept;
+    [[nodiscard]] bool isRecoverable() const noexcept;
+
+    // Leaves the error screen at the start of the next frame, before the app updates: the engine publishes appRecovered with the error, whose listeners put the app in order, and the app runs on from there. Nothing happens while no error stops the app.
+    void recover() noexcept;
+
     void quit();
     [[nodiscard]] bool isRunning() const noexcept;
 
@@ -216,6 +223,7 @@ class Engine final {
   private:
     void activatePlugin(plugins::Plugin& plugin);
     void applyWindowOptions();
+    void leaveErrorScreen();
     void publishDeviceChanges();
     void publishKeyboard(const math::Rect& value);
     void render(const std::vector<plugins::Plugin*>& all);

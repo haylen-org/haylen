@@ -24,9 +24,16 @@ class Component;
 class Document;
 class NavigationInput;
 
-// Moves the keyboard, gamepad and remote focus between the controls of mounted documents. Controls register as targets while they draw, and at the start of the next frame the navigation actions move the focus among them, press the focused control or go back, following explicit neighbors, focus scopes and wrap options. The focus stays inside the document that holds it and inside a popup, such as a dialog, that holds it.
+// Moves the keyboard, gamepad and remote focus between the controls of mounted documents. Controls register as targets while they draw, and at the start of the next frame the navigation actions move the focus among them, press the focused control or go back, following explicit neighbors, focus scopes and wrap options. The focus stays inside the document that holds it and inside a popup, such as a dialog, that holds it, and a document that stops drawing, such as the document of a covered scene, gets its focus back once it draws again. A play area is a target that stands for the game: while it holds the focus the directions, accept and menu belong to the app, and Tab or `uiFocus` move the focus to the controls of its document and back.
 class FocusNavigator final {
   public:
+    // What holds the focus: nothing, a control of a document, or a play area, which gives the navigation input to the game.
+    enum class Owner : std::uint8_t {
+        None,
+        Control,
+        PlayArea,
+    };
+
     // An item a player carries with the keyboard or a gamepad to drop on another item, the way the pointer drags it.
     struct Carry {
         std::string source;
@@ -46,6 +53,7 @@ class FocusNavigator final {
 
     // Registers an item of the component being drawn as a place the focus can go, unless it or a node around it cannot take the focus or it is disabled.
     void addTarget(ImGuiID item, const math::Rect& bounds);
+    void addPlayArea(ImGuiID item, const math::Rect& bounds);
     void endDraw();
 
     // Keeps the controls drawn meanwhile out of navigation, such as those of a carousel page sliding out.
@@ -56,6 +64,9 @@ class FocusNavigator final {
     // Gives the focus to an item of the window being drawn, as a script or a component asks. The ring shows when the player already navigates, last used a gamepad or has no pointer device.
     void focus(ImGuiID item, const math::Rect& bounds);
     void clear();
+
+    // Drops the control a document keeps for when it draws again, once the document is unmounted.
+    void forget(const Document& document);
 
     // Whether the component being drawn and every node around it can take the focus.
     [[nodiscard]] bool isFocusable() const noexcept;
@@ -74,13 +85,18 @@ class FocusNavigator final {
     // Whether the player pressed `uiCancel` this frame for a window that closes with it, such as a dismissible dialog or a closable window: the topmost popup, or the window with the focus while no popup is open. The window being asked answers cancel, so the app actions leave the next press to it.
     [[nodiscard]] bool answerCancel(const ImGuiWindow* window);
 
-    // Whether the UI answers `uiCancel` and `uiAccept` itself in the next frame: cancel while a control is being edited, a popup is open, an item is carried or the focused window closes with it, and accept while a control has the focus.
+    // Whether the UI answers `uiCancel`, `uiAccept` and `uiFocus` itself in the next frame: cancel while a control or a play area has the focus, a control is being edited, a popup is open, an item is carried or the focused window closes with it, accept while a control has the focus, and `uiFocus` while a document has the focus or draws a play area.
     [[nodiscard]] bool answersCancel() const noexcept {
         return cancelAnswered;
     }
     [[nodiscard]] bool answersAccept() const noexcept {
         return acceptAnswered;
     }
+    [[nodiscard]] bool answersFocus() const noexcept {
+        return focusAnswered;
+    }
+
+    [[nodiscard]] Owner getOwner() const noexcept;
 
     // Whether an item was being edited when the frame ended, such as a text field or a dragged slider. A press on empty space holds the move id of its window, which edits nothing.
     [[nodiscard]] bool isEditing() const noexcept {
@@ -135,6 +151,7 @@ class FocusNavigator final {
         math::Rect bounds;
         std::size_t node = 0;
         bool inputable = false;
+        bool play = false;
     };
 
     struct DocumentEntry {
@@ -174,14 +191,21 @@ class FocusNavigator final {
     [[nodiscard]] const Target* search(const Target& source, const math::Rect& from, std::optional<std::size_t> scope, FocusDirection direction) const;
     [[nodiscard]] const Target* searchAround(const Target& source, FocusDirection direction) const;
     [[nodiscard]] ImGuiID getTrapId(const Frame& frame, const Target& target) const noexcept;
+    [[nodiscard]] bool hasTargets(const Document* document) const noexcept;
+    [[nodiscard]] const Target* findPlayArea(const Target* source) const noexcept;
+    [[nodiscard]] const Target* findControl(const Target& playArea) const noexcept;
 
+    void addItem(ImGuiID item, const math::Rect& bounds, bool play);
+    void switchFocus(const Target* source);
     void move(const Target& source, FocusDirection direction);
     void tab(const Target& source, bool backward);
     void apply(const Target& target);
     void activate(const Target& target);
     void cancel(const Target* source);
     void remember(const Frame& frame, const Target& next);
+    void keepControl(const Target& next);
     void restore();
+    void unpark();
     void focusPopup();
     void notify(ImGuiID node, std::string_view name);
 
@@ -190,11 +214,15 @@ class FocusNavigator final {
     std::vector<Level> levels;
     const Document* currentDocument = nullptr;
     std::vector<ImGuiID> history;
+
+    // The control that had the focus in each document that stopped drawing its controls, such as the document of a covered scene.
+    std::vector<std::pair<const Document*, ImGuiID>> parked;
     std::vector<std::pair<ImGuiID, std::string_view>> notices;
     std::optional<std::pair<ImGuiID, FocusDirection>> pendingDirection;
     std::optional<Carry> carried;
     std::vector<const ImGuiWindow*> cancelWindows;
     ImGuiID focusedItem = 0;
+    ImGuiID returnControl = 0;
     ImGuiID focusedNode = 0;
     const Document* focusedDocument = nullptr;
     std::string focusedName;
@@ -208,8 +236,10 @@ class FocusNavigator final {
     bool ringVisible = false;
     bool cancelPressed = false;
     bool editing = false;
+    bool focusedPlay = false;
     bool cancelAnswered = false;
     bool acceptAnswered = false;
+    bool focusAnswered = false;
     bool menuPressed = false;
     bool suspended = false;
 };

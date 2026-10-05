@@ -1,0 +1,65 @@
+-- The tests of the category in menu order. The headless host loads no native parts of plugins, so only the tests that also check the Lua side run there.
+local headless = 'The headless host loads no native parts of plugins.'
+
+return {
+    prefix = 'PLG',
+    title = 'Plugins',
+    description = 'Every capability of native plugins through the plugin "native-demo", written with the APIs of each platform alone.',
+    tests = {
+        {code = 'PLG-001', title = 'Calls', description = 'The call "echo" on the main thread, "compute" on a background thread, a typed failure, and a call that only a timeout or a cancel ends.', module = 'calls',
+            platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'web'}, unsupported = {headless = headless}},
+        {code = 'PLG-002', title = 'Events', description = 'The "tick" events of a native timer, and "loaded", which the native part sent retained when it loaded.', module = 'events',
+            platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'web'}, unsupported = {headless = headless}},
+        {code = 'PLG-003', title = 'Binary payloads', description = 'Bytes that cross to the native part and back as buffers, and an image that the native part draws and returns as PNG bytes.', module = 'bytes',
+            platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'web'}, unsupported = {headless = headless}},
+        {code = 'PLG-004', title = 'Streams', description = 'A video stream that the native part draws 30 times per second, and an audio stream of a tone that the app plays.', module = 'streams',
+            platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'web'}, unsupported = {headless = headless}},
+        {code = 'PLG-005', title = 'Batched events', description = '100 events per frame from the native part, which arrive as one list per frame.', module = 'batches',
+            platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'web'}, unsupported = {headless = headless}},
+        {code = 'PLG-006', title = 'Configuration', description = 'The parameters of the plugin from "app.json" and the defaults of "plugin.json", in Lua and in the native part.', module = 'configuration'},
+        {code = 'PLG-007', title = 'Native banner', description = 'A native view over the app at the top or bottom that may reserve its edge, with a native button, while other taps reach the app.', module = 'banner',
+            platforms = {'macos', 'ios', 'tvos', 'android', 'web'}, unsupported = {
+                windows = 'The C library of the plugin places no views over the app on Windows.',
+                linux = 'The C library of the plugin places no views over the app on Linux.',
+                headless = headless,
+            }},
+        {code = 'PLG-008', title = 'Covering native UI', description = 'A native screen over the whole app, which halts the app until it closes.', module = 'cover',
+            platforms = {'macos', 'ios', 'tvos', 'android', 'web'}, unsupported = {
+                windows = 'The C library of the plugin shows no native screen over the app on Windows.',
+                linux = 'The C library of the plugin shows no native screen over the app on Linux.',
+                headless = headless,
+            }},
+        {code = 'PLG-009', title = 'Native screen', description = 'A screen of the plugin whose answer reaches the call, and after a restart the next app as "screenRestored".', module = 'screen',
+            platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'web'}, unsupported = {headless = headless}},
+        {code = 'PLG-010', title = 'Native result', description = 'The file picker of the platform, which answers with the name of the picked file.', module = 'result',
+            platforms = {'macos', 'ios', 'android', 'web'}, unsupported = {
+                tvos = 'The TV has no file picker.',
+                windows = 'The desktops share no C API for a file picker, so the C library of the plugin has none on Windows.',
+                linux = 'The desktops share no C API for a file picker, so the C library of the plugin has none on Linux.',
+                headless = headless,
+            }},
+        {code = 'PLG-011', title = 'Permissions', description = 'The camera and notification prompts of the system, and a local notification whose tap reaches the app, even from a closed app.', module = 'permissions',
+            platforms = {'macos', 'ios', 'android'}, unsupported = {
+                tvos = 'The TV has no camera and shows no notifications of the plugin.',
+                windows = 'The C library of the plugin asks for no permissions and shows no notifications on Windows.',
+                linux = 'The C library of the plugin asks for no permissions and shows no notifications on Linux.',
+                web = 'The web part of the plugin asks for no permissions and shows no notifications.',
+                headless = headless,
+            }},
+        {code = 'PLG-012', title = 'Requirements', description = 'A call whose native part needs what the project of the app lacks, which fails with the code "unsupported" and lists what is missing and how to add it.', module = 'requirements',
+            platforms = {'macos', 'ios', 'tvos', 'android', 'web'}, unsupported = {
+                windows = 'The desktops check no requirements of the project.',
+                linux = 'The desktops check no requirements of the project.',
+                headless = headless,
+            }},
+        {code = 'PLG-013', title = 'Opened URLs', description = 'Links with the scheme of the plugin that open the app, before or after it started.', module = 'urls',
+            platforms = {'macos', 'ios', 'tvos', 'android', 'web'}, unsupported = {
+                windows = 'The C library of the plugin receives no opened links on Windows.',
+                linux = 'The C library of the plugin receives no opened links on Linux.',
+                headless = headless,
+            }},
+        {code = 'PLG-014', title = 'App errors', description = 'An error of the app that the native part keeps and sends back to the next app.', module = 'errors',
+            platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'web'}, unsupported = {headless = headless}},
+        {code = 'PLG-015', title = 'Plugin info', description = 'The plugins of the app and whether their native part runs on this platform.', module = 'info'},
+    },
+}

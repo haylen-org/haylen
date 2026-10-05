@@ -42,6 +42,7 @@
 #include "ui/components/inputs/FilterField.hpp"
 #include "ui/components/inputs/KeyCapture.hpp"
 #include "ui/components/inputs/NumberField.hpp"
+#include "ui/components/inputs/PlayArea.hpp"
 #include "ui/components/inputs/RangeSlider.hpp"
 #include "ui/components/inputs/SecretField.hpp"
 #include "ui/components/inputs/Slider.hpp"
@@ -129,6 +130,7 @@ void BuiltInComponents::registerAll(ComponentRegistry& registry) {
     registry.add<ContextMenu>("contextMenu");
     registry.add<TouchStick>("touchStick");
     registry.add<TouchButton>("touchButton");
+    registry.add<PlayArea>("playArea");
 }
 
 } // namespace haylen::ui

@@ -123,3 +123,21 @@ jobs:
           key: cpm-apple-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
       - name: Build "Haylen.xcframework"
         run: python haylen.py engine --platform apple
+
+  tests-project:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install Linux packages
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev
+      - uses: actions/cache@v6
+        with:
+          path: .cache/cpm
+          key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
+      - name: Build the headless player
+        run: python haylen.py build --config Debug --target haylen-headless
+      - name: Run every test of the test project
+        run: build/linux-debug/bin/haylen-headless samples/tests --frames 60000

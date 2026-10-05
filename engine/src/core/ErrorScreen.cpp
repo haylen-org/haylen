@@ -18,7 +18,7 @@
 
 namespace haylen::core {
 
-ErrorScreen::ErrorScreen(Engine& owner, lua::Error failure) : engine(owner), error(std::move(failure)) {
+ErrorScreen::ErrorScreen(Engine& owner, lua::Error failure) : engine(owner), error(std::move(failure)), focused(owner.isRecoverable() ? Action::Back : Action::Restart) {
     excerpt = readExcerpt();
     report = buildReport();
 }
@@ -140,6 +140,32 @@ void ErrorScreen::restartApp() {
     engine.requestRestart();
 }
 
+void ErrorScreen::goBack() {
+    if (engine.isRecoverable()) {
+        engine.recover();
+    }
+}
+
+void ErrorScreen::run(Action action) {
+    switch (action) {
+    case Action::Copy:
+        copyReport();
+        break;
+    case Action::Restart:
+        restartApp();
+        break;
+    case Action::Back:
+        goBack();
+        break;
+    }
+}
+
+// The focus moves along the buttons in the order they show, which ends with going back in a recoverable app.
+void ErrorScreen::moveFocus(int step) {
+    const int count = engine.isRecoverable() ? 3 : 2;
+    focused = static_cast<Action>(std::clamp(static_cast<int>(focused) + step, 0, count - 1));
+}
+
 void ErrorScreen::scrollBy(float amount) {
     scroll = std::clamp(scroll + amount, 0.0F, maxScroll);
 }
@@ -155,6 +181,11 @@ void ErrorScreen::handleKey(const platform::Event& event) {
     case input::Key::R:
         if (!event.repeat) {
             restartApp();
+        }
+        break;
+    case input::Key::Escape:
+        if (!event.repeat) {
+            goBack();
         }
         break;
     case input::Key::Left:
@@ -191,13 +222,11 @@ void ErrorScreen::pressFocus(const platform::Event& event) {
         return;
     }
     if (event.key == input::Key::Left) {
-        focused = Action::Copy;
+        moveFocus(-1);
     } else if (event.key == input::Key::Right) {
-        focused = Action::Restart;
-    } else if (focused == Action::Copy) {
-        copyReport();
+        moveFocus(1);
     } else {
-        restartApp();
+        run(focused);
     }
 }
 
@@ -209,6 +238,10 @@ void ErrorScreen::press(math::Vec2 point) {
     }
     if (restartButton.contains(point)) {
         restartApp();
+        return;
+    }
+    if (backButton.contains(point)) {
+        goBack();
         return;
     }
     dragging = Drag{.pointer = point.y, .scroll = scroll};
@@ -249,10 +282,10 @@ void ErrorScreen::update() {
     const float line = kLineStep * getUnit();
     for (std::size_t index = 0; index < input::Input::kMaxGamepads; ++index) {
         if (input.isGamepadPressed(index, input::GamepadButton::DpadLeft)) {
-            focused = Action::Copy;
+            moveFocus(-1);
         }
         if (input.isGamepadPressed(index, input::GamepadButton::DpadRight)) {
-            focused = Action::Restart;
+            moveFocus(1);
         }
         if (input.isGamepadPressed(index, input::GamepadButton::DpadUp)) {
             scrollBy(-line);
@@ -260,10 +293,11 @@ void ErrorScreen::update() {
         if (input.isGamepadPressed(index, input::GamepadButton::DpadDown)) {
             scrollBy(line);
         }
-        if (input.isGamepadPressed(index, input::GamepadButton::South) && focused == Action::Copy) {
-            copyReport();
-        } else if (input.isGamepadPressed(index, input::GamepadButton::South)) {
-            restartApp();
+        if (input.isGamepadPressed(index, input::GamepadButton::South)) {
+            run(focused);
+        }
+        if (input.isGamepadPressed(index, input::GamepadButton::East)) {
+            goBack();
         }
     }
 }
@@ -424,6 +458,7 @@ float ErrorScreen::drawFooter(graphics2d::Renderer& renderer, text::Font& font, 
     const float buttonsTop = area.getBottom() - kButtonHeight * unit;
     copyButton = drawAction(renderer, font, {area.x, buttonsTop}, Action::Copy, "C", copied ? "Report copied" : "Copy report", unit);
     restartButton = drawAction(renderer, font, {copyButton.getRight() + gap, buttonsTop}, Action::Restart, "R", "Restart app", unit);
+    backButton = engine.isRecoverable() ? drawAction(renderer, font, {restartButton.getRight() + gap, buttonsTop}, Action::Back, "Esc", "Back to the app", unit) : math::Rect{};
 
     float top = buttonsTop - gap;
     if (isReloadWatching()) {

@@ -54,6 +54,7 @@ class InputLua final {
     static int pointerCaptured(lua_State* L);
     static int keyCaptured(lua_State* L);
     static int gamepadButtonCaptured(lua_State* L);
+    static int gamepadAxisCaptured(lua_State* L);
     static int touches(lua_State* L);
     static int findTouch(lua_State* L);
     static int gestures(lua_State* L);

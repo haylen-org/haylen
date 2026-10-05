@@ -10,6 +10,7 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
+#include "haylen/core/SceneView.hpp"
 #include "haylen/debug/ObjectCounter.hpp"
 #include "haylen/debug/Profiler.hpp"
 #include "haylen/platform/Event.hpp"
@@ -120,8 +121,8 @@ void DebugPlugin::event(core::Engine&, const platform::Event& event) {
     }
 }
 
-void DebugPlugin::renderUi(core::Engine& engine) {
-    if (statsMode != debug::StatsDisplay::Mode::Full) {
+void DebugPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
+    if (!view.current || statsMode != debug::StatsDisplay::Mode::Full) {
         return;
     }
     ui::Backend& backend = engine.getPlugin<UiPlugin>().getBackend();

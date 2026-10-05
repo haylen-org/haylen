@@ -17,7 +17,7 @@ class CorePlugin final : public Plugin {
     void fixedUpdate(core::Engine& engine, float stepSeconds) override;
     void update(core::Engine& engine, float deltaSeconds) override;
     void render(core::Engine& engine) override;
-    void renderUi(core::Engine& engine) override;
+    void renderUi(core::Engine& engine, const core::SceneView& view) override;
 
     [[nodiscard]] lua::Autoloads& getAutoloads() noexcept {
         return autoloads;

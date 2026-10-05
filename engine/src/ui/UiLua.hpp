@@ -86,6 +86,7 @@ class UiLua final {
     static int usingPointer(lua_State* L);
     static int usingKeyboard(lua_State* L);
     static int focused(lua_State* L);
+    static int focusOwner(lua_State* L);
     static int clearFocus(lua_State* L);
     static int focusRingVisible(lua_State* L);
     static int safeAreaVisible(lua_State* L);

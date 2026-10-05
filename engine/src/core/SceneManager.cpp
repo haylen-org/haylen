@@ -913,14 +913,15 @@ void SceneManager::endTransition() noexcept {
 }
 
 // The cover renders the current scenes into the outgoing image with the incoming image empty, the hold draws the covered frame with the loading view on top and no scene renders, and the reveal renders the scenes after the change into the incoming image, next to the scenes still leaving through an effect that shows both scenes.
-std::vector<SceneManager::View> SceneManager::getViews() {
+void SceneManager::prepareViews() {
+    views.clear();
     if (!isEffectShown()) {
-        return {View{.scenes = getVisible(stack), .current = true}};
+        views.push_back({.scenes = getVisible(stack), .current = true});
+        return;
     }
 
     prepareImages();
     const Change& change = *pending;
-    std::vector<View> views;
     switch (change.phase) {
     case Phase::Cover:
         views.push_back({.scenes = getVisible(stack), .target = outgoingImage, .current = true});
@@ -946,11 +947,10 @@ std::vector<SceneManager::View> SceneManager::getViews() {
         views.push_back({.effect = true});
         break;
     }
-    return views;
 }
 
 // A scene that leaves while an earlier one renders, through a clear, draws nothing more, and the loading view draws above the scenes of the current view.
-void SceneManager::render(const View& view) {
+void SceneManager::render(const SceneView& view) {
     for (const std::shared_ptr<Scene>& scene : view.scenes) {
         if (isAlive(*scene)) {
             scene->render(engine);
@@ -962,7 +962,7 @@ void SceneManager::render(const View& view) {
     }
 }
 
-void SceneManager::renderUi(const View& view) {
+void SceneManager::renderUi(const SceneView& view) {
     for (const std::shared_ptr<Scene>& scene : view.scenes) {
         if (isAlive(*scene)) {
             scene->renderUi(engine);
@@ -975,7 +975,7 @@ void SceneManager::renderUi(const View& view) {
 }
 
 // The hold draws the effect at its switch progress, where it covers the screen, and the reveal of an effect that covers the screen never goes back below it.
-void SceneManager::renderTransition(graphics2d::Renderer& renderer, const View& view) {
+void SceneManager::renderTransition(graphics2d::Renderer& renderer, const SceneView& view) {
     if (!isEffectShown()) {
         return;
     }

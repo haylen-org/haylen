@@ -5,6 +5,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -16,6 +17,7 @@
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
+#include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
@@ -25,7 +27,9 @@
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
 #include "haylen/ui/Document.hpp"
+#include "haylen/ui/FocusNavigator.hpp"
 #include "lua/Owners.hpp"
+#include "lua/ScriptedScene.hpp"
 #include "ui/MountLink.hpp"
 #include "ui/TransformLua.hpp"
 
@@ -34,6 +38,28 @@ namespace haylen::lua {
 template <> struct Type<ui::Document> {
     static constexpr const char* name = "haylen.UiDocument";
     using Storage = std::shared_ptr<ui::Document>;
+};
+
+template <> struct EnumNames<ui::FocusNavigator::Owner> {
+    static constexpr std::array<std::pair<std::string_view, ui::FocusNavigator::Owner>, 3> kOwners{{{"none", ui::FocusNavigator::Owner::None}, {"control", ui::FocusNavigator::Owner::Control}, {"playArea", ui::FocusNavigator::Owner::PlayArea}}};
+
+    static std::optional<ui::FocusNavigator::Owner> fromName(std::string_view name) {
+        for (const auto& [candidate, owner] : kOwners) {
+            if (candidate == name) {
+                return owner;
+            }
+        }
+        return std::nullopt;
+    }
+
+    static std::string_view name(ui::FocusNavigator::Owner value) {
+        for (const auto& [candidate, owner] : kOwners) {
+            if (owner == value) {
+                return candidate;
+            }
+        }
+        return kOwners.front().first;
+    }
 };
 
 } // namespace haylen::lua
@@ -298,7 +324,10 @@ int UiLua::mount(lua_State* L) {
     lua_setfield(L, -2, "handlers");
     lua_rawsetp(L, -2, created.get());
     lua_pop(L, 1);
-    getPlugin(L).mount(created, layer);
+
+    // A document owned by a scene of the stack belongs to that scene, so it shows and leaves with it.
+    const std::shared_ptr<const core::Scene> scene = owner != 0 ? lua::ScriptedScene::find(L, owner) : nullptr;
+    getPlugin(L).mount(created, layer, scene);
     if (owner != 0) {
         lua::Owners::add(L, owner, std::make_shared<MountLink>(getPlugin(L), created));
     }
@@ -690,6 +719,11 @@ int UiLua::focused(lua_State* L) {
     return 2;
 }
 
+int UiLua::focusOwner(lua_State* L) {
+    lua::Stack::push(L, getPlugin(L).getFocus().getOwner());
+    return 1;
+}
+
 int UiLua::clearFocus(lua_State* L) {
     plugins::UiPlugin& plugin = getPlugin(L);
     plugin.getBackend().makeCurrent();
@@ -733,7 +767,7 @@ int UiLua::kinds(lua_State* L) {
 
 int UiLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"mount", &lua::Binding::native<&mount>}, {"node", &lua::Binding::native<&node>}, {"setTheme", &lua::Binding::native<&setTheme>}, {"theme", &lua::Binding::native<&theme>}, {"themes", &lua::Binding::native<&themes>}, {"loadTheme", &lua::Binding::native<&loadTheme>}, {"addTheme", &lua::Binding::native<&addTheme>}, {"themeColor", &lua::Binding::native<&themeColor>}, {"themeMetric", &lua::Binding::native<&themeMetric>}, {"themeFont", &lua::Binding::native<&themeFont>}, {"themeSurface", &lua::Binding::native<&themeSurface>}, {"themeImageFilter", &lua::Binding::native<&themeImageFilter>}, {"addFont", &lua::Binding::native<&addFont>}, {"usingPointer", &lua::Binding::native<&usingPointer>}, {"usingKeyboard", &lua::Binding::native<&usingKeyboard>}, {"focused", &lua::Binding::native<&focused>}, {"clearFocus", &lua::Binding::native<&clearFocus>}, {"focusRingVisible", &lua::Binding::native<&focusRingVisible>}, {"safeAreaVisible", &lua::Binding::native<&safeAreaVisible>}, {"setSafeAreaVisible", &lua::Binding::native<&setSafeAreaVisible>}, {"setDirection", &lua::Binding::native<&setDirection>}, {"direction", &lua::Binding::native<&direction>}, {"kinds", &lua::Binding::native<&kinds>}, {"onEvent", &lua::Binding::native<&onEvent>}, {nullptr, nullptr},
+        {"mount", &lua::Binding::native<&mount>}, {"node", &lua::Binding::native<&node>}, {"setTheme", &lua::Binding::native<&setTheme>}, {"theme", &lua::Binding::native<&theme>}, {"themes", &lua::Binding::native<&themes>}, {"loadTheme", &lua::Binding::native<&loadTheme>}, {"addTheme", &lua::Binding::native<&addTheme>}, {"themeColor", &lua::Binding::native<&themeColor>}, {"themeMetric", &lua::Binding::native<&themeMetric>}, {"themeFont", &lua::Binding::native<&themeFont>}, {"themeSurface", &lua::Binding::native<&themeSurface>}, {"themeImageFilter", &lua::Binding::native<&themeImageFilter>}, {"addFont", &lua::Binding::native<&addFont>}, {"usingPointer", &lua::Binding::native<&usingPointer>}, {"usingKeyboard", &lua::Binding::native<&usingKeyboard>}, {"focused", &lua::Binding::native<&focused>}, {"focusOwner", &lua::Binding::native<&focusOwner>}, {"clearFocus", &lua::Binding::native<&clearFocus>}, {"focusRingVisible", &lua::Binding::native<&focusRingVisible>}, {"safeAreaVisible", &lua::Binding::native<&safeAreaVisible>}, {"setSafeAreaVisible", &lua::Binding::native<&setSafeAreaVisible>}, {"setDirection", &lua::Binding::native<&setDirection>}, {"direction", &lua::Binding::native<&direction>}, {"kinds", &lua::Binding::native<&kinds>}, {"onEvent", &lua::Binding::native<&onEvent>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     lua_createtable(L, 0, 1);

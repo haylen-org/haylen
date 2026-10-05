@@ -64,13 +64,17 @@ void FocusNavigator::update(const NavigationInput& navigation, input::InputDevic
         g.NavActivateDownId = current->id;
     }
 
-    // Tab walks the controls in the order they draw, also out of a text field being edited, the way ImGui tabs through a window.
+    // Tab walks the controls and the play areas in the order they draw, also out of a text field being edited, the way ImGui tabs through a window.
     const bool tabbing = !g.IO.KeyCtrl && !g.IO.KeyAlt && ImGui::IsKeyPressed(ImGuiKey_Tab, ImGuiInputFlags_Repeat, ImGuiKeyOwner_NoOwner);
     if (tabbing && current != nullptr && (g.ActiveId == 0 || g.ActiveId == current->id)) {
         tab(*current, g.IO.KeyShift);
         return;
     }
     if (g.ActiveId != 0) {
+        return;
+    }
+    if (navigation.isPressed(NavigationInput::Action::Focus)) {
+        switchFocus(current);
         return;
     }
 
@@ -83,7 +87,8 @@ void FocusNavigator::update(const NavigationInput& navigation, input::InputDevic
     if (cancelPressed && popupsAtEnd == 0 && g.OpenPopupStack.Size == 0) {
         cancel(current);
     }
-    if (current == nullptr) {
+    // The directions, accept and menu of a play area belong to the game, which reads them from the action map.
+    if (current == nullptr || current->play) {
         return;
     }
     if (accept) {
@@ -145,6 +150,14 @@ void FocusNavigator::leave() {
 }
 
 void FocusNavigator::addTarget(ImGuiID item, const math::Rect& bounds) {
+    addItem(item, bounds, false);
+}
+
+void FocusNavigator::addPlayArea(ImGuiID item, const math::Rect& bounds) {
+    addItem(item, bounds, true);
+}
+
+void FocusNavigator::addItem(ImGuiID item, const math::Rect& bounds, bool play) {
     if (suspended || levels.empty() || !levels.back().focusable || (GImGui->CurrentItemFlags & ImGuiItemFlags_Disabled) != 0) {
         return;
     }
@@ -162,7 +175,7 @@ void FocusNavigator::addTarget(ImGuiID item, const math::Rect& bounds) {
         level.node = building.nodes.size() - 1;
     }
     const bool inputable = GImGui->LastItemData.ID == item && (GImGui->LastItemData.ItemFlags & ImGuiItemFlags_Inputable) != 0;
-    building.targets.push_back({.id = item, .window = ImGui::GetCurrentWindow(), .bounds = bounds, .node = *level.node, .inputable = inputable});
+    building.targets.push_back({.id = item, .window = ImGui::GetCurrentWindow(), .bounds = bounds, .node = *level.node, .inputable = inputable, .play = play});
 }
 
 void FocusNavigator::endDraw() {
@@ -175,9 +188,14 @@ void FocusNavigator::endDraw() {
     activeAtEnd = g.ActiveId;
 
     if (find(drawn, g.NavId) == nullptr && focusedItem != 0 && (g.NavId == focusedItem || g.NavId == 0)) {
+        if (!hasTargets(focusedDocument)) {
+            std::erase_if(parked, [this](const auto& entry) { return entry.first == focusedDocument; });
+            parked.emplace_back(focusedDocument, focusedItem);
+        }
         restore();
     }
     focusPopup();
+    unpark();
 
     const Target* focused = find(drawn, g.NavId);
     const Node* node = focused != nullptr ? &drawn.nodes[focused->node] : nullptr;
@@ -192,6 +210,7 @@ void FocusNavigator::endDraw() {
         focusedNode = owner;
     }
     focusedItem = focused != nullptr ? focused->id : 0;
+    focusedPlay = focused != nullptr && focused->play;
     focusedDocument = node != nullptr ? node->document : nullptr;
     focusedName = node != nullptr ? node->name : std::string();
     focusedRoot = focused != nullptr ? focused->window->RootWindow : nullptr;
@@ -199,8 +218,16 @@ void FocusNavigator::endDraw() {
 
     editing = g.ActiveId != 0 && (g.ActiveIdWindow == nullptr || g.ActiveId != g.ActiveIdWindow->MoveId);
     const ImGuiWindow* answering = popupAtEnd != nullptr ? popupAtEnd : focusedRoot;
-    cancelAnswered = editing || popupsAtEnd > 0 || carried.has_value() || std::ranges::find(cancelWindows, answering) != cancelWindows.end();
-    acceptAnswered = editing || focusedItem != 0;
+    cancelAnswered = editing || focusedItem != 0 || popupsAtEnd > 0 || carried.has_value() || std::ranges::find(cancelWindows, answering) != cancelWindows.end();
+    acceptAnswered = editing || (focusedItem != 0 && !focusedPlay);
+    focusAnswered = focusedItem != 0 || std::ranges::any_of(drawn.targets, &Target::play);
+}
+
+FocusNavigator::Owner FocusNavigator::getOwner() const noexcept {
+    if (focusedItem == 0) {
+        return Owner::None;
+    }
+    return focusedPlay ? Owner::PlayArea : Owner::Control;
 }
 
 void FocusNavigator::focus(ImGuiID item, const math::Rect& bounds) {
@@ -208,11 +235,16 @@ void FocusNavigator::focus(ImGuiID item, const math::Rect& bounds) {
     ringVisible = ringVisible || lastInput == input::InputDevice::Gamepad || !pointerAvailable;
     if (const Target* target = find(building, item)) {
         remember(building, *target);
+        keepControl(*target);
     }
     setFocus(item, window, bounds);
     focusedDocument = currentDocument;
     focusedRoot = window->RootWindow;
     focusedBounds = bounds;
+}
+
+void FocusNavigator::forget(const Document& document) {
+    std::erase_if(parked, [&document](const auto& entry) { return entry.first == &document; });
 }
 
 void FocusNavigator::clear() {
@@ -366,6 +398,31 @@ const FocusNavigator::Target* FocusNavigator::searchAround(const Target& source,
     return search(source, FocusSearch::wrap(source.bounds, drawn.scopes[*wrap].bounds, direction), wrap, direction);
 }
 
+// The play area of the document that holds the focus, or of the topmost document that draws one while nothing has the focus.
+const FocusNavigator::Target* FocusNavigator::findPlayArea(const Target* source) const noexcept {
+    const Document* document = source != nullptr ? drawn.nodes[source->node].document : nullptr;
+    const Target* found = nullptr;
+    for (const Target& target : drawn.targets) {
+        if (target.play && (document == nullptr || drawn.nodes[target.node].document == document)) {
+            found = &target;
+            if (document != nullptr) {
+                break;
+            }
+        }
+    }
+    return found;
+}
+
+// The control that had the focus before the play area took it, or else the first control of the document of the play area.
+const FocusNavigator::Target* FocusNavigator::findControl(const Target& playArea) const noexcept {
+    const Document* document = drawn.nodes[playArea.node].document;
+    if (const Target* remembered = find(drawn, returnControl); remembered != nullptr && drawn.nodes[remembered->node].document == document) {
+        return remembered;
+    }
+    const auto first = std::ranges::find_if(drawn.targets, [&](const Target& target) { return !target.play && drawn.nodes[target.node].document == document; });
+    return first != drawn.targets.end() ? &*first : nullptr;
+}
+
 ImGuiID FocusNavigator::getTrapId(const Frame& frame, const Target& target) const noexcept {
     for (std::optional<std::size_t> scope = frame.nodes[target.node].scope; scope; scope = frame.scopes[*scope].parent) {
         if (frame.scopes[*scope].trap) {
@@ -373,6 +430,16 @@ ImGuiID FocusNavigator::getTrapId(const Frame& frame, const Target& target) cons
         }
     }
     return 0;
+}
+
+// The action `uiFocus` moves the focus from a play area to the controls of its document and back, showing the ring where it lands.
+void FocusNavigator::switchFocus(const Target* source) {
+    const Target* target = source != nullptr && source->play ? findControl(*source) : findPlayArea(source);
+    if (target == nullptr) {
+        return;
+    }
+    ringVisible = true;
+    apply(*target);
 }
 
 void FocusNavigator::move(const Target& source, FocusDirection direction) {
@@ -426,6 +493,7 @@ void FocusNavigator::tab(const Target& source, bool backward) {
 
 void FocusNavigator::apply(const Target& target) {
     remember(drawn, target);
+    keepControl(target);
     setFocus(target.id, target.window, target.bounds);
     focusedDocument = drawn.nodes[target.node].document;
     focusedRoot = target.window->RootWindow;
@@ -479,6 +547,14 @@ void FocusNavigator::remember(const Frame& frame, const Target& next) {
 }
 
 // Lost focus goes back to where it was before it entered the scope that closed, for players who navigate. A pointer player simply loses it, so a key that also plays the game never presses a control nobody chose.
+// A move from a control into a play area keeps the control, where `uiFocus` takes the focus back.
+void FocusNavigator::keepControl(const Target& next) {
+    const Target* current = find(drawn, GImGui->NavId);
+    if (next.play && current != nullptr && !current->play) {
+        returnControl = current->id;
+    }
+}
+
 void FocusNavigator::restore() {
     ImGuiContext& g = *GImGui;
     while (ringVisible && !history.empty()) {
@@ -490,6 +566,26 @@ void FocusNavigator::restore() {
         }
     }
     g.NavId = 0;
+}
+
+bool FocusNavigator::hasTargets(const Document* document) const noexcept {
+    return std::ranges::any_of(drawn.targets, [this, document](const Target& target) { return drawn.nodes[target.node].document == document; });
+}
+
+// A document that draws its controls again gives the focus back to the control it parked, unless the focus went elsewhere meanwhile.
+void FocusNavigator::unpark() {
+    ImGuiContext& g = *GImGui;
+    for (auto entry = parked.begin(); entry != parked.end();) {
+        if (!hasTargets(entry->first)) {
+            ++entry;
+            continue;
+        }
+        const Target* target = find(drawn, entry->second);
+        if (target != nullptr && find(drawn, g.NavId) == nullptr) {
+            setFocus(target->id, target->window, target->bounds);
+        }
+        entry = parked.erase(entry);
+    }
 }
 
 // A popup the UI draws takes the focus when it opens, on its first control.

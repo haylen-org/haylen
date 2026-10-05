@@ -221,9 +221,9 @@ void Backend::setClipboardText(ImGuiContext* context, const char* text) {
 // Every mesh carries its own render state, so a request to reset it needs no work.
 void Backend::resetRenderState(const ImDrawList*, const ImDrawCmd*) {}
 
-// Runs a render callback at its place among the meshes, inside the clip of its command.
-void Backend::runRenderCall(const ImDrawList*, const ImDrawCmd* command) {
-    const RenderCall& call = *static_cast<const RenderCall*>(command->UserCallbackData);
+// Runs a render callback at its place among the meshes, inside the clip of its command. Its data lives in the draw list, where ImGui points the command only once the frame ends, so a window drawn before that finds it by its offset.
+void Backend::runRenderCall(const ImDrawList* list, const ImDrawCmd* command) {
+    const RenderCall& call = *reinterpret_cast<const RenderCall*>(list->_CallbacksDataBuf.Data + command->UserCallbackDataOffset);
     Backend& owner = *call.owner;
     const math::Rect clip = math::Rect::fromMinMax({command->ClipRect.x, command->ClipRect.y}, {command->ClipRect.z, command->ClipRect.w}).translated(owner.origin);
     if (clip.isEmpty()) {
@@ -591,6 +591,7 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     blockedPrevious = std::exchange(blocked, {});
     frameTextures.clear();
     renderCalls.clear();
+    renderedLists.clear();
     ImGui::NewFrame();
     ImGui::ErrorRecoveryStoreState(&recovery->state);
     frameActive = true;
@@ -706,19 +707,55 @@ void Backend::render(graphics2d::Renderer& renderer) {
         window.setCursor(toCursor(wanted));
     }
 
-    if (data.TotalVtxCount == 0 && renderCalls.empty()) {
+    std::vector<const ImDrawList*> lists;
+    for (const ImDrawList* list : data.CmdLists) {
+        if (std::ranges::find(renderedLists, list) == renderedLists.end()) {
+            lists.push_back(list);
+        }
+    }
+    drawLists(renderer, lists);
+}
+
+void Backend::renderWindow(graphics2d::Renderer& renderer, const ImGuiWindow& root) {
+    makeCurrent();
+    std::vector<const ImDrawList*> lists;
+    collectLists(root, lists);
+    for (const ImGuiPopupData& popup : GImGui->OpenPopupStack) {
+        if (popup.Window != nullptr && popup.Window->RootWindowPopupTree == &root && popup.Window != &root) {
+            collectLists(*popup.Window, lists);
+        }
+    }
+    drawLists(renderer, lists);
+    renderedLists.insert(renderedLists.end(), lists.begin(), lists.end());
+}
+
+void Backend::collectLists(const ImGuiWindow& window, std::vector<const ImDrawList*>& lists) {
+    if (!window.Active || window.Hidden) {
+        return;
+    }
+    lists.push_back(window.DrawList);
+    for (const ImGuiWindow* child : window.DC.ChildWindows) {
+        collectLists(*child, lists);
+    }
+}
+
+// A command whose texture never reached the GPU, such as an atlas that the frame creates and a window drawn before the frame ends uses, draws nothing.
+void Backend::drawLists(graphics2d::Renderer& renderer, std::span<const ImDrawList* const> lists) {
+    const bool empty = std::ranges::all_of(lists, [](const ImDrawList* list) { return list->VtxBuffer.Size == 0; });
+    if (empty && renderCalls.empty()) {
         return;
     }
     renderer.beginScreen();
     rendering = &renderer;
-    for (const ImDrawList* list : data.CmdLists) {
+    for (const ImDrawList* list : lists) {
         for (const ImDrawCmd& command : list->CmdBuffer) {
             if (command.UserCallback != nullptr) {
                 command.UserCallback(list, &command);
                 continue;
             }
 
-            const graphics::Texture* texture = findTexture(command.GetTexID());
+            const ImTextureData* atlas = command.TexRef._TexData;
+            const graphics::Texture* texture = atlas != nullptr && atlas->TexID == ImTextureID_Invalid ? nullptr : findTexture(command.GetTexID());
             const math::Rect clip = math::Rect::fromMinMax({command.ClipRect.x, command.ClipRect.y}, {command.ClipRect.z, command.ClipRect.w}).translated(origin);
             if (texture == nullptr || command.ElemCount == 0 || clip.isEmpty()) {
                 continue;

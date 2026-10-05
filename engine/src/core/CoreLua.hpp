@@ -33,6 +33,9 @@ class CoreLua final {
     static int rootFixedStep(lua_State* L);
     static int rootInterpolation(lua_State* L);
     static int rootReportError(lua_State* L);
+    static int rootRecoverable(lua_State* L);
+    static int rootSetRecoverable(lua_State* L);
+    static int rootRecover(lua_State* L);
     static int rootPaused(lua_State* L);
     static int rootSetPaused(lua_State* L);
     static int rootAppState(lua_State* L);

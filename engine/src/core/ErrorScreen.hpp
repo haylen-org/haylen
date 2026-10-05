@@ -28,10 +28,10 @@ namespace haylen::core {
 
 class Engine;
 
-// What the engine draws in place of the app once a script error stops it: the app and engine it ran on, the message, a source excerpt, the stack and the actions. Content taller than the screen scrolls with the mouse wheel, a drag, the arrow keys and the directional pad. C copies the report and R restarts the app, and both actions are buttons too, the only way to reach them on touch devices. Gamepads and TV remotes move the focus between the buttons with the directional pad, or the arrow keys that TV remotes also send, and press the focused one with the south button or Enter, and the focus starts on Restart. It draws with the renderer alone, so it keeps working when the UI is what failed.
+// What the engine draws in place of the app once a script error stops it: the app and engine it ran on, the message, a source excerpt, the stack and the actions. Content taller than the screen scrolls with the mouse wheel, a drag, the arrow keys and the directional pad. C copies the report and R restarts the app, and in a recoverable app Escape, the east button and the back button of the platform go back to the app. Every action is a button too, the only way to reach it on touch devices. Gamepads and TV remotes move the focus between the buttons with the directional pad, or the arrow keys that TV remotes also send, and press the focused one with the south button or Enter, and the focus starts on going back in a recoverable app and on Restart otherwise. It draws with the renderer alone, so it keeps working when the UI is what failed.
 class ErrorScreen final {
   public:
-    enum class Action { Copy, Restart };
+    enum class Action { Copy, Restart, Back };
 
     struct SourceLine {
         int number = 0;
@@ -69,6 +69,11 @@ class ErrorScreen final {
     [[nodiscard]] const math::Rect& getRestartButton() const noexcept {
         return restartButton;
     }
+
+    // The button that goes back to a recoverable app, empty when the app cannot go back.
+    [[nodiscard]] const math::Rect& getBackButton() const noexcept {
+        return backButton;
+    }
     [[nodiscard]] Action getFocusedAction() const noexcept {
         return focused;
     }
@@ -80,6 +85,7 @@ class ErrorScreen final {
 
     void copyReport();
     void restartApp();
+    void goBack();
 
   private:
     struct Drag {
@@ -127,6 +133,8 @@ class ErrorScreen final {
 
     void handleKey(const platform::Event& event);
     void pressFocus(const platform::Event& event);
+    void moveFocus(int step);
+    void run(Action action);
     void handleTouch(const platform::Event& event);
     void press(math::Vec2 point);
     void drag(math::Vec2 point);
@@ -150,7 +158,8 @@ class ErrorScreen final {
     std::optional<std::uint64_t> finger;
     math::Rect copyButton{};
     math::Rect restartButton{};
-    Action focused = Action::Restart;
+    math::Rect backButton{};
+    Action focused;
     bool copied = false;
 };
 

@@ -378,6 +378,20 @@ Chunk names are package paths, so every position in a message points at a file o
 
 The runtime stays alive on the error screen. Fixing the script restarts the app when hot reload is on, and a browser editor restarts it with `Module.haylen.restart()` or `Module.haylen.run()`.
 
+An app that can return to a safe screen after an error calls [`haylen.setRecoverable(true)`](lua-api/haylen.md#haylensetrecoverablerecoverable). Its error screen then offers `Back to the app` next to copying and restarting, with Escape, the east button and the back button of the platform, and it starts with the focus on it. Going back publishes `appRecovered` with the error at the start of the next frame, before the app updates again, so its listener leaves the scene that failed first, and the app runs on with the same Lua state. Every error also publishes `appError` at the end of its frame, which an app that runs on by itself answers with `haylen.recover()`, the way the test project of the samples runs every test and lists the ones that failed.
+
+```lua
+local events = require('haylen.events')
+local haylen = require('haylen')
+local scene = require('haylen.scene')
+
+haylen.setRecoverable(true)
+events.on('appRecovered', function()
+    scene.clear()
+    scene.push(require('scenes.menu')())
+end)
+```
+
 ## Hot reload
 
 The desktop player treats a package folder named on its command line as an app in development when it also receives `--dev`, as in `haylen --dev samples/games/tiny-island` or `python3 haylen.py run samples/games/tiny-island`. It checks `app.json`, `source/`, `content/` and the `plugin.json` and `source/` of every plugin for changes every half second on the I/O pool, so frames never wait for the file system, and ignores everything else in the folder.

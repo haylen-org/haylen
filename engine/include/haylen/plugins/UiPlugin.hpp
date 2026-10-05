@@ -23,6 +23,11 @@
 #include "haylen/ui/Placement.hpp"
 #include "haylen/ui/Theme.hpp"
 
+namespace haylen::core {
+class Scene;
+struct SceneView;
+} // namespace haylen::core
+
 namespace haylen::plugins {
 
 // Runs the app UI: Dear ImGui over the app, the themes, the component kinds and the documents the app mounts. Lua sees it as `haylen.ui` and `haylen.imgui`.
@@ -39,7 +44,7 @@ class UiPlugin final : public Plugin {
     void event(core::Engine& engine, const platform::Event& event) override;
     void beginFrame(core::Engine& engine, float deltaSeconds) override;
     void update(core::Engine& engine, float deltaSeconds) override;
-    void renderUi(core::Engine& engine) override;
+    void renderUi(core::Engine& engine, const core::SceneView& view) override;
     void installLua(core::Engine& engine, lua_State* L) override;
     [[nodiscard]] bool isCapturingBack() const override;
 
@@ -57,8 +62,8 @@ class UiPlugin final : public Plugin {
 
     [[nodiscard]] std::shared_ptr<ui::Document> createDocument(const core::Json& tree, ui::Placement placement = ui::Placement::Safe) const;
 
-    // Documents draw in layer order, and documents on the same layer in the order they were mounted. Mounting and unmounting publish `uiDocumentMounted` and `uiDocumentUnmounted` with the shared pointer of the document.
-    void mount(std::shared_ptr<ui::Document> document, int layer = 0);
+    // Documents draw in layer order, and documents on the same layer in the order they were mounted. A document of a scene draws only while its scene shows and goes into the image of its scene during a transition, so it travels with its scene, while a document of no scene draws above the scenes the app runs. Mounting and unmounting publish `uiDocumentMounted` and `uiDocumentUnmounted` with the shared pointer of the document.
+    void mount(std::shared_ptr<ui::Document> document, int layer = 0, const std::shared_ptr<const core::Scene>& scene = nullptr);
     bool unmount(const ui::Document& document);
     [[nodiscard]] bool isMounted(const ui::Document& document) const;
 
@@ -107,6 +112,8 @@ class UiPlugin final : public Plugin {
   private:
     struct Mounted {
         std::shared_ptr<ui::Document> document;
+        std::weak_ptr<const core::Scene> scene;
+        bool scened = false;
         int layer = 0;
         std::uint64_t order = 0;
     };
@@ -119,9 +126,15 @@ class UiPlugin final : public Plugin {
 
     // Returns the texture of a UI image with the image filter of the theme, which loads in the background and is empty until it arrives.
     [[nodiscard]] graphics::Texture requestImage(core::Engine& engine, std::string_view path);
+    [[nodiscard]] std::vector<const Mounted*> getDocuments(core::Engine& engine, const core::SceneView& view) const;
+    void beginWindow(const char* name, ImGuiWindowFlags flags);
+    void drawDocuments(const std::vector<const Mounted*>& drawn);
+    void drawLeaving(core::Engine& engine, const core::SceneView& view);
+    void drawCurrent(core::Engine& engine, const core::SceneView& view);
     void applyVirtualInput(core::Engine& engine);
     void drawSafeArea();
     [[nodiscard]] input::ActionMap::Capture getCapture() const;
+    static void addCapture(input::ActionMap::Capture& capture, const std::vector<input::ActionMap::Binding>& bindings);
 
     // Returns the file of a TrueType face, or nothing for a bitmap face or a style the family has no face for.
     [[nodiscard]] static std::vector<std::uint8_t> getTrueTypeData(const std::shared_ptr<text::Font>& face);
@@ -134,6 +147,7 @@ class UiPlugin final : public Plugin {
     std::map<std::string, ui::Theme, std::less<>> themes;
     std::string themeName = "dark";
     std::vector<Mounted> documents;
+    std::vector<const ui::Document*> shownDocuments;
     std::uint64_t nextOrder = 0;
     std::map<std::string, ImageEntry, std::less<>> images;
     std::map<std::string, std::string, std::less<>> fontPaths;
@@ -144,6 +158,7 @@ class UiPlugin final : public Plugin {
     double elapsed = 0.0;
     text::Direction direction = text::Direction::LeftToRight;
     bool safeAreaVisible = false;
+    bool drawBegun = false;
     core::Engine* owner = nullptr;
 };
 

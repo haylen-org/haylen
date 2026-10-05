@@ -1,4 +1,4 @@
-// A plain C library that the native interop tests and the native sample load on every platform. It exercises values, structs, buffers, text, callbacks from the calling thread and from threads of its own, and the `HaylenNativeApi` of the engine with byte buffers, batched events, streams, a screen, the window of the app and covers.
+// A plain C library that the native interop tests and the test project load on every platform. It exercises values, structs, buffers, text, callbacks from the calling thread and from threads of its own, and the `HaylenNativeApi` of the engine with byte buffers, batched events, streams, a screen, the window of the app and covers.
 
 #include <stddef.h>
 #include <stdint.h>

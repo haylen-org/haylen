@@ -1,0 +1,25 @@
+-- The tests of the category in menu order.
+return {
+    prefix = 'PHY',
+    title = 'Physics',
+    description = 'Bodies, materials, sensors, joints and the ready-made ropes, bridges, ragdolls, vehicles, terrain, fracture and fluids of the physics world.',
+    tests = {
+        {code = 'PHY-001', title = 'Bodies and shapes', description = 'Boxes, circles, capsules, convex and concave polygons, segments and chains, dragged with a mouse joint.', module = 'bodies'},
+        {code = 'PHY-002', title = 'Materials', description = 'Friction on a ramp, restitution of bouncing balls and density on a seesaw.', module = 'materials'},
+        {code = 'PHY-003', title = 'Sensors and contacts', description = 'A sensor zone that counts its visitors and the contact, hit and sensor events of the world.', module = 'sensors'},
+        {code = 'PHY-004', title = 'Joints', description = 'Distance, revolute with a motor and limits, prismatic, weld, wheel, motor and filter joints.', module = 'joints'},
+        {code = 'PHY-005', title = 'Ropes', description = 'Chains of segments pinned in place or hung from bodies, which can be cut.', module = 'ropes'},
+        {code = 'PHY-006', title = 'Bridge', description = 'A bridge of planks between two cliffs that bends under falling crates.', module = 'bridge'},
+        {code = 'PHY-007', title = 'Ragdolls', description = 'Human figures with limited joints tumbling down the stairs.', module = 'ragdoll'},
+        {code = 'PHY-008', title = 'Vehicle', description = 'A car on springy suspension whose wheel motors climb the hills.', module = 'vehicle'},
+        {code = 'PHY-009', title = 'Explosions', description = 'Radial impulses with falloff and occlusion that scatter a tower of crates.', module = 'explosions'},
+        {code = 'PHY-010', title = 'Destructible terrain', description = 'Ground carved and filled with bombs and tools, with its collision rebuilt chunk by chunk.', module = 'terrain'},
+        {code = 'PHY-011', title = 'Fracture', description = 'Objects that break into Voronoi pieces where they are hit.', module = 'fracture'},
+        {code = 'PHY-012', title = 'Liquids', description = 'A particle fluid poured into a tank and drawn as metaballs.', module = 'liquids'},
+        {code = 'PHY-013', title = 'One-way platforms', description = 'A character that jumps up through platforms and lands on them.', module = 'one-way'},
+        {code = 'PHY-014', title = 'Conveyors', description = 'Belts that carry crates with the tangent speed of their surface.', module = 'conveyors'},
+        {code = 'PHY-015', title = 'Ray and shape casts', description = 'Closest and all hits, filters, piercing, bounces, fans, shape casts, batches and picking.', module = 'raycasts'},
+        {code = 'PHY-016', title = 'Collision filtering', description = 'Categories, masks and groups that decide which bodies collide.', module = 'filtering'},
+        {code = 'PHY-017', title = 'Stress test', description = 'Hundreds of bodies with the body count and the time of every step.', module = 'stress'},
+    },
+}

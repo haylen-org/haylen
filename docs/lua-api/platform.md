@@ -548,7 +548,7 @@ public final class StorePlugin {
 }
 ```
 
-Kotlin handlers written as suspending functions register with `HaylenCoroutines.register(method) { params -> result }`. Each call runs in a coroutine on the main thread, its result answers the call, a thrown exception fails it like `failure(throwable)`, and the coroutine is cancelled when the app cancels the call or its timeout passes. `HaylenCoroutines` comes with the `dev.haylen:haylen-coroutines` library, which brings `kotlinx-coroutines-android` with it, so an app with such handlers depends on it in `app/build.gradle.kts` of its Android project, and a plugin in its module, as the local plugin `native-sample` of the [native sample](../../samples/system/native) does.
+Kotlin handlers written as suspending functions register with `HaylenCoroutines.register(method) { params -> result }`. Each call runs in a coroutine on the main thread, its result answers the call, a thrown exception fails it like `failure(throwable)`, and the coroutine is cancelled when the app cancels the call or its timeout passes. `HaylenCoroutines` comes with the `dev.haylen:haylen-coroutines` library, which brings `kotlinx-coroutines-android` with it, so an app with such handlers depends on it in `app/build.gradle.kts` of its Android project, and a plugin in its module, as the local plugin [`native-sample`](../../samples/tests/plugins/native-sample) of the test project does.
 
 ```kotlin
 import dev.haylen.HaylenBridge

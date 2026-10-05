@@ -8,7 +8,7 @@ local ui = require('haylen.ui')
 
 ## Documents
 
-A document is a tree of nodes. Every node is one flat table with a `kind`, an optional `id`, its children and the properties of its kind. The function `ui.mount` builds the components, draws them over the app every frame and returns a [`UiDocument`](#uidocument) that stays on screen until it is unmounted. Several documents can be mounted at once, and they stay mounted when scenes change, so a scene that mounts a document usually unmounts it in `exit`.
+A document is a tree of nodes. Every node is one flat table with a `kind`, an optional `id`, its children and the properties of its kind. The function `ui.mount` builds the components, draws them over the app every frame and returns a [`UiDocument`](#uidocument) that stays mounted until it is unmounted. Several documents can be mounted at once. A scene mounts its documents with itself as `owner`, so they show only while the scene shows, go through scene transitions with it and unmount when it unloads, and a document without a scene owner stays on screen above the scenes.
 
 Sizes and positions are design units of the design resolution in `app.json`. The metrics of the built-in themes suit the default design resolution of 1920 by 1080.
 
@@ -26,10 +26,7 @@ scene.push({
                 event.document:set('status', {text = 'Loading the island'})
             end},
             ui.label{id = 'status', text = ''},
-        })
-    end,
-    exit = function(self)
-        self.menu:unmount()
+        }, {owner = self})
     end,
 })
 ```
@@ -44,7 +41,7 @@ Builds a document from the node table `tree`, shows it and returns its [`UiDocum
 | --- | --- | --- | --- |
 | `placement` | string | `'safe'` | The value `'safe'` lays the root out inside the safe area of the screen, away from notches and system bars. The value `'screen'` lays it out over the whole visible screen. |
 | `layer` | integer | `0` | Documents draw in ascending layer order, and documents on the same layer draw in the order they were mounted, so later ones cover earlier ones. |
-| `owner` | table or userdata | `nil` | Unmounts the document when the owner is released, such as a scene when it unloads, or collected, like the other [owners of `haylen.events`](events.md#owners). |
+| `owner` | table or userdata | `nil` | Unmounts the document when the owner is released, such as a scene when it unloads, or collected, like the other [owners of `haylen.events`](events.md#owners). A scene of the stack as owner also makes the document part of the scene: it draws only while the scene shows, and during a transition it goes into the image of its scene. |
 
 The root fills the whole area when its `align` is `stretch`, which is the default of containers. With `start`, `center` or `end` the root keeps its measured size and sits at the top left, the center or the bottom right of the area.
 
@@ -62,7 +59,7 @@ local hud = ui.mount(ui.row{
 }, {placement = 'screen', layer = 1})
 ```
 
-A scene that owns its documents needs no `exit` of its own to unmount them.
+A scene that owns its documents needs no `exit` of its own to unmount them, and no `pause` and `resume` to hide them while another scene covers it. Its documents never show over the scene that covers it, not even while the transition plays.
 
 ```lua
 local scene = require('haylen.scene')
@@ -333,6 +330,26 @@ scene.push({
 })
 ```
 
+### ui.focusOwner()
+
+Returns what holds the keyboard, gamepad and remote focus: `'control'` for a control of a document, `'playArea'` for a [play area](#uiplayareaproperties), whose game gets the directions, accept and menu, or `'none'`.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+local ui = require('haylen.ui')
+
+scene.push({
+    update = function(self, dt)
+        if ui.focusOwner() == 'control' then
+            return
+        end
+        local dx, dy = input.vector('move')
+        print('the game moves by ' .. dx .. ', ' .. dy)
+    end,
+})
+```
+
 ### ui.clearFocus()
 
 Takes the focus away from every document, which suits the start of gameplay, so a key that plays the game never presses a menu control left focused.
@@ -544,7 +561,7 @@ scene.push({
 
 Sends a command to the node `id`. The argument `arguments` is optional, and both commands take none.
 
-- The command `'focus'` moves the keyboard, gamepad and remote focus to the node. The focus ring stays visible when the player was already navigating and shows at once when they last used a gamepad or have no pointer device, while a mouse or touch player sees it only once they start navigating. The first accept press also counts as navigation: it shows the ring and activates the focused node. The focusable kinds are `button`, `imageButton`, `menuButton`, `popover`, `chip`, `checkbox`, `toggle`, `radioGroup`, `combo`, `segmentedControl`, `textField`, `secretField`, `textArea`, `filterField`, `numberField`, `slider`, `rangeSlider`, `stepper`, `keyCapture`, `colorField`, `list`, `tree`, `slotGrid`, `accordion`, `carousel` and a `richText` with links. A radio group, a list, a tree and a slot grid focus their selected entry, or their first entry that can be picked when none is selected or the selected one cannot take the focus, such as an item of a closed branch, an accordion focuses its first header, and rich text focuses its first link. Rich text written as literal markup takes the focus as soon as it is mounted or set, and translated rich text once it has been drawn.
+- The command `'focus'` moves the keyboard, gamepad and remote focus to the node. The focus ring stays visible when the player was already navigating and shows at once when they last used a gamepad or have no pointer device, while a mouse or touch player sees it only once they start navigating. The first accept press also counts as navigation: it shows the ring and activates the focused node. The focusable kinds are `button`, `imageButton`, `menuButton`, `popover`, `chip`, `checkbox`, `toggle`, `radioGroup`, `combo`, `segmentedControl`, `textField`, `secretField`, `textArea`, `filterField`, `numberField`, `slider`, `rangeSlider`, `stepper`, `keyCapture`, `colorField`, `list`, `tree`, `slotGrid`, `accordion`, `carousel`, `playArea` and a `richText` with links. A radio group, a list, a tree and a slot grid focus their selected entry, or their first entry that can be picked when none is selected or the selected one cannot take the focus, such as an item of a closed branch, an accordion focuses its first header, and rich text focuses its first link. Rich text written as literal markup takes the focus as soon as it is mounted or set, and translated rich text once it has been drawn.
 - The command `'open'` opens a `contextMenu` below its child, as a right click would.
 
 A kind without that command raises `The component kind "<kind>" does not answer the command "<name>".`, arguments raise `The "focus" command takes no arguments.` or `The "open" command takes no arguments.`, and an unknown id raises `The UI document has no node with the id "<id>".`.
@@ -840,17 +857,19 @@ Buttons, choices, inputs, list rows, slots and the other interactive parts of a 
 | `uiCancel` | `key:escape`, `button:east` | Goes back: closes the open popup or dialog, puts back a carried item, or sends `cancel`. |
 | `uiLeft`, `uiRight`, `uiUp`, `uiDown` | the arrow keys, the directional pad and the left stick | Moves the focus. |
 | `uiMenu` | `key:menu`, `button:north` | Opens the context menu around the focus. |
+| `uiFocus` | `button:back` | Moves the focus from a play area to the control of its document that last had it, or to its first control, and back. |
 
 - A direction moves the focus to the nearest control in that direction, preferring controls in line with the focused one, unless the focused node names a neighbor with `focusLeft`, `focusRight`, `focusUp` or `focusDown`. Some controls use left and right themselves while they have the focus: sliders, range sliders, steppers, segmented controls and the page dots of a carousel.
 - Tab and Shift Tab walk the controls in the order they draw, also out of a text field being edited, and a text field they reach starts editing.
-- The focus stays inside its document, and a dialog, a popover and a menu keep it until they close, and then it returns to where it was. A `window` belongs to the navigation of its document, so a move reaches its controls from the rest of the document and brings it to the front, and closing it returns the focus to where it was. A node with `focusScope = true` keeps the focus while it is inside, and a move never enters a scope from outside, only `autofocus`, the `focus` command or a click do.
+- The focus stays inside its document, and a dialog, a popover and a menu keep it until they close, and then it returns to where it was. A document that stops drawing, such as the document of a covered scene or one with `visible` set to `false`, gives the focus back to the control that had it once it draws again, unless the focus moved elsewhere meanwhile. A `window` belongs to the navigation of its document, so a move reaches its controls from the rest of the document and brings it to the front, and closing it returns the focus to where it was. A node with `focusScope = true` keeps the focus while it is inside, and a move never enters a scope from outside, only `autofocus`, the `focus` command or a click do.
 - The property `focusWrap` wraps a move that would leave a node around to its other side, such as the end of a row of cards back to its first card.
 - A scroll brings the focused control into view.
 - The focused node reports `focus` and its previous node reports `blur`, as long as that node still draws.
 - The action `uiCancel` closes the open popup or dialog, puts back an item carried from a slot grid or a list, and otherwise sends `cancel` to the innermost node with `focusScope` around the focus, or to the root of the document that holds the focus, or of the topmost document when nothing has it. A screen goes back from its root handler, as in the example below.
 - The ring shows around the focus once the player navigates, and a click or a touch hides it. On a device without a pointer, such as an Apple TV or an Android TV, it shows from the start. The function `ui.focusRingVisible()` tells whether it shows.
 - The first press of a direction while the ring is hidden only shows where the focus is, and the first accept shows the ring and presses the control.
-- A press the UI answers itself never reaches the actions of the app. The keys and buttons of `uiCancel` that close a popup, a dialog, a closable window or a carried item or that end the editing of a control, those of `uiAccept` while a control has the focus, every key while a text field edits and every key and button while a `keyCapture` listens read as up in the action map until they are released, and [`input.keyCaptured`](input.md#inputkeycapturedkey) tells when a key belongs to the UI.
+- A [`playArea`](#uiplayareaproperties) takes the focus like a control, from a click, a touch, Tab, `uiFocus`, a move or the `focus` command. While it has the focus the directions, accept and menu belong to the game, so they never move the focus or press a control, and cancel, Tab and `uiFocus` stay with the UI. The function [`ui.focusOwner`](#uifocusowner) tells which side has the focus.
+- A press the UI answers itself never reaches the actions of the app. Every navigation key, button and the left stick while a control has the focus, the keys and buttons of `uiCancel` and `uiFocus` and Tab while a play area has the focus, the keys and buttons of `uiCancel` that close a popup, a dialog, a closable window or a carried item or that end the editing of a control, every key while a text field edits and every key and button while a `keyCapture` listens read as up in the action map until they are released, and [`input.keyCaptured`](input.md#inputkeycapturedkey), [`input.gamepadButtonCaptured`](input.md#inputgamepadbuttoncapturedbutton-index) and [`input.gamepadAxisCaptured`](input.md#inputgamepadaxiscapturedaxis-index) tell when a press belongs to the UI. A press that started in the game stays with the game until it is released, even once the focus moved to a control.
 
 On an Apple TV, a swipe on the touch surface of the Siri Remote moves the focus, a click presses the focused control, and Menu is `uiCancel`. On an Android TV, the directional pad of the remote and gamepads move it, select presses, and Back is `uiCancel`. Both platforms leave the app when the player goes back from its root screen, as Apple and Google ask, while [`window.setBackLeavesApp`](window.md#windowsetbackleavesappenabled) keeps the press inside the app on other screens. An open popup or dialog always keeps it.
 
@@ -2320,6 +2339,37 @@ ui.mount(ui.contextMenu{
         print('save slot: ' .. event.item)
     end,
     ui.button{text = 'Save slot 1', width = 480},
+})
+```
+
+## Play areas
+
+### ui.playArea(properties)
+
+The part of a screen where the game shows, as a place the focus can go, such as the space a level leaves between its controls. It draws nothing but the focus ring and has no properties of its own, so it uses `width`, `height` or `grow`. While it has the focus, the directions, accept and menu of the keyboard, gamepads and TV remotes reach the action map of the app instead of moving the focus or pressing a control, while cancel still reaches the `onCancel` handlers of the document and Tab and `uiFocus` move the focus to the controls of the document and back. It never takes the pointer: a click or a touch on it gives it the focus and reaches the game too, which reads `mouse:` bindings and touches as usual, unless a control drawn over it, such as a touch button, takes the press. It reports `focus` and `blur` like every node, and `document:bounds(id)` tells where it lies, so a camera can draw the world inside it. The [input guide](../input.md#who-owns-the-keyboard-and-the-gamepad) explains the whole model.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+local ui = require('haylen.ui')
+
+input.defineAction({name = 'move', type = 'vector', up = {'key:up'}, down = {'key:down'}, left = {'key:left'}, right = {'key:right'}, bindings = {'stick:left'}})
+
+scene.push({
+    enter = function(self)
+        self.document = ui.mount(ui.row{
+            ui.playArea{id = 'world', grow = 1, autofocus = true, onFocus = function()
+                print('the arrows move the hero')
+            end},
+            ui.column{width = 360, ui.button{id = 'map', text = 'Map'}},
+        }, {owner = self})
+    end,
+    update = function(self, dt)
+        local dx, dy = input.vector('move')
+        if dx ~= 0 or dy ~= 0 then
+            print('the hero walks ' .. dx .. ', ' .. dy)
+        end
+    end,
 })
 ```
 

@@ -298,7 +298,7 @@ float ActionMap::getBindingValue(const Binding& binding, const Input& input, con
     case Binding::Source::GamepadButton:
         return anyGamepad([&](std::size_t index) { return input.isGamepadDown(index, binding.gamepadButton) && !isGamepadButtonCaptured(index, binding.gamepadButton) ? 1.0F : 0.0F; });
     case Binding::Source::GamepadAxis:
-        return anyGamepad([&](std::size_t index) { return std::max(0.0F, input.getGamepadAxis(index, binding.gamepadAxis) * binding.direction); });
+        return anyGamepad([&](std::size_t index) { return isGamepadAxisCaptured(index, binding.gamepadAxis) ? 0.0F : std::max(0.0F, input.getGamepadAxis(index, binding.gamepadAxis) * binding.direction); });
     case Binding::Source::VirtualButton:
         return virtualInput.isButtonDown(binding.name) ? 1.0F : 0.0F;
     case Binding::Source::GamepadStick:
@@ -316,11 +316,14 @@ math::Vec2 ActionMap::getBindingVector(const Binding& binding, const Input& inpu
         return {};
     }
     if (gamepadIndex) {
-        return input.getGamepadStick(*gamepadIndex, binding.rightStick);
+        return isStickCaptured(*gamepadIndex, binding.rightStick) ? math::Vec2{} : input.getGamepadStick(*gamepadIndex, binding.rightStick);
     }
 
     math::Vec2 strongestStick{};
     for (std::size_t index = 0; index < Input::kMaxGamepads; ++index) {
+        if (isStickCaptured(index, binding.rightStick)) {
+            continue;
+        }
         const math::Vec2 stick = input.getGamepadStick(index, binding.rightStick);
         if (stick.getLengthSquared() > strongestStick.getLengthSquared()) {
             strongestStick = stick;
@@ -399,6 +402,15 @@ void ActionMap::holdCaptured(const Input& input) noexcept {
                 capturedButtons[index].reset(code);
             }
         }
+        for (std::size_t code = 0; code < Controls::kGamepadAxisCount; ++code) {
+            const bool leaning = std::fabs(input.getGamepadAxis(index, static_cast<GamepadAxis>(code))) >= pressThreshold;
+            if (leaning && !leaningAxes[index].test(code) && capture.axes.test(code)) {
+                capturedAxes[index].set(code);
+            } else if (!leaning) {
+                capturedAxes[index].reset(code);
+            }
+            leaningAxes[index].set(code, leaning);
+        }
     }
 }
 
@@ -410,6 +422,15 @@ bool ActionMap::isKeyCaptured(Key key) const noexcept {
 bool ActionMap::isGamepadButtonCaptured(std::size_t index, GamepadButton button) const noexcept {
     const auto code = static_cast<std::size_t>(button);
     return index < Input::kMaxGamepads && code < Controls::kGamepadButtonCount && capturedButtons[index].test(code);
+}
+
+bool ActionMap::isGamepadAxisCaptured(std::size_t index, GamepadAxis axis) const noexcept {
+    const auto code = static_cast<std::size_t>(axis);
+    return index < Input::kMaxGamepads && code < Controls::kGamepadAxisCount && capturedAxes[index].test(code);
+}
+
+bool ActionMap::isStickCaptured(std::size_t index, bool right) const noexcept {
+    return isGamepadAxisCaptured(index, right ? GamepadAxis::RightX : GamepadAxis::LeftX) || isGamepadAxisCaptured(index, right ? GamepadAxis::RightY : GamepadAxis::LeftY);
 }
 
 const ActionMap::State* ActionMap::find(std::string_view name) const noexcept {

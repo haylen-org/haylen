@@ -92,8 +92,8 @@ class CountingPlugin final : public plugins::Plugin {
     void render(core::Engine&) override {
         ++renders;
     }
-    void renderUi(core::Engine&) override {
-        ++uiRenders;
+    void renderUi(core::Engine&, const core::SceneView& view) override {
+        uiRenders += view.current ? 1 : 0;
     }
     void endFrame(core::Engine&) override {
         ++endedFrames;

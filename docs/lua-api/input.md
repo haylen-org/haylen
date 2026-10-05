@@ -536,6 +536,23 @@ scene.push({
 })
 ```
 
+### input.gamepadAxisCaptured(axis, index)
+
+Returns `true` while the current lean of a gamepad axis past the press threshold belongs to the interface, such as the left stick that moves the focus between the controls of a menu, and `axis:` and `stick:` bindings of that axis read it as 0 meanwhile. The argument `axis` is one of `'leftX'`, `'leftY'`, `'rightX'`, `'rightY'`, `'leftTrigger'` or `'rightTrigger'`, and `index` picks the gamepad from 1 to 4 and defaults to 1.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+scene.push({
+    update = function(self, dt)
+        if math.abs(input.gamepadAxis('leftX')) > 0.5 and not input.gamepadAxisCaptured('leftX') then
+            print('the stick steers the game')
+        end
+    end,
+})
+```
+
 ### input.gamepadAxis(axis, index)
 
 Returns the value of one axis with the dead zone removed and the rest rescaled to the full range. Sticks go from -1 to 1 with positive y pointing down, and triggers go from 0 to 1.

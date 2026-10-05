@@ -191,18 +191,62 @@ function level:update(dt)
 end
 ```
 
-Touch controls count as interface for `ui.usingPointer()`, so an app that checks it never treats a tap on a touch button as a tap on the world. The UI also moves its focus with the arrow keys and the d-pad and activates controls with Space, Enter and the south gamepad button, as the [UI guide](ui.md#pointer-keyboard-and-gamepad) explains. The action map reads the directions at the same time, so a menu with focusable controls usually covers a paused scene, as the Tiny Island pause menu does.
+Touch controls count as interface for `ui.usingPointer()`, so an app that checks it never treats a tap on a touch button as a tap on the world.
 
-Input the interface answers itself never triggers an action, the same way the action map leaves mouse buttons alone while the interface owns the pointer. At the end of every frame the interface captures, for the next frame, the keys and gamepad buttons of the presses it will answer:
+### Who owns the keyboard and the gamepad
 
-- the `uiCancel` bindings, Escape, the east button and the Menu button of a TV remote by default, while a popup, a combo list, a menu or a dialog is open, a control is being edited, an item is carried or the focus is inside a closable window,
-- the `uiAccept` bindings, Enter, Space and the south button by default, while a control has the focus,
+The keyboard, gamepads and TV remotes drive both the interface, through its navigation actions, and the game, through the action map. The focus decides which one hears a press, so the two never fight over the same key:
+
+- While a control of a document has the focus, the interface owns the navigation input: the directions, accept, cancel, menu, Tab and `uiFocus` move and press its controls, and the action map reads their keys, buttons and left stick as up.
+- While a [play area](lua-api/ui.md#uiplayareaproperties) has the focus, the game owns the directions, accept and menu, so the arrows, WASD, the d-pad, the left stick, Space, Enter and the south button reach the action map and never move the focus. Cancel, Tab and `uiFocus` still belong to the interface, so Escape, the east button and the Menu button of a TV remote reach the `onCancel` handler of the document, and Tab or `uiFocus` move the focus to the controls of the document and back.
+- While nothing has the focus, the action map reads every key, and the interface only takes the presses it answers itself, such as the cancel that closes a popup.
+
+A play area is the part of a document where the game shows, usually the space a screen leaves between its controls. A click or a touch on it gives it the focus and still reaches the game, which reads `mouse:` bindings and touches as usual, and a click on a control gives the focus to the control. The action `uiFocus`, the View button of gamepads by default, moves the focus from the play area to the control that last had it, or to the first control of the document, and back. An app remaps it like any navigation action, for example to the pause key that the Play/Pause button of a TV remote sends, and `document:command(id, 'focus')` moves the focus from code. The function `ui.focusOwner()` returns `'control'`, `'playArea'` or `'none'`.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+local ui = require('haylen.ui')
+
+input.loadActions({actions = {
+    {name = 'move', type = 'vector', up = {'key:up', 'key:w'}, down = {'key:down', 'key:s'}, left = {'key:left', 'key:a'}, right = {'key:right', 'key:d'}, bindings = {'stick:left'}},
+    {name = 'uiFocus', type = 'button', bindings = {'button:back', 'key:pause'}},
+}})
+
+local Level = {}
+Level.__index = Level
+
+function Level:enter()
+    self.document = ui.mount(ui.row{
+        onCancel = function() scene.pop() end,
+        ui.playArea{id = 'world', grow = 1, autofocus = true},
+        ui.column{width = 360, ui.slider{id = 'zoom', min = 1, max = 4, value = 2}},
+    }, {owner = self})
+end
+
+-- The hero walks with the arrows while the world has the focus, and the slider takes them once Tab moved the focus to it.
+function Level:update(dt)
+    local dx, dy = input.vector('move')
+    self.x = (self.x or 0) + dx * 180 * dt
+    self.y = (self.y or 0) + dy * 180 * dt
+end
+
+scene.push(setmetatable({}, Level))
+```
+
+A press stays with the side that took it until it is released. A key held in the game keeps moving the game after Tab moved the focus to a control, and the control never sees it repeat, and a key held on a control stays with the interface after the focus moved to the play area.
+
+Input the interface answers itself never triggers an action, the same way the action map leaves mouse buttons alone while the interface owns the pointer. At the end of every frame the interface captures, for the next frame, the keys, gamepad buttons and gamepad axes of the presses it will answer:
+
+- the bindings of every navigation action and Tab, while a control has the focus,
+- the `uiCancel` bindings, Escape, the east button and the Menu button of a TV remote by default, and Tab while a play area has the focus, and the `uiCancel` bindings while a popup, a combo list, a menu or a dialog is open, a control is being edited, an item is carried or the focus is inside a closable window,
+- the `uiFocus` bindings while a document has the focus or draws a play area,
 - every key while a text field edits, on Mac Catalyst too, where a hardware keyboard still reports keys while the native field edits,
 - every key and gamepad button while a `keyCapture` listens.
 
-A key or button pressed while it is captured belongs to the interface until it is released, so an action bound to it reads as up for that whole press, even after the popup it closed is gone. `input.keyCaptured(key)` and `input.gamepadButtonCaptured(button)` tell whether a press belongs to the interface, for apps that also read the raw keyboard, whose functions keep reporting every key.
+A key, button or axis pressed while it is captured belongs to the interface until it is released, so an action bound to it reads as up for that whole press, even after the popup it closed is gone, and a captured axis holds the stick it belongs to. `input.keyCaptured(key)`, `input.gamepadButtonCaptured(button)` and `input.gamepadAxisCaptured(axis)` tell whether a press belongs to the interface, for apps that also read the raw keyboard, whose functions keep reporting every key.
 
-A screen therefore goes back with the `onCancel` handler of its document root instead of an action of its own. `uiCancel` reaches the root only when no popup, combo list, dialog or edit answers it first, so the Escape that closes a combo list never leaves the screen, and the next Escape does.
+A screen therefore goes back with the `onCancel` handler of its document root instead of an action of its own. `uiCancel` reaches the root only when no popup, combo list, dialog or edit answers it first, so the Escape that closes a combo list never leaves the screen, and the next Escape does. A game that pauses with Escape either gives its screen a play area, whose document hears the cancel, or leaves the focus empty, so its `pause` action hears it.
 
 ```lua
 local scene = require('haylen.scene')

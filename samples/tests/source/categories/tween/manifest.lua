@@ -1,0 +1,27 @@
+-- The tests of the category in menu order.
+return {
+    prefix = 'TWN',
+    title = 'Tween',
+    description = 'Tweens of fields, colors, angles and text, every easing curve, timelines, playback controls, time scales, process modes and native tweens of sprites and UI nodes.',
+    tests = {
+        {code = 'TWN-001', title = 'To, from, by and fromTo', description = 'The four ways a tween picks its start and end values.', module = 'modes'},
+        {code = 'TWN-002', title = 'Nested and several fields', description = 'Paths into nested tables and vectors, and many fields in one tween.', module = 'fields'},
+        {code = 'TWN-003', title = 'Colors in RGB and HSV', description = 'The same color change blended through RGB and through hue, saturation and value.', module = 'colors'},
+        {code = 'TWN-004', title = 'Shortest-path angles', description = 'Angles that turn the short way around the circle, next to plain numbers.', module = 'angles'},
+        {code = 'TWN-005', title = 'Counters and typewriter', description = 'Whole-number score counters and text revealed one character at a time.', module = 'counters'},
+        {code = 'TWN-006', title = 'Easing gallery', description = 'Every easing family with its parameters, steps, cubic Bezier curves and curves by points.', module = 'easing'},
+        {code = 'TWN-007', title = 'Custom easing', description = 'Easing curves written as Lua functions.', module = 'custom-ease'},
+        {code = 'TWN-008', title = 'Timelines', description = 'Append, join, insert, labels, pauses and callbacks placed in time.', module = 'timelines'},
+        {code = 'TWN-009', title = 'Nested timelines', description = 'Timelines inside a timeline that repeats and yoyos as a whole.', module = 'nested'},
+        {code = 'TWN-010', title = 'Repeat modes', description = 'Restart, yoyo and incremental loops with a delay between them.', module = 'repeats'},
+        {code = 'TWN-011', title = 'Playback controls', description = 'Play, pause, resume, restart, reverse, seek, complete and kill from buttons.', module = 'controls'},
+        {code = 'TWN-012', title = 'Time scale', description = 'The speed of one tween and of a whole group of tweens by tag.', module = 'time-scale'},
+        {code = 'TWN-013', title = 'Ready-made tweens', description = 'Move, scale, rotate, fade, tint, jump, path, Bezier, blink, shake and punch on sprites.', module = 'ready-made'},
+        {code = 'TWN-014', title = 'Stagger', description = 'One tween on many targets, started from the start, the end or the center.', module = 'stagger'},
+        {code = 'TWN-015', title = 'Overwrite mode', description = 'A new tween on the same fields takes them over, or fights the old one.', module = 'overwrite'},
+        {code = 'TWN-016', title = 'Scene and target lifetime', description = 'Tweens that end with the scene that owns them and with a target that is collected.', module = 'lifetime'},
+        {code = 'TWN-017', title = 'Process modes', description = 'Which tweens run while the game is paused, and tweens on real time.', module = 'process-modes'},
+        {code = 'TWN-018', title = 'UI node tweens', description = 'Native tweens of the offset, scale, opacity and tint of UI nodes.', module = 'ui-nodes'},
+        {code = 'TWN-019', title = 'Stress test', description = 'Thousands of native tweens on sprites with their count and the frame time.', module = 'stress'},
+    },
+}

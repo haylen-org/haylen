@@ -176,6 +176,78 @@ TEST_F(ErrorScreenTest, CopiesAndRestartsWithAClickOrATap) {
     EXPECT_TRUE(fixture.engine().isRestartRequested());
 }
 
+TEST_F(ErrorScreenTest, GoesBackToARecoverableAppAfterItsListenersRan) {
+    // clang-format off
+    test::EngineFixture fixture({{"source/main.lua", R"(
+        local events = require('haylen.events')
+        local haylen = require('haylen')
+        local scene = require('haylen.scene')
+        log = {}
+        haylen.setRecoverable(true)
+        events.on('appError', function(error) log[#log + 1] = 'error ' .. error.message .. ' ' .. tostring(scene.size()) end)
+        events.on('appRecovered', function(error)
+            log[#log + 1] = 'recovered ' .. error.message
+            scene.clear()
+            scene.push({update = function() log[#log + 1] = 'menu' end})
+        end)
+        scene.push({update = function() error('broken scene', 0) end})
+    )"}});
+    // clang-format on
+    fixture.frames(2);
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+    EXPECT_TRUE(fixture.engine().isBackCaptured());
+    EXPECT_EQ(fixture.lua("return table.concat(log, ', ')"), "error broken scene 1");
+
+    // The listeners of appRecovered run before the app updates again, so the failing scene never runs once more.
+    press(fixture, input::Key::Escape);
+    EXPECT_NE(fixture.engine().getError(), nullptr);
+    fixture.frames(1);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+    EXPECT_EQ(fixture.lua("return table.concat(log, ', ')"), "error broken scene 1, recovered broken scene, menu");
+    EXPECT_EQ(fixture.lua("return tostring(require('haylen').recoverable())"), "true");
+}
+
+TEST_F(ErrorScreenTest, OffersToGoBackOnlyInARecoverableApp) {
+    test::EngineFixture fixture({{"source/scenes/battle.lua", std::string(kBattle)}, {"source/main.lua", ""}});
+    ErrorScreen plain(fixture.engine(), lua::Error("source/scenes/battle.lua:6: boom"));
+    fixture.engine().setRecoverable(true);
+    ErrorScreen recoverable(fixture.engine(), lua::Error("source/scenes/battle.lua:6: boom"));
+    EXPECT_EQ(plain.getFocusedAction(), ErrorScreen::Action::Restart);
+    EXPECT_EQ(recoverable.getFocusedAction(), ErrorScreen::Action::Back);
+
+    // clang-format off
+    fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([&](Engine&) {
+        plain.render();
+        recoverable.render();
+    }));
+    // clang-format on
+    fixture.frames(2);
+    EXPECT_GT(recoverable.getBackButton().getSize().x, 0.0F);
+
+    // Recovery waits for an error that stops the app, and a press that goes back to an app without one changes nothing.
+    point(fixture, recoverable, platform::Event::Type::MouseDown, recoverable.getBackButton().getCenter());
+    fixture.frames(1);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+    fixture.engine().setRecoverable(false);
+    EXPECT_FALSE(fixture.engine().isRecoverable());
+}
+
+TEST_F(ErrorScreenTest, GoesBackWithTheEastButtonOfAGamepad) {
+    test::EngineFixture fixture({{"source/main.lua", "require('haylen').setRecoverable(true) require('haylen.scene').push({update = function() error('broken', 0) end})"}});
+    fixture.frames(2);
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+    input::GamepadState state{.connected = true};
+    state.buttons[static_cast<std::size_t>(input::GamepadButton::East)] = true;
+    fixture.host().setGamepad(0, state);
+    fixture.frames(1);
+    fixture.host().setGamepad(0, {.connected = true});
+
+    // The scene fails again once the app runs on, which shows the screen again.
+    fixture.frames(1);
+    EXPECT_NE(fixture.engine().getError(), nullptr);
+    EXPECT_EQ(fixture.host().getErrorReports().size(), 2U);
+}
+
 TEST_F(ErrorScreenTest, ScrollsContentTallerThanTheScreen) {
     test::EngineFixture fixture({{"source/scenes/battle.lua", std::string(kBattle)}, {"source/main.lua", ""}});
     fixture.host().resize({480.0F, 320.0F});

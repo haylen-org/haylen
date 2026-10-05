@@ -1,0 +1,80 @@
+{
+ "frames": [
+  {
+   "filename": "card",
+   "frame": {
+    "x": 2,
+    "y": 2,
+    "w": 96,
+    "h": 96
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 16,
+    "y": 16,
+    "w": 96,
+    "h": 96
+   },
+   "sourceSize": {
+    "w": 128,
+    "h": 128
+   },
+   "duration": 100
+  },
+  {
+   "filename": "checker",
+   "frame": {
+    "x": 100,
+    "y": 2,
+    "w": 96,
+    "h": 96
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 96,
+    "h": 96
+   },
+   "sourceSize": {
+    "w": 96,
+    "h": 96
+   },
+   "duration": 100
+  }
+ ],
+ "meta": {
+  "image": "cards.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 200,
+   "h": 100
+  },
+  "scale": "1",
+  "slices": [
+   {
+    "name": "card",
+    "color": "#0000ffff",
+    "keys": [
+     {
+      "frame": 0,
+      "bounds": {
+       "x": 16,
+       "y": 16,
+       "w": 96,
+       "h": 96
+      },
+      "center": {
+       "x": 28,
+       "y": 28,
+       "w": 40,
+       "h": 40
+      }
+     }
+    ]
+   }
+  ]
+ }
+}

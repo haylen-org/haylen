@@ -446,7 +446,7 @@ require('haylen.scene').push({
 
 ### haylen.reportError(message)
 
-Stops the app with an error. The report of the error is logged at the error level, app updates and scene rendering stop and the error screen shows `message` with the stack of the code that called `reportError` until the app is restarted. Only the first error is kept, so later calls do nothing. Uncaught errors in scene callbacks, timers, tweens and `async` tasks end up on the same screen automatically.
+Stops the app with an error. The report of the error is logged at the error level, app updates and scene rendering stop and the error screen shows `message` with the stack of the code that called `reportError` until the app is restarted or, in a [recoverable](#haylensetrecoverablerecoverable) app, until it goes back to the app. Only the first error is kept while the screen shows, so later calls do nothing. Uncaught errors in scene callbacks, timers, tweens and `async` tasks end up on the same screen automatically, and every error publishes `appError` of [`haylen.events`](events.md#engine-events) at the end of its frame.
 
 ```lua
 local haylen = require('haylen')
@@ -456,4 +456,45 @@ local ok, failure = pcall(storage.readJson, 'levels/custom.json')
 if not ok and storage.exists('levels/custom.json') then
     haylen.reportError('The custom level is corrupted: ' .. failure)
 end
+```
+
+### haylen.recoverable()
+
+Returns whether the error screen offers to go back to the app, as `haylen.setRecoverable` set it. Apps start not recoverable.
+
+```lua
+local haylen = require('haylen')
+
+print(haylen.recoverable()) -- false
+```
+
+### haylen.setRecoverable(recoverable)
+
+Lets the error screen offer to go back to the app, next to copying the report and restarting the app, for apps that can return to a safe screen after an error, such as a menu or a list of levels. Escape, the east button of a gamepad, the back button of Android and the Menu button of a TV remote go back, and so does the button `Back to the app`, which has the focus from the start. Going back publishes `appRecovered` of [`haylen.events`](events.md#engine-events) with the error at the start of the next frame, before the app updates again, and the app runs on from where it was, so its listeners put it in order first, such as by leaving the scene that failed.
+
+```lua
+local events = require('haylen.events')
+local haylen = require('haylen')
+local scene = require('haylen.scene')
+
+haylen.setRecoverable(true)
+events.on('appRecovered', function(error)
+    print('back from: ' .. error.message)
+    scene.clear()
+    scene.push(require('scenes.menu')())
+end)
+```
+
+### haylen.recover()
+
+Goes back to the app from the error screen at the start of the next frame, the way the `Back to the app` button does, whether the app is recoverable or not, which suits an app that runs on by itself after an error, such as one that lists the failures of a test run. It publishes `appRecovered` before the app updates again, and it does nothing while no error stops the app.
+
+```lua
+local events = require('haylen.events')
+local haylen = require('haylen')
+
+events.on('appError', function(error)
+    print('failed: ' .. error.message)
+    haylen.recover()
+end)
 ```

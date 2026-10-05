@@ -18,7 +18,7 @@ void Plugin::update(core::Engine&, float) {}
 
 void Plugin::render(core::Engine&) {}
 
-void Plugin::renderUi(core::Engine&) {}
+void Plugin::renderUi(core::Engine&, const core::SceneView&) {}
 
 void Plugin::renderOverlay(core::Engine&) {}
 

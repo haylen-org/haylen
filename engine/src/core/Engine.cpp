@@ -213,6 +213,10 @@ void Engine::frame(double frameSeconds) {
     profiler.beginFrame();
 
     try {
+        if (current.recovering) {
+            leaveErrorScreen();
+        }
+
         // Window and gamepad changes, asynchronous results and platform replies arrive before the app updates, and their callbacks may fail like any app code.
         publishDeviceChanges();
         if (current.errorScreen) {
@@ -353,12 +357,14 @@ void Engine::render(const std::vector<plugins::Plugin*>& all) {
     }
 }
 
-// Each view renders its scenes, with the drawing of the plugins in the current view. During a transition the views before the last one go into their own images, and the last one draws the effect on the screen before its own scenes.
+// Each view renders its scenes, with the drawing of the plugins in the current view and the interface of the plugins in every view. During a transition the views before the last one go into their own images, and the last one draws the effect on the screen before its own scenes.
 void Engine::renderScenes(const std::vector<plugins::Plugin*>& all) {
     EngineState& current = *state;
     graphics2d::Renderer& renderer = *current.renderer;
     SceneManager& scenes = *current.scenes;
-    for (const SceneManager::View& view : scenes.getViews()) {
+    scenes.prepareViews();
+    const std::vector<SceneView> views = scenes.getViews();
+    for (const SceneView& view : views) {
         if (view.target.isValid()) {
             renderer.beginCapture(view.target, current.config.clearColor);
         }
@@ -372,10 +378,8 @@ void Engine::renderScenes(const std::vector<plugins::Plugin*>& all) {
             }
         }
         scenes.renderUi(view);
-        if (view.current) {
-            for (plugins::Plugin* plugin : all) {
-                plugin->renderUi(*this);
-            }
+        for (plugins::Plugin* plugin : all) {
+            plugin->renderUi(*this, view);
         }
         if (view.target.isValid()) {
             renderer.endCapture();
@@ -712,7 +716,7 @@ bool Engine::canBackLeaveApp() const noexcept {
 bool Engine::isBackCaptured() const {
     const EngineState& current = *state;
     const std::vector<plugins::Plugin*> all = current.plugins.getAll();
-    return !current.backLeavesApp || std::ranges::any_of(all, [](const plugins::Plugin* plugin) { return plugin->isCapturingBack(); });
+    return !current.backLeavesApp || (current.errorScreen && current.recoverable) || std::ranges::any_of(all, [](const plugins::Plugin* plugin) { return plugin->isCapturingBack(); });
 }
 
 void Engine::reportError(const std::exception& exception) {
@@ -728,6 +732,7 @@ void Engine::reportError(const std::exception& exception) {
     current.host.reportError(report);
     platform::NativeApi::reportError(report);
     errorRaised.emit(current.errorScreen->getError());
+    current.events.post(std::string(LifecycleEvent::kAppError), report);
 }
 
 void Engine::reportError(const std::string& message) {
@@ -736,6 +741,27 @@ void Engine::reportError(const std::string& message) {
 
 const lua::Error* Engine::getError() const noexcept {
     return state->errorScreen ? &state->errorScreen->getError() : nullptr;
+}
+
+void Engine::setRecoverable(bool value) noexcept {
+    state->recoverable = value;
+}
+
+bool Engine::isRecoverable() const noexcept {
+    return state->recoverable;
+}
+
+void Engine::recover() noexcept {
+    state->recovering = state->errorScreen != nullptr;
+}
+
+// The listeners of appRecovered run before the app updates again, so a scene that failed in every frame is gone before it would fail again.
+void Engine::leaveErrorScreen() {
+    EngineState& current = *state;
+    current.recovering = false;
+    const Json error = current.errorScreen->getError().toJson();
+    current.errorScreen.reset();
+    current.events.emit(LifecycleEvent::kAppRecovered, error);
 }
 
 void Engine::requestRestart() noexcept {

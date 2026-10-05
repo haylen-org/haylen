@@ -1,0 +1,17 @@
+{
+    "id": "platform-sample",
+    "name": "Platform Sample",
+    "version": "1.0.0",
+    "description": "The native code of the platform tests of the test project, which answers its methods and sends its events in Objective-C, Java and JavaScript.",
+    "platforms": ["ios", "catalyst", "tvos", "macos", "android", "web"],
+    "apple": {
+        "class": "PlatformSamplePlugin",
+        "sources": "apple"
+    },
+    "android": {
+        "module": "android"
+    },
+    "web": {
+        "module": "web/platform-sample.js"
+    }
+}

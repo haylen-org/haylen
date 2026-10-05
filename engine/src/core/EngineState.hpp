@@ -95,6 +95,8 @@ struct EngineState {
     std::array<std::optional<std::string>, input::Input::kMaxGamepads> gamepadNames;
 
     std::unique_ptr<ErrorScreen> errorScreen;
+    bool recoverable = false;
+    bool recovering = false;
     Engine::AppState appState = Engine::AppState::Active;
 
     // An app in the foreground is active only while its window has the focus, no interruption of the system, such as a phone call, holds it and no native UI of a plugin covers it.

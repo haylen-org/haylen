@@ -15,6 +15,7 @@
 #include "haylen/core/LoadingView.hpp"
 #include "haylen/core/ProcessMode.hpp"
 #include "haylen/core/Scene.hpp"
+#include "haylen/core/SceneView.hpp"
 #include "haylen/core/TransitionEffect.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
 #include "haylen/lua/Error.hpp"
@@ -95,14 +96,6 @@ class SceneManager final {
         const lua::Error* error = nullptr;
     };
 
-    // What one image of a frame shows: the scenes to render from the bottom up and the render target they go into, which stays empty when they draw straight onto the screen. The current view also takes the loading view and the drawing of the engine plugins, and the effect view draws the transition before its scenes.
-    struct View {
-        std::vector<std::shared_ptr<Scene>> scenes;
-        graphics::RenderTarget target;
-        bool current = false;
-        bool effect = false;
-    };
-
     explicit SceneManager(Engine& owner);
     ~SceneManager();
 
@@ -169,17 +162,22 @@ class SceneManager final {
     // Tells every scene that the new pause state stops or starts, from the bottom of the stack up. The engine calls it when the game pause changes.
     void notifyPauseChange(bool gamePaused);
 
-    // Returns the views of the next frame: the visible scenes straight onto the screen or, during a transition, the images of the scenes before and after the change and the screen the effect draws on.
-    [[nodiscard]] std::vector<View> getViews();
+    // Works out the views of the frame about to render: the visible scenes straight onto the screen or, during a transition, the images of the scenes before and after the change and the screen the effect draws on, which renders last.
+    void prepareViews();
+
+    // The views that `prepareViews` worked out, in the order they render, which plugins read while the frame renders.
+    [[nodiscard]] const std::vector<SceneView>& getViews() const noexcept {
+        return views;
+    }
 
     void event(const platform::Event& event);
     void fixedUpdate(const FrameClock& clock);
     void update(const FrameClock& clock);
-    void render(const View& view);
-    void renderUi(const View& view);
+    void render(const SceneView& view);
+    void renderUi(const SceneView& view);
 
     // Draws the effect of the transition for a view that has one. While the loading view fades out, the current view renders the view over the covered frame into an image of its own, and the effect blends that image over the covered frame of the screen.
-    void renderTransition(graphics2d::Renderer& renderer, const View& view);
+    void renderTransition(graphics2d::Renderer& renderer, const SceneView& view);
 
   private:
     enum class Operation : std::uint8_t {
@@ -281,6 +279,7 @@ class SceneManager final {
     graphics::RenderTarget outgoingImage;
     graphics::RenderTarget incomingImage;
     graphics::RenderTarget loadingImage;
+    std::vector<SceneView> views;
     std::shared_ptr<Change> pending;
     std::deque<std::shared_ptr<Change>> queue;
 };

@@ -1,6 +1,7 @@
 #include "haylen/plugins/UiPlugin.hpp"
 
 #include <algorithm>
+#include <array>
 #include <format>
 #include <stdexcept>
 #include <string>
@@ -16,6 +17,7 @@
 #include "haylen/core/FrameClock.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/core/SceneManager.hpp"
+#include "haylen/core/SceneView.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/input/ActionMap.hpp"
 #include "haylen/input/Input.hpp"
@@ -102,7 +104,8 @@ void UiPlugin::beginFrame(core::Engine& engine, float) {
     // The UI keeps real time, so menus still animate while the time scale pauses the world.
     const auto delta = static_cast<float>(engine.getClock().getUnscaledDelta());
     elapsed += delta;
-    navigation.update(engine.getActions(), engine.getInput(), engine.getVirtualInput(), engine.isHalted() || engine.getScenes().isInputBlocked());
+    drawBegun = false;
+    navigation.update(engine.getActions(), engine.getInput(), engine.getVirtualInput(), engine.isHalted() || engine.getScenes().isInputBlocked(), focus.getOwner() == ui::FocusNavigator::Owner::PlayArea);
     backend->beginFrame(delta, engine.getViewport(), engine.getInput(), navigation);
     context->beginFrame(elapsed, delta, engine.getViewport().getVisibleRect().getMin());
 
@@ -129,31 +132,98 @@ void UiPlugin::update(core::Engine& engine, float) {
     }
 }
 
-void UiPlugin::renderUi(core::Engine& engine) {
+// Every view draws the documents of its scenes, a view that leaves through a transition into its own image before the frame ends, and the current view also the documents that belong to no scene, which ends the frame.
+void UiPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
+    ui::Backend& drawing = getBackend();
+    if (!drawing.isFrameActive()) {
+        return;
+    }
+    if (!drawBegun) {
+        drawBegun = true;
+        shownDocuments.clear();
+        focus.beginDraw();
+    }
+    if (view.current) {
+        drawCurrent(engine, view);
+    } else if (!view.scenes.empty()) {
+        drawLeaving(engine, view);
+    }
+}
+
+// The documents a view draws in layer order: those of its scenes, and in the current view those of no scene too. A scene in the current view and in a leaving view, such as one under a transparent scene pushed through an effect that shows both, keeps its documents in the current view.
+std::vector<const UiPlugin::Mounted*> UiPlugin::getDocuments(core::Engine& engine, const core::SceneView& view) const {
+    const std::vector<core::SceneView>& views = engine.getScenes().getViews();
+    const auto current = std::ranges::find_if(views, &core::SceneView::current);
+    // clang-format off
+    const auto shows = [](const core::SceneView& candidate, const core::Scene* scene) {
+        return std::ranges::any_of(candidate.scenes, [scene](const std::shared_ptr<core::Scene>& shown) { return shown.get() == scene; });
+    };
+    // clang-format on
+
+    std::vector<const Mounted*> drawn;
+    for (const Mounted& entry : documents) {
+        if (!entry.scened) {
+            if (view.current) {
+                drawn.push_back(&entry);
+            }
+            continue;
+        }
+        const std::shared_ptr<const core::Scene> scene = entry.scene.lock();
+        if (scene && shows(view, scene.get()) && (view.current || current == views.end() || !shows(*current, scene.get()))) {
+            drawn.push_back(&entry);
+        }
+    }
+    std::ranges::sort(drawn, [](const Mounted* lhs, const Mounted* rhs) { return lhs->layer != rhs->layer ? lhs->layer < rhs->layer : lhs->order < rhs->order; });
+    return drawn;
+}
+
+void UiPlugin::beginWindow(const char* name, ImGuiWindowFlags flags) {
     ui::Backend& drawing = getBackend();
     const math::Rect display = drawing.getDisplayRect();
     ImGui::SetNextWindowPos({0.0F, 0.0F});
     ImGui::SetNextWindowSize(ui::ImGuiConverter::toImVec2(display.getSize()));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0F, 0.0F});
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0F);
-    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoScrollWithMouse;
-    ImGui::Begin("##haylen-documents", nullptr, flags | ImGuiWindowFlags_NoNavInputs);
+    const ImGuiWindowFlags common = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoScrollWithMouse;
+    ImGui::Begin(name, nullptr, common | flags);
     ImGui::PopStyleVar(2);
-    drawing.setTransparentWindow();
-    focus.beginDraw();
+}
 
-    std::vector<const Mounted*> ordered;
-    for (const Mounted& entry : documents) {
-        ordered.push_back(&entry);
-    }
-    std::ranges::sort(ordered, [](const Mounted* lhs, const Mounted* rhs) { return lhs->layer != rhs->layer ? lhs->layer < rhs->layer : lhs->order < rhs->order; });
-
-    // Every document moves up together while the on-screen keyboard would cover the focused text field.
+// Every document moves up together while the on-screen keyboard would cover the focused text field.
+void UiPlugin::drawDocuments(const std::vector<const Mounted*>& drawn) {
+    ui::Backend& drawing = getBackend();
+    const math::Rect display = drawing.getDisplayRect();
     const math::Vec2 lift{0.0F, -drawing.getKeyboardOffset()};
-    for (const Mounted* entry : ordered) {
+    for (const Mounted* entry : drawn) {
         ImGui::PushID(entry->document.get());
         entry->document->draw(*context, (entry->document->getPlacement() == ui::Placement::Safe ? drawing.getSafeRect() : display).translated(lift));
         ImGui::PopID();
+        shownDocuments.push_back(entry->document.get());
+    }
+}
+
+// The documents of a leaving view take no input and no focus, and they draw into the image of their view right away.
+void UiPlugin::drawLeaving(core::Engine& engine, const core::SceneView& view) {
+    beginWindow("##haylen-leaving", ImGuiWindowFlags_NoInputs);
+    focus.suspendTargets(true);
+    drawDocuments(getDocuments(engine, view));
+    focus.suspendTargets(false);
+    const ImGuiWindow& window = *ImGui::GetCurrentWindow();
+    ImGui::End();
+    getBackend().renderWindow(engine.getRenderer2D(), window);
+}
+
+void UiPlugin::drawCurrent(core::Engine& engine, const core::SceneView& view) {
+    ui::Backend& drawing = getBackend();
+    beginWindow("##haylen-documents", ImGuiWindowFlags_NoNavInputs);
+    drawing.setTransparentWindow();
+    drawDocuments(getDocuments(engine, view));
+
+    // The documents that no view shows, such as those of a covered scene, hear that they stopped drawing.
+    for (const Mounted& entry : documents) {
+        if (std::ranges::find(shownDocuments, entry.document.get()) == shownDocuments.end()) {
+            entry.document->skip(*context);
+        }
     }
     ImGui::End();
     focus.endDraw();
@@ -169,27 +239,59 @@ void UiPlugin::renderUi(core::Engine& engine) {
     engine.getActions().setCapture(getCapture());
 }
 
-// A text field that edits takes every key, and a control that listens for a binding takes every key and gamepad button.
+// A text field that edits takes every key, and a control that listens for a binding takes every key and gamepad button. A control with the focus takes every navigation action and Tab, a play area with the focus leaves the directions, accept and menu to the game, and the UI otherwise takes the presses it answers itself.
 input::ActionMap::Capture UiPlugin::getCapture() const {
+    using Action = ui::NavigationInput::Action;
     const ImGuiContext& state = *backend->getImGuiContext();
     const bool listening = focus.isEditing() && state.ActiveIdUsingAllKeyboardKeys;
     input::ActionMap::Capture capture{.keyboard = listening || state.PlatformImeData.WantTextInput};
     if (listening) {
         capture.buttons.set();
     }
-    for (const auto& [action, answered] : {std::pair{ui::NavigationInput::Action::Cancel, focus.answersCancel()}, std::pair{ui::NavigationInput::Action::Accept, focus.answersAccept()}}) {
-        if (!answered) {
-            continue;
-        }
-        for (const input::ActionMap::Binding& binding : navigation.getBindings(action)) {
-            if (binding.source == input::ActionMap::Binding::Source::Key) {
-                capture.keys.set(static_cast<std::size_t>(binding.key));
-            } else if (binding.source == input::ActionMap::Binding::Source::GamepadButton) {
-                capture.buttons.set(static_cast<std::size_t>(binding.gamepadButton));
-            }
+
+    const ui::FocusNavigator::Owner holder = focus.getOwner();
+    const bool control = holder == ui::FocusNavigator::Owner::Control;
+    if (holder != ui::FocusNavigator::Owner::None) {
+        capture.keys.set(static_cast<std::size_t>(input::Key::Tab));
+    }
+    const std::array<std::pair<Action, bool>, ui::NavigationInput::kActionCount> answers{{
+        {Action::Accept, focus.answersAccept()},
+        {Action::Cancel, focus.answersCancel()},
+        {Action::Left, control},
+        {Action::Right, control},
+        {Action::Up, control},
+        {Action::Down, control},
+        {Action::Menu, control},
+        {Action::Focus, focus.answersFocus()},
+    }};
+    for (const auto& [action, answered] : answers) {
+        if (answered) {
+            addCapture(capture, navigation.getBindings(action));
         }
     }
     return capture;
+}
+
+void UiPlugin::addCapture(input::ActionMap::Capture& capture, const std::vector<input::ActionMap::Binding>& bindings) {
+    for (const input::ActionMap::Binding& binding : bindings) {
+        switch (binding.source) {
+        case input::ActionMap::Binding::Source::Key:
+            capture.keys.set(static_cast<std::size_t>(binding.key));
+            break;
+        case input::ActionMap::Binding::Source::GamepadButton:
+            capture.buttons.set(static_cast<std::size_t>(binding.gamepadButton));
+            break;
+        case input::ActionMap::Binding::Source::GamepadAxis:
+            capture.axes.set(static_cast<std::size_t>(binding.gamepadAxis));
+            break;
+        case input::ActionMap::Binding::Source::GamepadStick:
+            capture.axes.set(static_cast<std::size_t>(binding.rightStick ? input::GamepadAxis::RightX : input::GamepadAxis::LeftX));
+            capture.axes.set(static_cast<std::size_t>(binding.rightStick ? input::GamepadAxis::RightY : input::GamepadAxis::LeftY));
+            break;
+        default:
+            break;
+        }
+    }
 }
 
 void UiPlugin::drawSafeArea() {
@@ -236,14 +338,14 @@ std::shared_ptr<ui::Document> UiPlugin::createDocument(const core::Json& tree, u
     return std::make_shared<ui::Document>(components, tree, placement);
 }
 
-void UiPlugin::mount(std::shared_ptr<ui::Document> document, int layer) {
+void UiPlugin::mount(std::shared_ptr<ui::Document> document, int layer, const std::shared_ptr<const core::Scene>& scene) {
     if (owner == nullptr) {
         throw std::logic_error("The UI plugin has not started.");
     }
     if (!document || isMounted(*document)) {
         throw std::invalid_argument("Only a document that is not mounted can be mounted.");
     }
-    documents.push_back({.document = document, .layer = layer, .order = nextOrder++});
+    documents.push_back({.document = document, .scene = scene, .scened = scene != nullptr, .layer = layer, .order = nextOrder++});
     owner->getEvents().emitWith(core::LifecycleEvent::kUiDocumentMounted, document);
 }
 
@@ -255,6 +357,7 @@ bool UiPlugin::unmount(const ui::Document& document) {
     }
     const std::shared_ptr<ui::Document> unmounted = found->document;
     documents.erase(found);
+    focus.forget(*unmounted);
     owner->getEvents().emitWith(core::LifecycleEvent::kUiDocumentUnmounted, unmounted);
     ui::UiLua::forgetDocument(owner->getLuaState(), document);
     return true;

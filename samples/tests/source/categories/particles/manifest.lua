@@ -1,0 +1,26 @@
+-- The tests of the category in menu order.
+return {
+    prefix = 'PRT',
+    title = 'Particles',
+    description = 'Particle emitters from Lua tables and effect files: weather, fire, bursts, shapes, forces, blending and tens of thousands of particles.',
+    tests = {
+        {code = 'PRT-001', title = 'Fire', description = 'Flames, embers and smoke from three emitters that follow the cursor.', module = 'fire'},
+        {code = 'PRT-002', title = 'Smoke', description = 'Chimney smoke that starts fully grown with prewarm and bends in the wind.', module = 'smoke'},
+        {code = 'PRT-003', title = 'Explosion', description = 'A flash, fireballs, debris, a shock ring and smoke in one burst.', module = 'explosion'},
+        {code = 'PRT-004', title = 'Rain', description = 'Streaks across the whole view and splashes on the ground.', module = 'rain'},
+        {code = 'PRT-005', title = 'Snow', description = 'Two layers of flakes that drift and spin in the wind.', module = 'snow'},
+        {code = 'PRT-006', title = 'Sparks', description = 'Welding sparks from a cone with gravity and damping.', module = 'sparks'},
+        {code = 'PRT-007', title = 'Trails', description = 'Trails in world space that follow the cursor and a comet.', module = 'trail'},
+        {code = 'PRT-008', title = 'Magic', description = 'A swirling orb with radial and tangential acceleration and twinkling stars.', module = 'magic'},
+        {code = 'PRT-009', title = 'Confetti', description = 'Colored confetti that flips through frames as it falls.', module = 'confetti'},
+        {code = 'PRT-010', title = 'Fireworks', description = 'Rockets with trails that burst into colored stars.', module = 'fireworks'},
+        {code = 'PRT-011', title = 'Emitter shapes', description = 'Point, circle, ring, rectangle and cone spawn areas side by side.', module = 'shapes'},
+        {code = 'PRT-012', title = 'Bursts and prewarm', description = 'Scheduled bursts, one-shot cycles and prewarm against a cold start.', module = 'bursts'},
+        {code = 'PRT-013', title = 'Local and world space', description = 'Particles that stay behind a moving emitter against ones that move with it.', module = 'space'},
+        {code = 'PRT-014', title = 'Gravity and accelerations', description = 'Gravity, radial and tangential acceleration and damping on sliders.', module = 'forces'},
+        {code = 'PRT-015', title = 'Color, size and frames', description = 'Color and size over the lifetime and frame animation.', module = 'over-life'},
+        {code = 'PRT-016', title = 'Blend modes', description = 'The same particles with alpha, additive, multiply, screen and premultiplied blending.', module = 'blend-modes'},
+        {code = 'PRT-017', title = 'Effect files', description = 'Effects loaded from ".particles" files in the content folder.', module = 'files'},
+        {code = 'PRT-018', title = 'Many particles', description = 'Tens of thousands of particles with their live count.', module = 'stress'},
+    },
+}

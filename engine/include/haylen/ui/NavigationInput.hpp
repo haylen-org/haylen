@@ -12,7 +12,7 @@
 
 namespace haylen::ui {
 
-// The actions that move the UI focus, press the focused control, go back and open context menus: `uiAccept`, `uiCancel`, `uiLeft`, `uiRight`, `uiUp`, `uiDown` and `uiMenu`. An app remaps one by defining an action with its name in its action map, and the others keep their built-in bindings.
+// The actions that move the UI focus, press the focused control, go back, open context menus and move the focus between a play area and the controls: `uiAccept`, `uiCancel`, `uiLeft`, `uiRight`, `uiUp`, `uiDown`, `uiMenu` and `uiFocus`. An app remaps one by defining an action with its name in its action map, and the others keep their built-in bindings.
 class NavigationInput final {
   public:
     enum class Action : std::uint8_t {
@@ -23,15 +23,16 @@ class NavigationInput final {
         Up,
         Down,
         Menu,
+        Focus,
     };
 
-    static constexpr std::size_t kActionCount = 7;
-    static constexpr std::array<std::string_view, kActionCount> kNames{"uiAccept", "uiCancel", "uiLeft", "uiRight", "uiUp", "uiDown", "uiMenu"};
+    static constexpr std::size_t kActionCount = 8;
+    static constexpr std::array<std::string_view, kActionCount> kNames{"uiAccept", "uiCancel", "uiLeft", "uiRight", "uiUp", "uiDown", "uiMenu", "uiFocus"};
 
     NavigationInput();
 
-    // Reads every action with the bindings the app map gives it when it defines it and with the built-in bindings otherwise. The UI reads the presses it captures from the app map itself, and blocked input, such as during a scene transition, holds every action up until it is released, like the actions of the app map.
-    void update(const input::ActionMap& actions, const input::Input& devices, const input::VirtualInput& virtualInput, bool blocked);
+    // Reads every action with the bindings the app map gives it when it defines it and with the built-in bindings otherwise. The UI reads the presses it captures from the app map itself, and blocked input, such as during a scene transition, holds every action up until it is released, like the actions of the app map. While a play area has the focus, the presses of the directions, accept and menu belong to the game, so they read as up until they are released, even once the focus moved to a control.
+    void update(const input::ActionMap& actions, const input::Input& devices, const input::VirtualInput& virtualInput, bool blocked, bool playing);
 
     // The bindings an action reads, remapped by the app or built in.
     [[nodiscard]] const std::vector<input::ActionMap::Binding>& getBindings(Action action) const;
@@ -48,6 +49,7 @@ class NavigationInput final {
     input::ActionMap resolved;
     std::array<bool, kActionCount> down{};
     std::array<bool, kActionCount> wasDown{};
+    std::array<bool, kActionCount> held{};
 };
 
 } // namespace haylen::ui

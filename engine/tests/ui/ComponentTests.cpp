@@ -726,16 +726,22 @@ TEST_F(ComponentTest, KeepsPressesTheInterfaceAnswersFromActions) {
     };
     // clang-format on
 
+    // The combo keeps the focus once its list closes, so cancel still belongs to the interface until nothing has the focus.
     click(getBounds(*document, "size").getCenter());
     ASSERT_TRUE(getUi().isCapturingBack());
     EXPECT_FALSE(reaches(input::Key::Escape, "back"));
     EXPECT_FALSE(getUi().isCapturingBack());
+    EXPECT_FALSE(reaches(input::Key::Escape, "back"));
+    fixture.runLua("require('haylen.ui').clearFocus()");
+    frames();
     EXPECT_TRUE(reaches(input::Key::Escape, "back"));
 
     click(getBounds(*document, "size").getCenter());
     ASSERT_TRUE(getUi().isCapturingBack());
     EXPECT_FALSE(reachesButton(input::GamepadButton::East, "back"));
     EXPECT_FALSE(getUi().isCapturingBack());
+    fixture.runLua("require('haylen.ui').clearFocus()");
+    frames();
     EXPECT_TRUE(reachesButton(input::GamepadButton::East, "back"));
 
     // The keys of a text field being edited stay with it, the escape that ends the editing included.

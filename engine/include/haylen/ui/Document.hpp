@@ -50,6 +50,9 @@ class Document final {
     void command(Context& context, std::string_view id, std::string_view name, const core::Json& arguments);
 
     void draw(Context& context, const math::Rect& area);
+
+    // Tells the components of a document that the UI does not draw this frame, such as the document of a covered scene, that they stopped drawing.
+    void skip(Context& context);
     [[nodiscard]] std::vector<Event> takeEvents();
 
     [[nodiscard]] bool isVisible() const noexcept {

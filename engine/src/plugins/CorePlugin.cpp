@@ -8,6 +8,7 @@
 #include "core/SignalLua.hpp"
 #include "core/TimerLua.hpp"
 #include "core/TweenLua.hpp"
+#include "haylen/core/SceneView.hpp"
 #include "math/MathLua.hpp"
 #include "platform/WindowLua.hpp"
 
@@ -46,8 +47,10 @@ void CorePlugin::render(core::Engine&) {
     autoloads.render();
 }
 
-void CorePlugin::renderUi(core::Engine&) {
-    autoloads.renderUi();
+void CorePlugin::renderUi(core::Engine&, const core::SceneView& view) {
+    if (view.current) {
+        autoloads.renderUi();
+    }
 }
 
 } // namespace haylen::plugins

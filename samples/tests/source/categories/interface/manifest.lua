@@ -1,0 +1,27 @@
+-- The tests of the category in menu order.
+return {
+    prefix = 'GUI',
+    title = 'Interface',
+    description = 'Every component of "haylen.ui" with its themes, focus navigation, tweens, text entry and touch controls.',
+    tests = {
+        {code = 'GUI-001', title = 'Containers', description = 'Rows, columns, grids, stacks, scrolls, cards, panels, dividers, tabs, form fields and splitters.', module = 'containers'},
+        {code = 'GUI-002', title = 'Text', description = 'Labels in every font role and color, alignment, wrapping, page headers, empty states and alerts.', module = 'text'},
+        {code = 'GUI-003', title = 'Buttons', description = 'Every button variant, image buttons, chips and menu buttons.', module = 'buttons'},
+        {code = 'GUI-004', title = 'Choices', description = 'Check boxes, toggles and radio groups.', module = 'choices'},
+        {code = 'GUI-005', title = 'Text fields', description = 'Text fields with every keyboard and return key, secret fields, text areas and filter fields.', module = 'text-fields'},
+        {code = 'GUI-006', title = 'Pickers', description = 'Combos, color fields, number fields and sliders.', module = 'pickers'},
+        {code = 'GUI-007', title = 'Indicators', description = 'Badges, status dots, busy rings, progress bars, circular progress and cooldowns, icons, images and avatars.', module = 'indicators'},
+        {code = 'GUI-008', title = 'Collections', description = 'Lists with draggable rows, trees and tables.', module = 'collections'},
+        {code = 'GUI-009', title = 'Settings', description = 'A settings screen built from a settings form, rows and actions.', module = 'settings'},
+        {code = 'GUI-010', title = 'Overlays', description = 'Dialogs, toasts, tooltips, popovers and context menus.', module = 'overlays'},
+        {code = 'GUI-011', title = 'Game controls', description = 'Steppers, segmented controls, range sliders and key capture fields that rebind actions of the action map.', module = 'game-controls'},
+        {code = 'GUI-012', title = 'Windows and pages', description = 'A draggable window, accordions, a carousel and a scroll that snaps to its cards.', module = 'windows-pages'},
+        {code = 'GUI-013', title = 'Slot grid', description = 'An inventory, a hotbar in another document and a chest list that trade items by drag and drop.', module = 'slot-grid'},
+        {code = 'GUI-014', title = 'Rich text', description = 'Markup with styles, links, hints, images, icons, lists, tables, effects and a typewriter reveal.', module = 'rich-text'},
+        {code = 'GUI-015', title = 'Themes', description = 'The dark and light themes and a textured theme drawn with nine-slice surfaces.', module = 'themes'},
+        {code = 'GUI-016', title = 'Focus navigation', description = 'Directional and explicit neighbours, focus scopes, wrapping and going back with keys, gamepads and TV remotes.', module = 'focus-navigation'},
+        {code = 'GUI-017', title = 'UI tweens', description = 'Node transforms that move, scale, fade and tint controls with native tweens.', module = 'tweens'},
+        {code = 'GUI-018', title = 'Text input', description = 'The hidden native field behind text fields, the on-screen keyboard and the plain keyboard on every platform.', module = 'text-input'},
+        {code = 'GUI-019', title = 'Touch controls', description = 'A touch stick and touch buttons that drive actions of the action map next to keys and gamepads.', module = 'touch-controls'},
+    },
+}

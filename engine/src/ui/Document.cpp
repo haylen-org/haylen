@@ -207,16 +207,23 @@ void Document::command(Context& context, std::string_view id, std::string_view n
 
 // The root places itself in the direction it sets for the document.
 void Document::draw(Context& context, const math::Rect& area) {
-    const EventScope scope(context, events);
-    if (visible) {
-        context.getFocus().beginDocument(*this);
-        const bool writing = root->pushWriting(context);
-        const math::Rect placed = root->getCommon().anchor ? root->getAnchoredBounds(context) : place(context, *root, root->measure(context, area.width), area);
-        if (writing) {
-            context.popWriting();
-        }
-        root->draw(context, placed);
+    if (!visible) {
+        skip(context);
+        return;
     }
+    const EventScope scope(context, events);
+    context.getFocus().beginDocument(*this);
+    const bool writing = root->pushWriting(context);
+    const math::Rect placed = root->getCommon().anchor ? root->getAnchoredBounds(context) : place(context, *root, root->measure(context, area.width), area);
+    if (writing) {
+        context.popWriting();
+    }
+    root->draw(context, placed);
+    root->noticeStoppedDrawing(context);
+}
+
+void Document::skip(Context& context) {
+    const EventScope scope(context, events);
     root->noticeStoppedDrawing(context);
 }
 

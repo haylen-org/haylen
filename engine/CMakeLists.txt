@@ -464,6 +464,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/components/inputs/FilterField.cpp
   src/ui/components/inputs/KeyCapture.cpp
   src/ui/components/inputs/NumberField.cpp
+  src/ui/components/inputs/PlayArea.cpp
   src/ui/components/inputs/RangeSlider.cpp
   src/ui/components/inputs/SecretField.cpp
   src/ui/components/inputs/Slider.cpp
@@ -729,6 +730,15 @@ elseif(HAYLEN_BUILD_PLAYER AND ANDROID)
   target_link_libraries(haylen PRIVATE haylen::runtime)
   # The activity loads the library by its exact name, while Poco forces a Debug postfix into the cache for every library after it.
   set_target_properties(haylen PROPERTIES DEBUG_POSTFIX "")
+endif()
+
+# The headless player runs any package without a window, GPU or audio device on the host of the engine tests, which suits automatic runs of apps such as the test project in continuous integration.
+if(HAYLEN_BUILD_PLAYER AND HAYLEN_DESKTOP)
+  add_executable(haylen-headless src/platform/headless/HeadlessPlayer.cpp)
+  target_include_directories(haylen-headless PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
+  target_link_libraries(haylen-headless PRIVATE haylen::engine haylen::headless haylen_sokol_headers)
+  set_target_properties(haylen-headless PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  haylen_enable_warnings(haylen-headless)
 endif()
 
 # Haylen.xcframework holds one static library per Apple platform with the engine, its dependencies, the runtime and the player merged.

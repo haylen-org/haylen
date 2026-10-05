@@ -2,7 +2,7 @@
 
 An app reaches anything native, from the APIs of the platform to native libraries and SDKs with a C API, in three ways. This guide explains them, how to choose between them, how native libraries are called from Lua and how their callbacks reach it, how an app ships its libraries on every platform, and how to integrate SDKs such as the flat C API of Steam or the C API of Epic Online Services with its NAT P2P. The [`haylen.native` reference](lua-api/native.md) and the [`haylen.platform` reference](lua-api/platform.md) list every function, and the [platform bridge guide](platform_bridge.md) describes how bridge calls travel.
 
-The sample `samples/system/native` runs every part of this guide against the test library of the engine, `engine/tests/native/NativeTest.c`, on every platform, with a list of checks that pass or fail.
+The Native libraries category of the test project, `NAT-001` to `NAT-005` in `samples/tests/source/categories/native/`, runs every part of this guide against the test library of the engine, `engine/tests/native/NativeTest.c`, on every platform, with a list of checks that pass or fail. The `native` section of `samples/tests/app.json` builds the library from `samples/tests/plugins/native-test/native/`.
 
 ## The three ways
 
@@ -18,7 +18,7 @@ The sample `samples/system/native` runs every part of this guide against the tes
 - A library or SDK with a C API that ships as a `.dll`, `.so`, `.dylib`, framework or static library goes through FFI. Lua calls it directly, with no glue code to compile, and the calls cost what a C call costs plus the conversion of the arguments.
 - A library with a C++ API, one that needs many calls per frame from native code, or one whose data never needs to reach Lua, goes into a C++ plugin of an app that compiles the engine, or into a small C library with a flat API that FFI calls.
 - A native library that answers calls or sends events on its own threads registers bridge handlers through the `HaylenNativeApi` of the engine, which works the same on every platform that loads native libraries.
-- The browser has no native libraries, so web builds reach JavaScript through the bridge. An app that calls a library through FFI elsewhere answers the same methods with a page handler on the web, as the local plugin `native-test` of the native sample does.
+- The browser has no native libraries, so web builds reach JavaScript through the bridge. An app that calls a library through FFI elsewhere answers the same methods with a page handler on the web, as the local plugin `native-test` of the test project does.
 
 ## Calling a library
 

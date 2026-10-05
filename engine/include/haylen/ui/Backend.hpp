@@ -22,6 +22,8 @@
 #include "haylen/math/Vec2.hpp"
 #include "haylen/platform/Window.hpp"
 
+struct ImGuiWindow;
+
 namespace haylen::platform {
 struct Event;
 }
@@ -70,7 +72,12 @@ class Backend final {
 
     // Starts a frame over the visible area of the viewport. A frame the app left open, which happens when a script fails halfway, is closed first.
     void beginFrame(float deltaSeconds, const graphics::Viewport& viewport, const input::Input& input, const NavigationInput& navigation);
+
+    // Ends the frame and draws it with the renderer, leaving out the windows that `renderWindow` drew already.
     void render(graphics2d::Renderer& renderer);
+
+    // Draws a window that ended, with its child windows and its popups, before the frame ends, such as the documents of a scene that leaves through a transition into an image of its own.
+    void renderWindow(graphics2d::Renderer& renderer, const ImGuiWindow& root);
     [[nodiscard]] bool isFrameActive() const noexcept {
         return frameActive;
     }
@@ -161,6 +168,8 @@ class Backend final {
     // Closes every popup that no component drew in the last frame, such as the dialog of a node that was hidden or of a document that was unmounted, so it never keeps the pointer and cancel from the windows under it.
     static void closeAbandonedPopups();
     void updateTextures(ImDrawData& data);
+    static void collectLists(const ImGuiWindow& window, std::vector<const ImDrawList*>& lists);
+    void drawLists(graphics2d::Renderer& renderer, std::span<const ImDrawList* const> lists);
     [[nodiscard]] const graphics::Texture* findTexture(ImTextureID id) const;
 
     graphics::Device& device;
@@ -173,6 +182,7 @@ class Backend final {
     std::unordered_map<ImTextureID, graphics::Texture> atlasTextures;
     std::unordered_map<ImTextureID, graphics::Texture> frameTextures;
     std::vector<std::function<void(graphics2d::Renderer&, math::Vec2)>> renderCalls;
+    std::vector<const ImDrawList*> renderedLists;
     std::vector<graphics2d::MeshVertex> meshVertices;
     std::vector<std::uint32_t> meshIndices;
     graphics2d::Renderer* rendering = nullptr;

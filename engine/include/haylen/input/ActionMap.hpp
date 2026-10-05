@@ -81,11 +81,12 @@ class ActionMap final {
         static const std::array<std::pair<std::string_view, Type>, 3> kTypeNames;
     };
 
-    // The keys and gamepad buttons the UI answers itself in the next frame: every key while a text field edits, and the bindings of the navigation actions it handles, such as `cancel` while a popup is open.
+    // The keys, gamepad buttons and gamepad axes the UI answers itself in the next frame: every key while a text field edits, and the bindings of the navigation actions it handles, such as `cancel` while a popup is open and the directions while a control has the focus.
     struct Capture {
         bool keyboard = false;
         std::bitset<Controls::kKeyCount> keys;
         std::bitset<Controls::kGamepadButtonCount> buttons;
+        std::bitset<Controls::kGamepadAxisCount> axes;
     };
 
     void load(const core::Json& document);
@@ -105,12 +106,13 @@ class ActionMap final {
     // Blocked input, such as during a scene change or while the app is halted, reads every action as up. An action still down when input returns stays up until its bindings let go, so a key held across a scene change never reads as a second press.
     void update(const Input& input, const VirtualInput& virtualInput, bool blocked);
 
-    // A key or gamepad button pressed while the UI captures it stays with the UI until it is released, and every binding reads it as up meanwhile, like mouse buttons while the UI owns the pointer.
+    // A key or gamepad button pressed while the UI captures it stays with the UI until it is released, and every binding reads it as up meanwhile, like mouse buttons while the UI owns the pointer. An axis is pressed while it leans past the press threshold, and a captured axis also holds the stick it belongs to.
     void setCapture(const Capture& value) noexcept {
         capture = value;
     }
     [[nodiscard]] bool isKeyCaptured(Key key) const noexcept;
     [[nodiscard]] bool isGamepadButtonCaptured(std::size_t index, GamepadButton button) const noexcept;
+    [[nodiscard]] bool isGamepadAxisCaptured(std::size_t index, GamepadAxis axis) const noexcept;
 
     [[nodiscard]] bool isDown(std::string_view name) const noexcept;
     [[nodiscard]] bool isPressed(std::string_view name) const noexcept;
@@ -141,6 +143,7 @@ class ActionMap final {
     [[nodiscard]] math::Vec2 getBindingVector(const Binding& binding, const Input& input, const VirtualInput& virtualInput) const noexcept;
     [[nodiscard]] float getStrongest(const std::vector<Binding>& list, const Input& input, const VirtualInput& virtualInput) const noexcept;
     [[nodiscard]] const State* find(std::string_view name) const noexcept;
+    [[nodiscard]] bool isStickCaptured(std::size_t index, bool right) const noexcept;
     void holdCaptured(const Input& input) noexcept;
 
     std::vector<State> actions;
@@ -149,6 +152,8 @@ class ActionMap final {
     Capture capture;
     std::bitset<Controls::kKeyCount> capturedKeys;
     std::array<std::bitset<Controls::kGamepadButtonCount>, Input::kMaxGamepads> capturedButtons;
+    std::array<std::bitset<Controls::kGamepadAxisCount>, Input::kMaxGamepads> capturedAxes;
+    std::array<std::bitset<Controls::kGamepadAxisCount>, Input::kMaxGamepads> leaningAxes;
 };
 
 } // namespace haylen::input

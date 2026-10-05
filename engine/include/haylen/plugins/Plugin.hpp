@@ -10,7 +10,8 @@ struct Event;
 
 namespace haylen::core {
 class Engine;
-}
+struct SceneView;
+} // namespace haylen::core
 
 namespace haylen::plugins {
 
@@ -29,7 +30,9 @@ class Plugin {
     virtual void fixedUpdate(core::Engine& engine, float stepSeconds);
     virtual void update(core::Engine& engine, float deltaSeconds);
     virtual void render(core::Engine& engine);
-    virtual void renderUi(core::Engine& engine);
+
+    // Draws the interface of one view of the frame above its scenes. Every view gets the call in the order the views render, and most plugins draw only in the current view, while the UI draws the documents of the scenes of each view into its image.
+    virtual void renderUi(core::Engine& engine, const core::SceneView& view);
 
     // Draws above everything else once per frame, including scene transitions and the error screen, which suits debug displays.
     virtual void renderOverlay(core::Engine& engine);

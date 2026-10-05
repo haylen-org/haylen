@@ -1,7 +1,0 @@
-{
-    "actions": [
-        {"name": "uiCancel", "type": "button", "bindings": ["key:escape", "button:east", "button:back"]},
-        {"name": "back", "type": "button", "bindings": ["key:escape", "button:east", "button:back"]},
-        {"name": "pause", "type": "button", "bindings": ["key:p", "button:north"]}
-    ]
-}
