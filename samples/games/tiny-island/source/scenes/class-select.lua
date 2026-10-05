@@ -42,7 +42,7 @@ function classSelect:enter()
     for _, class in ipairs(classes) do
         cards[#cards + 1] = ui.column{
             gap = 4,
-            ui.imageButton{id = 'pick_' .. class.id, image = art.avatar(class), scale = 0.62, align = 'center', onClick = function()
+            ui.imageButton{id = 'pick_' .. class.id, image = art.portrait(class), scale = 0.66, align = 'center', onClick = function()
                 sound.play('click')
                 self:select(class.id)
             end},

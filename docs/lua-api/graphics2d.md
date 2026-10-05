@@ -197,7 +197,7 @@ local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 
-local sheet = assets.texture('tiny_swords/units/blue/warrior/warrior_idle.png')
+local sheet = assets.texture('sprites/knight/idle.png')
 
 scene.push({
     render = function(self)
@@ -405,7 +405,7 @@ local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 
-local texture = assets.texture('tiny_swords/effects/dust_01.png')
+local texture = assets.texture('effects/dust.png')
 local vertices = {
     {x = 100, y = 100, u = 0, v = 0},
     {x = 300, y = 100, u = 1, v = 0},
@@ -627,7 +627,7 @@ local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 
-local banner = graphics2d.newNineSlice(assets.texture('tiny_swords/ui/sliced/banner.png'), {borders = {100, 68, 84, 111}})
+local banner = graphics2d.newNineSlice(assets.texture('ui/banner.png'), {borders = {100, 68, 84, 111}})
 
 scene.push({
     renderUi = function(self)
@@ -725,7 +725,7 @@ local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 
-local clouds = graphics2d.newSpriteBatch(assets.texture('tiny_swords/effects/dust_01.png'))
+local clouds = graphics2d.newSpriteBatch(assets.texture('effects/dust.png'))
 for index = 0, 9 do
     clouds:add({x = index * 180, y = 100, width = 64, height = 64, source = {0, 0, 64, 64}})
 end
@@ -953,7 +953,7 @@ local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 
-local hero = graphics2d.newSprite(assets.texture('tiny_swords/units/blue/warrior/warrior_idle.png'), {
+local hero = graphics2d.newSprite(assets.texture('sprites/knight/idle.png'), {
     x = 300,
     y = 200,
     source = {0, 0, 192, 192},
@@ -980,7 +980,7 @@ local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 
-local batch = graphics2d.newSpriteBatch(assets.texture('tiny_swords/effects/dust_01.png'))
+local batch = graphics2d.newSpriteBatch(assets.texture('effects/dust.png'))
 for index = 1, 100 do
     batch:add({x = (index % 10) * 70, y = (index // 10) * 70, width = 64, height = 64, source = {0, 0, 64, 64}})
 end
@@ -1011,7 +1011,7 @@ local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 
-local texture = assets.texture('tiny_swords/ui/sliced/big_blue_button.png')
+local texture = assets.texture('ui/button.png')
 local button = graphics2d.newNineSlice(texture, {borders = {45, 47, 45, 47}})
 local tiled = graphics2d.newNineSlice(texture, {source = {0, 0, texture.width, texture.height}, borders = {45, 47, 45, 47}, fill = 'tile'})
 
@@ -1269,7 +1269,7 @@ local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 
-local sprite = graphics2d.newSprite(assets.texture('tiny_swords/units/blue/warrior/warrior_idle.png'), {source = {0, 0, 192, 192}})
+local sprite = graphics2d.newSprite(assets.texture('sprites/knight/idle.png'), {source = {0, 0, 192, 192}})
 sprite.position = {500, 300}
 sprite.flipHorizontal = true
 sprite.color = '#FFFFC0C0'
@@ -1989,7 +1989,7 @@ A `NineSlice` is a scalable frame made of nine texture regions. The functions `g
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 
-local panel = graphics2d.newNineSlice(assets.texture('tiny_swords/ui/sliced/banner.png'), {borders = {100, 68, 84, 111}})
+local panel = graphics2d.newNineSlice(assets.texture('ui/banner.png'), {borders = {100, 68, 84, 111}})
 print(table.concat(panel.borders, ', '), panel.fill, #panel.pieces, panel.pieces[5].width)
 panel.fill = 'tile'
 local wide = graphics2d.newNineSlice(panel.texture, {borders = panel.borders, fill = panel.fill})

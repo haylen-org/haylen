@@ -404,24 +404,28 @@ bool UiPlugin::isUsingKeyboard() const {
 }
 
 graphics::Texture UiPlugin::requestImage(core::Engine& engine, std::string_view path) {
-    if (const auto found = images.find(path); found != images.end()) {
+    const graphics::Texture::Filter filter = getTheme().getImageFilter();
+    if (const auto found = images.find(path); found != images.end() && found->second.filter == filter) {
         if (!found->second.error.empty()) {
             throw std::runtime_error("The UI image \"" + std::string(path) + "\" could not be loaded. " + found->second.error);
         }
         return found->second.texture;
     }
 
-    // Images load in the background, and a component draws nothing in their place until they arrive.
-    images.emplace(std::string(path), ImageEntry{});
+    // Images load in the background, and a component draws nothing in their place until they arrive. A theme with another image filter loads them again, and an answer for the filter of an earlier theme goes nowhere.
+    images.insert_or_assign(std::string(path), ImageEntry{.texture = {}, .error = {}, .filter = filter});
     // clang-format off
-    engine.getAssets().textureAsync(path, [this, weakAlive = std::weak_ptr<bool>(alive), key = std::string(path)](graphics::Texture texture, std::string error) {
+    engine.getAssets().textureAsync(path, [this, weakAlive = std::weak_ptr<bool>(alive), key = std::string(path), filter](graphics::Texture texture, std::string error) {
         if (weakAlive.expired()) {
             return;
         }
         ImageEntry& entry = images[key];
+        if (entry.filter != filter) {
+            return;
+        }
         entry.texture = std::move(texture);
         entry.error = std::move(error);
-    });
+    }, {.filter = filter, .wrap = graphics::Texture::Wrap::Clamp});
     // clang-format on
     return {};
 }

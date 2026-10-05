@@ -1,4 +1,4 @@
--- The heads-up display of a run: the survivor on the left, the day on the right, notices at the top and touch controls at the bottom.
+-- The heads-up display of a run: the survivor with health, food, special and wood on the left, the day and the fire on the right, notices at the top and touch controls at the bottom.
 local ui = require('haylen.ui')
 
 local art = require('systems.art')
@@ -10,10 +10,14 @@ local widgets = require('ui.widgets')
 local hud = {}
 hud.__index = hud
 
-local icons = 'tiny_swords/ui/icons/'
-local tones = {['hud.fireOut'] = 'danger', ['hud.nightFalls'] = 'warning', ['hud.morning'] = 'success'}
+local tones = {['hud.fireOut'] = 'danger', ['hud.nightFalls'] = 'warning', ['hud.morning'] = 'success', ['hud.starving'] = 'danger'}
 
-local function touchControls()
+-- A bar with its icon in front, the way every meter of the HUD reads.
+local function meter(id, icon, tone, visible)
+    return ui.row{gap = 12, visible = visible, ui.icon{image = art.icon(icon), size = 44}, ui.progress{id = id, tone = tone, grow = 1}}
+end
+
+local function touchControls(class)
     return ui.row{
         id = 'touch',
         align = 'stretch',
@@ -25,10 +29,10 @@ local function touchControls()
             align = 'end',
             ui.row{
                 gap = 24,
-                ui.touchButton{action = 'interact', image = icons .. 'icon_02.png', size = 120, touchOnly = true},
-                ui.touchButton{action = 'special', image = icons .. 'icon_06.png', size = 140, touchOnly = true},
+                ui.touchButton{action = 'interact', image = art.icon('log'), size = 120, touchOnly = true},
+                ui.touchButton{action = 'special', image = art.icon(class.specialIcon), size = 140, touchOnly = true},
             },
-            ui.touchButton{action = 'attack', image = icons .. 'icon_05.png', size = 190, align = 'end', touchOnly = true},
+            ui.touchButton{action = 'attack', image = art.icon(class.attackIcon), size = 190, align = 'end', touchOnly = true},
         },
     }
 end
@@ -42,38 +46,40 @@ function hud.new(game, onPause)
             align = 'stretch',
             gap = 24,
             ui.panel{
-                width = 600,
+                width = 620,
                 align = 'start',
-                gap = 12,
+                gap = 10,
                 ui.row{
                     gap = 20,
-                    ui.icon{image = art.avatar(class), size = 110},
+                    ui.icon{image = art.portrait(class), size = 132},
                     ui.column{
                         grow = 1,
-                        gap = 10,
-                        ui.progress{id = 'health', tone = 'success'},
-                        ui.progress{id = 'fuel', tone = 'warning'},
-                        ui.progress{id = 'special', tone = 'accent', text = widgets.text('hud.special'), visible = class.specialCooldown > 0},
+                        gap = 8,
+                        meter('health', 'heart', 'success'),
+                        meter('food', 'meat', 'warning'),
+                        meter('special', class.specialIcon, 'accent', class.specialCooldown > 0),
                     },
                 },
-                ui.row{gap = 12, ui.icon{image = icons .. 'icon_02.png', size = 44}, ui.label{id = 'wood', font = 'button'}},
+                ui.row{gap = 12, ui.icon{image = art.icon('log'), size = 48}, ui.label{id = 'wood', font = 'button'}},
             },
             ui.spacer{grow = 1},
             ui.panel{
+                width = 420,
                 align = 'start',
-                gap = 4,
-                ui.label{id = 'day', font = 'heading', align = 'end'},
-                ui.label{id = 'phase', align = 'end'},
-                ui.label{id = 'raiders', color = 'danger', align = 'end', visible = false},
+                gap = 8,
+                ui.row{gap = 12, ui.icon{id = 'phaseIcon', image = art.icon('sun'), size = 52}, ui.label{id = 'day', font = 'heading'}},
+                ui.label{id = 'phase'},
+                meter('fuel', 'fire', 'warning'),
+                ui.row{id = 'raiders', gap = 12, visible = false, ui.icon{image = art.icon('skull'), size = 40}, ui.label{id = 'raidersText', color = 'dangerText'}},
             },
-            ui.button{id = 'pause', icon = icons .. 'icon_10.png', variant = 'icon', align = 'start', onClick = function()
+            ui.button{id = 'pause', icon = art.icon('pause'), variant = 'icon', align = 'start', onClick = function()
                 sound.play('click')
                 onPause()
             end},
         },
         ui.toast{id = 'notice', duration = 4},
         ui.spacer{grow = 1},
-        touchControls(),
+        touchControls(class),
     })
     self:update()
     return self
@@ -96,6 +102,10 @@ function hud:update()
     self:show('health', 'value', health)
     self:show('health', 'tone', health < 0.3 and 'danger' or 'success')
     self:show('health', 'text', string.format('%d / %d', math.ceil(player.health), player.maxHealth))
+    local food = player.food / config.food.max
+    self:show('food', 'value', food)
+    self:show('food', 'tone', food < 0.2 and 'danger' or 'warning')
+    self:show('food', 'text', string.format('%d%%', math.ceil(food * 100)))
     if player.class.specialCooldown > 0 then
         self:show('special', 'value', 1 - player.specialCooldown / player.class.specialCooldown)
     end
@@ -111,6 +121,7 @@ function hud:update()
     local time = string.format('%d:%02d', left // 60, left % 60)
     self:show('day', 'text', widgets.text('hud.day', {day = cycle.day}), cycle.day)
     self:show('phase', 'text', widgets.text('hud.next.' .. cycle.phase, {time = time}), cycle.phase .. time)
+    self:show('phaseIcon', 'image', art.icon(game:night() and 'moon' or 'sun'))
 
     local raiders = #game.pending
     for _, raider in ipairs(game.enemies) do
@@ -119,7 +130,7 @@ function hud:update()
         end
     end
     self:show('raiders', 'visible', raiders > 0)
-    self:show('raiders', 'text', widgets.text('hud.raiders', {count = raiders}), raiders)
+    self:show('raidersText', 'text', widgets.text('hud.raiders', {count = raiders}), raiders)
 end
 
 function hud:notice(key)

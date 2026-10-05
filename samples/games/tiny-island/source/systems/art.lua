@@ -1,88 +1,76 @@
--- Builds animations from the Tiny Swords strips, where the frames of a strip share one size and sit left to right.
+-- The art of the game: an atlas per character with one tagged animation per move, and the atlases of the props and the effects.
 local animation2d = require('haylen.animation2d')
 local assets = require('haylen.assets')
 
 local art = {}
 
-local root = 'tiny_swords/'
+-- The art is painted in high definition, so every image is smoothed when the screen scales it.
+art.options = {filter = 'linear'}
 
--- Clip names are shared by every unit, so gameplay code plays `run` or `attack` without knowing the unit.
-local units = {
-    warrior = {frame = 192, pivotY = 0.71, clips = {
-        idle = {file = 'warrior/warrior_idle', fps = 10},
-        run = {file = 'warrior/warrior_run', fps = 12},
-        attack = {file = 'warrior/warrior_attack1', fps = 14, loop = false},
-        attack2 = {file = 'warrior/warrior_attack2', fps = 14, loop = false},
-        guard = {file = 'warrior/warrior_guard', fps = 10},
-    }},
-    archer = {frame = 192, pivotY = 0.71, clips = {
-        idle = {file = 'archer/archer_idle', fps = 9},
-        run = {file = 'archer/archer_run', fps = 10},
-        attack = {file = 'archer/archer_shoot', fps = 16, loop = false},
-    }},
-    lancer = {frame = 320, pivotY = 0.62, clips = {
-        idle = {file = 'lancer/lancer_idle', fps = 12},
-        run = {file = 'lancer/lancer_run', fps = 12},
-        attack = {file = 'lancer/lancer_right_attack', fps = 12, loop = false},
-        attackUp = {file = 'lancer/lancer_up_attack', fps = 12, loop = false},
-        attackDown = {file = 'lancer/lancer_down_attack', fps = 12, loop = false},
-    }},
-    monk = {frame = 192, pivotY = 0.71, clips = {
-        idle = {file = 'monk/idle', fps = 9},
-        run = {file = 'monk/run', fps = 10},
-        attack = {file = 'monk/heal', fps = 20, loop = false},
-    }},
-    pawn = {frame = 192, pivotY = 0.71, clips = {
-        idle = {file = 'pawn/pawn_idle_axe', fps = 10},
-        run = {file = 'pawn/pawn_run_axe', fps = 12},
-        attack = {file = 'pawn/pawn_interact_axe', fps = 16, loop = false},
-        idleCarry = {file = 'pawn/pawn_idle_wood', fps = 10},
-        runCarry = {file = 'pawn/pawn_run_wood', fps = 12},
-    }},
+-- How large each character is drawn and where the ground is in its frames, as a fraction of the frame height.
+local characters = {
+    warrior = {scale = 0.82, pivotY = 178 / 192},
+    archer = {scale = 0.82, pivotY = 178 / 192},
+    lancer = {scale = 0.82, pivotY = 178 / 192},
+    mage = {scale = 0.82, pivotY = 178 / 192},
+    brute = {scale = 0.82, pivotY = 272 / 288},
+    thrower = {scale = 0.82, pivotY = 178 / 192},
+    bomber = {scale = 0.82, pivotY = 178 / 192},
+    imp = {scale = 0.82, pivotY = 146 / 160},
+    sheep = {scale = 0.8, pivotY = 146 / 160},
 }
 
-local cache = {}
+function art.atlas(path)
+    return assets.load(path, 'atlas', art.options)
+end
 
 function art.texture(path)
-    return assets.texture(root .. path)
+    return assets.texture(path, art.options)
+end
+
+function art.props()
+    return art.atlas('world/props.json')
+end
+
+function art.effects()
+    return art.atlas('effects/effects.json')
+end
+
+-- Returns a character with its atlas, the scale it is drawn at and its ground line.
+function art.character(name)
+    local spec = characters[name]
+    return {atlas = art.atlas('characters/' .. name .. '.json'), scale = spec.scale, pivotY = spec.pivotY}
+end
+
+-- The animator puts the feet of the character on the sprite position whenever it applies a frame. Every atlas tag is an animation, so gameplay code plays `run` or `attack` without knowing the character.
+function art.newAnimator(name)
+    local character = art.character(name)
+    local animator = animation2d.newAnimator()
+    animator.pivotY = character.pivotY
+    for _, tag in ipairs(character.atlas:animationNames()) do
+        animator:add(tag, character.atlas:animation(tag))
+    end
+    animator:play('idle')
+    return animator, character
+end
+
+-- Builds an animation from the frames `<name>_1`, `<name>_2` and on of the effects atlas.
+function art.effect(name, framesPerSecond, loop)
+    local atlas = art.effects()
+    local frames = {}
+    while atlas:hasFrame(name .. '_' .. (#frames + 1)) do
+        frames[#frames + 1] = atlas:source(name .. '_' .. (#frames + 1))
+    end
+    return animation2d.fromFrames(atlas.texture, frames, {framesPerSecond = framesPerSecond, loop = loop or 'once'})
 end
 
 -- Returns the path of the portrait of a class, for the UI.
-function art.avatar(class)
-    return string.format('%sui/human_avatars/avatars_%02d.png', root, class.avatar)
+function art.portrait(class)
+    return 'ui/portraits/' .. class.id .. '.png'
 end
 
-function art.strip(path, frame, options)
-    local texture = art.texture(path)
-    return animation2d.fromGrid(texture, {frameWidth = frame, frameHeight = options.height or frame, framesPerSecond = options.fps or 10, loop = options.loop == false and 'once' or 'loop'})
-end
-
--- Returns the clips of a unit kind in a team color, with the pivot that puts the feet of the unit on its position.
-function art.unit(kind, color)
-    local key = kind .. ':' .. color
-    if cache[key] then
-        return cache[key]
-    end
-
-    local spec = units[kind]
-    local clips = {}
-    for name, clip in pairs(spec.clips) do
-        clips[name] = art.strip('units/' .. color .. '/' .. clip.file .. '.png', spec.frame, clip)
-    end
-    cache[key] = {clips = clips, pivotY = spec.pivotY}
-    return cache[key]
-end
-
--- The animator puts the feet of the unit on the sprite position whenever it applies a frame.
-function art.newAnimator(kind, color)
-    local unit = art.unit(kind, color)
-    local animator = animation2d.newAnimator()
-    animator.pivotY = unit.pivotY
-    for name, clip in pairs(unit.clips) do
-        animator:add(name, clip)
-    end
-    animator:play('idle')
-    return animator, unit
+function art.icon(name)
+    return 'ui/icons/' .. name .. '.png'
 end
 
 return art

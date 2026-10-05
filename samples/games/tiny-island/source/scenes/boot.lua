@@ -5,13 +5,14 @@ local scene = require('haylen.scene')
 local stored = require('haylen.preferences')
 local system = require('haylen.system')
 
+local art = require('systems.art')
 local preferences = require('systems.preferences')
 
 local boot = {}
 boot.__index = boot
 
 function boot.new()
-    return setmetatable({}, boot)
+    return setmetatable({logo = art.texture('ui/logo.png')}, boot)
 end
 
 function boot:enter()
@@ -39,12 +40,12 @@ function boot:render()
     local area = graphics2d.canvasBounds()
     local width = 720
     local x = area.x + (area.width - width) / 2
-    local y = area.y + area.height * 0.62
+    local y = area.y + area.height * 0.74
     local progress = self.menu and scene.loadProgress(self.menu) or 0
-    graphics2d.drawRect(area, '#FF1B1E2B')
-    graphics2d.drawText(nil, localization.text('title'), area.x + area.width / 2, y - 90, {size = 96, color = '#FFF2E3C6', anchor = {0.5, 0.5}})
-    graphics2d.drawRect({x, y, width, 18}, '#FF3A3F55')
-    graphics2d.drawRect({x, y, width * progress, 18}, '#FFF2C14E')
+    graphics2d.drawRect(area, '#FF1E2138')
+    graphics2d.draw(self.logo, area.x + area.width / 2, y - 60, {pivotY = 1, scaleX = 0.65, scaleY = 0.65})
+    graphics2d.drawRect({x - 6, y - 6, width + 12, 30}, '#FF15172A')
+    graphics2d.drawRect({x, y, width * progress, 18}, '#FF2F86F6')
 end
 
 return boot

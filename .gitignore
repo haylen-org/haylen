@@ -5,8 +5,6 @@
 /.idea/
 /.vscode/
 .DS_Store
-# The art of this sample is not redistributable, so it stays out of the repository.
-/samples/games/tiny-island/content/tiny_swords/
 __pycache__/
 # Gradle, Kotlin and the Android plugin write their outputs next to the Android library project, and apps assemble their projects under build/.
 .gradle/

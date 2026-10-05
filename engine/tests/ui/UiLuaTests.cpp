@@ -352,12 +352,13 @@ TEST(UiLuaThemeTest, ReadsAndAddsThemes) {
     test::EngineFixture fixture({{"content/ui/panel.png", std::string(panel.begin(), panel.end())}});
     fixture.runLua("ui = require('haylen.ui')");
     EXPECT_EQ(fixture.lua("return ui.themeColor('accent'):toHex() .. ' ' .. ui.themeMetric('controlHeight') .. ' ' .. ui.themeMetric('caretWidth')"), "#FF4C7DFF 64.0 2.0");
-    EXPECT_EQ(fixture.lua("local font = ui.themeFont('title') return font.font .. ' ' .. font.size .. ' ' .. tostring(ui.themeSurface('panel'))"), "default 56.0 nil");
+    EXPECT_EQ(fixture.lua("local font = ui.themeFont('title') return font.font .. ' ' .. font.size .. ' ' .. tostring(ui.themeSurface('panel')) .. ' ' .. ui.themeImageFilter()"), "default 56.0 nil nearest");
 
     // clang-format off
     EXPECT_EQ(fixture.lua(R"(
         return ui.addTheme({
             name = 'mint',
+            imageFilter = 'linear',
             colors = {accent = '#FF00AA88'},
             metrics = {controlHeight = 80},
             fonts = {title = {size = 72}},
@@ -366,7 +367,7 @@ TEST(UiLuaThemeTest, ReadsAndAddsThemes) {
     )"), "mint");
     // clang-format on
     fixture.runLua("ui.setTheme('mint')");
-    EXPECT_EQ(fixture.lua("return ui.themeColor('accent'):toHex() .. ' ' .. ui.themeColor('window'):toHex() .. ' ' .. ui.themeMetric('controlHeight') .. ' ' .. ui.themeFont('title').size"), "#FF00AA88 #FFF4F5F9 80.0 72.0");
+    EXPECT_EQ(fixture.lua("return ui.themeColor('accent'):toHex() .. ' ' .. ui.themeColor('window'):toHex() .. ' ' .. ui.themeMetric('controlHeight') .. ' ' .. ui.themeFont('title').size .. ' ' .. ui.themeImageFilter()"), "#FF00AA88 #FFF4F5F9 80.0 72.0 linear");
     EXPECT_EQ(fixture.lua("local s = ui.themeSurface('panel') return tostring(s.slice):match('^haylen.NineSlice') .. ' ' .. s.scale .. ' ' .. table.concat(s.padding, ',') .. ' ' .. s.tint:toHex() .. ' ' .. tostring(s.colorize)"), "haylen.NineSlice 1.0 1.0,2.0,3.0,4.0 #FF808080 true");
     EXPECT_EQ(fixture.lua("return table.concat(ui.themes(), ',')"), "dark,light,mint");
 

@@ -220,6 +220,17 @@ local title = ui.themeFont('title')
 print(title.font, title.size, title.bold, title.italic)
 ```
 
+### ui.themeImageFilter()
+
+Returns the texture filter that the pictures of components load with in the active theme, `'nearest'` or `'linear'`, which the `imageFilter` key of a [theme](#themes) sets.
+
+```lua
+local ui = require('haylen.ui')
+
+ui.setTheme(ui.addTheme({name = 'painted', imageFilter = 'linear'}))
+print(ui.themeImageFilter())
+```
+
 ### ui.themeSurface(surface)
 
 Returns the image the active theme paints a [surface](#theme-surfaces) with, or `nil` when the theme paints it with flat colors. The table holds `slice`, a `haylen.NineSlice` for `graphics2d.drawNineSlice`, `scale`, `padding` as `{top, right, bottom, left}`, `tint`, a `haylen.Color`, and `colorize`. An unknown surface raises `The theme has no surface named "<surface>".`
@@ -2397,8 +2408,9 @@ A theme holds every color, metric, font and surface the components use, so no co
 | `fonts` | object | Font roles mapped to `{"font": name, "size": number, "bold": boolean, "italic": boolean}`, where every key is optional. |
 | `fontFiles` | object | Font names mapped to TrueType or OpenType files in the package assets, which `ui.loadTheme` registers unless a font with that name exists. |
 | `surfaces` | object | Surfaces mapped to nine-slice images, or to `null` to go back to flat colors. |
+| `imageFilter` | string | The texture filter of the pictures components show, such as images, icons and image buttons: `'nearest'`, the default, or `'linear'`. A theme switch to another filter loads the pictures again with it. |
 
-Theme files raise these errors: `Unknown key "<key>" in the theme.`, `A theme needs a name.`, `The section "<name>" of the theme must be an object.`, `The theme has no color role named "<name>".`, `The theme has no metric named "<name>".`, `The theme has no surface named "<name>".`, `The theme font "<name>" must be a known role with an object value.`, `The theme font "<name>" must name its font with a string.`, `The theme font "<name>" must set "bold" to "true" or "false".`, the same for `italic`, `The theme font file "<name>" must be a path.`, `The theme color "<name>" must be a color such as "#FF2E7D32".`, `The theme metric "<name>" must be a non-negative number.` and `The size of the theme font "<name>" must be a non-negative number.`.
+Theme files raise these errors: `Unknown key "<key>" in the theme.`, `A theme needs a name.`, `The image filter of the theme must be "nearest" or "linear".`, `The section "<name>" of the theme must be an object.`, `The theme has no color role named "<name>".`, `The theme has no metric named "<name>".`, `The theme has no surface named "<name>".`, `The theme font "<name>" must be a known role with an object value.`, `The theme font "<name>" must name its font with a string.`, `The theme font "<name>" must set "bold" to "true" or "false".`, the same for `italic`, `The theme font file "<name>" must be a path.`, `The theme color "<name>" must be a color such as "#FF2E7D32".`, `The theme metric "<name>" must be a non-negative number.` and `The size of the theme font "<name>" must be a non-negative number.`.
 
 ```json
 {

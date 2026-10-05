@@ -167,7 +167,7 @@ local tiled = require('haylen.tiled')
 
 local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 local camera = graphics2d.newCamera()
-local hero = graphics2d.newSprite(assets.texture('tiny_swords/units/blue/warrior/warrior_idle.png'), {source = {0, 0, 192, 192}, x = 800, y = 600, layer = 1})
+local hero = graphics2d.newSprite(assets.texture('sprites/knight/idle.png'), {source = {0, 0, 192, 192}, x = 800, y = 600, layer = 1})
 
 scene.push({
     render = function(self)
@@ -189,7 +189,7 @@ local tiled = require('haylen.tiled')
 
 local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
 local camera = graphics2d.newCamera()
-local hero = graphics2d.newSprite(assets.texture('tiny_swords/units/blue/warrior/warrior_idle.png'), {source = {0, 0, 192, 192}, x = 800, y = 600, pivotY = 0.7, sortOffset = 50, layer = 1})
+local hero = graphics2d.newSprite(assets.texture('sprites/knight/idle.png'), {source = {0, 0, 192, 192}, x = 800, y = 600, pivotY = 0.7, sortOffset = 50, layer = 1})
 
 scene.push({
     update = function(self, dt)
@@ -380,7 +380,7 @@ local graphics2d = require('haylen.graphics2d')
 local tiled = require('haylen.tiled')
 
 local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
-local warrior = assets.texture('tiny_swords/units/blue/warrior/warrior_idle.png')
+local warrior = assets.texture('sprites/knight/idle.png')
 
 local entities = map:spawn({
     player_start = function(object)
@@ -390,7 +390,7 @@ local entities = map:spawn({
         return {kind = 'campfire', x = object.worldX, y = object.worldY, radius = object.properties.radius or 160}
     end,
 })
-local regions = map:spawn({tree_region = function(object) return {object.worldX, object.worldY, object.width, object.height} end}, 'gameplay')
+local regions = map:spawn({wilds = function(object) return {object.worldX, object.worldY, object.width, object.height} end}, 'gameplay')
 print(#entities, #regions)
 ```
 

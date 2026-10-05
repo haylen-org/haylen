@@ -60,6 +60,7 @@ TEST(ThemeTest, ShipsDarkAndLightThemes) {
     EXPECT_EQ(dark.getFont(Theme::Font::Title).size, 56.0F);
     EXPECT_EQ(dark.getFont(Theme::Font::Body).font, "default");
     EXPECT_EQ(dark.getSurface(Theme::Surface::Button), nullptr);
+    EXPECT_EQ(light.getImageFilter(), graphics::Texture::Filter::Nearest);
 }
 
 TEST(ThemeTest, ReadsThemesOnTopOfABase) {
@@ -69,6 +70,7 @@ TEST(ThemeTest, ReadsThemesOnTopOfABase) {
     // clang-format off
     const core::Json document = core::Json::parse(R"({
         "name": "wood",
+        "imageFilter": "linear",
         "colors": {"accent": "#FF8B5A2B", "text": "#1B1E2B"},
         "metrics": {"controlHeight": 80, "panelPadding": 36},
         "fonts": {"title": {"font": "pixel", "size": 72}, "body": {"size": 34}},
@@ -85,6 +87,7 @@ TEST(ThemeTest, ReadsThemesOnTopOfABase) {
     const Theme theme = Theme::fromJson(document, Theme::light(), loader.function());
 
     EXPECT_EQ(theme.getName(), "wood");
+    EXPECT_EQ(theme.getImageFilter(), graphics::Texture::Filter::Linear);
     EXPECT_EQ(theme.getColor(Theme::Color::Accent), *math::Color::parse("#FF8B5A2B"));
     EXPECT_EQ(theme.getColor(Theme::Color::Text), *math::Color::parse("#1B1E2B"));
     EXPECT_EQ(theme.getColor(Theme::Color::Window), Theme::light().getColor(Theme::Color::Window));
@@ -120,6 +123,13 @@ TEST(ThemeTest, RejectsBrokenThemes) {
     EXPECT_THROW(read(R"([1])"), std::invalid_argument);
     EXPECT_THROW(read(R"({"colors": {}})"), std::invalid_argument);
     EXPECT_THROW(read(R"({"name": "x", "shadows": {}})"), std::invalid_argument);
+    try {
+        (void)read(R"({"name": "x", "imageFilter": "blurry"})");
+        ADD_FAILURE() << "An unknown image filter was accepted.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_STREQ(error.what(), "The image filter of the theme must be \"nearest\" or \"linear\".");
+    }
+    EXPECT_THROW(read(R"({"name": "x", "imageFilter": 1})"), std::invalid_argument);
     EXPECT_THROW(read(R"({"name": "x", "colors": {"purple": "#FFFFFF"}})"), std::invalid_argument);
     EXPECT_THROW(read(R"({"name": "x", "colors": {"text": "white"}})"), std::invalid_argument);
     EXPECT_THROW(read(R"({"name": "x", "colors": []})"), std::invalid_argument);

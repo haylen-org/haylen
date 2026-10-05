@@ -1,0 +1,17 @@
+{
+    "texture": "effects.png",
+    "frames": [[4, 988, 32, 32]],
+    "rate": 0,
+    "maxParticles": 128,
+    "lifetime": [0.5, 1.0],
+    "speed": [60, 220],
+    "direction": -1.5708,
+    "spread": 6.2832,
+    "damping": 2,
+    "gravity": [0, -60],
+    "startSize": [10, 18],
+    "endSize": 2,
+    "colors": ["#FFFFFFFF", "#FFFFB060", "#00FF5010"],
+    "blend": "additive",
+    "layer": 7
+}

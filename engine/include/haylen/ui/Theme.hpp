@@ -178,7 +178,7 @@ class Theme final {
     [[nodiscard]] static Theme dark();
     [[nodiscard]] static Theme light();
 
-    // Reads a theme on top of a base theme. The JSON holds `name`, optional `colors`, `metrics`, `fonts`, `fontFiles` and `surfaces`, and `fontFiles` maps font names to TrueType files the caller registers before drawing.
+    // Reads a theme on top of a base theme. The JSON holds `name`, optional `colors`, `metrics`, `fonts`, `fontFiles`, `surfaces` and `imageFilter`, and `fontFiles` maps font names to TrueType files the caller registers before drawing.
     [[nodiscard]] static Theme fromJson(const core::Json& document, const Theme& base, const TextureLoader& loadTexture);
 
     [[nodiscard]] static std::optional<Color> colorFromName(std::string_view value) noexcept;
@@ -202,6 +202,10 @@ class Theme final {
     [[nodiscard]] const std::map<std::string, std::string, std::less<>>& getFontFiles() const noexcept {
         return fontFiles;
     }
+    // The filter that the pictures of components, such as images, icons and image buttons, load with.
+    [[nodiscard]] graphics::Texture::Filter getImageFilter() const noexcept {
+        return imageFilter;
+    }
 
     void setColor(Color role, math::Color value) noexcept {
         colors[static_cast<std::size_t>(role)] = value;
@@ -209,6 +213,9 @@ class Theme final {
     void setMetric(Metric role, float value);
     void setFont(Font role, FontStyle value);
     void setSurface(Surface role, std::optional<Image> value);
+    void setImageFilter(graphics::Texture::Filter value) noexcept {
+        imageFilter = value;
+    }
 
     // Copies the colors and shapes into an ImGui style, so immediate windows match the retained components.
     void applyTo(ImGuiStyle& style) const;
@@ -256,6 +263,7 @@ class Theme final {
     std::array<FontStyle, kFontCount> fonts{};
     std::array<std::optional<Image>, kSurfaceCount> surfaces{};
     std::map<std::string, std::string, std::less<>> fontFiles;
+    graphics::Texture::Filter imageFilter = graphics::Texture::Filter::Nearest;
 };
 
 } // namespace haylen::ui

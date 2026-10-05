@@ -185,13 +185,21 @@ Theme Theme::fromJson(const core::Json& document, const Theme& base, const Textu
     if (!document.is_object()) {
         throw std::invalid_argument("A theme must be a JSON object.");
     }
-    core::JsonValidator::requireKnownKeys(document, {"name", "colors", "metrics", "fonts", "fontFiles", "surfaces"}, "the theme");
+    core::JsonValidator::requireKnownKeys(document, {"name", "colors", "metrics", "fonts", "fontFiles", "surfaces", "imageFilter"}, "the theme");
     if (!document.contains("name") || !document.at("name").is_string() || document.at("name").get<std::string>().empty()) {
         throw std::invalid_argument("A theme needs a name.");
     }
 
     Theme theme = base;
     theme.name = document.at("name").get<std::string>();
+    if (document.contains("imageFilter")) {
+        const core::Json& value = document.at("imageFilter");
+        const std::optional<graphics::Texture::Filter> filter = value.is_string() ? graphics::Texture::filterFromName(value.get<std::string>()) : std::nullopt;
+        if (!filter) {
+            throw std::invalid_argument("The image filter of the theme must be \"nearest\" or \"linear\".");
+        }
+        theme.imageFilter = *filter;
+    }
 
     for (const auto& [key, value] : readSection(document, "colors").items()) {
         const std::optional<Color> role = colorFromName(key);

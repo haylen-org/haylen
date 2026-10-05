@@ -1034,6 +1034,7 @@ class ComponentAssetTest : public ComponentTest {
                   "surfaces": {"panel": {"image": "ui/panel.png", "slice": 8}, "button": {"image": "ui/panel.png", "slice": 8, "padding": 4}, "track": {"image": "ui/panel.png", "slice": 4, "padding": 4},
                       "trackFill": {"image": "ui/fill.png", "slice": 2, "colorize": true}, "stickBase": {"image": "ui/panel.png", "slice": 8, "colorize": true}, "tooltip": {"image": "ui/panel.png", "slice": 8, "padding": 6}}})"},
               {"content/themes/broken.json", R"({"name": "broken", "fonts": {"body": {"font": "missing"}}})"},
+              {"content/themes/smooth.json", R"({"name": "smooth", "imageFilter": "linear"})"},
               {"content/i18n/en.json", R"({"menu": {"play": "Play {n}"}})"},
           }) {}
 };
@@ -1061,6 +1062,17 @@ TEST_F(ComponentAssetTest, LoadsImagesThemesAndTranslations) {
     mount(R"({"kind": "image", "image": "ui/missing.png"})");
     ASSERT_TRUE(fixture.frameUntil([&] { return getEngine().getError() != nullptr; }));
     EXPECT_NE(std::string_view(getEngine().getError()->what()).find("The UI image \"ui/missing.png\" could not be loaded."), std::string::npos);
+}
+
+TEST_F(ComponentAssetTest, LoadsImagesWithTheFilterOfTheTheme) {
+    const auto loaded = [&] { return getUi().getContext().getImage("ui/icon.png"); };
+    ASSERT_TRUE(fixture.frameUntil([&] { return loaded().isValid(); }));
+    EXPECT_EQ(loaded().getOptions().filter, graphics::Texture::Filter::Nearest);
+
+    getUi().setTheme(getUi().loadTheme(getEngine(), "themes/smooth.json"));
+    EXPECT_FALSE(loaded().isValid());
+    ASSERT_TRUE(fixture.frameUntil([&] { return loaded().isValid(); }));
+    EXPECT_EQ(loaded().getOptions().filter, graphics::Texture::Filter::Linear);
 }
 
 TEST_F(ComponentAssetTest, PressesImageButtons) {

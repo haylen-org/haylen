@@ -44,7 +44,7 @@ The functions `assets.load(path, nil, options)` and `assets.loadAsync(path, nil,
 ```json
 {
     "groups": {
-        "menu": ["maps/island.tmj", "tiny_swords/units/blue/", "effects/flames.particles"]
+        "menu": [{"path": "maps/island.tmj", "options": {"filter": "linear"}}, {"path": "world/props.json", "type": "atlas", "options": {"filter": "linear"}}]
     }
 }
 ```
@@ -140,13 +140,13 @@ local spawned = map:spawn({
     enemy_spawn = function(object)
         return {kind = 'spawn', x = object.worldX, y = object.worldY}
     end,
-    tree_region = function(object)
-        return {kind = 'trees', x = object.worldX, y = object.worldY, width = object.width, height = object.height}
+    wilds = function(object)
+        return {kind = 'wilds', x = object.worldX, y = object.worldY, width = object.width, height = object.height}
     end,
 }, 'gameplay')
 ```
 
-Tiny Island itself reads the gameplay layer with `map:objects('gameplay')` and switches on `object.type`, because it gathers the points into its own tables rather than creating entities one by one. Both approaches read the same data, and the raw coordinates are world coordinates there because the island layers have no offsets and the map is orthogonal.
+Tiny Island itself reads the gameplay layer with `map:objects('gameplay')` and switches on `object.type`, because it gathers the points into its own tables rather than creating entities one by one. Both approaches read the same data, and the raw coordinates are world coordinates there because the object layers of the island have no offsets and the map is orthogonal.
 
 ## Worlds
 
@@ -160,38 +160,42 @@ end
 
 ## The Tiny Island map
 
-The island lives in `samples/games/tiny-island/content/maps/` as `island.tmj` and four external tilesets. The tool `samples/games/tiny-island/tools/generate_island_map.py` writes all of them from seeded noise, and they open and edit in Tiled 1.12. The file `samples/games/tiny-island/source/systems/island.lua` loads the map and gives the rest of the game what it needs from it.
+The island lives in `samples/games/tiny-island/content/maps/` as `island.tmj` and three external tilesets. The tool `samples/games/tiny-island/tools/generate_island_map.py` writes all of them from seeded noise, and they open and edit in Tiled 1.12. The file `samples/games/tiny-island/source/systems/island.lua` loads the map with the `linear` filter, because the art is painted in high definition, and gives the rest of the game what it needs from it.
 
-The map is orthogonal, 56 by 36 cells of 64 pixels, with the water color `#47aba9` as its background color, which matches the `clearColor` in `app.json` so the sea fills the screen around the map.
+The map is orthogonal, 56 by 36 cells of 64 pixels, with the water color `#2fb3c4` as its background color, which matches the `clearColor` in `app.json` so the sea fills the screen around the map.
 
 | Layer | Kind | Content |
 | --- | --- | --- |
+| `water` | Image | The sea, a water image that repeats on both axes. |
 | `foam` | Tile | Animated foam under every coast cell. |
-| `ground` | Tile | Grass with edge tiles picked from the four neighbours of each cell. |
-| `shadow` | Tile | Shadows under the cliff. |
-| `cliffs` | Tile | The cliff face south of the plateau. |
-| `plateau` | Tile | The raised ground in the north east. |
-| `decorations` | Object | Bushes, rocks and rocks in the water as tile objects of class `decoration`. |
+| `sand` | Tile | The beach, corner tiles of the land. |
+| `grass` | Tile | The meadow, corner tiles of the land one cell in from the coast. |
+| `path` | Tile | Worn dirt paths from a clearing around the fire to three beaches. |
+| `shadow` | Tile | The shadow the high ground casts, the high ground shifted down and to the right. |
+| `cliffs` | Tile | The stone face of the high ground, the high ground shifted one cell down so only its front shows. |
+| `plateau` | Tile | The high ground in the north east, with a straight cliff along its south side. |
+| `decorations` | Object | Bushes, rocks, grass, flowers, mushrooms, shells, driftwood and rocks in the water as tile objects of class `decoration`. |
 | `gameplay` | Object | Points and regions that the game reads by class. |
 | `collision` | Object | Rectangles that block movement, in a hidden layer of class `collision`. |
-| `clouds` | Object | Cloud tile objects of class `cloud`, with opacity 0.55 and parallax 1.25. |
+| `clouds` | Object | Cloud tile objects of class `cloud`, with opacity 0.45 and parallax 1.25. |
 
-The tilesets follow the art in `content/tiny_swords/` of the sample.
+The tilesets use the art in `content/world/` of the sample.
 
-- The file `terrain.tsj` is an image tileset of 64-pixel tiles with two edge Wang sets, `Grass` and `High ground`, so the island can be repainted by hand with the Tiled terrain brush.
-- The files `foam.tsj` and `shadow.tsj` hold 192-pixel tiles with a tile offset of `(-64, 64)`, which centers each large tile on its 64-pixel cell. The foam tile animates through 16 frames.
-- The file `decorations.tsj` is an image collection with `objectalignment` set to `bottom`, so decorations stand on their point. Bushes and rocks in the water are sub-rectangles of strip images with tile animations.
+- The file `terrain.tsj` is an image tileset of 64-pixel tiles made for corner layers, which sit half a tile right and down so that every tile takes the state of the four cells around its corners. Each material (sand, grass, high ground, path and the stone face) has the fifteen shapes of a corner tile in four copies, because its texture repeats every two tiles and each copy holds the part of the texture of its position. The tileset holds four corner Wang sets, `Sand`, `Grass`, `High ground` and `Path`, so the island can be repainted by hand with the Tiled terrain brush, and a row of shadow shapes.
+- The file `foam.tsj` holds 128-pixel tiles with a tile offset of `(-32, 32)`, which centers each large tile on its 64-pixel cell. The foam tile animates through four frames.
+- The file `decorations.tsj` is an image collection whose tiles are regions of the props and cloud atlases, with `objectalignment` set to `bottom`, so decorations stand on their point.
 
 The conventions the game relies on are these.
 
 - Every tile layer has the property `collision` set to `false`, so `map:buildCollision` ignores the art and takes collision only from the `collision` layer. Those rectangles are merged from blocked cells (water, cliffs and plateau) and collide with the default category 1, which is `config.category.world` in the game.
-- The `gameplay` layer holds one point of class `campfire`, one point of class `player_start`, twelve points of class `enemy_spawn` on walkable coast cells at twelve bearings around the fire and four rectangles of class `tree_region`, one per quarter of the island.
-- The `campfire` point sits on a walkable cell at or near the middle of the island, and the player starts two cells south of it.
+- The `gameplay` layer holds one point of class `campfire`, one point of class `player_start`, twelve points of class `enemy_spawn` on walkable coast cells at twelve bearings around the fire and four rectangles of class `wilds`, one per quarter of the island, where trees grow and sheep graze.
+- The `campfire` point sits on a walkable grass cell at or near the middle of the island, and the player starts two cells south of it.
+- Trees and sheep stay off the paths, which the game finds with `map:tile` on the `path` layer.
 
-The file `island.lua` uses these conventions in a few lines. It builds physics collision with `map:buildCollision`, marks every cell under a `collision` rectangle as blocked in a [navigation grid](lua-api/navigation2d.md) with `map:worldToCell`, collects the gameplay points by class, and scatters trees with Poisson disk sampling inside the tree regions, away from the fire.
+The file `island.lua` uses these conventions in a few lines. It builds physics collision with `map:buildCollision`, marks every cell under a `collision` rectangle as blocked in a [navigation grid](lua-api/navigation2d.md) with `map:worldToCell`, collects the gameplay points by class, and scatters trees with Poisson disk sampling inside the wild regions, away from the fire.
 
 ```lua
-self.map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
+self.map = tiled.newMapRenderer(assets.load('maps/island.tmj', nil, {filter = 'linear'}))
 self.world = physics2d.newWorld({gravity = {0, 0}, pixelsPerMeter = 64})
 self.walls = self.map:buildCollision(self.world)
 
@@ -221,13 +225,13 @@ end
 python3 samples/games/tiny-island/tools/generate_island_map.py
 ```
 
-The tool of the sample writes `island.tmj`, `terrain.tsj`, `foam.tsj`, `shadow.tsj` and `decorations.tsj` into the `content/maps` folder of the sample that holds it, with the default seed `20260927`, or of the package that `--package` names. The tileset images come from `content/tiny_swords/` of the sample, and the generator stops with a message when they are missing. The same seed always gives the same island. Another island comes from a seed of its own:
+The tool of the sample writes `island.tmj`, `terrain.tsj`, `foam.tsj` and `decorations.tsj` into the `content/maps` folder of the sample that holds it, with the default seed `20260927`, or of the package that `--package` names. The tilesets use the images and atlases in `content/world/` of the package, and the generator stops with a message when one is missing. The same seed always gives the same island. Another island comes from a seed of its own:
 
 ```sh
 python3 samples/games/tiny-island/tools/generate_island_map.py --seed 7
 ```
 
-Regenerating overwrites the five files, including any edit made to them in Tiled. The game reads whatever `island.tmj` holds, so a hand-edited island works as long as it keeps the layer names and object classes above.
+Regenerating overwrites the four files, including any edit made to them in Tiled. The game reads whatever `island.tmj` holds, so a hand-edited island works as long as it keeps the layer names and object classes above.
 
 ## From C++
 

@@ -1,4 +1,4 @@
--- Short visual feedback in the world: particle bursts, one-shot animations and floating numbers.
+-- Short visual feedback in the world: particle bursts, one-shot animations such as slashes, thrusts and explosions, and floating numbers.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local particles2d = require('haylen.particles2d')
@@ -9,22 +9,18 @@ local config = require('config')
 local effects = {}
 effects.__index = effects
 
-local bursts = {chips = 'effects/wood_chips.particles', heal = 'effects/heal.particles', sparks = 'effects/sparks.particles', dust = 'effects/dust.particles'}
+local bursts = {'sparks', 'chips', 'dust', 'smoke', 'embers', 'wool', 'flames'}
 
-local animations = {
-    explosion = {path = 'effects/explosion_01.png', frame = 192, fps = 16},
-    bigExplosion = {path = 'effects/explosion_02.png', frame = 192, fps = 16},
-    splash = {path = 'effects/water_splash.png', frame = 192, fps = 16},
-}
+-- Frames per second of every one-shot animation of the effects atlas.
+local animations = {slash = 16, thrust = 16, explosion = 16, hit = 22, splash = 14}
 
 function effects.new()
-    local self = setmetatable({emitters = {}, playing = {}, numbers = {}}, effects)
-    for name, path in pairs(bursts) do
-        self.emitters[name] = particles2d.newEmitter(assets.load(path))
+    local self = setmetatable({emitters = {}, clips = {}, playing = {}, numbers = {}, font = assets.font('fonts/lilita_one_regular.ttf')}, effects)
+    for _, name in ipairs(bursts) do
+        self.emitters[name] = particles2d.newEmitter(assets.load('effects/' .. name .. '.particles', nil, art.options))
     end
-    self.clips = {}
-    for name, spec in pairs(animations) do
-        self.clips[name] = art.strip(spec.path, spec.frame, {fps = spec.fps, loop = false})
+    for name, framesPerSecond in pairs(animations) do
+        self.clips[name] = art.effect(name, framesPerSecond)
     end
     return self
 end
@@ -36,9 +32,12 @@ function effects:burst(name, x, y, count)
     emitter:burst(count)
 end
 
-function effects:animate(name, x, y, scale)
+-- Plays a one-shot animation at a point. The table `options` may set `rotation`, `scale`, `color` and `glow`, which keeps the colors bright at night.
+function effects:animate(name, x, y, options)
+    options = options or {}
     local clip = self.clips[name]
-    local sprite = graphics2d.newSprite(clip.texture, {x = x, y = y, pivotX = 0.5, pivotY = 0.5, scaleX = scale or 1, scaleY = scale or 1, layer = config.layer.effects, depth = y})
+    local scale = options.scale or 1
+    local sprite = graphics2d.newSprite(clip.texture, {x = x, y = y, rotation = options.rotation or 0, scaleX = scale, scaleY = scale, color = options.color or '#FFFFFFFF', layer = config.layer.effects, depth = y, unshaded = options.glow or false})
     self.playing[#self.playing + 1] = {clip = clip, sprite = sprite, time = 0}
 end
 
@@ -78,7 +77,8 @@ function effects:draw()
         local fade = 1 - number.time / 0.9
         local color = number.color or '#FFFFFFFF'
         local alpha = string.format('#%02X%s', math.floor(fade * 255), color:sub(4))
-        graphics2d.drawText(nil, number.text, number.x, number.y - 50 - number.time * 60, {size = 30, color = alpha, outlineWidth = 3, outlineColor = string.format('#%02X1B1E2B', math.floor(fade * 255)), anchor = {0.5, 1}, layer = config.layer.overlay})
+        local rise = number.time * 70
+        graphics2d.drawText(self.font, number.text, number.x, number.y - 40 - rise, {size = 34, color = alpha, outlineWidth = 4, outlineColor = string.format('#%02X1E1B33', math.floor(fade * 255)), anchor = {0.5, 1}, layer = config.layer.overlay})
     end
 end
 

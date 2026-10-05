@@ -151,7 +151,7 @@ Text measures in whole design units, so a label, button or choice placed at its 
 
 Cards and panels add padding from two sources. Their own `padding` applies when it is set, and otherwise the theme `panelPadding` metric applies. The `padding` of their theme surface image is always added on top, so content clears thick frame borders.
 
-The Tiny Island HUD shows the typical shape of a game HUD. A padded root column holds a top row with the survivor panel on the left, a growing spacer and the day panel and pause button on the right. A toast sits under it, a growing spacer pushes the touch controls to the bottom, and the touch row stretches across the screen.
+The Tiny Island HUD shows the typical shape of a game HUD. A padded root column holds a top row with the survivor panel and its health, food, special and wood meters on the left, a growing spacer and the day and fire panel and pause button on the right. A toast sits under it, a growing spacer pushes the touch controls to the bottom, and the touch row stretches across the screen.
 
 ```lua
 ui.mount(ui.column{
@@ -159,14 +159,14 @@ ui.mount(ui.column{
     ui.row{
         align = 'stretch',
         gap = 24,
-        ui.panel{width = 600, align = 'start', gap = 12, --[[ avatar, health, fuel, wood ]]},
+        ui.panel{width = 620, align = 'start', gap = 10, --[[ portrait, health, food, special, wood ]]},
         ui.spacer{grow = 1},
-        ui.panel{align = 'start', gap = 4, --[[ day, phase, raiders ]]},
-        ui.button{id = 'pause', icon = icons .. 'icon_10.png', variant = 'icon', align = 'start'},
+        ui.panel{width = 420, align = 'start', gap = 8, --[[ day, phase, fire, raiders ]]},
+        ui.button{id = 'pause', icon = art.icon('pause'), variant = 'icon', align = 'start'},
     },
     ui.toast{id = 'notice', duration = 4},
     ui.spacer{grow = 1},
-    touchControls(),
+    touchControls(class),
 })
 ```
 
@@ -191,7 +191,7 @@ Every kind also accepts the [common properties](lua-api/ui.md#common-properties)
 
 Games reach for a few of them often. The kind `circularProgress` with `style = 'cooldown'` shades an ability icon while it recharges. The kinds `stepper` and `segmentedControl` pick settings with left and right, the way console menus do. The kind `slotGrid` holds inventories and hotbars and moves items between slots, draggable lists and other documents, with the pointer and by carrying them with a gamepad or a remote. The kind `keyCapture` reads the next key, mouse button, gamepad button or stick for a controls screen and returns a binding the action map takes. The kind `window` floats a draggable panel over the game, and `contextMenu` opens actions on a right click, a long press or `uiMenu`.
 
-The Tiny Island screens use a small part of the catalog. The menu is a `pageHeader` with `banner = true` over a column of buttons. The class selection screen uses `imageButton` avatars whose `tint` dims the classes that are not chosen, and `progress` bars for the stats. The settings sheet is a `panel` holding a `settingsForm` of `settingsRow` nodes with sliders, a combo and toggles. The HUD uses panels, icons, labels, progress bars, an icon button, a toast and the touch controls.
+The Tiny Island screens use a small part of the catalog. The menu is the logo as an `image` over a column of buttons. The class selection screen uses a `pageHeader` with `banner = true`, `imageButton` portraits whose `tint` dims the classes that are not chosen, and `progress` bars for the stats. The settings sheet is a `panel` holding a `settingsForm` of `settingsRow` nodes with sliders, a combo and toggles. The HUD uses panels, icons, labels, progress bars, an icon button, a toast and the touch controls.
 
 ## Events and handlers
 
@@ -303,7 +303,7 @@ A theme holds every color, metric, font and surface the components use, so no co
 An app adds its own theme with a JSON file loaded by `ui.loadTheme(path, base)`. The theme starts as a copy of the registered theme `base`, which defaults to `dark`, so the file only lists what it changes. The function `loadTheme` registers the fonts of `fontFiles`, loads the surface images and returns the theme name without switching to it. Loading a file whose `name` matches a registered theme replaces that theme, and the change shows at once when it is active. Tiny Island loads its theme at startup in `source/main.lua`.
 
 ```lua
-ui.setTheme(ui.loadTheme('ui/theme.json', 'light'))
+ui.setTheme(ui.loadTheme('ui/theme.json', 'dark'))
 ```
 
 A theme file has these keys.
@@ -316,6 +316,7 @@ A theme file has these keys.
 | `fonts` | [Font roles](lua-api/ui.md#theme-fonts) mapped to `{"font": name, "size": number, "bold": boolean, "italic": boolean}`, where every key is optional. |
 | `fontFiles` | Font names mapped to TrueType or OpenType files in the package assets, registered unless a font with that name already exists. The function `ui.addFont(name, path)` registers fonts from Lua too, and `ui.addFont(name, family)` registers a font family, whose faces and fallback fonts every text component of the roles that name it uses. |
 | `surfaces` | [Surfaces](lua-api/ui.md#theme-surfaces) mapped to nine-slice images, or to `null` to go back to flat colors. |
+| `imageFilter` | The filter that the pictures of `image`, `icon`, `imageButton`, `avatar`, `circularProgress` and the touch controls load with, `'nearest'` (the default) for pixel art or `'linear'` for painted art that the screen scales. Switching to a theme with another filter loads the pictures again. |
 
 Unknown keys, roles, metrics and surfaces are errors, so a typo in a theme file never goes unnoticed.
 
@@ -346,32 +347,36 @@ A surface image is an object with these keys.
 
 The corners keep their texture size times `scale`, and the edges and center stretch or tile. When the bounds are too small for both borders, the borders shrink together.
 
-A theme may leave out the hover or pressed surface of a button, and the normal surface of the same button stands in for it. Tiny Island gives its paper buttons hover and pressed states with the same image and a different `tint`.
+A theme may leave out the hover or pressed surface of a button, and the normal surface of the same button stands in for it. Tiny Island gives its buttons hover states with the same image and a different `tint`.
 
-Without `colorize`, a surface image ignores the color the component would have used, so every tone of a progress bar and every state of a touch stick look alike. With `colorize = true`, one light image serves every color. Tiny Island draws the fill of every HUD bar from one light image, `big_bar_fill_light.png`, and the tone of each `progress` node turns it green for health, orange for fuel and red when either runs low.
+Without `colorize`, a surface image ignores the color the component would have used, so every tone of a progress bar and every state of a touch stick look alike. With `colorize = true`, one light image serves every color. Tiny Island draws the fill of every HUD bar from one light image, `track_fill.png`, and the tone of each `progress` node turns it green for health, orange for food and fuel and red when one runs low.
 
-The fill of toggles, sliders and progress bars stays inside the `padding` of the `track` surface, so a framed bar image keeps its frame visible around the fill. Tiny Island pads its bar frame by `[9, 8, 13, 8]` so the fill sits in the groove of the wooden bar. A toggle draws its `track` in every state, and its `trackFill` grows inside the groove from the start side as the `knob` slides on, so an empty groove means off and a full one means on.
+The fill of toggles, sliders and progress bars stays inside the `padding` of the `track` surface, so a framed bar image keeps its frame visible around the fill. Tiny Island pads its groove by 5 units so the fill sits inside its outline. A toggle draws its `track` in every state, and its `trackFill` grows inside the groove from the start side as the `knob` slides on, so an empty groove means off and a full one means on.
 
 ### The Tiny Island theme
 
-The file `samples/games/tiny-island/content/ui/theme.json` turns the flat `light` theme into the Tiny Swords look. It is a good model for a textured theme.
+The file `samples/games/tiny-island/content/ui/theme.json` turns the `dark` theme into the casual fantasy look of the game, with art painted for it in high definition. It is a good model for a textured theme.
 
-- The key `fontFiles` registers the Kenney Future fonts, and `fonts` gives the narrow cut to `body` and `caption` and the regular cut to `button`, `heading` and `title`. The role `monospace` keeps the built-in font.
-- The key `colors` sets a parchment palette with dark brown text, a teal accent and a gold `focus` color that the class selection screen also uses for the chosen class name.
-- The key `metrics` makes controls larger (`controlHeight` 76), lowers `panelPadding` to 12 because the paper image already brings its own padding, and raises `progressHeight` and `sliderTrackHeight` to 40 so bars and sliders fit the wooden bar art.
-- The surfaces `panel` and `card` use the same paper image at different scales and paddings with `"fill": "tile"`, `dialog` uses the wooden table and `banner` uses the blue ribbon with only left and right borders, so the ribbon stretches in the middle and keeps its ends.
-- The surfaces `button`, `buttonHover` and `buttonPressed` are paper with different tints. The surfaces `buttonPrimary` and `buttonDestructive` use the big blue and red buttons, and their pressed states use the pressed art with its own `slice`.
-- The surface `track` is the wooden bar with `padding`, `trackFill` is a region of the light fill image with `colorize`, and `knob` is a small round blue button.
-- The surface `stickBase` is a round button region with a translucent `tint`, `stickKnob` reuses the knob image, and `touchButton` and `touchButtonPressed` use the regular and pressed round buttons, each with a `source` that crops the art to the button itself.
-- The keys `check`, `checkChecked`, `tab` and `tabSelected` are the remaining surfaces. Fields, toasts, chips and badges keep the flat colors of the palette.
+- The key `imageFilter` is `linear`, so the icons, portraits and logo of the screens stay smooth when the screen scales them, and every surface sets `"filter": "linear"` for the same reason.
+- The key `fontFiles` registers the rounded display font of the game, and `fonts` gives it to every role but `monospace`.
+- The key `colors` sets a slate indigo palette with white text, a royal blue accent, green, orange and red tones for the HUD bars and a yellow `focus` color that rings the navigation target and marks the chosen class name.
+- The key `metrics` makes controls larger (`controlHeight` 84), lowers `panelPadding` to 10 because the panel image brings its own padding, and sizes bars, sliders, check boxes and the switch to the art.
+- The surfaces `panel`, `card`, `dialog`, `toast` and `menu` use one panel image at different scales and paddings, and `banner` uses the blue ribbon with only left and right borders, so the ribbon stretches in the middle and keeps its folded ends.
+- The surfaces of the three button variants use slate, blue and red buttons. The hover states tint the normal image, and the pressed states use the pressed art, whose face sits lower on a thinner bevel.
+- The surface `track` is a dark groove with `padding` for its outline, `trackFill` is a light pill with `colorize` that the accent, a tone or the toggle state colors, and `knob` is a light knob with `colorize`, so a held knob darkens with the `pressed` color.
+- The surfaces `stickBase`, `stickKnob`, `touchButton` and `touchButtonPressed` give the touch controls a ring, a knob and a round button with its pressed state.
+- The keys `check`, `checkChecked`, `field`, `fieldFocused`, `tab` and `tabSelected` are the remaining surfaces. Chips and badges keep the flat colors of the palette.
+
+The switch of the settings screen shows how the surfaces work together. Off, it is the empty groove with the knob at its start. On, the blue fill covers the groove and the knob sits at its end. Held, the knob darkens, and focused, the yellow ring surrounds it, while the same three images draw every state.
 
 ```json
 {
+    "imageFilter": "linear",
     "surfaces": {
-        "track": {"image": "tiny_swords/ui/sliced/big_bar.png", "slice": [0, 24, 0, 24], "scale": 0.8, "padding": [9, 8, 13, 8]},
-        "trackFill": {"image": "tiny_swords/ui/sliced/big_bar_fill_light.png", "source": [0, 20, 64, 24], "colorize": true},
-        "stickBase": {"image": "tiny_swords/ui/buttons/small_blue_round_button_regular.png", "source": [20, 17, 88, 94], "tint": "#8CFFFFFF"},
-        "touchButtonPressed": {"image": "tiny_swords/ui/buttons/small_blue_round_button_pressed.png", "source": [12, 28, 104, 85]}
+        "track": {"image": "ui/track.png", "slice": 28, "scale": 0.93, "padding": 5, "filter": "linear"},
+        "trackFill": {"image": "ui/track_fill.png", "slice": 16, "scale": 1.3, "colorize": true, "filter": "linear"},
+        "knob": {"image": "ui/knob.png", "colorize": true, "filter": "linear"},
+        "touchButtonPressed": {"image": "ui/touch_button_pressed.png", "filter": "linear"}
     }
 }
 ```
@@ -389,7 +394,7 @@ The kinds `touchStick` and `touchButton` put on-screen controls in a document an
 - A control that stops drawing, because it, its parent or its document was hidden or removed, releases what it held. Values reach the actions at the start of the next frame.
 - A `touchButton` also reports `press` and `release` events for feedback such as sounds.
 
-The Tiny Island HUD puts a floating stick in a large area at the bottom left and three buttons at the bottom right, all touch-only, inside a row whose visibility follows the player's touch controls setting.
+The Tiny Island HUD puts a floating stick in a large area at the bottom left and three buttons at the bottom right, all touch-only, inside a row whose visibility follows the player's touch controls setting. The buttons show the icons of the attack and the special of the chosen class.
 
 ```lua
 ui.row{
@@ -403,10 +408,10 @@ ui.row{
         align = 'end',
         ui.row{
             gap = 24,
-            ui.touchButton{action = 'interact', image = icons .. 'icon_02.png', size = 120, touchOnly = true},
-            ui.touchButton{action = 'special', image = icons .. 'icon_06.png', size = 140, touchOnly = true},
+            ui.touchButton{action = 'interact', image = art.icon('log'), size = 120, touchOnly = true},
+            ui.touchButton{action = 'special', image = art.icon(class.specialIcon), size = 140, touchOnly = true},
         },
-        ui.touchButton{action = 'attack', image = icons .. 'icon_05.png', size = 190, align = 'end', touchOnly = true},
+        ui.touchButton{action = 'attack', image = art.icon(class.attackIcon), size = 190, align = 'end', touchOnly = true},
     },
 }
 ```

@@ -17,7 +17,7 @@ Um item só recebe `[x]` quando está implementado, coberto por testes (quando a
 - Plataformas: macOS, Windows, Linux, iOS e iPadOS, Mac Catalyst, tvOS, Android (celular, tablet e Android TV num só APK) e web desktop e mobile (WebGPU, com WebGL2 como alternativa que a página escolhe). visionOS roda o app de iPad, e watchOS não é possível.
 - Todo tipo de app de desktop: janelas comuns, sem moldura, transparentes, sempre no topo e com cliques atravessando, para apps que vivem na área de trabalho ou em cima da barra de tarefas.
 - Runtime web pronto para um editor web futuro (em outro repositório), com pacotes entregues em tempo de execução, reinício sem recarregar a página, hot reload e erros com a pilha do Lua enviados ao JavaScript.
-- Samples em `samples/<categoria>/`, com o jogo Tiny Island (pacote Tiny Swords) e um sample Lua para cada conjunto de recursos.
+- Samples em `samples/<categoria>/`, com o jogo Tiny Island, de arte própria, e um sample Lua para cada conjunto de recursos.
 - Resolução de design configurável (1920x1080 por padrão) com a UI sempre dentro da safe area.
 - Alta performance (milhões de sprites), processamento assíncrono e código de produto, sem gambiarras.
 
@@ -29,7 +29,7 @@ Cada ponto abaixo veio do pedido e precisa estar coberto por algum item da seç�
 2. CMake com CPM (última versão) para baixar dependências.
 3. `haylen.py` que gera e compila para todas as plataformas: desktop, iOS, tvOS, Android e Web.
 4. Assets colocados na pasta certa por plataforma.
-5. Jogo usando o Tiny Swords (baixado do itch.io ou do zip local).
+5. Um jogo completo feito com a engine, com arte própria.
 6. Resolução 1920x1080 com a UI dentro da safe area.
 7. Tudo para 2D: textos, sprites, alta performance para milhões de sprites.
 8. Suporte a mouse, teclado, touch e joystick.
@@ -64,7 +64,7 @@ Cada ponto abaixo veio do pedido e precisa estar coberto por algum item da seç�
 37. A engine carrega um `.zip` com o app inteiro (`app.json`, `source/` e `content/`) e executa o `source/main.lua`. Também executa a partir de uma pasta com o mesmo formato.
 38. Todo caminho de asset é relativo à pasta `content/`, sem repetir `content/` no caminho, para fontes, imagens, vídeos, áudios e qualquer outro tipo.
 39. Testes para tudo ficar 100% testado, sem testes inúteis, sem testes que geram testes e sem excesso de testes.
-40. Os samples ficam em `samples/<categoria>/`, com o Tiny Island e os assets do Tiny Swords em `samples/games/tiny-island`.
+40. Os samples ficam em `samples/<categoria>/`, com o Tiny Island e a sua arte em `samples/games/tiny-island`.
 41. Sockets vêm do Varn no nativo. Na web, onde não existe TCP bruto, a engine oferece WebSocket pelo JavaScript do navegador, e o HTTP do Varn usa o fetch.
 42. Cuidado com o async do Varn para nunca travar a UI e o loop principal.
 43. A melhor arquitetura e organização possível, bem pesquisada e bem estruturada.
@@ -320,7 +320,7 @@ PROJECT.md                  Este documento.
 README.md                   Apresentação e início rápido.
 .github/workflows/ci.yml    CI: formatação, testes, cobertura, SDK e os artefatos web, Android e Apple.
 docs/                       Guias e referência da API Lua (docs/lua-api/).
-tools/                      Ferramentas Python (importador do Tiny Swords, gerador do mapa da ilha, leitura e escrita de PNG).
+tools/                      Leitor e escritor de PNG das ferramentas que desenham a arte dos samples e o `test_haylen.py`, os testes das regras do `haylen.py`.
 engine/
   CMakeLists.txt            Projeto CMake independente da engine, usável por outros projetos.
   cmake/                    Módulos CMake: CPM, dependências e patches, haylen_add_app, deploy do conteúdo, shaders, avisos, cobertura, instalação do SDK, fusão das slices do xcframework e toolchain do Mac Catalyst.
@@ -370,7 +370,7 @@ Todo subsistema é um plugin (`plugins::Plugin`) com nome e os ganchos `start`, 
 - Um pacote é uma pasta ou um `.zip` com `app.json`, os módulos Lua em `source/` e os recursos em `content/`. Nada mais na pasta faz parte do pacote, então projetos de plataforma, notas e arquivos de build podem ficar ao lado.
 - `app.json` define identidade (`name`, `identifier`, `version`), janela (inclusive as opções de desktop), resolução de design e política de escala, orientação, passo fixo, tempo máximo de frame, cor de fundo, splash, ciclo de vida, sessão de áudio, debug, autoloads e bibliotecas nativas. Ele é lido antes do Lua, porque a janela é criada antes do primeiro script, e chaves desconhecidas e valores inválidos são erros claros.
 - `source/main.lua` é o ponto de entrada. `require("scenes.menu")` carrega `source/scenes/menu.lua` (ou `source/scenes/menu/init.lua`), também dentro do zip e sempre como texto.
-- Todo caminho de asset é relativo a `content/`: `assets.texture("tiny_swords/units/blue/warrior/idle.png")` lê `content/tiny_swords/units/blue/warrior/idle.png`.
+- Todo caminho de asset é relativo a `content/`: `assets.texture("ui/logo.png")` lê `content/ui/logo.png`.
 - Onde o pacote fica: no desktop, a pasta ou o zip passado ao player (`haylen --dev samples/games/tiny-island` ou `haylen app.zip`). Nos apps Windows e Linux, `app/` ou `app.zip` ao lado do executável. Nos apps Apple, `Resources/app` do bundle. No Android, `app/` nos assets do APK, com `haylen-package-index.json`. Na web, o `app.zip` que a página entrega (`Module.haylen.packageData` ou `packageUrl`), ou `/app` no sistema de arquivos virtual dos apps C++.
 
 ### 6.3 Fluxo de um frame
@@ -459,7 +459,6 @@ As versões mínimas são iOS e tvOS 16.3, macOS 13.3, Mac Catalyst 16.4 e Andro
 | `bench` | Roda os benchmarks de sprites, algoritmos (`--suite algorithms`), geração procedural (`--suite procedural`) e Lua (`--suite lua`). |
 | `sdk` | Compila e instala o SDK para `find_package(haylen)`. |
 | `embedding` | Compila o sample C++ por `add_subdirectory`, CPM ou o SDK instalado. |
-| `assets` e `map` | Importam o Tiny Swords e geram o mapa da ilha do Tiny Island. |
 | `clean` | Apaga `build/`. |
 
 Os comandos recebem a pasta do app, relativa à pasta atual ou absoluta (`python3 haylen.py run samples/games/tiny-island`), e `run` sem app ou com uma pasta que não é app para com um erro claro.
@@ -572,7 +571,7 @@ Regra geral: todo item desta seção que tem API em C++ só está pronto quando 
 - [x] **Câmera 2D** (`graphics2d::Camera`): posição, zoom, rotação, limites, seguir suave, zona morta, tremor e área visível para culling.
 - [x] **Sprites** (`graphics2d::Sprite`): pivô, rotação, escala, flips (incluindo a diagonal do Tiled), tinta, cor de flash para dano, camada e profundidade.
 - [x] **Atlas** (`animation2d::SpriteAtlas`): regiões com trim, TexturePacker JSON (hash e array), Aseprite JSON e fatiamento em grade.
-- [x] **Nine-slice** (`graphics2d::NineSlice`) clássico e em nove peças separadas (formato das peças do Tiny Swords), com centro esticado ou repetido.
+- [x] **Nine-slice** (`graphics2d::NineSlice`) clássico e em nove peças separadas (formato da arte que vem em nove peças soltas), com centro esticado ou repetido.
 - [x] **Primitivas**: linhas com espessura, polilinhas, retângulos, contornos, círculos, anéis, arcos e polígonos côncavos.
 - [x] **Meshes** indexadas com textura, cor e recorte (scissor).
 - [x] **Batches estáticos** (`graphics2d::StaticSpriteBatch`) em buffers imutáveis.
@@ -648,7 +647,7 @@ O ciclo de dia e noite é mecânica de jogo e fica no Tiny Island. O grupo I da 
 ### 8.13 UI (Dear ImGui, temas e componentes)
 
 - [x] **Backend Dear ImGui próprio** (`ui::Backend`) que desenha pela pipeline de mesh do `graphics2d::Renderer` em coordenadas de design, implementa o protocolo de texturas dinâmicas do Dear ImGui, recebe mouse, toque, teclado, texto, clipboard e navegação por gamepad, mostra o teclado virtual quando um campo pede texto, transforma erros do Dear ImGui em erros de script e se recupera de frames deixados abertos. Validado no Chrome com WebGPU.
-- [x] **Temas** (`ui::Theme`): papéis semânticos `Theme::Color`, `Theme::Metric`, `Theme::Font` e `Theme::Surface`, temas `dark` e `light`, temas em JSON sobre uma base com imagens nine-slice e fontes, troca em tempo real e sincronização com o estilo do Dear ImGui. O tema texturizado Tiny Swords fica no sample (`content/ui/theme.json`).
+- [x] **Temas** (`ui::Theme`): papéis semânticos `Theme::Color`, `Theme::Metric`, `Theme::Font` e `Theme::Surface`, temas `dark` e `light`, temas em JSON sobre uma base com imagens nine-slice e fontes, troca em tempo real e sincronização com o estilo do Dear ImGui. O tema texturizado do Tiny Island fica no sample (`content/ui/theme.json`).
 - [x] **Árvore de componentes retida** (`ui::Document`, `UiDocument` em Lua): propriedades lidas de JSON com validação estrita, patches atômicos validados sobre o estado mesclado, troca de filhos, comandos, medição com cache por frame, propriedades comuns (visível, habilitado, tooltip, crescer, tamanhos e alinhamento), eventos por id de nó entregues antes do update e registro por tipo (`ui::ComponentRegistry`).
 - [x] **Containers**: column, row, grid, stack, scroll (com arrasto por toque), card, panel, spacer, divider, tabs, formField, splitter e safeArea.
 - [x] **Texto**: label (quebra de linha, alinhamento e contorno para texto sobre o jogo), pageHeader (com faixa), sectionTitle, emptyState e alert.
@@ -735,13 +734,13 @@ O ciclo de dia e noite é mecânica de jogo e fica no Tiny Island. O grupo I da 
 
 O jogo é escrito em Lua e fica em `samples/games/tiny-island/`: `app.json`, `source/` (`main.lua`, `config.lua` com os valores de ajuste, e as pastas `data/`, `scenes/`, `systems/`, `entities/` e `ui/`) e `content/` com os assets. O app de cada plataforma é montado a partir dos templates por `python3 haylen.py run samples/games/tiny-island [--platform ...]`, e `platform/` guarda só o login Google do Android e da web.
 
-Sobreviver o maior número de noites numa ilha. Durante o dia o jogador corta árvores e alimenta a fogueira. À noite os inimigos aparecem e só a luz da fogueira mantém um círculo seguro. Quanto menos madeira, menor o círculo.
+Sobreviver o maior número de noites numa ilha. Durante o dia o jogador corta árvores, alimenta a fogueira e caça ovelhas para comer. À noite os inimigos aparecem e só a luz da fogueira mantém um círculo seguro. Quanto menos madeira, menor o círculo.
 
 ### 9.2 Fluxo de telas
 
-1. Boot: escolhe o idioma do aparelho no primeiro uso (`system.locale` e `localization.bestMatch`) e pré-carrega a cena do menu (`scene.preload`), cujo `load` carrega os grupos `boot` e `menu`, com barra de progresso.
-2. Menu principal: a ilha ao entardecer ao fundo, com os cinco sobreviventes em volta da fogueira e a câmera passeando devagar, título numa fita (ribbon) do Tiny Swords, botões Jogar, Configurações e Sair (só no desktop), recorde e música do menu.
-3. Seleção de classe: a câmera enquadra o sobrevivente escolhido na fogueira, que comemora com a animação de ataque, com avatares clicáveis, folha de papel com a descrição do especial e barras de atributos.
+1. Boot: a logo do jogo com uma barra de progresso. Escolhe o idioma do aparelho no primeiro uso (`system.locale` e `localization.bestMatch`) e pré-carrega a cena do menu (`scene.preload`), cujo `load` carrega os grupos `boot` e `menu`.
+2. Menu principal: a ilha ao entardecer ao fundo, com os quatro sobreviventes e ovelhas em volta da fogueira e a câmera passeando devagar, a logo do jogo, botões Jogar, Configurações e Sair (só no desktop), recorde e música do menu.
+3. Seleção de classe: a câmera enquadra o sobrevivente escolhido na fogueira, que comemora com a animação de ataque, com retratos clicáveis, um painel com a descrição do ataque e do especial e barras de atributos.
 4. Loading: o `load` da cena de gameplay carrega o grupo `gameplay` atrás da view de loading, com o sobrevivente esperando na fogueira e barra de progresso.
 5. Gameplay com HUD.
 6. Pausa, configurações e tela de fim de jogo com dias sobrevividos, inimigos derrotados e recorde salvo, como cenas transparentes sobre o jogo escurecido e dessaturado.
@@ -750,22 +749,23 @@ Sobreviver o maior número de noites numa ilha. Durante o dia o jogador corta á
 
 | Classe | Vida | Velocidade | Dano | Alcance | Recarga | Corte | Carga de madeira | Especial |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Warrior | 140 | 300 | 30 | 110 (corpo a corpo) | 0,6 s | 1,0 | 6 | Guarda que bloqueia quase todo o dano enquanto segurada |
-| Archer | 90 | 330 | 22 | 700 (flechas físicas que atravessam um inimigo) | 0,7 s | 0,6 | 5 | Rajada de três flechas |
-| Lancer | 120 | 310 | 34 | 150 (estocada que empurra) | 0,8 s | 0,8 | 6 | Investida que fere tudo no caminho |
-| Monk | 100 | 300 | 14 (pulso em área) | 220 | 1,2 s | 0,5 | 4 | Cura um terço da vida |
-| Pawn | 80 | 360 | 12 | 90 | 0,5 s | 2,0 | 10 | Corrida curta |
+| Warrior | 140 | 300 | 30 | 125 (golpe largo que empurra) | 0,55 s | 1,0 | 6 | Guarda que bloqueia quase todo o dano enquanto segurada |
+| Archer | 90 | 330 | 22 | 700 (flechas que atravessam dois inimigos) | 0,6 s | 0,6 | 5 | Rajada de três flechas, recarga de 4 s |
+| Lancer | 120 | 310 | 34 | 185 (estocada longa) | 0,75 s | 0,8 | 6 | Investida que fere tudo no caminho, recarga de 3 s |
+| Mage | 90 | 300 | 28 | 620 (bola de fogo que explode em área) | 1,1 s | 0,5 | 4 | Anel de fogo que empurra todos em volta, recarga de 6 s |
+
+Cada ataque tem o seu efeito de sprite e de partículas e o seu som: o arco do golpe, a flecha com o rastro, a estocada, a bola de fogo com brasas, luz e explosão, e a faísca de impacto em cada acerto.
 
 ### 9.4 Mapa
 
 - Gerado por `samples/games/tiny-island/tools/generate_island_map.py` e salvo como `samples/games/tiny-island/content/maps/island.tmj`, editável no Tiled.
-- Camadas: fundo de água, espuma animada na costa, grama com bordas por autotile (Wang set de bordas), platô elevado com penhascos e sombra, decorações (arbustos, pedras, pedras na água e nuvens em parallax) e objetos.
-- Objetos: posição da fogueira, posição inicial do jogador, regiões de spawn de árvores, pontos de spawn de inimigos na costa e colisões da borda da ilha e dos penhascos.
+- Camadas: água (imagem repetida), espuma animada na costa, areia, grama, trilhas de terra, sombra, penhasco de pedra e platô, todas em corner tiles com bordas suaves, decorações (arbustos, pedras, capim, flores, cogumelos, conchas, troncos na praia, pedras na água e nuvens em parallax) e objetos.
+- Objetos: posição da fogueira, posição inicial do jogador, regiões selvagens (`wilds`) onde nascem árvores e ovelhas, pontos de spawn de inimigos na costa e colisões da borda da ilha e dos penhascos.
 
 ### 9.5 Árvores e madeira
 
-- Espalhadas com Poisson disk dentro das regiões do Tiled, longe da fogueira e da água.
-- Balançam com o vento (animação de 8 frames).
+- Quatro variedades (carvalho, árvore alta, coqueiro e árvore frutífera), espalhadas com Poisson disk dentro das regiões selvagens, fora das trilhas, longe da fogueira e da água.
+- Balançam com o vento, girando em volta do pé do tronco.
 - Cada golpe faz a árvore tremer, solta lascas (partículas) e toca som. Ao chegar a zero, vira toco e solta de 2 a 3 madeiras.
 - Tocos voltam a ser árvores depois de dois dias.
 - A madeira é coletada ao passar por cima, até a capacidade da classe.
@@ -773,6 +773,7 @@ Sobreviver o maior número de noites numa ilha. Durante o dia o jogador corta á
 
 ### 9.6 Fogueira e círculo seguro
 
+- A fogueira é um anel de pedras com lenha e um único efeito de partículas (chamas, brasas e fumaça) com a luz que cintila, definido num lugar só (`source/entities/flame.lua`) e igual no menu e no jogo.
 - Combustível máximo 100. Cada madeira adiciona 8.
 - Queima 0,1 por segundo de dia e 0,25 por segundo à noite. A cada novo dia perde 15 de uma vez.
 - Raio do círculo: de 90 a 520 pixels, proporcional ao combustível.
@@ -782,76 +783,77 @@ Sobreviver o maior número de noites numa ilha. Durante o dia o jogador corta á
 ### 9.7 Dia e noite
 
 - Ciclo em Lua (`source/systems/day-night.lua`): amanhecer de 15 s, dia de 150 s, entardecer de 15 s e noite de 90 s, com contagem de dias e aviso de cada fase para a partida.
-- Luz ambiente em gradiente, luz da fogueira com cintilação e luz pequena ao redor do jogador.
+- Luz ambiente em gradiente, luz da fogueira com cintilação, luz pequena ao redor do jogador e clarões das explosões e das bolas de fogo.
 - Crossfade de música entre dia e noite e jingles nas trocas de fase.
 
 ### 9.8 Inimigos
 
-- Só nascem à noite, nos pontos de spawn do Tiled. A quantidade cresce a cada noite.
-- Tipos: guerreiro vermelho (corpo a corpo), arqueiro vermelho (à distância, mantém distância) e lanceiro vermelho (resistente). Unidades pretas aparecem a partir da quarta noite.
-- Movimento com A* e steering (separação entre inimigos), sem entrar no círculo seguro.
+- Só nascem à noite, nos pontos de spawn do Tiled. A quantidade cresce a cada noite, e cada noite os deixa 12% mais fortes.
+- Tipos:
+  - Diabrete: desde a primeira noite. Pequeno e rápido, chega em pares, avança em zigue-zague e arranha.
+  - Bruto: desde a primeira noite. Lento e resistente, brilha em vermelho enquanto prepara o golpe e esmaga o chão à sua frente.
+  - Arremessador: desde a segunda noite. Mantém distância e arremessa dardos.
+  - Bombardeiro: desde a terceira noite. Lança bombas em arco que caem num círculo de alerta e explodem.
+- Movimento com A* e steering (separação entre inimigos), sem entrar no círculo seguro. Dardos e bombas se apagam na luz da fogueira.
 - Ao amanhecer os que sobraram fogem e queimam com efeito de explosão.
 
-### 9.9 Combate
+### 9.9 Ovelhas e comida
 
-- Ataques corpo a corpo e à distância, flechas como projéteis físicos, flash branco ao tomar dano, empurrão, números de dano e mortes com explosão.
+- Um rebanho de seis ovelhas vive nas regiões selvagens. Elas pastam e andam, fogem de quem as acerta e, ao cair, deixam duas carnes.
+- A comida cai 0,4 por segundo. Cada carne dá 35 de comida e 8 de vida. Com a comida em zero o sobrevivente perde 2 de vida por segundo, com um aviso.
+- O rebanho volta ao tamanho cheio a cada amanhecer.
 
-### 9.10 HUD
+### 9.10 Combate
 
-- Vida, combustível da fogueira e recarga do especial em barras de madeira coloridas por tom, madeira carregada, dia, contagem regressiva até a próxima fase, número de invasores e avisos de entardecer, amanhecer e fogo apagado, tudo dentro da safe area e feito com a UI temática.
+- Ataques corpo a corpo e à distância com efeitos próprios, projéteis que voam e explodem, flash ao tomar dano, empurrão, números de dano, e animações de dano e de morte de todos os personagens.
 
-### 9.11 Controles
+### 9.11 HUD
+
+- À esquerda, o retrato da classe, a vida, a comida, a recarga do especial e a madeira carregada. À direita, o sol ou a lua com o dia, a contagem regressiva até a próxima fase, o combustível da fogueira e o número de invasores. Avisos de entardecer, amanhecer, fome e fogo apagado. Tudo dentro da safe area e feito com a UI temática.
+
+### 9.12 Controles
 
 | Ação | Teclado e mouse | Gamepad | Toque |
 | --- | --- | --- | --- |
 | Mover | WASD ou setas | Stick esquerdo ou direcional | Joystick virtual flutuante |
-| Atacar ou cortar | Espaço ou clique esquerdo | A (sul) | Botão virtual |
-| Especial | Shift esquerdo ou clique direito | X (oeste) | Botão virtual |
+| Atacar, cortar ou caçar | Espaço ou clique esquerdo | A (sul) | Botão virtual com a arma da classe |
+| Especial | Shift esquerdo ou clique direito | X (oeste) | Botão virtual com o ícone do especial |
 | Interagir | E | B (leste) | Botão virtual |
 | Pausa | Esc | Start | Botão de pausa |
 
 Os controles de toque só aparecem depois que a tela é tocada (`touchOnly`) e podem ser desligados nas configurações. O jogo pausa sozinho quando perde o foco ou vai para o segundo plano.
 
-### 9.12 Áudio
+### 9.13 Arte e áudio
 
-Todos os sons são CC0. Os créditos ficam em `samples/games/tiny-island/content/audio/CREDITS.md`, e os das fontes Kenney Future em `content/fonts/CREDITS.md`.
+- Toda a arte é feita para o jogo: gerada com o Codex e o `$imagegen`, cortada em frames e montada em atlas. O guia de estilo fica no README do sample: casual fantasy polido em alta definição, contorno escuro uniforme, sombreamento cel suave com a luz de cima à esquerda, cores saturadas, e todas as imagens carregadas com o filtro `linear`.
+- Personagens: os quatro heróis com parado, corrida, ataque, especial, dano e morte, os quatro inimigos e a ovelha com as suas animações, num atlas por personagem com uma animação por tag.
+- A fonte da interface é a Lilita One, com a licença em `content/fonts/lilita_one_license.txt`.
+- Todos os sons e músicas são de domínio público (CC0), então nenhum crédito cita autores. Eles cobrem a interface, o machado e a madeira, golpes, guarda, passos, flechas, explosões, dano e morte, a fogueira crepitando, o ambiente da noite, os jingles de amanhecer e entardecer e as músicas do menu, do dia e do fim de jogo.
 
-| Uso | Origem |
-| --- | --- |
-| Clique, confirmar, voltar e erro | Kenney Interface Sounds |
-| Machado | Kenney RPG Audio |
-| Madeira atingida, árvore caindo, golpes, guarda e passos | Kenney Impact Sounds |
-| Jingles de amanhecer e entardecer | Kenney Music Jingles |
-| Pegar madeira, alimentar a fogueira, explosão e dano e morte de inimigo | OpenGameArt "80 CC0 RPG SFX" |
-| Dano no jogador | OpenGameArt "80 CC0 creature SFX" |
-| Espada e flecha | OpenGameArt "Swishes Sound Pack" |
-| Cura | OpenGameArt "Cure Magic" |
-| Fogo crepitando (loop) | OpenGameArt "Fire Crackling" |
-| Ambiente da noite | JaggedStone "Loopable Dungeon Ambience" |
-| Música do menu, do dia e do fim de jogo | RandomMind "The Old Tower Inn", "Market Day" e "Defeat Theme" |
+### 9.14 Recursos da engine exercitados pelo jogo
 
-### 9.13 Recursos da engine exercitados pelo jogo
+- [x] Tudo pela API Lua: cenas com `load` e transições, preload com progresso e `:await()`, UI temática com nine-slice e filtro `linear` nas imagens, atlas de sprites com animações por tag, mapa Tiled com corner tiles, colisão e spawn, Poisson disk, animação de sprites, tweens, partículas, luz 2D, física com filtros e sensores, A\* e steering, áudio com barramentos e crossfade, mapa de ações com teclado, mouse, gamepad e toque, recorde e configurações em `haylen.preferences`, bridge de plataforma (`device.info` e login Google), localização (inglês e português) e overlay de debug.
 
-- [x] Tudo pela API Lua: cenas com `load` e transições, preload com progresso e `:await()`, UI temática com nine-slice, mapa Tiled com colisão e spawn, Poisson disk, animação de sprites, tweens, partículas, luz 2D, física com filtros e sensores, A\* e steering, áudio com barramentos e crossfade, mapa de ações com teclado, mouse, gamepad e toque, recorde e configurações em `haylen.preferences`, bridge de plataforma (`device.info` e login Google), localização (inglês e português) e overlay de debug.
-
-### 9.14 Itens do jogo
+### 9.15 Itens do jogo
 
 - [x] **Jogo em Lua** usando só a API Lua da engine e os módulos do Varn.
 - [x] **Pacote em zip**: o mesmo jogo roda a partir de `tiny-island.zip` no player desktop (Metal) e no navegador (WebGPU).
+- [x] **Arte própria** gerada com o Codex, num estilo só, com o guia de estilo no README.
 - [x] **Mapa da ilha** gerado e editável no Tiled.
 - [x] **Menu principal** com a ilha ao fundo e a logo.
-- [x] **Seleção de classe** com cinco classes.
+- [x] **Seleção de classe** com quatro classes.
 - [x] **Loading** com preload.
 - [x] **Árvores** com vento, corte, tocos e rebrota.
 - [x] **Madeira e fogueira** com consumo diário e contínuo.
+- [x] **Ovelhas e comida**.
 - [x] **Círculo seguro** físico e visual.
 - [x] **Dia e noite** com luz e música.
-- [x] **Inimigos** noturnos com A\* e steering.
-- [x] **Combate** completo.
+- [x] **Inimigos** noturnos variados com A\* e steering.
+- [x] **Combate** completo com efeitos por ataque.
 - [x] **HUD** temático.
 - [x] **Pausa, configurações e fim de jogo** com recorde.
 - [x] **Controles** em todos os dispositivos. Teclado, mouse e toque validados no navegador. O gamepad usa o mesmo mapa de ações e falta testar com um controle físico.
-- [x] **Áudio** completo com créditos.
+- [x] **Áudio** completo, todo de domínio público.
 - [x] **Demo da bridge** nas configurações. O login Google real depende do client id do projeto no Google Cloud.
 
 ## 10. Editor web (projeto futuro, em outro repositório)
@@ -911,7 +913,7 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 | 8 | UI: backend Dear ImGui, temas e componentes | Concluída |
 | 9 | Bindings Lua de todos os módulos com testes | Concluída. Todas as capacidades públicas em C++ têm binding, teste e documentação. Registrar tipos novos de componente de UI só é possível em C++, porque o registro recebe fábricas C++ |
 | 10 | Plataformas: bridge, safe area, gamepads, Android, Apple, web e player | Concluída, com os itens `[~]` que dependem de hardware ou contas |
-| 11 | Ferramentas: importador do Tiny Swords, gerador de mapa, empacotador zip e áudio | Concluída |
+| 11 | Ferramentas: gerador de mapa, empacotador zip e áudio | Concluída |
 | 12 | Jogo Tiny Island em Lua | Concluída |
 | 13 | Testes e cobertura até o máximo possível | Concluída |
 | 14 | Documentação e revisão final (bugs, legado, não utilizado, race conditions e crashes) | Concluída, com testes de regressão para as correções |
@@ -1543,7 +1545,7 @@ Decisões, a partir da pesquisa dos SDKs que abrem telas próprias (RevenueCat, 
 
 - [ ] Tiny Island no Apple TV: achar por que fica lento e pisca (simulador e, se possível, aparelho), corrigir a causa no render ou no host da Apple e conferir que ele roda liso na taxa da tela do tvOS, sem piscar, também no iOS, no Mac Catalyst e no macOS.
 - [ ] Switch: o estado desligado, o ligado, o pressionado e o de foco desenhados com a mesma arte e coerentes entre si, no tema do Tiny Island e no tema padrão da UI, conferidos em todas as plataformas.
-- [ ] Fogueira do Tiny Island: o mesmo efeito de partículas no menu e no jogo, vindo de um lugar só no código do jogo.
+- [x] Fogueira do Tiny Island: o mesmo efeito de partículas no menu e no jogo, vindo de um lugar só no código do jogo.
 - [ ] Revisão de desempenho do render: lotes e chamadas de desenho por frame, trocas de estado e de textura, uploads por frame, alocações no caminho quente, passes de luz e de pós-processamento, sincronização com a GPU e o ritmo dos frames em cada plataforma, com números antes e depois nos benchmarks da engine (`engine/bench`) e no Tiny Island.
 - [ ] Frames lisos em todas as plataformas: sem piscar, sem frames repetidos ou perdidos a mais, no ritmo da tela (Choreographer, CADisplayLink, `requestAnimationFrame` e vsync nos desktops), conferido com medições em cada plataforma.
 
@@ -1641,7 +1643,7 @@ Checklist:
 - [x] Saída profissional e colorida do `haylen.py`: títulos e passos, sucesso, avisos e erros em cores distintas, comandos ecoados discretos, URLs e caminhos sem aspas para o terminal deixar clicar, cores desligadas sem TTY ou com `NO_COLOR`, e erros com a causa e o que fazer.
 - [x] Comando `haylen.py android-key <app> [--debug|--release]` (nome final a decidir pelo padrão dos comandos) que gera a chave de upload com o `keytool` (RSA 2048, validade longa, alias e senhas configuráveis, padrão `upload`) e o certificado `.pem`, na pasta do projeto Android do app, ignorada pelo `.gitignore`, e liga a assinatura de release do Gradle a ela por propriedades locais, documentado. Conferido com um APK de release assinado pela chave gerada (`apksigner`), também só com variáveis de ambiente.
 - [x] Ferramentas e assets de samples saem de `tools/`: o importador de arte de terceiros sai, e geradores que só um sample usa vão para dentro do sample ou saem, com os assets gerados versionados no sample. O importador saiu, e o gerador do mapa foi para `samples/games/tiny-island/tools/`.
-- [ ] Nenhuma arte ou menção de terceiros no repositório: os pacotes de arte (Tiny Swords e os pacotes CC0), os `CREDITS.md` que citam autores, os nomes de fontes ou pacotes de terceiros onde não forem obrigatórios por licença, e o `.gitignore` de arte importada saem, e a arte própria entra no lugar. Fontes de licença aberta que a engine embute ficam só com a licença exigida.
+- [ ] Nenhuma arte ou menção de terceiros no repositório: os pacotes de arte importados e os pacotes CC0, os `CREDITS.md` que citam autores, os nomes de fontes ou pacotes de terceiros onde não forem obrigatórios por licença, e o `.gitignore` de arte importada saem, e a arte própria entra no lugar. Fontes de licença aberta que a engine embute ficam só com a licença exigida.
 - [x] CI só testa: confirmar que nenhum workflow publica artefatos em releases, e que o release do GitHub é só o código. Nenhum artefato é publicado, e tags e releases não disparam o CI.
 - [ ] Auditoria das versões de todas as dependências (Sokol, Box2D, miniaudio, Dear ImGui, HarfBuzz, SheenBidi, libunibreak, msdfgen, stb, zstd, Clipper2, nlohmann/json, GameActivity, AndroidX, XcodeGen, emsdk, NDK, Gradle, AGP, Kotlin e as do CI), subindo cada uma para a última versão, adotando a API atual e removendo patches que não forem mais necessários.
 - [x] README do produto Haylen: objetivo, recursos por área, plataformas, início rápido, sem versões além das essenciais (C++20) e sem samples específicos em destaque.
@@ -1733,7 +1735,7 @@ Checklist:
 #### AQ. Arte, samples e jogos
 
 - [ ] Arte própria gerada com o Codex para tudo o que tem imagem: sprites, tiles, UI, ícones, fundos e efeitos, num estilo visual único e polido, em alta definição, com os assets nos samples.
-- [ ] Tiny Island refeito com arte própria: guerreiro, arqueiro, lanceiro e mago jogáveis, inimigos variados, ovelhas que dão comida, ataques com efeitos, fogueira de partículas igual no menu e no jogo, e tudo o que existe hoje.
+- [~] Tiny Island refeito com arte própria: guerreiro, arqueiro, lanceiro e mago jogáveis, inimigos variados, ovelhas que dão comida, ataques com efeitos, fogueira de partículas igual no menu e no jogo, e tudo o que existe hoje. Conferido na web (WebGPU e WebGL2), no emulador Android e no player headless. No simulador de iOS e no de tvOS o app aborta ao abrir o dispositivo de áudio, porque o serviço de áudio do host não responde, e falta conferir quando ele voltar.
 - [ ] Categoria de samples de apps com cinco apps (delivery de comida, marketplace, transporte por app, loja online e streaming de música), com dados falsos, navegação de ida e volta, listas, busca, carrinho ou fila, mapas onde fizer sentido, cores e características de cada tipo, sem citar nomes.
 - [ ] Mais samples de casos reais que testem a capacidade da engine (muitos sprites, muitos corpos, mapas grandes, muita UI).
 

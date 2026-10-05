@@ -1,0 +1,392 @@
+{
+ "frames": {
+  "tree_oak": {
+   "frame": {
+    "x": 415,
+    "y": 4,
+    "w": 241,
+    "h": 300
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 241,
+    "h": 300
+   },
+   "sourceSize": {
+    "w": 241,
+    "h": 300
+   }
+  },
+  "tree_tall": {
+   "frame": {
+    "x": 4,
+    "y": 4,
+    "w": 184,
+    "h": 330
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 184,
+    "h": 330
+   },
+   "sourceSize": {
+    "w": 184,
+    "h": 330
+   }
+  },
+  "tree_palm": {
+   "frame": {
+    "x": 192,
+    "y": 4,
+    "w": 219,
+    "h": 310
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 219,
+    "h": 310
+   },
+   "sourceSize": {
+    "w": 219,
+    "h": 310
+   }
+  },
+  "tree_fruit": {
+   "frame": {
+    "x": 660,
+    "y": 4,
+    "w": 172,
+    "h": 240
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 172,
+    "h": 240
+   },
+   "sourceSize": {
+    "w": 172,
+    "h": 240
+   }
+  },
+  "stump_oak": {
+   "frame": {
+    "x": 508,
+    "y": 338,
+    "w": 112,
+    "h": 87
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 112,
+    "h": 87
+   },
+   "sourceSize": {
+    "w": 112,
+    "h": 87
+   }
+  },
+  "stump_palm": {
+   "frame": {
+    "x": 732,
+    "y": 338,
+    "w": 84,
+    "h": 78
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 84,
+    "h": 78
+   },
+   "sourceSize": {
+    "w": 84,
+    "h": 78
+   }
+  },
+  "log": {
+   "frame": {
+    "x": 4,
+    "y": 449,
+    "w": 72,
+    "h": 57
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 72,
+    "h": 57
+   },
+   "sourceSize": {
+    "w": 72,
+    "h": 57
+   }
+  },
+  "meat": {
+   "frame": {
+    "x": 144,
+    "y": 449,
+    "w": 64,
+    "h": 54
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 54
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 54
+   }
+  },
+  "bush": {
+   "frame": {
+    "x": 292,
+    "y": 338,
+    "w": 104,
+    "h": 94
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 104,
+    "h": 94
+   },
+   "sourceSize": {
+    "w": 104,
+    "h": 94
+   }
+  },
+  "bush_flowers": {
+   "frame": {
+    "x": 400,
+    "y": 338,
+    "w": 104,
+    "h": 94
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 104,
+    "h": 94
+   },
+   "sourceSize": {
+    "w": 104,
+    "h": 94
+   }
+  },
+  "boulder": {
+   "frame": {
+    "x": 836,
+    "y": 4,
+    "w": 124,
+    "h": 110
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 124,
+    "h": 110
+   },
+   "sourceSize": {
+    "w": 124,
+    "h": 110
+   }
+  },
+  "stones": {
+   "frame": {
+    "x": 212,
+    "y": 449,
+    "w": 76,
+    "h": 52
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 76,
+    "h": 52
+   },
+   "sourceSize": {
+    "w": 76,
+    "h": 52
+   }
+  },
+  "grass": {
+   "frame": {
+    "x": 904,
+    "y": 338,
+    "w": 64,
+    "h": 59
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 59
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 59
+   }
+  },
+  "flowers": {
+   "frame": {
+    "x": 820,
+    "y": 338,
+    "w": 80,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 70
+   }
+  },
+  "mushrooms": {
+   "frame": {
+    "x": 80,
+    "y": 449,
+    "w": 60,
+    "h": 55
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 60,
+    "h": 55
+   },
+   "sourceSize": {
+    "w": 60,
+    "h": 55
+   }
+  },
+  "shell": {
+   "frame": {
+    "x": 292,
+    "y": 449,
+    "w": 52,
+    "h": 44
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 52,
+    "h": 44
+   },
+   "sourceSize": {
+    "w": 52,
+    "h": 44
+   }
+  },
+  "driftwood": {
+   "frame": {
+    "x": 624,
+    "y": 338,
+    "w": 104,
+    "h": 86
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 104,
+    "h": 86
+   },
+   "sourceSize": {
+    "w": 104,
+    "h": 86
+   }
+  },
+  "water_rock": {
+   "frame": {
+    "x": 164,
+    "y": 338,
+    "w": 124,
+    "h": 98
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 124,
+    "h": 98
+   },
+   "sourceSize": {
+    "w": 124,
+    "h": 98
+   }
+  },
+  "campfire": {
+   "frame": {
+    "x": 4,
+    "y": 338,
+    "w": 156,
+    "h": 107
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 156,
+    "h": 107
+   },
+   "sourceSize": {
+    "w": 156,
+    "h": 107
+   }
+  }
+ },
+ "meta": {
+  "image": "props.png",
+  "size": {
+   "w": 1024,
+   "h": 510
+  },
+  "scale": "1"
+ }
+}

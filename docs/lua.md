@@ -95,11 +95,14 @@ local localization = require('haylen.localization')
 local scene = require('haylen.scene')
 local ui = require('haylen.ui')
 
+local preferences = require('systems.preferences')
+
 assets.defineGroups(assets.json('preload.json'))
 input.loadActions(assets.json('input/actions.json'))
 localization.loadFolder('locale')
 localization.setFallback('en')
-ui.setTheme(ui.loadTheme('ui/theme.json', 'light'))
+ui.setTheme(ui.loadTheme('ui/theme.json', 'dark'))
+preferences.apply()
 
 scene.push(require('scenes.boot').new())
 ```
@@ -125,8 +128,8 @@ Every asset path is relative to the package `content/` folder and never includes
 ```lua
 local assets = require('haylen.assets')
 
--- Reads `content/tiny_swords/units/blue/warrior/idle.png` from the package.
-local idle = assets.texture('tiny_swords/units/blue/warrior/idle.png')
+-- Reads `content/sprites/knight/idle.png` from the package.
+local idle = assets.texture('sprites/knight/idle.png')
 ```
 
 Paths use `/` as the separator and `.` segments are ignored. An absolute path raises `The path "<path>" must be relative.`, and a path that leaves the package raises `The path "<path>" must stay inside its root folder.` The same rule holds for every module that reads package files, such as `haylen.tiled`, `haylen.audio`, `haylen.localization` and `haylen.ui`. The [`haylen.assets`](lua-api/assets.md) reference covers caching, preload groups and asynchronous loading.

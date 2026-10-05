@@ -1,12 +1,12 @@
 # Tiny Island
 
-Tiny Island is a survival game written in Lua on top of Haylen. A survivor lives on an island with a campfire. During the day they chop trees and carry the wood to the fire. At night raiders land on the shores, and only the light of the fire keeps them out. Every piece of wood makes the safe circle larger, and the fire burns faster at night and loses fuel with every new day. The game ends when the survivor falls, and the longest run is saved as the record.
+Tiny Island is a survival game written in Lua on top of Haylen. A survivor lives on an island with a campfire. During the day they chop trees, carry the wood to the fire and hunt sheep for food. At night raiders land on the shores, and only the light of the fire keeps them out. Every piece of wood makes the safe circle larger, the fire burns faster at night and loses fuel with every new day, and an empty belly costs health. The game ends when the survivor falls, and the longest run is saved as the record.
 
-The game uses only the public Lua API of the engine, so it doubles as a worked example of scenes, preload groups, a themed UI, Tiled maps, physics, navigation, particles, lighting, audio buses, the action map, touch controls, saves, settings, localization and the platform bridge.
+The game uses only the public Lua API of the engine, so it doubles as a worked example of scenes, preload groups, a themed UI, Tiled maps, physics, navigation, particles, lighting, sprite atlases, audio buses, the action map, touch controls, saves, settings, localization and the platform bridge.
 
 ## Running it
 
-The art in `content/tiny_swords/` is not stored in the repository. The commands run from the root of the repository:
+The commands run from the root of the repository:
 
 | Where | Command |
 | --- | --- |
@@ -25,50 +25,86 @@ The command `python3 haylen.py package samples/games/tiny-island -o tiny-island.
 | Action | Keyboard and mouse | Gamepad | Touch |
 | --- | --- | --- | --- |
 | Move | WASD or arrow keys | Left stick or directional pad | Floating stick on the left |
-| Attack or chop | Space or left click | South button | Sword button |
-| Special | Left Shift or right click | West button | Shield button |
-| Feed the fire from further away | E | East button | Wood button |
-| Pause | Escape | Start | Gear button |
+| Attack, chop or hunt | Space or left click | South button | Weapon button |
+| Special | Left Shift or right click | West button | Special button |
+| Feed the fire from further away | E | East button | Log button |
+| Pause | Escape | Start | Pause button |
 | Back from the class choice or the settings | Escape | East button | Back button |
 
-Walking next to the fire with wood feeds it. The touch controls appear once the screen is touched, and the settings screen can turn them off. The run also pauses when the app goes to the background or its window loses the focus, so the pause menu waits for the player who comes back.
+Walking next to the fire with wood feeds it, and walking over wood or meat picks it up. Attacks aim at the closest raider in reach, or at the closest sheep when no raider is near. The touch controls appear once the screen is touched, and the settings screen can turn them off. The run also pauses when the app goes to the background or its window loses the focus, so the pause menu waits for the player who comes back.
 
 ## Classes
 
-| Class | Strength | Special |
+| Class | Attack | Special |
 | --- | --- | --- |
-| Warrior | High health and damage | Holding the special raises a guard that blocks most damage. |
-| Archer | Long range arrows that pierce one enemy | A volley of three arrows. |
-| Lancer | Thrusts that push enemies away | A charge that hurts everything on the way. |
-| Monk | Hits every enemy around | Heals a third of the health. |
-| Pawn | Chops trees much faster and carries the most wood | A short sprint. |
+| Warrior | A wide slash in front that knocks raiders back. | Holding the special raises the shield, which blocks most damage. |
+| Archer | Arrows from afar that pierce two enemies. | A volley of three arrows. |
+| Lancer | A long thrust that reaches past the tip of the spear. | A charge that hurts everything on the way. |
+| Mage | A fireball that bursts on the first raider it meets and burns everything around it, with a longer cooldown. | A ring of fire that throws every raider back. |
+
+Every attack has its own effect, a sprite animation of the effects atlas together with particles, and its sound: the slash arc, the arrow with its streak, the spear thrust, the fireball with its trail of embers and its explosion, and the impact spark on every hit.
+
+## Raiders and sheep
+
+| Kind | First night | How it fights |
+| --- | --- | --- |
+| Imp | 1 | Small and fast, lands in pairs, weaves from side to side and bites. |
+| Brute | 1 | Slow and tough, glows red while it winds up and smashes the ground in front of it. |
+| Thrower | 2 | Keeps its distance and throws javelins. |
+| Bomber | 3 | Lobs bombs that land on a marked circle and burst there. |
+
+Raiders follow A* paths around the water and the cliffs, steer apart from each other and never enter the light. Their javelins and bombs burn up in the light, and at dawn the raiders still standing run and burn away. Each night brings more of them, and they grow tougher.
+
+Sheep wander the wild parts of the island and graze. A sheep that is hit runs away, and a sheep that falls drops meat, which feeds the survivor and heals a little. The herd grows back to its size every morning.
+
+## Art
+
+Every image of the game is made for it and generated with the `codex` command line and its `$imagegen` skill, as the project rules describe, then cut into frames, scaled and packed into the atlases of the game. The images follow one style guide, and every prompt carries its key words.
+
+| Part | Rule |
+| --- | --- |
+| Look | Polished casual fantasy in high definition. Chunky cute shapes, super deformed characters whose head is about 40 percent of their height, simple bold forms that read at a small size. |
+| Outline | A bold clean outline of even thickness in very dark navy `#1E1B33` around every character, prop and icon, and `#15172A` around interface pieces. |
+| Shading | Soft cel shading with two tones per material and one soft highlight, light from the top left, clean flat areas without noise or painterly texture. |
+| Palette | Bright saturated colors. Heroes in royal blue, warm yellow, teal and purple, raiders in moss green, sky blue, red and dark purple, nature in fresh greens `#7BC74D`, golden sand `#F3D58D`, tropical water `#2FB3C4` and warm wood browns. The interface uses slate indigo panels `#2F3352`, royal blue `#2F86F6` primary buttons, red `#F0473E` destructive buttons, white text and a yellow `#FFC93C` focus ring. |
+| Characters | Seen from the side in a slight three-quarter top-down view, facing right. Each animation is one sheet of six frames generated in a single call, cut into frames of one scale, one ground line and one anchor, and packed with its tags into the atlas of its character in `content/characters/`. Heroes are about 150 pixels tall in their frames and draw at 0.82, the brute about 205, the imp about 104 and the sheep about 100. |
+| Terrain | Seamless textures of grass, sand, dirt and stone, cut into corner tiles of 64 pixels whose coast lines are smooth and whose texture repeats every two tiles, in `content/world/terrain.png`, with a repeating water image and animated foam. |
+| Props | Trees about 300 pixels tall, stumps, logs, meat, bushes, rocks, flowers, shells and clouds, packed into `content/world/props.png` and `content/world/clouds.png`. |
+| Effects | Slash, thrust, fireball, explosion, hit and splash animations, the particles of fire, embers, smoke, dust, sparks, wood chips and wool, and the projectiles, packed into `content/effects/effects.png`. |
+| Interface | Nine-slice buttons in normal and pressed states, the panel, the ribbon, the track, fill and knob of bars, sliders and the switch, check boxes, touch controls, icons of 128 pixels, class portraits of 256 pixels and the logo, in `content/ui/`. |
+
+Every image is smoothed when the screen scales it: sprites, atlases, particles and the map load with the `linear` filter, the theme surfaces set `"filter": "linear"` and the theme sets `"imageFilter": "linear"` for the pictures of the UI.
 
 ## Package layout
 
-The sample folder is the package. Only `app.json`, `source/`, `content/` and the `plugin.json` and `source/` of its plugin ship, and the native parts of the plugin reach the platform projects while this README stays behind.
+The sample folder is the package. Only `app.json`, `source/`, `content/` and the `plugin.json` and `source/` of its plugin ship, and the native parts of the plugin reach the platform projects while this README and the tools stay behind.
 
 ```text
 tiny-island/
   app.json               Window, design resolution of 1920 by 1080 and identifier.
   source/
     main.lua             Loads the preload groups, actions, translations and theme, then opens the boot screen.
-    config.lua           Tuning values: fire, day length, trees, waves, physics categories and draw layers.
-    data/                Class and enemy tables.
+    config.lua           Tuning values: fire, day length, trees, food, sheep, waves, physics categories and draw layers.
+    data/                Class and raider tables.
     scenes/              Boot, menu, class selection, gameplay, pause, settings and game over. The boot screen preloads the menu, and the menu and the run load their preload groups in their load hooks.
     systems/             The run (game.lua), the day and night clock (day-night.lua), the island map, the campfire, the menu backdrop, effects, art, sound and preferences.
-    entities/            Player, enemies, trees, wood, arrows and the flame of the campfire, which the menus and the run share.
+    entities/            Player, raiders, sheep, trees, pickups, projectiles and the flame of the campfire, the one campfire effect that the menus and the run share.
     ui/                  The HUD, the loading view that shows the chosen survivor at the fire while a run loads, and shared widgets.
   content/
-    tiny_swords/         The imported art pack.
+    characters/          One atlas per character with an animation per tag.
+    world/               The terrain tileset, water, foam, props and clouds.
+    effects/             The effects atlas and the particle effects.
     maps/                The island map and its tilesets.
-    ui/theme.json        The UI theme built from Tiny Swords paper, wood, ribbons, bars and buttons.
+    ui/                  The theme, its images, icons, portraits and the logo.
     input/actions.json   The action map.
     locale/              English and Portuguese text.
-    effects/             Particle effects.
-    audio/, fonts/       CC0 sounds, music and fonts with their credits.
+    audio/               Sounds and music.
+    fonts/               The font of the interface with its license.
     preload.json         The boot, menu and gameplay preload groups.
   plugins/
     google-sign-in/      The local plugin with the Google sign-in: its Lua API, its Android module and its web module.
+  tools/
+    generate_island_map.py  The island map generator.
 ```
 
 The day runs dawn, day, dusk and night in a loop of 15, 150, 15 and 90 seconds. The file `systems/day-night.lua` counts the days, reports every phase to the run and eases the ambient light from night through a warm dawn into full daylight and back through the dusk color.
@@ -79,4 +115,4 @@ The settings screen shows what `system.info()` of [`haylen.system`](../../../doc
 
 ## Credits
 
-The art is [Tiny Swords](https://pixelfrog-assets.itch.io/tiny-swords) by Pixel Frog. The sounds, the music and the Kenney Future fonts are CC0, and their authors are listed in `content/audio/CREDITS.md` and `content/fonts/CREDITS.md`.
+The sounds and the music are released into the public domain (CC0), and the font keeps its license in `content/fonts/lilita_one_license.txt`.

@@ -7,21 +7,26 @@ local config = require('config')
 local tree = {}
 tree.__index = tree
 
+-- The trees are painted large, and the island shows them at this scale.
+local scale = 0.62
+
 local variants = {
-    {file = 'tree1', height = 256, pivotY = 0.94},
-    {file = 'tree2', height = 256, pivotY = 0.97},
-    {file = 'tree3', height = 192, pivotY = 0.885},
-    {file = 'tree4', height = 192, pivotY = 0.875},
+    {frame = 'tree_oak', stump = 'stump_oak'},
+    {frame = 'tree_tall', stump = 'stump_oak'},
+    {frame = 'tree_palm', stump = 'stump_palm'},
+    {frame = 'tree_fruit', stump = 'stump_oak'},
 }
 
 function tree.new(world, x, y, variant)
     local spec = variants[variant]
-    local self = setmetatable({x = x, y = y, time = math.random() * 2, shake = 0}, tree)
-    self.clip = art.strip('terrain/resources/wood/trees/' .. spec.file .. '.png', 192, {height = spec.height, fps = 8})
-    self.stumpTexture = art.texture('terrain/resources/wood/trees/stump_' .. variant .. '.png')
-    self.sprite = graphics2d.newSprite(self.clip.texture, {x = x, y = y, pivotX = 0.5, pivotY = spec.pivotY, layer = config.layer.entities, depth = y})
+    local self = setmetatable({x = x, y = y, time = math.random() * 6, shake = 0}, tree)
+    self.atlas = art.props()
+    self.source = self.atlas:source(spec.frame)
+    self.stumpSource = self.atlas:source(spec.stump)
+    self.shadow = art.effects()
+    self.shadowSource = self.shadow:source('shadow')
     self.body = world:createBody({type = 'static', x = x, y = y})
-    self.body:addCircle(24, {category = config.category.tree, mask = config.category.player | config.category.enemy})
+    self.body:addCircle(20, {category = config.category.tree, mask = config.category.player | config.category.enemy | config.category.sheep})
     self.health = config.trees.health
     return self
 end
@@ -54,13 +59,16 @@ function tree:update(dt)
 end
 
 function tree:draw()
-    if self:standing() then
-        self.sprite.source = self.clip:frame(self.clip:frameAt(self.time))
-        self.sprite.x = self.x + math.sin(self.time * 60) * 6 * self.shake
-        self.sprite:draw()
-    else
-        graphics2d.draw(self.stumpTexture, self.x, self.y, {pivotX = 0.5, pivotY = 0.93, layer = config.layer.entities, depth = self.y})
+    local layer = config.layer.entities
+    graphics2d.draw(self.shadow.texture, self.x + 4, self.y + 3, {source = self.shadowSource, width = 100, height = 32, color = '#78FFFFFF', layer = layer, depth = self.y - 1})
+    if not self:standing() then
+        graphics2d.draw(self.atlas.texture, self.x, self.y + 7, {source = self.stumpSource, pivotX = 0.5, pivotY = 1, scaleX = scale, scaleY = scale, layer = layer, depth = self.y})
+        return
     end
+
+    -- The crown sways around the foot of the trunk, and a chop shakes it hard for a moment.
+    local sway = math.sin(self.time * 1.3) * 0.018 + math.sin(self.time * 31) * 0.05 * self.shake
+    graphics2d.draw(self.atlas.texture, self.x, self.y + 8, {source = self.source, pivotX = 0.5, pivotY = 1, scaleX = scale, scaleY = scale, rotation = sway, layer = layer, depth = self.y})
 end
 
 return tree

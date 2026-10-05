@@ -22,23 +22,19 @@
         "carry": "Carga",
         "warrior": {
             "name": "Guerreiro",
-            "special": "Segure a guarda para bloquear quase todo o dano."
+            "special": "Golpes largos empurram os invasores. Segure a guarda para bloquear quase todo o dano."
         },
         "archer": {
-            "name": "Arqueiro",
-            "special": "Flechas atravessam um inimigo. O especial dispara uma rajada."
+            "name": "Arqueira",
+            "special": "Flechas atravessam dois inimigos de longe. O especial dispara uma rajada."
         },
         "lancer": {
             "name": "Lanceiro",
-            "special": "Estocadas empurram os inimigos. O especial avança com tudo."
+            "special": "Estocadas longas alcançam além da lança. O especial avança com tudo."
         },
-        "monk": {
-            "name": "Monge",
-            "special": "Ataca em círculo. O especial cura você."
-        },
-        "pawn": {
-            "name": "Peão",
-            "special": "Corta árvores muito mais rápido. O especial dá uma corrida."
+        "mage": {
+            "name": "Maga",
+            "special": "Bolas de fogo explodem em tudo ao redor. O especial solta um anel de fogo."
         }
     },
     "loading": {
@@ -49,7 +45,7 @@
         "fireOut": "A fogueira apagou!",
         "nightFalls": "A noite chegou. Fique na luz!",
         "morning": "O sol nasceu. Os invasores queimam!",
-        "special": "Especial",
+        "starving": "Você está com fome! Cace uma ovelha.",
         "raiders": {
             "one": "{count} invasor",
             "other": "{count} invasores"

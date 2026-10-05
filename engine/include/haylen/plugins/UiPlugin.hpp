@@ -114,9 +114,10 @@ class UiPlugin final : public Plugin {
     struct ImageEntry {
         graphics::Texture texture;
         std::string error;
+        graphics::Texture::Filter filter = graphics::Texture::Filter::Nearest;
     };
 
-    // Returns the texture of a UI image, which loads in the background and is empty until it arrives.
+    // Returns the texture of a UI image with the image filter of the theme, which loads in the background and is empty until it arrives.
     [[nodiscard]] graphics::Texture requestImage(core::Engine& engine, std::string_view path);
     void applyVirtualInput(core::Engine& engine);
     void drawSafeArea();

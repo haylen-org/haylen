@@ -45,10 +45,10 @@ function menu:enter()
 
     local best = preferences.best()
     self.document = ui.mount(ui.column{
-        padding = 64,
-        gap = 40,
+        padding = 48,
+        gap = 32,
         justify = 'center',
-        ui.pageHeader{title = widgets.text('title'), banner = true, textAlign = 'center', align = 'center'},
+        ui.image{image = 'ui/logo.png', scale = 0.62, align = 'center'},
         ui.column{width = 520, align = 'center', gap = 20, children = buttons},
         widgets.caption('best', widgets.text('menu.best', {count = best and best.days or 0})),
     })

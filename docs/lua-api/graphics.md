@@ -160,8 +160,8 @@ A `Texture` is a shared handle to a GPU image. The function `assets.texture(path
 ```lua
 local assets = require('haylen.assets')
 
-local texture = assets.texture('tiny_swords/units/blue/warrior/warrior_run.png', {filter = 'linear'})
-print(texture.width, texture.height, texture.filter, texture.wrap, texture == assets.texture('tiny_swords/units/blue/warrior/warrior_run.png', {filter = 'linear'}))
+local texture = assets.texture('sprites/knight/run.png', {filter = 'linear'})
+print(texture.width, texture.height, texture.filter, texture.wrap, texture == assets.texture('sprites/knight/run.png', {filter = 'linear'}))
 ```
 
 ### texture:update(pixels)

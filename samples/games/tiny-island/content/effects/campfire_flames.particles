@@ -1,0 +1,20 @@
+{
+    "texture": "effects.png",
+    "frames": [[268, 804, 64, 93]],
+    "rate": 34,
+    "maxParticles": 64,
+    "lifetime": [0.45, 0.8],
+    "speed": [50, 110],
+    "direction": -1.5708,
+    "spread": 0.5,
+    "damping": 1.2,
+    "startSize": [40, 56],
+    "endSize": 10,
+    "spin": [-0.6, 0.6],
+    "colors": ["#FFFFF4C0", "#FFFFB040", "#B0FF6010", "#00FF3000"],
+    "shape": "circle",
+    "shapeSize": [18, 0],
+    "blend": "additive",
+    "layer": 6,
+    "prewarm": 1
+}

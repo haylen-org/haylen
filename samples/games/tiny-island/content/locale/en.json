@@ -22,23 +22,19 @@
         "carry": "Carry",
         "warrior": {
             "name": "Warrior",
-            "special": "Hold the guard to block most of the damage."
+            "special": "Wide slashes knock raiders back. Hold the guard to block most of the damage."
         },
         "archer": {
             "name": "Archer",
-            "special": "Arrows pierce an enemy. Special shoots a volley."
+            "special": "Arrows pierce two enemies from afar. Special shoots a volley."
         },
         "lancer": {
             "name": "Lancer",
-            "special": "Thrusts push enemies away. Special charges ahead."
+            "special": "Long thrusts reach past the spear tip. Special charges ahead."
         },
-        "monk": {
-            "name": "Monk",
-            "special": "Strikes in a circle. Special heals yourself."
-        },
-        "pawn": {
-            "name": "Pawn",
-            "special": "Chops trees much faster. Special sprints."
+        "mage": {
+            "name": "Mage",
+            "special": "Fireballs burst on everything around. Special sets off a ring of fire."
         }
     },
     "loading": {
@@ -49,7 +45,7 @@
         "fireOut": "The fire went out!",
         "nightFalls": "Night falls. Stay in the light!",
         "morning": "The sun rises. The raiders burn!",
-        "special": "Special",
+        "starving": "You are starving! Hunt a sheep for food.",
         "raiders": {
             "one": "{count} raider",
             "other": "{count} raiders"

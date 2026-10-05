@@ -66,8 +66,8 @@ Errors: `framesPerSecond must be positive`, `A grid animation needs a texture, a
 local animation2d = require('haylen.animation2d')
 local assets = require('haylen.assets')
 
-local idle = animation2d.fromGrid(assets.texture('tiny_swords/units/blue/warrior/warrior_idle.png'), {frameWidth = 192, frameHeight = 192, framesPerSecond = 10})
-local slash = animation2d.fromGrid(assets.texture('tiny_swords/units/blue/warrior/warrior_attack1.png'), {frameWidth = 192, frameHeight = 192, cells = {1, 2, 3, 4}, framesPerSecond = 12, loop = 'once'})
+local idle = animation2d.fromGrid(assets.texture('sprites/knight/idle.png'), {frameWidth = 192, frameHeight = 192, framesPerSecond = 10})
+local slash = animation2d.fromGrid(assets.texture('sprites/knight/attack.png'), {frameWidth = 192, frameHeight = 192, cells = {1, 2, 3, 4}, framesPerSecond = 12, loop = 'once'})
 print(idle.frameCount, slash.duration)
 ```
 
@@ -79,7 +79,7 @@ Builds an `Animation` from a list of source rectangles in `texture`. The argumen
 local animation2d = require('haylen.animation2d')
 local assets = require('haylen.assets')
 
-local fire = animation2d.fromFrames(assets.texture('tiny_swords/effects/fire_01.png'), {
+local fire = animation2d.fromFrames(assets.texture('effects/fire.png'), {
     {0, 0, 64, 64},
     {64, 0, 64, 64},
     {128, 0, 64, 64},
@@ -97,7 +97,7 @@ local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 
-local sheet = assets.texture('tiny_swords/units/blue/warrior/warrior_run.png')
+local sheet = assets.texture('sprites/knight/run.png')
 local warrior = graphics2d.newSprite(sheet, {x = 400, y = 300})
 local animator = animation2d.newAnimator()
 animator:add('run', animation2d.fromGrid(sheet, {frameWidth = 192, frameHeight = 192, framesPerSecond = 12}))
@@ -139,7 +139,7 @@ Returns the frame number, counting from 1, that the animation shows `seconds` af
 local animation2d = require('haylen.animation2d')
 local assets = require('haylen.assets')
 
-local run = animation2d.fromGrid(assets.texture('tiny_swords/units/blue/warrior/warrior_run.png'), {frameWidth = 192, frameHeight = 192, framesPerSecond = 10})
+local run = animation2d.fromGrid(assets.texture('sprites/knight/run.png'), {frameWidth = 192, frameHeight = 192, framesPerSecond = 10})
 run.loop = 'pingPong'
 print(run.duration, run.cycleDuration)
 run.loop = 'once'
@@ -181,7 +181,7 @@ local animation2d = require('haylen.animation2d')
 local assets = require('haylen.assets')
 
 local animator = animation2d.newAnimator()
-animator:add('idle', animation2d.fromGrid(assets.texture('tiny_swords/units/blue/warrior/warrior_idle.png'), {frameWidth = 192, frameHeight = 192}))
+animator:add('idle', animation2d.fromGrid(assets.texture('sprites/knight/idle.png'), {frameWidth = 192, frameHeight = 192}))
 print(animator:has('idle'), animator:has('fly'))
 local idle = animator:animation('idle')
 print(idle.frameCount, idle.duration)
@@ -203,10 +203,10 @@ local scene = require('haylen.scene')
 
 input.loadActions({actions = {{name = 'attack', type = 'button', bindings = {'key:space'}}, {name = 'freeze', type = 'button', bindings = {'key:f'}}}})
 
-local warrior = 'tiny_swords/units/blue/warrior/'
+local knight = 'sprites/knight/'
 local animator = animation2d.newAnimator()
-animator:add('idle', animation2d.fromGrid(assets.texture(warrior .. 'warrior_idle.png'), {frameWidth = 192, frameHeight = 192}))
-animator:add('attack', animation2d.fromGrid(assets.texture(warrior .. 'warrior_attack1.png'), {frameWidth = 192, frameHeight = 192, framesPerSecond = 12, loop = 'once'}))
+animator:add('idle', animation2d.fromGrid(assets.texture(knight .. 'idle.png'), {frameWidth = 192, frameHeight = 192}))
+animator:add('attack', animation2d.fromGrid(assets.texture(knight .. 'attack.png'), {frameWidth = 192, frameHeight = 192, framesPerSecond = 12, loop = 'once'}))
 animator:play('idle')
 
 scene.push({
@@ -234,11 +234,11 @@ Removes every queued animation.
 local animation2d = require('haylen.animation2d')
 local assets = require('haylen.assets')
 
-local warrior = 'tiny_swords/units/blue/warrior/'
+local knight = 'sprites/knight/'
 local animator = animation2d.newAnimator()
-animator:add('attack', animation2d.fromGrid(assets.texture(warrior .. 'warrior_attack1.png'), {frameWidth = 192, frameHeight = 192, loop = 'once'}))
-animator:add('guard', animation2d.fromGrid(assets.texture(warrior .. 'warrior_guard.png'), {frameWidth = 192, frameHeight = 192, loop = 'once'}))
-animator:add('idle', animation2d.fromGrid(assets.texture(warrior .. 'warrior_idle.png'), {frameWidth = 192, frameHeight = 192}))
+animator:add('attack', animation2d.fromGrid(assets.texture(knight .. 'attack.png'), {frameWidth = 192, frameHeight = 192, loop = 'once'}))
+animator:add('guard', animation2d.fromGrid(assets.texture(knight .. 'guard.png'), {frameWidth = 192, frameHeight = 192, loop = 'once'}))
+animator:add('idle', animation2d.fromGrid(assets.texture(knight .. 'idle.png'), {frameWidth = 192, frameHeight = 192}))
 
 animator:play('attack')
 animator:queue('guard')
@@ -261,7 +261,7 @@ local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 
-local sheet = assets.texture('tiny_swords/units/blue/warrior/warrior_idle.png')
+local sheet = assets.texture('sprites/knight/idle.png')
 local warrior = graphics2d.newSprite(sheet, {x = 400, y = 400})
 local animator = animation2d.newAnimator()
 animator:add('idle', animation2d.fromGrid(sheet, {frameWidth = 192, frameHeight = 192}))
@@ -298,10 +298,10 @@ local animation2d = require('haylen.animation2d')
 local assets = require('haylen.assets')
 local log = require('haylen.log')
 
-local warrior = 'tiny_swords/units/blue/warrior/'
+local knight = 'sprites/knight/'
 local animator = animation2d.newAnimator()
-animator:add('idle', animation2d.fromGrid(assets.texture(warrior .. 'warrior_idle.png'), {frameWidth = 192, frameHeight = 192}))
-animator:add('attack', animation2d.fromGrid(assets.texture(warrior .. 'warrior_attack1.png'), {frameWidth = 192, frameHeight = 192, framesPerSecond = 12, loop = 'once'}))
+animator:add('idle', animation2d.fromGrid(assets.texture(knight .. 'idle.png'), {frameWidth = 192, frameHeight = 192}))
+animator:add('attack', animation2d.fromGrid(assets.texture(knight .. 'attack.png'), {frameWidth = 192, frameHeight = 192, framesPerSecond = 12, loop = 'once'}))
 
 animator.onFrame = function(name, frame)
     if name == 'attack' and frame == 3 then

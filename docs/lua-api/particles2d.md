@@ -155,7 +155,7 @@ local scene = require('haylen.scene')
 
 local camera = graphics2d.newCamera()
 local smoke = particles2d.newEmitter({
-    texture = assets.texture('tiny_swords/effects/dust_01.png'),
+    texture = assets.texture('effects/dust.png'),
     frames = {{0, 0, 64, 64}, {64, 0, 64, 64}, {128, 0, 64, 64}, {192, 0, 64, 64}},
     rate = 12,
     prewarm = 2,
