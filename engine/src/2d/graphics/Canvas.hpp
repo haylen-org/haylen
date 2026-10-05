@@ -55,9 +55,12 @@ struct Canvas {
     std::size_t postShade = 0;
     std::size_t postImage = 0;
 
-    // Returns the part of the destination that the area covers, both in the same coordinates.
+    // Returns the part of the destination that the area covers, both in the same coordinates, or nothing while the destination has no area, such as the screen before the first frame.
     [[nodiscard]] static math::Rect frameOf(const math::Rect& area, const math::Rect& destination) noexcept {
         const math::Vec2 size = destination.getSize();
+        if (!(size.x > 0.0F && size.y > 0.0F)) {
+            return {};
+        }
         return {(area.x - destination.x) / size.x, (area.y - destination.y) / size.y, area.width / size.x, area.height / size.y};
     }
 

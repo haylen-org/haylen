@@ -1,8 +1,10 @@
 #include <gtest/gtest.h>
 
+#include "2d/graphics/Canvas.hpp"
 #include "2d/graphics/RendererState.hpp"
 #include "haylen/graphics/BlendMode.hpp"
 #include "haylen/math/Color.hpp"
+#include "haylen/math/Rect.hpp"
 #include "sokol_gfx.h"
 
 namespace haylen::graphics2d {
@@ -93,6 +95,13 @@ TEST_F(RendererStateTest, BlendsTheStraightColorsOfDrawsInEveryModeButPremultipl
         EXPECT_FLOAT_EQ(untouched.b, target.b);
     }
     EXPECT_FLOAT_EQ(blend(Mode::Opaque, color, target).r, color.r);
+}
+
+// A canvas begun before the first frame, when the screen has no size yet, covers no pixels instead of a frame of NaN that would reach the viewport of its pass.
+TEST(CanvasTest, CoversNothingOfADestinationWithoutArea) {
+    EXPECT_EQ(Canvas::frameOf({10.0F, 20.0F, 30.0F, 40.0F}, {}), math::Rect{});
+    EXPECT_EQ(Canvas::frameOf({10.0F, 20.0F, 30.0F, 40.0F}, {0.0F, 0.0F, 100.0F, 0.0F}), math::Rect{});
+    EXPECT_EQ(Canvas::frameOf({10.0F, 20.0F, 30.0F, 40.0F}, {0.0F, 0.0F, 100.0F, 200.0F}), (math::Rect{0.1F, 0.1F, 0.3F, 0.2F}));
 }
 
 } // namespace haylen::graphics2d
