@@ -15,7 +15,7 @@
 
 namespace haylen::ui {
 
-// A modal window over the whole screen with a title, a message, optional content and answer buttons. It takes no room in the layout that holds it.
+// A modal window over the whole screen with a title, a message, optional content and answer buttons, over a backdrop that fades in and out with it. It takes no room in the layout that holds it.
 class Dialog final : public Component {
   public:
     [[nodiscard]] std::string_view getKind() const noexcept override {
@@ -43,12 +43,15 @@ class Dialog final : public Component {
     [[nodiscard]] static std::vector<Answer> readButtons(PropertyReader& reader, const core::Json& value);
     [[nodiscard]] static math::Insets getContentPadding(Context& context);
     [[nodiscard]] static bool isWaiting();
+    static void drawBackdrop(Context& context, const math::Rect& display);
+    static void close();
     [[nodiscard]] float getContentHeight(Context& context, float width);
     void drawContent(Context& context, const math::Rect& inner);
     void drawBody(Context& context);
 
     bool open = false;
     bool dismissible = true;
+    float shown = 0.0F;
     TextValue title;
     TextValue message;
     std::vector<Answer> buttons;

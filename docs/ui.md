@@ -94,7 +94,7 @@ The function `ui.mount` takes three options.
 
 The root fills the whole area when its `align` is `stretch`, which is the default of containers. With `start`, `center` or `end` the root keeps its measured size and sits at the top left, the center or the bottom right of the area.
 
-A GUI that paints a background to the screen edges uses `placement = 'screen'` and wraps its controls in `ui.safeArea`, which keeps its one child inside the safe area. Toasts always appear at the top or bottom of the safe area. Every Tiny Island screen, the HUD included, uses the default safe placement.
+A GUI that paints a background to the screen edges uses `placement = 'screen'` and wraps its controls in `ui.safeArea`, which keeps its one child inside the safe area. Toasts always appear at the top or bottom edge of the safe area, stacked so they never cover each other. Every Tiny Island screen, the HUD included, uses the default safe placement.
 
 ### Anchors
 

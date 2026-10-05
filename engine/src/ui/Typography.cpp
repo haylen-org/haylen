@@ -5,6 +5,8 @@
 #include <cmath>
 #include <cstdio>
 
+#include <imgui.h>
+
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/core/Utf8.hpp"
 #include "haylen/text/FontFamily.hpp"
@@ -49,10 +51,12 @@ void Typography::drawLayout(Context& context, Theme::Font font, std::string_view
     if (text.empty()) {
         return;
     }
+    // The text fades with the transforms around it and with the alpha of ImGui, which disabled nodes and fading overlays lower.
     const Context::Reshape shape = context.getReshape();
+    const math::Color faded = shape.color.withAlpha(shape.color.a * ImGui::GetStyle().Alpha);
     text::Style painted = style;
-    painted.color = style.color * shape.color;
-    painted.outlineColor = style.outlineColor * shape.color;
+    painted.color = style.color * faded;
+    painted.outlineColor = style.outlineColor * faded;
     painted.scale = shape.scale;
     const math::Vec2 origin = math::Vec2{std::floor(position.x), std::floor(position.y)} * shape.scale + shape.offset;
     // clang-format off

@@ -511,9 +511,9 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/components/touch/TouchButton.cpp
   src/ui/components/touch/TouchStick.cpp
   src/ui/Context.cpp
-  src/ui/Gui.cpp
   src/ui/FocusNavigator.cpp
   src/ui/FocusSearch.cpp
+  src/ui/Gui.cpp
   src/ui/ImGuiConverter.cpp
   src/ui/ImGuiLua.cpp
   src/ui/MountLink.cpp
@@ -525,6 +525,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/TextSession.cpp
   src/ui/TextValue.cpp
   src/ui/Theme.cpp
+  src/ui/ToastStack.cpp
   src/ui/TransformLua.cpp
   src/ui/Typography.cpp
   src/ui/UiLua.cpp

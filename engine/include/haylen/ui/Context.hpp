@@ -22,6 +22,7 @@
 #include "haylen/ui/Event.hpp"
 #include "haylen/ui/TextValue.hpp"
 #include "haylen/ui/Theme.hpp"
+#include "haylen/ui/ToastStack.hpp"
 #include "haylen/ui/Transform.hpp"
 
 namespace haylen::input {
@@ -112,6 +113,11 @@ class Context final {
         return sticks;
     }
 
+    // The stacks the toasts of every GUI share, so toasts shown together never cover each other.
+    [[nodiscard]] ToastStack& getToasts() noexcept {
+        return toasts;
+    }
+
     // Converts a point in design coordinates, such as a touch position, to UI coordinates.
     [[nodiscard]] math::Vec2 toUi(math::Vec2 designPoint) const noexcept;
 
@@ -172,6 +178,7 @@ class Context final {
     std::set<std::string, std::less<>> heldButtons;
     std::map<std::string, math::Vec2, std::less<>> sticks;
     std::vector<Reshape> reshapes;
+    ToastStack toasts;
 
     // The direction and language in effect, from the whole UI at the bottom to the node being drawn at the top.
     std::vector<Writing> writings{Writing{}};

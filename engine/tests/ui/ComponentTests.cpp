@@ -435,7 +435,9 @@ TEST_F(ComponentTest, ShowsOneDialogAtATime) {
     // clang-format on
     frames(2);
     key(input::Key::Enter);
-    frames(2);
+
+    // The second dialog waits until the first one faded out.
+    frames(12);
     key(input::Key::Enter);
     frames(2);
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"first:answer", "second:answer"}));

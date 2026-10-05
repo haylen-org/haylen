@@ -157,7 +157,9 @@ TEST_F(FocusTest, RestoresTheFocusWhenADialogCloses) {
     EXPECT_TRUE(getEngine().isBackCaptured());
     key(input::Key::Left);
     key(input::Key::Enter);
-    frames(2);
+
+    // The focus goes back once the dialog faded out and closed.
+    frames(12);
     EXPECT_EQ(findLastEvent("answer").value, (core::Json{{"button", "no"}}));
     EXPECT_TRUE(isFocused(*gui, "quit"));
     EXPECT_FALSE(getEngine().isBackCaptured());

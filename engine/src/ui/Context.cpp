@@ -64,6 +64,7 @@ void Context::beginFrame(double now, float delta, math::Vec2 visibleOrigin) noex
     heldButtons.clear();
     sticks.clear();
     reshapes.clear();
+    toasts.beginFrame();
     time = now;
     deltaSeconds = delta;
     origin = visibleOrigin;

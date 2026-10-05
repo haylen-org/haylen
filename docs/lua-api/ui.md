@@ -559,10 +559,11 @@ scene.push({
 
 ### gui:command(id, name, arguments)
 
-Sends a command to the node `id`. The argument `arguments` is optional, and both commands take none.
+Sends a command to the node `id`. The argument `arguments` is optional, and only `show` takes some.
 
 - The command `'focus'` moves the keyboard, gamepad and remote focus to the node. The focus ring stays visible when the player was already navigating and shows at once when they last used a gamepad or have no pointer device, while a mouse or touch player sees it only once they start navigating. The first accept press also counts as navigation: it shows the ring and activates the focused node. The focusable kinds are `button`, `imageButton`, `menuButton`, `popover`, `chip`, `checkbox`, `toggle`, `radioGroup`, `combo`, `segmentedControl`, `textField`, `secretField`, `textArea`, `filterField`, `numberField`, `slider`, `rangeSlider`, `stepper`, `keyCapture`, `colorField`, `list`, `tree`, `slotGrid`, `accordion`, `carousel`, `playArea` and a `richText` with links. A radio group, a list, a tree and a slot grid focus their selected entry, or their first entry that can be picked when none is selected or the selected one cannot take the focus, such as an item of a closed branch, an accordion focuses its first header, and rich text focuses its first link. Rich text written as literal markup takes the focus as soon as it is mounted or set, and translated rich text once it has been drawn.
 - The command `'open'` opens a `contextMenu` below its child, as a right click would.
+- The command `'show'` adds a notice to a `toast`, with the arguments `text`, `tone` and `duration`, which default to the properties of the toast. Every notice takes its place in the stack of the toast, so notices shown one after the other never cover each other. Unknown arguments raise `Unknown key "<key>" in the "show" command of a "toast".`, and wrong values raise the errors of the properties of the same names.
 
 A kind without that command raises `The component kind "<kind>" does not answer the command "<name>".`, arguments raise `The "focus" command takes no arguments.` or `The "open" command takes no arguments.`, and an unknown id raises `The GUI has no node with the id "<id>".`.
 
@@ -2255,7 +2256,7 @@ ui.mount(ui.settingsForm{
 
 ### ui.dialog(properties)
 
-A modal window over the whole screen with a title, a message, optional children and answer buttons. It takes no room in the layout that holds it. The last button starts with the focus. Pressing a button closes the dialog and reports `answer` with the button id as `button`. Escape or the east gamepad button closes a dismissible dialog and reports `dismiss`. A dialog the player closed shows again when `set` sets `open = true`. A dialog stays inside the screen, and its title, message and children scroll above the buttons when they are taller than it. One dialog shows at a time, so a dialog that opens while another one shows waits until that one closes. A dialog closes when its node stops drawing, because it, a node around it or its GUI was hidden, and shows again once it draws while `open` is still `true`. The popups of menu buttons, popovers, combos, color fields and context menus close the same way.
+A modal window over the whole screen with a title, a message, optional children and answer buttons, over a backdrop in the theme `overlay` color that dims everything behind it. The dialog and its backdrop fade in together when it opens and fade out together when it closes, over the theme `transitionDuration`, and a closing dialog takes no more answers. It takes no room in the layout that holds it. The last button starts with the focus. Pressing a button closes the dialog and reports `answer` with the button id as `button`. Escape or the east gamepad button closes a dismissible dialog and reports `dismiss`. A dialog the player closed shows again when `set` sets `open = true`. A dialog stays inside the screen, and its title, message and children scroll above the buttons when they are taller than it. One dialog shows at a time, so a dialog that opens while another one shows waits until that one closes. A dialog closes when its node stops drawing, because it, a node around it or its GUI was hidden, and shows again once it draws while `open` is still `true`. The popups of menu buttons, popovers, combos, color fields and context menus close the same way.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -2288,15 +2289,15 @@ ui.mount(ui.column{
 
 ### ui.toast(properties)
 
-A short notice at the top or bottom of the safe area that fades in and fades out after its duration, then reports `dismiss`. It takes no room in the layout that holds it and ignores the pointer. Setting `open = true` again shows it again from the start.
+Short notices at an edge of the safe area. The notice of the toast shows while `open` is `true`, and the `show` [command](#guicommandid-name-arguments) adds more notices to the same toast. Every notice slides in from the edge and fades in, stays for its duration, then fades out while the notices after it move up into its place. The notices of every toast at the same position form one stack, in the order they were asked to show, so they never cover each other, and when the stack already shows the theme `toastLimit` notices, the next ones wait their turn and their time starts once they show. A toast takes no room in the layout that holds it and ignores the pointer. Setting `open = true` again shows the notice of the toast again from the start, at the end of the stack, and the end of that notice reports `dismiss`.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `open` | boolean | `false` | Shows the toast. |
+| `open` | boolean | `false` | Shows the notice of the toast. |
 | `text` | text | none | The notice. |
 | `tone` | tone | `'information'` | Color of the bar on its start edge. |
-| `duration` | number from 0 to 3600 | `3` | Seconds on screen. The value `0` keeps it until `open` is set to `false`. |
-| `position` | string | `'top'` | `'top'` or `'bottom'`. |
+| `duration` | number from 0 to 3600 | `3` | Seconds on screen. The value `0` keeps the notice until `open` is set to `false`. |
+| `position` | string | `'top'` | Where the stack sits: `'top'` or `'bottom'` in the middle of the edge, or `'topStart'`, `'topEnd'`, `'bottomStart'` and `'bottomEnd'` at its sides, where start is the left of a left-to-right UI. |
 
 ```lua
 local ui = require('haylen.ui')
@@ -2308,6 +2309,8 @@ local function showSaved()
 end
 
 showSaved()
+notices:command('saved', 'show', {text = 'Two new items in the chest', tone = 'information', duration = 5})
+notices:command('saved', 'show', {text = 'The storm is coming', tone = 'warning'})
 ```
 
 ### ui.window(properties)
@@ -2514,7 +2517,7 @@ Colors are `'#RRGGBB'` or `'#AARRGGBB'` strings. The four tones `success`, `warn
 | `panel` | `#FF232739` | `#FFFFFFFF` | Fill of panels and dialogs. |
 | `raised` | `#FF2C3147` | `#FFFFFFFF` | Fill of cards, buttons, fields and chips. |
 | `tooltip` | `#F20F111A` | `#F21B1E2B` | Background of tooltips and toasts. |
-| `overlay` | `#A0000000` | `#66000000` | Dimming behind modal dialogs and the base of touch controls. |
+| `overlay` | `#A0000000` | `#66000000` | The backdrop behind dialogs and the base of touch controls. |
 | `hover` | `#14FFFFFF` | `#0F000000` | Layer over hovered controls and rows. |
 | `pressed` | `#24FFFFFF` | `#1F000000` | Layer over pressed controls. |
 | `selection` | `#404C7DFF` | `#334C7DFF` | Selected rows, checked buttons and selected text. |
@@ -2591,7 +2594,9 @@ Both built-in themes share these metrics, in design units.
 | `windowTitleHeight` | `56` | Height of the title bar of windows. |
 | `pageIndicatorSize` | `14` | Size of the page dots of carousels. |
 | `toggleKnobInset` | `4` | Space between the knob of a switch and the edge of its track. |
-| `transitionDuration` | `0.15` | Seconds the transitions of the UI take, such as the knob of a switch. |
+| `transitionDuration` | `0.15` | Seconds the transitions of the UI take: the knob of a switch, the fades of dialogs and their backdrops, and the fades and moves of toasts. |
+| `toastLimit` | `3` | Notices one stack of toasts shows at once, while the others wait. The value `0` shows them all. |
+| `toneBarWidth` | `6` | Width of the bar of the tone of toasts and alerts. |
 
 ## Theme fonts
 

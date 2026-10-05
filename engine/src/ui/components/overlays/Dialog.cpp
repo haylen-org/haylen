@@ -39,6 +39,19 @@ void Dialog::render(Context& context, const math::Rect&) {
     if (open && !ImGui::IsPopupOpen("##dialog") && !isWaiting()) {
         ImGui::OpenPopup("##dialog");
     }
+    if (!ImGui::IsPopupOpen("##dialog")) {
+        shown = 0.0F;
+        return;
+    }
+
+    // The dialog and its backdrop fade in and out together over the transition duration of the theme, and a closing dialog stays until it faded, taking no answers.
+    const float duration = context.getMetric(Theme::Metric::TransitionDuration);
+    const float step = duration > 0.0F ? context.getDeltaSeconds() / duration : 1.0F;
+    shown = open ? std::min(1.0F, shown + step) : std::max(0.0F, shown - step);
+    if (shown <= 0.0F) {
+        close();
+        return;
+    }
 
     // A dialog keeps a margin inside the display, and its content scrolls when it is taller than that.
     const math::Rect display = context.getBackend().getDisplayRect();
@@ -49,18 +62,22 @@ void Dialog::render(Context& context, const math::Rect&) {
     const float height = std::min(getContentHeight(context, inner) + padding.getVertical(), std::max(0.0F, display.height - margin * 2.0F));
     ImGui::SetNextWindowPos(ImGuiConverter::toImVec2(display.getCenter()), ImGuiCond_Always, {0.5F, 0.5F});
     ImGui::SetNextWindowSize({width, height});
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * shown);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0F, 0.0F});
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0F);
     ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.0F, 0.0F, 0.0F, 0.0F));
+    ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg, ImVec4(0.0F, 0.0F, 0.0F, 0.0F));
     const bool began = ImGui::BeginPopupModal("##dialog", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNavInputs);
-    ImGui::PopStyleColor();
+    ImGui::PopStyleColor(2);
     ImGui::PopStyleVar(2);
     if (!began) {
+        ImGui::PopStyleVar();
         return;
     }
 
     const math::Rect frame{ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, width, height};
     setBounds(frame);
+    drawBackdrop(context, display);
     Surfaces::draw(context, Theme::Surface::Dialog, frame, context.getColor(Theme::Color::Panel), context.getColor(Theme::Color::Border));
     drawContent(context, frame.inset(padding));
 
@@ -68,10 +85,28 @@ void Dialog::render(Context& context, const math::Rect&) {
         open = false;
         context.emit(*this, "dismiss");
     }
-    if (!open) {
-        ImGui::CloseCurrentPopup();
-    }
     ImGui::EndPopup();
+    ImGui::PopStyleVar();
+}
+
+// A faded dialog closes its popup from outside, since ImGui skips the window of a popup drawn with no opacity.
+void Dialog::close() {
+    const ImGuiContext& state = *GImGui;
+    const ImGuiID id = ImGui::GetID("##dialog");
+    for (int level = 0; level < state.OpenPopupStack.Size; ++level) {
+        if (state.OpenPopupStack[level].PopupId == id) {
+            ImGui::ClosePopupToLevel(level, true);
+            return;
+        }
+    }
+}
+
+// The backdrop covers the whole display behind the dialog, drawn first in the window of the dialog so it stays above the GUIs under it.
+void Dialog::drawBackdrop(Context& context, const math::Rect& display) {
+    ImDrawList& list = *ImGui::GetWindowDrawList();
+    list.PushClipRect(ImGuiConverter::toImVec2(display.getMin()), ImGuiConverter::toImVec2(display.getMax()), false);
+    list.AddRectFilled(ImGuiConverter::toImVec2(display.getMin()), ImGuiConverter::toImVec2(display.getMax()), ImGuiConverter::toImU32(context.getColor(Theme::Color::Overlay)));
+    list.PopClipRect();
 }
 
 // Only one dialog shows at a time, so a dialog that opens while another one shows waits until that one closes.

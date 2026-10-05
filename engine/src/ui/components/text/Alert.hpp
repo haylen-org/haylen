@@ -22,8 +22,6 @@ class Alert final : public Component {
     void render(Context& context, const math::Rect& bounds) override;
 
   private:
-    static constexpr float kBar = 6.0F;
-
     Widgets::Tone tone = Widgets::Tone::Information;
     TextValue title;
     TextValue message;
