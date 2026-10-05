@@ -1,5 +1,7 @@
 #pragma once
 
+#include <span>
+#include <string>
 #include <string_view>
 
 struct lua_State;
@@ -40,6 +42,9 @@ class Plugin {
 
     // Whether the plugin takes the next press of the back button of the platform, such as the UI while a popup is open, so the press never leaves the app.
     [[nodiscard]] virtual bool isCapturingBack() const;
+
+    // Hears the package paths that changed while the app runs in development, after the assets read from them reloaded, so a plugin rebuilds what it built from files outside the asset cache.
+    virtual void packageChanged(core::Engine& engine, std::span<const std::string> paths);
 };
 
 } // namespace haylen::plugins

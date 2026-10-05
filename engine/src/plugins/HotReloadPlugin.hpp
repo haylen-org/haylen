@@ -62,9 +62,10 @@ class HotReloadPlugin final : public Plugin {
     core::Signal<const Report&> reloaded;
 
   private:
-    // The paths of a batch by what they do.
+    // The paths of a batch by what they do: the assets by their asset paths and the package paths of the same files, which plugins hear, and the modules.
     struct Batch {
         std::vector<std::string> assets;
+        std::vector<std::string> files;
         std::vector<std::string> modules;
         std::string restart;
     };

@@ -502,7 +502,23 @@ scene.push({
 })
 ```
 
-While debug hot reload runs, a changed texture updates in place, so every sprite that uses it shows the new pixels. Other changed assets leave the cache, and the next load reads the new file.
+### Hot reload of assets
+
+While an app runs in development, a changed file reloads the assets read from it. Textures, shaders and JSON update in place, so every sprite that uses a texture shows the new pixels and `assets.json` returns the new data even while a preload group holds it, and each updated asset publishes `assetReloaded`. The other types leave the cache, so the next load reads the new file, and a live asset of such a type, such as a sound, a sprite atlas, a particle effect, a map or a vector image, publishes `assetChanged` with its type and path, so the app loads it again where it uses it. A changed font file restarts the app, because the text and the UI bake their fonts into atlases. The [Lua guide](../lua.md#hot-reload) describes the rest of hot reload.
+
+```lua
+local assets = require('haylen.assets')
+local events = require('haylen.events')
+
+local level = {map = assets.json('levels/forest.json')}
+
+-- A level that an editor changes while the app runs reads it again.
+events.on('assetReloaded', function(event)
+    if event.path == 'levels/forest.json' then
+        level.map = assets.json(event.path)
+    end
+end, {owner = level})
+```
 
 ## Asset types of other modules
 

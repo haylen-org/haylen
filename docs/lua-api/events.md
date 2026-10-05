@@ -211,6 +211,7 @@ The engine publishes these events on the bus. Events with data pass it to listen
 | `assetLoaded` | An asset of [`haylen.assets`](assets.md) entered the cache, queued for the end of the frame. | `{type, path}` |
 | `assetUnloaded` | The last holder of a cached asset let it go, such as the last preload group that held it, queued for the end of the frame. | `{type, path}` |
 | `assetReloaded` | A changed file updated a live asset in place during hot reload, queued for the end of the frame. | `{type, path}` |
+| `assetChanged` | A changed file left a live asset of a type that cannot update in place behind during hot reload, so the object the app holds is stale until it loads the file again, queued for the end of the frame. | `{type, path}` |
 | `moduleReloaded` | A changed Lua module reloaded in place during hot reload, once for each module of a save, queued for the end of the frame, as [`haylen.hotReload`](hotReload.md) describes. | `{module, path}` |
 | `objectCreated`, `objectDestroyed` | While object events are on, a counted object was created or destroyed, queued for the end of the frame, as [`haylen.debug`](debug.md#object-counts-and-events) describes. | The table `{type, count}`, where `type` is a counter name such as `'haylen.Sprite'` or `'Texture'`. |
 

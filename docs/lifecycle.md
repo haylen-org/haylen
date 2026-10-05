@@ -142,7 +142,7 @@ end)
 
 ## Assets, connections and objects
 
-Assets announce their life as well. `assetLoaded` follows an asset into the cache of [haylen.assets](lua-api/assets.md), `assetUnloaded` follows the moment its last holder lets go, whether a script, a sprite or the last preload group that held it, and `assetReloaded` follows a changed file that hot reload applied to a live asset. The asset manager learns about a release wherever it happens, even inside the garbage collector or on a worker thread, so these events are queued and arrive at the end of the frame, in the order they happened.
+Assets announce their life as well. `assetLoaded` follows an asset into the cache of [haylen.assets](lua-api/assets.md), `assetUnloaded` follows the moment its last holder lets go, whether a script, a sprite or the last preload group that held it, `assetReloaded` follows a changed file that hot reload applied to a live asset, and `assetChanged` follows a changed file that left a live asset of a type that cannot update in place behind. The asset manager learns about a release wherever it happens, even inside the garbage collector or on a worker thread, so these events are queued and arrive at the end of the frame, in the order they happened.
 
 Every WebSocket of [haylen.net](lua-api/net.md) publishes `webSocketConnected` when it opens and `webSocketDisconnected` when an open connection ends. A socket opened with reconnection publishes `webSocketReconnecting` with the attempt number and the wait before it, each time it schedules an attempt, until a connection opens again or it gives up.
 

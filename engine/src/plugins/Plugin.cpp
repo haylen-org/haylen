@@ -28,4 +28,6 @@ bool Plugin::isCapturingBack() const {
     return false;
 }
 
+void Plugin::packageChanged(core::Engine&, std::span<const std::string>) {}
+
 } // namespace haylen::plugins

@@ -32,7 +32,7 @@ class Device;
 
 namespace haylen::assets {
 
-// Loads, caches and preloads assets by their path inside the package content folder. Cached assets stay alive while anything, including a preload group, still holds them. The manager publishes `assetLoaded` when an asset enters the cache, `assetReloaded` when a changed file updates it in place and `assetUnloaded` when its last holder lets go, queued on the event bus with the type and path of the asset.
+// Loads, caches and preloads assets by their path inside the package content folder. Cached assets stay alive while anything, including a preload group, still holds them. The manager publishes `assetLoaded` when an asset enters the cache, `assetReloaded` when a changed file updates it in place, `assetChanged` when a changed file leaves a live asset of a type that cannot update in place behind, and `assetUnloaded` when its last holder lets go, queued on the event bus with the type and path of the asset.
 class Manager final {
   public:
     // What a loader receives. Decoders may read companion files, such as the image of an atlas, through the package from their worker thread.
@@ -52,7 +52,7 @@ class Manager final {
         std::function<std::shared_ptr<void>(Request&)> decode;
         std::function<std::shared_ptr<void>(std::shared_ptr<void>, const Request&)> finalize;
 
-        // Updates a live asset in place from the fresh bytes of its file. Types without it leave the cache on reload, so the next load reads the file again.
+        // Updates a live asset in place from the fresh bytes of its file. Types without it leave the cache on reload, so the next load reads the file again, and the live asset announces with `assetChanged` that it is stale.
         std::function<void(const std::shared_ptr<void>&, Request&)> reload;
     };
 

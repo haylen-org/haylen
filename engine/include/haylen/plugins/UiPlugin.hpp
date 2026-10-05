@@ -5,6 +5,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -49,6 +50,9 @@ class UiPlugin final : public Plugin {
     void renderUi(core::Engine& engine, const core::SceneView& view) override;
     void installLua(core::Engine& engine, lua_State* L) override;
     [[nodiscard]] bool isCapturingBack() const override;
+
+    // Builds a theme that `loadTheme` read from a changed file again on its base, and applies it when it is the current theme.
+    void packageChanged(core::Engine& engine, std::span<const std::string> paths) override;
 
     [[nodiscard]] ui::Backend& getBackend();
     [[nodiscard]] ui::Context& getContext();
@@ -171,6 +175,9 @@ class UiPlugin final : public Plugin {
     std::uint64_t nextOrder = 0;
     std::array<std::map<std::string, ImageEntry, std::less<>>, 2> images;
     std::map<std::string, std::string, std::less<>> fontPaths;
+
+    // The base of every theme file that `loadTheme` read, by its asset path.
+    std::map<std::string, std::string, std::less<>> themeFiles;
     std::map<std::string, std::shared_ptr<text::FontFamily>, std::less<>> fontFamilies;
     std::shared_ptr<bool> alive = std::make_shared<bool>(true);
     std::set<std::string, std::less<>> heldButtons;

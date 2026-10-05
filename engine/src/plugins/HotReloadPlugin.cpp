@@ -73,8 +73,15 @@ HotReloadPlugin::Batch HotReloadPlugin::classify(core::Engine& engine, const std
         if (!io::PackageWatcher::isWatched(path)) {
             continue;
         }
+        const std::string_view extension = io::Path::extension(path);
+        const bool font = extension == ".ttf" || extension == ".otf";
+        if (io::Path::isInside(path, io::Path::kContentDirectory) && font) {
+            batch.restart = "The font file \"" + path + "\" changed, restarting the app, because the text and the UI bake their fonts into atlases.";
+            return batch;
+        }
         if (io::Path::isInside(path, io::Path::kContentDirectory)) {
             batch.assets.push_back(path.substr(io::Path::kContentDirectory.size() + 1));
+            batch.files.push_back(path);
             continue;
         }
         const bool manifest = path == io::Path::kAppConfigFile || path.ends_with(std::string("/") + std::string(io::Path::kPluginManifestFile));
@@ -115,6 +122,9 @@ void HotReloadPlugin::apply(core::Engine& engine, const std::vector<std::string>
     }
 
     reloadAssets(engine, batch.assets, report);
+    for (Plugin* plugin : engine.getPlugins().getAll()) {
+        plugin->packageChanged(engine, batch.files);
+    }
     const bool applied = batch.modules.empty() || reloadModules(engine, batch.modules, report);
     if (report.restarted) {
         finish(report);

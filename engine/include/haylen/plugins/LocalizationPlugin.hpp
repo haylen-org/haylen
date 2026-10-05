@@ -1,5 +1,8 @@
 #pragma once
 
+#include <functional>
+#include <set>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -21,6 +24,9 @@ class LocalizationPlugin final : public Plugin {
     }
     void installLua(core::Engine& engine, lua_State* L) override;
 
+    // Adds a changed language file of a loaded folder again, so `localization.text` returns its new texts at once. A text the file no longer has stays until the app restarts.
+    void packageChanged(core::Engine& engine, std::span<const std::string> paths) override;
+
     [[nodiscard]] localization::Catalog& getCatalog() noexcept {
         return catalog;
     }
@@ -29,7 +35,10 @@ class LocalizationPlugin final : public Plugin {
     std::vector<std::string> loadFolder(const io::Package& package, std::string_view folder);
 
   private:
+    void addFile(const io::Package& package, const std::string& file);
+
     localization::Catalog catalog;
+    std::set<std::string, std::less<>> folders;
 };
 
 } // namespace haylen::plugins

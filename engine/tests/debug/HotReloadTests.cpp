@@ -153,6 +153,62 @@ TEST_F(AssetReloadTest, UpdatesTexturesInPlaceAndDropsOtherAssets) {
     EXPECT_THROW((void)assets.reload("hero.png"), std::runtime_error);
 }
 
+TEST_F(AssetReloadTest, UpdatesJsonInPlaceAndAnnouncesStaleAssets) {
+    test::EngineFixture fixture({{"content/data.json", R"({"level": 1})"}, {"content/icon.svg", R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 12"><path d="M0 0h24v12z"/></svg>)"}});
+    // clang-format off
+    fixture.runLua(R"(
+        heard = {}
+        local events = require('haylen.events')
+        events.on('assetReloaded', function(event) heard[#heard + 1] = 'reloaded ' .. event.type .. ' ' .. event.path end)
+        events.on('assetChanged', function(event) heard[#heard + 1] = 'changed ' .. event.type .. ' ' .. event.path end)
+        icon = require('haylen.assets').vectorImage('icon.svg')
+    )");
+    // clang-format on
+    assets::Manager& assets = fixture.engine().getAssets();
+    const std::shared_ptr<void> held = assets.load("json", "data.json");
+
+    fixture.package().setFile("content/data.json", test::TestFiles::bytes(R"({"level": 2})"));
+    fixture.package().setFile("content/icon.svg", test::TestFiles::bytes(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 12"><path d="M0 0h48v12z"/></svg>)"));
+    EXPECT_EQ(assets.reload("data.json"), 1U);
+    EXPECT_EQ(assets.reload("icon.svg"), 1U);
+    EXPECT_EQ(assets.json("data.json").at("level"), 2);
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return table.concat(heard, ', ')"), "reloaded json data.json, changed vectorImage icon.svg");
+}
+
+TEST_F(AssetReloadTest, RebuildsCatalogsAndThemesFromChangedFiles) {
+    // clang-format off
+    test::EngineFixture fixture({
+        {"content/locale/en.json", R"({"greeting": "Hello"})"},
+        {"content/themes/wood.json", R"({"name": "wood", "colors": {"accent": "#FF102030"}})"},
+        {"source/main.lua", R"(
+            localization = require('haylen.localization')
+            ui = require('haylen.ui')
+            localization.loadFolder('locale')
+            ui.setTheme(ui.loadTheme('themes/wood.json', 'light'))
+        )"},
+    }, nullptr, {.development = true});
+    // clang-format on
+    EXPECT_EQ(fixture.lua("return localization.text('greeting')"), "Hello");
+
+    fixture.package().setFile("content/locale/en.json", test::TestFiles::bytes(R"({"greeting": "Hi again"})"));
+    fixture.package().setFile("content/themes/wood.json", test::TestFiles::bytes(R"({"name": "wood", "colors": {"accent": "#FF405060"}})"));
+    const std::vector<std::string> changed{"content/locale/en.json", "content/themes/wood.json"};
+    fixture.host().getDevelopmentSession()->addChanges(changed);
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return localization.text('greeting')"), "Hi again");
+    EXPECT_EQ(fixture.lua("return ui.theme() .. ' ' .. ui.themeColor('accent'):toHex()"), "wood #FF405060");
+    EXPECT_FALSE(fixture.engine().isRestartRequested());
+}
+
+TEST_F(HotReloadPluginTest, RestartsForChangedFonts) {
+    test::EngineFixture fixture({}, nullptr, {.development = true});
+    const std::vector<std::string> changed{"content/fonts/title.ttf"};
+    fixture.host().getDevelopmentSession()->addChanges(changed);
+    fixture.frames(1);
+    EXPECT_TRUE(fixture.engine().isRestartRequested());
+}
+
 // Scans run on the I/O pool, so a watched engine runs frames until what a scan found reached it.
 class WatchedEngine final {
   public:

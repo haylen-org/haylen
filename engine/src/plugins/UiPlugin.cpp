@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <exception>
 #include <format>
 #include <stdexcept>
 #include <string>
@@ -16,12 +17,15 @@
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/FrameClock.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
+#include "haylen/core/Log.hpp"
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/core/SceneView.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/input/ActionMap.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/input/VirtualInput.hpp"
+#include "haylen/io/Package.hpp"
+#include "haylen/io/Path.hpp"
 #include "haylen/localization/Catalog.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/plugins/LocalizationPlugin.hpp"
@@ -76,6 +80,7 @@ void UiPlugin::stop(core::Engine& engine) {
         loaded.clear();
     }
     fontPaths.clear();
+    themeFiles.clear();
     fontFamilies.clear();
 
     // No GUI is left to report events, and listeners holding Lua functions let go before the Lua state closes.
@@ -495,7 +500,28 @@ std::string UiPlugin::addTheme(core::Engine& engine, const core::Json& definitio
 }
 
 std::string UiPlugin::loadTheme(core::Engine& engine, std::string_view path, std::string_view base) {
-    return addTheme(engine, engine.getAssets().json(path), base);
+    std::string name = addTheme(engine, engine.getAssets().json(path), base);
+    themeFiles.insert_or_assign(io::Path::normalize(path), std::string(base));
+    return name;
+}
+
+// An editor may still be writing a file when it is seen, so a theme that fails to build waits for the next save.
+void UiPlugin::packageChanged(core::Engine& engine, std::span<const std::string> paths) {
+    for (const std::string& path : paths) {
+        if (!io::Path::isInside(path, io::Path::kContentDirectory)) {
+            continue;
+        }
+        const auto theme = themeFiles.find(std::string_view(path).substr(io::Path::kContentDirectory.size() + 1));
+        if (theme == themeFiles.end() || !engine.getPackage().exists(path)) {
+            continue;
+        }
+        try {
+            const std::string name = addTheme(engine, engine.getAssets().json(theme->first), theme->second);
+            core::Log::info("Reloaded the theme \"{}\" from \"{}\".", name, theme->first);
+        } catch (const std::exception& error) {
+            core::Log::warning("The theme \"{}\" could not be reloaded yet: {}", theme->first, error.what());
+        }
+    }
 }
 
 void UiPlugin::addFont(core::Engine& engine, const std::string& name, std::string_view path) {

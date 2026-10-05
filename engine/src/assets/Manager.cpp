@@ -154,6 +154,9 @@ Manager::Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphi
             return std::make_shared<core::Json>(core::Json::parse(request.bytes.begin(), request.bytes.end()));
         },
         .finalize = [](std::shared_ptr<void> decoded, const Request&) { return decoded; },
+        .reload = [](const std::shared_ptr<void>& asset, Request& request) {
+            *std::static_pointer_cast<core::Json>(asset) = core::Json::parse(request.bytes.begin(), request.bytes.end());
+        },
     });
     // clang-format on
 }
@@ -219,6 +222,7 @@ std::size_t Manager::reload(std::string_view path) {
         const std::string typeName = key.substr(0, first);
         const Type& kind = getType(typeName);
         if (!kind.reload) {
+            publisher->publish(core::LifecycleEvent::kAssetChanged, typeName, changed);
             entry = cache.erase(entry);
             continue;
         }
