@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cmath>
 #include <string>
 #include <string_view>
@@ -12,7 +13,9 @@
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/Gui.hpp"
+#include "haylen/ui/Theme.hpp"
 #include "support/UiFixture.hpp"
+#include "ui/ImGuiConverter.hpp"
 #include "ui/ImageLibrary.hpp"
 
 namespace haylen::ui {
@@ -33,6 +36,13 @@ class ImageLibraryTest : public ::testing::Test, public test::UiFixture {
     // The pixels a picture drawn over a size in UI units covers on the screen.
     [[nodiscard]] math::Vec2 toPixels(math::Vec2 size) {
         return size * getUi().getBackend().getDensity();
+    }
+
+    // Tells whether a vertex the GUIs drew in the last frame has the color.
+    [[nodiscard]] bool drawsColor(ImU32 color) {
+        getUi().getBackend().makeCurrent();
+        const ImVector<ImDrawVert>& vertices = ImGui::FindWindowByName("##haylen-guis")->DrawList->VtxBuffer;
+        return std::any_of(vertices.begin(), vertices.end(), [color](const ImDrawVert& vertex) { return vertex.col == color; });
     }
 
     // Counts the vertices the GUIs drew in the last frame.
@@ -100,6 +110,19 @@ TEST_F(ImageLibraryTest, RoundsTheCornersOfImages) {
 
     EXPECT_THROW(gui->set("photo", {{"radius", -1}}), std::invalid_argument);
     EXPECT_EQ(getEngine().getError(), nullptr);
+}
+
+TEST_F(ImageLibraryTest, TintsTheIconOfAButtonWithItsIconColor) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "help", "text": "Help", "icon": "icons/badge.svg"}]})");
+    ASSERT_TRUE(getFixture().frameUntil([&] { return getContext().getImage("icons/badge.svg", {24.0F, 24.0F}).isValid(); }));
+    const ImU32 danger = ImGuiConverter::toImU32(getUi().getTheme().getColor(Theme::Color::Danger));
+    frames(2);
+    EXPECT_FALSE(drawsColor(danger));
+
+    gui->set("help", {{"iconColor", "danger"}});
+    frames(2);
+    EXPECT_TRUE(drawsColor(danger));
+    EXPECT_THROW(gui->set("help", {{"iconColor", "crimson"}}), std::invalid_argument);
 }
 
 TEST_F(ImageLibraryTest, ReportsSvgDocumentsThatFailToLoad) {

@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <string_view>
 #include <utility>
 
@@ -88,7 +89,8 @@ class Widgets final {
     static void focusItem(Context& context);
 
     [[nodiscard]] static math::Vec2 measureButton(Context& context, std::string_view label, bool hasIcon, ButtonVariant variant);
-    [[nodiscard]] static bool button(Context& context, const math::Rect& bounds, std::string_view label, const graphics::Texture* icon, ButtonVariant variant, bool checked = false);
+    // Draws a button with its label and icon, which takes `iconTint` when given and otherwise the color of the label in toolbar and icon buttons and its own colors in the others.
+    [[nodiscard]] static bool button(Context& context, const math::Rect& bounds, std::string_view label, const graphics::Texture* icon, ButtonVariant variant, bool checked = false, std::optional<math::Color> iconTint = std::nullopt);
 
     [[nodiscard]] static math::Vec2 measureChoice(Context& context, std::string_view label);
     static bool checkbox(Context& context, const math::Rect& bounds, bool& value, std::string_view label);

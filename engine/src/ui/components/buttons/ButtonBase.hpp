@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 
 #include "haylen/math/Rect.hpp"
@@ -7,11 +8,12 @@
 #include "haylen/ui/Alignment.hpp"
 #include "haylen/ui/Component.hpp"
 #include "haylen/ui/TextValue.hpp"
+#include "haylen/ui/Theme.hpp"
 #include "ui/Widgets.hpp"
 
 namespace haylen::ui {
 
-// The text, icon and variant every button-like kind shares.
+// The text, icon with its tint and variant every button-like kind shares.
 class ButtonBase : public Component {
   protected:
     [[nodiscard]] Alignment getDefaultAlignment() const noexcept override {
@@ -29,6 +31,7 @@ class ButtonBase : public Component {
   private:
     TextValue text;
     std::string icon;
+    std::optional<Theme::Color> iconColor;
     Widgets::ButtonVariant variant = Widgets::ButtonVariant::Default;
 };
 

@@ -919,7 +919,7 @@ Lua has no separate empty list, so an empty table converts to an empty JSON obje
 | theme color | The name of a [theme color role](#theme-colors), such as `'accent'` or `'textMuted'`. |
 | length | A non-negative number, or `'auto'` to let the content decide. |
 | insets | One number for every side, `{vertical, horizontal}`, or `{top, right, bottom, left}`. Every value is non-negative. |
-| image | A path relative to the package `content/` folder of an image file, such as `.png` or `.jpg`, or of an SVG document ending in `.svg`. Images load in the background, and a component draws nothing in their place until they arrive. An image file measures its size in pixels, and an SVG document the size its view box, or its width and height, give it, and the UI rasterizes it for the pixels it covers on the screen, so it stays sharp at every size, scale and density. The color `currentColor` paints white in an SVG document, so `ui.icon` tints the parts that use it with its `color`, and toolbar and icon buttons tint them like their text. An image that fails to load stops the app with `The UI image "<path>" could not be loaded.` followed by the reason. |
+| image | A path relative to the package `content/` folder of an image file, such as `.png` or `.jpg`, or of an SVG document ending in `.svg`. Images load in the background, and a component draws nothing in their place until they arrive. An image file measures its size in pixels, and an SVG document the size its view box, or its width and height, give it, and the UI rasterizes it for the pixels it covers on the screen, so it stays sharp at every size, scale and density. The color `currentColor` paints white in an SVG document, so `ui.icon` tints the parts that use it with its `color`, toolbar and icon buttons tint them like their text, and the `iconColor` of a button tints them in every variant. An image that fails to load stops the app with `The UI image "<path>" could not be loaded.` followed by the reason. |
 | tone | `'neutral'`, `'accent'`, `'success'`, `'warning'`, `'danger'` or `'information'`. |
 | variant | One of `'default'`, `'primary'`, `'destructive'`, `'toolbar'`, `'icon'` or `'link'`, described under [button](#uibuttonproperties). |
 | items | A list of [items](#items). |
@@ -1692,6 +1692,7 @@ A button that reports `click` when pressed. It can take the focus.
 | --- | --- | --- | --- |
 | `text` | text | none | Label of the button. |
 | `icon` | image | none | Picture before the label, as large as the theme `iconSize` metric. |
+| `iconColor` | theme color | none | Tint of the icon, such as `'text'` for an SVG icon drawn with `currentColor` on a light button. Without it toolbar and icon buttons tint the icon like their label and the other variants keep its colors. |
 | `variant` | variant | `'default'` | Look of the button. |
 | `checked` | boolean | `false` | Marks the button as active with the selection color, which suits toolbar toggles. |
 

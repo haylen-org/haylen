@@ -139,7 +139,7 @@ math::Vec2 Widgets::measureButton(Context& context, std::string_view label, bool
     return {std::max(width, height), height};
 }
 
-bool Widgets::button(Context& context, const math::Rect& bounds, std::string_view label, const graphics::Texture* icon, ButtonVariant variant, bool checked) {
+bool Widgets::button(Context& context, const math::Rect& bounds, std::string_view label, const graphics::Texture* icon, ButtonVariant variant, bool checked, std::optional<math::Color> iconTint) {
     const Interaction state = interact(context, bounds, context.getMetric(Theme::Metric::ControlRadius));
 
     if (variant == ButtonVariant::Link) {
@@ -191,7 +191,7 @@ bool Widgets::button(Context& context, const math::Rect& bounds, std::string_vie
     const float contentWidth = iconSize + labelWidth + (iconSize > 0.0F && labelWidth > 0.0F ? context.getMetric(Theme::Metric::ContentSpacing) : 0.0F);
     float x = std::floor(inner.x + (inner.width - contentWidth) * 0.5F);
     if (iconSize > 0.0F) {
-        Surfaces::drawImage(context, *icon, context.mirror({x, std::floor(inner.getCenter().y - iconSize * 0.5F), iconSize, iconSize}, inner), variant == ButtonVariant::Icon || variant == ButtonVariant::Toolbar ? textColor : math::Color::white());
+        Surfaces::drawImage(context, *icon, context.mirror({x, std::floor(inner.getCenter().y - iconSize * 0.5F), iconSize, iconSize}, inner), iconTint.value_or(variant == ButtonVariant::Icon || variant == ButtonVariant::Toolbar ? textColor : math::Color::white()));
         x += iconSize + context.getMetric(Theme::Metric::ContentSpacing);
     }
     if (labelWidth > 0.0F) {
