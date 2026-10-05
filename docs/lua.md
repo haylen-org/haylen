@@ -299,7 +299,7 @@ end)
 
 ## Asynchronous code
 
-Operations that take time return a Varn promise instead of blocking the frame, such as `assets.loadAsync`, `assets.preload`, `platform.call`, `jobs.spawn` and `handle:wait()` of a tween, together with Varn's own `async.sleep` and `http` requests. A coroutine started with `async.spawn` waits for a promise with `:await()`. The coroutine pauses and the app keeps running, and the coroutine resumes at the start of a later frame, before the updates of that frame.
+Operations that take time return a Varn promise instead of blocking the frame, such as `assets.loadAsync`, `assets.preload`, `platform.call`, `jobs.spawn` and `handle:wait()` of a tween, together with Varn's own `async.sleep` and `http` requests. A coroutine started with `async.spawn` waits for a promise with `:await()`. The coroutine pauses and the app keeps running, and the coroutine resumes during the poll of the event loop at the start of a frame, before the updates of that frame. A promise that settles during that poll, such as one of `async.sleep(0)`, resumes its coroutine in the same poll, so a loop that awaits such promises without end keeps the frame from ending, and a long computation awaits something that settles later or runs as a [job](lua-api/jobs.md).
 
 The method `:await()` never raises. It returns the value when the promise resolves, and `nil` and the error message when it rejects, so always check the result.
 
