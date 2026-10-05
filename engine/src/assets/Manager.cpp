@@ -91,7 +91,9 @@ Manager::Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphi
         },
         .finalize = [this](std::shared_ptr<void> decoded, const Request& request) -> std::shared_ptr<void> {
             const graphics::Image& image = *std::static_pointer_cast<graphics::Image>(decoded);
-            return device.createTexture(image, textureOptionsFromJson(request.options)).getResource();
+            const std::shared_ptr<graphics::TextureResource> texture = device.createTexture(image, textureOptionsFromJson(request.options)).getResource();
+            texture->label = request.path;
+            return texture;
         },
         .reload = [this](const std::shared_ptr<void>& asset, Request& request) {
             device.replaceTexture(graphics::Texture(std::static_pointer_cast<graphics::TextureResource>(asset)), graphics::Image::decode(request.bytes));

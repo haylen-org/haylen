@@ -3,6 +3,7 @@
 #include <any>
 #include <functional>
 #include <memory>
+#include <string>
 
 #include "haylen/core/ProcessMode.hpp"
 #include "haylen/core/Scene.hpp"
@@ -44,6 +45,9 @@ class ScriptedScene final : public core::Scene {
     void renderUi(core::Engine& engine) override;
     [[nodiscard]] bool isTransparent() const override;
     [[nodiscard]] core::ProcessMode getProcessMode() const override;
+
+    // The `name` field of the table, which a table made by a class of `haylen.class` reads from its class.
+    [[nodiscard]] std::string getName() const override;
 
     void pushTable(lua_State* L) const;
 

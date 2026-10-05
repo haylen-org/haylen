@@ -85,7 +85,7 @@ class RecordingScene final : public core::Scene {
     [[nodiscard]] core::ProcessMode getProcessMode() const override {
         return mode;
     }
-    [[nodiscard]] const std::string& getName() const noexcept {
+    [[nodiscard]] std::string getName() const override {
         return name;
     }
 

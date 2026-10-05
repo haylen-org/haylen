@@ -56,6 +56,7 @@ set(HAYLEN_TEST_SOURCES
   core/SignalTests.cpp
   core/TweenTests.cpp
   debug/DebugTests.cpp
+  debug/DrawingTests.cpp
   debug/HotReloadTests.cpp
   debug/StatsTests.cpp
   graphics/GraphicsLuaTests.cpp

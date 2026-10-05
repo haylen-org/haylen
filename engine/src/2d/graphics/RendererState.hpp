@@ -8,6 +8,7 @@
 #include <span>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "2d/graphics/Canvas.hpp"
@@ -122,6 +123,11 @@ struct RendererState {
     std::size_t indexCapacity = 0;
 
     VectorAtlas vectors;
+
+    // The canvas overlays by id, and whether they are drawing, which keeps them from running inside each other.
+    std::vector<std::pair<std::uint64_t, Renderer::CanvasOverlay>> overlays;
+    std::uint64_t nextOverlay = 1;
+    bool drawingOverlays = false;
 
     math::Rect pixelRect{};
     math::Rect visibleRect{};

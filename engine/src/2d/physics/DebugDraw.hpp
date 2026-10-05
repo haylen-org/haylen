@@ -12,7 +12,7 @@ class Renderer;
 
 namespace haylen::physics2d {
 
-// Draws the shapes and joints of a Box2D world with the 2D renderer, in world units.
+// Draws the shapes, joints and contacts of a Box2D world with the 2D renderer, in world units, with lines of the same width on the screen at any zoom.
 class DebugDraw final {
   public:
     DebugDraw(graphics2d::Renderer& target, const graphics2d::DrawOrder& drawOrder, float pixelsPerMeter) noexcept : renderer(target), order(drawOrder), scale(pixelsPerMeter) {}
@@ -36,6 +36,7 @@ class DebugDraw final {
     graphics2d::Renderer& renderer;
     graphics2d::DrawOrder order;
     float scale;
+    float lineWidth = kLineWidth;
 };
 
 } // namespace haylen::physics2d

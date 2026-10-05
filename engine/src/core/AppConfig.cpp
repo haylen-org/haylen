@@ -1,5 +1,6 @@
 #include "haylen/core/AppConfig.hpp"
 
+#include <algorithm>
 #include <optional>
 #include <stdexcept>
 
@@ -208,7 +209,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
 
     if (document.contains("debug")) {
         const Json& debugJson = document.at("debug");
-        JsonValidator::requireKnownKeys(debugJson, {"stats", "objectEvents", "safeArea", "showSafeArea"}, "the \"debug\" section of \"app.json\"");
+        JsonValidator::requireKnownKeys(debugJson, {"stats", "drawings", "objectEvents", "safeArea", "showSafeArea"}, "the \"debug\" section of \"app.json\"");
         std::string stats;
         readValue(debugJson, "stats", stats);
         if (!stats.empty()) {
@@ -217,6 +218,10 @@ AppConfig AppConfig::fromJson(const Json& document) {
                 throw std::invalid_argument("The \"debug.stats\" value \"" + stats + "\" in \"app.json\" is unknown. It is \"off\", \"compact\" or \"full\".");
             }
             config.debug.stats = *mode;
+        }
+        readValue(debugJson, "drawings", config.debug.drawings);
+        if (std::ranges::any_of(config.debug.drawings, [](const std::string& drawing) { return drawing.empty(); })) {
+            throw std::invalid_argument("The \"debug.drawings\" list in \"app.json\" has an empty drawing name.");
         }
         readValue(debugJson, "objectEvents", config.debug.objectEvents);
         if (debugJson.contains("safeArea")) {
@@ -250,7 +255,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
 }
 
 Json AppConfig::toJson() const {
-    Json debugJson = {{"stats", debug::StatsDisplay::modeName(debug.stats)}, {"objectEvents", debug.objectEvents}, {"showSafeArea", debug.showSafeArea}};
+    Json debugJson = {{"stats", debug::StatsDisplay::modeName(debug.stats)}, {"drawings", debug.drawings}, {"objectEvents", debug.objectEvents}, {"showSafeArea", debug.showSafeArea}};
     if (debug.safeArea) {
         debugJson["safeArea"] = debug.safeArea->toJson();
     }

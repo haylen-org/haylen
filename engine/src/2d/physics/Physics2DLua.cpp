@@ -8,9 +8,12 @@
 #include "2d/physics/ShapeLua.hpp"
 #include "2d/physics/WorldLua.hpp"
 #include "2d/physics/WorldRaycastLua.hpp"
+#include "haylen/core/Engine.hpp"
 #include "haylen/lua/Binding.hpp"
+#include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
+#include "plugins/Physics2DPlugin.hpp"
 
 namespace haylen::physics2d {
 
@@ -24,7 +27,9 @@ int Physics2DLua::newWorld(lua_State* L) {
         lua::Table::readField(L, 1, "pixelsPerMeter", settings.pixelsPerMeter);
         lua::Table::readField(L, 1, "subSteps", settings.subSteps);
     }
-    lua::Userdata::emplace<World>(L, std::make_shared<World>(settings));
+    const std::shared_ptr<World> world = std::make_shared<World>(settings);
+    lua::Runtime::getEngine(L).getPlugin<plugins::Physics2DPlugin>().track(world);
+    lua::Userdata::emplace<World>(L, world);
     lua_createtable(L, 0, 6);
     lua_newtable(L);
     lua_setfield(L, -2, "data");

@@ -1,11 +1,14 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <span>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/2d/graphics/Camera.hpp"
@@ -56,6 +59,16 @@ struct RendererState;
 // Records 2D draw commands into canvases during a frame and submits them to the GPU at the end of the frame.
 class Renderer final {
   public:
+    // The kinds of canvas: a world canvas through a camera, a screen canvas in design units and a render target canvas.
+    enum class CanvasKind : std::uint8_t {
+        World,
+        Screen,
+        Target,
+    };
+
+    // Draws into a canvas that is about to close, over what it holds and in its coordinates.
+    using CanvasOverlay = std::function<void(Renderer& renderer)>;
+
     // Inside each layer, draws keep their order, sort by depth, or sort by the y they stand on so lower ones draw later.
     enum class SortMode : std::uint8_t {
         Layer,
@@ -147,6 +160,19 @@ class Renderer final {
     void drawArc(math::Vec2 center, float radius, float thickness, float startAngle, float endAngle, math::Color color, const DrawOrder& order = {}, int segments = 0);
     void drawPolygon(std::span<const math::Vec2> points, math::Color color, const DrawOrder& order = {});
 
+    // Outlines every textured quad and text block the open canvas holds so far, in the color, and names each sprite after the path of its texture with the font, at a size in units of the destination: sprites, batches, nine-slice pieces, baked batches and glyphs drawn together.
+    void drawBounds(text::Font& font, math::Color color, float labelSize);
+
+    // Runs an overlay in every canvas just before it closes, with the clips and layer offsets of the canvas cleared, such as the debug drawings of the engine. Overlays never run while an overlay draws. The returned id removes the overlay.
+    std::uint64_t addCanvasOverlay(CanvasOverlay overlay);
+    void removeCanvasOverlay(std::uint64_t id);
+
+    // Returns the kind of the open canvas. It needs an active canvas.
+    [[nodiscard]] CanvasKind getCanvasKind() const;
+
+    // Names the canvas kinds `world`, `screen` and `target`.
+    [[nodiscard]] static std::string_view canvasKindName(CanvasKind value) noexcept;
+
     // Restricts following draws of the current canvas to a rectangle in canvas coordinates until popped.
     void pushClip(const math::Rect& rect);
     void popClip();
@@ -173,6 +199,7 @@ class Renderer final {
 
   private:
     static const CanvasOptions kDefaultCanvas;
+    static const std::array<std::pair<std::string_view, CanvasKind>, 3> kCanvasKindNames;
     static const MetaballStyle kDefaultMetaballs;
 
     // A soft circle whose kernel spans this many radii reaches the threshold of 0.5 at its radius, since `(1 - d^2)^2` is 0.5 at `d = sqrt(1 - sqrt(0.5))`.
@@ -185,6 +212,9 @@ class Renderer final {
     [[nodiscard]] static float lowestPoint(std::span<const math::Vec2> points) noexcept;
 
     void drawTextLayout(const text::Layout& layout, math::Vec2 position, const text::Style& style, const DrawOrder& order);
+
+    // Runs the overlays in the open canvas and closes it.
+    void finishCanvas();
 
     // Adds `count` sprites of one texture, where `spriteAt` returns the sprite at an index from any worker thread, and `partsAt` its part colors when the order recolors them.
     template <typename SpriteAt, typename PartsAt> void addBatch(const graphics::Texture& texture, std::size_t count, const DrawOrder& order, const SpriteAt& spriteAt, const PartsAt& partsAt);

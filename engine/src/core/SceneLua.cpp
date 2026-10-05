@@ -40,24 +40,11 @@ template <> struct Type<core::SceneLoad> {
 };
 
 template <> struct EnumNames<core::Scene::State> {
-    static constexpr std::array<std::pair<std::string_view, core::Scene::State>, 9> kStates{{{"created", core::Scene::State::Created}, {"loading", core::Scene::State::Loading}, {"loaded", core::Scene::State::Loaded}, {"entering", core::Scene::State::Entering}, {"active", core::Scene::State::Active}, {"covered", core::Scene::State::Covered}, {"exiting", core::Scene::State::Exiting}, {"exited", core::Scene::State::Exited}, {"unloaded", core::Scene::State::Unloaded}}};
-
     static std::optional<core::Scene::State> fromName(std::string_view name) {
-        for (const auto& [candidate, state] : kStates) {
-            if (candidate == name) {
-                return state;
-            }
-        }
-        return std::nullopt;
+        return core::Scene::stateFromName(name);
     }
-
     static std::string_view name(core::Scene::State value) {
-        for (const auto& [candidate, state] : kStates) {
-            if (state == value) {
-                return candidate;
-            }
-        }
-        return kStates.front().first;
+        return core::Scene::stateName(value);
     }
 };
 

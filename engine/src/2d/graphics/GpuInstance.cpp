@@ -68,4 +68,15 @@ GpuInstance GpuInstance::makeParts(const PartColors& colors) noexcept {
     return std::bit_cast<GpuInstance>(Parts{.colors = {colors.red.toRgba8(), colors.green.toRgba8(), colors.blue.toRgba8(), colors.yellow.toRgba8()}, .unused = {}});
 }
 
+std::array<math::Vec2, 4> GpuInstance::getCorners() const noexcept {
+    const float cosine = std::cos(rotation);
+    const float sine = std::sin(rotation);
+    std::array<math::Vec2, 4> corners{math::Vec2{0.0F, 0.0F}, math::Vec2{1.0F, 0.0F}, math::Vec2{1.0F, 1.0F}, math::Vec2{0.0F, 1.0F}};
+    for (math::Vec2& corner : corners) {
+        const math::Vec2 local = (corner - math::Vec2{pivot[0], pivot[1]}) * math::Vec2{size[0], size[1]};
+        corner = math::Vec2{position[0] + local.x * cosine - local.y * sine, position[1] + local.x * sine + local.y * cosine};
+    }
+    return corners;
+}
+
 } // namespace haylen::graphics2d

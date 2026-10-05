@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 #include "2d/graphics/FrameSubmitter.hpp"
@@ -29,6 +31,11 @@
 namespace haylen::graphics2d {
 
 const Renderer::CanvasOptions Renderer::kDefaultCanvas{};
+const std::array<std::pair<std::string_view, Renderer::CanvasKind>, 3> Renderer::kCanvasKindNames{{{"world", CanvasKind::World}, {"screen", CanvasKind::Screen}, {"target", CanvasKind::Target}}};
+
+std::string_view Renderer::canvasKindName(CanvasKind value) noexcept {
+    return std::ranges::find(kCanvasKindNames, value, &std::pair<std::string_view, CanvasKind>::second)->first;
+}
 const Renderer::MetaballStyle Renderer::kDefaultMetaballs{};
 
 std::vector<std::uint8_t> Renderer::radialFalloff(int size) {
@@ -146,6 +153,7 @@ void Renderer::beginWorld(const Camera& camera, const CanvasOptions& options) {
     }
 
     const math::Rect area = camera.getViewRect(state->visibleRect);
+    finishCanvas();
     state->openCanvas({.kind = Canvas::Kind::World, .options = options, .viewSize = area.getSize(), .view = camera.viewTransform(area.getSize()), .frame = Canvas::frameOf(area, state->visibleRect)});
 }
 
@@ -157,6 +165,7 @@ void Renderer::beginScreen(const CanvasOptions& options) {
         throw std::invalid_argument("Screen canvases do not support a clear color.");
     }
 
+    finishCanvas();
     state->openCanvas({.kind = Canvas::Kind::Screen, .options = options, .viewSize = state->visibleRect.getSize(), .view = math::Transform2D::translation(-state->visibleRect.getMin())});
 }
 
@@ -172,6 +181,7 @@ void Renderer::beginTarget(const graphics::RenderTarget& target, const Camera& c
 
     const math::Rect whole{0.0F, 0.0F, target.getSize().x, target.getSize().y};
     const math::Rect area = camera.getViewRect(whole);
+    finishCanvas();
     state->openCanvas({.kind = Canvas::Kind::Target, .options = options, .target = target, .viewSize = area.getSize(), .view = camera.viewTransform(area.getSize()), .frame = Canvas::frameOf(area, whole)});
 }
 
@@ -180,7 +190,7 @@ void Renderer::beginCapture(const graphics::RenderTarget& target, math::Color cl
         throw std::invalid_argument("A capture needs a valid render target.");
     }
 
-    state->closeCanvas();
+    finishCanvas();
     state->openCaptures.push_back(state->captures.size());
     state->captures.push_back({.target = target, .clear = clear});
 }
@@ -189,6 +199,7 @@ void Renderer::endCapture() {
     if (state->openCaptures.empty()) {
         throw std::logic_error("The \"endCapture\" call has no matching \"beginCapture\".");
     }
+    finishCanvas();
     state->closeCapture();
 }
 
@@ -611,6 +622,87 @@ void Renderer::drawPolygon(std::span<const math::Vec2> points, math::Color color
     state->addMesh(state->white, vertices, indices, order);
 }
 
+std::uint64_t Renderer::addCanvasOverlay(CanvasOverlay overlay) {
+    const std::uint64_t id = state->nextOverlay++;
+    state->overlays.emplace_back(id, std::move(overlay));
+    return id;
+}
+
+void Renderer::removeCanvasOverlay(std::uint64_t id) {
+    std::erase_if(state->overlays, [id](const auto& entry) { return entry.first == id; });
+}
+
+Renderer::CanvasKind Renderer::getCanvasKind() const {
+    switch (state->getCanvas().kind) {
+    case Canvas::Kind::World:
+        return CanvasKind::World;
+    case Canvas::Kind::Screen:
+        return CanvasKind::Screen;
+    case Canvas::Kind::Target:
+        break;
+    }
+    return CanvasKind::Target;
+}
+
+// The overlays run on a copy of their list, so one may add or remove overlays, and the canvas closes even when one of them fails.
+void Renderer::finishCanvas() {
+    if (state->canvasOpen && !state->overlays.empty() && !state->drawingOverlays) {
+        const std::vector<std::pair<std::uint64_t, CanvasOverlay>> overlays = state->overlays;
+        state->clipStack.clear();
+        state->layerOffsets.clear();
+        state->layerOffset = 0;
+        state->drawingOverlays = true;
+        try {
+            for (const auto& [id, overlay] : overlays) {
+                overlay(*this);
+            }
+        } catch (...) {
+            state->drawingOverlays = false;
+            state->closeCanvas();
+            throw;
+        }
+        state->drawingOverlays = false;
+    }
+    state->closeCanvas();
+}
+
+void Renderer::drawBounds(text::Font& font, math::Color color, float labelSize) {
+    const Canvas& canvas = state->getCanvas();
+    const float unit = getCanvasUnitSize();
+    const DrawOrder order{.layer = std::numeric_limits<int>::max() / 2, .unshaded = true};
+    const std::size_t end = state->items.size();
+
+    for (std::size_t index = canvas.itemBegin; index < end; ++index) {
+        const DrawItem item = state->items[index];
+        const bool sprite = item.program == Program::Sprite || item.program == Program::Recolor;
+        if ((!sprite && item.program != Program::Text) || item.texture == state->white.getResource().get()) {
+            continue;
+        }
+        if (item.batch != nullptr) {
+            drawRectOutline(item.batch->bounds.translated(item.offset), unit, color, order);
+            continue;
+        }
+
+        // A text draw is one block, and every quad of a sprite draw is a sprite of its own.
+        const std::size_t stride = item.program == Program::Recolor ? 2 : 1;
+        math::Rect block = math::Rect::fromCenter(math::Vec2{state->instances[item.first].position[0], state->instances[item.first].position[1]}, {});
+        for (std::size_t quad = item.first; quad < item.first + item.count; quad += stride) {
+            const std::array<math::Vec2, 4> corners = state->instances[quad].getCorners();
+            if (item.program == Program::Text) {
+                block = block.merged(math::Geometry::bounds(corners));
+                continue;
+            }
+            drawPolyline(corners, unit, color, true, order);
+            if (!item.texture->label.empty() && (quad == item.first || item.count == stride)) {
+                drawText(font, item.texture->label, corners[0], {.size = labelSize * unit, .color = color, .shadowOffset = {unit, unit}, .shadowColor = math::Color::black()}, order);
+            }
+        }
+        if (item.program == Program::Text) {
+            drawRectOutline(block, unit, color.withAlpha(color.a * 0.6F), order);
+        }
+    }
+}
+
 void Renderer::pushClip(const math::Rect& rect) {
     (void)state->getCanvas();
     math::Rect clip = rect;
@@ -699,7 +791,7 @@ bool Renderer::isCapturing() const noexcept {
 }
 
 void Renderer::endFrame(const graphics::FrameTarget& target) {
-    state->closeCanvas();
+    finishCanvas();
     while (!state->openCaptures.empty()) {
         state->closeCapture();
     }

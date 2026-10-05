@@ -1,6 +1,6 @@
 # haylen.debug
 
-The module `haylen.debug` shows the debug statistics and reads them, counts objects, samples monitors, and reads the frame profiler and the recent log. Use it to measure where frame time goes, to profile app code with named scopes and to show performance numbers in debug tools.
+The module `haylen.debug` shows the debug statistics and reads them, switches the debug drawings, counts objects, samples monitors, and reads the frame profiler and the recent log. Use it to measure where frame time goes, to see what the app draws and simulates, to profile app code with named scopes and to show performance numbers in debug tools.
 
 ```lua
 local debug = require('haylen.debug')
@@ -16,9 +16,33 @@ The engine shows its statistics in one of three modes.
 | --- | --- |
 | `'off'` | Nothing. Every app starts this way unless `app.json` picks another mode. |
 | `'compact'` | Three lines in the bottom left corner of the safe area: frames per second and the last frame time, draw calls and vertices, and GPU instances. The 2D renderer draws them above everything else, including scene transitions and the error screen, so they work in every app, with or without UI. |
-| `'full'` | The debug overlay, a window drawn over the app with the frame rate, the fastest, slowest and one percent low frame times, the fixed steps of the frame, a graph of recent frame times, the profiler scopes of the last frame, the rendering statistics, the memory of Lua, textures, render targets and sounds, the counters of scenes, tweens, timers, voices by bus, sockets, assets, bodies, contacts and particles, the usage of the GPU pools, the object counts, the signals and event listeners with their emissions, warnings about listeners whose owner is gone, the monitors with their graphs and the recent log. Its close button turns the statistics off. |
+| `'full'` | The debug overlay, a window drawn over the app with the frame rate, the fastest, slowest and one percent low frame times, the fixed steps of the frame, a graph of recent frame times, the profiler scopes of the last frame, the scenes of the stack from the bottom up with their names, states and process modes and whether the scenes below them keep rendering, a checkbox for every [drawing](#drawings), the rendering statistics, the memory of Lua, textures, render targets and sounds, the counters of scenes, tweens, timers, voices by bus, sockets, assets, bodies, contacts and particles, the usage of the GPU pools, the object counts, the signals and event listeners with their emissions, warnings about listeners whose owner is gone, the monitors with their graphs and the recent log. Its close button turns the statistics off. |
 
 F3 cycles through `off`, `compact` and `full`, `debug.setToggleKey` picks another key, and `debug.setStatsMode` picks a mode from Lua. The setting `"debug": {"stats": "compact"}` in `app.json` starts the app in a mode, as the [Lua guide](../lua.md#appjson) lists. The statistics describe the frame before, because the renderer only knows its numbers once it has submitted a frame.
+
+## Drawings
+
+Drawings show what the app draws and simulates over every canvas it draws, in the coordinates of that canvas, on top of everything else and unlit. Each drawing has a name:
+
+| Drawing | What shows |
+| --- | --- |
+| `'physics'` | The bodies, shapes, joints and contact points of every physics world that [`physics2d.newWorld`](physics2d.md) made, in world and render target canvases, with lines of the same width on the screen at any zoom. Bodies take the colors of their state: awake, sleeping, static or kinematic. |
+| `'bounds'` | An outline around every sprite, sprite of a batch, nine-slice piece and baked batch, named after the path of the texture the assets loaded it from, and a fainter outline around every text block, in every canvas. |
+| Any other name | The drawers that the app or a plugin adds with [`debug.addDrawer`](#debugadddrawername-fn-options). |
+
+F4 turns every drawing off while any is on, and otherwise turns on every drawing the engine and the app know, `debug.setDrawKey` picks another key, and `debug.setDrawing` switches one drawing from Lua. The setting `"debug": {"drawings": ["physics", "bounds"]}` in `app.json` starts the app with drawings on, as the [Lua guide](../lua.md#appjson) lists. The statistics key wins when an app gives both the same key.
+
+```lua
+local debug = require('haylen.debug')
+local graphics2d = require('haylen.graphics2d')
+
+debug.setDrawing('physics', true)
+debug.addDrawer('paths', function(kind)
+    if kind == 'world' then
+        graphics2d.drawPolyline({{0, 0}, {200, 80}, {400, 40}}, 2 * graphics2d.canvasUnitSize(), '#FF40E0FF')
+    end
+end)
+```
 
 ## Object counts and events
 
@@ -88,6 +112,91 @@ local debug = require('haylen.debug')
 
 local key = debug.toggleKey()
 print(key and ('press ' .. key .. ' for the debug statistics') or 'the debug statistics have no shortcut')
+```
+
+### debug.setDrawing(name, enabled)
+
+Turns the [drawing](#drawings) named `name` on or off. A name that no drawer has yet stays on and shows once a drawer of that name is added.
+
+```lua
+local debug = require('haylen.debug')
+
+debug.setDrawing('bounds', true)
+```
+
+### debug.drawing(name)
+
+Returns `true` while the drawing named `name` is on.
+
+```lua
+local debug = require('haylen.debug')
+
+print(debug.drawing('physics'))
+```
+
+### debug.drawings()
+
+Returns the names of the drawings that are on, in order of name.
+
+```lua
+local debug = require('haylen.debug')
+
+print(table.concat(debug.drawings(), ', '))
+```
+
+### debug.drawingNames()
+
+Returns the names of every drawing the engine and the app know, `bounds`, `physics` and the names of the drawers added with `debug.addDrawer`, in order of name.
+
+```lua
+local debug = require('haylen.debug')
+
+for _, name in ipairs(debug.drawingNames()) do
+    print(name, debug.drawing(name))
+end
+```
+
+### debug.setDrawKey(key)
+
+Picks the key that turns every drawing on or off, by the key names of [`haylen.input`](input.md). The value `nil` turns the shortcut off. The default key is `'f4'`.
+
+```lua
+local debug = require('haylen.debug')
+
+debug.setDrawKey('f6')
+```
+
+### debug.drawKey()
+
+Returns the name of the key that switches the drawings, or `nil` when the shortcut is off.
+
+```lua
+local debug = require('haylen.debug')
+
+print(debug.drawKey())
+```
+
+### debug.addDrawer(name, fn, options)
+
+Adds a drawer to the drawing named `name`, which calls `fn(kind)` in every canvas just before the canvas closes while the drawing is on, where `kind` is `'world'`, `'screen'` or `'target'`. The function draws with [`haylen.graphics2d`](graphics2d.md) in the coordinates of the canvas, such as the path of an enemy or the cells of a navigation grid. It returns the [`Connection`](signal.md#connection) of the drawer, whose `disconnect` removes it and whose `blocked` holds it. The argument `options` is an optional table whose `owner` removes the drawer when the owner ends, as the [owners of `haylen.events`](events.md#owners) describe. An empty name raises `a drawing needs a name`, and an unknown option raises `Unknown option "<name>".`
+
+```lua
+local debug = require('haylen.debug')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local level = {enemies = {{x = 100, y = 200, range = 120}}}
+function level:enter()
+    debug.addDrawer('ranges', function(kind)
+        if kind ~= 'world' then
+            return
+        end
+        for _, enemy in ipairs(self.enemies) do
+            graphics2d.drawRing(enemy.x, enemy.y, enemy.range, 2 * graphics2d.canvasUnitSize(), '#C0FF4040')
+        end
+    end, {owner = self})
+end
+scene.push(level)
 ```
 
 ### debug.stats()

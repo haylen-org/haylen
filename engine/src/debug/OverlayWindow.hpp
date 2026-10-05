@@ -16,13 +16,18 @@ struct ImVec4;
 
 namespace haylen::core {
 class Engine;
+class SceneManager;
+} // namespace haylen::core
+
+namespace haylen::plugins {
+class DebugPlugin;
 }
 
 namespace haylen::debug {
 
 class Profiler;
 
-// Draws the full debug overlay window with ImGui: frame times, profiler scopes, rendering, memory, GPU pools, counters, object counts, signals and event listeners, monitors and the recent log.
+// Draws the full debug overlay window with ImGui: frame times, profiler scopes, the scenes on the stack, the debug drawings, rendering, memory, GPU pools, counters, object counts, signals and event listeners, monitors and the recent log.
 class OverlayWindow final {
   public:
     // Draws the window and returns `false` once the player closed it.
@@ -35,6 +40,8 @@ class OverlayWindow final {
 
     static void drawFrame(const Profiler& profiler, const Stats::Frame& frame);
     static void drawProfiler(const Profiler& profiler);
+    static void drawScenes(const core::SceneManager& scenes);
+    static void drawDrawings(plugins::DebugPlugin& plugin);
     static void drawRendering(const graphics2d::Renderer::Stats& rendering);
     static void drawResources(const Stats& stats);
     static void drawObjects(const std::vector<ObjectCounter::Snapshot>& objects);

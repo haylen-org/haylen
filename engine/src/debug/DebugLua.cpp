@@ -65,6 +65,68 @@ int DebugLua::toggleKey(lua_State* L) {
     return 1;
 }
 
+int DebugLua::setDrawing(lua_State* L) {
+    getPlugin(L).setDrawing(lua::Stack::read<std::string_view>(L, 1), lua::Stack::read<bool>(L, 2));
+    return 0;
+}
+
+int DebugLua::drawing(lua_State* L) {
+    lua::Stack::push(L, getPlugin(L).isDrawing(lua::Stack::read<std::string_view>(L, 1)));
+    return 1;
+}
+
+int DebugLua::drawings(lua_State* L) {
+    lua::Stack::push(L, getPlugin(L).getDrawings());
+    return 1;
+}
+
+int DebugLua::drawingNames(lua_State* L) {
+    lua::Stack::push(L, getPlugin(L).getDrawingNames());
+    return 1;
+}
+
+int DebugLua::setDrawKey(lua_State* L) {
+    getPlugin(L).setDrawKey(lua_isnoneornil(L, 1) ? std::nullopt : std::optional<input::Key>(lua::Stack::read<input::Key>(L, 1)));
+    return 0;
+}
+
+int DebugLua::drawKey(lua_State* L) {
+    lua::Stack::push(L, getPlugin(L).getDrawKey());
+    return 1;
+}
+
+// Adds a drawer with `addDrawer(name, function(kind) ... end[, {owner = owner}])`, which draws into every canvas while the drawing is on, and receives the kind of the canvas.
+int DebugLua::addDrawer(lua_State* L) {
+    std::string name = lua::Stack::read<std::string>(L, 1);
+    luaL_argcheck(L, !name.empty(), 1, "a drawing needs a name");
+    luaL_checktype(L, 2, LUA_TFUNCTION);
+    int owner = 0;
+    if (!lua_isnoneornil(L, 3)) {
+        luaL_checktype(L, 3, LUA_TTABLE);
+        lua::Table::checkFields(L, 3, {kOwnerFields});
+        if (lua_getfield(L, 3, "owner") != LUA_TNIL) {
+            lua::Owners::checkOwner(L, -1);
+            owner = lua_gettop(L);
+        }
+    }
+
+    auto function = std::make_shared<lua::Owners::Function>(L, 2, owner);
+    lua_State* main = lua::Runtime::getMainThread(L);
+    // clang-format off
+    core::Connection connection = getPlugin(L).addDrawer(std::move(name), [function, main](graphics2d::Renderer& renderer) {
+        if (function->push(main)) {
+            lua::Stack::push(main, graphics2d::Renderer::canvasKindName(renderer.getCanvasKind()));
+            lua::Runtime::protectedCall(main, 1, 0);
+        }
+    });
+    // clang-format on
+    if (owner != 0) {
+        lua::Owners::add(L, owner, connection);
+    }
+    lua::Userdata::emplace<core::Connection>(L, std::move(connection));
+    return 1;
+}
+
 int DebugLua::setObjectEvents(lua_State* L) {
     getPlugin(L).setObjectEvents(lua::Stack::read<bool>(L, 1));
     return 0;
@@ -219,7 +281,7 @@ int DebugLua::addMonitor(lua_State* L) {
     int owner = 0;
     if (!lua_isnoneornil(L, 3)) {
         luaL_checktype(L, 3, LUA_TTABLE);
-        lua::Table::checkFields(L, 3, {kMonitorFields});
+        lua::Table::checkFields(L, 3, {kOwnerFields});
         if (lua_getfield(L, 3, "owner") != LUA_TNIL) {
             lua::Owners::checkOwner(L, -1);
             owner = lua_gettop(L);
@@ -346,7 +408,7 @@ int DebugLua::recentLog(lua_State* L) {
 
 int DebugLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"setStatsMode", &lua::Binding::native<&setStatsMode>}, {"statsMode", &lua::Binding::native<&statsMode>}, {"setToggleKey", &lua::Binding::native<&setToggleKey>}, {"toggleKey", &lua::Binding::native<&toggleKey>}, {"setObjectEvents", &lua::Binding::native<&setObjectEvents>}, {"objectEvents", &lua::Binding::native<&objectEvents>}, {"hotReloadWatching", &lua::Binding::native<&hotReloadWatching>}, {"stats", &lua::Binding::native<&stats>}, {"addMonitor", &lua::Binding::native<&addMonitor>}, {"removeMonitor", &lua::Binding::native<&removeMonitor>}, {"monitors", &lua::Binding::native<&monitors>}, {"frame", &lua::Binding::native<&frame>}, {"frameHistory", &lua::Binding::native<&frameHistory>}, {"beginScope", &lua::Binding::native<&beginScope>}, {"endScope", &lua::Binding::native<&endScope>}, {"profile", &lua::Binding::native<&profile>}, {"recentLog", &lua::Binding::native<&recentLog>}, {nullptr, nullptr},
+        {"setStatsMode", &lua::Binding::native<&setStatsMode>}, {"statsMode", &lua::Binding::native<&statsMode>}, {"setToggleKey", &lua::Binding::native<&setToggleKey>}, {"toggleKey", &lua::Binding::native<&toggleKey>}, {"setDrawing", &lua::Binding::native<&setDrawing>}, {"drawing", &lua::Binding::native<&drawing>}, {"drawings", &lua::Binding::native<&drawings>}, {"drawingNames", &lua::Binding::native<&drawingNames>}, {"setDrawKey", &lua::Binding::native<&setDrawKey>}, {"drawKey", &lua::Binding::native<&drawKey>}, {"addDrawer", &lua::Binding::native<&addDrawer>}, {"setObjectEvents", &lua::Binding::native<&setObjectEvents>}, {"objectEvents", &lua::Binding::native<&objectEvents>}, {"hotReloadWatching", &lua::Binding::native<&hotReloadWatching>}, {"stats", &lua::Binding::native<&stats>}, {"addMonitor", &lua::Binding::native<&addMonitor>}, {"removeMonitor", &lua::Binding::native<&removeMonitor>}, {"monitors", &lua::Binding::native<&monitors>}, {"frame", &lua::Binding::native<&frame>}, {"frameHistory", &lua::Binding::native<&frameHistory>}, {"beginScope", &lua::Binding::native<&beginScope>}, {"endScope", &lua::Binding::native<&endScope>}, {"profile", &lua::Binding::native<&profile>}, {"recentLog", &lua::Binding::native<&recentLog>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

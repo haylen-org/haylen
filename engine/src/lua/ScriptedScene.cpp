@@ -271,6 +271,21 @@ std::function<core::ProcessMode()> ScriptedScene::followOwnerMode(lua_State* L, 
     // clang-format on
 }
 
+// A table made by a class of `haylen.class` reads the name of its class through its metatable.
+std::string ScriptedScene::getName() const {
+    std::string name = core::Scene::getName();
+    // clang-format off
+    Runtime::protectedRun(table.getState(), [&](lua_State* L) {
+        table.push(L);
+        if (lua_getfield(L, -1, "name") == LUA_TSTRING) {
+            name = lua_tostring(L, -1);
+        }
+        lua_pop(L, 2);
+    });
+    // clang-format on
+    return name;
+}
+
 bool ScriptedScene::isTransparent() const {
     bool result = false;
     // clang-format off

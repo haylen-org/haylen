@@ -557,7 +557,7 @@ scene.push({
 
 ### world:debugDraw(order)
 
-Draws the outlines of every shape and joint on the current canvas, which helps while tuning collisions. Call it from the `render` callback of a scene after `graphics2d.beginWorld()`. The optional `order` table takes the `layer`, `depth` and `blend` fields described in [`haylen.graphics2d`](graphics2d.md).
+Draws the outlines of every shape and joint and the contact points of the world on the current canvas, with lines of the same width on the screen at any zoom, which helps while tuning collisions. Call it from the `render` callback of a scene after `graphics2d.beginWorld()`. The optional `order` table takes the `layer`, `depth` and `blend` fields described in [`haylen.graphics2d`](graphics2d.md). The `physics` [debug drawing](debug.md#drawings) draws every world that `physics2d.newWorld` made this way in every world canvas, without a call.
 
 ```lua
 local physics2d = require('haylen.physics2d')

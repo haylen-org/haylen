@@ -1,8 +1,12 @@
 #pragma once
 
 #include <any>
+#include <array>
 #include <cstdint>
 #include <memory>
+#include <optional>
+#include <string>
+#include <string_view>
 #include <utility>
 
 #include "haylen/core/Connection.hpp"
@@ -35,6 +39,13 @@ class Scene {
     };
 
     virtual ~Scene() = default;
+
+    // Resolves the state names `created`, `loading`, `loaded`, `entering`, `active`, `covered`, `exiting`, `exited` and `unloaded`.
+    [[nodiscard]] static std::optional<State> stateFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view stateName(State value) noexcept;
+
+    // The name the debug overlay shows the scene by, `Scene` unless the scene gives one.
+    [[nodiscard]] virtual std::string getName() const;
 
     // Loads what the scene needs before it enters, while the transition covers the screen or before an effect that shows both scenes starts. The load finishes when the hook returns, or later through the deferrals and preloads of the load. An exception fails the load.
     virtual void load(Engine& engine, SceneLoad& context);
@@ -91,6 +102,8 @@ class Scene {
 
   private:
     friend class SceneManager;
+
+    static const std::array<std::pair<std::string_view, State>, 9> kStateNames;
 
     State state = State::Created;
     std::shared_ptr<SceneLoad> loading;

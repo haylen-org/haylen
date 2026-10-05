@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "graphics/ResourceGraveyard.hpp"
@@ -25,6 +26,9 @@ struct TextureResource {
     std::uint32_t id = 0;
     Texture::Options options{};
     bool flipped = false;
+
+    // The path of a texture the assets loaded from the package, which debug drawings name it by.
+    std::string label;
 
     // A dynamic texture changes in place, and keeps the pixels it received since the last upload until the device sends them.
     bool dynamic = false;

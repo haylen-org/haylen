@@ -20,7 +20,7 @@ class DebugLua final {
 
   private:
     static constexpr std::array<const char*, 4> kLevelNames{"debug", "info", "warning", "error"};
-    static constexpr std::array<std::string_view, 1> kMonitorFields{"owner"};
+    static constexpr std::array<std::string_view, 1> kOwnerFields{"owner"};
 
     [[nodiscard]] static plugins::DebugPlugin& getPlugin(lua_State* L);
     static void pushStats(lua_State* L, const Stats& snapshot);
@@ -29,6 +29,13 @@ class DebugLua final {
     static int statsMode(lua_State* L);
     static int setToggleKey(lua_State* L);
     static int toggleKey(lua_State* L);
+    static int setDrawing(lua_State* L);
+    static int drawing(lua_State* L);
+    static int drawings(lua_State* L);
+    static int drawingNames(lua_State* L);
+    static int setDrawKey(lua_State* L);
+    static int drawKey(lua_State* L);
+    static int addDrawer(lua_State* L);
     static int setObjectEvents(lua_State* L);
     static int objectEvents(lua_State* L);
     static int hotReloadWatching(lua_State* L);

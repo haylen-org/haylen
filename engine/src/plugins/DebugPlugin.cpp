@@ -23,13 +23,89 @@ void DebugPlugin::start(core::Engine& engine) {
     listener = core::Log::addListener([this](core::Log::Level level, std::string_view line) { record(level, line); });
     statsMode = engine.getConfig().debug.stats;
     setObjectEvents(engine.getConfig().debug.objectEvents);
+    drawings.insert(engine.getConfig().debug.drawings.begin(), engine.getConfig().debug.drawings.end());
+    overlay = engine.getRenderer2D().addCanvasOverlay([this, &engine](graphics2d::Renderer& renderer) { drawOverlay(engine, renderer); });
 }
 
-void DebugPlugin::stop(core::Engine&) {
+void DebugPlugin::stop(core::Engine& engine) {
+    engine.getRenderer2D().removeCanvasOverlay(overlay);
     setObjectEvents(false);
     core::Log::removeListener(listener);
     removeMonitors([](const MonitorEntry&) { return true; });
+    for (const std::shared_ptr<DrawerEntry>& entry : std::exchange(drawers, {})) {
+        entry->plugin = nullptr;
+    }
+    drawings.clear();
     owner = nullptr;
+}
+
+void DebugPlugin::setDrawing(std::string_view name, bool enabled) {
+    if (enabled) {
+        drawings.emplace(name);
+        return;
+    }
+    if (const auto found = drawings.find(name); found != drawings.end()) {
+        drawings.erase(found);
+    }
+}
+
+bool DebugPlugin::isDrawing(std::string_view name) const {
+    return drawings.contains(name);
+}
+
+std::vector<std::string> DebugPlugin::getDrawings() const {
+    return {drawings.begin(), drawings.end()};
+}
+
+std::vector<std::string> DebugPlugin::getDrawingNames() const {
+    std::set<std::string, std::less<>> names{std::string(kBoundsDrawing)};
+    for (const std::shared_ptr<DrawerEntry>& entry : drawers) {
+        names.insert(entry->name);
+    }
+    return {names.begin(), names.end()};
+}
+
+void DebugPlugin::DrawerEntry::disconnect() {
+    if (plugin != nullptr) {
+        std::erase_if(plugin->drawers, [this](const std::shared_ptr<DrawerEntry>& entry) { return entry.get() == this; });
+        plugin = nullptr;
+    }
+}
+
+core::Connection DebugPlugin::addDrawer(std::string name, Drawer drawer) {
+    auto entry = std::make_shared<DrawerEntry>();
+    entry->plugin = this;
+    entry->name = std::move(name);
+    entry->drawer = std::move(drawer);
+    drawers.push_back(entry);
+    return core::Connection(std::weak_ptr<core::Connection::Link>(entry));
+}
+
+// A drawer may add or remove drawers while it draws, so the loop walks a copy and skips the ones removed meanwhile, and the bounds come last, around everything the canvas holds.
+void DebugPlugin::drawOverlay(core::Engine& engine, graphics2d::Renderer& renderer) {
+    if (drawings.empty()) {
+        return;
+    }
+    const std::vector<std::shared_ptr<DrawerEntry>> snapshot = drawers;
+    for (const std::shared_ptr<DrawerEntry>& entry : snapshot) {
+        if (entry->isConnected() && !entry->blocked && drawings.contains(entry->name)) {
+            entry->drawer(renderer);
+        }
+    }
+    if (drawings.contains(kBoundsDrawing)) {
+        renderer.drawBounds(*engine.getDefaultFont(), kBoundsColor, kBoundsLabelSize);
+    }
+}
+
+// Every drawing turns off while any is on, and otherwise every drawing the engine and the app know turns on.
+void DebugPlugin::toggleDrawings() {
+    if (!drawings.empty()) {
+        drawings.clear();
+        return;
+    }
+    for (std::string& name : getDrawingNames()) {
+        drawings.insert(std::move(name));
+    }
 }
 
 void DebugPlugin::record(core::Log::Level level, std::string_view line) {
@@ -105,7 +181,14 @@ std::vector<std::shared_ptr<debug::Monitor>> DebugPlugin::getMonitors() const {
 }
 
 void DebugPlugin::event(core::Engine&, const platform::Event& event) {
-    if (event.type != platform::Event::Type::KeyDown || event.repeat || !toggleKey || event.key != *toggleKey) {
+    if (event.type != platform::Event::Type::KeyDown || event.repeat) {
+        return;
+    }
+    // The key of the statistics wins when the app gives both the same key.
+    if (!toggleKey || event.key != *toggleKey) {
+        if (drawKey && event.key == *drawKey) {
+            toggleDrawings();
+        }
         return;
     }
     switch (statsMode) {

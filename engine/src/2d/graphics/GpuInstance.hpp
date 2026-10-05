@@ -1,10 +1,12 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 
 #include "haylen/2d/graphics/PartColors.hpp"
 #include "haylen/2d/graphics/SpriteFlip.hpp"
 #include "haylen/2d/graphics/SpriteInstance.hpp"
+#include "haylen/math/Vec2.hpp"
 
 namespace haylen::graphics {
 struct TextureResource;
@@ -38,6 +40,9 @@ struct GpuInstance {
 
     // Packs the part colors of a recolored sprite into the record that follows its own, which the recolor program reads at the same instance.
     [[nodiscard]] static GpuInstance makeParts(const PartColors& colors) noexcept;
+
+    // Returns the corners of the quad on its canvas from the top-left one clockwise, where the vertex stage places them, without the skew of italic glyphs.
+    [[nodiscard]] std::array<math::Vec2, 4> getCorners() const noexcept;
 
   private:
     // The colors of the red, green, blue and yellow parts in the first bytes of a record.

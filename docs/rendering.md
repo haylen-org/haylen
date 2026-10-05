@@ -265,6 +265,10 @@ The method `Renderer::drawVector(image, sprite)`, `graphics2d.drawVector` in Lua
 - Rasters live in pages of 1024 by 1024 pixels, one dynamic texture each, packed in shelves with a pixel between them, so the draws of many images at many sizes share a few textures and batch into few draw calls. A raster larger than a page takes a page of its own. Once the atlas holds eight pages, the page that drew longest ago starts over with a new texture, and its images make their rasters again when they draw.
 - A page whose rasters changed uploads once per frame, before the passes.
 
+## Debug drawings
+
+The method `Renderer::addCanvasOverlay(overlay)` runs a function in every canvas just before it closes, with the clips and layer offsets of the canvas cleared, so it draws over what the canvas holds in its own coordinates, and `Renderer::getCanvasKind()` tells the kind of the canvas it runs in. The [debug drawings](lua-api/debug.md#drawings) of the engine draw through it: the shapes of physics worlds in world and render target canvases, and `Renderer::drawBounds(font, color, labelSize)`, which outlines every textured quad and text block the open canvas holds and names each sprite after the path of the texture the assets loaded it from.
+
 ## Tiled maps
 
 The method `tiled::MapRenderer::draw(renderer, view, order)`, which Lua calls as `map:draw(camera, order)`, draws every visible layer in map order into the active canvas. The [Tiled guide](tiled.md) covers the supported features, and drawing works like this:

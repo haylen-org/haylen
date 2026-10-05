@@ -4,10 +4,15 @@
 
 #include <algorithm>
 #include <format>
+#include <string>
 
 #include "core/SignalLua.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/Scene.hpp"
+#include "haylen/core/SceneManager.hpp"
 #include "haylen/debug/Profiler.hpp"
+#include "haylen/lua/TypeConverter.hpp"
+#include "haylen/plugins/DebugPlugin.hpp"
 
 namespace haylen::debug {
 
@@ -125,6 +130,47 @@ void OverlayWindow::drawObjects(const std::vector<ObjectCounter::Snapshot>& obje
     ImGui::EndTable();
 }
 
+// The scenes from the bottom of the stack up, each with the state it is in and the process mode it resolves to, and whether the scenes below it keep rendering.
+void OverlayWindow::drawScenes(const core::SceneManager& scenes) {
+    if (scenes.empty()) {
+        ImGui::TextUnformatted("No scene is on the stack.");
+        return;
+    }
+    if (!ImGui::BeginTable("##scenes", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+        return;
+    }
+    ImGui::TableSetupColumn("Scene", ImGuiTableColumnFlags_WidthStretch, 3.0F);
+    ImGui::TableSetupColumn("State", ImGuiTableColumnFlags_WidthStretch, 1.2F);
+    ImGui::TableSetupColumn("Mode", ImGuiTableColumnFlags_WidthStretch, 1.2F);
+    ImGui::TableSetupColumn("Transparent", ImGuiTableColumnFlags_WidthStretch, 1.0F);
+    ImGui::TableHeadersRow();
+    for (std::size_t index = 0; index < scenes.size(); ++index) {
+        const core::Scene& scene = scenes.at(index);
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+        ImGui::Text("%zu. %s", index + 1, scene.getName().c_str());
+        ImGui::TableNextColumn();
+        ImGui::TextUnformatted(std::string(core::Scene::stateName(scene.getState())).c_str());
+        ImGui::TableNextColumn();
+        ImGui::TextUnformatted(std::string(lua::EnumNames<core::ProcessMode>::name(scenes.getProcessMode(index))).c_str());
+        ImGui::TableNextColumn();
+        ImGui::TextUnformatted(scene.isTransparent() ? "Yes" : "No");
+    }
+    ImGui::EndTable();
+}
+
+// A checkbox for every drawing the engine and the app know, which switches it like the API does.
+void OverlayWindow::drawDrawings(plugins::DebugPlugin& plugin) {
+    for (const std::string& name : plugin.getDrawingNames()) {
+        bool enabled = plugin.isDrawing(name);
+        if (ImGui::Checkbox(name.c_str(), &enabled)) {
+            plugin.setDrawing(name, enabled);
+        }
+        ImGui::SameLine();
+    }
+    ImGui::NewLine();
+}
+
 std::size_t OverlayWindow::countStale(const std::vector<core::EventBus::Topic>& topics) noexcept {
     return static_cast<std::size_t>(std::ranges::count_if(topics, [](const core::EventBus::Topic& topic) { return topic.stale > 0; }));
 }
@@ -202,6 +248,12 @@ bool OverlayWindow::draw(core::Engine& engine, const Stats& stats, const std::ve
     }
     if (ImGui::CollapsingHeader("Profiler", ImGuiTreeNodeFlags_DefaultOpen)) {
         drawProfiler(profiler);
+    }
+    if (ImGui::CollapsingHeader("Scenes", ImGuiTreeNodeFlags_DefaultOpen)) {
+        drawScenes(engine.getScenes());
+    }
+    if (ImGui::CollapsingHeader("Drawings", ImGuiTreeNodeFlags_DefaultOpen)) {
+        drawDrawings(engine.getPlugin<plugins::DebugPlugin>());
     }
     if (ImGui::CollapsingHeader("Rendering", ImGuiTreeNodeFlags_DefaultOpen)) {
         drawRendering(stats.rendering);
