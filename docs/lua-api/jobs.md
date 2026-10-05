@@ -6,7 +6,7 @@ The module `haylen.jobs` spreads long Lua work across several frames so the app 
 local jobs = require('haylen.jobs')
 ```
 
-Every frame, during the engine update, the jobs take turns in the order they were spawned until the budget is used up. A job that spends the rest of the budget goes to the back of the line, so several jobs progress fairly. A job that never calls `jobs.checkpoint()` runs to its end in a single turn. Every job is dropped when the app stops or restarts.
+Every frame, during the engine update, the jobs take turns in the order they were spawned until the budget is used up. The first job in line always gets its turn, so the jobs move on even in a frame that started late. A job that spends the rest of the budget goes to the back of the line, so several jobs progress fairly. A job that never calls `jobs.checkpoint()` runs to its end in a single turn. Every job is dropped when the app stops or restarts.
 
 ## Functions
 
