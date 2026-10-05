@@ -24,7 +24,7 @@ const ShardReader& ShardSet::open(std::uint32_t shard) const {
 }
 
 void ShardSet::readChunk(const Catalog::Chunk& chunk, std::vector<std::uint8_t>& scratch, std::vector<std::uint8_t>& plain) const {
-    open(chunk.shard).readChunk(chunk.storedId, chunk.contentId, scratch, plain);
+    open(chunk.shard).readChunk(chunk, scratch, plain);
 }
 
 } // namespace haylen::content

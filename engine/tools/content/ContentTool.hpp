@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <map>
@@ -8,6 +9,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "content/ContentBuilder.hpp"
@@ -29,6 +31,10 @@ class ContentTool final {
   private:
     // A compaction keeps the current generation of every channel and the one before it, which apps that are still downloading it need.
     static constexpr std::uint64_t kDefaultKeep = 2;
+
+    static const std::array<std::pair<std::string_view, Delivery>, 3> kDeliveryNames;
+    static const std::array<std::pair<std::string_view, Catalog::Kind>, 2> kKindNames;
+    static const std::array<std::pair<std::string_view, Manifest::Domain>, 2> kDomainNames;
 
     // The words of a command line: the positional arguments in order and the options by name, each of which a command takes once.
     class Arguments final {
@@ -62,7 +68,7 @@ class ContentTool final {
 
     void printKeys(const KeyStore& store);
     void printDomain(const ReleaseInspector::Domain& domain, bool chunks);
-    void printStatistics(std::string_view domain, const ContentBuilder::Statistics& statistics);
+    void printStatistics(Manifest::Domain domain, const ContentBuilder::Statistics& statistics);
 
     [[nodiscard]] static ReleaseInspector makeInspector(const KeyStore& store);
     [[nodiscard]] static std::string_view getDeliveryName(Delivery delivery) noexcept;

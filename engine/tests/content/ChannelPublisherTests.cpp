@@ -118,6 +118,8 @@ TEST_F(ChannelPublisherTest, CompactsWhatNoChannelReaches) {
     (void)publish("4");
     const ChannelPublisher::Publication last = publish("5");
     EXPECT_THROW((void)publisher.compact(tree.getPath(), 0), std::invalid_argument);
+    const test::TemporaryDirectory empty;
+    EXPECT_THROW((void)publisher.compact(empty.getPath(), 1), std::invalid_argument) << "A folder without channels is no publication tree.";
 
     const ChannelPublisher::Compaction compaction = publisher.compact(tree.getPath(), 1);
     EXPECT_EQ(compaction.manifests, 2U);
@@ -130,6 +132,14 @@ TEST_F(ChannelPublisherTest, CompactsWhatNoChannelReaches) {
     }
     EXPECT_TRUE(left.contains(ChannelPublisher::getManifestPath(last.manifest).generic_string()));
     EXPECT_EQ(publish("6").generation, 4U);
+}
+
+TEST_F(ChannelPublisherTest, RefusesChannelNamesThatLeaveTheChannelsFolder) {
+    // A damaged file next to the channels folder shows that a refused name reads nothing, and the tree stays as it was.
+    std::filesystem::create_directories(tree.getPath() / ChannelPublisher::kChannelsFolder);
+    std::ofstream(tree.getPath() / "x.hchannel") << "not a channel";
+    EXPECT_THROW((void)publisher.publish(io::MemoryPackage("source", makeFiles("3")), tree.getPath(), {.profile = "desktop", .appBuild = 7, .channel = "../x"}), std::invalid_argument);
+    EXPECT_EQ(readTree().size(), 1U);
 }
 
 TEST_F(ChannelPublisherTest, RefusesTheChannelOfAnotherApp) {

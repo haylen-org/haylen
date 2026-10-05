@@ -93,7 +93,8 @@ void ChunkRecord::open(const ContentKey& key, std::span<std::uint8_t> ciphertext
         throw Error(Error::Code::ChunkAuthenticationFailed, "The chunk \"" + storedId.toHex() + "\" failed authentication, so its shard is damaged or was changed.");
     }
 
-    // The decrypted encoded bytes are wiped as soon as they are decoded, and output that fails its check never leaves.
+    // An earlier chunk in the output is wiped before it resizes, the decrypted encoded bytes are wiped as soon as they are decoded, and output that fails its check never leaves.
+    crypto_wipe(plain.data(), plain.size());
     plain.resize(static_cast<std::size_t>(plainSize));
     try {
         Compression::decode(codec, ciphertext, plain);

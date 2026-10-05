@@ -70,7 +70,7 @@ scene.push({
 
 ### assets.font(path, options)
 
-Loads a font synchronously and returns it: a TrueType or OpenType font with the `bakeSize`, `spread` and `atlasSize` options, or a BMFont `.fnt` file with the `filter` and `wrap` of its pages. Any other extension raises `expected a .ttf, .otf or .fnt file`. Load a grid font with `assets.load(path, 'gridFont', options)`.
+Loads a font synchronously and returns it: a TrueType or OpenType font with the `bakeSize`, `spread` and `atlasSize` options, or a BMFont `.fnt` file with the `filter` and `wrap` of its pages. A file whose extension no asset type handles, such as `.woff`, raises `No asset type handles the file "<path>". Pass its type or use an extension that an asset type handles.`, and a file of another asset type, such as an image, raises the `bad argument` error of Lua with `expected a .ttf, .otf or .fnt file`. A font option that is not a number raises `The font option "<option>" must be a number, not <value>.`, with the value as JSON. Load a grid font with `assets.load(path, 'gridFont', options)`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -147,7 +147,7 @@ local width, height = string.unpack('<I2I2', level)
 print(#level, width, height)
 ```
 
-With an `offset` and a `count`, it reads only that range of the file: `count` bytes from the byte at `offset`, which starts at 0, or fewer when the file ends first, and an empty string from an offset at or past the end. Only the part of the file that holds the range is read, so files of any size, such as a large data set or a recording, are read in parts in bounded memory. A whole read of a file larger than one gibibyte raises `The package file "<file>" holds <size> bytes, more than a whole read allows. Read it in ranges instead.`, and such files are read in ranges. A negative offset or count raises the `bad argument` error of Lua.
+With an `offset` and a `count`, it reads only that range of the file: `count` bytes from the byte at `offset`, which starts at 0, or fewer when the file ends first, and an empty string from an offset at or past the end. Only the part of the file that holds the range is read, so files of any size, such as a large data set or a recording, are read in parts in bounded memory. A whole read of a file larger than one gibibyte raises `The package file "<file>" holds <size> bytes, more than a whole read allows. Read it in ranges instead.`, and such files are read in ranges. A range that covers more than one gibibyte of the file raises `The range of <count> bytes of the package file "<file>" is more than one read allows. Read it in smaller ranges instead.`, while a larger count, such as `math.maxinteger`, still reads the rest of a smaller file. A negative offset or count raises the `bad argument` error of Lua.
 
 ```lua
 local assets = require('haylen.assets')
@@ -242,7 +242,7 @@ print(assets.fileSize('music/theme.ogg'))
 
 ### assets.list(folder)
 
-Returns a sorted list of every file under a folder of the content folder, including files in subfolders, as paths relative to the content folder. Without a folder it lists every asset. A missing folder gives an empty list, and a folder that leads out of the content folder, such as `'..'`, raises `The path "<folder>" must stay inside its root folder.`
+Returns a sorted list of every file under a folder of the content folder, including files in subfolders, as paths relative to the content folder. Without a folder it lists every asset. A missing folder gives an empty list, and a folder that leads out of the content folder, such as `'..'`, raises `The path "<folder>" must stay inside its root folder.` An app that runs from a folder raises `The package folder "<folder>" could not be listed, and the file system reported "<reason>".` when a folder under it cannot be read, instead of listing part of its files.
 
 ```lua
 local assets = require('haylen.assets')
@@ -302,7 +302,7 @@ A group manifest is a table or a JSON file with a `groups` object. Every group i
 
 ### assets.defineGroups(manifest)
 
-Defines every group of a manifest, given as a table or as the path of a JSON file in the content folder. A group that already exists gets the new entries. A manifest key other than `groups` raises `Unknown key "<key>" in the asset group manifest.`, and an entry key other than `path`, `type` and `options` raises `Unknown key "<key>" in an asset group entry.`.
+Defines every group of a manifest, given as a table or as the path of a JSON file in the content folder. A group that already exists gets the new entries. A manifest key other than `groups` raises `Unknown key "<key>" in the asset group manifest.`, and an entry key other than `path`, `type` and `options` raises `Unknown key "<key>" in an asset group entry.`. A manifest without a `groups` table raises `The asset group manifest needs "groups", which maps each group name to its list of entries.`, a group that is not a list raises `The asset group "<name>" must be a list of entries.`, and an entry that is neither a path nor a table with a `path` string, an optional `type` string and an optional `options` table raises `The asset group "<name>" has the entry <entry>, which is not a path or an object with a "path" string, an optional "type" string and optional "options".`, with the entry as JSON. An empty table is an empty list.
 
 ```lua
 local assets = require('haylen.assets')
@@ -330,7 +330,7 @@ assets.defineGroup('forest', {
 
 ### assets.preload(name, progress)
 
-Starts loading every asset of a group and returns a promise. The promise resolves once every asset finished, with a list of error messages in the form `'<path>: <error>'` for the assets that failed, so an empty list means everything loaded. It never rejects. The optional `progress` function receives the fraction of finished assets, from above 0 to 1, after each asset. Preloading a group that is already loaded loads nothing again, reports progress 1 and resolves with its earlier errors. An error raised by the progress function shows the engine error screen. An unknown group raises `The asset group "<name>" is not defined.`, and an entry without a type whose extension no type handles raises `No asset type handles the file "<path>". Pass its type or use an extension that an asset type handles.`
+Starts loading every asset of a group and returns a promise. The promise resolves once every asset finished, with a list of error messages in the form `'<path>: <error>'` for the assets that failed, so an empty list means everything loaded. It never rejects. The optional `progress` function receives the fraction of finished assets, from above 0 to 1, after each asset. Preloading a group that is already loaded loads nothing again, reports progress 1 and resolves with its earlier errors. An error raised by the progress function shows the engine error screen. An unknown group raises `The asset group "<name>" is not defined.`, an entry without a type whose extension no type handles raises `No asset type handles the file "<path>". Pass its type or use an extension that an asset type handles.`, and an entry with invalid options raises the error of its options. The group checks every entry before it starts to load, so such an error leaves the group as it was, without the progress function of that call. When the group unloads while it loads, its promises resolve on a later frame with the one error `The asset group "<name>" was unloaded before it finished loading.`
 
 The group holds its assets until `assets.unloadGroup()`, so they stay cached even when nothing else refers to them, and later `assets.load()` calls return them at once.
 
@@ -366,7 +366,7 @@ scene.push(loading)
 
 ### assets.unloadGroup(name)
 
-Releases the hold of a group on its assets. Assets that nothing else refers to leave memory, and assets still in use stay loaded. The group stays defined and can be preloaded again. An unknown group raises `The asset group "<name>" is not defined.`
+Releases the hold of a group on its assets. Assets that nothing else refers to leave memory, and assets still in use stay loaded. A group that is still loading stops, and the promises of its preloads resolve on a later frame with the one error `The asset group "<name>" was unloaded before it finished loading.` The group stays defined and can be preloaded again. An unknown group raises `The asset group "<name>" is not defined.`
 
 ```lua
 local assets = require('haylen.assets')
@@ -621,16 +621,23 @@ end
 | --- | --- |
 | `The package file "<file>" was not found.` | The file does not exist in the package. |
 | `The package file "<file>" holds <size> bytes, more than a whole read allows. Read it in ranges instead.` | A whole read asks for a file larger than one gibibyte. |
+| `The range of <count> bytes of the package file "<file>" is more than one read allows. Read it in smaller ranges instead.` | A range read covers more than one gibibyte of a file. |
+| `The package folder "<folder>" could not be listed, and the file system reported "<reason>".` | A folder of an app that runs from a folder cannot be read. |
 | `The path "<path>" must be relative.` | A path starts with a slash or a drive letter. |
 | `The path "<path>" must stay inside its root folder.` | A path uses `..` to leave the content folder. |
 | `An asset path cannot be empty.` | The path is empty. |
 | `No asset type handles the file "<path>". Pass its type or use an extension that an asset type handles.` | The extension belongs to no asset type and no type was given. |
 | `The asset type "<type>" does not exist.` | The type argument names no asset type. |
 | `Unknown key "<key>" in <kind> options.` | An options table has a key the asset type does not accept. |
-| `The texture filter must be "nearest" or "linear", not "<filter>".` | The `filter` option is not `nearest` or `linear`. |
-| `The texture wrap must be "clamp", "repeat" or "mirror", not "<wrap>".` | The `wrap` option is not `clamp`, `repeat` or `mirror`. |
+| `The texture filter must be "nearest" or "linear", not <filter>.` | The `filter` option is not `nearest` or `linear`, and the message shows it as JSON, such as `"blurry"` or `3`. |
+| `The texture wrap must be "clamp", "repeat" or "mirror", not <wrap>.` | The `wrap` option is not `clamp`, `repeat` or `mirror`, and the message shows it as JSON. |
+| `The font option "<option>" must be a number, not <value>.` | The `bakeSize`, `spread` or `atlasSize` of a font is not a number. |
 | `The asset group "<name>" is not defined.` | A group function names a group that was never defined. |
 | `Unknown key "<key>" in the asset group manifest.` | A manifest has a key other than `groups`. |
 | `Unknown key "<key>" in an asset group entry.` | A group entry has a key other than `path`, `type` and `options`. |
+| `The asset group manifest needs "groups", which maps each group name to its list of entries.` | A manifest has no `groups` table. |
+| `The asset group "<name>" must be a list of entries.` | A group of a manifest is not a list. |
+| `The asset group "<name>" has the entry <entry>, which is not a path or an object with a "path" string, an optional "type" string and optional "options".` | An entry is not a path or a table with a `path` string, an optional `type` string and an optional `options` table. |
+| `The asset group "<name>" was unloaded before it finished loading.` | The one error a preload resolves with when its group unloads while it loads. |
 
 Decoding errors, such as an image that is not a valid PNG, raise from `assets.load()` and come back as the second value of `:await()` for `assets.loadAsync()`.

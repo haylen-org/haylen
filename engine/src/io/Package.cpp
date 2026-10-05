@@ -92,7 +92,12 @@ std::vector<std::uint8_t> Package::read(std::string_view path) const {
 std::vector<std::uint8_t> Package::readRange(std::string_view path, std::uint64_t offset, std::size_t size) const {
     const std::unique_ptr<PackageReader> reader = openReader(path);
     const std::uint64_t available = offset < reader->getSize() ? reader->getSize() - offset : 0;
-    std::vector<std::uint8_t> bytes(static_cast<std::size_t>(std::min<std::uint64_t>(size, available)));
+    const std::uint64_t count = std::min<std::uint64_t>(size, available);
+    if (count > kMaxReadSize) {
+        throw std::runtime_error(std::format("The range of {} bytes of the package file \"{}/{}\" is more than one read allows. Read it in smaller ranges instead.", count, getName(), Path::normalize(path)));
+    }
+
+    std::vector<std::uint8_t> bytes(static_cast<std::size_t>(count));
     reader->readExactly(offset, bytes);
     return bytes;
 }

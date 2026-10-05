@@ -13,6 +13,7 @@
 #include "content/ShardReader.hpp"
 #include "content/ShardWriter.hpp"
 #include "content/crypto/KeyRing.hpp"
+#include "content/format/Catalog.hpp"
 #include "content/format/ChunkRecord.hpp"
 #include "content/format/ShardHeader.hpp"
 #include "content/format/ShardIndex.hpp"
@@ -117,11 +118,16 @@ class ShardTest : public ::testing::Test {
         }
     }
 
-    static void expectReadFails(const ShardReader& reader, const Digest& storedId, const Digest& contentId, Error::Code code) {
+    // Describes a sealed record the way a catalog names its chunk.
+    [[nodiscard]] static Catalog::Chunk describe(const ChunkRecord& record) {
+        return {.storedId = record.storedId, .contentId = record.contentId, .plainSize = record.plainSize, .encodedSize = record.encodedSize, .codec = record.codec, .profile = record.profile};
+    }
+
+    static void expectReadFails(const ShardReader& reader, const Catalog::Chunk& chunk, Error::Code code) {
         std::vector<std::uint8_t> scratch;
         std::vector<std::uint8_t> plain;
         try {
-            reader.readChunk(storedId, contentId, scratch, plain);
+            reader.readChunk(chunk, scratch, plain);
             ADD_FAILURE() << "The read must fail.";
         } catch (const Error& error) {
             EXPECT_EQ(error.getCode(), code);
@@ -221,7 +227,7 @@ TEST_F(ShardTest, WritesAndReadsShards) {
     std::vector<std::uint8_t> plain;
     for (const std::vector<std::uint8_t>& chunk : chunks) {
         const Compression::Encoded encoded = Compression::encode(chunk);
-        reader.readChunk(ChunkRecord::identifyStored(encoded.codec, encoded.profile, encoded.bytes), Digest::of(chunk), scratch, plain);
+        reader.readChunk({.storedId = ChunkRecord::identifyStored(encoded.codec, encoded.profile, encoded.bytes), .contentId = Digest::of(chunk), .plainSize = chunk.size(), .encodedSize = encoded.bytes.size(), .codec = encoded.codec, .profile = encoded.profile}, scratch, plain);
         EXPECT_EQ(plain, chunk);
     }
 }
@@ -304,7 +310,7 @@ TEST_F(ShardTest, ReadsRecordsBeyondFourGigabytes) {
     const ShardReader reader(std::make_unique<SparseReader>(size, std::move(regions)), {.shardId = header.shardId, .fileSize = size}, keys);
     std::vector<std::uint8_t> scratch;
     std::vector<std::uint8_t> read;
-    reader.readChunk(record.storedId, record.contentId, scratch, read);
+    reader.readChunk(describe(record), scratch, read);
     EXPECT_EQ(read, plain);
 }
 
@@ -331,9 +337,19 @@ TEST_F(ShardTest, ReportsChunksTheShardDoesNotHold) {
     const std::vector<std::vector<std::uint8_t>> chunks = makeChunks();
     const ShardReference reference = writeShard(directory.getPath(), chunks, getKey());
     const ShardReader reader(makeReader(readFile(directory.getPath() / reference.getFileName())), reference, keys);
-    const Digest stored = reader.getIndex().getEntries().front().storedId;
-    expectReadFails(reader, Digest::of(test::TestFiles::bytes("missing")), Digest(), Error::Code::MissingChunk);
-    expectReadFails(reader, stored, Digest::of(test::TestFiles::bytes("another chunk")), Error::Code::CorruptChunk);
+    expectReadFails(reader, {.storedId = Digest::of(test::TestFiles::bytes("missing"))}, Error::Code::MissingChunk);
+
+    // A record serves only the chunk its catalog describes, with the same content ID, sizes and codec.
+    std::vector<std::uint8_t> ciphertext;
+    const Catalog::Chunk stored = describe(ChunkRecord::seal(*getKey(), chunks.front(), Digest::of(chunks.front()), ciphertext));
+    Catalog::Chunk otherContent = stored;
+    otherContent.contentId = Digest::of(test::TestFiles::bytes("another chunk"));
+    Catalog::Chunk larger = stored;
+    larger.plainSize += 1000;
+    larger.encodedSize += 1000;
+    for (const Catalog::Chunk& named : {otherContent, larger}) {
+        expectReadFails(reader, named, Error::Code::CorruptChunk);
+    }
 }
 
 } // namespace haylen::content

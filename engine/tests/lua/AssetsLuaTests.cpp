@@ -109,6 +109,30 @@ TEST_F(AssetsLuaTest, PreloadsGroupsWithProgress) {
     EXPECT_NE(lua("assets.unloadGroup('unknown')").find("The asset group \"unknown\" is not defined."), std::string::npos);
 }
 
+TEST_F(AssetsLuaTest, SettlesPreloadsOfAGroupThatUnloads) {
+    // clang-format off
+    lua(R"(
+        assets.defineGroup('level', {'images/hero.png', 'data/level.json'})
+        async.spawn(function()
+            failures = assets.preload('level'):await()
+        end)
+        assets.unloadGroup('level')
+    )");
+    // clang-format on
+    ASSERT_TRUE(waitFor("failures ~= nil"));
+    EXPECT_EQ(lua("return #failures .. ' ' .. failures[1]"), "1 The asset group \"level\" was unloaded before it finished loading.");
+    EXPECT_EQ(lua("return assets.groupLoaded('level')"), "false");
+}
+
+TEST_F(AssetsLuaTest, ExplainsInvalidOptionsAndGroups) {
+    EXPECT_NE(lua("return assets.texture('images/hero.png', {filter = 3})").find("The texture filter must be \"nearest\" or \"linear\", not 3."), std::string::npos);
+    EXPECT_NE(lua("return assets.font('fonts/ui.ttf', {bakeSize = 'large'})").find("The font option \"bakeSize\" must be a number, not \"large\"."), std::string::npos);
+    EXPECT_NE(lua("assets.defineGroups({})").find("The asset group manifest needs \"groups\", which maps each group name to its list of entries."), std::string::npos);
+    EXPECT_NE(lua("assets.defineGroup('level', 'images/')").find("The asset group \"level\" must be a list of entries."), std::string::npos);
+    EXPECT_NE(lua("assets.defineGroup('level', {{type = 'texture'}})").find("The asset group \"level\" has the entry {\"type\":\"texture\"}, which is not a path or an object with a \"path\" string, an optional \"type\" string and optional \"options\"."), std::string::npos);
+    EXPECT_EQ(lua("assets.defineGroup('level', {}) return #assets.groups()"), "1");
+}
+
 TEST_F(AssetsLuaTest, ReportsFailingProgressCallbacks) {
     lua("assets.defineGroup('world', {'images/'}) assets.preload('world', function() error('progress failed') end)");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));

@@ -27,10 +27,6 @@ class ShardWriter final {
     // Appends a sealed record, unless the shard holds its chunk already.
     void add(const ChunkRecord& record, std::span<const std::uint8_t> ciphertext);
 
-    [[nodiscard]] bool contains(const Digest& storedId) const noexcept {
-        return stored.contains(storedId);
-    }
-
     // The size the shard file has once its index is written.
     [[nodiscard]] std::uint64_t getSize() const noexcept {
         return offset + entries.size() * ShardIndex::kEntrySize;

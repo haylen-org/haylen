@@ -163,18 +163,31 @@ class Manager final {
         std::vector<Callback> callbacks;
     };
 
+    // A cached asset with the type, path and options it was loaded with, so a changed file finds every asset read from it.
+    struct Cached {
+        std::weak_ptr<void> asset;
+        std::string type;
+        std::string path;
+        core::Json options;
+    };
+
     // Publishes the asset events from any thread for as long as the manager lives, because the last holder of an asset may let go anywhere.
     struct Publisher;
 
     [[nodiscard]] static std::string lowercase(std::string_view text);
+    [[nodiscard]] static std::string describe(const core::Json& value);
     [[nodiscard]] static text::TrueTypeFont::Options fontOptionsFromJson(const core::Json& options);
     [[nodiscard]] static core::Json fontOptionsToJson(const text::TrueTypeFont::Options& options);
     [[nodiscard]] static std::string cacheKey(std::string_view type, std::string_view path, const core::Json& options);
+    [[nodiscard]] static bool isList(const core::Json& value) noexcept;
+    [[nodiscard]] static Entry readEntry(std::string_view group, const core::Json& item);
 
     [[nodiscard]] const Type& getType(std::string_view name) const;
     [[nodiscard]] Request makeRequest(std::string_view typeName, std::string_view path, const core::Json& options) const;
+    [[nodiscard]] std::shared_ptr<void> findCached(const std::string& key) const;
     [[nodiscard]] std::vector<Entry> expand(const std::vector<Entry>& entries) const;
-    void finish(const std::string& key, std::shared_ptr<void> asset, const std::string& error);
+    void startLoad(Request request, Callback callback);
+    void finish(const std::string& key, const std::shared_ptr<void>& asset, const std::string& error);
 
     // Wraps a new asset so the manager learns when its last holder lets go, and announces it.
     [[nodiscard]] std::shared_ptr<void> track(std::shared_ptr<void> asset, const Request& request) const;
@@ -184,7 +197,7 @@ class Manager final {
     core::JobSystem& jobs;
     graphics::Device& device;
     std::unordered_map<std::string, Type> types;
-    std::unordered_map<std::string, std::weak_ptr<void>> cache;
+    std::unordered_map<std::string, Cached> cache;
     std::unordered_map<std::string, Pending> pending;
     std::unordered_map<std::string, Group> groups;
     std::deque<Upload> uploads;

@@ -3,10 +3,11 @@
 #include <algorithm>
 #include <stdexcept>
 #include <system_error>
+#include <utility>
 
 namespace haylen::io {
 
-FileReader::FileReader(const std::filesystem::path& file) : name(file.generic_string()) {
+FileReader::FileReader(const std::filesystem::path& file, std::string fileName) : name(std::move(fileName)) {
     std::error_code error;
     if (!std::filesystem::is_regular_file(file, error)) {
         throw std::runtime_error("The package file \"" + name + "\" was not found.");

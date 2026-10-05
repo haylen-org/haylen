@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -31,8 +32,11 @@ template <std::unsigned_integral T> T Catalog::load(std::size_t offset) const no
 }
 
 Catalog Catalog::parse(std::vector<std::uint8_t> plain, std::uint64_t shardCount) {
-    BinaryReader reader(plain, Error::Code::CorruptCatalog, "catalog");
-    if (plain.size() < kHeaderSize) {
+    // The catalog owns the bytes before it reads them, so they are wiped however the parsing ends.
+    Catalog catalog(std::move(plain));
+    const std::span<const std::uint8_t> table(catalog.bytes);
+    BinaryReader reader(table, Error::Code::CorruptCatalog, "catalog");
+    if (table.size() < kHeaderSize) {
         reader.fail("ends before its header does");
     }
     if (!std::ranges::equal(reader.readBytes(kMagic.size()), kMagic)) {
@@ -51,16 +55,15 @@ Catalog Catalog::parse(std::vector<std::uint8_t> plain, std::uint64_t shardCount
     // Each table is checked against the room left before its size is added, so hostile counts never wrap around.
     std::uint64_t total = kHeaderSize;
     for (const auto& [count, size] : {std::pair{files, kFileSize}, std::pair{chunks, kChunkSize}, std::pair{parts, kPartSize}, std::pair{strings, std::size_t{1}}}) {
-        if (count > (plain.size() - total) / size) {
+        if (count > (table.size() - total) / size) {
             reader.fail("declares tables larger than its bytes");
         }
         total += count * size;
     }
-    if (total != plain.size()) {
+    if (total != table.size()) {
         reader.fail("has bytes its tables do not account for");
     }
 
-    Catalog catalog(std::move(plain));
     catalog.fileCount = files;
     catalog.chunkCount = chunks;
     catalog.partCount = parts;

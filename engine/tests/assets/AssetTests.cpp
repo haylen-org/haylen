@@ -193,6 +193,20 @@ TEST_F(AssetsManagerTest, LoadsAsynchronouslyOnWorkers) {
     ASSERT_TRUE(fixture.frameUntil([&] { return !decodeError.empty(); }));
 }
 
+TEST_F(AssetsManagerTest, SharesOneAssetBetweenBackgroundAndDirectLoads) {
+    test::EngineFixture fixture(getAssetFiles());
+    assets::Manager& assets = fixture.engine().getAssets();
+
+    // A direct load while the same asset decodes in the background caches it first, and the background load hands out that one.
+    graphics::Texture background;
+    assets.textureAsync("images/red.png", [&background](graphics::Texture texture, std::string) { background = texture; });
+    const graphics::Texture direct = assets.texture("images/red.png");
+    ASSERT_TRUE(fixture.frameUntil([&] { return background.isValid(); }));
+    EXPECT_EQ(background, direct);
+    EXPECT_EQ(assets.texture("images/red.png"), direct);
+    EXPECT_EQ(assets.getCachedCount(), 1U);
+}
+
 TEST_F(AssetsManagerTest, SpreadsUploadsOverFramesWithinTheBudget) {
     test::EngineFixture fixture(getAssetFiles());
     assets::Manager& assets = fixture.engine().getAssets();
@@ -278,18 +292,47 @@ TEST_F(AssetsManagerTest, PreloadsAndUnloadsGroups) {
     EXPECT_FALSE(assets.isGroupLoaded("missing"));
 }
 
+TEST_F(AssetsManagerTest, KeepsAGroupAsItWasWhenItsPreloadFails) {
+    test::EngineFixture fixture(getAssetFiles());
+    assets::Manager& assets = fixture.engine().getAssets();
+
+    // An entry without an asset type and an entry with invalid options fail the preload before the group gains a listener or starts to load.
+    const std::vector<assets::Manager::Entry> untyped{{.path = "images/readme.txt"}};
+    const std::vector<assets::Manager::Entry> misconfigured{{.path = "images/blue.png"}, {.path = "images/red.png", .options = {{"filter", "blurry"}}}};
+    int staleProgress = 0;
+    int staleCompletions = 0;
+    for (const std::vector<assets::Manager::Entry>* broken : {&untyped, &misconfigured}) {
+        assets.defineGroup("menu", *broken);
+        EXPECT_THROW(assets.preload("menu", [&](float) { ++staleProgress; }, [&](std::vector<std::string>) { ++staleCompletions; }), std::invalid_argument);
+        EXPECT_FALSE(assets.isGroupLoaded("menu"));
+
+        assets.defineGroup("menu", {{.path = "images/blue.png"}});
+        std::vector<float> progress;
+        bool completed = false;
+        assets.preload("menu", [&](float fraction) { progress.push_back(fraction); }, [&](std::vector<std::string>) { completed = true; });
+        ASSERT_TRUE(fixture.frameUntil([&] { return completed; }));
+        EXPECT_EQ(progress, std::vector<float>{1.0F});
+        assets.unloadGroup("menu");
+    }
+    fixture.frames(1);
+    EXPECT_EQ(staleProgress, 0);
+    EXPECT_EQ(staleCompletions, 0);
+}
+
 TEST_F(AssetsManagerTest, UnloadingDuringALoadDropsItsResults) {
     test::EngineFixture fixture(getAssetFiles());
     assets::Manager& assets = fixture.engine().getAssets();
     assets.defineGroup("menu", {{.path = "images/red.png"}});
 
-    bool completed = false;
-    assets.preload("menu", {}, [&](std::vector<std::string>) { completed = true; });
+    // A preload that still waits completes with the failure that its group unloaded first.
+    std::vector<std::string> failures;
+    assets.preload("menu", {}, [&](std::vector<std::string> errors) { failures = errors; });
     assets.unloadGroup("menu");
-    ASSERT_TRUE(fixture.frameUntil([&] { return assets.getPendingCount() == 0; }));
-    EXPECT_FALSE(completed);
+    ASSERT_TRUE(fixture.frameUntil([&] { return assets.getPendingCount() == 0 && !failures.empty(); }));
+    EXPECT_EQ(failures, (std::vector<std::string>{"The asset group \"menu\" was unloaded before it finished loading."}));
     EXPECT_FALSE(assets.isGroupLoaded("menu"));
 
+    bool completed = false;
     assets.preload("menu", {}, [&](std::vector<std::string>) { completed = true; });
     assets.cancelAll();
     EXPECT_EQ(assets.getPendingCount(), 0U);
@@ -299,6 +342,16 @@ TEST_F(AssetsManagerTest, UnloadingDuringALoadDropsItsResults) {
     ASSERT_TRUE(fixture.frameUntil([&] { return reloaded; }));
     EXPECT_FALSE(completed);
     EXPECT_FALSE(assets.isGroupLoaded("menu"));
+}
+
+TEST_F(AssetsManagerTest, ReloadsFilesWhosePathsHoldAnyCharacter) {
+    test::EngineFixture fixture({{"content/data/a|b.json", R"({"level": 1})"}});
+    assets::Manager& assets = fixture.engine().getAssets();
+
+    const std::shared_ptr<void> held = assets.load("json", "data/a|b.json");
+    fixture.package().setFile("content/data/a|b.json", test::TestFiles::bytes(R"({"level": 2})"));
+    EXPECT_EQ(assets.reload("data/a|b.json"), 1U);
+    EXPECT_EQ(assets.json("data/a|b.json").at("level"), 2);
 }
 
 TEST_F(AssetsManagerTest, RegistersCustomTypes) {

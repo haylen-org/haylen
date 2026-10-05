@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <limits>
 #include <map>
 #include <memory>
 #include <string>
@@ -224,6 +225,43 @@ TEST_F(HpakPackageTest, MountsHundredsOfGigabytesInBoundedMemory) {
     } catch (const std::runtime_error& error) {
         EXPECT_NE(std::string(error.what()).find("Read it in ranges instead."), std::string::npos);
     }
+
+    // A range read that asks for more than one read allows fails before it allocates anything for the range.
+    {
+        const test::AllocationTracker tracker;
+        try {
+            (void)package->readRange("content/world.bin", size - io::Package::kMaxReadSize - 1, std::numeric_limits<std::size_t>::max());
+            ADD_FAILURE() << "A range read longer than the limit must fail.";
+        } catch (const std::runtime_error& error) {
+            EXPECT_NE(std::string(error.what()).find("Read it in smaller ranges instead."), std::string::npos);
+        }
+        EXPECT_LT(tracker.getLargest(), std::size_t{1} << 20);
+    }
+}
+
+TEST_F(HpakPackageTest, RefusesChunksOfAnotherSizeThanTheCatalogNames) {
+    // A catalog that gives a sealed chunk twice its plain size describes a file larger than its chunks hold, and a reader never reads past the chunk it decrypted.
+    test::TemporaryDirectory folder;
+    const std::vector<std::uint8_t> plain = test::TestFiles::randomBytes(1000, 3);
+    std::vector<std::uint8_t> ciphertext;
+    const ChunkRecord record = ChunkRecord::seal(*release.getContentKey(), plain, ChunkRecord::identifyContent(plain), ciphertext);
+    ShardWriter writer(folder.getPath(), release.getContentKey());
+    writer.add(record, ciphertext);
+    const ShardReference reference = writer.finish();
+
+    CatalogWriter catalogWriter;
+    catalogWriter.addChunk({.storedId = record.storedId, .contentId = record.contentId, .plainSize = 2 * record.plainSize, .encodedSize = 2 * record.encodedSize, .codec = record.codec, .profile = record.profile});
+    catalogWriter.addFile("content/data.bin", Delivery::Required, std::vector<Digest>{record.storedId});
+    const std::shared_ptr<const io::Package> files = io::Package::openDirectory(folder.getPath());
+    // clang-format off
+    const HpakPackage package("forged", std::make_shared<const Catalog>(Catalog::parse(catalogWriter.write(), 1)), std::make_shared<const ShardSet>(std::vector{reference}, release.getKeys(), [files](const ShardReference& shard) {
+        return files->openReader(shard.getFileName());
+    }));
+    // clang-format on
+
+    EXPECT_EQ(package.getFileSize("content/data.bin"), 2 * plain.size());
+    expectCode(Error::Code::CorruptChunk, [&] { (void)package.readRange("content/data.bin", plain.size() + 500, 100); });
+    expectCode(Error::Code::CorruptChunk, [&] { (void)package.readRange("content/data.bin", 0, 100); });
 }
 
 TEST_F(HpakPackageTest, ReadsFromManyThreadsAtOnce) {

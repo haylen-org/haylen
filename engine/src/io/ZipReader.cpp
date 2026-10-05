@@ -15,7 +15,7 @@ ZipReader::ZipReader(std::shared_ptr<ZipArchive> openArchive, zip_uint64_t entry
 
 ZipReader::~ZipReader() {
     std::scoped_lock lock(archive->getMutex());
-    zip_fclose(file);
+    close();
 }
 
 void ZipReader::open() {
@@ -24,6 +24,14 @@ void ZipReader::open() {
         fail();
     }
     position = 0;
+}
+
+// A reopen that failed leaves no entry open, so the reader still closes safely.
+void ZipReader::close() noexcept {
+    if (file != nullptr) {
+        zip_fclose(file);
+        file = nullptr;
+    }
 }
 
 void ZipReader::fail() const {
@@ -64,8 +72,7 @@ void ZipReader::moveTo(std::uint64_t offset) {
     }
 
     if (offset < position) {
-        zip_fclose(file);
-        file = nullptr;
+        close();
         open();
     }
 

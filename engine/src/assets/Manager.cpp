@@ -4,6 +4,7 @@
 #include <cctype>
 #include <chrono>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <utility>
 
@@ -43,12 +44,28 @@ std::string Manager::lowercase(std::string_view text) {
     return result;
 }
 
+std::string Manager::describe(const core::Json& value) {
+    return value.dump(-1, ' ', false, core::Json::error_handler_t::replace);
+}
+
 text::TrueTypeFont::Options Manager::fontOptionsFromJson(const core::Json& options) {
     core::JsonValidator::requireKnownKeys(options, {"bakeSize", "spread", "atlasSize"}, "font options");
+    // clang-format off
+    const auto number = [&options](const char* key, auto value) {
+        if (!options.contains(key)) {
+            return value;
+        }
+        if (!options.at(key).is_number()) {
+            throw std::invalid_argument(std::string("The font option \"") + key + "\" must be a number, not " + describe(options.at(key)) + ".");
+        }
+        return options.at(key).get<decltype(value)>();
+    };
+    // clang-format on
+
     text::TrueTypeFont::Options result;
-    result.bakeSize = options.value("bakeSize", result.bakeSize);
-    result.spread = options.value("spread", result.spread);
-    result.atlasSize = options.value("atlasSize", result.atlasSize);
+    result.bakeSize = number("bakeSize", result.bakeSize);
+    result.spread = number("spread", result.spread);
+    result.atlasSize = number("atlasSize", result.atlasSize);
     return result;
 }
 
@@ -60,16 +77,18 @@ graphics::Texture::Options Manager::textureOptionsFromJson(const core::Json& opt
     core::JsonValidator::requireKnownKeys(options, {"filter", "wrap"}, "texture options");
     graphics::Texture::Options result;
     if (options.contains("filter")) {
-        const auto filter = graphics::Texture::filterFromName(options.at("filter").get<std::string>());
+        const core::Json& value = options.at("filter");
+        const std::optional<graphics::Texture::Filter> filter = value.is_string() ? graphics::Texture::filterFromName(value.get<std::string>()) : std::nullopt;
         if (!filter) {
-            throw std::invalid_argument("The texture filter must be \"nearest\" or \"linear\", not \"" + options.at("filter").get<std::string>() + "\".");
+            throw std::invalid_argument("The texture filter must be \"nearest\" or \"linear\", not " + describe(value) + ".");
         }
         result.filter = *filter;
     }
     if (options.contains("wrap")) {
-        const auto wrap = graphics::Texture::wrapFromName(options.at("wrap").get<std::string>());
+        const core::Json& value = options.at("wrap");
+        const std::optional<graphics::Texture::Wrap> wrap = value.is_string() ? graphics::Texture::wrapFromName(value.get<std::string>()) : std::nullopt;
         if (!wrap) {
-            throw std::invalid_argument("The texture wrap must be \"clamp\", \"repeat\" or \"mirror\", not \"" + options.at("wrap").get<std::string>() + "\".");
+            throw std::invalid_argument("The texture wrap must be \"clamp\", \"repeat\" or \"mirror\", not " + describe(value) + ".");
         }
         result.wrap = *wrap;
     }
@@ -162,7 +181,6 @@ Manager::Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphi
 }
 
 Manager::~Manager() {
-    *alive = false;
     const std::scoped_lock lock(publisher->mutex);
     publisher->events = nullptr;
 }
@@ -202,35 +220,32 @@ const Manager::Type& Manager::getType(std::string_view name) const {
 
 std::size_t Manager::reload(std::string_view path) {
     const std::string changed = io::Path::normalize(path);
-    std::size_t reloaded = 0;
-    for (auto entry = cache.begin(); entry != cache.end();) {
-        // Cache keys read `type|path|options`, and normalized paths never hold the separator.
-        const std::string& key = entry->first;
-        const std::size_t first = key.find('|');
-        const std::size_t second = key.find('|', first + 1);
-        if (key.compare(first + 1, second - first - 1, changed) != 0) {
-            ++entry;
-            continue;
-        }
 
-        const std::shared_ptr<void> asset = entry->second.lock();
+    // A type may load other assets while it reloads one, so the entries of the file are taken before any of them reloads.
+    std::vector<std::pair<std::string, Cached>> entries;
+    for (const auto& [key, entry] : cache) {
+        if (entry.path == changed) {
+            entries.emplace_back(key, entry);
+        }
+    }
+
+    std::size_t reloaded = 0;
+    for (const auto& [key, entry] : entries) {
+        const std::shared_ptr<void> asset = entry.asset.lock();
         if (!asset) {
-            entry = cache.erase(entry);
+            cache.erase(key);
             continue;
         }
         ++reloaded;
-        const std::string typeName = key.substr(0, first);
-        const Type& kind = getType(typeName);
+        const Type& kind = getType(entry.type);
         if (!kind.reload) {
-            publisher->publish(core::LifecycleEvent::kAssetChanged, typeName, changed);
-            entry = cache.erase(entry);
+            publisher->publish(core::LifecycleEvent::kAssetChanged, entry.type, changed);
+            cache.erase(key);
             continue;
         }
-        Request fresh = makeRequest(typeName, changed, core::Json::parse(key.substr(second + 1)));
-        fresh.bytes = package.readAsset(changed);
+        Request fresh{.type = entry.type, .path = changed, .options = entry.options, .bytes = package.readAsset(changed), .package = &package};
         kind.reload(asset, fresh);
-        publisher->publish(core::LifecycleEvent::kAssetReloaded, typeName, changed);
-        ++entry;
+        publisher->publish(core::LifecycleEvent::kAssetReloaded, entry.type, changed);
     }
     return reloaded;
 }
@@ -241,6 +256,11 @@ std::string Manager::cacheKey(std::string_view type, std::string_view path, cons
 
 Manager::Request Manager::makeRequest(std::string_view typeName, std::string_view path, const core::Json& options) const {
     return {.type = std::string(typeName), .path = io::Path::normalize(path), .options = normalizeOptions(typeName, options), .package = &package};
+}
+
+std::shared_ptr<void> Manager::findCached(const std::string& key) const {
+    const auto found = cache.find(key);
+    return found == cache.end() ? nullptr : found->second.asset.lock();
 }
 
 core::Json Manager::normalizeOptions(std::string_view typeName, const core::Json& options) const {
@@ -261,14 +281,12 @@ std::shared_ptr<void> Manager::load(std::string_view typeName, std::string_view 
 std::shared_ptr<void> Manager::share(std::string_view typeName, std::string_view path, const core::Json& options, const std::function<std::shared_ptr<void>(const Request&)>& make) {
     const Request request = makeRequest(typeName, path, options);
     const std::string key = cacheKey(request.type, request.path, request.options);
-    if (const auto found = cache.find(key); found != cache.end()) {
-        if (std::shared_ptr<void> cached = found->second.lock()) {
-            return cached;
-        }
+    if (std::shared_ptr<void> cached = findCached(key)) {
+        return cached;
     }
 
     std::shared_ptr<void> asset = track(make(request), request);
-    cache.insert_or_assign(key, asset);
+    cache.insert_or_assign(key, Cached{.asset = asset, .type = request.type, .path = request.path, .options = request.options});
     return asset;
 }
 
@@ -287,15 +305,16 @@ std::shared_ptr<void> Manager::track(std::shared_ptr<void> asset, const Request&
 }
 
 void Manager::loadAsync(std::string_view typeName, std::string_view path, Callback callback, const core::Json& options) {
-    auto request = std::make_shared<Request>(makeRequest(typeName, path, options));
-    const std::string key = cacheKey(request->type, request->path, request->options);
+    startLoad(makeRequest(typeName, path, options), std::move(callback));
+}
+
+void Manager::startLoad(Request request, Callback callback) {
+    const std::string key = cacheKey(request.type, request.path, request.options);
 
     // Callbacks always run later on the frame thread, so callers never see them run inside the call itself.
-    if (const auto found = cache.find(key); found != cache.end()) {
-        if (std::shared_ptr<void> cached = found->second.lock()) {
-            jobs.postToFrame([callback = std::move(callback), cached] { callback(cached, {}); });
-            return;
-        }
+    if (std::shared_ptr<void> cached = findCached(key)) {
+        jobs.postToFrame([callback = std::move(callback), cached] { callback(cached, {}); });
+        return;
     }
 
     const bool alreadyLoading = pending.contains(key);
@@ -304,31 +323,32 @@ void Manager::loadAsync(std::string_view typeName, std::string_view path, Callba
         return;
     }
 
-    const Type& assetType = getType(typeName);
+    const Type& assetType = getType(request.type);
+    auto loading = std::make_shared<Request>(std::move(request));
 
     // The file is read on the I/O pool, where waiting on the disk blocks no decoding, then decoded on the task pool and queued on the frame thread, where `finalizePending` creates its GPU resources within the upload budget.
     // clang-format off
-    const auto deliver = [this, owner = std::weak_ptr<bool>(alive), key, request, finalize = assetType.finalize](std::shared_ptr<void> decoded, std::string error) {
-        jobs.postToFrame([this, owner, key, request, finalize, decoded = std::move(decoded), error = std::move(error)]() mutable {
+    const auto deliver = [this, owner = std::weak_ptr<bool>(alive), key, loading, finalize = assetType.finalize](std::shared_ptr<void> decoded, std::string error) {
+        jobs.postToFrame([this, owner, key, loading, finalize, decoded = std::move(decoded), error = std::move(error)]() mutable {
             if (!owner.expired()) {
-                uploads.push_back({.key = key, .request = request, .finalize = std::move(finalize), .decoded = std::move(decoded), .error = std::move(error)});
+                uploads.push_back({.key = key, .request = loading, .finalize = std::move(finalize), .decoded = std::move(decoded), .error = std::move(error)});
             }
         });
     };
 
-    jobs.postIo([this, request, decode = assetType.decode, deliver] {
+    jobs.postIo([this, loading, decode = assetType.decode, deliver] {
         try {
-            request->bytes = package.readAsset(request->path);
+            loading->bytes = package.readAsset(loading->path);
         } catch (const std::exception& exception) {
             deliver(nullptr, exception.what());
             return;
         }
 
-        jobs.post([request, decode, deliver] {
+        jobs.post([loading, decode, deliver] {
             std::shared_ptr<void> decoded;
             std::string error;
             try {
-                decoded = decode(*request);
+                decoded = decode(*loading);
             } catch (const std::exception& exception) {
                 error = exception.what();
             }
@@ -338,16 +358,13 @@ void Manager::loadAsync(std::string_view typeName, std::string_view path, Callba
     // clang-format on
 }
 
-void Manager::finish(const std::string& key, std::shared_ptr<void> asset, const std::string& error) {
+void Manager::finish(const std::string& key, const std::shared_ptr<void>& asset, const std::string& error) {
     std::vector<Callback> callbacks;
     if (const auto found = pending.find(key); found != pending.end()) {
         callbacks = std::move(found->second.callbacks);
         pending.erase(found);
     }
 
-    if (asset) {
-        cache.insert_or_assign(key, asset);
-    }
     for (const Callback& callback : callbacks) {
         callback(asset, error);
     }
@@ -412,18 +429,38 @@ void Manager::defineGroup(std::string name, std::vector<Entry> entries) {
 
 void Manager::defineGroups(const core::Json& manifest) {
     core::JsonValidator::requireKnownKeys(manifest, {"groups"}, "the asset group manifest");
+    if (!manifest.contains("groups") || !manifest.at("groups").is_object()) {
+        throw std::invalid_argument("The asset group manifest needs \"groups\", which maps each group name to its list of entries.");
+    }
+
     for (const auto& [name, items] : manifest.at("groups").items()) {
+        if (!isList(items)) {
+            throw std::invalid_argument("The asset group \"" + name + "\" must be a list of entries.");
+        }
         std::vector<Entry> entries;
         for (const core::Json& item : items) {
-            if (item.is_string()) {
-                entries.push_back({.path = item.get<std::string>()});
-                continue;
-            }
-            core::JsonValidator::requireKnownKeys(item, {"path", "type", "options"}, "an asset group entry");
-            entries.push_back({.path = item.at("path").get<std::string>(), .type = item.value("type", std::string{}), .options = item.value("options", core::Json::object())});
+            entries.push_back(readEntry(name, item));
         }
         defineGroup(name, std::move(entries));
     }
+}
+
+// An empty Lua table arrives as an empty object, so it counts as an empty list.
+bool Manager::isList(const core::Json& value) noexcept {
+    return value.is_array() || (value.is_object() && value.empty());
+}
+
+Manager::Entry Manager::readEntry(std::string_view group, const core::Json& item) {
+    if (item.is_string()) {
+        return {.path = item.get<std::string>()};
+    }
+    if (item.is_object()) {
+        core::JsonValidator::requireKnownKeys(item, {"path", "type", "options"}, "an asset group entry");
+    }
+    if (!item.is_object() || !item.contains("path") || !item.at("path").is_string() || (item.contains("type") && !item.at("type").is_string()) || (item.contains("options") && !item.at("options").is_object())) {
+        throw std::invalid_argument("The asset group \"" + std::string(group) + "\" has the entry " + describe(item) + ", which is not a path or an object with a \"path\" string, an optional \"type\" string and optional \"options\".");
+    }
+    return {.path = item.at("path").get<std::string>(), .type = item.value("type", std::string{}), .options = item.value("options", core::Json::object())};
 }
 
 std::vector<Manager::Entry> Manager::expand(const std::vector<Entry>& entries) const {
@@ -471,6 +508,14 @@ void Manager::preload(std::string_view name, GroupProgress progress, GroupComple
         return;
     }
 
+    // A group that starts to load turns every entry into a request before it changes, so entries that are not valid leave no listener behind and never leave the group loading.
+    std::vector<Request> requests;
+    if (!group.loading) {
+        for (const Entry& entry : expand(group.entries)) {
+            requests.push_back(makeRequest(entry.type, entry.path, entry.options));
+        }
+    }
+
     if (progress) {
         group.progressListeners.push_back(std::move(progress));
     }
@@ -481,23 +526,22 @@ void Manager::preload(std::string_view name, GroupProgress progress, GroupComple
         return;
     }
 
-    const std::vector<Entry> entries = expand(group.entries);
     group.held.clear();
     group.errors.clear();
     group.completed = 0;
-    group.total = entries.size();
+    group.total = requests.size();
     group.loading = true;
     const std::uint64_t generation = ++group.generation;
     const std::string groupName(name);
 
-    if (entries.empty()) {
+    if (requests.empty()) {
         jobs.postToFrame([this, groupName, generation] { completeGroup(groupName, generation); });
         return;
     }
 
-    for (const Entry& entry : entries) {
+    for (const Request& request : requests) {
         // clang-format off
-        loadAsync(entry.type, entry.path, [this, groupName, generation, path = entry.path](std::shared_ptr<void> asset, std::string error) {
+        startLoad(request, [this, groupName, generation, path = request.path](std::shared_ptr<void> asset, std::string error) {
             Group& target = groups.at(groupName);
             if (target.generation != generation) {
                 return;
@@ -518,7 +562,7 @@ void Manager::preload(std::string_view name, GroupProgress progress, GroupComple
             if (target.completed == target.total) {
                 completeGroup(groupName, generation);
             }
-        }, entry.options);
+        });
         // clang-format on
     }
 }
@@ -546,14 +590,25 @@ void Manager::unloadGroup(std::string_view name) {
     }
 
     Group& group = found->second;
+    std::vector<GroupCompletion> waiting = std::exchange(group.completionListeners, {});
     group.held.clear();
     group.errors.clear();
     group.progressListeners.clear();
-    group.completionListeners.clear();
     group.completed = 0;
     group.loading = false;
     group.loaded = false;
     ++group.generation;
+
+    // Preloads that still wait for the group complete on a later frame, with the one failure that the group unloaded first.
+    if (!waiting.empty()) {
+        // clang-format off
+        jobs.postToFrame([waiting = std::move(waiting), errors = std::vector<std::string>{"The asset group \"" + std::string(name) + "\" was unloaded before it finished loading."}] {
+            for (const GroupCompletion& listener : waiting) {
+                listener(errors);
+            }
+        });
+        // clang-format on
+    }
 }
 
 float Manager::getGroupProgress(std::string_view name) const {
@@ -584,7 +639,7 @@ std::vector<std::string> Manager::getGroups() const {
 }
 
 std::size_t Manager::getCachedCount() const noexcept {
-    return static_cast<std::size_t>(std::count_if(cache.begin(), cache.end(), [](const auto& entry) { return !entry.second.expired(); }));
+    return static_cast<std::size_t>(std::count_if(cache.begin(), cache.end(), [](const auto& entry) { return !entry.second.asset.expired(); }));
 }
 
 std::size_t Manager::getPendingCount() const noexcept {
@@ -592,7 +647,7 @@ std::size_t Manager::getPendingCount() const noexcept {
 }
 
 std::size_t Manager::releaseUnused() {
-    return static_cast<std::size_t>(std::erase_if(cache, [](const auto& entry) { return entry.second.expired(); }));
+    return static_cast<std::size_t>(std::erase_if(cache, [](const auto& entry) { return entry.second.asset.expired(); }));
 }
 
 void Manager::finalizePending() {
@@ -605,15 +660,20 @@ void Manager::finalizePending() {
         Upload upload = std::move(uploads.front());
         uploads.pop_front();
 
-        std::shared_ptr<void> asset;
-        if (upload.error.empty()) {
+        // A synchronous load may have cached the asset while this one decoded, and every load of an asset shares that one object.
+        std::shared_ptr<void> asset = findCached(upload.key);
+        if (asset) {
+            upload.error.clear();
+        } else if (upload.error.empty()) {
             try {
-                asset = track(upload.finalize(std::move(upload.decoded), *upload.request), *upload.request);
+                const Request& request = *upload.request;
+                asset = track(upload.finalize(std::move(upload.decoded), request), request);
+                cache.insert_or_assign(upload.key, Cached{.asset = asset, .type = request.type, .path = request.path, .options = request.options});
             } catch (const std::exception& exception) {
                 upload.error = exception.what();
             }
         }
-        finish(upload.key, std::move(asset), upload.error);
+        finish(upload.key, asset, upload.error);
     } while (std::chrono::steady_clock::now() - start < budget);
 }
 

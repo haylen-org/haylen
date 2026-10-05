@@ -7,7 +7,7 @@
 #include <limits>
 #include <set>
 #include <stdexcept>
-#include <system_error>
+#include <string>
 #include <utility>
 
 #include "content/Error.hpp"
@@ -34,10 +34,10 @@ std::filesystem::path ChannelPublisher::getChannelPath(std::string_view channel)
 }
 
 ChannelPublisher::Publication ChannelPublisher::publish(const io::Package& app, const std::filesystem::path& tree, const Options& options) const {
-    const core::AppConfig config = core::AppConfig::fromPackage(app);
-    if (options.channel.empty()) {
-        throw std::invalid_argument("A publication needs the name of a channel.");
+    if (options.channel.empty() || !Manifest::isValidName(options.channel)) {
+        throw std::invalid_argument("A publication needs the name of a channel, with at most 64 lowercase letters, digits, dashes and dots, not \"" + options.channel + "\".");
     }
+    const core::AppConfig config = core::AppConfig::fromPackage(app);
     const Digest application = Manifest::identifyApplication(config.identifier);
     const std::optional<ChannelDescriptor> current = readChannel(tree, options.channel);
     std::optional<Manifest> earlier;
@@ -95,7 +95,7 @@ std::optional<ChannelDescriptor> ChannelPublisher::readChannel(const std::filesy
 Manifest ChannelPublisher::readManifest(const std::filesystem::path& tree, const Digest& manifest) const {
     std::ifstream stream(tree / getManifestPath(manifest), std::ios::binary);
     if (!stream) {
-        throw Error(Error::Code::MissingShard, "The tree has no manifest \"" + manifest.toHex() + "\", which a channel names.");
+        throw Error(Error::Code::MissingManifest, "The tree has no manifest \"" + manifest.toHex() + "\", which a channel names.");
     }
     const VerifyingKey trusted = signingKey->getVerifyingKey();
     Manifest read = Manifest::read({std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()}, std::span(&trusted, 1));
@@ -108,9 +108,11 @@ Manifest ChannelPublisher::readManifest(const std::filesystem::path& tree, const
 void ChannelPublisher::verify(const std::filesystem::path& tree, const Manifest& manifest) const {
     for (const ShardReference& pack : manifest.getEnvelope().shards) {
         const std::filesystem::path file = tree / getPackPath(pack);
-        std::error_code error;
-        if (std::filesystem::file_size(file, error) != pack.fileSize || error || Digest::ofFile(file) != pack.fileDigest) {
-            throw Error(Error::Code::MissingShard, "The pack \"" + pack.getFileName() + "\" of the tree is missing or is not the file its manifest signs.");
+        if (!std::filesystem::is_regular_file(file)) {
+            throw Error(Error::Code::MissingShard, "The tree has no pack \"" + pack.getFileName() + "\", which its manifest names.");
+        }
+        if (std::filesystem::file_size(file) != pack.fileSize || Digest::ofFile(file) != pack.fileDigest) {
+            throw Error(Error::Code::CorruptHeader, "The pack \"" + pack.getFileName() + "\" of the tree is not the file its manifest signs.");
         }
     }
 
@@ -154,6 +156,10 @@ void ChannelPublisher::writeFile(const std::filesystem::path& file, std::span<co
 ChannelPublisher::Compaction ChannelPublisher::compact(const std::filesystem::path& tree, std::uint64_t keep) const {
     if (keep == 0) {
         throw std::invalid_argument("A compaction keeps at least the current generation of every channel.");
+    }
+
+    if (!std::filesystem::is_directory(tree / kChannelsFolder)) {
+        throw std::invalid_argument("The folder \"" + tree.generic_string() + "\" is not a publication tree, because it has no \"" + std::string(kChannelsFolder) + "\" folder.");
     }
 
     // Every channel keeps its current manifest and the ones before it, up to the count, with every pack they name.

@@ -70,7 +70,7 @@ void SceneLoad::preload(std::string_view group, PreloadCompletion completion) {
     const std::size_t part = groups.size();
     groups.push_back(0.0F);
 
-    // The asset manager may drop its listeners, when the group is unloaded or the engine shuts down, and the deferral they hold then fails the load.
+    // A group that unloads while it loads completes with the failure that it unloaded, and when the engine shuts down the asset manager drops its listeners, so the deferral they hold fails the load.
     // clang-format off
     try {
         engine.getAssets().preload(group, [weak = weak_from_this(), part](float fraction) {

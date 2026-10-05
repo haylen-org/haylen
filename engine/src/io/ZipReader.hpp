@@ -31,6 +31,7 @@ class ZipReader final : public PackageReader {
     // Moves the entry to an offset while the caller holds the lock.
     void moveTo(std::uint64_t offset);
     void open();
+    void close() noexcept;
     [[noreturn]] void fail() const;
 
     std::shared_ptr<ZipArchive> archive;

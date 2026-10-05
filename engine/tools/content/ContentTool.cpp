@@ -1,5 +1,6 @@
 #include "content/ContentTool.hpp"
 
+#include <algorithm>
 #include <charconv>
 #include <filesystem>
 #include <format>
@@ -19,6 +20,10 @@
 #include "haylen/io/Package.hpp"
 
 namespace haylen::content {
+
+const std::array<std::pair<std::string_view, Delivery>, 3> ContentTool::kDeliveryNames{{{"required", Delivery::Required}, {"prefetch", Delivery::Prefetch}, {"onDemand", Delivery::OnDemand}}};
+const std::array<std::pair<std::string_view, Catalog::Kind>, 2> ContentTool::kKindNames{{{"data", Catalog::Kind::File}, {"Lua bytecode", Catalog::Kind::LuaBytecode}}};
+const std::array<std::pair<std::string_view, Manifest::Domain>, 2> ContentTool::kDomainNames{{{"app", Manifest::Domain::App}, {"content", Manifest::Domain::Content}}};
 
 ContentTool::Arguments::Arguments(std::span<const std::string> words) {
     for (std::size_t index = 0; index < words.size(); ++index) {
@@ -195,12 +200,12 @@ void ContentTool::runBuild(Arguments& arguments) {
     const std::optional<std::filesystem::path> previous = earlier ? std::optional<std::filesystem::path>(*earlier) : std::nullopt;
     const ReleaseBuilder::Result result = builder.build(*package, folder, previous, options);
     output << "Built the release of \"" << config.identifier << "\" for the profile \"" << options.profile << "\" in \"" << folder.generic_string() << "\".\n";
-    printStatistics("app", result.app.statistics);
-    printStatistics("content", result.content.statistics);
+    printStatistics(Manifest::Domain::App, result.app.statistics);
+    printStatistics(Manifest::Domain::Content, result.content.statistics);
 }
 
-void ContentTool::printStatistics(std::string_view domain, const ContentBuilder::Statistics& statistics) {
-    output << std::format("The {} domain stores {} new chunks of {} bytes in {} bytes, {} of them from the build cache, and reuses {} chunks of {} bytes, while {} earlier shards leave it.\n", domain, statistics.newChunks, statistics.newBytes, statistics.storedBytes, statistics.cachedChunks, statistics.reusedChunks, statistics.reusedBytes, statistics.droppedShards);
+void ContentTool::printStatistics(Manifest::Domain domain, const ContentBuilder::Statistics& statistics) {
+    output << std::format("The {} domain stores {} new chunks of {} bytes in {} bytes, {} of them from the build cache, and reuses {} chunks of {} bytes, while {} earlier shards leave it.\n", getDomainName(domain), statistics.newChunks, statistics.newBytes, statistics.storedBytes, statistics.cachedChunks, statistics.reusedChunks, statistics.reusedBytes, statistics.droppedShards);
 }
 
 ReleaseInspector ContentTool::makeInspector(const KeyStore& store) {
@@ -270,15 +275,15 @@ void ContentTool::runDiff(Arguments& arguments) {
     const ReleaseInspector::Report earlier = inspector.inspect(before);
     const ReleaseInspector::Report later = inspector.inspect(after);
     std::uint64_t download = 0;
-    for (const auto& [name, domains] : {std::pair{std::string_view("app"), std::pair{&earlier.app, &later.app}}, std::pair{std::string_view("content"), std::pair{&earlier.content, &later.content}}}) {
-        const ReleaseInspector::Difference difference = ReleaseInspector::compare(*domains.first, *domains.second);
-        output << std::format("The {} domain adds {} chunks of {} bytes, reuses {} chunks of {} bytes and drops {} chunks of {} bytes, with {} new shards and {} added, {} changed and {} removed files.\n", name, difference.newChunks, difference.newBytes, difference.reusedChunks, difference.reusedBytes, difference.removedChunks, difference.removedBytes, difference.newShards.size(), difference.addedFiles.size(), difference.changedFiles.size(), difference.removedFiles.size());
+    for (const auto& [older, newer] : {std::pair{&earlier.app, &later.app}, std::pair{&earlier.content, &later.content}}) {
+        const ReleaseInspector::Difference difference = ReleaseInspector::compare(*older, *newer);
+        output << std::format("The {} domain adds {} chunks of {} bytes, reuses {} chunks of {} bytes and drops {} chunks of {} bytes, with {} new shards and {} added, {} changed and {} removed files.\n", getDomainName(newer->envelope.domain), difference.newChunks, difference.newBytes, difference.reusedChunks, difference.reusedBytes, difference.removedChunks, difference.removedBytes, difference.newShards.size(), difference.addedFiles.size(), difference.changedFiles.size(), difference.removedFiles.size());
         for (const auto& [label, paths] : {std::pair{"Added", &difference.addedFiles}, std::pair{"Changed", &difference.changedFiles}, std::pair{"Removed", &difference.removedFiles}}) {
             for (const std::string& path : *paths) {
                 output << "  " << label << " \"" << path << "\".\n";
             }
         }
-        download += difference.downloadBytes + std::filesystem::file_size(after / ReleasePackage::getManifestFile(domains.second->envelope.domain));
+        download += difference.downloadBytes + std::filesystem::file_size(after / ReleasePackage::getManifestFile(newer->envelope.domain));
     }
     output << std::format("An app that holds the earlier release downloads about {} bytes to reach the later one.\n", download);
 }
@@ -302,7 +307,7 @@ void ContentTool::runPublish(Arguments& arguments) {
         bytes += pack.fileSize;
     }
     output << std::format("Published generation {} of the channel \"{}\" in \"{}\" with the manifest \"{}\" and {} new packs of {} bytes.\n", publication.generation, options.channel, tree.generic_string(), publication.manifest.toHex(), publication.newPacks.size(), bytes);
-    printStatistics("content", publication.statistics);
+    printStatistics(Manifest::Domain::Content, publication.statistics);
 }
 
 void ContentTool::runCompact(Arguments& arguments) {
@@ -344,23 +349,15 @@ void ContentTool::runBootstrap(Arguments& arguments) {
 }
 
 std::string_view ContentTool::getDeliveryName(Delivery delivery) noexcept {
-    switch (delivery) {
-    case Delivery::Required:
-        return "required";
-    case Delivery::Prefetch:
-        return "prefetch";
-    case Delivery::OnDemand:
-        return "onDemand";
-    }
-    return "required";
+    return std::ranges::find(kDeliveryNames, delivery, &std::pair<std::string_view, Delivery>::second)->first;
 }
 
 std::string_view ContentTool::getKindName(Catalog::Kind kind) noexcept {
-    return kind == Catalog::Kind::LuaBytecode ? "Lua bytecode" : "data";
+    return std::ranges::find(kKindNames, kind, &std::pair<std::string_view, Catalog::Kind>::second)->first;
 }
 
 std::string_view ContentTool::getDomainName(Manifest::Domain domain) noexcept {
-    return domain == Manifest::Domain::App ? "app" : "content";
+    return std::ranges::find(kDomainNames, domain, &std::pair<std::string_view, Manifest::Domain>::second)->first;
 }
 
 } // namespace haylen::content

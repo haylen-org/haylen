@@ -16,7 +16,7 @@ namespace haylen::io {
 // Read-only view of an app package: a folder or a zip archive holding `app.json`, the Lua modules under `source` with `source/main.lua` as the entry point, the assets under `content` and the manifest and Lua modules of every plugin under `plugins`. All methods are thread-safe and take normalized relative paths. Files of any size stream through `openReader`, which reads only the ranges it is asked for.
 class Package {
   public:
-    // Whole reads of larger files throw, because such files stream through a reader instead.
+    // Whole reads of larger files and range reads of longer ranges throw, because such files stream through a reader instead.
     static constexpr std::uint64_t kMaxReadSize = std::uint64_t{1} << 30;
 
     virtual ~Package() = default;

@@ -27,6 +27,7 @@ class Error final : public std::runtime_error {
         KeyUnavailable,
         MissingChunk,
         MissingShard,
+        MissingManifest,
         LuaBytecodeIncompatible,
     };
 

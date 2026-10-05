@@ -2,11 +2,16 @@
 #include <zip.h>
 
 #include <algorithm>
+#include <filesystem>
 #include <fstream>
+#include <functional>
 #include <iterator>
 #include <map>
 #include <memory>
 #include <stdexcept>
+#include <string>
+#include <system_error>
+#include <vector>
 
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/io/MemoryPackage.hpp"
@@ -99,6 +104,15 @@ class PackageTest : public ::testing::TestWithParam<std::string> {
         return data;
     }
 
+    [[nodiscard]] static std::string getError(const std::function<void()>& action) {
+        try {
+            action();
+        } catch (const std::exception& error) {
+            return error.what();
+        }
+        return {};
+    }
+
     test::TemporaryDirectory directory;
 };
 
@@ -137,6 +151,11 @@ TEST_P(PackageTest, ReadsFilesInRanges) {
     EXPECT_EQ(reader->read(12, bytes), 0U);
     EXPECT_THROW(reader->readExactly(11, bytes), std::runtime_error);
     EXPECT_THROW((void)package->openReader("missing.lua"), std::runtime_error);
+
+    // Every package names a missing file by its path inside the package, never by a path of the host.
+    const std::string missing = "The package file \"" + std::string(package->getName()) + "/source/missing.lua\" was not found.";
+    EXPECT_EQ(getError([&] { (void)package->getFileSize("source/missing.lua"); }), missing);
+    EXPECT_EQ(getError([&] { (void)package->openReader("./source/missing.lua"); }), missing);
 }
 
 TEST_P(PackageTest, CarriesThePluginsOfTheApp) {
@@ -199,6 +218,57 @@ TEST(PackageOpenTest, OpensZipFilesWithoutReadingThemWhole) {
     EXPECT_TRUE(std::equal(early.begin(), early.end(), large.begin() + 1000));
     EXPECT_EQ(package->readAsset("large.bin"), large);
 }
+
+TEST(PackageOpenTest, KeepsAZipReaderSafeWhenItsArchiveShrinks) {
+    test::TemporaryDirectory directory;
+    const std::filesystem::path file = directory.getPath() / "app.zip";
+    const std::vector<std::uint8_t> large = test::TestFiles::randomBytes(4 * 1024 * 1024, 2);
+    int error = 0;
+    zip_t* archive = zip_open(file.string().c_str(), ZIP_CREATE | ZIP_TRUNCATE, &error);
+    ASSERT_NE(archive, nullptr);
+    zip_file_add(archive, "content/large.bin", zip_source_buffer(archive, large.data(), large.size(), 0), 0);
+    zip_close(archive);
+
+    const std::unique_ptr<Package> package = Package::open(file);
+    std::unique_ptr<PackageReader> reader = package->openReader("content/large.bin");
+    std::vector<std::uint8_t> bytes(1000);
+    reader->readExactly(2 * 1024 * 1024, bytes);
+
+    // Going back in a compressed entry opens it again, which fails once the archive lost its bytes, and the reader still reads and closes safely.
+    std::filesystem::resize_file(file, 0);
+    EXPECT_THROW(reader->readExactly(0, bytes), std::runtime_error);
+    EXPECT_THROW(reader->readExactly(0, bytes), std::runtime_error);
+    reader.reset();
+}
+
+#if !defined(_WIN32)
+TEST(PackageOpenTest, RefusesToListAFolderPartly) {
+    test::TemporaryDirectory directory;
+    directory.write("content/maps/island.tmj", "{}");
+    directory.write("content/locked/secret.json", "{}");
+    const std::filesystem::path locked = directory.getPath() / "content" / "locked";
+    std::filesystem::permissions(locked, std::filesystem::perms::none);
+
+    // A user who reads every folder, such as the superuser, cannot meet the problem.
+    std::error_code denied;
+    const std::filesystem::directory_iterator probe(locked, denied);
+    if (!denied) {
+        std::filesystem::permissions(locked, std::filesystem::perms::owner_all);
+        GTEST_SKIP() << "The user reads folders without permission.";
+    }
+
+    const std::unique_ptr<Package> package = Package::open(directory.getPath());
+    std::string message;
+    try {
+        (void)package->listAssets("");
+    } catch (const std::runtime_error& error) {
+        message = error.what();
+    }
+    std::filesystem::permissions(locked, std::filesystem::perms::owner_all);
+    EXPECT_TRUE(message.starts_with("The package folder \"" + std::string(package->getName()) + "/content\" could not be listed")) << message;
+    EXPECT_EQ(message.find(directory.getPath().generic_string()), std::string::npos) << "The message names the folder inside the package.";
+}
+#endif
 
 TEST(CompositePackageTest, ShowsLaterLayersOverEarlierOnes) {
     const auto base = std::make_shared<MemoryPackage>("base", std::map<std::string, std::vector<std::uint8_t>>{{"content/a.txt", test::TestFiles::bytes("base a")}, {"content/b.txt", test::TestFiles::bytes("base b")}});

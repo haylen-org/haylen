@@ -57,6 +57,9 @@ class Manifest final {
     // Tells whether a package path names a Lua module of the app or of a plugin, the only files that may be Lua bytecode.
     [[nodiscard]] static bool isLuaModule(std::string_view path) noexcept;
 
+    // Tells whether a name suits a profile, a channel or a Lua ABI: at most 64 lowercase letters, digits, dashes and dots.
+    [[nodiscard]] static bool isValidName(std::string_view name) noexcept;
+
     // Encrypts a plain catalog under the content key, signs the envelope with the signing key, and returns the bytes of the manifest. The key IDs of the envelope come from the keys.
     [[nodiscard]] static std::vector<std::uint8_t> write(Envelope fields, std::span<const std::uint8_t> catalog, const ContentKey& contentKey, const SigningKey& signingKey);
 
@@ -89,7 +92,6 @@ class Manifest final {
     [[nodiscard]] static std::vector<std::uint8_t> writeContext(const Envelope& fields, std::uint32_t envelopeSize);
     [[nodiscard]] static bool belongsToDomain(std::string_view path, Domain domain) noexcept;
     void checkFiles(const Catalog& catalog) const;
-    [[nodiscard]] static bool isValidName(std::string_view name) noexcept;
     void parseEnvelope(std::span<const std::uint8_t> signedBytes);
 
     Envelope envelope;

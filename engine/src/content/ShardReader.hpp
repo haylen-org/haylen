@@ -6,6 +6,7 @@
 
 #include "content/crypto/ContentKey.hpp"
 #include "content/crypto/KeyRing.hpp"
+#include "content/format/Catalog.hpp"
 #include "content/format/ShardHeader.hpp"
 #include "content/format/ShardIndex.hpp"
 #include "content/format/ShardReference.hpp"
@@ -18,8 +19,8 @@ class ShardReader final {
   public:
     ShardReader(std::unique_ptr<io::PackageReader> shardFile, const ShardReference& reference, const KeyRing& keys);
 
-    // Reads one record, checks that it is the chunk the catalog names, then authenticates, decrypts, decodes and verifies it into the plain buffer. The scratch buffer holds the record on the way, so callers reuse both buffers across chunks.
-    void readChunk(const Digest& storedId, const Digest& contentId, std::vector<std::uint8_t>& scratch, std::vector<std::uint8_t>& plain) const;
+    // Reads one record, checks that it is the chunk the catalog names, with its IDs, sizes and codec, then authenticates, decrypts, decodes and verifies it into the plain buffer, which then holds exactly the plain size of the chunk. The scratch buffer holds the record on the way, so callers reuse both buffers across chunks.
+    void readChunk(const Catalog::Chunk& chunk, std::vector<std::uint8_t>& scratch, std::vector<std::uint8_t>& plain) const;
 
     [[nodiscard]] const ShardHeader& getHeader() const noexcept {
         return header;
