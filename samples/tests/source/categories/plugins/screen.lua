@@ -138,7 +138,7 @@ function Screen:openRedirect()
     end)
 end
 
--- The SwiftUI screen lets the app show through, as a sheet over it on iOS, iPadOS and tvOS, where a swipe closes it too. It answers like the confirm screen, and its Close button dismisses it through SwiftUI, which the call hears as `cancelled`.
+-- The SwiftUI screen lets the app show through, as a sheet over it on iOS, iPadOS and tvOS, where a swipe closes it too. It answers like the confirm screen, and its Close button ends it, which the call hears as `cancelled`.
 function Screen:openSwiftUI()
     self:act(function()
         local name = Screen.rows[7].name

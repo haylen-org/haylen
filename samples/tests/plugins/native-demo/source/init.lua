@@ -154,7 +154,7 @@ function demo.openScreen(options)
     return handle:openScreen('confirm', {title = 'Native Demo', question = 'Does the app get an answer?'}, options)
 end
 
--- Opens the same question in SwiftUI, which only Apple platforms have: over the app on iOS, iPadOS and tvOS and in a window of its own on Mac Catalyst and macOS. It answers like `openScreen`, and its Close button dismisses it through SwiftUI, which fails the call with the code `cancelled`.
+-- Opens the same question in SwiftUI, which only Apple platforms have: over the app on iOS, iPadOS and tvOS and in a window of its own on Mac Catalyst and macOS. It answers like `openScreen`, and its Close button fails the call with the code `cancelled`.
 function demo.openSwiftUIScreen(options)
     return handle:openScreen('swiftUI', {title = 'SwiftUI', question = 'Does the SwiftUI screen answer the app?'}, options)
 end

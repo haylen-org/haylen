@@ -1,12 +1,11 @@
 import SwiftUI
 
-// The confirm screen in SwiftUI: the question with Confirm and Decline, which answer through the closure, and Close, which dismisses the screen through the dismiss action of SwiftUI without an answer, so the runtime ends the screen as `cancelled`.
+// The confirm screen in SwiftUI: the question with Confirm and Decline, which answer through `answered`, and Close, which leaves without an answer through `closed`.
 struct NativeDemoConfirmView: View {
     let title: String
     let question: String
     let answered: @MainActor (Bool) -> Void
-
-    @Environment(\.dismiss) private var dismiss
+    let closed: @MainActor () -> Void
 
     var body: some View {
         VStack(spacing: 24) {
@@ -17,7 +16,7 @@ struct NativeDemoConfirmView: View {
                 .multilineTextAlignment(.center)
             HStack(spacing: 16) {
                 Button("Close") {
-                    dismiss()
+                    closed()
                 }
                 Button("Decline") {
                     answered(false)

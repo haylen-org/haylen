@@ -337,7 +337,7 @@ end)
 
 ### demo.openSwiftUIScreen(options)
 
-Opens the same question in SwiftUI, which only Apple platforms have: a `UIHostingController` over the app on iOS, iPadOS and tvOS and in a window of its own on Mac Catalyst, and an `NSHostingController` in a window of its own in the macOS app. It answers like `openScreen` with `via` naming SwiftUI, and its Close button dismisses it through the dismiss action of SwiftUI, which fails the call with the code `cancelled`. The other platforms fail with the code `noHandler`.
+Opens the same question in SwiftUI, which only Apple platforms have: a `UIHostingController` over the app on iOS, iPadOS and tvOS and in a window of its own on Mac Catalyst, and an `NSHostingController` in a window of its own in the macOS app. It answers like `openScreen` with `via` naming SwiftUI, and its Close button ends it with the code `cancelled`, which closes it on every platform, the window of Mac Catalyst included. The other platforms fail with the code `noHandler`.
 
 ```lua
 local async = require('async')

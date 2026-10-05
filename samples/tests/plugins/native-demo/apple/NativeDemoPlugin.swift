@@ -433,7 +433,7 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
             #endif
         }
 
-        // The same question in SwiftUI through a hosting controller, presented over the app on iOS, iPadOS and tvOS and in a window of its own on Mac Catalyst and macOS.
+        // The same question in SwiftUI through a hosting controller, presented over the app on iOS, iPadOS and tvOS and in a window of its own on Mac Catalyst and macOS. The dismiss action of SwiftUI does nothing in the root of a window of Mac Catalyst, so Close ends the screen as `cancelled` itself, which closes what shows it on every platform.
         context.registerScreen("swiftUI") { (params: Confirm, screen: HaylenScreen) in
             #if os(macOS) || targetEnvironment(macCatalyst)
             let via = "a SwiftUI window"
@@ -442,6 +442,8 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
             #endif
             let view = NativeDemoConfirmView(title: params.title, question: params.question) { confirmed in
                 try? screen.finish(encoding: Confirmed(confirmed: confirmed, via: via, language: Self.language))
+            } closed: {
+                screen.fail("The person closed the screen.", code: "cancelled", data: nil)
             }
             #if os(macOS)
             let hosting = NSHostingController(rootView: view)
