@@ -58,7 +58,7 @@ A parameter applies to the platforms it lists, or to every platform of the plugi
 
 ### Load order
 
-Plugins load in the order of `app.json`, except that every plugin loads after the plugins it requires, and two plugins that require each other fail the build. The same order loads the plugin classes on Apple platforms and the plugin modules on Android, which their runtimes read from the package, and the modules that the web loader imports.
+Plugins load in the order of `app.json`, except that every plugin loads after the plugins it requires, and two plugins that require each other fail the build. The same order loads the plugin classes on Apple platforms, which their runtime reads from the package, the plugin classes on Android, which `haylen-plugins.json` of the APK assets lists, and the modules that the web loader imports.
 
 ### The package
 
@@ -1063,7 +1063,7 @@ An app whose plugins bring no provider and no link activity has no exported comp
 
 ### The plugin class
 
-A plugin class extends `dev.haylen.HaylenPlugin` and has a public constructor without parameters. `HaylenPluginProvider`, a content provider that the manifest of `dev.haylen:haylen-plugins` declares, starts with the app process, before `Application.onCreate`. It reads every `dev.haylen.plugin.<id>` entry of the merged manifest, creates each class once and calls `onLoad` with the context of the plugin, in the [load order](#load-order) of the `app.json` of the package, so SDKs set up before any app code runs. Its `initOrder` is 50, so the providers that SDKs start with at 100, such as the one of Firebase, have run by then. The engine receives the ids of the plugins that loaded, which `handle.native` and `platform.plugins()` show in Lua.
+A plugin class extends `dev.haylen.HaylenPlugin` and has a public constructor without parameters. `HaylenPluginProvider`, a content provider that the manifest of `dev.haylen:haylen-plugins` declares, starts with the app process, before `Application.onCreate`. It reads every `dev.haylen.plugin.<id>` entry of the merged manifest, creates each class once and calls `onLoad` with the context of the plugin, in the [load order](#load-order) that `haylen-plugins.json` of the APK assets lists, so SDKs set up before any app code runs. Its `initOrder` is 50, so the providers that SDKs start with at 100, such as the one of Firebase, have run by then. The tool `haylen.py prepare` writes that file with the id, the version and the parameter values of every plugin with an Android part, so the runtime never reads `app.json` or a `plugin.json`, which a protected release keeps in its encrypted app domain, and a plugin class that the file does not list loads after the listed ones without parameter values. The engine receives the ids of the plugins that loaded, which `handle.native` and `platform.plugins()` show in Lua.
 
 - A class that cannot be found or created, such as a class the module lacks or one without a public constructor without parameters, and a class that does not extend `HaylenPlugin`, are logged as errors with the tag `haylen` that name the class and the plugin, and the plugin runs without its native part.
 - An `onLoad` that throws is logged the same way, the methods it registered go away, and the plugin runs without its native part.

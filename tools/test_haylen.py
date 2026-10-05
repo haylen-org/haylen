@@ -347,5 +347,18 @@ class ReleaseInspectionTest(unittest.TestCase):
             haylen.stop_on_release_problems([haylen.Requirement("A plugin needs a key.", "Add it.")])
 
 
+class AndroidPluginsTest(unittest.TestCase):
+    def test_the_plugins_file_lists_the_android_plugins_in_load_order_with_their_values(self):
+        assets = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, assets)
+        accounts = haylen.Plugin(assets, {"id": "accounts", "version": "2.0.0", "android": {"module": "android"}}, None)
+        sounds = haylen.Plugin(assets, {"id": "sounds", "version": "1.0.0", "requires": ["accounts"]}, None)
+        store = haylen.Plugin(assets, {"id": "store", "version": "1.1.0", "requires": ["accounts"], "android": {"module": "android"}}, None)
+        app = mock.Mock(plugins=[accounts, sounds, store], plugin_values={"accounts": {"server": "accounts.example.com"}, "sounds": {}, "store": {"sandbox": True}})
+        haylen.write_android_plugins(app, assets)
+        written = json.loads((assets / haylen.ANDROID_PLUGINS_FILE).read_text())
+        self.assertEqual(written, {"plugins": [{"id": "accounts", "version": "2.0.0", "config": {"server": "accounts.example.com"}}, {"id": "store", "version": "1.1.0", "config": {"sandbox": True}}]})
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -83,6 +83,10 @@ EMSDK_VERSION = "6.0.10"
 ANDROID_MIN_SDK = 27
 # The ABIs of the `haylen` Android library, which the native libraries of an app match: 32-bit ARM keeps the Android TV devices that still run it, and `x86_64` serves emulators.
 ANDROID_ABIS = ("arm64-v8a", "armeabi-v7a", "x86_64")
+# The library that the activity of a release build loads instead of the Lua player of the `haylen` library: the Lua player with the bootstrap of the app.
+ANDROID_RELEASE_LIBRARY = "haylen_app"
+# The file in the assets of an Android project that names the plugins whose classes the runtime loads, written by `prepare`.
+ANDROID_PLUGINS_FILE = "haylen-plugins.json"
 # The Android libraries that `haylen.py engine` publishes as `dev.haylen:<module>`, each a module of the Gradle project of the engine.
 ANDROID_LIBRARIES = ("haylen", "haylen-plugins", "haylen-links", "haylen-coroutines")
 # The host tool that builds, verifies, inspects, compares and publishes the protected releases of apps with the format library of the engine, which the desktop artifacts carry.
@@ -98,8 +102,8 @@ BOOTSTRAP_SOURCE = "HaylenBootstrap.cpp"
 # The files of a release folder besides its shards, and the suffix of the shards.
 RELEASE_MANIFESTS = ("app.hmanifest", "content.hmanifest")
 RELEASE_SHARD_SUFFIX = ".hpak"
-# The largest protected release that the store of a content profile accepts inside an app, with the words that name the limit. The App Store limits the uncompressed size of an iOS or tvOS app.
-STORE_RELEASE_LIMITS = {"apple": (4 * 1024**3, "the 4 GB that the App Store accepts for the uncompressed size of an iOS or tvOS app")}
+# The largest protected release that the store of a content profile accepts inside an app, with the words that name the limit: the App Store limits the uncompressed size of an iOS or tvOS app, and Google Play the compressed download of the base module, whose shards are compressed already.
+STORE_RELEASE_LIMITS = {"apple": (4 * 1024**3, "the 4 GB that the App Store accepts for the uncompressed size of an iOS or tvOS app"), "android": (200 * 1024**2, "the 200 MB that Google Play accepts for the compressed download of the base module of an app")}
 # Symbol files, which stay with the developer and never ship.
 SYMBOL_SUFFIXES = (".pdb", ".debug", ".dwo", ".dsym", ".map")
 # A file of the package smaller than this may match an unrelated file of a release by chance, such as an empty file, so the check of raw files leaves it out.
@@ -806,16 +810,22 @@ def build_apple_artifacts(config: str, jobs: int) -> None:
     shutil.copy2(ENGINE_DIR / "platform" / "apple" / "PrivacyInfo.xcprivacy", output.parent)
 
 
+def android_engine_sdk(abi: str) -> Path:
+    """The SDK of the engine for one Android ABI, which links the release libraries of apps."""
+    return ARTIFACTS_DIR / "android" / "sdk" / abi
+
+
 def build_android_players(config: str, jobs: int) -> Path:
-    """Builds `libhaylen.so`, the Lua player, for one ABI after the other with every job, so the configures never write into the shared CPM sources together and the compilers stay within the jobs, and gathers the libraries in the `jniLibs` layout."""
+    """Builds `libhaylen.so`, the Lua player, and the SDK of the engine, for one ABI after the other with every job, so the configures never write into the shared CPM sources together and the compilers stay within the jobs, gathers the libraries in the `jniLibs` layout and installs each SDK into the artifacts."""
     libraries = ENGINE_BUILDS_DIR / f"android-{config.lower()}" / "jniLibs"
     shutil.rmtree(libraries, ignore_errors=True)
     for abi in ANDROID_ABIS:
         directory = ENGINE_BUILDS_DIR / f"android-{abi}-{config.lower()}"
-        if not (directory / "CMakeCache.txt").exists():
-            run(["cmake", "-S", ENGINE_DIR, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={config}", "-DHAYLEN_BUILD_PLAYER=ON", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF", *android_options(abi)])
-        run(["cmake", "--build", directory, "--target", "haylen", "--parallel", str(jobs)])
+        run(["cmake", "-S", ENGINE_DIR, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={config}", "-DHAYLEN_BUILD_PLAYER=ON", "-DHAYLEN_BUILD_SDK=ON", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF", *android_options(abi)])
+        run(["cmake", "--build", directory, "--target", "haylen", "haylen_sdk", "--parallel", str(jobs)])
         copy_into(directory / "lib" / "libhaylen.so", libraries / abi)
+        shutil.rmtree(android_engine_sdk(abi), ignore_errors=True)
+        run(["cmake", "--install", directory, "--component", "haylen_sdk", "--prefix", android_engine_sdk(abi)])
     return libraries
 
 
@@ -2620,6 +2630,12 @@ def android_plugin_files(app: App, plugin: Plugin) -> list[tuple[Path, str]]:
     return files
 
 
+def write_android_plugins(app: App, assets: Path) -> None:
+    """Writes `haylen-plugins.json` into the assets of an Android project: the id, version and parameter values of every plugin with an Android part, in load order, from which the runtime loads their classes when the process starts. The runtime never reads `app.json` or a `plugin.json` for them, which a protected release keeps inside its encrypted app domain."""
+    plugins = [{"id": plugin.id, "version": plugin.version, "config": app.plugin_values[plugin.id]} for plugin in app.plugins if "android" in plugin.manifest]
+    write_if_changed(assets / ANDROID_PLUGINS_FILE, json.dumps({"plugins": plugins}, indent=4) + "\n")
+
+
 def write_android_splash(app: App, resources: Path) -> None:
     """Writes the splash background and logo of an app as resources that replace the defaults of the `haylen` library, which show the engine logo."""
     red, green, blue, alpha = app.background
@@ -2632,15 +2648,20 @@ def write_android_splash(app: App, resources: Path) -> None:
         shutil.copy2(app.splash_logo, resources / "drawable" / f"haylen_splash_logo{app.splash_logo.suffix.lower()}")
 
 
-def prepare_android(app: App, root: Path, library: str, jobs: int) -> None:
-    """Writes the folder `haylen/` of an Android project: `haylen.properties` with the identity, version and orientation of the app, the native library its activity loads, the engine repository and version, the plugins and the build folder, the package with its index in `assets/app`, the splash resources in `res`, the native libraries in `jniLibs` and the plugin modules in `plugins`."""
+def prepare_android(app: App, root: Path, library: str, jobs: int, release: Path | None = None) -> None:
+    """Writes the folder `haylen/` of an Android project: `haylen.properties` with the identity, version and orientation of the app, the native library its activity loads, the engine repository and version, the plugins and the build folder, in `assets/app` the files of a protected release or else the package with its index, the splash resources in `res`, the native libraries in `jniLibs` and the plugin modules in `plugins`."""
     generated = root / GENERATED_FOLDER
     terminal.step(f"Preparing the Android project `{shown_path(root)}`")
     for name in ("assets", "res", "jniLibs", "plugins"):
         shutil.rmtree(generated / name, ignore_errors=True)
-    files = copy_package(app, generated / "assets" / "app")
-    # Android cannot list asset folders recursively, so the runtime reads the files of the package from this index.
-    write_if_changed(generated / "assets" / "app" / "haylen-package-index.json", json.dumps(sorted(files)))
+    if release:
+        # A release is a flat folder, which Android lists without an index.
+        shutil.copytree(release, generated / "assets" / "app")
+    else:
+        files = copy_package(app, generated / "assets" / "app")
+        # Android cannot list asset folders recursively, so the runtime reads the files of the package from this index.
+        write_if_changed(generated / "assets" / "app" / "haylen-package-index.json", json.dumps(sorted(files)))
+    write_android_plugins(app, generated / "assets")
     write_android_splash(app, generated / "res")
     prepare_android_native(app, generated / "jniLibs", jobs)
     values = {
@@ -2746,6 +2767,7 @@ def check_android(app: App, root: Path, args: argparse.Namespace) -> list[Requir
     merged = android_manifest(apk)
     with zipfile.ZipFile(apk) as archive:
         entries = set(archive.namelist())
+        compressed = [info.filename for info in archive.infolist() if info.filename.endswith(RELEASE_SHARD_SUFFIX) and info.compress_type != zipfile.ZIP_STORED]
     manifest = root / "app" / "src" / "main" / "AndroidManifest.xml"
     own = manifest.read_text() if manifest.is_file() else ""
     modules = f'Keep the plugin modules of "{GENERATED_FOLDER}/haylen.properties" in `{shown_path(root / "settings.gradle.kts")}` and `{shown_path(root / "app" / "build.gradle.kts")}`.'
@@ -2780,19 +2802,79 @@ def check_android(app: App, root: Path, args: argparse.Namespace) -> list[Requir
         for source, destination in android_plugin_files(app, plugin):
             if not (root / destination).exists():
                 missing.append(Requirement(f'{owner} needs "{destination}" in the Android project, which the project lacks.', f'Copy `{shown_path(source)}` to `{shown_path(root / destination)}`.'))
+    if args.config == "Release":
+        missing += [Requirement(problem, RELEASE_ADVICE) for problem in release_problems(app, apk_entries(apk), "assets/app", read_secrets(app))]
+        missing += [Requirement(f'The release holds the shard "{name}" compressed, while the runtime reads shards in place.', f'Keep "noCompress" of "hpak" in `{shown_path(root / "app" / "build.gradle.kts")}`.') for name in compressed]
     return missing
 
 
+def apk_entries(apk: Path) -> list[tuple[str, int, Callable[[], bytes]]]:
+    """Lists every entry of an APK with its size and the function that reads it."""
+    with zipfile.ZipFile(apk) as archive:
+        infos = [info for info in archive.infolist() if not info.is_dir()]
+    return [(info.filename, info.file_size, functools.partial(read_zip_entry, apk, info.filename)) for info in infos]
+
+
+def read_zip_entry(archive: Path, name: str) -> bytes:
+    with zipfile.ZipFile(archive) as opened:
+        return opened.read(name)
+
+
+RELEASE_LIBRARY_PROJECT = """# Written by haylen.py for the release build of the app: the library that HaylenActivity loads, the Lua player with the bootstrap of the app linked against the SDK of the prebuilt engine, which exports only the entry points of Java and GameActivity and keeps no symbols.
+cmake_minimum_required(VERSION 3.28)
+project(haylen_release LANGUAGES C CXX)
+find_package(haylen REQUIRED CONFIG)
+add_library({name} SHARED {bootstrap} "${{HAYLEN_ENGINE_DIR}}/src/platform/sokol/LuaPlayer.cpp")
+target_link_libraries({name} PRIVATE haylen::runtime)
+set_target_properties({name} PROPERTIES CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON)
+target_link_options({name} PRIVATE "LINKER:--version-script=${{CMAKE_CURRENT_SOURCE_DIR}}/exports.map" "LINKER:--gc-sections" "LINKER:--strip-all")
+"""
+# The symbols that Java and GameActivity look up in the library of an app.
+RELEASE_LIBRARY_EXPORTS = """{
+  global:
+    JNI_OnLoad;
+    Java_*;
+    GameActivity_onCreate;
+  local:
+    *;
+};
+"""
+
+
+def build_release_library(app: App, libraries: Path, args: argparse.Namespace) -> None:
+    """Links the library of the release build of an Android app for every ABI, the Lua player with the bootstrap of the app, against the SDK of each ABI in the Android artifacts, into a `jniLibs` folder."""
+    project = app.build_folder / "release-library"
+    write_bootstrap(app, CONTENT_PROFILES["android"], project / BOOTSTRAP_SOURCE, args.engine_config, args.jobs)
+    write_if_changed(project / "CMakeLists.txt", RELEASE_LIBRARY_PROJECT.format(name=ANDROID_RELEASE_LIBRARY, bootstrap=BOOTSTRAP_SOURCE))
+    write_if_changed(project / "exports.map", RELEASE_LIBRARY_EXPORTS)
+    for abi in ANDROID_ABIS:
+        build = project / f"build-{abi}"
+        config = next(android_engine_sdk(abi).glob("*/cmake/haylen"), None)
+        if config is None:
+            raise BuildError(f'The Android artifacts hold no SDK for "{abi}". Build them again with "{TOOL} engine --platform android".')
+        terminal.step(f'Linking the release library of `{shown_path(app.folder)}` for "{abi}"')
+        run(["cmake", "-S", project, "-B", build, "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release", f"-Dhaylen_DIR={config}", *android_options(abi)])
+        run(["cmake", "--build", build, "--parallel", str(args.jobs)])
+        copy_into(build / f"lib{ANDROID_RELEASE_LIBRARY}.so", libraries / abi)
+
+
 def prepare_android_run(app: App, args: argparse.Namespace) -> Path:
+    """Prepares the Android project of a Lua app: a debug build plays the package with the Lua player of the `haylen` library, and a release build ships the protected release with a library of the app."""
     root = project_root(app, "android")
-    prepare_android(app, root, "haylen", args.jobs)
+    if args.config != "Release":
+        prepare_android(app, root, "haylen", args.jobs)
+        return root
+    prepare_android(app, root, ANDROID_RELEASE_LIBRARY, args.jobs, build_release(app, CONTENT_PROFILES["android"], args.engine_config, args.jobs))
+    build_release_library(app, root / GENERATED_FOLDER / "jniLibs", args)
     return root
 
 
 def run_android(app: App, root: Path, args: argparse.Namespace) -> None:
     device = android_device(args.device)
     apk = build_android(app, root, args)
-    report_requirements(check_android(app, root, args))
+    requirements = check_android(app, root, args)
+    stop_on_release_problems(requirements)
+    report_requirements(requirements)
     launch_android(apk, args, device)
 
 

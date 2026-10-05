@@ -17,7 +17,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -31,8 +31,8 @@ import org.json.JSONObject;
 final class HaylenPlugins {
     private static final String TAG = "haylen";
     private static final String META_DATA_PREFIX = "dev.haylen.plugin.";
-    // The package of the app lies in this folder of the APK assets, as the engine reads it.
-    private static final String PACKAGE_FOLDER = "app/";
+    // The file of the APK assets that `haylen.py prepare` writes with the plugins of `app.json` in load order, their versions and their parameter values.
+    private static final String PLUGINS_FILE = "haylen-plugins.json";
 
     private static final Handler mainThread = new Handler(Looper.getMainLooper());
     private static List<Loaded> loaded = Collections.emptyList();
@@ -41,23 +41,20 @@ final class HaylenPlugins {
 
     private HaylenPlugins() {}
 
-    // Creates every plugin class that the manifest names and calls `onLoad` in the order of the plugins in `app.json`, where every plugin follows the plugins it requires. A class that cannot be created, or an `onLoad` that fails, is logged and leaves its plugin out, so the app runs without its native part.
+    // Creates every plugin class that the manifest names and calls `onLoad` in the load order of `haylen-plugins.json`, where every plugin follows the plugins it requires. A class that cannot be created, or an `onLoad` that fails, is logged and leaves its plugin out, so the app runs without its native part.
     static void load(Application application) {
         Map<String, String> classes = readClasses(application);
-        JSONObject values = readPackageJson(application, "app.json").optJSONObject("plugins");
-        Map<String, JSONObject> manifests = new TreeMap<>();
-        for (String id : classes.keySet()) {
-            manifests.put(id, readPackageJson(application, "plugins/" + id + "/plugin.json"));
-        }
+        Map<String, JSONObject> declared = readDeclared(application);
 
         List<Loaded> all = new ArrayList<>();
-        for (String id : order(classes.keySet(), values, manifests)) {
+        for (String id : order(classes.keySet(), declared.keySet())) {
             HaylenPlugin plugin = create(application, id, classes.get(id));
             if (plugin == null) {
                 continue;
             }
-            JSONObject manifest = manifests.get(id);
-            HaylenPluginContext context = new HaylenPluginContext(id, application, config(values, id, manifest));
+            JSONObject entry = declared.get(id);
+            JSONObject config = entry != null ? entry.optJSONObject("config") : null;
+            HaylenPluginContext context = new HaylenPluginContext(id, application, config != null ? config : new JSONObject());
             try {
                 plugin.onLoad(context);
             } catch (Exception error) {
@@ -65,7 +62,7 @@ final class HaylenPlugins {
                 context.unregisterAll();
                 continue;
             }
-            Log.i(TAG, "Loaded the plugin \"" + id + "\" " + manifest.optString("version", "without a \"plugin.json\"") + ".");
+            Log.i(TAG, "Loaded the plugin \"" + id + "\" " + (entry != null ? entry.optString("version") : "that \"app.json\" does not list") + ".");
             all.add(new Loaded(plugin, context));
         }
         loaded = Collections.unmodifiableList(all);
@@ -172,44 +169,32 @@ final class HaylenPlugins {
         return classes;
     }
 
-    // A file the package lacks reads as an empty object, like a plugin module that an app adds without its plugin folder.
-    private static JSONObject readPackageJson(Application application, String path) {
-        try (InputStream input = application.getAssets().open(PACKAGE_FOLDER + path)) {
+    // The plugins of `haylen-plugins.json` by id, in load order.
+    private static Map<String, JSONObject> readDeclared(Application application) {
+        Map<String, JSONObject> declared = new LinkedHashMap<>();
+        try (InputStream input = application.getAssets().open(PLUGINS_FILE)) {
             ByteArrayOutputStream text = new ByteArrayOutputStream();
             byte[] buffer = new byte[8192];
             for (int read; (read = input.read(buffer)) > 0; ) {
                 text.write(buffer, 0, read);
             }
-            return new JSONObject(new String(text.toByteArray(), StandardCharsets.UTF_8));
+            JSONArray plugins = new JSONObject(new String(text.toByteArray(), StandardCharsets.UTF_8)).getJSONArray("plugins");
+            for (int index = 0; index < plugins.length(); ++index) {
+                JSONObject entry = plugins.getJSONObject(index);
+                declared.put(entry.getString("id"), entry);
+            }
         } catch (IOException | JSONException error) {
-            Log.w(TAG, "The package has no readable \"" + path + "\": " + error.getMessage());
-            return new JSONObject();
+            Log.w(TAG, "The assets of the app have no readable \"" + PLUGINS_FILE + "\", which \"haylen.py prepare\" writes: " + error.getMessage());
         }
+        return declared;
     }
 
-    // The plugins keep the order of `app.json`, every plugin after the plugins it requires, as `haylen.py` orders them, and plugins that `app.json` does not list follow by id.
-    private static List<String> order(Set<String> ids, JSONObject values, Map<String, JSONObject> manifests) {
-        Set<String> ordered = new LinkedHashSet<>();
-        if (values != null) {
-            for (Iterator<String> keys = values.keys(); keys.hasNext(); ) {
-                visit(keys.next(), manifests, ordered);
-            }
-        }
+    // The plugins keep the load order of `haylen-plugins.json`, and plugins that it does not list follow by id.
+    private static List<String> order(Set<String> ids, Set<String> declared) {
+        Set<String> ordered = new LinkedHashSet<>(declared);
         ordered.addAll(ids);
         ordered.retainAll(ids);
         return new ArrayList<>(ordered);
-    }
-
-    private static void visit(String id, Map<String, JSONObject> manifests, Set<String> ordered) {
-        if (ordered.contains(id)) {
-            return;
-        }
-        JSONObject manifest = manifests.get(id);
-        JSONArray requires = manifest != null ? manifest.optJSONArray("requires") : null;
-        for (int index = 0; requires != null && index < requires.length(); ++index) {
-            visit(requires.optString(index), manifests, ordered);
-        }
-        ordered.add(id);
     }
 
     private static HaylenPlugin create(Application application, String id, String className) {
@@ -224,34 +209,6 @@ final class HaylenPlugins {
             Log.e(TAG, "The plugin \"" + id + "\" names the class \"" + className + "\", which cannot be found or created with a public constructor without parameters, so the app runs without its native part.", error);
             return null;
         }
-    }
-
-    // The values that `app.json` gives the plugin, with the default of every parameter of its `plugin.json` that the app leaves out.
-    private static JSONObject config(JSONObject values, String id, JSONObject manifest) {
-        JSONObject given = values != null ? values.optJSONObject(id) : null;
-        JSONObject config = new JSONObject();
-        try {
-            if (given != null) {
-                for (Iterator<String> keys = given.keys(); keys.hasNext(); ) {
-                    String name = keys.next();
-                    config.put(name, given.get(name));
-                }
-            }
-            JSONObject parameters = manifest.optJSONObject("parameters");
-            if (parameters == null) {
-                return config;
-            }
-            for (Iterator<String> names = parameters.keys(); names.hasNext(); ) {
-                String name = names.next();
-                JSONObject parameter = parameters.optJSONObject(name);
-                if (parameter != null && parameter.has("default") && !config.has(name)) {
-                    config.put(name, parameter.get("default"));
-                }
-            }
-        } catch (JSONException error) {
-            throw new IllegalStateException("The values of the plugin \"" + id + "\" cannot be copied.", error);
-        }
-        return config;
     }
 
     private static final class ActivityLifecycle implements DefaultLifecycleObserver {

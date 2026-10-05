@@ -324,7 +324,7 @@ The publisher of a channel raises the generation with every release. `ChannelDes
 
 ## Release builds
 
-The Release configuration of `haylen.py run` and `prepare` ships an app only as its protected release, with a binary that compiles in the bootstrap of the app, on every platform, as the [distribution guide](distribution.md#release-builds) describes, and inspects the built app for anything a release never holds: Lua text, the index of a development package, a file of the package as it is, symbol files and any form of a key of the app. The runtime opens the release that ships with the app with `ReleasePackage::openBundled`, from the folder `app` next to the executable on Windows and Linux and from `app` of the resources of the bundle on Apple platforms.
+The Release configuration of `haylen.py run` and `prepare` ships an app only as its protected release, with a binary that compiles in the bootstrap of the app, on every platform, as the [distribution guide](distribution.md#release-builds) describes, and inspects the built app for anything a release never holds: Lua text, the index of a development package, a file of the package as it is, symbol files and any form of a key of the app. The runtime opens the release that ships with the app with `ReleasePackage::openBundled`, from the folder `app` next to the executable on Windows and Linux, from `app` of the resources of the bundle on Apple platforms and from the flat folder `app` of the APK assets on Android, whose shards the APK keeps uncompressed so the runtime reads their ranges in place.
 
 ## The content tool
 

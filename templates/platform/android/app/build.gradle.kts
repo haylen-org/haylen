@@ -54,6 +54,11 @@ android {
         jniLibs.directories.add("../haylen/jniLibs")
     }
 
+    // The shards of a protected release stay uncompressed in the APK, so the runtime reads their ranges in place.
+    androidResources {
+        noCompress += "hpak"
+    }
+
     // A C++ app brings the engine in its own library, so the Lua player of the `haylen` library stays out of its APK.
     if (haylen.getProperty("library") != "haylen") {
         packaging {
@@ -97,6 +102,12 @@ dependencies {
 
 // The Gradle plugins that the plugins of the app need, which the root project puts on the build classpath.
 haylenEntries("gradlePlugins").forEach { (id, _) -> apply(plugin = id) }
+
+// A release build ships the protected release of the app with a library of its own, while the Lua player of the `haylen` library plays the package of a debug build as it is.
+if (haylen.getProperty("library") == "haylen") {
+    val development = "The project holds the development package of the app, which release builds never ship. Prepare it with \"python3 haylen.py prepare\" and the app folder with \"--platform android --config Release\"."
+    tasks.named { it.startsWith("pre") && it.endsWith("ReleaseBuild") }.configureEach { doFirst { throw GradleException(development) } }
+}
 
 // A release build without the upload key stops with the way to add it.
 if ("release" !in haylenKeys) {
