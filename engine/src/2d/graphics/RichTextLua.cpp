@@ -2,8 +2,11 @@
 
 #include <lua.hpp>
 
+#include <functional>
 #include <map>
+#include <memory>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -36,48 +39,60 @@ text::RichTextOptions RichTextLua::readOptions(lua_State* L, int index, std::ini
         return options;
     }
     luaL_checktype(L, index, LUA_TTABLE);
-    const int table = lua_absindex(L, index);
-    std::vector<lua::Table::FieldNames> allowed{kOptionFields};
-    allowed.insert(allowed.end(), extraFields.begin(), extraFields.end());
-    lua::Table::checkFields(L, table, allowed);
-
-    if (lua_getfield(L, table, "family") != LUA_TNIL) {
-        options.family = graphics::FontLua::readFamily(L, lua_gettop(L));
-    }
-    lua_pop(L, 1);
-    lua::Table::readField(L, table, "size", options.size);
-    lua::Table::readField(L, table, "bold", options.bold);
-    lua::Table::readField(L, table, "italic", options.italic);
-    lua::Table::readField(L, table, "color", options.color);
-    lua::Table::readField(L, table, "maxWidth", options.maxWidth);
-    lua::Table::readField(L, table, "align", options.align);
-    lua::Table::readField(L, table, "direction", options.direction);
-    lua::Table::readField(L, table, "language", options.language);
-    lua::Table::readField(L, table, "lineSpacing", options.lineSpacing);
-    lua::Table::readField(L, table, "scale", options.scale);
-    lua::Table::readField(L, table, "revealSpeed", options.revealSpeed);
-    lua::Table::readField(L, table, "underlineLinks", options.underlineLinks);
-
-    if (lua_getfield(L, table, "fonts") != LUA_TNIL) {
-        luaL_checktype(L, -1, LUA_TTABLE);
-        std::map<std::string, std::shared_ptr<text::FontFamily>, std::less<>> fonts;
-        lua_pushnil(L);
-        while (lua_next(L, -2) != 0) {
-            if (lua_type(L, -2) != LUA_TSTRING) {
-                luaL_error(L, "The \"fonts\" option maps font names to families, so its keys must be strings.");
-            }
-            fonts.insert_or_assign(lua::Stack::read<std::string>(L, -2), graphics::FontLua::readFamily(L, lua_gettop(L)));
-            lua_pop(L, 1);
+    // clang-format off
+    lua::Table::readFields(L, index, kOptionFields, extraFields, [L, &options](std::string_view key) {
+        if (key == "family") {
+            options.family = graphics::FontLua::readFamily(L, lua_gettop(L));
+        } else if (key == "size") {
+            lua::Table::readValue(L, key, options.size);
+        } else if (key == "bold") {
+            lua::Table::readValue(L, key, options.bold);
+        } else if (key == "italic") {
+            lua::Table::readValue(L, key, options.italic);
+        } else if (key == "color") {
+            lua::Table::readValue(L, key, options.color);
+        } else if (key == "maxWidth") {
+            lua::Table::readValue(L, key, options.maxWidth);
+        } else if (key == "align") {
+            lua::Table::readValue(L, key, options.align);
+        } else if (key == "direction") {
+            lua::Table::readValue(L, key, options.direction);
+        } else if (key == "language") {
+            lua::Table::readValue(L, key, options.language);
+        } else if (key == "lineSpacing") {
+            lua::Table::readValue(L, key, options.lineSpacing);
+        } else if (key == "scale") {
+            lua::Table::readValue(L, key, options.scale);
+        } else if (key == "revealSpeed") {
+            lua::Table::readValue(L, key, options.revealSpeed);
+        } else if (key == "underlineLinks") {
+            lua::Table::readValue(L, key, options.underlineLinks);
+        } else if (key == "fonts") {
+            options.fonts = readFonts(L);
         }
-        // clang-format off
-        options.fonts = [fonts = std::move(fonts)](std::string_view name) -> std::shared_ptr<text::FontFamily> {
-            const auto found = fonts.find(name);
-            return found != fonts.end() ? found->second : nullptr;
-        };
-        // clang-format on
-    }
-    lua_pop(L, 1);
+    });
+    // clang-format on
     return options;
+}
+
+// Reads the table on top of the stack, which maps font names to families, into the function that rich text asks for the family of a name.
+std::function<std::shared_ptr<text::FontFamily>(std::string_view)> RichTextLua::readFonts(lua_State* L) {
+    luaL_checktype(L, -1, LUA_TTABLE);
+    std::map<std::string, std::shared_ptr<text::FontFamily>, std::less<>> fonts;
+    lua_pushnil(L);
+    while (lua_next(L, -2) != 0) {
+        if (lua_type(L, -2) != LUA_TSTRING) {
+            luaL_error(L, "The \"fonts\" option maps font names to families, so its keys must be strings.");
+        }
+        fonts.insert_or_assign(lua::Stack::read<std::string>(L, -2), graphics::FontLua::readFamily(L, lua_gettop(L)));
+        lua_pop(L, 1);
+    }
+    // clang-format off
+    return [fonts = std::move(fonts)](std::string_view name) -> std::shared_ptr<text::FontFamily> {
+        const auto found = fonts.find(name);
+        return found != fonts.end() ? found->second : nullptr;
+    };
+    // clang-format on
 }
 
 // Creates rich text with `newRichText(markup, {family, size, bold, italic, color, maxWidth, align, direction, language, lineSpacing, scale, revealSpeed, underlineLinks, fonts})`.
@@ -90,7 +105,7 @@ int RichTextLua::newRichText(lua_State* L) {
 math::Color RichTextLua::readTint(lua_State* L, int index) {
     math::Color tint = math::Color::white();
     if (!lua_isnoneornil(L, index)) {
-        lua::Table::readField(L, index, "tint", tint);
+        lua::Table::readFields(L, index, kTintFields, {kOptionFields, lua::TypeConverter::kDrawOrderFields}, [L, &tint](std::string_view key) { lua::Table::readValue(L, key, tint); });
     }
     return tint;
 }
@@ -196,10 +211,19 @@ int RichTextLua::update(lua_State* L) {
 int RichTextLua::draw(lua_State* L) {
     const DrawOrder order = lua::TypeConverter::readDrawOrder(L, 4, {kDrawFields});
     math::Vec2 scale{1.0F, 1.0F};
+    math::Color tint = math::Color::white();
     if (!lua_isnoneornil(L, 4)) {
-        lua::Table::readField(L, 4, "scale", scale);
+        // clang-format off
+        lua::Table::readFields(L, 4, kDrawFields, {lua::TypeConverter::kDrawOrderFields}, [L, &scale, &tint](std::string_view key) {
+            if (key == "scale") {
+                lua::Table::readValue(L, key, scale);
+            } else {
+                lua::Table::readValue(L, key, tint);
+            }
+        });
+        // clang-format on
     }
-    lua::Runtime::getEngine(L).getRenderer2D().drawRichText(lua::Userdata::check<text::RichText>(L, 1), {lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}, order, scale, readTint(L, 4));
+    lua::Runtime::getEngine(L).getRenderer2D().drawRichText(lua::Userdata::check<text::RichText>(L, 1), {lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}, order, scale, tint);
     return 0;
 }
 

@@ -207,7 +207,7 @@ int Graphics2DLua::draw(lua_State* L) {
     sprite.texture = lua::Stack::read<graphics::Texture>(L, 1);
     sprite.position = {lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)};
     if (!lua_isnoneornil(L, 4)) {
-        const SpriteInstance instance = lua::TypeConverter::readSpriteInstance(L, 4, sprite.texture, {.position = sprite.position}, {kScaleFields, lua::TypeConverter::kDrawOrderFields, SpriteBatchLua::kPartColorFields, kEffectFields});
+        const SpriteInstance instance = lua::TypeConverter::readSpriteInstance(L, 4, sprite.texture, {.position = sprite.position}, {kDrawFields, lua::TypeConverter::kDrawOrderFields});
         sprite.position = instance.position;
         sprite.source = instance.source;
         sprite.size = instance.size;
@@ -216,11 +216,20 @@ int Graphics2DLua::draw(lua_State* L) {
         sprite.color = instance.color;
         sprite.flash = instance.flash;
         sprite.flip = instance.flip;
-        lua::Table::readField(L, 4, "scaleX", sprite.scale.x);
-        lua::Table::readField(L, 4, "scaleY", sprite.scale.y);
-        lua::Table::readField(L, 4, "partColors", sprite.partColors);
-        lua::Table::readField(L, 4, "effect", sprite.effect);
-        sprite.order = lua::TypeConverter::readDrawOrder(L, 4, {lua::TypeConverter::kSpriteInstanceFields, kScaleFields, SpriteBatchLua::kPartColorFields, kEffectFields});
+        // clang-format off
+        lua::Table::readFields(L, 4, kDrawFields, {lua::TypeConverter::kSpriteInstanceFields, lua::TypeConverter::kDrawOrderFields}, [L, &sprite](std::string_view key) {
+            if (key == "scaleX") {
+                lua::Table::readValue(L, key, sprite.scale.x);
+            } else if (key == "scaleY") {
+                lua::Table::readValue(L, key, sprite.scale.y);
+            } else if (key == "partColors") {
+                lua::Table::readValue(L, key, sprite.partColors);
+            } else if (key == "effect") {
+                lua::Table::readValue(L, key, sprite.effect);
+            }
+        });
+        // clang-format on
+        sprite.order = lua::TypeConverter::readDrawOrder(L, 4, {lua::TypeConverter::kSpriteInstanceFields, kDrawFields});
     }
     getRenderer(L).draw(sprite);
     return 0;
@@ -233,21 +242,39 @@ int Graphics2DLua::drawVector(lua_State* L) {
     sprite.position = {lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)};
     if (!lua_isnoneornil(L, 4)) {
         luaL_checktype(L, 4, LUA_TTABLE);
-        lua::Table::checkFields(L, 4, {kVectorFields, lua::TypeConverter::kDrawOrderFields});
-        lua::Table::readField(L, 4, "x", sprite.position.x);
-        lua::Table::readField(L, 4, "y", sprite.position.y);
-        lua::Table::readField(L, 4, "width", sprite.size.x);
-        lua::Table::readField(L, 4, "height", sprite.size.y);
-        lua::Table::readField(L, 4, "scaleX", sprite.scale.x);
-        lua::Table::readField(L, 4, "scaleY", sprite.scale.y);
-        lua::Table::readField(L, 4, "pivotX", sprite.pivot.x);
-        lua::Table::readField(L, 4, "pivotY", sprite.pivot.y);
-        lua::Table::readField(L, 4, "rotation", sprite.rotation);
-        lua::Table::readField(L, 4, "color", sprite.color);
-        lua::Table::readField(L, 4, "flash", sprite.flash);
-        lua::Table::readField(L, 4, "flipHorizontal", sprite.flip.horizontal);
-        lua::Table::readField(L, 4, "flipVertical", sprite.flip.vertical);
-        lua::Table::readField(L, 4, "flipDiagonal", sprite.flip.diagonal);
+        // clang-format off
+        lua::Table::readFields(L, 4, kVectorFields, {lua::TypeConverter::kDrawOrderFields}, [L, &sprite](std::string_view key) {
+            if (key == "x") {
+                lua::Table::readValue(L, key, sprite.position.x);
+            } else if (key == "y") {
+                lua::Table::readValue(L, key, sprite.position.y);
+            } else if (key == "width") {
+                lua::Table::readValue(L, key, sprite.size.x);
+            } else if (key == "height") {
+                lua::Table::readValue(L, key, sprite.size.y);
+            } else if (key == "scaleX") {
+                lua::Table::readValue(L, key, sprite.scale.x);
+            } else if (key == "scaleY") {
+                lua::Table::readValue(L, key, sprite.scale.y);
+            } else if (key == "pivotX") {
+                lua::Table::readValue(L, key, sprite.pivot.x);
+            } else if (key == "pivotY") {
+                lua::Table::readValue(L, key, sprite.pivot.y);
+            } else if (key == "rotation") {
+                lua::Table::readValue(L, key, sprite.rotation);
+            } else if (key == "color") {
+                lua::Table::readValue(L, key, sprite.color);
+            } else if (key == "flash") {
+                lua::Table::readValue(L, key, sprite.flash);
+            } else if (key == "flipHorizontal") {
+                lua::Table::readValue(L, key, sprite.flip.horizontal);
+            } else if (key == "flipVertical") {
+                lua::Table::readValue(L, key, sprite.flip.vertical);
+            } else if (key == "flipDiagonal") {
+                lua::Table::readValue(L, key, sprite.flip.diagonal);
+            }
+        });
+        // clang-format on
         sprite.order = lua::TypeConverter::readDrawOrder(L, 4, {kVectorFields});
     }
     getRenderer(L).drawVector(image, sprite);
@@ -461,11 +488,19 @@ int Graphics2DLua::drawMetaballs(lua_State* L) {
     Renderer::MetaballStyle style;
     if (!lua_isnoneornil(L, 3)) {
         luaL_checktype(L, 3, LUA_TTABLE);
-        lua::Table::checkFields(L, 3, {kMetaballFields, lua::TypeConverter::kDrawOrderFields});
-        lua::Table::readField(L, 3, "color", style.color);
-        lua::Table::readField(L, 3, "outlineColor", style.outlineColor);
-        lua::Table::readField(L, 3, "outlineWidth", style.outlineWidth);
-        lua::Table::readField(L, 3, "threshold", style.threshold);
+        // clang-format off
+        lua::Table::readFields(L, 3, kMetaballFields, {lua::TypeConverter::kDrawOrderFields}, [L, &style](std::string_view key) {
+            if (key == "color") {
+                lua::Table::readValue(L, key, style.color);
+            } else if (key == "outlineColor") {
+                lua::Table::readValue(L, key, style.outlineColor);
+            } else if (key == "outlineWidth") {
+                lua::Table::readValue(L, key, style.outlineWidth);
+            } else if (key == "threshold") {
+                lua::Table::readValue(L, key, style.threshold);
+            }
+        });
+        // clang-format on
     }
     getRenderer(L).drawMetaballs(points, lua::Stack::read<float>(L, 2), style, lua::TypeConverter::readDrawOrder(L, 3, {kMetaballFields}));
     return 0;
@@ -476,15 +511,27 @@ int Graphics2DLua::drawImageBlend(lua_State* L) {
     ImageBlend blend{.from = lua::Stack::read<graphics::Texture>(L, 1), .to = lua::Stack::read<graphics::Texture>(L, 2), .area = lua::Stack::read<math::Rect>(L, 3)};
     if (!lua_isnoneornil(L, 4)) {
         luaL_checktype(L, 4, LUA_TTABLE);
-        lua::Table::checkFields(L, 4, {kImageBlendFields, lua::TypeConverter::kDrawOrderFields});
-        lua::Table::readField(L, 4, "pattern", blend.pattern);
-        lua::Table::readField(L, 4, "progress", blend.progress);
-        lua::Table::readField(L, 4, "center", blend.center);
-        lua::Table::readField(L, 4, "cellSize", blend.cellSize);
-        lua::Table::readField(L, 4, "blockSize", blend.blockSize);
-        lua::Table::readField(L, 4, "color", blend.color);
-        lua::Table::readField(L, 4, "reversed", blend.reversed);
-        lua::Table::readField(L, 4, "angle", blend.angle);
+        // clang-format off
+        lua::Table::readFields(L, 4, kImageBlendFields, {lua::TypeConverter::kDrawOrderFields}, [L, &blend](std::string_view key) {
+            if (key == "pattern") {
+                lua::Table::readValue(L, key, blend.pattern);
+            } else if (key == "progress") {
+                lua::Table::readValue(L, key, blend.progress);
+            } else if (key == "center") {
+                lua::Table::readValue(L, key, blend.center);
+            } else if (key == "cellSize") {
+                lua::Table::readValue(L, key, blend.cellSize);
+            } else if (key == "blockSize") {
+                lua::Table::readValue(L, key, blend.blockSize);
+            } else if (key == "color") {
+                lua::Table::readValue(L, key, blend.color);
+            } else if (key == "reversed") {
+                lua::Table::readValue(L, key, blend.reversed);
+            } else if (key == "angle") {
+                lua::Table::readValue(L, key, blend.angle);
+            }
+        });
+        // clang-format on
     }
     getRenderer(L).drawImageBlend(blend, lua::TypeConverter::readDrawOrder(L, 4, {kImageBlendFields}));
     return 0;

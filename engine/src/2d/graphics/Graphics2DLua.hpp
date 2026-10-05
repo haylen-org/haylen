@@ -23,9 +23,8 @@ class Graphics2DLua final {
     static constexpr std::array<std::string_view, 6> kCanvasFields{"sort", "order", "visibilityMask", "ambientLight", "clear", "postProcess"};
     static constexpr std::array<std::string_view, 8> kImageBlendFields{"pattern", "progress", "center", "cellSize", "blockSize", "color", "reversed", "angle"};
     static constexpr std::array<std::string_view, 18> kPostProcessFields{"tint", "saturation", "brightness", "contrast", "vignetteStrength", "vignetteRadius", "vignetteSoftness", "fade", "distortion", "chromaticAberration", "pixelate", "blur", "bloomStrength", "bloomThreshold", "bloomRadius", "colorLut", "colorLutStrength", "materials"};
-    static constexpr std::array<std::string_view, 1> kEffectFields{"effect"};
     static constexpr std::array<std::string_view, 4> kMetaballFields{"color", "outlineColor", "outlineWidth", "threshold"};
-    static constexpr std::array<std::string_view, 2> kScaleFields{"scaleX", "scaleY"};
+    static constexpr std::array<std::string_view, 4> kDrawFields{"scaleX", "scaleY", "partColors", "effect"};
     static constexpr std::array<std::string_view, 5> kMeshVertexFields{"x", "y", "u", "v", "color"};
     static constexpr std::array<std::string_view, 4> kNineSliceFields{"source", "borders", "pieces", "fill"};
     static constexpr std::array<std::string_view, 8> kShapeFields{"radius", "rotation", "startAngle", "sweep", "color", "borderWidth", "borderColor", "softness"};
@@ -33,7 +32,7 @@ class Graphics2DLua final {
 
     [[nodiscard]] static Renderer& getRenderer(lua_State* L);
 
-    // Reads the scale of a text draw from its style table, which stretches the block from its anchor.
+    // Returns the font at the index, or the default font of the engine where the argument is nil.
     [[nodiscard]] static text::Font& fontArgument(lua_State* L, int index);
     [[nodiscard]] static Renderer::CanvasOptions readCanvasOptions(lua_State* L, int index);
 
