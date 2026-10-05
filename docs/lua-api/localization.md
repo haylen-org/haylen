@@ -84,7 +84,7 @@ print(localization.language())
 
 ### localization.direction(language)
 
-Returns `'rightToLeft'` when a language declares that it reads right to left with `@direction`, and `'leftToRight'` otherwise, for the current language when `language` is omitted. Text laid out in the language takes its direction from its own letters, and the direction of a language decides the layout of a UI around it.
+Returns `'rightToLeft'` when a language declares that it reads right to left with `@direction`, and `'leftToRight'` otherwise, for the current language when `language` is omitted. Text laid out in the language takes its direction from its own letters, and the direction of a language decides the layout of a UI around it. A language that was never added raises `No localization table was added for "<language>".`, and so does a call without `language` before any language is added, which names the empty current language.
 
 ```lua
 local localization = require('haylen.localization')
