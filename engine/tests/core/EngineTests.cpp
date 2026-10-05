@@ -26,6 +26,7 @@
 #include "haylen/lua/Error.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/Plugin.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/RecordingScene.hpp"
@@ -280,6 +281,23 @@ TEST(EngineTest, DrivesPluginsScenesAndTimers) {
     EXPECT_EQ(plugin->events, 1);
     EXPECT_EQ(log.back(), "main:event");
     EXPECT_TRUE(fixture.engine().getInput().isKeyDown(input::Key::A));
+}
+
+// The frame loop reuses its storage, so only the scripts allocate, through the allocator of Lua.
+TEST(EngineTest, SteadyFramesAllocateNothing) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        box = {x = 0}
+        require('haylen.scene').push({update = function(self, dt) box.x = box.x + dt end, render = function() end})
+        require('haylen.timer').every(0.01, function() end)
+        require('haylen.tween').to(box, 100, {x = 5})
+    )");
+    // clang-format on
+    fixture.frames(10);
+    const test::AllocationTracker tracker;
+    fixture.frames(30);
+    EXPECT_EQ(tracker.getTotal(), 0U);
 }
 
 TEST(EngineTest, AnnouncesPluginsAddedWhileRunning) {

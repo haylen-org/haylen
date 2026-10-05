@@ -217,8 +217,9 @@ class SceneManager final {
         bool blocked = false;
     };
 
-    // Returns the scenes that render, from the lowest opaque scene up to the top.
-    [[nodiscard]] static std::vector<std::shared_ptr<Scene>> getVisible(std::vector<std::shared_ptr<Scene>> scenes);
+    // Fills the list with the scenes that render, from the lowest opaque scene up to the top.
+    void copyVisible(std::vector<std::shared_ptr<Scene>>& scenes) const;
+    void resetViews(std::size_t count);
 
     // Returns whether the scene has to load before it enters, which a scene that never loaded or that unloaded has.
     [[nodiscard]] static bool needsLoad(const Scene* scene) noexcept;

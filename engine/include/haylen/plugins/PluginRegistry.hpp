@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <memory>
 #include <string_view>
 #include <typeindex>
@@ -38,6 +39,9 @@ class PluginRegistry final {
 
     [[nodiscard]] Plugin* find(std::string_view name) const noexcept;
     [[nodiscard]] std::vector<Plugin*> getAll() const;
+    [[nodiscard]] Plugin& operator[](std::size_t index) const noexcept {
+        return *entries[index].plugin;
+    }
     [[nodiscard]] std::size_t size() const noexcept {
         return entries.size();
     }

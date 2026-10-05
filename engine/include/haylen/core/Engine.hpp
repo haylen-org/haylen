@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <exception>
 #include <memory>
@@ -288,8 +289,8 @@ class Engine final {
     // A rectangle of framebuffer pixels as the table of design units that events carry.
     [[nodiscard]] Json toDesignJson(const math::Rect& pixels) const;
     void dispatchEvent(const platform::Event& event);
-    void render(const std::vector<plugins::Plugin*>& all);
-    void renderScenes(const std::vector<plugins::Plugin*>& all);
+    void render(std::size_t plugins);
+    void renderScenes(std::size_t plugins);
     void setAppState(AppState value);
     void releaseHeldInput();
     void refreshForegroundState();

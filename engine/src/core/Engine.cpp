@@ -216,7 +216,8 @@ void Engine::frame(double frameSeconds) {
     const auto delta = static_cast<float>(current.clock.getDelta());
     current.input.updateTouchDurations(static_cast<float>(current.clock.getUnscaledDelta()));
     current.gestures.update(current.input, static_cast<float>(current.clock.getUnscaledDelta()));
-    const std::vector<plugins::Plugin*> all = current.plugins.getAll();
+    // Plugins that start during the frame join the next one, and the loops reach the plugins by index, since the registry grows when one starts.
+    const std::size_t plugins = current.plugins.size();
     debug::Profiler& profiler = current.profiler;
     profiler.beginFrame();
     current.lifecycleFailed = false;
@@ -248,8 +249,8 @@ void Engine::frame(double frameSeconds) {
         }
 
         if (!hidden) {
-            for (plugins::Plugin* plugin : all) {
-                plugin->beginFrame(*this, delta);
+            for (std::size_t index = 0; index < plugins; ++index) {
+                current.plugins[index].beginFrame(*this, delta);
             }
         }
 
@@ -259,16 +260,16 @@ void Engine::frame(double frameSeconds) {
                 const debug::ProfileScope scope(profiler, "fixedUpdate");
                 current.scenes->fixedUpdate(current.clock);
                 current.tweens.fixedUpdate(current.clock);
-                for (plugins::Plugin* plugin : all) {
-                    plugin->fixedUpdate(*this, step);
+                for (std::size_t index = 0; index < plugins; ++index) {
+                    current.plugins[index].fixedUpdate(*this, step);
                 }
             }
 
             const debug::ProfileScope scope(profiler, "update");
             current.timers.update(current.clock);
             current.tweens.update(current.clock);
-            for (plugins::Plugin* plugin : all) {
-                plugin->update(*this, delta);
+            for (std::size_t index = 0; index < plugins; ++index) {
+                current.plugins[index].update(*this, delta);
             }
             current.scenes->update(current.clock);
         }
@@ -279,7 +280,7 @@ void Engine::frame(double frameSeconds) {
 
     // A covered app draws one frame once the cover began, which shows it covered and stays on screen, and no more while the cover lasts. An opaque screen of a plugin hides the app, which draws nothing under it.
     if (!hidden && !current.hiddenByScreen && !(current.covered && current.coveredFrameDrawn)) {
-        render(all);
+        render(plugins);
         current.coveredFrameDrawn = current.covered;
     }
 
@@ -333,7 +334,7 @@ void Engine::publishDeviceChanges() {
     }
 }
 
-void Engine::render(const std::vector<plugins::Plugin*>& all) {
+void Engine::render(std::size_t plugins) {
     EngineState& current = *state;
     debug::Profiler& profiler = current.profiler;
 
@@ -342,7 +343,7 @@ void Engine::render(const std::vector<plugins::Plugin*>& all) {
     try {
         const debug::ProfileScope scope(profiler, "render");
         if (!current.errorScreen) {
-            renderScenes(all);
+            renderScenes(plugins);
         }
     } catch (const std::exception& exception) {
         reportError(exception);
@@ -351,8 +352,8 @@ void Engine::render(const std::vector<plugins::Plugin*>& all) {
         current.errorScreen->render();
     }
     try {
-        for (plugins::Plugin* plugin : all) {
-            plugin->renderOverlay(*this);
+        for (std::size_t index = 0; index < plugins; ++index) {
+            current.plugins[index].renderOverlay(*this);
         }
     } catch (const std::exception& exception) {
         reportError(exception);
@@ -365,8 +366,8 @@ void Engine::render(const std::vector<plugins::Plugin*>& all) {
     }
 
     try {
-        for (plugins::Plugin* plugin : all) {
-            plugin->endFrame(*this);
+        for (std::size_t index = 0; index < plugins; ++index) {
+            current.plugins[index].endFrame(*this);
         }
     } catch (const std::exception& exception) {
         reportError(exception);
@@ -374,13 +375,12 @@ void Engine::render(const std::vector<plugins::Plugin*>& all) {
 }
 
 // Each view renders its scenes, with the drawing of the plugins in the current view and the interface of the plugins in every view. During a transition the views before the last one go into their own images, and the last one draws the effect on the screen before its own scenes.
-void Engine::renderScenes(const std::vector<plugins::Plugin*>& all) {
+void Engine::renderScenes(std::size_t plugins) {
     EngineState& current = *state;
     graphics2d::Renderer& renderer = *current.renderer;
     SceneManager& scenes = *current.scenes;
     scenes.prepareViews();
-    const std::vector<SceneView> views = scenes.getViews();
-    for (const SceneView& view : views) {
+    for (const SceneView& view : scenes.getViews()) {
         if (view.target.isValid()) {
             renderer.beginCapture(view.target, current.config.clearColor);
         }
@@ -389,13 +389,13 @@ void Engine::renderScenes(const std::vector<plugins::Plugin*>& all) {
         }
         scenes.render(view);
         if (view.current) {
-            for (plugins::Plugin* plugin : all) {
-                plugin->render(*this);
+            for (std::size_t index = 0; index < plugins; ++index) {
+                current.plugins[index].render(*this);
             }
         }
         scenes.renderUi(view);
-        for (plugins::Plugin* plugin : all) {
-            plugin->renderUi(*this, view);
+        for (std::size_t index = 0; index < plugins; ++index) {
+            current.plugins[index].renderUi(*this, view);
         }
         if (view.target.isValid()) {
             renderer.endCapture();
@@ -497,8 +497,8 @@ void Engine::dispatchEvent(const platform::Event& event) {
             break;
         }
 
-        for (plugins::Plugin* plugin : current.plugins.getAll()) {
-            plugin->event(*this, event);
+        for (std::size_t index = 0, plugins = current.plugins.size(); index < plugins; ++index) {
+            current.plugins[index].event(*this, event);
         }
         if (!current.errorScreen) {
             current.scenes->event(event);
@@ -784,8 +784,15 @@ bool Engine::canBackLeaveApp() const noexcept {
 
 bool Engine::isBackCaptured() const {
     const EngineState& current = *state;
-    const std::vector<plugins::Plugin*> all = current.plugins.getAll();
-    return !current.backLeavesApp || (current.errorScreen && current.recoverable) || std::ranges::any_of(all, [](const plugins::Plugin* plugin) { return plugin->isCapturingBack(); });
+    if (!current.backLeavesApp || (current.errorScreen && current.recoverable)) {
+        return true;
+    }
+    for (std::size_t index = 0; index < current.plugins.size(); ++index) {
+        if (current.plugins[index].isCapturingBack()) {
+            return true;
+        }
+    }
+    return false;
 }
 
 Engine::PhaseScope::PhaseScope(Engine& owner, Phase value) noexcept : engine(owner), previous(owner.state->phase), exceptions(std::uncaught_exceptions()) {

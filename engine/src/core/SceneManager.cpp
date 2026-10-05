@@ -635,7 +635,7 @@ void SceneManager::switchScenes(const std::shared_ptr<Change>& change) {
     const TransitionEffect* effect = change->options.transition.effect.get();
     if (effect != nullptr) {
         prepareImages();
-        outgoing = getVisible(stack);
+        copyVisible(outgoing);
         change->exited = false;
     }
     if (change->from) {
@@ -881,8 +881,9 @@ void SceneManager::fixedUpdate(const FrameClock& clock) {
     }
 }
 
-// The walk goes over a copy of the stack, because asking a scripted scene whether it is transparent runs Lua.
-std::vector<std::shared_ptr<Scene>> SceneManager::getVisible(std::vector<std::shared_ptr<Scene>> scenes) {
+// The walk goes over a copy of the stack, because asking a scripted scene whether it is transparent runs Lua, and the copy reuses the storage of the list it goes into.
+void SceneManager::copyVisible(std::vector<std::shared_ptr<Scene>>& scenes) const {
+    scenes.assign(stack.begin(), stack.end());
     std::size_t first = scenes.size();
     while (first > 0) {
         --first;
@@ -891,7 +892,6 @@ std::vector<std::shared_ptr<Scene>> SceneManager::getVisible(std::vector<std::sh
         }
     }
     scenes.erase(scenes.begin(), scenes.begin() + static_cast<std::ptrdiff_t>(first));
-    return scenes;
 }
 
 bool SceneManager::isAlive(const Scene& scene) const noexcept {
@@ -933,38 +933,64 @@ void SceneManager::endTransition() noexcept {
 
 // The cover renders the current scenes into the outgoing image with the incoming image empty, the hold draws the covered frame with the loading view on top and no scene renders, and the reveal renders the scenes after the change into the incoming image, next to the scenes still leaving through an effect that shows both scenes.
 void SceneManager::prepareViews() {
-    views.clear();
     if (!isEffectShown()) {
-        views.push_back({.scenes = getVisible(stack), .current = true});
+        resetViews(1);
+        copyVisible(views[0].scenes);
+        views[0].current = true;
         return;
     }
 
     prepareImages();
-    const Change& change = *pending;
-    switch (change.phase) {
+    const std::shared_ptr<Change> change = pending;
+    switch (change->phase) {
     case Phase::Cover:
-        views.push_back({.scenes = getVisible(stack), .target = outgoingImage, .current = true});
-        views.push_back({.target = incomingImage});
-        views.push_back({.effect = true});
+        resetViews(3);
+        copyVisible(views[0].scenes);
+        views[0].target = outgoingImage;
+        views[0].current = true;
+        views[1].target = incomingImage;
+        views[2].effect = true;
         break;
     case Phase::Hold:
-        if (change.fading) {
+        if (change->fading) {
             prepareLoadingImage();
-            views.push_back({.target = loadingImage, .current = true, .effect = true});
-            views.push_back({.effect = true});
+            resetViews(2);
+            views[0].target = loadingImage;
+            views[0].current = true;
+            views[0].effect = true;
+            views[1].effect = true;
             break;
         }
-        views.push_back({.current = true, .effect = true});
+        resetViews(1);
+        views[0].current = true;
+        views[0].effect = true;
         break;
     case Phase::Start:
     case Phase::Load:
-    case Phase::Reveal:
-        if (!change.exited) {
-            views.push_back({.scenes = outgoing, .target = outgoingImage});
+    case Phase::Reveal: {
+        const std::size_t incoming = change->exited ? 0 : 1;
+        resetViews(incoming + 2);
+        if (incoming != 0) {
+            views[0].scenes.assign(outgoing.begin(), outgoing.end());
+            views[0].target = outgoingImage;
         }
-        views.push_back({.scenes = getVisible(stack), .target = incomingImage, .current = true});
-        views.push_back({.effect = true});
+        copyVisible(views[incoming].scenes);
+        views[incoming].target = incomingImage;
+        views[incoming].current = true;
+        views[incoming + 1].effect = true;
         break;
+    }
+    }
+}
+
+// The views of the last frame stay, so their lists of scenes keep their storage from one frame to the next, and each one starts empty.
+void SceneManager::resetViews(std::size_t count) {
+    views.resize(count);
+    for (SceneView& view : views) {
+        view.scenes.clear();
+        view.target = {};
+        view.current = false;
+        view.effect = false;
     }
 }
 
