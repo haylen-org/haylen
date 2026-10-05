@@ -1692,9 +1692,14 @@ def substitute_parameters(value: object, values: dict) -> object:
     return value
 
 
-def plugin_section(app: App, plugin: Plugin, name: str) -> dict | None:
-    """Returns the `apple` or `android` section of a plugin with the values that `app.json` gives its parameters, or `None` when the plugin has none."""
-    return substitute_parameters(plugin.manifest[name], app.plugin_values[plugin.id]) if name in plugin.manifest else None
+def plugin_section(app: App, plugin: Plugin, name: str, platforms: tuple[str, ...] = ()) -> dict | None:
+    """Returns the `apple` or `android` section of a plugin with the values that `app.json` gives its parameters, or `None` when the plugin has none. For the files of some platforms, such as the entitlements of macOS, only the parameters that apply to one of them have values, so the keys that reference the others are left out."""
+    if name not in plugin.manifest:
+        return None
+    values = app.plugin_values[plugin.id]
+    if platforms:
+        values = {key: value for key, value in values.items() if any(platform in plugin.parameters[key].get("platforms", plugin.manifest["platforms"]) for platform in platforms)}
+    return substitute_parameters(plugin.manifest[name], values)
 
 
 def plugin_file(app: App, plugin: Plugin, value: str) -> Path | None:
@@ -2070,7 +2075,7 @@ def apple_plugin_keys(app: App, platforms: tuple[str, ...], section: str, keys: 
     owners.update({key: '"app.json"' for key in merged})
     for plugin in app.plugins:
         if plugin.supports(*platforms) and "apple" in plugin.manifest:
-            merge_plugin_keys(merged, plugin_section(app, plugin, "apple").get(section, {}), owners, f'the plugin "{plugin.id}"', label)
+            merge_plugin_keys(merged, plugin_section(app, plugin, "apple", platforms).get(section, {}), owners, f'the plugin "{plugin.id}"', label)
     return merged
 
 
@@ -2539,7 +2544,7 @@ def check_apple(app: App, root: Path, args: argparse.Namespace) -> list[Requirem
     need_privacy("Haylen", engine_privacy())
 
     for plugin in app.plugins:
-        apple = plugin_section(app, plugin, "apple")
+        apple = plugin_section(app, plugin, "apple", (plugin_platform,))
         if apple is None or not plugin.supports(plugin_platform):
             continue
         owner = f'The plugin "{plugin.id}"'
