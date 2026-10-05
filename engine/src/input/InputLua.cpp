@@ -12,6 +12,7 @@
 #include "haylen/core/Utf8.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/input/ActionMap.hpp"
+#include "haylen/input/AppTextField.hpp"
 #include "haylen/input/GestureRecognizer.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/input/PointerEmulation.hpp"
@@ -23,6 +24,7 @@
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/platform/Event.hpp"
+#include "haylen/platform/TextInput.hpp"
 
 namespace haylen::input {
 
@@ -307,6 +309,71 @@ int InputLua::lastDevice(lua_State* L) {
     return 1;
 }
 
+template <typename Enum, std::size_t Size> void InputLua::readChoice(lua_State* L, const char* field, const std::array<std::pair<std::string_view, Enum>, Size>& names, Enum& target) {
+    if (lua_getfield(L, 1, field) == LUA_TNIL) {
+        lua_pop(L, 1);
+        return;
+    }
+    const std::string_view name = lua::Stack::read<std::string_view>(L, -1);
+    const auto found = std::ranges::find(names, name, &std::pair<std::string_view, Enum>::first);
+    if (found == names.end()) {
+        std::string expected;
+        for (std::size_t index = 0; index < Size; ++index) {
+            expected += std::string(index == 0 ? "" : (index + 1 == Size ? " or " : ", ")) + "\"" + std::string(names[index].first) + "\"";
+        }
+        luaL_error(L, "The option \"%s\" of a text field must be %s.", field, expected.c_str());
+    }
+    target = found->second;
+    lua_pop(L, 1);
+}
+
+// Starts editing the text field the app draws itself with `editText({text, selectionStart, selectionEnd, x, y, width, height, keyboard, returnKey, autocapitalize, autocorrect, maxLength})`, where the place is in design coordinates, and follows it on every later call.
+int InputLua::editText(lua_State* L) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+    lua::Table::checkFields(L, 1, {kTextFieldOptions});
+    AppTextField::State state;
+    if (lua_getfield(L, 1, "text") != LUA_TSTRING) {
+        return luaL_error(L, "A text field needs its \"text\" as a string.");
+    }
+    state.text = lua::Stack::read<std::string>(L, -1);
+    lua_pop(L, 1);
+    const auto length = static_cast<int>(core::Utf8::countCodePoints(state.text));
+    state.selectionStart = length;
+    state.selectionEnd = length;
+    lua::Table::readField(L, 1, "selectionStart", state.selectionStart);
+    state.selectionEnd = std::max(state.selectionEnd, state.selectionStart);
+    lua::Table::readField(L, 1, "selectionEnd", state.selectionEnd);
+    if (state.selectionStart < 0 || state.selectionEnd < state.selectionStart || state.selectionEnd > length) {
+        return luaL_error(L, "The selection of a text field must run from 0 to the length of its text, with \"selectionStart\" not past \"selectionEnd\".");
+    }
+
+    math::Rect place;
+    lua::Table::readField(L, 1, "x", place.x);
+    lua::Table::readField(L, 1, "y", place.y);
+    lua::Table::readField(L, 1, "width", place.width);
+    lua::Table::readField(L, 1, "height", place.height);
+    const graphics::Viewport& viewport = lua::Runtime::getEngine(L).getViewport();
+    state.bounds = math::Rect::fromMinMax(viewport.toFramebuffer(place.getMin()), viewport.toFramebuffer(place.getMax()));
+
+    readChoice(L, "keyboard", platform::TextInput::kKeyboards, state.options.keyboard);
+    readChoice(L, "returnKey", platform::TextInput::kReturnKeys, state.options.returnKey);
+    readChoice(L, "autocapitalize", platform::TextInput::kCapitalizations, state.options.capitalization);
+    lua::Table::readField(L, 1, "autocorrect", state.options.autocorrect);
+    lua::Table::readField(L, 1, "maxLength", state.options.maxLength);
+    lua::Runtime::getEngine(L).getAppTextField().edit(std::move(state));
+    return 0;
+}
+
+int InputLua::finishText(lua_State* L) {
+    lua::Runtime::getEngine(L).getAppTextField().finish();
+    return 0;
+}
+
+int InputLua::editingText(lua_State* L) {
+    lua::Stack::push(L, lua::Runtime::getEngine(L).getAppTextField().isEditing());
+    return 1;
+}
+
 int InputLua::setMouseAsTouch(lua_State* L) {
     lua::Runtime::getEngine(L).getPointerEmulation().setMouseAsTouch(lua::Stack::read<bool>(L, 1));
     return 0;
@@ -422,7 +489,7 @@ int InputLua::clearVirtual(lua_State* L) {
 
 int InputLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"keyDown", &keyDown}, {"keyPressed", &keyPressed}, {"keyReleased", &keyReleased}, {"anyKeyPressed", &anyKeyPressed}, {"modifiers", &modifiers}, {"text", &text}, {"mouseDown", &mouseDown}, {"mousePressed", &mousePressed}, {"mouseReleased", &mouseReleased}, {"mousePosition", &mousePosition}, {"mouseFramebufferPosition", &mouseFramebufferPosition}, {"mouseDelta", &mouseDelta}, {"mouseScroll", &mouseScroll}, {"mouseInside", &mouseInside}, {"pointerCaptured", &pointerCaptured}, {"keyCaptured", &keyCaptured}, {"gamepadButtonCaptured", &gamepadButtonCaptured}, {"gamepadAxisCaptured", &gamepadAxisCaptured}, {"touches", &touches}, {"findTouch", &findTouch}, {"gestures", &lua::Binding::native<&gestures>}, {"setGestureSettings", &lua::Binding::native<&setGestureSettings>}, {"gestureSettings", &gestureSettings}, {"gamepadConnected", &gamepadConnected}, {"gamepadName", &gamepadName}, {"gamepadDown", &gamepadDown}, {"gamepadPressed", &gamepadPressed}, {"gamepadReleased", &gamepadReleased}, {"gamepadAxis", &gamepadAxis}, {"gamepadStick", &gamepadStick}, {"setGamepadDeadzone", &lua::Binding::native<&setGamepadDeadzone>}, {"gamepadDeadzone", &gamepadDeadzone}, {"lastDevice", &lastDevice}, {"setMouseAsTouch", &setMouseAsTouch}, {"mouseAsTouch", &mouseAsTouch}, {"setTouchAsMouse", &setTouchAsMouse}, {"touchAsMouse", &touchAsMouse}, {"loadActions", &lua::Binding::native<&loadActions>}, {"saveActions", &saveActions}, {"actionNames", &actionNames}, {"defineAction", &lua::Binding::native<&defineAction>}, {"removeAction", &removeAction}, {"clearActions", &clearActions}, {"actionDefinition", &actionDefinition}, {"setPressThreshold", &lua::Binding::native<&setPressThreshold>}, {"down", &actionDown}, {"pressed", &actionPressed}, {"released", &actionReleased}, {"value", &actionValue}, {"vector", &actionVector}, {"setGamepadIndex", &setGamepadIndex}, {"setVirtualButton", &setVirtualButton}, {"setVirtualStick", &setVirtualStick}, {"clearVirtual", &clearVirtual}, {nullptr, nullptr},
+        {"keyDown", &keyDown}, {"keyPressed", &keyPressed}, {"keyReleased", &keyReleased}, {"anyKeyPressed", &anyKeyPressed}, {"modifiers", &modifiers}, {"text", &text}, {"mouseDown", &mouseDown}, {"mousePressed", &mousePressed}, {"mouseReleased", &mouseReleased}, {"mousePosition", &mousePosition}, {"mouseFramebufferPosition", &mouseFramebufferPosition}, {"mouseDelta", &mouseDelta}, {"mouseScroll", &mouseScroll}, {"mouseInside", &mouseInside}, {"pointerCaptured", &pointerCaptured}, {"keyCaptured", &keyCaptured}, {"gamepadButtonCaptured", &gamepadButtonCaptured}, {"gamepadAxisCaptured", &gamepadAxisCaptured}, {"touches", &touches}, {"findTouch", &findTouch}, {"gestures", &lua::Binding::native<&gestures>}, {"setGestureSettings", &lua::Binding::native<&setGestureSettings>}, {"gestureSettings", &gestureSettings}, {"gamepadConnected", &gamepadConnected}, {"gamepadName", &gamepadName}, {"gamepadDown", &gamepadDown}, {"gamepadPressed", &gamepadPressed}, {"gamepadReleased", &gamepadReleased}, {"gamepadAxis", &gamepadAxis}, {"gamepadStick", &gamepadStick}, {"setGamepadDeadzone", &lua::Binding::native<&setGamepadDeadzone>}, {"gamepadDeadzone", &gamepadDeadzone}, {"lastDevice", &lastDevice}, {"editText", &lua::Binding::native<&editText>}, {"finishText", &finishText}, {"editingText", &editingText}, {"setMouseAsTouch", &setMouseAsTouch}, {"mouseAsTouch", &mouseAsTouch}, {"setTouchAsMouse", &setTouchAsMouse}, {"touchAsMouse", &touchAsMouse}, {"loadActions", &lua::Binding::native<&loadActions>}, {"saveActions", &saveActions}, {"actionNames", &actionNames}, {"defineAction", &lua::Binding::native<&defineAction>}, {"removeAction", &removeAction}, {"clearActions", &clearActions}, {"actionDefinition", &actionDefinition}, {"setPressThreshold", &lua::Binding::native<&setPressThreshold>}, {"down", &actionDown}, {"pressed", &actionPressed}, {"released", &actionReleased}, {"value", &actionValue}, {"vector", &actionVector}, {"setGamepadIndex", &setGamepadIndex}, {"setVirtualButton", &setVirtualButton}, {"setVirtualStick", &setVirtualStick}, {"clearVirtual", &clearVirtual}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;
@@ -509,6 +576,16 @@ void InputLua::pushEvent(lua_State* L, const platform::Event& event) {
         lua_setfield(L, -2, "field");
         lua::Stack::push(L, event.textEdit.text);
         lua_setfield(L, -2, "text");
+        lua::Stack::push(L, event.textEdit.selectionStart);
+        lua_setfield(L, -2, "selectionStart");
+        lua::Stack::push(L, event.textEdit.selectionEnd);
+        lua_setfield(L, -2, "selectionEnd");
+        if (event.textEdit.isComposing()) {
+            lua::Stack::push(L, event.textEdit.compositionStart);
+            lua_setfield(L, -2, "compositionStart");
+            lua::Stack::push(L, event.textEdit.compositionEnd);
+            lua_setfield(L, -2, "compositionEnd");
+        }
         return;
     case platform::Event::Type::TextAction:
         lua::Stack::push(L, event.textEdit.field);

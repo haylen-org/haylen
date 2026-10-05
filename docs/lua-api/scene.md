@@ -752,7 +752,7 @@ The `event` hook receives one table per platform event. Its `type` field names t
 | `'focusGained'`, `'focusLost'` | None. |
 | `'quitRequested'` | None. The player asked to close the window, or to quit the app through its menu, Command+Q or the Dock on macOS. |
 | `'lowMemory'` | None. The platform is short of memory. |
-| `'textEdited'` | `field`, the id of the text field of the UI, and `text`, what its native field holds now. The UI applies these edits itself. |
+| `'textEdited'` | `field`, the id of the text field, `text`, what its native field holds now, `selectionStart` and `selectionEnd`, and `compositionStart` and `compositionEnd` while an input method composes. The UI applies the edits of its fields itself, and the app those of [`input.editText`](input.md#inputedittextoptions). |
 | `'textAction'` | `field` and `action`: `'submit'`, `'next'`, `'cancel'` or `'dismissed'`, which the UI applies to its text field itself. |
 | `'keyboardChanged'` | `frame`, the rectangle the on-screen keyboard covers in design units, empty while it is hidden. |
 | `'networkChanged'` | `online`, whether the device has a network. |

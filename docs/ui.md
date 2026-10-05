@@ -467,6 +467,10 @@ scene.push({
 
 ImGui windows use the colors, metrics and body font of the active theme, and `ui.usingPointer()` returns `true` while the pointer is over one. Calls outside a running frame, such as at the top level of `source/main.lua`, raise an error. The engine's own debug overlay, the full mode of the statistics that F3 cycles through and [`haylen.debug`](lua-api/debug.md) controls, is built with it.
 
+## A GUI of your own in Lua
+
+An app can also draw its own GUI from Lua, every frame or retained, on the same APIs the built-in UI uses. Drawing takes rectangles, circles, lines, polygons, meshes, nine-slices, textures and text from [`haylen.graphics2d`](lua-api/graphics2d.md), with `measureText` to lay text out, `pushClip` to keep a list inside its box, and render targets and shaders for masks and effects. Input takes the mouse, the fingers, the keys, typed characters and gamepads from [`haylen.input`](lua-api/input.md), and [`input.editText`](lua-api/input.md#text-fields-of-the-app) edits a field through the native text input with the on-screen keyboard and input method composition. The cursor comes from `window.setCursor`, the safe area from `viewport.safeRect` and the scale from `ui.scale`. The test `GUI-027` of the test project is such a GUI, with buttons, a check box, a slider that holds the pointer while it drags, a text field, a clipped scrolling list and focus that keys, gamepads and remotes move.
+
 ## Choosing between them
 
 | Need | Module |

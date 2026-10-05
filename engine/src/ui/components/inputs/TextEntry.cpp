@@ -12,7 +12,7 @@ void TextEntry::readProperties(PropertyReader& reader) {
     reader.read("value", value);
     reader.read("placeholder", placeholder);
     reader.read("maxLength", maxLength, 0, 1 << 20);
-    reader.readChoice<platform::TextInput::ReturnKey>("returnKey", returnKey, TextEditor::kReturnKeys);
+    reader.readChoice<platform::TextInput::ReturnKey>("returnKey", returnKey, platform::TextInput::kReturnKeys);
     if (reader.has("autocorrect")) {
         bool enabled = true;
         reader.read("autocorrect", enabled);
@@ -20,7 +20,7 @@ void TextEntry::readProperties(PropertyReader& reader) {
     }
     if (reader.has("autocapitalize")) {
         platform::TextInput::Capitalization mode = platform::TextInput::Capitalization::None;
-        reader.readChoice<platform::TextInput::Capitalization>("autocapitalize", mode, TextEditor::kCapitalizations);
+        reader.readChoice<platform::TextInput::Capitalization>("autocapitalize", mode, platform::TextInput::kCapitalizations);
         capitalization = mode;
     }
     readMore(reader);

@@ -28,5 +28,6 @@ return {
         {code = 'GUI-024', title = 'Theme overrides', description = 'Styles that replace colors, metrics, fonts and surfaces of one subtree, styles that nest, subtrees in other themes in every state and the cursor of each node.', module = 'theme-overrides'},
         {code = 'GUI-025', title = 'Node events', description = 'The events every kind reports: mount, unmount, show, hide, hover, press, drag, release and scroll, in a log.', module = 'node-events'},
         {code = 'GUI-026', title = 'UI scale', description = 'The design and physical scale modes and the scale factor, with the size of a control in points on the screen.', module = 'ui-scale'},
+        {code = 'GUI-027', title = 'Custom GUI in Lua', description = 'A small immediate-mode GUI written in Lua with buttons, a check box, a slider, a native text field, a clipped list, focus, the cursor, the safe area and the UI scale.', module = 'custom-gui'},
     },
 }

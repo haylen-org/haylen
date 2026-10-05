@@ -28,6 +28,7 @@ class InputLua final {
     static void pushEvent(lua_State* L, const platform::Event& event);
 
   private:
+    static constexpr std::array<std::string_view, 12> kTextFieldOptions{"text", "selectionStart", "selectionEnd", "x", "y", "width", "height", "keyboard", "returnKey", "autocapitalize", "autocorrect", "maxLength"};
     static constexpr std::array<std::string_view, 8> kGestureFields{"tapMaxDuration", "tapMaxMovement", "doubleTapInterval", "doubleTapDistance", "longPressDuration", "swipeMinDistance", "swipeMaxDuration", "mouse"};
 
     [[nodiscard]] static Input& getInput(lua_State* L);
@@ -70,6 +71,10 @@ class InputLua final {
     static int setGamepadDeadzone(lua_State* L);
     static int gamepadDeadzone(lua_State* L);
     static int lastDevice(lua_State* L);
+    static int editText(lua_State* L);
+    static int finishText(lua_State* L);
+    static int editingText(lua_State* L);
+    template <typename Enum, std::size_t Size> static void readChoice(lua_State* L, const char* field, const std::array<std::pair<std::string_view, Enum>, Size>& names, Enum& target);
     static int setMouseAsTouch(lua_State* L);
     static int mouseAsTouch(lua_State* L);
     static int setTouchAsMouse(lua_State* L);

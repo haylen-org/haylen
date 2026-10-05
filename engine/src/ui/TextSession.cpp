@@ -177,15 +177,15 @@ math::Rect TextSession::toFramebuffer(const math::Rect& rect) const noexcept {
     return math::Rect::fromMinMax(viewport.toFramebuffer(rect.getMin() * scale + origin), viewport.toFramebuffer(rect.getMax() * scale + origin));
 }
 
+// The list is rebuilt every frame in storage kept from the frames before, and the platform hears it only when it changes.
 void TextSession::publishVisibleFields() {
-    std::vector<platform::TextInput::Field> visible;
-    visible.reserve(fields.size());
+    visibleFields.clear();
     for (const Entry& entry : fields) {
-        visible.push_back({.id = entry.id, .bounds = toFramebuffer(entry.bounds), .options = entry.options});
+        visibleFields.push_back({.id = entry.id, .bounds = toFramebuffer(entry.bounds), .options = entry.options});
     }
-    if (visible != sentFields) {
-        input.setVisibleFields(visible);
-        sentFields = std::move(visible);
+    if (visibleFields != sentFields) {
+        input.setVisibleFields(visibleFields);
+        sentFields = visibleFields;
     }
 }
 

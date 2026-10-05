@@ -680,6 +680,73 @@ local input = require('haylen.input')
 print(input.touchAsMouse())
 ```
 
+## Text fields of the app
+
+A GUI that the app draws itself, such as one written in Lua over `haylen.graphics2d`, edits text through the native text input of the platform as the text fields of `haylen.ui` do, with the on-screen keyboard, autocorrection and the input methods that compose Japanese, Chinese or Korean text. The app keeps the text and draws it, the platform reports every edit as a `textEdited` event with the field id `4294967296`, and its actions as `textAction`. One field edits at a time, and a text field of `haylen.ui` that takes the focus takes the keyboard over.
+
+### input.editText(options)
+
+Starts editing the text field of the app, or follows it when it changes or moves. Call it again every frame or whenever the text, the selection or the place change. The native field takes the text and the selection only when they differ from what the user typed last, so an app that shows the typed text back keeps a composition going.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `text` | string | required | The text of the field. |
+| `selectionStart`, `selectionEnd` | integer | the end of the text | The selection in code points, the caret when both are equal. |
+| `x`, `y`, `width`, `height` | number | `0` | The place of the field in design coordinates, where the platform shows its input method windows and which it keeps above the on-screen keyboard. |
+| `keyboard` | string | `'text'` | `'text'`, `'multiline'`, `'number'`, `'decimal'`, `'phone'`, `'email'`, `'url'`, `'search'` or `'password'`. |
+| `returnKey` | string | `'default'` | `'default'`, `'done'`, `'go'`, `'next'`, `'search'` or `'send'`. |
+| `autocapitalize` | string | `'sentences'` | `'none'`, `'sentences'`, `'words'` or `'characters'`. |
+| `autocorrect` | boolean | `true` | Lets the system correct words. |
+| `maxLength` | integer | `0` | The most code points the field takes, or `0` for no limit. |
+
+Errors: `A text field needs its "text" as a string.`, `The selection of a text field must run from 0 to the length of its text, with "selectionStart" not past "selectionEnd".`, `The option "<option>" of a text field must be <names>.` and `Unknown option "<key>".`.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+local field = {text = '', caret = 0}
+
+scene.push({
+    enter = function(self)
+        input.editText({text = field.text, x = 200, y = 300, width = 600, height = 64, returnKey = 'done'})
+    end,
+    event = function(self, event)
+        if event.type == 'textEdited' and event.field == 4294967296 then
+            field.text, field.caret, field.composing = event.text, event.selectionStart, event.compositionStart
+            input.editText({text = field.text, selectionStart = field.caret, x = 200, y = 300, width = 600, height = 64, returnKey = 'done'})
+        elseif event.type == 'textAction' and event.field == 4294967296 then
+            input.finishText()
+        end
+    end,
+    render = function(self)
+        graphics2d.beginScreen()
+        graphics2d.drawRectOutline({x = 200, y = 300, width = 600, height = 64}, 2, '#FFFFFFFF')
+    end,
+})
+```
+
+### input.finishText()
+
+Ends editing the text field of the app and hides the on-screen keyboard.
+
+```lua
+local input = require('haylen.input')
+
+input.finishText()
+```
+
+### input.editingText()
+
+Returns `true` while the text field of the app edits.
+
+```lua
+local input = require('haylen.input')
+
+print(input.editingText())
+```
+
 ## Action map
 
 The action map gives names to gameplay actions and binds each one to any number of keys, mouse buttons, gamepad controls and virtual controls. Actions update once per frame in the order they were defined.
@@ -989,7 +1056,7 @@ A scene with an `event(self, e)` callback receives every platform event as a tab
 | `'mouseMove'` | The fields `x` and `y` are the mouse position. The fields `dx` and `dy` are the movement of this event, which keeps coming while the mouse is locked. |
 | `'mouseScroll'` | The fields `scrollX` and `scrollY` are the wheel movement. |
 | `'touchBegan'`, `'touchMoved'`, `'touchEnded'`, `'touchCancelled'` | The field `touches` is a list of every finger with `id`, `x`, `y` and `changed`, which is `true` for the fingers this event is about. |
-| `'textEdited'` | The field `field` is the id of the text field of the UI and `text` what its native field holds. |
+| `'textEdited'` | The field `field` is the id of the text field, a field of the UI or the one of [`input.editText`](#inputedittextoptions), `text` what its native field holds, `selectionStart` and `selectionEnd` the selection in code points, and `compositionStart` and `compositionEnd` the text an input method still composes, present only while it composes. |
 | `'textAction'` | The field `field` is the id of the text field and `action` is `'submit'`, `'next'`, `'cancel'` or `'dismissed'`. |
 | `'keyboardChanged'` | The field `frame` is the rectangle the on-screen keyboard covers, empty while it is hidden. |
 | `'networkChanged'` | The field `online` is whether the device has a network. |

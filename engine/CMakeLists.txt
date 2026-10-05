@@ -298,6 +298,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/graphics/VectorImageResource.cpp
   src/graphics/Viewport.cpp
   src/input/ActionMap.cpp
+  src/input/AppTextField.cpp
   src/input/Controls.cpp
   src/input/Gesture.cpp
   src/input/GestureRecognizer.cpp

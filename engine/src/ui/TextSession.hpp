@@ -102,6 +102,7 @@ class TextSession final {
     math::Vec2 origin;
     float scale = 1.0F;
     std::vector<Entry> fields;
+    std::vector<platform::TextInput::Field> visibleFields;
     std::vector<platform::TextInput::Field> sentFields;
     std::optional<platform::TextInput::Field> published;
     std::optional<platform::TextInput::Edit> pending;

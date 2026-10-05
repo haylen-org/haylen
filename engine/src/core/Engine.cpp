@@ -444,6 +444,9 @@ void Engine::dispatchEvent(const platform::Event& event) {
         case platform::Event::Type::KeyboardChanged:
             publishKeyboard(event.keyboardFrame);
             break;
+        case platform::Event::Type::TextEdited:
+            current.appTextField.receive(event.textEdit);
+            break;
         case platform::Event::Type::WindowMoved: {
             // Platforms report every step of a move, and the app hears each new position once.
             const math::Vec2 position = current.host.getFrame().getPosition();
@@ -872,6 +875,10 @@ input::VirtualInput& Engine::getVirtualInput() noexcept {
 
 input::PointerEmulation& Engine::getPointerEmulation() noexcept {
     return state->pointerEmulation;
+}
+
+input::AppTextField& Engine::getAppTextField() noexcept {
+    return state->appTextField;
 }
 
 SceneManager& Engine::getScenes() noexcept {

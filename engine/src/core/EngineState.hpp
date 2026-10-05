@@ -25,6 +25,7 @@
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/input/ActionMap.hpp"
+#include "haylen/input/AppTextField.hpp"
 #include "haylen/input/GamepadState.hpp"
 #include "haylen/input/GestureRecognizer.hpp"
 #include "haylen/input/Input.hpp"
@@ -47,13 +48,14 @@ namespace haylen::core {
 
 // Everything one engine owns, kept out of the public header so apps do not compile every subsystem.
 struct EngineState {
-    EngineState(platform::Host& owner, std::shared_ptr<io::Package> source, AppConfig settings, std::unique_ptr<Application> app) : host(owner), package(std::move(source)), config(std::move(settings)), application(std::move(app)), lifecycle(config.lifecycle), clock(1.0 / config.fixedRate, config.maxFrameTime), events(frameQueue) {}
+    EngineState(platform::Host& owner, std::shared_ptr<io::Package> source, AppConfig settings, std::unique_ptr<Application> app) : host(owner), package(std::move(source)), config(std::move(settings)), application(std::move(app)), lifecycle(config.lifecycle), appTextField(owner.getTextInput()), clock(1.0 / config.fixedRate, config.maxFrameTime), events(frameQueue) {}
 
     platform::Host& host;
     std::shared_ptr<io::Package> package;
     AppConfig config;
     std::unique_ptr<Application> application;
     AppConfig::Lifecycle lifecycle;
+    input::AppTextField appTextField;
     std::unique_ptr<graphics::Device> graphics;
     std::unique_ptr<audio::Mixer> audio;
     std::unique_ptr<storage::UserStorage> storage;

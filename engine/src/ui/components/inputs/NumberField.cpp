@@ -22,7 +22,7 @@ void NumberField::readProperties(PropertyReader& reader) {
     reader.read("max", highest);
     reader.read("step", step, 0.0);
     reader.read("decimals", decimals, 0, 6);
-    reader.readChoice<platform::TextInput::ReturnKey>("returnKey", returnKey, TextEditor::kReturnKeys);
+    reader.readChoice<platform::TextInput::ReturnKey>("returnKey", returnKey, platform::TextInput::kReturnKeys);
     if (lowest > highest) {
         reader.fail("min", "must not be greater than \"max\"");
     }

@@ -34,22 +34,6 @@ class TextEditor final {
         bool submitted = false;
     };
 
-    // The names that the `returnKey` and `autocapitalize` properties of text components take.
-    static constexpr std::array<std::pair<std::string_view, platform::TextInput::ReturnKey>, 6> kReturnKeys{{
-        {"default", platform::TextInput::ReturnKey::Default},
-        {"done", platform::TextInput::ReturnKey::Done},
-        {"go", platform::TextInput::ReturnKey::Go},
-        {"next", platform::TextInput::ReturnKey::Next},
-        {"search", platform::TextInput::ReturnKey::Search},
-        {"send", platform::TextInput::ReturnKey::Send},
-    }};
-    static constexpr std::array<std::pair<std::string_view, platform::TextInput::Capitalization>, 4> kCapitalizations{{
-        {"none", platform::TextInput::Capitalization::None},
-        {"sentences", platform::TextInput::Capitalization::Sentences},
-        {"words", platform::TextInput::Capitalization::Words},
-        {"characters", platform::TextInput::Capitalization::Characters},
-    }};
-
     static Result draw(Context& context, const math::Rect& bounds, std::string& value, const Options& options);
 
     // Lays out the text a field shows, where a password shows one bullet per character.

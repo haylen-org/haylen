@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 
 #include <string>
+#include <vector>
 
+#include "haylen/input/AppTextField.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/platform/Event.hpp"
 #include "support/EngineFixture.hpp"
@@ -223,6 +225,41 @@ TEST_F(InputLuaTest, TurnsTheMouseIntoAFingerAndAFingerIntoTheMouse) {
 TEST(InputLuaAppTest, TakesThePointerDevicesFromTheAppSettings) {
     test::EngineFixture fixture({{"app.json", R"({"input": {"mouseAsTouch": true, "touchAsMouse": true}})"}});
     EXPECT_EQ(fixture.lua("local input = require('haylen.input') return tostring(input.mouseAsTouch()) .. ' ' .. tostring(input.touchAsMouse())"), "true true");
+}
+
+TEST_F(InputLuaTest, EditsATextFieldTheAppDrawsWithTheNativeTextInput) {
+    fixture.host().resize({960.0F, 540.0F});
+    fixture.host().getTextInput().setNative(true);
+    lua("events = {} require('haylen.scene').push({event = function(self, e) if e.type == 'textEdited' then events[#events + 1] = e end end})");
+    fixture.frames(1);
+
+    lua("input.editText({text = 'Ana', x = 100, y = 200, width = 400, height = 60, keyboard = 'email', returnKey = 'done'})");
+    const std::vector<platform::TextInput::Field>& published = fixture.host().getTextInput().getPublished();
+    ASSERT_EQ(published.size(), 1U);
+    EXPECT_EQ(published[0].id, AppTextField::kField);
+    EXPECT_EQ(published[0].text, "Ana");
+    EXPECT_EQ(published[0].selectionStart, 3);
+    EXPECT_EQ(published[0].bounds, (math::Rect{50.0F, 100.0F, 200.0F, 30.0F}));
+    EXPECT_EQ(published[0].options.keyboard, platform::TextInput::Keyboard::Email);
+    EXPECT_EQ(lua("return tostring(input.editingText())"), "true");
+
+    // What the user composes reaches the app, and showing it back keeps the native field as it is.
+    platform::Event typed{.type = platform::Event::Type::TextEdited};
+    typed.textEdit = {.field = AppTextField::kField, .revision = published[0].revision, .text = "Ana\xE3\x81\x82", .selectionStart = 4, .selectionEnd = 4, .compositionStart = 3, .compositionEnd = 4};
+    fixture.engine().handleEvent(typed);
+    EXPECT_EQ(lua("local e = events[1] return e.field .. ' ' .. e.text .. ' ' .. e.selectionStart .. ' ' .. e.compositionStart .. ' ' .. e.compositionEnd"), "4294967296 Ana\xE3\x81\x82 4 3 4");
+    lua("input.editText({text = events[1].text, selectionStart = 4, x = 100, y = 200, width = 400, height = 60, keyboard = 'email', returnKey = 'done'})");
+    EXPECT_EQ(published.size(), 1U);
+    lua("input.editText({text = '', x = 100, y = 200, width = 400, height = 60})");
+    ASSERT_EQ(published.size(), 2U);
+    EXPECT_GT(published[1].revision, published[0].revision);
+
+    lua("input.finishText()");
+    EXPECT_FALSE(fixture.host().getTextInput().isEditing());
+    EXPECT_NE(lua("input.editText({text = 'A', selectionStart = 5})").find("The selection of a text field must run from 0 to the length of its text"), std::string::npos);
+    EXPECT_NE(lua("input.editText({text = 'A', keyboard = 'emoji'})").find("The option \"keyboard\" of a text field must be \"text\", \"multiline\""), std::string::npos);
+    EXPECT_NE(lua("input.editText({})").find("A text field needs its \"text\" as a string."), std::string::npos);
+    EXPECT_NE(lua("input.editText({text = 'A', colour = 1})").find("Unknown option \"colour\""), std::string::npos);
 }
 
 TEST_F(InputLuaTest, DefinesActionsOneByOne) {

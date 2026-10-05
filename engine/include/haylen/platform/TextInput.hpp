@@ -1,8 +1,11 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <span>
 #include <string>
+#include <string_view>
+#include <utility>
 
 #include "haylen/math/Rect.hpp"
 
@@ -46,6 +49,32 @@ class TextInput {
         Cancel,
         Dismissed,
     };
+
+    static constexpr std::array<std::pair<std::string_view, Keyboard>, 9> kKeyboards{{
+        {"text", Keyboard::Text},
+        {"multiline", Keyboard::Multiline},
+        {"number", Keyboard::Number},
+        {"decimal", Keyboard::Decimal},
+        {"phone", Keyboard::Phone},
+        {"email", Keyboard::Email},
+        {"url", Keyboard::Url},
+        {"search", Keyboard::Search},
+        {"password", Keyboard::Password},
+    }};
+    static constexpr std::array<std::pair<std::string_view, ReturnKey>, 6> kReturnKeys{{
+        {"default", ReturnKey::Default},
+        {"done", ReturnKey::Done},
+        {"go", ReturnKey::Go},
+        {"next", ReturnKey::Next},
+        {"search", ReturnKey::Search},
+        {"send", ReturnKey::Send},
+    }};
+    static constexpr std::array<std::pair<std::string_view, Capitalization>, 4> kCapitalizations{{
+        {"none", Capitalization::None},
+        {"sentences", Capitalization::Sentences},
+        {"words", Capitalization::Words},
+        {"characters", Capitalization::Characters},
+    }};
 
     struct Options {
         Keyboard keyboard = Keyboard::Text;
