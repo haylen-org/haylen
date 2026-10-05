@@ -54,6 +54,9 @@ TEST(CollectionsLuaTest, PoolsRecycleObjects) {
     EXPECT_EQ(fixture.lua("pool:releaseAll() return pool.active .. ' ' .. pool.idle .. ' ' .. released"), "0 3 4");
     EXPECT_EQ(fixture.lua("local open = collections.newPool({create = function() return {} end}) open:prewarm(5) return open.idle .. ' ' .. open.capacity"), "5 0");
 
+    // A pool without hooks recycles its objects as they are.
+    EXPECT_EQ(fixture.lua("local plain = collections.newPool({create = function() return {} end}) local object = plain:acquire() object.hits = 3 plain:release(object) local again = plain:acquire() return tostring(again == object) .. ' ' .. again.hits .. ' ' .. plain.active"), "true 3 1");
+
     EXPECT_NE(fixture.lua("collections.newPool({})").find("create must be a function"), std::string::npos);
     EXPECT_NE(fixture.lua("collections.newPool({create = function() return {} end, size = 3})").find("Unknown option \"size\""), std::string::npos);
     EXPECT_NE(fixture.lua("collections.newPool({create = function() end}):acquire()").find("returned \"nil\""), std::string::npos);

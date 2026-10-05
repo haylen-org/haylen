@@ -151,6 +151,21 @@ TEST(SignalTest, OnceSlotsRunASingleTime) {
     EXPECT_EQ(total, 3);
     EXPECT_FALSE(once.isConnected());
     EXPECT_TRUE(signal.empty());
+
+    // A once slot may also disconnect its own connection while it runs.
+    core::Connection self;
+    // clang-format off
+    self = signal.connect([&](int value) {
+        total += value;
+        self.disconnect();
+    }, {.once = true});
+    // clang-format on
+    const core::Connection copy = self;
+    signal.emit(5);
+    signal.emit(6);
+    EXPECT_EQ(total, 8);
+    EXPECT_FALSE(copy.isConnected());
+    EXPECT_TRUE(signal.empty());
 }
 
 TEST(SignalTest, BlocksTheSignalOrOneSlot) {

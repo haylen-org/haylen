@@ -2,6 +2,8 @@
 
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/TweenManager.hpp"
@@ -35,6 +37,34 @@ TEST(TweenLuaTest, TweensEveryKindOfValue) {
     EXPECT_EQ(fixture.lua("return faded.alpha .. ' ' .. moved.x .. ' ' .. both.x"), "0.5 10.0 150.0");
     fixture.frames(2, 0.25);
     EXPECT_EQ(fixture.lua("return box.label .. ' ' .. moved.x .. ' ' .. tween.size()"), "hello 15.0 0");
+}
+
+TEST(TweenLuaTest, TweensFieldsAlongPathsOfTablesAndValues) {
+    {
+        test::EngineFixture fixture;
+        // clang-format off
+        fixture.runLua(R"(
+            tween = require('haylen.tween')
+            m = require('haylen.math')
+            hero = {stats = {hp = 100}, body = {position = m.vec2(0, 0)}}
+            tween.to(hero, 1, {['stats.hp'] = 50, ['body.position.x'] = 40})
+        )");
+        // clang-format on
+        fixture.frames(2, 0.25);
+        EXPECT_EQ(fixture.lua("return hero.stats.hp .. ' ' .. hero.body.position.x"), "75.0 20.0");
+    }
+
+    // A field whose holder becomes a value without that field while the tween plays stops the app with the reason.
+    for (const auto& [holder, message] : std::vector<std::pair<std::string, std::string>>{{"m.vec2(1, 1)", R"(Cannot tween the field "pos.z" because a "Vec2" has only "x" and "y".)"}, {"m.color(1, 1, 1, 1)", R"(Cannot tween the field "pos.z" because a "Color" has only "r", "g", "b" and "a".)"}}) {
+        test::EngineFixture failing;
+        failing.runLua("m = require('haylen.math') holder = {pos = {z = 0}} require('haylen.tween').to(holder, 1, {['pos.z'] = 5})");
+        failing.frames(1, 0.25);
+        EXPECT_EQ(failing.lua("return holder.pos.z"), "1.25");
+        failing.runLua("holder.pos = " + holder);
+        failing.frames(1, 0.25);
+        ASSERT_NE(failing.engine().getError(), nullptr) << holder;
+        EXPECT_NE(std::string_view(failing.engine().getError()->what()).find(message), std::string_view::npos) << failing.engine().getError()->what();
+    }
 }
 
 TEST(TweenLuaTest, RunsCallbacksAndControlsHandles) {
@@ -166,6 +196,12 @@ TEST(TweenLuaTest, BuildsTimelinesAndStaggers) {
     fixture.runLua("marked = tween.timeline({autoKill = false}):append(tween.to(box, 1, {x = 4})):addLabel('half', 0.5)");
     fixture.runLua("marked:seek('half')");
     EXPECT_EQ(fixture.lua("return box.x"), "2.0");
+
+    // A joined function runs at the start of the last step.
+    fixture.runLua("joined = false walker = {x = 0} tween.timeline():append(tween.to(walker, 1, {x = 1})):join(function() joined = true end)");
+    fixture.frames(1, 0.25);
+    EXPECT_EQ(fixture.lua("return tostring(joined) .. ' ' .. walker.x"), "true 0.25");
+
     EXPECT_NE(fixture.lua("tween.timeline():append(tween.to(box, 1, {x = 1}, {speedBased = true}))").find("speed-based"), std::string::npos);
     EXPECT_NE(fixture.lua("marked:insert('missing', function() end)").find("no label named \"missing\""), std::string::npos);
     EXPECT_NE(fixture.lua("tween.stagger({{v = 1}}, 1, function() return 5 end)").find("haylen.Tween expected"), std::string::npos);
@@ -216,6 +252,24 @@ TEST(TweenLuaTest, PlaysReadyMadeTweens) {
     fixture.frames(2, 0.25);
     EXPECT_EQ(fixture.lua("return shaken.x .. ',' .. shaken.y .. ' ' .. string.format('%.3f', punched.offset)"), "10.0,10.0 0.000");
 
+    // Ready-made tweens take a pair of number fields, a whole value for a scale, the hidden value of a blink and an overwrite of the tweens before them.
+    // clang-format off
+    fixture.runLua(R"(
+        pair = {px = 0, py = 0}
+        tween.move(pair, 1, {10, 20}, {field = {'px', 'py'}})
+        sized = {size = m.vec2(1, 1)}
+        tween.scale(sized, 1, m.vec2(3, 5), {field = 'size'})
+        glow = {alpha = 1}
+        tween.blink(glow, 1, 2, {field = 'alpha', hidden = 0.25})
+        runner = {x = 0, y = 0}
+        older = tween.move(runner, 1, {100, 0})
+        newer = tween.move(runner, 1, {0, 100}, {overwrite = true})
+    )");
+    // clang-format on
+    fixture.frames(1, 0.25);
+    EXPECT_EQ(fixture.lua("return pair.px .. ',' .. pair.py .. ' ' .. sized.size.x .. ',' .. sized.size.y .. ' ' .. glow.alpha"), "2.5,5.0 1.5,2.0 0.25");
+    EXPECT_EQ(fixture.lua("return tostring(older.alive) .. ' ' .. runner.x .. ',' .. runner.y"), "false 0.0,25.0");
+
     EXPECT_NE(fixture.lua("tween.path({v = 1}, 1, {{1, 1}}, {field = 'v'})").find("needs a \"Vec2\" field"), std::string::npos);
     EXPECT_NE(fixture.lua("tween.bezier({x = 0, y = 0}, 1, {{1, 1}})").find("one or two control points"), std::string::npos);
     EXPECT_NE(fixture.lua("tween.move({x = 0, y = 0}, 1, {1, 1}, {field = {'x'}})").find("two number field names"), std::string::npos);
@@ -243,6 +297,11 @@ TEST(TweenLuaTest, AnimatesNativePropertiesWithoutLua) {
     fixture.frames(2, 0.25);
     EXPECT_EQ(fixture.lua("return tween.size()"), "0");
     EXPECT_EQ(fixture.engine().getError(), nullptr);
+
+    // A property of a userdata that has no native form, such as the time scale of a tween, tweens through its Lua accessors.
+    fixture.runLua("crawler = {x = 0} slow = tween.to(crawler, 10, {x = 10}) tween.to(slow, 1, {timeScale = 3})");
+    fixture.frames(2, 0.25);
+    EXPECT_EQ(fixture.lua("return slow.timeScale"), "2.0");
 }
 
 TEST(TweenLuaTest, TiesTweensToTargetsOwnersAndTags) {
@@ -350,6 +409,8 @@ TEST(TweenLuaTest, EasesWithEveryKindOfCurve) {
     EXPECT_EQ(fixture.lua("return tostring(m.ease({curve = 'elasticOut', amplitude = 2, period = 0.5}, 0.2) ~= m.ease('elasticOut', 0.2))"), "true");
     EXPECT_NE(fixture.lua("m.ease({curve = 'quadIn', overshoot = 2}, 0.5)").find("overshoot only applies"), std::string::npos);
     EXPECT_NE(fixture.lua("m.ease({cubicBezier = {2, 0, 0, 1}}, 0.5)").find("between 0 and 1"), std::string::npos);
+    EXPECT_NE(fixture.lua("m.ease({cubicBezier = {0.25, 0.1}}, 0.5)").find("A \"cubicBezier\" curve needs the four numbers \"x1\", \"y1\", \"x2\" and \"y2\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("m.ease(5, 0.5)").find("easing curve name, function or table expected, got number"), std::string::npos);
     EXPECT_NE(fixture.lua("m.ease({speed = 1}, 0.5)").find("Unknown option \"speed\""), std::string::npos);
     EXPECT_NE(fixture.lua("m.ease({steps = 4294967297}, 0.5)").find("The option \"steps\""), std::string::npos);
     EXPECT_NE(fixture.lua("m.ease(function() return 'x' end, 0.5)").find("must return a number"), std::string::npos);
@@ -374,6 +435,16 @@ TEST(TweenLuaTest, ReportsMistakes) {
     EXPECT_NE(fixture.lua("tween.to(box, 1, {['x.y'] = 1})").find("part of its path is number"), std::string::npos);
     EXPECT_NE(fixture.lua("tween.fromTo(box, 1, {x = 1}, {})").find("needs an end value for the field \"x\""), std::string::npos);
     EXPECT_NE(fixture.lua("tween.to(5, 1, {})").find("must be a table or a userdata"), std::string::npos);
+    EXPECT_NE(fixture.lua("tween.to({label = 'a'}, 1, {label = 5})").find("The tween value of \"label\" must be a text."), std::string::npos);
+    EXPECT_NE(fixture.lua("tween.to(box, 1, {x = 1}, {angles = 'x'})").find("The tween option \"angles\" must be a list of field names."), std::string::npos);
+    EXPECT_NE(fixture.lua("tween.to({tint = require('haylen.math').color(1, 1, 1, 1)}, 1, {tint = '#000000FF'}, {colorSpace = 'lab'})").find("The tween option \"colorSpace\" must be \"rgb\" or \"hsv\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("tween.to(box, 1, {x = 1}, {loopMode = 'bounce'})").find("unknown value 'bounce'"), std::string::npos);
+    EXPECT_NE(fixture.lua("tween.stagger({{v = 0}}, 1, function(row) return tween.to(row, 1, {v = 1}) end, {origin = 'middle'})").find("unknown value 'middle'"), std::string::npos);
+
+    // Fields that are no native property of a userdata go through Lua, which reaches only what the object has.
+    fixture.runLua("camera = require('haylen.graphics2d').newCamera()");
+    EXPECT_NE(fixture.lua("tween.move(camera, 1, {1, 1}, {field = {'position', 'zoom'}})").find("Cannot tween the field \"position\" as part of a \"Vec2\" because it is not a number."), std::string::npos);
+    EXPECT_NE(fixture.lua("tween.to(camera, 1, {['zoom.z'] = 2})").find("has no member \"z\""), std::string::npos);
 
     // A list counts the elements it holds, whatever its `__len` claims.
     EXPECT_NE(fixture.lua("tween.path({x = 0, y = 0}, 1, setmetatable({}, {__len = function() return -1 end}))").find("A path needs at least one point."), std::string::npos);

@@ -2,9 +2,11 @@
 
 #include <chrono>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/2d/graphics/Camera.hpp"
@@ -27,6 +29,8 @@
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/Plugin.hpp"
 #include "haylen/storage/UserStorage.hpp"
+#include "platform/NativeViews.hpp"
+#include "platform/headless/HeadlessHost.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
@@ -39,15 +43,38 @@ namespace haylen::core {
 
 namespace {
 
-// Fails at the end of every frame, like a plugin with a bug in its bookkeeping.
-class FailingEndPlugin final : public plugins::Plugin {
+// Fails in one hook of every frame, like a plugin with a bug in its bookkeeping.
+class FailingFramePlugin final : public plugins::Plugin {
   public:
+    enum class Hook {
+        Event,
+        Overlay,
+        EndFrame,
+    };
+
+    explicit FailingFramePlugin(Hook value) : failing(value) {}
+
     [[nodiscard]] std::string_view getName() const noexcept override {
         return "failing";
     }
-    void endFrame(core::Engine&) override {
-        throw std::runtime_error("end of frame failed");
+    void event(core::Engine&, const platform::Event&) override {
+        fail(Hook::Event, "event failed");
     }
+    void renderOverlay(core::Engine&) override {
+        fail(Hook::Overlay, "overlay failed");
+    }
+    void endFrame(core::Engine&) override {
+        fail(Hook::EndFrame, "end of frame failed");
+    }
+
+  private:
+    void fail(Hook hook, const char* message) const {
+        if (hook == failing) {
+            throw std::runtime_error(message);
+        }
+    }
+
+    Hook failing;
 };
 
 // Fails to start, and counts the stops it receives, which a plugin that never started must not get.
@@ -194,6 +221,12 @@ TEST(AppConfigTest, ReadsEveryField) {
 TEST(AppConfigTest, RejectsInvalidValues) {
     for (const char* document : {R"([])", R"({"name": 3})", R"({"window": {"width": 0}})", R"({"design": {"scaling": "zoom"}})", R"({"design": {"height": -1}})", R"({"orientation": "sideways"})", R"({"fixedRate": 0})", R"({"clearColor": "blue"})", R"({"title": "typo"})", R"({"window": {"fullScreen": true}})", R"({"design": {"widht": 10}})", R"({"splash": {"background": "blue"}})", R"({"splash": {"image": "logo.png"}})", R"({"splash": {"darkBackground": ""}})", R"({"splash": {"duration": -1}})", R"({"splash": {"fadeOut": "slow"}})"}) {
         EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(document)), std::invalid_argument) << document;
+    }
+    try {
+        (void)core::AppConfig::fromJson(core::Json::parse(R"({"autoload": ["state.player", ""]})"));
+        FAIL() << "An autoload needs the name of its module.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_STREQ(error.what(), "The \"autoload\" list in \"app.json\" has an empty module name.");
     }
 }
 
@@ -599,11 +632,42 @@ TEST(EngineTest, ReportsFailuresFromAsynchronousCallbacksAndRendering) {
     EXPECT_STREQ(fixture.engine().getError()->what(), "late failure");
 }
 
-TEST(EngineTest, ReportsFailuresOfPluginsAtTheEndOfAFrame) {
-    test::EngineFixture fixture({}, std::make_unique<test::TestApplication>([](core::Engine& engine) { engine.addPlugin(std::make_unique<FailingEndPlugin>()); }));
+TEST(EngineTest, ReportsFailuresOfPluginsInEveryHookOfAFrame) {
+    for (const auto& [hook, message] : std::vector<std::pair<FailingFramePlugin::Hook, std::string_view>>{{FailingFramePlugin::Hook::Event, "event failed"}, {FailingFramePlugin::Hook::Overlay, "overlay failed"}, {FailingFramePlugin::Hook::EndFrame, "end of frame failed"}}) {
+        test::EngineFixture fixture({}, std::make_unique<test::TestApplication>([failing = hook](core::Engine& engine) { engine.addPlugin(std::make_unique<FailingFramePlugin>(failing)); }));
+        fixture.engine().handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::A});
+        fixture.frames(1);
+        ASSERT_NE(fixture.engine().getError(), nullptr) << message;
+        EXPECT_EQ(std::string_view(fixture.engine().getError()->what()), message);
+    }
+}
+
+TEST(EngineTest, StartsPluginsAddedBeforeItStartsOnce) {
+    test::TemporaryDirectory directory;
+    platform::HeadlessHost host(directory.getPath());
+    std::optional<core::Engine::Phase> startPhase;
+    core::Engine engine(host, std::make_shared<io::MemoryPackage>("app"), core::AppConfig{}, std::make_unique<test::TestApplication>([&startPhase](core::Engine& running) { startPhase = running.getPhase(); }));
+    const CountingPlugin& plugin = engine.addPlugin(std::make_unique<CountingPlugin>());
+    EXPECT_EQ(plugin.started, 0);
+
+    // The start of the app runs as a lifecycle step, and a second start changes nothing.
+    engine.start();
+    engine.start();
+    EXPECT_EQ(plugin.started, 1);
+    EXPECT_EQ(startPhase, core::Engine::Phase::Lifecycle);
+    EXPECT_EQ(engine.getPhase(), core::Engine::Phase::Frame);
+    engine.stop();
+    EXPECT_EQ(plugin.stopped, 1);
+}
+
+TEST(EngineTest, ReportsFailuresOfListenersWhenNativeUiCoversTheApp) {
+    test::EngineFixture fixture;
+    fixture.runLua("require('haylen.events').on('appInactive', function() error('the cover broke', 0) end)");
+    fixture.host().getNativeViews().coverApp();
     fixture.frames(1);
     ASSERT_NE(fixture.engine().getError(), nullptr);
-    EXPECT_STREQ(fixture.engine().getError()->what(), "end of frame failed");
+    EXPECT_STREQ(fixture.engine().getError()->what(), "the cover broke");
+    EXPECT_EQ(fixture.engine().getAppState(), core::Engine::AppState::Inactive);
 }
 
 TEST(EngineTest, StopsOnlyThePluginsThatStarted) {

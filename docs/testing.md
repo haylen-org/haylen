@@ -68,7 +68,7 @@ The support folder provides the other shared helpers.
 | --- | --- |
 | `TestApplication(onStart)` | An application whose `start` runs the given function, for tests that add plugins or push C++ scenes, in `support/TestApplication.hpp`. |
 | `DrawingScene(draw)` | A scene whose `render` runs the given function inside a real frame, in `support/EngineFixture.hpp`. |
-| `RecordingScene(name, log, transparent, processMode)` | A scene that writes every hook it receives to a shared log as `name:hook`, counts its updates and renders, and loads at once, through a deferral the test completes or with a failure, preloading the asset groups it lists, in `support/RecordingScene.hpp`. |
+| `RecordingScene(name, log, transparent, processMode)` | A scene that writes every hook it receives to a shared log as `name:hook`, counts its updates and renders, and loads at once, through a deferral the test completes or with a failure, preloading the asset groups it lists. Its `onHook` function runs with the entry of every hook right after it is logged, so a test can clear the stack or fail the hook in the middle of a change, in `support/RecordingScene.hpp`. |
 | `RecordingEffect(switchAt, exitAt)` | A transition effect with the given switch and exit points that records the progress and the images it draws, in `support/RecordingEffect.hpp`. |
 | `TemporaryDirectory` | A unique folder under the system temporary directory, removed afterwards, with `getPath()` and `write(relative, content)`, in `support/TemporaryDirectory.hpp`. |
 | `bytes(text)`, `pngImage(width, height, rgba)`, `randomBytes(size, seed)` | Test data: raw bytes, a solid PNG image and bytes that look random but are the same for the same seed, in `support/TestFiles.hpp`. |

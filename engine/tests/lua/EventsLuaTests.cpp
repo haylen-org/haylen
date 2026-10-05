@@ -47,6 +47,23 @@ TEST(SignalLuaTest, ConnectsWithPriorityOnceOwnersAndDeferral) {
     fixture.runLua("calls = {} hit:connect(function(value) calls[#calls + 1] = 'deferred once:' .. value end, {once = true, deferred = true}) hit:emit(6) hit:emit(7)");
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return table.concat(calls, ' ')"), "first:6 normal:6 first:7 normal:7 deferred once:6");
+
+    // A deferred listener that disconnects, or whose owner is collected, before the end of the frame misses the call queued for it.
+    // clang-format off
+    fixture.runLua(R"(
+        calls = {}
+        local dropped = hit:connect(function() calls[#calls + 1] = 'dropped' end, {deferred = true})
+        local owner = {}
+        hit:connect(function() calls[#calls + 1] = 'collected' end, {deferred = true, owner = owner})
+        hit:emit(8)
+        dropped:disconnect()
+        owner = nil
+        collectgarbage()
+        collectgarbage()
+    )");
+    // clang-format on
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return table.concat(calls, ' ')"), "first:8 normal:8");
 }
 
 TEST(EventsLuaTest, PublishesAndSubscribesByName) {
@@ -328,6 +345,7 @@ TEST(AutoloadTest, LoadsModulesBeforeMainAndRunsTheirCallbacks) {
     EXPECT_NE(fixture.lua("haylen.autoload('soundtrack', 'state.player-data')").find("already exists"), std::string::npos);
     EXPECT_NE(fixture.lua("haylen.autoload('state.menu-music')").find("is already the autoload \"soundtrack\""), std::string::npos);
     EXPECT_NE(fixture.lua("haylen.autoload('missing.module')").find("missing/module"), std::string::npos);
+    EXPECT_NE(fixture.lua("haylen.autoload('', 'state.menu-music')").find("An autoload needs a name."), std::string::npos);
 
     fixture.runLua("stopLog = require('state.player-data').log");
     fixture.engine().stop();

@@ -163,6 +163,7 @@ TEST_F(MathLuaTest, MeasuresCirclesAndSegments) {
     EXPECT_EQ(lua("return tostring(m.closestPoint({{0, 0}, {10, 0}}, {4, 3})) .. ' ' .. m.distanceToSegment({{0, 0}, {10, 0}}, {13, 4})"), "Vec2(4.0, 0.0) 5.0");
     EXPECT_EQ(lua("return tostring(m.bounds({{3, 1}, {-2, 4}, {5, -1}})) .. ' ' .. tostring(m.bounds({}))"), "Rect(-2.0, -1.0, 7.0, 5.0) Rect(0.0, 0.0, 0.0, 0.0)");
     EXPECT_NE(lua("return m.intersects({radius = 5}, {{0, 0}, 1})").find("Expected a point in field \"center\"."), std::string::npos);
+    EXPECT_NE(lua("return m.intersects(5, {0, 0, 1, 1})").find("table with center and radius expected, got number"), std::string::npos);
     EXPECT_NE(lua("return m.closestPoint(5, {0, 0})").find("table with start and end expected"), std::string::npos);
 }
 

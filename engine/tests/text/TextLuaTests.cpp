@@ -96,6 +96,12 @@ TEST_F(TextLuaTest, EndsParagraphsAtEverySeparatorAndHidesControlCharacters) {
     EXPECT_EQ(lua(R"(local laid = font:layout('a\tb', {size = 20}) return #laid.quads .. ' ' .. tostring(math.abs(laid.size.x - font:measure('a', {size = 20}) - font:measure('b', {size = 20})) < 0.01))"), "2 true");
 }
 
+// The anchor is the fraction of the block that lands on the position, and the line spacing spreads the lines apart.
+TEST_F(TextLuaTest, PlacesTheBlockByItsAnchorAndSpacesItsLines) {
+    EXPECT_EQ(lua("local plain = font:layout('AB', {size = 20}) local moved = font:layout('AB', {size = 20, anchor = {0.5, 1}}).quads[1].position local quad = plain.quads[1].position return tostring(math.abs(moved.x - quad.x + plain.size.x * 0.5) < 0.001 and math.abs(moved.y - quad.y + plain.size.y) < 0.001)"), "true");
+    EXPECT_EQ(lua("return font:layout('A\\nB', {size = 20, lineSpacing = 2}).size.y > font:layout('A\\nB', {size = 20}).size.y"), "true");
+}
+
 TEST_F(TextLuaTest, SameFontsCompareEqual) {
     lua("pixel = assets.font('fonts/pixel.fnt') family = graphics.newFontFamily({regular = font, fallbacks = {pixel}}) target = graphics.newRenderTarget(8, 8)");
     EXPECT_EQ(lua("return tostring(family.fallbacks[1] == family.fallbacks[1]) .. ' ' .. tostring(family:resolve('A') == family.regular) .. ' ' .. tostring(family.regular == font) .. ' ' .. tostring(pixel == assets.font('fonts/pixel.fnt'))"), "true true true true");

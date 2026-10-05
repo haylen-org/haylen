@@ -54,6 +54,21 @@ class TweenRig final {
     core::TweenManager tweens;
 };
 
+// A tween of two seconds that only remembers where it played to, the way a project extends the engine with its own kind of tween.
+class PlayheadTween final : public core::Tween {
+  public:
+    [[nodiscard]] float getDuration() const noexcept override {
+        return 2.0F;
+    }
+
+    float playhead = 0.0F;
+
+  protected:
+    void renderLoop(float loopTime, float, int, bool) override {
+        playhead = loopTime;
+    }
+};
+
 } // namespace
 
 TEST(TweenValueTest, MixesEveryKind) {
@@ -87,10 +102,13 @@ TEST(TweenValueTest, MixesEveryKind) {
 
     EXPECT_DOUBLE_EQ(core::TweenValue::add(2.0, 3.0, 2.0F).getNumber(), 8.0);
     EXPECT_FLOAT_EQ(core::TweenValue::difference(math::Vec2{5.0F, 1.0F}, math::Vec2{2.0F, 1.0F}).getVector().x, 3.0F);
+    EXPECT_EQ(core::TweenValue::add(math::Color{0.5F, 0.25F, 0.0F, 1.0F}, math::Color{0.25F, 0.25F, 0.5F, -0.5F}, 2.0F).getColor(), (math::Color{1.0F, 0.75F, 1.0F, 0.0F}));
+    EXPECT_EQ(core::TweenValue::difference(blue, red).getColor(), (math::Color{-1.0F, 0.0F, 1.0F, 0.0F}));
     EXPECT_FLOAT_EQ(core::TweenValue::distance(math::Vec2{0.0F, 0.0F}, math::Vec2{3.0F, 4.0F}, Interpolation::Linear), 5.0F);
     EXPECT_FLOAT_EQ(core::TweenValue::distance(red, blue, Interpolation::Linear), 1.0F);
     EXPECT_THROW((void)core::TweenValue::mix(1.0, math::Vec2{}, 0.5F, Interpolation::Linear), std::invalid_argument);
     EXPECT_THROW((void)core::TweenValue::add(std::string("a"), std::string("b")), std::invalid_argument);
+    EXPECT_THROW((void)core::TweenValue::difference(std::string("a"), std::string("b")), std::invalid_argument);
 
     // The end of a tween is its target exactly, even where subtracting and adding back the start rounds.
     EXPECT_EQ(core::TweenValue::mix(12.3, -4.56, 1.0F, Interpolation::Linear).getNumber(), -4.56);
@@ -150,6 +168,7 @@ TEST(TweenMotionTest, FollowsShapesAndComesBack) {
     const auto path = core::TweenMotion::path({{10.0F, 0.0F}, {10.0F, 30.0F}}, false, false);
     path->prepare(start, math::Vec2{10.0F, 30.0F});
     EXPECT_FLOAT_EQ(path->getDistance(start, math::Vec2{}), 40.0F);
+    EXPECT_EQ(path->evaluate(start, math::Vec2{}, 0.0F).getVector(), (math::Vec2{0.0F, 0.0F}));
     const math::Vec2 quarter = path->evaluate(start, math::Vec2{}, 0.25F).getVector();
     EXPECT_NEAR(quarter.x, 10.0F, 1e-3F);
     EXPECT_NEAR(quarter.y, 0.0F, 1e-3F);
@@ -187,7 +206,16 @@ TEST(TweenMotionTest, FollowsShapesAndComesBack) {
     EXPECT_DOUBLE_EQ(blink->evaluate(1.0, 0.0, 0.6F).getNumber(), 1.0);
     EXPECT_DOUBLE_EQ(blink->evaluate(1.0, 0.0, 1.0F).getNumber(), 1.0);
 
+    // The distance a speed-based tween travels is the strength of a shake, one unit per blink, nothing for a heading and the straight line of a jump.
+    EXPECT_FLOAT_EQ(shake->getDistance(start, strength), strength.getVector().getLength());
+    EXPECT_FLOAT_EQ(blink->getDistance(1.0, 0.0), 2.0F);
+    EXPECT_FLOAT_EQ(heading->getDistance(0.0, 0.0), 0.0F);
+    EXPECT_FLOAT_EQ(jump->getDistance(start, math::Vec2{30.0F, 40.0F}), 50.0F);
+
     EXPECT_THROW((void)core::TweenMotion::jump(1.0F, 0), std::invalid_argument);
+    EXPECT_THROW((void)core::TweenMotion::shake(0, 90.0F, 1U), std::invalid_argument);
+    EXPECT_THROW((void)core::TweenMotion::punch(0, 0.5F), std::invalid_argument);
+    EXPECT_THROW((void)core::TweenMotion::blink(0), std::invalid_argument);
     EXPECT_THROW((void)core::TweenMotion::path({}, false, false), std::invalid_argument);
     EXPECT_THROW((void)core::TweenMotion::bezier({}), std::invalid_argument);
     EXPECT_THROW((void)core::TweenMotion::orientation(jump), std::invalid_argument);
@@ -222,7 +250,11 @@ TEST(TweenManagerTest, PlaysEasedProgressWithDelayAndCallbacks) {
     EXPECT_FALSE(tween->isAlive());
     EXPECT_EQ(rig.tweens.size(), 0U);
     EXPECT_THROW(rig.tweens.add(tween), std::logic_error);
+    EXPECT_THROW(rig.tweens.add(nullptr), std::invalid_argument);
     EXPECT_THROW(core::PropertyTween(0.0F), std::invalid_argument);
+    EXPECT_THROW(tween->addTrack(nullptr), std::invalid_argument);
+    EXPECT_THROW(core::PropertyTrack(&box, {"x"}, {}, [](const core::TweenValue&) {}, core::TweenProperty::to(1.0)), std::invalid_argument);
+    EXPECT_FLOAT_EQ(tween->getEase().apply(0.5F), 0.25F);
 }
 
 TEST(TweenManagerTest, RepeatsWithEveryLoopMode) {
@@ -263,6 +295,12 @@ TEST(TweenManagerTest, RepeatsWithEveryLoopMode) {
     EXPECT_TRUE(third->isPlaying());
     third->complete();
     EXPECT_TRUE(third->isAlive());
+
+    // Seeking a tween that repeats forever moves within its current loop, the twelfth one after 11.75 seconds.
+    EXPECT_NEAR(incremental.x, 117.5, 1e-4);
+    third->seek(0.25F);
+    EXPECT_NEAR(incremental.x, 112.5, 1e-4);
+    EXPECT_FLOAT_EQ(third->getTime(), 11.25F);
 }
 
 TEST(TweenManagerTest, ControlsPlayback) {
@@ -315,6 +353,97 @@ TEST(TweenManagerTest, ControlsPlayback) {
     EXPECT_EQ(finished, (std::vector<bool>{true, true, true, false}));
     tween->kill();
     EXPECT_EQ(rig.tweens.size(), 0U);
+
+    // A killed tween never moves its target again.
+    tween->restart();
+    tween->seek(0.5F);
+    EXPECT_DOUBLE_EQ(box.x, 20.0);
+    EXPECT_FALSE(tween->isAlive());
+}
+
+TEST(TweenManagerTest, CallbacksThatKillTheTweenStopItWhereItIs) {
+    TweenRig rig;
+
+    // A loop callback that kills the tween leaves the target where the loop ended, without rewinding it for the next loop.
+    Box looping;
+    auto tween = rig.tweenX(looping, 1.0F, core::TweenProperty::to(10.0));
+    tween->setRepeatCount(2);
+    tween->getCallbacks().loop = [&tween](int) { tween->kill(); };
+
+    // A call at the end of a loop of a timeline that kills the timeline stops it there, before the next loop begins.
+    Box timed;
+    int loops = 0;
+    auto timeline = std::make_shared<core::Timeline>();
+    timeline->append(rig.tweenX(timed, 1.0F, core::TweenProperty::to(10.0), false));
+    timeline->appendCall([&timeline] { timeline->kill(); });
+    timeline->setRepeatCount(2);
+    timeline->getCallbacks().loop = [&loops](int) { ++loops; };
+    rig.tweens.add(timeline);
+
+    // A complete callback that kills the tween ends it once.
+    Box finishing;
+    int kills = 0;
+    auto completing = rig.tweenX(finishing, 1.0F, core::TweenProperty::to(10.0));
+    completing->getCallbacks().complete = [&completing] { completing->kill(); };
+    completing->getCallbacks().kill = [&kills] { ++kills; };
+
+    // A loop callback that lets the target go stops the tween before it rewinds the target for the next loop.
+    Box abandoned;
+    bool alive = true;
+    auto releasing = std::make_shared<core::PropertyTween>(1.0F);
+    releasing->addTrack(TweenRig::numberTrack(abandoned, core::TweenProperty::to(10.0), [&alive] { return alive; }));
+    releasing->setRepeatCount(2);
+    releasing->getCallbacks().loop = [&alive](int) { alive = false; };
+    rig.tweens.add(releasing);
+
+    rig.step(1.5);
+    EXPECT_DOUBLE_EQ(looping.x, 10.0);
+    EXPECT_FALSE(tween->isAlive());
+    EXPECT_DOUBLE_EQ(abandoned.x, 10.0);
+    EXPECT_FALSE(releasing->isAlive());
+    EXPECT_DOUBLE_EQ(timed.x, 10.0);
+    EXPECT_EQ(loops, 0);
+    EXPECT_FALSE(timeline->isAlive());
+    EXPECT_DOUBLE_EQ(finishing.x, 10.0);
+    EXPECT_EQ(kills, 1);
+    EXPECT_FALSE(completing->isAlive());
+    EXPECT_EQ(rig.tweens.size(), 0U);
+}
+
+// The finished signal fires and the tween ends even when its kill callback fails, so nothing waits for it forever.
+TEST(TweenManagerTest, EndsEvenWhenTheKillCallbackFails) {
+    TweenRig rig;
+    Box box;
+    auto tween = rig.tweenX(box, 1.0F, core::TweenProperty::to(10.0));
+    tween->getCallbacks().kill = [] { throw std::runtime_error("the kill callback failed"); };
+    std::vector<bool> finished;
+    tween->finished.connect([&finished](bool completed) { finished.push_back(completed); });
+    rig.step(0.5);
+
+    EXPECT_THROW(tween->kill(), std::runtime_error);
+    EXPECT_EQ(finished, std::vector<bool>{false});
+    EXPECT_FALSE(tween->isAlive());
+    rig.step(0.5);
+    EXPECT_DOUBLE_EQ(box.x, 5.0);
+    EXPECT_EQ(rig.tweens.size(), 0U);
+}
+
+// A tween of a project runs in the manager like the tweens of the engine, and kills by target and overwrites leave it alone, since it animates no target the engine knows.
+TEST(TweenManagerTest, PlaysTweensThatProjectsDefine) {
+    TweenRig rig;
+    Box box;
+    auto custom = std::make_shared<PlayheadTween>();
+    std::vector<float> progress;
+    custom->getCallbacks().update = [&progress](float value) { progress.push_back(value); };
+    rig.tweens.add(custom);
+    rig.step(0.5);
+
+    rig.tweens.killTarget(&box);
+    rig.tweens.overwrite(*rig.tweenX(box, 1.0F, core::TweenProperty::to(1.0), false));
+    rig.step(0.5);
+    EXPECT_TRUE(custom->isAlive());
+    EXPECT_FLOAT_EQ(custom->playhead, 1.0F);
+    EXPECT_EQ(progress, (std::vector<float>{0.25F, 0.5F}));
 }
 
 TEST(TweenManagerTest, KillingBeforeTheEndReportsNoCompletion) {
@@ -328,6 +457,7 @@ TEST(TweenManagerTest, KillingBeforeTheEndReportsNoCompletion) {
     EXPECT_TRUE(connection.isConnected());
     connection.setBlocked(true);
     EXPECT_TRUE(tween->isPaused());
+    EXPECT_TRUE(connection.isBlocked());
     connection.disconnect();
     EXPECT_FALSE(completed);
     EXPECT_FALSE(connection.isConnected());
@@ -428,7 +558,14 @@ TEST(TweenManagerTest, ActsOnTagsTargetsAndOverwrites) {
 
     rig.tweens.killTarget(&second);
     EXPECT_FALSE(other->isAlive());
+    auto hud = rig.tweenX(second, 1.0F, core::TweenProperty::to(10.0), false);
+    hud->setTag("hud");
+    rig.tweens.add(hud);
     rig.tweens.killTag("missing");
+    EXPECT_TRUE(hud->isAlive());
+    rig.tweens.killTag("hud");
+    EXPECT_FALSE(hud->isAlive());
+    EXPECT_TRUE(newer->isAlive());
     rig.tweens.killAll();
     EXPECT_FALSE(newer->isAlive());
 }
@@ -486,6 +623,18 @@ TEST(TweenManagerTest, CallbacksMayChangeTweensWhileUpdating) {
     self->getCallbacks().start = [&] { self->kill(); };
     rig.step(0.5);
     EXPECT_FALSE(self->isAlive());
+
+    // A tween that a callback moves into a timeline leaves the manager before the update reaches it.
+    Box moved;
+    auto taker = std::make_shared<core::Timeline>();
+    auto trigger = rig.tweenX(box, 1.0F, core::TweenProperty::to(5.0));
+    auto runner = rig.tweenX(moved, 1.0F, core::TweenProperty::to(5.0));
+    trigger->getCallbacks().start = [&] { taker->append(runner); };
+    rig.step(0.5);
+    EXPECT_EQ(taker->size(), 1U);
+    EXPECT_DOUBLE_EQ(moved.x, 0.0);
+    EXPECT_EQ(rig.tweens.size(), 1U);
+    EXPECT_FLOAT_EQ(taker->getDuration(), 1.0F);
 
     // Clearing drops tweens without running their callbacks.
     int calls = 0;
@@ -632,6 +781,101 @@ TEST(TimelineTest, RejectsInvalidChildrenAndKillsTheirTweens) {
     EXPECT_TRUE(timeline->isAlive());
     timeline->kill();
     EXPECT_EQ(timeline->size(), 0U);
+}
+
+TEST(TimelineTest, JoinsIntoTheFirstStepAndPlaysCallsAtOnce) {
+    TweenRig rig;
+    Box first;
+    Box second;
+
+    // Joining into an empty timeline starts its first step, and the update callback receives the progress through the loop.
+    auto parallel = std::make_shared<core::Timeline>();
+    parallel->join(rig.tweenX(first, 1.0F, core::TweenProperty::to(10.0), false));
+    parallel->join(rig.tweenX(second, 0.5F, core::TweenProperty::to(10.0), false));
+    float parallelProgress = 0.0F;
+    parallel->getCallbacks().update = [&parallelProgress](float value) { parallelProgress = value; };
+    EXPECT_FLOAT_EQ(parallel->getDuration(), 1.0F);
+    rig.tweens.add(parallel);
+    rig.step(0.5);
+    EXPECT_DOUBLE_EQ(first.x, 5.0);
+    EXPECT_DOUBLE_EQ(second.x, 10.0);
+    EXPECT_FLOAT_EQ(parallelProgress, 0.5F);
+
+    // A timeline of calls alone takes no time, so it runs every call and step and completes at once.
+    std::vector<std::string> log;
+    float callsProgress = 0.0F;
+    auto calls = std::make_shared<core::Timeline>();
+    calls->joinCall([&log] { log.emplace_back("first"); });
+    calls->joinCall([&log] { log.emplace_back("joined"); });
+    calls->appendCall([&log] { log.emplace_back("next"); });
+    calls->getCallbacks().step = [&log](int step) { log.push_back("step " + std::to_string(step)); };
+    calls->getCallbacks().update = [&callsProgress](float value) { callsProgress = value; };
+    EXPECT_FLOAT_EQ(calls->getDuration(), 0.0F);
+    rig.tweens.add(calls);
+    rig.step(0.1);
+    EXPECT_EQ(log, (std::vector<std::string>{"first", "joined", "next", "step 0", "step 1"}));
+    EXPECT_FLOAT_EQ(callsProgress, 1.0F);
+    EXPECT_TRUE(calls->isCompleted());
+    EXPECT_FALSE(calls->isAlive());
+}
+
+TEST(TimelineTest, CallsMayChangeTheTimelineWhileItPlays) {
+    TweenRig rig;
+    Box first;
+    Box second;
+    std::vector<std::string> log;
+    float duringCall = 0.0F;
+    auto timeline = std::make_shared<core::Timeline>();
+    auto later = rig.tweenX(second, 3.0F, core::TweenProperty::to(30.0), false);
+    timeline->append(rig.tweenX(first, 1.0F, core::TweenProperty::to(10.0), false));
+
+    // A call kills a tween that comes after it in the same render and inserts another call, and the timeline counts only what it still holds.
+    // clang-format off
+    timeline->insertCall(0.5F, [&] {
+        later->kill();
+        timeline->insertCall(0.75F, [&log] { log.emplace_back("inserted"); });
+        duringCall = timeline->getDuration();
+    });
+    // clang-format on
+    timeline->insert(0.5F, later);
+    EXPECT_FLOAT_EQ(timeline->getDuration(), 3.5F);
+    rig.tweens.add(timeline);
+
+    rig.step(0.6);
+    EXPECT_FLOAT_EQ(duringCall, 1.0F);
+    EXPECT_FALSE(later->isAlive());
+    EXPECT_DOUBLE_EQ(second.x, 0.0);
+    EXPECT_EQ(timeline->size(), 3U);
+    rig.step(0.2);
+    EXPECT_EQ(log, std::vector<std::string>{"inserted"});
+    rig.step(0.5);
+    EXPECT_DOUBLE_EQ(first.x, 10.0);
+    EXPECT_FALSE(timeline->isAlive());
+}
+
+TEST(TimelineTest, TweensInsideGiveUpTheFieldsThatANewerTweenOverwrites) {
+    TweenRig rig;
+    Box box;
+    Box other;
+    auto timeline = std::make_shared<core::Timeline>();
+    auto inside = rig.tweenX(box, 1.0F, core::TweenProperty::to(10.0), false);
+    timeline->append(inside).join(rig.tweenX(other, 1.0F, core::TweenProperty::to(10.0), false));
+    rig.tweens.add(timeline);
+    rig.step(0.5);
+
+    auto newer = rig.tweenX(box, 1.0F, core::TweenProperty::to(-10.0), false);
+    rig.tweens.overwrite(*newer);
+    rig.tweens.add(newer);
+    EXPECT_FALSE(inside->isAlive());
+    EXPECT_TRUE(timeline->isAlive());
+    EXPECT_EQ(timeline->size(), 1U);
+
+    // A tween that overwrites again from the manager keeps its own fields.
+    rig.tweens.overwrite(*newer);
+    EXPECT_TRUE(newer->isAlive());
+    rig.step(0.5);
+    EXPECT_DOUBLE_EQ(box.x, -2.5);
+    EXPECT_DOUBLE_EQ(other.x, 10.0);
 }
 
 TEST(TweenManagerTest, OwnerScopesKillTweens) {

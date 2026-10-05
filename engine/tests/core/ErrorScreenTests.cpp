@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -11,17 +12,59 @@
 
 #include "core/ErrorScreen.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
+#include "haylen/core/AppConfig.hpp"
+#include "haylen/core/Engine.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/core/Version.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/input/GamepadState.hpp"
+#include "haylen/io/MemoryPackage.hpp"
+#include "haylen/io/Package.hpp"
+#include "haylen/io/PackageReader.hpp"
 #include "haylen/lua/Error.hpp"
 #include "haylen/platform/Event.hpp"
+#include "platform/headless/HeadlessHost.hpp"
 #include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/TemporaryDirectory.hpp"
+#include "support/TestApplication.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen::core {
+
+namespace {
+
+// Passes a package through but fails to read one of its files, like a package whose storage went away after the app started.
+class UnreadablePackage final : public io::Package {
+  public:
+    UnreadablePackage(std::shared_ptr<const io::Package> innerPackage, std::string path) : inner(std::move(innerPackage)), unreadable(std::move(path)) {}
+
+    [[nodiscard]] std::string_view getName() const noexcept override {
+        return inner->getName();
+    }
+    [[nodiscard]] bool exists(std::string_view path) const override {
+        return inner->exists(path);
+    }
+    [[nodiscard]] std::uint64_t getFileSize(std::string_view path) const override {
+        return inner->getFileSize(path);
+    }
+    [[nodiscard]] std::unique_ptr<io::PackageReader> openReader(std::string_view path) const override {
+        if (path == unreadable) {
+            throw std::runtime_error("The storage of the package is gone.");
+        }
+        return inner->openReader(path);
+    }
+    [[nodiscard]] std::vector<std::string> list(std::string_view directory) const override {
+        return inner->list(directory);
+    }
+
+  private:
+    std::shared_ptr<const io::Package> inner;
+    std::string unreadable;
+};
+
+} // namespace
 
 class ErrorScreenTest : public ::testing::Test {
   protected:
@@ -70,6 +113,30 @@ TEST_F(ErrorScreenTest, ShowsTheLinesAroundTheErrorLineOfAPackageFile) {
     EXPECT_TRUE(core::ErrorScreen(fixture.engine(), lua::Error("source/scenes/battle.lua:40: past the end"), true).getExcerpt().empty());
     EXPECT_TRUE(core::ErrorScreen(fixture.engine(), lua::Error("source/scenes/missing.lua:3: boom"), true).getExcerpt().empty());
     EXPECT_TRUE(core::ErrorScreen(fixture.engine(), lua::Error("The app could not be loaded."), true).getExcerpt().empty());
+
+    // Lines that end with a carriage return show without it.
+    fixture.package().setFile("source/scenes/windows.lua", test::TestFiles::bytes("local damage = 1\r\nerror('boom')\r\n"));
+    const core::ErrorScreen windows(fixture.engine(), lua::Error("source/scenes/windows.lua:2: boom"), true);
+    ASSERT_EQ(windows.getExcerpt().size(), 2U);
+    EXPECT_EQ(windows.getExcerpt()[0].text, "local damage = 1");
+    EXPECT_EQ(windows.getExcerpt()[1].text, "error('boom')");
+}
+
+TEST_F(ErrorScreenTest, ShowsNoExcerptOfAFileThatCannotBeRead) {
+    test::TemporaryDirectory directory;
+    platform::HeadlessHost host(directory.getPath());
+    auto files = std::make_shared<io::MemoryPackage>("app", std::map<std::string, std::vector<std::uint8_t>>{{"source/broken.lua", test::TestFiles::bytes("error('boom')\n")}});
+    Engine engine(host, std::make_shared<UnreadablePackage>(files, "source/broken.lua"), AppConfig{}, std::make_unique<test::TestApplication>(nullptr));
+    std::vector<std::string> lines;
+    const std::uint64_t listener = Log::addListener([&lines](Log::Level, std::string_view line) { lines.emplace_back(line); });
+    const ErrorScreen screen(engine, lua::Error("source/broken.lua:1: boom"), true);
+    Log::removeListener(listener);
+
+    // The screen explains an error that already happened, so a file it cannot read only costs it the excerpt.
+    EXPECT_TRUE(screen.getExcerpt().empty());
+    EXPECT_NE(screen.getReport().find("File \"source/broken.lua\", line 1"), std::string::npos);
+    const std::string warning = "The error screen shows no source excerpt, because \"source/broken.lua\" could not be read: The storage of the package is gone.";
+    EXPECT_EQ(std::count_if(lines.begin(), lines.end(), [&warning](const std::string& line) { return line.find(warning) != std::string::npos; }), 1);
 }
 
 TEST_F(ErrorScreenTest, ReportsTheWholeErrorAsPlainText) {
@@ -233,20 +300,33 @@ TEST_F(ErrorScreenTest, OffersToGoBackOnlyInARecoverableApp) {
     EXPECT_FALSE(fixture.engine().isRecoverable());
 }
 
-TEST_F(ErrorScreenTest, GoesBackWithTheEastButtonOfAGamepad) {
+TEST_F(ErrorScreenTest, GoesBackWithTheButtonsOfAGamepad) {
     test::EngineFixture fixture({{"source/main.lua", "require('haylen').setRecoverable(true) require('haylen.scene').push({update = function() error('broken', 0) end})"}});
     fixture.frames(2);
     ASSERT_NE(fixture.engine().getError(), nullptr);
-    input::GamepadState state{.connected = true};
-    state.buttons[static_cast<std::size_t>(input::GamepadButton::East)] = true;
-    fixture.host().setGamepad(0, state);
-    fixture.frames(1);
-    fixture.host().setGamepad(0, {.connected = true});
+
+    // A button counts as pressed in the frame it goes down, so each press is one frame down and one frame up.
+    // clang-format off
+    const auto tap = [&fixture](input::GamepadButton button) {
+        input::GamepadState state{.connected = true};
+        state.buttons[static_cast<std::size_t>(button)] = true;
+        fixture.host().setGamepad(0, state);
+        fixture.frames(1);
+        fixture.host().setGamepad(0, {.connected = true});
+        fixture.frames(1);
+    };
+    // clang-format on
 
     // The scene fails again once the app runs on, which shows the screen again.
-    fixture.frames(1);
+    tap(input::GamepadButton::East);
     EXPECT_NE(fixture.engine().getError(), nullptr);
     EXPECT_EQ(fixture.host().getErrorReports().size(), 2U);
+
+    // The focus of a recoverable app starts on going back, which the south button presses.
+    tap(input::GamepadButton::South);
+    EXPECT_NE(fixture.engine().getError(), nullptr);
+    EXPECT_EQ(fixture.host().getErrorReports().size(), 3U);
+    EXPECT_FALSE(fixture.engine().isRestartRequested());
 }
 
 TEST_F(ErrorScreenTest, ScrollsContentTallerThanTheScreen) {
@@ -310,6 +390,22 @@ TEST_F(ErrorScreenTest, ScrollsContentTallerThanTheScreen) {
         screen.handleEvent({.type = platform::Event::Type::KeyDown, .key = key});
         EXPECT_NEAR(screen.getScroll(), expected, 0.01F);
     }
+
+    // The directional pad of a gamepad moves a line too, while other keys and events leave the screen alone.
+    for (const auto& [button, expected] : std::vector<std::pair<input::GamepadButton, float>>{{input::GamepadButton::DpadDown, step}, {input::GamepadButton::DpadUp, 0.0F}}) {
+        input::GamepadState state{.connected = true};
+        state.buttons[static_cast<std::size_t>(button)] = true;
+        fixture.host().setGamepad(0, state);
+        fixture.frames(1);
+        screen.update();
+        fixture.host().setGamepad(0, {.connected = true});
+        fixture.frames(1);
+        EXPECT_NEAR(screen.getScroll(), expected, 0.01F);
+    }
+    screen.handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::A});
+    screen.handleEvent({.type = platform::Event::Type::KeyUp, .key = input::Key::Down});
+    EXPECT_EQ(screen.getScroll(), 0.0F);
+    EXPECT_FALSE(fixture.engine().isRestartRequested());
 }
 
 TEST_F(ErrorScreenTest, DrawsAndScrollsInTheHeadlessEngine) {

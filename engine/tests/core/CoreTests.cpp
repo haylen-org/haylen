@@ -8,6 +8,7 @@
 #include "haylen/core/ConnectionScope.hpp"
 #include "haylen/core/FrameClock.hpp"
 #include "haylen/core/Json.hpp"
+#include "haylen/core/JsonBytes.hpp"
 #include "haylen/core/JsonNumber.hpp"
 #include "haylen/core/TimerScheduler.hpp"
 #include "haylen/core/Utf8.hpp"
@@ -174,6 +175,29 @@ TEST(TimerSchedulerTest, CallbacksCanScheduleAndCancelTimers) {
     EXPECT_EQ(events, (std::vector<std::string>{"first", "second"}));
 }
 
+TEST(TimerSchedulerTest, ClearingFromACallbackDropsEveryTimerWithTheOnesItCreated) {
+    core::TimerScheduler timers;
+    core::FrameClock clock(0.1, 10.0);
+    int calls = 0;
+    core::TimerScheduler::Id created = 0;
+    // clang-format off
+    timers.after(0.1F, [&] {
+        created = timers.after(0.1F, [&calls] { ++calls; });
+        timers.clear();
+    });
+    // clang-format on
+    timers.every(0.15F, [&calls] { calls += 10; });
+
+    clock.advance(0.2);
+    timers.update(clock);
+    EXPECT_EQ(calls, 0);
+    EXPECT_FALSE(timers.isActive(created));
+    EXPECT_EQ(timers.size(), 0U);
+    clock.advance(1.0);
+    timers.update(clock);
+    EXPECT_EQ(calls, 0);
+}
+
 TEST(TimerSchedulerTest, ZeroIntervalRepeatsOncePerUpdate) {
     core::TimerScheduler timers;
     core::FrameClock clock(0.1, 10.0);
@@ -288,6 +312,20 @@ TEST(Utf8Test, EncodesEveryLength) {
         core::Utf8::append(text, codePoint);
     }
     EXPECT_EQ(core::Utf8::decode(text), (std::u32string{U'a', U'é', U'€', U'\U0001F600', core::Utf8::kReplacementCharacter, core::Utf8::kReplacementCharacter}));
+}
+
+TEST(JsonBytesTest, RefersToBuffersOnlyThroughIndexesOfZeroOrMore) {
+    EXPECT_EQ(JsonBytes::findReference(Json{{JsonBytes::kKey, 2}}), 2U);
+    for (const Json& value : {Json{{JsonBytes::kKey, -1}}, Json{{JsonBytes::kKey, "0"}}, Json{{JsonBytes::kKey, 1}, {"name", "photo"}}, Json::array({0})}) {
+        EXPECT_FALSE(JsonBytes::findReference(value).has_value()) << value.dump();
+    }
+
+    // A value that only looks like a reference is plain JSON, which a check of the buffers and a shift leave as it is.
+    Json document = {{"negative", {{JsonBytes::kKey, -1}}}, {"photo", JsonBytes::makeReference(0)}};
+    EXPECT_NO_THROW(JsonBytes::validate(document, 1));
+    JsonBytes::shift(document, 3);
+    EXPECT_EQ(document.at("negative").at(JsonBytes::kKey), -1);
+    EXPECT_EQ(JsonBytes::findReference(document.at("photo")), 3U);
 }
 
 TEST(JsonNumberTest, WritesFloatsWithTheirShortestDecimalForm) {

@@ -94,6 +94,8 @@ TEST(Particles2DLuaTest, ReadsAndReturnsEveryOption) {
     EXPECT_EQ(fixture.lua("full:configure({light = false, particleLights = false, bounds = false, endSizeScale = false, speedCurve = false, spinCurve = false}) local c = full.config return tostring(c.light) .. ' ' .. tostring(c.particleLights) .. ' ' .. tostring(c.bounds) .. ' ' .. tostring(c.endSizeScale) .. ' ' .. tostring(c.speedCurve) .. ' ' .. tostring(c.spinCurve)"), "nil nil nil nil nil nil");
 
     EXPECT_NE(fixture.lua("full:configure({sizeCurve = function(t) return t end})").find("takes a curve name or a table, not a function"), std::string::npos);
+    EXPECT_NE(fixture.lua("full:configure({endSizeScale = 'big'})").find("number or {min, max} pair expected, got string"), std::string::npos);
+    EXPECT_NE(fixture.lua("full:configure({endSizeScale = {1, 2, 3}})").find("a range needs a number or the pair {min, max}"), std::string::npos);
     EXPECT_NE(fixture.lua("full:configure({turbulence = {strenght = 1}})").find("Unknown option \"strenght\""), std::string::npos);
     EXPECT_NE(fixture.lua("full:configure({collision = {type = 'sticky'}})").find("unknown value 'sticky'"), std::string::npos);
     EXPECT_NE(fixture.lua("full:configure({subEmitters = {{trigger = 'death'}}})").find("needs a \"ParticleEffect\" or an options table"), std::string::npos);

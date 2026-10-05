@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
+#include <lua.hpp>
 
 #include <chrono>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <thread>
 #include <vector>
@@ -11,8 +13,10 @@
 #include "haylen/lua/Error.hpp"
 #include "haylen/platform/Bridge.hpp"
 #include "haylen/platform/Event.hpp"
+#include "lua/ScriptedScene.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/RecordingScene.hpp"
 #include "support/TestFiles.hpp"
 
 namespace haylen::core {
@@ -49,14 +53,14 @@ TEST(SceneLuaTest, ManagesTheStackWithPromisesAndHooks) {
     EXPECT_EQ(fixture.lua("return scene.size() .. ' ' .. table.concat(results, ', ')"), "3 callback true, true");
     EXPECT_EQ(fixture.lua("return scene.at(1).name .. scene.at(3).name .. tostring(scene.at(4)) .. tostring(scene.at(0)) .. #scene.list() .. scene.list()[2].name"), "rootbnilnil3a");
 
-    fixture.runLua("log = {} scene.popToRoot()");
+    fixture.runLua("log = {} scene.popToRoot({onComplete = function(done) log[#log + 1] = 'root ' .. tostring(done) end})");
     fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return table.concat(log, ', ') .. ' | ' .. scene.size()"), "b started, b exit, a exit, root finished | 1");
+    EXPECT_EQ(fixture.lua("return table.concat(log, ', ') .. ' | ' .. scene.size()"), "b started, b exit, a exit, root finished, root true | 1");
     fixture.runLua("scene.push(a) scene.push(b)");
     fixture.frames(1);
-    fixture.runLua("log = {} scene.popTo(2)");
+    fixture.runLua("log = {} scene.popTo(2, {onComplete = function(done) log[#log + 1] = 'popped ' .. tostring(done) end})");
     fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return table.concat(log, ', ') .. ' | ' .. scene.top().name"), "b started, b exit, a finished | a");
+    EXPECT_EQ(fixture.lua("return table.concat(log, ', ') .. ' | ' .. scene.top().name"), "b started, b exit, a finished, popped true | a");
 
     fixture.runLua("dropped = nil async.spawn(function() dropped = scene.replace(b, {duration = 1}):await() end) scene.clear()");
     fixture.frames(1);
@@ -105,6 +109,25 @@ TEST(SceneLuaTest, DrawsCustomTransitionsAndHearsThePause) {
     EXPECT_NE(fixture.lua("scene.pop({effect = 3})").find("must be the name of a built-in effect or a table"), std::string::npos);
     EXPECT_NE(fixture.lua("scene.pop({duration = 1, effect = 'swirl'})").find("unknown value 'swirl'"), std::string::npos);
     EXPECT_NE(fixture.lua("scene.pop({duration = 1, effect = 'wipe', direction = 'sideways'})").find("unknown value 'sideways'"), std::string::npos);
+}
+
+// A custom effect that shows both scenes exits the leaving scenes at its "exitProgress" while it still draws.
+TEST(SceneLuaTest, CustomEffectsThatShowBothScenesExitTheLeavingScenesAtTheirExitProgress) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        scene = require('haylen.scene')
+        halfway = {switchProgress = 0, exitProgress = 0.5, render = function() end}
+        scene.push({exit = function() exited = true end})
+    )");
+    // clang-format on
+    fixture.frames(1);
+    fixture.runLua("scene.replace({}, {duration = 1, effect = halfway})");
+    fixture.frames(2, 0.2);
+    EXPECT_EQ(fixture.lua("return tostring(exited) .. ' ' .. tostring(scene.transitioning())"), "nil true");
+    fixture.frames(2, 0.2);
+    EXPECT_EQ(fixture.lua("return tostring(exited) .. ' ' .. tostring(scene.transitioning())"), "true true");
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
 TEST(SceneLuaTest, PlaysBuiltInEffectsWithBothScenesAlive) {
@@ -201,6 +224,41 @@ TEST(SceneLuaTest, LoadsScenesInCoroutinesBehindALoadingView) {
     EXPECT_EQ(fixture.lua("return scene.state(level) .. ' ' .. scene.loadProgress(level)"), "active 1.0");
     EXPECT_NE(fixture.lua("level.context:progress(1)").find("haylen.SceneLoad\" was already released."), std::string::npos);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+TEST(SceneLuaTest, LoadsThatPreloadNothingOrABrokenGroup) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        scene = require('haylen.scene')
+        require('haylen.assets').defineGroup('broken', {{path = 'missing.png', type = 'texture'}})
+        log = {}
+        menu = {name = 'menu'}
+        level = {load = function(self, context)
+            log[#log + 1] = 'nothing ' .. tostring(context:preload({}):await())
+            context:preload('broken')
+        end}
+        scene.push(menu)
+    )");
+    // clang-format on
+    fixture.frames(1);
+
+    // A list without groups resolves at once, and a group that fails rejects its promise and fails the load.
+    fixture.runLua("scene.push(level, {onError = function(message) log[#log + 1] = message end})");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #log") == "2"; }));
+    EXPECT_EQ(fixture.lua("return log[1]"), "nothing true");
+    EXPECT_TRUE(fixture.lua("return log[2]").starts_with("The asset group \"broken\" could not load missing.png")) << fixture.lua("return log[2]");
+    EXPECT_EQ(fixture.lua("return scene.top().name .. ' ' .. scene.state(level)"), "menu unloaded");
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+TEST(SceneLuaTest, ShowsScenesPushedFromCppAsFalse) {
+    std::vector<std::string> log;
+    test::EngineFixture fixture;
+    fixture.runLua("scene = require('haylen.scene') require('haylen.events').on('sceneEntered', function(entered) heard = entered end)");
+    fixture.engine().getScenes().push(std::make_shared<test::RecordingScene>("native", log));
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return tostring(heard) .. ' ' .. tostring(scene.list()[1]) .. ' ' .. tostring(scene.at(1)) .. ' ' .. tostring(scene.top())"), "false false false nil");
 }
 
 TEST(SceneLuaTest, LoadsThatReturnPromisesOrFailRouteTheChange) {
@@ -307,6 +365,12 @@ TEST(SceneLuaTest, SpawnedTasksNeverResumeOnceTheirSceneUnloaded) {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
     EXPECT_EQ(fixture.lua("return table.concat(log, ', ') .. ' ' .. scene.size()"), "clearing, closed 0");
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+
+    // A task that ends its own scene and returns before any wait runs to its end.
+    fixture.runLua("log = {} scene.push({enter = function(self) scene.spawn(self, function() scene.clear() log[#log + 1] = 'returned' end) end})");
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("return table.concat(log, ', ') .. ' ' .. scene.size()"), "returned 0");
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 
     // An error in a task reaches the error screen with the stack of the task.
@@ -423,6 +487,64 @@ TEST(SceneLuaTest, EverythingASceneOwnsEndsWhenItUnloads) {
     EXPECT_EQ(fixture.lua("return tostring(owner.gui.mounted) .. ' ' .. table.concat(fired, ', ')"), "false event, unload");
     EXPECT_EQ(fixture.lua("return owner.value.x"), value);
     EXPECT_NE(fixture.lua("ui.mount(ui.label{text = 'x'}, {owner = 3})").find("An owner must be a table or a userdata"), std::string::npos);
+}
+
+// The exit hook of a loading view and the unload hook of a scene end what their table owns even when they fail, and the failure reaches the error screen.
+TEST(SceneLuaTest, HooksThatFailToLeaveStillEndWhatTheirTableOwns) {
+    {
+        test::EngineFixture fixture;
+        // clang-format off
+        fixture.runLua(R"(
+            scene = require('haylen.scene')
+            timer = require('haylen.timer')
+            async = require('async')
+            view = {
+                enter = function(self) viewTimer = timer.every(1, function() end, {owner = self}) end,
+                exit = function() error('the view cannot exit') end,
+            }
+            scene.push({})
+        )");
+        // clang-format on
+        fixture.frames(1);
+        fixture.runLua("scene.replace({load = function() async.sleep(20):await() end}, {duration = 0.2, loading = view})");
+        ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
+        EXPECT_NE(std::string(fixture.engine().getError()->what()).find("the view cannot exit"), std::string::npos);
+        EXPECT_EQ(fixture.lua("return timer.active(viewTimer)"), "false");
+    }
+
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        scene = require('haylen.scene')
+        timer = require('haylen.timer')
+        scene.push({
+            enter = function(self) levelTimer = timer.every(1, function() end, {owner = self}) end,
+            unload = function() error('the level cannot unload') end,
+        })
+    )");
+    // clang-format on
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return timer.active(levelTimer)"), "true");
+    fixture.runLua("scene.pop()");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
+    EXPECT_NE(std::string(fixture.engine().getError()->what()).find("the level cannot unload"), std::string::npos);
+    EXPECT_EQ(fixture.lua("return timer.active(levelTimer)"), "false");
+}
+
+// A Lua scene takes the "params" of a change from Lua, so native code that brings it with a value of its own reaches the error screen.
+TEST(SceneLuaTest, ALuaSceneRefusesParamsOfNativeCode) {
+    test::EngineFixture fixture;
+    fixture.runLua("level = {enter = function(self, params) entered = params end}");
+    lua_State* L = fixture.lua();
+    lua_getglobal(L, "level");
+    const std::shared_ptr<lua::ScriptedScene> level = lua::ScriptedScene::get(L, -1);
+    lua_pop(L, 1);
+
+    fixture.engine().getScenes().push(level, {.params = 42});
+    fixture.frames(1);
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+    EXPECT_NE(std::string(fixture.engine().getError()->what()).find("A Lua scene takes the \"params\" of a change from Lua."), std::string::npos);
+    EXPECT_EQ(fixture.lua("return tostring(entered)"), "nil");
 }
 
 TEST(SceneLuaTest, PreloadsAndCancelsPreloads) {

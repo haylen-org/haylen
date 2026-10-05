@@ -73,6 +73,15 @@ TEST_F(Graphics2DLuaTest, DrawsShapesWithTheirOptions) {
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawShape({0, 0, 8, 8}, {softness = 'soft'})").find("softness"), std::string::npos);
 }
 
+// Text with a visible shadow and an outline draws every glyph three times, the shadow and the outline under the fill, and turns as one block.
+TEST_F(Graphics2DLuaTest, DrawsTheShadowAndOutlineOfTextUnderItsFill) {
+    EXPECT_EQ(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'Hi', 100, 100, {size = 24})"), "nil");
+    const int plain = std::stoi(lua("return graphics2d.stats().sprites"));
+    EXPECT_GT(plain, 0);
+    EXPECT_EQ(render("graphics2d.beginScreen() graphics2d.drawText(nil, 'Hi', 100, 100, {size = 24, rotation = 0.3, outlineWidth = 2, outlineColor = '#FF000000', shadowOffset = {3, 3}, shadowColor = '#80000000', shadowBlur = 2})"), "nil");
+    EXPECT_EQ(std::stoi(lua("return graphics2d.stats().sprites")), 3 * plain);
+}
+
 TEST_F(Graphics2DLuaTest, CreatesAndEditsSprites) {
     lua("sprite = graphics2d.newSprite(hero, {x = 10, y = 20, layer = 2, flipHorizontal = true, color = '#80FF0000', blend = 'additive'})");
     EXPECT_EQ(lua("return sprite.x .. ',' .. sprite.y .. ' ' .. sprite.layer .. ' ' .. tostring(sprite.flipHorizontal) .. ' ' .. tostring(sprite.flipVertical)"), "10.0,20.0 2 true false");
