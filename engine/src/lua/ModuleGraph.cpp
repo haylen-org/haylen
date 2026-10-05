@@ -399,7 +399,7 @@ void ModuleGraph::finishLoad(lua_State* L, const std::string& path, std::string 
     closures.pushValues(L);
     const int upvalues = lua_gettop(L);
     pushCreators(L);
-    ModuleSnapshot::push(L, result, upvalues, written, lua_gettop(L), path);
+    ModuleSnapshot::push(L, result, upvalues, written, lua_gettop(L), path, 0);
     setSnapshot(L, path, -1);
     lua_pop(L, 4);
     modules.at(path).source = std::move(source);

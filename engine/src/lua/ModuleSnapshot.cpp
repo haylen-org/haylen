@@ -39,21 +39,22 @@ bool ModuleSnapshot::isJsonMarker(lua_State* L, int metatable) {
     return marker;
 }
 
-void ModuleSnapshot::push(lua_State* L, int value, int upvalues, int globals, int creators, std::string_view path) {
+void ModuleSnapshot::push(lua_State* L, int value, int upvalues, int globals, int creators, std::string_view path, int keys) {
     const int valueIndex = lua_absindex(L, value);
     const int upvaluesIndex = lua_absindex(L, upvalues);
     const int globalsIndex = lua_absindex(L, globals);
     const int creatorsIndex = lua_absindex(L, creators);
+    const int keysIndex = keys != 0 ? lua_absindex(L, keys) : 0;
     lua_createtable(L, 0, 3);
     const int snapshot = lua_gettop(L);
     lua_newtable(L);
     const int copies = lua_gettop(L);
     int budget = kMaxEntries;
-    copy(L, valueIndex, copies, 0, budget);
+    copy(L, valueIndex, copies, keysIndex, 0, budget);
     lua_setfield(L, snapshot, "value");
-    copy(L, upvaluesIndex, copies, 0, budget);
+    copy(L, upvaluesIndex, copies, keysIndex, 0, budget);
     lua_setfield(L, snapshot, "upvalues");
-    copy(L, globalsIndex, copies, 0, budget);
+    copy(L, globalsIndex, copies, keysIndex, 0, budget);
     lua_setfield(L, snapshot, "globals");
     claim(L, copies, creatorsIndex, path);
     lua_pop(L, 1);
@@ -74,8 +75,8 @@ void ModuleSnapshot::claim(lua_State* L, int copies, int creators, std::string_v
     }
 }
 
-// Keys keep their identity, because the live tables a snapshot is compared with use the same keys.
-void ModuleSnapshot::copy(lua_State* L, int value, int copies, int depth, int& budget) {
+// Keys keep their identity, or become the live table that replaces them, because the live tables a snapshot is compared with use the same keys.
+void ModuleSnapshot::copy(lua_State* L, int value, int copies, int keys, int depth, int& budget) {
     luaL_checkstack(L, 6, "The snapshot of a module is too deep.");
     if (!isMergeable(L, value) || depth > kMaxDepth || budget <= 0) {
         lua_pushvalue(L, value);
@@ -95,8 +96,16 @@ void ModuleSnapshot::copy(lua_State* L, int value, int copies, int depth, int& b
     lua_pushnil(L);
     while (lua_next(L, value) != 0) {
         --budget;
-        copy(L, lua_gettop(L), copies, depth + 1, budget);
+        copy(L, lua_gettop(L), copies, keys, depth + 1, budget);
         lua_pushvalue(L, -3);
+        if (keys != 0 && lua_istable(L, -1)) {
+            lua_pushvalue(L, -1);
+            if (lua_rawget(L, keys) == LUA_TTABLE) {
+                lua_replace(L, -2);
+            } else {
+                lua_pop(L, 1);
+            }
+        }
         lua_insert(L, -2);
         lua_rawset(L, result);
         lua_pop(L, 1);

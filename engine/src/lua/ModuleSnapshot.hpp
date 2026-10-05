@@ -15,8 +15,8 @@ class ModuleSnapshot final {
     // Tells whether the value at index is a prototype, a table whose `__index` is the table itself, such as a class of `haylen.class`, whose methods belong to its instances.
     [[nodiscard]] static bool isPrototype(lua_State* L, int index);
 
-    // Pushes the snapshot `{value, upvalues, globals}` of the module value and the tables of captured values by name and of written globals at the indices. Every table it copies that no module claimed yet becomes a table of the module at `path` in the weak table at `creators`, so a later reload tells the tables of the module from the tables of other modules.
-    static void push(lua_State* L, int value, int upvalues, int globals, int creators, std::string_view path);
+    // Pushes the snapshot `{value, upvalues, globals}` of the module value and the tables of captured values by name and of written globals at the indices. Every table it copies that no module claimed yet becomes a table of the module at `path` in the weak table at `creators`, so a later reload tells the tables of the module from the tables of other modules. When `keys` is not 0, the copies use the table that the table at that index maps a table key to in place of the key, such as the live table that a staging table of a reload merged into.
+    static void push(lua_State* L, int value, int upvalues, int globals, int creators, std::string_view path, int keys);
 
     // Tells whether the live value still equals the value that a snapshot holds, comparing copied tables by their contents.
     [[nodiscard]] static bool equals(lua_State* L, int live, int base);
@@ -29,7 +29,7 @@ class ModuleSnapshot final {
     [[nodiscard]] static bool isJsonMarker(lua_State* L, int metatable);
 
     // Pushes a copy of the value at index, reusing the copies that the table at `copies` already holds for shared and cyclic tables.
-    static void copy(lua_State* L, int value, int copies, int depth, int& budget);
+    static void copy(lua_State* L, int value, int copies, int keys, int depth, int& budget);
     static void claim(lua_State* L, int copies, int creators, std::string_view path);
     [[nodiscard]] static bool compare(lua_State* L, int live, int base, int visited, int depth, int& budget);
 };

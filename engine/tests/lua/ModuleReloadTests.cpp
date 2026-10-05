@@ -689,6 +689,18 @@ return Level
     EXPECT_EQ(error(), "");
 }
 
+TEST_F(ModuleReloadTest, TakesEditedValuesOfTablesKeyedByTables) {
+    const auto kinds = [](const std::string& label) {
+        return "local Kind = {}\nlocal Other = require('other')\nreturn {Kind, labels = {[Kind] = '" + label + "', [Other] = '" + label + "'}}";
+    };
+    start({{"source/other.lua", "return {}"}, {"source/kinds.lua", kinds("v1")}, {"source/main.lua", "kinds, other = require('kinds'), require('other') kind = kinds[1]"}});
+    edit({{"source/kinds.lua", kinds("v2")}});
+    EXPECT_EQ(lua("return kinds.labels[kind] .. ' ' .. kinds.labels[other]"), "v2 v2");
+
+    edit({{"source/kinds.lua", kinds("v3")}});
+    EXPECT_EQ(lua("local count = 0 for _ in pairs(kinds.labels) do count = count + 1 end return kinds.labels[kind] .. ' ' .. kinds.labels[other] .. ' ' .. count .. ' ' .. tostring(kinds[1] == kind)"), "v3 v3 2 true");
+}
+
 TEST_F(ModuleReloadTest, ReloadsTheOtherModulesOfASaveWithAFailedModule) {
     start({{"source/a.lua", "return {version = 1}"}, {"source/b.lua", "return {version = 1}"}, {"source/main.lua", "a = require('a') b = require('b')"}});
     edit({{"source/a.lua", "return {version ="}, {"source/b.lua", "return {version = 2}"}});

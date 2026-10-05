@@ -149,7 +149,8 @@ ModuleReloader::Result ModuleReloader::reload(const std::string& file) {
     Owners::release(state, previousOwner);
     ModuleGraph::setOwner(state, file, owner);
     ModuleGraph::pushCreators(state);
-    ModuleSnapshot::push(state, fresh, freshUpvalues, staging, lua_gettop(state), file);
+    replacements.push(state);
+    ModuleSnapshot::push(state, fresh, freshUpvalues, staging, lua_gettop(state) - 1, file, lua_gettop(state));
     ModuleGraph::setSnapshot(state, file, -1);
     module.source = source;
     lua_settop(state, top);
