@@ -21,6 +21,7 @@ This file is binding for every change. It describes the project as it is and the
 ## Working rules
 
 - Every request of the owner goes into the checklist of `PROJECT.md` before the work starts, so nothing is lost, and an item is checked only when it is implemented, tested where possible and documented.
+- The engine comes first. Its base, the core, the Lua bindings, rendering, text, the UI, input, audio, assets and content packaging, and the platform hosts, is finished, tested and verified on every platform before work on samples goes on, and samples come second. A sample never hides a flaw of the engine: the flaw is fixed in the engine first.
 - Commit and push to `main` after each finished block of work, once the build, the tests and the format check pass. A block that is committed builds and passes its tests on its own, so separate unrelated changes into separate commits and verify a commit from a clean checkout when the working tree holds other work.
 - CI only tests and publishes nothing, and the GitHub release of the repository is the source archive alone, because developers build the engine themselves.
 - A commit message is one short lowercase sentence after a type prefix, `feature: ...`, `fix: ...`, `refactor: ...`, `perf: ...`, `test: ...`, `docs: ...`, `build: ...` or `chore: ...`, for example `feature: add scene loading lifecycle`. It has no body, no co-author and no other trailer, and never names Claude or anyone else.

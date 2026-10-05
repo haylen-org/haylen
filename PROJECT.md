@@ -277,6 +277,7 @@ Cada ponto abaixo precisa estar coberto pelo grupo AA da seção 14.2.
 205. Dar push na `main` conforme o trabalho avança.
 206. Regra: a barra de rolagem nunca aparece por cima do conteúdo nem colada nele, com pelo menos 4 pt de distância, como pedem as diretrizes de interface das plataformas.
 207. As bordas arredondadas de botões, switches, pinos e de tudo o que tem curva estão serrilhadas: revisar as bordas e o jeito como as curvas são geradas, para ficarem lisas em qualquer escala.
+208. Prioridade: tudo o que é a base da engine (núcleo, Lua, rendering, textos, UI, input, áudio, assets, empacotamento do conteúdo e os hosts das plataformas) vem primeiro e tem que estar 100% perfeito e rodando perfeitamente bem em todas as plataformas. Os samples vêm em segundo lugar.
 
 ## 3. Regras
 
@@ -922,7 +923,7 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 | 12 | Jogo Tiny Island em Lua | Concluída |
 | 13 | Testes e cobertura até o máximo possível | Concluída |
 | 14 | Documentação e revisão final (bugs, legado, não utilizado, race conditions e crashes) | Concluída, com testes de regressão para as correções |
-| 15 | Pedidos 51 a 207 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
+| 15 | Pedidos 51 a 208 (seção 14) | Em andamento, com os itens abertos da seção 14.2 |
 
 ## 13. Limitações conhecidas
 
@@ -933,9 +934,9 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 - visionOS nativo depende do Sokol, que usa o `UIScreen`, indisponível no SDK do visionOS. O app iOS roda no Apple Vision Pro como app de iPad compatível. watchOS é impossível, porque o SDK do watchOS não tem Metal, MetalKit, GameController nem AudioToolbox.
 - O Sokol só aceita imagens inteiras em texturas que vivem entre frames, então uma textura dinâmica alterada (os atlas das fontes e da UI) sobe todos os pixels, uma vez por frame.
 
-## 14. Pedidos 51 a 207: decisões e checklist
+## 14. Pedidos 51 a 208: decisões e checklist
 
-Esta seção cobre os pedidos 51 a 207 das seções 2.1, 2.2, 2.3, 2.4, 2.5 e 2.6. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
+Esta seção cobre os pedidos 51 a 208 das seções 2.1, 2.2, 2.3, 2.4, 2.5 e 2.6. As decisões vêm da pesquisa em código-fonte de referência, no código do Sokol e do miniaudio e no código da engine.
 
 ### 14.1 Decisões de organização
 
@@ -1782,6 +1783,16 @@ Decisões: um rollback é publicado como uma geração nova que aponta para o co
 - [ ] UX de atualização pronta e APIs públicas em Lua e C++ (`ContentManager`, erros, progresso).
 - [ ] Leitores de streaming de mídia e de pacotes grandes de verdade, sem buffers inteiros.
 - [ ] Endurecimento, fuzzing, benchmarks, documentação, samples, inspeção de artefatos e verificação em todas as plataformas, com o relatório final que o documento pede.
+
+#### AU. Engine primeiro
+
+O trabalho na base da engine tem prioridade sobre os samples, que vêm em segundo lugar.
+
+- [ ] Ordem de trabalho: as ondas da engine (curvas lisas, plataformas, revisão completa da engine, conceitos 2D, input e ferramentas, API, dependências e as mudanças do Varn) vêm antes das ondas de samples (apps, tema de imagens, arte do Tiny Island, arte dos samples de estresse e texturas de partículas).
+- [ ] Revisão completa do núcleo, das bindings Lua, dos assets e do empacotamento do conteúdo: cada classe lida e conferida contra as regras, bugs, condições de corrida, vazamentos e caminhos de erro corrigidos com testes de regressão, cobertura o mais perto possível de 100% com o relatório do `haylen.py coverage`, e os sanitizers de endereço e de threads limpos.
+- [ ] Revisão completa do rendering, do texto e da UI: cada caminho de desenho conferido em todos os backends (Metal, Direct3D 11, OpenGL, OpenGL ES 3, WebGPU e WebGL2), com capturas comparadas, custo por quadro medido, nenhuma alocação por quadro, e bugs corrigidos com testes.
+- [ ] Revisão completa do input, do áudio e dos hosts das plataformas: cada evento, dispositivo e ciclo de vida conferido em macOS, Windows, Linux, iOS, tvOS, Mac Catalyst, Android e web, com o que não puder ser conferido nesta máquina escrito com o motivo.
+- [ ] A engine roda perfeitamente bem: o projeto de testes inteiro passa sem falhas no player headless, na web com os dois backends, no simulador de iOS, no simulador de tvOS, no Mac Catalyst e no emulador de Android, sem nenhum aviso de build e sem erro nos logs.
 
 #### AT. Documentação
 
