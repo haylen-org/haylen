@@ -35,6 +35,20 @@ A `particles2d::System` (`System.hpp`) holds the emitters of an effect, one for 
 
 A `particles2d::Trail` (`Trail.hpp`) is a ribbon that follows a moving point, such as a blade tip or a projectile, without particles. It adds a point when its position moves far enough, drops the points older than its lifetime, and draws one mesh whose width and colors go from the head to the tail. Particles take a ribbon each through the `trail` option, which records their positions at the same moments for all of them.
 
+## Effect library
+
+The test project holds a library of 240 effects in `samples/tests/content/particles/library/`, one folder for each of its 25 categories, such as `fire`, `explosions`, `weather` and `ui`, next to the `textures` folder that every effect draws from. The file `catalog.json` lists every effect with its name, its style (`realistic`, `cartoon`, `pixel`, `neon`, `magic` or `scifi`) and its kind: `loop` effects emit until the app stops them, `once` effects are one-shot cycles that end on their own, and `cycle` effects repeat a cycle of bursts. Composite effects, such as `explosions/explosion_realistic` and `fire/campfire_full`, group several effects of the library with offsets and delays. The test `PRT-034` of the test project browses the library and edits the main values of each effect live, and `PRT-035` loads and runs every file of the library and fails with the file and the error of any effect that breaks.
+
+An app takes effects from the library like this:
+
+1. Copy the effect files it needs, keeping their category folders, and the `textures` folder next to them, into its own `content` folder, such as `content/effects/fire/campfire_realistic.particles` and `content/effects/textures/`. The effects name their textures as `../textures/<name>.png`, so the folders keep their places relative to each other. A composite effect also needs the files of its parts, and an effect with sub-emitters the files they name.
+2. Load an effect with `assets.load('effects/fire/campfire_realistic.particles')` and create it with `particles2d.newEmitter(effect)`, or with `particles2d.newSystem(effect)` for a composite effect. The effects of smooth textures name the filter `linear` in the file, and the pixel effects keep `nearest`.
+3. Place it with `position`, `scale` and `rotation`, adjust it with the overrides of `particles2d.newEmitter` or with `emitter:configure`, such as other `colors`, and restart one-shot effects with `restart` when they fire again.
+
+The values of the library use the scale of the test project: world units at a 1920 by 1080 design resolution with camera zoom 1, a character about 128 units tall, and pixel art with art pixels of 4 units. Effects such as rain and snow cover the width of that view from just above it, and the app moves them with its camera.
+
+The effects `fire/heat_haze`, `explosions/shockwave_distortion` and `scifi/shield_ripple_distortion` bend the image with a `distortion` instead of drawing colors, so they show only in world canvases with lighting or post-processing, as the [distortion section](lua-api/graphics2d.md#distortion) explains, and the test `EFX-002` shows them over a landscape.
+
 ## Performance
 
 - An emitter costs its live particles, and the optional features cost only the emitters that use them. Turbulence samples noise twice for each particle, every attractor and collision type tests each particle, and world collision casts a ray for each moving particle.

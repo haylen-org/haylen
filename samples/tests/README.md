@@ -187,6 +187,8 @@ Particle emitters from Lua tables, effect files and composite effects: weather, 
 | `PRT-031` | Lights and shading | A night clearing lit by a flickering fire "light", embers and fireflies with "particleLights", flames with "emission" and "unshaded" runes, next to the same scene unlit. |  |
 | `PRT-032` | Trails and ribbons | Neon sparks that each draw a "trail", and a blade ribbon of "newTrail" that follows the cursor with its width and lifetime on sliders. |  |
 | `PRT-033` | Pixel art effects | Pixel leaves, explosions, coins, smoke and flames with "pixelSnap", "rotationStep" and "steps", next to the same effects without them. |  |
+| `PRT-034` | Effect library | Every effect of "content/particles/library" by category from its "catalog.json", one-shot effects fired again on a press and by themselves, looping effects at the cursor, and the scale, rate, speed, lifetime, spread, gravity and damping of every emitter on sliders, with a night canvas for the lights. |  |
+| `PRT-035` | Effect library check | Every effect file of the library loaded on the worker threads, its emitters created and run, and the file and the error of any effect that fails, which fails the test. |  |
 
 #### Scenes and transitions (SCN)
 

@@ -37,5 +37,7 @@ return {
         {code = 'PRT-031', title = 'Lights and shading', description = 'A night scene lit by a flickering fire, glowing embers and fireflies, with emission, unshaded particles and an unlit canvas.', module = 'lights-shading'},
         {code = 'PRT-032', title = 'Trails and ribbons', description = 'Neon sparks that draw ribbons behind them and a blade ribbon that follows the cursor.', module = 'trails-ribbons'},
         {code = 'PRT-033', title = 'Pixel art effects', description = 'Pixel effects snapped to their grid, turned by quarter turns and held in their palette, next to the same effects without them.', module = 'pixel-art'},
+        {code = 'PRT-034', title = 'Effect library', description = 'Every effect of the library by category, fired again on input, with its main values on sliders.', module = 'library-browser'},
+        {code = 'PRT-035', title = 'Effect library check', description = 'Every effect file of the library loaded and run, with the file and the error of any that fails.', module = 'library-check'},
     },
 }
