@@ -1,4 +1,4 @@
-// Android library module of the Native Demo plugin. The script `make.py` copies it into `haylen/plugins/native-demo` of the Android project of an app, which depends on it. The `haylen-plugins` library brings the plugin API of the `haylen` library and the provider that loads the plugin, and the `haylen-links` library the activity that receives its links.
+// Android library module of the Native Demo plugin. The script `haylen.py` copies it into `haylen/plugins/native-demo` of the Android project of an app, which depends on it. The `haylen-plugins` library brings the plugin API of the `haylen` library and the provider that loads the plugin, and the `haylen-links` library the activity that receives its links.
 plugins {
     id("com.android.library")
 }

@@ -26,12 +26,12 @@ The fonts are under the SIL Open Font License and listed in [`content/CREDITS.md
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `python3 make.py run samples/system/localization` |
-| macOS app | `python3 make.py run samples/system/localization --platform macos` |
-| iPhone and iPad simulator | `python3 make.py run samples/system/localization --platform ios-simulator` |
-| Apple TV simulator | `python3 make.py run samples/system/localization --platform tvos-simulator` |
-| Android device or emulator | `python3 make.py run samples/system/localization --platform android --device <serial>` |
-| Browser | `python3 make.py run samples/system/localization --platform web` |
+| Desktop player with hot reload | `python3 haylen.py run samples/system/localization` |
+| macOS app | `python3 haylen.py run samples/system/localization --platform macos` |
+| iPhone and iPad simulator | `python3 haylen.py run samples/system/localization --platform ios-simulator` |
+| Apple TV simulator | `python3 haylen.py run samples/system/localization --platform tvos-simulator` |
+| Android device or emulator | `python3 haylen.py run samples/system/localization --platform android --device <serial>` |
+| Browser | `python3 haylen.py run samples/system/localization --platform web` |
 
 ## Controls
 

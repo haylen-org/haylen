@@ -124,7 +124,7 @@ This is also the way Windows and Linux apps, which have no native handler regist
 
 ## Packaging libraries with an app
 
-The `native` section of `app.json` lists the libraries an app ships, by the name it loads them with. A library is either prebuilt files per platform or a CMake project that `make.py` builds for each platform it lists.
+The `native` section of `app.json` lists the libraries an app ships, by the name it loads them with. A library is either prebuilt files per platform or a CMake project that `haylen.py` builds for each platform it lists.
 
 ```json
 {
@@ -153,12 +153,12 @@ The `native` section of `app.json` lists the libraries an app ships, by the name
 | Key | Meaning |
 | --- | --- |
 | `files` | The prebuilt file of each platform, relative to the app folder: a `.dylib`, `.framework` or `.xcframework` on macOS, a `.framework`, `.xcframework` or, when linked statically, a `.a` on iOS and tvOS, a `.dll` on Windows, a `.so` on Linux, and on Android a folder with a subfolder of `.so` files for each ABI, the layout of `jniLibs`. An `.xcframework` gives the slice of each Apple platform. |
-| `cmake` | A folder with a `CMakeLists.txt` that defines a library target with the name of the library, built as a shared or a static library as `BUILD_SHARED_LIBS` says. The script `make.py` passes `HAYLEN_INCLUDE_DIR`, the folder of `haylen/platform/native/HaylenNative.h`. |
-| `platforms` | The platforms `make.py` builds a CMake library for, among `macos`, `ios`, `tvos`, `android`, `windows` and `linux`. |
+| `cmake` | A folder with a `CMakeLists.txt` that defines a library target with the name of the library, built as a shared or a static library as `BUILD_SHARED_LIBS` says. The script `haylen.py` passes `HAYLEN_INCLUDE_DIR`, the folder of `haylen/platform/native/HaylenNative.h`. |
+| `platforms` | The platforms `haylen.py` builds a CMake library for, among `macos`, `ios`, `tvos`, `android`, `windows` and `linux`. |
 | `link` | Either `dynamic`, the default, or `static`, which only iOS and tvOS apps do. |
-| `symbols` | The symbols of a static library that Lua reaches, which `make.py` keeps and registers. |
+| `symbols` | The symbols of a static library that Lua reaches, which `haylen.py` keeps and registers. |
 
-The script `make.py` places each library where the app loads it:
+The script `haylen.py` places each library where the app loads it:
 
 | Platform | Place |
 | --- | --- |
@@ -168,17 +168,17 @@ The script `make.py` places each library where the app loads it:
 | Android | The folder `haylen/jniLibs/<abi>/` of the Gradle project for `arm64-v8a`, `armeabi-v7a` and `x86_64`, the ABIs of the engine, which the app module takes as a folder of native libraries. The linker of Android finds them by name. An AAR dependency or a `jniLibs` folder of the Android project of the app works too. |
 | Windows | Next to the executable. |
 | Linux | The folder `lib/` next to the executable, whose `RUNPATH` of `$ORIGIN:$ORIGIN/lib` lets the libraries find each other. |
-| Desktop player | The folder `build/apps/<app>-<hash>/native/development/`, in the build folder of the app, which `make.py run` passes to the player with `--native`. |
+| Desktop player | The folder `build/apps/<app>-<hash>/native/development/`, in the build folder of the app, which `haylen.py run` passes to the player with `--native`. |
 
-The file `project.yml` of the app never changes for its libraries: `make.py` writes them into `haylen/native/<platform>-<sdk>/` of the Apple project, the file lists that the embed phase reads into `haylen/native/<platform>-<sdk>.xcfilelist`, the link settings into `haylen/Haylen.xcconfig`, and the embed phase into the target templates of the platforms that have libraries. The embed phase runs without the script sandbox of Xcode, because the sandbox would need every file of a bundle and the temporary files of `codesign` listed one by one. Files that the app keeps in `platform/<platform>/` for Windows and Linux land next to the executable too.
+The file `project.yml` of the app never changes for its libraries: `haylen.py` writes them into `haylen/native/<platform>-<sdk>/` of the Apple project, the file lists that the embed phase reads into `haylen/native/<platform>-<sdk>.xcfilelist`, the link settings into `haylen/Haylen.xcconfig`, and the embed phase into the target templates of the platforms that have libraries. The embed phase runs without the script sandbox of Xcode, because the sandbox would need every file of a bundle and the temporary files of `codesign` listed one by one. Files that the app keeps in `platform/<platform>/` for Windows and Linux land next to the executable too.
 
 ### Static libraries on iOS and tvOS
 
-An iOS app may link a library statically instead of embedding a framework, which some SDKs require. Dead code stripping would then remove every function the app never calls from native code, so `make.py` writes `source/HaylenNativeSymbols.mm`, whose `+load` registers the listed symbols with `haylen::platform::NativeLibraries::registerLinked`. The references keep the functions in the app, and every Lua state the engine creates gets the table through `varn::runtime::Runtime::addSymbol`, so `native.load('native_test_static')` returns `ffi.C`, which finds the listed functions by name without the app exporting them, and `native.findSymbol` finds them too. The `symbols` list names the functions Lua calls, including an `init` function.
+An iOS app may link a library statically instead of embedding a framework, which some SDKs require. Dead code stripping would then remove every function the app never calls from native code, so `haylen.py` writes `source/HaylenNativeSymbols.mm`, whose `+load` registers the listed symbols with `haylen::platform::NativeLibraries::registerLinked`. The references keep the functions in the app, and every Lua state the engine creates gets the table through `varn::runtime::Runtime::addSymbol`, so `native.load('native_test_static')` returns `ffi.C`, which finds the listed functions by name without the app exporting them, and `native.findSymbol` finds them too. The `symbols` list names the functions Lua calls, including an `init` function.
 
 ### Development
 
-The command `python3 make.py run <app>` builds or copies the libraries of this desktop into `build/apps/<app>-<hash>/native/development/`, in the [build folder of the app](distribution.md#platform-projects), and starts the player with `--native` and that folder, which `native.load` searches first. The player takes `--native <folder>` more than once, so a player started by hand finds libraries anywhere.
+The command `python3 haylen.py run <app>` builds or copies the libraries of this desktop into `build/apps/<app>-<hash>/native/development/`, in the [build folder of the app](distribution.md#platform-projects), and starts the player with `--native` and that folder, which `native.load` searches first. The player takes `--native <folder>` more than once, so a player started by hand finds libraries anywhere.
 
 ## C++ plugins
 

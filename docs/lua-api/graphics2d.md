@@ -1203,7 +1203,7 @@ print('the sun shines with intensity ' .. glare)
 
 ### graphics2d.newMaterial(shader, uniforms)
 
-Creates a [`Material`](#material) that shades draws with `shader`, a `Shader` that [`haylen.assets`](assets.md) loads from a `.shader` file compiled by `make.py shaders`, as the [shader guide](../shaders.md) explains. The argument `uniforms` is an optional table of initial values by name, which `material:set` takes one by one. A shader without the programs of the shader library raises `The shader "name" has no "sprite" program.`
+Creates a [`Material`](#material) that shades draws with `shader`, a `Shader` that [`haylen.assets`](assets.md) loads from a `.shader` file compiled by `haylen.py shaders`, as the [shader guide](../shaders.md) explains. The argument `uniforms` is an optional table of initial values by name, which `material:set` takes one by one. A shader without the programs of the shader library raises `The shader "name" has no "sprite" program.`
 
 ```lua
 local assets = require('haylen.assets')

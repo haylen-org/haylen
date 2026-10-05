@@ -21,8 +21,8 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install clang-format==23.1.1
-      - run: python make.py format --check
-      - name: Test the rules of make.py
+      - run: python haylen.py format --check
+      - name: Test the rules of haylen.py
         run: python -m unittest discover -s tools -p "test_*.py"
 
   desktop:
@@ -50,9 +50,9 @@ jobs:
           path: .cache/cpm
           key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
       - name: Test
-        run: python make.py test --config Debug
+        run: python haylen.py test --config Debug
       - name: Build the SDK and an app that finds it with "find_package"
-        run: python make.py embedding --mode package --config Release
+        run: python haylen.py embedding --mode package --config Release
 
   coverage:
     runs-on: macos-latest
@@ -65,7 +65,7 @@ jobs:
         with:
           path: .cache/cpm
           key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
-      - run: python make.py coverage
+      - run: python haylen.py coverage
       - uses: actions/upload-artifact@v7
         with:
           name: coverage
@@ -86,9 +86,9 @@ jobs:
       - uses: actions/cache@v6
         with:
           path: .tools/emsdk
-          key: emsdk-${{ hashFiles('make.py') }}
+          key: emsdk-${{ hashFiles('haylen.py') }}
       - name: Build the prebuilt player for WebGPU and WebGL2
-        run: python make.py engine --platform web
+        run: python haylen.py engine --platform web
       - uses: actions/upload-artifact@v7
         with:
           name: haylen-web
@@ -113,7 +113,7 @@ jobs:
           path: .cache/cpm
           key: cpm-android-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
       - name: Build the Android library and publish it to the local Maven repository
-        run: python make.py engine --platform android
+        run: python haylen.py engine --platform android
       - uses: actions/upload-artifact@v7
         with:
           name: haylen-android
@@ -132,7 +132,7 @@ jobs:
           path: .cache/cpm
           key: cpm-apple-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
       - name: Build "Haylen.xcframework"
-        run: python make.py engine --platform apple
+        run: python haylen.py engine --platform apple
       - uses: actions/upload-artifact@v7
         with:
           name: haylen-apple

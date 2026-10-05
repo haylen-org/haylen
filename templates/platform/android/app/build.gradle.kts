@@ -1,4 +1,4 @@
-// The app module takes its identity, version, orientation, native library and plugins from `haylen/haylen.properties`, and its package, splash resources and native libraries from the folders next to it, which `make.py` writes from `app.json` every time it prepares the project.
+// The app module takes its identity, version, orientation, native library and plugins from `haylen/haylen.properties`, and its package, splash resources and native libraries from the folders next to it, which `haylen.py` writes from `app.json` every time it prepares the project.
 import java.util.Properties
 
 plugins {
@@ -20,7 +20,7 @@ android {
         targetSdk = 37
         versionCode = haylen.getProperty("versionCode").toInt()
         versionName = haylen.getProperty("versionName")
-        // The manifests of the plugin modules read their values from placeholders, which `make.py` writes as `placeholder.<name>` keys.
+        // The manifests of the plugin modules read their values from placeholders, which `haylen.py` writes as `placeholder.<name>` keys.
         haylen.stringPropertyNames().filter { it.startsWith("placeholder.") }.forEach { manifestPlaceholders[it.removePrefix("placeholder.")] = haylen.getProperty(it) }
         manifestPlaceholders["haylenAppName"] = haylen.getProperty("name")
         manifestPlaceholders["haylenScreenOrientation"] = haylen.getProperty("orientation")

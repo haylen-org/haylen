@@ -114,7 +114,7 @@ The window keeps the mouse it has while a button is down, so a press that starts
 
 A game that the player keeps next to their work should not take the keyboard when clicked. The option `focusable = false` keeps the app inactive: clicks reach the app, and key presses go to the app the player was typing in. Such a game is played with the mouse, and a normal window mode with `window.setFocusable(true)` can bring the keyboard back.
 
-The option `showInTaskbar = false` makes the window a tool window without a taskbar button on Windows and Linux, and an accessory app without a Dock icon or a menu bar on macOS. A macOS app packaged by `make.py` or `haylen_add_app` with `showInTaskbar` set to `false` in `app.json` also declares `LSUIElement`, so its Dock icon never appears, not even while it starts. A window out of the taskbar needs a way to quit, such as a button of the UI.
+The option `showInTaskbar = false` makes the window a tool window without a taskbar button on Windows and Linux, and an accessory app without a Dock icon or a menu bar on macOS. A macOS app packaged by `haylen.py` or `haylen_add_app` with `showInTaskbar` set to `false` in `app.json` also declares `LSUIElement`, so its Dock icon never appears, not even while it starts. A window out of the taskbar needs a way to quit, such as a button of the UI.
 
 ## The taskbar strip
 

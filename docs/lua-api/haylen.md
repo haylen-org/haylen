@@ -82,7 +82,7 @@ A table with the configuration read from `app.json`, with defaults filled in for
 | `debug.safeArea` | string or table | absent | The safe area simulated instead of the one of the device, present only when `app.json` sets it, see [`viewport.setSafeAreaSimulation`](viewport.md#viewportsetsafeareasimulationvalue). |
 | `debug.showSafeArea` | boolean | `false` | Whether the debug view of the safe area shows from the start, see [`ui.setSafeAreaVisible`](ui.md#uisetsafeareavisiblevisible). |
 | `autoload` | list of strings | `{}` | Modules that load as autoloads before `source/main.lua`, see `haylen.autoload`. |
-| `native` | table | `{}` | The native libraries the app ships by name, as `app.json` lists them for `make.py`, see the [native code guide](../native.md#packaging-libraries-with-an-app). |
+| `native` | table | `{}` | The native libraries the app ships by name, as `app.json` lists them for `haylen.py`, see the [native code guide](../native.md#packaging-libraries-with-an-app). |
 | `plugins` | table | `{}` | The plugins of the app by id with the parameter values that `app.json` gives them, see the [plugin guide](../plugins.md). The field [`platform.plugin(id).config`](platform.md#plugin-handles) adds the defaults of their parameters. |
 
 ```lua

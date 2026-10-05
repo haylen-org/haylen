@@ -18,12 +18,12 @@ The recordings come from the Tiny Island sample and are CC0, credited in `conten
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `python3 make.py run gameplay/audio` |
-| macOS app | `python3 make.py run gameplay/audio --platform macos` |
-| iPhone and iPad simulator | `python3 make.py run gameplay/audio --platform ios-simulator` |
-| Apple TV simulator | `python3 make.py run gameplay/audio --platform tvos-simulator` |
-| Android device or emulator | `python3 make.py run gameplay/audio --platform android --device <serial>` |
-| Browser | `python3 make.py run gameplay/audio --platform web` |
+| Desktop player with hot reload | `python3 haylen.py run gameplay/audio` |
+| macOS app | `python3 haylen.py run gameplay/audio --platform macos` |
+| iPhone and iPad simulator | `python3 haylen.py run gameplay/audio --platform ios-simulator` |
+| Apple TV simulator | `python3 haylen.py run gameplay/audio --platform tvos-simulator` |
+| Android device or emulator | `python3 haylen.py run gameplay/audio --platform android --device <serial>` |
+| Browser | `python3 haylen.py run gameplay/audio --platform web` |
 
 Browsers keep the sound silent until the first click, tap or key on the page, so the web build starts playing once the player picks a test.
 

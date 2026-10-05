@@ -28,12 +28,12 @@ A Lua sample with one scene per feature of [`haylen.tween`](../../../docs/lua-ap
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `python3 make.py run samples/gameplay/tween` |
-| macOS app | `python3 make.py run samples/gameplay/tween --platform macos` |
-| iPhone and iPad simulator | `python3 make.py run samples/gameplay/tween --platform ios-simulator` |
-| Apple TV simulator | `python3 make.py run samples/gameplay/tween --platform tvos-simulator` |
-| Android device or emulator | `python3 make.py run samples/gameplay/tween --platform android --device <serial>` |
-| Browser | `python3 make.py run samples/gameplay/tween --platform web` |
+| Desktop player with hot reload | `python3 haylen.py run samples/gameplay/tween` |
+| macOS app | `python3 haylen.py run samples/gameplay/tween --platform macos` |
+| iPhone and iPad simulator | `python3 haylen.py run samples/gameplay/tween --platform ios-simulator` |
+| Apple TV simulator | `python3 haylen.py run samples/gameplay/tween --platform tvos-simulator` |
+| Android device or emulator | `python3 haylen.py run samples/gameplay/tween --platform android --device <serial>` |
+| Browser | `python3 haylen.py run samples/gameplay/tween --platform web` |
 
 ## Controls
 

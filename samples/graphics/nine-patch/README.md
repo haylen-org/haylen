@@ -16,12 +16,12 @@ The images under `content/` were drawn for this sample from code: the framed pan
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `python3 make.py run samples/graphics/nine-patch` |
-| macOS app | `python3 make.py run samples/graphics/nine-patch --platform macos` |
-| iPhone and iPad simulator | `python3 make.py run samples/graphics/nine-patch --platform ios-simulator` |
-| Apple TV simulator | `python3 make.py run samples/graphics/nine-patch --platform tvos-simulator` |
-| Android device or emulator | `python3 make.py run samples/graphics/nine-patch --platform android --device <serial>` |
-| Browser | `python3 make.py run samples/graphics/nine-patch --platform web` |
+| Desktop player with hot reload | `python3 haylen.py run samples/graphics/nine-patch` |
+| macOS app | `python3 haylen.py run samples/graphics/nine-patch --platform macos` |
+| iPhone and iPad simulator | `python3 haylen.py run samples/graphics/nine-patch --platform ios-simulator` |
+| Apple TV simulator | `python3 haylen.py run samples/graphics/nine-patch --platform tvos-simulator` |
+| Android device or emulator | `python3 haylen.py run samples/graphics/nine-patch --platform android --device <serial>` |
+| Browser | `python3 haylen.py run samples/graphics/nine-patch --platform web` |
 
 ## Controls
 

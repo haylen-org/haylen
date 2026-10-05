@@ -1,5 +1,5 @@
-# XcodeGen spec of App.xcodeproj, which is committed next to it. After changing it, run "python3 make.py xcodegen <app>", which runs the XcodeGen that make.py pins.
-# The script make.py writes the gitignored folder haylen/ and nothing else: haylen/project.yml defines the target templates HaylenIOS, HaylenTVOS and HaylenMacOS with the engine, its system frameworks, the package, the splash assets, the merged Info.plist, entitlements and privacy manifest, the native libraries and the native parts of the plugins of the app.
+# XcodeGen spec of App.xcodeproj, which is committed next to it. After changing it, run "python3 haylen.py xcodegen <app>", which runs the XcodeGen that haylen.py pins.
+# The script haylen.py writes the gitignored folder haylen/ and nothing else: haylen/project.yml defines the target templates HaylenIOS, HaylenTVOS and HaylenMacOS with the engine, its system frameworks, the package, the splash assets, the merged Info.plist, entitlements and privacy manifest, the native libraries and the native parts of the plugins of the app.
 # Each target takes its template in "templates", and a setting or a list of the target itself adds to the template or wins over it. Deleting "templates" leaves the target without the engine, which the target then links itself.
 # Every file in source/ builds into every target, so apps add Objective-C, C++ and Swift files there, and Swift reaches the engine through HaylenBridging.h.
 # The Info.plist of each platform stays out of the resources, since the template completes it into haylen/ and the target builds the completed one.
@@ -44,7 +44,7 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MACCATALYST: YES
         DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER: NO
-        # Mac Catalyst runs on this Mac without a development team, while devices sign with the team make.py passes.
+        # Mac Catalyst runs on this Mac without a development team, while devices sign with the team haylen.py passes.
         CODE_SIGN_IDENTITY[sdk=macosx*]: "-"
         # Mac Catalyst 16.3 would run on macOS 13.2, while the C++ library of the engine needs macOS 13.3, which is Mac Catalyst 16.4.
         IPHONEOS_DEPLOYMENT_TARGET[sdk=macosx*]: "16.4"

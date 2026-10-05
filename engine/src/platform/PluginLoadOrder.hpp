@@ -11,7 +11,7 @@ class Package;
 
 namespace haylen::platform {
 
-// The order in which the native parts of the plugins of an app load on the platforms that read it from the package: the order of `app.json`, where every plugin follows the plugins that its `plugin.json` requires, as `make.py` orders them for the builds of the other platforms.
+// The order in which the native parts of the plugins of an app load on the platforms that read it from the package: the order of `app.json`, where every plugin follows the plugins that its `plugin.json` requires, as `haylen.py` orders them for the builds of the other platforms.
 class PluginLoadOrder final {
   public:
     // Returns the ids of the plugins that `app.json` of the package lists, in load order. Throws `std::runtime_error` when `app.json` or the `plugin.json` of a listed plugin is not a JSON object.

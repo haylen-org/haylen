@@ -19,12 +19,12 @@ The mouse, touch, the keyboard, gamepads and TV remotes reach every control of t
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `python3 make.py run interface/safe-area` |
-| macOS app | `python3 make.py run interface/safe-area --platform macos` |
-| iPhone and iPad simulator | `python3 make.py run interface/safe-area --platform ios-simulator` |
-| Apple TV simulator | `python3 make.py run interface/safe-area --platform tvos-simulator` |
-| Android device or emulator | `python3 make.py run interface/safe-area --platform android` |
-| Browser | `python3 make.py run interface/safe-area --platform web` |
+| Desktop player with hot reload | `python3 haylen.py run interface/safe-area` |
+| macOS app | `python3 haylen.py run interface/safe-area --platform macos` |
+| iPhone and iPad simulator | `python3 haylen.py run interface/safe-area --platform ios-simulator` |
+| Apple TV simulator | `python3 haylen.py run interface/safe-area --platform tvos-simulator` |
+| Android device or emulator | `python3 haylen.py run interface/safe-area --platform android` |
+| Browser | `python3 haylen.py run interface/safe-area --platform web` |
 
 To start any app with a simulated device and the overlay, add `"debug": {"safeArea": "iphoneNotch", "showSafeArea": true}` to its `app.json`.
 

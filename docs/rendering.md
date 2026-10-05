@@ -234,7 +234,7 @@ The engine embeds Roboto Medium from Dear ImGui as its default font, which `grap
 
 ## Nine-slices
 
-A `NineSlice` (`engine/include/haylen/2d/graphics/NineSlice.hpp`) is a texture with nine source rectangles, row by row from the top-left corner. The method `NineSlice::fromBorders` cuts one source rectangle with fixed borders, and `NineSlice::fromPieces` takes nine separate rectangles, like the packed Tiny Swords pieces that `make.py assets` writes to `ui/sliced.json`. In Lua, `graphics2d.newNineSlice(texture, {borders = ...})` or `{pieces = ...}` builds one.
+A `NineSlice` (`engine/include/haylen/2d/graphics/NineSlice.hpp`) is a texture with nine source rectangles, row by row from the top-left corner. The method `NineSlice::fromBorders` cuts one source rectangle with fixed borders, and `NineSlice::fromPieces` takes nine separate rectangles, like the packed Tiny Swords pieces that `haylen.py assets` writes to `ui/sliced.json`. In Lua, `graphics2d.newNineSlice(texture, {borders = ...})` or `{pieces = ...}` builds one.
 
 The method `drawNineSlice(slice, area, color, order, borderScale)` keeps the corners at their size times `borderScale`, and shrinks the borders proportionally when the area is smaller than them. With the `stretch` fill the edges and the center stretch. With the `tile` fill they repeat at their scaled size and the last tile of each row and column is cropped. All pieces go into one draw item with the slice's texture, so frames that share a texture batch together. UI themes use nine-slices for their surfaces, as the [UI guide](ui.md) explains.
 
@@ -303,7 +303,7 @@ A slot is freed when the last handle to its object goes away, and the object is 
 ## Sprite benchmark
 
 ```sh
-python3 make.py bench
+python3 haylen.py bench
 ```
 
 The command `bench` builds the `haylen-sprite-benchmark` app in Release for the host and runs it on the local GPU. The app is `engine/bench/SpriteBenchmark.cpp`, written in C++ and added with `haylen_add_app(... CPP ...)` on desktop builds when `HAYLEN_BUILD_BENCHMARKS` is on, with the package `engine/bench/sprite-benchmark`. Its `app.json` opens a 1280 by 720 high-DPI window with vsync off and a 1920 by 1080 design area with the `fit` policy.

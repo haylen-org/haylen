@@ -32,12 +32,12 @@ The mouse, touch, the keyboard, gamepads and TV remotes reach every control. The
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `python3 make.py run interface/ui` |
-| macOS app | `python3 make.py run interface/ui --platform macos` |
-| iPhone and iPad simulator | `python3 make.py run interface/ui --platform ios-simulator` |
-| Apple TV simulator | `python3 make.py run interface/ui --platform tvos-simulator` |
-| Android device or emulator | `python3 make.py run interface/ui --platform android` |
-| Browser | `python3 make.py run interface/ui --platform web` |
+| Desktop player with hot reload | `python3 haylen.py run interface/ui` |
+| macOS app | `python3 haylen.py run interface/ui --platform macos` |
+| iPhone and iPad simulator | `python3 haylen.py run interface/ui --platform ios-simulator` |
+| Apple TV simulator | `python3 haylen.py run interface/ui --platform tvos-simulator` |
+| Android device or emulator | `python3 haylen.py run interface/ui --platform android` |
+| Browser | `python3 haylen.py run interface/ui --platform web` |
 
 ## Package layout
 

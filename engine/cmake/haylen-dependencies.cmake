@@ -66,7 +66,7 @@ CPMAddPackage(
   DOWNLOAD_ONLY YES
 )
 
-# GameActivity of the AndroidX games libraries hosts Android apps. The script `make.py` builds the player outside Gradle, so the engine links the static library of its native side from the prefab folder of the AAR, whose Java classes the Android library and template use at the same version.
+# GameActivity of the AndroidX games libraries hosts Android apps. The script `haylen.py` builds the player outside Gradle, so the engine links the static library of its native side from the prefab folder of the AAR, whose Java classes the Android library and template use at the same version.
 if(ANDROID)
   CPMAddPackage(
     NAME games_activity

@@ -5,7 +5,7 @@
 /.idea/
 /.vscode/
 .DS_Store
-# The Tiny Swords license allows using the art in games but not redistributing the pack, so make.py assets imports it from the original zip.
+# The Tiny Swords license allows using the art in games but not redistributing the pack, so haylen.py assets imports it from the original zip.
 /samples/games/tiny-island/content/tiny_swords/
 __pycache__/
 # Gradle, Kotlin and the Android plugin write their outputs next to the Android library project, and apps assemble their projects under build/.

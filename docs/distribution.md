@@ -1,17 +1,17 @@
 # Distributing apps
 
-A Haylen app is a package: `app.json`, the Lua modules under `source/` and the assets under `content/`. The engine is compiled once into prebuilt artifacts for every platform, and the project of each platform, which starts as a copy of a template in `templates/platform/`, belongs to the developer. `make.py` writes the name, identifier, version, orientation and splash screen of `app.json`, the package and the plugins of the app into one generated folder of that project, builds the project where it is and launches it. A Lua app never compiles the engine, and the same package runs on every platform.
+A Haylen app is a package: `app.json`, the Lua modules under `source/` and the assets under `content/`. The engine is compiled once into prebuilt artifacts for every platform, and the project of each platform, which starts as a copy of a template in `templates/platform/`, belongs to the developer. `haylen.py` writes the name, identifier, version, orientation and splash screen of `app.json`, the package and the plugins of the app into one generated folder of that project, builds the project where it is and launches it. A Lua app never compiles the engine, and the same package runs on every platform.
 
 This guide covers the commands, the engine artifacts, the templates, the platform projects and their generated folder, the check of a built app, the privacy manifest, native libraries, splash screens, the web loader, the local web server and the platforms Haylen supports. The [plugin guide](plugins.md) covers plugins, which add native capabilities to apps, the [build guide](build.md) covers building the engine itself and the [embedding guide](embedding.md) covers C++ projects that compile the engine through CMake.
 
 ## Quick start
 
 ```sh
-python3 make.py new ~/apps/my-game --name "My Game" --identifier com.example.mygame
-python3 make.py run ~/apps/my-game
-python3 make.py run ~/apps/my-game --platform ios-simulator
-python3 make.py run ~/apps/my-game --platform android
-python3 make.py run ~/apps/my-game --platform web
+python3 haylen.py new ~/apps/my-game --name "My Game" --identifier com.example.mygame
+python3 haylen.py run ~/apps/my-game
+python3 haylen.py run ~/apps/my-game --platform ios-simulator
+python3 haylen.py run ~/apps/my-game --platform android
+python3 haylen.py run ~/apps/my-game --platform web
 ```
 
 `new` creates the app from the starter app and copies every platform template into its `platform/` folder, where the projects belong to the developer. `run` without `--platform` starts the desktop player of this machine in development mode, which reloads edited scripts and assets. With `--platform` it builds the engine artifacts when they are missing or stale, prepares the project of the platform, builds it, checks what the built app lacks and launches it on a simulator, an emulator, a device, this Mac or a local web server, and streams the output of the app.
@@ -37,13 +37,13 @@ python3 make.py run ~/apps/my-game --platform web
 | `plugin list [--app]` | Lists the plugins of an app with their status. |
 | `plugin new <folder> [--id]` | Creates a plugin from `templates/plugin/`. |
 
-`app` is an app folder or the path of a sample from `samples/`, so `python3 make.py run games/tiny-island` and `python3 make.py run samples/games/tiny-island` are the same. Without an app, `run` runs Tiny Island.
+`app` is an app folder or the path of a sample from `samples/`, so `python3 haylen.py run games/tiny-island` and `python3 haylen.py run samples/games/tiny-island` are the same. Without an app, `run` runs Tiny Island.
 
 ### engine
 
 ```sh
-python3 make.py engine
-python3 make.py engine --platform apple --config Release
+python3 haylen.py engine
+python3 haylen.py engine --platform apple --config Release
 ```
 
 Builds the artifacts of one platform, or of every platform with `--platform all`, which is the default. `--config` is `Release` by default. Each build records the configuration and a SHA-256 hash of the engine sources in `build/artifacts/manifest.json`, and `run` rebuilds the artifacts of a platform before it uses them whenever the manifest does not match the current sources or the configuration that `--engine-config` asks for. The hash covers every file under `engine/` except the tests, the benchmark and build outputs, so any change to the engine code, its CMake files, its shaders or its platform projects makes the artifacts stale.
@@ -51,21 +51,21 @@ Builds the artifacts of one platform, or of every platform with `--platform all`
 ### new
 
 ```sh
-python3 make.py new ~/apps/space-race --orientation portrait
+python3 haylen.py new ~/apps/space-race --orientation portrait
 ```
 
-Copies `templates/app` into the folder with its `.gitignore`, `.editorconfig` and `.clang-format`, writes the name, identifier and orientation into its `app.json`, turns the window and design resolution upright for `portrait`, and copies every folder of `templates/platform`, today `apple`, `android` and `web`, into `platform/<platform>` of the app. Those projects belong to the developer, who edits them as the company wants, and make.py builds them where they are and writes only their `haylen/` folder, as [platform projects](#platform-projects) describes. The name defaults to the folder name in title case, the identifier to `com.example.<folder>` and the orientation to `landscape`. The folder must not exist or must be empty.
+Copies `templates/app` into the folder with its `.gitignore`, `.editorconfig` and `.clang-format`, writes the name, identifier and orientation into its `app.json`, turns the window and design resolution upright for `portrait`, and copies every folder of `templates/platform`, today `apple`, `android` and `web`, into `platform/<platform>` of the app. Those projects belong to the developer, who edits them as the company wants, and haylen.py builds them where they are and writes only their `haylen/` folder, as [platform projects](#platform-projects) describes. The name defaults to the folder name in title case, the identifier to `com.example.<folder>` and the orientation to `landscape`. The folder must not exist or must be empty.
 
 ### run
 
 ```sh
-python3 make.py run samples/games/tiny-island
-python3 make.py run games/tiny-island --platform macos
-python3 make.py run games/tiny-island --platform catalyst
-python3 make.py run games/tiny-island --platform ios-simulator --device "iPad Pro 13-inch (M5)"
-python3 make.py run games/tiny-island --platform tvos-simulator
-python3 make.py run games/tiny-island --platform android --device emulator-5554
-python3 make.py run games/tiny-island --platform web --coep off --open
+python3 haylen.py run samples/games/tiny-island
+python3 haylen.py run games/tiny-island --platform macos
+python3 haylen.py run games/tiny-island --platform catalyst
+python3 haylen.py run games/tiny-island --platform ios-simulator --device "iPad Pro 13-inch (M5)"
+python3 haylen.py run games/tiny-island --platform tvos-simulator
+python3 haylen.py run games/tiny-island --platform android --device emulator-5554
+python3 haylen.py run games/tiny-island --platform web --coep off --open
 ```
 
 Before anything else, `run` compiles the shaders of the app whose sources changed, as [shaders](#shaders) describes. Without `--platform`, `run` builds the `haylen` player in the build tree of this machine (`build/<host>-<config>`), builds or copies the [native libraries](#native-libraries) of the app for this machine into `native/development` of the [build folder of the app](#platform-projects), and starts the player with `--dev`, `--native` and that folder when there are libraries, and the app folder. While the player runs it compiles every shader source that changes again, which the player then reloads. With `--platform` it prepares the project of the platform as [platform projects](#platform-projects) describes and then:
@@ -85,11 +85,11 @@ Before anything else, `run` compiles the shaders of the app whose sources change
 ### run-cpp
 
 ```sh
-python3 make.py run-cpp cpp/embedding
-python3 make.py run-cpp samples/cpp/embedding --platform web
-python3 make.py run-cpp cpp/embedding --platform ios-simulator --device "iPhone 17"
-python3 make.py run-cpp cpp/embedding --platform catalyst
-python3 make.py run-cpp cpp/embedding --platform android --device emulator-5554
+python3 haylen.py run-cpp cpp/embedding
+python3 haylen.py run-cpp samples/cpp/embedding --platform web
+python3 haylen.py run-cpp cpp/embedding --platform ios-simulator --device "iPhone 17"
+python3 haylen.py run-cpp cpp/embedding --platform catalyst
+python3 haylen.py run-cpp cpp/embedding --platform android --device emulator-5554
 ```
 
 Configures a CMake project that calls `haylen_add_app`, such as `samples/cpp/embedding`, in `build/cpp/<project>-<hash>/<platform>-<config>`, builds its app target and runs it. `<hash>` is the start of the SHA-256 hash of the absolute project folder, so projects in folders with the same name never share a build tree. The target is named after the project folder unless `--target` names another one. C++ projects compile the engine from source, so only Android uses an engine artifact, for its Java classes.
@@ -106,7 +106,7 @@ Configures a CMake project that calls `haylen_add_app`, such as `samples/cpp/emb
 ### package
 
 ```sh
-python3 make.py package games/tiny-island -o build/tiny-island.zip
+python3 haylen.py package games/tiny-island -o build/tiny-island.zip
 ```
 
 Compiles the shaders of the app whose sources changed, then zips `app.json`, `source/` and `content/` of the app, with `plugin.json` and `source/` of every plugin that `app.json` lists, and nothing else in its folder, into `app.zip` or the file `-o` names. The desktop player runs the zip with `haylen app.zip`, and a web page hands it to the runtime as described in [the web loader](#web-loader).
@@ -114,8 +114,8 @@ Compiles the shaders of the app whose sources changed, then zips `app.json`, `so
 ### shaders
 
 ```sh
-python3 make.py shaders tiny-island
-python3 make.py shaders ~/apps/my-game --force
+python3 haylen.py shaders tiny-island
+python3 haylen.py shaders ~/apps/my-game --force
 ```
 
 Compiles every source under `content/shaders/` that declares an `@program` into a `.shader` file next to it, for every backend the engine runs on, with `sokol-shdc` from `.tools/`. Sources without a program are files the others include. A shader is compiled again when its `.shader` file is older than any source of the app or the shader library, and `--force` compiles them all. A compile error names the file, the line and the program, and fails the command. The [shader guide](shaders.md) explains the sources and the files. The web editor cannot compile shaders, so apps ship their `.shader` files in their package.
@@ -123,9 +123,9 @@ Compiles every source under `content/shaders/` that declares an `@program` into 
 ### serve
 
 ```sh
-python3 make.py serve dist/my-game --port 8000
-python3 make.py serve dist/my-game --coep off --open
-python3 make.py serve dist/my-game --host 192.168.1.20
+python3 haylen.py serve dist/my-game --port 8000
+python3 haylen.py serve dist/my-game --coep off --open
+python3 haylen.py serve dist/my-game --host 192.168.1.20
 ```
 
 Serves a folder at `http://127.0.0.1:<port>/` with a threading Python server. `--host` listens on another address of this machine instead, such as its LAN address, so phones and other computers open the page. Browsers offer `AudioWorklet` only to pages served over https or from localhost, so those pages run without sound. `run --platform web` and `run-cpp --platform web` take the same options. The server sends:
@@ -143,11 +143,11 @@ The web runtime is single-threaded, so its pages need no cross-origin isolation,
 ### plugin
 
 ```sh
-python3 make.py plugin list
-python3 make.py plugin add admob --app ~/apps/my-game
-python3 make.py plugin list --app ~/apps/my-game
-python3 make.py plugin remove admob --app ~/apps/my-game
-python3 make.py plugin new ~/plugins/my-plugin
+python3 haylen.py plugin list
+python3 haylen.py plugin add admob --app ~/apps/my-game
+python3 haylen.py plugin list --app ~/apps/my-game
+python3 haylen.py plugin remove admob --app ~/apps/my-game
+python3 haylen.py plugin new ~/plugins/my-plugin
 ```
 
 `plugin add` copies a plugin folder, or the root of a plugin repository at the branch, tag or commit that `--ref` names, into `plugins/<id>/` of the app and lists it in the `plugins` section of `app.json` with the defaults of its parameters and an empty text for each required one. `plugin remove` deletes both, `plugin list` lists the plugins of an app with the problems that keep them from building, and `plugin new` creates a plugin from `templates/plugin/`. `--app` defaults to the current folder. The [plugin guide](plugins.md) describes the commands, the `plugins` section of `app.json`, the checks that `run` makes before it builds and the plugin format.
@@ -155,17 +155,17 @@ python3 make.py plugin new ~/plugins/my-plugin
 ### platform
 
 ```sh
-python3 make.py platform add ~/apps/my-game android
-python3 make.py platform diff ~/apps/my-game --template apple
+python3 haylen.py platform add ~/apps/my-game android
+python3 haylen.py platform diff ~/apps/my-game --template apple
 ```
 
-`platform add` creates `platform/<template>/` of an app from the template of the platform, for an app whose folder has none, which then builds that project instead of the copy that make.py keeps. `platform diff` compares `platform/<template>/` of an app with the current template and prints the files that only one of them has and a unified diff of every text file that differs, leaving out `haylen/`, build outputs and the state of Xcode for each person, so the developer adopts what they want of a newer template. It changes nothing.
+`platform add` creates `platform/<template>/` of an app from the template of the platform, for an app whose folder has none, which then builds that project instead of the copy that haylen.py keeps. `platform diff` compares `platform/<template>/` of an app with the current template and prints the files that only one of them has and a unified diff of every text file that differs, leaving out `haylen/`, build outputs and the state of Xcode for each person, so the developer adopts what they want of a newer template. It changes nothing.
 
 ### prepare
 
 ```sh
-python3 make.py prepare ~/apps/my-game --platform ios-simulator
-python3 make.py prepare games/tiny-island --platform android
+python3 haylen.py prepare ~/apps/my-game --platform ios-simulator
+python3 haylen.py prepare games/tiny-island --platform android
 ```
 
 Builds the engine artifacts of the platform when they are missing or stale and writes the folder `haylen/` of the project of the platform, and nothing else, which is enough to open the project in Xcode or Android Studio and build, run or archive it there. On the web it makes the site, and on Windows and Linux the folder of the app. The native libraries of an Apple project are the ones of the platform it names.
@@ -173,33 +173,33 @@ Builds the engine artifacts of the platform when they are missing or stale and w
 ### xcodegen
 
 ```sh
-python3 make.py xcodegen ~/apps/my-game
-python3 make.py xcodegen --template
+python3 haylen.py xcodegen ~/apps/my-game
+python3 haylen.py xcodegen --template
 ```
 
-Prepares the Apple project of an app, with the native libraries of `--platform`, `macos` by default, and generates its `App.xcodeproj` again from `project.yml` with the XcodeGen that make.py pins, after the developer changed `project.yml`, as [generating App.xcodeproj](#generating-appxcodeproj) describes. `--template` generates the `App.xcodeproj` of the Apple template of the engine again, in a copy with the `haylen/` folder of the starter app, after a change to its `project.yml`.
+Prepares the Apple project of an app, with the native libraries of `--platform`, `macos` by default, and generates its `App.xcodeproj` again from `project.yml` with the XcodeGen that haylen.py pins, after the developer changed `project.yml`, as [generating App.xcodeproj](#generating-appxcodeproj) describes. `--template` generates the `App.xcodeproj` of the Apple template of the engine again, in a copy with the `haylen/` folder of the starter app, after a change to its `project.yml`.
 
 ## Engine artifacts
 
-`make.py engine` writes this layout:
+`haylen.py engine` writes this layout:
 
 ```text
 build/artifacts/
   manifest.json                 Engine version and, per platform, the configuration and the source hash of the last build.
   apple/Haylen.xcframework      Static library and headers for macOS, iOS, the iOS simulator, Mac Catalyst, tvOS and the tvOS simulator.
-  apple/haylen-frameworks.json  The system frameworks that the engine needs on iOS, Mac Catalyst, tvOS and macOS, which make.py links into Apple projects.
-  apple/PrivacyInfo.xcprivacy   The APIs with required reasons that the engine calls, which make.py merges into the privacy manifest of Apple apps.
+  apple/haylen-frameworks.json  The system frameworks that the engine needs on iOS, Mac Catalyst, tvOS and macOS, which haylen.py links into Apple projects.
+  apple/PrivacyInfo.xcprivacy   The APIs with required reasons that the engine calls, which haylen.py merges into the privacy manifest of Apple apps.
   android/maven/                Maven repository with dev.haylen:haylen, the Android library with the player, and dev.haylen:haylen-plugins, haylen-links and haylen-coroutines.
   web/webgpu/                   haylen.js and haylen.wasm of the player for WebGPU, and haylen-audio-worklet.js, the processor of its audio output.
   web/webgl2/                   The same files for WebGL2.
   desktop/<os>-<arch>/haylen    The player of this machine.
 ```
 
-The intermediate build trees live in `build/engine/` for Apple and Android, and in the regular build trees of `make.py build` (`build/web-<config>`, `build/web-webgl2-<config>` and `build/<host>-<config>`) for the web and the desktop.
+The intermediate build trees live in `build/engine/` for Apple and Android, and in the regular build trees of `haylen.py build` (`build/web-<config>`, `build/web-webgl2-<config>` and `build/<host>-<config>`) for the web and the desktop.
 
 ### Haylen.xcframework
 
-The framework holds one static library per slice, `libhaylen.a`, with the engine, every dependency (Varn, Lua, Poco, OpenSSL, libuv, Box2D, ImGui, miniaudio and the rest), the runtime and the Lua player merged by `libtool`, and the public headers. Every architecture is a CMake build of `engine/` with `HAYLEN_BUILD_SDK` and `HAYLEN_BUILD_FRAMEWORK` in `build/engine/apple-<slice>-<arch>-<config>`: `haylen-install.cmake` merges the engine and the runtime as it does for the [SDK](embedding.md), and `haylen-framework.cmake` merges both with the player and writes `haylen-frameworks.json` from the lists of system frameworks in `haylen-app.cmake`, the same lists that `haylen_link_runtime_platform` links into C++ apps. `lipo` joins the architectures of a slice, `xcodebuild -create-xcframework` joins the slices, and make.py copies `haylen-frameworks.json` and the privacy manifest of the engine next to the framework.
+The framework holds one static library per slice, `libhaylen.a`, with the engine, every dependency (Varn, Lua, Poco, OpenSSL, libuv, Box2D, ImGui, miniaudio and the rest), the runtime and the Lua player merged by `libtool`, and the public headers. Every architecture is a CMake build of `engine/` with `HAYLEN_BUILD_SDK` and `HAYLEN_BUILD_FRAMEWORK` in `build/engine/apple-<slice>-<arch>-<config>`: `haylen-install.cmake` merges the engine and the runtime as it does for the [SDK](embedding.md), and `haylen-framework.cmake` merges both with the player and writes `haylen-frameworks.json` from the lists of system frameworks in `haylen-app.cmake`, the same lists that `haylen_link_runtime_platform` links into C++ apps. `lipo` joins the architectures of a slice, `xcodebuild -create-xcframework` joins the slices, and haylen.py copies `haylen-frameworks.json` and the privacy manifest of the engine next to the framework.
 
 | Slice | Architectures | Built with |
 | --- | --- | --- |
@@ -210,7 +210,7 @@ The framework holds one static library per slice, `libhaylen.a`, with the engine
 | `tvos` | arm64 | `CMAKE_SYSTEM_NAME=tvOS` and the `appletvos` SDK. |
 | `tvos-simulator` | arm64, x86_64 | `CMAKE_SYSTEM_NAME=tvOS` and the `appletvsimulator` SDK. |
 
-The slices target the oldest systems the engine code allows: iOS and tvOS 16.3 and Mac Catalyst 16.4, which is macOS 13.3 on the Mac, the releases whose C++ library formats floating point numbers with `std::format`, which the engine uses for text and logs, and macOS 14.0, because `sokol_app` drives the frames of macOS apps with `-[NSView displayLinkWithTarget:selector:]`, which macOS 14.0 introduced, without checking the version of the system, so an app built for an earlier macOS stops as it opens there. Mac Catalyst draws through the UIKit path of `sokol_app`, which never calls it. The Apple template sets `IPHONEOS_DEPLOYMENT_TARGET[sdk=macosx*]` to 16.4 for Mac Catalyst, because Xcode would otherwise map iOS 16.3 to macOS 13.2. The toolchain itself reaches back to iOS and tvOS 15 and macOS 12, and a build for iOS 15 fails only on `std::format` with floating point. The engine parses floating point numbers with fast_float, because `std::from_chars` for floating point needs iOS, tvOS and macOS 26. `make.py` passes the versions as `CMAKE_OSX_DEPLOYMENT_TARGET`, to the C++ apps it builds for macOS too, the Apple template sets them in `project.yml`, and C++ apps built with `haylen_add_app` use the same ones.
+The slices target the oldest systems the engine code allows: iOS and tvOS 16.3 and Mac Catalyst 16.4, which is macOS 13.3 on the Mac, the releases whose C++ library formats floating point numbers with `std::format`, which the engine uses for text and logs, and macOS 14.0, because `sokol_app` drives the frames of macOS apps with `-[NSView displayLinkWithTarget:selector:]`, which macOS 14.0 introduced, without checking the version of the system, so an app built for an earlier macOS stops as it opens there. Mac Catalyst draws through the UIKit path of `sokol_app`, which never calls it. The Apple template sets `IPHONEOS_DEPLOYMENT_TARGET[sdk=macosx*]` to 16.4 for Mac Catalyst, because Xcode would otherwise map iOS 16.3 to macOS 13.2. The toolchain itself reaches back to iOS and tvOS 15 and macOS 12, and a build for iOS 15 fails only on `std::format` with floating point. The engine parses floating point numbers with fast_float, because `std::from_chars` for floating point needs iOS, tvOS and macOS 26. `haylen.py` passes the versions as `CMAKE_OSX_DEPLOYMENT_TARGET`, to the C++ apps it builds for macOS too, the Apple template sets them in `project.yml`, and C++ apps built with `haylen_add_app` use the same ones.
 
 On Apple platforms `sokol_app` is compiled with `SOKOL_NO_ENTRY`, so the runtime never defines `main`. The app calls `haylen_main` instead, declared in `haylen/platform/apple/HaylenMain.h`:
 
@@ -228,7 +228,7 @@ That `main` is also the place to register native platform bridge handlers with `
 
 `engine/platform/android` is a Gradle project with four modules. The module `haylen` is the Android library (AAR) with the namespace `dev.haylen`. It holds `HaylenActivity`, a `GameActivity` of the AndroidX games libraries and so an `AppCompatActivity`, which draws the app in a `SurfaceView` of an ordinary view hierarchy, installs the splash screen, hides the system bars, reports the safe area, the on-screen keyboard and the screen orientation, forwards low-memory warnings, takes the back button through an `OnBackPressedCallback` while the app captures it and hands its events to the plugins, `HaylenLinkActivity`, which hands the links and notifications of the app to it, `HaylenEditText`, the hidden field that edits the focused text field of the UI, `HaylenAudioFocus`, which holds the audio focus in the foreground, `HaylenNetwork`, which follows the network while the app holds the permission `ACCESS_NETWORK_STATE`, `HaylenBattery`, which follows the battery, `HaylenDialogs` with the native dialogs, `HaylenBridge` for the platform bridge, the host of the Android parts of [plugins](plugins.md#the-android-part) with `HaylenPluginProvider`, which loads them when the process starts, `HaylenPlugin`, `HaylenPluginContext`, `HaylenRequirements`, `HaylenOverlay` with its `HaylenPlacement`, the screens of plugins with `HaylenScreens` and `HaylenScreen`, and the streams `HaylenVideoStream` and `HaylenAudioStream`, the splash themes and the Kotlin HTTP transport of Varn, which Gradle copies from the Varn sources. Its manifest declares only the OpenGL ES 3 requirement, so the permissions, the back policy and the components that only some apps want never reach an app through it: the modules `haylen-plugins` and `haylen-links` declare `HaylenPluginProvider` and the exported `HaylenLinkActivity` in manifests of their own, which reach the apps whose plugins depend on them, and `haylen-coroutines` holds `HaylenCoroutines` and `registerSuspend` with `kotlinx-coroutines-android`, as the [plugin guide](plugins.md#engine-libraries) describes. It packages the player, which the engine CMake project builds with `HAYLEN_BUILD_PLAYER` as the shared library `libhaylen.so`, for arm64-v8a, armeabi-v7a (the 32-bit Android TV devices still in use) and x86_64 (emulators), from Android 8.1 (API 27) on. The NDK r30 links the arm64-v8a and x86_64 libraries with 16 KB page alignment, which Android 15 devices with 16 KB pages need, and `ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES` makes it explicit. 32-bit ARM has no 16 KB pages and keeps 4 KB alignment.
 
-`make.py engine --platform android` builds the player of each ABI in `build/engine/android-<abi>-<config>`, one ABI after the other with the jobs of `--jobs`, so the compilers stay within them and the configures never write into the shared CPM sources at the same time, and gathers the libraries in `build/engine/android-<config>/jniLibs`. It passes them to Gradle with the folder where CPM placed Varn, then runs the `publishReleasePublicationToArtifactsRepository` task of every module, which publishes `dev.haylen:haylen`, `dev.haylen:haylen-plugins`, `dev.haylen:haylen-links` and `dev.haylen:haylen-coroutines` at the engine version with their POMs to `build/artifacts/android/maven`. The POM of `haylen` lists the dependencies of the library, which Gradle brings into every app: the Kotlin standard library, `androidx.games:games-activity` 4.4.2, which the Gradle module metadata pins strictly because the player links the native side of the same version, `androidx.appcompat:appcompat`, `androidx.activity:activity` and `androidx.core:core`, which `HaylenActivity` and its plugins build on, and `androidx.core:core-splashscreen`. The POMs of the other libraries list `haylen`, and the one of `haylen-coroutines` also `kotlinx-coroutines-android`, which apps and plugins with suspending handlers get as an API.
+`haylen.py engine --platform android` builds the player of each ABI in `build/engine/android-<abi>-<config>`, one ABI after the other with the jobs of `--jobs`, so the compilers stay within them and the configures never write into the shared CPM sources at the same time, and gathers the libraries in `build/engine/android-<config>/jniLibs`. It passes them to Gradle with the folder where CPM placed Varn, then runs the `publishReleasePublicationToArtifactsRepository` task of every module, which publishes `dev.haylen:haylen`, `dev.haylen:haylen-plugins`, `dev.haylen:haylen-links` and `dev.haylen:haylen-coroutines` at the engine version with their POMs to `build/artifacts/android/maven`. The POM of `haylen` lists the dependencies of the library, which Gradle brings into every app: the Kotlin standard library, `androidx.games:games-activity` 4.4.2, which the Gradle module metadata pins strictly because the player links the native side of the same version, `androidx.appcompat:appcompat`, `androidx.activity:activity` and `androidx.core:core`, which `HaylenActivity` and its plugins build on, and `androidx.core:core-splashscreen`. The POMs of the other libraries list `haylen`, and the one of `haylen-coroutines` also `kotlinx-coroutines-android`, which apps and plugins with suspending handlers get as an API.
 
 ### Web and desktop
 
@@ -238,15 +238,15 @@ The web artifacts are the `haylen` player built for WebGPU and for WebGL2, each 
 
 ```text
 templates/
-  app/                The starter app package of make.py new, with the .gitignore, .editorconfig and .clang-format of an app project.
-  plugin/             The starter plugin of make.py plugin new, with the .gitignore, .editorconfig and .clang-format of a plugin repository.
+  app/                The starter app package of haylen.py new, with the .gitignore, .editorconfig and .clang-format of an app project.
+  plugin/             The starter plugin of haylen.py plugin new, with the .gitignore, .editorconfig and .clang-format of a plugin repository.
   platform/
     apple/            XcodeGen project with targets for iOS and iPadOS with Mac Catalyst, tvOS and macOS.
     android/          Gradle project that depends on the haylen library.
     web/              Loading page with the logo, the progress bar, the backend choice and the error screen.
 ```
 
-make.py finds the platform templates by folder. A new platform is a folder under `templates/platform/` and a run target in `make.py`, the `RUN_TARGETS` table that names, for each `--platform`, the template of its project, the engine artifacts it needs and the functions that prepare, build and launch it and check what the built app lacks. Apps mirror the same shape with their `platform/<platform>/` folders.
+The tool `haylen.py` finds the platform templates by folder. A new platform is a folder under `templates/platform/` and a run target in `haylen.py`, the `RUN_TARGETS` table that names, for each `--platform`, the template of its project, the engine artifacts it needs and the functions that prepare, build and launch it and check what the built app lacks. Apps mirror the same shape with their `platform/<platform>/` folders.
 
 ### app
 
@@ -288,7 +288,7 @@ templates/platform/android/
   app/src/main/res/           Adaptive launcher icon with its monochrome layer and Android TV banner.
 ```
 
-The app module reads the application id, version name and code, label, screen orientation, native library and manifest placeholders from `haylen/haylen.properties` and adds `haylen/assets`, `haylen/res` and `haylen/jniLibs` to its source folders, as [the Android project](#the-android-project) describes. The version code comes from the version, with 1.2.3 becoming 1002003. The SDK levels, R8 and the debug signing of release builds are choices of the developer, while the `minSdk` of 27 is what the engine library needs. The manifest declares the permissions `INTERNET`, `ACCESS_NETWORK_STATE` and `VIBRATE` as visible defaults, which network access, the network events and `system.vibrate` need and which an app deletes when it does not use them, since the engine library declares no permission: a feature whose permission is missing logs once what is missing and does nothing or fails, as the [plugin guide](plugins.md#android-requirements) describes. The `<application>` sets `android:enableOnBackInvokedCallback`, which lets the back callback of `HaylenActivity` play the predictive back animation of the system. The manifest declares `HaylenActivity` single top, so the launcher icon brings back every screen that shows over the app, such as a purchase, with the `android.app.lib_name` meta-data set to the native library, which GameActivity loads, `haylen` for Lua apps, the Lua player of the haylen library, and the library of the app for C++ apps, whose APK leaves the Lua player out, the `LAUNCHER` and `LEANBACK_LAUNCHER` categories, the TV banner, and a touchscreen, the screen orientations, Android TV and a gamepad as optional features, so the same APK serves phones, tablets and Android TV. The links and notifications of the app go to `HaylenLinkActivity`, which the `haylen-links` library of the plugins that receive them declares with their intent filters, so an app without such plugins has no exported component besides its launcher activity, and `make.py run` starts the app with the launcher intent, whose task the launcher icon then brings back as it is.
+The app module reads the application id, version name and code, label, screen orientation, native library and manifest placeholders from `haylen/haylen.properties` and adds `haylen/assets`, `haylen/res` and `haylen/jniLibs` to its source folders, as [the Android project](#the-android-project) describes. The version code comes from the version, with 1.2.3 becoming 1002003. The SDK levels, R8 and the debug signing of release builds are choices of the developer, while the `minSdk` of 27 is what the engine library needs. The manifest declares the permissions `INTERNET`, `ACCESS_NETWORK_STATE` and `VIBRATE` as visible defaults, which network access, the network events and `system.vibrate` need and which an app deletes when it does not use them, since the engine library declares no permission: a feature whose permission is missing logs once what is missing and does nothing or fails, as the [plugin guide](plugins.md#android-requirements) describes. The `<application>` sets `android:enableOnBackInvokedCallback`, which lets the back callback of `HaylenActivity` play the predictive back animation of the system. The manifest declares `HaylenActivity` single top, so the launcher icon brings back every screen that shows over the app, such as a purchase, with the `android.app.lib_name` meta-data set to the native library, which GameActivity loads, `haylen` for Lua apps, the Lua player of the haylen library, and the library of the app for C++ apps, whose APK leaves the Lua player out, the `LAUNCHER` and `LEANBACK_LAUNCHER` categories, the TV banner, and a touchscreen, the screen orientations, Android TV and a gamepad as optional features, so the same APK serves phones, tablets and Android TV. The links and notifications of the app go to `HaylenLinkActivity`, which the `haylen-links` library of the plugins that receive them declares with their intent filters, so an app without such plugins has no exported component besides its launcher activity, and `haylen.py run` starts the app with the launcher intent, whose task the launcher icon then brings back as it is.
 
 The resources are vector drawables of the Haylen brand. The adaptive launcher icon has the gradient symbol inside the safe zone of its foreground, over `ic_launcher_background`, the navy `#07112F` of the brand, and a monochrome layer with the silhouette of the symbol, which launchers tint for themed icons. The Android TV banner shows the horizontal logo with its white wordmark on the same navy.
 
@@ -305,9 +305,9 @@ templates/platform/web/
 
 ## Platform projects
 
-The project of a platform belongs to the developer. It is `platform/<template>/` of the app when that folder exists, and make.py builds it where it is. An app without that folder uses a copy of the template that make.py keeps in the build folder of the app, `build/apps/<app>-<hash>/<template>/`, named after the app folder and the start of the SHA-256 hash of its absolute path, so apps in folders with the same name never share projects, and makes again whenever the template changes. A file that the developer deletes stays deleted, and a newer template reaches a project only when the developer adopts it, which [`platform diff`](#platform) helps with.
+The project of a platform belongs to the developer. It is `platform/<template>/` of the app when that folder exists, and haylen.py builds it where it is. An app without that folder uses a copy of the template that haylen.py keeps in the build folder of the app, `build/apps/<app>-<hash>/<template>/`, named after the app folder and the start of the SHA-256 hash of its absolute path, so apps in folders with the same name never share projects, and makes again whenever the template changes. A file that the developer deletes stays deleted, and a newer template reaches a project only when the developer adopts it, which [`platform diff`](#platform) helps with.
 
-make.py writes one folder inside a project, `haylen/`, which the `.gitignore` of the app ignores, and never edits `project.yml`, `project.pbxproj`, the Gradle scripts, the manifests, the `Info.plist` files or the entitlements of the developer. The files of the project reach what it writes through a few visible lines, which the developer may delete to take over. Build products go to the build folder of the app, outside the project: Xcode builds into `xcode/` and Gradle into `gradle/`, with its project cache in `gradle-cache/`.
+The tool `haylen.py` writes one folder inside a project, `haylen/`, which the `.gitignore` of the app ignores, and never edits `project.yml`, `project.pbxproj`, the Gradle scripts, the manifests, the `Info.plist` files or the entitlements of the developer. The files of the project reach what it writes through a few visible lines, which the developer may delete to take over. Build products go to the build folder of the app, outside the project: Xcode builds into `xcode/` and Gradle into `gradle/`, with its project cache in `gradle-cache/`.
 
 `prepare` writes the folder, and `run` prepares the project, generates `App.xcodeproj` again when it may, builds, [checks](#check) the built app and launches it. Before the first step, `run` checks the plugins of the app and their values for the platform, and stops with every problem it finds.
 
@@ -329,14 +329,14 @@ make.py writes one folder inside a project, `haylen/`, which the `.gitignore` of
 | `Haylen.xcframework` | A link to the framework of the artifacts. |
 | `state.json` | The hashes of the last generation of `App.xcodeproj`, and for a copy of the template, the hash of the template. |
 
-The completed `Info.plist` and entitlements follow one rule: the value of the developer wins, and the keys of `app.json` and of the plugins only fill what is missing. Objects merge key by key and arrays gain the items they lack, so two ad plugins share `SKAdNetworkItems`, and a value of the developer that differs from the one of a plugin stays, with a warning, such as a usage description in the words of the company. Two plugins, or a plugin and `app.json`, that give one key different values stop the build with both named. `app.json` fills the orientations of iPhone and iPad and, for an app whose `window.showInTaskbar` is `false`, `LSUIElement` on macOS, so macOS never shows its Dock icon, not even while it starts. No key that make.py adds is a decision of the company, such as the statement on export compliance, which stays a default of the template that the developer keeps or deletes.
+The completed `Info.plist` and entitlements follow one rule: the value of the developer wins, and the keys of `app.json` and of the plugins only fill what is missing. Objects merge key by key and arrays gain the items they lack, so two ad plugins share `SKAdNetworkItems`, and a value of the developer that differs from the one of a plugin stays, with a warning, such as a usage description in the words of the company. Two plugins, or a plugin and `app.json`, that give one key different values stop the build with both named. `app.json` fills the orientations of iPhone and iPad and, for an app whose `window.showInTaskbar` is `false`, `LSUIElement` on macOS, so macOS never shows its Dock icon, not even while it starts. No key that haylen.py adds is a decision of the company, such as the statement on export compliance, which stays a default of the template that the developer keeps or deletes.
 
 ### Generating App.xcodeproj
 
-The developer changes the project in `project.yml` and generates `App.xcodeproj` again with `python3 make.py xcodegen <app>`, which prepares `haylen/` and runs the XcodeGen that make.py pins. `run` generates it on its own when `project.yml` includes `haylen/project.yml` and the inputs changed since the last generation, which are `project.yml`, `haylen/project.yml`, the XcodeGen version and the files of the plugin sources, such as after the app gained a plugin, as long as `project.pbxproj` still has the hash of the last generation or is an untouched copy of the template in a project without a record. `haylen/state.json` keeps both hashes. A project whose inputs did not change builds as it is, edits made in Xcode included. When the inputs changed and `project.pbxproj` differs from the last generation, or make.py never generated it, such as in a fresh clone of the repository of an app, make.py generates the project once more in a scratch folder that links the entries of the project: when the result is the same file, make.py records it and goes on, and otherwise it stops without touching the project and says what to do:
+The developer changes the project in `project.yml` and generates `App.xcodeproj` again with `python3 haylen.py xcodegen <app>`, which prepares `haylen/` and runs the XcodeGen that haylen.py pins. `run` generates it on its own when `project.yml` includes `haylen/project.yml` and the inputs changed since the last generation, which are `project.yml`, `haylen/project.yml`, the XcodeGen version and the files of the plugin sources, such as after the app gained a plugin, as long as `project.pbxproj` still has the hash of the last generation or is an untouched copy of the template in a project without a record. `haylen/state.json` keeps both hashes. A project whose inputs did not change builds as it is, edits made in Xcode included. When the inputs changed and `project.pbxproj` differs from the last generation, or haylen.py never generated it, such as in a fresh clone of the repository of an app, haylen.py generates the project once more in a scratch folder that links the entries of the project: when the result is the same file, haylen.py records it and goes on, and otherwise it stops without touching the project and says what to do:
 
 ```text
-Error: The project "platform/apple/App.xcodeproj" changed since make.py generated it from "project.yml", or make.py never generated it, so make.py leaves it as it is. Move the changes made in Xcode into "project.yml" and run "python3 make.py xcodegen <app>", which generates the project again.
+Error: The project "platform/apple/App.xcodeproj" changed since haylen.py generated it from "project.yml", or haylen.py never generated it, so haylen.py leaves it as it is. Move the changes made in Xcode into "project.yml" and run "python3 haylen.py xcodegen <app>", which generates the project again.
 ```
 
 A `project.yml` without the include is never generated by `run`, and [check](#check) reports what its targets lack.
@@ -353,11 +353,11 @@ The Gradle scripts of the developer read `haylen/haylen.properties`:
 | `plugins`, `gradlePlugins`, `placeholder.<name>` | The plugin modules as `id=folder` entries, their Gradle plugins as `id=version` entries and their manifest placeholders, as the [plugin guide](plugins.md#android) describes. |
 | `buildDirectory` | The build folder of the app, where `settings.gradle.kts` sends the build outputs of every module. |
 
-Next to it, `assets/app/` holds the package with `haylen-package-index.json`, the list of its files, because Android cannot list asset folders recursively, `res/` the splash resources, `jniLibs/<abi>/` the native libraries, and `plugins/<id>/` the library modules of the plugins. make.py writes every value as ASCII with `\uXXXX` escapes, so any text survives. It builds with Gradle, whose outputs and project cache go to the build folder of the app, and installs the newest APK of the configuration, whatever product flavors the project defines.
+Next to it, `assets/app/` holds the package with `haylen-package-index.json`, the list of its files, because Android cannot list asset folders recursively, `res/` the splash resources, `jniLibs/<abi>/` the native libraries, and `plugins/<id>/` the library modules of the plugins. The tool `haylen.py` writes every value as ASCII with `\uXXXX` escapes, so any text survives. It builds with Gradle, whose outputs and project cache go to the build folder of the app, and installs the newest APK of the configuration, whatever product flavors the project defines.
 
 ### The web site
 
-The files of `platform/web/` of the app, or of the template, go as they are into the site in the build folder of the app, `build/apps/<app>-<hash>/web/`, and make.py writes next to them `config.json`, `app.zip`, the splash logo, the web modules of the plugins in `plugins/` and the WebGPU and WebGL2 runtimes. Nothing is written into `platform/web/`, and a file that the developer deletes stays out of the site.
+The files of `platform/web/` of the app, or of the template, go as they are into the site in the build folder of the app, `build/apps/<app>-<hash>/web/`, and haylen.py writes next to them `config.json`, `app.zip`, the splash logo, the web modules of the plugins in `plugins/` and the WebGPU and WebGL2 runtimes. Nothing is written into `platform/web/`, and a file that the developer deletes stays out of the site.
 
 ### Windows and Linux
 
@@ -384,7 +384,7 @@ The plugin "native-demo" needs the permission "android.permission.POST_NOTIFICAT
 
 ## Privacy manifest
 
-Apps for Apple platforms declare the APIs with required reasons that their code calls, and the engine is part of that code, since `Haylen.xcframework` is a static library. `engine/platform/apple/PrivacyInfo.xcprivacy` holds the declarations of the engine, which the Apple artifacts carry next to the framework and C++ apps built with `haylen_add_app` copy into their bundles. make.py writes `haylen/PrivacyInfo.xcprivacy` from the one of the engine, the `privacy` keys of the Apple plugins and `PrivacyInfo.xcprivacy` at the root of the Apple project of the developer, when it exists: the reasons of every API type join the reasons of that type, the tracking domains and the collected data types gain the items they lack, and the app tracks when any of them says so.
+Apps for Apple platforms declare the APIs with required reasons that their code calls, and the engine is part of that code, since `Haylen.xcframework` is a static library. `engine/platform/apple/PrivacyInfo.xcprivacy` holds the declarations of the engine, which the Apple artifacts carry next to the framework and C++ apps built with `haylen_add_app` copy into their bundles. The tool `haylen.py` writes `haylen/PrivacyInfo.xcprivacy` from the one of the engine, the `privacy` keys of the Apple plugins and `PrivacyInfo.xcprivacy` at the root of the Apple project of the developer, when it exists: the reasons of every API type join the reasons of that type, the tracking domains and the collected data types gain the items they lack, and the app tracks when any of them says so.
 
 The undefined symbols of `libhaylen.a` show which of those APIs the engine and its dependencies reach:
 
@@ -398,7 +398,7 @@ The engine reads no user defaults, no active keyboards and no system boot time t
 
 ## Native libraries
 
-The `native` section of `app.json` lists the native libraries an app ships, by the name `native.load` takes, as prebuilt files for each platform or as a CMake project that make.py builds for each platform it lists. The [native code guide](native.md#packaging-libraries-with-an-app) describes the section. The `native` section of a plugin adds one more library, named after the plugin id with underscores for its dashes, which make.py builds and places in the same way.
+The `native` section of `app.json` lists the native libraries an app ships, by the name `native.load` takes, as prebuilt files for each platform or as a CMake project that haylen.py builds for each platform it lists. The [native code guide](native.md#packaging-libraries-with-an-app) describes the section. The `native` section of a plugin adds one more library, named after the plugin id with underscores for its dashes, which haylen.py builds and places in the same way.
 
 ```json
 {
@@ -409,12 +409,12 @@ The `native` section of `app.json` lists the native libraries an app ships, by t
 }
 ```
 
-make.py builds a CMake library in `native/<library>/` of the build folder of the app, once per architecture with the settings of the engine artifacts, and joins the architectures of Apple platforms with `lipo`. Then it places every library of the run platform:
+The tool `haylen.py` builds a CMake library in `native/<library>/` of the build folder of the app, once per architecture with the settings of the engine artifacts, and joins the architectures of Apple platforms with `lipo`. Then it places every library of the run platform:
 
 | Platform | Place |
 | --- | --- |
 | macOS and Mac Catalyst | `haylen/native/<platform>-<sdk>/` of the Apple project, which the `Embed native libraries` phase copies into `Contents/Frameworks` and signs. An `.xcframework` gives the slice of the platform. |
-| iOS and tvOS | The same, into `Frameworks`, where a dynamic CMake library becomes a framework with its own `Info.plist`. A static library is linked through `HAYLEN_NATIVE_LDFLAGS` in `haylen/Haylen.xcconfig`, and make.py writes `haylen/HaylenNativeSymbols.mm`, which keeps and registers the symbols the section lists. |
+| iOS and tvOS | The same, into `Frameworks`, where a dynamic CMake library becomes a framework with its own `Info.plist`. A static library is linked through `HAYLEN_NATIVE_LDFLAGS` in `haylen/Haylen.xcconfig`, and haylen.py writes `haylen/HaylenNativeSymbols.mm`, which keeps and registers the symbols the section lists. |
 | Android | `haylen/jniLibs/<abi>/` of the Android project for arm64-v8a, armeabi-v7a and x86_64, built one ABI after the other with the NDK and `ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES`. |
 | Windows | Next to the player. |
 | Linux | `lib/` next to the player, whose `RUNPATH` is `$ORIGIN:$ORIGIN/lib`. |
@@ -441,18 +441,18 @@ The `splash` object of `app.json` sets the launch screen of every platform:
 | Android | The SplashScreen API of `androidx.core:core-splashscreen`, with the `Theme.Haylen.Splash` theme of the manifest showing `haylen_splash_icon` over `haylen_splash_background`, then `Theme.Haylen`, whose window background has the same color. The system splash screen ends with the first frame of the activity window, while `sokol_app` draws only once the activity resumed and its surface exists, so `HaylenSplash` covers the surface of the app from that first frame with a view of the same background and icon, which stays until the player reports its first frame through `nativeFramePresented`. No black frame shows in between. The icon insets the logo so it fits the circle that Android masks it with, in every orientation, on phones, tablets and TVs. |
 | Web | The page shows the logo over the background with the progress bar until the app starts. |
 
-make.py writes the logo into the `splash_logo` image set of `haylen/Splash.xcassets` of the Apple project, as `templates/platform/web/haylen-logo.svg`, the SVG of the Haylen symbol, with its vector data preserved when the app names none, and the background into its `splash_background` color set, which the launch screens of iOS and tvOS find in the catalogs of their target. On Android it writes the background into `haylen/res/values/haylen_splash.xml` and copies the logo to `haylen/res/drawable/haylen_splash_logo.<ext>`, which replace the defaults of the library, the Haylen symbol as a vector drawable over `#FF101418`. Android splash logos are PNG, WebP or JPEG images. On the web it copies the logo, or the Haylen symbol, next to the files of the page as `splash.<ext>`.
+The tool `haylen.py` writes the logo into the `splash_logo` image set of `haylen/Splash.xcassets` of the Apple project, as `templates/platform/web/haylen-logo.svg`, the SVG of the Haylen symbol, with its vector data preserved when the app names none, and the background into its `splash_background` color set, which the launch screens of iOS and tvOS find in the catalogs of their target. On Android it writes the background into `haylen/res/values/haylen_splash.xml` and copies the logo to `haylen/res/drawable/haylen_splash_logo.<ext>`, which replace the defaults of the library, the Haylen symbol as a vector drawable over `#FF101418`. Android splash logos are PNG, WebP or JPEG images. On the web it copies the logo, or the Haylen symbol, next to the files of the page as `splash.<ext>`.
 
 ## Development mode
 
-The runtime turns on development behavior, which today is hot reload of the package folder, only when its command line has `--dev`. `--native <folder>`, which may repeat, adds a folder that `native.load` searches before the folders of the platform. The first command-line argument that is not an option names the package to play, a folder or a zip, and without one the runtime plays the package bundled with the app. Other options are ignored, because systems add their own, such as the ones Xcode passes to the macOS apps it launches. `make.py run` without `--platform` is the only place that passes `--dev`, so apps built from the templates, shipped apps and web pages never run in development mode.
+The runtime turns on development behavior, which today is hot reload of the package folder, only when its command line has `--dev`. `--native <folder>`, which may repeat, adds a folder that `native.load` searches before the folders of the platform. The first command-line argument that is not an option names the package to play, a folder or a zip, and without one the runtime plays the package bundled with the app. Other options are ignored, because systems add their own, such as the ones Xcode passes to the macOS apps it launches. `haylen.py run` without `--platform` is the only place that passes `--dev`, so apps built from the templates, shipped apps and web pages never run in development mode.
 
 ## Web loader
 
 `loader.js` runs when the page loads:
 
 1. It creates `Module` with the canvas, so `app.js` can add page handlers to `Module.preRun`.
-2. It reads `config.json`, which make.py writes with the app name, whether `window.transparent` is set, the splash logo and background, the size of `app.zip` and of the two `haylen.wasm` files, and the plugins with a web part. It sets the title, the background, and the logo and the page icon, which are `splash.<ext>`, the logo of the app or the Haylen symbol. For a transparent app the page itself has no background, so whatever holds the page, such as the page of an editor that embeds it in a frame, shows through the transparent pixels of the canvas, and only the splash keeps the splash background.
+2. It reads `config.json`, which haylen.py writes with the app name, whether `window.transparent` is set, the splash logo and background, the size of `app.zip` and of the two `haylen.wasm` files, and the plugins with a web part. It sets the title, the background, and the logo and the page icon, which are `splash.<ext>`, the logo of the app or the Haylen symbol. For a transparent app the page itself has no background, so whatever holds the page, such as the page of an editor that embeds it in a frame, shows through the transparent pixels of the canvas, and only the splash keeps the splash background.
 3. It checks for WebAssembly and picks the backend: WebGPU when `navigator.gpu` returns an adapter, and WebGL2 otherwise. `?backend=webgpu` or `?backend=webgl2` forces one when the browser supports it. A browser with neither sees a message instead of a blank page.
 4. It downloads `<backend>/haylen.wasm` and `app.zip` together with one progress bar. Each download counts the bytes it streams against its `Content-Length`, or against the size in `config.json` when the length is missing or describes compressed bytes. Meanwhile it imports the web module of every plugin from `plugins/<id>/`.
 5. It hands the WebAssembly bytes to the runtime as `Module.wasmBinary` and the package as `Module.haylen.packageData`, then loads `<backend>/haylen.js`.

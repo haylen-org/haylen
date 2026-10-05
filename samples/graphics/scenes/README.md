@@ -19,12 +19,12 @@ Every operation of a test is a button in the panel on the right, which the mouse
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `python3 make.py run samples/graphics/scenes` |
-| macOS app | `python3 make.py run samples/graphics/scenes --platform macos` |
-| iPhone and iPad simulator | `python3 make.py run samples/graphics/scenes --platform ios-simulator` |
-| Apple TV simulator | `python3 make.py run samples/graphics/scenes --platform tvos-simulator` |
-| Android device or emulator | `python3 make.py run samples/graphics/scenes --platform android` |
-| Browser | `python3 make.py run samples/graphics/scenes --platform web` |
+| Desktop player with hot reload | `python3 haylen.py run samples/graphics/scenes` |
+| macOS app | `python3 haylen.py run samples/graphics/scenes --platform macos` |
+| iPhone and iPad simulator | `python3 haylen.py run samples/graphics/scenes --platform ios-simulator` |
+| Apple TV simulator | `python3 haylen.py run samples/graphics/scenes --platform tvos-simulator` |
+| Android device or emulator | `python3 haylen.py run samples/graphics/scenes --platform android` |
+| Browser | `python3 haylen.py run samples/graphics/scenes --platform web` |
 
 ## Package layout
 

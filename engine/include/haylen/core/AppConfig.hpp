@@ -42,7 +42,7 @@ struct AppConfig {
         std::optional<platform::WindowPlacement> position;
     };
 
-    // The launch screen that every platform shows while the app starts, with a logo relative to the content folder, or the Haylen logo when it is empty, over a background color that defaults to the clear color. The script `make.py` turns it into the launch storyboard on Apple platforms, the splash screen on Android and the loading page on the web.
+    // The launch screen that every platform shows while the app starts, with a logo relative to the content folder, or the Haylen logo when it is empty, over a background color that defaults to the clear color. The script `haylen.py` turns it into the launch storyboard on Apple platforms, the splash screen on Android and the loading page on the web.
     struct Splash {
         std::string logo;
         math::Color background = math::Color::black();
@@ -83,7 +83,7 @@ struct AppConfig {
     // Lua modules that load before the first scene and live for the whole app.
     std::vector<std::string> autoloads;
 
-    // The native libraries the app ships by name, which `make.py` builds and places in the package of each platform. The engine keeps the section as `app.json` wrote it.
+    // The native libraries the app ships by name, which `haylen.py` builds and places in the package of each platform. The engine keeps the section as `app.json` wrote it.
     Json native = Json::object();
 
     // The plugins the app uses by id, each with the values of its parameters as `app.json` wrote them. Every id names the folder `plugins/<id>` of the package, which holds its `plugin.json` and its Lua modules.

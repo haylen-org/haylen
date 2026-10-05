@@ -13,7 +13,7 @@ Um item só recebe `[x]` quando está implementado, coberto por testes (quando a
 - Haylen é uma engine reutilizável para jogos, aplicações multimídia e apps. Ela é 2D e organizada para o 3D crescer ao lado sem renomear nada, com núcleo em C++20 distribuído como biblioteca CMake.
 - Lua é a linguagem principal dos apps, pelo Varn, e toda a API continua disponível em C++.
 - O runtime executa um pacote de app (pasta ou `.zip`) com `app.json`, os módulos Lua em `source/` (com `source/main.lua` como ponto de entrada) e os recursos em `content/`.
-- A engine é compilada uma vez em artefatos prontos, e um app Lua é só o pacote, montado pelo `make.py` sobre os templates de plataforma. Apps C++ compilam a engine pelo CMake com `haylen_add_app`.
+- A engine é compilada uma vez em artefatos prontos, e um app Lua é só o pacote, montado pelo `haylen.py` sobre os templates de plataforma. Apps C++ compilam a engine pelo CMake com `haylen_add_app`.
 - Plataformas: macOS, Windows, Linux, iOS e iPadOS, Mac Catalyst, tvOS, Android (celular, tablet e Android TV num só APK) e web desktop e mobile (WebGPU, com WebGL2 como alternativa que a página escolhe). visionOS roda o app de iPad, e watchOS não é possível.
 - Todo tipo de app de desktop: janelas comuns, sem moldura, transparentes, sempre no topo e com cliques atravessando, para apps que vivem na área de trabalho ou em cima da barra de tarefas.
 - Runtime web pronto para um editor web futuro (em outro repositório), com pacotes entregues em tempo de execução, reinício sem recarregar a página, hot reload e erros com a pilha do Lua enviados ao JavaScript.
@@ -27,7 +27,7 @@ Cada ponto abaixo veio do pedido e precisa estar coberto por algum item da seç�
 
 1. Usar a última versão de todas as bibliotecas.
 2. CMake com CPM (última versão) para baixar dependências.
-3. `make.py` que gera e compila para todas as plataformas: desktop, iOS, tvOS, Android e Web.
+3. `haylen.py` que gera e compila para todas as plataformas: desktop, iOS, tvOS, Android e Web.
 4. Assets colocados na pasta certa por plataforma.
 5. Jogo usando o Tiny Swords (baixado do itch.io ou do zip local).
 6. Resolução 1920x1080 com a UI dentro da safe area.
@@ -123,9 +123,9 @@ Cada ponto abaixo veio do segundo pedido e precisa estar coberto por algum item 
 74. Templates de plataforma: projetos prontos para cada plataforma que só esperam o pacote (`app.json`, `source/` e `content/`). O comando que roda um app Lua apaga e recria a pasta daquele app em `build/`, junta o template, as personalizações do app e o pacote, e roda na plataforma pedida no parâmetro, ou no desktop quando nenhuma é passada. O projeto C++ é um caso à parte.
 75. Um comando para rodar samples Lua e outro para rodar samples C++.
 76. O wasm da engine é pré-compilado, e só o pacote do app muda de um app para outro.
-77. Um comando no `make.py` que serve uma pasta com um servidor Python que já suporta tudo o que o wasm precisa (MIME, SharedArrayBuffer, threads e os cabeçalhos COOP, COEP e CORP), recebendo a pasta e, opcionalmente, a porta.
+77. Um comando no `haylen.py` que serve uma pasta com um servidor Python que já suporta tudo o que o wasm precisa (MIME, SharedArrayBuffer, threads e os cabeçalhos COOP, COEP e CORP), recebendo a pasta e, opcionalmente, a porta.
 78. Na web, a logo do projeto com uma barra de progresso durante o carregamento, e a logo da engine quando o projeto não tem uma.
-79. Fluxo do desenvolvedor: um comando do `make.py` cria um projeto novo na pasta escolhida, com o template de todas as plataformas e um código Lua de exemplo com `source/` e `content/`.
+79. Fluxo do desenvolvedor: um comando do `haylen.py` cria um projeto novo na pasta escolhida, com o template de todas as plataformas e um código Lua de exemplo com `source/` e `content/`.
 80. Modo debug com estatísticas: FPS, tempo de frame, draw calls, vértices e a contagem de objetos criados, vivos e destruídos por tipo.
 81. Nomes genéricos: o que o desenvolvedor cria é um app (`app.json`, `app.zip`, `haylen_add_app`), porque a engine serve para jogos, aplicações multimídia e apps. O que é 2D fica separado do que é 3D nos nomes, pastas e arquivos, para que o 3D do futuro não conflite nem obrigue a mover nada.
 82. Uma revisão geral de tudo, organizada de forma profissional e fácil de desenvolver e de usar, com o objetivo de ser a engine mais fácil de usar, mais robusta e mais completa.
@@ -152,7 +152,7 @@ Cada ponto abaixo precisa estar coberto pelos grupos A, B, J, N, O, P, Q, R, S, 
 98. O nome da engine é Haylen (em minúsculas, `haylen`) em todos os lugares: arquivos, pastas, docs, README, classes, namespaces, alvos e funções do CMake, módulos Lua, pacotes Java, JavaScript, artefatos, templates e logo.
 99. Ciclo de vida de cena com carregamento: a transição começa (cobre a cena atual), a engine chama um método de carregamento da nova cena (assíncrono), e depois a transição de saída exibe a nova cena carregada. Isso permite exibir um loading próprio se o desenvolvedor quiser, ou usar a própria transição como loading. A arquitetura precisa dar todas as possibilidades, com eventos assíncronos e ciclo de vida funcionando perfeitamente, pensada como arquitetura de software, com o máximo de desempenho e sem gambiarras, não importa o tamanho do trabalho.
 100. Revisar tudo de novo atrás de bugs, código legado, código não usado, erros, race conditions e falhas que podem derrubar o app, corrigindo o que faz sentido (não código que nunca pode acontecer nem coisas aleatórias só para mostrar trabalho), e manter as regras gerais no AGENTS.md e esta mega lista detalhada.
-101. Os samples ficam em subpastas por categoria, e o comando recebe o caminho da categoria, por exemplo `python3 make.py run games/tiny-island`, para ficar mais organizado.
+101. Os samples ficam em subpastas por categoria, e o comando recebe o caminho da categoria, por exemplo `python3 haylen.py run games/tiny-island`, para ficar mais organizado.
 102. Aplicações sem moldura e transparentes, como o Taskbar Hero: janela sem barra de título e sem bordas, fundo transparente, o jogo rodando no rodapé da tela e arrastável, com a GUI/UI do jogo funcionando. É outra modalidade de jogo que a engine precisa suportar.
 103. Comunicação fácil com qualquer plataforma (iOS, Android, desktop, web e as outras): enviar e receber a resposta da plataforma de forma assíncrona, para usar qualquer coisa nativa da plataforma.
 104. Chamar bibliotecas e SDKs nativos, como a biblioteca da Steam, bibliotecas nativas em geral e SDKs como o P2P da Epic Online Services (NAT P2P). O `ffi` do Varn pode ser parte da solução. Não é preciso usar esses SDKs, eles são só exemplos, mas a capacidade precisa ser testada nas plataformas.
@@ -191,10 +191,10 @@ Cada ponto abaixo precisa estar coberto pelo grupo AA da seção 14.2.
 122. Os plugins precisam ter a capacidade de enviar e receber de forma assíncrona tudo o que os recursos básicos de cada sistema pedem: áudio, câmera, foto, localização, notificação local e os dados de uma notificação push recebida, na web, no Android, no iOS, nos desktops e nas outras plataformas. A engine entrega a capacidade, e o plugin de demonstração testa cada mecanismo sem SDK de terceiros.
 123. Plugins que abrem outra tela (uma activity no Android, um view controller na Apple, como o paywall do RevenueCat, telas de login, de compra, de câmera e de anúncios) precisam de uma arquitetura que suporte isso em todas as plataformas, pesquisada e pensada para não criar incompatibilidades no futuro: abrir a tela, pausar e cobrir o app enquanto ela aparece, receber o resultado e voltar ao jogo sem perder estado.
 124. As imagens da engine usam a marca nova de `extras/images/` (símbolo, `logo-h` e `logo-v`) no lugar da logo antiga: nos ícones e nos espaços pequenos só o símbolo, sobre o fundo azul escuro da fonte (`#07112f`), e a logo onde há espaço.
-125. Nenhuma frase começa com letra minúscula, em comentários, documentação, mensagens de erro e de log e na saída do `make.py`: quando a frase começaria com um comando, identificador ou caminho em minúsculo, vai uma palavra antes, como "O comando" ou "Rode". E toda expressão reservada (comando, código, identificador, caminho, chave e valor) fica marcada para não se misturar com a frase: crases nos documentos Markdown e nos comentários, e aspas duplas nas mensagens, nos logs e na saída dos comandos, como no exemplo do dono e como o Varn e o Workpane fazem. A regra vale para qualquer texto, inclusive as mensagens de commit, cuja frase depois do prefixo do tipo começa com maiúscula.
+125. Nenhuma frase começa com letra minúscula, em comentários, documentação, mensagens de erro e de log e na saída do `haylen.py`: quando a frase começaria com um comando, identificador ou caminho em minúsculo, vai uma palavra antes, como "O comando" ou "Rode". E toda expressão reservada (comando, código, identificador, caminho, chave e valor) fica marcada para não se misturar com a frase: crases nos documentos Markdown e nos comentários, e aspas duplas nas mensagens, nos logs e na saída dos comandos, como no exemplo do dono e como o Varn e o Workpane fazem. A regra vale para qualquer texto, inclusive as mensagens de commit, cuja frase depois do prefixo do tipo começa com maiúscula.
 126. A engine não impõe nada aos projetos finais do Android e do Xcode. Cada plugin define o que o projeto precisa (frameworks, dependências, permissões, chaves do Info.plist, entitlements e configurações), e o projeto é do desenvolvedor, que o altera como quiser (por exemplo editando o `project.yml` do XcodeGen e gerando de novo), porque cada empresa tem o seu padrão. A engine não carrega nem compila coisas particulares que o app não usa. Quando um requisito de um plugin falta, o plugin registra no log e ignora a chamada até o desenvolvedor cumprir o requisito, em vez de quebrar. Analisar, pesquisar, planejar e revisar a melhor forma de organizar isso.
 127. Regra: o `AGENTS.md` só cita uma versão ou um número quando uma regra depende dele, como o C++20 da linguagem ou os 100% de cobertura que os testes buscam. Valores secundários que mudam o tempo todo ficam fora: versões de bibliotecas, de ferramentas, de SDKs e da própria engine, e limites, tamanhos, contagens e durações que o código declara. Para esses, a regra diz o tipo de limite e aponta o arquivo que guarda o valor.
-128. Os templates de app e de plugin trazem o `.gitignore`, o `.editorconfig` e o `.clang-format`, então todo projeto criado pelo `make.py new` e pelo `make.py plugin new` já nasce com eles.
+128. Os templates de app e de plugin trazem o `.gitignore`, o `.editorconfig` e o `.clang-format`, então todo projeto criado pelo `haylen.py new` e pelo `haylen.py plugin new` já nasce com eles.
 129. O Tiny Island no Apple TV fica lento e pisca de um jeito estranho: há um problema de renderização a achar e corrigir.
 130. O switch desligado (e pressionado) aparece como uma barra azul estranha, enquanto o ligado está certo: o desenho de todos os estados do switch tem que ficar coerente.
 131. No Tiny Island, a fogueira do menu é de partículas e a do jogo é outra coisa: as duas têm que ser a mesma, com o mesmo efeito.
@@ -219,9 +219,9 @@ Cada ponto abaixo precisa estar coberto pelo grupo AA da seção 14.2.
 147. A safe area só existe quando o aparelho tem uma: sem recorte, a área segura é a janela inteira.
 148. Todos os ciclos de vida e eventos possíveis funcionando 100% em todas as plataformas, como uma cena que carrega atrás de uma tela de loading que sai com fade revelando o mapa pronto.
 149. Listas com itens de tipos diferentes, horizontais, verticais e em grade, com reciclagem de células como as listas nativas da Apple e do Google, pesquisada, testada e funcionando em todas as situações.
-150. O `make.py` não tem comandos nem regras de samples (como do Tiny Island): os comandos são da engine, e para rodar algo existe o `run`. O README fala do produto Haylen de forma objetiva e clara, com os recursos, sem versões a não ser as essenciais (como a do C++).
+150. O `haylen.py` não tem comandos nem regras de samples (como do Tiny Island): os comandos são da engine, e para rodar algo existe o `run`. O README fala do produto Haylen de forma objetiva e clara, com os recursos, sem versões a não ser as essenciais (como a do C++).
 151. A documentação é organizada por módulo da engine (2D hoje, 3D no futuro).
-152. O `make.py` passa a se chamar `haylen.py`.
+152. A ferramenta da engine se chama `haylen.py`.
 153. O `haylen.py` fica profissional e bonito, colorido, com erros destacados e mensagens bem elaboradas, e com links e caminhos clicáveis no terminal (sem aspas em volta de URLs).
 154. Na web o `haylen.wasm` é baixado duas vezes, e o `splash.png` também: cada arquivo tem que ser baixado uma vez só.
 155. Revisar a fundo a resolução e a escala: na web, ao diminuir o navegador, tudo diminui. Avaliar modos responsivos que acompanham a largura.
@@ -287,7 +287,7 @@ As versões fixadas de cada componente ficam em `engine/cmake/haylen-dependencie
 | Componente | Uso |
 | --- | --- |
 | CMake e CPM.cmake | Build e download das dependências, fixadas por hash SHA-256 e com cache compartilhado em `.cache/cpm`. |
-| Python | `make.py` e as ferramentas de `tools/`. |
+| Python | `haylen.py` e as ferramentas de `tools/`. |
 | Varn | Runtime Lua (Lua compilado como C++), event loop, pools de workers, promises e os módulos `async`, `http`, `socket`, `json`, `fs`, `zip`, `crypto`, `log`, `platform`, `process`, `datetime`, `xml` e `ffi`. Traz Lua, Poco, OpenSSL, libzip, zlib e libffi, que a engine reaproveita. |
 | nlohmann/json | JSON, declarado antes do Varn para existir uma cópia só no build. |
 | Sokol | Janela, eventos e GPU (Metal, Direct3D 11, OpenGL, OpenGL ES 3 e WebGPU). |
@@ -313,7 +313,7 @@ As versões fixadas de cada componente ficam em `engine/cmake/haylen-dependencie
 
 ```text
 CMakeLists.txt              Projeto raiz: engine, player, testes e benchmarks.
-make.py                     Ponto único de build para todas as plataformas e tarefas: artefatos da engine, criação, execução e empacotamento de apps, samples, shaders, servidor web, testes, cobertura, sanitizers, formatação e benchmarks.
+haylen.py                   Ponto único de build para todas as plataformas e tarefas: artefatos da engine, criação, execução e empacotamento de apps, samples, shaders, servidor web, testes, cobertura, sanitizers, formatação e benchmarks.
 AGENTS.md                   Regras oficiais, descrição do projeto e estrutura.
 AGENTS.md                   Aponta para o AGENTS.md.
 PROJECT.md                  Este documento.
@@ -336,7 +336,7 @@ engine/
 samples/
   <categoria>/<sample>/     Samples por categoria (games, graphics, gameplay, interface, system e cpp).
 templates/
-  app/                      Pacote do app inicial do make.py new.
+  app/                      Pacote do app inicial do haylen.py new.
   platform/apple/           Projeto XcodeGen (project.yml) com o App.xcodeproj gerado ao lado: iOS e iPadOS com Mac Catalyst, tvOS e macOS.
   platform/android/         Projeto Gradle do app, sem C++, que depende do AAR haylen.
   platform/web/             Página de carregamento com a logo, a barra de progresso, a escolha do backend e a tela de erro.
@@ -361,7 +361,7 @@ O guia `docs/architecture.md` descreve a arquitetura em detalhe. Esta seção é
 | `haylen` | Player que roda qualquer pacote (`engine/src/platform/sokol/LuaPlayer.cpp`): executável no desktop e na web e `libhaylen.so` no Android. |
 | `haylen_add_app` | Função CMake que monta o app C++ de um pacote para a plataforma do build. |
 
-O executável sempre define `core::Application::create()`: o player devolve um `lua::Application`, que roda `source/main.lua`, e um app C++ devolve a própria aplicação. `make.py sdk` instala o SDK para `find_package(haylen)`, com as bibliotecas fundidas em `libhaylen` e `libhaylen_runtime`, e `make.py engine` gera os artefatos prontos dos apps Lua (seção 7).
+O executável sempre define `core::Application::create()`: o player devolve um `lua::Application`, que roda `source/main.lua`, e um app C++ devolve a própria aplicação. `haylen.py sdk` instala o SDK para `find_package(haylen)`, com as bibliotecas fundidas em `libhaylen` e `libhaylen_runtime`, e `haylen.py engine` gera os artefatos prontos dos apps Lua (seção 7).
 
 Todo subsistema é um plugin (`plugins::Plugin`) com nome e os ganchos `start`, `installLua`, `event`, `beginFrame`, `fixedUpdate`, `update`, `render`, `renderUi`, `endFrame` e `stop`. `plugins::BuiltInPlugins` registra os plugins embutidos em ordem de dependência, e um projeto que usa a engine registra os próprios com `Engine::addPlugin`, pela mesma interface. A engine só alcança o sistema pela interface interna `platform::Host`.
 
@@ -428,7 +428,7 @@ Os guias `docs/distribution.md` (comandos, artefatos, templates e montagem dos a
 
 | Plataforma | Backend gráfico | Como um app Lua roda |
 | --- | --- | --- |
-| macOS | Metal | Player de desktop com hot reload (`make.py run <app>`) ou o alvo macOS do template Apple (`--platform macos`). |
+| macOS | Metal | Player de desktop com hot reload (`haylen.py run <app>`) ou o alvo macOS do template Apple (`--platform macos`). |
 | Windows | Direct3D 11 | Player de desktop ou o player ao lado do pacote (`--platform windows`). |
 | Linux | OpenGL core | Player de desktop ou o player ao lado do pacote (`--platform linux`). |
 | iOS e iPadOS | Metal | Alvo iOS do template Apple (`--platform ios` ou `ios-simulator`). |
@@ -439,7 +439,7 @@ Os guias `docs/distribution.md` (comandos, artefatos, templates e montagem dos a
 
 As versões mínimas são iOS e tvOS 16.3, macOS 13.3, Mac Catalyst 16.4 e Android 8.1 (API 27), com os motivos em `docs/distribution.md`.
 
-### 7.2 Comandos do make.py
+### 7.2 Comandos do haylen.py
 
 | Comando | Para que serve |
 | --- | --- |
@@ -462,7 +462,7 @@ As versões mínimas são iOS e tvOS 16.3, macOS 13.3, Mac Catalyst 16.4 e Andro
 | `assets` e `map` | Importam o Tiny Swords e geram o mapa da ilha do Tiny Island. |
 | `clean` | Apaga `build/`. |
 
-Os comandos recebem o caminho do sample a partir de `samples/` (`python3 make.py run games/tiny-island`), e `run` sem app roda o Tiny Island.
+Os comandos recebem o caminho do sample a partir de `samples/` (`python3 haylen.py run games/tiny-island`), e `run` sem app roda o Tiny Island.
 
 ### 7.3 Como um app é montado
 
@@ -478,7 +478,7 @@ Depois disso, `run` compila o projeto, instala e abre o app no simulador, emulad
 
 ### 7.4 Apps C++
 
-Um app C++ é um projeto CMake que chama `haylen_add_app(<alvo> PACKAGE <pasta> [SOURCES ...] [CPP] [APPLE_PROJECT ...] [WEB_SHELL ...])` e compila a engine por `add_subdirectory`, CPM ou `find_package(haylen)`. A função leva o pacote para o app de cada plataforma: links para a pasta do pacote no Windows e no Linux (alvo `SYNC_PACKAGE-<alvo>`), recursos em `Resources/app` do bundle na Apple, `--preload-file` em `/app` na web e, no Android, a biblioteca do app e o caminho do pacote, que `make.py run-cpp --platform android` junta ao template Android. O sample `samples/cpp/embedding` é o exemplo.
+Um app C++ é um projeto CMake que chama `haylen_add_app(<alvo> PACKAGE <pasta> [SOURCES ...] [CPP] [APPLE_PROJECT ...] [WEB_SHELL ...])` e compila a engine por `add_subdirectory`, CPM ou `find_package(haylen)`. A função leva o pacote para o app de cada plataforma: links para a pasta do pacote no Windows e no Linux (alvo `SYNC_PACKAGE-<alvo>`), recursos em `Resources/app` do bundle na Apple, `--preload-file` em `/app` na web e, no Android, a biblioteca do app e o caminho do pacote, que `haylen.py run-cpp --platform android` junta ao template Android. O sample `samples/cpp/embedding` é o exemplo.
 
 ## 8. Recursos da engine
 
@@ -496,7 +496,7 @@ Regra geral: todo item desta seção que tem API em C++ só está pronto quando 
 - [x] **Aplicação Lua** (`lua::Application`): carrega o pacote, executa `source/main.lua` e encaminha o ciclo da engine para as cenas Lua.
 - [x] **Player** `haylen [--dev] <pasta|zip>` no desktop (validado com Metal no macOS) e o player web pré-compilado, que recebe o `app.zip` da página do template web (validado com WebGPU no Chrome).
 - [~] **haylen_add_app** gerando apps C++ para todas as plataformas com o pacote como conteúdo. Desktop, web, Android (APK no emulador com bridge, HTTP, pausa e retomada), simulador iOS e Mac Catalyst validados. Falta rodar no tvOS.
-- [x] **Engine como biblioteca**: três formas de consumo da pasta `engine/`, todas com `haylen::engine`, `haylen::runtime` e `haylen_add_app`. `add_subdirectory` e `CPMAddPackage` compilam a engine dentro do projeto, com C++20 e o suporte a exceções da web propagados pelo target, e testes, player e benchmarks desligados quando a engine não é o projeto principal. `find_package(haylen)` usa o SDK de `make.py sdk --platform <macos|linux|windows|web|web-webgl2>`: todas as bibliotecas estáticas do fechamento da engine (Varn, Poco, OpenSSL, libuv, Lua, Box2D e as outras) são fundidas em `libhaylen` e o runtime em `libhaylen_runtime`, com os headers públicos, os headers de Dear ImGui, Lua e nlohmann/json que eles usam, o `haylen-config.cmake` e os arquivos de `haylen_add_app` em `share/haylen`, instalados pelo componente `haylen_sdk`. O sample `samples/cpp/embedding` é um projeto CMake próprio compilado nos três modos por `make.py embedding --mode subdirectory|cpm|package` (validados no macOS, e o modo `package` também na web com o SDK WebGPU no Chrome). Apps C++ para Android, iOS, tvOS e Mac Catalyst compilam a engine pelo CMake com `make.py run-cpp`.
+- [x] **Engine como biblioteca**: três formas de consumo da pasta `engine/`, todas com `haylen::engine`, `haylen::runtime` e `haylen_add_app`. `add_subdirectory` e `CPMAddPackage` compilam a engine dentro do projeto, com C++20 e o suporte a exceções da web propagados pelo target, e testes, player e benchmarks desligados quando a engine não é o projeto principal. `find_package(haylen)` usa o SDK de `haylen.py sdk --platform <macos|linux|windows|web|web-webgl2>`: todas as bibliotecas estáticas do fechamento da engine (Varn, Poco, OpenSSL, libuv, Lua, Box2D e as outras) são fundidas em `libhaylen` e o runtime em `libhaylen_runtime`, com os headers públicos, os headers de Dear ImGui, Lua e nlohmann/json que eles usam, o `haylen-config.cmake` e os arquivos de `haylen_add_app` em `share/haylen`, instalados pelo componente `haylen_sdk`. O sample `samples/cpp/embedding` é um projeto CMake próprio compilado nos três modos por `haylen.py embedding --mode subdirectory|cpm|package` (validados no macOS, e o modo `package` também na web com o SDK WebGPU no Chrome). Apps C++ para Android, iOS, tvOS e Mac Catalyst compilam a engine pelo CMake com `haylen.py run-cpp`.
 - [x] **API C++ para bindings** (`haylen/lua/`) para que outros projetos exponham seus próprios módulos, inclusive `lua::Promise` para bindings assíncronos, que o app espera com `:await()` e que o código nativo resolve de qualquer thread sem depender dos headers do Varn (o SDK não instala esses headers).
 - [x] **Erros de tarefas assíncronas**: um erro que escapa de `async.spawn` ou `async.run` mostra a tela de erro com a pilha da corrotina e chega ao `onError` da página, como um erro de callback de cena. Falhas em `start`, `installLua` e `endFrame` de plugins também viram tela de erro.
 
@@ -522,8 +522,8 @@ Regra geral: todo item desta seção que tem API em C++ só está pronto quando 
 - [x] **Detecção de plataforma e backend** com override pela opção CMake `HAYLEN_RENDER_BACKEND`.
 - [~] **Deploy do conteúdo** do pacote do app (desktop, Apple, web e Android).
 - [x] **Shaders** compilados com sokol-shdc para GLSL 4.30, GLSL 3.00 ES, HLSL 5, Metal (macOS, iOS e simulador) e WGSL.
-- [~] **make.py** com `tools`, `configure`, `build`, `test`, `engine`, `new`, `samples`, `run`, `run-cpp`, `package`, `shaders`, `serve`, `coverage`, `format`, `bench`, `sdk`, `embedding`, `assets`, `map` e `clean` para todas as plataformas. Faltam rodar os apps numa máquina Windows e Linux e em aparelhos Apple físicos.
-- [x] **clang-format** com o `.clang-format` do repositório, aplicado por `make.py format` em todo C, C++, Objective-C e Objective-C++ da engine, dos samples e dos templates, com verificação de lambdas multilinha sem `clang-format off/on` e modo `--check` para o CI.
+- [~] **haylen.py** com `tools`, `configure`, `build`, `test`, `engine`, `new`, `samples`, `run`, `run-cpp`, `package`, `shaders`, `serve`, `coverage`, `format`, `bench`, `sdk`, `embedding`, `assets`, `map` e `clean` para todas as plataformas. Faltam rodar os apps numa máquina Windows e Linux e em aparelhos Apple físicos.
+- [x] **clang-format** com o `.clang-format` do repositório, aplicado por `haylen.py format` em todo C, C++, Objective-C e Objective-C++ da engine, dos samples e dos templates, com verificação de lambdas multilinha sem `clang-format off/on` e modo `--check` para o CI.
 - [x] **Avisos e sanitizers**: `-Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wshadow` (ou `/W4`), e AddressSanitizer com UndefinedBehaviorSanitizer ou ThreadSanitizer opcionais (`--sanitizers address|thread`).
 - [x] **Cobertura** com LLVM source-based coverage e relatório HTML e texto filtrado para a engine.
 - [x] **CI** no GitHub Actions (`.github/workflows/ci.yml`): verificação de formatação, testes e SDK com `find_package` no macOS, Linux e Windows, cobertura no macOS e os artefatos da engine para web (WebGPU e WebGL2), Android (AAR) e Apple (xcframework), com cache das fontes do CPM e do emsdk. Cada teste tem um limite de 120 segundos, então um teste que trava falha sozinho e o resto da suíte roda.
@@ -576,7 +576,7 @@ Regra geral: todo item desta seção que tem API em C++ só está pronto quando 
 - [x] **Primitivas**: linhas com espessura, polilinhas, retângulos, contornos, círculos, anéis, arcos e polígonos côncavos.
 - [x] **Meshes** indexadas com textura, cor e recorte (scissor).
 - [x] **Batches estáticos** (`graphics2d::StaticSpriteBatch`) em buffers imutáveis.
-- [x] **Caminho de milhões de sprites**: `drawBatch` com conversão paralela no `JobSystem`, batches estáticos na GPU e o benchmark `make.py bench` (app `haylen-sprite-benchmark`, vsync desligado, fases de 100 mil, 1 milhão e 2 milhões de sprites dinâmicos e estáticos). Num Apple M5 Pro com Metal em Release: 2 milhões de sprites animados todo frame a 105 fps com 4,5 ms de CPU por frame, e 2 milhões estáticos no limite de 120 Hz da tela com 0,02 ms de CPU.
+- [x] **Caminho de milhões de sprites**: `drawBatch` com conversão paralela no `JobSystem`, batches estáticos na GPU e o benchmark `haylen.py bench` (app `haylen-sprite-benchmark`, vsync desligado, fases de 100 mil, 1 milhão e 2 milhões de sprites dinâmicos e estáticos). Num Apple M5 Pro com Metal em Release: 2 milhões de sprites animados todo frame a 105 fps com 4,5 ms de CPU por frame, e 2 milhões estáticos no limite de 120 Hz da tela com 0,02 ms de CPU.
 - [x] **Texto SDF** (`text::TrueTypeFont`): fontes TrueType e OpenType em atlas dinâmico, UTF-8, kerning, alinhamento, quebra de linha, contorno e sombra.
 - [x] **Pós-processamento** (`graphics2d::PostProcess`): vinheta, tinta, saturação, brilho, contraste, fade e materiais.
 - [x] **Estatísticas**: sprites, instâncias, draw calls, trocas de textura e bytes enviados.
@@ -673,7 +673,7 @@ O ciclo de dia e noite é mecânica de jogo e fica no Tiny Island. O grupo I da 
 - [~] **Ciclo de vida**: suspender, retomar, foco, redimensionar, pouca memória (`onTrimMemory` no Android e aviso de memória do UIKit, entregues como evento `low_memory` das cenas, evento `app_low_memory` e sinal `lowMemory` de `core::Engine`) e pedido de saída. Android e desktop validados. Falta validar no iOS.
 - [x] **Biblioteca Android** `haylen` (AAR, namespace `dev.haylen`) com `HaylenActivity` (splash, bridge, insets, teclado virtual, orientação, controles, tela cheia imersiva e Back), regras do R8 para as classes chamadas pelo C++, e o template Android sem C++.
 - [x] **Projetos Apple**: template XcodeGen com alvos iOS e iPadOS com Mac Catalyst, tvOS e macOS, com Info.plist, launch screen e orientação vindos do `app.json`, rodados nos simuladores de iOS e tvOS, no Mac Catalyst e no macOS.
-- [x] **Web**: template com canvas, builds WebGPU e WebGL2 (ambos validados no Chrome), script da bridge com os métodos embutidos, pacote entregue pela página e servidor local do `make.py`.
+- [x] **Web**: template com canvas, builds WebGPU e WebGL2 (ambos validados no Chrome), script da bridge com os métodos embutidos, pacote entregue pela página e servidor local do `haylen.py`.
 
 ### 8.15 Utilitários de gameplay
 
@@ -695,7 +695,7 @@ O ciclo de dia e noite é mecânica de jogo e fica no Tiny Island. O grupo I da 
 - [x] **GoogleTest** via CTest, num executável só (`haylen_tests`).
 - [x] **Runtime headless** com backend dummy do Sokol, host headless, mixer sem dispositivo e runtime do Varn, e `test::EngineFixture` rodando uma engine real sobre um pacote em memória.
 - [x] **Testes dos bindings Lua** executando Lua pela engine headless.
-- [x] **Cobertura** da engine o mais perto de 100%, excluindo só os backends que exigem o SDK da plataforma, medida por `make.py coverage`.
+- [x] **Cobertura** da engine o mais perto de 100%, excluindo só os backends que exigem o SDK da plataforma, medida por `haylen.py coverage`.
 - [x] **ThreadSanitizer**: a suíte inteira roda sem nenhum relato de corrida.
 
 ### 8.18 Bindings Lua por módulo
@@ -733,7 +733,7 @@ O ciclo de dia e noite é mecânica de jogo e fica no Tiny Island. O grupo I da 
 
 ### 9.1 Conceito
 
-O jogo é escrito em Lua e fica em `samples/games/tiny-island/`: `app.json`, `source/` (`main.lua`, `config.lua` com os valores de ajuste, e as pastas `data/`, `scenes/`, `systems/`, `entities/` e `ui/`) e `content/` com os assets. O app de cada plataforma é montado a partir dos templates por `python3 make.py run games/tiny-island [--platform ...]`, e `platform/` guarda só o login Google do Android e da web.
+O jogo é escrito em Lua e fica em `samples/games/tiny-island/`: `app.json`, `source/` (`main.lua`, `config.lua` com os valores de ajuste, e as pastas `data/`, `scenes/`, `systems/`, `entities/` e `ui/`) e `content/` com os assets. O app de cada plataforma é montado a partir dos templates por `python3 haylen.py run games/tiny-island [--platform ...]`, e `platform/` guarda só o login Google do Android e da web.
 
 Sobreviver o maior número de noites numa ilha. Durante o dia o jogador corta árvores e alimenta a fogueira. À noite os inimigos aparecem e só a luz da fogueira mantém um círculo seguro. Quanto menos madeira, menor o círculo.
 
@@ -758,7 +758,7 @@ Sobreviver o maior número de noites numa ilha. Durante o dia o jogador corta á
 
 ### 9.4 Mapa
 
-- Gerado por `tools/generate_island_map.py` (`make.py map`) e salvo como `samples/games/tiny-island/content/maps/island.tmj`, editável no Tiled.
+- Gerado por `tools/generate_island_map.py` (`haylen.py map`) e salvo como `samples/games/tiny-island/content/maps/island.tmj`, editável no Tiled.
 - Camadas: fundo de água, espuma animada na costa, grama com bordas por autotile (Wang set de bordas), platô elevado com penhascos e sombra, decorações (arbustos, pedras, pedras na água e nuvens em parallax) e objetos.
 - Objetos: posição da fogueira, posição inicial do jogador, regiões de spawn de árvores, pontos de spawn de inimigos na costa e colisões da borda da ilha e dos penhascos.
 
@@ -836,7 +836,7 @@ Todos os sons são CC0. Os créditos ficam em `samples/games/tiny-island/content
 
 ### 9.14 Itens do jogo
 
-- [x] **Importação do Tiny Swords**: `make.py assets <zip>` copia o pacote para `samples/games/tiny-island/content/tiny_swords/` com nomes em `snake_case`, gera as peças de nine-slice da UI e versões claras das barras para o tema colorir.
+- [x] **Importação do Tiny Swords**: `haylen.py assets <zip>` copia o pacote para `samples/games/tiny-island/content/tiny_swords/` com nomes em `snake_case`, gera as peças de nine-slice da UI e versões claras das barras para o tema colorir.
 - [x] **Jogo em Lua** usando só a API Lua da engine e os módulos do Varn.
 - [x] **Pacote em zip**: o mesmo jogo roda a partir de `tiny-island.zip` no player desktop (Metal) e no navegador (WebGPU).
 - [x] **Mapa da ilha** gerado e editável no Tiled.
@@ -872,7 +872,7 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 - [x] **Reinício limpo** do app sem recarregar a página: cada início cria um `core::Engine` novo (cenas, estado Lua com um `Runtime` do Varn próprio, assets, áudio, física e recursos de GPU), e o anterior é destruído entre frames.
 - [x] **Hot reload**: no desktop, `plugins::HotReloadPlugin` observa a pasta do pacote no modo de desenvolvimento (`--dev`), recarrega os assets no lugar e reinicia o app quando um script muda. Na web, o editor usa `setFile` com `reloadAsset` para assets e `restart` para scripts.
 - [x] **Tela de erro**: um erro em script não derruba o runtime. A engine mostra o erro na tela, avisa a página e continua pronta para receber a correção.
-- [x] **Backend escolhido pela página**: `make.py engine --platform web` gera o player para WebGPU e para WebGL2, e a página do template web usa WebGPU quando o navegador oferece um adaptador e WebGL2 no resto, com `?backend=webgpu` ou `?backend=webgl2` para forçar um deles. Os apps C++ (`make.py run-cpp --platform web`) usam o shell do próprio alvo com o seletor de backend (`engine/platform/web/backend-picker.html`) no lugar do `{{{ SCRIPT }}}`, então plugins de página também funcionam no pacote duplo (validado no Chrome).
+- [x] **Backend escolhido pela página**: `haylen.py engine --platform web` gera o player para WebGPU e para WebGL2, e a página do template web usa WebGPU quando o navegador oferece um adaptador e WebGL2 no resto, com `?backend=webgpu` ou `?backend=webgl2` para forçar um deles. Os apps C++ (`haylen.py run-cpp --platform web`) usam o shell do próprio alvo com o seletor de backend (`engine/platform/web/backend-picker.html`) no lugar do `{{{ SCRIPT }}}`, então plugins de página também funcionam no pacote duplo (validado no Chrome).
 - [x] **Canvas controlado pela página**: o runtime usa o `Module.canvas` que a página fornecer (com `id`) e acompanha o tamanho do elemento com um `ResizeObserver`, sem assumir a página inteira.
 - [x] **Sem requisitos especiais de hospedagem**: o runtime web é single-thread (como o Varn, e o `JobSystem` roda os trabalhos no próprio frame), então não depende de COOP e COEP nem de `SharedArrayBuffer`. A página só precisa ser servida por https ou por localhost, onde o navegador oferece o `AudioWorklet` da saída de áudio.
 - [x] **Bridge de plataforma na web**: plugins em JavaScript registrados pela página (`Module.haylen.register`, inclusive em `Module.preRun`), com handlers assíncronos. O exemplo de login com Google está no `platform/web/app.js` do Tiny Island.
@@ -885,7 +885,7 @@ O editor web não faz parte deste repositório, mas a engine é construída para
 - [x] **docs/architecture.md**: bibliotecas e produtos, organização das fontes, plugins, fronteira com o host, frame, tela de erro, threads, posse de recursos, pacotes e runtime web.
 - [x] **docs/lua.md**: pacote do app, `app.json`, módulos e `require`, caminhos de assets, cenas, autoloads, classes, acesso ao disco, async com o Varn, erros, hot reload, desempenho e como estender a engine com bindings próprios.
 - [x] **docs/lifecycle.md**: início, frames e parada, estados do app, pausa, modos de processamento, autoloads, ciclo de vida das cenas e donos.
-- [x] **docs/build.md**: `make.py`, requisitos por plataforma, árvores de build, opções CMake, dependências, apps C++ com `haylen_add_app`, player de desktop, builds web, Android, Apple, assets do Tiny Island e CI.
+- [x] **docs/build.md**: `haylen.py`, requisitos por plataforma, árvores de build, opções CMake, dependências, apps C++ com `haylen_add_app`, player de desktop, builds web, Android, Apple, assets do Tiny Island e CI.
 - [x] **docs/distribution.md**: comandos de apps, artefatos da engine, templates, montagem, personalizações por plataforma, bibliotecas nativas, splash, modo de desenvolvimento, carregador web e suporte a plataformas.
 - [x] **docs/embedding.md**: a engine como biblioteca em outro projeto CMake (`add_subdirectory`, CPM e SDK).
 - [x] **docs/testing.md**: organização da suíte, host headless, `test::EngineFixture`, testes de bindings, sanitizers, cobertura, formatação e CI.
@@ -936,15 +936,15 @@ Esta seção cobre os pedidos 51 a 205 das seções 2.1, 2.2, 2.3, 2.4, 2.5 e 2.
 - **Nome do produto**: Haylen, sem "2D" no nome, porque o 3D cresce ao lado. O pacote Java é `dev.haylen`.
 - **Nomes genéricos**: o que o desenvolvedor cria é um app (jogo, aplicação multimídia ou app): `app.json`, `haylen_add_app`, `core::Application`, o pacote embarcado em `app/` e o zip `app.zip`. A palavra "game" só aparece onde é sobre jogos de verdade (gamepad e os samples de jogos).
 - **Regra 2D e 3D**: tudo o que é específico de 2D fica em pastas `2d/` (`engine/include/haylen/2d/`, `engine/src/2d/` e `engine/tests/2d/`), e cada pasta dentro de `2d/` tem um namespace com o sufixo `2d` igual ao nome do módulo Lua (`haylen::physics2d` e `haylen.physics2d`). Os tipos não repetem o namespace (`physics2d::World`, `graphics2d::Camera`), e os tipos do namespace compartilhado `haylen::plugins` dizem a dimensão (`Physics2DPlugin`). Assim os módulos 3D do futuro não conflitam com nada. `haylen.graphics` fica com o que não tem dimensão (texturas, render targets, fontes, shaders e o backend), e `Font` fica em `text/`, porque uma fonte serve às duas dimensões. O Tiled mantém `haylen::tiled` e `haylen.tiled`, porque mapas do Tiled são 2D por natureza.
-- **Formato do pacote**: `app.json` (identidade, orientação, janela, resolução de design, splash, ciclo de vida, sessão de áudio, debug, autoloads e bibliotecas nativas), `source/` com `main.lua` como ponto de entrada e os outros módulos Lua, e `content/` com os recursos. `require("scenes.menu")` procura `source/scenes/menu.lua`. Todo caminho de recurso é relativo a `content/`. Uma pasta opcional `platform/<template>/` no app é o projeto inteiro daquela plataforma, que pertence ao desenvolvedor e não faz parte do pacote. O `make.py new` também dá ao app o `.gitignore`, o `.editorconfig` e o `.clang-format`.
-- **Templates**: a pasta `templates/` na raiz guarda o app inicial em `templates/app` (usado pelo `make.py new`) e os projetos prontos por plataforma em `templates/platform/<plataforma>/`, que só esperam o pacote: `templates/platform/apple` (projeto XcodeGen com o `App.xcodeproj` gerado ao lado do `project.yml`, com alvos iOS, iPadOS, Mac Catalyst, tvOS e macOS), `templates/platform/android` (projeto Gradle que usa o AAR da engine) e `templates/platform/web` (página com a logo, a barra de progresso, a escolha entre WebGPU e WebGL2 e o carregador). É modular e extensível: uma plataforma nova é uma pasta nova em `templates/platform/` e o seu alvo de execução no `make.py` (a tabela `RUN_TARGETS`), que descobre os templates pelas pastas. Os projetos são do desenvolvedor: o `make.py` escreve só a pasta `haylen/` de cada projeto (`project.yml` com os modelos de alvo `HaylenIOS`, `HaylenTVOS` e `HaylenMacOS`, `Haylen.xcconfig`, o `Info.plist`, os entitlements e o manifesto de privacidade completados, `Splash.xcassets`, o pacote, as bibliotecas nativas e os plugins na Apple, e `haylen.properties`, `assets`, `res`, `jniLibs` e `plugins` no Android), e na web copia os arquivos do desenvolvedor como estão para a saída, com `config.json` ao lado.
-- **Projetos no lugar**: o projeto de uma plataforma é `platform/<template>/` do app, compilado onde está. Um app sem essa pasta usa uma cópia do template que o `make.py` guarda em `build/apps/<app>-<hash>/<template>/` e refaz quando o template muda. Os produtos do build ficam na pasta de build do app, fora do projeto (`xcode/`, `gradle/` e `gradle-cache/`). O `run` prepara a pasta gerada, gera o `App.xcodeproj` de novo quando pode, compila, confere o app com o `check` e abre o app. Os samples guardam o código nativo em plugins locais e nenhum guarda projeto de plataforma.
+- **Formato do pacote**: `app.json` (identidade, orientação, janela, resolução de design, splash, ciclo de vida, sessão de áudio, debug, autoloads e bibliotecas nativas), `source/` com `main.lua` como ponto de entrada e os outros módulos Lua, e `content/` com os recursos. `require("scenes.menu")` procura `source/scenes/menu.lua`. Todo caminho de recurso é relativo a `content/`. Uma pasta opcional `platform/<template>/` no app é o projeto inteiro daquela plataforma, que pertence ao desenvolvedor e não faz parte do pacote. O `haylen.py new` também dá ao app o `.gitignore`, o `.editorconfig` e o `.clang-format`.
+- **Templates**: a pasta `templates/` na raiz guarda o app inicial em `templates/app` (usado pelo `haylen.py new`) e os projetos prontos por plataforma em `templates/platform/<plataforma>/`, que só esperam o pacote: `templates/platform/apple` (projeto XcodeGen com o `App.xcodeproj` gerado ao lado do `project.yml`, com alvos iOS, iPadOS, Mac Catalyst, tvOS e macOS), `templates/platform/android` (projeto Gradle que usa o AAR da engine) e `templates/platform/web` (página com a logo, a barra de progresso, a escolha entre WebGPU e WebGL2 e o carregador). É modular e extensível: uma plataforma nova é uma pasta nova em `templates/platform/` e o seu alvo de execução no `haylen.py` (a tabela `RUN_TARGETS`), que descobre os templates pelas pastas. Os projetos são do desenvolvedor: o `haylen.py` escreve só a pasta `haylen/` de cada projeto (`project.yml` com os modelos de alvo `HaylenIOS`, `HaylenTVOS` e `HaylenMacOS`, `Haylen.xcconfig`, o `Info.plist`, os entitlements e o manifesto de privacidade completados, `Splash.xcassets`, o pacote, as bibliotecas nativas e os plugins na Apple, e `haylen.properties`, `assets`, `res`, `jniLibs` e `plugins` no Android), e na web copia os arquivos do desenvolvedor como estão para a saída, com `config.json` ao lado.
+- **Projetos no lugar**: o projeto de uma plataforma é `platform/<template>/` do app, compilado onde está. Um app sem essa pasta usa uma cópia do template que o `haylen.py` guarda em `build/apps/<app>-<hash>/<template>/` e refaz quando o template muda. Os produtos do build ficam na pasta de build do app, fora do projeto (`xcode/`, `gradle/` e `gradle-cache/`). O `run` prepara a pasta gerada, gera o `App.xcodeproj` de novo quando pode, compila, confere o app com o `check` e abre o app. Os samples guardam o código nativo em plugins locais e nenhum guarda projeto de plataforma.
 - **Artefatos prontos da engine**: `build/artifacts/` com um `manifest.json` (versão da engine e, por plataforma, a configuração e o hash das fontes do último build) e reconstrução automática quando a engine muda.
   - `apple/Haylen.xcframework`: biblioteca estática com engine, dependências e player Lua, com os slices macOS (arm64 e x86_64), iOS, simulador iOS, Mac Catalyst, tvOS e simulador tvOS, e os headers públicos (`haylen_main` e `HaylenBridge`). O template leva um `main.mm` mínimo que chama `haylen_main`, que também é o lugar para registrar handlers nativos da bridge. Ao lado dele ficam o `haylen-frameworks.json`, a lista de frameworks do sistema que a engine usa em cada plataforma, e o `PrivacyInfo.xcprivacy` da engine.
   - `android/maven/`: o AAR `haylen` (arm64-v8a, armeabi-v7a para TVs Android de 32 bits e x86_64), publicado num repositório Maven local para levar as dependências transitivas (Kotlin, AndroidX e kotlinx-coroutines).
   - `web/`: `haylen.js`, `haylen.wasm` e `haylen-audio-worklet.js` para WebGPU e para WebGL2. O wasm é pré-compilado, porque o player web carrega o pacote em tempo de execução: só o `app.zip` muda de um app para outro.
   - `desktop/`: o player `haylen` para rodar apps no macOS, Windows e Linux com hot reload.
-- **Comandos do make.py**:
+- **Comandos do haylen.py**:
   - `engine [--platform apple|android|web|desktop|all]` gera os artefatos.
   - `new <pasta> [--name --identifier --orientation]` cria um projeto com `app.json`, `source/main.lua`, `content/` de exemplo, `.gitignore`, `.editorconfig` e `.clang-format`, e um projeto de cada template em `platform/`, que é do desenvolvedor.
   - `prepare <app> --platform` escreve a pasta `haylen/` do projeto, `xcodegen [app] [--platform] [--template]` gera o `App.xcodeproj` de novo, `check <app> --platform [--config] [--coop]` confere o app compilado contra os requisitos da engine e dos plugins, e `platform add <app> <template>` e `platform diff <app> --template <t>` criam o projeto de uma plataforma e mostram o que difere do template atual.
@@ -964,7 +964,7 @@ Esta seção cobre os pedidos 51 a 205 das seções 2.1, 2.2, 2.3, 2.4, 2.5 e 2.
 #### A. Nomes, pacote e estrutura
 
 - [x] Nome Haylen em tudo (namespace `haylen` com os sub-namespaces por contexto, headers em `haylen/`, alvos `haylen::engine` e `haylen::runtime`, `haylen_add_app`, módulos Lua `haylen.*`, pacote Java `dev.haylen`, `Module.haylen` na web, `Haylen.xcframework`, `haylen_main`, player `haylen`, arquivos `haylen-*.cmake`, docs, README e AGENTS.md).
-- [x] `app` em tudo o que o desenvolvedor cria (arquivos, CMake, Gradle, JavaScript, `make.py`, docs e mensagens).
+- [x] `app` em tudo o que o desenvolvedor cria (arquivos, CMake, Gradle, JavaScript, `haylen.py`, docs e mensagens).
 - [x] Pacote com `app.json`, `source/` e `content/`, com hot reload separando scripts (`source/` e `app.json`) de recursos (`content/`). Só essas três entradas são o pacote em todas as plataformas.
 - [x] Módulos Lua 2D com sufixo `2d`, `haylen.graphics` separado de `haylen.graphics2d`, `Font` em `text/` e `FloatRange` em `math/`. Os tipos 2D levam o contexto no namespace (`physics2d::World`), como o grupo P descreve.
 - [x] Ciclo de dia e noite fora da engine, em Lua no Tiny Island (`source/systems/day-night.lua`), e `lighting2d.flicker` (`lighting2d::LightFlicker`) como utilitário genérico.
@@ -979,8 +979,8 @@ Esta seção cobre os pedidos 51 a 205 das seções 2.1, 2.2, 2.3, 2.4, 2.5 e 2.
 - [x] Wasm pré-compilado (WebGPU e WebGL2) e template web com logo do app ou da engine, barra de progresso real (wasm e `app.zip`), checagem de recursos do navegador e tela de erro. O pacote chega ao runtime por `Module.haylen.packageData`.
 - [x] Logo da engine usada quando o app não tem logo, com os derivados para o splash e os ícones do Android, da Apple e da web, o banner de TV e o `logo.png` do app inicial, com a marca do grupo AD.
 - [x] Splash nos templates Apple (LaunchScreen com Auto Layout em iOS, iPadOS, Mac Catalyst e a imagem de abertura do tvOS) e Android (SplashScreen API mantida na tela até o primeiro frame da engine, sem tela preta no meio), funcionando em retrato e paisagem em celulares, tablets e TVs, com logo e cor de fundo do `app.json` (`splash`) e a logo da engine quando o app não tem uma.
-- [x] Player desktop como artefato (`make.py engine --platform desktop`).
-- [x] `make.py engine`, `new`, `samples`, `run`, `run-cpp`, `package`, `shaders` e `serve` como descritos em 14.1, com montagem em `build/apps/<app>-<hash>/<plataforma>/`, personalização por `platform/<template>/` e plataformas descobertas pelas pastas de `templates/platform/` (a tabela `RUN_TARGETS` no `make.py`). O `serve` entrega isolamento de origem (`crossOriginIsolated` verdadeiro no Chrome) e aceita `--coep off`.
+- [x] Player desktop como artefato (`haylen.py engine --platform desktop`).
+- [x] `haylen.py engine`, `new`, `samples`, `run`, `run-cpp`, `package`, `shaders` e `serve` como descritos em 14.1, com montagem em `build/apps/<app>-<hash>/<plataforma>/`, personalização por `platform/<template>/` e plataformas descobertas pelas pastas de `templates/platform/` (a tabela `RUN_TARGETS` no `haylen.py`). O `serve` entrega isolamento de origem (`crossOriginIsolated` verdadeiro no Chrome) e aceita `--coep off`.
 - [x] Modo de desenvolvimento explícito (`--dev`) no player, sem hot reload em apps publicados. A web nunca passa `--dev`.
 - [x] Samples Lua rodando em macOS, simulador iOS, simulador tvOS, Mac Catalyst, emulador Android e web, e o sample C++ em macOS e web. Os 26 samples Lua rodam sem crash na web (WebGPU e WebGL2, 60 fps), no iPhone, no iPad e no Android, com o menu, testes abertos por toque e o voltar. No tvOS foram validados o Tiny Island, a UI com o controle remoto e um sample por categoria, e no Catalyst o Tiny Island e a UI. Faltam Windows e Linux (fora da máquina de desenvolvimento) e aparelhos físicos.
 
@@ -1063,7 +1063,7 @@ Esta seção cobre os pedidos 51 a 205 das seções 2.1, 2.2, 2.3, 2.4, 2.5 e 2.
 - [x] Autoloads: módulos listados no `app.json` (ou registrados por `haylen.autoload`) que carregam antes da primeira cena, vivem durante o app todo, ficam acessíveis de qualquer cena e recebem os callbacks do ciclo (update, fixedUpdate, render, renderUi, eventos e stop).
 - [x] Helper de classes (`haylen.class`) com herança, construtor, `super`, `is` e mixins, para classes globais do app.
 - [x] Acesso ao disco documentado e testado: `fs` do Varn (com `storage.root()` para montar os caminhos) e `haylen.storage` (pasta do usuário, leitura e escrita síncronas e assíncronas, listagem, criação e remoção).
-- [x] Desempenho: APIs em lote sem alocação por item (`collections.newFloatBuffer`, `graphics2d.drawBatch` com buffer e campos, `world:readTransforms` e `writeTransforms` e `emitter:readPositions`), buffers de números compartilhados com o C++, métodos rápidos nos userdata dos caminhos quentes e o bunnymark em Lua no `make.py bench --suite lua`: 1 milhão de sprites em 72 ms de CPU por frame pelo caminho em lote contra 347 ms com uma tabela por sprite.
+- [x] Desempenho: APIs em lote sem alocação por item (`collections.newFloatBuffer`, `graphics2d.drawBatch` com buffer e campos, `world:readTransforms` e `writeTransforms` e `emitter:readPositions`), buffers de números compartilhados com o C++, métodos rápidos nos userdata dos caminhos quentes e o bunnymark em Lua no `haylen.py bench --suite lua`: 1 milhão de sprites em 72 ms de CPU por frame pelo caminho em lote contra 347 ms com uma tabela por sprite.
 
 #### L. Modo debug com estatísticas
 
@@ -1074,7 +1074,7 @@ Esta seção cobre os pedidos 51 a 205 das seções 2.1, 2.2, 2.3, 2.4, 2.5 e 2.
 
 #### M. Recursos exigidos pelos samples
 
-- [x] Shaders próprios: fontes GLSL anotadas em `content/shaders/` compiladas por `make.py shaders` em arquivos `.shader` com reflexão para Metal, HLSL, GLSL 430, GLSL ES 300 e WGSL, materiais com uniforms por nome (`graphics2d.newMaterial`) aplicados a sprites, canvases e pós-processamento, e hot reload no desktop. Validado em Metal, WebGL2 e WebGPU, com o guia `docs/shaders.md`.
+- [x] Shaders próprios: fontes GLSL anotadas em `content/shaders/` compiladas por `haylen.py shaders` em arquivos `.shader` com reflexão para Metal, HLSL, GLSL 430, GLSL ES 300 e WGSL, materiais com uniforms por nome (`graphics2d.newMaterial`) aplicados a sprites, canvases e pós-processamento, e hot reload no desktop. Validado em Metal, WebGL2 e WebGPU, com o guia `docs/shaders.md`.
 - [x] Efeitos de áudio pelo grafo do miniaudio, por barramento e por som, com nós próprios de parâmetros atômicos, tweenáveis pelo Lua: `Filter` (passa-baixa, passa-alta, passa-banda, notch, pico e shelves, que formam o equalizador), `Delay` (atraso e eco) e `Reverb` (Freeverb).
 - [x] Física avançada: cordas (cadeias de juntas), líquidos (partículas com renderização de metaballs pelo renderer), terreno destrutível (bitmap com marching squares e recriação das cadeias), ragdoll, veículos, pontes, explosões com impulso radial, plataformas de mão única (com a direção girando com o corpo) e esteiras.
 - [x] Fontes bitmap (BMFont em texto e binário, e fontes em grade) além das TrueType e OpenType, com `text::Font` como interface (`text::TrueTypeFont` e `text::BitmapFont`).
@@ -1083,9 +1083,9 @@ Esta seção cobre os pedidos 51 a 205 das seções 2.1, 2.2, 2.3, 2.4, 2.5 e 2.
 
 #### N. Samples
 
-Os samples ficam em categorias, e os comandos recebem o caminho a partir de `samples/` (`python3 make.py run games/tiny-island`, `python3 make.py run graphics/lighting --platform web`, `python3 make.py run-cpp cpp/embedding`), com `python3 make.py samples` listando todos: `games/` (tiny-island e taskbar-quest), `graphics/` (sprites, camera, lighting, shaders, particles, nine-patch, fonts e scenes), `gameplay/` (physics, algorithms, tiled, tween, events, input e audio), `interface/` (ui, safe-area e orientation), `system/` (filesystem, preferences, localization, network, platform e native) e `cpp/` (embedding).
+Os samples ficam em categorias, e os comandos recebem o caminho a partir de `samples/` (`python3 haylen.py run games/tiny-island`, `python3 haylen.py run graphics/lighting --platform web`, `python3 haylen.py run-cpp cpp/embedding`), com `python3 haylen.py samples` listando todos: `games/` (tiny-island e taskbar-quest), `graphics/` (sprites, camera, lighting, shaders, particles, nine-patch, fonts e scenes), `gameplay/` (physics, algorithms, tiled, tween, events, input e audio), `interface/` (ui, safe-area e orientation), `system/` (filesystem, preferences, localization, network, platform e native) e `cpp/` (embedding).
 
-- [x] Samples em categorias, `make.py run` e `run-cpp` resolvendo o caminho a partir de `samples/`, `make.py samples` listando todos, e README, docs, AGENTS.md e os READMEs dos samples no mesmo formato.
+- [x] Samples em categorias, `haylen.py run` e `run-cpp` resolvendo o caminho a partir de `samples/`, `haylen.py samples` listando todos, e README, docs, AGENTS.md e os READMEs dos samples no mesmo formato.
 
 Todo sample de recursos tem um menu simples para escolher o teste, cada teste é uma cena com um botão para voltar ao menu, e roda em todas as plataformas pelos templates.
 
@@ -1110,7 +1110,7 @@ Todo sample de recursos tem um menu simples para escolher o teste, cada teste é
 - [x] `samples/graphics/scenes` (6 testes): todas as transições (os 24 efeitos com direção, easing, duração e cor), efeitos próprios, o ciclo de carregamento (a transição como loading, view de loading, pré-carregamento e erro com `onError`), a pilha, sobreposições e a pausa.
 - [x] `samples/gameplay/tiled` (12 testes, com o conteúdo gerado por `samples/gameplay/tiled/tools/generate_content.py`): mapas de todas as orientações do Tiled.
 - [x] `samples/games/tiny-island`: o jogo, com `app.json`, `source/` e `content/`.
-- [x] `samples/cpp/embedding`: o sample C++, rodado por `make.py run-cpp cpp/embedding`.
+- [x] `samples/cpp/embedding`: o sample C++, rodado por `haylen.py run-cpp cpp/embedding`.
 
 #### O. Documentação, testes e revisão
 
@@ -1128,14 +1128,14 @@ Todo sample de recursos tem um menu simples para escolher o teste, cada teste é
 - [x] Varn `04b710d` adotado: o driver HTTP da Apple vem do próprio Varn, a tela de erro monta a pilha das tarefas e dos callbacks do `ffi` pelos frames que o `async.onFailure` entrega, o cancelamento das tarefas das cenas e dos jobs usa o cancelamento do Varn, que fecha as variáveis to-be-closed, e a configuração com o CMake 4 não mostra avisos.
 - [x] Varn `0248f79` adotado: um `__close` que falha numa tarefa cancelada chega ao `async.onFailure` sem patch, com texto ou tabela, e a pilha das tarefas e dos callbacks do `ffi` usa o `namewhat` e o `linedefined` dos frames do Varn e lê igual à das chamadas protegidas (`global 'error'`, `function <arquivo:linha>`), montada pelo mesmo código de `lua::Runtime`, com a mesma linha de níveis pulados nas pilhas profundas.
 - [x] O cache de fontes do CPM guarda um pacote com patches numa chave feita do hash do arquivo e do conteúdo dos patches (`haylen_patched_package_key` e o `CUSTOM_CACHE_KEY` do CPM), então um patch alterado chega a todo checkout que já tinha a fonte, e checkouts em pastas diferentes dividem o mesmo pacote.
-- [x] CI verde em todos os jobs (formato, desktops macOS, Ubuntu e Windows, cobertura, web, Android e Apple), com o `desktop (windows-latest)` e o `android` passando pela primeira vez, e o workflow cancelando as execuções substituídas de um mesmo branch. No Windows: os testes da FFI travavam numa caixa de diálogo do MSVC (o buffer de retorno do `ffi` do Varn), o `make.py shaders` roda sem shell porque o `cmd.exe` tirava as aspas do comando, o `wss://` conecta antes do handshake para o app poder abandoná-lo e aceita o handshake terminado do Schannel, o armazenamento não troca um arquivo enquanto outra thread o lê ou troca, o teste das bibliotecas nativas compara caminhos no formato do sistema, e o SDK calcula o prefixo do config pelos nomes e compila o Poco sem os pedidos automáticos de bibliotecas do MSVC.
+- [x] CI verde em todos os jobs (formato, desktops macOS, Ubuntu e Windows, cobertura, web, Android e Apple), com o `desktop (windows-latest)` e o `android` passando pela primeira vez, e o workflow cancelando as execuções substituídas de um mesmo branch. No Windows: os testes da FFI travavam numa caixa de diálogo do MSVC (o buffer de retorno do `ffi` do Varn), o `haylen.py shaders` roda sem shell porque o `cmd.exe` tirava as aspas do comando, o `wss://` conecta antes do handshake para o app poder abandoná-lo e aceita o handshake terminado do Schannel, o armazenamento não troca um arquivo enquanto outra thread o lê ou troca, o teste das bibliotecas nativas compara caminhos no formato do sistema, e o SDK calcula o prefixo do config pelos nomes e compila o Poco sem os pedidos automáticos de bibliotecas do MSVC.
 - [x] Build sem avisos no GCC do Linux e no MSVC do Windows: o GCC deixa de avisar sobre os inicializadores designados, como o Clang, e os fontes e testes que escondiam membros (`Tree.cpp`, `KeyCapture.cpp`, `RangeSlider.cpp`, o `Window.cpp` dos overlays, `ScriptedScene.cpp`, `MixerLuaTests.cpp` e `ShapingTests.cpp`), o parâmetro sem uso de `Signal.hpp` e de `Binding.hpp`, as conversões de `Grid.cpp`, `NativeSignature.cpp` e do tempo limite de `PocoWebSocket.cpp`, o `-Wstringop-overflow` de `MapParser.cpp` e a cópia no laço de `NavMeshTests.cpp` foram corrigidos. Os logs do CI do Ubuntu e do Windows não têm avisos da engine. Os avisos do libffi vêm do Varn.
 - [x] `HaylenNativeApi` versão 3 com `registerErrorHandler`: os erros que param o app chegam às bibliotecas nativas nos desktops, com o teste `NativeLuaTest.HandsTheErrorsThatStopAppsToLibraries`.
 - [x] A tela de erro com foco nos botões, movido pelo direcional ou pelas setas e apertado pelo botão sul ou Enter, para o controle da TV reiniciar o app, com testes.
 - [x] Na web, o foco de um elemento de plugin (o botão de um diálogo) não conta mais como perda de foco do app, então o app volta a ficar ativo quando a tela do plugin fecha, e Escape e Enter chegam ao elemento focado.
 - [x] `Engine::stop` só para os plugins da engine cujo `start` terminou, em ordem inversa, inclusive os adicionados com o app rodando, então um plugin que falhou no início (ou que nunca começou porque outro falhou antes) não recebe `stop`, com o teste `EngineTest.StopsOnlyThePluginsThatStarted`.
 - [x] O build web não tem avisos (o `DestructionLua.cpp` converte o tamanho da tabela onde lê).
-- [x] Sem saída de áudio, o app roda sem som: o log avisa uma vez com o motivo, o mixer segue o tempo misturando e descartando as amostras (vozes terminam, músicas fazem crossfade e vozes posicionais atualizam), uma interrupção sempre termina, a engine tenta abrir a saída de novo quando o app volta a ficar ativo, e `Mixer::isOutputAvailable()`, `audio.outputAvailable()` e o `available` do `onStats` informam o estado. Na web, uma página em http fora do localhost abre e roda sem som, conferido pelo IP da rede local no Chrome, e `make.py serve`, `run` e `run-cpp` aceitam `--host`.
+- [x] Sem saída de áudio, o app roda sem som: o log avisa uma vez com o motivo, o mixer segue o tempo misturando e descartando as amostras (vozes terminam, músicas fazem crossfade e vozes posicionais atualizam), uma interrupção sempre termina, a engine tenta abrir a saída de novo quando o app volta a ficar ativo, e `Mixer::isOutputAvailable()`, `audio.outputAvailable()` e o `available` do `onStats` informam o estado. Na web, uma página em http fora do localhost abre e roda sem som, conferido pelo IP da rede local no Chrome, e `haylen.py serve`, `run` e `run-cpp` aceitam `--host`.
 - [x] Posição da janela dos apps C++ no Mac Catalyst: `haylen_add_app` assina o bundle ad hoc depois do link, como o Xcode faz, e a janela abre onde o app pede, e não no canto superior esquerdo.
 - [x] Revisão final de bugs, código morto, race conditions e riscos de crash em duas frentes (core, Lua, plugins, storage, io, math, IA, debug, net, áudio e input, e gráficos, texto, UI e os contextos 2D), com testes de regressão para as correções (crashes na saída e no reinício, use-after-free, estouro de pilha Lua, travamentos por entradas do Lua, asserts do Box2D, leituras fora dos limites, alfa pré-multiplicado, lotes de desenho e memória por frame) e ThreadSanitizer limpo. As sobras estão nos itens abertos deste grupo.
 - [x] O teste `FontTest.FailsAgainForAGlyphNoAtlasHolds` roda em 43 ms em Debug e verifica o mesmo comportamento.
@@ -1157,21 +1157,21 @@ Todo sample de recursos tem um menu simples para escolher o teste, cada teste é
 - [x] Texturas dinâmicas no `graphics::Device` (`createDynamicTexture` e `updateTexture`, com `dynamic` e `texture:update` em Lua): os atlas da UI e das fontes mudam no lugar e sobem uma vez por frame, antes dos passes, por mais glifos que o frame acrescente. O Sokol só aceita a imagem inteira nessas texturas, como a seção 13 registra.
 - [x] `JobSystem::parallelFor` em que o chamador roda todo pedaço que nenhum worker começou, então o `crowd:step` nunca espera atrás de jobs longos de fundo, como a construção assíncrona de um navmesh.
 - [x] `PoissonDisk::reachOf` limitado ao tamanho da grade, zoom NaN da câmera recusado com erro, handles C++ de física com a geração do mundo (inválidos depois que o slot do mundo é reusado) e `GridRay::traverse` somando as distâncias em double, sem travar em raios longos.
-- [x] `make.py` com `--sanitizers address|thread`, e o OpenSSL compilado com um job só, porque o `make.py` tira o `CMAKE_BUILD_PARALLEL_LEVEL` do ambiente, dentro do limite de jobs.
+- [x] `haylen.py` com `--sanitizers address|thread`, e o OpenSSL compilado com um job só, porque o `haylen.py` tira o `CMAKE_BUILD_PARALLEL_LEVEL` do ambiente, dentro do limite de jobs.
 - [x] A triangulação com restrições do navmesh converge em todo layout: o teste de orientação exato resolve a semente 97, e uma aresta até 0,1% mais longa que a abertura que cruza conta como exata, o que evita milhares de pontos entre paredes quase paralelas (sementes 344 e 715). Varredura de 2000 sementes: 20000 construções sem falha e 154170 caminhos sem sair da malha.
 - [x] Encerramento por uma thread de fundo não derruba o app: o runtime vive num `Process` que nunca é destruído fora da thread do frame, e um `exit()` de uma fila de fundo (no simulador iOS, o IOSurface faz isso quando o servidor de render cai) sai limpo (6 de 6 execuções).
 - [x] Pasta de build única por app (`build/apps/<pasta>-<hash>/`), sem colisão entre apps com o mesmo nome de pasta.
-- [x] `make.py run` nas plataformas Apple mostra o log do app no terminal: `log stream` filtrado para o app no simulador e no Catalyst, e a saída padrão no macOS.
+- [x] `haylen.py run` nas plataformas Apple mostra o log do app no terminal: `log stream` filtrado para o app no simulador e no Catalyst, e a saída padrão no macOS.
 - [x] O shell web dos apps C++ usa a logo da engine como ícone, sem 404 de `/favicon.ico`.
 - [x] Áudio na web por um backend próprio do miniaudio (`BrowserAudioOutput`) que manda os blocos de PCM para um `AudioWorkletNode` pela porta de mensagens (`haylen-audio-worklet.js`), sem memória compartilhada, sem cabeçalhos de isolamento e com a mistura na thread da página, em páginas servidas por https ou localhost. O backend AudioWorklet do próprio miniaudio exige isolamento de origem (COOP e COEP), que bloqueia scripts de terceiros e os popups de login, e fica de fora.
 - [x] As janelas do Mac Catalyst abrem com o tamanho do `app.json` (1280x720 centralizado nos apps do template).
-- [x] `make.py run-cpp` roda os apps C++ no desktop, na web, no iOS, no tvOS, nos simuladores, no Catalyst e no Android: iOS, tvOS e simuladores pelo gerador do Xcode, Catalyst pelo Ninja e Android pelo template, com o `samples/cpp/embedding` rodado no simulador iOS, no emulador Android e no Catalyst.
+- [x] `haylen.py run-cpp` roda os apps C++ no desktop, na web, no iOS, no tvOS, nos simuladores, no Catalyst e no Android: iOS, tvOS e simuladores pelo gerador do Xcode, Catalyst pelo Ninja e Android pelo template, com o `samples/cpp/embedding` rodado no simulador iOS, no emulador Android e no Catalyst.
 - [x] Uma ligação do `ActionMap` segurada quando o input volta (por exemplo no fim de uma troca de cena) só dispara de novo depois de solta, então um toque normal em Escape ou Start não abre e fecha o menu de pausa do Tiny Island.
 - [x] O exemplo de `docs/input.md` volta pelo `onCancel` do documento.
 - [x] Os testes da engine leem fontes de `engine/tests/data/fonts` (subconjuntos com as licenças OFL), nunca dos samples.
 - [x] Tamanho do texto de `graphics2d.drawText` e do rich text nos samples e no Tiny Island conferido com o tamanho pelo em das fontes, nos harnesses headless e Metal.
 - [x] Android: o app fecha sem crash (patch `sokol-android-quit.patch`), validado no emulador com Back na raiz, recentes, `am force-stop` e `haylen.quit()`.
-- [x] `make.py engine --platform android --jobs N` compila o `libhaylen.so` uma ABI de cada vez com o `--jobs`, e o Gradle só empacota.
+- [x] `haylen.py engine --platform android --jobs N` compila o `libhaylen.so` uma ABI de cada vez com o `--jobs`, e o Gradle só empacota.
 - [x] Predictive back no Android 13 e posteriores: `android:enableOnBackInvokedCallback` no manifesto do AAR e o callback registrado só enquanto o app segura o Back (`window.setBackLeavesApp(false)`), validado no emulador.
 - [x] `audio.playMusic` devolve a voz da música, para pausar só a música.
 - [x] Filhos que crescem (`grow`) partem do zero e dividem o espaço que sobra no pai, então um `ui.scroll{grow = 1}` dentro de um painel não empurra a página para fora da tela.
@@ -1241,7 +1241,7 @@ Tudo em C++ com binding Lua, sem alocação por chamada nos caminhos quentes, co
 - [x] **Geometria e destruição**: operações booleanas de polígonos (união, diferença, interseção e offset, com `math::Polygon` sobre o Clipper2), decomposição em polígonos convexos para o Box2D, simplificação (Ramer-Douglas-Peucker), marching squares (`math::MarchingSquares`, contornos a partir de grades e bitmaps), terreno destrutível por bitmap ou por polígonos (cavar, explodir e reconstruir a colisão por pedaço), fratura de polígonos por Voronoi para quebrar objetos, e splines (`math::Spline`: Catmull-Rom, Bézier e B-spline) com amostragem por distância.
 - [x] **IA**: behavior trees com blackboard, utility AI e mapas de influência, além da máquina de estados.
 - [x] **Utilitários**: sacola aleatória (`math::ShuffleBag`), escolha ponderada (`math::WeightedChoice`), molas criticamente amortecidas (`math::Spring`), pools de objetos (`core::ObjectPool`) e ring buffers (`core::RingBuffer`), com `haylen.collections` em Lua.
-- [x] **Benchmarks** dos algoritmos principais em `make.py bench --suite algorithms` (A* 512x512 em 2,4 ms, navmesh de 400 obstáculos em 5,4 ms, 2000 agentes ORCA em 0,1 ms e 100 mil raios de física em 2,8 ms pelo `JobSystem`) e da geração procedural em `make.py bench --suite procedural`, e o sample `samples/gameplay/algorithms` com 26 testes, um por algoritmo, cada um com menu e botão de voltar.
+- [x] **Benchmarks** dos algoritmos principais em `haylen.py bench --suite algorithms` (A* 512x512 em 2,4 ms, navmesh de 400 obstáculos em 5,4 ms, 2000 agentes ORCA em 0,1 ms e 100 mil raios de física em 2,8 ms pelo `JobSystem`) e da geração procedural em `haylen.py bench --suite procedural`, e o sample `samples/gameplay/algorithms` com 26 testes, um por algoritmo, cada um com menu e botão de voltar.
 
 #### S. Tween robusto
 
@@ -1349,11 +1349,11 @@ Decisões, a partir da documentação oficial dos SDKs (AdMob, UMP, Firebase, St
 
 - Um plugin é uma pasta com `plugin.json` (id, nome, versão, descrição, plataformas, dependências de outros plugins, parâmetros por app e o que cada plataforma traz), a API Lua em `source/`, a parte Apple em `apple/` (Swift ou Objective-C, pacotes Swift, xcframeworks, chaves do Info.plist, entitlements e scripts de build), a parte Android em `android/` (módulo de biblioteca Gradle em Kotlin ou Java, com dependências Maven, manifesto e regras do R8), a parte web em `web/` (módulo JavaScript) e, quando preciso, uma biblioteca nativa em C ou C++ em `native/` para os desktops, a mesma da seção `native` do `app.json`.
 - Quem escreve um plugin escreve a API Lua e a implementação em Swift ou Objective-C, em Kotlin ou Java e em JavaScript. As chamadas continuam pela bridge assíncrona em JSON, com a resposta na thread do frame.
-- O app lista os plugins na seção `plugins` do `app.json`, com a configuração de cada um validada pelos parâmetros do `plugin.json`. Os plugins ficam em `plugins/<id>/` do app, copiados por `make.py plugin add` de uma pasta ou de um repositório git num branch, tag ou commit. O pacote do app leva o Lua dos plugins (`plugins/<id>/source/`), e `require('<id>')` encontra o módulo do plugin.
+- O app lista os plugins na seção `plugins` do `app.json`, com a configuração de cada um validada pelos parâmetros do `plugin.json`. Os plugins ficam em `plugins/<id>/` do app, copiados por `haylen.py plugin add` de uma pasta ou de um repositório git num branch, tag ou commit. O pacote do app leva o Lua dos plugins (`plugins/<id>/source/`), e `require('<id>')` encontra o módulo do plugin.
 - Plugins que trazem SDKs de terceiros (anúncios, analytics, crashes, login, compras e serviços de jogos) ficam em repositórios próprios em https://github.com/haylen-org, fora deste repositório, que não usa bibliotecas de terceiros além das dependências da engine. Aqui fica um plugin de demonstração no sample de plugins, só com APIs da plataforma, que testa cada capacidade.
-- Apple: quando o app tem plugins, `make.py` gera de novo o `App.xcodeproj` montado com o XcodeGen baixado numa versão fixa e conferido por SHA-256, incluindo um fragmento por plugin com os fontes e os pacotes Swift de cada alvo (o AdMob só existe no iOS, sem tvOS, macOS e Mac Catalyst). O template continua com o projeto gerado ao lado do `project.yml`. O Info.plist e os entitlements continuam escritos pelo `make.py`, que junta as chaves dos plugins.
+- Apple: quando o app tem plugins, `haylen.py` gera de novo o `App.xcodeproj` montado com o XcodeGen baixado numa versão fixa e conferido por SHA-256, incluindo um fragmento por plugin com os fontes e os pacotes Swift de cada alvo (o AdMob só existe no iOS, sem tvOS, macOS e Mac Catalyst). O template continua com o projeto gerado ao lado do `project.yml`. O Info.plist e os entitlements continuam escritos pelo `haylen.py`, que junta as chaves dos plugins.
 - Apple: um patch pequeno do Sokol deixa a engine usar uma subclasse do delegate de app e de cena do Sokol, que repassa aos plugins o launch com as opções, as opções de conexão da cena (URLs, atividades e notificação), `openURLContexts`, `continueUserActivity`, o token e as notificações remotas, as sessões de URL em segundo plano e o delegate do `UNUserNotificationCenter`. O swizzling do Firebase fica desligado (`FirebaseAppDelegateProxyEnabled = NO`), porque o repasse é explícito.
-- Android: `make.py` inclui o módulo Gradle de cada plugin no projeto montado e aplica os plugins Gradle que eles pedem (Crashlytics e google-services). Cada módulo declara a classe do plugin num `meta-data` do manifesto, e a biblioteca da engine encontra os plugins por um `ContentProvider` que roda antes do `Application.onCreate`, sem exigir uma classe `Application` própria. Uma regra do R8 da biblioteca mantém toda subclasse de `HaylenPlugin`.
+- Android: `haylen.py` inclui o módulo Gradle de cada plugin no projeto montado e aplica os plugins Gradle que eles pedem (Crashlytics e google-services). Cada módulo declara a classe do plugin num `meta-data` do manifesto, e a biblioteca da engine encontra os plugins por um `ContentProvider` que roda antes do `Application.onCreate`, sem exigir uma classe `Application` própria. Uma regra do R8 da biblioteca mantém toda subclasse de `HaylenPlugin`.
 - Android: o `HaylenActivity` repassa aos plugins o ciclo da activity, `onNewIntent`, `onActivityResult`, `onRequestPermissionsResult`, `onConfigurationChanged` e `onWindowFocusChanged`, porque o `NativeActivity` não tem a API de Activity Result.
 - Views nativas por cima do jogo: no iOS, uma view que deixa os toques passarem, acima da view Metal. No Android, uma janela de painel (`TYPE_APPLICATION_PANEL`, sem foco e do tamanho da view) por view, porque o `NativeActivity` toma a superfície e a fila de input, e as views comuns da activity não desenham nem recebem toques. Na web, uma camada de DOM por cima do canvas. A posição usa âncoras (bordas, cantos e centro) com margens, dentro ou fora da safe area.
 - Uma view nativa pode reservar espaço: a engine soma a borda que ela ocupa à safe area, e a UI ancorada na safe area sai de baixo do banner sozinha, com o evento de mudança da safe area.
@@ -1364,12 +1364,12 @@ Decisões, a partir da documentação oficial dos SDKs (AdMob, UMP, Firebase, St
 
 **Formato, configuração e ferramentas**
 
-- [x] `plugin.json` com esquema documentado em `docs/plugins.md` e validado pelo `make.py` (`PluginManifestCheck`), que mostra todos os problemas de uma vez com o caminho e a chave: id em dash-case igual à pasta, versão, plataformas (`ios`, `catalyst`, `tvos`, `macos`, `android`, `web`, `windows`, `linux`), dependências, parâmetros tipados (texto, número, inteiro, booleano, lista, objeto e arquivo) com plataformas, obrigatoriedade e padrão, substituições `${parâmetro}` e as seções `apple`, `android`, `web` e `native`.
-- [x] Seção `plugins` do `app.json`: o `make.py` valida para a plataforma do build (plugin desconhecido, parâmetro que falta, tipo errado, arquivo que não existe, plugin requerido ausente e parâmetro que nenhum plugin declara), aplica os padrões e ordena os plugins pelas dependências, e o `AppConfig` da engine (`AppConfig::fromPackage`) aceita a seção como objeto de objetos com ids em dash-case e confere que cada plugin tem `plugins/<id>/plugin.json` no pacote.
-- [x] `make.py plugin add <pasta|repositório>` com `--ref` (branch, tag ou commit, pelo fetch de uma ref só, sem copiar o `.git`), `plugin remove <id>`, `plugin list` e `plugin new <pasta>`, com o esqueleto em `templates/plugin/` (API Lua, classe Swift, classe Kotlin, módulo JavaScript, `plugin.json` e README).
-- [~] O pacote do app (`make.py package`, a cópia para as plataformas, o índice do Android e o zip da web) leva `plugins/<id>/plugin.json` e `plugins/<id>/source/` de cada plugin listado, e o player de desktop acha o mesmo Lua, com hot reload do Lua dos plugins. Falta o `haylen_add_app` dos apps C++ levar os plugins.
+- [x] `plugin.json` com esquema documentado em `docs/plugins.md` e validado pelo `haylen.py` (`PluginManifestCheck`), que mostra todos os problemas de uma vez com o caminho e a chave: id em dash-case igual à pasta, versão, plataformas (`ios`, `catalyst`, `tvos`, `macos`, `android`, `web`, `windows`, `linux`), dependências, parâmetros tipados (texto, número, inteiro, booleano, lista, objeto e arquivo) com plataformas, obrigatoriedade e padrão, substituições `${parâmetro}` e as seções `apple`, `android`, `web` e `native`.
+- [x] Seção `plugins` do `app.json`: o `haylen.py` valida para a plataforma do build (plugin desconhecido, parâmetro que falta, tipo errado, arquivo que não existe, plugin requerido ausente e parâmetro que nenhum plugin declara), aplica os padrões e ordena os plugins pelas dependências, e o `AppConfig` da engine (`AppConfig::fromPackage`) aceita a seção como objeto de objetos com ids em dash-case e confere que cada plugin tem `plugins/<id>/plugin.json` no pacote.
+- [x] `haylen.py plugin add <pasta|repositório>` com `--ref` (branch, tag ou commit, pelo fetch de uma ref só, sem copiar o `.git`), `plugin remove <id>`, `plugin list` e `plugin new <pasta>`, com o esqueleto em `templates/plugin/` (API Lua, classe Swift, classe Kotlin, módulo JavaScript, `plugin.json` e README).
+- [~] O pacote do app (`haylen.py package`, a cópia para as plataformas, o índice do Android e o zip da web) leva `plugins/<id>/plugin.json` e `plugins/<id>/source/` de cada plugin listado, e o player de desktop acha o mesmo Lua, com hot reload do Lua dos plugins. Falta o `haylen_add_app` dos apps C++ levar os plugins.
 - [x] Arquivos por app, como `GoogleService-Info.plist` e `google-services.json`, como parâmetros do tipo arquivo relativos à pasta do app, copiados como recursos do bundle na Apple e para o projeto Android pela seção `files`.
-- [x] `make.py tools` baixa o XcodeGen 2.46.0 conferido por SHA-256 em `.tools/xcodegen/`, também no primeiro uso, e o `App.xcodeproj` do template regenerado com o `plugins.json` vazio sai igual byte a byte.
+- [x] `haylen.py tools` baixa o XcodeGen 2.46.0 conferido por SHA-256 em `.tools/xcodegen/`, também no primeiro uso, e o `App.xcodeproj` do template regenerado com o `plugins.json` vazio sai igual byte a byte.
 
 **Engine (runtime, Lua e C++)**
 
@@ -1388,7 +1388,7 @@ Decisões, a partir da documentação oficial dos SDKs (AdMob, UMP, Firebase, St
 - [x] `HaylenActivity` repassa aos plugins o ciclo da activity, `onNewIntent` (com `setIntent`), `onActivityResult` e `onRequestPermissionsResult` (até o primeiro plugin que trata), `onConfigurationChanged`, `onWindowFocusChanged`, `onTrimMemory` e `onAppError` na thread principal, conferido no emulador com um seletor real.
 - [x] `HaylenOverlay` e `HaylenPlacement` no Android: uma janela de painel sem foco por view, posicionada por âncora e safe area, com espaço reservado enviado à engine, conferida no emulador em retrato, paisagem, cutout emulado e tela dividida, escondida quando a activity para e sem janelas vazadas quando a activity é recriada. O toque no botão do banner chega ao Lua e os outros toques chegam ao jogo.
 - [x] Cobertura do app pelo nativo no Android (`coverApp` e `uncoverApp` contados por plugin, fechados quando a activity é destruída), conferida no emulador com o app inativo e parado.
-- [x] `make.py` monta o Android com os plugins pelo `gradle.properties` (`haylen.plugins`, `haylen.gradlePlugins` e `haylen.placeholder.<nome>`): módulos incluídos pelo `settings.gradle.kts`, dependência do app em cada módulo, plugins Gradle no classpath por `buildscript` e aplicados com `apply(plugin = id)`, placeholders do manifesto vindos da configuração e os arquivos por app, conferido com `assembleDebug` de um plugin com meta-data, placeholder, dependência Maven e o google-services.
+- [x] `haylen.py` monta o Android com os plugins pelo `gradle.properties` (`haylen.plugins`, `haylen.gradlePlugins` e `haylen.placeholder.<nome>`): módulos incluídos pelo `settings.gradle.kts`, dependência do app em cada módulo, plugins Gradle no classpath por `buildscript` e aplicados com `apply(plugin = id)`, placeholders do manifesto vindos da configuração e os arquivos por app, conferido com `assembleDebug` de um plugin com meta-data, placeholder, dependência Maven e o google-services.
 - [x] Correções da bridge no Android: o JNI anexa cada thread uma vez e solta no destrutor do `pthread_key_create`, e o parse do JSON sai da thread do frame. Custo na thread do frame com 100 chamadas por frame caiu de 10,5 a 11,8 µs para 2,0 a 2,2 µs por chamada, e a ida e volta continua de um frame. Os eventos nativos que chegam sem app rodando esperam no Java e vão para o próximo app.
 
 **Apple**
@@ -1398,14 +1398,14 @@ Decisões, a partir da documentação oficial dos SDKs (AdMob, UMP, Firebase, St
 - [x] Patch `sokol-apple-delegate.patch` (`sapp_desc.apple.delegate_class` e a configuração de cena com `[self class]`) e `HaylenSceneDelegate`, que repassa aos plugins o launch, as opções de conexão da cena (URLs, atividades e atalhos entregues como no app rodando), `openURLContexts`, `continueUserActivity`, o token e as notificações remotas com os handlers de conclusão chamados uma vez, as sessões de URL em segundo plano e o delegate do `UNUserNotificationCenter`, conferido no simulador com URL a frio e com o app rodando e com `simctl push`.
 - [x] `HaylenOverlay` no UIKit e no macOS: view que deixa os toques passarem, acima da view do Sokol, com Auto Layout na safe area ou nas bordas e espaço reservado em pixels do framebuffer, conferida no simulador iOS (retrato, paisagem, segundo plano), no Mac Catalyst (janela redimensionada), no tvOS (o controle continua na UI do jogo) e no macOS.
 - [x] Cobertura do app pelo nativo e erros do app para os plugins na Apple (`appDidFail(with:)` na fila principal), conferidos no simulador iOS.
-- [x] `make.py` monta a Apple com os plugins: `plugins.json` incluído pelo `project.yml` com fontes, pacotes Swift, frameworks, recursos e scripts por alvo, com filtro que tira o Mac Catalyst dos plugins só de iOS, chaves do Info.plist e a lista `HaylenPlugins` juntadas, entitlements por plataforma no `App.xcconfig` e o projeto gerado de novo pelo XcodeGen quando os plugins pedem, conferido com swift-numerics em todas as plataformas e GoogleMobileAds só no iOS, nos builds do simulador iOS, do Mac Catalyst, do simulador tvOS e do macOS.
+- [x] `haylen.py` monta a Apple com os plugins: `plugins.json` incluído pelo `project.yml` com fontes, pacotes Swift, frameworks, recursos e scripts por alvo, com filtro que tira o Mac Catalyst dos plugins só de iOS, chaves do Info.plist e a lista `HaylenPlugins` juntadas, entitlements por plataforma no `App.xcconfig` e o projeto gerado de novo pelo XcodeGen quando os plugins pedem, conferido com swift-numerics em todas as plataformas e GoogleMobileAds só no iOS, nos builds do simulador iOS, do Mac Catalyst, do simulador tvOS e do macOS.
 - [x] Repasse do delegate do macOS (`HaylenAppDelegate`): launch, `application:openURLs:`, registro de notificações remotas e o centro de notificações, conferido com URL a frio e com o app rodando.
 
 **Web**
 
 - [x] O loader importa o módulo JavaScript de cada plugin antes de o runtime começar, e cada módulo recebe o contexto (`Module.haylen.createPluginContext`) com `register`, `emit` com retenção, a configuração, o overlay, a cobertura e `onAppError`, com chamadas feitas no `load` guardadas até o runtime ficar pronto.
 - [x] Camada de overlay de DOM por cima do canvas, que só recebe o ponteiro nos elementos dos plugins, com âncoras, safe area e espaço reservado, conferida no Chrome sem janela: o elemento recebe os próprios cliques e o canvas continua recebendo os outros, e a UI ancorada sai de baixo do espaço reservado.
-- [x] `make.py` copia a pasta `web/` de cada plugin para `plugins/<id>/` do site e escreve a lista no `config.json`, e o loader importa os módulos durante o download e chama o `load(context)` de cada um em ordem antes de o app começar, mostrando o erro na página de carregamento quando um plugin falha.
+- [x] `haylen.py` copia a pasta `web/` de cada plugin para `plugins/<id>/` do site e escreve a lista no `config.json`, e o loader importa os módulos durante o download e chama o `load(context)` de cada um em ordem antes de o app começar, mostrando o erro na página de carregamento quando um plugin falha.
 
 **Desktop e apps C++**
 
@@ -1438,10 +1438,10 @@ Decisões, a partir da documentação oficial dos SDKs (AdMob, UMP, Firebase, St
 
 #### AE. Frases e expressões reservadas
 
-- [~] Varredura das mensagens: erros e logs da engine (C++, Objective-C, Java, Kotlin, Swift, JavaScript e C), mensagens e saída do `make.py` e das ferramentas, e textos dos samples, sem frase começando em minúscula e com comandos, identificadores, caminhos, chaves e valores entre aspas duplas (inclusive os valores que hoje usam aspas simples), com os testes e os documentos que citam as mensagens atualizados.
+- [~] Varredura das mensagens: erros e logs da engine (C++, Objective-C, Java, Kotlin, Swift, JavaScript e C), mensagens e saída do `haylen.py` e das ferramentas, e textos dos samples, sem frase começando em minúscula e com comandos, identificadores, caminhos, chaves e valores entre aspas duplas (inclusive os valores que hoje usam aspas simples), com os testes e os documentos que citam as mensagens atualizados.
 - [~] Varredura dos documentos (`docs/`, READMEs dos samples e do plugin de demonstração, `README.md` e `PROJECT.md`): nenhuma frase começa com uma expressão em crase, e toda expressão reservada fica entre crases.
 - [~] Varredura dos comentários de código (C++, Objective-C, Java, Kotlin, Swift, JavaScript, Lua, CMake e Python): toda expressão reservada entre crases e nenhuma frase começando em minúscula.
-- A primeira passada cobriu a engine portátil, os desktops, a web, as ferramentas, os samples, os templates e 73 documentos, e trocou as aspas simples das mensagens por aspas duplas, com os testes. Faltam o `make.py`, o código do Android e da Apple, o `PROJECT.md` e os documentos que as ondas da Apple e do Android estavam editando.
+- A primeira passada cobriu a engine portátil, os desktops, a web, as ferramentas, os samples, os templates e 73 documentos, e trocou as aspas simples das mensagens por aspas duplas, com os testes. Faltam o `haylen.py`, o código do Android e da Apple, o `PROJECT.md` e os documentos que as ondas da Apple e do Android estavam editando.
 - [x] O `AGENTS.md` só cita versões e números de que uma regra depende (o C++20 e os 100% de cobertura), e a regra está nos princípios dele: versões de bibliotecas, ferramentas, SDKs e da engine, e limites, tamanhos, contagens e durações declarados no código ficam fora, com o arquivo que guarda cada valor.
 
 #### AA. Informações do sistema e diálogos nativos
@@ -1474,7 +1474,7 @@ Decisões, a partir da pesquisa das bibliotecas de diálogos, notificações e w
 
 **Correções de plataforma achadas na revisão**
 
-- [ ] macOS mínimo 14.0: o Sokol chama `-[NSView displayLinkWithTarget:selector:]` sem conferir a versão, uma API do macOS 14, então o app não abre no macOS 13. Subir o mínimo do macOS no `make.py`, no template e no CMake, e registrar na documentação. O Mac Catalyst usa o caminho do UIKit e fica como está.
+- [ ] macOS mínimo 14.0: o Sokol chama `-[NSView displayLinkWithTarget:selector:]` sem conferir a versão, uma API do macOS 14, então o app não abre no macOS 13. Subir o mínimo do macOS no `haylen.py`, no template e no CMake, e registrar na documentação. O Mac Catalyst usa o caminho do UIKit e fica como está.
 - [x] Manifesto de aplicativo no Windows (Common Controls 6, que o `TaskDialogIndirect` pede) no player e nos apps do `haylen_add_app`. O arquivo `engine/platform/windows/haylen.manifest` escolhe os Common Controls 6 e o UTF-8 como página de código, e entra no player, nos apps do `haylen_add_app` e no SDK.
 
 **Testes, samples e documentação**
@@ -1530,7 +1530,7 @@ Decisões, a partir da pesquisa dos SDKs que abrem telas próprias (RevenueCat, 
 
 **Web e desktops**
 
-- [x] Web: telas de plugins por popup (`window.open` dentro da ativação do usuário, `popupBlocked` fora dela, resultado por `postMessage` ou pelo `BroadcastChannel` `haylen-screens`) e por redirecionamento (estado salvo no `sessionStorage` e `screenRestored` depois de a página voltar), conferidas no Chrome sem janela, e o `make.py serve` sem o `Cross-Origin-Opener-Policy` por padrão, com `--coop` para páginas que querem isolamento.
+- [x] Web: telas de plugins por popup (`window.open` dentro da ativação do usuário, `popupBlocked` fora dela, resultado por `postMessage` ou pelo `BroadcastChannel` `haylen-screens`) e por redirecionamento (estado salvo no `sessionStorage` e `screenRestored` depois de a página voltar), conferidas no Chrome sem janela, e o `haylen.py serve` sem o `Cross-Origin-Opener-Policy` por padrão, com `--coop` para páginas que querem isolamento.
 - [~] Desktops: a `HaylenNativeApi` expõe a janela do app (`getWindow`) e a cobertura, e a biblioteca do plugin de demonstração abre uma sheet no macOS (conferida no player: resultado, `busy`, sem desenhar por baixo, cancelamento e restauração), uma janela com dono no Windows e uma janela X11 transitória com conexão própria no Linux. Falta compilar e rodar no Windows e no Linux.
 
 **Engine, testes e documentação**
@@ -1550,7 +1550,7 @@ Decisões, a partir da pesquisa dos SDKs que abrem telas próprias (RevenueCat, 
 
 #### AF. Projetos de plataforma do desenvolvedor e requisitos dos plugins
 
-A auditoria do que a engine e o `make.py` impõem hoje mostrou três problemas:
+A auditoria do que a engine e o `haylen.py` impõem hoje mostrou três problemas:
 
 - **O que todo app recebe à força:**
   - cinco frameworks particulares da Apple (UserNotifications, Network, IOKit, UniformTypeIdentifiers e CoreVideo), porque a biblioteca estática não liga nada sozinha;
@@ -1559,7 +1559,7 @@ A auditoria do que a engine e o `make.py` impõem hoje mostrou três problemas:
   - o `enableOnBackInvokedCallback` do app inteiro;
   - o `kotlinx-coroutines`;
   - declarações que são da empresa, como `ITSAppUsesNonExemptEncryption`.
-- **O `make.py` apaga o que o desenvolvedor faz:**
+- **O `haylen.py` apaga o que o desenvolvedor faz:**
   - reescreve o `Info.plist`, o `App.xcconfig`, os entitlements e o splash a cada execução;
   - gera o `App.xcodeproj` de novo;
   - copia arquivos de plugins por cima do projeto;
@@ -1569,23 +1569,23 @@ A auditoria do que a engine e o `make.py` impõem hoje mostrou três problemas:
 Decisões:
 
 - **O projeto é do desenvolvedor:**
-  - `platform/<template>/` do app é o projeto inteiro, compilado no lugar, sem cópia por cima de template. Um app sem essa pasta usa uma cópia do template que o `make.py` guarda em `build/apps/`.
-  - O `make.py new` e o `make.py platform add` criam os projetos, e o `make.py platform diff` mostra, sem mudar nada, o que o template atual tem de diferente, para o desenvolvedor adotar o que quiser.
+  - `platform/<template>/` do app é o projeto inteiro, compilado no lugar, sem cópia por cima de template. Um app sem essa pasta usa uma cópia do template que o `haylen.py` guarda em `build/apps/`.
+  - O `haylen.py new` e o `haylen.py platform add` criam os projetos, e o `haylen.py platform diff` mostra, sem mudar nada, o que o template atual tem de diferente, para o desenvolvedor adotar o que quiser.
 - **Só a pasta gerada é escrita:**
-  - O `make.py` escreve só na pasta `haylen/` dentro do projeto, que o `.gitignore` do projeto ignora. Ele nunca edita `project.yml`, `project.pbxproj`, scripts do Gradle, manifestos nem `Info.plist` do desenvolvedor.
+  - O `haylen.py` escreve só na pasta `haylen/` dentro do projeto, que o `.gitignore` do projeto ignora. Ele nunca edita `project.yml`, `project.pbxproj`, scripts do Gradle, manifestos nem `Info.plist` do desenvolvedor.
   - Os arquivos do desenvolvedor incluem o que é gerado por poucas linhas visíveis, que ele pode tirar:
     - na Apple, `include: [haylen/project.yml]` e `templates: [HaylenIOS]` em cada alvo do `project.yml` (conferido com o XcodeGen fixado: listas do template somam com as do alvo, e o ajuste do alvo vence o do template), e `#include "haylen/Haylen.xcconfig"` no `App.xcconfig`;
     - no Android, o `haylen/haylen.properties` lido pelos scripts do Gradle e as pastas `haylen/assets`, `haylen/res` e `haylen/jniLibs` como fontes extras.
 - **Gerar o projeto de novo:**
-  - O desenvolvedor edita o `project.yml` e gera de novo com `make.py xcodegen <app>` ou com o XcodeGen fixado.
-  - O `make.py run` só gera sozinho quando o `project.yml` inclui a pasta gerada, as entradas mudaram e o `project.pbxproj` não foi editado à mão desde a última geração. Se foi editado, ele para com uma mensagem que explica o que fazer, sem sobrescrever nada.
+  - O desenvolvedor edita o `project.yml` e gera de novo com `haylen.py xcodegen <app>` ou com o XcodeGen fixado.
+  - O `haylen.py run` só gera sozinho quando o `project.yml` inclui a pasta gerada, as entradas mudaram e o `project.pbxproj` não foi editado à mão desde a última geração. Se foi editado, ele para com uma mensagem que explica o que fazer, sem sobrescrever nada.
 - **O `Info.plist` e os entitlements são do desenvolvedor:**
-  - O `make.py` grava em `haylen/` uma cópia completada: o valor do desenvolvedor vence, chaves dos plugins e do `app.json` só preenchem o que falta, listas ganham os itens que faltam, e dois plugins que discordam param o build com os dois nomes.
+  - O `haylen.py` grava em `haylen/` uma cópia completada: o valor do desenvolvedor vence, chaves dos plugins e do `app.json` só preenchem o que falta, listas ganham os itens que faltam, e dois plugins que discordam param o build com os dois nomes.
   - O desenvolvedor pode apontar o alvo direto para o arquivo dele e deixar de receber o que é gerado.
   - A lista `HaylenPlugins` sai do `Info.plist`: o runtime lê os plugins do pacote e avisa no log quando a classe de um plugin listado não está no app.
 - **Requisitos dos plugins em três camadas:**
   - Primeiro, a inclusão aditiva pela pasta gerada: frameworks, pacotes Swift, fontes, recursos e scripts na Apple, e módulos com o manifesto mesclado pelo Gradle no Android.
-  - Depois, o `make.py check`, que confere o app compilado e mostra, para cada requisito que falta, quem precisa dele, por quê e o trecho exato com o arquivo onde colocar. Na Apple ele lê o `Info.plist`, os frameworks ligados e os entitlements. No Android, o manifesto final do APK. O `run` roda a mesma conferência como aviso.
+  - Depois, o `haylen.py check`, que confere o app compilado e mostra, para cada requisito que falta, quem precisa dele, por quê e o trecho exato com o arquivo onde colocar. Na Apple ele lê o `Info.plist`, os frameworks ligados e os entitlements. No Android, o manifesto final do APK. O `run` roda a mesma conferência como aviso.
   - Por último, a checagem em tempo de execução.
 - **Em tempo de execução, loga e ignora:**
   - Cada recurso confere o requisito antes de chamar a API do sistema, o que na Apple evita o encerramento pelo sistema quando falta a descrição de uso.
@@ -1595,7 +1595,7 @@ Decisões:
   - A engine só leva o que todo app precisa para rodar.
   - Na Apple, a lista de frameworks do núcleo sai do `project.yml` do desenvolvedor e vem da engine pela pasta gerada. O UserNotifications deixa de ser ligado: o runtime acha o centro de notificações em tempo de execução, e os métodos de notificação vão para um `HaylenNotificationPlugin.h` que só os plugins de notificação importam.
   - No Android, as três permissões saem do AAR e ficam como padrão visível no manifesto do template, que o desenvolvedor tira quando não quer. Vibrar, o estado da rede e a rede passam a conferir a permissão. O provider dos plugins vai para o artefato `dev.haylen:haylen-plugins`, de que todo módulo de plugin depende. O `HaylenLinkActivity` vai para o `dev.haylen:haylen-links`, só dos plugins de links e notificações. O `kotlinx-coroutines` vai para o `dev.haylen:haylen-coroutines`. O `enableOnBackInvokedCallback` vai para o manifesto do template.
-  - Os valores que são escolhas da empresa, como criptografia, controles, barra de status, TV, SDKs e assinatura, ficam só como padrão do template, nunca forçados pelo `make.py`.
+  - Os valores que são escolhas da empresa, como criptografia, controles, barra de status, TV, SDKs e assinatura, ficam só como padrão do template, nunca forçados pelo `haylen.py`.
 - **A engine não se divide em módulos C++ opcionais para o player Lua:**
   - os módulos 2D opcionais são cerca de 9% do código;
   - o player web precisa rodar qualquer app;
@@ -1613,14 +1613,14 @@ Checklist:
   - Web, pronto: `context.require` com contexto seguro, API e política de permissões, conferido no Chrome sem janela com WebGPU e WebGL2.
   - Nas três, `unsupported` com `data.missing` e log uma vez só, documentados no guia de plugins.
 - [x] UserNotifications fora do núcleo: o centro de notificações é achado em tempo de execução, sem `class_addProtocol`, os métodos de notificação ficam no `HaylenNotificationPlugin.h`, o framework saiu do template e do `haylen-app.cmake`, e o plugin de demonstração declara os frameworks que usa. O `otool -L` de um app sem plugins não mostra o UserNotifications, e o toque numa notificação chega ao Lua com o app rodando e a frio no simulador.
-- [x] O runtime da Apple lê os plugins do pacote pela ordem de carga do `PluginLoadOrder`, sem a chave `HaylenPlugins`, e avisa quando a classe de um plugin listado falta. O `make.py` não repete no `plugins.json` um framework que o alvo do `project.yml` já liga, porque o XcodeGen recusa dependência duplicada.
-- [x] AAR mínimo: sem permissões, sem provider, sem activity de links e sem coroutines. Os artefatos `haylen-plugins`, `haylen-links` e `haylen-coroutines` são publicados pelo `make.py engine`, e o template de plugin e o plugin de demonstração dependem deles. O template do Android não repete as versões do AndroidX e declara as permissões de rede e de vibração no próprio manifesto. Conferido com `aapt2`: o AAR não traz permissões nem componentes, e um app sem plugins só exporta o launcher e o `ProfileInstallReceiver` do AndroidX, protegido pela permissão `DUMP`. O build Release com R8 carrega os plugins.
+- [x] O runtime da Apple lê os plugins do pacote pela ordem de carga do `PluginLoadOrder`, sem a chave `HaylenPlugins`, e avisa quando a classe de um plugin listado falta. O `haylen.py` não repete no `plugins.json` um framework que o alvo do `project.yml` já liga, porque o XcodeGen recusa dependência duplicada.
+- [x] AAR mínimo: sem permissões, sem provider, sem activity de links e sem coroutines. Os artefatos `haylen-plugins`, `haylen-links` e `haylen-coroutines` são publicados pelo `haylen.py engine`, e o template de plugin e o plugin de demonstração dependem deles. O template do Android não repete as versões do AndroidX e declara as permissões de rede e de vibração no próprio manifesto. Conferido com `aapt2`: o AAR não traz permissões nem componentes, e um app sem plugins só exporta o launcher e o `ProfileInstallReceiver` do AndroidX, protegido pela permissão `DUMP`. O build Release com R8 carrega os plugins.
 - [x] Projeto no lugar e pasta `haylen/` gerada:
   - Apple: `haylen/project.yml` com os modelos de alvo, `Haylen.xcconfig`, `Info.plist` e entitlements completados, `Splash.xcassets`, pacote, bibliotecas nativas e plugins, com os produtos do build fora da pasta do projeto.
   - Android: `haylen.properties`, `assets`, `res`, `jniLibs` e plugins.
   - Web: os arquivos do desenvolvedor copiados como estão para a saída, com os gerados ao lado.
   - Os templates são reescritos para esse modelo, com `.gitignore`, e o `App.xcodeproj` do template é gerado de novo.
-- [x] Comandos `make.py prepare`, `xcodegen`, `check`, `platform add` e `platform diff`, com a proteção do `project.pbxproj` editado à mão: o `run` mantém um projeto editado quando nada de onde ele é gerado mudou, e para com a explicação quando mudou. A regra de decisão é testada em `tools/test_make.py`, que o CI roda.
+- [x] Comandos `haylen.py prepare`, `xcodegen`, `check`, `platform add` e `platform diff`, com a proteção do `project.pbxproj` editado à mão: o `run` mantém um projeto editado quando nada de onde ele é gerado mudou, e para com a explicação quando mudou. A regra de decisão é testada em `tools/test_haylen.py`, que o CI roda.
 - [~] O `Info.plist` com `UIApplicationSupportsMultipleScenes` verdadeiro no iOS, conferido no iPad e no Mac Catalyst, onde a tela SwiftUI de um plugin abre numa janela própria. No Mac Catalyst essa janela continua visível depois de um cancelamento ou de um timeout da tela, o que falta corrigir.
 - [x] Manifesto de privacidade: a auditoria em `docs/distribution.md` achou timestamps de arquivos (`C617.1`), tempo desde o boot (`35F9.1`) e espaço em disco (`E174.1`) na engine e nas dependências, o `PrivacyInfo.xcprivacy` da engine vai com os artefatos e com os apps C++, o `plugin.json` ganhou `apple.privacy`, e o `haylen/PrivacyInfo.xcprivacy` junta a engine, os plugins e o arquivo do desenvolvedor.
 - [x] O código nativo dos samples vira plugins locais (`platform-sample`, `native-sample`, `native-test` e `google-sign-in`, este com o parâmetro `clientId`), e nenhum sample guarda projeto de plataforma.
@@ -1630,14 +1630,14 @@ Checklist:
   - Com as linhas de inclusão: o simulador iOS, o Mac Catalyst, o simulador tvOS, o macOS, o emulador Android e a web.
   - Sem elas: o `check` mostra os trechos, e o app abre e responde `unsupported` em vez de fechar.
   - Com edições do desenvolvedor: chave própria no `Info.plist`, número de build no `App.xcconfig`, framework e alvo mudados no `project.yml`, `targetSdk`, assinatura e sabor no Gradle, e arquivos apagados que não voltam.
-- [x] Templates de app e de plugin com `.gitignore` (saídas de build, cache do CPM, pastas `haylen/` geradas, arquivos de editor e do sistema e o `local.properties`), `.editorconfig` (o do dono) e `.clang-format` (o do repositório), copiados pelo `make.py new` e pelo `make.py plugin new` e fora do pacote do app.
-- [x] Decisões 14.1 (templates, projetos no lugar e `make.py new`), `docs/distribution.md`, `docs/plugins.md`, `docs/build.md`, `docs/embedding.md` e o AGENTS.md descrevendo a propriedade dos projetos e os requisitos.
+- [x] Templates de app e de plugin com `.gitignore` (saídas de build, cache do CPM, pastas `haylen/` geradas, arquivos de editor e do sistema e o `local.properties`), `.editorconfig` (o do dono) e `.clang-format` (o do repositório), copiados pelo `haylen.py new` e pelo `haylen.py plugin new` e fora do pacote do app.
+- [x] Decisões 14.1 (templates, projetos no lugar e `haylen.py new`), `docs/distribution.md`, `docs/plugins.md`, `docs/build.md`, `docs/embedding.md` e o AGENTS.md descrevendo a propriedade dos projetos e os requisitos.
 
 #### AH. Regras, repositório e a ferramenta `haylen.py`
 
 - [x] As regras do projeto ficam todas no `AGENTS.md`, que todas as referências do repositório citam.
-- [x] Regras novas no `AGENTS.md`: commit todo em minúsculas (`feature: add scene loading lifecycle`); logs, mensagens e textos ao usuário com a caixa normal de frase; comentários só onde forem muito necessários; nunca citar jogos, empresas, autores ou ferramentas de terceiros nem usar imagens de terceiros; usar a última versão de todas as dependências; gerar a arte dos samples com o Codex (como chamar, tamanho exato, transparência, estilo único); o terminal do `make.py` destaca expressões por cor e mostra URLs e caminhos sem aspas.
-- [ ] `make.py` renomeado para `haylen.py` em tudo: código, testes (`tools/test_make.py` vira `tools/test_haylen.py`), CI, templates, docs, README, mensagens e o próprio `AGENTS.md`.
+- [x] Regras novas no `AGENTS.md`: commit todo em minúsculas (`feature: add scene loading lifecycle`); logs, mensagens e textos ao usuário com a caixa normal de frase; comentários só onde forem muito necessários; nunca citar jogos, empresas, autores ou ferramentas de terceiros nem usar imagens de terceiros; usar a última versão de todas as dependências; gerar a arte dos samples com o Codex (como chamar, tamanho exato, transparência, estilo único); o terminal do `haylen.py` destaca expressões por cor e mostra URLs e caminhos sem aspas.
+- [x] A ferramenta da engine é o `haylen.py` em tudo: código, testes (`tools/test_haylen.py`), CI, templates, docs, README, mensagens e o `AGENTS.md`.
 - [ ] O `haylen.py` só tem comandos da engine: sai o comando de importar os assets do Tiny Island e qualquer regra de sample. O `run` sem app ou com um caminho inválido para com uma mensagem clara e não abre nenhum sample por padrão.
 - [ ] Saída profissional e colorida do `haylen.py`: títulos e passos, sucesso, avisos e erros em cores distintas, comandos ecoados discretos, URLs e caminhos sem aspas para o terminal deixar clicar, cores desligadas sem TTY ou com `NO_COLOR`, e erros com a causa e o que fazer.
 - [ ] Comando `haylen.py android-key <app> [--debug|--release]` (nome final a decidir pelo padrão dos comandos) que gera a chave de upload com o `keytool` (RSA 2048, validade longa, alias e senhas configuráveis, padrão `upload`) e o certificado `.pem`, na pasta do projeto Android do app, ignorada pelo `.gitignore`, e liga a assinatura de release do Gradle a ela por propriedades locais, documentado.

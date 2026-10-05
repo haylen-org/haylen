@@ -1,5 +1,5 @@
 // Loads a Haylen app into the page: checks what the browser supports, picks WebGPU or WebGL2, downloads the prebuilt runtime and `app.zip` with a real progress bar, imports the web modules of the plugins, and hands everything to the runtime.
-// The script `make.py` writes `config.json` next to this file with the name, the transparency, the splash logo and background of `app.json`, the size of every download and the plugins with a web part, whose modules it copies to `plugins/<id>/`.
+// The script `haylen.py` writes `config.json` next to this file with the name, the transparency, the splash logo and background of `app.json`, the size of every download and the plugins with a web part, whose modules it copies to `plugins/<id>/`.
 
 var Module = {
     canvas: document.getElementById("canvas"),

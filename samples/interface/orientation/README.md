@@ -19,12 +19,12 @@ The mouse, touch, the keyboard, gamepads and TV remotes reach every control. Lef
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `python3 make.py run interface/orientation` |
-| macOS app | `python3 make.py run interface/orientation --platform macos` |
-| iPhone and iPad simulator | `python3 make.py run interface/orientation --platform ios-simulator` |
-| Apple TV simulator | `python3 make.py run interface/orientation --platform tvos-simulator` |
-| Android device or emulator | `python3 make.py run interface/orientation --platform android` |
-| Browser | `python3 make.py run interface/orientation --platform web` |
+| Desktop player with hot reload | `python3 haylen.py run interface/orientation` |
+| macOS app | `python3 haylen.py run interface/orientation --platform macos` |
+| iPhone and iPad simulator | `python3 haylen.py run interface/orientation --platform ios-simulator` |
+| Apple TV simulator | `python3 haylen.py run interface/orientation --platform tvos-simulator` |
+| Android device or emulator | `python3 haylen.py run interface/orientation --platform android` |
+| Browser | `python3 haylen.py run interface/orientation --platform web` |
 
 ## Package layout
 

@@ -45,23 +45,23 @@ The repository holds the engine, the `haylen` desktop player, the platform templ
 
 ## Quick start
 
-Haylen needs CMake 3.28 or newer, Ninja, Python 3.10 or newer and a C++20 compiler. The script `make.py` downloads the pinned shader compiler, and the Emscripten SDK and Gradle the first time a web or Android build needs them. Apple platforms need Xcode and Android needs the Android SDK with NDK 30.
+Haylen needs CMake 3.28 or newer, Ninja, Python 3.10 or newer and a C++20 compiler. The script `haylen.py` downloads the pinned shader compiler, and the Emscripten SDK and Gradle the first time a web or Android build needs them. Apple platforms need Xcode and Android needs the Android SDK with NDK 30.
 
 ```sh
-python3 make.py assets ~/Downloads/"Tiny Swords (Free Pack).zip"
-python3 make.py run games/tiny-island
+python3 haylen.py assets ~/Downloads/"Tiny Swords (Free Pack).zip"
+python3 haylen.py run games/tiny-island
 ```
 
-The first command imports the [Tiny Swords](https://pixelfrog-assets.itch.io/tiny-swords) pack into the Tiny Island sample, and the second builds the desktop player and runs the game with hot reload. The command `python3 make.py test` builds and runs the engine tests.
+The first command imports the [Tiny Swords](https://pixelfrog-assets.itch.io/tiny-swords) pack into the Tiny Island sample, and the second builds the desktop player and runs the game with hot reload. The command `python3 haylen.py test` builds and runs the engine tests.
 
-A new app starts with `make.py new`, which writes a small starter app and a project of every platform, which belongs to the developer:
+A new app starts with `haylen.py new`, which writes a small starter app and a project of every platform, which belongs to the developer:
 
 ```sh
-python3 make.py new ~/apps/my-app --name "My App" --identifier com.example.myapp
-python3 make.py run ~/apps/my-app
-python3 make.py run ~/apps/my-app --platform ios-simulator
-python3 make.py run ~/apps/my-app --platform android
-python3 make.py run ~/apps/my-app --platform web
+python3 haylen.py new ~/apps/my-app --name "My App" --identifier com.example.myapp
+python3 haylen.py run ~/apps/my-app
+python3 haylen.py run ~/apps/my-app --platform ios-simulator
+python3 haylen.py run ~/apps/my-app --platform android
+python3 haylen.py run ~/apps/my-app --platform web
 ```
 
 With `--platform`, `run` builds the prebuilt engine for that platform once, writes the app into the generated folder of the platform project, builds the project and launches it on macOS, iOS and tvOS simulators and devices, Mac Catalyst, Android devices and emulators, or a local web server. The app itself never compiles the engine.
@@ -76,7 +76,7 @@ my-app/
     scenes/         Any other Lua modules, loaded with require('scenes.title').
   content/          Textures, sounds, fonts, maps and data.
   plugins/          Plugins with native code, such as sign-in or ads.
-  platform/         The Xcode, Android and web projects, which make.py builds where they are.
+  platform/         The Xcode, Android and web projects, which haylen.py builds where they are.
 ```
 
 ```lua
@@ -91,7 +91,7 @@ scene.push({
 })
 ```
 
-The command `python3 make.py package my-app` zips the package, and the [distribution guide](docs/distribution.md) covers every platform. C++ apps add the engine to their CMake project and call `haylen_add_app`, as the [embedding guide](docs/embedding.md) shows.
+The command `python3 haylen.py package my-app` zips the package, and the [distribution guide](docs/distribution.md) covers every platform. C++ apps add the engine to their CMake project and call `haylen_add_app`, as the [embedding guide](docs/embedding.md) shows.
 
 ## Documentation
 

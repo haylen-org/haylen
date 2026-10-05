@@ -16,7 +16,7 @@ Material::Material(graphics::Shader shader) {
     }
     for (const std::string_view program : kPrograms) {
         if (!shader.hasProgram(program)) {
-            throw std::invalid_argument(std::format("The shader \"{}\" has no \"{}\" program. Compile it with \"make.py shaders\" from a source that includes \"haylen/material.glsl\".", shader.getName(), program));
+            throw std::invalid_argument(std::format("The shader \"{}\" has no \"{}\" program. Compile it with \"haylen.py shaders\" from a source that includes \"haylen/material.glsl\".", shader.getName(), program));
         }
     }
     resource = std::make_shared<MaterialResource>();

@@ -33,7 +33,7 @@ class NativeLibraries final {
     // Whether the platform loads native libraries, which the browser does not.
     [[nodiscard]] static bool isAvailable() noexcept;
 
-    // Adds a folder that `open` searches before the folders of the platform, such as the one `make.py` builds the libraries of an app into during development.
+    // Adds a folder that `open` searches before the folders of the platform, such as the one `haylen.py` builds the libraries of an app into during development.
     static void addSearchFolder(std::filesystem::path folder);
 
     // Registers a library linked into the app with the symbols it exposes. Generated code calls it before `main`, and it replaces an earlier registration of the name.

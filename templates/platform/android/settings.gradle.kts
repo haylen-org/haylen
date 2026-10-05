@@ -1,4 +1,4 @@
-// Android project of a Haylen app. It has no C++: the player, the activity and the platform bridge come from the `haylen` library that `make.py engine --platform android` publishes.
+// Android project of a Haylen app. It has no C++: the player, the activity and the platform bridge come from the `haylen` library that `haylen.py engine --platform android` publishes.
 import java.util.Properties
 
 pluginManagement {
@@ -9,7 +9,7 @@ pluginManagement {
     }
 }
 
-// The script `make.py` writes `haylen/haylen.properties` from `app.json` and the plugins of the app every time it prepares the project: the engine repository and version, the identity of the app, the native library its activity loads, the plugin modules and their Gradle plugins and manifest placeholders, and the folder that holds the build outputs.
+// The script `haylen.py` writes `haylen/haylen.properties` from `app.json` and the plugins of the app every time it prepares the project: the engine repository and version, the identity of the app, the native library its activity loads, the plugin modules and their Gradle plugins and manifest placeholders, and the folder that holds the build outputs.
 val haylen = Properties().apply { load(providers.fileContents(layout.settingsDirectory.file("haylen/haylen.properties")).asText.get().reader()) }
 
 dependencyResolutionManagement {
@@ -27,7 +27,7 @@ dependencyResolutionManagement {
 rootProject.name = "app"
 include(":app")
 
-// The library modules of the plugins of the app, which `make.py` copies into `haylen/plugins/` and lists as `id=folder` entries.
+// The library modules of the plugins of the app, which `haylen.py` copies into `haylen/plugins/` and lists as `id=folder` entries.
 haylen.getProperty("plugins").split(",").filter { it.isNotEmpty() }.forEach { entry ->
     val (id, folder) = entry.split("=")
     include(":$id")

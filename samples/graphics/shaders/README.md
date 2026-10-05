@@ -16,10 +16,10 @@ Haylen Shaders is a Lua sample of custom shaders: fragment shaders in the annota
 Every source lives in `content/shaders/` next to the `.shader` file compiled from it, which ships in the package:
 
 ```sh
-python3 make.py shaders samples/graphics/shaders
+python3 haylen.py shaders samples/graphics/shaders
 ```
 
-The command `make.py run` compiles the sources that changed on its own, and a desktop dev run reloads a `.shader` file as soon as it is compiled again, as the [shader guide](../../../docs/shaders.md) explains. Browsers, phones and TVs run the compiled files.
+The command `haylen.py run` compiles the sources that changed on its own, and a desktop dev run reloads a `.shader` file as soon as it is compiled again, as the [shader guide](../../../docs/shaders.md) explains. Browsers, phones and TVs run the compiled files.
 
 | Source | Effect |
 | --- | --- |
@@ -45,12 +45,12 @@ A click, a tap, E or the X button flashes the hero in the tests that flash it. E
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `python3 make.py run samples/graphics/shaders` |
-| macOS app | `python3 make.py run samples/graphics/shaders --platform macos` |
-| iPhone and iPad simulator | `python3 make.py run samples/graphics/shaders --platform ios-simulator` |
-| Apple TV simulator | `python3 make.py run samples/graphics/shaders --platform tvos-simulator` |
-| Android device or emulator | `python3 make.py run samples/graphics/shaders --platform android` |
-| Browser | `python3 make.py run samples/graphics/shaders --platform web` |
+| Desktop player with hot reload | `python3 haylen.py run samples/graphics/shaders` |
+| macOS app | `python3 haylen.py run samples/graphics/shaders --platform macos` |
+| iPhone and iPad simulator | `python3 haylen.py run samples/graphics/shaders --platform ios-simulator` |
+| Apple TV simulator | `python3 haylen.py run samples/graphics/shaders --platform tvos-simulator` |
+| Android device or emulator | `python3 haylen.py run samples/graphics/shaders --platform android` |
+| Browser | `python3 haylen.py run samples/graphics/shaders --platform web` |
 
 ## Package layout
 

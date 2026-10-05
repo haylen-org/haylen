@@ -12,7 +12,7 @@ A Lua sample with one scene per part of [haylen.platform](../../../docs/lua-api/
 
 ## The native code of the app
 
-The app keeps its native code in the local plugin [`plugins/platform-sample`](plugins/platform-sample), which its `app.json` lists, so the sample keeps no platform project and `make.py run` builds a copy of the template of each platform that it keeps in the build folder of the app, as the [distribution guide](../../../docs/distribution.md#platform-projects) describes.
+The app keeps its native code in the local plugin [`plugins/platform-sample`](plugins/platform-sample), which its `app.json` lists, so the sample keeps no platform project and `haylen.py run` builds a copy of the template of each platform that it keeps in the build folder of the app, as the [distribution guide](../../../docs/distribution.md#platform-projects) describes.
 
 ```text
 plugins/platform-sample/
@@ -29,18 +29,18 @@ plugins/platform-sample/
 | `platform-sample.ticker` | Takes `{count, interval}` in milliseconds, answers `{started, count, interval}` and then sends `count` `platform-sample.tick` events of `{count, total, source}`. |
 | `platform-sample.activity` | Sent by native code with `{state, source}` when the activity resumes or pauses, the Apple app becomes active or resigns, or the tab shows or hides. |
 
-The desktop player, `python3 make.py run system/platform` without a platform, runs the Lua of the app and nothing else, so `platform-sample.echo` and `platform-sample.ticker` fail with `No native handler is registered for "<method>".`, which the sample shows. A handler for the desktop is C++ code, `engine.getPlatform().registerHandler`, in a C++ app built with `haylen_add_app` such as [the embedding sample](../../cpp/embedding), or a native library of the plugin, and the Lua player loads neither for this plugin. `platform.registerHandler` answers a method with Lua instead, which the custom handler test offers there. The macOS app of `--platform macos` builds the Apple part of the plugin, so the Objective-C class answers there.
+The desktop player, `python3 haylen.py run system/platform` without a platform, runs the Lua of the app and nothing else, so `platform-sample.echo` and `platform-sample.ticker` fail with `No native handler is registered for "<method>".`, which the sample shows. A handler for the desktop is C++ code, `engine.getPlatform().registerHandler`, in a C++ app built with `haylen_add_app` such as [the embedding sample](../../cpp/embedding), or a native library of the plugin, and the Lua player loads neither for this plugin. `platform.registerHandler` answers a method with Lua instead, which the custom handler test offers there. The macOS app of `--platform macos` builds the Apple part of the plugin, so the Objective-C class answers there.
 
 ## Running it
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `python3 make.py run system/platform` |
-| macOS app | `python3 make.py run system/platform --platform macos` |
-| iPhone and iPad simulator | `python3 make.py run system/platform --platform ios-simulator` |
-| Apple TV simulator | `python3 make.py run system/platform --platform tvos-simulator` |
-| Android device or emulator | `python3 make.py run system/platform --platform android --device <serial>` |
-| Browser | `python3 make.py run system/platform --platform web` |
+| Desktop player with hot reload | `python3 haylen.py run system/platform` |
+| macOS app | `python3 haylen.py run system/platform --platform macos` |
+| iPhone and iPad simulator | `python3 haylen.py run system/platform --platform ios-simulator` |
+| Apple TV simulator | `python3 haylen.py run system/platform --platform tvos-simulator` |
+| Android device or emulator | `python3 haylen.py run system/platform --platform android --device <serial>` |
+| Browser | `python3 haylen.py run system/platform --platform web` |
 
 ## Controls
 

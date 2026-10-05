@@ -1,3 +1,3 @@
 #include "haylen/Haylen.xcconfig"
 
-// Build settings of the app targets. The include brings the name, identifier, version and build number that make.py writes from app.json, and a setting below it wins, such as a build number from continuous integration: CURRENT_PROJECT_VERSION = 42.
+// Build settings of the app targets. The include brings the name, identifier, version and build number that haylen.py writes from app.json, and a setting below it wins, such as a build number from continuous integration: CURRENT_PROJECT_VERSION = 42.

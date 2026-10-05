@@ -433,7 +433,7 @@ end
 
 ## Shader
 
-A `Shader` is a custom shader that `make.py shaders` compiled from annotated GLSL for every backend the engine runs on, loaded with `assets.shader(path)` or `assets.load(path)` from a `.shader` file. [Materials](graphics2d.md#material) draw with it, and the [shader guide](../shaders.md) explains how to write one. The engine creates the GPU program of the active backend the first time a draw needs it.
+A `Shader` is a custom shader that `haylen.py shaders` compiled from annotated GLSL for every backend the engine runs on, loaded with `assets.shader(path)` or `assets.load(path)` from a `.shader` file. [Materials](graphics2d.md#material) draw with it, and the [shader guide](../shaders.md) explains how to write one. The engine creates the GPU program of the active backend the first time a draw needs it.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |

@@ -19,7 +19,7 @@ struct MaterialResource;
 // Shared handle to a custom shader with values for its uniforms and textures. Draws take a material through their draw order, which replaces how their pixels are shaded for sprites, batches, primitives, meshes and text in every canvas, and post-processing chains of world canvases run materials over the whole image. A draw keeps the values its material had when it was made.
 class Material final {
   public:
-    // The programs a material shader holds, one per kind of draw and each also for lit canvases, which `make.py shaders` compiles from every source.
+    // The programs a material shader holds, one per kind of draw and each also for lit canvases, which `haylen.py shaders` compiles from every source.
     static const std::array<std::string_view, 6> kPrograms;
 
     Material() = default;

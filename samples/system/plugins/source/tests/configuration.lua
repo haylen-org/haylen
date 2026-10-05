@@ -16,7 +16,7 @@ function Configuration:enter()
         hint = 'Compare the values with "app.json" and "plugins/native-demo/plugin.json".',
         focus = 'back',
         controls = {
-            ui.label{text = 'The file "app.json" gives "greeting", "bannerColor" and "urlScheme" in its "plugins" section and leaves "tickInterval" out, which then takes the default of "plugin.json". The tool "make.py" checks the values against the types of "plugin.json" before it builds, and the platforms hand the same values to the native part of the plugin.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'The file "app.json" gives "greeting", "bannerColor" and "urlScheme" in its "plugins" section and leaves "tickInterval" out, which then takes the default of "plugin.json". The tool "haylen.py" checks the values against the types of "plugin.json" before it builds, and the platforms hand the same values to the native part of the plugin.', color = 'textMuted', font = 'caption'},
             ui.label{font = 'monospace', text = '"plugins": {\n  "native-demo": {\n    "greeting": "Hello from app.json",\n    "bannerColor": "#1D3557",\n    "urlScheme": "haylendemo"\n  }\n}'},
         },
     })

@@ -35,12 +35,12 @@ A Lua sample with one scene per algorithm of [`haylen.navigation2d`](../../../do
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `python3 make.py run samples/gameplay/algorithms` |
-| macOS app | `python3 make.py run samples/gameplay/algorithms --platform macos` |
-| iPhone and iPad simulator | `python3 make.py run samples/gameplay/algorithms --platform ios-simulator` |
-| Apple TV simulator | `python3 make.py run samples/gameplay/algorithms --platform tvos-simulator` |
-| Android device or emulator | `python3 make.py run samples/gameplay/algorithms --platform android --device <serial>` |
-| Browser | `python3 make.py run samples/gameplay/algorithms --platform web` |
+| Desktop player with hot reload | `python3 haylen.py run samples/gameplay/algorithms` |
+| macOS app | `python3 haylen.py run samples/gameplay/algorithms --platform macos` |
+| iPhone and iPad simulator | `python3 haylen.py run samples/gameplay/algorithms --platform ios-simulator` |
+| Apple TV simulator | `python3 haylen.py run samples/gameplay/algorithms --platform tvos-simulator` |
+| Android device or emulator | `python3 haylen.py run samples/gameplay/algorithms --platform android --device <serial>` |
+| Browser | `python3 haylen.py run samples/gameplay/algorithms --platform web` |
 
 ## Controls
 

@@ -1,6 +1,6 @@
 # Shaders
 
-Apps shade their draws with their own fragment shaders, written in the annotated GLSL of [sokol-shdc](https://github.com/floooh/sokol-tools/blob/master/docs/sokol-shdc.md) under `content/shaders/`. The command `make.py shaders` compiles every source ahead of time into a `.shader` file for every backend the engine runs on, and the engine loads the file as a `Shader` and draws with it through a `Material`, which holds the values of its uniforms and textures. A material shades sprites, batches, nine-slices, rectangles, lines, shapes, meshes and text in every canvas, and runs over the whole image of a world or render target canvas as a post-processing pass.
+Apps shade their draws with their own fragment shaders, written in the annotated GLSL of [sokol-shdc](https://github.com/floooh/sokol-tools/blob/master/docs/sokol-shdc.md) under `content/shaders/`. The command `haylen.py shaders` compiles every source ahead of time into a `.shader` file for every backend the engine runs on, and the engine loads the file as a `Shader` and draws with it through a `Material`, which holds the values of its uniforms and textures. A material shades sprites, batches, nine-slices, rectangles, lines, shapes, meshes and text in every canvas, and runs over the whole image of a world or render target canvas as a post-processing pass.
 
 ## A first shader
 
@@ -28,7 +28,7 @@ void main() {
 @program ripple haylen_vs ripple_fs
 ```
 
-The command `python3 make.py shaders my-game` compiles it into `content/shaders/ripple.shader`, and `make.py run` and `make.py package` compile the shaders that changed on their own. In Lua, [`haylen.assets`](lua-api/assets.md) loads the file and [`haylen.graphics2d`](lua-api/graphics2d.md#material) makes a material of it:
+The command `python3 haylen.py shaders my-game` compiles it into `content/shaders/ripple.shader`, and `haylen.py run` and `haylen.py package` compile the shaders that changed on their own. In Lua, [`haylen.assets`](lua-api/assets.md) loads the file and [`haylen.graphics2d`](lua-api/graphics2d.md#material) makes a material of it:
 
 ```lua
 local assets = require('haylen.assets')
@@ -52,7 +52,7 @@ scene.push({
 
 ## Compiling
 
-The command `make.py shaders <app>` compiles every `.glsl` file under `content/shaders/` that declares an `@program`, and leaves the others, which the sources include, alone. It runs `sokol-shdc` from `.tools/` with `engine/shaders/include` as its working directory, which is how `@include haylen/material.glsl` finds the shader library, and writes a `.shader` file next to each source, so the files ship in the package like any asset. A source compiles again when its `.shader` file is older than any source of the app or the shader library, and `--force` compiles them all. The app's own `@include` paths are relative to the folder of the source being compiled.
+The command `haylen.py shaders <app>` compiles every `.glsl` file under `content/shaders/` that declares an `@program`, and leaves the others, which the sources include, alone. It runs `sokol-shdc` from `.tools/` with `engine/shaders/include` as its working directory, which is how `@include haylen/material.glsl` finds the shader library, and writes a `.shader` file next to each source, so the files ship in the package like any asset. A source compiles again when its `.shader` file is older than any source of the app or the shader library, and `--force` compiles them all. The app's own `@include` paths are relative to the folder of the source being compiled.
 
 Every source compiles six times, once for each kind of draw and once more of each for lit canvases:
 
@@ -69,9 +69,9 @@ Error: The sokol-shdc tool could not compile the "sprite" program of "content/sh
 content/shaders/ripple.glsl:13:0: error: 'wave' : undeclared identifier
 ```
 
-Browsers cannot run `sokol-shdc`, so the web editor and the web runtime never compile shaders. An app compiles its shaders on a machine with `make.py` and ships the `.shader` files in its package, and an edited source reaches the browser once its `.shader` file is compiled again.
+Browsers cannot run `sokol-shdc`, so the web editor and the web runtime never compile shaders. An app compiles its shaders on a machine with `haylen.py` and ships the `.shader` files in its package, and an edited source reaches the browser once its `.shader` file is compiled again.
 
-In development, `make.py run` keeps compiling the sources that change while the desktop player runs with `--dev`, and the player reloads every changed `.shader` file in place, so the materials that use it draw with the new programs from the next frame and keep the values that still fit its uniforms. A source with an error prints the error and leaves the last good shader running.
+In development, `haylen.py run` keeps compiling the sources that change while the desktop player runs with `--dev`, and the player reloads every changed `.shader` file in place, so the materials that use it draw with the new programs from the next frame and keep the values that still fit its uniforms. A source with an error prints the error and leaves the last good shader running.
 
 ## The shader library
 
@@ -99,7 +99,7 @@ The engine's own shaders in `engine/shaders` include the same library, so a mate
 
 A material fills the uniform blocks and textures that the fragment shader declares:
 
-- Uniform blocks take the bindings 1 to 6. Binding 0 holds the view projection of the vertex shader and whether the blend of the draw needs premultiplied colors, and binding 7 the lighting of lit canvases. The renderer fills both with the layout of the shader library it was built with, so a shader compiled with another version of the library raises `The shader "<name>" was compiled with another version of the shader library. Compile it again with "make.py shaders".` when a draw first uses it.
+- Uniform blocks take the bindings 1 to 6. Binding 0 holds the view projection of the vertex shader and whether the blend of the draw needs premultiplied colors, and binding 7 the lighting of lit canvases. The renderer fills both with the layout of the shader library it was built with, so a shader compiled with another version of the library raises `The shader "<name>" was compiled with another version of the shader library. Compile it again with "haylen.py shaders".` when a draw first uses it.
 - Members are `float`, `vec2`, `vec3`, `vec4`, `int`, `ivec2`, `ivec3`, `ivec4` and `mat4`, and arrays of `vec4`, `ivec4` and `mat4`, the types sokol-shdc allows, laid out with std140 rules.
 - Textures take the bindings from 1 up, next to `sprite_texture` at 0, with samplers of their own from binding 1 up or `sprite_sampler`. The sampler of a texture binding is the one the texture was created with, so a texture loaded with `filter = 'linear'` samples smoothly.
 - A texture that a material leaves unset draws as white.
@@ -198,7 +198,7 @@ scene.push({
 
 ## The .shader file
 
-A `.shader` file is JSON that `make.py shaders` writes and nothing else edits:
+A `.shader` file is JSON that `haylen.py shaders` writes and nothing else edits:
 
 | Key | Meaning |
 | --- | --- |

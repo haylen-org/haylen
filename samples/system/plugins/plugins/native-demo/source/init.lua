@@ -8,7 +8,7 @@ local demo = {}
 
 local kDesktops = {macos = true, windows = true, linux = true}
 
--- Apple platforms, Android and the web load their native parts before any Lua runs. The desktop player and the Windows and Linux apps run the C library of native/, which make.py places next to them and which declares itself the native part of the plugin in its init function, once per process.
+-- Apple platforms, Android and the web load their native parts before any Lua runs. The desktop player and the Windows and Linux apps run the C library of native/, which haylen.py places next to them and which declares itself the native part of the plugin in its init function, once per process.
 if not handle.native and kDesktops[haylen.platform] then
     native.load('native_demo', {init = 'native_demo_haylen_init'})
 end

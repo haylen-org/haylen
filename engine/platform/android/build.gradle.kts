@@ -1,11 +1,11 @@
-// Every module publishes its release variant as `dev.haylen:<module>` at the engine version to the Maven repository that `make.py engine --platform android` names.
+// Every module publishes its release variant as `dev.haylen:<module>` at the engine version to the Maven repository that `haylen.py engine --platform android` names.
 plugins {
     id("com.android.library") version "9.4.1" apply false
 }
 
 val engineVersion = rootDir.resolve("../../VERSION").readText().trim()
 val mavenDir = providers.gradleProperty("haylenMavenDir").orNull
-    ?: error("Pass \"-PhaylenMavenDir\" with the Maven repository that receives the libraries. The script \"make.py\" uses \"build/artifacts/android/maven\".")
+    ?: error("Pass \"-PhaylenMavenDir\" with the Maven repository that receives the libraries. The script \"haylen.py\" uses \"build/artifacts/android/maven\".")
 
 // The Android plugin creates the component of the release variant after the module evaluated, so the publication takes it after the plugin has registered its own step.
 subprojects {

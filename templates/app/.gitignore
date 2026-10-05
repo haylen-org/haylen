@@ -3,7 +3,7 @@
 /dist/
 # The source cache of CPM, where C++ builds keep the dependencies they download.
 /.cache/
-# The folder that make.py writes into each platform project on every build.
+# The folder that haylen.py writes into each platform project on every build.
 platform/*/haylen/
 # Files of Finder and of the editors.
 .DS_Store

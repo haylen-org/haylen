@@ -96,15 +96,15 @@ void main() {
         return {};
     }
 
-    // Compiles the material with `make.py shaders`, the way apps compile theirs, once for every test that needs it. Python starts without a shell, so no shell reinterprets the quotes of the paths.
+    // Compiles the material with `haylen.py shaders`, the way apps compile theirs, once for every test that needs it. Python starts without a shell, so no shell reinterprets the quotes of the paths.
     [[nodiscard]] static const std::vector<std::uint8_t>& tintShader() {
         // clang-format off
         static const std::vector<std::uint8_t> compiled = [] {
             const test::TemporaryDirectory app;
             app.write("app.json", R"({"name": "Shaders", "identifier": "dev.haylen.shaders", "version": "1.0.0"})");
             app.write("content/shaders/tint.glsl", kTintSource);
-            if (Poco::Process::launch(HAYLEN_PYTHON, {HAYLEN_MAKE_SCRIPT, "shaders", app.getPath().string()}).wait() != 0) {
-                throw std::runtime_error("The command \"make.py shaders\" failed.");
+            if (Poco::Process::launch(HAYLEN_PYTHON, {HAYLEN_TOOL_SCRIPT, "shaders", app.getPath().string()}).wait() != 0) {
+                throw std::runtime_error("The command \"haylen.py shaders\" failed.");
             }
             std::ifstream file(app.getPath() / "content" / "shaders" / "tint.shader", std::ios::binary);
             return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());

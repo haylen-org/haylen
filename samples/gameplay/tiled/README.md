@@ -29,12 +29,12 @@ python3 samples/gameplay/tiled/tools/generate_content.py
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `python3 make.py run samples/gameplay/tiled` |
-| macOS app | `python3 make.py run samples/gameplay/tiled --platform macos` |
-| iPhone and iPad simulator | `python3 make.py run samples/gameplay/tiled --platform ios-simulator` |
-| Apple TV simulator | `python3 make.py run samples/gameplay/tiled --platform tvos-simulator` |
-| Android device or emulator | `python3 make.py run samples/gameplay/tiled --platform android --device <serial>` |
-| Browser | `python3 make.py run samples/gameplay/tiled --platform web` |
+| Desktop player with hot reload | `python3 haylen.py run samples/gameplay/tiled` |
+| macOS app | `python3 haylen.py run samples/gameplay/tiled --platform macos` |
+| iPhone and iPad simulator | `python3 haylen.py run samples/gameplay/tiled --platform ios-simulator` |
+| Apple TV simulator | `python3 haylen.py run samples/gameplay/tiled --platform tvos-simulator` |
+| Android device or emulator | `python3 haylen.py run samples/gameplay/tiled --platform android --device <serial>` |
+| Browser | `python3 haylen.py run samples/gameplay/tiled --platform web` |
 
 ## Controls
 

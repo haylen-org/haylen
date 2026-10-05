@@ -168,7 +168,7 @@ void NativeLibraries::addLinkedSymbols(varn::runtime::Runtime& runtime) {
     }
 }
 
-// The engine loads the libraries of an app from inside its bundle or next to its executable, where `make.py` places them, so the system search paths never decide which file loads.
+// The engine loads the libraries of an app from inside its bundle or next to its executable, where `haylen.py` places them, so the system search paths never decide which file loads.
 std::vector<std::filesystem::path> NativeLibraries::getPlatformFolders() {
 #if defined(__ANDROID__)
     // The package manager extracts the libraries of the APK where the linker finds them by name.

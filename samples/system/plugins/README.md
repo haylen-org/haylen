@@ -47,14 +47,14 @@ A Lua sample that tests every capability of native plugins with its own plugin, 
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `python3 make.py run system/plugins` |
-| macOS app | `python3 make.py run system/plugins --platform macos` |
-| Mac Catalyst app | `python3 make.py run system/plugins --platform catalyst` |
-| iPhone and iPad simulator | `python3 make.py run system/plugins --platform ios-simulator` |
-| Apple TV simulator | `python3 make.py run system/plugins --platform tvos-simulator` |
-| Android device or emulator | `python3 make.py run system/plugins --platform android --device <serial>` |
-| Windows and Linux | `python3 make.py run system/plugins --platform windows` or `--platform linux` on that host |
-| Browser | `python3 make.py run system/plugins --platform web` |
+| Desktop player with hot reload | `python3 haylen.py run system/plugins` |
+| macOS app | `python3 haylen.py run system/plugins --platform macos` |
+| Mac Catalyst app | `python3 haylen.py run system/plugins --platform catalyst` |
+| iPhone and iPad simulator | `python3 haylen.py run system/plugins --platform ios-simulator` |
+| Apple TV simulator | `python3 haylen.py run system/plugins --platform tvos-simulator` |
+| Android device or emulator | `python3 haylen.py run system/plugins --platform android --device <serial>` |
+| Windows and Linux | `python3 haylen.py run system/plugins --platform windows` or `--platform linux` on that host |
+| Browser | `python3 haylen.py run system/plugins --platform web` |
 
 ## Opening URLs
 

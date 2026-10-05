@@ -1,6 +1,6 @@
 # Platform Sample
 
-The local plugin of the [platform sample](../../README.md), which holds the native code of the app: Objective-C on Apple platforms, Java on Android and JavaScript on the web answer its methods and send its events through the [platform bridge](../../../../../docs/platform_bridge.md). The sample lists it in its `app.json` with no parameters, and `make.py` builds it into the project of each platform as the [plugin guide](../../../../../docs/plugins.md) describes.
+The local plugin of the [platform sample](../../README.md), which holds the native code of the app: Objective-C on Apple platforms, Java on Android and JavaScript on the web answer its methods and send its events through the [platform bridge](../../../../../docs/platform_bridge.md). The sample lists it in its `app.json` with no parameters, and `haylen.py` builds it into the project of each platform as the [plugin guide](../../../../../docs/plugins.md) describes.
 
 ## Lua API
 

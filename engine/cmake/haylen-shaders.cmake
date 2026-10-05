@@ -4,7 +4,7 @@ set(HAYLEN_SHADER_LIBRARY_DIR "${CMAKE_CURRENT_LIST_DIR}/../shaders/include" CAC
 function(haylen_compile_shader target)
   cmake_parse_arguments(PARSE_ARGV 1 SHADER "" "SOURCE;MODULE" "DEFINES")
   if(NOT EXISTS "${HAYLEN_SOKOL_SHDC}")
-    message(FATAL_ERROR "The sokol-shdc tool was not found at \"${HAYLEN_SOKOL_SHDC}\". Run \"python3 make.py tools\" or pass \"-DHAYLEN_SOKOL_SHDC\".")
+    message(FATAL_ERROR "The sokol-shdc tool was not found at \"${HAYLEN_SOKOL_SHDC}\". Run \"python3 haylen.py tools\" or pass \"-DHAYLEN_SOKOL_SHDC\".")
   endif()
 
   set(output_dir "${CMAKE_CURRENT_BINARY_DIR}/generated/shaders")

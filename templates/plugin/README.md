@@ -5,7 +5,7 @@ A Haylen plugin that echoes messages through the native code of every platform. 
 ## Installation
 
 ```sh
-python3 make.py plugin add path/to/{{ID}} --app my-game
+python3 haylen.py plugin add path/to/{{ID}} --app my-game
 ```
 
 The command `plugin add` copies the plugin into `plugins/{{ID}}/` of the app and lists it in the `plugins` section of its `app.json`:

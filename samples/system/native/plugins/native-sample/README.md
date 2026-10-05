@@ -1,6 +1,6 @@
 # Native Sample
 
-The local plugin of the [native sample](../../README.md) with the platform handlers of its platform handlers test: suspending Kotlin and a Java handler that throws on Android, async Swift on Apple platforms and JavaScript on the web. They answer with typed errors, fail their calls instead of crashing when they throw, and hear when the app cancels a call or its timeout passes. The sample lists it in its `app.json` with no parameters, and `make.py` builds it into the project of each platform as the [plugin guide](../../../../../docs/plugins.md) describes.
+The local plugin of the [native sample](../../README.md) with the platform handlers of its platform handlers test: suspending Kotlin and a Java handler that throws on Android, async Swift on Apple platforms and JavaScript on the web. They answer with typed errors, fail their calls instead of crashing when they throw, and hear when the app cancels a call or its timeout passes. The sample lists it in its `app.json` with no parameters, and `haylen.py` builds it into the project of each platform as the [plugin guide](../../../../../docs/plugins.md) describes.
 
 ## Lua API
 

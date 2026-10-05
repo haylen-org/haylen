@@ -14,7 +14,7 @@ namespace haylen::graphics {
 
 struct ShaderResource;
 
-// Shared handle to a custom shader: a `.shader` file that `make.py shaders` compiles from annotated GLSL for every backend, with the reflection of the uniforms and textures of its own. The engine creates the GPU program of the active backend the first time a draw needs it, and a reloaded file updates every handle.
+// Shared handle to a custom shader: a `.shader` file that `haylen.py shaders` compiles from annotated GLSL for every backend, with the reflection of the uniforms and textures of its own. The engine creates the GPU program of the active backend the first time a draw needs it, and a reloaded file updates every handle.
 class Shader final {
   public:
     enum class UniformType : std::uint8_t {

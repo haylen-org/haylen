@@ -1,4 +1,4 @@
-# The desktop part of the Native Demo plugin, a C library that the desktop player and the Windows and Linux apps load. make.py builds the target named after the plugin, native_demo, as a shared library and passes HAYLEN_INCLUDE_DIR with haylen/platform/native/HaylenNative.h. The confirm screen is Objective-C with AppKit on macOS, Win32 on Windows and Xlib on Linux.
+# The desktop part of the Native Demo plugin, a C library that the desktop player and the Windows and Linux apps load. The tool `haylen.py` builds the target named after the plugin, native_demo, as a shared library and passes HAYLEN_INCLUDE_DIR with haylen/platform/native/HaylenNative.h. The confirm screen is Objective-C with AppKit on macOS, Win32 on Windows and Xlib on Linux.
 cmake_minimum_required(VERSION 3.28...4.4)
 project(native_demo LANGUAGES C)
 

@@ -1,19 +1,19 @@
 # Building Haylen
 
-`make.py` at the repository root is the single entry point for building, running, testing and packaging the engine and its apps on every platform. It wraps CMake, downloads the pinned tools it needs into `.tools/`, and keeps one build tree per platform and configuration under `build/`. This guide covers building the engine, what each platform needs, how dependencies are declared, how `haylen_add_app` deploys a package into a C++ app, the web runtime and the Tiny Island asset tools. The [distribution guide](distribution.md) covers the prebuilt engine artifacts, the platform templates and the commands that create, run and package apps, the [embedding guide](embedding.md) covers consuming the engine from another CMake project, and the [testing guide](testing.md) covers the test suite.
+`haylen.py` at the repository root is the single entry point for building, running, testing and packaging the engine and its apps on every platform. It wraps CMake, downloads the pinned tools it needs into `.tools/`, and keeps one build tree per platform and configuration under `build/`. This guide covers building the engine, what each platform needs, how dependencies are declared, how `haylen_add_app` deploys a package into a C++ app, the web runtime and the Tiny Island asset tools. The [distribution guide](distribution.md) covers the prebuilt engine artifacts, the platform templates and the commands that create, run and package apps, the [embedding guide](embedding.md) covers consuming the engine from another CMake project, and the [testing guide](testing.md) covers the test suite.
 
 ## Requirements
 
-Every host needs Python 3.10 or newer, CMake 3.28 or newer and a C++20 compiler. Ninja is needed by every build except iOS, tvOS, macOS with `--xcode`, and Windows builds, which fall back to the default CMake generator when Ninja is not on `PATH`. Run the script with `python3 make.py` on macOS and Linux and with `python make.py` on Windows.
+Every host needs Python 3.10 or newer, CMake 3.28 or newer and a C++20 compiler. Ninja is needed by every build except iOS, tvOS, macOS with `--xcode`, and Windows builds, which fall back to the default CMake generator when Ninja is not on `PATH`. Run the script with `python3 haylen.py` on macOS and Linux and with `python haylen.py` on Windows.
 
-`make.py` downloads the remaining tools the first time a command needs them:
+`haylen.py` downloads the remaining tools the first time a command needs them:
 
 | Tool | Version | Location | Needed by |
 | --- | --- | --- | --- |
 | `sokol-shdc` | commit `11d0cf6` of `floooh/sokol-tools-bin` | `.tools/sokol-shdc` | Every build. Prebuilt binaries exist for macOS (arm64 and x64), Linux (arm64 and x64) and Windows (x64). |
 | Emscripten SDK | 6.0.10 | `.tools/emsdk` | Web builds. It is cloned with `git`. |
 | Gradle | 9.8.0 | `.tools/gradle-9.8.0` | The Android library and Android apps. |
-| XcodeGen | 2.46.0, the release zip checked against its pinned SHA-256 hash | `.tools/xcodegen` | Apple apps whose plugins add to the Apple project, which make.py generates again. macOS only. |
+| XcodeGen | 2.46.0, the release zip checked against its pinned SHA-256 hash | `.tools/xcodegen` | Apple apps whose plugins add to the Apple project, which haylen.py generates again. macOS only. |
 
 What each platform needs on top of that:
 
@@ -28,11 +28,11 @@ What each platform needs on top of that:
 | Web | `web` | any | WebGPU | Ninja through `emcmake` | `git`, and a browser with WebGPU to run it. |
 | Web | `web-webgl2` | any | WebGL2 | Ninja through `emcmake` | `git`, and a browser with WebGL2 to run it. |
 
-`make.py` refuses to configure macOS, iOS, tvOS, Linux and Windows builds on any other host. Android and web builds work from every host.
+`haylen.py` refuses to configure macOS, iOS, tvOS, Linux and Windows builds on any other host. Android and web builds work from every host.
 
 ## Build trees
 
-Every platform and configuration gets its own tree at `build/<platform>-<config>`, with the configuration in lowercase, such as `build/macos-debug` or `build/web-webgl2-release`, and builds with sanitizers get trees of their own at `build/<platform>-<config>-<sanitizers>`, such as `build/macos-debug-thread`. Executables and apps land in `bin/<target>/` inside the tree. `python3 make.py clean` removes the whole `build/` folder but keeps `.tools/` and the dependency cache.
+Every platform and configuration gets its own tree at `build/<platform>-<config>`, with the configuration in lowercase, such as `build/macos-debug` or `build/web-webgl2-release`, and builds with sanitizers get trees of their own at `build/<platform>-<config>-<sanitizers>`, such as `build/macos-debug-thread`. Executables and apps land in `bin/<target>/` inside the tree. `python3 haylen.py clean` removes the whole `build/` folder but keeps `.tools/` and the dependency cache.
 
 `build` configures a tree when it has no CMake cache yet or when `--backend` differs from the backend the tree was configured with. Run `clean` before switching the generator with `--xcode`, because CMake cannot change the generator of a tree. The prebuilt engine artifacts that apps use have trees of their own, described in the [distribution guide](distribution.md#engine-artifacts).
 
@@ -79,7 +79,7 @@ The runtime links the system libraries of each platform's default backend, plus 
 ### tools
 
 ```sh
-python3 make.py tools [--emsdk] [--gradle]
+python3 haylen.py tools [--emsdk] [--gradle]
 ```
 
 Downloads `sokol-shdc`, XcodeGen 2.46.0 on macOS, and Emscripten 6.0.10 or Gradle 9.8.0 when asked, and prints where each one lives. Every other command downloads what it needs by itself, so `tools` is mainly useful to warm up a machine or a CI cache.
@@ -87,7 +87,7 @@ Downloads `sokol-shdc`, XcodeGen 2.46.0 on macOS, and Emscripten 6.0.10 or Gradl
 ### configure
 
 ```sh
-python3 make.py configure --platform ios
+python3 haylen.py configure --platform ios
 ```
 
 Generates the build tree with the options above. Every tree receives `-DHAYLEN_SOKOL_SHDC` and `-DCMAKE_BUILD_TYPE`. The platforms add their own settings:
@@ -96,22 +96,22 @@ Generates the build tree with the options above. Every tree receives `-DHAYLEN_S
 - Android uses the NDK toolchain with `ANDROID_ABI=arm64-v8a`, `ANDROID_PLATFORM=android-27` and the static C++ library, with the tests turned off. The player is the shared library `libhaylen.so`, the one the [Android library](distribution.md#the-android-libraries) packages.
 - The web platforms run CMake through `emcmake`, turn the tests off and force `WGPU` for `web` and `GLES3` for `web-webgl2`.
 
-`make.py` builds with the pinned NDK, `ndk/30.0.16248370` inside the SDK that `ANDROID_HOME` or `ANDROID_SDK_ROOT` names, even when the environment names another NDK, because the engine and its dependencies build against its headers.
+`haylen.py` builds with the pinned NDK, `ndk/30.0.16248370` inside the SDK that `ANDROID_HOME` or `ANDROID_SDK_ROOT` names, even when the environment names another NDK, because the engine and its dependencies build against its headers.
 
 ### build
 
 ```sh
-python3 make.py build
-python3 make.py build --platform web-webgl2 --config Release --target tiny-island
+python3 haylen.py build
+python3 haylen.py build --platform web-webgl2 --config Release --target tiny-island
 ```
 
-Configures the tree when needed and runs `cmake --build`. Without `--target` it builds everything the tree defines: the engine, the `haylen` player on desktop, web and Android, and the tests and the sprite benchmark on desktop. Useful targets are `haylen`, `haylen_tests` and `haylen-sprite-benchmark`. Apps are not part of the workspace: `make.py run` runs Lua apps from their folders and `make.py run-cpp` builds C++ app projects, as the [distribution guide](distribution.md) describes.
+Configures the tree when needed and runs `cmake --build`. Without `--target` it builds everything the tree defines: the engine, the `haylen` player on desktop, web and Android, and the tests and the sprite benchmark on desktop. Useful targets are `haylen`, `haylen_tests` and `haylen-sprite-benchmark`. Apps are not part of the workspace: `haylen.py run` runs Lua apps from their folders and `haylen.py run-cpp` builds C++ app projects, as the [distribution guide](distribution.md) describes.
 
 ### test
 
 ```sh
-python3 make.py test
-python3 make.py test --config Release --sanitizers address
+python3 haylen.py test
+python3 haylen.py test --config Release --sanitizers address
 ```
 
 Builds `haylen_tests` for the host and runs it through `ctest` with `--output-on-failure` in parallel. See the [testing guide](testing.md).
@@ -119,7 +119,7 @@ Builds `haylen_tests` for the host and runs it through `ctest` with `--output-on
 ### coverage
 
 ```sh
-python3 make.py coverage
+python3 haylen.py coverage
 ```
 
 Configures `build/coverage` in Debug with `HAYLEN_ENABLE_COVERAGE=ON` and without samples and the player, builds and runs the tests, merges the profiles with `llvm-profdata`, prints the `llvm-cov report` table and writes an HTML report to `build/coverage/coverage/html/index.html`. The report leaves out dependencies, tests, generated files and the platform backends in `engine/src/platform/{apple,android,web,windows,linux,sokol}`, which need a real device. Coverage uses LLVM source-based coverage, so it needs Clang. On macOS the LLVM tools come from Xcode through `xcrun`, and elsewhere they must be on `PATH`. It accepts `--jobs` and `--sanitizers`.
@@ -127,8 +127,8 @@ Configures `build/coverage` in Debug with `HAYLEN_ENABLE_COVERAGE=ON` and withou
 ### format
 
 ```sh
-python3 make.py format
-python3 make.py format --check
+python3 haylen.py format
+python3 haylen.py format --check
 ```
 
 Runs `clang-format --style=file` on every `.h`, `.hpp`, `.c`, `.cpp`, `.m` and `.mm` file under `engine/include`, `engine/src`, `engine/tests`, `samples` and `templates`, then lists every multi-line lambda outside a `// clang-format off` and `// clang-format on` region. `--check` rewrites nothing and fails on formatting differences or unguarded lambdas. `clang-format` must be on `PATH`, and CI pins version 23.1.1.
@@ -136,10 +136,10 @@ Runs `clang-format --style=file` on every `.h`, `.hpp`, `.c`, `.cpp`, `.m` and `
 ### bench
 
 ```sh
-python3 make.py bench
-python3 make.py bench --suite algorithms
-python3 make.py bench --suite procedural
-python3 make.py bench --suite lua
+python3 haylen.py bench
+python3 haylen.py bench --suite algorithms
+python3 haylen.py bench --suite procedural
+python3 haylen.py bench --suite lua
 ```
 
 Builds `haylen-sprite-benchmark` in Release for the host and runs it on the local GPU. It accepts `--jobs`. The [rendering guide](rendering.md#sprite-benchmark) describes the phases and the recorded results. `--suite algorithms` builds and runs `haylen-algorithm-benchmark` instead, which times A*, weighted A*, jump point search, flow fields and hierarchical path finding on a 512 by 512 grid, navigation mesh builds and funnel paths, ORCA crowd steps on one thread, on the job system and on the job system while navmesh builds keep every worker busy, with the slowest of those steps, AABB and k-d tree queries, and batches of physics ray casts on one thread and on the job system, and prints the average time of each. `--suite procedural` builds and runs `haylen-procedural-benchmark`, which times wave function collapse, Poisson disk sampling with a fixed and a varying distance, random scattering, marching squares, Delaunay triangulation of 100 thousand points and carving destructible terrain, and prints the average time of each. `--suite lua` builds `haylen-lua-benchmark` and runs the Lua bunnymark of `engine/bench/lua-benchmark` on the headless host, which prints how long Lua takes to update and draw 10 thousand, 100 thousand and a million sprites kept in tables, in a float buffer and in a sprite batch, as the [performance section of the Lua guide](lua.md#performance) explains.
@@ -147,8 +147,8 @@ Builds `haylen-sprite-benchmark` in Release for the host and runs it on the loca
 ### sdk
 
 ```sh
-python3 make.py sdk
-python3 make.py sdk --platform web --output dist/haylen-web
+python3 haylen.py sdk
+python3 haylen.py sdk --platform web --output dist/haylen-web
 ```
 
 Configures `engine/` on its own in `build/sdk-build-<platform>-<config>` with `HAYLEN_BUILD_SDK=ON`, builds the `haylen_sdk` target and installs the `haylen_sdk` component to `build/sdk/haylen-<platform>-<config>` or to `--output`. `--platform` accepts `macos`, `linux`, `windows`, `web` and `web-webgl2`, and `--config` defaults to `Release`. The [embedding guide](embedding.md) explains what the SDK contains and how a project finds it.
@@ -156,7 +156,7 @@ Configures `engine/` on its own in `build/sdk-build-<platform>-<config>` with `H
 ### embedding
 
 ```sh
-python3 make.py embedding --mode cpm
+python3 haylen.py embedding --mode cpm
 ```
 
 Builds `samples/cpp/embedding`, a CMake project of its own that adds the engine the way another repository would, into `build/embedding-<mode>-<config>`. `--mode` is `subdirectory` (default), `cpm` or `package`. The `package` mode builds the host SDK first and points `CMAKE_PREFIX_PATH` at it. `--config` defaults to `Debug`.
@@ -164,20 +164,20 @@ Builds `samples/cpp/embedding`, a CMake project of its own that adds the engine 
 ### assets, map, package and clean
 
 ```sh
-python3 make.py assets ~/Downloads/"Tiny Swords (Free Pack).zip"
-python3 make.py map
-python3 make.py package games/tiny-island -o build/tiny-island.zip
-python3 make.py clean
+python3 haylen.py assets ~/Downloads/"Tiny Swords (Free Pack).zip"
+python3 haylen.py map
+python3 haylen.py package games/tiny-island -o build/tiny-island.zip
+python3 haylen.py clean
 ```
 
 - `assets <archive>` imports the Tiny Swords pack, as described in [Tiny Island assets and map](#tiny-island-assets-and-map).
 - `map` generates the Tiny Island map.
 - `package <app> [-o <output>]` zips the `app.json`, `source/` and `content/` of an app folder or sample, and nothing else in it, into `app.zip` or the file `-o` names. It fails when the folder has no `app.json`, and it skips `.DS_Store` files.
-- `clean` removes `build/`, including the engine artifacts and the build folders of apps, with the copies of the templates that make.py keeps for them.
+- `clean` removes `build/`, including the engine artifacts and the build folders of apps, with the copies of the templates that haylen.py keeps for them.
 
 ## CMake options
 
-`make.py` sets these options for you, and projects that add the engine themselves set them directly.
+`haylen.py` sets these options for you, and projects that add the engine themselves set them directly.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
@@ -200,7 +200,7 @@ Dependencies are declared with [CPM.cmake](https://github.com/cpm-cmake/CPM.cmak
 | Package | Version | Notes |
 | --- | --- | --- |
 | nlohmann/json | 3.12.0 | Added first, so Varn reuses it. |
-| Varn | commit `0248f79` | Lua runtime, event loop, worker pools and the `async`, `http`, `socket`, `json`, `fs`, `zip`, `crypto` and other modules. `VARN_TARGET` is `cli` on desktop and Apple platforms, `android` on Android and `wasm` on the web. The `cli` target builds the static core that the engine links, and Varn picks the HTTP client driver of each platform itself: the Apple driver on iOS, tvOS and Mac Catalyst, the Android driver on Android and the fetch driver on the web. Lua, libuv, zlib, libzip, Poco and OpenSSL come in through Varn, each pinned with its hash. Varn builds OpenSSL with its own `make` as one step of the build, with the jobs that `CMAKE_BUILD_PARALLEL_LEVEL` names when the tree is configured and one job without it, and `make.py` leaves the variable out, so a build never runs more jobs than it was given. |
+| Varn | commit `0248f79` | Lua runtime, event loop, worker pools and the `async`, `http`, `socket`, `json`, `fs`, `zip`, `crypto` and other modules. `VARN_TARGET` is `cli` on desktop and Apple platforms, `android` on Android and `wasm` on the web. The `cli` target builds the static core that the engine links, and Varn picks the HTTP client driver of each platform itself: the Apple driver on iOS, tvOS and Mac Catalyst, the Android driver on Android and the fetch driver on the web. Lua, libuv, zlib, libzip, Poco and OpenSSL come in through Varn, each pinned with its hash. Varn builds OpenSSL with its own `make` as one step of the build, with the jobs that `CMAKE_BUILD_PARALLEL_LEVEL` names when the tree is configured and one job without it, and `haylen.py` leaves the variable out, so a build never runs more jobs than it was given. |
 | Sokol | commit `2e75443` | Headers only. The runtime compiles the implementation for the chosen backend, with the patches in `engine/cmake/patches` that the [distribution guide](distribution.md#notes-on-dependencies) describes. |
 | GameActivity | 4.4.2 | Android only, Apache 2.0. The AAR of `androidx.games:games-activity` from Google Maven, pinned by its hash, whose prefab folder holds the static library and the headers of the native side of GameActivity for every ABI, which the runtime links. |
 | stb | commit `2c980bb` | Headers only. |
@@ -246,7 +246,7 @@ haylen_add_app(<target> PACKAGE <folder> [SOURCES <files>...] [CPP] [APPLE_PROJE
 | `APPLE_PROJECT` | Folder with `mac/Info.plist.in`, `ios/Info.plist.in`, `ios/LaunchScreen.storyboard`, `tvos/Info.plist.in` and `tvos/LaunchScreen.storyboard`. Defaults to `engine/platform/apple`. |
 | `WEB_SHELL` | HTML shell of the web page. Defaults to `engine/platform/web/shell.html`. |
 
-The C++ sample `samples/cpp/embedding` is such a project, and `python3 make.py run-cpp cpp/embedding` builds and runs it:
+The C++ sample `samples/cpp/embedding` is such a project, and `python3 haylen.py run-cpp cpp/embedding` builds and runs it:
 
 ```cmake
 haylen_add_app(embedding CPP
@@ -262,11 +262,11 @@ How each platform carries the package, and where the runtime opens it:
 | Windows, Linux | The `SYNC_PACKAGE-<target>` target creates `bin/<target>/app` after every build and links its `app.json`, `source` and `content` to the package folder, with directory junctions and a hard link on Windows and symbolic links elsewhere. Edited files show up without a rebuild. | `app/` next to the executable, or `app.zip` next to it. |
 | macOS, iOS, tvOS | `app.json` and every file under `source/` and `content/` become bundle resources under `Resources/app/<subfolder>` through `MACOSX_PACKAGE_LOCATION`, except `.DS_Store`. The file list is globbed with `CONFIGURE_DEPENDS`, so new files are picked up by the next build. The app enters the runtime through `engine/src/platform/apple/AppleMain.cpp`, which calls `haylen_main`. | `Resources/app` of the bundle, or `Resources/app.zip`. |
 | Web | `--preload-file` options pack `app.json`, `source/` and `content/` into `<target>.data` under `/app`. | `/app` in the virtual file system, unless the page hands over another package. |
-| Android | `haylen_add_app` builds the shared library `bin/<target>/lib<target>.so` and writes the absolute path of the package folder to `bin/<target>/package.txt`. The Gradle project of the app packages both: `make.py run-cpp --platform android` prepares the [Android project](distribution.md#the-android-project) of the package, with the library in `haylen/jniLibs`, `HaylenActivity` loading it and the package under `haylen/assets/app` with `haylen-package-index.json`. | The `app/` folder of the APK assets. |
+| Android | `haylen_add_app` builds the shared library `bin/<target>/lib<target>.so` and writes the absolute path of the package folder to `bin/<target>/package.txt`. The Gradle project of the app packages both: `haylen.py run-cpp --platform android` prepares the [Android project](distribution.md#the-android-project) of the package, with the library in `haylen/jniLibs`, `HaylenActivity` loading it and the package under `haylen/assets/app` with `haylen-package-index.json`. | The `app/` folder of the APK assets. |
 
 Every runtime app, not only the player, runs the package named by the first command-line argument that is not an option instead of the bundled one, and `--dev` turns on the development mode described in the next section.
 
-To ship a Windows or Linux app, copy `app.json`, `source/` and `content/` into an `app` folder next to the executable, or zip them with `make.py package` and ship the zip as `app.zip`.
+To ship a Windows or Linux app, copy `app.json`, `source/` and `content/` into an `app` folder next to the executable, or zip them with `haylen.py package` and ship the zip as `app.zip`.
 
 Windows apps and the `haylen` player embed `engine/platform/windows/haylen.manifest`, the application manifest of the engine, which `haylen_add_app` adds to the sources of every Windows target. It selects version 6 of the Common Controls, where the task dialogs of [haylen.dialogs](lua-api/dialogs.md) live, and UTF-8 as the code page of the process, since the engine keeps every text and path in UTF-8. The SDK installs it with the other platform files. Linux apps load GIO for the theme and GTK 3 for the dialogs at run time where the system has them, so building needs neither.
 
@@ -279,13 +279,13 @@ build/macos-debug/bin/haylen/haylen --dev samples/games/tiny-island
 build/macos-debug/bin/haylen/haylen tiny-island.zip
 ```
 
-`--dev` turns on development mode, which `make.py run` passes. When the package is a folder, the player then watches its `app.json`, `source/` and `content/`: a changed texture updates in place, other changed assets leave the cache so the next load reads them again, and a changed file under `source/` or a changed `app.json` restarts the app, even from the error screen. Without `--dev` the player runs the package like a shipped app. A package that fails to load keeps the window open and shows the error. `make.py engine --platform desktop` copies the player to `build/artifacts/desktop/<os>-<arch>/`.
+`--dev` turns on development mode, which `haylen.py run` passes. When the package is a folder, the player then watches its `app.json`, `source/` and `content/`: a changed texture updates in place, other changed assets leave the cache so the next load reads them again, and a changed file under `source/` or a changed `app.json` restarts the app, even from the error screen. Without `--dev` the player runs the package like a shipped app. A package that fails to load keeps the window open and shows the error. `haylen.py engine --platform desktop` copies the player to `build/artifacts/desktop/<os>-<arch>/`.
 
 ## Web builds
 
-Web builds are single-threaded like Varn, so they need no `SharedArrayBuffer` and no cross-origin isolation, and `make.py serve` sends a COOP header only when `--coop` asks for one, since `same-origin` cuts the page off from the sign-in and payment popups of plugins, as the [distribution guide](distribution.md#serve) explains. Audio reaches the browser through an `AudioWorkletNode` that the page feeds over its message port, as the [audio guide](audio.md#sessions-and-interruptions) describes. Pages play sound only when they are served over https or from localhost, where browsers offer `AudioWorklet`, which `make.py serve`, `make.py run --platform web` and `make.py run-cpp --platform web` do on `127.0.0.1` by default. Apps run on any other page too, without sound, as the [audio guide](audio.md#without-an-audio-output) explains. The link options come from `haylen_link_runtime_platform`: memory growth, a 1 MB stack, IDBFS for user data, exception support because Varn compiles Lua as C++, the `emdawnwebgpu` port for WebGPU, and WebGL 2 only for the `web-webgl2` platform.
+Web builds are single-threaded like Varn, so they need no `SharedArrayBuffer` and no cross-origin isolation, and `haylen.py serve` sends a COOP header only when `--coop` asks for one, since `same-origin` cuts the page off from the sign-in and payment popups of plugins, as the [distribution guide](distribution.md#serve) explains. Audio reaches the browser through an `AudioWorkletNode` that the page feeds over its message port, as the [audio guide](audio.md#sessions-and-interruptions) describes. Pages play sound only when they are served over https or from localhost, where browsers offer `AudioWorklet`, which `haylen.py serve`, `haylen.py run --platform web` and `haylen.py run-cpp --platform web` do on `127.0.0.1` by default. Apps run on any other page too, without sound, as the [audio guide](audio.md#without-an-audio-output) explains. The link options come from `haylen_link_runtime_platform`: memory growth, a 1 MB stack, IDBFS for user data, exception support because Varn compiles Lua as C++, the `emdawnwebgpu` port for WebGPU, and WebGL 2 only for the `web-webgl2` platform.
 
-A single web target produces `<target>.html`, `<target>.js`, `<target>.wasm` and, for apps, `<target>.data` in `bin/<target>/`. A post-build step of `haylen_setup_web_page` also copies the target's shell, the `WEB_SHELL` of `haylen_add_app` or `engine/platform/web/shell.html` by default, next to them as `<target>.shell.html`, together with `haylen-logo.svg`, the engine logo that the default shell shows as the icon of the page, and `haylen-audio-worklet.js`, the AudioWorklet processor of the audio output, which the runtime loads from the folder of its script through `locateFile`. The prebuilt player of `make.py engine --platform web` is the `haylen` target of the `web` and `web-webgl2` trees, whose page is the [web template](distribution.md#web-loader). `make.py run-cpp --platform web` builds a C++ app target for both backends and writes this layout:
+A single web target produces `<target>.html`, `<target>.js`, `<target>.wasm` and, for apps, `<target>.data` in `bin/<target>/`. A post-build step of `haylen_setup_web_page` also copies the target's shell, the `WEB_SHELL` of `haylen_add_app` or `engine/platform/web/shell.html` by default, next to them as `<target>.shell.html`, together with `haylen-logo.svg`, the engine logo that the default shell shows as the icon of the page, and `haylen-audio-worklet.js`, the AudioWorklet processor of the audio output, which the runtime loads from the folder of its script through `locateFile`. The prebuilt player of `haylen.py engine --platform web` is the `haylen` target of the `web` and `web-webgl2` trees, whose page is the [web template](distribution.md#web-loader). `haylen.py run-cpp --platform web` builds a C++ app target for both backends and writes this layout:
 
 ```text
 build/cpp/embedding-<hash>/web/
@@ -357,26 +357,26 @@ async function play(files) {
 
 ## Android
 
-`python3 make.py build --platform android` builds the engine and the player library `libhaylen.so` for arm64-v8a with the NDK and Ninja in `build/android-<config>`, which is the quick way to compile the engine for Android. Apps come from the Android library module and the Android template:
+`python3 haylen.py build --platform android` builds the engine and the player library `libhaylen.so` for arm64-v8a with the NDK and Ninja in `build/android-<config>`, which is the quick way to compile the engine for Android. Apps come from the Android library module and the Android template:
 
-- `engine/platform/android` is the Gradle project of the Haylen Android libraries. Its module `haylen` is the `haylen` library (namespace `dev.haylen`), which holds `HaylenActivity`, a GameActivity, `HaylenBridge`, the plugin API, `HaylenRequirements`, `HaylenPluginProvider`, `HaylenLinkActivity`, the AppCompat splash themes and the R8 rules for the classes C++ calls by name. Its manifest declares only the OpenGL ES 3 requirement, with no permission and no component, and it packages the `libhaylen.so` of arm64-v8a, armeabi-v7a and x86_64 from `-PhaylenNativeLibraries`, which `make.py` builds with the engine CMake project. Its `copyVarnTransport` task copies Varn's `VarnHttp.kt` from `-PhaylenVarnSourceDir` into the module, because the engine links Varn into the player library and only the Kotlin HTTP transport of Varn's Android library runs in the app. The modules `haylen-plugins` and `haylen-links` hold only a manifest, which declares `HaylenPluginProvider` for plugin modules and the exported `HaylenLinkActivity` for plugins of links and notifications, and `haylen-coroutines` holds `HaylenCoroutines` with its dependency on `kotlinx-coroutines-android`. Each of them depends on `haylen` as an API. `make.py engine --platform android` passes the libraries, that folder and the Maven repository as `-PhaylenMavenDir`, and the root `build.gradle.kts` publishes every module there as `dev.haylen:<module>` at the engine version.
+- `engine/platform/android` is the Gradle project of the Haylen Android libraries. Its module `haylen` is the `haylen` library (namespace `dev.haylen`), which holds `HaylenActivity`, a GameActivity, `HaylenBridge`, the plugin API, `HaylenRequirements`, `HaylenPluginProvider`, `HaylenLinkActivity`, the AppCompat splash themes and the R8 rules for the classes C++ calls by name. Its manifest declares only the OpenGL ES 3 requirement, with no permission and no component, and it packages the `libhaylen.so` of arm64-v8a, armeabi-v7a and x86_64 from `-PhaylenNativeLibraries`, which `haylen.py` builds with the engine CMake project. Its `copyVarnTransport` task copies Varn's `VarnHttp.kt` from `-PhaylenVarnSourceDir` into the module, because the engine links Varn into the player library and only the Kotlin HTTP transport of Varn's Android library runs in the app. The modules `haylen-plugins` and `haylen-links` hold only a manifest, which declares `HaylenPluginProvider` for plugin modules and the exported `HaylenLinkActivity` for plugins of links and notifications, and `haylen-coroutines` holds `HaylenCoroutines` with its dependency on `kotlinx-coroutines-android`. Each of them depends on `haylen` as an API. `haylen.py engine --platform android` passes the libraries, that folder and the Maven repository as `-PhaylenMavenDir`, and the root `build.gradle.kts` publishes every module there as `dev.haylen:<module>` at the engine version.
 - The Java classes of GameActivity must match its native side in `libhaylen.so`, so the library depends on `androidx.games:games-activity` 4.4.2, strictly, the version that `engine/cmake/haylen-dependencies.cmake` pins, and on the AndroidX libraries that GameActivity leaves to apps, AppCompat 1.8.0, the activity library 1.13.0 and core 1.19.1, as APIs. A version change updates the pin, the library and the template together.
-- `templates/platform/android` is the Gradle project of an app, without C++, which depends on `dev.haylen:haylen` from that repository and gets GameActivity, AppCompat, the activity library and core from it. Its manifest declares the permissions `INTERNET`, `ACCESS_NETWORK_STATE` and `VIBRATE` of the network, the network events and vibration, which an app deletes when it does not use them, and `android:enableOnBackInvokedCallback`, which lets the back callback of `HaylenActivity` play the predictive back animation of the system. `make.py run --platform android` writes the package and the settings of an app into its folder `haylen/`, builds it where it is and installs it, as the [distribution guide](distribution.md#the-android-project) describes.
+- `templates/platform/android` is the Gradle project of an app, without C++, which depends on `dev.haylen:haylen` from that repository and gets GameActivity, AppCompat, the activity library and core from it. Its manifest declares the permissions `INTERNET`, `ACCESS_NETWORK_STATE` and `VIBRATE` of the network, the network events and vibration, which an app deletes when it does not use them, and `android:enableOnBackInvokedCallback`, which lets the back callback of `HaylenActivity` play the predictive back animation of the system. `haylen.py run --platform android` writes the package and the settings of an app into its folder `haylen/`, builds it where it is and installs it, as the [distribution guide](distribution.md#the-android-project) describes.
 
 Gradle finds the Android SDK through `ANDROID_HOME` or a `local.properties` file, as in any Android project. Release builds of apps are minified with R8 and signed with the debug key.
 
 ## iOS, tvOS and Mac Catalyst
 
-`python3 make.py configure --platform ios` or `--platform tvos` generates an Xcode project of the engine at `build/<platform>-<config>/haylen_workspace.xcodeproj`, and `make.py build` compiles it through `cmake --build`. Apps for iOS, iPadOS, Mac Catalyst, tvOS and macOS come from the XcodeGen project of the app, which starts from `templates/platform/apple` and links the prebuilt `Haylen.xcframework` through the target templates of its generated folder, as the [distribution guide](distribution.md#the-apple-project) describes.
+`python3 haylen.py configure --platform ios` or `--platform tvos` generates an Xcode project of the engine at `build/<platform>-<config>/haylen_workspace.xcodeproj`, and `haylen.py build` compiles it through `cmake --build`. Apps for iOS, iPadOS, Mac Catalyst, tvOS and macOS come from the XcodeGen project of the app, which starts from `templates/platform/apple` and links the prebuilt `Haylen.xcframework` through the target templates of its generated folder, as the [distribution guide](distribution.md#the-apple-project) describes.
 
 C++ apps built with `haylen_add_app` target iOS 16.3 on iPhone and iPad and tvOS 16.3, with automatic code signing, because the engine needs the C++ library of those releases, and macOS apps macOS 14.0, the first release with the display link of `NSView` that `sokol_app` draws with. The bundle name, identifier and version come from `name`, `identifier` and `version` in the `app.json` of the package. The templates in `engine/platform/apple` hold the `Info.plist` files, the launch screens and the privacy manifest of the engine, which every bundle carries among its resources. The iOS template lists the supported orientations through `@HAYLEN_ORIENTATIONS@` and `@HAYLEN_ORIENTATIONS_IPAD@`, which `haylen_add_app` fills from `orientation` in `app.json`: `landscape` allows both landscape sides, `portrait` allows portrait (and upside down on iPad) and `any` allows all of them. The macOS template ends its dictionary with `@HAYLEN_UI_ELEMENT@`, which `haylen_add_app` fills with `LSUIElement` when `window.showInTaskbar` is `false` in `app.json`, so the app never shows a Dock icon. Pass `APPLE_PROJECT` to `haylen_add_app` to use templates of your own with the same layout and placeholders. macOS apps use the same mechanism with `engine/platform/apple/mac/Info.plist.in`.
 
 ## Tiny Island assets and map
 
-The Tiny Swords art by Pixel Frog is free to use in games but not to redistribute, so the repository ignores `samples/games/tiny-island/content/tiny_swords/` and `make.py` imports it from the original zip:
+The Tiny Swords art by Pixel Frog is free to use in games but not to redistribute, so the repository ignores `samples/games/tiny-island/content/tiny_swords/` and `haylen.py` imports it from the original zip:
 
 ```sh
-python3 make.py assets ~/Downloads/"Tiny Swords (Free Pack).zip"
+python3 haylen.py assets ~/Downloads/"Tiny Swords (Free Pack).zip"
 ```
 
 `assets` runs `tools/import_tiny_swords.py` with `samples/games/tiny-island/content/tiny_swords` as the destination, which it deletes first. The importer:
@@ -386,10 +386,10 @@ python3 make.py assets ~/Downloads/"Tiny Swords (Free Pack).zip"
 - writes light gray copies of the bar fills as `ui/sliced/big_bar_fill_light.png` and `ui/sliced/small_bar_fill_light.png`, so a UI theme can tint every bar.
 
 ```sh
-python3 make.py map
+python3 haylen.py map
 ```
 
-`map` runs `tools/generate_island_map.py --package samples/games/tiny-island`, which needs the imported art. It writes `content/maps/island.tmj` with the tilesets `terrain.tsj`, `foam.tsj`, `shadow.tsj` and `decorations.tsj`, all as Tiled JSON that opens and edits in Tiled. The island shape comes from seeded noise, so the same seed always gives the same map. `make.py map` uses the default seed, and the tool takes `--seed` when run directly:
+`map` runs `tools/generate_island_map.py --package samples/games/tiny-island`, which needs the imported art. It writes `content/maps/island.tmj` with the tilesets `terrain.tsj`, `foam.tsj`, `shadow.tsj` and `decorations.tsj`, all as Tiled JSON that opens and edits in Tiled. The island shape comes from seeded noise, so the same seed always gives the same map. `haylen.py map` uses the default seed, and the tool takes `--seed` when run directly:
 
 ```sh
 python3 tools/generate_island_map.py --package samples/games/tiny-island --seed 7
@@ -403,11 +403,11 @@ The [Tiled guide](tiled.md) describes the layers and objects the game reads.
 
 | Job | Runs |
 | --- | --- |
-| `format` | `make.py format --check` with clang-format 23.1.1. |
-| `desktop` | `make.py test --config Debug` and `make.py embedding --mode package --config Release` on macOS, Ubuntu and Windows. |
-| `coverage` | `make.py coverage` on macOS, with the HTML report as an artifact. |
-| `web` | `make.py engine --platform web`, with the prebuilt WebGPU and WebGL2 player as an artifact. |
-| `android` | `make.py engine --platform android`, with the Maven repository of the Android libraries as an artifact. |
-| `apple` | `make.py engine --platform apple` on macOS, with `Haylen.xcframework` as an artifact. |
+| `format` | `haylen.py format --check` with clang-format 23.1.1. |
+| `desktop` | `haylen.py test --config Debug` and `haylen.py embedding --mode package --config Release` on macOS, Ubuntu and Windows. |
+| `coverage` | `haylen.py coverage` on macOS, with the HTML report as an artifact. |
+| `web` | `haylen.py engine --platform web`, with the prebuilt WebGPU and WebGL2 player as an artifact. |
+| `android` | `haylen.py engine --platform android`, with the Maven repository of the Android libraries as an artifact. |
+| `apple` | `haylen.py engine --platform apple` on macOS, with `Haylen.xcframework` as an artifact. |
 
 The jobs cache `.cache/cpm`, keyed by the hash of `engine/cmake/haylen-dependencies.cmake`, and the web job also caches `.tools/emsdk`.

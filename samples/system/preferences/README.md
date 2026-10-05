@@ -15,12 +15,12 @@ The file `source/settings.lua` holds the defaults. At startup it loads the defau
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `python3 make.py run samples/system/preferences` |
-| macOS app | `python3 make.py run samples/system/preferences --platform macos` |
-| iPhone and iPad simulator | `python3 make.py run samples/system/preferences --platform ios-simulator` |
-| Apple TV simulator | `python3 make.py run samples/system/preferences --platform tvos-simulator` |
-| Android device or emulator | `python3 make.py run samples/system/preferences --platform android --device <serial>` |
-| Browser | `python3 make.py run samples/system/preferences --platform web` |
+| Desktop player with hot reload | `python3 haylen.py run samples/system/preferences` |
+| macOS app | `python3 haylen.py run samples/system/preferences --platform macos` |
+| iPhone and iPad simulator | `python3 haylen.py run samples/system/preferences --platform ios-simulator` |
+| Apple TV simulator | `python3 haylen.py run samples/system/preferences --platform tvos-simulator` |
+| Android device or emulator | `python3 haylen.py run samples/system/preferences --platform android --device <serial>` |
+| Browser | `python3 haylen.py run samples/system/preferences --platform web` |
 
 To see the settings persist, change them, close the app and run it again. The preferences live in `preferences.json` in the user folder of `dev.haylen.samples.preferences`, which the browser keeps in IndexedDB. The fullscreen setting shows on desktop and in the browser only, since phones and TVs are always fullscreen.
 

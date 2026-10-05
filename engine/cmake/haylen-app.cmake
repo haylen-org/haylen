@@ -2,9 +2,9 @@
 # Desktop builds link those entries into an "app" folder next to the executable, so edited files show up without a rebuild.
 # Apple bundles carry them under Resources/app.
 # Web builds preload them at /app in the virtual file system.
-# Android apps take them into the APK assets of their Gradle project, which make.py assembles from the Android template, so the build records the package folder next to the library.
+# Android apps take them into the APK assets of their Gradle project, which haylen.py assembles from the Android template, so the build records the package folder next to the library.
 
-# The system frameworks that the engine needs on each Apple platform. The runtime links them, and the Apple artifacts publish them in haylen-frameworks.json, from which make.py links them into the projects of Lua apps.
+# The system frameworks that the engine needs on each Apple platform. The runtime links them, and the Apple artifacts publish them in haylen-frameworks.json, from which haylen.py links them into the projects of Lua apps.
 # Mac Catalyst reads the battery of the Mac from the power sources of IOKit.
 set(HAYLEN_APPLE_FRAMEWORKS_MACOS Cocoa CoreGraphics QuartzCore Metal MetalKit GameController AudioToolbox CoreAudio Network CoreVideo IOKit UniformTypeIdentifiers)
 set(HAYLEN_APPLE_FRAMEWORKS_IOS Foundation UIKit CoreGraphics QuartzCore Metal MetalKit GameController AVFoundation AudioToolbox CoreAudio Network CoreVideo UniformTypeIdentifiers)
@@ -91,7 +91,7 @@ function(haylen_setup_web_page target shell)
   target_link_options(${target} PRIVATE "--shell-file=${shell}")
   set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${shell}" "${HAYLEN_ENGINE_DIR}/platform/web/haylen-runtime.js" "${HAYLEN_ENGINE_DIR}/platform/web/haylen-audio-worklet.js")
 
-  # The WebGPU and WebGL2 bundle of make.py run-cpp builds its page from the same shell, so the shell travels with the build output, next to the engine logo that the default shell shows as its icon.
+  # The WebGPU and WebGL2 bundle of haylen.py run-cpp builds its page from the same shell, so the shell travels with the build output, next to the engine logo that the default shell shows as its icon.
   # The runtime loads the processor of its audio output from next to its script, so the processor travels with the build output too.
   add_custom_command(TARGET ${target} POST_BUILD
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${shell}" "$<TARGET_FILE_DIR:${target}>/${target}.shell.html"

@@ -35,12 +35,12 @@ Every setting of a test is a control in the panel on the right, which the mouse,
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `python3 make.py run samples/graphics/camera` |
-| macOS app | `python3 make.py run samples/graphics/camera --platform macos` |
-| iPhone and iPad simulator | `python3 make.py run samples/graphics/camera --platform ios-simulator` |
-| Apple TV simulator | `python3 make.py run samples/graphics/camera --platform tvos-simulator` |
-| Android device or emulator | `python3 make.py run samples/graphics/camera --platform android` |
-| Browser | `python3 make.py run samples/graphics/camera --platform web` |
+| Desktop player with hot reload | `python3 haylen.py run samples/graphics/camera` |
+| macOS app | `python3 haylen.py run samples/graphics/camera --platform macos` |
+| iPhone and iPad simulator | `python3 haylen.py run samples/graphics/camera --platform ios-simulator` |
+| Apple TV simulator | `python3 haylen.py run samples/graphics/camera --platform tvos-simulator` |
+| Android device or emulator | `python3 haylen.py run samples/graphics/camera --platform android` |
+| Browser | `python3 haylen.py run samples/graphics/camera --platform web` |
 
 ## Package layout
 

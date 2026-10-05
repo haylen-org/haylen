@@ -33,7 +33,7 @@ Loads a library and returns the namespace of Varn's `ffi` whose fields are the f
 
 A name is looked up in this order, and the first file that loads wins:
 
-1. The folders that the `--native` option of the player adds, which `make.py run` passes during development.
+1. The folders that the `--native` option of the player adds, which `haylen.py run` passes during development.
 2. The folders of the platform: `Contents/Frameworks` of the app bundle and then the folder of the executable on macOS and Mac Catalyst, `Frameworks` of the app bundle on iOS and tvOS, the folder of the executable on Windows, the folder of the executable and its `lib` folder on Linux, and the libraries of the APK, which the dynamic linker finds by name, on Android.
 3. The libraries linked into the app, which register their symbols, as iOS and tvOS apps do with static libraries. The function `native.load` returns `ffi.C` for them, because their symbols are part of the app, and `ffi.C` finds the registered symbols by name without the app exporting them.
 

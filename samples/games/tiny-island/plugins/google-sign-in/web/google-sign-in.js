@@ -1,4 +1,4 @@
-// Native part of the Google sign-in of Tiny Island on the web. It answers `google-sign-in.signIn` with Google Identity Services, which it loads when the player first signs in, and needs a server that allows the Google script, such as `make.py run --platform web --coep off`.
+// Native part of the Google sign-in of Tiny Island on the web. It answers `google-sign-in.signIn` with Google Identity Services, which it loads when the player first signs in, and needs a server that allows the Google script, such as `haylen.py run --platform web --coep off`.
 export default function load(context) {
     let library;
     const loadLibrary = () => {

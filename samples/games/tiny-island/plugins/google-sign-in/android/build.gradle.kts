@@ -1,4 +1,4 @@
-// Android library module of the Google sign-in of Tiny Island. The script `make.py` copies it into `haylen/plugins/google-sign-in` of the Android project of the game, which depends on it. The `haylen-plugins` library brings the plugin API of the `haylen` library and the provider that loads the plugin, and Credential Manager the sign-in.
+// Android library module of the Google sign-in of Tiny Island. The script `haylen.py` copies it into `haylen/plugins/google-sign-in` of the Android project of the game, which depends on it. The `haylen-plugins` library brings the plugin API of the `haylen` library and the provider that loads the plugin, and Credential Manager the sign-in.
 plugins {
     id("com.android.library")
 }

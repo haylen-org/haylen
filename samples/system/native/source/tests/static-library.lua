@@ -1,4 +1,4 @@
--- Static library: iOS and tvOS apps link `native_test_static` into the app, and `make.py` writes a table of its symbols that `native.load` and `native.findSymbol` find, while Varn `ffi` calls it through `ffi.C`. The other platforms load dynamic libraries only, and the browser none.
+-- Static library: iOS and tvOS apps link `native_test_static` into the app, and `haylen.py` writes a table of its symbols that `native.load` and `native.findSymbol` find, while Varn `ffi` calls it through `ffi.C`. The other platforms load dynamic libraries only, and the browser none.
 local ffi = require('ffi')
 local haylen = require('haylen')
 local native = require('haylen.native')

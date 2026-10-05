@@ -28,12 +28,12 @@ The light or the cursor of a test follows the mouse and the first finger, and WA
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `python3 make.py run samples/graphics/lighting` |
-| macOS app | `python3 make.py run samples/graphics/lighting --platform macos` |
-| iPhone and iPad simulator | `python3 make.py run samples/graphics/lighting --platform ios-simulator` |
-| Apple TV simulator | `python3 make.py run samples/graphics/lighting --platform tvos-simulator` |
-| Android device or emulator | `python3 make.py run samples/graphics/lighting --platform android` |
-| Browser | `python3 make.py run samples/graphics/lighting --platform web` |
+| Desktop player with hot reload | `python3 haylen.py run samples/graphics/lighting` |
+| macOS app | `python3 haylen.py run samples/graphics/lighting --platform macos` |
+| iPhone and iPad simulator | `python3 haylen.py run samples/graphics/lighting --platform ios-simulator` |
+| Apple TV simulator | `python3 haylen.py run samples/graphics/lighting --platform tvos-simulator` |
+| Android device or emulator | `python3 haylen.py run samples/graphics/lighting --platform android` |
+| Browser | `python3 haylen.py run samples/graphics/lighting --platform web` |
 
 ## Package layout
 

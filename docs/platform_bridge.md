@@ -166,7 +166,7 @@ The runtime calls the handler after the frame that made the call, with the parse
 
 The web build is single-threaded, so handlers run on the browser's main thread between frames. An asynchronous handler, such as one that waits for `fetch` or for a sign-in popup, never blocks the app while it waits.
 
-`register` exists once the runtime script has run, so a page registers its handlers in `Module.preRun`. The web template runs the `app.js` of an app for that, and plugins register theirs with `context.register` of their web module, such as `google-sign-in.signIn` of the local plugin of Tiny Island. It loads Google Identity Services only when the player first signs in, reads the client id from the parameters of the plugin, and resolves with `idToken`, `email`, `name` and `picture` decoded from the returned credential. The Google script needs `make.py run --platform web --coep off`, as the [distribution guide](distribution.md#serve) explains.
+`register` exists once the runtime script has run, so a page registers its handlers in `Module.preRun`. The web template runs the `app.js` of an app for that, and plugins register theirs with `context.register` of their web module, such as `google-sign-in.signIn` of the local plugin of Tiny Island. It loads Google Identity Services only when the player first signs in, reads the client id from the parameters of the plugin, and resolves with `idToken`, `email`, `name` and `picture` decoded from the returned credential. The Google script needs `haylen.py run --platform web --coep off`, as the [distribution guide](distribution.md#serve) explains.
 
 ## Desktop
 

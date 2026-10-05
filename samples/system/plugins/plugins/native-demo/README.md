@@ -5,7 +5,7 @@ A Haylen plugin that exercises every capability of native plugins with the APIs 
 ## Installation
 
 ```sh
-python3 make.py plugin add samples/system/plugins/plugins/native-demo --app my-game
+python3 haylen.py plugin add samples/system/plugins/plugins/native-demo --app my-game
 ```
 
 `plugin add` copies the plugin into `plugins/native-demo/` of the app and lists it in the `plugins` section of its `app.json` with the defaults of its parameters:

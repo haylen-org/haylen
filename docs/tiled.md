@@ -176,7 +176,7 @@ The map is orthogonal, 56 by 36 cells of 64 pixels, with the water color `#47aba
 | `collision` | Object | Rectangles that block movement, in a hidden layer of class `collision`. |
 | `clouds` | Object | Cloud tile objects of class `cloud`, with opacity 0.55 and parallax 1.25. |
 
-The tilesets follow the Tiny Swords art that `python3 make.py assets` imports.
+The tilesets follow the Tiny Swords art that `python3 haylen.py assets` imports.
 
 - The file `terrain.tsj` is an image tileset of 64-pixel tiles with two edge Wang sets, `Grass` and `High ground`, so the island can be repainted by hand with the Tiled terrain brush.
 - The files `foam.tsj` and `shadow.tsj` hold 192-pixel tiles with a tile offset of `(-64, 64)`, which centers each large tile on its 64-pixel cell. The foam tile animates through 16 frames.
@@ -218,16 +218,16 @@ end
 ### Regenerating the map
 
 ```sh
-python3 make.py map
+python3 haylen.py map
 ```
 
-The command `make.py map` runs `tools/generate_island_map.py --package samples/games/tiny-island` with the default seed `20260927` and rewrites `island.tmj`, `terrain.tsj`, `foam.tsj`, `shadow.tsj` and `decorations.tsj` in the sample's `content/maps` folder. The tileset images come from the imported Tiny Swords pack, so run `python3 make.py assets <path to the Tiny Swords zip>` first, and the generator stops with a message when the art is missing. The same seed always gives the same island. Another island comes from calling the tool with a seed of its own:
+The command `haylen.py map` runs `tools/generate_island_map.py --package samples/games/tiny-island` with the default seed `20260927` and rewrites `island.tmj`, `terrain.tsj`, `foam.tsj`, `shadow.tsj` and `decorations.tsj` in the sample's `content/maps` folder. The tileset images come from the imported Tiny Swords pack, so run `python3 haylen.py assets <path to the Tiny Swords zip>` first, and the generator stops with a message when the art is missing. The same seed always gives the same island. Another island comes from calling the tool with a seed of its own:
 
 ```sh
 python3 tools/generate_island_map.py --package samples/games/tiny-island --seed 7
 ```
 
-Regenerating overwrites the five files, including any edit made to them in Tiled. The game reads whatever `island.tmj` holds, so a hand-edited island works as long as it keeps the layer names and object classes above. See [Build](build.md) for the other `make.py` commands.
+Regenerating overwrites the five files, including any edit made to them in Tiled. The game reads whatever `island.tmj` holds, so a hand-edited island works as long as it keeps the layer names and object classes above. See [Build](build.md) for the other `haylen.py` commands.
 
 ## From C++
 

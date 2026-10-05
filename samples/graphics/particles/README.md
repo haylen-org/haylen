@@ -31,12 +31,12 @@ Emitters that follow the cursor follow the mouse and the first finger, and WASD 
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `python3 make.py run samples/graphics/particles` |
-| macOS app | `python3 make.py run samples/graphics/particles --platform macos` |
-| iPhone and iPad simulator | `python3 make.py run samples/graphics/particles --platform ios-simulator` |
-| Apple TV simulator | `python3 make.py run samples/graphics/particles --platform tvos-simulator` |
-| Android device or emulator | `python3 make.py run samples/graphics/particles --platform android` |
-| Browser | `python3 make.py run samples/graphics/particles --platform web` |
+| Desktop player with hot reload | `python3 haylen.py run samples/graphics/particles` |
+| macOS app | `python3 haylen.py run samples/graphics/particles --platform macos` |
+| iPhone and iPad simulator | `python3 haylen.py run samples/graphics/particles --platform ios-simulator` |
+| Apple TV simulator | `python3 haylen.py run samples/graphics/particles --platform tvos-simulator` |
+| Android device or emulator | `python3 haylen.py run samples/graphics/particles --platform android` |
+| Browser | `python3 haylen.py run samples/graphics/particles --platform web` |
 
 ## Package layout
 

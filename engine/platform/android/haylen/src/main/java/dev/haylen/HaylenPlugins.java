@@ -187,7 +187,7 @@ final class HaylenPlugins {
         }
     }
 
-    // The plugins keep the order of `app.json`, every plugin after the plugins it requires, as `make.py` orders them, and plugins that `app.json` does not list follow by id.
+    // The plugins keep the order of `app.json`, every plugin after the plugins it requires, as `haylen.py` orders them, and plugins that `app.json` does not list follow by id.
     private static List<String> order(Set<String> ids, JSONObject values, Map<String, JSONObject> manifests) {
         Set<String> ordered = new LinkedHashSet<>();
         if (values != null) {

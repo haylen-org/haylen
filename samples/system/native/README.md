@@ -21,19 +21,19 @@ plugins/native-sample/       The platform handlers: the Kotlin plugin class and 
 plugins/native-test/         The web module that answers the functions and handlers of the test library in the browser, where they are native-test.<name> instead of native_test.<name>.
 ```
 
-The sample keeps no platform project, so `make.py run` builds a copy of the template of each platform that it keeps in the build folder of the app, as the [distribution guide](../../../docs/distribution.md#platform-projects) describes. The desktop player, `python3 make.py run system/native` without a platform, builds the library for this machine and passes its folder to the player with `--native`. It runs no native part of the plugins, so the platform handlers test reports that it does not apply there.
+The sample keeps no platform project, so `haylen.py run` builds a copy of the template of each platform that it keeps in the build folder of the app, as the [distribution guide](../../../docs/distribution.md#platform-projects) describes. The desktop player, `python3 haylen.py run system/native` without a platform, builds the library for this machine and passes its folder to the player with `--native`. It runs no native part of the plugins, so the platform handlers test reports that it does not apply there.
 
 ## Running it
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `python3 make.py run system/native` |
-| macOS app | `python3 make.py run system/native --platform macos` |
-| iPhone and iPad simulator | `python3 make.py run system/native --platform ios-simulator` |
-| Apple TV simulator | `python3 make.py run system/native --platform tvos-simulator` |
-| Android device or emulator | `python3 make.py run system/native --platform android --device <serial>` |
-| Windows and Linux | `python3 make.py run system/native --platform windows` or `--platform linux` on that host |
-| Browser | `python3 make.py run system/native --platform web` |
+| Desktop player with hot reload | `python3 haylen.py run system/native` |
+| macOS app | `python3 haylen.py run system/native --platform macos` |
+| iPhone and iPad simulator | `python3 haylen.py run system/native --platform ios-simulator` |
+| Apple TV simulator | `python3 haylen.py run system/native --platform tvos-simulator` |
+| Android device or emulator | `python3 haylen.py run system/native --platform android --device <serial>` |
+| Windows and Linux | `python3 haylen.py run system/native --platform windows` or `--platform linux` on that host |
+| Browser | `python3 haylen.py run system/native --platform web` |
 
 ## Controls
 

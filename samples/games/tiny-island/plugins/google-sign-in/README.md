@@ -1,6 +1,6 @@
 # Google Sign-In
 
-The local plugin of [Tiny Island](../../README.md) that signs the player in with a Google account: Credential Manager answers on Android and Google Identity Services in the browser. The game lists it in its `app.json` and calls it from its settings screen, and `make.py` builds it into the project of each platform as the [plugin guide](../../../../../docs/plugins.md) describes.
+The local plugin of [Tiny Island](../../README.md) that signs the player in with a Google account: Credential Manager answers on Android and Google Identity Services in the browser. The game lists it in its `app.json` and calls it from its settings screen, and `haylen.py` builds it into the project of each platform as the [plugin guide](../../../../../docs/plugins.md) describes.
 
 ## Setup
 

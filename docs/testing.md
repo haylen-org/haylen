@@ -134,7 +134,7 @@ To add a test for a new binding:
 ## Running the tests
 
 ```sh
-python3 make.py test
+python3 haylen.py test
 ```
 
 The command configures `build/<host>-<config>` when needed, builds `haylen_tests` and runs CTest with `--output-on-failure` in parallel. It accepts `--config` (`Debug` by default), `--jobs` and `--sanitizers`.
@@ -142,8 +142,8 @@ The command configures `build/<host>-<config>` when needed, builds `haylen_tests
 ## Sanitizers
 
 ```sh
-python3 make.py test --sanitizers address
-python3 make.py test --sanitizers thread
+python3 haylen.py test --sanitizers address
+python3 haylen.py test --sanitizers thread
 ```
 
 The option `--sanitizers` builds the tests with sanitizers in a tree of its own, `build/<host>-<config>-address` or `build/<host>-<config>-thread`, so switching never rebuilds the plain tree. It sets `HAYLEN_SANITIZERS`, which MSVC builds ignore.
@@ -165,7 +165,7 @@ build/macos-debug/bin/haylen_tests --gtest_filter='SpatialLuaTest.*'
 ## Coverage
 
 ```sh
-python3 make.py coverage
+python3 haylen.py coverage
 ```
 
 Coverage uses LLVM source-based coverage and needs Clang. The command configures `build/coverage` with `HAYLEN_ENABLE_COVERAGE=ON` and without the samples and the player, builds `haylen_tests` and runs every test, which writes one profile per process into `build/coverage/coverage/`. Then it merges the profiles with `llvm-profdata`, prints the `llvm-cov` report and writes an HTML report to `build/coverage/coverage/html/index.html`. The report leaves out dependencies, the tests themselves, generated files and the platform backends in `engine/src/platform/` that need a platform SDK (`apple`, `android`, `web`, `windows`, `linux` and `sokol`). On macOS the LLVM tools come from `xcrun`, and elsewhere they must be on `PATH`. Engine coverage stays as close to 100 percent as the code allows.
@@ -173,19 +173,19 @@ Coverage uses LLVM source-based coverage and needs Clang. The command configures
 ## Formatting
 
 ```sh
-python3 make.py format
-python3 make.py format --check
+python3 haylen.py format
+python3 haylen.py format --check
 ```
 
 The command `format` applies `.clang-format` to every `.h`, `.hpp`, `.c`, `.cpp`, `.m` and `.mm` file under `engine/include`, `engine/src`, `engine/tests`, `samples` and `templates`, and then lists the multi-line lambdas that are not between `// clang-format off` and `// clang-format on`. The option `--check` changes nothing and fails when a file is not formatted or a lambda is missing its markers. The command `clang-format` must be on `PATH`, and CI installs version 23.1.1 with `pip install clang-format==23.1.1`.
 
-## The rules of make.py
+## The rules of haylen.py
 
 ```sh
 python3 -m unittest discover -s tools -p "test_*.py"
 ```
 
-The module `tools/test_make.py` tests the rules of `make.py` that need no build with the `unittest` module of Python: how it merges the `Info.plist` keys, the entitlements and the privacy manifests of the developer, the plugins and `app.json`, how `check` decides that a built app holds what a plugin needs, how it escapes the values of `haylen.properties`, and when `run` generates `App.xcodeproj` again, keeps it or compares it with a trial generation.
+The module `tools/test_haylen.py` tests the rules of `haylen.py` that need no build with the `unittest` module of Python: how it merges the `Info.plist` keys, the entitlements and the privacy manifests of the developer, the plugins and `app.json`, how `check` decides that a built app holds what a plugin needs, how it escapes the values of `haylen.properties`, and when `run` generates `App.xcodeproj` again, keeps it or compares it with a trial generation.
 
 ## Continuous integration
 
@@ -193,11 +193,11 @@ The workflow `.github/workflows/ci.yml` runs on every push and pull request, and
 
 | Job | Runner | What it does |
 | --- | --- | --- |
-| `format` | Ubuntu | Installs clang-format 23.1.1, runs `python make.py format --check` and the tests of the rules of `make.py`. |
-| `desktop` | macOS, Ubuntu and Windows | Installs Ninja with the X11 and OpenGL development packages on Linux, and Ninja with the MSVC environment on Windows. Runs `python make.py test --config Debug`, then `python make.py embedding --mode package --config Release`, which builds the SDK and an app that finds it with `find_package`. |
-| `coverage` | macOS | Runs `python make.py coverage` and uploads the HTML report as the `coverage` artifact. |
-| `web` | Ubuntu | Caches the Emscripten SDK in `.tools/emsdk`, runs `python make.py engine --platform web` and uploads the prebuilt WebGPU and WebGL2 player as the `haylen-web` artifact. |
-| `android` | Ubuntu | Installs Java 17, NDK 30.0.16248370, CMake 4.1.2 and the Android 37 platform, runs `python make.py engine --platform android` and uploads the Maven repository of the Android libraries as the `haylen-android` artifact. |
-| `apple` | macOS | Installs Ninja, runs `python make.py engine --platform apple` and uploads `Haylen.xcframework` as the `haylen-apple` artifact. |
+| `format` | Ubuntu | Installs clang-format 23.1.1, runs `python haylen.py format --check` and the tests of the rules of `haylen.py`. |
+| `desktop` | macOS, Ubuntu and Windows | Installs Ninja with the X11 and OpenGL development packages on Linux, and Ninja with the MSVC environment on Windows. Runs `python haylen.py test --config Debug`, then `python haylen.py embedding --mode package --config Release`, which builds the SDK and an app that finds it with `find_package`. |
+| `coverage` | macOS | Runs `python haylen.py coverage` and uploads the HTML report as the `coverage` artifact. |
+| `web` | Ubuntu | Caches the Emscripten SDK in `.tools/emsdk`, runs `python haylen.py engine --platform web` and uploads the prebuilt WebGPU and WebGL2 player as the `haylen-web` artifact. |
+| `android` | Ubuntu | Installs Java 17, NDK 30.0.16248370, CMake 4.1.2 and the Android 37 platform, runs `python haylen.py engine --platform android` and uploads the Maven repository of the Android libraries as the `haylen-android` artifact. |
+| `apple` | macOS | Installs Ninja, runs `python haylen.py engine --platform apple` and uploads `Haylen.xcframework` as the `haylen-apple` artifact. |
 
 The engine tests run only in the `desktop` job, and the web, Android and Apple jobs check that the engine artifacts of those platforms build. The [build guide](build.md) explains the platform builds, and the [embedding guide](embedding.md) explains the SDK.

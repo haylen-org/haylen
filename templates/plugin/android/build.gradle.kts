@@ -1,4 +1,4 @@
-// Android library module of the {{TITLE}} plugin. The script `make.py` copies it into `haylen/plugins/{{ID}}` of the Android project of an app, which depends on it. The `haylen-plugins` library brings the plugin API of the `haylen` library and the provider that loads the plugin when the app process starts.
+// Android library module of the {{TITLE}} plugin. The script `haylen.py` copies it into `haylen/plugins/{{ID}}` of the Android project of an app, which depends on it. The `haylen-plugins` library brings the plugin API of the `haylen` library and the provider that loads the plugin when the app process starts.
 plugins {
     id("com.android.library")
 }

@@ -231,7 +231,7 @@ Each app finds its package in a platform-specific place.
 | Web | The zip file that the page of the web template hands over at runtime, a zip file the page names by URL, or `/app` in the virtual file system for C++ apps that preload it at build time. |
 | Android | `app/` inside the APK assets, with `haylen-package-index.json` listing its files because Android cannot list asset folders recursively. |
 
-The [distribution guide](distribution.md) explains how `make.py` puts the package into the platform templates, and the [build guide](build.md) how `haylen_add_app` deploys it for C++ apps.
+The [distribution guide](distribution.md) explains how `haylen.py` puts the package into the platform templates, and the [build guide](build.md) how `haylen_add_app` deploys it for C++ apps.
 
 ## The web runtime
 
@@ -260,4 +260,4 @@ Hot reload works in two ways. On desktop, a folder package passed to the player 
 
 A script error never stops the runtime. The engine shows the error screen, the page and the web modules of plugins receive the error with the message, the script position and the stack, and the runtime waits for the next `run`, `restart` or `loadZip`. On other platforms the report of the error goes to the log and, through `Host::reportError`, to the platform services.
 
-The runtime draws into `Module.canvas`, which must be a canvas element with an id, and follows its size with a `ResizeObserver`. It plays audio through an `AudioWorkletNode` whose processor, `haylen-audio-worklet.js`, it loads from the folder of its script, and the engine mixes the blocks the processor plays on the page thread, as the [audio guide](audio.md#sessions-and-interruptions) describes. User data lives under `/persistent`, a file system kept in IndexedDB. `python3 make.py engine --platform web` builds the player for WebGPU and for WebGL2, and the page of the web template picks WebGPU when the browser offers an adapter, while `?backend=webgpu` or `?backend=webgl2` forces one of them. The [distribution guide](distribution.md#web-loader) covers the page and the [build guide](build.md#web-builds) the web builds.
+The runtime draws into `Module.canvas`, which must be a canvas element with an id, and follows its size with a `ResizeObserver`. It plays audio through an `AudioWorkletNode` whose processor, `haylen-audio-worklet.js`, it loads from the folder of its script, and the engine mixes the blocks the processor plays on the page thread, as the [audio guide](audio.md#sessions-and-interruptions) describes. User data lives under `/persistent`, a file system kept in IndexedDB. `python3 haylen.py engine --platform web` builds the player for WebGPU and for WebGL2, and the page of the web template picks WebGPU when the browser offers an adapter, while `?backend=webgpu` or `?backend=webgl2` forces one of them. The [distribution guide](distribution.md#web-loader) covers the page and the [build guide](build.md#web-builds) the web builds.

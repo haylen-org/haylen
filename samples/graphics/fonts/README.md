@@ -25,12 +25,12 @@ The mouse, touch, the keyboard, gamepads and TV remotes reach the controls in th
 
 | Where | Command |
 | --- | --- |
-| Desktop player with hot reload | `python3 make.py run graphics/fonts` |
-| macOS app | `python3 make.py run graphics/fonts --platform macos` |
-| iPhone and iPad simulator | `python3 make.py run graphics/fonts --platform ios-simulator` |
-| Apple TV simulator | `python3 make.py run graphics/fonts --platform tvos-simulator` |
-| Android device or emulator | `python3 make.py run graphics/fonts --platform android` |
-| Browser | `python3 make.py run graphics/fonts --platform web` |
+| Desktop player with hot reload | `python3 haylen.py run graphics/fonts` |
+| macOS app | `python3 haylen.py run graphics/fonts --platform macos` |
+| iPhone and iPad simulator | `python3 haylen.py run graphics/fonts --platform ios-simulator` |
+| Apple TV simulator | `python3 haylen.py run graphics/fonts --platform tvos-simulator` |
+| Android device or emulator | `python3 haylen.py run graphics/fonts --platform android` |
+| Browser | `python3 haylen.py run graphics/fonts --platform web` |
 
 ## Package layout
 

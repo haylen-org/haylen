@@ -14,7 +14,7 @@ When the engine is not the top-level project, its player, tests and benchmarks a
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `HAYLEN_SOKOL_SHDC` | Empty | Path to the `sokol-shdc` executable that compiles the engine shaders. A source build fails without it. The command `python3 make.py tools` downloads the pinned version into `.tools/` of a Haylen checkout. |
+| `HAYLEN_SOKOL_SHDC` | Empty | Path to the `sokol-shdc` executable that compiles the engine shaders. A source build fails without it. The command `python3 haylen.py tools` downloads the pinned version into `.tools/` of a Haylen checkout. |
 | `HAYLEN_RENDER_BACKEND` | `AUTO` | `AUTO`, `METAL`, `D3D11`, `GLCORE`, `GLES3` or `WGPU`. The value `AUTO` picks Metal on Apple platforms, D3D11 on Windows, GLES3 on Android, WebGPU in the browser and OpenGL Core on Linux. |
 | `HAYLEN_SANITIZERS` | `OFF` | Sanitizers of desktop builds that do not use MSVC: `ADDRESS` for AddressSanitizer and UndefinedBehaviorSanitizer, or `THREAD` for ThreadSanitizer. |
 | `HAYLEN_BUILD_SDK` | `OFF` | Adds the `haylen_sdk` target and the install rules of the SDK. |
@@ -71,7 +71,7 @@ A local checkout works the same way with `CPMAddPackage(NAME haylen SOURCE_DIR "
 The SDK is a prebuilt engine for one platform and one graphics backend. It needs neither the engine sources nor `sokol-shdc`, because the shaders are already compiled into it.
 
 ```sh
-python3 make.py sdk --platform macos --config Release
+python3 haylen.py sdk --platform macos --config Release
 ```
 
 | Option | Default | Meaning |
@@ -134,7 +134,7 @@ The function links `haylen::runtime`, which brings the system libraries of the p
 | Windows and Linux | An executable in `bin/<target>/` of the build tree, and a `SYNC_PACKAGE-<target>` target that creates an `app` folder next to it with links to `app.json`, `source/` and `content/` of the package folder, so edited files show up without a rebuild. Windows builds are GUI apps whose Visual Studio debugger starts in that folder. |
 | macOS, iOS, tvOS and Mac Catalyst | An app bundle in `bin/<target>/`, or in `bin/` with the Xcode generator, with the package files under `Resources/app` and the privacy manifest of `APPLE_PROJECT` among its resources. Apps for iOS and tvOS target version 16.3, like the engine. |
 | Web | The page `<target>.html` with the shell, and the package preloaded at `/app` in the virtual file system. |
-| Android | The shared library `bin/<target>/lib<target>.so`, which `HaylenActivity` loads, and `bin/<target>/package.txt` with the absolute path of the package folder, which the Gradle project of the app copies into the APK assets. The command `make.py run-cpp --platform android` prepares that project, `platform/android` of the package folder or a copy of the Android template, as the [distribution guide](distribution.md#the-android-project) describes. |
+| Android | The shared library `bin/<target>/lib<target>.so`, which `HaylenActivity` loads, and `bin/<target>/package.txt` with the absolute path of the package folder, which the Gradle project of the app copies into the APK assets. The command `haylen.py run-cpp --platform android` prepares that project, `platform/android` of the package folder or a copy of the Android template, as the [distribution guide](distribution.md#the-android-project) describes. |
 
 ## An app written in C++
 
@@ -197,12 +197,12 @@ A plugin is the place for native code that the app compiles itself: a C++ SDK pu
 
 ## Checking the three modes
 
-The command `make.py embedding` builds `samples/cpp/embedding` the way another repository would consume the engine.
+The command `haylen.py embedding` builds `samples/cpp/embedding` the way another repository would consume the engine.
 
 ```sh
-python3 make.py embedding --mode subdirectory
-python3 make.py embedding --mode cpm
-python3 make.py embedding --mode package
+python3 haylen.py embedding --mode subdirectory
+python3 haylen.py embedding --mode cpm
+python3 haylen.py embedding --mode package
 ```
 
-Each mode builds in `build/embedding-<mode>-<config>`, with `--config` defaulting to `Debug`, and places the app in `bin/embedding/` of that tree. The `package` mode first runs `make.py sdk` for the host with the same configuration and points `CMAKE_PREFIX_PATH` at the result. The CI workflow runs `python make.py embedding --mode package --config Release` on macOS, Linux and Windows, as the [testing guide](testing.md#continuous-integration) describes.
+Each mode builds in `build/embedding-<mode>-<config>`, with `--config` defaulting to `Debug`, and places the app in `bin/embedding/` of that tree. The `package` mode first runs `haylen.py sdk` for the host with the same configuration and points `CMAKE_PREFIX_PATH` at the result. The CI workflow runs `python haylen.py embedding --mode package --config Release` on macOS, Linux and Windows, as the [testing guide](testing.md#continuous-integration) describes.

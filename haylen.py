@@ -38,9 +38,9 @@ SAMPLES_DIR = ROOT / "samples"
 TEMPLATES_DIR = ROOT / "templates"
 APP_TEMPLATE = TEMPLATES_DIR / "app"
 PLUGIN_TEMPLATE = TEMPLATES_DIR / "plugin"
-# Every folder here is the project template of one platform, which `make.py new` and `platform add` copy into `platform/<name>` of an app.
+# Every folder here is the project template of one platform, which `haylen.py new` and `platform add` copy into `platform/<name>` of an app.
 PLATFORM_TEMPLATES_DIR = TEMPLATES_DIR / "platform"
-# The folder that make.py writes inside a platform project, and the only one it writes there.
+# The folder that haylen.py writes inside a platform project, and the only one it writes there.
 GENERATED_FOLDER = "haylen"
 ARTIFACTS_DIR = BUILD_ROOT / "artifacts"
 ENGINE_BUILDS_DIR = BUILD_ROOT / "engine"
@@ -72,7 +72,7 @@ EMSDK_VERSION = "6.0.10"
 ANDROID_MIN_SDK = 27
 # The ABIs of the `haylen` Android library, which the native libraries of an app match: 32-bit ARM keeps the Android TV devices that still run it, and `x86_64` serves emulators.
 ANDROID_ABIS = ("arm64-v8a", "armeabi-v7a", "x86_64")
-# The Android libraries that `make.py engine` publishes as `dev.haylen:<module>`, each a module of the Gradle project of the engine.
+# The Android libraries that `haylen.py engine` publishes as `dev.haylen:<module>`, each a module of the Gradle project of the engine.
 ANDROID_LIBRARIES = ("haylen", "haylen-plugins", "haylen-links", "haylen-coroutines")
 # The oldest Apple systems the engine runs on: `std::format` with floating point, which the engine formats text and logs with, reaches their C++ library in iOS and tvOS 16.3, and `sokol_app` draws macOS frames through `-[NSView displayLinkWithTarget:selector:]`, which macOS 14.0 introduced.
 # Mac Catalyst takes its minimum, the iOS version, from `engine/cmake/haylen-catalyst.toolchain.cmake`.
@@ -93,7 +93,7 @@ PACKAGE_FOLDERS = ("source", "content")
 COPY_IGNORED = shutil.ignore_patterns(".DS_Store", ".git", "build", ".gradle", ".cxx", ".kotlin")
 # Engine files that never reach an artifact, so editing them keeps the artifacts fresh.
 ENGINE_HASH_SKIPPED = {"tests", "bench", "build", ".cxx", ".gradle", ".kotlin", ".DS_Store"}
-# The benchmarks of `make.py bench` that are plain executables on the CPU, by suite.
+# The benchmarks of `haylen.py bench` that are plain executables on the CPU, by suite.
 CPU_BENCHMARKS = {"algorithms": "haylen-algorithm-benchmark", "procedural": "haylen-procedural-benchmark"}
 
 # The slices of `Haylen.xcframework` and the architectures each one joins with lipo.
@@ -179,7 +179,7 @@ def download(url: str, target: Path, sha256: str | None = None) -> None:
     urllib.request.urlretrieve(url, target)
     if sha256 and hashlib.sha256(target.read_bytes()).hexdigest() != sha256:
         target.unlink()
-        raise BuildError(f'The file "{url}" does not match its pinned SHA-256 "{sha256}", so "make.py" deleted the download.')
+        raise BuildError(f'The file "{url}" does not match its pinned SHA-256 "{sha256}", so "haylen.py" deleted the download.')
 
 
 def ensure_shdc() -> Path:
@@ -535,7 +535,7 @@ def cmake_app_executable(directory: Path, target: str) -> Path:
 
 
 def engine_sources_hash() -> str:
-    """Hashes every engine file that reaches an artifact, so `make.py` knows when the artifacts are stale."""
+    """Hashes every engine file that reaches an artifact, so `haylen.py` knows when the artifacts are stale."""
     digest = hashlib.sha256()
     for folder, subfolders, files in os.walk(ENGINE_DIR):
         subfolders[:] = sorted(name for name in subfolders if name not in ENGINE_HASH_SKIPPED)
@@ -671,7 +671,7 @@ def ensure_artifacts(platform_name: str, config: str, jobs: int) -> None:
     entry = read_manifest()["platforms"].get(platform_name)
     if entry == {"config": config, "sources": engine_sources_hash()}:
         return
-    print(f'The "{platform_name}" artifacts are missing or stale, so "make.py" builds them first.', flush=True)
+    print(f'The "{platform_name}" artifacts are missing or stale, so "haylen.py" builds them first.', flush=True)
     build_artifacts(platform_name, config, jobs)
 
 
@@ -690,7 +690,7 @@ def resolve_app(value: str) -> Path:
         candidate = SAMPLES_DIR / value
     folder = candidate.resolve()
     if not (folder / "app.json").is_file():
-        raise BuildError(f'The path "{value}" is neither an app folder with an "app.json" nor a sample path from "samples/", such as "games/tiny-island". List them with "python3 make.py samples".')
+        raise BuildError(f'The path "{value}" is neither an app folder with an "app.json" nor a sample path from "samples/", such as "games/tiny-island". List them with "python3 haylen.py samples".')
     return folder
 
 
@@ -755,7 +755,7 @@ class App:
 
     @property
     def build_folder(self) -> Path:
-        """The folder under `build/apps` that holds everything `make.py` builds for the app, which no other app shares."""
+        """The folder under `build/apps` that holds everything `haylen.py` builds for the app, which no other app shares."""
         return APPS_DIR / build_folder_name(self.folder)
 
     @property
@@ -776,7 +776,7 @@ def package_files(folder: Path) -> list[Path]:
     for identifier in plugins:
         manifest = folder / "plugins" / identifier / "plugin.json"
         if not manifest.is_file():
-            raise BuildError(f'The file "{folder}/app.json" lists the plugin "{identifier}", whose "plugins/{identifier}/plugin.json" does not exist. Add it with "python3 make.py plugin add {identifier} --app {folder}".')
+            raise BuildError(f'The file "{folder}/app.json" lists the plugin "{identifier}", whose "plugins/{identifier}/plugin.json" does not exist. Add it with "python3 haylen.py plugin add {identifier} --app {folder}".')
         manifests.append(manifest)
         roots.append(manifest.parent / "source")
     return [folder / "app.json", *sorted([*manifests, *(path for root in roots for path in root.rglob("*") if path.is_file() and path.name != ".DS_Store")])]
@@ -820,7 +820,7 @@ FRAMEWORK_PLATFORMS = {"ios": "iPhoneOS", "ios-simulator": "iPhoneSimulator", "t
 
 @dataclasses.dataclass(frozen=True)
 class NativeLibrary:
-    """A native library of an app: prebuilt files per platform, or a target of a CMake project that `make.py` builds for each listed platform. On iOS and tvOS, apps may link it statically, and then the symbols that Lua reaches are listed."""
+    """A native library of an app: prebuilt files per platform, or a target of a CMake project that `haylen.py` builds for each listed platform. On iOS and tvOS, apps may link it statically, and then the symbols that Lua reaches are listed."""
 
     name: str
     files: dict[str, Path]
@@ -977,7 +977,7 @@ def write_apple_native_symbols(app: App, generated: Path) -> bool:
         declarations += [f"#if {condition}", *(f'extern "C" void {symbol}(void);' for symbol in library.symbols), "#endif"]
         registrations += [f"#if {condition}", f'    haylen::platform::NativeLibraries::registerLinked("{library.name}", {{{entries}}});', "#endif"]
     lines = [
-        "// Written by make.py from the native section of app.json. It links the symbols of the static native libraries into the app and registers them for haylen.native and ffi.C.",
+        "// Written by haylen.py from the native section of app.json. It links the symbols of the static native libraries into the app and registers them for haylen.native and ffi.C.",
         "#import <Foundation/Foundation.h>",
         "#include <TargetConditionals.h>",
         "",
@@ -1033,7 +1033,7 @@ def prepare_host_native(app: App, folder: Path, jobs: int) -> list[Path]:
     return placed
 
 
-# Plugins: folders under `plugins/` of an app that give Lua a capability implemented natively on each platform, which `make.py` validates, packages and assembles into the platform projects.
+# Plugins: folders under `plugins/` of an app that give Lua a capability implemented natively on each platform, which `haylen.py` validates, packages and assembles into the platform projects.
 
 PLUGIN_PLATFORMS = ("ios", "catalyst", "tvos", "macos", "android", "web", "windows", "linux")
 PLUGIN_KEYS = {"id", "name", "version", "description", "platforms", "requires", "parameters", "apple", "android", "web", "native"}
@@ -1073,7 +1073,7 @@ PRIVACY_KEYS = {"NSPrivacyTracking", "NSPrivacyTrackingDomains", "NSPrivacyColle
 
 @dataclasses.dataclass(frozen=True, eq=False)
 class Plugin:
-    """A plugin folder with its manifest, which `make.py` validated, and the native library it adds to the app."""
+    """A plugin folder with its manifest, which `haylen.py` validated, and the native library it adds to the app."""
 
     folder: Path
     manifest: dict
@@ -1169,7 +1169,7 @@ class PluginManifestCheck:
         return True
 
     def check_source(self, key: str, value: object) -> None:
-        """Checks a file that `make.py` copies into a project, which is a path inside the plugin or a reference to a file parameter, and so a file of the app."""
+        """Checks a file that `haylen.py` copies into a project, which is a path inside the plugin or a reference to a file parameter, and so a file of the app."""
         reference = PARAMETER_REFERENCE.fullmatch(value) if isinstance(value, str) else None
         if reference is None:
             self.check_path(key, value, "file or folder")
@@ -1383,7 +1383,7 @@ def parameter_values(folder: Path, plugin: Plugin, given: object, platform: str)
         description, valid = PARAMETER_TYPES[parameter["type"]]
         applies = platform in parameter.get("platforms", plugin.manifest["platforms"])
         value = given.get(name, parameter.get("default"))
-        # The command `make.py plugin add` writes an empty text for every required parameter, which is the value the developer still has to fill in.
+        # The command `haylen.py plugin add` writes an empty text for every required parameter, which is the value the developer still has to fill in.
         if value is None or (value == "" and parameter.get("required")):
             if applies and parameter.get("required"):
                 problems.append(f"The key \"{key}.{name}\" needs a value to build for \"{platform}\". {parameter['description']}")
@@ -1428,7 +1428,7 @@ def load_app_plugins(folder: Path, section: object, platform: str) -> tuple[list
     plugins: dict[str, Plugin] = {}
     for identifier in section:
         if not (folder / "plugins" / identifier / "plugin.json").is_file():
-            problems.append(f'{where}: The key "plugins.{identifier}" names no plugin of the app, because "plugins/{identifier}/plugin.json" does not exist. Add it with "python3 make.py plugin add {identifier} --app {folder}".')
+            problems.append(f'{where}: The key "plugins.{identifier}" names no plugin of the app, because "plugins/{identifier}/plugin.json" does not exist. Add it with "python3 haylen.py plugin add {identifier} --app {folder}".')
             continue
         try:
             plugins[identifier] = Plugin.load(folder / "plugins" / identifier)
@@ -1599,7 +1599,7 @@ def compile_shader(source: Path, output: Path) -> None:
 
 
 def shader_sources(folder: Path) -> list[Path]:
-    """Lists the sources of an app that declare a program, which are the ones `make.py` compiles, while the others are files they include."""
+    """Lists the sources of an app that declare a program, which are the ones `haylen.py` compiles, while the others are files they include."""
     shaders = folder / "content" / "shaders"
     return sorted(path for path in shaders.rglob("*.glsl") if re.search(r"^\s*@program\b", path.read_text(), re.MULTILINE)) if shaders.is_dir() else []
 
@@ -1651,7 +1651,7 @@ def platform_templates() -> list[str]:
     return sorted(path.name for path in PLATFORM_TEMPLATES_DIR.iterdir() if path.is_dir())
 
 
-# Platform projects: `platform/<template>` of an app belongs to the developer, and make.py builds it in place while it writes only its folder `haylen/`. An app without that folder uses a copy of the template that make.py keeps in the build folder of the app.
+# Platform projects: `platform/<template>` of an app belongs to the developer, and haylen.py builds it in place while it writes only its folder `haylen/`. An app without that folder uses a copy of the template that haylen.py keeps in the build folder of the app.
 
 
 def write_if_changed(path: Path, text: str) -> None:
@@ -1673,7 +1673,7 @@ def tree_hash(folder: Path) -> str:
 
 
 def read_state(root: Path) -> dict:
-    """Reads what make.py records about a platform project in `haylen/state.json`: the hashes of the last generation of `App.xcodeproj` and, for a copy of a template, the hash of the template."""
+    """Reads what haylen.py records about a platform project in `haylen/state.json`: the hashes of the last generation of `App.xcodeproj` and, for a copy of a template, the hash of the template."""
     path = root / GENERATED_FOLDER / "state.json"
     return json.loads(path.read_text()) if path.is_file() else {}
 
@@ -1683,12 +1683,12 @@ def write_state(root: Path, state: dict) -> None:
 
 
 def is_owned(root: Path) -> bool:
-    """Tells a copy of a template that make.py keeps under `build/apps` from the project of a developer."""
+    """Tells a copy of a template that haylen.py keeps under `build/apps` from the project of a developer."""
     return root.is_relative_to(APPS_DIR)
 
 
 def project_root(app: App, template: str) -> Path:
-    """Returns the project that make.py builds for an app with a platform template: `platform/<template>` of the app when it exists, or else the copy of the template in the build folder of the app, which make.py makes again whenever the template changed."""
+    """Returns the project that haylen.py builds for an app with a platform template: `platform/<template>` of the app when it exists, or else the copy of the template in the build folder of the app, which haylen.py makes again whenever the template changed."""
     own = app.folder / "platform" / template
     if own.is_dir():
         return own
@@ -1897,7 +1897,7 @@ def write_apple_privacy(app: App, root: Path, generated: Path) -> None:
 def write_apple_xcconfig(app: App, generated: Path, native: list[str]) -> None:
     """Writes `Haylen.xcconfig`, which `App.xcconfig` includes first, so the lines of the developer after the include win."""
     xcconfig = [
-        "// Written by make.py from app.json. The file App.xcconfig includes it first, so its own settings win.",
+        "// Written by haylen.py from app.json. The file App.xcconfig includes it first, so its own settings win.",
         f"HAYLEN_PRODUCT_NAME = {app.name}",
         f"HAYLEN_DISPLAY_NAME = {app.name}",
         f"HAYLEN_BUNDLE_IDENTIFIER = {app.identifier}",
@@ -1919,7 +1919,7 @@ def apple_spec(root: Path) -> dict:
 
 
 def includes_generated(spec: dict) -> bool:
-    """Tells whether the `project.yml` of a developer includes `haylen/project.yml`, which is what lets make.py generate `App.xcodeproj` again on its own."""
+    """Tells whether the `project.yml` of a developer includes `haylen/project.yml`, which is what lets haylen.py generate `App.xcodeproj` again on its own."""
     return any((entry if isinstance(entry, str) else entry.get("path")) == f"{GENERATED_FOLDER}/project.yml" for entry in spec.get("include", []))
 
 
@@ -1940,7 +1940,7 @@ def apple_template_plugins(plugin: Plugin) -> dict[str, dict]:
 def apple_embed_script(folder: str) -> dict:
     """The build phase that copies the native libraries of a target template into the app and signs them like the app, from the file list of its platform."""
     script = "\n".join([
-        "# Copies the libraries that make.py listed for this target and platform into the app and signs them like the app.",
+        "# Copies the libraries that haylen.py listed for this target and platform into the app and signs them like the app.",
         "set -e",
         'destination="$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH"',
         'mkdir -p "$destination"',
@@ -2037,7 +2037,7 @@ def write_apple_spec(app: App, root: Path, generated: Path, entitlements: dict[s
         included[template] = {"dependencies": dependencies, "sources": [*sources, *templates[template]["sources"]], "settings": {"base": settings}, **({"postBuildScripts": scripts} if scripts else {})}
 
     document = {**({"packages": packages} if packages else {}), "targetTemplates": included}
-    header = "# Written by make.py from app.json, the plugins of the app and the engine artifacts. The file project.yml includes it, and each target takes its template in \"templates\".\n"
+    header = "# Written by haylen.py from app.json, the plugins of the app and the engine artifacts. The file project.yml includes it, and each target takes its template in \"templates\".\n"
     write_if_changed(generated / "project.yml", header + json.dumps(document, indent=4) + "\n")
 
 
@@ -2110,7 +2110,7 @@ def generate_apple_project(app: App, root: Path, forced: bool) -> None:
         # A project that someone generated from the same inputs, such as the one a fresh clone of a repository holds, only needs its record.
         if action == "compare":
             if trial_apple_project(root) != current:
-                raise BuildError(f'The project "{root / "App.xcodeproj"}" changed since make.py generated it from "project.yml", or make.py never generated it, so make.py leaves it as it is. Move the changes made in Xcode into "project.yml" and run "python3 make.py xcodegen {app.folder}", which generates the project again.')
+                raise BuildError(f'The project "{root / "App.xcodeproj"}" changed since haylen.py generated it from "project.yml", or haylen.py never generated it, so haylen.py leaves it as it is. Move the changes made in Xcode into "project.yml" and run "python3 haylen.py xcodegen {app.folder}", which generates the project again.')
             write_state(root, {**state, "xcodegen": {"inputs": inputs, "project": current}})
             return
 
@@ -2200,7 +2200,7 @@ def apple_product(app: App, platform: str, config: str) -> Path:
     folder = app.build_folder / "xcode" / "Build" / "Products" / f"{config}{APPLE_RUNS[platform]['products']}"
     bundles = sorted(folder.glob("*.app"), key=lambda bundle: bundle.stat().st_mtime) if folder.is_dir() else []
     if not bundles:
-        raise BuildError(f'No app of "{app.folder}" was built for "{platform}" in the "{config}" configuration. Build it with "python3 make.py run {app.folder} --platform {platform}".')
+        raise BuildError(f'No app of "{app.folder}" was built for "{platform}" in the "{config}" configuration. Build it with "python3 haylen.py run {app.folder} --platform {platform}".')
     return bundles[-1]
 
 
@@ -2331,7 +2331,7 @@ def java_property(value: str) -> str:
 
 
 def prepare_android_plugins(app: App, root: Path) -> dict[str, str]:
-    """Copies the library module of every plugin into `haylen/plugins/<id>` and returns the properties that include the modules, apply their Gradle plugins and set their manifest placeholders. The files that plugins place in the project, such as `app/google-services.json`, go only into a copy of the template that make.py owns, since the project of a developer is theirs, and `check` names the ones it lacks."""
+    """Copies the library module of every plugin into `haylen/plugins/<id>` and returns the properties that include the modules, apply their Gradle plugins and set their manifest placeholders. The files that plugins place in the project, such as `app/google-services.json`, go only into a copy of the template that haylen.py owns, since the project of a developer is theirs, and `check` names the ones it lacks."""
     modules: list[str] = []
     gradle_plugins: dict[str, str] = {}
     placeholders: dict[str, str] = {}
@@ -2384,7 +2384,7 @@ def android_plugin_files(app: App, plugin: Plugin) -> list[tuple[Path, str]]:
 def write_android_splash(app: App, resources: Path) -> None:
     """Writes the splash background and logo of an app as resources that replace the defaults of the `haylen` library, which show the engine logo."""
     red, green, blue, alpha = app.background
-    colors = f'<?xml version="1.0" encoding="utf-8"?>\n<!-- Written by make.py from the splash of app.json. -->\n<resources>\n    <color name="haylen_splash_background">#{alpha:02X}{red:02X}{green:02X}{blue:02X}</color>\n</resources>\n'
+    colors = f'<?xml version="1.0" encoding="utf-8"?>\n<!-- Written by haylen.py from the splash of app.json. -->\n<resources>\n    <color name="haylen_splash_background">#{alpha:02X}{red:02X}{green:02X}{blue:02X}</color>\n</resources>\n'
     write_if_changed(resources / "values" / "haylen_splash.xml", colors)
     if app.splash_logo:
         if app.splash_logo.suffix.lower() not in {".png", ".webp", ".jpg", ".jpeg"}:
@@ -2415,7 +2415,7 @@ def prepare_android(app: App, root: Path, library: str, jobs: int) -> None:
         "buildDirectory": (app.build_folder / "gradle").as_posix(),
         **prepare_android_plugins(app, root),
     }
-    lines = ["# Written by make.py from app.json and the plugins of the app. The Gradle scripts of the project read it."]
+    lines = ["# Written by haylen.py from app.json and the plugins of the app. The Gradle scripts of the project read it."]
     write_if_changed(generated / "haylen.properties", "\n".join([*lines, *(f"{key}={java_property(value)}" for key, value in values.items())]) + "\n")
 
 
@@ -2443,7 +2443,7 @@ def android_product(app: App, config: str) -> Path:
     folder = app.build_folder / "gradle" / "app" / "outputs" / "apk"
     apks = sorted((path for path in folder.rglob("*.apk") if variant in path.parent.parts), key=lambda path: path.stat().st_mtime) if folder.is_dir() else []
     if not apks:
-        raise BuildError(f'No APK of "{app.folder}" was built in the "{config}" configuration. Build it with "python3 make.py run {app.folder} --platform android".')
+        raise BuildError(f'No APK of "{app.folder}" was built in the "{config}" configuration. Build it with "python3 haylen.py run {app.folder} --platform android".')
     return apks[-1]
 
 
@@ -2596,7 +2596,7 @@ def prepare_web(app: App, args: argparse.Namespace) -> Path:
 def check_web(app: App, site: Path, args: argparse.Namespace) -> list[Requirement]:
     """Checks the site of an app: every plugin with a web part in `config.json` with its module, and plugins whose screens open popups on a page that the opener policy `same-origin` cuts off from them."""
     if not (site / "config.json").is_file():
-        raise BuildError(f'The site of "{app.folder}" was not made yet. Make it with "python3 make.py prepare {app.folder} --platform web".')
+        raise BuildError(f'The site of "{app.folder}" was not made yet. Make it with "python3 haylen.py prepare {app.folder} --platform web".')
     listed = {entry["id"]: entry for entry in json.loads((site / "config.json").read_text()).get("plugins", [])}
     missing: list[Requirement] = []
     for plugin in app.plugins:
@@ -2605,7 +2605,7 @@ def check_web(app: App, site: Path, args: argparse.Namespace) -> list[Requiremen
         owner = f'The plugin "{plugin.id}"'
         entry = listed.get(plugin.id)
         if entry is None or not (site / entry["module"]).is_file():
-            missing.append(Requirement(f'{owner} needs its web module in the site, which "config.json" does not list.', f'Make the site again with "python3 make.py prepare {app.folder} --platform web".'))
+            missing.append(Requirement(f'{owner} needs its web module in the site, which "config.json" does not list.', f'Make the site again with "python3 haylen.py prepare {app.folder} --platform web".'))
         # Popups of screens are the one feature of plugins that the opener policy breaks, and a module registers its screens by name.
         screens = any("registerScreen(" in path.read_text() for path in (plugin.folder / "web").rglob("*") if path.suffix in (".js", ".mjs"))
         if screens and args.coop == "same-origin":
@@ -2642,7 +2642,7 @@ def run_desktop(app: App, folder: Path, args: argparse.Namespace) -> None:
 
 @dataclasses.dataclass(frozen=True)
 class RunTarget:
-    """A platform that `make.py run` builds for: the platform template of its project, if any, the engine artifacts it needs, the plugin platform whose parameters it checks, the function that prepares its project or folder, the one that builds and launches it and the one that checks what the built app lacks."""
+    """A platform that `haylen.py run` builds for: the platform template of its project, if any, the engine artifacts it needs, the plugin platform whose parameters it checks, the function that prepares its project or folder, the one that builds and launches it and the one that checks what the built app lacks."""
 
     template: str | None
     artifacts: str
@@ -2736,7 +2736,7 @@ def command_check(args: argparse.Namespace) -> None:
     app = resolve_app(args.app)
     target = RUN_TARGETS[args.platform]
     if target.check is None:
-        raise BuildError(f'The platform "{args.platform}" has no project whose requirements "make.py" checks.')
+        raise BuildError(f'The platform "{args.platform}" has no project whose requirements "haylen.py" checks.')
     info = App(app, target.plugins)
     root = app.build_folder / "web" if args.platform == "web" else project_root(info, target.template)
     missing = target.check(info, root, args)
@@ -2776,7 +2776,7 @@ def command_new(args: argparse.Namespace) -> None:
     (folder / "app.json").write_text(json.dumps(document, indent=4) + "\n")
     for template in platform_templates():
         copy_template(template, folder / "platform" / template)
-    print(f'Created "{name}" ("{identifier}") in "{folder}". Run it with "python3 make.py run {folder}".')
+    print(f'Created "{name}" ("{identifier}") in "{folder}". Run it with "python3 haylen.py run {folder}".')
 
 
 def command_platform_add(args: argparse.Namespace) -> None:
@@ -2784,7 +2784,7 @@ def command_platform_add(args: argparse.Namespace) -> None:
     app = resolve_app(args.app)
     destination = app / "platform" / args.template
     if destination.exists():
-        raise BuildError(f'The app "{app}" already has the project "{destination}". Compare it with the template with "python3 make.py platform diff {app} --template {args.template}".')
+        raise BuildError(f'The app "{app}" already has the project "{destination}". Compare it with the template with "python3 haylen.py platform diff {app} --template {args.template}".')
     copy_template(args.template, destination)
     print(f'Created "{destination}" from the "{args.template}" template.')
 
@@ -2800,7 +2800,7 @@ def command_platform_diff(args: argparse.Namespace) -> None:
     app = resolve_app(args.app)
     project = app / "platform" / args.template
     if not project.is_dir():
-        raise BuildError(f'The app "{app}" has no "{args.template}" project. Create it with "python3 make.py platform add {app} {args.template}".')
+        raise BuildError(f'The app "{app}" has no "{args.template}" project. Create it with "python3 haylen.py platform add {app} {args.template}".')
     template = project_files(PLATFORM_TEMPLATES_DIR / args.template)
     own = project_files(project)
     differences = 0
@@ -2870,7 +2870,7 @@ def command_plugin_add(args: argparse.Namespace) -> None:
         print(f"Fill in {', '.join(f'"{name}"' for name in missing)} under \"plugins.{plugin.id}\" of \"{app / 'app.json'}\".")
     for required in plugin.requires:
         if required not in listed:
-            print(f'The plugin "{plugin.id}" requires "{required}", which the app does not list yet. Add it with "python3 make.py plugin add" and its folder or repository.')
+            print(f'The plugin "{plugin.id}" requires "{required}", which the app does not list yet. Add it with "python3 haylen.py plugin add" and its folder or repository.')
 
 
 def command_plugin_remove(args: argparse.Namespace) -> None:
@@ -2949,7 +2949,7 @@ def command_plugin_new(args: argparse.Namespace) -> None:
         target = folder / substitute(source.relative_to(PLUGIN_TEMPLATE).as_posix())
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(substitute(source.read_text()))
-    print(f'Created the plugin "{identifier}" in "{folder}". Add it to an app with "python3 make.py plugin add {folder} --app <app>".')
+    print(f'Created the plugin "{identifier}" in "{folder}". Add it to an app with "python3 haylen.py plugin add {folder} --app <app>".')
 
 
 # The platforms a C++ app project runs on: this machine, the browser, Mac Catalyst, iOS, tvOS, their simulators and Android.
@@ -2989,7 +2989,7 @@ def command_run_cpp(args: argparse.Namespace) -> None:
 
 
 def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Namespace) -> None:
-    """Builds a C++ app for iOS, tvOS or their simulators with the Xcode generator, which compiles the launch screen and signs the bundle, or for Mac Catalyst with Ninja and the Mac Catalyst toolchain, for the architecture of this Mac, then launches it like `make.py run`."""
+    """Builds a C++ app for iOS, tvOS or their simulators with the Xcode generator, which compiles the launch screen and signs the bundle, or for Mac Catalyst with Ninja and the Mac Catalyst toolchain, for the architecture of this Mac, then launches it like `haylen.py run`."""
     require_host("apple")
     device = args.platform in {"ios", "tvos"}
     arch = "arm64" if device or host_arch() == "arm64" else "x86_64"
@@ -3008,7 +3008,7 @@ def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Names
 
 
 def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Namespace) -> None:
-    """Builds the library of a C++ app for the ABI of the Android device and packages it with the package of the app into its Android project, whose activity loads it instead of the Lua player, then installs and launches it like `make.py run`."""
+    """Builds the library of a C++ app for the ABI of the Android device and packages it with the package of the app into its Android project, whose activity loads it instead of the Lua player, then installs and launches it like `haylen.py run`."""
     device = android_device(args.device)
     abi = capture([adb(), "-s", device, "shell", "getprop", "ro.product.cpu.abi"]).strip()
     if abi not in ANDROID_ABIS:
@@ -3077,7 +3077,7 @@ def command_samples(_: argparse.Namespace) -> None:
             category = current
             print(f"{category}/")
         runner = "run-cpp" if kind == "cpp" else "run"
-        print(f"  {path:<32} python3 make.py {runner} {path}")
+        print(f"  {path:<32} python3 haylen.py {runner} {path}")
 
 
 def command_package(args: argparse.Namespace) -> None:
